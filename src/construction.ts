@@ -22,7 +22,7 @@ export type P = { x: number; y: number }
 
 /** Un geste. « aide » : un trait de construction, fin et gris, qu'on garde */
 export type Geste =
-  | { k: 'point'; nom: string; p: P }
+  | { k: 'point'; nom: string; p: P; lie?: string }      // lie : l'image qu'il suit
   | { k: 'forme'; f: Forme; cotes?: [P, P][]; cercle?: { c: P; r: number } }   // l'image finale, tracée puis posée
   | { k: 'regle'; a: P; b: P; aide?: boolean }
   | { k: 'compas'; c: P; r: number; a0: number; a1: number; aide?: boolean }
@@ -393,7 +393,9 @@ export function etapesImage(f: Forme, t: Transformation, imageFinale: Forme, nom
   const quel = (n: string | null, i: number) => n ?? (f.type === 'image' ? `le coin n° ${i + 1}` : f.type === 'cercle' ? 'le centre' : `le sommet n° ${i + 1}`)
   const image = (n: string | null) => n ? n + "'" : 'son image'
   const axe = noms.axe ?? "l'axe", centre = noms.centre ?? 'le centre'
-  const marque = (p: P, n: string | null): Geste => ({ k: 'point', nom: n ? n + "'" : '', p })
+  // Les points construits suivent la nouvelle image, s'il y en a une
+  const lie = imageFinale.type === 'image' ? imageFinale.id : (imageFinale as { lie?: string }).lie
+  const marque = (p: P, n: string | null): Geste => ({ k: 'point', nom: n ? n + "'" : '', p, lie })
 
   points.forEach(({ nom, p }, i) => {
     const q = g(p), gestes: Geste[] = []
@@ -456,6 +458,7 @@ export function etapesImage(f: Forme, t: Transformation, imageFinale: Forme, nom
   } else if (imageFinale.type === 'cercle') fin.cercle = { c: { x: imageFinale.x, y: imageFinale.y }, r: imageFinale.r }
   const nomsImage = points.every(x => x.nom) ? points.map(x => x.nom + "'").join('') : ''
   etapes.push({ consigne: f.type === 'image' ? "L'image de la figure se pose sur ses quatre coins." :
+    imageFinale.type === 'image' ? `L'image se pose : ${nomsImage ? 'ses points sont ' + nomsImage.replace(/'(?=.)/g, "', ") : 'ses points sont construits'}.` :
     imageFinale.type === 'cercle' ? `Au compas, même rayon : le cercle image${nomsImage ? ' de centre ' + nomsImage : ''}.` :
     `Relie les points obtenus : ${nomsImage ? 'la figure ' + nomsImage : "l'image"} est construite.`, gestes: [fin, ...aussi.map(a => ({ k: 'forme', f: a }) as Geste)] })
   return etapes

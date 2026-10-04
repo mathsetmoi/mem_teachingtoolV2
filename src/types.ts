@@ -16,7 +16,7 @@ export const FONDS: { id: Fond; nom: string }[] = [
   { id: 'repere', nom: 'Repère' },
 ]
 
-export type Outil = 'stylo' | 'surligneur' | 'gomme' | 'segment' | 'forme' | 'formule' | 'selection' | 'main'
+export type Outil = 'stylo' | 'surligneur' | 'gomme' | 'point' | 'segment' | 'forme' | 'formule' | 'selection' | 'main'
 
 /** Ce que trace l'outil « Formes » */
 export type TypeForme = 'rectangle' | 'cercle' | 'polygone'

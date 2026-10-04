@@ -9,7 +9,7 @@ import { COULEURS, TAILLES } from './app'
 import type { Bout, Figure, Forme, MarquePoint, Outil, TypeForme } from './types'
 import { CM, FONDS } from './types'
 import type { P, Transformation } from './formes'
-import { centreDe, image } from './formes'
+import { centreDe, image, versRelatif } from './formes'
 import { etapesImage } from './construction'
 import { Lecteur } from './lecteur'
 import { Constructeur } from './constructeur'
@@ -34,6 +34,7 @@ const ICONES: Record<string, string> = {
   aimant: 'M6 4v8a6 6 0 0012 0V4h-4v8a2 2 0 01-4 0V4zM6 8h4M14 8h4',
   partager: 'M4 13v7h16v-7M12 3v12M8 7l4-4 4 4',
   forme: 'M3 11h8v8H3zM17 13a4 4 0 100-8 4 4 0 100 8z',
+  point: 'M7 7l7 7M14 7l-7 7M16 17.5h4M16.5 21l1.75-6 1.75 6',
   rectangle: 'M4 6h16v12H4z',
   cercle: 'M12 20a8 8 0 100-16 8 8 0 100 16z',
   polygone: 'M12 3l8 6-3 10H7L4 9z',
@@ -84,6 +85,7 @@ const OUTILS: { id: Outil; nom: string; touche: string }[] = [
   { id: 'stylo', nom: 'Stylo', touche: 'P' },
   { id: 'surligneur', nom: 'Surligneur', touche: 'H' },
   { id: 'gomme', nom: 'Gomme', touche: 'E' },
+  { id: 'point', nom: 'Point : un clic le pose et le nomme', touche: 'X' },
   { id: 'segment', nom: 'Segment (Maj : angles de 15°)', touche: 'L' },
   { id: 'forme', nom: 'Formes : rectangle, cercle, polygone', touche: 'R, C, G' },
   { id: 'formule', nom: 'Formule', touche: 'F' },
@@ -403,7 +405,6 @@ export class UI implements Interface {
     }
     if (f.type !== 'image') action('Contour', 'Couleur, épaisseur, pointillés', () => ouvrir('contour'), this.section === 'contour')
     if (figure && ((f.type === 'cercle' && !f.arc) || (f.type === 'polygone' && f.ferme))) action('Fond', 'Remplir la figure', () => ouvrir('fond'), this.section === 'fond')
-    if (f.type === 'image') action(app.liees(f.id).length ? 'Repérer à nouveau' : 'Repérer les points', 'Trouver les sommets et les points marqués sur l\'image', () => app.repererImage(f))
     action('Transformer', 'Translation, rotation, symétrie, homothétie', () => ouvrir('transformer'), this.section === 'transformer')
     if (figure?.brut) action('Main levée', 'Revenir au tracé d\'origine', () => app.revenirMainLevee(figure))
     action('Dupliquer', 'Une copie, décalée d\'un centimètre', () => app.dupliquer(f))
@@ -604,15 +605,23 @@ export class UI implements Interface {
       // figure (ses sommets nommés), et l'image se pose avec elle à la fin
       let source: Forme = f, aussi: Forme[] = []
       const finale = image(f, r.t, app.tableau.moi)
+      let imgSource: Forme = finale
       if (f.type === 'image') {
         const liees = app.liees(f.id)
-        const pg = liees.find(g => g.type === 'polygone' && g.ferme) ?? liees[0]
+        const pg = liees.find(g => g.type === 'polygone' && g.ferme)
+        const points = liees.filter(g => g.type === 'polygone' && !g.ferme && g.pts.length === 2) as Extract<Figure, { type: 'polygone' }>[]
         if (pg) {
           source = pg
+          imgSource = { ...image(pg, r.t, app.tableau.moi), lie: finale.id } as Forme
           aussi = [finale, ...liees.filter(g => g !== pg).map(g => ({ ...image(g, r.t, app.tableau.moi), lie: finale.id }) as Forme)]
+        } else if (points.length) {
+          // Les points placés à la main sur l'image : on construit l'image de
+          // chacun, puis l'image se pose sur eux
+          const pts = points.map(g => app.sommetsDe(g)[0])
+          source = { ...points[0], id: 'source', ...versRelatif(pts), noms: points.map(g => g.noms?.[0] ?? ''), sommets: true } as Forme
+          imgSource = finale             // les points A', B'… naissent des étapes, liés à elle
         }
       }
-      const imgSource = source === f ? finale : ({ ...image(source, r.t, app.tableau.moi), lie: finale.id } as Forme)
       const noms = source.type === 'polygone' && source.sommets && source.noms ? ' de ' + source.noms.join('') : ''
       const titre = `${types.find(x => x[0] === T.type)![1]} : construction de l'image${noms}.`
       this.constructeur.jouerEtapes(etapesImage(source, r.t, imgSource, r.noms, aussi), titre)
@@ -733,7 +742,7 @@ export class UI implements Interface {
     this.toast.textContent = texte
     this.toast.classList.add('visible')
     clearTimeout((this.toast as unknown as { t: number }).t)
-    ;(this.toast as unknown as { t: number }).t = window.setTimeout(() => this.toast.classList.remove('visible'), 2600)
+    ;(this.toast as unknown as { t: number }).t = window.setTimeout(() => this.toast.classList.remove('visible'), Math.max(2600, texte.length * 60))
   }
 
   // ----- Partage -----

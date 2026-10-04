@@ -425,6 +425,7 @@ Trace la médiatrice de [AB]."></textarea>
       case 'point': {
         const f = this.app.nouvelleFigure({ type: 'polygone', ferme: false, pts: [g.p] })
         f.sommets = !!g.nom; f.noms = [g.nom]
+        if (g.lie) f.lie = g.lie
         if (!g.nom) f.stylePoints = [{ marque: 'croix' }]
         ids.push(this.app.poserFigureSeule(f))
         await pause(this.duree(220))

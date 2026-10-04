@@ -98,14 +98,10 @@ tracée sur la page, à une verticale ou à un axe du repère ; symétrie centra
 rotation ou homothétie autour d'un point de la page. L'image est vraiment
 retournée par une symétrie axiale, et un symétrique ne recopie pas les données.
 
-**Repérer la figure dans l'image.** À l'import (ou avec « Repérer les points »
-du panneau), les sommets des figures dessinées sur l'image et les points
-marqués (point, croix × ou +) sont cherchés et posés, nommés A, B, C…, sur
-l'image : ce sont de vraies figures, liées à elle (elles la suivent quand on la
-déplace ou la transforme). La construction pas à pas du symétrique part alors
-de ces sommets (A', B', C'). Aucune IA : seuil d'Otsu, composantes connexes,
-suivi de contour et Ramer-Douglas-Peucker (`src/detection.ts`). Les lettres
-imprimées ne sont pas prises pour des points ; elles ne sont pas lues non plus.
+**Les points d'une image** se placent à la main avec l'outil **Point** (X) :
+posé sur l'image, un point y est lié (il la suit quand on la déplace ou la
+transforme), et la construction pas à pas du symétrique part de ces points
+(A', B', C'…).
 
 ## Instruments
 
@@ -121,9 +117,13 @@ Le bouton « Instruments » de la barre du haut pose ou range une **règle**
 - **Tracer le long d'un bord** : au stylo ou à l'outil segment, posé contre un
   bord, le trait suit le bord en ligne droite, au millimètre sur un bord gradué
   (la longueur s'affiche). L'équerre donne ainsi perpendiculaires et parallèles.
-- **Compas** : la pointe le déplace ; la mine l'écarte, au millimètre ou
-  exactement jusqu'à un point de la figure (report de longueur) ; la tête ↻ le
-  fait tourner et trace l'arc, un cercle entier si l'on fait le tour.
+- **Compas** : la pointe le déplace (l'écartement ne bouge pas) ; la mine
+  l'écarte, au millimètre ou exactement jusqu'à un point de la figure (report
+  de longueur) ; **Maj + mine** le tourne sur sa pointe sans tracer (on « lève »
+  le compas pour l'amener où l'arc doit commencer) ; la tête ↻ le fait tourner
+  et trace l'arc — un petit tour, un petit arc ; le tour complet, le cercle.
+  Deux arcs qui se coupent : pointe en A, Maj + mine vers l'endroit visé, un
+  petit tour de tête ; pointe en B (même écartement), et de même.
 
 ## Constructions pas à pas
 
@@ -184,6 +184,9 @@ propose plus : `PARTAGE_ELEVES = false` dans `src/main.ts`. Le passer à `true`
 rend le bouton « Partager » et le mode élève décrits plus bas.
 
 ## Ce que fait la v0.1
+
+Outil **Point** (X) : un clic pose un point marqué d'une croix et nommé (A, B,
+C…), sur le tableau ou sur une image.
 
 Côté prof : stylo sensible à la pression, surligneur, gomme, segments (Maj pour
 les angles de 15°, aimant au quadrillage), formules LaTeX avec aperçu et
@@ -251,7 +254,6 @@ cours, qui fait la latence ressentie au stylet.
 | `src/instruments.ts` | Règle, équerre, rapporteur, compas |
 | `src/construction.ts` | Programme de construction → étapes et gestes |
 | `src/constructeur.ts` | Joue les étapes, avec ou sans instruments |
-| `src/detection.ts` | Repère sommets et points marqués dans une image |
 | `src/ui.ts` | Barres d'outils, partage, éditeur de formules |
 | `serveur/server.js` | Relais WebSocket et sauvegarde des salles |
 

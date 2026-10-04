@@ -15,7 +15,7 @@ import type { P, Reconnue, Transformation } from './formes'
 import type { Bord, EtatInstrument, NomInstrument, Partie } from './instruments'
 import { angleLisible, bords, etatParDefaut, toucher } from './instruments'
 import * as Y from 'yjs'
-import { bornerDecalage, image, nomsLibres, placesDesNoms, ranger, reconnaitre, sommetsDe, versRelatif } from './formes'
+import { bornerDecalage, image, nomsLibres, placesDesNoms, reconnaitre, sommetsDe, versRelatif } from './formes'
 
 export const COULEURS = [
   { nom: 'Noir', valeur: '#1b2230' },
@@ -139,6 +139,7 @@ export class App {
     // Un instrument rangé hors de la vue revient au milieu de l'écran
     const garde = avant && avant.x > v.x && avant.x < v.x + v.l && avant.y > v.y && avant.y < v.y + v.h
     posés.set(nom, { ...(garde ? avant : etatParDefaut(nom, centre)), visible: true })
+    if (nom === 'compas') this.ui.message('Compas : la pointe le pose, la mine l\'écarte (Maj + mine : le tourner sans tracer), la tête ↻ trace l\'arc — un petit tour, un petit arc.')
   }
 
   private enregistrerInstrument(nom: NomInstrument) {
@@ -197,7 +198,7 @@ export class App {
     return mieux ? { p: mieux, accroche: true } : { p: this.aimanter(p), accroche: false }
   }
 
-  private geste_instrument(g: Extract<Geste, { type: 'instrument' }>, m: P) {
+  private geste_instrument(g: Extract<Geste, { type: 'instrument' }>, m: P, maj = false) {
     const e = { ...g.depart }
     const cm = (v: number) => (Math.round(v / CM * 10) / 10).toString().replace('.', ',') + ' cm'
     this.rendu.mesure = null
@@ -218,6 +219,14 @@ export class App {
         break
       }
       case 'mine': {
+        if (maj) {
+          // Maj : on « lève » le compas et on le tourne sur sa pointe, sans
+          // tracer ni changer l'écartement — pour amener la mine où l'arc doit
+          // commencer (à côté de l'intersection qu'on cherche, par exemple)
+          e.a = Math.atan2(m.y - e.y, m.x - e.x)
+          this.rendu.mesure = { texte: 'r = ' + cm(e.r) + ' (compas levé)', x: m.x, y: m.y }
+          break
+        }
         // L'écartement se prend sur un point de la figure, sinon au millimètre
         const o = this.accrocher(m, { x: e.x, y: e.y })
         const d = Math.hypot(o.p.x - e.x, o.p.y - e.y)
@@ -554,6 +563,7 @@ export class App {
         this.geste = { type: this.typeForme, x: a.x, y: a.y }
         break
       }
+      case 'point': this.placerPoint(m); break
       case 'gomme':
         this.geste = { type: 'gomme', effaces: new Set() }
         this.gommer(m.x, m.y)
@@ -615,7 +625,7 @@ export class App {
       return
     }
     switch (g.type) {
-      case 'instrument': this.geste_instrument(g, m); break
+      case 'instrument': this.geste_instrument(g, m, e.shiftKey); break
       case 'longer': this.geste_longer(g, m); break
       case 'poignee':
         if (!g.bouge && Math.hypot(s.x - g.sx, s.y - g.sy) < 4) break     // un clic, pas encore un glisser
@@ -1033,9 +1043,7 @@ export class App {
       const f: Forme = { id: uid(), type: 'image', src, l, h, m: [e, 0, 0, e],
         x: v.x + v.l / 2 - l * e / 2, y: v.y + v.h / 2 - h * e / 2, z: Date.now(), auteur: this.tableau.moi }
       this.poserFigure(f)
-      this.ui.message('Image posée : « Transformer » construit son symétrique')
-      // Une figure nette sur l'image ? On en repère tout de suite les sommets
-      setTimeout(() => this.repererImage(f as Extract<Forme, { type: 'image' }>, true), 50)
+      this.ui.message('Image posée. L\'outil Point (X) place ses sommets ; « Transformer » construit son symétrique.')
     } catch { this.ui.message('Impossible de lire cette image.') }
     finally { URL.revokeObjectURL(url) }
   }
@@ -1232,7 +1240,23 @@ export class App {
     this.poserFigure(img)
   }
 
-  /** Les figures repérées sur une image (elles la suivent) */
+  /** L'outil Point : un clic pose un point marqué d'une croix, nommé de la
+   *  lettre libre suivante. Posé sur une image, il lui est lié : il la suit,
+   *  et sert à construire son image par une transformation. */
+  private placerPoint(m: P) {
+    const p = this.aimanter(m)
+    const sous = [...this.formes].reverse().find(f => f.type === 'image' && touche(f, p.x, p.y, 0, g => this.rendu.boite(g)))
+    const f = this.nouvelleFigure({ type: 'polygone', ferme: false, pts: [p] })
+    f.sommets = true
+    f.noms = nomsLibres(1, this.formes)
+    f.stylePoints = [{ marque: 'croix' }]
+    if (sous) f.lie = sous.id
+    this.tableau.nouveauGeste()
+    this.poserFigureSeule(f)
+    this.rendu.redessinerDirect()
+  }
+
+  /** Les figures liées à une image (elles la suivent) */
   liees(id: string): Figure[] {
     return this.formes.filter((g): g is Figure => (g.type === 'polygone' || g.type === 'cercle') && g.lie === id)
   }
@@ -1240,45 +1264,6 @@ export class App {
   /** La forme suit-elle une image sélectionnée ? */
   private lieeA(f: Forme) {
     return (f.type === 'polygone' || f.type === 'cercle') && !!f.lie && this.selection.has(f.lie)
-  }
-
-  /** Repère les sommets et points dessinés sur une image, et les pose,
-   *  nommés, liés à elle. `auto` : seulement si le résultat est net. */
-  async repererImage(f: Extract<Forme, { type: 'image' }>, auto = false): Promise<number> {
-    const img = this.pixels(f.src)
-    if (!img) return 0
-    if (!img.complete) await new Promise(r => { img.onload = () => { this.rendu.toutRedessiner(); r(null) } })
-    const { reperer } = await import('./detection')
-    const r = reperer(img)
-    const [a, b, c, d] = f.m
-    const monde = (p: P) => ({ x: f.x + a * p.x + c * p.y, y: f.y + b * p.x + d * p.y })
-    const nb = r.polygones.reduce((s, p) => s + p.length, 0) + r.points.length
-    if (auto && (!nb || r.polygones.length > 3 || nb > 16 || (!r.polygones.length && r.points.length < 2))) return 0
-    if (!nb) { this.ui.message('Je ne trouve ni sommets ni points marqués sur cette image.'); return 0 }
-    // On remplace ce qui avait déjà été repéré sur cette image
-    const anciens = this.liees(f.id).map(g => g.id)
-    this.tableau.nouveauGeste()
-    this.tableau.doc.transact(() => {
-      if (anciens.length) this.tableau.supprimer(this.page, anciens)
-      const pris = this.formes.filter(g => !anciens.includes(g.id))
-      const noms: string[] = []
-      for (const pg of r.polygones) {
-        const pts = ranger(pg.map(monde))
-        const fig = this.nouvelleFigure({ type: 'polygone', ferme: true, pts }, { couleur: '#1f5fbf', taille: 2 })
-        fig.sommets = true; fig.lie = f.id
-        fig.noms = nomsLibres(pts.length, [...pris, { ...fig, noms: noms.slice() } as Forme])
-        noms.push(...fig.noms); this.tableau.poser(this.page, fig)
-      }
-      for (const p of r.points) {
-        const fig = this.nouvelleFigure({ type: 'polygone', ferme: false, pts: [monde(p)] }, { couleur: '#1f5fbf', taille: 2 })
-        fig.sommets = true; fig.lie = f.id
-        fig.noms = nomsLibres(1, [...pris, { ...fig, noms: noms.slice() } as Forme])
-        noms.push(...fig.noms); this.tableau.poser(this.page, fig)
-      }
-      const fig = r.polygones.length ? (r.polygones.length > 1 ? `${r.polygones.length} figures repérées` : 'Figure repérée') + ' — ' : ''
-      this.ui.message(`${fig}${nb} point${nb > 1 ? 's' : ''} : ${noms.join(', ')}${auto ? ' (Ctrl+Z pour les enlever)' : ''}`)
-    }, 'locale')
-    return nb
   }
 
   /** Origine du repère de la page (pour les transformations), si elle en a un */
@@ -1349,7 +1334,7 @@ export class App {
       return
     }
     if (ctrl || !this.peutEcrire) return
-    const raccourcis: Record<string, Outil> = { p: 'stylo', h: 'surligneur', e: 'gomme', l: 'segment', f: 'formule', v: 'selection' }
+    const raccourcis: Record<string, Outil> = { p: 'stylo', h: 'surligneur', e: 'gomme', x: 'point', l: 'segment', f: 'formule', v: 'selection' }
     const formes: Record<string, TypeForme> = { r: 'rectangle', c: 'cercle', g: 'polygone' }
     const k = e.key.toLowerCase()
     if (formes[k]) { this.typeForme = formes[k]; this.choisirOutil('forme'); return }
