@@ -343,3 +343,70 @@ body.en-lecture .panneau-construction, body.en-lecture .consigne-construction { 
 .transformer .actions { flex-wrap: wrap; }
 @media (max-width: 640px) { .choix-sur-tableau { grid-template-columns: 1fr auto auto !important; } }
 .principal.danger-plein { background: var(--rouge); }
+
+/* ---------- Automatismes ---------- */
+.seance { position: fixed; inset: 0; z-index: 40; background: var(--papier); color: var(--encre); overflow: auto; }
+body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .panneau-construction { visibility: hidden; }
+.seance .fermer { width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; font-size: 28px; cursor: pointer; }
+.seance .fermer:hover { background: #e9eef5; }
+.seance-reglages { max-width: 1100px; margin: 0 auto; padding: 20px 24px 40px; }
+.seance-tete { display: flex; align-items: center; justify-content: space-between; }
+.seance-tete h2 { margin: 0; font-size: 24px; }
+.seance-colonnes { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; margin-top: 12px; }
+@media (max-width: 860px) { .seance-colonnes { grid-template-columns: 1fr; } }
+.seance fieldset { border: 1px solid var(--filet); border-radius: 14px; padding: 10px 14px 14px; margin: 0 0 14px; }
+.seance legend { font-weight: 700; padding: 0 6px; }
+.seance legend .compte { font-weight: 400; color: var(--encre-douce); font-size: 13px; }
+.liste-autos .theme h3 { margin: 10px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--encre-douce); }
+.seance label { display: flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer; }
+.seance label input[type=checkbox], .seance label input[type=radio] { width: 18px; height: 18px; accent-color: var(--bleu); flex: none; }
+.liste-autos label span { flex: 1; }
+.apercu-auto { border: 0; background: transparent; cursor: pointer; opacity: .55; font-size: 15px; border-radius: 8px; padding: 4px 6px; }
+.apercu-auto:hover { opacity: 1; background: #e9eef5; }
+.seance label.nombre span { min-width: 150px; }
+.seance label.nombre input { width: 70px; height: 36px; padding: 0 8px; border: 1px solid var(--filet); border-radius: 8px; font: inherit; }
+.exemple-auto { min-height: 44px; padding: 10px 12px; margin-bottom: 12px; border-radius: 10px; background: var(--chrome); font-size: 15px; line-height: 1.6; }
+.exemple-auto:empty { display: none; }
+.exemple-auto .rep { color: #1e8a4c; font-weight: 700; }
+.seance .lancer { width: 100%; height: 52px; font-size: 17px; }
+.seance .lancer:disabled { opacity: .45; }
+
+.seance-jeu { min-height: 100%; display: flex; flex-direction: column; }
+.barre-seance { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 10px 16px; background: var(--chrome); border-bottom: 1px solid var(--filet); }
+.titre-seance { font-weight: 700; font-size: 17px; }
+.temps { text-align: center; }
+.chrono { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: pre; }
+.jauge { width: 240px; height: 8px; border-radius: 4px; background: var(--filet); overflow: hidden; margin: 4px auto 0; }
+.jauge > div { height: 100%; background: var(--bleu); transition: width .2s linear; }
+.jauge > div.presque { background: var(--rouge); }
+.commandes-seance { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.commandes-seance button { height: 42px; padding: 0 14px; }
+@media (max-width: 900px) { .barre-seance { grid-template-columns: 1fr; } .commandes-seance { justify-content: center; } }
+
+.scene-seance { flex: 1; padding: 24px; }
+.scene-seance.diapo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+.scene-seance.diapo .question-auto { width: min(1000px, 100%); font-size: clamp(22px, 3.2vw, 40px); padding: 36px 44px; }
+.points-diapo { display: flex; gap: 10px; }
+.points-diapo span { width: 14px; height: 14px; border-radius: 50%; background: var(--filet); }
+.points-diapo span.vu { background: #9bb6dc; }
+.points-diapo span.ici { background: var(--bleu); transform: scale(1.25); }
+/* Les 10 d'un coup : deux rangées de cinq sur un écran de classe */
+.scene-seance.grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; align-content: start; font-size: clamp(15px, 1.25vw, 20px); padding: 16px; }
+@media (min-width: 1250px) { .scene-seance.grille { grid-template-columns: repeat(5, 1fr); } }
+.scene-seance.grille .question-auto { padding: 12px 14px; }
+.question-auto { background: var(--papier); border: 1px solid var(--filet); border-radius: 16px; padding: 16px 20px; box-shadow: 0 2px 0 var(--filet); }
+.question-auto header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.question-auto .numero { min-width: 1.6em; height: 1.6em; display: inline-grid; place-items: center; border-radius: 50%; background: var(--surligneur); font-weight: 700; font-size: .8em; }
+.question-auto .genre { font-size: .55em; text-transform: uppercase; letter-spacing: .06em; color: var(--encre-douce); }
+.question-auto .enonce { margin: .3em 0 .6em; line-height: 1.5; }
+.question-auto .options { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: .4em .8em; }
+.question-auto .options li { display: flex; align-items: center; gap: .5em; padding: .3em .5em; border-radius: 10px; border: 2px solid transparent; }
+.question-auto .lettre { min-width: 1.5em; height: 1.5em; display: inline-grid; place-items: center; border-radius: 8px; background: var(--chrome); border: 1px solid var(--filet); font-weight: 700; font-size: .75em; }
+.question-auto .juste { border-color: #1e8a4c !important; background: #e5f4ea; }
+.question-auto .ecartee { opacity: .4; }
+.question-auto .vf { display: flex; gap: .8em; }
+.question-auto .vf span { padding: .2em .9em; border-radius: 10px; border: 2px solid var(--filet); font-weight: 700; }
+.question-auto .propose { margin: 0 0 .5em; }
+.question-auto .correction { margin: .4em 0 0; color: #1e6b3d; font-weight: 700; }
+.question-auto .a-repondre { margin: 0; color: var(--encre-douce); }
+.seance-message { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); padding: 12px 20px; border-radius: 12px; background: var(--encre); color: #fff; font-size: 18px; }

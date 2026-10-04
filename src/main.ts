@@ -39,7 +39,7 @@ async function demarrer() {
   const ui = new UI(app, racine, PARTAGE_ELEVES ? partager : null)
   zone.dataset.outil = app.outil
   // Pour les tests automatiques, en développement seulement
-  if (import.meta.env.DEV) Object.assign(window, { __app: app, __parties: (await import('./instruments')).partiesDuCompas, __construction: await import('./construction') })
+  if (import.meta.env.DEV) Object.assign(window, { __app: app, __parties: (await import('./instruments')).partiesDuCompas, __construction: await import('./construction'), __auto: await import('./automatismes'), __katex: (await import('katex')).default })
 
   const nom = role === 'prof' ? 'Prof' : await ui.demanderNom()
   tableau.diffuser({ nom, role, couleur: TEINTES[tableau.presence.clientID % TEINTES.length] })

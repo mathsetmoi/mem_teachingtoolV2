@@ -13,6 +13,7 @@ import { centreDe, image, versRelatif } from './formes'
 import { etapesImage } from './construction'
 import { Lecteur } from './lecteur'
 import { Constructeur } from './constructeur'
+import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
 
@@ -50,6 +51,7 @@ const ICONES: Record<string, string> = {
   rapporteur: 'M3 17a9 9 0 0118 0zM12 17V12M12 8V9M7 11l1 1M17 11l-1 1',
   compas: 'M12 3v2M12 5l-6 15M12 5l6 15M9.5 13h5',
   construction: 'M4 5h9M4 10h7M4 15h5M15 20l2-9 2 9M17 11V8M15.6 16h2.8',
+  automatismes: 'M12 21a8 8 0 100-16 8 8 0 100 16zM12 9v4l2.5 2.5M10 2h4M12 2v3',
 }
 
 const TYPES_FORMES: { id: TypeForme; nom: string; touche: string }[] = [
@@ -144,6 +146,7 @@ export class UI implements Interface {
   private section: 'contour' | 'fond' | 'transformer' | null = null
   private lecteur!: Lecteur
   private constructeur!: Constructeur
+  private seance!: Seance
   private choixInstruments!: HTMLDivElement
   private boutonInstruments!: HTMLButtonElement
   private boutonsInstruments = new Map<NomInstrument, HTMLButtonElement>()
@@ -234,9 +237,10 @@ export class UI implements Interface {
     choixFichier.addEventListener('change', () => { const f = choixFichier.files?.[0]; if (f) app.importerImage(f); choixFichier.value = '' })
     const importer = bouton('image', 'Importer une image (ou coller avec Ctrl+V, ou glisser le fichier)', () => choixFichier.click())
     this.racine.appendChild(choixFichier)
+    const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir())
     const rejouer = bouton('rejouer', 'Rejouer la construction du tableau', () => this.lecteur.ouvrir())
-    this.outilsPage = [nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, rejouer]
-    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, rejouer)
+    this.outilsPage = [nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, rejouer]
+    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, rejouer)
 
     // ----- Les instruments, sous leur bouton -----
     this.choixInstruments = document.createElement('div')
@@ -301,6 +305,7 @@ export class UI implements Interface {
     this.racine.append(outils, haut, zoom, this.bandeau, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
     this.lecteur = new Lecteur(app, this.racine, t => this.message(t))
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t))
+    this.seance = new Seance(this.racine)
 
     // ----- Menu d'un morceau de figure (point, extrémité, nom, rayon) -----
     this.menuPartie = document.createElement('div')

@@ -168,6 +168,27 @@ de côté », « de 2,5 cm de rayon », « la perpendiculaire à la droite (AB) 
 par le point C », « la médiatrice du segment AB », « 50 degrés »… Les crochets
 et parenthèses sont facultatifs ; les majuscules désignent les points.
 
+## Automatismes
+
+Le bouton « Automatismes » (chronomètre) de la barre du haut ouvre une séance
+plein écran. On choisit un ou plusieurs des 20 automatismes de 5e (priorités,
+relatifs, fractions, divisibilité, calcul littéral, proportionnalité,
+pourcentages, conversions, aires et périmètres, angles, moyenne…), un **mode**
+— réponse directe, QCM, vrai/faux, ou **au hasard** (un mode tiré pour chaque
+question) — et un **affichage** : diaporama (une question à la fois, qui
+change toutes les 30 s) ou les 10 questions d'un coup.
+
+Une minuterie de 5 min tourne (Pause / Espace). La correction s'affiche à la
+fin du temps, ou quand le professeur la demande (bouton ou touche C) ; en QCM,
+la bonne proposition est mise en évidence, en vrai/faux la bonne réponse est
+rappelée. « Nouveaux exemples » tire dix autres questions.
+
+Chaque automatisme est un générateur (`src/automatismes.ts`) : les valeurs sont
+tirées au hasard, et les trois réponses fausses d'un QCM sont de vraies erreurs
+d'élèves (calcul de gauche à droite, signe oublié, numérateurs et dénominateurs
+additionnés, virgule mal placée…). Écrits pour ce projet, ils ne reprennent le
+contenu d'aucun autre site.
+
 ## Rejouer le tableau
 
 Le bouton ▶ de la barre du haut rejoue la construction, geste par geste, au
@@ -264,6 +285,8 @@ cours, qui fait la latence ressentie au stylet.
 | `src/instruments.ts` | Règle, équerre, rapporteur, compas |
 | `src/construction.ts` | Programme de construction → étapes et gestes |
 | `src/constructeur.ts` | Joue les étapes, avec ou sans instruments |
+| `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
+| `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/ui.ts` | Barres d'outils, partage, éditeur de formules |
 | `serveur/server.js` | Relais WebSocket et sauvegarde des salles |
 
