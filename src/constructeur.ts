@@ -30,6 +30,7 @@ export class Constructeur {
   private liste!: HTMLOListElement
   private erreurs!: HTMLDivElement
   private programme: Programme | null = null
+  private messages: string[] = []                 // ce que le dernier essai n'a pas compris
   private faites = 0                              // étapes déjà construites
   private posees: string[][] = []                 // ce que chaque étape a posé
   private enCours = false
@@ -116,7 +117,7 @@ Trace la médiatrice de [AB]."></textarea>
       this.champ.value = EXEMPLES[Number(ex.value)].texte; ex.value = ''
       this.oublier()
     })
-    this.champ.addEventListener('input', () => this.oublier())
+    this.champ.addEventListener('input', () => { this.messages = []; this.oublier(); this.afficher() })
     const coche = q<HTMLInputElement>('.interrupteur input')
     coche.checked = this.avecInstruments
     coche.addEventListener('change', () => {
@@ -148,16 +149,18 @@ Trace la médiatrice de [AB]."></textarea>
     const r = this.app.rendu, cam = this.app.cam
     // On construit dans la partie gauche de l'écran : le panneau est à droite
     const ancre = cam.versMonde(Math.max(140, r.l * 0.3 - 3 * CM * cam.z), r.h * 0.62)
-    this.programme = compiler(texte, this.app.pointsNommes(), ancre)
+    const prog = compiler(texte, this.app.pointsNommes(), ancre)
+    this.messages = prog.erreurs
     this.faites = 0; this.posees = []
+    // Rien de compris : on montre pourquoi, sans lancer de construction vide
+    this.programme = prog.etapes.length ? prog : null
     this.afficher()
-    if (!this.programme.etapes.length) { this.programme = null; return false }
-    return true
+    return !!this.programme
   }
 
   private afficher() {
     const prog = this.programme
-    this.erreurs.innerHTML = prog?.erreurs.map(e => `<p>${html(e)}</p>`).join('') ?? ''
+    this.erreurs.innerHTML = this.messages.map(e => `<p>${html(e)}</p>`).join('')
     this.liste.innerHTML = prog ? prog.etapes.map((e, i) =>
       `<li class="${i < this.faites ? 'faite' : i === this.faites ? 'courante' : ''}">${html(e.consigne)}</li>`).join('') : ''
     this.liste.querySelector('.courante, .faite:last-child')?.scrollIntoView?.({ block: 'nearest' })

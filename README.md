@@ -118,7 +118,13 @@ rayon 3 cm (ou passant par A) ; médiatrice et milieu de [AB] ; triangle ABC par
 ses trois côtés ; triangle équilatéral ; carré, rectangle ; perpendiculaire et
 parallèle à (AB) passant par C ; angle BAC de 50° (rapporteur) ; bissectrice ;
 hexagone régulier. Les points déjà nommés sur la page servent. Une phrase non
-comprise est dite, pas devinée.
+comprise est dite, pas devinée, avec une phrase modèle à recopier.
+
+Les tournures d'un énoncé passent : « segment AB de longueur 6 cm », « le
+segment [AB] mesurant 6cm », « tel que AB = 6 cm », « 6 cm de long », « de 4 cm
+de côté », « de 2,5 cm de rayon », « la perpendiculaire à la droite (AB) passant
+par le point C », « la médiatrice du segment AB », « 50 degrés »… Les crochets
+et parenthèses sont facultatifs ; les majuscules désignent les points.
 
 ## Rejouer le tableau
 

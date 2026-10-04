@@ -69,9 +69,64 @@ function noms(t: string): string[] {
   return t.match(new RegExp(NOM, 'g')) ?? []
 }
 
-/** Retire accents et majuscules du début de phrase pour reconnaître les mots */
-function normaliser(t: string) {
-  return t.trim().replace(/[.;]+$/, '').replace(/\s+/g, ' ').replace(/’/g, "'")
+/**
+ * Remet une phrase dans la forme que lit le compilateur. Un énoncé dit la
+ * même chose de vingt façons — « segment AB de longueur 6 cm », « le segment
+ * [AB] mesurant 6cm », « un segment [AB] tel que AB = 6 cm » — et chacune doit
+ * marcher. Les noms de points restent en majuscules : ce sont eux qui disent
+ * ce qui est un point (« de » n'est pas le segment [DE]).
+ */
+export function normaliser(t: string) {
+  const N = "[A-Z](?:'|\\d)?"
+  let l = t.trim().replace(/[.;!]+$/, '').replace(/\s+/g, ' ').replace(/[’‘]/g, "'").replace(/\u00a0/g, ' ')
+  l = l.charAt(0).toLowerCase() + l.slice(1)                     // « Trace » comme « trace »
+  const r = (re: RegExp, par: string) => { l = l.replace(re, par) }
+  // Les unités
+  r(/(\d+(?:[.,]\d+)?)\s*(?:cm|centim[èe]tres?)\b/g, '$1 cm')
+  r(/(\d+(?:[.,]\d+)?)\s*(?:°|degr[ée]s?)/g, '$1°')
+  r(/\s*=\s*/g, ' = ')
+  // Les longueurs : « de longueur 6 cm », « mesurant 6 cm », « 6 cm de long »…
+  r(/\b(?:d'une longueur de|de longueur|longueur|qui mesure|mesurant|long de|de mesure)\s+(\d)/g, 'de $1')
+  r(/\b(\d+(?:[.,]\d+)?) cm de long(?:ueur)?\b/g, '$1 cm')
+  r(/\b(?:de |d')?(\d+(?:[.,]\d+)?) cm de rayon\b/g, 'de rayon $1 cm')
+  r(/\bde rayon (?:égal à |de )?(\d)/g, 'de rayon $1')
+  r(/\b(?:de |d')?(\d+(?:[.,]\d+)?) cm de c[ôo]t[ée]\b/g, 'de côté $1 cm')
+  r(/\bde (?:mesure )?(\d+(?:[.,]\d+)?)°/g, 'de $1°')
+  // « segment AB » → « segment [AB] » ; « tel que AB = 6 cm » pour un segment
+  r(new RegExp(`\\bsegment (${N})(${N})\\b`, 'g'), 'segment [$1$2]')
+  r(new RegExp(`\\bsegment \\[(${N})(${N})\\] tel(?:le)? que \\1\\2 = (\\d)`, 'g'), 'segment [$1$2] de $3')
+  // « du segment [AB] », « de AB » → « de [AB] » après médiatrice, milieu
+  r(new RegExp(`\\b(m[ée]diatrice|milieu(?: ${N})?) (?:du segment|de segment|de|du) \\[?(${N})(${N})\\]?`, 'g'), '$1 de [$2$3]')
+  // « à la droite (AB) », « à AB », « à [AB] » → « à (AB) » ; « passant par le point C » → « passant par C »
+  r(new RegExp(`\\b(perpendiculaire|parall[èe]le) (?:à|a) (?:la droite |la demi-droite |le segment )?[\\[(]?(${N})(${N})[\\])]?`, 'g'), '$1 à ($2$3)')
+  r(new RegExp(`\\b(passant par|qui passe par|en) le point (${N})`, 'g'), '$1 $2')
+  // « bissectrice de ABC » → « bissectrice de l'angle ABC »
+  r(new RegExp(`\\bbissectrice (?:de |du )(?:l'angle )?(?:\\\\widehat\\{)?(${N})(${N})(${N})`, 'g'), "bissectrice de l'angle $1$2$3")
+  // « centre le point O », « de centre O, de rayon » → « de centre O de rayon »
+  r(new RegExp(`\\bde centre (${N}),? (?:et )?(de rayon|passant par)`, 'g'), 'de centre $1 $2')
+  return l
+}
+
+/** Une phrase modèle, selon le mot qui ressemble à ce qu'on voulait faire */
+function suggestion(l: string): string {
+  const modeles: [RegExp, string][] = [
+    [/segment/, 'Trace un segment [AB] de 6 cm.'],
+    [/cercle/, 'Trace le cercle de centre O et de rayon 3 cm.'],
+    [/m[ée]diatrice/, 'Trace la médiatrice de [AB].'],
+    [/milieu/, 'Place le milieu I de [AB].'],
+    [/[ée]quilat/, 'Construis un triangle équilatéral ABC de côté 5 cm.'],
+    [/triangle/, 'Construis un triangle ABC tel que AB = 6 cm, AC = 5 cm et BC = 4 cm.'],
+    [/carr/, 'Construis un carré ABCD de côté 4 cm.'],
+    [/rectangle/, 'Construis un rectangle ABCD de 6 cm sur 3 cm.'],
+    [/perpendiculaire/, 'Trace la perpendiculaire à (AB) passant par C.'],
+    [/parall/, 'Trace la parallèle à (AB) passant par C.'],
+    [/bissectrice/, "Trace la bissectrice de l'angle ABC."],
+    [/angle/, 'Trace un angle BAC de 50°.'],
+    [/hexagone/, 'Construis un hexagone régulier ABCDEF de côté 3 cm.'],
+    [/point/, 'Place les points A, B et C.'],
+  ]
+  const m = modeles.find(([re]) => re.test(l))
+  return m ? ` Essaie par exemple : « ${m[1]} »` : ''
 }
 
 export function compiler(texte: string, connus: Map<string, P>, ancre: P): Programme {
@@ -140,13 +195,13 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
     return { H, w }
   }
 
-  const lignes = texte.split(/\n|(?<=[a-zé\])0-9°])\.\s+(?=[A-ZÉ])/).map(normaliser).filter(Boolean)
+  const lignes = texte.split(/\n|(?<=[a-zé\])0-9°])\.\s+(?=[A-ZÉ])/).map(x => x.trim()).filter(Boolean)
   for (const ligne of lignes) {
-    const l = ligne
+    const l = normaliser(ligne)
     let m: RegExpMatchArray | null
     try {
       // --- Points ---
-      if ((m = l.match(new RegExp(`^(?:place|placer|soit|trace)\\s+(?:un |le |les |deux |trois |quatre )?(?:points? )\\s*((?:${NOM}(?:\\s*,\\s*|\\s+et\\s+)?)+)$`, 'i')))) {
+      if ((m = l.match(new RegExp(`^(?:place|placer|soit|trace)\\s+(?:un |le |les |deux |trois |quatre )?(?:points? )\\s*((?:${NOM}(?:\\s*,\\s*|\\s+et\\s+)?)+)(?:\\s+non align[ée]s)?$`)))) {
         const n = noms(m[1]).filter(x => !pts.has(x))
         // Un point seul après une figure se pose au-dessus d'elle (pour y mener
         // une perpendiculaire, une parallèle…) ; sinon, à côté
@@ -156,12 +211,17 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
         etapes.push({ consigne: `Place ${n.length > 1 ? 'les points' : 'le point'} ${n.join(', ')}.`, gestes: n.map(x => ({ k: 'point', nom: x, p: pts.get(x)! })) })
       }
       // --- Segment [AB] de 5 cm, ou [AB] entre deux points connus ---
-      else if ((m = l.match(new RegExp(`segment \\[(${NOM})(${NOM})\\](?:\\s+(?:de|mesurant|de longueur)\\s+${NOMBRE}\\s*cm)?`, 'i'))) ||
-               (m = l.match(new RegExp(`^(?:trace|relie)\\s+\\[(${NOM})(${NOM})\\](?:\\s+(?:de|mesurant)\\s+${NOMBRE}\\s*cm)?$`, 'i')))) {
+      else if ((m = l.match(new RegExp(`segment \\[(${NOM})(${NOM})\\](?:\\s+(?:de|mesurant|de longueur)\\s+${NOMBRE}\\s*cm)?`))) ||
+               (m = l.match(new RegExp(`^(?:trace|relie)\\s+\\[(${NOM})(${NOM})\\](?:\\s+(?:de|mesurant)\\s+${NOMBRE}\\s*cm)?$`)))) {
         segment(m[1], m[2], m[3] ? lireNombre(m[3]) * CM : null)
       }
+      // --- Un segment sans nom : ses extrémités prennent des lettres libres ---
+      else if ((m = l.match(new RegExp(`segment de ${NOMBRE} cm`)))) {
+        const libres = 'ABCDEFGHIJKLMNPQRSTUVWXYZ'.split('').filter(x => !pts.has(x))
+        segment(libres[0], libres[1], lireNombre(m[1]) * CM)
+      }
       // --- Cercle de centre O et de rayon r / passant par M ---
-      else if ((m = l.match(new RegExp(`cercle\\s+(?:${NOM}\\s+)?de centre (${NOM})\\s+(?:et\\s+)?(?:de rayon ${NOMBRE}\\s*cm|passant par (${NOM}))`, 'i')))) {
+      else if ((m = l.match(new RegExp(`cercle\\s+(?:${NOM}\\s+)?de centre (${NOM})\\s+(?:et\\s+)?(?:de rayon ${NOMBRE}\\s*cm|passant par (${NOM}))`)))) {
         const nomC = m[1]
         const gestes: Geste[] = []
         const r = m[2] ? lireNombre(m[2]) * CM : dist(exiger(m[1])[0], exiger(m[3])[0])
@@ -171,7 +231,7 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
         etapes.push({ consigne: `Pointe du compas en ${nomC}, écartement ${cmTexte(r / CM)} : trace le cercle.`, gestes })
       }
       // --- Médiatrice de [AB] (et milieu) ---
-      else if ((m = l.match(new RegExp(`(m[ée]diatrice|milieu)\\s+(?:(${NOM})\\s+)?de \\[(${NOM})(${NOM})\\]`, 'i')))) {
+      else if ((m = l.match(new RegExp(`(m[ée]diatrice|milieu)\\s+(?:(${NOM})\\s+)?de \\[(${NOM})(${NOM})\\]`)))) {
         const [A, B] = exiger(m[3], m[4])
         const r = dist(A, B) * 0.7
         const [h, b] = intersectionCercles(A, r, B, r)!
@@ -190,7 +250,7 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
         }
       }
       // --- Triangle ABC tel que AB = 5 cm, AC = 4 cm, BC = 3 cm ---
-      else if ((m = l.match(new RegExp(`triangle\\s+(${NOM})(${NOM})(${NOM})\\s+tel que\\s+(.+)$`, 'i')))) {
+      else if ((m = l.match(new RegExp(`triangle\\s+(${NOM})(${NOM})(${NOM})\\s+tel que\\s+(.+)$`)))) {
         const [a, b, c] = [m[1], m[2], m[3]]
         const L = new Map<string, number>()
         for (const x of m[4].matchAll(new RegExp(`(${NOM})(${NOM})\\s*=\\s*${NOMBRE}\\s*cm`, 'g'))) {
@@ -202,12 +262,12 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
         triangle(a, b, c, ab, ac, bc)
       }
       // --- Triangle équilatéral ABC de côté 4 cm ---
-      else if ((m = l.match(new RegExp(`triangle [ée]quilat[ée]ral\\s+(${NOM})(${NOM})(${NOM})\\s+de (?:c[ôo]t[ée]\\s+)?${NOMBRE}\\s*cm`, 'i')))) {
+      else if ((m = l.match(new RegExp(`triangle [ée]quilat[ée]ral\\s+(${NOM})(${NOM})(${NOM})\\s+de (?:c[ôo]t[ée]\\s+)?${NOMBRE}\\s*cm`)))) {
         const c = lireNombre(m[4]) * CM
         triangle(m[1], m[2], m[3], c, c, c, 'triangle équilatéral')
       }
       // --- Carré ABCD / rectangle ABCD ---
-      else if ((m = l.match(new RegExp(`(carr[ée]|rectangle)\\s+(${NOM})(${NOM})(${NOM})(${NOM})\\s+(?:de |tel que )?(?:c[ôo]t[ée] |longueur )?${NOMBRE}\\s*cm(?:\\s+(?:sur|et|de largeur|et de largeur)\\s+${NOMBRE}\\s*cm)?`, 'i')))) {
+      else if ((m = l.match(new RegExp(`(carr[ée]|rectangle)\\s+(${NOM})(${NOM})(${NOM})(${NOM})\\s+(?:de |tel que )?(?:c[ôo]t[ée] |longueur )?${NOMBRE}\\s*cm(?:\\s+(?:sur|et|de largeur|et de largeur)\\s+${NOMBRE}\\s*cm)?`)))) {
         const carre = /carr/i.test(m[1])
         const [a, b, c, d] = [m[2], m[3], m[4], m[5]]
         const L = lireNombre(m[6]) * CM, H = carre ? L : m[7] ? lireNombre(m[7]) * CM : null
@@ -222,12 +282,12 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
         etapes.push({ consigne: `Trace [${d}${c}] : le ${carre ? 'carré' : 'rectangle'} ${a}${b}${c}${d} est construit.`, gestes: [{ k: 'regle', a: D, b: C }] })
       }
       // --- Perpendiculaire à (AB) passant par C ---
-      else if ((m = l.match(new RegExp(`perpendiculaire\\s+(?:à|a)\\s+\\((${NOM})(${NOM})\\)\\s+(?:passant par|qui passe par|en)\\s+(${NOM})`, 'i')))) {
+      else if ((m = l.match(new RegExp(`perpendiculaire\\s+(?:à|a)\\s+\\((${NOM})(${NOM})\\)\\s+(?:passant par|qui passe par|en)\\s+(${NOM})`)))) {
         const [A, B, C] = exiger(m[1], m[2], m[3])
         perpendiculaire(A, B, C, `Pose l'équerre : un côté de l'angle droit sur (${m[1]}${m[2]}), l'autre contre ${m[3]}. Trace la perpendiculaire.`)
       }
       // --- Parallèle à (AB) passant par C : deux perpendiculaires ---
-      else if ((m = l.match(new RegExp(`parall[èe]le\\s+(?:à|a)\\s+\\((${NOM})(${NOM})\\)\\s+(?:passant par|qui passe par)\\s+(${NOM})`, 'i')))) {
+      else if ((m = l.match(new RegExp(`parall[èe]le\\s+(?:à|a)\\s+\\((${NOM})(${NOM})\\)\\s+(?:passant par|qui passe par)\\s+(${NOM})`)))) {
         const [A, B, C] = exiger(m[1], m[2], m[3])
         perpendiculaire(A, B, C, `D'abord, à l'équerre, la perpendiculaire à (${m[1]}${m[2]}) passant par ${m[3]}.`, true)
         const d = unit(A, B)
@@ -236,7 +296,7 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
           gestes: [{ k: 'equerre', o: C, w: d, a: plus(C, d, -5 * CM), b: plus(C, d, 6 * CM) }] })
       }
       // --- Bissectrice de l'angle ABC ---
-      else if ((m = l.match(new RegExp(`bissectrice\\s+de\\s+l'angle\\s+(${NOM})(${NOM})(${NOM})`, 'i')))) {
+      else if ((m = l.match(new RegExp(`bissectrice\\s+de\\s+l'angle\\s+(${NOM})(${NOM})(${NOM})`)))) {
         const [A, B, C] = exiger(m[1], m[2], m[3])
         const r = Math.min(dist(B, A), dist(B, C)) * 0.5
         const E = plus(B, unit(B, A), r), F = plus(B, unit(B, C), r)
@@ -248,7 +308,7 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
         etapes.push({ consigne: `Trace la demi-droite qui part de ${m[2]} et passe par ce point : c'est la bissectrice.`, gestes: [{ k: 'regle', a: B, b: plus(B, unit(B, G), Math.max(dist(B, G) + 2 * CM, 6 * CM)) }] })
       }
       // --- Angle BAC de 40° (au rapporteur) ---
-      else if ((m = l.match(new RegExp(`angle\\s+(${NOM}|[a-z])(${NOM})(${NOM}|[a-z])\\s+(?:de|mesurant)\\s+${NOMBRE}\\s*°`, 'i')))) {
+      else if ((m = l.match(new RegExp(`angle\\s+(${NOM}|[a-z])(${NOM})(${NOM}|[a-z])\\s+(?:de|mesurant)\\s+${NOMBRE}\\s*°`)))) {
         const [n1, nA, n2] = [m[1], m[2], m[3]]
         const alpha = lireNombre(m[4])
         if (alpha <= 0 || alpha >= 180) throw new Error('Au rapporteur, un angle entre 0° et 180°.')
@@ -264,7 +324,7 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
         etapes.push({ consigne: `Trace la demi-droite [${nA}${n2}) qui passe par ce repère.`, gestes: [{ k: 'regle', a: A, b: plus(A, dir, 8 * CM) }, ...(n2.toUpperCase() === n2 ? [point(n2, C)] : [])] })
       }
       // --- Hexagone régulier ABCDEF de côté 3 cm (au compas) ---
-      else if ((m = l.match(new RegExp(`hexagone(?: r[ée]gulier)?\\s*((?:${NOM}){6})?\\s+de (?:c[ôo]t[ée]\\s+)?${NOMBRE}\\s*cm`, 'i')))) {
+      else if ((m = l.match(new RegExp(`hexagone(?: r[ée]gulier)?\\s*((?:${NOM}){6})?\\s+de (?:c[ôo]t[ée]\\s+)?${NOMBRE}\\s*cm`)))) {
         const r = lireNombre(m[2]) * CM
         const n = m[1] ? noms(m[1]) : ['A', 'B', 'C', 'D', 'E', 'F'].filter(x => !pts.has(x))
         if (n.length < 6) throw new Error('Il faut six noms libres pour l\'hexagone.')
@@ -276,8 +336,8 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
         etapes.push({ consigne: `Sans changer l'écartement, reporte le rayon six fois sur le cercle, à partir de ${n[0]}.`, gestes: g })
         etapes.push({ consigne: `Relie les six points : l'hexagone ${n.join('')} est construit.`, gestes: S.map((p, i) => ({ k: 'regle', a: p, b: S[(i + 1) % 6] }) as Geste) })
       }
-      else if (/^(?:[ée]tape|que remarques|justifie|observe)/i.test(l)) continue
-      else erreurs.push(`Je ne sais pas faire : « ${l} »`)
+      else if (/^(?:[ée]tape|que remarques|justifie|observe|explique)/i.test(l)) continue
+      else erreurs.push(`Je ne sais pas faire : « ${ligne.replace(/[.;]+$/, '')} ».` + suggestion(l))
     } catch (e) {
       erreurs.push((e as Error).message)
     }
