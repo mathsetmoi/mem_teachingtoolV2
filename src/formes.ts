@@ -165,7 +165,7 @@ function ranger(s: P[]): P[] {
 /** Un angle presque horizontal ou vertical le devient (à 7° près) */
 function redresser(a: number) {
   const q = Math.round(a / (Math.PI / 2)) * (Math.PI / 2)
-  return Math.abs(a - q) < 7 * DEG ? q : a
+  return Math.abs(a - q) < 12 * DEG ? q : a
 }
 
 function embellir(s: P[]): { pts: P[]; nom: string } {
@@ -198,6 +198,33 @@ function embellir(s: P[]): { pts: P[]; nom: string } {
     return { pts, nom: carre ? 'Carré' : 'Rectangle' }
   }
 
+  if (n === 4) {
+    const [A, B, C, D] = s
+    const dir = (a: P, b: P) => Math.atan2(b.y - a.y, b.x - a.x)
+    const ecart = (a: number, b: number) => { const d = Math.abs(a - b) % Math.PI; return Math.min(d, Math.PI - d) / DEG }
+    // Losange : quatre côtés presque égaux. Diagonales perpendiculaires.
+    if (cotes.every(x => egaux(x, moy, 0.15))) {
+      const t = redresser(dir(A, C))
+      const u = { x: Math.cos(t), y: Math.sin(t) }, v = { x: -u.y, y: u.x }
+      const d1 = dist(A, C) / 2, d2 = dist(B, D) / 2
+      const sens = (B.x - c.x) * v.x + (B.y - c.y) * v.y > 0 ? 1 : -1
+      return { nom: 'Losange', pts: [
+        { x: c.x - d1 * u.x, y: c.y - d1 * u.y }, { x: c.x + sens * d2 * v.x, y: c.y + sens * d2 * v.y },
+        { x: c.x + d1 * u.x, y: c.y + d1 * u.y }, { x: c.x - sens * d2 * v.x, y: c.y - sens * d2 * v.y }] }
+    }
+    // Parallélogramme : côtés opposés presque parallèles et de même longueur
+    if (ecart(dir(A, B), dir(D, C)) < 10 && ecart(dir(A, D), dir(B, C)) < 10 &&
+        egaux(cotes[0], cotes[2], 0.18) && egaux(cotes[1], cotes[3], 0.18)) {
+      let u = { x: (B.x - A.x + C.x - D.x) / 2, y: (B.y - A.y + C.y - D.y) / 2 }
+      const v = { x: (D.x - A.x + C.x - B.x) / 2, y: (D.y - A.y + C.y - B.y) / 2 }
+      const t = redresser(Math.atan2(u.y, u.x)), lu = Math.hypot(u.x, u.y)
+      u = { x: lu * Math.cos(t), y: lu * Math.sin(t) }
+      return { nom: 'Parallélogramme', pts: [
+        { x: c.x - u.x / 2 - v.x / 2, y: c.y - u.y / 2 - v.y / 2 }, { x: c.x + u.x / 2 - v.x / 2, y: c.y + u.y / 2 - v.y / 2 },
+        { x: c.x + u.x / 2 + v.x / 2, y: c.y + u.y / 2 + v.y / 2 }, { x: c.x - u.x / 2 + v.x / 2, y: c.y - u.y / 2 + v.y / 2 }] }
+    }
+  }
+
   if (n === 3) {
     // La base : le côté le plus proche de l'horizontale
     let b = 0
@@ -212,7 +239,7 @@ function embellir(s: P[]): { pts: P[]; nom: string } {
     const u = { x: Math.cos(t), y: Math.sin(t) }
     const cote = (C.x - m.x) * -u.y + (C.y - m.y) * u.x > 0 ? 1 : -1   // de quel côté est le sommet
     const nrm = { x: -u.y * cote, y: u.x * cote }
-    if (cotes.every(x => egaux(x, moy, 0.08))) {
+    if (cotes.every(x => egaux(x, moy, 0.1))) {
       const k = moy / 2, hh = moy * Math.sqrt(3) / 2
       return { nom: 'Triangle équilatéral', pts: [
         { x: m.x - k * u.x, y: m.y - k * u.y }, { x: m.x + k * u.x, y: m.y + k * u.y },
@@ -220,7 +247,7 @@ function embellir(s: P[]): { pts: P[]; nom: string } {
     }
     const base = dist(A, B), haut = (C.x - m.x) * nrm.x + (C.y - m.y) * nrm.y
     const A2 = { x: m.x - base / 2 * u.x, y: m.y - base / 2 * u.y }, B2 = { x: m.x + base / 2 * u.x, y: m.y + base / 2 * u.y }
-    if (egaux(dist(C, A), dist(C, B), 0.06)) {
+    if (egaux(dist(C, A), dist(C, B), 0.08)) {
       return { nom: 'Triangle isocèle', pts: [A2, B2, { x: m.x + haut * nrm.x, y: m.y + haut * nrm.y }] }
     }
     // Angle droit en un sommet : on le rend exact
@@ -281,26 +308,67 @@ export function reconnaitre(brut: P[], maintenu: boolean, zoom: number): Reconnu
     return { type: 'polygone', ferme: false, pts: garde.map(i => p[i]), nom: 'Ligne brisée' }
   }
 
-  const ferme = [...brut, brut[0]]
-  const p = reechantillonner(ferme, 72)
-  // Cercle ?
-  const c = { x: p.reduce((a, q) => a + q.x, 0) / p.length, y: p.reduce((a, q) => a + q.y, 0) / p.length }
-  const r = p.reduce((a, q) => a + dist(q, c), 0) / p.length
-  const errCercle = p.reduce((a, q) => a + Math.abs(dist(q, c) - r), 0) / p.length
-  // Polygone ?
+  const p = reechantillonner([...fermer(brut), brut[0]], 72)
+  const cercle = ajusterCercle(p)
   const s = coins(p, 0.035 * longueur(p))
-  const errPoly = s ? erreurPolygone(p, s, true) : Infinity
 
-  const tol = 0.06 * D
-  const rapport = (x2 - x1) / ((y2 - y1) || 1)
-  if (errCercle < errPoly && errCercle < 0.07 * r && rapport > 0.7 && rapport < 1.43) {
-    return { type: 'cercle', c, r, nom: 'Cercle' }
-  }
-  if (s && errPoly < tol) {
+  // Un polygone n'est retenu que si TOUS ses coins sont francs : un cercle
+  // tremblé a des bosses, pas des coins. Sinon, c'est un cercle (comme au
+  // tableau : on voulait un cercle, on n'a pas su le tracer rond).
+  if (s && s.length <= 6 && erreurPolygone(p, s, true) < 0.06 * D && s.every(v => nettete(p, v) >= 38)) {
     const e = embellir(ranger(s))
     return { type: 'polygone', ferme: true, pts: ranger(e.pts), nom: e.nom }
   }
+  const rapport = (x2 - x1) / ((y2 - y1) || 1)
+  if (cercle.erreur < 0.16 && rapport > 0.6 && rapport < 1.66) return { type: 'cercle', c: cercle.c, r: cercle.r, nom: 'Cercle' }
   return null
+}
+
+/** Le trait qui dépasse son point de départ (ou s'arrête un peu avant)
+ *  laisserait une pointe : on coupe là où la fin repasse au plus près du début. */
+function fermer(t: P[]): P[] {
+  const n = t.length, q = Math.max(2, Math.floor(n * 0.25))
+  let best = Infinity, bi = 0, bj = n - 1
+  for (let i = 0; i < q; i++) for (let j = n - q; j < n; j++) {
+    const d = dist(t[i], t[j])
+    if (d < best) { best = d; bi = i; bj = j }
+  }
+  return t.slice(bi, bj + 1)
+}
+
+/** Cercle des moindres carrés (méthode de Kåsa) ; erreur relative au rayon */
+function ajusterCercle(p: P[]): { c: P; r: number; erreur: number } {
+  const n = p.length
+  const mx = p.reduce((a, q) => a + q.x, 0) / n, my = p.reduce((a, q) => a + q.y, 0) / n
+  let suu = 0, svv = 0, suv = 0, suuu = 0, svvv = 0, suvv = 0, svuu = 0
+  for (const q of p) {
+    const u = q.x - mx, v = q.y - my
+    suu += u * u; svv += v * v; suv += u * v
+    suuu += u * u * u; svvv += v * v * v; suvv += u * v * v; svuu += v * u * u
+  }
+  const det = suu * svv - suv * suv
+  let c = { x: mx, y: my }
+  if (Math.abs(det) > 1e-9) {
+    const b1 = (suuu + suvv) / 2, b2 = (svvv + svuu) / 2
+    c = { x: mx + (b1 * svv - b2 * suv) / det, y: my + (b2 * suu - b1 * suv) / det }
+  }
+  const r = p.reduce((a, q) => a + dist(q, c), 0) / n
+  return { c, r, erreur: p.reduce((a, q) => a + Math.abs(dist(q, c) - r), 0) / n / (r || 1) }
+}
+
+/** Combien le tracé tourne (en degrés) autour du sommet v, sur une courte distance */
+function nettete(p: P[], v: P): number {
+  const n = p.length - 1                 // le dernier point répète le premier
+  let i0 = 0
+  for (let i = 1; i < n; i++) if (dist(p[i], v) < dist(p[i0], v)) i0 = i
+  const k = 4
+  let max = 0
+  for (let d = -2; d <= 2; d++) {
+    const i = (i0 + d + n) % n
+    const a = p[(i - k + n) % n], b = p[i], c = p[(i + k) % n]
+    max = Math.max(max, 180 - angle(a, b, c))
+  }
+  return max
 }
 
 // =============================================================

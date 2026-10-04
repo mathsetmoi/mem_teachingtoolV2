@@ -65,6 +65,7 @@ export class App {
   private dernierEnvoiVue = 0
   private dernierMouvement = 0        // pour savoir si le stylet est resté immobile
   private polyEnCours: P[] | null = null
+  private minuterieForme = 0
 
   constructor(readonly tableau: Tableau, readonly role: Role, private zone: HTMLElement) {
     this.rendu = new Rendu(this.cam, zone)
@@ -291,6 +292,7 @@ export class App {
         }
         this.geste = { type: 'dessin', pointeur: e.pointerId }
         this.dernierMouvement = performance.now()
+        this.attendreImmobilite()
         this.rendu.redessinerDirect()
         break
       }
@@ -387,7 +389,7 @@ export class App {
           const n = trait.pts.length
           if (Math.hypot(p.x - trait.pts[n - 3], p.y - trait.pts[n - 2]) < seuil) continue
           trait.pts.push(p.x, p.y, ev.pointerType === 'pen' ? ev.pressure : 0.5)
-          if (Math.hypot(p.x - trait.pts[n - 3], p.y - trait.pts[n - 2]) * this.cam.z > 1.5) this.dernierMouvement = t
+          if (Math.hypot(p.x - trait.pts[n - 3], p.y - trait.pts[n - 2]) * this.cam.z > 1.5) { this.dernierMouvement = t; this.attendreImmobilite() }
         }
         this.rendu.redessinerDirect()
         if (t - this.dernierEnvoiTrait > 33) { this.dernierEnvoiTrait = t; this.tableau.diffuser({ direct: { ...trait } }) }
@@ -431,7 +433,7 @@ export class App {
 
     const m = this.monde(e)
     switch (g.type) {
-      case 'dessin': this.validerTrait(performance.now() - this.dernierMouvement > 450); break
+      case 'dessin': clearTimeout(this.minuterieForme); this.validerTrait(false); break
       case 'segment': {
         const s = this.rendu.monSegment!
         this.rendu.monSegment = null
@@ -479,7 +481,7 @@ export class App {
   }
 
   private abandonnerGeste(g: Geste | null = this.geste) {
-    if (g?.type === 'dessin') { this.rendu.monTrait = null; this.tableau.diffuser({ direct: null }) }
+    if (g?.type === 'dessin') { clearTimeout(this.minuterieForme); this.rendu.monTrait = null; this.tableau.diffuser({ direct: null }) }
     if (g?.type === 'segment') this.rendu.monSegment = null
     if (g?.type === 'rectangle' || g?.type === 'cercle') this.rendu.apercu = null
     if (g?.type === 'cadre') this.rendu.cadreSelection = null
@@ -519,6 +521,18 @@ export class App {
     }, 'locale')
     this.selectionner(f.id)
     this.ui.message(r.nom + ' — Ctrl+Z pour garder le tracé à main levée')
+  }
+
+  /** Stylo posé et immobile un instant : la figure se forme aussitôt,
+   *  sans attendre qu'on lève le stylo. */
+  private attendreImmobilite() {
+    clearTimeout(this.minuterieForme)
+    if (this.outil !== 'stylo' || !this.reconnaissance) return
+    this.minuterieForme = window.setTimeout(() => {
+      if (this.geste?.type !== 'dessin') return
+      this.geste = null
+      this.validerTrait(true)
+    }, 550)
   }
 
   // ---------- Figures géométriques ----------

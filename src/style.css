@@ -242,3 +242,5 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
 .champ select, .champ .saisie { height: 38px; padding: 0 10px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); font-family: var(--police); }
 .champ.coords { grid-template-columns: 150px 1fr 1fr; }
 @media (max-width: 640px) { .champ, .champ.coords { grid-template-columns: 1fr; } }
+.barre, .panneau-forme, .toast, .choix-formes { user-select: none; -webkit-user-select: none; }
+.panneau-forme input { user-select: text; -webkit-user-select: text; }

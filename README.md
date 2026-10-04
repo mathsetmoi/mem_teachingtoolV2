@@ -28,11 +28,16 @@ npm run build        # → dist/index.html, autonome
 
 ## Figures géométriques
 
-**Au stylo.** Un carré, un rectangle, un triangle, un polygone ou un cercle
-tracé à main levée se redresse tout seul au lever du stylo (« Carré », « Triangle
-isocèle », « Cercle »… s'affiche). `Ctrl+Z` rend le tracé d'origine. Pour un
-segment ou une ligne brisée, garder le stylo immobile un instant à la fin du
-trait : sans cela, chaque « 1 » ou « − » écrit au tableau deviendrait un segment.
+**Au stylo.** Une figure fermée tracée à main levée se redresse au lever du
+stylo : carré, rectangle, losange, parallélogramme, triangle (équilatéral,
+isocèle, rectangle), polygone régulier, cercle. Garder le stylo immobile un
+instant la fait apparaître tout de suite, stylo encore posé ; c'est aussi ainsi
+qu'on obtient un segment (sans cela, chaque « 1 » ou « − » écrit au tableau
+deviendrait un segment). `Ctrl+Z` rend le tracé d'origine.
+
+Un tracé arrondi devient un cercle, même bosselé ou un peu ovale : il ne
+devient un polygone que si tous ses coins sont francs. Un côté presque
+horizontal ou vertical (à 12° près) le devient.
 Les tracés trop petits (l'écriture) ne sont jamais touchés, et le bouton
 « reconnaissance » de la barre du haut coupe tout.
 
