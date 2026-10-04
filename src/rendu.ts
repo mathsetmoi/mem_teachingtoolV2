@@ -61,6 +61,10 @@ export class Rendu {
   /** Les instruments posés, dans l'ordre (le dernier est dessus) */
   instruments: { nom: NomInstrument; etat: EtatInstrument; actif: Partie | null }[] = []
   instrumentsCaches = false
+  /** La forme sous le pointeur, avec l'outil Sélection */
+  survol: string | null = null
+  /** Une construction qu'on va poser : on la voit, en transparence, sous le pointeur */
+  fantomes: Figure[] = []
   /** Ceux que manie le constructeur, en plus de ceux de l'utilisateur */
   instrumentsAnimes: { nom: NomInstrument; etat: EtatInstrument; actif: Partie | null }[] = []
   /** Une mesure lue pendant un geste (« 4,5 cm », « 30° »), en monde */
@@ -327,6 +331,19 @@ export class Rendu {
     for (const p of this.autres) if (p.direct) this.dessinerDirect(c, p.direct)
     if (this.monTrait) this.dessinerDirect(c, this.monTrait)
 
+    if (this.fantomes.length) {
+      c.save(); c.globalAlpha = 0.38
+      for (const f of this.fantomes) this.dessinerFigure(c, f, null)
+      c.restore()
+    }
+    if (this.survol) {
+      const f = this.formes.find(x => x.id === this.survol)
+      if (f) {
+        const b = this.boite(f), m = 5 / cam.z
+        c.fillStyle = 'rgba(59, 111, 182, 0.07)'; c.strokeStyle = 'rgba(59, 111, 182, 0.6)'; c.lineWidth = 1.5 / cam.z
+        c.beginPath(); c.roundRect(b.x - m, b.y - m, b.l + 2 * m, b.h + 2 * m, 6 / cam.z); c.fill(); c.stroke()
+      }
+    }
     if (this.apercu) this.dessinerFigure(c, this.apercu, null)
     if (this.monSegment) {
       const s = this.monSegment

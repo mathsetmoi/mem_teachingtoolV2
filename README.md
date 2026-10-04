@@ -104,6 +104,10 @@ prêt) :
     Trace un segment [AB] de 6 cm.
     Trace la médiatrice de [AB].
 
+Avec « Choisir l'emplacement sur le tableau », la construction entière suit le
+pointeur en transparence : un clic la pose (Échap annule). Un programme qui ne
+s'appuie que sur des points déjà présents n'a rien à placer.
+
 Chaque consigne devient des étapes, chacune avec sa phrase, affichée en grand.
 **Pas à pas** (→, Espace ou la télécommande de présentation ; ← pour revenir)
 ou **Tout construire**. Avec la case « Avec les instruments », la règle se
@@ -154,6 +158,14 @@ petits carreaux, Seyès, repère gradué), zoom de 10 % à 2000 %.
 Côté élève : le lien du prof, un prénom, et l'élève suit la page et le cadrage du
 prof. S'il se déplace lui-même, un bouton le ramène. Le prof décide si les élèves
 peuvent écrire ; leurs traits apparaissent en direct, avec leur prénom au curseur.
+
+Au pavé tactile : deux doigts qui glissent déplacent le tableau, pincer zoome ;
+la molette d'une souris zoome. **Échap** annule ce qui est en cours (menu,
+sélection, polygone) ; s'il n'y a rien, il passe à l'outil Sélection, et un
+second Échap rend l'outil d'avant. Avec la Sélection, glisser un objet le
+déplace, glisser dans le vide déplace le tableau, Maj + glisser encadre ; l'objet
+survolé s'éclaire avant le clic ; les flèches poussent la sélection d'1 mm
+(1 cm avec Maj).
 
 Au doigt : deux doigts pour zoomer et déplacer. Dès qu'un stylet a servi, le doigt
 ne dessine plus (la paume posée sur l'écran ne laisse pas de traces).

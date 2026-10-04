@@ -18,6 +18,7 @@ import type { Figure } from './types'
 import { CM } from './types'
 
 const CLE_INSTRUMENTS = 'mem-construction-instruments'
+const CLE_EMPLACEMENT = 'mem-construction-emplacement'
 const AIDE = { couleur: '#7d8799', taille: 1.6 }        // traits de construction
 
 const pause = (ms: number) => new Promise(r => setTimeout(r, ms))
@@ -37,11 +38,15 @@ export class Constructeur {
   private enBoucle = false
   private jeton = 0                               // change quand on interrompt
   private avecInstruments = true
+  private choisirPlace = true                     // le prochain clic pose la construction
   private poses = new Map<NomInstrument, EtatInstrument>()
   private clavier = (e: KeyboardEvent) => this.touche(e)
 
   constructor(private app: App, racine: HTMLElement, private message: (t: string) => void) {
-    try { this.avecInstruments = localStorage.getItem(CLE_INSTRUMENTS) !== 'non' } catch { /* refusé */ }
+    try {
+      this.avecInstruments = localStorage.getItem(CLE_INSTRUMENTS) !== 'non'
+      this.choisirPlace = localStorage.getItem(CLE_EMPLACEMENT) !== 'non'
+    } catch { /* refusé */ }
     this.panneau = document.createElement('div')
     this.panneau.className = 'panneau-construction'
     this.panneau.setAttribute('role', 'dialog')
@@ -65,6 +70,7 @@ export class Constructeur {
 
   fermer() {
     this.interrompre()
+    if (this.app.placement) this.app.echap()
     this.panneau.hidden = true
     this.bandeau.hidden = true
     window.removeEventListener('keydown', this.clavier, true)
@@ -85,7 +91,8 @@ export class Constructeur {
 Trace un segment [AB] de 6 cm.
 Trace la médiatrice de [AB]."></textarea>
       <div class="erreurs" role="status"></div>
-      <label class="interrupteur"><input type="checkbox"><span>Avec les instruments</span></label>
+      <label class="interrupteur instruments"><input type="checkbox"><span>Avec les instruments</span></label>
+      <label class="interrupteur emplacement"><input type="checkbox"><span>Choisir l'emplacement sur le tableau</span></label>
       <div class="actions-construction">
         <button type="button" class="principal pas">Pas à pas</button>
         <button type="button" class="secondaire tout">Tout construire</button>
@@ -118,15 +125,21 @@ Trace la médiatrice de [AB]."></textarea>
       this.oublier()
     })
     this.champ.addEventListener('input', () => { this.messages = []; this.oublier(); this.afficher() })
-    const coche = q<HTMLInputElement>('.interrupteur input')
+    const place = q<HTMLInputElement>('.emplacement input')
+    place.checked = this.choisirPlace
+    place.addEventListener('change', () => {
+      this.choisirPlace = place.checked
+      try { localStorage.setItem(CLE_EMPLACEMENT, place.checked ? 'oui' : 'non') } catch { /* refusé */ }
+    })
+    const coche = q<HTMLInputElement>('.instruments input')
     coche.checked = this.avecInstruments
     coche.addEventListener('change', () => {
       this.avecInstruments = coche.checked
       try { localStorage.setItem(CLE_INSTRUMENTS, coche.checked ? 'oui' : 'non') } catch { /* refusé */ }
       if (!coche.checked) { this.app.rendu.instrumentsAnimes = []; this.app.rendu.redessinerInstruments() }
     })
-    q('.pas').addEventListener('click', () => { if (this.preparer()) this.suivante() })
-    q('.tout').addEventListener('click', () => { if (this.preparer()) this.boucle() })
+    q('.pas').addEventListener('click', () => this.lancer(false))
+    q('.tout').addEventListener('click', () => this.lancer(true))
     q('.suivante').addEventListener('click', () => this.suivante())
     q('.precedente').addEventListener('click', () => this.precedente())
     q('.recommencer').addEventListener('click', () => this.recommencer())
@@ -141,15 +154,39 @@ Trace la médiatrice de [AB]."></textarea>
     this.afficher()
   }
 
+  /** Démarre : d'abord, si on l'a demandé, choisir où poser la construction */
+  private lancer(tout: boolean) {
+    const go = (ancre?: P) => { if (this.preparer(ancre)) { if (tout) this.boucle(); else this.suivante() } }
+    if (this.programme || !this.choisirPlace) return go()
+    const texte = this.champ.value.trim()
+    if (!texte) return go()
+    const connus = this.app.pointsNommes()
+    // Rien à placer si le programme ne s'appuie que sur des points déjà là
+    const a = compiler(texte, connus, { x: 0, y: 0 }), b = compiler(texte, connus, { x: 1000, y: 1000 })
+    if (!a.etapes.length || JSON.stringify(a.etapes) === JSON.stringify(b.etapes)) return go()
+    this.bandeau.hidden = false
+    this.bandeau.innerHTML = '<span class="numero">⌖</span>Clique sur le tableau là où la construction doit commencer. Échap pour annuler.'
+    const fin = () => { this.app.rendu.fantomes = []; this.app.rendu.redessinerDirect(); this.bandeau.hidden = true }
+    this.app.placement = {
+      bouge: w => { this.app.rendu.fantomes = fantomes(compiler(texte, connus, w), this.app); this.app.rendu.redessinerDirect() },
+      clic: w => { fin(); go(w) },
+      annuler: () => fin(),
+    }
+    this.app.placement.bouge(this.ancreParDefaut())
+  }
+
+  /** Dans la partie gauche de l'écran : le panneau est à droite */
+  private ancreParDefaut(): P {
+    const r = this.app.rendu, cam = this.app.cam
+    return cam.versMonde(Math.max(140, r.l * 0.3 - 3 * CM * cam.z), r.h * 0.62)
+  }
+
   /** Compile le programme (s'il ne l'est pas déjà) */
-  private preparer(): boolean {
+  private preparer(ancre?: P): boolean {
     if (this.programme && this.faites < this.programme.etapes.length) return true
     const texte = this.champ.value.trim()
     if (!texte) { this.message('Écris d\'abord le programme, ou choisis un exemple.'); return false }
-    const r = this.app.rendu, cam = this.app.cam
-    // On construit dans la partie gauche de l'écran : le panneau est à droite
-    const ancre = cam.versMonde(Math.max(140, r.l * 0.3 - 3 * CM * cam.z), r.h * 0.62)
-    const prog = compiler(texte, this.app.pointsNommes(), ancre)
+    const prog = compiler(texte, this.app.pointsNommes(), ancre ?? this.ancreParDefaut())
     this.messages = prog.erreurs
     this.faites = 0; this.posees = []
     // Rien de compris : on montre pourquoi, sans lancer de construction vide
@@ -247,10 +284,10 @@ Trace la médiatrice de [AB]."></textarea>
   }
 
   private touche(e: KeyboardEvent) {
+    if (this.app.placement && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.app.echap(); return }
     if ((e.target as HTMLElement).closest('textarea, input, select')) { if (e.key === 'Escape') this.fermer(); return }
     const actions: Record<string, () => void> = {
-      ArrowRight: () => { if (this.preparer()) this.suivante() }, PageDown: () => { if (this.preparer()) this.suivante() },
-      ' ': () => { if (this.preparer()) this.suivante() },
+      ArrowRight: () => this.lancer(false), PageDown: () => this.lancer(false), ' ': () => this.lancer(false),
       ArrowLeft: () => this.precedente(), PageUp: () => this.precedente(),
       Escape: () => this.fermer(),
     }
@@ -397,3 +434,18 @@ Trace la médiatrice de [AB]."></textarea>
 }
 
 export type { Etape }
+
+/** La construction entière, en traits, pour la montrer avant de la poser */
+function fantomes(prog: Programme, app: App): Figure[] {
+  const r: Figure[] = []
+  for (const e of prog.etapes) for (const g of e.gestes) {
+    if (g.k === 'regle' || g.k === 'equerre') r.push(app.nouvelleFigure({ type: 'polygone', ferme: false, pts: [g.a, g.b] }, g.aide ? AIDE : undefined))
+    else if (g.k === 'point') { const f = app.nouvelleFigure({ type: 'polygone', ferme: false, pts: [g.p] }); f.sommets = true; f.noms = [g.nom]; r.push(f) }
+    else if (g.k === 'compas') {
+      const f = app.nouvelleFigure({ type: 'cercle', x: g.c.x, y: g.c.y, r: g.r }, g.aide ? AIDE : undefined)
+      if (Math.abs(g.a1 - g.a0) < 2 * Math.PI - 1e-6) (f as Extract<Figure, { type: 'cercle' }>).arc = { a0: g.a0, a1: g.a1 }
+      r.push(f)
+    }
+  }
+  return r
+}

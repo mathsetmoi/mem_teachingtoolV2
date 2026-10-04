@@ -34,7 +34,7 @@ export interface Interface {
 }
 
 type Geste =
-  | { type: 'pan'; dernierX: number; dernierY: number }
+  | { type: 'pan'; dernierX: number; dernierY: number; vide?: { x: number; y: number } }
   | { type: 'pinch'; dist: number; cx: number; cy: number }
   | { type: 'dessin'; pointeur: number }
   | { type: 'segment'; x: number; y: number }
@@ -66,7 +66,11 @@ export class App {
   selection = new Set<string>()
   /** Un seul morceau choisi (un sommet, un nom…), sans la figure entière */
   partie: { id: string; prise: Prise } | null = null
-  enLecture = false                   // le lecteur occupe l'écran : on ne relit pas le document
+  enLecture = false
+  /** Un mode où le prochain clic pose quelque chose (une construction…) */
+  placement: { bouge(w: P): void; clic(w: P): void; annuler(): void } | null = null
+  private outilAvant: Outil = 'stylo'      // l'outil que rend Échap depuis la Sélection
+  private survol: string | null = null                   // le lecteur occupe l'écran : on ne relit pas le document
 
   private formes: Forme[] = []
   private camerasParPage = new Map<string, Camera>()
@@ -325,6 +329,7 @@ export class App {
   // ---------- Outils ----------
   choisirOutil(o: Outil) {
     this.annulerPolygone()
+    this.survol = null; this.rendu.survol = null
     if (this.partie) this.choisirPartie(null)
     this.outil = o
     if (o !== 'selection') this.selection.clear()
@@ -469,6 +474,7 @@ export class App {
     if (e.button !== 0) return
 
     const m = this.monde(e)
+    if (this.placement) { const p = this.placement; this.placement = null; p.clic(m); return }
     this.tableau.nouveauGeste()
     // Le crayon posé contre le bord d'un instrument trace le long du bord
     const dessine = this.outil === 'stylo' || this.outil === 'segment'
@@ -544,9 +550,11 @@ export class App {
         if (f) {
           if (!this.selection.has(f.id)) { if (!e.shiftKey) this.selection.clear(); this.selection.add(f.id) }
           this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false }
+        } else if (e.shiftKey) {
+          this.geste = { type: 'cadre', x: m.x, y: m.y }          // Maj + glisser : encadrer
         } else {
-          if (!e.shiftKey) this.selection.clear()
-          this.geste = { type: 'cadre', x: m.x, y: m.y }
+          // Glisser dans le vide déplace le tableau ; un simple clic désélectionne
+          this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, vide: { x: s.x, y: s.y } }
         }
         this.rendu.redessinerDirect(); this.ui.maj()
         break
@@ -580,9 +588,17 @@ export class App {
     }
 
     const g = this.geste
+    if (this.placement && !g) { this.placement.bouge(m); this.zone.style.cursor = 'copy'; return }
+    if (!g && this.outil === 'selection') {
+      // Ce qu'on survole s'éclaire : au pavé tactile, on sait ce qu'on va prendre
+      const f = this.formeSous(m.x, m.y)
+      const id = f && !this.selection.has(f.id) ? f.id : null
+      if (id !== this.survol) { this.survol = id; this.rendu.survol = id; this.rendu.redessinerDirect() }
+    }
     if (!g) {
       const inst = this.instruments.size ? this.instrumentSous(m) : null
-      this.zone.style.cursor = inst ? (inst.quoi === 'corps' || inst.quoi === 'pointe' ? 'grab' : 'pointer') : this.priseSous(s) ? 'move' : ''
+      this.zone.style.cursor = inst ? (inst.quoi === 'corps' || inst.quoi === 'pointe' ? 'grab' : 'pointer') : this.priseSous(s) ? 'move'
+        : this.outil === 'selection' ? (this.survol || this.formeSous(m.x, m.y) ? 'move' : 'grab') : ''
       return
     }
     switch (g.type) {
@@ -666,6 +682,10 @@ export class App {
     const g = this.geste
     if (!g) return
     if (g.type === 'pinch') { if (this.pointeurs.size === 0) this.geste = null; return }
+    if (g.type === 'pan' && g.vide) {
+      const s = this.ecran(e)
+      if (Math.hypot(s.x - g.vide.x, s.y - g.vide.y) < 4 && this.selection.size) { this.selection.clear(); this.rendu.redessinerDirect(); this.ui.maj() }
+    }
     if (g.type === 'dessin' && e.pointerId !== g.pointeur) return
     this.geste = null
     if (annule) { this.abandonnerGeste(g); return }
@@ -940,6 +960,26 @@ export class App {
     this.choisirPartie(null)
   }
 
+  /** Échap : d'abord annuler ce qui est en cours ; s'il n'y a rien,
+   *  passer à la Sélection — et un second Échap rend l'outil d'avant. */
+  echap() {
+    if (this.placement) { const p = this.placement; this.placement = null; p.annuler(); return }
+    const enCours = !!this.polyEnCours || this.selection.size > 0 || !!this.partie
+    this.annulerPolygone(); this.selection.clear(); this.choisirPartie(null)
+    this.ui.fermerMenuPartie()
+    if (!enCours && this.peutEcrire) {
+      if (this.outil !== 'selection') {
+        this.outilAvant = this.outil
+        this.choisirOutil('selection')
+        this.ui.message('Sélection : glisser un objet le déplace, glisser dans le vide déplace le tableau. Échap : revenir.')
+      } else {
+        this.choisirOutil(this.outilAvant)
+        this.ui.message('Retour à l\'outil précédent')
+      }
+    }
+    this.rendu.toutRedessiner(); this.ui.maj()
+  }
+
   // ---------- Pour le constructeur ----------
   /** Les points nommés de la page : ils servent dans un programme de construction */
   pointsNommes(): Map<string, P> {
@@ -1081,11 +1121,15 @@ export class App {
   private molette(e: WheelEvent) {
     e.preventDefault()
     const s = this.ecran(e)
-    // Pincement de pavé tactile (ctrlKey) ou molette de souris : zoom.
-    // Glissement à deux doigts sur pavé tactile : déplacement.
-    const pave = e.deltaMode === 0 && Math.abs(e.deltaX) > 0
-    if (e.ctrlKey || !pave) this.cam.zoomerAutour(s.x, s.y, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)))
-    else this.cam.deplacer(-e.deltaX, -e.deltaY)
+    // Pavé tactile : deux doigts qui glissent déplacent le tableau, pincer
+    // zoome (le navigateur l'envoie avec ctrlKey). Une molette de souris
+    // zoome : elle se reconnaît à ses crans (lignes, ou pas entiers et larges
+    // sans aucun mouvement de côté). Ctrl/Cmd + défilement zoome toujours.
+    const molette = e.deltaMode !== 0 || (e.deltaX === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50)
+    if (e.ctrlKey || e.metaKey || molette) {
+      const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY
+      this.cam.zoomerAutour(s.x, s.y, Math.exp(-d * (e.ctrlKey && !molette ? 0.01 : 0.0015)))
+    } else this.cam.deplacer(-e.deltaX, -e.deltaY)
     this.vueChangee(true)
   }
 
@@ -1100,7 +1144,15 @@ export class App {
     if (e.key === 'PageDown') { this.pageSuivante(1); return }
     if (e.key === 'PageUp') { this.pageSuivante(-1); return }
     if (e.key === 'Enter' && this.polyEnCours) { this.finirPolygone(false); return }
-    if (e.key === 'Escape') { this.annulerPolygone(); this.selection.clear(); this.choisirPartie(null); this.rendu.toutRedessiner(); this.ui.maj(); return }
+    if (e.key === 'Escape') { this.echap(); return }
+    // Les flèches poussent la sélection : 1 mm, ou 1 cm avec Maj
+    const fleches: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }
+    if (fleches[e.key] && this.selection.size && this.peutEcrire) {
+      e.preventDefault()
+      const k = e.shiftKey ? CM : CM / 10, [dx, dy] = fleches[e.key]
+      this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id)).map(f => ({ id: f.id, patch: { x: f.x + dx * k, y: f.y + dy * k } })))
+      return
+    }
     if (ctrl || !this.peutEcrire) return
     const raccourcis: Record<string, Outil> = { p: 'stylo', h: 'surligneur', e: 'gomme', l: 'segment', f: 'formule', v: 'selection' }
     const formes: Record<string, TypeForme> = { r: 'rectangle', c: 'cercle', g: 'polygone' }
