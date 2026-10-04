@@ -84,7 +84,8 @@ function poigneeRotation(nom: NomInstrument, e: EtatInstrument): P {
 export function partiesDuCompas(e: EtatInstrument) {
   const P = { x: e.x, y: e.y }
   const M = { x: e.x + e.r * Math.cos(e.a), y: e.y + e.r * Math.sin(e.a) }
-  const jambe = Math.max(8 * CM, e.r / 2 + 0.6 * CM)
+  // Des jambes à la mesure de l'écartement : la tête reste près de la figure
+  const jambe = Math.max(5 * CM, e.r * 0.62 + 0.8 * CM)
   const h = Math.sqrt(Math.max(0, jambe * jambe - (e.r / 2) ** 2))
   // La charnière est du côté du haut de l'écran
   let n = { x: Math.sin(e.a), y: -Math.cos(e.a) }
@@ -242,19 +243,21 @@ function graduerRapporteur(c: CanvasRenderingContext2D, e: EtatInstrument, z: nu
 function dessinerCompas(c: CanvasRenderingContext2D, e: EtatInstrument, z: number, actif: Partie | null) {
   const { P, M, H, T } = partiesDuCompas(e)
   // Les jambes : métal pour la pointe, bois et mine pour l'autre
-  c.lineWidth = 0.32 * CM
-  c.strokeStyle = 'rgba(110, 122, 140, 0.92)'
-  c.beginPath(); c.moveTo(H.x, H.y); c.lineTo(P.x, P.y); c.stroke()
-  c.strokeStyle = 'rgba(70, 110, 170, 0.92)'
-  c.beginPath(); c.moveTo(H.x, H.y); c.lineTo(M.x, M.y); c.stroke()
-  // La pointe et la mine, fines au bout
-  c.lineWidth = 1.6 / z
-  c.strokeStyle = '#2b2f36'
-  for (const B of [P, M]) {
-    const l = Math.hypot(H.x - B.x, H.y - B.y) || 1
-    const k = Math.min(0.8 * CM, l / 4)
-    c.beginPath(); c.moveTo(B.x + (H.x - B.x) / l * k, B.y + (H.y - B.y) / l * k); c.lineTo(B.x, B.y); c.stroke()
+  // Les jambes s'arrêtent où commencent les cônes des bouts
+  const avantBout = (B: P) => {
+    const l = Math.hypot(H.x - B.x, H.y - B.y) || 1, k = Math.min(1.2 * CM, l / 3) * 0.92
+    return { x: B.x + (H.x - B.x) / l * k, y: B.y + (H.y - B.y) / l * k }
   }
+  c.lineWidth = 0.32 * CM
+  const p1 = avantBout(P), m1 = avantBout(M)
+  c.strokeStyle = 'rgba(110, 122, 140, 0.92)'
+  c.beginPath(); c.moveTo(H.x, H.y); c.lineTo(p1.x, p1.y); c.stroke()
+  c.strokeStyle = 'rgba(70, 110, 170, 0.92)'
+  c.beginPath(); c.moveTo(H.x, H.y); c.lineTo(m1.x, m1.y); c.stroke()
+  // Les deux bouts, bien visibles : une aiguille d'acier et une mine de crayon,
+  // chacune taillée en cône, avec une pastille à l'endroit exact où elle touche
+  bout(c, H, P, 'rgba(70, 78, 92, 0.98)', '#2b2f36')
+  bout(c, H, M, '#d9a35b', '#2b2f36')
   // Charnière et tête
   c.fillStyle = '#5b6b82'
   c.beginPath(); c.arc(H.x, H.y, 0.35 * CM, 0, Math.PI * 2); c.fill()
@@ -262,9 +265,32 @@ function dessinerCompas(c: CanvasRenderingContext2D, e: EtatInstrument, z: numbe
   c.beginPath(); c.moveTo(H.x, H.y); c.lineTo(T.x, T.y); c.stroke()
   poignee(c, T, z, actif === 'tete', 'tete')
   poignee(c, M, z, actif === 'mine', 'mine')
-  // La pointe : un petit cercle là où elle pique
-  c.strokeStyle = '#2b2f36'; c.lineWidth = 1.4 / z
-  c.beginPath(); c.arc(P.x, P.y, 3 / z, 0, Math.PI * 2); c.stroke()
+  // Les deux points : un anneau rouge sous la pointe, un anneau bleu sous la mine
+  for (const [B, teinte] of [[P, '#d0342c'], [M, '#1f5fbf']] as const) {
+    c.beginPath(); c.arc(B.x, B.y, 6 / z, 0, Math.PI * 2)
+    c.fillStyle = 'rgba(255, 255, 255, 0.85)'; c.fill()
+    c.strokeStyle = teinte; c.lineWidth = 2 / z; c.stroke()
+    c.beginPath(); c.arc(B.x, B.y, 2.2 / z, 0, Math.PI * 2); c.fillStyle = teinte; c.fill()
+  }
+}
+
+/** Le bout d'une jambe, de H vers B : un cône (acier ou bois) et sa pointe */
+function bout(c: CanvasRenderingContext2D, H: P, B: P, corps: string, pointe: string) {
+  const l = Math.hypot(H.x - B.x, H.y - B.y) || 1
+  const u = { x: (H.x - B.x) / l, y: (H.y - B.y) / l }, n = { x: -u.y, y: u.x }
+  const k = Math.min(1.2 * CM, l / 3), w = 0.2 * CM
+  c.beginPath()
+  c.moveTo(B.x, B.y)
+  c.lineTo(B.x + u.x * k + n.x * w, B.y + u.y * k + n.y * w)
+  c.lineTo(B.x + u.x * k - n.x * w, B.y + u.y * k - n.y * w)
+  c.closePath(); c.fillStyle = corps; c.fill()
+  // la pointe elle-même, plus sombre
+  const k2 = k * 0.35, w2 = w * 0.35
+  c.beginPath()
+  c.moveTo(B.x, B.y)
+  c.lineTo(B.x + u.x * k2 + n.x * w2, B.y + u.y * k2 + n.y * w2)
+  c.lineTo(B.x + u.x * k2 - n.x * w2, B.y + u.y * k2 - n.y * w2)
+  c.closePath(); c.fillStyle = pointe; c.fill()
 }
 
 /** Une pastille qu'on attrape : flèche tournante (tourner, tracer) ou ↔ (écarter) */

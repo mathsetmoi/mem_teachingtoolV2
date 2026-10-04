@@ -95,6 +95,31 @@ Le bouton « Instruments » de la barre du haut pose ou range une **règle**
   exactement jusqu'à un point de la figure (report de longueur) ; la tête ↻ le
   fait tourner et trace l'arc, un cercle entier si l'on fait le tour.
 
+## Constructions pas à pas
+
+Le bouton « Programme de construction » ouvre un panneau où l'on écrit le
+programme comme dans un manuel, une consigne par ligne (ou un exemple tout
+prêt) :
+
+    Trace un segment [AB] de 6 cm.
+    Trace la médiatrice de [AB].
+
+Chaque consigne devient des étapes, chacune avec sa phrase, affichée en grand.
+**Pas à pas** (→, Espace ou la télécommande de présentation ; ← pour revenir)
+ou **Tout construire**. Avec la case « Avec les instruments », la règle se
+couche (du côté opposé à la figure), le compas se pose, s'écarte en affichant
+son rayon puis tourne, l'équerre se pose sur la droite, le rapporteur se centre
+sur le sommet ; sans, les traits se dessinent seuls. Ce qui est construit
+devient de vraies figures (les traits de construction en gris fin) ; revenir
+d'une étape retire ce qu'elle avait posé.
+
+Compris : placer des points ; segment [AB] de 5 cm ; cercle de centre O de
+rayon 3 cm (ou passant par A) ; médiatrice et milieu de [AB] ; triangle ABC par
+ses trois côtés ; triangle équilatéral ; carré, rectangle ; perpendiculaire et
+parallèle à (AB) passant par C ; angle BAC de 50° (rapporteur) ; bissectrice ;
+hexagone régulier. Les points déjà nommés sur la page servent. Une phrase non
+comprise est dite, pas devinée.
+
 ## Rejouer le tableau
 
 Le bouton ▶ de la barre du haut rejoue la construction, geste par geste, au
@@ -171,6 +196,8 @@ cours, qui fait la latence ressentie au stylet.
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
 | `src/lecteur.ts` | Le lecteur qui rejoue la construction |
 | `src/instruments.ts` | Règle, équerre, rapporteur, compas |
+| `src/construction.ts` | Programme de construction → étapes et gestes |
+| `src/constructeur.ts` | Joue les étapes, avec ou sans instruments |
 | `src/ui.ts` | Barres d'outils, partage, éditeur de formules |
 | `serveur/server.js` | Relais WebSocket et sauvegarde des salles |
 
@@ -202,10 +229,13 @@ n'empêche un usage payant.
 1. Export PDF des pages (pour l'ENT et les absents).
 2. Instruments : règle et équerre qui s'alignent l'une sur l'autre, crayon qui
    suit l'arc du rapporteur pour reporter un angle.
-3. Figures liées : un point partagé par deux figures, une image qui suit sa
+3. Constructions : plus de phrases (triangle par deux côtés et un angle,
+   cercle circonscrit, hauteurs, symétriques…), et l'équerre qui glisse le long
+   de la règle pour les parallèles.
+4. Figures liées : un point partagé par deux figures, une image qui suit sa
    figure quand on la déplace.
-4. Import d'un PDF ou d'une image comme fond de page (annoter un énoncé).
-5. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
-6. Sécurité du serveur : jeton prof, durée de vie des salles.
-7. Lecteur : export vidéo, et alléger les très longs films (le document ne
+5. Import d'un PDF ou d'une image comme fond de page (annoter un énoncé).
+6. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
+7. Sécurité du serveur : jeton prof, durée de vie des salles.
+8. Lecteur : export vidéo, et alléger les très longs films (le document ne
    jette plus rien).

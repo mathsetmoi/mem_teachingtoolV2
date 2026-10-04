@@ -61,6 +61,8 @@ export class Rendu {
   /** Les instruments posés, dans l'ordre (le dernier est dessus) */
   instruments: { nom: NomInstrument; etat: EtatInstrument; actif: Partie | null }[] = []
   instrumentsCaches = false
+  /** Ceux que manie le constructeur, en plus de ceux de l'utilisateur */
+  instrumentsAnimes: { nom: NomInstrument; etat: EtatInstrument; actif: Partie | null }[] = []
   /** Une mesure lue pendant un geste (« 4,5 cm », « 30° »), en monde */
   mesure: { texte: string; x: number; y: number } | null = null
   readonly coucheFormules: HTMLDivElement
@@ -145,7 +147,7 @@ export class Rendu {
     c.clearRect(0, 0, this.coucheInstruments.width, this.coucheInstruments.height)
     if (this.instrumentsCaches) return
     c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
-    for (const i of this.instruments) dessinerInstrument(c, i.nom, i.etat, cam.z, i.actif)
+    for (const i of [...this.instruments, ...this.instrumentsAnimes]) dessinerInstrument(c, i.nom, i.etat, cam.z, i.actif)
   }
 
   // ---------- Couche scène ----------

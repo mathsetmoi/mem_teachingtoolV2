@@ -940,6 +940,32 @@ export class App {
     this.choisirPartie(null)
   }
 
+  // ---------- Pour le constructeur ----------
+  /** Les points nommés de la page : ils servent dans un programme de construction */
+  pointsNommes(): Map<string, P> {
+    const r = new Map<string, P>()
+    for (const f of this.formes) {
+      if ((f.type !== 'polygone' && f.type !== 'cercle') || !f.sommets || !f.noms) continue
+      const pts = f.type === 'cercle' ? [{ x: f.x, y: f.y }] : sommetsDe(f)
+      f.noms.forEach((n, i) => { if (n && pts[i]) r.set(n, pts[i]) })
+    }
+    return r
+  }
+
+  /** Une figure neuve aux réglages du moment (ou à ceux d'un trait de construction) */
+  nouvelleFigure(g: { type: 'polygone'; ferme: boolean; pts: P[] } | { type: 'cercle'; x: number; y: number; r: number },
+    style?: { couleur: string; taille: number }): Figure {
+    const f = g.type === 'polygone' ? this.figure({ type: 'polygone', ferme: g.ferme, ...versRelatif(g.pts) }) : this.figure(g)
+    if (style) { f.couleur = style.couleur; f.taille = style.taille }
+    return f
+  }
+
+  /** Pose une forme sans la sélectionner ; rend son identifiant */
+  poserFigureSeule(f: Forme): string {
+    this.tableau.poser(this.page, f)
+    return f.id
+  }
+
   forme(id: string): Forme | null { return this.formes.find(f => f.id === id) ?? null }
 
   /** Change le réglage du point (ou du nom) n° i d'une figure */

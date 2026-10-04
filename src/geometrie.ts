@@ -23,6 +23,7 @@ export function touche(f: Forme, x: number, y: number, r: number, boite: (f: For
   }
   if (f.type === 'polygone') {
     const q = f.pts, n = q.length / 2, lx = x - f.x, ly = y - f.y
+    if (n === 1) return Math.hypot(lx - q[0], ly - q[1]) <= r + 6         // un point seul
     const fin = f.ferme ? n : n - 1
     for (let i = 0; i < fin; i++) {
       const j = (i + 1) % n

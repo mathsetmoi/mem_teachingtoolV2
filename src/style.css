@@ -291,3 +291,48 @@ body.en-lecture .panneau-forme, body.en-lecture .barre-zoom { display: none !imp
 .option.instrument { display: flex; align-items: center; gap: 10px; text-align: left; }
 .option.instrument svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 body.en-lecture .choix-instruments { display: none !important; }
+
+/* ---------- Programme de construction ---------- */
+.panneau-construction {
+  position: absolute; z-index: 18; right: 12px; top: 84px; bottom: 84px; width: min(360px, calc(100vw - 24px));
+  display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; overflow-y: auto;
+  background: var(--papier); border: 1px solid var(--filet); border-radius: 16px;
+  box-shadow: 0 3px 0 var(--filet), 0 18px 40px rgba(27, 34, 48, 0.12);
+}
+.panneau-construction .tete { display: flex; align-items: center; justify-content: space-between; }
+.panneau-construction h2 { margin: 0; font-size: 18px; }
+.panneau-construction .fermer { width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; font-size: 24px; cursor: pointer; }
+.panneau-construction .fermer:hover { background: #e9eef5; }
+.panneau-construction .exemples { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--encre-douce); }
+.panneau-construction .exemples select { flex: 1; height: 38px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); padding: 0 8px; color: var(--encre); }
+.panneau-construction textarea {
+  width: 100%; min-height: 110px; resize: vertical; padding: 10px 12px; line-height: 1.5;
+  border: 1px solid var(--filet); border-radius: 10px; background: #fbfcfe; font: inherit;
+}
+.panneau-construction textarea:focus { outline: 2px solid var(--bleu); outline-offset: 1px; }
+.panneau-construction .erreurs p { margin: 0 0 4px; padding: 6px 10px; border-radius: 8px; background: #fdecea; color: #9b2620; font-size: 14px; }
+.panneau-construction .erreurs:empty { display: none; }
+.actions-construction, .commandes { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions-construction .principal, .commandes .suivante { flex: 1; }
+.commandes .secondaire { min-width: 44px; padding: 0 10px; }
+.commandes button:disabled { opacity: 0.45; cursor: default; }
+.panneau-construction .etapes { margin: 0; padding-left: 24px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.45; }
+.panneau-construction .etapes:empty { display: none; }
+.panneau-construction .etapes li { color: var(--encre-douce); }
+.panneau-construction .etapes li.faite { color: var(--encre); }
+.panneau-construction .etapes li.faite::marker { content: '✓  '; color: #1e8a4c; }
+.panneau-construction .etapes li.courante { color: var(--encre); font-weight: 700; }
+.aide-phrases { font-size: 13px; color: var(--encre-douce); }
+.aide-phrases summary { cursor: pointer; font-weight: 700; }
+.aide-phrases ul { padding-left: 18px; margin: 8px 0; line-height: 1.5; }
+.aide-phrases p { margin: 0; }
+.consigne-construction {
+  /* centré dans la partie libre, à gauche du panneau */
+  position: absolute; z-index: 17; left: calc((100% - 384px) / 2 + 40px); top: 84px; transform: translateX(-50%);
+  max-width: min(720px, calc(100vw - 500px)); padding: 12px 18px; border-radius: 14px;
+  background: rgba(27, 34, 48, 0.9); color: #fff; font-size: 19px; line-height: 1.4;
+  display: flex; gap: 12px; align-items: baseline;
+}
+.consigne-construction .numero { flex: none; min-width: 28px; height: 28px; display: inline-grid; place-items: center; border-radius: 50%; background: var(--surligneur); color: var(--encre); font-weight: 700; font-size: 15px; }
+@media (max-width: 760px) { .consigne-construction { max-width: calc(100vw - 24px); top: auto; bottom: 16px; font-size: 16px; } }
+body.en-lecture .panneau-construction, body.en-lecture .consigne-construction { display: none !important; }
