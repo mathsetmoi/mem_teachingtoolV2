@@ -38,6 +38,7 @@ const ICONES: Record<string, string> = {
   polygone: 'M12 3l8 6-3 10H7L4 9z',
   reconnaissance: 'M4 17c2-6 5-9 9-9M14 4h6v6M20 4l-7 7M4 20h6',
   rejouer: 'M12 21a9 9 0 100-18 9 9 0 100 18zM10 8.5l5.5 3.5-5.5 3.5z',
+  image: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15.5 9.5a1.5 1.5 0 100-.01',
   instruments: 'M3 17L17 3l4 4L7 21zM7 13l2 2M10 10l2 2M13 7l2 2',
   regle: 'M2 9h20v6H2zM6 9v3M10 9v2M14 9v3M18 9v2',
   equerre: 'M4 20V4l16 16zM4 15h5v5',
@@ -212,9 +213,14 @@ export class UI implements Interface {
     const construire = bouton('construction', 'Programme de construction, étape par étape', () => {
       if (this.constructeur.ouvert) this.constructeur.fermer(); else this.constructeur.ouvrir()
     })
+    // Importer une image : bouton, ou coller (Ctrl+V), ou glisser le fichier sur le tableau
+    const choixFichier = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*', hidden: true })
+    choixFichier.addEventListener('change', () => { const f = choixFichier.files?.[0]; if (f) app.importerImage(f); choixFichier.value = '' })
+    const importer = bouton('image', 'Importer une image (ou coller avec Ctrl+V, ou glisser le fichier)', () => choixFichier.click())
+    this.racine.appendChild(choixFichier)
     const rejouer = bouton('rejouer', 'Rejouer la construction du tableau', () => this.lecteur.ouvrir())
-    this.outilsPage = [nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, this.boutonInstruments, construire, rejouer]
-    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, this.boutonInstruments, construire, rejouer)
+    this.outilsPage = [nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, rejouer]
+    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, rejouer)
 
     // ----- Les instruments, sous leur bouton -----
     this.choixInstruments = document.createElement('div')
@@ -394,7 +400,7 @@ export class UI implements Interface {
         () => app.basculerSommets(figure), !!figure.sommets)
       if (!segment) action('Codage', 'Côtés de même longueur, angles droits', () => app.habiller(f, { codage: !figure.codage }), !!figure.codage)
     }
-    action('Contour', 'Couleur, épaisseur, pointillés', () => ouvrir('contour'), this.section === 'contour')
+    if (f.type !== 'image') action('Contour', 'Couleur, épaisseur, pointillés', () => ouvrir('contour'), this.section === 'contour')
     if (figure && ((f.type === 'cercle' && !f.arc) || (f.type === 'polygone' && f.ferme))) action('Fond', 'Remplir la figure', () => ouvrir('fond'), this.section === 'fond')
     action('Transformer', 'Translation, rotation, symétrie, homothétie', () => ouvrir('transformer'), this.section === 'transformer')
     if (figure?.brut) action('Main levée', 'Revenir au tracé d\'origine', () => app.revenirMainLevee(figure))
@@ -479,9 +485,13 @@ export class UI implements Interface {
     const centres: { nom: string; p: P }[] = [{ nom: f.type === 'cercle' ? 'Centre du cercle' : 'Centre de la figure', p: centreFig }]
     for (const v of sommets) centres.push({ nom: 'Sommet ' + v.nom, p: v.p })
     if (origine) centres.push({ nom: 'Origine du repère', p: origine })
+    // Les points nommés de la page servent aussi de centre
+    const deja = new Set(sommets.map(v => v.nom))
+    for (const [nom, p] of app.pointsNommes()) if (!deja.has(nom)) centres.push({ nom: 'Point ' + nom, p })
 
-    // Les axes possibles
-    const axes: { nom: string; a: P; b: P }[] = []
+    // Les axes possibles : d'abord les droites tracées sur la page (un segment
+    // qu'on a dessiné pour servir d'axe), puis les côtés de la figure
+    const axes: { nom: string; a: P; b: P }[] = app.droitesDeLaPage(f.id)
     const n = sommets.length, ferme = f.type === 'polygone' && f.ferme
     for (let i = 0; i < (ferme ? n : n - 1); i++) {
       const a = sommets[i], b = sommets[(i + 1) % n]

@@ -146,7 +146,8 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
   }
   const exiger = (...n: string[]) => {
     const manque = n.filter(x => !pts.has(x))
-    if (manque.length) throw new Error(`Le point ${manque.join(', ')} n'existe pas encore : place-le d'abord.`)
+    if (manque.length === 1) throw new Error(`Le point ${manque[0]} n'existe pas encore : place-le d'abord.`)
+    if (manque.length) throw new Error(`Les points ${manque.slice(0, -1).join(', ')} et ${manque[manque.length - 1]} n'existent pas encore : place-les d'abord.`)
     return n.map(x => pts.get(x)!)
   }
 

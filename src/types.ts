@@ -105,7 +105,20 @@ export interface Formule extends Base {
   taille: number      // taille de police en unités monde
 }
 
-export type Forme = Trait | Segment | Formule | Polygone | Cercle
+/** Image importée. Le coin (x, y) et la matrice m = [a, b, c, d] placent le
+ *  point (u, v) de l'image (en pixels) en (x + a·u + c·v, y + b·u + d·v) :
+ *  c'est ce qui permet de la tourner, l'agrandir ou la retourner (symétrie).
+ *  Les données sont rangées à part, sous l'identifiant `src` : un symétrique
+ *  ne recopie pas l'image, il la reprend. */
+export interface ImageForme extends Base {
+  type: 'image'
+  src: string
+  l: number          // largeur, en pixels de l'image
+  h: number
+  m: [number, number, number, number]
+}
+
+export type Forme = Trait | Segment | Formule | Polygone | Cercle | ImageForme
 export type Figure = Polygone | Cercle
 
 export type Role = 'prof' | 'eleve'

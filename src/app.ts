@@ -111,6 +111,19 @@ export class App {
     }
     posés.observe(relire)
     relire()
+
+    // Les images : où trouver leurs pixels ; coller ou glisser un fichier
+    this.rendu.pixels = src => this.pixels(src)
+    window.addEventListener('paste', e => {
+      if ((e.target as HTMLElement).closest?.('input, textarea')) return
+      const f = [...(e.clipboardData?.files ?? [])].find(x => x.type.startsWith('image/'))
+      if (f && this.peutEcrire) { e.preventDefault(); this.importerImage(f) }
+    })
+    zone.addEventListener('dragover', e => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault() })
+    zone.addEventListener('drop', e => {
+      const f = [...(e.dataTransfer?.files ?? [])].find(x => x.type.startsWith('image/'))
+      if (f && this.peutEcrire) { e.preventDefault(); this.importerImage(f) }
+    })
   }
 
   // ---------- Instruments ----------
@@ -978,6 +991,64 @@ export class App {
       }
     }
     this.rendu.toutRedessiner(); this.ui.maj()
+  }
+
+  // ---------- Images ----------
+  private cachePixels = new Map<string, HTMLImageElement>()
+
+  private get banqueImages() { return this.tableau.doc.getMap('images') as Y.Map<string> }
+
+  /** Les pixels d'une image, chargés une fois : la banque garde les données */
+  private pixels(src: string): HTMLImageElement | null {
+    let img = this.cachePixels.get(src)
+    if (!img) {
+      const donnees = this.banqueImages.get(src)
+      if (!donnees) return null
+      img = new Image()
+      img.onload = () => this.rendu.toutRedessiner()
+      img.src = donnees
+      this.cachePixels.set(src, img)
+    }
+    return img
+  }
+
+  /** Importe un fichier image : réduit (1600 px au plus), rangé une fois dans
+   *  le document, posé au milieu de la vue et sélectionné */
+  async importerImage(fichier: Blob) {
+    if (!fichier.type.startsWith('image/')) return this.ui.message('Ce fichier n\'est pas une image.')
+    const url = URL.createObjectURL(fichier)
+    try {
+      const img = await new Promise<HTMLImageElement>((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = url })
+      const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight))
+      const l = Math.round(img.naturalWidth * k), h = Math.round(img.naturalHeight * k)
+      const cv = Object.assign(document.createElement('canvas'), { width: l, height: h })
+      cv.getContext('2d')!.drawImage(img, 0, 0, l, h)
+      const png = fichier.type === 'image/png' || fichier.type === 'image/gif'
+      const donnees = cv.toDataURL(png ? 'image/png' : 'image/jpeg', 0.86)
+      const src = uid()
+      this.banqueImages.set(src, donnees)
+      // Elle occupe au plus la moitié de la vue
+      const v = this.cam.visible(this.rendu.l, this.rendu.h)
+      const e = Math.min(v.l * 0.5 / l, v.h * 0.6 / h, 1 / this.cam.z)
+      const f: Forme = { id: uid(), type: 'image', src, l, h, m: [e, 0, 0, e],
+        x: v.x + v.l / 2 - l * e / 2, y: v.y + v.h / 2 - h * e / 2, z: Date.now(), auteur: this.tableau.moi }
+      this.poserFigure(f)
+      this.ui.message('Image posée : « Transformer » construit son symétrique')
+    } catch { this.ui.message('Impossible de lire cette image.') }
+    finally { URL.revokeObjectURL(url) }
+  }
+
+  /** Les droites tracées sur la page (segments), pour servir d'axe */
+  droitesDeLaPage(sauf?: string): { nom: string; a: P; b: P }[] {
+    const r: { nom: string; a: P; b: P }[] = []
+    let k = 0
+    for (const f of this.formes) {
+      if (f.id === sauf || f.type !== 'polygone' || f.ferme || f.pts.length !== 4) continue
+      const [a, b] = sommetsDe(f)
+      const n = f.sommets && f.noms?.[0] && f.noms?.[1] ? `Droite (${f.noms[0]}${f.noms[1]})` : `Droite tracée n° ${++k}`
+      r.push({ nom: n, a, b })
+    }
+    return r
   }
 
   // ---------- Pour le constructeur ----------

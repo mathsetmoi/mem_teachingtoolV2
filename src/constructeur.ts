@@ -18,7 +18,7 @@ import type { Figure } from './types'
 import { CM } from './types'
 
 const CLE_INSTRUMENTS = 'mem-construction-instruments'
-const CLE_EMPLACEMENT = 'mem-construction-emplacement'
+const CLE_EXISTANTS = 'mem-construction-existants'
 const AIDE = { couleur: '#7d8799', taille: 1.6 }        // traits de construction
 
 const pause = (ms: number) => new Promise(r => setTimeout(r, ms))
@@ -38,14 +38,15 @@ export class Constructeur {
   private enBoucle = false
   private jeton = 0                               // change quand on interrompt
   private avecInstruments = true
-  private choisirPlace = true                     // le prochain clic pose la construction
+  /** Construire à partir des points déjà sur la page, ou à part */
+  private existants = true
   private poses = new Map<NomInstrument, EtatInstrument>()
   private clavier = (e: KeyboardEvent) => this.touche(e)
 
   constructor(private app: App, racine: HTMLElement, private message: (t: string) => void) {
     try {
       this.avecInstruments = localStorage.getItem(CLE_INSTRUMENTS) !== 'non'
-      this.choisirPlace = localStorage.getItem(CLE_EMPLACEMENT) !== 'non'
+      this.existants = localStorage.getItem(CLE_EXISTANTS) !== 'non'
     } catch { /* refusé */ }
     this.panneau = document.createElement('div')
     this.panneau.className = 'panneau-construction'
@@ -64,6 +65,7 @@ export class Constructeur {
 
   ouvrir() {
     this.panneau.hidden = false
+    this.noter()
     window.addEventListener('keydown', this.clavier, true)
     this.champ.focus()
   }
@@ -92,7 +94,8 @@ Trace un segment [AB] de 6 cm.
 Trace la médiatrice de [AB]."></textarea>
       <div class="erreurs" role="status"></div>
       <label class="interrupteur instruments"><input type="checkbox"><span>Avec les instruments</span></label>
-      <label class="interrupteur emplacement"><input type="checkbox"><span>Choisir l'emplacement sur le tableau</span></label>
+      <label class="interrupteur existants"><input type="checkbox"><span>Utiliser les objets existants</span></label>
+      <p class="note-existants"></p>
       <div class="actions-construction">
         <button type="button" class="principal pas">Pas à pas</button>
         <button type="button" class="secondaire tout">Tout construire</button>
@@ -125,12 +128,14 @@ Trace la médiatrice de [AB]."></textarea>
       this.oublier()
     })
     this.champ.addEventListener('input', () => { this.messages = []; this.oublier(); this.afficher() })
-    const place = q<HTMLInputElement>('.emplacement input')
-    place.checked = this.choisirPlace
-    place.addEventListener('change', () => {
-      this.choisirPlace = place.checked
-      try { localStorage.setItem(CLE_EMPLACEMENT, place.checked ? 'oui' : 'non') } catch { /* refusé */ }
+    const exist = q<HTMLInputElement>('.existants input')
+    exist.checked = this.existants
+    exist.addEventListener('change', () => {
+      this.existants = exist.checked
+      try { localStorage.setItem(CLE_EXISTANTS, exist.checked ? 'oui' : 'non') } catch { /* refusé */ }
+      this.oublier(); this.noter()
     })
+    this.noter()
     const coche = q<HTMLInputElement>('.instruments input')
     coche.checked = this.avecInstruments
     coche.addEventListener('change', () => {
@@ -157,10 +162,10 @@ Trace la médiatrice de [AB]."></textarea>
   /** Démarre : d'abord, si on l'a demandé, choisir où poser la construction */
   private lancer(tout: boolean) {
     const go = (ancre?: P) => { if (this.preparer(ancre)) { if (tout) this.boucle(); else this.suivante() } }
-    if (this.programme || !this.choisirPlace) return go()
+    if (this.programme) return go()
     const texte = this.champ.value.trim()
     if (!texte) return go()
-    const connus = this.app.pointsNommes()
+    const connus = this.connus()
     // Rien à placer si le programme ne s'appuie que sur des points déjà là
     const a = compiler(texte, connus, { x: 0, y: 0 }), b = compiler(texte, connus, { x: 1000, y: 1000 })
     if (!a.etapes.length || JSON.stringify(a.etapes) === JSON.stringify(b.etapes)) return go()
@@ -175,6 +180,20 @@ Trace la médiatrice de [AB]."></textarea>
     this.app.placement.bouge(this.ancreParDefaut())
   }
 
+  /** Les points de la page dont le programme peut se servir (aucun : à part) */
+  private connus(): Map<string, P> {
+    return this.existants ? this.app.pointsNommes() : new Map()
+  }
+
+  /** Sous la case : ce que « objets existants » veut dire, ici et maintenant */
+  noter() {
+    const n = this.app.pointsNommes()
+    const el = this.panneau.querySelector('.note-existants') as HTMLElement
+    el.textContent = this.existants
+      ? (n.size ? `Les points ${[...n.keys()].slice(0, 12).join(', ')}${n.size > 12 ? '…' : ''} de la page peuvent servir.` : 'Aucun point nommé sur la page pour l\'instant.')
+      : 'La construction se fait à part, sans tenir compte de ce qui est déjà tracé.'
+  }
+
   /** Dans la partie gauche de l'écran : le panneau est à droite */
   private ancreParDefaut(): P {
     const r = this.app.rendu, cam = this.app.cam
@@ -186,8 +205,12 @@ Trace la médiatrice de [AB]."></textarea>
     if (this.programme && this.faites < this.programme.etapes.length) return true
     const texte = this.champ.value.trim()
     if (!texte) { this.message('Écris d\'abord le programme, ou choisis un exemple.'); return false }
-    const prog = compiler(texte, this.app.pointsNommes(), ancre ?? this.ancreParDefaut())
-    this.messages = prog.erreurs
+    const prog = compiler(texte, this.connus(), ancre ?? this.ancreParDefaut())
+    this.messages = [...prog.erreurs]
+    // Les points manquent ici, mais ils sont sur la page : on le dit
+    if (!this.existants && prog.erreurs.some(e => /n'existen?t? pas/.test(e)) && this.app.pointsNommes().size) {
+      this.messages.push('Ces points sont déjà sur la page : coche « Utiliser les objets existants » pour construire à partir d\'eux.')
+    }
     this.faites = 0; this.posees = []
     // Rien de compris : on montre pourquoi, sans lancer de construction vide
     this.programme = prog.etapes.length ? prog : null

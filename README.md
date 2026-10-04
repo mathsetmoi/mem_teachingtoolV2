@@ -77,6 +77,16 @@ Un morceau choisi l'est seul : il est surligné, pas la figure entière.
 `Suppr` retire un sommet choisi (ou masque un nom). Nommer un seul point d'une
 figure sans noms donne des lettres libres aux autres.
 
+## Images
+
+Le bouton image de la barre du haut importe une photo ou une capture (on peut
+aussi la coller avec Ctrl+V, ou glisser le fichier sur le tableau). Réduite à
+1600 px, elle est rangée une seule fois dans le document. Comme une figure, elle
+se déplace, se duplique et se **transforme** : symétrie par rapport à une droite
+tracée sur la page, à une verticale ou à un axe du repère ; symétrie centrale,
+rotation ou homothétie autour d'un point de la page. L'image est vraiment
+retournée par une symétrie axiale, et un symétrique ne recopie pas les données.
+
 ## Instruments
 
 Le bouton « Instruments » de la barre du haut pose ou range une **règle**
@@ -104,9 +114,14 @@ prêt) :
     Trace un segment [AB] de 6 cm.
     Trace la médiatrice de [AB].
 
-Avec « Choisir l'emplacement sur le tableau », la construction entière suit le
-pointeur en transparence : un clic la pose (Échap annule). Un programme qui ne
-s'appuie que sur des points déjà présents n'a rien à placer.
+La construction entière suit d'abord le pointeur en transparence : un clic la
+pose là où on la veut (Échap annule). Un programme qui ne s'appuie que sur des
+points déjà présents n'a rien à placer et démarre directement.
+
+**Utiliser les objets existants** (case du panneau) : cochée, le programme se
+sert des points nommés de la page (« Trace la médiatrice de [AB] » sur le
+segment déjà tracé) ; décochée, la construction se fait à part, sans tenir
+compte de ce qui est déjà au tableau.
 
 Chaque consigne devient des étapes, chacune avec sa phrase, affichée en grand.
 **Pas à pas** (→, Espace ou la télécommande de présentation ; ← pour revenir)
@@ -252,7 +267,7 @@ n'empêche un usage payant.
    de la règle pour les parallèles.
 4. Figures liées : un point partagé par deux figures, une image qui suit sa
    figure quand on la déplace.
-5. Import d'un PDF ou d'une image comme fond de page (annoter un énoncé).
+5. Import d'un PDF comme fond de page (annoter un énoncé) ; recadrer une image.
 6. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
 7. Sécurité du serveur : jeton prof, durée de vie des salles.
 8. Lecteur : export vidéo, et alléger les très longs films (le document ne

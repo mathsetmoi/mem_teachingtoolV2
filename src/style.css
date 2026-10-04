@@ -336,3 +336,4 @@ body.en-lecture .choix-instruments { display: none !important; }
 .consigne-construction .numero { flex: none; min-width: 28px; height: 28px; display: inline-grid; place-items: center; border-radius: 50%; background: var(--surligneur); color: var(--encre); font-weight: 700; font-size: 15px; }
 @media (max-width: 760px) { .consigne-construction { max-width: calc(100vw - 24px); top: auto; bottom: 16px; font-size: 16px; } }
 body.en-lecture .panneau-construction, body.en-lecture .consigne-construction { display: none !important; }
+.note-existants { margin: -6px 0 0 30px; font-size: 13px; line-height: 1.4; color: var(--encre-douce); }

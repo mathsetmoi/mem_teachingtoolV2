@@ -512,6 +512,13 @@ export function image(f: Forme, t: Transformation, auteur: string): Forme {
   const g = applicateur(t)
   const base = { id: uid(), z: Date.now(), auteur }
   switch (f.type) {
+    case 'image': {
+      // On transforme le coin et les deux côtés : la symétrie retourne l'image
+      const o = g({ x: f.x, y: f.y })
+      const [a, b, c, d] = f.m
+      const u = g({ x: f.x + a, y: f.y + b }), v = g({ x: f.x + c, y: f.y + d })
+      return { ...f, ...base, x: o.x, y: o.y, m: [u.x - o.x, u.y - o.y, v.x - o.x, v.y - o.y] }
+    }
     case 'polygone': {
       const r = versRelatif(sommetsDe(f).map(g))
       const { brut: _, ...reste } = f

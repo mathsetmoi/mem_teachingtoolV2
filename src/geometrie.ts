@@ -31,6 +31,15 @@ export function touche(f: Forme, x: number, y: number, r: number, boite: (f: For
     }
     return !!f.fond && f.ferme && dedans(lx, ly, q)
   }
+  if (f.type === 'image') {
+    // On ramène le point dans le repère de l'image : dedans ou pas
+    const [a, b, c, d] = f.m, det = a * d - b * c
+    if (Math.abs(det) < 1e-12) return false
+    const dx = x - f.x, dy = y - f.y
+    const u = (d * dx - c * dy) / det, v = (-b * dx + a * dy) / det
+    const k = r / Math.sqrt(Math.abs(det))
+    return u >= -k && u <= f.l + k && v >= -k && v <= f.h + k
+  }
   const lx = x - f.x, ly = y - f.y, seuil = r + f.taille / 2
   const p = f.pts
   if (p.length === 3) return Math.hypot(lx - p[0], ly - p[1]) <= seuil
@@ -64,4 +73,11 @@ export function dansLArc(a: number, arc: { a0: number; a1: number }) {
   const lo = Math.min(arc.a0, arc.a1), hi = Math.max(arc.a0, arc.a1)
   const t = ((a - lo) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI)
   return t <= hi - lo
+}
+
+/** Les quatre coins d'une image, dans l'ordre (haut-gauche, haut-droit, bas-droit, bas-gauche de l'image) */
+export function coinsImage(f: { x: number; y: number; l: number; h: number; m: [number, number, number, number] }) {
+  const [a, b, c, d] = f.m
+  const p = (u: number, v: number) => ({ x: f.x + a * u + c * v, y: f.y + b * u + d * v })
+  return [p(0, 0), p(f.l, 0), p(f.l, f.h), p(0, f.h)]
 }

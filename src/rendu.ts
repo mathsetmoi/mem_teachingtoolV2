@@ -11,7 +11,8 @@
 import { getStroke } from 'perfect-freehand'
 import katex from 'katex'
 import type { Camera } from './camera'
-import type { Bout, Figure, Fond, Forme, Formule, MarquePoint, Presence, Trait } from './types'
+import type { Bout, Figure, Fond, Forme, Formule, ImageForme, MarquePoint, Presence, Trait } from './types'
+import { coinsImage } from './geometrie'
 import { dessinerFond } from './fonds'
 import { codageDe, placesDesNoms, sommetsDe } from './formes'
 import type { EtatInstrument, NomInstrument, Partie } from './instruments'
@@ -170,6 +171,7 @@ export class Rendu {
         c.beginPath(); c.moveTo(x, y); c.lineTo(x + f.dx, y + f.dy); c.stroke()
       }
       else if (f.type === 'polygone' || f.type === 'cercle') this.dessinerFigure(c, f, dec)
+      else if (f.type === 'image') this.dessinerImage(c, f, dec)
     }
     // Nettoie le cache des formes disparues
     if (this.chemins.size > this.formes.length + 50) {
@@ -190,6 +192,20 @@ export class Rendu {
     c.globalAlpha = t.opacite
     c.fillStyle = t.couleur
     c.fill(entree.chemin)
+    c.restore()
+  }
+
+  // ---------- Images ----------
+  /** Où trouver les pixels d'une image (chargée à part, une fois) */
+  pixels: (src: string) => HTMLImageElement | null = () => null
+
+  private dessinerImage(c: CanvasRenderingContext2D, f: ImageForme, dec: { dx: number; dy: number } | null) {
+    const img = this.pixels(f.src)
+    const [a, b, cc, d] = f.m
+    c.save()
+    c.transform(a, b, cc, d, f.x + (dec?.dx ?? 0), f.y + (dec?.dy ?? 0))
+    if (img?.complete && img.naturalWidth) c.drawImage(img, 0, 0, f.l, f.h)
+    else { c.fillStyle = 'rgba(59, 111, 182, 0.08)'; c.fillRect(0, 0, f.l, f.h) }   // pas encore chargée
     c.restore()
   }
 
@@ -456,6 +472,11 @@ export class Rendu {
       const m = f.taille / 2
       return { x: Math.min(f.x, f.x + f.dx) - m, y: Math.min(f.y, f.y + f.dy) - m,
         l: Math.abs(f.dx) + 2 * m, h: Math.abs(f.dy) + 2 * m }
+    }
+    if (f.type === 'image') {
+      const c = coinsImage(f), xs = c.map(p => p.x), ys = c.map(p => p.y)
+      const x1 = Math.min(...xs), y1 = Math.min(...ys)
+      return { x: x1, y: y1, l: Math.max(...xs) - x1, h: Math.max(...ys) - y1 }
     }
     let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
     for (let i = 0; i < f.pts.length; i += 3) {
