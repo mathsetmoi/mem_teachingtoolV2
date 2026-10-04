@@ -13,7 +13,8 @@ type Boite = { x: number; y: number; l: number; h: number }
 /** La forme passe-t-elle à moins de r du point (x, y) ? */
 export function touche(f: Forme, x: number, y: number, r: number, boite: (f: Forme) => Boite): boolean {
   const b = boite(f)
-  if (x < b.x - r || x > b.x + b.l + r || y < b.y - r || y > b.y + b.h + r) return false
+  const infinie = f.type === 'polygone' && !!f.prolonge       // une droite dépasse son cadre
+  if (!infinie && (x < b.x - r || x > b.x + b.l + r || y < b.y - r || y > b.y + b.h + r)) return false
   if (f.type === 'formule') return true
   if (f.type === 'segment') return distanceAuSegment(x, y, f.x, f.y, f.x + f.dx, f.y + f.dy) <= r + f.taille / 2
   if (f.type === 'cercle') {
@@ -24,6 +25,13 @@ export function touche(f: Forme, x: number, y: number, r: number, boite: (f: For
   if (f.type === 'polygone') {
     const q = f.pts, n = q.length / 2, lx = x - f.x, ly = y - f.y
     if (n === 1) return Math.hypot(lx - q[0], ly - q[1]) <= r + 6         // un point seul
+    if (f.prolonge && n === 2) {
+      // Distance à la droite (ou à la demi-droite)
+      const ax = q[0], ay = q[1], vx = q[2] - ax, vy = q[3] - ay, l = Math.hypot(vx, vy) || 1
+      const t = ((lx - ax) * vx + (ly - ay) * vy) / l
+      if (f.prolonge === 'demi' && t < 0) return Math.hypot(lx - ax, ly - ay) <= r + f.taille / 2
+      return Math.abs((lx - ax) * vy - (ly - ay) * vx) / l <= r + f.taille / 2
+    }
     const fin = f.ferme ? n : n - 1
     for (let i = 0; i < fin; i++) {
       const j = (i + 1) % n

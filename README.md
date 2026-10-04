@@ -152,10 +152,13 @@ sur le sommet ; sans, les traits se dessinent seuls. Ce qui est construit
 devient de vraies figures (les traits de construction en gris fin) ; revenir
 d'une étape retire ce qu'elle avait posé.
 
-Compris : placer des points ; segment [AB] de 5 cm ; cercle de centre O de
+Compris : placer des points ; segment [AB] de 5 cm ; droite (AB),
+demi-droite [AB) ; cercle de centre O de
 rayon 3 cm (ou passant par A) ; médiatrice et milieu de [AB] ; triangle ABC par
 ses trois côtés ; triangle équilatéral ; carré, rectangle ; perpendiculaire et
 parallèle à (AB) passant par C ; angle BAC de 50° (rapporteur) ; bissectrice ;
+(médiatrice, perpendiculaire et parallèle sont tracées en droites, la
+bissectrice en demi-droite)
 hexagone régulier. Les points déjà nommés sur la page servent. Une phrase non
 comprise est dite, pas devinée, avec une phrase modèle à recopier.
 
@@ -184,6 +187,11 @@ propose plus : `PARTAGE_ELEVES = false` dans `src/main.ts`. Le passer à `true`
 rend le bouton « Partager » et le mode élève décrits plus bas.
 
 ## Ce que fait la v0.1
+
+Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment
+[AB]**, **droite (AB)** ou **demi-droite [AB)** ; une droite est dessinée jusqu'au
+bord de l'écran, quel que soit le zoom, et se prend sur toute sa longueur. Le
+panneau d'options d'un trait passe de l'un à l'autre d'un clic.
 
 Outil **Point** (X) : un clic pose un point marqué d'une croix et nommé (A, B,
 C…), sur le tableau ou sur une image.

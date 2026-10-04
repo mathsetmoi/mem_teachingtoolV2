@@ -35,6 +35,9 @@ const ICONES: Record<string, string> = {
   partager: 'M4 13v7h16v-7M12 3v12M8 7l4-4 4 4',
   forme: 'M3 11h8v8H3zM17 13a4 4 0 100-8 4 4 0 100 8z',
   point: 'M7 7l7 7M14 7l-7 7M16 17.5h4M16.5 21l1.75-6 1.75 6',
+  'trait-segment': 'M6 18L18 6M4.5 16.5l3 3M16.5 4.5l3 3',
+  'trait-droite': 'M2 22L22 2M8 13l3 3M13 8l3 3',
+  'trait-demi': 'M5 19L22 2M3.5 17.5l3 3M11 12l3 3',
   rectangle: 'M4 6h16v12H4z',
   cercle: 'M12 20a8 8 0 100-16 8 8 0 100 16z',
   polygone: 'M12 3l8 6-3 10H7L4 9z',
@@ -86,7 +89,7 @@ const OUTILS: { id: Outil; nom: string; touche: string }[] = [
   { id: 'surligneur', nom: 'Surligneur', touche: 'H' },
   { id: 'gomme', nom: 'Gomme', touche: 'E' },
   { id: 'point', nom: 'Point : un clic le pose et le nomme', touche: 'X' },
-  { id: 'segment', nom: 'Segment (Maj : angles de 15°)', touche: 'L' },
+  { id: 'segment', nom: 'Segment, droite, demi-droite (Maj : angles de 15°)', touche: 'L' },
   { id: 'forme', nom: 'Formes : rectangle, cercle, polygone', touche: 'R, C, G' },
   { id: 'formule', nom: 'Formule', touche: 'F' },
   { id: 'selection', nom: 'Sélectionner et déplacer', touche: 'V' },
@@ -132,6 +135,8 @@ export class UI implements Interface {
   private dialogue: HTMLDialogElement | null = null
   private boutonReconnaissance!: HTMLButtonElement
   private choixFormes!: HTMLDivElement
+  private choixTraits!: HTMLDivElement
+  private boutonsTraits = new Map<string, HTMLButtonElement>()
   private boutonsFormes = new Map<TypeForme, HTMLButtonElement>()
   private panneau!: HTMLDivElement
   private clePanneau = ''
@@ -196,8 +201,16 @@ export class UI implements Interface {
     this.rang = document.createElement('span'); this.rang.className = 'rang'
     const apres = bouton('apres', 'Page suivante (Page ↓)', () => app.pageSuivante(1))
     const nouvelle = bouton('plus', 'Nouvelle page', () => app.nouvellePage())
-    const jeter = bouton('poubelle', 'Supprimer cette page', () => {
-      if (confirm('Supprimer cette page et tout ce qui y est écrit ?')) app.supprimerPage()
+    // Pas de confirm() : dans une page intégrée (l'aperçu, un ENT), le
+    // navigateur le bloque et répond « non » sans rien montrer
+    const jeter = bouton('poubelle', 'Supprimer cette page', async () => {
+      const seule = app.pages.length <= 1
+      const n = app.pages.indexOf(app.page) + 1
+      const ok = await this.confirmer(seule ? 'Effacer la page ?' : `Supprimer la page ${n} ?`,
+        seule ? 'Le tableau n\'a qu\'une page : tout ce qui y est écrit sera effacé. Ctrl+Z pour revenir.'
+          : 'La page et tout ce qu\'elle contient disparaissent.', seule ? 'Effacer la page' : 'Supprimer la page')
+      if (!ok) return
+      if (seule) app.viderPage(); else app.supprimerPage()
     }, 'danger')
     this.choixFond = document.createElement('select')
     this.choixFond.className = 'choix-fond'
@@ -271,13 +284,21 @@ export class UI implements Interface {
       this.boutonsFormes.set(t.id, b); this.choixFormes.appendChild(b)
     }
 
+    // ----- Segment, droite ou demi-droite, à côté de l'outil Segment -----
+    this.choixTraits = document.createElement('div')
+    this.choixTraits.className = 'barre choix-formes'
+    for (const [id, nom] of [['segment', 'Segment [AB]'], ['droite', 'Droite (AB)'], ['demi', 'Demi-droite [AB)']] as const) {
+      const b = bouton('trait-' + id, nom, () => { app.typeTrait = id; app.choisirOutil('segment') }, 'outil')
+      this.boutonsTraits.set(id, b); this.choixTraits.appendChild(b)
+    }
+
     // ----- Options de la forme sélectionnée -----
     this.panneau = document.createElement('div')
     this.panneau.className = 'panneau-forme'
     this.panneau.setAttribute('role', 'toolbar')
     this.panneau.setAttribute('aria-label', 'Options de la figure')
 
-    this.racine.append(outils, haut, zoom, this.bandeau, this.toast, this.choixFormes, this.panneau, this.choixInstruments)
+    this.racine.append(outils, haut, zoom, this.bandeau, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
     this.lecteur = new Lecteur(app, this.racine, t => this.message(t))
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t))
 
@@ -308,11 +329,14 @@ export class UI implements Interface {
     this.boutonAimant.classList.toggle('actif', app.aimant)
     this.boutonReconnaissance.classList.toggle('actif', app.reconnaissance)
     for (const [id, b] of this.boutonsFormes) b.classList.toggle('actif', app.typeForme === id)
-    this.choixFormes.hidden = app.outil !== 'forme' || !ecrit
-    if (!this.choixFormes.hidden) {
-      const r = this.outils.get('forme')!.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
-      this.choixFormes.style.left = (o.right + 8) + 'px'
-      this.choixFormes.style.top = Math.max(8, r.top - 6) + 'px'
+    for (const [id, b] of this.boutonsTraits) b.classList.toggle('actif', app.typeTrait === id)
+    // Le petit panneau à côté de l'outil choisi (Formes ou Segment)
+    for (const [panneau, outil] of [[this.choixFormes, 'forme'], [this.choixTraits, 'segment']] as const) {
+      panneau.hidden = app.outil !== outil || !ecrit
+      if (panneau.hidden) continue
+      const r = this.outils.get(outil)!.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
+      panneau.style.left = (o.right + 8) + 'px'
+      panneau.style.top = Math.max(8, r.top - 6) + 'px'
     }
     this.etat.hidden = !this.partager
     for (const [id, b] of this.boutonsInstruments) {
@@ -398,8 +422,14 @@ export class UI implements Interface {
     const figure = f.type === 'polygone' || f.type === 'cercle' ? f as Figure : null
     const segment = f.type === 'polygone' && !f.ferme && f.pts.length === 4
 
+    if (segment && f.type === 'polygone') {
+      // Segment, droite ou demi-droite : on passe de l'un à l'autre d'un clic
+      for (const [id, nom] of [[undefined, 'Segment'], ['droite', 'Droite'], ['demi', 'Demi-droite']] as const) {
+        action(nom, nom === 'Segment' ? 'Segment [AB]' : nom === 'Droite' ? 'Droite (AB)' : 'Demi-droite [AB)', () => app.habiller(f, { prolonge: id } as never), f.prolonge === id)
+      }
+    }
     if (figure) {
-      action(f.type === 'cercle' ? 'Centre' : segment ? 'Extrémités' : 'Sommets', 'Afficher les points et leurs noms',
+      action(f.type === 'cercle' ? 'Centre' : segment ? (f.type === 'polygone' && f.prolonge ? 'Points' : 'Extrémités') : 'Sommets', 'Afficher les points et leurs noms',
         () => app.basculerSommets(figure), !!figure.sommets)
       if (!segment) action('Codage', 'Côtés de même longueur, angles droits', () => app.habiller(f, { codage: !figure.codage }), !!figure.codage)
     }
@@ -689,7 +719,7 @@ export class UI implements Interface {
 
     const i = prise.quoi === 'rayon' ? 0 : prise.i
     const ouvert = f.type === 'polygone' && !f.ferme
-    const extremite = ouvert && (i === 0 || i === f.pts.length / 2 - 1)
+    const extremite = ouvert && !(f.type === 'polygone' && f.prolonge) && (i === 0 || i === f.pts.length / 2 - 1)
     const nom = nomDe(i)
 
     if (prise.quoi === 'nom') {
@@ -716,7 +746,7 @@ export class UI implements Interface {
 
     // Un point : sommet, extrémité ou centre
     const st = f.stylePoints?.[i] ?? {}
-    titre.textContent = (f.type === 'cercle' ? 'Centre ' : extremite ? 'Extrémité ' : 'Sommet ') + nom
+    titre.textContent = (f.type === 'cercle' ? 'Centre ' : f.type === 'polygone' && f.prolonge ? 'Point ' : extremite ? 'Extrémité ' : 'Sommet ') + nom
     m.appendChild(titre)
     const ln = ligne('Nom')
     const champ = Object.assign(document.createElement('input'), { className: 'saisie nom', placeholder: '—' })
@@ -814,6 +844,24 @@ export class UI implements Interface {
       d.show()
       montrer()
       saisie.focus()
+    })
+  }
+
+  /** Une question oui/non, dans l'outil lui-même */
+  confirmer(titre: string, texte: string, oui: string): Promise<boolean> {
+    return new Promise(resolve => {
+      const d = this.nouveauDialogue(titre)
+      const corps = d.querySelector('.corps')!
+      corps.innerHTML = `<p></p><div class="actions"><button type="button" class="secondaire">Annuler</button><button type="button" class="principal danger-plein"></button></div>`
+      corps.querySelector('p')!.textContent = texte
+      const b = corps.querySelector('.principal') as HTMLButtonElement
+      b.textContent = oui
+      let fini = false
+      const finir = (v: boolean) => { if (fini) return; fini = true; if (d.open) d.close(); d.remove(); resolve(v) }
+      b.addEventListener('click', () => finir(true))
+      corps.querySelector('.secondaire')!.addEventListener('click', () => finir(false))
+      d.addEventListener('close', () => finir(false))
+      d.showModal(); b.focus()
     })
   }
 

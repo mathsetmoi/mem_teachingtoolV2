@@ -342,3 +342,4 @@ body.en-lecture .panneau-construction, body.en-lecture .consigne-construction { 
 .secondaire.petit { height: 38px; padding: 0 10px; font-size: 13px; }
 .transformer .actions { flex-wrap: wrap; }
 @media (max-width: 640px) { .choix-sur-tableau { grid-template-columns: 1fr auto auto !important; } }
+.principal.danger-plein { background: var(--rouge); }

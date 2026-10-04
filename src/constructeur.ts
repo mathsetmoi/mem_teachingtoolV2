@@ -379,7 +379,7 @@ Trace la médiatrice de [AB]."></textarea>
     this.app.rendu.redessinerInstruments()
   }
 
-  private async tracer(a: P, b: P, aide: boolean | undefined, ids: string[], jeton: number, mesure: boolean, poser = true) {
+  private async tracer(a: P, b: P, aide: boolean | undefined, ids: string[], jeton: number, mesure: boolean, poser = true, prolonge?: 'droite' | 'demi') {
     const r = this.app.rendu
     const l = Math.hypot(b.x - a.x, b.y - a.y)
     await this.animer(this.duree(Math.min(1300, 300 + l / CM * 70)), jeton, t => {
@@ -389,7 +389,11 @@ Trace la médiatrice de [AB]."></textarea>
       r.redessinerDirect()
     })
     r.apercu = null; r.mesure = null
-    if (jeton === this.jeton && poser) ids.push(this.app.poserFigureSeule(this.app.nouvelleFigure({ type: 'polygone', ferme: false, pts: [a, b] }, aide ? AIDE : undefined)))
+    if (jeton === this.jeton && poser) {
+      const f = this.app.nouvelleFigure({ type: 'polygone', ferme: false, pts: [a, b] }, aide ? AIDE : undefined)
+      if (prolonge && f.type === 'polygone') f.prolonge = prolonge
+      ids.push(this.app.poserFigureSeule(f))
+    }
   }
 
   /** Le centre des points de la construction en cours */
@@ -437,16 +441,17 @@ Trace la médiatrice de [AB]."></textarea>
         const c = this.centreFigure()
         const u = { x: g.b.x - g.a.x, y: g.b.y - g.a.y }
         const cote = c ? (c.x - g.a.x) * -u.y + (c.y - g.a.y) * u.x : -1      // > 0 : la figure est du côté du corps
-        const [o, vers] = cote > 0 ? [g.b, g.a] : [g.a, g.b]
+        // Une demi-droite part toujours de son origine : on ne la retourne pas
+        const [o, vers] = cote > 0 && g.prolonge !== 'demi' ? [g.b, g.a] : [g.a, g.b]
         await this.amener('regle', { x: o.x, y: o.y, a: Math.atan2(vers.y - o.y, vers.x - o.x), r: 0 }, jeton)
         // Le crayon part du zéro : la mesure lue est celle des graduations
-        await this.tracer(o, vers, g.aide, ids, jeton, true)
+        await this.tracer(o, vers, g.aide, ids, jeton, true, true, g.prolonge)
         break
       }
       case 'equerre': {
         // Le grand côté de l'angle droit le long du trait, le petit sur la droite
         await this.amener('equerre', { x: g.o.x, y: g.o.y, a: Math.atan2(g.w.y, g.w.x), r: 0 }, jeton)
-        await this.tracer(g.a, g.b, g.aide, ids, jeton, true)
+        await this.tracer(g.a, g.b, g.aide, ids, jeton, true, true, g.prolonge)
         break
       }
       case 'rapporteur': {

@@ -81,6 +81,8 @@ export interface Polygone extends Base, Habillage {
   type: 'polygone'
   pts: number[]
   ferme: boolean
+  /** Deux points seulement : la droite (AB), ou la demi-droite [AB) */
+  prolonge?: 'droite' | 'demi'
 }
 
 /** Cercle de centre (x, y) — ou arc, tracé au compas, de l'angle a0 à a1 */

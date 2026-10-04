@@ -24,9 +24,9 @@ export type P = { x: number; y: number }
 export type Geste =
   | { k: 'point'; nom: string; p: P; lie?: string }      // lie : l'image qu'il suit
   | { k: 'forme'; f: Forme; cotes?: [P, P][]; cercle?: { c: P; r: number } }   // l'image finale, tracée puis posée
-  | { k: 'regle'; a: P; b: P; aide?: boolean }
+  | { k: 'regle'; a: P; b: P; aide?: boolean; prolonge?: 'droite' | 'demi' }
   | { k: 'compas'; c: P; r: number; a0: number; a1: number; aide?: boolean }
-  | { k: 'equerre'; o: P; w: P; a: P; b: P; aide?: boolean }   // angle droit en o ; on trace [ab] le long de w
+  | { k: 'equerre'; o: P; w: P; a: P; b: P; aide?: boolean; prolonge?: 'droite' | 'demi' }   // angle droit en o ; on trace [ab] le long de w
   | { k: 'rapporteur'; o: P; u: P; angle: number; marque: P }
 
 export interface Etape { consigne: string; gestes: Geste[] }
@@ -105,6 +105,9 @@ export function normaliser(t: string) {
   // « à la droite (AB) », « à AB », « à [AB] » → « à (AB) » ; « passant par le point C » → « passant par C »
   r(new RegExp(`\\b(perpendiculaire|parall[èe]le) (?:à|a) (?:la droite |la demi-droite |le segment )?[\\[(]?(${N})(${N})[\\])]?`, 'g'), '$1 à ($2$3)')
   r(new RegExp(`\\b(passant par|qui passe par|en) le point (${N})`, 'g'), '$1 $2')
+  // « demi-droite AB », « [AB) » ; « droite AB » → « droite (AB) »
+  r(new RegExp(`\\bdemi-droite \\[?(${N})(${N})\\)?`, 'g'), 'demi-droite [$1$2)')
+  r(new RegExp(`(?<!demi-)\\bdroite \\(?(${N})(${N})\\)?(?! tracée)`, 'g'), 'droite ($1$2)')
   // « bissectrice de ABC » → « bissectrice de l'angle ABC »
   r(new RegExp(`\\bbissectrice (?:de |du )(?:l'angle )?(?:\\\\widehat\\{)?(${N})(${N})(${N})`, 'g'), "bissectrice de l'angle $1$2$3")
   // « centre le point O », « de centre O, de rayon » → « de centre O de rayon »
@@ -195,7 +198,7 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
     if (dist(H, Pp) < 1) { H = Pp; w = { x: d.y, y: -d.x }; if (w.y > 0) w = { x: -w.x, y: -w.y } }
     else w = unit(H, Pp)
     const l = Math.max(dist(H, Pp) + 2 * CM, 6 * CM)
-    const gestes: Geste[] = [{ k: 'equerre', o: H, w, a: plus(H, w, -1 * CM), b: plus(H, w, Math.min(l, 11.5 * CM)) }]
+    const gestes: Geste[] = [{ k: 'equerre', o: H, w, a: plus(H, w, -1 * CM), b: plus(H, w, Math.min(l, 11.5 * CM)), prolonge: aide ? undefined : 'droite' }]
     if (aide) (gestes[0] as { aide?: boolean }).aide = true
     etapes.push({ consigne, gestes })
     return { H, w }
@@ -220,6 +223,18 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
       else if ((m = l.match(new RegExp(`segment \\[(${NOM})(${NOM})\\](?:\\s+(?:de|mesurant|de longueur)\\s+${NOMBRE}\\s*cm)?`))) ||
                (m = l.match(new RegExp(`^(?:trace|relie)\\s+\\[(${NOM})(${NOM})\\](?:\\s+(?:de|mesurant)\\s+${NOMBRE}\\s*cm)?$`)))) {
         segment(m[1], m[2], m[3] ? lireNombre(m[3]) * CM : null)
+      }
+      // --- Droite (AB), demi-droite [AB) ---
+      else if ((m = l.match(new RegExp(`(demi-droite \\[|(?<!demi-)droite \\()(${NOM})(${NOM})[)\\]]`)))) {
+        const demi = m[1].startsWith('demi')
+        const [a, b] = [m[2], m[3]]
+        const gestes: Geste[] = []
+        if (!pts.has(a)) gestes.push(point(a, nouvellePlace(5 * CM)))
+        if (!pts.has(b)) gestes.push(point(b, plus(pts.get(a)!, { x: 1, y: 0 }, 5 * CM)))
+        const A = pts.get(a)!, B = pts.get(b)!, u = unit(A, B)
+        gestes.push({ k: 'regle', a: demi ? A : plus(A, u, -1.5 * CM), b: plus(B, u, 1.5 * CM), prolonge: demi ? 'demi' : 'droite' })
+        recent = milieu(A, B)
+        etapes.push({ consigne: demi ? `Trace la demi-droite [${a}${b}) : elle part de ${a} et passe par ${b}.` : `Trace la droite (${a}${b}) : elle passe par ${a} et ${b}, sans s'arrêter.`, gestes })
       }
       // --- Un segment sans nom : ses extrémités prennent des lettres libres ---
       else if ((m = l.match(new RegExp(`segment de ${NOMBRE} cm`)))) {
@@ -252,7 +267,7 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
             gestes: [{ k: 'regle', a: haut, b: bas, aide: true }, point(nomI, I)] })
         } else {
           etapes.push({ consigne: `Trace la droite qui passe par ces deux points : c'est la médiatrice de [${m[3]}${m[4]}].`,
-            gestes: [{ k: 'regle', a: plus(haut, u, -1.5 * CM), b: plus(bas, u, 1.5 * CM) }] })
+            gestes: [{ k: 'regle', a: plus(haut, u, -1.5 * CM), b: plus(bas, u, 1.5 * CM), prolonge: 'droite' }] })
         }
       }
       // --- Triangle ABC tel que AB = 5 cm, AC = 4 cm, BC = 3 cm ---
@@ -299,7 +314,7 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
         const d = unit(A, B)
         // Deuxième perpendiculaire, en C, à la première
         etapes.push({ consigne: `Puis, à l'équerre, la perpendiculaire à cette droite en ${m[3]} : elle est parallèle à (${m[1]}${m[2]}).`,
-          gestes: [{ k: 'equerre', o: C, w: d, a: plus(C, d, -5 * CM), b: plus(C, d, 6 * CM) }] })
+          gestes: [{ k: 'equerre', o: C, w: d, a: plus(C, d, -5 * CM), b: plus(C, d, 6 * CM), prolonge: 'droite' }] })
       }
       // --- Bissectrice de l'angle ABC ---
       else if ((m = l.match(new RegExp(`bissectrice\\s+de\\s+l'angle\\s+(${NOM})(${NOM})(${NOM})`)))) {
@@ -311,7 +326,7 @@ export function compiler(texte: string, connus: Map<string, P>, ancre: P): Progr
         const inter = intersectionCercles(E, r2, F, r2)!
         const G = dist(inter[0], B) > dist(inter[1], B) ? inter[0] : inter[1]
         etapes.push({ consigne: 'Même écartement, depuis chacun des deux points : deux arcs qui se coupent.', gestes: [arcVers(E, r2, G, 15 * DEG), arcVers(F, r2, G, 15 * DEG)] })
-        etapes.push({ consigne: `Trace la demi-droite qui part de ${m[2]} et passe par ce point : c'est la bissectrice.`, gestes: [{ k: 'regle', a: B, b: plus(B, unit(B, G), Math.max(dist(B, G) + 2 * CM, 6 * CM)) }] })
+        etapes.push({ consigne: `Trace la demi-droite qui part de ${m[2]} et passe par ce point : c'est la bissectrice.`, gestes: [{ k: 'regle', a: B, b: plus(B, unit(B, G), Math.max(dist(B, G) + 2 * CM, 6 * CM)), prolonge: 'demi' }] })
       }
       // --- Angle BAC de 40° (au rapporteur) ---
       else if ((m = l.match(new RegExp(`angle\\s+(${NOM}|[a-z])(${NOM})(${NOM}|[a-z])\\s+(?:de|mesurant)\\s+${NOMBRE}\\s*°`)))) {

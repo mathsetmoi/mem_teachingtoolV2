@@ -224,6 +224,15 @@ export class Rendu {
       if (f.arc) trace.arc(f.x, f.y, f.r, f.arc.a0, f.arc.a1, f.arc.a1 < f.arc.a0)
       else trace.arc(f.x, f.y, f.r, 0, Math.PI * 2)
     }
+    else if (f.prolonge && f.pts.length === 4) {
+      // Droite ou demi-droite : jusqu'au bord de ce qu'on voit, quel que soit le zoom
+      const [a, b] = sommetsDe(f)
+      const l = Math.hypot(b.x - a.x, b.y - a.y) || 1, u = { x: (b.x - a.x) / l, y: (b.y - a.y) / l }
+      const v = this.cam.visible(this.l, this.h)
+      const loin = Math.hypot(v.l, v.h) + Math.hypot(a.x - v.x - v.l / 2, a.y - v.y - v.h / 2)
+      const debut = f.prolonge === 'droite' ? { x: a.x - u.x * loin, y: a.y - u.y * loin } : a
+      trace.moveTo(debut.x, debut.y); trace.lineTo(a.x + u.x * loin, a.y + u.y * loin)
+    }
     else {
       sommetsDe(f).forEach((p, i) => i ? trace.lineTo(p.x, p.y) : trace.moveTo(p.x, p.y))
       if (f.ferme) trace.closePath()

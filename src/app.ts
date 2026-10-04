@@ -62,6 +62,7 @@ export class App {
   aimant = false
   reconnaissance = true               // le stylo redresse les figures
   typeForme: TypeForme = 'rectangle'
+  typeTrait: 'segment' | 'droite' | 'demi' = 'segment'      // ce que trace l'outil Segment
   suivre = true                       // élève : suit la page et la vue du prof
   selection = new Set<string>()
   /** Un seul morceau choisi (un sommet, un nom…), sans la figure entière */
@@ -307,6 +308,13 @@ export class App {
   nouvellePage() {
     const id = this.tableau.ajouterPage(this.fond, this.pages.indexOf(this.page) + 1)
     this.allerPage(id)
+  }
+
+  /** Efface tout ce qui est sur la page (Ctrl+Z le rend) */
+  viderPage() {
+    this.selection.clear(); this.choisirPartie(null)
+    this.tableau.nouveauGeste()
+    this.tableau.supprimer(this.page, this.formes.map(f => f.id))
   }
 
   supprimerPage() {
@@ -681,6 +689,12 @@ export class App {
           b = { x: g.x + d * Math.cos(ang), y: g.y + d * Math.sin(ang) }
         }
         this.rendu.monSegment!.x2 = b.x; this.rendu.monSegment!.y2 = b.y
+        // Une droite ou une demi-droite se voit prolongée pendant qu'on la trace
+        if (this.typeTrait !== 'segment' && Math.hypot(b.x - g.x, b.y - g.y) > 1) {
+          const f = this.figure({ type: 'polygone', ferme: false, ...versRelatif([{ x: g.x, y: g.y }, b]) })
+          if (f.type === 'polygone') f.prolonge = this.typeTrait
+          this.rendu.apercu = f
+        }
         this.rendu.redessinerDirect()
         break
       }
@@ -724,8 +738,10 @@ export class App {
         const s = this.rendu.monSegment!
         this.rendu.monSegment = null
         if (Math.hypot(s.x2 - s.x1, s.y2 - s.y1) > 2) {
-          this.poserFigure(this.figure({ type: 'polygone', ferme: false,
-            ...versRelatif([{ x: s.x1, y: s.y1 }, { x: s.x2, y: s.y2 }]) }))
+          const f = this.figure({ type: 'polygone', ferme: false, ...versRelatif([{ x: s.x1, y: s.y1 }, { x: s.x2, y: s.y2 }]) })
+          if (this.typeTrait !== 'segment' && f.type === 'polygone') f.prolonge = this.typeTrait
+          this.rendu.apercu = null
+          this.poserFigure(f)
         }
         this.rendu.redessinerDirect()
         break
@@ -789,7 +805,7 @@ export class App {
 
   private abandonnerGeste(g: Geste | null = this.geste) {
     if (g?.type === 'dessin') { clearTimeout(this.minuterieForme); this.rendu.monTrait = null; this.tableau.diffuser({ direct: null }) }
-    if (g?.type === 'segment') this.rendu.monSegment = null
+    if (g?.type === 'segment') { this.rendu.monSegment = null; this.rendu.apercu = null }
     if (g?.type === 'rectangle' || g?.type === 'cercle') this.rendu.apercu = null
     if (g?.type === 'poignee') this.rendu.remplacement = null
     if (g?.type === 'longer' || g?.type === 'instrument') {
