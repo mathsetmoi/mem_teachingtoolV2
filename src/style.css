@@ -1,0 +1,211 @@
+/* =============================================================
+   Tableau MEM
+   Les couleurs viennent du cahier d'écolier : le bleu des lignes
+   Seyès, le rouge de la marge, et le jaune du surligneur, qui
+   marque l'outil qu'on tient en main.
+   ============================================================= */
+:root {
+  --papier: #ffffff;
+  --chrome: #f6f8fb;
+  --filet: #d4dce8;
+  --encre: #1b2230;
+  --encre-douce: #5a6577;
+  --bleu: #3b6fb6;
+  --rouge: #d64545;
+  --surligneur: #ffe45c;
+  --police: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--papier); }
+body { font-family: var(--police); color: var(--encre); font-size: 15px; -webkit-font-smoothing: antialiased; }
+button, select, input { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+
+#app { position: fixed; inset: 0; }
+#zone {
+  position: absolute; inset: 0; overflow: hidden;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+  cursor: crosshair;
+}
+#zone[data-outil='main'] { cursor: grab; }
+#zone[data-outil='selection'] { cursor: default; }
+#zone[data-outil='gomme'] { cursor: none; }
+#zone[data-outil='formule'] { cursor: text; }
+
+.couche { position: absolute; inset: 0; pointer-events: none; }
+.couche-formules { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+.formule { position: absolute; white-space: nowrap; line-height: 1.2; padding: 2px 4px; }
+
+/* ---------- Barres ---------- */
+.barre {
+  position: absolute; z-index: 10;
+  display: flex; gap: 2px; padding: 6px;
+  background: var(--chrome);
+  border: 1px solid var(--filet);
+  border-radius: 14px;
+  box-shadow: 0 2px 0 var(--filet);
+}
+.barre-outils {
+  left: max(12px, env(safe-area-inset-left)); top: 50%; transform: translateY(-50%);
+  flex-direction: column; align-items: center;
+  max-height: calc(100% - 24px); overflow-y: auto; scrollbar-width: none;
+}
+.barre-haut {
+  top: max(12px, env(safe-area-inset-top)); right: 12px;
+  align-items: center; flex-wrap: wrap; justify-content: flex-end;
+  max-width: calc(100% - 100px);
+}
+.barre-zoom { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); align-items: center; }
+
+.filet { width: 70%; height: 0; border: 0; border-top: 1px solid var(--filet); margin: 6px 0; }
+
+.bouton {
+  position: relative; isolation: isolate;
+  width: 44px; height: 44px; display: grid; place-items: center;
+  border: 0; border-radius: 10px; background: transparent; cursor: pointer;
+}
+.bouton svg {
+  width: 22px; height: 22px; fill: none; stroke: currentColor;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.bouton:hover { background: #e9eef5; }
+.bouton.danger:hover { color: var(--rouge); }
+
+/* L'outil en main : un coup de surligneur derrière l'icône */
+.bouton.actif { background: transparent; }
+.bouton.actif::before {
+  content: ''; position: absolute; z-index: -1;
+  left: 6px; right: 6px; top: 12px; bottom: 12px;
+  background: var(--surligneur);
+  border-radius: 3px 8px 4px 9px;
+  transform: rotate(-6deg) skewX(-10deg);
+}
+
+.pastille {
+  width: 44px; height: 34px; border: 0; background: transparent; cursor: pointer;
+  display: grid; place-items: center;
+}
+.pastille::after {
+  content: ''; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--teinte);
+  box-shadow: 0 0 0 2px var(--chrome), 0 0 0 2px transparent;
+  transition: box-shadow 0.12s;
+}
+.pastille.actif::after { box-shadow: 0 0 0 2px var(--chrome), 0 0 0 4px var(--teinte); }
+
+.tailles { display: flex; flex-direction: column; }
+.taille { width: 44px; height: 30px; border: 0; background: transparent; cursor: pointer; display: grid; place-items: center; border-radius: 8px; }
+.taille span { width: 24px; height: var(--d); border-radius: 99px; background: var(--encre-douce); }
+.taille.actif span { background: var(--encre); box-shadow: 0 0 0 3px var(--surligneur); }
+
+.rang { min-width: 56px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.choix-fond {
+  height: 44px; padding: 0 10px; margin: 0 2px;
+  border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); cursor: pointer;
+}
+
+.partager {
+  display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 12px; margin-left: 4px;
+  border: 0; border-radius: 10px; background: var(--bleu); color: #fff; font-weight: 700; cursor: pointer;
+}
+.partager svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.partager:hover { background: #2f5d9c; }
+
+.etat { padding: 0 10px; font-size: 13px; color: var(--encre-douce); white-space: nowrap; }
+.etat::before {
+  content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%;
+  background: var(--filet); vertical-align: 1px;
+}
+.etat[data-etat='en-ligne']::before { background: #1e8a4c; }
+.etat[data-etat='connexion']::before { background: var(--surligneur); }
+.etat[data-etat='injoignable']::before { background: var(--rouge); }
+
+.zoom-texte {
+  min-width: 64px; height: 44px; border: 0; background: transparent; cursor: pointer;
+  font-variant-numeric: tabular-nums; border-radius: 10px;
+}
+.zoom-texte:hover { background: #e9eef5; }
+
+/* ---------- Élève ---------- */
+.bandeau {
+  position: absolute; z-index: 10; left: 50%; bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%); display: flex; gap: 10px; align-items: center;
+}
+.bandeau button {
+  height: 44px; padding: 0 18px; border: 0; border-radius: 22px;
+  background: var(--bleu); color: #fff; font-weight: 700; cursor: pointer;
+}
+.bandeau span {
+  padding: 8px 14px; border-radius: 99px; background: var(--chrome);
+  border: 1px solid var(--filet); color: var(--encre-douce); font-size: 13px;
+}
+
+/* ---------- Dialogues ---------- */
+.dialogue {
+  border: 1px solid var(--filet); border-radius: 16px; padding: 20px 22px;
+  width: min(440px, calc(100vw - 24px)); background: var(--papier); color: var(--encre);
+  box-shadow: 0 3px 0 var(--filet), 0 18px 40px rgba(27, 34, 48, 0.14);
+}
+.dialogue::backdrop { background: rgba(27, 34, 48, 0.25); }
+.dialogue h2 { margin: 0 0 10px; font-size: 19px; }
+.dialogue p { margin: 0 0 14px; line-height: 1.5; color: var(--encre-douce); max-width: 60ch; }
+.dialogue-formule { position: fixed; margin: 0; z-index: 20; }
+
+.saisie, .lien input {
+  width: 100%; height: 44px; padding: 0 12px;
+  border: 1px solid var(--filet); border-radius: 10px; background: #fbfcfe;
+}
+.saisie { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 15px; }
+.saisie:focus, .lien input:focus { outline: 2px solid var(--bleu); outline-offset: 1px; }
+
+.apercu {
+  min-height: 64px; margin-bottom: 10px; padding: 6px 10px; overflow-x: auto;
+  border-radius: 10px; background: #fbfcfe;
+  /* une ligne de cahier sous l'aperçu */
+  background-image: linear-gradient(transparent calc(100% - 1px), rgba(80, 130, 200, 0.28) 0);
+  background-size: 100% 16px;
+}
+.apercu.vide { color: var(--encre-douce); }
+
+.raccourcis { display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0 14px; }
+.raccourci {
+  min-width: 44px; height: 38px; padding: 0 8px;
+  border: 1px solid var(--filet); border-radius: 8px; background: var(--chrome); cursor: pointer;
+}
+.raccourci:hover { border-color: var(--bleu); }
+
+.actions { display: flex; justify-content: flex-end; gap: 8px; }
+.principal, .secondaire { height: 42px; padding: 0 18px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+.principal { border: 0; background: var(--bleu); color: #fff; }
+.secondaire { border: 1px solid var(--filet); background: var(--papier); }
+
+.lien { display: flex; gap: 8px; margin-bottom: 14px; }
+.lien input { flex: 1; font-size: 13px; }
+
+.interrupteur { display: flex; align-items: center; gap: 10px; cursor: pointer; min-height: 44px; }
+.interrupteur input { width: 20px; height: 20px; accent-color: var(--bleu); }
+
+button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); outline-offset: 2px; }
+
+/* ---------- Message ---------- */
+.toast {
+  position: absolute; z-index: 30; left: 50%; top: 16px;
+  transform: translate(-50%, -8px); opacity: 0; pointer-events: none;
+  padding: 10px 16px; border-radius: 10px; background: var(--encre); color: #fff;
+  transition: opacity 0.18s, transform 0.18s;
+}
+.toast.visible { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast, .pastille::after { transition: none; }
+}
+
+/* Petits écrans (téléphone d'élève) : la barre du haut se resserre */
+@media (max-width: 640px) {
+  .barre-haut { left: 12px; right: 12px; max-width: none; justify-content: center; }
+  .etat { width: 100%; text-align: center; padding-top: 4px; }
+  .barre-outils { top: auto; bottom: 12px; transform: none; max-height: calc(100% - 140px); }
+}
