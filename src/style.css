@@ -357,7 +357,7 @@ body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .panneau-co
 .seance fieldset { border: 1px solid var(--filet); border-radius: 14px; padding: 10px 14px 14px; margin: 0 0 14px; }
 .seance legend { font-weight: 700; padding: 0 6px; }
 .seance legend .compte { font-weight: 400; color: var(--encre-douce); font-size: 13px; }
-.liste-autos .theme h3 { margin: 10px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--encre-douce); }
+.liste-autos .theme h3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--encre-douce); }
 .seance label { display: flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer; }
 .seance label input[type=checkbox], .seance label input[type=radio] { width: 18px; height: 18px; accent-color: var(--bleu); flex: none; }
 .liste-autos label span { flex: 1; }
@@ -368,6 +368,24 @@ body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .panneau-co
 .exemple-auto { min-height: 44px; padding: 10px 12px; margin-bottom: 12px; border-radius: 10px; background: var(--chrome); font-size: 15px; line-height: 1.6; }
 .exemple-auto:empty { display: none; }
 .exemple-auto .rep { color: #1e8a4c; font-weight: 700; }
+.tout-theme { border: 0; background: transparent; color: var(--bleu); font: inherit; font-size: 12px; text-transform: none; letter-spacing: 0; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.tout-theme:hover { background: #e9eef5; }
+.exemple-auto .figure-auto svg { max-height: 150px; }
+.exemple-auto .rep svg { max-height: 70px; vertical-align: middle; }
+/* Les figures des automatismes */
+.figure-auto { display: flex; justify-content: center; margin: .2em 0 .6em; }
+.figure-auto svg { width: auto; max-width: 100%; height: auto; max-height: 9em; }
+.scene-seance.diapo .figure-auto svg { max-height: 30vh; }
+.scene-seance.diapo .figure-auto svg.fig-carree { max-height: 26vh; }
+.scene-seance.diapo .options.longues { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.scene-seance.diapo .question-auto.avec-figure { font-size: clamp(18px, min(2.8vw, 3.8vh), 34px); padding: clamp(14px, 2.6vh, 30px) 40px; }
+.question-auto svg.fig { color: var(--encre); overflow: visible; }
+.question-auto .options.dessins li { justify-content: center; }
+.question-auto .options.dessins svg { width: auto; max-width: 100%; height: auto; max-height: 4.2em; }
+.scene-seance.diapo .options.dessins { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.scene-seance.diapo .options.dessins svg { max-height: 16vh; }
+.question-auto .propose svg, .question-auto .correction svg { max-height: 4em; vertical-align: middle; }
+.question-auto .mots { font-size: .92em; }
 .seance .lancer { width: 100%; height: 52px; font-size: 17px; }
 .seance .lancer:disabled { opacity: .45; }
 
@@ -384,8 +402,8 @@ body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .panneau-co
 @media (max-width: 900px) { .barre-seance { grid-template-columns: 1fr; } .commandes-seance { justify-content: center; } }
 
 .scene-seance { flex: 1; padding: 24px; }
-.scene-seance.diapo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
-.scene-seance.diapo .question-auto { width: min(1000px, 100%); font-size: clamp(22px, 3.2vw, 40px); padding: 36px 44px; }
+.scene-seance.diapo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(10px, 2.5vh, 28px); padding: clamp(10px, 2vh, 24px); }
+.scene-seance.diapo .question-auto { width: min(1000px, 100%); font-size: clamp(20px, min(3.2vw, 5vh), 40px); padding: clamp(16px, 3.5vh, 36px) 44px; }
 .points-diapo { display: flex; gap: 10px; }
 .points-diapo span { width: 14px; height: 14px; border-radius: 50%; background: var(--filet); }
 .points-diapo span.vu { background: #9bb6dc; }
@@ -393,13 +411,14 @@ body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .panneau-co
 /* Les 10 d'un coup : deux rangées de cinq sur un écran de classe */
 .scene-seance.grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; align-content: start; font-size: clamp(15px, 1.25vw, 20px); padding: 16px; }
 @media (min-width: 1250px) { .scene-seance.grille { grid-template-columns: repeat(5, 1fr); } }
-.scene-seance.grille .question-auto { padding: 12px 14px; }
+.scene-seance.grille .question-auto { padding: 12px 14px; min-width: 0; }
+.question-auto .options.longues { grid-template-columns: minmax(0, 1fr); }
 .question-auto { background: var(--papier); border: 1px solid var(--filet); border-radius: 16px; padding: 16px 20px; box-shadow: 0 2px 0 var(--filet); }
 .question-auto header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .question-auto .numero { min-width: 1.6em; height: 1.6em; display: inline-grid; place-items: center; border-radius: 50%; background: var(--surligneur); font-weight: 700; font-size: .8em; }
 .question-auto .genre { font-size: .55em; text-transform: uppercase; letter-spacing: .06em; color: var(--encre-douce); }
 .question-auto .enonce { margin: .3em 0 .6em; line-height: 1.5; }
-.question-auto .options { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: .4em .8em; }
+.question-auto .options { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .4em .8em; }
 .question-auto .options li { display: flex; align-items: center; gap: .5em; padding: .3em .5em; border-radius: 10px; border: 2px solid transparent; }
 .question-auto .lettre { min-width: 1.5em; height: 1.5em; display: inline-grid; place-items: center; border-radius: 8px; background: var(--chrome); border: 1px solid var(--filet); font-weight: 700; font-size: .75em; }
 .question-auto .juste { border-color: #1e8a4c !important; background: #e5f4ea; }

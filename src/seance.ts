@@ -25,13 +25,15 @@ function rendre(texte: string): string {
     ? katex.renderToString(m.slice(1, -1), { throwOnError: false })
     : html(m)).join('')
 }
-const maths = (t: string) => katex.renderToString(t, { throwOnError: false })
+/** Une réponse : un dessin SVG, un texte (§…) ou du LaTeX */
+const maths = (t: string) => t.startsWith('<svg') ? t : t.startsWith('§') ? `<span class="mots">${rendre(t.slice(1))}</span>` : katex.renderToString(t, { throwOnError: false })
+const figure = (q: Question) => q.figure ? `<div class="figure-auto">${q.figure}</div>` : ''
 const melanger = <T,>(t: T[]) => { const r = [...t]; for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]] } return r }
 const mmss = (s: number) => { const t = Math.max(0, Math.ceil(s - 1e-6)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}` }
 
 export class Seance {
   private ecran: HTMLDivElement
-  private reglages = { choisis: ['priorites'] as string[], mode: 'qcm' as Mode, affichage: 'diaporama' as 'diaporama' | 'grille', minutes: 5, parDiapo: 30, correctionAuto: true }
+  private reglages = { choisis: ['tables'] as string[], mode: 'qcm' as Mode, affichage: 'diaporama' as 'diaporama' | 'grille', minutes: 5, parDiapo: 30, correctionAuto: true }
   private items: Item[] = []
   private i = 0                    // diapo courante
   private reste = 0                // secondes restantes (toute la séance)
@@ -77,7 +79,7 @@ export class Seance {
         <div class="seance-tete"><h2>Automatismes — 5<sup>e</sup></h2><button type="button" class="fermer" aria-label="Fermer">×</button></div>
         <div class="seance-colonnes">
           <fieldset class="liste-autos"><legend>Automatismes <span class="compte"></span></legend>
-            ${themes.map(t => `<div class="theme"><h3>${html(t)}</h3>${AUTOMATISMES_5E.filter(a => a.theme === t).map(a =>
+            ${themes.map(t => `<div class="theme"><h3>${html(t)}<button type="button" class="tout-theme" data-theme="${html(t)}">tout cocher</button></h3>${AUTOMATISMES_5E.filter(a => a.theme === t).map(a =>
               `<label><input type="checkbox" value="${a.id}"${R.choisis.includes(a.id) ? ' checked' : ''}><span>${html(a.titre)}</span><button type="button" class="apercu-auto" data-id="${a.id}" title="Voir un exemple">👁</button></label>`).join('')}</div>`).join('')}
           </fieldset>
           <div class="options-seance">
@@ -107,12 +109,18 @@ export class Seance {
       q('.par-diapo').hidden = !(this.ecran.querySelector('input[name=aff]:checked') as HTMLInputElement).value.startsWith('diapo')
     }
     this.ecran.addEventListener('change', compter)
+    this.ecran.querySelectorAll<HTMLButtonElement>('.tout-theme').forEach(b => b.addEventListener('click', () => {
+      const cases = [...b.closest('.theme')!.querySelectorAll<HTMLInputElement>('input[type=checkbox]')]
+      const tout = cases.every(c => c.checked)
+      cases.forEach(c => { c.checked = !tout })
+      compter()
+    }))
     compter()
     q('.fermer').addEventListener('click', () => this.fermer())
     this.ecran.querySelectorAll<HTMLButtonElement>('.apercu-auto').forEach(b => b.addEventListener('click', e => {
       e.preventDefault()
       const a = AUTOMATISMES_5E.find(x => x.id === b.dataset.id)!, ex = a.generer()
-      q('.exemple-auto').innerHTML = `<strong>${html(a.titre)}</strong> — ${rendre(ex.enonce)} <span class="rep">→ ${maths(ex.reponse)}</span>`
+      q('.exemple-auto').innerHTML = `<strong>${html(a.titre)}</strong> — ${rendre(ex.enonce)}${figure(ex)} <span class="rep">→ ${maths(ex.reponse)}</span>`
     }))
     q('.lancer').addEventListener('click', () => {
       R.choisis = [...this.ecran.querySelectorAll<HTMLInputElement>('.liste-autos input:checked')].map(x => x.value)
@@ -248,7 +256,7 @@ export class Seance {
     const { q, mode } = it
     let corps = ''
     if (mode === 'qcm') {
-      corps = `<ol class="options">${it.options.map((o, j) =>
+      corps = `<ol class="options${it.options.some(o => o.startsWith('<svg')) ? ' dessins' : it.options.some(o => o.startsWith('§') && o.length > 14) ? ' longues' : ''}">${it.options.map((o, j) =>
         `<li class="${corr && o === q.reponse ? 'juste' : corr ? 'ecartee' : ''}"><span class="lettre">${LETTRES[j]}</span>${maths(o)}</li>`).join('')}</ol>`
     } else if (mode === 'vraifaux') {
       const vrai = it.propose === q.reponse
@@ -259,9 +267,10 @@ export class Seance {
       corps = corr ? `<p class="correction">${maths(q.reponse)}</p>` : `<p class="a-repondre">…</p>`
     }
     const etiquette = { directe: 'Réponse directe', qcm: 'QCM', vraifaux: 'Vrai ou faux' }[mode]
-    return `<article class="question-auto ${mode}${corr ? ' corrigee' : ''}">
+    const dessin = !!q.figure || q.reponse.startsWith('<svg')
+    return `<article class="question-auto ${mode}${corr ? ' corrigee' : ''}${dessin ? ' avec-figure' : ''}">
       <header><span class="numero">${k + 1}</span><span class="genre">${etiquette}</span></header>
-      <p class="enonce">${rendre(q.enonce)}</p>${corps}</article>`
+      <p class="enonce">${rendre(q.enonce)}</p>${figure(q)}${corps}</article>`
   }
 
   private touche(e: KeyboardEvent) {

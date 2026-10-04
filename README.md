@@ -171,9 +171,13 @@ et parenthèses sont facultatifs ; les majuscules désignent les points.
 ## Automatismes
 
 Le bouton « Automatismes » (chronomètre) de la barre du haut ouvre une séance
-plein écran. On choisit un ou plusieurs des 20 automatismes de 5e (priorités,
-relatifs, fractions, divisibilité, calcul littéral, proportionnalité,
-pourcentages, conversions, aires et périmètres, angles, moyenne…), un **mode**
+plein écran. Les automatismes suivent la **liste officielle de 5e**, rangés
+par thème : opérations, nombres relatifs, nombres rationnels (fractions,
+pourcentages), puissances et calcul littéral, repérage, représentation de
+l'espace, transformations, angles, triangles, parallélogrammes et polygones,
+probabilités, proportionnalité — 42 automatismes, plus 10 « hors liste
+officielle » (priorités, conversions, moyenne…). « tout cocher » prend un thème
+entier, l'œil montre un exemple. On choisit aussi un **mode**
 — réponse directe, QCM, vrai/faux, ou **au hasard** (un mode tiré pour chaque
 question) — et un **affichage** : diaporama (une question à la fois, qui
 change toutes les 30 s) ou les 10 questions d'un coup.
@@ -188,6 +192,16 @@ tirées au hasard, et les trois réponses fausses d'un QCM sont de vraies erreur
 d'élèves (calcul de gauche à droite, signe oublié, numérateurs et dénominateurs
 additionnés, virgule mal placée…). Écrits pour ce projet, ils ne reprennent le
 contenu d'aucun autre site.
+
+Les questions de géométrie et d'espace portent une **figure** tirée elle aussi
+au hasard (`src/figures.ts`, en SVG) : droite graduée, repère, angles,
+bissectrice, triangles et quadrilatères codés (tournés au hasard : seul le
+codage permet de conclure), médiatrice, symétrique sur quadrillage,
+empilements de cubes en perspective cavalière, patrons, pavés, motifs,
+échelle de probabilité. En QCM, les propositions peuvent elles-mêmes être des
+dessins (« Quelle est la vue de dessus ? », « Lequel est un patron de
+cube ? »). Le patron se vérifie en faisant rouler un dé sur ses cases : sur
+les 35 assemblages de six carrés, on retrouve bien les 11 patrons du cube.
 
 ## Rejouer le tableau
 
@@ -287,6 +301,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/constructeur.ts` | Joue les étapes, avec ou sans instruments |
 | `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
+| `src/figures.ts` | Les figures SVG des automatismes |
 | `src/ui.ts` | Barres d'outils, partage, éditeur de formules |
 | `serveur/server.js` | Relais WebSocket et sauvegarde des salles |
 
