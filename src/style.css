@@ -192,8 +192,8 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
 
 /* ---------- Message ---------- */
 .toast {
-  position: absolute; z-index: 30; left: 50%; top: 16px;
-  transform: translate(-50%, -8px); opacity: 0; pointer-events: none;
+  position: absolute; z-index: 30; left: 50%; bottom: max(84px, env(safe-area-inset-bottom));
+  transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
   padding: 10px 16px; border-radius: 10px; background: var(--encre); color: #fff;
   transition: opacity 0.18s, transform 0.18s;
 }
@@ -209,3 +209,36 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
   .etat { width: 100%; text-align: center; padding-top: 4px; }
   .barre-outils { top: auto; bottom: 12px; transform: none; max-height: calc(100% - 140px); }
 }
+
+/* ---------- Choix de la forme ---------- */
+.choix-formes { position: fixed; flex-direction: column; }
+
+/* ---------- Options de la figure sélectionnée ---------- */
+.panneau-forme {
+  position: fixed; z-index: 15; width: max-content; max-width: min(820px, calc(100vw - 16px));
+  padding: 6px; display: flex; flex-direction: column; gap: 6px;
+  background: var(--chrome); border: 1px solid var(--filet); border-radius: 14px;
+  box-shadow: 0 2px 0 var(--filet), 0 10px 24px rgba(27, 34, 48, 0.1);
+}
+.panneau-forme .ligne, .panneau-forme .section { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.panneau-forme .section { padding-top: 6px; border-top: 1px solid var(--filet); }
+.option {
+  height: 40px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent;
+  cursor: pointer; font-weight: 700; white-space: nowrap; position: relative; isolation: isolate;
+}
+.option:hover { background: #e9eef5; }
+.option.actif::before {
+  content: ''; position: absolute; z-index: -1; left: 6px; right: 6px; top: 11px; bottom: 9px;
+  background: var(--surligneur); border-radius: 3px 8px 4px 9px; transform: rotate(-2deg) skewX(-10deg);
+}
+.panneau-forme .bouton { width: 40px; height: 40px; }
+.panneau-forme .pastille { width: 38px; }
+.panneau-forme .taille { width: 40px; height: 40px; }
+.noms { display: flex; align-items: center; gap: 8px; padding: 0 6px; }
+.noms span, .champ span { font-size: 13px; color: var(--encre-douce); white-space: nowrap; }
+.noms .saisie { height: 38px; width: 180px; font-family: 'KaTeX_Math', 'Times New Roman', serif; font-style: italic; font-size: 18px; }
+.transformer { flex-direction: column; align-items: stretch !important; gap: 8px !important; padding: 8px 6px 2px; }
+.champ { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 8px; }
+.champ select, .champ .saisie { height: 38px; padding: 0 10px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); font-family: var(--police); }
+.champ.coords { grid-template-columns: 150px 1fr 1fr; }
+@media (max-width: 640px) { .champ, .champ.coords { grid-template-columns: 1fr; } }

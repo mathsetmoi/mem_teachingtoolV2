@@ -26,6 +26,40 @@ Version hors ligne en un seul fichier (clé USB, pas de partage) :
 npm run build        # → dist/index.html, autonome
 ```
 
+## Figures géométriques
+
+**Au stylo.** Un carré, un rectangle, un triangle, un polygone ou un cercle
+tracé à main levée se redresse tout seul au lever du stylo (« Carré », « Triangle
+isocèle », « Cercle »… s'affiche). `Ctrl+Z` rend le tracé d'origine. Pour un
+segment ou une ligne brisée, garder le stylo immobile un instant à la fin du
+trait : sans cela, chaque « 1 » ou « − » écrit au tableau deviendrait un segment.
+Les tracés trop petits (l'écriture) ne sont jamais touchés, et le bouton
+« reconnaissance » de la barre du haut coupe tout.
+
+**Avec l'outil Formes** (`R` rectangle, Maj pour un carré ; `C` cercle ; `G`
+polygone, sommet par sommet, en revenant au premier pour fermer).
+
+**Le panneau d'options** s'ouvre sur la figure qu'on vient de tracer, ou sur
+tout objet choisi avec l'outil de sélection :
+
+- *Sommets* : points et noms (A, B, C… libres sur la page), modifiables ;
+- *Codage* : côtés de même longueur et angles droits, calculés ;
+- *Contour* : couleur, épaisseur, pointillés ;
+- *Fond* : remplissage en transparence ;
+- *Transformer* : symétrie axiale (par un côté, une verticale, un axe du
+  repère), symétrie centrale, rotation, translation (par un vecteur entre deux
+  sommets ou en coordonnées), homothétie. L'image est une nouvelle figure, aux
+  sommets nommés A', B', C'… ;
+- *Main levée*, *Dupliquer*, supprimer.
+
+Les transformations et le contour valent aussi pour un tracé à main levée.
+
+## Partage avec les élèves (mis de côté)
+
+Le code est toujours là (`src/document.ts`, `serveur/`), mais l'outil ne le
+propose plus : `PARTAGE_ELEVES = false` dans `src/main.ts`. Le passer à `true`
+rend le bouton « Partager » et le mode élève décrits plus bas.
+
 ## Ce que fait la v0.1
 
 Côté prof : stylo sensible à la pression, surligneur, gomme, segments (Maj pour
@@ -81,6 +115,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/rendu.ts` | Les trois couches d'affichage |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
 | `src/geometrie.ts` | Ce que touche la gomme ou la sélection |
+| `src/formes.ts` | Reconnaissance des figures, codage, transformations |
 | `src/ui.ts` | Barres d'outils, partage, éditeur de formules |
 | `serveur/server.js` | Relais WebSocket et sauvegarde des salles |
 
@@ -110,8 +145,10 @@ n'empêche un usage payant.
 ## Feuille de route proposée
 
 1. Export PDF des pages (pour l'ENT et les absents).
-2. Instruments : règle, équerre, rapporteur, compas qui tracent.
-3. Import d'un PDF ou d'une image comme fond de page (annoter un énoncé).
-4. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
-5. Sécurité du serveur : jeton prof, durée de vie des salles.
-6. Lecteur qui rejoue la construction du tableau.
+2. Figures liées : un point partagé par deux figures, une image qui suit sa
+   figure quand on la déplace.
+3. Instruments : règle, équerre, rapporteur, compas qui tracent.
+4. Import d'un PDF ou d'une image comme fond de page (annoter un énoncé).
+5. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
+6. Sécurité du serveur : jeton prof, durée de vie des salles.
+7. Lecteur qui rejoue la construction du tableau.

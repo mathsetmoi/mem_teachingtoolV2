@@ -16,7 +16,10 @@ export const FONDS: { id: Fond; nom: string }[] = [
   { id: 'repere', nom: 'Repère' },
 ]
 
-export type Outil = 'stylo' | 'surligneur' | 'gomme' | 'segment' | 'formule' | 'selection' | 'main'
+export type Outil = 'stylo' | 'surligneur' | 'gomme' | 'segment' | 'forme' | 'formule' | 'selection' | 'main'
+
+/** Ce que trace l'outil « Formes » */
+export type TypeForme = 'rectangle' | 'cercle' | 'polygone'
 
 interface Base {
   id: string
@@ -36,7 +39,34 @@ export interface Trait extends Base {
   pression: boolean   // vraie pression du stylet, sinon simulée
 }
 
-/** Segment droit de (x, y) à (x + dx, y + dy) */
+/** Ce qui habille une figure géométrique : réglé dans le panneau d'options. */
+export interface Habillage {
+  couleur: string
+  taille: number
+  tirets?: boolean
+  fond?: string | null       // couleur de remplissage, posée en transparence
+  noms?: string[]            // noms des sommets (ou du centre d'un cercle)
+  sommets?: boolean          // afficher les sommets et leurs noms
+  codage?: boolean           // afficher côtés égaux et angles droits
+  /** Le tracé à main levée d'origine, si la figure a été reconnue */
+  brut?: { pts: number[]; taille: number; pression: boolean }
+}
+
+/** Polygone ou ligne brisée : sommets relatifs à (x, y), à plat [x, y, …].
+ *  Un segment est un polygone ouvert à deux sommets. */
+export interface Polygone extends Base, Habillage {
+  type: 'polygone'
+  pts: number[]
+  ferme: boolean
+}
+
+/** Cercle de centre (x, y) */
+export interface Cercle extends Base, Habillage {
+  type: 'cercle'
+  r: number
+}
+
+/** Ancien segment (v0.1), encore lu pour les tableaux déjà enregistrés */
 export interface Segment extends Base {
   type: 'segment'
   dx: number
@@ -53,7 +83,8 @@ export interface Formule extends Base {
   taille: number      // taille de police en unités monde
 }
 
-export type Forme = Trait | Segment | Formule
+export type Forme = Trait | Segment | Formule | Polygone | Cercle
+export type Figure = Polygone | Cercle
 
 export type Role = 'prof' | 'eleve'
 

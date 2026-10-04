@@ -17,9 +17,16 @@ const SERVEUR: string | null = import.meta.env.VITE_SANS_SERVEUR ? null :
     ? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.hostname}:1234`
     : null)
 
+// -------------------------------------------------------------
+// Le partage avec les élèves est mis de côté pour l'instant : tout le
+// code reste (document.ts, serveur/), mais l'outil ne le propose plus.
+// Passer à true pour retrouver le bouton « Partager » et le mode élève.
+// -------------------------------------------------------------
+const PARTAGE_ELEVES = false
+
 const params = new URLSearchParams(location.search)
-const salle = params.get('salle')
-const role: Role = params.get('role') === 'eleve' ? 'eleve' : 'prof'
+const salle = PARTAGE_ELEVES ? params.get('salle') : null
+const role: Role = PARTAGE_ELEVES && params.get('role') === 'eleve' ? 'eleve' : 'prof'
 
 // Couleur de curseur : stable pour un même appareil
 const TEINTES = ['#1f5fbf', '#d0342c', '#1e8a4c', '#8a4fbf', '#c0761b', '#167f8f']
@@ -29,7 +36,7 @@ async function demarrer() {
   const racine = document.getElementById('app')!
   const tableau = new Tableau('mem-tableau-' + (salle || 'local'))
   const app = new App(tableau, role, zone)
-  const ui = new UI(app, racine, partager)
+  const ui = new UI(app, racine, PARTAGE_ELEVES ? partager : null)
   zone.dataset.outil = app.outil
 
   const nom = role === 'prof' ? 'Prof' : await ui.demanderNom()

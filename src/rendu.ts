@@ -11,8 +11,9 @@
 import { getStroke } from 'perfect-freehand'
 import katex from 'katex'
 import type { Camera } from './camera'
-import type { Fond, Forme, Formule, Presence, Trait } from './types'
+import type { Figure, Fond, Forme, Formule, Presence, Trait } from './types'
 import { dessinerFond } from './fonds'
+import { codageDe, placesDesNoms, sommetsDe } from './formes'
 
 export interface TraitDirect {
   pts: number[]; couleur: string; taille: number; opacite: number; pression: boolean
@@ -72,6 +73,7 @@ export class Rendu {
   monSegment: { x1: number; y1: number; x2: number; y2: number; couleur: string; taille: number } | null = null
   cadreSelection: { x: number; y: number; l: number; h: number } | null = null
   gomme: { x: number; y: number; r: number } | null = null
+  apercu: Figure | null = null                     // figure en cours de construction
   autres: Presence[] = []
 
   private sceneSale = true
@@ -131,6 +133,7 @@ export class Rendu {
         c.strokeStyle = f.couleur; c.lineWidth = f.taille; c.lineCap = 'round'
         c.beginPath(); c.moveTo(x, y); c.lineTo(x + f.dx, y + f.dy); c.stroke()
       }
+      else if (f.type === 'polygone' || f.type === 'cercle') this.dessinerFigure(c, f, dec)
     }
     // Nettoie le cache des formes disparues
     if (this.chemins.size > this.formes.length + 50) {
@@ -151,6 +154,73 @@ export class Rendu {
     c.globalAlpha = t.opacite
     c.fillStyle = t.couleur
     c.fill(entree.chemin)
+    c.restore()
+  }
+
+  // ---------- Figures géométriques ----------
+  dessinerFigure(c: CanvasRenderingContext2D, f0: Figure, dec: { dx: number; dy: number } | null) {
+    const f = dec ? { ...f0, x: f0.x + dec.dx, y: f0.y + dec.dy } : f0
+    const trace = new Path2D()
+    if (f.type === 'cercle') trace.arc(f.x, f.y, f.r, 0, Math.PI * 2)
+    else {
+      sommetsDe(f).forEach((p, i) => i ? trace.lineTo(p.x, p.y) : trace.moveTo(p.x, p.y))
+      if (f.ferme) trace.closePath()
+    }
+    c.save()
+    if (f.fond && (f.type === 'cercle' || f.ferme)) {
+      c.globalAlpha = 0.22; c.fillStyle = f.fond; c.fill(trace); c.globalAlpha = 1
+    }
+    c.strokeStyle = f.couleur; c.lineWidth = f.taille; c.lineJoin = 'round'; c.lineCap = 'round'
+    if (f.tirets) c.setLineDash([f.taille * 3, f.taille * 2.5])
+    c.stroke(trace)
+    c.setLineDash([])
+
+    // Codage : petits traits sur les côtés égaux, carré sur les angles droits
+    c.lineWidth = Math.max(1.5, f.taille * 0.6)
+    if (f.codage && f.type === 'polygone') {
+      const k = codageDe(f)
+      for (const t of k.traits) {
+        const l = Math.hypot(t.b.x - t.a.x, t.b.y - t.a.y) || 1
+        const u = { x: (t.b.x - t.a.x) / l, y: (t.b.y - t.a.y) / l }
+        const m = { x: (t.a.x + t.b.x) / 2, y: (t.a.y + t.b.y) / 2 }
+        c.beginPath()
+        for (let i = 0; i < t.n; i++) {
+          const d = (i - (t.n - 1) / 2) * 5
+          const o = { x: m.x + u.x * d, y: m.y + u.y * d }
+          // traits légèrement penchés, comme à la main
+          c.moveTo(o.x - u.y * 7 - u.x * 2, o.y + u.x * 7 - u.y * 2)
+          c.lineTo(o.x + u.y * 7 + u.x * 2, o.y - u.x * 7 + u.y * 2)
+        }
+        c.stroke()
+      }
+      for (const d of k.droits) {
+        const a = 11
+        c.beginPath()
+        c.moveTo(d.s.x + d.u.x * a, d.s.y + d.u.y * a)
+        c.lineTo(d.s.x + (d.u.x + d.v.x) * a, d.s.y + (d.u.y + d.v.y) * a)
+        c.lineTo(d.s.x + d.v.x * a, d.s.y + d.v.y * a)
+        c.stroke()
+      }
+    }
+    if (f.type === 'cercle' && (f.codage || f.sommets)) {
+      c.beginPath()                                    // le centre, marqué d'une croix
+      c.moveTo(f.x - 5, f.y - 5); c.lineTo(f.x + 5, f.y + 5); c.moveTo(f.x + 5, f.y - 5); c.lineTo(f.x - 5, f.y + 5)
+      c.stroke()
+    }
+
+    // Sommets : un point et un nom
+    if (f.sommets && f.noms) {
+      c.fillStyle = f.couleur
+      if (f.type === 'polygone') {
+        for (const p of sommetsDe(f)) { c.beginPath(); c.arc(p.x, p.y, Math.max(2.5, f.taille * 0.7), 0, Math.PI * 2); c.fill() }
+      }
+      c.font = 'italic 22px "KaTeX_Math", "Times New Roman", serif'
+      c.textAlign = 'center'; c.textBaseline = 'middle'
+      placesDesNoms(f, 17).forEach((p, i) => {
+        const nom = f.noms?.[i]
+        if (nom) c.fillText(nom.replace(/_(\d+)/, '$1'), p.x, p.y)
+      })
+    }
     c.restore()
   }
 
@@ -206,6 +276,7 @@ export class Rendu {
     for (const p of this.autres) if (p.direct) this.dessinerDirect(c, p.direct)
     if (this.monTrait) this.dessinerDirect(c, this.monTrait)
 
+    if (this.apercu) this.dessinerFigure(c, this.apercu, null)
     if (this.monSegment) {
       const s = this.monSegment
       c.strokeStyle = s.couleur; c.lineWidth = s.taille; c.lineCap = 'round'
@@ -263,6 +334,16 @@ export class Rendu {
   /** Boîte englobante d'une forme, en monde */
   boite(f: Forme) {
     if (f.type === 'formule') return this.boiteFormule(f)
+    if (f.type === 'cercle') {
+      const m = f.r + f.taille / 2 + (f.sommets ? 28 : 0)
+      return { x: f.x - m, y: f.y - m, l: 2 * m, h: 2 * m }
+    }
+    if (f.type === 'polygone') {
+      let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
+      for (const p of sommetsDe(f)) { x1 = Math.min(x1, p.x); x2 = Math.max(x2, p.x); y1 = Math.min(y1, p.y); y2 = Math.max(y2, p.y) }
+      const m = f.taille / 2 + (f.sommets ? 28 : 0)
+      return { x: x1 - m, y: y1 - m, l: x2 - x1 + 2 * m, h: y2 - y1 + 2 * m }
+    }
     if (f.type === 'segment') {
       const m = f.taille / 2
       return { x: Math.min(f.x, f.x + f.dx) - m, y: Math.min(f.y, f.y + f.dy) - m,

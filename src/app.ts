@@ -9,8 +9,10 @@ import type { Tableau } from './document'
 import { Camera } from './camera'
 import { Rendu } from './rendu'
 import { chevauche, rectangle, touche } from './geometrie'
-import type { Fond, Forme, Formule, Outil, Presence, Role } from './types'
+import type { Figure, Fond, Forme, Formule, Habillage, Outil, Polygone, Presence, Role, Trait, TypeForme } from './types'
 import { CM, uid } from './types'
+import type { P, Reconnue, Transformation } from './formes'
+import { image, nomsLibres, reconnaitre, sommetsDe, versRelatif } from './formes'
 
 export const COULEURS = [
   { nom: 'Noir', valeur: '#1b2230' },
@@ -31,6 +33,7 @@ type Geste =
   | { type: 'pinch'; dist: number; cx: number; cy: number }
   | { type: 'dessin'; pointeur: number }
   | { type: 'segment'; x: number; y: number }
+  | { type: 'rectangle' | 'cercle'; x: number; y: number }
   | { type: 'gomme'; effaces: Set<string> }
   | { type: 'deplacer'; x: number; y: number; bouge: boolean }
   | { type: 'cadre'; x: number; y: number }
@@ -46,6 +49,8 @@ export class App {
   couleur = COULEURS[0].valeur
   taille = TAILLES[1].valeur
   aimant = false
+  reconnaissance = true               // le stylo redresse les figures
+  typeForme: TypeForme = 'rectangle'
   suivre = true                       // élève : suit la page et la vue du prof
   selection = new Set<string>()
 
@@ -58,6 +63,8 @@ export class App {
   private dernierEnvoiTrait = 0
   private dernierEnvoiCurseur = 0
   private dernierEnvoiVue = 0
+  private dernierMouvement = 0        // pour savoir si le stylet est resté immobile
+  private polyEnCours: P[] | null = null
 
   constructor(readonly tableau: Tableau, readonly role: Role, private zone: HTMLElement) {
     this.rendu = new Rendu(this.cam, zone)
@@ -138,6 +145,7 @@ export class App {
 
   // ---------- Outils ----------
   choisirOutil(o: Outil) {
+    this.annulerPolygone()
     this.outil = o
     if (o !== 'selection') this.selection.clear()
     this.rendu.gomme = null
@@ -265,6 +273,11 @@ export class App {
 
     const m = this.monde(e)
     this.tableau.nouveauGeste()
+    // La figure qu'on vient de tracer reste sélectionnée (son panneau
+    // d'options est ouvert) jusqu'au geste suivant.
+    if (this.outil !== 'selection' && this.selection.size) {
+      this.selection.clear(); this.rendu.redessinerDirect(); this.ui.maj()
+    }
     switch (this.outil) {
       case 'stylo':
       case 'surligneur': {
@@ -277,6 +290,7 @@ export class App {
           pression: e.pointerType === 'pen' && !surligneur,
         }
         this.geste = { type: 'dessin', pointeur: e.pointerId }
+        this.dernierMouvement = performance.now()
         this.rendu.redessinerDirect()
         break
       }
@@ -284,6 +298,12 @@ export class App {
         const a = this.aimanter(m)
         this.geste = { type: 'segment', x: a.x, y: a.y }
         this.rendu.monSegment = { x1: a.x, y1: a.y, x2: a.x, y2: a.y, couleur: this.couleur, taille: this.taille }
+        break
+      }
+      case 'forme': {
+        const a = this.aimanter(m)
+        if (this.typeForme === 'polygone') { this.pointDuPolygone(a, s); break }
+        this.geste = { type: this.typeForme, x: a.x, y: a.y }
         break
       }
       case 'gomme':
@@ -325,9 +345,19 @@ export class App {
       this.rendu.redessinerDirect()
     }
 
+    if (this.polyEnCours && this.outil === 'forme') {
+      this.rendu.apercu = this.figure({ type: 'polygone', ferme: false, ...versRelatif([...this.polyEnCours, this.aimanter(m)]) })
+      this.rendu.redessinerDirect()
+    }
+
     const g = this.geste
     if (!g) return
     switch (g.type) {
+      case 'rectangle':
+      case 'cercle':
+        this.rendu.apercu = this.figureTiree(g, this.aimanter(m), e.shiftKey)
+        this.rendu.redessinerDirect()
+        break
       case 'pinch': {
         const doigts = [...this.pointeurs.values()].filter(p => p.type === 'touch')
         if (doigts.length < 2) return
@@ -357,6 +387,7 @@ export class App {
           const n = trait.pts.length
           if (Math.hypot(p.x - trait.pts[n - 3], p.y - trait.pts[n - 2]) < seuil) continue
           trait.pts.push(p.x, p.y, ev.pointerType === 'pen' ? ev.pressure : 0.5)
+          if (Math.hypot(p.x - trait.pts[n - 3], p.y - trait.pts[n - 2]) * this.cam.z > 1.5) this.dernierMouvement = t
         }
         this.rendu.redessinerDirect()
         if (t - this.dernierEnvoiTrait > 33) { this.dernierEnvoiTrait = t; this.tableau.diffuser({ direct: { ...trait } }) }
@@ -400,14 +431,22 @@ export class App {
 
     const m = this.monde(e)
     switch (g.type) {
-      case 'dessin': this.validerTrait(); break
+      case 'dessin': this.validerTrait(performance.now() - this.dernierMouvement > 450); break
       case 'segment': {
         const s = this.rendu.monSegment!
         this.rendu.monSegment = null
         if (Math.hypot(s.x2 - s.x1, s.y2 - s.y1) > 2) {
-          this.tableau.poser(this.page, { id: uid(), type: 'segment', x: s.x1, y: s.y1, dx: s.x2 - s.x1,
-            dy: s.y2 - s.y1, couleur: s.couleur, taille: s.taille, z: Date.now(), auteur: this.tableau.moi })
+          this.poserFigure(this.figure({ type: 'polygone', ferme: false,
+            ...versRelatif([{ x: s.x1, y: s.y1 }, { x: s.x2, y: s.y2 }]) }))
         }
+        this.rendu.redessinerDirect()
+        break
+      }
+      case 'rectangle':
+      case 'cercle': {
+        const f = this.figureTiree(g, this.aimanter(m), e.shiftKey)
+        this.rendu.apercu = null
+        if (f && (f.type === 'cercle' ? f.r : Math.abs(f.pts[4]) + Math.abs(f.pts[5])) * this.cam.z > 6) this.poserFigure(f)
         this.rendu.redessinerDirect()
         break
       }
@@ -436,18 +475,20 @@ export class App {
         break
       }
     }
+    this.ui.maj()                       // le panneau d'options réapparaît
   }
 
   private abandonnerGeste(g: Geste | null = this.geste) {
     if (g?.type === 'dessin') { this.rendu.monTrait = null; this.tableau.diffuser({ direct: null }) }
     if (g?.type === 'segment') this.rendu.monSegment = null
+    if (g?.type === 'rectangle' || g?.type === 'cercle') this.rendu.apercu = null
     if (g?.type === 'cadre') this.rendu.cadreSelection = null
     if (g?.type === 'deplacer') this.rendu.decalage = { dx: 0, dy: 0 }
     this.geste = null
     this.rendu.toutRedessiner()
   }
 
-  private validerTrait() {
+  private validerTrait(maintenu: boolean) {
     const t = this.rendu.monTrait
     this.rendu.monTrait = null
     this.tableau.diffuser({ direct: null })
@@ -458,10 +499,136 @@ export class App {
       pts.push(Math.round((t.pts[i] - x0) * 10) / 10, Math.round((t.pts[i + 1] - y0) * 10) / 10,
         Math.round(t.pts[i + 2] * 100) / 100)
     }
-    this.tableau.poser(this.page, { id: uid(), type: 'trait', x: x0, y: y0, pts, couleur: t.couleur,
-      taille: t.taille, opacite: t.opacite, pression: t.pression, z: Date.now(), auteur: this.tableau.moi })
+    const trait: Trait = { id: uid(), type: 'trait', x: x0, y: y0, pts, couleur: t.couleur,
+      taille: t.taille, opacite: t.opacite, pression: t.pression, z: Date.now(), auteur: this.tableau.moi }
+    this.tableau.poser(this.page, trait)
     this.rendu.redessinerDirect()
+
+    // Le tracé ressemble-t-il à une figure ? Elle remplace le trait dans
+    // une SECONDE étape d'annulation : Ctrl+Z rend le tracé à main levée.
+    if (this.outil !== 'stylo' || !this.reconnaissance) return
+    const abs: P[] = []
+    for (let i = 0; i < t.pts.length; i += 3) abs.push({ x: t.pts[i], y: t.pts[i + 1] })
+    const r = reconnaitre(abs, maintenu, this.cam.z)
+    if (!r) return
+    const f = this.depuisReconnue(r, trait)
+    this.tableau.nouveauGeste()
+    this.tableau.doc.transact(() => {
+      this.tableau.supprimer(this.page, [trait.id])
+      this.tableau.poser(this.page, f)
+    }, 'locale')
+    this.selectionner(f.id)
+    this.ui.message(r.nom + ' — Ctrl+Z pour garder le tracé à main levée')
   }
+
+  // ---------- Figures géométriques ----------
+  /** Une figure neuve, avec l'habillage courant */
+  private figure(g: { type: 'polygone'; x: number; y: number; pts: number[]; ferme: boolean } | { type: 'cercle'; x: number; y: number; r: number }): Figure {
+    return { ...g, id: uid(), z: Date.now(), auteur: this.tableau.moi, couleur: this.couleur, taille: Math.min(this.taille, 4.5) }
+  }
+
+  private depuisReconnue(r: Reconnue, t: Trait): Figure {
+    const f = r.type === 'cercle'
+      ? this.figure({ type: 'cercle', x: r.c.x, y: r.c.y, r: r.r })
+      : this.figure({ type: 'polygone', ferme: r.ferme, ...versRelatif(r.pts) })
+    f.couleur = t.couleur
+    f.brut = { pts: t.pts.map((v, i) => i % 3 === 0 ? v + t.x - f.x : i % 3 === 1 ? v + t.y - f.y : v), taille: t.taille, pression: t.pression }
+    return f
+  }
+
+  /** Rectangle (Maj : carré) ou cercle tiré à la souris ou au stylet */
+  private figureTiree(g: { type: 'rectangle' | 'cercle'; x: number; y: number }, b: P, carre: boolean): Figure | null {
+    if (g.type === 'cercle') return this.figure({ type: 'cercle', x: g.x, y: g.y, r: Math.hypot(b.x - g.x, b.y - g.y) })
+    let l = b.x - g.x, h = b.y - g.y
+    if (carre) { const c = Math.max(Math.abs(l), Math.abs(h)); l = Math.sign(l || 1) * c; h = Math.sign(h || 1) * c }
+    const x1 = Math.min(g.x, g.x + l), x2 = Math.max(g.x, g.x + l), y1 = Math.min(g.y, g.y + h), y2 = Math.max(g.y, g.y + h)
+    // Sens direct, en partant du coin en bas à gauche : A B C D
+    return this.figure({ type: 'polygone', ferme: true, ...versRelatif([{ x: x1, y: y2 }, { x: x2, y: y2 }, { x: x2, y: y1 }, { x: x1, y: y1 }]) })
+  }
+
+  /** Polygone point par point : cliquer sur le premier point le ferme,
+   *  cliquer deux fois au même endroit (ou Entrée) le laisse ouvert. */
+  private pointDuPolygone(a: P, ecran: P) {
+    const pts = this.polyEnCours
+    if (!pts) { this.polyEnCours = [a]; return }
+    const prem = this.cam.versEcran(pts[0].x, pts[0].y), der = this.cam.versEcran(pts[pts.length - 1].x, pts[pts.length - 1].y)
+    if (pts.length >= 3 && Math.hypot(prem.x - ecran.x, prem.y - ecran.y) < 12) return this.finirPolygone(true)
+    if (Math.hypot(der.x - ecran.x, der.y - ecran.y) < 6) return this.finirPolygone(false)
+    pts.push(a)
+  }
+
+  finirPolygone(ferme: boolean) {
+    const pts = this.polyEnCours
+    this.annulerPolygone()
+    if (pts && pts.length >= (ferme ? 3 : 2)) this.poserFigure(this.figure({ type: 'polygone', ferme, ...versRelatif(pts) }))
+  }
+
+  private annulerPolygone() {
+    if (!this.polyEnCours) return
+    this.polyEnCours = null; this.rendu.apercu = null; this.rendu.redessinerDirect()
+  }
+
+  private poserFigure(f: Forme) {
+    this.tableau.nouveauGeste()
+    this.tableau.poser(this.page, f)
+    this.selectionner(f.id)
+  }
+
+  private selectionner(id: string) {
+    this.selection.clear(); this.selection.add(id)
+    this.rendu.redessinerDirect(); this.ui.maj()
+  }
+
+  // ---------- Panneau d'options ----------
+  /** La forme seule sélectionnée, s'il n'y en a qu'une et qu'aucun geste n'est en cours */
+  formeChoisie(): Forme | null {
+    if (this.selection.size !== 1 || (this.geste && this.geste.type !== 'pan' && this.geste.type !== 'pinch')) return null
+    const id = [...this.selection][0]
+    return this.formes.find(f => f.id === id) ?? null
+  }
+
+  habiller(f: Forme, patch: Partial<Habillage> & Partial<Trait>) {
+    this.tableau.nouveauGeste()
+    this.tableau.modifier(this.page, [{ id: f.id, patch: patch as Partial<Forme> }])
+  }
+
+  basculerSommets(f: Figure) {
+    const n = f.type === 'cercle' ? 1 : f.pts.length / 2
+    const noms = f.noms?.length === n ? f.noms : nomsLibres(n, this.formes.filter(g => g.id !== f.id), f.type === 'cercle')
+    this.habiller(f, { sommets: !f.sommets, noms })
+  }
+
+  renommer(f: Figure, texte: string) {
+    // « ABCD » ou « A B C D » ou « A' B' C' D' »
+    const n = f.type === 'cercle' ? 1 : f.pts.length / 2
+    const morceaux = texte.includes(' ') ? texte.trim().split(/\s+/) : texte.match(/[A-Za-zΩ](?:'+|_\d+|\d+)?/g) ?? []
+    if (morceaux.length !== n) return this.ui.message(`Il faut ${n} nom${n > 1 ? 's' : ''}.`)
+    this.habiller(f, { noms: morceaux, sommets: true })
+  }
+
+  revenirMainLevee(f: Figure) {
+    if (!f.brut) return
+    const t: Trait = { id: uid(), type: 'trait', x: f.x, y: f.y, pts: f.brut.pts, couleur: f.couleur, taille: f.brut.taille,
+      opacite: 1, pression: f.brut.pression, z: f.z, auteur: this.tableau.moi }
+    this.tableau.nouveauGeste()
+    this.tableau.doc.transact(() => { this.tableau.supprimer(this.page, [f.id]); this.tableau.poser(this.page, t) }, 'locale')
+    this.selectionner(t.id)
+  }
+
+  dupliquer(f: Forme) {
+    const copie = image(f, { type: 'translation', dx: CM, dy: CM }, this.tableau.moi)
+    if ((copie.type === 'polygone' || copie.type === 'cercle') && f.type === copie.type) copie.noms = f.noms && nomsLibres(f.noms.length, this.formes, copie.type === 'cercle')
+    this.poserFigure(copie)
+  }
+
+  transformer(f: Forme, t: Transformation) {
+    this.poserFigure(image(f, t, this.tableau.moi))
+  }
+
+  /** Origine du repère de la page (pour les transformations), si elle en a un */
+  get origineRepere(): P | null { return this.fond === 'repere' ? this.tableau.origineDe(this.page) : null }
+
+  sommetsDe(f: Polygone) { return sommetsDe(f) }
 
   private gommer(x: number, y: number, deja?: Set<string>) {
     const r = 12 / this.cam.z
@@ -511,10 +678,14 @@ export class App {
     if (e.key === 'Delete' || e.key === 'Backspace') { this.supprimerSelection(); return }
     if (e.key === 'PageDown') { this.pageSuivante(1); return }
     if (e.key === 'PageUp') { this.pageSuivante(-1); return }
-    if (e.key === 'Escape') { this.selection.clear(); this.rendu.toutRedessiner(); this.ui.maj(); return }
+    if (e.key === 'Enter' && this.polyEnCours) { this.finirPolygone(false); return }
+    if (e.key === 'Escape') { this.annulerPolygone(); this.selection.clear(); this.rendu.toutRedessiner(); this.ui.maj(); return }
     if (ctrl || !this.peutEcrire) return
     const raccourcis: Record<string, Outil> = { p: 'stylo', h: 'surligneur', e: 'gomme', l: 'segment', f: 'formule', v: 'selection' }
-    const o = raccourcis[e.key.toLowerCase()]
+    const formes: Record<string, TypeForme> = { r: 'rectangle', c: 'cercle', g: 'polygone' }
+    const k = e.key.toLowerCase()
+    if (formes[k]) { this.typeForme = formes[k]; this.choisirOutil('forme'); return }
+    const o = raccourcis[k]
     if (o) this.choisirOutil(o)
   }
 }
