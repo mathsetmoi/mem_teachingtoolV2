@@ -12,6 +12,9 @@ import { chevauche, rectangle, touche } from './geometrie'
 import type { Figure, Fond, Forme, Formule, Habillage, Outil, Polygone, Presence, Role, Trait, TypeForme } from './types'
 import { CM, uid } from './types'
 import type { P, Reconnue, Transformation } from './formes'
+import type { Bord, EtatInstrument, NomInstrument, Partie } from './instruments'
+import { angleLisible, bords, etatParDefaut, toucher } from './instruments'
+import * as Y from 'yjs'
 import { bornerDecalage, image, nomsLibres, placesDesNoms, reconnaitre, sommetsDe, versRelatif } from './formes'
 
 export const COULEURS = [
@@ -37,6 +40,8 @@ type Geste =
   | { type: 'segment'; x: number; y: number }
   | { type: 'rectangle' | 'cercle'; x: number; y: number }
   | { type: 'poignee'; prise: Prise; f: Figure; sx: number; sy: number; bouge: boolean }
+  | { type: 'instrument'; nom: NomInstrument; quoi: Partie; depart: EtatInstrument; x: number; y: number; ecart: number; balayage: number; dernier: number }
+  | { type: 'longer'; bord: Bord; t0: number }
   | { type: 'gomme'; effaces: Set<string> }
   | { type: 'deplacer'; x: number; y: number; bouge: boolean }
   | { type: 'cadre'; x: number; y: number }
@@ -59,6 +64,8 @@ export class App {
   typeForme: TypeForme = 'rectangle'
   suivre = true                       // élève : suit la page et la vue du prof
   selection = new Set<string>()
+  /** Un seul morceau choisi (un sommet, un nom…), sans la figure entière */
+  partie: { id: string; prise: Prise } | null = null
   enLecture = false                   // le lecteur occupe l'écran : on ne relit pas le document
 
   private formes: Forme[] = []
@@ -73,6 +80,8 @@ export class App {
   private dernierMouvement = 0        // pour savoir si le stylet est resté immobile
   private polyEnCours: P[] | null = null
   private minuterieForme = 0
+  /** Les instruments posés (dans l'ordre d'empilement) et leur réglage */
+  readonly instruments = new Map<NomInstrument, EtatInstrument>()
 
   constructor(readonly tableau: Tableau, readonly role: Role, private zone: HTMLElement) {
     this.rendu = new Rendu(this.cam, zone)
@@ -84,6 +93,166 @@ export class App {
     tableau.presence.on('change', () => this.surPresence())
 
     this.brancherGestes()
+
+    // Les instruments vivent dans le document (ils restent où on les a
+    // laissés), mais hors des pages : ni annulation, ni film.
+    const posés = tableau.doc.getMap('instruments') as Y.Map<EtatInstrument & { visible: boolean }>
+    const relire = () => {
+      if (this.geste?.type === 'instrument') return
+      for (const [nom, e] of posés) {
+        if (e.visible) this.instruments.set(nom as NomInstrument, { x: e.x, y: e.y, a: e.a, r: e.r })
+        else this.instruments.delete(nom as NomInstrument)
+      }
+      this.majInstruments()
+    }
+    posés.observe(relire)
+    relire()
+  }
+
+  // ---------- Instruments ----------
+  instrumentVisible(nom: NomInstrument) { return this.instruments.has(nom) }
+
+  /** Montre ou range un instrument ; il revient là où on l'avait laissé */
+  basculerInstrument(nom: NomInstrument) {
+    const posés = this.tableau.doc.getMap('instruments') as Y.Map<EtatInstrument & { visible: boolean }>
+    const avant = posés.get(nom)
+    if (this.instruments.has(nom)) { posés.set(nom, { ...avant!, visible: false }); return }
+    const v = this.cam.visible(this.rendu.l, this.rendu.h)
+    const centre = { x: v.x + v.l / 2, y: v.y + v.h / 2 }
+    // Un instrument rangé hors de la vue revient au milieu de l'écran
+    const garde = avant && avant.x > v.x && avant.x < v.x + v.l && avant.y > v.y && avant.y < v.y + v.h
+    posés.set(nom, { ...(garde ? avant : etatParDefaut(nom, centre)), visible: true })
+  }
+
+  private enregistrerInstrument(nom: NomInstrument) {
+    const e = this.instruments.get(nom)
+    if (e) (this.tableau.doc.getMap('instruments') as Y.Map<unknown>).set(nom, { ...e, visible: true })
+  }
+
+  private majInstruments(actif?: { nom: NomInstrument; quoi: Partie }) {
+    this.rendu.instruments = [...this.instruments].map(([nom, etat]) => ({ nom, etat, actif: actif?.nom === nom ? actif.quoi : null }))
+    this.rendu.redessinerInstruments()
+    this.ui?.maj()
+  }
+
+  /** L'instrument sous le pointeur, le plus haut d'abord */
+  private instrumentSous(w: P): { nom: NomInstrument; quoi: Partie } | null {
+    const r = 9 / this.cam.z
+    for (const [nom, e] of [...this.instruments].reverse()) {
+      const quoi = toucher(nom, e, w, r)
+      if (quoi) return { nom, quoi }
+    }
+    return null
+  }
+
+  /** Le bord d'instrument contre lequel on pose le crayon */
+  private bordSous(w: P): { bord: Bord; t: number } | null {
+    const portee = 12 / this.cam.z
+    let mieux: { bord: Bord; t: number; d: number } | null = null
+    for (const [nom, e] of this.instruments) {
+      for (const b of bords(nom, e)) {
+        const dx = w.x - b.o.x, dy = w.y - b.o.y
+        const t = dx * b.u.x + dy * b.u.y, d = Math.abs(-dx * b.u.y + dy * b.u.x)
+        if (t >= b.debut - portee && t <= b.fin + portee && d < portee && (!mieux || d < mieux.d)) mieux = { bord: b, t, d }
+      }
+    }
+    return mieux
+  }
+
+  /** Les points de la page où un instrument s'accroche */
+  private pointsAccroche(): P[] {
+    const r: P[] = []
+    for (const f of this.formes) {
+      if (f.type === 'polygone') r.push(...sommetsDe(f))
+      else if (f.type === 'cercle') r.push({ x: f.x, y: f.y })
+    }
+    return r
+  }
+
+  private accrocher(p: P, exclu?: P): { p: P; accroche: boolean } {
+    const portee = 12 / this.cam.z
+    let mieux: P | null = null, d = portee
+    for (const q of this.pointsAccroche()) {
+      if (exclu && Math.hypot(q.x - exclu.x, q.y - exclu.y) < 1e-6) continue
+      const e = Math.hypot(q.x - p.x, q.y - p.y)
+      if (e < d) { d = e; mieux = q }
+    }
+    return mieux ? { p: mieux, accroche: true } : { p: this.aimanter(p), accroche: false }
+  }
+
+  private geste_instrument(g: Extract<Geste, { type: 'instrument' }>, m: P) {
+    const e = { ...g.depart }
+    const cm = (v: number) => (Math.round(v / CM * 10) / 10).toString().replace('.', ',') + ' cm'
+    this.rendu.mesure = null
+    switch (g.quoi) {
+      case 'corps':
+      case 'pointe': {
+        const o = this.accrocher({ x: g.depart.x + m.x - g.x, y: g.depart.y + m.y - g.y })
+        e.x = o.p.x; e.y = o.p.y
+        break
+      }
+      case 'rotation': {
+        // L'angle se lit au degré près, et s'aimante tous les 15°
+        let a = Math.atan2(m.y - e.y, m.x - e.x) - g.ecart
+        const deg = a * 180 / Math.PI, q = Math.round(deg / 15) * 15
+        a = (Math.abs(deg - q) < 2.5 ? q : Math.round(deg)) * Math.PI / 180
+        e.a = a
+        this.rendu.mesure = { texte: angleLisible(a), x: m.x, y: m.y }
+        break
+      }
+      case 'mine': {
+        // L'écartement se prend sur un point de la figure, sinon au millimètre
+        const o = this.accrocher(m, { x: e.x, y: e.y })
+        const d = Math.hypot(o.p.x - e.x, o.p.y - e.y)
+        e.r = Math.max(0.2 * CM, o.accroche ? d : Math.round(d / 4) * 4)
+        e.a = Math.atan2(o.p.y - e.y, o.p.x - e.x)
+        this.rendu.mesure = { texte: 'r = ' + cm(e.r), x: m.x, y: m.y }
+        break
+      }
+      case 'tete': {
+        // Tourner la tête : la mine décrit l'arc
+        const a = Math.atan2(m.y - e.y, m.x - e.x)
+        let d = a - g.dernier
+        while (d > Math.PI) d -= 2 * Math.PI
+        while (d < -Math.PI) d += 2 * Math.PI
+        g.balayage += d; g.dernier = a
+        const tour = Math.abs(g.balayage) >= 2 * Math.PI - 0.02
+        e.a = g.depart.a + g.balayage
+        this.rendu.apercu = Math.abs(g.balayage) > 0.01 ? this.figure({ type: 'cercle', x: e.x, y: e.y, r: e.r }) : null
+        if (this.rendu.apercu?.type === 'cercle' && !tour) this.rendu.apercu.arc = { a0: g.depart.a, a1: g.depart.a + g.balayage }
+        this.rendu.mesure = { texte: Math.round(Math.abs(g.balayage) * 180 / Math.PI) + '°', x: m.x, y: m.y }
+        break
+      }
+    }
+    this.instruments.set(g.nom, e)
+    this.majInstruments({ nom: g.nom, quoi: g.quoi })
+    this.rendu.redessinerDirect()
+  }
+
+  private finirInstrument(g: Extract<Geste, { type: 'instrument' }>) {
+    this.rendu.mesure = null
+    if (g.quoi === 'tete') {
+      const f = this.rendu.apercu
+      this.rendu.apercu = null
+      // Un arc assez long pour se voir ; un tour complet donne le cercle
+      if (f?.type === 'cercle' && Math.abs(g.balayage) * f.r * this.cam.z > 4) {
+        this.tableau.nouveauGeste()
+        this.tableau.poser(this.page, f)
+      }
+    }
+    this.enregistrerInstrument(g.nom)
+    this.majInstruments()
+  }
+
+  private geste_longer(g: Extract<Geste, { type: 'longer' }>, m: P) {
+    const b = g.bord
+    let t = (m.x - b.o.x) * b.u.x + (m.y - b.o.y) * b.u.y
+    t = Math.max(b.debut, Math.min(b.fin, t))
+    if (b.gradue) t = Math.round(t / 4) * 4                  // au millimètre, comme on lit la règle
+    const a = { x: b.o.x + b.u.x * g.t0, y: b.o.y + b.u.y * g.t0 }, z = { x: b.o.x + b.u.x * t, y: b.o.y + b.u.y * t }
+    this.rendu.apercu = this.figure({ type: 'polygone', ferme: false, ...versRelatif([a, z]) })
+    this.rendu.mesure = { texte: (Math.round(Math.abs(t - g.t0) / CM * 10) / 10).toString().replace('.', ',') + ' cm', x: m.x, y: m.y }
+    this.rendu.redessinerDirect()
   }
 
   // ---------- Droits ----------
@@ -156,6 +325,7 @@ export class App {
   // ---------- Outils ----------
   choisirOutil(o: Outil) {
     this.annulerPolygone()
+    if (this.partie) this.choisirPartie(null)
     this.outil = o
     if (o !== 'selection') this.selection.clear()
     this.rendu.gomme = null
@@ -168,6 +338,7 @@ export class App {
   retablir() { this.tableau.annulation.redo() }
 
   supprimerSelection() {
+    if (this.partie) return this.supprimerPartie()
     if (!this.selection.size) return
     this.tableau.nouveauGeste()
     this.tableau.supprimer(this.page, [...this.selection])
@@ -262,9 +433,10 @@ export class App {
       this.outil = 'selection'                 // pour viser toutes les figures
       const prise = this.priseSous(s)
       this.outil = outil
-      if (prise) { this.selectionner(prise.f.id); this.ui.ouvrirMenuPartie(prise.f.id, prise.prise, e.clientX, e.clientY); return }
+      if (prise) { this.choisirPartie(prise.f.id, prise.prise); this.ui.ouvrirMenuPartie(prise.f.id, prise.prise, e.clientX, e.clientY); return }
       const p = this.monde(e), f = this.formeSous(p.x, p.y)
       this.ui.fermerMenuPartie()
+      this.choisirPartie(null)
       if (f) this.selectionner(f.id)
     })
     z.addEventListener('dblclick', e => {
@@ -298,15 +470,37 @@ export class App {
 
     const m = this.monde(e)
     this.tableau.nouveauGeste()
+    // Le crayon posé contre le bord d'un instrument trace le long du bord
+    const dessine = this.outil === 'stylo' || this.outil === 'segment'
+    const bord = dessine ? this.bordSous(m) : null
+    if (bord) {
+      const t0 = bord.bord.gradue ? Math.round(Math.max(bord.bord.debut, Math.min(bord.bord.fin, bord.t)) / 4) * 4 : bord.t
+      this.geste = { type: 'longer', bord: bord.bord, t0 }
+      this.geste_longer(this.geste, m)
+      return
+    }
+    // Un instrument : on le déplace, on le tourne, on écarte ou on tourne le compas
+    const inst = this.instrumentSous(m)
+    if (inst) {
+      const depart = { ...this.instruments.get(inst.nom)! }
+      // Celui qu'on prend passe au-dessus des autres
+      this.instruments.delete(inst.nom); this.instruments.set(inst.nom, depart)
+      const a = Math.atan2(m.y - depart.y, m.x - depart.x)
+      this.geste = { type: 'instrument', nom: inst.nom, quoi: inst.quoi, depart, x: m.x, y: m.y,
+        ecart: a - depart.a, balayage: 0, dernier: a }
+      this.majInstruments(inst)
+      return
+    }
     // Un morceau de la figure sélectionnée : son nom, un sommet, son rayon
     const prise = this.priseSous(s)
     if (prise) {
       this.ui.fermerMenuPartie()
-      if (!this.selection.has(prise.f.id)) this.selectionner(prise.f.id)
+      this.choisirPartie(prise.f.id, prise.prise)
       this.geste = { type: 'poignee', ...prise, sx: s.x, sy: s.y, bouge: false }
       this.ui.maj(); return
     }
     this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
     // La figure qu'on vient de tracer reste sélectionnée (son panneau
     // d'options est ouvert) jusqu'au geste suivant.
     if (this.outil !== 'selection' && this.selection.size) {
@@ -387,10 +581,13 @@ export class App {
 
     const g = this.geste
     if (!g) {
-      this.zone.style.cursor = this.priseSous(s) ? 'move' : ''
+      const inst = this.instruments.size ? this.instrumentSous(m) : null
+      this.zone.style.cursor = inst ? (inst.quoi === 'corps' || inst.quoi === 'pointe' ? 'grab' : 'pointer') : this.priseSous(s) ? 'move' : ''
       return
     }
     switch (g.type) {
+      case 'instrument': this.geste_instrument(g, m); break
+      case 'longer': this.geste_longer(g, m); break
       case 'poignee':
         if (!g.bouge && Math.hypot(s.x - g.sx, s.y - g.sy) < 4) break     // un clic, pas encore un glisser
         g.bouge = true
@@ -486,6 +683,17 @@ export class App {
         this.rendu.redessinerDirect()
         break
       }
+      case 'instrument': this.finirInstrument(g); break
+      case 'longer': {
+        const f = this.rendu.apercu
+        this.rendu.apercu = null; this.rendu.mesure = null
+        if (f?.type === 'polygone' && Math.hypot(f.pts[2], f.pts[3]) * this.cam.z > 3) {
+          this.tableau.nouveauGeste()
+          this.tableau.poser(this.page, f)
+        }
+        this.rendu.redessinerDirect()
+        break
+      }
       case 'poignee': {
         // Un clic sans bouger : les options de ce morceau-là
         if (!g.bouge) { this.ui.ouvrirMenuPartie(g.f.id, g.prise, e.clientX, e.clientY); break }
@@ -537,6 +745,10 @@ export class App {
     if (g?.type === 'segment') this.rendu.monSegment = null
     if (g?.type === 'rectangle' || g?.type === 'cercle') this.rendu.apercu = null
     if (g?.type === 'poignee') this.rendu.remplacement = null
+    if (g?.type === 'longer' || g?.type === 'instrument') {
+      this.rendu.apercu = null; this.rendu.mesure = null
+      if (g.type === 'instrument') { this.instruments.set(g.nom, g.depart); this.majInstruments() }
+    }
     if (g?.type === 'cadre') this.rendu.cadreSelection = null
     if (g?.type === 'deplacer') this.rendu.decalage = { dx: 0, dy: 0 }
     this.geste = null
@@ -652,7 +864,7 @@ export class App {
    *  celle qui est sélectionnée (sinon on ne pourrait plus écrire près d'un point). */
   priseSous(s: P): { prise: Prise; f: Figure } | null {
     if (!this.peutEcrire || this.outil === 'main' || this.enLecture) return null
-    const choisie = this.formeChoisie()
+    const choisie = this.formeChoisie() ?? (this.partie && this.forme(this.partie.id))
     const candidates = this.outil === 'selection' ? [...(choisie ? [choisie] : []), ...[...this.formes].reverse()] : choisie ? [choisie] : []
     for (const f of candidates) {
       if (f.type !== 'polygone' && f.type !== 'cercle') continue
@@ -705,6 +917,29 @@ export class App {
     return f
   }
 
+  /** Choisit un seul morceau d'une figure (null : plus rien) */
+  choisirPartie(id: string | null, prise?: Prise) {
+    this.partie = id && prise ? { id, prise } : null
+    if (this.partie) this.selection.clear()
+    this.rendu.partie = this.partie
+    this.rendu.redessinerDirect(); this.ui?.maj()
+  }
+
+  /** Suppr sur un sommet le retire de la figure ; sur un nom, le masque */
+  private supprimerPartie() {
+    const p = this.partie, f = p && this.forme(p.id)
+    if (!p || !f || (f.type !== 'polygone' && f.type !== 'cercle')) return
+    this.ui.fermerMenuPartie()
+    if (p.prise.quoi === 'nom') { this.reglerPartie(f, 'styleNoms', p.prise.i, { cache: true }); return this.choisirPartie(null) }
+    if (p.prise.quoi !== 'sommet' || f.type !== 'polygone') return
+    const n = f.pts.length / 2, i = p.prise.i
+    if (n <= (f.ferme ? 3 : 2)) return this.ui.message('La figure n\'a plus assez de sommets : Suppr sur la figure l\'efface.')
+    const sans = <T,>(l?: T[]) => l?.filter((_, k) => k !== i)
+    const pts = sommetsDe(f).filter((_, k) => k !== i)
+    this.habiller(f, { ...versRelatif(pts), noms: sans(f.noms), posNoms: sans(f.posNoms), stylePoints: sans(f.stylePoints), styleNoms: sans(f.styleNoms) } as Partial<Habillage>)
+    this.choisirPartie(null)
+  }
+
   forme(id: string): Forme | null { return this.formes.find(f => f.id === id) ?? null }
 
   /** Change le réglage du point (ou du nom) n° i d'une figure */
@@ -720,8 +955,15 @@ export class App {
   /** Renomme un seul point */
   renommerPoint(f: Figure, i: number, nom: string) {
     const n = f.type === 'cercle' ? 1 : f.pts.length / 2
-    const noms = Array.from({ length: n }, (_, k) => f.noms?.[k] ?? '')
+    const noms = Array.from({ length: n }, (_, k) => f.sommets ? f.noms?.[k] ?? '' : '')
     noms[i] = nom.trim()
+    // Les autres points sans nom reçoivent des lettres libres sur la page
+    const vides = noms.map((x, k) => x ? -1 : k).filter(k => k >= 0)
+    if (vides.length) {
+      const pris = this.formes.filter(g => g.id !== f.id)
+      const libres = nomsLibres(vides.length, [...pris, { ...f, noms: noms.filter(Boolean) } as Forme])
+      vides.forEach((k, j) => { noms[k] = libres[j] })
+    }
     this.habiller(f, { noms, sommets: true })
   }
 
@@ -832,7 +1074,7 @@ export class App {
     if (e.key === 'PageDown') { this.pageSuivante(1); return }
     if (e.key === 'PageUp') { this.pageSuivante(-1); return }
     if (e.key === 'Enter' && this.polyEnCours) { this.finirPolygone(false); return }
-    if (e.key === 'Escape') { this.annulerPolygone(); this.selection.clear(); this.rendu.toutRedessiner(); this.ui.maj(); return }
+    if (e.key === 'Escape') { this.annulerPolygone(); this.selection.clear(); this.choisirPartie(null); this.rendu.toutRedessiner(); this.ui.maj(); return }
     if (ctrl || !this.peutEcrire) return
     const raccourcis: Record<string, Outil> = { p: 'stylo', h: 'surligneur', e: 'gomme', l: 'segment', f: 'formule', v: 'selection' }
     const formes: Record<string, TypeForme> = { r: 'rectangle', c: 'cercle', g: 'polygone' }

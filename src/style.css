@@ -285,3 +285,9 @@ body.en-lecture .panneau-forme, body.en-lecture .barre-zoom { display: none !imp
 .choix i { font-family: 'KaTeX_Math', 'Times New Roman', serif; font-size: 18px; }
 .menu-partie .saisie { height: 36px; width: 120px; user-select: text; -webkit-user-select: text; }
 .menu-partie .saisie.nom { font-family: 'KaTeX_Math', 'Times New Roman', serif; font-style: italic; font-size: 18px; }
+
+/* ---------- Instruments ---------- */
+.choix-instruments { position: fixed; z-index: 16; flex-direction: column; align-items: stretch; }
+.option.instrument { display: flex; align-items: center; gap: 10px; text-align: left; }
+.option.instrument svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+body.en-lecture .choix-instruments { display: none !important; }

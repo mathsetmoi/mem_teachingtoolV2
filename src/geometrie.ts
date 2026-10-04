@@ -18,7 +18,8 @@ export function touche(f: Forme, x: number, y: number, r: number, boite: (f: For
   if (f.type === 'segment') return distanceAuSegment(x, y, f.x, f.y, f.x + f.dx, f.y + f.dy) <= r + f.taille / 2
   if (f.type === 'cercle') {
     const d = Math.hypot(x - f.x, y - f.y)
-    return Math.abs(d - f.r) <= r + f.taille / 2 || (!!f.fond && d <= f.r)
+    if (f.arc && !dansLArc(Math.atan2(y - f.y, x - f.x), f.arc)) return false
+    return Math.abs(d - f.r) <= r + f.taille / 2 || (!f.arc && !!f.fond && d <= f.r)
   }
   if (f.type === 'polygone') {
     const q = f.pts, n = q.length / 2, lx = x - f.x, ly = y - f.y
@@ -55,4 +56,11 @@ export function dedans(x: number, y: number, q: number[]) {
     if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) oui = !oui
   }
   return oui
+}
+
+/** L'angle a tombe-t-il dans l'arc parcouru de a0 à a1 ? */
+export function dansLArc(a: number, arc: { a0: number; a1: number }) {
+  const lo = Math.min(arc.a0, arc.a1), hi = Math.max(arc.a0, arc.a1)
+  const t = ((a - lo) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI)
+  return t <= hi - lo
 }

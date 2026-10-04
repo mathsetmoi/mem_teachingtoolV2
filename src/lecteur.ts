@@ -114,6 +114,7 @@ export class Lecteur {
     this.app.enLecture = true
     this.app.selection.clear()
     this.app.rendu.poignees = false
+    this.app.rendu.instrumentsCaches = true
     document.body.classList.add('en-lecture')
     this.voile.hidden = this.barre.hidden = false
     this.curseur.max = String(n - 1)
@@ -130,6 +131,8 @@ export class Lecteur {
     document.body.classList.remove('en-lecture')
     this.app.enLecture = false
     this.app.rendu.poignees = true
+    this.app.rendu.instrumentsCaches = false
+    this.app.rendu.redessinerInstruments()
     // Le tableau revient tel qu'on l'a laissé : rien n'y a été écrit
     this.app.rafraichir()
   }

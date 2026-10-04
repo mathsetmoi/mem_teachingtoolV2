@@ -81,10 +81,11 @@ export interface Polygone extends Base, Habillage {
   ferme: boolean
 }
 
-/** Cercle de centre (x, y) */
+/** Cercle de centre (x, y) — ou arc, tracé au compas, de l'angle a0 à a1 */
 export interface Cercle extends Base, Habillage {
   type: 'cercle'
   r: number
+  arc?: { a0: number; a1: number }     // radians, dans le sens du tracé (a1 < a0 possible)
 }
 
 /** Ancien segment (v0.1), encore lu pour les tableaux déjà enregistrés */

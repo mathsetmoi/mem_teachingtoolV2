@@ -73,6 +73,27 @@ centre ou le rayon d'un cercle, le nom d'un point :
   - le rayon d'un cercle : sa valeur en centimètres.
 
 Le clic droit ailleurs sur une figure la sélectionne et ouvre son panneau.
+Un morceau choisi l'est seul : il est surligné, pas la figure entière.
+`Suppr` retire un sommet choisi (ou masque un nom). Nommer un seul point d'une
+figure sans noms donne des lettres libres aux autres.
+
+## Instruments
+
+Le bouton « Instruments » de la barre du haut pose ou range une **règle**
+(20 cm, au millimètre), une **équerre**, un **rapporteur** (double échelle) et un
+**compas**. Ils restent où on les a laissés, sans passer dans l'annulation.
+
+- **Déplacer** : on prend le corps. L'origine (le zéro de la règle, le coin de
+  l'équerre, le centre du rapporteur, la pointe du compas) s'accroche aux
+  points de la figure, puisque c'est de là qu'on mesure.
+- **Tourner** : la pastille ↻, autour de l'origine, au degré près, aimantée
+  tous les 15°. L'angle s'affiche.
+- **Tracer le long d'un bord** : au stylo ou à l'outil segment, posé contre un
+  bord, le trait suit le bord en ligne droite, au millimètre sur un bord gradué
+  (la longueur s'affiche). L'équerre donne ainsi perpendiculaires et parallèles.
+- **Compas** : la pointe le déplace ; la mine l'écarte, au millimètre ou
+  exactement jusqu'à un point de la figure (report de longueur) ; la tête ↻ le
+  fait tourner et trace l'arc, un cercle entier si l'on fait le tour.
 
 ## Rejouer le tableau
 
@@ -149,6 +170,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/geometrie.ts` | Ce que touche la gomme ou la sélection |
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
 | `src/lecteur.ts` | Le lecteur qui rejoue la construction |
+| `src/instruments.ts` | Règle, équerre, rapporteur, compas |
 | `src/ui.ts` | Barres d'outils, partage, éditeur de formules |
 | `serveur/server.js` | Relais WebSocket et sauvegarde des salles |
 
@@ -178,9 +200,10 @@ n'empêche un usage payant.
 ## Feuille de route proposée
 
 1. Export PDF des pages (pour l'ENT et les absents).
-2. Figures liées : un point partagé par deux figures, une image qui suit sa
+2. Instruments : règle et équerre qui s'alignent l'une sur l'autre, crayon qui
+   suit l'arc du rapporteur pour reporter un angle.
+3. Figures liées : un point partagé par deux figures, une image qui suit sa
    figure quand on la déplace.
-3. Instruments : règle, équerre, rapporteur, compas qui tracent.
 4. Import d'un PDF ou d'une image comme fond de page (annoter un énoncé).
 5. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
 6. Sécurité du serveur : jeton prof, durée de vie des salles.

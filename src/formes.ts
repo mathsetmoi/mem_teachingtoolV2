@@ -520,7 +520,16 @@ export function image(f: Forme, t: Transformation, auteur: string): Forme {
     case 'cercle': {
       const c = g({ x: f.x, y: f.y })
       const { brut: _, ...reste } = f
-      return { ...reste, ...base, x: c.x, y: c.y, r: f.r * (t.type === 'homothetie' ? Math.abs(t.k) : 1), noms: f.noms?.map(prime), posNoms: decalagesImages(f, g) }
+      let arc = f.arc
+      if (arc) {
+        // L'image d'un arc : on suit son point de départ ; une symétrie axiale
+        // renverse le sens de parcours, les autres transformations le gardent
+        const d = g({ x: f.x + Math.cos(arc.a0), y: f.y + Math.sin(arc.a0) })
+        const a0 = Math.atan2(d.y - c.y, d.x - c.x)
+        const sens = t.type === 'symetrie-axiale' ? -1 : 1
+        arc = { a0, a1: a0 + sens * (arc.a1 - arc.a0) }
+      }
+      return { ...reste, ...base, arc, x: c.x, y: c.y, r: f.r * (t.type === 'homothetie' ? Math.abs(t.k) : 1), noms: f.noms?.map(prime), posNoms: decalagesImages(f, g) }
     }
     case 'trait': {
       const abs: P[] = []

@@ -38,6 +38,8 @@ async function demarrer() {
   const app = new App(tableau, role, zone)
   const ui = new UI(app, racine, PARTAGE_ELEVES ? partager : null)
   zone.dataset.outil = app.outil
+  // Pour les tests automatiques, en développement seulement
+  if (import.meta.env.DEV) Object.assign(window, { __app: app, __parties: (await import('./instruments')).partiesDuCompas })
 
   const nom = role === 'prof' ? 'Prof' : await ui.demanderNom()
   tableau.diffuser({ nom, role, couleur: TEINTES[tableau.presence.clientID % TEINTES.length] })

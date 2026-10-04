@@ -11,6 +11,8 @@ import { CM, FONDS } from './types'
 import type { P, Transformation } from './formes'
 import { centreDe } from './formes'
 import { Lecteur } from './lecteur'
+import type { NomInstrument } from './instruments'
+import { INSTRUMENTS } from './instruments'
 
 const ICONES: Record<string, string> = {
   stylo: 'M4 20l4-1L19 8l-3-3L5 16l-1 4zM14 7l3 3',
@@ -35,6 +37,11 @@ const ICONES: Record<string, string> = {
   polygone: 'M12 3l8 6-3 10H7L4 9z',
   reconnaissance: 'M4 17c2-6 5-9 9-9M14 4h6v6M20 4l-7 7M4 20h6',
   rejouer: 'M12 21a9 9 0 100-18 9 9 0 100 18zM10 8.5l5.5 3.5-5.5 3.5z',
+  instruments: 'M3 17L17 3l4 4L7 21zM7 13l2 2M10 10l2 2M13 7l2 2',
+  regle: 'M2 9h20v6H2zM6 9v3M10 9v2M14 9v3M18 9v2',
+  equerre: 'M4 20V4l16 16zM4 15h5v5',
+  rapporteur: 'M3 17a9 9 0 0118 0zM12 17V12M12 8V9M7 11l1 1M17 11l-1 1',
+  compas: 'M12 3v2M12 5l-6 15M12 5l6 15M9.5 13h5',
 }
 
 const TYPES_FORMES: { id: TypeForme; nom: string; touche: string }[] = [
@@ -125,6 +132,9 @@ export class UI implements Interface {
   private idPanneau = ''
   private section: 'contour' | 'fond' | 'transformer' | null = null
   private lecteur!: Lecteur
+  private choixInstruments!: HTMLDivElement
+  private boutonInstruments!: HTMLButtonElement
+  private boutonsInstruments = new Map<NomInstrument, HTMLButtonElement>()
   private menuPartie!: HTMLDivElement
   private partie: { id: string; prise: Prise } | null = null
 
@@ -193,9 +203,25 @@ export class UI implements Interface {
       this.message(app.reconnaissance ? 'Le stylo reconnaît les figures' : 'Le stylo laisse les tracés à main levée')
       this.maj()
     }, 'outil')
+    this.boutonInstruments = bouton('instruments', 'Instruments : règle, équerre, rapporteur, compas', () => {
+      this.choixInstruments.hidden = !this.choixInstruments.hidden; this.maj()
+    }, 'outil')
     const rejouer = bouton('rejouer', 'Rejouer la construction du tableau', () => this.lecteur.ouvrir())
-    this.outilsPage = [nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, rejouer]
-    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, rejouer)
+    this.outilsPage = [nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, this.boutonInstruments, rejouer]
+    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, this.boutonInstruments, rejouer)
+
+    // ----- Les instruments, sous leur bouton -----
+    this.choixInstruments = document.createElement('div')
+    this.choixInstruments.className = 'barre choix-instruments'
+    this.choixInstruments.hidden = true
+    for (const i of INSTRUMENTS) {
+      const b = document.createElement('button')
+      b.type = 'button'; b.className = 'option instrument'
+      b.innerHTML = icone(i.id) + `<span>${i.nom}</span>`
+      b.addEventListener('click', () => { app.basculerInstrument(i.id); this.maj() })
+      this.boutonsInstruments.set(i.id, b)
+      this.choixInstruments.appendChild(b)
+    }
 
     if (app.role === 'prof' && this.partager) {
       const p = document.createElement('button')
@@ -236,7 +262,7 @@ export class UI implements Interface {
     this.panneau.setAttribute('role', 'toolbar')
     this.panneau.setAttribute('aria-label', 'Options de la figure')
 
-    this.racine.append(outils, haut, zoom, this.bandeau, this.toast, this.choixFormes, this.panneau)
+    this.racine.append(outils, haut, zoom, this.bandeau, this.toast, this.choixFormes, this.panneau, this.choixInstruments)
     this.lecteur = new Lecteur(app, this.racine, t => this.message(t))
 
     // ----- Menu d'un morceau de figure (point, extrémité, nom, rayon) -----
@@ -273,6 +299,16 @@ export class UI implements Interface {
       this.choixFormes.style.top = Math.max(8, r.top - 6) + 'px'
     }
     this.etat.hidden = !this.partager
+    for (const [id, b] of this.boutonsInstruments) {
+      const oui = app.instrumentVisible(id)
+      b.classList.toggle('actif', oui); b.setAttribute('aria-pressed', String(oui))
+    }
+    this.boutonInstruments.classList.toggle('actif', !this.choixInstruments.hidden || [...this.boutonsInstruments.keys()].some(i => app.instrumentVisible(i)))
+    if (!this.choixInstruments.hidden) {
+      const r = this.boutonInstruments.getBoundingClientRect()
+      this.choixInstruments.style.top = (r.bottom + 10) + 'px'
+      this.choixInstruments.style.left = Math.max(8, Math.min(r.left + r.width / 2 - this.choixInstruments.offsetWidth / 2, window.innerWidth - this.choixInstruments.offsetWidth - 8)) + 'px'
+    }
     this.majPanneau()
     for (const el of this.outilsPage) el.hidden = app.role !== 'prof'
     this.zoomTexte.textContent = Math.round(app.cam.z * 100) + ' %'
@@ -352,7 +388,7 @@ export class UI implements Interface {
       if (!segment) action('Codage', 'Côtés de même longueur, angles droits', () => app.habiller(f, { codage: !figure.codage }), !!figure.codage)
     }
     action('Contour', 'Couleur, épaisseur, pointillés', () => ouvrir('contour'), this.section === 'contour')
-    if (figure && (f.type === 'cercle' || (f.type === 'polygone' && f.ferme))) action('Fond', 'Remplir la figure', () => ouvrir('fond'), this.section === 'fond')
+    if (figure && ((f.type === 'cercle' && !f.arc) || (f.type === 'polygone' && f.ferme))) action('Fond', 'Remplir la figure', () => ouvrir('fond'), this.section === 'fond')
     action('Transformer', 'Translation, rotation, symétrie, homothétie', () => ouvrir('transformer'), this.section === 'transformer')
     if (figure?.brut) action('Main levée', 'Revenir au tracé d\'origine', () => app.revenirMainLevee(figure))
     action('Dupliquer', 'Une copie, décalée d\'un centimètre', () => app.dupliquer(f))

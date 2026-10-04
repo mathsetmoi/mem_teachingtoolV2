@@ -14,6 +14,8 @@ import type { Camera } from './camera'
 import type { Bout, Figure, Fond, Forme, Formule, MarquePoint, Presence, Trait } from './types'
 import { dessinerFond } from './fonds'
 import { codageDe, placesDesNoms, sommetsDe } from './formes'
+import type { EtatInstrument, NomInstrument, Partie } from './instruments'
+import { dessinerInstrument } from './instruments'
 
 export interface TraitDirect {
   pts: number[]; couleur: string; taille: number; opacite: number; pression: boolean
@@ -53,6 +55,14 @@ export function cheminDuTrait(t: { pts: number[]; taille: number; pression: bool
 export class Rendu {
   readonly scene: HTMLCanvasElement
   readonly direct: HTMLCanvasElement
+  readonly coucheInstruments: HTMLCanvasElement
+  private ci: CanvasRenderingContext2D
+  private instrumentsSales = true
+  /** Les instruments posés, dans l'ordre (le dernier est dessus) */
+  instruments: { nom: NomInstrument; etat: EtatInstrument; actif: Partie | null }[] = []
+  instrumentsCaches = false
+  /** Une mesure lue pendant un geste (« 4,5 cm », « 30° »), en monde */
+  mesure: { texte: string; x: number; y: number } | null = null
   readonly coucheFormules: HTMLDivElement
   private cs: CanvasRenderingContext2D
   private cd: CanvasRenderingContext2D
@@ -76,6 +86,8 @@ export class Rendu {
   apercu: Figure | null = null                     // figure en cours de construction
   remplacement: Figure | null = null               // figure dont on tire un morceau
   poignees = true                                  // montrer sommets et rayon de la figure choisie
+  /** Le seul morceau choisi : il est surligné, pas la figure */
+  partie: { id: string; prise: { quoi: 'nom' | 'sommet'; i: number } | { quoi: 'rayon' } } | null = null
   autres: Presence[] = []
 
   private sceneSale = true
@@ -85,11 +97,14 @@ export class Rendu {
   constructor(private cam: Camera, conteneur: HTMLElement) {
     this.scene = document.createElement('canvas')
     this.direct = document.createElement('canvas')
+    this.coucheInstruments = document.createElement('canvas')
+    this.coucheInstruments.className = 'couche couche-instruments'
     this.coucheFormules = document.createElement('div')
     this.scene.className = 'couche couche-scene'
     this.direct.className = 'couche couche-direct'
     this.coucheFormules.className = 'couche-formules'
-    conteneur.append(this.scene, this.coucheFormules, this.direct)
+    conteneur.append(this.scene, this.coucheFormules, this.coucheInstruments, this.direct)
+    this.ci = this.coucheInstruments.getContext('2d')!
     this.cs = this.scene.getContext('2d')!
     // Pas de « desynchronized » : sur certaines cartes graphiques, Chrome
     // affiche alors ce canvas transparent en noir opaque, qui cache tout.
@@ -101,14 +116,15 @@ export class Rendu {
   private redimensionner(c: HTMLElement) {
     this.dpr = Math.min(window.devicePixelRatio || 1, 2)
     this.l = c.clientWidth; this.h = c.clientHeight
-    for (const cv of [this.scene, this.direct]) {
+    for (const cv of [this.scene, this.direct, this.coucheInstruments]) {
       cv.width = Math.round(this.l * this.dpr); cv.height = Math.round(this.h * this.dpr)
       cv.style.width = this.l + 'px'; cv.style.height = this.h + 'px'
     }
     this.toutRedessiner()
   }
 
-  toutRedessiner() { this.sceneSale = true; this.directSale = true; this.planifier() }
+  toutRedessiner() { this.sceneSale = true; this.directSale = true; this.instrumentsSales = true; this.planifier() }
+  redessinerInstruments() { this.instrumentsSales = true; this.directSale = true; this.planifier() }
   redessinerDirect() { this.directSale = true; this.planifier() }
 
   private planifier() {
@@ -117,8 +133,19 @@ export class Rendu {
 
   private peindre() {
     this.image = 0
+    if (this.instrumentsSales) { this.peindreInstruments(); this.instrumentsSales = false }
     if (this.sceneSale) { this.peindreScene(); this.placerFormules(); this.sceneSale = false }
     if (this.directSale) { this.peindreDirect(); this.directSale = false }
+  }
+
+  // ---------- Couche des instruments ----------
+  private peindreInstruments() {
+    const c = this.ci, cam = this.cam
+    c.setTransform(1, 0, 0, 1, 0, 0)
+    c.clearRect(0, 0, this.coucheInstruments.width, this.coucheInstruments.height)
+    if (this.instrumentsCaches) return
+    c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
+    for (const i of this.instruments) dessinerInstrument(c, i.nom, i.etat, cam.z, i.actif)
   }
 
   // ---------- Couche scène ----------
@@ -164,13 +191,16 @@ export class Rendu {
   dessinerFigure(c: CanvasRenderingContext2D, f0: Figure, dec: { dx: number; dy: number } | null) {
     const f = dec ? { ...f0, x: f0.x + dec.dx, y: f0.y + dec.dy } : f0
     const trace = new Path2D()
-    if (f.type === 'cercle') trace.arc(f.x, f.y, f.r, 0, Math.PI * 2)
+    if (f.type === 'cercle') {
+      if (f.arc) trace.arc(f.x, f.y, f.r, f.arc.a0, f.arc.a1, f.arc.a1 < f.arc.a0)
+      else trace.arc(f.x, f.y, f.r, 0, Math.PI * 2)
+    }
     else {
       sommetsDe(f).forEach((p, i) => i ? trace.lineTo(p.x, p.y) : trace.moveTo(p.x, p.y))
       if (f.ferme) trace.closePath()
     }
     c.save()
-    if (f.fond && (f.type === 'cercle' || f.ferme)) {
+    if (f.fond && ((f.type === 'cercle' && !f.arc) || (f.type === 'polygone' && f.ferme))) {
       c.globalAlpha = 0.22; c.fillStyle = f.fond; c.fill(trace); c.globalAlpha = 1
     }
     c.strokeStyle = f.couleur; c.lineWidth = f.taille; c.lineJoin = 'round'; c.lineCap = 'round'
@@ -328,6 +358,22 @@ export class Rendu {
         }
       }
     }
+    // Le morceau choisi seul : un halo autour du point ou du nom
+    if (this.partie && this.poignees) {
+      const f0 = this.formes.find(f => f.id === this.partie!.id)
+      const f = f0 && this.remplacement?.id === f0.id ? this.remplacement : f0
+      const pr = this.partie.prise
+      if (f && (f.type === 'polygone' || f.type === 'cercle')) {
+        let p: { x: number; y: number } | undefined, r = 9 / cam.z
+        if (pr.quoi === 'rayon' && f.type === 'cercle') p = { x: f.x + f.r * Math.SQRT1_2, y: f.y - f.r * Math.SQRT1_2 }
+        else if (pr.quoi === 'nom') { p = placesDesNoms(f, 17)[pr.i]; r = 15 }
+        else if (pr.quoi === 'sommet') p = f.type === 'cercle' ? { x: f.x, y: f.y } : sommetsDe(f)[pr.i]
+        if (p) {
+          c.fillStyle = 'rgba(59, 111, 182, 0.16)'; c.strokeStyle = '#3b6fb6'; c.lineWidth = 2 / cam.z
+          c.beginPath(); c.arc(p.x, p.y, r, 0, Math.PI * 2); c.fill(); c.stroke()
+        }
+      }
+    }
     if (this.cadreSelection) {
       const r = this.cadreSelection
       c.fillStyle = 'rgba(59, 111, 182, 0.08)'; c.strokeStyle = '#3b6fb6'; c.lineWidth = 1 / cam.z
@@ -340,6 +386,15 @@ export class Rendu {
 
     // Curseurs des autres, avec leur nom
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
+    if (this.mesure) {
+      const s = cam.versEcran(this.mesure.x, this.mesure.y)
+      c.font = '700 14px "Atkinson Hyperlegible", system-ui, sans-serif'
+      const l = c.measureText(this.mesure.texte).width + 16
+      c.fillStyle = 'rgba(27, 34, 48, 0.88)'
+      c.beginPath(); c.roundRect(s.x + 14, s.y - 34, l, 26, 13); c.fill()
+      c.fillStyle = '#ffffff'; c.textAlign = 'left'; c.textBaseline = 'middle'
+      c.fillText(this.mesure.texte, s.x + 22, s.y - 21)
+    }
     c.font = '600 12px "Atkinson Hyperlegible", system-ui, sans-serif'
     c.textBaseline = 'middle'
     for (const p of this.autres) {
