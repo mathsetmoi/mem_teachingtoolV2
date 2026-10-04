@@ -410,6 +410,23 @@ export function codageDe(f: Polygone): Codage {
 
 /** Où écrire le nom de chaque sommet : à l'extérieur, sur la bissectrice */
 export function placesDesNoms(f: Polygone | Cercle, ecart: number): P[] {
+  const auto = placesAuto(f, ecart)
+  const points = f.type === 'cercle' ? [{ x: f.x, y: f.y }] : sommetsDe(f)
+  return auto.map((p, i) => {
+    const o = f.posNoms?.[i]
+    return o ? { x: points[i].x + o.x, y: points[i].y + o.y } : p
+  })
+}
+
+/** Un nom tourne autour de son point, sans s'en éloigner ni le recouvrir */
+export const ECART_NOM = { min: 10, max: 70 }
+export function bornerDecalage(o: P): P {
+  const l = Math.hypot(o.x, o.y) || 1
+  const d = Math.max(ECART_NOM.min, Math.min(ECART_NOM.max, l))
+  return { x: o.x / l * d, y: o.y / l * d }
+}
+
+function placesAuto(f: Polygone | Cercle, ecart: number): P[] {
   if (f.type === 'cercle') return [{ x: f.x - ecart * 0.7, y: f.y + ecart * 0.7 }]
   const s = sommetsDe(f), n = s.length
   const c = centreDe(f)
@@ -498,12 +515,12 @@ export function image(f: Forme, t: Transformation, auteur: string): Forme {
     case 'polygone': {
       const r = versRelatif(sommetsDe(f).map(g))
       const { brut: _, ...reste } = f
-      return { ...reste, ...base, ...r, noms: f.noms?.map(prime) }
+      return { ...reste, ...base, ...r, noms: f.noms?.map(prime), posNoms: decalagesImages(f, g) }
     }
     case 'cercle': {
       const c = g({ x: f.x, y: f.y })
       const { brut: _, ...reste } = f
-      return { ...reste, ...base, x: c.x, y: c.y, r: f.r * (t.type === 'homothetie' ? Math.abs(t.k) : 1), noms: f.noms?.map(prime) }
+      return { ...reste, ...base, x: c.x, y: c.y, r: f.r * (t.type === 'homothetie' ? Math.abs(t.k) : 1), noms: f.noms?.map(prime), posNoms: decalagesImages(f, g) }
     }
     case 'trait': {
       const abs: P[] = []
@@ -522,6 +539,19 @@ export function image(f: Forme, t: Transformation, auteur: string): Forme {
       return { ...f, ...base, x: a.x, y: a.y }
     }
   }
+}
+
+/** Un nom déplacé à la main suit la transformation : le symétrique de « A
+ *  au-dessus à gauche » est « A' au-dessus à droite ». Même écart au point. */
+function decalagesImages(f: Polygone | Cercle, g: (p: P) => P) {
+  if (!f.posNoms) return undefined
+  const points = f.type === 'cercle' ? [{ x: f.x, y: f.y }] : sommetsDe(f)
+  return f.posNoms.map((o, i) => {
+    if (!o) return null
+    const a = g(points[i]), b = g({ x: points[i].x + o.x, y: points[i].y + o.y })
+    const l = Math.hypot(b.x - a.x, b.y - a.y) || 1, d = Math.hypot(o.x, o.y)
+    return { x: (b.x - a.x) / l * d, y: (b.y - a.y) / l * d }
+  })
 }
 
 /** Points remarquables d'une forme, pour choisir un centre */

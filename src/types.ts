@@ -47,6 +47,8 @@ export interface Habillage {
   fond?: string | null       // couleur de remplissage, posée en transparence
   noms?: string[]            // noms des sommets (ou du centre d'un cercle)
   sommets?: boolean          // afficher les sommets et leurs noms
+  /** Où est posé chaque nom, par rapport à son point (null : place automatique) */
+  posNoms?: ({ x: number; y: number } | null)[]
   codage?: boolean           // afficher côtés égaux et angles droits
   /** Le tracé à main levée d'origine, si la figure a été reconnue */
   brut?: { pts: number[]; taille: number; pression: boolean }

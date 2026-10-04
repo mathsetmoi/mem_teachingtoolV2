@@ -12,7 +12,7 @@ import { chevauche, rectangle, touche } from './geometrie'
 import type { Figure, Fond, Forme, Formule, Habillage, Outil, Polygone, Presence, Role, Trait, TypeForme } from './types'
 import { CM, uid } from './types'
 import type { P, Reconnue, Transformation } from './formes'
-import { image, nomsLibres, reconnaitre, sommetsDe, versRelatif } from './formes'
+import { bornerDecalage, image, nomsLibres, placesDesNoms, reconnaitre, sommetsDe, versRelatif } from './formes'
 
 export const COULEURS = [
   { nom: 'Noir', valeur: '#1b2230' },
@@ -34,10 +34,14 @@ type Geste =
   | { type: 'dessin'; pointeur: number }
   | { type: 'segment'; x: number; y: number }
   | { type: 'rectangle' | 'cercle'; x: number; y: number }
+  | { type: 'poignee'; prise: Prise; f: Figure }
   | { type: 'gomme'; effaces: Set<string> }
   | { type: 'deplacer'; x: number; y: number; bouge: boolean }
   | { type: 'cadre'; x: number; y: number }
   | { type: 'formule'; sx: number; sy: number }
+
+/** Un morceau d'une figure qu'on attrape : le nom d'un point, un sommet, le rayon */
+type Prise = { quoi: 'nom' | 'sommet'; i: number } | { quoi: 'rayon' }
 
 export class App {
   readonly cam = new Camera()
@@ -53,6 +57,7 @@ export class App {
   typeForme: TypeForme = 'rectangle'
   suivre = true                       // élève : suit la page et la vue du prof
   selection = new Set<string>()
+  enLecture = false                   // le lecteur occupe l'écran : on ne relit pas le document
 
   private formes: Forme[] = []
   private camerasParPage = new Map<string, Camera>()
@@ -89,6 +94,7 @@ export class App {
     if (!id || id === this.page) return
     if (this.page) this.camerasParPage.set(this.page, this.cam.copie())
     this.page = id
+    this.tableau.pageVue = id
     const c = this.camerasParPage.get(id)
     if (c) { this.cam.x = c.x; this.cam.y = c.y; this.cam.z = c.z }
     this.selection.clear()
@@ -132,6 +138,7 @@ export class App {
 
   // ---------- Lecture du document ----------
   rafraichir() {
+    if (this.enLecture) return
     const formes = this.tableau.formesDe(this.page)
     this.formes = formes ? Array.from(formes.values()).sort((a, b) => a.z - b.z) : []
     const ids = new Set(this.formes.map(f => f.id))
@@ -274,6 +281,9 @@ export class App {
 
     const m = this.monde(e)
     this.tableau.nouveauGeste()
+    // Un morceau de la figure sélectionnée : son nom, un sommet, son rayon
+    const prise = this.priseSous(s)
+    if (prise) { this.geste = { type: 'poignee', ...prise }; this.ui.maj(); return }
     // La figure qu'on vient de tracer reste sélectionnée (son panneau
     // d'options est ouvert) jusqu'au geste suivant.
     if (this.outil !== 'selection' && this.selection.size) {
@@ -353,8 +363,15 @@ export class App {
     }
 
     const g = this.geste
-    if (!g) return
+    if (!g) {
+      this.zone.style.cursor = this.priseSous(s) ? 'move' : ''
+      return
+    }
     switch (g.type) {
+      case 'poignee':
+        this.rendu.remplacement = this.manipuler(g.f, g.prise, m)
+        this.rendu.toutRedessiner()
+        break
       case 'rectangle':
       case 'cercle':
         this.rendu.apercu = this.figureTiree(g, this.aimanter(m), e.shiftKey)
@@ -444,6 +461,14 @@ export class App {
         this.rendu.redessinerDirect()
         break
       }
+      case 'poignee': {
+        const f = this.manipuler(g.f, g.prise, m)
+        this.rendu.remplacement = null
+        const { id: _i, type: _t, ...patch } = f
+        this.tableau.modifier(this.page, [{ id: f.id, patch: patch as Partial<Forme> }])
+        this.rendu.toutRedessiner()
+        break
+      }
       case 'rectangle':
       case 'cercle': {
         const f = this.figureTiree(g, this.aimanter(m), e.shiftKey)
@@ -484,6 +509,7 @@ export class App {
     if (g?.type === 'dessin') { clearTimeout(this.minuterieForme); this.rendu.monTrait = null; this.tableau.diffuser({ direct: null }) }
     if (g?.type === 'segment') this.rendu.monSegment = null
     if (g?.type === 'rectangle' || g?.type === 'cercle') this.rendu.apercu = null
+    if (g?.type === 'poignee') this.rendu.remplacement = null
     if (g?.type === 'cadre') this.rendu.cadreSelection = null
     if (g?.type === 'deplacer') this.rendu.decalage = { dx: 0, dy: 0 }
     this.geste = null
@@ -593,10 +619,49 @@ export class App {
     this.rendu.redessinerDirect(); this.ui.maj()
   }
 
+  // ---------- Morceaux d'une figure ----------
+  /** Ce qu'il y a sous le pointeur (écran) dans la figure sélectionnée */
+  private priseSous(s: P): { prise: Prise; f: Figure } | null {
+    if (!this.peutEcrire || this.outil === 'main') return null
+    const f = this.formeChoisie()
+    if (!f || (f.type !== 'polygone' && f.type !== 'cercle')) return null
+    const pres = (w: P, r: number) => { const e = this.cam.versEcran(w.x, w.y); return Math.hypot(e.x - s.x, e.y - s.y) < r }
+    if (f.sommets && f.noms) {
+      const places = placesDesNoms(f, 17)
+      for (let i = 0; i < places.length; i++) if (f.noms[i] && pres(places[i], Math.max(12, 15 * this.cam.z))) return { prise: { quoi: 'nom', i }, f }
+    }
+    if (f.type === 'polygone') {
+      const pts = sommetsDe(f)
+      for (let i = 0; i < pts.length; i++) if (pres(pts[i], 11)) return { prise: { quoi: 'sommet', i }, f }
+    } else if (pres(poigneeDuRayon(f), 11)) return { prise: { quoi: 'rayon' }, f }
+    return null
+  }
+
+  /** La figure, avec le morceau saisi amené en m (monde) */
+  private manipuler(f: Figure, p: Prise, m: P): Figure {
+    if (p.quoi === 'rayon' && f.type === 'cercle') {
+      const a = this.aimanter(m)
+      return { ...f, r: Math.max(4, Math.hypot(a.x - f.x, a.y - f.y)) }
+    }
+    if (p.quoi === 'sommet' && f.type === 'polygone') {
+      const pts = sommetsDe(f)
+      pts[p.i] = this.aimanter(m)
+      return { ...f, ...versRelatif(pts) }
+    }
+    if (p.quoi === 'nom') {
+      const point = f.type === 'cercle' ? { x: f.x, y: f.y } : sommetsDe(f)[p.i]
+      const n = f.type === 'cercle' ? 1 : f.pts.length / 2
+      const posNoms = Array.from({ length: n }, (_, i) => f.posNoms?.[i] ?? null)
+      posNoms[p.i] = bornerDecalage({ x: m.x - point.x, y: m.y - point.y })
+      return { ...f, posNoms }
+    }
+    return f
+  }
+
   // ---------- Panneau d'options ----------
   /** La forme seule sélectionnée, s'il n'y en a qu'une et qu'aucun geste n'est en cours */
   formeChoisie(): Forme | null {
-    if (this.selection.size !== 1 || (this.geste && this.geste.type !== 'pan' && this.geste.type !== 'pinch')) return null
+    if (this.selection.size !== 1 || (this.geste && this.geste.type !== 'pan' && this.geste.type !== 'pinch' && this.geste.type !== 'poignee')) return null
     const id = [...this.selection][0]
     return this.formes.find(f => f.id === id) ?? null
   }
@@ -702,4 +767,9 @@ export class App {
     const o = raccourcis[k]
     if (o) this.choisirOutil(o)
   }
+}
+
+/** Où l'on attrape un cercle pour changer son rayon : en haut à droite */
+export function poigneeDuRayon(f: { x: number; y: number; r: number }): P {
+  return { x: f.x + f.r * Math.SQRT1_2, y: f.y - f.r * Math.SQRT1_2 }
 }

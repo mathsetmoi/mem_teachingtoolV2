@@ -59,6 +59,23 @@ tout objet choisi avec l'outil de sélection :
 
 Les transformations et le contour valent aussi pour un tracé à main levée.
 
+**Chaque morceau se prend à la main.** Sur la figure sélectionnée, les
+poignées blanches se tirent : un sommet (le codage se recalcule), le rayon d'un
+cercle. Le nom d'un point (P, Q…) tourne autour de son point, sans s'en
+éloigner ; il garde sa place quand on déplace ou transforme la figure.
+
+## Rejouer le tableau
+
+Le bouton ▶ de la barre du haut rejoue la construction, geste par geste, au
+rythme où elle a été faite (une rafale reste visible, une longue pause est
+écourtée). Les traits se redessinent sous les yeux. Vitesse de ×0,05 à ×8 ;
+Espace, ← →, Origine, Fin ; Échap pour fermer. Le lecteur n'écrit rien :
+le tableau revient tel quel. Le film est gardé avec le tableau.
+
+Pour cela, le document Yjs garde ce qui a été effacé (`gc: false`) et note un
+instantané à chaque geste (`film`) : rejouer, c'est reconstruire le document à
+chacun de ces instants.
+
 ## Partage avec les élèves (mis de côté)
 
 Le code est toujours là (`src/document.ts`, `serveur/`), mais l'outil ne le
@@ -121,6 +138,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
 | `src/geometrie.ts` | Ce que touche la gomme ou la sélection |
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
+| `src/lecteur.ts` | Le lecteur qui rejoue la construction |
 | `src/ui.ts` | Barres d'outils, partage, éditeur de formules |
 | `serveur/server.js` | Relais WebSocket et sauvegarde des salles |
 
@@ -156,4 +174,5 @@ n'empêche un usage payant.
 4. Import d'un PDF ou d'une image comme fond de page (annoter un énoncé).
 5. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
 6. Sécurité du serveur : jeton prof, durée de vie des salles.
-7. Lecteur qui rejoue la construction du tableau.
+7. Lecteur : export vidéo, et alléger les très longs films (le document ne
+   jette plus rien).

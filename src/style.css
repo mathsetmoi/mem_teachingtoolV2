@@ -244,3 +244,19 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
 @media (max-width: 640px) { .champ, .champ.coords { grid-template-columns: 1fr; } }
 .barre, .panneau-forme, .toast, .choix-formes { user-select: none; -webkit-user-select: none; }
 .panneau-forme input { user-select: text; -webkit-user-select: text; }
+
+/* ---------- Lecteur ---------- */
+.voile-lecture { position: absolute; inset: 0; z-index: 12; cursor: default; }
+.barre-lecture {
+  left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  z-index: 25; align-items: center; gap: 4px; width: max-content; max-width: calc(100vw - 24px); flex-wrap: wrap; justify-content: center;
+}
+.barre-lecture .bouton svg { fill: currentColor; stroke-width: 1.4; }
+.barre-lecture .bouton[aria-label^='Fermer'] svg { fill: none; stroke-width: 2; }
+.barre-lecture .avancee { width: min(320px, 40vw); accent-color: var(--bleu); }
+.barre-lecture .compteur { min-width: 92px; text-align: center; font-variant-numeric: tabular-nums; font-size: 13px; color: var(--encre-douce); white-space: nowrap; }
+.barre-lecture .vitesse { display: flex; align-items: center; gap: 6px; padding: 0 6px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.barre-lecture .vitesse input { width: 90px; accent-color: var(--bleu); }
+.barre-lecture .vitesse span { min-width: 44px; }
+body.en-lecture .barre-outils, body.en-lecture .barre-haut, body.en-lecture .choix-formes,
+body.en-lecture .panneau-forme, body.en-lecture .barre-zoom { display: none !important; }

@@ -74,6 +74,8 @@ export class Rendu {
   cadreSelection: { x: number; y: number; l: number; h: number } | null = null
   gomme: { x: number; y: number; r: number } | null = null
   apercu: Figure | null = null                     // figure en cours de construction
+  remplacement: Figure | null = null               // figure dont on tire un morceau
+  poignees = true                                  // montrer sommets et rayon de la figure choisie
   autres: Presence[] = []
 
   private sceneSale = true
@@ -125,7 +127,8 @@ export class Rendu {
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
     dessinerFond(c, this.fond, cam, this.l, this.h, this.origine)
     c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
-    for (const f of this.formes) {
+    for (const f0 of this.formes) {
+      const f = this.remplacement?.id === f0.id ? this.remplacement : f0
       const dec = this.selection.has(f.id) ? this.decalage : null
       if (f.type === 'trait') this.dessinerTrait(c, f, dec)
       else if (f.type === 'segment') {
@@ -286,13 +289,28 @@ export class Rendu {
     // Sélection : un cadre en tirets autour de chaque forme tenue
     if (this.selection.size) {
       c.strokeStyle = '#3b6fb6'; c.lineWidth = 1.5 / cam.z; c.setLineDash([6 / cam.z, 4 / cam.z])
-      for (const f of this.formes) {
-        if (!this.selection.has(f.id)) continue
+      for (const f0 of this.formes) {
+        if (!this.selection.has(f0.id)) continue
+        const f = this.remplacement?.id === f0.id ? this.remplacement : f0
         const b = this.boite(f)
         const m = 6 / cam.z
         c.strokeRect(b.x + this.decalage.dx - m, b.y + this.decalage.dy - m, b.l + 2 * m, b.h + 2 * m)
       }
       c.setLineDash([])
+      // Les poignées : ce qu'on peut attraper dans la figure choisie
+      const seule = this.selection.size === 1 ? this.formes.find(f => this.selection.has(f.id)) : undefined
+      const f = seule && this.remplacement?.id === seule.id ? this.remplacement : seule
+      if (this.poignees && f && (f.type === 'polygone' || f.type === 'cercle')) {
+        const pts = f.type === 'polygone' ? sommetsDe(f)
+          : [{ x: f.x + f.r * Math.SQRT1_2, y: f.y - f.r * Math.SQRT1_2 }]
+        c.lineWidth = 1.6 / cam.z; c.strokeStyle = '#3b6fb6'; c.fillStyle = '#ffffff'
+        for (const p of pts) { c.beginPath(); c.arc(p.x, p.y, 5.5 / cam.z, 0, Math.PI * 2); c.fill(); c.stroke() }
+        if (f.sommets && f.noms) {
+          c.setLineDash([2 / cam.z, 3 / cam.z]); c.strokeStyle = 'rgba(59, 111, 182, 0.55)'
+          for (const p of placesDesNoms(f, 17)) { c.beginPath(); c.arc(p.x, p.y, 14, 0, Math.PI * 2); c.stroke() }
+          c.setLineDash([])
+        }
+      }
     }
     if (this.cadreSelection) {
       const r = this.cadreSelection

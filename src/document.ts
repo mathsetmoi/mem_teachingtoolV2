@@ -15,14 +15,26 @@ import type { Fond, Forme, Presence } from './types'
 import { uid } from './types'
 
 export const ORIGINE_LOCALE = 'locale'
+const ORIGINE_FILM = 'film'
+
+/** Une étape du film : quand, sur quelle page, et l'état du document */
+export interface Etape { t: number; page: string; s: Uint8Array }
+
+/** Ce qu'il y avait sur une page à une étape du film */
+export interface ImagePage { fond: Fond; origine: { x: number; y: number }; formes: Forme[] }
 
 export type EtatConnexion = 'hors-ligne' | 'connexion' | 'en-ligne' | 'injoignable'
 
 export class Tableau {
-  readonly doc = new Y.Doc()
+  // gc: false — le document garde ce qui a été effacé. C'est ce qui permet
+  // au lecteur de le reconstruire tel qu'il était à n'importe quelle étape.
+  readonly doc = new Y.Doc({ gc: false })
   readonly ordre: Y.Array<string>                 // ordre des pages
   readonly pages: Y.Map<Y.Map<unknown>>           // id → { fond, formes }
   readonly reglages: Y.Map<unknown>               // réglages partagés de la séance
+  readonly film: Y.Array<Etape>                   // une étape par geste, pour le lecteur
+  /** La page que l'on regarde : notée avec chaque étape du film */
+  pageVue = ''
   readonly annulation: Y.UndoManager
   readonly presence: Awareness
   readonly moi = uid()
@@ -36,6 +48,7 @@ export class Tableau {
     this.ordre = this.doc.getArray('ordre')
     this.pages = this.doc.getMap('pages')
     this.reglages = this.doc.getMap('reglages')
+    this.film = this.doc.getArray('film')
     this.presence = new Awareness(this.doc)
     // Portée : toutes les pages et ce qu'elles contiennent. Seules les
     // transactions marquées « locale » sont retenues.
@@ -44,6 +57,37 @@ export class Tableau {
       captureTimeout: 400,
     })
     this.local = new IndexeddbPersistence(nomLocal, this.doc)
+
+    // Chaque geste qui touche aux pages devient une étape du film. Pas le
+    // chargement depuis le disque ni le serveur : ces étapes-là y sont déjà.
+    this.doc.on('afterTransaction', (tr: Y.Transaction) => {
+      if (tr.origin === ORIGINE_FILM || tr.origin === this.local || (this.ws && tr.origin === this.ws)) return
+      if (!tr.changedParentTypes.size || ![...tr.changedParentTypes.keys()].some(t => this.dansLesPages(t))) return
+      const etape: Etape = { t: Date.now(), page: this.pageVue, s: Y.encodeSnapshot(Y.snapshot(this.doc)) }
+      queueMicrotask(() => this.doc.transact(() => this.film.push([etape]), ORIGINE_FILM))
+    })
+  }
+
+  private dansLesPages(t: Y.AbstractType<any>): boolean {
+    for (let x: Y.AbstractType<any> | null = t; x; x = x.parent as Y.AbstractType<any> | null) {
+      if (x === this.pages || x === this.ordre) return true
+    }
+    return false
+  }
+
+  /** Une page telle qu'elle était à une étape du film */
+  pageA(etape: Etape, page: string): ImagePage | null {
+    const d = Y.createDocFromSnapshot(this.doc, Y.decodeSnapshot(etape.s))
+    const p = d.getMap('pages').get(page) as Y.Map<unknown> | undefined
+    if (!p) { d.destroy(); return null }
+    const formes = p.get('formes')
+    const r: ImagePage = {
+      fond: (p.get('fond') as Fond) || 'blanc',
+      origine: (p.get('origine') as { x: number; y: number }) || { x: 0, y: 0 },
+      formes: formes instanceof Y.Map ? Array.from((formes as Y.Map<Forme>).values()).sort((a, b) => a.z - b.z) : [],
+    }
+    d.destroy()
+    return r
   }
 
   /** Attend la copie locale ; crée une première page si le tableau est vide. */

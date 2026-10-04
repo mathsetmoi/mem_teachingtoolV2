@@ -10,6 +10,7 @@ import type { Figure, Forme, Outil, TypeForme } from './types'
 import { CM, FONDS } from './types'
 import type { P, Transformation } from './formes'
 import { centreDe } from './formes'
+import { Lecteur } from './lecteur'
 
 const ICONES: Record<string, string> = {
   stylo: 'M4 20l4-1L19 8l-3-3L5 16l-1 4zM14 7l3 3',
@@ -33,6 +34,7 @@ const ICONES: Record<string, string> = {
   cercle: 'M12 20a8 8 0 100-16 8 8 0 100 16z',
   polygone: 'M12 3l8 6-3 10H7L4 9z',
   reconnaissance: 'M4 17c2-6 5-9 9-9M14 4h6v6M20 4l-7 7M4 20h6',
+  rejouer: 'M12 21a9 9 0 100-18 9 9 0 100 18zM10 8.5l5.5 3.5-5.5 3.5z',
 }
 
 const TYPES_FORMES: { id: TypeForme; nom: string; touche: string }[] = [
@@ -108,6 +110,7 @@ export class UI implements Interface {
   private clePanneau = ''
   private idPanneau = ''
   private section: 'contour' | 'fond' | 'transformer' | null = null
+  private lecteur!: Lecteur
 
   /** `partager` absent : le partage avec les élèves est désactivé. */
   constructor(private app: App, private racine: HTMLElement, private partager: (() => Promise<string | null>) | null) {
@@ -174,8 +177,9 @@ export class UI implements Interface {
       this.message(app.reconnaissance ? 'Le stylo reconnaît les figures' : 'Le stylo laisse les tracés à main levée')
       this.maj()
     }, 'outil')
-    this.outilsPage = [nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance]
-    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance)
+    const rejouer = bouton('rejouer', 'Rejouer la construction du tableau', () => this.lecteur.ouvrir())
+    this.outilsPage = [nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, rejouer]
+    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, rejouer)
 
     if (app.role === 'prof' && this.partager) {
       const p = document.createElement('button')
@@ -217,6 +221,7 @@ export class UI implements Interface {
     this.panneau.setAttribute('aria-label', 'Options de la figure')
 
     this.racine.append(outils, haut, zoom, this.bandeau, this.toast, this.choixFormes, this.panneau)
+    this.lecteur = new Lecteur(app, this.racine, t => this.message(t))
   }
 
   maj() {
@@ -276,7 +281,7 @@ export class UI implements Interface {
 
   // ----- Panneau d'options de la figure -----
   private majPanneau() {
-    const f = this.app.peutEcrire ? this.app.formeChoisie() : null
+    const f = this.app.peutEcrire && !this.app.enLecture ? this.app.formeChoisie() : null
     if (!f || f.type === 'formule' || f.type === 'segment') { this.panneau.hidden = true; this.clePanneau = ''; return }
     const { x: _x, y: _y, ...props } = f as Forme
     if (f.id !== this.idPanneau) { this.idPanneau = f.id; this.section = null }
