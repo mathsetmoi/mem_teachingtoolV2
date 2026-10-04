@@ -87,10 +87,9 @@ export class Rendu {
     this.coucheFormules.className = 'couche-formules'
     conteneur.append(this.scene, this.coucheFormules, this.direct)
     this.cs = this.scene.getContext('2d')!
-    // « desynchronized » : le navigateur peut afficher le trait sans
-    // attendre la composition de la page. Gain réel de latence au stylet.
-    this.cd = (this.direct.getContext('2d', { desynchronized: true }) ||
-      this.direct.getContext('2d'))!
+    // Pas de « desynchronized » : sur certaines cartes graphiques, Chrome
+    // affiche alors ce canvas transparent en noir opaque, qui cache tout.
+    this.cd = this.direct.getContext('2d')!
     new ResizeObserver(() => this.redimensionner(conteneur)).observe(conteneur)
     this.redimensionner(conteneur)
   }
