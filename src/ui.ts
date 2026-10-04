@@ -4,9 +4,9 @@
 // lui transmet les clics. Tout est reconstruit par « maj() ».
 // =============================================================
 import katex from 'katex'
-import type { App, Interface } from './app'
+import type { App, Interface, Prise } from './app'
 import { COULEURS, TAILLES } from './app'
-import type { Figure, Forme, Outil, TypeForme } from './types'
+import type { Bout, Figure, Forme, MarquePoint, Outil, TypeForme } from './types'
 import { CM, FONDS } from './types'
 import type { P, Transformation } from './formes'
 import { centreDe } from './formes'
@@ -52,6 +52,20 @@ function nombre(t: string): number | null {
   const n = m ? Number(m[1]) / Number(m[2]) : Number(v)
   return v && Number.isFinite(n) ? n : null
 }
+
+const MARQUES: { id: MarquePoint; nom: string; d: string }[] = [
+  { id: 'aucun', nom: 'Aucune marque', d: 'M5 19L19 5' },
+  { id: 'point', nom: 'Point', d: 'M12 12h.01" style="stroke-width:7' },
+  { id: 'croix', nom: 'Croix', d: 'M7 7l10 10M17 7L7 17' },
+  { id: 'plus', nom: 'Croix droite', d: 'M12 5v14M5 12h14' },
+  { id: 'rond', nom: 'Rond', d: 'M12 16a4 4 0 100-8 4 4 0 100 8z' },
+]
+const BOUTS: { id: Bout; nom: string; d: string }[] = [
+  { id: 'aucun', nom: 'Extrémité simple', d: 'M3 12h16' },
+  { id: 'fleche', nom: 'Flèche', d: 'M3 12h14M13 7l6 5-6 5' },
+  { id: 'trait', nom: 'Trait', d: 'M3 12h16M19 6v12' },
+  { id: 'crochet', nom: 'Crochet', d: 'M3 12h16M19 6v12M19 6h-3M19 18h-3' },
+]
 
 const html = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
 
@@ -111,6 +125,8 @@ export class UI implements Interface {
   private idPanneau = ''
   private section: 'contour' | 'fond' | 'transformer' | null = null
   private lecteur!: Lecteur
+  private menuPartie!: HTMLDivElement
+  private partie: { id: string; prise: Prise } | null = null
 
   /** `partager` absent : le partage avec les élèves est désactivé. */
   constructor(private app: App, private racine: HTMLElement, private partager: (() => Promise<string | null>) | null) {
@@ -222,6 +238,17 @@ export class UI implements Interface {
 
     this.racine.append(outils, haut, zoom, this.bandeau, this.toast, this.choixFormes, this.panneau)
     this.lecteur = new Lecteur(app, this.racine, t => this.message(t))
+
+    // ----- Menu d'un morceau de figure (point, extrémité, nom, rayon) -----
+    this.menuPartie = document.createElement('div')
+    this.menuPartie.className = 'menu-partie'
+    this.menuPartie.setAttribute('role', 'dialog')
+    this.menuPartie.hidden = true
+    this.racine.appendChild(this.menuPartie)
+    document.addEventListener('pointerdown', e => {
+      if (!this.menuPartie.hidden && !this.menuPartie.contains(e.target as Node) && !(e.target as HTMLElement).closest('#zone')) this.fermerMenuPartie()
+    }, true)
+    window.addEventListener('keydown', e => { if (e.key === 'Escape') this.fermerMenuPartie() })
   }
 
   maj() {
@@ -485,6 +512,115 @@ export class UI implements Interface {
       app.transformer(f, t)
     })
     return s
+  }
+
+  // ----- Menu d'un morceau de figure -----
+  ouvrirMenuPartie(id: string, prise: Prise, x: number, y: number) {
+    this.partie = { id, prise }
+    this.construireMenuPartie()
+    const m = this.menuPartie
+    m.hidden = false
+    m.style.left = Math.max(8, Math.min(x + 14, window.innerWidth - m.offsetWidth - 8)) + 'px'
+    m.style.top = Math.max(8, Math.min(y + 14, window.innerHeight - m.offsetHeight - 8)) + 'px'
+  }
+
+  fermerMenuPartie() {
+    if (this.menuPartie.hidden) return
+    this.menuPartie.hidden = true
+    this.partie = null
+  }
+
+  private construireMenuPartie() {
+    const app = this.app, m = this.menuPartie
+    const f0 = this.partie && app.forme(this.partie.id)
+    if (!this.partie || !f0 || (f0.type !== 'polygone' && f0.type !== 'cercle')) return this.fermerMenuPartie()
+    const f = f0 as Figure
+    const prise = this.partie.prise
+    const refaire = () => this.construireMenuPartie()
+    m.replaceChildren()
+
+    const titre = document.createElement('h3')
+    const ligne = (etiquette: string) => {
+      const l = document.createElement('div'); l.className = 'rang-menu'
+      const t = document.createElement('span'); t.textContent = etiquette
+      l.appendChild(t); m.appendChild(l); return l
+    }
+    const choix = (l: HTMLElement, nom: string, contenu: string, actif: boolean, faire: () => void) => {
+      const b = document.createElement('button')
+      b.type = 'button'; b.className = 'choix' + (actif ? ' actif' : ''); b.title = nom; b.setAttribute('aria-label', nom)
+      b.setAttribute('aria-pressed', String(actif)); b.innerHTML = contenu
+      b.addEventListener('click', () => { faire(); refaire() })
+      l.appendChild(b); return b
+    }
+    const couleurs = (l: HTMLElement, actuelle: string | undefined, faire: (c: string | undefined) => void) => {
+      choix(l, 'Couleur de la figure', '<span class="meme">=</span>', !actuelle, () => faire(undefined))
+      for (const c of COULEURS) choix(l, c.nom, `<span class="rond" style="background:${c.valeur}"></span>`, actuelle === c.valeur, () => faire(c.valeur))
+    }
+    const icone = (d: string) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`
+    const nomDe = (i: number) => f.noms?.[i]?.replace(/_(\d+)/, '$1') || ''
+
+    if (prise.quoi === 'rayon' && f.type === 'cercle') {
+      titre.textContent = 'Rayon'; m.appendChild(titre)
+      const l = ligne('r (cm)')
+      const champ = Object.assign(document.createElement('input'), { className: 'saisie', inputMode: 'decimal' })
+      champ.value = String(Math.round(f.r / CM * 100) / 100).replace('.', ',')
+      champ.addEventListener('change', () => {
+        const v = nombre(champ.value)
+        if (v && v > 0) app.habiller(f, { r: v * CM } as never); else this.message('Rayon : un nombre positif, en centimètres')
+      })
+      l.appendChild(champ)
+      return
+    }
+
+    const i = prise.quoi === 'rayon' ? 0 : prise.i
+    const ouvert = f.type === 'polygone' && !f.ferme
+    const extremite = ouvert && (i === 0 || i === f.pts.length / 2 - 1)
+    const nom = nomDe(i)
+
+    if (prise.quoi === 'nom') {
+      const st = f.styleNoms?.[i] ?? {}
+      titre.textContent = 'Nom ' + nom; m.appendChild(titre)
+      const lt = ligne('Texte')
+      const champ = Object.assign(document.createElement('input'), { className: 'saisie nom' })
+      champ.value = f.noms?.[i] ?? ''
+      champ.addEventListener('change', () => { app.renommerPoint(f, i, champ.value); refaire() })
+      lt.appendChild(champ)
+      couleurs(ligne('Couleur'), st.couleur, c => app.reglerPartie(f, 'styleNoms', i, { couleur: c }))
+      const ltaille = ligne('Taille')
+      for (const [n, v] of [['Petit', 16], ['Normal', 22], ['Grand', 32]] as const) {
+        choix(ltaille, n, `<span style="font-size:${v * 0.62}px">A</span>`, (st.taille ?? 22) === v, () => app.reglerPartie(f, 'styleNoms', i, { taille: v === 22 ? undefined : v }))
+      }
+      const lstyle = ligne('Style')
+      choix(lstyle, 'Italique', '<i>A</i>', !st.droit, () => app.reglerPartie(f, 'styleNoms', i, { droit: undefined }))
+      choix(lstyle, 'Droit', 'A', !!st.droit, () => app.reglerPartie(f, 'styleNoms', i, { droit: true }))
+      const la = ligne('')
+      choix(la, 'Remettre à sa place', 'Replacer', false, () => app.replacerNom(f, i))
+      choix(la, 'Masquer ce nom', 'Masquer', false, () => { app.reglerPartie(f, 'styleNoms', i, { cache: true }); this.fermerMenuPartie() })
+      return
+    }
+
+    // Un point : sommet, extrémité ou centre
+    const st = f.stylePoints?.[i] ?? {}
+    titre.textContent = (f.type === 'cercle' ? 'Centre ' : extremite ? 'Extrémité ' : 'Sommet ') + nom
+    m.appendChild(titre)
+    const ln = ligne('Nom')
+    const champ = Object.assign(document.createElement('input'), { className: 'saisie nom', placeholder: '—' })
+    champ.value = f.sommets ? (f.noms?.[i] ?? '') : ''
+    champ.addEventListener('change', () => { app.renommerPoint(f, i, champ.value); refaire() })
+    ln.appendChild(champ)
+    if (f.sommets && f.styleNoms?.[i]?.cache) choix(ln, 'Afficher le nom', 'Afficher', false, () => app.reglerPartie(f, 'styleNoms', i, { cache: undefined }))
+    const marqueActuelle = st.marque ?? (f.sommets && f.type === 'polygone' && !(st.bout && st.bout !== 'aucun') ? 'point' : 'aucun')
+    const lm = ligne('Point')
+    for (const k of MARQUES) choix(lm, k.nom, icone(k.d), marqueActuelle === k.id, () => app.reglerPartie(f, 'stylePoints', i, { marque: k.id }))
+    if (extremite) {
+      const lb = ligne('Extrémité')
+      for (const k of BOUTS) choix(lb, k.nom, icone(k.d), (st.bout ?? 'aucun') === k.id, () => app.reglerPartie(f, 'stylePoints', i, { bout: k.id === 'aucun' ? undefined : k.id }))
+    }
+    couleurs(ligne('Couleur'), st.couleur, c => app.reglerPartie(f, 'stylePoints', i, { couleur: c }))
+    const lt = ligne('Taille')
+    for (const [n, v, d] of [['Petit', 0.7, 3], ['Normal', 1, 5], ['Grand', 1.6, 8]] as const) {
+      choix(lt, n, `<span class="rond" style="width:${d * 2}px;height:${d * 2}px;background:currentColor"></span>`, (st.taille ?? 1) === v, () => app.reglerPartie(f, 'stylePoints', i, { taille: v === 1 ? undefined : v }))
+    }
   }
 
   message(texte: string) {

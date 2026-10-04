@@ -26,6 +26,8 @@ export interface Interface {
   maj(): void
   editerFormule(latex: string, ecranX: number, ecranY: number): Promise<string | null>
   message(texte: string): void
+  ouvrirMenuPartie(id: string, prise: Prise, clientX: number, clientY: number): void
+  fermerMenuPartie(): void
 }
 
 type Geste =
@@ -34,14 +36,14 @@ type Geste =
   | { type: 'dessin'; pointeur: number }
   | { type: 'segment'; x: number; y: number }
   | { type: 'rectangle' | 'cercle'; x: number; y: number }
-  | { type: 'poignee'; prise: Prise; f: Figure }
+  | { type: 'poignee'; prise: Prise; f: Figure; sx: number; sy: number; bouge: boolean }
   | { type: 'gomme'; effaces: Set<string> }
   | { type: 'deplacer'; x: number; y: number; bouge: boolean }
   | { type: 'cadre'; x: number; y: number }
   | { type: 'formule'; sx: number; sy: number }
 
 /** Un morceau d'une figure qu'on attrape : le nom d'un point, un sommet, le rayon */
-type Prise = { quoi: 'nom' | 'sommet'; i: number } | { quoi: 'rayon' }
+export type Prise = { quoi: 'nom' | 'sommet'; i: number } | { quoi: 'rayon' }
 
 export class App {
   readonly cam = new Camera()
@@ -250,6 +252,21 @@ export class App {
     z.addEventListener('pointercancel', e => this.haut(e, true))
     z.addEventListener('pointerleave', () => this.tableau.diffuser({ curseur: null }))
     z.addEventListener('wheel', e => this.molette(e), { passive: false })
+    // Clic droit (ou bouton du stylet) : les options du morceau visé,
+    // sinon celles de la figure entière
+    z.addEventListener('contextmenu', e => {
+      e.preventDefault()
+      if (!this.peutEcrire || this.enLecture) return
+      const s = this.ecran(e)
+      const outil = this.outil
+      this.outil = 'selection'                 // pour viser toutes les figures
+      const prise = this.priseSous(s)
+      this.outil = outil
+      if (prise) { this.selectionner(prise.f.id); this.ui.ouvrirMenuPartie(prise.f.id, prise.prise, e.clientX, e.clientY); return }
+      const p = this.monde(e), f = this.formeSous(p.x, p.y)
+      this.ui.fermerMenuPartie()
+      if (f) this.selectionner(f.id)
+    })
     z.addEventListener('dblclick', e => {
       const p = this.monde(e), f = this.formeSous(p.x, p.y)
       if (f?.type === 'formule' && this.peutEcrire) this.editerFormule(f)
@@ -283,7 +300,13 @@ export class App {
     this.tableau.nouveauGeste()
     // Un morceau de la figure sélectionnée : son nom, un sommet, son rayon
     const prise = this.priseSous(s)
-    if (prise) { this.geste = { type: 'poignee', ...prise }; this.ui.maj(); return }
+    if (prise) {
+      this.ui.fermerMenuPartie()
+      if (!this.selection.has(prise.f.id)) this.selectionner(prise.f.id)
+      this.geste = { type: 'poignee', ...prise, sx: s.x, sy: s.y, bouge: false }
+      this.ui.maj(); return
+    }
+    this.ui.fermerMenuPartie()
     // La figure qu'on vient de tracer reste sélectionnée (son panneau
     // d'options est ouvert) jusqu'au geste suivant.
     if (this.outil !== 'selection' && this.selection.size) {
@@ -369,6 +392,8 @@ export class App {
     }
     switch (g.type) {
       case 'poignee':
+        if (!g.bouge && Math.hypot(s.x - g.sx, s.y - g.sy) < 4) break     // un clic, pas encore un glisser
+        g.bouge = true
         this.rendu.remplacement = this.manipuler(g.f, g.prise, m)
         this.rendu.toutRedessiner()
         break
@@ -462,6 +487,8 @@ export class App {
         break
       }
       case 'poignee': {
+        // Un clic sans bouger : les options de ce morceau-là
+        if (!g.bouge) { this.ui.ouvrirMenuPartie(g.f.id, g.prise, e.clientX, e.clientY); break }
         const f = this.manipuler(g.f, g.prise, m)
         this.rendu.remplacement = null
         const { id: _i, type: _t, ...patch } = f
@@ -621,19 +648,35 @@ export class App {
 
   // ---------- Morceaux d'une figure ----------
   /** Ce qu'il y a sous le pointeur (écran) dans la figure sélectionnée */
-  private priseSous(s: P): { prise: Prise; f: Figure } | null {
-    if (!this.peutEcrire || this.outil === 'main') return null
-    const f = this.formeChoisie()
-    if (!f || (f.type !== 'polygone' && f.type !== 'cercle')) return null
+  /** Avec l'outil Sélection, toutes les figures ; avec un autre outil, seulement
+   *  celle qui est sélectionnée (sinon on ne pourrait plus écrire près d'un point). */
+  priseSous(s: P): { prise: Prise; f: Figure } | null {
+    if (!this.peutEcrire || this.outil === 'main' || this.enLecture) return null
+    const choisie = this.formeChoisie()
+    const candidates = this.outil === 'selection' ? [...(choisie ? [choisie] : []), ...[...this.formes].reverse()] : choisie ? [choisie] : []
+    for (const f of candidates) {
+      if (f.type !== 'polygone' && f.type !== 'cercle') continue
+      const r = this.priseDans(f, s)
+      if (r) return r
+    }
+    return null
+  }
+
+  private priseDans(f: Figure, s: P): { prise: Prise; f: Figure } | null {
     const pres = (w: P, r: number) => { const e = this.cam.versEcran(w.x, w.y); return Math.hypot(e.x - s.x, e.y - s.y) < r }
     if (f.sommets && f.noms) {
       const places = placesDesNoms(f, 17)
-      for (let i = 0; i < places.length; i++) if (f.noms[i] && pres(places[i], Math.max(12, 15 * this.cam.z))) return { prise: { quoi: 'nom', i }, f }
+      for (let i = 0; i < places.length; i++) {
+        if (f.noms[i] && !f.styleNoms?.[i]?.cache && pres(places[i], Math.max(12, 15 * this.cam.z))) return { prise: { quoi: 'nom', i }, f }
+      }
     }
     if (f.type === 'polygone') {
       const pts = sommetsDe(f)
       for (let i = 0; i < pts.length; i++) if (pres(pts[i], 11)) return { prise: { quoi: 'sommet', i }, f }
-    } else if (pres(poigneeDuRayon(f), 11)) return { prise: { quoi: 'rayon' }, f }
+    } else {
+      if (pres(poigneeDuRayon(f), 11)) return { prise: { quoi: 'rayon' }, f }
+      if (pres({ x: f.x, y: f.y }, 10)) return { prise: { quoi: 'sommet', i: 0 }, f }   // le centre
+    }
     return null
   }
 
@@ -642,6 +685,10 @@ export class App {
     if (p.quoi === 'rayon' && f.type === 'cercle') {
       const a = this.aimanter(m)
       return { ...f, r: Math.max(4, Math.hypot(a.x - f.x, a.y - f.y)) }
+    }
+    if (p.quoi === 'sommet' && f.type === 'cercle') {
+      const a = this.aimanter(m)
+      return { ...f, x: a.x, y: a.y }
     }
     if (p.quoi === 'sommet' && f.type === 'polygone') {
       const pts = sommetsDe(f)
@@ -656,6 +703,33 @@ export class App {
       return { ...f, posNoms }
     }
     return f
+  }
+
+  forme(id: string): Forme | null { return this.formes.find(f => f.id === id) ?? null }
+
+  /** Change le réglage du point (ou du nom) n° i d'une figure */
+  reglerPartie(f: Figure, cle: 'stylePoints' | 'styleNoms', i: number, patch: Record<string, unknown>) {
+    const n = f.type === 'cercle' ? 1 : f.pts.length / 2
+    const liste = Array.from({ length: n }, (_, k) => (f[cle]?.[k] ?? null) as Record<string, unknown> | null)
+    const nouveau: Record<string, unknown> = { ...(liste[i] ?? {}), ...patch }
+    for (const k of Object.keys(nouveau)) if (nouveau[k] === undefined) delete nouveau[k]
+    liste[i] = Object.keys(nouveau).length ? nouveau : null
+    this.habiller(f, { [cle]: liste } as Partial<Habillage>)
+  }
+
+  /** Renomme un seul point */
+  renommerPoint(f: Figure, i: number, nom: string) {
+    const n = f.type === 'cercle' ? 1 : f.pts.length / 2
+    const noms = Array.from({ length: n }, (_, k) => f.noms?.[k] ?? '')
+    noms[i] = nom.trim()
+    this.habiller(f, { noms, sommets: true })
+  }
+
+  /** Le nom revient à sa place automatique */
+  replacerNom(f: Figure, i: number) {
+    if (!f.posNoms) return
+    const posNoms = [...f.posNoms]; posNoms[i] = null
+    this.habiller(f, { posNoms })
   }
 
   // ---------- Panneau d'options ----------

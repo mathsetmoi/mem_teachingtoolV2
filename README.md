@@ -59,10 +59,20 @@ tout objet choisi avec l'outil de sélection :
 
 Les transformations et le contour valent aussi pour un tracé à main levée.
 
-**Chaque morceau se prend à la main.** Sur la figure sélectionnée, les
-poignées blanches se tirent : un sommet (le codage se recalcule), le rayon d'un
-cercle. Le nom d'un point (P, Q…) tourne autour de son point, sans s'en
-éloigner ; il garde sa place quand on déplace ou transforme la figure.
+**Chaque morceau se prend à la main.** Sur la figure sélectionnée (et sur
+toutes, avec l'outil Sélection), on attrape un sommet ou une extrémité, le
+centre ou le rayon d'un cercle, le nom d'un point :
+
+- **glisser** le déplace (le codage se recalcule ; un nom tourne autour de son
+  point sans s'en éloigner, et garde sa place quand on transforme la figure) ;
+- **cliquer sans bouger, ou clic droit**, ouvre ses options :
+  - un point : son nom, sa marque (aucune, point, croix ×, croix +, rond), le
+    bout d'une extrémité (flèche, trait, crochet), sa couleur, sa taille ;
+  - un nom : son texte, sa couleur, sa taille, italique ou droit, le replacer
+    automatiquement, le masquer ;
+  - le rayon d'un cercle : sa valeur en centimètres.
+
+Le clic droit ailleurs sur une figure la sélectionne et ouvre son panneau.
 
 ## Rejouer le tableau
 

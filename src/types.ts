@@ -49,9 +49,28 @@ export interface Habillage {
   sommets?: boolean          // afficher les sommets et leurs noms
   /** Où est posé chaque nom, par rapport à son point (null : place automatique) */
   posNoms?: ({ x: number; y: number } | null)[]
+  /** Réglages propres à chaque point (sommet, extrémité, centre) */
+  stylePoints?: (StylePoint | null)[]
+  /** Réglages propres à chaque nom */
+  styleNoms?: (StyleNom | null)[]
   codage?: boolean           // afficher côtés égaux et angles droits
   /** Le tracé à main levée d'origine, si la figure a été reconnue */
   brut?: { pts: number[]; taille: number; pression: boolean }
+}
+
+export type MarquePoint = 'aucun' | 'point' | 'croix' | 'plus' | 'rond'
+export type Bout = 'aucun' | 'fleche' | 'trait' | 'crochet'
+export interface StylePoint {
+  marque?: MarquePoint     // dessin du point (sans réglage : un point si les sommets sont affichés)
+  bout?: Bout              // extrémité d'une ligne ouverte : flèche, trait, crochet
+  couleur?: string
+  taille?: number          // 1 = taille normale
+}
+export interface StyleNom {
+  couleur?: string
+  taille?: number          // taille de police, en unités monde (22 par défaut)
+  droit?: boolean          // caractères droits plutôt qu'italiques
+  cache?: boolean
 }
 
 /** Polygone ou ligne brisée : sommets relatifs à (x, y), à plat [x, y, …].

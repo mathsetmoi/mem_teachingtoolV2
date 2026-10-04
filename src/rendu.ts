@@ -11,7 +11,7 @@
 import { getStroke } from 'perfect-freehand'
 import katex from 'katex'
 import type { Camera } from './camera'
-import type { Figure, Fond, Forme, Formule, Presence, Trait } from './types'
+import type { Bout, Figure, Fond, Forme, Formule, MarquePoint, Presence, Trait } from './types'
 import { dessinerFond } from './fonds'
 import { codageDe, placesDesNoms, sommetsDe } from './formes'
 
@@ -211,17 +211,33 @@ export class Rendu {
       c.stroke()
     }
 
-    // Sommets : un point et un nom
-    if (f.sommets && f.noms) {
-      c.fillStyle = f.couleur
-      if (f.type === 'polygone') {
-        for (const p of sommetsDe(f)) { c.beginPath(); c.arc(p.x, p.y, Math.max(2.5, f.taille * 0.7), 0, Math.PI * 2); c.fill() }
+    // Extrémités d'une ligne ouverte : flèche, trait, crochet
+    if (f.type === 'polygone' && !f.ferme && f.pts.length >= 4) {
+      const s = sommetsDe(f)
+      for (const i of [0, s.length - 1]) {
+        const st = f.stylePoints?.[i]
+        if (st?.bout && st.bout !== 'aucun') dessinerBout(c, s[i], s[i === 0 ? 1 : s.length - 2], st.bout, st.couleur ?? f.couleur, f.taille * (st.taille ?? 1))
       }
-      c.font = 'italic 22px "KaTeX_Math", "Times New Roman", serif'
+    }
+
+    // Points : la marque choisie, ou un point si les sommets sont affichés
+    const points = f.type === 'polygone' ? sommetsDe(f) : [{ x: f.x, y: f.y }]
+    points.forEach((p, i) => {
+      const st = f.stylePoints?.[i]
+      // Sans réglage : un point si les sommets sont affichés — sauf sous une flèche ou un trait
+      const marque = st?.marque ?? (f.sommets && f.type === 'polygone' && !(st?.bout && st.bout !== 'aucun') ? 'point' : 'aucun')
+      if (marque !== 'aucun') dessinerMarque(c, p, marque, st?.couleur ?? f.couleur, Math.max(2.5, f.taille * 0.7) * (st?.taille ?? 1))
+    })
+
+    // Noms
+    if (f.sommets && f.noms) {
       c.textAlign = 'center'; c.textBaseline = 'middle'
       placesDesNoms(f, 17).forEach((p, i) => {
-        const nom = f.noms?.[i]
-        if (nom) c.fillText(nom.replace(/_(\d+)/, '$1'), p.x, p.y)
+        const nom = f.noms?.[i], st = f.styleNoms?.[i]
+        if (!nom || st?.cache) return
+        c.fillStyle = st?.couleur ?? f.couleur
+        c.font = `${st?.droit ? '' : 'italic '}${st?.taille ?? 22}px "${st?.droit ? 'KaTeX_Main' : 'KaTeX_Math'}", "Times New Roman", serif`
+        c.fillText(nom.replace(/_(\d+)/, '$1'), p.x, p.y)
       })
     }
     c.restore()
@@ -375,4 +391,44 @@ export class Rendu {
     const m = f.taille / 2
     return { x: f.x + x1 - m, y: f.y + y1 - m, l: x2 - x1 + 2 * m, h: y2 - y1 + 2 * m }
   }
+}
+
+/** La marque d'un point, de demi-taille r */
+function dessinerMarque(c: CanvasRenderingContext2D, p: { x: number; y: number }, m: MarquePoint, couleur: string, r: number) {
+  c.save()
+  c.fillStyle = couleur; c.strokeStyle = couleur; c.lineWidth = Math.max(1.5, r * 0.55); c.lineCap = 'round'
+  c.beginPath()
+  if (m === 'point') { c.arc(p.x, p.y, r, 0, Math.PI * 2); c.fill() }
+  else if (m === 'rond') { c.arc(p.x, p.y, r * 1.5, 0, Math.PI * 2); c.fillStyle = '#ffffff'; c.fill(); c.stroke() }
+  else {
+    const k = r * 2.2
+    if (m === 'croix') { c.moveTo(p.x - k, p.y - k); c.lineTo(p.x + k, p.y + k); c.moveTo(p.x + k, p.y - k); c.lineTo(p.x - k, p.y + k) }
+    else { c.moveTo(p.x - k * 1.2, p.y); c.lineTo(p.x + k * 1.2, p.y); c.moveTo(p.x, p.y - k * 1.2); c.lineTo(p.x, p.y + k * 1.2) }
+    c.stroke()
+  }
+  c.restore()
+}
+
+/** Le bout d'une ligne en `p`, qui arrive depuis `de` */
+function dessinerBout(c: CanvasRenderingContext2D, p: { x: number; y: number }, de: { x: number; y: number }, b: Bout, couleur: string, e: number) {
+  const l = Math.hypot(p.x - de.x, p.y - de.y) || 1
+  const u = { x: (p.x - de.x) / l, y: (p.y - de.y) / l }, n = { x: -u.y, y: u.x }
+  const k = 5 + e * 2.2
+  c.save()
+  c.fillStyle = couleur; c.strokeStyle = couleur; c.lineWidth = e; c.lineCap = 'round'; c.lineJoin = 'round'
+  c.beginPath()
+  if (b === 'fleche') {
+    c.moveTo(p.x + u.x * e * 0.6, p.y + u.y * e * 0.6)
+    c.lineTo(p.x - u.x * k * 1.6 + n.x * k * 0.75, p.y - u.y * k * 1.6 + n.y * k * 0.75)
+    c.lineTo(p.x - u.x * k * 1.6 - n.x * k * 0.75, p.y - u.y * k * 1.6 - n.y * k * 0.75)
+    c.closePath(); c.fill()
+  } else {
+    c.moveTo(p.x + n.x * k, p.y + n.y * k); c.lineTo(p.x - n.x * k, p.y - n.y * k)
+    if (b === 'crochet') {                      // [ ou ] : le crochet s'ouvre vers le segment
+      c.moveTo(p.x + n.x * k, p.y + n.y * k); c.lineTo(p.x + n.x * k - u.x * k * 0.6, p.y + n.y * k - u.y * k * 0.6)
+      c.moveTo(p.x - n.x * k, p.y - n.y * k); c.lineTo(p.x - n.x * k - u.x * k * 0.6, p.y - n.y * k - u.y * k * 0.6)
+    }
+    c.stroke()
+  }
+  c.restore()
 }

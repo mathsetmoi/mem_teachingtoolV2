@@ -260,3 +260,28 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
 .barre-lecture .vitesse span { min-width: 44px; }
 body.en-lecture .barre-outils, body.en-lecture .barre-haut, body.en-lecture .choix-formes,
 body.en-lecture .panneau-forme, body.en-lecture .barre-zoom { display: none !important; }
+
+/* ---------- Menu d'un morceau de figure ---------- */
+.menu-partie {
+  position: fixed; z-index: 22; width: max-content; max-width: calc(100vw - 16px);
+  padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px;
+  background: var(--papier); border: 1px solid var(--filet); border-radius: 14px;
+  box-shadow: 0 2px 0 var(--filet), 0 14px 30px rgba(27, 34, 48, 0.14);
+  user-select: none; -webkit-user-select: none;
+}
+.menu-partie h3 { margin: 0 0 2px; font-size: 15px; }
+.rang-menu { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.rang-menu > span:first-child { width: 72px; font-size: 13px; color: var(--encre-douce); }
+.rang-menu > span:first-child:empty { display: none; }
+.choix {
+  min-width: 38px; height: 38px; padding: 0 8px; display: grid; place-items: center;
+  border: 1px solid transparent; border-radius: 9px; background: transparent; cursor: pointer; font-weight: 700;
+}
+.choix:hover { background: #e9eef5; }
+.choix.actif { border-color: var(--bleu); background: #eaf1fb; }
+.choix svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.choix .rond { display: block; width: 18px; height: 18px; border-radius: 50%; }
+.choix .meme { font-size: 13px; color: var(--encre-douce); }
+.choix i { font-family: 'KaTeX_Math', 'Times New Roman', serif; font-size: 18px; }
+.menu-partie .saisie { height: 36px; width: 120px; user-select: text; -webkit-user-select: text; }
+.menu-partie .saisie.nom { font-family: 'KaTeX_Math', 'Times New Roman', serif; font-style: italic; font-size: 18px; }
