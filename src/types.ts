@@ -54,6 +54,8 @@ export interface Habillage {
   /** Réglages propres à chaque nom */
   styleNoms?: (StyleNom | null)[]
   codage?: boolean           // afficher côtés égaux et angles droits
+  /** L'image sur laquelle ce point (ou ce polygone) a été repéré : il la suit */
+  lie?: string
   /** Le tracé à main levée d'origine, si la figure a été reconnue */
   brut?: { pts: number[]; taille: number; pression: boolean }
 }

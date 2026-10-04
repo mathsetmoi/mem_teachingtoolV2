@@ -98,6 +98,15 @@ tracée sur la page, à une verticale ou à un axe du repère ; symétrie centra
 rotation ou homothétie autour d'un point de la page. L'image est vraiment
 retournée par une symétrie axiale, et un symétrique ne recopie pas les données.
 
+**Repérer la figure dans l'image.** À l'import (ou avec « Repérer les points »
+du panneau), les sommets des figures dessinées sur l'image et les points
+marqués (point, croix × ou +) sont cherchés et posés, nommés A, B, C…, sur
+l'image : ce sont de vraies figures, liées à elle (elles la suivent quand on la
+déplace ou la transforme). La construction pas à pas du symétrique part alors
+de ces sommets (A', B', C'). Aucune IA : seuil d'Otsu, composantes connexes,
+suivi de contour et Ramer-Douglas-Peucker (`src/detection.ts`). Les lettres
+imprimées ne sont pas prises pour des points ; elles ne sont pas lues non plus.
+
 ## Instruments
 
 Le bouton « Instruments » de la barre du haut pose ou range une **règle**
@@ -242,6 +251,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/instruments.ts` | Règle, équerre, rapporteur, compas |
 | `src/construction.ts` | Programme de construction → étapes et gestes |
 | `src/constructeur.ts` | Joue les étapes, avec ou sans instruments |
+| `src/detection.ts` | Repère sommets et points marqués dans une image |
 | `src/ui.ts` | Barres d'outils, partage, éditeur de formules |
 | `serveur/server.js` | Relais WebSocket et sauvegarde des salles |
 

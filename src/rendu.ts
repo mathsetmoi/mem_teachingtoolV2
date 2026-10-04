@@ -163,9 +163,14 @@ export class Rendu {
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
     dessinerFond(c, this.fond, cam, this.l, this.h, this.origine)
     c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
-    for (const f0 of this.formes) {
+    // Les images d'abord, comme des feuilles posées sous les tracés : une
+    // image (et son papier) ne recouvre jamais un trait de construction
+    const images = this.formes.filter(f => f.type === 'image'), traces = this.formes.filter(f => f.type !== 'image')
+    for (const f0 of [...images, ...traces]) {
       const f = this.remplacement?.id === f0.id ? this.remplacement : f0
-      const dec = this.selection.has(f.id) ? this.decalage : null
+      // Ce qui est lié à une image sélectionnée bouge avec elle
+      const lie = f.type === 'polygone' || f.type === 'cercle' ? f.lie : undefined
+      const dec = this.selection.has(f.id) || (lie && this.selection.has(lie)) ? this.decalage : null
       if (f.type === 'trait') this.dessinerTrait(c, f, dec)
       else if (f.type === 'segment') {
         const x = f.x + (dec?.dx ?? 0), y = f.y + (dec?.dy ?? 0)

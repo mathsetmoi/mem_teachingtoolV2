@@ -15,7 +15,7 @@ import type { P, Reconnue, Transformation } from './formes'
 import type { Bord, EtatInstrument, NomInstrument, Partie } from './instruments'
 import { angleLisible, bords, etatParDefaut, toucher } from './instruments'
 import * as Y from 'yjs'
-import { bornerDecalage, image, nomsLibres, placesDesNoms, reconnaitre, sommetsDe, versRelatif } from './formes'
+import { bornerDecalage, image, nomsLibres, placesDesNoms, ranger, reconnaitre, sommetsDe, versRelatif } from './formes'
 
 export const COULEURS = [
   { nom: 'Noir', valeur: '#1b2230' },
@@ -749,7 +749,7 @@ export class App {
         const { dx, dy } = this.rendu.decalage
         this.rendu.decalage = { dx: 0, dy: 0 }
         if (g.bouge && (dx || dy)) {
-          this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id))
+          this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id) || this.lieeA(f))
             .map(f => ({ id: f.id, patch: { x: f.x + dx, y: f.y + dy } })))
         } else this.rendu.toutRedessiner()
         break
@@ -1034,6 +1034,8 @@ export class App {
         x: v.x + v.l / 2 - l * e / 2, y: v.y + v.h / 2 - h * e / 2, z: Date.now(), auteur: this.tableau.moi }
       this.poserFigure(f)
       this.ui.message('Image posée : « Transformer » construit son symétrique')
+      // Une figure nette sur l'image ? On en repère tout de suite les sommets
+      setTimeout(() => this.repererImage(f as Extract<Forme, { type: 'image' }>, true), 50)
     } catch { this.ui.message('Impossible de lire cette image.') }
     finally { URL.revokeObjectURL(url) }
   }
@@ -1224,7 +1226,59 @@ export class App {
   }
 
   transformer(f: Forme, t: Transformation) {
-    this.poserFigure(image(f, t, this.tableau.moi))
+    const img = image(f, t, this.tableau.moi)
+    // Les points repérés sur une image ont aussi leur image, liée à la nouvelle
+    for (const g of this.liees(f.id)) this.tableau.poser(this.page, { ...image(g, t, this.tableau.moi), lie: img.id } as Forme)
+    this.poserFigure(img)
+  }
+
+  /** Les figures repérées sur une image (elles la suivent) */
+  liees(id: string): Figure[] {
+    return this.formes.filter((g): g is Figure => (g.type === 'polygone' || g.type === 'cercle') && g.lie === id)
+  }
+
+  /** La forme suit-elle une image sélectionnée ? */
+  private lieeA(f: Forme) {
+    return (f.type === 'polygone' || f.type === 'cercle') && !!f.lie && this.selection.has(f.lie)
+  }
+
+  /** Repère les sommets et points dessinés sur une image, et les pose,
+   *  nommés, liés à elle. `auto` : seulement si le résultat est net. */
+  async repererImage(f: Extract<Forme, { type: 'image' }>, auto = false): Promise<number> {
+    const img = this.pixels(f.src)
+    if (!img) return 0
+    if (!img.complete) await new Promise(r => { img.onload = () => { this.rendu.toutRedessiner(); r(null) } })
+    const { reperer } = await import('./detection')
+    const r = reperer(img)
+    const [a, b, c, d] = f.m
+    const monde = (p: P) => ({ x: f.x + a * p.x + c * p.y, y: f.y + b * p.x + d * p.y })
+    const nb = r.polygones.reduce((s, p) => s + p.length, 0) + r.points.length
+    if (auto && (!nb || r.polygones.length > 3 || nb > 16 || (!r.polygones.length && r.points.length < 2))) return 0
+    if (!nb) { this.ui.message('Je ne trouve ni sommets ni points marqués sur cette image.'); return 0 }
+    // On remplace ce qui avait déjà été repéré sur cette image
+    const anciens = this.liees(f.id).map(g => g.id)
+    this.tableau.nouveauGeste()
+    this.tableau.doc.transact(() => {
+      if (anciens.length) this.tableau.supprimer(this.page, anciens)
+      const pris = this.formes.filter(g => !anciens.includes(g.id))
+      const noms: string[] = []
+      for (const pg of r.polygones) {
+        const pts = ranger(pg.map(monde))
+        const fig = this.nouvelleFigure({ type: 'polygone', ferme: true, pts }, { couleur: '#1f5fbf', taille: 2 })
+        fig.sommets = true; fig.lie = f.id
+        fig.noms = nomsLibres(pts.length, [...pris, { ...fig, noms: noms.slice() } as Forme])
+        noms.push(...fig.noms); this.tableau.poser(this.page, fig)
+      }
+      for (const p of r.points) {
+        const fig = this.nouvelleFigure({ type: 'polygone', ferme: false, pts: [monde(p)] }, { couleur: '#1f5fbf', taille: 2 })
+        fig.sommets = true; fig.lie = f.id
+        fig.noms = nomsLibres(1, [...pris, { ...fig, noms: noms.slice() } as Forme])
+        noms.push(...fig.noms); this.tableau.poser(this.page, fig)
+      }
+      const fig = r.polygones.length ? (r.polygones.length > 1 ? `${r.polygones.length} figures repérées` : 'Figure repérée') + ' — ' : ''
+      this.ui.message(`${fig}${nb} point${nb > 1 ? 's' : ''} : ${noms.join(', ')}${auto ? ' (Ctrl+Z pour les enlever)' : ''}`)
+    }, 'locale')
+    return nb
   }
 
   /** Origine du repère de la page (pour les transformations), si elle en a un */
@@ -1291,7 +1345,7 @@ export class App {
     if (fleches[e.key] && this.selection.size && this.peutEcrire) {
       e.preventDefault()
       const k = e.shiftKey ? CM : CM / 10, [dx, dy] = fleches[e.key]
-      this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id)).map(f => ({ id: f.id, patch: { x: f.x + dx * k, y: f.y + dy * k } })))
+      this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id) || this.lieeA(f)).map(f => ({ id: f.id, patch: { x: f.x + dx * k, y: f.y + dy * k } })))
       return
     }
     if (ctrl || !this.peutEcrire) return

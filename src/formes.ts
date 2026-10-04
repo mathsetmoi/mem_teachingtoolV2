@@ -151,7 +151,7 @@ function coins(p: P[], eps: number): P[] | null {
 
 /** Sens direct (inverse des aiguilles d'une montre à l'écran), en
  *  commençant par le sommet en bas à gauche : l'usage pour nommer ABCD. */
-function ranger(s: P[]): P[] {
+export function ranger(s: P[]): P[] {
   let aire = 0
   for (let i = 0; i < s.length; i++) { const a = s[i], b = s[(i + 1) % s.length]; aire += a.x * b.y - b.x * a.y }
   const r = aire > 0 ? [...s].reverse() : [...s]            // y vers le bas : aire < 0 = sens direct

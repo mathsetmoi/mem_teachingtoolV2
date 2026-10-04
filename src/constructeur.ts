@@ -417,7 +417,7 @@ Trace la médiatrice de [AB]."></textarea>
           await this.jouer({ k: 'compas', c: g.cercle.c, r: g.cercle.r, a0: -Math.PI / 2, a1: 1.5 * Math.PI }, [], jeton, false)
         }
         if (jeton !== this.jeton) break
-        const f = { ...g.f, id: g.f.id + '-' + Date.now().toString(36) } as Figure
+        const f = { ...g.f } as Figure
         if ((f.type === 'polygone' || f.type === 'cercle') && f.sommets) f.sommets = false
         ids.push(this.app.poserFigureSeule(f))
         break

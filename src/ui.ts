@@ -403,6 +403,7 @@ export class UI implements Interface {
     }
     if (f.type !== 'image') action('Contour', 'Couleur, épaisseur, pointillés', () => ouvrir('contour'), this.section === 'contour')
     if (figure && ((f.type === 'cercle' && !f.arc) || (f.type === 'polygone' && f.ferme))) action('Fond', 'Remplir la figure', () => ouvrir('fond'), this.section === 'fond')
+    if (f.type === 'image') action(app.liees(f.id).length ? 'Repérer à nouveau' : 'Repérer les points', 'Trouver les sommets et les points marqués sur l\'image', () => app.repererImage(f))
     action('Transformer', 'Translation, rotation, symétrie, homothétie', () => ouvrir('transformer'), this.section === 'transformer')
     if (figure?.brut) action('Main levée', 'Revenir au tracé d\'origine', () => app.revenirMainLevee(figure))
     action('Dupliquer', 'Une copie, décalée d\'un centimètre', () => app.dupliquer(f))
@@ -599,8 +600,22 @@ export class UI implements Interface {
       const r = transformation(); if (!r) return
       this.section = null
       app.selection.clear(); this.maj()
-      const titre = `${types.find(x => x[0] === T.type)![1]} : construction de l'image${f.type === 'polygone' && f.sommets && f.noms ? ' de ' + f.noms.join('') : ''}.`
-      this.constructeur.jouerEtapes(etapesImage(f, r.t, image(f, r.t, app.tableau.moi), r.noms), titre)
+      // Une image dont on a repéré la figure : on construit l'image de CETTE
+      // figure (ses sommets nommés), et l'image se pose avec elle à la fin
+      let source: Forme = f, aussi: Forme[] = []
+      const finale = image(f, r.t, app.tableau.moi)
+      if (f.type === 'image') {
+        const liees = app.liees(f.id)
+        const pg = liees.find(g => g.type === 'polygone' && g.ferme) ?? liees[0]
+        if (pg) {
+          source = pg
+          aussi = [finale, ...liees.filter(g => g !== pg).map(g => ({ ...image(g, r.t, app.tableau.moi), lie: finale.id }) as Forme)]
+        }
+      }
+      const imgSource = source === f ? finale : ({ ...image(source, r.t, app.tableau.moi), lie: finale.id } as Forme)
+      const noms = source.type === 'polygone' && source.sommets && source.noms ? ' de ' + source.noms.join('') : ''
+      const titre = `${types.find(x => x[0] === T.type)![1]} : construction de l'image${noms}.`
+      this.constructeur.jouerEtapes(etapesImage(source, r.t, imgSource, r.noms, aussi), titre)
     })
     return s
   }

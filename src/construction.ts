@@ -381,7 +381,7 @@ export const EXEMPLES: { nom: string; texte: string }[] = [
 // figure image qui les relie. `noms` dit comment on parle de l'axe et
 // du centre dans les consignes (« (d) », « O »).
 // =============================================================
-export function etapesImage(f: Forme, t: Transformation, imageFinale: Forme, noms: { axe?: string; centre?: string }): Etape[] {
+export function etapesImage(f: Forme, t: Transformation, imageFinale: Forme, noms: { axe?: string; centre?: string }, aussi: Forme[] = []): Etape[] {
   const g = applicateur(t)
   const etapes: Etape[] = []
   // Les points dont on construit l'image
@@ -457,6 +457,6 @@ export function etapesImage(f: Forme, t: Transformation, imageFinale: Forme, nom
   const nomsImage = points.every(x => x.nom) ? points.map(x => x.nom + "'").join('') : ''
   etapes.push({ consigne: f.type === 'image' ? "L'image de la figure se pose sur ses quatre coins." :
     imageFinale.type === 'cercle' ? `Au compas, même rayon : le cercle image${nomsImage ? ' de centre ' + nomsImage : ''}.` :
-    `Relie les points obtenus : ${nomsImage ? 'la figure ' + nomsImage : "l'image"} est construite.`, gestes: [fin] })
+    `Relie les points obtenus : ${nomsImage ? 'la figure ' + nomsImage : "l'image"} est construite.`, gestes: [fin, ...aussi.map(a => ({ k: 'forme', f: a }) as Geste)] })
   return etapes
 }
