@@ -409,7 +409,11 @@ export function codageDe(f: Polygone): Codage {
 }
 
 /** Où écrire le nom de chaque sommet : à l'extérieur, sur la bissectrice */
-export function placesDesNoms(f: Polygone | Cercle, ecart: number): P[] {
+/** Écart entre un point et son nom, en unités monde : assez pour que la
+ *  lettre ne touche ni la croix du point ni les côtés */
+export const ECART_NOMS = 24
+
+export function placesDesNoms(f: Polygone | Cercle, ecart = ECART_NOMS): P[] {
   const auto = placesAuto(f, ecart)
   const points = f.type === 'cercle' ? [{ x: f.x, y: f.y }] : sommetsDe(f)
   return auto.map((p, i) => {
@@ -419,7 +423,7 @@ export function placesDesNoms(f: Polygone | Cercle, ecart: number): P[] {
 }
 
 /** Un nom tourne autour de son point, sans s'en éloigner ni le recouvrir */
-export const ECART_NOM = { min: 10, max: 70 }
+export const ECART_NOM = { min: 14, max: 70 }
 export function bornerDecalage(o: P): P {
   const l = Math.hypot(o.x, o.y) || 1
   const d = Math.max(ECART_NOM.min, Math.min(ECART_NOM.max, l))
@@ -432,7 +436,7 @@ function placesAuto(f: Polygone | Cercle, ecart: number): P[] {
   const c = centreDe(f)
   return s.map((b, i) => {
     let d: P
-    if (n === 1) d = { x: -1, y: -1 }
+    if (n === 1) return { x: b.x + ecart * 0.8, y: b.y - ecart * 0.8 }   // un point seul : en haut à droite
     else if (!f.ferme && (i === 0 || i === n - 1)) {
       const o = s[i === 0 ? 1 : n - 2]
       d = { x: b.x - o.x, y: b.y - o.y }

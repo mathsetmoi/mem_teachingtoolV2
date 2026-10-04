@@ -191,7 +191,9 @@ C…), sur le tableau ou sur une image.
 Côté prof : stylo sensible à la pression, surligneur, gomme, segments (Maj pour
 les angles de 15°, aimant au quadrillage), formules LaTeX avec aperçu et
 raccourcis, sélection et déplacement, annuler/rétablir, pages, fonds (blanc,
-petits carreaux, Seyès, repère gradué), zoom de 10 % à 2000 %.
+petits carreaux, Seyès, repère gradué), zoom de 10 % à 2000 % — le quadrillage
+suit le zoom comme une carte : les carreaux trop petits s'estompent et laissent
+place à de plus grands (1 cm, 5 cm, 10 cm…), la page n'est jamais blanche.
 
 Côté élève : le lien du prof, un prénom, et l'élève suit la page et le cadrage du
 prof. S'il se déplace lui-même, un bouton le ramène. Le prof décide si les élèves

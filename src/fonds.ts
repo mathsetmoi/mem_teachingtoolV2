@@ -17,7 +17,7 @@ const ROUGE_MARGE = 'rgba(214, 69, 69, 0.75)'
 function lignes(ctx: CanvasRenderingContext2D, cam: Camera, l: number, h: number,
   pas: number, couleur: string, epaisseur: number, verticales: boolean, horizontales: boolean) {
   const ecart = pas * cam.z
-  if (ecart < 5) return                     // trop serré : on n'encombre pas
+  if (ecart < 3) return                     // trop serré : rien de lisible
   const v = cam.visible(l, h)
   ctx.strokeStyle = couleur
   ctx.lineWidth = epaisseur
@@ -37,18 +37,50 @@ function lignes(ctx: CanvasRenderingContext2D, cam: Camera, l: number, h: number
   ctx.stroke()
 }
 
+/**
+ * Un quadrillage qui suit le zoom, comme une carte : de la suite de pas
+ * (0,5 cm, 1 cm, 5 cm…), le plus fin encore lisible est tracé en fondu
+ * — il s'efface doucement quand on dézoome — et le suivant, plus fort,
+ * prend le relais. La page n'est jamais blanche, et rien ne saute.
+ */
+function grilleAdaptative(ctx: CanvasRenderingContext2D, cam: Camera, l: number, h: number,
+  pas: number[], fine: string, forte: string, verticales = true, horizontales = true) {
+  const LISIBLE = 7                           // pixels au moins entre deux lignes
+  let i = pas.findIndex(p => p * cam.z >= LISIBLE)
+  if (i < 0) i = pas.length - 1
+  const ecart = pas[i] * cam.z
+  // Le niveau fin apparaît entre 7 et 18 px d'écart
+  ctx.save()
+  ctx.globalAlpha = Math.max(0, Math.min(1, (ecart - LISIBLE) / 11))
+  lignes(ctx, cam, l, h, pas[i], fine, 1, verticales, horizontales)
+  ctx.globalAlpha = 1
+  if (pas[i + 1]) lignes(ctx, cam, l, h, pas[i + 1], forte, 1, verticales, horizontales)
+  else lignes(ctx, cam, l, h, pas[i], forte, 1, verticales, horizontales)
+  ctx.restore()
+}
+
+// Les pas successifs, en unités monde (40 = 1 cm)
+const PAS_CARREAUX = [CM / 2, CM, 5 * CM, 10 * CM, 50 * CM, 100 * CM, 500 * CM]
+const PAS_REPERE = [CM / 2, CM, 5 * CM, 10 * CM, 50 * CM, 100 * CM, 500 * CM]
+const PAS_SEYES = [CM * 0.8, 4 * CM, 8 * CM, 40 * CM, 80 * CM, 400 * CM]
+
 export function dessinerFond(ctx: CanvasRenderingContext2D, fond: Fond, cam: Camera, l: number, h: number,
   origine = { x: 0, y: 0 }) {
   ctx.fillStyle = PAPIER
   ctx.fillRect(0, 0, l, h)
 
   if (fond === 'carreaux') {
-    lignes(ctx, cam, l, h, CM / 2, BLEU_LIGNE, 1, true, true)          // 5 mm
+    // 5 mm, sans renfort tant qu'on les voit ; plus loin, des carreaux plus grands
+    if (CM / 2 * cam.z >= 18) lignes(ctx, cam, l, h, CM / 2, BLEU_LIGNE, 1, true, true)
+    else grilleAdaptative(ctx, cam, l, h, PAS_CARREAUX, BLEU_LIGNE, BLEU_LIGNE)
   }
 
   if (fond === 'seyes') {
+    // Les lignes de 2 mm s'effacent en fondu ; le quadrillage de 8 mm s'adapte
+    ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, (CM / 5 * cam.z - 4) / 6))
     lignes(ctx, cam, l, h, CM / 5, BLEU_LIGNE, 1, false, true)         // 2 mm
-    lignes(ctx, cam, l, h, CM * 0.8, VIOLET_SEYES, 1, true, true)      // 8 mm
+    ctx.restore()
+    grilleAdaptative(ctx, cam, l, h, PAS_SEYES, VIOLET_SEYES, VIOLET_SEYES)
     const marge = cam.x                                                 // marge en x = 0
     if (marge > -2 && marge < l + 2) {
       ctx.strokeStyle = ROUGE_MARGE; ctx.lineWidth = 1.5
@@ -57,8 +89,7 @@ export function dessinerFond(ctx: CanvasRenderingContext2D, fond: Fond, cam: Cam
   }
 
   if (fond === 'repere') {
-    lignes(ctx, cam, l, h, CM / 2, BLEU_LIGNE, 1, true, true)
-    lignes(ctx, cam, l, h, CM, BLEU_FORT, 1, true, true)
+    grilleAdaptative(ctx, cam, l, h, PAS_REPERE, BLEU_LIGNE, BLEU_FORT)
     dessinerAxes(ctx, cam, l, h, origine)
   }
 }

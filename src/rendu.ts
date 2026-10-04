@@ -291,7 +291,7 @@ export class Rendu {
     // Noms
     if (f.sommets && f.noms) {
       c.textAlign = 'center'; c.textBaseline = 'middle'
-      placesDesNoms(f, 17).forEach((p, i) => {
+      placesDesNoms(f).forEach((p, i) => {
         const nom = f.noms?.[i], st = f.styleNoms?.[i]
         if (!nom || st?.cache) return
         c.fillStyle = st?.couleur ?? f.couleur
@@ -402,7 +402,7 @@ export class Rendu {
         for (const p of pts) { c.beginPath(); c.arc(p.x, p.y, 5.5 / cam.z, 0, Math.PI * 2); c.fill(); c.stroke() }
         if (f.sommets && f.noms) {
           c.setLineDash([2 / cam.z, 3 / cam.z]); c.strokeStyle = 'rgba(59, 111, 182, 0.55)'
-          for (const p of placesDesNoms(f, 17)) { c.beginPath(); c.arc(p.x, p.y, 14, 0, Math.PI * 2); c.stroke() }
+          for (const p of placesDesNoms(f)) { c.beginPath(); c.arc(p.x, p.y, 14, 0, Math.PI * 2); c.stroke() }
           c.setLineDash([])
         }
       }
@@ -415,7 +415,7 @@ export class Rendu {
       if (f && (f.type === 'polygone' || f.type === 'cercle')) {
         let p: { x: number; y: number } | undefined, r = 9 / cam.z
         if (pr.quoi === 'rayon' && f.type === 'cercle') p = { x: f.x + f.r * Math.SQRT1_2, y: f.y - f.r * Math.SQRT1_2 }
-        else if (pr.quoi === 'nom') { p = placesDesNoms(f, 17)[pr.i]; r = 15 }
+        else if (pr.quoi === 'nom') { p = placesDesNoms(f)[pr.i]; r = 15 }
         else if (pr.quoi === 'sommet') p = f.type === 'cercle' ? { x: f.x, y: f.y } : sommetsDe(f)[pr.i]
         if (p) {
           c.fillStyle = 'rgba(59, 111, 182, 0.16)'; c.strokeStyle = '#3b6fb6'; c.lineWidth = 2 / cam.z

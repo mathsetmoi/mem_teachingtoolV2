@@ -711,7 +711,11 @@ export class App {
     }
     if (g.type === 'dessin' && e.pointerId !== g.pointeur) return
     this.geste = null
-    if (annule) { this.abandonnerGeste(g); return }
+    // Un geste coupé par le navigateur (un second doigt sur le pavé tactile,
+    // une fenêtre système…) garde ce qu'il a tracé : un arc de compas, un
+    // trait à la règle ou au stylo ne doit pas s'effacer sous les yeux
+    const garder = g.type === 'instrument' || g.type === 'longer' || g.type === 'dessin'
+    if (annule && !garder) { this.abandonnerGeste(g); return }
 
     const m = this.monde(e)
     switch (g.type) {
@@ -920,7 +924,7 @@ export class App {
   private priseDans(f: Figure, s: P): { prise: Prise; f: Figure } | null {
     const pres = (w: P, r: number) => { const e = this.cam.versEcran(w.x, w.y); return Math.hypot(e.x - s.x, e.y - s.y) < r }
     if (f.sommets && f.noms) {
-      const places = placesDesNoms(f, 17)
+      const places = placesDesNoms(f)
       for (let i = 0; i < places.length; i++) {
         if (f.noms[i] && !f.styleNoms?.[i]?.cache && pres(places[i], Math.max(12, 15 * this.cam.z))) return { prise: { quoi: 'nom', i }, f }
       }
