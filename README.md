@@ -59,6 +59,17 @@ tout objet choisi avec l'outil de sélection :
 
 Les transformations et le contour valent aussi pour un tracé à main levée.
 
+Dans *Transformer*, les listes ne gardent que ce qui est au tableau : les
+droites tracées sur la page et les côtés de la figure (axes), son centre, ses
+sommets et les points nommés de la page (centres), le repère s'il y en a un.
+**Désigner** fait cliquer l'axe ou le centre directement sur le tableau (ce qui
+est visé s'éclaire) ; **Tracer** le crée tout de suite (deux clics pour un axe,
+un clic pour un centre). **Pas à pas** construit l'image comme au tableau,
+avec ou sans les instruments : pour chaque sommet, l'équerre et le compas
+(symétrie axiale), la règle et le compas (symétrie centrale), le rapporteur et
+le compas (rotation)… puis la figure image se trace à la règle. Une image
+importée se construit par ses quatre coins.
+
 **Chaque morceau se prend à la main.** Sur la figure sélectionnée (et sur
 toutes, avec l'outil Sélection), on attrape un sommet ou une extrémité, le
 centre ou le rayon d'un cercle, le nom d'un point :

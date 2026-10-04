@@ -63,6 +63,26 @@ export class Constructeur {
 
   get ouvert() { return !this.panneau.hidden }
 
+  get instruments() { return this.avecInstruments }
+  set instruments(v: boolean) {
+    this.avecInstruments = v
+    try { localStorage.setItem(CLE_INSTRUMENTS, v ? 'oui' : 'non') } catch { /* refusé */ }
+    const c = this.panneau.querySelector('.instruments input') as HTMLInputElement | null
+    if (c) c.checked = v
+  }
+
+  /** Joue des étapes déjà prêtes (l'image d'une figure, par exemple) */
+  jouerEtapes(etapes: Etape[], titre: string) {
+    this.interrompre()
+    this.ouvrir()
+    this.champ.value = titre
+    this.messages = []
+    this.programme = { etapes, erreurs: [] }
+    this.faites = 0; this.posees = []
+    this.afficher()
+    this.suivante()
+  }
+
   ouvrir() {
     this.panneau.hidden = false
     this.noter()
@@ -359,7 +379,7 @@ Trace la médiatrice de [AB]."></textarea>
     this.app.rendu.redessinerInstruments()
   }
 
-  private async tracer(a: P, b: P, aide: boolean | undefined, ids: string[], jeton: number, mesure: boolean) {
+  private async tracer(a: P, b: P, aide: boolean | undefined, ids: string[], jeton: number, mesure: boolean, poser = true) {
     const r = this.app.rendu
     const l = Math.hypot(b.x - a.x, b.y - a.y)
     await this.animer(this.duree(Math.min(1300, 300 + l / CM * 70)), jeton, t => {
@@ -369,7 +389,7 @@ Trace la médiatrice de [AB]."></textarea>
       r.redessinerDirect()
     })
     r.apercu = null; r.mesure = null
-    if (jeton === this.jeton) ids.push(this.app.poserFigureSeule(this.app.nouvelleFigure({ type: 'polygone', ferme: false, pts: [a, b] }, aide ? AIDE : undefined)))
+    if (jeton === this.jeton && poser) ids.push(this.app.poserFigureSeule(this.app.nouvelleFigure({ type: 'polygone', ferme: false, pts: [a, b] }, aide ? AIDE : undefined)))
   }
 
   /** Le centre des points de la construction en cours */
@@ -382,12 +402,30 @@ Trace la médiatrice de [AB]."></textarea>
     return { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length }
   }
 
-  private async jouer(g: Geste, ids: string[], jeton: number) {
+  private async jouer(g: Geste, ids: string[], jeton: number, poser = true) {
     const r = this.app.rendu
     switch (g.k) {
+      case 'forme': {
+        // L'image finale : ses côtés à la règle (ou son cercle au compas), puis
+        // la vraie figure. Ses noms restent rangés (les points sont déjà là).
+        for (const [a, b] of g.cotes ?? []) {
+          if (jeton !== this.jeton) break
+          await this.amener('regle', { x: a.x, y: a.y, a: Math.atan2(b.y - a.y, b.x - a.x), r: 0 }, jeton)
+          await this.tracer(a, b, false, [], jeton, false, false)
+        }
+        if (g.cercle && jeton === this.jeton) {
+          await this.jouer({ k: 'compas', c: g.cercle.c, r: g.cercle.r, a0: -Math.PI / 2, a1: 1.5 * Math.PI }, [], jeton, false)
+        }
+        if (jeton !== this.jeton) break
+        const f = { ...g.f, id: g.f.id + '-' + Date.now().toString(36) } as Figure
+        if ((f.type === 'polygone' || f.type === 'cercle') && f.sommets) f.sommets = false
+        ids.push(this.app.poserFigureSeule(f))
+        break
+      }
       case 'point': {
         const f = this.app.nouvelleFigure({ type: 'polygone', ferme: false, pts: [g.p] })
-        f.sommets = true; f.noms = [g.nom]
+        f.sommets = !!g.nom; f.noms = [g.nom]
+        if (!g.nom) f.stylePoints = [{ marque: 'croix' }]
         ids.push(this.app.poserFigureSeule(f))
         await pause(this.duree(220))
         break
@@ -447,6 +485,7 @@ Trace la médiatrice de [AB]."></textarea>
         })
         r.apercu = null
         if (jeton !== this.jeton) break
+        if (!poser) break
         const f = this.app.nouvelleFigure({ type: 'cercle', x: g.c.x, y: g.c.y, r: g.r }, g.aide ? AIDE : undefined)
         if (!plein) (f as Extract<Figure, { type: 'cercle' }>).arc = { a0: g.a0, a1: g.a1 }
         ids.push(this.app.poserFigureSeule(f))
@@ -462,7 +501,8 @@ export type { Etape }
 function fantomes(prog: Programme, app: App): Figure[] {
   const r: Figure[] = []
   for (const e of prog.etapes) for (const g of e.gestes) {
-    if (g.k === 'regle' || g.k === 'equerre') r.push(app.nouvelleFigure({ type: 'polygone', ferme: false, pts: [g.a, g.b] }, g.aide ? AIDE : undefined))
+    if (g.k === 'forme' && (g.f.type === 'polygone' || g.f.type === 'cercle')) r.push(g.f as Figure)
+    else if (g.k === 'regle' || g.k === 'equerre') r.push(app.nouvelleFigure({ type: 'polygone', ferme: false, pts: [g.a, g.b] }, g.aide ? AIDE : undefined))
     else if (g.k === 'point') { const f = app.nouvelleFigure({ type: 'polygone', ferme: false, pts: [g.p] }); f.sommets = true; f.noms = [g.nom]; r.push(f) }
     else if (g.k === 'compas') {
       const f = app.nouvelleFigure({ type: 'cercle', x: g.c.x, y: g.c.y, r: g.r }, g.aide ? AIDE : undefined)

@@ -337,3 +337,8 @@ body.en-lecture .choix-instruments { display: none !important; }
 @media (max-width: 760px) { .consigne-construction { max-width: calc(100vw - 24px); top: auto; bottom: 16px; font-size: 16px; } }
 body.en-lecture .panneau-construction, body.en-lecture .consigne-construction { display: none !important; }
 .note-existants { margin: -6px 0 0 30px; font-size: 13px; line-height: 1.4; color: var(--encre-douce); }
+.choix-sur-tableau { grid-template-columns: 150px 1fr auto auto !important; }
+.choix-sur-tableau em { font-size: 13px; color: var(--encre-douce); }
+.secondaire.petit { height: 38px; padding: 0 10px; font-size: 13px; }
+.transformer .actions { flex-wrap: wrap; }
+@media (max-width: 640px) { .choix-sur-tableau { grid-template-columns: 1fr auto auto !important; } }

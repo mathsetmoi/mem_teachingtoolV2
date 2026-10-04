@@ -8,7 +8,7 @@
 import type { Tableau } from './document'
 import { Camera } from './camera'
 import { Rendu } from './rendu'
-import { chevauche, rectangle, touche } from './geometrie'
+import { chevauche, distanceAuSegment, rectangle, touche } from './geometrie'
 import type { Figure, Fond, Forme, Formule, Habillage, Outil, Polygone, Presence, Role, Trait, TypeForme } from './types'
 import { CM, uid } from './types'
 import type { P, Reconnue, Transformation } from './formes'
@@ -1038,15 +1038,85 @@ export class App {
     finally { URL.revokeObjectURL(url) }
   }
 
+  /** Désigner sur le tableau une droite ou un point parmi des candidats :
+   *  ce qui est visé s'éclaire ; un clic le choisit ; Échap renonce. */
+  designer(genre: 'axe' | 'centre', candidats: { cle: string; a: P; b?: P }[], fini: (cle: string) => void) {
+    if (!candidats.length) return this.ui.message(genre === 'axe' ? 'Aucune droite sur la page : trace l\'axe.' : 'Aucun point sur la page : trace le centre.')
+    const vise = (w: P) => {
+      const s = this.cam.versEcran(w.x, w.y)
+      let mieux: { cle: string; a: P; b?: P } | null = null, d = 16
+      for (const c of candidats) {
+        const A = this.cam.versEcran(c.a.x, c.a.y)
+        const e = c.b ? (() => { const B = this.cam.versEcran(c.b!.x, c.b!.y); return distanceAuSegment(s.x, s.y, A.x, A.y, B.x, B.y) })() : Math.hypot(A.x - s.x, A.y - s.y)
+        if (e < d) { d = e; mieux = c }
+      }
+      return mieux
+    }
+    const fin = () => { this.rendu.cible = null; this.rendu.redessinerDirect() }
+    const mode = {
+      bouge: (w: P) => { const c = vise(w); this.rendu.cible = c ? { a: c.a, b: c.b } : null; this.rendu.redessinerDirect() },
+      clic: (w: P) => {
+        const c = vise(w)
+        if (!c) { this.placement = mode; return this.ui.message(genre === 'axe' ? 'Clique sur une droite (ou Échap).' : 'Clique sur un point (ou Échap).') }
+        fin(); fini(c.cle)
+      },
+      annuler: fin,
+    }
+    this.placement = mode
+    this.ui.message(genre === 'axe' ? 'Clique sur la droite qui sert d\'axe.' : 'Clique sur le point qui sert de centre.')
+  }
+
+  /** Tracer un axe tout de suite : deux clics. Il devient un segment de la page. */
+  tracerAxe(fini: (id: string) => void) {
+    let A: P | null = null
+    const mode = {
+      bouge: (w: P) => {
+        if (!A) return
+        const f = this.nouvelleFigure({ type: 'polygone', ferme: false, pts: [A, this.aimanter(w)] }, { couleur: '#1f5fbf', taille: 2.5 })
+        f.tirets = true; this.rendu.apercu = f; this.rendu.redessinerDirect()
+      },
+      clic: (w: P) => {
+        const p = this.aimanter(w)
+        if (!A) { A = p; this.placement = mode; return this.ui.message('Second point de l\'axe…') }
+        this.rendu.apercu = null
+        if (Math.hypot(p.x - A.x, p.y - A.y) * this.cam.z < 8) { this.placement = mode; return }
+        const f = this.nouvelleFigure({ type: 'polygone', ferme: false, pts: [A, p] }, { couleur: '#1f5fbf', taille: 2.5 })
+        f.tirets = true
+        this.tableau.nouveauGeste()
+        fini(this.poserFigureSeule(f))
+      },
+      annuler: () => { this.rendu.apercu = null; this.rendu.redessinerDirect() },
+    }
+    this.placement = mode
+    this.ui.message('Trace l\'axe : clique son premier point, puis le second.')
+  }
+
+  /** Tracer le centre tout de suite : un clic. C'est un point nommé (O…). */
+  tracerCentre(fini: (nom: string) => void) {
+    this.placement = {
+      bouge: () => {},
+      clic: (w: P) => {
+        const nom = nomsLibres(1, this.formes, true)[0]
+        const f = this.nouvelleFigure({ type: 'polygone', ferme: false, pts: [this.aimanter(w)] })
+        f.sommets = true; f.noms = [nom]
+        this.tableau.nouveauGeste()
+        this.poserFigureSeule(f)
+        fini(nom)
+      },
+      annuler: () => {},
+    }
+    this.ui.message('Clique là où placer le centre.')
+  }
+
   /** Les droites tracées sur la page (segments), pour servir d'axe */
-  droitesDeLaPage(sauf?: string): { nom: string; a: P; b: P }[] {
-    const r: { nom: string; a: P; b: P }[] = []
+  droitesDeLaPage(sauf?: string): { nom: string; a: P; b: P; id: string }[] {
+    const r: { nom: string; a: P; b: P; id: string }[] = []
     let k = 0
     for (const f of this.formes) {
       if (f.id === sauf || f.type !== 'polygone' || f.ferme || f.pts.length !== 4) continue
       const [a, b] = sommetsDe(f)
       const n = f.sommets && f.noms?.[0] && f.noms?.[1] ? `Droite (${f.noms[0]}${f.noms[1]})` : `Droite tracée n° ${++k}`
-      r.push({ nom: n, a, b })
+      r.push({ nom: n, a, b, id: f.id })
     }
     return r
   }

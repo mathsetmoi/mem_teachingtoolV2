@@ -64,6 +64,8 @@ export class Rendu {
   instrumentsCaches = false
   /** La forme sous le pointeur, avec l'outil Sélection */
   survol: string | null = null
+  /** Ce qu'on vise en désignant un axe (une droite) ou un centre (un point) */
+  cible: { a: { x: number; y: number }; b?: { x: number; y: number } } | null = null
   /** Une construction qu'on va poser : on la voit, en transparence, sous le pointeur */
   fantomes: Figure[] = []
   /** Ceux que manie le constructeur, en plus de ceux de l'utilisateur */
@@ -350,6 +352,13 @@ export class Rendu {
     if (this.fantomes.length) {
       c.save(); c.globalAlpha = 0.38
       for (const f of this.fantomes) this.dessinerFigure(c, f, null)
+      c.restore()
+    }
+    if (this.cible) {
+      const { a, b } = this.cible
+      c.save(); c.strokeStyle = 'rgba(31, 95, 191, 0.35)'; c.fillStyle = 'rgba(31, 95, 191, 0.18)'; c.lineCap = 'round'
+      if (b) { c.lineWidth = 12 / cam.z; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke() }
+      else { c.lineWidth = 2 / cam.z; c.beginPath(); c.arc(a.x, a.y, 12 / cam.z, 0, Math.PI * 2); c.fill(); c.stroke() }
       c.restore()
     }
     if (this.survol) {

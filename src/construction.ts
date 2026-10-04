@@ -13,12 +13,17 @@
 // une figure déjà là.
 // =============================================================
 import { CM } from './types'
+import type { Forme } from './types'
+import type { Transformation } from './formes'
+import { applicateur, sommetsDe } from './formes'
+import { coinsImage } from './geometrie'
 
 export type P = { x: number; y: number }
 
 /** Un geste. « aide » : un trait de construction, fin et gris, qu'on garde */
 export type Geste =
   | { k: 'point'; nom: string; p: P }
+  | { k: 'forme'; f: Forme; cotes?: [P, P][]; cercle?: { c: P; r: number } }   // l'image finale, tracée puis posée
   | { k: 'regle'; a: P; b: P; aide?: boolean }
   | { k: 'compas'; c: P; r: number; a0: number; a1: number; aide?: boolean }
   | { k: 'equerre'; o: P; w: P; a: P; b: P; aide?: boolean }   // angle droit en o ; on trace [ab] le long de w
@@ -369,3 +374,89 @@ export const EXEMPLES: { nom: string; texte: string }[] = [
   { nom: 'Cercle', texte: 'Place le point O.\nTrace le cercle de centre O et de rayon 3 cm.' },
   { nom: 'Hexagone régulier', texte: 'Construis un hexagone régulier ABCDEF de côté 3 cm.' },
 ]
+
+// =============================================================
+// CONSTRUIRE L'IMAGE D'UNE FIGURE PAR UNE TRANSFORMATION
+// Point par point, comme au tableau : l'image de chaque sommet, puis la
+// figure image qui les relie. `noms` dit comment on parle de l'axe et
+// du centre dans les consignes (« (d) », « O »).
+// =============================================================
+export function etapesImage(f: Forme, t: Transformation, imageFinale: Forme, noms: { axe?: string; centre?: string }): Etape[] {
+  const g = applicateur(t)
+  const etapes: Etape[] = []
+  // Les points dont on construit l'image
+  let points: { nom: string | null; p: P }[] = []
+  if (f.type === 'polygone') points = sommetsDe(f).map((p, i) => ({ nom: f.sommets ? f.noms?.[i] || null : null, p }))
+  else if (f.type === 'cercle') points = [{ nom: f.sommets ? f.noms?.[0] || null : null, p: { x: f.x, y: f.y } }]
+  else if (f.type === 'image') points = coinsImage(f).map(p => ({ nom: null, p }))
+  else if (f.type === 'segment') points = [{ nom: null, p: { x: f.x, y: f.y } }, { nom: null, p: { x: f.x + f.dx, y: f.y + f.dy } }]
+  const quel = (n: string | null, i: number) => n ?? (f.type === 'image' ? `le coin n° ${i + 1}` : f.type === 'cercle' ? 'le centre' : `le sommet n° ${i + 1}`)
+  const image = (n: string | null) => n ? n + "'" : 'son image'
+  const axe = noms.axe ?? "l'axe", centre = noms.centre ?? 'le centre'
+  const marque = (p: P, n: string | null): Geste => ({ k: 'point', nom: n ? n + "'" : '', p })
+
+  points.forEach(({ nom, p }, i) => {
+    const q = g(p), gestes: Geste[] = []
+    let consigne = ''
+    switch (t.type) {
+      case 'symetrie-axiale': {
+        const H = projete(p, t.a, t.b)
+        if (dist(H, p) < 1) { consigne = `${quel(nom, i)} est sur ${axe} : il est sa propre image.`; break }
+        const w = unit(H, p)
+        gestes.push({ k: 'equerre', o: H, w, a: plus(p, w, 0.8 * CM), b: plus(q, w, -0.8 * CM), aide: true })
+        gestes.push(arcVers(H, dist(H, p), q, 14 * DEG))
+        consigne = `À l'équerre, la perpendiculaire à ${axe} passant par ${quel(nom, i)} ; au compas, reporte la distance de l'autre côté : c'est ${image(nom)}.`
+        break
+      }
+      case 'symetrie-centrale': {
+        const O = t.c
+        if (dist(O, p) < 1) { consigne = `${quel(nom, i)} est le centre : il est sa propre image.`; break }
+        gestes.push({ k: 'regle', a: p, b: plus(q, unit(p, q), 0.8 * CM), aide: true })
+        gestes.push(arcVers(O, dist(O, p), q, 14 * DEG))
+        consigne = `Trace la droite qui joint ${quel(nom, i)} à ${centre}, puis au compas, pointe en ${centre}, reporte la distance de l'autre côté : c'est ${image(nom)}.`
+        break
+      }
+      case 'rotation': {
+        const O = t.c, r = dist(O, p)
+        if (r < 1) { consigne = `${quel(nom, i)} est le centre : il est sa propre image.`; break }
+        const a = Math.abs(t.angle)
+        // Le zéro du rapporteur sur [O, point) ; dans le sens horaire, on le pose sur [O, image)
+        const u = t.angle >= 0 ? unit(O, p) : unit(O, q), vers = t.angle >= 0 ? q : p
+        gestes.push({ k: 'rapporteur', o: O, u, angle: Math.round(a * 10) / 10, marque: plus(O, unit(O, vers), 6.4 * CM) })
+        gestes.push({ k: 'regle', a: O, b: plus(O, unit(O, q), Math.max(r + 1 * CM, 3 * CM)), aide: true })
+        const a0 = ang(O, p)
+        gestes.push({ k: 'compas', c: O, r, a0, a1: a0 - t.angle * DEG, aide: true })
+        consigne = `Rapporteur en ${centre} : ${a}° ${t.angle >= 0 ? 'dans le sens direct' : 'dans le sens des aiguilles d\'une montre'} ; au compas, pointe en ${centre}, l'arc de ${quel(nom, i)} donne ${image(nom)}.`
+        break
+      }
+      case 'translation': {
+        gestes.push({ k: 'regle', a: p, b: q, aide: true })
+        consigne = `Depuis ${quel(nom, i)}, reporte le vecteur de la translation (même direction, même sens, même longueur) : c'est ${image(nom)}.`
+        break
+      }
+      case 'homothetie': {
+        const O = t.c
+        if (dist(O, p) < 1) { consigne = `${quel(nom, i)} est le centre : il est sa propre image.`; break }
+        const loin = dist(O, q) > dist(O, p) ? q : p
+        gestes.push({ k: 'regle', a: t.k < 0 ? plus(p, unit(q, p), 0.6 * CM) : O, b: plus(loin, unit(O, loin), 0.8 * CM), aide: true })
+        const k = String(Math.round(t.k * 100) / 100).replace('.', ',')
+        consigne = `Sur la droite qui joint ${centre} à ${quel(nom, i)}, place ${image(nom)} à ${k.replace('-', '')} fois la distance de ${centre} à ${quel(nom, i)}${t.k < 0 ? ", de l'autre côté de " + centre : ''}.`
+        break
+      }
+    }
+    gestes.push(marque(q, nom))
+    etapes.push({ consigne, gestes })
+  })
+
+  // La figure image elle-même
+  const fin: Geste = { k: 'forme', f: imageFinale }
+  if (imageFinale.type === 'polygone') {
+    const s2 = sommetsDe(imageFinale)
+    fin.cotes = s2.slice(0, imageFinale.ferme ? s2.length : s2.length - 1).map((a, i) => [a, s2[(i + 1) % s2.length]] as [P, P])
+  } else if (imageFinale.type === 'cercle') fin.cercle = { c: { x: imageFinale.x, y: imageFinale.y }, r: imageFinale.r }
+  const nomsImage = points.every(x => x.nom) ? points.map(x => x.nom + "'").join('') : ''
+  etapes.push({ consigne: f.type === 'image' ? "L'image de la figure se pose sur ses quatre coins." :
+    imageFinale.type === 'cercle' ? `Au compas, même rayon : le cercle image${nomsImage ? ' de centre ' + nomsImage : ''}.` :
+    `Relie les points obtenus : ${nomsImage ? 'la figure ' + nomsImage : "l'image"} est construite.`, gestes: [fin] })
+  return etapes
+}

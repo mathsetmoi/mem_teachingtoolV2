@@ -9,7 +9,8 @@ import { COULEURS, TAILLES } from './app'
 import type { Bout, Figure, Forme, MarquePoint, Outil, TypeForme } from './types'
 import { CM, FONDS } from './types'
 import type { P, Transformation } from './formes'
-import { centreDe } from './formes'
+import { centreDe, image } from './formes'
+import { etapesImage } from './construction'
 import { Lecteur } from './lecteur'
 import { Constructeur } from './constructeur'
 import type { NomInstrument } from './instruments'
@@ -472,97 +473,134 @@ export class UI implements Interface {
     return s
   }
 
+  /** Ce qu'on a choisi dans « Transformer » : gardé quand le panneau se refait */
+  private transfo = { type: 'symetrie-axiale', axe: '', centre: '', angle: '90', k: '2', vecteur: '', vx: '3', vy: '0' }
+
   private sectionTransformer(f: Forme) {
     const app = this.app
     const s = document.createElement('div'); s.className = 'section transformer'
+    const T = this.transfo
     const sommets: { nom: string; p: P }[] = f.type === 'polygone'
-      ? app.sommetsDe(f).map((p, i) => ({ nom: f.noms?.[i] ?? String(i + 1), p })) : []
+      ? app.sommetsDe(f).map((p, i) => ({ nom: f.sommets && f.noms?.[i] ? f.noms[i] : String(i + 1), p })) : []
     const centreFig = f.type === 'polygone' || f.type === 'cercle' ? centreDe(f)
       : (() => { const b = app.rendu.boite(f); return { x: b.x + b.l / 2, y: b.y + b.h / 2 } })()
     const origine = app.origineRepere
 
-    // Les centres possibles
-    const centres: { nom: string; p: P }[] = [{ nom: f.type === 'cercle' ? 'Centre du cercle' : 'Centre de la figure', p: centreFig }]
-    for (const v of sommets) centres.push({ nom: 'Sommet ' + v.nom, p: v.p })
-    if (origine) centres.push({ nom: 'Origine du repère', p: origine })
-    // Les points nommés de la page servent aussi de centre
+    // Seulement ce qui est sur le tableau : la figure elle-même, les points
+    // nommés et les droites tracées de la page, le repère s'il y en a un
+    const centres: { cle: string; nom: string; p: P }[] = [{ cle: 'centre', nom: f.type === 'cercle' ? 'Centre du cercle' : f.type === 'image' ? "Centre de l'image" : 'Centre de la figure', p: centreFig }]
+    sommets.forEach((v, i) => centres.push({ cle: 'som:' + i, nom: 'Sommet ' + v.nom, p: v.p }))
     const deja = new Set(sommets.map(v => v.nom))
-    for (const [nom, p] of app.pointsNommes()) if (!deja.has(nom)) centres.push({ nom: 'Point ' + nom, p })
+    for (const [nom, p] of app.pointsNommes()) if (!deja.has(nom)) centres.push({ cle: 'pt:' + nom, nom: 'Point ' + nom, p })
+    if (origine) centres.push({ cle: 'origine', nom: 'Origine du repère', p: origine })
 
-    // Les axes possibles : d'abord les droites tracées sur la page (un segment
-    // qu'on a dessiné pour servir d'axe), puis les côtés de la figure
-    const axes: { nom: string; a: P; b: P }[] = app.droitesDeLaPage(f.id)
+    const axes: { cle: string; nom: string; a: P; b: P }[] = app.droitesDeLaPage(f.id).map(d => ({ cle: 'seg:' + d.id, nom: d.nom, a: d.a, b: d.b }))
     const n = sommets.length, ferme = f.type === 'polygone' && f.ferme
-    for (let i = 0; i < (ferme ? n : n - 1); i++) {
+    if (n >= 2) for (let i = 0; i < (ferme ? n : n - 1); i++) {
       const a = sommets[i], b = sommets[(i + 1) % n]
-      axes.push({ nom: `Droite (${a.nom}${b.nom})`, a: a.p, b: b.p })
+      axes.push({ cle: 'cote:' + i, nom: `Côté (${a.nom}${b.nom})`, a: a.p, b: b.p })
     }
-    axes.push({ nom: 'Verticale par le centre', a: centreFig, b: { x: centreFig.x, y: centreFig.y + 1 } })
-    axes.push({ nom: 'Horizontale par le centre', a: centreFig, b: { x: centreFig.x + 1, y: centreFig.y } })
     if (origine) {
-      axes.push({ nom: 'Axe des abscisses', a: origine, b: { x: origine.x + 1, y: origine.y } })
-      axes.push({ nom: 'Axe des ordonnées', a: origine, b: { x: origine.x, y: origine.y + 1 } })
+      axes.push({ cle: 'ox', nom: 'Axe des abscisses', a: origine, b: { x: origine.x + 1, y: origine.y } })
+      axes.push({ cle: 'oy', nom: 'Axe des ordonnées', a: origine, b: { x: origine.x, y: origine.y + 1 } })
     }
 
-    // Les vecteurs possibles
-    const vecteurs: { nom: string; dx: number; dy: number }[] = []
+    const vecteurs: { cle: string; nom: string; dx: number; dy: number }[] = []
     for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
-      if (i !== j && vecteurs.length < 12) vecteurs.push({ nom: `Vecteur ${sommets[i].nom}${sommets[j].nom}`, dx: sommets[j].p.x - sommets[i].p.x, dy: sommets[j].p.y - sommets[i].p.y })
+      if (i !== j && vecteurs.length < 12) vecteurs.push({ cle: `v:${i}:${j}`, nom: `Vecteur ${sommets[i].nom}${sommets[j].nom}`, dx: sommets[j].p.x - sommets[i].p.x, dy: sommets[j].p.y - sommets[i].p.y })
     }
 
-    const options = (l: { nom: string }[]) => l.map((o, i) => `<option value="${i}">${html(o.nom)}</option>`).join('')
+    // Le choix gardé, s'il existe encore ; sinon le premier de la liste
+    if (!axes.some(a => a.cle === T.axe)) T.axe = axes[0]?.cle ?? ''
+    if (!centres.some(c => c.cle === T.centre)) T.centre = centres[0].cle
+    if (T.vecteur !== 'libre' && !vecteurs.some(v => v.cle === T.vecteur)) T.vecteur = vecteurs[0]?.cle ?? 'libre'
+
+    const options = (l: { cle: string; nom: string }[], actuel: string) => l.map(o => `<option value="${o.cle}"${o.cle === actuel ? ' selected' : ''}>${html(o.nom)}</option>`).join('')
+    const types = [['symetrie-axiale', 'Symétrie axiale'], ['symetrie-centrale', 'Symétrie centrale'], ['rotation', 'Rotation'], ['translation', 'Translation'], ['homothetie', 'Homothétie']]
     s.innerHTML = `
-      <label class="champ"><span>Transformation</span><select class="t-type">
-        <option value="symetrie-axiale">Symétrie axiale</option>
-        <option value="symetrie-centrale">Symétrie centrale</option>
-        <option value="rotation">Rotation</option>
-        <option value="translation">Translation</option>
-        <option value="homothetie">Homothétie</option>
-      </select></label>
-      <label class="champ" data-pour="symetrie-axiale"><span>Axe</span><select class="t-axe">${options(axes)}</select></label>
-      <label class="champ" data-pour="symetrie-centrale rotation homothetie"><span>Centre</span><select class="t-centre">${options(centres)}</select></label>
-      <label class="champ" data-pour="rotation"><span>Angle (°, sens direct)</span><input class="saisie t-angle" value="90" inputmode="decimal"></label>
-      <label class="champ" data-pour="homothetie"><span>Rapport k</span><input class="saisie t-k" value="2" inputmode="decimal"></label>
-      <label class="champ" data-pour="translation"><span>Vecteur</span><select class="t-vecteur">${options(vecteurs)}<option value="libre">Coordonnées (en cm)</option></select></label>
-      <div class="champ coords" data-pour="libre"><span>x ; y</span><input class="saisie t-vx" value="3" inputmode="decimal" aria-label="x"><input class="saisie t-vy" value="0" inputmode="decimal" aria-label="y"></div>
-      <div class="actions"><button type="button" class="principal">Construire l'image</button></div>`
+      <label class="champ"><span>Transformation</span><select class="t-type">${types.map(([v, t]) => `<option value="${v}"${v === T.type ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+      <div class="champ choix-sur-tableau" data-pour="symetrie-axiale"><span>Axe</span>
+        <select class="t-axe"${axes.length ? '' : ' hidden'}>${options(axes, T.axe)}</select>${axes.length ? '' : '<em>Aucune droite sur la page</em>'}
+        <button type="button" class="secondaire petit designer-axe" title="Cliquer sur une droite du tableau"${axes.length ? '' : ' hidden'}>Désigner</button>
+        <button type="button" class="secondaire petit tracer-axe" title="Tracer l'axe sur le tableau (deux clics)">Tracer</button></div>
+      <div class="champ choix-sur-tableau" data-pour="symetrie-centrale rotation homothetie"><span>Centre</span>
+        <select class="t-centre">${options(centres, T.centre)}</select>
+        <button type="button" class="secondaire petit designer-centre" title="Cliquer sur un point du tableau">Désigner</button>
+        <button type="button" class="secondaire petit tracer-centre" title="Placer le centre sur le tableau (un clic)">Tracer</button></div>
+      <label class="champ" data-pour="rotation"><span>Angle (°, sens direct)</span><input class="saisie t-angle" value="${html(T.angle)}" inputmode="decimal"></label>
+      <label class="champ" data-pour="homothetie"><span>Rapport k</span><input class="saisie t-k" value="${html(T.k)}" inputmode="decimal"></label>
+      <label class="champ" data-pour="translation"><span>Vecteur</span><select class="t-vecteur">${options(vecteurs, T.vecteur)}<option value="libre"${T.vecteur === 'libre' ? ' selected' : ''}>Coordonnées (en cm)</option></select></label>
+      <div class="champ coords" data-pour="libre"><span>x ; y</span><input class="saisie t-vx" value="${html(T.vx)}" inputmode="decimal" aria-label="x"><input class="saisie t-vy" value="${html(T.vy)}" inputmode="decimal" aria-label="y"></div>
+      <label class="interrupteur instruments-transfo"><input type="checkbox"${this.constructeur.instruments ? ' checked' : ''}><span>Pas à pas avec les instruments</span></label>
+      <div class="actions"><button type="button" class="secondaire pas-a-pas">Pas à pas</button><button type="button" class="principal construire">Construire l'image</button></div>`
     const q = <T extends HTMLElement>(c: string) => s.querySelector(c) as T
     const type = q<HTMLSelectElement>('.t-type'), vecteur = q<HTMLSelectElement>('.t-vecteur')
+    const lire = () => {
+      T.type = type.value; T.vecteur = vecteur.value
+      T.axe = q<HTMLSelectElement>('.t-axe').value; T.centre = q<HTMLSelectElement>('.t-centre').value
+      T.angle = q<HTMLInputElement>('.t-angle').value; T.k = q<HTMLInputElement>('.t-k').value
+      T.vx = q<HTMLInputElement>('.t-vx').value; T.vy = q<HTMLInputElement>('.t-vy').value
+    }
     const montrer = () => {
       s.querySelectorAll<HTMLElement>('[data-pour]').forEach(el => {
         const pour = el.dataset.pour!.split(' ')
         el.hidden = pour[0] === 'libre' ? !(type.value === 'translation' && vecteur.value === 'libre') : !pour.includes(type.value)
       })
     }
-    if (!vecteurs.length) vecteur.value = 'libre'
-    type.addEventListener('change', montrer); vecteur.addEventListener('change', montrer)
+    s.addEventListener('change', () => { lire(); montrer() })
+    s.addEventListener('input', lire)
     montrer()
 
-    q('.principal').addEventListener('click', () => {
-      const centre = centres[Number(q<HTMLSelectElement>('.t-centre').value)].p
-      let t: Transformation
-      switch (type.value) {
-        case 'symetrie-axiale': { const a = axes[Number(q<HTMLSelectElement>('.t-axe').value)]; t = { type: 'symetrie-axiale', a: a.a, b: a.b }; break }
-        case 'symetrie-centrale': t = { type: 'symetrie-centrale', c: centre }; break
+    // Désigner ou tracer sur le tableau : le choix revient dans la liste
+    const refaire = () => { this.clePanneau = ''; this.maj() }
+    q('.designer-axe').addEventListener('click', () => app.designer('axe', axes.map(a => ({ cle: a.cle, a: a.a, b: a.b })), cle => { T.axe = cle; refaire() }))
+    q('.tracer-axe').addEventListener('click', () => app.tracerAxe(id => { T.axe = 'seg:' + id; refaire() }))
+    q('.designer-centre').addEventListener('click', () => app.designer('centre', centres.map(c => ({ cle: c.cle, a: c.p })), cle => { T.centre = cle; refaire() }))
+    q('.tracer-centre').addEventListener('click', () => app.tracerCentre(nom => { T.centre = 'pt:' + nom; refaire() }))
+    q<HTMLInputElement>('.instruments-transfo input').addEventListener('change', e => { this.constructeur.instruments = (e.target as HTMLInputElement).checked })
+
+    /** La transformation choisie, et comment en parler dans les consignes */
+    const transformation = (): { t: Transformation; noms: { axe?: string; centre?: string } } | null => {
+      lire()
+      const centre = centres.find(c => c.cle === T.centre)!
+      const nomCentre = centre.cle.startsWith('pt:') ? centre.cle.slice(3) : centre.cle.startsWith('som:') ? centre.nom.replace('Sommet ', '') : centre.cle === 'origine' ? 'O' : 'le centre'
+      switch (T.type) {
+        case 'symetrie-axiale': {
+          const a = axes.find(x => x.cle === T.axe)
+          if (!a) { this.message('Choisis l\'axe : désigne une droite du tableau, ou trace-la.'); return null }
+          const m = a.nom.match(/\((.+)\)/)
+          return { t: { type: 'symetrie-axiale', a: a.a, b: a.b }, noms: { axe: m ? `(${m[1]})` : "l'axe" } }
+        }
+        case 'symetrie-centrale': return { t: { type: 'symetrie-centrale', c: centre.p }, noms: { centre: nomCentre } }
         case 'rotation': {
-          const angle = nombre(q<HTMLInputElement>('.t-angle').value)
-          if (angle === null) return this.message('Angle : un nombre de degrés, par exemple 90')
-          t = { type: 'rotation', c: centre, angle }; break
+          const angle = nombre(T.angle)
+          if (angle === null) { this.message('Angle : un nombre de degrés, par exemple 90'); return null }
+          return { t: { type: 'rotation', c: centre.p, angle }, noms: { centre: nomCentre } }
         }
         case 'homothetie': {
-          const k = nombre(q<HTMLInputElement>('.t-k').value)
-          if (!k) return this.message('Rapport : un nombre non nul, par exemple 2, −0,5 ou 1/3')
-          t = { type: 'homothetie', c: centre, k }; break
+          const k = nombre(T.k)
+          if (!k) { this.message('Rapport : un nombre non nul, par exemple 2, −0,5 ou 1/3'); return null }
+          return { t: { type: 'homothetie', c: centre.p, k }, noms: { centre: nomCentre } }
         }
         default: {
-          if (vecteur.value !== 'libre') { const v = vecteurs[Number(vecteur.value)]; t = { type: 'translation', dx: v.dx, dy: v.dy }; break }
-          const vx = nombre(q<HTMLInputElement>('.t-vx').value), vy = nombre(q<HTMLInputElement>('.t-vy').value)
-          if (vx === null || vy === null) return this.message('Coordonnées : deux nombres, en centimètres')
-          t = { type: 'translation', dx: vx * CM, dy: -vy * CM }          // y vers le haut, comme au cahier
+          if (T.vecteur !== 'libre') { const v = vecteurs.find(x => x.cle === T.vecteur)!; return { t: { type: 'translation', dx: v.dx, dy: v.dy }, noms: {} } }
+          const vx = nombre(T.vx), vy = nombre(T.vy)
+          if (vx === null || vy === null) { this.message('Coordonnées : deux nombres, en centimètres'); return null }
+          return { t: { type: 'translation', dx: vx * CM, dy: -vy * CM }, noms: {} }       // y vers le haut, comme au cahier
         }
       }
+    }
+    q('.construire').addEventListener('click', () => {
+      const r = transformation(); if (!r) return
       this.section = null
-      app.transformer(f, t)
+      app.transformer(f, r.t)
+    })
+    q('.pas-a-pas').addEventListener('click', () => {
+      const r = transformation(); if (!r) return
+      this.section = null
+      app.selection.clear(); this.maj()
+      const titre = `${types.find(x => x[0] === T.type)![1]} : construction de l'image${f.type === 'polygone' && f.sommets && f.noms ? ' de ' + f.noms.join('') : ''}.`
+      this.constructeur.jouerEtapes(etapesImage(f, r.t, image(f, r.t, app.tableau.moi), r.noms), titre)
     })
     return s
   }
