@@ -228,6 +228,12 @@ Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment
 bord de l'écran, quel que soit le zoom, et se prend sur toute sa longueur. Le
 panneau d'options d'un trait passe de l'un à l'autre d'un clic.
 
+On trace un trait **en glissant**, ou **en deux clics** : un clic pour le
+premier point, un clic pour le second (Échap annule). Près d'un point existant
+(un point posé, le sommet d'une figure, le centre d'un cercle), l'extrémité s'y
+accroche et le point s'éclaire ; ailleurs, elle se pose où l'on clique. Le
+polygone, tracé clic par clic, s'accroche de la même façon.
+
 Outil **Point** (X) : un clic pose un point marqué d'une croix et nommé (A, B,
 C…), sur le tableau ou sur une image.
 

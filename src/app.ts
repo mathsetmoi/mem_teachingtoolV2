@@ -37,7 +37,7 @@ type Geste =
   | { type: 'pan'; dernierX: number; dernierY: number; vide?: { x: number; y: number } }
   | { type: 'pinch'; dist: number; cx: number; cy: number }
   | { type: 'dessin'; pointeur: number }
-  | { type: 'segment'; x: number; y: number }
+  | { type: 'segment'; x: number; y: number; sx: number; sy: number }
   | { type: 'rectangle' | 'cercle'; x: number; y: number }
   | { type: 'poignee'; prise: Prise; f: Figure; sx: number; sy: number; bouge: boolean }
   | { type: 'instrument'; nom: NomInstrument; quoi: Partie; depart: EtatInstrument; x: number; y: number; ecart: number; balayage: number; dernier: number }
@@ -63,6 +63,8 @@ export class App {
   reconnaissance = true               // le stylo redresse les figures
   typeForme: TypeForme = 'rectangle'
   typeTrait: 'segment' | 'droite' | 'demi' = 'segment'      // ce que trace l'outil Segment
+  /** Le premier point d'un trait tracé en deux clics (le second clic le finit) */
+  private traitEnAttente: P | null = null
   suivre = true                       // élève : suit la page et la vue du prof
   selection = new Set<string>()
   /** Un seul morceau choisi (un sommet, un nom…), sans la figure entière */
@@ -359,6 +361,7 @@ export class App {
   // ---------- Outils ----------
   choisirOutil(o: Outil) {
     this.annulerPolygone()
+    this.annulerTrait()
     this.survol = null; this.rendu.survol = null
     if (this.partie) this.choisirPartie(null)
     this.outil = o
@@ -560,14 +563,21 @@ export class App {
         break
       }
       case 'segment': {
-        const a = this.aimanter(m)
-        this.geste = { type: 'segment', x: a.x, y: a.y }
+        // Second clic d'un trait en deux clics : il le finit
+        if (this.traitEnAttente) {
+          const a = this.traitEnAttente
+          this.traitEnAttente = null
+          this.finirTrait(a, this.boutDuTrait(a, m, e.shiftKey))
+          break
+        }
+        const a = this.accrocher(m).p
+        this.geste = { type: 'segment', x: a.x, y: a.y, sx: s.x, sy: s.y }
         this.rendu.monSegment = { x1: a.x, y1: a.y, x2: a.x, y2: a.y, couleur: this.couleur, taille: this.taille }
         break
       }
       case 'forme': {
+        if (this.typeForme === 'polygone') { this.pointDuPolygone(this.accrocher(m).p, s); break }
         const a = this.aimanter(m)
-        if (this.typeForme === 'polygone') { this.pointDuPolygone(a, s); break }
         this.geste = { type: this.typeForme, x: a.x, y: a.y }
         break
       }
@@ -614,7 +624,9 @@ export class App {
     }
 
     if (this.polyEnCours && this.outil === 'forme') {
-      this.rendu.apercu = this.figure({ type: 'polygone', ferme: false, ...versRelatif([...this.polyEnCours, this.aimanter(m)]) })
+      const o = this.accrocher(m)
+      this.rendu.apercu = this.figure({ type: 'polygone', ferme: false, ...versRelatif([...this.polyEnCours, o.p]) })
+      this.rendu.cible = o.accroche ? { a: o.p } : null
       this.rendu.redessinerDirect()
     }
 
@@ -625,6 +637,10 @@ export class App {
       const f = this.formeSous(m.x, m.y)
       const id = f && !this.selection.has(f.id) ? f.id : null
       if (id !== this.survol) { this.survol = id; this.rendu.survol = id; this.rendu.redessinerDirect() }
+    }
+    if (!g && this.outil === 'segment' && this.peutEcrire) {
+      if (this.traitEnAttente) this.apercuTrait(this.traitEnAttente, this.boutDuTrait(this.traitEnAttente, m, e.shiftKey))
+      else this.montrerAccroche(m)
     }
     if (!g) {
       const inst = this.instruments.size ? this.instrumentSous(m) : null
@@ -681,23 +697,9 @@ export class App {
         if (t - this.dernierEnvoiTrait > 33) { this.dernierEnvoiTrait = t; this.tableau.diffuser({ direct: { ...trait } }) }
         break
       }
-      case 'segment': {
-        let b = this.aimanter(m)
-        if (e.shiftKey) {                               // angles de 15° en 15°
-          const ang = Math.round(Math.atan2(b.y - g.y, b.x - g.x) / (Math.PI / 12)) * (Math.PI / 12)
-          const d = Math.hypot(b.x - g.x, b.y - g.y)
-          b = { x: g.x + d * Math.cos(ang), y: g.y + d * Math.sin(ang) }
-        }
-        this.rendu.monSegment!.x2 = b.x; this.rendu.monSegment!.y2 = b.y
-        // Une droite ou une demi-droite se voit prolongée pendant qu'on la trace
-        if (this.typeTrait !== 'segment' && Math.hypot(b.x - g.x, b.y - g.y) > 1) {
-          const f = this.figure({ type: 'polygone', ferme: false, ...versRelatif([{ x: g.x, y: g.y }, b]) })
-          if (f.type === 'polygone') f.prolonge = this.typeTrait
-          this.rendu.apercu = f
-        }
-        this.rendu.redessinerDirect()
+      case 'segment':
+        this.apercuTrait(g, this.boutDuTrait(g, m, e.shiftKey))
         break
-      }
       case 'gomme':
         this.gommer(m.x, m.y, g.effaces)
         break
@@ -736,14 +738,15 @@ export class App {
       case 'dessin': clearTimeout(this.minuterieForme); this.validerTrait(false); break
       case 'segment': {
         const s = this.rendu.monSegment!
-        this.rendu.monSegment = null
-        if (Math.hypot(s.x2 - s.x1, s.y2 - s.y1) > 2) {
-          const f = this.figure({ type: 'polygone', ferme: false, ...versRelatif([{ x: s.x1, y: s.y1 }, { x: s.x2, y: s.y2 }]) })
-          if (this.typeTrait !== 'segment' && f.type === 'polygone') f.prolonge = this.typeTrait
-          this.rendu.apercu = null
-          this.poserFigure(f)
+        const ecran = this.ecran(e)
+        // Un simple clic (sans glisser) pose le premier point : le second clic finira le trait
+        if (Math.hypot(ecran.x - g.sx, ecran.y - g.sy) < 5) {
+          this.traitEnAttente = { x: g.x, y: g.y }
+          if (!this.astuceDeuxClics) { this.astuceDeuxClics = true; this.ui.message('Cliquez le second point (Échap pour annuler)') }
+          this.rendu.redessinerDirect()
+          break
         }
-        this.rendu.redessinerDirect()
+        this.finirTrait({ x: s.x1, y: s.y1 }, { x: s.x2, y: s.y2 })
         break
       }
       case 'instrument': this.finirInstrument(g); break
@@ -805,7 +808,7 @@ export class App {
 
   private abandonnerGeste(g: Geste | null = this.geste) {
     if (g?.type === 'dessin') { clearTimeout(this.minuterieForme); this.rendu.monTrait = null; this.tableau.diffuser({ direct: null }) }
-    if (g?.type === 'segment') { this.rendu.monSegment = null; this.rendu.apercu = null }
+    if (g?.type === 'segment') { this.rendu.monSegment = null; this.rendu.apercu = null; this.rendu.cible = null }
     if (g?.type === 'rectangle' || g?.type === 'cercle') this.rendu.apercu = null
     if (g?.type === 'poignee') this.rendu.remplacement = null
     if (g?.type === 'longer' || g?.type === 'instrument') {
@@ -905,9 +908,63 @@ export class App {
     if (pts && pts.length >= (ferme ? 3 : 2)) this.poserFigure(this.figure({ type: 'polygone', ferme, ...versRelatif(pts) }))
   }
 
+  // ---------- Traits (segment, droite, demi-droite) ----------
+  private astuceDeuxClics = false
+
+  /** L'extrémité visée : accrochée à un point existant, ou tous les 15° avec Maj */
+  private boutDuTrait(a: P, m: P, maj: boolean): P {
+    if (!maj) return this.accrocher(m, a).p
+    const b = this.aimanter(m)
+    const ang = Math.round(Math.atan2(b.y - a.y, b.x - a.x) / (Math.PI / 12)) * (Math.PI / 12)
+    const d = Math.hypot(b.x - a.x, b.y - a.y)
+    return { x: a.x + d * Math.cos(ang), y: a.y + d * Math.sin(ang) }
+  }
+
+  /** Un point existant sous le pointeur s'éclaire : on sait qu'on s'y accrochera */
+  private montrerAccroche(m: P, exclu?: P) {
+    const o = this.accrocher(m, exclu)
+    const c = o.accroche ? { a: o.p } : null
+    const avant = this.rendu.cible
+    if (!c && !avant) return
+    if (c && avant && !avant.b && avant.a.x === c.a.x && avant.a.y === c.a.y) return
+    this.rendu.cible = c
+    this.rendu.redessinerDirect()
+  }
+
+  private apercuTrait(a: P, b: P) {
+    this.rendu.monSegment = { x1: a.x, y1: a.y, x2: b.x, y2: b.y, couleur: this.couleur, taille: this.taille }
+    // Une droite ou une demi-droite se voit prolongée pendant qu'on la trace
+    this.rendu.apercu = null
+    if (this.typeTrait !== 'segment' && Math.hypot(b.x - a.x, b.y - a.y) > 1) {
+      const f = this.figure({ type: 'polygone', ferme: false, ...versRelatif([a, b]) })
+      if (f.type === 'polygone') f.prolonge = this.typeTrait
+      this.rendu.apercu = f
+    }
+    const o = this.accrocher(b, a)
+    this.rendu.cible = o.accroche && o.p.x === b.x && o.p.y === b.y ? { a: b } : null
+    this.rendu.redessinerDirect()
+  }
+
+  private finirTrait(a: P, b: P) {
+    this.rendu.monSegment = null; this.rendu.apercu = null; this.rendu.cible = null
+    if (Math.hypot(b.x - a.x, b.y - a.y) > 2) {
+      const f = this.figure({ type: 'polygone', ferme: false, ...versRelatif([a, b]) })
+      if (this.typeTrait !== 'segment' && f.type === 'polygone') f.prolonge = this.typeTrait
+      this.poserFigure(f)
+    }
+    this.rendu.redessinerDirect()
+  }
+
+  private annulerTrait() {
+    if (!this.traitEnAttente) return
+    this.traitEnAttente = null
+    this.rendu.monSegment = null; this.rendu.apercu = null; this.rendu.cible = null
+    this.rendu.redessinerDirect()
+  }
+
   private annulerPolygone() {
     if (!this.polyEnCours) return
-    this.polyEnCours = null; this.rendu.apercu = null; this.rendu.redessinerDirect()
+    this.polyEnCours = null; this.rendu.apercu = null; this.rendu.cible = null; this.rendu.redessinerDirect()
   }
 
   private poserFigure(f: Forme) {
@@ -1007,6 +1064,7 @@ export class App {
    *  passer à la Sélection — et un second Échap rend l'outil d'avant. */
   echap() {
     if (this.placement) { const p = this.placement; this.placement = null; p.annuler(); return }
+    if (this.traitEnAttente) { this.annulerTrait(); return }
     const enCours = !!this.polyEnCours || this.selection.size > 0 || !!this.partie
     this.annulerPolygone(); this.selection.clear(); this.choisirPartie(null)
     this.ui.fermerMenuPartie()
