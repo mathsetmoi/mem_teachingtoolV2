@@ -18,6 +18,8 @@ import { codageDe, placesDesNoms, sommetsDe } from './formes'
 import type { EtatInstrument, NomInstrument, Partie } from './instruments'
 import { dessinerInstrument } from './instruments'
 
+type P = { x: number; y: number }
+
 export interface TraitDirect {
   pts: number[]; couleur: string; taille: number; opacite: number; pression: boolean
 }
@@ -171,20 +173,51 @@ export class Rendu {
       // Ce qui est lié à une image sélectionnée bouge avec elle
       const lie = f.type === 'polygone' || f.type === 'cercle' ? f.lie : undefined
       const dec = this.selection.has(f.id) || (lie && this.selection.has(lie)) ? this.decalage : null
-      if (f.type === 'trait') this.dessinerTrait(c, f, dec)
-      else if (f.type === 'segment') {
-        const x = f.x + (dec?.dx ?? 0), y = f.y + (dec?.dy ?? 0)
-        c.strokeStyle = f.couleur; c.lineWidth = f.taille; c.lineCap = 'round'
-        c.beginPath(); c.moveTo(x, y); c.lineTo(x + f.dx, y + f.dy); c.stroke()
-      }
-      else if (f.type === 'polygone' || f.type === 'cercle') this.dessinerFigure(c, f, dec)
-      else if (f.type === 'image') this.dessinerImage(c, f, dec)
+      this.dessinerForme(c, f, dec)
     }
     // Nettoie le cache des formes disparues
     if (this.chemins.size > this.formes.length + 50) {
       const vivants = new Set(this.formes.map(f => f.id))
       for (const id of this.chemins.keys()) if (!vivants.has(id)) this.chemins.delete(id)
     }
+  }
+
+  private dessinerForme(c: CanvasRenderingContext2D, f: Forme, dec: { dx: number; dy: number } | null) {
+    if (f.type === 'trait') this.dessinerTrait(c, f, dec)
+    else if (f.type === 'segment') {
+      const x = f.x + (dec?.dx ?? 0), y = f.y + (dec?.dy ?? 0)
+      c.strokeStyle = f.couleur; c.lineWidth = f.taille; c.lineCap = 'round'
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + f.dx, y + f.dy); c.stroke()
+    }
+    else if (f.type === 'polygone' || f.type === 'cercle') this.dessinerFigure(c, f, dec)
+    else if (f.type === 'image') this.dessinerImage(c, f, dec)
+  }
+
+  /** Ce qu'on voit d'une droite ou d'une demi-droite : ses deux bouts, au bord de l'écran */
+  etendue(f: Figure): [P, P] | null {
+    if (f.type !== 'polygone' || !f.prolonge || f.pts.length !== 4) return null
+    const [a, b] = sommetsDe(f)
+    const l = Math.hypot(b.x - a.x, b.y - a.y) || 1, u = { x: (b.x - a.x) / l, y: (b.y - a.y) / l }
+    const v = this.cam.visible(this.l, this.h)
+    const loin = Math.hypot(v.l, v.h) + Math.hypot(a.x - v.x - v.l / 2, a.y - v.y - v.h / 2)
+    const debut = f.prolonge === 'droite' ? { x: a.x - u.x * loin, y: a.y - u.y * loin } : a
+    return [debut, { x: a.x + u.x * loin, y: a.y + u.y * loin }]
+  }
+
+  /** La partie visible de l'étendue (coupée au bord de l'écran, avec une marge) */
+  etendueVisible(f: Figure): [P, P] | null {
+    const e = this.etendue(f)
+    if (!e) return null
+    const v = this.cam.visible(this.l, this.h), m = 4 / this.cam.z
+    const [p, q] = e, d = { x: q.x - p.x, y: q.y - p.y }
+    let t0 = 0, t1 = 1
+    for (const [pp, qq] of [[-d.x, p.x - (v.x + m)], [d.x, v.x + v.l - m - p.x], [-d.y, p.y - (v.y + m)], [d.y, v.y + v.h - m - p.y]]) {
+      if (pp === 0) { if (qq < 0) return null; continue }
+      const r = qq / pp
+      if (pp < 0) t0 = Math.max(t0, r); else t1 = Math.min(t1, r)
+    }
+    if (t0 > t1) return null
+    return [{ x: p.x + d.x * t0, y: p.y + d.y * t0 }, { x: p.x + d.x * t1, y: p.y + d.y * t1 }]
   }
 
   private dessinerTrait(c: CanvasRenderingContext2D, t: Trait, dec: { dx: number; dy: number } | null) {
@@ -226,12 +259,8 @@ export class Rendu {
     }
     else if (f.prolonge && f.pts.length === 4) {
       // Droite ou demi-droite : jusqu'au bord de ce qu'on voit, quel que soit le zoom
-      const [a, b] = sommetsDe(f)
-      const l = Math.hypot(b.x - a.x, b.y - a.y) || 1, u = { x: (b.x - a.x) / l, y: (b.y - a.y) / l }
-      const v = this.cam.visible(this.l, this.h)
-      const loin = Math.hypot(v.l, v.h) + Math.hypot(a.x - v.x - v.l / 2, a.y - v.y - v.h / 2)
-      const debut = f.prolonge === 'droite' ? { x: a.x - u.x * loin, y: a.y - u.y * loin } : a
-      trace.moveTo(debut.x, debut.y); trace.lineTo(a.x + u.x * loin, a.y + u.y * loin)
+      const [debut, fin] = this.etendue(f)!
+      trace.moveTo(debut.x, debut.y); trace.lineTo(fin.x, fin.y)
     }
     else {
       sommetsDe(f).forEach((p, i) => i ? trace.lineTo(p.x, p.y) : trace.moveTo(p.x, p.y))
@@ -377,10 +406,16 @@ export class Rendu {
     }
     if (this.survol) {
       const f = this.formes.find(x => x.id === this.survol)
-      if (f) {
+      if (f && f.type === 'formule') {
         const b = this.boite(f), m = 5 / cam.z
         c.fillStyle = 'rgba(59, 111, 182, 0.07)'; c.strokeStyle = 'rgba(59, 111, 182, 0.6)'; c.lineWidth = 1.5 / cam.z
         c.beginPath(); c.roundRect(b.x - m, b.y - m, b.l + 2 * m, b.h + 2 * m, 6 / cam.z); c.fill(); c.stroke()
+      } else if (f) {
+        // Un halo bleu qui suit la forme elle-même : on voit ce qu'on va prendre
+        c.save()
+        c.shadowColor = 'rgba(31, 111, 235, 0.95)'; c.shadowBlur = 14 * this.dpr
+        this.dessinerForme(c, f, null); this.dessinerForme(c, f, null)
+        c.restore()
       }
     }
     if (this.apercu) this.dessinerFigure(c, this.apercu, null)
@@ -396,6 +431,13 @@ export class Rendu {
       for (const f0 of this.formes) {
         if (!this.selection.has(f0.id)) continue
         const f = this.remplacement?.id === f0.id ? this.remplacement : f0
+        const vu = f.type === 'polygone' || f.type === 'cercle' ? this.etendueVisible(f) : null
+        if (vu) {
+          c.save(); c.setLineDash([]); c.globalAlpha = 0.28; c.lineCap = 'round'; c.lineWidth = (f.type === 'polygone' ? f.taille : 2) + 12 / cam.z
+          c.beginPath(); c.moveTo(vu[0].x + this.decalage.dx, vu[0].y + this.decalage.dy); c.lineTo(vu[1].x + this.decalage.dx, vu[1].y + this.decalage.dy); c.stroke()
+          c.restore()
+          continue
+        }
         const b = this.boite(f)
         const m = 6 / cam.z
         c.strokeRect(b.x + this.decalage.dx - m, b.y + this.decalage.dy - m, b.l + 2 * m, b.h + 2 * m)
@@ -487,7 +529,7 @@ export class Rendu {
     }
     if (f.type === 'polygone') {
       let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
-      for (const p of sommetsDe(f)) { x1 = Math.min(x1, p.x); x2 = Math.max(x2, p.x); y1 = Math.min(y1, p.y); y2 = Math.max(y2, p.y) }
+      for (const p of [...sommetsDe(f), ...(this.etendueVisible(f) ?? [])]) { x1 = Math.min(x1, p.x); x2 = Math.max(x2, p.x); y1 = Math.min(y1, p.y); y2 = Math.max(y2, p.y) }
       const m = f.taille / 2 + (f.sommets ? 28 : 0)
       return { x: x1 - m, y: y1 - m, l: x2 - x1 + 2 * m, h: y2 - y1 + 2 * m }
     }

@@ -44,8 +44,10 @@ Les tracés trop petits (l'écriture) ne sont jamais touchés, et le bouton
 **Avec l'outil Formes** (`R` rectangle, Maj pour un carré ; `C` cercle ; `G`
 polygone, sommet par sommet, en revenant au premier pour fermer).
 
-**Le panneau d'options** s'ouvre sur la figure qu'on vient de tracer, ou sur
-tout objet choisi avec l'outil de sélection :
+**Le panneau d'options** ne s'ouvre qu'à la demande : **double-clic** ou
+**clic droit** sur l'objet (un simple clic le sélectionne seulement, pour le
+déplacer). Il se ferme quand on choisit autre chose ou qu'on clique dans le
+vide :
 
 - *Sommets* : points et noms (A, B, C… libres sur la page), modifiables ;
 - *Codage* : côtés de même longueur et angles droits, calculés ;
@@ -83,7 +85,7 @@ centre ou le rayon d'un cercle, le nom d'un point :
     automatiquement, le masquer ;
   - le rayon d'un cercle : sa valeur en centimètres.
 
-Le clic droit ailleurs sur une figure la sélectionne et ouvre son panneau.
+Le clic droit ailleurs sur une figure (ou un double-clic) la sélectionne et ouvre son panneau.
 Un morceau choisi l'est seul : il est surligné, pas la figure entière.
 `Suppr` retire un sommet choisi (ou masque un nom). Nommer un seul point d'une
 figure sans noms donne des lettres libres aux autres.
@@ -253,7 +255,8 @@ la molette d'une souris zoome. **Échap** annule ce qui est en cours (menu,
 sélection, polygone) ; s'il n'y a rien, il passe à l'outil Sélection, et un
 second Échap rend l'outil d'avant. Avec la Sélection, glisser un objet le
 déplace, glisser dans le vide déplace le tableau, Maj + glisser encadre ; l'objet
-survolé s'éclaire avant le clic ; les flèches poussent la sélection d'1 mm
+survolé s'éclaire d'un halo bleu qui suit sa forme, avant le clic ; une droite
+ou une demi-droite sélectionnée se surligne sur toute sa longueur visible ; les flèches poussent la sélection d'1 mm
 (1 cm avec Maj).
 
 Au doigt : deux doigts pour zoomer et déplacer. Dès qu'un stylet a servi, le doigt

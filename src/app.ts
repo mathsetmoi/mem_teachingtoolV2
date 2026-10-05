@@ -63,6 +63,9 @@ export class App {
   reconnaissance = true               // le stylo redresse les figures
   typeForme: TypeForme = 'rectangle'
   typeTrait: 'segment' | 'droite' | 'demi' = 'segment'      // ce que trace l'outil Segment
+  /** La figure dont le panneau d'options est ouvert (double-clic ou clic droit) */
+  options: string | null = null
+  private astuceOptions = false
   /** Le premier point d'un trait tracé en deux clics (le second clic le finit) */
   private traitEnAttente: P | null = null
   suivre = true                       // élève : suit la page et la vue du prof
@@ -475,11 +478,14 @@ export class App {
       const p = this.monde(e), f = this.formeSous(p.x, p.y)
       this.ui.fermerMenuPartie()
       this.choisirPartie(null)
-      if (f) this.selectionner(f.id)
+      if (f) this.ouvrirOptions(f)
     })
+    // Double-clic : les options de l'objet (une formule, elle, se modifie)
     z.addEventListener('dblclick', e => {
+      if (!this.peutEcrire || this.enLecture) return
       const p = this.monde(e), f = this.formeSous(p.x, p.y)
-      if (f?.type === 'formule' && this.peutEcrire) this.editerFormule(f)
+      if (f?.type === 'formule') this.editerFormule(f)
+      else if (f && (this.outil === 'selection' || this.outil === 'main' || this.outil === 'segment')) this.ouvrirOptions(f)
     })
     window.addEventListener('keydown', e => this.clavier(e))
     window.addEventListener('keyup', e => { if (e.code === 'Space') this.espace = false })
@@ -590,6 +596,7 @@ export class App {
         const f = this.formeSous(m.x, m.y)
         if (f) {
           if (!this.selection.has(f.id)) { if (!e.shiftKey) this.selection.clear(); this.selection.add(f.id) }
+          this.direOptions()
           this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false }
         } else if (e.shiftKey) {
           this.geste = { type: 'cadre', x: m.x, y: m.y }          // Maj + glisser : encadrer
@@ -976,6 +983,23 @@ export class App {
   private selectionner(id: string) {
     this.selection.clear(); this.selection.add(id)
     this.rendu.redessinerDirect(); this.ui.maj()
+  }
+
+  /** Le panneau d'options d'un objet ne s'ouvre qu'à la demande */
+  ouvrirOptions(f: Forme) {
+    this.astuceOptions = true
+    this.selection.clear(); this.selection.add(f.id)
+    this.options = f.id
+    this.rendu.redessinerDirect(); this.ui.maj()
+  }
+
+  /** La première fois qu'on prend un objet, on dit où sont ses options */
+  private direOptions() {
+    if (this.astuceOptions || this.selection.size !== 1) return
+    const f = this.formeChoisie()
+    if (!f || f.type === 'formule' || f.type === 'segment') return
+    this.astuceOptions = true
+    this.ui.message('Double-clic ou clic droit sur l\'objet : ses options')
   }
 
   // ---------- Morceaux d'une figure ----------

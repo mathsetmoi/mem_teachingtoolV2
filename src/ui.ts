@@ -37,8 +37,8 @@ const ICONES: Record<string, string> = {
   forme: 'M3 11h8v8H3zM17 13a4 4 0 100-8 4 4 0 100 8z',
   point: 'M7 7l7 7M14 7l-7 7M16 17.5h4M16.5 21l1.75-6 1.75 6',
   'trait-segment': 'M6 18L18 6M4.5 16.5l3 3M16.5 4.5l3 3',
-  'trait-droite': 'M2 22L22 2M8 13l3 3M13 8l3 3',
-  'trait-demi': 'M5 19L22 2M3.5 17.5l3 3M11 12l3 3',
+  'trait-droite': 'M3 21L21 3',
+  'trait-demi': 'M6 18L21 3M4.5 16.5l3 3',
   rectangle: 'M4 6h16v12H4z',
   cercle: 'M12 20a8 8 0 100-16 8 8 0 100 16z',
   polygone: 'M12 3l8 6-3 10H7L4 9z',
@@ -389,8 +389,11 @@ export class UI implements Interface {
 
   // ----- Panneau d'options de la figure -----
   private majPanneau() {
-    const f = this.app.peutEcrire && !this.app.enLecture ? this.app.formeChoisie() : null
-    if (!f || f.type === 'formule' || f.type === 'segment') { this.panneau.hidden = true; this.clePanneau = ''; return }
+    const app = this.app
+    // Le panneau se ferme dès que l'objet n'est plus seul sélectionné
+    if (app.options && !(app.selection.size === 1 && app.selection.has(app.options))) app.options = null
+    const f = app.peutEcrire && !app.enLecture ? app.formeChoisie() : null
+    if (!f || f.id !== app.options || f.type === 'formule' || f.type === 'segment') { this.panneau.hidden = true; this.clePanneau = ''; return }
     const { x: _x, y: _y, ...props } = f as Forme
     if (f.id !== this.idPanneau) { this.idPanneau = f.id; this.section = null }
     // On ne reconstruit que si la figure a changé : sinon un champ en
@@ -405,7 +408,8 @@ export class UI implements Interface {
     const l = this.panneau.offsetWidth, h = this.panneau.offsetHeight
     let top = z.top + a.y - h - 14
     if (top < 76) top = Math.min(z.top + c.y + 14, window.innerHeight - h - 8)
-    const left = Math.max(8, Math.min(z.left + (a.x + c.x) / 2 - l / 2, window.innerWidth - l - 8))
+    const gauche = this.barreOutils.hidden ? 8 : this.barreOutils.getBoundingClientRect().right + 8
+    const left = Math.max(gauche, Math.min(z.left + (a.x + c.x) / 2 - l / 2, window.innerWidth - l - 8))
     this.panneau.style.left = left + 'px'
     this.panneau.style.top = Math.max(8, top) + 'px'
   }
