@@ -46,7 +46,8 @@ export interface FilmEleve {
   images: Record<string, string>
 }
 
-/** L'enveloppe écrite dans le fichier « .prof » */
+/** L'enveloppe écrite dans le fichier séance (« .mem ») ; elle commence
+ *  toujours par {"format":"mem-revoir" — le relais s'en sert pour refuser le reste */
 export interface Enveloppe { format: typeof FORMAT; v: number; titre: string; date: number; gz: string }
 
 // ---------- Écrire ----------

@@ -240,7 +240,7 @@ fichier : le lien déjà collé montre la nouvelle version, même depuis un autr
 onglet ou un autre ordinateur, et même si le fichier était passé à la
 corbeille du Drive (il en revient). « Publier comme une nouvelle séance »
 donne volontairement un autre lien. **Enregistrer le
-fichier** donne un fichier `.prof` à déposer dans l'ENT ou sur une clé USB ; le
+fichier** donne un fichier `.mem` à déposer dans l'ENT ou sur une clé USB ; le
 lecteur l'ouvre aussi.
 
 **Côté élève** (`revoir.html`). L'affiche montre le tableau final, le titre, la
@@ -271,19 +271,20 @@ Il reste au professeur à vérifier qu'aucun prénom n'a été écrit pendant la
 séance, et qu'aucune image importée ne montre une copie ou un visage : la
 fenêtre le rappelle.
 
-**Où vivent les séances.** Dans le dossier privé « Au Tableau — séances
-publiées » du Drive du professeur, le même qu'en V1 : rien n'est partagé. Le
-relais Apps Script de ce compte (`relais/relais-seances.gs`, repris de la V1)
-lit la séance sous l'identité du professeur et la sert ; un relais par compte
-Google, et le lien dit lequel (`?r=mem&id=…`). La version 2 du script (dans
-ce dépôt) ne donne plus l'adresse e-mail du compte à qui appelle `?ping=1`,
-et sert les séances de tout dossier « Au Tableau — séances publiées » du
-compte : la redéployer (Gérer les déploiements → Version : nouvelle) garde la
-même adresse. Le relais du Drive personnel est
-déjà déployé ; celui du lycée s'installe en cinq minutes (instructions en tête
-du script), puis son adresse va dans `src/publication/comptes.ts`. La
-connexion Google demande le droit le plus étroit (`drive.file` : Tableau MEM ne
-voit que les fichiers qu'il a créés).
+**Où vivent les séances.** Dans un dossier privé du Drive du professeur, un
+par compte : « MEM - Replay séances » (compte mathsetmoi) et « LFB - Replay
+séances » (compte du lycée). Rien n'est partagé. Le relais Apps Script de ce
+compte (`relais/relais-seances.gs`, projet « MEM - Relais replay ») lit la
+séance sous l'identité du professeur et la sert ; un relais par compte Google,
+et le lien dit lequel (`?r=mem&id=…`). Il ne sert qu'un fichier `.mem` qui est
+bien un replay, rangé dans l'un de ces deux dossiers, et ne liste jamais rien.
+Les noms des dossiers sont à la fois dans `src/publication/comptes.ts` et dans
+le relais : un test vérifie qu'ils concordent. Installer un relais prend cinq
+minutes (instructions en tête du script) ; le mettre à jour (Gérer les
+déploiements → Version : Nouvelle version) garde la même adresse. Un relais
+pas à jour est signalé à la publication. La connexion Google demande le droit
+le plus étroit (`drive.file` : Tableau MEM ne voit que les fichiers qu'il a
+créés).
 
 **Connexion Google : à régler une fois.** Tableau MEM a besoin de SON
 identifiant client Google (`CLIENT_GOOGLE` dans `src/publication/comptes.ts`) :

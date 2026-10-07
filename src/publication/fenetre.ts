@@ -12,8 +12,8 @@ import type { Seance } from '../revoir/exporter'
 import type { FilmEleve } from '../revoir/format'
 import { ErreurFilm, ecrireFilm, lireFilm } from '../revoir/format'
 import { Bobine } from '../revoir/bobine'
-import { lireParLeRelais } from '../revoir/relais'
-import { CLIENT_GOOGLE, COMPTES, compteDe, lienEleve } from './comptes'
+import { essayerRelais, lireParLeRelais } from '../revoir/relais'
+import { CLIENT_GOOGLE, COMPTES, EXTENSION, compteDe, lienEleve } from './comptes'
 import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier } from './drive'
 
 /** Ce qu'on retient d'une séance publiée, dans le document du professeur
@@ -21,6 +21,8 @@ import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier }
 interface Publiee { compte: string; id: string; titre: string; quand: number; cle?: string }
 
 const MINUTE = 60_000
+/** La version du relais (relais/relais-seances.gs) que ce site attend */
+const VERSION_RELAIS = 3
 /** Les découpages proposés : un silence plus long sépare deux séances */
 const DECOUPAGES = [20, 10, 5, 2]
 
@@ -110,8 +112,10 @@ export class Publication {
       const s = this.reperer(Number(q<HTMLSelectElement>('.p-decoupage').value) * MINUTE)
       if (s.length) { this.seances = s; this.remplirSeances() }
     })
-    q('.p-comptes .cases').innerHTML = COMPTES.map((c, i) => `
-      <label class="case"><input type="radio" name="p-compte" value="${echapper(c.cle)}"${i === 0 ? ' checked' : ''}${c.relais ? '' : ' disabled'}>
+    // Coché d'avance : le premier compte dont le relais est installé
+    const parDefaut = COMPTES.find(c => c.relais) ?? COMPTES[0]
+    q('.p-comptes .cases').innerHTML = COMPTES.map(c => `
+      <label class="case"><input type="radio" name="p-compte" value="${echapper(c.cle)}"${c === parDefaut ? ' checked' : ''}${c.relais ? '' : ' disabled'}>
       <span>${echapper(c.nom)}${c.relais ? '' : ' <em>(relais à installer)</em>'}</span></label>`).join('')
 
     q('.p-apercu').addEventListener('click', () => this.apercu())
@@ -269,7 +273,7 @@ export class Publication {
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([texte], { type: 'application/json' }))
     // Sans accents ni signes : le nom passe partout (ENT, clés USB, messageries)
-    a.download = (film.titre.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9 _.-]+/g, ' ').replace(/\s+/g, ' ').trim() || 'seance') + '.prof'
+    a.download = (film.titre.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9 _.-]+/g, ' ').replace(/\s+/g, ' ').trim() || 'seance') + EXTENSION
     // Dans la fenêtre elle-même : hors d'elle, la page est inerte tant qu'elle est ouverte
     ;(this.d ?? document.body).appendChild(a); a.click(); a.remove()
     setTimeout(() => URL.revokeObjectURL(a.href), 10_000)
@@ -305,7 +309,7 @@ export class Publication {
       // Une nouvelle séance demandée : sa propre clé, pour ne pas reprendre l'ancien fichier
       const cleDrive = this.nouveauLien ? `${cle}:${Date.now()}` : (deja?.cle ?? cle)
       this.etat(`Envoi sur ${compte.nom} (${kilo(texte.length)})…`)
-      const r = await publier(film.titre, texte, cleDrive, deja?.id ?? null, async id => {
+      const r = await publier(compte.dossier, film.titre, texte, cleDrive, deja?.id ?? null, async id => {
         this.etat('Vérification : on ouvre la séance comme un élève…')
         let relu: FilmEleve
         try { relu = await lireFilm(await lireParLeRelais(compte.cle, id)) }
@@ -313,6 +317,9 @@ export class Publication {
           const m = e instanceof ErreurFilm ? e.message : String(e)
           // Le relais ne la trouve pas : c'est presque toujours qu'on a publié dans l'autre compte
           if (/introuvable/i.test(m)) {
+            // Un relais d'une version d'avant ne connaît ni ces dossiers ni « .mem »
+            const etat = await essayerRelais(compte.relais).catch(() => null)
+            if (etat && etat.version !== VERSION_RELAIS) throw new Error(`Le relais de « ${compte.nom} » n'est pas à jour (version ${etat.version ?? 1}, il faut la ${VERSION_RELAIS}) : collez la nouvelle version de relais/relais-seances.gs dans son projet Apps Script, puis Déployer → Gérer les déploiements → Version : Nouvelle version. Réessayez ensuite.`)
             mauvaisCompte = true
             const qui = courrielDe(compte.cle)
             throw new Error(`Le relais de « ${compte.nom} » ne trouve pas la séance qu'on vient d'envoyer : ${qui ? `le compte ${qui} n'est sans doute pas le sien` : 'vous êtes sans doute connecté à un autre compte Google'}. Réessayez en choisissant le bon compte.`)

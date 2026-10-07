@@ -1,14 +1,15 @@
 // =============================================================
 // LES COMPTES GOOGLE ET LEURS RELAIS
-// Les séances publiées vivent dans le Drive du professeur, dans le dossier
-// « Au Tableau — séances publiées », privé. Un petit script Apps Script
-// déployé dans chaque compte (relais/relais-seances.gs, le même qu'en V1)
-// les lit sous l'identité du professeur et les sert à l'élève : aucune clé,
-// aucun partage. Un relais par compte ; le lien de la séance dit lequel
-// (« ?r=mem&id=… »), et c'est ICI que le lecteur apprend son adresse.
+// Les séances publiées vivent dans le Drive du professeur, dans un dossier
+// privé propre à chaque compte (« MEM - Replay séances », « LFB - Replay
+// séances »). Un petit script Apps Script déployé dans chaque compte
+// (relais/relais-seances.gs) les lit sous l'identité du professeur et les
+// sert à l'élève : aucune clé, aucun partage. Un relais par compte ; le lien
+// de la séance dit lequel (« ?r=mem&id=… »), et c'est ICI que le lecteur
+// apprend son adresse.
 //
 // Ces adresses ne sont pas des secrets : un relais ne sert que les séances
-// du dossier publié, une par une, et ne les liste jamais.
+// des dossiers des replays, une par une, et ne les liste jamais.
 // =============================================================
 
 export interface Compte {
@@ -16,16 +17,22 @@ export interface Compte {
   cle: string
   /** Comment le professeur le reconnaît */
   nom: string
+  /** Le dossier des replays dans ce Drive. Le relais ne sert que les
+   *  dossiers de sa liste DOSSIERS : les deux doivent concorder (un test y veille). */
+  dossier: string
   /** L'adresse « …/exec » du relais déployé dans ce compte (vide : pas encore déployé) */
   relais: string
 }
 
 export const COMPTES: Compte[] = [
-  // Le compte personnel, déployé et vérifié le 6 octobre 2026 (repris de la V1)
-  { cle: 'mem', nom: 'Drive personnel', relais: 'https://script.google.com/macros/s/AKfycbyjIhYog-9tM4G0VF0AhHHR3iQGvz-5lBjnYeLVGF8HwkmgEYib4-UCkgTjY3OiO6I1Zg/exec' },
-  // Le compte du lycée, déployé le 7 octobre 2026
-  { cle: 'lfb', nom: 'Drive du lycée', relais: 'https://script.google.com/macros/s/AKfycbwaP0-0Zlqn_IMLhUfc1LexNza9WITwyrtlgEHgHcS2p3lqPQaW14eh8PjoVYY3YfGwdQ/exec' },
+  // Le compte mathsetmoi : son relais « MEM - Relais replay » reste à déployer
+  { cle: 'mem', nom: 'Drive personnel', dossier: 'MEM - Replay séances', relais: '' },
+  // Le compte du lycée, déployé le 7 octobre 2026 (à mettre à jour en version 3)
+  { cle: 'lfb', nom: 'Drive du lycée', dossier: 'LFB - Replay séances', relais: 'https://script.google.com/macros/s/AKfycbwaP0-0Zlqn_IMLhUfc1LexNza9WITwyrtlgEHgHcS2p3lqPQaW14eh8PjoVYY3YfGwdQ/exec' },
 ]
+
+/** L'extension des fichiers séance (le relais ne sert qu'elle) */
+export const EXTENSION = '.mem'
 
 /** L'identifiant client Google de Tableau MEM (pas un secret), créé dans SON
  *  projet Google Cloud : c'est le nom de ce projet que Google affiche quand le

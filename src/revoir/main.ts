@@ -521,9 +521,9 @@ function montrerFichier() {
   commandes.hidden = true
   carteHTML(`
     <h1>Revoir une séance</h1>
-    <p class="details">Ouvrez le lien donné par votre enseignant dans le cahier de textes. Si vous avez reçu un fichier séance (.prof), choisissez-le ici :</p>
+    <p class="details">Ouvrez le lien donné par votre enseignant dans le cahier de textes. Si vous avez reçu un fichier séance (.mem), choisissez-le ici :</p>
     <div class="actions">
-      <label class="principal fichier">Choisir un fichier séance<input type="file" accept=".prof,application/json" /></label>
+      <label class="principal fichier">Choisir un fichier séance<input type="file" /></label>
     </div>`, 'label')
   const entree = carte.querySelector('input[type=file]') as HTMLInputElement
   entree.addEventListener('change', () => { const f = entree.files?.[0]; if (f) charger(() => f.text(), true) })
