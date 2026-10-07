@@ -69,7 +69,7 @@ export class Publication {
 
   ouvrir() {
     this.seances = this.reperer(DECOUPAGES[0] * MINUTE)
-    if (!this.seances.length) return this.app.ui.message('Rien à publier pour l\'instant : le replay commence avec les gestes faits à l’écran.')
+    if (!this.seances.length) return this.app.ui.message('Rien à publier pour l\'instant : le replay commence avec ce que vous écrivez pendant la séance.')
     if (this.enLigne) preparerGoogle()
     this.d?.remove()
     const d = document.createElement('dialog')
@@ -199,7 +199,7 @@ export class Publication {
     const items = [
       `<li>${f.etapes.length} geste${f.etapes.length > 1 ? 's' : ''} · ${mmss(new Bobine(f).duree)} de replay · ${f.chapitres.length} chapitre${f.chapitres.length > 1 ? 's' : ''}</li>`,
       images ? `<li class="alerte">${images} image${images > 1 ? 's' : ''} importée${images > 1 ? 's' : ''} : vérifiez qu'aucune ne montre un nom, une copie ou un visage d'élève.</li>` : '',
-      '<li class="alerte">Vérifiez qu\'aucun prénom n\'a été écrit à l’écran pendant la séance : tout ce qui a été visible pendant la séance part, même effacé ensuite. Rejouez l\'aperçu pour le voir.</li>',
+      '<li class="alerte">Vérifiez qu\'aucun prénom n\'a été écrit pendant la séance : tout ce qui a été visible pendant la séance part, même effacé ensuite. Rejouez l\'aperçu pour le voir.</li>',
       this.enLigne && !CLIENT_GOOGLE ? '<li class="alerte">La publication sur Google Drive n\'est pas encore réglée sur ce site (identifiant Google à créer, voir le mode d\'emploi). En attendant, enregistrez le fichier séance.</li>' : '',
       deja && !this.nouveauLien ? `<li>Déjà publiée le ${new Date(deja.quand).toLocaleDateString('fr-FR')} : publier à nouveau met à jour cette séance, au même lien.</li>` : '',
     ]

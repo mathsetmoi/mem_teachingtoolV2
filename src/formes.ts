@@ -282,6 +282,30 @@ function angleSens(s: P[]) {
   return aire > 0 ? 1 : -1
 }
 
+/** Au-delà de ce déplacement (px d'écran), la plume a bougé */
+export const PLUME_BOUGE = 1.5
+
+/**
+ * Le stylet est-il resté immobile (« maintenu », voir reconnaitre) ? On
+ * mesure le déplacement depuis l'ancrage, l'endroit où la plume s'est posée
+ * ou a bougé pour la dernière fois, et non d'un point au suivant : sur un
+ * stylet rapide (200 à 240 Hz), une plume lente avance de moins d'un pixel
+ * et demi par point sans jamais s'arrêter. La mesure ne dépend donc pas de
+ * la fréquence du stylet ; une main posée qui tremble à peine reste immobile.
+ */
+export class Immobilite {
+  private x: number
+  private y: number
+  constructor(p: P) { this.x = p.x; this.y = p.y }
+
+  /** La plume arrive en p (monde), au zoom `zoom` : a-t-elle bougé ? Si oui, l'ancrage la suit. */
+  bouge(p: P, zoom: number): boolean {
+    if (!(Math.hypot(p.x - this.x, p.y - this.y) * zoom > PLUME_BOUGE)) return false
+    this.x = p.x; this.y = p.y
+    return true
+  }
+}
+
 /**
  * Le tracé (points absolus) est-il une figure ?
  * - Une figure fermée assez grande est reconnue d'office.

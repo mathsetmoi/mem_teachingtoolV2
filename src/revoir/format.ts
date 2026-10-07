@@ -22,8 +22,11 @@ export const VERSION = 1
 export type Op = ['=', Forme] | ['-', string] | ['f', Fond, number, number] | ['x']
 
 /** Un geste du film : son écart avec le précédent (ms), la page où il a
- *  lieu, et ce qu'il change */
-export interface EtapeFilm { dt: number; p: string; o: Op[] }
+ *  lieu, et ce qu'il change. ms : si le geste pose un trait tracé à la main,
+ *  le temps passé sur chacun de ses points, jusqu'au lever (voir
+ *  main-levee.ts). Facultatif : un film sans ms, ou un lecteur qui l'ignore,
+ *  rejoue le trait comme avant. */
+export interface EtapeFilm { dt: number; p: string; o: Op[]; ms?: number[] }
 
 /** L'état d'une page au début du film */
 export interface PageFilm { id: string; fond: Fond; origine: { x: number; y: number }; formes: Forme[] }

@@ -7,7 +7,7 @@ import { defineConfig } from 'vite'
 // Chemins relatifs : le site marche quel que soit le dossier où il est servi.
 export default defineConfig({
   base: './',
-  // Les réglages de cette version (fichier .env.pages) : pas de serveur de salle, publication possible
+  // Les réglages de cette version (fichier .env.pages) : publication possible
   mode: 'pages',
   build: {
     outDir: 'dist-pages',

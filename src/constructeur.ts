@@ -190,7 +190,7 @@ Trace la médiatrice de [AB]."></textarea>
     const a = compiler(texte, connus, { x: 0, y: 0 }), b = compiler(texte, connus, { x: 1000, y: 1000 })
     if (!a.etapes.length || JSON.stringify(a.etapes) === JSON.stringify(b.etapes)) return go()
     this.bandeau.hidden = false
-    this.bandeau.innerHTML = '<span class="numero">⌖</span>Clique sur le tableau là où la construction doit commencer. Échap pour annuler.'
+    this.bandeau.innerHTML = '<span class="numero">⌖</span>Clique sur la page là où la construction doit commencer. Échap pour annuler.'
     const fin = () => { this.app.rendu.fantomes = []; this.app.rendu.redessinerDirect(); this.bandeau.hidden = true }
     this.app.placement = {
       bouge: w => { this.app.rendu.fantomes = fantomes(compiler(texte, connus, w), this.app); this.app.rendu.redessinerDirect() },

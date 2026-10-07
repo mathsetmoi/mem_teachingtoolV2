@@ -1,7 +1,10 @@
 // Le film élève : ce qui part chez les élèves, et ce qu'ils en revoient.
 // La règle d'or d'abord : rien de ce qui a été effacé avant la séance, ni
 // le nom de l'appareil, ni le tracé brut d'une figure, ne doit s'y trouver.
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as Y from 'yjs'
 import { Tableau } from '../src/document'
 import type { Forme, Polygone, Trait } from '../src/types'
 import { exporter, exporterDetaille, pagesDeLaSeance, seancesDuFilm } from '../src/revoir/exporter'
@@ -274,5 +277,45 @@ describe('ce que la relecture a trouvé', () => {
     t.poser(page, trait(2, 0)); await attendre(1000)
     expect(seancesDuFilm(t.film.toArray()).length).toBe(1)
     expect(seancesDuFilm(t.film.toArray(), 5 * MINUTE).map(s => s.gestes)).toEqual([1, 3])
+  })
+})
+
+describe('les tableaux déjà enregistrés chez le professeur', () => {
+  it('toujours dans la même base du navigateur', () => {
+    const main = readFileSync(join(__dirname, '..', 'src', 'main.ts'), 'utf8')
+    expect(main).toContain("new Tableau('mem-tableau-local')")
+  })
+
+  it("s'ouvrent encore, même avec l'ancien réglage « les élèves peuvent écrire »", async () => {
+    // Un tableau d'avant : deux pages, des gestes, et le réglage du partage en direct
+    const { t, page } = await nouveauTableau()
+    t.poser(page, trait(0, 0)); await attendre(1000)
+    const deux = t.ajouterPage('blanc', 1); t.pageVue = deux; await attendre(500)
+    t.poser(deux, formule('x^2')); await attendre(1000)
+    t.doc.getMap('reglages').set('elevesEcrivent', true)
+    const enregistre = Y.encodeStateAsUpdate(t.doc)
+    const etapes = t.film.length
+
+    const relu = new Tableau(null)
+    Y.applyUpdate(relu.doc, enregistre)
+    await attendre(0)
+    expect(relu.ordre.toArray()).toEqual([page, deux])
+    expect([...relu.formesDe(page)!.values()].map(f => f.type)).toEqual(['trait'])
+    expect([...relu.formesDe(deux)!.values()].map(f => f.type)).toEqual(['formule'])
+    // Le film d'avant est intact : la revue et la publication le relisent
+    const film = relu.film.toArray().slice(0, etapes)
+    expect(film.map(e => e.page)).toEqual(t.film.toArray().map(e => e.page))
+    expect(relu.pageA(film[etapes - 1], deux)?.formes.map(f => f.type)).toEqual(['formule'])
+    const b = new Bobine(exporter(relu, { de: 1, a: etapes - 1, pages: [page, deux], titre: 'Avant' }))
+    expect(b.image(b.n - 1).formes.map(f => f.type)).toEqual(['formule'])
+    // Le vieux réglage reste dans le document, sans effet, et ne part pas chez les élèves
+    expect(relu.doc.getMap('reglages').get('elevesEcrivent')).toBe(true)
+    expect(JSON.stringify(b.film)).not.toContain('elevesEcrivent')
+    // On continue d'écrire et d'annuler comme avant
+    relu.pageVue = page
+    relu.poser(page, trait(5, 5)); await attendre(1000)
+    expect(relu.formesDe(page)!.size).toBe(2)
+    relu.annulation.undo()
+    expect(relu.formesDe(page)!.size).toBe(1)
   })
 })

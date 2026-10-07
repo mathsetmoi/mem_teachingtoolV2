@@ -1,8 +1,8 @@
 // =============================================================
 // LES FORMES DU TABLEAU
 // Une forme est un simple objet JSON. C'est ce qui permet de la
-// ranger telle quelle dans le document Yjs : elle se synchronise,
-// s'annule et s'enregistre sans code supplémentaire.
+// ranger telle quelle dans le document Yjs : elle s'annule et
+// s'enregistre sans code supplémentaire.
 // Coordonnées en « unités monde » : 40 unités = 1 cm.
 // =============================================================
 
@@ -124,19 +124,6 @@ export interface ImageForme extends Base {
 
 export type Forme = Trait | Segment | Formule | Polygone | Cercle | ImageForme
 export type Figure = Polygone | Cercle
-
-export type Role = 'prof' | 'eleve'
-
-/** Ce que chaque participant diffuse en direct (non enregistré) */
-export interface Presence {
-  nom: string
-  role: Role
-  couleur: string
-  page?: string
-  vue?: { cx: number; cy: number; l: number; h: number }   // zone visible, en monde
-  curseur?: { x: number; y: number } | null
-  direct?: { pts: number[]; couleur: string; taille: number; opacite: number; pression: boolean } | null
-}
 
 export function uid(): string {
   // crypto.randomUUID n'existe pas en http:// sur le réseau local de la classe

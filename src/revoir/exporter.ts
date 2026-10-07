@@ -4,12 +4,15 @@
 // instantanés, rapide) et on n'en garde que ce que les élèves ont vu :
 // les pages choisies, entre le début et la fin de la séance. Ce qui a
 // été effacé AVANT la séance n'y est pas, ni le nom de l'appareil qui a
-// tracé (auteur), ni le tracé brut d'une figure reconnue.
+// tracé (auteur), ni le tracé brut d'une figure reconnue. Le rythme de la
+// main (le temps de chaque point d'un trait) ne part qu'avec le geste où
+// la classe a vu ce trait s'écrire.
 // =============================================================
 import type { Etape, EtatTableau, Tableau } from '../document'
 import type { Fond, Forme } from '../types'
 import type { Chapitre, EtapeFilm, FilmEleve, Op, PageFilm } from './format'
 import { FORMAT, VERSION } from './format'
+import { lireTemps } from './main-levee'
 
 /** Les découpages proposés, en minutes : un silence plus long sépare deux
  *  séances. Le premier est celui qu'on prend sans rien régler. */
@@ -117,8 +120,12 @@ export function exporterDetaille(tableau: Tableau, choix: Choix): { film: FilmEl
     }
     // Plusieurs pages touchées d'un coup (rare) : un geste par page
     const ordreTouche = [...parPage.keys()].sort((x, y) => (x === vue ? -1 : 0) - (y === vue ? -1 : 0))
+    let ms = film[i].ms
     ordreTouche.forEach((p, k) => {
-      etapes.push({ dt: k ? 0 : Math.max(0, Math.round(dt + attente)), p, o: parPage.get(p)! })
+      const g: EtapeFilm = { dt: k ? 0 : Math.max(0, Math.round(dt + attente)), p, o: parPage.get(p)! }
+      // Le rythme du trait que ce geste a tracé à la main, avec lui seul
+      if (ms && tracePose(g.o, avant.pages.get(p), ms)) { g.ms = [...ms]; ms = undefined }
+      etapes.push(g)
       sources.push(i)
       derniere = p
     })
@@ -172,6 +179,12 @@ export function pagesDeLaSeance(tableau: Tableau, s: Seance): string[] {
   for (let i = s.de; i <= s.a; i++) for (const p of tableau.etatA(tableau.film.get(i)).ordre) toutes.add(p)
   const f = exporter(tableau, { de: s.de, a: s.a, pages: [...toutes], titre: '' })
   return f.ordre
+}
+
+/** Ces opérations posent-elles un trait neuf (absent de la page d'avant) qui
+ *  va avec ces temps, un par point ? */
+function tracePose(o: Op[], avant: { formes: Map<string, Forme> } | undefined, ms: number[]): boolean {
+  return o.some(op => op[0] === '=' && op[1].type === 'trait' && !avant?.formes.has(op[1].id) && !!lireTemps(ms, op[1].pts.length / 3))
 }
 
 /** Ce qui a changé sur une page d'un état à l'autre */
