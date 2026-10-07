@@ -64,7 +64,7 @@ export class Publication {
   private reperer(ecart: number) {
     const t = this.app.tableau
     return seancesDuFilm(t.film.toArray(), ecart)
-      .filter(s => visible(exporter(t, { de: s.de, a: s.a, pages: pagesDeLaSeance(t, s), titre: '' })))
+      .filter(s => visible(exporter(t, { de: s.de, a: s.a, pages: pagesDeLaSeance(t, s), titre: '' }, { instruments: false })))
   }
 
   ouvrir() {

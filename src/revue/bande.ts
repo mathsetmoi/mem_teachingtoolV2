@@ -26,10 +26,16 @@
 // Le temps : un trait tracé à la main dont le film a noté le rythme (voir
 // revoir/main-levee.ts) s'écrit à la fin de l'attente de son image, à la
 // vitesse de la main ; l'attente qui le précède est le vrai temps stylo levé.
+// Ce que les instruments ont fait avant un geste (la piste du tableau, voir
+// revoir/instruments-film.ts) se rejoue de même, avant le trait : la
+// manipulation fait partie du tracé de l'image.
 // =============================================================
 import type { Etape } from '../document'
 import type { Seance } from '../revoir/exporter'
+import { AVANT_PROPOS } from '../revoir/exporter'
 import { dureesDuTrace } from '../revoir/main-levee'
+import type { EtatInstruments, GesteAuxInstruments } from '../revoir/instruments-film'
+import { horaire } from '../revoir/instruments-film'
 import { PLANCHER, tasser } from '../revoir/rythme'
 import type { LectureSeule } from './planches'
 import { departPropre, memeImage } from './planches'
@@ -62,6 +68,10 @@ export interface Bande {
   /** Le nombre de gestes montrés jusqu'à l'image k, incluse */
   gestes: Int32Array
   total: number
+  /** Si le tableau a noté ses instruments : leur état à chaque image, et ce
+   *  qu'ils font avant chaque geste (null : rien ne bouge). Absents sinon. */
+  etats?: EtatInstruments[]
+  manips?: (GesteAuxInstruments | null)[]
 }
 
 /** Au-delà de ce silence (ms), un nouveau pas commence */
@@ -244,9 +254,18 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
   const traces: number[] = [0]
   const parties: Partie[] = []
   const debutsDePas: number[] = []
+  // Les instruments, si le tableau les a notés : l'état à chaque image, et la
+  // manipulation qui précède chaque geste
+  const piste = lecture.piste
+  const heureDe = (e: number) => film[e]?.t ?? -Infinity
+  const etats: EtatInstruments[] | undefined = piste ? [piste.etatA(heureDe(avants[0]))] : undefined
+  const manips: (GesteAuxInstruments | null)[] | undefined = piste ? [null] : undefined
   groupes.forEach((g, q) => {
     const debut = q ? images.length : 0
-    if (q) { images.push({ e: avants[g.de], p: g.page, geste: false }); attentes.push(PAUSE_DE_PARTIE); traces.push(0) }
+    if (q) {
+      images.push({ e: avants[g.de], p: g.page, geste: false }); attentes.push(PAUSE_DE_PARTIE); traces.push(0)
+      etats?.push(piste!.etatA(heureDe(avants[g.de]))); manips?.push(null)
+    }
     for (let j = g.de; j <= g.a; j++) {
       const premier = j === g.de
       const silence = j ? film[etapes[j]].t - film[etapes[j - 1]].t : 0
@@ -254,9 +273,23 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
       const m = avants[j] + 1, d = dureesDuTrace(film[m]?.ms)
       // Le temps stylo levé : jusqu'au poser du trait, et non jusqu'à son lever
       const leve = d ? film[m].t - d.vecue - (j ? film[etapes[j - 1]].t : film[m].t) : silence
-      if (premier || leve >= SILENCE_DE_PAS) debutsDePas.push(images.length)
-      attentes.push((premier ? ENTREE : d ? tasser(leve, 0) : tasser(silence)) + (d?.duree ?? 0))
-      traces.push(d?.duree ?? 0)
+      // Ce que les instruments ont fait sur cette page depuis l'image d'avant
+      // (au plus une minute pour la première d'une partie), jusqu'au geste
+      let manip: GesteAuxInstruments | null = null
+      if (piste) {
+        const fin = film[d ? m : etapes[j]].t
+        let debutF = heureDe(images[images.length - 1].e)
+        if (premier) debutF = Math.max(debutF, fin - AVANT_PROPOS)
+        const w = piste.fenetre(debutF, fin, pages[j])
+        manip = horaire(w.poses, w.traces, piste.etatA(debutF), fin - debutF, d?.vecue ?? 0, premier ? ENTREE : d ? 0 : PLANCHER)
+        etats!.push(piste.etatA(film[etapes[j]].t)); manips!.push(manip)
+      }
+      // Avec une manipulation, le pas se coupe au temps immobile de la fenêtre
+      // (sans elle, c'est le temps stylo levé ou le silence d'avant, comme avant)
+      if (premier || (manip ? manip.immobile : leve) >= SILENCE_DE_PAS) debutsDePas.push(images.length)
+      const lent = (manip?.duree ?? 0) + (d?.duree ?? 0)
+      attentes.push((premier ? ENTREE : manip ? manip.attente : d ? tasser(leve, 0) : tasser(silence)) + lent)
+      traces.push(lent)
       images.push(d ? { e: etapes[j], p: pages[j], geste: true, main: m } : { e: etapes[j], p: pages[j], geste: true })
     }
     const heure = film[etapes[g.de]].t
@@ -273,6 +306,7 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
     attentes.push(tasser(silence))
     traces.push(0)
     images.push({ e: bout, p: der.p, geste: true })
+    etats?.push(piste!.etatA(film[bout].t)); manips?.push(null)
     parties[parties.length - 1].fin = images.length - 1
   }
 
@@ -287,7 +321,9 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
   const gestes = new Int32Array(n)
   for (let k = 1; k < n; k++) gestes[k] = gestes[k - 1] + (images[k].geste ? 1 : 0)
 
-  return { portion: p, images, attentes: Float64Array.from(attentes), traces: Float64Array.from(traces), parties, bornes, gestes, total: gestes[n - 1] }
+  const b: Bande = { portion: p, images, attentes: Float64Array.from(attentes), traces: Float64Array.from(traces), parties, bornes, gestes, total: gestes[n - 1] }
+  if (etats && manips) { b.etats = etats; b.manips = manips }
+  return b
 }
 
 // ---------- Se déplacer dans la bande ----------

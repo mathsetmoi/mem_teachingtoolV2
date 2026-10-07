@@ -11,12 +11,16 @@
 // =============================================================
 import type { Etape, ImagePage, Tableau } from '../document'
 import type { Fond, Forme } from '../types'
+import { LecturePiste } from '../revoir/instruments-film'
 import type { ImageBande } from './bande'
 
 /** Tout ce que la revue peut demander au tableau, et rien d'autre */
 export interface LectureSeule {
   /** Le film, copié et figé à l'ouverture */
   readonly film: readonly Etape[]
+  /** La piste des instruments, copiée à l'ouverture et relue à la première
+   *  question (null : elle est vide, les instruments ne se rejouent pas) */
+  readonly piste: LecturePiste | null
   /** La page `page` juste après l'étape i ; null si i est hors du film ou si la page n'existait pas */
   page(i: number, page: string): ImagePage | null
   /** Les pages du tableau aujourd'hui, dans leur ordre */
@@ -52,8 +56,14 @@ export function lectureDe(t: Tableau, pagesActuelles: () => readonly string[], f
   const premieres = new Map<string, number>()
   fige.forEach((e, i) => { if (e.page && !premieres.has(e.page)) premieres.set(e.page, i) })
   const verdicts = new Map<number, boolean>()
+  const morceaux = t.piste.toArray()
+  let piste: LecturePiste | null | undefined
   return {
     film: fige,
+    get piste() {
+      if (piste === undefined) { const l = morceaux.length ? new LecturePiste(morceaux) : null; piste = l && !l.vide ? l : null }
+      return piste
+    },
     page,
     pagesActuelles,
     fondActuel: p => pagesActuelles().includes(p) ? t.fondDe(p) : null,

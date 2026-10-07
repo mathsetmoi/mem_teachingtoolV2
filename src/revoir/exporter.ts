@@ -6,13 +6,17 @@
 // été effacé AVANT la séance n'y est pas, ni le nom de l'appareil qui a
 // tracé (auteur), ni le tracé brut d'une figure reconnue. Le rythme de la
 // main (le temps de chaque point d'un trait) ne part qu'avec le geste où
-// la classe a vu ce trait s'écrire.
+// la classe a vu ce trait s'écrire. Les instruments (la règle qu'on pose,
+// le compas qui trace) ne partent que tels que la classe les a vus sur une
+// page publiée, pendant la séance : voir instrumentsDuFilm, plus bas.
 // =============================================================
 import type { Etape, EtatTableau, Tableau } from '../document'
 import type { Fond, Forme } from '../types'
 import type { Chapitre, EtapeFilm, FilmEleve, Op, PageFilm } from './format'
 import { FORMAT, VERSION } from './format'
 import { lireTemps } from './main-levee'
+import type { EtatInstruments, InstrumentVu, Morceau, Piece } from './instruments-film'
+import { IndexPieces, LecturePiste, cleDe, ecrireMorceau, memeEtat } from './instruments-film'
 
 /** Les découpages proposés, en minutes : un silence plus long sépare deux
  *  séances. Le premier est celui qu'on prend sans rien régler. */
@@ -67,11 +71,15 @@ function nettoyer(f: Forme): Forme {
   return c as unknown as Forme
 }
 
+/** instruments : false pour ne pas chercher les instruments (quand on ne veut
+ *  du film que ses pages, ses gestes ou ses chapitres) */
+export interface OptionsExport { instruments?: boolean }
+
 /** Le film élève d'une séance */
-export function exporter(tableau: Tableau, choix: Choix): FilmEleve { return exporterDetaille(tableau, choix).film }
+export function exporter(tableau: Tableau, choix: Choix, options: OptionsExport = {}): FilmEleve { return exporterDetaille(tableau, choix, options).film }
 
 /** Le film élève, et pour chacun de ses gestes l'étape du tableau dont il vient (pour les tests) */
-export function exporterDetaille(tableau: Tableau, choix: Choix): { film: FilmEleve; sources: number[] } {
+export function exporterDetaille(tableau: Tableau, choix: Choix, options: OptionsExport = {}): { film: FilmEleve; sources: number[] } {
   const film = tableau.film.toArray()
   const de = Math.max(0, Math.min(choix.de, film.length - 1)), a = Math.max(de, Math.min(choix.a, film.length - 1))
   const gardees = new Set(choix.pages)
@@ -169,7 +177,68 @@ export function exporterDetaille(tableau: Tableau, choix: Choix): { film: FilmEl
     chapitres: chapitresAuto(etapes, ordre, pages),
     images,
   }
+  if (options.instruments !== false && tableau.piste.length && etapes.length) {
+    const i = instrumentsDuFilm(new LecturePiste(tableau.piste.toArray()), etapes, sources.map(k => film[k].t), film[sources[0] - 1]?.t ?? -Infinity)
+    if (i.depart.length) resultat.instruments = i.depart
+    if (i.avant > 0) resultat.avant = i.avant
+  }
   return { film: resultat, sources }
+}
+
+/** Au plus ce temps d'avant le premier geste (ms) : on rejoue la mise en place
+ *  des instruments qui le précède (la règle qu'on pose avant le premier trait) */
+export const AVANT_PROPOS = 60_000
+
+/** Les instruments du film élève. `heures` : l'heure de l'étape d'où vient
+ *  chaque geste ; `precedente` : celle de l'étape d'avant le premier.
+ *  Le geste j rejoue ce que les instruments ont fait dans ]heure j−1, heure j]
+ *  (pour le premier : l'avant-propos, au plus une minute, après l'étape
+ *  d'avant), et seulement sur la page de ce geste, qui est publiée : un
+ *  mouvement fait sur une autre page, ou une page non publiée, ne part pas.
+ *  On simule ce que le lecteur aura reconstruit ; s'il diffère de l'état vrai
+ *  à la fin d'un geste (un instrument bougé ailleurs), un « saut » remet l'état
+ *  vrai, celui que la classe avait sous les yeux à ce moment-là. Les morceaux
+ *  sont ceux de la piste, coupés aux bords de leur fenêtre, datés depuis
+ *  l'image d'avant, sans page. Écrit dans les gestes (inst) ; rend l'état de
+ *  départ et l'avant-propos. */
+export function instrumentsDuFilm(piste: LecturePiste, etapes: EtapeFilm[], heures: number[], precedente: number): { depart: Morceau[]; avant: number } {
+  const T0 = heures[0]
+  const debut0 = Math.max(T0 - AVANT_PROPOS, precedente)
+  const premier = piste.premierDans(debut0, T0, etapes[0].p)
+  // La fenêtre du premier geste commence juste avant le premier mouvement
+  const origine = premier === null ? T0 : Math.max(debut0, premier - 1)
+  let sim: EtatInstruments = piste.etatA(origine)
+  const depart = [...sim.values()].sort((x, y) => x.rang - y.rang).map(i => instantane(i, 0))
+  etapes.forEach((g, j) => {
+    const a = j ? heures[j - 1] : origine, b = heures[j]
+    const d = piste.dans(a, b, g.p)
+    const morceaux: { t: number; m: Morceau }[] = []
+    for (const x of d.poses) morceaux.push({ t: x.t0, m: ecrireMorceau(x, a) })
+    for (const x of d.traces) morceaux.push({ t: x.t0, m: ecrireMorceau(x, a) })
+    morceaux.sort((x, y) => x.t - y.t)
+    if (d.poses.length) sim = new IndexPieces(d.poses, sim).fin
+    // Les raccords : l'état vrai au geste, s'il n'est pas celui qu'on a rejoué
+    const vrai = piste.etatA(b)
+    for (const [cle, i] of sim) if (!vrai.has(cle)) morceaux.push({ t: b, m: ecrireMorceau(rangeIci(i, b - a)) })
+    for (const [cle, i] of vrai) {
+      const s = sim.get(cle)
+      if (!s || !memeEtat(s.etat, i.etat)) morceaux.push({ t: b, m: instantane(i, b - a, true) })
+    }
+    sim = vrai
+    if (morceaux.length) g.inst = morceaux.map(x => x.m)
+  })
+  return { depart, avant: T0 - origine }
+}
+
+/** Un instrument posé là, d'un coup, à l'instant t de la fenêtre (saut : un raccord) */
+function instantane(i: InstrumentVu, t: number, saut = false): Morceau {
+  const p: Piece = { cle: cleDe(i.n, i.c), n: i.n, c: i.c, q: i.q, visible: true, saut, p: null, t0: t, poses: [{ t, ...i.etat }] }
+  return ecrireMorceau(p)
+}
+
+/** L'instrument rangé, d'un coup, à l'instant t de la fenêtre */
+function rangeIci(i: InstrumentVu, t: number): Piece {
+  return { cle: cleDe(i.n, i.c), n: i.n, c: i.c, q: null, visible: false, saut: true, p: null, t0: t, poses: [] }
 }
 
 /** Les pages où il se passe quelque chose pendant une séance (celles que le
@@ -177,7 +246,7 @@ export function exporterDetaille(tableau: Tableau, choix: Choix): { film: FilmEl
 export function pagesDeLaSeance(tableau: Tableau, s: Seance): string[] {
   const toutes = new Set<string>(s.pages)
   for (let i = s.de; i <= s.a; i++) for (const p of tableau.etatA(tableau.film.get(i)).ordre) toutes.add(p)
-  const f = exporter(tableau, { de: s.de, a: s.a, pages: [...toutes], titre: '' })
+  const f = exporter(tableau, { de: s.de, a: s.a, pages: [...toutes], titre: '' }, { instruments: false })
   return f.ordre
 }
 

@@ -71,6 +71,13 @@ export class Rendu {
   fantomes: Figure[] = []
   /** Ceux que manie le constructeur, en plus de ceux de l'utilisateur */
   instrumentsAnimes: { nom: NomInstrument; etat: EtatInstrument; actif: Partie | null }[] = []
+  /** Appelé chaque fois que la couche des instruments est peinte, avec ce
+   *  qu'elle montre : le tableau y branche la piste des instruments (voir
+   *  piste.ts). Le lecteur et la revue n'en ont pas. */
+  temoin: ((instruments: Rendu['instruments'], animes: Rendu['instrumentsAnimes']) => void) | null = null
+  /** Appelé chaque fois que la couche « direct » est peinte (le tracé en cours
+   *  sous un instrument paraît alors) : la piste y date ce tracé */
+  temoinDirect: (() => void) | null = null
   /** Une mesure lue pendant un geste (« 4,5 cm », « 30° »), en monde */
   mesure: { texte: string; x: number; y: number } | null = null
   readonly coucheFormules: HTMLDivElement
@@ -170,7 +177,7 @@ export class Rendu {
     this.image = 0
     if (this.instrumentsSales) { this.peindreInstruments(); this.instrumentsSales = false }
     if (this.sceneSale) { this.peindreScene(); this.placerFormules(); this.sceneSale = false }
-    if (this.directSale) { this.peindreDirect(); this.directSale = false }
+    if (this.directSale) { this.peindreDirect(); this.directSale = false; this.temoinDirect?.() }
   }
 
   // ---------- Couche des instruments ----------
@@ -178,9 +185,11 @@ export class Rendu {
     const c = this.ci, cam = this.cam
     c.setTransform(1, 0, 0, 1, 0, 0)
     c.clearRect(0, 0, this.coucheInstruments.width, this.coucheInstruments.height)
-    if (this.instrumentsCaches) return
+    if (this.instrumentsCaches) { this.temoin?.([], []); return }
     c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
-    for (const i of [...this.instruments, ...this.instrumentsAnimes]) dessinerInstrument(c, i.nom, i.etat, cam.z, i.actif)
+    for (const i of this.instruments) dessinerInstrument(c, i.nom, i.etat, cam.z, i.actif)
+    for (const i of this.instrumentsAnimes) dessinerInstrument(c, i.nom, i.etat, cam.z, i.actif)
+    this.temoin?.(this.instruments, this.instrumentsAnimes)
   }
 
   // ---------- Couche scène ----------

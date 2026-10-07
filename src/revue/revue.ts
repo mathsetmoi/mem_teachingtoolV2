@@ -23,7 +23,9 @@ import { Camera } from '../camera'
 import { Rendu } from '../rendu'
 import type { TraitDirect } from '../rendu'
 import type { Etape } from '../document'
-import type { Forme } from '../types'
+import type { Figure, Forme } from '../types'
+import type { EtatInstruments, GesteAuxInstruments } from '../revoir/instruments-film'
+import { dansLOrdre, dejaTracee } from '../revoir/instruments-film'
 import { boiteDe } from '../revoir/bobine'
 import type { Boite } from '../revoir/bobine'
 import { DECOUPAGES, seancesDuFilm } from '../revoir/exporter'
@@ -143,9 +145,20 @@ export class RevueEnClasse {
   private boucle = 0
   /** On est dans une image d'écran de la boucle (voir assurerBoucle) */
   private dansLaBoucle = false
-  /** Les formes qui se dessinent en ce moment. main : un trait qui s'écrit au
-   *  rythme de la main, sur la page d'avant (avant), point par point (vus) */
-  private trace: { ids: Set<string>; debut: number; duree: number; main?: { m: Main; avant: Forme[]; vus: number } } | null = null
+  /** Ce qui se trace en ce moment, dans l'ordre : la manipulation des
+   *  instruments (geste, sur la page d'avant : avant), puis le trait qui
+   *  s'écrit au rythme de la main (main, point par point : vus), ou bien les
+   *  figures neuves qui se dessinent (ids). partManip, partTrait : la part de
+   *  la durée que prennent les deux premiers (le reste : les figures) ; phase :
+   *  où l'on en était à la dernière image d'écran */
+  private trace: {
+    ids: Set<string>; debut: number; duree: number
+    main?: { m: Main; avant: Forme[]; vus: number }
+    geste?: GesteAuxInstruments; avant?: Forme[]
+    partManip: number; partTrait: number; phase: number
+  } | null = null
+  /** Les instruments à l'écran de la revue (null : aucun) */
+  private montres: EtatInstruments | null = null
   /** Rapide par défaut ; retenue tant que l'onglet vit, nulle part ailleurs */
   private allure = 2
   private arretAuxParties = true
@@ -319,7 +332,12 @@ export class RevueEnClasse {
     this.doigts.clear(); this.pince = null; this.appui = null
     this.planches?.vider()
     this.planches = null; this.bande = null; this.lecture = null; this.film = []; this.seances = []; this.totaux.clear()
-    if (this.rendu) { this.rendu.formes = []; this.rendu.monTrait = null; this.rendu.toutRedessiner() }
+    if (this.rendu) {
+      this.rendu.formes = []; this.rendu.monTrait = null; this.rendu.apercu = null
+      this.rendu.instruments = []; this.rendu.instrumentsAnimes = []; this.rendu.instrumentsCaches = true
+      this.rendu.toutRedessiner()
+    }
+    this.montres = null
     this.images.clear()
     for (const c of this.inertes) c.inert = false
     this.inertes = []
@@ -363,6 +381,8 @@ export class RevueEnClasse {
   private montrer(b: Bande, premiere = false) {
     const p = b.portion
     this.bande = b
+    // Les instruments ne se montrent que si le tableau les a notés
+    if (this.rendu) { this.rendu.instrumentsCaches = !b.etats; this.montres = null; this.rendu.apercu = null }
     this.ech = echeances(b, this.facteur)
     this.debuts = departs(b, this.ech, this.facteur)
     this.frise.charger(b.images.length, b.parties)
@@ -437,24 +457,37 @@ export class RevueEnClasse {
     // « animations réduites ». Pendant la lecture, l'horloge a pu dépasser le
     // début du tracé d'une image d'écran : il reprend là où il en est.
     const main = tracer && img.main !== undefined ? this.mainDe(img) : null
-    if (main) {
-      const duree = main.m.duree / this.facteur
-      const deja = this.enMarche ? Math.max(0, Math.min(duree, this.horloge - this.debuts[j])) : 0
-      this.trace = { ids: new Set([main.m.trait.id]), debut: this.maintenant - deja, duree, main }
-      this.assurerBoucle()
-    } else if (tracer && !this.reduit.matches) {
-      // Ce qui revient (Ctrl+Z, Ctrl+Y) revient d'un coup, comme au tableau
-      const dessinees = apparues.filter(seDessine)
-      const f = voisine && dessinees.length ? this.planches!.neuves(voisine, dessinees) : []
-      if (f.length) {
-        let duree = dureeDuTrace(f) / this.facteur
+    // Avant le geste, ce que les instruments ont fait au tableau, sur la page d'avant
+    const geste = tracer ? b.manips?.[j] ?? null : null
+    // Ensuite, sans trait à la main, les figures neuves se dessinent sous les yeux.
+    // Ce qui revient (Ctrl+Z, Ctrl+Y) revient d'un coup, comme au tableau, et ce
+    // qu'on vient de voir se tracer sous un instrument ne se retrace pas
+    let esquisses: Forme[] = [], esquisse = 0
+    if (tracer && !main && !this.reduit.matches) {
+      const dessinees = apparues.filter(f => seDessine(f) && !(geste && (f.type === 'cercle' || f.type === 'polygone') && dejaTracee(f, geste.traces)))
+      esquisses = voisine && dessinees.length ? this.planches!.neuves(voisine, dessinees) : []
+      if (esquisses.length) {
+        esquisse = dureeDuTrace(esquisses) / this.facteur
         // Pendant la lecture, le tracé finit toujours avant le geste suivant
-        if (this.enMarche && j + 1 < n) duree = Math.min(duree, 0.85 * (this.debuts[j + 1] - this.ech[j]))
-        if (duree >= TRACE_VISIBLE) {
-          this.trace = { ids: new Set(f.map(x => x.id)), debut: this.maintenant, duree }
-          this.assurerBoucle()
-        }
+        if (this.enMarche && j + 1 < n) esquisse = Math.min(esquisse, 0.85 * (this.debuts[j + 1] - this.ech[j]))
+        if (esquisse < TRACE_VISIBLE) esquisse = 0
       }
+    }
+    if (main || geste) {
+      const manip = (geste?.duree ?? 0) / this.facteur, trait = (main?.m.duree ?? 0) / this.facteur
+      const duree = manip + trait + esquisse
+      // Pendant la lecture, l'horloge a pu dépasser le début du tracé d'une image d'écran
+      const deja = this.enMarche ? Math.max(0, Math.min(manip + trait, this.horloge - this.debuts[j])) : 0
+      const avant = geste ? this.planches!.lire({ e: (img.main ?? img.e) - 1, p: img.p, geste: false }).formes : undefined
+      this.trace = {
+        ids: new Set(main ? [main.m.trait.id] : esquisse ? esquisses.map(x => x.id) : []), debut: this.maintenant - deja, duree,
+        main: main ?? undefined, geste: geste ?? undefined, avant,
+        partManip: duree > 0 ? manip / duree : 0, partTrait: duree > 0 ? trait / duree : 0, phase: -1,
+      }
+      this.assurerBoucle()
+    } else if (esquisse) {
+      this.trace = { ids: new Set(esquisses.map(x => x.id)), debut: this.maintenant, duree: esquisse, partManip: 0, partTrait: 0, phase: -1 }
+      this.assurerBoucle()
     }
     if (this.vue === 'auto') {
       // Pendant un glissé sur la frise, on cadre ce qu'on voit sans lire d'autre planche
@@ -480,42 +513,107 @@ export class RevueEnClasse {
     return null
   }
 
+  /** Où en est ce qui se trace : la phase (0 : la manipulation, 1 : le trait
+   *  à la main, 2 : les figures qui se dessinent, 3 : fini), et la fraction
+   *  faite de cette phase */
+  private ouEnEst(t: NonNullable<RevueEnClasse['trace']>): { phase: number; u: number } {
+    const fait = t.duree > 0 ? Math.min(1, (this.maintenant - t.debut) / t.duree) : 1
+    if (fait >= 1) return { phase: 3, u: 1 }
+    const m = t.partManip, p = t.partTrait
+    if (t.geste && fait < m) return { phase: 0, u: m > 0 ? fait / m : 1 }
+    if (t.main && fait < m + p) return { phase: 1, u: p > 0 ? (fait - m) / p : 1 }
+    return { phase: 2, u: 1 - m - p > 0 ? (fait - m - p) / (1 - m - p) : 1 }
+  }
+
   private peindre() {
     const r = this.rendu, b = this.bande
     if (!r || !b || !this.planches) return
     const planche = this.planches.lire(b.images[this.k])
     const t = this.trace
     let enCours: TraitDirect | null = null
-    if (t?.main) {
-      // La page d'avant le geste, et sous le stylo le trait en cours : le dessin même du direct
-      const fait = t.duree > 0 ? Math.min(1, (this.maintenant - t.debut) / t.duree) : 1
-      if (fait < 1) {
-        t.main.vus = pointsPoses(t.main.m, fait * t.main.m.duree)
+    let instruments = b.etats?.[this.k] ?? null, apercu: Figure | null = null
+    if (t) {
+      const { phase, u } = this.ouEnEst(t)
+      t.phase = phase
+      if (phase === 0 && t.geste) {
+        // La page d'avant le geste, et les instruments qui font ce qu'ils ont fait au tableau
+        const tau = u * t.geste.duree
+        r.formes = t.avant ?? planche.formes
+        instruments = t.geste.etatA(tau); apercu = t.geste.apercuA(tau)
+      } else if (phase === 1 && t.main) {
+        // La page d'avant le geste, et sous le stylo le trait en cours : le dessin même du direct
+        t.main.vus = pointsPoses(t.main.m, u * t.main.m.duree)
         enCours = traitEnCours(t.main.m, t.main.vus)
-      }
-      r.formes = fait < 1 ? t.main.avant : planche.formes
-    } else if (t) {
-      const fait = Math.min(1, (this.maintenant - t.debut) / t.duree)
-      r.formes = planche.formes.map(f => t.ids.has(f.id) ? esquisse(f, fait) : f)
+        r.formes = t.main.avant
+        if (t.geste) instruments = t.geste.fin
+      } else if (phase === 2 && !t.main) {
+        r.formes = planche.formes.map(f => t.ids.has(f.id) ? esquisse(f, u) : f)
+      } else r.formes = planche.formes
     } else if (this.glisse) r.formes = planche.formes.map(brouillon)
     else r.formes = planche.formes
     r.monTrait = enCours
+    this.poserInstruments(instruments)
+    this.poserApercu(apercu)
     r.fond = planche.fond
     r.origine = planche.origine
     // Au début d'un trait qui s'écrit, la page est souvent celle qui est déjà là : seul le trait se peint
     r.redessinerSiBesoin()
   }
 
-  /** Une image d'écran du trait qui s'écrit : seule la couche « direct » se
-   *  repeint, et seulement quand un point de plus est posé */
-  private peindreLaMain(t: NonNullable<RevueEnClasse['trace']>) {
-    const r = this.rendu, m = t.main
-    if (!r || !m) return
-    const fait = t.duree > 0 ? Math.min(1, (this.maintenant - t.debut) / t.duree) : 1
-    const n = pointsPoses(m.m, fait * m.m.duree)
-    if (n === m.vus) return
-    m.vus = n
-    r.monTrait = traitEnCours(m.m, n)
+  /** Une image d'écran de ce qui se trace. Pendant la manipulation, seules les
+   *  couches des instruments et « direct » se repeignent ; pendant le trait à
+   *  la main, seule la couche « direct », et seulement quand un point de plus
+   *  est posé. On change de phase : tout se repeint. */
+  private peindreLeGeste(t: NonNullable<RevueEnClasse['trace']>) {
+    const r = this.rendu
+    if (!r) return
+    const { phase, u } = this.ouEnEst(t)
+    if (phase !== t.phase) { this.peindre(); return }
+    if (phase === 0 && t.geste) {
+      const tau = u * t.geste.duree
+      this.poserInstruments(t.geste.etatA(tau))
+      this.poserApercu(t.geste.apercuA(tau))
+      return
+    }
+    if (phase === 1 && t.main) {
+      const m = t.main
+      const n = pointsPoses(m.m, u * m.m.duree)
+      if (n === m.vus) return
+      m.vus = n
+      r.monTrait = traitEnCours(m.m, n)
+      r.redessinerDirect()
+      return
+    }
+    this.peindre()
+  }
+
+  /** Montre ces instruments (rien à repeindre s'ils n'ont pas changé ; null : aucun) */
+  private poserInstruments(e: EtatInstruments | null) {
+    const r = this.rendu
+    if (!r) return
+    if (!e) {
+      if (this.montres) { this.montres = null; r.instruments = []; r.instrumentsAnimes = []; r.redessinerInstruments() }
+      return
+    }
+    const a = this.montres
+    if (a && a.size === e.size && [...a].every(([cle, x]) => {
+      const y = e.get(cle)
+      return !!y && y.q === x.q && y.rang === x.rang && y.etat.x === x.etat.x && y.etat.y === x.etat.y && y.etat.a === x.etat.a && y.etat.r === x.etat.r
+    })) return
+    this.montres = e
+    const { prof, constructeur } = dansLOrdre(e)
+    r.instruments = prof.map(i => ({ nom: i.n, etat: i.etat, actif: i.q }))
+    r.instrumentsAnimes = constructeur.map(i => ({ nom: i.n, etat: i.etat, actif: i.q }))
+    r.redessinerInstruments()
+  }
+
+  /** Le tracé en cours sous un instrument (l'arc sous la mine, le trait le long de la règle) */
+  private poserApercu(f: Figure | null) {
+    const r = this.rendu
+    if (!r) return
+    const a = r.apercu
+    if (a === f || (!a && !f) || (a && f && JSON.stringify(a) === JSON.stringify(f))) return
+    r.apercu = f
     r.redessinerDirect()
   }
 
@@ -557,7 +655,7 @@ export class RevueEnClasse {
     // Un trait qui s'écrit encore à la main bouge déjà : il va jusqu'au lever,
     // puis vient le vrai temps stylo levé (comme au lecteur des élèves).
     const t = this.trace
-    const reste = t?.main ? Math.max(0, t.debut + t.duree - performance.now()) : 0
+    const reste = t && (t.main || t.geste) ? Math.max(0, t.debut + t.duree * (t.partManip + t.partTrait) - performance.now()) : 0
     this.horloge = horlogeAuDepart(this.ech, this.debuts, this.k, reste, DEMARRAGE)
     this.instant = performance.now()
     this.enMarche = true
@@ -621,7 +719,7 @@ export class RevueEnClasse {
     const t = this.trace
     if (t) {
       if (this.maintenant - t.debut >= t.duree) { this.trace = null; this.peindre() }
-      else if (t.main) this.peindreLaMain(t)
+      else if (t.main || t.geste) this.peindreLeGeste(t)
       else this.peindre()
     }
     // Ce que l'horloge décide à cette image d'écran y paraît, pas à la suivante

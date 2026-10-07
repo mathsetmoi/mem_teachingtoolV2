@@ -5,9 +5,10 @@
 // s'effacent pas et ne passent pas dans l'annulation.
 //
 // Chacun a une ORIGINE, d'où l'on mesure : le zéro de la règle, le
-// coin droit de l'équerre, le centre du rapporteur, la pointe du compas.
-// C'est autour d'elle qu'il tourne, et c'est elle qui s'accroche aux
-// points de la figure quand on le pose.
+// coin droit de l'équerre, le centre du rapporteur (au milieu de son bord,
+// qui est sa ligne 0°–180°), la pointe du compas. C'est autour d'elle
+// qu'il tourne, et c'est elle qui s'accroche aux points de la figure
+// quand on le pose.
 //
 // Repère de l'instrument : u le long de son bord, v à 90° (vers le bas
 // de l'écran quand l'instrument est droit). Coordonnées monde, 40 = 1 cm.
@@ -62,9 +63,10 @@ function contour(nom: NomInstrument, e: EtatInstrument): P[] {
     case 'regle': return [pt(REGLE.debut, 0), pt(REGLE.fin, 0), pt(REGLE.fin, REGLE.largeur), pt(REGLE.debut, REGLE.largeur)]
     case 'equerre': return [pt(0, 0), pt(EQUERRE.a, 0), pt(0, -EQUERRE.b)]
     case 'rapporteur': {
-      const r: P[] = [pt(-RAPPORTEUR.r, 0.35 * CM)]
+      // Le demi-disque seul : fermé par son diamètre, qui est le bord du bas
+      // et la ligne 0°–180°. Rien ne dépasse sous ce bord.
+      const r: P[] = []
       for (let k = 0; k <= 36; k++) { const f = Math.PI * k / 36; r.push(pt(-Math.cos(f) * RAPPORTEUR.r, -Math.sin(f) * RAPPORTEUR.r)) }
-      r.push(pt(RAPPORTEUR.r, 0.35 * CM))
       return r
     }
     case 'compas': return []
@@ -224,18 +226,27 @@ function graduerRapporteur(c: CanvasRenderingContext2D, e: EtatInstrument, z: nu
     const w = dir(d * Math.PI / 180)
     c.moveTo(o.x + w.x * R, o.y + w.y * R); c.lineTo(o.x + w.x * (R - l), o.y + w.y * (R - l))
   }
-  // Ligne de foi et centre
-  c.moveTo(o.x - u.x * R, o.y - u.y * R); c.lineTo(o.x + u.x * R, o.y + u.y * R)
-  const k = 0.3 * CM
-  c.moveTo(o.x - v.x * k, o.y - v.y * k); c.lineTo(o.x + v.x * k * 0.5, o.y + v.y * k * 0.5)
   c.lineWidth = 1 / z; c.stroke()
-  // Les deux échelles : 0 à droite (extérieure), 0 à gauche (intérieure)
+  // La ligne 0°–180° EST le bord du bas : un seul trait, à l'encre et de la
+  // largeur du contour, posé sur le bord lui-même. Le centre est marqué d'un
+  // petit trait qui monte du bord (⊥) : rien ne descend dessous.
+  c.beginPath()
+  c.moveTo(o.x - u.x * R, o.y - u.y * R); c.lineTo(o.x + u.x * R, o.y + u.y * R)
+  c.moveTo(o.x, o.y); c.lineTo(o.x - v.x * 0.5 * CM, o.y - v.y * 0.5 * CM)
+  c.lineWidth = 1.4 / z; c.stroke()
+  // Les deux échelles : 0 à droite (extérieure), 0 à gauche (intérieure).
+  // Les chiffres des deux bouts (0 et 180) sont couchés le long du bord et
+  // remontés juste au-dessus de lui : debout, ils passeraient sous le bord ou
+  // chevaucheraient « 170 ».
   c.textAlign = 'center'; c.textBaseline = 'middle'
+  const couche = Math.atan2(u.y, u.x)
   for (let d = 0; d <= 180; d += 10) {
-    const w = dir(d * Math.PI / 180), rot = Math.atan2(w.y, w.x) + Math.PI / 2
+    const w = dir(d * Math.PI / 180), bout = d % 180 === 0
+    const rot = bout ? couche : Math.atan2(w.y, w.x) + Math.PI / 2
     for (const [rr, val, taille, gras] of [[R - 0.95 * CM, d, 0.32, 700], [R - 1.45 * CM, 180 - d, 0.26, 500]] as const) {
+      const leve = bout ? taille * CM / 2 + 0.07 * CM : 0
       c.font = `${gras} ${taille * CM}px "Atkinson Hyperlegible", system-ui, sans-serif`
-      c.save(); c.translate(o.x + w.x * rr, o.y + w.y * rr); c.rotate(rot); c.fillText(String(val), 0, 0); c.restore()
+      c.save(); c.translate(o.x + w.x * rr - v.x * leve, o.y + w.y * rr - v.y * leve); c.rotate(rot); c.fillText(String(val), 0, 0); c.restore()
     }
   }
 }

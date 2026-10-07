@@ -23,6 +23,9 @@ import type { FilmEleve } from './format'
 import { svg } from './icones'
 import type { Main } from './main-levee'
 import { pointsPoses, traitEnCours } from './main-levee'
+import type { EtatInstruments, GesteAuxInstruments } from './instruments-film'
+import { dansLOrdre } from './instruments-film'
+import type { Figure } from '../types'
 import { lireParLeRelais } from './relais'
 import { ALLURES } from './rythme'
 
@@ -84,9 +87,14 @@ let k = 0                                  // l'image montrée
 let page = ''
 let enMarche = false
 let minuterie = 0, animation = 0
-/** Le trait qui s'écrit en ce moment, au rythme de la main : quand il a
- *  commencé et combien de temps il dure (horloge de la page, allure comprise) */
-let enTrace: { main: Main; img: Image; debut: number; duree: number; vus: number } | null = null
+/** Le geste qui se trace en ce moment : la manipulation des instruments (la
+ *  règle qu'on pose, le compas qui tourne), puis le trait écrit au rythme de la
+ *  main. Quand il a commencé et combien de temps il dure (horloge de la page,
+ *  allure comprise) ; total : sa durée à l'allure Normale. avant : la page
+ *  telle qu'avant le geste, pendant la manipulation. */
+let enTrace: { k: number; geste: GesteAuxInstruments | null; main: Main | null; img: Image; avant: Image; debut: number; duree: number; total: number; vus: number; changePage: boolean } | null = null
+/** Les instruments à l'écran (null : aucun) */
+let montres: EtatInstruments | null = null
 /** Pendant la lecture : l'heure (horloge de la page) où l'image montrée a fini,
  *  ou finira, de s'écrire. Le geste suivant se cale dessus, et non sur l'heure
  *  où le minuteur a sonné : un minuteur un peu en retard ne décale pas la suite. */
@@ -154,6 +162,9 @@ function attendreApercu() {
 
 async function ouvrir(film: FilmEleve) {
   bobine = new Bobine(film)
+  // Les instruments ne se montrent que si le film les a notés
+  rendu.instrumentsCaches = !bobine.avecInstruments
+  montres = null
   document.title = `${film.titre} — Revoir la séance`
   $('.titre-seance').textContent = film.titre
   // KaTeX ne se charge que si la séance a des formules
@@ -193,27 +204,43 @@ function montrer(i: number, anime: boolean, debut = performance.now()) {
   k = i; page = nouvellePage
   cancelAnimationFrame(animation)
   enTrace = null; rendu.monTrait = null
+  if (rendu.apercu) { rendu.apercu = null; rendu.redessinerDirect() }
   const img = bobine.image(k, page)
   if (changePage) { vue = 'page'; cadrerPage() }
   const suite = anime && i === avant + 1
   // Un trait tracé à la main s'écrit comme au tableau (même sur une page où
   // l'on vient d'arriver) : la page d'avant, et sous le stylo le trait en
-  // cours, point par point, à l'heure de chaque point
+  // cours, point par point, à l'heure de chaque point. Avant lui, les
+  // instruments font ce qu'ils ont fait au tableau, sur la page d'avant le geste.
   const main = suite ? bobine.main(k) : null
-  afficher(main ? img.formes.filter(f => f.id !== main.trait.id) : img.formes, img)
+  const geste = suite ? bobine.geste(k) : null
+  const avantGeste = geste ? bobine.image(k - 1, page) : img
+  if (geste) { poserInstruments(geste.depart); afficher(avantGeste.formes, avantGeste) }
+  else {
+    poserInstruments(bobine.instruments(k))
+    afficher(main ? img.formes.filter(f => f.id !== main.trait.id) : img.formes, img)
+  }
   majCommandes()
 
   if (!suite) return
   const nouvelles = bobine.nouvelles(k)
   if (vue === 'page' && !changePage) suivre(nouvelles)
-  if (main) return ecrire(main, img, debut)
+  if (main || geste) return tracer(k, geste, main, img, avantGeste, debut, changePage)
+  esquisser(k, img, changePage)
+}
+
+/** Les figures apparues à l'image k se dessinent sous les yeux, à vitesse de
+ *  plume (seulement celles qui apparaissent : une forme déplacée ou recolorée
+ *  ne se réécrit pas, ni celle qu'un Ctrl+Z rend, qui revient d'un coup, ni
+ *  celle qu'on vient de voir se tracer sous un instrument), et le tracé finit
+ *  avant le geste suivant */
+function esquisser(k: number, img: Image, changePage: boolean) {
+  if (!bobine) return
   // La figure reconnue au lever du stylo remplace le trait d'un coup, comme au tableau
   if (changePage || bobine.reconnue(k)) return
-  // Les figures apparues se dessinent sous les yeux, à vitesse de plume
-  // (seulement celles qui apparaissent : une forme déplacée ou recolorée ne se réécrit pas,
-  // ni celle qu'un Ctrl+Z rend, qui revient d'un coup), et le tracé finit avant le geste suivant
-  const ajouts = bobine.ajoutees(k)
-  const aTracer = nouvelles.filter(f => ajouts.has(f.id) && seDessine(f))
+  const nouvelles = bobine.nouvelles(k)
+  const ajouts = bobine.ajoutees(k), vues = bobine.tracees(k)
+  const aTracer = nouvelles.filter(f => ajouts.has(f.id) && !vues.has(f.id) && seDessine(f))
   const facteur = ALLURES[allure].facteur
   const duree = Math.min(dureeDuTrace(aTracer), 0.85 * bobine.attente(Math.min(bobine.n - 1, k + 1))) / facteur
   if (duree < 40 || mouvementReduit.matches) return
@@ -227,28 +254,76 @@ function montrer(i: number, anime: boolean, debut = performance.now()) {
   pas()
 }
 
-/** Écrit le trait de l'image montrée au rythme de la main. Seule la couche
- *  « direct » se repeint, avec le dessin même du tableau pour le trait en
- *  cours ; au lever, le trait rejoint la page. C'est le contenu de la séance,
- *  comme une vidéo : il s'écrit même sous « animations réduites ». */
-function ecrire(main: Main, img: Image, debut: number) {
-  enTrace = { main, img, debut, duree: main.duree / ALLURES[allure].facteur, vus: 0 }
+/** Trace le geste de l'image montrée : d'abord ce que les instruments ont
+ *  fait (ils bougent, tournent, s'ouvrent à leur vitesse réelle, et le compas
+ *  trace son arc), puis le trait écrit au rythme de la main. Seules les
+ *  couches des instruments et « direct » se repeignent, avec le dessin même
+ *  du tableau ; à la fin, le geste rejoint la page. C'est le contenu de la
+ *  séance, comme une vidéo : il se trace même sous « animations réduites ». */
+function tracer(k: number, geste: GesteAuxInstruments | null, main: Main | null, img: Image, avant: Image, debut: number, changePage: boolean) {
+  const total = (geste?.duree ?? 0) + (main?.duree ?? 0)
+  enTrace = { k, geste, main, img, avant, debut, duree: total / ALLURES[allure].facteur, total, vus: -1, changePage }
   const pas = () => {
     const t = enTrace
     if (!t) return
     const fait = t.duree > 0 ? (performance.now() - t.debut) / t.duree : 1
+    const tau = Math.min(1, fait) * t.total, manip = t.geste?.duree ?? 0
     if (fait >= 1) {
       enTrace = null; rendu.monTrait = null
+      poserApercu(null)
+      poserInstruments(bobine?.instruments(t.k) ?? null)
       afficher(t.img.formes, t.img)
-    } else {
-      const n = pointsPoses(t.main, fait * t.main.duree)
+      // Sans trait à la main, les figures neuves se dessinent ensuite, comme avant
+      if (!t.main) esquisser(t.k, t.img, t.changePage)
+    } else if (t.geste && tau < manip) {
+      poserInstruments(t.geste.etatA(tau))
+      poserApercu(t.geste.apercuA(tau))
+      animation = requestAnimationFrame(pas)
+    } else if (t.main) {
+      if (t.vus < 0) {
+        // Le trait commence : la page d'avant lui, les instruments où la manipulation les a laissés
+        t.vus = 0
+        poserApercu(null)
+        if (t.geste) poserInstruments(t.geste.fin)
+        afficher(t.img.formes.filter(f => f.id !== t.main!.trait.id), t.img)
+      }
+      const n = pointsPoses(t.main, tau - manip)
       if (n !== t.vus) { t.vus = n; rendu.monTrait = traitEnCours(t.main, n); rendu.redessinerDirect() }
       animation = requestAnimationFrame(pas)
-    }
+    } else animation = requestAnimationFrame(pas)
     // Ce qui est décidé à cette image d'écran y paraît, pas à la suivante
     rendu.peindreMaintenant()
   }
   pas()
+}
+
+/** Montre ces instruments (rien à repeindre s'ils n'ont pas changé). null : le film n'en montre pas */
+function poserInstruments(e: EtatInstruments | null) {
+  if (!e || memeAffichage(montres, e)) return
+  montres = e
+  const { prof, constructeur } = dansLOrdre(e)
+  rendu.instruments = prof.map(i => ({ nom: i.n, etat: i.etat, actif: i.q }))
+  rendu.instrumentsAnimes = constructeur.map(i => ({ nom: i.n, etat: i.etat, actif: i.q }))
+  rendu.redessinerInstruments()
+}
+
+/** Deux états dessinés à l'identique : mêmes instruments, mêmes poses, mêmes parties tenues, même ordre */
+function memeAffichage(a: EtatInstruments | null, b: EtatInstruments): boolean {
+  if (!a || a.size !== b.size) return false
+  for (const [cle, x] of a) {
+    const y = b.get(cle)
+    if (!y || y.q !== x.q || y.rang !== x.rang || y.etat.x !== x.etat.x || y.etat.y !== x.etat.y || y.etat.a !== x.etat.a || y.etat.r !== x.etat.r) return false
+  }
+  return true
+}
+
+/** Le tracé en cours sous un instrument (l'arc sous la mine, le trait le long de la règle) */
+function poserApercu(f: Figure | null) {
+  const a = rendu.apercu
+  if (a === f || (!a && !f)) return
+  if (a && f && JSON.stringify(a) === JSON.stringify(f)) return
+  rendu.apercu = f
+  rendu.redessinerDirect()
 }
 
 /** Le temps qu'il reste au trait qui s'écrit (ms d'horloge ; 0 : aucun) */
@@ -462,7 +537,7 @@ boutonVitesse.addEventListener('click', () => {
   // le trait qui s'écrit change de vitesse sans perdre sa place
   if (enTrace) {
     const maintenant = performance.now(), fait = enTrace.duree > 0 ? Math.min(1, (maintenant - enTrace.debut) / enTrace.duree) : 1
-    enTrace.duree = enTrace.main.duree / ALLURES[allure].facteur
+    enTrace.duree = enTrace.total / ALLURES[allure].facteur
     enTrace.debut = maintenant - fait * enTrace.duree
   }
   if (enMarche) { clearTimeout(minuterie); finPrevue = performance.now() + resteDuTrace(); suivante() }
@@ -606,6 +681,6 @@ window.addEventListener('drop', e => {
 })
 
 // Pour les tests automatiques, en développement seulement
-if (import.meta.env.DEV) Object.assign(window, { __revoir: { get bobine() { return bobine }, get k() { return k }, get page() { return page }, get enMarche() { return enMarche }, cam, rendu } })
+if (import.meta.env.DEV) Object.assign(window, { __revoir: { get bobine() { return bobine }, get k() { return k }, get page() { return page }, get enMarche() { return enMarche }, get enTrace() { return enTrace }, get allure() { return allure }, cam, rendu } })
 
 demarrer()
