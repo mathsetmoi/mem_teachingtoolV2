@@ -134,7 +134,7 @@ export class Publication {
     if (!this.enLigne) {
       q('.p-apercu').hidden = true
       q<HTMLButtonElement>('.p-publier').disabled = true
-      this.etat('Cette version de Tableau MEM (un seul fichier) ne peut ni publier ni montrer l\'aperçu : enregistrez le fichier séance, ou utilisez Tableau MEM en ligne pour publier.')
+      this.etat('Cette version de MEM teachingtool (un seul fichier) ne peut ni publier ni montrer l\'aperçu : enregistrez le fichier séance, ou utilisez MEM teachingtool en ligne pour publier.')
     }
     this.remplirSeances()
     this.majGoogle()
@@ -199,7 +199,7 @@ export class Publication {
     const items = [
       `<li>${f.etapes.length} geste${f.etapes.length > 1 ? 's' : ''} · ${mmss(new Bobine(f).duree)} de replay · ${f.chapitres.length} chapitre${f.chapitres.length > 1 ? 's' : ''}</li>`,
       images ? `<li class="alerte">${images} image${images > 1 ? 's' : ''} importée${images > 1 ? 's' : ''} : vérifiez qu'aucune ne montre un nom, une copie ou un visage d'élève.</li>` : '',
-      '<li class="alerte">Vérifiez qu\'aucun prénom n\'a été écrit au tableau pendant la séance : tout ce qui a été visible pendant la séance part, même effacé ensuite. Rejouez l\'aperçu pour le voir.</li>',
+      '<li class="alerte">Vérifiez qu\'aucun prénom n\'a été écrit pendant la séance : tout ce qui a été visible pendant la séance part, même effacé ensuite. Rejouez l\'aperçu pour le voir.</li>',
       this.enLigne && !CLIENT_GOOGLE ? '<li class="alerte">La publication sur Google Drive n\'est pas encore réglée sur ce site (identifiant Google à créer, voir le mode d\'emploi). En attendant, enregistrez le fichier séance.</li>' : '',
       deja && !this.nouveauLien ? `<li>Déjà publiée le ${new Date(deja.quand).toLocaleDateString('fr-FR')} : publier à nouveau met à jour cette séance, au même lien.</li>` : '',
     ]
@@ -344,7 +344,7 @@ export class Publication {
         : ancienPerdu ? 'L\'ancienne publication n\'est plus sur le Drive : la séance a un NOUVEAU lien, recopiez-le dans Pronote.'
         : 'Séance publiée. Copiez le lien dans le cahier de textes.'
       if (lien.startsWith('https://')) this.etat(fait, ancienPerdu)
-      else this.etat(fait + ' Attention : publiée depuis cet ordinateur, le lien ne s\'ouvrira que chez vous. Publiez depuis Tableau MEM en ligne pour les élèves.', true)
+      else this.etat(fait + ' Attention : publiée depuis cet ordinateur, le lien ne s\'ouvrira que chez vous. Publiez depuis MEM teachingtool en ligne pour les élèves.', true)
       this.majNouveauLien()
       this.majVerifications()
     } catch (e) {

@@ -224,7 +224,7 @@ export class RevueEnClasse {
       this.boutonsAllure.push(b)
       allures.append(b)
     })
-    const revenir = this.boutonTexte('revenir', 'Revenir au tableau', 'Revenir au tableau (Échap)', () => this.fermer())
+    const revenir = this.boutonTexte('revenir', 'Revenir au direct', 'Revenir au direct (Échap)', () => this.fermer())
     revenir.classList.add('b-revenir')
     rangee.append(revenir)
     // Après un clic à la souris, le bouton rend la main : Espace lit, au lieu de recliquer

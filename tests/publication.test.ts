@@ -2,7 +2,7 @@
 // dossiers et de la même extension, et le relais ne doit servir que des
 // replays rangés là où il faut. Le relais tourne ici dans un bac à sable,
 // avec un faux Drive.
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { runInNewContext } from 'node:vm'
 import { describe, expect, it } from 'vitest'
@@ -121,5 +121,23 @@ describe('plus aucune trace du projet d’origine', () => {
 
   it('le relais ne porte pas le mot « Tableau »', () => {
     expect(SOURCE_RELAIS).not.toMatch(/tableau/i)
+  })
+
+  it('l’outil s’appelle « MEM teachingtool » : plus de « Tableau MEM »', () => {
+    const ancien = new RegExp('Tableau' + ' MEM')
+    const lus = [...fichiers(join(RACINE, 'src')), ...['index.html', 'revoir.html', 'README.md', 'package.json'].map(f => join(RACINE, f))]
+    expect(lus.filter(f => ancien.test(readFileSync(f, 'utf8'))).map(f => f.slice(RACINE.length + 1))).toEqual([])
+    expect(JSON.parse(readFileSync(join(RACINE, 'package.json'), 'utf8')).name).toBe('mem-teachingtool')
+  })
+
+  it('ni élève connecté, ni partage en direct : plus de y-websocket ni de serveur/', () => {
+    const MOTS = [new RegExp('y-' + 'websocket'), new RegExp('Websocket' + 'Provider'), new RegExp('y-' + 'protocols'),
+      new RegExp('eleves' + 'Ecrivent'), new RegExp('VITE_SERVEUR' + '_SYNC'), new RegExp('VITE_SANS' + '_SERVEUR')]
+    const lus = [...fichiers(join(RACINE, 'src')),
+      ...['index.html', 'revoir.html', 'README.md', 'package.json', 'package-lock.json', '.env.pages'].map(f => join(RACINE, f))]
+    const trouves = lus.flatMap(f => MOTS.filter(m => m.test(readFileSync(f, 'utf8'))).map(m => `${f.slice(RACINE.length + 1)} : ${m}`))
+    expect(trouves).toEqual([])
+    expect(existsSync(join(RACINE, 'serveur'))).toBe(false)
+    expect(existsSync(join(RACINE, '.env.exemple'))).toBe(false)
   })
 })

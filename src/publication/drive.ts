@@ -1,7 +1,7 @@
 // =============================================================
 // PUBLIER SUR LE DRIVE DU PROFESSEUR
 // Le professeur se connecte à Google avec le droit le plus étroit qui
-// soit (« drive.file » : Tableau MEM ne voit que les fichiers qu'il a
+// soit (« drive.file » : MEM teachingtool ne voit que les fichiers qu'il a
 // créés lui-même). La séance va, en copie, dans le dossier privé des
 // replays de ce compte (« MEM - Replay séances »…) : son relais la sert.
 // Rien n'est partagé, ni le fichier, ni le dossier. Le jeton de connexion
@@ -65,7 +65,7 @@ export function connecter(compte: string, indice = ''): Promise<void> {
   deconnecter()
   return new Promise((ok, ko) => {
     if (!CLIENT_GOOGLE) return ko(new Error('La connexion à Google n\'est pas encore réglée sur ce site (identifiant client à créer, voir le mode d\'emploi). En attendant, enregistrez le fichier séance.'))
-    if (location.protocol === 'file:') return ko(new Error('La connexion à Google ne fonctionne pas depuis un fichier ouvert sur l\'ordinateur. Utilisez Tableau MEM en ligne (mathsetmoi.github.io), ou enregistrez le fichier séance.'))
+    if (location.protocol === 'file:') return ko(new Error('La connexion à Google ne fonctionne pas depuis un fichier ouvert sur l\'ordinateur. Utilisez MEM teachingtool en ligne (mathsetmoi.github.io), ou enregistrez le fichier séance.'))
     const oauth = window.google?.accounts?.oauth2
     if (!oauth) {
       const echec = bibliotheque === 'echec'
@@ -81,7 +81,7 @@ export function connecter(compte: string, indice = ''): Promise<void> {
         ? 'Le navigateur a bloqué la fenêtre de connexion Google : autorisez les fenêtres pour ce site, puis réessayez.'
         : 'La fenêtre de connexion Google a été fermée avant la fin. Si Google y affichait « Accès bloqué » ou « origin_mismatch », c\'est que ce site n\'est pas encore autorisé dans la console Google Cloud (voir le mode d\'emploi).')),
       callback: r => {
-        if (r.error || !r.access_token || !oauth.hasGrantedAllScopes(r, DROIT)) return ko(new Error('Pour publier, autorisez Tableau MEM à gérer les fichiers qu\'il crée sur votre Drive.'))
+        if (r.error || !r.access_token || !oauth.hasGrantedAllScopes(r, DROIT)) return ko(new Error('Pour publier, autorisez MEM teachingtool à gérer les fichiers qu\'il crée sur votre Drive.'))
         jeton = r.access_token
         expiration = Date.now() + (Number(r.expires_in) || 3600) * 1000 - 60_000
         compteDuJeton = compte

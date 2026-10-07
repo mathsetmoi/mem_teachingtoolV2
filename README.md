@@ -1,8 +1,9 @@
-# Tableau MEM — v0.1
+# MEM teachingtool — v0.1
 
-Un tableau blanc pour les cours de maths, pensé pour la classe **et** le distanciel :
-le même tableau marche hors connexion sur le poste de la salle, et se partage en
-direct avec les élèves quand un serveur est disponible.
+Un tableau blanc pour les cours de maths, utilisé par le professeur en classe :
+il marche hors connexion sur le poste de la salle, et tout ce qui y est écrit
+s'enregistre dans le navigateur. Le professeur peut publier le replay d'une
+séance, que les élèves revoient chez eux.
 
 ## Lancer en local
 
@@ -10,17 +11,10 @@ Il faut Node.js 20 ou plus récent.
 
 ```bash
 npm install
-cd serveur && npm install && cd ..
-
-npm run serveur      # terminal 1 : synchronisation (port 1234)
-npm run dev          # terminal 2 : le tableau (http://localhost:5173)
+npm run dev          # l'outil (http://localhost:5173)
 ```
 
-Les tablettes de la classe sur le même Wi-Fi ouvrent l'adresse « Network »
-affichée par `npm run dev` (par exemple `http://192.168.1.20:5173`).
-Le bouton **Partager** crée une salle et donne le lien élève.
-
-Version hors ligne en un seul fichier (clé USB, pas de partage) :
+Version hors ligne en un seul fichier (clé USB) :
 
 ```bash
 npm run build        # → dist/index.html, autonome
@@ -240,7 +234,8 @@ appui bref sur le tableau pour lire ou s'arrêter ; → ou Page↓ pour un pas,
 ← ou Page↑ pour revenir ; Maj+→ et Maj+← pour un seul geste visible ; [ et ]
 pour la partie précédente ou suivante ; Origine et Fin ; 1 à 4, − et + pour
 l'allure (Lent, Normal, Rapide, Très rapide ; Rapide au départ) ; C pour
-revoir toute la page ; Échap pour revenir au tableau. La lecture suit le
+revoir toute la page ; Échap (ou le bouton **Revenir au direct**) pour
+quitter la revue. La lecture suit le
 rythme du cours : les intervalles courts sont gardés, les longs silences
 tassés en douceur. Les figures se dessinent sous les yeux (le trait suit son
 chemin, le cercle s'ouvre comme au compas, le polygone se construit côté
@@ -284,8 +279,8 @@ donne volontairement un autre lien. **Enregistrer le
 fichier** donne un fichier `.mem` à déposer dans l'ENT ou sur une clé USB ; le
 lecteur l'ouvre aussi.
 
-**Côté élève** (`revoir.html`). L'affiche montre le tableau final, le titre, la
-date et la durée. Le replay suit le rythme du cours (les longs silences sont
+**Côté élève** (`revoir.html`). L'affiche montre la fin de la séance (la page
+du dernier geste), le titre, la date et la durée. Le replay suit le rythme du cours (les longs silences sont
 écourtés) aux allures Lent, Normal, Rapide ou Très rapide ; les figures se dessinent sous les yeux.
 Pas à pas, frise, chapitres (un par page pour l'instant), pages qui changent
 toutes seules, pincer ou la molette pour zoomer, glisser pour se déplacer,
@@ -327,10 +322,10 @@ le relais : un test vérifie qu'ils concordent. Installer un relais prend cinq
 minutes (instructions en tête du script) ; le mettre à jour (Gérer les
 déploiements → Version : Nouvelle version) garde la même adresse. Un relais
 pas à jour est signalé à la publication. La connexion Google demande le droit
-le plus étroit (`drive.file` : Tableau MEM ne voit que les fichiers qu'il a
+le plus étroit (`drive.file` : MEM teachingtool ne voit que les fichiers qu'il a
 créés).
 
-**Connexion Google : à régler une fois.** Tableau MEM a besoin de SON
+**Connexion Google : à régler une fois.** MEM teachingtool a besoin de SON
 identifiant client Google (`CLIENT_GOOGLE` dans `src/publication/comptes.ts`) :
 tant qu'il est vide, la fenêtre ne propose que d'enregistrer le fichier. Une
 erreur « origin_mismatch » veut dire que l'adresse du site n'est pas autorisée
@@ -370,12 +365,6 @@ qui ne savent pas décompresser seuls, un petit décompresseur (fflate, 8 Ko) se
 charge à la place. Commandes de 44 px, zoom du navigateur jamais bloqué, la
 frise annonce le temps aux lecteurs d'écran.
 
-## Partage avec les élèves (mis de côté)
-
-Le code est toujours là (`src/document.ts`, `serveur/`), mais l'outil ne le
-propose plus : `PARTAGE_ELEVES = false` dans `src/main.ts`. Le passer à `true`
-rend le bouton « Partager » et le mode élève décrits plus bas.
-
 ## Ce que fait la v0.1
 
 Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment
@@ -392,16 +381,12 @@ polygone, tracé clic par clic, s'accroche de la même façon.
 Outil **Point** (X) : un clic pose un point marqué d'une croix et nommé (A, B,
 C…), sur le tableau ou sur une image.
 
-Côté prof : stylo sensible à la pression, surligneur, gomme, segments (Maj pour
+Stylo sensible à la pression, surligneur, gomme, segments (Maj pour
 les angles de 15°, aimant au quadrillage), formules LaTeX avec aperçu et
 raccourcis, sélection et déplacement, annuler/rétablir, pages, fonds (blanc,
 petits carreaux, Seyès, repère gradué), zoom de 10 % à 2000 % — le quadrillage
 suit le zoom comme une carte : les carreaux trop petits s'estompent et laissent
 place à de plus grands (1 cm, 5 cm, 10 cm…), la page n'est jamais blanche.
-
-Côté élève : le lien du prof, un prénom, et l'élève suit la page et le cadrage du
-prof. S'il se déplace lui-même, un bouton le ramène. Le prof décide si les élèves
-peuvent écrire ; leurs traits apparaissent en direct, avec leur prénom au curseur.
 
 Au pavé tactile : deux doigts qui glissent déplacent le tableau, pincer zoome ;
 la molette d'une souris zoome. **Échap** annule ce qui est en cours (menu,
@@ -424,24 +409,19 @@ ne dessine plus (la paume posée sur l'écran ne laisse pas de traces).
    │  rendu.ts    3 couches d'affichage │
    │  document.ts document Yjs (CRDT) ──┼── IndexedDB (hors ligne)
    └────────────────────────────────────┘
-                      │ WebSocket (seulement si on partage)
-              serveur/server.js  ── dossier salles/ (sauvegarde)
 ```
 
 Le choix qui fait tout : **ce qui est écrit vit dans un document Yjs**, un CRDT.
 Une forme est un simple objet JSON rangé dans ce document. Trois choses en
 découlent sans code supplémentaire :
 
-1. **Hors ligne et en ligne, c'est le même code.** Le document s'enregistre dans
-   le navigateur ; brancher un serveur ne fait que le synchroniser. Si le Wi-Fi
-   tombe en plein cours, chacun continue, et tout se fusionne au retour.
-2. **L'annulation est personnelle.** `Ctrl+Z` défait vos gestes, jamais ceux d'un
-   élève qui écrivait au même moment.
-3. **Le serveur est minuscule.** Il relaie et sauvegarde, sans rien savoir du
-   dessin. Pas de base de données à concevoir.
-
-Ce qui n'a pas à être enregistré (le trait en cours, les curseurs, la page que
-regarde le prof) passe par la « présence » Yjs : diffusé en direct, oublié ensuite.
+1. **Tout s'enregistre tout seul.** Le document s'enregistre dans le navigateur
+   (IndexedDB), sans bouton ni connexion : il marche hors ligne, et le tableau
+   est là le lendemain. Pas de base de données à concevoir.
+2. **L'annulation ne défait que les gestes.** `Ctrl+Z` ne touche ni au
+   chargement depuis le disque, ni au film.
+3. **Rien ne se perd.** Le document garde ce qui a été effacé : c'est ce qui
+   permet la revue en classe et le replay des élèves.
 
 Le rendu est en trois couches : un canvas pour le fond et les formes posées,
 redessiné seulement quand quelque chose change ; une couche HTML pour les
@@ -450,9 +430,9 @@ cours, qui fait la latence ressentie au stylet.
 
 | Fichier | Rôle |
 | --- | --- |
-| `src/types.ts` | Les formes (trait, segment, formule), les fonds, la présence |
-| `src/document.ts` | Document Yjs : pages, formes, annulation, connexion |
-| `src/app.ts` | Gestes au stylet, au doigt et à la souris ; suivi du prof |
+| `src/types.ts` | Les formes (trait, segment, formule), les fonds |
+| `src/document.ts` | Document Yjs : pages, formes, annulation, film, enregistrement |
+| `src/app.ts` | Gestes au stylet, au doigt et à la souris |
 | `src/rendu.ts` | Les trois couches d'affichage |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
 | `src/geometrie.ts` | Ce que touche la gomme ou la sélection |
@@ -468,29 +448,14 @@ cours, qui fait la latence ressentie au stylet.
 | `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
-| `src/ui.ts` | Barres d'outils, partage, éditeur de formules |
-| `serveur/server.js` | Relais WebSocket et sauvegarde des salles |
+| `src/ui.ts` | Barres d'outils, panneau d'options, éditeur de formules |
 
-Toutes les briques sont sous licence MIT (Yjs, y-websocket, y-indexeddb,
+Toutes les briques sont sous licence MIT (Yjs, y-indexeddb,
 perfect-freehand, KaTeX, Vite) : aucune clé de licence, aucun filigrane, et rien
 n'empêche un usage payant.
 
-## Pour le distanciel
-
-1. Héberger le site statique (`npm run build`, puis le dossier `dist/`) sur
-   n'importe quel hébergement : GitHub Pages, Netlify, l'espace web de
-   l'établissement.
-2. Lancer `serveur/` sur une petite machine toujours allumée (un VPS à quelques
-   euros par mois suffit), derrière un proxy qui fournit le HTTPS (Caddy le fait
-   en deux lignes), pour obtenir une adresse `wss://`.
-3. Copier `.env.exemple` en `.env`, y mettre cette adresse, reconstruire.
-
 ## Limites connues de la v0.1
 
-- Les droits des élèves sont vérifiés dans le navigateur seulement. Un élève
-  bricoleur pourrait écrire sans autorisation. À corriger côté serveur avant un
-  usage réel (jeton prof, salles signées).
-- Le nom de la salle sert de clé : quiconque a le lien entre.
 - Tout est redessiné à chaque déplacement de la vue. Au-delà de quelques
   milliers de traits sur une page, il faudra un index spatial (quadtree).
 
@@ -506,6 +471,5 @@ n'empêche un usage payant.
    figure quand on la déplace.
 5. Import d'un PDF comme fond de page (annoter un énoncé) ; recadrer une image.
 6. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
-7. Sécurité du serveur : jeton prof, durée de vie des salles.
-8. Revue : export vidéo, et alléger les très longs films (le document ne
+7. Revue : export vidéo, et alléger les très longs films (le document ne
    jette plus rien).
