@@ -114,8 +114,8 @@ export class App {
     // Ce que la couche des instruments montre part dans la piste : les gestes,
     // le constructeur, ce qu'on montre ou range, l'état rendu au chargement
     this.piste = new Piste(m => tableau.noterPiste(m), () => tableau.pageVue)
-    this.rendu.temoin = (i, a) => this.piste.peinture(i, a)
-    this.rendu.temoinDirect = () => this.piste.peintureDirect()
+    this.rendu.temoin = (i, a, t) => this.piste.peinture(i, a, t)
+    this.rendu.temoinDirect = t => this.piste.peintureDirect(t)
     window.addEventListener('pagehide', () => this.piste.vider())
 
     tableau.pages.observeDeep(() => this.rafraichir())

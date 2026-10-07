@@ -248,7 +248,9 @@ describe('la piste : ce qu\'on note', () => {
   it('le tracé aux instruments : l\'arc sous la mine, au plus 60 échantillons par seconde', async () => {
     const s = await seance()
     for (let i = 0; i <= 120; i++) {
+      // Le pointeur bouge toutes les 4 ms ; la couche « direct » se peint quand elle peut (au plus à chaque fois)
       s.piste.trace({ k: 'arc', x: 10, y: 20, r: 160, a0: 0.25, a1: 0.25 - i * 0.03 + Math.sin(i) * 0.001, couleur: '#1f5fbf', taille: 2.5 })
+      s.piste.peintureDirect()
       s.h.avancer(4)
     }
     s.piste.trace(null)
@@ -259,9 +261,28 @@ describe('la piste : ce qu\'on note', () => {
     expect(x && 'k' in x && x.ech.length).toBeLessThanOrEqual(35)
     // Un autre centre : un autre morceau
     const seg: TraceInstrument = { k: 'seg', ax: 0, ay: 0, zx: 10, zy: 0, couleur: '#000', taille: 2 }
-    s.piste.trace(seg); s.h.avancer(16); s.piste.trace({ ...seg, zx: 40 }); s.h.avancer(16); s.piste.trace({ ...seg, ax: 5, zx: 50 })
+    s.piste.trace(seg); s.piste.peintureDirect(); s.h.avancer(16); s.piste.trace({ ...seg, zx: 40 }); s.piste.peintureDirect(); s.h.avancer(16); s.piste.trace({ ...seg, ax: 5, zx: 50 }); s.piste.peintureDirect()
     s.piste.vider()
     expect(s.ecrits.filter(m => 'k' in m && m.k === 'seg')).toHaveLength(2)
+  })
+})
+
+describe('la piste : le tracé est daté à sa peinture', () => {
+  it('l\'arc et la mine du compas, peints ensemble, sont notés ensemble', async () => {
+    const s = await seance()
+    s.montrer(peint('compas', 0, 0, 0, 160)); await s.avancer(300)
+    // Le pointeur arrive 10 ms avant que l'image se peigne
+    for (let i = 1; i <= 40; i++) {
+      const a = -i * 0.04
+      s.piste.trace({ k: 'arc', x: 0, y: 0, r: 160, a0: 0, a1: a, couleur: '#000', taille: 2 })
+      s.h.avancer(10)
+      s.montrer(peint('compas', 0, 0, a, 160, 'tete')); s.piste.peintureDirect()
+      s.h.avancer(6)
+    }
+    s.piste.trace(null); s.piste.vider()
+    const compas = poses(s.ecrits.find(m => (m as MorceauPoses).q === 'tete')!)
+    const arc = lireMorceau(s.ecrits.find(m => 'k' in m)!) as { ech: { t: number; v: number[] }[] }
+    for (const e of arc.ech) expect(Math.abs(poseA(compas, e.t).a - e.v[0])).toBeLessThanOrEqual(0.004)
   })
 })
 
@@ -341,6 +362,7 @@ async function seanceType() {
   // Le crayon le long du bord, puis le segment posé
   for (let i = 0; i <= 30; i++) {
     s.piste.trace({ k: 'seg', ax: 200, ay: 300, zx: 200 + 6 * i * Math.cos(-0.4), zy: 300 + 6 * i * Math.sin(-0.4), couleur: '#1b2230', taille: 2.5 })
+    s.piste.peintureDirect()
     await s.avancer(16)
   }
   s.piste.trace(null)

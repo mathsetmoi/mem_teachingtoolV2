@@ -74,10 +74,11 @@ export class Rendu {
   /** Appelé chaque fois que la couche des instruments est peinte, avec ce
    *  qu'elle montre : le tableau y branche la piste des instruments (voir
    *  piste.ts). Le lecteur et la revue n'en ont pas. */
-  temoin: ((instruments: Rendu['instruments'], animes: Rendu['instrumentsAnimes']) => void) | null = null
+  temoin: ((instruments: Rendu['instruments'], animes: Rendu['instrumentsAnimes'], t: number) => void) | null = null
   /** Appelé chaque fois que la couche « direct » est peinte (le tracé en cours
-   *  sous un instrument paraît alors) : la piste y date ce tracé */
-  temoinDirect: (() => void) | null = null
+   *  sous un instrument paraît alors) : la piste y date ce tracé. t : l'heure de
+   *  l'image d'écran (horloge de performance.now()), la même pour les deux */
+  temoinDirect: ((t: number) => void) | null = null
   /** Une mesure lue pendant un geste (« 4,5 cm », « 30° »), en monde */
   mesure: { texte: string; x: number; y: number } | null = null
   readonly coucheFormules: HTMLDivElement
@@ -161,7 +162,7 @@ export class Rendu {
   redessinerDirect() { this.directSale = true; this.planifier() }
 
   private planifier() {
-    if (!this.image) this.image = requestAnimationFrame(() => this.peindre())
+    if (!this.image) this.image = requestAnimationFrame(t => this.peindre(t))
   }
 
   /** Peint sans attendre l'image d'écran suivante ce qui doit l'être. Pour un
@@ -173,23 +174,23 @@ export class Rendu {
     this.peindre()
   }
 
-  private peindre() {
+  private peindre(t = performance.now()) {
     this.image = 0
-    if (this.instrumentsSales) { this.peindreInstruments(); this.instrumentsSales = false }
+    if (this.instrumentsSales) { this.peindreInstruments(t); this.instrumentsSales = false }
     if (this.sceneSale) { this.peindreScene(); this.placerFormules(); this.sceneSale = false }
-    if (this.directSale) { this.peindreDirect(); this.directSale = false; this.temoinDirect?.() }
+    if (this.directSale) { this.peindreDirect(); this.directSale = false; this.temoinDirect?.(t) }
   }
 
   // ---------- Couche des instruments ----------
-  private peindreInstruments() {
+  private peindreInstruments(t: number) {
     const c = this.ci, cam = this.cam
     c.setTransform(1, 0, 0, 1, 0, 0)
     c.clearRect(0, 0, this.coucheInstruments.width, this.coucheInstruments.height)
-    if (this.instrumentsCaches) { this.temoin?.([], []); return }
+    if (this.instrumentsCaches) { this.temoin?.([], [], t); return }
     c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
     for (const i of this.instruments) dessinerInstrument(c, i.nom, i.etat, cam.z, i.actif)
     for (const i of this.instrumentsAnimes) dessinerInstrument(c, i.nom, i.etat, cam.z, i.actif)
-    this.temoin?.(this.instruments, this.instrumentsAnimes)
+    this.temoin?.(this.instruments, this.instrumentsAnimes, t)
   }
 
   // ---------- Couche scène ----------

@@ -97,9 +97,11 @@ export function simplifier(n: number, t: (i: number) => number, erreur: (i: numb
 
 export function simplifierPoses(p: readonly Pose[]): Pose[] {
   return simplifier(p.length, i => p[i].t, (i, a, b, u) => {
-    const x = p[a].x + (p[b].x - p[a].x) * u, y = p[a].y + (p[b].y - p[a].y) * u
-    const ang = p[a].a + (p[b].a - p[a].a) * u, r = p[a].r + (p[b].r - p[a].r) * u
-    return Math.max(Math.hypot(p[i].x - x, p[i].y - y) / TOL.xy, Math.abs(p[i].a - ang) / TOL.a, Math.abs(p[i].r - r) / TOL.r)
+    const A = p[a], B = p[b], P = p[i]
+    const dx = P.x - (A.x + (B.x - A.x) * u), dy = P.y - (A.y + (B.y - A.y) * u)
+    const da = P.a - (A.a + (B.a - A.a) * u), dr = P.r - (A.r + (B.r - A.r) * u)
+    // Le carré des écarts, rapportés à leur tolérance : pas de racine
+    return Math.max((dx * dx + dy * dy) / (TOL.xy * TOL.xy), (da * da) / (TOL.a * TOL.a), (dr * dr) / (TOL.r * TOL.r))
   }).map(i => p[i])
 }
 
@@ -124,7 +126,9 @@ export class Piste {
   private precedente = -Infinity
   private pageVue: string | null = null
   private minuterie: unknown = null
-  private enAttente: Morceau[] = []
+  /** Les morceaux fermés, pas encore écrits : on ne les simplifie et ne les
+   *  encode qu'au moment de les écrire, hors de l'image d'écran */
+  private enAttente: (() => Morceau)[] = []
   private envoi: unknown = null
 
   /** noter : écrit des morceaux dans le document ; page : la page qu'on regarde */
@@ -132,9 +136,9 @@ export class Piste {
 
   // ---------- Le témoin du rendu ----------
   /** La couche des instruments vient d'être peinte avec ces instruments
-   *  (ceux du professeur, puis ceux du constructeur) */
-  peinture(duProf: readonly Peint[], constructeur: readonly Peint[]) {
-    const t = this.h.maintenant(), page = this.page()
+   *  (ceux du professeur, puis ceux du constructeur), à l'image d'écran t */
+  peinture(duProf: readonly Peint[], constructeur: readonly Peint[], t = this.h.maintenant()) {
+    const page = this.page()
     if (page !== this.pageVue) {
       // Ce qui était ouvert appartient à la page d'avant
       if (this.pageVue !== null) this.fermerTout()
@@ -149,7 +153,8 @@ export class Piste {
         if (presents.has(cle)) continue
         // Rangé : ce qui était ouvert se ferme, et l'on note qu'il s'en va
         this.fermer(cle)
-        this.ecrire(this.morceau({ t: Math.round(this.dateDe(t)), p: page, n: v.nom, v: 0, d: [] }, v.c))
+        const m = this.morceau({ t: Math.round(this.dateDe(t)), p: page, n: v.nom, v: 0, d: [] }, v.c)
+        this.ecrire(() => m)
         this.vus.delete(cle)
       }
     }
@@ -204,16 +209,16 @@ export class Piste {
     this.fermerTrace()
   }
 
-  /** La couche « direct » vient d'être peinte : le tracé en cours a paru */
-  peintureDirect() {
+  /** La couche « direct » vient d'être peinte, à l'image d'écran t : le tracé en cours a paru */
+  peintureDirect(t = this.h.maintenant()) {
     const f = this.enAttenteDePeinture
     if (!f) return
     this.enAttenteDePeinture = null
-    this.noterTrace(f)
+    this.noterTrace(f, t)
   }
 
-  private noterTrace(f: TraceInstrument) {
-    const t = this.h.maintenant(), page = this.page()
+  private noterTrace(f: TraceInstrument, t = this.h.maintenant()) {
+    const page = this.page()
     const g = f.k === 'arc' ? [f.x, f.y, f.r, f.a0] : [f.ax, f.ay]
     const v = f.k === 'arc' ? [f.a1] : [f.zx, f.zy]
     let o = this.trace_
@@ -231,13 +236,14 @@ export class Piste {
     const o = this.trace_
     if (!o) return
     this.trace_ = null
-    const arc = o.k === 'arc'
-    const ech = simplifierTrace(o.ech, arc)
-    const m: MorceauTrace = {
-      t: Math.round(o.date), p: o.p, k: o.k, s: [o.couleur, o.taille],
-      g: o.g.map((v, i) => Math.round(v * (arc && i === 3 ? 1e4 : 10))), d: encoderTrace(ech, arc),
-    }
-    this.ecrire(m)
+    this.ecrire(() => {
+      const arc = o.k === 'arc'
+      const m: MorceauTrace = {
+        t: Math.round(o.date), p: o.p, k: o.k, s: [o.couleur, o.taille],
+        g: o.g.map((v, i) => Math.round(v * (arc && i === 3 ? 1e4 : 10))), d: encoderTrace(simplifierTrace(o.ech, arc), arc),
+      }
+      return m
+    })
   }
 
   // ---------- Fermer, écrire ----------
@@ -254,11 +260,12 @@ export class Piste {
     const o = this.ouverts.get(cle)
     if (!o) return
     this.ouverts.delete(cle)
-    const poses = simplifierPoses(o.poses)
-    const m: MorceauPoses = { t: Math.round(o.date), p: o.p, n: o.nom, d: [] }
-    if (o.q) m.q = o.q
-    m.d = encoderPoses(poses, o.nom === 'compas')
-    this.ecrire(this.morceau(m, o.c))
+    this.ecrire(() => {
+      const m: MorceauPoses = { t: Math.round(o.date), p: o.p, n: o.nom, d: [] }
+      if (o.q) m.q = o.q
+      m.d = encoderPoses(simplifierPoses(o.poses), o.nom === 'compas')
+      return this.morceau(m, o.c)
+    })
   }
 
   /** Ferme ce qui est ouvert depuis trop longtemps sans changement */
@@ -279,6 +286,7 @@ export class Piste {
   /** Ferme tous les morceaux ouverts */
   fermerTout() {
     for (const cle of [...this.ouverts.keys()]) this.fermer(cle)
+    if (this.enAttenteDePeinture) { this.noterTrace(this.enAttenteDePeinture); this.enAttenteDePeinture = null }
     this.fermerTrace()
   }
 
@@ -290,8 +298,9 @@ export class Piste {
     this.envoyer()
   }
 
-  /** On écrit un peu plus tard, hors du geste : le lever du pointeur reste immédiat */
-  private ecrire(m: Morceau) {
+  /** On écrit un peu plus tard, hors du geste et de l'image d'écran : le lever
+   *  du pointeur reste immédiat, et la simplification ne retarde aucune image */
+  private ecrire(m: () => Morceau) {
     this.enAttente.push(m)
     if (this.envoi === null) this.envoi = this.h.plusTard(() => { this.envoi = null; this.envoyer() }, 0)
   }
@@ -300,6 +309,6 @@ export class Piste {
     if (!this.enAttente.length) return
     const l = this.enAttente
     this.enAttente = []
-    this.noter(l)
+    this.noter(l.map(f => f()))
   }
 }
