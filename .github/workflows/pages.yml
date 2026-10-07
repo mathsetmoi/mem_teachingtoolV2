@@ -13,9 +13,10 @@ permissions:
   pages: write
   id-token: write
 
+# Une mise en ligne commencée va jusqu'au bout ; les suivantes attendent
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   construire:
@@ -42,4 +43,4 @@ jobs:
       url: ${{ steps.deploiement.outputs.page_url }}
     steps:
       - id: deploiement
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
