@@ -174,8 +174,10 @@ export class Rendu {
       const dec = this.selection.has(f.id) || (lie && this.selection.has(lie)) ? this.decalage : null
       this.dessinerForme(c, f, dec)
     }
-    // Nettoie le cache des formes disparues
-    if (this.chemins.size > this.formes.length + 50) {
+    // Nettoie le cache des formes disparues. On en garde une bonne réserve :
+    // revenir sur une autre page, ou sur une autre image de la revue, ne
+    // recalcule pas tous ses tracés
+    if (this.chemins.size > this.formes.length + 1500) {
       const vivants = new Set(this.formes.map(f => f.id))
       for (const id of this.chemins.keys()) if (!vivants.has(id)) this.chemins.delete(id)
     }
@@ -220,7 +222,10 @@ export class Rendu {
   }
 
   private dessinerTrait(c: CanvasRenderingContext2D, t: Trait, dec: { dx: number; dy: number } | null) {
-    const cle = `${t.pts.length}|${t.taille}|${t.pression}`
+    // Le dernier point compte aussi : un trait qui se dessine garde parfois
+    // le même nombre de points d'une image à l'autre, mais pas le même bout
+    const n = t.pts.length
+    const cle = `${n}|${t.taille}|${t.pression}|${t.pts[n - 3]}|${t.pts[n - 2]}`
     let entree = this.chemins.get(t.id)
     if (!entree || entree.cle !== cle) {
       entree = { cle, chemin: cheminDuTrait(t, true) }

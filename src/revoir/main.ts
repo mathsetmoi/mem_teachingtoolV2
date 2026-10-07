@@ -14,31 +14,19 @@ import 'katex/dist/katex.min.css'
 import './revoir.css'
 import { Camera } from '../camera'
 import { Rendu } from '../rendu'
-import type { Forme, Trait } from '../types'
+import type { Forme } from '../types'
 import { Bobine, boiteDe } from './bobine'
 import type { Boite } from './bobine'
+import { dureeDuTrace, esquisse, seDessine } from './esquisse'
 import { ErreurFilm, lireFilm } from './format'
 import type { FilmEleve } from './format'
+import { svg } from './icones'
 import { lireParLeRelais } from './relais'
+import { ALLURES } from './rythme'
 
-const VITESSES = [1, 1.5, 2, 0.5]
-const lisible = (v: number) => '×' + String(v).replace('.', ',')
 const mmss = (ms: number) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 const echapper = (t: string) => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 const dateLisible = (t: number) => { const d = new Date(t).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); return d.charAt(0).toUpperCase() + d.slice(1) }
-
-const ICONES: Record<string, string> = {
-  lire: 'M8 5l11 7-11 7z',
-  pause: 'M8 5v14M16 5v14',
-  avant: 'M17 6l-8 6 8 6z',
-  apres: 'M7 6l8 6-8 6z',
-  chapAvant: 'M6 5v14M18 6l-9 6 9 6z',
-  chapApres: 'M18 5v14M6 6l9 6-9 6z',
-  chapitres: 'M4 6h16M4 12h16M4 18h10',
-  cadrer: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
-  fermer: 'M6 6l12 12M18 6L6 18',
-}
-const svg = (nom: string) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONES[nom]}"/></svg>`
 
 // ---------- La page ----------
 const racine = document.getElementById('revoir')!
@@ -62,15 +50,15 @@ racine.innerHTML = `
     <div class="rangee">
       <span class="temps" aria-live="off"></span>
       <div class="boutons">
-        <button type="button" class="bouton b-chapitres" aria-label="Chapitres" title="Chapitres">${svg('chapitres')}</button>
-        <button type="button" class="bouton b-chap-avant" aria-label="Chapitre précédent" title="Chapitre précédent ([)">${svg('chapAvant')}</button>
-        <button type="button" class="bouton b-avant" aria-label="Geste précédent" title="Geste précédent (←)">${svg('avant')}</button>
+        <button type="button" class="bouton b-chapitres" aria-label="Chapitres" title="Chapitres">${svg('liste')}</button>
+        <button type="button" class="bouton b-chap-avant" aria-label="Chapitre précédent" title="Chapitre précédent ([)">${svg('partieAvant')}</button>
+        <button type="button" class="bouton b-avant" aria-label="Geste précédent" title="Geste précédent (←)">${svg('pasAvant')}</button>
         <button type="button" class="bouton principal b-lire" aria-label="Lire" title="Lire (Espace)">${svg('lire')}</button>
-        <button type="button" class="bouton b-apres" aria-label="Geste suivant" title="Geste suivant (→)">${svg('apres')}</button>
-        <button type="button" class="bouton b-chap-apres" aria-label="Chapitre suivant" title="Chapitre suivant (])">${svg('chapApres')}</button>
+        <button type="button" class="bouton b-apres" aria-label="Geste suivant" title="Geste suivant (→)">${svg('pasApres')}</button>
+        <button type="button" class="bouton b-chap-apres" aria-label="Chapitre suivant" title="Chapitre suivant (])">${svg('partieApres')}</button>
       </div>
       <div class="reglages">
-        <button type="button" class="bouton texte b-vitesse" aria-label="Vitesse : ×1" title="Vitesse">×1</button>
+        <button type="button" class="bouton texte b-vitesse" aria-label="Allure : Normal" title="Allure de lecture">Normal</button>
         <button type="button" class="bouton b-cadrer" aria-label="Voir toute la page" title="Voir toute la page">${svg('cadrer')}</button>
       </div>
     </div>
@@ -94,13 +82,14 @@ let k = 0                                  // l'image montrée
 let page = ''
 let enMarche = false
 let minuterie = 0, animation = 0
-let vitesse = 1
+let allure = 1                             // Normal (voir ALLURES)
 let vue: 'page' | 'libre' = 'page'         // « libre » : l'élève a zoomé ou déplacé
 let arreteIci = -1                         // la fin de chapitre où l'on vient de s'arrêter : « Continuer » la passe
 let kDepart = -1                           // l'image d'où la lecture est partie : pas d'arrêt immédiat
 const params = new URLSearchParams(location.search)
 const arretAuxChapitres = params.get('continu') !== '1'
 const images = new Map<string, HTMLImageElement>()
+const mouvementReduit = window.matchMedia('(prefers-reduced-motion: reduce)')
 
 rendu.pixels = src => {
   let img = images.get(src)
@@ -201,16 +190,19 @@ function montrer(i: number, anime: boolean) {
   if (!anime || i !== avant + 1 || changePage) return
   const nouvelles = bobine.nouvelles(k)
   if (vue === 'page') suivre(nouvelles)
-  // Les traits apparus se dessinent sous les yeux, à peu près à la vitesse du cours
-  // (seulement ceux qui apparaissent : un trait déplacé ou recoloré ne se réécrit pas)
+  // Les figures apparues se dessinent sous les yeux, à vitesse de plume
+  // (seulement celles qui apparaissent : une forme déplacée ou recolorée ne se réécrit pas),
+  // et le tracé finit avant le geste suivant
   const ajouts = bobine.ajoutees(k)
-  const traits = new Set(nouvelles.filter((f): f is Trait => f.type === 'trait' && ajouts.has(f.id)).map(f => f.id))
-  if (!traits.size) return
-  const duree = Math.min(900, bobine.delai(Math.min(bobine.n - 1, k + 1)) / vitesse * 0.8)
+  const aTracer = nouvelles.filter(f => ajouts.has(f.id) && seDessine(f))
+  const facteur = ALLURES[allure].facteur
+  const duree = Math.min(dureeDuTrace(aTracer), 0.85 * bobine.delai(Math.min(bobine.n - 1, k + 1))) / facteur
+  if (duree < 40 || mouvementReduit.matches) return
+  const ids = new Set(aTracer.map(f => f.id))
   const debut = performance.now()
   const pas = () => {
-    const t = Math.min(1, (performance.now() - debut) / Math.max(1, duree))
-    afficher(img.formes.map(f => traits.has(f.id) ? partiel(f as Trait, t) : f), img)
+    const t = Math.min(1, (performance.now() - debut) / duree)
+    afficher(img.formes.map(f => ids.has(f.id) ? esquisse(f, t) : f), img)
     if (t < 1) animation = requestAnimationFrame(pas)
   }
   pas()
@@ -219,12 +211,6 @@ function montrer(i: number, anime: boolean) {
 function afficher(formes: Forme[], img: { fond: Rendu['fond']; origine: Rendu['origine'] }) {
   rendu.formes = formes; rendu.fond = img.fond; rendu.origine = img.origine
   rendu.toutRedessiner()
-}
-
-/** Le début d'un trait, jusqu'à la fraction t de ses points */
-function partiel(f: Trait, t: number): Trait {
-  const n = Math.max(1, Math.round((f.pts.length / 3) * t))
-  return { ...f, pts: f.pts.slice(0, n * 3) }
 }
 
 // ---------- La vue ----------
@@ -315,7 +301,8 @@ function voirLaPage() { vue = 'page'; cadrerPage(); rendu.toutRedessiner(); majC
 function lire() {
   if (!bobine) return
   fermerCarte()
-  if (k >= bobine.n - 1) { arreteIci = -1; montrer(0, false) }   // relancer depuis le début
+  // au bout du film, Lire repart de la première image
+  if (k >= bobine.n - 1) { arreteIci = -1; montrer(0, false) }
   enMarche = true
   kDepart = k
   majCommandes()
@@ -337,7 +324,7 @@ function suivante() {
     arreteIci = k
     pause(); return carteChapitre(c + 1, false)
   }
-  minuterie = window.setTimeout(() => { montrer(k + 1, true); suivante() }, Math.max(16, bobine.delai(k + 1) / vitesse))
+  minuterie = window.setTimeout(() => { montrer(k + 1, true); suivante() }, bobine.delai(k + 1) / ALLURES[allure].facteur)
 }
 
 function allerAuChapitre(c: number) {
@@ -364,7 +351,8 @@ function majCommandes() {
     boutonLire.setAttribute('aria-label', enMarche ? 'Pause' : 'Lire'); boutonLire.title = enMarche ? 'Pause (Espace)' : 'Lire (Espace)'
   }
   curseur.setAttribute('aria-valuetext', `${mmss(bobine.temps[k])} sur ${mmss(bobine.duree)}`)
-  boutonVitesse.textContent = lisible(vitesse); boutonVitesse.setAttribute('aria-label', `Vitesse : ${lisible(vitesse)}`)
+  const nom = ALLURES[allure].nom
+  boutonVitesse.textContent = nom; boutonVitesse.setAttribute('aria-label', `Allure : ${nom}`)
   $('.b-cadrer').classList.toggle('actif', vue === 'page')
   for (const li of tiroir.querySelectorAll('li')) li.classList.toggle('ici', Number((li as HTMLElement).dataset.c) === c)
   void ch
@@ -406,10 +394,11 @@ $('.b-chap-apres').addEventListener('click', () => {
   else { pause(); fermerCarte(); montrer(bobine.n - 1, false) }   // dernier chapitre : on va à la fin
 })
 boutonVitesse.addEventListener('click', () => {
-  vitesse = VITESSES[(VITESSES.indexOf(vitesse) + 1) % VITESSES.length]
-  // La nouvelle vitesse vaut tout de suite, pas seulement au geste suivant
+  // Normal → Rapide → Très rapide → Lent → Normal
+  allure = (allure + 1) % ALLURES.length
+  // La nouvelle allure vaut tout de suite, pas seulement au geste suivant
   if (enMarche) { clearTimeout(minuterie); suivante() }
-  majCommandes(); annoncer(`Vitesse ${lisible(vitesse)}`)
+  majCommandes(); annoncer(`Allure ${ALLURES[allure].nom}`)
 })
 $('.b-cadrer').addEventListener('click', voirLaPage)
 $('.b-chapitres').addEventListener('click', () => { tiroir.hidden = !tiroir.hidden; if (!tiroir.hidden) (tiroir.querySelector('li.ici button') as HTMLElement | null)?.focus() })
@@ -426,7 +415,7 @@ function fermerTiroir() {
 }
 
 window.addEventListener('keydown', e => {
-  if (!bobine || (e.target as HTMLElement).closest('input[type=range]') && e.key.startsWith('Arrow')) return
+  if (!bobine) return
   // Les raccourcis du navigateur (Alt+←, Cmd+[…) restent au navigateur
   if (e.metaKey || (e.key.length > 1 && (e.altKey || e.ctrlKey))) return
   const a: Record<string, () => void> = {

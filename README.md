@@ -205,21 +205,57 @@ dessins (« Quelle est la vue de dessus ? », « Lequel est un patron de
 cube ? »). Le patron se vérifie en faisant rouler un dé sur ses cases : sur
 les 35 assemblages de six carrés, on retrouve bien les 11 patrons du cube.
 
-## Rejouer le tableau
+## Revoir la construction (en classe)
 
-Le bouton ▶ de la barre du haut rejoue la construction, geste par geste, au
-rythme où elle a été faite (une rafale reste visible, une longue pause est
-écourtée). Les traits se redessinent sous les yeux. Vitesse de ×0,05 à ×8 ;
-Espace, ← →, Origine, Fin ; Échap pour fermer. Le lecteur n'écrit rien :
-le tableau revient tel quel. Le film est gardé avec le tableau.
+Le bouton **Revoir** de la barre du haut (la flèche qui tourne autour d'un
+petit triangle) montre comment le tableau s'est construit. Un calque couvre
+l'écran, bordé de jaune et marqué **REVOIR** : la classe sait qu'elle ne
+regarde pas le direct. Il s'ouvre en pause sur l'image finale de la page
+affichée, telle qu'elle était à la fin de sa dernière séance, avec la même
+vue que le tableau : au vidéoprojecteur, rien ne bouge. Un bandeau dit ce
+qu'on revoit ; **Espace** repart du début, **←** remonte pas à pas.
 
-Pour cela, le document Yjs garde ce qui a été effacé (`gc: false`) et note un
-instantané à chaque geste (`film`). Rejouer, c'est lire l'état du tableau dans
-chacun de ces instantanés, directement, sans reconstruire le document.
+**Que revoir ?** Le tiroir du même nom propose la page affichée (« Sa
+dernière séance », « Toute son histoire », de séance en séance), les séances
+du tableau rangées par jour (douze à la fois, puis « Plus anciennes »), et
+les pages jetées depuis, dont l'histoire reste lisible. On y règle aussi
+l'arrêt en fin de partie et le découpage des séances (une pause de 20, 10, 5
+ou 2 minutes en sépare deux, comme dans la fenêtre Publier).
+
+**Parties et pas.** Ce qu'on revoit est découpé en parties titrées avec
+l'heure réelle : une par page où l'on s'est attardé pendant une séance, une
+par séance dans l'histoire d'une page, et une nouvelle après trois minutes de
+silence. Elles forment la frise, en bas : glisser montre l'image visée,
+toucher une partie mène à son début. À l'intérieur, les gestes rapprochés
+(moins de deux secondes d'écart) forment un pas, une idée : c'est ce que fait
+avancer la télécommande de présentation.
+
+**Les commandes**, toutes au clavier et en grands boutons : Espace, K ou un
+appui bref sur le tableau pour lire ou s'arrêter ; → ou Page↓ pour un pas,
+← ou Page↑ pour revenir ; Maj+→ et Maj+← pour un seul geste visible ; [ et ]
+pour la partie précédente ou suivante ; Origine et Fin ; 1 à 4, − et + pour
+l'allure (Lent, Normal, Rapide, Très rapide ; Rapide au départ) ; C pour
+revoir toute la page ; Échap pour revenir au tableau. La lecture suit le
+rythme du cours : les intervalles courts sont gardés, les longs silences
+tassés en douceur. Les figures se dessinent sous les yeux (le trait suit son
+chemin, le cercle s'ouvre comme au compas, le polygone se construit côté
+après côté) ; formules et images apparaissent d'un coup. La vue suit la page
+montrée ; après un glisser ou un pincement, elle reste où on l'a mise
+jusqu'à C. Sous « animations réduites », rien ne se dessine ni ne s'estompe.
+
+**La revue ne fait que lire.** Le document Yjs garde ce qui a été effacé
+(`gc: false`) et note un instantané à chaque geste (`film`). La revue lit
+une seule page dans l'instantané de l'image qu'elle montre, au moment de la
+montrer, sans rien préparer ni reconstruire : elle s'ouvre aussitôt sur un
+tableau utilisé depuis des semaines. Elle a sa propre caméra et son propre
+rendu, et n'écrit nulle part, ni dans le document ni dans le navigateur ;
+crayon, doigt, collage et raccourcis du tableau sont sans effet tant qu'elle
+est ouverte. Un test le vérifie sur toutes les portions d'un tableau
+(`npm test`) : aucune transaction, le même vecteur d'état, le même film.
 
 ## Revoir la séance (les élèves, chez eux)
 
-Le bouton **Publier le replay** (la flèche qui sort d'une boîte, à côté de ▶)
+Le bouton **Publier le replay** (la flèche qui sort d'une boîte, à côté de Revoir)
 donne aux élèves un lien à coller dans le cahier de textes Pronote. Ils
 l'ouvrent sur leur téléphone, sans compte, et appuient sur ▶.
 
@@ -245,7 +281,7 @@ lecteur l'ouvre aussi.
 
 **Côté élève** (`revoir.html`). L'affiche montre le tableau final, le titre, la
 date et la durée. Le replay suit le rythme du cours (les longs silences sont
-écourtés) à ×0,5, ×1, ×1,5 ou ×2 ; les traits se redessinent sous les yeux.
+écourtés) aux allures Lent, Normal, Rapide ou Très rapide ; les figures se dessinent sous les yeux.
 Pas à pas, frise, chapitres (un par page pour l'instant), pages qui changent
 toutes seules, pincer ou la molette pour zoomer, glisser pour se déplacer,
 double-clic pour revoir toute la page. **La lecture s'arrête à la fin de chaque
@@ -413,7 +449,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
 | `src/geometrie.ts` | Ce que touche la gomme ou la sélection |
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
-| `src/lecteur.ts` | Le lecteur qui rejoue la construction |
+| `src/revue/` | La revue en classe : ce qu'on revoit, les images, la frise, le choix |
 | `src/revoir/` | Le replay des élèves : format du film, exporteur, bobine, lecteur (`revoir.html`), relais |
 | `src/publication/` | Publier sur le Drive : comptes et relais, connexion Google, la fenêtre |
 | `relais/relais-seances.gs` | Le relais Apps Script, à déployer dans chaque compte Google |
@@ -463,5 +499,5 @@ n'empêche un usage payant.
 5. Import d'un PDF comme fond de page (annoter un énoncé) ; recadrer une image.
 6. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
 7. Sécurité du serveur : jeton prof, durée de vie des salles.
-8. Lecteur : export vidéo, et alléger les très longs films (le document ne
+8. Revue : export vidéo, et alléger les très longs films (le document ne
    jette plus rien).

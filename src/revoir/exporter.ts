@@ -11,8 +11,12 @@ import type { Fond, Forme } from '../types'
 import type { Chapitre, EtapeFilm, FilmEleve, Op, PageFilm } from './format'
 import { FORMAT, VERSION } from './format'
 
+/** Les découpages proposés, en minutes : un silence plus long sépare deux
+ *  séances. Le premier est celui qu'on prend sans rien régler. */
+export const DECOUPAGES = [20, 10, 5, 2] as const
+
 /** Un écart de plus de 20 minutes entre deux gestes : une autre séance */
-const ENTRE_DEUX_SEANCES = 20 * 60 * 1000
+const ENTRE_DEUX_SEANCES = DECOUPAGES[0] * 60 * 1000
 
 /** Une séance repérée dans le film : de l'étape `de` à l'étape `a` (incluses) */
 export interface Seance {

@@ -245,22 +245,6 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
 .barre, .panneau-forme, .toast, .choix-formes { user-select: none; -webkit-user-select: none; }
 .panneau-forme input { user-select: text; -webkit-user-select: text; }
 
-/* ---------- Lecteur ---------- */
-.voile-lecture { position: absolute; inset: 0; z-index: 12; cursor: default; }
-.barre-lecture {
-  left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%);
-  z-index: 25; align-items: center; gap: 4px; width: max-content; max-width: calc(100vw - 24px); flex-wrap: wrap; justify-content: center;
-}
-.barre-lecture .bouton svg { fill: currentColor; stroke-width: 1.4; }
-.barre-lecture .bouton[aria-label^='Fermer'] svg { fill: none; stroke-width: 2; }
-.barre-lecture .avancee { width: min(320px, 40vw); accent-color: var(--bleu); }
-.barre-lecture .compteur { min-width: 92px; text-align: center; font-variant-numeric: tabular-nums; font-size: 13px; color: var(--encre-douce); white-space: nowrap; }
-.barre-lecture .vitesse { display: flex; align-items: center; gap: 6px; padding: 0 6px; font-size: 13px; font-variant-numeric: tabular-nums; }
-.barre-lecture .vitesse input { width: 90px; accent-color: var(--bleu); }
-.barre-lecture .vitesse span { min-width: 44px; }
-body.en-lecture .barre-outils, body.en-lecture .barre-haut, body.en-lecture .choix-formes,
-body.en-lecture .panneau-forme, body.en-lecture .barre-zoom { display: none !important; }
-
 /* ---------- Menu d'un morceau de figure ---------- */
 .menu-partie {
   position: fixed; z-index: 22; width: max-content; max-width: calc(100vw - 16px);
@@ -290,7 +274,6 @@ body.en-lecture .panneau-forme, body.en-lecture .barre-zoom { display: none !imp
 .choix-instruments { position: fixed; z-index: 16; flex-direction: column; align-items: stretch; }
 .option.instrument { display: flex; align-items: center; gap: 10px; text-align: left; }
 .option.instrument svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-body.en-lecture .choix-instruments { display: none !important; }
 
 /* ---------- Programme de construction ---------- */
 .panneau-construction {
@@ -335,7 +318,6 @@ body.en-lecture .choix-instruments { display: none !important; }
 }
 .consigne-construction .numero { flex: none; min-width: 28px; height: 28px; display: inline-grid; place-items: center; border-radius: 50%; background: var(--surligneur); color: var(--encre); font-weight: 700; font-size: 15px; }
 @media (max-width: 760px) { .consigne-construction { max-width: calc(100vw - 24px); top: auto; bottom: 16px; font-size: 16px; } }
-body.en-lecture .panneau-construction, body.en-lecture .consigne-construction { display: none !important; }
 .note-existants { margin: -6px 0 0 30px; font-size: 13px; line-height: 1.4; color: var(--encre-douce); }
 .choix-sur-tableau { grid-template-columns: 150px 1fr auto auto !important; }
 .choix-sur-tableau em { font-size: 13px; color: var(--encre-douce); }
@@ -455,3 +437,97 @@ body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .panneau-co
 .p-etat.erreur { color: var(--rouge); font-weight: 700; }
 .p-resultat { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: #e9f5ee; }
 .bouton-lien { display: inline-flex; align-items: center; text-decoration: none; color: inherit; height: 42px; padding: 0 18px; border-radius: 10px; font-weight: 700; }
+
+/* ---------- Revoir la construction ----------
+   Un calque sur tout l'écran, au-dessus des menus (22) et du panneau de
+   construction (18), sous le message (30). Il est transparent : sa scène
+   peint son propre papier, et à l'ouverture, avant la première image, on
+   voit encore le tableau, qui est la même image. */
+.revue { position: fixed; inset: 0; z-index: 28; background: transparent; color: var(--encre); }
+.revue-scene { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.revue-scene:active { cursor: grabbing; }
+.revue-cadre { position: absolute; inset: 0; border: 6px solid var(--surligneur); pointer-events: none; }
+.revue-ou {
+  position: absolute; left: max(16px, env(safe-area-inset-left)); top: max(14px, env(safe-area-inset-top));
+  max-width: calc(100% - 120px); padding: 8px 14px; display: flex; flex-direction: column; gap: 2px;
+  background: rgba(246, 248, 251, 0.92); border: 1px solid var(--filet); border-radius: 14px;
+  font-size: clamp(16px, 2vw, 26px); line-height: 1.25; pointer-events: none;
+}
+.revue-etiquette {
+  align-self: flex-start; padding: 0 8px; border-radius: 6px; background: var(--surligneur);
+  font-weight: 700; letter-spacing: 0.08em; font-size: 0.7em;
+}
+.revue-ou .ligne1 { font-weight: 700; }
+.revue-ou .ligne2 { font-size: 0.75em; color: var(--encre-douce); }
+.revue-barre {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: max(12px, env(safe-area-inset-bottom));
+  width: min(1180px, calc(100% - 32px)); display: flex; flex-direction: column; gap: 8px; padding: 10px 12px;
+  background: var(--chrome); border: 1px solid var(--filet); border-radius: 16px; box-shadow: 0 2px 0 var(--filet);
+  transition: opacity 0.4s; user-select: none; -webkit-user-select: none;
+}
+.revue.repos .revue-barre { opacity: 0.35; }
+.revue-ligne-frise { display: flex; align-items: center; gap: 10px; }
+/* La tête déborde de la moitié de sa largeur aux deux bouts : la frise lui laisse la place.
+   Les cases sont placées en pourcentage, sur la même règle que la tête (frise.ts) : aucune
+   marge ni largeur minimale ne doit les pousser, et rien ne sort de la frise. */
+.revue-frise { flex: 1; min-width: 0; position: relative; height: 44px; margin: 0 12px; cursor: pointer; touch-action: none; }
+.revue-cases { position: absolute; inset: 0; overflow: hidden; border-radius: 10px; background: #e3e9f2; }
+.revue-partie {
+  --separation: inset 2px 0 0 var(--chrome);
+  position: absolute; top: 0; bottom: 0; box-sizing: border-box; min-width: 0; padding: 0; overflow: hidden;
+  font-size: 13px; line-height: 44px; color: var(--encre-douce); background: #e3e9f2; box-shadow: var(--separation);
+}
+.revue-partie:first-child, .revue-partie.fine { --separation: 0 0 transparent; }
+.revue-partie.paire { background: #d6dfeb; }
+.revue-partie.ici { box-shadow: var(--separation), inset 0 -5px 0 var(--surligneur); color: var(--encre); }
+.revue-partie span { display: block; padding: 0 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.revue-partie:first-child span { padding-left: 18px; }
+.revue-partie.muette span { visibility: hidden; }
+.revue-rempli { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(59, 111, 182, 0.28); pointer-events: none; }
+.revue-tete {
+  position: absolute; top: 50%; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%;
+  background: var(--bleu); border: 3px solid #fff; box-shadow: 0 1px 3px rgba(27, 34, 48, 0.3); pointer-events: none;
+}
+.revue-frise:focus-visible, .revue button:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
+.revue-rangee { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+.revue-groupe { display: inline-flex; align-items: center; gap: 2px; }
+.revue .bouton { width: clamp(48px, 6.8vh, 60px); height: clamp(48px, 6.8vh, 60px); flex: none; }
+.revue .bouton svg { width: 28px; height: 28px; stroke-width: 2.2; }
+.revue .b-lire { width: clamp(56px, 8.4vh, 72px); height: clamp(56px, 8.4vh, 72px); border-radius: 50%; background: var(--bleu); color: #fff; }
+.revue .b-lire:hover { background: #2f5d9c; }
+.revue .b-lire svg { fill: currentColor; stroke: currentColor; stroke-width: 2.5; }
+.revue-texte {
+  height: 48px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; flex: none;
+  border: 1px solid var(--filet); border-radius: 12px; background: var(--papier); font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.revue-texte:hover { background: #e9eef5; }
+.revue-texte svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.revue-texte[aria-expanded='true'] { background: #fff6c2; }
+.revue-allures { display: inline-flex; flex: none; border: 1px solid var(--filet); border-radius: 12px; overflow: hidden; }
+.revue-allures button { height: 48px; padding: 0 8px; border: 0; border-right: 1px solid var(--filet); background: var(--papier); font-size: 14px; cursor: pointer; white-space: nowrap; }
+.revue-allures button:last-child { border-right: 0; }
+.revue-allures button:hover { background: #e9eef5; }
+.revue-allures button[aria-pressed='true'] { background: var(--surligneur); font-weight: 700; }
+.revue-compteur { min-width: 8ch; text-align: right; font-variant-numeric: tabular-nums; color: var(--encre-douce); white-space: nowrap; }
+.revue-bandeau { padding: 6px 12px; border-radius: 10px; background: #fff6c2; font-size: 16px; line-height: 1.35; }
+.revue-tiroir {
+  position: absolute; left: max(16px, env(safe-area-inset-left)); width: min(440px, calc(100% - 32px));
+  overflow-y: auto; padding: 12px 16px; background: var(--papier); border: 1px solid var(--filet); border-radius: 16px;
+  box-shadow: 0 3px 0 var(--filet), 0 18px 40px rgba(27, 34, 48, 0.14);
+}
+.revue-tiroir h2 { margin: 0 0 4px; font-size: 19px; }
+.revue-tiroir h3 { margin: 14px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--encre-douce); }
+.revue-tiroir h4 { margin: 8px 0 2px 14px; font-size: 14px; color: var(--encre-douce); }
+.revue-choix {
+  display: block; width: 100%; min-height: 56px; padding: 8px 14px; text-align: left; border: 0;
+  border-radius: 12px; background: transparent; font-size: 17px; cursor: pointer;
+}
+.revue-choix:hover { background: #e9eef5; }
+.revue-choix.ici { background: #fff6c2; }
+.revue-choix small { display: block; font-size: 14px; color: var(--encre-douce); }
+.revue-plus { min-height: 44px; margin: 4px 0 0 6px; padding: 0 14px; border: 1px solid var(--filet); border-radius: 10px; background: var(--chrome); font-weight: 700; cursor: pointer; }
+.revue-reglage { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 6px; font-size: 16px; cursor: pointer; }
+.revue-reglage input { width: 22px; height: 22px; accent-color: var(--bleu); }
+.revue-reglage select { height: 44px; padding: 0 10px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); }
+.revue-annonce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .revue-barre { transition: none; } }
