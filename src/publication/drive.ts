@@ -11,6 +11,7 @@ import { CLIENT_GOOGLE } from './comptes'
 
 const API = 'https://www.googleapis.com/drive/v3/files'
 const ENVOI = 'https://www.googleapis.com/upload/drive/v3/files'
+const A_PROPOS = 'https://www.googleapis.com/drive/v3/about'
 const DROIT = 'https://www.googleapis.com/auth/drive.file'
 /** Le dossier que le relais sert : même nom, même marque qu'en V1 */
 export const DOSSIER = 'Au Tableau — séances publiées'
@@ -23,15 +24,17 @@ interface Fiche { id: string; name: string; mimeType: string; parents?: string[]
 
 declare global {
   interface Window { google?: { accounts?: { oauth2?: {
-    initTokenClient(o: { client_id: string; scope: string; include_granted_scopes?: boolean; callback: (r: { access_token?: string; expires_in?: number; error?: string }) => void; error_callback?: (e: unknown) => void }): { requestAccessToken(o?: { prompt?: string }): void }
+    initTokenClient(o: { client_id: string; scope: string; include_granted_scopes?: boolean; login_hint?: string; callback: (r: { access_token?: string; expires_in?: number; error?: string }) => void; error_callback?: (e: { type?: string }) => void }): { requestAccessToken(o?: { prompt?: string }): void }
     hasGrantedAllScopes(r: unknown, ...s: string[]): boolean
   } } } }
 }
 
 // Le jeton est celui d'UN compte : changer de compte demande de se reconnecter
-let jeton = '', expiration = 0, compteDuJeton = ''
+let jeton = '', expiration = 0, compteDuJeton = '', courriel = ''
 export const connecte = (compte: string) => !!jeton && compteDuJeton === compte && Date.now() < expiration
-export function deconnecter() { jeton = ''; expiration = 0; compteDuJeton = '' }
+/** L'adresse du compte Google connecté pour `compte` ('' : pas connecté, ou inconnue) */
+export const courrielDe = (compte: string) => connecte(compte) ? courriel : ''
+export function deconnecter() { jeton = ''; expiration = 0; compteDuJeton = ''; courriel = '' }
 
 /** Une erreur de Google Drive, avec son code (404 : le fichier n'existe pas) */
 class ErreurDrive extends Error { constructor(message: string, readonly statut: number) { super(message) } }
@@ -53,10 +56,13 @@ export function preparerGoogle() {
   document.head.appendChild(s)
 }
 
-/** Se connecter au compte `compte` : à appeler directement depuis un clic */
-export function connecter(compte: string): Promise<void> {
+/** Se connecter au compte `compte` : à appeler directement depuis un clic.
+ *  Google montre toujours la liste de ses comptes ; `indice` (l'adresse du
+ *  dernier compte utilisé) le met en avant. */
+export function connecter(compte: string, indice = ''): Promise<void> {
   deconnecter()
   return new Promise((ok, ko) => {
+    if (!CLIENT_GOOGLE) return ko(new Error('La connexion à Google n\'est pas encore réglée sur ce site (identifiant client à créer, voir le mode d\'emploi). En attendant, enregistrez le fichier séance.'))
     if (location.protocol === 'file:') return ko(new Error('La connexion à Google ne fonctionne pas depuis un fichier ouvert sur l\'ordinateur. Utilisez Tableau MEM en ligne (mathsetmoi.github.io), ou enregistrez le fichier séance.'))
     const oauth = window.google?.accounts?.oauth2
     if (!oauth) {
@@ -68,13 +74,19 @@ export function connecter(compte: string): Promise<void> {
     }
     const client = oauth.initTokenClient({
       client_id: CLIENT_GOOGLE, scope: DROIT, include_granted_scopes: false,
-      error_callback: () => ko(new Error('La fenêtre de connexion Google a été fermée ou bloquée. Autorisez-la, puis réessayez.')),
+      ...(indice ? { login_hint: indice } : {}),
+      error_callback: e => ko(new Error(e?.type === 'popup_failed_to_open'
+        ? 'Le navigateur a bloqué la fenêtre de connexion Google : autorisez les fenêtres pour ce site, puis réessayez.'
+        : 'La fenêtre de connexion Google a été fermée avant la fin. Si Google y affichait « Accès bloqué » ou « origin_mismatch », c\'est que ce site n\'est pas encore autorisé dans la console Google Cloud (voir le mode d\'emploi).')),
       callback: r => {
         if (r.error || !r.access_token || !oauth.hasGrantedAllScopes(r, DROIT)) return ko(new Error('Pour publier, autorisez Tableau MEM à gérer les fichiers qu\'il crée sur votre Drive.'))
         jeton = r.access_token
         expiration = Date.now() + (Number(r.expires_in) || 3600) * 1000 - 60_000
         compteDuJeton = compte
-        ok()
+        // Quel compte a-t-il choisi ? Pour le lui montrer : on publie sinon à l'aveugle
+        appeler<{ user?: { emailAddress?: string } }>(`${A_PROPOS}?fields=user(emailAddress)`)
+          .then(a => { if (compteDuJeton === compte) courriel = a?.user?.emailAddress ?? '' }, () => {})
+          .finally(ok)
       },
     })
     client.requestAccessToken({ prompt: 'select_account' })

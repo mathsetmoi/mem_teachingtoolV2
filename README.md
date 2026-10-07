@@ -227,7 +227,11 @@ l'ouvrent sur leur téléphone, sans compte, et appuient sur ▶.
 film (un silence de plus de 20 minutes, ou un autre jour, en commence une
 autre ; deux cours séparés par un intercours de 5 minutes se séparent en
 réglant le découpage à 5 ou 2 minutes), les pages où l'on a écrit pendant la
-séance, un titre et le compte Google. **Voir comme un élève** ouvre
+séance, un titre et le compte (Drive personnel ou du lycée). La fenêtre montre
+le compte Google connecté ; **Choisir / Changer de compte Google** ouvre la
+liste des comptes de Google. Elle retient, sur cet ordinateur, le compte avec
+lequel chaque Drive a été publié, le propose en premier la fois suivante, et
+prévient avant d'envoyer si l'on est connecté avec un autre. **Voir comme un élève** ouvre
 le lecteur dans un onglet, sans rien publier. **Publier** se connecte à Google,
 envoie la séance sur le Drive, la relit par le relais comme le fera l'élève, et
 donne le lien, avec **Copier pour Pronote** (le titre, le lien et les
@@ -279,8 +283,31 @@ même adresse. Le relais du Drive personnel est
 déjà déployé ; celui du lycée s'installe en cinq minutes (instructions en tête
 du script), puis son adresse va dans `src/publication/comptes.ts`. La
 connexion Google demande le droit le plus étroit (`drive.file` : Tableau MEM ne
-voit que les fichiers qu'il a créés) et utilise le même identifiant client que
-la V1, ce qui lui fait retrouver son dossier.
+voit que les fichiers qu'il a créés).
+
+**Connexion Google : à régler une fois.** Tableau MEM a besoin de SON
+identifiant client Google (`CLIENT_GOOGLE` dans `src/publication/comptes.ts`) :
+tant qu'il est vide, la fenêtre ne propose que d'enregistrer le fichier. Une
+erreur « origin_mismatch » veut dire que l'adresse du site n'est pas autorisée
+pour l'identifiant utilisé. Pour le créer, avec le compte gmail personnel :
+1. [console.cloud.google.com](https://console.cloud.google.com) → Nouveau
+   projet (son nom, « Aucune organisation »).
+2. API et services → Bibliothèque → **Google Drive API** → Activer.
+3. Google Auth Platform → Commencer : nom de l'application (c'est lui que
+   Google affiche à la connexion), adresse d'assistance, audience
+   **Externe**.
+4. Accès aux données → ajouter le champ `…/auth/drive.file`.
+5. Clients → Créer un client → **Application Web** ; Origines JavaScript
+   autorisées : `https://mathsetmoi.github.io` (sans chemin, sans `/` final) et
+   `http://localhost:5173`. Pas d'URI de redirection.
+6. Audience : « Publier l'application » (avec `drive.file` seul, Google ne
+   demande pas de validation), ou rester « En test » en ajoutant les deux
+   adresses (gmail et lycée) comme utilisateurs test.
+7. Copier l'ID client dans `CLIENT_GOOGLE`. Une nouvelle origine peut mettre de
+   cinq minutes à quelques heures à être prise en compte.
+Si le lycée filtre les applications tierces, son administrateur Google
+Workspace doit autoriser cet ID client (console d'administration → Sécurité →
+Contrôle des accès et des données → Commandes des API).
 
 **Mettre en ligne.** `npm run build:pages` construit le tableau et le lecteur
 dans `dist-pages/`. Le fichier `.github/workflows/pages.yml` les met en ligne

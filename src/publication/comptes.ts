@@ -23,16 +23,17 @@ export interface Compte {
 export const COMPTES: Compte[] = [
   // Le compte personnel, déployé et vérifié le 6 octobre 2026 (repris de la V1)
   { cle: 'mem', nom: 'Drive personnel', relais: 'https://script.google.com/macros/s/AKfycbyjIhYog-9tM4G0VF0AhHHR3iQGvz-5lBjnYeLVGF8HwkmgEYib4-UCkgTjY3OiO6I1Zg/exec' },
-  // Le compte du lycée : coller ici l'adresse de son relais une fois déployé
-  { cle: 'lfb', nom: 'Drive du lycée', relais: '' },
+  // Le compte du lycée, déployé le 7 octobre 2026
+  { cle: 'lfb', nom: 'Drive du lycée', relais: 'https://script.google.com/macros/s/AKfycbwaP0-0Zlqn_IMLhUfc1LexNza9WITwyrtlgEHgHcS2p3lqPQaW14eh8PjoVYY3YfGwdQ/exec' },
 ]
 
-/** L'identifiant client Google de la V1 (pas un secret). Le garder le même :
- *  avec le droit « drive.file », un client ne voit que les fichiers qu'il a
- *  créés — c'est ce qui permet de retrouver le dossier des séances de la V1.
- *  Ses origines autorisées, dans la console Google Cloud : mathsetmoi.github.io
- *  (et http://localhost:5173 pour essayer depuis son ordinateur). */
-export const CLIENT_GOOGLE = '104179953661-2h0q8ada8m22j3d8uhe4ra3rbgfdp83p.apps.googleusercontent.com'
+/** L'identifiant client Google de Tableau MEM (pas un secret), créé dans SON
+ *  projet Google Cloud : c'est le nom de ce projet que Google affiche quand le
+ *  professeur se connecte. Origines JavaScript autorisées de ce client :
+ *  https://mathsetmoi.github.io (et http://localhost:5173 pour essayer depuis
+ *  son ordinateur). Vide : la publication attend cet identifiant, seul
+ *  l'enregistrement du fichier séance est possible. Voir le README. */
+export const CLIENT_GOOGLE = ''
 
 export const compteDe = (cle: string) => COMPTES.find(c => c.cle === cle) ?? null
 
