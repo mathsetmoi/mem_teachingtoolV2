@@ -7,8 +7,12 @@ import { defineConfig } from 'vite'
 // Chemins relatifs : le site marche quel que soit le dossier où il est servi.
 export default defineConfig({
   base: './',
+  // Les réglages de cette version (fichier .env.pages) : pas de serveur de salle, publication possible
+  mode: 'pages',
   build: {
     outDir: 'dist-pages',
+    // Les téléphones des élèves ne sont pas tous récents (iPhone sous iOS 14 et plus)
+    target: ['es2020', 'safari14', 'chrome87', 'firefox78'],
     rollupOptions: { input: { index: 'index.html', revoir: 'revoir.html' } },
   },
 })

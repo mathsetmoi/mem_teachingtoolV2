@@ -1,5 +1,9 @@
 // Repris de la V1 (mathsetmoi/mem_teachingtools, relais/relais-seances.gs),
-// écrit par le même auteur. Inchangé, sauf les instructions de déploiement.
+// écrit par le même auteur. Version 2 : le « ?ping » ne donne plus l'adresse
+// e-mail du compte, et une séance est servie si elle est dans N'IMPORTE QUEL
+// dossier « Au Tableau — séances publiées » appartenant à ce compte. Pour en
+// profiter : Déployer → Gérer les déploiements → crayon → Version : nouvelle
+// (l'adresse ne change pas). L'ancienne version continue de marcher.
 
 /**
  * ============================================================================
@@ -49,8 +53,10 @@
  *     (Au Tableau, la V1 : fenêtre « Publier pour le cahier de textes »,
  *     rubrique « Comptes et relais », puis lib/cloud/config.js.)
  *  5. Vérifier : ouvrir l'adresse suivie de « ?ping=1 » dans le navigateur.
- *     Le script répond le compte sous lequel il tourne et le dossier qu'il
- *     dessert (« pret: true » une fois une première séance publiée).
+ *     Le script répond s'il trouve le dossier qu'il dessert (« pret: true »
+ *     une fois une première séance publiée). Le compte sous lequel il tourne
+ *     s'affiche dans le journal de l'éditeur (« verifierLInstallation »), pas
+ *     en ligne : l'adresse du relais est publique.
  *
  * La V1 et la V2 partagent le même dossier et le même relais : un relais
  * déjà déployé pour la V1 sert aussi les séances de la V2, sans rien changer.
@@ -123,7 +129,10 @@ function messageDe(err) {
 /**
  * Le fichier demandé, s'il est bien une séance publiée de CE compte.
  * Trois conditions, et il faut les trois : exister, porter l'extension, et
- * se trouver dans le dossier des séances publiées.
+ * se trouver dans UN dossier des séances publiées de ce compte (son nom, pas
+ * à la corbeille, et ce compte en est le propriétaire). On ne retient plus un
+ * seul dossier : s'il y en a deux du même nom, ou si l'on en a recréé un, les
+ * séances de chacun sont servies.
  */
 function fichierServable(id) {
   var fichier;
@@ -131,11 +140,13 @@ function fichierServable(id) {
   if (!fichier || fichier.isTrashed()) return null;
   if (fichier.getName().slice(-EXTENSION.length) !== EXTENSION) return null;
 
-  var vise = idDuDossier();
-  if (!vise) return null;
+  var moi = Session.getEffectiveUser().getEmail();
   var parents = fichier.getParents();
   while (parents.hasNext()) {
-    if (parents.next().getId() === vise) return fichier;
+    var d = parents.next();
+    if (d.getName() !== DOSSIER || d.isTrashed()) continue;
+    var proprietaire = d.getOwner();
+    if (proprietaire && proprietaire.getEmail() === moi) return fichier;
   }
   return null;
 }
@@ -175,8 +186,9 @@ function etatDuRelais() {
   var id = idDuDossier();
   return {
     relais: 'Au Tableau',
-    version: 1,
-    compte: Session.getEffectiveUser().getEmail(),
+    version: 2,
+    // Pas d'adresse e-mail ici : l'adresse du relais est publique (elle est
+    // dans le code du site), et n'importe qui peut appeler « ?ping=1 »
     dossier: id ? DOSSIER : null,
     pret: !!id
   };
@@ -199,5 +211,6 @@ function repondre(objet, p) {
  * dessert. Ne sert à rien d'autre.
  */
 function verifierLInstallation() {
+  console.log('Compte : ' + Session.getEffectiveUser().getEmail());
   console.log(JSON.stringify(etatDuRelais(), null, 2));
 }

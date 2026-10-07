@@ -55,7 +55,7 @@ button, input { font: inherit; color: inherit; }
   min-width: 44px; height: 44px; display: inline-grid; place-items: center; border: 0; border-radius: 12px;
   background: transparent; cursor: pointer; padding: 0 6px;
 }
-.bouton svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bouton svg { pointer-events: none; width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .bouton:hover { background: var(--bleu-clair); }
 .bouton:focus-visible, .carte button:focus-visible, .carte label:focus-within, .curseur:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
 .bouton.principal { background: var(--bleu); color: #fff; min-width: 56px; height: 52px; border-radius: 26px; }
@@ -67,8 +67,12 @@ button, input { font: inherit; color: inherit; }
   .rangee { grid-template-columns: 1fr auto; }
   .temps { grid-column: 1 / -1; grid-row: 1; text-align: center; }
   .boutons { grid-column: 1; justify-content: flex-start; }
-  .boutons .bouton { min-width: 40px; }
+  .boutons .bouton { min-width: 44px; }
+  .boutons .bouton.principal { min-width: 44px; }
   .b-chap-avant, .b-chap-apres { display: none; }
+}
+@media (max-width: 520px) and (min-width: 340px) {
+  .boutons .bouton.principal { min-width: 56px; }
 }
 
 /* La carte : affiche, fin de chapitre, erreur */

@@ -28,6 +28,8 @@ export class Bobine {
   /** Temps écoulé à chaque image, au rythme d'origine (borné), en ms */
   readonly temps: number[]
   private reperes: Etat[] = []
+  /** Pour chaque image, les formes qui y APPARAISSENT (pas celles qui changent) */
+  private ajouts: Set<string>[] = [new Set()]
 
   constructor(readonly film: FilmEleve) {
     this.n = film.etapes.length + 1
@@ -36,7 +38,8 @@ export class Bobine {
     let e = depart
     this.reperes.push(copie(e))
     for (let k = 1; k < this.n; k++) {
-      this.appliquer(e, k)
+      const a = new Set<string>(); this.ajouts.push(a)
+      this.appliquer(e, k, a)
       if (k % TOUS_LES === 0) this.reperes.push(copie(e))
     }
     this.temps = [0]
@@ -86,6 +89,9 @@ export class Bobine {
     return this.film.etapes[k - 1].o.filter(o => o[0] === '=').map(o => o[1] as Forme)
   }
 
+  /** Les formes qui apparaissent à l'image k (une forme déplacée n'y est pas) */
+  ajoutees(k: number): Set<string> { return this.ajouts[k] ?? new Set() }
+
   /** Le chapitre de l'image k (son rang dans la liste) */
   chapitreDe(k: number) {
     let c = 0
@@ -109,14 +115,17 @@ export class Bobine {
   }
 
   /** Applique le geste k (passage de l'image k-1 à l'image k) */
-  private appliquer(e: Etat, k: number) {
+  private appliquer(e: Etat, k: number, ajouts?: Set<string>) {
     const g = this.film.etapes[k - 1]
     if (!g || !Array.isArray(g.o)) return
     let p = e.get(g.p)
     if (!p) { p = { fond: 'blanc', origine: { x: 0, y: 0 }, formes: new Map() }; e.set(g.p, p) }
     for (const o of g.o) {
       if (!Array.isArray(o)) continue
-      if (o[0] === '=' && o[1] && typeof o[1] === 'object' && typeof o[1].id === 'string') { p.formes.set(o[1].id, o[1]); p.supprimee = false }
+      if (o[0] === '=' && o[1] && typeof o[1] === 'object' && typeof o[1].id === 'string') {
+        if (ajouts && !p.formes.has(o[1].id)) ajouts.add(o[1].id)
+        p.formes.set(o[1].id, o[1]); p.supprimee = false
+      }
       else if (o[0] === '-') p.formes.delete(o[1])
       else if (o[0] === 'f') { p.fond = o[1]; p.origine = { x: Number(o[2]) || 0, y: Number(o[3]) || 0 }; p.supprimee = false }
       else if (o[0] === 'x') { p.formes.clear(); p.supprimee = true }

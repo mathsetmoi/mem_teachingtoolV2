@@ -225,12 +225,17 @@ l'ouvrent sur leur téléphone, sans compte, et appuient sur ▶.
 
 **Côté professeur.** La fenêtre propose la séance, repérée toute seule dans le
 film (un silence de plus de 20 minutes, ou un autre jour, en commence une
-autre), les pages, un titre et le compte Google. **Voir comme un élève** ouvre
+autre ; deux cours séparés par un intercours de 5 minutes se séparent en
+réglant le découpage à 5 ou 2 minutes), les pages où l'on a écrit pendant la
+séance, un titre et le compte Google. **Voir comme un élève** ouvre
 le lecteur dans un onglet, sans rien publier. **Publier** se connecte à Google,
 envoie la séance sur le Drive, la relit par le relais comme le fera l'élève, et
 donne le lien, avec **Copier pour Pronote** (le titre, le lien et les
 chapitres avec leur minute). Republier la même séance met à jour le même
-fichier : le lien déjà collé montre la nouvelle version. **Enregistrer le
+fichier : le lien déjà collé montre la nouvelle version, même depuis un autre
+onglet ou un autre ordinateur, et même si le fichier était passé à la
+corbeille du Drive (il en revient). « Publier comme une nouvelle séance »
+donne volontairement un autre lien. **Enregistrer le
 fichier** donne un fichier `.prof` à déposer dans l'ENT ou sur une clé USB ; le
 lecteur l'ouvre aussi.
 
@@ -248,8 +253,13 @@ Espace, ← →, [ ], Origine, Fin.
 le document du tableau : il garde tout ce qui a été effacé. On publie un « film
 élève » (`src/revoir/format.ts`) : l'état des pages au début de la séance,
 puis ce qui apparaît, change ou disparaît à chaque geste. Ce qui a été effacé
-avant la séance n'y est pas, ni les pages non cochées, ni le nom de l'appareil,
-ni le tracé brut d'une figure reconnue, ni les images inutilisées. Un test
+avant la séance n'y est pas, ni ce qu'efface le premier geste du cours
+(« Effacer la page » à l'arrivée de la classe), ni les pages où rien ne s'est
+passé pendant la séance (la page de la classe d'avant, quand on commence par
+« Nouvelle page »), ni les pages non cochées, ni le nom de l'appareil, ni le
+tracé brut d'une figure reconnue, ni les images inutilisées. Tout ce qui a été
+visible pendant la séance, en revanche, part, même effacé ensuite : l'aperçu
+permet de le revoir. Un test
 automatique le vérifie (`npm test`). Le lecteur n'écrit rien dans le navigateur
 de l'élève (ni stockage, ni cookie), ne charge aucune police ni aucun service
 extérieur, et sa politique de sécurité ne l'autorise à parler qu'aux relais.
@@ -261,7 +271,11 @@ fenêtre le rappelle.
 publiées » du Drive du professeur, le même qu'en V1 : rien n'est partagé. Le
 relais Apps Script de ce compte (`relais/relais-seances.gs`, repris de la V1)
 lit la séance sous l'identité du professeur et la sert ; un relais par compte
-Google, et le lien dit lequel (`?r=mem&id=…`). Le relais du Drive personnel est
+Google, et le lien dit lequel (`?r=mem&id=…`). La version 2 du script (dans
+ce dépôt) ne donne plus l'adresse e-mail du compte à qui appelle `?ping=1`,
+et sert les séances de tout dossier « Au Tableau — séances publiées » du
+compte : la redéployer (Gérer les déploiements → Version : nouvelle) garde la
+même adresse. Le relais du Drive personnel est
 déjà déployé ; celui du lycée s'installe en cinq minutes (instructions en tête
 du script), puis son adresse va dans `src/publication/comptes.ts`. La
 connexion Google demande le droit le plus étroit (`drive.file` : Tableau MEM ne
@@ -275,7 +289,14 @@ fois : Settings → Pages → Source : GitHub Actions). On publie depuis cette
 version en ligne : la connexion Google ne marche ni depuis le fichier unique,
 ni depuis une adresse que la console Google n'autorise pas. Attention : le
 tableau vit dans le navigateur, adresse par adresse ; celui de la version en
-ligne n'est pas celui de la clé USB.
+ligne n'est pas celui de la clé USB. La version clé USB peut seulement
+enregistrer le fichier séance.
+
+**Les téléphones des élèves.** Le lecteur vise les navigateurs depuis 2020
+(Safari 14, Chrome 87, Firefox 78) ; sur les iPhone et iPad d'avant iOS 16.4,
+qui ne savent pas décompresser seuls, un petit décompresseur (fflate, 8 Ko) se
+charge à la place. Commandes de 44 px, zoom du navigateur jamais bloqué, la
+frise annonce le temps aux lecteurs d'écran.
 
 ## Partage avec les élèves (mis de côté)
 

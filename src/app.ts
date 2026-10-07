@@ -1419,7 +1419,8 @@ export class App {
 
   private clavier(e: KeyboardEvent) {
     const cible = e.target as HTMLElement
-    if (cible.closest('input, textarea, [contenteditable]')) return
+    // Dans une fenêtre (publier, formule…), les raccourcis du tableau se taisent
+    if (cible.closest('input, textarea, select, [contenteditable], dialog')) return
     const ctrl = e.ctrlKey || e.metaKey
     if (e.code === 'Space') { this.espace = true; e.preventDefault(); return }
     if (ctrl && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? this.retablir() : this.annuler(); return }

@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Tableau } from '../src/document'
 import type { Forme, Polygone, Trait } from '../src/types'
-import { exporter, exporterDetaille, seancesDuFilm } from '../src/revoir/exporter'
+import { exporter, exporterDetaille, pagesDeLaSeance, seancesDuFilm } from '../src/revoir/exporter'
 import { ErreurFilm, ecrireFilm, lireFilm } from '../src/revoir/format'
 import { Bobine } from '../src/revoir/bobine'
 
@@ -206,5 +206,61 @@ describe('un fichier qui n’est pas une séance', () => {
     await expect(lireFilm('{"format":"autre"}')).rejects.toBeInstanceOf(ErreurFilm)
     await expect(lireFilm('{"format":"mem-revoir","v":99}')).rejects.toThrow(/plus récente/)
     await expect(lireFilm('{"format":"mem-revoir","v":1,"gz":"@@@"}')).rejects.toThrow(/abîmé/)
+  })
+})
+
+describe('ce que la relecture a trouvé', () => {
+  it("« Nouvelle page » au début du cours : l'ancienne page (la classe d'avant) ne part pas", async () => {
+    const { t, page } = await nouveauTableau()
+    t.poser(page, formule('\\text{Groupe 1 : Lucas, Emma}')); await attendre(50 * MINUTE)
+    // Le professeur est encore sur la page 1 quand il en crée une neuve
+    const neuve = t.ajouterPage('carreaux', 1); await attendre(500)
+    t.pageVue = neuve
+    t.poser(neuve, trait(0, 0)); await attendre(1000)
+    const s = seancesDuFilm(t.film.toArray())[0]
+    expect(s.pages).toEqual([neuve])                                   // la création est notée sur la page neuve
+    // Même si on coche les deux pages, seule celle de la séance part
+    const r = exporter(t, { de: s.de, a: s.a, pages: [page, neuve], titre: 'x' })
+    expect(JSON.stringify(r)).not.toContain('Lucas')
+    expect(r.ordre).toEqual([neuve])
+    expect(pagesDeLaSeance(t, s)).toEqual([neuve])
+  })
+
+  it("« Effacer la page » en premier geste : ce qu'on efface ne part pas", async () => {
+    const { t, page } = await nouveauTableau()
+    const absents = formule('\\text{Absents : Noah}')
+    t.poser(page, absents); await attendre(1000)
+    t.poser(page, trait(5, 5)); await attendre(16 * 60 * MINUTE)       // le lendemain matin
+    t.supprimer(page, t.formesDe(page)!.keys()); await attendre(2000)
+    t.poser(page, trait(9, 9)); await attendre(1000)
+    const s = seancesDuFilm(t.film.toArray())[0]
+    const r = exporter(t, { de: s.de, a: s.a, pages: s.pages, titre: 'x' })
+    expect(JSON.stringify(r)).not.toContain('Noah')
+    expect(r.pages[0].formes).toHaveLength(0)
+    expect(r.etapes).toHaveLength(1)
+    expect(r.etapes[0].dt).toBe(0)                                      // le silence d'avant ne compte pas
+  })
+
+  it("une page jetée : le replay revient sur la page qu'on regarde, sans montrer de page vide", async () => {
+    const { t, page } = await nouveauTableau()
+    t.poser(page, trait(0, 0)); await attendre(1000)
+    const brouillon = t.ajouterPage('blanc', 1); t.pageVue = brouillon; await attendre(500)
+    t.poser(brouillon, trait(1, 1)); await attendre(1000)
+    t.pageVue = page
+    t.supprimerPage(brouillon); await attendre(1000)
+    const film = t.film.toArray()
+    const b = new Bobine(exporter(t, { de: 1, a: film.length - 1, pages: [page, brouillon], titre: 'x' }))
+    expect(b.page(b.n - 1)).toBe(page)
+    expect(b.image(b.n - 1).formes).toHaveLength(1)
+    expect(b.film.etapes.every(e => !(e.o.length === 1 && e.o[0][0] === 'x'))).toBe(true)
+  })
+
+  it('deux classes séparées par 5 minutes : un découpage plus fin les sépare', async () => {
+    const { t, page } = await nouveauTableau()
+    t.poser(page, trait(0, 0)); await attendre(1000)
+    t.poser(page, trait(1, 0)); await attendre(6 * MINUTE)            // l'intercours
+    t.poser(page, trait(2, 0)); await attendre(1000)
+    expect(seancesDuFilm(t.film.toArray()).length).toBe(1)
+    expect(seancesDuFilm(t.film.toArray(), 5 * MINUTE).map(s => s.gestes)).toEqual([1, 3])
   })
 })

@@ -97,6 +97,7 @@ let minuterie = 0, animation = 0
 let vitesse = 1
 let vue: 'page' | 'libre' = 'page'         // « libre » : l'élève a zoomé ou déplacé
 let arreteIci = -1                         // la fin de chapitre où l'on vient de s'arrêter : « Continuer » la passe
+let kDepart = -1                           // l'image d'où la lecture est partie : pas d'arrêt immédiat
 const params = new URLSearchParams(location.search)
 const arretAuxChapitres = params.get('continu') !== '1'
 const images = new Map<string, HTMLImageElement>()
@@ -122,13 +123,16 @@ async function demarrer() {
   montrerFichier()
 }
 
-async function charger(source: () => Promise<unknown>) {
+async function charger(source: () => Promise<unknown>, depuisUnFichier = false) {
   carteChargement()
   try {
     const film = await lireFilm(await source())
     await ouvrir(film)
   } catch (e) {
-    carteErreur(e instanceof ErreurFilm ? e.message : 'La séance n\'a pas pu être ouverte. Réessayez dans un moment.', () => charger(source))
+    const texte = e instanceof ErreurFilm ? e.message : 'La séance n\'a pas pu être ouverte. Réessayez dans un moment.'
+    // Un fichier qui n'est pas une séance : relire le même ne sert à rien, on en choisit un autre
+    if (depuisUnFichier) carteErreur(texte, montrerFichier, 'Choisir un autre fichier')
+    else carteErreur(texte, () => charger(source))
   }
 }
 
@@ -145,6 +149,9 @@ function attendreApercu() {
     }
   })
   ;(window.opener as Window).postMessage({ type: 'mem-revoir-pret' }, location.origin)
+  setTimeout(() => {
+    if (!bobine) carteErreur('L\'aperçu ne s\'est pas ouvert : fermez cet onglet et cliquez à nouveau sur « Voir comme un élève » dans le tableau.', null)
+  }, 6000)
 }
 
 async function ouvrir(film: FilmEleve) {
@@ -180,6 +187,7 @@ function aDesFormules(film: FilmEleve) {
 function montrer(i: number, anime: boolean) {
   if (!bobine) return
   i = Math.max(0, Math.min(bobine.n - 1, i))
+  if (i < arreteIci) arreteIci = -1            // en revenant en arrière, les arrêts de chapitre reviennent
   const avant = k
   const nouvellePage = bobine.page(i)
   const changePage = nouvellePage !== page
@@ -194,7 +202,9 @@ function montrer(i: number, anime: boolean) {
   const nouvelles = bobine.nouvelles(k)
   if (vue === 'page') suivre(nouvelles)
   // Les traits apparus se dessinent sous les yeux, à peu près à la vitesse du cours
-  const traits = new Set(nouvelles.filter((f): f is Trait => f.type === 'trait').map(f => f.id))
+  // (seulement ceux qui apparaissent : un trait déplacé ou recoloré ne se réécrit pas)
+  const ajouts = bobine.ajoutees(k)
+  const traits = new Set(nouvelles.filter((f): f is Trait => f.type === 'trait' && ajouts.has(f.id)).map(f => f.id))
   if (!traits.size) return
   const duree = Math.min(900, bobine.delai(Math.min(bobine.n - 1, k + 1)) / vitesse * 0.8)
   const debut = performance.now()
@@ -243,22 +253,33 @@ function suivre(formes: Forme[]) {
   rendu.toutRedessiner()
 }
 
-new ResizeObserver(() => { if (vue === 'page' && bobine) { cadrerPage(); rendu.toutRedessiner() } }).observe(scene)
+let paysage = scene.clientWidth > scene.clientHeight
+new ResizeObserver(() => {
+  if (!bobine) return
+  const p = scene.clientWidth > scene.clientHeight
+  // On a tourné le téléphone : la page entière revient à l'écran
+  if (p !== paysage) { paysage = p; vue = 'page' }
+  if (vue === 'page') { cadrerPage(); rendu.toutRedessiner(); majCommandes() }
+}).observe(scene)
 
 // Glisser pour se déplacer, pincer (ou la molette) pour zoomer. La lecture continue.
-const doigts = new Map<number, { x: number; y: number }>()
+const doigts = new Map<number, { x: number; y: number; x0: number; y0: number }>()
 let pince: { d: number; cx: number; cy: number } | null = null
+const repincer = () => {
+  if (doigts.size !== 2) { pince = null; return }
+  const [a, b] = [...doigts.values()]
+  pince = { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }
+}
 scene.addEventListener('pointerdown', e => {
   scene.setPointerCapture(e.pointerId)
-  doigts.set(e.pointerId, { x: e.clientX, y: e.clientY })
-  if (doigts.size === 2) {
-    const [a, b] = [...doigts.values()]
-    pince = { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }
-  }
+  doigts.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY })
+  repincer()
 })
 scene.addEventListener('pointermove', e => {
   const p = doigts.get(e.pointerId); if (!p) return
   const r = scene.getBoundingClientRect()
+  // Un appui qui tremble n'est pas un déplacement : on attend 8 px
+  if (doigts.size === 1 && vue === 'page' && Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < 8) return
   if (doigts.size === 1) cam.deplacer(e.clientX - p.x, e.clientY - p.y)
   p.x = e.clientX; p.y = e.clientY
   if (doigts.size === 2 && pince) {
@@ -268,16 +289,22 @@ scene.addEventListener('pointermove', e => {
     if (pince.d > 0) cam.zoomerAutour(cx - r.left, cy - r.top, d / pince.d)
     pince = { d, cx, cy }
   }
+  if (doigts.size > 2) return
   vue = 'libre'; rendu.toutRedessiner(); majCommandes()
 })
-const lacher = (e: PointerEvent) => { doigts.delete(e.pointerId); if (doigts.size < 2) pince = null }
+const lacher = (e: PointerEvent) => { doigts.delete(e.pointerId); repincer() }
 scene.addEventListener('pointerup', lacher)
 scene.addEventListener('pointercancel', lacher)
 scene.addEventListener('wheel', e => {
   e.preventDefault()
   const r = scene.getBoundingClientRect()
-  if (e.ctrlKey || e.deltaMode !== 0 || Math.abs(e.deltaY) > 40 && !e.deltaX) cam.zoomerAutour(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)))
-  else cam.deplacer(-e.deltaX, -e.deltaY)
+  // Comme au tableau : une vraie molette zoome (crans entiers, sans mouvement de côté) ;
+  // sur un pavé tactile, deux doigts déplacent et le pincement (ctrl) zoome
+  const molette = e.deltaMode !== 0 || (e.deltaX === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50)
+  if (e.ctrlKey || e.metaKey || molette) {
+    const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY
+    cam.zoomerAutour(e.clientX - r.left, e.clientY - r.top, Math.exp(-d * (e.ctrlKey && !molette ? 0.01 : 0.0015)))
+  } else cam.deplacer(-e.deltaX, -e.deltaY)
   vue = 'libre'; rendu.toutRedessiner(); majCommandes()
 }, { passive: false })
 scene.addEventListener('dblclick', () => voirLaPage())
@@ -290,6 +317,7 @@ function lire() {
   fermerCarte()
   if (k >= bobine.n - 1) { arreteIci = -1; montrer(0, false) }   // relancer depuis le début
   enMarche = true
+  kDepart = k
   majCommandes()
   suivante()
 }
@@ -305,7 +333,7 @@ function suivante() {
   if (k >= bobine.n - 1) { pause(); return carteFin() }
   const c = bobine.chapitreDe(k)
   // Fin d'un chapitre : on s'arrête, l'élève relance
-  if (arretAuxChapitres && k !== arreteIci && k === bobine.finDuChapitre(c) && c + 1 < bobine.chapitres.length && k > bobine.chapitres[c].i) {
+  if (arretAuxChapitres && k !== arreteIci && k !== kDepart && k === bobine.finDuChapitre(c) && c + 1 < bobine.chapitres.length) {
     arreteIci = k
     pause(); return carteChapitre(c + 1, false)
   }
@@ -329,8 +357,13 @@ function majCommandes() {
   const pages = bobine.nombreDePages
   ou.textContent = [pages > 1 ? `Page ${bobine.numero(page)} / ${pages}` : '', bobine.chapitres.length > 1 ? `Chapitre ${c + 1} / ${bobine.chapitres.length}` : ''].filter(Boolean).join(' · ')
   temps.textContent = `${mmss(bobine.temps[k])} / ${mmss(bobine.duree)}`
-  boutonLire.innerHTML = svg(enMarche ? 'pause' : 'lire')
-  boutonLire.setAttribute('aria-label', enMarche ? 'Pause' : 'Lire'); boutonLire.title = enMarche ? 'Pause (Espace)' : 'Lire (Espace)'
+  const icone = enMarche ? 'pause' : 'lire'
+  if (boutonLire.dataset.icone !== icone) {
+    boutonLire.dataset.icone = icone
+    boutonLire.innerHTML = svg(icone)
+    boutonLire.setAttribute('aria-label', enMarche ? 'Pause' : 'Lire'); boutonLire.title = enMarche ? 'Pause (Espace)' : 'Lire (Espace)'
+  }
+  curseur.setAttribute('aria-valuetext', `${mmss(bobine.temps[k])} sur ${mmss(bobine.duree)}`)
   boutonVitesse.textContent = lisible(vitesse); boutonVitesse.setAttribute('aria-label', `Vitesse : ${lisible(vitesse)}`)
   $('.b-cadrer').classList.toggle('actif', vue === 'page')
   for (const li of tiroir.querySelectorAll('li')) li.classList.toggle('ici', Number((li as HTMLElement).dataset.c) === c)
@@ -366,15 +399,36 @@ $('.b-chap-avant').addEventListener('click', () => {
   // Au milieu d'un chapitre, on revient à son début ; à son début, au précédent
   allerAuChapitre(k > bobine.chapitres[c].i ? c : c - 1)
 })
-$('.b-chap-apres').addEventListener('click', () => { if (bobine) allerAuChapitre(bobine.chapitreDe(k) + 1) })
-boutonVitesse.addEventListener('click', () => { vitesse = VITESSES[(VITESSES.indexOf(vitesse) + 1) % VITESSES.length]; majCommandes(); annoncer(`Vitesse ${lisible(vitesse)}`) })
+$('.b-chap-apres').addEventListener('click', () => {
+  if (!bobine) return
+  const c = bobine.chapitreDe(k)
+  if (c + 1 < bobine.chapitres.length) allerAuChapitre(c + 1)
+  else { pause(); fermerCarte(); montrer(bobine.n - 1, false) }   // dernier chapitre : on va à la fin
+})
+boutonVitesse.addEventListener('click', () => {
+  vitesse = VITESSES[(VITESSES.indexOf(vitesse) + 1) % VITESSES.length]
+  // La nouvelle vitesse vaut tout de suite, pas seulement au geste suivant
+  if (enMarche) { clearTimeout(minuterie); suivante() }
+  majCommandes(); annoncer(`Vitesse ${lisible(vitesse)}`)
+})
 $('.b-cadrer').addEventListener('click', voirLaPage)
 $('.b-chapitres').addEventListener('click', () => { tiroir.hidden = !tiroir.hidden; if (!tiroir.hidden) (tiroir.querySelector('li.ici button') as HTMLElement | null)?.focus() })
-$('.fermer-tiroir').addEventListener('click', () => { tiroir.hidden = true })
-curseur.addEventListener('input', () => { pause(); fermerCarte(); arreteIci = -1; montrer(Number(curseur.value), false) })
+$('.fermer-tiroir').addEventListener('click', fermerTiroir)
+// Lire la valeur AVANT la pause : la pause remet la frise sur l'image en cours
+curseur.addEventListener('input', () => { const v = Number(curseur.value); pause(); fermerCarte(); arreteIci = -1; montrer(v, false) })
+// Après un clic à la souris, le bouton rend la main : Espace lit ou met en pause, au lieu de recliquer
+commandes.addEventListener('click', e => { if (e.detail > 0) (e.target as HTMLElement).closest('button')?.blur() })
+
+function fermerTiroir() {
+  const avait = tiroir.contains(document.activeElement)
+  tiroir.hidden = true
+  if (avait) $('.b-chapitres').focus()
+}
 
 window.addEventListener('keydown', e => {
   if (!bobine || (e.target as HTMLElement).closest('input[type=range]') && e.key.startsWith('Arrow')) return
+  // Les raccourcis du navigateur (Alt+←, Cmd+[…) restent au navigateur
+  if (e.metaKey || (e.key.length > 1 && (e.altKey || e.ctrlKey))) return
   const a: Record<string, () => void> = {
     ' ': () => enMarche ? pause() : lire(),
     ArrowLeft: () => { pause(); fermerCarte(); arreteIci = -1; montrer(k - 1, false) },
@@ -383,7 +437,7 @@ window.addEventListener('keydown', e => {
     End: () => { pause(); montrer(bobine!.n - 1, false) },
     '[': () => $('.b-chap-avant').click(),
     ']': () => $('.b-chap-apres').click(),
-    Escape: () => { tiroir.hidden = true },
+    Escape: fermerTiroir,
   }
   const f = a[e.key]
   if (!f || (e.target as HTMLElement).closest('button') && e.key === ' ') return
@@ -394,9 +448,16 @@ window.addEventListener('keydown', e => {
 function carteHTML(html: string, focus = '.principal') {
   carte.innerHTML = html
   carte.hidden = false
+  const titre = carte.querySelector('h1, h2')
+  if (titre) { titre.id = 'carte-titre'; carte.setAttribute('aria-labelledby', 'carte-titre') } else carte.removeAttribute('aria-labelledby')
   ;(carte.querySelector(focus) as HTMLElement | null)?.focus()
 }
-function fermerCarte() { carte.hidden = true }
+function fermerCarte() {
+  if (carte.hidden) return
+  const avait = carte.contains(document.activeElement)
+  carte.hidden = true
+  if (avait && !commandes.hidden) boutonLire.focus()
+}
 
 function carteAffiche() {
   const b = bobine!, f = b.film
@@ -425,7 +486,8 @@ function carteChapitre(c: number, debut: boolean) {
   annoncer(debut ? `Chapitre ${c + 1} : ${ch.titre}` : `Fin du chapitre. Suivant : ${ch.titre}`)
   brancher({
     continuer: () => { if (k < ch.i - 1 || k > ch.i) montrer(Math.max(0, ch.i - 1), false); lire() },
-    revoir: () => { fermerCarte(); montrer(precedent!.i, false); lire() },
+    // On repart juste avant le chapitre : son premier geste se redessine, et l'on s'arrête à sa fin
+    revoir: () => { fermerCarte(); montrer(Math.max(0, precedent!.i - 1), false); lire() },
   })
 }
 
@@ -445,12 +507,12 @@ function carteChargement(texte = 'Chargement de la séance…') {
   carteHTML(`<div class="sablier" aria-hidden="true"></div><p class="details">${echapper(texte)}</p>`, 'h1')
 }
 
-function carteErreur(texte: string, reessayer: (() => void) | null) {
+function carteErreur(texte: string, reessayer: (() => void) | null, libelle = 'Réessayer') {
   commandes.hidden = true
   carteHTML(`
     <h2>La séance ne s'affiche pas</h2>
     <p class="details">${echapper(texte)}</p>
-    <div class="actions">${reessayer ? '<button type="button" class="principal" data-a="encore">Réessayer</button>' : ''}</div>`)
+    <div class="actions">${reessayer ? `<button type="button" class="principal" data-a="encore">${echapper(libelle)}</button>` : ''}</div>`)
   brancher({ encore: () => reessayer?.() })
 }
 
@@ -464,7 +526,7 @@ function montrerFichier() {
       <label class="principal fichier">Choisir un fichier séance<input type="file" accept=".prof,application/json" /></label>
     </div>`, 'label')
   const entree = carte.querySelector('input[type=file]') as HTMLInputElement
-  entree.addEventListener('change', () => { const f = entree.files?.[0]; if (f) charger(() => f.text()) })
+  entree.addEventListener('change', () => { const f = entree.files?.[0]; if (f) charger(() => f.text(), true) })
 }
 
 function brancher(actions: Record<string, () => void>) {
@@ -479,7 +541,7 @@ window.addEventListener('drop', e => {
   if (bobine) return
   e.preventDefault()
   const f = e.dataTransfer?.files?.[0]
-  if (f) charger(() => f.text())
+  if (f) charger(() => f.text(), true)
 })
 
 // Pour les tests automatiques, en développement seulement

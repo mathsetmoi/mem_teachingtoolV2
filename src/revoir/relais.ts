@@ -14,7 +14,7 @@ export async function lireParLeRelais(cle: string, id: string, adresse = compteD
   try {
     r = await fetch(u.toString(), { cache: 'no-store', credentials: 'omit', redirect: 'follow' })
   } catch {
-    throw new ErreurFilm('La séance ne se charge pas : vérifiez la connexion à Internet, puis réessayez.')
+    throw new ErreurFilm('La séance ne se charge pas : vérifiez la connexion à Internet, puis réessayez. Si cela dure, prévenez votre enseignant (le relais de la séance n\'est peut-être pas ouvert à tous).')
   }
   if (!r.ok) throw new ErreurFilm(`Le serveur de la séance a répondu « ${r.status} ». Réessayez dans un moment.`)
   const texte = await r.text()

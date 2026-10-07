@@ -95,11 +95,15 @@ export class Tableau {
     for (const [id, p] of Object.entries(toutes)) {
       if (!(p instanceof Y.Map)) continue
       const formes = Y.typeMapGetSnapshot(p, 'formes', snap)
-      const liste = formes instanceof Y.Map ? Y.typeMapGetAllSnapshot(formes, snap) as Record<string, Forme> : {}
+      const liste = formes instanceof Y.Map ? Y.typeMapGetAllSnapshot(formes, snap) as Record<string, Forme | undefined> : {}
+      // Un document passé par un serveur qui fait le ménage (gc) peut avoir perdu
+      // le contenu des formes effacées : on ne garde que de vraies formes
+      const presentes = new Map<string, Forme>()
+      for (const [k, f] of Object.entries(liste)) if (f && typeof f === 'object' && typeof (f as Forme).type === 'string') presentes.set(k, f)
       pages.set(id, {
         fond: (Y.typeMapGetSnapshot(p, 'fond', snap) as Fond) || 'blanc',
         origine: (Y.typeMapGetSnapshot(p, 'origine', snap) as { x: number; y: number }) || { x: 0, y: 0 },
-        formes: new Map(Object.entries(liste)),
+        formes: presentes,
       })
     }
     return { ordre, pages }
@@ -159,13 +163,19 @@ export class Tableau {
   // ---------- Pages ----------
   ajouterPage(fond: Fond, position: number): string {
     const id = uid()
-    this.doc.transact(() => {
-      const p = new Y.Map<unknown>()
-      p.set('fond', fond)
-      p.set('formes', new Y.Map<Forme>())
-      this.pages.set(id, p)
-      this.ordre.insert(Math.min(position, this.ordre.length), [id])
-    })
+    // La création se note dans le film sur la NOUVELLE page, pas sur celle
+    // qu'on regarde encore : le replay ne doit pas compter celle qu'on quitte
+    const vue = this.pageVue
+    this.pageVue = id
+    try {
+      this.doc.transact(() => {
+        const p = new Y.Map<unknown>()
+        p.set('fond', fond)
+        p.set('formes', new Y.Map<Forme>())
+        this.pages.set(id, p)
+        this.ordre.insert(Math.min(position, this.ordre.length), [id])
+      })
+    } finally { this.pageVue = vue }
     return id
   }
 

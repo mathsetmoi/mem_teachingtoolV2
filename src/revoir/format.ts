@@ -55,6 +55,12 @@ async function compresser(texte: string): Promise<Uint8Array> {
   return new Uint8Array(await new Response(flux).arrayBuffer())
 }
 async function decompresser(octets: Uint8Array): Promise<string> {
+  // Les iPhone et iPad d'avant iOS 16.4 n'ont pas DecompressionStream : on
+  // charge alors un petit décompresseur (fflate, 8 Ko), seulement pour eux
+  if (typeof DecompressionStream !== 'function') {
+    const { gunzipSync, strFromU8 } = await import('fflate')
+    return strFromU8(gunzipSync(octets))
+  }
   const flux = new Blob([octets as BlobPart]).stream().pipeThrough(new DecompressionStream('gzip'))
   return new Response(flux).text()
 }
