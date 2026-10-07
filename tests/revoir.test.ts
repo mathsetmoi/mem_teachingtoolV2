@@ -7,6 +7,7 @@ import type { Forme, Polygone, Trait } from '../src/types'
 import { exporter, exporterDetaille, pagesDeLaSeance, seancesDuFilm } from '../src/revoir/exporter'
 import { ErreurFilm, ecrireFilm, lireFilm } from '../src/revoir/format'
 import { Bobine } from '../src/revoir/bobine'
+import { PLAFOND } from '../src/revoir/rythme'
 
 const MINUTE = 60_000
 let horloge = new Date('2026-10-07T08:00:00').getTime()
@@ -193,7 +194,7 @@ describe('la bobine rejoue fidèlement', () => {
     const r = exporter(t, { de: 2, a: film.length - 1, pages: [page, autre], titre: 'x' })   // après la création des deux pages
     const b = new Bobine(r)
     expect(b.n).toBe(4)
-    expect(b.delai(2)).toBe(2500)                          // l'attente est bornée
+    expect(b.delai(2)).toBe(PLAFOND)                       // l'attente est bornée
     expect(b.chapitres.map(c => c.titre)).toEqual(['Page 1', 'Page 2'])
     expect(b.chapitres[1].i).toBe(3)
     expect(b.finDuChapitre(0)).toBe(2)
@@ -210,6 +211,17 @@ describe('un fichier qui n’est pas une séance', () => {
 })
 
 describe('ce que la relecture a trouvé', () => {
+  it('tableau neuf : les gestes sont notés sur sa première page', async () => {
+    const t = new Tableau(null)
+    // Comme l'application : quand la page vue disparaît ou manque, elle va sur la première
+    t.ordre.observe(() => { if (!t.ordre.toArray().includes(t.pageVue)) t.pageVue = t.ordre.get(0) })
+    const page = t.ajouterPage('carreaux', 0)
+    expect(t.pageVue).toBe(page)
+    await attendre(1000)
+    t.poser(page, trait(10, 10)); await attendre(1000)
+    expect(t.film.toArray().every(e => e.page === page)).toBe(true)
+  })
+
   it("« Nouvelle page » au début du cours : l'ancienne page (la classe d'avant) ne part pas", async () => {
     const { t, page } = await nouveauTableau()
     t.poser(page, formule('\\text{Groupe 1 : Lucas, Emma}')); await attendre(50 * MINUTE)

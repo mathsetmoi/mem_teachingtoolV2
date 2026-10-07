@@ -93,27 +93,36 @@ export class Tableau {
     const pages: EtatTableau['pages'] = new Map()
     const toutes = Y.typeMapGetAllSnapshot(this.pages, snap) as Record<string, unknown>
     for (const [id, p] of Object.entries(toutes)) {
-      if (!(p instanceof Y.Map)) continue
-      const formes = Y.typeMapGetSnapshot(p, 'formes', snap)
-      const liste = formes instanceof Y.Map ? Y.typeMapGetAllSnapshot(formes, snap) as Record<string, Forme | undefined> : {}
-      // Un document passé par un serveur qui fait le ménage (gc) peut avoir perdu
-      // le contenu des formes effacées : on ne garde que de vraies formes
-      const presentes = new Map<string, Forme>()
-      for (const [k, f] of Object.entries(liste)) if (f && typeof f === 'object' && typeof (f as Forme).type === 'string') presentes.set(k, f)
-      pages.set(id, {
-        fond: (Y.typeMapGetSnapshot(p, 'fond', snap) as Fond) || 'blanc',
-        origine: (Y.typeMapGetSnapshot(p, 'origine', snap) as { x: number; y: number }) || { x: 0, y: 0 },
-        formes: presentes,
-      })
+      if (p instanceof Y.Map) pages.set(id, this.lirePage(p, snap))
     }
     return { ordre, pages }
   }
 
-  /** Une page telle qu'elle était à une étape du film */
+  /** Une page telle qu'elle était à une étape du film. On ne lit que cette
+   *  page-là dans l'instantané : sur un tableau de plusieurs pages, c'est
+   *  environ cinq fois moins de travail que de relire tout le tableau, pour
+   *  exactement le même résultat. */
   pageA(etape: Etape, page: string): ImagePage | null {
-    const p = this.etatA(etape).pages.get(page)
-    if (!p) return null
-    return { fond: p.fond, origine: p.origine, formes: [...p.formes.values()].sort((a, b) => a.z - b.z) }
+    const snap = Y.decodeSnapshot(etape.s)
+    const p = Y.typeMapGetSnapshot(this.pages, page, snap)
+    if (!(p instanceof Y.Map)) return null
+    const l = this.lirePage(p, snap)
+    return { fond: l.fond, origine: l.origine, formes: [...l.formes.values()].sort((a, b) => a.z - b.z) }
+  }
+
+  /** Le fond, l'origine et les formes d'une page dans un instantané */
+  private lirePage(p: Y.Map<unknown>, snap: Y.Snapshot): { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme> } {
+    const formes = Y.typeMapGetSnapshot(p, 'formes', snap)
+    const liste = formes instanceof Y.Map ? Y.typeMapGetAllSnapshot(formes, snap) as Record<string, Forme | undefined> : {}
+    // Un document passé par un serveur qui fait le ménage (gc) peut avoir perdu
+    // le contenu des formes effacées : on ne garde que de vraies formes
+    const presentes = new Map<string, Forme>()
+    for (const [k, f] of Object.entries(liste)) if (f && typeof f === 'object' && typeof (f as Forme).type === 'string') presentes.set(k, f)
+    return {
+      fond: (Y.typeMapGetSnapshot(p, 'fond', snap) as Fond) || 'blanc',
+      origine: (Y.typeMapGetSnapshot(p, 'origine', snap) as { x: number; y: number }) || { x: 0, y: 0 },
+      formes: presentes,
+    }
   }
 
   /** La même page, lue en reconstruisant tout le document (l'ancienne façon,
@@ -175,7 +184,11 @@ export class Tableau {
         this.pages.set(id, p)
         this.ordre.insert(Math.min(position, this.ordre.length), [id])
       })
-    } finally { this.pageVue = vue }
+    } finally {
+      // Sur un tableau neuf, on ne regardait aucune page : l'application vient
+      // d'aller sur celle-ci (pendant la transaction), on la garde
+      if (vue) this.pageVue = vue
+    }
     return id
   }
 

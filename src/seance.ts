@@ -67,7 +67,7 @@ export class Seance {
     window.removeEventListener('keydown', this.clavier, true)
   }
 
-  private garder() { try { localStorage.setItem(CLE, JSON.stringify(this.reglages)) } catch { /* refusé */ } }
+  private garder() { try { localStorage.setItem(CLE, JSON.stringify(this.reglages)) } catch { /* navigateur sans mémoire : le réglage vaut pour cette fois */ } }
 
   // ---------- 1. Les réglages ----------
   private montrerReglages() {

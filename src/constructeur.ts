@@ -47,7 +47,7 @@ export class Constructeur {
     try {
       this.avecInstruments = localStorage.getItem(CLE_INSTRUMENTS) !== 'non'
       this.existants = localStorage.getItem(CLE_EXISTANTS) !== 'non'
-    } catch { /* refusé */ }
+    } catch { /* navigateur sans mémoire : le réglage vaut pour cette fois */ }
     this.panneau = document.createElement('div')
     this.panneau.className = 'panneau-construction'
     this.panneau.setAttribute('role', 'dialog')
@@ -66,7 +66,7 @@ export class Constructeur {
   get instruments() { return this.avecInstruments }
   set instruments(v: boolean) {
     this.avecInstruments = v
-    try { localStorage.setItem(CLE_INSTRUMENTS, v ? 'oui' : 'non') } catch { /* refusé */ }
+    try { localStorage.setItem(CLE_INSTRUMENTS, v ? 'oui' : 'non') } catch { /* navigateur sans mémoire : le réglage vaut pour cette fois */ }
     const c = this.panneau.querySelector('.instruments input') as HTMLInputElement | null
     if (c) c.checked = v
   }
@@ -152,7 +152,7 @@ Trace la médiatrice de [AB]."></textarea>
     exist.checked = this.existants
     exist.addEventListener('change', () => {
       this.existants = exist.checked
-      try { localStorage.setItem(CLE_EXISTANTS, exist.checked ? 'oui' : 'non') } catch { /* refusé */ }
+      try { localStorage.setItem(CLE_EXISTANTS, exist.checked ? 'oui' : 'non') } catch { /* navigateur sans mémoire : le réglage vaut pour cette fois */ }
       this.oublier(); this.noter()
     })
     this.noter()
@@ -160,7 +160,7 @@ Trace la médiatrice de [AB]."></textarea>
     coche.checked = this.avecInstruments
     coche.addEventListener('change', () => {
       this.avecInstruments = coche.checked
-      try { localStorage.setItem(CLE_INSTRUMENTS, coche.checked ? 'oui' : 'non') } catch { /* refusé */ }
+      try { localStorage.setItem(CLE_INSTRUMENTS, coche.checked ? 'oui' : 'non') } catch { /* navigateur sans mémoire : le réglage vaut pour cette fois */ }
       if (!coche.checked) { this.app.rendu.instrumentsAnimes = []; this.app.rendu.redessinerInstruments() }
     })
     q('.pas').addEventListener('click', () => this.lancer(false))

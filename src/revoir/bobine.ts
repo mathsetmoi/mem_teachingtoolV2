@@ -3,13 +3,12 @@
 // L'image k du film, c'est l'état de départ plus les k premiers gestes.
 // Pour sauter n'importe où sans tout rejouer, on garde un état complet
 // toutes les 32 images : aller à l'image k coûte au plus 31 gestes.
-// Le lecteur ne fait que lire : rien ici n'écrit ailleurs qu'en mémoire.
+// Rien ici n'écrit ailleurs qu'en mémoire.
 // =============================================================
 import type { Fond, Forme } from '../types'
 import type { Chapitre, FilmEleve } from './format'
+import { tasser } from './rythme'
 
-export const RYTHME_MIN = 60        // ms : au-dessous, le geste passerait inaperçu
-export const RYTHME_MAX = 2500      // ms : au-dessus, on regarderait un tableau figé
 const TOUS_LES = 32
 
 interface EtatPage { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme>; supprimee?: boolean }
@@ -25,7 +24,7 @@ export class Bobine {
   /** Nombre d'images : l'état de départ, puis une par geste */
   readonly n: number
   readonly chapitres: Chapitre[]
-  /** Temps écoulé à chaque image, au rythme d'origine (borné), en ms */
+  /** Temps écoulé à chaque image, au rythme d'origine tassé, en ms */
   readonly temps: number[]
   private reperes: Etat[] = []
   /** Pour chaque image, les formes qui y APPARAISSENT (pas celles qui changent) */
@@ -50,11 +49,10 @@ export class Bobine {
 
   get duree() { return this.temps[this.n - 1] }
 
-  /** Le temps d'attente avant l'image k, au rythme d'origine borné */
+  /** Le temps d'attente avant l'image k : l'intervalle vécu, tassé (voir rythme.ts) */
   delai(k: number) {
     if (k <= 0 || k >= this.n) return 0
-    const dt = this.film.etapes[k - 1].dt
-    return Math.max(RYTHME_MIN, Math.min(RYTHME_MAX, Number.isFinite(dt) ? dt : 700))
+    return tasser(this.film.etapes[k - 1].dt)
   }
 
   /** La page qu'on regarde à l'image k : celle du geste */
