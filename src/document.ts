@@ -8,10 +8,13 @@
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import type { Fond, Forme, Trait } from './types'
+import type { Morceau } from './revoir/instruments-film'
 import { uid } from './types'
 
 export const ORIGINE_LOCALE = 'locale'
 const ORIGINE_FILM = 'film'
+/** Les écritures de la piste des instruments : ni étape du film, ni annulation */
+const ORIGINE_PISTE = 'piste'
 
 /** Une étape du film : quand, sur quelle page, et l'état du document.
  *  ms : si l'étape pose un trait tracé à la main, le temps passé sur chacun
@@ -36,6 +39,9 @@ export class Tableau {
   readonly ordre: Y.Array<string>                 // ordre des pages
   readonly pages: Y.Map<Y.Map<unknown>>           // id → { fond, formes }
   readonly film: Y.Array<Etape>                   // une étape par geste, pour le lecteur
+  /** Ce que les instruments ont fait, au temps réel (voir piste.ts) : à côté
+   *  du film, hors des pages. Ni étape, ni annulation, ni forme. */
+  readonly piste: Y.Array<Morceau>
   /** La page que l'on regarde : notée avec chaque étape du film */
   pageVue = ''
   readonly annulation: Y.UndoManager
@@ -49,6 +55,7 @@ export class Tableau {
     this.ordre = this.doc.getArray('ordre')
     this.pages = this.doc.getMap('pages')
     this.film = this.doc.getArray('film')
+    this.piste = this.doc.getArray('piste')
     // Portée : toutes les pages et ce qu'elles contiennent. Seules les
     // transactions marquées « locale » sont retenues.
     this.annulation = new Y.UndoManager(this.pages, {
@@ -230,4 +237,11 @@ export class Tableau {
 
   /** Un geste = une étape d'annulation, même s'il dure longtemps. */
   nouveauGeste() { this.annulation.stopCapturing() }
+
+  /** Ajoute des morceaux à la piste des instruments. Hors des pages : le film
+   *  n'en fait pas d'étape et l'annulation ne les voit pas. */
+  noterPiste(m: Morceau | Morceau[]) {
+    const l = Array.isArray(m) ? m : [m]
+    if (l.length) this.doc.transact(() => this.piste.push(l), ORIGINE_PISTE)
+  }
 }

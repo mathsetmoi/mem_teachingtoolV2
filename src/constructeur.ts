@@ -385,9 +385,12 @@ Trace la médiatrice de [AB]."></textarea>
     await this.animer(this.duree(Math.min(1300, 300 + l / CM * 70)), jeton, t => {
       const z = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
       r.apercu = this.app.nouvelleFigure({ type: 'polygone', ferme: false, pts: [a, z] }, aide ? AIDE : undefined)
+      // Le crayon le long de la règle (ou de l'équerre) : la piste le note pour le replay
+      if (this.avecInstruments) this.app.piste.trace(this.app.traceLe(r.apercu))
       r.mesure = mesure && !aide ? { texte: (Math.round(l * t / CM * 10) / 10).toString().replace('.', ',') + ' cm', x: z.x, y: z.y } : null
       r.redessinerDirect()
     })
+    this.app.piste.trace(null)
     r.apercu = null; r.mesure = null
     if (jeton === this.jeton && poser) {
       const f = this.app.nouvelleFigure({ type: 'polygone', ferme: false, pts: [a, b] }, aide ? AIDE : undefined)
@@ -487,8 +490,10 @@ Trace la médiatrice de [AB]."></textarea>
           if (this.avecInstruments) this.poserInstrument('compas', { x: g.c.x, y: g.c.y, a, r: g.r })
           const f = this.app.nouvelleFigure({ type: 'cercle', x: g.c.x, y: g.c.y, r: g.r }, g.aide ? AIDE : undefined)
           ;(f as Extract<Figure, { type: 'cercle' }>).arc = { a0: g.a0, a1: a }
+          if (this.avecInstruments) this.app.piste.trace({ k: 'arc', x: g.c.x, y: g.c.y, r: g.r, a0: g.a0, a1: a, couleur: f.couleur, taille: f.taille })
           r.apercu = f; r.redessinerDirect()
         })
+        this.app.piste.trace(null)
         r.apercu = null
         if (jeton !== this.jeton) break
         if (!poser) break

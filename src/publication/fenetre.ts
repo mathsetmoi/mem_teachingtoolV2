@@ -64,7 +64,7 @@ export class Publication {
   private reperer(ecart: number) {
     const t = this.app.tableau
     return seancesDuFilm(t.film.toArray(), ecart)
-      .filter(s => visible(exporter(t, { de: s.de, a: s.a, pages: pagesDeLaSeance(t, s), titre: '' })))
+      .filter(s => visible(exporter(t, { de: s.de, a: s.a, pages: pagesDeLaSeance(t, s), titre: '' }, { instruments: false })))
   }
 
   ouvrir() {
@@ -182,6 +182,8 @@ export class Publication {
   /** Le film élève de ce qui est choisi */
   private film(): FilmEleve {
     const s = this.seance
+    // Ce que les instruments viennent de faire (le dernier quart de seconde) part aussi
+    this.app.piste.vider()
     return exporter(this.app.tableau, { de: s.de, a: s.a, pages: this.pagesChoisies(), titre: (this.d!.querySelector('.p-titre') as HTMLInputElement).value })
   }
 

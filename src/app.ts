@@ -18,6 +18,8 @@ import * as Y from 'yjs'
 import katex from 'katex'
 import { Immobilite, bornerDecalage, image, nomsLibres, placesDesNoms, reconnaitre, sommetsDe, versRelatif } from './formes'
 import { tempsDesPoints } from './revoir/main-levee'
+import { Piste } from './piste'
+import type { TraceInstrument } from './piste'
 
 export const COULEURS = [
   { nom: 'Noir', valeur: '#1b2230' },
@@ -103,10 +105,18 @@ export class App {
   private minuterieForme = 0
   /** Les instruments posés (dans l'ordre d'empilement) et leur réglage */
   readonly instruments = new Map<NomInstrument, EtatInstrument>()
+  /** Ce que la classe voit des instruments, noté pour le replay (voir piste.ts) */
+  readonly piste: Piste
 
   constructor(readonly tableau: Tableau, private zone: HTMLElement) {
     this.rendu = new Rendu(this.cam, zone)
     this.cam.x = 120; this.cam.y = 120
+    // Ce que la couche des instruments montre part dans la piste : les gestes,
+    // le constructeur, ce qu'on montre ou range, l'état rendu au chargement
+    this.piste = new Piste(m => tableau.noterPiste(m), () => tableau.pageVue)
+    this.rendu.temoin = (i, a, t) => this.piste.peinture(i, a, t)
+    this.rendu.temoinDirect = t => this.piste.peintureDirect(t)
+    window.addEventListener('pagehide', () => this.piste.vider())
 
     tableau.pages.observeDeep(() => this.rafraichir())
     tableau.ordre.observe(() => this.verifierPage())
@@ -262,6 +272,8 @@ export class App {
         e.a = g.depart.a + g.balayage
         this.rendu.apercu = Math.abs(g.balayage) > 0.01 ? this.figure({ type: 'cercle', x: e.x, y: e.y, r: e.r }) : null
         if (this.rendu.apercu?.type === 'cercle' && !tour) this.rendu.apercu.arc = { a0: g.depart.a, a1: g.depart.a + g.balayage }
+        const f = this.rendu.apercu
+        this.piste.trace(f ? { k: 'arc', x: e.x, y: e.y, r: e.r, a0: g.depart.a, a1: e.a, couleur: f.couleur, taille: f.taille } : null)
         this.rendu.mesure = { texte: Math.round(Math.abs(g.balayage) * 180 / Math.PI) + '°', x: m.x, y: m.y }
         break
       }
@@ -273,6 +285,7 @@ export class App {
 
   private finirInstrument(g: Extract<Geste, { type: 'instrument' }>) {
     this.rendu.mesure = null
+    this.piste.trace(null)
     if (g.quoi === 'tete') {
       const f = this.rendu.apercu
       this.rendu.apercu = null
@@ -292,9 +305,16 @@ export class App {
     t = Math.max(b.debut, Math.min(b.fin, t))
     if (b.gradue) t = Math.round(t / 4) * 4                  // au millimètre, comme on lit la règle
     const a = { x: b.o.x + b.u.x * g.t0, y: b.o.y + b.u.y * g.t0 }, z = { x: b.o.x + b.u.x * t, y: b.o.y + b.u.y * t }
-    this.rendu.apercu = this.figure({ type: 'polygone', ferme: false, ...versRelatif([a, z]) })
+    const f = this.rendu.apercu = this.figure({ type: 'polygone', ferme: false, ...versRelatif([a, z]) })
+    this.piste.trace(this.traceLe(f))
     this.rendu.mesure = { texte: (Math.round(Math.abs(t - g.t0) / CM * 10) / 10).toString().replace('.', ',') + ' cm', x: m.x, y: m.y }
     this.rendu.redessinerDirect()
+  }
+
+  /** Le tracé le long d'un bord (un segment de l'aperçu), pour la piste */
+  traceLe(f: Figure): TraceInstrument | null {
+    if (f.type !== 'polygone' || f.pts.length !== 4) return null
+    return { k: 'seg', ax: f.x, ay: f.y, zx: f.x + f.pts[2], zy: f.y + f.pts[3], couleur: f.couleur, taille: f.taille }
   }
 
   get pages() { return this.tableau.ordre.toArray() }
@@ -493,9 +513,12 @@ export class App {
     const m = this.monde(e)
     if (this.placement) { const p = this.placement; this.placement = null; p.clic(m); return }
     this.tableau.nouveauGeste()
-    // Le crayon posé contre le bord d'un instrument trace le long du bord
+    // Le crayon posé contre le bord d'un instrument trace le long du bord.
+    // Sauf sur une pastille ↻ : à petit zoom, la portée du bord l'atteindrait
+    // (celle du rapporteur est dans le prolongement de son bord)
     const dessine = this.outil === 'stylo' || this.outil === 'segment'
-    const bord = dessine ? this.bordSous(m) : null
+    const pastille = dessine && this.instruments.size ? this.instrumentSous(m)?.quoi === 'rotation' : false
+    const bord = dessine && !pastille ? this.bordSous(m) : null
     if (bord) {
       const t0 = bord.bord.gradue ? Math.round(Math.max(bord.bord.debut, Math.min(bord.bord.fin, bord.t)) / 4) * 4 : bord.t
       this.geste = { type: 'longer', bord: bord.bord, t0 }
@@ -734,6 +757,7 @@ export class App {
       case 'longer': {
         const f = this.rendu.apercu
         this.rendu.apercu = null; this.rendu.mesure = null
+        this.piste.trace(null)
         if (f?.type === 'polygone' && Math.hypot(f.pts[2], f.pts[3]) * this.cam.z > 3) {
           this.tableau.nouveauGeste()
           this.tableau.poser(this.page, f)
@@ -794,6 +818,7 @@ export class App {
     if (g?.type === 'poignee') this.rendu.remplacement = null
     if (g?.type === 'longer' || g?.type === 'instrument') {
       this.rendu.apercu = null; this.rendu.mesure = null
+      this.piste.trace(null)
       if (g.type === 'instrument') { this.instruments.set(g.nom, g.depart); this.majInstruments() }
     }
     if (g?.type === 'cadre') this.rendu.cadreSelection = null
