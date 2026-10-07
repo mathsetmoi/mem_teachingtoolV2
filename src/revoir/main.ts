@@ -89,10 +89,17 @@ let enMarche = false
 let minuterie = 0, animation = 0
 /** Le geste qui se trace en ce moment : la manipulation des instruments (la
  *  règle qu'on pose, le compas qui tourne), puis le trait écrit au rythme de la
- *  main. Quand il a commencé et combien de temps il dure (horloge de la page,
+ *  main, puis l'épilogue de la page (on range l'équerre avant de la quitter).
+ *  Quand il a commencé et combien de temps il dure (horloge de la page,
  *  allure comprise) ; total : sa durée à l'allure Normale. avant : la page
- *  telle qu'avant le geste, pendant la manipulation. */
-let enTrace: { k: number; geste: GesteAuxInstruments | null; main: Main | null; img: Image; avant: Image; debut: number; duree: number; total: number; vus: number; changePage: boolean } | null = null
+ *  telle qu'avant le geste, pendant la manipulation. esquisse : les figures
+ *  neuves qui se dessinent au début de l'épilogue (undefined : il n'a pas
+ *  commencé ; null : rien, ou plus rien, à dessiner). */
+let enTrace: {
+  k: number; geste: GesteAuxInstruments | null; main: Main | null; epilogue: GesteAuxInstruments | null
+  img: Image; avant: Image; debut: number; duree: number; total: number; vus: number; changePage: boolean
+  esquisse?: Esquisse | null
+} | null = null
 /** Les instruments à l'écran (null : aucun) */
 let montres: EtatInstruments | null = null
 /** Pendant la lecture : l'heure (horloge de la page) où l'image montrée a fini,
@@ -214,10 +221,12 @@ function montrer(i: number, anime: boolean, debut = performance.now()) {
   // instruments font ce qu'ils ont fait au tableau, sur la page d'avant le geste.
   const main = suite ? bobine.main(k) : null
   const geste = suite ? bobine.geste(k) : null
+  const epilogue = suite ? bobine.epilogue(k) : null
   const avantGeste = geste ? bobine.image(k - 1, page) : img
   if (geste) { poserInstruments(geste.depart); afficher(avantGeste.formes, avantGeste) }
   else {
-    poserInstruments(bobine.instruments(k))
+    // Pendant le tracé, l'épilogue de la page n'a pas commencé
+    poserInstruments(suite ? bobine.instrumentsAuGeste(k) : bobine.instruments(k))
     afficher(main ? img.formes.filter(f => f.id !== main.trait.id) : img.formes, img)
   }
   majCommandes()
@@ -225,59 +234,86 @@ function montrer(i: number, anime: boolean, debut = performance.now()) {
   if (!suite) return
   const nouvelles = bobine.nouvelles(k)
   if (vue === 'page' && !changePage) suivre(nouvelles)
-  if (main || geste) return tracer(k, geste, main, img, avantGeste, debut, changePage)
+  if (main || geste || epilogue) return tracer(k, geste, main, epilogue, img, avantGeste, debut, changePage)
   esquisser(k, img, changePage)
 }
 
-/** Les figures apparues à l'image k se dessinent sous les yeux, à vitesse de
- *  plume (seulement celles qui apparaissent : une forme déplacée ou recolorée
- *  ne se réécrit pas, ni celle qu'un Ctrl+Z rend, qui revient d'un coup, ni
- *  celle qu'on vient de voir se tracer sous un instrument), et le tracé finit
- *  avant le geste suivant */
-function esquisser(k: number, img: Image, changePage: boolean) {
-  if (!bobine) return
+/** Des figures qui se dessinent sous les yeux : lesquelles, depuis quand, en combien de temps (horloge de la page) */
+interface Esquisse { ids: Set<string>; depart: number; duree: number }
+
+/** Les figures apparues à l'image k qui se dessinent sous les yeux, à vitesse
+ *  de plume, en au plus `budget` ms (allure Normale) : seulement celles qui
+ *  apparaissent (une forme déplacée ou recolorée ne se réécrit pas, ni celle
+ *  qu'un Ctrl+Z rend, qui revient d'un coup, ni celle qu'on vient de voir se
+ *  tracer sous un instrument). null : rien à dessiner. */
+function aEsquisser(k: number, changePage: boolean, budget: number): Esquisse | null {
   // La figure reconnue au lever du stylo remplace le trait d'un coup, comme au tableau
-  if (changePage || bobine.reconnue(k)) return
+  if (!bobine || changePage || bobine.reconnue(k)) return null
   const nouvelles = bobine.nouvelles(k)
   const ajouts = bobine.ajoutees(k), vues = bobine.tracees(k)
   const aTracer = nouvelles.filter(f => ajouts.has(f.id) && !vues.has(f.id) && seDessine(f))
-  const facteur = ALLURES[allure].facteur
-  const duree = Math.min(dureeDuTrace(aTracer), 0.85 * bobine.attente(Math.min(bobine.n - 1, k + 1))) / facteur
-  if (duree < 40 || mouvementReduit.matches) return
-  const ids = new Set(aTracer.map(f => f.id))
-  const depart = performance.now()
-  const pas = () => {
-    const t = Math.min(1, (performance.now() - depart) / duree)
-    afficher(img.formes.map(f => ids.has(f.id) ? esquisse(f, t) : f), img)
-    if (t < 1) animation = requestAnimationFrame(pas)
-  }
+  const duree = Math.min(dureeDuTrace(aTracer), budget) / ALLURES[allure].facteur
+  if (duree < 40 || mouvementReduit.matches) return null
+  return { ids: new Set(aTracer.map(f => f.id)), depart: performance.now(), duree }
+}
+
+/** Une image d'écran des figures qui se dessinent ; vrai tant qu'il en reste à dessiner */
+function peindreEsquisse(e: Esquisse, img: Image): boolean {
+  const t = Math.min(1, (performance.now() - e.depart) / e.duree)
+  afficher(img.formes.map(f => e.ids.has(f.id) ? esquisse(f, t) : f), img)
+  return t < 1
+}
+
+/** Les figures apparues à l'image k se dessinent sous les yeux (voir
+ *  aEsquisser), et le tracé finit avant le geste suivant */
+function esquisser(k: number, img: Image, changePage: boolean) {
+  if (!bobine) return
+  const e = aEsquisser(k, changePage, 0.85 * bobine.attente(Math.min(bobine.n - 1, k + 1)))
+  if (!e) return
+  const pas = () => { if (peindreEsquisse(e, img)) animation = requestAnimationFrame(pas) }
   pas()
 }
 
 /** Trace le geste de l'image montrée : d'abord ce que les instruments ont
  *  fait (ils bougent, tournent, s'ouvrent à leur vitesse réelle, et le compas
- *  trace son arc), puis le trait écrit au rythme de la main. Seules les
- *  couches des instruments et « direct » se repeignent, avec le dessin même
- *  du tableau ; à la fin, le geste rejoint la page. C'est le contenu de la
- *  séance, comme une vidéo : il se trace même sous « animations réduites ». */
-function tracer(k: number, geste: GesteAuxInstruments | null, main: Main | null, img: Image, avant: Image, debut: number, changePage: boolean) {
-  const total = (geste?.duree ?? 0) + (main?.duree ?? 0)
-  enTrace = { k, geste, main, img, avant, debut, duree: total / ALLURES[allure].facteur, total, vus: -1, changePage }
+ *  trace son arc), puis le trait écrit au rythme de la main, puis l'épilogue
+ *  de la page, s'il y en a un : le geste a rejoint la page, ses figures neuves
+ *  s'y dessinent, et les instruments font ce qu'ils y ont fait avant qu'on la
+ *  quitte. Seules les couches des instruments et « direct » se repeignent,
+ *  avec le dessin même du tableau. C'est le contenu de la séance, comme une
+ *  vidéo : il se trace même sous « animations réduites ». */
+function tracer(k: number, geste: GesteAuxInstruments | null, main: Main | null, epilogue: GesteAuxInstruments | null, img: Image, avant: Image, debut: number, changePage: boolean) {
+  const total = (geste?.duree ?? 0) + (main?.duree ?? 0) + (epilogue ? epilogue.attente + epilogue.duree : 0)
+  enTrace = { k, geste, main, epilogue, img, avant, debut, duree: total / ALLURES[allure].facteur, total, vus: -1, changePage }
   const pas = () => {
     const t = enTrace
     if (!t) return
     const fait = t.duree > 0 ? (performance.now() - t.debut) / t.duree : 1
-    const tau = Math.min(1, fait) * t.total, manip = t.geste?.duree ?? 0
+    const tau = Math.min(1, fait) * t.total, manip = t.geste?.duree ?? 0, trait = t.main?.duree ?? 0
     if (fait >= 1) {
       enTrace = null; rendu.monTrait = null
       poserApercu(null)
       poserInstruments(bobine?.instruments(t.k) ?? null)
       afficher(t.img.formes, t.img)
       // Sans trait à la main, les figures neuves se dessinent ensuite, comme avant
-      if (!t.main) esquisser(t.k, t.img, t.changePage)
+      // (au début de l'épilogue, s'il a commencé)
+      if (!t.main && t.esquisse === undefined) esquisser(t.k, t.img, t.changePage)
     } else if (t.geste && tau < manip) {
       poserInstruments(t.geste.etatA(tau))
       poserApercu(t.geste.apercuA(tau))
+      animation = requestAnimationFrame(pas)
+    } else if (t.epilogue && tau >= manip + trait) {
+      if (t.esquisse === undefined) {
+        // Le geste a rejoint la page ; sans trait à la main, ses figures neuves
+        // s'y dessinent avant que les instruments ne bougent de nouveau
+        rendu.monTrait = null
+        afficher(t.img.formes, t.img)
+        t.esquisse = t.main ? null : aEsquisser(t.k, t.changePage, 0.85 * t.epilogue.attente)
+      }
+      if (t.esquisse && !peindreEsquisse(t.esquisse, t.img)) t.esquisse = null
+      const e = tau - manip - trait - t.epilogue.attente
+      poserInstruments(t.epilogue.etatA(e))
+      poserApercu(t.epilogue.apercuA(e))
       animation = requestAnimationFrame(pas)
     } else if (t.main) {
       if (t.vus < 0) {

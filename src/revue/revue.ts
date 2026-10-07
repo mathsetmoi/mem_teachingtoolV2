@@ -428,10 +428,11 @@ export class RevueEnClasse {
     return pages.length === 1 ? 'La page' : `Page ${i + 1}`
   }
 
-  /** L'heure de l'image k : celle de son geste, ou du geste qui la suit */
+  /** L'heure de l'image k : celle de son geste (ou du geste que son épilogue
+   *  suit), ou du geste qui la suit */
   private heureDe(k: number): number {
     const b = this.bande!
-    const img = b.images[k].geste || k + 1 >= b.images.length ? b.images[k] : b.images[k + 1]
+    const img = b.images[k].geste || b.images[k].epilogue || k + 1 >= b.images.length ? b.images[k] : b.images[k + 1]
     return this.film[Math.max(0, img.e)]?.t ?? Date.now()
   }
 
@@ -478,7 +479,8 @@ export class RevueEnClasse {
       const duree = manip + trait + esquisse
       // Pendant la lecture, l'horloge a pu dépasser le début du tracé d'une image d'écran
       const deja = this.enMarche ? Math.max(0, Math.min(manip + trait, this.horloge - this.debuts[j])) : 0
-      const avant = geste ? this.planches!.lire({ e: (img.main ?? img.e) - 1, p: img.p, geste: false }).formes : undefined
+      // (pendant l'épilogue d'une page, la page elle-même : elle ne change plus)
+      const avant = geste ? this.planches!.lire(img.epilogue ? img : { e: (img.main ?? img.e) - 1, p: img.p, geste: false }).formes : undefined
       this.trace = {
         ids: new Set(main ? [main.m.trait.id] : esquisse ? esquisses.map(x => x.id) : []), debut: this.maintenant - deja, duree,
         main: main ?? undefined, geste: geste ?? undefined, avant,

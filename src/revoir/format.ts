@@ -12,8 +12,8 @@
 // La version ne monte que le jour où un champ qui existe change de sens : un
 // lecteur refuse une version plus récente que la sienne. Les ajouts sont
 // facultatifs et gardent la version 1 (le rythme de la main, ms ; les
-// instruments, inst, instruments et avant) : un lecteur plus ancien les
-// ignore et rejoue le film comme avant, sans planter.
+// instruments, inst, apres, instruments et avant) : un lecteur plus ancien
+// les ignore et rejoue le film comme avant, sans planter.
 // =============================================================
 import type { Fond, Forme } from '../types'
 import type { Morceau } from './instruments-film'
@@ -33,9 +33,12 @@ export type Op = ['=', Forme] | ['-', string] | ['f', Fond, number, number] | ['
  *  le temps passé sur chacun de ses points, jusqu'au lever (voir
  *  main-levee.ts). inst : ce que les instruments ont fait sur cette page
  *  depuis l'image d'avant (t : ms depuis elle, de 0 à dt ; voir
- *  instruments-film.ts). Facultatifs : un film sans eux, ou un lecteur qui
- *  les ignore, rejoue le geste comme avant. */
-export interface EtapeFilm { dt: number; p: string; o: Op[]; ms?: number[]; inst?: Morceau[] }
+ *  instruments-film.ts). apres : au dernier geste d'une page (on la quitte
+ *  ensuite, ou le film finit), ce que les instruments y font encore avant
+ *  qu'on la quitte (t : ms depuis la fin de inst, c'est-à-dire depuis dt).
+ *  Facultatifs : un film sans eux, ou un lecteur qui les ignore, rejoue le
+ *  geste comme avant. */
+export interface EtapeFilm { dt: number; p: string; o: Op[]; ms?: number[]; inst?: Morceau[]; apres?: Morceau[] }
 
 /** L'état d'une page au début du film */
 export interface PageFilm { id: string; fond: Fond; origine: { x: number; y: number }; formes: Forme[] }

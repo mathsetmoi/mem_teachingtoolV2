@@ -22,13 +22,14 @@
 // seconde, et seulement quand quelque chose change. Un morceau se ferme
 // quand on lâche ou prend une autre partie, quand l'instrument paraît ou est
 // rangé, quand on change de page, après 250 ms sans changement, ou au-delà
-// de 1 200 poses. On le simplifie alors (les poses qu'une ligne droite entre
+// de 1 200 poses. Celui d'un instrument qui paraît ou qu'on lâche, sans
+// bouger, n'a qu'une pose : il se ferme aussitôt. On le simplifie alors (les poses qu'une ligne droite entre
 // leurs voisines retrouve s'en vont), puis on l'écrit dans le document,
 // hors des pages, un peu plus tard : le lever du pointeur reste immédiat.
 // =============================================================
 import type { EtatInstrument, NomInstrument, Partie } from './instruments'
 import type { Echantillon, Morceau, MorceauPoses, MorceauTrace, Pose } from './revoir/instruments-film'
-import { cleDe, encoderPoses, encoderTrace, enrouler } from './revoir/instruments-film'
+import { cleDe, encoderPoses, encoderTrace, enrouler, versMilliDegres } from './revoir/instruments-film'
 
 /** Un instrument tel que le rendu le peint */
 export interface Peint { nom: NomInstrument; etat: EtatInstrument; actif: Partie | null }
@@ -63,8 +64,10 @@ export const POSES_MAX = 1200
 const ARRET = 60
 /** Une image d'écran, à peu près (ms) */
 const IMAGE = 17
+/** Deux morceaux d'un même instrument sont au moins à tant de ms l'un de l'autre */
+const ECART_MORCEAUX = 5
 /** Les tolérances de la simplification, un peu sous celles du replay pour
- *  laisser la place à l'arrondi des entiers (dixième d'unité, 1e-4 rad) */
+ *  laisser la place à l'arrondi des entiers (dixième d'unité, millième de degré) */
 const TOL = { xy: 0.42, a: 0.0019, r: 0.44 }
 
 interface Vu { nom: NomInstrument; c: boolean; e: EtatInstrument; actif: Partie | null; t: number }
@@ -122,6 +125,8 @@ export class Piste {
   private trace_: TraceOuvert | null = null
   /** Le tracé donné depuis la dernière peinture de la couche « direct » : on le date à la suivante */
   private enAttenteDePeinture: TraceInstrument | null = null
+  /** Le tracé s'est arrêté, mais son dernier état n'a pas encore paru : on le ferme à la peinture */
+  private fermerApresPeinture = false
   /** L'heure de la peinture d'avant, et la page qu'on regardait */
   private precedente = -Infinity
   private pageVue: string | null = null
@@ -172,13 +177,19 @@ export class Piste {
     else {
       if (o) this.fermer(cle)
       // Le morceau part du repos (la pose d'avant, à la peinture d'avant) :
-      // le replay ne fait pas glisser l'instrument pendant le silence qui précède
+      // le replay ne fait pas glisser l'instrument pendant le silence qui
+      // précède. Si cette pose vient d'être notée (le morceau d'avant finit
+      // dessus), on ne la répète pas : deux morceaux du même instrument ne se
+      // chevauchent jamais, même à la milliseconde près des dates
       const poses: Pose[] = []
-      const repos = v ? Math.max(this.precedente, t - IMAGE, v.t) : t
-      if (v && repos < t && !memeEtatExact(v.e, e)) poses.push({ t: repos, ...v.e })
+      const repos = v ? Math.max(this.precedente, t - IMAGE) : t
+      if (v && repos >= v.t + ECART_MORCEAUX && repos < t && !memeEtatExact(v.e, e)) poses.push({ t: repos, ...v.e })
       const premier = poses[0]?.a ?? e.a
       poses.push({ t, x: e.x, y: e.y, r: e.r, a: premier + enrouler(e.a - premier) })
       this.ouverts.set(cle, { nom: i.nom, c, q: i.actif, p: page, date: this.dateDe(poses[0].t), poses, brut: e.a })
+      // Un instrument qui paraît, ou qu'on lâche, sans bouger : une seule pose, notée
+      // tout de suite (s'il bouge ensuite, un autre morceau suivra celui-ci)
+      if (!i.actif && (!v || memeEtatExact(v.e, e))) this.fermer(cle)
     }
     this.vus.set(cle, { nom: i.nom, c, e, actif: i.actif, t })
   }
@@ -202,19 +213,31 @@ export class Piste {
   /** Le tracé en cours sous un instrument (null : il s'arrête). On le note
    *  quand la couche « direct » le peint, pas avant (voir peintureDirect) */
   trace(f: TraceInstrument | null) {
+    // Un tracé arrêté qui attendait encore de paraître : il s'arrête ici
+    if (this.fermerApresPeinture) this.viderTrace()
     if (f) { this.enAttenteDePeinture = f; return }
-    // Le dernier état, s'il n'a pas encore été peint, est celui qu'on laisse
-    if (this.enAttenteDePeinture) this.noterTrace(this.enAttenteDePeinture)
-    this.enAttenteDePeinture = null
+    // Le dernier état, s'il n'a pas encore paru, sera daté à sa peinture
+    if (this.enAttenteDePeinture) { this.fermerApresPeinture = true; return }
+    // Le crayon a pu rester immobile avant le lever : au tableau, le tracé est
+    // resté à l'écran jusque-là. On note qu'il a tenu jusqu'à l'arrêt, comme
+    // pour les poses : le replay ne l'efface pas avant que la figure paraisse
+    const o = this.trace_, t = this.h.maintenant()
+    const der = o?.ech[o.ech.length - 1]
+    if (der && t - der.t > ARRET) o!.ech.push({ t, v: der.v })
     this.fermerTrace()
   }
 
   /** La couche « direct » vient d'être peinte, à l'image d'écran t : le tracé en cours a paru */
   peintureDirect(t = this.h.maintenant()) {
     const f = this.enAttenteDePeinture
-    if (!f) return
-    this.enAttenteDePeinture = null
-    this.noterTrace(f, t)
+    if (f) { this.enAttenteDePeinture = null; this.noterTrace(f, t) }
+    if (this.fermerApresPeinture) { this.fermerApresPeinture = false; this.fermerTrace() }
+  }
+
+  /** Note tout de suite ce qui attendait sa peinture, et ferme le tracé s'il était arrêté */
+  private viderTrace() {
+    if (this.enAttenteDePeinture) { this.noterTrace(this.enAttenteDePeinture); this.enAttenteDePeinture = null }
+    if (this.fermerApresPeinture) { this.fermerApresPeinture = false; this.fermerTrace() }
   }
 
   private noterTrace(f: TraceInstrument, t = this.h.maintenant()) {
@@ -222,7 +245,8 @@ export class Piste {
     const g = f.k === 'arc' ? [f.x, f.y, f.r, f.a0] : [f.ax, f.ay]
     const v = f.k === 'arc' ? [f.a1] : [f.zx, f.zy]
     let o = this.trace_
-    const memeFixe = (a: number[], b: number[]) => a.every((x, i) => Math.round(x * (f.k === 'arc' && i === 3 ? 1e4 : 10)) === Math.round(b[i] * (f.k === 'arc' && i === 3 ? 1e4 : 10)))
+    const entier = (x: number, i: number) => f.k === 'arc' && i === 3 ? versMilliDegres(x) : Math.round(x * 10)
+    const memeFixe = (a: number[], b: number[]) => a.every((x, i) => entier(x, i) === entier(b[i], i))
     if (o && (o.k !== f.k || o.p !== page || o.couleur !== f.couleur || o.taille !== f.taille || !memeFixe(o.g, g))) { this.fermerTrace(); o = null }
     if (!o) { this.trace_ = { k: f.k, p: page, couleur: f.couleur, taille: f.taille, g, date: this.dateDe(t), ech: [{ t, v }] }; return }
     const e = o.ech, n = e.length, der = e[n - 1]
@@ -240,7 +264,7 @@ export class Piste {
       const arc = o.k === 'arc'
       const m: MorceauTrace = {
         t: Math.round(o.date), p: o.p, k: o.k, s: [o.couleur, o.taille],
-        g: o.g.map((v, i) => Math.round(v * (arc && i === 3 ? 1e4 : 10))), d: encoderTrace(simplifierTrace(o.ech, arc), arc),
+        g: o.g.map((v, i) => arc && i === 3 ? versMilliDegres(v) : Math.round(v * 10)), d: encoderTrace(simplifierTrace(o.ech, arc), arc),
       }
       return m
     })
@@ -286,7 +310,7 @@ export class Piste {
   /** Ferme tous les morceaux ouverts */
   fermerTout() {
     for (const cle of [...this.ouverts.keys()]) this.fermer(cle)
-    if (this.enAttenteDePeinture) { this.noterTrace(this.enAttenteDePeinture); this.enAttenteDePeinture = null }
+    this.viderTrace()
     this.fermerTrace()
   }
 

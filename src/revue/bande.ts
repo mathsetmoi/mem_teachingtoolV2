@@ -28,14 +28,18 @@
 // vitesse de la main ; l'attente qui le précède est le vrai temps stylo levé.
 // Ce que les instruments ont fait avant un geste (la piste du tableau, voir
 // revoir/instruments-film.ts) se rejoue de même, avant le trait : la
-// manipulation fait partie du tracé de l'image.
+// manipulation fait partie du tracé de l'image. Ce qu'ils font sur une page
+// après son dernier geste, avant qu'on la quitte (on range l'équerre, on
+// pousse la règle), est une image de plus, sans geste : l'épilogue de la
+// page. La fin d'une partie et l'affiche montrent ainsi les instruments tels
+// que la classe les a vus en quittant la page.
 // =============================================================
 import type { Etape } from '../document'
 import type { Seance } from '../revoir/exporter'
-import { AVANT_PROPOS } from '../revoir/exporter'
+import { AVANT_PROPOS, EPILOGUE } from '../revoir/exporter'
 import { dureesDuTrace } from '../revoir/main-levee'
 import type { EtatInstruments, GesteAuxInstruments } from '../revoir/instruments-film'
-import { horaire } from '../revoir/instruments-film'
+import { APRES_L_ETAPE, IndexPieces, finDesPieces, horaire } from '../revoir/instruments-film'
 import { PLANCHER, tasser } from '../revoir/rythme'
 import type { LectureSeule } from './planches'
 import { departPropre, memeImage } from './planches'
@@ -45,11 +49,13 @@ export type Portion =
   | { genre: 'page'; page: string }                            // toute l'histoire d'une page
 
 /** L'état de la page p après l'étape e du film (e = −1 : avant tout).
- *  geste : false pour l'image 0 et pour l'ouverture d'une partie.
- *  main : l'étape où ce geste a tracé un trait à la main, dont le film a noté
- *  le rythme. C'est e, ou, dans un geste fondu, l'étape du trait que la figure
- *  reconnue remplace : le trait s'écrit, puis la figure paraît, comme au tableau. */
-export interface ImageBande { e: number; p: string; geste: boolean; main?: number }
+ *  geste : false pour l'image 0, pour l'ouverture d'une partie et pour
+ *  l'épilogue d'une page. main : l'étape où ce geste a tracé un trait à la
+ *  main, dont le film a noté le rythme. C'est e, ou, dans un geste fondu,
+ *  l'étape du trait que la figure reconnue remplace : le trait s'écrit, puis
+ *  la figure paraît, comme au tableau. epilogue : la page ne change pas, seuls
+ *  les instruments bougent (ce qu'ils y font après son dernier geste). */
+export interface ImageBande { e: number; p: string; geste: boolean; main?: number; epilogue?: true }
 
 /** Une partie : ses images de debut à fin (incluses), sa page, l'heure de son premier geste */
 export interface Partie { debut: number; fin: number; page: string; heure: number; titre: string }
@@ -256,33 +262,49 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
   const debutsDePas: number[] = []
   // Les instruments, si le tableau les a notés : l'état à chaque image, et la
   // manipulation qui précède chaque geste
-  const piste = lecture.piste
   const heureDe = (e: number) => film[e]?.t ?? -Infinity
-  const etats: EtatInstruments[] | undefined = piste ? [piste.etatA(heureDe(avants[0]))] : undefined
+  // De la piste, seulement ce qui sert à la portion : de l'état d'avant son
+  // premier geste (au plus une minute avant lui) à l'épilogue de son dernier
+  const piste = lecture.pisteEntre(
+    Math.min(heureDe(avants[0]), film[etapes[0]].t - AVANT_PROPOS) + APRES_L_ETAPE,
+    film[etapes[etapes.length - 1]].t + APRES_L_ETAPE + EPILOGUE)
+  // L'état des instruments juste après une étape (sa dernière pose est peinte un peu après elle)
+  const apres = (e: number) => piste!.etatA(heureDe(e) + APRES_L_ETAPE)
+  const etats: EtatInstruments[] | undefined = piste ? [apres(avants[0])] : undefined
   const manips: (GesteAuxInstruments | null)[] | undefined = piste ? [null] : undefined
+  /** Où finit, au temps réel, l'épilogue qu'on vient de montrer (−∞ : aucun) :
+   *  la fenêtre du geste suivant commence là, sans le rejouer */
+  let finEpilogue = -Infinity
   groupes.forEach((g, q) => {
     const debut = q ? images.length : 0
     if (q) {
       images.push({ e: avants[g.de], p: g.page, geste: false }); attentes.push(PAUSE_DE_PARTIE); traces.push(0)
-      etats?.push(piste!.etatA(heureDe(avants[g.de]))); manips?.push(null)
+      // Les instruments tels qu'on les a laissés en quittant la page d'avant
+      if (piste) etats!.push(piste.etatA(Math.max(heureDe(avants[g.de]) + APRES_L_ETAPE, finEpilogue)))
+      manips?.push(null)
     }
     for (let j = g.de; j <= g.a; j++) {
       const premier = j === g.de
-      const silence = j ? film[etapes[j]].t - film[etapes[j - 1]].t : 0
+      // Le temps que l'épilogue d'avant a déjà montré ne s'attend pas une seconde fois
+      const deja = j && finEpilogue > -Infinity ? finEpilogue - film[etapes[j - 1]].t - APRES_L_ETAPE : 0
+      const silence = j ? film[etapes[j]].t - film[etapes[j - 1]].t - deja : 0
       // Le geste commence à l'étape qui suit l'état d'avant (la première d'un geste fondu)
       const m = avants[j] + 1, d = dureesDuTrace(film[m]?.ms)
       // Le temps stylo levé : jusqu'au poser du trait, et non jusqu'à son lever
-      const leve = d ? film[m].t - d.vecue - (j ? film[etapes[j - 1]].t : film[m].t) : silence
+      const leve = d ? film[m].t - d.vecue - (j ? film[etapes[j - 1]].t + deja : film[m].t) : silence
       // Ce que les instruments ont fait sur cette page depuis l'image d'avant
       // (au plus une minute pour la première d'une partie), jusqu'au geste
       let manip: GesteAuxInstruments | null = null
       if (piste) {
-        const fin = film[d ? m : etapes[j]].t
+        const fin = film[d ? m : etapes[j]].t + APRES_L_ETAPE
         let debutF = heureDe(images[images.length - 1].e)
-        if (premier) debutF = Math.max(debutF, fin - AVANT_PROPOS)
-        const w = piste.fenetre(debutF, fin, pages[j])
-        manip = horaire(w.poses, w.traces, piste.etatA(debutF), fin - debutF, d?.vecue ?? 0, premier ? ENTREE : d ? 0 : PLANCHER)
-        etats!.push(piste.etatA(film[etapes[j]].t)); manips!.push(manip)
+        if (premier) debutF = Math.max(debutF, fin - APRES_L_ETAPE - AVANT_PROPOS)
+        // Après un épilogue, la fenêtre commence où il s'est arrêté
+        const depuis = Math.max(debutF + APRES_L_ETAPE, finEpilogue)
+        const w = piste.fenetre(depuis, fin, pages[j])
+        manip = horaire(w.poses, w.traces, piste.etatA(depuis), Math.max(0, fin - depuis), d?.vecue ?? 0, premier ? ENTREE : d ? 0 : PLANCHER)
+        etats!.push(apres(etapes[j])); manips!.push(manip)
+        finEpilogue = -Infinity
       }
       // Avec une manipulation, le pas se coupe au temps immobile de la fenêtre
       // (sans elle, c'est le temps stylo levé ou le silence d'avant, comme avant)
@@ -291,6 +313,28 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
       attentes.push((premier ? ENTREE : manip ? manip.attente : d ? tasser(leve, 0) : tasser(silence)) + lent)
       traces.push(lent)
       images.push(d ? { e: etapes[j], p: pages[j], geste: true, main: m } : { e: etapes[j], p: pages[j], geste: true })
+      // L'épilogue de la page, quand on la quitte ensuite ou que la partie finit
+      if (piste) {
+        const quitte = j + 1 < etapes.length && pages[j + 1] !== pages[j]
+        if (quitte || j === g.a) {
+          // Jusqu'au geste suivant, s'il est sur une autre page ; sinon au plus
+          // une minute, jusqu'à l'étape suivante du film
+          const T = heureDe(etapes[j]) + APRES_L_ETAPE
+          const borne = quitte ? heureDe(avants[j + 1] + 1) + APRES_L_ETAPE : Math.min(T + EPILOGUE, (film[etapes[j] + 1]?.t ?? Infinity) + APRES_L_ETAPE)
+          const w = borne > T ? piste.fenetre(T, borne, pages[j]) : null
+          if (w && (w.poses.length || w.traces.length)) {
+            const base = etats![etats!.length - 1], fin = finDesPieces(w.poses, w.traces)
+            const epilogue = horaire(w.poses, w.traces, base, fin, 0, 0)
+            const quitteeAinsi = w.poses.length ? new IndexPieces(w.poses, base).fin : base
+            if (epilogue) {
+              images.push({ e: etapes[j], p: pages[j], geste: false, epilogue: true })
+              attentes.push(epilogue.attente + epilogue.duree); traces.push(epilogue.duree)
+              etats!.push(quitteeAinsi); manips!.push(epilogue)
+              finEpilogue = T + fin
+            } else etats![etats!.length - 1] = quitteeAinsi       // rien de visible ne bouge
+          }
+        }
+      }
     }
     const heure = film[etapes[g.de]].t
     const titre = p.genre === 'page' ? `${jourCourt(heure)} · ${heureLisible(heure)}` : `${nommer(g.page)} · ${heureLisible(heure)}`
@@ -306,7 +350,9 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
     attentes.push(tasser(silence))
     traces.push(0)
     images.push({ e: bout, p: der.p, geste: true })
-    etats?.push(piste!.etatA(film[bout].t)); manips?.push(null)
+    // Les instruments tels que la classe les a vus en quittant la page
+    if (piste) etats!.push(etats![etats!.length - 1])
+    manips?.push(null)
     parties[parties.length - 1].fin = images.length - 1
   }
 

@@ -12,8 +12,8 @@ import type { EtatInstrument, NomInstrument, Partie } from '../src/instruments'
 import { Piste, POSES_MAX, REPOS_MORCEAU } from '../src/piste'
 import type { Horloge, Peint, TraceInstrument } from '../src/piste'
 import type { Cercle, Polygone, Trait } from '../src/types'
-import type { InstrumentVu, Morceau, MorceauPoses, Piece } from '../src/revoir/instruments-film'
-import { LecturePiste, decoderPoses, dejaTracee, encoderPoses, enrouler, horaire, lireMorceau, poseA } from '../src/revoir/instruments-film'
+import type { EtatInstruments, InstrumentVu, Morceau, MorceauPoses, Piece } from '../src/revoir/instruments-film'
+import { APRES_L_ETAPE, LecturePiste, decoderPoses, dejaTracee, encoderPoses, encoderTrace, enrouler, horaire, lireMorceau, morceauxEntre, poseA } from '../src/revoir/instruments-film'
 import { AVANT_PROPOS, exporter, exporterDetaille, seancesDuFilm } from '../src/revoir/exporter'
 import type { EtapeFilm, FilmEleve } from '../src/revoir/format'
 import { VERSION, ecrireFilm, lireFilm } from '../src/revoir/format'
@@ -229,6 +229,29 @@ describe('la piste : ce qu\'on note', () => {
     expect(Math.abs(enrouler(mi.a - Math.PI))).toBeLessThan(0.1)
   })
 
+  it('un instrument qui paraît et part aussitôt : ses morceaux se suivent sans se chevaucher', async () => {
+    const s = await seance()
+    // Comme le constructeur : le compas paraît, et bouge dès l'image suivante
+    s.montrer(peint('compas', 0, 0, 0, 100), true)
+    const vus: { t: number; a: number }[] = []
+    for (let i = 1; i <= 30; i++) { s.h.avancer(16.7); const a = -i * 0.03; s.montrer(peint('compas', 0, 0, a, 100), true); vus.push({ t: DATE0 + s.h.t, a }) }
+    s.piste.vider()
+    const l = new LecturePiste(s.ecrits)
+    const morceaux = l.poses.filter(x => x.cle === 'compas+')
+    for (let i = 1; i < morceaux.length; i++) expect(morceaux[i].t0).toBeGreaterThan(morceaux[i - 1].poses[morceaux[i - 1].poses.length - 1].t)
+    // (les dates des morceaux sont à la milliseconde : on regarde une milliseconde après chaque image)
+    for (const v of vus) expect(l.etatA(Math.ceil(v.t) + 1).get('compas+')!.etat.a).toBeCloseTo(v.a, 2)
+    expect(morceaux.length).toBe(2)                         // il paraît, puis il bouge
+  })
+
+  it('un instrument mené sans être tenu (le constructeur) fait un seul morceau, pas un par image', async () => {
+    const s = await seance()
+    s.montrer(peint('regle', 0, 0), true); await s.avancer(400)
+    for (let i = 1; i <= 60; i++) { s.h.avancer(16.7); s.montrer(peint('regle', i * 3, i, i * 0.01), true) }
+    s.piste.vider()
+    expect(s.ecrits.filter(m => (m as MorceauPoses).n === 'regle')).toHaveLength(2)
+  })
+
   it('les instruments du constructeur ont leur propre clé : deux règles à l\'écran', async () => {
     const s = await seance()
     s.montrer(peint('regle', 0, 0)); s.montrer(peint('regle', 400, 400), true)
@@ -256,7 +279,7 @@ describe('la piste : ce qu\'on note', () => {
     s.piste.trace(null)
     s.h.avancer(1)
     const arc = s.ecrits.find(m => 'k' in m)!
-    expect(arc).toMatchObject({ k: 'arc', s: ['#1f5fbf', 2.5], g: [100, 200, 1600, 2500] })
+    expect(arc).toMatchObject({ k: 'arc', s: ['#1f5fbf', 2.5], g: [100, 200, 1600, Math.round(0.25 * 180_000 / Math.PI)] })
     const x = lireMorceau(arc)
     expect(x && 'k' in x && x.ech.length).toBeLessThanOrEqual(35)
     // Un autre centre : un autre morceau
@@ -292,7 +315,16 @@ describe('la piste : le format, relu défensivement', () => {
     const d = encoderPoses(p, false)
     expect(d.every(Number.isInteger)).toBe(true)
     const q = decoderPoses(d, false)!
-    expect(q[1]).toEqual({ t: 17, x: 3.3, y: 4.4, a: -3.1416, r: 0 })
+    expect(q[1]).toMatchObject({ t: 17, x: 3.3, y: 4.4, r: 0 })
+    expect(q[1].a).toBeCloseTo(-3.14159, 5)
+  })
+
+  it('un nombre entier de degrés se relit au bit près (la pastille ↻ tourne au degré)', () => {
+    for (let d = -720; d <= 720; d += 7) {
+      const a = d * Math.PI / 180
+      const q = decoderPoses(encoderPoses([{ t: 0, x: 0, y: 0, a: 0, r: 0 }, { t: 5, x: 0, y: 0, a, r: 0 }], false), false)!
+      expect(q[1].a).toBe(a)
+    }
   })
 
   it('refuse les entiers abîmés, le mauvais pas, un instrument inconnu', () => {
@@ -481,13 +513,342 @@ describe('l\'export : ce qui part, ce qui ne part pas', () => {
     expect(p3[0].t).toBe(0)                                      // et repris là
     expect(p3[0].a).toBeCloseTo(p2[p2.length - 1].a, 3)
     // Toutes les poses vues se retrouvent, d'un côté ou de l'autre
-    const debut2 = s.t.film.get(1).t, debut3 = s.t.film.get(2).t
+    const debut2 = s.t.film.get(1).t + APRES_L_ETAPE, debut3 = s.t.film.get(2).t + APRES_L_ETAPE
     for (const v of vus) {
       const q = v.t <= debut3 ? poseA(p2, v.t - debut2) : poseA(p3, v.t - debut3)
       expect(Math.abs(q.a - v.a)).toBeLessThanOrEqual(0.0021)
     }
     // Rangé avant le dernier geste : un morceau v: 0
     expect(g3.inst!.some(m => (m as MorceauPoses).v === 0)).toBe(true)
+  })
+})
+
+describe('la dernière image d\'un geste', () => {
+  it('peinte juste après l\'étape, elle reste au geste : l\'image suivante n\'a rien à rejouer', async () => {
+    const s = await seance()
+    s.montrer(peint('regle', 0, 0)); await s.avancer(400)
+    s.t.poser(s.page, trait(0, 0)); await s.avancer(500)
+    // La règle glisse ; le lever pose l'étape, et la dernière pose ne se peint qu'après
+    s.montrer(peint('regle', 0, 0, 0, 0, 'corps'))
+    for (let i = 1; i <= 20; i++) { await s.avancer(16); s.montrer(peint('regle', i * 10, 0, 0, 0, 'corps')) }
+    s.t.poser(s.page, polygone([[0, 0], [200, 0]]))
+    await s.avancer(9)
+    s.montrer(peint('regle', 210, 0, 0, 0, 'corps'))         // l'image d'après l'étape
+    await s.avancer(7)
+    s.montrer(peint('regle', 210, 0))                         // la pastille s'éteint
+    await s.avancer(3000)
+    s.t.poser(s.page, trait(40, 40)); await s.avancer(1)
+    s.piste.vider()
+    const film = exporter(s.t, { ...toutes(s.t), pages: [s.page], titre: '' })
+    const b = new Bobine(film)
+    expect(b.geste(2)).toBeTruthy()
+    expect(b.geste(2)!.fin.get('regle')!.etat.x).toBe(210)    // la dernière pose est dans le geste
+    expect(b.geste(3)).toBeNull()                              // et pas dans le suivant
+    expect(b.attente(3)).toBe(tasser(film.etapes[2].dt))
+  })
+
+  it('le tracé arrêté avant sa dernière peinture est daté à cette peinture', async () => {
+    const s = await seance()
+    const arc = (a1: number): TraceInstrument => ({ k: 'arc', x: 0, y: 0, r: 100, a0: 0, a1, couleur: '#000', taille: 2 })
+    s.piste.trace(arc(-0.1)); s.piste.peintureDirect(); s.h.avancer(16)
+    s.piste.trace(arc(-0.2)); s.h.avancer(4)
+    s.piste.trace(null)                                        // le lever, avant que -0.2 ait paru
+    s.h.avancer(12)
+    s.piste.peintureDirect()                                   // il paraît maintenant
+    s.piste.vider()
+    const x = lireMorceau(s.ecrits.find(m => 'k' in m)!) as { ech: { t: number; v: number[] }[] }
+    expect(x.ech).toHaveLength(2)
+    expect(x.ech[1].t - x.ech[0].t).toBe(32)
+    expect(x.ech[1].v[0]).toBeCloseTo(-0.2, 4)
+  })
+})
+
+describe('le tracé reste à l\'écran jusqu\'à la figure', () => {
+  /** Un arc au compas, peint image par image, le crayon tenu `tenue` ms avant
+   *  le lever ; `pose` : le lever pose l'arc (sinon le tracé est abandonné) */
+  async function arcTenu(tenue: number, pose = true) {
+    const s = await seance()
+    s.montrer(peint('compas', 0, 0, 0, 160)); await s.avancer(500)
+    s.t.poser(s.page, trait(300, 300)); await s.avancer(1500)
+    s.montrer(peint('compas', 0, 0, 0, 160, 'tete'))
+    for (let i = 1; i <= 40; i++) {
+      await s.avancer(16)
+      s.montrer(peint('compas', 0, 0, -i * 0.03, 160, 'tete'))
+      s.piste.trace({ k: 'arc', x: 0, y: 0, r: 160, a0: 0, a1: -i * 0.03, couleur: '#1b2230', taille: 2.5 })
+      s.piste.peintureDirect()
+    }
+    await s.avancer(tenue)
+    // Le lever : le tracé s'arrête, l'arc est posé, la pastille s'éteint à l'image d'après
+    s.piste.trace(null)
+    if (pose) s.t.poser(s.page, cercle(0, 0, 160, { a0: 0, a1: -1.2 }))
+    await s.avancer(9)
+    s.montrer(peint('compas', 0, 0, -1.2, 160)); s.piste.peintureDirect()
+    await s.avancer(pose ? 2000 : 6000)
+    s.t.poser(s.page, trait(40, 40)); await s.avancer(1)
+    s.piste.vider()
+    return s
+  }
+  /** Du premier instant où l'aperçu paraît jusqu'à la fin de la manipulation, il ne manque jamais */
+  function sansTrou(g: { duree: number; apercuA(tau: number): unknown }) {
+    let premier = -1, trous = 0
+    for (let tau = 0; tau <= g.duree; tau += 1) {
+      const f = g.apercuA(tau)
+      if (premier < 0 && f) premier = tau
+      if (premier >= 0 && !f) trous++
+    }
+    expect(premier).toBeGreaterThanOrEqual(0)
+    return trous
+  }
+
+  it('la piste note l\'arrêt d\'un crayon resté immobile : le tracé dure jusqu\'au lever', async () => {
+    const s = await arcTenu(800)
+    const x = lireMorceau(s.ecrits.find(m => 'k' in m)!) as { ech: { t: number; v: number[] }[] }
+    const n = x.ech.length
+    expect(x.ech[n - 1].t - x.ech[n - 2].t).toBeGreaterThanOrEqual(800)     // tenu jusqu'au lever
+    expect(x.ech[n - 1].v[0]).toBeCloseTo(-1.2, 4)
+    expect(x.ech[n - 1].t).toBe(s.t.film.get(2).t)                          // le lever est l'étape
+  })
+
+  for (const tenue of [0, 800]) {
+    it(`crayon tenu ${tenue} ms : au lecteur comme à la revue, l'arc ne s'efface jamais avant la figure`, async () => {
+      const s = await arcTenu(tenue)
+      const film = exporter(s.t, { ...toutes(s.t), pages: [s.page], titre: '' })
+      const b = new Bobine(film)
+      expect(film.etapes[1].o.some(o => o[0] === '=' && o[1].type === 'cercle')).toBe(true)
+      expect(sansTrou(b.geste(2)!)).toBe(0)
+      const fin = b.geste(2)!.apercuA(b.geste(2)!.duree)
+      expect(fin?.type === 'cercle' && fin.arc!.a1).toBeCloseTo(-1.2, 3)
+      expect(b.tracees(2).size).toBe(1)                                      // et l'arc posé ne se redessine pas
+      const lecture = lectureDe(s.t, () => s.t.ordre.toArray())
+      const seances = seancesDuFilm(lecture.film)
+      const bande = construireBande(lecture, { genre: 'seance', seance: seances[0], page: s.page }, seances, p => p)!
+      const k = bande.images.findIndex(i => i.e === 2)
+      expect(sansTrou(bande.manips![k]!)).toBe(0)
+    })
+  }
+
+  it('un tracé abandonné (rien de posé au lever) s\'efface à son arrêt, comme au tableau', async () => {
+    const s = await arcTenu(300, false)
+    const b = new Bobine(exporter(s.t, { ...toutes(s.t), pages: [s.page], titre: '' }))
+    const g = b.geste(2)!
+    expect(g.apercuA(g.duree)).toBeNull()
+    expect(g.apercuA(g.duree / 2)).toBeNull()                              // le long silence qui suit
+  })
+})
+
+describe('l\'épilogue d\'une page : ce qu\'on y fait après son dernier geste', () => {
+  /** Sur la page A, la règle et le compas servent ; après le dernier geste de
+   *  A, on range le compas et on pousse la règle, puis on passe sur la page B
+   *  (neuve, ou déjà là : on y va sans rien noter) pour y écrire deux traits */
+  async function deuxPages(neuve: boolean, traitsB = 2) {
+    const s = await seance()
+    const A = s.page
+    const B0 = neuve ? '' : s.t.ajouterPage('blanc', 1)
+    await s.avancer(1000)
+    const de = s.t.film.length
+    s.montrer(peint('regle', 100, 100)); s.montrer(peint('compas', 300, 300, 0, 120)); await s.avancer(500)
+    s.t.poser(A, trait(0, 0)); await s.avancer(400)
+    await s.mener('regle', { x: 200, y: 150, a: 0.3, r: 0 }, 400)
+    await s.avancer(300)
+    s.t.poser(A, polygone([[0, 0], [100, 0]], 200, 150)); await s.avancer(1)
+    await s.avancer(1500)
+    s.ranger('compas'); await s.avancer(600)
+    await s.mener('regle', { x: 900, y: 700, a: 0.3, r: 0 }, 500)
+    await s.avancer(800)
+    const B = neuve ? s.t.ajouterPage('blanc', 1) : B0
+    s.t.pageVue = B; s.peindre(); await s.avancer(1200)
+    s.t.poser(B, trait(10, 10)); await s.avancer(700)
+    if (traitsB > 1) { s.t.poser(B, trait(30, 10)); await s.avancer(1) }
+    await s.avancer(500)
+    s.piste.vider(); await s.avancer(1)
+    return { ...s, A, B, de }
+  }
+  const sans = (e: EtatInstruments | null | undefined, n: string) => !e?.has(n)
+
+  for (const neuve of [true, false]) {
+    it(`lecteur (page B ${neuve ? 'neuve' : 'déjà là'}) : l'arrêt en fin de chapitre montre les instruments tels qu'on a quitté la page`, async () => {
+      const s = await deuxPages(neuve)
+      const film = exporter(s.t, { de: s.de, a: s.t.film.length - 1, pages: [s.A, s.B], titre: '' })
+      const kA = film.etapes.findIndex(e => e.p === s.B)              // la dernière image de la page A
+      expect(kA).toBe(2)
+      const apres = film.etapes[kA - 1].apres!
+      expect(apres.some(m => (m as MorceauPoses).n === 'compas' && (m as MorceauPoses).v === 0)).toBe(true)
+      expect(apres.some(m => (m as MorceauPoses).n === 'regle' && (m as MorceauPoses).q === 'corps')).toBe(true)
+      expect(JSON.stringify(film)).not.toContain(`"p":"${s.A}","n"`)  // aucun morceau ne porte de page
+      const b = new Bobine(await lireFilm(await ecrireFilm(film)))
+      expect(b.finDuChapitre(0)).toBe(kA)
+      // Au geste, le compas est là ; à la fin de l'image (fin du chapitre), il est rangé et la règle poussée
+      expect(b.instrumentsAuGeste(kA)!.has('compas')).toBe(true)
+      const fin = b.instruments(kA)!
+      expect(sans(fin, 'compas')).toBe(true)
+      expect(fin.get('regle')!.etat).toMatchObject({ x: 900, y: 700 })
+      // L'épilogue se joue après le geste, à son rythme : le compas part, puis la règle glisse
+      const e = b.epilogue(kA)!
+      expect(e.etatA(-1).has('compas')).toBe(true)
+      expect(e.attente).toBeCloseTo(tasser(1500 - APRES_L_ETAPE, 0), -1)
+      expect(e.duree).toBeGreaterThan(1000); expect(e.duree).toBeLessThan(1300)
+      const mi = e.etatA(e.duree - 250).get('regle')!.etat.x
+      expect(mi).toBeGreaterThan(250); expect(mi).toBeLessThan(850)
+      expect(b.trace(kA)).toBe((b.geste(kA)?.duree ?? 0) + e.attente + e.duree)
+      // Le temps qu'il a montré n'est pas rejoué avant l'image suivante
+      const L = 1500 + 600 + 500 + 16 - APRES_L_ETAPE
+      expect(b.attente(kA + 1)).toBeLessThan(tasser(film.etapes[kA].dt) - 500)
+      expect(b.attente(kA + 1)).toBeCloseTo(tasser(film.etapes[kA].dt - L), -2)
+      // Sur la page B, rien ne reparaît
+      for (let k = kA + 1; k < b.n; k++) expect(sans(b.instruments(k), 'compas')).toBe(true)
+    })
+
+    it(`revue (page B ${neuve ? 'neuve' : 'déjà là'}) : la fin de la partie, l'ouverture de la suivante et l'affiche`, async () => {
+      const s = await deuxPages(neuve)
+      const lecture = lectureDe(s.t, () => s.t.ordre.toArray())
+      const seances = seancesDuFilm(lecture.film)
+      const toute = construireBande(lecture, { genre: 'seance', seance: seances[0], page: null }, seances, p => p)!
+      expect(toute.parties).toHaveLength(2)
+      const f = toute.parties[0].fin, img = toute.images[f]
+      expect(img).toMatchObject({ p: s.A, geste: false, epilogue: true })
+      expect(lecture.film[img.e].t).toBe(lecture.film[toute.images[f - 1].e].t)    // la page après son dernier geste
+      expect(toute.manips![f]!.etatA(-1).has('compas')).toBe(true)
+      expect(sans(toute.etats![f], 'compas')).toBe(true)
+      expect(toute.etats![f].get('regle')!.etat).toMatchObject({ x: 900, y: 700 })
+      expect(toute.total).toBe(4)                                       // ce n'est pas un geste
+      // La partie suivante s'ouvre sur les instruments tels qu'on les a laissés
+      const o = toute.parties[1].debut
+      expect(sans(toute.etats![o], 'compas')).toBe(true)
+      expect(toute.etats![o].get('regle')!.etat).toMatchObject({ x: 900, y: 700 })
+      // L'affiche de la page A, revue seule : comme on l'a quittée
+      const pageA = construireBande(lecture, { genre: 'seance', seance: seances[0], page: s.A }, seances, p => p)!
+      const n = pageA.images.length
+      expect(pageA.images[n - 1].epilogue).toBe(true)
+      expect(sans(pageA.etats![n - 1], 'compas')).toBe(true)
+      expect(pageA.etats![n - 1].get('regle')!.etat).toMatchObject({ x: 900, y: 700 })
+      expect(pageA.bornes).toContain(n - 1)
+    })
+  }
+
+  it('revue, un détour d\'un geste sur une autre page : l\'épilogue, puis l\'image suivante n\'attend pas son temps une seconde fois', async () => {
+    const s = await deuxPages(false, 1)
+    const lecture = lectureDe(s.t, () => s.t.ordre.toArray())
+    const seances = seancesDuFilm(lecture.film)
+    const b = construireBande(lecture, { genre: 'seance', seance: seances[0], page: null }, seances, p => p)!
+    expect(b.parties).toHaveLength(1)
+    const f = b.images.findIndex(i => i.epilogue)
+    expect(b.images[f + 1]).toMatchObject({ p: s.B, geste: true })
+    expect(sans(b.etats![f], 'compas')).toBe(true)
+    const silence = lecture.film[b.images[f + 1].e].t - lecture.film[b.images[f].e].t
+    const L = 1500 + 600 + 500 + 16 - APRES_L_ETAPE
+    expect(b.attentes[f + 1]).toBeCloseTo(tasser(silence - L), -2)
+    expect(b.attentes[f + 1]).toBeLessThan(tasser(silence) - 500)
+  })
+
+  it('au bout du film : l\'épilogue va au plus une minute après le dernier geste, et jamais au-delà de l\'étape suivante', async () => {
+    for (const [attente, part] of [[2000, true], [70_000, false]] as const) {
+      const s = await seance()
+      s.montrer(peint('compas', 0, 0, 0, 100)); await s.avancer(500)
+      s.t.poser(s.page, trait(0, 0)); await s.avancer(1)
+      await s.avancer(attente)
+      s.ranger('compas'); await s.avancer(500)
+      s.piste.vider()
+      const film = exporter(s.t, { ...toutes(s.t), pages: [s.page], titre: '' })
+      expect(!!film.etapes[0].apres).toBe(part)
+      expect(sans(new Bobine(film).instruments(1), 'compas')).toBe(part)
+      // La revue, au bout du film : son affiche aussi
+      const lecture = lectureDe(s.t, () => s.t.ordre.toArray())
+      const seances = seancesDuFilm(lecture.film)
+      const b = construireBande(lecture, { genre: 'seance', seance: seances[0], page: s.page }, seances, p => p)!
+      const n = b.images.length
+      expect(!!b.images[n - 1].epilogue).toBe(part)
+      expect(sans(b.etats![n - 1], 'compas')).toBe(part)
+    }
+    // Une étape du tableau (non publiée) vient avant le rangement : il n'est pas de cette séance
+    const s = await seance()
+    s.montrer(peint('compas', 0, 0, 0, 100)); await s.avancer(500)
+    s.t.poser(s.page, trait(0, 0)); await s.avancer(1000)
+    const C = s.t.ajouterPage('blanc', 1); await s.avancer(1000)
+    s.ranger('compas'); await s.avancer(500)
+    s.piste.vider()
+    const film = exporter(s.t, { de: 1, a: 1, pages: [s.page, C], titre: '' })
+    expect(film.etapes).toHaveLength(1)
+    expect(film.etapes[0].apres).toBeUndefined()
+  })
+})
+
+describe('une piste de toute une année', () => {
+  it('ce qui sert entre deux heures répond comme toute la piste (état, rang, fenêtres), pour des pistes au hasard', () => {
+    let graine = 7
+    const hasard = () => { graine = (graine * 16807) % 2147483647; return graine / 2147483647 }
+    const cles: [NomInstrument, boolean][] = [['regle', false], ['compas', false], ['equerre', false], ['regle', true], ['rapporteur', true]]
+    for (let essai = 0; essai < 40; essai++) {
+      const morceaux: Morceau[] = []
+      for (const [n, c] of cles) {
+        let t = Math.floor(hasard() * 3000)
+        while (t < 100_000) {
+          const page = hasard() < 0.5 ? 'P1' : 'P2'
+          const r = hasard()
+          const base = { t, p: page, n, ...(c ? { c: 1 as const } : {}) }
+          if (r < 0.12) { morceaux.push({ ...base, v: 0, d: [] }); t += 1 + Math.floor(hasard() * 4000); continue }
+          const nb = 1 + Math.floor(hasard() * 6), poses = []
+          for (let i = 0; i < nb; i++) poses.push({ t: i * Math.floor(1 + hasard() * 300), x: Math.round(hasard() * 900), y: Math.round(hasard() * 600), a: Math.round(hasard() * 6000) / 1000, r: n === 'compas' ? Math.round(hasard() * 300) : 0 })
+          const m: MorceauPoses = { ...base, d: encoderPoses(poses, n === 'compas') }
+          if (!c && r < 0.55) m.q = 'corps'
+          if (hasard() < 0.03) m.d = [0, 1, 2]                          // abîmé : laissé de côté
+          morceaux.push(m)
+          t += poses[poses.length - 1].t + 1 + Math.floor(hasard() * 5000)
+        }
+      }
+      for (let i = 0; i < 30; i++) {
+        const t = Math.floor(hasard() * 100_000), arc = hasard() < 0.5
+        const ech = Array.from({ length: 2 + Math.floor(hasard() * 5) }, (_, j) => ({ t: j * Math.floor(1 + hasard() * 2000), v: arc ? [hasard() * 3] : [hasard() * 500, hasard() * 500] }))
+        morceaux.push({ t, p: hasard() < 0.5 ? 'P1' : 'P2', k: arc ? 'arc' : 'seg', s: ['#000', 2], g: arc ? [0, 0, 1000, 0] : [0, 0], d: encoderTrace(ech, arc) })
+      }
+      // L'ordre de la piste : celui où les morceaux se ferment, à peu près celui du temps
+      morceaux.sort((x, y) => x.t - y.t + (hasard() - 0.5) * 3000)
+      const a = 10_000 + Math.floor(hasard() * 60_000), b = a + Math.floor(hasard() * 30_000)
+      const choisis = morceauxEntre(morceaux, a, b)
+      const toute = new LecturePiste(morceaux), partie = new LecturePiste(choisis)
+      expect(choisis.length).toBeLessThan(morceaux.length)
+      const vu = (e: EtatInstruments) => [...e.values()].sort((x, y) => x.rang - y.rang).map(i => ({ n: i.n, c: i.c, q: i.q, ...i.etat }))
+      for (let k = 0; k <= 20; k++) {
+        const t = a + (b - a) * k / 20
+        expect(vu(partie.etatA(t))).toEqual(vu(toute.etatA(t)))
+        const x = a + Math.floor(hasard() * (b - a)), y = x + Math.floor(hasard() * (b - x))
+        for (const p of [null, 'P1', 'P2']) {
+          const f1 = toute.dans(x, y, p), f2 = partie.dans(x, y, p)
+          expect(JSON.stringify(f2)).toBe(JSON.stringify(f1))
+        }
+        expect(partie.premierDans(x, y, 'P1')).toBe(toute.premierDans(x, y, 'P1'))
+      }
+    }
+  })
+
+  it('l\'export d\'une séance et sa revue ne décodent pas le passé de la piste', async () => {
+    const s = await seance()
+    // Deux cents jours d'instruments, avant la séance : chaque morceau compte ses lectures
+    let lus = 0
+    const passe: Morceau[] = []
+    for (let i = 0; i < 2000; i++) {
+      const d = encoderPoses([{ t: 0, x: i % 500, y: 0, a: 0, r: 0 }, { t: 400, x: i % 500 + 40, y: 10, a: 0.1, r: 0 }], i % 2 === 0)
+      const m = { t: DATE0 - 200 * 86_400_000 + i * 8_000_000, p: s.page, n: i % 2 ? 'regle' : 'compas', q: 'corps' } as MorceauPoses
+      Object.defineProperty(m, 'd', { get: () => { lus++; return d }, enumerable: true })
+      passe.push(m)
+    }
+    s.t.noterPiste(passe)
+    await s.avancer(1000)
+    s.montrer(peint('regle', 0, 0)); await s.avancer(500)
+    s.t.poser(s.page, trait(0, 0)); await s.avancer(400)
+    await s.mener('regle', { x: 300, y: 100, a: 0.2, r: 0 }, 400); await s.avancer(300)
+    s.t.poser(s.page, trait(20, 0)); await s.avancer(1)
+    s.piste.vider(); await s.avancer(1)
+    lus = 0
+    const film = exporter(s.t, { de: 1, a: s.t.film.length - 1, pages: [s.page], titre: '' })
+    expect(film.etapes[1].inst).toBeTruthy()
+    expect(film.instruments!.map(m => (m as MorceauPoses).n).sort()).toEqual(['compas', 'regle'])   // l'état d'avant, lui, est là
+    expect(lus).toBeLessThanOrEqual(4)
+    lus = 0
+    const lecture = lectureDe(s.t, () => s.t.ordre.toArray())
+    const seances = seancesDuFilm(lecture.film)
+    const b = construireBande(lecture, { genre: 'seance', seance: seances[0], page: s.page }, seances, p => p)!
+    expect(b.manips!.some(m => m)).toBe(true)
+    expect(lus).toBeLessThanOrEqual(4)
   })
 })
 
@@ -503,7 +864,7 @@ describe('la compatibilité', () => {
     // c'est exactement le film sans instruments
     const ancien = JSON.parse(JSON.stringify(film)) as FilmEleve
     delete ancien.instruments; delete ancien.avant
-    for (const e of ancien.etapes) delete e.inst
+    for (const e of ancien.etapes) { delete e.inst; delete e.apres }
     expect(JSON.stringify(ancien)).toBe(JSON.stringify(exporter(s.t, choix, { instruments: false })))
     // Les temps d'un lecteur ancien (qui ignore inst) sont ceux du film sans instruments
     const b = new Bobine(ancien)
@@ -648,7 +1009,7 @@ describe('le lecteur des élèves : le temps des instruments', () => {
     // Le compas tourne de 0 à −1,5 rad en 1 s ; l'arc suit sa mine
     const pts = Array.from({ length: 11 }, (_, i) => ({ t: 2000 + i * 100, x: 0, y: 0, a: -0.15 * i, r: 160 }))
     const m = morceau('compas', pts, 'tete')
-    const arc: Morceau = { t: 2000, k: 'arc', s: ['#1f5fbf', 2.5], g: [0, 0, 1600, 0], d: [0, 0, ...Array.from({ length: 10 }, () => [100, -1500]).flat()] }
+    const arc: Morceau = { t: 2000, k: 'arc', s: ['#1f5fbf', 2.5], g: [0, 0, 1600, 0], d: encoderTrace(pts.map(p => ({ t: p.t, v: [p.a] })), true) }
     const c = cercle(0, 0, 160, { a0: 0, a1: -1.5 })
     const b = new Bobine(filmDe([{ dt: 0, p: 'P', o: [] }, { dt: 3100, p: 'P', o: [['=', c]], inst: [m, arc] }], [morceau('compas', [{ t: 0, x: 0, y: 0, a: 0, r: 160 }])]))
     const g = b.geste(2)!
@@ -657,7 +1018,10 @@ describe('le lecteur des élèves : le temps des instruments', () => {
       expect(f?.type).toBe('cercle')
       if (f?.type === 'cercle') expect(f.arc!.a1).toBeCloseTo(a, 6)
     }
-    expect(g.apercuA(g.duree)).toBeNull()                       // fini : l'arc a rejoint la page
+    // Arrêté 100 ms avant la fin de la manipulation : l'arc reste jusqu'au bout,
+    // où la figure posée le remplace (le lecteur efface alors l'aperçu)
+    const fin = g.apercuA(g.duree)
+    expect(fin?.type === 'cercle' && fin.arc!.a1).toBeCloseTo(-1.5, 4)
     expect(dejaTracee(c, g.traces)).toBe(true)
     expect(b.tracees(2).has(c.id)).toBe(true)
     expect(dejaTracee(cercle(0, 0, 175), g.traces)).toBe(false)
@@ -694,7 +1058,7 @@ describe('la revue : les instruments', () => {
     const s = await seance()
     for (let i = 0; i < 8; i++) { s.t.poser(s.page, trait(i * 20, 0)); await s.avancer(400 + i * 900) }
     const sans = lectureDe(s.t, () => s.t.ordre.toArray())
-    expect(sans.piste).toBeNull()
+    expect(sans.pisteEntre(-Infinity, Infinity)).toBeNull()
     const seances = seancesDuFilm(sans.film)
     const portion = { genre: 'seance' as const, seance: seances[0], page: s.page }
     const b0 = construireBande(sans, portion, seances, p => p)!
@@ -725,7 +1089,7 @@ describe('la revue : les instruments', () => {
     expect(b.traces[k]).toBe(g.duree)
     expect(b.attentes[k]).toBe(ENTREE + g.duree)                // la première image d'une partie
     // L'état à chaque image est l'état vrai à son étape
-    const piste = lecture.piste!
+    const piste = lecture.pisteEntre(-Infinity, Infinity)!
     b.images.forEach((img, i) => {
       if (img.e < 0) return
       const vrai = piste.etatA(lecture.film[img.e].t)
@@ -739,6 +1103,21 @@ describe('la revue : les instruments', () => {
       const reste = 300
       expect(horlogeAuDepart(ech, dep, k, reste, 100)).toBeCloseTo(ech[k] - reste, 6)
     }
+  })
+
+  it('l\'histoire d\'une page : ce qui s\'est fait sur une autre page n\'est pas rejoué, l\'état vrai reparaît', async () => {
+    const s = await seanceType()
+    const lecture = lectureDe(s.t, () => s.t.ordre.toArray())
+    const seances = seancesDuFilm(lecture.film)
+    const b = construireBande(lecture, { genre: 'page', page: s.A }, seances, p => p)!
+    const k2 = b.images.findIndex(i => i.geste && lecture.film[i.e].t === s.T2)
+    expect(k2).toBeGreaterThan(0)
+    expect(b.images.every(i => i.p === s.A)).toBe(true)
+    // La règle a bougé sur la page B : rien à rejouer avant le trait de la page A…
+    expect(b.manips![k2]).toBeNull()
+    // … mais elle y est, à sa vraie place
+    expect(b.etats![k2].get('regle')!.etat).toMatchObject({ x: 600, y: 120 })
+    expect(b.etats![k2 - 1].get('regle')!.etat.x).toBeCloseTo(200, 6)
   })
 
   it('le pas : un long temps immobile dans la fenêtre en commence un', async () => {

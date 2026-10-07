@@ -11,16 +11,17 @@
 // =============================================================
 import type { Etape, ImagePage, Tableau } from '../document'
 import type { Fond, Forme } from '../types'
-import { LecturePiste } from '../revoir/instruments-film'
+import { LecturePiste, morceauxEntre } from '../revoir/instruments-film'
 import type { ImageBande } from './bande'
 
 /** Tout ce que la revue peut demander au tableau, et rien d'autre */
 export interface LectureSeule {
   /** Le film, copié et figé à l'ouverture */
   readonly film: readonly Etape[]
-  /** La piste des instruments, copiée à l'ouverture et relue à la première
-   *  question (null : elle est vide, les instruments ne se rejouent pas) */
-  readonly piste: LecturePiste | null
+  /** La piste des instruments, copiée à l'ouverture ; on n'en relit que ce
+   *  qui sert entre les heures de et a (ms), à la première question sur elles
+   *  (null : rien, les instruments ne se rejouent pas) */
+  pisteEntre(de: number, a: number): LecturePiste | null
   /** La page `page` juste après l'étape i ; null si i est hors du film ou si la page n'existait pas */
   page(i: number, page: string): ImagePage | null
   /** Les pages du tableau aujourd'hui, dans leur ordre */
@@ -57,12 +58,21 @@ export function lectureDe(t: Tableau, pagesActuelles: () => readonly string[], f
   fige.forEach((e, i) => { if (e.page && !premieres.has(e.page)) premieres.set(e.page, i) })
   const verdicts = new Map<number, boolean>()
   const morceaux = t.piste.toArray()
-  let piste: LecturePiste | null | undefined
+  /** Les dernières pistes relues, par intervalle (les plus anciennes s'en vont d'abord) */
+  const pistes = new Map<string, LecturePiste | null>()
   return {
     film: fige,
-    get piste() {
-      if (piste === undefined) { const l = morceaux.length ? new LecturePiste(morceaux) : null; piste = l && !l.vide ? l : null }
-      return piste
+    pisteEntre(de, a) {
+      if (!morceaux.length) return null
+      const cle = `${de}|${a}`
+      let l = pistes.get(cle)
+      if (l === undefined) {
+        const lue = new LecturePiste(morceauxEntre(morceaux, de, a))
+        l = lue.vide ? null : lue
+        pistes.set(cle, l)
+        if (pistes.size > 8) pistes.delete(pistes.keys().next().value as string)
+      }
+      return l
     },
     page,
     pagesActuelles,

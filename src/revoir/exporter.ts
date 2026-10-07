@@ -16,7 +16,7 @@ import type { Chapitre, EtapeFilm, FilmEleve, Op, PageFilm } from './format'
 import { FORMAT, VERSION } from './format'
 import { lireTemps } from './main-levee'
 import type { EtatInstruments, InstrumentVu, Morceau, Piece } from './instruments-film'
-import { IndexPieces, LecturePiste, cleDe, ecrireMorceau, memeEtat } from './instruments-film'
+import { APRES_L_ETAPE, IndexPieces, LecturePiste, cleDe, ecrireMorceau, memeEtat, morceauxEntre } from './instruments-film'
 
 /** Les découpages proposés, en minutes : un silence plus long sépare deux
  *  séances. Le premier est celui qu'on prend sans rien régler. */
@@ -178,7 +178,10 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
     images,
   }
   if (options.instruments !== false && tableau.piste.length && etapes.length) {
-    const i = instrumentsDuFilm(new LecturePiste(tableau.piste.toArray()), etapes, sources.map(k => film[k].t), film[sources[0] - 1]?.t ?? -Infinity)
+    const heures = sources.map(k => film[k].t)
+    // De la piste, on ne relit que ce qui sert à la séance : elle garde toute l'année
+    const piste = new LecturePiste(morceauxEntre(tableau.piste.toArray(), heures[0] - AVANT_PROPOS, heures[heures.length - 1] + APRES_L_ETAPE + EPILOGUE))
+    const i = instrumentsDuFilm(piste, etapes, heures, film[sources[0] - 1]?.t ?? -Infinity, film[sources[sources.length - 1] + 1]?.t ?? Infinity)
     if (i.depart.length) resultat.instruments = i.depart
     if (i.avant > 0) resultat.avant = i.avant
   }
@@ -188,29 +191,39 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
 /** Au plus ce temps d'avant le premier geste (ms) : on rejoue la mise en place
  *  des instruments qui le précède (la règle qu'on pose avant le premier trait) */
 export const AVANT_PROPOS = 60_000
+/** Au bout du film, au plus ce temps après le dernier geste (ms) : on rejoue
+ *  les instruments qu'on range après lui (l'épilogue de sa page) */
+export const EPILOGUE = 60_000
 
 /** Les instruments du film élève. `heures` : l'heure de l'étape d'où vient
- *  chaque geste ; `precedente` : celle de l'étape d'avant le premier.
+ *  chaque geste ; `precedente` : celle de l'étape d'avant le premier ;
+ *  `suivante` : celle de l'étape du tableau qui suit le dernier.
  *  Le geste j rejoue ce que les instruments ont fait dans ]heure j−1, heure j]
  *  (pour le premier : l'avant-propos, au plus une minute, après l'étape
  *  d'avant), et seulement sur la page de ce geste, qui est publiée : un
  *  mouvement fait sur une autre page, ou une page non publiée, ne part pas.
  *  On simule ce que le lecteur aura reconstruit ; s'il diffère de l'état vrai
  *  à la fin d'un geste (un instrument bougé ailleurs), un « saut » remet l'état
- *  vrai, celui que la classe avait sous les yeux à ce moment-là. Les morceaux
- *  sont ceux de la piste, coupés aux bords de leur fenêtre, datés depuis
- *  l'image d'avant, sans page. Écrit dans les gestes (inst) ; rend l'état de
- *  départ et l'avant-propos. */
-export function instrumentsDuFilm(piste: LecturePiste, etapes: EtapeFilm[], heures: number[], precedente: number): { depart: Morceau[]; avant: number } {
-  const T0 = heures[0]
-  const debut0 = Math.max(T0 - AVANT_PROPOS, precedente)
-  const premier = piste.premierDans(debut0, T0, etapes[0].p)
+ *  vrai, celui que la classe avait sous les yeux à ce moment-là. Le dernier
+ *  geste d'une page (on la quitte ensuite, ou le film finit) emporte aussi son
+ *  épilogue : ce que les instruments font encore sur cette page jusqu'au geste
+ *  suivant (au bout du film : au plus une minute, jusqu'à l'étape suivante du
+ *  tableau). Les morceaux sont ceux de la piste, coupés aux bords de leur
+ *  fenêtre, datés depuis l'image d'avant (l'épilogue : depuis la fin de la
+ *  fenêtre du geste), sans page. Écrit dans les gestes (inst, apres) ; rend
+ *  l'état de départ et l'avant-propos. */
+export function instrumentsDuFilm(piste: LecturePiste, etapes: EtapeFilm[], heures: number[], precedente: number, suivante = Infinity): { depart: Morceau[]; avant: number } {
+  // Chaque fenêtre se coupe juste après son étape : la dernière pose du geste
+  // est peinte une image d'écran après lui (voir APRES_L_ETAPE)
+  const fin = (j: number) => heures[j] + APRES_L_ETAPE
+  const debut0 = Math.max(heures[0] - AVANT_PROPOS, precedente + APRES_L_ETAPE)
+  const premier = piste.premierDans(debut0, fin(0), etapes[0].p)
   // La fenêtre du premier geste commence juste avant le premier mouvement
-  const origine = premier === null ? T0 : Math.max(debut0, premier - 1)
+  const origine = premier === null ? fin(0) : Math.max(debut0, premier - 1)
   let sim: EtatInstruments = piste.etatA(origine)
   const depart = [...sim.values()].sort((x, y) => x.rang - y.rang).map(i => instantane(i, 0))
   etapes.forEach((g, j) => {
-    const a = j ? heures[j - 1] : origine, b = heures[j]
+    const a = j ? fin(j - 1) : origine, b = fin(j)
     const d = piste.dans(a, b, g.p)
     const morceaux: { t: number; m: Morceau }[] = []
     for (const x of d.poses) morceaux.push({ t: x.t0, m: ecrireMorceau(x, a) })
@@ -226,8 +239,17 @@ export function instrumentsDuFilm(piste: LecturePiste, etapes: EtapeFilm[], heur
     }
     sim = vrai
     if (morceaux.length) g.inst = morceaux.map(x => x.m)
+    // L'épilogue : au dernier geste d'une page, ce que les instruments y font
+    // encore avant qu'on la quitte (on range l'équerre, on pousse la règle)
+    const dernier = j + 1 >= etapes.length
+    if (!dernier && etapes[j + 1].p === g.p) return
+    const E = dernier ? Math.min(b + EPILOGUE, suivante + APRES_L_ETAPE) : fin(j + 1)
+    const e = E > b ? piste.dans(b, E, g.p) : null
+    if (!e || (!e.poses.length && !e.traces.length)) return
+    g.apres = [...e.poses, ...e.traces].sort((x, y) => x.t0 - y.t0).map(x => ecrireMorceau(x, b))
+    if (e.poses.length) sim = new IndexPieces(e.poses, sim).fin
   })
-  return { depart, avant: T0 - origine }
+  return { depart, avant: fin(0) - origine }
 }
 
 /** Un instrument posé là, d'un coup, à l'instant t de la fenêtre (saut : un raccord) */

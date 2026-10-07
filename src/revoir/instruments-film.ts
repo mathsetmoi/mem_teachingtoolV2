@@ -14,13 +14,21 @@
 // - v : 0 s'il est rangé (pas de poses) ; s : 1 pour un « saut » (film
 //   seulement) : l'état vrai remis en place, sans mouvement à montrer ;
 // - d : les poses, à plat, des entiers : [dt, x, y, a, r] (r pour le compas
-//   seulement). x, y, r en dixièmes d'unité monde, a en dix-millièmes de
-//   radian. La première est absolue (dt = 0), les suivantes des écarts.
-//   L'angle est « déroulé » : il ne saute jamais de 2π d'une pose à l'autre.
+//   seulement). x, y, r en dixièmes d'unité monde (0,025 mm), a en millièmes
+//   de degré : un angle pris à la pastille ↻ (toujours un nombre entier de
+//   degrés) se relit exactement, et l'instrument se redessine au pixel près.
+//   La première est absolue (dt = 0), les suivantes des écarts. L'angle est
+//   « déroulé » : il ne saute jamais d'un tour d'une pose à l'autre.
 // Le tracé fait aux instruments (l'arc sous la mine, le trait le long de la
 // règle) a ses propres morceaux : { t, p, k: 'arc' | 'seg', s: [couleur,
 // taille], g, d }. Arc : g = [cx, cy, r, a0], d = [dt, a1]… ; segment :
-// g = [ax, ay], d = [dt, zx, zy]… (écarts, comme les poses).
+// g = [ax, ay], d = [dt, zx, zy]… (mêmes unités, écarts comme les poses).
+//
+// L'épilogue d'une page : ce que les instruments y font après son dernier
+// geste, avant qu'on la quitte (on range l'équerre, on pousse la règle). Au
+// replay, il se joue sur cette page, après ce geste ; l'image où l'on
+// s'arrête (fin de chapitre, fin de partie, affiche) montre les instruments
+// tels que la classe les a vus en quittant la page.
 //
 // Le rejeu : le geste aux instruments fait partie du tracé de l'image, comme
 // le trait écrit à la main (voir main-levee.ts). Les mouvements passent à leur
@@ -59,6 +67,17 @@ const PARTIES: ReadonlySet<string> = new Set(['corps', 'rotation', 'pointe', 'mi
 /** Les tolérances : deux poses plus proches que ceci sont la même à l'œil
  *  (0,5 unité = 0,12 mm ; 2 mrad) */
 export const TOLERANCE = { xy: 0.5, a: 0.002, r: 0.5 }
+/** Une étape du film est notée au lever du pointeur ; la couche des
+ *  instruments montre la dernière pose du geste à l'image d'écran suivante,
+ *  un peu après. Ce que la piste note dans ce délai (ms) appartient encore au
+ *  geste : les fenêtres du replay se coupent juste après chaque étape. */
+export const APRES_L_ETAPE = 50
+/** Un tracé qui s'arrête si peu de temps (ms) avant la fin de la manipulation
+ *  est celui que la figure du geste remplace : il reste à l'écran jusqu'à
+ *  elle. La piste note l'arrêt d'un crayon resté immobile plus de 60 ms ; le
+ *  geste est noté au lever, et la manipulation montrée finit APRES_L_ETAPE
+ *  après lui : au plus 110 ms, et une image d'écran de marge. */
+const JUSQUA_LA_FIGURE = 150
 /** Le plus grand entier accepté dans une pose (au-delà : un fichier abîmé) */
 const BORNE = 1e10
 /** Le plus long écart entre deux poses d'un morceau (ms) */
@@ -79,7 +98,11 @@ export function enrouler(a: number): number {
 }
 
 const d10 = (v: number) => Math.round(v * 10)
-const d4 = (a: number) => Math.round(a * 1e4)
+/** Un angle (radians) en millièmes de degré, et retour. Un nombre entier de
+ *  degrés d revient tel que le tableau le calcule (d × π / 180), au bit près. */
+export const versMilliDegres = (a: number) => Math.round(a * 180_000 / Math.PI)
+export const depuisMilliDegres = (q: number) => (q / 1000) * Math.PI / 180
+const enMilli = versMilliDegres
 
 /** Les poses d'un morceau, à plat (voir le format). Les heures sont arrondies
  *  depuis la première pose, pas d'un écart à l'autre : rien ne s'accumule. */
@@ -89,7 +112,7 @@ export function encoderPoses(poses: readonly Pose[], avecR: boolean): number[] {
   const t0 = poses[0].t
   let pt = 0, px = 0, py = 0, pa = 0, pr = 0
   poses.forEach((p, i) => {
-    const t = Math.round(p.t - t0), x = d10(p.x), y = d10(p.y), a = d4(p.a), r = d10(p.r)
+    const t = Math.round(p.t - t0), x = d10(p.x), y = d10(p.y), a = enMilli(p.a), r = d10(p.r)
     if (i === 0) { d.push(0, x, y, a); if (avecR) d.push(r) }
     else { d.push(Math.max(0, t - pt), x - px, y - py, a - pa); if (avecR) d.push(r - pr) }
     pt = Math.max(pt, t); px = x; py = y; pa = a; pr = r
@@ -115,7 +138,7 @@ export function decoderPoses(d: unknown, avecR: boolean): Pose[] | null {
     if (dt < 0 || dt > DT_MAX) return null
     t += dt; x += d[i + 1]; y += d[i + 2]; a += d[i + 3]; if (avecR) rr += d[i + 4]
     if (Math.abs(x) > BORNE || Math.abs(y) > BORNE || Math.abs(a) > BORNE || Math.abs(rr) > BORNE || rr < 0) return null
-    r.push({ t, x: x / 10, y: y / 10, a: a / 1e4, r: rr / 10 })
+    r.push({ t, x: x / 10, y: y / 10, a: depuisMilliDegres(a), r: rr / 10 })
   }
   return r
 }
@@ -127,7 +150,7 @@ export interface Echantillon { t: number; v: number[] }
 export function encoderTrace(ech: readonly Echantillon[], angle: boolean): number[] {
   const d: number[] = []
   if (!ech.length) return d
-  const t0 = ech[0].t, q = angle ? d4 : d10
+  const t0 = ech[0].t, q = angle ? enMilli : d10
   let pt = 0, prec: number[] = []
   ech.forEach((e, i) => {
     const t = Math.round(e.t - t0), v = e.v.map(q)
@@ -148,7 +171,7 @@ function decoderTrace(d: unknown, angle: boolean): Echantillon[] | null {
     if (d[i] < 0 || d[i] > DT_MAX) return null
     t += d[i]
     for (let j = 0; j < n; j++) v[j] += d[i + 1 + j]
-    r.push({ t, v: v.map(x => angle ? x / 1e4 : x / 10) })
+    r.push({ t, v: v.map(x => angle ? depuisMilliDegres(x) : x / 10) })
   }
   return r
 }
@@ -196,7 +219,7 @@ export function lireMorceau(m: unknown, relatif = false): Piece | PieceTrace | n
     if (arc && o.g[2] < 0) return null
     const ech = decoderTrace(o.d, arc)
     if (!ech) return null
-    const g = o.g.map((v, i) => arc && i === 3 ? v / 1e4 : v / 10)
+    const g = o.g.map((v, i) => arc && i === 3 ? depuisMilliDegres(v) : v / 10)
     return { p, t0: t, k: o.k, couleur: s[0], taille: s[1], g, ech: ech.map(e => ({ t: t + e.t, v: e.v })) }
   }
   if (typeof o.n !== 'string' || !NOMS.has(o.n)) return null
@@ -219,7 +242,7 @@ export function ecrireMorceau(x: Piece | PieceTrace, origine = 0, avecPage = fal
   const t = Math.round(x.t0 - origine)
   if ('k' in x) {
     const arc = x.k === 'arc'
-    const m: MorceauTrace = { t, k: x.k, s: [x.couleur, x.taille], g: x.g.map((v, i) => arc && i === 3 ? d4(v) : d10(v)), d: encoderTrace(x.ech, arc) }
+    const m: MorceauTrace = { t, k: x.k, s: [x.couleur, x.taille], g: x.g.map((v, i) => arc && i === 3 ? enMilli(v) : d10(v)), d: encoderTrace(x.ech, arc) }
     if (avecPage && x.p !== null) m.p = x.p
     return m
   }
@@ -300,16 +323,6 @@ export class IndexPieces {
   get fin(): EtatInstruments { return this.etatA(Infinity) }
 }
 
-/** Deux états pareils à l'œil : les mêmes instruments, aux mêmes poses */
-export function memesEtats(a: EtatInstruments, b: EtatInstruments): boolean {
-  if (a.size !== b.size) return false
-  for (const [cle, x] of a) {
-    const y = b.get(cle)
-    if (!y || !memeEtat(x.etat, y.etat)) return false
-  }
-  return true
-}
-
 /** Les instruments d'un état dans l'ordre où on les dessine : ceux du
  *  professeur, puis ceux du constructeur, chacun par rang */
 export function dansLOrdre(e: EtatInstruments): { prof: InstrumentVu[]; constructeur: InstrumentVu[] } {
@@ -348,6 +361,63 @@ export function couperTrace(x: PieceTrace, a: number, b: number): PieceTrace | n
   for (const s of e) if (s.t > a && s.t <= b) ech.push(s)
   if (derniere > b && ech[ech.length - 1]?.t !== b) ech.push({ t: b, v: val(b) })
   return { ...x, t0: ech[0].t, ech }
+}
+
+/** L'heure où finit un tracé brut, depuis son début : la somme de ses écarts
+ *  de temps, sans rien décoder (0 s'il est abîmé : on le relira pour voir) */
+function dureeBrute(d: unknown, pas: number): number {
+  if (!Array.isArray(d)) return 0
+  let t = 0
+  for (let i = 0; i < d.length; i += pas) { const dt = d[i]; if (typeof dt === 'number' && dt > 0) t += dt }
+  return t
+}
+
+/** Les morceaux bruts de la piste qui servent entre les heures a et b (ms) :
+ *  ceux qui commencent entre elles, les tracés commencés avant qui durent
+ *  encore en a, et, pour chaque instrument, ce qui fixe son état en a — son
+ *  dernier morceau d'avant (le seul qui puisse durer encore : les morceaux
+ *  d'un instrument ne se chevauchent pas), et celui qui l'a mis dessus la
+ *  pile en dernier (son rang). On ne lit que les en-têtes, et les écarts de
+ *  temps des tracés ; on ne décode que ces quelques morceaux d'avant a. Une
+ *  LecturePiste de ce qui est rendu répond, pour toute heure de [a, b], comme
+ *  celle de toute la piste : l'export d'une séance ou sa revue ne relisent pas
+ *  toute l'année. L'ordre de la piste est gardé. */
+export function morceauxEntre(morceaux: readonly unknown[], a: number, b: number): unknown[] {
+  const garde = new Uint8Array(morceaux.length)
+  /** Par instrument, ses morceaux commencés avant a */
+  const avant = new Map<string, number[]>()
+  const t = (i: number) => (morceaux[i] as { t: number }).t
+  morceaux.forEach((m, i) => {
+    if (!m || typeof m !== 'object') return
+    const o = m as Record<string, unknown>
+    if (typeof o.t !== 'number' || !(o.t <= b)) return
+    if (o.t >= a) { garde[i] = 1; return }
+    if (o.k !== undefined) { if (o.t + dureeBrute(o.d, o.k === 'arc' ? 2 : 3) >= a) garde[i] = 1; return }
+    if (typeof o.n !== 'string') return
+    const cle = cleDe(o.n as NomInstrument, o.c === 1)
+    let l = avant.get(cle)
+    if (!l) avant.set(cle, l = [])
+    l.push(i)
+  })
+  for (const l of avant.values()) {
+    // Dans l'ordre du temps, et de la piste à égalité (celui d'IndexPieces) ;
+    // on remonte depuis le dernier morceau lisible jusqu'à celui qui l'a mis dessus
+    l.sort((x, y) => t(x) - t(y) || x - y)
+    let dernier = -1, dessus = -1
+    for (let j = l.length - 1; j >= 0; j--) {
+      const x = lireMorceau(morceaux[l[j]])
+      if (!x || 'k' in x) continue
+      if (dernier < 0) {
+        dernier = l[j]
+        if (!x.visible) break                   // rangé : son rang ne compte plus
+      } else if (!x.visible) break              // il a reparu juste après : c'est là qu'il est passé dessus
+      dessus = l[j]
+      if (x.q !== null) break                   // pris en main : il est passé dessus
+    }
+    if (dernier >= 0) garde[dernier] = 1
+    if (dessus >= 0) garde[dessus] = 1
+  }
+  return morceaux.filter((_, i) => garde[i])
 }
 
 /** La piste du tableau, relue : on la lit une fois, et l'on y cherche l'état
@@ -546,12 +616,21 @@ export function horaire(poses: readonly Piece[], traces: readonly PieceTrace[], 
     return s.t1 > s.t0 ? s.r0 + (t - s.t0) / (s.t1 - s.t0) * (s.r1 - s.r0) : s.r1
   }
   const etatA = (t: number) => index.etatA(Math.min(F, reel(t)))
+  // Le dernier tracé de la fenêtre, s'il s'arrête juste avant la fin de la
+  // manipulation, reste à l'écran jusqu'au bout : au tableau, la figure posée
+  // au lever le remplace dans la même image. Un tracé abandonné plus tôt (trop
+  // court pour poser une figure) s'efface à son arrêt, comme au tableau.
+  const finDu = (x: PieceTrace) => x.ech[x.ech.length - 1].t
+  let tenu: PieceTrace | null = null
+  for (const x of traces) if (finDu(x) <= F && (!tenu || finDu(x) >= finDu(tenu))) tenu = x
+  if (tenu && F - finDu(tenu) > JUSQUA_LA_FIGURE) tenu = null
   const apercuA = (t: number): Figure | null => {
     const r = reel(t)
     for (let i = traces.length - 1; i >= 0; i--) {
       const v = valeurDuTrace(traces[i], r)
       if (v) return figureDuTrace(traces[i], v)
     }
+    if (tenu && r >= finDu(tenu)) return figureDuTrace(tenu, tenu.ech[tenu.ech.length - 1].v)
     return null
   }
   const finies = traces.filter(x => x.ech[0].t <= F).map(x => figureDuTrace(x, x.ech[x.ech.length - 1].v))
@@ -576,13 +655,37 @@ export function dejaTracee(f: Figure, traces: readonly Figure[]): boolean {
   return false
 }
 
+/** L'heure où finit la dernière de ces pièces (ms ; 0 : aucune) */
+export function finDesPieces(poses: readonly Piece[], traces: readonly PieceTrace[]): number {
+  let f = 0
+  for (const x of poses) f = Math.max(f, x.poses.length ? x.poses[x.poses.length - 1].t : x.t0)
+  for (const x of traces) f = Math.max(f, x.ech[x.ech.length - 1].t)
+  return f
+}
+
 // ---------- Le film élève ----------
+/** Les pièces d'une fenêtre */
+export interface Fenetre { poses: Piece[]; traces: PieceTrace[] }
+
 /** Les instruments d'un film élève, relus et vérifiés : l'état à l'image 0,
- *  et pour chaque geste, ses pièces (datées depuis l'image d'avant). */
+ *  et pour chaque geste, ses pièces (datées depuis l'image d'avant) et son
+ *  épilogue (apres, daté depuis la fin de la fenêtre du geste). */
 export interface InstrumentsDuFilm {
   depart: EtatInstruments
   avant: number
-  etapes: ({ poses: Piece[]; traces: PieceTrace[] } | null)[]
+  etapes: ((Fenetre & { apres: Fenetre | null }) | null)[]
+}
+
+/** Les morceaux d'une fenêtre du film, relus ; null au moindre défaut */
+function lireFenetre(inst: unknown): Fenetre | null {
+  if (!Array.isArray(inst)) return null
+  const poses: Piece[] = [], traces: PieceTrace[] = []
+  for (const m of inst) {
+    const x = lireMorceau(m, true)
+    if (!x) return null
+    if ('k' in x) traces.push(x); else poses.push(x)
+  }
+  return { poses, traces }
 }
 
 /** Relit les instruments d'un film. Au moindre défaut, null : le film se
@@ -603,17 +706,13 @@ export function lireInstruments(film: { instruments?: unknown; avant?: unknown; 
   }
   const etapes: InstrumentsDuFilm['etapes'] = []
   for (const e of film.etapes) {
-    const inst = e && typeof e === 'object' ? (e as { inst?: unknown }).inst : undefined
-    if (inst === undefined) { etapes.push(null); continue }
-    if (!Array.isArray(inst)) return null
+    const o = e && typeof e === 'object' ? e as { inst?: unknown; apres?: unknown } : {}
+    if (o.inst === undefined && o.apres === undefined) { etapes.push(null); continue }
     present = true
-    const poses: Piece[] = [], traces: PieceTrace[] = []
-    for (const m of inst) {
-      const x = lireMorceau(m, true)
-      if (!x) return null
-      if ('k' in x) traces.push(x); else poses.push(x)
-    }
-    etapes.push({ poses, traces })
+    const w = o.inst === undefined ? { poses: [], traces: [] } : lireFenetre(o.inst)
+    const apres = o.apres === undefined ? null : lireFenetre(o.apres)
+    if (!w || (o.apres !== undefined && !apres)) return null
+    etapes.push({ ...w, apres })
   }
   return present ? { depart, avant, etapes } : null
 }
