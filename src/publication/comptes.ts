@@ -25,22 +25,22 @@ export interface Compte {
 }
 
 export const COMPTES: Compte[] = [
-  // Le compte mathsetmoi : son relais « MEM - Relais replay » reste à déployer
-  { cle: 'mem', nom: 'Drive personnel', dossier: 'MEM - Replay séances', relais: '' },
-  // Le compte du lycée, déployé le 7 octobre 2026 (à mettre à jour en version 3)
-  { cle: 'lfb', nom: 'Drive du lycée', dossier: 'LFB - Replay séances', relais: 'https://script.google.com/macros/s/AKfycbwaP0-0Zlqn_IMLhUfc1LexNza9WITwyrtlgEHgHcS2p3lqPQaW14eh8PjoVYY3YfGwdQ/exec' },
+  // Les relais « MEM - Relais replay » (version 3), déployés le 7 octobre 2026
+  { cle: 'mem', nom: 'Drive personnel', dossier: 'MEM - Replay séances', relais: 'https://script.google.com/macros/s/AKfycbyEm-IdKOVzUPeZYlypnxXXUQZB_Ber8ttWyU2EIlgzVgZ1MFKvvtWRvXPlFAQ9F2fw/exec' },
+  { cle: 'lfb', nom: 'Drive du lycée', dossier: 'LFB - Replay séances', relais: 'https://script.google.com/macros/s/AKfycbwtm8ylsrv-R9RJDdwnIf9CMlSP-B0WdAaV9SHtfHhhD7i5YcHnnViGUMHGlKRTPEKN4w/exec' },
 ]
 
 /** L'extension des fichiers séance (le relais ne sert qu'elle) */
 export const EXTENSION = '.mem'
 
-/** L'identifiant client Google de Tableau MEM (pas un secret), créé dans SON
- *  projet Google Cloud : c'est le nom de ce projet que Google affiche quand le
- *  professeur se connecte. Origines JavaScript autorisées de ce client :
- *  https://mathsetmoi.github.io (et http://localhost:5173 pour essayer depuis
- *  son ordinateur). Vide : la publication attend cet identifiant, seul
- *  l'enregistrement du fichier séance est possible. Voir le README. */
-export const CLIENT_GOOGLE = ''
+/** L'identifiant client Google de Tableau MEM (pas un secret), créé dans le
+ *  projet Google Cloud de l'organisation mathsetmoi : c'est le nom de son
+ *  application que Google affiche quand le professeur se connecte. Origines
+ *  JavaScript autorisées de ce client : https://mathsetmoi.github.io (et
+ *  http://localhost:5173 pour essayer depuis son ordinateur). Vide : la
+ *  publication serait désactivée, seul l'enregistrement du fichier séance
+ *  resterait possible. Voir le README. */
+export const CLIENT_GOOGLE = '41829434463-j9dekdpg6c9va9pd00fanof7h3lphkjm.apps.googleusercontent.com'
 
 export const compteDe = (cle: string) => COMPTES.find(c => c.cle === cle) ?? null
 
