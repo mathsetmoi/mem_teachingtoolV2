@@ -710,7 +710,7 @@ describe('le code de la revue ne peut pas écrire', () => {
     ]
     expect(fichiers.length).toBeGreaterThanOrEqual(9)
     const interdits = [
-      /\.(poser|poserTrace|modifier|supprimer|ajouterPage|supprimerPage|changerFond|nouveauGeste|diffuser|importerImage|allerPage)\(/,
+      /\.(poser|poserTrace|modifier|supprimer|ajouterPage|supprimerPage|changerFond|nouveauGeste|importerImage|allerPage)\(/,
       /transact\(/,
       /annulation/,
       /localStorage|sessionStorage|indexedDB/,

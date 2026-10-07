@@ -34,7 +34,6 @@ const ICONES: Record<string, string> = {
   avant: 'M15 6l-6 6 6 6',
   apres: 'M9 6l6 6-6 6',
   aimant: 'M6 4v8a6 6 0 0012 0V4h-4v8a2 2 0 01-4 0V4zM6 8h4M14 8h4',
-  partager: 'M4 13v7h16v-7M12 3v12M8 7l4-4 4 4',
   forme: 'M3 11h8v8H3zM17 13a4 4 0 100-8 4 4 0 100 8z',
   point: 'M7 7l7 7M14 7l-7 7M16 17.5h4M16.5 21l1.75-6 1.75 6',
   'trait-segment': 'M6 18L18 6M4.5 16.5l3 3M16.5 4.5l3 3',
@@ -131,10 +130,7 @@ export class UI implements Interface {
   private choixFond!: HTMLSelectElement
   private boutonAimant!: HTMLButtonElement
   private zoomTexte!: HTMLButtonElement
-  private etat!: HTMLSpanElement
-  private bandeau!: HTMLDivElement
   private barreOutils!: HTMLElement
-  private outilsPage: HTMLElement[] = []
   private toast!: HTMLDivElement
   private dialogue: HTMLDialogElement | null = null
   private boutonReconnaissance!: HTMLButtonElement
@@ -156,11 +152,9 @@ export class UI implements Interface {
   private menuPartie!: HTMLDivElement
   private partie: { id: string; prise: Prise } | null = null
 
-  /** `partager` absent : le partage avec les élèves est désactivé. */
-  constructor(private app: App, private racine: HTMLElement, private partager: (() => Promise<string | null>) | null) {
+  constructor(private app: App, private racine: HTMLElement) {
     this.construire()
     app.ui = this
-    app.tableau.surEtat = () => this.maj()
     this.maj()
   }
 
@@ -213,7 +207,7 @@ export class UI implements Interface {
       const seule = app.pages.length <= 1
       const n = app.pages.indexOf(app.page) + 1
       const ok = await this.confirmer(seule ? 'Effacer la page ?' : `Supprimer la page ${n} ?`,
-        seule ? 'Le tableau n\'a qu\'une page : tout ce qui y est écrit sera effacé. Ctrl+Z pour revenir.'
+        seule ? 'Il n\'y a qu\'une page : tout ce qui y est écrit sera effacé. Ctrl+Z pour revenir.'
           : 'La page et tout ce qu\'elle contient disparaissent.', seule ? 'Effacer la page' : 'Supprimer la page')
       if (!ok) return
       if (seule) app.viderPage(); else app.supprimerPage()
@@ -243,7 +237,6 @@ export class UI implements Interface {
     const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir())
     const revoir = bouton('revue', 'Revoir la construction : une page, une séance, pas à pas', () => this.ouvrirRevue(revoir))
     const publier = bouton('publier', 'Publier le replay pour les élèves', () => this.publication.ouvrir())
-    this.outilsPage = [nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, revoir, publier]
     haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, revoir, publier)
 
     // ----- Les instruments, sous leur bouton -----
@@ -259,16 +252,6 @@ export class UI implements Interface {
       this.choixInstruments.appendChild(b)
     }
 
-    if (app.role === 'prof' && this.partager) {
-      const p = document.createElement('button')
-      p.type = 'button'; p.className = 'partager'
-      p.innerHTML = icone('partager') + '<span>Partager</span>'
-      p.addEventListener('click', () => this.ouvrirPartage())
-      haut.appendChild(p)
-    }
-    this.etat = document.createElement('span'); this.etat.className = 'etat'
-    haut.appendChild(this.etat)
-
     // ----- Zoom, en bas à droite -----
     const zoom = document.createElement('div')
     zoom.className = 'barre barre-zoom'
@@ -276,10 +259,6 @@ export class UI implements Interface {
     this.zoomTexte.type = 'button'; this.zoomTexte.className = 'zoom-texte'; this.zoomTexte.title = 'Revenir à 100 %'
     this.zoomTexte.addEventListener('click', () => app.zoom100())
     zoom.append(bouton('moins', 'Dézoomer', () => app.zoomer(1 / 1.25)), this.zoomTexte, bouton('plus', 'Zoomer', () => app.zoomer(1.25)))
-
-    // ----- Bandeau élève -----
-    this.bandeau = document.createElement('div')
-    this.bandeau.className = 'bandeau'
 
     this.toast = document.createElement('div')
     this.toast.className = 'toast'; this.toast.setAttribute('role', 'status')
@@ -306,7 +285,7 @@ export class UI implements Interface {
     this.panneau.setAttribute('role', 'toolbar')
     this.panneau.setAttribute('aria-label', 'Options de la figure')
 
-    this.racine.append(outils, haut, zoom, this.bandeau, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
+    this.racine.append(outils, haut, zoom, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
     this.revue = new RevueEnClasse(this.app, this.racine)
     this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t))
@@ -326,8 +305,6 @@ export class UI implements Interface {
 
   maj() {
     const app = this.app
-    const ecrit = app.peutEcrire
-    this.barreOutils.hidden = !ecrit
     for (const [id, b] of this.outils) b.classList.toggle('actif', app.outil === id)
     this.pastilles.forEach((b, i) => b.classList.toggle('actif', COULEURS[i].valeur === app.couleur))
     this.tailles.forEach((b, i) => b.classList.toggle('actif', TAILLES[i].valeur === app.taille))
@@ -342,13 +319,12 @@ export class UI implements Interface {
     for (const [id, b] of this.boutonsTraits) b.classList.toggle('actif', app.typeTrait === id)
     // Le petit panneau à côté de l'outil choisi (Formes ou Segment)
     for (const [panneau, outil] of [[this.choixFormes, 'forme'], [this.choixTraits, 'segment']] as const) {
-      panneau.hidden = app.outil !== outil || !ecrit
+      panneau.hidden = app.outil !== outil
       if (panneau.hidden) continue
       const r = this.outils.get(outil)!.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
       panneau.style.left = (o.right + 8) + 'px'
       panneau.style.top = Math.max(8, r.top - 6) + 'px'
     }
-    this.etat.hidden = !this.partager
     for (const [id, b] of this.boutonsInstruments) {
       const oui = app.instrumentVisible(id)
       b.classList.toggle('actif', oui); b.setAttribute('aria-pressed', String(oui))
@@ -360,36 +336,7 @@ export class UI implements Interface {
       this.choixInstruments.style.left = Math.max(8, Math.min(r.left + r.width / 2 - this.choixInstruments.offsetWidth / 2, window.innerWidth - this.choixInstruments.offsetWidth - 8)) + 'px'
     }
     this.majPanneau()
-    for (const el of this.outilsPage) el.hidden = app.role !== 'prof'
     this.zoomTexte.textContent = Math.round(app.cam.z * 100) + ' %'
-
-    // État de la connexion, en mots simples
-    const t = app.tableau
-    const eleves = [...t.autres().values()].filter(p => p.role === 'eleve').length
-    const textes: Record<string, string> = {
-      'hors-ligne': 'Sur cet appareil',
-      'connexion': 'Connexion…',
-      'en-ligne': app.role === 'prof' ? (eleves ? `${eleves} élève${eleves > 1 ? 's' : ''} connecté${eleves > 1 ? 's' : ''}` : 'En ligne, aucun élève') : 'Connecté au tableau du prof',
-      'injoignable': 'Serveur injoignable',
-    }
-    this.etat.textContent = textes[t.etat]
-    this.etat.dataset.etat = t.etat
-
-    // Élève : où en est-on par rapport au prof ?
-    this.bandeau.replaceChildren()
-    if (app.role === 'eleve') {
-      if (!app.suivre) {
-        const b = document.createElement('button')
-        b.type = 'button'; b.textContent = 'Revenir au tableau du prof'
-        b.addEventListener('click', () => app.revenirAuProf())
-        this.bandeau.appendChild(b)
-      }
-      if (!ecrit) {
-        const s = document.createElement('span'); s.textContent = 'Lecture seule'
-        this.bandeau.appendChild(s)
-      }
-    }
-    this.bandeau.hidden = !this.bandeau.childElementCount
   }
 
   // ----- Panneau d'options de la figure -----
@@ -397,7 +344,7 @@ export class UI implements Interface {
     const app = this.app
     // Le panneau se ferme dès que l'objet n'est plus seul sélectionné
     if (app.options && !(app.selection.size === 1 && app.selection.has(app.options))) app.options = null
-    const f = app.peutEcrire && !app.enLecture ? app.formeChoisie() : null
+    const f = !app.enLecture ? app.formeChoisie() : null
     if (!f || f.id !== app.options || f.type === 'formule' || f.type === 'segment') { this.panneau.hidden = true; this.clePanneau = ''; return }
     const { x: _x, y: _y, ...props } = f as Forme
     if (f.id !== this.idPanneau) { this.idPanneau = f.id; this.section = null }
@@ -413,7 +360,7 @@ export class UI implements Interface {
     const l = this.panneau.offsetWidth, h = this.panneau.offsetHeight
     let top = z.top + a.y - h - 14
     if (top < 76) top = Math.min(z.top + c.y + 14, window.innerHeight - h - 8)
-    const gauche = this.barreOutils.hidden ? 8 : this.barreOutils.getBoundingClientRect().right + 8
+    const gauche = this.barreOutils.getBoundingClientRect().right + 8
     const left = Math.max(gauche, Math.min(z.left + (a.x + c.x) / 2 - l / 2, window.innerWidth - l - 8))
     this.panneau.style.left = left + 'px'
     this.panneau.style.top = Math.max(8, top) + 'px'
@@ -567,12 +514,12 @@ export class UI implements Interface {
       <label class="champ"><span>Transformation</span><select class="t-type">${types.map(([v, t]) => `<option value="${v}"${v === T.type ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
       <div class="champ choix-sur-tableau" data-pour="symetrie-axiale"><span>Axe</span>
         <select class="t-axe"${axes.length ? '' : ' hidden'}>${options(axes, T.axe)}</select>${axes.length ? '' : '<em>Aucune droite sur la page</em>'}
-        <button type="button" class="secondaire petit designer-axe" title="Cliquer sur une droite du tableau"${axes.length ? '' : ' hidden'}>Désigner</button>
-        <button type="button" class="secondaire petit tracer-axe" title="Tracer l'axe sur le tableau (deux clics)">Tracer</button></div>
+        <button type="button" class="secondaire petit designer-axe" title="Cliquer sur une droite de la page"${axes.length ? '' : ' hidden'}>Désigner</button>
+        <button type="button" class="secondaire petit tracer-axe" title="Tracer l'axe sur la page (deux clics)">Tracer</button></div>
       <div class="champ choix-sur-tableau" data-pour="symetrie-centrale rotation homothetie"><span>Centre</span>
         <select class="t-centre">${options(centres, T.centre)}</select>
-        <button type="button" class="secondaire petit designer-centre" title="Cliquer sur un point du tableau">Désigner</button>
-        <button type="button" class="secondaire petit tracer-centre" title="Placer le centre sur le tableau (un clic)">Tracer</button></div>
+        <button type="button" class="secondaire petit designer-centre" title="Cliquer sur un point de la page">Désigner</button>
+        <button type="button" class="secondaire petit tracer-centre" title="Placer le centre sur la page (un clic)">Tracer</button></div>
       <label class="champ" data-pour="rotation"><span>Angle (°, sens direct)</span><input class="saisie t-angle" value="${html(T.angle)}" inputmode="decimal"></label>
       <label class="champ" data-pour="homothetie"><span>Rapport k</span><input class="saisie t-k" value="${html(T.k)}" inputmode="decimal"></label>
       <label class="champ" data-pour="translation"><span>Vecteur</span><select class="t-vecteur">${options(vecteurs, T.vecteur)}<option value="libre"${T.vecteur === 'libre' ? ' selected' : ''}>Coordonnées (en cm)</option></select></label>
@@ -613,7 +560,7 @@ export class UI implements Interface {
       switch (T.type) {
         case 'symetrie-axiale': {
           const a = axes.find(x => x.cle === T.axe)
-          if (!a) { this.message('Choisis l\'axe : désigne une droite du tableau, ou trace-la.'); return null }
+          if (!a) { this.message('Choisis l\'axe : désigne une droite de la page, ou trace-la.'); return null }
           const m = a.nom.match(/\((.+)\)/)
           return { t: { type: 'symetrie-axiale', a: a.a, b: a.b }, noms: { axe: m ? `(${m[1]})` : "l'axe" } }
         }
@@ -808,28 +755,6 @@ export class UI implements Interface {
     ;(this.toast as unknown as { t: number }).t = window.setTimeout(() => this.toast.classList.remove('visible'), Math.max(2600, texte.length * 60))
   }
 
-  // ----- Partage -----
-  private async ouvrirPartage() {
-    const lien = await this.partager?.()
-    if (!lien) return
-    const d = this.nouveauDialogue('Faire entrer la classe')
-    const corps = d.querySelector('.corps')!
-    corps.innerHTML = `
-      <p>Les élèves ouvrent ce lien sur leur appareil. Ils voient votre tableau en direct et suivent vos changements de page.</p>
-      <div class="lien"><input readonly aria-label="Lien élève"><button type="button" class="principal">Copier</button></div>
-      <label class="interrupteur"><input type="checkbox"><span>Les élèves peuvent écrire</span></label>`
-    const champ = corps.querySelector('input[readonly]') as HTMLInputElement
-    champ.value = lien
-    corps.querySelector('.lien button')!.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(lien) } catch { champ.select(); document.execCommand('copy') }
-      this.message('Lien copié')
-    })
-    const coche = corps.querySelector('.interrupteur input') as HTMLInputElement
-    coche.checked = this.app.tableau.reglages.get('elevesEcrivent') === true
-    coche.addEventListener('change', () => this.app.tableau.reglages.set('elevesEcrivent', coche.checked))
-    d.showModal()
-  }
-
   // ----- Éditeur de formules -----
   editerFormule(latex: string, sx: number, sy: number): Promise<string | null> {
     return new Promise(resolve => {
@@ -895,27 +820,6 @@ export class UI implements Interface {
       corps.querySelector('.secondaire')!.addEventListener('click', () => finir(false))
       d.addEventListener('close', () => finir(false))
       d.showModal(); b.focus()
-    })
-  }
-
-  demanderNom(): Promise<string> {
-    return new Promise(resolve => {
-      const d = this.nouveauDialogue('Entrer dans la classe')
-      const corps = d.querySelector('.corps')!
-      corps.innerHTML = `<p>Votre prénom s'affichera à côté de votre curseur quand vous écrirez.</p>
-        <input class="saisie" autocomplete="given-name" placeholder="Prénom" aria-label="Prénom">
-        <div class="actions"><button type="button" class="principal">Entrer</button></div>`
-      const champ = corps.querySelector('input') as HTMLInputElement
-      try { champ.value = localStorage.getItem('mem-prenom') || '' } catch { /* navigateur sans mémoire : on redemandera */ }
-      const ok = () => {
-        const v = champ.value.trim() || 'Élève'
-        try { localStorage.setItem('mem-prenom', v) } catch { /* tant pis : le prénom ne sera pas proposé la prochaine fois */ }
-        d.close(); d.remove(); resolve(v)
-      }
-      corps.querySelector('button')!.addEventListener('click', ok)
-      champ.addEventListener('keydown', e => { if (e.key === 'Enter') ok() })
-      d.addEventListener('cancel', e => e.preventDefault())
-      d.showModal(); champ.focus()
     })
   }
 

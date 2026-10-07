@@ -37,7 +37,7 @@ racine.innerHTML = `
     <div class="titre-seance"></div>
     <div class="ou" aria-live="off"></div>
   </header>
-  <main class="scene" aria-label="Le tableau de la séance"></main>
+  <main class="scene" aria-label="La séance"></main>
   <div class="bandeau-apercu" hidden>Aperçu : voici ce que verront les élèves. Rien n'est encore publié.</div>
   <section class="carte" role="dialog" aria-modal="false" hidden></section>
   <aside class="tiroir" aria-label="Chapitres" hidden>
@@ -148,7 +148,7 @@ function attendreApercu() {
   })
   ;(window.opener as Window).postMessage({ type: 'mem-revoir-pret' }, location.origin)
   setTimeout(() => {
-    if (!bobine) carteErreur('L\'aperçu ne s\'est pas ouvert : fermez cet onglet et cliquez à nouveau sur « Voir comme un élève » dans le tableau.', null)
+    if (!bobine) carteErreur('L\'aperçu ne s\'est pas ouvert : fermez cet onglet et cliquez à nouveau sur « Voir comme un élève » dans la fenêtre Publier.', null)
   }, 6000)
 }
 
@@ -518,13 +518,17 @@ function fermerCarte() {
 
 function carteAffiche() {
   const b = bobine!, f = b.film
+  const details = [mmss(b.duree), b.nombreDePages > 1 ? `${b.nombreDePages} pages` : '', b.chapitres.length > 1 ? `${b.chapitres.length} chapitres` : '']
+  // L'affiche montre la page du dernier geste, telle qu'elle était à la fin
+  const derniere = b.numero(b.page(b.n - 1))
+  const voir = b.nombreDePages > 1 && derniere > 0 ? `Voir la fin de la page ${derniere}` : 'Voir la fin de la séance'
   carteHTML(`
     <p class="surtitre">${echapper(dateLisible(f.date))}</p>
     <h1>${echapper(f.titre)}</h1>
-    <p class="details">${mmss(b.duree)} · ${b.nombreDePages > 1 ? `${b.nombreDePages} pages · ` : ''}${b.chapitres.length > 1 ? `${b.chapitres.length} chapitres` : `${b.n - 1} gestes`}</p>
+    <p class="details">${details.filter(Boolean).join(' · ')}</p>
     <div class="actions">
       <button type="button" class="principal grand" data-a="lire">${svg('lire')}<span>Rejouer la séance</span></button>
-      <button type="button" class="secondaire" data-a="voir">Voir le tableau final</button>
+      <button type="button" class="secondaire" data-a="voir">${voir}</button>
     </div>
     ${arretAuxChapitres && b.chapitres.length > 1 ? '<p class="aide">La lecture s\'arrête à la fin de chaque chapitre : relancez quand vous avez recopié.</p>' : ''}`)
   brancher({ lire: () => { montrer(0, false); lire() }, voir: () => { fermerCarte(); majCommandes() } })
@@ -553,7 +557,7 @@ function carteFin() {
     <h2>Fin de la séance</h2>
     <div class="actions">
       <button type="button" class="principal grand" data-a="encore">${svg('lire')}<span>Revoir depuis le début</span></button>
-      <button type="button" class="secondaire" data-a="voir">Rester sur le tableau</button>
+      <button type="button" class="secondaire" data-a="voir">Rester sur cette page</button>
     </div>`)
   annoncer('Fin de la séance')
   brancher({ encore: () => { montrer(0, false); lire() }, voir: fermerCarte })

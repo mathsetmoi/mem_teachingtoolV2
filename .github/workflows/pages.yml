@@ -1,4 +1,4 @@
-# Met Tableau MEM en ligne sur GitHub Pages à chaque envoi sur « main » :
+# Met MEM teachingtool en ligne sur GitHub Pages à chaque envoi sur « main » :
 # le tableau (index.html) et le lecteur des élèves (revoir.html).
 # À activer une fois : Settings → Pages → Source : « GitHub Actions ».
 # Node.js 24 (LTS), et des actions qui tournent elles-mêmes sous Node 24.

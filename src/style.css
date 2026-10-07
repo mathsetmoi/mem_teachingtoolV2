@@ -1,5 +1,5 @@
 /* =============================================================
-   Tableau MEM
+   MEM teachingtool
    Les couleurs viennent du cahier d'écolier : le bleu des lignes
    Seyès, le rouge de la marge, et le jaune du surligneur, qui
    marque l'outil qu'on tient en main.
@@ -107,41 +107,11 @@ button, select, input { font: inherit; color: inherit; }
   border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); cursor: pointer;
 }
 
-.partager {
-  display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 12px; margin-left: 4px;
-  border: 0; border-radius: 10px; background: var(--bleu); color: #fff; font-weight: 700; cursor: pointer;
-}
-.partager svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.partager:hover { background: #2f5d9c; }
-
-.etat { padding: 0 10px; font-size: 13px; color: var(--encre-douce); white-space: nowrap; }
-.etat::before {
-  content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%;
-  background: var(--filet); vertical-align: 1px;
-}
-.etat[data-etat='en-ligne']::before { background: #1e8a4c; }
-.etat[data-etat='connexion']::before { background: var(--surligneur); }
-.etat[data-etat='injoignable']::before { background: var(--rouge); }
-
 .zoom-texte {
   min-width: 64px; height: 44px; border: 0; background: transparent; cursor: pointer;
   font-variant-numeric: tabular-nums; border-radius: 10px;
 }
 .zoom-texte:hover { background: #e9eef5; }
-
-/* ---------- Élève ---------- */
-.bandeau {
-  position: absolute; z-index: 10; left: 50%; bottom: max(16px, env(safe-area-inset-bottom));
-  transform: translateX(-50%); display: flex; gap: 10px; align-items: center;
-}
-.bandeau button {
-  height: 44px; padding: 0 18px; border: 0; border-radius: 22px;
-  background: var(--bleu); color: #fff; font-weight: 700; cursor: pointer;
-}
-.bandeau span {
-  padding: 8px 14px; border-radius: 99px; background: var(--chrome);
-  border: 1px solid var(--filet); color: var(--encre-douce); font-size: 13px;
-}
 
 /* ---------- Dialogues ---------- */
 .dialogue {
@@ -154,12 +124,12 @@ button, select, input { font: inherit; color: inherit; }
 .dialogue p { margin: 0 0 14px; line-height: 1.5; color: var(--encre-douce); max-width: 60ch; }
 .dialogue-formule { position: fixed; margin: 0; z-index: 20; }
 
-.saisie, .lien input {
+.saisie {
   width: 100%; height: 44px; padding: 0 12px;
   border: 1px solid var(--filet); border-radius: 10px; background: #fbfcfe;
 }
 .saisie { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 15px; }
-.saisie:focus, .lien input:focus { outline: 2px solid var(--bleu); outline-offset: 1px; }
+.saisie:focus { outline: 2px solid var(--bleu); outline-offset: 1px; }
 
 .apercu {
   min-height: 64px; margin-bottom: 10px; padding: 6px 10px; overflow-x: auto;
@@ -182,9 +152,6 @@ button, select, input { font: inherit; color: inherit; }
 .principal { border: 0; background: var(--bleu); color: #fff; }
 .secondaire { border: 1px solid var(--filet); background: var(--papier); }
 
-.lien { display: flex; gap: 8px; margin-bottom: 14px; }
-.lien input { flex: 1; font-size: 13px; }
-
 .interrupteur { display: flex; align-items: center; gap: 10px; cursor: pointer; min-height: 44px; }
 .interrupteur input { width: 20px; height: 20px; accent-color: var(--bleu); }
 
@@ -203,10 +170,9 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
   .toast, .pastille::after { transition: none; }
 }
 
-/* Petits écrans (téléphone d'élève) : la barre du haut se resserre */
+/* Petits écrans : la barre du haut se resserre */
 @media (max-width: 640px) {
   .barre-haut { left: 12px; right: 12px; max-width: none; justify-content: center; }
-  .etat { width: 100%; text-align: center; padding-top: 4px; }
   .barre-outils { top: auto; bottom: 12px; transform: none; max-height: calc(100% - 140px); }
 }
 

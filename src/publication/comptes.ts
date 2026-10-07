@@ -33,7 +33,7 @@ export const COMPTES: Compte[] = [
 /** L'extension des fichiers séance (le relais ne sert qu'elle) */
 export const EXTENSION = '.mem'
 
-/** L'identifiant client Google de Tableau MEM (pas un secret), créé dans le
+/** L'identifiant client Google de MEM teachingtool (pas un secret), créé dans le
  *  projet Google Cloud de l'organisation mathsetmoi : c'est le nom de son
  *  application que Google affiche quand le professeur se connecte. Origines
  *  JavaScript autorisées de ce client : https://mathsetmoi.github.io (et
