@@ -1,0 +1,30 @@
+{
+  "name": "tableau-mem",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host",
+    "serveur": "node serveur/server.js",
+    "test": "vitest run",
+    "build:pages": "tsc && vite build --config vite.pages.config.ts"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "katex": "^0.19.0",
+    "perfect-freehand": "^1.2.3",
+    "y-indexeddb": "^9.0.12",
+    "y-protocols": "^1.0.7",
+    "y-websocket": "^3.1.0",
+    "yjs": "^13.6.33"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.8",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^5.0.3"
+  },
+  "private": true,
+  "type": "module"
+}
