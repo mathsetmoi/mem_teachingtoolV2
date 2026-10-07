@@ -8,8 +8,15 @@
 // Le fichier est un texte JSON : { format, v, titre, date, gz }, où gz est
 // le film compressé (gzip, en base64). C'est ce que le relais Apps Script
 // sert tel quel, et ce qu'un lecteur plus récent saura toujours relire.
+//
+// La version ne monte que le jour où un champ qui existe change de sens : un
+// lecteur refuse une version plus récente que la sienne. Les ajouts sont
+// facultatifs et gardent la version 1 (le rythme de la main, ms ; les
+// instruments, inst, apres, instruments et avant) : un lecteur plus ancien
+// les ignore et rejoue le film comme avant, sans planter.
 // =============================================================
 import type { Fond, Forme } from '../types'
+import type { Morceau } from './instruments-film'
 
 export const FORMAT = 'mem-revoir'
 export const VERSION = 1
@@ -24,9 +31,14 @@ export type Op = ['=', Forme] | ['-', string] | ['f', Fond, number, number] | ['
 /** Un geste du film : son écart avec le précédent (ms), la page où il a
  *  lieu, et ce qu'il change. ms : si le geste pose un trait tracé à la main,
  *  le temps passé sur chacun de ses points, jusqu'au lever (voir
- *  main-levee.ts). Facultatif : un film sans ms, ou un lecteur qui l'ignore,
- *  rejoue le trait comme avant. */
-export interface EtapeFilm { dt: number; p: string; o: Op[]; ms?: number[] }
+ *  main-levee.ts). inst : ce que les instruments ont fait sur cette page
+ *  depuis l'image d'avant (t : ms depuis elle, de 0 à dt ; voir
+ *  instruments-film.ts). apres : au dernier geste d'une page (on la quitte
+ *  ensuite, ou le film finit), ce que les instruments y font encore avant
+ *  qu'on la quitte (t : ms depuis la fin de inst, c'est-à-dire depuis dt).
+ *  Facultatifs : un film sans eux, ou un lecteur qui les ignore, rejoue le
+ *  geste comme avant. */
+export interface EtapeFilm { dt: number; p: string; o: Op[]; ms?: number[]; inst?: Morceau[]; apres?: Morceau[] }
 
 /** L'état d'une page au début du film */
 export interface PageFilm { id: string; fond: Fond; origine: { x: number; y: number }; formes: Forme[] }
@@ -47,6 +59,11 @@ export interface FilmEleve {
   chapitres: Chapitre[]
   /** Les images utilisées, et elles seules : identifiant → data: URL */
   images: Record<string, string>
+  /** Les instruments visibles à l'image 0 (une pose chacun). Facultatif, comme avant : */
+  instruments?: Morceau[]
+  /** le temps (ms) d'avant le premier geste où les instruments se mettent en
+   *  place ; les morceaux du premier geste sont datés depuis ce début */
+  avant?: number
 }
 
 /** L'enveloppe écrite dans le fichier séance (« .mem ») ; elle commence

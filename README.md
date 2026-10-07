@@ -107,12 +107,18 @@ transforme), et la construction pas à pas du symétrique part de ces points
 Le bouton « Instruments » de la barre du haut pose ou range une **règle**
 (20 cm, au millimètre), une **équerre**, un **rapporteur** (double échelle) et un
 **compas**. Ils restent où on les a laissés, sans passer dans l'annulation.
+Le rapporteur est un demi-disque : **son bord du bas est la ligne 0°–180°**,
+la seule, et son centre (le petit trait ⊥) est au milieu de ce bord ; rien ne
+dépasse dessous. Les chiffres 0 et 180 sont couchés le long du bord, juste
+au-dessus de lui. On le prend par le demi-disque ; le stylo posé contre son
+bord trace le long du bord, comme le long d'une règle.
 
 - **Déplacer** : on prend le corps. L'origine (le zéro de la règle, le coin de
   l'équerre, le centre du rapporteur, la pointe du compas) s'accroche aux
   points de la figure, puisque c'est de là qu'on mesure.
 - **Tourner** : la pastille ↻, autour de l'origine, au degré près, aimantée
-  tous les 15°. L'angle s'affiche.
+  tous les 15°. L'angle s'affiche. Même à petit zoom, le stylo posé sur la
+  pastille tourne l'instrument (il ne trace pas le long du bord voisin).
 - **Tracer le long d'un bord** : au stylo ou à l'outil segment, posé contre un
   bord, le trait suit le bord en ligne droite, au millimètre sur un bord gradué
   (la longueur s'affiche). L'équerre donne ainsi perpendiculaires et parallèles.
@@ -123,6 +129,14 @@ Le bouton « Instruments » de la barre du haut pose ou range une **règle**
   et trace l'arc — un petit tour, un petit arc ; le tour complet, le cercle.
   Deux arcs qui se coupent : pointe en A, Maj + mine vers l'endroit visé, un
   petit tour de tête ; pointe en B (même écartement), et de même.
+- **Au replay**, les instruments font ce qu'ils ont fait en classe : ils
+  paraissent, glissent, tournent, s'ouvrent, au rythme réel, et s'en vont
+  quand on les range, même après le dernier geste d'une page ; le compas
+  tourne pendant que l'arc pousse sous sa mine, le crayon avance le long de
+  la règle, et l'arc ou le trait reste à l'écran jusqu'à ce que la figure le
+  remplace (voir « Les instruments au replay », plus bas). Ce qui a été
+  construit au programme de construction avec les instruments se rejoue de
+  même.
 
 ## Constructions pas à pas
 
@@ -253,6 +267,16 @@ glisser ou un pincement, elle reste où on l'a mise jusqu'à C. Sous
 « animations réduites », les figures ne se dessinent plus et rien ne
 s'estompe ; l'écriture, elle, garde son rythme : c'est ce qu'on revoit.
 
+**Les instruments** se rejouent dans la revue comme chez les élèves (voir
+« Les instruments au replay », plus bas) : avant un geste, ce que la règle,
+l'équerre, le rapporteur ou le compas ont fait sur la page passe à sa vitesse
+réelle, puis le trait s'écrit. Un long silence pendant une manipulation
+commence un nouveau pas, comme un long temps stylo levé. Ce qu'on fait des
+instruments sur une page après son dernier geste (ranger l'équerre, pousser
+la règle) est une image de plus, sans geste, à la fin de la page : la fin
+d'une partie et l'affiche montrent les instruments tels que la classe les a
+vus en quittant la page, et la page suivante s'ouvre sur eux.
+
 **La revue ne fait que lire.** Le document Yjs garde ce qui a été effacé
 (`gc: false`) et note un instantané à chaque geste (`film`). La revue lit
 une seule page dans l'instantané de l'image qu'elle montre, au moment de la
@@ -350,6 +374,60 @@ mouvement prend toujours 0,18 ms en moyenne, le lever 0,1 ms de plus). Sur
 un téléphone lent, le lecteur est plus fluide qu'avant : pendant qu'un trait
 s'écrit, seule la couche « direct » se repeint (1 ms par image au lieu de 12
 pour toute la page, processeur ralenti quatre fois, 960 traits à l'écran).
+
+**Les instruments au replay.** Les instruments ne sont pas des formes : les
+poser, les tourner ou les ouvrir ne crée aucune étape du film, et Ctrl+Z ne les
+voit pas. Pour que le replay les montre, le tableau note à part, dans une
+**piste** rangée dans le document hors des pages (`src/piste.ts`), ce que la
+couche des instruments a montré et quand : à chaque fois qu'elle se peint, une
+pose par instrument (position, angle, écartement, partie tenue), au plus 60 par
+seconde et seulement si quelque chose a changé, et le tracé en cours sous un
+instrument (l'arc sous la mine, le trait le long d'un bord). Un geste d'un seul
+tenant fait un morceau ; il est simplifié (une pose qu'une ligne droite entre
+ses voisines retrouve à 0,12 mm et 0,1° près s'en va) puis écrit un peu plus
+tard, hors du geste. Pendant un trait au stylo, la couche des instruments ne se
+repeint pas : l'écriture ne paie rien ; quand un instrument bouge, noter coûte
+moins d'une microseconde par image. Le format (`src/revoir/instruments-film.ts`)
+tient en petits entiers, en écarts, comme les points du stylet : les positions
+au dixième d'unité, les angles au millième de degré (un angle pris à la pastille
+↻, toujours un nombre entier de degrés, se relit exactement : l'image finale du
+replay est celle du direct au pixel près).
+Le film élève emporte, avec chaque geste, ce que les instruments ont fait **sur
+cette page** depuis le geste d'avant, et seulement cela : un instrument bougé
+sur une page non publiée, ou ailleurs, n'y est pas ; s'il en revient changé, il
+reparaît d'un coup à sa place, comme la classe l'a revu. Avant le premier geste,
+au plus une minute de mise en place. Le replay montre la manipulation à sa
+vitesse réelle, avec ses petits arrêts ; les longs silences sont tassés comme
+partout ; puis le trait s'écrit. L'arc sous la mine, le trait le long d'un
+bord restent à l'écran jusqu'au lever, même si le crayon s'est arrêté avant
+(la piste note cet arrêt), et la figure posée les remplace dans la même image ;
+un tracé abandonné (trop court pour poser une figure) s'efface à son arrêt. Une
+figure qu'on a vue se tracer sous l'instrument ne se redessine pas ensuite. Le
+dernier geste d'une page emporte aussi son **épilogue** (`apres`) : ce que les
+instruments font encore sur cette page avant qu'on la quitte, jusqu'au geste
+suivant (au bout du film, au plus une minute, et pas au-delà de l'étape
+suivante du tableau). Il se joue après ce geste, à son rythme, sur sa page ;
+l'arrêt en fin de chapitre montre les instruments comme la classe les a vus en
+quittant la page, et le geste suivant n'attend pas une seconde fois ce temps-là.
+Les allures accélèrent ou ralentissent tout, et la manipulation (épilogue
+compris) va jusqu'au bout avant une pause ou un arrêt de chapitre, comme un
+trait. Le format garde sa version 1 : les champs ajoutés (`inst` et `apres`
+dans un geste, `instruments` et `avant` dans le film) sont facultatifs, un
+lecteur plus ancien les ignore et rejoue le film comme avant, et un film, un
+fichier `.mem` ou un tableau sans instruments se rejoue exactement comme avant.
+Des instruments abîmés dans un fichier sont ignorés en entier. La piste garde
+toute l'année ; l'export d'une séance et la revue n'en décodent que ce qui sert
+à la séance (`morceauxEntre` : les morceaux de la séance, et pour chaque
+instrument les un ou deux morceaux d'avant qui fixent son état), et cochent une
+case de la fenêtre Publier en quelques millisecondes, même après un an. Ce que
+cela coûte, mesuré : environ 65 octets par seconde de manipulation dans le
+`.mem` (une séance de 55 minutes avec trois minutes d'instruments : +13 %),
+240 octets par seconde dans le document du tableau. Limites : un instrument
+bougé sur une autre page que celle du geste suivant reparaît d'un coup ; la
+mesure lue pendant le geste (« 30° », « r = 4 cm ») n'est pas rejouée ; le
+document du tableau garde toute la piste (`gc: false`) : son chargement au
+démarrage grandit avec elle (environ 0,1 s pour 7 h 30 d'instruments
+manipulés sans arrêt, sur un PC ordinaire).
 
 **Où vivent les séances.** Dans un dossier privé du Drive du professeur, un
 par compte : « MEM - Replay séances » (compte mathsetmoi) et « LFB - Replay
@@ -482,7 +560,8 @@ cours, qui fait la latence ressentie au stylet.
 | `src/geometrie.ts` | Ce que touche la gomme ou la sélection |
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
 | `src/revue/` | La revue en classe : ce qu'on revoit, les images, la frise, le choix |
-| `src/revoir/` | Le replay des élèves : format du film, rythme de la main, exporteur, bobine, lecteur (`revoir.html`), relais |
+| `src/revoir/` | Le replay des élèves : format du film, rythme de la main, instruments, exporteur, bobine, lecteur (`revoir.html`), relais |
+| `src/piste.ts` | La piste des instruments : ce que la classe en a vu, noté pour le replay |
 | `src/publication/` | Publier sur le Drive : comptes et relais, connexion Google, la fenêtre |
 | `relais/relais-seances.gs` | Le relais Apps Script, à déployer dans chaque compte Google |
 | `tests/` | Les tests (`npm test`) : ce qui part chez les élèves, la fidélité du replay |
