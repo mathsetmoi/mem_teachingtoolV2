@@ -31,9 +31,12 @@ npm run build        # → dist/index.html, autonome
 **Au stylo.** Une figure fermée tracée à main levée se redresse au lever du
 stylo : carré, rectangle, losange, parallélogramme, triangle (équilatéral,
 isocèle, rectangle), polygone régulier, cercle. Garder le stylo immobile un
-instant la fait apparaître tout de suite, stylo encore posé ; c'est aussi ainsi
-qu'on obtient un segment (sans cela, chaque « 1 » ou « − » écrit au tableau
-deviendrait un segment). `Ctrl+Z` rend le tracé d'origine.
+instant (la plume ne s'éloigne pas d'un pixel et demi de l'endroit où elle
+s'est arrêtée, quelle que soit la fréquence du stylet : une plume lente qui
+avance n'est jamais coupée) la fait apparaître tout de suite, stylo encore
+posé ; c'est aussi ainsi qu'on obtient un segment (sans cela, chaque « 1 » ou
+« − » écrit au tableau deviendrait un segment). `Ctrl+Z` rend le tracé
+d'origine.
 
 Un tracé arrondi devient un cercle, même bosselé ou un peu ovale : il ne
 devient un polygone que si tous ses coins sont francs. Un côté presque
@@ -337,8 +340,10 @@ dessin), puis rejoint la page au lever ; l'attente qui le précède est le vrai
 temps stylo levé, et non plus l'écart entre deux levers. Seuls les longs
 arrêts (plus de 1,2 s, stylo levé ou posé) sont tassés, comme les silences.
 L'image finale est la même au pixel près. Le temps est rangé dans l'étape du
-film, pas dans le trait : un trait recopié (symétrie, dupliquer), rendu par
-Ctrl+Z ou déplacé n'a pas été écrit à ce moment-là, il paraît comme avant.
+film, pas dans le trait : un trait recopié (symétrie, dupliquer) ou déplacé
+n'a pas été écrit à ce moment-là, il paraît comme avant. Ce qu'un Ctrl+Z ou
+un Ctrl+Y rend (le tracé à main levée d'une figure reconnue, un trait effacé)
+revient d'un coup, comme au tableau, sans se redessiner.
 Les séances publiées avant ce rythme, et les tableaux qui ne l'ont pas noté,
 se rejouent comme avant (le trait se dessine à vitesse de plume constante) ;
 un lecteur plus ancien ignore ces temps. Ce que cela coûte, mesuré : le

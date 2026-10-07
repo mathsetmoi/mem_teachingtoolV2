@@ -29,6 +29,10 @@ export interface LectureSeule {
    *  montre rien (une page vide paraît là où il n'y avait rien) : ce n'est
    *  pas un geste, la bande la saute et les comptes l'ignorent. */
   naissance(i: number): boolean
+  /** La forme `id` était-elle déjà passée sur la page à l'étape i, ou avant ?
+   *  Une forme absente à l'étape i qui paraît ensuite revient alors : rendue
+   *  par Ctrl+Z ou Ctrl+Y, telle qu'on l'a déjà vue. */
+  dejaPassee(i: number, page: string, id: string): boolean
 }
 
 /** La lecture seule d'un tableau. `film` : la copie déjà faite, s'il y en a une.
@@ -54,6 +58,7 @@ export function lectureDe(t: Tableau, pagesActuelles: () => readonly string[], f
     pagesActuelles,
     fondActuel: p => pagesActuelles().includes(p) ? t.fondDe(p) : null,
     image: src => { const d = banque.get(src); return typeof d === 'string' ? d : null },
+    dejaPassee: (i, p, id) => i >= 0 && i < fige.length && t.dejaPassee(fige[i], p, id),
     naissance: i => {
       const p = fige[i]?.page
       if (!p || premieres.get(p) !== i) return false
@@ -107,6 +112,13 @@ export class Planches {
     if (avant.p !== img.p) return []
     const deja = new Set(this.lire(avant).formes.map(f => f.id))
     return this.lire(img).formes.filter(f => !deja.has(f.id))
+  }
+
+  /** Parmi les formes apparues en passant de `avant` à `img`, celles qui
+   *  naissent. Une forme qui revient (rendue par Ctrl+Z ou Ctrl+Y) n'y est
+   *  pas : au tableau, elle revient d'un coup, sans se redessiner. */
+  neuves(avant: ImageBande, apparues: readonly Forme[]): Forme[] {
+    return apparues.filter(f => !this.lecture.dejaPassee(avant.e, avant.p, f.id))
   }
 
   vider() { this.gardees.clear() }

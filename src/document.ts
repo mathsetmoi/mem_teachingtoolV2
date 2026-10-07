@@ -115,6 +115,23 @@ export class Tableau {
     return { fond: l.fond, origine: l.origine, formes: [...l.formes.values()].sort((a, b) => a.z - b.z) }
   }
 
+  /** La forme `id` était-elle déjà passée sur la page à cette étape du film,
+   *  ou avant ? Pour une forme absente à cette étape qui paraît ensuite, c'est
+   *  qu'elle revient : rendue par Ctrl+Z ou Ctrl+Y, telle qu'on l'a déjà vue.
+   *  Le document garde tout (gc: false) : chaque valeur prise par la forme
+   *  reste chaînée à la précédente ; il suffit de savoir si la toute première
+   *  existait déjà à cette étape. */
+  dejaPassee(etape: Etape, page: string, id: string): boolean {
+    const snap = Y.decodeSnapshot(etape.s)
+    const p = Y.typeMapGetSnapshot(this.pages, page, snap)
+    const formes = p instanceof Y.Map ? Y.typeMapGetSnapshot(p, 'formes', snap) : null
+    if (!(formes instanceof Y.Map)) return false
+    let v = formes._map.get(id)
+    if (!v) return false
+    while (v.left instanceof Y.Item) v = v.left
+    return (snap.sv.get(v.id.client) ?? 0) > v.id.clock
+  }
+
   /** Le fond, l'origine et les formes d'une page dans un instantané */
   private lirePage(p: Y.Map<unknown>, snap: Y.Snapshot): { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme> } {
     const formes = Y.typeMapGetSnapshot(p, 'formes', snap)

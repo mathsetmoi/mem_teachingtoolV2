@@ -363,6 +363,16 @@ export function departs(b: Bande, ech: Float64Array, facteur: number): Float64Ar
   return ech.map((v, k) => Math.max(k ? ech[k - 1] : 0, v - b.traces[k] / facteur))
 }
 
+/** L'horloge au départ d'une lecture depuis l'image k. Un trait qui s'y écrit
+ *  encore à la main va jusqu'au lever : l'horloge se cale sur ce qu'il lui
+ *  reste (`reste`, en ms d'horloge), et l'image suivante vient après le vrai
+ *  temps stylo levé, comme au tableau. Sinon, quelle que soit l'attente
+ *  d'origine, l'image suivante commence au plus tard après `demarrage` ms. */
+export function horlogeAuDepart(ech: Float64Array, debuts: Float64Array, k: number, reste: number, demarrage: number): number {
+  if (reste > 0) return ech[k] - reste
+  return Math.max(ech[k], debuts[Math.min(ech.length - 1, k + 1)] - demarrage)
+}
+
 /** La dernière image parue à l'instant `temps`, entre les images de et a */
 export function indiceAuTemps(ech: Float64Array, temps: number, de: number, a: number): number {
   let bas = de + 1, haut = a, r = de

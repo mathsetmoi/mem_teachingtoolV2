@@ -6,15 +6,17 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Tableau } from '../src/document'
-import type { Polygone, Trait } from '../src/types'
+import { Immobilite } from '../src/formes'
+import type { P } from '../src/formes'
+import type { Cercle, Polygone, Trait } from '../src/types'
 import { exporter, seancesDuFilm } from '../src/revoir/exporter'
 import { ecrireFilm, lireFilm } from '../src/revoir/format'
 import type { FilmEleve } from '../src/revoir/format'
 import { Bobine } from '../src/revoir/bobine'
 import { MS_MAX, dureesDuTrace, leve, lireTemps, main, pointsPoses, tempsDesPoints, traitEnCours } from '../src/revoir/main-levee'
 import { COUDE, PLANCHER, tasser } from '../src/revoir/rythme'
-import { ENTREE, construireBande, departs, echeances } from '../src/revue/bande'
-import { lectureDe } from '../src/revue/planches'
+import { ENTREE, construireBande, departs, echeances, horlogeAuDepart, indiceAuTemps } from '../src/revue/bande'
+import { Planches, lectureDe } from '../src/revue/planches'
 
 const MINUTE = 60_000
 let horloge = new Date('2026-10-07T08:00:00').getTime()
@@ -125,6 +127,47 @@ describe('au tableau : l\'étape du trait note son rythme', () => {
     expect(film.map(e => e.ms ?? null)).toEqual([null, ms, null, null, null, null, null])
     // Le trait lui-même reste un trait comme les autres
     expect(Object.keys(t.formesDe(page)!.get(a.id)!)).not.toContain('ms')
+  })
+})
+
+describe('au tableau : le stylet immobile', () => {
+  /** Ce que fait le tableau de chaque point du stylet : il ignore ceux à moins
+   *  de 0,6 px d'écran du dernier gardé, et relance la minuterie « stylo
+   *  immobile » (550 ms) quand la plume a bougé. Rend le plus long temps passé
+   *  sans relance : à 550 ms, le trait est coupé et validé « maintenu ». */
+  function plusLongArret(points: (P & { t: number })[], zoom = 1): number {
+    const im = new Immobilite(points[0])
+    let dernier: P = points[0], relance = points[0].t, max = 0
+    for (const p of points.slice(1)) {
+      if (Math.hypot(p.x - dernier.x, p.y - dernier.y) * zoom < 0.6) continue
+      dernier = p
+      if (im.bouge(p, zoom)) { max = Math.max(max, p.t - relance); relance = p.t }
+    }
+    return Math.max(max, points[points.length - 1].t - relance)
+  }
+  /** Une vague lente de 1,5 s, à `vitesse` px d'écran par seconde, échantillonnée à `hz` */
+  function vague(vitesse: number, hz: number, zoom = 1) {
+    const r: (P & { t: number })[] = []
+    for (let t = 0; t <= 1500; t += 1000 / hz) r.push({ t, x: 100 + vitesse * t / 1000 / zoom, y: 100 + 10 * Math.sin(t / 150) / zoom })
+    return r
+  }
+
+  it('une plume lente mais continue n\'est jamais immobile, quelle que soit la fréquence du stylet', () => {
+    for (const hz of [60, 125, 200, 240, 480]) {
+      for (const vitesse of [30, 120, 250, 350]) {
+        for (const zoom of [0.5, 1, 2]) expect(plusLongArret(vague(vitesse, hz, zoom), zoom), `${vitesse} px/s à ${hz} Hz, zoom ${zoom}`).toBeLessThan(150)
+      }
+    }
+  })
+
+  it('la main posée qui tremble à peine est immobile, à toutes les fréquences', () => {
+    let s = 7
+    const hasard = () => { s = (s * 16807) % 2147483647; return s / 2147483647 - 0.5 }
+    for (const hz of [60, 125, 240]) {
+      const pts: (P & { t: number })[] = []
+      for (let t = 0; t <= 1000; t += 1000 / hz) pts.push({ t, x: 300 + hasard(), y: 300 + hasard() })      // ±0,5 px
+      expect(plusLongArret(pts)).toBeGreaterThanOrEqual(1000 - 1000 / hz)
+    }
   })
 })
 
@@ -271,6 +314,29 @@ describe('la revue : le rythme de la main', () => {
     }
   })
 
+  it('relancée pendant qu\'un trait s\'écrit, la lecture le finit jusqu\'au lever, puis attend le vrai temps stylo levé', async () => {
+    const { t, page } = await nouveauTableau()
+    // Un long mot cursif (2,4 s d'écriture), puis, 214 ms stylo levé plus tard, la barre du t
+    const long = Array.from({ length: 300 }, (_, i) => i === 299 ? 14 : 8), barre = rythme(6)
+    t.poserTrace(page, trait(0, 0, 300), long); await attendre(214 + somme(barre))
+    t.poserTrace(page, trait(90, 0), barre); await attendre(1000)
+    const lecture = lectureDe(t, () => t.ordre.toArray())
+    const seances = seancesDuFilm(lecture.film)
+    const b = construireBande(lecture, { genre: 'seance', seance: seances[0], page }, seances, p => p)!
+    expect(b.traces[1]).toBe(somme(long))
+    const fin = b.images.length - 1
+    for (const f of [0.5, 1, 3]) {
+      const ech = echeances(b, f), dep = departs(b, ech, f)
+      // Maj+→ a amené le mot ; on relance quand il lui reste 2 s à s'écrire
+      const reste = 2000 / f, h = horlogeAuDepart(ech, dep, 1, reste, 100)
+      expect(indiceAuTemps(dep, h + reste - 1, 1, fin)).toBe(1)          // la barre attend la fin du mot…
+      expect(dep[2] - h).toBeCloseTo(reste + 214 / f)                      // … et le temps stylo levé
+      // Rien qui s'écrit : la suite vient tout de suite, comme avant
+      expect(dep[2] - horlogeAuDepart(ech, dep, 1, 0, 100)).toBeLessThanOrEqual(100)
+      expect(horlogeAuDepart(ech, dep, 1, 0, 100)).toBeGreaterThanOrEqual(ech[1])
+    }
+  })
+
   it('la figure reconnue : le trait s\'écrit, puis la figure paraît, en un seul geste', async () => {
     const { t, page } = await nouveauTableau()
     await attendre(500)
@@ -307,5 +373,50 @@ describe('la revue : le rythme de la main', () => {
         expect(b.attentes[k]).toBe(tasser(lecture.film[b.images[k].e].t - lecture.film[b.images[k - 1].e].t))
       }
     }
+  })
+})
+
+describe('ce qui revient revient d\'un coup, comme au tableau', () => {
+  /** « x », un grand O que le tableau reconnaît comme un cercle, Ctrl+Z pour garder
+   *  le tracé à main levée, puis la barre d'un t, retirée par Ctrl+Z et rendue par Ctrl+Y */
+  async function lettresRendues() {
+    const { t, page } = await nouveauTableau()
+    const x = trait(0, 0), o = trait(40, 0, 12), barre = trait(90, 0)
+    t.nouveauGeste(); t.poserTrace(page, x, rythme(6)); await attendre(600)
+    t.nouveauGeste(); t.poserTrace(page, o, rythme(12)); await attendre(5)
+    const cercle: Cercle = { id: 'C' + numero++, type: 'cercle', x: 50, y: 0, r: 20, z: Date.now(), auteur: 'a', couleur: '#1b2230', taille: 3 }
+    t.nouveauGeste(); t.doc.transact(() => { t.supprimer(page, [o.id]); t.poser(page, cercle) }, 'locale'); await attendre(700)
+    t.nouveauGeste(); t.annulation.undo(); await attendre(800)
+    t.nouveauGeste(); t.poserTrace(page, barre, rythme(6)); await attendre(500)
+    t.nouveauGeste(); t.annulation.undo(); await attendre(400)
+    t.nouveauGeste(); t.annulation.redo(); await attendre(1000)
+    return { t, page, ids: { x: x.id, o: o.id, cercle: cercle.id, barre: barre.id } }
+  }
+
+  it('le lecteur des élèves : seul ce qui naît se dessine', async () => {
+    const { t, page, ids } = await lettresRendues()
+    const bo = new Bobine(await filmEleve(t, [page]))
+    expect(bo.n).toBe(8)
+    const nouvelles = Array.from({ length: bo.n }, (_, k) => bo.nouvelles(k).map(f => f.id))
+    const ajoutees = Array.from({ length: bo.n }, (_, k) => [...bo.ajoutees(k)])
+    expect(nouvelles).toEqual([[], [ids.x], [ids.o], [ids.cercle], [ids.o], [ids.barre], [], [ids.barre]])
+    // Le O rendu par Ctrl+Z et la barre rendue par Ctrl+Y reviennent tels quels, sans se redessiner
+    expect(ajoutees).toEqual([[], [ids.x], [ids.o], [ids.cercle], [], [ids.barre], [], []])
+    expect([1, 2, 5].map(k => bo.main(k)?.trait.id)).toEqual([ids.x, ids.o, ids.barre])
+    expect(bo.main(4)).toBeNull()
+    expect(bo.main(7)).toBeNull()
+  })
+
+  it('la revue : seul ce qui naît se dessine', async () => {
+    const { t, page, ids } = await lettresRendues()
+    const lecture = lectureDe(t, () => t.ordre.toArray())
+    const seances = seancesDuFilm(lecture.film)
+    const b = construireBande(lecture, { genre: 'seance', seance: seances[0], page }, seances, p => p)!
+    const pl = new Planches(lecture)
+    const apparues = b.images.slice(1).map((img, j) => pl.apparues(b.images[j], img))
+    // Le O et sa figure ne font qu'un geste (le trait s'écrit, puis la figure paraît)
+    expect(apparues.map(a => a.map(f => f.id))).toEqual([[ids.x], [ids.cercle], [ids.o], [ids.barre], [], [ids.barre]])
+    expect(apparues.map((a, j) => pl.neuves(b.images[j], a).map(f => f.id))).toEqual([[ids.x], [ids.cercle], [], [ids.barre], [], []])
+    expect(b.images.map(i => i.main !== undefined)).toEqual([false, true, true, false, true, false, false])
   })
 })

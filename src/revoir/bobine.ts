@@ -32,7 +32,8 @@ export class Bobine {
   /** Temps écoulé à chaque image, au rythme d'origine tassé, en ms */
   readonly temps: number[]
   private reperes: Etat[] = []
-  /** Pour chaque image, les formes qui y APPARAISSENT (pas celles qui changent) */
+  /** Pour chaque image, les formes qui y APPARAISSENT pour la première fois
+   *  (pas celles qui changent, ni celles qui reviennent : voir ajoutees) */
   private ajouts: Set<string>[] = [new Set()]
   /** Pour chaque image, le trait qui s'y trace à la main, au rythme noté (null : aucun) */
   private mains: (Main | null)[] = [null]
@@ -46,9 +47,13 @@ export class Bobine {
     for (const p of film.pages) depart.set(p.id, { fond: p.fond, origine: p.origine, formes: new Map(p.formes.map(f => [f.id, f])) })
     let e = depart
     this.reperes.push(copie(e))
+    /** Les formes déjà montrées, sur une page ou une autre */
+    const vues = new Set<string>()
+    for (const p of film.pages) for (const f of p.formes) vues.add(f.id)
     for (let k = 1; k < this.n; k++) {
       const a = new Set<string>(); this.ajouts.push(a)
       this.appliquer(e, k, a)
+      for (const id of a) if (vues.has(id)) a.delete(id); else vues.add(id)
       if (k % TOUS_LES === 0) this.reperes.push(copie(e))
       const g = film.etapes[k - 1]
       let m: Main | null = null
@@ -125,7 +130,9 @@ export class Bobine {
     return this.film.etapes[k - 1].o.filter(o => o[0] === '=').map(o => o[1] as Forme)
   }
 
-  /** Les formes qui apparaissent à l'image k (une forme déplacée n'y est pas) */
+  /** Les formes qui apparaissent à l'image k pour la première fois du film :
+   *  une forme déplacée n'y est pas, ni une forme déjà montrée qui revient
+   *  (rendue par Ctrl+Z ou Ctrl+Y) : au tableau, elle revient d'un coup */
   ajoutees(k: number): Set<string> { return this.ajouts[k] ?? new Set() }
 
   /** Le chapitre de l'image k (son rang dans la liste) */

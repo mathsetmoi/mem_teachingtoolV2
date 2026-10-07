@@ -210,8 +210,8 @@ function montrer(i: number, anime: boolean, debut = performance.now()) {
   // La figure reconnue au lever du stylo remplace le trait d'un coup, comme au tableau
   if (changePage || bobine.reconnue(k)) return
   // Les figures apparues se dessinent sous les yeux, à vitesse de plume
-  // (seulement celles qui apparaissent : une forme déplacée ou recolorée ne se réécrit pas),
-  // et le tracé finit avant le geste suivant
+  // (seulement celles qui apparaissent : une forme déplacée ou recolorée ne se réécrit pas,
+  // ni celle qu'un Ctrl+Z rend, qui revient d'un coup), et le tracé finit avant le geste suivant
   const ajouts = bobine.ajoutees(k)
   const aTracer = nouvelles.filter(f => ajouts.has(f.id) && seDessine(f))
   const facteur = ALLURES[allure].facteur

@@ -36,7 +36,7 @@ import type { NomIcone } from '../revoir/icones'
 import { ALLURES } from '../revoir/rythme'
 import type { Bande, ImageBande, Portion } from './bande'
 import {
-  bandeParDefaut, compterGestes, construireBande, departs, dureeLisible, echeances, entreePrecedente, entreeSuivante, heureLisible, indiceAuTemps,
+  bandeParDefaut, compterGestes, construireBande, departs, dureeLisible, echeances, entreePrecedente, entreeSuivante, heureLisible, horlogeAuDepart, indiceAuTemps,
   jourCourt, jourDuMois, jourLisible, listeDesPages, partieDe, pasPrecedent, pasSuivant, pluriel,
   prochainArret, seancesDeLaPage,
 } from './bande'
@@ -443,7 +443,9 @@ export class RevueEnClasse {
       this.trace = { ids: new Set([main.m.trait.id]), debut: this.maintenant - deja, duree, main }
       this.assurerBoucle()
     } else if (tracer && !this.reduit.matches) {
-      const f = apparues.filter(seDessine)
+      // Ce qui revient (Ctrl+Z, Ctrl+Y) revient d'un coup, comme au tableau
+      const dessinees = apparues.filter(seDessine)
+      const f = voisine && dessinees.length ? this.planches!.neuves(voisine, dessinees) : []
       if (f.length) {
         let duree = dureeDuTrace(f) / this.facteur
         // Pendant la lecture, le tracé finit toujours avant le geste suivant
@@ -550,10 +552,13 @@ export class RevueEnClasse {
   }
 
   private demarrer() {
-    const n = this.bande!.images.length
     // Quelque chose bouge en moins de 150 ms, quelle que soit l'attente d'origine
-    // (le geste paraît au plus 100 ms après l'appui ; l'écran suit à l'image d'après)
-    this.horloge = Math.max(this.ech[this.k], this.debuts[Math.min(n - 1, this.k + 1)] - DEMARRAGE)
+    // (le geste paraît au plus 100 ms après l'appui ; l'écran suit à l'image d'après).
+    // Un trait qui s'écrit encore à la main bouge déjà : il va jusqu'au lever,
+    // puis vient le vrai temps stylo levé (comme au lecteur des élèves).
+    const t = this.trace
+    const reste = t?.main ? Math.max(0, t.debut + t.duree - performance.now()) : 0
+    this.horloge = horlogeAuDepart(this.ech, this.debuts, this.k, reste, DEMARRAGE)
     this.instant = performance.now()
     this.enMarche = true
     this.majCommandes()

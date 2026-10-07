@@ -16,7 +16,7 @@ import type { Bord, EtatInstrument, NomInstrument, Partie } from './instruments'
 import { angleLisible, bords, etatParDefaut, toucher } from './instruments'
 import * as Y from 'yjs'
 import katex from 'katex'
-import { bornerDecalage, image, nomsLibres, placesDesNoms, reconnaitre, sommetsDe, versRelatif } from './formes'
+import { Immobilite, bornerDecalage, image, nomsLibres, placesDesNoms, reconnaitre, sommetsDe, versRelatif } from './formes'
 import { tempsDesPoints } from './revoir/main-levee'
 
 export const COULEURS = [
@@ -99,6 +99,8 @@ export class App {
   private dernierEnvoiCurseur = 0
   private dernierEnvoiVue = 0
   private dernierMouvement = 0        // pour savoir si le stylet est resté immobile
+  /** Où la plume s'est posée ou a bougé pour la dernière fois (voir Immobilite) */
+  private immobilite = new Immobilite({ x: 0, y: 0 })
   /** L'heure de chaque point du trait en cours : le replay le retracera à ce rythme */
   private heuresDuTrait: number[] = []
   private polyEnCours: P[] | null = null
@@ -579,6 +581,7 @@ export class App {
         this.heuresDuTrait = [heureDe(e)]
         this.geste = { type: 'dessin', pointeur: e.pointerId }
         this.dernierMouvement = performance.now()
+        this.immobilite = new Immobilite(m)
         this.attendreImmobilite()
         this.rendu.redessinerDirect()
         break
@@ -714,7 +717,7 @@ export class App {
           if (Math.hypot(p.x - trait.pts[n - 3], p.y - trait.pts[n - 2]) < seuil) continue
           trait.pts.push(p.x, p.y, ev.pointerType === 'pen' ? ev.pressure : 0.5)
           this.heuresDuTrait.push(heureDe(ev))
-          if (Math.hypot(p.x - trait.pts[n - 3], p.y - trait.pts[n - 2]) * this.cam.z > 1.5) { this.dernierMouvement = t; this.attendreImmobilite() }
+          if (this.immobilite.bouge(p, this.cam.z)) { this.dernierMouvement = t; this.attendreImmobilite() }
         }
         this.rendu.redessinerDirect()
         if (t - this.dernierEnvoiTrait > 33) { this.dernierEnvoiTrait = t; this.tableau.diffuser({ direct: { ...trait } }) }
