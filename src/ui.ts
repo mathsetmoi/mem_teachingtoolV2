@@ -12,6 +12,7 @@ import type { P, Transformation } from './formes'
 import { centreDe, image, versRelatif } from './formes'
 import { etapesImage } from './construction'
 import { Lecteur } from './lecteur'
+import { Publication } from './publication/fenetre'
 import { Constructeur } from './constructeur'
 import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
@@ -44,6 +45,7 @@ const ICONES: Record<string, string> = {
   polygone: 'M12 3l8 6-3 10H7L4 9z',
   reconnaissance: 'M4 17c2-6 5-9 9-9M14 4h6v6M20 4l-7 7M4 20h6',
   rejouer: 'M12 21a9 9 0 100-18 9 9 0 100 18zM10 8.5l5.5 3.5-5.5 3.5z',
+  publier: 'M12 15V3M7.5 7.5L12 3l4.5 4.5M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6',
   image: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15.5 9.5a1.5 1.5 0 100-.01',
   instruments: 'M3 17L17 3l4 4L7 21zM7 13l2 2M10 10l2 2M13 7l2 2',
   regle: 'M2 9h20v6H2zM6 9v3M10 9v2M14 9v3M18 9v2',
@@ -145,6 +147,7 @@ export class UI implements Interface {
   private idPanneau = ''
   private section: 'contour' | 'fond' | 'transformer' | null = null
   private lecteur!: Lecteur
+  private publication!: Publication
   private constructeur!: Constructeur
   private seance!: Seance
   private choixInstruments!: HTMLDivElement
@@ -239,8 +242,9 @@ export class UI implements Interface {
     this.racine.appendChild(choixFichier)
     const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir())
     const rejouer = bouton('rejouer', 'Rejouer la construction du tableau', () => this.lecteur.ouvrir())
-    this.outilsPage = [nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, rejouer]
-    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, rejouer)
+    const publier = bouton('publier', 'Publier le replay pour les élèves', () => this.publication.ouvrir())
+    this.outilsPage = [nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, rejouer, publier]
+    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, rejouer, publier)
 
     // ----- Les instruments, sous leur bouton -----
     this.choixInstruments = document.createElement('div')
@@ -304,6 +308,7 @@ export class UI implements Interface {
 
     this.racine.append(outils, haut, zoom, this.bandeau, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
     this.lecteur = new Lecteur(app, this.racine, t => this.message(t))
+    this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t))
     this.seance = new Seance(this.racine)
 

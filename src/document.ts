@@ -23,6 +23,14 @@ export interface Etape { t: number; page: string; s: Uint8Array }
 /** Ce qu'il y avait sur une page à une étape du film */
 export interface ImagePage { fond: Fond; origine: { x: number; y: number }; formes: Forme[] }
 
+/** Tout le tableau à une étape du film : l'ordre des pages, et chacune
+ *  avec ses formes. Les formes sont les objets mêmes du document : une forme
+ *  qui n'a pas changé d'une étape à l'autre est le même objet. */
+export interface EtatTableau {
+  ordre: string[]
+  pages: Map<string, { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme> }>
+}
+
 export type EtatConnexion = 'hors-ligne' | 'connexion' | 'en-ligne' | 'injoignable'
 
 export class Tableau {
@@ -40,11 +48,12 @@ export class Tableau {
   readonly moi = uid()
   salle: string | null = null
   private ws: WebsocketProvider | null = null
-  private local: IndexeddbPersistence
+  private local: IndexeddbPersistence | null
   etat: EtatConnexion = 'hors-ligne'
   surEtat: (e: EtatConnexion) => void = () => {}
 
-  constructor(nomLocal: string) {
+  /** nomLocal : la base du navigateur où le tableau s'enregistre (null : nulle part, pour les tests) */
+  constructor(nomLocal: string | null) {
     this.ordre = this.doc.getArray('ordre')
     this.pages = this.doc.getMap('pages')
     this.reglages = this.doc.getMap('reglages')
@@ -56,12 +65,12 @@ export class Tableau {
       trackedOrigins: new Set([ORIGINE_LOCALE]),
       captureTimeout: 400,
     })
-    this.local = new IndexeddbPersistence(nomLocal, this.doc)
+    this.local = nomLocal ? new IndexeddbPersistence(nomLocal, this.doc) : null
 
     // Chaque geste qui touche aux pages devient une étape du film. Pas le
     // chargement depuis le disque ni le serveur : ces étapes-là y sont déjà.
     this.doc.on('afterTransaction', (tr: Y.Transaction) => {
-      if (tr.origin === ORIGINE_FILM || tr.origin === this.local || (this.ws && tr.origin === this.ws)) return
+      if (tr.origin === ORIGINE_FILM || (this.local && tr.origin === this.local) || (this.ws && tr.origin === this.ws)) return
       if (!tr.changedParentTypes.size || ![...tr.changedParentTypes.keys()].some(t => this.dansLesPages(t))) return
       const etape: Etape = { t: Date.now(), page: this.pageVue, s: Y.encodeSnapshot(Y.snapshot(this.doc)) }
       queueMicrotask(() => this.doc.transact(() => this.film.push([etape]), ORIGINE_FILM))
@@ -75,8 +84,37 @@ export class Tableau {
     return false
   }
 
+  /** Le tableau tel qu'il était à une étape du film. On le lit directement
+   *  dans l'instantané, sans reconstruire de document : c'est possible parce
+   *  que le document garde tout (gc: false), et cent fois plus rapide. */
+  etatA(etape: Etape): EtatTableau {
+    const snap = Y.decodeSnapshot(etape.s)
+    const ordre = (Y.typeListToArraySnapshot(this.ordre, snap) as string[])
+    const pages: EtatTableau['pages'] = new Map()
+    const toutes = Y.typeMapGetAllSnapshot(this.pages, snap) as Record<string, unknown>
+    for (const [id, p] of Object.entries(toutes)) {
+      if (!(p instanceof Y.Map)) continue
+      const formes = Y.typeMapGetSnapshot(p, 'formes', snap)
+      const liste = formes instanceof Y.Map ? Y.typeMapGetAllSnapshot(formes, snap) as Record<string, Forme> : {}
+      pages.set(id, {
+        fond: (Y.typeMapGetSnapshot(p, 'fond', snap) as Fond) || 'blanc',
+        origine: (Y.typeMapGetSnapshot(p, 'origine', snap) as { x: number; y: number }) || { x: 0, y: 0 },
+        formes: new Map(Object.entries(liste)),
+      })
+    }
+    return { ordre, pages }
+  }
+
   /** Une page telle qu'elle était à une étape du film */
   pageA(etape: Etape, page: string): ImagePage | null {
+    const p = this.etatA(etape).pages.get(page)
+    if (!p) return null
+    return { fond: p.fond, origine: p.origine, formes: [...p.formes.values()].sort((a, b) => a.z - b.z) }
+  }
+
+  /** La même page, lue en reconstruisant tout le document (l'ancienne façon,
+   *  lente) : sert aux tests, pour vérifier que la lecture rapide dit pareil */
+  pageReconstruite(etape: Etape, page: string): ImagePage | null {
     const d = Y.createDocFromSnapshot(this.doc, Y.decodeSnapshot(etape.s))
     const p = d.getMap('pages').get(page) as Y.Map<unknown> | undefined
     if (!p) { d.destroy(); return null }
@@ -92,7 +130,7 @@ export class Tableau {
 
   /** Attend la copie locale ; crée une première page si le tableau est vide. */
   async charger(creerSiVide: boolean): Promise<void> {
-    await this.local.whenSynced
+    await this.local?.whenSynced
     if (creerSiVide && this.ordre.length === 0) this.ajouterPage('carreaux', 0)
   }
 

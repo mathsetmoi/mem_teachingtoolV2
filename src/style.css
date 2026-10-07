@@ -429,3 +429,27 @@ body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .panneau-co
 .question-auto .correction { margin: .4em 0 0; color: #1e6b3d; font-weight: 700; }
 .question-auto .a-repondre { margin: 0; color: var(--encre-douce); }
 .seance-message { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); padding: 12px 20px; border-radius: 12px; background: var(--encre); color: #fff; font-size: 18px; }
+
+/* ---------- Publier le replay ---------- */
+.dialogue-publier { width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto; }
+.dialogue-publier .corps { display: grid; gap: 14px; }
+.dialogue-publier .champ { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.dialogue-publier .champ span { font-size: 14px; font-weight: 700; color: var(--encre); white-space: normal; }
+.dialogue-publier .champ input, .dialogue-publier .champ select {
+  height: 44px; padding: 0 12px; border: 1px solid var(--filet); border-radius: 10px; background: #fbfcfe; font-weight: 400; font-size: 15px; min-width: 0;
+}
+.dialogue-publier fieldset { border: 1px solid var(--filet); border-radius: 12px; padding: 8px 12px 10px; margin: 0; }
+.dialogue-publier legend { font-weight: 700; font-size: 14px; padding: 0 4px; }
+.dialogue-publier .cases { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.dialogue-publier .case { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; cursor: pointer; }
+.dialogue-publier .case input { width: 18px; height: 18px; accent-color: var(--bleu); }
+.dialogue-publier .case em { color: var(--encre-douce); font-style: normal; font-size: 13px; }
+.p-verifier { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 14px; color: var(--encre-douce); }
+.p-verifier li { padding: 8px 10px; border-radius: 10px; background: var(--chrome); line-height: 1.4; }
+.p-verifier li.alerte { background: #fff6d6; color: var(--encre); }
+.dialogue-publier .actions { flex-wrap: wrap; }
+.dialogue-publier .actions.fin { border-top: 1px solid var(--filet); padding-top: 12px; }
+.p-etat { margin: 0 !important; min-height: 1.4em; font-size: 14px; color: var(--encre-douce); }
+.p-etat.erreur { color: var(--rouge); font-weight: 700; }
+.p-resultat { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: #e9f5ee; }
+.bouton-lien { display: inline-flex; align-items: center; text-decoration: none; color: inherit; height: 42px; padding: 0 18px; border-radius: 10px; font-weight: 700; }

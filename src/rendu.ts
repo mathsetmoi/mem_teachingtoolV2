@@ -9,7 +9,6 @@
 //                  elle qui fait la latence ressentie au stylet.
 // =============================================================
 import { getStroke } from 'perfect-freehand'
-import katex from 'katex'
 import type { Camera } from './camera'
 import type { Bout, Figure, Fond, Forme, Formule, ImageForme, MarquePoint, Presence, Trait } from './types'
 import { coinsImage } from './geometrie'
@@ -238,6 +237,11 @@ export class Rendu {
   // ---------- Images ----------
   /** Où trouver les pixels d'une image (chargée à part, une fois) */
   pixels: (src: string) => HTMLImageElement | null = () => null
+  /** Comment écrire une formule. Le tableau y branche KaTeX ; le lecteur des
+   *  élèves ne le charge que si la séance a des formules. */
+  rendreFormule: (latex: string, el: HTMLElement) => void = (latex, el) => { el.textContent = latex }
+  /** À appeler quand la façon d'écrire les formules change : on les réécrit toutes */
+  reecrireFormules() { for (const e of this.elementsFormules.values()) e.cle = ''; this.toutRedessiner() }
 
   private dessinerImage(c: CanvasRenderingContext2D, f: ImageForme, dec: { dx: number; dy: number } | null) {
     const img = this.pixels(f.src)
@@ -358,7 +362,7 @@ export class Rendu {
         this.elementsFormules.set(f.id, e)
       }
       if (e.cle !== cle) {
-        katex.render(f.latex || '\\square', e.el, { throwOnError: false, displayMode: false })
+        this.rendreFormule(f.latex || '\\square', e.el)
         e.el.style.color = f.couleur
         e.el.style.fontSize = f.taille + 'px'
         e.cle = cle

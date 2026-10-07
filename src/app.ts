@@ -15,6 +15,7 @@ import type { P, Reconnue, Transformation } from './formes'
 import type { Bord, EtatInstrument, NomInstrument, Partie } from './instruments'
 import { angleLisible, bords, etatParDefaut, toucher } from './instruments'
 import * as Y from 'yjs'
+import katex from 'katex'
 import { bornerDecalage, image, nomsLibres, placesDesNoms, reconnaitre, sommetsDe, versRelatif } from './formes'
 
 export const COULEURS = [
@@ -120,6 +121,7 @@ export class App {
 
     // Les images : où trouver leurs pixels ; coller ou glisser un fichier
     this.rendu.pixels = src => this.pixels(src)
+    this.rendu.rendreFormule = (latex, el) => katex.render(latex, el, { throwOnError: false, displayMode: false })
     window.addEventListener('paste', e => {
       if ((e.target as HTMLElement).closest?.('input, textarea')) return
       const f = [...(e.clipboardData?.files ?? [])].find(x => x.type.startsWith('image/'))

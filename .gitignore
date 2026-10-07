@@ -3,3 +3,4 @@ dist
 serveur/node_modules
 serveur/salles
 .env
+dist-pages

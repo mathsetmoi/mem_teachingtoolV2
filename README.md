@@ -214,8 +214,68 @@ Espace, ← →, Origine, Fin ; Échap pour fermer. Le lecteur n'écrit rien :
 le tableau revient tel quel. Le film est gardé avec le tableau.
 
 Pour cela, le document Yjs garde ce qui a été effacé (`gc: false`) et note un
-instantané à chaque geste (`film`) : rejouer, c'est reconstruire le document à
-chacun de ces instants.
+instantané à chaque geste (`film`). Rejouer, c'est lire l'état du tableau dans
+chacun de ces instantanés, directement, sans reconstruire le document.
+
+## Revoir la séance (les élèves, chez eux)
+
+Le bouton **Publier le replay** (la flèche qui sort d'une boîte, à côté de ▶)
+donne aux élèves un lien à coller dans le cahier de textes Pronote. Ils
+l'ouvrent sur leur téléphone, sans compte, et appuient sur ▶.
+
+**Côté professeur.** La fenêtre propose la séance, repérée toute seule dans le
+film (un silence de plus de 20 minutes, ou un autre jour, en commence une
+autre), les pages, un titre et le compte Google. **Voir comme un élève** ouvre
+le lecteur dans un onglet, sans rien publier. **Publier** se connecte à Google,
+envoie la séance sur le Drive, la relit par le relais comme le fera l'élève, et
+donne le lien, avec **Copier pour Pronote** (le titre, le lien et les
+chapitres avec leur minute). Republier la même séance met à jour le même
+fichier : le lien déjà collé montre la nouvelle version. **Enregistrer le
+fichier** donne un fichier `.prof` à déposer dans l'ENT ou sur une clé USB ; le
+lecteur l'ouvre aussi.
+
+**Côté élève** (`revoir.html`). L'affiche montre le tableau final, le titre, la
+date et la durée. Le replay suit le rythme du cours (les longs silences sont
+écourtés) à ×0,5, ×1, ×1,5 ou ×2 ; les traits se redessinent sous les yeux.
+Pas à pas, frise, chapitres (un par page pour l'instant), pages qui changent
+toutes seules, pincer ou la molette pour zoomer, glisser pour se déplacer,
+double-clic pour revoir toute la page. **La lecture s'arrête à la fin de chaque
+chapitre** : l'élève relance quand il a recopié (`&continu=1` dans le lien pour
+un replay d'un seul tenant, `&c=2` pour ouvrir au chapitre 2). Clavier :
+Espace, ← →, [ ], Origine, Fin.
+
+**Ce qui part chez les élèves, et ce qui n'y part pas.** On ne publie jamais
+le document du tableau : il garde tout ce qui a été effacé. On publie un « film
+élève » (`src/revoir/format.ts`) : l'état des pages au début de la séance,
+puis ce qui apparaît, change ou disparaît à chaque geste. Ce qui a été effacé
+avant la séance n'y est pas, ni les pages non cochées, ni le nom de l'appareil,
+ni le tracé brut d'une figure reconnue, ni les images inutilisées. Un test
+automatique le vérifie (`npm test`). Le lecteur n'écrit rien dans le navigateur
+de l'élève (ni stockage, ni cookie), ne charge aucune police ni aucun service
+extérieur, et sa politique de sécurité ne l'autorise à parler qu'aux relais.
+Il reste au professeur à vérifier qu'aucun prénom n'a été écrit pendant la
+séance, et qu'aucune image importée ne montre une copie ou un visage : la
+fenêtre le rappelle.
+
+**Où vivent les séances.** Dans le dossier privé « Au Tableau — séances
+publiées » du Drive du professeur, le même qu'en V1 : rien n'est partagé. Le
+relais Apps Script de ce compte (`relais/relais-seances.gs`, repris de la V1)
+lit la séance sous l'identité du professeur et la sert ; un relais par compte
+Google, et le lien dit lequel (`?r=mem&id=…`). Le relais du Drive personnel est
+déjà déployé ; celui du lycée s'installe en cinq minutes (instructions en tête
+du script), puis son adresse va dans `src/publication/comptes.ts`. La
+connexion Google demande le droit le plus étroit (`drive.file` : Tableau MEM ne
+voit que les fichiers qu'il a créés) et utilise le même identifiant client que
+la V1, ce qui lui fait retrouver son dossier.
+
+**Mettre en ligne.** `npm run build:pages` construit le tableau et le lecteur
+dans `dist-pages/`. Le fichier `.github/workflows/pages.yml` les met en ligne
+sur GitHub Pages à chaque envoi sur `main`, après les tests (à activer une
+fois : Settings → Pages → Source : GitHub Actions). On publie depuis cette
+version en ligne : la connexion Google ne marche ni depuis le fichier unique,
+ni depuis une adresse que la console Google n'autorise pas. Attention : le
+tableau vit dans le navigateur, adresse par adresse ; celui de la version en
+ligne n'est pas celui de la clé USB.
 
 ## Partage avec les élèves (mis de côté)
 
@@ -305,6 +365,10 @@ cours, qui fait la latence ressentie au stylet.
 | `src/geometrie.ts` | Ce que touche la gomme ou la sélection |
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
 | `src/lecteur.ts` | Le lecteur qui rejoue la construction |
+| `src/revoir/` | Le replay des élèves : format du film, exporteur, bobine, lecteur (`revoir.html`), relais |
+| `src/publication/` | Publier sur le Drive : comptes et relais, connexion Google, la fenêtre |
+| `relais/relais-seances.gs` | Le relais Apps Script, à déployer dans chaque compte Google |
+| `tests/` | Les tests (`npm test`) : ce qui part chez les élèves, la fidélité du replay |
 | `src/instruments.ts` | Règle, équerre, rapporteur, compas |
 | `src/construction.ts` | Programme de construction → étapes et gestes |
 | `src/constructeur.ts` | Joue les étapes, avec ou sans instruments |

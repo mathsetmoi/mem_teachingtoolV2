@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- Le lecteur ne parle qu'à lui-même et aux relais des séances (Apps Script) :
+         aucune police, aucune mesure d'audience, aucun service tiers. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: https://script.google.com https://script.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'none'" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#f6f8fb" />
+    <title>Revoir la séance — Tableau MEM</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%231f5fbf'/><path d='M40 30l32 20-32 20z' fill='white'/></svg>" />
+  </head>
+  <body>
+    <div id="revoir"></div>
+    <noscript><p style="padding:24px;font-family:system-ui">Pour revoir la séance, il faut activer JavaScript.</p></noscript>
+    <script type="module" src="/src/revoir/main.ts"></script>
+  </body>
+</html>
