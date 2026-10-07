@@ -125,13 +125,17 @@ export class Frise {
     })
   }
 
-  /** Où l'on en est : l'image k, dans la partie `partie` */
-  placer(k: number, partie: number, texte: string) {
+  /** Où l'on en est : l'image k, dans la partie `partie`. texte null : la
+   *  frise avance sans changer ce qu'elle dit au lecteur d'écran (pendant la
+   *  lecture, il annoncerait chaque geste) ; on le lui redit à l'arrêt. */
+  placer(k: number, partie: number, texte: string | null) {
     const el = this.el
-    el.setAttribute('aria-valuemin', '0')
-    el.setAttribute('aria-valuemax', String(this.n - 1))
-    el.setAttribute('aria-valuenow', String(k))
-    el.setAttribute('aria-valuetext', texte)
+    if (texte !== null) {
+      el.setAttribute('aria-valuemin', '0')
+      el.setAttribute('aria-valuemax', String(this.n - 1))
+      el.setAttribute('aria-valuenow', String(k))
+      el.setAttribute('aria-valuetext', texte)
+    }
     const f = this.position(k)
     this.rempli.style.width = `${f * 100}%`
     this.tete.style.left = `${f * 100}%`

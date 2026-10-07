@@ -15,6 +15,9 @@ const A_PROPOS = 'https://www.googleapis.com/drive/v3/about'
 const DROIT = 'https://www.googleapis.com/auth/drive.file'
 /** La marque du dossier des replays : le site le retrouve par elle, le relais par son nom */
 const MARQUE_DOSSIER = { cle: 'memReplay', valeur: 'dossier-v1' }
+/** Et le compte (« mem », « lfb ») dont il est le dossier : celui qu'un essai
+ *  avec le mauvais compte Google a créé n'est jamais repris par l'autre compte */
+const MARQUE_COMPTE = 'memCompte'
 /** La marque des séances publiées */
 const MARQUE = { cle: 'memRevoir', valeur: 'v1' }
 const CHAMPS = 'id,name,mimeType,parents,trashed,appProperties,permissions(id,type,role)'
@@ -120,18 +123,21 @@ const estPrive = (d: Fiche) => d.mimeType === 'application/vnd.google-apps.folde
   && Array.isArray(d.permissions) && d.permissions.length > 0 && d.permissions.every(p => p.type === 'user' && p.role === 'owner')
 const partage = (f: Fiche) => (f.permissions ?? []).some(p => p.type === 'anyone' || p.type === 'domain')
 
-/** Le dossier des replays de ce Drive, créé au besoin sous le nom `nom` */
-async function dossierPrive(nom: string): Promise<Fiche> {
+/** Le dossier des replays du compte dont `nom` est le dossier, dans ce Drive,
+ *  créé au besoin (cree : il vient de l'être) */
+async function dossierPrive(nom: string): Promise<{ dossier: Fiche; cree: boolean }> {
+  const compte = COMPTES.find(c => c.dossier === nom)?.cle ?? nom
   const q = `trashed=false and mimeType='application/vnd.google-apps.folder' and appProperties has { key='${MARQUE_DOSSIER.cle}' and value='${MARQUE_DOSSIER.valeur}' }`
+    + ` and appProperties has { key='${MARQUE_COMPTE}' and value='${compte.replace(/'/g, "\\'")}' }`
   const r = await appeler<{ files?: Fiche[] }>(`${API}?${new URLSearchParams({ q, fields: `files(${CHAMPS})`, pageSize: '50' })}`)
   const prive = (r.files ?? []).find(estPrive)
   if (prive) {
     // Renommé à la main dans Drive : le relais ne le reconnaîtrait plus
-    if (!COMPTES.some(c => c.dossier === prive.name)) {
+    if (prive.name !== nom) {
       await appeler(`${API}/${encodeURIComponent(prive.id)}`, enJson('PATCH', { name: nom }))
       prive.name = nom
     }
-    return prive
+    return { dossier: prive, cree: false }
   }
   // Un dossier des replays existe, mais il a été partagé : on ne publie pas
   // dedans, et on n'en crée pas un de plus à chaque essai
@@ -139,11 +145,11 @@ async function dossierPrive(nom: string): Promise<Fiche> {
   if (ouvert) throw new Error(`Le dossier « ${ouvert.name} » de ce Drive est partagé. Dans Google Drive, remettez son accès sur « Limité » (seulement vous), puis réessayez.`)
   // Créé privé, même dans un établissement dont les fichiers sont visibles par défaut de tout le domaine
   const cree = await appeler<{ id: string }>(`${API}?fields=id&ignoreDefaultVisibility=true`, enJson('POST', {
-    name: nom, mimeType: 'application/vnd.google-apps.folder', appProperties: { [MARQUE_DOSSIER.cle]: MARQUE_DOSSIER.valeur },
+    name: nom, mimeType: 'application/vnd.google-apps.folder', appProperties: { [MARQUE_DOSSIER.cle]: MARQUE_DOSSIER.valeur, [MARQUE_COMPTE]: compte },
   }))
   const d = await fiche(cree.id)
   if (!estPrive(d)) throw new Error('Le dossier des replays doit rester privé : vérifiez ses autorisations dans Google Drive.')
-  return d
+  return { dossier: d, cree: true }
 }
 
 /** Envoi du contenu avec ses métadonnées (une seule requête) */
@@ -164,7 +170,7 @@ function envoiMultipart(meta: unknown, texte: string) {
 export async function publier(nomDossier: string, nom: string, texte: string, cle: string, idExistant: string | null, verifier: (id: string) => Promise<void>):
   Promise<{ id: string; miseAJour: boolean; restauree: boolean }> {
   if (texte.length > 4.5 * 1024 * 1024) throw new Error('La séance est trop lourde pour être publiée (plus de 4,5 Mo) : retirez des pages ou des images.')
-  const dossier = await dossierPrive(nomDossier)
+  const { dossier, cree: dossierCree } = await dossierPrive(nomDossier)
   const infos = { name: nom.replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 120) + EXTENSION, appProperties: { [MARQUE.cle]: MARQUE.valeur, memSeance: cle.slice(0, 100) } }
 
   // Mettre à jour plutôt que refaire : le lien collé dans Pronote reste bon
@@ -202,7 +208,12 @@ export async function publier(nomDossier: string, nom: string, texte: string, cl
   } catch (e) {
     // On ne jette que ce qu'on vient de créer : une séance mise à jour a déjà un lien qui circule
     if (cree) {
-      try { await appeler(`${API}/${encodeURIComponent(id)}`, enJson('PATCH', { trashed: true })) }
+      try {
+        await appeler(`${API}/${encodeURIComponent(id)}`, enJson('PATCH', { trashed: true }))
+        // Le dossier, créé pour cette séance, n'a plus rien : on ne le laisse pas
+        // dans un Drive qui n'est peut-être pas celui du compte (mauvais compte Google)
+        if (dossierCree) await appeler(`${API}/${encodeURIComponent(dossier.id)}`, enJson('PATCH', { trashed: true })).catch(() => {})
+      }
       catch { if (e instanceof Error) e.message += ` (Une copie « ${infos.name} » est restée dans le dossier « ${dossier.name} » de votre Drive : supprimez-la.)` }
     }
     throw e

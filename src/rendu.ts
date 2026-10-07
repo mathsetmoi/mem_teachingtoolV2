@@ -81,7 +81,8 @@ export class Rendu {
   h = 0
 
   private chemins = new Map<string, { cle: string; chemin: Path2D }>()
-  private elementsFormules = new Map<string, { cle: string; el: HTMLDivElement }>()
+  /** cachee : la formule n'est plus à l'écran, mais son rendu KaTeX est gardé en réserve */
+  private elementsFormules = new Map<string, { cle: string; el: HTMLDivElement; cachee: boolean }>()
 
   // État fourni par l'application à chaque image
   formes: Forme[] = []
@@ -363,9 +364,9 @@ export class Rendu {
         const el = document.createElement('div')
         el.className = 'formule'
         this.coucheFormules.appendChild(el)
-        e = { cle: '', el }
+        e = { cle: '', el, cachee: false }
         this.elementsFormules.set(f.id, e)
-      }
+      } else if (e.cachee) { e.cachee = false; e.el.style.visibility = '' }
       if (e.cle !== cle) {
         this.rendreFormule(f.latex || '\\square', e.el)
         e.el.style.color = f.couleur
@@ -377,14 +378,22 @@ export class Rendu {
       e.el.style.top = (f.y + dec.dy) + 'px'
       e.el.style.zIndex = String(Math.floor(f.z / 1000) % 1e6)
     }
+    // Une formule qui s'en va est seulement cachée (sans quitter la mise en
+    // page : la remontrer ne coûte rien) : revenir sur une autre page, ou sur
+    // une autre image de la revue, ne la refait pas passer par KaTeX. On en
+    // garde une bonne réserve, comme pour les tracés.
+    const purger = this.elementsFormules.size > vues.size + 500
     for (const [id, e] of this.elementsFormules) {
-      if (!vues.has(id)) { e.el.remove(); this.elementsFormules.delete(id) }
+      if (vues.has(id)) continue
+      if (purger) { e.el.remove(); this.elementsFormules.delete(id) }
+      else if (!e.cachee) { e.cachee = true; e.el.style.visibility = 'hidden' }
     }
   }
 
   /** Boîte d'une formule, en monde (sa taille vient du rendu KaTeX) */
   boiteFormule(f: Formule) {
-    const e = this.elementsFormules.get(f.id)
+    const vu = this.elementsFormules.get(f.id)
+    const e = vu && !vu.cachee ? vu : null
     const l = e ? e.el.offsetWidth : f.taille * Math.max(1, f.latex.length * 0.5)
     const h = e ? e.el.offsetHeight : f.taille * 1.4
     return { x: f.x, y: f.y, l, h }

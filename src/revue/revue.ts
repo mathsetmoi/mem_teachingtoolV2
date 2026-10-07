@@ -33,9 +33,9 @@ import type { NomIcone } from '../revoir/icones'
 import { ALLURES } from '../revoir/rythme'
 import type { Bande, Portion } from './bande'
 import {
-  construireBande, dureeLisible, echeances, entreePrecedente, entreeSuivante, heureLisible, indiceAuTemps,
+  bandeParDefaut, compterGestes, construireBande, dureeLisible, echeances, entreePrecedente, entreeSuivante, heureLisible, indiceAuTemps,
   jourCourt, jourDuMois, jourLisible, listeDesPages, partieDe, pasPrecedent, pasSuivant, pluriel,
-  portionParDefaut, prochainArret, seancesDeLaPage,
+  prochainArret, seancesDeLaPage,
 } from './bande'
 import { Frise } from './frise'
 import type { LectureSeule } from './planches'
@@ -119,6 +119,8 @@ export class RevueEnClasse {
   private seances: Seance[] = []
   private ecart = DECOUPAGES[0] * MINUTE
   private bande: Bande | null = null
+  /** Le nombre de gestes de chaque portion déjà comptée (le film est figé tant que la revue est ouverte) */
+  private totaux = new Map<string, number>()
   private planches: Planches | null = null
   /** L'instant de chaque image, à l'allure choisie */
   private ech: Float64Array = new Float64Array(1)
@@ -259,6 +261,7 @@ export class RevueEnClasse {
     this.film = this.lecture.film
     this.seances = seancesDuFilm(this.film, this.ecart)
     this.planches = new Planches(this.lecture)
+    this.totaux.clear()
 
     // Le reste de l'écran ne répond plus, ni au clavier ni au lecteur d'écran
     // (le message du tableau, lui, reste lisible)
@@ -280,14 +283,15 @@ export class RevueEnClasse {
     window.addEventListener('keydown', this.surTouche, true)
     window.addEventListener('keyup', this.surRelache, true)
 
-    const p = portionParDefaut(this.seances, app.page)
-    // Une page toute neuve (sa naissance seule) n'a rien à montrer : on revoit sa séance entière
-    if (p && !this.choisirPortion(p, true) && p.genre === 'seance' && p.page !== null) this.choisirPortion({ ...p, page: null }, true)
-    if (!this.bande) {
+    // La page affichée dans sa dernière séance ; une page toute neuve (sa
+    // naissance seule) n'a rien à montrer : la dernière séance qui montre quelque chose
+    const b = bandeParDefaut(this.lecture, this.seances, app.page, pg => this.nommer(pg))
+    if (!b) {
       this.fermer()
       app.ui.message('Rien à revoir pour l\'instant : la revue montre ce qui a été écrit au tableau.')
       return
     }
+    this.montrer(b, true)
     this.boutonLire.focus()
   }
 
@@ -306,7 +310,7 @@ export class RevueEnClasse {
     this.el.classList.remove('repos')
     this.doigts.clear(); this.pince = null; this.appui = null
     this.planches?.vider()
-    this.planches = null; this.bande = null; this.lecture = null; this.film = []; this.seances = []
+    this.planches = null; this.bande = null; this.lecture = null; this.film = []; this.seances = []; this.totaux.clear()
     if (this.rendu) { this.rendu.formes = []; this.rendu.toutRedessiner() }
     this.images.clear()
     for (const c of this.inertes) c.inert = false
@@ -325,14 +329,31 @@ export class RevueEnClasse {
 
   // ---------- Ce qu'on revoit ----------
   /** Montre une portion ; false si elle n'a rien à montrer (la bande ne change pas) */
-  private choisirPortion(p: Portion, premiere = false): boolean {
+  private choisirPortion(p: Portion): boolean {
     this.pause(false)
     const b = construireBande(this.lecture!, p, this.seances, pg => this.nommer(pg))
     if (!b) {
-      // À l'ouverture, on essaie autre chose avant de le dire
-      if (!premiere) this.app.ui.message('Rien à revoir ici.')
+      this.app.ui.message('Rien à revoir ici.')
       return false
     }
+    this.montrer(b)
+    return true
+  }
+
+  /** Combien de gestes montre une portion (0 : rien), comptés comme sa bande les compte */
+  private totalDe(p: Portion): number {
+    const cle = p.genre === 'page' ? `page|${p.page}` : `${p.seance.de}|${p.seance.a}|${p.page ?? ''}`
+    let n = this.totaux.get(cle)
+    if (n === undefined && this.lecture) {
+      n = compterGestes(this.lecture, p)
+      this.totaux.set(cle, n)
+    }
+    return n ?? 0
+  }
+
+  /** Montre une bande, en pause sur son affiche. `premiere` : à l'ouverture */
+  private montrer(b: Bande, premiere = false) {
+    const p = b.portion
     this.bande = b
     this.ech = echeances(b, this.facteur)
     this.frise.charger(b.images.length, b.parties)
@@ -350,7 +371,6 @@ export class RevueEnClasse {
     this.vue = 'auto'
     this.peindre()
     this.majCommandes()
-    return true
   }
 
   /** « Page 3 · mardi 6 octobre, 10 h 05 → 10 h 50 · 84 gestes » */
@@ -629,6 +649,7 @@ export class RevueEnClasse {
       nommer: p => this.nommer(p),
       pagesActuelles: this.app.pages,
       naissance: i => this.lecture?.naissance(i) ?? false,
+      gestes: p => this.totalDe(p),
       portion: b.portion,
       arretAuxParties: this.arretAuxParties,
       ecart: this.ecart,
@@ -849,7 +870,9 @@ export class RevueEnClasse {
     this.ligne2.hidden = nbParties < 2
     this.compteur.textContent = `${b.gestes[k]} / ${b.total}`
     this.compteur.title = `Encore environ ${dureeLisible(this.ech[n - 1] - this.ech[k])} à cette allure`
-    this.frise.placer(k, q, `Geste ${b.gestes[k]} sur ${b.total} · ${this.nommer(img.p)} · partie ${q + 1} sur ${nbParties}`)
+    // Pendant la lecture, la frise avance sans rien dire : focalisée, elle ferait
+    // lire chaque geste au lecteur d'écran. Elle le dit à l'arrêt.
+    this.frise.placer(k, q, this.enMarche ? null : `Geste ${b.gestes[k]} sur ${b.total} · ${this.nommer(img.p)} · partie ${q + 1} sur ${nbParties}`)
 
     const icone: NomIcone = this.enMarche ? 'pause' : 'lire'
     if (this.boutonLire.dataset.icone !== icone) {

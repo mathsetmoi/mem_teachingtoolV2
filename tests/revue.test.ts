@@ -12,8 +12,8 @@ import { COUDE, PLAFOND, PLANCHER, tasser } from '../src/revoir/rythme'
 import { TRACE_MAX, TRACE_MIN, dureeDuTrace, esquisse, longueur } from '../src/revoir/esquisse'
 import type { Bande, Portion } from '../src/revue/bande'
 import {
-  ENTREE, PAUSE_DE_PARTIE, construireBande, echeances, entreePrecedente, entreeSuivante, heureLisible, indiceAuTemps,
-  listeDesPages, partieDe, pasPrecedent, pasSuivant, portionParDefaut, prochainArret, seancesDeLaPage,
+  ENTREE, PAUSE_DE_PARTIE, bandeParDefaut, compterGestes, construireBande, echeances, entreePrecedente, entreeSuivante, heureLisible, indiceAuTemps,
+  listeDesPages, partieDe, pasPrecedent, pasSuivant, prochainArret, seancesDeLaPage,
 } from '../src/revue/bande'
 import { Planches, lectureDe } from '../src/revue/planches'
 
@@ -198,13 +198,78 @@ describe('ce qu\'on revoit en ouvrant', () => {
     const autre = await pageNeuve(t)
     t.poser(autre, trait(0, 0)); await attendre(1000)
     const jamais = t.ajouterPage('blanc', 5); await attendre(100)
-    const s = seancesDuFilm(t.film.toArray())
+    const r = revue(t)
+    const s = r.seances
+    const ouvrir = (p: string) => bandeParDefaut(r.lecture, s, p, r.nommer)?.portion
     // jamais : la création est notée sur la page qu'on regarde, pas sur elle
-    expect(portionParDefaut(s, page)).toMatchObject({ genre: 'seance', seance: s[1], page })
-    expect(portionParDefaut(s, autre)).toMatchObject({ genre: 'seance', seance: s[0], page: autre })
-    expect(portionParDefaut(s, 'inconnue')).toMatchObject({ genre: 'seance', seance: s[0], page: null })
-    expect(portionParDefaut([], page)).toBeNull()
+    expect(ouvrir(page)).toMatchObject({ genre: 'seance', seance: s[1], page })
+    expect(ouvrir(autre)).toMatchObject({ genre: 'seance', seance: s[0], page: autre })
+    expect(ouvrir('inconnue')).toMatchObject({ genre: 'seance', seance: s[0], page: null })
+    expect(bandeParDefaut(r.lecture, [], page, r.nommer)).toBeNull()
     void jamais
+  })
+
+  it('une page toute neuve, après une pause ou le lendemain : la dernière séance qui montre quelque chose', async () => {
+    for (const pause of [16 * 60 * MINUTE, 25 * MINUTE]) {
+      const { t, page } = await nouveauTableau()
+      for (let i = 0; i < 6; i++) { t.poser(page, trait(i, 0)); await attendre(800) }
+      await attendre(pause)
+      const neuve = await pageNeuve(t)                                  // « Nouvelle page », puis « Revoir »
+      const r = revue(t)
+      expect(r.seances).toHaveLength(2)
+      // La dernière séance n'a fait que créer la page : elle n'a rien à montrer
+      expect(construireBande(r.lecture, { genre: 'seance', seance: r.seances[0], page: null }, r.seances, r.nommer)).toBeNull()
+      const b = bandeParDefaut(r.lecture, r.seances, neuve, r.nommer)!
+      expect(b).not.toBeNull()
+      expect(b.portion).toMatchObject({ genre: 'seance', seance: r.seances[1], page: null })
+      expect(b.total).toBe(6)
+      // Revenu sur la page 1 : sa dernière séance, avec ses six gestes
+      expect(bandeParDefaut(r.lecture, r.seances, page, r.nommer)).toMatchObject({ portion: { seance: r.seances[1], page }, total: 6 })
+    }
+    // Un tableau où il n'y a encore rien eu : rien à montrer
+    const { t, page } = await nouveauTableau()
+    const r = revue(t)
+    expect(bandeParDefaut(r.lecture, r.seances, page, r.nommer)).toBeNull()
+  })
+})
+
+describe('une figure reconnue', () => {
+  it('le trait à main levée puis la figure qui le remplace : une image, un geste, la figure seule se dessine', async () => {
+    const { t, page } = await nouveauTableau()
+    /** Comme le stylo : le trait est posé, puis, dans une seconde étape, la figure le remplace */
+    const figure = async (p: string, x: number) => {
+      const brut = trait(x, 0, 49)
+      t.nouveauGeste(); t.poser(p, brut)
+      await attendre(1)
+      const carre: Polygone = { id: 'R' + numero++, type: 'polygone', x, y: 0, z: numero, auteur: 'a', pts: [0, 0, 80, 0, 80, 60, 0, 60], ferme: true, couleur: '#1b2230', taille: 3 }
+      t.nouveauGeste(); t.doc.transact(() => { t.supprimer(p, [brut.id]); t.poser(p, carre) })
+      await attendre(3000)
+      return carre.id
+    }
+    const figures: string[] = []
+    for (let i = 0; i < 6; i++) figures.push(await figure(page, i * 100))
+    const r = revue(t)
+    const b = r.bande({ genre: 'seance', seance: r.seances[0], page })
+    expect(b.total).toBe(6)
+    expect(b.images).toHaveLength(7)
+    expect(r.planches.lire(b.images[0]).formes).toEqual([])            // le tracé à main levée n'est jamais montré
+    for (let k = 1; k < b.images.length; k++) {
+      // Chaque image montre la figure, jamais le tracé à main levée
+      expect(r.planches.lire(b.images[k]).formes.map(f => f.type)).toEqual(Array(k).fill('polygone'))
+      expect(r.planches.apparues(b.images[k - 1], b.images[k]).map(f => f.id)).toEqual([figures[k - 1]])
+    }
+    // Une figure en premier geste d'une page neuve : la partie s'ouvre sur la page vide
+    const p2 = await pageNeuve(t)
+    for (let i = 0; i < 3; i++) await figure(p2, i * 100)
+    const r2 = revue(t)
+    const b2 = r2.bande({ genre: 'seance', seance: r2.seances[0], page: null })
+    expect(b2.total).toBe(9)
+    expect(b2.parties).toHaveLength(2)
+    expect(r2.planches.lire(b2.images[b2.parties[1].debut]).formes).toEqual([])
+    expect(b2.images.every(img => r2.planches.lire(img).formes.every(f => f.type === 'polygone'))).toBe(true)
+    // Deux gestes séparés de plus de 50 ms restent deux images
+    const deux = await gestesEspaces([60])
+    expect(deux.b.total).toBe(2)
   })
 })
 
@@ -294,6 +359,52 @@ describe('ce qui n\'est pas un geste', () => {
     expect(b2.images.every(i => i.p === p2 && (!i.geste || r.lecture.film[i.e].page === p2))).toBe(true)
   })
 
+  it('« Supprimer la page » ne compte pas comme un geste de la page où l\'on revient', async () => {
+    const { t, page } = await nouveauTableau()
+    for (let i = 0; i < 3; i++) { t.poser(page, trait(i, 0)); await attendre(800) }
+    const brouillon = await pageNeuve(t)
+    for (let i = 0; i < 2; i++) { t.poser(brouillon, trait(i, 5)); await attendre(800) }
+    // Comme l'application : on revient sur la page 1, puis on jette le brouillon (l'étape est notée sur la page 1)
+    t.pageVue = page
+    t.supprimerPage(brouillon); await attendre(800)
+    let r = revue(t)
+    expect(r.lecture.film[r.lecture.film.length - 1].page).toBe(page)
+    for (const p of [{ genre: 'seance', seance: r.seances[0], page }, { genre: 'page', page }] as Portion[]) {
+      const b = r.bande(p)
+      expect(b.total).toBe(3)
+      expect(r.planches.lire(b.images[b.images.length - 1]).formes).toHaveLength(3)
+    }
+    expect(r.bande({ genre: 'seance', seance: r.seances[0], page: null }).total).toBe(5)
+    // Au milieu de la portion aussi : on continue d'écrire sur la page 1
+    for (let i = 0; i < 2; i++) { t.poser(page, trait(i, 9)); await attendre(800) }
+    r = revue(t)
+    const b = r.bande({ genre: 'seance', seance: r.seances[0], page })
+    expect(b.total).toBe(5)
+    for (let k = 1; k < b.images.length; k++) expect(r.planches.apparues(b.images[k - 1], b.images[k])).toHaveLength(1)
+    expect(r.bande({ genre: 'seance', seance: r.seances[0], page: null }).total).toBe(7)
+    // Deux pages jetées de suite depuis la page 1, puis on y écrit encore
+    const [p4, p5] = [await pageNeuve(t), await pageNeuve(t)]
+    t.poser(p5, trait(0, 0)); await attendre(800)
+    t.pageVue = page
+    t.supprimerPage(p4); await attendre(500)
+    t.supprimerPage(p5); await attendre(500)
+    t.poser(page, trait(7, 7)); await attendre(800)
+    r = revue(t)
+    const b3 = r.bande({ genre: 'seance', seance: r.seances[0], page })
+    expect(b3.total).toBe(6)
+    for (let k = 1; k < b3.images.length; k++) expect(r.planches.apparues(b3.images[k - 1], b3.images[k])).toHaveLength(1)
+    // Une séance qui n'a fait que jeter une page n'a rien à montrer
+    const p3 = await pageNeuve(t)
+    t.poser(p3, trait(0, 0)); await attendre(800)
+    t.pageVue = page
+    await attendre(40 * MINUTE)
+    t.supprimerPage(p3); await attendre(800)
+    r = revue(t)
+    expect(r.seances).toHaveLength(2)
+    expect(construireBande(r.lecture, { genre: 'seance', seance: r.seances[0], page: null }, r.seances, r.nommer)).toBeNull()
+    expect(bandeParDefaut(r.lecture, r.seances, page, r.nommer)!.portion).toMatchObject({ seance: r.seances[1], page })
+  })
+
   it('une page jetée garde sa dernière image, sans page vide au bout', async () => {
     const { t, page } = await nouveauTableau()
     const p2 = await pageNeuve(t)
@@ -304,6 +415,44 @@ describe('ce qui n\'est pas un geste', () => {
     const b = r.bande({ genre: 'page', page: p2 })
     expect(b.total).toBe(3)
     expect(r.planches.lire(b.images[b.images.length - 1]).formes).toHaveLength(3)
+  })
+})
+
+describe('le nombre de gestes annoncé', () => {
+  it('« Effacer la page » à l\'arrivée de la classe : le tiroir compte comme la bande', async () => {
+    const { t, page } = await nouveauTableau()
+    for (let i = 0; i < 6; i++) { t.poser(page, trait(i, 0)); await attendre(800) }
+    await attendre(16 * 60 * MINUTE)                                    // le lendemain
+    t.supprimer(page, [...t.formesDe(page)!.keys()]); await attendre(1000)
+    for (let i = 0; i < 3; i++) { t.poser(page, trait(i, 5)); await attendre(800) }
+    const r = revue(t)
+    for (const p of [{ genre: 'seance', seance: r.seances[0], page }, { genre: 'seance', seance: r.seances[0], page: null }] as Portion[]) {
+      expect(r.bande(p).total).toBe(3)
+      expect(compterGestes(r.lecture, p)).toBe(3)
+    }
+    expect(compterGestes(r.lecture, { genre: 'page', page })).toBe(r.bande({ genre: 'page', page }).total)
+  })
+
+  it('pour toutes les portions d\'un tableau au hasard, le compte est le total de la bande', async () => {
+    const { t, pages } = await seanceAuHasard(400, 31)
+    await attendre(30 * MINUTE)
+    const brouillon = await pageNeuve(t)
+    t.poser(brouillon, trait(3, 3)); await attendre(1000)
+    t.pageVue = pages[0]
+    t.supprimerPage(brouillon); await attendre(1000)
+    t.annulation.undo(); await attendre(500)                             // un Ctrl+Z en fin de portion
+    const r = revue(t)
+    const portions: Portion[] = []
+    for (const s of r.seances) {
+      portions.push({ genre: 'seance', seance: s, page: null })
+      for (const p of s.pages) portions.push({ genre: 'seance', seance: s, page: p })
+    }
+    for (const p of new Set(r.lecture.film.map(e => e.page))) if (p) portions.push({ genre: 'page', page: p })
+    for (const p of portions) {
+      const b = construireBande(r.lecture, p, r.seances, r.nommer)
+      expect(compterGestes(r.lecture, p)).toBe(b?.total ?? 0)
+      if (b) expect(b.total).toBe(b.images.filter(i => i.geste).length)
+    }
   })
 })
 
@@ -516,7 +665,9 @@ describe('la revue ne fait que lire', () => {
     expect(portions.some(p => p.page === brouillon && p.genre === 'page')).toBe(true)
     let images = 0
     for (const p of portions) {
-      const b: Bande = r.bande(p)
+      // (la page où l'on est revenu pour jeter le brouillon n'a, dans cette séance, rien d'autre : rien à montrer)
+      const b: Bande | null = construireBande(r.lecture, p, r.seances, r.nommer)
+      if (!b) { expect(p).toMatchObject({ genre: 'seance', seance: r.seances[0], page: pages[0] }); continue }
       b.images.forEach((img, k) => {
         r.planches.lire(img)
         if (k) r.planches.apparues(b.images[k - 1], img)

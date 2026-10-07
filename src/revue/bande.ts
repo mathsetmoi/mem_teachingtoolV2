@@ -24,7 +24,7 @@
 // =============================================================
 import type { Etape } from '../document'
 import type { Seance } from '../revoir/exporter'
-import { tasser } from '../revoir/rythme'
+import { PLANCHER, tasser } from '../revoir/rythme'
 import type { LectureSeule } from './planches'
 import { departPropre, memeImage } from './planches'
 
@@ -87,18 +87,28 @@ export function seancesDeLaPage(lecture: Pick<LectureSeule, 'film' | 'naissance'
   })
 }
 
-/** Ce qu'on montre en ouvrant : la page affichée dans sa dernière séance,
- *  ou à défaut la dernière séance, toutes pages */
-export function portionParDefaut(seances: readonly Seance[], page: string): Portion | null {
-  if (!seances.length) return null
-  const s = seances.find(x => x.pages.includes(page))       // la plus récente d'abord
-  return s ? { genre: 'seance', seance: s, page } : { genre: 'seance', seance: seances[0], page: null }
+/** Ce qu'on montre en ouvrant : la page affichée dans la dernière séance où
+ *  elle a quelque chose à montrer ; à défaut (une page toute neuve, dont la
+ *  séance n'a fait que la créer), la dernière séance qui montre quelque chose,
+ *  toutes pages. null : rien à montrer nulle part. */
+export function bandeParDefaut(lecture: LectureSeule, seances: readonly Seance[], page: string, nommer: (page: string) => string): Bande | null {
+  for (const s of seances) {                                // la plus récente d'abord
+    if (!s.pages.includes(page)) continue
+    const b = construireBande(lecture, { genre: 'seance', seance: s, page }, seances, nommer)
+    if (b) return b
+  }
+  for (const s of seances) {
+    const b = construireBande(lecture, { genre: 'seance', seance: s, page: null }, seances, nommer)
+    if (b) return b
+  }
+  return null
 }
 
 type Cause = 'debut' | 'page' | 'seance' | 'silence'
 
-/** La bande d'une portion (null : la portion est vide) */
-export function construireBande(lecture: LectureSeule, p: Portion, seances: readonly Seance[], nommer: (page: string) => string): Bande | null {
+/** Les gestes qu'une portion montre : leurs étapes, leurs pages, l'état
+ *  juste avant chacun, et les pages qui naissent (null : rien à montrer) */
+function gestesMontres(lecture: LectureSeule, p: Portion): { etapes: number[]; pages: string[]; avants: number[]; neuves: Set<string> } | null {
   const film = lecture.film
   // Une page qui naît ne montre rien : sa naissance n'est pas une image. On
   // retient seulement que la page est neuve (voir les parties, plus bas).
@@ -115,7 +125,75 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
   const pagesDe: string[] = []
   for (let j = 0; j < toutes.length; j++) pagesDe.push(film[toutes[j]].page || (j ? pagesDe[j - 1] : repli))
   const retire = departPropre(lecture, toutes, j => pagesDe[j])
-  const etapes = toutes.slice(retire), pages = pagesDe.slice(retire)
+  let etapes = toutes.slice(retire), pages = pagesDe.slice(retire)
+
+  // Une étape qui ne change rien à sa page n'est pas un geste. « Supprimer la
+  // page » se note sur la page où l'on revient, sans la toucher : on la
+  // reconnaît sans tout relire, juste après une étape notée sur une page jetée
+  // depuis (ou juste après une autre étape sans effet : on jette deux pages
+  // de suite), et au bout de la portion (un Ctrl+Z qui change une autre page).
+  const actuelles = new Set(lecture.pagesActuelles())
+  const rienNeChange = (j: number) => {
+    const avant = lecture.page(etapes[j] - 1, pages[j]), apres = lecture.page(etapes[j], pages[j])
+    return !!avant && !!apres && memeImage(avant, apres)
+  }
+  const invisibles = new Set<number>()
+  /** Les étapes du film reconnues sans effet */
+  const sansEffet = new Set<number>()
+  for (let j = 0; j < etapes.length; j++) {
+    const i = etapes[j], q = film[i - 1]?.page
+    if (((q && q !== pages[j] && !actuelles.has(q)) || sansEffet.has(i - 1)) && rienNeChange(j)) { invisibles.add(j); sansEffet.add(i) }
+  }
+  for (let j = etapes.length - 1; j >= 0 && (invisibles.has(j) || rienNeChange(j)); j--) invisibles.add(j)
+  // Deux étapes de la même page à moins de PLANCHER ms sont un seul geste (un
+  // trait, puis la figure reconnue qui le remplace) : on ne montre que la
+  // seconde, et ce qui précède le geste est l'état d'avant la première.
+  const fondue = (j: number) => j + 1 < etapes.length && !invisibles.has(j + 1) && pages[j + 1] === pages[j]
+    && film[etapes[j + 1]].t - film[etapes[j]].t < PLANCHER
+  /** L'état juste avant chaque geste gardé (l'étape d'avant, dans le film) */
+  let avants = etapes.map(e => e - 1)
+  if (invisibles.size || etapes.some((_, j) => fondue(j))) {
+    const gardees: number[] = [], av: number[] = []
+    let debut = -1
+    for (let j = 0; j < etapes.length; j++) {
+      if (invisibles.has(j)) continue
+      if (fondue(j)) { if (debut < 0) debut = j; continue }
+      gardees.push(j); av.push(etapes[debut < 0 ? j : debut] - 1); debut = -1
+    }
+    etapes = gardees.map(j => etapes[j]); pages = gardees.map(j => pages[j]); avants = av
+  }
+  return etapes.length ? { etapes, pages, avants, neuves } : null
+}
+
+/** L'affiche est la page telle qu'elle est au bout de la portion. Un Ctrl+Z
+ *  fait depuis une autre page a pu la changer sans être noté sur elle : on
+ *  finit alors sur son état vrai, comme un geste de plus (l'étape du bout ;
+ *  null : la dernière image y suffit). Une page jetée depuis garde sa
+ *  dernière image : il n'y a plus rien à rattraper. */
+function boutEnPlus(lecture: LectureSeule, p: Portion, derniere: number, page: string): number | null {
+  if (p.page === null || page !== p.page) return null
+  const film = lecture.film
+  const bout = p.genre === 'page' ? film.length - 1 : Math.min(film.length - 1, p.seance.a)
+  const vraie = bout > derniere ? lecture.page(bout, p.page) : null
+  const montree = vraie && lecture.page(derniere, p.page)
+  return vraie && (!montree || !memeImage(vraie, montree)) ? bout : null
+}
+
+/** Combien de gestes montre une portion (0 : rien), sans construire sa bande :
+ *  c'est le total de sa bande */
+export function compterGestes(lecture: LectureSeule, p: Portion): number {
+  const g = gestesMontres(lecture, p)
+  if (!g) return 0
+  const n = g.etapes.length
+  return n + (boutEnPlus(lecture, p, g.etapes[n - 1], g.pages[n - 1]) === null ? 0 : 1)
+}
+
+/** La bande d'une portion (null : la portion est vide) */
+export function construireBande(lecture: LectureSeule, p: Portion, seances: readonly Seance[], nommer: (page: string) => string): Bande | null {
+  const film = lecture.film
+  const g0 = gestesMontres(lecture, p)
+  if (!g0) return null
+  const { etapes, pages, avants, neuves } = g0
 
   // À quelle séance appartient une étape (pour l'histoire d'une page)
   const debuts = seances.map(s => s.de).sort((a, b) => a - b)
@@ -149,13 +227,13 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
   }
 
   // 3. Les images, leurs attentes et les débuts de pas
-  const images: ImageBande[] = [{ e: etapes[0] - 1, p: pages[0], geste: false }]
+  const images: ImageBande[] = [{ e: avants[0], p: pages[0], geste: false }]
   const attentes: number[] = [0]
   const parties: Partie[] = []
   const debutsDePas: number[] = []
   groupes.forEach((g, q) => {
     const debut = q ? images.length : 0
-    if (q) { images.push({ e: etapes[g.de] - 1, p: g.page, geste: false }); attentes.push(PAUSE_DE_PARTIE) }
+    if (q) { images.push({ e: avants[g.de], p: g.page, geste: false }); attentes.push(PAUSE_DE_PARTIE) }
     for (let j = g.de; j <= g.a; j++) {
       const premier = j === g.de
       const silence = j ? film[etapes[j]].t - film[etapes[j - 1]].t : 0
@@ -168,22 +246,15 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
     parties.push({ debut, fin: images.length - 1, page: g.page, heure, titre })
   })
 
-  // L'affiche est la page telle qu'elle est au bout de la portion. Un Ctrl+Z
-  // fait depuis une autre page a pu la changer sans être noté sur elle : on
-  // finit alors sur son état vrai, comme un geste de plus. (Une page jetée
-  // depuis garde sa dernière image : il n'y a plus rien à rattraper.)
-  if (p.page !== null) {
-    const der = images[images.length - 1]
-    const bout = p.genre === 'page' ? film.length - 1 : Math.min(film.length - 1, p.seance.a)
-    const vraie = der.p === p.page && bout > der.e ? lecture.page(bout, p.page) : null
-    const montree = vraie && lecture.page(der.e, p.page)
-    if (vraie && (!montree || !memeImage(vraie, montree))) {
-      const silence = film[bout].t - film[der.e].t
-      if (silence >= SILENCE_DE_PAS) debutsDePas.push(images.length)
-      attentes.push(tasser(silence))
-      images.push({ e: bout, p: p.page, geste: true })
-      parties[parties.length - 1].fin = images.length - 1
-    }
+  // L'affiche : la page telle qu'elle est au bout de la portion
+  const der = images[images.length - 1]
+  const bout = boutEnPlus(lecture, p, der.e, der.p)
+  if (bout !== null) {
+    const silence = film[bout].t - film[der.e].t
+    if (silence >= SILENCE_DE_PAS) debutsDePas.push(images.length)
+    attentes.push(tasser(silence))
+    images.push({ e: bout, p: der.p, geste: true })
+    parties[parties.length - 1].fin = images.length - 1
   }
 
   // 4. Les arrêts du pas à pas : les deux bouts, l'ouverture et la fin de

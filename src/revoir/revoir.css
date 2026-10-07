@@ -21,7 +21,9 @@ body { font-family: var(--police); color: var(--encre); font-size: 16px; -webkit
 button, input { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
 
-#revoir { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; }
+/* Une seule colonne, jamais plus large que l'écran : un contenu trop large
+   se replie (l'en-tête passe à la ligne) au lieu d'élargir toute la page */
+#revoir { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: minmax(0, 1fr); }
 
 /* Le tableau (les couches de dessin sont celles du tableau du professeur) */
 .scene { position: relative; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; grid-row: 2; }
@@ -63,7 +65,9 @@ button, input { font: inherit; color: inherit; }
 .bouton.principal:hover { background: #174d9e; }
 .bouton.texte { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 52px; }
 .bouton.actif { background: var(--bleu-clair); color: var(--bleu); }
-@media (max-width: 520px) {
+/* Écran étroit : le temps passe au-dessus des boutons. La limite tient compte
+   du libellé d'allure le plus large (« Normal ») à côté des six boutons. */
+@media (max-width: 560px) {
   .rangee { grid-template-columns: 1fr auto; }
   .temps { grid-column: 1 / -1; grid-row: 1; text-align: center; }
   .boutons { grid-column: 1; justify-content: flex-start; }
@@ -71,8 +75,13 @@ button, input { font: inherit; color: inherit; }
   .boutons .bouton.principal { min-width: 44px; }
   .b-chap-avant, .b-chap-apres { display: none; }
 }
-@media (max-width: 520px) and (min-width: 340px) {
+@media (max-width: 560px) and (min-width: 340px) {
   .boutons .bouton.principal { min-width: 56px; }
+}
+/* Très petit écran (320 px) : le libellé d'allure et les boutons se serrent pour tout garder à l'écran */
+@media (max-width: 380px) {
+  .bouton.texte { min-width: 0; padding: 0 4px; font-size: 14px; }
+  .boutons { gap: 0; }
 }
 
 /* La carte : affiche, fin de chapitre, erreur */

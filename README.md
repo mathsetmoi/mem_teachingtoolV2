@@ -211,14 +211,17 @@ Le bouton **Revoir** de la barre du haut (la flèche qui tourne autour d'un
 petit triangle) montre comment le tableau s'est construit. Un calque couvre
 l'écran, bordé de jaune et marqué **REVOIR** : la classe sait qu'elle ne
 regarde pas le direct. Il s'ouvre en pause sur l'image finale de la page
-affichée, telle qu'elle était à la fin de sa dernière séance, avec la même
+affichée, telle qu'elle était à la fin de sa dernière séance (sur une page
+toute neuve : la dernière séance qui montre quelque chose), avec la même
 vue que le tableau : au vidéoprojecteur, rien ne bouge. Un bandeau dit ce
 qu'on revoit ; **Espace** repart du début, **←** remonte pas à pas.
 
 **Que revoir ?** Le tiroir du même nom propose la page affichée (« Sa
 dernière séance », « Toute son histoire », de séance en séance), les séances
 du tableau rangées par jour (douze à la fois, puis « Plus anciennes »), et
-les pages jetées depuis, dont l'histoire reste lisible. On y règle aussi
+les pages jetées depuis, dont l'histoire reste lisible. Chaque ligne dit
+combien de gestes elle montrera, comme le bandeau et le compteur ; une séance
+qui n'a fait que créer ou jeter une page n'y figure pas. On y règle aussi
 l'arrêt en fin de partie et le découpage des séances (une pause de 20, 10, 5
 ou 2 minutes en sépare deux, comme dans la fenêtre Publier).
 
@@ -228,7 +231,9 @@ par séance dans l'histoire d'une page, et une nouvelle après trois minutes de
 silence. Elles forment la frise, en bas : glisser montre l'image visée,
 toucher une partie mène à son début. À l'intérieur, les gestes rapprochés
 (moins de deux secondes d'écart) forment un pas, une idée : c'est ce que fait
-avancer la télécommande de présentation.
+avancer la télécommande de présentation. Une figure reconnue au stylo est un
+seul geste (seule la figure se dessine, pas le tracé à main levée qu'elle
+remplace), et jeter une page n'en est pas un pour la page où l'on revient.
 
 **Les commandes**, toutes au clavier et en grands boutons : Espace, K ou un
 appui bref sur le tableau pour lire ou s'arrêter ; → ou Page↓ pour un pas,
@@ -314,6 +319,9 @@ compte (`relais/relais-seances.gs`, projet « MEM - Relais replay ») lit la
 séance sous l'identité du professeur et la sert ; un relais par compte Google,
 et le lien dit lequel (`?r=mem&id=…`). Il ne sert qu'un fichier `.mem` qui est
 bien un replay, rangé dans l'un de ces deux dossiers, et ne liste jamais rien.
+Chaque dossier porte aussi la marque de son compte : un essai avec le mauvais
+compte Google ne laisse rien derrière lui, et le dossier d'un compte n'est
+jamais repris par l'autre.
 Les noms des dossiers sont à la fois dans `src/publication/comptes.ts` et dans
 le relais : un test vérifie qu'ils concordent. Installer un relais prend cinq
 minutes (instructions en tête du script) ; le mettre à jour (Gérer les

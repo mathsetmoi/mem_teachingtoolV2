@@ -2,10 +2,12 @@
 // QUE REVOIR ?
 // Le tiroir où le professeur choisit ce qu'il montre : la page affichée
 // (sa dernière séance, ou toute son histoire), une séance entière, ou une
-// page jetée depuis. Tout s'y calcule sur les métadonnées du film (l'heure
-// et la page notées à chaque étape), en un seul passage, même sur un film de
-// plusieurs semaines. Seule exception : la naissance d'une page (qui n'est
-// pas un geste) se vérifie dans l'instantané, une fois par page montrée.
+// page jetée depuis. Les heures s'y calculent sur les métadonnées du film
+// (l'heure et la page notées à chaque étape), en un seul passage, même sur un
+// film de plusieurs semaines. Le nombre de gestes de chaque ligne, lui, est
+// celui que montrera sa bande (la revue le donne) : le tiroir, le bandeau et
+// le compteur disent toujours le même, et une ligne qui ne montrerait rien
+// (une séance qui n'a fait que créer une page) n'est pas proposée.
 // Les listes longues (séances, pages jetées) arrivent par paquets.
 // Les lignes sont de grandes cibles, faciles à toucher au tableau.
 // =============================================================
@@ -25,6 +27,8 @@ export interface Contexte {
   pagesActuelles: readonly string[]
   /** L'étape i ne fait-elle que créer sa page, vide ? (elle ne compte pas comme un geste) */
   naissance(i: number): boolean
+  /** Combien de gestes montre la bande d'une portion (0 : elle ne montre rien) */
+  gestes(p: Portion): number
   portion: Portion | null
   arretAuxParties: boolean
   /** Le silence qui sépare deux séances, en ms */
@@ -113,63 +117,70 @@ export class Tiroir {
       if (!m) parPage.set(e.page, { gestes: 1, premier: e.t, ensuite: e.t, dernier: e.t, nee: i })
       else { if (m.gestes === 1) m.ensuite = e.t; m.gestes++; m.dernier = e.t }
     })
-    /** La naissance de la page p, si elle tombe entre les étapes de et a : elle n'est pas un geste */
-    const neeEntre = (p: string, de: number, a: number) => {
-      const i = parPage.get(p)?.nee ?? -1
-      return i >= de && i <= a && c.naissance(i)
+    /** Les `combien` premières lignes qui montrent quelque chose (avec leur
+     *  nombre de gestes), et s'il en reste d'autres plus loin */
+    const lignes = <T>(liste: readonly T[], combien: number, gestes: (x: T) => number) => {
+      const r: { x: T; gestes: number }[] = []
+      let i = 0
+      for (; i < liste.length && r.length < combien; i++) { const g = gestes(liste[i]); if (g > 0) r.push({ x: liste[i], gestes: g }) }
+      return { r, reste: liste.slice(i).some(x => gestes(x) > 0) }
     }
-    const gestesDe = (p: string) => { const m = parPage.get(p)!; return m.gestes - (neeEntre(p, 0, c.film.length - 1) ? 1 : 0) }
 
-    // La page affichée, si elle a déjà reçu un geste
+    // La page affichée, dans la dernière séance où elle montre quelque chose
     const vue = parPage.get(c.pageVue)
-    const derniere = c.seances.find(s => s.pages.includes(c.pageVue))
-    if (vue && derniere && gestesDe(c.pageVue) > 0) {
-      let gestes = 0, de = Infinity, a = -Infinity
-      for (let i = derniere.de; i <= derniere.a; i++) {
+    let derniere: { x: Seance; gestes: number } | undefined
+    if (vue) for (const s of c.seances) {
+      const g = s.pages.includes(c.pageVue) ? c.gestes({ genre: 'seance', seance: s, page: c.pageVue }) : 0
+      if (g > 0) { derniere = { x: s, gestes: g }; break }
+    }
+    if (vue && derniere) {
+      let de = Infinity, a = -Infinity
+      for (let i = derniere.x.de; i <= derniere.x.a; i++) {
         const e = c.film[i]
         if (e?.page !== c.pageVue || (i === vue.nee && c.naissance(i))) continue
-        gestes++; de = Math.min(de, e.t); a = Math.max(a, e.t)
+        de = Math.min(de, e.t); a = Math.max(a, e.t)
       }
       const nbSeances = seancesDeLaPage(c, c.seances, c.pageVue).length
       const depuis = c.naissance(vue.nee) ? vue.ensuite : vue.premier
       const sec = this.section(c.nommer(c.pageVue))
       sec.append(
-        this.choix('Sa dernière séance', `${jour(de)}, ${heureLisible(de)} → ${heureLisible(a)} · ${pluriel(gestes, 'geste')}`,
-          { genre: 'seance', seance: derniere, page: c.pageVue }),
-        this.choix('Toute son histoire', `${pluriel(nbSeances, 'séance')} depuis le ${jourDuMois(depuis)} · ${pluriel(gestesDe(c.pageVue), 'geste')}`,
+        this.choix('Sa dernière séance', `${jour(de)}, ${heureLisible(de)} → ${heureLisible(a)} · ${pluriel(derniere.gestes, 'geste')}`,
+          { genre: 'seance', seance: derniere.x, page: c.pageVue }),
+        this.choix('Toute son histoire', `${pluriel(nbSeances, 'séance')} depuis le ${jourDuMois(depuis)} · ${pluriel(c.gestes({ genre: 'page', page: c.pageVue }), 'geste')}`,
           { genre: 'page', page: c.pageVue }),
       )
     }
 
     // Les séances, les plus récentes d'abord, groupées par jour
-    if (c.seances.length) {
+    const seances = lignes(c.seances, this.combien, s => c.gestes({ genre: 'seance', seance: s, page: null }))
+    if (seances.r.length) {
       const sec = this.section('Séances')
       let jourCourant = ''
-      for (const s of c.seances.slice(0, this.combien)) {
+      for (const { x: s, gestes } of seances.r) {
         const j = jourLisible(s.debut)
         if (j !== jourCourant) {
           jourCourant = j
           const t = document.createElement('h4'); t.textContent = j
           sec.append(t)
         }
-        const gestes = s.gestes - s.pages.filter(p => neeEntre(p, s.de, s.a)).length
         sec.append(this.choix(`${heureLisible(s.debut)} → ${heureLisible(s.fin)}`, `${listeDesPages(s.pages, c.pagesActuelles)} · ${pluriel(gestes, 'geste')}`,
           { genre: 'seance', seance: s, page: null }, 'revue-seance'))
       }
-      if (c.seances.length > this.combien) this.plusAnciennes(sec, '.revue-seance', this.combien, () => { this.combien += PAR_PAQUET })
+      if (seances.reste) this.plusAnciennes(sec, '.revue-seance', this.combien, () => { this.combien += PAR_PAQUET })
     }
 
     // Les pages jetées, les plus récemment écrites d'abord : leur histoire reste
     // dans le film (une page jetée sans avoir rien reçu n'a rien à montrer)
     const vivantes = new Set(c.pagesActuelles)
-    const jetees = [...parPage].filter(([p, m]) => !vivantes.has(p) && (m.gestes > 1 || !c.naissance(m.nee))).sort((a, b) => b[1].dernier - a[1].dernier)
-    if (jetees.length) {
+    const jetees = lignes([...parPage].filter(([p]) => !vivantes.has(p)).sort((a, b) => b[1].dernier - a[1].dernier),
+      this.combienJetees, ([p]) => c.gestes({ genre: 'page', page: p }))
+    if (jetees.r.length) {
       const sec = this.section('Pages jetées')
-      for (const [p, m] of jetees.slice(0, this.combienJetees)) {
-        sec.append(this.choix('Page jetée', `dernière écriture le ${jourDuMois(m.dernier)} à ${heureLisible(m.dernier)} · ${pluriel(gestesDe(p), 'geste')}`,
+      for (const { x: [p, m], gestes } of jetees.r) {
+        sec.append(this.choix('Page jetée', `dernière écriture le ${jourDuMois(m.dernier)} à ${heureLisible(m.dernier)} · ${pluriel(gestes, 'geste')}`,
           { genre: 'page', page: p }, 'revue-jetee'))
       }
-      if (jetees.length > this.combienJetees) this.plusAnciennes(sec, '.revue-jetee', this.combienJetees, () => { this.combienJetees += PAR_PAQUET })
+      if (jetees.reste) this.plusAnciennes(sec, '.revue-jetee', this.combienJetees, () => { this.combienJetees += PAR_PAQUET })
     }
 
     // Les réglages
