@@ -1,214 +1,161 @@
-// Repris de la V1 (mathsetmoi/mem_teachingtools, relais/relais-seances.gs),
-// écrit par le même auteur. Version 2 : le « ?ping » ne donne plus l'adresse
-// e-mail du compte, et une séance est servie si elle est dans N'IMPORTE QUEL
-// dossier « Au Tableau — séances publiées » appartenant à ce compte. Pour en
-// profiter : Déployer → Gérer les déploiements → crayon → Version : nouvelle
-// (l'adresse ne change pas). L'ancienne version continue de marcher.
-
 /**
  * ============================================================================
- * LE RELAIS DES SÉANCES — à déployer dans Google Apps Script
+ * MEM — RELAIS DES REPLAYS (version 3), à déployer dans Google Apps Script
  * ============================================================================
- * Ce petit script sert une séance publiée à l'élève qui ouvre son lien, et
- * rien d'autre.
+ * Ce petit script lit, dans votre Drive, la séance qu'un élève demande par
+ * son lien, et la lui envoie. Il ne fait rien d'autre.
  *
- * POURQUOI IL EXISTE. Pour qu'un navigateur sans compte lise un fichier du
- * Drive, Google exige une clé d'API — qui arrive donc chez l'élève, et donc
- * chez n'importe qui. Ici, c'est le script qui lit le fichier, sous VOTRE
- * compte : plus aucune clé ne circule, et les séances n'ont même plus besoin
- * d'être partagées. Elles restent privées dans votre Drive.
+ * POURQUOI. Un navigateur sans compte Google ne peut pas lire un fichier
+ * privé du Drive. Le script, lui, s'exécute sous VOTRE compte : il lit la
+ * séance à la place de l'élève. Les séances ne sont jamais partagées, aucune
+ * clé ne circule.
  *
- * CE QU'IL ACCEPTE DE SERVIR. Uniquement les fichiers « .prof » rangés dans le
- * dossier « Au Tableau — séances publiées » de ce compte. Un identifiant pris
- * au hasard, un fichier d'un autre dossier, un document de travail : refusés.
- * Le script ne liste jamais le contenu du dossier — qui n'a pas le lien d'une
- * séance ne peut pas la découvrir.
+ * CE QU'IL SERT, ET RIEN D'AUTRE. Un fichier « .mem » qui est un replay
+ * (il commence par {"format":"mem-revoir"), rangé dans l'un des dossiers
+ * ci-dessous (DOSSIERS), dont ce compte est le propriétaire, ni l'un ni
+ * l'autre à la corbeille. Tout autre identifiant est refusé. Le script ne
+ * liste jamais un dossier : sans le lien d'une séance, on ne la trouve pas.
  *
- * DEUX COMPTES, DEUX DÉPLOIEMENTS. Un script s'exécute sous un seul compte.
- * Déployez-le une fois dans chaque compte Google qui héberge des séances : le
- * compte de l'établissement pour les cours du lycée, le compte personnel pour
- * le reste. Chaque déploiement donne une adresse ; Au Tableau les range sous
- * un nom court (« lfb », « mem »…) et le lien de la séance dit lequel ouvrir.
+ * UN RELAIS PAR COMPTE. Le script s'exécute sous un seul compte : on le
+ * déploie dans chaque compte Google qui publie des séances (mathsetmoi, LFB).
+ * C'est le même fichier partout. Chaque déploiement a son adresse, que le
+ * site range sous un nom court (« mem », « lfb ») ; le lien dit lequel ouvrir.
  *
  * ---------------------------------------------------------------------------
- * DÉPLOIEMENT, une fois par compte (cinq minutes)
+ * INSTALLER, une fois par compte (cinq minutes)
  * ---------------------------------------------------------------------------
- *  1. Ouvrir script.google.com en étant connecté AU BON COMPTE, puis
- *     « Nouveau projet ». Le renommer, par exemple « Relais Au Tableau ».
- *  2. Remplacer tout le contenu de « Code.gs » par ce fichier, et enregistrer.
- *  3. « Déployer » → « Nouveau déploiement » → type « Application Web ».
- *       • Description : Relais des séances
- *       • Exécuter en tant que : MOI
- *       • Qui a accès : TOUT LE MONDE
- *     Déployer, autoriser (Google prévient que le script accède à votre Drive :
- *     c'est précisément ce qu'on lui demande), puis copier l'adresse
- *     « …/exec ».
- *     L'adresse d'un compte d'établissement est plus longue — elle contient
- *     « /a/macros/votre-domaine/s/… » : c'est la bonne, prenez-la telle quelle.
- *     Ne prenez jamais celle qui finit par « /dev » : elle n'ouvre que pour vous.
- *  4. Tableau MEM (V2) : coller l'adresse dans src/publication/comptes.ts, en
- *     face du compte concerné (« mem », « lfb »…), puis remettre le site en
- *     ligne. C'est de là, et de là seule, que le navigateur de l'élève apprend
- *     l'adresse du relais.
- *     (Au Tableau, la V1 : fenêtre « Publier pour le cahier de textes »,
- *     rubrique « Comptes et relais », puis lib/cloud/config.js.)
- *  5. Vérifier : ouvrir l'adresse suivie de « ?ping=1 » dans le navigateur.
- *     Le script répond s'il trouve le dossier qu'il dessert (« pret: true »
- *     une fois une première séance publiée). Le compte sous lequel il tourne
- *     s'affiche dans le journal de l'éditeur (« verifierLInstallation »), pas
- *     en ligne : l'adresse du relais est publique.
+ *  1. Ouvrir script.google.com, connecté AU BON COMPTE, puis « Nouveau
+ *     projet ». Le nommer « MEM - Relais replay ».
+ *  2. Remplacer tout le contenu de « Code.gs » par ce fichier, enregistrer.
+ *  3. Choisir la fonction « verifierLInstallation » et cliquer « Exécuter » :
+ *     Google demande d'autoriser l'accès au Drive (c'est ce qu'on veut).
+ *  4. « Déployer » → « Nouveau déploiement » → type « Application Web » :
+ *       • Exécuter en tant que : Moi
+ *       • Qui a accès : Tout le monde
+ *     Déployer, puis copier l'adresse qui finit par « /exec » (jamais celle
+ *     en « /dev », qui n'ouvre que pour vous). Celle d'un compte
+ *     d'établissement contient « /a/macros/… » : elle est bonne telle quelle.
+ *  5. Mettre cette adresse dans src/publication/comptes.ts, en face du compte
+ *     (« mem » ou « lfb »), et remettre le site en ligne.
+ *  6. Vérifier : ouvrir l'adresse suivie de « ?ping=1 » dans une fenêtre de
+ *     navigation privée. Il doit s'afficher une ligne de texte commençant par
+ *     {"relais":"MEM Replay" — et non une page de connexion Google.
+ *     « pret » passe à true après la première séance publiée.
  *
- * La V1 et la V2 partagent le même dossier et le même relais : un relais
- * déjà déployé pour la V1 sert aussi les séances de la V2, sans rien changer.
+ * METTRE À JOUR un relais déjà déployé : coller la nouvelle version dans
+ * « Code.gs », enregistrer, puis « Déployer » → « Gérer les déploiements » →
+ * crayon → « Version : Nouvelle version » → « Déployer ». L'adresse ne change
+ * pas : les liens déjà donnés aux élèves continuent de marcher.
  *
- * À SAVOIR. Si votre établissement interdit les applications web ouvertes à
- * tous, l'étape 3 ne proposera que « les utilisateurs de votre organisation » :
- * les élèves du domaine pourront lire, les familles non. Au Tableau le dira à
- * la première vérification plutôt que de vous laisser distribuer un lien mort.
- *
- * MISES À JOUR. Après toute modification de ce fichier, « Déployer » → « Gérer
- * les déploiements » → crayon → « Version : nouvelle » : l'adresse ne change
- * pas, les liens déjà collés dans Pronote continuent de fonctionner.
+ * À SAVOIR. Si l'établissement interdit les applications ouvertes à tous,
+ * l'étape 4 ne proposera que « les utilisateurs de votre organisation » :
+ * seuls les élèves connectés à leur compte du lycée pourront lire. Le site
+ * le signale à la première publication (« la séance demande une connexion »).
  * ============================================================================
  */
 
-/** Le dossier qu'Au Tableau crée pour les séances publiées. */
-var DOSSIER = 'Au Tableau — séances publiées';
+/** Les dossiers que le site crée pour les replays (un par compte).
+ *  Ils doivent rester ceux de src/publication/comptes.ts : un test le vérifie. */
+var DOSSIERS = ['MEM - Replay séances', 'LFB - Replay séances'];
 
-/** Ce que le fichier doit porter pour être servi. */
-var EXTENSION = '.prof';
+/** L'extension des fichiers séance, et le début de leur contenu. */
+var EXTENSION = '.mem';
+var DEBUT = '{"format":"mem-revoir"';
 
-/** Combien de temps on se souvient du dossier, pour ne pas le rechercher. */
-var MEMOIRE_DOSSIER = 6 * 60 * 60; // six heures, en secondes
+/** Combien de temps on retient le dossier trouvé (pour « ?ping=1 »). */
+var GARDE_DOSSIER = 6 * 60 * 60; // secondes
 
 /**
- * L'élève ouvre son lien : le lecteur d'Au Tableau demande la séance ici.
- * Deux formes de réponse, selon ce que le navigateur sait recevoir :
- * du JSON ordinaire, ou du JSONP quand « callback » est donné.
+ * L'élève ouvre son lien : son navigateur demande ici la séance « id ».
+ * Réponse : le fichier tel quel (JSON), ou { erreur } avec une phrase qu'il
+ * peut lire et répéter à son professeur.
  */
 function doGet(e) {
   var p = (e && e.parameter) || {};
   try {
-    if (p.ping) return repondre(etatDuRelais(), p);
+    if (p.ping) return enJson(etatDuRelais());
     var id = String(p.id || '');
     if (!/^[A-Za-z0-9_-]{10,}$/.test(id)) {
-      return repondre({ erreur: 'Ce lien est incomplet : demandez-en un nouveau à votre enseignant.' }, p);
+      return enJson({ erreur: 'Ce lien est incomplet : demandez-en un nouveau à votre enseignant.' });
     }
-    var fichier = fichierServable(id);
-    if (!fichier) {
-      return repondre({ erreur: 'Séance introuvable ou retirée. Demandez le lien à votre enseignant.' }, p);
+    var texte = seanceServie(id);
+    if (texte === null) {
+      return enJson({ erreur: 'Séance introuvable ou retirée. Demandez le lien à votre enseignant.' });
     }
-    return servir(fichier, p);
+    return ContentService.createTextOutput(texte).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
-    // Le détail reste dans le journal du script ; l'élève, lui, reçoit une
-    // phrase qu'il peut répéter à son professeur.
     console.error(err);
-    // Sauf quand c'est le professeur qui vérifie son installation : là, taire
-    // la cause ne protège personne et fait perdre une heure. « Essayer ce
-    // relais » reçoit donc la panne telle qu'elle est — presque toujours une
-    // autorisation manquante, ou un déploiement réglé sur « l'utilisateur qui
-    // accède » au lieu de « moi », auquel cas le script tourne sans compte et
-    // ne voit aucun Drive.
+    // Au professeur qui vérifie son installation, on dit ce qui coince :
+    // presque toujours l'autorisation pas encore donnée (étape 3), ou un
+    // déploiement qui s'exécute en tant que « l'utilisateur » au lieu de « Moi ».
     if (p.ping) {
-      return repondre({ relais: 'Au Tableau', pret: false,
-        erreur: 'Le relais répond, mais il a buté : ' + messageDe(err)
-          + ' — vérifiez, dans « Gérer les déploiements », que « Exécuter en tant que » est bien VOUS,'
-          + ' et lancez une fois « verifierLInstallation » depuis l’éditeur pour accorder l’accès au Drive.' }, p);
+      return enJson({ relais: 'MEM Replay', version: 3, pret: false,
+        erreur: 'Le relais répond mais ne lit pas le Drive : ' + String((err && err.message) || err).slice(0, 300)
+          + ' — lancez « verifierLInstallation » depuis l’éditeur, et vérifiez que le déploiement s’exécute en tant que « Moi ».' });
     }
-    return repondre({ erreur: 'La séance n’a pas pu être lue. Réessayez dans un instant.' }, p);
+    return enJson({ erreur: 'La séance n’a pas pu être lue. Réessayez dans un instant.' });
   }
 }
 
-/** Ce qu'une erreur Apps Script a de lisible. */
-function messageDe(err) {
-  if (!err) return 'erreur inconnue';
-  var m = err.message || String(err);
-  return String(m).slice(0, 300);
-}
-
 /**
- * Le fichier demandé, s'il est bien une séance publiée de CE compte.
- * Trois conditions, et il faut les trois : exister, porter l'extension, et
- * se trouver dans UN dossier des séances publiées de ce compte (son nom, pas
- * à la corbeille, et ce compte en est le propriétaire). On ne retient plus un
- * seul dossier : s'il y en a deux du même nom, ou si l'on en a recréé un, les
- * séances de chacun sont servies.
+ * Le texte de la séance « id » si elle remplit toutes les conditions de
+ * l'en-tête, sinon null.
  */
-function fichierServable(id) {
+function seanceServie(id) {
   var fichier;
   try { fichier = DriveApp.getFileById(id); } catch (err) { return null; }
   if (!fichier || fichier.isTrashed()) return null;
-  if (fichier.getName().slice(-EXTENSION.length) !== EXTENSION) return null;
+  var nom = fichier.getName();
+  if (nom.slice(-EXTENSION.length) !== EXTENSION) return null;
+  if (!dansUnDossierDesReplays(fichier)) return null;
+  var texte = fichier.getBlob().getDataAsString('UTF-8');
+  return texte.slice(0, DEBUT.length) === DEBUT ? texte : null;
+}
 
+/** Le fichier est-il rangé dans un dossier des replays dont ce compte est le propriétaire ? */
+function dansUnDossierDesReplays(fichier) {
   var moi = Session.getEffectiveUser().getEmail();
   var parents = fichier.getParents();
   while (parents.hasNext()) {
     var d = parents.next();
-    if (d.getName() !== DOSSIER || d.isTrashed()) continue;
+    if (DOSSIERS.indexOf(d.getName()) < 0 || d.isTrashed()) continue;
     var proprietaire = d.getOwner();
-    if (proprietaire && proprietaire.getEmail() === moi) return fichier;
+    if (proprietaire && proprietaire.getEmail() === moi) return true;
+  }
+  return false;
+}
+
+/** Le premier dossier des replays de ce compte, retenu quelques heures. */
+function dossierTrouve() {
+  var cache = CacheService.getScriptCache();
+  var garde = cache.get('dossier');
+  if (garde) return garde;
+  for (var i = 0; i < DOSSIERS.length; i++) {
+    var trouves = DriveApp.getFoldersByName(DOSSIERS[i]);
+    while (trouves.hasNext()) {
+      var d = trouves.next();
+      if (!d.isTrashed()) { cache.put('dossier', d.getName(), GARDE_DOSSIER); return d.getName(); }
+    }
   }
   return null;
 }
 
-/** L'identifiant du dossier des séances, retenu d'un appel à l'autre. */
-function idDuDossier() {
-  var cache = CacheService.getScriptCache();
-  var garde = cache.get('dossier');
-  if (garde) return garde;
-
-  var trouves = DriveApp.getFoldersByName(DOSSIER);
-  var id = null;
-  while (trouves.hasNext()) {
-    var d = trouves.next();
-    if (!d.isTrashed()) { id = d.getId(); break; }
-  }
-  if (id) cache.put('dossier', id, MEMOIRE_DOSSIER);
-  return id;
-}
-
-/** La séance elle-même, telle qu'Au Tableau l'a écrite. */
-function servir(fichier, p) {
-  var texte = fichier.getBlob().getDataAsString('UTF-8');
-  if (p.callback) {
-    return ContentService
-      .createTextOutput(String(p.callback) + '(' + texte + ');')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-  return ContentService.createTextOutput(texte).setMimeType(ContentService.MimeType.JSON);
-}
-
 /**
- * De quoi vérifier l'installation sans publier quoi que ce soit : le compte
- * qui sert, et si le dossier des séances existe déjà.
+ * « ?ping=1 » : de quoi vérifier l'installation sans rien publier. Pas
+ * d'adresse e-mail : l'adresse du relais est publique.
  */
 function etatDuRelais() {
-  var id = idDuDossier();
-  return {
-    relais: 'Au Tableau',
-    version: 2,
-    // Pas d'adresse e-mail ici : l'adresse du relais est publique (elle est
-    // dans le code du site), et n'importe qui peut appeler « ?ping=1 »
-    dossier: id ? DOSSIER : null,
-    pret: !!id
-  };
+  var dossier = dossierTrouve();
+  return { relais: 'MEM Replay', version: 3, dossier: dossier, pret: !!dossier };
 }
 
-/** Une réponse que le lecteur sait lire, JSON ou JSONP. */
-function repondre(objet, p) {
-  var texte = JSON.stringify(objet);
-  if (p && p.callback) {
-    return ContentService
-      .createTextOutput(String(p.callback) + '(' + texte + ');')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-  return ContentService.createTextOutput(texte).setMimeType(ContentService.MimeType.JSON);
+function enJson(objet) {
+  return ContentService.createTextOutput(JSON.stringify(objet)).setMimeType(ContentService.MimeType.JSON);
 }
 
 /**
- * À lancer une fois depuis l'éditeur (bouton « Exécuter ») si l'on veut
- * autoriser le script avant le déploiement, et voir dans le journal ce qu'il
- * dessert. Ne sert à rien d'autre.
+ * À lancer une fois depuis l'éditeur (étape 3) : donne l'autorisation, et
+ * écrit dans le journal le compte et l'état du relais.
  */
 function verifierLInstallation() {
   console.log('Compte : ' + Session.getEffectiveUser().getEmail());

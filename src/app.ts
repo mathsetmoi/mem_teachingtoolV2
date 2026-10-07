@@ -73,11 +73,12 @@ export class App {
   selection = new Set<string>()
   /** Un seul morceau choisi (un sommet, un nom…), sans la figure entière */
   partie: { id: string; prise: Prise } | null = null
+  /** Une revue occupe l'écran : on ne relit pas le document et les raccourcis se taisent */
   enLecture = false
   /** Un mode où le prochain clic pose quelque chose (une construction…) */
   placement: { bouge(w: P): void; clic(w: P): void; annuler(): void } | null = null
   private outilAvant: Outil = 'stylo'      // l'outil que rend Échap depuis la Sélection
-  private survol: string | null = null                   // le lecteur occupe l'écran : on ne relit pas le document
+  private survol: string | null = null
 
   private formes: Forme[] = []
   private camerasParPage = new Map<string, Camera>()
@@ -125,7 +126,7 @@ export class App {
     window.addEventListener('paste', e => {
       if ((e.target as HTMLElement).closest?.('input, textarea')) return
       const f = [...(e.clipboardData?.files ?? [])].find(x => x.type.startsWith('image/'))
-      if (f && this.peutEcrire) { e.preventDefault(); this.importerImage(f) }
+      if (f && this.peutEcrire && !this.enLecture) { e.preventDefault(); this.importerImage(f) }
     })
     zone.addEventListener('dragover', e => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault() })
     zone.addEventListener('drop', e => {
@@ -1418,6 +1419,7 @@ export class App {
   }
 
   private clavier(e: KeyboardEvent) {
+    if (this.enLecture) return
     const cible = e.target as HTMLElement
     // Dans une fenêtre (publier, formule…), les raccourcis du tableau se taisent
     if (cible.closest('input, textarea, select, [contenteditable], dialog')) return

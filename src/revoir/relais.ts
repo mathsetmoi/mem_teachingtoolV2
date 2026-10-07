@@ -29,8 +29,8 @@ export async function lireParLeRelais(cle: string, id: string, adresse = compteD
   return objet
 }
 
-/** Vérifier un relais sans rien lire : il répond le compte qu'il sert */
-export async function essayerRelais(adresse: string): Promise<{ compte?: string; pret?: boolean; dossier?: string | null }> {
+/** Vérifier un relais sans rien lire : il répond sa version et s'il a trouvé son dossier */
+export async function essayerRelais(adresse: string): Promise<{ version?: number; pret?: boolean; dossier?: string | null }> {
   if (!relaisValable(adresse)) throw new Error('Cette adresse n\'est pas celle d\'un relais : elle doit être sur script.google.com et finir par « /exec ».')
   const u = new URL(adresse)
   u.searchParams.set('ping', '1')

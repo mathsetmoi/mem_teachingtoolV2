@@ -205,21 +205,62 @@ dessins (« Quelle est la vue de dessus ? », « Lequel est un patron de
 cube ? »). Le patron se vérifie en faisant rouler un dé sur ses cases : sur
 les 35 assemblages de six carrés, on retrouve bien les 11 patrons du cube.
 
-## Rejouer le tableau
+## Revoir la construction (en classe)
 
-Le bouton ▶ de la barre du haut rejoue la construction, geste par geste, au
-rythme où elle a été faite (une rafale reste visible, une longue pause est
-écourtée). Les traits se redessinent sous les yeux. Vitesse de ×0,05 à ×8 ;
-Espace, ← →, Origine, Fin ; Échap pour fermer. Le lecteur n'écrit rien :
-le tableau revient tel quel. Le film est gardé avec le tableau.
+Le bouton **Revoir** de la barre du haut (la flèche qui tourne autour d'un
+petit triangle) montre comment le tableau s'est construit. Un calque couvre
+l'écran, bordé de jaune et marqué **REVOIR** : la classe sait qu'elle ne
+regarde pas le direct. Il s'ouvre en pause sur l'image finale de la page
+affichée, telle qu'elle était à la fin de sa dernière séance (sur une page
+toute neuve : la dernière séance qui montre quelque chose), avec la même
+vue que le tableau : au vidéoprojecteur, rien ne bouge. Un bandeau dit ce
+qu'on revoit ; **Espace** repart du début, **←** remonte pas à pas.
 
-Pour cela, le document Yjs garde ce qui a été effacé (`gc: false`) et note un
-instantané à chaque geste (`film`). Rejouer, c'est lire l'état du tableau dans
-chacun de ces instantanés, directement, sans reconstruire le document.
+**Que revoir ?** Le tiroir du même nom propose la page affichée (« Sa
+dernière séance », « Toute son histoire », de séance en séance), les séances
+du tableau rangées par jour (douze à la fois, puis « Plus anciennes »), et
+les pages jetées depuis, dont l'histoire reste lisible. Chaque ligne dit
+combien de gestes elle montrera, comme le bandeau et le compteur ; une séance
+qui n'a fait que créer ou jeter une page n'y figure pas. On y règle aussi
+l'arrêt en fin de partie et le découpage des séances (une pause de 20, 10, 5
+ou 2 minutes en sépare deux, comme dans la fenêtre Publier).
+
+**Parties et pas.** Ce qu'on revoit est découpé en parties titrées avec
+l'heure réelle : une par page où l'on s'est attardé pendant une séance, une
+par séance dans l'histoire d'une page, et une nouvelle après trois minutes de
+silence. Elles forment la frise, en bas : glisser montre l'image visée,
+toucher une partie mène à son début. À l'intérieur, les gestes rapprochés
+(moins de deux secondes d'écart) forment un pas, une idée : c'est ce que fait
+avancer la télécommande de présentation. Une figure reconnue au stylo est un
+seul geste (seule la figure se dessine, pas le tracé à main levée qu'elle
+remplace), et jeter une page n'en est pas un pour la page où l'on revient.
+
+**Les commandes**, toutes au clavier et en grands boutons : Espace, K ou un
+appui bref sur le tableau pour lire ou s'arrêter ; → ou Page↓ pour un pas,
+← ou Page↑ pour revenir ; Maj+→ et Maj+← pour un seul geste visible ; [ et ]
+pour la partie précédente ou suivante ; Origine et Fin ; 1 à 4, − et + pour
+l'allure (Lent, Normal, Rapide, Très rapide ; Rapide au départ) ; C pour
+revoir toute la page ; Échap pour revenir au tableau. La lecture suit le
+rythme du cours : les intervalles courts sont gardés, les longs silences
+tassés en douceur. Les figures se dessinent sous les yeux (le trait suit son
+chemin, le cercle s'ouvre comme au compas, le polygone se construit côté
+après côté) ; formules et images apparaissent d'un coup. La vue suit la page
+montrée ; après un glisser ou un pincement, elle reste où on l'a mise
+jusqu'à C. Sous « animations réduites », rien ne se dessine ni ne s'estompe.
+
+**La revue ne fait que lire.** Le document Yjs garde ce qui a été effacé
+(`gc: false`) et note un instantané à chaque geste (`film`). La revue lit
+une seule page dans l'instantané de l'image qu'elle montre, au moment de la
+montrer, sans rien préparer ni reconstruire : elle s'ouvre aussitôt sur un
+tableau utilisé depuis des semaines. Elle a sa propre caméra et son propre
+rendu, et n'écrit nulle part, ni dans le document ni dans le navigateur ;
+crayon, doigt, collage et raccourcis du tableau sont sans effet tant qu'elle
+est ouverte. Un test le vérifie sur toutes les portions d'un tableau
+(`npm test`) : aucune transaction, le même vecteur d'état, le même film.
 
 ## Revoir la séance (les élèves, chez eux)
 
-Le bouton **Publier le replay** (la flèche qui sort d'une boîte, à côté de ▶)
+Le bouton **Publier le replay** (la flèche qui sort d'une boîte, à côté de Revoir)
 donne aux élèves un lien à coller dans le cahier de textes Pronote. Ils
 l'ouvrent sur leur téléphone, sans compte, et appuient sur ▶.
 
@@ -240,12 +281,12 @@ fichier : le lien déjà collé montre la nouvelle version, même depuis un autr
 onglet ou un autre ordinateur, et même si le fichier était passé à la
 corbeille du Drive (il en revient). « Publier comme une nouvelle séance »
 donne volontairement un autre lien. **Enregistrer le
-fichier** donne un fichier `.prof` à déposer dans l'ENT ou sur une clé USB ; le
+fichier** donne un fichier `.mem` à déposer dans l'ENT ou sur une clé USB ; le
 lecteur l'ouvre aussi.
 
 **Côté élève** (`revoir.html`). L'affiche montre le tableau final, le titre, la
 date et la durée. Le replay suit le rythme du cours (les longs silences sont
-écourtés) à ×0,5, ×1, ×1,5 ou ×2 ; les traits se redessinent sous les yeux.
+écourtés) aux allures Lent, Normal, Rapide ou Très rapide ; les figures se dessinent sous les yeux.
 Pas à pas, frise, chapitres (un par page pour l'instant), pages qui changent
 toutes seules, pincer ou la molette pour zoomer, glisser pour se déplacer,
 double-clic pour revoir toute la page. **La lecture s'arrête à la fin de chaque
@@ -271,19 +312,23 @@ Il reste au professeur à vérifier qu'aucun prénom n'a été écrit pendant la
 séance, et qu'aucune image importée ne montre une copie ou un visage : la
 fenêtre le rappelle.
 
-**Où vivent les séances.** Dans le dossier privé « Au Tableau — séances
-publiées » du Drive du professeur, le même qu'en V1 : rien n'est partagé. Le
-relais Apps Script de ce compte (`relais/relais-seances.gs`, repris de la V1)
-lit la séance sous l'identité du professeur et la sert ; un relais par compte
-Google, et le lien dit lequel (`?r=mem&id=…`). La version 2 du script (dans
-ce dépôt) ne donne plus l'adresse e-mail du compte à qui appelle `?ping=1`,
-et sert les séances de tout dossier « Au Tableau — séances publiées » du
-compte : la redéployer (Gérer les déploiements → Version : nouvelle) garde la
-même adresse. Le relais du Drive personnel est
-déjà déployé ; celui du lycée s'installe en cinq minutes (instructions en tête
-du script), puis son adresse va dans `src/publication/comptes.ts`. La
-connexion Google demande le droit le plus étroit (`drive.file` : Tableau MEM ne
-voit que les fichiers qu'il a créés).
+**Où vivent les séances.** Dans un dossier privé du Drive du professeur, un
+par compte : « MEM - Replay séances » (compte mathsetmoi) et « LFB - Replay
+séances » (compte du lycée). Rien n'est partagé. Le relais Apps Script de ce
+compte (`relais/relais-seances.gs`, projet « MEM - Relais replay ») lit la
+séance sous l'identité du professeur et la sert ; un relais par compte Google,
+et le lien dit lequel (`?r=mem&id=…`). Il ne sert qu'un fichier `.mem` qui est
+bien un replay, rangé dans l'un de ces deux dossiers, et ne liste jamais rien.
+Chaque dossier porte aussi la marque de son compte : un essai avec le mauvais
+compte Google ne laisse rien derrière lui, et le dossier d'un compte n'est
+jamais repris par l'autre.
+Les noms des dossiers sont à la fois dans `src/publication/comptes.ts` et dans
+le relais : un test vérifie qu'ils concordent. Installer un relais prend cinq
+minutes (instructions en tête du script) ; le mettre à jour (Gérer les
+déploiements → Version : Nouvelle version) garde la même adresse. Un relais
+pas à jour est signalé à la publication. La connexion Google demande le droit
+le plus étroit (`drive.file` : Tableau MEM ne voit que les fichiers qu'il a
+créés).
 
 **Connexion Google : à régler une fois.** Tableau MEM a besoin de SON
 identifiant client Google (`CLIENT_GOOGLE` dans `src/publication/comptes.ts`) :
@@ -412,7 +457,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
 | `src/geometrie.ts` | Ce que touche la gomme ou la sélection |
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
-| `src/lecteur.ts` | Le lecteur qui rejoue la construction |
+| `src/revue/` | La revue en classe : ce qu'on revoit, les images, la frise, le choix |
 | `src/revoir/` | Le replay des élèves : format du film, exporteur, bobine, lecteur (`revoir.html`), relais |
 | `src/publication/` | Publier sur le Drive : comptes et relais, connexion Google, la fenêtre |
 | `relais/relais-seances.gs` | Le relais Apps Script, à déployer dans chaque compte Google |
@@ -462,5 +507,5 @@ n'empêche un usage payant.
 5. Import d'un PDF comme fond de page (annoter un énoncé) ; recadrer une image.
 6. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
 7. Sécurité du serveur : jeton prof, durée de vie des salles.
-8. Lecteur : export vidéo, et alléger les très longs films (le document ne
+8. Revue : export vidéo, et alléger les très longs films (le document ne
    jette plus rien).

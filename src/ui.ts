@@ -11,7 +11,7 @@ import { CM, FONDS } from './types'
 import type { P, Transformation } from './formes'
 import { centreDe, image, versRelatif } from './formes'
 import { etapesImage } from './construction'
-import { Lecteur } from './lecteur'
+import { RevueEnClasse } from './revue/revue'
 import { Publication } from './publication/fenetre'
 import { Constructeur } from './constructeur'
 import { Seance } from './seance'
@@ -44,7 +44,7 @@ const ICONES: Record<string, string> = {
   cercle: 'M12 20a8 8 0 100-16 8 8 0 100 16z',
   polygone: 'M12 3l8 6-3 10H7L4 9z',
   reconnaissance: 'M4 17c2-6 5-9 9-9M14 4h6v6M20 4l-7 7M4 20h6',
-  rejouer: 'M12 21a9 9 0 100-18 9 9 0 100 18zM10 8.5l5.5 3.5-5.5 3.5z',
+  revue: 'M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4.5v4.2h4.2M10.5 9.5v5l4-2.5z',
   publier: 'M12 15V3M7.5 7.5L12 3l4.5 4.5M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6',
   image: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15.5 9.5a1.5 1.5 0 100-.01',
   instruments: 'M3 17L17 3l4 4L7 21zM7 13l2 2M10 10l2 2M13 7l2 2',
@@ -146,7 +146,7 @@ export class UI implements Interface {
   private clePanneau = ''
   private idPanneau = ''
   private section: 'contour' | 'fond' | 'transformer' | null = null
-  private lecteur!: Lecteur
+  private revue!: RevueEnClasse
   private publication!: Publication
   private constructeur!: Constructeur
   private seance!: Seance
@@ -241,10 +241,10 @@ export class UI implements Interface {
     const importer = bouton('image', 'Importer une image (ou coller avec Ctrl+V, ou glisser le fichier)', () => choixFichier.click())
     this.racine.appendChild(choixFichier)
     const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir())
-    const rejouer = bouton('rejouer', 'Rejouer la construction du tableau', () => this.lecteur.ouvrir())
+    const revoir = bouton('revue', 'Revoir la construction : une page, une séance, pas à pas', () => this.ouvrirRevue(revoir))
     const publier = bouton('publier', 'Publier le replay pour les élèves', () => this.publication.ouvrir())
-    this.outilsPage = [nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, rejouer, publier]
-    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, rejouer, publier)
+    this.outilsPage = [nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, revoir, publier]
+    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, revoir, publier)
 
     // ----- Les instruments, sous leur bouton -----
     this.choixInstruments = document.createElement('div')
@@ -307,7 +307,7 @@ export class UI implements Interface {
     this.panneau.setAttribute('aria-label', 'Options de la figure')
 
     this.racine.append(outils, haut, zoom, this.bandeau, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
-    this.lecteur = new Lecteur(app, this.racine, t => this.message(t))
+    this.revue = new RevueEnClasse(this.app, this.racine)
     this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t))
     this.seance = new Seance(this.racine)
@@ -683,6 +683,25 @@ export class UI implements Interface {
     m.style.top = Math.max(8, Math.min(y + 14, window.innerHeight - m.offsetHeight - 8)) + 'px'
   }
 
+  /** La revue prend tout l'écran : le programme de construction se ferme
+   *  d'abord (son clavier passerait avant le sien, et il écrit au tableau).
+   *  Un instrument qu'il amenait finit pourtant son trajet à l'image d'après,
+   *  et resterait seul sur le tableau : on le range quand le tableau revient
+   *  (ou, si la revue n'a rien eu à montrer, deux images plus tard). */
+  private ouvrirRevue(b: HTMLElement) {
+    const construisait = this.constructeur.ouvert
+    if (construisait) this.constructeur.fermer()
+    this.fermerMenuPartie()
+    const ranger = () => {
+      const r = this.app.rendu
+      if (this.constructeur.ouvert || !r.instrumentsAnimes.length) return
+      r.instrumentsAnimes = []
+      r.redessinerInstruments()
+    }
+    this.revue.ouvrir(b, construisait ? ranger : undefined)
+    if (construisait && !this.revue.ouvert) requestAnimationFrame(() => requestAnimationFrame(ranger))
+  }
+
   fermerMenuPartie() {
     if (this.menuPartie.hidden) return
     this.menuPartie.hidden = true
@@ -887,10 +906,10 @@ export class UI implements Interface {
         <input class="saisie" autocomplete="given-name" placeholder="Prénom" aria-label="Prénom">
         <div class="actions"><button type="button" class="principal">Entrer</button></div>`
       const champ = corps.querySelector('input') as HTMLInputElement
-      try { champ.value = localStorage.getItem('mem-prenom') || '' } catch { /* stockage refusé */ }
+      try { champ.value = localStorage.getItem('mem-prenom') || '' } catch { /* navigateur sans mémoire : on redemandera */ }
       const ok = () => {
         const v = champ.value.trim() || 'Élève'
-        try { localStorage.setItem('mem-prenom', v) } catch { /* stockage refusé */ }
+        try { localStorage.setItem('mem-prenom', v) } catch { /* tant pis : le prénom ne sera pas proposé la prochaine fois */ }
         d.close(); d.remove(); resolve(v)
       }
       corps.querySelector('button')!.addEventListener('click', ok)
