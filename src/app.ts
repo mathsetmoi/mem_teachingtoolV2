@@ -369,7 +369,13 @@ export class App {
     this.ui?.maj()
   }
 
-  annuler() { this.tableau.annulation.undo(); this.selection.clear() }
+  /** L'interface est remise à jour APRÈS avoir vidé la sélection : le
+   *  rafraîchissement déclenché par l'annulation passe avant, et laisserait
+   *  le panneau d'options ouvert sur une figure qui n'est plus choisie. */
+  annuler() {
+    this.tableau.annulation.undo()
+    this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()
+  }
   retablir() { this.tableau.annulation.redo() }
 
   supprimerSelection() {
