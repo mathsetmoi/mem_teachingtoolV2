@@ -560,7 +560,7 @@ export class UI implements Interface {
       switch (T.type) {
         case 'symetrie-axiale': {
           const a = axes.find(x => x.cle === T.axe)
-          if (!a) { this.message('Choisis l\'axe : désigne une droite du tableau, ou trace-la.'); return null }
+          if (!a) { this.message('Choisis l\'axe : désigne une droite de la page, ou trace-la.'); return null }
           const m = a.nom.match(/\((.+)\)/)
           return { t: { type: 'symetrie-axiale', a: a.a, b: a.b }, noms: { axe: m ? `(${m[1]})` : "l'axe" } }
         }

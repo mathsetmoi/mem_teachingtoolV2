@@ -69,7 +69,7 @@ export class Publication {
 
   ouvrir() {
     this.seances = this.reperer(DECOUPAGES[0] * MINUTE)
-    if (!this.seances.length) return this.app.ui.message('Rien à publier pour l\'instant : le replay commence avec les gestes faits au tableau.')
+    if (!this.seances.length) return this.app.ui.message('Rien à publier pour l\'instant : le replay commence avec ce que vous écrivez pendant la séance.')
     if (this.enLigne) preparerGoogle()
     this.d?.remove()
     const d = document.createElement('dialog')

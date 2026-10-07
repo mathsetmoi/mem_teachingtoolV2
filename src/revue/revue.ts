@@ -250,7 +250,7 @@ export class RevueEnClasse {
     const app = this.app
     const film = app.tableau.film.toArray()
     if (film.length < 2) {
-      app.ui.message('Rien à revoir pour l\'instant : la revue montre ce qui a été écrit au tableau.')
+      app.ui.message('Rien à revoir pour l\'instant : la revue montre ce qui a été écrit pendant les séances.')
       return
     }
     app.enLecture = true
@@ -288,7 +288,7 @@ export class RevueEnClasse {
     const b = bandeParDefaut(this.lecture, this.seances, app.page, pg => this.nommer(pg))
     if (!b) {
       this.fermer()
-      app.ui.message('Rien à revoir pour l\'instant : la revue montre ce qui a été écrit au tableau.')
+      app.ui.message('Rien à revoir pour l\'instant : la revue montre ce qui a été écrit pendant les séances.')
       return
     }
     this.montrer(b, true)
@@ -549,7 +549,7 @@ export class RevueEnClasse {
     const b = this.bande!
     const n = b.images.length
     if (this.k >= n - 1) {
-      this.montrerBandeau('Fin. Espace : revoir depuis le début · Échap : revenir au tableau.')
+      this.montrerBandeau('Fin. Espace : revoir depuis le début · Échap : revenir au direct.')
       this.annoncer('Fin')
     } else if (this.mode === 'lecture') {
       const q = partieDe(b, this.k)

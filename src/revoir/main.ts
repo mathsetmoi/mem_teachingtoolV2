@@ -139,7 +139,7 @@ function attendreApercu() {
   })
   ;(window.opener as Window).postMessage({ type: 'mem-revoir-pret' }, location.origin)
   setTimeout(() => {
-    if (!bobine) carteErreur('L\'aperçu ne s\'est pas ouvert : fermez cet onglet et cliquez à nouveau sur « Voir comme un élève » dans le tableau.', null)
+    if (!bobine) carteErreur('L\'aperçu ne s\'est pas ouvert : fermez cet onglet et cliquez à nouveau sur « Voir comme un élève » dans la fenêtre Publier.', null)
   }, 6000)
 }
 

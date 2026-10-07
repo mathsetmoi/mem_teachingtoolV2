@@ -1053,7 +1053,7 @@ export class App {
       if (this.outil !== 'selection') {
         this.outilAvant = this.outil
         this.choisirOutil('selection')
-        this.ui.message('Sélection : glisser un objet le déplace, glisser dans le vide déplace le tableau. Échap : revenir.')
+        this.ui.message('Sélection : glisser un objet le déplace, glisser dans le vide déplace la vue. Échap : revenir.')
       } else {
         this.choisirOutil(this.outilAvant)
         this.ui.message('Retour à l\'outil précédent')
