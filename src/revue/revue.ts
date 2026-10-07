@@ -21,6 +21,7 @@ import katex from 'katex'
 import type { App } from '../app'
 import { Camera } from '../camera'
 import { Rendu } from '../rendu'
+import type { TraitDirect } from '../rendu'
 import type { Etape } from '../document'
 import type { Forme } from '../types'
 import { boiteDe } from '../revoir/bobine'
@@ -28,12 +29,14 @@ import type { Boite } from '../revoir/bobine'
 import { DECOUPAGES, seancesDuFilm } from '../revoir/exporter'
 import type { Seance } from '../revoir/exporter'
 import { dureeDuTrace, esquisse, seDessine } from '../revoir/esquisse'
+import type { Main } from '../revoir/main-levee'
+import { main, pointsPoses, traitEnCours } from '../revoir/main-levee'
 import { svg } from '../revoir/icones'
 import type { NomIcone } from '../revoir/icones'
 import { ALLURES } from '../revoir/rythme'
-import type { Bande, Portion } from './bande'
+import type { Bande, ImageBande, Portion } from './bande'
 import {
-  bandeParDefaut, compterGestes, construireBande, dureeLisible, echeances, entreePrecedente, entreeSuivante, heureLisible, indiceAuTemps,
+  bandeParDefaut, compterGestes, construireBande, departs, dureeLisible, echeances, entreePrecedente, entreeSuivante, heureLisible, horlogeAuDepart, indiceAuTemps,
   jourCourt, jourDuMois, jourLisible, listeDesPages, partieDe, pasPrecedent, pasSuivant, pluriel,
   prochainArret, seancesDeLaPage,
 } from './bande'
@@ -122,8 +125,10 @@ export class RevueEnClasse {
   /** Le nombre de gestes de chaque portion déjà comptée (le film est figé tant que la revue est ouverte) */
   private totaux = new Map<string, number>()
   private planches: Planches | null = null
-  /** L'instant de chaque image, à l'allure choisie */
+  /** L'instant où chaque image est finie, à l'allure choisie */
   private ech: Float64Array = new Float64Array(1)
+  /** L'instant où chaque image commence à paraître (avant son tracé à la main) */
+  private debuts: Float64Array = new Float64Array(1)
   /** L'image montrée */
   private k = 0
 
@@ -136,8 +141,11 @@ export class RevueEnClasse {
   private horloge = 0
   private instant = 0
   private boucle = 0
-  /** Les formes qui se dessinent en ce moment */
-  private trace: { ids: Set<string>; debut: number; duree: number } | null = null
+  /** On est dans une image d'écran de la boucle (voir assurerBoucle) */
+  private dansLaBoucle = false
+  /** Les formes qui se dessinent en ce moment. main : un trait qui s'écrit au
+   *  rythme de la main, sur la page d'avant (avant), point par point (vus) */
+  private trace: { ids: Set<string>; debut: number; duree: number; main?: { m: Main; avant: Forme[]; vus: number } } | null = null
   /** Rapide par défaut ; retenue tant que l'onglet vit, nulle part ailleurs */
   private allure = 2
   private arretAuxParties = true
@@ -224,7 +232,7 @@ export class RevueEnClasse {
       this.boutonsAllure.push(b)
       allures.append(b)
     })
-    const revenir = this.boutonTexte('revenir', 'Revenir au tableau', 'Revenir au tableau (Échap)', () => this.fermer())
+    const revenir = this.boutonTexte('revenir', 'Revenir au direct', 'Revenir au direct (Échap)', () => this.fermer())
     revenir.classList.add('b-revenir')
     rangee.append(revenir)
     // Après un clic à la souris, le bouton rend la main : Espace lit, au lieu de recliquer
@@ -250,7 +258,7 @@ export class RevueEnClasse {
     const app = this.app
     const film = app.tableau.film.toArray()
     if (film.length < 2) {
-      app.ui.message('Rien à revoir pour l\'instant : la revue montre ce qui a été écrit au tableau.')
+      app.ui.message('Rien à revoir pour l\'instant : la revue montre ce qui a été écrit pendant les séances.')
       return
     }
     app.enLecture = true
@@ -288,7 +296,7 @@ export class RevueEnClasse {
     const b = bandeParDefaut(this.lecture, this.seances, app.page, pg => this.nommer(pg))
     if (!b) {
       this.fermer()
-      app.ui.message('Rien à revoir pour l\'instant : la revue montre ce qui a été écrit au tableau.')
+      app.ui.message('Rien à revoir pour l\'instant : la revue montre ce qui a été écrit pendant les séances.')
       return
     }
     this.montrer(b, true)
@@ -311,7 +319,7 @@ export class RevueEnClasse {
     this.doigts.clear(); this.pince = null; this.appui = null
     this.planches?.vider()
     this.planches = null; this.bande = null; this.lecture = null; this.film = []; this.seances = []; this.totaux.clear()
-    if (this.rendu) { this.rendu.formes = []; this.rendu.toutRedessiner() }
+    if (this.rendu) { this.rendu.formes = []; this.rendu.monTrait = null; this.rendu.toutRedessiner() }
     this.images.clear()
     for (const c of this.inertes) c.inert = false
     this.inertes = []
@@ -356,6 +364,7 @@ export class RevueEnClasse {
     const p = b.portion
     this.bande = b
     this.ech = echeances(b, this.facteur)
+    this.debuts = departs(b, this.ech, this.facteur)
     this.frise.charger(b.images.length, b.parties)
     this.partieAnnoncee = -1
     // On ouvre sur l'affiche : la fin de la portion
@@ -423,14 +432,26 @@ export class RevueEnClasse {
     const voisine = j > 0 && b.images[j - 1].p === img.p ? b.images[j - 1] : null
     const voir = suivre && this.vue === 'auto' && (this.enMarche || j === k0 + 1)
     const apparues = voisine && (tracer || voir) ? this.planches!.apparues(voisine, img) : []
-    if (tracer && !this.reduit.matches) {
-      const f = apparues.filter(seDessine)
+    // Un trait tracé à la main s'écrit comme au tableau, à l'heure de chaque
+    // point : c'est le contenu même de la revue, il s'écrit donc aussi sous
+    // « animations réduites ». Pendant la lecture, l'horloge a pu dépasser le
+    // début du tracé d'une image d'écran : il reprend là où il en est.
+    const main = tracer && img.main !== undefined ? this.mainDe(img) : null
+    if (main) {
+      const duree = main.m.duree / this.facteur
+      const deja = this.enMarche ? Math.max(0, Math.min(duree, this.horloge - this.debuts[j])) : 0
+      this.trace = { ids: new Set([main.m.trait.id]), debut: this.maintenant - deja, duree, main }
+      this.assurerBoucle()
+    } else if (tracer && !this.reduit.matches) {
+      // Ce qui revient (Ctrl+Z, Ctrl+Y) revient d'un coup, comme au tableau
+      const dessinees = apparues.filter(seDessine)
+      const f = voisine && dessinees.length ? this.planches!.neuves(voisine, dessinees) : []
       if (f.length) {
         let duree = dureeDuTrace(f) / this.facteur
         // Pendant la lecture, le tracé finit toujours avant le geste suivant
-        if (this.enMarche && j + 1 < n) duree = Math.min(duree, 0.85 * (this.ech[j + 1] - this.ech[j]))
+        if (this.enMarche && j + 1 < n) duree = Math.min(duree, 0.85 * (this.debuts[j + 1] - this.ech[j]))
         if (duree >= TRACE_VISIBLE) {
-          this.trace = { ids: new Set(f.map(x => x.id)), debut: performance.now(), duree }
+          this.trace = { ids: new Set(f.map(x => x.id)), debut: this.maintenant, duree }
           this.assurerBoucle()
         }
       }
@@ -444,19 +465,58 @@ export class RevueEnClasse {
     this.majCommandes()
   }
 
+  /** Le trait que l'image trace à la main, retrouvé dans les planches : celui
+   *  qui paraît à son étape et va avec les temps notés. null : aucun. */
+  private mainDe(img: ImageBande): { m: Main; avant: Forme[]; vus: number } | null {
+    const e = img.main, pl = this.planches
+    if (e === undefined || !pl) return null
+    const avant = pl.lire({ e: e - 1, p: img.p, geste: false }), apres = pl.lire({ e, p: img.p, geste: true })
+    const deja = new Set(avant.formes.map(f => f.id))
+    for (const f of apres.formes) {
+      if (f.type !== 'trait' || deja.has(f.id)) continue
+      const m = main(f, this.film[e]?.ms)
+      if (m) return { m, avant: avant.formes, vus: 0 }
+    }
+    return null
+  }
+
   private peindre() {
     const r = this.rendu, b = this.bande
     if (!r || !b || !this.planches) return
     const planche = this.planches.lire(b.images[this.k])
     const t = this.trace
-    if (t) {
-      const fait = Math.min(1, (performance.now() - t.debut) / t.duree)
+    let enCours: TraitDirect | null = null
+    if (t?.main) {
+      // La page d'avant le geste, et sous le stylo le trait en cours : le dessin même du direct
+      const fait = t.duree > 0 ? Math.min(1, (this.maintenant - t.debut) / t.duree) : 1
+      if (fait < 1) {
+        t.main.vus = pointsPoses(t.main.m, fait * t.main.m.duree)
+        enCours = traitEnCours(t.main.m, t.main.vus)
+      }
+      r.formes = fait < 1 ? t.main.avant : planche.formes
+    } else if (t) {
+      const fait = Math.min(1, (this.maintenant - t.debut) / t.duree)
       r.formes = planche.formes.map(f => t.ids.has(f.id) ? esquisse(f, fait) : f)
     } else if (this.glisse) r.formes = planche.formes.map(brouillon)
     else r.formes = planche.formes
+    r.monTrait = enCours
     r.fond = planche.fond
     r.origine = planche.origine
-    r.toutRedessiner()
+    // Au début d'un trait qui s'écrit, la page est souvent celle qui est déjà là : seul le trait se peint
+    r.redessinerSiBesoin()
+  }
+
+  /** Une image d'écran du trait qui s'écrit : seule la couche « direct » se
+   *  repeint, et seulement quand un point de plus est posé */
+  private peindreLaMain(t: NonNullable<RevueEnClasse['trace']>) {
+    const r = this.rendu, m = t.main
+    if (!r || !m) return
+    const fait = t.duree > 0 ? Math.min(1, (this.maintenant - t.debut) / t.duree) : 1
+    const n = pointsPoses(m.m, fait * m.m.duree)
+    if (n === m.vus) return
+    m.vus = n
+    r.monTrait = traitEnCours(m.m, n)
+    r.redessinerDirect()
   }
 
   private pixels(src: string): HTMLImageElement | null {
@@ -492,10 +552,13 @@ export class RevueEnClasse {
   }
 
   private demarrer() {
-    const n = this.bande!.images.length
     // Quelque chose bouge en moins de 150 ms, quelle que soit l'attente d'origine
-    // (le geste paraît au plus 100 ms après l'appui ; l'écran suit à l'image d'après)
-    this.horloge = Math.max(this.ech[this.k], this.ech[Math.min(n - 1, this.k + 1)] - DEMARRAGE)
+    // (le geste paraît au plus 100 ms après l'appui ; l'écran suit à l'image d'après).
+    // Un trait qui s'écrit encore à la main bouge déjà : il va jusqu'au lever,
+    // puis vient le vrai temps stylo levé (comme au lecteur des élèves).
+    const t = this.trace
+    const reste = t?.main ? Math.max(0, t.debut + t.duree - performance.now()) : 0
+    this.horloge = horlogeAuDepart(this.ech, this.debuts, this.k, reste, DEMARRAGE)
     this.instant = performance.now()
     this.enMarche = true
     this.majCommandes()
@@ -518,7 +581,9 @@ export class RevueEnClasse {
   }
 
   private assurerBoucle() {
-    if (this.boucle) return
+    // Depuis la boucle elle-même (un geste qui paraît), rien à faire : elle se
+    // relance à la fin de l'image, et l'horloge ne doit pas perdre ce temps-là
+    if (this.boucle || this.dansLaBoucle) return
     this.instant = performance.now()
     this.boucle = requestAnimationFrame(this.tic)
   }
@@ -527,21 +592,40 @@ export class RevueEnClasse {
   private tic = (now: number) => {
     this.boucle = 0
     if (!this.ouvert || !this.bande) return
+    this.dansLaBoucle = true
+    try { this.avancer(now) } finally { this.dansLaBoucle = false }
+    if (this.enMarche || this.trace) this.boucle = requestAnimationFrame(this.tic)
+  }
+
+  /** L'heure qui fait avancer les tracés : celle de l'image d'écran dans la
+   *  boucle (comme au tableau, où un point paraît à l'image qui suit son
+   *  arrivée), sinon maintenant */
+  private get maintenant() { return this.dansLaBoucle ? this.instant : performance.now() }
+
+  /** Une image d'écran de la revue : l'horloge avance, les gestes paraissent, le trait s'écrit */
+  private avancer(now: number) {
+    const b = this.bande!
     // Un onglet caché ne rattrape rien en revenant : au plus 100 ms par image
     const dt = Math.min(100, Math.max(0, now - this.instant))
     this.instant = now
     if (this.enMarche) {
       this.horloge += dt
-      const j = indiceAuTemps(this.ech, this.horloge, this.k, this.arret)
-      // Plusieurs gestes dans la même image d'écran : on montre le dernier, sans tracé
-      if (j > this.k) this.aller(j, j === this.k + 1)
-      if (this.k >= this.arret) this.arreter()
+      // Une image commence à paraître au début de son tracé à la main
+      const j = indiceAuTemps(this.debuts, this.horloge, this.k, this.arret)
+      // Plusieurs gestes dans la même image d'écran : on montre le dernier, sans
+      // tracé (sauf un trait qui s'écrit encore à la main : il reprend où il en est)
+      if (j > this.k) this.aller(j, j === this.k + 1 || b.traces[j] > 0)
+      // On s'arrête quand la dernière image est finie, son trait écrit jusqu'au lever
+      if (this.k >= this.arret && this.horloge >= this.ech[this.k]) this.arreter()
     }
-    if (this.trace) {
-      this.peindre()
-      if (performance.now() - this.trace.debut >= this.trace.duree) { this.trace = null; this.peindre() }
+    const t = this.trace
+    if (t) {
+      if (this.maintenant - t.debut >= t.duree) { this.trace = null; this.peindre() }
+      else if (t.main) this.peindreLaMain(t)
+      else this.peindre()
     }
-    if (this.enMarche || this.trace) this.boucle = requestAnimationFrame(this.tic)
+    // Ce que l'horloge décide à cette image d'écran y paraît, pas à la suivante
+    this.rendu?.peindreMaintenant()
   }
 
   private arreter() {
@@ -549,7 +633,7 @@ export class RevueEnClasse {
     const b = this.bande!
     const n = b.images.length
     if (this.k >= n - 1) {
-      this.montrerBandeau('Fin. Espace : revoir depuis le début · Échap : revenir au tableau.')
+      this.montrerBandeau('Fin. Espace : revoir depuis le début · Échap : revenir au direct.')
       this.annoncer('Fin')
     } else if (this.mode === 'lecture') {
       const q = partieDe(b, this.k)
@@ -621,6 +705,7 @@ export class RevueEnClasse {
       this.allure = i
       const f1 = this.facteur
       this.ech = echeances(b, f1)
+      this.debuts = departs(b, this.ech, f1)
       if (this.enMarche) this.horloge = this.ech[this.k] + (this.horloge - avant[this.k]) * f0 / f1
       const t = this.trace
       if (t) {

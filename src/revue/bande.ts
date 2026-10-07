@@ -19,11 +19,17 @@
 // avant son premier geste : c'est là que mènent [ et ].
 //
 // Dans une partie, les gestes se groupent en pas : des gestes qui se
-// suivent à moins de deux secondes forment une seule idée (un mot, une
-// figure et ses noms). La télécommande avance d'un pas à la fois.
+// suivent à moins de deux secondes (stylo levé, quand le film connaît le
+// rythme de la main) forment une seule idée (un mot, une figure et ses
+// noms). La télécommande avance d'un pas à la fois.
+//
+// Le temps : un trait tracé à la main dont le film a noté le rythme (voir
+// revoir/main-levee.ts) s'écrit à la fin de l'attente de son image, à la
+// vitesse de la main ; l'attente qui le précède est le vrai temps stylo levé.
 // =============================================================
 import type { Etape } from '../document'
 import type { Seance } from '../revoir/exporter'
+import { dureesDuTrace } from '../revoir/main-levee'
 import { PLANCHER, tasser } from '../revoir/rythme'
 import type { LectureSeule } from './planches'
 import { departPropre, memeImage } from './planches'
@@ -33,8 +39,11 @@ export type Portion =
   | { genre: 'page'; page: string }                            // toute l'histoire d'une page
 
 /** L'état de la page p après l'étape e du film (e = −1 : avant tout).
- *  geste : false pour l'image 0 et pour l'ouverture d'une partie. */
-export interface ImageBande { e: number; p: string; geste: boolean }
+ *  geste : false pour l'image 0 et pour l'ouverture d'une partie.
+ *  main : l'étape où ce geste a tracé un trait à la main, dont le film a noté
+ *  le rythme. C'est e, ou, dans un geste fondu, l'étape du trait que la figure
+ *  reconnue remplace : le trait s'écrit, puis la figure paraît, comme au tableau. */
+export interface ImageBande { e: number; p: string; geste: boolean; main?: number }
 
 /** Une partie : ses images de debut à fin (incluses), sa page, l'heure de son premier geste */
 export interface Partie { debut: number; fin: number; page: string; heure: number; titre: string }
@@ -42,8 +51,11 @@ export interface Partie { debut: number; fin: number; page: string; heure: numbe
 export interface Bande {
   portion: Portion
   images: ImageBande[]
-  /** L'attente avant chaque image, en ms, à l'allure Normale */
+  /** L'attente avant chaque image, en ms, à l'allure Normale (son tracé à la main compris) */
   attentes: Float64Array
+  /** Le temps que chaque image met à s'écrire à la main, à la fin de son
+   *  attente (ms, allure Normale ; 0 : elle paraît d'un coup) */
+  traces: Float64Array
   parties: Partie[]
   /** Les images où l'on s'arrête en allant pas à pas (triées, sans doublon) */
   bornes: number[]
@@ -229,17 +241,23 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
   // 3. Les images, leurs attentes et les débuts de pas
   const images: ImageBande[] = [{ e: avants[0], p: pages[0], geste: false }]
   const attentes: number[] = [0]
+  const traces: number[] = [0]
   const parties: Partie[] = []
   const debutsDePas: number[] = []
   groupes.forEach((g, q) => {
     const debut = q ? images.length : 0
-    if (q) { images.push({ e: avants[g.de], p: g.page, geste: false }); attentes.push(PAUSE_DE_PARTIE) }
+    if (q) { images.push({ e: avants[g.de], p: g.page, geste: false }); attentes.push(PAUSE_DE_PARTIE); traces.push(0) }
     for (let j = g.de; j <= g.a; j++) {
       const premier = j === g.de
       const silence = j ? film[etapes[j]].t - film[etapes[j - 1]].t : 0
-      if (premier || silence >= SILENCE_DE_PAS) debutsDePas.push(images.length)
-      attentes.push(premier ? ENTREE : tasser(silence))
-      images.push({ e: etapes[j], p: pages[j], geste: true })
+      // Le geste commence à l'étape qui suit l'état d'avant (la première d'un geste fondu)
+      const m = avants[j] + 1, d = dureesDuTrace(film[m]?.ms)
+      // Le temps stylo levé : jusqu'au poser du trait, et non jusqu'à son lever
+      const leve = d ? film[m].t - d.vecue - (j ? film[etapes[j - 1]].t : film[m].t) : silence
+      if (premier || leve >= SILENCE_DE_PAS) debutsDePas.push(images.length)
+      attentes.push((premier ? ENTREE : d ? tasser(leve, 0) : tasser(silence)) + (d?.duree ?? 0))
+      traces.push(d?.duree ?? 0)
+      images.push(d ? { e: etapes[j], p: pages[j], geste: true, main: m } : { e: etapes[j], p: pages[j], geste: true })
     }
     const heure = film[etapes[g.de]].t
     const titre = p.genre === 'page' ? `${jourCourt(heure)} · ${heureLisible(heure)}` : `${nommer(g.page)} · ${heureLisible(heure)}`
@@ -253,6 +271,7 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
     const silence = film[bout].t - film[der.e].t
     if (silence >= SILENCE_DE_PAS) debutsDePas.push(images.length)
     attentes.push(tasser(silence))
+    traces.push(0)
     images.push({ e: bout, p: der.p, geste: true })
     parties[parties.length - 1].fin = images.length - 1
   }
@@ -268,7 +287,7 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
   const gestes = new Int32Array(n)
   for (let k = 1; k < n; k++) gestes[k] = gestes[k - 1] + (images[k].geste ? 1 : 0)
 
-  return { portion: p, images, attentes: Float64Array.from(attentes), parties, bornes, gestes, total: gestes[n - 1] }
+  return { portion: p, images, attentes: Float64Array.from(attentes), traces: Float64Array.from(traces), parties, bornes, gestes, total: gestes[n - 1] }
 }
 
 // ---------- Se déplacer dans la bande ----------
@@ -331,11 +350,27 @@ export function prochainArret(b: Bande, k: number, auxParties: boolean): number 
   return Math.min(n - 1, b.parties[partieDe(b, Math.min(n - 1, k + 1))].fin)
 }
 
-/** L'instant où chaque image paraît, en ms depuis l'image 0, à une allure donnée */
+/** L'instant où chaque image est là, finie, en ms depuis l'image 0, à une allure donnée */
 export function echeances(b: Bande, facteur: number): Float64Array {
   const e = new Float64Array(b.images.length)
   for (let k = 1; k < e.length; k++) e[k] = e[k - 1] + b.attentes[k] / facteur
   return e
+}
+
+/** L'instant où chaque image commence à paraître : son échéance, moins le
+ *  temps de l'écrire à la main. Jamais avant que l'image d'avant soit finie. */
+export function departs(b: Bande, ech: Float64Array, facteur: number): Float64Array {
+  return ech.map((v, k) => Math.max(k ? ech[k - 1] : 0, v - b.traces[k] / facteur))
+}
+
+/** L'horloge au départ d'une lecture depuis l'image k. Un trait qui s'y écrit
+ *  encore à la main va jusqu'au lever : l'horloge se cale sur ce qu'il lui
+ *  reste (`reste`, en ms d'horloge), et l'image suivante vient après le vrai
+ *  temps stylo levé, comme au tableau. Sinon, quelle que soit l'attente
+ *  d'origine, l'image suivante commence au plus tard après `demarrage` ms. */
+export function horlogeAuDepart(ech: Float64Array, debuts: Float64Array, k: number, reste: number, demarrage: number): number {
+  if (reste > 0) return ech[k] - reste
+  return Math.max(ech[k], debuts[Math.min(ech.length - 1, k + 1)] - demarrage)
 }
 
 /** La dernière image parue à l'instant `temps`, entre les images de et a */

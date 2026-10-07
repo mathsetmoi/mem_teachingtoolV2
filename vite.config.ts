@@ -5,5 +5,5 @@ import { viteSingleFile } from 'vite-plugin-singlefile'
 // KaTeX inclus) : il s'ouvre depuis une clé USB, sans connexion.
 export default defineConfig({
   plugins: [viteSingleFile()],
-  server: { host: true },   // accessible depuis les tablettes du même Wi-Fi
+  server: { host: true },   // accessible depuis une tablette du même Wi-Fi
 })

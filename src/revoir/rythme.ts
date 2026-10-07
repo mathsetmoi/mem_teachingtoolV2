@@ -24,9 +24,10 @@ export const PLAFOND = 3500
 /** Ce que rapporte chaque doublement du silence, au-delà du coude (ms) */
 const PENTE = 800
 
-/** L'intervalle montré pour un intervalle vécu de `dt` ms */
-export function tasser(dt: number): number {
-  if (!(dt > PLANCHER)) return PLANCHER          // inconnu, négatif ou trop bref
+/** L'intervalle montré pour un intervalle vécu de `dt` ms. `plancher` : le
+ *  plus court montré (0 pour un temps stylo levé, connu au point près) */
+export function tasser(dt: number, plancher = PLANCHER): number {
+  if (!(dt > plancher)) return plancher          // inconnu, négatif ou trop bref
   if (dt <= COUDE) return dt
   return Math.min(PLAFOND, COUDE + PENTE * Math.log2(dt / COUDE))
 }

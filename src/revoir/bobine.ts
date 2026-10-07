@@ -3,11 +3,16 @@
 // L'image k du film, c'est l'état de départ plus les k premiers gestes.
 // Pour sauter n'importe où sans tout rejouer, on garde un état complet
 // toutes les 32 images : aller à l'image k coûte au plus 31 gestes.
+// Le temps : avant chaque image, une attente ; puis, si le geste a tracé
+// un trait à la main (et que le film a noté son rythme), le tracé lui-même,
+// à la vitesse de la main. L'attente est alors le vrai temps stylo levé.
 // Rien ici n'écrit ailleurs qu'en mémoire.
 // =============================================================
 import type { Fond, Forme } from '../types'
 import type { Chapitre, FilmEleve } from './format'
-import { tasser } from './rythme'
+import type { Main } from './main-levee'
+import { leve, main } from './main-levee'
+import { PLANCHER, tasser } from './rythme'
 
 const TOUS_LES = 32
 
@@ -27,8 +32,14 @@ export class Bobine {
   /** Temps écoulé à chaque image, au rythme d'origine tassé, en ms */
   readonly temps: number[]
   private reperes: Etat[] = []
-  /** Pour chaque image, les formes qui y APPARAISSENT (pas celles qui changent) */
+  /** Pour chaque image, les formes qui y APPARAISSENT pour la première fois
+   *  (pas celles qui changent, ni celles qui reviennent : voir ajoutees) */
   private ajouts: Set<string>[] = [new Set()]
+  /** Pour chaque image, le trait qui s'y trace à la main, au rythme noté (null : aucun) */
+  private mains: (Main | null)[] = [null]
+  /** Pour chaque image, vrai si elle remplace aussitôt le trait que l'image
+   *  d'avant vient de tracer : la figure reconnue au lever du stylo */
+  private reconnues: boolean[] = [false]
 
   constructor(readonly film: FilmEleve) {
     this.n = film.etapes.length + 1
@@ -36,10 +47,23 @@ export class Bobine {
     for (const p of film.pages) depart.set(p.id, { fond: p.fond, origine: p.origine, formes: new Map(p.formes.map(f => [f.id, f])) })
     let e = depart
     this.reperes.push(copie(e))
+    /** Les formes déjà montrées, sur une page ou une autre */
+    const vues = new Set<string>()
+    for (const p of film.pages) for (const f of p.formes) vues.add(f.id)
     for (let k = 1; k < this.n; k++) {
       const a = new Set<string>(); this.ajouts.push(a)
       this.appliquer(e, k, a)
+      for (const id of a) if (vues.has(id)) a.delete(id); else vues.add(id)
       if (k % TOUS_LES === 0) this.reperes.push(copie(e))
+      const g = film.etapes[k - 1]
+      let m: Main | null = null
+      if (g?.ms && Array.isArray(g.o)) {
+        for (const o of g.o) if (Array.isArray(o) && o[0] === '=' && o[1]?.type === 'trait' && a.has(o[1].id) && (m = main(o[1], g.ms))) break
+      }
+      this.mains.push(m)
+      const avant = this.mains[k - 1]
+      this.reconnues.push(!!avant && !!g && g.dt <= PLANCHER && g.p === film.etapes[k - 2]?.p && Array.isArray(g.o)
+        && g.o.some(o => Array.isArray(o) && o[0] === '-' && o[1] === avant.trait.id))
     }
     this.temps = [0]
     for (let k = 1; k < this.n; k++) this.temps.push(this.temps[k - 1] + this.delai(k))
@@ -49,11 +73,30 @@ export class Bobine {
 
   get duree() { return this.temps[this.n - 1] }
 
-  /** Le temps d'attente avant l'image k : l'intervalle vécu, tassé (voir rythme.ts) */
-  delai(k: number) {
+  /** Le temps entre l'image k-1 finie et l'image k finie : l'attente, puis le tracé */
+  delai(k: number) { return this.attente(k) + this.trace(k) }
+
+  /** Le temps d'attente avant l'image k (avant que son tracé à la main commence) :
+   *  l'intervalle vécu, tassé (voir rythme.ts). Avant un trait tracé à la main,
+   *  c'est le temps stylo levé ; avant la figure reconnue, l'instant du lever. */
+  attente(k: number) {
     if (k <= 0 || k >= this.n) return 0
-    return tasser(this.film.etapes[k - 1].dt)
+    const dt = this.film.etapes[k - 1].dt, m = this.mains[k]
+    if (m) return leve(dt, m)
+    if (this.reconnues[k]) return tasser(dt, 0)
+    return tasser(dt)
   }
+
+  /** Le temps que met l'image k à se tracer à la main (0 : elle paraît d'un coup,
+   *  ou ses figures se dessinent pendant l'attente suivante) */
+  trace(k: number) { return this.mains[k]?.duree ?? 0 }
+
+  /** Le trait que l'image k trace à la main, et son rythme (null : aucun) */
+  main(k: number): Main | null { return this.mains[k] ?? null }
+
+  /** L'image k remplace-t-elle aussitôt le trait que l'image d'avant vient de
+   *  tracer (une figure reconnue) ? Elle paraît alors d'un coup, comme au tableau */
+  reconnue(k: number): boolean { return !!this.reconnues[k] }
 
   /** La page qu'on regarde à l'image k : celle du geste */
   page(k: number): string {
@@ -87,7 +130,9 @@ export class Bobine {
     return this.film.etapes[k - 1].o.filter(o => o[0] === '=').map(o => o[1] as Forme)
   }
 
-  /** Les formes qui apparaissent à l'image k (une forme déplacée n'y est pas) */
+  /** Les formes qui apparaissent à l'image k pour la première fois du film :
+   *  une forme déplacée n'y est pas, ni une forme déjà montrée qui revient
+   *  (rendue par Ctrl+Z ou Ctrl+Y) : au tableau, elle revient d'un coup */
   ajoutees(k: number): Set<string> { return this.ajouts[k] ?? new Set() }
 
   /** Le chapitre de l'image k (son rang dans la liste) */

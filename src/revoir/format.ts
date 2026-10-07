@@ -22,8 +22,11 @@ export const VERSION = 1
 export type Op = ['=', Forme] | ['-', string] | ['f', Fond, number, number] | ['x']
 
 /** Un geste du film : son écart avec le précédent (ms), la page où il a
- *  lieu, et ce qu'il change */
-export interface EtapeFilm { dt: number; p: string; o: Op[] }
+ *  lieu, et ce qu'il change. ms : si le geste pose un trait tracé à la main,
+ *  le temps passé sur chacun de ses points, jusqu'au lever (voir
+ *  main-levee.ts). Facultatif : un film sans ms, ou un lecteur qui l'ignore,
+ *  rejoue le trait comme avant. */
+export interface EtapeFilm { dt: number; p: string; o: Op[]; ms?: number[] }
 
 /** L'état d'une page au début du film */
 export interface PageFilm { id: string; fond: Fond; origine: { x: number; y: number }; formes: Forme[] }
@@ -91,11 +94,11 @@ export class ErreurFilm extends Error {}
 export async function lireFilm(source: string | unknown): Promise<FilmEleve> {
   let objet: unknown = source
   if (typeof source === 'string') {
-    try { objet = JSON.parse(source) } catch { throw new ErreurFilm('Ce fichier n\'est pas une séance de Tableau MEM.') }
+    try { objet = JSON.parse(source) } catch { throw new ErreurFilm('Ce fichier n\'est pas une séance de MEM teachingtool.') }
   }
   const e = objet as Partial<Enveloppe> & Partial<FilmEleve>
-  if (!e || typeof e !== 'object' || e.format !== FORMAT) throw new ErreurFilm('Ce fichier n\'est pas une séance de Tableau MEM.')
-  if (typeof e.v !== 'number' || e.v > VERSION) throw new ErreurFilm('Cette séance a été publiée par une version plus récente de Tableau MEM : rechargez la page.')
+  if (!e || typeof e !== 'object' || e.format !== FORMAT) throw new ErreurFilm('Ce fichier n\'est pas une séance de MEM teachingtool.')
+  if (typeof e.v !== 'number' || e.v > VERSION) throw new ErreurFilm('Cette séance a été publiée par une version plus récente de MEM teachingtool : rechargez la page.')
   let film: Partial<FilmEleve>
   if (typeof e.gz === 'string') {
     try { film = JSON.parse(await decompresser(depuisBase64(e.gz))) } catch { throw new ErreurFilm('Le fichier de la séance est abîmé : demandez à votre enseignant de la publier à nouveau.') }

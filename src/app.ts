@@ -9,14 +9,15 @@ import type { Tableau } from './document'
 import { Camera } from './camera'
 import { Rendu } from './rendu'
 import { chevauche, distanceAuSegment, rectangle, touche } from './geometrie'
-import type { Figure, Fond, Forme, Formule, Habillage, Outil, Polygone, Presence, Role, Trait, TypeForme } from './types'
+import type { Figure, Fond, Forme, Formule, Habillage, Outil, Polygone, Trait, TypeForme } from './types'
 import { CM, uid } from './types'
 import type { P, Reconnue, Transformation } from './formes'
 import type { Bord, EtatInstrument, NomInstrument, Partie } from './instruments'
 import { angleLisible, bords, etatParDefaut, toucher } from './instruments'
 import * as Y from 'yjs'
 import katex from 'katex'
-import { bornerDecalage, image, nomsLibres, placesDesNoms, reconnaitre, sommetsDe, versRelatif } from './formes'
+import { Immobilite, bornerDecalage, image, nomsLibres, placesDesNoms, reconnaitre, sommetsDe, versRelatif } from './formes'
+import { tempsDesPoints } from './revoir/main-levee'
 
 export const COULEURS = [
   { nom: 'Noir', valeur: '#1b2230' },
@@ -25,6 +26,14 @@ export const COULEURS = [
   { nom: 'Vert', valeur: '#1e8a4c' },
 ]
 export const TAILLES = [{ nom: 'Fin', valeur: 2.5 }, { nom: 'Moyen', valeur: 4.5 }, { nom: 'Épais', valeur: 9 }]
+
+/** L'heure d'un événement du stylet (ms, horloge de performance.now()) : celle
+ *  où le stylet a touché ce point, pas celle où on le traite. Un navigateur qui
+ *  donnerait une autre horloge est ramené à maintenant. */
+function heureDe(e: Event): number {
+  const maintenant = performance.now(), t = e.timeStamp
+  return t > 0 && t <= maintenant + 100 ? t : maintenant
+}
 
 export interface Interface {
   maj(): void
@@ -69,7 +78,6 @@ export class App {
   private astuceOptions = false
   /** Le premier point d'un trait tracé en deux clics (le second clic le finit) */
   private traitEnAttente: P | null = null
-  suivre = true                       // élève : suit la page et la vue du prof
   selection = new Set<string>()
   /** Un seul morceau choisi (un sommet, un nom…), sans la figure entière */
   partie: { id: string; prise: Prise } | null = null
@@ -86,23 +94,22 @@ export class App {
   private geste: Geste | null = null
   private styletVu = false            // un stylet a servi : le doigt ne dessine plus
   private espace = false
-  private dernierEnvoiTrait = 0
-  private dernierEnvoiCurseur = 0
-  private dernierEnvoiVue = 0
   private dernierMouvement = 0        // pour savoir si le stylet est resté immobile
+  /** Où la plume s'est posée ou a bougé pour la dernière fois (voir Immobilite) */
+  private immobilite = new Immobilite({ x: 0, y: 0 })
+  /** L'heure de chaque point du trait en cours : le replay le retracera à ce rythme */
+  private heuresDuTrait: number[] = []
   private polyEnCours: P[] | null = null
   private minuterieForme = 0
   /** Les instruments posés (dans l'ordre d'empilement) et leur réglage */
   readonly instruments = new Map<NomInstrument, EtatInstrument>()
 
-  constructor(readonly tableau: Tableau, readonly role: Role, private zone: HTMLElement) {
+  constructor(readonly tableau: Tableau, private zone: HTMLElement) {
     this.rendu = new Rendu(this.cam, zone)
     this.cam.x = 120; this.cam.y = 120
 
     tableau.pages.observeDeep(() => this.rafraichir())
     tableau.ordre.observe(() => this.verifierPage())
-    tableau.reglages.observe(() => { this.ui?.maj() })
-    tableau.presence.on('change', () => this.surPresence())
 
     this.brancherGestes()
 
@@ -126,12 +133,12 @@ export class App {
     window.addEventListener('paste', e => {
       if ((e.target as HTMLElement).closest?.('input, textarea')) return
       const f = [...(e.clipboardData?.files ?? [])].find(x => x.type.startsWith('image/'))
-      if (f && this.peutEcrire && !this.enLecture) { e.preventDefault(); this.importerImage(f) }
+      if (f && !this.enLecture) { e.preventDefault(); this.importerImage(f) }
     })
     zone.addEventListener('dragover', e => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault() })
     zone.addEventListener('drop', e => {
       const f = [...(e.dataTransfer?.files ?? [])].find(x => x.type.startsWith('image/'))
-      if (f && this.peutEcrire) { e.preventDefault(); this.importerImage(f) }
+      if (f) { e.preventDefault(); this.importerImage(f) }
     })
   }
 
@@ -290,8 +297,6 @@ export class App {
     this.rendu.redessinerDirect()
   }
 
-  // ---------- Droits ----------
-  get peutEcrire() { return this.role === 'prof' || this.tableau.reglages.get('elevesEcrivent') === true }
   get pages() { return this.tableau.ordre.toArray() }
   get fond(): Fond { return this.tableau.fondDe(this.page) }
 
@@ -305,7 +310,6 @@ export class App {
     if (c) { this.cam.x = c.x; this.cam.y = c.y; this.cam.z = c.z }
     this.selection.clear()
     this.rafraichir()
-    this.annoncerVue(true)
   }
 
   pageSuivante(sens: 1 | -1) {
@@ -326,7 +330,7 @@ export class App {
   }
 
   supprimerPage() {
-    if (this.pages.length <= 1) return this.ui.message('Un tableau garde au moins une page.')
+    if (this.pages.length <= 1) return this.ui.message('Il faut garder au moins une page.')
     const i = this.pages.indexOf(this.page)
     const id = this.page
     this.allerPage(this.pages[i > 0 ? i - 1 : 1])
@@ -378,7 +382,13 @@ export class App {
     this.ui?.maj()
   }
 
-  annuler() { this.tableau.annulation.undo(); this.selection.clear() }
+  /** L'interface est remise à jour APRÈS avoir vidé la sélection : le
+   *  rafraîchissement déclenché par l'annulation passe avant, et laisserait
+   *  le panneau d'options ouvert sur une figure qui n'est plus choisie. */
+  annuler() {
+    this.tableau.annulation.undo()
+    this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()
+  }
   retablir() { this.tableau.annulation.redo() }
 
   supprimerSelection() {
@@ -391,47 +401,13 @@ export class App {
 
   zoomer(facteur: number) {
     this.cam.zoomerAutour(this.rendu.l / 2, this.rendu.h / 2, facteur)
-    this.vueChangee(true)
+    this.vueChangee()
   }
 
-  zoom100() { this.cam.zoomerAutour(this.rendu.l / 2, this.rendu.h / 2, 1 / this.cam.z); this.vueChangee(true) }
+  zoom100() { this.cam.zoomerAutour(this.rendu.l / 2, this.rendu.h / 2, 1 / this.cam.z); this.vueChangee() }
 
-  private vueChangee(parLUtilisateur: boolean) {
-    if (parLUtilisateur && this.role === 'eleve' && this.suivre) { this.suivre = false }
+  private vueChangee() {
     this.rendu.toutRedessiner()
-    this.annoncerVue(false)
-    this.ui?.maj()
-  }
-
-  // ---------- Présence : le prof annonce, l'élève suit ----------
-  private annoncerVue(force: boolean) {
-    const t = performance.now()
-    if (!force && t - this.dernierEnvoiVue < 120) return
-    this.dernierEnvoiVue = t
-    const v = this.cam.visible(this.rendu.l, this.rendu.h)
-    this.tableau.diffuser({ page: this.page, vue: { cx: v.x + v.l / 2, cy: v.y + v.h / 2, l: v.l, h: v.h } })
-  }
-
-  prof(): Presence | null {
-    for (const p of this.tableau.autres().values()) if (p.role === 'prof') return p
-    return null
-  }
-
-  revenirAuProf() { this.suivre = true; this.surPresence() }
-
-  private surPresence() {
-    const autres = [...this.tableau.autres().values()].filter(p => p.page === this.page)
-    this.rendu.autres = autres
-    this.rendu.redessinerDirect()
-    if (this.role === 'eleve' && this.suivre) {
-      const prof = this.prof()
-      if (prof?.page && prof.page !== this.page && this.pages.includes(prof.page)) this.allerPage(prof.page)
-      if (prof?.vue) {
-        const v = prof.vue
-        this.cam.cadrer(v.cx, v.cy, v.l, v.h, this.rendu.l, this.rendu.h)
-        this.rendu.toutRedessiner()
-      }
-    }
     this.ui?.maj()
   }
 
@@ -465,13 +441,12 @@ export class App {
     z.addEventListener('pointermove', e => this.bouge(e))
     z.addEventListener('pointerup', e => this.haut(e))
     z.addEventListener('pointercancel', e => this.haut(e, true))
-    z.addEventListener('pointerleave', () => this.tableau.diffuser({ curseur: null }))
     z.addEventListener('wheel', e => this.molette(e), { passive: false })
     // Clic droit (ou bouton du stylet) : les options du morceau visé,
     // sinon celles de la figure entière
     z.addEventListener('contextmenu', e => {
       e.preventDefault()
-      if (!this.peutEcrire || this.enLecture) return
+      if (this.enLecture) return
       const s = this.ecran(e)
       const outil = this.outil
       this.outil = 'selection'                 // pour viser toutes les figures
@@ -485,7 +460,7 @@ export class App {
     })
     // Double-clic : les options de l'objet (une formule, elle, se modifie)
     z.addEventListener('dblclick', e => {
-      if (!this.peutEcrire || this.enLecture) return
+      if (this.enLecture) return
       const p = this.monde(e), f = this.formeSous(p.x, p.y)
       if (f?.type === 'formule') this.editerFormule(f)
       else if (f && (this.outil === 'selection' || this.outil === 'main' || this.outil === 'segment')) this.ouvrirOptions(f)
@@ -510,7 +485,7 @@ export class App {
     }
     if (this.geste) return
 
-    const deplacerVue = e.button === 1 || this.outil === 'main' || this.espace || !this.peutEcrire ||
+    const deplacerVue = e.button === 1 || this.outil === 'main' || this.espace ||
       (e.pointerType === 'touch' && this.styletVu)          // la paume ne dessine pas
     if (deplacerVue) { this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y }; return }
     if (e.button !== 0) return
@@ -565,8 +540,10 @@ export class App {
           opacite: surligneur ? 0.35 : 1,
           pression: e.pointerType === 'pen' && !surligneur,
         }
+        this.heuresDuTrait = [heureDe(e)]
         this.geste = { type: 'dessin', pointeur: e.pointerId }
         this.dernierMouvement = performance.now()
+        this.immobilite = new Immobilite(m)
         this.attendreImmobilite()
         this.rendu.redessinerDirect()
         break
@@ -621,14 +598,8 @@ export class App {
     const avant = this.pointeurs.get(e.pointerId)
     if (avant) { avant.x = s.x; avant.y = s.y }
     const m = this.monde(e)
-
-    // Curseur partagé (le prof est suivi des yeux)
     const t = performance.now()
-    if (t - this.dernierEnvoiCurseur > 50 && this.peutEcrire) {
-      this.dernierEnvoiCurseur = t
-      this.tableau.diffuser({ curseur: m, page: this.page })
-    }
-    if (this.outil === 'gomme' && this.peutEcrire) {
+    if (this.outil === 'gomme') {
       this.rendu.gomme = { x: m.x, y: m.y, r: 12 / this.cam.z }
       this.rendu.redessinerDirect()
     }
@@ -648,7 +619,7 @@ export class App {
       const id = f && !this.selection.has(f.id) ? f.id : null
       if (id !== this.survol) { this.survol = id; this.rendu.survol = id; this.rendu.redessinerDirect() }
     }
-    if (!g && this.outil === 'segment' && this.peutEcrire) {
+    if (!g && this.outil === 'segment') {
       if (this.traitEnAttente) this.apercuTrait(this.traitEnAttente, this.boutDuTrait(this.traitEnAttente, m, e.shiftKey))
       else this.montrerAccroche(m)
     }
@@ -681,13 +652,13 @@ export class App {
         this.cam.deplacer(cx - g.cx, cy - g.cy)
         if (g.dist > 0) this.cam.zoomerAutour(cx, cy, dist / g.dist)
         g.dist = dist; g.cx = cx; g.cy = cy
-        this.vueChangee(true)
+        this.vueChangee()
         break
       }
       case 'pan':
         this.cam.deplacer(s.x - g.dernierX, s.y - g.dernierY)
         g.dernierX = s.x; g.dernierY = s.y
-        this.vueChangee(true)
+        this.vueChangee()
         break
       case 'dessin': {
         if (e.pointerId !== g.pointeur) return
@@ -701,10 +672,10 @@ export class App {
           const n = trait.pts.length
           if (Math.hypot(p.x - trait.pts[n - 3], p.y - trait.pts[n - 2]) < seuil) continue
           trait.pts.push(p.x, p.y, ev.pointerType === 'pen' ? ev.pressure : 0.5)
-          if (Math.hypot(p.x - trait.pts[n - 3], p.y - trait.pts[n - 2]) * this.cam.z > 1.5) { this.dernierMouvement = t; this.attendreImmobilite() }
+          this.heuresDuTrait.push(heureDe(ev))
+          if (this.immobilite.bouge(p, this.cam.z)) { this.dernierMouvement = t; this.attendreImmobilite() }
         }
         this.rendu.redessinerDirect()
-        if (t - this.dernierEnvoiTrait > 33) { this.dernierEnvoiTrait = t; this.tableau.diffuser({ direct: { ...trait } }) }
         break
       }
       case 'segment':
@@ -817,7 +788,7 @@ export class App {
   }
 
   private abandonnerGeste(g: Geste | null = this.geste) {
-    if (g?.type === 'dessin') { clearTimeout(this.minuterieForme); this.rendu.monTrait = null; this.tableau.diffuser({ direct: null }) }
+    if (g?.type === 'dessin') { clearTimeout(this.minuterieForme); this.rendu.monTrait = null; this.heuresDuTrait = [] }
     if (g?.type === 'segment') { this.rendu.monSegment = null; this.rendu.apercu = null; this.rendu.cible = null }
     if (g?.type === 'rectangle' || g?.type === 'cercle') this.rendu.apercu = null
     if (g?.type === 'poignee') this.rendu.remplacement = null
@@ -833,8 +804,9 @@ export class App {
 
   private validerTrait(maintenu: boolean) {
     const t = this.rendu.monTrait
+    const heures = this.heuresDuTrait
     this.rendu.monTrait = null
-    this.tableau.diffuser({ direct: null })
+    this.heuresDuTrait = []
     if (!t || t.pts.length < 3) return
     const x0 = t.pts[0], y0 = t.pts[1]
     const pts: number[] = []
@@ -844,7 +816,9 @@ export class App {
     }
     const trait: Trait = { id: uid(), type: 'trait', x: x0, y: y0, pts, couleur: t.couleur,
       taille: t.taille, opacite: t.opacite, pression: t.pression, z: Date.now(), auteur: this.tableau.moi }
-    this.tableau.poser(this.page, trait)
+    // Le temps passé sur chaque point, jusqu'au lever (maintenant) : l'étape du film le note
+    if (heures.length * 3 === t.pts.length) this.tableau.poserTrace(this.page, trait, tempsDesPoints(heures, performance.now()))
+    else this.tableau.poser(this.page, trait)
     this.rendu.redessinerDirect()
 
     // Le tracé ressemble-t-il à une figure ? Elle remplace le trait dans
@@ -1010,7 +984,7 @@ export class App {
   /** Avec l'outil Sélection, toutes les figures ; avec un autre outil, seulement
    *  celle qui est sélectionnée (sinon on ne pourrait plus écrire près d'un point). */
   priseSous(s: P): { prise: Prise; f: Figure } | null {
-    if (!this.peutEcrire || this.outil === 'main' || this.enLecture) return null
+    if (this.outil === 'main' || this.enLecture) return null
     const choisie = this.formeChoisie() ?? (this.partie && this.forme(this.partie.id))
     const candidates = this.outil === 'selection' ? [...(choisie ? [choisie] : []), ...[...this.formes].reverse()] : choisie ? [choisie] : []
     for (const f of candidates) {
@@ -1095,11 +1069,11 @@ export class App {
     const enCours = !!this.polyEnCours || this.selection.size > 0 || !!this.partie
     this.annulerPolygone(); this.selection.clear(); this.choisirPartie(null)
     this.ui.fermerMenuPartie()
-    if (!enCours && this.peutEcrire) {
+    if (!enCours) {
       if (this.outil !== 'selection') {
         this.outilAvant = this.outil
         this.choisirOutil('selection')
-        this.ui.message('Sélection : glisser un objet le déplace, glisser dans le vide déplace le tableau. Échap : revenir.')
+        this.ui.message('Sélection : glisser un objet le déplace, glisser dans le vide déplace la vue. Échap : revenir.')
       } else {
         this.choisirOutil(this.outilAvant)
         this.ui.message('Retour à l\'outil précédent')
@@ -1415,7 +1389,7 @@ export class App {
       const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY
       this.cam.zoomerAutour(s.x, s.y, Math.exp(-d * (e.ctrlKey && !molette ? 0.01 : 0.0015)))
     } else this.cam.deplacer(-e.deltaX, -e.deltaY)
-    this.vueChangee(true)
+    this.vueChangee()
   }
 
   private clavier(e: KeyboardEvent) {
@@ -1434,13 +1408,13 @@ export class App {
     if (e.key === 'Escape') { this.echap(); return }
     // Les flèches poussent la sélection : 1 mm, ou 1 cm avec Maj
     const fleches: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }
-    if (fleches[e.key] && this.selection.size && this.peutEcrire) {
+    if (fleches[e.key] && this.selection.size) {
       e.preventDefault()
       const k = e.shiftKey ? CM : CM / 10, [dx, dy] = fleches[e.key]
       this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id) || this.lieeA(f)).map(f => ({ id: f.id, patch: { x: f.x + dx * k, y: f.y + dy * k } })))
       return
     }
-    if (ctrl || !this.peutEcrire) return
+    if (ctrl) return
     const raccourcis: Record<string, Outil> = { p: 'stylo', h: 'surligneur', e: 'gomme', x: 'point', l: 'segment', f: 'formule', v: 'selection' }
     const formes: Record<string, TypeForme> = { r: 'rectangle', c: 'cercle', g: 'polygone' }
     const k = e.key.toLowerCase()

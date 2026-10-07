@@ -4,13 +4,13 @@
 //                  quand quelque chose change (pas de boucle permanente).
 // 2. « formules » : des éléments HTML rendus par KaTeX, déplacés et
 //                  zoomés d'un seul transform CSS : nets à tout zoom.
-// 3. « direct »  : le trait en cours (le mien et ceux des autres), les
-//                  curseurs, la sélection. Petite, donc rapide : c'est
-//                  elle qui fait la latence ressentie au stylet.
+// 3. « direct »  : le trait en cours, la sélection, les aperçus.
+//                  Petite, donc rapide : c'est elle qui fait la
+//                  latence ressentie au stylet.
 // =============================================================
 import { getStroke } from 'perfect-freehand'
 import type { Camera } from './camera'
-import type { Bout, Figure, Fond, Forme, Formule, ImageForme, MarquePoint, Presence, Trait } from './types'
+import type { Bout, Figure, Fond, Forme, Formule, ImageForme, MarquePoint, Trait } from './types'
 import { coinsImage } from './geometrie'
 import { dessinerFond } from './fonds'
 import { codageDe, placesDesNoms, sommetsDe } from './formes'
@@ -99,7 +99,6 @@ export class Rendu {
   poignees = true                                  // montrer sommets et rayon de la figure choisie
   /** Le seul morceau choisi : il est surligné, pas la figure */
   partie: { id: string; prise: { quoi: 'nom' | 'sommet'; i: number } | { quoi: 'rayon' } } | null = null
-  autres: Presence[] = []
 
   private sceneSale = true
   private directSale = true
@@ -135,11 +134,36 @@ export class Rendu {
   }
 
   toutRedessiner() { this.sceneSale = true; this.directSale = true; this.instrumentsSales = true; this.planifier() }
+
+  /** Ce que montre la scène peinte en dernier (voir redessinerSiBesoin) */
+  private peinte: { formes: Forme[]; fond: Fond; ox: number; oy: number; x: number; y: number; z: number; remplacement: Figure | null } | null = null
+
+  /** Redessine la couche « direct » seulement si la scène montre déjà ces formes
+   *  (les mêmes, dans le même ordre), ce fond et cette vue ; tout sinon. C'est le
+   *  cas d'un replay pendant qu'un trait s'écrit : la page ne change pas, seul le
+   *  trait en cours avance, comme sous le stylo au tableau. */
+  redessinerSiBesoin() {
+    const p = this.peinte, f = this.formes, c = this.cam
+    const memeScene = !!p && p.formes.length === f.length && p.fond === this.fond && p.ox === this.origine.x && p.oy === this.origine.y
+      && p.x === c.x && p.y === c.y && p.z === c.z && p.remplacement === this.remplacement && !this.selection.size
+      && !this.decalage.dx && !this.decalage.dy && p.formes.every((g, i) => g === f[i])
+    if (memeScene) this.redessinerDirect()
+    else this.toutRedessiner()
+  }
   redessinerInstruments() { this.instrumentsSales = true; this.directSale = true; this.planifier() }
   redessinerDirect() { this.directSale = true; this.planifier() }
 
   private planifier() {
     if (!this.image) this.image = requestAnimationFrame(() => this.peindre())
+  }
+
+  /** Peint sans attendre l'image d'écran suivante ce qui doit l'être. Pour un
+   *  appel fait DEPUIS une image d'écran (un replay qui avance à chaque image) :
+   *  sinon ce qu'il décide ne paraîtrait qu'une image plus tard. */
+  peindreMaintenant() {
+    if (!this.image) return
+    cancelAnimationFrame(this.image)
+    this.peindre()
   }
 
   private peindre() {
@@ -162,6 +186,7 @@ export class Rendu {
   // ---------- Couche scène ----------
   private peindreScene() {
     const c = this.cs, cam = this.cam
+    this.peinte = { formes: this.formes, fond: this.fond, ox: this.origine.x, oy: this.origine.y, x: cam.x, y: cam.y, z: cam.z, remplacement: this.remplacement }
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
     dessinerFond(c, this.fond, cam, this.l, this.h, this.origine)
     c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
@@ -406,8 +431,6 @@ export class Rendu {
     c.clearRect(0, 0, this.direct.width, this.direct.height)
     c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
 
-    // Traits des autres participants, pendant qu'ils écrivent
-    for (const p of this.autres) if (p.direct) this.dessinerDirect(c, p.direct)
     if (this.monTrait) this.dessinerDirect(c, this.monTrait)
 
     if (this.fantomes.length) {
@@ -502,7 +525,7 @@ export class Rendu {
       c.beginPath(); c.arc(this.gomme.x, this.gomme.y, this.gomme.r, 0, Math.PI * 2); c.stroke()
     }
 
-    // Curseurs des autres, avec leur nom
+    // La mesure en cours (longueur, angle, rayon), près du pointeur
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
     if (this.mesure) {
       const s = cam.versEcran(this.mesure.x, this.mesure.y)
@@ -512,20 +535,6 @@ export class Rendu {
       c.beginPath(); c.roundRect(s.x + 14, s.y - 34, l, 26, 13); c.fill()
       c.fillStyle = '#ffffff'; c.textAlign = 'left'; c.textBaseline = 'middle'
       c.fillText(this.mesure.texte, s.x + 22, s.y - 21)
-    }
-    c.font = '600 12px "Atkinson Hyperlegible", system-ui, sans-serif'
-    c.textBaseline = 'middle'
-    for (const p of this.autres) {
-      if (!p.curseur) continue
-      const s = cam.versEcran(p.curseur.x, p.curseur.y)
-      c.fillStyle = p.couleur
-      c.beginPath(); c.arc(s.x, s.y, 5, 0, Math.PI * 2); c.fill()
-      const larg = c.measureText(p.nom).width + 12
-      c.beginPath()
-      c.roundRect(s.x + 9, s.y + 6, larg, 20, 10)
-      c.fill()
-      c.fillStyle = '#ffffff'
-      c.fillText(p.nom, s.x + 15, s.y + 16)
     }
   }
 
