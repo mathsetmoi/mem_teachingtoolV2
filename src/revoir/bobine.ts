@@ -1,0 +1,165 @@
+// =============================================================
+// LA BOBINE : LE FILM ÉLÈVE, PRÊT À REJOUER
+// L'image k du film, c'est l'état de départ plus les k premiers gestes.
+// Pour sauter n'importe où sans tout rejouer, on garde un état complet
+// toutes les 32 images : aller à l'image k coûte au plus 31 gestes.
+// Le lecteur ne fait que lire : rien ici n'écrit ailleurs qu'en mémoire.
+// =============================================================
+import type { Fond, Forme } from '../types'
+import type { Chapitre, FilmEleve } from './format'
+
+export const RYTHME_MIN = 60        // ms : au-dessous, le geste passerait inaperçu
+export const RYTHME_MAX = 2500      // ms : au-dessus, on regarderait un tableau figé
+const TOUS_LES = 32
+
+interface EtatPage { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme>; supprimee?: boolean }
+type Etat = Map<string, EtatPage>
+
+export interface Image { page: string; fond: Fond; origine: { x: number; y: number }; formes: Forme[] }
+export interface Boite { x: number; y: number; l: number; h: number }
+
+/** Copie d'un état : les formes ne changent jamais, on ne copie que les listes */
+const copie = (e: Etat): Etat => new Map([...e].map(([id, p]) => [id, { ...p, formes: new Map(p.formes) }]))
+
+export class Bobine {
+  /** Nombre d'images : l'état de départ, puis une par geste */
+  readonly n: number
+  readonly chapitres: Chapitre[]
+  /** Temps écoulé à chaque image, au rythme d'origine (borné), en ms */
+  readonly temps: number[]
+  private reperes: Etat[] = []
+  /** Pour chaque image, les formes qui y APPARAISSENT (pas celles qui changent) */
+  private ajouts: Set<string>[] = [new Set()]
+
+  constructor(readonly film: FilmEleve) {
+    this.n = film.etapes.length + 1
+    const depart: Etat = new Map()
+    for (const p of film.pages) depart.set(p.id, { fond: p.fond, origine: p.origine, formes: new Map(p.formes.map(f => [f.id, f])) })
+    let e = depart
+    this.reperes.push(copie(e))
+    for (let k = 1; k < this.n; k++) {
+      const a = new Set<string>(); this.ajouts.push(a)
+      this.appliquer(e, k, a)
+      if (k % TOUS_LES === 0) this.reperes.push(copie(e))
+    }
+    this.temps = [0]
+    for (let k = 1; k < this.n; k++) this.temps.push(this.temps[k - 1] + this.delai(k))
+    this.chapitres = (film.chapitres.length ? film.chapitres : [{ i: 0, titre: 'La séance' }])
+      .filter(c => c.i >= 0 && c.i < this.n).sort((a, b) => a.i - b.i)
+  }
+
+  get duree() { return this.temps[this.n - 1] }
+
+  /** Le temps d'attente avant l'image k, au rythme d'origine borné */
+  delai(k: number) {
+    if (k <= 0 || k >= this.n) return 0
+    const dt = this.film.etapes[k - 1].dt
+    return Math.max(RYTHME_MIN, Math.min(RYTHME_MAX, Number.isFinite(dt) ? dt : 700))
+  }
+
+  /** La page qu'on regarde à l'image k : celle du geste */
+  page(k: number): string {
+    const e = this.film.etapes
+    if (!e.length) return this.film.pages[0]?.id ?? ''
+    return e[Math.max(0, Math.min(e.length, k) - 1)].p
+  }
+
+  /** Le numéro d'une page (1, 2…) dans l'ordre du tableau */
+  numero(page: string) { return this.film.ordre.indexOf(page) + 1 }
+  get nombreDePages() { return this.film.ordre.length }
+
+  /** Ce qu'on voit à l'image k */
+  image(k: number, page = this.page(k)): Image {
+    k = Math.max(0, Math.min(this.n - 1, k))
+    const r = Math.floor(k / TOUS_LES)
+    const e = copie(this.reperes[r])
+    for (let j = r * TOUS_LES + 1; j <= k; j++) this.appliquer(e, j)
+    const p = e.get(page)
+    return {
+      page,
+      fond: p?.fond ?? 'blanc',
+      origine: p?.origine ?? { x: 0, y: 0 },
+      formes: p && !p.supprimee ? [...p.formes.values()].sort((a, b) => a.z - b.z) : [],
+    }
+  }
+
+  /** Les formes qui apparaissent ou changent à l'image k */
+  nouvelles(k: number): Forme[] {
+    if (k <= 0 || k >= this.n) return []
+    return this.film.etapes[k - 1].o.filter(o => o[0] === '=').map(o => o[1] as Forme)
+  }
+
+  /** Les formes qui apparaissent à l'image k (une forme déplacée n'y est pas) */
+  ajoutees(k: number): Set<string> { return this.ajouts[k] ?? new Set() }
+
+  /** Le chapitre de l'image k (son rang dans la liste) */
+  chapitreDe(k: number) {
+    let c = 0
+    this.chapitres.forEach((ch, i) => { if (ch.i <= k) c = i })
+    return c
+  }
+  /** La dernière image d'un chapitre */
+  finDuChapitre(c: number) { return c + 1 < this.chapitres.length ? this.chapitres[c + 1].i - 1 : this.n - 1 }
+
+  /** La zone occupée par une page sur tout le film : on la cadre une fois,
+   *  sans que la vue saute à chaque geste */
+  etendue(page: string): Boite | null {
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
+    const voir = (f: Forme) => {
+      const b = boiteDe(f); if (!b) return
+      x1 = Math.min(x1, b.x); y1 = Math.min(y1, b.y); x2 = Math.max(x2, b.x + b.l); y2 = Math.max(y2, b.y + b.h)
+    }
+    this.film.pages.find(p => p.id === page)?.formes.forEach(voir)
+    for (const e of this.film.etapes) if (e.p === page) for (const o of e.o) if (o[0] === '=') voir(o[1])
+    return x1 === Infinity ? null : { x: x1, y: y1, l: x2 - x1, h: y2 - y1 }
+  }
+
+  /** Applique le geste k (passage de l'image k-1 à l'image k) */
+  private appliquer(e: Etat, k: number, ajouts?: Set<string>) {
+    const g = this.film.etapes[k - 1]
+    if (!g || !Array.isArray(g.o)) return
+    let p = e.get(g.p)
+    if (!p) { p = { fond: 'blanc', origine: { x: 0, y: 0 }, formes: new Map() }; e.set(g.p, p) }
+    for (const o of g.o) {
+      if (!Array.isArray(o)) continue
+      if (o[0] === '=' && o[1] && typeof o[1] === 'object' && typeof o[1].id === 'string') {
+        if (ajouts && !p.formes.has(o[1].id)) ajouts.add(o[1].id)
+        p.formes.set(o[1].id, o[1]); p.supprimee = false
+      }
+      else if (o[0] === '-') p.formes.delete(o[1])
+      else if (o[0] === 'f') { p.fond = o[1]; p.origine = { x: Number(o[2]) || 0, y: Number(o[3]) || 0 }; p.supprimee = false }
+      else if (o[0] === 'x') { p.formes.clear(); p.supprimee = true }
+    }
+  }
+}
+
+/** La boîte d'une forme, sans avoir besoin de la dessiner */
+export function boiteDe(f: Forme): Boite | null {
+  const depuis = (xs: number[], ys: number[], m: number) => {
+    if (!xs.length) return null
+    const x1 = Math.min(...xs), x2 = Math.max(...xs), y1 = Math.min(...ys), y2 = Math.max(...ys)
+    return { x: x1 - m, y: y1 - m, l: x2 - x1 + 2 * m, h: y2 - y1 + 2 * m }
+  }
+  switch (f.type) {
+    case 'trait': {
+      const xs: number[] = [], ys: number[] = []
+      for (let i = 0; i < f.pts.length; i += 3) { xs.push(f.x + f.pts[i]); ys.push(f.y + f.pts[i + 1]) }
+      return depuis(xs, ys, f.taille)
+    }
+    case 'polygone': {
+      const xs: number[] = [], ys: number[] = []
+      for (let i = 0; i < f.pts.length; i += 2) { xs.push(f.x + f.pts[i]); ys.push(f.y + f.pts[i + 1]) }
+      return depuis(xs, ys, f.taille + (f.sommets ? 28 : 0))
+    }
+    case 'cercle': return { x: f.x - f.r - 8, y: f.y - f.r - 8, l: 2 * f.r + 16, h: 2 * f.r + 16 }
+    case 'segment': return depuis([f.x, f.x + f.dx], [f.y, f.y + f.dy], f.taille)
+    case 'formule': return { x: f.x, y: f.y, l: Math.max(1, f.latex.length) * f.taille * 0.55, h: f.taille * 1.6 }
+    case 'image': {
+      const [a, b, c, d] = f.m
+      const xs = [0, a * f.l, c * f.h, a * f.l + c * f.h].map(v => f.x + v)
+      const ys = [0, b * f.l, d * f.h, b * f.l + d * f.h].map(v => f.y + v)
+      return depuis(xs, ys, 0)
+    }
+  }
+  return null
+}
