@@ -19,8 +19,9 @@
 // avant son premier geste : c'est là que mènent [ et ].
 //
 // Dans une partie, les gestes se groupent en pas : des gestes qui se
-// suivent à moins de deux secondes forment une seule idée (un mot, une
-// figure et ses noms). La télécommande avance d'un pas à la fois.
+// suivent à moins de deux secondes (stylo levé, quand le film connaît le
+// rythme de la main) forment une seule idée (un mot, une figure et ses
+// noms). La télécommande avance d'un pas à la fois.
 //
 // Le temps : un trait tracé à la main dont le film a noté le rythme (voir
 // revoir/main-levee.ts) s'écrit à la fin de l'attente de son image, à la
