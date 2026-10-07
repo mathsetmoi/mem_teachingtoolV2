@@ -13,8 +13,8 @@ import type { FilmEleve } from '../revoir/format'
 import { ErreurFilm, ecrireFilm, lireFilm } from '../revoir/format'
 import { Bobine } from '../revoir/bobine'
 import { lireParLeRelais } from '../revoir/relais'
-import { COMPTES, compteDe, lienEleve } from './comptes'
-import { connecte, connecter, deconnecter, preparerGoogle, publier } from './drive'
+import { CLIENT_GOOGLE, COMPTES, compteDe, lienEleve } from './comptes'
+import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier } from './drive'
 
 /** Ce qu'on retient d'une séance publiée, dans le document du professeur
  *  (jamais dans le film élève) : de quoi republier au même lien */
@@ -28,6 +28,13 @@ const heure = (t: number) => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-
 const jour = (t: number) => new Date(t).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 const mmss = (ms: number) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 const echapper = (t: string) => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
+
+/** Le compte Google avec lequel on a publié la dernière fois dans `compte`,
+ *  retenu sur cet ordinateur seulement : Google le propose en premier */
+const MEMOIRE_COMPTE = 'tableau-mem:compte-google:'
+const dernierCompte = (compte: string) => { try { return localStorage.getItem(MEMOIRE_COMPTE + compte) ?? '' } catch { return '' } }
+const retenirCompte = (compte: string, courriel: string) => { try { if (courriel) localStorage.setItem(MEMOIRE_COMPTE + compte, courriel) } catch { /* navigation privée */ } }
+const memes = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
 const kilo = (n: number) => n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} Ko` : `${(n / 1024 / 1024).toFixed(1).replace('.', ',')} Mo`
 
 /** La séance a-t-elle quelque chose à montrer ? */
@@ -37,6 +44,8 @@ export class Publication {
   private d: HTMLDialogElement | null = null
   private seances: Seance[] = []
   private textePronote = ''
+  /** Publier quand même avec un autre compte que d'habitude : « compte:adresse » confirmé */
+  private autreCompteAccepte = ''
 
   constructor(private app: App, private racine: HTMLElement) {}
 
@@ -72,7 +81,8 @@ export class Publication {
           <select class="p-decoupage">${DECOUPAGES.map(m => `<option value="${m}">${m} minutes</option>`).join('')}</select></label>
         <fieldset class="p-pages"><legend>Pages où l'on a écrit pendant la séance</legend><div class="cases"></div></fieldset>
         <label class="champ"><span>Titre (les élèves le voient)</span><input class="p-titre" maxlength="120" /></label>
-        <fieldset class="p-comptes"><legend>Publier dans</legend><div class="cases"></div></fieldset>
+        <fieldset class="p-comptes"><legend>Publier dans</legend><div class="cases"></div>
+          <p class="p-google"><span class="p-qui"></span> <button type="button" class="secondaire petit p-changer">Choisir le compte Google</button></p></fieldset>
         <label class="case p-nouveau-lien" hidden><input type="checkbox" class="p-nouveau"><span>Publier comme une nouvelle séance (nouveau lien, l'ancien reste tel quel)</span></label>
         <ul class="p-verifier" aria-label="À vérifier avant de publier"></ul>
         <div class="actions">
@@ -107,12 +117,13 @@ export class Publication {
     q('.p-apercu').addEventListener('click', () => this.apercu())
     q('.p-fichier').addEventListener('click', () => this.enregistrer())
     q('.p-publier').addEventListener('click', () => this.publier())
+    q('.p-changer').addEventListener('click', () => this.choisirCompteGoogle())
     q('.p-copier').addEventListener('click', () => this.copier(q<HTMLInputElement>('.p-lien').value, 'Lien copié'))
     q('.p-pronote').addEventListener('click', () => this.copier(this.textePronote, 'Texte copié : collez-le dans le cahier de textes'))
     q('.p-fermer').addEventListener('click', () => d.close())
     d.addEventListener('close', () => { d.remove(); if (this.d === d) this.d = null })
     d.addEventListener('change', e => {
-      if ((e.target as HTMLElement).closest('.p-comptes')) this.majNouveauLien()
+      if ((e.target as HTMLElement).closest('.p-comptes')) { this.majNouveauLien(); this.majGoogle() }
       if ((e.target as HTMLElement).closest('.p-pages, .p-comptes, .p-nouveau-lien')) this.majVerifications()
     })
 
@@ -122,6 +133,7 @@ export class Publication {
       this.etat('Cette version de Tableau MEM (un seul fichier) ne peut ni publier ni montrer l\'aperçu : enregistrez le fichier séance, ou utilisez Tableau MEM en ligne pour publier.')
     }
     this.remplirSeances()
+    this.majGoogle()
     d.showModal()
     q('.p-seance').focus()
   }
@@ -174,7 +186,7 @@ export class Publication {
     const d = this.d!, ul = d.querySelector('.p-verifier')!
     const pages = this.pagesChoisies()
     const publier = d.querySelector('.p-publier') as HTMLButtonElement
-    publier.disabled = !pages.length || !this.enLigne || !compteDe(this.compte)?.relais
+    publier.disabled = !pages.length || !this.enLigne || !CLIENT_GOOGLE || !compteDe(this.compte)?.relais
     ;(d.querySelector('.p-fichier') as HTMLButtonElement).disabled = !pages.length
     if (!pages.length) { ul.innerHTML = '<li class="alerte">Cochez au moins une page.</li>'; return }
     const f = this.film()
@@ -184,9 +196,50 @@ export class Publication {
       `<li>${f.etapes.length} geste${f.etapes.length > 1 ? 's' : ''} · ${mmss(new Bobine(f).duree)} de replay · ${f.chapitres.length} chapitre${f.chapitres.length > 1 ? 's' : ''}</li>`,
       images ? `<li class="alerte">${images} image${images > 1 ? 's' : ''} importée${images > 1 ? 's' : ''} : vérifiez qu'aucune ne montre un nom, une copie ou un visage d'élève.</li>` : '',
       '<li class="alerte">Vérifiez qu\'aucun prénom n\'a été écrit au tableau pendant la séance : tout ce qui a été visible pendant la séance part, même effacé ensuite. Rejouez l\'aperçu pour le voir.</li>',
+      this.enLigne && !CLIENT_GOOGLE ? '<li class="alerte">La publication sur Google Drive n\'est pas encore réglée sur ce site (identifiant Google à créer, voir le mode d\'emploi). En attendant, enregistrez le fichier séance.</li>' : '',
       deja && !this.nouveauLien ? `<li>Déjà publiée le ${new Date(deja.quand).toLocaleDateString('fr-FR')} : publier à nouveau met à jour cette séance, au même lien.</li>` : '',
     ]
     ul.innerHTML = items.join('')
+  }
+
+  /** Le compte Google : celui qui est connecté, ou celui que Google proposera */
+  private majGoogle() {
+    const d = this.d
+    if (!d) return
+    const ligne = d.querySelector('.p-google') as HTMLElement
+    const compte = compteDe(this.compte)
+    ligne.hidden = !this.enLigne || !CLIENT_GOOGLE || !compte?.relais
+    if (ligne.hidden || !compte) return
+    const courriel = courrielDe(compte.cle), dernier = dernierCompte(compte.cle)
+    const qui = d.querySelector('.p-qui') as HTMLElement
+    const autre = !!courriel && !!dernier && !memes(courriel, dernier)
+    qui.textContent = courriel ? `Connecté : ${courriel}`
+      : connecte(compte.cle) ? 'Connecté à Google.'
+      : dernier ? `Google proposera ${dernier} (dernier compte utilisé pour « ${compte.nom} »).`
+      : 'Au moment de publier, Google demandera quel compte utiliser.'
+    qui.classList.toggle('alerte', autre)
+    if (autre) qui.textContent += ` — d'habitude, « ${compte.nom} » est ${dernier}.`
+    ;(d.querySelector('.p-changer') as HTMLButtonElement).textContent = connecte(compte.cle) ? 'Changer de compte Google' : 'Choisir le compte Google'
+  }
+
+  /** Se connecter (ou changer de compte) sans rien publier : Google montre ses comptes */
+  private async choisirCompteGoogle() {
+    const compte = compteDe(this.compte)
+    if (!compte?.relais) return
+    const b = this.d!.querySelector('.p-changer') as HTMLButtonElement
+    const publier = this.d!.querySelector('.p-publier') as HTMLButtonElement
+    b.disabled = true; publier.disabled = true
+    this.etat(`Connexion à Google (${compte.nom})…`)
+    try {
+      await connecter(compte.cle, dernierCompte(compte.cle))
+      this.etat('')
+    } catch (e) {
+      this.etat(e instanceof Error ? e.message : 'La connexion à Google a échoué. Réessayez.', true)
+    } finally {
+      b.disabled = false
+      this.majGoogle()
+      this.majVerifications()
+    }
   }
 
   private etat(t: string, erreur = false) {
@@ -227,10 +280,23 @@ export class Publication {
     const d = this.d!, b = d.querySelector('.p-publier') as HTMLButtonElement
     const compte = compteDe(this.compte)
     if (!compte?.relais) return this.etat('Ce compte n\'a pas encore de relais : choisissez-en un autre.', true)
-    b.disabled = true
+    const changer = d.querySelector('.p-changer') as HTMLButtonElement
+    b.disabled = true; changer.disabled = true
+    // Le relais ne trouve pas la séance : mauvais compte. On se déconnecte
+    // APRÈS que publier() a jeté la copie envoyée au mauvais endroit
+    let mauvaisCompte = false
     try {
       // Le jeton vaut pour un compte : changer de compte, c'est se reconnecter
-      if (!connecte(compte.cle)) { this.etat(`Connexion à Google (${compte.nom})…`); await connecter(compte.cle) }
+      const dernier = dernierCompte(compte.cle)
+      if (!connecte(compte.cle)) { this.etat(`Connexion à Google (${compte.nom})…`); await connecter(compte.cle, dernier) }
+      this.majGoogle()
+      // Un autre compte que celui que ce relais a toujours servi : la séance
+      // irait dans un Drive que le relais ne lit pas. On le dit avant d'envoyer.
+      const courriel = courrielDe(compte.cle)
+      if (courriel && dernier && !memes(courriel, dernier) && this.autreCompteAccepte !== `${compte.cle}:${courriel}`) {
+        this.autreCompteAccepte = `${compte.cle}:${courriel}`
+        return this.etat(`Vous êtes connecté avec ${courriel}, mais « ${compte.nom} » a toujours été publié avec ${dernier}. Cliquez « Changer de compte Google », ou à nouveau « Publier » pour publier quand même avec ${courriel}.`, true)
+      }
       this.etat('Préparation de la séance…')
       const film = this.film()
       const texte = await ecrireFilm(film)
@@ -246,12 +312,19 @@ export class Publication {
         catch (e) {
           const m = e instanceof ErreurFilm ? e.message : String(e)
           // Le relais ne la trouve pas : c'est presque toujours qu'on a publié dans l'autre compte
-          if (/introuvable/i.test(m)) { deconnecter(); throw new Error(`Le relais de « ${compte.nom} » ne trouve pas la séance qu'on vient d'envoyer : vous êtes sans doute connecté à un autre compte Google. Réessayez en choisissant le bon compte.`) }
+          if (/introuvable/i.test(m)) {
+            mauvaisCompte = true
+            const qui = courrielDe(compte.cle)
+            throw new Error(`Le relais de « ${compte.nom} » ne trouve pas la séance qu'on vient d'envoyer : ${qui ? `le compte ${qui} n'est sans doute pas le sien` : 'vous êtes sans doute connecté à un autre compte Google'}. Réessayez en choisissant le bon compte.`)
+          }
           throw new Error(`Le relais de « ${compte.nom} » : ${m}`)
         }
         if (relu.etapes.length !== film.etapes.length) throw new Error(`Le relais de « ${compte.nom} » sert une autre version de la séance : réessayez dans un instant.`)
       })
       this.registre.set(cle, { compte: compte.cle, id: r.id, titre: film.titre, quand: Date.now(), cle: cleDrive })
+      // Le relais a servi la séance : ce compte Google est bien le sien
+      retenirCompte(compte.cle, courrielDe(compte.cle))
+      this.majGoogle()
       const lien = lienEleve(this.lecteur, compte.cle, r.id)
       ;(d.querySelector('.p-lien') as HTMLInputElement).value = lien
       ;(d.querySelector('.p-ouvrir') as HTMLAnchorElement).href = lien
@@ -268,9 +341,11 @@ export class Publication {
       this.majNouveauLien()
       this.majVerifications()
     } catch (e) {
+      if (mauvaisCompte) deconnecter()
       this.etat(e instanceof Error ? e.message : 'La publication a échoué. Réessayez.', true)
     } finally {
-      b.disabled = false
+      b.disabled = false; changer.disabled = false
+      this.majGoogle()
     }
   }
 
