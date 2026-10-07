@@ -323,6 +323,33 @@ Il reste au professeur à vérifier qu'aucun prénom n'a été écrit pendant la
 séance, et qu'aucune image importée ne montre une copie ou un visage : la
 fenêtre le rappelle.
 
+**Le rythme de la main.** Au tableau, chaque point d'un trait arrive à son
+heure : la main accélère dans les droites, ralentit dans les boucles, marque
+un temps au rebroussement, puis se lève avant la lettre suivante. Le film le
+note : l'étape qui pose un trait tracé au stylo (ou au doigt, à la souris)
+garde, pour chacun de ses points, le temps que la plume y a passé, jusqu'au
+lever (`src/revoir/main-levee.ts` : un petit entier par point, en ms, à partir
+de l'heure de l'événement du stylet, sans erreur qui s'accumule). Le lecteur
+des élèves et la revue s'en servent pour reformer chaque lettre comme elle
+s'est formée : le trait s'écrit à l'heure de chacun de ses points, dessiné
+comme le trait en cours sous le stylo (la couche « direct », avec le même
+dessin), puis rejoint la page au lever ; l'attente qui le précède est le vrai
+temps stylo levé, et non plus l'écart entre deux levers. Seuls les longs
+arrêts (plus de 1,2 s, stylo levé ou posé) sont tassés, comme les silences.
+L'image finale est la même au pixel près. Le temps est rangé dans l'étape du
+film, pas dans le trait : un trait recopié (symétrie, dupliquer), rendu par
+Ctrl+Z ou déplacé n'a pas été écrit à ce moment-là, il paraît comme avant.
+Les séances publiées avant ce rythme, et les tableaux qui ne l'ont pas noté,
+se rejouent comme avant (le trait se dessine à vitesse de plume constante) ;
+un lecteur plus ancien ignore ces temps. Ce que cela coûte, mesuré : le
+fichier `.mem` grossit d'environ 5 % sur une séance de 560 traits (stylet à
+120 ou 240 Hz ; 11 % sur un film de seize traits), le document du tableau de
+7,5 % ; au stylet, rien (une heure notée par point : le gestionnaire de
+mouvement prend toujours 0,18 ms en moyenne, le lever 0,1 ms de plus). Sur
+un téléphone lent, le lecteur est plus fluide qu'avant : pendant qu'un trait
+s'écrit, seule la couche « direct » se repeint (1 ms par image au lieu de 12
+pour toute la page, processeur ralenti quatre fois, 960 traits à l'écran).
+
 **Où vivent les séances.** Dans un dossier privé du Drive du professeur, un
 par compte : « MEM - Replay séances » (compte mathsetmoi) et « LFB - Replay
 séances » (compte du lycée). Rien n'est partagé. Le relais Apps Script de ce
@@ -469,7 +496,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/geometrie.ts` | Ce que touche la gomme ou la sélection |
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
 | `src/revue/` | La revue en classe : ce qu'on revoit, les images, la frise, le choix |
-| `src/revoir/` | Le replay des élèves : format du film, exporteur, bobine, lecteur (`revoir.html`), relais |
+| `src/revoir/` | Le replay des élèves : format du film, rythme de la main, exporteur, bobine, lecteur (`revoir.html`), relais |
 | `src/publication/` | Publier sur le Drive : comptes et relais, connexion Google, la fenêtre |
 | `relais/relais-seances.gs` | Le relais Apps Script, à déployer dans chaque compte Google |
 | `tests/` | Les tests (`npm test`) : ce qui part chez les élèves, la fidélité du replay |
