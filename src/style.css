@@ -444,6 +444,8 @@ body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .panneau-co
 .dialogue-publier .case { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; cursor: pointer; }
 .dialogue-publier .case input { width: 18px; height: 18px; accent-color: var(--bleu); }
 .dialogue-publier .case em { color: var(--encre-douce); font-style: normal; font-size: 13px; }
+.p-google { margin: 8px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 14px; color: var(--encre-douce); }
+.p-google .alerte { color: var(--encre); background: #fff6d6; border-radius: 8px; padding: 4px 8px; }
 .p-verifier { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 14px; color: var(--encre-douce); }
 .p-verifier li { padding: 8px 10px; border-radius: 10px; background: var(--chrome); line-height: 1.4; }
 .p-verifier li.alerte { background: #fff6d6; color: var(--encre); }
