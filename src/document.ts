@@ -11,14 +11,16 @@ import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import { WebsocketProvider } from 'y-websocket'
 import { Awareness } from 'y-protocols/awareness'
-import type { Fond, Forme, Presence } from './types'
+import type { Fond, Forme, Presence, Trait } from './types'
 import { uid } from './types'
 
 export const ORIGINE_LOCALE = 'locale'
 const ORIGINE_FILM = 'film'
 
-/** Une étape du film : quand, sur quelle page, et l'état du document */
-export interface Etape { t: number; page: string; s: Uint8Array }
+/** Une étape du film : quand, sur quelle page, et l'état du document.
+ *  ms : si l'étape pose un trait tracé à la main, le temps passé sur chacun
+ *  de ses points (voir revoir/main-levee.ts) ; l'étape est prise au lever. */
+export interface Etape { t: number; page: string; s: Uint8Array; ms?: number[] }
 
 /** Ce qu'il y avait sur une page à une étape du film */
 export interface ImagePage { fond: Fond; origine: { x: number; y: number }; formes: Forme[] }
@@ -51,6 +53,8 @@ export class Tableau {
   private local: IndexeddbPersistence | null
   etat: EtatConnexion = 'hors-ligne'
   surEtat: (e: EtatConnexion) => void = () => {}
+  /** Les temps du trait que pose la transaction en cours (voir poserTrace) */
+  private tempsDuTrace: number[] | null = null
 
   /** nomLocal : la base du navigateur où le tableau s'enregistre (null : nulle part, pour les tests) */
   constructor(nomLocal: string | null) {
@@ -73,6 +77,7 @@ export class Tableau {
       if (tr.origin === ORIGINE_FILM || (this.local && tr.origin === this.local) || (this.ws && tr.origin === this.ws)) return
       if (!tr.changedParentTypes.size || ![...tr.changedParentTypes.keys()].some(t => this.dansLesPages(t))) return
       const etape: Etape = { t: Date.now(), page: this.pageVue, s: Y.encodeSnapshot(Y.snapshot(this.doc)) }
+      if (this.tempsDuTrace) { etape.ms = this.tempsDuTrace; this.tempsDuTrace = null }
       queueMicrotask(() => this.doc.transact(() => this.film.push([etape]), ORIGINE_FILM))
     })
   }
@@ -216,6 +221,15 @@ export class Tableau {
   poser(page: string, forme: Forme) {
     const formes = this.formesDe(page); if (!formes) return
     this.doc.transact(() => formes.set(forme.id, forme), ORIGINE_LOCALE)
+  }
+
+  /** Pose un trait tracé à la main. L'étape du film qu'il fait naître note le
+   *  temps passé sur chacun de ses points (ms, un par point) : le replay le
+   *  retracera au rythme de la main. Le trait, lui, reste un trait comme les
+   *  autres : une copie ou un Ctrl+Z ne reprend pas ce rythme. */
+  poserTrace(page: string, trait: Trait, ms: number[]) {
+    this.tempsDuTrace = ms.length && ms.length === trait.pts.length / 3 ? ms : null
+    try { this.poser(page, trait) } finally { this.tempsDuTrace = null }
   }
 
   modifier(page: string, changements: { id: string; patch: Partial<Forme> }[]) {

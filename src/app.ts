@@ -17,6 +17,7 @@ import { angleLisible, bords, etatParDefaut, toucher } from './instruments'
 import * as Y from 'yjs'
 import katex from 'katex'
 import { bornerDecalage, image, nomsLibres, placesDesNoms, reconnaitre, sommetsDe, versRelatif } from './formes'
+import { tempsDesPoints } from './revoir/main-levee'
 
 export const COULEURS = [
   { nom: 'Noir', valeur: '#1b2230' },
@@ -25,6 +26,14 @@ export const COULEURS = [
   { nom: 'Vert', valeur: '#1e8a4c' },
 ]
 export const TAILLES = [{ nom: 'Fin', valeur: 2.5 }, { nom: 'Moyen', valeur: 4.5 }, { nom: 'Épais', valeur: 9 }]
+
+/** L'heure d'un événement du stylet (ms, horloge de performance.now()) : celle
+ *  où le stylet a touché ce point, pas celle où on le traite. Un navigateur qui
+ *  donnerait une autre horloge est ramené à maintenant. */
+function heureDe(e: Event): number {
+  const maintenant = performance.now(), t = e.timeStamp
+  return t > 0 && t <= maintenant + 100 ? t : maintenant
+}
 
 export interface Interface {
   maj(): void
@@ -90,6 +99,8 @@ export class App {
   private dernierEnvoiCurseur = 0
   private dernierEnvoiVue = 0
   private dernierMouvement = 0        // pour savoir si le stylet est resté immobile
+  /** L'heure de chaque point du trait en cours : le replay le retracera à ce rythme */
+  private heuresDuTrait: number[] = []
   private polyEnCours: P[] | null = null
   private minuterieForme = 0
   /** Les instruments posés (dans l'ordre d'empilement) et leur réglage */
@@ -565,6 +576,7 @@ export class App {
           opacite: surligneur ? 0.35 : 1,
           pression: e.pointerType === 'pen' && !surligneur,
         }
+        this.heuresDuTrait = [heureDe(e)]
         this.geste = { type: 'dessin', pointeur: e.pointerId }
         this.dernierMouvement = performance.now()
         this.attendreImmobilite()
@@ -701,6 +713,7 @@ export class App {
           const n = trait.pts.length
           if (Math.hypot(p.x - trait.pts[n - 3], p.y - trait.pts[n - 2]) < seuil) continue
           trait.pts.push(p.x, p.y, ev.pointerType === 'pen' ? ev.pressure : 0.5)
+          this.heuresDuTrait.push(heureDe(ev))
           if (Math.hypot(p.x - trait.pts[n - 3], p.y - trait.pts[n - 2]) * this.cam.z > 1.5) { this.dernierMouvement = t; this.attendreImmobilite() }
         }
         this.rendu.redessinerDirect()
@@ -817,7 +830,7 @@ export class App {
   }
 
   private abandonnerGeste(g: Geste | null = this.geste) {
-    if (g?.type === 'dessin') { clearTimeout(this.minuterieForme); this.rendu.monTrait = null; this.tableau.diffuser({ direct: null }) }
+    if (g?.type === 'dessin') { clearTimeout(this.minuterieForme); this.rendu.monTrait = null; this.heuresDuTrait = []; this.tableau.diffuser({ direct: null }) }
     if (g?.type === 'segment') { this.rendu.monSegment = null; this.rendu.apercu = null; this.rendu.cible = null }
     if (g?.type === 'rectangle' || g?.type === 'cercle') this.rendu.apercu = null
     if (g?.type === 'poignee') this.rendu.remplacement = null
@@ -833,7 +846,9 @@ export class App {
 
   private validerTrait(maintenu: boolean) {
     const t = this.rendu.monTrait
+    const heures = this.heuresDuTrait
     this.rendu.monTrait = null
+    this.heuresDuTrait = []
     this.tableau.diffuser({ direct: null })
     if (!t || t.pts.length < 3) return
     const x0 = t.pts[0], y0 = t.pts[1]
@@ -844,7 +859,9 @@ export class App {
     }
     const trait: Trait = { id: uid(), type: 'trait', x: x0, y: y0, pts, couleur: t.couleur,
       taille: t.taille, opacite: t.opacite, pression: t.pression, z: Date.now(), auteur: this.tableau.moi }
-    this.tableau.poser(this.page, trait)
+    // Le temps passé sur chaque point, jusqu'au lever (maintenant) : l'étape du film le note
+    if (heures.length * 3 === t.pts.length) this.tableau.poserTrace(this.page, trait, tempsDesPoints(heures, performance.now()))
+    else this.tableau.poser(this.page, trait)
     this.rendu.redessinerDirect()
 
     // Le tracé ressemble-t-il à une figure ? Elle remplace le trait dans

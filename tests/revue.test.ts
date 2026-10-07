@@ -706,11 +706,11 @@ describe('le code de la revue ne peut pas écrire', () => {
     const racine = join(__dirname, '..', 'src')
     const fichiers = [
       ...readdirSync(join(racine, 'revue'), { recursive: true }).map(String).filter(f => f.endsWith('.ts')).map(f => join(racine, 'revue', f)),
-      ...['rythme.ts', 'esquisse.ts', 'icones.ts'].map(f => join(racine, 'revoir', f)),
+      ...['rythme.ts', 'esquisse.ts', 'icones.ts', 'main-levee.ts'].map(f => join(racine, 'revoir', f)),
     ]
-    expect(fichiers.length).toBeGreaterThanOrEqual(8)
+    expect(fichiers.length).toBeGreaterThanOrEqual(9)
     const interdits = [
-      /\.(poser|modifier|supprimer|ajouterPage|supprimerPage|changerFond|nouveauGeste|diffuser|importerImage|allerPage)\(/,
+      /\.(poser|poserTrace|modifier|supprimer|ajouterPage|supprimerPage|changerFond|nouveauGeste|diffuser|importerImage|allerPage)\(/,
       /transact\(/,
       /annulation/,
       /localStorage|sessionStorage|indexedDB/,

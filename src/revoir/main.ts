@@ -16,11 +16,13 @@ import { Camera } from '../camera'
 import { Rendu } from '../rendu'
 import type { Forme } from '../types'
 import { Bobine, boiteDe } from './bobine'
-import type { Boite } from './bobine'
+import type { Boite, Image } from './bobine'
 import { dureeDuTrace, esquisse, seDessine } from './esquisse'
 import { ErreurFilm, lireFilm } from './format'
 import type { FilmEleve } from './format'
 import { svg } from './icones'
+import type { Main } from './main-levee'
+import { pointsPoses, traitEnCours } from './main-levee'
 import { lireParLeRelais } from './relais'
 import { ALLURES } from './rythme'
 
@@ -82,6 +84,13 @@ let k = 0                                  // l'image montrée
 let page = ''
 let enMarche = false
 let minuterie = 0, animation = 0
+/** Le trait qui s'écrit en ce moment, au rythme de la main : quand il a
+ *  commencé et combien de temps il dure (horloge de la page, allure comprise) */
+let enTrace: { main: Main; img: Image; debut: number; duree: number; vus: number } | null = null
+/** Pendant la lecture : l'heure (horloge de la page) où l'image montrée a fini,
+ *  ou finira, de s'écrire. Le geste suivant se cale dessus, et non sur l'heure
+ *  où le minuteur a sonné : un minuteur un peu en retard ne décale pas la suite. */
+let finPrevue = 0
 let allure = 1                             // Normal (voir ALLURES)
 let vue: 'page' | 'libre' = 'page'         // « libre » : l'élève a zoomé ou déplacé
 let arreteIci = -1                         // la fin de chapitre où l'on vient de s'arrêter : « Continuer » la passe
@@ -173,7 +182,8 @@ function aDesFormules(film: FilmEleve) {
 }
 
 // ---------- Montrer une image du film ----------
-function montrer(i: number, anime: boolean) {
+/** debut : l'heure prévue du geste, pendant la lecture (sinon : maintenant) */
+function montrer(i: number, anime: boolean, debut = performance.now()) {
   if (!bobine) return
   i = Math.max(0, Math.min(bobine.n - 1, i))
   if (i < arreteIci) arreteIci = -1            // en revenant en arrière, les arrêts de chapitre reviennent
@@ -182,35 +192,73 @@ function montrer(i: number, anime: boolean) {
   const changePage = nouvellePage !== page
   k = i; page = nouvellePage
   cancelAnimationFrame(animation)
+  enTrace = null; rendu.monTrait = null
   const img = bobine.image(k, page)
   if (changePage) { vue = 'page'; cadrerPage() }
-  afficher(img.formes, img)
+  const suite = anime && i === avant + 1
+  // Un trait tracé à la main s'écrit comme au tableau (même sur une page où
+  // l'on vient d'arriver) : la page d'avant, et sous le stylo le trait en
+  // cours, point par point, à l'heure de chaque point
+  const main = suite ? bobine.main(k) : null
+  afficher(main ? img.formes.filter(f => f.id !== main.trait.id) : img.formes, img)
   majCommandes()
 
-  if (!anime || i !== avant + 1 || changePage) return
+  if (!suite) return
   const nouvelles = bobine.nouvelles(k)
-  if (vue === 'page') suivre(nouvelles)
+  if (vue === 'page' && !changePage) suivre(nouvelles)
+  if (main) return ecrire(main, img, debut)
+  // La figure reconnue au lever du stylo remplace le trait d'un coup, comme au tableau
+  if (changePage || bobine.reconnue(k)) return
   // Les figures apparues se dessinent sous les yeux, à vitesse de plume
   // (seulement celles qui apparaissent : une forme déplacée ou recolorée ne se réécrit pas),
   // et le tracé finit avant le geste suivant
   const ajouts = bobine.ajoutees(k)
   const aTracer = nouvelles.filter(f => ajouts.has(f.id) && seDessine(f))
   const facteur = ALLURES[allure].facteur
-  const duree = Math.min(dureeDuTrace(aTracer), 0.85 * bobine.delai(Math.min(bobine.n - 1, k + 1))) / facteur
+  const duree = Math.min(dureeDuTrace(aTracer), 0.85 * bobine.attente(Math.min(bobine.n - 1, k + 1))) / facteur
   if (duree < 40 || mouvementReduit.matches) return
   const ids = new Set(aTracer.map(f => f.id))
-  const debut = performance.now()
+  const depart = performance.now()
   const pas = () => {
-    const t = Math.min(1, (performance.now() - debut) / duree)
+    const t = Math.min(1, (performance.now() - depart) / duree)
     afficher(img.formes.map(f => ids.has(f.id) ? esquisse(f, t) : f), img)
     if (t < 1) animation = requestAnimationFrame(pas)
   }
   pas()
 }
 
+/** Écrit le trait de l'image montrée au rythme de la main. Seule la couche
+ *  « direct » se repeint, avec le dessin même du tableau pour le trait en
+ *  cours ; au lever, le trait rejoint la page. C'est le contenu de la séance,
+ *  comme une vidéo : il s'écrit même sous « animations réduites ». */
+function ecrire(main: Main, img: Image, debut: number) {
+  enTrace = { main, img, debut, duree: main.duree / ALLURES[allure].facteur, vus: 0 }
+  const pas = () => {
+    const t = enTrace
+    if (!t) return
+    const fait = t.duree > 0 ? (performance.now() - t.debut) / t.duree : 1
+    if (fait >= 1) {
+      enTrace = null; rendu.monTrait = null
+      afficher(t.img.formes, t.img)
+    } else {
+      const n = pointsPoses(t.main, fait * t.main.duree)
+      if (n !== t.vus) { t.vus = n; rendu.monTrait = traitEnCours(t.main, n); rendu.redessinerDirect() }
+      animation = requestAnimationFrame(pas)
+    }
+    // Ce qui est décidé à cette image d'écran y paraît, pas à la suivante
+    rendu.peindreMaintenant()
+  }
+  pas()
+}
+
+/** Le temps qu'il reste au trait qui s'écrit (ms d'horloge ; 0 : aucun) */
+const resteDuTrace = () => enTrace ? Math.max(0, enTrace.debut + enTrace.duree - performance.now()) : 0
+
 function afficher(formes: Forme[], img: { fond: Rendu['fond']; origine: Rendu['origine'] }) {
   rendu.formes = formes; rendu.fond = img.fond; rendu.origine = img.origine
-  rendu.toutRedessiner()
+  // Au début d'un trait qui s'écrit, la page est celle qui est déjà là (mêmes formes,
+  // même vue) : seul le trait en cours se peint
+  rendu.redessinerSiBesoin()
 }
 
 // ---------- La vue ----------
@@ -305,6 +353,7 @@ function lire() {
   if (k >= bobine.n - 1) { arreteIci = -1; montrer(0, false) }
   enMarche = true
   kDepart = k
+  finPrevue = performance.now() + resteDuTrace()
   majCommandes()
   suivante()
 }
@@ -317,14 +366,27 @@ function pause() {
 
 function suivante() {
   if (!enMarche || !bobine) return
-  if (k >= bobine.n - 1) { pause(); return carteFin() }
+  // Le trait qui s'écrit va jusqu'au lever : on ne s'arrête pas au milieu d'une lettre
+  const reste = resteDuTrace()
   const c = bobine.chapitreDe(k)
   // Fin d'un chapitre : on s'arrête, l'élève relance
-  if (arretAuxChapitres && k !== arreteIci && k !== kDepart && k === bobine.finDuChapitre(c) && c + 1 < bobine.chapitres.length) {
+  const finDeChapitre = arretAuxChapitres && k !== arreteIci && k !== kDepart && k === bobine.finDuChapitre(c) && c + 1 < bobine.chapitres.length
+  if ((k >= bobine.n - 1 || finDeChapitre) && reste > 0) { minuterie = window.setTimeout(suivante, reste); return }
+  if (k >= bobine.n - 1) { pause(); return carteFin() }
+  if (finDeChapitre) {
     arreteIci = k
     pause(); return carteChapitre(c + 1, false)
   }
-  minuterie = window.setTimeout(() => { montrer(k + 1, true); suivante() }, bobine.delai(k + 1) / ALLURES[allure].facteur)
+  // Le geste suivant commence quand celui-ci est fini (son tracé compris), après l'attente
+  const facteur = ALLURES[allure].facteur
+  const prevu = finPrevue + bobine.attente(k + 1) / facteur
+  minuterie = window.setTimeout(() => {
+    // Un minuteur très en retard (onglet caché) ne fait pas tout rattraper d'un coup : on repart d'ici
+    const maintenant = performance.now(), debut = maintenant - prevu < 100 ? prevu : maintenant
+    montrer(k + 1, true, debut)
+    finPrevue = debut + (bobine?.trace(k) ?? 0) / facteur
+    suivante()
+  }, Math.max(0, prevu - performance.now()))
 }
 
 function allerAuChapitre(c: number) {
@@ -396,8 +458,14 @@ $('.b-chap-apres').addEventListener('click', () => {
 boutonVitesse.addEventListener('click', () => {
   // Normal → Rapide → Très rapide → Lent → Normal
   allure = (allure + 1) % ALLURES.length
-  // La nouvelle allure vaut tout de suite, pas seulement au geste suivant
-  if (enMarche) { clearTimeout(minuterie); suivante() }
+  // La nouvelle allure vaut tout de suite, pas seulement au geste suivant :
+  // le trait qui s'écrit change de vitesse sans perdre sa place
+  if (enTrace) {
+    const maintenant = performance.now(), fait = enTrace.duree > 0 ? Math.min(1, (maintenant - enTrace.debut) / enTrace.duree) : 1
+    enTrace.duree = enTrace.main.duree / ALLURES[allure].facteur
+    enTrace.debut = maintenant - fait * enTrace.duree
+  }
+  if (enMarche) { clearTimeout(minuterie); finPrevue = performance.now() + resteDuTrace(); suivante() }
   majCommandes(); annoncer(`Allure ${ALLURES[allure].nom}`)
 })
 $('.b-cadrer').addEventListener('click', voirLaPage)

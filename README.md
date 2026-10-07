@@ -230,10 +230,12 @@ l'heure réelle : une par page où l'on s'est attardé pendant une séance, une
 par séance dans l'histoire d'une page, et une nouvelle après trois minutes de
 silence. Elles forment la frise, en bas : glisser montre l'image visée,
 toucher une partie mène à son début. À l'intérieur, les gestes rapprochés
-(moins de deux secondes d'écart) forment un pas, une idée : c'est ce que fait
-avancer la télécommande de présentation. Une figure reconnue au stylo est un
-seul geste (seule la figure se dessine, pas le tracé à main levée qu'elle
-remplace), et jeter une page n'en est pas un pour la page où l'on revient.
+(moins de deux secondes stylo levé entre eux) forment un pas, une idée : c'est
+ce que fait avancer la télécommande de présentation. Une figure reconnue au
+stylo est un seul geste : le tracé à main levée s'écrit, puis la figure le
+remplace d'un coup, comme au tableau (sur un tableau d'avant le rythme de la
+main, seule la figure se dessine). Jeter une page n'est pas un geste pour la
+page où l'on revient.
 
 **Les commandes**, toutes au clavier et en grands boutons : Espace, K ou un
 appui bref sur le tableau pour lire ou s'arrêter ; → ou Page↓ pour un pas,
@@ -242,11 +244,16 @@ pour la partie précédente ou suivante ; Origine et Fin ; 1 à 4, − et + pour
 l'allure (Lent, Normal, Rapide, Très rapide ; Rapide au départ) ; C pour
 revoir toute la page ; Échap pour revenir au tableau. La lecture suit le
 rythme du cours : les intervalles courts sont gardés, les longs silences
-tassés en douceur. Les figures se dessinent sous les yeux (le trait suit son
-chemin, le cercle s'ouvre comme au compas, le polygone se construit côté
-après côté) ; formules et images apparaissent d'un coup. La vue suit la page
-montrée ; après un glisser ou un pincement, elle reste où on l'a mise
-jusqu'à C. Sous « animations réduites », rien ne se dessine ni ne s'estompe.
+tassés en douceur. L'écriture se reforme comme en direct (voir « Le rythme de
+la main », plus bas) : à l'allure Normale, chaque lettre s'écrit au rythme
+même du stylo ; les autres allures accélèrent ou ralentissent tout, écriture
+comprise (Rapide, l'allure de départ, écrit trois fois plus vite). Les
+figures se dessinent sous les yeux (le trait suit son chemin, le cercle
+s'ouvre comme au compas, le polygone se construit côté après côté) ; formules
+et images apparaissent d'un coup. La vue suit la page montrée ; après un
+glisser ou un pincement, elle reste où on l'a mise jusqu'à C. Sous
+« animations réduites », les figures ne se dessinent plus et rien ne
+s'estompe ; l'écriture, elle, garde son rythme : c'est ce qu'on revoit.
 
 **La revue ne fait que lire.** Le document Yjs garde ce qui a été effacé
 (`gc: false`) et note un instantané à chaque geste (`film`). La revue lit
@@ -286,7 +293,9 @@ lecteur l'ouvre aussi.
 
 **Côté élève** (`revoir.html`). L'affiche montre le tableau final, le titre, la
 date et la durée. Le replay suit le rythme du cours (les longs silences sont
-écourtés) aux allures Lent, Normal, Rapide ou Très rapide ; les figures se dessinent sous les yeux.
+écourtés) aux allures Lent, Normal, Rapide ou Très rapide ; à l'allure Normale,
+chaque lettre s'écrit comme au tableau, au rythme de la main (voir « Le rythme
+de la main ») ; les figures se dessinent sous les yeux.
 Pas à pas, frise, chapitres (un par page pour l'instant), pages qui changent
 toutes seules, pincer ou la molette pour zoomer, glisser pour se déplacer,
 double-clic pour revoir toute la page. **La lecture s'arrête à la fin de chaque
@@ -302,7 +311,9 @@ avant la séance n'y est pas, ni ce qu'efface le premier geste du cours
 (« Effacer la page » à l'arrivée de la classe), ni les pages où rien ne s'est
 passé pendant la séance (la page de la classe d'avant, quand on commence par
 « Nouvelle page »), ni les pages non cochées, ni le nom de l'appareil, ni le
-tracé brut d'une figure reconnue, ni les images inutilisées. Tout ce qui a été
+tracé brut d'une figure reconnue, ni les images inutilisées. Le rythme de la
+main (le temps de chaque point d'un trait) ne part qu'avec le geste où la
+classe a vu ce trait s'écrire. Tout ce qui a été
 visible pendant la séance, en revanche, part, même effacé ensuite : l'aperçu
 permet de le revoir. Un test
 automatique le vérifie (`npm test`). Le lecteur n'écrit rien dans le navigateur

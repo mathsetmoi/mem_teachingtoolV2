@@ -135,11 +135,36 @@ export class Rendu {
   }
 
   toutRedessiner() { this.sceneSale = true; this.directSale = true; this.instrumentsSales = true; this.planifier() }
+
+  /** Ce que montre la scène peinte en dernier (voir redessinerSiBesoin) */
+  private peinte: { formes: Forme[]; fond: Fond; ox: number; oy: number; x: number; y: number; z: number; remplacement: Figure | null } | null = null
+
+  /** Redessine la couche « direct » seulement si la scène montre déjà ces formes
+   *  (les mêmes, dans le même ordre), ce fond et cette vue ; tout sinon. C'est le
+   *  cas d'un replay pendant qu'un trait s'écrit : la page ne change pas, seul le
+   *  trait en cours avance, comme sous le stylo au tableau. */
+  redessinerSiBesoin() {
+    const p = this.peinte, f = this.formes, c = this.cam
+    const memeScene = !!p && p.formes.length === f.length && p.fond === this.fond && p.ox === this.origine.x && p.oy === this.origine.y
+      && p.x === c.x && p.y === c.y && p.z === c.z && p.remplacement === this.remplacement && !this.selection.size
+      && !this.decalage.dx && !this.decalage.dy && p.formes.every((g, i) => g === f[i])
+    if (memeScene) this.redessinerDirect()
+    else this.toutRedessiner()
+  }
   redessinerInstruments() { this.instrumentsSales = true; this.directSale = true; this.planifier() }
   redessinerDirect() { this.directSale = true; this.planifier() }
 
   private planifier() {
     if (!this.image) this.image = requestAnimationFrame(() => this.peindre())
+  }
+
+  /** Peint sans attendre l'image d'écran suivante ce qui doit l'être. Pour un
+   *  appel fait DEPUIS une image d'écran (un replay qui avance à chaque image) :
+   *  sinon ce qu'il décide ne paraîtrait qu'une image plus tard. */
+  peindreMaintenant() {
+    if (!this.image) return
+    cancelAnimationFrame(this.image)
+    this.peindre()
   }
 
   private peindre() {
@@ -162,6 +187,7 @@ export class Rendu {
   // ---------- Couche scène ----------
   private peindreScene() {
     const c = this.cs, cam = this.cam
+    this.peinte = { formes: this.formes, fond: this.fond, ox: this.origine.x, oy: this.origine.y, x: cam.x, y: cam.y, z: cam.z, remplacement: this.remplacement }
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
     dessinerFond(c, this.fond, cam, this.l, this.h, this.origine)
     c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
