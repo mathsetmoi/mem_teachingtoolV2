@@ -12,7 +12,7 @@ async function demarrer() {
   // sinon le professeur ne retrouverait plus ses pages
   const tableau = new Tableau('mem-tableau-local')
   const app = new App(tableau, zone)
-  new UI(app, racine)
+  const ui = new UI(app, racine)
   // Le navigateur ne prend plus Ctrl + « + », F5 ni les gestes du tableau
   installerGardes(app)
   zone.dataset.outil = app.outil
@@ -22,6 +22,12 @@ async function demarrer() {
   await tableau.charger()
   // La page qu'on regardait avant de recharger, si elle existe encore
   app.allerPage(app.pageDeDepart())
+  // Un tableau vient d'être ouvert depuis un fichier : on le dit
+  ui.sauvegarde.annoncerOuverture()
+  // Que le navigateur ne vide pas la base pour faire de la place. Chrome, Edge
+  // et Safari décident seuls, sans rien demander ; Firefox pose sa question.
+  // Rien n'est montré ici : ce n'est pas une sauvegarde (voir « Enregistrer le tableau »).
+  navigator.storage?.persisted?.().then(oui => oui || navigator.storage.persist()).catch(() => {})
 }
 
 demarrer()

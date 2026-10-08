@@ -2,8 +2,9 @@
 
 Un tableau blanc pour les cours de maths, utilisé par le professeur en classe :
 il marche hors connexion sur le poste de la salle, et tout ce qui y est écrit
-s'enregistre dans le navigateur. Le professeur peut publier le replay d'une
-séance, que les élèves revoient chez eux.
+s'enregistre dans le navigateur ; le tableau entier se garde aussi dans un
+fichier (`.memc`), sur une clé ou ailleurs. Le professeur peut publier le
+replay d'une séance, que les élèves revoient chez eux.
 
 ## Lancer en local
 
@@ -503,14 +504,58 @@ fois : Settings → Pages → Source : GitHub Actions). On publie depuis cette
 version en ligne : la connexion Google ne marche ni depuis le fichier unique,
 ni depuis une adresse que la console Google n'autorise pas. Attention : le
 tableau vit dans le navigateur, adresse par adresse ; celui de la version en
-ligne n'est pas celui de la clé USB. La version clé USB peut seulement
-enregistrer le fichier séance.
+ligne n'est pas celui de la clé USB. Pour passer de l'un à l'autre :
+« Enregistrer le tableau » d'un côté, « Ouvrir un tableau » de l'autre (voir
+plus bas). La version clé USB enregistre aussi le fichier séance.
 
 **Les téléphones des élèves.** Le lecteur vise les navigateurs depuis 2020
 (Safari 14, Chrome 87, Firefox 78) ; sur les iPhone et iPad d'avant iOS 16.4,
 qui ne savent pas décompresser seuls, un petit décompresseur (fflate, 8 Ko) se
 charge à la place. Commandes de 44 px, zoom du navigateur jamais bloqué, la
 frise annonce le temps aux lecteurs d'écran.
+
+## Enregistrer et ouvrir un tableau
+
+Le tableau s'enregistre tout seul dans le navigateur, mais un navigateur peut
+l'oublier : un poste de lycée remis à zéro chaque soir, un iPad sur lequel on
+n'est pas revenu depuis des semaines, un historique effacé. Le bouton **⋯**, au
+bout de la barre du haut, l'emporte dans un fichier :
+
+- **Enregistrer le tableau…** (Ctrl + S, ⌘ + S sur Mac) écrit un fichier
+  `tableau-2026-10-07-14h05.memc` : toutes les pages, tout l'historique (la
+  revue en classe et le replay marchent sur une autre machine comme sur
+  celle-ci), les instruments, les images, la liste des séances publiées. Sur
+  Chrome et Edge, on choisit où l'écrire (la clé USB, un dossier synchronisé
+  avec le Drive) ; ailleurs, et depuis la version clé USB, il se télécharge.
+  Comme le document, il garde ce qui a été effacé : il n'est pas pour les
+  élèves (pour eux : Publier, qui donne un film aplati, `.mem`).
+- **Ouvrir un tableau…** (Ctrl + O) remplace le tableau de ce navigateur par
+  celui d'un fichier `.memc`, après une question qui dit ce qui sera remplacé
+  (« 12 pages, enregistré le mardi 7 octobre 2026 à 14 h 05. Il remplace le
+  tableau de ce navigateur (8 pages) et tout son historique ») et propose
+  **Enregistrer d'abord**. On peut aussi glisser le fichier sur la page. Le
+  fichier est relu en entier avant de toucher à quoi que ce soit : un fichier
+  abîmé, un film élève (`.mem`), un fichier d'une version plus récente ou un
+  fichier quelconque sont refusés avec une phrase qui dit quoi faire, et le
+  tableau n'a pas changé. Le remplacement se fait d'un bloc dans la base du
+  navigateur (s'il échoue, faute de place, l'ancien tableau reste entier),
+  puis la page se recharge : « Tableau ouvert : 12 pages ». Un autre onglet
+  ouvert sur le même tableau l'apprend aussitôt, cesse d'écrire et demande à
+  être rechargé. On n'ouvre pas de tableau pendant la revue, une séance
+  d'automatismes ou une fenêtre ouverte.
+
+Le menu rappelle le dernier enregistrement dans un fichier (« aujourd'hui à
+14 h 05 »), ou qu'il n'y en a jamais eu. C'est la passerelle entre la version
+en ligne et la version clé USB, et d'une machine à l'autre. Le lecteur des
+élèves refuse un `.memc` en disant où l'ouvrir. Au démarrage, l'outil demande
+aussi au navigateur de ne pas vider sa base pour faire de la place
+(`navigator.storage.persist()` : Chrome, Edge et Safari décident seuls, sans
+rien demander ; Firefox pose la question) ; ce n'est pas une sauvegarde.
+
+Le fichier : une première ligne de texte,
+`{"format":"mem-tableau","v":1,"app":"MEM teachingtool","date":…,"pages":…}`,
+puis le document Yjs entier, compressé (gzip). Le film élève commence lui
+aussi par `{"format":` ; chaque lecteur reconnaît le sien à ses premiers octets.
 
 ## Ce que fait la v0.1
 
@@ -623,7 +668,8 @@ découlent sans code supplémentaire :
 
 1. **Tout s'enregistre tout seul.** Le document s'enregistre dans le navigateur
    (IndexedDB), sans bouton ni connexion : il marche hors ligne, et le tableau
-   est là le lendemain. Pas de base de données à concevoir.
+   est là le lendemain. Pas de base de données à concevoir. Et le même
+   document, tel quel, fait le fichier `.memc` qu'on emporte.
 2. **L'annulation ne défait que les gestes.** `Ctrl+Z` ne touche ni au
    chargement depuis le disque, ni au film.
 3. **Rien ne se perd.** Le document garde ce qui a été effacé : c'est ce qui
@@ -637,7 +683,7 @@ cours, qui fait la latence ressentie au stylet.
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule), les fonds |
-| `src/document.ts` | Document Yjs : pages, formes, annulation, film, enregistrement |
+| `src/document.ts` | Document Yjs : pages, formes, annulation, film, enregistrement dans le navigateur (et remplacement par un fichier ouvert) |
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris |
 | `src/rendu.ts` | Les trois couches d'affichage |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
@@ -661,6 +707,8 @@ cours, qui fait la latence ressentie au stylet.
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt), hors du document |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la paume, le stylet sur l'écran, le double appui, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
+| `src/fichier.ts` | Le tableau dans un fichier `.memc` : l'écrire, le relire (et refuser ce qui n'en est pas un) |
+| `src/sauvegarde.ts` | Enregistrer et ouvrir un tableau : le menu ⋯, Ctrl + S, Ctrl + O, la question avant de remplacer, les autres onglets |
 
 Toutes les briques sont sous licence MIT (Yjs, y-indexeddb,
 perfect-freehand, KaTeX, Vite) : aucune clé de licence, aucun filigrane, et rien

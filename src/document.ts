@@ -165,6 +165,41 @@ export class Tableau {
     if (this.ordre.length === 0) this.ajouterPage('carreaux', 0)
   }
 
+  /** Remplace, dans la base du navigateur, tout le tableau par un autre (un
+   *  fichier ouvert, voir fichier.ts). On recharge la page ensuite : le
+   *  document en mémoire, lui, reste l'ancien.
+   *  Une seule transaction vide le magasin et y range le nouveau tableau :
+   *  si elle échoue (plus de place), rien n'a changé, l'ancien tableau reste
+   *  entier. Le lien avec la base est coupé juste après l'avoir ouverte :
+   *  plus rien de l'ancien document ne s'y écrit, et la base ne se ferme
+   *  qu'une fois la transaction finie. Même base, même magasin. */
+  async remplacerPar(etat: Uint8Array): Promise<void> {
+    const local = this.local
+    if (!local) throw new Error('Ce tableau n\'est enregistré nulle part.')
+    await local.whenSynced
+    const db = local.db
+    if (!db) throw new Error('La base du navigateur n\'est pas ouverte.')
+    const tr = db.transaction(['updates'], 'readwrite')
+    const fin = new Promise<void>((ok, ko) => {
+      tr.oncomplete = () => ok()
+      tr.onabort = () => ko(tr.error ?? new Error('Transaction abandonnée.'))
+    })
+    const magasin = tr.objectStore('updates')
+    magasin.clear()
+    magasin.add(etat)
+    this.local = null
+    local.destroy()
+    await fin
+  }
+
+  /** Plus rien ne s'écrit dans la base du navigateur (un autre onglet vient
+   *  d'y ranger un autre tableau) : ce qu'on écrirait encore ici serait perdu
+   *  au rechargement, mais n'abîmerait pas le nouveau. */
+  couper() {
+    this.local?.destroy()
+    this.local = null
+  }
+
   // ---------- Pages ----------
   ajouterPage(fond: Fond, position: number): string {
     const id = uid()

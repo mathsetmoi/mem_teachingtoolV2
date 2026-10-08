@@ -22,6 +22,7 @@ import { basculerMenu, fermerMenu, installerMenus, placerMenu } from './menus'
 import { choisirMolette, reglages } from './reglages'
 import type { Doigt, Molette } from './reglages'
 import { CTRL } from './navigateur'
+import { Sauvegarde } from './sauvegarde'
 
 const ICONES: Record<string, string> = {
   stylo: 'M4 20l4-1L19 8l-3-3L5 16l-1 4zM14 7l3 3',
@@ -60,6 +61,7 @@ const ICONES: Record<string, string> = {
   automatismes: 'M12 21a8 8 0 100-16 8 8 0 100 16zM12 9v4l2.5 2.5M10 2h4M12 2v3',
   cadre: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
   coche: 'M5 12.5l4.5 4.5L19 7.5',
+  points: 'M5 12h.01M12 12h.01M19 12h.01',
   doigt: 'M10 15V4.5a1.5 1.5 0 0 1 3 0V11M13 10a1.5 1.5 0 0 1 3 0v2M16 11.5a1.5 1.5 0 0 1 3 0V16a5 5 0 0 1-5 5h-1.5a5 5 0 0 1-4-2l-3-4a1.5 1.5 0 0 1 2.3-1.9L10 15',
 }
 
@@ -184,6 +186,9 @@ export class UI implements Interface {
   /** Le rôle du doigt : son bouton (sur un appareil tactile) et son menu */
   private boutonDoigt!: HTMLButtonElement
   private menuDoigt!: Menu
+  /** Enregistrer le tableau dans un fichier, en ouvrir un : le bouton ⋯ et son menu */
+  sauvegarde!: Sauvegarde
+  private menuFichier!: Menu
 
   constructor(private app: App, private racine: HTMLElement) {
     // Les menus d'abord : leur Échap passe avant celui des panneaux (voir menus.ts)
@@ -292,7 +297,22 @@ export class UI implements Interface {
     const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir())
     const revoir = bouton('revue', 'Revoir la construction : une page, une séance, pas à pas', () => this.ouvrirRevue(revoir))
     const publier = bouton('publier', 'Publier le replay pour les élèves', () => this.publication.ouvrir())
-    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, revoir, publier)
+    // Enregistrer le tableau dans un fichier, en ouvrir un : un menu discret
+    // au bout de la barre, sous son bouton, aligné à droite
+    this.sauvegarde = new Sauvegarde(app, t => this.message(t), this.racine)
+    const fichier = bouton('points', `Enregistrer ou ouvrir un tableau (${CTRL} + S, ${CTRL} + O)`, e => {
+      if (menuFichier.hidden) this.construireMenuFichier()
+      basculerMenu(this.menuFichier)
+      if (menuFichier.hidden) return
+      placerMenu(menuFichier, fichier.getBoundingClientRect(), 'dessous')
+      if ((e as MouseEvent).detail === 0) menuFichier.querySelector<HTMLElement>('.menu-item')?.focus()
+    }, 'points')
+    fichier.setAttribute('aria-haspopup', 'menu'); fichier.setAttribute('aria-expanded', 'false')
+    const menuFichier = document.createElement('div')
+    menuFichier.className = 'menu-flottant menu-large'; menuFichier.setAttribute('role', 'menu'); menuFichier.setAttribute('aria-label', 'Enregistrer ou ouvrir un tableau')
+    menuFichier.hidden = true
+    this.menuFichier = { el: menuFichier, bouton: fichier }
+    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, revoir, publier, fichier)
 
     // ----- Les instruments, sous leur bouton -----
     this.choixInstruments = document.createElement('div')
@@ -363,7 +383,7 @@ export class UI implements Interface {
     this.panneau.setAttribute('role', 'toolbar')
     this.panneau.setAttribute('aria-label', 'Options de la figure')
 
-    this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
+    this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, menuFichier, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
     this.revue = new RevueEnClasse(this.app, this.racine)
     this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
@@ -512,6 +532,22 @@ export class UI implements Interface {
     molette('defile', 'Fait défiler', `${CTRL} + molette : zoomer`)
     molette('zoome', 'Zoome')
   }
+
+  /** Le menu du bouton ⋯, refait à chaque ouverture (la date du dernier
+   *  enregistrement a pu changer) */
+  private construireMenuFichier() {
+    const m = this.menuFichier.el, s = this.sauvegarde
+    m.replaceChildren()
+    this.entreeMenu(m, 'Enregistrer le tableau…', () => void s.enregistrer(), { touche: `${CTRL} + S`,
+      aide: 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder sur la clé ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).' })
+    this.entreeMenu(m, 'Ouvrir un tableau…', () => s.ouvrir(), { touche: `${CTRL} + O`,
+      aide: 'Remplace le tableau de ce navigateur par celui d\'un fichier .memc.' })
+    m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
+    m.appendChild(Object.assign(document.createElement('p'), { className: 'menu-note', textContent: s.etat() }))
+  }
+
+  /** Un fichier glissé sur le tableau (.memc, ou .mem) : comme « Ouvrir un tableau » */
+  ouvrirTableau(f: File) { void this.sauvegarde.ouvrirFichier(f) }
 
   /** Le menu du rôle du doigt : ouvert par son bouton, ou par « Changer »
    *  dans le message « Stylet détecté » */

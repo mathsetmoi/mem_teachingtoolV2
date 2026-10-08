@@ -559,6 +559,15 @@ body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .panneau-co
 .menu-item small { display: block; }
 .menu-filet { width: auto; height: 0; border: 0; border-top: 1px solid var(--filet); margin: 6px 4px; }
 .menu-titre { padding: 6px 10px 2px 42px; font-size: 13px; font-weight: 700; color: var(--encre-douce); }
+/* Un menu aux aides longues (le bouton ⋯) : une largeur fixe, les aides vont à la ligne */
+.menu-large { width: min(400px, calc(100vw - 16px)); }
+.menu-note { margin: 0; padding: 4px 10px 6px 42px; font-size: 13px; line-height: 1.4; color: var(--encre-douce); }
+
+/* ---------- Enregistrer et ouvrir un tableau (sauvegarde.ts) ---------- */
+.bouton.points svg { stroke-width: 3.4; }
+.dialogue-ouvrir { width: min(520px, calc(100vw - 24px)); }
+.dialogue-ouvrir .actions { flex-wrap: wrap; }
+.dialogue-ouvrir button:disabled { opacity: 0.55; cursor: default; }
 
 /* ---------- Revenir au contenu ---------- */
 .retour-contenu {

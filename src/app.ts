@@ -66,6 +66,8 @@ export interface Interface {
   fermerMenus(garderOptions?: boolean): boolean
   /** Ce qu'on voit du tableau entre les barres (coordonnées de la zone) */
   zoneLibre(): { x: number; y: number; l: number; h: number }
+  /** Un fichier glissé sur le tableau (.memc, ou .mem) : comme « Ouvrir un tableau » */
+  ouvrirTableau(f: File): void
 }
 
 type Geste =
@@ -205,7 +207,12 @@ export class App {
     })
     zone.addEventListener('dragover', e => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault() })
     zone.addEventListener('drop', e => {
-      const f = [...(e.dataTransfer?.files ?? [])].find(x => x.type.startsWith('image/'))
+      const fichiers = [...(e.dataTransfer?.files ?? [])]
+      // Un tableau enregistré (.memc), ou un film élève (.mem) qu'on refusera
+      // avec une phrase claire : comme « Ouvrir un tableau »
+      const tableau = fichiers.find(x => /\.memc?$/i.test(x.name))
+      if (tableau) { e.preventDefault(); this.ui.ouvrirTableau(tableau); return }
+      const f = fichiers.find(x => x.type.startsWith('image/'))
       if (f) { e.preventDefault(); this.importerImage(f) }
     })
 
@@ -516,6 +523,9 @@ export class App {
   /** Safari sur Mac pince par gesturechange : la molette ne zoome pas en double */
   pinceSafari = false
   private minuterieSession = 0
+  /** Le tableau du navigateur vient d'être remplacé (ici ou dans un autre
+   *  onglet) : jusqu'au rechargement, plus rien ne s'écrit dans la session */
+  private sessionArretee = false
   /** Les boîtes des formes (une forme modifiée est un nouvel objet) */
   private boites = new WeakMap<Forme, Boite | null>()
 
@@ -667,7 +677,7 @@ export class App {
   /** Note la page et sa vue dans la session de ce navigateur (jamais dans le document) */
   private noterSession() {
     clearTimeout(this.minuterieSession); this.minuterieSession = 0
-    if (!this.page) return
+    if (!this.page || this.sessionArretee) return
     if (this.rendu.l > 0) this.vues.set(this.page, this.vueActuelle())
     ecrireSession(this.page, this.vues, this.pages)
   }
@@ -679,6 +689,18 @@ export class App {
     clearTimeout(this.minuterieSession); this.minuterieSession = 0
     this.vues.clear(); this.pageSession = null
     oublierSession()
+  }
+
+  /** Avant d'enregistrer le tableau dans un fichier : le point d'un simple
+   *  toucher, qui attendait un éventuel double-clic, est posé tout de suite */
+  poserCeQuiAttend() { this.viderPointEnAttente() }
+
+  /** Plus rien ne s'écrit dans la session jusqu'au rechargement : un autre
+   *  onglet vient d'ouvrir un autre tableau, ou celui-ci va le faire (en
+   *  quittant la page, on y remettrait la page et la vue de l'ancien) */
+  arreterSession() {
+    clearTimeout(this.minuterieSession); this.minuterieSession = 0
+    this.sessionArretee = true
   }
 
   private vueChangee() {
