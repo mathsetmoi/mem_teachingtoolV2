@@ -22,8 +22,20 @@ const CAPTURE = 400
 
 /** Une étape du film : quand, sur quelle page, et l'état du document.
  *  ms : si l'étape pose un trait tracé à la main, le temps passé sur chacun
- *  de ses points (voir revoir/main-levee.ts) ; l'étape est prise au lever. */
-export interface Etape { t: number; page: string; s: Uint8Array; ms?: number[] }
+ *  de ses points (voir revoir/main-levee.ts) ; l'étape est prise au lever.
+ *  seulOrdre : l'étape ne change que l'ordre des pages (une page jetée, une
+ *  page rendue), rien sur aucune page ; ce n'est un geste nulle part (ni
+ *  dans la revue, ni dans les séances, ni dans le film élève). Le champ est
+ *  facultatif : un tableau d'avant n'en a pas, un lecteur d'avant l'ignore,
+ *  et le fichier .memc garde sa version. */
+export interface Etape { t: number; page: string; s: Uint8Array; ms?: number[]; seulOrdre?: true }
+
+/** Une page jetée depuis une page (voir Tableau.jeterPage) : de quoi la
+ *  remettre à sa place, et savoir quand Ctrl+Z doit la rendre. apres : la
+ *  page qui la précédait (null : elle était en tête) ; index : sa place
+ *  d'alors ; profondeur : la longueur de la pile de la page d'arrivée au
+ *  moment du jet. */
+interface Jetee { id: string; apres: string | null; index: number; profondeur: number }
 
 /** Ce qu'il y avait sur une page à une étape du film */
 export interface ImagePage { fond: Fond; origine: { x: number; y: number }; formes: Forme[] }
@@ -54,6 +66,11 @@ export class Tableau {
   private piles = new Map<string, Y.UndoManager>()
   /** La fenêtre de capture des piles : 400 ms, sans fin pendant un geste long */
   private capture = CAPTURE
+  /** Les pages jetées depuis chaque page, la plus récente en dernier (voir
+   *  jeterPage) : en mémoire seulement, comme les piles. Après un
+   *  rechargement, une page jetée ne revient plus ; son histoire reste
+   *  lisible dans la revue. */
+  private jetees = new Map<string, Jetee[]>()
   /** Prévenu quand une pile change de longueur (une étape ajoutée, défaite,
    *  refaite, ou les étapes à refaire oubliées). Il l'est pendant la fin de la
    *  transaction, la pile déjà à jour : l'interface s'y remet (↶ ↷ grisés ou
@@ -86,6 +103,9 @@ export class Tableau {
       this.derniereHeure = t
       const etape: Etape = { t, page: this.pageVue, s: Y.encodeSnapshot(Y.snapshot(this.doc)) }
       if (this.tempsDuTrace) { etape.ms = this.tempsDuTrace; this.tempsDuTrace = null }
+      // Jeter une page, la rendre : seul l'ordre change, aucune page. Le
+      // film le note, pour que personne n'y compte un geste.
+      if ([...tr.changedParentTypes.keys()].every(x => x === this.ordre)) etape.seulOrdre = true
       this.heureDuTrace = null
       queueMicrotask(() => this.doc.transact(() => this.film.push([etape]), ORIGINE_FILM))
     })
@@ -236,6 +256,75 @@ export class Tableau {
     return id
   }
 
+  /** Jette une page : elle quitte l'ordre, et rien d'autre. Sa Y.Map reste
+   *  dans `pages`, intacte (le même objet, les mêmes formes, la même pile) :
+   *  la rendre (rendrePage) la remet dans l'ordre sans rien recopier. Un
+   *  undo de Yjs ne ressuscite pas un type effacé, il le recopie : les formes
+   *  changeraient d'identité, et la revue comme le replay les croiraient
+   *  neuves. depuis : la page où l'on se retrouve (l'application y est déjà
+   *  allée) ; c'est sur elle que le jet se note, et sur elle qu'un Ctrl+Z,
+   *  juste après, rend la page. Refuse (faux) la dernière page, une page
+   *  hors de l'ordre, un depuis absent ou égal à la page.
+   *  La transaction n'a pas d'origine : aucune pile ne la prend (Ctrl+Z
+   *  passe par la marque, voir annuler). */
+  jeterPage(id: string, depuis: string): boolean {
+    const ordre = this.ordre.toArray()
+    const i = ordre.indexOf(id)
+    if (i < 0 || ordre.length <= 1 || id === depuis || !ordre.includes(depuis)) return false
+    // Ce qu'on écrira ensuite sur `depuis` fera sa propre étape : la marque
+    // se place entre les deux
+    this.nouveauGeste()
+    const vue = this.pageVue
+    this.pageVue = depuis
+    try { this.doc.transact(() => this.ordre.delete(i, 1)) } finally { this.pageVue = vue }
+    const marques = this.jetees.get(depuis) ?? []
+    marques.push({ id, apres: i > 0 ? ordre[i - 1] : null, index: i, profondeur: this.annulationDe(depuis)?.undoStack.length ?? 0 })
+    this.jetees.set(depuis, marques)
+    // ↶ s'allume sur la page d'arrivée, même si elle n'a encore aucun geste
+    this.onPiles?.()
+    return true
+  }
+
+  /** Rend une page jetée : elle revient juste après la page qui la
+   *  précédait si celle-ci est encore là, sinon à sa place d'alors (ou au
+   *  bout). Sa marque s'en va, où qu'elle soit. L'étape se note sur la page
+   *  rendue (comme ajouterPage) : le replay ne compte pas celle qu'on quitte.
+   *  Rend sa nouvelle place, ou −1 s'il n'y a rien à faire (déjà dans
+   *  l'ordre, ou effacée par l'ancienne suppression). */
+  rendrePage(id: string): number {
+    let marque: Jetee | null = null
+    for (const [p, l] of this.jetees) {
+      const k = l.findIndex(m => m.id === id)
+      if (k >= 0) marque = l.splice(k, 1)[0]
+      if (!l.length) this.jetees.delete(p)
+    }
+    const ordre = this.ordre.toArray()
+    if (ordre.includes(id) || !(this.pages.get(id) instanceof Y.Map)) { if (marque) this.onPiles?.(); return -1 }
+    const voisine = marque?.apres ? ordre.indexOf(marque.apres) : -1
+    const place = voisine >= 0 ? voisine + 1 : Math.min(marque?.index ?? ordre.length, ordre.length)
+    const vue = this.pageVue
+    this.pageVue = id
+    try { this.doc.transact(() => this.ordre.insert(place, [id])) } finally { if (vue) this.pageVue = vue }
+    this.onPiles?.()
+    return place
+  }
+
+  /** La dernière page jetée depuis cette page et pas encore rendue (null :
+   *  aucune). Les marques des pages déjà revenues (par le bouton du message)
+   *  s'en vont au passage. */
+  private derniereJetee(page: string): Jetee | null {
+    const l = this.jetees.get(page)
+    if (!l) return null
+    const ordre = new Set(this.ordre.toArray())
+    for (let k = l.length - 1; k >= 0; k--) if (ordre.has(l[k].id) || !(this.pages.get(l[k].id) instanceof Y.Map)) l.splice(k, 1)
+    if (!l.length) { this.jetees.delete(page); return null }
+    return l[l.length - 1]
+  }
+
+  /** L'ancienne suppression : la page quitte l'ordre ET sa Y.Map est effacée
+   *  (hors annulation). L'application ne s'en sert plus (elle jette la page,
+   *  voir jeterPage) ; elle reste pour les tests qui fabriquent des tableaux
+   *  d'avant, que la revue et l'export doivent toujours lire. */
   supprimerPage(id: string) {
     const i = this.ordre.toArray().indexOf(id)
     if (i < 0 || this.ordre.length <= 1) return
@@ -333,10 +422,15 @@ export class Tableau {
   }
 
   /** Défait le dernier geste de cette page, et d'elle seule. Rend null s'il
-   *  n'y avait rien à défaire, un objet sinon (le morceau des pages jetées y
-   *  dira laquelle revient). */
+   *  n'y avait rien à défaire, un objet sinon : { page } quand c'est une page
+   *  jetée depuis celle-ci qui revient. Le jet passe avant les gestes faits
+   *  sur la page avant lui, après ceux faits depuis : la marque retient la
+   *  longueur de la pile au moment du jet. Rétablir ne rejette jamais une
+   *  page (on ne jette pas une page sans la voir). */
   annuler(page: string): { page?: string } | null {
     const u = this.piles.get(page)
+    const m = this.derniereJetee(page)
+    if (m && (u?.undoStack.length ?? 0) <= m.profondeur) return this.rendrePage(m.id) >= 0 ? { page: m.id } : null
     if (!u || !u.undoStack.length) return null
     return u.undo() ? {} : null
   }
@@ -348,8 +442,9 @@ export class Tableau {
   }
 
   /** Y a-t-il un geste à défaire, à refaire, sur cette page ? Une page dont la
-   *  pile n'existe pas encore n'a rien (on ne la crée pas pour le savoir). */
-  peutAnnuler(page: string): boolean { return (this.piles.get(page)?.undoStack.length ?? 0) > 0 }
+   *  pile n'existe pas encore n'a rien (on ne la crée pas pour le savoir) ;
+   *  une page jetée depuis celle-ci se défait (Ctrl+Z la rend). */
+  peutAnnuler(page: string): boolean { return (this.piles.get(page)?.undoStack.length ?? 0) > 0 || this.derniereJetee(page) !== null }
   peutRetablir(page: string): boolean { return (this.piles.get(page)?.redoStack.length ?? 0) > 0 }
 
   /** Un geste = une étape d'annulation, même s'il dure longtemps. Un geste

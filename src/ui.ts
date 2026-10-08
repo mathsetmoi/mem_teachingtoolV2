@@ -160,6 +160,8 @@ export class UI implements Interface {
   private pastilles: HTMLButtonElement[] = []
   private tailles: HTMLButtonElement[] = []
   private boutonSupprimer!: HTMLButtonElement
+  /** La poubelle de la barre du haut : supprimer la page (l'effacer, seule) */
+  private boutonJeter!: HTMLButtonElement
   private boutonAnnuler!: HTMLButtonElement
   private boutonRetablir!: HTMLButtonElement
   private rang!: HTMLSpanElement
@@ -178,7 +180,7 @@ export class UI implements Interface {
   /** Ce que montre le message : le dernier message ordinaire, et le dernier
    *  qui porte une action, chacun jusqu'à son échéance (voir message) */
   private toastSimple: { el: HTMLElement; fin: number } | null = null
-  private toastAction: { el: HTMLElement; fin: number } | null = null
+  private toastAction: { el: HTMLElement; fin: number; cle?: string } | null = null
   private minuterieToast = 0
   private dialogue: HTMLDialogElement | null = null
   private boutonReconnaissance!: HTMLButtonElement
@@ -280,16 +282,17 @@ export class UI implements Interface {
     this.rang = document.createElement('span'); this.rang.className = 'rang'
     const apres = bouton('apres', 'Page suivante (Page ↓)', () => app.pageSuivante(1))
     const nouvelle = bouton('plus', 'Nouvelle page', () => app.nouvellePage())
-    // Pas de confirm() : dans une page intégrée (l'aperçu, un ENT), le
-    // navigateur le bloque et répond « non » sans rien montrer
-    const jeter = bouton('poubelle', 'Supprimer cette page', async () => {
-      const seule = app.pages.length <= 1
-      const n = app.pages.indexOf(app.page) + 1
-      const ok = await this.confirmer(seule ? 'Effacer la page ?' : `Supprimer la page ${n} ?`,
-        seule ? 'Il n\'y a qu\'une page : tout ce qui y est écrit sera effacé. Ctrl+Z pour revenir.'
-          : 'La page et tout ce qu\'elle contient disparaissent.', seule ? 'Effacer la page' : 'Supprimer la page')
-      if (!ok) return
-      if (seule) app.viderPage(); else app.supprimerPage()
+    // Pas de question : la page part tout de suite, et s'annule (le message
+    // « Page N supprimée · Annuler », ou Ctrl+Z). Le second clic d'un
+    // double-clic, et tout clic trop tôt après une suppression, ne font rien :
+    // un double-clic jetterait deux pages, et le second message chasserait
+    // le premier « Annuler ».
+    let jeteeA = -Infinity
+    const jeter = this.boutonJeter = bouton('poubelle', 'Supprimer cette page', e => {
+      const maintenant = performance.now()
+      if ((e as MouseEvent).detail > 1 || maintenant - jeteeA < 600) return
+      jeteeA = maintenant
+      app.supprimerPage()
     }, 'danger')
     this.choixFond = document.createElement('select')
     this.choixFond.className = 'choix-fond'
@@ -436,6 +439,8 @@ export class UI implements Interface {
 
     const pages = app.pages, i = pages.indexOf(app.page)
     this.rang.textContent = pages.length ? `${i + 1} / ${pages.length}` : '…'
+    const titreJeter = pages.length <= 1 ? 'Effacer la page' : 'Supprimer cette page'
+    if (this.boutonJeter.title !== titreJeter) { this.boutonJeter.title = titreJeter; this.boutonJeter.setAttribute('aria-label', titreJeter) }
     this.choixFond.value = app.fond
     this.boutonAimant.classList.toggle('actif', app.aimant)
     this.boutonReconnaissance.classList.toggle('actif', app.reconnaissance)
@@ -1052,7 +1057,7 @@ export class UI implements Interface {
    *  Un message ordinaire ne chasse pas un message à action encore à l'écran
    *  (« Stylet détecté … Changer », que suit souvent la figure reconnue du
    *  premier trait) : il s'écrit au-dessus de lui, et s'en va seul. */
-  message(texte: string, action?: { libelle: string; faire: () => void }, dessus = false) {
+  message(texte: string, action?: { libelle: string; faire: () => void; cle?: string }, dessus = false) {
     this.toast.classList.toggle('dessus', dessus || this.app.enLecture)
     const el = document.createElement('span')
     el.className = 'ligne'
@@ -1067,11 +1072,19 @@ export class UI implements Interface {
         action.faire()
       })
       el.appendChild(b)
-      this.toastAction = { el, fin: maintenant + 7000 }
+      this.toastAction = { el, fin: maintenant + 7000, cle: action.cle }
       this.toastSimple = null
     } else {
       this.toastSimple = { el, fin: maintenant + Math.max(2600, texte.length * 60) }
     }
+    this.majToast()
+  }
+
+  /** Le message à action de cette clé s'en va, s'il est encore là : son
+   *  bouton n'a plus rien à faire (la page qu'il rendait est revenue) */
+  oublierAction(cle: string) {
+    if (this.toastAction?.cle !== cle) return
+    this.toastAction = null
     this.majToast()
   }
 
@@ -1136,24 +1149,6 @@ export class UI implements Interface {
       d.show()
       montrer()
       saisie.focus()
-    })
-  }
-
-  /** Une question oui/non, dans l'outil lui-même */
-  confirmer(titre: string, texte: string, oui: string): Promise<boolean> {
-    return new Promise(resolve => {
-      const d = this.nouveauDialogue(titre)
-      const corps = d.querySelector('.corps')!
-      corps.innerHTML = `<p></p><div class="actions"><button type="button" class="secondaire">Annuler</button><button type="button" class="principal danger-plein"></button></div>`
-      corps.querySelector('p')!.textContent = texte
-      const b = corps.querySelector('.principal') as HTMLButtonElement
-      b.textContent = oui
-      let fini = false
-      const finir = (v: boolean) => { if (fini) return; fini = true; if (d.open) d.close(); d.remove(); resolve(v) }
-      b.addEventListener('click', () => finir(true))
-      corps.querySelector('.secondaire')!.addEventListener('click', () => finir(false))
-      d.addEventListener('close', () => finir(false))
-      d.showModal(); b.focus()
     })
   }
 

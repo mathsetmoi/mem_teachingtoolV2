@@ -37,13 +37,18 @@ export interface Seance {
 }
 
 /** Les séances du film, de la plus récente à la plus ancienne. On coupe à
- *  chaque silence plus long que `ecart` et à chaque changement de jour. */
+ *  chaque silence plus long que `ecart` et à chaque changement de jour.
+ *  Une étape qui ne change que l'ordre des pages (une page jetée, ou rendue)
+ *  n'est ni un geste, ni une page de la séance, ni une coupure : on la
+ *  saute, et le silence se mesure depuis l'étape gardée d'avant. */
 export function seancesDuFilm(film: readonly Etape[], ecart = ENTRE_DEUX_SEANCES): Seance[] {
   const r: Seance[] = []
   let cour: Seance | null = null
+  let prec: Etape | null = null
   film.forEach((e, i) => {
-    const prec = i ? film[i - 1] : null
+    if (e.seulOrdre) return
     const coupe = !prec || e.t - prec.t > ecart || new Date(e.t).toDateString() !== new Date(prec.t).toDateString()
+    prec = e
     if (coupe || !cour) { cour = { de: i, a: i, debut: e.t, fin: e.t, gestes: 0, pages: [] }; r.push(cour) }
     cour.a = i; cour.fin = e.t; cour.gestes++
     if (e.page && !cour.pages.includes(e.page)) cour.pages.push(e.page)
@@ -106,6 +111,13 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
   let attente = 0                                        // le temps des gestes sans rien de visible
   let ordre = avant.ordre.filter(id => gardees.has(id))
   let derniere = ''                                      // la page montrée au dernier geste
+  /** Le replay suit le professeur quand on jette la page qu'il montrait (le
+   *  pas vide qui change de page). Ce pas n'est écrit qu'au geste visible
+   *  suivant, ou au bout : si la page revient d'abord (« Annuler », Ctrl+Z),
+   *  le replay ne l'a jamais quittée, et son attente revient au geste
+   *  suivant. quittee : la page jetée ; attente : le temps qu'il emportait. */
+  let suivre: { g: EtapeFilm; source: number; quittee: string; attente: number } | null = null
+  const ecrireSuivre = () => { if (suivre) { etapes.push(suivre.g); sources.push(suivre.source); suivre = null } }
   for (let i = debut; i <= a; i++) {
     const etat = tableau.etatA(film[i])
     const parPage = new Map<string, Op[]>()
@@ -119,13 +131,20 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
     const vue = film[i].page
     if (!parPage.size) {
       // Rien de visible n'a changé ; mais si l'on a jeté la page qu'on montrait,
-      // le replay suit le professeur sur celle qu'il regarde maintenant
-      if (derniere && !etat.pages.has(derniere) && gardees.has(vue) && etat.pages.has(vue) && vue !== derniere) {
-        etapes.push({ dt: Math.max(0, Math.round(dt + attente)), p: vue, o: [] }); sources.push(i)
+      // le replay suit le professeur sur celle qu'il regarde maintenant. On le
+      // lit sur l'ordre : une page jetée garde ses formes (voir
+      // Tableau.jeterPage) ; sur un tableau d'avant, elle manquait aux deux.
+      if (suivre && etat.ordre.includes(suivre.quittee)) {
+        // La page jetée revient avant tout autre geste : on ne la quitte pas
+        derniere = suivre.quittee; attente += suivre.attente + dt; suivre = null
+      } else if (derniere && !etat.ordre.includes(derniere) && gardees.has(vue) && etat.ordre.includes(vue) && vue !== derniere) {
+        ecrireSuivre()
+        suivre = { g: { dt: Math.max(0, Math.round(dt + attente)), p: vue, o: [] }, source: i, quittee: derniere, attente: dt + attente }
         derniere = vue; attente = 0
       } else attente += dt
       avant = etat; continue
     }
+    ecrireSuivre()
     // Plusieurs pages touchées d'un coup (rare) : un geste par page
     const ordreTouche = [...parPage.keys()].sort((x, y) => (x === vue ? -1 : 0) - (y === vue ? -1 : 0))
     let ms = film[i].ms
@@ -141,6 +160,7 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
     for (const id of etat.ordre) if (gardees.has(id) && !ordre.includes(id)) ordre.push(id)
     avant = etat
   }
+  ecrireSuivre()
 
   // Ne part que ce que le lecteur montrera : les pages où il s'est passé
   // quelque chose pendant la séance (une page cochée sans geste n'est jamais

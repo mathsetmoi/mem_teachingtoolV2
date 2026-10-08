@@ -309,8 +309,13 @@ toucher une partie mène à son début. À l'intérieur, les gestes rapprochés
 ce que fait avancer la télécommande de présentation. Une figure reconnue au
 stylo est un seul geste : le tracé à main levée s'écrit, puis la figure le
 remplace d'un coup, comme au tableau (sur un tableau d'avant le rythme de la
-main, seule la figure se dessine). Jeter une page n'est pas un geste pour la
-page où l'on revient.
+main, seule la figure se dessine). Supprimer une page, ou la rendre
+(« Annuler », Ctrl+Z), n'est un geste nulle part : ni pour la page où l'on
+arrive, ni pour la page rendue, ni dans le compte d'une séance (une séance
+qui n'a fait que cela n'existe pas, et « Sa dernière séance » finit à l'heure
+du dernier vrai geste). Une page supprimée et jamais rendue est rangée dans
+« Pages jetées », avec toute son histoire ; rendue, elle reprend sa place et
+son histoire continue.
 
 **Les commandes**, toutes au clavier et en grands boutons : Espace, K ou un
 appui bref sur le tableau pour lire ou s'arrêter ; → ou Page↓ pour un pas,
@@ -402,7 +407,12 @@ tracé brut d'une figure reconnue, ni les images inutilisées. Le rythme de la
 main (le temps de chaque point d'un trait) ne part qu'avec le geste où la
 classe a vu ce trait s'écrire. Tout ce qui a été
 visible pendant la séance, en revanche, part, même effacé ensuite : l'aperçu
-permet de le revoir. Un test
+permet de le revoir. Une page supprimée puis rendue (« Annuler », Ctrl+Z)
+pendant la séance ne change rien au replay : les mêmes gestes, sans pas vide,
+et rien ne s'y redessine. Une page supprimée pour de bon au milieu de la
+séance : le replay suit le professeur sur la page où il est arrivé ; supprimée
+après le dernier geste, elle n'allonge pas la séance, qui finit sur ce geste.
+Un test
 automatique le vérifie (`npm test`). Le lecteur n'écrit rien dans le navigateur
 de l'élève (ni stockage, ni cookie), ne charge aucune police ni aucun service
 extérieur, et sa politique de sécurité ne l'autorise à parler qu'aux relais.
@@ -615,7 +625,7 @@ C…), sur le tableau ou sur une image.
 
 Stylo sensible à la pression, surligneur, gomme, segments (Maj pour
 les angles de 15°, aimant au quadrillage), formules LaTeX avec aperçu et
-raccourcis, sélection et déplacement, annuler/rétablir (page par page), pages, fonds (blanc,
+raccourcis, sélection et déplacement, annuler/rétablir (page par page), pages (supprimées sans question, et rendues par Annuler ou Ctrl+Z), fonds (blanc,
 petits carreaux, Seyès, repère gradué), zoom de 10 % à 2000 % — le quadrillage
 suit le zoom comme une carte : les carreaux trop petits s'estompent et laissent
 place à de plus grands (1 cm, 5 cm, 10 cm…), la page n'est jamais blanche.
@@ -686,6 +696,24 @@ points ; une figure reconnue en fait une seconde (Ctrl+Z rend le tracé).
 Les piles vivent le temps de la séance : après un rechargement, on ne défait
 plus ce qui a été fait avant (le replay, lui, a tout gardé).
 
+**Supprimer une page.** La poubelle de la barre du haut ne pose plus de
+question : la page part tout de suite, on arrive sur la page d'avant (la
+suivante pour la première), et un message « Page 2 supprimée » porte un
+bouton **Annuler** pendant 7 s. Ctrl+Z (ou ↶), juste après, sur la page où
+l'on se retrouve, la ramène aussi ; si l'on a écrit entre-temps, Ctrl+Z défait
+d'abord ce qu'on a écrit, puis la ramène. Elle revient à sa place (juste après
+la page qui la précédait, même si l'on a ajouté des pages depuis), entière :
+ses formes, son fond, son repère, la vue qu'on y avait, ce qu'on peut y
+défaire. Rien n'est recopié : la page n'a jamais quitté le document, elle
+avait seulement quitté la liste des pages ; la revue et le replay la voient
+telle qu'elle était, sans rien redessiner. Ctrl+Y ne la supprime pas de
+nouveau. Le second clic d'un double-clic sur la poubelle ne fait rien (on ne
+jette pas deux pages d'un coup). Une page seule n'est jamais supprimée : la
+poubelle (« Effacer la page ») l'efface, avec « Page effacée · Annuler », ou
+dit « La page est déjà vide. ». Après un rechargement, une page supprimée ne
+revient plus ; son histoire reste dans « Pages jetées » de la revue. De même,
+un fichier `.memc` la garde dans l'histoire du tableau, pas parmi ses pages.
+
 **La barre de gauche** ne bouge pas : la poubelle y garde sa place, grisée
 quand rien n'est choisi, comme ↶ et ↷ quand il n'y a rien à faire. Sur un écran bas (moins de 900 px de haut environ),
 ses boutons gardent leurs 44 px et elle défile, avec une fine barre de
@@ -755,7 +783,8 @@ découlent sans code supplémentaire :
    document, ni le fichier `.memc` ne changent. Un Ctrl+Z ne peut donc plus
    défaire, sans rien montrer, ce qu'on a fait sur une autre page. Un geste
    reste une étape, même long (le coup de gomme lent) ; le film, lui, garde
-   une étape par changement.
+   une étape par changement. Supprimer une page ne fait que la retirer de
+   l'ordre des pages : Ctrl+Z la remet, la même, sans rien recopier.
 3. **Rien ne se perd.** Le document garde ce qui a été effacé : c'est ce qui
    permet la revue en classe et le replay des élèves.
 
@@ -767,7 +796,7 @@ cours, qui fait la latence ressentie au stylet.
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule), les fonds |
-| `src/document.ts` | Document Yjs : pages, formes, annulation (une pile par page, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert) |
+| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert) |
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris |
 | `src/rendu.ts` | Les trois couches d'affichage |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |

@@ -54,8 +54,12 @@ function heureDe(e: Event): number {
 export interface Interface {
   maj(): void
   editerFormule(latex: string, ecranX: number, ecranY: number): Promise<string | null>
-  /** Un message en bas de l'écran ; avec une action, un bouton à côté du texte */
-  message(texte: string, action?: { libelle: string; faire: () => void }): void
+  /** Un message en bas de l'écran ; avec une action, un bouton à côté du
+   *  texte. cle : ce que l'action concerne (voir oublierAction) */
+  message(texte: string, action?: { libelle: string; faire: () => void; cle?: string }): void
+  /** Le message à action de cette clé n'a plus d'objet (la page que son
+   *  « Annuler » rendait est revenue par Ctrl+Z) : il s'en va */
+  oublierAction(cle: string): void
   /** Le menu du rôle du doigt (dessine, déplace, auto) */
   ouvrirReglageDoigt(): void
   ouvrirMenuPartie(id: string, prise: Prise, clientX: number, clientY: number): void
@@ -473,12 +477,57 @@ export class App {
     this.tableau.supprimer(this.page, this.formes.map(f => f.id))
   }
 
+  /** La poubelle de la barre du haut. Pas de question : la page part tout
+   *  de suite, et « Annuler » (dans le message, 7 s) ou Ctrl+Z, juste après,
+   *  sur la page où l'on se retrouve, la ramène à sa place, entière (voir
+   *  Tableau.jeterPage). On arrive sur la page d'avant (la suivante pour la
+   *  première). Une page seule n'est jamais jetée : on l'efface, ce qui
+   *  s'annule aussi ; vide, il n'y a rien à faire. */
   supprimerPage() {
-    if (this.pages.length <= 1) return this.ui.message('Il faut garder au moins une page.')
-    const i = this.pages.indexOf(this.page)
-    const id = this.page
-    this.allerPage(this.pages[i > 0 ? i - 1 : 1])
-    this.tableau.supprimerPage(id)
+    this.viderPointEnAttente()
+    const pages = this.pages, id = this.page, i = pages.indexOf(id)
+    if (i < 0) return
+    if (pages.length <= 1) {
+      if (!this.formes.length) return this.ui.message('La page est déjà vide.')
+      this.viderPage()
+      // L'effacement fait seul son étape : rien ne s'y ajoute ensuite
+      this.tableau.nouveauGeste()
+      const pile = this.tableau.annulationDe(id)
+      const haut = pile?.undoStack[pile.undoStack.length - 1]
+      this.ui.message('Page effacée', { libelle: 'Annuler', faire: () => {
+        // Le bouton ne défait que l'effacement, s'il est encore le dernier
+        // geste de la page ; sinon il défairait autre chose, qu'on ne voit pas
+        this.viderPointEnAttente()
+        const p = this.tableau.annulationDe(id)
+        if (!haut || !p || p.undoStack[p.undoStack.length - 1] !== haut) return this.ui.message('La page a changé depuis : ↶ défait les gestes un à un.')
+        this.allerPage(id)
+        this.annuler()
+      } })
+      return
+    }
+    const voisine = pages[i > 0 ? i - 1 : 1]
+    this.allerPage(voisine)
+    if (!this.tableau.jeterPage(id, voisine)) return
+    this.ui.message(`Page ${i + 1} supprimée`, { libelle: 'Annuler', faire: () => this.rendrePage(id), cle: 'page:' + id })
+  }
+
+  /** Rend une page jetée (le bouton « Annuler » de son message) : elle
+   *  revient à sa place, avec tout ce qu'elle avait, et on la regarde. Rien
+   *  si elle est déjà revenue (un Ctrl+Z l'a rendue). Sa vue l'attend : on
+   *  l'a gardée en la quittant. */
+  rendrePage(id: string): boolean {
+    this.viderPointEnAttente()
+    const k = this.tableau.rendrePage(id)
+    if (k < 0) return false
+    this.revenirSur(id, k)
+    return true
+  }
+
+  /** On regarde la page qui vient de revenir, et un message le dit */
+  private revenirSur(id: string, k: number) {
+    this.allerPage(id)
+    this.ui.oublierAction('page:' + id)
+    this.ui.message(`Page ${k + 1} rétablie`)
   }
 
   /** Le repère se pose au milieu de ce qu'on regarde, calé sur le centimètre. */
@@ -536,12 +585,19 @@ export class App {
    *  visible, c'est lui qui part. Vrai si un geste a été défait.
    *  L'interface est remise à jour APRÈS avoir vidé la sélection : le
    *  rafraîchissement déclenché par l'annulation passe avant, et laisserait
-   *  le panneau d'options ouvert sur une figure qui n'est plus choisie. */
-  annuler(): boolean {
+   *  le panneau d'options ouvert sur une figure qui n'est plus choisie.
+   *  Juste après « Supprimer la page », c'est la page jetée qui revient : on
+   *  y va, un message le dit, et la réponse est 'page' (le message est déjà
+   *  dit) ; sinon, vrai si un geste a été défait. */
+  annuler(): 'page' | boolean {
     this.viderPointEnAttente()
-    const fait = this.tableau.annuler(this.page) !== null
+    const r = this.tableau.annuler(this.page)
+    if (r?.page) {
+      this.revenirSur(r.page, this.pages.indexOf(r.page))
+      return 'page'
+    }
     this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()
-    return fait
+    return r !== null
   }
 
   /** Refait le dernier geste défait sur la page qu'on regarde. Comme annuler :
