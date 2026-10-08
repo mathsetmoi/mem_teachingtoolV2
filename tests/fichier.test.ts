@@ -9,7 +9,7 @@ import { Tableau } from '../src/document'
 import type { Trait } from '../src/types'
 import { DEBUT_TABLEAU, ErreurFilm, ecrireFilm, lireFilm } from '../src/revoir/format'
 import type { FilmEleve } from '../src/revoir/format'
-import { ErreurFichier, EXTENSION_TABLEAU, VERSION_TABLEAU, dateLisible, ecrireTableau, lireTableau, nomTableau, pagesLisibles, quandLisible, tailleLisible } from '../src/fichier'
+import { ErreurFichier, EXTENSION_TABLEAU, VERSION_TABLEAU, crc32, dateLisible, ecrireTableau, lireTableau, nomTableau, pagesLisibles, quandLisible, tailleLisible } from '../src/fichier'
 
 let horloge = new Date('2026-10-07T14:05:00').getTime()
 let numero = 0
@@ -138,6 +138,63 @@ describe('ouvrir un fichier qui n\'est pas un tableau qu\'on sait lire', () => {
     const sv = Y.encodeStateVector(d)
     d.getArray('ordre').push(['b'])
     expect(refuse(new Uint8Array([...entete, ...gzipSync(Y.encodeStateAsUpdate(d, sv))]))).toBe(abime)
+  })
+
+  it('un seul bit changé n\'importe où dans les données compressées : refusé, ou le même tableau', async () => {
+    // fflate ne vérifie pas la fin du gzip (somme CRC-32, taille) : sans ce
+    // contrôle, un bit changé donnait souvent un tableau altéré, accepté
+    const abime = 'Ce fichier .memc est abîmé : il ne peut pas être ouvert. Le tableau actuel n\'a pas changé.'
+    const t = new Tableau(null)
+    const p = t.ajouterPage('carreaux', 0); t.pageVue = p
+    t.nouveauGeste(); t.poser(p, trait(140, 60)); await attendre(1000)
+    t.nouveauGeste(); t.poser(p, trait(140, 100)); await attendre(1000)
+    const o = await octets(ecrireTableau(t.doc))
+    const juste = Y.encodeStateAsUpdate(t.doc)
+    const fin = o.indexOf(0x0a)
+    const alteres: string[] = [], autres: string[] = []
+    let refuses = 0
+    for (let i = fin + 1; i < o.length; i++) for (let b = 0; b < 8; b++) {
+      const c = o.slice(); c[i] ^= 1 << b
+      const m = refuse(c)
+      if (m === null) { const e = lireTableau(c).etat; if (e.length !== juste.length || e.some((x, k) => x !== juste[k])) alteres.push(`octet ${i - fin - 1}, bit ${b}`) }
+      else if (m === abime) refuses++
+      else autres.push(`octet ${i - fin - 1}, bit ${b} : ${m}`)
+    }
+    expect(alteres).toEqual([])
+    expect(autres).toEqual([])
+    // Seuls passent les bits qui ne touchent pas aux données (l'heure du gzip…)
+    expect(refuses).toBeGreaterThan((o.length - fin - 1 - 10) * 8)
+  })
+
+  it('la somme CRC-32 est celle du gzip', () => {
+    expect(crc32(strToU8('123456789'))).toBe(0xcbf43926)              // la valeur de référence
+    expect(crc32(new Uint8Array(0))).toBe(0)
+    const o = gzipSync(strToU8('Le tableau de la séance, '.repeat(200)))
+    const n = o.length
+    expect(crc32(strToU8('Le tableau de la séance, '.repeat(200)))).toBe((o[n - 8] | o[n - 7] << 8 | o[n - 6] << 16 | o[n - 5] << 24) >>> 0)
+  })
+
+  it('un tableau dont une page de l\'ordre n\'existe pas, ou n\'a pas de formes', () => {
+    const abime = 'Ce fichier .memc est abîmé : il ne peut pas être ouvert. Le tableau actuel n\'a pas changé.'
+    const entete = strToU8('{"format":"mem-tableau","v":1,"app":"MEM teachingtool","date":1,"pages":1}\n')
+    const fichier = (d: Y.Doc) => new Uint8Array([...entete, ...gzipSync(Y.encodeStateAsUpdate(d))])
+    // L'ordre nomme une page absente (une racine « pages » au nom changé)
+    const sans = new Y.Doc({ gc: false })
+    sans.getArray('ordre').push(['a'])
+    sans.getMap('pagez').set('a', new Y.Map())
+    expect(refuse(fichier(sans))).toBe(abime)
+    // La page existe, sans ses formes
+    const vide = new Y.Doc({ gc: false })
+    vide.getArray('ordre').push(['a'])
+    const p = new Y.Map<unknown>(); p.set('fond', 'blanc')
+    vide.getMap('pages').set('a', p)
+    expect(refuse(fichier(vide))).toBe(abime)
+    // Une page entière passe
+    const bon = new Y.Doc({ gc: false })
+    bon.getArray('ordre').push(['a'])
+    const q = new Y.Map<unknown>(); q.set('fond', 'blanc'); q.set('formes', new Y.Map())
+    bon.getMap('pages').set('a', q)
+    expect(lireTableau(fichier(bon)).pages).toBe(1)
   })
 })
 

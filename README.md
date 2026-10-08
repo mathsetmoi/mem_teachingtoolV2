@@ -540,7 +540,9 @@ bout de la barre du haut, l'emporte dans un fichier :
   tableau de ce navigateur (8 pages) et tout son historique ») et propose
   **Enregistrer d'abord**. On peut aussi glisser le fichier sur la page. Le
   fichier est relu en entier avant de toucher à quoi que ce soit : un fichier
-  abîmé, un film élève (`.mem`), un fichier d'une version plus récente ou un
+  abîmé (tronqué, ou d'un seul bit changé : la somme CRC-32 et la taille de la
+  fin du gzip sont vérifiées, et chaque page de l'ordre doit exister avec ses
+  formes), un film élève (`.mem`), un fichier d'une version plus récente ou un
   fichier quelconque sont refusés avec une phrase qui dit quoi faire, et le
   tableau n'a pas changé. Le remplacement se fait d'un bloc dans la base du
   navigateur (s'il échoue, faute de place, l'ancien tableau reste entier),

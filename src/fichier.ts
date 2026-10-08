@@ -62,17 +62,58 @@ export function lireTableau(octets: Uint8Array): { entete: EnteteTableau; etat: 
   if (entete.v > VERSION_TABLEAU) throw new ErreurFichier(PLUS_RECENT)
   let etat: Uint8Array
   let pages = 0
+  const corps = octets.subarray(fin + 1), n = corps.length
   const essai = new Y.Doc({ gc: false })
   try {
-    etat = gunzipSync(octets.subarray(fin + 1))
+    // La fin du gzip : la somme CRC-32 des données, puis leur taille. fflate
+    // ne la vérifie pas ; sans elle, un seul bit changé (une clé fatiguée, une
+    // copie défectueuse) donnait souvent un tableau altéré sans aucun signe.
+    // fflate réserve la place d'après la taille annoncée : on refuse d'abord
+    // celle que deflate ne peut pas atteindre (au mieux 1032 octets pour un).
+    if (n < 18) throw new Error('trop court')
+    const taille = lire32(corps, n - 4)
+    if (taille > n * 1032) throw new Error('taille impossible')
+    etat = gunzipSync(corps)
+    if (etat.length !== taille || crc32(etat) !== lire32(corps, n - 8)) throw new Error('somme fausse')
     Y.applyUpdate(essai, etat)
     // Un morceau manquant (un fichier tronqué) laisse des changements en
     // attente de ce qui les précède : le document n'est pas entier
     if (essai.store.pendingStructs || essai.store.pendingDs) throw new Error('incomplet')
+    // Chaque page de l'ordre existe, avec ses formes : sinon on verrait des
+    // pages vides, où rien de ce qu'on écrit ne serait gardé
+    const toutes = essai.getMap('pages')
+    for (const id of essai.getArray('ordre').toArray()) {
+      const p = toutes.get(id as string)
+      if (!(p instanceof Y.Map) || !(p.get('formes') instanceof Y.Map)) throw new Error('page incomplète')
+    }
     pages = essai.getArray('ordre').length
   } catch { throw new ErreurFichier(ABIME) } finally { essai.destroy() }
   if (!pages) throw new ErreurFichier(ABIME)
   return { entete, etat, pages }
+}
+
+/** Un entier de 32 bits, petit-boutiste (l'ordre du gzip) */
+function lire32(o: Uint8Array, i: number): number {
+  return (o[i] | o[i + 1] << 8 | o[i + 2] << 16 | o[i + 3] << 24) >>> 0
+}
+
+let tableCrc: Int32Array | null = null
+
+/** La somme CRC-32 du gzip (polynôme 0xEDB88320). fflate ne l'exporte pas ;
+ *  celle-ci marche partout, en http:// sur le réseau local comme en file://. */
+export function crc32(o: Uint8Array): number {
+  if (!tableCrc) {
+    tableCrc = new Int32Array(256)
+    for (let i = 0; i < 256; i++) {
+      let c = i
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+      tableCrc[i] = c
+    }
+  }
+  const t = tableCrc
+  let c = -1
+  for (let i = 0; i < o.length; i++) c = t[(c ^ o[i]) & 255] ^ (c >>> 8)
+  return ~c >>> 0
 }
 
 // ---------- Les mots ----------
