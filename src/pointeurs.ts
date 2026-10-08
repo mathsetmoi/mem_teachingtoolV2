@@ -19,6 +19,26 @@ export function typePointeur(t: string): TypePointeur {
  *  qu'une souris. En deçà, rien ne bouge et rien ne s'écrit. */
 export const SEUIL_GLISSER: Record<TypePointeur, number> = { mouse: 4, pen: 6, touch: 8 }
 
+/** À quelle distance du tracé d'un objet (en pixels d'écran) on le prend
+ *  encore. Le doigt vise moins juste que le stylet, le stylet que la souris :
+ *  20 px au doigt font une cible de 40 px, la taille d'un bouton qu'on touche
+ *  sans regarder. C'est plus large que tldraw, qui ne prend qu'à 3 ou 4 px :
+ *  un choix propre à MEM, pour le doigt sur une tablette ou un TNI. Mais on
+ *  écrit petit et serré : c'est pourquoi, entre deux objets à portée, le
+ *  tracé le plus proche l'emporte (voir cibleSous, dans app.ts), et qu'un
+ *  trait écrit dans un grand cadre se prend avant le cadre. */
+export const TOLERANCE_PRISE: Record<TypePointeur, number> = { mouse: 6, pen: 10, touch: 20 }
+
+/** À cette distance du tracé d'un objet ou moins (pixels d'écran), un appui
+ *  le SAISIT : glissé, il l'emporte. Plus loin, jusqu'à TOLERANCE_PRISE, un
+ *  toucher le prend, mais un glisser entourera ce qu'on veut prendre (le
+ *  lasso) : sinon, à 20 px au doigt, on ne pourrait plus entourer un mot
+ *  écrit à la main sans en emporter une lettre. 10 au doigt plutôt que 6 : un
+ *  doigt qui vise un trait fin tombe souvent à 7 ou 8 px. Au stylet de la
+ *  tablette graphique, qui survole avant de toucher, le curseur montre la
+ *  différence. */
+export const PRISE_GLISSER: Record<TypePointeur, number> = { mouse: 6, pen: 6, touch: 10 }
+
 /** Le départ d'un appui, et s'il est devenu un glisser */
 export interface Depart {
   x: number

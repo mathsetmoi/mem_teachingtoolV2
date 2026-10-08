@@ -2,7 +2,7 @@
 // paume, quand le stylet écrit sur l'écran lui-même, et le rôle du doigt
 // (un réglage de cet appareil, gardé dans le navigateur).
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, SEUIL_GLISSER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from '../src/pointeurs'
+import { DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, SEUIL_GLISSER, TOLERANCE_PRISE, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from '../src/pointeurs'
 import { choisirDoigt, leDoigtDeplace, lire, noterStyletDirect, reglages } from '../src/reglages'
 
 describe('le seuil du glisser', () => {
@@ -28,6 +28,21 @@ describe('le seuil du glisser', () => {
     expect(depasseSeuil(d, 0, 6)).toBe(true)
     expect(depasseSeuil(d, 0, 0)).toBe(true)
     expect(d.parti).toBe(true)
+  })
+})
+
+describe('la prise d\'un objet', () => {
+  it('on prend à 6 px à la souris, 10 au stylet, 20 au doigt', () => {
+    expect(TOLERANCE_PRISE).toEqual({ mouse: 6, pen: 10, touch: 20 })
+  })
+
+  it('on saisit (pour l\'emporter) plus près : 6 px à la souris et au stylet, 10 au doigt', () => {
+    expect(PRISE_GLISSER).toEqual({ mouse: 6, pen: 6, touch: 10 })
+    // Saisir n'est jamais plus large que prendre, ni plus serré que le seuil du glisser
+    for (const k of ['mouse', 'pen', 'touch'] as const) {
+      expect(PRISE_GLISSER[k]).toBeLessThanOrEqual(TOLERANCE_PRISE[k])
+      expect(PRISE_GLISSER[k]).toBeGreaterThanOrEqual(SEUIL_GLISSER[k])
+    }
   })
 })
 

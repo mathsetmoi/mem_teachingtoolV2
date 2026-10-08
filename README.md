@@ -46,6 +46,23 @@ Une figure qu'on vient de tracer (au stylo, aux Formes, au Segment) n'est pas
 sélectionnée : on continue d'écrire tout près sans attraper ses sommets. Une
 copie, une image importée, l'image d'une transformation le sont.
 
+**Prendre un objet.** Avec l'outil Sélection, un objet se prend sur son tracé,
+à 6 px près à la souris, 10 au stylet, 20 au doigt (des pixels d'écran, quel
+que soit le zoom). Une figure fermée sans fond (triangle, rectangle, polygone,
+cercle entier ; pas un arc, ni une ligne ouverte, ni un tracé à main levée
+refermé) se prend aussi par l'intérieur, mais le tracé le plus proche passe
+avant elle : un trait écrit dans un grand cadre se prend avant le cadre, et
+entre deux intérieurs, le plus petit l'emporte (un triangle tracé dans un
+grand rectangle, même colorié, se prend par son milieu). Une image, une
+formule, une figure coloriée se prennent partout où elles sont et cachent ce
+qui est dessous ; ce qu'on a écrit par-dessus (un soulignement) se prend avant
+elles. Vu de très près, l'intérieur d'une figure qui déborde tout l'écran ne
+prend rien. Le doigt qui « déplace » prend de même d'un simple toucher, mais
+n'emporte un objet sélectionné que s'il le saisit à 10 px de son tracé (ou par
+une image, une formule, une figure coloriée) : parti du milieu d'un grand
+cadre, il déplace la vue. Jamais sous le Stylo : écrire dans un triangle ne le
+prend pas, et un clic droit dans son vide ne le vise pas.
+
 **Le panneau d'options** ne s'ouvre qu'à la demande : **double-clic** ou
 **clic droit** sur l'objet (un simple clic le sélectionne seulement, pour le
 déplacer) ; au stylet, le bouton du stylet fait le clic droit ; au doigt, avec
@@ -611,12 +628,16 @@ ce navigateur, hors du document : ni un fichier, ni un replay ne les emportent.
 
 **Échap** annule ce qui est en cours (menu, sélection, polygone) ; s'il n'y a
 rien, il passe à l'outil Sélection, et un second Échap rend l'outil d'avant.
-Avec la Sélection, glisser un objet le déplace, glisser dans le vide déplace le
-tableau, Maj + glisser encadre ; Maj + clic (ou Ctrl + clic, ⌘ + clic sur Mac)
-ajoute un objet à la sélection, ou l'en retire s'il y était (Maj + glisser un
-objet sélectionné déplace toute la sélection) ; un clic droit dans une
-sélection de plusieurs objets la laisse entière. L'objet survolé s'éclaire
-d'un halo bleu qui suit sa forme, avant le clic ; une droite ou une
+Avec la Sélection, un objet se prend à 6 px de son tracé à la souris, 10 au
+stylet, 20 au doigt ; une figure fermée sans fond se prend aussi par
+l'intérieur, le trait le plus proche passant avant elle (jamais sous le Stylo,
+voir « Prendre un objet »). Glisser un objet le déplace, glisser dans le vide
+déplace le tableau, Maj + glisser encadre ; Maj + clic (ou Ctrl + clic, ⌘ +
+clic sur Mac) ajoute un objet à la sélection, ou l'en retire s'il y était (Maj
++ glisser un objet sélectionné déplace toute la sélection) ; un clic droit
+dans une sélection de plusieurs objets la laisse entière. L'objet survolé (par
+son tracé ou son intérieur) s'éclaire d'un halo bleu qui suit sa forme, avant
+le clic ; une droite ou une
 demi-droite sélectionnée se surligne sur toute sa longueur visible ; les
 flèches poussent la sélection d'1 mm (1 cm avec Maj).
 
@@ -701,7 +722,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris |
 | `src/rendu.ts` | Les trois couches d'affichage |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
-| `src/geometrie.ts` | Ce que touche la gomme ou la sélection |
+| `src/geometrie.ts` | Ce que touche la gomme ; ce que vise la sélection (la distance au tracé, l'intérieur plein ou nu, l'aire) |
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
 | `src/revue/` | La revue en classe : ce qu'on revoit, les images, la frise, le choix |
 | `src/revoir/` | Le replay des élèves : format du film, rythme de la main, instruments, exporteur, bobine, lecteur (`revoir.html`), relais |
@@ -719,7 +740,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page ; la molette |
 | `src/menus.ts` | Les petits menus flottants (un seul ouvert, Échap, un appui ailleurs) |
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt), hors du document |
-| `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la paume, le stylet sur l'écran, le double appui, les mots des messages |
+| `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
 | `src/fichier.ts` | Le tableau dans un fichier `.memc` : l'écrire, le relire (et refuser ce qui n'en est pas un) |
 | `src/sauvegarde.ts` | Enregistrer et ouvrir un tableau : le menu ⋯, Ctrl + S, Ctrl + O, la question avant de remplacer, les autres onglets |

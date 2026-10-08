@@ -8,7 +8,7 @@
 import type { Tableau } from './document'
 import { Camera, vuePour } from './camera'
 import { Rendu } from './rendu'
-import { chevauche, distanceAuSegment, rectangle, touche } from './geometrie'
+import { aireDe, chevauche, distanceAuSegment, distanceAuTrace, interieur, rectangle, touche } from './geometrie'
 import type { Figure, Fond, Forme, Formule, Habillage, Outil, Polygone, Trait, TypeForme } from './types'
 import { CM, uid } from './types'
 import type { P, Reconnue, Transformation } from './formes'
@@ -24,7 +24,7 @@ import { boiteDe } from './revoir/bobine'
 import type { Boite } from './revoir/bobine'
 import { choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, reglages } from './reglages'
 import type { Doigt } from './reglages'
-import { DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from './pointeurs'
+import { DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, TOLERANCE_PRISE, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from './pointeurs'
 import type { Depart, Toucher, TypePointeur } from './pointeurs'
 import { CTRL, MAC, lireMolette } from './navigateur'
 import { avale } from './menus'
@@ -746,12 +746,105 @@ export class App {
     return null
   }
 
-  /** L'objet qu'on prend sous le pointeur (outil Sélection, doigt qui
-   *  déplace) : touché sur son trait, ou par un morceau qui en sort, dans
-   *  n'importe quelle figure (le centre d'un cercle, le nom d'un sommet).
-   *  C'est la figure entière qu'on prend ; le morceau, au clic suivant. */
-  private objetSous(m: P, s: P, rayon = 6): Forme | null {
-    return this.formeSous(m.x, m.y, rayon) ?? this.priseSous(s, { toutes: true })?.f ?? null
+  /** Ce qu'on prend sous le pointeur (outil Sélection, doigt qui déplace,
+   *  clic droit), m dans le monde, s à l'écran, et par où on le prend :
+   *  - 'trace' : près de son tracé, à TOLERANCE_PRISE pixels d'écran au plus
+   *    selon le pointeur (ecart : à combien) ;
+   *  - 'morceau' : un morceau qui sort d'une figure (le centre d'un cercle, le
+   *    nom d'un sommet), dans n'importe quelle figure ; c'est la figure
+   *    entière qu'on prend, le morceau au clic suivant ;
+   *  - 'plein' : dans une formule, une image, une figure coloriée ;
+   *  - 'dedans' : dans une figure fermée sans fond, seulement si o.dedans
+   *    (l'outil Sélection, le toucher du doigt qui déplace : jamais sous un
+   *    outil de dessin, où écrire dans un triangle ne doit pas le prendre).
+   *  Le bord le plus proche l'emporte : un trait ou une petite figure écrits
+   *  dans un grand cadre se prennent avant le cadre. Un plein cache ce qui est
+   *  sous lui à cet endroit. L'ordre, en détail : les tracés à 6 px ou moins
+   *  (le plus proche), les morceaux, l'intérieur s'il est plein (entre lui et
+   *  les intérieurs nus, le plus petit), les tracés plus loin, enfin
+   *  l'intérieur nu. Une seule boucle sur les formes, chacune écartée d'abord
+   *  par sa boîte : le survol reste léger sur une page de milliers de traits. */
+  private cibleSous(m: P, s: P, o: { pointeur: TypePointeur; dedans: boolean }):
+    { f: Forme; par: 'trace' | 'morceau' | 'plein' | 'dedans'; ecart: number } | null {
+    const z = this.cam.z, tol = TOLERANCE_PRISE[o.pointeur], r = tol / z
+    type Candidat = { f: Forme; i: number; ecart: number }
+    const traces: Candidat[] = [], pleins: Candidat[] = [], nus: Candidat[] = []
+    for (let i = 0; i < this.formes.length; i++) {
+      const f = this.formes[i]
+      const infinie = f.type === 'polygone' && !!f.prolonge          // une droite dépasse sa boîte
+      const b = this.boiteDeForme(f)
+      if (!infinie) {
+        if (!b) continue
+        // Un point seul se prend à 6 unités de plus (voir distanceAuTrace)
+        const k = r + (f.type === 'polygone' && f.pts.length === 2 ? 6 : 0)
+        if (m.x < b.x - k || m.x > b.x + b.l + k || m.y < b.y - k || m.y > b.y + b.h + k) continue
+      }
+      const d = distanceAuTrace(f, m.x, m.y, b) * z
+      if (d <= tol) traces.push({ f, i, ecart: d })
+      const dans = interieur(f, m.x, m.y, b)
+      if (dans === 'plein') pleins.push({ f, i, ecart: 0 })
+      else if (dans === 'nu' && o.dedans) nus.push({ f, i, ecart: 0 })
+    }
+    // Vu de près, l'intérieur d'une figure qui déborde tout l'écran (un grand
+    // cercle à 800 %) ne prend rien : on regarde ce qui est dedans, et un
+    // toucher dans le vide doit pouvoir désélectionner (règle de tldraw)
+    if (nus.length) {
+      const zl = this.ui?.zoneLibre() ?? { x: 0, y: 0, l: this.rendu.l, h: this.rendu.h }
+      for (let k = nus.length - 1; k >= 0; k--) {
+        const g = this.boiteGeometrique(nus[k].f)
+        const a = this.cam.versEcran(g.x, g.y), c = this.cam.versEcran(g.x + g.l, g.y + g.h)
+        if (a.x <= zl.x && a.y <= zl.y && c.x >= zl.x + zl.l && c.y >= zl.y + zl.h) nus.splice(k, 1)
+      }
+    }
+    // Un plein cache ce qui est sous lui : une image posée sur un trait se
+    // prend par l'image, une formule posée sur une image par la formule
+    const haut = pleins.length ? pleins[pleins.length - 1].i : -1
+    const visibles = (l: Candidat[]) => l.filter(c => c.i >= haut)
+    const tous = visibles(traces), plein = pleins.length ? pleins[pleins.length - 1] : null, vides = visibles(nus)
+    // Le plus proche, et à un demi-pixel près, le plus haut
+    const plusProche = (l: Candidat[]) => {
+      if (!l.length) return null
+      const min = Math.min(...l.map(c => c.ecart))
+      return l.filter(c => c.ecart <= min + 0.5).reduce((a, c) => (c.i > a.i ? c : a))
+    }
+    const net = plusProche(tous.filter(c => c.ecart <= TOLERANCE_PRISE.mouse))
+    if (net) return { f: net.f, par: 'trace', ecart: net.ecart }
+    // Le sommet d'une figure cachée sous une image ne se prend pas à travers
+    // elle : c'est l'image qu'on touche, comme avant
+    const morceau = this.priseSous(s, { toutes: true })
+    if (morceau && this.formes.indexOf(morceau.f) >= haut) return { f: morceau.f, par: 'morceau', ecart: 0 }
+    // L'intérieur : le plus petit l'emporte (un triangle sans fond dans un
+    // grand rectangle colorié se prend par son milieu), puis le plus haut
+    const dedans = [...(plein ? [plein] : []), ...vides].map(c => ({ ...c, aire: aireDe(c.f, this.boiteDeForme(c.f)) }))
+    const gagnant = dedans.length ? dedans.reduce((a, c) => (c.aire < a.aire || (c.aire === a.aire && c.i > a.i) ? c : a)) : null
+    if (gagnant && gagnant === dedans[0] && plein) return { f: gagnant.f, par: 'plein', ecart: 0 }
+    const loin = plusProche(tous)
+    if (loin) return { f: loin.f, par: 'trace', ecart: loin.ecart }
+    return gagnant ? { f: gagnant.f, par: 'dedans', ecart: 0 } : null
+  }
+
+  /** L'objet que prend le pointeur (voir cibleSous) */
+  private objetSous(m: P, s: P, o: { pointeur: TypePointeur; dedans: boolean }): Forme | null {
+    return this.cibleSous(m, s, o)?.f ?? null
+  }
+
+  /** L'appui SAISIT-il l'objet visé (glissé, il l'emporte) ? Par un morceau,
+   *  par un plein, ou tout près de son tracé (PRISE_GLISSER) ; plus loin, un
+   *  toucher le prend mais un glisser ne l'emporte pas. */
+  private saisi(c: { par: string; ecart: number }, pointeur: TypePointeur): boolean {
+    return c.par === 'morceau' || c.par === 'plein' || (c.par === 'trace' && c.ecart <= PRISE_GLISSER[pointeur])
+  }
+
+  /** La boîte d'une figure fermée, sans marge pour l'épaisseur ni les noms */
+  private boiteGeometrique(f: Forme): Boite {
+    if (f.type === 'cercle') return { x: f.x - f.r, y: f.y - f.r, l: 2 * f.r, h: 2 * f.r }
+    const b = this.boiteDeForme(f)
+    if (f.type !== 'polygone') return b ?? { x: f.x, y: f.y, l: 0, h: 0 }
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
+    for (let i = 0; i < f.pts.length; i += 2) {
+      x1 = Math.min(x1, f.pts[i]); x2 = Math.max(x2, f.pts[i]); y1 = Math.min(y1, f.pts[i + 1]); y2 = Math.max(y2, f.pts[i + 1])
+    }
+    return { x: f.x + x1, y: f.y + y1, l: x2 - x1, h: y2 - y1 }
   }
 
   private brancherGestes() {
@@ -770,7 +863,11 @@ export class App {
       if (this.enLecture) return
       const s = this.ecran(e), p = this.monde(e)
       const prise = this.priseSous(s, { toutes: true })
-      const f = this.formeSous(p.x, p.y) ?? prise?.f ?? null
+      // L'intérieur d'une figure fermée ne compte qu'à la Sélection et au doigt
+      // qui déplace : le Stylo en main, un clic droit dans le vide d'un
+      // triangle ne le vise pas
+      const dedans = this.outil === 'selection' || (this.dernierPointeur === 'touch' && this.doigtDeplace)
+      const f = this.objetSous(p, s, { pointeur: this.dernierPointeur, dedans })
       if (f && this.selection.size > 1 && this.selection.has(f.id)) { this.direPlusieurs(); return }
       if (prise) { this.choisirPartie(prise.f.id, prise.prise); this.ui.ouvrirMenuPartie(prise.f.id, prise.prise, e.clientX, e.clientY); return }
       this.ui.fermerMenuPartie()
@@ -790,7 +887,12 @@ export class App {
       // Au doigt, l'outil Sélection et le doigt qui déplace ont leur double
       // appui (secondToucher) : la même règle sur l'iPad et ailleurs
       if (this.dernierPointeur === 'touch' && (this.outil === 'selection' || this.doigtDeplace)) return
-      const p = this.monde(e), f = this.formeSous(p.x, p.y)
+      // La Sélection vise comme son clic (l'intérieur d'une figure compris) ;
+      // la Main et le Segment, le tracé seul, à la portée du pointeur
+      const p = this.monde(e), pointeur = this.dernierPointeur
+      const f = this.outil === 'selection' ? this.objetSous(p, this.ecran(e), { pointeur, dedans: true })
+        : this.outil === 'main' || this.outil === 'segment' ? this.formeSous(p.x, p.y, TOLERANCE_PRISE[pointeur])
+        : this.formeSous(p.x, p.y)
       if (f?.type === 'formule') this.editerFormule(f)
       else if (f && (this.outil === 'selection' || this.outil === 'main' || this.outil === 'segment')) this.ouvrirOptions(f)
     })
@@ -907,7 +1009,8 @@ export class App {
     // garde : il reparaît au lever. Un clic attendu par le panneau (Désigner,
     // Tracer un axe ou un centre) est pour lui : le panneau reste.
     const prend = this.outil === 'selection' || doigt
-    const vise = prend ? this.objetSous(m, s, doigt ? 12 : 6) : null
+    const pointeur = typePointeur(e.pointerType)
+    const vise = prend ? this.objetSous(m, s, { pointeur, dedans: true }) : null
     const apresMenu = !pan && !this.placement && (avale(e) || this.ui.fermerMenus(!!vise && vise.id === this.options))
     if (apresMenu) {
       const continuer = e.button === 0 && !gommeDuStylet && (
@@ -1008,7 +1111,7 @@ export class App {
       case 'point': this.placerPoint(m); break
       case 'gomme': this.commencerGomme(m, false); break
       case 'selection': {
-        const f = this.objetSous(m, s)
+        const f = this.cibleSous(m, s, { pointeur, dedans: true })?.f
         // Maj + clic, ou Ctrl + clic (⌘ sur Mac, où Ctrl + clic est un clic
         // droit) : l'objet entre dans la sélection, ou en sort
         const ajout = e.shiftKey || (MAC ? e.metaKey : e.ctrlKey)
@@ -1044,8 +1147,11 @@ export class App {
     const inst = this.instruments.size ? this.instrumentSous(m) : null
     if (inst) { this.prendreInstrument(inst, m); return }
     if (prise) { this.prendrePoignee(prise); return }
-    const f = this.objetSous(m, s, 12)
-    if (f && this.selection.has(f.id)) { this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false, doigt: true }; return }
+    // Glisser n'emporte qu'un objet sélectionné saisi par son tracé (ou son
+    // plein) : un doigt qui fait défiler en partant du milieu d'un grand cadre
+    // sélectionné déplace la vue, pas le cadre
+    const c = this.cibleSous(m, s, { pointeur: 'touch', dedans: false })
+    if (c && this.selection.has(c.f.id) && this.saisi(c, 'touch')) { this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false, doigt: true }; return }
     this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, pointeur: e.pointerId, toucher: true }
   }
 
@@ -1134,7 +1240,7 @@ export class App {
     if (!a || e.pointerType !== 'touch' || e.button !== 0 || a.page !== this.page) return
     if (this.outil !== 'selection' && !this.doigtDeplace) return
     if (!doubleToucher(a, s.x, s.y, performance.now())) return
-    const f = this.formeSous(m.x, m.y, 12)
+    const f = this.objetSous(m, s, { pointeur: 'touch', dedans: true })
     if (f && f.id === a.objet) this.doubleEnCours = { objet: f.id, pointeur: e.pointerId }
   }
 
@@ -1155,9 +1261,9 @@ export class App {
     if (e.pointerType !== 'touch' || glisse || this.placement || (this.outil !== 'selection' && !this.doigtDeplace)) return
     if (g.type !== 'deplacer' && !(g.type === 'pan' && g.toucher)) return
     if (performance.now() - this.depart.t >= DOUBLE_TOUCHER.ms) return
-    const f = this.formeSous(m.x, m.y, 12)
-    if (!f) return
     const s = this.ecran(e)
+    const f = this.objetSous(m, s, { pointeur: 'touch', dedans: true })
+    if (!f) return
     this.toucherPrecedent = { x: s.x, y: s.y, t: performance.now(), objet: f.id, page: this.page }
   }
 
@@ -1176,11 +1282,11 @@ export class App {
     this.rendu.redessinerDirect()
   }
 
-  /** Un simple toucher du doigt « qui déplace » : l'objet touché (à 12 px
-   *  près, ou par un morceau, voir objetSous) devient la sélection, seul ;
-   *  rien dessous, elle se vide */
+  /** Un simple toucher du doigt « qui déplace » : l'objet touché (à 20 px
+   *  de son tracé, par un morceau ou par son intérieur, voir cibleSous)
+   *  devient la sélection, seul ; rien dessous, elle se vide */
   private toucherObjet(m: P, s: P) {
-    const f = this.objetSous(m, s, 12)
+    const f = this.objetSous(m, s, { pointeur: 'touch', dedans: true })
     this.ui.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
     this.selection.clear()
@@ -1259,11 +1365,12 @@ export class App {
     }
 
     if (this.placement && !g) { this.placement.bouge(m); this.zone.style.cursor = 'copy'; return }
-    // Ce qu'un appui de l'outil Sélection prendrait ici (voir objetSous)
+    // Ce qu'un appui de l'outil Sélection prendrait ici (voir cibleSous)
     let vise: Forme | null = null
     if (!g && this.outil === 'selection') {
-      // Ce qu'on survole s'éclaire : au pavé tactile, on sait ce qu'on va prendre
-      vise = this.objetSous(m, s)
+      // Ce qu'on survole s'éclaire : au pavé tactile, on sait ce qu'on va
+      // prendre ; l'intérieur d'une figure fermée aussi
+      vise = this.objetSous(m, s, { pointeur: typePointeur(e.pointerType), dedans: true })
       const id = vise && !this.selection.has(vise.id) ? vise.id : null
       if (id !== this.survol) { this.survol = id; this.rendu.survol = id; this.rendu.redessinerDirect() }
     }
