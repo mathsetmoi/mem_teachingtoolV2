@@ -18,7 +18,9 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: var(--papier); }
+/* overscroll-behavior : le balayage horizontal à deux doigts ne fait plus
+   « page précédente » (Chromebook, Mac, Edge), ni « tirer pour recharger » sur Android */
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--papier); overscroll-behavior: none; }
 body { font-family: var(--police); color: var(--encre); font-size: 15px; -webkit-font-smoothing: antialiased; }
 button, select, input { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
@@ -50,8 +52,13 @@ button, select, input { font: inherit; color: inherit; }
 .barre-outils {
   left: max(12px, env(safe-area-inset-left)); top: 50%; transform: translateY(-50%);
   flex-direction: column; align-items: center;
-  max-height: calc(100% - 24px); overflow-y: auto; scrollbar-width: none;
+  max-height: calc(100% - 24px); overflow-y: auto;
+  /* Sur un écran bas, la barre défile, avec une fine barre de défilement qui
+     le montre ; ses boutons gardent leurs 44 px au lieu de rétrécir, et le
+     défilement s'arrête à son bout sans emporter la page */
+  scrollbar-width: thin; overscroll-behavior: contain;
 }
+.barre-outils > * { flex-shrink: 0; }
 .barre-haut {
   top: max(12px, env(safe-area-inset-top)); right: 12px;
   align-items: center; flex-wrap: wrap; justify-content: flex-end;
@@ -72,6 +79,9 @@ button, select, input { font: inherit; color: inherit; }
 }
 .bouton:hover { background: #e9eef5; }
 .bouton.danger:hover { color: var(--rouge); }
+/* Un bouton sans objet (la poubelle sans sélection) garde sa place, grisé */
+.bouton:disabled { opacity: 0.3; cursor: default; }
+.bouton:disabled:hover { background: transparent; color: inherit; }
 
 /* L'outil en main : un coup de surligneur derrière l'icône */
 .bouton.actif { background: transparent; }
@@ -82,6 +92,17 @@ button, select, input { font: inherit; color: inherit; }
   border-radius: 3px 8px 4px 9px;
   transform: rotate(-6deg) skewX(-10deg);
 }
+
+/* Le rôle du doigt : une petite marque dans le coin de son bouton
+   (✎ il dessine, ✥ il déplace, A auto) ; ::before est pris par .actif */
+.bouton[data-badge]::after {
+  content: attr(data-badge); position: absolute; right: 2px; bottom: 3px;
+  min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
+  display: grid; place-items: center;
+  font-size: 10px; font-weight: 700; line-height: 1;
+  background: var(--bleu); color: #fff;
+}
+.bouton[data-badge] svg { transform: translate(-4px, -3px); }    /* la main laisse la place à la marque */
 
 .pastille {
   width: 44px; height: 34px; border: 0; background: transparent; cursor: pointer;
@@ -157,14 +178,33 @@ button, select, input { font: inherit; color: inherit; }
 
 button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); outline-offset: 2px; }
 
-/* ---------- Message ---------- */
+/* ---------- Message ----------
+   Sous les panneaux et les menus (15 à 23) : il ne cache pas ce qu'on va
+   toucher. .dessus : pendant la revue (28), qui couvre le tableau, et pour le
+   programme de construction. */
 .toast {
-  position: absolute; z-index: 30; left: 50%; bottom: max(84px, env(safe-area-inset-bottom));
+  position: absolute; z-index: 14; left: 50%; bottom: max(84px, env(safe-area-inset-bottom));
   transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
   padding: 10px 16px; border-radius: 10px; background: var(--encre); color: #fff;
   transition: opacity 0.18s, transform 0.18s;
 }
 .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+/* Deux messages à la fois (un ordinaire au-dessus d'un message à action) : un par ligne */
+.toast .ligne { display: block; }
+.toast .ligne + .ligne { margin-top: 8px; }
+.toast.dessus { z-index: 30; }
+/* La séance d'automatismes couvre tout l'écran (barres et menus cachés) : ses
+   messages passent devant elle (F5 bloqué dit comment recharger) */
+body.en-seance .toast { z-index: 41; }
+/* Le bouton d'un message (« Changer ») : seul à recevoir les appuis, et
+   seulement quand le message se voit */
+.toast .action {
+  margin-left: 12px; height: 34px; padding: 0 12px; vertical-align: middle;
+  border: 0; border-radius: 8px; background: rgba(255, 255, 255, 0.16); color: #fff;
+  font-weight: 700; cursor: pointer; pointer-events: none;
+}
+.toast.visible .action { pointer-events: auto; }
+.toast .action:hover { background: rgba(255, 255, 255, 0.28); }
 
 @media (prefers-reduced-motion: reduce) {
   .toast, .pastille::after { transition: none; }
@@ -497,3 +537,55 @@ body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .panneau-co
 .revue-reglage select { height: 44px; padding: 0 10px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); }
 .revue-annonce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .revue-barre { transition: none; } }
+
+/* ---------- Petits menus flottants (menus.ts) ----------
+   Au-dessus des menus d'un morceau de figure (22) et du message (14), sous
+   la revue (28). */
+.menu-flottant {
+  position: fixed; z-index: 23; min-width: 260px; max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px); overflow-y: auto;
+  padding: 6px; display: flex; flex-direction: column;
+  background: var(--papier); border: 1px solid var(--filet); border-radius: 14px;
+  box-shadow: 0 2px 0 var(--filet), 0 14px 30px rgba(27, 34, 48, 0.14);
+  user-select: none; -webkit-user-select: none;
+}
+.menu-item {
+  display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 10px;
+  min-height: 44px; width: 100%; padding: 6px 10px; text-align: left;
+  border: 0; border-radius: 10px; background: transparent; cursor: pointer;
+}
+.menu-item:hover { background: #e9eef5; }
+.menu-item .coche { display: grid; place-items: center; width: 22px; height: 22px; }
+.menu-item .coche svg { width: 20px; height: 20px; fill: none; stroke: var(--bleu); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.menu-item[aria-checked='true'] .libelle { font-weight: 700; }
+.menu-item[aria-disabled='true'] { opacity: 0.4; cursor: default; }
+.menu-item[aria-disabled='true']:hover { background: transparent; }
+.menu-item .touche, .menu-item small { font-size: 13px; color: var(--encre-douce); font-weight: 400; }
+.menu-item .touche { white-space: nowrap; }
+.menu-item small { display: block; }
+.menu-filet { width: auto; height: 0; border: 0; border-top: 1px solid var(--filet); margin: 6px 4px; }
+.menu-titre { padding: 6px 10px 2px 42px; font-size: 13px; font-weight: 700; color: var(--encre-douce); }
+/* Un menu aux aides longues (le bouton ⋯) : une largeur fixe, les aides vont à la ligne */
+.menu-large { width: min(400px, calc(100vw - 16px)); }
+.menu-note { margin: 0; padding: 4px 10px 6px 42px; font-size: 13px; line-height: 1.4; color: var(--encre-douce); }
+
+/* ---------- Enregistrer et ouvrir un tableau (sauvegarde.ts) ---------- */
+.bouton.points svg { stroke-width: 3.4; }
+.dialogue-ouvrir { width: min(520px, calc(100vw - 24px)); }
+.dialogue-ouvrir .actions { flex-wrap: wrap; }
+.dialogue-ouvrir button:disabled { opacity: 0.55; cursor: default; }
+
+/* ---------- Revenir au contenu ---------- */
+.retour-contenu {
+  position: absolute; z-index: 12; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  height: 44px; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px;
+  border: 0; border-radius: 22px; background: var(--encre); color: #fff; font-weight: 700; cursor: pointer; white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(27, 34, 48, 0.2);
+}
+.retour-contenu svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.retour-contenu:hover { background: #2c3648; }
+body.en-seance .retour-contenu { visibility: hidden; }
+@media (max-width: 640px) {
+  .retour-contenu { bottom: 76px; }          /* au-dessus de la barre du zoom */
+  .toast { bottom: 132px; }
+}

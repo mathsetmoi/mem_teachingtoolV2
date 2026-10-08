@@ -2,8 +2,9 @@
 
 Un tableau blanc pour les cours de maths, utilisé par le professeur en classe :
 il marche hors connexion sur le poste de la salle, et tout ce qui y est écrit
-s'enregistre dans le navigateur. Le professeur peut publier le replay d'une
-séance, que les élèves revoient chez eux.
+s'enregistre dans le navigateur ; le tableau entier se garde aussi dans un
+fichier (`.memc`), sur une clé ou ailleurs. Le professeur peut publier le
+replay d'une séance, que les élèves revoient chez eux.
 
 ## Lancer en local
 
@@ -41,10 +42,27 @@ Les tracés trop petits (l'écriture) ne sont jamais touchés, et le bouton
 **Avec l'outil Formes** (`R` rectangle, Maj pour un carré ; `C` cercle ; `G`
 polygone, sommet par sommet, en revenant au premier pour fermer).
 
+Une figure qu'on vient de tracer (au stylo, aux Formes, au Segment) n'est pas
+sélectionnée : on continue d'écrire tout près sans attraper ses sommets. Une
+copie, une image importée, l'image d'une transformation le sont.
+
 **Le panneau d'options** ne s'ouvre qu'à la demande : **double-clic** ou
 **clic droit** sur l'objet (un simple clic le sélectionne seulement, pour le
-déplacer). Il se ferme quand on choisit autre chose ou qu'on clique dans le
-vide :
+déplacer) ; au stylet, le bouton du stylet fait le clic droit ; au doigt, avec
+l'outil Sélection ou le doigt qui « déplace », **deux touchers** rapprochés
+(moins d'un tiers de seconde, à moins de 35 px, sur le même objet), même sur
+iPad où Safari ne donne pas de double-clic au doigt (un toucher suivi d'un
+glisser déplace toujours). La première fois qu'on prend un objet, un message
+le rappelle dans les mots du pointeur (jamais « clic droit » au doigt).
+Au Stylo aussi, un double-clic sur une figure ou une formule ouvre
+ses options, sans y laisser de point : le point d'un simple toucher sur un
+objet ne s'écrit qu'un tiers de seconde plus tard, quand on sait qu'aucun
+second toucher ne suit (le film garde l'heure où il a été écrit). Ce
+double-clic est serré comme celui du système : le second toucher retombe à
+moins de 4 px à la souris, 5 au stylet, 14 au doigt, et se lève vite sans
+avoir glissé. Deux points qu'on écrit tout près (un « : », un tréma, sur une
+figure coloriée ou une formule) restent deux points. Le panneau se ferme quand on choisit autre chose ou
+qu'on appuie ailleurs (il reste quand on déplace l'objet lui-même) :
 
 - *Sommets* : points et noms (A, B, C… libres sur la page), modifiables ;
 - *Codage* : côtés de même longueur et angles droits, calculés ;
@@ -55,6 +73,13 @@ vide :
   sommets ou en coordonnées), homothétie. L'image est une nouvelle figure, aux
   sommets nommés A', B', C'… ;
 - *Main levée*, *Dupliquer*, supprimer.
+
+Le premier appui sur le tableau hors d'un panneau ou d'un menu ouvert (le
+zoom, le menu d'un point, la liste des instruments) le ferme, et ne fait rien
+d'autre : ni point d'encre, ni coup de gomme. Au Stylo, le trait commence quand
+même (on ne perd pas la première lettre de ce qu'on écrit), mais un simple
+appui ne laisse rien ; sur un instrument, ou à l'outil Sélection sur un autre
+objet, l'appui le prend directement.
 
 Les transformations et le contour valent aussi pour un tracé à main levée.
 
@@ -69,9 +94,15 @@ avec ou sans les instruments : pour chaque sommet, l'équerre et le compas
 le compas (rotation)… puis la figure image se trace à la règle. Une image
 importée se construit par ses quatre coins.
 
-**Chaque morceau se prend à la main.** Sur la figure sélectionnée (et sur
-toutes, avec l'outil Sélection), on attrape un sommet ou une extrémité, le
-centre ou le rayon d'un cercle, le nom d'un point :
+**Chaque morceau se prend à la main.** Sur la figure sélectionnée, avec
+l'outil Sélection (ou au doigt qui « déplace », voir plus bas), on attrape un
+sommet ou une extrémité, le centre ou le rayon d'un cercle, le nom d'un point ;
+jamais sous un outil de dessin (écrire près d'un sommet laisse la figure
+intacte). Un premier clic sur un morceau d'une figure non sélectionnée (un
+sommet, le centre d'un cercle, le nom d'un point) prend la figure entière, et
+la déplace si l'on glisse ; le suivant prend ce morceau. Le clic droit, lui,
+vise directement le morceau de n'importe quelle figure. Le menu d'un morceau
+reste collé à lui quand on zoome ou qu'on déplace la vue :
 
 - **glisser** le déplace (le codage se recalcule ; un nom tourne autour de son
   point sans s'en éloigner, et garde sa place quand on transforme la figure) ;
@@ -478,14 +509,60 @@ fois : Settings → Pages → Source : GitHub Actions). On publie depuis cette
 version en ligne : la connexion Google ne marche ni depuis le fichier unique,
 ni depuis une adresse que la console Google n'autorise pas. Attention : le
 tableau vit dans le navigateur, adresse par adresse ; celui de la version en
-ligne n'est pas celui de la clé USB. La version clé USB peut seulement
-enregistrer le fichier séance.
+ligne n'est pas celui de la clé USB. Pour passer de l'un à l'autre :
+« Enregistrer le tableau » d'un côté, « Ouvrir un tableau » de l'autre (voir
+plus bas). La version clé USB enregistre aussi le fichier séance.
 
 **Les téléphones des élèves.** Le lecteur vise les navigateurs depuis 2020
 (Safari 14, Chrome 87, Firefox 78) ; sur les iPhone et iPad d'avant iOS 16.4,
 qui ne savent pas décompresser seuls, un petit décompresseur (fflate, 8 Ko) se
 charge à la place. Commandes de 44 px, zoom du navigateur jamais bloqué, la
 frise annonce le temps aux lecteurs d'écran.
+
+## Enregistrer et ouvrir un tableau
+
+Le tableau s'enregistre tout seul dans le navigateur, mais un navigateur peut
+l'oublier : un poste de lycée remis à zéro chaque soir, un iPad sur lequel on
+n'est pas revenu depuis des semaines, un historique effacé. Le bouton **⋯**, au
+bout de la barre du haut, l'emporte dans un fichier :
+
+- **Enregistrer le tableau…** (Ctrl + S, ⌘ + S sur Mac) écrit un fichier
+  `tableau-2026-10-07-14h05.memc` : toutes les pages, tout l'historique (la
+  revue en classe et le replay marchent sur une autre machine comme sur
+  celle-ci), les instruments, les images, la liste des séances publiées. Sur
+  Chrome et Edge, on choisit où l'écrire (la clé USB, un dossier synchronisé
+  avec le Drive) ; ailleurs, et depuis la version clé USB, il se télécharge.
+  Comme le document, il garde ce qui a été effacé : il n'est pas pour les
+  élèves (pour eux : Publier, qui donne un film aplati, `.mem`).
+- **Ouvrir un tableau…** (Ctrl + O) remplace le tableau de ce navigateur par
+  celui d'un fichier `.memc`, après une question qui dit ce qui sera remplacé
+  (« 12 pages, enregistré le mardi 7 octobre 2026 à 14 h 05. Il remplace le
+  tableau de ce navigateur (8 pages) et tout son historique ») et propose
+  **Enregistrer d'abord**. On peut aussi glisser le fichier sur la page. Le
+  fichier est relu en entier avant de toucher à quoi que ce soit : un fichier
+  abîmé (tronqué, ou d'un seul bit changé : la somme CRC-32 et la taille de la
+  fin du gzip sont vérifiées, et chaque page de l'ordre doit exister avec ses
+  formes), un film élève (`.mem`), un fichier d'une version plus récente ou un
+  fichier quelconque sont refusés avec une phrase qui dit quoi faire, et le
+  tableau n'a pas changé. Le remplacement se fait d'un bloc dans la base du
+  navigateur (s'il échoue, faute de place, l'ancien tableau reste entier),
+  puis la page se recharge : « Tableau ouvert : 12 pages ». Un autre onglet
+  ouvert sur le même tableau l'apprend aussitôt, cesse d'écrire et demande à
+  être rechargé. On n'ouvre pas de tableau pendant la revue, une séance
+  d'automatismes ou une fenêtre ouverte.
+
+Le menu rappelle le dernier enregistrement dans un fichier (« aujourd'hui à
+14 h 05 »), ou qu'il n'y en a jamais eu. C'est la passerelle entre la version
+en ligne et la version clé USB, et d'une machine à l'autre. Le lecteur des
+élèves refuse un `.memc` en disant où l'ouvrir. Au démarrage, l'outil demande
+aussi au navigateur de ne pas vider sa base pour faire de la place
+(`navigator.storage.persist()` : Chrome, Edge et Safari décident seuls, sans
+rien demander ; Firefox pose la question) ; ce n'est pas une sauvegarde.
+
+Le fichier : une première ligne de texte,
+`{"format":"mem-tableau","v":1,"app":"MEM teachingtool","date":…,"pages":…}`,
+puis le document Yjs entier, compressé (gzip). Le film élève commence lui
+aussi par `{"format":` ; chaque lecteur reconnaît le sien à ses premiers octets.
 
 ## Ce que fait la v0.1
 
@@ -510,17 +587,83 @@ petits carreaux, Seyès, repère gradué), zoom de 10 % à 2000 % — le quadril
 suit le zoom comme une carte : les carreaux trop petits s'estompent et laissent
 place à de plus grands (1 cm, 5 cm, 10 cm…), la page n'est jamais blanche.
 
-Au pavé tactile : deux doigts qui glissent déplacent le tableau, pincer zoome ;
-la molette d'une souris zoome. **Échap** annule ce qui est en cours (menu,
-sélection, polygone) ; s'il n'y a rien, il passe à l'outil Sélection, et un
-second Échap rend l'outil d'avant. Avec la Sélection, glisser un objet le
-déplace, glisser dans le vide déplace le tableau, Maj + glisser encadre ; l'objet
-survolé s'éclaire d'un halo bleu qui suit sa forme, avant le clic ; une droite
-ou une demi-droite sélectionnée se surligne sur toute sa longueur visible ; les flèches poussent la sélection d'1 mm
-(1 cm avec Maj).
+**Se déplacer, zoomer.** La molette de la souris fait défiler la page (Maj :
+à l'horizontale) ; au pavé tactile, deux doigts qui glissent déplacent le
+tableau. Ctrl (⌘ sur Mac) + molette, ou pincer le pavé, zoome autour du
+pointeur, d'un cran à la fois (×1,1 par cran au plus : une molette libre ne
+s'emballe pas). Qui préfère la molette qui zoome, comme dans GeoGebra, le règle
+dans le menu du pourcentage (en bas à droite) : « Molette de la souris : fait
+défiler / zoome », gardé sur cet ordinateur. Ce menu donne aussi **100 %**
+(Ctrl + 0), **Tout voir** (Maj + 1, ou le bouton cadre à côté de « + » : toute
+la page entre les barres, jamais au-delà de 100 %) et **Voir la sélection**
+(Maj + 2, 200 % au plus) ; Ctrl + « + » et Ctrl + « − » zooment le tableau (au
+clavier principal ou au pavé numérique, en AZERTY comme en QWERTY), autour du
+pointeur, et non plus toute la page du navigateur. Sans sélection, les flèches
+déplacent la vue d'un quart d'écran (trois quarts avec Maj, en continu si on
+tient la touche). Quand plus rien de ce qui est écrit n'est à l'écran, une
+pastille **Revenir au contenu** paraît en bas au centre. F5 (que les
+télécommandes de présentation envoient) ne recharge plus la page en plein cours :
+un message rappelle Ctrl + R. Le pincement sur iPad ne zoome plus la page
+entière, et le balayage à deux doigts ne fait plus « page précédente ». Chaque
+page garde sa vue (une nouvelle page s'ouvre à 100 %, sur l'origine) ; la page
+courante et la vue de chaque page sont retrouvées au rechargement — notées dans
+ce navigateur, hors du document : ni un fichier, ni un replay ne les emportent.
 
-Au doigt : deux doigts pour zoomer et déplacer. Dès qu'un stylet a servi, le doigt
-ne dessine plus (la paume posée sur l'écran ne laisse pas de traces).
+**Échap** annule ce qui est en cours (menu, sélection, polygone) ; s'il n'y a
+rien, il passe à l'outil Sélection, et un second Échap rend l'outil d'avant.
+Avec la Sélection, glisser un objet le déplace, glisser dans le vide déplace le
+tableau, Maj + glisser encadre ; Maj + clic (ou Ctrl + clic, ⌘ + clic sur Mac)
+ajoute un objet à la sélection, ou l'en retire s'il y était (Maj + glisser un
+objet sélectionné déplace toute la sélection) ; un clic droit dans une
+sélection de plusieurs objets la laisse entière. L'objet survolé s'éclaire
+d'un halo bleu qui suit sa forme, avant le clic ; une droite ou une
+demi-droite sélectionnée se surligne sur toute sa longueur visible ; les
+flèches poussent la sélection d'1 mm (1 cm avec Maj).
+
+**La gomme** efface en entier ce qu'elle touche (un trait, une figure). Un coup de gomme, même
+lent et passant sur plusieurs traits, s'annule d'un seul Ctrl+Z (le replay,
+lui, les montre partir l'un après l'autre). Le bout gomme du stylet (le stylet
+retourné, sur une tablette graphique ou une Surface) efface de même quel que
+soit l'outil en main, qu'on retrouve en reprenant la pointe.
+
+**La barre de gauche** ne bouge pas : la poubelle y garde sa place, grisée
+quand rien n'est choisi. Sur un écran bas (moins de 900 px de haut environ),
+ses boutons gardent leurs 44 px et elle défile, avec une fine barre de
+défilement ; les choix des Formes et du Segment suivent leur bouton.
+Les **messages** en bas de l'écran passent sous les panneaux et les menus (ils
+ne cachent jamais ce qu'on va toucher), sauf pendant la revue, la séance
+d'automatismes et le programme de construction ; un message à bouton
+(« Changer ») reste 7 s, et un autre message qui arrive entre-temps s'écrit
+au-dessus de lui sans le chasser. Au doigt, ils parlent du bouton Annuler,
+pas de Ctrl + Z.
+
+**Au doigt, au stylet.** Deux doigts zooment et déplacent la vue ; si l'un se
+lève, celui qui reste continue de déplacer la vue, sans jamais se mettre à
+dessiner. Le rôle d'un seul doigt se règle par le bouton en forme de main de la
+barre de gauche (sur un appareil tactile seulement ; sa marque dit le choix) :
+
+- *le doigt dessine*, avec l'outil choisi, comme le stylet ;
+- *le doigt déplace et sélectionne* : le stylet écrit ; le doigt déplace la vue,
+  même parti d'un objet (traverser une page chargée n'emporte rien), et un
+  simple toucher choisit l'objet touché, qu'on glisse ensuite pour le déplacer ;
+  il prend aussi les instruments et les sommets de la figure sélectionnée, et
+  ne laisse jamais d'encre. Quand un clic est attendu sur la page (où commencer
+  une construction, *Désigner*, *Tracer un axe* ou un centre), le doigt qui
+  glisse déplace la vue pour chercher la place, et un toucher bref fait ce
+  clic ;
+- *Auto* (au départ) : le doigt dessine jusqu'au premier stylet posé sur
+  l'écran lui-même (iPad, Surface, tablette Android), puis il déplace. Un
+  message le dit, avec un bouton « Changer ». Une tablette graphique branchée à
+  un ordinateur dont l'écran n'est pas tactile ne fait jamais basculer.
+
+Le choix est gardé sur l'appareil. Quand le doigt déplace, la paume est
+ignorée : un contact large, et tout contact pendant que le stylet touche
+l'écran ; le stylet qui se pose arrête ce que faisait le doigt (la vue, la règle
+restent où il les a laissées). Partout, un appui ne devient un glisser qu'à
+8 px de son départ au doigt, 6 au stylet, 4 à la souris : un toucher qui tremble
+ne déplace rien, ne pose ni rectangle, ni cercle, ni segment le long d'un
+instrument, et n'ajoute rien à l'historique. L'encre (stylo, surligneur, l'arc
+du compas) part tout de suite.
 
 ## Architecture
 
@@ -539,7 +682,8 @@ découlent sans code supplémentaire :
 
 1. **Tout s'enregistre tout seul.** Le document s'enregistre dans le navigateur
    (IndexedDB), sans bouton ni connexion : il marche hors ligne, et le tableau
-   est là le lendemain. Pas de base de données à concevoir.
+   est là le lendemain. Pas de base de données à concevoir. Et le même
+   document, tel quel, fait le fichier `.memc` qu'on emporte.
 2. **L'annulation ne défait que les gestes.** `Ctrl+Z` ne touche ni au
    chargement depuis le disque, ni au film.
 3. **Rien ne se perd.** Le document garde ce qui a été effacé : c'est ce qui
@@ -553,7 +697,7 @@ cours, qui fait la latence ressentie au stylet.
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule), les fonds |
-| `src/document.ts` | Document Yjs : pages, formes, annulation, film, enregistrement |
+| `src/document.ts` | Document Yjs : pages, formes, annulation, film, enregistrement dans le navigateur (et remplacement par un fichier ouvert) |
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris |
 | `src/rendu.ts` | Les trois couches d'affichage |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
@@ -572,6 +716,13 @@ cours, qui fait la latence ressentie au stylet.
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
 | `src/ui.ts` | Barres d'outils, panneau d'options, éditeur de formules |
+| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page ; la molette |
+| `src/menus.ts` | Les petits menus flottants (un seul ouvert, Échap, un appui ailleurs) |
+| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt), hors du document |
+| `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la paume, le stylet sur l'écran, le double appui, les mots des messages |
+| `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
+| `src/fichier.ts` | Le tableau dans un fichier `.memc` : l'écrire, le relire (et refuser ce qui n'en est pas un) |
+| `src/sauvegarde.ts` | Enregistrer et ouvrir un tableau : le menu ⋯, Ctrl + S, Ctrl + O, la question avant de remplacer, les autres onglets |
 
 Toutes les briques sont sous licence MIT (Yjs, y-indexeddb,
 perfect-freehand, KaTeX, Vite) : aucune clé de licence, aucun filigrane, et rien

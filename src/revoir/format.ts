@@ -21,6 +21,14 @@ import type { Morceau } from './instruments-film'
 export const FORMAT = 'mem-revoir'
 export const VERSION = 1
 
+/** Le tableau complet que le professeur enregistre (« .memc », voir
+ *  src/fichier.ts) : tout le document, effacements compris. Il n'est PAS pour
+ *  les élèves ; le lecteur n'en importe rien d'autre que ce début, pour le
+ *  refuser avec une phrase claire. Les deux fichiers commencent par
+ *  {"format": — chacun se reconnaît à ses premiers octets. */
+export const FORMAT_TABLEAU = 'mem-tableau'
+export const DEBUT_TABLEAU = '{"format":"mem-tableau"'
+
 /** Ce qui se passe sur une page à un geste :
  *  ['=', forme]            la forme apparaît, ou change (elle remplace l'ancienne)
  *  ['-', id]               la forme disparaît
@@ -111,6 +119,9 @@ export class ErreurFilm extends Error {}
 export async function lireFilm(source: string | unknown): Promise<FilmEleve> {
   let objet: unknown = source
   if (typeof source === 'string') {
+    // Un tableau complet (.memc) : son début est du texte, la suite des octets
+    // compressés, que f.text() lit tant bien que mal ; on ne va pas plus loin
+    if (source.startsWith(DEBUT_TABLEAU)) throw new ErreurFilm('Ce fichier est un tableau complet enregistré par l\'enseignant (.memc) : il s\'ouvre dans MEM teachingtool, pas ici. Pour revoir la séance, ouvrez le fichier séance (.mem) ou le lien donné par votre enseignant.')
     try { objet = JSON.parse(source) } catch { throw new ErreurFilm('Ce fichier n\'est pas une séance de MEM teachingtool.') }
   }
   const e = objet as Partial<Enveloppe> & Partial<FilmEleve>

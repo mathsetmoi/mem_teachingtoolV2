@@ -15,6 +15,9 @@ export const ORIGINE_LOCALE = 'locale'
 const ORIGINE_FILM = 'film'
 /** Les écritures de la piste des instruments : ni étape du film, ni annulation */
 const ORIGINE_PISTE = 'piste'
+/** Deux changements à moins de 400 ms l'un de l'autre font une seule étape
+ *  d'annulation (le stylo qui se reprend, un nom qu'on retouche) */
+const CAPTURE = 400
 
 /** Une étape du film : quand, sur quelle page, et l'état du document.
  *  ms : si l'étape pose un trait tracé à la main, le temps passé sur chacun
@@ -49,6 +52,11 @@ export class Tableau {
   private local: IndexeddbPersistence | null
   /** Les temps du trait que pose la transaction en cours (voir poserTrace) */
   private tempsDuTrace: number[] | null = null
+  /** L'heure du lever de ce trait, s'il a attendu avant d'être posé */
+  private heureDuTrace: number | null = null
+  /** L'heure de la dernière étape notée : celle d'un trait qui a attendu ne
+   *  passe jamais avant elle */
+  private derniereHeure = 0
 
   /** nomLocal : la base du navigateur où le tableau s'enregistre (null : nulle part, pour les tests) */
   constructor(nomLocal: string | null) {
@@ -60,7 +68,7 @@ export class Tableau {
     // transactions marquées « locale » sont retenues.
     this.annulation = new Y.UndoManager(this.pages, {
       trackedOrigins: new Set([ORIGINE_LOCALE]),
-      captureTimeout: 400,
+      captureTimeout: CAPTURE,
     })
     this.local = nomLocal ? new IndexeddbPersistence(nomLocal, this.doc) : null
 
@@ -69,8 +77,11 @@ export class Tableau {
     this.doc.on('afterTransaction', (tr: Y.Transaction) => {
       if (tr.origin === ORIGINE_FILM || (this.local && tr.origin === this.local)) return
       if (!tr.changedParentTypes.size || ![...tr.changedParentTypes.keys()].some(t => this.dansLesPages(t))) return
-      const etape: Etape = { t: Date.now(), page: this.pageVue, s: Y.encodeSnapshot(Y.snapshot(this.doc)) }
+      const t = this.heureDuTrace !== null ? Math.max(this.heureDuTrace, this.derniereHeure) : Date.now()
+      this.derniereHeure = t
+      const etape: Etape = { t, page: this.pageVue, s: Y.encodeSnapshot(Y.snapshot(this.doc)) }
       if (this.tempsDuTrace) { etape.ms = this.tempsDuTrace; this.tempsDuTrace = null }
+      this.heureDuTrace = null
       queueMicrotask(() => this.doc.transact(() => this.film.push([etape]), ORIGINE_FILM))
     })
   }
@@ -162,6 +173,41 @@ export class Tableau {
     if (this.ordre.length === 0) this.ajouterPage('carreaux', 0)
   }
 
+  /** Remplace, dans la base du navigateur, tout le tableau par un autre (un
+   *  fichier ouvert, voir fichier.ts). On recharge la page ensuite : le
+   *  document en mémoire, lui, reste l'ancien.
+   *  Une seule transaction vide le magasin et y range le nouveau tableau :
+   *  si elle échoue (plus de place), rien n'a changé, l'ancien tableau reste
+   *  entier. Le lien avec la base est coupé juste après l'avoir ouverte :
+   *  plus rien de l'ancien document ne s'y écrit, et la base ne se ferme
+   *  qu'une fois la transaction finie. Même base, même magasin. */
+  async remplacerPar(etat: Uint8Array): Promise<void> {
+    const local = this.local
+    if (!local) throw new Error('Ce tableau n\'est enregistré nulle part.')
+    await local.whenSynced
+    const db = local.db
+    if (!db) throw new Error('La base du navigateur n\'est pas ouverte.')
+    const tr = db.transaction(['updates'], 'readwrite')
+    const fin = new Promise<void>((ok, ko) => {
+      tr.oncomplete = () => ok()
+      tr.onabort = () => ko(tr.error ?? new Error('Transaction abandonnée.'))
+    })
+    const magasin = tr.objectStore('updates')
+    magasin.clear()
+    magasin.add(etat)
+    this.local = null
+    local.destroy()
+    await fin
+  }
+
+  /** Plus rien ne s'écrit dans la base du navigateur (un autre onglet vient
+   *  d'y ranger un autre tableau) : ce qu'on écrirait encore ici serait perdu
+   *  au rechargement, mais n'abîmerait pas le nouveau. */
+  couper() {
+    this.local?.destroy()
+    this.local = null
+  }
+
   // ---------- Pages ----------
   ajouterPage(fond: Fond, position: number): string {
     const id = uid()
@@ -214,10 +260,14 @@ export class Tableau {
   /** Pose un trait tracé à la main. L'étape du film qu'il fait naître note le
    *  temps passé sur chacun de ses points (ms, un par point) : le replay le
    *  retracera au rythme de la main. Le trait, lui, reste un trait comme les
-   *  autres : une copie ou un Ctrl+Z ne reprend pas ce rythme. */
-  poserTrace(page: string, trait: Trait, ms: number[]) {
+   *  autres : une copie ou un Ctrl+Z ne reprend pas ce rythme. heure : celle
+   *  du lever (Date.now()), quand le trait a attendu avant d'être posé (le
+   *  point d'un simple toucher, qui attend un éventuel double-clic) ; sans
+   *  elle, l'étape prend l'heure où il est posé. */
+  poserTrace(page: string, trait: Trait, ms: number[], heure?: number) {
     this.tempsDuTrace = ms.length && ms.length === trait.pts.length / 3 ? ms : null
-    try { this.poser(page, trait) } finally { this.tempsDuTrace = null }
+    this.heureDuTrace = heure ?? null
+    try { this.poser(page, trait) } finally { this.tempsDuTrace = null; this.heureDuTrace = null }
   }
 
   modifier(page: string, changements: { id: string; patch: Partial<Forme> }[]) {
@@ -235,8 +285,26 @@ export class Tableau {
     this.doc.transact(() => { for (const id of ids) formes.delete(id) }, ORIGINE_LOCALE)
   }
 
-  /** Un geste = une étape d'annulation, même s'il dure longtemps. */
-  nouveauGeste() { this.annulation.stopCapturing() }
+  /** Un geste = une étape d'annulation, même s'il dure longtemps. Un geste
+   *  long resté ouvert (un lever perdu) ne déborde pas sur le suivant. */
+  nouveauGeste() {
+    this.annulation.captureTimeout = CAPTURE
+    this.annulation.stopCapturing()
+  }
+
+  /** Un geste qui écrit plusieurs fois, à son rythme (un coup de gomme lent
+   *  qui passe sur trois traits) : tout ce qu'il fait, jusqu'à finGesteLong,
+   *  ne fait qu'UNE étape d'annulation, quel que soit le temps entre deux
+   *  changements. Le film, lui, garde une étape par changement. */
+  gesteLong() {
+    this.annulation.stopCapturing()
+    this.annulation.captureTimeout = Infinity
+  }
+
+  finGesteLong() {
+    this.annulation.captureTimeout = CAPTURE
+    this.annulation.stopCapturing()
+  }
 
   /** Ajoute des morceaux à la piste des instruments. Hors des pages : le film
    *  n'en fait pas d'étape et l'annulation ne les voit pas. */
