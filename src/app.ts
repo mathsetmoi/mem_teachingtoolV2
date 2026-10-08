@@ -176,6 +176,8 @@ export class App {
    *  quelque chose depuis qu'il est allumé */
   private ajout = { actif: false, vu: false }
   private astuceAjout = false
+  /** Une mise à jour de l'interface est déjà prévue après un changement de pile */
+  private majPiles = false
   /** Les instruments posés (dans l'ordre d'empilement) et leur réglage */
   readonly instruments = new Map<NomInstrument, EtatInstrument>()
   /** Ce que la classe voit des instruments, noté pour le replay (voir piste.ts) */
@@ -196,6 +198,15 @@ export class App {
 
     tableau.pages.observeDeep(() => this.rafraichir())
     tableau.ordre.observe(() => this.verifierPage())
+    // Une pile d'annulation a changé : ↶ et ↷ se remettent à jour, une fois,
+    // juste après (voir Tableau.onPiles). Sans cela, ↶ resterait grisé après
+    // ↷, après les flèches qui poussent la sélection, après le point d'un
+    // simple toucher posé par sa minuterie, et ne se toucherait plus au doigt.
+    tableau.onPiles = () => {
+      if (this.majPiles) return
+      this.majPiles = true
+      queueMicrotask(() => { this.majPiles = false; this.ui?.maj() })
+    }
 
     this.brancherGestes()
 
@@ -518,15 +529,41 @@ export class App {
     this.ui?.maj()
   }
 
-  /** L'interface est remise à jour APRÈS avoir vidé la sélection : le
+  /** Défait le dernier geste de la page qu'on regarde, et d'elle seule :
+   *  chaque page garde sa pile (voir Tableau.annulationDe), et rien ne change
+   *  jamais là où l'on ne regarde pas. Le point d'un simple toucher au Stylo,
+   *  qui attend un double-clic, se pose d'abord : c'est le dernier geste
+   *  visible, c'est lui qui part. Vrai si un geste a été défait.
+   *  L'interface est remise à jour APRÈS avoir vidé la sélection : le
    *  rafraîchissement déclenché par l'annulation passe avant, et laisserait
    *  le panneau d'options ouvert sur une figure qui n'est plus choisie. */
-  annuler() {
+  annuler(): boolean {
     this.viderPointEnAttente()
-    this.tableau.annulation.undo()
+    const fait = this.tableau.annuler(this.page) !== null
     this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()
+    return fait
   }
-  retablir() { this.viderPointEnAttente(); this.tableau.annulation.redo() }
+
+  /** Refait le dernier geste défait sur la page qu'on regarde. Comme annuler :
+   *  la sélection se vide (ce qui revient peut recouvrir ce qui était choisi)
+   *  et l'interface se remet à jour. Vrai si un geste a été refait. */
+  retablir(): boolean {
+    this.viderPointEnAttente()
+    const fait = this.tableau.retablir(this.page)
+    this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()
+    return fait
+  }
+
+  /** ↶ a-t-il quelque chose à faire sur cette page ? Le point qui attend un
+   *  double-clic compte : Ctrl+Z le pose, puis le retire. */
+  peutAnnuler(): boolean {
+    return this.pointEnAttente?.page === this.page || this.tableau.peutAnnuler(this.page)
+  }
+
+  /** ↷ ? Pas pendant qu'un point attend : posé, il oublie ce qui était à refaire. */
+  peutRetablir(): boolean {
+    return this.pointEnAttente?.page !== this.page && this.tableau.peutRetablir(this.page)
+  }
 
   supprimerSelection() {
     if (this.partie) return this.supprimerPartie()
@@ -2295,11 +2332,20 @@ export class App {
     this.poserFigure(copie)
   }
 
+  /** L'image d'un objet par une transformation. Les points repérés sur une
+   *  image ont aussi leur image, liée à la nouvelle. L'image et ses points
+   *  font UN geste, posés dans une seule transaction : un seul Ctrl+Z les
+   *  retire ensemble (sinon les points images resteraient seuls, liés à une
+   *  image qui n'existe plus, ou se fondraient dans le geste d'avant). */
   transformer(f: Forme, t: Transformation) {
     const img = image(f, t, this.tableau.moi)
-    // Les points repérés sur une image ont aussi leur image, liée à la nouvelle
-    for (const g of this.liees(f.id)) this.tableau.poser(this.page, { ...image(g, t, this.tableau.moi), lie: img.id } as Forme)
-    this.poserFigure(img)
+    const points = this.liees(f.id).map(g => ({ ...image(g, t, this.tableau.moi), lie: img.id }) as Forme)
+    this.tableau.nouveauGeste()
+    this.tableau.doc.transact(() => {
+      for (const p of points) this.tableau.poser(this.page, p)
+      this.tableau.poser(this.page, img)
+    }, 'locale')
+    this.selectionner(img.id)
   }
 
   /** L'outil Point : un clic pose un point marqué d'une croix, nommé de la
@@ -2382,8 +2428,16 @@ export class App {
     if (cible.closest('input, textarea, select, [contenteditable], dialog')) return
     const ctrl = e.ctrlKey || e.metaKey
     if (e.code === 'Space') { this.espace = true; e.preventDefault(); return }
-    if (ctrl && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? this.retablir() : this.annuler(); return }
-    if (ctrl && e.key.toLowerCase() === 'y') { e.preventDefault(); this.retablir(); return }
+    // Ctrl+Z, Ctrl+Y ou Ctrl+Maj+Z (⌘ sur Mac) : sur la page qu'on regarde
+    // seulement. Rien à faire : un message le dit, pour qui pressait Ctrl+Z
+    // en pensant reprendre ce qu'il venait de faire sur une autre page.
+    const lettre = e.key.toLowerCase()
+    if (ctrl && (lettre === 'z' || lettre === 'y')) {
+      e.preventDefault()
+      const refaire = lettre === 'y' || e.shiftKey
+      if (refaire ? !this.retablir() : !this.annuler()) this.ui.message(refaire ? 'Rien à rétablir sur cette page' : 'Rien à annuler sur cette page')
+      return
+    }
     if (e.key === 'Delete' || e.key === 'Backspace') { this.supprimerSelection(); return }
     if (e.key === 'PageDown') { this.pageSuivante(1); return }
     if (e.key === 'PageUp') { this.pageSuivante(-1); return }

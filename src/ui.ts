@@ -148,11 +148,20 @@ function bouton(nom: string, titre: string, action: (e: Event) => void, classe =
   return b
 }
 
+/** Grise un bouton de la barre (ou le rend), sans toucher au DOM s'il l'est déjà */
+function griser(b: HTMLButtonElement, gris: boolean) {
+  if (b.disabled === gris) return
+  b.disabled = gris
+  b.setAttribute('aria-disabled', String(gris))
+}
+
 export class UI implements Interface {
   private outils = new Map<Outil, HTMLButtonElement>()
   private pastilles: HTMLButtonElement[] = []
   private tailles: HTMLButtonElement[] = []
   private boutonSupprimer!: HTMLButtonElement
+  private boutonAnnuler!: HTMLButtonElement
+  private boutonRetablir!: HTMLButtonElement
   private rang!: HTMLSpanElement
   private choixFond!: HTMLSelectElement
   private boutonAimant!: HTMLButtonElement
@@ -246,8 +255,11 @@ export class UI implements Interface {
     })
     outils.appendChild(rangee)
     outils.appendChild(Object.assign(document.createElement('hr'), { className: 'filet' }))
-    outils.appendChild(bouton('annuler', 'Annuler (Ctrl+Z)', () => app.annuler()))
-    outils.appendChild(bouton('retablir', 'Rétablir (Ctrl+Y)', () => app.retablir()))
+    // Annuler et rétablir n'agissent que sur la page visible : grisés quand
+    // elle n'a rien à défaire ou à refaire (ils gardent leur place)
+    this.boutonAnnuler = bouton('annuler', `Annuler sur cette page (${CTRL}+Z)`, () => app.annuler())
+    this.boutonRetablir = bouton('retablir', `Rétablir sur cette page (${CTRL}+Y)`, () => app.retablir())
+    outils.append(this.boutonAnnuler, this.boutonRetablir)
     // La poubelle garde sa place, grisée quand rien n'est choisi : la barre ne
     // saute plus à chaque sélection
     this.boutonSupprimer = bouton('poubelle', 'Supprimer la sélection (Suppr)', () => app.supprimerSelection(), 'danger')
@@ -418,10 +430,9 @@ export class UI implements Interface {
     this.pastilles.forEach((b, i) => b.classList.toggle('actif', COULEURS[i].valeur === app.couleur))
     this.tailles.forEach((b, i) => b.classList.toggle('actif', TAILLES[i].valeur === app.taille))
     const rien = !(app.selection.size || app.partie)
-    if (this.boutonSupprimer.disabled !== rien) {
-      this.boutonSupprimer.disabled = rien
-      this.boutonSupprimer.setAttribute('aria-disabled', String(rien))
-    }
+    griser(this.boutonSupprimer, rien)
+    griser(this.boutonAnnuler, !app.peutAnnuler())
+    griser(this.boutonRetablir, !app.peutRetablir())
 
     const pages = app.pages, i = pages.indexOf(app.page)
     this.rang.textContent = pages.length ? `${i + 1} / ${pages.length}` : '…'

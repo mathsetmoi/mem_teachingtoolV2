@@ -615,7 +615,7 @@ C…), sur le tableau ou sur une image.
 
 Stylo sensible à la pression, surligneur, gomme, segments (Maj pour
 les angles de 15°, aimant au quadrillage), formules LaTeX avec aperçu et
-raccourcis, sélection et déplacement, annuler/rétablir, pages, fonds (blanc,
+raccourcis, sélection et déplacement, annuler/rétablir (page par page), pages, fonds (blanc,
 petits carreaux, Seyès, repère gradué), zoom de 10 % à 2000 % — le quadrillage
 suit le zoom comme une carte : les carreaux trop petits s'estompent et laissent
 place à de plus grands (1 cm, 5 cm, 10 cm…), la page n'est jamais blanche.
@@ -673,8 +673,21 @@ lui, les montre partir l'un après l'autre). Le bout gomme du stylet (le stylet
 retourné, sur une tablette graphique ou une Surface) efface de même quel que
 soit l'outil en main, qu'on retrouve en reprenant la pointe.
 
+**Annuler, rétablir.** Ctrl+Z (⌘Z sur Mac) et ↶ défont le dernier geste de
+la page qu'on regarde, et d'elle seule ; Ctrl+Y, Ctrl+Maj+Z et ↷ le refont.
+Chaque page garde sa pile : revenir sur une page, c'est retrouver ce qu'on y
+peut défaire, et rien ne change jamais sur une page qu'on ne voit pas. ↶ et ↷
+gardent leur place et se grisent quand la page n'a rien à défaire ou à
+refaire (au doigt, c'est le seul moyen d'annuler : ils se rallument dès qu'il
+y a de quoi). Au clavier, un Ctrl+Z sans rien à défaire le dit : « Rien à
+annuler sur cette page ». Un geste fait une étape : un coup de gomme, même
+lent, même sur une page relue du disque ; une image transformée avec ses
+points ; une figure reconnue en fait une seconde (Ctrl+Z rend le tracé).
+Les piles vivent le temps de la séance : après un rechargement, on ne défait
+plus ce qui a été fait avant (le replay, lui, a tout gardé).
+
 **La barre de gauche** ne bouge pas : la poubelle y garde sa place, grisée
-quand rien n'est choisi. Sur un écran bas (moins de 900 px de haut environ),
+quand rien n'est choisi, comme ↶ et ↷ quand il n'y a rien à faire. Sur un écran bas (moins de 900 px de haut environ),
 ses boutons gardent leurs 44 px et elle défile, avec une fine barre de
 défilement ; les choix des Formes et du Segment suivent leur bouton.
 Les **messages** en bas de l'écran passent sous les panneaux et les menus (ils
@@ -735,8 +748,14 @@ découlent sans code supplémentaire :
    (IndexedDB), sans bouton ni connexion : il marche hors ligne, et le tableau
    est là le lendemain. Pas de base de données à concevoir. Et le même
    document, tel quel, fait le fichier `.memc` qu'on emporte.
-2. **L'annulation ne défait que les gestes.** `Ctrl+Z` ne touche ni au
-   chargement depuis le disque, ni au film.
+2. **L'annulation ne défait que les gestes, et seulement ceux de la page
+   qu'on regarde.** `Ctrl+Z` ne touche ni au chargement depuis le disque, ni
+   au film. Chaque page a sa propre pile (une `Y.UndoManager` dont la portée
+   est la page), créée à la demande et gardée en mémoire seulement : ni le
+   document, ni le fichier `.memc` ne changent. Un Ctrl+Z ne peut donc plus
+   défaire, sans rien montrer, ce qu'on a fait sur une autre page. Un geste
+   reste une étape, même long (le coup de gomme lent) ; le film, lui, garde
+   une étape par changement.
 3. **Rien ne se perd.** Le document garde ce qui a été effacé : c'est ce qui
    permet la revue en classe et le replay des élèves.
 
@@ -748,7 +767,7 @@ cours, qui fait la latence ressentie au stylet.
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule), les fonds |
-| `src/document.ts` | Document Yjs : pages, formes, annulation, film, enregistrement dans le navigateur (et remplacement par un fichier ouvert) |
+| `src/document.ts` | Document Yjs : pages, formes, annulation (une pile par page, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert) |
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris |
 | `src/rendu.ts` | Les trois couches d'affichage |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |

@@ -2,8 +2,9 @@
 // LE DOCUMENT
 // Tout ce qui est écrit vit dans UN document Yjs (un CRDT).
 // - Il s'enregistre dans le navigateur (IndexedDB).
-// - L'annulation (Y.UndoManager) ne défait que les gestes (les
-//   transactions « locales »), jamais le chargement depuis le disque.
+// - L'annulation (une Y.UndoManager par page) ne défait que les gestes
+//   (les transactions « locales ») de la page qu'on regarde, jamais le
+//   chargement depuis le disque.
 // =============================================================
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
@@ -47,8 +48,18 @@ export class Tableau {
   readonly piste: Y.Array<Morceau>
   /** La page que l'on regarde : notée avec chaque étape du film */
   pageVue = ''
-  readonly annulation: Y.UndoManager
   readonly moi = uid()
+  /** Une pile d'annulation par page (voir annulationDe) : en mémoire
+   *  seulement, jamais dans le document ni dans un fichier */
+  private piles = new Map<string, Y.UndoManager>()
+  /** La fenêtre de capture des piles : 400 ms, sans fin pendant un geste long */
+  private capture = CAPTURE
+  /** Prévenu quand une pile change de longueur (une étape ajoutée, défaite,
+   *  refaite, ou les étapes à refaire oubliées). Il l'est pendant la fin de la
+   *  transaction, la pile déjà à jour : l'interface s'y remet (↶ ↷ grisés ou
+   *  non), ce que les observateurs des pages ne peuvent pas faire, appelés
+   *  par Yjs avant que la pile ait reçu le changement. */
+  onPiles?: () => void
   private local: IndexeddbPersistence | null
   /** Les temps du trait que pose la transaction en cours (voir poserTrace) */
   private tempsDuTrace: number[] | null = null
@@ -64,12 +75,6 @@ export class Tableau {
     this.pages = this.doc.getMap('pages')
     this.film = this.doc.getArray('film')
     this.piste = this.doc.getArray('piste')
-    // Portée : toutes les pages et ce qu'elles contiennent. Seules les
-    // transactions marquées « locale » sont retenues.
-    this.annulation = new Y.UndoManager(this.pages, {
-      trackedOrigins: new Set([ORIGINE_LOCALE]),
-      captureTimeout: CAPTURE,
-    })
     this.local = nomLocal ? new IndexeddbPersistence(nomLocal, this.doc) : null
 
     // Chaque geste qui touche aux pages devient une étape du film. Pas le
@@ -252,8 +257,10 @@ export class Tableau {
   }
 
   // ---------- Formes : toutes passent par une transaction « locale » ----------
+  // Chacune demande d'abord la pile de sa page (voir annulationDe).
   poser(page: string, forme: Forme) {
     const formes = this.formesDe(page); if (!formes) return
+    this.annulationDe(page)
     this.doc.transact(() => formes.set(forme.id, forme), ORIGINE_LOCALE)
   }
 
@@ -272,6 +279,7 @@ export class Tableau {
 
   modifier(page: string, changements: { id: string; patch: Partial<Forme> }[]) {
     const formes = this.formesDe(page); if (!formes) return
+    this.annulationDe(page)
     this.doc.transact(() => {
       for (const { id, patch } of changements) {
         const f = formes.get(id)
@@ -282,14 +290,75 @@ export class Tableau {
 
   supprimer(page: string, ids: Iterable<string>) {
     const formes = this.formesDe(page); if (!formes) return
+    this.annulationDe(page)
     this.doc.transact(() => { for (const id of ids) formes.delete(id) }, ORIGINE_LOCALE)
   }
 
+  // ---------- Annulation : une pile par page ----------
+  /** La pile d'annulation d'une page, créée à la demande (null : la page
+   *  n'existe pas). Sa portée est la page elle-même : une transaction qui
+   *  écrit sur la page P n'entre que dans la pile de P, et Ctrl+Z sur une
+   *  page ne peut plus défaire, sans rien montrer, ce qu'on a fait sur une
+   *  autre. Chaque pile a son propre ensemble d'origines suivies : Yjs y
+   *  ajoute la pile elle-même (ce qu'elle défait, elle peut le refaire) ;
+   *  partagé, chaque pile suivrait aussi les annulations des autres.
+   *  poser, modifier et supprimer la demandent AVANT d'écrire : créée au
+   *  milieu d'une transaction englobante (la figure reconnue qui remplace son
+   *  tracé), elle la reçoit quand même, Yjs lisant ses écouteurs au moment de
+   *  finir la transaction. Une pile qui naît pendant un geste long (le coup de
+   *  gomme sur une page relue du disque, où rien n'a encore été écrit cette
+   *  fois) prend la fenêtre du moment : le coup reste une seule étape. */
+  annulationDe(page: string): Y.UndoManager | null {
+    const p = this.pages.get(page)
+    if (!(p instanceof Y.Map)) return null
+    const deja = this.piles.get(page)
+    if (deja && deja.scope[0] === p) return deja
+    deja?.destroy()
+    const u = new Y.UndoManager(p, { trackedOrigins: new Set([ORIGINE_LOCALE]), captureTimeout: this.capture })
+    const prevenir = () => this.onPiles?.()
+    u.on('stack-item-added', prevenir)
+    u.on('stack-item-popped', prevenir)
+    u.on('stack-cleared', prevenir)
+    this.piles.set(page, u)
+    return u
+  }
+
+  /** La pile de la page qu'on regarde (à défaut, de la première page) :
+   *  gardée pour les tests et le code d'avant, qui écrivent et annulent sur
+   *  la page qu'ils regardent. L'application passe par annuler(page). */
+  get annulation(): Y.UndoManager {
+    const u = this.annulationDe(this.pageVue) ?? this.annulationDe(this.ordre.get(0))
+    if (!u) throw new Error('Le tableau n\'a pas encore de page.')
+    return u
+  }
+
+  /** Défait le dernier geste de cette page, et d'elle seule. Rend null s'il
+   *  n'y avait rien à défaire, un objet sinon (le morceau des pages jetées y
+   *  dira laquelle revient). */
+  annuler(page: string): { page?: string } | null {
+    const u = this.piles.get(page)
+    if (!u || !u.undoStack.length) return null
+    return u.undo() ? {} : null
+  }
+
+  /** Refait le dernier geste défait sur cette page. Vrai s'il y en avait un. */
+  retablir(page: string): boolean {
+    const u = this.piles.get(page)
+    return !!u && u.redoStack.length > 0 && !!u.redo()
+  }
+
+  /** Y a-t-il un geste à défaire, à refaire, sur cette page ? Une page dont la
+   *  pile n'existe pas encore n'a rien (on ne la crée pas pour le savoir). */
+  peutAnnuler(page: string): boolean { return (this.piles.get(page)?.undoStack.length ?? 0) > 0 }
+  peutRetablir(page: string): boolean { return (this.piles.get(page)?.redoStack.length ?? 0) > 0 }
+
   /** Un geste = une étape d'annulation, même s'il dure longtemps. Un geste
-   *  long resté ouvert (un lever perdu) ne déborde pas sur le suivant. */
+   *  long resté ouvert (un lever perdu) ne déborde pas sur le suivant. Toutes
+   *  les piles : le geste suivant peut écrire sur une autre page (le point en
+   *  attente se pose sur la sienne). */
   nouveauGeste() {
-    this.annulation.captureTimeout = CAPTURE
-    this.annulation.stopCapturing()
+    this.capture = CAPTURE
+    for (const u of this.piles.values()) { u.captureTimeout = CAPTURE; u.stopCapturing() }
   }
 
   /** Un geste qui écrit plusieurs fois, à son rythme (un coup de gomme lent
@@ -297,14 +366,11 @@ export class Tableau {
    *  ne fait qu'UNE étape d'annulation, quel que soit le temps entre deux
    *  changements. Le film, lui, garde une étape par changement. */
   gesteLong() {
-    this.annulation.stopCapturing()
-    this.annulation.captureTimeout = Infinity
+    this.capture = Infinity
+    for (const u of this.piles.values()) { u.stopCapturing(); u.captureTimeout = Infinity }
   }
 
-  finGesteLong() {
-    this.annulation.captureTimeout = CAPTURE
-    this.annulation.stopCapturing()
-  }
+  finGesteLong() { this.nouveauGeste() }
 
   /** Ajoute des morceaux à la piste des instruments. Hors des pages : le film
    *  n'en fait pas d'étape et l'annulation ne les voit pas. */

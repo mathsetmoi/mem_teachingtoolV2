@@ -342,9 +342,12 @@ describe('ce qui n\'est pas un geste', () => {
     for (const f of [trait(0, 0), trait(5, 5), dernier]) { t.nouveauGeste(); t.poser(page, f); await attendre(1000) }
     const p2 = await pageNeuve(t)
     t.nouveauGeste(); t.poser(p2, trait(1, 1)); await attendre(1000)
-    // Deux Ctrl+Z en regardant la page 2 : le second retire le dernier trait de la page 1
-    t.annulation.undo(); await attendre(500)
-    t.annulation.undo(); await attendre(500)
+    // Deux Ctrl+Z en regardant la page 2 : le second retire le dernier trait de
+    // la page 1. L'application ne le fait plus (chaque page a sa pile), mais un
+    // tableau d'avant en a dans son film : on le simule par la pile de la page
+    // 1, pendant que le film note l'étape sur la page 2
+    t.annulationDe(p2)!.undo(); await attendre(500)
+    t.annulationDe(page)!.undo(); await attendre(500)
     expect(t.formesDe(page)!.has(dernier.id)).toBe(false)
     const r = revue(t)
     for (const p of [{ genre: 'seance', seance: r.seances[0], page }, { genre: 'page', page }] as Portion[]) {
