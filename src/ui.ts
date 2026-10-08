@@ -662,7 +662,7 @@ export class UI implements Interface {
     if (figure && ((f.type === 'cercle' && !f.arc) || (f.type === 'polygone' && f.ferme))) action('Fond', 'Remplir la figure', () => ouvrir('fond'), this.section === 'fond')
     action('Transformer', 'Translation, rotation, symétrie, homothétie', () => ouvrir('transformer'), this.section === 'transformer')
     if (figure?.brut) action('Main levée', 'Revenir au tracé d\'origine', () => app.revenirMainLevee(figure))
-    action('Dupliquer', 'Une copie, décalée d\'un centimètre', () => app.dupliquer(f))
+    action('Dupliquer', `Une copie, décalée d'un centimètre (${CTRL}+D)`, () => app.dupliquerSelection())
     const jeter = bouton('poubelle', 'Supprimer (Suppr)', () => app.supprimerSelection(), 'danger')
     ligne.appendChild(jeter)
     p.appendChild(ligne)

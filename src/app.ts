@@ -31,6 +31,17 @@ import { avale } from './menus'
 import type { TraitDirect } from './rendu'
 import type { Vue } from './session'
 import { ecrireSession, lireSession, oublierSession } from './session'
+import type { Copie } from './presse-papiers'
+import { collage, lireHtml, lireJson, memeTexte, versHtml, versTexte } from './presse-papiers'
+
+/** La copie gardée dans le navigateur, pour un autre onglet de la même
+ *  adresse (nouvelle clé : aucune autre ne change) */
+const CLE_PRESSE_PAPIERS = 'mem-presse-papiers'
+/** Au-delà (des images), elle ne se garde pas dans le navigateur : le
+ *  presse-papiers du système la porte encore */
+const GARDE_MAX = 2 * 1024 * 1024
+/** Une copie oubliée ne se colle pas le lendemain */
+const GARDE_DUREE = 12 * 3600 * 1000
 
 export const COULEURS = [
   { nom: 'Noir', valeur: '#1b2230' },
@@ -182,6 +193,23 @@ export class App {
   private astuceAjout = false
   /** Une mise à jour de l'interface est déjà prévue après un changement de pile */
   private majPiles = false
+  /** La dernière copie faite dans cet onglet (Ctrl+C, Ctrl+X) */
+  private copie: Copie | null = null
+  /** Où sont allés les collages de la copie `cle` (son heure) : la place du
+   *  dernier sur chaque page, et le pointeur d'alors (à la copie, puis à
+   *  chaque collage). Trois Ctrl+V sans bouger la souris s'étagent. */
+  private collages: { cle: number; pointeur: { clientX: number; clientY: number } | null; pages: Map<string, P> } | null = null
+  /** La copie que l'événement copy doit ranger (voir ecrireSysteme) */
+  private copieAEcrire: Copie | null = null
+  private copieEcrite = false
+  /** L'heure de la dernière copie que le presse-papiers du système a
+   *  refusée : Ctrl+V la colle quand même (voir surColler) */
+  private copieHorsSysteme = 0
+  /** Ctrl+V attend l'événement paste ; s'il ne vient pas (un navigateur qui ne
+   *  le donne pas hors d'un champ de saisie), la copie gardée se colle */
+  private collageAttendu = 0
+  /** L'heure de la dernière copie : deux copies n'ont jamais la même */
+  private heureCopie = 0
   /** Les instruments posés (dans l'ordre d'empilement) et leur réglage */
   readonly instruments = new Map<NomInstrument, EtatInstrument>()
   /** Ce que la classe voit des instruments, noté pour le replay (voir piste.ts) */
@@ -231,10 +259,20 @@ export class App {
     // Les images : où trouver leurs pixels ; coller ou glisser un fichier
     this.rendu.pixels = src => this.pixels(src)
     this.rendu.rendreFormule = (latex, el) => katex.render(latex, el, { throwOnError: false, displayMode: false })
-    window.addEventListener('paste', e => {
-      if ((e.target as HTMLElement).closest?.('input, textarea')) return
-      const f = [...(e.clipboardData?.files ?? [])].find(x => x.type.startsWith('image/'))
-      if (f && !this.enLecture) { e.preventDefault(); this.importerImage(f) }
+    window.addEventListener('paste', e => this.surColler(e))
+    // La copie part dans le presse-papiers du système par execCommand('copy')
+    // (voir ecrireSysteme), qui déclenche cet événement : on y range la
+    // copie, en texte et marquée dans le HTML. Safari n'accepte « copy » sans
+    // texte choisi sur la page que si beforecopy a été empêché. Une copie
+    // ordinaire (du texte choisi dans une fenêtre) passe sans rien changer.
+    document.addEventListener('beforecopy', e => { if (this.copieAEcrire) e.preventDefault() })
+    document.addEventListener('copy', e => {
+      const c = this.copieAEcrire
+      if (!c || !e.clipboardData) return
+      e.clipboardData.setData('text/plain', versTexte(c))
+      e.clipboardData.setData('text/html', versHtml(c))
+      e.preventDefault()
+      this.copieEcrite = true
     })
     zone.addEventListener('dragover', e => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault() })
     zone.addEventListener('drop', e => {
@@ -2382,12 +2420,6 @@ export class App {
     this.selectionner(t.id)
   }
 
-  dupliquer(f: Forme) {
-    const copie = image(f, { type: 'translation', dx: CM, dy: CM }, this.tableau.moi)
-    if ((copie.type === 'polygone' || copie.type === 'cercle') && f.type === copie.type) copie.noms = f.noms && nomsLibres(f.noms.length, this.formes, copie.type === 'cercle')
-    this.poserFigure(copie)
-  }
-
   /** L'image d'un objet par une transformation. Les points repérés sur une
    *  image ont aussi leur image, liée à la nouvelle. L'image et ses points
    *  font UN geste, posés dans une seule transaction : un seul Ctrl+Z les
@@ -2397,11 +2429,249 @@ export class App {
     const img = image(f, t, this.tableau.moi)
     const points = this.liees(f.id).map(g => ({ ...image(g, t, this.tableau.moi), lie: img.id }) as Forme)
     this.tableau.nouveauGeste()
-    this.tableau.doc.transact(() => {
-      for (const p of points) this.tableau.poser(this.page, p)
-      this.tableau.poser(this.page, img)
-    }, 'locale')
+    this.tableau.poserPlusieurs(this.page, [...points, img])
     this.selectionner(img.id)
+  }
+
+  // ---------- Copier, couper, coller, dupliquer ----------
+  /** Ce que copient Ctrl+C, Ctrl+X, Ctrl+D : la sélection, ou la figure du
+   *  morceau choisi (un sommet choisi, c'est la figure qu'on copie), avec les
+   *  points liés aux images choisies (ils les suivent) ; dans l'ordre
+   *  d'empilement. */
+  objetsChoisis(): Forme[] {
+    const ids = new Set(this.selection)
+    if (!ids.size && this.partie) ids.add(this.partie.id)
+    if (!ids.size) return []
+    return this.formes.filter(f => ids.has(f.id) || ((f.type === 'polygone' || f.type === 'cercle') && !!f.lie && ids.has(f.lie)))
+  }
+
+  /** La copie de ces formes : les données de leurs images, la page, le
+   *  centre de leur boîte, l'heure. Une image dont la banque a perdu les
+   *  données ne se copie pas (elle ne se collerait nulle part). */
+  private faireCopie(formes: Forme[]): Copie | null {
+    const images: Record<string, string> = {}
+    const gardees = formes.filter(f => {
+      if (f.type !== 'image') return true
+      const d = this.banqueImages.get(f.src)
+      if (typeof d !== 'string') return false
+      images[f.src] = d
+      return true
+    })
+    if (!gardees.length) return null
+    const b = this.boiteDuContenu(gardees)
+    const centre = b ? { x: b.x + b.l / 2, y: b.y + b.h / 2 } : { x: gardees[0].x, y: gardees[0].y }
+    this.heureCopie = Math.max(Date.now(), this.heureCopie + 1)
+    return { v: 1, formes: gardees, images, page: this.page, centre, t: this.heureCopie }
+  }
+
+  /** Ctrl+C : la copie est gardée en mémoire (cet onglet), dans le navigateur
+   *  (un autre onglet de la même adresse) et dans le presse-papiers du
+   *  système (la version en ligne et la version clé USB). Rien de choisi : on
+   *  le dit, et faux (le navigateur fait alors sa copie ordinaire). */
+  copier(dire = true): boolean {
+    if (this.enLecture) return false
+    const formes = this.objetsChoisis()
+    const c = formes.length ? this.faireCopie(formes) : null
+    if (!c) { this.ui.message('Rien n\'est sélectionné.'); return false }
+    this.copie = c
+    // Le pointeur d'au moment de la copie : s'il n'a pas bougé, Ctrl+V ne
+    // colle pas sous lui (ce serait sur l'objet même), mais à côté
+    this.collages = { cle: c.t, pointeur: this.pointeurSurZone && { ...this.pointeurSurZone }, pages: new Map() }
+    this.garderCopie(c)
+    this.ecrireSysteme(c)
+    const n = c.formes.length
+    if (dire) this.ui.message(n === 1 ? '1 objet copié' : `${n} objets copiés`)
+    return true
+  }
+
+  /** La copie gardée dans le navigateur, sous la nouvelle clé. Trop grosse
+   *  (des images), l'ancienne s'en va : un autre onglet ne doit pas coller
+   *  une copie d'avant en croyant coller celle-ci. */
+  private garderCopie(c: Copie) {
+    try {
+      const texte = JSON.stringify(c)
+      if (texte.length <= GARDE_MAX) localStorage.setItem(CLE_PRESSE_PAPIERS, texte)
+      else localStorage.removeItem(CLE_PRESSE_PAPIERS)
+    } catch {
+      try { localStorage.removeItem(CLE_PRESSE_PAPIERS) } catch { /* rien de gardé */ }
+    }
+  }
+
+  /** La copie dans le presse-papiers du système : execCommand('copy')
+   *  déclenche l'événement copy, qui la range (voir le constructeur). Un
+   *  navigateur qui refuse ne casse rien : la copie reste en mémoire et dans
+   *  le navigateur. */
+  private ecrireSysteme(c: Copie) {
+    this.copieAEcrire = c
+    this.copieEcrite = false
+    try { document.execCommand('copy') } catch { /* refusé : le presse-papiers du système ne l'aura pas */ }
+    this.copieAEcrire = null
+    this.copieHorsSysteme = this.copieEcrite ? 0 : c.t
+  }
+
+  /** Ctrl+X : la copie, puis ce qui est copié part, en une étape (Ctrl+Z le
+   *  rend). Un sommet choisi : c'est la figure copiée qui part, pas le sommet. */
+  couper(): boolean {
+    if (this.enLecture) return false
+    const formes = this.objetsChoisis()
+    if (!this.copier(false)) return false
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    this.tableau.nouveauGeste()
+    this.tableau.supprimer(this.page, formes.map(f => f.id))
+    this.selection.clear()
+    this.rendu.redessinerDirect(); this.ui.maj()
+    const n = this.copie?.formes.length ?? formes.length
+    this.ui.message(n === 1 ? '1 objet coupé' : `${n} objets coupés`)
+    return true
+  }
+
+  /** La copie à coller : la plus récente de celle de cet onglet et de celle
+   *  gardée dans le navigateur (un autre onglet a pu copier depuis). Une copie
+   *  gardée depuis plus de 12 h ne compte plus. */
+  private copieGardee(): Copie | null {
+    let gardee: Copie | null = null
+    try { gardee = lireJson(localStorage.getItem(CLE_PRESSE_PAPIERS)) } catch { /* rien de gardé */ }
+    if (gardee && Date.now() - gardee.t > GARDE_DUREE) gardee = null
+    const ici = this.copie && Date.now() - this.copie.t <= GARDE_DUREE ? this.copie : null
+    if (ici && (!gardee || gardee.t <= ici.t)) return ici
+    return gardee
+  }
+
+  /** Y a-t-il une copie à coller (« Coller ici ») ? Le presse-papiers du
+   *  système ne se lit pas sans permission : seules comptent les copies de MEM */
+  peutColler(): boolean { return !this.enLecture && this.copieGardee() !== null }
+
+  /** Colle la copie gardée (la plus récente) : en ou (monde) si on le donne,
+   *  sinon comme Ctrl+V (voir collerCopie) */
+  coller(ou?: P): boolean {
+    if (this.enLecture) return false
+    const c = this.copieGardee()
+    if (!c) { this.ui.message('Rien à coller : copiez d\'abord un objet.'); return false }
+    this.collerCopie(c, ou)
+    return true
+  }
+
+  /** Colle une copie sur la page qu'on regarde, en une étape d'annulation ;
+   *  ce qui est collé devient la sélection (l'outil ne change pas). Où :
+   *  - en ou, si on le donne (« Coller ici ») ;
+   *  - sous le pointeur s'il est sur le tableau et a bougé (plus de 4 px)
+   *    depuis la copie ou le collage précédent ;
+   *  - sinon, 1 cm plus loin que le collage précédent sur cette page ; le
+   *    premier sur la page de la copie, 1 cm à côté de l'original ; sur une
+   *    autre page ou dans un autre onglet, à la même place que l'original.
+   *  Une place hors de ce qu'on voit devient le milieu de la vue : un Ctrl+V
+   *  qui ne montre rien ferait croire qu'il n'a rien fait. */
+  collerCopie(c: Copie, ou?: P) {
+    if (this.enLecture || !c.formes.length) return
+    this.viderPointEnAttente()
+    const page = this.page
+    // Une copie de cet onglet (la même heure, les mêmes objets) : on colle
+    // celle qu'on a, telle quelle, plutôt que sa version relue
+    const memes = (a: Copie, b: Copie) => a.t === b.t && a.formes.length === b.formes.length && a.formes.every((f, k) => f.id === b.formes[k].id)
+    const ici = !!this.copie && memes(this.copie, c)
+    if (ici) c = this.copie!
+    if (!this.collages || this.collages.cle !== c.t) this.collages = { cle: c.t, pointeur: null, pages: new Map() }
+    const suivi = this.collages
+    const ptr = this.pointeurSurZone
+    const bouge = !!ptr && (!suivi.pointeur || Math.hypot(ptr.clientX - suivi.pointeur.clientX, ptr.clientY - suivi.pointeur.clientY) > 4)
+    const avant = suivi.pages.get(page)
+    let centre: P
+    if (ou) centre = ou
+    else if (ptr && bouge) centre = this.monde(ptr)
+    else {
+      centre = avant ? { x: avant.x + CM, y: avant.y + CM }
+        : ici && c.page === page ? { x: c.centre.x + CM, y: c.centre.y + CM }
+        : { ...c.centre }
+      if (!this.dansLaVue(centre)) { const s = this.centreLibre(); centre = this.cam.versMonde(s.x, s.y) }
+    }
+    suivi.pages.set(page, centre)
+    suivi.pointeur = ptr && { ...ptr }
+    // Les images : leurs données entrent dans la banque si elles n'y sont pas
+    // (une copie d'un autre tableau) ; sous le même identifiant d'autres
+    // données (un autre tableau), elles prennent un identifiant neuf. Jamais
+    // une image déjà là n'est remplacée.
+    const autres = new Map<string, string>()
+    for (const [src, d] of Object.entries(c.images)) {
+      const deja = this.banqueImages.get(src)
+      if (deja === undefined) this.banqueImages.set(src, d)
+      else if (deja !== d) { const n = uid(); this.banqueImages.set(n, d); autres.set(src, n) }
+    }
+    const formes = autres.size ? c.formes.map(f => f.type === 'image' && autres.has(f.src) ? { ...f, src: autres.get(f.src)! } : f) : c.formes
+    this.poserCollage(collage({ ...c, formes }, { dx: centre.x - c.centre.x, dy: centre.y - c.centre.y, moi: this.tableau.moi, existantes: this.formes }))
+  }
+
+  /** Pose ce qu'on colle ou duplique (une étape) et le sélectionne */
+  private poserCollage(formes: Forme[]) {
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    this.tableau.nouveauGeste()
+    this.tableau.poserPlusieurs(this.page, formes)
+    this.selection.clear()
+    for (const f of formes) this.selection.add(f.id)
+    this.rendu.redessinerDirect(); this.ui.maj()
+  }
+
+  /** Ce point du monde est-il dans ce qu'on voit entre les barres ? */
+  private dansLaVue(w: P): boolean {
+    const s = this.cam.versEcran(w.x, w.y)
+    const r = this.ui?.zoneLibre() ?? { x: 0, y: 0, l: this.rendu.l, h: this.rendu.h }
+    return s.x >= r.x && s.x <= r.x + r.l && s.y >= r.y && s.y <= r.y + r.h
+  }
+
+  /** Ctrl+D et « Dupliquer » : une copie 1 cm plus loin, en une étape, qui
+   *  devient la sélection ; le presse-papiers n'y est pour rien. Les noms
+   *  changent (ceux de l'original sont pris), les points liés à une image
+   *  dupliquée suivent la nouvelle. */
+  dupliquerSelection(): boolean {
+    if (this.enLecture) return false
+    this.viderPointEnAttente()
+    const formes = this.objetsChoisis()
+    if (!formes.length) { this.ui.message('Rien n\'est sélectionné.'); return false }
+    const c: Copie = { v: 1, formes, images: {}, page: this.page, centre: { x: 0, y: 0 }, t: 0 }
+    this.poserCollage(collage(c, { dx: CM, dy: CM, moi: this.tableau.moi, existantes: this.formes }))
+    return true
+  }
+
+  /** Ctrl+A : tout ce qui est sur la page qu'on regarde. On passe à l'outil
+   *  Sélection, comme Échap (on peut alors glisser le tout, et un second
+   *  Échap rend l'outil d'avant). */
+  toutSelectionner() {
+    if (this.enLecture) return
+    this.viderPointEnAttente()
+    if (!this.formes.length) { this.ui.message('La page est vide.'); return }
+    if (this.outil !== 'selection') { this.outilAvant = this.outil; this.choisirOutil('selection') }
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    this.selection.clear()
+    for (const f of this.formes) this.selection.add(f.id)
+    this.rendu.redessinerDirect(); this.ui.maj()
+    const n = this.formes.length
+    this.ui.message(n === 1 ? '1 objet sélectionné' : `${n} objets sélectionnés`)
+  }
+
+  /** Ctrl+V (ou le menu Édition du navigateur), hors d'un champ de saisie :
+   *  dans l'ordre, des objets de MEM teachingtool marqués dans le HTML (d'un
+   *  autre onglet, de l'autre version) ; une image (comme avant) ; la copie
+   *  gardée, si le texte du presse-papiers est vide ou est le sien (l'écriture
+   *  dans le système a échoué, ou c'est bien elle) ; sinon on dit qu'il n'y a
+   *  rien à coller. Ni pendant la revue, ni pendant une séance, ni dans une
+   *  fenêtre ouverte. */
+  private surColler(e: ClipboardEvent) {
+    clearTimeout(this.collageAttendu); this.collageAttendu = 0
+    if ((e.target as HTMLElement | null)?.closest?.('input, textarea, [contenteditable]')) return
+    if (this.enLecture || document.body.classList.contains('en-seance') || document.querySelector('dialog[open]')) return
+    const d = e.clipboardData
+    if (!d) return
+    const marquee = lireHtml(d.getData('text/html'))
+    if (marquee) { e.preventDefault(); this.collerCopie(marquee); return }
+    const f = [...d.files].find(x => x.type.startsWith('image/'))
+    if (f) { e.preventDefault(); this.importerImage(f); return }
+    const gardee = this.copieGardee(), texte = d.getData('text/plain')
+    // Le presse-papiers du système a refusé cette copie : il a encore autre
+    // chose, mais c'est bien elle qu'on vient de copier
+    if (gardee && (!texte || memeTexte(texte, versTexte(gardee)) || gardee.t === this.copieHorsSysteme)) { e.preventDefault(); this.collerCopie(gardee); return }
+    this.ui.message('Le presse-papiers ne contient ni objet ni image à coller.')
   }
 
   /** L'outil Point : un clic pose un point marqué d'une croix, nommé de la
@@ -2494,6 +2764,31 @@ export class App {
       if (refaire ? !this.retablir() : !this.annuler()) this.ui.message(refaire ? 'Rien à rétablir sur cette page' : 'Rien à annuler sur cette page')
       return
     }
+    // Pendant une séance d'automatismes, le tableau est caché : sa vue ne bouge pas
+    const seance = document.body.classList.contains('en-seance')
+    // Ctrl+A, C, X, V, D (⌘ sur Mac) : tout sélectionner, copier, couper,
+    // coller, dupliquer. La lettre se lit par e.key : en AZERTY, la touche
+    // marquée A a pour e.code « KeyQ ». AltGr (Ctrl+Alt sous Windows) n'en
+    // est pas un. Ni pendant une séance, ni dans une fenêtre ouverte (les
+    // champs de saisie se sont déjà tus plus haut : on y copie du texte).
+    if (ctrl && !e.altKey && !e.shiftKey && !seance && !document.querySelector('dialog[open]')) {
+      switch (lettre) {
+        case 'a': e.preventDefault(); if (!e.repeat) this.toutSelectionner(); return
+        // Rien de choisi : le navigateur fait sa copie ordinaire
+        case 'c': if (e.repeat) { e.preventDefault(); return } if (this.copier()) e.preventDefault(); return
+        case 'x': if (e.repeat) { e.preventDefault(); return } if (this.couper()) e.preventDefault(); return
+        // Toujours empêché : sinon le navigateur ajoute un marque-page
+        case 'd': e.preventDefault(); this.dupliquerSelection(); return
+        // L'événement paste suit (voir surColler) : on ne l'empêche pas. Un
+        // navigateur qui ne le donne pas hors d'un champ de saisie colle tout
+        // de même la copie gardée, un instant après (paste, s'il vient, passe
+        // avant, dans la même tâche que la touche)
+        case 'v':
+          clearTimeout(this.collageAttendu)
+          this.collageAttendu = window.setTimeout(() => { this.collageAttendu = 0; this.coller() }, 200)
+          return
+      }
+    }
     if (e.key === 'Delete' || e.key === 'Backspace') { this.supprimerSelection(); return }
     if (e.key === 'PageDown') { this.pageSuivante(1); return }
     if (e.key === 'PageUp') { this.pageSuivante(-1); return }
@@ -2507,8 +2802,6 @@ export class App {
       this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id) || this.lieeA(f)).map(f => ({ id: f.id, patch: { x: f.x + dx * k, y: f.y + dy * k } })))
       return
     }
-    // Pendant une séance d'automatismes, le tableau est caché : sa vue ne bouge pas
-    const seance = document.body.classList.contains('en-seance')
     // Sans sélection, elles déplacent la vue : → montre ce qui est à droite.
     // Un quart de ce qu'on voit (trois quarts avec Maj), en douceur ; touche
     // tenue, un douzième à chaque répétition, tout de suite (sinon la vue

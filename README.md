@@ -625,7 +625,7 @@ C…), sur le tableau ou sur une image.
 
 Stylo sensible à la pression, surligneur, gomme, segments (Maj pour
 les angles de 15°, aimant au quadrillage), formules LaTeX avec aperçu et
-raccourcis, sélection et déplacement, annuler/rétablir (page par page), pages (supprimées sans question, et rendues par Annuler ou Ctrl+Z), fonds (blanc,
+raccourcis, sélection et déplacement, copier, coller, dupliquer (d'une page et d'un onglet à l'autre), annuler/rétablir (page par page), pages (supprimées sans question, et rendues par Annuler ou Ctrl+Z), fonds (blanc,
 petits carreaux, Seyès, repère gradué), zoom de 10 % à 2000 % — le quadrillage
 suit le zoom comme une carte : les carreaux trop petits s'estompent et laissent
 place à de plus grands (1 cm, 5 cm, 10 cm…), la page n'est jamais blanche.
@@ -713,6 +713,40 @@ poubelle (« Effacer la page ») l'efface, avec « Page effacée · Annuler », 
 dit « La page est déjà vide. ». Après un rechargement, une page supprimée ne
 revient plus ; son histoire reste dans « Pages jetées » de la revue. De même,
 un fichier `.memc` la garde dans l'histoire du tableau, pas parmi ses pages.
+
+**Copier, coller.** Ctrl+C copie ce qui est sélectionné (la figure entière
+quand un de ses sommets est choisi ; une image emporte les points qui lui sont
+liés), Ctrl+X le coupe, Ctrl+V le colle, Ctrl+D le duplique (1 cm plus loin,
+sans passer par le presse-papiers), Ctrl+A sélectionne tout ce qui est sur la
+page et passe à l'outil Sélection (Échap vide la sélection, un second Échap
+rend l'outil d'avant) ; ⌘ sur Mac. Ce sont les lettres écrites sur les
+touches, en AZERTY comme en QWERTY, et AltGr n'en fait pas un raccourci. Rien
+de tout cela dans un champ de saisie (une formule qu'on tape, les noms des
+sommets : on y copie du texte), pendant la revue, une séance d'automatismes,
+ou quand une fenêtre est ouverte ; sans rien de choisi, un message le dit.
+Ctrl+V colle sur la page qu'on regarde : sous le pointeur (souris, plume de la
+tablette graphique) s'il est sur le tableau et a bougé depuis la copie ;
+sinon 1 cm à côté de l'original, et trois Ctrl+V de suite font trois copies
+étagées ; sur une autre page, à la même place si elle se voit ; une place
+hors de ce qu'on voit devient le milieu de la vue. Ce qui est collé est
+sélectionné, l'outil ne change pas. Copier ne change rien à la page ; couper,
+coller, dupliquer font chacun une étape : un Ctrl+Z retire tout un collage
+d'un coup, et rend ce qu'on a coupé. Une figure collée garde ses noms s'ils
+sont libres sur la page (ABC reste ABC sur une page neuve), sinon elle reçoit
+les lettres libres suivantes (DEF sur la même page), jamais des primes (A'
+veut dire « l'image de A ») ; un point lié à une image collée avec lui suit la
+nouvelle image. La copie passe d'une page à l'autre, d'un onglet à l'autre
+(elle est gardée dans ce navigateur, 12 heures au plus : on ne colle pas le
+lendemain ce qu'on avait oublié avoir copié), et entre la version en ligne et
+la version clé USB par le presse-papiers du système, images comprises (leurs
+pixels voyagent avec elles). Collées dans un autre logiciel, des formules
+seules donnent leur LaTeX. Une image copiée ailleurs (une capture d'écran) se
+colle toujours comme une image importée. Ce qui vient du presse-papiers du
+système n'entre jamais dans la page telle quelle : seules les copies de MEM
+teachingtool sont lues, chaque forme est refaite champ par champ (une forme
+abîmée resterait pour toujours dans le document et casserait la revue), et
+tout le reste est refusé : « Le presse-papiers ne contient ni objet ni image à
+coller. »
 
 **La barre de gauche** ne bouge pas : la poubelle y garde sa place, grisée
 quand rien n'est choisi, comme ↶ et ↷ quand il n'y a rien à faire. Sur un écran bas (moins de 900 px de haut environ),
@@ -820,6 +854,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt), hors du document |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
+| `src/presse-papiers.ts` | Copier, coller : la copie écrite pour le presse-papiers du système et relue sans passer par la page, chaque forme vérifiée, le collage (noms gardés ou changés, points liés) |
 | `src/fichier.ts` | Le tableau dans un fichier `.memc` : l'écrire, le relire (et refuser ce qui n'en est pas un) |
 | `src/sauvegarde.ts` | Enregistrer et ouvrir un tableau : le menu ⋯, Ctrl + S, Ctrl + O, la question avant de remplacer, les autres onglets |
 

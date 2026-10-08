@@ -8,7 +8,9 @@
 // stockage bloqué) les oublie à la fermeture, et c'est tout.
 // Les clés déjà en service ailleurs ne changent pas : 'mem-automatismes',
 // 'mem-construction-instruments', 'mem-construction-existants',
-// 'tableau-mem:compte-google:…'.
+// 'tableau-mem:compte-google:…'. Ailleurs aussi, une clé qui n'est pas un
+// réglage : 'mem-presse-papiers', la dernière copie d'objets (voir app.ts),
+// qu'un autre onglet colle, oubliée au bout de 12 heures.
 // =============================================================
 
 /** La valeur gardée sous cette clé, si elle fait partie des valeurs permises */

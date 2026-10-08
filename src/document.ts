@@ -353,6 +353,15 @@ export class Tableau {
     this.doc.transact(() => formes.set(forme.id, forme), ORIGINE_LOCALE)
   }
 
+  /** Pose plusieurs formes d'un coup (un collage, une duplication) : UNE
+   *  transaction, donc une étape d'annulation (un Ctrl+Z retire tout le
+   *  collage) et une étape du film (le replay les montre paraître ensemble). */
+  poserPlusieurs(page: string, liste: Forme[]) {
+    const formes = this.formesDe(page); if (!formes || !liste.length) return
+    this.annulationDe(page)
+    this.doc.transact(() => { for (const f of liste) formes.set(f.id, f) }, ORIGINE_LOCALE)
+  }
+
   /** Pose un trait tracé à la main. L'étape du film qu'il fait naître note le
    *  temps passé sur chacun de ses points (ms, un par point) : le replay le
    *  retracera au rythme de la main. Le trait, lui, reste un trait comme les
