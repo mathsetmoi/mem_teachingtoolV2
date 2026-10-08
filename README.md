@@ -79,13 +79,41 @@ on part d'à côté. Au survol de la souris ou de la tablette graphique, le
 curseur le dit : la flèche en croix saisit, la main prend ou entoure, la
 croix est dans le vide.
 
+**La barre d'actions.** Dès qu'on prend quelque chose avec l'outil
+Sélection (un clic, Maj + clic, un cadre, un lasso, Ctrl + A, ce qu'on vient
+de coller ou de dupliquer), ou d'un toucher du doigt qui « déplace », une
+petite barre paraît tout de suite juste au-dessus, sans le cacher : *Dupliquer*,
+*Copier*, *Supprimer* et *Options* (le menu complet), avec *Modifier* en tête
+pour une formule seule. Au doigt s'ajoute *Ajouter* : allumé, chaque objet
+touché entre dans la sélection ou en sort (le Maj + clic d'une tablette, qui
+n'a pas de touche Maj), et un toucher dans le vide l'éteint. Des boutons de
+52 px, leur nom dessous ; l'infobulle donne le raccourci (Ctrl + D, Ctrl + C,
+Suppr ; pour *Options*, le clic droit à la souris, le bouton du stylet au
+stylet). Elle se pose dessous quand il n'y a pas la place sous la barre du
+haut, en haut de l'écran pour un objet plus grand que lui, toujours dans
+l'écran, jamais sur la barre d'outils (sauf sur un téléphone, où elle n'y
+tiendrait pas). Elle suit la vue et l'objet (zoom, molette, flèches) ; elle
+se cache pendant qu'on glisse l'objet, qu'on tire un cadre ou un lasso, qu'on
+pince à deux doigts, et revient au lâcher ; elle s'efface quand l'objet sort
+de la vue. Elle ne paraît **jamais sous le Stylo** (ni sous un autre outil de
+dessin) à la souris ou au stylet : une copie, une image importée, l'image
+d'une transformation restent sélectionnées sans barre, et ce qu'on vient
+d'écrire n'est jamais sélectionné ; au doigt qui déplace, elle ne prend
+jamais le stylet (sur l'iPad, le crayon posé dessus écrit son trait, comme si
+elle n'était pas là). Un clic droit ou un double-clic ouvrent directement le
+menu complet, qui contient tout : la barre lui laisse la place, comme au menu
+d'un morceau, à la revue, à une séance d'automatismes, à l'éditeur d'une
+formule, à une fenêtre ouverte. Discrète au vidéoprojecteur : le gris des
+barres, des libellés gris, aucune couleur.
+
 **Le menu complet** de ce qu'on a pris s'ouvre à la demande, de la même
-façon partout : **clic droit** sur l'objet (au stylet, le bouton du stylet ;
-sur Mac, Ctrl + clic aussi) ou **double-clic** (un simple clic le sélectionne
-seulement, pour le déplacer) ; au doigt, avec l'outil Sélection ou le doigt
-qui « déplace », **deux touchers** rapprochés (moins d'un tiers de seconde, à
-moins de 35 px, sur le même objet), même sur iPad où Safari ne donne pas de
-double-clic au doigt (un toucher suivi d'un glisser déplace toujours). La
+façon partout : *Options* dans la barre d'actions ; **clic droit** sur l'objet
+(au stylet, le bouton du stylet ; sur Mac, Ctrl + clic aussi) ou
+**double-clic** (un simple clic le sélectionne seulement, pour le déplacer) ;
+au doigt, avec l'outil Sélection ou le doigt qui « déplace », **deux
+touchers** rapprochés (moins d'un tiers de seconde, à moins de 35 px, sur le
+même objet), même sur iPad où Safari ne donne pas de double-clic au doigt (un
+toucher suivi d'un glisser déplace toujours). La
 première fois qu'on prend un objet, un message le rappelle dans les mots du
 pointeur (jamais « clic droit » au doigt). Au Stylo aussi, un double-clic sur
 une figure ou une formule ouvre son menu (ou l'éditeur de la formule), sans y
@@ -801,7 +829,8 @@ lève, celui qui reste continue de déplacer la vue, sans jamais se mettre à
 dessiner. À l'outil Sélection, quel que soit le rôle du doigt, un doigt qui
 glisse dans le vide trace un lasso (le second doigt qui se pose l'efface et
 déplace la vue), et un doigt posé sur un objet le prend ou le glisse, comme la
-souris. Sous les autres outils, le rôle d'un seul doigt se règle par le bouton
+souris ; *Ajouter*, dans la barre d'actions, fait de chaque toucher un
+Maj + clic, jusqu'à un toucher dans le vide. Sous les autres outils, le rôle d'un seul doigt se règle par le bouton
 en forme de main de la barre de gauche (sur un appareil tactile seulement ; sa
 marque dit le choix) :
 
@@ -886,6 +915,8 @@ cours, qui fait la latence ressentie au stylet.
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
 | `src/ui.ts` | Barres d'outils, le menu complet (un objet, une formule, plusieurs objets), le menu de la page, éditeur de formules |
+| `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît, ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose |
+| `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (celles des lecteurs sont dans `src/revoir/icones.ts`) |
 | `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule |
 | `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page ; la molette |
 | `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs) |

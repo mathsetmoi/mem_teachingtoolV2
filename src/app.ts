@@ -1140,6 +1140,8 @@ export class App {
     if (doigts.length === 2) {
       this.abandonnerGeste()
       this.geste = this.pincement(doigts)
+      // La barre d'actions se cache le temps du pincement (voir enMouvement)
+      if (this.selection.size) this.ui.maj()
       return
     }
     if (this.geste) return
@@ -1609,7 +1611,13 @@ export class App {
     // glisser, rien ne bouge ; passé le seuil, le déplacement compte depuis
     // le départ. L'encre, elle, part tout de suite.
     if (g.type !== 'pinch' && e.pointerId !== this.depart.pointeur) return
+    const parti = this.depart.parti
     const glisse = g.type !== 'pinch' && this.aGlisse(s)
+    // L'appui devient un glisser (un objet qui part, un cadre ou un lasso qui
+    // commence) : la barre d'actions se cache, une fois, jusqu'au lâcher (voir
+    // enMouvement). Rien de sélectionné, pas de barre : un trait du Stylo ne
+    // paie pas cette mise à jour.
+    if (glisse && !parti && this.selection.size) this.ui?.maj()
     switch (g.type) {
       case 'instrument':
         if (g.quoi !== 'tete' && !glisse) break          // l'arc du compas, lui, se trace tout de suite
@@ -1703,7 +1711,8 @@ export class App {
     this.pointeurs.delete(e.pointerId)
     const g = this.geste
     if (!g) return
-    if (g.type === 'pinch') { this.finPincement(); return }
+    // La fin d'un pincement : la barre d'actions revient quand plus rien ne bouge
+    if (g.type === 'pinch') { this.finPincement(); this.ui.maj(); return }
     if (g.type === 'dessin' && e.pointerId !== g.pointeur) return
     if (g.type === 'pan' && g.pointeur !== undefined && e.pointerId !== g.pointeur) return
     // Clic ou glisser ? Le lever compte aussi (un appui levé loin de son départ a glissé)
@@ -1716,7 +1725,7 @@ export class App {
     // une fenêtre système…) garde ce qu'il a tracé : un arc de compas, un
     // trait à la règle ou au stylo ne doit pas s'effacer sous les yeux
     const garder = g.type === 'instrument' || g.type === 'longer' || g.type === 'dessin'
-    if (annule && !garder) { this.abandonnerGeste(g); return }
+    if (annule && !garder) { this.abandonnerGeste(g); this.ui.maj(); return }
 
     const m = this.monde(e)
     if (!double) this.noterToucher(e, g, glisse, m)
@@ -2103,8 +2112,9 @@ export class App {
 
   /** Le menu complet de ce qui est sous le pointeur (client : le point de
    *  l'appui dans la fenêtre). Le clic droit (le bouton du stylet en est
-   *  un), et bientôt « Options » de la barre d'actions et l'appui long,
-   *  passent tous par ici : le même menu, de la même façon, partout. Dans
+   *  un), et bientôt l'appui long, passent par ici ; « Options » de la barre
+   *  d'actions ouvre le même menu (ouvrirOptions, ouvrirOptionsSelection) :
+   *  le même menu, de la même façon, partout. Dans
    *  l'ordre :
    *  - un objet d'une sélection de plusieurs : leur menu commun, et la
    *    sélection reste entière (même près du sommet d'une de ses figures) ;
@@ -2459,6 +2469,18 @@ export class App {
    *  un cadre… (déplacer la vue, pincer, tirer un sommet le laissent) */
   private gesteQuiCache(): boolean {
     return !!this.geste && this.geste.type !== 'pan' && this.geste.type !== 'pinch' && this.geste.type !== 'poignee'
+  }
+
+  /** Un geste est-il en mouvement : deux doigts posés (un pincement), ou un
+   *  appui qui a passé son seuil (un objet qu'on glisse, un cadre ou un
+   *  lasso qu'on tire, la vue qu'on déplace, un instrument) ? La barre
+   *  d'actions se cache alors, et revient au lâcher : elle ne flotte pas
+   *  au-dessus d'un objet qui part, ni d'un lasso qui l'entoure. Un appui
+   *  qui n'a pas encore glissé la laisse : un clic sur un objet la montre
+   *  tout de suite. */
+  get enMouvement(): boolean {
+    const g = this.geste
+    return !!g && (g.type === 'pinch' || this.depart.parti)
   }
 
   /** La forme seule sélectionnée, s'il n'y en a qu'une et qu'aucun geste n'est en cours */
