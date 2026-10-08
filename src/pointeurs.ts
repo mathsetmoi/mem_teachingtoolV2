@@ -187,6 +187,14 @@ export function messageOptions(p: TypePointeur, direct = ecranTactile()): string
   return 'Double-clic ou clic droit sur l\'objet : toutes ses options'
 }
 
+/** Le titre (l'infobulle, le nom lu) de « Modifier » pour une formule, dans
+ *  sa barre d'actions comme dans son menu complet : son double-clic, sauf
+ *  au doigt, où l'on ne clique pas (le double appui marche aussi, mais
+ *  jamais « clic » au doigt) */
+export function titreModifierFormule(p: TypePointeur): string {
+  return p === 'touch' ? 'Modifier la formule' : 'Modifier la formule (double-clic)'
+}
+
 /** Le second point d'un trait tracé en deux appuis */
 export function messageSecondPoint(p: TypePointeur): string {
   return p === 'touch' ? 'Touchez le second point (un autre outil annule)' : 'Cliquez le second point (Échap pour annuler)'

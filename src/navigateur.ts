@@ -33,6 +33,39 @@ export function toucheRecharger(e: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'meta
   return (e.key === 'F5' || e.key === 'BrowserRefresh') && !e.ctrlKey && !e.metaKey && !e.altKey
 }
 
+/** Ctrl (⌘) + D : le marque-page du navigateur, que MEM remplace par
+ *  « Dupliquer ». Dans un champ de saisie (une formule qu'on tape, le nom
+ *  d'un sommet), où cette touche n'écrit rien, on l'empêche seulement (voir
+ *  App.clavier) : le réflexe de dupliquer n'ouvre pas « Ajouter aux
+ *  favoris » par-dessus l'éditeur. Maj compris (Ctrl + Maj + D marque tous
+ *  les onglets) ; AltGr, qui vaut Ctrl + Alt sous Windows, n'en est pas. */
+export function toucheMarquePage(e: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey'>): boolean {
+  return (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'd'
+}
+
+/** La touche Menu du clavier, ou Maj + F10 : le menu contextuel au clavier
+ *  (voir App.menuAuClavier). Sans Ctrl, ⌘ ni Alt. */
+export function toucheMenu(e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey' | 'metaKey' | 'altKey'>): boolean {
+  if (e.ctrlKey || e.metaKey || e.altKey) return false
+  return e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)
+}
+
+/** Les touches qui ne font rien pendant un geste (un objet qu'on glisse, un
+ *  trait qu'on écrit, un cadre ou un lasso, la vue qu'on déplace) : celles
+ *  qui changeraient la page, la sélection ou l'objet tenu. Le lâcher
+ *  déplacerait ce que la touche vient de prendre (tout ce que Ctrl + A a
+ *  pris, la copie que Ctrl + V vient de poser), ou rien du tout (l'objet
+ *  tenu que Suppr ou Ctrl + Z vient d'ôter), ou poserait sur une autre page
+ *  ce qu'on écrit. Ctrl (⌘) + A, C, X, V, D, Z, Y (Maj compris), Suppr,
+ *  Retour arrière, Page↑, Page↓ et la touche Menu ; les flèches quand
+ *  quelque chose est sélectionné (elles le poussent). AltGr n'en fait pas
+ *  des raccourcis. Les autres (Échap, Espace, Maj) gardent leur rôle. */
+export function toucheTenueEnGeste(e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey' | 'metaKey' | 'altKey'>, selection: boolean): boolean {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && /^[acxdvzy]$/.test(e.key.toLowerCase())) return true
+  if (e.key === 'Delete' || e.key === 'Backspace' || e.key === 'PageUp' || e.key === 'PageDown' || toucheMenu(e)) return true
+  return selection && e.key.startsWith('Arrow')
+}
+
 /** Un cran au plus ×1,1 par événement : exp(−0,01 · d) avec d borné */
 export const PLAFOND_MOLETTE = Math.log(1.1) / 0.01
 

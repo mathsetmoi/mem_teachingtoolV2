@@ -96,8 +96,12 @@ celui qui retouche l'objet un peu haut (le second toucher d'un double appui)
 ne doit pas toucher *Supprimer*. Un appui qui n'est pas pour elle passe au
 tableau, comme si elle n'était pas là : un doigt dont le point tombe à côté
 d'elle (le navigateur donne l'appui au bouton que la zone de contact du doigt
-effleure), et un doigt qui la touche moins de 300 ms après qu'elle a paru (le
-second toucher d'un double appui). Elle se pose
+effleure). Un doigt qui la touche moins de 300 ms après qu'elle a paru (le
+second toucher d'un double appui, ou un toucher trop rapide pour l'avoir vue)
+ne déclenche aucun de ses boutons : s'il y a un objet sous le doigt (un trait,
+une formule, une image), c'est lui qu'il prend ; sinon il ne fait rien, et ce
+qui est pris le reste (*Options* touché juste après un lasso ne perd plus ce
+qu'on vient d'entourer : le toucher suivant l'ouvre). Elle se pose
 dessous quand il n'y a pas la place sous la barre du haut, en haut de l'écran pour un objet plus grand que lui, toujours dans
 l'écran, jamais sur la barre d'outils (sauf sur un téléphone, où elle n'y
 tiendrait pas). Elle suit la vue et l'objet (zoom, molette, flèches) ; elle
@@ -110,8 +114,10 @@ d'écrire n'est jamais sélectionné ; au doigt qui déplace, elle ne prend
 jamais le stylet (sur l'iPad, le crayon posé dessus écrit son trait, comme si
 elle n'était pas là). Un clic droit, un double-clic ou un appui long ouvrent
 directement le menu complet, qui contient tout : la barre lui laisse la place, comme au menu
-d'un morceau, à la revue, à une séance d'automatismes, à l'éditeur d'une
-formule, à une fenêtre ouverte. Discrète au vidéoprojecteur : le gris des
+d'un morceau, à un petit menu (celui de la page, au clic droit dans le vide,
+celui du zoom… : un seul menu à la fois ; elle revient quand il se ferme), à
+la revue, à une séance d'automatismes, à l'éditeur d'une formule, à une
+fenêtre ouverte. Discrète au vidéoprojecteur : le gris des
 barres, des libellés gris, aucune couleur.
 
 **Le menu complet** de ce qu'on a pris s'ouvre à la demande, de la même façon
@@ -164,8 +170,12 @@ hésitation, une figure qu'on fait reconnaître) envoie un clic droit au lever
 du trait, qui ouvrirait un menu en plein cours. Android, la Surface et Windows
 tactile en envoient un aussi à l'appui long du doigt : il n'ouvre rien, c'est
 l'appui long de MEM qui ouvre le menu (jamais deux menus). Un bouton pressé
-pendant un trait ou un glisser n'ouvre rien ; la touche Menu du clavier non
-plus. Rien ne s'ouvre sur un instrument posé : il recouvre ce qui est dessous.
+pendant un trait ou un glisser n'ouvre rien. La **touche Menu** du clavier (ou
+Maj + F10) ouvre le menu complet de ce qui est sélectionné (le menu commun de
+plusieurs objets), sinon le menu de la page au milieu de ce qu'on voit, le
+focus sur sa première entrée ; jamais le menu du navigateur par-dessus. Dans
+un champ de saisie, elle garde le menu du navigateur (coller un texte).
+Rien ne s'ouvre sur un instrument posé : il recouvre ce qui est dessous.
 Le menu se pose au-dessus de ce qu'il règle (dessous s'il n'y a pas la place),
 et se ferme quand on choisit autre chose ou qu'on appuie ailleurs (il se cache
 pendant qu'on déplace l'objet lui-même, et revient au lâcher). Il porte le nom
@@ -186,7 +196,8 @@ figure, d'un trait ou d'une image :
 - *Main levée*, *Dupliquer*, *Copier*, supprimer.
 
 **Une formule** se modifie au double-clic (comme un texte, partout) ; son clic
-droit ouvre son menu : *Modifier*, *Couleur et taille* (les quatre couleurs ;
+droit ouvre son menu : *Modifier* (son infobulle rappelle le double-clic, sauf
+au doigt), *Couleur et taille* (les quatre couleurs ;
 Petite, Normale, Grande), *Dupliquer*, *Copier*, supprimer. Pas de
 *Transformer* : l'image d'une formule n'en déplacerait que le coin.
 
@@ -220,7 +231,8 @@ du menu complet (ou du menu d'un sommet) ne poussent plus l'objet : ← et →
 y vont aussi d'un bouton à l'autre (Tab atteint ses champs, où les flèches
 gardent leur rôle). Un choix qui refait le menu (une
 couleur, une section qui s'ouvre) y laisse le focus. *Options* de la barre
-d'actions, pressé au clavier, met le focus dans le menu complet.
+d'actions, pressé au clavier, met le focus dans le menu complet, comme la
+touche Menu (ou Maj + F10) qui l'ouvre.
 
 Le premier appui sur le tableau hors d'un menu ouvert (le menu complet, celui
 de la page, du zoom ou d'un point, la liste des instruments) le ferme, et ne fait rien
@@ -816,7 +828,12 @@ reconnue en fait une seconde (Ctrl+Z rend le tracé). Une rafale de flèches
 qui pousse la sélection fait une étape, séparée de ce qui la précède : Ctrl+D
 puis → aussitôt, Ctrl+Z ne défait que la poussée. Pendant une séance
 d'automatismes, le tableau est caché : aucune touche ne le change (ni Ctrl+Z,
-ni Suppr, ni les flèches). Les piles vivent le temps
+ni Suppr, ni les flèches). Pendant qu'on glisse un objet, qu'on écrit, qu'on
+tire un cadre ou un lasso, ou qu'on déplace la vue, les touches qui
+changeraient la page ou la sélection ne font rien : Ctrl+Z, Ctrl+Y, Suppr,
+Retour arrière, Page↑, Page↓, la touche Menu, les flèches qui pousseraient la
+sélection (Suppr ôtait l'objet tenu, que le lâcher ne posait plus) ; elles
+remarchent au lâcher. Les piles vivent le temps
 de la séance : après un rechargement, on ne défait plus ce qui a été fait
 avant (le replay, lui, a tout gardé).
 
@@ -868,7 +885,8 @@ page et passe à l'outil Sélection (Échap vide la sélection, un second Échap
 rend l'outil d'avant) ; ⌘ sur Mac. Ce sont les lettres écrites sur les
 touches, en AZERTY comme en QWERTY, et AltGr n'en fait pas un raccourci. Rien
 de tout cela dans un champ de saisie (une formule qu'on tape, les noms des
-sommets : on y copie du texte), pendant la revue, une séance d'automatismes,
+sommets : on y copie du texte ; Ctrl+D n'y ouvre pas non plus le marque-page
+du navigateur, il ne fait rien), pendant la revue, une séance d'automatismes,
 quand une fenêtre est ouverte, ni pendant qu'on glisse un objet ou qu'on
 écrit (le lâcher déplacerait ce que la touche vient de prendre) ; sans rien
 de choisi, un message le dit.
@@ -1012,11 +1030,11 @@ cours, qui fait la latence ressentie au stylet.
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
 | `src/ui.ts` | Barres d'outils, le menu complet (un objet, une formule, plusieurs objets), le menu de la page, éditeur de formules |
-| `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît, ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose |
+| `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose, ce que devient un appui sur elle |
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (celles des lecteurs sont dans `src/revoir/icones.ts`) |
 | `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
-| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page ; la molette |
-| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs) ; le clavier qui va au menu ouvert (aussi pour le menu complet) |
+| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; les touches qui se taisent pendant un geste |
+| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) |
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
@@ -1047,7 +1065,6 @@ n'empêche un usage payant.
 - Au TNI, une manche ou une paume qui effleure l'écran avec un doigt peut
   faire un toucher à deux doigts, qui annule : le message « Annulé » le dit,
   trois doigts ou Ctrl+Y le rattrapent, et le menu du doigt coupe ces gestes.
-- La touche Menu du clavier (Maj + F10) n'ouvre rien sur le tableau.
 
 ## Feuille de route proposée
 

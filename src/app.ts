@@ -28,7 +28,7 @@ import { choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, reglage
 import type { Doigt } from './reglages'
 import { APPUI_LONG, DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, SEUIL_GLISSER, TOLERANCE_PRISE, TOUCHER_DOIGTS, ToucherADoigts, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from './pointeurs'
 import type { Depart, Toucher, ToucherReconnu, TypePointeur } from './pointeurs'
-import { CTRL, MAC, lireMolette } from './navigateur'
+import { CTRL, MAC, lireMolette, toucheMarquePage, toucheMenu, toucheTenueEnGeste } from './navigateur'
 import { avale } from './menus'
 import type { TraitDirect } from './rendu'
 import type { Vue } from './session'
@@ -84,7 +84,7 @@ export interface Interface {
   /** Le menu de la page (un clic droit dans le vide), posé au point de
    *  l'appui (clientX, clientY) ; m : ce point, dans le monde, où « Coller
    *  ici » colle */
-  ouvrirMenuPage(clientX: number, clientY: number, m: P): void
+  ouvrirMenuPage(clientX: number, clientY: number, m: P, auClavier?: boolean): void
   /** Ferme ce qui flotte au-dessus du tableau (un petit menu, le menu d'un
    *  morceau, le panneau d'options sauf garderOptions, la liste des
    *  instruments) ; vrai si quelque chose était ouvert */
@@ -221,6 +221,10 @@ export class App {
   /** Le pointeur d'un appui long, et l'heure de son lever : le clic que le
    *  navigateur en tire ne fait rien (voir brancherGestes) */
   private clicApresAppuiLong: { pointeur: number; leve: number } | null = null
+  /** L'heure (performance.now()) où la touche Menu a ouvert un menu de MEM :
+   *  le contextmenu que le navigateur en tire n'ouvre pas le sien (voir
+   *  brancherGestes) ; 0 s'il est passé */
+  private toucheMenuA = 0
   /** Le toucher à deux ou trois doigts en cours (voir gesteDesDoigts) */
   private toucherDoigts = new ToucherADoigts()
   /** La dernière poussée aux flèches : sa page, et l'étape de la pile de la
@@ -1054,9 +1058,19 @@ export class App {
     // l'appui long du doigt, que l'appui long de MEM remplace par son propre
     // minuteur (voir armerAppuiLong ; l'iPad n'en envoie pas) : jamais deux
     // menus. Un vrai clic droit, lui, commence toujours par l'appui du
-    // bouton 2, comme le bouton du stylet. Conséquence acceptée : la touche
-    // Menu du clavier (Maj + F10) n'ouvre rien sur le tableau.
+    // bouton 2, comme le bouton du stylet. La touche Menu du clavier (et
+    // Maj + F10) passe par sa touche (voir menuAuClavier), pas par cet
+    // événement.
     z.addEventListener('contextmenu', e => e.preventDefault())
+    // La touche Menu (ou Maj + F10) vient d'ouvrir le menu de MEM : le
+    // contextmenu que le navigateur tire ensuite de la même touche (sous
+    // Windows, au relâcher), visant le focus (la page, ou l'entrée du menu
+    // qui vient de le prendre), n'ouvre pas le sien par-dessus
+    document.addEventListener('contextmenu', e => {
+      if (!this.toucheMenuA || performance.now() - this.toucheMenuA > 1500) return
+      this.toucheMenuA = 0
+      e.preventDefault()
+    }, true)
     // Double-clic : le menu complet de l'objet (une formule, elle, se modifie,
     // comme un texte partout ; dans une sélection de plusieurs objets, le
     // menu commun).
@@ -2398,6 +2412,44 @@ export class App {
     this.ui.ouvrirMenuPage(client.clientX, client.clientY, m)
   }
 
+  /** La touche Menu du clavier, ou Maj + F10 (voir toucheMenu) : le menu
+   *  complet de ce qui est sélectionné (son objet, une formule comprise, ou
+   *  le menu commun de plusieurs), sinon le menu de la page, au milieu de ce
+   *  qu'on voit entre les barres (« Coller ici » y colle). Comme un menu
+   *  ouvert au clavier, le focus va à sa première entrée. Un menu déjà
+   *  ouvert se ferme (un seul à la fois) ; celui d'un sommet aussi : la
+   *  touche ouvre le menu de la figure. Rien pendant la revue, ni quand un
+   *  clic est attendu (la séance et les champs de saisie gardent leurs
+   *  touches : voir clavier). */
+  menuAuClavier() {
+    if (this.enLecture || this.placement) return
+    this.viderPointEnAttente()
+    this.ui.fermerMenus()
+    this.toucheMenuA = performance.now()
+    const seul = this.selection.size === 1 ? this.forme([...this.selection][0]) : null
+    if (this.selection.size > 1) this.ouvrirOptionsSelection()
+    else if (seul) this.ouvrirOptions(seul)
+    else {
+      const z = this.zone.getBoundingClientRect(), r = this.ui.zoneLibre()
+      const client = { clientX: z.left + r.x + r.l / 2, clientY: z.top + r.y + r.h / 2 }
+      this.ui.ouvrirMenuPage(client.clientX, client.clientY, this.monde(client), true)
+      return
+    }
+    this.ui.entrerDansMenu()
+  }
+
+  /** Un toucher du doigt en ce point de la fenêtre prendrait-il quelque
+   *  chose, par son tracé, par un morceau ou par un plein (une formule, une
+   *  image, une figure coloriée) ; ou un instrument ? L'intérieur nu d'une
+   *  figure fermée ne compte pas : écrire dans un grand cadre est courant,
+   *  et la barre d'actions de ce qu'on y a pris flotte souvent au-dessus de
+   *  ce vide (voir BarreActions.appui). */
+  quelqueChoseSousLeDoigt(client: { clientX: number; clientY: number }): boolean {
+    const m = this.monde(client), s = this.ecran(client)
+    if (this.instruments.size && this.instrumentSous(m)) return true
+    return !!this.cibleSous(m, s, { pointeur: 'touch', dedans: false })
+  }
+
   /** La première fois qu'on prend un objet, on dit où sont toutes ses
    *  options, dans les mots du pointeur (voir messageOptions) : le clic droit
    *  à la souris, le bouton du stylet à la tablette graphique, l'appui long
@@ -3154,14 +3206,29 @@ export class App {
     // (visibility: hidden) : aucun de leurs boutons ne garde le focus.
     if (document.body.classList.contains('en-seance')) return
     const cible = e.target as HTMLElement
-    // Dans une fenêtre (publier, formule…), les raccourcis du tableau se taisent
-    if (cible.closest('input, textarea, select, [contenteditable], dialog')) return
+    // Dans une fenêtre (publier, formule…), les raccourcis du tableau se
+    // taisent. Ctrl+D (⌘D) n'y écrit rien : on empêche seulement le
+    // marque-page du navigateur, que le réflexe de dupliquer ouvrirait
+    // par-dessus l'éditeur d'une formule ou le menu d'un sommet
+    if (cible.closest('input, textarea, select, [contenteditable], dialog')) {
+      if (toucheMarquePage(e)) e.preventDefault()
+      return
+    }
     const ctrl = e.ctrlKey || e.metaKey
     // Le menu complet ouvert (clic droit, appui long, « Options ») ou le menu
     // d'un sommet : les flèches et Tab y mènent, Espace y appuie sur un
     // bouton (voir Interface.clavierMenu)
     if (this.ui.clavierMenu(e)) return
     if (e.code === 'Space') { this.espace = true; e.preventDefault(); return }
+    // En plein geste (un objet qu'on glisse, un trait, un cadre ou un lasso,
+    // la vue qu'on déplace), ce qui changerait la page ou la sélection ne
+    // fait rien (voir toucheTenueEnGeste) : Suppr ou Ctrl+Z ôteraient l'objet
+    // tenu, qu'un lâcher ne poserait plus ; Ctrl+A ou Ctrl+V changeraient ce
+    // que le lâcher déplace. Le doigt retenu un instant (voir
+    // ecrireOuRetenir) n'a encore rien fait.
+    if (this.geste && this.geste.type !== 'retenu' && toucheTenueEnGeste(e, this.selection.size > 0)) { e.preventDefault(); return }
+    // La touche Menu, Maj + F10 : le menu de la sélection, ou de la page
+    if (toucheMenu(e)) { e.preventDefault(); this.menuAuClavier(); return }
     // Ctrl+Z, Ctrl+Y ou Ctrl+Maj+Z (⌘ sur Mac) : sur la page qu'on regarde
     // seulement. Rien à faire : un message le dit, pour qui pressait Ctrl+Z
     // en pensant reprendre ce qu'il venait de faire sur une autre page.
@@ -3177,12 +3244,8 @@ export class App {
     // marquée A a pour e.code « KeyQ ». AltGr (Ctrl+Alt sous Windows) n'en
     // est pas un. Ni dans une fenêtre ouverte (les champs de saisie se sont
     // déjà tus plus haut : on y copie du texte).
+    // Pas en plein geste : voir plus haut.
     if (ctrl && !e.altKey && !e.shiftKey && !document.querySelector('dialog[open]')) {
-      // Pas en plein geste (un objet qu'on glisse, un trait, un lasso) : le
-      // lâcher déplacerait la sélection d'APRÈS la touche (tout ce que Ctrl+A
-      // a pris, la copie que Ctrl+V vient de poser) et non ce qu'on tient.
-      // Le doigt retenu un instant (voir ecrireOuRetenir) n'a encore rien fait.
-      if (/^[acxdv]$/.test(lettre) && this.geste && this.geste.type !== 'retenu') { e.preventDefault(); return }
       switch (lettre) {
         case 'a': e.preventDefault(); if (!e.repeat) this.toutSelectionner(); return
         // Rien de choisi : le navigateur fait sa copie ordinaire

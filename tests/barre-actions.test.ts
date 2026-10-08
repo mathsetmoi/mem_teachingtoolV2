@@ -5,9 +5,12 @@
 // où elle n'y tient pas, toujours dans la fenêtre). Ce qui se voit dans le
 // navigateur (quand elle paraît, qu'elle suit la vue) est vérifié par l'essai
 // Playwright du morceau.
-import { describe, expect, it } from 'vitest'
-import { ECART_DOIGT, actionsDe, placeBarre } from '../src/barre-actions'
+import { describe, expect, it, vi } from 'vitest'
+import { ECART_DOIGT, actionsDe, barreVisible, clicDuClavier, placeBarre, sortAppui } from '../src/barre-actions'
+import type { EtatBarre } from '../src/barre-actions'
 import { ICONES } from '../src/icones'
+import { menuOuvert, ouvrirMenu, fermerMenu, quandMenuChange } from '../src/menus'
+import { titreModifierFormule } from '../src/pointeurs'
 
 const ids = (l: { id: string }[]) => l.map(a => a.id)
 
@@ -124,5 +127,106 @@ describe('où elle se pose', () => {
     const p = placeBarre(objet(100, 500, 200, 540), 320, 60, { gauche: 70, haut: 162 }, tel)
     expect(p.left).toBe(8)
     expect(p.left + 320).toBeLessThanOrEqual(tel.l - 8)
+  })
+})
+
+describe('quand elle paraît', () => {
+  // Un trait pris à l'outil Sélection, rien d'autre d'ouvert
+  const base: EtatBarre = { pris: 1, partie: false, options: false, menu: false, mouvement: false, lecture: false, placement: false,
+    seance: false, fenetre: false, outilSelection: true, doigtQuiDeplace: false }
+
+  it('quelque chose de pris, à la Sélection ou au doigt qui déplace ; jamais sous un outil de dessin', () => {
+    expect(barreVisible(base)).toBe(true)
+    expect(barreVisible({ ...base, pris: 0 })).toBe(false)
+    expect(barreVisible({ ...base, outilSelection: false })).toBe(false)
+    expect(barreVisible({ ...base, outilSelection: false, doigtQuiDeplace: true })).toBe(true)
+  })
+
+  it('un seul menu à la fois : cachée sous le menu de la page (ou tout petit menu), le menu complet, celui d\'un morceau', () => {
+    expect(barreVisible({ ...base, menu: true })).toBe(false)
+    expect(barreVisible({ ...base, menu: true, outilSelection: false, doigtQuiDeplace: true })).toBe(false)
+    expect(barreVisible({ ...base, options: true })).toBe(false)
+    expect(barreVisible({ ...base, partie: true })).toBe(false)
+  })
+
+  it('cachée quand quelque chose bouge, pendant la revue, une séance, un placement, une fenêtre ouverte', () => {
+    for (const k of ['mouvement', 'lecture', 'placement', 'seance', 'fenetre'] as const) expect(barreVisible({ ...base, [k]: true }), k).toBe(false)
+  })
+
+  it('un petit menu qui s\'ouvre ou se ferme le dit (la barre se cache, puis revient)', () => {
+    const el = () => ({ hidden: true, dataset: {}, addEventListener() {}, contains: () => false }) as unknown as HTMLElement
+    const vus: boolean[] = []
+    quandMenuChange(() => vus.push(menuOuvert()))
+    const a = { el: el() }, b = { el: el() }
+    ouvrirMenu(a)
+    expect(vus).toEqual([true])
+    // En ouvrir un autre ferme le premier : un seul ouvert
+    ouvrirMenu(b)
+    expect(vus).toEqual([true, false, true])
+    expect(a.el.hidden).toBe(true)
+    // Fermé par Échap ou un choix : le focus reviendrait à son bouton (sous
+    // Node, un document sans focus)
+    vi.stubGlobal('document', { activeElement: null })
+    try {
+      expect(fermerMenu()).toBe(true)
+    } finally { vi.unstubAllGlobals() }
+    expect(vus).toEqual([true, false, true, false])
+    expect(menuOuvert()).toBe(false)
+  })
+})
+
+describe('un appui sur la barre', () => {
+  const appui = (o: Partial<Parameters<typeof sortAppui>[0]> & { dessous?: boolean }) => {
+    let demande = false
+    const sort = sortAppui({ pointeur: 'touch', outilSelection: true, dedans: true, depuis: 1000, ...o,
+      objetDessous: () => { demande = true; return !!o.dessous } })
+    return { sort, demande }
+  }
+
+  it('la souris et le stylet d\'une tablette graphique, à la Sélection : pour elle, aussitôt', () => {
+    expect(appui({ pointeur: 'mouse', depuis: 10 }).sort).toBe('barre')
+    expect(appui({ pointeur: 'pen', depuis: 10 }).sort).toBe('barre')
+  })
+
+  it('un stylet sous un autre outil veut écrire : au tableau', () => {
+    expect(appui({ pointeur: 'pen', outilSelection: false }).sort).toBe('tableau')
+  })
+
+  it('un doigt dont le point est hors de la barre (le toucher ajusté de Chrome) : au tableau', () => {
+    expect(appui({ dedans: false }).sort).toBe('tableau')
+    expect(appui({ dedans: false, depuis: 50 }).sort).toBe('tableau')
+  })
+
+  it('un doigt dans la barre, passé 300 ms : pour elle', () => {
+    expect(appui({ depuis: 300 }).sort).toBe('barre')
+    expect(appui({ depuis: 400 }).demande).toBe(false)
+  })
+
+  it('un doigt dans la barre moins de 300 ms après qu\'elle a paru, sur du vide : avalé (la sélection reste) ; sur un objet : au tableau', () => {
+    // « Options » touché 120 ms après un lasso, le second toucher d'un
+    // double appui tombé dans la barre : rendus au tableau, ils tombaient
+    // dans le vide et vidaient la sélection
+    expect(appui({ depuis: 120 })).toEqual({ sort: 'rien', demande: true })
+    expect(appui({ depuis: 0 }).sort).toBe('rien')
+    expect(appui({ depuis: 120, dessous: true }).sort).toBe('tableau')
+  })
+
+  it('le clic du clavier agit toujours ; le clic que Chrome tire d\'un toucher, même à detail 0, n\'est pas du clavier', () => {
+    expect(clicDuClavier({ detail: 0, pointerType: '' })).toBe(true)
+    expect(clicDuClavier({ detail: 0 })).toBe(true)                    // Safari : un MouseEvent
+    expect(clicDuClavier({ detail: 0, pointerType: 'touch' })).toBe(false)
+    expect(clicDuClavier({ detail: 1, pointerType: 'mouse' })).toBe(false)
+    expect(clicDuClavier({ detail: 1 })).toBe(false)
+  })
+})
+
+describe('« Modifier » une formule, dans la barre et dans son menu complet', () => {
+  it('le même titre aux deux endroits : « (double-clic) », sauf au doigt', () => {
+    expect(titreModifierFormule('mouse')).toBe('Modifier la formule (double-clic)')
+    expect(titreModifierFormule('pen')).toBe('Modifier la formule (double-clic)')
+    expect(titreModifierFormule('touch')).toBe('Modifier la formule')
+    for (const p of ['mouse', 'pen', 'touch'] as const) {
+      expect(actionsDe({ n: 1, formule: true }, p).find(a => a.id === 'modifier')!.titre).toBe(titreModifierFormule(p))
+    }
   })
 })

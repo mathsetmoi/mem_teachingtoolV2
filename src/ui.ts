@@ -18,7 +18,7 @@ import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
 import type { Menu } from './menus'
-import { allerAuxEntrees, basculerMenu, fermerMenu, focusAuClavier, focusNullePart, installerMenus, ouvrirMenu, placerMenu, refaireEnGardantLeFocus } from './menus'
+import { ENTREES, allerAuxEntrees, basculerMenu, fermerMenu, focusAuClavier, focusNullePart, installerMenus, ouvrirMenu, placerMenu, refaireEnGardantLeFocus } from './menus'
 import { choisirGestes, choisirMolette, reglages } from './reglages'
 import type { Doigt, Molette } from './reglages'
 import { CTRL } from './navigateur'
@@ -28,6 +28,7 @@ import type { Bords } from './camera'
 import { TAILLES_FORMULE, changerCouleur, changerEpaisseur, changerPointilles, habillageCommun, titreDuMenu } from './habillage'
 import { icone } from './icones'
 import { BarreActions } from './barre-actions'
+import { titreModifierFormule } from './pointeurs'
 
 /** Le rôle du doigt : la marque de son bouton, son titre, ce qu'on en dit */
 const DOIGTS: { id: Doigt; nom: string; aide: string; marque: string; titre: string; dit: string }[] = [
@@ -597,8 +598,10 @@ export class UI implements Interface {
    *  menu du système (de l'autre côté s'il n'y a pas la place), et se ferme
    *  comme les autres petits menus : Échap, un choix, ou un appui ailleurs
    *  (qui ne laisse pas d'encre). m : le point du monde où « Coller ici »
-   *  colle. Refait à chaque ouverture : la copie et la page ont pu changer. */
-  ouvrirMenuPage(x: number, y: number, m: P) {
+   *  colle. Refait à chaque ouverture : la copie et la page ont pu changer.
+   *  auClavier : ouvert par la touche Menu (voir App.menuAuClavier), le
+   *  focus va à sa première entrée active. */
+  ouvrirMenuPage(x: number, y: number, m: P, auClavier = false) {
     const app = this.app, el = this.menuPage.el
     el.replaceChildren()
     this.entreeMenu(el, 'Coller ici', () => app.coller(m), { touche: `${CTRL} + V`, inactif: !app.peutColler(),
@@ -607,6 +610,7 @@ export class UI implements Interface {
     this.entreeMenu(el, 'Tout voir', () => app.toutVoir(), { touche: 'Maj + 1' })
     ouvrirMenu(this.menuPage)
     placerMenu(el, new DOMRect(x, y, 0, 0), 'droite')
+    if (auClavier) allerAuxEntrees(el, 1, ENTREES)
   }
 
   /** Le menu du rôle du doigt : ouvert par son bouton, ou par « Changer »
@@ -732,7 +736,9 @@ export class UI implements Interface {
       // taille. Pas de « Transformer » : l'image d'une formule n'en déplace
       // que le coin, sans la tourner ni la retourner.
       p.setAttribute('aria-label', titreDuMenu(f))
-      action('Modifier', 'Modifier la formule (double-clic)', () => app.modifierFormule(f))
+      // Son titre parle la langue du pointeur qui a ouvert le menu : jamais
+      // « double-clic » au doigt
+      action('Modifier', titreModifierFormule(app.dernierPointeur), () => app.modifierFormule(f))
       action('Couleur et taille', 'La couleur et la taille des caractères', () => ouvrir('couleur'), this.section === 'couleur')
       action('Dupliquer', `Une copie, décalée d'un centimètre (${CTRL}+D)`, () => app.dupliquerSelection())
       copier(); jeter()

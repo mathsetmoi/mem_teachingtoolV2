@@ -17,6 +17,8 @@
 // mêmes règles valent pour le menu complet d'un objet et le menu d'un
 // morceau de figure (voir Interface.clavierMenu), qui ne sont pas de ces
 // petits menus : allerAuxEntrees et refaireEnGardantLeFocus leur servent.
+// Tant qu'un de ces menus est ouvert, la barre d'actions se cache (voir
+// quandMenuChange).
 // =============================================================
 
 /** Un menu, et le bouton qui l'ouvre s'il en a un (le menu de la page n'en a
@@ -24,6 +26,10 @@
 export interface Menu { el: HTMLElement; bouton?: HTMLElement; fermer?: () => void }
 
 let ouvert: Menu | null = null
+/** Qui veut savoir qu'un menu s'ouvre ou se ferme : la barre d'actions, qui
+ *  se cache tant qu'un de ces menus est ouvert (un seul menu à la fois) et
+ *  revient quand il se ferme, de quelque façon que ce soit */
+const veilleurs: (() => void)[] = []
 /** L'appui qui vient de fermer un menu (le même événement repasse ensuite par la zone) */
 let fermeur: { pointerId: number; timeStamp: number } | null = null
 let installe = false
@@ -101,7 +107,7 @@ function brancherClavier(el: HTMLElement) {
 }
 
 /** Les entrées d'un petit menu qu'on peut choisir */
-const ENTREES = '.menu-item:not([aria-disabled="true"])'
+export const ENTREES = '.menu-item:not([aria-disabled="true"])'
 /** Ce que les flèches parcourent dans le menu complet ou le menu d'un
  *  morceau : ses boutons actifs. Pas ses champs (le nom des sommets, le
  *  rayon, les réglages de « Transformer ») : les flèches y déplacent le
@@ -162,7 +168,13 @@ export function ouvrirMenu(m: Menu) {
   brancherClavier(m.el)
   m.el.hidden = false
   m.bouton?.setAttribute('aria-expanded', 'true')
+  prevenir()
 }
+
+/** f sera appelée à chaque menu qui s'ouvre ou se ferme (menuOuvert dit alors lequel des deux) */
+export function quandMenuChange(f: () => void) { veilleurs.push(f) }
+
+function prevenir() { for (const f of veilleurs) f() }
 
 export function basculerMenu(m: Menu) {
   if (ouvert === m) fermerMenu()
@@ -182,6 +194,7 @@ function fermer(rendreFocus: boolean): boolean {
   m.bouton?.setAttribute('aria-expanded', 'false')
   if (dedans) m.bouton?.focus()
   m.fermer?.()
+  prevenir()
   return true
 }
 
