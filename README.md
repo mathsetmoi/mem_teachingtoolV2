@@ -510,8 +510,29 @@ petits carreaux, Seyès, repère gradué), zoom de 10 % à 2000 % — le quadril
 suit le zoom comme une carte : les carreaux trop petits s'estompent et laissent
 place à de plus grands (1 cm, 5 cm, 10 cm…), la page n'est jamais blanche.
 
-Au pavé tactile : deux doigts qui glissent déplacent le tableau, pincer zoome ;
-la molette d'une souris zoome. **Échap** annule ce qui est en cours (menu,
+**Se déplacer, zoomer.** La molette de la souris fait défiler la page (Maj :
+à l'horizontale) ; au pavé tactile, deux doigts qui glissent déplacent le
+tableau. Ctrl (⌘ sur Mac) + molette, ou pincer le pavé, zoome autour du
+pointeur, d'un cran à la fois (×1,1 par cran au plus : une molette libre ne
+s'emballe pas). Qui préfère la molette qui zoome, comme dans GeoGebra, le règle
+dans le menu du pourcentage (en bas à droite) : « Molette de la souris : fait
+défiler / zoome », gardé sur cet ordinateur. Ce menu donne aussi **100 %**
+(Ctrl + 0), **Tout voir** (Maj + 1, ou le bouton cadre à côté de « + » : toute
+la page entre les barres, jamais au-delà de 100 %) et **Voir la sélection**
+(Maj + 2, 200 % au plus) ; Ctrl + « + » et Ctrl + « − » zooment le tableau (au
+clavier principal ou au pavé numérique, en AZERTY comme en QWERTY), autour du
+pointeur, et non plus toute la page du navigateur. Sans sélection, les flèches
+déplacent la vue d'un quart d'écran (trois quarts avec Maj, en continu si on
+tient la touche). Quand plus rien de ce qui est écrit n'est à l'écran, une
+pastille **Revenir au contenu** paraît en bas au centre. F5 (que les
+télécommandes de présentation envoient) ne recharge plus la page en plein cours :
+un message rappelle Ctrl + R. Le pincement sur iPad ne zoome plus la page
+entière, et le balayage à deux doigts ne fait plus « page précédente ». Chaque
+page garde sa vue (une nouvelle page s'ouvre à 100 %, sur l'origine) ; la page
+courante et la vue de chaque page sont retrouvées au rechargement — notées dans
+ce navigateur, hors du document : ni un fichier, ni un replay ne les emportent.
+
+**Échap** annule ce qui est en cours (menu,
 sélection, polygone) ; s'il n'y a rien, il passe à l'outil Sélection, et un
 second Échap rend l'outil d'avant. Avec la Sélection, glisser un objet le
 déplace, glisser dans le vide déplace le tableau, Maj + glisser encadre ; l'objet

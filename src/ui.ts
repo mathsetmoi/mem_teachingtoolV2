@@ -17,6 +17,11 @@ import { Constructeur } from './constructeur'
 import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
+import type { Menu } from './menus'
+import { basculerMenu, fermerMenu, placerMenu } from './menus'
+import { choisirMolette, reglages } from './reglages'
+import type { Molette } from './reglages'
+import { CTRL } from './navigateur'
 
 const ICONES: Record<string, string> = {
   stylo: 'M4 20l4-1L19 8l-3-3L5 16l-1 4zM14 7l3 3',
@@ -53,6 +58,8 @@ const ICONES: Record<string, string> = {
   compas: 'M12 3v2M12 5l-6 15M12 5l6 15M9.5 13h5',
   construction: 'M4 5h9M4 10h7M4 15h5M15 20l2-9 2 9M17 11V8M15.6 16h2.8',
   automatismes: 'M12 21a8 8 0 100-16 8 8 0 100 16zM12 9v4l2.5 2.5M10 2h4M12 2v3',
+  cadre: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
+  coche: 'M5 12.5l4.5 4.5L19 7.5',
 }
 
 const TYPES_FORMES: { id: TypeForme; nom: string; touche: string }[] = [
@@ -130,6 +137,13 @@ export class UI implements Interface {
   private choixFond!: HTMLSelectElement
   private boutonAimant!: HTMLButtonElement
   private zoomTexte!: HTMLButtonElement
+  private barreHaut!: HTMLElement
+  private barreZoom!: HTMLElement
+  /** Le menu du bouton % : 100 %, tout voir, voir la sélection, la molette */
+  private menuZoom!: Menu
+  /** « Revenir au contenu », quand plus rien de la page n'est à l'écran */
+  private retour!: HTMLButtonElement
+  private minuterieRetour = 0
   private barreOutils!: HTMLElement
   private toast!: HTMLDivElement
   private dialogue: HTMLDialogElement | null = null
@@ -197,6 +211,7 @@ export class UI implements Interface {
     // ----- Barre des pages, en haut à droite -----
     const haut = document.createElement('div')
     haut.className = 'barre barre-haut'
+    this.barreHaut = haut
     const avant = bouton('avant', 'Page précédente (Page ↑)', () => app.pageSuivante(-1))
     this.rang = document.createElement('span'); this.rang.className = 'rang'
     const apres = bouton('apres', 'Page suivante (Page ↓)', () => app.pageSuivante(1))
@@ -253,12 +268,35 @@ export class UI implements Interface {
     }
 
     // ----- Zoom, en bas à droite -----
+    // Le pourcentage ouvre un petit menu : 100 %, tout voir, voir la
+    // sélection, et ce que fait la molette de la souris
     const zoom = document.createElement('div')
     zoom.className = 'barre barre-zoom'
+    this.barreZoom = zoom
     this.zoomTexte = document.createElement('button')
-    this.zoomTexte.type = 'button'; this.zoomTexte.className = 'zoom-texte'; this.zoomTexte.title = 'Revenir à 100 %'
-    this.zoomTexte.addEventListener('click', () => app.zoom100())
-    zoom.append(bouton('moins', 'Dézoomer', () => app.zoomer(1 / 1.25)), this.zoomTexte, bouton('plus', 'Zoomer', () => app.zoomer(1.25)))
+    this.zoomTexte.type = 'button'; this.zoomTexte.className = 'zoom-texte'; this.zoomTexte.title = 'Zoom et molette de la souris'
+    this.zoomTexte.setAttribute('aria-haspopup', 'menu'); this.zoomTexte.setAttribute('aria-expanded', 'false')
+    const menu = document.createElement('div')
+    menu.className = 'menu-flottant'; menu.setAttribute('role', 'menu'); menu.setAttribute('aria-label', 'Zoom et molette de la souris')
+    menu.hidden = true
+    this.menuZoom = { el: menu, bouton: this.zoomTexte }
+    this.zoomTexte.addEventListener('click', e => {
+      if (menu.hidden) this.construireMenuZoom()
+      basculerMenu(this.menuZoom)
+      if (menu.hidden) return
+      placerMenu(menu, zoom.getBoundingClientRect(), 'dessus')
+      // Ouvert au clavier : la première entrée prend la main
+      if (e.detail === 0) menu.querySelector<HTMLElement>('.menu-item')?.focus()
+    })
+    zoom.append(bouton('moins', `Dézoomer (${CTRL} + −)`, () => app.zoomer(1 / 1.25)), this.zoomTexte,
+      bouton('plus', `Zoomer (${CTRL} + +)`, () => app.zoomer(1.25)), bouton('cadre', 'Tout voir (Maj + 1)', () => app.toutVoir()))
+
+    // ----- Revenir au contenu, quand on s'en est éloigné -----
+    this.retour = document.createElement('button')
+    this.retour.type = 'button'; this.retour.className = 'retour-contenu'; this.retour.hidden = true
+    this.retour.title = 'Tout voir (Maj + 1)'
+    this.retour.innerHTML = icone('cadre') + '<span>Revenir au contenu</span>'
+    this.retour.addEventListener('click', () => app.toutVoir())
 
     this.toast = document.createElement('div')
     this.toast.className = 'toast'; this.toast.setAttribute('role', 'status')
@@ -285,7 +323,7 @@ export class UI implements Interface {
     this.panneau.setAttribute('role', 'toolbar')
     this.panneau.setAttribute('aria-label', 'Options de la figure')
 
-    this.racine.append(outils, haut, zoom, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
+    this.racine.append(outils, haut, zoom, this.retour, menu, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
     this.revue = new RevueEnClasse(this.app, this.racine)
     this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t))
@@ -337,6 +375,72 @@ export class UI implements Interface {
     }
     this.majPanneau()
     this.zoomTexte.textContent = Math.round(app.cam.z * 100) + ' %'
+    this.majRetour()
+  }
+
+  /** Ce qu'on voit du tableau entre les barres, en coordonnées de la zone :
+   *  c'est là que « Tout voir » cadre la page. Sur un téléphone, où les barres
+   *  prennent presque tout, toute la zone avec une marge. */
+  zoneLibre() {
+    const z = this.app.rendu.scene.getBoundingClientRect()
+    const o = this.barreOutils.getBoundingClientRect(), h = this.barreHaut.getBoundingClientRect(), b = this.barreZoom.getBoundingClientRect()
+    const x = (o.width ? o.right - z.left : 0) + 16
+    const y = (h.height ? h.bottom - z.top : 0) + 12
+    const droite = z.width - 16, bas = (b.height ? b.top - z.top : z.height) - 12
+    if (droite - x < 200 || bas - y < 200) return { x: 16, y: 16, l: Math.max(0, z.width - 32), h: Math.max(0, z.height - 32) }
+    return { x, y, l: droite - x, h: bas - y }
+  }
+
+  /** La pastille « Revenir au contenu » : elle paraît une seconde après qu'on
+   *  a perdu de vue tout ce qui est écrit, et part dès qu'on le retrouve */
+  private majRetour() {
+    const app = this.app
+    if (app.enLecture || !app.contenuHorsVue()) {
+      clearTimeout(this.minuterieRetour); this.minuterieRetour = 0
+      this.retour.hidden = true
+      return
+    }
+    if (!this.retour.hidden || this.minuterieRetour) return
+    this.minuterieRetour = window.setTimeout(() => {
+      this.minuterieRetour = 0
+      if (!app.enLecture && app.contenuHorsVue()) this.retour.hidden = false
+    }, 1000)
+  }
+
+  /** Le menu du zoom, refait à chaque ouverture (la sélection a pu changer) */
+  private construireMenuZoom() {
+    const app = this.app, m = this.menuZoom.el
+    m.replaceChildren()
+    const entree = (texte: string, faire: () => void, o: { touche?: string; aide?: string; coche?: boolean; inactif?: boolean } = {}) => {
+      const b = document.createElement('button')
+      b.type = 'button'; b.className = 'menu-item'
+      b.setAttribute('role', o.coche === undefined ? 'menuitem' : 'menuitemradio')
+      if (o.coche !== undefined) b.setAttribute('aria-checked', String(o.coche))
+      if (o.inactif) b.setAttribute('aria-disabled', 'true')
+      b.innerHTML = `<span class="coche">${o.coche ? icone('coche') : ''}</span><span class="libelle"></span>` + (o.touche ? `<span class="touche">${html(o.touche)}</span>` : '')
+      const libelle = b.querySelector('.libelle')!
+      libelle.textContent = texte
+      if (o.aide) libelle.appendChild(Object.assign(document.createElement('small'), { textContent: o.aide }))
+      b.addEventListener('click', () => {
+        if (o.inactif) return
+        fermerMenu()
+        faire()
+      })
+      m.appendChild(b)
+    }
+    const rien = !app.selection.size && !app.partie
+    entree('100 %', () => app.zoom100(), { touche: `${CTRL} + 0` })
+    entree('Tout voir', () => app.toutVoir(), { touche: 'Maj + 1' })
+    entree('Voir la sélection', () => app.voirSelection(), { touche: 'Maj + 2', inactif: rien })
+    m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
+    m.appendChild(Object.assign(document.createElement('div'), { className: 'menu-titre', textContent: 'Molette de la souris' }))
+    const molette = (choix: Molette, texte: string, aide?: string) => entree(texte, () => {
+      choisirMolette(choix)
+      this.message(choix === 'defile' ? `La molette fait défiler la page ; ${CTRL} + molette zoome.`
+        : 'La molette zoome (comme dans GeoGebra) ; Maj + molette fait défiler.')
+    }, { coche: reglages.molette === choix, aide })
+    molette('defile', 'Fait défiler', `${CTRL} + molette : zoomer`)
+    molette('zoome', 'Zoome')
   }
 
   // ----- Panneau d'options de la figure -----

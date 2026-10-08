@@ -6,7 +6,7 @@
 // le document. Le rendu, lui, ne fait que lire.
 // =============================================================
 import type { Tableau } from './document'
-import { Camera } from './camera'
+import { Camera, vuePour } from './camera'
 import { Rendu } from './rendu'
 import { chevauche, distanceAuSegment, rectangle, touche } from './geometrie'
 import type { Figure, Fond, Forme, Formule, Habillage, Outil, Polygone, Trait, TypeForme } from './types'
@@ -20,6 +20,12 @@ import { Immobilite, bornerDecalage, image, nomsLibres, placesDesNoms, reconnait
 import { tempsDesPoints } from './revoir/main-levee'
 import { Piste } from './piste'
 import type { TraceInstrument } from './piste'
+import { boiteDe } from './revoir/bobine'
+import type { Boite } from './revoir/bobine'
+import { reglages } from './reglages'
+import { lireMolette } from './navigateur'
+import type { Vue } from './session'
+import { ecrireSession, lireSession } from './session'
 
 export const COULEURS = [
   { nom: 'Noir', valeur: '#1b2230' },
@@ -28,6 +34,9 @@ export const COULEURS = [
   { nom: 'Vert', valeur: '#1e8a4c' },
 ]
 export const TAILLES = [{ nom: 'Fin', valeur: 2.5 }, { nom: 'Moyen', valeur: 4.5 }, { nom: 'Épais', valeur: 9 }]
+
+/** La vue d'une page neuve : 100 %, l'origine en haut à gauche */
+const VUE_NEUTRE = { x: 120, y: 120, z: 1 }
 
 /** L'heure d'un événement du stylet (ms, horloge de performance.now()) : celle
  *  où le stylet a touché ce point, pas celle où on le traite. Un navigateur qui
@@ -43,6 +52,8 @@ export interface Interface {
   message(texte: string): void
   ouvrirMenuPartie(id: string, prise: Prise, clientX: number, clientY: number): void
   fermerMenuPartie(): void
+  /** Ce qu'on voit du tableau entre les barres (coordonnées de la zone) */
+  zoneLibre(): { x: number; y: number; l: number; h: number }
 }
 
 type Geste =
@@ -91,7 +102,10 @@ export class App {
   private survol: string | null = null
 
   private formes: Forme[] = []
-  private camerasParPage = new Map<string, Camera>()
+  /** La vue de chaque page (son centre et son zoom), retrouvée au rechargement */
+  private vues = new Map<string, Vue>()
+  /** La page qu'on regardait au dernier passage (voir pageDeDepart) */
+  private pageSession: string | null = null
   private pointeurs = new Map<number, { x: number; y: number; type: string }>()
   private geste: Geste | null = null
   private styletVu = false            // un stylet a servi : le doigt ne dessine plus
@@ -110,7 +124,9 @@ export class App {
 
   constructor(readonly tableau: Tableau, private zone: HTMLElement) {
     this.rendu = new Rendu(this.cam, zone)
-    this.cam.x = 120; this.cam.y = 120
+    this.cam.x = VUE_NEUTRE.x; this.cam.y = VUE_NEUTRE.y
+    const session = lireSession()
+    if (session) { this.vues = session.vues; this.pageSession = session.page }
     // Ce que la couche des instruments montre part dans la piste : les gestes,
     // le constructeur, ce qu'on montre ou range, l'état rendu au chargement
     this.piste = new Piste(m => tableau.noterPiste(m), () => tableau.pageVue)
@@ -150,6 +166,15 @@ export class App {
       const f = [...(e.dataTransfer?.files ?? [])].find(x => x.type.startsWith('image/'))
       if (f) { e.preventDefault(); this.importerImage(f) }
     })
+
+    // La vue : toucher le tableau arrête un cadrage en cours (en capture,
+    // avant tout geste) ; le zoom au clavier se fait autour du pointeur
+    // s'il est sur le tableau ; la session se note quand on quitte la page
+    zone.addEventListener('pointerdown', () => this.arreterAnimation(), true)
+    zone.addEventListener('pointermove', e => { this.dernierPointeur = { clientX: e.clientX, clientY: e.clientY } })
+    zone.addEventListener('pointerleave', () => { this.dernierPointeur = null })
+    window.addEventListener('pagehide', () => this.noterSession())
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.noterSession() })
   }
 
   // ---------- Instruments ----------
@@ -321,15 +346,28 @@ export class App {
   get fond(): Fond { return this.tableau.fondDe(this.page) }
 
   // ---------- Pages ----------
+  /** Chaque page garde sa vue. Une page qu'on n'a pas encore regardée
+   *  s'ouvre sur une vue neutre si elle est vide (une page neuve ne reprend
+   *  pas le zoom de celle qu'on quitte), sur tout son contenu sinon (un
+   *  tableau d'avant, un fichier ouvert). */
   allerPage(id: string) {
     if (!id || id === this.page) return
-    if (this.page) this.camerasParPage.set(this.page, this.cam.copie())
+    this.arreterAnimation()
+    if (this.page && this.rendu.l > 0) this.vues.set(this.page, this.vueActuelle())
     this.page = id
     this.tableau.pageVue = id
-    const c = this.camerasParPage.get(id)
-    if (c) { this.cam.x = c.x; this.cam.y = c.y; this.cam.z = c.z }
+    this.appliquerVue(id)
     this.selection.clear()
     this.rafraichir()
+    this.noterSession()
+  }
+
+  /** La page où reprendre : celle de la session si elle existe encore, sinon la première */
+  pageDeDepart(): string {
+    // Les vues d'un autre tableau (aucune page commune) ne servent jamais :
+    // leurs pages n'existent pas ici, et la prochaine écriture les oublie
+    const p = this.pages
+    return this.pageSession && p.includes(this.pageSession) ? this.pageSession : p[0]
   }
 
   pageSuivante(sens: 1 | -1) {
@@ -419,16 +457,177 @@ export class App {
     this.selection.clear()
   }
 
+  // ---------- La vue ----------
+  /** Le cadrage en cours (requestAnimationFrame), et où il mène */
+  private animation = 0
+  private cible: { x: number; y: number; z: number } | null = null
+  /** Le dernier endroit du pointeur sur le tableau (null : il est ailleurs) */
+  private dernierPointeur: { clientX: number; clientY: number } | null = null
+  /** Safari sur Mac pince par gesturechange : la molette ne zoome pas en double */
+  pinceSafari = false
+  private minuterieSession = 0
+  /** Les boîtes des formes (une forme modifiée est un nouvel objet) */
+  private boites = new WeakMap<Forme, Boite | null>()
+
+  /** Le centre de ce qu'on voit entre les barres (écran) */
+  private centreLibre() {
+    const r = this.ui?.zoneLibre() ?? { x: 0, y: 0, l: this.rendu.l, h: this.rendu.h }
+    return { x: r.x + r.l / 2, y: r.y + r.h / 2 }
+  }
+
+  arreterAnimation() {
+    if (this.animation) cancelAnimationFrame(this.animation)
+    this.animation = 0; this.cible = null
+  }
+
+  /** Amène la caméra en c, en douceur : le zoom change géométriquement, et le
+   *  point du monde au centre de la zone libre va en ligne droite de son départ
+   *  à son arrivée. Un pointeur posé sur le tableau, la molette, le clavier ou
+   *  un changement de page l'arrêtent. */
+  allerVers(c: { x: number; y: number; z: number }, duree = 250) {
+    this.arreterAnimation()
+    const cam = this.cam
+    const calme = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (duree <= 0 || calme || (cam.x === c.x && cam.y === c.y && cam.z === c.z)) {
+      cam.x = c.x; cam.y = c.y; cam.z = c.z
+      this.vueChangee(); return
+    }
+    const s = this.centreLibre(), z0 = cam.z, z1 = c.z
+    const a = cam.versMonde(s.x, s.y), b = { x: (s.x - c.x) / z1, y: (s.y - c.y) / z1 }
+    const debut = performance.now()
+    this.cible = { ...c }
+    const pas = () => {
+      const u = Math.max(0, Math.min(1, (performance.now() - debut) / duree))
+      if (u >= 1) {
+        this.animation = 0; this.cible = null
+        cam.x = c.x; cam.y = c.y; cam.z = c.z
+      } else {
+        const k = 1 - (1 - u) ** 3
+        const z = z0 * (z1 / z0) ** k
+        cam.z = z
+        cam.x = s.x - (a.x + (b.x - a.x) * k) * z
+        cam.y = s.y - (a.y + (b.y - a.y) * k) * z
+        this.animation = requestAnimationFrame(pas)
+      }
+      this.vueChangee()
+    }
+    this.animation = requestAnimationFrame(pas)
+  }
+
+  /** La vue qu'on a : le point du monde au centre de l'écran, et le zoom */
+  private vueActuelle(): Vue {
+    const c = this.cam.versMonde(this.rendu.l / 2, this.rendu.h / 2)
+    return { cx: c.x, cy: c.y, z: this.cam.z }
+  }
+
+  /** La vue de la page qu'on ouvre (voir allerPage) */
+  private appliquerVue(id: string) {
+    const cam = this.cam, l = this.rendu.l, h = this.rendu.h
+    const v = this.vues.get(id)
+    let c = VUE_NEUTRE
+    if (l > 0 && h > 0) {
+      if (v) c = { x: l / 2 - v.cx * v.z, y: h / 2 - v.cy * v.z, z: v.z }
+      else {
+        // this.formes n'est relue qu'à rafraichir : on lit celles de la page
+        const formes = this.tableau.formesDe(id)
+        const b = formes?.size ? this.boiteDuContenu(formes.values()) : null
+        if (b) c = vuePour(b, this.ui?.zoneLibre() ?? { x: 0, y: 0, l, h }, 1)
+      }
+    }
+    cam.x = c.x; cam.y = c.y; cam.z = c.z
+  }
+
+  private boiteDeForme(f: Forme): Boite | null {
+    // Une formule se mesure à l'écran (son rendu KaTeX) : pas de cache
+    if (f.type === 'formule') return this.rendu.boite(f)
+    let b = this.boites.get(f)
+    if (b === undefined) { b = boiteDe(f); this.boites.set(f, b) }
+    return b
+  }
+
+  /** La boîte de ce qui est écrit (null : rien). Une droite compte par ses deux
+   *  points, pas par son étendue à l'écran, qui dépend de la vue. */
+  boiteDuContenu(formes: Iterable<Forme> = this.formes): Boite | null {
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
+    for (const f of formes) {
+      const b = this.boiteDeForme(f)
+      if (!b) continue
+      x1 = Math.min(x1, b.x); y1 = Math.min(y1, b.y); x2 = Math.max(x2, b.x + b.l); y2 = Math.max(y2, b.y + b.h)
+    }
+    return x1 === Infinity ? null : { x: x1, y: y1, l: x2 - x1, h: y2 - y1 }
+  }
+
+  /** Tout ce qui est sur la page, jamais au-delà de 100 % : un petit contenu
+   *  reste à 100 % et se centre */
+  toutVoir() {
+    const b = this.boiteDuContenu()
+    if (!b) { this.allerVers(VUE_NEUTRE); this.ui.message('La page est vide.'); return }
+    this.allerVers(vuePour(b, this.ui.zoneLibre(), 1))
+  }
+
+  /** La sélection (ou la figure du morceau choisi), à 200 % au plus */
+  voirSelection() {
+    const ids = this.selection.size ? this.selection : this.partie ? new Set([this.partie.id]) : null
+    const b = ids ? this.boiteDuContenu(this.formes.filter(f => ids.has(f.id))) : null
+    if (!b) { this.ui.message('Rien n\'est sélectionné.'); return }
+    this.allerVers(vuePour(b, this.ui.zoneLibre(), 2))
+  }
+
+  /** Les boutons − et + : autour du centre de l'écran, tout de suite */
   zoomer(facteur: number) {
+    this.arreterAnimation()
     this.cam.zoomerAutour(this.rendu.l / 2, this.rendu.h / 2, facteur)
     this.vueChangee()
   }
 
-  zoom100() { this.cam.zoomerAutour(this.rendu.l / 2, this.rendu.h / 2, 1 / this.cam.z); this.vueChangee() }
+  /** 100 %, en gardant le point au centre de ce qu'on voit */
+  zoom100() {
+    const s = this.centreLibre(), w = this.cam.versMonde(s.x, s.y)
+    this.allerVers({ x: s.x - w.x, y: s.y - w.y, z: 1 })
+  }
+
+  /** Ctrl + « + » ou « − » : autour du pointeur s'il est sur le tableau */
+  zoomerClavier(facteur: number) {
+    this.arreterAnimation()
+    const s = this.dernierPointeur ? this.ecran(this.dernierPointeur) : this.centreLibre()
+    this.cam.zoomerAutour(s.x, s.y, facteur)
+    this.vueChangee()
+  }
+
+  /** Zoome autour d'un point de la fenêtre (le pincement de Safari) */
+  zoomerAutourClient(clientX: number, clientY: number, facteur: number) {
+    this.arreterAnimation()
+    const s = this.ecran({ clientX, clientY })
+    this.cam.zoomerAutour(s.x, s.y, facteur)
+    this.vueChangee()
+  }
+
+  /** La page a des formes, et aucune n'est à l'écran : on s'est perdu */
+  contenuHorsVue(): boolean {
+    if (!this.formes.length || this.rendu.l <= 0) return false
+    const v = this.cam.visible(this.rendu.l, this.rendu.h)
+    for (const f of this.formes) {
+      if (f.type === 'polygone' && f.prolonge) { if (this.rendu.etendueVisible(f)) return false; continue }
+      const b = this.boiteDeForme(f)
+      if (b && chevauche(v, b)) return false
+    }
+    return true
+  }
+
+  /** Note la page et sa vue dans la session de ce navigateur (jamais dans le document) */
+  private noterSession() {
+    clearTimeout(this.minuterieSession); this.minuterieSession = 0
+    if (!this.page) return
+    if (this.rendu.l > 0) this.vues.set(this.page, this.vueActuelle())
+    ecrireSession(this.page, this.vues, this.pages)
+  }
 
   private vueChangee() {
     this.rendu.toutRedessiner()
     this.ui?.maj()
+    // La vue se note un peu après le dernier mouvement, pas à chaque image
+    clearTimeout(this.minuterieSession)
+    this.minuterieSession = window.setTimeout(() => this.noterSession(), 400)
   }
 
   // ---------- Gestes ----------
@@ -1402,18 +1601,18 @@ export class App {
   }
 
   // ---------- Molette et clavier ----------
+  /** La molette et le pavé tactile défilent ; Ctrl/⌘ + molette et le pincement
+   *  zooment autour du pointeur ; le réglage « la molette zoome » rend à la
+   *  molette d'une souris son zoom (voir lireMolette). */
   private molette(e: WheelEvent) {
     e.preventDefault()
-    const s = this.ecran(e)
-    // Pavé tactile : deux doigts qui glissent déplacent le tableau, pincer
-    // zoome (le navigateur l'envoie avec ctrlKey). Une molette de souris
-    // zoome : elle se reconnaît à ses crans (lignes, ou pas entiers et larges
-    // sans aucun mouvement de côté). Ctrl/Cmd + défilement zoome toujours.
-    const molette = e.deltaMode !== 0 || (e.deltaX === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50)
-    if (e.ctrlKey || e.metaKey || molette) {
-      const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY
-      this.cam.zoomerAutour(s.x, s.y, Math.exp(-d * (e.ctrlKey && !molette ? 0.01 : 0.0015)))
-    } else this.cam.deplacer(-e.deltaX, -e.deltaY)
+    this.arreterAnimation()
+    if (this.pinceSafari && e.ctrlKey) return      // Safari sur Mac zoome déjà par gesturechange
+    const effet = lireMolette(e, this.rendu.h, reglages.molette)
+    if ('zoom' in effet) {
+      const s = this.ecran(e)
+      this.cam.zoomerAutour(s.x, s.y, effet.zoom)
+    } else this.cam.deplacer(effet.dx, effet.dy)
     this.vueChangee()
   }
 
@@ -1437,6 +1636,30 @@ export class App {
       e.preventDefault()
       const k = e.shiftKey ? CM : CM / 10, [dx, dy] = fleches[e.key]
       this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id) || this.lieeA(f)).map(f => ({ id: f.id, patch: { x: f.x + dx * k, y: f.y + dy * k } })))
+      return
+    }
+    // Pendant une séance d'automatismes, le tableau est caché : sa vue ne bouge pas
+    const seance = document.body.classList.contains('en-seance')
+    // Sans sélection, elles déplacent la vue : → montre ce qui est à droite.
+    // Un quart de ce qu'on voit (trois quarts avec Maj), en douceur ; touche
+    // tenue, un douzième à chaque répétition, tout de suite (sinon la vue
+    // filerait à sept écrans par seconde)
+    if (fleches[e.key] && !ctrl && !e.altKey && !seance) {
+      e.preventDefault()
+      const r = this.ui.zoneLibre(), [sx, sy] = fleches[e.key]
+      const part = (e.shiftKey ? 3 / 4 : 1 / 4) / (e.repeat ? 3 : 1)
+      const dx = sx * r.l * part, dy = sy * r.h * part
+      if (e.repeat) { this.arreterAnimation(); this.cam.deplacer(-dx, -dy); this.vueChangee(); return }
+      // Un appui pendant le glissement du précédent part de là où il allait
+      const depart = this.cible ?? { x: this.cam.x, y: this.cam.y, z: this.cam.z }
+      this.allerVers({ x: depart.x - dx, y: depart.y - dy, z: depart.z }, 150)
+      return
+    }
+    // Maj + 1 : tout voir ; Maj + 2 : voir la sélection. Par la touche (e.code) :
+    // en AZERTY, Maj + 1 donne « 1 », en QWERTY « ! »
+    if (e.shiftKey && !ctrl && !e.altKey && !seance && (e.code === 'Digit1' || e.code === 'Digit2')) {
+      e.preventDefault()
+      if (e.code === 'Digit1') this.toutVoir(); else this.voirSelection()
       return
     }
     if (ctrl) return

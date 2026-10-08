@@ -35,3 +35,16 @@ export class Camera {
 
   copie() { const c = new Camera(); c.x = this.x; c.y = this.y; c.z = this.z; return c }
 }
+
+/** La caméra qui montre la boîte b (monde) entière dans le rectangle r de
+ *  l'écran, centrée, avec une marge, sans dépasser le zoom zMax : un petit
+ *  contenu reste à ce zoom et se centre. Une boîte plate (un seul point, un
+ *  trait horizontal) ne compte que dans l'autre sens, ou pas du tout. */
+export function vuePour(b: { x: number; y: number; l: number; h: number }, r: { x: number; y: number; l: number; h: number },
+  zMax: number, marge = 32): { x: number; y: number; z: number } {
+  const haut = Math.min(zMax, ZOOM_MAX)
+  const zl = b.l > 0 ? (r.l - 2 * marge) / b.l : Infinity
+  const zh = b.h > 0 ? (r.h - 2 * marge) / b.h : Infinity
+  const z = Math.max(ZOOM_MIN, Math.min(haut, zl, zh))
+  return { x: r.x + r.l / 2 - (b.x + b.l / 2) * z, y: r.y + r.h / 2 - (b.y + b.h / 2) * z, z }
+}
