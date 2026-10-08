@@ -8,7 +8,7 @@
 import type { Tableau } from './document'
 import { Camera, vuePour } from './camera'
 import { Rendu } from './rendu'
-import { aireDe, chevauche, distanceAuSegment, distanceAuTrace, interieur, rectangle, touche } from './geometrie'
+import { aireDe, chevauche, dansLasso, distanceAuSegment, distanceAuTrace, interieur, partDedans, rectangle, simplifier, touche } from './geometrie'
 import type { Figure, Fond, Forme, Formule, Habillage, Outil, Polygone, Trait, TypeForme } from './types'
 import { CM, uid } from './types'
 import type { P, Reconnue, Transformation } from './formes'
@@ -74,7 +74,7 @@ type Geste =
   // pointeur : le seul qui la déplace (le doigt resté après un pincement) ;
   // toucher : le doigt « qui déplace » ; levé sans avoir glissé, il fait le
   // clic attendu (voir placement) ou choisit l'objet touché
-  | { type: 'pan'; dernierX: number; dernierY: number; vide?: boolean; pointeur?: number; toucher?: boolean }
+  | { type: 'pan'; dernierX: number; dernierY: number; pointeur?: number; toucher?: boolean }
   | { type: 'pinch'; dist: number; cx: number; cy: number }
   // apresMenu : l'appui qui a commencé le trait fermait un menu ; levé sans
   // avoir glissé, il ne pose rien. surObjet : il est parti d'une figure ou
@@ -91,11 +91,20 @@ type Geste =
   // doigt : pris par le doigt « qui déplace » ; levé sans avoir glissé, il choisit l'objet touché.
   // retirer : Maj + clic sur un objet déjà sélectionné ; levé sans avoir glissé, il en sort
   | { type: 'deplacer'; x: number; y: number; bouge: boolean; doigt?: boolean; retirer?: string }
-  | { type: 'cadre'; x: number; y: number }
+  // Glisser depuis le vide, à l'outil Sélection : un cadre à la souris, un
+  // lasso au stylet et au doigt (pts : le lasso, en monde, à plat). ajout :
+  // Maj, Ctrl (⌘) ou le mode « Ajouter » ; ce qui est pris s'ajoute alors à la
+  // sélection. candidat : l'objet que l'appui touchait sans le saisir
+  // (l'intérieur d'une figure fermée, un tracé un peu loin) ; levé sans avoir
+  // glissé, il le prend
+  | { type: 'zone'; forme: 'cadre' | 'lasso'; x: number; y: number; pts: number[]; ajout: boolean; candidat?: string }
   | { type: 'formule' }
 
 /** Un morceau d'une figure qu'on attrape : le nom d'un point, un sommet, le rayon */
 export type Prise = { quoi: 'nom' | 'sommet'; i: number } | { quoi: 'rayon' }
+
+/** Ce que prend le pointeur, et par où (voir cibleSous) */
+type Cible = { f: Forme; par: 'trace' | 'morceau' | 'plein' | 'dedans'; ecart: number }
 
 export class App {
   readonly cam = new Camera()
@@ -163,6 +172,10 @@ export class App {
   private toucherPrecedent: (Toucher & { objet: string; page: string }) | null = null
   /** Ce second toucher, posé : levé sans avoir glissé, il ouvre les options de l'objet */
   private doubleEnCours: { objet: string; pointeur: number } | null = null
+  /** Le mode « Ajouter » au doigt (voir ajoutTactile). vu : la sélection a eu
+   *  quelque chose depuis qu'il est allumé */
+  private ajout = { actif: false, vu: false }
+  private astuceAjout = false
   /** Les instruments posés (dans l'ordre d'empilement) et leur réglage */
   readonly instruments = new Map<NomInstrument, EtatInstrument>()
   /** Ce que la classe voit des instruments, noté pour le replay (voir piste.ts) */
@@ -417,6 +430,7 @@ export class App {
     // Rien ne reste choisi d'une page à l'autre : ni la sélection, ni un
     // morceau de figure (Suppr, au retour, l'ôterait sans qu'on le voie choisi)
     this.selection.clear()
+    this.finirAjout()
     this.ui?.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
     this.rafraichir()
@@ -494,6 +508,7 @@ export class App {
     this.annulerTrait()
     this.survol = null; this.rendu.survol = null
     if (this.partie) this.choisirPartie(null)
+    this.finirAjout()
     this.outil = o
     if (o !== 'selection') this.selection.clear()
     this.majPoignees()
@@ -764,8 +779,7 @@ export class App {
    *  les intérieurs nus, le plus petit), les tracés plus loin, enfin
    *  l'intérieur nu. Une seule boucle sur les formes, chacune écartée d'abord
    *  par sa boîte : le survol reste léger sur une page de milliers de traits. */
-  private cibleSous(m: P, s: P, o: { pointeur: TypePointeur; dedans: boolean }):
-    { f: Forme; par: 'trace' | 'morceau' | 'plein' | 'dedans'; ecart: number } | null {
+  private cibleSous(m: P, s: P, o: { pointeur: TypePointeur; dedans: boolean }): Cible | null {
     const z = this.cam.z, tol = TOLERANCE_PRISE[o.pointeur], r = tol / z
     type Candidat = { f: Forme; i: number; ecart: number }
     const traces: Candidat[] = [], pleins: Candidat[] = [], nus: Candidat[] = []
@@ -1041,7 +1055,11 @@ export class App {
     // Le bout gomme passe avant tout le reste : le bord d'un instrument, les
     // instruments, les sommets. L'outil en main ne change pas.
     if (gommeDuStylet) { this.commencerGomme(m, true); return }
-    if (doigt) { this.basDoigt(e, s, m, prise); return }
+    // Le doigt qui « déplace » a son propre geste sous les autres outils. À la
+    // Sélection, il fait comme la souris et le stylet (un doigt qui glisse dans
+    // le vide trace un lasso, la vue se déplace à deux doigts), sauf quand un
+    // clic est attendu : il cherche alors la place en déplaçant la vue.
+    if (doigt && (this.outil !== 'selection' || this.placement)) { this.basDoigt(e, s, m, prise); return }
     // Le crayon posé contre le bord d'un instrument trace le long du bord.
     // Sauf sur une pastille ↻ : à petit zoom, la portée du bord l'atteindrait
     // (celle du rapporteur est dans le prolongement de son bord)
@@ -1111,20 +1129,27 @@ export class App {
       case 'point': this.placerPoint(m); break
       case 'gomme': this.commencerGomme(m, false); break
       case 'selection': {
-        const f = this.cibleSous(m, s, { pointeur, dedans: true })?.f
+        const c = this.cibleSous(m, s, { pointeur, dedans: true })
         // Maj + clic, ou Ctrl + clic (⌘ sur Mac, où Ctrl + clic est un clic
-        // droit) : l'objet entre dans la sélection, ou en sort
-        const ajout = e.shiftKey || (MAC ? e.metaKey : e.ctrlKey)
-        if (f) {
+        // droit), ou le mode « Ajouter » au doigt : l'objet entre dans la
+        // sélection, ou en sort ; un cadre ou un lasso s'y ajoute
+        const ajout = e.shiftKey || (MAC ? e.metaKey : e.ctrlKey) || this.ajoutTactile
+        // Saisir ou entourer. Un objet qu'on saisit (tout près de son tracé, par
+        // un morceau, par un plein) ou déjà sélectionné se glisse. Sinon, même
+        // si l'appui touche quelque chose (l'intérieur d'une figure fermée sans
+        // fond, un tracé un peu plus loin), glisser entoure : on prend ce qu'on
+        // a écrit dans un grand cadre, ou un mot dont on part à 15 px, comme
+        // chez tldraw et Excalidraw ; levé sans glisser, l'appui prend l'objet.
+        if (c && (this.saisi(c, pointeur) || this.selection.has(c.f.id))) {
+          const f = c.f
           const retirer = ajout && this.selection.has(f.id) ? f.id : undefined
           if (!this.selection.has(f.id)) { if (!ajout) this.selection.clear(); this.selection.add(f.id) }
           this.direOptions()
           this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false, retirer }
-        } else if (ajout) {
-          this.geste = { type: 'cadre', x: m.x, y: m.y }          // Maj + glisser : encadrer
         } else {
-          // Glisser dans le vide déplace le tableau ; un simple clic désélectionne
-          this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, vide: true }
+          // Un cadre à la souris (le pavé tactile en est une), un lasso libre au
+          // stylet (tablette graphique comprise) et au doigt
+          this.geste = { type: 'zone', forme: e.pointerType === 'mouse' ? 'cadre' : 'lasso', x: m.x, y: m.y, pts: [m.x, m.y], ajout, candidat: c?.f.id }
         }
         this.rendu.redessinerDirect(); this.ui.maj()
         break
@@ -1135,13 +1160,14 @@ export class App {
     }
   }
 
-  /** Le doigt qui « déplace et sélectionne » : jamais d'encre, quel que soit
-   *  l'outil. Il prend un instrument, un morceau de la figure sélectionnée
-   *  (prise, lu par bas()), ou ce qui est déjà sélectionné pour le déplacer ;
-   *  ailleurs, même sur un objet, il déplace la vue (un doigt qui traverse une
-   *  page chargée n'emporte pas un trait). Levé sans avoir glissé, il choisit
-   *  l'objet touché (voir toucherObjet). Quand un clic est attendu (voir
-   *  placement), il déplace la vue, ou, levé sans avoir glissé, il fait ce clic. */
+  /** Le doigt qui « déplace et sélectionne », sous un autre outil que la
+   *  Sélection (ou quand un clic est attendu) : jamais d'encre. Il prend un
+   *  instrument, un morceau de la figure sélectionnée (prise, lu par bas()),
+   *  ou ce qui est déjà sélectionné pour le déplacer ; ailleurs, même sur un
+   *  objet, il déplace la vue (un doigt qui traverse une page chargée
+   *  n'emporte pas un trait). Levé sans avoir glissé, il choisit l'objet
+   *  touché (voir toucherObjet). Quand un clic est attendu (voir placement),
+   *  il déplace la vue, ou, levé sans avoir glissé, il fait ce clic. */
   private basDoigt(e: PointerEvent, s: P, m: P, prise: { prise: Prise; f: Figure } | null) {
     if (this.placement) { this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, pointeur: e.pointerId, toucher: true }; return }
     const inst = this.instruments.size ? this.instrumentSous(m) : null
@@ -1259,7 +1285,9 @@ export class App {
    *  sans avoir glissé : un second peut suivre (voir secondToucher) */
   private noterToucher(e: PointerEvent, g: Geste, glisse: boolean, m: P) {
     if (e.pointerType !== 'touch' || glisse || this.placement || (this.outil !== 'selection' && !this.doigtDeplace)) return
-    if (g.type !== 'deplacer' && !(g.type === 'pan' && g.toucher)) return
+    // Un appui de la Sélection qui touchait sans saisir prend son candidat à
+    // son lever : c'est aussi un premier toucher
+    if (g.type !== 'deplacer' && !(g.type === 'pan' && g.toucher) && !(g.type === 'zone' && g.candidat)) return
     if (performance.now() - this.depart.t >= DOUBLE_TOUCHER.ms) return
     const s = this.ecran(e)
     const f = this.objetSous(m, s, { pointeur: 'touch', dedans: true })
@@ -1284,16 +1312,50 @@ export class App {
 
   /** Un simple toucher du doigt « qui déplace » : l'objet touché (à 20 px
    *  de son tracé, par un morceau ou par son intérieur, voir cibleSous)
-   *  devient la sélection, seul ; rien dessous, elle se vide */
+   *  devient la sélection, seul ; rien dessous, elle se vide. Le mode
+   *  « Ajouter » allumé, l'objet touché y entre ou en sort, et le vide éteint
+   *  le mode. */
   private toucherObjet(m: P, s: P) {
     const f = this.objetSous(m, s, { pointeur: 'touch', dedans: true })
     this.ui.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
-    this.selection.clear()
-    if (f) this.selection.add(f.id)
+    if (f && this.ajoutTactile) {
+      if (this.selection.has(f.id)) this.selection.delete(f.id)
+      else this.selection.add(f.id)
+    } else {
+      if (!f) this.finirAjout()
+      this.selection.clear()
+      if (f) this.selection.add(f.id)
+    }
     this.rendu.redessinerDirect(); this.ui.maj()
     if (f) this.direOptions()
   }
+
+  // ---------- Le mode « Ajouter » au doigt ----------
+  /** Allumé (par le bouton « Ajouter » de la barre d'actions), un toucher sur
+   *  un objet l'ajoute à la sélection ou l'en retire, comme Maj + clic, et un
+   *  lasso s'y ajoute : sur une tablette, on n'a pas de touche Maj. Il
+   *  s'éteint au toucher dans le vide, à Échap, à un autre outil, à une autre
+   *  page, et quand la sélection se vide. */
+  get ajoutTactile(): boolean {
+    const a = this.ajout
+    if (a.actif) {
+      if (this.selection.size) a.vu = true
+      else if (a.vu) a.actif = false          // la sélection s'est vidée
+    }
+    return a.actif
+  }
+
+  basculerAjout() {
+    this.ajout = { actif: !this.ajout.actif, vu: this.selection.size > 0 }
+    if (this.ajout.actif && !this.astuceAjout) {
+      this.astuceAjout = true
+      this.ui.message('Touchez d\'autres objets pour les ajouter ou les retirer ; touchez le vide pour finir.')
+    }
+    this.ui.maj()
+  }
+
+  private finirAjout() { this.ajout.actif = false }
 
   private prendreInstrument(inst: { nom: NomInstrument; quoi: Partie }, m: P) {
     const depart = { ...this.instruments.get(inst.nom)! }
@@ -1366,12 +1428,13 @@ export class App {
 
     if (this.placement && !g) { this.placement.bouge(m); this.zone.style.cursor = 'copy'; return }
     // Ce qu'un appui de l'outil Sélection prendrait ici (voir cibleSous)
-    let vise: Forme | null = null
+    const pointeur = typePointeur(e.pointerType)
+    let vise: Cible | null = null
     if (!g && this.outil === 'selection') {
       // Ce qu'on survole s'éclaire : au pavé tactile, on sait ce qu'on va
       // prendre ; l'intérieur d'une figure fermée aussi
-      vise = this.objetSous(m, s, { pointeur: typePointeur(e.pointerType), dedans: true })
-      const id = vise && !this.selection.has(vise.id) ? vise.id : null
+      vise = this.cibleSous(m, s, { pointeur, dedans: true })
+      const id = vise && !this.selection.has(vise.f.id) ? vise.f.id : null
       if (id !== this.survol) { this.survol = id; this.rendu.survol = id; this.rendu.redessinerDirect() }
     }
     if (!g && this.outil === 'segment') {
@@ -1380,8 +1443,12 @@ export class App {
     }
     if (!g) {
       const inst = this.instruments.size ? this.instrumentSous(m) : null
+      // À la Sélection, le curseur dit ce que fera l'appui (au survol de la
+      // tablette graphique aussi) : « move », il saisit l'objet et le glisse ;
+      // « pointer », il le prend d'un clic, mais glisser entoure ; la croix,
+      // dans le vide, glisser sélectionne
       this.zone.style.cursor = inst ? (inst.quoi === 'corps' || inst.quoi === 'pointe' ? 'grab' : 'pointer') : this.priseSous(s) ? 'move'
-        : this.outil === 'selection' ? (vise ? 'move' : 'grab') : ''
+        : this.outil === 'selection' ? (!vise ? 'crosshair' : this.saisi(vise, pointeur) || this.selection.has(vise.f.id) ? 'move' : 'pointer') : ''
       return
     }
     // Le geste n'écoute que le pointeur qui l'a commencé (pas un stylet qui
@@ -1460,11 +1527,20 @@ export class App {
         this.rendu.toutRedessiner()
         break
       }
-      case 'cadre':
+      case 'zone': {
         if (!glisse) break
-        this.rendu.cadreSelection = rectangle(g.x, g.y, m.x, m.y)
+        // Le halo de l'objet sous l'appui s'éteint : ce n'est plus lui qu'on prend
+        if (this.survol) { this.survol = null; this.rendu.survol = null }
+        if (g.forme === 'cadre') this.rendu.cadreSelection = rectangle(g.x, g.y, m.x, m.y)
+        else {
+          // Un point tous les 3 px d'écran au moins : le lasso reste léger
+          const n = g.pts.length
+          if (Math.hypot(m.x - g.pts[n - 2], m.y - g.pts[n - 1]) * this.cam.z > 3) g.pts.push(m.x, m.y)
+          this.rendu.lasso = g.pts
+        }
         this.rendu.redessinerDirect()
         break
+      }
     }
   }
 
@@ -1493,13 +1569,11 @@ export class App {
     if (!double) this.noterToucher(e, g, glisse, m)
     switch (g.type) {
       case 'pan':
-        // Un simple clic dans le vide (outil Sélection) désélectionne ; un
-        // simple toucher du doigt « qui déplace » fait le clic attendu (voir
+        // Un simple toucher du doigt « qui déplace » fait le clic attendu (voir
         // placement), ou choisit l'objet touché
         if (glisse) break
         if (g.toucher && this.placement) { const p = this.placement; this.placement = null; p.clic(m) }
         else if (g.toucher) this.toucherObjet(m, this.ecran(e))
-        else if (g.vide && this.selection.size) { this.selection.clear(); this.rendu.redessinerDirect(); this.ui.maj() }
         break
       case 'dessin': {
         clearTimeout(this.minuterieForme)
@@ -1562,10 +1636,30 @@ export class App {
         if (g.retirer && !glisse) { this.rendu.decalage = { dx: 0, dy: 0 }; this.selection.delete(g.retirer); this.rendu.redessinerDirect(); break }
         this.poserDeplacement(g)
         break
-      case 'cadre': {
-        const r = this.rendu.cadreSelection
-        this.rendu.cadreSelection = null
-        if (r) for (const f of this.formes) if (chevauche(r, this.rendu.boite(f))) this.selection.add(f.id)
+      case 'zone': {
+        this.rendu.cadreSelection = null; this.rendu.lasso = null
+        if (g.forme === 'lasso') {
+          const n = g.pts.length
+          if (m.x !== g.pts[n - 2] || m.y !== g.pts[n - 1]) g.pts.push(m.x, m.y)
+        }
+        // Un lasso resté tout petit (un doigt qui a roulé) est un toucher
+        if (glisse && !(g.forme === 'lasso' && this.petitLasso(g.pts))) this.prendreZone(g, m)
+        else if (g.candidat && this.forme(g.candidat)) {
+          // Un toucher sur l'objet qu'on ne saisissait pas : il est pris (avec
+          // Maj, Ctrl ou le mode « Ajouter », il entre dans la sélection ou en sort)
+          const id = g.candidat
+          if (!g.ajout) this.selection.clear()
+          if (g.ajout && this.selection.has(id)) this.selection.delete(id)
+          else this.selection.add(id)
+          this.direOptions()
+        } else {
+          // Un clic dans le vide désélectionne, sauf avec Maj ou Ctrl (on a
+          // visé à côté) ; un toucher dans le vide éteint le mode « Ajouter »,
+          // et vide la sélection
+          const tactile = this.ajoutTactile
+          this.finirAjout()
+          if (!g.ajout || tactile) this.selection.clear()
+        }
         this.rendu.redessinerDirect(); this.ui.maj()
         break
       }
@@ -1581,6 +1675,49 @@ export class App {
     // Le second toucher d'un double appui, bref et levé sans avoir glissé
     if (double && !glisse && performance.now() - this.depart.t < DOUBLE_TOUCHER.ms) this.ouvrirParDouble(double.objet)
     this.ui.maj()                       // le panneau d'options réapparaît
+  }
+
+  /** Le lasso tient-il dans moins de 8 px d'écran ? */
+  private petitLasso(pts: number[]): boolean {
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
+    for (let i = 0; i < pts.length; i += 2) {
+      x1 = Math.min(x1, pts[i]); x2 = Math.max(x2, pts[i]); y1 = Math.min(y1, pts[i + 1]); y2 = Math.max(y2, pts[i + 1])
+    }
+    return Math.max(x2 - x1, y2 - y1) * this.cam.z < 8
+  }
+
+  /** Le cadre ou le lasso lâché : ce qui y est à plus de moitié est pris (la
+   *  longueur d'un tracé, la surface d'une image ou d'une formule, les deux
+   *  points d'une droite : voir partDedans). Sans ajout, il remplace la
+   *  sélection ; avec (Maj, Ctrl, le mode « Ajouter »), il s'y ajoute sans
+   *  rien en retirer, comme Maj + cadre chez tldraw. Le lasso est d'abord
+   *  simplifié (à 2 px d'écran près) et rangé par bandes (dansLasso), et les
+   *  formes dont la boîte ne touche pas celle de la zone sont écartées sans
+   *  calcul : le lâcher reste immédiat sur une page de milliers de traits. */
+  private prendreZone(g: Extract<Geste, { type: 'zone' }>, m: P) {
+    let b: Boite, dansZone: (x: number, y: number) => boolean
+    if (g.forme === 'cadre') {
+      const r = rectangle(g.x, g.y, m.x, m.y)
+      b = r
+      dansZone = (x, y) => x >= r.x && x <= r.x + r.l && y >= r.y && y <= r.y + r.h
+    } else {
+      const q = simplifier(g.pts, 2 / this.cam.z)
+      let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
+      for (let i = 0; i < q.length; i += 2) {
+        x1 = Math.min(x1, q[i]); x2 = Math.max(x2, q[i]); y1 = Math.min(y1, q[i + 1]); y2 = Math.max(y2, q[i + 1])
+      }
+      b = { x: x1, y: y1, l: x2 - x1, h: y2 - y1 }
+      dansZone = dansLasso(q)
+    }
+    if (!g.ajout) this.selection.clear()
+    for (const f of this.formes) {
+      // Une droite compte par ses deux points (sa boîte est la leur)
+      const fb = this.boiteDeForme(f)
+      if (!fb || !chevauche(b, fb)) continue
+      // Toute la boîte dans le cadre : tout l'objet y est, sans rien mesurer
+      const entiere = g.forme === 'cadre' && fb.x >= b.x && fb.y >= b.y && fb.x + fb.l <= b.x + b.l && fb.y + fb.h <= b.y + b.h
+      if (entiere || partDedans(f, dansZone, fb) > 0.5) this.selection.add(f.id)
+    }
   }
 
   /** La sélection déplacée se pose là où on l'a laissée */
@@ -1613,7 +1750,7 @@ export class App {
       this.piste.trace(null)
       if (g.type === 'instrument') { this.instruments.set(g.nom, g.depart); this.majInstruments() }
     }
-    if (g?.type === 'cadre') this.rendu.cadreSelection = null
+    if (g?.type === 'zone') { this.rendu.cadreSelection = null; this.rendu.lasso = null }
     if (g?.type === 'deplacer') this.rendu.decalage = { dx: 0, dy: 0 }
     if (g?.type === 'gomme') this.finirGomme(g)
     this.geste = null
@@ -1913,13 +2050,13 @@ export class App {
     if (this.placement) { const p = this.placement; this.placement = null; p.annuler(); return }
     if (this.traitEnAttente) { this.annulerTrait(); return }
     const enCours = !!this.polyEnCours || this.selection.size > 0 || !!this.partie
-    this.annulerPolygone(); this.selection.clear(); this.choisirPartie(null)
+    this.annulerPolygone(); this.selection.clear(); this.choisirPartie(null); this.finirAjout()
     this.ui.fermerMenuPartie()
     if (!enCours) {
       if (this.outil !== 'selection') {
         this.outilAvant = this.outil
         this.choisirOutil('selection')
-        this.ui.message('Sélection : glisser un objet le déplace, glisser dans le vide déplace la vue. Échap : revenir.')
+        this.ui.message('Sélection : glisser un objet le déplace, glisser dans le vide sélectionne. Échap : revenir.')
       } else {
         this.choisirOutil(this.outilAvant)
         this.ui.message('Retour à l\'outil précédent')

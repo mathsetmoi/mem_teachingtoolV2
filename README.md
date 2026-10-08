@@ -57,11 +57,27 @@ grand rectangle, même colorié, se prend par son milieu). Une image, une
 formule, une figure coloriée se prennent partout où elles sont et cachent ce
 qui est dessous ; ce qu'on a écrit par-dessus (un soulignement) se prend avant
 elles. Vu de très près, l'intérieur d'une figure qui déborde tout l'écran ne
-prend rien. Le doigt qui « déplace » prend de même d'un simple toucher, mais
-n'emporte un objet sélectionné que s'il le saisit à 10 px de son tracé (ou par
-une image, une formule, une figure coloriée) : parti du milieu d'un grand
-cadre, il déplace la vue. Jamais sous le Stylo : écrire dans un triangle ne le
-prend pas, et un clic droit dans son vide ne le vise pas.
+prend rien. Sous un autre outil que la Sélection, le doigt qui « déplace »
+prend de même d'un simple toucher, mais n'emporte un objet sélectionné que
+s'il le saisit à 10 px de son tracé (ou par une image, une formule, une figure
+coloriée) : parti du milieu d'un grand cadre, il déplace la vue. Jamais sous
+le Stylo : écrire dans un triangle ne le prend pas, et un clic droit dans son
+vide ne le vise pas.
+
+**Saisir ou entourer.** À l'outil Sélection, un appui tout près du tracé d'un
+objet (6 px à la souris et au stylet, 10 au doigt), sur un morceau, sur une
+image, une formule ou une figure coloriée, le **saisit** : glissé, il
+l'emporte. Plus loin, mais dans la portée, un clic le prend, et un glisser
+**entoure** : on entoure un mot écrit à la main en partant à 15 px de lui,
+sans en emporter une lettre. Dans le vide d'une grande figure fermée sans fond
+qui n'est pas sélectionnée, de même : un clic prend la figure, un glisser
+entoure ce qu'on a écrit dedans (comme tldraw et Excalidraw ; la figure n'est
+prise que si elle est elle-même à plus de moitié dans la zone). Sélectionnée,
+elle se glisse depuis son milieu. Une image, une formule, une figure coloriée
+se glissent toujours : pour entourer ce qu'on a écrit sur un énoncé importé,
+on part d'à côté. Au survol de la souris ou de la tablette graphique, le
+curseur le dit : la flèche en croix saisit, la main prend ou entoure, la
+croix est dans le vide.
 
 **Le panneau d'options** ne s'ouvre qu'à la demande : **double-clic** ou
 **clic droit** sur l'objet (un simple clic le sélectionne seulement, pour le
@@ -631,15 +647,25 @@ rien, il passe à l'outil Sélection, et un second Échap rend l'outil d'avant.
 Avec la Sélection, un objet se prend à 6 px de son tracé à la souris, 10 au
 stylet, 20 au doigt ; une figure fermée sans fond se prend aussi par
 l'intérieur, le trait le plus proche passant avant elle (jamais sous le Stylo,
-voir « Prendre un objet »). Glisser un objet le déplace, glisser dans le vide
-déplace le tableau, Maj + glisser encadre ; Maj + clic (ou Ctrl + clic, ⌘ +
-clic sur Mac) ajoute un objet à la sélection, ou l'en retire s'il y était (Maj
-+ glisser un objet sélectionné déplace toute la sélection) ; un clic droit
-dans une sélection de plusieurs objets la laisse entière. L'objet survolé (par
-son tracé ou son intérieur) s'éclaire d'un halo bleu qui suit sa forme, avant
-le clic ; une droite ou une
-demi-droite sélectionnée se surligne sur toute sa longueur visible ; les
-flèches poussent la sélection d'1 mm (1 cm avec Maj).
+voir « Prendre un objet »). **Glisser un objet le déplace, glisser dans le vide
+sélectionne**, sans touche : un cadre à la souris (et au pavé tactile), un
+lasso libre au stylet (tablette graphique comprise) et au doigt. Un objet est
+pris s'il est à plus de moitié dedans : plus de la moitié de la longueur de
+son tracé, de la surface d'une image ou d'une formule ; une droite, si ses
+deux points y sont. Un long trait en diagonale n'est donc plus pris par un
+cadre posé dans un coin vide de sa boîte. Parti d'un peu loin d'un trait, ou
+du vide d'une figure fermée, un glisser entoure plutôt qu'il n'emporte (voir
+« Saisir ou entourer »). Un clic dans le vide désélectionne. Maj + glisser
+(ou Ctrl, ⌘ sur Mac) ajoute ce qu'on entoure à la sélection, sans rien en
+retirer ; Maj + clic (ou Ctrl + clic, ⌘ + clic sur Mac) ajoute un objet à la
+sélection, ou l'en retire s'il y était (Maj + glisser un objet sélectionné
+déplace toute la sélection) ; un clic droit dans une sélection de plusieurs
+objets la laisse entière. À la Sélection, la vue se déplace à deux doigts, au
+bouton du milieu, avec Espace + glisser, à la molette ou avec l'outil Main.
+L'objet survolé (par son tracé ou son intérieur) s'éclaire d'un halo bleu qui
+suit sa forme, avant le clic ; une droite ou une demi-droite sélectionnée se
+surligne sur toute sa longueur visible ; les flèches poussent la sélection
+d'1 mm (1 cm avec Maj).
 
 **La gomme** efface en entier ce qu'elle touche (un trait, une figure). Un coup de gomme, même
 lent et passant sur plusieurs traits, s'annule d'un seul Ctrl+Z (le replay,
@@ -660,8 +686,12 @@ pas de Ctrl + Z.
 
 **Au doigt, au stylet.** Deux doigts zooment et déplacent la vue ; si l'un se
 lève, celui qui reste continue de déplacer la vue, sans jamais se mettre à
-dessiner. Le rôle d'un seul doigt se règle par le bouton en forme de main de la
-barre de gauche (sur un appareil tactile seulement ; sa marque dit le choix) :
+dessiner. À l'outil Sélection, quel que soit le rôle du doigt, un doigt qui
+glisse dans le vide trace un lasso (le second doigt qui se pose l'efface et
+déplace la vue), et un doigt posé sur un objet le prend ou le glisse, comme la
+souris. Sous les autres outils, le rôle d'un seul doigt se règle par le bouton
+en forme de main de la barre de gauche (sur un appareil tactile seulement ; sa
+marque dit le choix) :
 
 - *le doigt dessine*, avec l'outil choisi, comme le stylet ;
 - *le doigt déplace et sélectionne* : le stylet écrit ; le doigt déplace la vue,
@@ -722,7 +752,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris |
 | `src/rendu.ts` | Les trois couches d'affichage |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
-| `src/geometrie.ts` | Ce que touche la gomme ; ce que vise la sélection (la distance au tracé, l'intérieur plein ou nu, l'aire) |
+| `src/geometrie.ts` | Ce que touche la gomme ; ce que vise la sélection (la distance au tracé, l'intérieur plein ou nu, l'aire) ; ce que prend un cadre ou un lasso (la part dedans, le lasso simplifié) |
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
 | `src/revue/` | La revue en classe : ce qu'on revoit, les images, la frise, le choix |
 | `src/revoir/` | Le replay des élèves : format du film, rythme de la main, instruments, exporteur, bobine, lecteur (`revoir.html`), relais |

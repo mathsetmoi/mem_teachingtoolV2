@@ -32,7 +32,8 @@ button, select, input { font: inherit; color: inherit; }
   cursor: crosshair;
 }
 #zone[data-outil='main'] { cursor: grab; }
-#zone[data-outil='selection'] { cursor: default; }
+/* À la Sélection, glisser dans le vide sélectionne (un cadre, un lasso) */
+#zone[data-outil='selection'] { cursor: crosshair; }
 #zone[data-outil='gomme'] { cursor: none; }
 #zone[data-outil='formule'] { cursor: text; }
 
