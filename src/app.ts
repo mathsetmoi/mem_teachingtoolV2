@@ -566,7 +566,9 @@ export class App {
       const haut = pile?.undoStack[pile.undoStack.length - 1]
       this.ui.message('Page effacée', { libelle: 'Annuler', faire: () => {
         // Le bouton ne défait que l'effacement, s'il est encore le dernier
-        // geste de la page ; sinon il défairait autre chose, qu'on ne voit pas
+        // geste de la page ; sinon il défairait autre chose, qu'on ne voit pas.
+        // Jamais pendant la revue, qui n'écrit pas dans le tableau.
+        if (this.enLecture) return
         this.viderPointEnAttente()
         const p = this.tableau.annulationDe(id)
         if (!haut || !p || p.undoStack[p.undoStack.length - 1] !== haut) return this.ui.message('La page a changé depuis : ↶ défait les gestes un à un.')
@@ -583,9 +585,10 @@ export class App {
 
   /** Rend une page jetée (le bouton « Annuler » de son message) : elle
    *  revient à sa place, avec tout ce qu'elle avait, et on la regarde. Rien
-   *  si elle est déjà revenue (un Ctrl+Z l'a rendue). Sa vue l'attend : on
-   *  l'a gardée en la quittant. */
+   *  si elle est déjà revenue (un Ctrl+Z l'a rendue), ni pendant la revue. Sa
+   *  vue l'attend : on l'a gardée en la quittant. */
   rendrePage(id: string): boolean {
+    if (this.enLecture) return false
     this.viderPointEnAttente()
     const k = this.tableau.rendrePage(id)
     if (k < 0) return false
@@ -660,6 +663,7 @@ export class App {
    *  y va, un message le dit, et la réponse est 'page' (le message est déjà
    *  dit) ; sinon, vrai si un geste a été défait. */
   annuler(): 'page' | boolean {
+    if (this.enLecture) return false
     this.viderPointEnAttente()
     const r = this.tableau.annuler(this.page)
     if (r?.page) {
@@ -674,6 +678,7 @@ export class App {
    *  la sélection se vide (ce qui revient peut recouvrir ce qui était choisi)
    *  et l'interface se remet à jour. Vrai si un geste a été refait. */
   retablir(): boolean {
+    if (this.enLecture) return false
     this.viderPointEnAttente()
     const fait = this.tableau.retablir(this.page)
     this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()

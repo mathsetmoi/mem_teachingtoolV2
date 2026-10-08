@@ -508,8 +508,10 @@ classe a vu ce trait s'écrire. Tout ce qui a été
 visible pendant la séance, en revanche, part, même effacé ensuite : l'aperçu
 permet de le revoir. Une page supprimée puis rendue (« Annuler », Ctrl+Z)
 pendant la séance ne change rien au replay : les mêmes gestes, sans pas vide,
-et rien ne s'y redessine. Une page supprimée pour de bon au milieu de la
-séance : le replay suit le professeur sur la page où il est arrivé ; supprimée
+et rien ne s'y redessine ; de même pour plusieurs pages supprimées de suite
+puis rendues. Une page supprimée pour de bon au milieu de la
+séance : le replay suit le professeur sur la page où il est arrivé (après
+plusieurs suppressions de suite, directement sur la dernière) ; supprimée
 après le dernier geste, elle n'allonge pas la séance, qui finit sur ce geste.
 Un test
 automatique le vérifie (`npm test`). Le lecteur n'écrit rien dans le navigateur
@@ -861,11 +863,14 @@ hors de ce qu'on voit devient le milieu de la vue. *Coller ici*, dans le menu
 de la page (un clic droit dans le vide), colle au point visé. Ce qui est collé est
 sélectionné, l'outil ne change pas. Copier ne change rien à la page ; couper,
 coller, dupliquer font chacun une étape : un Ctrl+Z retire tout un collage
-d'un coup, et rend ce qu'on a coupé. Une figure collée garde ses noms s'ils
-sont libres sur la page (ABC reste ABC sur une page neuve), sinon elle reçoit
-les lettres libres suivantes (DEF sur la même page), jamais des primes (A'
-veut dire « l'image de A ») ; un point lié à une image collée avec lui suit la
-nouvelle image. La copie passe d'une page à l'autre, d'un onglet à l'autre
+d'un coup, et rend ce qu'on a coupé. Les noms se choisissent pour tout ce
+qu'on colle à la fois, point par point : un point que plusieurs figures
+partagent (le sommet A du triangle ABC, de sa hauteur [AH] et le centre A d'un
+cercle) garde un seul nom. Ce qu'on colle garde ses noms s'ils sont libres sur
+la page (ABC reste ABC sur une page neuve), sinon chaque point reçoit une
+lettre libre, la même dans toutes ses figures (DEF et la hauteur [DG] sur la
+même page), jamais des primes (A' veut dire « l'image de A ») ; un point lié à
+une image collée avec lui suit la nouvelle image. La copie passe d'une page à l'autre, d'un onglet à l'autre
 (elle est gardée dans ce navigateur, 12 heures au plus : on ne colle pas le
 lendemain ce qu'on avait oublié avoir copié), et entre la version en ligne et
 la version clé USB par le presse-papiers du système, images comprises (leurs
@@ -874,8 +879,10 @@ seules donnent leur LaTeX. Une image copiée ailleurs (une capture d'écran) se
 colle toujours comme une image importée. Ce qui vient du presse-papiers du
 système n'entre jamais dans la page telle quelle : seules les copies de MEM
 teachingtool sont lues, chaque forme est refaite champ par champ (une forme
-abîmée resterait pour toujours dans le document et casserait la revue), et
-tout le reste est refusé : « Le presse-papiers ne contient ni objet ni image à
+abîmée resterait pour toujours dans le document et casserait la revue), ses
+grandeurs bornées (des places à moins de 10 millions d'unités, 2,5 km au
+tableau ; des épaisseurs et des tailles de nom sous 1000 : un nombre démesuré
+gèlerait le dessin de la page), et tout le reste est refusé : « Le presse-papiers ne contient ni objet ni image à
 coller. »
 
 **La barre de gauche** ne bouge pas : la poubelle y garde sa place, grisée
@@ -886,7 +893,10 @@ Les **messages** en bas de l'écran passent sous les panneaux et les menus (ils
 ne cachent jamais ce qu'on va toucher), sauf pendant la revue, la séance
 d'automatismes et le programme de construction ; un message à bouton
 (« Changer ») reste 7 s, et un autre message qui arrive entre-temps s'écrit
-au-dessus de lui sans le chasser. Au doigt, ils parlent du bouton Annuler,
+au-dessus de lui sans le chasser. Pendant la revue, un message à bouton ne se
+montre pas et son bouton ne fait rien (« Annuler » d'une page qu'on vient de
+supprimer écrirait dans le tableau, que la revue ne change jamais) ; la
+revue fermée, Ctrl+Z sur la page où l'on était arrivé rend la page. Au doigt, ils parlent du bouton Annuler,
 pas de Ctrl + Z.
 
 **Au doigt, au stylet.** Deux doigts zooment et déplacent la vue (dès qu'ils

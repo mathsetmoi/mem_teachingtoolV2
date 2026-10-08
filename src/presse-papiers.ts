@@ -19,9 +19,9 @@
 //
 // Ce fichier est pur (aucun DOM) : il se teste sous Node.
 // =============================================================
-import type { Cercle, Figure, Forme, Formule, Habillage, ImageForme, Polygone, Segment, StyleNom, StylePoint, Trait } from './types'
+import type { Cercle, Forme, Formule, Habillage, ImageForme, Polygone, Segment, StyleNom, StylePoint, Trait } from './types'
 import type { P } from './formes'
-import { image, nomsLibres } from './formes'
+import { image, nomsLibres, sommetsDe } from './formes'
 
 /** Ce qu'on a copié. Les formes ont leurs coordonnées absolues (celles de la
  *  page d'où elles viennent) ; images : les données (data:image/…) des
@@ -98,6 +98,20 @@ export function lireJson(texte: unknown): Copie | null {
 const estObjet = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 const fini = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 const positif = (v: unknown): v is number => fini(v) && v > 0
+/** Les grandeurs démesurées sont refusées comme une forme abîmée : un trait
+ *  à x = 1e300 est un nombre fini, mais la vue qui le montre (Tout voir, ou
+ *  l'ouverture d'un tableau sans vue gardée) gèlerait le dessin de la page
+ *  (x + 1 cm y vaut encore x), à chaque chargement. Les places et les
+ *  longueurs restent sous 10 millions d'unités (2,5 km au tableau) ; les
+ *  épaisseurs et les tailles (de trait, de formule, de nom, de point) sous
+ *  1000 ; les coefficients de l'image (sa taille à l'écran par pixel) entre
+ *  un millionième et 10 000. */
+export const BORNE = 1e7
+export const TAILLE_MAX = 1000
+const ECHELLE_MAX = 1e4
+const borne = (v: unknown): v is number => fini(v) && Math.abs(v) <= BORNE
+const longueur = (v: unknown): v is number => positif(v) && v <= BORNE
+const taille = (v: unknown): v is number => positif(v) && v <= TAILLE_MAX
 const absent = (v: unknown) => v === undefined || v === null
 const COULEUR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
 const couleur = (v: unknown): v is string => typeof v === 'string' && COULEUR.test(v)
@@ -106,10 +120,10 @@ const chaineCourte = (v: unknown, max = 64): v is string => typeof v === 'string
 const MARQUES = ['aucun', 'point', 'croix', 'plus', 'rond']
 const BOUTS = ['aucun', 'fleche', 'trait', 'crochet']
 
-/** Des nombres finis, autant qu'un multiple de `pas`, au moins `min` */
+/** Des nombres bornés (voir BORNE), autant qu'un multiple de `pas`, au moins `min` */
 function nombres(v: unknown, pas: number, min: number): number[] | null {
   if (!Array.isArray(v) || v.length < min || v.length % pas !== 0) return null
-  for (const x of v) if (!fini(x)) return null
+  for (const x of v) if (!borne(x)) return null
   return v.slice()
 }
 
@@ -123,7 +137,7 @@ export function validerCopie(o: unknown): Copie | null {
     if (!estObjet(o) || o.v !== 1 || !Array.isArray(o.formes) || !o.formes.length || o.formes.length > MAX_FORMES) return null
     if (typeof o.page !== 'string' || o.page.length > 64 || !fini(o.t) || !estObjet(o.images)) return null
     const c = o.centre
-    if (!estObjet(c) || !fini(c.x) || !fini(c.y)) return null
+    if (!estObjet(c) || !borne(c.x) || !borne(c.y)) return null
     const sources = o.images
     // Sans prototype : un identifiant « __proto__ » reste une clé comme une autre
     const images: Record<string, string> = Object.create(null)
@@ -146,14 +160,14 @@ export function validerCopie(o: unknown): Copie | null {
 
 /** Une forme refaite par la liste blanche de son type (voir types.ts) */
 function validerForme(v: unknown, prendreImage: (src: string) => boolean): Forme | null {
-  if (!estObjet(v) || !chaineCourte(v.id) || !fini(v.x) || !fini(v.y) || !fini(v.z)) return null
+  if (!estObjet(v) || !chaineCourte(v.id) || !borne(v.x) || !borne(v.y) || !fini(v.z)) return null
   const base = { id: v.id, x: v.x, y: v.y, z: v.z, auteur: '' }
   switch (v.type) {
     case 'trait': {
       const pts = nombres(v.pts, 3, 3)
       // Un trait d'avant sans opacité ni pression : plein, sans pression
       const opacite = absent(v.opacite) ? 1 : v.opacite, pression = absent(v.pression) ? false : v.pression
-      if (!pts || !couleur(v.couleur) || !positif(v.taille) || !fini(opacite) || opacite <= 0 || opacite > 1 || typeof pression !== 'boolean') return null
+      if (!pts || !couleur(v.couleur) || !taille(v.taille) || !fini(opacite) || opacite <= 0 || opacite > 1 || typeof pression !== 'boolean') return null
       const t: Trait = { ...base, type: 'trait', pts, couleur: v.couleur, taille: v.taille, opacite, pression }
       return t
     }
@@ -168,9 +182,9 @@ function validerForme(v: unknown, prendreImage: (src: string) => boolean): Forme
       return p
     }
     case 'cercle': {
-      if (!positif(v.r)) return null
+      if (!longueur(v.r)) return null
       const arc = v.arc
-      if (!absent(arc) && (!estObjet(arc) || !fini(arc.a0) || !fini(arc.a1))) return null
+      if (!absent(arc) && (!estObjet(arc) || !borne(arc.a0) || !borne(arc.a1))) return null
       const h = habillage(v, 1)
       if (!h) return null
       const c: Cercle = { ...base, type: 'cercle', r: v.r, ...h }
@@ -178,21 +192,21 @@ function validerForme(v: unknown, prendreImage: (src: string) => boolean): Forme
       return c
     }
     case 'segment': {
-      if (!fini(v.dx) || !fini(v.dy) || !couleur(v.couleur) || !positif(v.taille)) return null
+      if (!borne(v.dx) || !borne(v.dy) || !couleur(v.couleur) || !taille(v.taille)) return null
       const s: Segment = { ...base, type: 'segment', dx: v.dx, dy: v.dy, couleur: v.couleur, taille: v.taille }
       return s
     }
     case 'formule': {
-      if (typeof v.latex !== 'string' || v.latex.length > 2000 || !couleur(v.couleur) || !positif(v.taille)) return null
+      if (typeof v.latex !== 'string' || v.latex.length > 2000 || !couleur(v.couleur) || !taille(v.taille)) return null
       const f: Formule = { ...base, type: 'formule', latex: v.latex, couleur: v.couleur, taille: v.taille }
       return f
     }
     case 'image': {
-      if (!chaineCourte(v.src) || !positif(v.l) || !positif(v.h)) return null
+      if (!chaineCourte(v.src) || !longueur(v.l) || !longueur(v.h)) return null
       const m = nombres(v.m, 4, 4)
-      if (!m || m.length !== 4) return null
+      if (!m || m.length !== 4 || m.some(x => Math.abs(x) > ECHELLE_MAX)) return null
       const det = m[0] * m[3] - m[1] * m[2]
-      if (!Number.isFinite(det) || det === 0 || !prendreImage(v.src)) return null
+      if (!Number.isFinite(det) || Math.abs(det) < 1e-12 || !prendreImage(v.src)) return null
       const i: ImageForme = { ...base, type: 'image', src: v.src, l: v.l, h: v.h, m: [m[0], m[1], m[2], m[3]] }
       return i
     }
@@ -202,7 +216,7 @@ function validerForme(v: unknown, prendreImage: (src: string) => boolean): Forme
 
 /** L'habillage d'une figure de n points, refait ; null s'il est abîmé */
 function habillage(v: Record<string, unknown>, n: number): Habillage | null {
-  if (!couleur(v.couleur) || !positif(v.taille)) return null
+  if (!couleur(v.couleur) || !taille(v.taille)) return null
   const h: Habillage = { couleur: v.couleur, taille: v.taille }
   if (v.fond === null) h.fond = null
   else if (v.fond !== undefined) { if (!couleur(v.fond)) return null; h.fond = v.fond }
@@ -223,7 +237,7 @@ function habillage(v: Record<string, unknown>, n: number): Habillage | null {
     const r: ({ x: number; y: number } | null)[] = []
     for (const o of l) {
       if (absent(o)) { r.push(null); continue }
-      if (!estObjet(o) || !fini(o.x) || !fini(o.y)) return null
+      if (!estObjet(o) || !borne(o.x) || !borne(o.y)) return null
       r.push({ x: o.x, y: o.y })
     }
     h.posNoms = r
@@ -261,14 +275,14 @@ function stylePoint(o: Record<string, unknown>): StylePoint | null {
   if (!absent(o.marque)) { if (!MARQUES.includes(o.marque as string)) return null; s.marque = o.marque as StylePoint['marque'] }
   if (!absent(o.bout)) { if (!BOUTS.includes(o.bout as string)) return null; s.bout = o.bout as StylePoint['bout'] }
   if (!absent(o.couleur)) { if (!couleur(o.couleur)) return null; s.couleur = o.couleur }
-  if (!absent(o.taille)) { if (!positif(o.taille)) return null; s.taille = o.taille }
+  if (!absent(o.taille)) { if (!taille(o.taille)) return null; s.taille = o.taille }
   return s
 }
 
 function styleNom(o: Record<string, unknown>): StyleNom | null {
   const s: StyleNom = {}
   if (!absent(o.couleur)) { if (!couleur(o.couleur)) return null; s.couleur = o.couleur }
-  if (!absent(o.taille)) { if (!positif(o.taille)) return null; s.taille = o.taille }
+  if (!absent(o.taille)) { if (!taille(o.taille)) return null; s.taille = o.taille }
   for (const k of ['droit', 'cache'] as const) {
     const b = o[k]
     if (absent(b)) continue
@@ -281,13 +295,12 @@ function styleNom(o: Record<string, unknown>): StyleNom | null {
 // ---------- Coller ----------
 /** Les formes à poser pour un collage : chacune déplacée de (dx, dy), avec un
  *  identifiant neuf et un rang neuf (au-dessus de tout, dans l'ordre d'origine).
- *  Une figure nommée GARDE ses noms s'ils sont tous libres sur la page
- *  d'arrivée (les copies déjà placées comptent : deux triangles ABC copiés
- *  ensemble ne gardent pas tous deux ABC) ; sinon elle reçoit des lettres
- *  libres, jamais des primes (A' veut dire « l'image de A »). Un point lié à
- *  une image copiée avec lui suit la nouvelle image ; sans elle, il n'est plus
- *  lié à rien. Le tracé d'origine (brut) ne suit pas : une copie n'a pas été
- *  tracée à la main. */
+ *  Les noms se choisissent une fois pour toute la copie, point par point (voir
+ *  nommerLaCopie) : un point que plusieurs figures partagent (le sommet A du
+ *  triangle ABC, de la hauteur [AH] et le centre A d'un cercle) garde un seul
+ *  nom. Un point lié à une image copiée avec lui suit la nouvelle image ; sans
+ *  elle, il n'est plus lié à rien. Le tracé d'origine (brut) ne suit pas : une
+ *  copie n'a pas été tracée à la main. */
 export function collage(c: Copie, o: { dx: number; dy: number; moi: string; existantes: Forme[]; maintenant?: number }): Forme[] {
   const t = { type: 'translation' as const, dx: o.dx, dy: o.dy }
   const ordre = [...c.formes].sort((a, b) => a.z - b.z)
@@ -299,15 +312,12 @@ export function collage(c: Copie, o: { dx: number; dy: number; moi: string; exis
     ids.set(f.id, g.id)
     return g
   })
+  const noms = nommerLaCopie(ordre, o.existantes)
   r.forEach((g, k) => {
     if (g.type !== 'polygone' && g.type !== 'cercle') return
-    const f = ordre[k] as Figure
-    if (f.noms?.length) {
-      const avant = [...o.existantes, ...r.slice(0, k)]
-      const pris = new Set<string>()
-      for (const x of avant) if ((x.type === 'polygone' || x.type === 'cercle') && x.noms) x.noms.forEach(n => pris.add(n))
-      g.noms = f.noms.every(n => !n || !pris.has(n)) ? [...f.noms] : nomsLibres(f.noms.length, avant, g.type === 'cercle')
-    } else delete g.noms
+    const n = noms.get(ordre[k].id)
+    if (n) g.noms = n
+    else delete g.noms
     if (g.lie) {
       const nouvelle = ids.get(g.lie)
       if (nouvelle) g.lie = nouvelle
@@ -317,6 +327,56 @@ export function collage(c: Copie, o: { dx: number; dy: number; moi: string; exis
   // Des objets neufs, sans rien de partagé avec la copie (une liste de
   // réglages que la copie et la forme posée auraient en commun) ni champ vide
   return r.map(g => JSON.parse(JSON.stringify(g)) as Forme)
+}
+
+/** Deux points nommés pareil à moins de ceci (monde) sont un seul point :
+ *  les sommets sont rangés au dixième (versRelatif), et deux points distincts
+ *  aussi proches ne se distingueraient pas au tableau */
+const MEME_POINT = 0.5
+
+/** Les noms des figures collées, par identifiant de la forme copiée. Un point
+ *  nommé de la copie, c'est un nom et une place : le même nom à la même place
+ *  dans deux figures est un seul point, partagé ; à deux places, deux points.
+ *  Si tous ces points ont des noms libres sur la page d'arrivée, et deux à deux
+ *  différents, la copie garde tous ses noms (ABC reste ABC sur une page vide).
+ *  Sinon, chaque point reçoit UNE lettre libre sur la page, la même dans
+ *  toutes ses figures, dans l'ordre de la copie (ABC devient DEF sur la page
+ *  d'origine, et la hauteur [AH] du triangle devient [DG]) : jamais des primes
+ *  (A' veut dire « l'image de A »). Un point qui n'est que le centre d'un
+ *  cercle reçoit O (ou Ω) s'il est libre, comme un cercle qu'on nomme. Un
+ *  sommet sans nom reste sans nom. */
+function nommerLaCopie(formes: Forme[], existantes: Forme[]): Map<string, string[]> {
+  type Point = { nom: string; x: number; y: number; centre: boolean; nouveau?: string }
+  const points: Point[] = []
+  const places = new Map<string, (Point | null)[]>()
+  const trouver = (nom: string, x: number, y: number, centre: boolean): Point => {
+    let p = points.find(q => q.nom === nom && Math.hypot(q.x - x, q.y - y) <= MEME_POINT)
+    if (!p) { p = { nom, x, y, centre }; points.push(p) } else if (!centre) p.centre = false
+    return p
+  }
+  for (const f of formes) {
+    if ((f.type !== 'polygone' && f.type !== 'cercle') || !f.noms?.length) continue
+    const sommets = f.type === 'cercle' ? [{ x: f.x, y: f.y }] : sommetsDe(f)
+    places.set(f.id, f.noms.map((nom, i) => nom && sommets[i] ? trouver(nom, sommets[i].x, sommets[i].y, f.type === 'cercle') : null))
+  }
+  const pris = new Set<string>()
+  for (const x of existantes) if ((x.type === 'polygone' || x.type === 'cercle') && x.noms) x.noms.forEach(n => n && pris.add(n))
+  const garder = points.every(p => !pris.has(p.nom)) && new Set(points.map(p => p.nom)).size === points.length
+  if (!garder) {
+    // Les lettres prises : celles de la page, puis celles déjà données
+    const donnes: Forme = { id: '', type: 'polygone', x: 0, y: 0, z: 0, auteur: '', pts: [], ferme: false, couleur: '#000', taille: 1, noms: [] }
+    for (const p of points) {
+      p.nouveau = nomsLibres(1, [...existantes, donnes], p.centre)[0]
+      donnes.noms!.push(p.nouveau)
+    }
+  }
+  const r = new Map<string, string[]>()
+  for (const f of formes) {
+    if ((f.type !== 'polygone' && f.type !== 'cercle') || !f.noms?.length) continue
+    const l = places.get(f.id)!
+    r.set(f.id, f.noms.map((nom, i) => { const p = l[i]; return p ? (p.nouveau ?? p.nom) : nom }))
+  }
+  return r
 }
 
 // ---------- Base64 d'un texte UTF-8 ----------

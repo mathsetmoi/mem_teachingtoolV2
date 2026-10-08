@@ -125,6 +125,30 @@ describe('ce qui n\'est pas une copie est refusé, sans exception', () => {
     expect(validerCopie({ ...copie([trait('t')]), centre: { x: Infinity, y: 0 } })).toBeNull()
   })
 
+  it('des grandeurs démesurées (finies, mais qui gèleraient la vue à chaque chargement) : refusées', () => {
+    // La copie piégée d'un site hostile : un trait à 1e300, de taille 1e300
+    const piege = { v: 1, formes: [{ id: 'q', type: 'trait', x: 1e300, y: 1e300, z: 1, pts: [0, 0, 0.5, 1e300, 1e300, 0.5], couleur: '#000000', taille: 1e300, opacite: 1, pression: false }], images: {}, page: 'p', centre: { x: 0, y: 0 }, t: 1700000000000 }
+    expect(lireHtml(html(piege))).toBeNull()
+    const G = 1e300
+    const cercle = (o: Partial<Cercle>): Cercle => ({ ...base, id: 'c', z: 1, type: 'cercle', x: 0, y: 0, r: 30, couleur: '#000', taille: 2, ...o })
+    for (const f of [
+      { ...trait('t'), x: G }, { ...trait('t'), y: -G }, { ...trait('t'), pts: [0, 0, 0.5, G, 0, 0.5] }, { ...trait('t'), taille: G },
+      { ...triangle('p'), pts: [0, 0, 1e8, 0, 0, 60] }, { ...triangle('p'), taille: 5000 },
+      { ...triangle('p', ['A', 'B', 'C']), posNoms: [{ x: G, y: 0 }, null, null] },
+      { ...triangle('p', ['A', 'B', 'C']), styleNoms: [{ taille: G }, null, null] },
+      { ...triangle('p', ['A', 'B', 'C']), stylePoints: [{ taille: G }, null, null] },
+      cercle({ r: G }), cercle({ arc: { a0: 0, a1: G } }),
+      { ...base, id: 's', z: 1, type: 'segment', x: 0, y: 0, dx: G, dy: 0, couleur: '#000', taille: 2 },
+      { ...formule('f', 'x'), taille: G },
+    ]) expect(validerCopie(copie([f as never])), JSON.stringify(f).slice(0, 120)).toBeNull()
+    for (const i of [{ ...img('i'), l: G }, { ...img('i'), m: [G, 0, 0, 1] }, { ...img('i'), m: [1e-9, 0, 0, 1e-9] }])
+      expect(validerCopie(copie([i as never], { banque1: PNG }))).toBeNull()
+    expect(validerCopie({ ...copie([trait('t')]), centre: { x: G, y: 0 } })).toBeNull()
+    // Aux bornes, ou d'une taille ordinaire, tout passe
+    expect(validerCopie(copie([{ ...trait('t'), x: 1e7, y: -1e7, taille: 1000 }, cercle({ r: 1e7 })]))).not.toBeNull()
+    expect(validerCopie(copie([{ ...img('i'), l: 4000, h: 3000, m: [0.25, 0, 0, 0.25] }], { banque1: PNG }))).not.toBeNull()
+  })
+
   it('un champ inconnu est jeté, comme le tracé d\'origine et l\'auteur', () => {
     const c = validerCopie(copie([{ ...triangle('p', ['A', 'B', 'C']), pirate: '<script>', stylePoints: [{ marque: 'croix', onclick: 'x' }] } as never]))!
     const f = c.formes[0] as Polygone & Record<string, unknown>
@@ -176,11 +200,32 @@ describe('le collage', () => {
     const abc = triangle('p', ['A', 'B', 'C'])
     expect((collage(copie([abc]), { dx: 0, dy: 0, moi: 'm', existantes: [] })[0] as Polygone).noms).toEqual(['A', 'B', 'C'])
     expect((collage(copie([abc]), { dx: 40, dy: 40, moi: 'm', existantes: [abc] })[0] as Polygone).noms).toEqual(['D', 'E', 'F'])
-    // Deux triangles ABC copiés ensemble sur une page vide : le second change
-    const r = collage(copie([abc, { ...triangle('q', ['A', 'B', 'C'], 3) }]), { dx: 0, dy: 0, moi: 'm', existantes: [] })
+    // Deux triangles ABC copiés ensemble sur une page vide, à deux places :
+    // six points, deux à deux distincts ; le second change
+    const r = collage(copie([abc, { ...triangle('q', ['A', 'B', 'C'], 3), x: 300 }]), { dx: 0, dy: 0, moi: 'm', existantes: [] })
     expect(r.map(f => (f as Polygone).noms)).toEqual([['A', 'B', 'C'], ['D', 'E', 'F']])
     // Une figure sans noms n'en reçoit pas
     expect((collage(copie([triangle('p')]), { dx: 0, dy: 0, moi: 'm', existantes: [] })[0] as Polygone).noms).toBeUndefined()
+  })
+
+  it('un point partagé par plusieurs figures garde UN nom : triangle ABC, hauteur [AH], cercle de centre A', () => {
+    const tri: Polygone = { ...base, id: 'tri', z: 1, type: 'polygone', x: 300, y: 200, pts: [0, 0, 200, 160, -100, 160], ferme: true, couleur: '#1b2230', taille: 3, sommets: true, noms: ['A', 'B', 'C'] }
+    const hau: Polygone = { ...base, id: 'hau', z: 2, type: 'polygone', x: 300, y: 200, pts: [0, 0, 0, 160], ferme: false, couleur: '#1b2230', taille: 3, sommets: true, noms: ['A', 'H'] }
+    const cer: Cercle = { ...base, id: 'cer', z: 3, type: 'cercle', x: 300.04, y: 199.97, r: 60, couleur: '#1b2230', taille: 3, sommets: true, noms: ['A'] }
+    const noms = (r: ReturnType<typeof collage>) => r.map(f => (f as Polygone | Cercle).noms)
+    // Sur une page vide : tout est gardé
+    expect(noms(collage(copie([tri, hau, cer]), { dx: 130, dy: 19, moi: 'm', existantes: [] }))).toEqual([['A', 'B', 'C'], ['A', 'H'], ['A']])
+    // Sur la même page (Ctrl+D) : une lettre neuve par point, la même partout
+    expect(noms(collage(copie([tri, hau, cer]), { dx: 40, dy: 40, moi: 'm', existantes: [tri, hau, cer] }))).toEqual([['D', 'E', 'F'], ['D', 'G'], ['D']])
+    // Un seul nom pris sur la page (H) : chaque point prend la première lettre
+    // libre (A, B, C le sont encore), et le partage tient
+    const h: Polygone = { ...base, id: 'h', z: 0, type: 'polygone', x: 0, y: 0, pts: [0, 0], ferme: false, couleur: '#1b2230', taille: 3, sommets: true, noms: ['H'] }
+    expect(noms(collage(copie([tri, hau, cer]), { dx: 0, dy: 0, moi: 'm', existantes: [h] }))).toEqual([['A', 'B', 'C'], ['A', 'D'], ['A']])
+    // Un cercle seul, son centre pris : il reçoit O, comme un cercle qu'on nomme
+    expect(noms(collage(copie([cer]), { dx: 40, dy: 40, moi: 'm', existantes: [cer] }))).toEqual([['O']])
+    // Un sommet sans nom reste sans nom
+    const sansC: Polygone = { ...tri, noms: ['A', 'B', ''] }
+    expect(noms(collage(copie([sansC]), { dx: 40, dy: 40, moi: 'm', existantes: [tri] }))).toEqual([['D', 'E', '']])
   })
 
   it('un point lié suit la nouvelle image si elle est copiée avec lui ; sinon il n\'est plus lié', () => {

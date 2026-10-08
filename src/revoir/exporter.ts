@@ -115,9 +115,21 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
    *  pas vide qui change de page). Ce pas n'est écrit qu'au geste visible
    *  suivant, ou au bout : si la page revient d'abord (« Annuler », Ctrl+Z),
    *  le replay ne l'a jamais quittée, et son attente revient au geste
-   *  suivant. quittee : la page jetée ; attente : le temps qu'il emportait. */
-  let suivre: { g: EtapeFilm; source: number; quittee: string; attente: number } | null = null
-  const ecrireSuivre = () => { if (suivre) { etapes.push(suivre.g); sources.push(suivre.source); suivre = null } }
+   *  suivant. Plusieurs jets de suite, sans geste entre eux, s'empilent
+   *  (on jette la page 2, on arrive sur la 1, on la jette aussi) : une page
+   *  qui revient défait son jet et ceux d'après, et si rien ne revient, un
+   *  seul pas vide part, vers la page où l'on est arrivé en dernier, avec le
+   *  temps de tous (les pages traversées sans y écrire ne se montrent pas,
+   *  pas plus qu'une page qu'on regarde sans rien y faire). Chaque jet :
+   *  quittee, la page jetée ; attente, le temps qu'il emportait. */
+  const suivre: { g: EtapeFilm; source: number; quittee: string; attente: number }[] = []
+  const ecrireSuivre = () => {
+    const haut = suivre[suivre.length - 1]
+    if (!haut) return
+    const temps = suivre.reduce((s, x) => s + x.attente, 0)
+    etapes.push({ ...haut.g, dt: Math.max(0, Math.round(temps)) }); sources.push(haut.source)
+    suivre.length = 0
+  }
   for (let i = debut; i <= a; i++) {
     const etat = tableau.etatA(film[i])
     const parPage = new Map<string, Op[]>()
@@ -134,12 +146,14 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
       // le replay suit le professeur sur celle qu'il regarde maintenant. On le
       // lit sur l'ordre : une page jetée garde ses formes (voir
       // Tableau.jeterPage) ; sur un tableau d'avant, elle manquait aux deux.
-      if (suivre && etat.ordre.includes(suivre.quittee)) {
-        // La page jetée revient avant tout autre geste : on ne la quitte pas
-        derniere = suivre.quittee; attente += suivre.attente + dt; suivre = null
+      const revient = suivre.findIndex(x => etat.ordre.includes(x.quittee))
+      if (revient >= 0) {
+        // Une page jetée revient avant tout autre geste : on ne l'a pas
+        // quittée, ni celles où l'on est passé depuis
+        derniere = suivre[revient].quittee
+        attente += suivre.splice(revient).reduce((s, x) => s + x.attente, 0) + dt
       } else if (derniere && !etat.ordre.includes(derniere) && gardees.has(vue) && etat.ordre.includes(vue) && vue !== derniere) {
-        ecrireSuivre()
-        suivre = { g: { dt: Math.max(0, Math.round(dt + attente)), p: vue, o: [] }, source: i, quittee: derniere, attente: dt + attente }
+        suivre.push({ g: { dt: 0, p: vue, o: [] }, source: i, quittee: derniere, attente: dt + attente })
         derniere = vue; attente = 0
       } else attente += dt
       avant = etat; continue

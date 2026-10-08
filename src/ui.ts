@@ -1181,7 +1181,11 @@ export class UI implements Interface {
    *  tablette.
    *  Un message ordinaire ne chasse pas un message à action encore à l'écran
    *  (« Stylet détecté … Changer », que suit souvent la figure reconnue du
-   *  premier trait) : il s'écrit au-dessus de lui, et s'en va seul. */
+   *  premier trait) : il s'écrit au-dessus de lui, et s'en va seul.
+   *  Pendant la revue, un message à action ne se montre pas, et son bouton ne
+   *  fait rien : un message ordinaire (F5, que la télécommande envoie) passe
+   *  au-dessus de la revue, et « Annuler » d'une page qu'on vient de jeter
+   *  écrirait alors dans le tableau, que la revue ne doit jamais changer. */
   message(texte: string, action?: { libelle: string; faire: () => void; cle?: string }, dessus = false) {
     this.toast.classList.toggle('dessus', dessus || this.app.enLecture)
     const el = document.createElement('span')
@@ -1192,6 +1196,7 @@ export class UI implements Interface {
       const b = document.createElement('button')
       b.type = 'button'; b.className = 'action'; b.textContent = action.libelle
       b.addEventListener('click', () => {
+        if (this.app.enLecture) return
         this.toastSimple = this.toastAction = null
         this.majToast()
         action.faire()
@@ -1220,7 +1225,7 @@ export class UI implements Interface {
     const maintenant = performance.now()
     if (this.toastSimple && this.toastSimple.fin <= maintenant) this.toastSimple = null
     if (this.toastAction && this.toastAction.fin <= maintenant) this.toastAction = null
-    const parts = [this.toastSimple, this.toastAction].filter(p => p !== null)
+    const parts = [this.toastSimple, this.app.enLecture ? null : this.toastAction].filter(p => p !== null)
     if (!parts.length) { this.toast.classList.remove('visible'); return }
     this.toast.replaceChildren(...parts.map(p => p.el))
     this.toast.classList.add('visible')

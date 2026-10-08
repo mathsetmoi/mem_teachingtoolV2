@@ -340,6 +340,60 @@ describe('le film élève', () => {
     expect(f.etapes[3].dt).toBe(500 + 3000)
   })
 
+  /** Deux jets de suite (la page 2, puis la 1 où l'on arrive), puis deux
+   *  retours ; ou les mêmes allers et venues entre les pages, sans jet */
+  async function deuxJets(jeterEtRendre: boolean) {
+    numero = 0
+    const { t, pages: [a, b, c] } = await tableau(3)
+    await attendre(30 * MINUTE)
+    await geste(t, a, 0, 0); await geste(t, b, 0, 50)
+    if (jeterEtRendre) {
+      await jeter(t, b, a); await attendre(1000)
+      await jeter(t, a, c); await attendre(1000)
+      // Ctrl+Z sur la page 3 rend la 1 ; Ctrl+Z sur la 1 rend la 2
+      expect(t.annuler(c)).toEqual({ page: a }); t.pageVue = a; await attendre(500); await attendre(1000)
+      expect(t.annuler(a)).toEqual({ page: b }); t.pageVue = b; await attendre(500)
+    } else {
+      for (const p of [a, c, a]) { t.pageVue = p; await attendre(500); await attendre(1000) }
+      t.pageVue = b; await attendre(500)
+    }
+    await geste(t, b, 10, 50); await geste(t, a, 10, 0)
+    return t
+  }
+
+  it('deux pages jetées de suite puis rendues : le même film qu\'une séance sans jet (aucun pas vide, aucun chapitre de trop)', async () => {
+    const sans = filmEleve(await deuxJets(false))
+    const avec = filmEleve(await deuxJets(true))
+    expect(avec).toEqual(sans)
+    expect(avec.etapes.map(e => [e.p, e.o.length])).toEqual([['p0', 1], ['p1', 1], ['p1', 1], ['p0', 1]])
+    expect(avec.chapitres.map(c => c.titre)).toEqual(['Page 1', 'Page 2', 'Page 1'])
+  })
+
+  it('deux pages jetées de suite, la première rendue (« Annuler ») : le replay reste sur elle ; aucune rendue : un seul pas vide, vers la page d\'arrivée', async () => {
+    numero = 0
+    let { t, pages: [a, b, c] } = await tableau(3)
+    await attendre(30 * MINUTE)
+    await geste(t, a, 0, 0); await geste(t, b, 0, 50)
+    await jeter(t, b, a); await attendre(1000)
+    await jeter(t, a, c); await attendre(1000)
+    await rendre(t, b)
+    await geste(t, b, 10, 50)
+    expect(filmEleve(t).etapes.map(e => [e.p, e.o.length])).toEqual([['p0', 1], ['p1', 1], ['p1', 1]])
+    // Sans retour : on passe par la page 1 sans y écrire, puis on arrive sur la 3
+    numero = 0
+    ;({ t, pages: [a, b, c] } = await tableau(3))
+    await attendre(30 * MINUTE)
+    await geste(t, a, 0, 0); await geste(t, b, 0, 50)
+    await jeter(t, b, a); await attendre(1000)
+    await jeter(t, a, c); await attendre(1000)
+    await geste(t, c, 0, 90)
+    const f = filmEleve(t)
+    expect(f.etapes.map(e => [e.p, e.o.length])).toEqual([['p0', 1], ['p1', 1], ['p2', 0], ['p2', 1]])
+    // Le pas vide emporte le temps des deux jets ; le geste, celui d'après
+    expect(f.etapes[2].dt).toBe(800 + 500 + 1000)
+    expect(f.etapes[3].dt).toBe(500 + 1000)
+  })
+
   it('une page jetée reste lisible dans tout instantané : la revue montre son histoire', async () => {
     const { t, pages: [a, b] } = await tableau(2)
     await geste(t, b, 0, 0, 'x1')
