@@ -18,14 +18,14 @@ import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
 import type { Menu } from './menus'
-import { basculerMenu, fermerMenu, installerMenus, ouvrirMenu, placerMenu } from './menus'
+import { allerAuxEntrees, basculerMenu, fermerMenu, focusAuClavier, focusNullePart, installerMenus, ouvrirMenu, placerMenu, refaireEnGardantLeFocus } from './menus'
 import { choisirGestes, choisirMolette, reglages } from './reglages'
 import type { Doigt, Molette } from './reglages'
 import { CTRL } from './navigateur'
 import { Sauvegarde } from './sauvegarde'
 import { zoneEntreBarres } from './camera'
 import type { Bords } from './camera'
-import { TAILLES_FORMULE, changerCouleur, changerEpaisseur, changerPointilles, habillageCommun } from './habillage'
+import { TAILLES_FORMULE, changerCouleur, changerEpaisseur, changerPointilles, habillageCommun, titreDuMenu } from './habillage'
 import { icone } from './icones'
 import { BarreActions } from './barre-actions'
 
@@ -374,7 +374,7 @@ export class UI implements Interface {
     this.panneau = document.createElement('div')
     this.panneau.className = 'panneau-forme'
     this.panneau.setAttribute('role', 'toolbar')
-    this.panneau.setAttribute('aria-label', 'Options de la figure')
+    this.panneau.setAttribute('aria-label', 'Options')
 
     // ----- Le menu de la page, posé là où l'on a appuyé (voir ouvrirMenuPage) -----
     const menuPage = document.createElement('div')
@@ -472,6 +472,40 @@ export class UI implements Interface {
     if (!this.choixInstruments.hidden) { this.choixInstruments.hidden = true; ferme = true }
     if (ferme) this.maj()
     return ferme
+  }
+
+  /** Le clavier dans le menu complet ou le menu d'un morceau de figure,
+   *  ouverts au clic droit, à l'appui long, au double-clic ou par
+   *  « Options », comme dans le menu du système (les petits menus, celui de
+   *  la page compris, font de même : voir menus.ts) :
+   *  - le focus hors du menu (sur la page après un clic droit, ou sur un
+   *    bouton) : ↓, → et Début mènent à sa première entrée ; ↑, ← et Fin à
+   *    la dernière ; Tab et Maj+Tab aussi, depuis la page seulement (depuis
+   *    un bouton, Tab passe au suivant comme d'habitude) ;
+   *  - dans le menu : les flèches passent d'un bouton à l'autre, en
+   *    tournant (pas par ses champs, que Tab atteint : voir BOUTONS) ;
+   *    Début et Fin vont aux bouts ; Espace appuie sur le bouton
+   *    (au relâcher, comme partout) au lieu d'armer « Espace + glisser »,
+   *    si le focus y est venu du clavier (après un clic sur un bouton du
+   *    menu, Espace + glisser déplace toujours la vue).
+   *  L'objet n'est donc pas poussé, ni la vue déplacée, tant que le menu est
+   *  ouvert : sans menu, les flèches font comme avant. Un champ de saisie du
+   *  menu garde ses touches (App.clavier ne l'écoute pas). */
+  clavierMenu(e: KeyboardEvent): boolean {
+    if (e.ctrlKey || e.metaKey || e.altKey) return false
+    const m = !this.menuPartie.hidden ? this.menuPartie : !this.panneau.hidden ? this.panneau : null
+    if (!m) return false
+    const dedans = m.contains(document.activeElement)
+    if (dedans && e.key === ' ' && focusAuClavier(document.activeElement)) return true
+    const fleches: Record<string, number> = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1, Home: -Infinity, End: Infinity }
+    const sens = fleches[e.key] ?? (e.key === 'Tab' && !dedans && focusNullePart() ? (e.shiftKey ? -1 : 1) : undefined)
+    if (sens === undefined || !allerAuxEntrees(m, sens)) return false
+    e.preventDefault()
+    return true
+  }
+
+  entrerDansMenu() {
+    if (!this.panneau.hidden) allerAuxEntrees(this.panneau, -Infinity)
   }
 
   /** Ce qu'on voit du tableau entre les barres, en coordonnées de la zone :
@@ -639,14 +673,14 @@ export class UI implements Interface {
       // objets eux-mêmes ne coûte rien, même sur mille traits sélectionnés
       const cle = TOUTE_LA_SELECTION + '|' + this.section
       if (cle !== this.clePanneau || formes.length !== this.formesPanneau.length || formes.some((f, i) => f !== this.formesPanneau[i])) {
-        this.construireMenuPlusieurs(formes); this.clePanneau = cle; this.formesPanneau = formes
+        refaireEnGardantLeFocus(this.panneau, () => this.construireMenuPlusieurs(formes!)); this.clePanneau = cle; this.formesPanneau = formes
       }
     } else {
       // Un objet : on ne reconstruit que s'il a changé (sauf sa place) : sinon
       // un champ en cours de saisie perdrait le curseur à chaque mise à jour
       const { x: _x, y: _y, ...props } = formes[0]
       const cle = JSON.stringify(props) + '|' + this.section
-      if (cle !== this.clePanneau) { this.construirePanneau(formes[0]); this.clePanneau = cle; this.formesPanneau = [] }
+      if (cle !== this.clePanneau) { const f = formes[0]; refaireEnGardantLeFocus(this.panneau, () => this.construirePanneau(f)); this.clePanneau = cle; this.formesPanneau = [] }
     }
     this.panneau.hidden = false
     // Au-dessus de ce qu'il règle (toute la sélection), ou en dessous s'il
@@ -697,7 +731,7 @@ export class UI implements Interface {
       // Une formule : la modifier (comme son double-clic), sa couleur et sa
       // taille. Pas de « Transformer » : l'image d'une formule n'en déplace
       // que le coin, sans la tourner ni la retourner.
-      p.setAttribute('aria-label', 'Options de la formule')
+      p.setAttribute('aria-label', titreDuMenu(f))
       action('Modifier', 'Modifier la formule (double-clic)', () => app.modifierFormule(f))
       action('Couleur et taille', 'La couleur et la taille des caractères', () => ouvrir('couleur'), this.section === 'couleur')
       action('Dupliquer', `Une copie, décalée d'un centimètre (${CTRL}+D)`, () => app.dupliquerSelection())
@@ -706,7 +740,8 @@ export class UI implements Interface {
       if (this.section === 'couleur') p.appendChild(this.sectionFormule(f))
       return
     }
-    p.setAttribute('aria-label', 'Options de la figure')
+    // Le nom de ce qu'il règle : du trait, de l'image, du segment, du cercle…
+    p.setAttribute('aria-label', titreDuMenu(f))
 
     if (segment && f.type === 'polygone') {
       // Segment, droite ou demi-droite : on passe de l'un à l'autre d'un clic
@@ -1079,7 +1114,13 @@ export class UI implements Interface {
     this.partie = null
   }
 
+  /** Le menu d'un morceau, refait à chaque choix : le focus qui y était
+   *  (un choix fait au clavier) y reste */
   private construireMenuPartie() {
+    refaireEnGardantLeFocus(this.menuPartie, () => this.remplirMenuPartie())
+  }
+
+  private remplirMenuPartie() {
     const app = this.app, m = this.menuPartie
     const f0 = this.partie && app.forme(this.partie.id)
     if (!this.partie || !f0 || (f0.type !== 'polygone' && f0.type !== 'cercle')) return this.fermerMenuPartie()

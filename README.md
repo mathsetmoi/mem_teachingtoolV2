@@ -168,7 +168,11 @@ pendant un trait ou un glisser n'ouvre rien ; la touche Menu du clavier non
 plus. Rien ne s'ouvre sur un instrument posé : il recouvre ce qui est dessous.
 Le menu se pose au-dessus de ce qu'il règle (dessous s'il n'y a pas la place),
 et se ferme quand on choisit autre chose ou qu'on appuie ailleurs (il se cache
-pendant qu'on déplace l'objet lui-même, et revient au lâcher). Celui d'une
+pendant qu'on déplace l'objet lui-même, et revient au lâcher). Il porte le nom
+de ce qu'il règle, que dit un lecteur d'écran : « Options du trait », « de
+l'image », « du segment » (de la droite, de la demi-droite), « du point »,
+« de la ligne brisée », « du cercle », « de l'arc », « de la figure » pour un
+polygone fermé, « de la formule », « des 3 objets ». Celui d'une
 figure, d'un trait ou d'une image :
 
 - *Sommets* : points et noms (A, B, C… libres sur la page), modifiables ;
@@ -205,6 +209,18 @@ au point visé :
 coller), *Tout sélectionner* (Ctrl + A), *Tout voir* (Maj + 1). Il se ferme
 comme les autres menus : Échap, un choix, ou un appui ailleurs, qui ne laisse
 pas d'encre.
+
+**Au clavier**, un menu ouvert prend les touches, comme le menu du système,
+même si le focus n'y est pas (après un clic droit, il reste sur la page) :
+↓ ou Début mènent à sa première entrée, ↑ ou Fin à la dernière, Tab et
+Maj + Tab aussi depuis la page ; dedans, les flèches passent d'une entrée à
+l'autre, Entrée ou Espace la choisissent, Échap le ferme. Tant qu'il est
+ouvert, les flèches ne font plus défiler le tableau derrière lui, et celles
+du menu complet (ou du menu d'un sommet) ne poussent plus l'objet : ← et →
+y vont aussi d'un bouton à l'autre (Tab atteint ses champs, où les flèches
+gardent leur rôle). Un choix qui refait le menu (une
+couleur, une section qui s'ouvre) y laisse le focus. *Options* de la barre
+d'actions, pressé au clavier, met le focus dans le menu complet.
 
 Le premier appui sur le tableau hors d'un menu ouvert (le menu complet, celui
 de la page, du zoom ou d'un point, la liste des instruments) le ferme, et ne fait rien
@@ -778,7 +794,8 @@ bouton du milieu, avec Espace + glisser, à la molette ou avec l'outil Main.
 L'objet survolé (par son tracé ou son intérieur) s'éclaire d'un halo bleu qui
 suit sa forme, avant le clic ; une droite ou une demi-droite sélectionnée se
 surligne sur toute sa longueur visible ; les flèches poussent la sélection
-d'1 mm (1 cm avec Maj).
+d'1 mm (1 cm avec Maj), sauf quand son menu complet est ouvert : elles vont
+alors dans le menu (voir « Au clavier »).
 
 **La gomme** efface en entier ce qu'elle touche (un trait, une figure). Un coup de gomme, même
 lent et passant sur plusieurs traits, s'annule d'un seul Ctrl+Z (le replay,
@@ -997,9 +1014,9 @@ cours, qui fait la latence ressentie au stylet.
 | `src/ui.ts` | Barres d'outils, le menu complet (un objet, une formule, plusieurs objets), le menu de la page, éditeur de formules |
 | `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît, ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose |
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (celles des lecteurs sont dans `src/revoir/icones.ts`) |
-| `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule |
+| `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
 | `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page ; la molette |
-| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs) |
+| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs) ; le clavier qui va au menu ouvert (aussi pour le menu complet) |
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |

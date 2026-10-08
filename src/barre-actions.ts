@@ -217,8 +217,14 @@ export class BarreActions {
       b.setAttribute('aria-label', a.titre)
       if (a.interrupteur) b.setAttribute('aria-pressed', 'false')
       // Un clic sans pointeur (Entrée ou Espace sur le bouton, detail 0)
-      // n'a pas eu d'appui : il agit toujours
-      b.addEventListener('click', e => { if (e.detail === 0) this.renvoye = false; this.agir(a.id) })
+      // n'a pas eu d'appui : il agit toujours. « Options » pressé ainsi met
+      // le focus dans le menu complet, comme un petit menu ouvert au
+      // clavier (le bouton, lui, part avec la barre, qui laisse la place au menu)
+      b.addEventListener('click', e => {
+        if (e.detail === 0) this.renvoye = false
+        this.agir(a.id)
+        if (e.detail === 0 && a.id === 'options') this.app.ui.entrerDansMenu()
+      })
       this.el.appendChild(b)
       this.boutons.set(a.id, b)
     }

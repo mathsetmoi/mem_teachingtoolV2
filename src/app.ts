@@ -89,6 +89,13 @@ export interface Interface {
    *  morceau, le panneau d'options sauf garderOptions, la liste des
    *  instruments) ; vrai si quelque chose était ouvert */
   fermerMenus(garderOptions?: boolean): boolean
+  /** Le clavier dans le menu complet (ou le menu d'un morceau) ouvert, comme
+   *  dans le menu du système ; vrai si la touche était pour lui (elle ne
+   *  pousse pas l'objet et ne déplace pas la vue derrière lui) */
+  clavierMenu(e: KeyboardEvent): boolean
+  /** Le focus sur la première entrée du menu complet ouvert (« Options »
+   *  pressé au clavier, comme les petits menus ouverts au clavier) */
+  entrerDansMenu(): void
   /** Ce qu'on voit du tableau entre les barres (coordonnées de la zone) */
   zoneLibre(): { x: number; y: number; l: number; h: number }
   /** Un fichier glissé sur le tableau (.memc, ou .mem) : comme « Ouvrir un tableau » */
@@ -3150,6 +3157,10 @@ export class App {
     // Dans une fenêtre (publier, formule…), les raccourcis du tableau se taisent
     if (cible.closest('input, textarea, select, [contenteditable], dialog')) return
     const ctrl = e.ctrlKey || e.metaKey
+    // Le menu complet ouvert (clic droit, appui long, « Options ») ou le menu
+    // d'un sommet : les flèches et Tab y mènent, Espace y appuie sur un
+    // bouton (voir Interface.clavierMenu)
+    if (this.ui.clavierMenu(e)) return
     if (e.code === 'Space') { this.espace = true; e.preventDefault(); return }
     // Ctrl+Z, Ctrl+Y ou Ctrl+Maj+Z (⌘ sur Mac) : sur la page qu'on regarde
     // seulement. Rien à faire : un message le dit, pour qui pressait Ctrl+Z

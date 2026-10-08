@@ -2,9 +2,10 @@
 // (seulement ce que le code sait appliquer à chacun), ce qu'il marque actif
 // (ce que TOUS les objets concernés ont déjà), et ce que change chaque choix,
 // objet par objet. Le menu lui-même (ouvert au clic droit, une étape
-// d'annulation pour tous) se vérifie dans le navigateur.
+// d'annulation pour tous) se vérifie dans le navigateur. Et le nom du menu
+// complet d'un objet : celui de ce qu'il règle.
 import { describe, expect, it } from 'vitest'
-import { TAILLES_FORMULE, aCouleur, aEpaisseur, change, changerCouleur, changerEpaisseur, changerPointilles, epaisseurPour, habillageCommun } from '../src/habillage'
+import { TAILLES_FORMULE, aCouleur, aEpaisseur, change, changerCouleur, changerEpaisseur, changerPointilles, epaisseurPour, habillageCommun, titreDuMenu } from '../src/habillage'
 import type { Cercle, Forme, Formule, ImageForme, Polygone, Segment, Trait } from '../src/types'
 
 const base = { z: 1, auteur: 'moi', x: 0, y: 0 }
@@ -89,5 +90,24 @@ describe('ce que change chaque choix, objet par objet', () => {
     expect(change(triangle(), { tirets: false })).toBe(false)         // sans pointillés, l'absence vaut non
     expect(change(triangle(), { tirets: true })).toBe(true)
     expect(change(triangle({ tirets: true }), { tirets: true })).toBe(false)
+  })
+})
+
+describe('le nom du menu complet d\'un objet (ce que dit un lecteur d\'écran)', () => {
+  it('celui de ce qu\'il règle ; « figure » seulement pour un polygone fermé', () => {
+    const ouvert = (pts: number[], o: Partial<Polygone> = {}) => triangle({ pts, ferme: false, ...o })
+    expect(titreDuMenu(trait())).toBe('Options du trait')
+    expect(titreDuMenu(surligneur())).toBe('Options du trait')
+    expect(titreDuMenu(image())).toBe("Options de l'image")
+    expect(titreDuMenu(formule())).toBe('Options de la formule')
+    expect(titreDuMenu(segment())).toBe('Options du segment')
+    expect(titreDuMenu(ouvert([0, 0, 10, 0]))).toBe('Options du segment')
+    expect(titreDuMenu(ouvert([0, 0, 10, 0], { prolonge: 'droite' }))).toBe('Options de la droite')
+    expect(titreDuMenu(ouvert([0, 0, 10, 0], { prolonge: 'demi' }))).toBe('Options de la demi-droite')
+    expect(titreDuMenu(ouvert([0, 0]))).toBe('Options du point')
+    expect(titreDuMenu(ouvert([0, 0, 10, 5, 20, 0]))).toBe('Options de la ligne brisée')
+    expect(titreDuMenu(cercle())).toBe('Options du cercle')
+    expect(titreDuMenu(cercle({ arc: { a0: 0, a1: 2 } }))).toBe("Options de l'arc")
+    expect(titreDuMenu(triangle())).toBe('Options de la figure')
   })
 })

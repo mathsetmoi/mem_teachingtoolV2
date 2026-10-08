@@ -6,7 +6,8 @@
 // les pointillés (les figures). Un choix est marqué actif quand TOUS les
 // objets qu'il concerne l'ont déjà : on voit d'un coup d'œil si les dix
 // objets choisis sont tous rouges. Rien ici ne touche à la page : les
-// tests le vérifient sous Node.
+// tests le vérifient sous Node. Ici aussi : le nom du menu complet d'un
+// objet (titreDuMenu).
 // =============================================================
 import type { Forme } from './types'
 
@@ -16,6 +17,25 @@ export const TAILLES_FORMULE = [
   { nom: 'Normale', titre: 'Caractères de taille normale', valeur: 28 },
   { nom: 'Grande', titre: 'Grands caractères', valeur: 40 },
 ]
+
+/** Le nom du menu complet d'un objet (son aria-label, ce que dit un lecteur
+ *  d'écran) : celui de ce qu'il règle. Le mot « figure » reste aux
+ *  polygones fermés, comme partout dans MEM ; un point est un polygone d'un
+ *  seul sommet, un segment (une droite, une demi-droite) en a deux. */
+export function titreDuMenu(f: Forme): string {
+  switch (f.type) {
+    case 'trait': return 'Options du trait'
+    case 'formule': return 'Options de la formule'
+    case 'image': return "Options de l'image"
+    case 'segment': return 'Options du segment'
+    case 'cercle': return f.arc ? "Options de l'arc" : 'Options du cercle'
+    case 'polygone':
+      if (f.ferme) return 'Options de la figure'
+      if (f.pts.length === 2) return 'Options du point'
+      if (f.pts.length === 4) return f.prolonge === 'droite' ? 'Options de la droite' : f.prolonge === 'demi' ? 'Options de la demi-droite' : 'Options du segment'
+      return 'Options de la ligne brisée'
+  }
+}
 
 /** L'objet a-t-il une couleur qu'on change ? Une image, non. */
 export function aCouleur(f: Forme): boolean {
