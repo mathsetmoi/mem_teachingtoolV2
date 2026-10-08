@@ -15,6 +15,9 @@ export const ORIGINE_LOCALE = 'locale'
 const ORIGINE_FILM = 'film'
 /** Les écritures de la piste des instruments : ni étape du film, ni annulation */
 const ORIGINE_PISTE = 'piste'
+/** Deux changements à moins de 400 ms l'un de l'autre font une seule étape
+ *  d'annulation (le stylo qui se reprend, un nom qu'on retouche) */
+const CAPTURE = 400
 
 /** Une étape du film : quand, sur quelle page, et l'état du document.
  *  ms : si l'étape pose un trait tracé à la main, le temps passé sur chacun
@@ -60,7 +63,7 @@ export class Tableau {
     // transactions marquées « locale » sont retenues.
     this.annulation = new Y.UndoManager(this.pages, {
       trackedOrigins: new Set([ORIGINE_LOCALE]),
-      captureTimeout: 400,
+      captureTimeout: CAPTURE,
     })
     this.local = nomLocal ? new IndexeddbPersistence(nomLocal, this.doc) : null
 
@@ -235,8 +238,26 @@ export class Tableau {
     this.doc.transact(() => { for (const id of ids) formes.delete(id) }, ORIGINE_LOCALE)
   }
 
-  /** Un geste = une étape d'annulation, même s'il dure longtemps. */
-  nouveauGeste() { this.annulation.stopCapturing() }
+  /** Un geste = une étape d'annulation, même s'il dure longtemps. Un geste
+   *  long resté ouvert (un lever perdu) ne déborde pas sur le suivant. */
+  nouveauGeste() {
+    this.annulation.captureTimeout = CAPTURE
+    this.annulation.stopCapturing()
+  }
+
+  /** Un geste qui écrit plusieurs fois, à son rythme (un coup de gomme lent
+   *  qui passe sur trois traits) : tout ce qu'il fait, jusqu'à finGesteLong,
+   *  ne fait qu'UNE étape d'annulation, quel que soit le temps entre deux
+   *  changements. Le film, lui, garde une étape par changement. */
+  gesteLong() {
+    this.annulation.stopCapturing()
+    this.annulation.captureTimeout = Infinity
+  }
+
+  finGesteLong() {
+    this.annulation.captureTimeout = CAPTURE
+    this.annulation.stopCapturing()
+  }
 
   /** Ajoute des morceaux à la piste des instruments. Hors des pages : le film
    *  n'en fait pas d'étape et l'annulation ne les voit pas. */

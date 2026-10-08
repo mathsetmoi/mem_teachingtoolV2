@@ -5,11 +5,11 @@
 // =============================================================
 import katex from 'katex'
 import type { App, Interface, Prise } from './app'
-import { COULEURS, TAILLES } from './app'
+import { COULEURS, TAILLES, poigneeDuRayon } from './app'
 import type { Bout, Figure, Forme, MarquePoint, Outil, TypeForme } from './types'
 import { CM, FONDS } from './types'
 import type { P, Transformation } from './formes'
-import { centreDe, image, versRelatif } from './formes'
+import { centreDe, image, placesDesNoms, sommetsDe, versRelatif } from './formes'
 import { etapesImage } from './construction'
 import { RevueEnClasse } from './revue/revue'
 import { Publication } from './publication/fenetre'
@@ -410,8 +410,27 @@ export class UI implements Interface {
       this.choixInstruments.style.left = Math.max(8, Math.min(r.left + r.width / 2 - this.choixInstruments.offsetWidth / 2, window.innerWidth - this.choixInstruments.offsetWidth - 8)) + 'px'
     }
     this.majPanneau()
+    this.majMenuPartie()
     this.zoomTexte.textContent = Math.round(app.cam.z * 100) + ' %'
     this.majRetour()
+  }
+
+  /** Ferme ce qui flotte au-dessus du tableau : le petit menu ouvert, le menu
+   *  d'un morceau (le morceau n'est plus choisi), le panneau d'options, la
+   *  liste des instruments. Vrai si quelque chose était ouvert : l'appui sur
+   *  le tableau qui l'a fermé ne fait rien d'autre (voir App.bas).
+   *  garderOptions : l'appui prend l'objet même du panneau, qui reste. */
+  fermerMenus(garderOptions = false): boolean {
+    const app = this.app
+    let ferme = fermerMenu()
+    if (!this.menuPartie.hidden) { this.fermerMenuPartie(); app.choisirPartie(null); ferme = true }
+    if (!garderOptions) {
+      if (!this.panneau.hidden) ferme = true
+      app.options = null
+    }
+    if (!this.choixInstruments.hidden) { this.choixInstruments.hidden = true; ferme = true }
+    if (ferme) this.maj()
+    return ferme
   }
 
   /** Ce qu'on voit du tableau entre les barres, en coordonnées de la zone :
@@ -792,13 +811,48 @@ export class UI implements Interface {
   }
 
   // ----- Menu d'un morceau de figure -----
+  /** Le menu s'ouvre collé au morceau (x, y : le pointeur, s'il fallait) */
   ouvrirMenuPartie(id: string, prise: Prise, x: number, y: number) {
     this.partie = { id, prise }
+    if (!this.ancrePartie()) { this.partie = null; return }
     this.construireMenuPartie()
-    const m = this.menuPartie
-    m.hidden = false
+    this.menuPartie.hidden = false
+    this.placerMenuPartie(x, y)
+  }
+
+  /** Où est, dans le monde, le morceau dont le menu est ouvert : un sommet,
+   *  le centre ou le rayon d'un cercle, un nom (null : il n'existe plus) */
+  private ancrePartie(): P | null {
+    const p = this.partie, f = p && this.app.forme(p.id)
+    if (!p || !f || (f.type !== 'polygone' && f.type !== 'cercle')) return null
+    const pr = p.prise
+    if (pr.quoi === 'rayon') return f.type === 'cercle' ? poigneeDuRayon(f) : null
+    if (pr.quoi === 'nom') return placesDesNoms(f)[pr.i] ?? null
+    return f.type === 'cercle' ? { x: f.x, y: f.y } : sommetsDe(f)[pr.i] ?? null
+  }
+
+  /** Le menu suit son morceau quand la vue bouge (zoom, déplacement), à
+   *  14 px en bas à droite, sans sortir de la fenêtre */
+  private placerMenuPartie(x?: number, y?: number) {
+    const m = this.menuPartie, a = this.ancrePartie()
+    if (a) {
+      const z = this.app.rendu.scene.getBoundingClientRect(), e = this.app.cam.versEcran(a.x, a.y)
+      x = z.left + e.x; y = z.top + e.y
+    }
+    if (x === undefined || y === undefined) return
     m.style.left = Math.max(8, Math.min(x + 14, window.innerWidth - m.offsetWidth - 8)) + 'px'
     m.style.top = Math.max(8, Math.min(y + 14, window.innerHeight - m.offsetHeight - 8)) + 'px'
+  }
+
+  /** À chaque mise à jour : le menu ouvert suit son morceau ; il se ferme si
+   *  le morceau n'est plus choisi, ou n'existe plus (une annulation l'a ôté) */
+  private majMenuPartie() {
+    if (this.menuPartie.hidden) return
+    const p = this.partie, a = this.app.partie
+    const meme = !!p && !!a && a.id === p.id && a.prise.quoi === p.prise.quoi
+      && (a.prise.quoi === 'rayon' || p.prise.quoi === 'rayon' || a.prise.i === p.prise.i)
+    if (!meme || !this.ancrePartie()) { this.fermerMenuPartie(); return }
+    this.placerMenuPartie()
   }
 
   /** La revue prend tout l'écran : le programme de construction se ferme

@@ -41,10 +41,17 @@ Les tracés trop petits (l'écriture) ne sont jamais touchés, et le bouton
 **Avec l'outil Formes** (`R` rectangle, Maj pour un carré ; `C` cercle ; `G`
 polygone, sommet par sommet, en revenant au premier pour fermer).
 
+Une figure qu'on vient de tracer (au stylo, aux Formes, au Segment) n'est pas
+sélectionnée : on continue d'écrire tout près sans attraper ses sommets. Une
+copie, une image importée, l'image d'une transformation le sont.
+
 **Le panneau d'options** ne s'ouvre qu'à la demande : **double-clic** ou
 **clic droit** sur l'objet (un simple clic le sélectionne seulement, pour le
-déplacer). Il se ferme quand on choisit autre chose ou qu'on clique dans le
-vide :
+déplacer). Au Stylo aussi, un double-clic sur une figure ou une formule ouvre
+ses options, sans y laisser de point : le point d'un simple toucher sur un
+objet ne s'écrit qu'un tiers de seconde plus tard, quand on sait qu'aucun
+second toucher ne suit. Le panneau se ferme quand on choisit autre chose ou
+qu'on appuie ailleurs (il reste quand on déplace l'objet lui-même) :
 
 - *Sommets* : points et noms (A, B, C… libres sur la page), modifiables ;
 - *Codage* : côtés de même longueur et angles droits, calculés ;
@@ -55,6 +62,13 @@ vide :
   sommets ou en coordonnées), homothétie. L'image est une nouvelle figure, aux
   sommets nommés A', B', C'… ;
 - *Main levée*, *Dupliquer*, supprimer.
+
+Le premier appui sur le tableau hors d'un panneau ou d'un menu ouvert (le
+zoom, le menu d'un point, la liste des instruments) le ferme, et ne fait rien
+d'autre : ni point d'encre, ni coup de gomme. Au Stylo, le trait commence quand
+même (on ne perd pas la première lettre de ce qu'on écrit), mais un simple
+appui ne laisse rien ; sur un instrument, ou à l'outil Sélection sur un autre
+objet, l'appui le prend directement.
 
 Les transformations et le contour valent aussi pour un tracé à main levée.
 
@@ -73,7 +87,10 @@ importée se construit par ses quatre coins.
 l'outil Sélection (ou au doigt qui « déplace », voir plus bas), on attrape un
 sommet ou une extrémité, le centre ou le rayon d'un cercle, le nom d'un point ;
 jamais sous un outil de dessin (écrire près d'un sommet laisse la figure
-intacte), et le clic droit vise le morceau de n'importe quelle figure :
+intacte). Un premier clic sur le sommet d'une figure non sélectionnée prend la
+figure entière, le suivant son sommet ; le clic droit, lui, vise directement le
+morceau de n'importe quelle figure. Le menu d'un morceau reste collé à lui
+quand on zoome ou qu'on déplace la vue :
 
 - **glisser** le déplace (le codage se recalcule ; un nom tourne autour de son
   point sans s'en éloigner, et garde sa place quand on transforme la figure) ;
@@ -537,10 +554,19 @@ ce navigateur, hors du document : ni un fichier, ni un replay ne les emportent.
 **Échap** annule ce qui est en cours (menu, sélection, polygone) ; s'il n'y a
 rien, il passe à l'outil Sélection, et un second Échap rend l'outil d'avant.
 Avec la Sélection, glisser un objet le déplace, glisser dans le vide déplace le
-tableau, Maj + glisser encadre ; l'objet survolé s'éclaire d'un halo bleu qui
-suit sa forme, avant le clic ; une droite ou une demi-droite sélectionnée se
-surligne sur toute sa longueur visible ; les flèches poussent la sélection
-d'1 mm (1 cm avec Maj).
+tableau, Maj + glisser encadre ; Maj + clic (ou Ctrl + clic, ⌘ + clic sur Mac)
+ajoute un objet à la sélection, ou l'en retire s'il y était (Maj + glisser un
+objet sélectionné déplace toute la sélection) ; un clic droit dans une
+sélection de plusieurs objets la laisse entière. L'objet survolé s'éclaire
+d'un halo bleu qui suit sa forme, avant le clic ; une droite ou une
+demi-droite sélectionnée se surligne sur toute sa longueur visible ; les
+flèches poussent la sélection d'1 mm (1 cm avec Maj).
+
+**La gomme** efface en entier ce qu'elle touche (un trait, une figure). Un coup de gomme, même
+lent et passant sur plusieurs traits, s'annule d'un seul Ctrl+Z (le replay,
+lui, les montre partir l'un après l'autre). Le bout gomme du stylet (le stylet
+retourné, sur une tablette graphique ou une Surface) efface de même quel que
+soit l'outil en main, qu'on retrouve en reprenant la pointe.
 
 **Au doigt, au stylet.** Deux doigts zooment et déplacent la vue ; si l'un se
 lève, celui qui reste continue de déplacer la vue, sans jamais se mettre à
