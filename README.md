@@ -62,7 +62,7 @@ prend de même d'un simple toucher, mais n'emporte un objet sélectionné que
 s'il le saisit à 10 px de son tracé (ou par une image, une formule, une figure
 coloriée) : parti du milieu d'un grand cadre, il déplace la vue. Jamais sous
 le Stylo : écrire dans un triangle ne le prend pas, et un clic droit dans son
-vide ne le vise pas.
+vide ne le vise pas (il ouvre le menu de la page, comme à côté).
 
 **Saisir ou entourer.** À l'outil Sélection, un appui tout près du tracé d'un
 objet (6 px à la souris et au stylet, 10 au doigt), sur un morceau, sur une
@@ -79,23 +79,35 @@ on part d'à côté. Au survol de la souris ou de la tablette graphique, le
 curseur le dit : la flèche en croix saisit, la main prend ou entoure, la
 croix est dans le vide.
 
-**Le panneau d'options** ne s'ouvre qu'à la demande : **double-clic** ou
-**clic droit** sur l'objet (un simple clic le sélectionne seulement, pour le
-déplacer) ; au stylet, le bouton du stylet fait le clic droit ; au doigt, avec
-l'outil Sélection ou le doigt qui « déplace », **deux touchers** rapprochés
-(moins d'un tiers de seconde, à moins de 35 px, sur le même objet), même sur
-iPad où Safari ne donne pas de double-clic au doigt (un toucher suivi d'un
-glisser déplace toujours). La première fois qu'on prend un objet, un message
-le rappelle dans les mots du pointeur (jamais « clic droit » au doigt).
-Au Stylo aussi, un double-clic sur une figure ou une formule ouvre
-ses options, sans y laisser de point : le point d'un simple toucher sur un
-objet ne s'écrit qu'un tiers de seconde plus tard, quand on sait qu'aucun
-second toucher ne suit (le film garde l'heure où il a été écrit). Ce
-double-clic est serré comme celui du système : le second toucher retombe à
-moins de 4 px à la souris, 5 au stylet, 14 au doigt, et se lève vite sans
-avoir glissé. Deux points qu'on écrit tout près (un « : », un tréma, sur une
-figure coloriée ou une formule) restent deux points. Le panneau se ferme quand on choisit autre chose ou
-qu'on appuie ailleurs (il reste quand on déplace l'objet lui-même) :
+**Le menu complet** de ce qu'on a pris s'ouvre à la demande, de la même
+façon partout : **clic droit** sur l'objet (au stylet, le bouton du stylet ;
+sur Mac, Ctrl + clic aussi) ou **double-clic** (un simple clic le sélectionne
+seulement, pour le déplacer) ; au doigt, avec l'outil Sélection ou le doigt
+qui « déplace », **deux touchers** rapprochés (moins d'un tiers de seconde, à
+moins de 35 px, sur le même objet), même sur iPad où Safari ne donne pas de
+double-clic au doigt (un toucher suivi d'un glisser déplace toujours). La
+première fois qu'on prend un objet, un message le rappelle dans les mots du
+pointeur (jamais « clic droit » au doigt). Au Stylo aussi, un double-clic sur
+une figure ou une formule ouvre son menu (ou l'éditeur de la formule), sans y
+laisser de point : le point d'un simple toucher sur un objet ne s'écrit qu'un
+tiers de seconde plus tard, quand on sait qu'aucun second toucher ne suit (le
+film garde l'heure où il a été écrit). Ce double-clic est serré comme celui du
+système : le second toucher retombe à moins de 4 px à la souris, 5 au stylet,
+14 au doigt, et se lève vite sans avoir glissé. Deux points qu'on écrit tout
+près (un « : », un tréma, sur une figure coloriée ou une formule) restent deux
+points.
+
+Le menu s'ouvre à l'**appui** du bouton droit (ou du bouton du stylet), jamais
+sur le « menu contextuel » que le navigateur envoie ensuite : sous Windows Ink,
+le stylet d'une tablette graphique tenu immobile une seconde (une hésitation,
+une figure qu'on fait reconnaître) envoie un clic droit au lever du trait, qui
+ouvrirait un menu en plein cours. Un bouton pressé pendant un trait ou un
+glisser n'ouvre rien ; la touche Menu du clavier non plus. Rien ne s'ouvre sur
+un instrument posé : il recouvre ce qui est dessous. Le menu se pose au-dessus
+de ce qu'il règle (dessous s'il n'y a pas la place), et se ferme quand on
+choisit autre chose ou qu'on appuie ailleurs (il se cache pendant qu'on
+déplace l'objet lui-même, et revient au lâcher). Celui d'une figure, d'un
+trait ou d'une image :
 
 - *Sommets* : points et noms (A, B, C… libres sur la page), modifiables ;
 - *Codage* : côtés de même longueur et angles droits, calculés ;
@@ -105,10 +117,34 @@ qu'on appuie ailleurs (il reste quand on déplace l'objet lui-même) :
   repère), symétrie centrale, rotation, translation (par un vecteur entre deux
   sommets ou en coordonnées), homothétie. L'image est une nouvelle figure, aux
   sommets nommés A', B', C'… ;
-- *Main levée*, *Dupliquer*, supprimer.
+- *Main levée*, *Dupliquer*, *Copier*, supprimer.
 
-Le premier appui sur le tableau hors d'un panneau ou d'un menu ouvert (le
-zoom, le menu d'un point, la liste des instruments) le ferme, et ne fait rien
+**Une formule** se modifie au double-clic (comme un texte, partout) ; son clic
+droit ouvre son menu : *Modifier*, *Couleur et taille* (les quatre couleurs ;
+Petite, Normale, Grande), *Dupliquer*, *Copier*, supprimer. Pas de
+*Transformer* : l'image d'une formule n'en déplacerait que le coin.
+
+**Plusieurs objets** sélectionnés (Maj + clic, un cadre, un lasso, Ctrl + A) :
+un clic droit ou un double-clic sur l'un d'eux, même près d'un sommet, ouvre
+leur menu commun, et la sélection reste entière. « 3 objets », puis *Couleur,
+épaisseur* (les quatre couleurs pour tout sauf les images ; les trois
+épaisseurs pour les traits et les figures, un trait de surligneur gardant sa
+largeur de surligneur ; les pointillés s'il y a une figure ; un choix est
+marqué quand tous l'ont déjà), *Dupliquer*, *Copier*, *Couper*, supprimer.
+Seulement ce qui vaut pour chacun : ni les sommets, ni le fond, ni les
+transformations. Chaque choix fait une seule étape : un Ctrl+Z rend leur
+couleur aux dix objets d'un coup. Le menu se pose au-dessus de toute la
+sélection ; Maj + clic sur l'un d'eux l'en retire, et le menu se ferme quand
+il ne reste qu'un objet.
+
+**Dans le vide**, le clic droit ouvre le menu de la page, au point visé :
+*Coller ici* (le dernier objet copié, posé là ; grisé quand il n'y a rien à
+coller), *Tout sélectionner* (Ctrl + A), *Tout voir* (Maj + 1). Il se ferme
+comme les autres menus : Échap, un choix, ou un appui ailleurs, qui ne laisse
+pas d'encre.
+
+Le premier appui sur le tableau hors d'un menu ouvert (le menu complet, celui
+de la page, du zoom ou d'un point, la liste des instruments) le ferme, et ne fait rien
 d'autre : ni point d'encre, ni coup de gomme. Au Stylo, le trait commence quand
 même (on ne perd pas la première lettre de ce qu'on écrit), mais un simple
 appui ne laisse rien ; sur un instrument, ou à l'outil Sélection sur un autre
@@ -146,7 +182,7 @@ reste collé à lui quand on zoome ou qu'on déplace la vue :
     automatiquement, le masquer ;
   - le rayon d'un cercle : sa valeur en centimètres.
 
-Le clic droit ailleurs sur une figure (ou un double-clic) la sélectionne et ouvre son panneau.
+Le clic droit ailleurs sur une figure (ou un double-clic) la sélectionne et ouvre son menu.
 Un morceau choisi l'est seul : il est surligné, pas la figure entière.
 `Suppr` retire un sommet choisi (ou masque un nom). Nommer un seul point d'une
 figure sans noms donne des lettres libres aux autres.
@@ -612,7 +648,7 @@ aussi par `{"format":` ; chaque lecteur reconnaît le sien à ses premiers octet
 Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment
 [AB]**, **droite (AB)** ou **demi-droite [AB)** ; une droite est dessinée jusqu'au
 bord de l'écran, quel que soit le zoom, et se prend sur toute sa longueur. Le
-panneau d'options d'un trait passe de l'un à l'autre d'un clic.
+menu d'un trait passe de l'un à l'autre d'un clic.
 
 On trace un trait **en glissant**, ou **en deux clics** : un clic pour le
 premier point, un clic pour le second (Échap annule). Près d'un point existant
@@ -670,7 +706,7 @@ du vide d'une figure fermée, un glisser entoure plutôt qu'il n'emporte (voir
 retirer ; Maj + clic (ou Ctrl + clic, ⌘ + clic sur Mac) ajoute un objet à la
 sélection, ou l'en retire s'il y était (Maj + glisser un objet sélectionné
 déplace toute la sélection) ; un clic droit dans une sélection de plusieurs
-objets la laisse entière. À la Sélection, la vue se déplace à deux doigts, au
+objets ouvre leur menu commun et la laisse entière. À la Sélection, la vue se déplace à deux doigts, au
 bouton du milieu, avec Espace + glisser, à la molette ou avec l'outil Main.
 L'objet survolé (par son tracé ou son intérieur) s'éclaire d'un halo bleu qui
 suit sa forme, avant le clic ; une droite ou une demi-droite sélectionnée se
@@ -728,7 +764,8 @@ Ctrl+V colle sur la page qu'on regarde : sous le pointeur (souris, plume de la
 tablette graphique) s'il est sur le tableau et a bougé depuis la copie ;
 sinon 1 cm à côté de l'original, et trois Ctrl+V de suite font trois copies
 étagées ; sur une autre page, à la même place si elle se voit ; une place
-hors de ce qu'on voit devient le milieu de la vue. Ce qui est collé est
+hors de ce qu'on voit devient le milieu de la vue. *Coller ici*, dans le menu
+de la page (un clic droit dans le vide), colle au point visé. Ce qui est collé est
 sélectionné, l'outil ne change pas. Copier ne change rien à la page ; couper,
 coller, dupliquer font chacun une étape : un Ctrl+Z retire tout un collage
 d'un coup, et rend ce qu'on a coupé. Une figure collée garde ses noms s'ils
@@ -848,9 +885,10 @@ cours, qui fait la latence ressentie au stylet.
 | `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
-| `src/ui.ts` | Barres d'outils, panneau d'options, éditeur de formules |
+| `src/ui.ts` | Barres d'outils, le menu complet (un objet, une formule, plusieurs objets), le menu de la page, éditeur de formules |
+| `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule |
 | `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page ; la molette |
-| `src/menus.ts` | Les petits menus flottants (un seul ouvert, Échap, un appui ailleurs) |
+| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs) |
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt), hors du document |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
