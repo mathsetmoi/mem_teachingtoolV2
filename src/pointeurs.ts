@@ -86,3 +86,11 @@ export function messageOptions(p: TypePointeur): string {
 export function messageSecondPoint(p: TypePointeur): string {
   return p === 'touch' ? 'Touchez le second point (un autre outil annule)' : 'Cliquez le second point (Échap pour annuler)'
 }
+
+/** La figure qu'on vient de reconnaître dans un tracé : comment garder le
+ *  tracé à main levée. Au doigt (une tablette sans clavier), le bouton
+ *  Annuler de la barre ; ailleurs, le raccourci (ctrl : « Ctrl » ou « ⌘ »). */
+export function messageReconnue(nom: string, p: TypePointeur, ctrl = 'Ctrl'): string {
+  return p === 'touch' ? `${nom} — ↶ (Annuler) pour garder le tracé à main levée`
+    : `${nom} — ${ctrl}+Z pour garder le tracé à main levée`
+}

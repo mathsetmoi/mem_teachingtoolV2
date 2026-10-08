@@ -94,10 +94,11 @@ importée se construit par ses quatre coins.
 l'outil Sélection (ou au doigt qui « déplace », voir plus bas), on attrape un
 sommet ou une extrémité, le centre ou le rayon d'un cercle, le nom d'un point ;
 jamais sous un outil de dessin (écrire près d'un sommet laisse la figure
-intacte). Un premier clic sur le sommet d'une figure non sélectionnée prend la
-figure entière, le suivant son sommet ; le clic droit, lui, vise directement le
-morceau de n'importe quelle figure. Le menu d'un morceau reste collé à lui
-quand on zoome ou qu'on déplace la vue :
+intacte). Un premier clic sur un morceau d'une figure non sélectionnée (un
+sommet, le centre d'un cercle, le nom d'un point) prend la figure entière, et
+la déplace si l'on glisse ; le suivant prend ce morceau. Le clic droit, lui,
+vise directement le morceau de n'importe quelle figure. Le menu d'un morceau
+reste collé à lui quand on zoome ou qu'on déplace la vue :
 
 - **glisser** le déplace (le codage se recalcule ; un nom tourne autour de son
   point sans s'en éloigner, et garde sa place quand on transforme la figure) ;
@@ -624,8 +625,11 @@ quand rien n'est choisi. Sur un écran bas (moins de 900 px de haut environ),
 ses boutons gardent leurs 44 px et elle défile, avec une fine barre de
 défilement ; les choix des Formes et du Segment suivent leur bouton.
 Les **messages** en bas de l'écran passent sous les panneaux et les menus (ils
-ne cachent jamais ce qu'on va toucher), sauf pendant la revue et pour le
-programme de construction ; un message à bouton (« Changer ») reste 7 s.
+ne cachent jamais ce qu'on va toucher), sauf pendant la revue, la séance
+d'automatismes et le programme de construction ; un message à bouton
+(« Changer ») reste 7 s, et un autre message qui arrive entre-temps s'écrit
+au-dessus de lui sans le chasser. Au doigt, ils parlent du bouton Annuler,
+pas de Ctrl + Z.
 
 **Au doigt, au stylet.** Deux doigts zooment et déplacent la vue ; si l'un se
 lève, celui qui reste continue de déplacer la vue, sans jamais se mettre à
@@ -648,8 +652,9 @@ ignorée : un contact large, et tout contact pendant que le stylet touche
 l'écran ; le stylet qui se pose arrête ce que faisait le doigt (la vue, la règle
 restent où il les a laissées). Partout, un appui ne devient un glisser qu'à
 8 px de son départ au doigt, 6 au stylet, 4 à la souris : un toucher qui tremble
-ne déplace rien et n'ajoute rien à l'historique. L'encre (stylo, surligneur, le
-long d'un instrument, l'arc du compas) part tout de suite.
+ne déplace rien, ne pose ni rectangle, ni cercle, ni segment le long d'un
+instrument, et n'ajoute rien à l'historique. L'encre (stylo, surligneur, l'arc
+du compas) part tout de suite.
 
 ## Architecture
 

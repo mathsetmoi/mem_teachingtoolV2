@@ -23,6 +23,8 @@ import { choisirMolette, reglages } from './reglages'
 import type { Doigt, Molette } from './reglages'
 import { CTRL } from './navigateur'
 import { Sauvegarde } from './sauvegarde'
+import { zoneEntreBarres } from './camera'
+import type { Bords } from './camera'
 
 const ICONES: Record<string, string> = {
   stylo: 'M4 20l4-1L19 8l-3-3L5 16l-1 4zM14 7l3 3',
@@ -164,6 +166,11 @@ export class UI implements Interface {
   private minuterieRetour = 0
   private barreOutils!: HTMLElement
   private toast!: HTMLDivElement
+  /** Ce que montre le message : le dernier message ordinaire, et le dernier
+   *  qui porte une action, chacun jusqu'à son échéance (voir message) */
+  private toastSimple: { el: HTMLElement; fin: number } | null = null
+  private toastAction: { el: HTMLElement; fin: number } | null = null
+  private minuterieToast = 0
   private dialogue: HTMLDialogElement | null = null
   private boutonReconnaissance!: HTMLButtonElement
   private choixFormes!: HTMLDivElement
@@ -466,16 +473,14 @@ export class UI implements Interface {
   }
 
   /** Ce qu'on voit du tableau entre les barres, en coordonnées de la zone :
-   *  c'est là que « Tout voir » cadre la page. Sur un téléphone, où les barres
-   *  prennent presque tout, toute la zone avec une marge. */
+   *  c'est là que « Tout voir » cadre la page (voir zoneEntreBarres) */
   zoneLibre() {
     const z = this.app.rendu.scene.getBoundingClientRect()
-    const o = this.barreOutils.getBoundingClientRect(), h = this.barreHaut.getBoundingClientRect(), b = this.barreZoom.getBoundingClientRect()
-    const x = (o.width ? o.right - z.left : 0) + 16
-    const y = (h.height ? h.bottom - z.top : 0) + 12
-    const droite = z.width - 16, bas = (b.height ? b.top - z.top : z.height) - 12
-    if (droite - x < 200 || bas - y < 200) return { x: 16, y: 16, l: Math.max(0, z.width - 32), h: Math.max(0, z.height - 32) }
-    return { x, y, l: droite - x, h: bas - y }
+    const bords = (el: HTMLElement): Bords | null => {
+      const r = el.getBoundingClientRect()
+      return r.width && r.height ? { left: r.left - z.left, top: r.top - z.top, right: r.right - z.left, bottom: r.bottom - z.top } : null
+    }
+    return zoneEntreBarres(z.width, z.height, { outils: bords(this.barreOutils), haut: bords(this.barreHaut), zoom: bords(this.barreZoom) })
   }
 
   /** La pastille « Revenir au contenu » : elle paraît une seconde après qu'on
@@ -1029,21 +1034,48 @@ export class UI implements Interface {
   /** Un message en bas de l'écran. Avec une action, un bouton suit le texte
    *  (« Changer ») et le message reste 7 s ; seul ce bouton reçoit les appuis,
    *  et seulement quand le message se voit. Il passe sous les menus et les
-   *  panneaux (il ne cache pas ce qu'on va toucher), sauf pendant la revue,
-   *  qui couvre tout, et pour le programme de construction (dessus), dont le
-   *  panneau prend presque tout l'écran d'une tablette. */
+   *  panneaux (il ne cache pas ce qu'on va toucher), sauf pendant la revue
+   *  et la séance d'automatismes, qui couvrent tout, et pour le programme de
+   *  construction (dessus), dont le panneau prend presque tout l'écran d'une
+   *  tablette.
+   *  Un message ordinaire ne chasse pas un message à action encore à l'écran
+   *  (« Stylet détecté … Changer », que suit souvent la figure reconnue du
+   *  premier trait) : il s'écrit au-dessus de lui, et s'en va seul. */
   message(texte: string, action?: { libelle: string; faire: () => void }, dessus = false) {
     this.toast.classList.toggle('dessus', dessus || this.app.enLecture)
-    this.toast.replaceChildren(texte)
+    const el = document.createElement('span')
+    el.className = 'ligne'
+    el.append(texte)
+    const maintenant = performance.now()
     if (action) {
       const b = document.createElement('button')
       b.type = 'button'; b.className = 'action'; b.textContent = action.libelle
-      b.addEventListener('click', () => { this.toast.classList.remove('visible'); action.faire() })
-      this.toast.appendChild(b)
+      b.addEventListener('click', () => {
+        this.toastSimple = this.toastAction = null
+        this.majToast()
+        action.faire()
+      })
+      el.appendChild(b)
+      this.toastAction = { el, fin: maintenant + 7000 }
+      this.toastSimple = null
+    } else {
+      this.toastSimple = { el, fin: maintenant + Math.max(2600, texte.length * 60) }
     }
+    this.majToast()
+  }
+
+  /** Le message montre ce qui n'a pas encore passé son échéance ; plus rien,
+   *  il s'efface (son texte reste le temps du fondu) */
+  private majToast() {
+    clearTimeout(this.minuterieToast)
+    const maintenant = performance.now()
+    if (this.toastSimple && this.toastSimple.fin <= maintenant) this.toastSimple = null
+    if (this.toastAction && this.toastAction.fin <= maintenant) this.toastAction = null
+    const parts = [this.toastSimple, this.toastAction].filter(p => p !== null)
+    if (!parts.length) { this.toast.classList.remove('visible'); return }
+    this.toast.replaceChildren(...parts.map(p => p.el))
     this.toast.classList.add('visible')
-    clearTimeout((this.toast as unknown as { t: number }).t)
-    ;(this.toast as unknown as { t: number }).t = window.setTimeout(() => this.toast.classList.remove('visible'), action ? 7000 : Math.max(2600, texte.length * 60))
+    this.minuterieToast = window.setTimeout(() => this.majToast(), Math.min(...parts.map(p => p.fin)) - maintenant)
   }
 
   // ----- Éditeur de formules -----

@@ -2,7 +2,7 @@
 // la place des menus, et la session (la page et la vue de chaque page,
 // retrouvées au rechargement, dans ce navigateur seulement).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ZOOM_MAX, ZOOM_MIN, vuePour } from '../src/camera'
+import { ZOOM_MAX, ZOOM_MIN, vuePour, zoneEntreBarres } from '../src/camera'
 import { PLAFOND_MOLETTE, lireMolette, toucheRecharger, toucheZoom } from '../src/navigateur'
 import { positionMenu } from '../src/menus'
 import { ecrireSession, lireSession, oublierSession } from '../src/session'
@@ -132,6 +132,43 @@ describe('vuePour : cadrer une boîte', () => {
   it('le zoom reste entre ZOOM_MIN et ZOOM_MAX', () => {
     expect(vuePour({ x: 0, y: 0, l: 1e9, h: 1e9 }, r, 1).z).toBe(ZOOM_MIN)
     expect(vuePour({ x: 0, y: 0, l: 1, h: 1 }, r, 100).z).toBe(ZOOM_MAX)
+  })
+})
+
+describe('zoneEntreBarres : ce qu\'on voit entre les barres', () => {
+  // Les barres mesurées dans l'application (gauche, haut, droite, bas)
+  const B = (l: number, t: number, r: number, b: number) => ({ left: l, top: t, right: r, bottom: b })
+  const dans = (z: { x: number; y: number; l: number; h: number }, b: { left: number; top: number; right: number; bottom: number }) =>
+    z.x < b.right && z.x + z.l > b.left && z.y < b.bottom && z.y + z.h > b.top
+
+  it('un ordinateur, une tablette : entre les trois barres, comme avant', () => {
+    expect(zoneEntreBarres(1366, 768, { outils: B(12, 12, 70, 756), haut: B(525, 12, 1354, 70), zoom: B(1138, 698, 1354, 756) }))
+      .toEqual({ x: 86, y: 82, l: 1264, h: 604 })
+    expect(zoneEntreBarres(390, 844, { outils: B(12, 128, 70, 832), haut: B(12, 12, 378, 162), zoom: B(162, 774, 378, 832) }))
+      .toEqual({ x: 86, y: 174, l: 288, h: 588 })
+  })
+
+  it('un téléphone en paysage : sous la barre du haut et à côté de celle du zoom, jamais dessous', () => {
+    for (const [l, h, haut, zoom] of [[844, 390, B(88, 12, 832, 116), B(616, 320, 832, 378)], [667, 375, B(88, 12, 655, 116), B(439, 305, 655, 363)],
+      [740, 360, B(88, 12, 728, 116), B(512, 290, 728, 348)]] as const) {
+      const z = zoneEntreBarres(l, h, { outils: B(12, 12, 70, h - 12), haut, zoom })
+      expect(z.y).toBe(128)
+      expect(z.l).toBeGreaterThanOrEqual(200)
+      expect(z.h).toBeGreaterThanOrEqual(200)
+      expect(dans(z, haut) || dans(z, zoom)).toBe(false)
+      expect(z.y + z.h).toBe(h - 12)
+    }
+  })
+
+  it('plus petit encore : sous la barre du haut jusqu\'en bas ; presque rien : toute la zone dans cette dimension seulement', () => {
+    const z = zoneEntreBarres(568, 320, { outils: B(12, 12, 70, 308), haut: B(88, 12, 556, 116), zoom: B(340, 250, 556, 308) })
+    expect(z).toEqual({ x: 86, y: 128, l: 466, h: 180 })
+    const t = zoneEntreBarres(568, 240, { outils: B(12, 12, 70, 228), haut: B(88, 12, 556, 116), zoom: B(340, 170, 556, 228) })
+    expect(t).toEqual({ x: 86, y: 16, l: 466, h: 208 })
+  })
+
+  it('sans barres (cachées) : toute la zone, avec la marge', () => {
+    expect(zoneEntreBarres(1000, 700, { outils: null, haut: null, zoom: null })).toEqual({ x: 16, y: 12, l: 968, h: 676 })
   })
 })
 

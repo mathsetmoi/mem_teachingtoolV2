@@ -2,7 +2,7 @@
 // paume, quand le stylet écrit sur l'écran lui-même, et le rôle du doigt
 // (un réglage de cet appareil, gardé dans le navigateur).
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DOUBLE_TOUCHER, SEUIL_GLISSER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageSecondPoint, nouveauDepart, typePointeur } from '../src/pointeurs'
+import { DOUBLE_TOUCHER, SEUIL_GLISSER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, typePointeur } from '../src/pointeurs'
 import { choisirDoigt, leDoigtDeplace, lire, noterStyletDirect, reglages } from '../src/reglages'
 
 describe('le seuil du glisser', () => {
@@ -109,10 +109,18 @@ describe('les messages selon le pointeur', () => {
   })
 
   it('au doigt, jamais « clic », ni un « appui long » qui n\'existe pas', () => {
-    for (const t of [messageOptions('touch'), messageSecondPoint('touch')]) {
+    for (const t of [messageOptions('touch'), messageSecondPoint('touch'), messageReconnue('Carré', 'touch')]) {
       expect(t).not.toMatch(/clic|appui long/i)
     }
     expect(messageSecondPoint('touch')).toBe('Touchez le second point (un autre outil annule)')
     expect(messageSecondPoint('mouse')).toBe('Cliquez le second point (Échap pour annuler)')
+  })
+
+  it('la figure reconnue : le bouton Annuler au doigt (sans clavier), le raccourci ailleurs', () => {
+    expect(messageReconnue('Carré', 'touch')).toBe('Carré — ↶ (Annuler) pour garder le tracé à main levée')
+    expect(messageReconnue('Carré', 'touch', '⌘')).not.toMatch(/Ctrl|⌘|\+Z/)
+    expect(messageReconnue('Cercle', 'mouse')).toBe('Cercle — Ctrl+Z pour garder le tracé à main levée')
+    expect(messageReconnue('Triangle', 'pen')).toBe('Triangle — Ctrl+Z pour garder le tracé à main levée')
+    expect(messageReconnue('Carré', 'mouse', '⌘')).toBe('Carré — ⌘+Z pour garder le tracé à main levée')
   })
 })

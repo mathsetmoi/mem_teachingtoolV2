@@ -24,9 +24,9 @@ import { boiteDe } from './revoir/bobine'
 import type { Boite } from './revoir/bobine'
 import { choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, reglages } from './reglages'
 import type { Doigt } from './reglages'
-import { DOUBLE_TOUCHER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageSecondPoint, nouveauDepart, typePointeur } from './pointeurs'
+import { DOUBLE_TOUCHER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, typePointeur } from './pointeurs'
 import type { Depart, Toucher, TypePointeur } from './pointeurs'
-import { MAC, lireMolette } from './navigateur'
+import { CTRL, MAC, lireMolette } from './navigateur'
 import { avale } from './menus'
 import type { TraitDirect } from './rendu'
 import type { Vue } from './session'
@@ -411,7 +411,11 @@ export class App {
     this.page = id
     this.tableau.pageVue = id
     this.appliquerVue(id)
+    // Rien ne reste choisi d'une page à l'autre : ni la sélection, ni un
+    // morceau de figure (Suppr, au retour, l'ôterait sans qu'on le voie choisi)
     this.selection.clear()
+    this.ui?.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
     this.rafraichir()
     this.noterSession()
   }
@@ -739,6 +743,14 @@ export class App {
     return null
   }
 
+  /** L'objet qu'on prend sous le pointeur (outil Sélection, doigt qui
+   *  déplace) : touché sur son trait, ou par un morceau qui en sort, dans
+   *  n'importe quelle figure (le centre d'un cercle, le nom d'un sommet).
+   *  C'est la figure entière qu'on prend ; le morceau, au clic suivant. */
+  private objetSous(m: P, s: P, rayon = 6): Forme | null {
+    return this.formeSous(m.x, m.y, rayon) ?? this.priseSous(s, { toutes: true })?.f ?? null
+  }
+
   private brancherGestes() {
     const z = this.zone
     z.addEventListener('pointerdown', e => this.bas(e))
@@ -888,7 +900,7 @@ export class App {
     // garde : il reparaît au lever. Un clic attendu par le panneau (Désigner,
     // Tracer un axe ou un centre) est pour lui : le panneau reste.
     const prend = this.outil === 'selection' || doigt
-    const vise = prend ? this.formeSous(m.x, m.y, doigt ? 12 : 6) : null
+    const vise = prend ? this.objetSous(m, s, doigt ? 12 : 6) : null
     const apresMenu = !pan && !this.placement && (avale(e) || this.ui.fermerMenus(!!vise && vise.id === this.options))
     if (apresMenu) {
       const continuer = e.button === 0 && !gommeDuStylet && (
@@ -988,7 +1000,7 @@ export class App {
       case 'point': this.placerPoint(m); break
       case 'gomme': this.commencerGomme(m, false); break
       case 'selection': {
-        const f = this.formeSous(m.x, m.y)
+        const f = this.objetSous(m, s)
         // Maj + clic, ou Ctrl + clic (⌘ sur Mac, où Ctrl + clic est un clic
         // droit) : l'objet entre dans la sélection, ou en sort
         const ajout = e.shiftKey || (MAC ? e.metaKey : e.ctrlKey)
@@ -1022,7 +1034,7 @@ export class App {
     const inst = this.instruments.size ? this.instrumentSous(m) : null
     if (inst) { this.prendreInstrument(inst, m); return }
     if (prise) { this.prendrePoignee(prise); return }
-    const f = this.formeSous(m.x, m.y, 12)
+    const f = this.objetSous(m, s, 12)
     if (f && this.selection.has(f.id)) { this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false, doigt: true }; return }
     this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, pointeur: e.pointerId, toucher: true }
   }
@@ -1134,9 +1146,10 @@ export class App {
   }
 
   /** Un simple toucher du doigt « qui déplace » : l'objet touché (à 12 px
-   *  près) devient la sélection, seul ; rien dessous, elle se vide */
-  private toucherObjet(m: P) {
-    const f = this.formeSous(m.x, m.y, 12)
+   *  près, ou par un morceau, voir objetSous) devient la sélection, seul ;
+   *  rien dessous, elle se vide */
+  private toucherObjet(m: P, s: P) {
+    const f = this.objetSous(m, s, 12)
     this.ui.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
     this.selection.clear()
@@ -1215,10 +1228,12 @@ export class App {
     }
 
     if (this.placement && !g) { this.placement.bouge(m); this.zone.style.cursor = 'copy'; return }
+    // Ce qu'un appui de l'outil Sélection prendrait ici (voir objetSous)
+    let vise: Forme | null = null
     if (!g && this.outil === 'selection') {
       // Ce qu'on survole s'éclaire : au pavé tactile, on sait ce qu'on va prendre
-      const f = this.formeSous(m.x, m.y)
-      const id = f && !this.selection.has(f.id) ? f.id : null
+      vise = this.objetSous(m, s)
+      const id = vise && !this.selection.has(vise.id) ? vise.id : null
       if (id !== this.survol) { this.survol = id; this.rendu.survol = id; this.rendu.redessinerDirect() }
     }
     if (!g && this.outil === 'segment') {
@@ -1228,7 +1243,7 @@ export class App {
     if (!g) {
       const inst = this.instruments.size ? this.instrumentSous(m) : null
       this.zone.style.cursor = inst ? (inst.quoi === 'corps' || inst.quoi === 'pointe' ? 'grab' : 'pointer') : this.priseSous(s) ? 'move'
-        : this.outil === 'selection' ? (this.survol || this.formeSous(m.x, m.y) ? 'move' : 'grab') : ''
+        : this.outil === 'selection' ? (vise ? 'move' : 'grab') : ''
       return
     }
     // Le geste n'écoute que le pointeur qui l'a commencé (pas un stylet qui
@@ -1242,7 +1257,10 @@ export class App {
         if (g.quoi !== 'tete' && !glisse) break          // l'arc du compas, lui, se trace tout de suite
         this.geste_instrument(g, m, e.shiftKey)
         break
-      case 'longer': this.geste_longer(g, m); break
+      case 'longer':
+        if (!glisse) break                               // posé contre le bord, pas encore tiré
+        this.geste_longer(g, m)
+        break
       case 'poignee':
         if (!glisse) break                               // un clic, pas encore un glisser
         g.bouge = true
@@ -1251,6 +1269,7 @@ export class App {
         break
       case 'rectangle':
       case 'cercle':
+        if (!glisse) break                               // un appui qui tremble ne tire rien
         this.rendu.apercu = this.figureTiree(g, this.aimanter(m), e.shiftKey)
         this.rendu.redessinerDirect()
         break
@@ -1339,7 +1358,7 @@ export class App {
         // Un simple clic dans le vide (outil Sélection) désélectionne ; un
         // simple toucher du doigt « qui déplace » choisit l'objet touché
         if (glisse) break
-        if (g.toucher) this.toucherObjet(m)
+        if (g.toucher) this.toucherObjet(m, this.ecran(e))
         else if (g.vide && this.selection.size) { this.selection.clear(); this.rendu.redessinerDirect(); this.ui.maj() }
         break
       case 'dessin': {
@@ -1369,7 +1388,8 @@ export class App {
         const f = this.rendu.apercu
         this.rendu.apercu = null; this.rendu.mesure = null
         this.piste.trace(null)
-        if (f?.type === 'polygone' && Math.hypot(f.pts[2], f.pts[3]) * this.cam.z > 3) {
+        // Le segment n'est posé que si le crayon a glissé le long du bord (voir SEUIL_GLISSER)
+        if (glisse && f?.type === 'polygone' && Math.hypot(f.pts[2], f.pts[3]) * this.cam.z > 3) {
           this.tableau.nouveauGeste()
           this.tableau.poser(this.page, f)
         }
@@ -1385,12 +1405,13 @@ export class App {
       case 'cercle': {
         const f = this.figureTiree(g, this.aimanter(m), e.shiftKey)
         this.rendu.apercu = null
-        if (f && (f.type === 'cercle' ? f.r : Math.abs(f.pts[4]) + Math.abs(f.pts[5])) * this.cam.z > 6) this.poserFigure(f, false)
+        // Un appui qui n'a pas glissé (un stylet ou un doigt qui tremble) ne pose rien
+        if (glisse && f && (f.type === 'cercle' ? f.r : Math.abs(f.pts[4]) + Math.abs(f.pts[5])) * this.cam.z > 6) this.poserFigure(f, false)
         this.rendu.redessinerDirect()
         break
       }
       case 'deplacer':
-        if (g.doigt && !glisse) { this.rendu.decalage = { dx: 0, dy: 0 }; this.toucherObjet(m); break }
+        if (g.doigt && !glisse) { this.rendu.decalage = { dx: 0, dy: 0 }; this.toucherObjet(m, this.ecran(e)); break }
         // Maj + clic sur un objet déjà sélectionné : il en sort (glissé, c'est
         // toute la sélection qui a bougé)
         if (g.retirer && !glisse) { this.rendu.decalage = { dx: 0, dy: 0 }; this.selection.delete(g.retirer); this.rendu.redessinerDirect(); break }
@@ -1494,7 +1515,7 @@ export class App {
     }, 'locale')
     // La figure n'est pas sélectionnée : ses sommets n'ont pas à se prendre
     // sous la plume qui continue d'écrire (ses options : double-clic, clic droit)
-    this.ui.message(r.nom + ' — Ctrl+Z pour garder le tracé à main levée')
+    this.ui.message(messageReconnue(r.nom, this.dernierPointeur, CTRL))
   }
 
   /** Stylo posé et immobile un instant : la figure se forme aussitôt,

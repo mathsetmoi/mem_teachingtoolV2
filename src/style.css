@@ -189,7 +189,13 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
   transition: opacity 0.18s, transform 0.18s;
 }
 .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+/* Deux messages à la fois (un ordinaire au-dessus d'un message à action) : un par ligne */
+.toast .ligne { display: block; }
+.toast .ligne + .ligne { margin-top: 8px; }
 .toast.dessus { z-index: 30; }
+/* La séance d'automatismes couvre tout l'écran (barres et menus cachés) : ses
+   messages passent devant elle (F5 bloqué dit comment recharger) */
+body.en-seance .toast { z-index: 41; }
 /* Le bouton d'un message (« Changer ») : seul à recevoir les appuis, et
    seulement quand le message se voit */
 .toast .action {
