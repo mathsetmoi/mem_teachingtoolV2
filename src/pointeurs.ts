@@ -73,6 +73,21 @@ export function doubleToucher(premier: Toucher | null, x: number, y: number, t: 
   return dt >= 0 && dt < DOUBLE_TOUCHER.ms && Math.hypot(x - premier.x, y - premier.y) < DOUBLE_TOUCHER.px
 }
 
+/** Au Stylo (et au Surligneur), un simple toucher sur une figure ou une
+ *  formule peut être le premier d'un double-clic, qui ouvre ses options. Le
+ *  second se pose moins de 300 ms après le lever du premier, dans le rayon du
+ *  double-clic du système (quelques pixels à la souris et au stylet, un peu
+ *  plus au doigt), et se lève en moins de 250 ms sans avoir glissé. Plus
+ *  large, deux points qu'on écrit serrés (un « : », un tréma, sur une figure
+ *  coloriée ou une formule) seraient pris pour un double-clic. */
+export const DOUBLE_CLIC_PLUME = { ms: 300, duree: 250, px: { mouse: 4, pen: 5, touch: 14 } as Record<TypePointeur, number> }
+
+/** Le toucher en (x, y), au pointeur p, tombe-t-il assez près du premier
+ *  pour en faire un double-clic ? (en pixels d'écran) */
+export function procheDuPremier(premier: { x: number; y: number }, x: number, y: number, p: TypePointeur): boolean {
+  return Math.hypot(x - premier.x, y - premier.y) < DOUBLE_CLIC_PLUME.px[p]
+}
+
 /** Ce qu'on dit, la première fois qu'on prend un objet, du geste qui ouvre
  *  ses options : il dépend du pointeur. Au doigt, le double appui (jamais
  *  « clic droit », ni un appui long qui n'existe pas). */

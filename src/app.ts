@@ -24,7 +24,7 @@ import { boiteDe } from './revoir/bobine'
 import type { Boite } from './revoir/bobine'
 import { choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, reglages } from './reglages'
 import type { Doigt } from './reglages'
-import { DOUBLE_TOUCHER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, typePointeur } from './pointeurs'
+import { DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from './pointeurs'
 import type { Depart, Toucher, TypePointeur } from './pointeurs'
 import { CTRL, MAC, lireMolette } from './navigateur'
 import { avale } from './menus'
@@ -72,13 +72,15 @@ export interface Interface {
 
 type Geste =
   // pointeur : le seul qui la déplace (le doigt resté après un pincement) ;
-  // toucher : le doigt « qui déplace » ; levé sans avoir glissé, il choisit l'objet touché
+  // toucher : le doigt « qui déplace » ; levé sans avoir glissé, il fait le
+  // clic attendu (voir placement) ou choisit l'objet touché
   | { type: 'pan'; dernierX: number; dernierY: number; vide?: boolean; pointeur?: number; toucher?: boolean }
   | { type: 'pinch'; dist: number; cx: number; cy: number }
   // apresMenu : l'appui qui a commencé le trait fermait un menu ; levé sans
   // avoir glissé, il ne pose rien. surObjet : il est parti d'une figure ou
-  // d'une formule (un double-clic peut suivre, voir mettreEnAttente)
-  | { type: 'dessin'; pointeur: number; apresMenu?: boolean; surObjet?: string }
+  // d'une formule (un double-clic peut suivre, voir mettreEnAttente).
+  // second : il est peut-être le second toucher de ce double-clic (voir secondClic)
+  | { type: 'dessin'; pointeur: number; apresMenu?: boolean; surObjet?: string; second?: boolean }
   | { type: 'segment'; x: number; y: number }
   | { type: 'rectangle' | 'cercle'; x: number; y: number }
   | { type: 'poignee'; prise: Prise; f: Figure; bouge: boolean }
@@ -146,11 +148,12 @@ export class App {
   private minuterieForme = 0
   /** Le point d'encre d'un simple toucher du Stylo sur un objet : il attend
    *  300 ms un second toucher (le double-clic, qui ouvre les options de
-   *  l'objet) avant d'être posé, et reste dessiné en attendant */
-  private pointEnAttente: { trait: Trait; ms: number[]; page: string; objet: string; x: number; y: number;
-    dessin: TraitDirect; minuterie: number } | null = null
-  /** L'heure du dernier double appui traité au pointerdown : le dblclick du
-   *  navigateur qui le suit ne refait rien */
+   *  l'objet) avant d'être posé, et reste dessiné en attendant. heure : celle
+   *  de son lever (Date.now()), que garde l'étape du film. */
+  private pointEnAttente: { trait: Trait; ms: number[]; heure: number; page: string; objet: string; x: number; y: number;
+    minuterie: number } | null = null
+  /** L'heure du dernier double appui traité : le dblclick du navigateur qui
+   *  le suit ne refait rien */
   private doubleTraite = -Infinity
   /** Le clic qui suit un double appui traité est encore à venir (voir brancherGestes) */
   private clicFantome = false
@@ -776,10 +779,14 @@ export class App {
     })
     // Double-clic : les options de l'objet (une formule, elle, se modifie).
     // Pas sur un morceau choisi (son menu vient de s'ouvrir), ni juste après
-    // un double appui déjà traité (au Stylo, voir doubleAppui ; au doigt,
-    // voir secondToucher)
+    // un double appui déjà traité (au Stylo, voir doubleClicPlume ; au
+    // doigt, voir secondToucher)
     z.addEventListener('dblclick', e => {
       if (this.enLecture || this.partie || performance.now() - this.doubleTraite < 500) return
+      // Au Stylo et au Surligneur, le double-clic est celui de la plume, plus
+      // serré que celui du navigateur (voir secondClic) : deux points écrits
+      // tout près sur une formule n'ouvrent pas son éditeur
+      if (this.outil === 'stylo' || this.outil === 'surligneur') return
       // Au doigt, l'outil Sélection et le doigt qui déplace ont leur double
       // appui (secondToucher) : la même règle sur l'iPad et ailleurs
       if (this.dernierPointeur === 'touch' && (this.outil === 'selection' || this.doigtDeplace)) return
@@ -910,13 +917,10 @@ export class App {
       if (!continuer) return
     }
 
-    // Le second toucher d'un double-clic au Stylo sur un objet : le point du
-    // premier s'en va et l'objet ouvre ses options. Tout autre appui pose ce
-    // point d'abord, à sa place dans l'historique.
-    if (this.pointEnAttente) {
-      if (!pan && this.doubleAppui(e, s)) return
-      this.viderPointEnAttente()
-    }
+    // Le point d'un simple toucher au Stylo sur un objet attend peut-être ce
+    // second toucher (le double-clic, voir secondClic). Tout autre appui le
+    // pose d'abord, à sa place dans l'historique.
+    if (this.pointEnAttente && (pan || !!apresMenu || !this.secondClic(e, s, doigt || gommeDuStylet))) this.viderPointEnAttente()
     // Le second toucher d'un double appui au doigt (outil Sélection, ou doigt
     // qui déplace) : noté ici, il ouvrira les options de l'objet à son lever
     this.secondToucher(e, s, m)
@@ -925,7 +929,11 @@ export class App {
     if (pan) { this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y }; return }
     if (e.button !== 0 && !gommeDuStylet) return
 
-    if (this.placement) { const p = this.placement; this.placement = null; p.clic(m); return }
+    // Un clic attendu (où commencer une construction, Désigner, Tracer un axe
+    // ou un centre) : c'est celui-ci. Au doigt « qui déplace », c'est son
+    // lever, s'il n'a pas glissé (voir basDoigt) : glissé, il déplace la vue
+    // pour chercher la place.
+    if (this.placement && !doigt) { const p = this.placement; this.placement = null; p.clic(m); return }
     this.tableau.nouveauGeste()
     // Le bout gomme passe avant tout le reste : le bord d'un instrument, les
     // instruments, les sommets. L'outil en main ne change pas.
@@ -971,7 +979,7 @@ export class App {
         // dessus) : un simple toucher y attendra peut-être un second (le
         // double-clic qui ouvre ses options)
         const surObjet = this.formeSous(m.x, m.y, 6, f => f.type === 'polygone' || f.type === 'cercle' || f.type === 'formule')?.id
-        this.geste = { type: 'dessin', pointeur: e.pointerId, apresMenu: apresMenu || undefined, surObjet }
+        this.geste = { type: 'dessin', pointeur: e.pointerId, apresMenu: apresMenu || undefined, surObjet, second: !!this.pointEnAttente || undefined }
         this.dernierMouvement = performance.now()
         this.immobilite = new Immobilite(m)
         this.attendreImmobilite()
@@ -1029,8 +1037,10 @@ export class App {
    *  (prise, lu par bas()), ou ce qui est déjà sélectionné pour le déplacer ;
    *  ailleurs, même sur un objet, il déplace la vue (un doigt qui traverse une
    *  page chargée n'emporte pas un trait). Levé sans avoir glissé, il choisit
-   *  l'objet touché (voir toucherObjet). */
+   *  l'objet touché (voir toucherObjet). Quand un clic est attendu (voir
+   *  placement), il déplace la vue, ou, levé sans avoir glissé, il fait ce clic. */
   private basDoigt(e: PointerEvent, s: P, m: P, prise: { prise: Prise; f: Figure } | null) {
+    if (this.placement) { this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, pointeur: e.pointerId, toucher: true }; return }
     const inst = this.instruments.size ? this.instrumentSous(m) : null
     if (inst) { this.prendreInstrument(inst, m); return }
     if (prise) { this.prendrePoignee(prise); return }
@@ -1062,35 +1072,53 @@ export class App {
 
   // ---------- Le double-clic au Stylo ----------
   /** Un simple toucher du Stylo (ou du Surligneur) sur une figure ou une
-   *  formule : son point d'encre attend 300 ms avant d'être posé. Un second
-   *  toucher tout près en fait un double-clic (voir doubleAppui) ; sinon il
-   *  se pose à l'échéance, ou dès qu'autre chose arrive (viderPointEnAttente).
-   *  Son rythme, pour le film, est celui du toucher : compté jusqu'au lever. */
+   *  formule : son point d'encre attend 300 ms avant d'être posé (dessiné en
+   *  attendant). Un second toucher tout près en fait peut-être un double-clic
+   *  (voir secondClic) ; sinon il se pose à l'échéance, ou dès qu'autre chose
+   *  arrive (viderPointEnAttente). Son rythme, pour le film, est celui du
+   *  toucher, compté jusqu'au lever, et son heure celle du lever. */
   private mettreEnAttente(objet: string) {
     const t = this.rendu.monTrait, heures = this.heuresDuTrait
     this.heuresDuTrait = []
+    this.rendu.monTrait = null
     const trait = t ? this.traitDe(t) : null
-    if (!t || !trait) { this.rendu.monTrait = null; this.rendu.redessinerDirect(); return }
+    if (!t || !trait) { this.rendu.redessinerDirect(); return }
     const ms = heures.length * 3 === t.pts.length ? tempsDesPoints(heures, performance.now()) : []
-    this.pointEnAttente = { trait, ms, page: this.page, objet, x: this.depart.x, y: this.depart.y, dessin: t,
-      minuterie: window.setTimeout(() => this.viderPointEnAttente(), 300) }
+    this.rendu.enAttente = t
+    this.pointEnAttente = { trait, ms, heure: Date.now(), page: this.page, objet, x: this.depart.x, y: this.depart.y,
+      minuterie: window.setTimeout(() => this.viderPointEnAttente(), DOUBLE_CLIC_PLUME.ms) }
+    this.rendu.redessinerDirect()
   }
 
-  /** Le second appui d'un double-clic : à moins de 10 px du premier (35 au
-   *  doigt), avant que son point ne soit posé. Le point s'en va, l'appui ne
-   *  fait rien d'autre, et l'objet ouvre ses options (une formule se modifie). */
-  private doubleAppui(e: PointerEvent, s: P): boolean {
+  /** Un appui pendant que le point du premier toucher attend : est-ce peut-être
+   *  le second toucher d'un double-clic ? Il faut le bouton principal, la même
+   *  page, une plume qui écrit (ni le doigt « qui déplace », ni le bout gomme,
+   *  ni un clic attendu) et le rayon du double-clic (voir DOUBLE_CLIC_PLUME).
+   *  Alors le point attend encore, le temps de ce toucher : levé vite et sans
+   *  avoir glissé, c'est le double-clic (voir haut) ; sinon les deux points
+   *  sont posés, l'un après l'autre. */
+  private secondClic(e: PointerEvent, s: P, autre: boolean): boolean {
     const a = this.pointEnAttente
-    if (!a || e.button !== 0 || a.page !== this.page) return false
-    if (Math.hypot(s.x - a.x, s.y - a.y) >= (e.pointerType === 'touch' ? 35 : 10)) return false
+    if (!a || autre || e.button !== 0 || a.page !== this.page || this.placement) return false
+    if (this.outil !== 'stylo' && this.outil !== 'surligneur') return false
+    if (!procheDuPremier(a, s.x, s.y, typePointeur(e.pointerType))) return false
+    clearTimeout(a.minuterie)
+    a.minuterie = window.setTimeout(() => this.viderPointEnAttente(), DOUBLE_CLIC_PLUME.duree)
+    return true
+  }
+
+  /** Le double-clic au Stylo, au lever de son second toucher : ni l'un ni
+   *  l'autre point ne se pose, et l'objet ouvre ses options (une formule se
+   *  modifie) */
+  private doubleClicPlume() {
+    const a = this.pointEnAttente
+    if (!a) return
     clearTimeout(a.minuterie)
     this.pointEnAttente = null
-    if (this.rendu.monTrait === a.dessin) { this.rendu.monTrait = null; this.rendu.redessinerDirect() }
-    this.doubleTraite = performance.now(); this.clicFantome = true
-    const f = this.forme(a.objet)
-    if (f?.type === 'formule') this.editerFormule(f)
-    else if (f) this.ouvrirOptions(f)
-    return true
+    this.rendu.enAttente = null
+    this.rendu.monTrait = null; this.heuresDuTrait = []
+    this.rendu.redessinerDirect()
+    this.ouvrirParDouble(a.objet)
   }
 
   /** Le second toucher d'un double appui au doigt : moins de 300 ms après le
@@ -1124,7 +1152,7 @@ export class App {
   /** Un simple toucher du doigt sur un objet, bref (moins de 300 ms) et levé
    *  sans avoir glissé : un second peut suivre (voir secondToucher) */
   private noterToucher(e: PointerEvent, g: Geste, glisse: boolean, m: P) {
-    if (e.pointerType !== 'touch' || glisse || (this.outil !== 'selection' && !this.doigtDeplace)) return
+    if (e.pointerType !== 'touch' || glisse || this.placement || (this.outil !== 'selection' && !this.doigtDeplace)) return
     if (g.type !== 'deplacer' && !(g.type === 'pan' && g.toucher)) return
     if (performance.now() - this.depart.t >= DOUBLE_TOUCHER.ms) return
     const f = this.formeSous(m.x, m.y, 12)
@@ -1133,15 +1161,18 @@ export class App {
     this.toucherPrecedent = { x: s.x, y: s.y, t: performance.now(), objet: f.id, page: this.page }
   }
 
-  /** Le point d'encre en attente se pose maintenant, sur sa page */
+  /** Le point d'encre en attente se pose maintenant, sur sa page, à l'heure
+   *  de son lever. Il fait sa propre étape d'annulation : ce qui suit (le
+   *  trait du second toucher, posé aussitôt) en fait une autre. */
   private viderPointEnAttente() {
     const a = this.pointEnAttente
     if (!a) return
     clearTimeout(a.minuterie)
     this.pointEnAttente = null
-    if (this.rendu.monTrait === a.dessin) this.rendu.monTrait = null
+    this.rendu.enAttente = null
     this.tableau.nouveauGeste()
-    this.tableau.poserTrace(a.page, a.trait, a.ms)
+    this.tableau.poserTrace(a.page, a.trait, a.ms, a.heure)
+    this.tableau.nouveauGeste()
     this.rendu.redessinerDirect()
   }
 
@@ -1356,17 +1387,24 @@ export class App {
     switch (g.type) {
       case 'pan':
         // Un simple clic dans le vide (outil Sélection) désélectionne ; un
-        // simple toucher du doigt « qui déplace » choisit l'objet touché
+        // simple toucher du doigt « qui déplace » fait le clic attendu (voir
+        // placement), ou choisit l'objet touché
         if (glisse) break
-        if (g.toucher) this.toucherObjet(m, this.ecran(e))
+        if (g.toucher && this.placement) { const p = this.placement; this.placement = null; p.clic(m) }
+        else if (g.toucher) this.toucherObjet(m, this.ecran(e))
         else if (g.vide && this.selection.size) { this.selection.clear(); this.rendu.redessinerDirect(); this.ui.maj() }
         break
       case 'dessin': {
         clearTimeout(this.minuterieForme)
         // L'appui qui fermait un menu, levé sans avoir glissé : rien n'est posé
         if (g.apresMenu && !glisse) { this.rendu.monTrait = null; this.heuresDuTrait = []; this.rendu.redessinerDirect(); break }
+        const bref = !glisse && !annule && performance.now() - this.depart.t < DOUBLE_CLIC_PLUME.duree
+        // Le second toucher d'un double-clic, bref et levé sans avoir glissé :
+        // les options de l'objet. Sinon, le point du premier se pose d'abord.
+        if (g.second && bref && this.pointEnAttente) { this.doubleClicPlume(); break }
+        if (g.second) this.viderPointEnAttente()
         // Un simple toucher sur un objet : un double-clic peut suivre
-        if (g.surObjet && !glisse && !annule && performance.now() - this.depart.t < 250) { this.mettreEnAttente(g.surObjet); break }
+        if (g.surObjet && bref) { this.mettreEnAttente(g.surObjet); break }
         this.validerTrait(false)
         break
       }

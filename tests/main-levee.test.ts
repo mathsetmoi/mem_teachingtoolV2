@@ -130,6 +130,32 @@ describe('au tableau : l\'étape du trait note son rythme', () => {
   })
 })
 
+describe('au tableau : le point qui a attendu un double-clic', () => {
+  it('son étape garde l\'heure de son lever, pas celle où il est enfin posé', async () => {
+    const { t, page } = await nouveauTableau()
+    const leve = Date.now()
+    await attendre(300)                                                  // l'attente du double-clic
+    const a = trait(0, 0, 1), ms = [12]
+    t.nouveauGeste(); t.poserTrace(page, a, ms, leve); await attendre(1000)
+    t.nouveauGeste(); t.poserTrace(page, trait(5, 5, 3), rythme(3)); await attendre(1000)    // sans heure : celle où il est posé
+    const film = t.film.toArray()
+    expect(film[1].t).toBe(leve)
+    expect(film[1].ms).toEqual(ms)
+    expect(film[2].t).toBe(leve + 1300)
+  })
+
+  it('jamais avant l\'étape qui le précède dans le film', async () => {
+    const { t, page } = await nouveauTableau()
+    const leve = Date.now()
+    await attendre(200)
+    t.nouveauGeste(); t.poser(page, trait(9, 9)); await attendre(100)   // posée entre le lever et l'échéance
+    t.nouveauGeste(); t.poserTrace(page, trait(0, 0, 1), [12], leve); await attendre(1000)
+    const film = t.film.toArray()
+    expect(film[2].t).toBe(film[1].t)
+    expect(film[2].t).toBe(leve + 200)
+  })
+})
+
 describe('au tableau : le stylet immobile', () => {
   /** Ce que fait le tableau de chaque point du stylet : il ignore ceux à moins
    *  de 0,6 px d'écran du dernier gardé, et relance la minuterie « stylo

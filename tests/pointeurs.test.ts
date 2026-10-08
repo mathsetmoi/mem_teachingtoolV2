@@ -2,7 +2,7 @@
 // paume, quand le stylet écrit sur l'écran lui-même, et le rôle du doigt
 // (un réglage de cet appareil, gardé dans le navigateur).
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DOUBLE_TOUCHER, SEUIL_GLISSER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, typePointeur } from '../src/pointeurs'
+import { DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, SEUIL_GLISSER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from '../src/pointeurs'
 import { choisirDoigt, leDoigtDeplace, lire, noterStyletDirect, reglages } from '../src/reglages'
 
 describe('le seuil du glisser', () => {
@@ -98,6 +98,27 @@ describe('le double appui au doigt', () => {
     expect(doubleToucher(premier, 225, 325, 1100)).toBe(false)     // 35,4 px en diagonale
     expect(doubleToucher(null, 200, 300, 1000)).toBe(false)
     expect(doubleToucher(premier, 200, 300, 900)).toBe(false)       // une horloge qui recule
+  })
+})
+
+describe('le double-clic au Stylo, sur une figure ou une formule', () => {
+  const premier = { x: 200, y: 300 }
+
+  it('dans le rayon du double-clic du système : 4 px à la souris, 5 au stylet, 14 au doigt', () => {
+    expect(DOUBLE_CLIC_PLUME).toEqual({ ms: 300, duree: 250, px: { mouse: 4, pen: 5, touch: 14 } })
+    expect(procheDuPremier(premier, 200, 300, 'mouse')).toBe(true)
+    expect(procheDuPremier(premier, 202, 302, 'mouse')).toBe(true)      // 2,8 px
+    expect(procheDuPremier(premier, 204, 300, 'mouse')).toBe(false)
+    expect(procheDuPremier(premier, 203, 303, 'pen')).toBe(true)        // 4,2 px
+    expect(procheDuPremier(premier, 210, 302, 'touch')).toBe(true)      // 10,2 px
+  })
+
+  it('deux points qu\'on écrit serrés (un « : », un tréma) ne sont jamais un double-clic', () => {
+    expect(procheDuPremier(premier, 200, 308, 'pen')).toBe(false)       // « : » à 8 px
+    expect(procheDuPremier(premier, 207, 300, 'pen')).toBe(false)       // deux points à 7 px sur une formule
+    expect(procheDuPremier(premier, 200, 308, 'mouse')).toBe(false)
+    expect(procheDuPremier(premier, 220, 302, 'touch')).toBe(false)     // au doigt, à 20 px
+    expect(procheDuPremier(premier, 214, 300, 'touch')).toBe(false)
   })
 })
 

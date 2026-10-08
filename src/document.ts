@@ -52,6 +52,11 @@ export class Tableau {
   private local: IndexeddbPersistence | null
   /** Les temps du trait que pose la transaction en cours (voir poserTrace) */
   private tempsDuTrace: number[] | null = null
+  /** L'heure du lever de ce trait, s'il a attendu avant d'être posé */
+  private heureDuTrace: number | null = null
+  /** L'heure de la dernière étape notée : celle d'un trait qui a attendu ne
+   *  passe jamais avant elle */
+  private derniereHeure = 0
 
   /** nomLocal : la base du navigateur où le tableau s'enregistre (null : nulle part, pour les tests) */
   constructor(nomLocal: string | null) {
@@ -72,8 +77,11 @@ export class Tableau {
     this.doc.on('afterTransaction', (tr: Y.Transaction) => {
       if (tr.origin === ORIGINE_FILM || (this.local && tr.origin === this.local)) return
       if (!tr.changedParentTypes.size || ![...tr.changedParentTypes.keys()].some(t => this.dansLesPages(t))) return
-      const etape: Etape = { t: Date.now(), page: this.pageVue, s: Y.encodeSnapshot(Y.snapshot(this.doc)) }
+      const t = this.heureDuTrace !== null ? Math.max(this.heureDuTrace, this.derniereHeure) : Date.now()
+      this.derniereHeure = t
+      const etape: Etape = { t, page: this.pageVue, s: Y.encodeSnapshot(Y.snapshot(this.doc)) }
       if (this.tempsDuTrace) { etape.ms = this.tempsDuTrace; this.tempsDuTrace = null }
+      this.heureDuTrace = null
       queueMicrotask(() => this.doc.transact(() => this.film.push([etape]), ORIGINE_FILM))
     })
   }
@@ -252,10 +260,14 @@ export class Tableau {
   /** Pose un trait tracé à la main. L'étape du film qu'il fait naître note le
    *  temps passé sur chacun de ses points (ms, un par point) : le replay le
    *  retracera au rythme de la main. Le trait, lui, reste un trait comme les
-   *  autres : une copie ou un Ctrl+Z ne reprend pas ce rythme. */
-  poserTrace(page: string, trait: Trait, ms: number[]) {
+   *  autres : une copie ou un Ctrl+Z ne reprend pas ce rythme. heure : celle
+   *  du lever (Date.now()), quand le trait a attendu avant d'être posé (le
+   *  point d'un simple toucher, qui attend un éventuel double-clic) ; sans
+   *  elle, l'étape prend l'heure où il est posé. */
+  poserTrace(page: string, trait: Trait, ms: number[], heure?: number) {
     this.tempsDuTrace = ms.length && ms.length === trait.pts.length / 3 ? ms : null
-    try { this.poser(page, trait) } finally { this.tempsDuTrace = null }
+    this.heureDuTrace = heure ?? null
+    try { this.poser(page, trait) } finally { this.tempsDuTrace = null; this.heureDuTrace = null }
   }
 
   modifier(page: string, changements: { id: string; patch: Partial<Forme> }[]) {

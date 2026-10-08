@@ -99,6 +99,9 @@ export class Rendu {
   selection = new Set<string>()
   decalage = { dx: 0, dy: 0 }                     // déplacement en cours de la sélection
   monTrait: TraitDirect | null = null
+  /** Le point d'un simple toucher au Stylo sur un objet, qui attend un
+   *  éventuel second toucher (le double-clic) avant d'être posé */
+  enAttente: TraitDirect | null = null
   monSegment: { x1: number; y1: number; x2: number; y2: number; couleur: string; taille: number } | null = null
   cadreSelection: { x: number; y: number; l: number; h: number } | null = null
   gomme: { x: number; y: number; r: number } | null = null
@@ -445,6 +448,7 @@ export class Rendu {
     c.clearRect(0, 0, this.direct.width, this.direct.height)
     c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
 
+    if (this.enAttente) this.dessinerDirect(c, this.enAttente)
     if (this.monTrait) this.dessinerDirect(c, this.monTrait)
 
     if (this.fantomes.length) {

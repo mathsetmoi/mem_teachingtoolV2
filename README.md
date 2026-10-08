@@ -57,7 +57,11 @@ le rappelle dans les mots du pointeur (jamais « clic droit » au doigt).
 Au Stylo aussi, un double-clic sur une figure ou une formule ouvre
 ses options, sans y laisser de point : le point d'un simple toucher sur un
 objet ne s'écrit qu'un tiers de seconde plus tard, quand on sait qu'aucun
-second toucher ne suit. Le panneau se ferme quand on choisit autre chose ou
+second toucher ne suit (le film garde l'heure où il a été écrit). Ce
+double-clic est serré comme celui du système : le second toucher retombe à
+moins de 4 px à la souris, 5 au stylet, 14 au doigt, et se lève vite sans
+avoir glissé. Deux points qu'on écrit tout près (un « : », un tréma, sur une
+figure coloriée ou une formule) restent deux points. Le panneau se ferme quand on choisit autre chose ou
 qu'on appuie ailleurs (il reste quand on déplace l'objet lui-même) :
 
 - *Sommets* : points et noms (A, B, C… libres sur la page), modifiables ;
@@ -641,7 +645,10 @@ barre de gauche (sur un appareil tactile seulement ; sa marque dit le choix) :
   même parti d'un objet (traverser une page chargée n'emporte rien), et un
   simple toucher choisit l'objet touché, qu'on glisse ensuite pour le déplacer ;
   il prend aussi les instruments et les sommets de la figure sélectionnée, et
-  ne laisse jamais d'encre ;
+  ne laisse jamais d'encre. Quand un clic est attendu sur la page (où commencer
+  une construction, *Désigner*, *Tracer un axe* ou un centre), le doigt qui
+  glisse déplace la vue pour chercher la place, et un toucher bref fait ce
+  clic ;
 - *Auto* (au départ) : le doigt dessine jusqu'au premier stylet posé sur
   l'écran lui-même (iPad, Surface, tablette Android), puis il déplace. Un
   message le dit, avec un bouton « Changer ». Une tablette graphique branchée à
