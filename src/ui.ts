@@ -18,7 +18,7 @@ import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
 import type { Menu } from './menus'
-import { basculerMenu, fermerMenu, placerMenu } from './menus'
+import { basculerMenu, fermerMenu, installerMenus, placerMenu } from './menus'
 import { choisirMolette, reglages } from './reglages'
 import type { Molette } from './reglages'
 import { CTRL } from './navigateur'
@@ -167,6 +167,8 @@ export class UI implements Interface {
   private partie: { id: string; prise: Prise } | null = null
 
   constructor(private app: App, private racine: HTMLElement) {
+    // Les menus d'abord : leur Échap passe avant celui des panneaux (voir menus.ts)
+    installerMenus()
     this.construire()
     app.ui = this
     this.maj()

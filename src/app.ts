@@ -25,7 +25,7 @@ import type { Boite } from './revoir/bobine'
 import { reglages } from './reglages'
 import { lireMolette } from './navigateur'
 import type { Vue } from './session'
-import { ecrireSession, lireSession } from './session'
+import { ecrireSession, lireSession, oublierSession } from './session'
 
 export const COULEURS = [
   { nom: 'Noir', valeur: '#1b2230' },
@@ -620,6 +620,15 @@ export class App {
     if (!this.page) return
     if (this.rendu.l > 0) this.vues.set(this.page, this.vueActuelle())
     ecrireSession(this.page, this.vues, this.pages)
+  }
+
+  /** Un autre tableau s'ouvre (un fichier) : les vues gardées ne sont plus les
+   *  siennes. Celles qu'on tient en mémoire partent aussi, sinon la prochaine
+   *  écriture les remettrait dans la session. */
+  oublierVues() {
+    clearTimeout(this.minuterieSession); this.minuterieSession = 0
+    this.vues.clear(); this.pageSession = null
+    oublierSession()
   }
 
   private vueChangee() {

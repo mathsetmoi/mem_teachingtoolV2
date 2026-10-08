@@ -532,13 +532,13 @@ page garde sa vue (une nouvelle page s'ouvre à 100 %, sur l'origine) ; la page
 courante et la vue de chaque page sont retrouvées au rechargement — notées dans
 ce navigateur, hors du document : ni un fichier, ni un replay ne les emportent.
 
-**Échap** annule ce qui est en cours (menu,
-sélection, polygone) ; s'il n'y a rien, il passe à l'outil Sélection, et un
-second Échap rend l'outil d'avant. Avec la Sélection, glisser un objet le
-déplace, glisser dans le vide déplace le tableau, Maj + glisser encadre ; l'objet
-survolé s'éclaire d'un halo bleu qui suit sa forme, avant le clic ; une droite
-ou une demi-droite sélectionnée se surligne sur toute sa longueur visible ; les flèches poussent la sélection d'1 mm
-(1 cm avec Maj).
+**Échap** annule ce qui est en cours (menu, sélection, polygone) ; s'il n'y a
+rien, il passe à l'outil Sélection, et un second Échap rend l'outil d'avant.
+Avec la Sélection, glisser un objet le déplace, glisser dans le vide déplace le
+tableau, Maj + glisser encadre ; l'objet survolé s'éclaire d'un halo bleu qui
+suit sa forme, avant le clic ; une droite ou une demi-droite sélectionnée se
+surligne sur toute sa longueur visible ; les flèches poussent la sélection
+d'1 mm (1 cm avec Maj).
 
 Au doigt : deux doigts pour zoomer et déplacer. Dès qu'un stylet a servi, le doigt
 ne dessine plus (la paume posée sur l'écran ne laisse pas de traces).
@@ -593,6 +593,10 @@ cours, qui fait la latence ressentie au stylet.
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
 | `src/ui.ts` | Barres d'outils, panneau d'options, éditeur de formules |
+| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page ; la molette |
+| `src/menus.ts` | Les petits menus flottants (un seul ouvert, Échap, un appui ailleurs) |
+| `src/reglages.ts` | Les réglages de cet appareil (la molette…), hors du document |
+| `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
 
 Toutes les briques sont sous licence MIT (Yjs, y-indexeddb,
 perfect-freehand, KaTeX, Vite) : aucune clé de licence, aucun filigrane, et rien

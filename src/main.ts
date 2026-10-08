@@ -17,7 +17,7 @@ async function demarrer() {
   installerGardes(app)
   zone.dataset.outil = app.outil
   // Pour les tests automatiques, en développement seulement
-  if (import.meta.env.DEV) Object.assign(window, { __app: app, __parties: (await import('./instruments')).partiesDuCompas, __construction: await import('./construction'), __auto: await import('./automatismes'), __katex: (await import('katex')).default })
+  if (import.meta.env.DEV) Object.assign(window, { __app: app, __parties: (await import('./instruments')).partiesDuCompas, __construction: await import('./construction'), __auto: await import('./automatismes'), __katex: (await import('katex')).default, __menus: await import('./menus') })
 
   await tableau.charger()
   // La page qu'on regardait avant de recharger, si elle existe encore

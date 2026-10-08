@@ -2,9 +2,10 @@
 // LES PETITS MENUS FLOTTANTS
 // Un menu s'ouvre sous (ou au-dessus de) son bouton : celui du zoom,
 // et d'autres à venir. Un seul est ouvert à la fois : en ouvrir un ferme
-// l'autre. Un appui ailleurs le ferme, Échap aussi ; cet appui-là ne doit
-// rien faire d'autre (pas de point d'encre posé en fermant un menu) :
-// « avale » le dit à qui reçoit l'appui ensuite.
+// l'autre. Un appui ailleurs le ferme, Échap aussi, et le focus qui part
+// ailleurs (Tab, une fenêtre qui s'ouvre) ; cet appui-là ne doit rien
+// faire d'autre (pas de point d'encre posé en fermant un menu) : « avale »
+// le dit à qui reçoit l'appui ensuite.
 // Le balisage est celui des menus du système : role=menu ; des entrées
 // <button class=menu-item role=menuitem|menuitemradio aria-checked>,
 // leur raccourci à droite dans <span class=touche>, une aide dessous
@@ -18,33 +19,51 @@ let ouvert: Menu | null = null
 let fermeur: { pointerId: number; timeStamp: number } | null = null
 let installe = false
 
-function installer() {
-  if (installe) return
+/** Les écouteurs communs à tous les menus. L'interface les pose au démarrage :
+ *  Échap doit passer AVANT ceux que le programme de construction, la revue
+ *  ou la séance posent plus tard sur window, en capture (même cible : c'est
+ *  l'ordre d'inscription qui compte). Sinon, Échap fermerait le programme de
+ *  construction et laisserait le menu ouvert. */
+export function installerMenus() {
+  if (installe || typeof window === 'undefined') return
   installe = true
   // En capture, sur le document : avant la zone d'écriture et les boutons
   document.addEventListener('pointerdown', e => {
     if (!ouvert) return
     const cible = e.target as Node
     if (ouvert.el.contains(cible) || ouvert.bouton.contains(cible)) return
-    fermerMenu()
+    fermer(false)
     fermeur = { pointerId: e.pointerId, timeStamp: e.timeStamp }
   }, true)
-  // Échap ferme le menu, et seulement le menu : l'outil en main ne change pas
-  document.addEventListener('keydown', e => {
+  // Échap ferme le menu, et seulement le menu : l'outil en main ne change pas.
+  // stopImmediatePropagation : les autres écouteurs de window ne l'entendent pas
+  window.addEventListener('keydown', e => {
     if (e.key !== 'Escape' || !ouvert) return
-    const m = ouvert, dedans = m.el.contains(document.activeElement)
-    if (fermerMenu()) {
-      e.preventDefault(); e.stopPropagation()
-      if (dedans) m.bouton.focus()
-    }
+    fermerMenu()
+    e.preventDefault(); e.stopImmediatePropagation()
   }, true)
+  // Le focus part ailleurs (Tab, une fenêtre qui s'ouvre) : le menu se ferme
+  document.addEventListener('focusin', e => {
+    const cible = e.target as Node
+    if (ouvert && !ouvert.el.contains(cible) && !ouvert.bouton.contains(cible)) fermer(false)
+  })
+  // La fenêtre change de taille (on tourne la tablette) : il ne serait plus
+  // collé à son bouton
+  window.addEventListener('resize', () => fermer(false))
 }
 
-/** Les flèches passent d'une entrée à l'autre (et ne déplacent pas la vue) */
+/** Les flèches passent d'une entrée à l'autre ; ni elles ni Espace ne vont
+ *  jusqu'au tableau (← → y déplaceraient la vue, Espace y est « Espace +
+ *  glisser » et n'activerait plus l'entrée). */
 function brancherClavier(el: HTMLElement) {
   if (el.dataset.menuClavier) return
   el.dataset.menuClavier = 'oui'
   el.addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.stopPropagation()
+      if (e.key !== ' ') e.preventDefault()
+      return
+    }
     const sens = ({ ArrowDown: 1, ArrowUp: -1, Home: -Infinity, End: Infinity } as Record<string, number>)[e.key]
     if (!sens) return
     e.preventDefault(); e.stopPropagation()
@@ -58,8 +77,8 @@ function brancherClavier(el: HTMLElement) {
 }
 
 export function ouvrirMenu(m: Menu) {
-  installer()
-  if (ouvert && ouvert !== m) fermerMenu()
+  installerMenus()
+  if (ouvert && ouvert !== m) fermer(false)
   ouvert = m
   brancherClavier(m.el)
   m.el.hidden = false
@@ -71,13 +90,18 @@ export function basculerMenu(m: Menu) {
   else ouvrirMenu(m)
 }
 
-/** Ferme le menu ouvert ; faux s'il n'y en avait pas */
-export function fermerMenu(): boolean {
+/** Ferme le menu ouvert ; faux s'il n'y en avait pas. Le focus qui était
+ *  dans le menu (on l'avait ouvert au clavier) revient à son bouton. */
+export function fermerMenu(): boolean { return fermer(true) }
+
+function fermer(rendreFocus: boolean): boolean {
   const m = ouvert
   if (!m) return false
+  const dedans = rendreFocus && m.el.contains(document.activeElement)
   ouvert = null
   m.el.hidden = true
   m.bouton.setAttribute('aria-expanded', 'false')
+  if (dedans) m.bouton.focus()
   m.fermer?.()
   return true
 }
