@@ -1,7 +1,8 @@
 // =============================================================
 // LES PETITS MENUS FLOTTANTS
-// Un menu s'ouvre sous (ou au-dessus de) son bouton : celui du zoom,
-// et d'autres à venir. Un seul est ouvert à la fois : en ouvrir un ferme
+// Un menu s'ouvre sous (ou au-dessus de) son bouton : celui du zoom, du
+// doigt, du bouton ⋯ ; ou là où l'on a appuyé, sans bouton : le menu de la
+// page (un clic droit dans le vide). Un seul est ouvert à la fois : en ouvrir un ferme
 // l'autre. Un appui ailleurs le ferme, Échap aussi, et le focus qui part
 // ailleurs (Tab, une fenêtre qui s'ouvre) ; cet appui-là ne doit rien
 // faire d'autre (pas de point d'encre posé en fermant un menu) : « avale »
@@ -12,7 +13,9 @@
 // dans <small> ; des <hr class=menu-filet> et des <div class=menu-titre>.
 // =============================================================
 
-export interface Menu { el: HTMLElement; bouton: HTMLElement; fermer?: () => void }
+/** Un menu, et le bouton qui l'ouvre s'il en a un (le menu de la page n'en a
+ *  pas : il s'ouvre au clic droit, là où l'on a appuyé) */
+export interface Menu { el: HTMLElement; bouton?: HTMLElement; fermer?: () => void }
 
 let ouvert: Menu | null = null
 /** L'appui qui vient de fermer un menu (le même événement repasse ensuite par la zone) */
@@ -31,7 +34,7 @@ export function installerMenus() {
   document.addEventListener('pointerdown', e => {
     if (!ouvert) return
     const cible = e.target as Node
-    if (ouvert.el.contains(cible) || ouvert.bouton.contains(cible)) return
+    if (ouvert.el.contains(cible) || ouvert.bouton?.contains(cible)) return
     fermer(false)
     fermeur = { pointerId: e.pointerId, timeStamp: e.timeStamp }
   }, true)
@@ -45,7 +48,7 @@ export function installerMenus() {
   // Le focus part ailleurs (Tab, une fenêtre qui s'ouvre) : le menu se ferme
   document.addEventListener('focusin', e => {
     const cible = e.target as Node
-    if (ouvert && !ouvert.el.contains(cible) && !ouvert.bouton.contains(cible)) fermer(false)
+    if (ouvert && !ouvert.el.contains(cible) && !ouvert.bouton?.contains(cible)) fermer(false)
   })
   // La fenêtre change de taille (on tourne la tablette) : il ne serait plus
   // collé à son bouton
@@ -82,7 +85,7 @@ export function ouvrirMenu(m: Menu) {
   ouvert = m
   brancherClavier(m.el)
   m.el.hidden = false
-  m.bouton.setAttribute('aria-expanded', 'true')
+  m.bouton?.setAttribute('aria-expanded', 'true')
 }
 
 export function basculerMenu(m: Menu) {
@@ -91,7 +94,7 @@ export function basculerMenu(m: Menu) {
 }
 
 /** Ferme le menu ouvert ; faux s'il n'y en avait pas. Le focus qui était
- *  dans le menu (on l'avait ouvert au clavier) revient à son bouton. */
+ *  dans le menu (on l'avait ouvert au clavier) revient à son bouton, s'il en a un. */
 export function fermerMenu(): boolean { return fermer(true) }
 
 function fermer(rendreFocus: boolean): boolean {
@@ -100,8 +103,8 @@ function fermer(rendreFocus: boolean): boolean {
   const dedans = rendreFocus && m.el.contains(document.activeElement)
   ouvert = null
   m.el.hidden = true
-  m.bouton.setAttribute('aria-expanded', 'false')
-  if (dedans) m.bouton.focus()
+  m.bouton?.setAttribute('aria-expanded', 'false')
+  if (dedans) m.bouton?.focus()
   m.fermer?.()
   return true
 }

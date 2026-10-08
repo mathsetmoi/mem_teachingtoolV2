@@ -9,6 +9,8 @@ import type { Tableau } from './document'
 import { Camera, vuePour } from './camera'
 import { Rendu } from './rendu'
 import { aireDe, chevauche, dansLasso, distanceAuSegment, distanceAuTrace, interieur, partDedans, rectangle, simplifier, touche } from './geometrie'
+import { change } from './habillage'
+import type { Retouche } from './habillage'
 import type { Figure, Fond, Forme, Formule, Habillage, Outil, Polygone, Trait, TypeForme } from './types'
 import { CM, uid } from './types'
 import type { P, Reconnue, Transformation } from './formes'
@@ -51,6 +53,10 @@ export const COULEURS = [
 ]
 export const TAILLES = [{ nom: 'Fin', valeur: 2.5 }, { nom: 'Moyen', valeur: 4.5 }, { nom: 'Épais', valeur: 9 }]
 
+/** App.options vaut ceci quand le menu ouvert est celui de toute une
+ *  sélection de plusieurs objets (le menu commun « N objets ») */
+export const TOUTE_LA_SELECTION = '*'
+
 /** La vue d'une page neuve : 100 %, l'origine en haut à gauche */
 const VUE_NEUTRE = { x: 120, y: 120, z: 1 }
 
@@ -75,6 +81,10 @@ export interface Interface {
   ouvrirReglageDoigt(): void
   ouvrirMenuPartie(id: string, prise: Prise, clientX: number, clientY: number): void
   fermerMenuPartie(): void
+  /** Le menu de la page (un clic droit dans le vide), posé au point de
+   *  l'appui (clientX, clientY) ; m : ce point, dans le monde, où « Coller
+   *  ici » colle */
+  ouvrirMenuPage(clientX: number, clientY: number, m: P): void
   /** Ferme ce qui flotte au-dessus du tableau (un petit menu, le menu d'un
    *  morceau, le panneau d'options sauf garderOptions, la liste des
    *  instruments) ; vrai si quelque chose était ouvert */
@@ -134,7 +144,9 @@ export class App {
   reconnaissance = true               // le stylo redresse les figures
   typeForme: TypeForme = 'rectangle'
   typeTrait: 'segment' | 'droite' | 'demi' = 'segment'      // ce que trace l'outil Segment
-  /** La figure dont le panneau d'options est ouvert (double-clic ou clic droit) */
+  /** Ce dont le menu complet est ouvert (clic droit, double-clic…, voir
+   *  demanderOptions) : l'identifiant de l'objet seul sélectionné, ou
+   *  TOUTE_LA_SELECTION pour le menu commun de plusieurs objets */
   options: string | null = null
   private astuceOptions = false
   /** Le premier point d'un trait tracé en deux clics (le second clic le finit) */
@@ -999,27 +1011,22 @@ export class App {
     z.addEventListener('pointerup', e => this.haut(e))
     z.addEventListener('pointercancel', e => this.haut(e, true))
     z.addEventListener('wheel', e => this.molette(e), { passive: false })
-    // Clic droit (ou bouton du stylet) : les options du morceau visé, dans
-    // n'importe quelle figure (c'est une demande d'options), sinon celles de
-    // la figure entière. Dans une sélection de plusieurs objets, elle reste
-    // entière : on dit ce qu'on peut en faire.
-    z.addEventListener('contextmenu', e => {
-      e.preventDefault()
-      if (this.enLecture) return
-      const s = this.ecran(e), p = this.monde(e)
-      const prise = this.priseSous(s, { toutes: true })
-      // L'intérieur d'une figure fermée ne compte qu'à la Sélection et au doigt
-      // qui déplace : le Stylo en main, un clic droit dans le vide d'un
-      // triangle ne le vise pas
-      const dedans = this.outil === 'selection' || (this.dernierPointeur === 'touch' && this.doigtDeplace)
-      const f = this.objetSous(p, s, { pointeur: this.dernierPointeur, dedans })
-      if (f && this.selection.size > 1 && this.selection.has(f.id)) { this.direPlusieurs(); return }
-      if (prise) { this.choisirPartie(prise.f.id, prise.prise); this.ui.ouvrirMenuPartie(prise.f.id, prise.prise, e.clientX, e.clientY); return }
-      this.ui.fermerMenuPartie()
-      this.choisirPartie(null)
-      if (f) this.ouvrirOptions(f)
-    })
-    // Double-clic : les options de l'objet (une formule, elle, se modifie).
+    // Le clic droit ouvre le menu complet à l'APPUI du bouton (voir bas et
+    // demanderOptions) ; l'événement contextmenu, lui, ne fait plus rien
+    // d'autre qu'écarter le menu du navigateur. Sous Windows Ink (la tablette
+    // graphique de la classe), « appuyer longuement pour cliquer avec le
+    // bouton droit » envoie un clic droit AU LEVER, après la fin du trait : un
+    // stylet tenu immobile une seconde (une hésitation, ou un tracé tenu pour
+    // que la figure soit reconnue) ouvrirait un menu, celui de la page dans le
+    // vide. Android, la Surface et Windows tactile en envoient un aussi à
+    // l'appui long du doigt, que l'appui long de MEM remplacera par son propre
+    // minuteur : jamais deux menus. Un vrai clic droit, lui, commence toujours
+    // par l'appui du bouton 2, comme le bouton du stylet. Conséquence acceptée :
+    // la touche Menu du clavier (Maj + F10) n'ouvre rien sur le tableau.
+    z.addEventListener('contextmenu', e => e.preventDefault())
+    // Double-clic : le menu complet de l'objet (une formule, elle, se modifie,
+    // comme un texte partout ; dans une sélection de plusieurs objets, le
+    // menu commun).
     // Pas sur un morceau choisi (son menu vient de s'ouvrir), ni juste après
     // un double appui déjà traité (au Stylo, voir doubleClicPlume ; au
     // doigt, voir secondToucher)
@@ -1038,7 +1045,8 @@ export class App {
       const f = this.outil === 'selection' ? this.objetSous(p, this.ecran(e), { pointeur, dedans: true })
         : this.outil === 'main' || this.outil === 'segment' ? this.formeSous(p.x, p.y, TOLERANCE_PRISE[pointeur])
         : this.formeSous(p.x, p.y)
-      if (f?.type === 'formule') this.editerFormule(f)
+      if (f && this.selection.size > 1 && this.selection.has(f.id)) this.ouvrirOptionsSelection()
+      else if (f?.type === 'formule') this.modifierFormule(f)
       else if (f && (this.outil === 'selection' || this.outil === 'main' || this.outil === 'segment')) this.ouvrirOptions(f)
     })
     // Le clic que le navigateur tire du second appui d'un double appui
@@ -1106,8 +1114,9 @@ export class App {
   // ---------- Appuyer, glisser, lever ----------
   /** Un appui. L'ordre compte : la paume écartée, le pointeur noté, le
    *  stylet qui reprend la main au doigt, deux doigts qui pincent ; puis,
-   *  si rien n'est en cours, un menu ouvert qui se ferme, le second toucher
-   *  d'un double-clic, et enfin ce que fait le pointeur avec l'outil. */
+   *  si rien n'est en cours, le clic droit qui ouvre un menu, un menu ouvert
+   *  qui se ferme, le second toucher d'un double-clic, et enfin ce que fait
+   *  le pointeur avec l'outil. */
   private bas(e: PointerEvent) {
     const s = this.ecran(e)
     // Le bout gomme du stylet (le stylet retourné) efface, quel que soit l'outil
@@ -1135,6 +1144,15 @@ export class App {
     }
     if (this.geste) return
 
+    // Le clic droit (le bouton du stylet en est un ; sur Mac, Ctrl + clic) :
+    // le menu complet, à l'APPUI du bouton, et aucun geste. Seulement quand
+    // rien n'est en cours : un bouton pressé pendant un glisser ou un trait
+    // n'envoie pas d'appui (le navigateur l'accorde au geste), il n'ouvre
+    // rien. Le petit menu qui était ouvert vient de se fermer (menus.ts, en
+    // capture) ; l'autre s'ouvre (voir demanderOptions).
+    const droit = e.button === 2 || (MAC && e.ctrlKey && e.button === 0 && e.pointerType !== 'touch')
+    if (droit) { this.demanderOptions(e, typePointeur(e.pointerType)); return }
+
     const m = this.monde(e)
     const doigt = e.pointerType === 'touch' && this.doigtDeplace
     // Déplacer la vue (bouton du milieu, Espace, outil Main) n'écrit jamais :
@@ -1150,13 +1168,15 @@ export class App {
     // continue seulement sur un instrument, sur un objet qu'on prend (outil
     // Sélection, doigt qui déplace), ou au Stylo : le trait commence (on ne
     // perd pas la première lettre), mais un simple appui ne posera rien.
-    // L'objet dont le panneau est ouvert, qu'on prend pour le déplacer, le
-    // garde : il reparaît au lever. Un clic attendu par le panneau (Désigner,
-    // Tracer un axe ou un centre) est pour lui : le panneau reste.
+    // L'objet dont le menu est ouvert, qu'on prend pour le déplacer, le
+    // garde : il reparaît au lever (le menu commun d'une sélection de
+    // plusieurs objets, quand on en prend un). Un clic attendu par le menu
+    // (Désigner, Tracer un axe ou un centre) est pour lui : le menu reste.
     const prend = this.outil === 'selection' || doigt
     const pointeur = typePointeur(e.pointerType)
     const vise = prend ? this.objetSous(m, s, { pointeur, dedans: true }) : null
-    const apresMenu = !pan && !this.placement && (avale(e) || this.ui.fermerMenus(!!vise && vise.id === this.options))
+    const garder = !!vise && (this.options === TOUTE_LA_SELECTION ? this.selection.has(vise.id) : vise.id === this.options)
+    const apresMenu = !pan && !this.placement && (avale(e) || this.ui.fermerMenus(garder))
     if (apresMenu) {
       const continuer = e.button === 0 && !gommeDuStylet && (
         (this.instruments.size > 0 && !!this.instrumentSous(m))
@@ -1401,14 +1421,16 @@ export class App {
     if (f && f.id === a.objet) this.doubleEnCours = { objet: f.id, pointeur: e.pointerId }
   }
 
-  /** Le double appui au doigt, au lever du second toucher : les options de
-   *  l'objet (une formule se modifie). Le dblclick du navigateur, s'il suit,
-   *  ne refait rien, ni le clic qu'il tire du toucher (voir brancherGestes). */
+  /** Le double appui au doigt, au lever du second toucher : le menu complet
+   *  de l'objet (une formule se modifie ; un objet d'une sélection de
+   *  plusieurs ouvre leur menu commun). Le dblclick du navigateur, s'il
+   *  suit, ne refait rien, ni le clic qu'il tire du toucher (voir brancherGestes). */
   private ouvrirParDouble(id: string) {
     const f = this.forme(id)
     if (!f) return
     this.doubleTraite = performance.now(); this.clicFantome = true
-    if (f.type === 'formule') this.editerFormule(f)
+    if (this.selection.size > 1 && this.selection.has(f.id)) this.ouvrirOptionsSelection()
+    else if (f.type === 'formule') this.modifierFormule(f)
     else this.ouvrirOptions(f)
   }
 
@@ -1798,7 +1820,7 @@ export class App {
         if (glisse) break
         const s = this.ecran(e)
         const f = this.formeSous(m.x, m.y)
-        if (f?.type === 'formule') this.editerFormule(f)
+        if (f?.type === 'formule') this.modifierFormule(f)
         else this.nouvelleFormule(m.x, m.y, s.x, s.y)
         break
       }
@@ -2061,7 +2083,8 @@ export class App {
     this.rendu.redessinerDirect(); this.ui.maj()
   }
 
-  /** Le panneau d'options d'un objet ne s'ouvre qu'à la demande */
+  /** Le menu complet d'un objet ne s'ouvre qu'à la demande (voir
+   *  demanderOptions) : l'objet devient la sélection, seul */
   ouvrirOptions(f: Forme) {
     this.astuceOptions = true
     this.selection.clear(); this.selection.add(f.id)
@@ -2069,11 +2092,57 @@ export class App {
     this.rendu.redessinerDirect(); this.ui.maj()
   }
 
-  /** Le clic droit dans une sélection de plusieurs objets : elle reste
-   *  entière, et l'on dit ce qu'on en fait */
-  private direPlusieurs() {
-    const efface = this.dernierPointeur === 'touch' ? 'la poubelle les efface' : 'Suppr (ou la poubelle) les efface'
-    this.ui.message(`${this.selection.size} objets sélectionnés : glissez-en un pour les déplacer tous ; ${efface}.`)
+  /** Le menu commun d'une sélection de plusieurs objets : elle reste
+   *  entière (« N objets » : couleur, épaisseur, dupliquer, copier, couper,
+   *  supprimer) */
+  ouvrirOptionsSelection() {
+    this.astuceOptions = true
+    this.options = TOUTE_LA_SELECTION
+    this.rendu.redessinerDirect(); this.ui.maj()
+  }
+
+  /** Le menu complet de ce qui est sous le pointeur (client : le point de
+   *  l'appui dans la fenêtre). Le clic droit (le bouton du stylet en est
+   *  un), et bientôt « Options » de la barre d'actions et l'appui long,
+   *  passent tous par ici : le même menu, de la même façon, partout. Dans
+   *  l'ordre :
+   *  - un objet d'une sélection de plusieurs : leur menu commun, et la
+   *    sélection reste entière (même près du sommet d'une de ses figures) ;
+   *  - un morceau d'une figure (un sommet, le centre ou le rayon d'un
+   *    cercle, un nom), de n'importe quelle figure : le menu de ce morceau ;
+   *  - un objet (une formule comprise) : son menu, l'objet seul sélectionné ;
+   *  - rien : le menu de la page (Coller ici, Tout sélectionner, Tout voir).
+   *  L'objet se vise comme le clic de la Sélection, à la portée du pointeur ;
+   *  l'intérieur d'une figure fermée ne compte qu'à la Sélection et au doigt
+   *  qui déplace (le Stylo en main, un clic droit dans le vide d'un triangle
+   *  ouvre le menu de la page, comme à côté). Rien pendant la revue, une
+   *  séance d'automatismes, ni quand un clic est attendu ; rien sur un
+   *  instrument, qui recouvre ce qui est dessous et n'a pas de menu. */
+  demanderOptions(client: { clientX: number; clientY: number }, pointeur: TypePointeur) {
+    if (this.enLecture || this.placement || document.body.classList.contains('en-seance')) return
+    this.viderPointEnAttente()
+    const m = this.monde(client), s = this.ecran(client)
+    if (this.instruments.size && this.instrumentSous(m)) { this.ui.fermerMenus(); return }
+    const dedans = this.outil === 'selection' || (pointeur === 'touch' && this.doigtDeplace)
+    const c = this.cibleSous(m, s, { pointeur, dedans })
+    // Le morceau visé, dans n'importe quelle figure : c'est une demande
+    // d'options. Pas à travers une image, une formule ou une figure
+    // coloriée posée dessus : c'est elle qu'on touche (voir cibleSous).
+    let prise = this.priseSous(s, { toutes: true })
+    if (prise && this.formes.slice(this.formes.indexOf(prise.f) + 1).some(g => interieur(g, m.x, m.y, this.boiteDeForme(g)) === 'plein')) prise = null
+    // Un seul menu ouvert : celui d'avant (un morceau, un objet, la liste
+    // des instruments) se ferme
+    this.ui.fermerMenus()
+    if (c && this.selection.size > 1 && this.selection.has(c.f.id)) { this.ouvrirOptionsSelection(); return }
+    if (prise) {
+      this.choisirPartie(prise.f.id, prise.prise)
+      this.ui.ouvrirMenuPartie(prise.f.id, prise.prise, client.clientX, client.clientY)
+      return
+    }
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    if (c) { this.ouvrirOptions(c.f); return }
+    this.ui.ouvrirMenuPage(client.clientX, client.clientY, m)
   }
 
   /** La première fois qu'on prend un objet, on dit où sont ses options, dans
@@ -2083,7 +2152,8 @@ export class App {
   private direOptions() {
     if (this.astuceOptions || this.selection.size !== 1) return
     const f = this.formeChoisie()
-    if (!f || f.type === 'formule' || f.type === 'segment') return
+    // Une formule, elle, se modifie au double-clic : le message ne lui va pas
+    if (!f || f.type === 'formule') return
     this.astuceOptions = true
     this.ui.message(messageOptions(this.dernierPointeur))
   }
@@ -2385,16 +2455,50 @@ export class App {
   }
 
   // ---------- Panneau d'options ----------
+  /** Un geste qui cache le menu ouvert : on déplace ce qu'il règle, on tire
+   *  un cadre… (déplacer la vue, pincer, tirer un sommet le laissent) */
+  private gesteQuiCache(): boolean {
+    return !!this.geste && this.geste.type !== 'pan' && this.geste.type !== 'pinch' && this.geste.type !== 'poignee'
+  }
+
   /** La forme seule sélectionnée, s'il n'y en a qu'une et qu'aucun geste n'est en cours */
   formeChoisie(): Forme | null {
-    if (this.selection.size !== 1 || (this.geste && this.geste.type !== 'pan' && this.geste.type !== 'pinch' && this.geste.type !== 'poignee')) return null
+    if (this.selection.size !== 1 || this.gesteQuiCache()) return null
     const id = [...this.selection][0]
     return this.formes.find(f => f.id === id) ?? null
   }
 
+  /** Les objets d'une sélection de plusieurs, dans l'ordre d'empilement, si
+   *  aucun geste n'est en cours : comme celui d'un objet, leur menu commun
+   *  se cache pendant qu'on les déplace et revient au lâcher */
+  formesChoisies(): Forme[] | null {
+    if (this.selection.size < 2 || this.gesteQuiCache()) return null
+    return this.formes.filter(f => this.selection.has(f.id))
+  }
+
+  /** La page qu'on regarde est-elle vide ? (« Tout sélectionner » se grise) */
+  pageVide(): boolean { return !this.formes.length }
+
   habiller(f: Forme, patch: Partial<Habillage> & Partial<Trait>) {
     this.tableau.nouveauGeste()
     this.tableau.modifier(this.page, [{ id: f.id, patch: patch as Partial<Forme> }])
+  }
+
+  /** Le menu commun de plusieurs objets : la retouche (une couleur, une
+   *  épaisseur, les pointillés) va à tous ceux qu'elle concerne, en UNE
+   *  transaction, donc une seule étape d'annulation : un Ctrl+Z rend leur
+   *  couleur aux dix objets. Un objet qui l'a déjà n'est pas réécrit. */
+  habillerSelection(retouche: Retouche) {
+    if (this.enLecture) return
+    const changements: { id: string; patch: Partial<Forme> }[] = []
+    for (const f of this.formes) {
+      if (!this.selection.has(f.id)) continue
+      const patch = retouche(f)
+      if (patch && change(f, patch)) changements.push({ id: f.id, patch })
+    }
+    if (!changements.length) return
+    this.tableau.nouveauGeste()
+    this.tableau.modifier(this.page, changements)
   }
 
   basculerSommets(f: Figure) {
@@ -2601,10 +2705,12 @@ export class App {
     this.poserCollage(collage({ ...c, formes }, { dx: centre.x - c.centre.x, dy: centre.y - c.centre.y, moi: this.tableau.moi, existantes: this.formes }))
   }
 
-  /** Pose ce qu'on colle ou duplique (une étape) et le sélectionne */
+  /** Pose ce qu'on colle ou duplique (une étape) et le sélectionne. Le menu
+   *  ouvert se ferme : il réglait l'original, pas la copie. */
   private poserCollage(formes: Forme[]) {
     this.ui.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
+    this.options = null
     this.tableau.nouveauGeste()
     this.tableau.poserPlusieurs(this.page, formes)
     this.selection.clear()
@@ -2722,7 +2828,11 @@ export class App {
       taille: 28, z: Date.now(), auteur: this.tableau.moi })
   }
 
-  private async editerFormule(f: Formule) {
+  /** L'éditeur d'une formule : son double-clic, « Modifier » de son menu
+   *  (qui se ferme : l'éditeur prend sa place) */
+  async modifierFormule(f: Formule) {
+    if (this.enLecture) return
+    if (this.options) { this.options = null; this.ui.maj() }
     const s = this.cam.versEcran(f.x, f.y)
     const latex = await this.ui.editerFormule(f.latex, s.x, s.y)
     if (latex === null) return

@@ -241,6 +241,8 @@ body.en-seance .toast { z-index: 41; }
 .panneau-forme .bouton { width: 40px; height: 40px; }
 .panneau-forme .pastille { width: 38px; }
 .panneau-forme .taille { width: 40px; height: 40px; }
+/* « 3 objets » : le titre du menu commun de plusieurs objets (on ne le touche pas) */
+.panneau-forme .titre-selection { padding: 0 10px 0 8px; font-weight: 700; color: var(--encre-douce); white-space: nowrap; }
 .noms { display: flex; align-items: center; gap: 8px; padding: 0 6px; }
 .noms span, .champ span { font-size: 13px; color: var(--encre-douce); white-space: nowrap; }
 .noms .saisie { height: 38px; width: 180px; font-family: 'KaTeX_Math', 'Times New Roman', serif; font-style: italic; font-size: 18px; }

@@ -5,8 +5,8 @@
 // =============================================================
 import katex from 'katex'
 import type { App, Interface, Prise } from './app'
-import { COULEURS, TAILLES, poigneeDuRayon } from './app'
-import type { Bout, Figure, Forme, MarquePoint, Outil, TypeForme } from './types'
+import { COULEURS, TAILLES, TOUTE_LA_SELECTION, poigneeDuRayon } from './app'
+import type { Bout, Figure, Forme, Formule, MarquePoint, Outil, TypeForme } from './types'
 import { CM, FONDS } from './types'
 import type { P, Transformation } from './formes'
 import { centreDe, image, placesDesNoms, sommetsDe, versRelatif } from './formes'
@@ -18,13 +18,14 @@ import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
 import type { Menu } from './menus'
-import { basculerMenu, fermerMenu, installerMenus, placerMenu } from './menus'
+import { basculerMenu, fermerMenu, installerMenus, ouvrirMenu, placerMenu } from './menus'
 import { choisirMolette, reglages } from './reglages'
 import type { Doigt, Molette } from './reglages'
 import { CTRL } from './navigateur'
 import { Sauvegarde } from './sauvegarde'
 import { zoneEntreBarres } from './camera'
 import type { Bords } from './camera'
+import { TAILLES_FORMULE, changerCouleur, changerEpaisseur, changerPointilles, habillageCommun } from './habillage'
 
 const ICONES: Record<string, string> = {
   stylo: 'M4 20l4-1L19 8l-3-3L5 16l-1 4zM14 7l3 3',
@@ -89,6 +90,11 @@ const TYPES_FORMES: { id: TypeForme; nom: string; touche: string }[] = [
 ]
 
 const FONDS_FIGURE = [...COULEURS, { nom: 'Jaune', valeur: '#e0a800' }]
+
+/** La section ouverte dans le menu complet : celles d'une figure (contour,
+ *  fond, transformer) ; « couleur » : la couleur et la taille d'une formule,
+ *  la couleur et l'épaisseur de plusieurs objets */
+type Section = 'contour' | 'fond' | 'transformer' | 'couleur' | null
 
 /** « 2 », « -0,5 », « 1/3 » → nombre */
 function nombre(t: string): number | null {
@@ -188,10 +194,14 @@ export class UI implements Interface {
   private choixTraits!: HTMLDivElement
   private boutonsTraits = new Map<string, HTMLButtonElement>()
   private boutonsFormes = new Map<TypeForme, HTMLButtonElement>()
+  /** Le menu complet de ce qui est pris : un objet, ou plusieurs (voir majPanneau) */
   private panneau!: HTMLDivElement
   private clePanneau = ''
   private idPanneau = ''
-  private section: 'contour' | 'fond' | 'transformer' | null = null
+  /** Les objets du menu commun de plusieurs objets, tels qu'il les a montrés :
+   *  il se refait quand l'un d'eux change (une forme changée est un nouvel objet) */
+  private formesPanneau: Forme[] = []
+  private section: Section = null
   private revue!: RevueEnClasse
   private publication!: Publication
   private constructeur!: Constructeur
@@ -207,6 +217,8 @@ export class UI implements Interface {
   /** Enregistrer le tableau dans un fichier, en ouvrir un : le bouton ⋯ et son menu */
   sauvegarde!: Sauvegarde
   private menuFichier!: Menu
+  /** Le menu de la page (un clic droit dans le vide) : il n'a pas de bouton */
+  private menuPage!: Menu
 
   constructor(private app: App, private racine: HTMLElement) {
     // Les menus d'abord : leur Échap passe avant celui des panneaux (voir menus.ts)
@@ -399,13 +411,19 @@ export class UI implements Interface {
       this.boutonsTraits.set(id, b); this.choixTraits.appendChild(b)
     }
 
-    // ----- Options de la forme sélectionnée -----
+    // ----- Le menu complet de ce qui est pris (un objet, ou plusieurs) -----
     this.panneau = document.createElement('div')
     this.panneau.className = 'panneau-forme'
     this.panneau.setAttribute('role', 'toolbar')
     this.panneau.setAttribute('aria-label', 'Options de la figure')
 
-    this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, menuFichier, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
+    // ----- Le menu de la page, posé là où l'on a appuyé (voir ouvrirMenuPage) -----
+    const menuPage = document.createElement('div')
+    menuPage.className = 'menu-flottant menu-large'; menuPage.setAttribute('role', 'menu'); menuPage.setAttribute('aria-label', 'Page')
+    menuPage.hidden = true
+    this.menuPage = { el: menuPage }
+
+    this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, menuFichier, menuPage, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
     this.revue = new RevueEnClasse(this.app, this.racine)
     this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
@@ -570,6 +588,23 @@ export class UI implements Interface {
   /** Un fichier glissé sur le tableau (.memc, ou .mem) : comme « Ouvrir un tableau » */
   ouvrirTableau(f: File) { void this.sauvegarde.ouvrirFichier(f) }
 
+  /** Le menu de la page : un clic droit dans le vide (voir App.demanderOptions).
+   *  Il se pose au point de l'appui, à sa droite et vers le bas comme le
+   *  menu du système (de l'autre côté s'il n'y a pas la place), et se ferme
+   *  comme les autres petits menus : Échap, un choix, ou un appui ailleurs
+   *  (qui ne laisse pas d'encre). m : le point du monde où « Coller ici »
+   *  colle. Refait à chaque ouverture : la copie et la page ont pu changer. */
+  ouvrirMenuPage(x: number, y: number, m: P) {
+    const app = this.app, el = this.menuPage.el
+    el.replaceChildren()
+    this.entreeMenu(el, 'Coller ici', () => app.coller(m), { touche: `${CTRL} + V`, inactif: !app.peutColler(),
+      aide: `Le dernier objet copié dans MEM ; ${CTRL} + V colle aussi une image ou ce qu'on a copié dans une autre version de MEM` })
+    this.entreeMenu(el, 'Tout sélectionner', () => app.toutSelectionner(), { touche: `${CTRL} + A`, inactif: app.pageVide() })
+    this.entreeMenu(el, 'Tout voir', () => app.toutVoir(), { touche: 'Maj + 1' })
+    ouvrirMenu(this.menuPage)
+    placerMenu(el, new DOMRect(x, y, 0, 0), 'droite')
+  }
+
   /** Le menu du rôle du doigt : ouvert par son bouton, ou par « Changer »
    *  dans le message « Stylet détecté » */
   ouvrirReglageDoigt() {
@@ -603,23 +638,43 @@ export class UI implements Interface {
     }
   }
 
-  // ----- Panneau d'options de la figure -----
+  // ----- Le menu complet de ce qui est pris -----
+  /** Le menu complet (le panneau sous le nom d'avant) : celui de l'objet seul
+   *  sélectionné dont app.options est l'identifiant, ou le menu commun d'une
+   *  sélection de plusieurs objets (app.options vaut TOUTE_LA_SELECTION). Il
+   *  se ferme dès que ce qu'il règle n'est plus choisi, se cache pendant
+   *  qu'on le déplace (formeChoisie, formesChoisies) et revient au lâcher. */
   private majPanneau() {
     const app = this.app
-    // Le panneau se ferme dès que l'objet n'est plus seul sélectionné
-    if (app.options && !(app.selection.size === 1 && app.selection.has(app.options))) app.options = null
-    const f = !app.enLecture ? app.formeChoisie() : null
-    if (!f || f.id !== app.options || f.type === 'formule' || f.type === 'segment') { this.panneau.hidden = true; this.clePanneau = ''; return }
-    const { x: _x, y: _y, ...props } = f as Forme
-    if (f.id !== this.idPanneau) { this.idPanneau = f.id; this.section = null }
-    // On ne reconstruit que si la figure a changé : sinon un champ en
-    // cours de saisie perdrait le curseur à chaque mise à jour.
-    const cle = JSON.stringify(props) + '|' + this.section
-    if (cle !== this.clePanneau) { this.construirePanneau(f); this.clePanneau = cle }
+    const plusieurs = app.options === TOUTE_LA_SELECTION
+    if (plusieurs ? app.selection.size < 2 : app.options && !(app.selection.size === 1 && app.selection.has(app.options))) app.options = null
+    let formes: Forme[] | null = null
+    if (!app.enLecture && plusieurs) formes = app.formesChoisies()
+    else if (!app.enLecture && app.options) { const f = app.formeChoisie(); if (f && f.id === app.options) formes = [f] }
+    if (!formes?.length) { this.panneau.hidden = true; this.clePanneau = ''; this.formesPanneau = []; return }
+    const id = plusieurs ? TOUTE_LA_SELECTION + formes.map(f => f.id).join(',') : formes[0].id
+    if (id !== this.idPanneau) { this.idPanneau = id; this.section = null }
+    if (plusieurs) {
+      // Plusieurs objets : on refait le menu quand l'un d'eux a changé (une
+      // forme changée, même déplacée, est un nouvel objet) ; comparer les
+      // objets eux-mêmes ne coûte rien, même sur mille traits sélectionnés
+      const cle = TOUTE_LA_SELECTION + '|' + this.section
+      if (cle !== this.clePanneau || formes.length !== this.formesPanneau.length || formes.some((f, i) => f !== this.formesPanneau[i])) {
+        this.construireMenuPlusieurs(formes); this.clePanneau = cle; this.formesPanneau = formes
+      }
+    } else {
+      // Un objet : on ne reconstruit que s'il a changé (sauf sa place) : sinon
+      // un champ en cours de saisie perdrait le curseur à chaque mise à jour
+      const { x: _x, y: _y, ...props } = formes[0]
+      const cle = JSON.stringify(props) + '|' + this.section
+      if (cle !== this.clePanneau) { this.construirePanneau(formes[0]); this.clePanneau = cle; this.formesPanneau = [] }
+    }
     this.panneau.hidden = false
-    // Au-dessus de la figure, ou en dessous s'il n'y a pas la place
-    const b = this.app.rendu.boite(f), cam = this.app.cam
-    const z = this.app.rendu.scene.getBoundingClientRect()
+    // Au-dessus de ce qu'il règle (toute la sélection), ou en dessous s'il
+    // n'y a pas la place
+    const b = plusieurs ? app.boiteDuContenu(formes) : app.rendu.boite(formes[0])
+    if (!b) return
+    const cam = app.cam, z = app.rendu.scene.getBoundingClientRect()
     const a = cam.versEcran(b.x, b.y), c = cam.versEcran(b.x + b.l, b.y + b.h)
     const l = this.panneau.offsetWidth, h = this.panneau.offsetHeight
     let top = z.top + a.y - h - 14
@@ -630,22 +685,49 @@ export class UI implements Interface {
     this.panneau.style.top = Math.max(8, top) + 'px'
   }
 
+  /** Un bouton texte du menu, dans sa ligne */
+  private optionMenu(ligne: HTMLElement, texte: string, titre: string, faire: () => void, actif = false) {
+    const b = document.createElement('button')
+    b.type = 'button'; b.className = 'option' + (actif ? ' actif' : ''); b.textContent = texte; b.title = titre
+    b.setAttribute('aria-pressed', String(actif))
+    b.addEventListener('click', faire)
+    ligne.appendChild(b)
+    return b
+  }
+
+  /** Ouvre (ou referme) une section du menu, qui se refait aussitôt */
+  private basculerSection(s: Section) {
+    this.section = this.section === s ? null : s
+    this.clePanneau = ''
+    this.maj()
+  }
+
   private construirePanneau(f: Forme) {
     const app = this.app
     const p = this.panneau
     p.replaceChildren()
     const ligne = document.createElement('div'); ligne.className = 'ligne'
-    const action = (texte: string, titre: string, faire: () => void, actif = false) => {
-      const b = document.createElement('button')
-      b.type = 'button'; b.className = 'option' + (actif ? ' actif' : ''); b.textContent = texte; b.title = titre
-      b.setAttribute('aria-pressed', String(actif))
-      b.addEventListener('click', faire)
-      ligne.appendChild(b)
-      return b
-    }
-    const ouvrir = (s: typeof this.section) => { this.section = this.section === s ? null : s; this.clePanneau = ''; this.maj() }
+    const action = (texte: string, titre: string, faire: () => void, actif = false) => this.optionMenu(ligne, texte, titre, faire, actif)
+    const ouvrir = (s: Section) => this.basculerSection(s)
     const figure = f.type === 'polygone' || f.type === 'cercle' ? f as Figure : null
     const segment = f.type === 'polygone' && !f.ferme && f.pts.length === 4
+    const copier = () => action('Copier', `Copier (${CTRL}+C) : ${CTRL}+V la colle ici, sur une autre page ou dans un autre onglet`, () => app.copier())
+    const jeter = () => ligne.appendChild(bouton('poubelle', 'Supprimer (Suppr)', () => app.supprimerSelection(), 'danger'))
+
+    if (f.type === 'formule') {
+      // Une formule : la modifier (comme son double-clic), sa couleur et sa
+      // taille. Pas de « Transformer » : l'image d'une formule n'en déplace
+      // que le coin, sans la tourner ni la retourner.
+      p.setAttribute('aria-label', 'Options de la formule')
+      action('Modifier', 'Modifier la formule (double-clic)', () => app.modifierFormule(f))
+      action('Couleur et taille', 'La couleur et la taille des caractères', () => ouvrir('couleur'), this.section === 'couleur')
+      action('Dupliquer', `Une copie, décalée d'un centimètre (${CTRL}+D)`, () => app.dupliquerSelection())
+      copier(); jeter()
+      p.appendChild(ligne)
+      if (this.section === 'couleur') p.appendChild(this.sectionFormule(f))
+      return
+    }
+    p.setAttribute('aria-label', 'Options de la figure')
 
     if (segment && f.type === 'polygone') {
       // Segment, droite ou demi-droite : on passe de l'un à l'autre d'un clic
@@ -663,8 +745,7 @@ export class UI implements Interface {
     action('Transformer', 'Translation, rotation, symétrie, homothétie', () => ouvrir('transformer'), this.section === 'transformer')
     if (figure?.brut) action('Main levée', 'Revenir au tracé d\'origine', () => app.revenirMainLevee(figure))
     action('Dupliquer', `Une copie, décalée d'un centimètre (${CTRL}+D)`, () => app.dupliquerSelection())
-    const jeter = bouton('poubelle', 'Supprimer (Suppr)', () => app.supprimerSelection(), 'danger')
-    ligne.appendChild(jeter)
+    copier(); jeter()
     p.appendChild(ligne)
 
     // Noms des sommets, modifiables
@@ -728,6 +809,69 @@ export class UI implements Interface {
       s.appendChild(b)
     }
     return s
+  }
+
+  /** Une pastille de couleur du menu (active : la couleur de l'objet, ou de tous) */
+  private pastilleMenu(s: HTMLElement, c: { nom: string; valeur: string }, actif: boolean, faire: () => void) {
+    const b = document.createElement('button')
+    b.type = 'button'; b.className = 'pastille' + (actif ? ' actif' : ''); b.title = c.nom; b.setAttribute('aria-label', c.nom)
+    b.setAttribute('aria-pressed', String(actif))
+    b.style.setProperty('--teinte', c.valeur)
+    b.addEventListener('click', faire)
+    s.appendChild(b)
+  }
+
+  /** La couleur et la taille d'une formule : les quatre couleurs de la barre,
+   *  et trois tailles de caractères */
+  private sectionFormule(f: Formule) {
+    const app = this.app
+    const s = document.createElement('div'); s.className = 'section'
+    for (const c of COULEURS) this.pastilleMenu(s, c, f.couleur === c.valeur, () => app.habiller(f, { couleur: c.valeur }))
+    for (const t of TAILLES_FORMULE) this.optionMenu(s, t.nom, t.titre, () => app.habiller(f, { taille: t.valeur }), f.taille === t.valeur)
+    return s
+  }
+
+  /** Le menu commun d'une sélection de plusieurs objets : « N objets » en
+   *  tête, puis ce qu'on fait à tous d'un coup. Chaque action fait UNE étape
+   *  d'annulation, quel que soit le nombre d'objets. */
+  private construireMenuPlusieurs(formes: Forme[]) {
+    const app = this.app, p = this.panneau
+    p.replaceChildren()
+    const n = formes.length
+    p.setAttribute('aria-label', `Options des ${n} objets`)
+    const ligne = document.createElement('div'); ligne.className = 'ligne'
+    const titre = document.createElement('span'); titre.className = 'titre-selection'; titre.textContent = `${n} objets`
+    ligne.appendChild(titre)
+    const commun = habillageCommun(formes, TAILLES.map(t => t.valeur))
+    // Des formules seules n'ont pas d'épaisseur, des images rien à régler
+    if (commun.couleurs || commun.epaisseurs) {
+      const texte = commun.epaisseurs ? 'Couleur, épaisseur' : 'Couleur'
+      this.optionMenu(ligne, texte, commun.epaisseurs ? 'La couleur, l\'épaisseur et les pointillés de tous' : 'La couleur de tous', () => this.basculerSection('couleur'), this.section === 'couleur')
+    }
+    this.optionMenu(ligne, 'Dupliquer', `Une copie de tous, décalée d'un centimètre (${CTRL}+D)`, () => app.dupliquerSelection())
+    this.optionMenu(ligne, 'Copier', `Copier (${CTRL}+C) : ${CTRL}+V les colle ici, sur une autre page ou dans un autre onglet`, () => app.copier())
+    this.optionMenu(ligne, 'Couper', `Couper (${CTRL}+X) : ils partent, ${CTRL}+V les remet`, () => app.couper())
+    ligne.appendChild(bouton('poubelle', `Supprimer les ${n} objets (Suppr)`, () => app.supprimerSelection(), 'danger'))
+    p.appendChild(ligne)
+    if (this.section !== 'couleur') return
+
+    // Seulement ce que le code sait appliquer à chacun : la couleur (pas à une
+    // image), l'épaisseur (traits et figures ; un trait de surligneur garde sa
+    // largeur de surligneur), les pointillés (les figures). Un choix est
+    // actif quand tous les objets qu'il concerne l'ont.
+    const s = document.createElement('div'); s.className = 'section'
+    if (commun.couleurs) for (const c of COULEURS) this.pastilleMenu(s, c, commun.couleur === c.valeur, () => app.habillerSelection(changerCouleur(c.valeur)))
+    if (commun.epaisseurs) TAILLES.forEach((t, i) => {
+      const actif = commun.taille === t.valeur
+      const b = document.createElement('button')
+      b.type = 'button'; b.className = 'taille' + (actif ? ' actif' : ''); b.title = t.nom
+      b.setAttribute('aria-label', 'Trait ' + t.nom.toLowerCase()); b.setAttribute('aria-pressed', String(actif))
+      b.innerHTML = `<span style="--d:${4 + i * 4}px"></span>`
+      b.addEventListener('click', () => app.habillerSelection(changerEpaisseur(t.valeur)))
+      s.appendChild(b)
+    })
+    if (commun.pointilles !== null) this.optionMenu(s, 'Pointillés', 'Les figures en pointillés', () => app.habillerSelection(changerPointilles(!commun.pointilles)), commun.pointilles)
+    p.appendChild(s)
   }
 
   /** Ce qu'on a choisi dans « Transformer » : gardé quand le panneau se refait */
