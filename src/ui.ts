@@ -377,7 +377,7 @@ export class UI implements Interface {
     const app = this.app
     for (const [id, b] of this.outils) b.classList.toggle('actif', app.outil === id)
     const doigt = DOIGTS.find(d => d.id === reglages.doigt)!
-    this.boutonDoigt.dataset.badge = doigt.marque
+    if (this.boutonDoigt.dataset.badge !== doigt.marque) this.boutonDoigt.dataset.badge = doigt.marque
     const titre = doigt.id === 'auto' && reglages.styletDirect ? 'Rôle du doigt : auto (stylet détecté : il déplace la vue)' : doigt.titre
     if (this.boutonDoigt.title !== titre) { this.boutonDoigt.title = titre; this.boutonDoigt.setAttribute('aria-label', titre) }
     this.pastilles.forEach((b, i) => b.classList.toggle('actif', COULEURS[i].valeur === app.couleur))
