@@ -2,8 +2,9 @@
 // SOURIS, STYLET, DOIGT
 // Ce qui distingue les trois pointeurs, en dehors de tout geste : quand
 // un appui devient un glisser, ce qu'est une paume, si le stylet écrit
-// sur l'écran lui-même, ce qu'est un double appui au doigt, et les mots
-// des messages pour chacun. Rien ici ne touche au document ni à la page :
+// sur l'écran lui-même, ce qu'est un double appui au doigt, un appui
+// long, un toucher à deux ou trois doigts, et les mots des messages pour
+// chacun. Rien ici ne touche au document ni à la page :
 // les tests le vérifient sous Node.
 // =============================================================
 
@@ -108,13 +109,82 @@ export function procheDuPremier(premier: { x: number; y: number }, x: number, y:
   return Math.hypot(x - premier.x, y - premier.y) < DOUBLE_CLIC_PLUME.px[p]
 }
 
+/** Un appui tenu ce temps-là (ms) sans glisser (voir SEUIL_GLISSER) ouvre le
+ *  menu complet de ce qui est dessous, ou le menu de la page dans le vide :
+ *  le clic droit de qui n'a ni souris ni bouton (le doigt, l'Apple Pencil).
+ *  500 ms, comme Excalidraw et tldraw : assez pour qu'un toucher qui hésite
+ *  ne l'ouvre pas, assez peu pour qu'on n'attende pas. Seulement à l'outil
+ *  Sélection et au doigt qui « déplace » (jamais pendant qu'on écrit : un
+ *  point qu'on tient, une lettre qu'on commence) ; le stylet, seulement sur
+ *  l'écran lui-même (une tablette graphique a son bouton). Voir
+ *  App.armerAppuiLong. */
+export const APPUI_LONG = 500
+
+/** Un toucher bref à deux doigts annule, à trois rétablit (sur la page qu'on
+ *  regarde) : comme Procreate, FigJam, Notability, Freeform. Pour en être
+ *  un, tous les doigts se posent à moins de `arrivee` ms du premier, chacun
+ *  se lève moins de `duree` ms après s'être posé, le tout dure moins de
+ *  `total` ms (ce que les deux premières règles assurent déjà), et aucun ne
+ *  bouge de `px` pixels d'écran ou plus. px est le seuil du
+ *  glisser au doigt (SEUIL_GLISSER.touch) : un toucher qui a bougé assez pour
+ *  déplacer la vue n'annule jamais ; un pincement, un déplacement à deux
+ *  doigts, deux doigts qu'on laisse posés n'en sont pas. */
+export const TOUCHER_DOIGTS = { arrivee: 150, duree: 300, total: 450, px: SEUIL_GLISSER.touch }
+
+export type ToucherReconnu = 'annuler' | 'retablir'
+
+/** Le suivi des doigts d'un toucher à plusieurs doigts (voir TOUCHER_DOIGTS).
+ *  On le nourrit de chaque doigt posé, bougé, levé (heures en ms, positions
+ *  en pixels d'écran) ; il répond au lever du DERNIER doigt : 'annuler' pour
+ *  deux doigts, 'retablir' pour trois, null sinon (un seul doigt, quatre, un
+ *  toucher trop long, trop lent à se poser, qui a bougé, ou dont un doigt
+ *  s'est posé après qu'un autre s'est levé). oublier() abandonne le toucher
+ *  en cours : une paume, un stylet, un appui long, un menu qu'on ferme. Un
+ *  doigt resté posé après un oubli est inconnu : son lever ne compte pas. */
+export class ToucherADoigts {
+  private doigts = new Map<number, { x: number; y: number; t: number; leve: boolean }>()
+  private debut = 0
+  /** Ce toucher n'en est plus un ; on attend que ses doigts se lèvent */
+  private rate = false
+
+  poser(id: number, x: number, y: number, t: number) {
+    if (!this.doigts.size) { this.debut = t; this.rate = false }
+    else if (t - this.debut >= TOUCHER_DOIGTS.arrivee || [...this.doigts.values()].some(d => d.leve)) this.rate = true
+    this.doigts.set(id, { x, y, t, leve: false })
+  }
+
+  bouger(id: number, x: number, y: number) {
+    const d = this.doigts.get(id)
+    if (d && !d.leve && Math.hypot(x - d.x, y - d.y) >= TOUCHER_DOIGTS.px) this.rate = true
+  }
+
+  lever(id: number, t: number): ToucherReconnu | null {
+    const d = this.doigts.get(id)
+    if (!d || d.leve) return null
+    d.leve = true
+    if (t - d.t >= TOUCHER_DOIGTS.duree) this.rate = true
+    if ([...this.doigts.values()].some(x => !x.leve)) return null
+    const n = this.doigts.size, bon = !this.rate && t - this.debut < TOUCHER_DOIGTS.total
+    this.oublier()
+    return !bon ? null : n === 2 ? 'annuler' : n === 3 ? 'retablir' : null
+  }
+
+  oublier() {
+    this.doigts.clear()
+    this.rate = false
+  }
+}
+
 /** Ce qu'on dit, la première fois qu'on prend un objet, du geste qui ouvre
- *  ses options : il dépend du pointeur. Au doigt, le double appui (jamais
- *  « clic droit », ni un appui long qui n'existe pas). */
-export function messageOptions(p: TypePointeur): string {
-  if (p === 'touch') return 'Touchez deux fois l\'objet : ses options'
-  if (p === 'pen') return 'Double-clic ou bouton du stylet sur l\'objet : ses options'
-  return 'Double-clic ou clic droit sur l\'objet : ses options'
+ *  toutes ses options : il dépend du pointeur. direct : le stylet écrit sur
+ *  l'écran lui-même (voir ecranTactile), où il a l'appui long (l'Apple Pencil
+ *  n'a pas de bouton) ; celui d'une tablette graphique a son bouton. Au
+ *  doigt, l'appui long, jamais « clic ». */
+export function messageOptions(p: TypePointeur, direct = ecranTactile()): string {
+  if (p === 'touch') return 'Appui long sur l\'objet : toutes ses options'
+  if (p === 'pen') return direct ? 'Appui long ou double-clic sur l\'objet : toutes ses options'
+    : 'Double-clic ou bouton du stylet sur l\'objet : toutes ses options'
+  return 'Double-clic ou clic droit sur l\'objet : toutes ses options'
 }
 
 /** Le second point d'un trait tracé en deux appuis */

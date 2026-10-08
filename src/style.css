@@ -26,9 +26,11 @@ button, select, input { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
 
 #app { position: fixed; inset: 0; }
+/* -webkit-touch-callout : sur iPad et iPhone, l'appui long (le menu de MEM,
+   voir App.armerAppuiLong) ne fait paraître ni loupe ni bulle du système */
 #zone {
   position: absolute; inset: 0; overflow: hidden;
-  touch-action: none; user-select: none; -webkit-user-select: none;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   cursor: crosshair;
 }
 #zone[data-outil='main'] { cursor: grab; }

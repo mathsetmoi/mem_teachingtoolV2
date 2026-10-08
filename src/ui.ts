@@ -19,7 +19,7 @@ import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
 import type { Menu } from './menus'
 import { basculerMenu, fermerMenu, installerMenus, ouvrirMenu, placerMenu } from './menus'
-import { choisirMolette, reglages } from './reglages'
+import { choisirGestes, choisirMolette, reglages } from './reglages'
 import type { Doigt, Molette } from './reglages'
 import { CTRL } from './navigateur'
 import { Sauvegarde } from './sauvegarde'
@@ -501,11 +501,13 @@ export class UI implements Interface {
     }, 1000)
   }
 
-  /** Une entrée d'un petit menu : un choix fait le ferme, puis agit */
-  private entreeMenu(m: HTMLElement, texte: string, faire: () => void, o: { touche?: string; aide?: string; coche?: boolean; inactif?: boolean } = {}) {
+  /** Une entrée d'un petit menu : un choix fait le ferme, puis agit. coche :
+   *  un choix parmi d'autres (menuitemradio), coché ou non ; avec caseACocher,
+   *  un réglage qu'on allume ou qu'on coupe (menuitemcheckbox). */
+  private entreeMenu(m: HTMLElement, texte: string, faire: () => void, o: { touche?: string; aide?: string; coche?: boolean; caseACocher?: boolean; inactif?: boolean } = {}) {
     const b = document.createElement('button')
     b.type = 'button'; b.className = 'menu-item'
-    b.setAttribute('role', o.coche === undefined ? 'menuitem' : 'menuitemradio')
+    b.setAttribute('role', o.coche === undefined ? 'menuitem' : o.caseACocher ? 'menuitemcheckbox' : 'menuitemradio')
     if (o.coche !== undefined) b.setAttribute('aria-checked', String(o.coche))
     if (o.inactif) b.setAttribute('aria-disabled', 'true')
     b.innerHTML = `<span class="coche">${o.coche ? icone('coche') : ''}</span><span class="libelle"></span>` + (o.touche ? `<span class="touche">${html(o.touche)}</span>` : '')
@@ -604,6 +606,15 @@ export class UI implements Interface {
       const aide = d.id === 'auto' && reglages.styletDirect ? 'stylet détecté : le doigt déplace la vue' : d.aide
       this.entreeMenu(m, d.nom, () => { this.app.choisirDoigt(d.id); this.message(d.dit) }, { coche: reglages.doigt === d.id, aide })
     }
+    // Le toucher à deux doigts qui annule (à trois, qui rétablit) : allumé au
+    // départ sur un écran tactile ; au TNI, une manche ou une paume peut en
+    // faire un, on le coupe ici
+    m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
+    m.appendChild(Object.assign(document.createElement('div'), { className: 'menu-titre', textContent: 'Gestes' }))
+    this.entreeMenu(m, 'Deux doigts : annuler', () => {
+      choisirGestes(!reglages.gestes)
+      this.message(reglages.gestes ? 'Toucher à deux doigts : annuler ; à trois : rétablir.' : 'Gestes à deux et trois doigts coupés.')
+    }, { coche: reglages.gestes, caseACocher: true, aide: 'trois doigts : rétablir · un toucher bref' })
   }
 
   // ----- Le menu complet de ce qui est pris -----

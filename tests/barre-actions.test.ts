@@ -43,6 +43,11 @@ describe('ce que montre la barre', () => {
     expect(titre('pen')).toBe('Toutes les options (bouton du stylet)')
     expect(titre('touch')).toBe('Toutes les options')
     for (const a of actionsDe({ n: 1, formule: true }, 'touch')) expect(a.titre).not.toMatch(/clic/)
+    // Le stylet posé sur l'écran (l'Apple Pencil n'a pas de bouton) : l'appui long
+    const options = (p: 'mouse' | 'pen' | 'touch', direct: boolean) => actionsDe({ n: 1, formule: false }, p, 'Ctrl', direct).find(a => a.id === 'options')!.titre
+    expect(options('pen', true)).toBe('Toutes les options (appui long)')
+    expect(options('pen', false)).toBe('Toutes les options (bouton du stylet)')
+    expect(options('mouse', true)).toBe('Toutes les options (clic droit)')
   })
 
   it('Ajouter est un interrupteur ; Supprimer seul est en danger ; chaque icône existe', () => {

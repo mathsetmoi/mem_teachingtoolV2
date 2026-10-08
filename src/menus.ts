@@ -8,7 +8,7 @@
 // doit rien faire d'autre (pas de point d'encre posé en fermant un menu) :
 // « avale » le dit à qui reçoit l'appui ensuite.
 // Le balisage est celui des menus du système : role=menu ; des entrées
-// <button class=menu-item role=menuitem|menuitemradio aria-checked>,
+// <button class=menu-item role=menuitem|menuitemradio|menuitemcheckbox aria-checked>,
 // leur raccourci à droite dans <span class=touche>, une aide dessous
 // dans <small> ; des <hr class=menu-filet> et des <div class=menu-titre>.
 // =============================================================

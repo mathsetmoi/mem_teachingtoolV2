@@ -21,6 +21,7 @@
 import type { App } from './app'
 import type { Forme } from './types'
 import type { TypePointeur } from './pointeurs'
+import { ecranTactile } from './pointeurs'
 import type { Boite } from './revoir/bobine'
 import { CTRL } from './navigateur'
 import { icone } from './icones'
@@ -44,8 +45,10 @@ export interface ActionBarre {
  *  une formule seule) et le dernier pointeur. « Modifier » en tête pour une
  *  formule (comme son double-clic) ; « Ajouter » au doigt seulement (la
  *  souris et le stylet ont Maj + clic). Les titres parlent la langue du
- *  pointeur : jamais « clic » au doigt. */
-export function actionsDe(pris: { n: number; formule: boolean }, pointeur: TypePointeur, ctrl = CTRL): ActionBarre[] {
+ *  pointeur : jamais « clic » au doigt ; le stylet posé sur l'écran (direct,
+ *  l'Apple Pencil, qui n'a pas de bouton) a l'appui long, celui d'une
+ *  tablette graphique son bouton. */
+export function actionsDe(pris: { n: number; formule: boolean }, pointeur: TypePointeur, ctrl = CTRL, direct = ecranTactile()): ActionBarre[] {
   const seul = pris.n === 1, doigt = pointeur === 'touch'
   const l: ActionBarre[] = []
   if (seul && pris.formule) l.push({ id: 'modifier', icone: 'stylo', libelle: 'Modifier', titre: doigt ? 'Modifier la formule' : 'Modifier la formule (double-clic)' })
@@ -54,7 +57,8 @@ export function actionsDe(pris: { n: number; formule: boolean }, pointeur: TypeP
   l.push({ id: 'supprimer', icone: 'poubelle', libelle: 'Supprimer', titre: seul ? 'Supprimer (Suppr)' : `Supprimer les ${pris.n} objets (Suppr)`, danger: true })
   if (doigt) l.push({ id: 'ajouter', icone: 'plus', libelle: 'Ajouter', titre: 'Ajouter d\'autres objets : touchez-les', interrupteur: true })
   l.push({ id: 'options', icone: 'points', libelle: 'Options',
-    titre: pointeur === 'mouse' ? 'Toutes les options (clic droit)' : pointeur === 'pen' ? 'Toutes les options (bouton du stylet)' : 'Toutes les options' })
+    titre: pointeur === 'mouse' ? 'Toutes les options (clic droit)'
+      : pointeur === 'pen' ? (direct ? 'Toutes les options (appui long)' : 'Toutes les options (bouton du stylet)') : 'Toutes les options' })
   return l
 }
 

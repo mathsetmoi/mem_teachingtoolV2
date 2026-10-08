@@ -26,8 +26,8 @@ import { boiteDe } from './revoir/bobine'
 import type { Boite } from './revoir/bobine'
 import { choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, reglages } from './reglages'
 import type { Doigt } from './reglages'
-import { DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, TOLERANCE_PRISE, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from './pointeurs'
-import type { Depart, Toucher, TypePointeur } from './pointeurs'
+import { APPUI_LONG, DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, SEUIL_GLISSER, TOLERANCE_PRISE, TOUCHER_DOIGTS, ToucherADoigts, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from './pointeurs'
+import type { Depart, Toucher, ToucherReconnu, TypePointeur } from './pointeurs'
 import { CTRL, MAC, lireMolette } from './navigateur'
 import { avale } from './menus'
 import type { TraitDirect } from './rendu'
@@ -100,7 +100,13 @@ type Geste =
   // toucher : le doigt « qui déplace » ; levé sans avoir glissé, il fait le
   // clic attendu (voir placement) ou choisit l'objet touché
   | { type: 'pan'; dernierX: number; dernierY: number; pointeur?: number; toucher?: boolean }
-  | { type: 'pinch'; dist: number; cx: number; cy: number }
+  // dist, cx, cy : l'écart et le centre des deux doigts au dernier pas de la
+  // vue ; parti : la vue suit les doigts (voir bouge) ; depart : les deux
+  // doigts et leur écart quand le pincement a commencé
+  | { type: 'pinch'; dist: number; cx: number; cy: number; parti: boolean; depart: { a: DoigtPose; b: DoigtPose; dist: number } }
+  // Le premier doigt d'un outil qui écrit dès l'appui, retenu un instant (voir
+  // ecrireOuRetenir) : m et s, le point de l'appui (monde, écran) ; maj : Maj tenue
+  | { type: 'retenu'; m: P; s: P; maj: boolean; pointeur: number; minuterie: number }
   // apresMenu : l'appui qui a commencé le trait fermait un menu ; levé sans
   // avoir glissé, il ne pose rien. surObjet : il est parti d'une figure ou
   // d'une formule (un double-clic peut suivre, voir mettreEnAttente).
@@ -124,6 +130,9 @@ type Geste =
   // glissé, il le prend
   | { type: 'zone'; forme: 'cadre' | 'lasso'; x: number; y: number; pts: number[]; ajout: boolean; candidat?: string }
   | { type: 'formule' }
+
+/** Un doigt posé, à l'écran */
+type DoigtPose = { id: number; x: number; y: number }
 
 /** Un morceau d'une figure qu'on attrape : le nom d'un point, un sommet, le rayon */
 export type Prise = { quoi: 'nom' | 'sommet'; i: number } | { quoi: 'rayon' }
@@ -199,6 +208,14 @@ export class App {
   private toucherPrecedent: (Toucher & { objet: string; page: string }) | null = null
   /** Ce second toucher, posé : levé sans avoir glissé, il ouvre les options de l'objet */
   private doubleEnCours: { objet: string; pointeur: number } | null = null
+  /** L'appui long armé (voir armerAppuiLong) : le pointeur qui le tient,
+   *  l'endroit de l'appui (fenêtre), et la minuterie qui ouvrira le menu */
+  private appuiLong: { pointeur: number; clientX: number; clientY: number; type: TypePointeur; minuterie: number } | null = null
+  /** Le pointeur d'un appui long, et l'heure de son lever : le clic que le
+   *  navigateur en tire ne fait rien (voir brancherGestes) */
+  private clicApresAppuiLong: { pointeur: number; leve: number } | null = null
+  /** Le toucher à deux ou trois doigts en cours (voir gesteDesDoigts) */
+  private toucherDoigts = new ToucherADoigts()
   /** Le mode « Ajouter » au doigt (voir ajoutTactile). vu : la sélection a eu
    *  quelque chose depuis qu'il est allumé */
   private ajout = { actif: false, vu: false }
@@ -1019,10 +1036,11 @@ export class App {
     // stylet tenu immobile une seconde (une hésitation, ou un tracé tenu pour
     // que la figure soit reconnue) ouvrirait un menu, celui de la page dans le
     // vide. Android, la Surface et Windows tactile en envoient un aussi à
-    // l'appui long du doigt, que l'appui long de MEM remplacera par son propre
-    // minuteur : jamais deux menus. Un vrai clic droit, lui, commence toujours
-    // par l'appui du bouton 2, comme le bouton du stylet. Conséquence acceptée :
-    // la touche Menu du clavier (Maj + F10) n'ouvre rien sur le tableau.
+    // l'appui long du doigt, que l'appui long de MEM remplace par son propre
+    // minuteur (voir armerAppuiLong ; l'iPad n'en envoie pas) : jamais deux
+    // menus. Un vrai clic droit, lui, commence toujours par l'appui du
+    // bouton 2, comme le bouton du stylet. Conséquence acceptée : la touche
+    // Menu du clavier (Maj + F10) n'ouvre rien sur le tableau.
     z.addEventListener('contextmenu', e => e.preventDefault())
     // Double-clic : le menu complet de l'objet (une formule, elle, se modifie,
     // comme un texte partout ; dans une sélection de plusieurs objets, le
@@ -1049,6 +1067,20 @@ export class App {
       else if (f?.type === 'formule') this.modifierFormule(f)
       else if (f && (this.outil === 'selection' || this.outil === 'main' || this.outil === 'segment')) this.ouvrirOptions(f)
     })
+    // Le clic que le navigateur tire du lever d'un appui long : Chrome (sous
+    // Windows, au TNI, sur une Surface) en donne un, même après une seconde,
+    // et il tomberait sur le menu qui vient de s'ouvrir sous le doigt (sa
+    // poubelle…). Il ne fait rien. On le reconnaît à son pointeur (le clic
+    // de Chrome porte celui du doigt) ; un navigateur qui n'en dit rien, au
+    // clic qui suit le lever de tout près. Un vrai clic d'après passe.
+    window.addEventListener('click', e => {
+      const c = this.clicApresAppuiLong
+      if (!c || !c.leve) return
+      const id = (e as Partial<PointerEvent>).pointerId, depuis = performance.now() - c.leve
+      const sien = id === c.pointeur || (id === undefined && depuis < 100)
+      if (sien || depuis > 1000) this.clicApresAppuiLong = null
+      if (sien) { e.preventDefault(); e.stopPropagation() }
+    }, true)
     // Le clic que le navigateur tire du second appui d'un double appui
     // viserait ce qui vient de s'ouvrir sous le doigt ou le stylet (l'éditeur
     // d'une formule, qui se fermerait aussitôt) : il ne fait rien
@@ -1103,26 +1135,39 @@ export class App {
     return [...this.pointeurs].filter(([, p]) => p.type === 'touch').map(([id, p]) => ({ id, x: p.x, y: p.y }))
   }
 
-  private pincement(doigts: { x: number; y: number }[]): Geste {
+  /** Un pincement des deux premiers doigts. parti : la vue suit déjà les
+   *  doigts (un pincement réancré quand un troisième se lève) ; sinon elle
+   *  attend qu'ils aient bougé (voir bouge) */
+  private pincement(doigts: DoigtPose[], parti = false): Geste {
     const [a, b] = doigts
-    return { type: 'pinch', dist: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }
+    const dist = Math.hypot(a.x - b.x, a.y - b.y)
+    return { type: 'pinch', dist, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, parti, depart: { a: { ...a }, b: { ...b }, dist } }
   }
 
   /** L'appui est-il devenu un glisser ? (voir SEUIL_GLISSER) */
   private aGlisse(s: P): boolean { return depasseSeuil(this.depart, s.x, s.y) }
 
   // ---------- Appuyer, glisser, lever ----------
-  /** Un appui. L'ordre compte : la paume écartée, le pointeur noté, le
-   *  stylet qui reprend la main au doigt, deux doigts qui pincent ; puis,
-   *  si rien n'est en cours, le clic droit qui ouvre un menu, un menu ouvert
-   *  qui se ferme, le second toucher d'un double-clic, et enfin ce que fait
-   *  le pointeur avec l'outil. */
+  /** Un appui. L'ordre compte : l'appui long d'un autre pointeur oublié, la
+   *  paume écartée, le doigt noté pour le toucher à plusieurs doigts, le
+   *  pointeur noté, le stylet qui reprend la main au doigt, deux doigts qui
+   *  pincent ; puis, si rien n'est en cours, le clic droit qui ouvre un menu,
+   *  un menu ouvert qui se ferme, le second toucher d'un double-clic, et
+   *  enfin ce que fait le pointeur avec l'outil (et l'appui long qui s'arme). */
   private bas(e: PointerEvent) {
     const s = this.ecran(e)
+    // Tout autre appui (le second doigt d'un pincement, une paume, le stylet)
+    // n'est plus un appui long
+    this.desarmerAppuiLong()
     // Le bout gomme du stylet (le stylet retourné) efface, quel que soit l'outil
     const gommeDuStylet = e.pointerType === 'pen' && (e.button === 5 || (e.buttons & 32) !== 0)
-    // La paume, quand le doigt ne dessine pas : rien jusqu'à son lever
-    if (this.paume(e)) { this.ignores.add(e.pointerId); return }
+    // La paume, quand le doigt ne dessine pas : rien jusqu'à son lever, et ce
+    // n'est pas un toucher à deux doigts
+    if (this.paume(e)) { this.ignores.add(e.pointerId); this.toucherDoigts.oublier(); return }
+    // Le toucher à deux ou trois doigts (voir gesteDesDoigts) se suit doigt
+    // par doigt ; un stylet posé l'abandonne. Jamais pendant la revue.
+    if (e.pointerType === 'touch' && !this.enLecture) this.toucherDoigts.poser(e.pointerId, s.x, s.y, heureDe(e))
+    else this.toucherDoigts.oublier()
     // Un pointeur synthétique, ou déjà levé, refuse d'être capturé : le geste a lieu quand même
     try { this.zone.setPointerCapture(e.pointerId) } catch { /* sans capture */ }
     this.pointeurs.set(e.pointerId, { x: s.x, y: s.y, type: e.pointerType })
@@ -1180,6 +1225,8 @@ export class App {
     const garder = !!vise && (this.options === TOUTE_LA_SELECTION ? this.selection.has(vise.id) : vise.id === this.options)
     const apresMenu = !pan && !this.placement && (avale(e) || this.ui.fermerMenus(garder))
     if (apresMenu) {
+      // Deux doigts posés pour fermer un menu n'annulent rien
+      this.toucherDoigts.oublier()
       const continuer = e.button === 0 && !gommeDuStylet && (
         (this.instruments.size > 0 && !!this.instrumentSous(m))
         || (prend && (!!prise || !!vise))
@@ -1196,7 +1243,13 @@ export class App {
     this.secondToucher(e, s, m)
 
     this.depart = nouveauDepart(s.x, s.y, e.pointerId, e.pointerType, performance.now())
-    if (pan) { this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y }; return }
+    if (pan) {
+      this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y }
+      // L'outil Main au doigt qui « déplace » : l'appui long y ouvre le menu,
+      // comme sous les autres outils (voir armerAppuiLong)
+      if (this.outil === 'main' && e.button === 0) this.armerAppuiLong(e)
+      return
+    }
     if (e.button !== 0 && !gommeDuStylet) return
 
     // Un clic attendu (où commencer une construction, Désigner, Tracer un axe
@@ -1212,7 +1265,7 @@ export class App {
     // Sélection, il fait comme la souris et le stylet (un doigt qui glisse dans
     // le vide trace un lasso, la vue se déplace à deux doigts), sauf quand un
     // clic est attendu : il cherche alors la place en déplaçant la vue.
-    if (doigt && (this.outil !== 'selection' || this.placement)) { this.basDoigt(e, s, m, prise); return }
+    if (doigt && (this.outil !== 'selection' || this.placement)) { this.basDoigt(e, s, m, prise); this.armerAppuiLong(e); return }
     // Le crayon posé contre le bord d'un instrument trace le long du bord.
     // Sauf sur une pastille ↻ : à petit zoom, la portée du bord l'atteindrait
     // (celle du rapporteur est dans le prolongement de son bord)
@@ -1262,25 +1315,20 @@ export class App {
       }
       case 'segment': {
         // Second clic d'un trait en deux clics : il le finit
-        if (this.traitEnAttente) {
-          const a = this.traitEnAttente
-          this.traitEnAttente = null
-          this.finirTrait(a, this.boutDuTrait(a, m, e.shiftKey))
-          break
-        }
+        if (this.traitEnAttente) { this.ecrireOuRetenir(e, m, s); break }
         const a = this.accrocher(m).p
         this.geste = { type: 'segment', x: a.x, y: a.y }
         this.rendu.monSegment = { x1: a.x, y1: a.y, x2: a.x, y2: a.y, couleur: this.couleur, taille: this.taille }
         break
       }
       case 'forme': {
-        if (this.typeForme === 'polygone') { this.pointDuPolygone(this.accrocher(m).p, s); break }
+        if (this.typeForme === 'polygone') { this.ecrireOuRetenir(e, m, s); break }
         const a = this.aimanter(m)
         this.geste = { type: this.typeForme, x: a.x, y: a.y }
         break
       }
-      case 'point': this.placerPoint(m); break
-      case 'gomme': this.commencerGomme(m, false); break
+      case 'point':
+      case 'gomme': this.ecrireOuRetenir(e, m, s); break
       case 'selection': {
         const c = this.cibleSous(m, s, { pointeur, dedans: true })
         // Maj + clic, ou Ctrl + clic (⌘ sur Mac, où Ctrl + clic est un clic
@@ -1304,6 +1352,7 @@ export class App {
           // stylet (tablette graphique comprise) et au doigt
           this.geste = { type: 'zone', forme: e.pointerType === 'mouse' ? 'cadre' : 'lasso', x: m.x, y: m.y, pts: [m.x, m.y], ajout, candidat: c?.f.id }
         }
+        this.armerAppuiLong(e)
         this.rendu.redessinerDirect(); this.ui.maj()
         break
       }
@@ -1332,6 +1381,120 @@ export class App {
     const c = this.cibleSous(m, s, { pointeur: 'touch', dedans: false })
     if (c && this.selection.has(c.f.id) && this.saisi(c, 'touch')) { this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false, doigt: true }; return }
     this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, pointeur: e.pointerId, toucher: true }
+  }
+
+  // ---------- Le premier doigt d'un outil qui écrit dès l'appui ----------
+  /** La Gomme efface ce qu'elle touche, le Point se pose, le Polygone prend
+   *  un sommet, le second clic du Segment finit le trait : ces outils écrivent
+   *  dès l'appui. Au doigt qui dessine, les gestes à deux doigts allumés, le
+   *  premier doigt attend un peu (TOUCHER_DOIGTS.arrivee) : sans cela, le
+   *  toucher à deux doigts défairait ce que le premier vient de faire, au
+   *  lieu du geste d'avant. Un second doigt pendant l'attente fait un
+   *  pincement (abandonnerGeste efface la minuterie) : rien n'est écrit.
+   *  Sinon, l'appui fait ce qu'il a toujours fait, au premier de ces moments :
+   *  l'échéance, le seuil du glisser passé (voir bouge), le lever (voir
+   *  leverGeste). Le Stylo et le Surligneur n'attendent pas : leur encre part
+   *  tout de suite, et le pincement la jette déjà. */
+  private ecrireOuRetenir(e: PointerEvent, m: P, s: P) {
+    if (e.pointerType !== 'touch' || !reglages.gestes) { this.ecrireDesLAppui(m, s, e.shiftKey); return }
+    const g: Extract<Geste, { type: 'retenu' }> = { type: 'retenu', m, s, maj: e.shiftKey, pointeur: e.pointerId, minuterie: 0 }
+    g.minuterie = window.setTimeout(() => { if (this.geste === g) this.lancerRetenu(g) }, TOUCHER_DOIGTS.arrivee)
+    this.geste = g
+  }
+
+  /** Ce que fait l'appui de ces outils (m, s : le point de l'appui, dans le
+   *  monde et à l'écran ; maj : Maj tenue) */
+  private ecrireDesLAppui(m: P, s: P, maj: boolean) {
+    switch (this.outil) {
+      case 'point': this.placerPoint(m); break
+      case 'gomme': this.commencerGomme(m, false); break
+      case 'forme': if (this.typeForme === 'polygone') this.pointDuPolygone(this.accrocher(m).p, s); break
+      case 'segment': {
+        const a = this.traitEnAttente
+        if (!a) break
+        this.traitEnAttente = null
+        this.finirTrait(a, this.boutDuTrait(a, m, maj))
+        break
+      }
+    }
+  }
+
+  /** Le doigt retenu agit enfin : la Gomme devient le geste en cours (elle
+   *  efface ce que le doigt traverse ensuite), le reste est fait */
+  private lancerRetenu(g: Extract<Geste, { type: 'retenu' }>) {
+    clearTimeout(g.minuterie)
+    if (this.geste === g) this.geste = null
+    this.tableau.nouveauGeste()
+    this.ecrireDesLAppui(g.m, g.s, g.maj)
+  }
+
+  // ---------- L'appui long ----------
+  /** Un appui tenu APPUI_LONG ms sans glisser ouvrira le menu complet de ce
+   *  qui est dessous (le menu de la page dans le vide), comme un clic droit.
+   *  Au doigt : à l'outil Sélection (quel que soit le rôle du doigt), et au
+   *  doigt qui « déplace » sous n'importe quel outil. Au stylet : seulement
+   *  posé sur l'écran lui-même (iPad, Surface, tablette Android) et à la
+   *  Sélection ; celui d'une tablette graphique a son bouton, et un stylet
+   *  qui marque un temps sur un objet avant de le glisser ne doit pas ouvrir
+   *  de menu. Jamais au Stylo ni au Surligneur (un point qu'on tient, une
+   *  lettre qu'on commence), ni quand un clic est attendu ; et seulement sur
+   *  un appui qui prend, déplace ou entoure (pas sur un instrument, un
+   *  sommet, un trait qu'on tire). Notre propre minuterie : l'iPad n'envoie
+   *  pas de contextmenu, et celui d'Android ou de Windows n'ouvre plus rien. */
+  private armerAppuiLong(e: PointerEvent) {
+    const g = this.geste
+    if (!g || this.placement || this.enLecture || this.depart.pointeur !== e.pointerId) return
+    const doigt = e.pointerType === 'touch' && (this.outil === 'selection' || this.doigtDeplace)
+    const stylet = e.pointerType === 'pen' && this.outil === 'selection' && ecranTactile()
+    if (!doigt && !stylet) return
+    if (!(g.type === 'deplacer' && !g.bouge) && g.type !== 'zone' && !(g.type === 'pan' && (g.toucher || this.outil === 'main'))) return
+    this.desarmerAppuiLong()
+    this.appuiLong = { pointeur: e.pointerId, clientX: e.clientX, clientY: e.clientY, type: typePointeur(e.pointerType),
+      minuterie: window.setTimeout(() => this.appuiLongEchu(), APPUI_LONG) }
+  }
+
+  /** L'appui a glissé, s'est levé, un autre s'est posé : pas d'appui long */
+  private desarmerAppuiLong() {
+    if (!this.appuiLong) return
+    clearTimeout(this.appuiLong.minuterie)
+    this.appuiLong = null
+  }
+
+  /** L'appui long : le geste commencé s'abandonne sans rien laisser (l'objet
+   *  revient à sa place, le lasso s'efface), le pointeur ne compte plus
+   *  jusqu'à son lever (qui ne désélectionne rien et ne prend rien), une
+   *  petite vibration le dit sous le doigt, et le menu s'ouvre (voir
+   *  demanderOptions), comme au clic droit. */
+  private appuiLongEchu() {
+    const a = this.appuiLong
+    this.appuiLong = null
+    if (!a || !this.geste || this.depart.pointeur !== a.pointeur) return
+    this.abandonnerGeste()
+    this.pointeurs.delete(a.pointeur); this.ignores.add(a.pointeur)
+    this.toucherDoigts.oublier()
+    this.toucherPrecedent = null; this.doubleEnCours = null
+    try { navigator.vibrate?.(10) } catch { /* pas de vibreur */ }
+    this.clicApresAppuiLong = { pointeur: a.pointeur, leve: 0 }
+    this.demanderOptions({ clientX: a.clientX, clientY: a.clientY }, a.type)
+    this.ui.maj()
+  }
+
+  // ---------- Le toucher à deux ou trois doigts ----------
+  /** Un toucher bref à deux doigts annule le dernier geste de la page qu'on
+   *  regarde, à trois il le rétablit (voir TOUCHER_DOIGTS, reconnu par
+   *  ToucherADoigts au lever du dernier doigt), comme Ctrl+Z et Ctrl+Y. Un
+   *  message bref le dit. La page jetée que ↶ ramène le dit elle-même (« Page
+   *  N rétablie »). Coupé dans le menu du doigt (reglages.gestes). Le doigt
+   *  qui dessinait a déjà perdu son trait quand le second s'est posé (le
+   *  pincement le jette) ; l'objet que le premier doigt a pris à la Sélection
+   *  est relâché par annuler() et retablir(), qui vident la sélection. */
+  private gesteDesDoigts(r: ToucherReconnu) {
+    if (!reglages.gestes || this.enLecture) return
+    if (r === 'annuler') {
+      const fait = this.annuler()
+      if (fait === true) this.ui.message('Annulé')
+      else if (!fait) this.ui.message('Rien à annuler sur cette page')
+    } else this.ui.message(this.retablir() ? 'Rétabli' : 'Rien à rétablir sur cette page')
   }
 
   /** Un coup de gomme : à l'outil Gomme, ou au bout gomme du stylet (le
@@ -1536,6 +1699,8 @@ export class App {
   private laisserLeStylet() {
     const g = this.geste
     this.geste = null
+    this.desarmerAppuiLong()
+    this.toucherDoigts.oublier()
     switch (g?.type) {
       case 'pan': case 'pinch': break
       case 'instrument': this.finirInstrument(g); break
@@ -1547,18 +1712,21 @@ export class App {
     this.ui.maj()
   }
 
-  /** Un doigt se lève pendant un pincement. Deux restent ou plus : le
+  /** Un doigt se lève pendant un pincement (g). Deux restent ou plus : le
    *  pincement continue, réancré sur les deux premiers (la vue ne saute pas).
    *  Un seul : il continue de déplacer la vue, sans jamais reprendre le
-   *  dessin, jusqu'à son lever. */
-  private finPincement() {
+   *  dessin, jusqu'à son lever. Si le pincement est parti (la vue suivait les
+   *  doigts), ce doigt la déplace aussitôt ; sinon (un toucher à deux doigts,
+   *  dont les doigts ne se lèvent jamais tout à fait ensemble), il repart
+   *  avec le seuil du glisser : un doigt qui tremble ne déplace rien. */
+  private finPincement(g: Extract<Geste, { type: 'pinch' }>) {
     const doigts = this.doigts()
-    if (doigts.length >= 2) { this.geste = this.pincement(doigts); return }
+    if (doigts.length >= 2) { this.geste = this.pincement(doigts, g.parti); return }
     if (!doigts.length) { this.geste = null; return }
     const d = doigts[0]
     this.geste = { type: 'pan', dernierX: d.x, dernierY: d.y, pointeur: d.id }
     this.depart = nouveauDepart(d.x, d.y, d.id, 'touch', performance.now())
-    this.depart.parti = true
+    this.depart.parti = g.parti
   }
 
   private bouge(e: PointerEvent) {
@@ -1566,9 +1734,10 @@ export class App {
     const s = this.ecran(e)
     const avant = this.pointeurs.get(e.pointerId)
     if (avant) { avant.x = s.x; avant.y = s.y }
+    if (e.pointerType === 'touch') this.toucherDoigts.bouger(e.pointerId, s.x, s.y)
     const m = this.monde(e)
     const t = performance.now()
-    const g = this.geste
+    let g = this.geste
     if (this.outil === 'gomme' || g?.type === 'gomme') {
       this.rendu.gomme = { x: m.x, y: m.y, r: 12 / this.cam.z }
       this.rendu.redessinerDirect()
@@ -1613,11 +1782,27 @@ export class App {
     if (g.type !== 'pinch' && e.pointerId !== this.depart.pointeur) return
     const parti = this.depart.parti
     const glisse = g.type !== 'pinch' && this.aGlisse(s)
-    // L'appui devient un glisser (un objet qui part, un cadre ou un lasso qui
-    // commence) : la barre d'actions se cache, une fois, jusqu'au lâcher (voir
-    // enMouvement). Rien de sélectionné, pas de barre : un trait du Stylo ne
-    // paie pas cette mise à jour.
-    if (glisse && !parti && this.selection.size) this.ui?.maj()
+    if (glisse && !parti) {
+      // Un appui qui glisse n'est plus un appui long ; un doigt qui glisse
+      // (la vue, un lasso, un objet qui part) ne fait plus un toucher à deux
+      // doigts : un toucher qui a déplacé quelque chose n'annule jamais
+      if (this.appuiLong?.pointeur === e.pointerId) this.desarmerAppuiLong()
+      if (e.pointerType === 'touch') this.toucherDoigts.oublier()
+      // L'appui devient un glisser (un objet qui part, un cadre ou un lasso
+      // qui commence) : la barre d'actions se cache, une fois, jusqu'au lâcher
+      // (voir enMouvement). Rien de sélectionné, pas de barre : un trait du
+      // Stylo ne paie pas cette mise à jour.
+      if (this.selection.size) this.ui?.maj()
+    }
+    // Le doigt retenu (voir ecrireOuRetenir) a glissé : il agit au point de
+    // l'appui, et ce mouvement continue avec le vrai geste (la Gomme efface
+    // ce qu'elle traverse)
+    if (g.type === 'retenu') {
+      if (!glisse) return
+      this.lancerRetenu(g)
+      g = this.geste
+      if (!g) return
+    }
     switch (g.type) {
       case 'instrument':
         if (g.quoi !== 'tete' && !glisse) break          // l'arc du compas, lui, se trace tout de suite
@@ -1644,6 +1829,19 @@ export class App {
         if (doigts.length < 2) return
         const [a, b] = doigts
         const dist = Math.hypot(a.x - b.x, a.y - b.y)
+        // La vue ne bouge pas tant qu'aucun des deux doigts n'a bougé de 8 px
+        // (le seuil du glisser au doigt) et que leur écart n'a pas changé de
+        // 8 px : un toucher à deux doigts qui tremble ne décale pas la vue
+        // avant d'annuler. Passé ce seuil, elle suit les doigts depuis le
+        // départ du pincement (dist, cx, cy n'ont pas bougé jusque-là), et ce
+        // n'est plus un toucher.
+        if (!g.parti) {
+          const d = g.depart, k = SEUIL_GLISSER.touch
+          const loin = (p: DoigtPose, q: DoigtPose) => p.id !== q.id || Math.hypot(p.x - q.x, p.y - q.y) >= k
+          if (!loin(a, d.a) && !loin(b, d.b) && Math.abs(dist - d.dist) < k) return
+          g.parti = true
+          this.toucherDoigts.oublier()
+        }
         const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2
         this.cam.deplacer(cx - g.cx, cy - g.cy)
         if (g.dist > 0) this.cam.zoomerAutour(cx, cy, dist / g.dist)
@@ -1705,16 +1903,44 @@ export class App {
     }
   }
 
+  /** Un lever (annule : coupé par le navigateur, pointercancel). Le toucher à
+   *  deux ou trois doigts se reconnaît au lever du dernier doigt (voir
+   *  ToucherADoigts), et n'agit qu'une fois ce lever fait. */
   private haut(e: PointerEvent, annule = false) {
-    // Une paume sort de la liste à son lever, sans rien faire d'autre
-    if (this.ignores.delete(e.pointerId)) return
+    // Une paume, ou le doigt d'un appui long, sort de la liste à son lever,
+    // sans rien faire d'autre (le clic qui suit le lever d'un appui long non
+    // plus : voir brancherGestes)
+    if (this.ignores.delete(e.pointerId)) {
+      if (this.clicApresAppuiLong?.pointeur === e.pointerId) this.clicApresAppuiLong.leve = performance.now()
+      return
+    }
+    if (this.appuiLong?.pointeur === e.pointerId) this.desarmerAppuiLong()
+    let doigts: ToucherReconnu | null = null
+    if (e.pointerType === 'touch') {
+      if (annule || this.enLecture) this.toucherDoigts.oublier()
+      else doigts = this.toucherDoigts.lever(e.pointerId, heureDe(e))
+    }
+    this.leverGeste(e, annule)
+    if (doigts) this.gesteDesDoigts(doigts)
+  }
+
+  private leverGeste(e: PointerEvent, annule: boolean) {
     this.pointeurs.delete(e.pointerId)
-    const g = this.geste
+    let g = this.geste
     if (!g) return
     // La fin d'un pincement : la barre d'actions revient quand plus rien ne bouge
-    if (g.type === 'pinch') { this.finPincement(); this.ui.maj(); return }
-    if (g.type === 'dessin' && e.pointerId !== g.pointeur) return
+    if (g.type === 'pinch') { this.finPincement(g); this.ui.maj(); return }
+    if ((g.type === 'dessin' || g.type === 'retenu') && e.pointerId !== g.pointeur) return
     if (g.type === 'pan' && g.pointeur !== undefined && e.pointerId !== g.pointeur) return
+    // Le doigt retenu (voir ecrireOuRetenir) se lève avant d'avoir agi : il
+    // agit (la Gomme efface ce qu'elle touche, le Point se pose…), puis c'est
+    // le lever du vrai geste. Coupé par le navigateur, il n'écrit rien.
+    if (g.type === 'retenu') {
+      if (annule) { this.abandonnerGeste(g); return }
+      this.lancerRetenu(g)
+      g = this.geste
+      if (!g) return
+    }
     // Clic ou glisser ? Le lever compte aussi (un appui levé loin de son départ a glissé)
     const glisse = this.aGlisse(this.ecran(e))
     this.geste = null
@@ -1903,6 +2129,8 @@ export class App {
   }
 
   private abandonnerGeste(g: Geste | null = this.geste) {
+    this.desarmerAppuiLong()
+    if (g?.type === 'retenu') clearTimeout(g.minuterie)
     if (g?.type === 'dessin') { clearTimeout(this.minuterieForme); this.rendu.monTrait = null; this.heuresDuTrait = [] }
     if (g?.type === 'segment') { this.rendu.monSegment = null; this.rendu.apercu = null; this.rendu.cible = null }
     if (g?.type === 'rectangle' || g?.type === 'cercle') this.rendu.apercu = null
@@ -2112,9 +2340,9 @@ export class App {
 
   /** Le menu complet de ce qui est sous le pointeur (client : le point de
    *  l'appui dans la fenêtre). Le clic droit (le bouton du stylet en est
-   *  un), et bientôt l'appui long, passent par ici ; « Options » de la barre
-   *  d'actions ouvre le même menu (ouvrirOptions, ouvrirOptionsSelection) :
-   *  le même menu, de la même façon, partout. Dans
+   *  un) et l'appui long (voir armerAppuiLong) passent par ici ; « Options »
+   *  de la barre d'actions ouvre le même menu (ouvrirOptions,
+   *  ouvrirOptionsSelection) : le même menu, de la même façon, partout. Dans
    *  l'ordre :
    *  - un objet d'une sélection de plusieurs : leur menu commun, et la
    *    sélection reste entière (même près du sommet d'une de ses figures) ;
@@ -2155,10 +2383,13 @@ export class App {
     this.ui.ouvrirMenuPage(client.clientX, client.clientY, m)
   }
 
-  /** La première fois qu'on prend un objet, on dit où sont ses options, dans
-   *  les mots du pointeur : le clic droit à la souris, le bouton du stylet au
-   *  stylet, deux touchers au doigt (le double appui, voir secondToucher :
-   *  l'objet a été pris à l'outil Sélection ou au doigt qui déplace) */
+  /** La première fois qu'on prend un objet, on dit où sont toutes ses
+   *  options, dans les mots du pointeur (voir messageOptions) : le clic droit
+   *  à la souris, le bouton du stylet à la tablette graphique, l'appui long
+   *  au stylet posé sur l'écran et au doigt (l'objet a été pris à l'outil
+   *  Sélection ou au doigt qui déplace, où l'appui long existe ; le double
+   *  appui marche toujours, mais l'appui long est le geste qu'on essaie
+   *  d'instinct sur une tablette) */
   private direOptions() {
     if (this.astuceOptions || this.selection.size !== 1) return
     const f = this.formeChoisie()
