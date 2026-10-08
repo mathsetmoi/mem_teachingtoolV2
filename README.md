@@ -47,7 +47,13 @@ copie, une image importée, l'image d'une transformation le sont.
 
 **Le panneau d'options** ne s'ouvre qu'à la demande : **double-clic** ou
 **clic droit** sur l'objet (un simple clic le sélectionne seulement, pour le
-déplacer). Au Stylo aussi, un double-clic sur une figure ou une formule ouvre
+déplacer) ; au stylet, le bouton du stylet fait le clic droit ; au doigt, avec
+l'outil Sélection ou le doigt qui « déplace », **deux touchers** rapprochés
+(moins d'un tiers de seconde, à moins de 35 px, sur le même objet), même sur
+iPad où Safari ne donne pas de double-clic au doigt (un toucher suivi d'un
+glisser déplace toujours). La première fois qu'on prend un objet, un message
+le rappelle dans les mots du pointeur (jamais « clic droit » au doigt).
+Au Stylo aussi, un double-clic sur une figure ou une formule ouvre
 ses options, sans y laisser de point : le point d'un simple toucher sur un
 objet ne s'écrit qu'un tiers de seconde plus tard, quand on sait qu'aucun
 second toucher ne suit. Le panneau se ferme quand on choisit autre chose ou
@@ -568,6 +574,14 @@ lui, les montre partir l'un après l'autre). Le bout gomme du stylet (le stylet
 retourné, sur une tablette graphique ou une Surface) efface de même quel que
 soit l'outil en main, qu'on retrouve en reprenant la pointe.
 
+**La barre de gauche** ne bouge pas : la poubelle y garde sa place, grisée
+quand rien n'est choisi. Sur un écran bas (moins de 900 px de haut environ),
+ses boutons gardent leurs 44 px et elle défile, avec une fine barre de
+défilement ; les choix des Formes et du Segment suivent leur bouton.
+Les **messages** en bas de l'écran passent sous les panneaux et les menus (ils
+ne cachent jamais ce qu'on va toucher), sauf pendant la revue et pour le
+programme de construction ; un message à bouton (« Changer ») reste 7 s.
+
 **Au doigt, au stylet.** Deux doigts zooment et déplacent la vue ; si l'un se
 lève, celui qui reste continue de déplacer la vue, sans jamais se mettre à
 dessiner. Le rôle d'un seul doigt se règle par le bouton en forme de main de la
@@ -645,7 +659,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page ; la molette |
 | `src/menus.ts` | Les petits menus flottants (un seul ouvert, Échap, un appui ailleurs) |
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt), hors du document |
-| `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la paume, le stylet sur l'écran |
+| `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la paume, le stylet sur l'écran, le double appui, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
 
 Toutes les briques sont sous licence MIT (Yjs, y-indexeddb,

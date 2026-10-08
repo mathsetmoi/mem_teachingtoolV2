@@ -52,8 +52,13 @@ button, select, input { font: inherit; color: inherit; }
 .barre-outils {
   left: max(12px, env(safe-area-inset-left)); top: 50%; transform: translateY(-50%);
   flex-direction: column; align-items: center;
-  max-height: calc(100% - 24px); overflow-y: auto; scrollbar-width: none;
+  max-height: calc(100% - 24px); overflow-y: auto;
+  /* Sur un écran bas, la barre défile, avec une fine barre de défilement qui
+     le montre ; ses boutons gardent leurs 44 px au lieu de rétrécir, et le
+     défilement s'arrête à son bout sans emporter la page */
+  scrollbar-width: thin; overscroll-behavior: contain;
 }
+.barre-outils > * { flex-shrink: 0; }
 .barre-haut {
   top: max(12px, env(safe-area-inset-top)); right: 12px;
   align-items: center; flex-wrap: wrap; justify-content: flex-end;
@@ -74,6 +79,9 @@ button, select, input { font: inherit; color: inherit; }
 }
 .bouton:hover { background: #e9eef5; }
 .bouton.danger:hover { color: var(--rouge); }
+/* Un bouton sans objet (la poubelle sans sélection) garde sa place, grisé */
+.bouton:disabled { opacity: 0.3; cursor: default; }
+.bouton:disabled:hover { background: transparent; color: inherit; }
 
 /* L'outil en main : un coup de surligneur derrière l'icône */
 .bouton.actif { background: transparent; }
@@ -170,14 +178,18 @@ button, select, input { font: inherit; color: inherit; }
 
 button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); outline-offset: 2px; }
 
-/* ---------- Message ---------- */
+/* ---------- Message ----------
+   Sous les panneaux et les menus (15 à 23) : il ne cache pas ce qu'on va
+   toucher. .dessus : pendant la revue (28), qui couvre le tableau, et pour le
+   programme de construction. */
 .toast {
-  position: absolute; z-index: 30; left: 50%; bottom: max(84px, env(safe-area-inset-bottom));
+  position: absolute; z-index: 14; left: 50%; bottom: max(84px, env(safe-area-inset-bottom));
   transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
   padding: 10px 16px; border-radius: 10px; background: var(--encre); color: #fff;
   transition: opacity 0.18s, transform 0.18s;
 }
 .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+.toast.dessus { z-index: 30; }
 /* Le bouton d'un message (« Changer ») : seul à recevoir les appuis, et
    seulement quand le message se voit */
 .toast .action {
@@ -521,8 +533,8 @@ body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .panneau-co
 @media (prefers-reduced-motion: reduce) { .revue-barre { transition: none; } }
 
 /* ---------- Petits menus flottants (menus.ts) ----------
-   Au-dessus des menus d'un morceau de figure (22), sous la revue (28)
-   et le message (30). */
+   Au-dessus des menus d'un morceau de figure (22) et du message (14), sous
+   la revue (28). */
 .menu-flottant {
   position: fixed; z-index: 23; min-width: 260px; max-width: calc(100vw - 16px);
   max-height: calc(100vh - 16px); overflow-y: auto;

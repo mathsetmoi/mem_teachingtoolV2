@@ -236,9 +236,17 @@ export class UI implements Interface {
     outils.appendChild(Object.assign(document.createElement('hr'), { className: 'filet' }))
     outils.appendChild(bouton('annuler', 'Annuler (Ctrl+Z)', () => app.annuler()))
     outils.appendChild(bouton('retablir', 'Rétablir (Ctrl+Y)', () => app.retablir()))
+    // La poubelle garde sa place, grisée quand rien n'est choisi : la barre ne
+    // saute plus à chaque sélection
     this.boutonSupprimer = bouton('poubelle', 'Supprimer la sélection (Suppr)', () => app.supprimerSelection(), 'danger')
     outils.appendChild(this.boutonSupprimer)
     this.barreOutils = outils
+    // Sur un écran bas, la barre défile (voir style.css) : les choix des Formes
+    // et du Segment suivent leur bouton, le menu du doigt le sien
+    outils.addEventListener('scroll', () => {
+      this.maj()
+      if (!this.menuDoigt.el.hidden) this.placerMenuDoigt()
+    }, { passive: true })
 
     // ----- Barre des pages, en haut à droite -----
     const haut = document.createElement('div')
@@ -358,7 +366,7 @@ export class UI implements Interface {
     this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
     this.revue = new RevueEnClasse(this.app, this.racine)
     this.publication = new Publication(app, this.racine)
-    this.constructeur = new Constructeur(app, this.racine, t => this.message(t))
+    this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
     this.seance = new Seance(this.racine)
 
     // ----- Menu d'un morceau de figure (point, extrémité, nom, rayon) -----
@@ -382,7 +390,11 @@ export class UI implements Interface {
     if (this.boutonDoigt.title !== titre) { this.boutonDoigt.title = titre; this.boutonDoigt.setAttribute('aria-label', titre) }
     this.pastilles.forEach((b, i) => b.classList.toggle('actif', COULEURS[i].valeur === app.couleur))
     this.tailles.forEach((b, i) => b.classList.toggle('actif', TAILLES[i].valeur === app.taille))
-    this.boutonSupprimer.hidden = app.selection.size === 0
+    const rien = !(app.selection.size || app.partie)
+    if (this.boutonSupprimer.disabled !== rien) {
+      this.boutonSupprimer.disabled = rien
+      this.boutonSupprimer.setAttribute('aria-disabled', String(rien))
+    }
 
     const pages = app.pages, i = pages.indexOf(app.page)
     this.rang.textContent = pages.length ? `${i + 1} / ${pages.length}` : '…'
@@ -514,9 +526,14 @@ export class UI implements Interface {
     if (m.hidden) this.construireMenuDoigt()
     basculerMenu(this.menuDoigt)
     if (m.hidden) return
-    const b = this.boutonDoigt.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
-    placerMenu(m, new DOMRect(o.left, b.top, o.width, b.height), 'droite')
+    this.placerMenuDoigt()
     if (auClavier) m.querySelector<HTMLElement>('.menu-item[aria-checked="true"]')?.focus()
+  }
+
+  /** Le menu du doigt, à droite de la barre, à la hauteur de son bouton */
+  private placerMenuDoigt() {
+    const b = this.boutonDoigt.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
+    placerMenu(this.menuDoigt.el, new DOMRect(o.left, b.top, o.width, b.height), 'droite')
   }
 
   private construireMenuDoigt() {
@@ -975,8 +992,12 @@ export class UI implements Interface {
 
   /** Un message en bas de l'écran. Avec une action, un bouton suit le texte
    *  (« Changer ») et le message reste 7 s ; seul ce bouton reçoit les appuis,
-   *  et seulement quand le message se voit. */
-  message(texte: string, action?: { libelle: string; faire: () => void }) {
+   *  et seulement quand le message se voit. Il passe sous les menus et les
+   *  panneaux (il ne cache pas ce qu'on va toucher), sauf pendant la revue,
+   *  qui couvre tout, et pour le programme de construction (dessus), dont le
+   *  panneau prend presque tout l'écran d'une tablette. */
+  message(texte: string, action?: { libelle: string; faire: () => void }, dessus = false) {
+    this.toast.classList.toggle('dessus', dessus || this.app.enLecture)
     this.toast.replaceChildren(texte)
     if (action) {
       const b = document.createElement('button')

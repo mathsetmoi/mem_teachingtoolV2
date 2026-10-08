@@ -24,8 +24,8 @@ import { boiteDe } from './revoir/bobine'
 import type { Boite } from './revoir/bobine'
 import { choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, reglages } from './reglages'
 import type { Doigt } from './reglages'
-import { contactLarge, depasseSeuil, ecranTactile, nouveauDepart, typePointeur } from './pointeurs'
-import type { Depart, TypePointeur } from './pointeurs'
+import { DOUBLE_TOUCHER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageSecondPoint, nouveauDepart, typePointeur } from './pointeurs'
+import type { Depart, Toucher, TypePointeur } from './pointeurs'
 import { MAC, lireMolette } from './navigateur'
 import { avale } from './menus'
 import type { TraitDirect } from './rendu'
@@ -150,6 +150,14 @@ export class App {
   /** L'heure du dernier double appui traité au pointerdown : le dblclick du
    *  navigateur qui le suit ne refait rien */
   private doubleTraite = -Infinity
+  /** Le clic qui suit un double appui traité est encore à venir (voir brancherGestes) */
+  private clicFantome = false
+  /** Le dernier simple toucher du doigt sur un objet (outil Sélection, ou
+   *  doigt qui déplace) : un second, tout près et tout de suite, ouvre ses
+   *  options (voir secondToucher) */
+  private toucherPrecedent: (Toucher & { objet: string; page: string }) | null = null
+  /** Ce second toucher, posé : levé sans avoir glissé, il ouvre les options de l'objet */
+  private doubleEnCours: { objet: string; pointeur: number } | null = null
   /** Les instruments posés (dans l'ordre d'empilement) et leur réglage */
   readonly instruments = new Map<NomInstrument, EtatInstrument>()
   /** Ce que la classe voit des instruments, noté pour le replay (voir piste.ts) */
@@ -734,13 +742,25 @@ export class App {
     })
     // Double-clic : les options de l'objet (une formule, elle, se modifie).
     // Pas sur un morceau choisi (son menu vient de s'ouvrir), ni juste après
-    // un double appui que bas() a déjà traité (au Stylo, voir doubleAppui)
+    // un double appui déjà traité (au Stylo, voir doubleAppui ; au doigt,
+    // voir secondToucher)
     z.addEventListener('dblclick', e => {
       if (this.enLecture || this.partie || performance.now() - this.doubleTraite < 500) return
+      // Au doigt, l'outil Sélection et le doigt qui déplace ont leur double
+      // appui (secondToucher) : la même règle sur l'iPad et ailleurs
+      if (this.dernierPointeur === 'touch' && (this.outil === 'selection' || this.doigtDeplace)) return
       const p = this.monde(e), f = this.formeSous(p.x, p.y)
       if (f?.type === 'formule') this.editerFormule(f)
       else if (f && (this.outil === 'selection' || this.outil === 'main' || this.outil === 'segment')) this.ouvrirOptions(f)
     })
+    // Le clic que le navigateur tire du second appui d'un double appui
+    // viserait ce qui vient de s'ouvrir sous le doigt ou le stylet (l'éditeur
+    // d'une formule, qui se fermerait aussitôt) : il ne fait rien
+    window.addEventListener('click', e => {
+      if (!this.clicFantome) return
+      this.clicFantome = false
+      if (performance.now() - this.doubleTraite < 500 && !z.contains(e.target as Node)) { e.preventDefault(); e.stopPropagation() }
+    }, true)
     window.addEventListener('keydown', e => this.clavier(e))
     window.addEventListener('keyup', e => { if (e.code === 'Space') this.espace = false })
   }
@@ -863,6 +883,9 @@ export class App {
       if (!pan && this.doubleAppui(e, s)) return
       this.viderPointEnAttente()
     }
+    // Le second toucher d'un double appui au doigt (outil Sélection, ou doigt
+    // qui déplace) : noté ici, il ouvrira les options de l'objet à son lever
+    this.secondToucher(e, s, m)
 
     this.depart = nouveauDepart(s.x, s.y, e.pointerId, e.pointerType, performance.now())
     if (pan) { this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y }; return }
@@ -1029,11 +1052,51 @@ export class App {
     clearTimeout(a.minuterie)
     this.pointEnAttente = null
     if (this.rendu.monTrait === a.dessin) { this.rendu.monTrait = null; this.rendu.redessinerDirect() }
-    this.doubleTraite = performance.now()
+    this.doubleTraite = performance.now(); this.clicFantome = true
     const f = this.forme(a.objet)
     if (f?.type === 'formule') this.editerFormule(f)
     else if (f) this.ouvrirOptions(f)
     return true
+  }
+
+  /** Le second toucher d'un double appui au doigt : moins de 300 ms après le
+   *  lever du premier, à moins de 35 px, sur le même objet. Il fait d'abord
+   *  ce que fait tout toucher (glissé, il déplace l'objet ou la vue) ; levé
+   *  sans avoir glissé, il ouvre les options de l'objet (voir ouvrirParDouble),
+   *  comme le double-clic à la souris, que Safari ne donne pas au doigt. Tout
+   *  autre appui oublie le premier toucher. */
+  private secondToucher(e: PointerEvent, s: P, m: P) {
+    const a = this.toucherPrecedent
+    this.toucherPrecedent = null
+    this.doubleEnCours = null
+    if (!a || e.pointerType !== 'touch' || e.button !== 0 || a.page !== this.page) return
+    if (this.outil !== 'selection' && !this.doigtDeplace) return
+    if (!doubleToucher(a, s.x, s.y, performance.now())) return
+    const f = this.formeSous(m.x, m.y, 12)
+    if (f && f.id === a.objet) this.doubleEnCours = { objet: f.id, pointeur: e.pointerId }
+  }
+
+  /** Le double appui au doigt, au lever du second toucher : les options de
+   *  l'objet (une formule se modifie). Le dblclick du navigateur, s'il suit,
+   *  ne refait rien, ni le clic qu'il tire du toucher (voir brancherGestes). */
+  private ouvrirParDouble(id: string) {
+    const f = this.forme(id)
+    if (!f) return
+    this.doubleTraite = performance.now(); this.clicFantome = true
+    if (f.type === 'formule') this.editerFormule(f)
+    else this.ouvrirOptions(f)
+  }
+
+  /** Un simple toucher du doigt sur un objet, bref (moins de 300 ms) et levé
+   *  sans avoir glissé : un second peut suivre (voir secondToucher) */
+  private noterToucher(e: PointerEvent, g: Geste, glisse: boolean, m: P) {
+    if (e.pointerType !== 'touch' || glisse || (this.outil !== 'selection' && !this.doigtDeplace)) return
+    if (g.type !== 'deplacer' && !(g.type === 'pan' && g.toucher)) return
+    if (performance.now() - this.depart.t >= DOUBLE_TOUCHER.ms) return
+    const f = this.formeSous(m.x, m.y, 12)
+    if (!f) return
+    const s = this.ecran(e)
+    this.toucherPrecedent = { x: s.x, y: s.y, t: performance.now(), objet: f.id, page: this.page }
   }
 
   /** Le point d'encre en attente se pose maintenant, sur sa page */
@@ -1238,6 +1301,9 @@ export class App {
     // Clic ou glisser ? Le lever compte aussi (un appui levé loin de son départ a glissé)
     const glisse = this.aGlisse(this.ecran(e))
     this.geste = null
+    // Le second toucher d'un double appui au doigt (voir secondToucher)
+    const double = this.doubleEnCours?.pointeur === e.pointerId ? this.doubleEnCours : null
+    if (double) this.doubleEnCours = null
     // Un geste coupé par le navigateur (un second doigt sur le pavé tactile,
     // une fenêtre système…) garde ce qu'il a tracé : un arc de compas, un
     // trait à la règle ou au stylo ne doit pas s'effacer sous les yeux
@@ -1245,6 +1311,7 @@ export class App {
     if (annule && !garder) { this.abandonnerGeste(g); return }
 
     const m = this.monde(e)
+    if (!double) this.noterToucher(e, g, glisse, m)
     switch (g.type) {
       case 'pan':
         // Un simple clic dans le vide (outil Sélection) désélectionne ; un
@@ -1268,7 +1335,7 @@ export class App {
         // Un simple clic (sans glisser) pose le premier point : le second clic finira le trait
         if (!glisse) {
           this.traitEnAttente = { x: g.x, y: g.y }
-          if (!this.astuceDeuxClics) { this.astuceDeuxClics = true; this.ui.message('Cliquez le second point (Échap pour annuler)') }
+          if (!this.astuceDeuxClics) { this.astuceDeuxClics = true; this.ui.message(messageSecondPoint(this.dernierPointeur)) }
           this.rendu.redessinerDirect()
           break
         }
@@ -1323,6 +1390,8 @@ export class App {
         break
       }
     }
+    // Le second toucher d'un double appui, bref et levé sans avoir glissé
+    if (double && !glisse && performance.now() - this.depart.t < DOUBLE_TOUCHER.ms) this.ouvrirParDouble(double.objet)
     this.ui.maj()                       // le panneau d'options réapparaît
   }
 
@@ -1551,14 +1620,16 @@ export class App {
     this.ui.message(`${this.selection.size} objets sélectionnés : glissez-en un pour les déplacer tous ; ${efface}.`)
   }
 
-  /** La première fois qu'on prend un objet, on dit où sont ses options */
+  /** La première fois qu'on prend un objet, on dit où sont ses options, dans
+   *  les mots du pointeur : le clic droit à la souris, le bouton du stylet au
+   *  stylet, deux touchers au doigt (le double appui, voir secondToucher :
+   *  l'objet a été pris à l'outil Sélection ou au doigt qui déplace) */
   private direOptions() {
-    // Au doigt, ni double-clic ni clic droit : rien à promettre
-    if (this.astuceOptions || this.selection.size !== 1 || this.dernierPointeur === 'touch') return
+    if (this.astuceOptions || this.selection.size !== 1) return
     const f = this.formeChoisie()
     if (!f || f.type === 'formule' || f.type === 'segment') return
     this.astuceOptions = true
-    this.ui.message('Double-clic ou clic droit sur l\'objet : ses options')
+    this.ui.message(messageOptions(this.dernierPointeur))
   }
 
   // ---------- Morceaux d'une figure ----------

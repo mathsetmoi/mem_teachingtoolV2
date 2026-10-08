@@ -2,7 +2,7 @@
 // paume, quand le stylet écrit sur l'écran lui-même, et le rôle du doigt
 // (un réglage de cet appareil, gardé dans le navigateur).
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { SEUIL_GLISSER, contactLarge, depasseSeuil, ecranTactile, nouveauDepart, typePointeur } from '../src/pointeurs'
+import { DOUBLE_TOUCHER, SEUIL_GLISSER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageSecondPoint, nouveauDepart, typePointeur } from '../src/pointeurs'
 import { choisirDoigt, leDoigtDeplace, lire, noterStyletDirect, reglages } from '../src/reglages'
 
 describe('le seuil du glisser', () => {
@@ -79,5 +79,40 @@ describe('le rôle du doigt', () => {
     expect(() => choisirDoigt('deplace')).not.toThrow()
     expect(leDoigtDeplace()).toBe(true)
     expect(lire('mem-doigt', ['auto', 'dessine', 'deplace'], 'auto')).toBe('auto')
+  })
+})
+
+describe('le double appui au doigt', () => {
+  const premier = { x: 200, y: 300, t: 1000 }
+
+  it('moins de 300 ms après le lever du premier, à moins de 35 px : un double appui', () => {
+    expect(DOUBLE_TOUCHER).toEqual({ ms: 300, px: 35 })
+    expect(doubleToucher(premier, 200, 300, 1000)).toBe(true)
+    expect(doubleToucher(premier, 220, 320, 1299)).toBe(true)      // 28 px, 299 ms
+    expect(doubleToucher(premier, 234, 300, 1100)).toBe(true)
+  })
+
+  it('trop tard, trop loin, ou sans premier toucher : non', () => {
+    expect(doubleToucher(premier, 200, 300, 1300)).toBe(false)
+    expect(doubleToucher(premier, 235, 300, 1100)).toBe(false)
+    expect(doubleToucher(premier, 225, 325, 1100)).toBe(false)     // 35,4 px en diagonale
+    expect(doubleToucher(null, 200, 300, 1000)).toBe(false)
+    expect(doubleToucher(premier, 200, 300, 900)).toBe(false)       // une horloge qui recule
+  })
+})
+
+describe('les messages selon le pointeur', () => {
+  it('les options : clic droit à la souris, bouton du stylet au stylet, deux touchers au doigt', () => {
+    expect(messageOptions('mouse')).toBe('Double-clic ou clic droit sur l\'objet : ses options')
+    expect(messageOptions('pen')).toBe('Double-clic ou bouton du stylet sur l\'objet : ses options')
+    expect(messageOptions('touch')).toBe('Touchez deux fois l\'objet : ses options')
+  })
+
+  it('au doigt, jamais « clic », ni un « appui long » qui n\'existe pas', () => {
+    for (const t of [messageOptions('touch'), messageSecondPoint('touch')]) {
+      expect(t).not.toMatch(/clic|appui long/i)
+    }
+    expect(messageSecondPoint('touch')).toBe('Touchez le second point (un autre outil annule)')
+    expect(messageSecondPoint('mouse')).toBe('Cliquez le second point (Échap pour annuler)')
   })
 })

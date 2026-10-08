@@ -1,8 +1,9 @@
 // =============================================================
 // SOURIS, STYLET, DOIGT
 // Ce qui distingue les trois pointeurs, en dehors de tout geste : quand
-// un appui devient un glisser, ce qu'est une paume, et si le stylet écrit
-// sur l'écran lui-même. Rien ici ne touche au document ni à la page :
+// un appui devient un glisser, ce qu'est une paume, si le stylet écrit
+// sur l'écran lui-même, ce qu'est un double appui au doigt, et les mots
+// des messages pour chacun. Rien ici ne touche au document ni à la page :
 // les tests le vérifient sous Node.
 // =============================================================
 
@@ -55,4 +56,33 @@ export function contactLarge(e: { width: number; height: number }): boolean {
 export function ecranTactile(nav: { maxTouchPoints?: number } | undefined =
   typeof navigator === 'undefined' ? undefined : navigator): boolean {
   return (nav?.maxTouchPoints ?? 0) > 0
+}
+
+/** Deux touchers du doigt font un double appui (les options de l'objet) : le
+ *  second se pose moins de 300 ms après le lever du premier, à moins de 35 px
+ *  de lui (un doigt ne retombe jamais tout à fait au même endroit). Safari sur
+ *  iPad ne donne pas de double-clic au doigt : on le reconnaît nous-mêmes. */
+export const DOUBLE_TOUCHER = { ms: 300, px: 35 }
+
+export interface Toucher { x: number; y: number; t: number }
+
+/** Le toucher (x, y) à l'heure t est-il le second d'un double appui ? */
+export function doubleToucher(premier: Toucher | null, x: number, y: number, t: number): boolean {
+  if (!premier) return false
+  const dt = t - premier.t
+  return dt >= 0 && dt < DOUBLE_TOUCHER.ms && Math.hypot(x - premier.x, y - premier.y) < DOUBLE_TOUCHER.px
+}
+
+/** Ce qu'on dit, la première fois qu'on prend un objet, du geste qui ouvre
+ *  ses options : il dépend du pointeur. Au doigt, le double appui (jamais
+ *  « clic droit », ni un appui long qui n'existe pas). */
+export function messageOptions(p: TypePointeur): string {
+  if (p === 'touch') return 'Touchez deux fois l\'objet : ses options'
+  if (p === 'pen') return 'Double-clic ou bouton du stylet sur l\'objet : ses options'
+  return 'Double-clic ou clic droit sur l\'objet : ses options'
+}
+
+/** Le second point d'un trait tracé en deux appuis */
+export function messageSecondPoint(p: TypePointeur): string {
+  return p === 'touch' ? 'Touchez le second point (un autre outil annule)' : 'Cliquez le second point (Échap pour annuler)'
 }
