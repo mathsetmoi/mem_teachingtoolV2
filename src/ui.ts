@@ -5,11 +5,11 @@
 // =============================================================
 import katex from 'katex'
 import type { App, Interface, Prise } from './app'
-import { COULEURS, TAILLES } from './app'
+import { COULEURS, TAILLES, poigneeDuRayon } from './app'
 import type { Bout, Figure, Forme, MarquePoint, Outil, TypeForme } from './types'
 import { CM, FONDS } from './types'
 import type { P, Transformation } from './formes'
-import { centreDe, image, versRelatif } from './formes'
+import { centreDe, image, placesDesNoms, sommetsDe, versRelatif } from './formes'
 import { etapesImage } from './construction'
 import { RevueEnClasse } from './revue/revue'
 import { Publication } from './publication/fenetre'
@@ -17,6 +17,14 @@ import { Constructeur } from './constructeur'
 import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
+import type { Menu } from './menus'
+import { basculerMenu, fermerMenu, installerMenus, placerMenu } from './menus'
+import { choisirMolette, reglages } from './reglages'
+import type { Doigt, Molette } from './reglages'
+import { CTRL } from './navigateur'
+import { Sauvegarde } from './sauvegarde'
+import { zoneEntreBarres } from './camera'
+import type { Bords } from './camera'
 
 const ICONES: Record<string, string> = {
   stylo: 'M4 20l4-1L19 8l-3-3L5 16l-1 4zM14 7l3 3',
@@ -53,6 +61,25 @@ const ICONES: Record<string, string> = {
   compas: 'M12 3v2M12 5l-6 15M12 5l6 15M9.5 13h5',
   construction: 'M4 5h9M4 10h7M4 15h5M15 20l2-9 2 9M17 11V8M15.6 16h2.8',
   automatismes: 'M12 21a8 8 0 100-16 8 8 0 100 16zM12 9v4l2.5 2.5M10 2h4M12 2v3',
+  cadre: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
+  coche: 'M5 12.5l4.5 4.5L19 7.5',
+  points: 'M5 12h.01M12 12h.01M19 12h.01',
+  doigt: 'M10 15V4.5a1.5 1.5 0 0 1 3 0V11M13 10a1.5 1.5 0 0 1 3 0v2M16 11.5a1.5 1.5 0 0 1 3 0V16a5 5 0 0 1-5 5h-1.5a5 5 0 0 1-4-2l-3-4a1.5 1.5 0 0 1 2.3-1.9L10 15',
+}
+
+/** Le rôle du doigt : la marque de son bouton, son titre, ce qu'on en dit */
+const DOIGTS: { id: Doigt; nom: string; aide: string; marque: string; titre: string; dit: string }[] = [
+  { id: 'dessine', nom: 'Le doigt dessine', aide: 'avec l\'outil choisi, comme le stylet', marque: '✎',
+    titre: 'Rôle du doigt : il dessine', dit: 'Le doigt dessine.' },
+  { id: 'deplace', nom: 'Le doigt déplace et sélectionne', aide: 'le stylet écrit ; le doigt déplace la vue, prend et déplace les objets', marque: '✥',
+    titre: 'Rôle du doigt : il déplace la vue et sélectionne', dit: 'Le doigt déplace la vue et sélectionne ; le stylet écrit.' },
+  { id: 'auto', nom: 'Auto', aide: 'le doigt dessine jusqu\'au premier stylet posé sur l\'écran', marque: 'A',
+    titre: 'Rôle du doigt : auto (il dessine tant qu\'aucun stylet n\'a touché l\'écran)', dit: 'Auto : le doigt dessine jusqu\'au premier stylet posé sur l\'écran.' },
+]
+
+/** Un écran tactile (ou un pointeur grossier) : le doigt a un rôle à régler */
+function appareilTactile(): boolean {
+  return navigator.maxTouchPoints > 0 || (typeof matchMedia === 'function' && matchMedia('(any-pointer: coarse)').matches)
 }
 
 const TYPES_FORMES: { id: TypeForme; nom: string; touche: string }[] = [
@@ -110,7 +137,7 @@ function icone(nom: string) {
   return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONES[nom]}"/></svg>`
 }
 
-function bouton(nom: string, titre: string, action: () => void, classe = '') {
+function bouton(nom: string, titre: string, action: (e: Event) => void, classe = '') {
   const b = document.createElement('button')
   b.type = 'button'
   b.className = 'bouton ' + classe
@@ -130,8 +157,20 @@ export class UI implements Interface {
   private choixFond!: HTMLSelectElement
   private boutonAimant!: HTMLButtonElement
   private zoomTexte!: HTMLButtonElement
+  private barreHaut!: HTMLElement
+  private barreZoom!: HTMLElement
+  /** Le menu du bouton % : 100 %, tout voir, voir la sélection, la molette */
+  private menuZoom!: Menu
+  /** « Revenir au contenu », quand plus rien de la page n'est à l'écran */
+  private retour!: HTMLButtonElement
+  private minuterieRetour = 0
   private barreOutils!: HTMLElement
   private toast!: HTMLDivElement
+  /** Ce que montre le message : le dernier message ordinaire, et le dernier
+   *  qui porte une action, chacun jusqu'à son échéance (voir message) */
+  private toastSimple: { el: HTMLElement; fin: number } | null = null
+  private toastAction: { el: HTMLElement; fin: number } | null = null
+  private minuterieToast = 0
   private dialogue: HTMLDialogElement | null = null
   private boutonReconnaissance!: HTMLButtonElement
   private choixFormes!: HTMLDivElement
@@ -151,8 +190,16 @@ export class UI implements Interface {
   private boutonsInstruments = new Map<NomInstrument, HTMLButtonElement>()
   private menuPartie!: HTMLDivElement
   private partie: { id: string; prise: Prise } | null = null
+  /** Le rôle du doigt : son bouton (sur un appareil tactile) et son menu */
+  private boutonDoigt!: HTMLButtonElement
+  private menuDoigt!: Menu
+  /** Enregistrer le tableau dans un fichier, en ouvrir un : le bouton ⋯ et son menu */
+  sauvegarde!: Sauvegarde
+  private menuFichier!: Menu
 
   constructor(private app: App, private racine: HTMLElement) {
+    // Les menus d'abord : leur Échap passe avant celui des panneaux (voir menus.ts)
+    installerMenus()
     this.construire()
     app.ui = this
     this.maj()
@@ -170,6 +217,17 @@ export class UI implements Interface {
       this.outils.set(o.id, b)
       outils.appendChild(b)
     }
+    // Le rôle du doigt, après « Déplacer la vue » : seulement sur un appareil
+    // tactile (sur le poste de la classe, souris et tablette graphique, il n'a
+    // pas de sens). Il ouvre son menu, à droite de la barre.
+    this.boutonDoigt = bouton('doigt', 'Rôle du doigt', e => this.basculerReglageDoigt((e as MouseEvent).detail === 0))
+    this.boutonDoigt.setAttribute('aria-haspopup', 'menu'); this.boutonDoigt.setAttribute('aria-expanded', 'false')
+    this.boutonDoigt.hidden = !appareilTactile()
+    outils.appendChild(this.boutonDoigt)
+    const menuDoigt = document.createElement('div')
+    menuDoigt.className = 'menu-flottant'; menuDoigt.setAttribute('role', 'menu'); menuDoigt.setAttribute('aria-label', 'Rôle du doigt')
+    menuDoigt.hidden = true
+    this.menuDoigt = { el: menuDoigt, bouton: this.boutonDoigt }
     outils.appendChild(Object.assign(document.createElement('hr'), { className: 'filet' }))
     for (const c of COULEURS) {
       const b = document.createElement('button')
@@ -190,13 +248,22 @@ export class UI implements Interface {
     outils.appendChild(Object.assign(document.createElement('hr'), { className: 'filet' }))
     outils.appendChild(bouton('annuler', 'Annuler (Ctrl+Z)', () => app.annuler()))
     outils.appendChild(bouton('retablir', 'Rétablir (Ctrl+Y)', () => app.retablir()))
+    // La poubelle garde sa place, grisée quand rien n'est choisi : la barre ne
+    // saute plus à chaque sélection
     this.boutonSupprimer = bouton('poubelle', 'Supprimer la sélection (Suppr)', () => app.supprimerSelection(), 'danger')
     outils.appendChild(this.boutonSupprimer)
     this.barreOutils = outils
+    // Sur un écran bas, la barre défile (voir style.css) : les choix des Formes
+    // et du Segment suivent leur bouton, le menu du doigt le sien
+    outils.addEventListener('scroll', () => {
+      this.maj()
+      if (!this.menuDoigt.el.hidden) this.placerMenuDoigt()
+    }, { passive: true })
 
     // ----- Barre des pages, en haut à droite -----
     const haut = document.createElement('div')
     haut.className = 'barre barre-haut'
+    this.barreHaut = haut
     const avant = bouton('avant', 'Page précédente (Page ↑)', () => app.pageSuivante(-1))
     this.rang = document.createElement('span'); this.rang.className = 'rang'
     const apres = bouton('apres', 'Page suivante (Page ↓)', () => app.pageSuivante(1))
@@ -237,7 +304,22 @@ export class UI implements Interface {
     const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir())
     const revoir = bouton('revue', 'Revoir la construction : une page, une séance, pas à pas', () => this.ouvrirRevue(revoir))
     const publier = bouton('publier', 'Publier le replay pour les élèves', () => this.publication.ouvrir())
-    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, revoir, publier)
+    // Enregistrer le tableau dans un fichier, en ouvrir un : un menu discret
+    // au bout de la barre, sous son bouton, aligné à droite
+    this.sauvegarde = new Sauvegarde(app, t => this.message(t), this.racine)
+    const fichier = bouton('points', `Enregistrer ou ouvrir un tableau (${CTRL} + S, ${CTRL} + O)`, e => {
+      if (menuFichier.hidden) this.construireMenuFichier()
+      basculerMenu(this.menuFichier)
+      if (menuFichier.hidden) return
+      placerMenu(menuFichier, fichier.getBoundingClientRect(), 'dessous')
+      if ((e as MouseEvent).detail === 0) menuFichier.querySelector<HTMLElement>('.menu-item')?.focus()
+    }, 'points')
+    fichier.setAttribute('aria-haspopup', 'menu'); fichier.setAttribute('aria-expanded', 'false')
+    const menuFichier = document.createElement('div')
+    menuFichier.className = 'menu-flottant menu-large'; menuFichier.setAttribute('role', 'menu'); menuFichier.setAttribute('aria-label', 'Enregistrer ou ouvrir un tableau')
+    menuFichier.hidden = true
+    this.menuFichier = { el: menuFichier, bouton: fichier }
+    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, revoir, publier, fichier)
 
     // ----- Les instruments, sous leur bouton -----
     this.choixInstruments = document.createElement('div')
@@ -253,12 +335,35 @@ export class UI implements Interface {
     }
 
     // ----- Zoom, en bas à droite -----
+    // Le pourcentage ouvre un petit menu : 100 %, tout voir, voir la
+    // sélection, et ce que fait la molette de la souris
     const zoom = document.createElement('div')
     zoom.className = 'barre barre-zoom'
+    this.barreZoom = zoom
     this.zoomTexte = document.createElement('button')
-    this.zoomTexte.type = 'button'; this.zoomTexte.className = 'zoom-texte'; this.zoomTexte.title = 'Revenir à 100 %'
-    this.zoomTexte.addEventListener('click', () => app.zoom100())
-    zoom.append(bouton('moins', 'Dézoomer', () => app.zoomer(1 / 1.25)), this.zoomTexte, bouton('plus', 'Zoomer', () => app.zoomer(1.25)))
+    this.zoomTexte.type = 'button'; this.zoomTexte.className = 'zoom-texte'; this.zoomTexte.title = 'Zoom et molette de la souris'
+    this.zoomTexte.setAttribute('aria-haspopup', 'menu'); this.zoomTexte.setAttribute('aria-expanded', 'false')
+    const menu = document.createElement('div')
+    menu.className = 'menu-flottant'; menu.setAttribute('role', 'menu'); menu.setAttribute('aria-label', 'Zoom et molette de la souris')
+    menu.hidden = true
+    this.menuZoom = { el: menu, bouton: this.zoomTexte }
+    this.zoomTexte.addEventListener('click', e => {
+      if (menu.hidden) this.construireMenuZoom()
+      basculerMenu(this.menuZoom)
+      if (menu.hidden) return
+      placerMenu(menu, zoom.getBoundingClientRect(), 'dessus')
+      // Ouvert au clavier : la première entrée prend la main
+      if (e.detail === 0) menu.querySelector<HTMLElement>('.menu-item')?.focus()
+    })
+    zoom.append(bouton('moins', `Dézoomer (${CTRL} + −)`, () => app.zoomer(1 / 1.25)), this.zoomTexte,
+      bouton('plus', `Zoomer (${CTRL} + +)`, () => app.zoomer(1.25)), bouton('cadre', 'Tout voir (Maj + 1)', () => app.toutVoir()))
+
+    // ----- Revenir au contenu, quand on s'en est éloigné -----
+    this.retour = document.createElement('button')
+    this.retour.type = 'button'; this.retour.className = 'retour-contenu'; this.retour.hidden = true
+    this.retour.title = 'Tout voir (Maj + 1)'
+    this.retour.innerHTML = icone('cadre') + '<span>Revenir au contenu</span>'
+    this.retour.addEventListener('click', () => app.toutVoir())
 
     this.toast = document.createElement('div')
     this.toast.className = 'toast'; this.toast.setAttribute('role', 'status')
@@ -285,10 +390,10 @@ export class UI implements Interface {
     this.panneau.setAttribute('role', 'toolbar')
     this.panneau.setAttribute('aria-label', 'Options de la figure')
 
-    this.racine.append(outils, haut, zoom, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
+    this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, menuFichier, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
     this.revue = new RevueEnClasse(this.app, this.racine)
     this.publication = new Publication(app, this.racine)
-    this.constructeur = new Constructeur(app, this.racine, t => this.message(t))
+    this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
     this.seance = new Seance(this.racine)
 
     // ----- Menu d'un morceau de figure (point, extrémité, nom, rayon) -----
@@ -306,9 +411,17 @@ export class UI implements Interface {
   maj() {
     const app = this.app
     for (const [id, b] of this.outils) b.classList.toggle('actif', app.outil === id)
+    const doigt = DOIGTS.find(d => d.id === reglages.doigt)!
+    if (this.boutonDoigt.dataset.badge !== doigt.marque) this.boutonDoigt.dataset.badge = doigt.marque
+    const titre = doigt.id === 'auto' && reglages.styletDirect ? 'Rôle du doigt : auto (stylet détecté : il déplace la vue)' : doigt.titre
+    if (this.boutonDoigt.title !== titre) { this.boutonDoigt.title = titre; this.boutonDoigt.setAttribute('aria-label', titre) }
     this.pastilles.forEach((b, i) => b.classList.toggle('actif', COULEURS[i].valeur === app.couleur))
     this.tailles.forEach((b, i) => b.classList.toggle('actif', TAILLES[i].valeur === app.taille))
-    this.boutonSupprimer.hidden = app.selection.size === 0
+    const rien = !(app.selection.size || app.partie)
+    if (this.boutonSupprimer.disabled !== rien) {
+      this.boutonSupprimer.disabled = rien
+      this.boutonSupprimer.setAttribute('aria-disabled', String(rien))
+    }
 
     const pages = app.pages, i = pages.indexOf(app.page)
     this.rang.textContent = pages.length ? `${i + 1} / ${pages.length}` : '…'
@@ -336,7 +449,142 @@ export class UI implements Interface {
       this.choixInstruments.style.left = Math.max(8, Math.min(r.left + r.width / 2 - this.choixInstruments.offsetWidth / 2, window.innerWidth - this.choixInstruments.offsetWidth - 8)) + 'px'
     }
     this.majPanneau()
+    this.majMenuPartie()
     this.zoomTexte.textContent = Math.round(app.cam.z * 100) + ' %'
+    this.majRetour()
+  }
+
+  /** Ferme ce qui flotte au-dessus du tableau : le petit menu ouvert, le menu
+   *  d'un morceau (le morceau n'est plus choisi), le panneau d'options, la
+   *  liste des instruments. Vrai si quelque chose était ouvert : l'appui sur
+   *  le tableau qui l'a fermé ne fait rien d'autre (voir App.bas).
+   *  garderOptions : l'appui prend l'objet même du panneau, qui reste. */
+  fermerMenus(garderOptions = false): boolean {
+    const app = this.app
+    let ferme = fermerMenu()
+    if (!this.menuPartie.hidden) { this.fermerMenuPartie(); app.choisirPartie(null); ferme = true }
+    if (!garderOptions) {
+      if (!this.panneau.hidden) ferme = true
+      app.options = null
+    }
+    if (!this.choixInstruments.hidden) { this.choixInstruments.hidden = true; ferme = true }
+    if (ferme) this.maj()
+    return ferme
+  }
+
+  /** Ce qu'on voit du tableau entre les barres, en coordonnées de la zone :
+   *  c'est là que « Tout voir » cadre la page (voir zoneEntreBarres) */
+  zoneLibre() {
+    const z = this.app.rendu.scene.getBoundingClientRect()
+    const bords = (el: HTMLElement): Bords | null => {
+      const r = el.getBoundingClientRect()
+      return r.width && r.height ? { left: r.left - z.left, top: r.top - z.top, right: r.right - z.left, bottom: r.bottom - z.top } : null
+    }
+    return zoneEntreBarres(z.width, z.height, { outils: bords(this.barreOutils), haut: bords(this.barreHaut), zoom: bords(this.barreZoom) })
+  }
+
+  /** La pastille « Revenir au contenu » : elle paraît une seconde après qu'on
+   *  a perdu de vue tout ce qui est écrit, et part dès qu'on le retrouve */
+  private majRetour() {
+    const app = this.app
+    if (app.enLecture || !app.contenuHorsVue()) {
+      clearTimeout(this.minuterieRetour); this.minuterieRetour = 0
+      this.retour.hidden = true
+      return
+    }
+    if (!this.retour.hidden || this.minuterieRetour) return
+    this.minuterieRetour = window.setTimeout(() => {
+      this.minuterieRetour = 0
+      if (!app.enLecture && app.contenuHorsVue()) this.retour.hidden = false
+    }, 1000)
+  }
+
+  /** Une entrée d'un petit menu : un choix fait le ferme, puis agit */
+  private entreeMenu(m: HTMLElement, texte: string, faire: () => void, o: { touche?: string; aide?: string; coche?: boolean; inactif?: boolean } = {}) {
+    const b = document.createElement('button')
+    b.type = 'button'; b.className = 'menu-item'
+    b.setAttribute('role', o.coche === undefined ? 'menuitem' : 'menuitemradio')
+    if (o.coche !== undefined) b.setAttribute('aria-checked', String(o.coche))
+    if (o.inactif) b.setAttribute('aria-disabled', 'true')
+    b.innerHTML = `<span class="coche">${o.coche ? icone('coche') : ''}</span><span class="libelle"></span>` + (o.touche ? `<span class="touche">${html(o.touche)}</span>` : '')
+    const libelle = b.querySelector('.libelle')!
+    libelle.textContent = texte
+    if (o.aide) libelle.appendChild(Object.assign(document.createElement('small'), { textContent: o.aide }))
+    b.addEventListener('click', () => {
+      if (o.inactif) return
+      fermerMenu()
+      faire()
+    })
+    m.appendChild(b)
+  }
+
+  /** Le menu du zoom, refait à chaque ouverture (la sélection a pu changer) */
+  private construireMenuZoom() {
+    const app = this.app, m = this.menuZoom.el
+    m.replaceChildren()
+    const entree = (texte: string, faire: () => void, o: Parameters<UI['entreeMenu']>[3] = {}) => this.entreeMenu(m, texte, faire, o)
+    const rien = !app.selection.size && !app.partie
+    entree('100 %', () => app.zoom100(), { touche: `${CTRL} + 0` })
+    entree('Tout voir', () => app.toutVoir(), { touche: 'Maj + 1' })
+    entree('Voir la sélection', () => app.voirSelection(), { touche: 'Maj + 2', inactif: rien })
+    m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
+    m.appendChild(Object.assign(document.createElement('div'), { className: 'menu-titre', textContent: 'Molette de la souris' }))
+    const molette = (choix: Molette, texte: string, aide?: string) => entree(texte, () => {
+      choisirMolette(choix)
+      this.message(choix === 'defile' ? `La molette fait défiler la page ; ${CTRL} + molette zoome.`
+        : 'La molette zoome (comme dans GeoGebra) ; Maj + molette fait défiler.')
+    }, { coche: reglages.molette === choix, aide })
+    molette('defile', 'Fait défiler', `${CTRL} + molette : zoomer`)
+    molette('zoome', 'Zoome')
+  }
+
+  /** Le menu du bouton ⋯, refait à chaque ouverture (la date du dernier
+   *  enregistrement a pu changer) */
+  private construireMenuFichier() {
+    const m = this.menuFichier.el, s = this.sauvegarde
+    m.replaceChildren()
+    this.entreeMenu(m, 'Enregistrer le tableau…', () => void s.enregistrer(), { touche: `${CTRL} + S`,
+      aide: 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder sur la clé ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).' })
+    this.entreeMenu(m, 'Ouvrir un tableau…', () => s.ouvrir(), { touche: `${CTRL} + O`,
+      aide: 'Remplace le tableau de ce navigateur par celui d\'un fichier .memc.' })
+    m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
+    m.appendChild(Object.assign(document.createElement('p'), { className: 'menu-note', textContent: s.etat() }))
+  }
+
+  /** Un fichier glissé sur le tableau (.memc, ou .mem) : comme « Ouvrir un tableau » */
+  ouvrirTableau(f: File) { void this.sauvegarde.ouvrirFichier(f) }
+
+  /** Le menu du rôle du doigt : ouvert par son bouton, ou par « Changer »
+   *  dans le message « Stylet détecté » */
+  ouvrirReglageDoigt() {
+    if (this.menuDoigt.el.hidden) this.basculerReglageDoigt(false)
+  }
+
+  private basculerReglageDoigt(auClavier: boolean) {
+    const m = this.menuDoigt.el
+    // Un stylet s'est posé sur l'écran : il est tactile, le bouton a sa place
+    this.boutonDoigt.hidden = false
+    if (m.hidden) this.construireMenuDoigt()
+    basculerMenu(this.menuDoigt)
+    if (m.hidden) return
+    this.placerMenuDoigt()
+    if (auClavier) m.querySelector<HTMLElement>('.menu-item[aria-checked="true"]')?.focus()
+  }
+
+  /** Le menu du doigt, à droite de la barre, à la hauteur de son bouton */
+  private placerMenuDoigt() {
+    const b = this.boutonDoigt.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
+    placerMenu(this.menuDoigt.el, new DOMRect(o.left, b.top, o.width, b.height), 'droite')
+  }
+
+  private construireMenuDoigt() {
+    const m = this.menuDoigt.el
+    m.replaceChildren()
+    m.appendChild(Object.assign(document.createElement('div'), { className: 'menu-titre', textContent: 'Le doigt' }))
+    for (const d of DOIGTS) {
+      const aide = d.id === 'auto' && reglages.styletDirect ? 'stylet détecté : le doigt déplace la vue' : d.aide
+      this.entreeMenu(m, d.nom, () => { this.app.choisirDoigt(d.id); this.message(d.dit) }, { coche: reglages.doigt === d.id, aide })
+    }
   }
 
   // ----- Panneau d'options de la figure -----
@@ -621,13 +869,48 @@ export class UI implements Interface {
   }
 
   // ----- Menu d'un morceau de figure -----
+  /** Le menu s'ouvre collé au morceau (x, y : le pointeur, s'il fallait) */
   ouvrirMenuPartie(id: string, prise: Prise, x: number, y: number) {
     this.partie = { id, prise }
+    if (!this.ancrePartie()) { this.partie = null; return }
     this.construireMenuPartie()
-    const m = this.menuPartie
-    m.hidden = false
+    this.menuPartie.hidden = false
+    this.placerMenuPartie(x, y)
+  }
+
+  /** Où est, dans le monde, le morceau dont le menu est ouvert : un sommet,
+   *  le centre ou le rayon d'un cercle, un nom (null : il n'existe plus) */
+  private ancrePartie(): P | null {
+    const p = this.partie, f = p && this.app.forme(p.id)
+    if (!p || !f || (f.type !== 'polygone' && f.type !== 'cercle')) return null
+    const pr = p.prise
+    if (pr.quoi === 'rayon') return f.type === 'cercle' ? poigneeDuRayon(f) : null
+    if (pr.quoi === 'nom') return placesDesNoms(f)[pr.i] ?? null
+    return f.type === 'cercle' ? { x: f.x, y: f.y } : sommetsDe(f)[pr.i] ?? null
+  }
+
+  /** Le menu suit son morceau quand la vue bouge (zoom, déplacement), à
+   *  14 px en bas à droite, sans sortir de la fenêtre */
+  private placerMenuPartie(x?: number, y?: number) {
+    const m = this.menuPartie, a = this.ancrePartie()
+    if (a) {
+      const z = this.app.rendu.scene.getBoundingClientRect(), e = this.app.cam.versEcran(a.x, a.y)
+      x = z.left + e.x; y = z.top + e.y
+    }
+    if (x === undefined || y === undefined) return
     m.style.left = Math.max(8, Math.min(x + 14, window.innerWidth - m.offsetWidth - 8)) + 'px'
     m.style.top = Math.max(8, Math.min(y + 14, window.innerHeight - m.offsetHeight - 8)) + 'px'
+  }
+
+  /** À chaque mise à jour : le menu ouvert suit son morceau ; il se ferme si
+   *  le morceau n'est plus choisi, ou n'existe plus (une annulation l'a ôté) */
+  private majMenuPartie() {
+    if (this.menuPartie.hidden) return
+    const p = this.partie, a = this.app.partie
+    const meme = !!p && !!a && a.id === p.id && a.prise.quoi === p.prise.quoi
+      && (a.prise.quoi === 'rayon' || p.prise.quoi === 'rayon' || a.prise.i === p.prise.i)
+    if (!meme || !this.ancrePartie()) { this.fermerMenuPartie(); return }
+    this.placerMenuPartie()
   }
 
   /** La revue prend tout l'écran : le programme de construction se ferme
@@ -748,11 +1031,51 @@ export class UI implements Interface {
     }
   }
 
-  message(texte: string) {
-    this.toast.textContent = texte
+  /** Un message en bas de l'écran. Avec une action, un bouton suit le texte
+   *  (« Changer ») et le message reste 7 s ; seul ce bouton reçoit les appuis,
+   *  et seulement quand le message se voit. Il passe sous les menus et les
+   *  panneaux (il ne cache pas ce qu'on va toucher), sauf pendant la revue
+   *  et la séance d'automatismes, qui couvrent tout, et pour le programme de
+   *  construction (dessus), dont le panneau prend presque tout l'écran d'une
+   *  tablette.
+   *  Un message ordinaire ne chasse pas un message à action encore à l'écran
+   *  (« Stylet détecté … Changer », que suit souvent la figure reconnue du
+   *  premier trait) : il s'écrit au-dessus de lui, et s'en va seul. */
+  message(texte: string, action?: { libelle: string; faire: () => void }, dessus = false) {
+    this.toast.classList.toggle('dessus', dessus || this.app.enLecture)
+    const el = document.createElement('span')
+    el.className = 'ligne'
+    el.append(texte)
+    const maintenant = performance.now()
+    if (action) {
+      const b = document.createElement('button')
+      b.type = 'button'; b.className = 'action'; b.textContent = action.libelle
+      b.addEventListener('click', () => {
+        this.toastSimple = this.toastAction = null
+        this.majToast()
+        action.faire()
+      })
+      el.appendChild(b)
+      this.toastAction = { el, fin: maintenant + 7000 }
+      this.toastSimple = null
+    } else {
+      this.toastSimple = { el, fin: maintenant + Math.max(2600, texte.length * 60) }
+    }
+    this.majToast()
+  }
+
+  /** Le message montre ce qui n'a pas encore passé son échéance ; plus rien,
+   *  il s'efface (son texte reste le temps du fondu) */
+  private majToast() {
+    clearTimeout(this.minuterieToast)
+    const maintenant = performance.now()
+    if (this.toastSimple && this.toastSimple.fin <= maintenant) this.toastSimple = null
+    if (this.toastAction && this.toastAction.fin <= maintenant) this.toastAction = null
+    const parts = [this.toastSimple, this.toastAction].filter(p => p !== null)
+    if (!parts.length) { this.toast.classList.remove('visible'); return }
+    this.toast.replaceChildren(...parts.map(p => p.el))
     this.toast.classList.add('visible')
-    clearTimeout((this.toast as unknown as { t: number }).t)
-    ;(this.toast as unknown as { t: number }).t = window.setTimeout(() => this.toast.classList.remove('visible'), Math.max(2600, texte.length * 60))
+    this.minuterieToast = window.setTimeout(() => this.majToast(), Math.min(...parts.map(p => p.fin)) - maintenant)
   }
 
   // ----- Éditeur de formules -----

@@ -99,12 +99,19 @@ export class Rendu {
   selection = new Set<string>()
   decalage = { dx: 0, dy: 0 }                     // déplacement en cours de la sélection
   monTrait: TraitDirect | null = null
+  /** Le point d'un simple toucher au Stylo sur un objet, qui attend un
+   *  éventuel second toucher (le double-clic) avant d'être posé */
+  enAttente: TraitDirect | null = null
   monSegment: { x1: number; y1: number; x2: number; y2: number; couleur: string; taille: number } | null = null
   cadreSelection: { x: number; y: number; l: number; h: number } | null = null
   gomme: { x: number; y: number; r: number } | null = null
   apercu: Figure | null = null                     // figure en cours de construction
   remplacement: Figure | null = null               // figure dont on tire un morceau
   poignees = true                                  // montrer sommets et rayon de la figure choisie
+  /** Les poignées se prennent-elles en ce moment (outil Sélection, ou doigt
+   *  qui « déplace ») ? Sinon leurs ronds ne se dessinent pas : on ne montre
+   *  pas ce qu'on ne peut pas attraper */
+  poigneesActives = true
   /** Le seul morceau choisi : il est surligné, pas la figure */
   partie: { id: string; prise: { quoi: 'nom' | 'sommet'; i: number } | { quoi: 'rayon' } } | null = null
 
@@ -441,6 +448,7 @@ export class Rendu {
     c.clearRect(0, 0, this.direct.width, this.direct.height)
     c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
 
+    if (this.enAttente) this.dessinerDirect(c, this.enAttente)
     if (this.monTrait) this.dessinerDirect(c, this.monTrait)
 
     if (this.fantomes.length) {
@@ -497,7 +505,7 @@ export class Rendu {
       // Les poignées : ce qu'on peut attraper dans la figure choisie
       const seule = this.selection.size === 1 ? this.formes.find(f => this.selection.has(f.id)) : undefined
       const f = seule && this.remplacement?.id === seule.id ? this.remplacement : seule
-      if (this.poignees && f && (f.type === 'polygone' || f.type === 'cercle')) {
+      if (this.poignees && this.poigneesActives && f && (f.type === 'polygone' || f.type === 'cercle')) {
         const pts = f.type === 'polygone' ? sommetsDe(f)
           : [{ x: f.x + f.r * Math.SQRT1_2, y: f.y - f.r * Math.SQRT1_2 }]
         c.lineWidth = 1.6 / cam.z; c.strokeStyle = '#3b6fb6'; c.fillStyle = '#ffffff'
