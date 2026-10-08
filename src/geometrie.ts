@@ -274,11 +274,18 @@ export function partDedans(f: Forme, dansZone: (x: number, y: number) => boolean
 }
 
 /** Le test « ce point est-il dans le lasso q ? », prêt pour des milliers de
- *  points : la même règle pair-impair que dedans, mais chaque côté est rangé
- *  dans les bandes horizontales qu'il traverse, et un point ne regarde que
- *  les côtés de sa bande. Un lasso tremblé de plusieurs centaines de côtés
- *  autour d'une page de 2000 traits se lâche ainsi en quelques millisecondes,
- *  au lieu de cinquante. */
+ *  points. La règle est celle de l'enroulement non nul, et non la règle
+ *  pair-impair de dedans : on « repasse » souvent sur son lasso pour être
+ *  sûr (un tour et demi, deux tours), et ce qui est entouré deux fois doit
+ *  rester dedans ; avec pair-impair, il en sortait (deux mots entourés d'un
+ *  tour et demi : l'un n'était pas pris). Chaque côté croisé par la demi-
+ *  droite vers la droite compte +1 s'il monte, -1 s'il descend ; le point est
+ *  dedans si la somme n'est pas nulle. Un lasso d'un seul tour, même tremblé,
+ *  concave ou en huit, dit la même chose que pair-impair. Chaque côté est
+ *  rangé dans les bandes horizontales qu'il traverse, et un point ne regarde
+ *  que les côtés de sa bande. Un lasso tremblé de plusieurs centaines de
+ *  côtés autour d'une page de 2000 traits se lâche ainsi en quelques
+ *  millisecondes, au lieu de cinquante. */
 export function dansLasso(q: number[]): (x: number, y: number) => boolean {
   const n = q.length / 2
   if (n < 3) return () => false
@@ -296,13 +303,14 @@ export function dansLasso(q: number[]): (x: number, y: number) => boolean {
   return (x, y) => {
     if (x < x1 || x > x2 || y < y1 || y > y2) return false
     const c = bandes[bande(y)]
-    let oui = false
+    let tours = 0
     for (let k = 0; k < c.length; k += 2) {
+      // Le côté va du sommet j au sommet i (j le précède)
       const i = c[k], j = c[k + 1]
       const xi = q[2 * i], yi = q[2 * i + 1], xj = q[2 * j], yj = q[2 * j + 1]
-      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) oui = !oui
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) tours += yi > yj ? 1 : -1
     }
-    return oui
+    return tours !== 0
   }
 }
 

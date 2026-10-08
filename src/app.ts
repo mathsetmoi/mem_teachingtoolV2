@@ -216,6 +216,9 @@ export class App {
   private clicApresAppuiLong: { pointeur: number; leve: number } | null = null
   /** Le toucher à deux ou trois doigts en cours (voir gesteDesDoigts) */
   private toucherDoigts = new ToucherADoigts()
+  /** La dernière poussée aux flèches : sa page, et l'étape de la pile de la
+   *  page qu'elle a faite ou prolongée (voir pousser) */
+  private poussee: { page: string; etape: unknown } | null = null
   /** Le mode « Ajouter » au doigt (voir ajoutTactile). vu : la sélection a eu
    *  quelque chose depuis qu'il est allumé */
   private ajout = { actif: false, vu: false }
@@ -3110,8 +3113,34 @@ export class App {
     this.vueChangee()
   }
 
+  /** Pousse la sélection (et les points liés à une image choisie) de dx, dy
+   *  (monde), aux flèches. Une rafale de poussées (une flèche tenue, des
+   *  appuis rapprochés) fait UNE étape d'annulation, mais jamais avec ce qui
+   *  l'a précédée : Ctrl+D, Ctrl+V ou une couleur choisie juste avant
+   *  restent leur propre étape (sans cela, la pile de la page fondait la
+   *  poussée dans l'étape d'avant, venue moins de 400 ms plus tôt, et Ctrl+Z
+   *  défaisait les deux). La poussée prolonge la rafale seulement si
+   *  l'étape du haut de la pile est encore celle que la poussée précédente a
+   *  faite : rien d'autre n'a été écrit depuis (une écriture qui suit
+   *  nouveauGeste ouvre une autre étape ; une annulation la retire). */
+  private pousser(dx: number, dy: number) {
+    const haut = () => { const u = this.tableau.annulationDe(this.page); return u ? u.undoStack[u.undoStack.length - 1] : undefined }
+    const p = this.poussee
+    if (!p || p.page !== this.page || !p.etape || p.etape !== haut()) this.tableau.nouveauGeste()
+    this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id) || this.lieeA(f)).map(f => ({ id: f.id, patch: { x: f.x + dx, y: f.y + dy } })))
+    this.poussee = { page: this.page, etape: haut() }
+  }
+
   private clavier(e: KeyboardEvent) {
     if (this.enLecture) return
+    // Pendant une séance d'automatismes, le tableau est caché : aucune touche
+    // ne le change (ni Ctrl+Z, ni Suppr, ni les flèches qui pousseraient un
+    // objet resté sélectionné) ni ne bouge sa vue ; on ne verrait rien. La
+    // séance a ses propres touches (seance.ts), et le navigateur garde les
+    // siennes (Ctrl+C dans une question, Ctrl + = pour grossir l'écran ;
+    // Espace et Entrée sur ses boutons). Les barres du tableau sont cachées
+    // (visibility: hidden) : aucun de leurs boutons ne garde le focus.
+    if (document.body.classList.contains('en-seance')) return
     const cible = e.target as HTMLElement
     // Dans une fenêtre (publier, formule…), les raccourcis du tableau se taisent
     if (cible.closest('input, textarea, select, [contenteditable], dialog')) return
@@ -3127,14 +3156,17 @@ export class App {
       if (refaire ? !this.retablir() : !this.annuler()) this.ui.message(refaire ? 'Rien à rétablir sur cette page' : 'Rien à annuler sur cette page')
       return
     }
-    // Pendant une séance d'automatismes, le tableau est caché : sa vue ne bouge pas
-    const seance = document.body.classList.contains('en-seance')
     // Ctrl+A, C, X, V, D (⌘ sur Mac) : tout sélectionner, copier, couper,
     // coller, dupliquer. La lettre se lit par e.key : en AZERTY, la touche
     // marquée A a pour e.code « KeyQ ». AltGr (Ctrl+Alt sous Windows) n'en
-    // est pas un. Ni pendant une séance, ni dans une fenêtre ouverte (les
-    // champs de saisie se sont déjà tus plus haut : on y copie du texte).
-    if (ctrl && !e.altKey && !e.shiftKey && !seance && !document.querySelector('dialog[open]')) {
+    // est pas un. Ni dans une fenêtre ouverte (les champs de saisie se sont
+    // déjà tus plus haut : on y copie du texte).
+    if (ctrl && !e.altKey && !e.shiftKey && !document.querySelector('dialog[open]')) {
+      // Pas en plein geste (un objet qu'on glisse, un trait, un lasso) : le
+      // lâcher déplacerait la sélection d'APRÈS la touche (tout ce que Ctrl+A
+      // a pris, la copie que Ctrl+V vient de poser) et non ce qu'on tient.
+      // Le doigt retenu un instant (voir ecrireOuRetenir) n'a encore rien fait.
+      if (/^[acxdv]$/.test(lettre) && this.geste && this.geste.type !== 'retenu') { e.preventDefault(); return }
       switch (lettre) {
         case 'a': e.preventDefault(); if (!e.repeat) this.toutSelectionner(); return
         // Rien de choisi : le navigateur fait sa copie ordinaire
@@ -3162,14 +3194,14 @@ export class App {
     if (fleches[e.key] && this.selection.size) {
       e.preventDefault()
       const k = e.shiftKey ? CM : CM / 10, [dx, dy] = fleches[e.key]
-      this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id) || this.lieeA(f)).map(f => ({ id: f.id, patch: { x: f.x + dx * k, y: f.y + dy * k } })))
+      this.pousser(dx * k, dy * k)
       return
     }
     // Sans sélection, elles déplacent la vue : → montre ce qui est à droite.
     // Un quart de ce qu'on voit (trois quarts avec Maj), en douceur ; touche
     // tenue, un douzième à chaque répétition, tout de suite (sinon la vue
     // filerait à sept écrans par seconde)
-    if (fleches[e.key] && !ctrl && !e.altKey && !seance) {
+    if (fleches[e.key] && !ctrl && !e.altKey) {
       e.preventDefault()
       const r = this.ui.zoneLibre(), [sx, sy] = fleches[e.key]
       const part = (e.shiftKey ? 3 / 4 : 1 / 4) / (e.repeat ? 3 : 1)
@@ -3182,7 +3214,7 @@ export class App {
     }
     // Maj + 1 : tout voir ; Maj + 2 : voir la sélection. Par la touche (e.code) :
     // en AZERTY, Maj + 1 donne « 1 », en QWERTY « ! »
-    if (e.shiftKey && !ctrl && !e.altKey && !seance && (e.code === 'Digit1' || e.code === 'Digit2')) {
+    if (e.shiftKey && !ctrl && !e.altKey && (e.code === 'Digit1' || e.code === 'Digit2')) {
       e.preventDefault()
       if (e.code === 'Digit1') this.toutVoir(); else this.voirSelection()
       return

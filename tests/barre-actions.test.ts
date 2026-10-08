@@ -6,7 +6,7 @@
 // navigateur (quand elle paraît, qu'elle suit la vue) est vérifié par l'essai
 // Playwright du morceau.
 import { describe, expect, it } from 'vitest'
-import { actionsDe, placeBarre } from '../src/barre-actions'
+import { ECART_DOIGT, actionsDe, placeBarre } from '../src/barre-actions'
 import { ICONES } from '../src/icones'
 
 const ids = (l: { id: string }[]) => l.map(a => a.id)
@@ -16,6 +16,14 @@ describe('ce que montre la barre', () => {
     expect(ids(actionsDe({ n: 1, formule: false }, 'mouse'))).toEqual(['dupliquer', 'copier', 'supprimer', 'options'])
     expect(ids(actionsDe({ n: 1, formule: false }, 'pen'))).toEqual(['dupliquer', 'copier', 'supprimer', 'options'])
     expect(ids(actionsDe({ n: 1, formule: false }, 'touch'))).toEqual(['dupliquer', 'copier', 'supprimer', 'ajouter', 'options'])
+  })
+
+  it('le stylet posé sur l\'écran (l\'Apple Pencil, sans clavier) a Ajouter ; celui d\'une tablette graphique, non (Maj + clic)', () => {
+    expect(ids(actionsDe({ n: 1, formule: false }, 'pen', 'Ctrl', true))).toEqual(['dupliquer', 'copier', 'supprimer', 'ajouter', 'options'])
+    expect(ids(actionsDe({ n: 2, formule: false }, 'pen', 'Ctrl', true))).toEqual(['dupliquer', 'copier', 'supprimer', 'ajouter', 'options'])
+    expect(ids(actionsDe({ n: 1, formule: false }, 'pen', 'Ctrl', false))).toEqual(['dupliquer', 'copier', 'supprimer', 'options'])
+    // La souris sur un écran tactile (un portable à écran tactile) a Maj + clic
+    expect(ids(actionsDe({ n: 1, formule: false }, 'mouse', 'Ctrl', true))).toEqual(['dupliquer', 'copier', 'supprimer', 'options'])
   })
 
   it('une formule : Modifier en tête ; six boutons au doigt', () => {
@@ -72,6 +80,16 @@ describe('où elle se pose', () => {
     const p = placeBarre(objet(500, 400, 700, 480), L, H, bords, fenetre)
     expect(p).toEqual({ left: 600 - L / 2, top: 400 - 10 - H, dessous: false })
     expect(p.top + H).toBeLessThanOrEqual(400)
+  })
+
+  it('au doigt, à 30 px de l\'objet (dessus comme dessous) : un doigt qui retouche l\'objet un peu haut ne touche pas la barre', () => {
+    expect(ECART_DOIGT).toBe(30)
+    expect(placeBarre(objet(500, 400, 700, 480), L, H, bords, fenetre, ECART_DOIGT)).toEqual({ left: 600 - L / 2, top: 400 - 30 - H, dessous: false })
+    expect(placeBarre(objet(500, 100, 700, 180), L, H, bords, fenetre, ECART_DOIGT)).toEqual({ left: 600 - L / 2, top: 210, dessous: true })
+    // Juste la place au-dessus, à 30 px
+    const top = bords.haut + 8 + H + 30
+    expect(placeBarre(objet(500, top, 700, top + 50), L, H, bords, fenetre, ECART_DOIGT).dessous).toBe(false)
+    expect(placeBarre(objet(500, top - 1, 700, top + 50), L, H, bords, fenetre, ECART_DOIGT).dessous).toBe(true)
   })
 
   it('un objet en haut de l\'écran : dessous, à 10 px', () => {

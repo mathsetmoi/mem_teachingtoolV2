@@ -84,12 +84,20 @@ Sélection (un clic, Maj + clic, un cadre, un lasso, Ctrl + A, ce qu'on vient
 de coller ou de dupliquer), ou d'un toucher du doigt qui « déplace », une
 petite barre paraît tout de suite juste au-dessus, sans le cacher : *Dupliquer*,
 *Copier*, *Supprimer* et *Options* (le menu complet), avec *Modifier* en tête
-pour une formule seule. Au doigt s'ajoute *Ajouter* : allumé, chaque objet
+pour une formule seule. Au doigt et au stylet posé sur l'écran (l'Apple
+Pencil d'un iPad sans clavier) s'ajoute *Ajouter* : allumé, chaque objet
 touché entre dans la sélection ou en sort (le Maj + clic d'une tablette, qui
 n'a pas de touche Maj), et un toucher dans le vide l'éteint. Des boutons de
 52 px, leur nom dessous ; l'infobulle donne le raccourci (Ctrl + D, Ctrl + C,
 Suppr ; pour *Options*, le clic droit à la souris, le bouton du stylet à la
 tablette graphique, l'appui long au stylet posé sur l'écran). Elle se pose
+à 10 px de l'objet, à 30 px au doigt : un doigt n'est pas un point, et
+celui qui retouche l'objet un peu haut (le second toucher d'un double appui)
+ne doit pas toucher *Supprimer*. Un appui qui n'est pas pour elle passe au
+tableau, comme si elle n'était pas là : un doigt dont le point tombe à côté
+d'elle (le navigateur donne l'appui au bouton que la zone de contact du doigt
+effleure), et un doigt qui la touche moins de 300 ms après qu'elle a paru (le
+second toucher d'un double appui). Elle se pose
 dessous quand il n'y a pas la place sous la barre du haut, en haut de l'écran pour un objet plus grand que lui, toujours dans
 l'écran, jamais sur la barre d'outils (sauf sur un téléphone, où elle n'y
 tiendrait pas). Elle suit la vue et l'objet (zoom, molette, flèches) ; elle
@@ -750,7 +758,9 @@ stylet, 20 au doigt ; une figure fermée sans fond se prend aussi par
 l'intérieur, le trait le plus proche passant avant elle (jamais sous le Stylo,
 voir « Prendre un objet »). **Glisser un objet le déplace, glisser dans le vide
 sélectionne**, sans touche : un cadre à la souris (et au pavé tactile), un
-lasso libre au stylet (tablette graphique comprise) et au doigt. Un objet est
+lasso libre au stylet (tablette graphique comprise) et au doigt. Un lasso
+qui fait plus d'un tour (on repasse pour être sûr) garde dedans ce qu'il
+entoure deux fois (la règle de l'enroulement non nul). Un objet est
 pris s'il est à plus de moitié dedans : plus de la moitié de la longueur de
 son tracé, de la surface d'une image ou d'une formule ; une droite, si ses
 deux points y sont. Un long trait en diagonale n'est donc plus pris par un
@@ -783,7 +793,11 @@ gardent leur place et se grisent quand la page n'a rien à défaire ou à refair
 clavier, un Ctrl+Z sans rien à défaire le dit : « Rien à annuler sur cette
 page ». Un geste fait une étape : un coup de gomme, même lent, même sur une
 page relue du disque ; une image transformée avec ses points ; une figure
-reconnue en fait une seconde (Ctrl+Z rend le tracé). Les piles vivent le temps
+reconnue en fait une seconde (Ctrl+Z rend le tracé). Une rafale de flèches
+qui pousse la sélection fait une étape, séparée de ce qui la précède : Ctrl+D
+puis → aussitôt, Ctrl+Z ne défait que la poussée. Pendant une séance
+d'automatismes, le tableau est caché : aucune touche ne le change (ni Ctrl+Z,
+ni Suppr, ni les flèches). Les piles vivent le temps
 de la séance : après un rechargement, on ne défait plus ce qui a été fait
 avant (le replay, lui, a tout gardé).
 
@@ -836,7 +850,9 @@ rend l'outil d'avant) ; ⌘ sur Mac. Ce sont les lettres écrites sur les
 touches, en AZERTY comme en QWERTY, et AltGr n'en fait pas un raccourci. Rien
 de tout cela dans un champ de saisie (une formule qu'on tape, les noms des
 sommets : on y copie du texte), pendant la revue, une séance d'automatismes,
-ou quand une fenêtre est ouverte ; sans rien de choisi, un message le dit.
+quand une fenêtre est ouverte, ni pendant qu'on glisse un objet ou qu'on
+écrit (le lâcher déplacerait ce que la touche vient de prendre) ; sans rien
+de choisi, un message le dit.
 Ctrl+V colle sur la page qu'on regarde : sous le pointeur (souris, plume de la
 tablette graphique) s'il est sur le tableau et a bougé depuis la copie ;
 sinon 1 cm à côté de l'original, et trois Ctrl+V de suite font trois copies
@@ -882,8 +898,8 @@ encore bougé, seulement passé 8 px). L'appui long ouvre le menu, au doigt qui
 Sélection, quel que soit le rôle du doigt, un doigt qui glisse dans le vide
 trace un lasso (le second doigt qui se pose l'efface et déplace la vue), et un
 doigt posé sur un objet le prend ou le glisse, comme la souris ; *Ajouter*,
-dans la barre d'actions, fait de chaque toucher un Maj + clic, jusqu'à un
-toucher dans le vide. Sous les autres outils, le rôle d'un seul doigt se règle
+dans la barre d'actions, fait de chaque toucher (du doigt ou du crayon) un
+Maj + clic, jusqu'à un toucher dans le vide. Sous les autres outils, le rôle d'un seul doigt se règle
 par le bouton en forme de main de la barre de gauche (sur un appareil tactile
 seulement ; sa marque dit le choix) :
 

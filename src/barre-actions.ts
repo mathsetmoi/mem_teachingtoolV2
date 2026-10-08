@@ -21,7 +21,7 @@
 import type { App } from './app'
 import type { Forme } from './types'
 import type { TypePointeur } from './pointeurs'
-import { ecranTactile } from './pointeurs'
+import { DOUBLE_TOUCHER, ecranTactile } from './pointeurs'
 import type { Boite } from './revoir/bobine'
 import { CTRL } from './navigateur'
 import { icone } from './icones'
@@ -43,19 +43,21 @@ export interface ActionBarre {
 
 /** Ce que montre la barre, dans l'ordre, selon ce qui est pris (n objets,
  *  une formule seule) et le dernier pointeur. « Modifier » en tête pour une
- *  formule (comme son double-clic) ; « Ajouter » au doigt seulement (la
- *  souris et le stylet ont Maj + clic). Les titres parlent la langue du
- *  pointeur : jamais « clic » au doigt ; le stylet posé sur l'écran (direct,
- *  l'Apple Pencil, qui n'a pas de bouton) a l'appui long, celui d'une
- *  tablette graphique son bouton. */
+ *  formule (comme son double-clic) ; « Ajouter » au doigt et au stylet posé
+ *  sur l'écran (l'Apple Pencil d'un iPad sans clavier n'a pas de touche
+ *  Maj) ; la souris et le stylet d'une tablette graphique, à côté du
+ *  clavier, ont Maj + clic. Les titres parlent la langue du pointeur :
+ *  jamais « clic » au doigt ; le stylet posé sur l'écran (direct, l'Apple
+ *  Pencil, qui n'a pas de bouton) a l'appui long, celui d'une tablette
+ *  graphique son bouton. */
 export function actionsDe(pris: { n: number; formule: boolean }, pointeur: TypePointeur, ctrl = CTRL, direct = ecranTactile()): ActionBarre[] {
-  const seul = pris.n === 1, doigt = pointeur === 'touch'
+  const seul = pris.n === 1, doigt = pointeur === 'touch', sansClavier = doigt || (pointeur === 'pen' && direct)
   const l: ActionBarre[] = []
   if (seul && pris.formule) l.push({ id: 'modifier', icone: 'stylo', libelle: 'Modifier', titre: doigt ? 'Modifier la formule' : 'Modifier la formule (double-clic)' })
   l.push({ id: 'dupliquer', icone: 'dupliquer', libelle: 'Dupliquer', titre: `Dupliquer (${ctrl} + D)` })
   l.push({ id: 'copier', icone: 'copier', libelle: 'Copier', titre: `Copier (${ctrl} + C)` })
   l.push({ id: 'supprimer', icone: 'poubelle', libelle: 'Supprimer', titre: seul ? 'Supprimer (Suppr)' : `Supprimer les ${pris.n} objets (Suppr)`, danger: true })
-  if (doigt) l.push({ id: 'ajouter', icone: 'plus', libelle: 'Ajouter', titre: 'Ajouter d\'autres objets : touchez-les', interrupteur: true })
+  if (sansClavier) l.push({ id: 'ajouter', icone: 'plus', libelle: 'Ajouter', titre: 'Ajouter d\'autres objets : touchez-les', interrupteur: true })
   l.push({ id: 'options', icone: 'points', libelle: 'Options',
     titre: pointeur === 'mouse' ? 'Toutes les options (clic droit)'
       : pointeur === 'pen' ? (direct ? 'Toutes les options (appui long)' : 'Toutes les options (bouton du stylet)') : 'Toutes les options' })
@@ -65,13 +67,25 @@ export function actionsDe(pris: { n: number; formule: boolean }, pointeur: TypeP
 /** Un rectangle de la fenêtre (pixels CSS) */
 export interface Rect { left: number; top: number; right: number; bottom: number }
 
-/** À 8 px au moins des bords de la fenêtre et des barres ; à 10 px de l'objet */
+/** À 8 px au moins des bords de la fenêtre et des barres ; à 10 px de
+ *  l'objet, 30 au doigt (voir ECART_DOIGT) */
 const MARGE = 8, ECART = 10
 
+/** L'écart entre l'objet et la barre quand le dernier pointeur est un doigt.
+ *  Un doigt n'est pas un point : sa zone de contact fait 25 à 35 px sur une
+ *  tablette, plus au TNI, et le navigateur donne l'appui au bouton le plus
+ *  proche que touche cette zone (l'ajustement du toucher de Chrome). À 10 px,
+ *  un doigt qui retouche l'objet un peu haut (le second toucher d'un double
+ *  appui, un nouveau toucher pour le glisser) touchait « Supprimer », au
+ *  milieu de la barre, juste au-dessus de l'objet. À 30 px, la barre reste
+ *  « juste au-dessus », et BarreActions.appui rend au tableau ce que le
+ *  navigateur aurait encore ajusté. */
+export const ECART_DOIGT = 30
+
 /** Où poser la barre (l × h) pour l'objet dont la boîte, à l'écran, est
- *  `objet` (coordonnées de la fenêtre) :
- *  - juste au-dessus, à 10 px, centrée sur lui : elle ne le cache pas ;
- *  - dessous, à 10 px, si le haut passait au-dessus du bas de la barre du
+ *  `objet` (coordonnées de la fenêtre), à `ecart` px de lui :
+ *  - juste au-dessus, centrée sur lui : elle ne le cache pas ;
+ *  - dessous, au même écart, si le haut passait au-dessus du bas de la barre du
  *    haut (bords.haut, plus 8 px) ;
  *  - si dessous déborde la fenêtre (un objet plus haut que l'écran), en haut
  *    de la zone libre, sous la barre du haut ;
@@ -80,10 +94,10 @@ const MARGE = 8, ECART = 10
  *    devant, à 8 px du bord de la fenêtre au moins ;
  *  - toujours dans la fenêtre, à 8 px de ses bords. */
 export function placeBarre(objet: Rect, l: number, h: number, bords: { gauche: number; haut: number },
-  fenetre: { l: number; h: number }): { left: number; top: number; dessous: boolean } {
-  let top = objet.top - ECART - h, dessous = false
+  fenetre: { l: number; h: number }, ecart = ECART): { left: number; top: number; dessous: boolean } {
+  let top = objet.top - ecart - h, dessous = false
   if (top < bords.haut + MARGE) {
-    top = objet.bottom + ECART; dessous = true
+    top = objet.bottom + ecart; dessous = true
     if (top + h > fenetre.h - MARGE) { top = bords.haut + MARGE; dessous = false }
   }
   top = Math.max(MARGE, Math.min(top, fenetre.h - h - MARGE))
@@ -98,9 +112,11 @@ export class BarreActions {
   /** Ce que montrent les boutons (voir maj) : ils ne se refont que s'il change */
   private cle = ''
   private boutons = new Map<IdAction, HTMLButtonElement>()
-  /** Le dernier appui sur la barre était celui d'un stylet qui voulait écrire
-   *  (voir appui) : le clic qui le suit ne fait rien */
-  private stylet = false
+  /** Le dernier appui sur la barre n'était pas pour elle et a été rendu au
+   *  tableau (voir appui) : le clic qui le suit ne fait rien */
+  private renvoye = false
+  /** L'heure où la barre a paru (performance.now()) : voir appui */
+  private parue = 0
 
   /** bords : le bord droit de la barre d'outils et le bas de la barre du
    *  haut (pixels de la fenêtre), que la barre ne recouvre pas */
@@ -160,8 +176,9 @@ export class BarreActions {
       ajouter.classList.toggle('actif', oui)
       if (ajouter.getAttribute('aria-pressed') !== String(oui)) ajouter.setAttribute('aria-pressed', String(oui))
     }
-    this.el.hidden = false
-    const p = placeBarre(objet, this.el.offsetWidth, this.el.offsetHeight, this.bords(), { l: window.innerWidth, h: window.innerHeight })
+    if (this.el.hidden) { this.el.hidden = false; this.parue = performance.now() }
+    const ecart = pointeur === 'touch' ? ECART_DOIGT : ECART
+    const p = placeBarre(objet, this.el.offsetWidth, this.el.offsetHeight, this.bords(), { l: window.innerWidth, h: window.innerHeight }, ecart)
     this.el.style.left = p.left + 'px'
     this.el.style.top = p.top + 'px'
   }
@@ -199,7 +216,9 @@ export class BarreActions {
       b.title = a.titre
       b.setAttribute('aria-label', a.titre)
       if (a.interrupteur) b.setAttribute('aria-pressed', 'false')
-      b.addEventListener('click', () => this.agir(a.id))
+      // Un clic sans pointeur (Entrée ou Espace sur le bouton, detail 0)
+      // n'a pas eu d'appui : il agit toujours
+      b.addEventListener('click', e => { if (e.detail === 0) this.renvoye = false; this.agir(a.id) })
       this.el.appendChild(b)
       this.boutons.set(a.id, b)
     }
@@ -209,7 +228,7 @@ export class BarreActions {
    *  sur la copie, part avec ce qu'on supprime, laisse la place au menu
    *  complet ou à l'éditeur de la formule) */
   private agir(id: IdAction) {
-    if (this.stylet) return
+    if (this.renvoye) return
     const app = this.app
     const seul = app.selection.size === 1 ? app.forme([...app.selection][0]) : null
     switch (id) {
@@ -223,15 +242,32 @@ export class BarreActions {
     app.ui.maj()
   }
 
-  /** Un appui sur la barre. Sous un autre outil que la Sélection, elle n'est
-   *  là que pour le doigt qui « déplace » : un stylet qui s'y pose veut
-   *  écrire (sur l'iPad, le crayon qui commence une lettre juste au-dessus de
-   *  l'objet qu'on vient de toucher). Rien ne s'y déclenche : la barre
-   *  s'efface et l'appui passe au tableau, qui le capture (voir App.bas),
-   *  comme si elle n'avait pas été là. Elle ne vole jamais l'encre. */
+  /** Un appui sur la barre. Trois appuis ne sont pas pour elle :
+   *  - sous un autre outil que la Sélection, elle n'est là que pour le doigt
+   *    qui « déplace » : un stylet qui s'y pose veut écrire (sur l'iPad, le
+   *    crayon qui commence une lettre juste au-dessus de l'objet qu'on vient
+   *    de toucher) ;
+   *  - un doigt dont le point n'est pas sur la barre : le navigateur lui a
+   *    donné l'appui parce que la zone de contact du doigt l'effleurait (le
+   *    toucher ajusté de Chrome, au doigt seulement) ; le doigt visait
+   *    l'objet juste dessous ;
+   *  - au doigt, un appui moins de 300 ms après qu'elle a paru
+   *    (DOUBLE_TOUCHER.ms) : c'est le second toucher d'un double appui (le
+   *    doigt retombe jusqu'à 35 px du premier, et la barre est à 30 px), ou
+   *    un geste commencé avant qu'on l'ait vue ; personne n'a encore eu le
+   *    temps de viser un de ses boutons. La souris et le stylet visent juste,
+   *    et le double-clic du système ne tolère que quelques pixels : leur
+   *    barre, à 10 px, se clique aussitôt.
+   *  Rien ne s'y déclenche : la barre s'efface et l'appui passe au tableau,
+   *  qui le capture (voir App.bas), comme si elle n'avait pas été là. Elle ne
+   *  vole jamais l'encre, et un double appui un peu haut n'efface rien. */
   private appui(e: PointerEvent) {
-    this.stylet = e.pointerType === 'pen' && this.app.outil !== 'selection'
-    if (!this.stylet) return
+    const r = this.el.getBoundingClientRect()
+    const hors = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom
+    const doigt = e.pointerType === 'touch'
+    this.renvoye = (e.pointerType === 'pen' && this.app.outil !== 'selection')
+      || (doigt && (hors || performance.now() - this.parue < DOUBLE_TOUCHER.ms))
+    if (!this.renvoye) return
     e.preventDefault(); e.stopPropagation()
     this.el.hidden = true
     this.app.rendu.scene.parentElement?.dispatchEvent(new PointerEvent('pointerdown', e))

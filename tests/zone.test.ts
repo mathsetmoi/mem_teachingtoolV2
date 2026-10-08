@@ -187,8 +187,65 @@ describe('le lasso simplifié', () => {
   })
 })
 
+/** L'enroulement du lasso q autour de (x, y), compté naïvement : la somme des
+ *  angles balayés par ses côtés, en tours (la référence de dansLasso) */
+const enroulement = (x: number, y: number, q: number[]) => {
+  let a = 0
+  for (let i = 0, j = q.length / 2 - 1; i < q.length / 2; j = i++) {
+    const a1 = Math.atan2(q[2 * j + 1] - y, q[2 * j] - x), a2 = Math.atan2(q[2 * i + 1] - y, q[2 * i] - x)
+    let d = a2 - a1
+    while (d > Math.PI) d -= 2 * Math.PI
+    while (d < -Math.PI) d += 2 * Math.PI
+    a += d
+  }
+  return Math.round(a / (2 * Math.PI))
+}
+/** Un lasso à la main qui fait `tours` tours autour de (cx, cy), le rayon
+ *  passant de r1 à r2 (on repasse un peu plus large) */
+const spirale = (cx: number, cy: number, r1: number, r2: number, tours: number, n = 200) => {
+  const q: number[] = []
+  for (let k = 0; k < n; k++) {
+    const t = k / (n - 1), a = 2 * Math.PI * tours * t, r = r1 + (r2 - r1) * t
+    q.push(cx + r * Math.cos(a), cy + r * Math.sin(a))
+  }
+  return q
+}
+
 describe('le lasso rangé par bandes', () => {
-  it('dit exactement ce que dit dedans (règle pair-impair), lasso tremblé, croisé ou concave', () => {
+  it('un lasso d\'un tour (tremblé, croisé en huit, concave) dit ce que dit dedans', () => {
+    const tremble: number[] = []
+    for (let i = 0; i < 300; i++) { const a = 2 * Math.PI * i / 300, r = 200 + 8 * Math.sin(i / 2); tremble.push(r * Math.cos(a), r * Math.sin(a)) }
+    const lassos = [tremble, [0, 0, 100, 100, 100, 0, 0, 100], [0, 0, 30, 0, 30, 80, 70, 80, 70, 0, 100, 0, 100, 100, 0, 100]]
+    let graine = 777
+    const hasard = () => { graine = (graine * 1103515245 + 12345) % 2147483648; return graine / 2147483648 }
+    for (const q of lassos) {
+      const vite = dansLasso(q)
+      for (let k = 0; k < 2000; k++) {
+        const x = hasard() * 500 - 250, y = hasard() * 500 - 250
+        expect(vite(x, y)).toBe(dedans(x, y, q))
+      }
+    }
+  })
+
+  it('un lasso qui fait un tour et demi, un tour trois quarts, deux tours : ce qui est entouré deux fois reste dedans', () => {
+    // Deux mots, l'un à droite (A), l'autre à gauche (B), dans un lasso centré
+    const A = { x: 40, y: 0 }, B = { x: -40, y: 0 }
+    for (const tours of [1, 1.15, 1.5, 1.75, 2, 2.5]) {
+      for (const depart of [0, Math.PI / 2, Math.PI]) {
+        // Le lasso commence à l'angle depart : la spirale tournée de depart
+        const s = spirale(0, 0, 100, 120, tours), r: number[] = []
+        for (let k = 0; k < s.length; k += 2) r.push(s[k] * Math.cos(depart) - s[k + 1] * Math.sin(depart), s[k] * Math.sin(depart) + s[k + 1] * Math.cos(depart))
+        const vite = dansLasso(r)
+        expect(vite(A.x, A.y), `A, ${tours} tours, départ ${depart}`).toBe(true)
+        expect(vite(B.x, B.y), `B, ${tours} tours, départ ${depart}`).toBe(true)
+        // Dehors reste dehors
+        expect(vite(200, 0)).toBe(false)
+        expect(vite(0, -200)).toBe(false)
+      }
+    }
+  })
+
+  it('dit exactement l\'enroulement non nul, lasso tremblé, croisé, concave, à plusieurs tours ou au hasard', () => {
     // Un générateur pseudo-aléatoire reproductible
     let graine = 12345
     const hasard = () => { graine = (graine * 1103515245 + 12345) % 2147483648; return graine / 2147483648 }
@@ -202,11 +259,13 @@ describe('le lasso rangé par bandes', () => {
     lassos.push([0, 0, 30, 0, 30, 80, 70, 80, 70, 0, 100, 0, 100, 100, 0, 100])
     // Des polygones au hasard
     for (let k = 0; k < 5; k++) { const q: number[] = []; for (let i = 0; i < 40; i++) q.push(hasard() * 300 - 150, hasard() * 300 - 150); lassos.push(q) }
+    // Des spirales de un à trois tours
+    for (const tours of [1.5, 1.75, 2.2, 3]) lassos.push(spirale(10, -20, 80, 140, tours, 150))
     for (const q of lassos) {
       const vite = dansLasso(q)
       for (let k = 0; k < 2000; k++) {
         const x = hasard() * 500 - 250, y = hasard() * 500 - 250
-        expect(vite(x, y)).toBe(dedans(x, y, q))
+        expect(vite(x, y)).toBe(enroulement(x, y, q) !== 0)
       }
     }
   })
