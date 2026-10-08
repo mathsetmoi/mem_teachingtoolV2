@@ -104,6 +104,8 @@ export class Rendu {
   enAttente: TraitDirect | null = null
   monSegment: { x1: number; y1: number; x2: number; y2: number; couleur: string; taille: number } | null = null
   cadreSelection: { x: number; y: number; l: number; h: number } | null = null
+  /** Le lasso de l'outil Sélection en cours (monde, à plat [x, y, …]), fermé au dessin */
+  lasso: number[] | null = null
   gomme: { x: number; y: number; r: number } | null = null
   apercu: Figure | null = null                     // figure en cours de construction
   remplacement: Figure | null = null               // figure dont on tire un morceau
@@ -537,6 +539,18 @@ export class Rendu {
       const r = this.cadreSelection
       c.fillStyle = 'rgba(59, 111, 182, 0.08)'; c.strokeStyle = '#3b6fb6'; c.lineWidth = 1 / cam.z
       c.fillRect(r.x, r.y, r.l, r.h); c.strokeRect(r.x, r.y, r.l, r.h)
+    }
+    // Le lasso : un chemin fermé en tirets, sans animation (au vidéoprojecteur,
+    // des tirets qui défilent attireraient l'œil)
+    if (this.lasso && this.lasso.length >= 4) {
+      const q = this.lasso
+      c.save()
+      c.fillStyle = 'rgba(59, 111, 182, 0.08)'; c.strokeStyle = '#3b6fb6'; c.lineWidth = 1.5 / cam.z
+      c.setLineDash([6 / cam.z, 4 / cam.z]); c.lineJoin = 'round'
+      c.beginPath(); c.moveTo(q[0], q[1])
+      for (let i = 2; i < q.length; i += 2) c.lineTo(q[i], q[i + 1])
+      c.closePath(); c.fill(); c.stroke()
+      c.restore()
     }
     if (this.gomme) {
       c.strokeStyle = 'rgba(27, 34, 48, 0.55)'; c.lineWidth = 1.5 / cam.z

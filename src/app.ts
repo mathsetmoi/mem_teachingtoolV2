@@ -8,7 +8,9 @@
 import type { Tableau } from './document'
 import { Camera, vuePour } from './camera'
 import { Rendu } from './rendu'
-import { chevauche, distanceAuSegment, rectangle, touche } from './geometrie'
+import { aireDe, chevauche, dansLasso, distanceAuSegment, distanceAuTrace, interieur, partDedans, rectangle, simplifier, touche } from './geometrie'
+import { change } from './habillage'
+import type { Retouche } from './habillage'
 import type { Figure, Fond, Forme, Formule, Habillage, Outil, Polygone, Trait, TypeForme } from './types'
 import { CM, uid } from './types'
 import type { P, Reconnue, Transformation } from './formes'
@@ -24,13 +26,24 @@ import { boiteDe } from './revoir/bobine'
 import type { Boite } from './revoir/bobine'
 import { choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, reglages } from './reglages'
 import type { Doigt } from './reglages'
-import { DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from './pointeurs'
-import type { Depart, Toucher, TypePointeur } from './pointeurs'
-import { CTRL, MAC, lireMolette } from './navigateur'
+import { APPUI_LONG, DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, SEUIL_GLISSER, TOLERANCE_PRISE, TOUCHER_DOIGTS, ToucherADoigts, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from './pointeurs'
+import type { Depart, Toucher, ToucherReconnu, TypePointeur } from './pointeurs'
+import { CTRL, MAC, lireMolette, toucheMarquePage, toucheMenu, toucheTenueEnGeste } from './navigateur'
 import { avale } from './menus'
 import type { TraitDirect } from './rendu'
 import type { Vue } from './session'
 import { ecrireSession, lireSession, oublierSession } from './session'
+import type { Copie } from './presse-papiers'
+import { collage, lireHtml, lireJson, memeTexte, versHtml, versTexte } from './presse-papiers'
+
+/** La copie gardée dans le navigateur, pour un autre onglet de la même
+ *  adresse (nouvelle clé : aucune autre ne change) */
+const CLE_PRESSE_PAPIERS = 'mem-presse-papiers'
+/** Au-delà (des images), elle ne se garde pas dans le navigateur : le
+ *  presse-papiers du système la porte encore */
+const GARDE_MAX = 2 * 1024 * 1024
+/** Une copie oubliée ne se colle pas le lendemain */
+const GARDE_DUREE = 12 * 3600 * 1000
 
 export const COULEURS = [
   { nom: 'Noir', valeur: '#1b2230' },
@@ -39,6 +52,10 @@ export const COULEURS = [
   { nom: 'Vert', valeur: '#1e8a4c' },
 ]
 export const TAILLES = [{ nom: 'Fin', valeur: 2.5 }, { nom: 'Moyen', valeur: 4.5 }, { nom: 'Épais', valeur: 9 }]
+
+/** App.options vaut ceci quand le menu ouvert est celui de toute une
+ *  sélection de plusieurs objets (le menu commun « N objets ») */
+export const TOUTE_LA_SELECTION = '*'
 
 /** La vue d'une page neuve : 100 %, l'origine en haut à gauche */
 const VUE_NEUTRE = { x: 120, y: 120, z: 1 }
@@ -54,16 +71,31 @@ function heureDe(e: Event): number {
 export interface Interface {
   maj(): void
   editerFormule(latex: string, ecranX: number, ecranY: number): Promise<string | null>
-  /** Un message en bas de l'écran ; avec une action, un bouton à côté du texte */
-  message(texte: string, action?: { libelle: string; faire: () => void }): void
+  /** Un message en bas de l'écran ; avec une action, un bouton à côté du
+   *  texte. cle : ce que l'action concerne (voir oublierAction) */
+  message(texte: string, action?: { libelle: string; faire: () => void; cle?: string }): void
+  /** Le message à action de cette clé n'a plus d'objet (la page que son
+   *  « Annuler » rendait est revenue par Ctrl+Z) : il s'en va */
+  oublierAction(cle: string): void
   /** Le menu du rôle du doigt (dessine, déplace, auto) */
   ouvrirReglageDoigt(): void
   ouvrirMenuPartie(id: string, prise: Prise, clientX: number, clientY: number): void
   fermerMenuPartie(): void
+  /** Le menu de la page (un clic droit dans le vide), posé au point de
+   *  l'appui (clientX, clientY) ; m : ce point, dans le monde, où « Coller
+   *  ici » colle */
+  ouvrirMenuPage(clientX: number, clientY: number, m: P, auClavier?: boolean): void
   /** Ferme ce qui flotte au-dessus du tableau (un petit menu, le menu d'un
    *  morceau, le panneau d'options sauf garderOptions, la liste des
    *  instruments) ; vrai si quelque chose était ouvert */
   fermerMenus(garderOptions?: boolean): boolean
+  /** Le clavier dans le menu complet (ou le menu d'un morceau) ouvert, comme
+   *  dans le menu du système ; vrai si la touche était pour lui (elle ne
+   *  pousse pas l'objet et ne déplace pas la vue derrière lui) */
+  clavierMenu(e: KeyboardEvent): boolean
+  /** Le focus sur la première entrée du menu complet ouvert (« Options »
+   *  pressé au clavier, comme les petits menus ouverts au clavier) */
+  entrerDansMenu(): void
   /** Ce qu'on voit du tableau entre les barres (coordonnées de la zone) */
   zoneLibre(): { x: number; y: number; l: number; h: number }
   /** Un fichier glissé sur le tableau (.memc, ou .mem) : comme « Ouvrir un tableau » */
@@ -74,8 +106,14 @@ type Geste =
   // pointeur : le seul qui la déplace (le doigt resté après un pincement) ;
   // toucher : le doigt « qui déplace » ; levé sans avoir glissé, il fait le
   // clic attendu (voir placement) ou choisit l'objet touché
-  | { type: 'pan'; dernierX: number; dernierY: number; vide?: boolean; pointeur?: number; toucher?: boolean }
-  | { type: 'pinch'; dist: number; cx: number; cy: number }
+  | { type: 'pan'; dernierX: number; dernierY: number; pointeur?: number; toucher?: boolean }
+  // dist, cx, cy : l'écart et le centre des deux doigts au dernier pas de la
+  // vue ; parti : la vue suit les doigts (voir bouge) ; depart : les deux
+  // doigts et leur écart quand le pincement a commencé
+  | { type: 'pinch'; dist: number; cx: number; cy: number; parti: boolean; depart: { a: DoigtPose; b: DoigtPose; dist: number } }
+  // Le premier doigt d'un outil qui écrit dès l'appui, retenu un instant (voir
+  // ecrireOuRetenir) : m et s, le point de l'appui (monde, écran) ; maj : Maj tenue
+  | { type: 'retenu'; m: P; s: P; maj: boolean; pointeur: number; minuterie: number }
   // apresMenu : l'appui qui a commencé le trait fermait un menu ; levé sans
   // avoir glissé, il ne pose rien. surObjet : il est parti d'une figure ou
   // d'une formule (un double-clic peut suivre, voir mettreEnAttente).
@@ -91,11 +129,23 @@ type Geste =
   // doigt : pris par le doigt « qui déplace » ; levé sans avoir glissé, il choisit l'objet touché.
   // retirer : Maj + clic sur un objet déjà sélectionné ; levé sans avoir glissé, il en sort
   | { type: 'deplacer'; x: number; y: number; bouge: boolean; doigt?: boolean; retirer?: string }
-  | { type: 'cadre'; x: number; y: number }
+  // Glisser depuis le vide, à l'outil Sélection : un cadre à la souris, un
+  // lasso au stylet et au doigt (pts : le lasso, en monde, à plat). ajout :
+  // Maj, Ctrl (⌘) ou le mode « Ajouter » ; ce qui est pris s'ajoute alors à la
+  // sélection. candidat : l'objet que l'appui touchait sans le saisir
+  // (l'intérieur d'une figure fermée, un tracé un peu loin) ; levé sans avoir
+  // glissé, il le prend
+  | { type: 'zone'; forme: 'cadre' | 'lasso'; x: number; y: number; pts: number[]; ajout: boolean; candidat?: string }
   | { type: 'formule' }
+
+/** Un doigt posé, à l'écran */
+type DoigtPose = { id: number; x: number; y: number }
 
 /** Un morceau d'une figure qu'on attrape : le nom d'un point, un sommet, le rayon */
 export type Prise = { quoi: 'nom' | 'sommet'; i: number } | { quoi: 'rayon' }
+
+/** Ce que prend le pointeur, et par où (voir cibleSous) */
+type Cible = { f: Forme; par: 'trace' | 'morceau' | 'plein' | 'dedans'; ecart: number }
 
 export class App {
   readonly cam = new Camera()
@@ -110,7 +160,9 @@ export class App {
   reconnaissance = true               // le stylo redresse les figures
   typeForme: TypeForme = 'rectangle'
   typeTrait: 'segment' | 'droite' | 'demi' = 'segment'      // ce que trace l'outil Segment
-  /** La figure dont le panneau d'options est ouvert (double-clic ou clic droit) */
+  /** Ce dont le menu complet est ouvert (clic droit, double-clic…, voir
+   *  demanderOptions) : l'identifiant de l'objet seul sélectionné, ou
+   *  TOUTE_LA_SELECTION pour le menu commun de plusieurs objets */
   options: string | null = null
   private astuceOptions = false
   /** Le premier point d'un trait tracé en deux clics (le second clic le finit) */
@@ -163,6 +215,44 @@ export class App {
   private toucherPrecedent: (Toucher & { objet: string; page: string }) | null = null
   /** Ce second toucher, posé : levé sans avoir glissé, il ouvre les options de l'objet */
   private doubleEnCours: { objet: string; pointeur: number } | null = null
+  /** L'appui long armé (voir armerAppuiLong) : le pointeur qui le tient,
+   *  l'endroit de l'appui (fenêtre), et la minuterie qui ouvrira le menu */
+  private appuiLong: { pointeur: number; clientX: number; clientY: number; type: TypePointeur; minuterie: number } | null = null
+  /** Le pointeur d'un appui long, et l'heure de son lever : le clic que le
+   *  navigateur en tire ne fait rien (voir brancherGestes) */
+  private clicApresAppuiLong: { pointeur: number; leve: number } | null = null
+  /** L'heure (performance.now()) où la touche Menu a ouvert un menu de MEM :
+   *  le contextmenu que le navigateur en tire n'ouvre pas le sien (voir
+   *  brancherGestes) ; 0 s'il est passé */
+  private toucheMenuA = 0
+  /** Le toucher à deux ou trois doigts en cours (voir gesteDesDoigts) */
+  private toucherDoigts = new ToucherADoigts()
+  /** La dernière poussée aux flèches : sa page, et l'étape de la pile de la
+   *  page qu'elle a faite ou prolongée (voir pousser) */
+  private poussee: { page: string; etape: unknown } | null = null
+  /** Le mode « Ajouter » au doigt (voir ajoutTactile). vu : la sélection a eu
+   *  quelque chose depuis qu'il est allumé */
+  private ajout = { actif: false, vu: false }
+  private astuceAjout = false
+  /** Une mise à jour de l'interface est déjà prévue après un changement de pile */
+  private majPiles = false
+  /** La dernière copie faite dans cet onglet (Ctrl+C, Ctrl+X) */
+  private copie: Copie | null = null
+  /** Où sont allés les collages de la copie `cle` (son heure) : la place du
+   *  dernier sur chaque page, et le pointeur d'alors (à la copie, puis à
+   *  chaque collage). Trois Ctrl+V sans bouger la souris s'étagent. */
+  private collages: { cle: number; pointeur: { clientX: number; clientY: number } | null; pages: Map<string, P> } | null = null
+  /** La copie que l'événement copy doit ranger (voir ecrireSysteme) */
+  private copieAEcrire: Copie | null = null
+  private copieEcrite = false
+  /** L'heure de la dernière copie que le presse-papiers du système a
+   *  refusée : Ctrl+V la colle quand même (voir surColler) */
+  private copieHorsSysteme = 0
+  /** Ctrl+V attend l'événement paste ; s'il ne vient pas (un navigateur qui ne
+   *  le donne pas hors d'un champ de saisie), la copie gardée se colle */
+  private collageAttendu = 0
+  /** L'heure de la dernière copie : deux copies n'ont jamais la même */
+  private heureCopie = 0
   /** Les instruments posés (dans l'ordre d'empilement) et leur réglage */
   readonly instruments = new Map<NomInstrument, EtatInstrument>()
   /** Ce que la classe voit des instruments, noté pour le replay (voir piste.ts) */
@@ -183,6 +273,15 @@ export class App {
 
     tableau.pages.observeDeep(() => this.rafraichir())
     tableau.ordre.observe(() => this.verifierPage())
+    // Une pile d'annulation a changé : ↶ et ↷ se remettent à jour, une fois,
+    // juste après (voir Tableau.onPiles). Sans cela, ↶ resterait grisé après
+    // ↷, après les flèches qui poussent la sélection, après le point d'un
+    // simple toucher posé par sa minuterie, et ne se toucherait plus au doigt.
+    tableau.onPiles = () => {
+      if (this.majPiles) return
+      this.majPiles = true
+      queueMicrotask(() => { this.majPiles = false; this.ui?.maj() })
+    }
 
     this.brancherGestes()
 
@@ -203,10 +302,20 @@ export class App {
     // Les images : où trouver leurs pixels ; coller ou glisser un fichier
     this.rendu.pixels = src => this.pixels(src)
     this.rendu.rendreFormule = (latex, el) => katex.render(latex, el, { throwOnError: false, displayMode: false })
-    window.addEventListener('paste', e => {
-      if ((e.target as HTMLElement).closest?.('input, textarea')) return
-      const f = [...(e.clipboardData?.files ?? [])].find(x => x.type.startsWith('image/'))
-      if (f && !this.enLecture) { e.preventDefault(); this.importerImage(f) }
+    window.addEventListener('paste', e => this.surColler(e))
+    // La copie part dans le presse-papiers du système par execCommand('copy')
+    // (voir ecrireSysteme), qui déclenche cet événement : on y range la
+    // copie, en texte et marquée dans le HTML. Safari n'accepte « copy » sans
+    // texte choisi sur la page que si beforecopy a été empêché. Une copie
+    // ordinaire (du texte choisi dans une fenêtre) passe sans rien changer.
+    document.addEventListener('beforecopy', e => { if (this.copieAEcrire) e.preventDefault() })
+    document.addEventListener('copy', e => {
+      const c = this.copieAEcrire
+      if (!c || !e.clipboardData) return
+      e.clipboardData.setData('text/plain', versTexte(c))
+      e.clipboardData.setData('text/html', versHtml(c))
+      e.preventDefault()
+      this.copieEcrite = true
     })
     zone.addEventListener('dragover', e => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault() })
     zone.addEventListener('drop', e => {
@@ -417,6 +526,7 @@ export class App {
     // Rien ne reste choisi d'une page à l'autre : ni la sélection, ni un
     // morceau de figure (Suppr, au retour, l'ôterait sans qu'on le voie choisi)
     this.selection.clear()
+    this.finirAjout()
     this.ui?.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
     this.rafraichir()
@@ -448,12 +558,60 @@ export class App {
     this.tableau.supprimer(this.page, this.formes.map(f => f.id))
   }
 
+  /** La poubelle de la barre du haut. Pas de question : la page part tout
+   *  de suite, et « Annuler » (dans le message, 7 s) ou Ctrl+Z, juste après,
+   *  sur la page où l'on se retrouve, la ramène à sa place, entière (voir
+   *  Tableau.jeterPage). On arrive sur la page d'avant (la suivante pour la
+   *  première). Une page seule n'est jamais jetée : on l'efface, ce qui
+   *  s'annule aussi ; vide, il n'y a rien à faire. */
   supprimerPage() {
-    if (this.pages.length <= 1) return this.ui.message('Il faut garder au moins une page.')
-    const i = this.pages.indexOf(this.page)
-    const id = this.page
-    this.allerPage(this.pages[i > 0 ? i - 1 : 1])
-    this.tableau.supprimerPage(id)
+    this.viderPointEnAttente()
+    const pages = this.pages, id = this.page, i = pages.indexOf(id)
+    if (i < 0) return
+    if (pages.length <= 1) {
+      if (!this.formes.length) return this.ui.message('La page est déjà vide.')
+      this.viderPage()
+      // L'effacement fait seul son étape : rien ne s'y ajoute ensuite
+      this.tableau.nouveauGeste()
+      const pile = this.tableau.annulationDe(id)
+      const haut = pile?.undoStack[pile.undoStack.length - 1]
+      this.ui.message('Page effacée', { libelle: 'Annuler', faire: () => {
+        // Le bouton ne défait que l'effacement, s'il est encore le dernier
+        // geste de la page ; sinon il défairait autre chose, qu'on ne voit pas.
+        // Jamais pendant la revue, qui n'écrit pas dans le tableau.
+        if (this.enLecture) return
+        this.viderPointEnAttente()
+        const p = this.tableau.annulationDe(id)
+        if (!haut || !p || p.undoStack[p.undoStack.length - 1] !== haut) return this.ui.message('La page a changé depuis : ↶ défait les gestes un à un.')
+        this.allerPage(id)
+        this.annuler()
+      } })
+      return
+    }
+    const voisine = pages[i > 0 ? i - 1 : 1]
+    this.allerPage(voisine)
+    if (!this.tableau.jeterPage(id, voisine)) return
+    this.ui.message(`Page ${i + 1} supprimée`, { libelle: 'Annuler', faire: () => this.rendrePage(id), cle: 'page:' + id })
+  }
+
+  /** Rend une page jetée (le bouton « Annuler » de son message) : elle
+   *  revient à sa place, avec tout ce qu'elle avait, et on la regarde. Rien
+   *  si elle est déjà revenue (un Ctrl+Z l'a rendue), ni pendant la revue. Sa
+   *  vue l'attend : on l'a gardée en la quittant. */
+  rendrePage(id: string): boolean {
+    if (this.enLecture) return false
+    this.viderPointEnAttente()
+    const k = this.tableau.rendrePage(id)
+    if (k < 0) return false
+    this.revenirSur(id, k)
+    return true
+  }
+
+  /** On regarde la page qui vient de revenir, et un message le dit */
+  private revenirSur(id: string, k: number) {
+    this.allerPage(id)
+    this.ui.oublierAction('page:' + id)
+    this.ui.message(`Page ${k + 1} rétablie`)
   }
 
   /** Le repère se pose au milieu de ce qu'on regarde, calé sur le centimètre. */
@@ -494,6 +652,7 @@ export class App {
     this.annulerTrait()
     this.survol = null; this.rendu.survol = null
     if (this.partie) this.choisirPartie(null)
+    this.finirAjout()
     this.outil = o
     if (o !== 'selection') this.selection.clear()
     this.majPoignees()
@@ -503,15 +662,50 @@ export class App {
     this.ui?.maj()
   }
 
-  /** L'interface est remise à jour APRÈS avoir vidé la sélection : le
+  /** Défait le dernier geste de la page qu'on regarde, et d'elle seule :
+   *  chaque page garde sa pile (voir Tableau.annulationDe), et rien ne change
+   *  jamais là où l'on ne regarde pas. Le point d'un simple toucher au Stylo,
+   *  qui attend un double-clic, se pose d'abord : c'est le dernier geste
+   *  visible, c'est lui qui part. Vrai si un geste a été défait.
+   *  L'interface est remise à jour APRÈS avoir vidé la sélection : le
    *  rafraîchissement déclenché par l'annulation passe avant, et laisserait
-   *  le panneau d'options ouvert sur une figure qui n'est plus choisie. */
-  annuler() {
+   *  le panneau d'options ouvert sur une figure qui n'est plus choisie.
+   *  Juste après « Supprimer la page », c'est la page jetée qui revient : on
+   *  y va, un message le dit, et la réponse est 'page' (le message est déjà
+   *  dit) ; sinon, vrai si un geste a été défait. */
+  annuler(): 'page' | boolean {
+    if (this.enLecture) return false
     this.viderPointEnAttente()
-    this.tableau.annulation.undo()
+    const r = this.tableau.annuler(this.page)
+    if (r?.page) {
+      this.revenirSur(r.page, this.pages.indexOf(r.page))
+      return 'page'
+    }
     this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()
+    return r !== null
   }
-  retablir() { this.viderPointEnAttente(); this.tableau.annulation.redo() }
+
+  /** Refait le dernier geste défait sur la page qu'on regarde. Comme annuler :
+   *  la sélection se vide (ce qui revient peut recouvrir ce qui était choisi)
+   *  et l'interface se remet à jour. Vrai si un geste a été refait. */
+  retablir(): boolean {
+    if (this.enLecture) return false
+    this.viderPointEnAttente()
+    const fait = this.tableau.retablir(this.page)
+    this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()
+    return fait
+  }
+
+  /** ↶ a-t-il quelque chose à faire sur cette page ? Le point qui attend un
+   *  double-clic compte : Ctrl+Z le pose, puis le retire. */
+  peutAnnuler(): boolean {
+    return this.pointEnAttente?.page === this.page || this.tableau.peutAnnuler(this.page)
+  }
+
+  /** ↷ ? Pas pendant qu'un point attend : posé, il oublie ce qui était à refaire. */
+  peutRetablir(): boolean {
+    return this.pointEnAttente?.page !== this.page && this.tableau.peutRetablir(this.page)
+  }
 
   supprimerSelection() {
     if (this.partie) return this.supprimerPartie()
@@ -746,12 +940,104 @@ export class App {
     return null
   }
 
-  /** L'objet qu'on prend sous le pointeur (outil Sélection, doigt qui
-   *  déplace) : touché sur son trait, ou par un morceau qui en sort, dans
-   *  n'importe quelle figure (le centre d'un cercle, le nom d'un sommet).
-   *  C'est la figure entière qu'on prend ; le morceau, au clic suivant. */
-  private objetSous(m: P, s: P, rayon = 6): Forme | null {
-    return this.formeSous(m.x, m.y, rayon) ?? this.priseSous(s, { toutes: true })?.f ?? null
+  /** Ce qu'on prend sous le pointeur (outil Sélection, doigt qui déplace,
+   *  clic droit), m dans le monde, s à l'écran, et par où on le prend :
+   *  - 'trace' : près de son tracé, à TOLERANCE_PRISE pixels d'écran au plus
+   *    selon le pointeur (ecart : à combien) ;
+   *  - 'morceau' : un morceau qui sort d'une figure (le centre d'un cercle, le
+   *    nom d'un sommet), dans n'importe quelle figure ; c'est la figure
+   *    entière qu'on prend, le morceau au clic suivant ;
+   *  - 'plein' : dans une formule, une image, une figure coloriée ;
+   *  - 'dedans' : dans une figure fermée sans fond, seulement si o.dedans
+   *    (l'outil Sélection, le toucher du doigt qui déplace : jamais sous un
+   *    outil de dessin, où écrire dans un triangle ne doit pas le prendre).
+   *  Le bord le plus proche l'emporte : un trait ou une petite figure écrits
+   *  dans un grand cadre se prennent avant le cadre. Un plein cache ce qui est
+   *  sous lui à cet endroit. L'ordre, en détail : les tracés à 6 px ou moins
+   *  (le plus proche), les morceaux, l'intérieur s'il est plein (entre lui et
+   *  les intérieurs nus, le plus petit), les tracés plus loin, enfin
+   *  l'intérieur nu. Une seule boucle sur les formes, chacune écartée d'abord
+   *  par sa boîte : le survol reste léger sur une page de milliers de traits. */
+  private cibleSous(m: P, s: P, o: { pointeur: TypePointeur; dedans: boolean }): Cible | null {
+    const z = this.cam.z, tol = TOLERANCE_PRISE[o.pointeur], r = tol / z
+    type Candidat = { f: Forme; i: number; ecart: number }
+    const traces: Candidat[] = [], pleins: Candidat[] = [], nus: Candidat[] = []
+    for (let i = 0; i < this.formes.length; i++) {
+      const f = this.formes[i]
+      const infinie = f.type === 'polygone' && !!f.prolonge          // une droite dépasse sa boîte
+      const b = this.boiteDeForme(f)
+      if (!infinie) {
+        if (!b) continue
+        // Un point seul se prend à 6 unités de plus (voir distanceAuTrace)
+        const k = r + (f.type === 'polygone' && f.pts.length === 2 ? 6 : 0)
+        if (m.x < b.x - k || m.x > b.x + b.l + k || m.y < b.y - k || m.y > b.y + b.h + k) continue
+      }
+      const d = distanceAuTrace(f, m.x, m.y, b) * z
+      if (d <= tol) traces.push({ f, i, ecart: d })
+      const dans = interieur(f, m.x, m.y, b)
+      if (dans === 'plein') pleins.push({ f, i, ecart: 0 })
+      else if (dans === 'nu' && o.dedans) nus.push({ f, i, ecart: 0 })
+    }
+    // Vu de près, l'intérieur d'une figure qui déborde tout l'écran (un grand
+    // cercle à 800 %) ne prend rien : on regarde ce qui est dedans, et un
+    // toucher dans le vide doit pouvoir désélectionner (règle de tldraw)
+    if (nus.length) {
+      const zl = this.ui?.zoneLibre() ?? { x: 0, y: 0, l: this.rendu.l, h: this.rendu.h }
+      for (let k = nus.length - 1; k >= 0; k--) {
+        const g = this.boiteGeometrique(nus[k].f)
+        const a = this.cam.versEcran(g.x, g.y), c = this.cam.versEcran(g.x + g.l, g.y + g.h)
+        if (a.x <= zl.x && a.y <= zl.y && c.x >= zl.x + zl.l && c.y >= zl.y + zl.h) nus.splice(k, 1)
+      }
+    }
+    // Un plein cache ce qui est sous lui : une image posée sur un trait se
+    // prend par l'image, une formule posée sur une image par la formule
+    const haut = pleins.length ? pleins[pleins.length - 1].i : -1
+    const visibles = (l: Candidat[]) => l.filter(c => c.i >= haut)
+    const tous = visibles(traces), plein = pleins.length ? pleins[pleins.length - 1] : null, vides = visibles(nus)
+    // Le plus proche, et à un demi-pixel près, le plus haut
+    const plusProche = (l: Candidat[]) => {
+      if (!l.length) return null
+      const min = Math.min(...l.map(c => c.ecart))
+      return l.filter(c => c.ecart <= min + 0.5).reduce((a, c) => (c.i > a.i ? c : a))
+    }
+    const net = plusProche(tous.filter(c => c.ecart <= TOLERANCE_PRISE.mouse))
+    if (net) return { f: net.f, par: 'trace', ecart: net.ecart }
+    // Le sommet d'une figure cachée sous une image ne se prend pas à travers
+    // elle : c'est l'image qu'on touche, comme avant
+    const morceau = this.priseSous(s, { toutes: true })
+    if (morceau && this.formes.indexOf(morceau.f) >= haut) return { f: morceau.f, par: 'morceau', ecart: 0 }
+    // L'intérieur : le plus petit l'emporte (un triangle sans fond dans un
+    // grand rectangle colorié se prend par son milieu), puis le plus haut
+    const dedans = [...(plein ? [plein] : []), ...vides].map(c => ({ ...c, aire: aireDe(c.f, this.boiteDeForme(c.f)) }))
+    const gagnant = dedans.length ? dedans.reduce((a, c) => (c.aire < a.aire || (c.aire === a.aire && c.i > a.i) ? c : a)) : null
+    if (gagnant && gagnant === dedans[0] && plein) return { f: gagnant.f, par: 'plein', ecart: 0 }
+    const loin = plusProche(tous)
+    if (loin) return { f: loin.f, par: 'trace', ecart: loin.ecart }
+    return gagnant ? { f: gagnant.f, par: 'dedans', ecart: 0 } : null
+  }
+
+  /** L'objet que prend le pointeur (voir cibleSous) */
+  private objetSous(m: P, s: P, o: { pointeur: TypePointeur; dedans: boolean }): Forme | null {
+    return this.cibleSous(m, s, o)?.f ?? null
+  }
+
+  /** L'appui SAISIT-il l'objet visé (glissé, il l'emporte) ? Par un morceau,
+   *  par un plein, ou tout près de son tracé (PRISE_GLISSER) ; plus loin, un
+   *  toucher le prend mais un glisser ne l'emporte pas. */
+  private saisi(c: { par: string; ecart: number }, pointeur: TypePointeur): boolean {
+    return c.par === 'morceau' || c.par === 'plein' || (c.par === 'trace' && c.ecart <= PRISE_GLISSER[pointeur])
+  }
+
+  /** La boîte d'une figure fermée, sans marge pour l'épaisseur ni les noms */
+  private boiteGeometrique(f: Forme): Boite {
+    if (f.type === 'cercle') return { x: f.x - f.r, y: f.y - f.r, l: 2 * f.r, h: 2 * f.r }
+    const b = this.boiteDeForme(f)
+    if (f.type !== 'polygone') return b ?? { x: f.x, y: f.y, l: 0, h: 0 }
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
+    for (let i = 0; i < f.pts.length; i += 2) {
+      x1 = Math.min(x1, f.pts[i]); x2 = Math.max(x2, f.pts[i]); y1 = Math.min(y1, f.pts[i + 1]); y2 = Math.max(y2, f.pts[i + 1])
+    }
+    return { x: f.x + x1, y: f.y + y1, l: x2 - x1, h: y2 - y1 }
   }
 
   private brancherGestes() {
@@ -761,23 +1047,33 @@ export class App {
     z.addEventListener('pointerup', e => this.haut(e))
     z.addEventListener('pointercancel', e => this.haut(e, true))
     z.addEventListener('wheel', e => this.molette(e), { passive: false })
-    // Clic droit (ou bouton du stylet) : les options du morceau visé, dans
-    // n'importe quelle figure (c'est une demande d'options), sinon celles de
-    // la figure entière. Dans une sélection de plusieurs objets, elle reste
-    // entière : on dit ce qu'on peut en faire.
-    z.addEventListener('contextmenu', e => {
+    // Le clic droit ouvre le menu complet à l'APPUI du bouton (voir bas et
+    // demanderOptions) ; l'événement contextmenu, lui, ne fait plus rien
+    // d'autre qu'écarter le menu du navigateur. Sous Windows Ink (la tablette
+    // graphique de la classe), « appuyer longuement pour cliquer avec le
+    // bouton droit » envoie un clic droit AU LEVER, après la fin du trait : un
+    // stylet tenu immobile une seconde (une hésitation, ou un tracé tenu pour
+    // que la figure soit reconnue) ouvrirait un menu, celui de la page dans le
+    // vide. Android, la Surface et Windows tactile en envoient un aussi à
+    // l'appui long du doigt, que l'appui long de MEM remplace par son propre
+    // minuteur (voir armerAppuiLong ; l'iPad n'en envoie pas) : jamais deux
+    // menus. Un vrai clic droit, lui, commence toujours par l'appui du
+    // bouton 2, comme le bouton du stylet. La touche Menu du clavier (et
+    // Maj + F10) passe par sa touche (voir menuAuClavier), pas par cet
+    // événement.
+    z.addEventListener('contextmenu', e => e.preventDefault())
+    // La touche Menu (ou Maj + F10) vient d'ouvrir le menu de MEM : le
+    // contextmenu que le navigateur tire ensuite de la même touche (sous
+    // Windows, au relâcher), visant le focus (la page, ou l'entrée du menu
+    // qui vient de le prendre), n'ouvre pas le sien par-dessus
+    document.addEventListener('contextmenu', e => {
+      if (!this.toucheMenuA || performance.now() - this.toucheMenuA > 1500) return
+      this.toucheMenuA = 0
       e.preventDefault()
-      if (this.enLecture) return
-      const s = this.ecran(e), p = this.monde(e)
-      const prise = this.priseSous(s, { toutes: true })
-      const f = this.formeSous(p.x, p.y) ?? prise?.f ?? null
-      if (f && this.selection.size > 1 && this.selection.has(f.id)) { this.direPlusieurs(); return }
-      if (prise) { this.choisirPartie(prise.f.id, prise.prise); this.ui.ouvrirMenuPartie(prise.f.id, prise.prise, e.clientX, e.clientY); return }
-      this.ui.fermerMenuPartie()
-      this.choisirPartie(null)
-      if (f) this.ouvrirOptions(f)
-    })
-    // Double-clic : les options de l'objet (une formule, elle, se modifie).
+    }, true)
+    // Double-clic : le menu complet de l'objet (une formule, elle, se modifie,
+    // comme un texte partout ; dans une sélection de plusieurs objets, le
+    // menu commun).
     // Pas sur un morceau choisi (son menu vient de s'ouvrir), ni juste après
     // un double appui déjà traité (au Stylo, voir doubleClicPlume ; au
     // doigt, voir secondToucher)
@@ -790,10 +1086,30 @@ export class App {
       // Au doigt, l'outil Sélection et le doigt qui déplace ont leur double
       // appui (secondToucher) : la même règle sur l'iPad et ailleurs
       if (this.dernierPointeur === 'touch' && (this.outil === 'selection' || this.doigtDeplace)) return
-      const p = this.monde(e), f = this.formeSous(p.x, p.y)
-      if (f?.type === 'formule') this.editerFormule(f)
+      // La Sélection vise comme son clic (l'intérieur d'une figure compris) ;
+      // la Main et le Segment, le tracé seul, à la portée du pointeur
+      const p = this.monde(e), pointeur = this.dernierPointeur
+      const f = this.outil === 'selection' ? this.objetSous(p, this.ecran(e), { pointeur, dedans: true })
+        : this.outil === 'main' || this.outil === 'segment' ? this.formeSous(p.x, p.y, TOLERANCE_PRISE[pointeur])
+        : this.formeSous(p.x, p.y)
+      if (f && this.selection.size > 1 && this.selection.has(f.id)) this.ouvrirOptionsSelection()
+      else if (f?.type === 'formule') this.modifierFormule(f)
       else if (f && (this.outil === 'selection' || this.outil === 'main' || this.outil === 'segment')) this.ouvrirOptions(f)
     })
+    // Le clic que le navigateur tire du lever d'un appui long : Chrome (sous
+    // Windows, au TNI, sur une Surface) en donne un, même après une seconde,
+    // et il tomberait sur le menu qui vient de s'ouvrir sous le doigt (sa
+    // poubelle…). Il ne fait rien. On le reconnaît à son pointeur (le clic
+    // de Chrome porte celui du doigt) ; un navigateur qui n'en dit rien, au
+    // clic qui suit le lever de tout près. Un vrai clic d'après passe.
+    window.addEventListener('click', e => {
+      const c = this.clicApresAppuiLong
+      if (!c || !c.leve) return
+      const id = (e as Partial<PointerEvent>).pointerId, depuis = performance.now() - c.leve
+      const sien = id === c.pointeur || (id === undefined && depuis < 100)
+      if (sien || depuis > 1000) this.clicApresAppuiLong = null
+      if (sien) { e.preventDefault(); e.stopPropagation() }
+    }, true)
     // Le clic que le navigateur tire du second appui d'un double appui
     // viserait ce qui vient de s'ouvrir sous le doigt ou le stylet (l'éditeur
     // d'une formule, qui se fermerait aussitôt) : il ne fait rien
@@ -848,25 +1164,39 @@ export class App {
     return [...this.pointeurs].filter(([, p]) => p.type === 'touch').map(([id, p]) => ({ id, x: p.x, y: p.y }))
   }
 
-  private pincement(doigts: { x: number; y: number }[]): Geste {
+  /** Un pincement des deux premiers doigts. parti : la vue suit déjà les
+   *  doigts (un pincement réancré quand un troisième se lève) ; sinon elle
+   *  attend qu'ils aient bougé (voir bouge) */
+  private pincement(doigts: DoigtPose[], parti = false): Geste {
     const [a, b] = doigts
-    return { type: 'pinch', dist: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }
+    const dist = Math.hypot(a.x - b.x, a.y - b.y)
+    return { type: 'pinch', dist, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, parti, depart: { a: { ...a }, b: { ...b }, dist } }
   }
 
   /** L'appui est-il devenu un glisser ? (voir SEUIL_GLISSER) */
   private aGlisse(s: P): boolean { return depasseSeuil(this.depart, s.x, s.y) }
 
   // ---------- Appuyer, glisser, lever ----------
-  /** Un appui. L'ordre compte : la paume écartée, le pointeur noté, le
-   *  stylet qui reprend la main au doigt, deux doigts qui pincent ; puis,
-   *  si rien n'est en cours, un menu ouvert qui se ferme, le second toucher
-   *  d'un double-clic, et enfin ce que fait le pointeur avec l'outil. */
+  /** Un appui. L'ordre compte : l'appui long d'un autre pointeur oublié, la
+   *  paume écartée, le doigt noté pour le toucher à plusieurs doigts, le
+   *  pointeur noté, le stylet qui reprend la main au doigt, deux doigts qui
+   *  pincent ; puis, si rien n'est en cours, le clic droit qui ouvre un menu,
+   *  un menu ouvert qui se ferme, le second toucher d'un double-clic, et
+   *  enfin ce que fait le pointeur avec l'outil (et l'appui long qui s'arme). */
   private bas(e: PointerEvent) {
     const s = this.ecran(e)
+    // Tout autre appui (le second doigt d'un pincement, une paume, le stylet)
+    // n'est plus un appui long
+    this.desarmerAppuiLong()
     // Le bout gomme du stylet (le stylet retourné) efface, quel que soit l'outil
     const gommeDuStylet = e.pointerType === 'pen' && (e.button === 5 || (e.buttons & 32) !== 0)
-    // La paume, quand le doigt ne dessine pas : rien jusqu'à son lever
-    if (this.paume(e)) { this.ignores.add(e.pointerId); return }
+    // La paume, quand le doigt ne dessine pas : rien jusqu'à son lever, et ce
+    // n'est pas un toucher à deux doigts
+    if (this.paume(e)) { this.ignores.add(e.pointerId); this.toucherDoigts.oublier(); return }
+    // Le toucher à deux ou trois doigts (voir gesteDesDoigts) se suit doigt
+    // par doigt ; un stylet posé l'abandonne. Jamais pendant la revue.
+    if (e.pointerType === 'touch' && !this.enLecture) this.toucherDoigts.poser(e.pointerId, s.x, s.y, heureDe(e))
+    else this.toucherDoigts.oublier()
     // Un pointeur synthétique, ou déjà levé, refuse d'être capturé : le geste a lieu quand même
     try { this.zone.setPointerCapture(e.pointerId) } catch { /* sans capture */ }
     this.pointeurs.set(e.pointerId, { x: s.x, y: s.y, type: e.pointerType })
@@ -884,9 +1214,20 @@ export class App {
     if (doigts.length === 2) {
       this.abandonnerGeste()
       this.geste = this.pincement(doigts)
+      // La barre d'actions se cache le temps du pincement (voir enMouvement)
+      if (this.selection.size) this.ui.maj()
       return
     }
     if (this.geste) return
+
+    // Le clic droit (le bouton du stylet en est un ; sur Mac, Ctrl + clic) :
+    // le menu complet, à l'APPUI du bouton, et aucun geste. Seulement quand
+    // rien n'est en cours : un bouton pressé pendant un glisser ou un trait
+    // n'envoie pas d'appui (le navigateur l'accorde au geste), il n'ouvre
+    // rien. Le petit menu qui était ouvert vient de se fermer (menus.ts, en
+    // capture) ; l'autre s'ouvre (voir demanderOptions).
+    const droit = e.button === 2 || (MAC && e.ctrlKey && e.button === 0 && e.pointerType !== 'touch')
+    if (droit) { this.demanderOptions(e, typePointeur(e.pointerType)); return }
 
     const m = this.monde(e)
     const doigt = e.pointerType === 'touch' && this.doigtDeplace
@@ -903,13 +1244,18 @@ export class App {
     // continue seulement sur un instrument, sur un objet qu'on prend (outil
     // Sélection, doigt qui déplace), ou au Stylo : le trait commence (on ne
     // perd pas la première lettre), mais un simple appui ne posera rien.
-    // L'objet dont le panneau est ouvert, qu'on prend pour le déplacer, le
-    // garde : il reparaît au lever. Un clic attendu par le panneau (Désigner,
-    // Tracer un axe ou un centre) est pour lui : le panneau reste.
+    // L'objet dont le menu est ouvert, qu'on prend pour le déplacer, le
+    // garde : il reparaît au lever (le menu commun d'une sélection de
+    // plusieurs objets, quand on en prend un). Un clic attendu par le menu
+    // (Désigner, Tracer un axe ou un centre) est pour lui : le menu reste.
     const prend = this.outil === 'selection' || doigt
-    const vise = prend ? this.objetSous(m, s, doigt ? 12 : 6) : null
-    const apresMenu = !pan && !this.placement && (avale(e) || this.ui.fermerMenus(!!vise && vise.id === this.options))
+    const pointeur = typePointeur(e.pointerType)
+    const vise = prend ? this.objetSous(m, s, { pointeur, dedans: true }) : null
+    const garder = !!vise && (this.options === TOUTE_LA_SELECTION ? this.selection.has(vise.id) : vise.id === this.options)
+    const apresMenu = !pan && !this.placement && (avale(e) || this.ui.fermerMenus(garder))
     if (apresMenu) {
+      // Deux doigts posés pour fermer un menu n'annulent rien
+      this.toucherDoigts.oublier()
       const continuer = e.button === 0 && !gommeDuStylet && (
         (this.instruments.size > 0 && !!this.instrumentSous(m))
         || (prend && (!!prise || !!vise))
@@ -926,7 +1272,13 @@ export class App {
     this.secondToucher(e, s, m)
 
     this.depart = nouveauDepart(s.x, s.y, e.pointerId, e.pointerType, performance.now())
-    if (pan) { this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y }; return }
+    if (pan) {
+      this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y }
+      // L'outil Main au doigt qui « déplace » : l'appui long y ouvre le menu,
+      // comme sous les autres outils (voir armerAppuiLong)
+      if (this.outil === 'main' && e.button === 0) this.armerAppuiLong(e)
+      return
+    }
     if (e.button !== 0 && !gommeDuStylet) return
 
     // Un clic attendu (où commencer une construction, Désigner, Tracer un axe
@@ -938,7 +1290,11 @@ export class App {
     // Le bout gomme passe avant tout le reste : le bord d'un instrument, les
     // instruments, les sommets. L'outil en main ne change pas.
     if (gommeDuStylet) { this.commencerGomme(m, true); return }
-    if (doigt) { this.basDoigt(e, s, m, prise); return }
+    // Le doigt qui « déplace » a son propre geste sous les autres outils. À la
+    // Sélection, il fait comme la souris et le stylet (un doigt qui glisse dans
+    // le vide trace un lasso, la vue se déplace à deux doigts), sauf quand un
+    // clic est attendu : il cherche alors la place en déplaçant la vue.
+    if (doigt && (this.outil !== 'selection' || this.placement)) { this.basDoigt(e, s, m, prise); this.armerAppuiLong(e); return }
     // Le crayon posé contre le bord d'un instrument trace le long du bord.
     // Sauf sur une pastille ↻ : à petit zoom, la portée du bord l'atteindrait
     // (celle du rapporteur est dans le prolongement de son bord)
@@ -988,41 +1344,44 @@ export class App {
       }
       case 'segment': {
         // Second clic d'un trait en deux clics : il le finit
-        if (this.traitEnAttente) {
-          const a = this.traitEnAttente
-          this.traitEnAttente = null
-          this.finirTrait(a, this.boutDuTrait(a, m, e.shiftKey))
-          break
-        }
+        if (this.traitEnAttente) { this.ecrireOuRetenir(e, m, s); break }
         const a = this.accrocher(m).p
         this.geste = { type: 'segment', x: a.x, y: a.y }
         this.rendu.monSegment = { x1: a.x, y1: a.y, x2: a.x, y2: a.y, couleur: this.couleur, taille: this.taille }
         break
       }
       case 'forme': {
-        if (this.typeForme === 'polygone') { this.pointDuPolygone(this.accrocher(m).p, s); break }
+        if (this.typeForme === 'polygone') { this.ecrireOuRetenir(e, m, s); break }
         const a = this.aimanter(m)
         this.geste = { type: this.typeForme, x: a.x, y: a.y }
         break
       }
-      case 'point': this.placerPoint(m); break
-      case 'gomme': this.commencerGomme(m, false); break
+      case 'point':
+      case 'gomme': this.ecrireOuRetenir(e, m, s); break
       case 'selection': {
-        const f = this.objetSous(m, s)
+        const c = this.cibleSous(m, s, { pointeur, dedans: true })
         // Maj + clic, ou Ctrl + clic (⌘ sur Mac, où Ctrl + clic est un clic
-        // droit) : l'objet entre dans la sélection, ou en sort
-        const ajout = e.shiftKey || (MAC ? e.metaKey : e.ctrlKey)
-        if (f) {
+        // droit), ou le mode « Ajouter » au doigt : l'objet entre dans la
+        // sélection, ou en sort ; un cadre ou un lasso s'y ajoute
+        const ajout = e.shiftKey || (MAC ? e.metaKey : e.ctrlKey) || this.ajoutTactile
+        // Saisir ou entourer. Un objet qu'on saisit (tout près de son tracé, par
+        // un morceau, par un plein) ou déjà sélectionné se glisse. Sinon, même
+        // si l'appui touche quelque chose (l'intérieur d'une figure fermée sans
+        // fond, un tracé un peu plus loin), glisser entoure : on prend ce qu'on
+        // a écrit dans un grand cadre, ou un mot dont on part à 15 px, comme
+        // chez tldraw et Excalidraw ; levé sans glisser, l'appui prend l'objet.
+        if (c && (this.saisi(c, pointeur) || this.selection.has(c.f.id))) {
+          const f = c.f
           const retirer = ajout && this.selection.has(f.id) ? f.id : undefined
           if (!this.selection.has(f.id)) { if (!ajout) this.selection.clear(); this.selection.add(f.id) }
           this.direOptions()
           this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false, retirer }
-        } else if (ajout) {
-          this.geste = { type: 'cadre', x: m.x, y: m.y }          // Maj + glisser : encadrer
         } else {
-          // Glisser dans le vide déplace le tableau ; un simple clic désélectionne
-          this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, vide: true }
+          // Un cadre à la souris (le pavé tactile en est une), un lasso libre au
+          // stylet (tablette graphique comprise) et au doigt
+          this.geste = { type: 'zone', forme: e.pointerType === 'mouse' ? 'cadre' : 'lasso', x: m.x, y: m.y, pts: [m.x, m.y], ajout, candidat: c?.f.id }
         }
+        this.armerAppuiLong(e)
         this.rendu.redessinerDirect(); this.ui.maj()
         break
       }
@@ -1032,21 +1391,139 @@ export class App {
     }
   }
 
-  /** Le doigt qui « déplace et sélectionne » : jamais d'encre, quel que soit
-   *  l'outil. Il prend un instrument, un morceau de la figure sélectionnée
-   *  (prise, lu par bas()), ou ce qui est déjà sélectionné pour le déplacer ;
-   *  ailleurs, même sur un objet, il déplace la vue (un doigt qui traverse une
-   *  page chargée n'emporte pas un trait). Levé sans avoir glissé, il choisit
-   *  l'objet touché (voir toucherObjet). Quand un clic est attendu (voir
-   *  placement), il déplace la vue, ou, levé sans avoir glissé, il fait ce clic. */
+  /** Le doigt qui « déplace et sélectionne », sous un autre outil que la
+   *  Sélection (ou quand un clic est attendu) : jamais d'encre. Il prend un
+   *  instrument, un morceau de la figure sélectionnée (prise, lu par bas()),
+   *  ou ce qui est déjà sélectionné pour le déplacer ; ailleurs, même sur un
+   *  objet, il déplace la vue (un doigt qui traverse une page chargée
+   *  n'emporte pas un trait). Levé sans avoir glissé, il choisit l'objet
+   *  touché (voir toucherObjet). Quand un clic est attendu (voir placement),
+   *  il déplace la vue, ou, levé sans avoir glissé, il fait ce clic. */
   private basDoigt(e: PointerEvent, s: P, m: P, prise: { prise: Prise; f: Figure } | null) {
     if (this.placement) { this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, pointeur: e.pointerId, toucher: true }; return }
     const inst = this.instruments.size ? this.instrumentSous(m) : null
     if (inst) { this.prendreInstrument(inst, m); return }
     if (prise) { this.prendrePoignee(prise); return }
-    const f = this.objetSous(m, s, 12)
-    if (f && this.selection.has(f.id)) { this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false, doigt: true }; return }
+    // Glisser n'emporte qu'un objet sélectionné saisi par son tracé (ou son
+    // plein) : un doigt qui fait défiler en partant du milieu d'un grand cadre
+    // sélectionné déplace la vue, pas le cadre
+    const c = this.cibleSous(m, s, { pointeur: 'touch', dedans: false })
+    if (c && this.selection.has(c.f.id) && this.saisi(c, 'touch')) { this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false, doigt: true }; return }
     this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, pointeur: e.pointerId, toucher: true }
+  }
+
+  // ---------- Le premier doigt d'un outil qui écrit dès l'appui ----------
+  /** La Gomme efface ce qu'elle touche, le Point se pose, le Polygone prend
+   *  un sommet, le second clic du Segment finit le trait : ces outils écrivent
+   *  dès l'appui. Au doigt qui dessine, les gestes à deux doigts allumés, le
+   *  premier doigt attend un peu (TOUCHER_DOIGTS.arrivee) : sans cela, le
+   *  toucher à deux doigts défairait ce que le premier vient de faire, au
+   *  lieu du geste d'avant. Un second doigt pendant l'attente fait un
+   *  pincement (abandonnerGeste efface la minuterie) : rien n'est écrit.
+   *  Sinon, l'appui fait ce qu'il a toujours fait, au premier de ces moments :
+   *  l'échéance, le seuil du glisser passé (voir bouge), le lever (voir
+   *  leverGeste). Le Stylo et le Surligneur n'attendent pas : leur encre part
+   *  tout de suite, et le pincement la jette déjà. */
+  private ecrireOuRetenir(e: PointerEvent, m: P, s: P) {
+    if (e.pointerType !== 'touch' || !reglages.gestes) { this.ecrireDesLAppui(m, s, e.shiftKey); return }
+    const g: Extract<Geste, { type: 'retenu' }> = { type: 'retenu', m, s, maj: e.shiftKey, pointeur: e.pointerId, minuterie: 0 }
+    g.minuterie = window.setTimeout(() => { if (this.geste === g) this.lancerRetenu(g) }, TOUCHER_DOIGTS.arrivee)
+    this.geste = g
+  }
+
+  /** Ce que fait l'appui de ces outils (m, s : le point de l'appui, dans le
+   *  monde et à l'écran ; maj : Maj tenue) */
+  private ecrireDesLAppui(m: P, s: P, maj: boolean) {
+    switch (this.outil) {
+      case 'point': this.placerPoint(m); break
+      case 'gomme': this.commencerGomme(m, false); break
+      case 'forme': if (this.typeForme === 'polygone') this.pointDuPolygone(this.accrocher(m).p, s); break
+      case 'segment': {
+        const a = this.traitEnAttente
+        if (!a) break
+        this.traitEnAttente = null
+        this.finirTrait(a, this.boutDuTrait(a, m, maj))
+        break
+      }
+    }
+  }
+
+  /** Le doigt retenu agit enfin : la Gomme devient le geste en cours (elle
+   *  efface ce que le doigt traverse ensuite), le reste est fait */
+  private lancerRetenu(g: Extract<Geste, { type: 'retenu' }>) {
+    clearTimeout(g.minuterie)
+    if (this.geste === g) this.geste = null
+    this.tableau.nouveauGeste()
+    this.ecrireDesLAppui(g.m, g.s, g.maj)
+  }
+
+  // ---------- L'appui long ----------
+  /** Un appui tenu APPUI_LONG ms sans glisser ouvrira le menu complet de ce
+   *  qui est dessous (le menu de la page dans le vide), comme un clic droit.
+   *  Au doigt : à l'outil Sélection (quel que soit le rôle du doigt), et au
+   *  doigt qui « déplace » sous n'importe quel outil. Au stylet : seulement
+   *  posé sur l'écran lui-même (iPad, Surface, tablette Android) et à la
+   *  Sélection ; celui d'une tablette graphique a son bouton, et un stylet
+   *  qui marque un temps sur un objet avant de le glisser ne doit pas ouvrir
+   *  de menu. Jamais au Stylo ni au Surligneur (un point qu'on tient, une
+   *  lettre qu'on commence), ni quand un clic est attendu ; et seulement sur
+   *  un appui qui prend, déplace ou entoure (pas sur un instrument, un
+   *  sommet, un trait qu'on tire). Notre propre minuterie : l'iPad n'envoie
+   *  pas de contextmenu, et celui d'Android ou de Windows n'ouvre plus rien. */
+  private armerAppuiLong(e: PointerEvent) {
+    const g = this.geste
+    if (!g || this.placement || this.enLecture || this.depart.pointeur !== e.pointerId) return
+    const doigt = e.pointerType === 'touch' && (this.outil === 'selection' || this.doigtDeplace)
+    const stylet = e.pointerType === 'pen' && this.outil === 'selection' && ecranTactile()
+    if (!doigt && !stylet) return
+    if (!(g.type === 'deplacer' && !g.bouge) && g.type !== 'zone' && !(g.type === 'pan' && (g.toucher || this.outil === 'main'))) return
+    this.desarmerAppuiLong()
+    this.appuiLong = { pointeur: e.pointerId, clientX: e.clientX, clientY: e.clientY, type: typePointeur(e.pointerType),
+      minuterie: window.setTimeout(() => this.appuiLongEchu(), APPUI_LONG) }
+  }
+
+  /** L'appui a glissé, s'est levé, un autre s'est posé : pas d'appui long */
+  private desarmerAppuiLong() {
+    if (!this.appuiLong) return
+    clearTimeout(this.appuiLong.minuterie)
+    this.appuiLong = null
+  }
+
+  /** L'appui long : le geste commencé s'abandonne sans rien laisser (l'objet
+   *  revient à sa place, le lasso s'efface), le pointeur ne compte plus
+   *  jusqu'à son lever (qui ne désélectionne rien et ne prend rien), une
+   *  petite vibration le dit sous le doigt, et le menu s'ouvre (voir
+   *  demanderOptions), comme au clic droit. */
+  private appuiLongEchu() {
+    const a = this.appuiLong
+    this.appuiLong = null
+    if (!a || !this.geste || this.depart.pointeur !== a.pointeur) return
+    this.abandonnerGeste()
+    this.pointeurs.delete(a.pointeur); this.ignores.add(a.pointeur)
+    this.toucherDoigts.oublier()
+    this.toucherPrecedent = null; this.doubleEnCours = null
+    try { navigator.vibrate?.(10) } catch { /* pas de vibreur */ }
+    this.clicApresAppuiLong = { pointeur: a.pointeur, leve: 0 }
+    this.demanderOptions({ clientX: a.clientX, clientY: a.clientY }, a.type)
+    this.ui.maj()
+  }
+
+  // ---------- Le toucher à deux ou trois doigts ----------
+  /** Un toucher bref à deux doigts annule le dernier geste de la page qu'on
+   *  regarde, à trois il le rétablit (voir TOUCHER_DOIGTS, reconnu par
+   *  ToucherADoigts au lever du dernier doigt), comme Ctrl+Z et Ctrl+Y. Un
+   *  message bref le dit. La page jetée que ↶ ramène le dit elle-même (« Page
+   *  N rétablie »). Coupé dans le menu du doigt (reglages.gestes). Le doigt
+   *  qui dessinait a déjà perdu son trait quand le second s'est posé (le
+   *  pincement le jette) ; l'objet que le premier doigt a pris à la Sélection
+   *  est relâché par annuler() et retablir(), qui vident la sélection. */
+  private gesteDesDoigts(r: ToucherReconnu) {
+    if (!reglages.gestes || this.enLecture) return
+    if (r === 'annuler') {
+      const fait = this.annuler()
+      if (fait === true) this.ui.message('Annulé')
+      else if (!fait) this.ui.message('Rien à annuler sur cette page')
+    } else this.ui.message(this.retablir() ? 'Rétabli' : 'Rien à rétablir sur cette page')
   }
 
   /** Un coup de gomme : à l'outil Gomme, ou au bout gomme du stylet (le
@@ -1134,18 +1611,20 @@ export class App {
     if (!a || e.pointerType !== 'touch' || e.button !== 0 || a.page !== this.page) return
     if (this.outil !== 'selection' && !this.doigtDeplace) return
     if (!doubleToucher(a, s.x, s.y, performance.now())) return
-    const f = this.formeSous(m.x, m.y, 12)
+    const f = this.objetSous(m, s, { pointeur: 'touch', dedans: true })
     if (f && f.id === a.objet) this.doubleEnCours = { objet: f.id, pointeur: e.pointerId }
   }
 
-  /** Le double appui au doigt, au lever du second toucher : les options de
-   *  l'objet (une formule se modifie). Le dblclick du navigateur, s'il suit,
-   *  ne refait rien, ni le clic qu'il tire du toucher (voir brancherGestes). */
+  /** Le double appui au doigt, au lever du second toucher : le menu complet
+   *  de l'objet (une formule se modifie ; un objet d'une sélection de
+   *  plusieurs ouvre leur menu commun). Le dblclick du navigateur, s'il
+   *  suit, ne refait rien, ni le clic qu'il tire du toucher (voir brancherGestes). */
   private ouvrirParDouble(id: string) {
     const f = this.forme(id)
     if (!f) return
     this.doubleTraite = performance.now(); this.clicFantome = true
-    if (f.type === 'formule') this.editerFormule(f)
+    if (this.selection.size > 1 && this.selection.has(f.id)) this.ouvrirOptionsSelection()
+    else if (f.type === 'formule') this.modifierFormule(f)
     else this.ouvrirOptions(f)
   }
 
@@ -1153,11 +1632,13 @@ export class App {
    *  sans avoir glissé : un second peut suivre (voir secondToucher) */
   private noterToucher(e: PointerEvent, g: Geste, glisse: boolean, m: P) {
     if (e.pointerType !== 'touch' || glisse || this.placement || (this.outil !== 'selection' && !this.doigtDeplace)) return
-    if (g.type !== 'deplacer' && !(g.type === 'pan' && g.toucher)) return
+    // Un appui de la Sélection qui touchait sans saisir prend son candidat à
+    // son lever : c'est aussi un premier toucher
+    if (g.type !== 'deplacer' && !(g.type === 'pan' && g.toucher) && !(g.type === 'zone' && g.candidat)) return
     if (performance.now() - this.depart.t >= DOUBLE_TOUCHER.ms) return
-    const f = this.formeSous(m.x, m.y, 12)
-    if (!f) return
     const s = this.ecran(e)
+    const f = this.objetSous(m, s, { pointeur: 'touch', dedans: true })
+    if (!f) return
     this.toucherPrecedent = { x: s.x, y: s.y, t: performance.now(), objet: f.id, page: this.page }
   }
 
@@ -1176,18 +1657,52 @@ export class App {
     this.rendu.redessinerDirect()
   }
 
-  /** Un simple toucher du doigt « qui déplace » : l'objet touché (à 12 px
-   *  près, ou par un morceau, voir objetSous) devient la sélection, seul ;
-   *  rien dessous, elle se vide */
+  /** Un simple toucher du doigt « qui déplace » : l'objet touché (à 20 px
+   *  de son tracé, par un morceau ou par son intérieur, voir cibleSous)
+   *  devient la sélection, seul ; rien dessous, elle se vide. Le mode
+   *  « Ajouter » allumé, l'objet touché y entre ou en sort, et le vide éteint
+   *  le mode. */
   private toucherObjet(m: P, s: P) {
-    const f = this.objetSous(m, s, 12)
+    const f = this.objetSous(m, s, { pointeur: 'touch', dedans: true })
     this.ui.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
-    this.selection.clear()
-    if (f) this.selection.add(f.id)
+    if (f && this.ajoutTactile) {
+      if (this.selection.has(f.id)) this.selection.delete(f.id)
+      else this.selection.add(f.id)
+    } else {
+      if (!f) this.finirAjout()
+      this.selection.clear()
+      if (f) this.selection.add(f.id)
+    }
     this.rendu.redessinerDirect(); this.ui.maj()
     if (f) this.direOptions()
   }
+
+  // ---------- Le mode « Ajouter » au doigt ----------
+  /** Allumé (par le bouton « Ajouter » de la barre d'actions), un toucher sur
+   *  un objet l'ajoute à la sélection ou l'en retire, comme Maj + clic, et un
+   *  lasso s'y ajoute : sur une tablette, on n'a pas de touche Maj. Il
+   *  s'éteint au toucher dans le vide, à Échap, à un autre outil, à une autre
+   *  page, et quand la sélection se vide. */
+  get ajoutTactile(): boolean {
+    const a = this.ajout
+    if (a.actif) {
+      if (this.selection.size) a.vu = true
+      else if (a.vu) a.actif = false          // la sélection s'est vidée
+    }
+    return a.actif
+  }
+
+  basculerAjout() {
+    this.ajout = { actif: !this.ajout.actif, vu: this.selection.size > 0 }
+    if (this.ajout.actif && !this.astuceAjout) {
+      this.astuceAjout = true
+      this.ui.message('Touchez d\'autres objets pour les ajouter ou les retirer ; touchez le vide pour finir.')
+    }
+    this.ui.maj()
+  }
+
+  private finirAjout() { this.ajout.actif = false }
 
   private prendreInstrument(inst: { nom: NomInstrument; quoi: Partie }, m: P) {
     const depart = { ...this.instruments.get(inst.nom)! }
@@ -1213,6 +1728,8 @@ export class App {
   private laisserLeStylet() {
     const g = this.geste
     this.geste = null
+    this.desarmerAppuiLong()
+    this.toucherDoigts.oublier()
     switch (g?.type) {
       case 'pan': case 'pinch': break
       case 'instrument': this.finirInstrument(g); break
@@ -1224,18 +1741,21 @@ export class App {
     this.ui.maj()
   }
 
-  /** Un doigt se lève pendant un pincement. Deux restent ou plus : le
+  /** Un doigt se lève pendant un pincement (g). Deux restent ou plus : le
    *  pincement continue, réancré sur les deux premiers (la vue ne saute pas).
    *  Un seul : il continue de déplacer la vue, sans jamais reprendre le
-   *  dessin, jusqu'à son lever. */
-  private finPincement() {
+   *  dessin, jusqu'à son lever. Si le pincement est parti (la vue suivait les
+   *  doigts), ce doigt la déplace aussitôt ; sinon (un toucher à deux doigts,
+   *  dont les doigts ne se lèvent jamais tout à fait ensemble), il repart
+   *  avec le seuil du glisser : un doigt qui tremble ne déplace rien. */
+  private finPincement(g: Extract<Geste, { type: 'pinch' }>) {
     const doigts = this.doigts()
-    if (doigts.length >= 2) { this.geste = this.pincement(doigts); return }
+    if (doigts.length >= 2) { this.geste = this.pincement(doigts, g.parti); return }
     if (!doigts.length) { this.geste = null; return }
     const d = doigts[0]
     this.geste = { type: 'pan', dernierX: d.x, dernierY: d.y, pointeur: d.id }
     this.depart = nouveauDepart(d.x, d.y, d.id, 'touch', performance.now())
-    this.depart.parti = true
+    this.depart.parti = g.parti
   }
 
   private bouge(e: PointerEvent) {
@@ -1243,9 +1763,10 @@ export class App {
     const s = this.ecran(e)
     const avant = this.pointeurs.get(e.pointerId)
     if (avant) { avant.x = s.x; avant.y = s.y }
+    if (e.pointerType === 'touch') this.toucherDoigts.bouger(e.pointerId, s.x, s.y)
     const m = this.monde(e)
     const t = performance.now()
-    const g = this.geste
+    let g = this.geste
     if (this.outil === 'gomme' || g?.type === 'gomme') {
       this.rendu.gomme = { x: m.x, y: m.y, r: 12 / this.cam.z }
       this.rendu.redessinerDirect()
@@ -1259,12 +1780,14 @@ export class App {
     }
 
     if (this.placement && !g) { this.placement.bouge(m); this.zone.style.cursor = 'copy'; return }
-    // Ce qu'un appui de l'outil Sélection prendrait ici (voir objetSous)
-    let vise: Forme | null = null
+    // Ce qu'un appui de l'outil Sélection prendrait ici (voir cibleSous)
+    const pointeur = typePointeur(e.pointerType)
+    let vise: Cible | null = null
     if (!g && this.outil === 'selection') {
-      // Ce qu'on survole s'éclaire : au pavé tactile, on sait ce qu'on va prendre
-      vise = this.objetSous(m, s)
-      const id = vise && !this.selection.has(vise.id) ? vise.id : null
+      // Ce qu'on survole s'éclaire : au pavé tactile, on sait ce qu'on va
+      // prendre ; l'intérieur d'une figure fermée aussi
+      vise = this.cibleSous(m, s, { pointeur, dedans: true })
+      const id = vise && !this.selection.has(vise.f.id) ? vise.f.id : null
       if (id !== this.survol) { this.survol = id; this.rendu.survol = id; this.rendu.redessinerDirect() }
     }
     if (!g && this.outil === 'segment') {
@@ -1273,8 +1796,12 @@ export class App {
     }
     if (!g) {
       const inst = this.instruments.size ? this.instrumentSous(m) : null
+      // À la Sélection, le curseur dit ce que fera l'appui (au survol de la
+      // tablette graphique aussi) : « move », il saisit l'objet et le glisse ;
+      // « pointer », il le prend d'un clic, mais glisser entoure ; la croix,
+      // dans le vide, glisser sélectionne
       this.zone.style.cursor = inst ? (inst.quoi === 'corps' || inst.quoi === 'pointe' ? 'grab' : 'pointer') : this.priseSous(s) ? 'move'
-        : this.outil === 'selection' ? (vise ? 'move' : 'grab') : ''
+        : this.outil === 'selection' ? (!vise ? 'crosshair' : this.saisi(vise, pointeur) || this.selection.has(vise.f.id) ? 'move' : 'pointer') : ''
       return
     }
     // Le geste n'écoute que le pointeur qui l'a commencé (pas un stylet qui
@@ -1282,7 +1809,29 @@ export class App {
     // glisser, rien ne bouge ; passé le seuil, le déplacement compte depuis
     // le départ. L'encre, elle, part tout de suite.
     if (g.type !== 'pinch' && e.pointerId !== this.depart.pointeur) return
+    const parti = this.depart.parti
     const glisse = g.type !== 'pinch' && this.aGlisse(s)
+    if (glisse && !parti) {
+      // Un appui qui glisse n'est plus un appui long ; un doigt qui glisse
+      // (la vue, un lasso, un objet qui part) ne fait plus un toucher à deux
+      // doigts : un toucher qui a déplacé quelque chose n'annule jamais
+      if (this.appuiLong?.pointeur === e.pointerId) this.desarmerAppuiLong()
+      if (e.pointerType === 'touch') this.toucherDoigts.oublier()
+      // L'appui devient un glisser (un objet qui part, un cadre ou un lasso
+      // qui commence) : la barre d'actions se cache, une fois, jusqu'au lâcher
+      // (voir enMouvement). Rien de sélectionné, pas de barre : un trait du
+      // Stylo ne paie pas cette mise à jour.
+      if (this.selection.size) this.ui?.maj()
+    }
+    // Le doigt retenu (voir ecrireOuRetenir) a glissé : il agit au point de
+    // l'appui, et ce mouvement continue avec le vrai geste (la Gomme efface
+    // ce qu'elle traverse)
+    if (g.type === 'retenu') {
+      if (!glisse) return
+      this.lancerRetenu(g)
+      g = this.geste
+      if (!g) return
+    }
     switch (g.type) {
       case 'instrument':
         if (g.quoi !== 'tete' && !glisse) break          // l'arc du compas, lui, se trace tout de suite
@@ -1309,6 +1858,19 @@ export class App {
         if (doigts.length < 2) return
         const [a, b] = doigts
         const dist = Math.hypot(a.x - b.x, a.y - b.y)
+        // La vue ne bouge pas tant qu'aucun des deux doigts n'a bougé de 8 px
+        // (le seuil du glisser au doigt) et que leur écart n'a pas changé de
+        // 8 px : un toucher à deux doigts qui tremble ne décale pas la vue
+        // avant d'annuler. Passé ce seuil, elle suit les doigts depuis le
+        // départ du pincement (dist, cx, cy n'ont pas bougé jusque-là), et ce
+        // n'est plus un toucher.
+        if (!g.parti) {
+          const d = g.depart, k = SEUIL_GLISSER.touch
+          const loin = (p: DoigtPose, q: DoigtPose) => p.id !== q.id || Math.hypot(p.x - q.x, p.y - q.y) >= k
+          if (!loin(a, d.a) && !loin(b, d.b) && Math.abs(dist - d.dist) < k) return
+          g.parti = true
+          this.toucherDoigts.oublier()
+        }
         const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2
         this.cam.deplacer(cx - g.cx, cy - g.cy)
         if (g.dist > 0) this.cam.zoomerAutour(cx, cy, dist / g.dist)
@@ -1353,23 +1915,61 @@ export class App {
         this.rendu.toutRedessiner()
         break
       }
-      case 'cadre':
+      case 'zone': {
         if (!glisse) break
-        this.rendu.cadreSelection = rectangle(g.x, g.y, m.x, m.y)
+        // Le halo de l'objet sous l'appui s'éteint : ce n'est plus lui qu'on prend
+        if (this.survol) { this.survol = null; this.rendu.survol = null }
+        if (g.forme === 'cadre') this.rendu.cadreSelection = rectangle(g.x, g.y, m.x, m.y)
+        else {
+          // Un point tous les 3 px d'écran au moins : le lasso reste léger
+          const n = g.pts.length
+          if (Math.hypot(m.x - g.pts[n - 2], m.y - g.pts[n - 1]) * this.cam.z > 3) g.pts.push(m.x, m.y)
+          this.rendu.lasso = g.pts
+        }
         this.rendu.redessinerDirect()
         break
+      }
     }
   }
 
+  /** Un lever (annule : coupé par le navigateur, pointercancel). Le toucher à
+   *  deux ou trois doigts se reconnaît au lever du dernier doigt (voir
+   *  ToucherADoigts), et n'agit qu'une fois ce lever fait. */
   private haut(e: PointerEvent, annule = false) {
-    // Une paume sort de la liste à son lever, sans rien faire d'autre
-    if (this.ignores.delete(e.pointerId)) return
+    // Une paume, ou le doigt d'un appui long, sort de la liste à son lever,
+    // sans rien faire d'autre (le clic qui suit le lever d'un appui long non
+    // plus : voir brancherGestes)
+    if (this.ignores.delete(e.pointerId)) {
+      if (this.clicApresAppuiLong?.pointeur === e.pointerId) this.clicApresAppuiLong.leve = performance.now()
+      return
+    }
+    if (this.appuiLong?.pointeur === e.pointerId) this.desarmerAppuiLong()
+    let doigts: ToucherReconnu | null = null
+    if (e.pointerType === 'touch') {
+      if (annule || this.enLecture) this.toucherDoigts.oublier()
+      else doigts = this.toucherDoigts.lever(e.pointerId, heureDe(e))
+    }
+    this.leverGeste(e, annule)
+    if (doigts) this.gesteDesDoigts(doigts)
+  }
+
+  private leverGeste(e: PointerEvent, annule: boolean) {
     this.pointeurs.delete(e.pointerId)
-    const g = this.geste
+    let g = this.geste
     if (!g) return
-    if (g.type === 'pinch') { this.finPincement(); return }
-    if (g.type === 'dessin' && e.pointerId !== g.pointeur) return
+    // La fin d'un pincement : la barre d'actions revient quand plus rien ne bouge
+    if (g.type === 'pinch') { this.finPincement(g); this.ui.maj(); return }
+    if ((g.type === 'dessin' || g.type === 'retenu') && e.pointerId !== g.pointeur) return
     if (g.type === 'pan' && g.pointeur !== undefined && e.pointerId !== g.pointeur) return
+    // Le doigt retenu (voir ecrireOuRetenir) se lève avant d'avoir agi : il
+    // agit (la Gomme efface ce qu'elle touche, le Point se pose…), puis c'est
+    // le lever du vrai geste. Coupé par le navigateur, il n'écrit rien.
+    if (g.type === 'retenu') {
+      if (annule) { this.abandonnerGeste(g); return }
+      this.lancerRetenu(g)
+      g = this.geste
+      if (!g) return
+    }
     // Clic ou glisser ? Le lever compte aussi (un appui levé loin de son départ a glissé)
     const glisse = this.aGlisse(this.ecran(e))
     this.geste = null
@@ -1380,19 +1980,17 @@ export class App {
     // une fenêtre système…) garde ce qu'il a tracé : un arc de compas, un
     // trait à la règle ou au stylo ne doit pas s'effacer sous les yeux
     const garder = g.type === 'instrument' || g.type === 'longer' || g.type === 'dessin'
-    if (annule && !garder) { this.abandonnerGeste(g); return }
+    if (annule && !garder) { this.abandonnerGeste(g); this.ui.maj(); return }
 
     const m = this.monde(e)
     if (!double) this.noterToucher(e, g, glisse, m)
     switch (g.type) {
       case 'pan':
-        // Un simple clic dans le vide (outil Sélection) désélectionne ; un
-        // simple toucher du doigt « qui déplace » fait le clic attendu (voir
+        // Un simple toucher du doigt « qui déplace » fait le clic attendu (voir
         // placement), ou choisit l'objet touché
         if (glisse) break
         if (g.toucher && this.placement) { const p = this.placement; this.placement = null; p.clic(m) }
         else if (g.toucher) this.toucherObjet(m, this.ecran(e))
-        else if (g.vide && this.selection.size) { this.selection.clear(); this.rendu.redessinerDirect(); this.ui.maj() }
         break
       case 'dessin': {
         clearTimeout(this.minuterieForme)
@@ -1455,10 +2053,30 @@ export class App {
         if (g.retirer && !glisse) { this.rendu.decalage = { dx: 0, dy: 0 }; this.selection.delete(g.retirer); this.rendu.redessinerDirect(); break }
         this.poserDeplacement(g)
         break
-      case 'cadre': {
-        const r = this.rendu.cadreSelection
-        this.rendu.cadreSelection = null
-        if (r) for (const f of this.formes) if (chevauche(r, this.rendu.boite(f))) this.selection.add(f.id)
+      case 'zone': {
+        this.rendu.cadreSelection = null; this.rendu.lasso = null
+        if (g.forme === 'lasso') {
+          const n = g.pts.length
+          if (m.x !== g.pts[n - 2] || m.y !== g.pts[n - 1]) g.pts.push(m.x, m.y)
+        }
+        // Un lasso resté tout petit (un doigt qui a roulé) est un toucher
+        if (glisse && !(g.forme === 'lasso' && this.petitLasso(g.pts))) this.prendreZone(g, m)
+        else if (g.candidat && this.forme(g.candidat)) {
+          // Un toucher sur l'objet qu'on ne saisissait pas : il est pris (avec
+          // Maj, Ctrl ou le mode « Ajouter », il entre dans la sélection ou en sort)
+          const id = g.candidat
+          if (!g.ajout) this.selection.clear()
+          if (g.ajout && this.selection.has(id)) this.selection.delete(id)
+          else this.selection.add(id)
+          this.direOptions()
+        } else {
+          // Un clic dans le vide désélectionne, sauf avec Maj ou Ctrl (on a
+          // visé à côté) ; un toucher dans le vide éteint le mode « Ajouter »,
+          // et vide la sélection
+          const tactile = this.ajoutTactile
+          this.finirAjout()
+          if (!g.ajout || tactile) this.selection.clear()
+        }
         this.rendu.redessinerDirect(); this.ui.maj()
         break
       }
@@ -1466,7 +2084,7 @@ export class App {
         if (glisse) break
         const s = this.ecran(e)
         const f = this.formeSous(m.x, m.y)
-        if (f?.type === 'formule') this.editerFormule(f)
+        if (f?.type === 'formule') this.modifierFormule(f)
         else this.nouvelleFormule(m.x, m.y, s.x, s.y)
         break
       }
@@ -1474,6 +2092,49 @@ export class App {
     // Le second toucher d'un double appui, bref et levé sans avoir glissé
     if (double && !glisse && performance.now() - this.depart.t < DOUBLE_TOUCHER.ms) this.ouvrirParDouble(double.objet)
     this.ui.maj()                       // le panneau d'options réapparaît
+  }
+
+  /** Le lasso tient-il dans moins de 8 px d'écran ? */
+  private petitLasso(pts: number[]): boolean {
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
+    for (let i = 0; i < pts.length; i += 2) {
+      x1 = Math.min(x1, pts[i]); x2 = Math.max(x2, pts[i]); y1 = Math.min(y1, pts[i + 1]); y2 = Math.max(y2, pts[i + 1])
+    }
+    return Math.max(x2 - x1, y2 - y1) * this.cam.z < 8
+  }
+
+  /** Le cadre ou le lasso lâché : ce qui y est à plus de moitié est pris (la
+   *  longueur d'un tracé, la surface d'une image ou d'une formule, les deux
+   *  points d'une droite : voir partDedans). Sans ajout, il remplace la
+   *  sélection ; avec (Maj, Ctrl, le mode « Ajouter »), il s'y ajoute sans
+   *  rien en retirer, comme Maj + cadre chez tldraw. Le lasso est d'abord
+   *  simplifié (à 2 px d'écran près) et rangé par bandes (dansLasso), et les
+   *  formes dont la boîte ne touche pas celle de la zone sont écartées sans
+   *  calcul : le lâcher reste immédiat sur une page de milliers de traits. */
+  private prendreZone(g: Extract<Geste, { type: 'zone' }>, m: P) {
+    let b: Boite, dansZone: (x: number, y: number) => boolean
+    if (g.forme === 'cadre') {
+      const r = rectangle(g.x, g.y, m.x, m.y)
+      b = r
+      dansZone = (x, y) => x >= r.x && x <= r.x + r.l && y >= r.y && y <= r.y + r.h
+    } else {
+      const q = simplifier(g.pts, 2 / this.cam.z)
+      let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
+      for (let i = 0; i < q.length; i += 2) {
+        x1 = Math.min(x1, q[i]); x2 = Math.max(x2, q[i]); y1 = Math.min(y1, q[i + 1]); y2 = Math.max(y2, q[i + 1])
+      }
+      b = { x: x1, y: y1, l: x2 - x1, h: y2 - y1 }
+      dansZone = dansLasso(q)
+    }
+    if (!g.ajout) this.selection.clear()
+    for (const f of this.formes) {
+      // Une droite compte par ses deux points (sa boîte est la leur)
+      const fb = this.boiteDeForme(f)
+      if (!fb || !chevauche(b, fb)) continue
+      // Toute la boîte dans le cadre : tout l'objet y est, sans rien mesurer
+      const entiere = g.forme === 'cadre' && fb.x >= b.x && fb.y >= b.y && fb.x + fb.l <= b.x + b.l && fb.y + fb.h <= b.y + b.h
+      if (entiere || partDedans(f, dansZone, fb) > 0.5) this.selection.add(f.id)
+    }
   }
 
   /** La sélection déplacée se pose là où on l'a laissée */
@@ -1497,6 +2158,8 @@ export class App {
   }
 
   private abandonnerGeste(g: Geste | null = this.geste) {
+    this.desarmerAppuiLong()
+    if (g?.type === 'retenu') clearTimeout(g.minuterie)
     if (g?.type === 'dessin') { clearTimeout(this.minuterieForme); this.rendu.monTrait = null; this.heuresDuTrait = [] }
     if (g?.type === 'segment') { this.rendu.monSegment = null; this.rendu.apercu = null; this.rendu.cible = null }
     if (g?.type === 'rectangle' || g?.type === 'cercle') this.rendu.apercu = null
@@ -1506,7 +2169,7 @@ export class App {
       this.piste.trace(null)
       if (g.type === 'instrument') { this.instruments.set(g.nom, g.depart); this.majInstruments() }
     }
-    if (g?.type === 'cadre') this.rendu.cadreSelection = null
+    if (g?.type === 'zone') { this.rendu.cadreSelection = null; this.rendu.lasso = null }
     if (g?.type === 'deplacer') this.rendu.decalage = { dx: 0, dy: 0 }
     if (g?.type === 'gomme') this.finirGomme(g)
     this.geste = null
@@ -1686,7 +2349,8 @@ export class App {
     this.rendu.redessinerDirect(); this.ui.maj()
   }
 
-  /** Le panneau d'options d'un objet ne s'ouvre qu'à la demande */
+  /** Le menu complet d'un objet ne s'ouvre qu'à la demande (voir
+   *  demanderOptions) : l'objet devient la sélection, seul */
   ouvrirOptions(f: Forme) {
     this.astuceOptions = true
     this.selection.clear(); this.selection.add(f.id)
@@ -1694,21 +2358,110 @@ export class App {
     this.rendu.redessinerDirect(); this.ui.maj()
   }
 
-  /** Le clic droit dans une sélection de plusieurs objets : elle reste
-   *  entière, et l'on dit ce qu'on en fait */
-  private direPlusieurs() {
-    const efface = this.dernierPointeur === 'touch' ? 'la poubelle les efface' : 'Suppr (ou la poubelle) les efface'
-    this.ui.message(`${this.selection.size} objets sélectionnés : glissez-en un pour les déplacer tous ; ${efface}.`)
+  /** Le menu commun d'une sélection de plusieurs objets : elle reste
+   *  entière (« N objets » : couleur, épaisseur, dupliquer, copier, couper,
+   *  supprimer) */
+  ouvrirOptionsSelection() {
+    this.astuceOptions = true
+    this.options = TOUTE_LA_SELECTION
+    this.rendu.redessinerDirect(); this.ui.maj()
   }
 
-  /** La première fois qu'on prend un objet, on dit où sont ses options, dans
-   *  les mots du pointeur : le clic droit à la souris, le bouton du stylet au
-   *  stylet, deux touchers au doigt (le double appui, voir secondToucher :
-   *  l'objet a été pris à l'outil Sélection ou au doigt qui déplace) */
+  /** Le menu complet de ce qui est sous le pointeur (client : le point de
+   *  l'appui dans la fenêtre). Le clic droit (le bouton du stylet en est
+   *  un) et l'appui long (voir armerAppuiLong) passent par ici ; « Options »
+   *  de la barre d'actions ouvre le même menu (ouvrirOptions,
+   *  ouvrirOptionsSelection) : le même menu, de la même façon, partout. Dans
+   *  l'ordre :
+   *  - un objet d'une sélection de plusieurs : leur menu commun, et la
+   *    sélection reste entière (même près du sommet d'une de ses figures) ;
+   *  - un morceau d'une figure (un sommet, le centre ou le rayon d'un
+   *    cercle, un nom), de n'importe quelle figure : le menu de ce morceau ;
+   *  - un objet (une formule comprise) : son menu, l'objet seul sélectionné ;
+   *  - rien : le menu de la page (Coller ici, Tout sélectionner, Tout voir).
+   *  L'objet se vise comme le clic de la Sélection, à la portée du pointeur ;
+   *  l'intérieur d'une figure fermée ne compte qu'à la Sélection et au doigt
+   *  qui déplace (le Stylo en main, un clic droit dans le vide d'un triangle
+   *  ouvre le menu de la page, comme à côté). Rien pendant la revue, une
+   *  séance d'automatismes, ni quand un clic est attendu ; rien sur un
+   *  instrument, qui recouvre ce qui est dessous et n'a pas de menu. */
+  demanderOptions(client: { clientX: number; clientY: number }, pointeur: TypePointeur) {
+    if (this.enLecture || this.placement || document.body.classList.contains('en-seance')) return
+    this.viderPointEnAttente()
+    const m = this.monde(client), s = this.ecran(client)
+    if (this.instruments.size && this.instrumentSous(m)) { this.ui.fermerMenus(); return }
+    const dedans = this.outil === 'selection' || (pointeur === 'touch' && this.doigtDeplace)
+    const c = this.cibleSous(m, s, { pointeur, dedans })
+    // Le morceau visé, dans n'importe quelle figure : c'est une demande
+    // d'options. Pas à travers une image, une formule ou une figure
+    // coloriée posée dessus : c'est elle qu'on touche (voir cibleSous).
+    let prise = this.priseSous(s, { toutes: true })
+    if (prise && this.formes.slice(this.formes.indexOf(prise.f) + 1).some(g => interieur(g, m.x, m.y, this.boiteDeForme(g)) === 'plein')) prise = null
+    // Un seul menu ouvert : celui d'avant (un morceau, un objet, la liste
+    // des instruments) se ferme
+    this.ui.fermerMenus()
+    if (c && this.selection.size > 1 && this.selection.has(c.f.id)) { this.ouvrirOptionsSelection(); return }
+    if (prise) {
+      this.choisirPartie(prise.f.id, prise.prise)
+      this.ui.ouvrirMenuPartie(prise.f.id, prise.prise, client.clientX, client.clientY)
+      return
+    }
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    if (c) { this.ouvrirOptions(c.f); return }
+    this.ui.ouvrirMenuPage(client.clientX, client.clientY, m)
+  }
+
+  /** La touche Menu du clavier, ou Maj + F10 (voir toucheMenu) : le menu
+   *  complet de ce qui est sélectionné (son objet, une formule comprise, ou
+   *  le menu commun de plusieurs), sinon le menu de la page, au milieu de ce
+   *  qu'on voit entre les barres (« Coller ici » y colle). Comme un menu
+   *  ouvert au clavier, le focus va à sa première entrée. Un menu déjà
+   *  ouvert se ferme (un seul à la fois) ; celui d'un sommet aussi : la
+   *  touche ouvre le menu de la figure. Rien pendant la revue, ni quand un
+   *  clic est attendu (la séance et les champs de saisie gardent leurs
+   *  touches : voir clavier). */
+  menuAuClavier() {
+    if (this.enLecture || this.placement) return
+    this.viderPointEnAttente()
+    this.ui.fermerMenus()
+    this.toucheMenuA = performance.now()
+    const seul = this.selection.size === 1 ? this.forme([...this.selection][0]) : null
+    if (this.selection.size > 1) this.ouvrirOptionsSelection()
+    else if (seul) this.ouvrirOptions(seul)
+    else {
+      const z = this.zone.getBoundingClientRect(), r = this.ui.zoneLibre()
+      const client = { clientX: z.left + r.x + r.l / 2, clientY: z.top + r.y + r.h / 2 }
+      this.ui.ouvrirMenuPage(client.clientX, client.clientY, this.monde(client), true)
+      return
+    }
+    this.ui.entrerDansMenu()
+  }
+
+  /** Un toucher du doigt en ce point de la fenêtre prendrait-il quelque
+   *  chose, par son tracé, par un morceau ou par un plein (une formule, une
+   *  image, une figure coloriée) ; ou un instrument ? L'intérieur nu d'une
+   *  figure fermée ne compte pas : écrire dans un grand cadre est courant,
+   *  et la barre d'actions de ce qu'on y a pris flotte souvent au-dessus de
+   *  ce vide (voir BarreActions.appui). */
+  quelqueChoseSousLeDoigt(client: { clientX: number; clientY: number }): boolean {
+    const m = this.monde(client), s = this.ecran(client)
+    if (this.instruments.size && this.instrumentSous(m)) return true
+    return !!this.cibleSous(m, s, { pointeur: 'touch', dedans: false })
+  }
+
+  /** La première fois qu'on prend un objet, on dit où sont toutes ses
+   *  options, dans les mots du pointeur (voir messageOptions) : le clic droit
+   *  à la souris, le bouton du stylet à la tablette graphique, l'appui long
+   *  au stylet posé sur l'écran et au doigt (l'objet a été pris à l'outil
+   *  Sélection ou au doigt qui déplace, où l'appui long existe ; le double
+   *  appui marche toujours, mais l'appui long est le geste qu'on essaie
+   *  d'instinct sur une tablette) */
   private direOptions() {
     if (this.astuceOptions || this.selection.size !== 1) return
     const f = this.formeChoisie()
-    if (!f || f.type === 'formule' || f.type === 'segment') return
+    // Une formule, elle, se modifie au double-clic : le message ne lui va pas
+    if (!f || f.type === 'formule') return
     this.astuceOptions = true
     this.ui.message(messageOptions(this.dernierPointeur))
   }
@@ -1806,13 +2559,13 @@ export class App {
     if (this.placement) { const p = this.placement; this.placement = null; p.annuler(); return }
     if (this.traitEnAttente) { this.annulerTrait(); return }
     const enCours = !!this.polyEnCours || this.selection.size > 0 || !!this.partie
-    this.annulerPolygone(); this.selection.clear(); this.choisirPartie(null)
+    this.annulerPolygone(); this.selection.clear(); this.choisirPartie(null); this.finirAjout()
     this.ui.fermerMenuPartie()
     if (!enCours) {
       if (this.outil !== 'selection') {
         this.outilAvant = this.outil
         this.choisirOutil('selection')
-        this.ui.message('Sélection : glisser un objet le déplace, glisser dans le vide déplace la vue. Échap : revenir.')
+        this.ui.message('Sélection : glisser un objet le déplace, glisser dans le vide sélectionne. Échap : revenir.')
       } else {
         this.choisirOutil(this.outilAvant)
         this.ui.message('Retour à l\'outil précédent')
@@ -2010,16 +2763,62 @@ export class App {
   }
 
   // ---------- Panneau d'options ----------
+  /** Un geste qui cache le menu ouvert : on déplace ce qu'il règle, on tire
+   *  un cadre… (déplacer la vue, pincer, tirer un sommet le laissent) */
+  private gesteQuiCache(): boolean {
+    return !!this.geste && this.geste.type !== 'pan' && this.geste.type !== 'pinch' && this.geste.type !== 'poignee'
+  }
+
+  /** Un geste est-il en mouvement : deux doigts posés (un pincement), ou un
+   *  appui qui a passé son seuil (un objet qu'on glisse, un cadre ou un
+   *  lasso qu'on tire, la vue qu'on déplace, un instrument) ? La barre
+   *  d'actions se cache alors, et revient au lâcher : elle ne flotte pas
+   *  au-dessus d'un objet qui part, ni d'un lasso qui l'entoure. Un appui
+   *  qui n'a pas encore glissé la laisse : un clic sur un objet la montre
+   *  tout de suite. */
+  get enMouvement(): boolean {
+    const g = this.geste
+    return !!g && (g.type === 'pinch' || this.depart.parti)
+  }
+
   /** La forme seule sélectionnée, s'il n'y en a qu'une et qu'aucun geste n'est en cours */
   formeChoisie(): Forme | null {
-    if (this.selection.size !== 1 || (this.geste && this.geste.type !== 'pan' && this.geste.type !== 'pinch' && this.geste.type !== 'poignee')) return null
+    if (this.selection.size !== 1 || this.gesteQuiCache()) return null
     const id = [...this.selection][0]
     return this.formes.find(f => f.id === id) ?? null
   }
 
+  /** Les objets d'une sélection de plusieurs, dans l'ordre d'empilement, si
+   *  aucun geste n'est en cours : comme celui d'un objet, leur menu commun
+   *  se cache pendant qu'on les déplace et revient au lâcher */
+  formesChoisies(): Forme[] | null {
+    if (this.selection.size < 2 || this.gesteQuiCache()) return null
+    return this.formes.filter(f => this.selection.has(f.id))
+  }
+
+  /** La page qu'on regarde est-elle vide ? (« Tout sélectionner » se grise) */
+  pageVide(): boolean { return !this.formes.length }
+
   habiller(f: Forme, patch: Partial<Habillage> & Partial<Trait>) {
     this.tableau.nouveauGeste()
     this.tableau.modifier(this.page, [{ id: f.id, patch: patch as Partial<Forme> }])
+  }
+
+  /** Le menu commun de plusieurs objets : la retouche (une couleur, une
+   *  épaisseur, les pointillés) va à tous ceux qu'elle concerne, en UNE
+   *  transaction, donc une seule étape d'annulation : un Ctrl+Z rend leur
+   *  couleur aux dix objets. Un objet qui l'a déjà n'est pas réécrit. */
+  habillerSelection(retouche: Retouche) {
+    if (this.enLecture) return
+    const changements: { id: string; patch: Partial<Forme> }[] = []
+    for (const f of this.formes) {
+      if (!this.selection.has(f.id)) continue
+      const patch = retouche(f)
+      if (patch && change(f, patch)) changements.push({ id: f.id, patch })
+    }
+    if (!changements.length) return
+    this.tableau.nouveauGeste()
+    this.tableau.modifier(this.page, changements)
   }
 
   basculerSommets(f: Figure) {
@@ -2045,17 +2844,260 @@ export class App {
     this.selectionner(t.id)
   }
 
-  dupliquer(f: Forme) {
-    const copie = image(f, { type: 'translation', dx: CM, dy: CM }, this.tableau.moi)
-    if ((copie.type === 'polygone' || copie.type === 'cercle') && f.type === copie.type) copie.noms = f.noms && nomsLibres(f.noms.length, this.formes, copie.type === 'cercle')
-    this.poserFigure(copie)
-  }
-
+  /** L'image d'un objet par une transformation. Les points repérés sur une
+   *  image ont aussi leur image, liée à la nouvelle. L'image et ses points
+   *  font UN geste, posés dans une seule transaction : un seul Ctrl+Z les
+   *  retire ensemble (sinon les points images resteraient seuls, liés à une
+   *  image qui n'existe plus, ou se fondraient dans le geste d'avant). */
   transformer(f: Forme, t: Transformation) {
     const img = image(f, t, this.tableau.moi)
-    // Les points repérés sur une image ont aussi leur image, liée à la nouvelle
-    for (const g of this.liees(f.id)) this.tableau.poser(this.page, { ...image(g, t, this.tableau.moi), lie: img.id } as Forme)
-    this.poserFigure(img)
+    const points = this.liees(f.id).map(g => ({ ...image(g, t, this.tableau.moi), lie: img.id }) as Forme)
+    this.tableau.nouveauGeste()
+    this.tableau.poserPlusieurs(this.page, [...points, img])
+    this.selectionner(img.id)
+  }
+
+  // ---------- Copier, couper, coller, dupliquer ----------
+  /** Ce que copient Ctrl+C, Ctrl+X, Ctrl+D : la sélection, ou la figure du
+   *  morceau choisi (un sommet choisi, c'est la figure qu'on copie), avec les
+   *  points liés aux images choisies (ils les suivent) ; dans l'ordre
+   *  d'empilement. */
+  objetsChoisis(): Forme[] {
+    const ids = new Set(this.selection)
+    if (!ids.size && this.partie) ids.add(this.partie.id)
+    if (!ids.size) return []
+    return this.formes.filter(f => ids.has(f.id) || ((f.type === 'polygone' || f.type === 'cercle') && !!f.lie && ids.has(f.lie)))
+  }
+
+  /** La copie de ces formes : les données de leurs images, la page, le
+   *  centre de leur boîte, l'heure. Une image dont la banque a perdu les
+   *  données ne se copie pas (elle ne se collerait nulle part). */
+  private faireCopie(formes: Forme[]): Copie | null {
+    const images: Record<string, string> = {}
+    const gardees = formes.filter(f => {
+      if (f.type !== 'image') return true
+      const d = this.banqueImages.get(f.src)
+      if (typeof d !== 'string') return false
+      images[f.src] = d
+      return true
+    })
+    if (!gardees.length) return null
+    const b = this.boiteDuContenu(gardees)
+    const centre = b ? { x: b.x + b.l / 2, y: b.y + b.h / 2 } : { x: gardees[0].x, y: gardees[0].y }
+    this.heureCopie = Math.max(Date.now(), this.heureCopie + 1)
+    return { v: 1, formes: gardees, images, page: this.page, centre, t: this.heureCopie }
+  }
+
+  /** Ctrl+C : la copie est gardée en mémoire (cet onglet), dans le navigateur
+   *  (un autre onglet de la même adresse) et dans le presse-papiers du
+   *  système (la version en ligne et la version clé USB). Rien de choisi : on
+   *  le dit, et faux (le navigateur fait alors sa copie ordinaire). */
+  copier(dire = true): boolean {
+    if (this.enLecture) return false
+    const formes = this.objetsChoisis()
+    const c = formes.length ? this.faireCopie(formes) : null
+    if (!c) { this.ui.message('Rien n\'est sélectionné.'); return false }
+    this.copie = c
+    // Le pointeur d'au moment de la copie : s'il n'a pas bougé, Ctrl+V ne
+    // colle pas sous lui (ce serait sur l'objet même), mais à côté
+    this.collages = { cle: c.t, pointeur: this.pointeurSurZone && { ...this.pointeurSurZone }, pages: new Map() }
+    this.garderCopie(c)
+    this.ecrireSysteme(c)
+    const n = c.formes.length
+    if (dire) this.ui.message(n === 1 ? '1 objet copié' : `${n} objets copiés`)
+    return true
+  }
+
+  /** La copie gardée dans le navigateur, sous la nouvelle clé. Trop grosse
+   *  (des images), l'ancienne s'en va : un autre onglet ne doit pas coller
+   *  une copie d'avant en croyant coller celle-ci. */
+  private garderCopie(c: Copie) {
+    try {
+      const texte = JSON.stringify(c)
+      if (texte.length <= GARDE_MAX) localStorage.setItem(CLE_PRESSE_PAPIERS, texte)
+      else localStorage.removeItem(CLE_PRESSE_PAPIERS)
+    } catch {
+      try { localStorage.removeItem(CLE_PRESSE_PAPIERS) } catch { /* rien de gardé */ }
+    }
+  }
+
+  /** La copie dans le presse-papiers du système : execCommand('copy')
+   *  déclenche l'événement copy, qui la range (voir le constructeur). Un
+   *  navigateur qui refuse ne casse rien : la copie reste en mémoire et dans
+   *  le navigateur. */
+  private ecrireSysteme(c: Copie) {
+    this.copieAEcrire = c
+    this.copieEcrite = false
+    try { document.execCommand('copy') } catch { /* refusé : le presse-papiers du système ne l'aura pas */ }
+    this.copieAEcrire = null
+    this.copieHorsSysteme = this.copieEcrite ? 0 : c.t
+  }
+
+  /** Ctrl+X : la copie, puis ce qui est copié part, en une étape (Ctrl+Z le
+   *  rend). Un sommet choisi : c'est la figure copiée qui part, pas le sommet. */
+  couper(): boolean {
+    if (this.enLecture) return false
+    const formes = this.objetsChoisis()
+    if (!this.copier(false)) return false
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    this.tableau.nouveauGeste()
+    this.tableau.supprimer(this.page, formes.map(f => f.id))
+    this.selection.clear()
+    this.rendu.redessinerDirect(); this.ui.maj()
+    const n = this.copie?.formes.length ?? formes.length
+    this.ui.message(n === 1 ? '1 objet coupé' : `${n} objets coupés`)
+    return true
+  }
+
+  /** La copie à coller : la plus récente de celle de cet onglet et de celle
+   *  gardée dans le navigateur (un autre onglet a pu copier depuis). Une copie
+   *  gardée depuis plus de 12 h ne compte plus. */
+  private copieGardee(): Copie | null {
+    let gardee: Copie | null = null
+    try { gardee = lireJson(localStorage.getItem(CLE_PRESSE_PAPIERS)) } catch { /* rien de gardé */ }
+    if (gardee && Date.now() - gardee.t > GARDE_DUREE) gardee = null
+    const ici = this.copie && Date.now() - this.copie.t <= GARDE_DUREE ? this.copie : null
+    if (ici && (!gardee || gardee.t <= ici.t)) return ici
+    return gardee
+  }
+
+  /** Y a-t-il une copie à coller (« Coller ici ») ? Le presse-papiers du
+   *  système ne se lit pas sans permission : seules comptent les copies de MEM */
+  peutColler(): boolean { return !this.enLecture && this.copieGardee() !== null }
+
+  /** Colle la copie gardée (la plus récente) : en ou (monde) si on le donne,
+   *  sinon comme Ctrl+V (voir collerCopie) */
+  coller(ou?: P): boolean {
+    if (this.enLecture) return false
+    const c = this.copieGardee()
+    if (!c) { this.ui.message('Rien à coller : copiez d\'abord un objet.'); return false }
+    this.collerCopie(c, ou)
+    return true
+  }
+
+  /** Colle une copie sur la page qu'on regarde, en une étape d'annulation ;
+   *  ce qui est collé devient la sélection (l'outil ne change pas). Où :
+   *  - en ou, si on le donne (« Coller ici ») ;
+   *  - sous le pointeur s'il est sur le tableau et a bougé (plus de 4 px)
+   *    depuis la copie ou le collage précédent ;
+   *  - sinon, 1 cm plus loin que le collage précédent sur cette page ; le
+   *    premier sur la page de la copie, 1 cm à côté de l'original ; sur une
+   *    autre page ou dans un autre onglet, à la même place que l'original.
+   *  Une place hors de ce qu'on voit devient le milieu de la vue : un Ctrl+V
+   *  qui ne montre rien ferait croire qu'il n'a rien fait. */
+  collerCopie(c: Copie, ou?: P) {
+    if (this.enLecture || !c.formes.length) return
+    this.viderPointEnAttente()
+    const page = this.page
+    // Une copie de cet onglet (la même heure, les mêmes objets) : on colle
+    // celle qu'on a, telle quelle, plutôt que sa version relue
+    const memes = (a: Copie, b: Copie) => a.t === b.t && a.formes.length === b.formes.length && a.formes.every((f, k) => f.id === b.formes[k].id)
+    const ici = !!this.copie && memes(this.copie, c)
+    if (ici) c = this.copie!
+    if (!this.collages || this.collages.cle !== c.t) this.collages = { cle: c.t, pointeur: null, pages: new Map() }
+    const suivi = this.collages
+    const ptr = this.pointeurSurZone
+    const bouge = !!ptr && (!suivi.pointeur || Math.hypot(ptr.clientX - suivi.pointeur.clientX, ptr.clientY - suivi.pointeur.clientY) > 4)
+    const avant = suivi.pages.get(page)
+    let centre: P
+    if (ou) centre = ou
+    else if (ptr && bouge) centre = this.monde(ptr)
+    else {
+      centre = avant ? { x: avant.x + CM, y: avant.y + CM }
+        : ici && c.page === page ? { x: c.centre.x + CM, y: c.centre.y + CM }
+        : { ...c.centre }
+      if (!this.dansLaVue(centre)) { const s = this.centreLibre(); centre = this.cam.versMonde(s.x, s.y) }
+    }
+    suivi.pages.set(page, centre)
+    suivi.pointeur = ptr && { ...ptr }
+    // Les images : leurs données entrent dans la banque si elles n'y sont pas
+    // (une copie d'un autre tableau) ; sous le même identifiant d'autres
+    // données (un autre tableau), elles prennent un identifiant neuf. Jamais
+    // une image déjà là n'est remplacée.
+    const autres = new Map<string, string>()
+    for (const [src, d] of Object.entries(c.images)) {
+      const deja = this.banqueImages.get(src)
+      if (deja === undefined) this.banqueImages.set(src, d)
+      else if (deja !== d) { const n = uid(); this.banqueImages.set(n, d); autres.set(src, n) }
+    }
+    const formes = autres.size ? c.formes.map(f => f.type === 'image' && autres.has(f.src) ? { ...f, src: autres.get(f.src)! } : f) : c.formes
+    this.poserCollage(collage({ ...c, formes }, { dx: centre.x - c.centre.x, dy: centre.y - c.centre.y, moi: this.tableau.moi, existantes: this.formes }))
+  }
+
+  /** Pose ce qu'on colle ou duplique (une étape) et le sélectionne. Le menu
+   *  ouvert se ferme : il réglait l'original, pas la copie. */
+  private poserCollage(formes: Forme[]) {
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    this.options = null
+    this.tableau.nouveauGeste()
+    this.tableau.poserPlusieurs(this.page, formes)
+    this.selection.clear()
+    for (const f of formes) this.selection.add(f.id)
+    this.rendu.redessinerDirect(); this.ui.maj()
+  }
+
+  /** Ce point du monde est-il dans ce qu'on voit entre les barres ? */
+  private dansLaVue(w: P): boolean {
+    const s = this.cam.versEcran(w.x, w.y)
+    const r = this.ui?.zoneLibre() ?? { x: 0, y: 0, l: this.rendu.l, h: this.rendu.h }
+    return s.x >= r.x && s.x <= r.x + r.l && s.y >= r.y && s.y <= r.y + r.h
+  }
+
+  /** Ctrl+D et « Dupliquer » : une copie 1 cm plus loin, en une étape, qui
+   *  devient la sélection ; le presse-papiers n'y est pour rien. Les noms
+   *  changent (ceux de l'original sont pris), les points liés à une image
+   *  dupliquée suivent la nouvelle. */
+  dupliquerSelection(): boolean {
+    if (this.enLecture) return false
+    this.viderPointEnAttente()
+    const formes = this.objetsChoisis()
+    if (!formes.length) { this.ui.message('Rien n\'est sélectionné.'); return false }
+    const c: Copie = { v: 1, formes, images: {}, page: this.page, centre: { x: 0, y: 0 }, t: 0 }
+    this.poserCollage(collage(c, { dx: CM, dy: CM, moi: this.tableau.moi, existantes: this.formes }))
+    return true
+  }
+
+  /** Ctrl+A : tout ce qui est sur la page qu'on regarde. On passe à l'outil
+   *  Sélection, comme Échap (on peut alors glisser le tout, et un second
+   *  Échap rend l'outil d'avant). */
+  toutSelectionner() {
+    if (this.enLecture) return
+    this.viderPointEnAttente()
+    if (!this.formes.length) { this.ui.message('La page est vide.'); return }
+    if (this.outil !== 'selection') { this.outilAvant = this.outil; this.choisirOutil('selection') }
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    this.selection.clear()
+    for (const f of this.formes) this.selection.add(f.id)
+    this.rendu.redessinerDirect(); this.ui.maj()
+    const n = this.formes.length
+    this.ui.message(n === 1 ? '1 objet sélectionné' : `${n} objets sélectionnés`)
+  }
+
+  /** Ctrl+V (ou le menu Édition du navigateur), hors d'un champ de saisie :
+   *  dans l'ordre, des objets de MEM teachingtool marqués dans le HTML (d'un
+   *  autre onglet, de l'autre version) ; une image (comme avant) ; la copie
+   *  gardée, si le texte du presse-papiers est vide ou est le sien (l'écriture
+   *  dans le système a échoué, ou c'est bien elle) ; sinon on dit qu'il n'y a
+   *  rien à coller. Ni pendant la revue, ni pendant une séance, ni dans une
+   *  fenêtre ouverte. */
+  private surColler(e: ClipboardEvent) {
+    clearTimeout(this.collageAttendu); this.collageAttendu = 0
+    if ((e.target as HTMLElement | null)?.closest?.('input, textarea, [contenteditable]')) return
+    if (this.enLecture || document.body.classList.contains('en-seance') || document.querySelector('dialog[open]')) return
+    const d = e.clipboardData
+    if (!d) return
+    const marquee = lireHtml(d.getData('text/html'))
+    if (marquee) { e.preventDefault(); this.collerCopie(marquee); return }
+    const f = [...d.files].find(x => x.type.startsWith('image/'))
+    if (f) { e.preventDefault(); this.importerImage(f); return }
+    const gardee = this.copieGardee(), texte = d.getData('text/plain')
+    // Le presse-papiers du système a refusé cette copie : il a encore autre
+    // chose, mais c'est bien elle qu'on vient de copier
+    if (gardee && (!texte || memeTexte(texte, versTexte(gardee)) || gardee.t === this.copieHorsSysteme)) { e.preventDefault(); this.collerCopie(gardee); return }
+    this.ui.message('Le presse-papiers ne contient ni objet ni image à coller.')
   }
 
   /** L'outil Point : un clic pose un point marqué d'une croix, nommé de la
@@ -2106,7 +3148,11 @@ export class App {
       taille: 28, z: Date.now(), auteur: this.tableau.moi })
   }
 
-  private async editerFormule(f: Formule) {
+  /** L'éditeur d'une formule : son double-clic, « Modifier » de son menu
+   *  (qui se ferme : l'éditeur prend sa place) */
+  async modifierFormule(f: Formule) {
+    if (this.enLecture) return
+    if (this.options) { this.options = null; this.ui.maj() }
     const s = this.cam.versEcran(f.x, f.y)
     const latex = await this.ui.editerFormule(f.latex, s.x, s.y)
     if (latex === null) return
@@ -2131,15 +3177,92 @@ export class App {
     this.vueChangee()
   }
 
+  /** Pousse la sélection (et les points liés à une image choisie) de dx, dy
+   *  (monde), aux flèches. Une rafale de poussées (une flèche tenue, des
+   *  appuis rapprochés) fait UNE étape d'annulation, mais jamais avec ce qui
+   *  l'a précédée : Ctrl+D, Ctrl+V ou une couleur choisie juste avant
+   *  restent leur propre étape (sans cela, la pile de la page fondait la
+   *  poussée dans l'étape d'avant, venue moins de 400 ms plus tôt, et Ctrl+Z
+   *  défaisait les deux). La poussée prolonge la rafale seulement si
+   *  l'étape du haut de la pile est encore celle que la poussée précédente a
+   *  faite : rien d'autre n'a été écrit depuis (une écriture qui suit
+   *  nouveauGeste ouvre une autre étape ; une annulation la retire). */
+  private pousser(dx: number, dy: number) {
+    const haut = () => { const u = this.tableau.annulationDe(this.page); return u ? u.undoStack[u.undoStack.length - 1] : undefined }
+    const p = this.poussee
+    if (!p || p.page !== this.page || !p.etape || p.etape !== haut()) this.tableau.nouveauGeste()
+    this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id) || this.lieeA(f)).map(f => ({ id: f.id, patch: { x: f.x + dx, y: f.y + dy } })))
+    this.poussee = { page: this.page, etape: haut() }
+  }
+
   private clavier(e: KeyboardEvent) {
     if (this.enLecture) return
+    // Pendant une séance d'automatismes, le tableau est caché : aucune touche
+    // ne le change (ni Ctrl+Z, ni Suppr, ni les flèches qui pousseraient un
+    // objet resté sélectionné) ni ne bouge sa vue ; on ne verrait rien. La
+    // séance a ses propres touches (seance.ts), et le navigateur garde les
+    // siennes (Ctrl+C dans une question, Ctrl + = pour grossir l'écran ;
+    // Espace et Entrée sur ses boutons). Les barres du tableau sont cachées
+    // (visibility: hidden) : aucun de leurs boutons ne garde le focus.
+    if (document.body.classList.contains('en-seance')) return
     const cible = e.target as HTMLElement
-    // Dans une fenêtre (publier, formule…), les raccourcis du tableau se taisent
-    if (cible.closest('input, textarea, select, [contenteditable], dialog')) return
+    // Dans une fenêtre (publier, formule…), les raccourcis du tableau se
+    // taisent. Ctrl+D (⌘D) n'y écrit rien : on empêche seulement le
+    // marque-page du navigateur, que le réflexe de dupliquer ouvrirait
+    // par-dessus l'éditeur d'une formule ou le menu d'un sommet
+    if (cible.closest('input, textarea, select, [contenteditable], dialog')) {
+      if (toucheMarquePage(e)) e.preventDefault()
+      return
+    }
     const ctrl = e.ctrlKey || e.metaKey
+    // Le menu complet ouvert (clic droit, appui long, « Options ») ou le menu
+    // d'un sommet : les flèches et Tab y mènent, Espace y appuie sur un
+    // bouton (voir Interface.clavierMenu)
+    if (this.ui.clavierMenu(e)) return
     if (e.code === 'Space') { this.espace = true; e.preventDefault(); return }
-    if (ctrl && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? this.retablir() : this.annuler(); return }
-    if (ctrl && e.key.toLowerCase() === 'y') { e.preventDefault(); this.retablir(); return }
+    // En plein geste (un objet qu'on glisse, un trait, un cadre ou un lasso,
+    // la vue qu'on déplace), ce qui changerait la page ou la sélection ne
+    // fait rien (voir toucheTenueEnGeste) : Suppr ou Ctrl+Z ôteraient l'objet
+    // tenu, qu'un lâcher ne poserait plus ; Ctrl+A ou Ctrl+V changeraient ce
+    // que le lâcher déplace. Le doigt retenu un instant (voir
+    // ecrireOuRetenir) n'a encore rien fait.
+    if (this.geste && this.geste.type !== 'retenu' && toucheTenueEnGeste(e, this.selection.size > 0)) { e.preventDefault(); return }
+    // La touche Menu, Maj + F10 : le menu de la sélection, ou de la page
+    if (toucheMenu(e)) { e.preventDefault(); this.menuAuClavier(); return }
+    // Ctrl+Z, Ctrl+Y ou Ctrl+Maj+Z (⌘ sur Mac) : sur la page qu'on regarde
+    // seulement. Rien à faire : un message le dit, pour qui pressait Ctrl+Z
+    // en pensant reprendre ce qu'il venait de faire sur une autre page.
+    const lettre = e.key.toLowerCase()
+    if (ctrl && (lettre === 'z' || lettre === 'y')) {
+      e.preventDefault()
+      const refaire = lettre === 'y' || e.shiftKey
+      if (refaire ? !this.retablir() : !this.annuler()) this.ui.message(refaire ? 'Rien à rétablir sur cette page' : 'Rien à annuler sur cette page')
+      return
+    }
+    // Ctrl+A, C, X, V, D (⌘ sur Mac) : tout sélectionner, copier, couper,
+    // coller, dupliquer. La lettre se lit par e.key : en AZERTY, la touche
+    // marquée A a pour e.code « KeyQ ». AltGr (Ctrl+Alt sous Windows) n'en
+    // est pas un. Ni dans une fenêtre ouverte (les champs de saisie se sont
+    // déjà tus plus haut : on y copie du texte).
+    // Pas en plein geste : voir plus haut.
+    if (ctrl && !e.altKey && !e.shiftKey && !document.querySelector('dialog[open]')) {
+      switch (lettre) {
+        case 'a': e.preventDefault(); if (!e.repeat) this.toutSelectionner(); return
+        // Rien de choisi : le navigateur fait sa copie ordinaire
+        case 'c': if (e.repeat) { e.preventDefault(); return } if (this.copier()) e.preventDefault(); return
+        case 'x': if (e.repeat) { e.preventDefault(); return } if (this.couper()) e.preventDefault(); return
+        // Toujours empêché : sinon le navigateur ajoute un marque-page
+        case 'd': e.preventDefault(); this.dupliquerSelection(); return
+        // L'événement paste suit (voir surColler) : on ne l'empêche pas. Un
+        // navigateur qui ne le donne pas hors d'un champ de saisie colle tout
+        // de même la copie gardée, un instant après (paste, s'il vient, passe
+        // avant, dans la même tâche que la touche)
+        case 'v':
+          clearTimeout(this.collageAttendu)
+          this.collageAttendu = window.setTimeout(() => { this.collageAttendu = 0; this.coller() }, 200)
+          return
+      }
+    }
     if (e.key === 'Delete' || e.key === 'Backspace') { this.supprimerSelection(); return }
     if (e.key === 'PageDown') { this.pageSuivante(1); return }
     if (e.key === 'PageUp') { this.pageSuivante(-1); return }
@@ -2150,16 +3273,14 @@ export class App {
     if (fleches[e.key] && this.selection.size) {
       e.preventDefault()
       const k = e.shiftKey ? CM : CM / 10, [dx, dy] = fleches[e.key]
-      this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id) || this.lieeA(f)).map(f => ({ id: f.id, patch: { x: f.x + dx * k, y: f.y + dy * k } })))
+      this.pousser(dx * k, dy * k)
       return
     }
-    // Pendant une séance d'automatismes, le tableau est caché : sa vue ne bouge pas
-    const seance = document.body.classList.contains('en-seance')
     // Sans sélection, elles déplacent la vue : → montre ce qui est à droite.
     // Un quart de ce qu'on voit (trois quarts avec Maj), en douceur ; touche
     // tenue, un douzième à chaque répétition, tout de suite (sinon la vue
     // filerait à sept écrans par seconde)
-    if (fleches[e.key] && !ctrl && !e.altKey && !seance) {
+    if (fleches[e.key] && !ctrl && !e.altKey) {
       e.preventDefault()
       const r = this.ui.zoneLibre(), [sx, sy] = fleches[e.key]
       const part = (e.shiftKey ? 3 / 4 : 1 / 4) / (e.repeat ? 3 : 1)
@@ -2172,7 +3293,7 @@ export class App {
     }
     // Maj + 1 : tout voir ; Maj + 2 : voir la sélection. Par la touche (e.code) :
     // en AZERTY, Maj + 1 donne « 1 », en QWERTY « ! »
-    if (e.shiftKey && !ctrl && !e.altKey && !seance && (e.code === 'Digit1' || e.code === 'Digit2')) {
+    if (e.shiftKey && !ctrl && !e.altKey && (e.code === 'Digit1' || e.code === 'Digit2')) {
       e.preventDefault()
       if (e.code === 'Digit1') this.toutVoir(); else this.voirSelection()
       return

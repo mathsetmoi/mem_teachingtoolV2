@@ -106,11 +106,15 @@ export function etapesDe(film: readonly Etape[], p: Portion): number[] {
 }
 
 /** Les séances où une page a reçu au moins un geste, les plus récentes
- *  d'abord (sa naissance seule n'en est pas un) */
+ *  d'abord (sa naissance seule n'en est pas un, ni une étape qui ne change
+ *  que l'ordre des pages : la jeter, la rendre) */
 export function seancesDeLaPage(lecture: Pick<LectureSeule, 'film' | 'naissance'>, seances: readonly Seance[], page: string): Seance[] {
   return seances.filter(s => {
     if (!s.pages.includes(page)) return false
-    for (let i = s.de; i <= s.a; i++) if (lecture.film[i]?.page === page && !lecture.naissance(i)) return true
+    for (let i = s.de; i <= s.a; i++) {
+      const e = lecture.film[i]
+      if (e?.page === page && !e.seulOrdre && !lecture.naissance(i)) return true
+    }
     return false
   })
 }
@@ -138,10 +142,13 @@ type Cause = 'debut' | 'page' | 'seance' | 'silence'
  *  juste avant chacun, et les pages qui naissent (null : rien à montrer) */
 function gestesMontres(lecture: LectureSeule, p: Portion): { etapes: number[]; pages: string[]; avants: number[]; neuves: Set<string> } | null {
   const film = lecture.film
-  // Une page qui naît ne montre rien : sa naissance n'est pas une image. On
-  // retient seulement que la page est neuve (voir les parties, plus bas).
+  // Une étape qui ne change que l'ordre des pages (une page jetée, ou rendue
+  // par Ctrl+Z) ne montre rien, nulle part : ce n'est jamais un geste. Une
+  // page qui naît ne montre rien non plus : sa naissance n'est pas une image.
+  // On retient seulement que la page est neuve (voir les parties, plus bas).
   const neuves = new Set<string>()
   const toutes = etapesDe(film, p).filter(i => {
+    if (film[i].seulOrdre) return false
     if (!lecture.naissance(i)) return true
     neuves.add(film[i].page)
     return false
@@ -155,8 +162,9 @@ function gestesMontres(lecture: LectureSeule, p: Portion): { etapes: number[]; p
   const retire = departPropre(lecture, toutes, j => pagesDe[j])
   let etapes = toutes.slice(retire), pages = pagesDe.slice(retire)
 
-  // Une étape qui ne change rien à sa page n'est pas un geste. « Supprimer la
-  // page » se note sur la page où l'on revient, sans la toucher : on la
+  // Une étape qui ne change rien à sa page n'est pas un geste. Sur un tableau
+  // d'avant, « Supprimer la page » effaçait la page jetée, sans marquer
+  // l'étape, notée sur la page où l'on revient sans la toucher : on la
   // reconnaît sans tout relire, juste après une étape notée sur une page jetée
   // depuis (ou juste après une autre étape sans effet : on jette deux pages
   // de suite), et au bout de la portion (un Ctrl+Z qui change une autre page).

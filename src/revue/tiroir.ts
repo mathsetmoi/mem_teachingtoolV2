@@ -110,9 +110,10 @@ export class Tiroir {
     // Un seul passage sur le film : combien d'étapes par page, et quand. La
     // première d'une page est sa naissance (si elle n'a fait que la créer,
     // vide) : on garde aussi l'heure de la suivante, son vrai premier geste.
+    // Jeter une page, la rendre ne change que l'ordre : ni geste, ni heure.
     const parPage = new Map<string, { gestes: number; premier: number; ensuite: number; dernier: number; nee: number }>()
     c.film.forEach((e, i) => {
-      if (!e.page) return
+      if (!e.page || e.seulOrdre) return
       const m = parPage.get(e.page)
       if (!m) parPage.set(e.page, { gestes: 1, premier: e.t, ensuite: e.t, dernier: e.t, nee: i })
       else { if (m.gestes === 1) m.ensuite = e.t; m.gestes++; m.dernier = e.t }
@@ -137,7 +138,7 @@ export class Tiroir {
       let de = Infinity, a = -Infinity
       for (let i = derniere.x.de; i <= derniere.x.a; i++) {
         const e = c.film[i]
-        if (e?.page !== c.pageVue || (i === vue.nee && c.naissance(i))) continue
+        if (e?.page !== c.pageVue || e.seulOrdre || (i === vue.nee && c.naissance(i))) continue
         de = Math.min(de, e.t); a = Math.max(a, e.t)
       }
       const nbSeances = seancesDeLaPage(c, c.seances, c.pageVue).length

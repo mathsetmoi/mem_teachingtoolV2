@@ -1,9 +1,10 @@
 // Souris, stylet, doigt : quand un appui devient un glisser, ce qu'est une
-// paume, quand le stylet écrit sur l'écran lui-même, et le rôle du doigt
-// (un réglage de cet appareil, gardé dans le navigateur).
+// paume, quand le stylet écrit sur l'écran lui-même, l'appui long, le
+// toucher à deux ou trois doigts, et les réglages du doigt (gardés dans le
+// navigateur de cet appareil).
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, SEUIL_GLISSER, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from '../src/pointeurs'
-import { choisirDoigt, leDoigtDeplace, lire, noterStyletDirect, reglages } from '../src/reglages'
+import { APPUI_LONG, DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, SEUIL_GLISSER, TOLERANCE_PRISE, TOUCHER_DOIGTS, ToucherADoigts, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from '../src/pointeurs'
+import { choisirDoigt, choisirGestes, leDoigtDeplace, lire, noterStyletDirect, reglages } from '../src/reglages'
 
 describe('le seuil du glisser', () => {
   it('8 px au doigt, 6 au stylet, 4 à la souris ; un pointeur inconnu est une souris', () => {
@@ -28,6 +29,21 @@ describe('le seuil du glisser', () => {
     expect(depasseSeuil(d, 0, 6)).toBe(true)
     expect(depasseSeuil(d, 0, 0)).toBe(true)
     expect(d.parti).toBe(true)
+  })
+})
+
+describe('la prise d\'un objet', () => {
+  it('on prend à 6 px à la souris, 10 au stylet, 20 au doigt', () => {
+    expect(TOLERANCE_PRISE).toEqual({ mouse: 6, pen: 10, touch: 20 })
+  })
+
+  it('on saisit (pour l\'emporter) plus près : 6 px à la souris et au stylet, 10 au doigt', () => {
+    expect(PRISE_GLISSER).toEqual({ mouse: 6, pen: 6, touch: 10 })
+    // Saisir n'est jamais plus large que prendre, ni plus serré que le seuil du glisser
+    for (const k of ['mouse', 'pen', 'touch'] as const) {
+      expect(PRISE_GLISSER[k]).toBeLessThanOrEqual(TOLERANCE_PRISE[k])
+      expect(PRISE_GLISSER[k]).toBeGreaterThanOrEqual(SEUIL_GLISSER[k])
+    }
   })
 })
 
@@ -123,16 +139,24 @@ describe('le double-clic au Stylo, sur une figure ou une formule', () => {
 })
 
 describe('les messages selon le pointeur', () => {
-  it('les options : clic droit à la souris, bouton du stylet au stylet, deux touchers au doigt', () => {
-    expect(messageOptions('mouse')).toBe('Double-clic ou clic droit sur l\'objet : ses options')
-    expect(messageOptions('pen')).toBe('Double-clic ou bouton du stylet sur l\'objet : ses options')
-    expect(messageOptions('touch')).toBe('Touchez deux fois l\'objet : ses options')
+  it('les options : clic droit à la souris, bouton du stylet à la tablette graphique, appui long au stylet sur l\'écran et au doigt', () => {
+    expect(messageOptions('mouse')).toBe('Double-clic ou clic droit sur l\'objet : toutes ses options')
+    expect(messageOptions('pen', false)).toBe('Double-clic ou bouton du stylet sur l\'objet : toutes ses options')
+    expect(messageOptions('pen', true)).toBe('Appui long ou double-clic sur l\'objet : toutes ses options')
+    expect(messageOptions('touch')).toBe('Appui long sur l\'objet : toutes ses options')
+    expect(messageOptions('touch', false)).toBe(messageOptions('touch', true))
+    // Sans écran tactile (Node, l'ordinateur de la classe), le stylet est celui d'une tablette graphique
+    expect(messageOptions('pen')).toBe(messageOptions('pen', false))
+    expect(messageOptions('mouse', true)).toBe(messageOptions('mouse', false))
   })
 
-  it('au doigt, jamais « clic », ni un « appui long » qui n\'existe pas', () => {
+  it('au doigt, jamais « clic » ; l\'appui long y existe maintenant', () => {
     for (const t of [messageOptions('touch'), messageSecondPoint('touch'), messageReconnue('Carré', 'touch')]) {
-      expect(t).not.toMatch(/clic|appui long/i)
+      expect(t).not.toMatch(/clic/i)
     }
+    expect(messageOptions('touch')).toMatch(/^Appui long/)
+    // L'Apple Pencil n'a pas de bouton : on ne lui en parle pas
+    expect(messageOptions('pen', true)).not.toMatch(/bouton/)
     expect(messageSecondPoint('touch')).toBe('Touchez le second point (un autre outil annule)')
     expect(messageSecondPoint('mouse')).toBe('Cliquez le second point (Échap pour annuler)')
   })
@@ -143,5 +167,120 @@ describe('les messages selon le pointeur', () => {
     expect(messageReconnue('Cercle', 'mouse')).toBe('Cercle — Ctrl+Z pour garder le tracé à main levée')
     expect(messageReconnue('Triangle', 'pen')).toBe('Triangle — Ctrl+Z pour garder le tracé à main levée')
     expect(messageReconnue('Carré', 'mouse', '⌘')).toBe('Carré — ⌘+Z pour garder le tracé à main levée')
+  })
+})
+
+describe('l\'appui long', () => {
+  it('500 ms, comme Excalidraw et tldraw ; plus long que le double appui', () => {
+    expect(APPUI_LONG).toBe(500)
+    expect(APPUI_LONG).toBeGreaterThan(DOUBLE_TOUCHER.ms)
+  })
+})
+
+describe('le toucher à deux ou trois doigts', () => {
+  /** Des doigts posés à ces heures et ces places, levés à ces heures ; ce que
+   *  rend le lever du dernier */
+  function toucher(doigts: { t: number; x?: number; y?: number; leve: number; va?: [number, number] }[]) {
+    const r = new ToucherADoigts()
+    doigts.forEach((d, i) => r.poser(i, d.x ?? 100 * (i + 1), d.y ?? 300, d.t))
+    doigts.forEach((d, i) => { if (d.va) r.bouger(i, (d.x ?? 100 * (i + 1)) + d.va[0], (d.y ?? 300) + d.va[1]) })
+    const ordre = doigts.map((d, i) => ({ i, t: d.leve })).sort((a, b) => a.t - b.t)
+    return ordre.map(o => r.lever(o.i, o.t))
+  }
+
+  it('posés presque ensemble, levés en moins de 300 ms, le tout en moins de 450 ms, sans bouger de 8 px', () => {
+    expect(TOUCHER_DOIGTS).toEqual({ arrivee: 150, duree: 300, total: 450, px: 8 })
+    expect(TOUCHER_DOIGTS.px).toBe(SEUIL_GLISSER.touch)
+  })
+
+  it('un toucher net à deux doigts annule, à trois rétablit ; au lever du dernier seulement', () => {
+    expect(toucher([{ t: 1000, leve: 1120 }, { t: 1010, leve: 1130 }])).toEqual([null, 'annuler'])
+    expect(toucher([{ t: 1000, leve: 1100 }, { t: 1020, leve: 1180 }, { t: 1040, leve: 1150 }])).toEqual([null, null, 'retablir'])
+    // Un tremblement de 7 px, deux doigts levés à 60 ms d'écart : encore un toucher
+    expect(toucher([{ t: 0, leve: 120, va: [7, 0] }, { t: 5, leve: 180, va: [0, -3] }])).toEqual([null, 'annuler'])
+  })
+
+  it('refusés : un pincement, un doigt qui glisse, un doigt resté posé, un second trop tard, quatre doigts, un seul', () => {
+    // Un pincement : l'écart change de 30 px (chaque doigt de 15)
+    expect(toucher([{ t: 0, leve: 200, va: [-15, 0] }, { t: 10, leve: 210, va: [15, 0] }])).toEqual([null, null])
+    // Un doigt qui glisse de 9 px (ou de 8, le seuil)
+    expect(toucher([{ t: 0, leve: 150, va: [9, 0] }, { t: 10, leve: 160 }])).toEqual([null, null])
+    expect(toucher([{ t: 0, leve: 150 }, { t: 10, leve: 160, va: [0, 8] }])).toEqual([null, null])
+    // Un doigt resté posé 400 ms (et deux doigts tenus 500 ms)
+    expect(toucher([{ t: 0, leve: 400 }, { t: 10, leve: 120 }])).toEqual([null, null])
+    expect(toucher([{ t: 0, leve: 500 }, { t: 0, leve: 500 }])).toEqual([null, null])
+    // Un second doigt arrivé 200 ms après le premier
+    expect(toucher([{ t: 0, leve: 250 }, { t: 200, leve: 300 }])).toEqual([null, null])
+    // Quatre doigts, un seul
+    expect(toucher([{ t: 0, leve: 100 }, { t: 5, leve: 100 }, { t: 10, leve: 100 }, { t: 15, leve: 110 }])).toEqual([null, null, null, null])
+    expect(toucher([{ t: 0, leve: 100 }])).toEqual([null])
+    // Aux limites : le dernier posé à 149 ms et levé 299 ms plus tard, le
+    // tout en 448 ms (moins de 450) ; une milliseconde de plus, c'est trop long
+    expect(toucher([{ t: 0, leve: 290 }, { t: 149, leve: 448 }])).toEqual([null, 'annuler'])
+    expect(toucher([{ t: 0, leve: 290 }, { t: 149, leve: 449 }])).toEqual([null, null])
+    expect(toucher([{ t: 0, leve: 100 }, { t: 150, leve: 200 }])).toEqual([null, null])
+  })
+
+  it('un doigt posé après qu\'un autre s\'est levé n\'est pas du même toucher', () => {
+    const r = new ToucherADoigts()
+    r.poser(1, 100, 100, 0)
+    r.poser(2, 200, 100, 20)
+    expect(r.lever(1, 60)).toBe(null)
+    r.poser(3, 300, 100, 80)
+    expect(r.lever(2, 100)).toBe(null)
+    expect(r.lever(3, 150)).toBe(null)
+    // Le suivant repart de zéro
+    r.poser(4, 100, 100, 1000); r.poser(5, 200, 100, 1010)
+    expect(r.lever(4, 1100)).toBe(null)
+    expect(r.lever(5, 1110)).toBe('annuler')
+  })
+
+  it('oublier (une paume, un stylet, un appui long) : les doigts déjà posés ne comptent plus', () => {
+    const r = new ToucherADoigts()
+    r.poser(1, 100, 100, 0); r.poser(2, 200, 100, 10)
+    r.oublier()
+    expect(r.lever(1, 100)).toBe(null)
+    expect(r.lever(2, 110)).toBe(null)
+    // Un doigt inconnu, ou levé deux fois : rien
+    expect(r.lever(9, 120)).toBe(null)
+    r.poser(3, 100, 100, 500); r.poser(4, 200, 100, 510)
+    expect(r.lever(3, 600)).toBe(null)
+    expect(r.lever(3, 600)).toBe(null)
+    expect(r.lever(4, 610)).toBe('annuler')
+  })
+})
+
+describe('le réglage des gestes à deux et trois doigts', () => {
+  afterEach(() => { vi.unstubAllGlobals(); reglages.gestes = false })
+
+  it('gardé sur l\'appareil, sous sa propre clé ; un navigateur qui ne garde rien ne casse rien', () => {
+    const m = new Map<string, string>()
+    vi.stubGlobal('localStorage', { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => { m.set(k, v) } })
+    choisirGestes(true)
+    expect(reglages.gestes).toBe(true)
+    expect(m.get('mem-gestes-doigts')).toBe('1')
+    choisirGestes(false)
+    expect(m.get('mem-gestes-doigts')).toBe('0')
+    expect(lire('mem-gestes-doigts', ['1', '0'], '1')).toBe('0')
+    // Les autres clés ne bougent pas
+    expect([...m.keys()]).toEqual(['mem-gestes-doigts'])
+    vi.stubGlobal('localStorage', { getItem: () => { throw new Error('SecurityError') }, setItem: () => { throw new Error('SecurityError') } })
+    expect(() => choisirGestes(true)).not.toThrow()
+    expect(reglages.gestes).toBe(true)
+  })
+
+  it('allumés au départ sur un écran tactile, éteints ailleurs (sous Node, pas d\'écran tactile)', async () => {
+    vi.resetModules()
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => {} })
+    vi.stubGlobal('navigator', { maxTouchPoints: 10 })
+    expect((await import('../src/reglages')).reglages.gestes).toBe(true)
+    vi.resetModules()
+    vi.stubGlobal('navigator', { maxTouchPoints: 0 })
+    expect((await import('../src/reglages')).reglages.gestes).toBe(false)
+    // Un choix gardé l'emporte
+    vi.resetModules()
+    vi.stubGlobal('localStorage', { getItem: (k: string) => k === 'mem-gestes-doigts' ? '0' : null, setItem: () => {} })
+    vi.stubGlobal('navigator', { maxTouchPoints: 10 })
+    expect((await import('../src/reglages')).reglages.gestes).toBe(false)
   })
 })
