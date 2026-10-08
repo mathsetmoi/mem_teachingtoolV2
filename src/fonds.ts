@@ -13,6 +13,12 @@ const BLEU_FORT = 'rgba(70, 110, 190, 0.55)'
 const VIOLET_SEYES = 'rgba(150, 110, 200, 0.45)'
 const ROUGE_MARGE = 'rgba(214, 69, 69, 0.75)'
 
+/** Au plus ce nombre de lignes (ou de graduations) par axe. Les boucles
+ *  comptent leurs tours au lieu d'avancer de pas en pas : très loin de
+ *  l'origine (une forme démesurée qu'on aurait voulu tout voir), x + pas
+ *  vaudrait x, et la boucle ne finirait jamais ; le tableau gèlerait. */
+const TOURS_MAX = 4000
+
 /** Lignes régulières de pas `pas` (monde) sur un axe, si elles restent lisibles */
 function lignes(ctx: CanvasRenderingContext2D, cam: Camera, l: number, h: number,
   pas: number, couleur: string, epaisseur: number, verticales: boolean, horizontales: boolean) {
@@ -23,13 +29,19 @@ function lignes(ctx: CanvasRenderingContext2D, cam: Camera, l: number, h: number
   ctx.lineWidth = epaisseur
   ctx.beginPath()
   if (verticales) {
-    for (let x = Math.floor(v.x / pas) * pas; x <= v.x + v.l; x += pas) {
+    const x0 = Math.floor(v.x / pas) * pas, n = Math.min(TOURS_MAX, Math.ceil(v.l / pas) + 1)
+    for (let k = 0; k <= n; k++) {
+      const x = x0 + k * pas
+      if (x > v.x + v.l) break
       const sx = Math.round(x * cam.z + cam.x) + 0.5
       ctx.moveTo(sx, 0); ctx.lineTo(sx, h)
     }
   }
   if (horizontales) {
-    for (let y = Math.floor(v.y / pas) * pas; y <= v.y + v.h; y += pas) {
+    const y0 = Math.floor(v.y / pas) * pas, n = Math.min(TOURS_MAX, Math.ceil(v.h / pas) + 1)
+    for (let k = 0; k <= n; k++) {
+      const y = y0 + k * pas
+      if (y > v.y + v.h) break
       const sy = Math.round(y * cam.z + cam.y) + 0.5
       ctx.moveTo(0, sy); ctx.lineTo(l, sy)
     }
@@ -123,7 +135,7 @@ function dessinerAxes(ctx: CanvasRenderingContext2D, cam: Camera, l: number, h: 
   if (o.y > -10 && o.y < h + 10) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'top'
     const debut = Math.ceil((v.x - origine.x) / CM / saut) * saut
-    for (let n = debut; origine.x + n * CM <= v.x + v.l; n += saut) {
+    for (let k = 0, n = debut; k <= TOURS_MAX && origine.x + n * CM <= v.x + v.l; k++, n = debut + k * saut) {
       if (Math.abs(n) < 1e-9) continue
       const sx = (origine.x + n * CM) * cam.z + cam.x
       ctx.beginPath(); ctx.moveTo(sx, o.y - 4); ctx.lineTo(sx, o.y + 4); ctx.stroke()
@@ -133,7 +145,7 @@ function dessinerAxes(ctx: CanvasRenderingContext2D, cam: Camera, l: number, h: 
   if (o.x > -10 && o.x < l + 10) {
     ctx.textAlign = 'right'; ctx.textBaseline = 'middle'
     const debut = Math.ceil((v.y - origine.y) / CM / saut) * saut
-    for (let n = debut; origine.y + n * CM <= v.y + v.h; n += saut) {
+    for (let k = 0, n = debut; k <= TOURS_MAX && origine.y + n * CM <= v.y + v.h; k++, n = debut + k * saut) {
       if (Math.abs(n) < 1e-9) continue
       const sy = (origine.y + n * CM) * cam.z + cam.y
       ctx.beginPath(); ctx.moveTo(o.x - 4, sy); ctx.lineTo(o.x + 4, sy); ctx.stroke()

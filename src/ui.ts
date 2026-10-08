@@ -5,8 +5,8 @@
 // =============================================================
 import katex from 'katex'
 import type { App, Interface, Prise } from './app'
-import { COULEURS, TAILLES, poigneeDuRayon } from './app'
-import type { Bout, Figure, Forme, MarquePoint, Outil, TypeForme } from './types'
+import { COULEURS, TAILLES, TOUTE_LA_SELECTION, poigneeDuRayon } from './app'
+import type { Bout, Figure, Forme, Formule, MarquePoint, Outil, TypeForme } from './types'
 import { CM, FONDS } from './types'
 import type { P, Transformation } from './formes'
 import { centreDe, image, placesDesNoms, sommetsDe, versRelatif } from './formes'
@@ -18,54 +18,17 @@ import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
 import type { Menu } from './menus'
-import { basculerMenu, fermerMenu, installerMenus, placerMenu } from './menus'
-import { choisirMolette, reglages } from './reglages'
+import { ENTREES, allerAuxEntrees, basculerMenu, fermerMenu, focusAuClavier, focusNullePart, installerMenus, ouvrirMenu, placerMenu, refaireEnGardantLeFocus } from './menus'
+import { choisirGestes, choisirMolette, reglages } from './reglages'
 import type { Doigt, Molette } from './reglages'
 import { CTRL } from './navigateur'
 import { Sauvegarde } from './sauvegarde'
 import { zoneEntreBarres } from './camera'
 import type { Bords } from './camera'
-
-const ICONES: Record<string, string> = {
-  stylo: 'M4 20l4-1L19 8l-3-3L5 16l-1 4zM14 7l3 3',
-  surligneur: 'M14 4l6 6-8 8H6v-6zM4 21h9',
-  gomme: 'M8 20h12M4.5 15.5l9-9 6 6-7.5 7.5H8.5z',
-  segment: 'M6 18L18 6M4 18a2 2 0 104 0 2 2 0 10-4 0M16 6a2 2 0 104 0 2 2 0 10-4 0',
-  formule: 'M3 13h3l3 7 4-16h8',
-  selection: 'M5 3l14 8-6.5 1.8L10.5 19z',
-  main: 'M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3',
-  annuler: 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3',
-  retablir: 'M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3',
-  poubelle: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
-  plus: 'M12 5v14M5 12h14',
-  moins: 'M5 12h14',
-  avant: 'M15 6l-6 6 6 6',
-  apres: 'M9 6l6 6-6 6',
-  aimant: 'M6 4v8a6 6 0 0012 0V4h-4v8a2 2 0 01-4 0V4zM6 8h4M14 8h4',
-  forme: 'M3 11h8v8H3zM17 13a4 4 0 100-8 4 4 0 100 8z',
-  point: 'M7 7l7 7M14 7l-7 7M16 17.5h4M16.5 21l1.75-6 1.75 6',
-  'trait-segment': 'M6 18L18 6M4.5 16.5l3 3M16.5 4.5l3 3',
-  'trait-droite': 'M3 21L21 3',
-  'trait-demi': 'M6 18L21 3M4.5 16.5l3 3',
-  rectangle: 'M4 6h16v12H4z',
-  cercle: 'M12 20a8 8 0 100-16 8 8 0 100 16z',
-  polygone: 'M12 3l8 6-3 10H7L4 9z',
-  reconnaissance: 'M4 17c2-6 5-9 9-9M14 4h6v6M20 4l-7 7M4 20h6',
-  revue: 'M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4.5v4.2h4.2M10.5 9.5v5l4-2.5z',
-  publier: 'M12 15V3M7.5 7.5L12 3l4.5 4.5M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6',
-  image: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15.5 9.5a1.5 1.5 0 100-.01',
-  instruments: 'M3 17L17 3l4 4L7 21zM7 13l2 2M10 10l2 2M13 7l2 2',
-  regle: 'M2 9h20v6H2zM6 9v3M10 9v2M14 9v3M18 9v2',
-  equerre: 'M4 20V4l16 16zM4 15h5v5',
-  rapporteur: 'M3 17a9 9 0 0118 0zM12 17V12M12 8V9M7 11l1 1M17 11l-1 1',
-  compas: 'M12 3v2M12 5l-6 15M12 5l6 15M9.5 13h5',
-  construction: 'M4 5h9M4 10h7M4 15h5M15 20l2-9 2 9M17 11V8M15.6 16h2.8',
-  automatismes: 'M12 21a8 8 0 100-16 8 8 0 100 16zM12 9v4l2.5 2.5M10 2h4M12 2v3',
-  cadre: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
-  coche: 'M5 12.5l4.5 4.5L19 7.5',
-  points: 'M5 12h.01M12 12h.01M19 12h.01',
-  doigt: 'M10 15V4.5a1.5 1.5 0 0 1 3 0V11M13 10a1.5 1.5 0 0 1 3 0v2M16 11.5a1.5 1.5 0 0 1 3 0V16a5 5 0 0 1-5 5h-1.5a5 5 0 0 1-4-2l-3-4a1.5 1.5 0 0 1 2.3-1.9L10 15',
-}
+import { TAILLES_FORMULE, changerCouleur, changerEpaisseur, changerPointilles, habillageCommun, titreDuMenu } from './habillage'
+import { icone } from './icones'
+import { BarreActions } from './barre-actions'
+import { titreModifierFormule } from './pointeurs'
 
 /** Le rôle du doigt : la marque de son bouton, son titre, ce qu'on en dit */
 const DOIGTS: { id: Doigt; nom: string; aide: string; marque: string; titre: string; dit: string }[] = [
@@ -89,6 +52,11 @@ const TYPES_FORMES: { id: TypeForme; nom: string; touche: string }[] = [
 ]
 
 const FONDS_FIGURE = [...COULEURS, { nom: 'Jaune', valeur: '#e0a800' }]
+
+/** La section ouverte dans le menu complet : celles d'une figure (contour,
+ *  fond, transformer) ; « couleur » : la couleur et la taille d'une formule,
+ *  la couleur et l'épaisseur de plusieurs objets */
+type Section = 'contour' | 'fond' | 'transformer' | 'couleur' | null
 
 /** « 2 », « -0,5 », « 1/3 » → nombre */
 function nombre(t: string): number | null {
@@ -133,10 +101,6 @@ const RACCOURCIS_LATEX = [
   ['\\pi', '\\pi'], ['\\lim', '\\lim_{x \\to }'],
 ]
 
-function icone(nom: string) {
-  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONES[nom]}"/></svg>`
-}
-
 function bouton(nom: string, titre: string, action: (e: Event) => void, classe = '') {
   const b = document.createElement('button')
   b.type = 'button'
@@ -148,11 +112,22 @@ function bouton(nom: string, titre: string, action: (e: Event) => void, classe =
   return b
 }
 
+/** Grise un bouton de la barre (ou le rend), sans toucher au DOM s'il l'est déjà */
+function griser(b: HTMLButtonElement, gris: boolean) {
+  if (b.disabled === gris) return
+  b.disabled = gris
+  b.setAttribute('aria-disabled', String(gris))
+}
+
 export class UI implements Interface {
   private outils = new Map<Outil, HTMLButtonElement>()
   private pastilles: HTMLButtonElement[] = []
   private tailles: HTMLButtonElement[] = []
   private boutonSupprimer!: HTMLButtonElement
+  /** La poubelle de la barre du haut : supprimer la page (l'effacer, seule) */
+  private boutonJeter!: HTMLButtonElement
+  private boutonAnnuler!: HTMLButtonElement
+  private boutonRetablir!: HTMLButtonElement
   private rang!: HTMLSpanElement
   private choixFond!: HTMLSelectElement
   private boutonAimant!: HTMLButtonElement
@@ -169,7 +144,7 @@ export class UI implements Interface {
   /** Ce que montre le message : le dernier message ordinaire, et le dernier
    *  qui porte une action, chacun jusqu'à son échéance (voir message) */
   private toastSimple: { el: HTMLElement; fin: number } | null = null
-  private toastAction: { el: HTMLElement; fin: number } | null = null
+  private toastAction: { el: HTMLElement; fin: number; cle?: string } | null = null
   private minuterieToast = 0
   private dialogue: HTMLDialogElement | null = null
   private boutonReconnaissance!: HTMLButtonElement
@@ -177,10 +152,14 @@ export class UI implements Interface {
   private choixTraits!: HTMLDivElement
   private boutonsTraits = new Map<string, HTMLButtonElement>()
   private boutonsFormes = new Map<TypeForme, HTMLButtonElement>()
+  /** Le menu complet de ce qui est pris : un objet, ou plusieurs (voir majPanneau) */
   private panneau!: HTMLDivElement
   private clePanneau = ''
   private idPanneau = ''
-  private section: 'contour' | 'fond' | 'transformer' | null = null
+  /** Les objets du menu commun de plusieurs objets, tels qu'il les a montrés :
+   *  il se refait quand l'un d'eux change (une forme changée est un nouvel objet) */
+  private formesPanneau: Forme[] = []
+  private section: Section = null
   private revue!: RevueEnClasse
   private publication!: Publication
   private constructeur!: Constructeur
@@ -196,6 +175,10 @@ export class UI implements Interface {
   /** Enregistrer le tableau dans un fichier, en ouvrir un : le bouton ⋯ et son menu */
   sauvegarde!: Sauvegarde
   private menuFichier!: Menu
+  /** Le menu de la page (un clic droit dans le vide) : il n'a pas de bouton */
+  private menuPage!: Menu
+  /** La barre d'actions au-dessus de ce qui est pris (voir barre-actions.ts) */
+  private barreActions!: BarreActions
 
   constructor(private app: App, private racine: HTMLElement) {
     // Les menus d'abord : leur Échap passe avant celui des panneaux (voir menus.ts)
@@ -246,8 +229,11 @@ export class UI implements Interface {
     })
     outils.appendChild(rangee)
     outils.appendChild(Object.assign(document.createElement('hr'), { className: 'filet' }))
-    outils.appendChild(bouton('annuler', 'Annuler (Ctrl+Z)', () => app.annuler()))
-    outils.appendChild(bouton('retablir', 'Rétablir (Ctrl+Y)', () => app.retablir()))
+    // Annuler et rétablir n'agissent que sur la page visible : grisés quand
+    // elle n'a rien à défaire ou à refaire (ils gardent leur place)
+    this.boutonAnnuler = bouton('annuler', `Annuler sur cette page (${CTRL}+Z)`, () => app.annuler())
+    this.boutonRetablir = bouton('retablir', `Rétablir sur cette page (${CTRL}+Y)`, () => app.retablir())
+    outils.append(this.boutonAnnuler, this.boutonRetablir)
     // La poubelle garde sa place, grisée quand rien n'est choisi : la barre ne
     // saute plus à chaque sélection
     this.boutonSupprimer = bouton('poubelle', 'Supprimer la sélection (Suppr)', () => app.supprimerSelection(), 'danger')
@@ -268,16 +254,17 @@ export class UI implements Interface {
     this.rang = document.createElement('span'); this.rang.className = 'rang'
     const apres = bouton('apres', 'Page suivante (Page ↓)', () => app.pageSuivante(1))
     const nouvelle = bouton('plus', 'Nouvelle page', () => app.nouvellePage())
-    // Pas de confirm() : dans une page intégrée (l'aperçu, un ENT), le
-    // navigateur le bloque et répond « non » sans rien montrer
-    const jeter = bouton('poubelle', 'Supprimer cette page', async () => {
-      const seule = app.pages.length <= 1
-      const n = app.pages.indexOf(app.page) + 1
-      const ok = await this.confirmer(seule ? 'Effacer la page ?' : `Supprimer la page ${n} ?`,
-        seule ? 'Il n\'y a qu\'une page : tout ce qui y est écrit sera effacé. Ctrl+Z pour revenir.'
-          : 'La page et tout ce qu\'elle contient disparaissent.', seule ? 'Effacer la page' : 'Supprimer la page')
-      if (!ok) return
-      if (seule) app.viderPage(); else app.supprimerPage()
+    // Pas de question : la page part tout de suite, et s'annule (le message
+    // « Page N supprimée · Annuler », ou Ctrl+Z). Le second clic d'un
+    // double-clic, et tout clic trop tôt après une suppression, ne font rien :
+    // un double-clic jetterait deux pages, et le second message chasserait
+    // le premier « Annuler ».
+    let jeteeA = -Infinity
+    const jeter = this.boutonJeter = bouton('poubelle', 'Supprimer cette page', e => {
+      const maintenant = performance.now()
+      if ((e as MouseEvent).detail > 1 || maintenant - jeteeA < 600) return
+      jeteeA = maintenant
+      app.supprimerPage()
     }, 'danger')
     this.choixFond = document.createElement('select')
     this.choixFond.className = 'choix-fond'
@@ -384,13 +371,26 @@ export class UI implements Interface {
       this.boutonsTraits.set(id, b); this.choixTraits.appendChild(b)
     }
 
-    // ----- Options de la forme sélectionnée -----
+    // ----- Le menu complet de ce qui est pris (un objet, ou plusieurs) -----
     this.panneau = document.createElement('div')
     this.panneau.className = 'panneau-forme'
     this.panneau.setAttribute('role', 'toolbar')
-    this.panneau.setAttribute('aria-label', 'Options de la figure')
+    this.panneau.setAttribute('aria-label', 'Options')
 
-    this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, menuFichier, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
+    // ----- Le menu de la page, posé là où l'on a appuyé (voir ouvrirMenuPage) -----
+    const menuPage = document.createElement('div')
+    menuPage.className = 'menu-flottant menu-large'; menuPage.setAttribute('role', 'menu'); menuPage.setAttribute('aria-label', 'Page')
+    menuPage.hidden = true
+    this.menuPage = { el: menuPage }
+
+    this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, menuFichier, menuPage, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
+    // ----- La barre d'actions, au-dessus de ce qui est pris -----
+    // Elle ne recouvre ni la barre d'outils (sauf sur un téléphone, où elle
+    // n'y tient pas), ni la barre du haut
+    this.barreActions = new BarreActions(app, this.racine, () => ({
+      gauche: this.barreOutils.getBoundingClientRect().right,
+      haut: this.barreHaut.getBoundingClientRect().bottom,
+    }))
     this.revue = new RevueEnClasse(this.app, this.racine)
     this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
@@ -418,13 +418,14 @@ export class UI implements Interface {
     this.pastilles.forEach((b, i) => b.classList.toggle('actif', COULEURS[i].valeur === app.couleur))
     this.tailles.forEach((b, i) => b.classList.toggle('actif', TAILLES[i].valeur === app.taille))
     const rien = !(app.selection.size || app.partie)
-    if (this.boutonSupprimer.disabled !== rien) {
-      this.boutonSupprimer.disabled = rien
-      this.boutonSupprimer.setAttribute('aria-disabled', String(rien))
-    }
+    griser(this.boutonSupprimer, rien)
+    griser(this.boutonAnnuler, !app.peutAnnuler())
+    griser(this.boutonRetablir, !app.peutRetablir())
 
     const pages = app.pages, i = pages.indexOf(app.page)
     this.rang.textContent = pages.length ? `${i + 1} / ${pages.length}` : '…'
+    const titreJeter = pages.length <= 1 ? 'Effacer la page' : 'Supprimer cette page'
+    if (this.boutonJeter.title !== titreJeter) { this.boutonJeter.title = titreJeter; this.boutonJeter.setAttribute('aria-label', titreJeter) }
     this.choixFond.value = app.fond
     this.boutonAimant.classList.toggle('actif', app.aimant)
     this.boutonReconnaissance.classList.toggle('actif', app.reconnaissance)
@@ -452,6 +453,8 @@ export class UI implements Interface {
     this.majMenuPartie()
     this.zoomTexte.textContent = Math.round(app.cam.z * 100) + ' %'
     this.majRetour()
+    // Après le menu complet : elle ne paraît que s'il est fermé
+    this.barreActions.maj()
   }
 
   /** Ferme ce qui flotte au-dessus du tableau : le petit menu ouvert, le menu
@@ -470,6 +473,40 @@ export class UI implements Interface {
     if (!this.choixInstruments.hidden) { this.choixInstruments.hidden = true; ferme = true }
     if (ferme) this.maj()
     return ferme
+  }
+
+  /** Le clavier dans le menu complet ou le menu d'un morceau de figure,
+   *  ouverts au clic droit, à l'appui long, au double-clic ou par
+   *  « Options », comme dans le menu du système (les petits menus, celui de
+   *  la page compris, font de même : voir menus.ts) :
+   *  - le focus hors du menu (sur la page après un clic droit, ou sur un
+   *    bouton) : ↓, → et Début mènent à sa première entrée ; ↑, ← et Fin à
+   *    la dernière ; Tab et Maj+Tab aussi, depuis la page seulement (depuis
+   *    un bouton, Tab passe au suivant comme d'habitude) ;
+   *  - dans le menu : les flèches passent d'un bouton à l'autre, en
+   *    tournant (pas par ses champs, que Tab atteint : voir BOUTONS) ;
+   *    Début et Fin vont aux bouts ; Espace appuie sur le bouton
+   *    (au relâcher, comme partout) au lieu d'armer « Espace + glisser »,
+   *    si le focus y est venu du clavier (après un clic sur un bouton du
+   *    menu, Espace + glisser déplace toujours la vue).
+   *  L'objet n'est donc pas poussé, ni la vue déplacée, tant que le menu est
+   *  ouvert : sans menu, les flèches font comme avant. Un champ de saisie du
+   *  menu garde ses touches (App.clavier ne l'écoute pas). */
+  clavierMenu(e: KeyboardEvent): boolean {
+    if (e.ctrlKey || e.metaKey || e.altKey) return false
+    const m = !this.menuPartie.hidden ? this.menuPartie : !this.panneau.hidden ? this.panneau : null
+    if (!m) return false
+    const dedans = m.contains(document.activeElement)
+    if (dedans && e.key === ' ' && focusAuClavier(document.activeElement)) return true
+    const fleches: Record<string, number> = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1, Home: -Infinity, End: Infinity }
+    const sens = fleches[e.key] ?? (e.key === 'Tab' && !dedans && focusNullePart() ? (e.shiftKey ? -1 : 1) : undefined)
+    if (sens === undefined || !allerAuxEntrees(m, sens)) return false
+    e.preventDefault()
+    return true
+  }
+
+  entrerDansMenu() {
+    if (!this.panneau.hidden) allerAuxEntrees(this.panneau, -Infinity)
   }
 
   /** Ce qu'on voit du tableau entre les barres, en coordonnées de la zone :
@@ -499,11 +536,13 @@ export class UI implements Interface {
     }, 1000)
   }
 
-  /** Une entrée d'un petit menu : un choix fait le ferme, puis agit */
-  private entreeMenu(m: HTMLElement, texte: string, faire: () => void, o: { touche?: string; aide?: string; coche?: boolean; inactif?: boolean } = {}) {
+  /** Une entrée d'un petit menu : un choix fait le ferme, puis agit. coche :
+   *  un choix parmi d'autres (menuitemradio), coché ou non ; avec caseACocher,
+   *  un réglage qu'on allume ou qu'on coupe (menuitemcheckbox). */
+  private entreeMenu(m: HTMLElement, texte: string, faire: () => void, o: { touche?: string; aide?: string; coche?: boolean; caseACocher?: boolean; inactif?: boolean } = {}) {
     const b = document.createElement('button')
     b.type = 'button'; b.className = 'menu-item'
-    b.setAttribute('role', o.coche === undefined ? 'menuitem' : 'menuitemradio')
+    b.setAttribute('role', o.coche === undefined ? 'menuitem' : o.caseACocher ? 'menuitemcheckbox' : 'menuitemradio')
     if (o.coche !== undefined) b.setAttribute('aria-checked', String(o.coche))
     if (o.inactif) b.setAttribute('aria-disabled', 'true')
     b.innerHTML = `<span class="coche">${o.coche ? icone('coche') : ''}</span><span class="libelle"></span>` + (o.touche ? `<span class="touche">${html(o.touche)}</span>` : '')
@@ -554,6 +593,26 @@ export class UI implements Interface {
   /** Un fichier glissé sur le tableau (.memc, ou .mem) : comme « Ouvrir un tableau » */
   ouvrirTableau(f: File) { void this.sauvegarde.ouvrirFichier(f) }
 
+  /** Le menu de la page : un clic droit dans le vide (voir App.demanderOptions).
+   *  Il se pose au point de l'appui, à sa droite et vers le bas comme le
+   *  menu du système (de l'autre côté s'il n'y a pas la place), et se ferme
+   *  comme les autres petits menus : Échap, un choix, ou un appui ailleurs
+   *  (qui ne laisse pas d'encre). m : le point du monde où « Coller ici »
+   *  colle. Refait à chaque ouverture : la copie et la page ont pu changer.
+   *  auClavier : ouvert par la touche Menu (voir App.menuAuClavier), le
+   *  focus va à sa première entrée active. */
+  ouvrirMenuPage(x: number, y: number, m: P, auClavier = false) {
+    const app = this.app, el = this.menuPage.el
+    el.replaceChildren()
+    this.entreeMenu(el, 'Coller ici', () => app.coller(m), { touche: `${CTRL} + V`, inactif: !app.peutColler(),
+      aide: `Le dernier objet copié dans MEM ; ${CTRL} + V colle aussi une image ou ce qu'on a copié dans une autre version de MEM` })
+    this.entreeMenu(el, 'Tout sélectionner', () => app.toutSelectionner(), { touche: `${CTRL} + A`, inactif: app.pageVide() })
+    this.entreeMenu(el, 'Tout voir', () => app.toutVoir(), { touche: 'Maj + 1' })
+    ouvrirMenu(this.menuPage)
+    placerMenu(el, new DOMRect(x, y, 0, 0), 'droite')
+    if (auClavier) allerAuxEntrees(el, 1, ENTREES)
+  }
+
   /** Le menu du rôle du doigt : ouvert par son bouton, ou par « Changer »
    *  dans le message « Stylet détecté » */
   ouvrirReglageDoigt() {
@@ -585,25 +644,54 @@ export class UI implements Interface {
       const aide = d.id === 'auto' && reglages.styletDirect ? 'stylet détecté : le doigt déplace la vue' : d.aide
       this.entreeMenu(m, d.nom, () => { this.app.choisirDoigt(d.id); this.message(d.dit) }, { coche: reglages.doigt === d.id, aide })
     }
+    // Le toucher à deux doigts qui annule (à trois, qui rétablit) : allumé au
+    // départ sur un écran tactile ; au TNI, une manche ou une paume peut en
+    // faire un, on le coupe ici
+    m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
+    m.appendChild(Object.assign(document.createElement('div'), { className: 'menu-titre', textContent: 'Gestes' }))
+    this.entreeMenu(m, 'Deux doigts : annuler', () => {
+      choisirGestes(!reglages.gestes)
+      this.message(reglages.gestes ? 'Toucher à deux doigts : annuler ; à trois : rétablir.' : 'Gestes à deux et trois doigts coupés.')
+    }, { coche: reglages.gestes, caseACocher: true, aide: 'trois doigts : rétablir · un toucher bref' })
   }
 
-  // ----- Panneau d'options de la figure -----
+  // ----- Le menu complet de ce qui est pris -----
+  /** Le menu complet (le panneau sous le nom d'avant) : celui de l'objet seul
+   *  sélectionné dont app.options est l'identifiant, ou le menu commun d'une
+   *  sélection de plusieurs objets (app.options vaut TOUTE_LA_SELECTION). Il
+   *  se ferme dès que ce qu'il règle n'est plus choisi, se cache pendant
+   *  qu'on le déplace (formeChoisie, formesChoisies) et revient au lâcher. */
   private majPanneau() {
     const app = this.app
-    // Le panneau se ferme dès que l'objet n'est plus seul sélectionné
-    if (app.options && !(app.selection.size === 1 && app.selection.has(app.options))) app.options = null
-    const f = !app.enLecture ? app.formeChoisie() : null
-    if (!f || f.id !== app.options || f.type === 'formule' || f.type === 'segment') { this.panneau.hidden = true; this.clePanneau = ''; return }
-    const { x: _x, y: _y, ...props } = f as Forme
-    if (f.id !== this.idPanneau) { this.idPanneau = f.id; this.section = null }
-    // On ne reconstruit que si la figure a changé : sinon un champ en
-    // cours de saisie perdrait le curseur à chaque mise à jour.
-    const cle = JSON.stringify(props) + '|' + this.section
-    if (cle !== this.clePanneau) { this.construirePanneau(f); this.clePanneau = cle }
+    const plusieurs = app.options === TOUTE_LA_SELECTION
+    if (plusieurs ? app.selection.size < 2 : app.options && !(app.selection.size === 1 && app.selection.has(app.options))) app.options = null
+    let formes: Forme[] | null = null
+    if (!app.enLecture && plusieurs) formes = app.formesChoisies()
+    else if (!app.enLecture && app.options) { const f = app.formeChoisie(); if (f && f.id === app.options) formes = [f] }
+    if (!formes?.length) { this.panneau.hidden = true; this.clePanneau = ''; this.formesPanneau = []; return }
+    const id = plusieurs ? TOUTE_LA_SELECTION + formes.map(f => f.id).join(',') : formes[0].id
+    if (id !== this.idPanneau) { this.idPanneau = id; this.section = null }
+    if (plusieurs) {
+      // Plusieurs objets : on refait le menu quand l'un d'eux a changé (une
+      // forme changée, même déplacée, est un nouvel objet) ; comparer les
+      // objets eux-mêmes ne coûte rien, même sur mille traits sélectionnés
+      const cle = TOUTE_LA_SELECTION + '|' + this.section
+      if (cle !== this.clePanneau || formes.length !== this.formesPanneau.length || formes.some((f, i) => f !== this.formesPanneau[i])) {
+        refaireEnGardantLeFocus(this.panneau, () => this.construireMenuPlusieurs(formes!)); this.clePanneau = cle; this.formesPanneau = formes
+      }
+    } else {
+      // Un objet : on ne reconstruit que s'il a changé (sauf sa place) : sinon
+      // un champ en cours de saisie perdrait le curseur à chaque mise à jour
+      const { x: _x, y: _y, ...props } = formes[0]
+      const cle = JSON.stringify(props) + '|' + this.section
+      if (cle !== this.clePanneau) { const f = formes[0]; refaireEnGardantLeFocus(this.panneau, () => this.construirePanneau(f)); this.clePanneau = cle; this.formesPanneau = [] }
+    }
     this.panneau.hidden = false
-    // Au-dessus de la figure, ou en dessous s'il n'y a pas la place
-    const b = this.app.rendu.boite(f), cam = this.app.cam
-    const z = this.app.rendu.scene.getBoundingClientRect()
+    // Au-dessus de ce qu'il règle (toute la sélection), ou en dessous s'il
+    // n'y a pas la place
+    const b = plusieurs ? app.boiteDuContenu(formes) : app.rendu.boite(formes[0])
+    if (!b) return
+    const cam = app.cam, z = app.rendu.scene.getBoundingClientRect()
     const a = cam.versEcran(b.x, b.y), c = cam.versEcran(b.x + b.l, b.y + b.h)
     const l = this.panneau.offsetWidth, h = this.panneau.offsetHeight
     let top = z.top + a.y - h - 14
@@ -614,22 +702,52 @@ export class UI implements Interface {
     this.panneau.style.top = Math.max(8, top) + 'px'
   }
 
+  /** Un bouton texte du menu, dans sa ligne */
+  private optionMenu(ligne: HTMLElement, texte: string, titre: string, faire: () => void, actif = false) {
+    const b = document.createElement('button')
+    b.type = 'button'; b.className = 'option' + (actif ? ' actif' : ''); b.textContent = texte; b.title = titre
+    b.setAttribute('aria-pressed', String(actif))
+    b.addEventListener('click', faire)
+    ligne.appendChild(b)
+    return b
+  }
+
+  /** Ouvre (ou referme) une section du menu, qui se refait aussitôt */
+  private basculerSection(s: Section) {
+    this.section = this.section === s ? null : s
+    this.clePanneau = ''
+    this.maj()
+  }
+
   private construirePanneau(f: Forme) {
     const app = this.app
     const p = this.panneau
     p.replaceChildren()
     const ligne = document.createElement('div'); ligne.className = 'ligne'
-    const action = (texte: string, titre: string, faire: () => void, actif = false) => {
-      const b = document.createElement('button')
-      b.type = 'button'; b.className = 'option' + (actif ? ' actif' : ''); b.textContent = texte; b.title = titre
-      b.setAttribute('aria-pressed', String(actif))
-      b.addEventListener('click', faire)
-      ligne.appendChild(b)
-      return b
-    }
-    const ouvrir = (s: typeof this.section) => { this.section = this.section === s ? null : s; this.clePanneau = ''; this.maj() }
+    const action = (texte: string, titre: string, faire: () => void, actif = false) => this.optionMenu(ligne, texte, titre, faire, actif)
+    const ouvrir = (s: Section) => this.basculerSection(s)
     const figure = f.type === 'polygone' || f.type === 'cercle' ? f as Figure : null
     const segment = f.type === 'polygone' && !f.ferme && f.pts.length === 4
+    const copier = () => action('Copier', `Copier (${CTRL}+C) : ${CTRL}+V la colle ici, sur une autre page ou dans un autre onglet`, () => app.copier())
+    const jeter = () => ligne.appendChild(bouton('poubelle', 'Supprimer (Suppr)', () => app.supprimerSelection(), 'danger'))
+
+    if (f.type === 'formule') {
+      // Une formule : la modifier (comme son double-clic), sa couleur et sa
+      // taille. Pas de « Transformer » : l'image d'une formule n'en déplace
+      // que le coin, sans la tourner ni la retourner.
+      p.setAttribute('aria-label', titreDuMenu(f))
+      // Son titre parle la langue du pointeur qui a ouvert le menu : jamais
+      // « double-clic » au doigt
+      action('Modifier', titreModifierFormule(app.dernierPointeur), () => app.modifierFormule(f))
+      action('Couleur et taille', 'La couleur et la taille des caractères', () => ouvrir('couleur'), this.section === 'couleur')
+      action('Dupliquer', `Une copie, décalée d'un centimètre (${CTRL}+D)`, () => app.dupliquerSelection())
+      copier(); jeter()
+      p.appendChild(ligne)
+      if (this.section === 'couleur') p.appendChild(this.sectionFormule(f))
+      return
+    }
+    // Le nom de ce qu'il règle : du trait, de l'image, du segment, du cercle…
+    p.setAttribute('aria-label', titreDuMenu(f))
 
     if (segment && f.type === 'polygone') {
       // Segment, droite ou demi-droite : on passe de l'un à l'autre d'un clic
@@ -646,9 +764,8 @@ export class UI implements Interface {
     if (figure && ((f.type === 'cercle' && !f.arc) || (f.type === 'polygone' && f.ferme))) action('Fond', 'Remplir la figure', () => ouvrir('fond'), this.section === 'fond')
     action('Transformer', 'Translation, rotation, symétrie, homothétie', () => ouvrir('transformer'), this.section === 'transformer')
     if (figure?.brut) action('Main levée', 'Revenir au tracé d\'origine', () => app.revenirMainLevee(figure))
-    action('Dupliquer', 'Une copie, décalée d\'un centimètre', () => app.dupliquer(f))
-    const jeter = bouton('poubelle', 'Supprimer (Suppr)', () => app.supprimerSelection(), 'danger')
-    ligne.appendChild(jeter)
+    action('Dupliquer', `Une copie, décalée d'un centimètre (${CTRL}+D)`, () => app.dupliquerSelection())
+    copier(); jeter()
     p.appendChild(ligne)
 
     // Noms des sommets, modifiables
@@ -712,6 +829,69 @@ export class UI implements Interface {
       s.appendChild(b)
     }
     return s
+  }
+
+  /** Une pastille de couleur du menu (active : la couleur de l'objet, ou de tous) */
+  private pastilleMenu(s: HTMLElement, c: { nom: string; valeur: string }, actif: boolean, faire: () => void) {
+    const b = document.createElement('button')
+    b.type = 'button'; b.className = 'pastille' + (actif ? ' actif' : ''); b.title = c.nom; b.setAttribute('aria-label', c.nom)
+    b.setAttribute('aria-pressed', String(actif))
+    b.style.setProperty('--teinte', c.valeur)
+    b.addEventListener('click', faire)
+    s.appendChild(b)
+  }
+
+  /** La couleur et la taille d'une formule : les quatre couleurs de la barre,
+   *  et trois tailles de caractères */
+  private sectionFormule(f: Formule) {
+    const app = this.app
+    const s = document.createElement('div'); s.className = 'section'
+    for (const c of COULEURS) this.pastilleMenu(s, c, f.couleur === c.valeur, () => app.habiller(f, { couleur: c.valeur }))
+    for (const t of TAILLES_FORMULE) this.optionMenu(s, t.nom, t.titre, () => app.habiller(f, { taille: t.valeur }), f.taille === t.valeur)
+    return s
+  }
+
+  /** Le menu commun d'une sélection de plusieurs objets : « N objets » en
+   *  tête, puis ce qu'on fait à tous d'un coup. Chaque action fait UNE étape
+   *  d'annulation, quel que soit le nombre d'objets. */
+  private construireMenuPlusieurs(formes: Forme[]) {
+    const app = this.app, p = this.panneau
+    p.replaceChildren()
+    const n = formes.length
+    p.setAttribute('aria-label', `Options des ${n} objets`)
+    const ligne = document.createElement('div'); ligne.className = 'ligne'
+    const titre = document.createElement('span'); titre.className = 'titre-selection'; titre.textContent = `${n} objets`
+    ligne.appendChild(titre)
+    const commun = habillageCommun(formes, TAILLES.map(t => t.valeur))
+    // Des formules seules n'ont pas d'épaisseur, des images rien à régler
+    if (commun.couleurs || commun.epaisseurs) {
+      const texte = commun.epaisseurs ? 'Couleur, épaisseur' : 'Couleur'
+      this.optionMenu(ligne, texte, commun.epaisseurs ? 'La couleur, l\'épaisseur et les pointillés de tous' : 'La couleur de tous', () => this.basculerSection('couleur'), this.section === 'couleur')
+    }
+    this.optionMenu(ligne, 'Dupliquer', `Une copie de tous, décalée d'un centimètre (${CTRL}+D)`, () => app.dupliquerSelection())
+    this.optionMenu(ligne, 'Copier', `Copier (${CTRL}+C) : ${CTRL}+V les colle ici, sur une autre page ou dans un autre onglet`, () => app.copier())
+    this.optionMenu(ligne, 'Couper', `Couper (${CTRL}+X) : ils partent, ${CTRL}+V les remet`, () => app.couper())
+    ligne.appendChild(bouton('poubelle', `Supprimer les ${n} objets (Suppr)`, () => app.supprimerSelection(), 'danger'))
+    p.appendChild(ligne)
+    if (this.section !== 'couleur') return
+
+    // Seulement ce que le code sait appliquer à chacun : la couleur (pas à une
+    // image), l'épaisseur (traits et figures ; un trait de surligneur garde sa
+    // largeur de surligneur), les pointillés (les figures). Un choix est
+    // actif quand tous les objets qu'il concerne l'ont.
+    const s = document.createElement('div'); s.className = 'section'
+    if (commun.couleurs) for (const c of COULEURS) this.pastilleMenu(s, c, commun.couleur === c.valeur, () => app.habillerSelection(changerCouleur(c.valeur)))
+    if (commun.epaisseurs) TAILLES.forEach((t, i) => {
+      const actif = commun.taille === t.valeur
+      const b = document.createElement('button')
+      b.type = 'button'; b.className = 'taille' + (actif ? ' actif' : ''); b.title = t.nom
+      b.setAttribute('aria-label', 'Trait ' + t.nom.toLowerCase()); b.setAttribute('aria-pressed', String(actif))
+      b.innerHTML = `<span style="--d:${4 + i * 4}px"></span>`
+      b.addEventListener('click', () => app.habillerSelection(changerEpaisseur(t.valeur)))
+      s.appendChild(b)
+    })
+    if (commun.pointilles !== null) this.optionMenu(s, 'Pointillés', 'Les figures en pointillés', () => app.habillerSelection(changerPointilles(!commun.pointilles)), commun.pointilles)
+    p.appendChild(s)
   }
 
   /** Ce qu'on a choisi dans « Transformer » : gardé quand le panneau se refait */
@@ -930,6 +1110,8 @@ export class UI implements Interface {
     }
     this.revue.ouvrir(b, construisait ? ranger : undefined)
     if (construisait && !this.revue.ouvert) requestAnimationFrame(() => requestAnimationFrame(ranger))
+    // La barre d'actions et le menu complet n'ont rien à faire pendant la revue
+    this.maj()
   }
 
   fermerMenuPartie() {
@@ -938,7 +1120,13 @@ export class UI implements Interface {
     this.partie = null
   }
 
+  /** Le menu d'un morceau, refait à chaque choix : le focus qui y était
+   *  (un choix fait au clavier) y reste */
   private construireMenuPartie() {
+    refaireEnGardantLeFocus(this.menuPartie, () => this.remplirMenuPartie())
+  }
+
+  private remplirMenuPartie() {
     const app = this.app, m = this.menuPartie
     const f0 = this.partie && app.forme(this.partie.id)
     if (!this.partie || !f0 || (f0.type !== 'polygone' && f0.type !== 'cercle')) return this.fermerMenuPartie()
@@ -1040,8 +1228,12 @@ export class UI implements Interface {
    *  tablette.
    *  Un message ordinaire ne chasse pas un message à action encore à l'écran
    *  (« Stylet détecté … Changer », que suit souvent la figure reconnue du
-   *  premier trait) : il s'écrit au-dessus de lui, et s'en va seul. */
-  message(texte: string, action?: { libelle: string; faire: () => void }, dessus = false) {
+   *  premier trait) : il s'écrit au-dessus de lui, et s'en va seul.
+   *  Pendant la revue, un message à action ne se montre pas, et son bouton ne
+   *  fait rien : un message ordinaire (F5, que la télécommande envoie) passe
+   *  au-dessus de la revue, et « Annuler » d'une page qu'on vient de jeter
+   *  écrirait alors dans le tableau, que la revue ne doit jamais changer. */
+  message(texte: string, action?: { libelle: string; faire: () => void; cle?: string }, dessus = false) {
     this.toast.classList.toggle('dessus', dessus || this.app.enLecture)
     const el = document.createElement('span')
     el.className = 'ligne'
@@ -1051,16 +1243,25 @@ export class UI implements Interface {
       const b = document.createElement('button')
       b.type = 'button'; b.className = 'action'; b.textContent = action.libelle
       b.addEventListener('click', () => {
+        if (this.app.enLecture) return
         this.toastSimple = this.toastAction = null
         this.majToast()
         action.faire()
       })
       el.appendChild(b)
-      this.toastAction = { el, fin: maintenant + 7000 }
+      this.toastAction = { el, fin: maintenant + 7000, cle: action.cle }
       this.toastSimple = null
     } else {
       this.toastSimple = { el, fin: maintenant + Math.max(2600, texte.length * 60) }
     }
+    this.majToast()
+  }
+
+  /** Le message à action de cette clé s'en va, s'il est encore là : son
+   *  bouton n'a plus rien à faire (la page qu'il rendait est revenue) */
+  oublierAction(cle: string) {
+    if (this.toastAction?.cle !== cle) return
+    this.toastAction = null
     this.majToast()
   }
 
@@ -1071,7 +1272,7 @@ export class UI implements Interface {
     const maintenant = performance.now()
     if (this.toastSimple && this.toastSimple.fin <= maintenant) this.toastSimple = null
     if (this.toastAction && this.toastAction.fin <= maintenant) this.toastAction = null
-    const parts = [this.toastSimple, this.toastAction].filter(p => p !== null)
+    const parts = [this.toastSimple, this.app.enLecture ? null : this.toastAction].filter(p => p !== null)
     if (!parts.length) { this.toast.classList.remove('visible'); return }
     this.toast.replaceChildren(...parts.map(p => p.el))
     this.toast.classList.add('visible')
@@ -1112,7 +1313,8 @@ export class UI implements Interface {
         corps.querySelector('.raccourcis')!.appendChild(b)
       }
       let fini = false
-      const finir = (v: string | null) => { if (fini) return; fini = true; d.close(); d.remove(); resolve(v) }
+      // Fermé (validé ou non), la barre d'actions revient sur la formule
+      const finir = (v: string | null) => { if (fini) return; fini = true; d.close(); d.remove(); this.maj(); resolve(v) }
       saisie.value = latex
       saisie.addEventListener('input', montrer)
       saisie.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); finir(saisie.value.trim()) } })
@@ -1123,26 +1325,10 @@ export class UI implements Interface {
       d.style.left = Math.max(12, Math.min(sx, window.innerWidth - 440)) + 'px'
       d.style.top = Math.max(12, Math.min(sy + 16, window.innerHeight - 330)) + 'px'
       d.show()
+      // Ouvert, la barre d'actions s'efface : elle couvrirait la formule
+      this.maj()
       montrer()
       saisie.focus()
-    })
-  }
-
-  /** Une question oui/non, dans l'outil lui-même */
-  confirmer(titre: string, texte: string, oui: string): Promise<boolean> {
-    return new Promise(resolve => {
-      const d = this.nouveauDialogue(titre)
-      const corps = d.querySelector('.corps')!
-      corps.innerHTML = `<p></p><div class="actions"><button type="button" class="secondaire">Annuler</button><button type="button" class="principal danger-plein"></button></div>`
-      corps.querySelector('p')!.textContent = texte
-      const b = corps.querySelector('.principal') as HTMLButtonElement
-      b.textContent = oui
-      let fini = false
-      const finir = (v: boolean) => { if (fini) return; fini = true; if (d.open) d.close(); d.remove(); resolve(v) }
-      b.addEventListener('click', () => finir(true))
-      corps.querySelector('.secondaire')!.addEventListener('click', () => finir(false))
-      d.addEventListener('close', () => finir(false))
-      d.showModal(); b.focus()
     })
   }
 

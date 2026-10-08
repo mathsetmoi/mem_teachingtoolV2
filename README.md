@@ -46,23 +46,144 @@ Une figure qu'on vient de tracer (au stylo, aux Formes, au Segment) n'est pas
 sélectionnée : on continue d'écrire tout près sans attraper ses sommets. Une
 copie, une image importée, l'image d'une transformation le sont.
 
-**Le panneau d'options** ne s'ouvre qu'à la demande : **double-clic** ou
-**clic droit** sur l'objet (un simple clic le sélectionne seulement, pour le
-déplacer) ; au stylet, le bouton du stylet fait le clic droit ; au doigt, avec
+**Prendre un objet.** Avec l'outil Sélection, un objet se prend sur son tracé,
+à 6 px près à la souris, 10 au stylet, 20 au doigt (des pixels d'écran, quel
+que soit le zoom). Une figure fermée sans fond (triangle, rectangle, polygone,
+cercle entier ; pas un arc, ni une ligne ouverte, ni un tracé à main levée
+refermé) se prend aussi par l'intérieur, mais le tracé le plus proche passe
+avant elle : un trait écrit dans un grand cadre se prend avant le cadre, et
+entre deux intérieurs, le plus petit l'emporte (un triangle tracé dans un
+grand rectangle, même colorié, se prend par son milieu). Une image, une
+formule, une figure coloriée se prennent partout où elles sont et cachent ce
+qui est dessous ; ce qu'on a écrit par-dessus (un soulignement) se prend avant
+elles. Vu de très près, l'intérieur d'une figure qui déborde tout l'écran ne
+prend rien. Sous un autre outil que la Sélection, le doigt qui « déplace »
+prend de même d'un simple toucher, mais n'emporte un objet sélectionné que
+s'il le saisit à 10 px de son tracé (ou par une image, une formule, une figure
+coloriée) : parti du milieu d'un grand cadre, il déplace la vue. Jamais sous
+le Stylo : écrire dans un triangle ne le prend pas, et un clic droit dans son
+vide ne le vise pas (il ouvre le menu de la page, comme à côté).
+
+**Saisir ou entourer.** À l'outil Sélection, un appui tout près du tracé d'un
+objet (6 px à la souris et au stylet, 10 au doigt), sur un morceau, sur une
+image, une formule ou une figure coloriée, le **saisit** : glissé, il
+l'emporte. Plus loin, mais dans la portée, un clic le prend, et un glisser
+**entoure** : on entoure un mot écrit à la main en partant à 15 px de lui,
+sans en emporter une lettre. Dans le vide d'une grande figure fermée sans fond
+qui n'est pas sélectionnée, de même : un clic prend la figure, un glisser
+entoure ce qu'on a écrit dedans (comme tldraw et Excalidraw ; la figure n'est
+prise que si elle est elle-même à plus de moitié dans la zone). Sélectionnée,
+elle se glisse depuis son milieu. Une image, une formule, une figure coloriée
+se glissent toujours : pour entourer ce qu'on a écrit sur un énoncé importé,
+on part d'à côté. Au survol de la souris ou de la tablette graphique, le
+curseur le dit : la flèche en croix saisit, la main prend ou entoure, la
+croix est dans le vide.
+
+**La barre d'actions.** Dès qu'on prend quelque chose avec l'outil
+Sélection (un clic, Maj + clic, un cadre, un lasso, Ctrl + A, ce qu'on vient
+de coller ou de dupliquer), ou d'un toucher du doigt qui « déplace », une
+petite barre paraît tout de suite juste au-dessus, sans le cacher : *Dupliquer*,
+*Copier*, *Supprimer* et *Options* (le menu complet), avec *Modifier* en tête
+pour une formule seule. Au doigt et au stylet posé sur l'écran (l'Apple
+Pencil d'un iPad sans clavier) s'ajoute *Ajouter* : allumé, chaque objet
+touché entre dans la sélection ou en sort (le Maj + clic d'une tablette, qui
+n'a pas de touche Maj), et un toucher dans le vide l'éteint. Des boutons de
+52 px, leur nom dessous ; l'infobulle donne le raccourci (Ctrl + D, Ctrl + C,
+Suppr ; pour *Options*, le clic droit à la souris, le bouton du stylet à la
+tablette graphique, l'appui long au stylet posé sur l'écran). Elle se pose
+à 10 px de l'objet, à 30 px au doigt : un doigt n'est pas un point, et
+celui qui retouche l'objet un peu haut (le second toucher d'un double appui)
+ne doit pas toucher *Supprimer*. Un appui qui n'est pas pour elle passe au
+tableau, comme si elle n'était pas là : un doigt dont le point tombe à côté
+d'elle (le navigateur donne l'appui au bouton que la zone de contact du doigt
+effleure). Un doigt qui la touche moins de 300 ms après qu'elle a paru (le
+second toucher d'un double appui, ou un toucher trop rapide pour l'avoir vue)
+ne déclenche aucun de ses boutons : s'il y a un objet sous le doigt (un trait,
+une formule, une image), c'est lui qu'il prend ; sinon il ne fait rien, et ce
+qui est pris le reste (*Options* touché juste après un lasso ne perd plus ce
+qu'on vient d'entourer : le toucher suivant l'ouvre). Elle se pose
+dessous quand il n'y a pas la place sous la barre du haut, en haut de l'écran pour un objet plus grand que lui, toujours dans
+l'écran, jamais sur la barre d'outils (sauf sur un téléphone, où elle n'y
+tiendrait pas). Elle suit la vue et l'objet (zoom, molette, flèches) ; elle
+se cache pendant qu'on glisse l'objet, qu'on tire un cadre ou un lasso, qu'on
+pince à deux doigts, et revient au lâcher ; elle s'efface quand l'objet sort
+de la vue. Elle ne paraît **jamais sous le Stylo** (ni sous un autre outil de
+dessin) à la souris ou au stylet : une copie, une image importée, l'image
+d'une transformation restent sélectionnées sans barre, et ce qu'on vient
+d'écrire n'est jamais sélectionné ; au doigt qui déplace, elle ne prend
+jamais le stylet (sur l'iPad, le crayon posé dessus écrit son trait, comme si
+elle n'était pas là). Un clic droit, un double-clic ou un appui long ouvrent
+directement le menu complet, qui contient tout : la barre lui laisse la place, comme au menu
+d'un morceau, à un petit menu (celui de la page, au clic droit dans le vide,
+celui du zoom… : un seul menu à la fois ; elle revient quand il se ferme), à
+la revue, à une séance d'automatismes, à l'éditeur d'une formule, à une
+fenêtre ouverte. Discrète au vidéoprojecteur : le gris des
+barres, des libellés gris, aucune couleur.
+
+**Le menu complet** de ce qu'on a pris s'ouvre à la demande, de la même façon
+partout : *Options* dans la barre d'actions ; **clic droit** sur l'objet (au
+stylet, le bouton du stylet ; sur Mac, Ctrl + clic aussi) ou **double-clic**
+(un simple clic le sélectionne seulement, pour le déplacer) ; **appui long**
+au doigt et au stylet posé sur l'écran (voir plus bas) ; au doigt, avec
 l'outil Sélection ou le doigt qui « déplace », **deux touchers** rapprochés
-(moins d'un tiers de seconde, à moins de 35 px, sur le même objet), même sur
-iPad où Safari ne donne pas de double-clic au doigt (un toucher suivi d'un
+aussi (moins d'un tiers de seconde, à moins de 35 px, sur le même objet), même
+sur iPad où Safari ne donne pas de double-clic au doigt (un toucher suivi d'un
 glisser déplace toujours). La première fois qu'on prend un objet, un message
-le rappelle dans les mots du pointeur (jamais « clic droit » au doigt).
-Au Stylo aussi, un double-clic sur une figure ou une formule ouvre
-ses options, sans y laisser de point : le point d'un simple toucher sur un
-objet ne s'écrit qu'un tiers de seconde plus tard, quand on sait qu'aucun
-second toucher ne suit (le film garde l'heure où il a été écrit). Ce
-double-clic est serré comme celui du système : le second toucher retombe à
-moins de 4 px à la souris, 5 au stylet, 14 au doigt, et se lève vite sans
-avoir glissé. Deux points qu'on écrit tout près (un « : », un tréma, sur une
-figure coloriée ou une formule) restent deux points. Le panneau se ferme quand on choisit autre chose ou
-qu'on appuie ailleurs (il reste quand on déplace l'objet lui-même) :
+le rappelle dans les mots du pointeur : « Double-clic ou clic droit » à la
+souris, « Double-clic ou bouton du stylet » à la tablette graphique, « Appui
+long ou double-clic » au stylet posé sur l'écran, « Appui long » au doigt
+(jamais « clic » au doigt). Au Stylo aussi, un double-clic sur une figure ou
+une formule ouvre son menu (ou l'éditeur de la formule), sans y laisser de
+point : le point d'un simple toucher sur un objet ne s'écrit qu'un tiers de
+seconde plus tard, quand on sait qu'aucun second toucher ne suit (le film
+garde l'heure où il a été écrit). Ce double-clic est serré comme celui du
+système : le second toucher retombe à moins de 4 px à la souris, 5 au stylet,
+14 au doigt, et se lève vite sans avoir glissé. Deux points qu'on écrit tout
+près (un « : », un tréma, sur une figure coloriée ou une formule) restent deux
+points.
+
+**L'appui long** : un appui tenu une demi-seconde sans glisser (sans bouger de
+plus de 8 px au doigt, 6 au stylet) ouvre le menu complet de ce qui est
+dessous, ou le menu de la page dans le vide, comme un clic droit ; une petite
+vibration le dit là où l'appareil en a une. Il n'existe qu'où l'on prend les
+objets : au doigt, avec l'outil Sélection (quel que soit le rôle du doigt) et
+au doigt qui « déplace », sous n'importe quel outil (la Main comprise) ; au
+stylet posé sur l'écran lui-même (iPad, Surface, tablette Android), avec
+l'outil Sélection. **Jamais pendant qu'on écrit** : au Stylo et au Surligneur,
+un point qu'on tient ou une lettre qu'on commence restent de l'encre ; au
+doigt qui dessine non plus. La tablette graphique de la classe n'en a pas :
+elle a son bouton (le clic droit), et un stylet qui marque un temps sur un
+objet avant de le glisser le déplace sans ouvrir de menu ; la souris a son
+clic droit. Le lever de l'appui long ne fait rien d'autre (il ne désélectionne
+pas, ne prend rien, ne trace pas de lasso). Sur **iPad**, l'Apple Pencil n'a
+ni bouton ni bout gomme que le navigateur voie : son menu vient de l'appui
+long à l'outil Sélection, d'*Options* dans la barre d'actions, du
+double-clic ; ou du doigt, qui « déplace » dès que le crayon a touché l'écran
+(réglage *Auto*) et dont l'appui long ouvre le menu sous n'importe quel
+outil, Stylo compris. Sur iPad, un appui long ne fait paraître ni la loupe ni la bulle du
+système.
+
+Le menu s'ouvre à l'**appui** du bouton droit (ou du bouton du stylet), jamais
+sur le « menu contextuel » que le navigateur envoie ensuite : sous Windows
+Ink, le stylet d'une tablette graphique tenu immobile une seconde (une
+hésitation, une figure qu'on fait reconnaître) envoie un clic droit au lever
+du trait, qui ouvrirait un menu en plein cours. Android, la Surface et Windows
+tactile en envoient un aussi à l'appui long du doigt : il n'ouvre rien, c'est
+l'appui long de MEM qui ouvre le menu (jamais deux menus). Un bouton pressé
+pendant un trait ou un glisser n'ouvre rien. La **touche Menu** du clavier (ou
+Maj + F10) ouvre le menu complet de ce qui est sélectionné (le menu commun de
+plusieurs objets), sinon le menu de la page au milieu de ce qu'on voit, le
+focus sur sa première entrée ; jamais le menu du navigateur par-dessus. Dans
+un champ de saisie, elle garde le menu du navigateur (coller un texte).
+Rien ne s'ouvre sur un instrument posé : il recouvre ce qui est dessous.
+Le menu se pose au-dessus de ce qu'il règle (dessous s'il n'y a pas la place),
+et se ferme quand on choisit autre chose ou qu'on appuie ailleurs (il se cache
+pendant qu'on déplace l'objet lui-même, et revient au lâcher). Il porte le nom
+de ce qu'il règle, que dit un lecteur d'écran : « Options du trait », « de
+l'image », « du segment » (de la droite, de la demi-droite), « du point »,
+« de la ligne brisée », « du cercle », « de l'arc », « de la figure » pour un
+polygone fermé, « de la formule », « des 3 objets ». Celui d'une
+figure, d'un trait ou d'une image :
 
 - *Sommets* : points et noms (A, B, C… libres sur la page), modifiables ;
 - *Codage* : côtés de même longueur et angles droits, calculés ;
@@ -72,10 +193,49 @@ qu'on appuie ailleurs (il reste quand on déplace l'objet lui-même) :
   repère), symétrie centrale, rotation, translation (par un vecteur entre deux
   sommets ou en coordonnées), homothétie. L'image est une nouvelle figure, aux
   sommets nommés A', B', C'… ;
-- *Main levée*, *Dupliquer*, supprimer.
+- *Main levée*, *Dupliquer*, *Copier*, supprimer.
 
-Le premier appui sur le tableau hors d'un panneau ou d'un menu ouvert (le
-zoom, le menu d'un point, la liste des instruments) le ferme, et ne fait rien
+**Une formule** se modifie au double-clic (comme un texte, partout) ; son clic
+droit ouvre son menu : *Modifier* (son infobulle rappelle le double-clic, sauf
+au doigt), *Couleur et taille* (les quatre couleurs ;
+Petite, Normale, Grande), *Dupliquer*, *Copier*, supprimer. Pas de
+*Transformer* : l'image d'une formule n'en déplacerait que le coin.
+
+**Plusieurs objets** sélectionnés (Maj + clic, un cadre, un lasso, Ctrl + A) :
+un clic droit ou un double-clic sur l'un d'eux, même près d'un sommet, ouvre
+leur menu commun, et la sélection reste entière. « 3 objets », puis *Couleur,
+épaisseur* (les quatre couleurs pour tout sauf les images ; les trois
+épaisseurs pour les traits et les figures, un trait de surligneur gardant sa
+largeur de surligneur ; les pointillés s'il y a une figure ; un choix est
+marqué quand tous l'ont déjà), *Dupliquer*, *Copier*, *Couper*, supprimer.
+Seulement ce qui vaut pour chacun : ni les sommets, ni le fond, ni les
+transformations. Chaque choix fait une seule étape : un Ctrl+Z rend leur
+couleur aux dix objets d'un coup. Le menu se pose au-dessus de toute la
+sélection ; Maj + clic sur l'un d'eux l'en retire, et le menu se ferme quand
+il ne reste qu'un objet.
+
+**Dans le vide**, le clic droit (ou l'appui long) ouvre le menu de la page,
+au point visé :
+*Coller ici* (le dernier objet copié, posé là ; grisé quand il n'y a rien à
+coller), *Tout sélectionner* (Ctrl + A), *Tout voir* (Maj + 1). Il se ferme
+comme les autres menus : Échap, un choix, ou un appui ailleurs, qui ne laisse
+pas d'encre.
+
+**Au clavier**, un menu ouvert prend les touches, comme le menu du système,
+même si le focus n'y est pas (après un clic droit, il reste sur la page) :
+↓ ou Début mènent à sa première entrée, ↑ ou Fin à la dernière, Tab et
+Maj + Tab aussi depuis la page ; dedans, les flèches passent d'une entrée à
+l'autre, Entrée ou Espace la choisissent, Échap le ferme. Tant qu'il est
+ouvert, les flèches ne font plus défiler le tableau derrière lui, et celles
+du menu complet (ou du menu d'un sommet) ne poussent plus l'objet : ← et →
+y vont aussi d'un bouton à l'autre (Tab atteint ses champs, où les flèches
+gardent leur rôle). Un choix qui refait le menu (une
+couleur, une section qui s'ouvre) y laisse le focus. *Options* de la barre
+d'actions, pressé au clavier, met le focus dans le menu complet, comme la
+touche Menu (ou Maj + F10) qui l'ouvre.
+
+Le premier appui sur le tableau hors d'un menu ouvert (le menu complet, celui
+de la page, du zoom ou d'un point, la liste des instruments) le ferme, et ne fait rien
 d'autre : ni point d'encre, ni coup de gomme. Au Stylo, le trait commence quand
 même (on ne perd pas la première lettre de ce qu'on écrit), mais un simple
 appui ne laisse rien ; sur un instrument, ou à l'outil Sélection sur un autre
@@ -113,7 +273,7 @@ reste collé à lui quand on zoome ou qu'on déplace la vue :
     automatiquement, le masquer ;
   - le rayon d'un cercle : sa valeur en centimètres.
 
-Le clic droit ailleurs sur une figure (ou un double-clic) la sélectionne et ouvre son panneau.
+Le clic droit ailleurs sur une figure (ou un double-clic) la sélectionne et ouvre son menu.
 Un morceau choisi l'est seul : il est surligné, pas la figure entière.
 `Suppr` retire un sommet choisi (ou masque un nom). Nommer un seul point d'une
 figure sans noms donne des lettres libres aux autres.
@@ -276,8 +436,13 @@ toucher une partie mène à son début. À l'intérieur, les gestes rapprochés
 ce que fait avancer la télécommande de présentation. Une figure reconnue au
 stylo est un seul geste : le tracé à main levée s'écrit, puis la figure le
 remplace d'un coup, comme au tableau (sur un tableau d'avant le rythme de la
-main, seule la figure se dessine). Jeter une page n'est pas un geste pour la
-page où l'on revient.
+main, seule la figure se dessine). Supprimer une page, ou la rendre
+(« Annuler », Ctrl+Z), n'est un geste nulle part : ni pour la page où l'on
+arrive, ni pour la page rendue, ni dans le compte d'une séance (une séance
+qui n'a fait que cela n'existe pas, et « Sa dernière séance » finit à l'heure
+du dernier vrai geste). Une page supprimée et jamais rendue est rangée dans
+« Pages jetées », avec toute son histoire ; rendue, elle reprend sa place et
+son histoire continue.
 
 **Les commandes**, toutes au clavier et en grands boutons : Espace, K ou un
 appui bref sur le tableau pour lire ou s'arrêter ; → ou Page↓ pour un pas,
@@ -369,7 +534,14 @@ tracé brut d'une figure reconnue, ni les images inutilisées. Le rythme de la
 main (le temps de chaque point d'un trait) ne part qu'avec le geste où la
 classe a vu ce trait s'écrire. Tout ce qui a été
 visible pendant la séance, en revanche, part, même effacé ensuite : l'aperçu
-permet de le revoir. Un test
+permet de le revoir. Une page supprimée puis rendue (« Annuler », Ctrl+Z)
+pendant la séance ne change rien au replay : les mêmes gestes, sans pas vide,
+et rien ne s'y redessine ; de même pour plusieurs pages supprimées de suite
+puis rendues. Une page supprimée pour de bon au milieu de la
+séance : le replay suit le professeur sur la page où il est arrivé (après
+plusieurs suppressions de suite, directement sur la dernière) ; supprimée
+après le dernier geste, elle n'allonge pas la séance, qui finit sur ce geste.
+Un test
 automatique le vérifie (`npm test`). Le lecteur n'écrit rien dans le navigateur
 de l'élève (ni stockage, ni cookie), ne charge aucune police ni aucun service
 extérieur, et sa politique de sécurité ne l'autorise à parler qu'aux relais.
@@ -569,7 +741,7 @@ aussi par `{"format":` ; chaque lecteur reconnaît le sien à ses premiers octet
 Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment
 [AB]**, **droite (AB)** ou **demi-droite [AB)** ; une droite est dessinée jusqu'au
 bord de l'écran, quel que soit le zoom, et se prend sur toute sa longueur. Le
-panneau d'options d'un trait passe de l'un à l'autre d'un clic.
+menu d'un trait passe de l'un à l'autre d'un clic.
 
 On trace un trait **en glissant**, ou **en deux clics** : un clic pour le
 premier point, un clic pour le second (Échap annule). Près d'un point existant
@@ -582,7 +754,7 @@ C…), sur le tableau ou sur une image.
 
 Stylo sensible à la pression, surligneur, gomme, segments (Maj pour
 les angles de 15°, aimant au quadrillage), formules LaTeX avec aperçu et
-raccourcis, sélection et déplacement, annuler/rétablir, pages, fonds (blanc,
+raccourcis, sélection et déplacement, copier, coller, dupliquer (d'une page et d'un onglet à l'autre), annuler/rétablir (page par page ; au doigt, toucher à deux ou trois doigts), pages (supprimées sans question, et rendues par Annuler ou Ctrl+Z), fonds (blanc,
 petits carreaux, Seyès, repère gradué), zoom de 10 % à 2000 % — le quadrillage
 suit le zoom comme une carte : les carreaux trop petits s'estompent et laissent
 place à de plus grands (1 cm, 5 cm, 10 cm…), la page n'est jamais blanche.
@@ -611,14 +783,31 @@ ce navigateur, hors du document : ni un fichier, ni un replay ne les emportent.
 
 **Échap** annule ce qui est en cours (menu, sélection, polygone) ; s'il n'y a
 rien, il passe à l'outil Sélection, et un second Échap rend l'outil d'avant.
-Avec la Sélection, glisser un objet le déplace, glisser dans le vide déplace le
-tableau, Maj + glisser encadre ; Maj + clic (ou Ctrl + clic, ⌘ + clic sur Mac)
-ajoute un objet à la sélection, ou l'en retire s'il y était (Maj + glisser un
-objet sélectionné déplace toute la sélection) ; un clic droit dans une
-sélection de plusieurs objets la laisse entière. L'objet survolé s'éclaire
-d'un halo bleu qui suit sa forme, avant le clic ; une droite ou une
-demi-droite sélectionnée se surligne sur toute sa longueur visible ; les
-flèches poussent la sélection d'1 mm (1 cm avec Maj).
+Avec la Sélection, un objet se prend à 6 px de son tracé à la souris, 10 au
+stylet, 20 au doigt ; une figure fermée sans fond se prend aussi par
+l'intérieur, le trait le plus proche passant avant elle (jamais sous le Stylo,
+voir « Prendre un objet »). **Glisser un objet le déplace, glisser dans le vide
+sélectionne**, sans touche : un cadre à la souris (et au pavé tactile), un
+lasso libre au stylet (tablette graphique comprise) et au doigt. Un lasso
+qui fait plus d'un tour (on repasse pour être sûr) garde dedans ce qu'il
+entoure deux fois (la règle de l'enroulement non nul). Un objet est
+pris s'il est à plus de moitié dedans : plus de la moitié de la longueur de
+son tracé, de la surface d'une image ou d'une formule ; une droite, si ses
+deux points y sont. Un long trait en diagonale n'est donc plus pris par un
+cadre posé dans un coin vide de sa boîte. Parti d'un peu loin d'un trait, ou
+du vide d'une figure fermée, un glisser entoure plutôt qu'il n'emporte (voir
+« Saisir ou entourer »). Un clic dans le vide désélectionne. Maj + glisser
+(ou Ctrl, ⌘ sur Mac) ajoute ce qu'on entoure à la sélection, sans rien en
+retirer ; Maj + clic (ou Ctrl + clic, ⌘ + clic sur Mac) ajoute un objet à la
+sélection, ou l'en retire s'il y était (Maj + glisser un objet sélectionné
+déplace toute la sélection) ; un clic droit dans une sélection de plusieurs
+objets ouvre leur menu commun et la laisse entière. À la Sélection, la vue se déplace à deux doigts, au
+bouton du milieu, avec Espace + glisser, à la molette ou avec l'outil Main.
+L'objet survolé (par son tracé ou son intérieur) s'éclaire d'un halo bleu qui
+suit sa forme, avant le clic ; une droite ou une demi-droite sélectionnée se
+surligne sur toute sa longueur visible ; les flèches poussent la sélection
+d'1 mm (1 cm avec Maj), sauf quand son menu complet est ouvert : elles vont
+alors dans le menu (voir « Au clavier »).
 
 **La gomme** efface en entier ce qu'elle touche (un trait, une figure). Un coup de gomme, même
 lent et passant sur plusieurs traits, s'annule d'un seul Ctrl+Z (le replay,
@@ -626,21 +815,138 @@ lui, les montre partir l'un après l'autre). Le bout gomme du stylet (le stylet
 retourné, sur une tablette graphique ou une Surface) efface de même quel que
 soit l'outil en main, qu'on retrouve en reprenant la pointe.
 
+**Annuler, rétablir.** Ctrl+Z (⌘Z sur Mac) et ↶ défont le dernier geste de la
+page qu'on regarde, et d'elle seule ; Ctrl+Y, Ctrl+Maj+Z et ↷ le refont.
+Chaque page garde sa pile : revenir sur une page, c'est retrouver ce qu'on y
+peut défaire, et rien ne change jamais sur une page qu'on ne voit pas. ↶ et ↷
+gardent leur place et se grisent quand la page n'a rien à défaire ou à refaire
+(sans clavier, ils se touchent : ils se rallument dès qu'il y a de quoi). Au
+clavier, un Ctrl+Z sans rien à défaire le dit : « Rien à annuler sur cette
+page ». Un geste fait une étape : un coup de gomme, même lent, même sur une
+page relue du disque ; une image transformée avec ses points ; une figure
+reconnue en fait une seconde (Ctrl+Z rend le tracé). Une rafale de flèches
+qui pousse la sélection fait une étape, séparée de ce qui la précède : Ctrl+D
+puis → aussitôt, Ctrl+Z ne défait que la poussée. Pendant une séance
+d'automatismes, le tableau est caché : aucune touche ne le change (ni Ctrl+Z,
+ni Suppr, ni les flèches). Pendant qu'on glisse un objet, qu'on écrit, qu'on
+tire un cadre ou un lasso, ou qu'on déplace la vue, les touches qui
+changeraient la page ou la sélection ne font rien : Ctrl+Z, Ctrl+Y, Suppr,
+Retour arrière, Page↑, Page↓, la touche Menu, les flèches qui pousseraient la
+sélection (Suppr ôtait l'objet tenu, que le lâcher ne posait plus) ; elles
+remarchent au lâcher. Les piles vivent le temps
+de la séance : après un rechargement, on ne défait plus ce qui a été fait
+avant (le replay, lui, a tout gardé).
+
+**Deux doigts : annuler ; trois doigts : rétablir.** Sur une tablette ou un
+TNI, un **toucher bref à deux doigts** défait le dernier geste de la page
+qu'on regarde, comme Ctrl+Z (comme Procreate, FigJam, Notability, Freeform) ;
+à **trois doigts**, il le refait. Un message bref le dit : « Annulé »,
+« Rétabli », ou « Rien à annuler sur cette page » ; juste après « Supprimer
+la page », c'est « Page 2 rétablie ». Il faut que les doigts se posent presque
+ensemble (moins de 150 ms entre le premier et le dernier), que chacun se lève
+moins de 300 ms après s'être posé, et qu'aucun ne bouge de 8 px : un
+pincement, un déplacement de la vue à deux doigts, deux doigts qu'on laisse
+posés, n'annulent jamais rien. La vue, elle, ne bouge qu'une fois ces 8 px
+passés : un toucher qui tremble ne la décale pas avant d'annuler. Le premier
+doigt d'un toucher à deux doigts ne laisse rien : au doigt qui dessine, son
+encre est jetée quand le second se pose ; la Gomme, le Point, un sommet du
+Polygone ou le second clic du Segment (qui écrivent dès l'appui) attendent un
+instant (150 ms, ou qu'il glisse, ou qu'il se lève) avant d'agir, et rien ne
+s'écrit si un second doigt arrive ; à l'outil Sélection, l'objet que le
+premier doigt a pris est relâché. Allumés au départ sur un appareil à écran
+tactile, éteints ailleurs ; le menu du doigt (le bouton en forme de main) les
+coupe : *Gestes — Deux doigts : annuler*, gardé sur l'appareil. Ils n'agissent
+jamais pour la souris, le pavé tactile ou un stylet (la tablette graphique de
+la classe comprise).
+
+**Supprimer une page.** La poubelle de la barre du haut ne pose plus de
+question : la page part tout de suite, on arrive sur la page d'avant (la
+suivante pour la première), et un message « Page 2 supprimée » porte un
+bouton **Annuler** pendant 7 s. Ctrl+Z (ou ↶), juste après, sur la page où
+l'on se retrouve, la ramène aussi ; si l'on a écrit entre-temps, Ctrl+Z défait
+d'abord ce qu'on a écrit, puis la ramène. Elle revient à sa place (juste après
+la page qui la précédait, même si l'on a ajouté des pages depuis), entière :
+ses formes, son fond, son repère, la vue qu'on y avait, ce qu'on peut y
+défaire. Rien n'est recopié : la page n'a jamais quitté le document, elle
+avait seulement quitté la liste des pages ; la revue et le replay la voient
+telle qu'elle était, sans rien redessiner. Ctrl+Y ne la supprime pas de
+nouveau. Le second clic d'un double-clic sur la poubelle ne fait rien (on ne
+jette pas deux pages d'un coup). Une page seule n'est jamais supprimée : la
+poubelle (« Effacer la page ») l'efface, avec « Page effacée · Annuler », ou
+dit « La page est déjà vide. ». Après un rechargement, une page supprimée ne
+revient plus ; son histoire reste dans « Pages jetées » de la revue. De même,
+un fichier `.memc` la garde dans l'histoire du tableau, pas parmi ses pages.
+
+**Copier, coller.** Ctrl+C copie ce qui est sélectionné (la figure entière
+quand un de ses sommets est choisi ; une image emporte les points qui lui sont
+liés), Ctrl+X le coupe, Ctrl+V le colle, Ctrl+D le duplique (1 cm plus loin,
+sans passer par le presse-papiers), Ctrl+A sélectionne tout ce qui est sur la
+page et passe à l'outil Sélection (Échap vide la sélection, un second Échap
+rend l'outil d'avant) ; ⌘ sur Mac. Ce sont les lettres écrites sur les
+touches, en AZERTY comme en QWERTY, et AltGr n'en fait pas un raccourci. Rien
+de tout cela dans un champ de saisie (une formule qu'on tape, les noms des
+sommets : on y copie du texte ; Ctrl+D n'y ouvre pas non plus le marque-page
+du navigateur, il ne fait rien), pendant la revue, une séance d'automatismes,
+quand une fenêtre est ouverte, ni pendant qu'on glisse un objet ou qu'on
+écrit (le lâcher déplacerait ce que la touche vient de prendre) ; sans rien
+de choisi, un message le dit.
+Ctrl+V colle sur la page qu'on regarde : sous le pointeur (souris, plume de la
+tablette graphique) s'il est sur le tableau et a bougé depuis la copie ;
+sinon 1 cm à côté de l'original, et trois Ctrl+V de suite font trois copies
+étagées ; sur une autre page, à la même place si elle se voit ; une place
+hors de ce qu'on voit devient le milieu de la vue. *Coller ici*, dans le menu
+de la page (un clic droit dans le vide), colle au point visé. Ce qui est collé est
+sélectionné, l'outil ne change pas. Copier ne change rien à la page ; couper,
+coller, dupliquer font chacun une étape : un Ctrl+Z retire tout un collage
+d'un coup, et rend ce qu'on a coupé. Les noms se choisissent pour tout ce
+qu'on colle à la fois, point par point : un point que plusieurs figures
+partagent (le sommet A du triangle ABC, de sa hauteur [AH] et le centre A d'un
+cercle) garde un seul nom. Ce qu'on colle garde ses noms s'ils sont libres sur
+la page (ABC reste ABC sur une page neuve), sinon chaque point reçoit une
+lettre libre, la même dans toutes ses figures (DEF et la hauteur [DG] sur la
+même page), jamais des primes (A' veut dire « l'image de A ») ; un point lié à
+une image collée avec lui suit la nouvelle image. La copie passe d'une page à l'autre, d'un onglet à l'autre
+(elle est gardée dans ce navigateur, 12 heures au plus : on ne colle pas le
+lendemain ce qu'on avait oublié avoir copié), et entre la version en ligne et
+la version clé USB par le presse-papiers du système, images comprises (leurs
+pixels voyagent avec elles). Collées dans un autre logiciel, des formules
+seules donnent leur LaTeX. Une image copiée ailleurs (une capture d'écran) se
+colle toujours comme une image importée. Ce qui vient du presse-papiers du
+système n'entre jamais dans la page telle quelle : seules les copies de MEM
+teachingtool sont lues, chaque forme est refaite champ par champ (une forme
+abîmée resterait pour toujours dans le document et casserait la revue), ses
+grandeurs bornées (des places à moins de 10 millions d'unités, 2,5 km au
+tableau ; des épaisseurs et des tailles de nom sous 1000 : un nombre démesuré
+gèlerait le dessin de la page), et tout le reste est refusé : « Le presse-papiers ne contient ni objet ni image à
+coller. »
+
 **La barre de gauche** ne bouge pas : la poubelle y garde sa place, grisée
-quand rien n'est choisi. Sur un écran bas (moins de 900 px de haut environ),
+quand rien n'est choisi, comme ↶ et ↷ quand il n'y a rien à faire. Sur un écran bas (moins de 900 px de haut environ),
 ses boutons gardent leurs 44 px et elle défile, avec une fine barre de
 défilement ; les choix des Formes et du Segment suivent leur bouton.
 Les **messages** en bas de l'écran passent sous les panneaux et les menus (ils
 ne cachent jamais ce qu'on va toucher), sauf pendant la revue, la séance
 d'automatismes et le programme de construction ; un message à bouton
 (« Changer ») reste 7 s, et un autre message qui arrive entre-temps s'écrit
-au-dessus de lui sans le chasser. Au doigt, ils parlent du bouton Annuler,
+au-dessus de lui sans le chasser. Pendant la revue, un message à bouton ne se
+montre pas et son bouton ne fait rien (« Annuler » d'une page qu'on vient de
+supprimer écrirait dans le tableau, que la revue ne change jamais) ; la
+revue fermée, Ctrl+Z sur la page où l'on était arrivé rend la page. Au doigt, ils parlent du bouton Annuler,
 pas de Ctrl + Z.
 
-**Au doigt, au stylet.** Deux doigts zooment et déplacent la vue ; si l'un se
-lève, celui qui reste continue de déplacer la vue, sans jamais se mettre à
-dessiner. Le rôle d'un seul doigt se règle par le bouton en forme de main de la
-barre de gauche (sur un appareil tactile seulement ; sa marque dit le choix) :
+**Au doigt, au stylet.** Deux doigts zooment et déplacent la vue (dès qu'ils
+ont bougé de 8 px ; un toucher bref à deux doigts annule, à trois rétablit,
+voir « Annuler, rétablir ») ; si l'un se lève, celui qui reste continue de
+déplacer la vue, sans jamais se mettre à dessiner (et, si la vue n'avait pas
+encore bougé, seulement passé 8 px). L'appui long ouvre le menu, au doigt qui
+« déplace » et à l'outil Sélection (voir « L'appui long »). À l'outil
+Sélection, quel que soit le rôle du doigt, un doigt qui glisse dans le vide
+trace un lasso (le second doigt qui se pose l'efface et déplace la vue), et un
+doigt posé sur un objet le prend ou le glisse, comme la souris ; *Ajouter*,
+dans la barre d'actions, fait de chaque toucher (du doigt ou du crayon) un
+Maj + clic, jusqu'à un toucher dans le vide. Sous les autres outils, le rôle d'un seul doigt se règle
+par le bouton en forme de main de la barre de gauche (sur un appareil tactile
+seulement ; sa marque dit le choix) :
 
 - *le doigt dessine*, avec l'outil choisi, comme le stylet ;
 - *le doigt déplace et sélectionne* : le stylet écrit ; le doigt déplace la vue,
@@ -656,7 +962,8 @@ barre de gauche (sur un appareil tactile seulement ; sa marque dit le choix) :
   message le dit, avec un bouton « Changer ». Une tablette graphique branchée à
   un ordinateur dont l'écran n'est pas tactile ne fait jamais basculer.
 
-Le choix est gardé sur l'appareil. Quand le doigt déplace, la paume est
+Le choix est gardé sur l'appareil. Le même menu coupe (ou rallume) les
+gestes à deux et trois doigts. Quand le doigt déplace, la paume est
 ignorée : un contact large, et tout contact pendant que le stylet touche
 l'écran ; le stylet qui se pose arrête ce que faisait le doigt (la vue, la règle
 restent où il les a laissées). Partout, un appui ne devient un glisser qu'à
@@ -684,8 +991,15 @@ découlent sans code supplémentaire :
    (IndexedDB), sans bouton ni connexion : il marche hors ligne, et le tableau
    est là le lendemain. Pas de base de données à concevoir. Et le même
    document, tel quel, fait le fichier `.memc` qu'on emporte.
-2. **L'annulation ne défait que les gestes.** `Ctrl+Z` ne touche ni au
-   chargement depuis le disque, ni au film.
+2. **L'annulation ne défait que les gestes, et seulement ceux de la page
+   qu'on regarde.** `Ctrl+Z` ne touche ni au chargement depuis le disque, ni
+   au film. Chaque page a sa propre pile (une `Y.UndoManager` dont la portée
+   est la page), créée à la demande et gardée en mémoire seulement : ni le
+   document, ni le fichier `.memc` ne changent. Un Ctrl+Z ne peut donc plus
+   défaire, sans rien montrer, ce qu'on a fait sur une autre page. Un geste
+   reste une étape, même long (le coup de gomme lent) ; le film, lui, garde
+   une étape par changement. Supprimer une page ne fait que la retirer de
+   l'ordre des pages : Ctrl+Z la remet, la même, sans rien recopier.
 3. **Rien ne se perd.** Le document garde ce qui a été effacé : c'est ce qui
    permet la revue en classe et le replay des élèves.
 
@@ -697,11 +1011,11 @@ cours, qui fait la latence ressentie au stylet.
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule), les fonds |
-| `src/document.ts` | Document Yjs : pages, formes, annulation, film, enregistrement dans le navigateur (et remplacement par un fichier ouvert) |
+| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert) |
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris |
 | `src/rendu.ts` | Les trois couches d'affichage |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
-| `src/geometrie.ts` | Ce que touche la gomme ou la sélection |
+| `src/geometrie.ts` | Ce que touche la gomme ; ce que vise la sélection (la distance au tracé, l'intérieur plein ou nu, l'aire) ; ce que prend un cadre ou un lasso (la part dedans, le lasso simplifié) |
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
 | `src/revue/` | La revue en classe : ce qu'on revoit, les images, la frise, le choix |
 | `src/revoir/` | Le replay des élèves : format du film, rythme de la main, instruments, exporteur, bobine, lecteur (`revoir.html`), relais |
@@ -715,12 +1029,16 @@ cours, qui fait la latence ressentie au stylet.
 | `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
-| `src/ui.ts` | Barres d'outils, panneau d'options, éditeur de formules |
-| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page ; la molette |
-| `src/menus.ts` | Les petits menus flottants (un seul ouvert, Échap, un appui ailleurs) |
-| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt), hors du document |
-| `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la paume, le stylet sur l'écran, le double appui, les mots des messages |
+| `src/ui.ts` | Barres d'outils, le menu complet (un objet, une formule, plusieurs objets), le menu de la page, éditeur de formules |
+| `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose, ce que devient un appui sur elle |
+| `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (celles des lecteurs sont dans `src/revoir/icones.ts`) |
+| `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
+| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; les touches qui se taisent pendant un geste |
+| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) |
+| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document |
+| `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
+| `src/presse-papiers.ts` | Copier, coller : la copie écrite pour le presse-papiers du système et relue sans passer par la page, chaque forme vérifiée, le collage (noms gardés ou changés, points liés) |
 | `src/fichier.ts` | Le tableau dans un fichier `.memc` : l'écrire, le relire (et refuser ce qui n'en est pas un) |
 | `src/sauvegarde.ts` | Enregistrer et ouvrir un tableau : le menu ⋯, Ctrl + S, Ctrl + O, la question avant de remplacer, les autres onglets |
 
@@ -732,6 +1050,21 @@ n'empêche un usage payant.
 
 - Tout est redessiné à chaque déplacement de la vue. Au-delà de quelques
   milliers de traits sur une page, il faudra un index spatial (quadtree).
+- Entre la version en ligne et la version clé USB, la copie passe seulement
+  par Ctrl+V (le presse-papiers du système) : *Coller ici*, dans le menu de
+  la page, ne colle que ce qui a été copié à la même adresse.
+- Au replay, ce qu'on colle ou duplique se dessine en un peu plus d'une
+  seconde au plus (comme Dupliquer jusqu'ici), au lieu de paraître d'un coup.
+- Une page supprimée ne se rend plus après un rechargement (son histoire
+  reste dans la revue).
+- Sur iPad (et toute tablette), à l'outil Sélection ou au doigt qui
+  « déplace », un appui qui marque un temps (une demi-seconde) avant de
+  glisser ouvre le menu au lieu de tracer le lasso, de déplacer l'objet ou la
+  vue : on glisse sans s'arrêter, ou l'on referme le menu (un toucher
+  ailleurs).
+- Au TNI, une manche ou une paume qui effleure l'écran avec un doigt peut
+  faire un toucher à deux doigts, qui annule : le message « Annulé » le dit,
+  trois doigts ou Ctrl+Y le rattrapent, et le menu du doigt coupe ces gestes.
 
 ## Feuille de route proposée
 

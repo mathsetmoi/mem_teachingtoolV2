@@ -26,13 +26,16 @@ button, select, input { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
 
 #app { position: fixed; inset: 0; }
+/* -webkit-touch-callout : sur iPad et iPhone, l'appui long (le menu de MEM,
+   voir App.armerAppuiLong) ne fait paraître ni loupe ni bulle du système */
 #zone {
   position: absolute; inset: 0; overflow: hidden;
-  touch-action: none; user-select: none; -webkit-user-select: none;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   cursor: crosshair;
 }
 #zone[data-outil='main'] { cursor: grab; }
-#zone[data-outil='selection'] { cursor: default; }
+/* À la Sélection, glisser dans le vide sélectionne (un cadre, un lasso) */
+#zone[data-outil='selection'] { cursor: crosshair; }
 #zone[data-outil='gomme'] { cursor: none; }
 #zone[data-outil='formule'] { cursor: text; }
 
@@ -240,6 +243,8 @@ body.en-seance .toast { z-index: 41; }
 .panneau-forme .bouton { width: 40px; height: 40px; }
 .panneau-forme .pastille { width: 38px; }
 .panneau-forme .taille { width: 40px; height: 40px; }
+/* « 3 objets » : le titre du menu commun de plusieurs objets (on ne le touche pas) */
+.panneau-forme .titre-selection { padding: 0 10px 0 8px; font-weight: 700; color: var(--encre-douce); white-space: nowrap; }
 .noms { display: flex; align-items: center; gap: 8px; padding: 0 6px; }
 .noms span, .champ span { font-size: 13px; color: var(--encre-douce); white-space: nowrap; }
 .noms .saisie { height: 38px; width: 180px; font-family: 'KaTeX_Math', 'Times New Roman', serif; font-style: italic; font-size: 18px; }
@@ -250,6 +255,56 @@ body.en-seance .toast { z-index: 41; }
 @media (max-width: 640px) { .champ, .champ.coords { grid-template-columns: 1fr; } }
 .barre, .panneau-forme, .toast, .choix-formes { user-select: none; -webkit-user-select: none; }
 .panneau-forme input { user-select: text; -webkit-user-select: text; }
+
+/* ---------- La barre d'actions (barre-actions.ts) ----------
+   Juste au-dessus de ce qui est pris. Discrète au vidéoprojecteur : le gris
+   des barres, un filet, leur ombre plate, des libellés gris ; ni ombre portée
+   ni couleur vive. Sous les petits menus (23) et le menu d'un morceau (22),
+   au-dessus du message (14). touch-action : un doigt ou un crayon qui s'y pose
+   ne fait pas défiler la page (le crayon passe au tableau, voir appui). */
+.barre-actions {
+  position: fixed; z-index: 15; display: flex; gap: 2px; padding: 4px;
+  background: var(--chrome); border: 1px solid var(--filet); border-radius: 12px;
+  box-shadow: 0 2px 0 var(--filet);
+  user-select: none; -webkit-user-select: none; touch-action: none;
+}
+/* Des cibles d'au moins 52 × 52 (46 × 52 sur un téléphone) : l'icône, et
+   son libellé court dessous */
+.action-barre {
+  position: relative; isolation: isolate;
+  min-width: 52px; height: 52px; padding: 0 3px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  border: 0; border-radius: 9px; background: transparent; color: var(--encre); cursor: pointer;
+}
+.action-barre svg {
+  width: 22px; height: 22px; fill: none; stroke: currentColor;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.action-options svg { stroke-width: 3.4; }          /* les trois points, comme le bouton ⋯ */
+.action-barre .libelle { font-size: 11px; line-height: 1; color: var(--encre-douce); white-space: nowrap; }
+/* Le survol, seulement là où il existe : sur une tablette, il resterait collé au bouton touché */
+@media (hover: hover) {
+  .action-barre:hover { background: #e9eef5; }
+  .action-barre.danger:hover { color: var(--rouge); }
+}
+/* « Ajouter » allumé : le coup de surligneur des outils, derrière l'icône */
+.action-barre.actif::before {
+  content: ''; position: absolute; z-index: -1;
+  left: 12px; right: 12px; top: 8px; bottom: 21px;
+  background: var(--surligneur);
+  border-radius: 3px 8px 4px 9px;
+  transform: rotate(-6deg) skewX(-10deg);
+}
+/* Un téléphone : six boutons (une formule prise au doigt) tiennent encore à
+   droite de la barre d'outils */
+@media (max-width: 420px) {
+  .barre-actions { gap: 0; padding: 3px; }
+  .action-barre { min-width: 46px; padding: 0 1px; }
+  .action-barre .libelle { font-size: 10.5px; }
+}
+/* Une fenêtre ouverte (l'éditeur d'une formule, Publier, Ouvrir un tableau) :
+   la barre s'efface, même avant sa mise à jour (voir BarreActions.visible) */
+body:has(dialog[open]) .barre-actions { visibility: hidden; }
 
 /* ---------- Menu d'un morceau de figure ---------- */
 .menu-partie {
@@ -334,7 +389,7 @@ body.en-seance .toast { z-index: 41; }
 
 /* ---------- Automatismes ---------- */
 .seance { position: fixed; inset: 0; z-index: 40; background: var(--papier); color: var(--encre); overflow: auto; }
-body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .panneau-construction { visibility: hidden; }
+body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .barre-actions, body.en-seance .panneau-construction { visibility: hidden; }
 .seance .fermer { width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; font-size: 28px; cursor: pointer; }
 .seance .fermer:hover { background: #e9eef5; }
 .seance-reglages { max-width: 1100px; margin: 0 auto; padding: 20px 24px 40px; }

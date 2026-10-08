@@ -3,7 +3,7 @@
 // retrouvées au rechargement, dans ce navigateur seulement).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ZOOM_MAX, ZOOM_MIN, vuePour, zoneEntreBarres } from '../src/camera'
-import { PLAFOND_MOLETTE, lireMolette, toucheRecharger, toucheZoom } from '../src/navigateur'
+import { PLAFOND_MOLETTE, lireMolette, toucheMarquePage, toucheMenu, toucheRecharger, toucheTenueEnGeste, toucheZoom } from '../src/navigateur'
 import { positionMenu } from '../src/menus'
 import { ecrireSession, lireSession, oublierSession } from '../src/session'
 import { lire } from '../src/reglages'
@@ -91,6 +91,42 @@ describe('les raccourcis du navigateur', () => {
     expect(toucheZoom(k('=', 'Equal', { ctrlKey: true, altKey: true }))).toBeNull()
     expect(toucheZoom(k('z', 'KeyW'))).toBeNull()
     expect(toucheZoom(k('6', 'Digit6'))).toBeNull()
+  })
+
+  it('Ctrl + D (⌘ + D), Maj compris : le marque-page, qu\'on empêche dans un champ ; pas AltGr + D', () => {
+    const t = (key: string, o: Partial<{ ctrlKey: boolean; metaKey: boolean; altKey: boolean }>) => toucheMarquePage({ key, ctrlKey: false, metaKey: false, altKey: false, ...o })
+    expect(t('d', { ctrlKey: true })).toBe(true)
+    expect(t('D', { ctrlKey: true })).toBe(true)
+    expect(t('d', { metaKey: true })).toBe(true)
+    expect(t('d', { ctrlKey: true, altKey: true })).toBe(false)
+    expect(t('d', {})).toBe(false)
+    expect(t('c', { ctrlKey: true })).toBe(false)
+  })
+
+  it('la touche Menu et Maj + F10 ouvrent le menu ; ni F10 seul, ni avec Ctrl ou Alt', () => {
+    const t = (key: string, o: Partial<{ shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; altKey: boolean }> = {}) =>
+      toucheMenu({ key, shiftKey: false, ctrlKey: false, metaKey: false, altKey: false, ...o })
+    expect(t('ContextMenu')).toBe(true)
+    expect(t('F10', { shiftKey: true })).toBe(true)
+    expect(t('F10')).toBe(false)
+    expect(t('F10', { shiftKey: true, ctrlKey: true })).toBe(false)
+    expect(t('ContextMenu', { altKey: true })).toBe(false)
+  })
+
+  it('pendant un geste, ce qui changerait la page ou la sélection ne fait rien', () => {
+    const t = (key: string, o: Partial<{ shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; altKey: boolean }> = {}, sel = true) =>
+      toucheTenueEnGeste({ key, shiftKey: false, ctrlKey: false, metaKey: false, altKey: false, ...o }, sel)
+    for (const l of ['a', 'c', 'x', 'v', 'd', 'z', 'y', 'Z']) expect(t(l, { ctrlKey: true }), 'Ctrl+' + l).toBe(true)
+    expect(t('z', { ctrlKey: true, shiftKey: true })).toBe(true)          // Ctrl+Maj+Z
+    expect(t('z', { metaKey: true })).toBe(true)
+    for (const k of ['Delete', 'Backspace', 'PageUp', 'PageDown', 'ContextMenu']) expect(t(k), k).toBe(true)
+    expect(t('F10', { shiftKey: true })).toBe(true)
+    // Les flèches poussent la sélection : seulement s'il y en a une
+    expect(t('ArrowRight')).toBe(true)
+    expect(t('ArrowRight', {}, false)).toBe(false)
+    // Échap, Espace, Maj, une lettre d'outil, AltGr + Z : leur rôle
+    for (const k of ['Escape', ' ', 'Shift', 'p']) expect(t(k), k).toBe(false)
+    expect(t('z', { ctrlKey: true, altKey: true })).toBe(false)
   })
 
   it('F5 et Maj + F5 ne rechargent pas ; Ctrl + F5 reste au navigateur', () => {
