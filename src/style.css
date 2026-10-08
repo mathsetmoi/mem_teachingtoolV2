@@ -85,6 +85,17 @@ button, select, input { font: inherit; color: inherit; }
   transform: rotate(-6deg) skewX(-10deg);
 }
 
+/* Le rôle du doigt : une petite marque dans le coin de son bouton
+   (✎ il dessine, ✥ il déplace, A auto) ; ::before est pris par .actif */
+.bouton[data-badge]::after {
+  content: attr(data-badge); position: absolute; right: 2px; bottom: 3px;
+  min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
+  display: grid; place-items: center;
+  font-size: 10px; font-weight: 700; line-height: 1;
+  background: var(--bleu); color: #fff;
+}
+.bouton[data-badge] svg { transform: translate(-4px, -3px); }    /* la main laisse la place à la marque */
+
 .pastille {
   width: 44px; height: 34px; border: 0; background: transparent; cursor: pointer;
   display: grid; place-items: center;
@@ -167,6 +178,15 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
   transition: opacity 0.18s, transform 0.18s;
 }
 .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+/* Le bouton d'un message (« Changer ») : seul à recevoir les appuis, et
+   seulement quand le message se voit */
+.toast .action {
+  margin-left: 12px; height: 34px; padding: 0 12px; vertical-align: middle;
+  border: 0; border-radius: 8px; background: rgba(255, 255, 255, 0.16); color: #fff;
+  font-weight: 700; cursor: pointer; pointer-events: none;
+}
+.toast.visible .action { pointer-events: auto; }
+.toast .action:hover { background: rgba(255, 255, 255, 0.28); }
 
 @media (prefers-reduced-motion: reduce) {
   .toast, .pastille::after { transition: none; }

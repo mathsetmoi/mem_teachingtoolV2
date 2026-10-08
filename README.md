@@ -69,9 +69,11 @@ avec ou sans les instruments : pour chaque sommet, l'équerre et le compas
 le compas (rotation)… puis la figure image se trace à la règle. Une image
 importée se construit par ses quatre coins.
 
-**Chaque morceau se prend à la main.** Sur la figure sélectionnée (et sur
-toutes, avec l'outil Sélection), on attrape un sommet ou une extrémité, le
-centre ou le rayon d'un cercle, le nom d'un point :
+**Chaque morceau se prend à la main.** Sur la figure sélectionnée, avec
+l'outil Sélection (ou au doigt qui « déplace », voir plus bas), on attrape un
+sommet ou une extrémité, le centre ou le rayon d'un cercle, le nom d'un point ;
+jamais sous un outil de dessin (écrire près d'un sommet laisse la figure
+intacte), et le clic droit vise le morceau de n'importe quelle figure :
 
 - **glisser** le déplace (le codage se recalcule ; un nom tourne autour de son
   point sans s'en éloigner, et garde sa place quand on transforme la figure) ;
@@ -540,8 +542,29 @@ suit sa forme, avant le clic ; une droite ou une demi-droite sélectionnée se
 surligne sur toute sa longueur visible ; les flèches poussent la sélection
 d'1 mm (1 cm avec Maj).
 
-Au doigt : deux doigts pour zoomer et déplacer. Dès qu'un stylet a servi, le doigt
-ne dessine plus (la paume posée sur l'écran ne laisse pas de traces).
+**Au doigt, au stylet.** Deux doigts zooment et déplacent la vue ; si l'un se
+lève, celui qui reste continue de déplacer la vue, sans jamais se mettre à
+dessiner. Le rôle d'un seul doigt se règle par le bouton en forme de main de la
+barre de gauche (sur un appareil tactile seulement ; sa marque dit le choix) :
+
+- *le doigt dessine*, avec l'outil choisi, comme le stylet ;
+- *le doigt déplace et sélectionne* : le stylet écrit ; le doigt déplace la vue,
+  même parti d'un objet (traverser une page chargée n'emporte rien), et un
+  simple toucher choisit l'objet touché, qu'on glisse ensuite pour le déplacer ;
+  il prend aussi les instruments et les sommets de la figure sélectionnée, et
+  ne laisse jamais d'encre ;
+- *Auto* (au départ) : le doigt dessine jusqu'au premier stylet posé sur
+  l'écran lui-même (iPad, Surface, tablette Android), puis il déplace. Un
+  message le dit, avec un bouton « Changer ». Une tablette graphique branchée à
+  un ordinateur dont l'écran n'est pas tactile ne fait jamais basculer.
+
+Le choix est gardé sur l'appareil. Quand le doigt déplace, la paume est
+ignorée : un contact large, et tout contact pendant que le stylet touche
+l'écran ; le stylet qui se pose arrête ce que faisait le doigt (la vue, la règle
+restent où il les a laissées). Partout, un appui ne devient un glisser qu'à
+8 px de son départ au doigt, 6 au stylet, 4 à la souris : un toucher qui tremble
+ne déplace rien et n'ajoute rien à l'historique. L'encre (stylo, surligneur, le
+long d'un instrument, l'arc du compas) part tout de suite.
 
 ## Architecture
 
@@ -595,7 +618,8 @@ cours, qui fait la latence ressentie au stylet.
 | `src/ui.ts` | Barres d'outils, panneau d'options, éditeur de formules |
 | `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page ; la molette |
 | `src/menus.ts` | Les petits menus flottants (un seul ouvert, Échap, un appui ailleurs) |
-| `src/reglages.ts` | Les réglages de cet appareil (la molette…), hors du document |
+| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt), hors du document |
+| `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la paume, le stylet sur l'écran |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
 
 Toutes les briques sont sous licence MIT (Yjs, y-indexeddb,

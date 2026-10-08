@@ -105,6 +105,10 @@ export class Rendu {
   apercu: Figure | null = null                     // figure en cours de construction
   remplacement: Figure | null = null               // figure dont on tire un morceau
   poignees = true                                  // montrer sommets et rayon de la figure choisie
+  /** Les poignées se prennent-elles en ce moment (outil Sélection, ou doigt
+   *  qui « déplace ») ? Sinon leurs ronds ne se dessinent pas : on ne montre
+   *  pas ce qu'on ne peut pas attraper */
+  poigneesActives = true
   /** Le seul morceau choisi : il est surligné, pas la figure */
   partie: { id: string; prise: { quoi: 'nom' | 'sommet'; i: number } | { quoi: 'rayon' } } | null = null
 
@@ -497,7 +501,7 @@ export class Rendu {
       // Les poignées : ce qu'on peut attraper dans la figure choisie
       const seule = this.selection.size === 1 ? this.formes.find(f => this.selection.has(f.id)) : undefined
       const f = seule && this.remplacement?.id === seule.id ? this.remplacement : seule
-      if (this.poignees && f && (f.type === 'polygone' || f.type === 'cercle')) {
+      if (this.poignees && this.poigneesActives && f && (f.type === 'polygone' || f.type === 'cercle')) {
         const pts = f.type === 'polygone' ? sommetsDe(f)
           : [{ x: f.x + f.r * Math.SQRT1_2, y: f.y - f.r * Math.SQRT1_2 }]
         c.lineWidth = 1.6 / cam.z; c.strokeStyle = '#3b6fb6'; c.fillStyle = '#ffffff'

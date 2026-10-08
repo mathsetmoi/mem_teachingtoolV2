@@ -22,7 +22,10 @@ import { Piste } from './piste'
 import type { TraceInstrument } from './piste'
 import { boiteDe } from './revoir/bobine'
 import type { Boite } from './revoir/bobine'
-import { reglages } from './reglages'
+import { choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, reglages } from './reglages'
+import type { Doigt } from './reglages'
+import { contactLarge, depasseSeuil, ecranTactile, nouveauDepart, typePointeur } from './pointeurs'
+import type { Depart, TypePointeur } from './pointeurs'
 import { lireMolette } from './navigateur'
 import type { Vue } from './session'
 import { ecrireSession, lireSession, oublierSession } from './session'
@@ -49,7 +52,10 @@ function heureDe(e: Event): number {
 export interface Interface {
   maj(): void
   editerFormule(latex: string, ecranX: number, ecranY: number): Promise<string | null>
-  message(texte: string): void
+  /** Un message en bas de l'écran ; avec une action, un bouton à côté du texte */
+  message(texte: string, action?: { libelle: string; faire: () => void }): void
+  /** Le menu du rôle du doigt (dessine, déplace, auto) */
+  ouvrirReglageDoigt(): void
   ouvrirMenuPartie(id: string, prise: Prise, clientX: number, clientY: number): void
   fermerMenuPartie(): void
   /** Ce qu'on voit du tableau entre les barres (coordonnées de la zone) */
@@ -57,18 +63,21 @@ export interface Interface {
 }
 
 type Geste =
-  | { type: 'pan'; dernierX: number; dernierY: number; vide?: { x: number; y: number } }
+  // pointeur : le seul qui la déplace (le doigt resté après un pincement) ;
+  // toucher : le doigt « qui déplace » ; levé sans avoir glissé, il choisit l'objet touché
+  | { type: 'pan'; dernierX: number; dernierY: number; vide?: boolean; pointeur?: number; toucher?: boolean }
   | { type: 'pinch'; dist: number; cx: number; cy: number }
   | { type: 'dessin'; pointeur: number }
-  | { type: 'segment'; x: number; y: number; sx: number; sy: number }
+  | { type: 'segment'; x: number; y: number }
   | { type: 'rectangle' | 'cercle'; x: number; y: number }
-  | { type: 'poignee'; prise: Prise; f: Figure; sx: number; sy: number; bouge: boolean }
+  | { type: 'poignee'; prise: Prise; f: Figure; bouge: boolean }
   | { type: 'instrument'; nom: NomInstrument; quoi: Partie; depart: EtatInstrument; x: number; y: number; ecart: number; balayage: number; dernier: number }
   | { type: 'longer'; bord: Bord; t0: number }
   | { type: 'gomme'; effaces: Set<string> }
-  | { type: 'deplacer'; x: number; y: number; bouge: boolean }
+  // doigt : pris par le doigt « qui déplace » ; levé sans avoir glissé, il choisit l'objet touché
+  | { type: 'deplacer'; x: number; y: number; bouge: boolean; doigt?: boolean }
   | { type: 'cadre'; x: number; y: number }
-  | { type: 'formule'; sx: number; sy: number }
+  | { type: 'formule' }
 
 /** Un morceau d'une figure qu'on attrape : le nom d'un point, un sommet, le rayon */
 export type Prise = { quoi: 'nom' | 'sommet'; i: number } | { quoi: 'rayon' }
@@ -108,7 +117,12 @@ export class App {
   private pageSession: string | null = null
   private pointeurs = new Map<number, { x: number; y: number; type: string }>()
   private geste: Geste | null = null
-  private styletVu = false            // un stylet a servi : le doigt ne dessine plus
+  /** Le pointeur du dernier appui : les messages en parlent (« clic droit » ou non) */
+  dernierPointeur: TypePointeur = 'mouse'
+  /** Où et quand le geste en cours a commencé, et s'il est devenu un glisser */
+  private depart: Depart = nouveauDepart(0, 0, -1, 'mouse')
+  /** Les paumes : posées sur l'écran, elles ne font rien jusqu'à leur lever */
+  private ignores = new Set<number>()
   private espace = false
   private dernierMouvement = 0        // pour savoir si le stylet est resté immobile
   /** Où la plume s'est posée ou a bougé pour la dernière fois (voir Immobilite) */
@@ -124,6 +138,7 @@ export class App {
 
   constructor(readonly tableau: Tableau, private zone: HTMLElement) {
     this.rendu = new Rendu(this.cam, zone)
+    this.majPoignees()
     this.cam.x = VUE_NEUTRE.x; this.cam.y = VUE_NEUTRE.y
     const session = lireSession()
     if (session) { this.vues = session.vues; this.pageSession = session.page }
@@ -171,8 +186,8 @@ export class App {
     // avant tout geste) ; le zoom au clavier se fait autour du pointeur
     // s'il est sur le tableau ; la session se note quand on quitte la page
     zone.addEventListener('pointerdown', () => this.arreterAnimation(), true)
-    zone.addEventListener('pointermove', e => { this.dernierPointeur = { clientX: e.clientX, clientY: e.clientY } })
-    zone.addEventListener('pointerleave', () => { this.dernierPointeur = null })
+    zone.addEventListener('pointermove', e => { this.pointeurSurZone = { clientX: e.clientX, clientY: e.clientY } })
+    zone.addEventListener('pointerleave', () => { this.pointeurSurZone = null })
     window.addEventListener('pagehide', () => this.noterSession())
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.noterSession() })
   }
@@ -434,6 +449,7 @@ export class App {
     if (this.partie) this.choisirPartie(null)
     this.outil = o
     if (o !== 'selection') this.selection.clear()
+    this.majPoignees()
     this.rendu.gomme = null
     this.rendu.toutRedessiner()
     this.zone.dataset.outil = o
@@ -462,7 +478,7 @@ export class App {
   private animation = 0
   private cible: { x: number; y: number; z: number } | null = null
   /** Le dernier endroit du pointeur sur le tableau (null : il est ailleurs) */
-  private dernierPointeur: { clientX: number; clientY: number } | null = null
+  private pointeurSurZone: { clientX: number; clientY: number } | null = null
   /** Safari sur Mac pince par gesturechange : la molette ne zoome pas en double */
   pinceSafari = false
   private minuterieSession = 0
@@ -589,7 +605,7 @@ export class App {
   /** Ctrl + « + » ou « − » : autour du pointeur s'il est sur le tableau */
   zoomerClavier(facteur: number) {
     this.arreterAnimation()
-    const s = this.dernierPointeur ? this.ecran(this.dernierPointeur) : this.centreLibre()
+    const s = this.pointeurSurZone ? this.ecran(this.pointeurSurZone) : this.centreLibre()
     this.cam.zoomerAutour(s.x, s.y, facteur)
     this.vueChangee()
   }
@@ -655,8 +671,10 @@ export class App {
     return { x: Math.round(p.x / pas) * pas, y: Math.round(p.y / pas) * pas }
   }
 
-  private formeSous(x: number, y: number): Forme | null {
-    const r = 6 / this.cam.z
+  /** L'objet sous ce point du monde, le plus haut d'abord, à `rayon` pixels
+   *  d'écran près (le doigt vise moins juste que la souris) */
+  private formeSous(x: number, y: number, rayon = 6): Forme | null {
+    const r = rayon / this.cam.z
     for (let i = this.formes.length - 1; i >= 0; i--) {
       if (touche(this.formes[i], x, y, r, f => this.rendu.boite(f))) return this.formes[i]
     }
@@ -670,16 +688,14 @@ export class App {
     z.addEventListener('pointerup', e => this.haut(e))
     z.addEventListener('pointercancel', e => this.haut(e, true))
     z.addEventListener('wheel', e => this.molette(e), { passive: false })
-    // Clic droit (ou bouton du stylet) : les options du morceau visé,
-    // sinon celles de la figure entière
+    // Clic droit (ou bouton du stylet) : les options du morceau visé, dans
+    // n'importe quelle figure (c'est une demande d'options), sinon celles de
+    // la figure entière
     z.addEventListener('contextmenu', e => {
       e.preventDefault()
       if (this.enLecture) return
       const s = this.ecran(e)
-      const outil = this.outil
-      this.outil = 'selection'                 // pour viser toutes les figures
-      const prise = this.priseSous(s)
-      this.outil = outil
+      const prise = this.priseSous(s, { toutes: true })
       if (prise) { this.choisirPartie(prise.f.id, prise.prise); this.ui.ouvrirMenuPartie(prise.f.id, prise.prise, e.clientX, e.clientY); return }
       const p = this.monde(e), f = this.formeSous(p.x, p.y)
       this.ui.fermerMenuPartie()
@@ -697,30 +713,93 @@ export class App {
     window.addEventListener('keyup', e => { if (e.code === 'Space') this.espace = false })
   }
 
+  // ---------- Le rôle du doigt ----------
+  /** Le doigt déplace la vue et sélectionne ; le stylet seul écrit */
+  get doigtDeplace(): boolean { return leDoigtDeplace() }
+
+  /** Le rôle du doigt, choisi dans son menu */
+  choisirDoigt(d: Doigt) {
+    reglerDoigt(d)
+    this.majPoignees()
+    this.rendu.toutRedessiner()
+    this.ui?.maj()
+  }
+
+  /** Les ronds des poignées ne se montrent que là où on peut les prendre :
+   *  avec l'outil Sélection, ou au doigt qui « déplace » */
+  private majPoignees() {
+    this.rendu.poigneesActives = this.outil === 'selection' || this.doigtDeplace
+  }
+
+  /** « Auto » : le premier stylet posé sur l'écran lui-même (iPad, Surface,
+   *  tablette Android) fait passer le doigt en « déplace ». Une tablette
+   *  graphique, sur un ordinateur dont l'écran n'est pas tactile, jamais. */
+  private detecterStylet() {
+    if (reglages.doigt !== 'auto' || reglages.styletDirect || !ecranTactile()) return
+    noterStyletDirect(true)
+    this.majPoignees()
+    this.rendu.toutRedessiner()
+    this.ui.maj()
+    this.ui.message('Stylet détecté : le doigt déplace la vue', { libelle: 'Changer', faire: () => this.ui.ouvrirReglageDoigt() })
+  }
+
+  /** Une paume, quand le doigt ne dessine pas : un contact large, ou tout
+   *  contact pendant que le stylet touche l'écran */
+  private paume(e: PointerEvent): boolean {
+    if (e.pointerType !== 'touch' || !this.doigtDeplace) return false
+    return contactLarge(e) || [...this.pointeurs.values()].some(p => p.type === 'pen')
+  }
+
+  /** Les doigts posés, dans l'ordre où ils sont arrivés */
+  private doigts() {
+    return [...this.pointeurs].filter(([, p]) => p.type === 'touch').map(([id, p]) => ({ id, x: p.x, y: p.y }))
+  }
+
+  private pincement(doigts: { x: number; y: number }[]): Geste {
+    const [a, b] = doigts
+    return { type: 'pinch', dist: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }
+  }
+
+  /** L'appui est-il devenu un glisser ? (voir SEUIL_GLISSER) */
+  private aGlisse(s: P): boolean { return depasseSeuil(this.depart, s.x, s.y) }
+
+  // ---------- Appuyer, glisser, lever ----------
+  /** Un appui. L'ordre compte : la paume écartée, le pointeur noté, le
+   *  stylet qui reprend la main au doigt, deux doigts qui pincent ; puis,
+   *  si rien n'est en cours, ce que fait le pointeur avec l'outil. */
   private bas(e: PointerEvent) {
-    this.zone.setPointerCapture(e.pointerId)
     const s = this.ecran(e)
+    // La paume, quand le doigt ne dessine pas : rien jusqu'à son lever
+    if (this.paume(e)) { this.ignores.add(e.pointerId); return }
+    // Un pointeur synthétique, ou déjà levé, refuse d'être capturé : le geste a lieu quand même
+    try { this.zone.setPointerCapture(e.pointerId) } catch { /* sans capture */ }
     this.pointeurs.set(e.pointerId, { x: s.x, y: s.y, type: e.pointerType })
-    if (e.pointerType === 'pen') this.styletVu = true
+    this.dernierPointeur = typePointeur(e.pointerType)
+
+    // Le stylet : « Auto » apprend que l'écran se touche au stylet ; ce que
+    // faisait le doigt (une paume posée juste avant, souvent) s'arrête là
+    if (e.pointerType === 'pen') {
+      this.detecterStylet()
+      if (this.doigtDeplace && this.geste && (this.geste.type === 'pinch' || this.depart.type === 'touch')) this.laisserLeStylet()
+    }
 
     // Deux doigts : pincer pour zoomer, quoi qu'on fût en train de faire
-    const doigts = [...this.pointeurs.values()].filter(p => p.type === 'touch')
+    const doigts = this.doigts()
     if (doigts.length === 2) {
       this.abandonnerGeste()
-      const [a, b] = doigts
-      this.geste = { type: 'pinch', dist: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }
+      this.geste = this.pincement(doigts)
       return
     }
     if (this.geste) return
 
-    const deplacerVue = e.button === 1 || this.outil === 'main' || this.espace ||
-      (e.pointerType === 'touch' && this.styletVu)          // la paume ne dessine pas
-    if (deplacerVue) { this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y }; return }
+    this.depart = nouveauDepart(s.x, s.y, e.pointerId, e.pointerType, performance.now())
+    if (e.button === 1 || this.outil === 'main' || this.espace) { this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y }; return }
     if (e.button !== 0) return
 
     const m = this.monde(e)
     if (this.placement) { const p = this.placement; this.placement = null; p.clic(m); return }
     this.tableau.nouveauGeste()
+    if (e.pointerType === 'touch' && this.doigtDeplace) { this.basDoigt(e, s, m); return }
     // Le crayon posé contre le bord d'un instrument trace le long du bord.
     // Sauf sur une pastille ↻ : à petit zoom, la portée du bord l'atteindrait
     // (celle du rapporteur est dans le prolongement de son bord)
@@ -735,24 +814,10 @@ export class App {
     }
     // Un instrument : on le déplace, on le tourne, on écarte ou on tourne le compas
     const inst = this.instrumentSous(m)
-    if (inst) {
-      const depart = { ...this.instruments.get(inst.nom)! }
-      // Celui qu'on prend passe au-dessus des autres
-      this.instruments.delete(inst.nom); this.instruments.set(inst.nom, depart)
-      const a = Math.atan2(m.y - depart.y, m.x - depart.x)
-      this.geste = { type: 'instrument', nom: inst.nom, quoi: inst.quoi, depart, x: m.x, y: m.y,
-        ecart: a - depart.a, balayage: 0, dernier: a }
-      this.majInstruments(inst)
-      return
-    }
-    // Un morceau de la figure sélectionnée : son nom, un sommet, son rayon
+    if (inst) { this.prendreInstrument(inst, m); return }
+    // Un morceau de la figure sélectionnée (outil Sélection) : son nom, un sommet, son rayon
     const prise = this.priseSous(s)
-    if (prise) {
-      this.ui.fermerMenuPartie()
-      this.choisirPartie(prise.f.id, prise.prise)
-      this.geste = { type: 'poignee', ...prise, sx: s.x, sy: s.y, bouge: false }
-      this.ui.maj(); return
-    }
+    if (prise) { this.prendrePoignee(prise); return }
     this.ui.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
     // La figure qu'on vient de tracer reste sélectionnée (son panneau
@@ -788,7 +853,7 @@ export class App {
           break
         }
         const a = this.accrocher(m).p
-        this.geste = { type: 'segment', x: a.x, y: a.y, sx: s.x, sy: s.y }
+        this.geste = { type: 'segment', x: a.x, y: a.y }
         this.rendu.monSegment = { x1: a.x, y1: a.y, x2: a.x, y2: a.y, couleur: this.couleur, taille: this.taille }
         break
       }
@@ -813,18 +878,96 @@ export class App {
           this.geste = { type: 'cadre', x: m.x, y: m.y }          // Maj + glisser : encadrer
         } else {
           // Glisser dans le vide déplace le tableau ; un simple clic désélectionne
-          this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, vide: { x: s.x, y: s.y } }
+          this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, vide: true }
         }
         this.rendu.redessinerDirect(); this.ui.maj()
         break
       }
       case 'formule':
-        this.geste = { type: 'formule', sx: s.x, sy: s.y }
+        this.geste = { type: 'formule' }
         break
     }
   }
 
+  /** Le doigt qui « déplace et sélectionne » : jamais d'encre, quel que soit
+   *  l'outil. Il prend un instrument, un morceau de la figure sélectionnée,
+   *  ou ce qui est déjà sélectionné pour le déplacer ; ailleurs, même sur un
+   *  objet, il déplace la vue (un doigt qui traverse une page chargée
+   *  n'emporte pas un trait). Levé sans avoir glissé, il choisit l'objet
+   *  touché (voir toucherObjet). */
+  private basDoigt(e: PointerEvent, s: P, m: P) {
+    const inst = this.instruments.size ? this.instrumentSous(m) : null
+    if (inst) { this.prendreInstrument(inst, m); return }
+    const prise = this.priseSous(s, { outil: 'selection' })
+    if (prise) { this.prendrePoignee(prise); return }
+    const f = this.formeSous(m.x, m.y, 12)
+    if (f && this.selection.has(f.id)) { this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false, doigt: true }; return }
+    this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, pointeur: e.pointerId, toucher: true }
+  }
+
+  /** Un simple toucher du doigt « qui déplace » : l'objet touché (à 12 px
+   *  près) devient la sélection, seul ; rien dessous, elle se vide */
+  private toucherObjet(m: P) {
+    const f = this.formeSous(m.x, m.y, 12)
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    this.selection.clear()
+    if (f) this.selection.add(f.id)
+    this.rendu.redessinerDirect(); this.ui.maj()
+    if (f) this.direOptions()
+  }
+
+  private prendreInstrument(inst: { nom: NomInstrument; quoi: Partie }, m: P) {
+    const depart = { ...this.instruments.get(inst.nom)! }
+    // Celui qu'on prend passe au-dessus des autres
+    this.instruments.delete(inst.nom); this.instruments.set(inst.nom, depart)
+    const a = Math.atan2(m.y - depart.y, m.x - depart.x)
+    this.geste = { type: 'instrument', nom: inst.nom, quoi: inst.quoi, depart, x: m.x, y: m.y,
+      ecart: a - depart.a, balayage: 0, dernier: a }
+    this.majInstruments(inst)
+  }
+
+  private prendrePoignee(prise: { prise: Prise; f: Figure }) {
+    this.ui.fermerMenuPartie()
+    this.choisirPartie(prise.f.id, prise.prise)
+    this.geste = { type: 'poignee', ...prise, bouge: false }
+    this.ui.maj()
+  }
+
+  /** Le stylet se pose pendant un geste du doigt : le geste s'arrête là où
+   *  le doigt l'a laissé (la vue, un instrument, un objet déplacé ou tiré) ;
+   *  un trait du doigt (une paume, sans doute) est jeté. Les doigts encore
+   *  posés ne font plus rien jusqu'à leur lever : le stylet a la main. */
+  private laisserLeStylet() {
+    const g = this.geste
+    this.geste = null
+    switch (g?.type) {
+      case 'pan': case 'pinch': break
+      case 'instrument': this.finirInstrument(g); break
+      case 'deplacer': this.poserDeplacement(g); break
+      case 'poignee': this.poserPoignee(g.bouge ? this.rendu.remplacement : null); break
+      default: this.abandonnerGeste(g)
+    }
+    for (const [id, p] of this.pointeurs) if (p.type === 'touch') { this.pointeurs.delete(id); this.ignores.add(id) }
+    this.ui.maj()
+  }
+
+  /** Un doigt se lève pendant un pincement. Deux restent ou plus : le
+   *  pincement continue, réancré sur les deux premiers (la vue ne saute pas).
+   *  Un seul : il continue de déplacer la vue, sans jamais reprendre le
+   *  dessin, jusqu'à son lever. */
+  private finPincement() {
+    const doigts = this.doigts()
+    if (doigts.length >= 2) { this.geste = this.pincement(doigts); return }
+    if (!doigts.length) { this.geste = null; return }
+    const d = doigts[0]
+    this.geste = { type: 'pan', dernierX: d.x, dernierY: d.y, pointeur: d.id }
+    this.depart = nouveauDepart(d.x, d.y, d.id, 'touch', performance.now())
+    this.depart.parti = true
+  }
+
   private bouge(e: PointerEvent) {
+    if (this.ignores.has(e.pointerId)) return
     const s = this.ecran(e)
     const avant = this.pointeurs.get(e.pointerId)
     if (avant) { avant.x = s.x; avant.y = s.y }
@@ -860,11 +1003,20 @@ export class App {
         : this.outil === 'selection' ? (this.survol || this.formeSous(m.x, m.y) ? 'move' : 'grab') : ''
       return
     }
+    // Le geste n'écoute que le pointeur qui l'a commencé (pas un stylet qui
+    // survole, ni un autre doigt). Tant que l'appui n'est pas devenu un
+    // glisser, rien ne bouge ; passé le seuil, le déplacement compte depuis
+    // le départ. L'encre, elle, part tout de suite.
+    if (g.type !== 'pinch' && e.pointerId !== this.depart.pointeur) return
+    const glisse = g.type !== 'pinch' && this.aGlisse(s)
     switch (g.type) {
-      case 'instrument': this.geste_instrument(g, m, e.shiftKey); break
+      case 'instrument':
+        if (g.quoi !== 'tete' && !glisse) break          // l'arc du compas, lui, se trace tout de suite
+        this.geste_instrument(g, m, e.shiftKey)
+        break
       case 'longer': this.geste_longer(g, m); break
       case 'poignee':
-        if (!g.bouge && Math.hypot(s.x - g.sx, s.y - g.sy) < 4) break     // un clic, pas encore un glisser
+        if (!glisse) break                               // un clic, pas encore un glisser
         g.bouge = true
         this.rendu.remplacement = this.manipuler(g.f, g.prise, m)
         this.rendu.toutRedessiner()
@@ -875,7 +1027,7 @@ export class App {
         this.rendu.redessinerDirect()
         break
       case 'pinch': {
-        const doigts = [...this.pointeurs.values()].filter(p => p.type === 'touch')
+        const doigts = this.doigts()
         if (doigts.length < 2) return
         const [a, b] = doigts
         const dist = Math.hypot(a.x - b.x, a.y - b.y)
@@ -887,6 +1039,7 @@ export class App {
         break
       }
       case 'pan':
+        if (!glisse) break
         this.cam.deplacer(s.x - g.dernierX, s.y - g.dernierY)
         g.dernierX = s.x; g.dernierY = s.y
         this.vueChangee()
@@ -916,12 +1069,14 @@ export class App {
         this.gommer(m.x, m.y, g.effaces)
         break
       case 'deplacer': {
+        if (!glisse) break
         g.bouge = true
         this.rendu.decalage = { dx: m.x - g.x, dy: m.y - g.y }
         this.rendu.toutRedessiner()
         break
       }
       case 'cadre':
+        if (!glisse) break
         this.rendu.cadreSelection = rectangle(g.x, g.y, m.x, m.y)
         this.rendu.redessinerDirect()
         break
@@ -929,15 +1084,16 @@ export class App {
   }
 
   private haut(e: PointerEvent, annule = false) {
+    // Une paume sort de la liste à son lever, sans rien faire d'autre
+    if (this.ignores.delete(e.pointerId)) return
     this.pointeurs.delete(e.pointerId)
     const g = this.geste
     if (!g) return
-    if (g.type === 'pinch') { if (this.pointeurs.size === 0) this.geste = null; return }
-    if (g.type === 'pan' && g.vide) {
-      const s = this.ecran(e)
-      if (Math.hypot(s.x - g.vide.x, s.y - g.vide.y) < 4 && this.selection.size) { this.selection.clear(); this.rendu.redessinerDirect(); this.ui.maj() }
-    }
+    if (g.type === 'pinch') { this.finPincement(); return }
     if (g.type === 'dessin' && e.pointerId !== g.pointeur) return
+    if (g.type === 'pan' && g.pointeur !== undefined && e.pointerId !== g.pointeur) return
+    // Clic ou glisser ? Le lever compte aussi (un appui levé loin de son départ a glissé)
+    const glisse = this.aGlisse(this.ecran(e))
     this.geste = null
     // Un geste coupé par le navigateur (un second doigt sur le pavé tactile,
     // une fenêtre système…) garde ce qu'il a tracé : un arc de compas, un
@@ -947,12 +1103,18 @@ export class App {
 
     const m = this.monde(e)
     switch (g.type) {
+      case 'pan':
+        // Un simple clic dans le vide (outil Sélection) désélectionne ; un
+        // simple toucher du doigt « qui déplace » choisit l'objet touché
+        if (glisse) break
+        if (g.toucher) this.toucherObjet(m)
+        else if (g.vide && this.selection.size) { this.selection.clear(); this.rendu.redessinerDirect(); this.ui.maj() }
+        break
       case 'dessin': clearTimeout(this.minuterieForme); this.validerTrait(false); break
       case 'segment': {
         const s = this.rendu.monSegment!
-        const ecran = this.ecran(e)
         // Un simple clic (sans glisser) pose le premier point : le second clic finira le trait
-        if (Math.hypot(ecran.x - g.sx, ecran.y - g.sy) < 5) {
+        if (!glisse) {
           this.traitEnAttente = { x: g.x, y: g.y }
           if (!this.astuceDeuxClics) { this.astuceDeuxClics = true; this.ui.message('Cliquez le second point (Échap pour annuler)') }
           this.rendu.redessinerDirect()
@@ -973,16 +1135,11 @@ export class App {
         this.rendu.redessinerDirect()
         break
       }
-      case 'poignee': {
-        // Un clic sans bouger : les options de ce morceau-là
-        if (!g.bouge) { this.ui.ouvrirMenuPartie(g.f.id, g.prise, e.clientX, e.clientY); break }
-        const f = this.manipuler(g.f, g.prise, m)
-        this.rendu.remplacement = null
-        const { id: _i, type: _t, ...patch } = f
-        this.tableau.modifier(this.page, [{ id: f.id, patch: patch as Partial<Forme> }])
-        this.rendu.toutRedessiner()
+      case 'poignee':
+        // Un clic sans glisser : les options de ce morceau-là
+        if (!glisse) { this.ui.ouvrirMenuPartie(g.f.id, g.prise, e.clientX, e.clientY); break }
+        this.poserPoignee(this.manipuler(g.f, g.prise, m))
         break
-      }
       case 'rectangle':
       case 'cercle': {
         const f = this.figureTiree(g, this.aimanter(m), e.shiftKey)
@@ -991,15 +1148,10 @@ export class App {
         this.rendu.redessinerDirect()
         break
       }
-      case 'deplacer': {
-        const { dx, dy } = this.rendu.decalage
-        this.rendu.decalage = { dx: 0, dy: 0 }
-        if (g.bouge && (dx || dy)) {
-          this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id) || this.lieeA(f))
-            .map(f => ({ id: f.id, patch: { x: f.x + dx, y: f.y + dy } })))
-        } else this.rendu.toutRedessiner()
+      case 'deplacer':
+        if (g.doigt && !glisse) { this.rendu.decalage = { dx: 0, dy: 0 }; this.toucherObjet(m); break }
+        this.poserDeplacement(g)
         break
-      }
       case 'cadre': {
         const r = this.rendu.cadreSelection
         this.rendu.cadreSelection = null
@@ -1008,8 +1160,8 @@ export class App {
         break
       }
       case 'formule': {
+        if (glisse) break
         const s = this.ecran(e)
-        if (Math.hypot(s.x - g.sx, s.y - g.sy) > 6) break
         const f = this.formeSous(m.x, m.y)
         if (f?.type === 'formule') this.editerFormule(f)
         else this.nouvelleFormule(m.x, m.y, s.x, s.y)
@@ -1017,6 +1169,26 @@ export class App {
       }
     }
     this.ui.maj()                       // le panneau d'options réapparaît
+  }
+
+  /** La sélection déplacée se pose là où on l'a laissée */
+  private poserDeplacement(g: { bouge: boolean }) {
+    const { dx, dy } = this.rendu.decalage
+    this.rendu.decalage = { dx: 0, dy: 0 }
+    if (g.bouge && (dx || dy)) {
+      this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id) || this.lieeA(f))
+        .map(f => ({ id: f.id, patch: { x: f.x + dx, y: f.y + dy } })))
+    } else this.rendu.toutRedessiner()
+  }
+
+  /** La figure dont on a tiré un morceau prend sa nouvelle forme (null : elle garde l'ancienne) */
+  private poserPoignee(f: Figure | null) {
+    this.rendu.remplacement = null
+    if (f) {
+      const { id: _i, type: _t, ...patch } = f
+      this.tableau.modifier(this.page, [{ id: f.id, patch: patch as Partial<Forme> }])
+    }
+    this.rendu.toutRedessiner()
   }
 
   private abandonnerGeste(g: Geste | null = this.geste) {
@@ -1205,7 +1377,8 @@ export class App {
 
   /** La première fois qu'on prend un objet, on dit où sont ses options */
   private direOptions() {
-    if (this.astuceOptions || this.selection.size !== 1) return
+    // Au doigt, ni double-clic ni clic droit : rien à promettre
+    if (this.astuceOptions || this.selection.size !== 1 || this.dernierPointeur === 'touch') return
     const f = this.formeChoisie()
     if (!f || f.type === 'formule' || f.type === 'segment') return
     this.astuceOptions = true
@@ -1213,13 +1386,17 @@ export class App {
   }
 
   // ---------- Morceaux d'une figure ----------
-  /** Ce qu'il y a sous le pointeur (écran) dans la figure sélectionnée */
-  /** Avec l'outil Sélection, toutes les figures ; avec un autre outil, seulement
-   *  celle qui est sélectionnée (sinon on ne pourrait plus écrire près d'un point). */
-  priseSous(s: P): { prise: Prise; f: Figure } | null {
-    if (this.outil === 'main' || this.enLecture) return null
+  /** Le morceau (nom, sommet, centre, rayon) sous le pointeur (écran). On ne
+   *  le prend que dans la figure sélectionnée, et seulement avec l'outil
+   *  Sélection (o.outil : celui qui compte, l'outil en main par défaut) :
+   *  jamais sous un outil de dessin, sinon on ne pourrait plus écrire près
+   *  d'un point. o.toutes : dans n'importe quelle figure, la sélectionnée
+   *  d'abord, puis la plus haute (le clic droit, qui demande des options). */
+  priseSous(s: P, o: { outil?: Outil; toutes?: boolean } = {}): { prise: Prise; f: Figure } | null {
+    if (this.enLecture) return null
     const choisie = this.formeChoisie() ?? (this.partie && this.forme(this.partie.id))
-    const candidates = this.outil === 'selection' ? [...(choisie ? [choisie] : []), ...[...this.formes].reverse()] : choisie ? [choisie] : []
+    const candidates = o.toutes ? [...(choisie ? [choisie] : []), ...[...this.formes].reverse()]
+      : (o.outil ?? this.outil) === 'selection' && choisie ? [choisie] : []
     for (const f of candidates) {
       if (f.type !== 'polygone' && f.type !== 'cercle') continue
       const r = this.priseDans(f, s)

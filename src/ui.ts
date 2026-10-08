@@ -20,7 +20,7 @@ import { INSTRUMENTS } from './instruments'
 import type { Menu } from './menus'
 import { basculerMenu, fermerMenu, installerMenus, placerMenu } from './menus'
 import { choisirMolette, reglages } from './reglages'
-import type { Molette } from './reglages'
+import type { Doigt, Molette } from './reglages'
 import { CTRL } from './navigateur'
 
 const ICONES: Record<string, string> = {
@@ -60,6 +60,22 @@ const ICONES: Record<string, string> = {
   automatismes: 'M12 21a8 8 0 100-16 8 8 0 100 16zM12 9v4l2.5 2.5M10 2h4M12 2v3',
   cadre: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
   coche: 'M5 12.5l4.5 4.5L19 7.5',
+  doigt: 'M10 15V4.5a1.5 1.5 0 0 1 3 0V11M13 10a1.5 1.5 0 0 1 3 0v2M16 11.5a1.5 1.5 0 0 1 3 0V16a5 5 0 0 1-5 5h-1.5a5 5 0 0 1-4-2l-3-4a1.5 1.5 0 0 1 2.3-1.9L10 15',
+}
+
+/** Le rôle du doigt : la marque de son bouton, son titre, ce qu'on en dit */
+const DOIGTS: { id: Doigt; nom: string; aide: string; marque: string; titre: string; dit: string }[] = [
+  { id: 'dessine', nom: 'Le doigt dessine', aide: 'avec l\'outil choisi, comme le stylet', marque: '✎',
+    titre: 'Rôle du doigt : il dessine', dit: 'Le doigt dessine.' },
+  { id: 'deplace', nom: 'Le doigt déplace et sélectionne', aide: 'le stylet écrit ; le doigt déplace la vue, prend et déplace les objets', marque: '✥',
+    titre: 'Rôle du doigt : il déplace la vue et sélectionne', dit: 'Le doigt déplace la vue et sélectionne ; le stylet écrit.' },
+  { id: 'auto', nom: 'Auto', aide: 'le doigt dessine jusqu\'au premier stylet posé sur l\'écran', marque: 'A',
+    titre: 'Rôle du doigt : auto (il dessine tant qu\'aucun stylet n\'a touché l\'écran)', dit: 'Auto : le doigt dessine jusqu\'au premier stylet posé sur l\'écran.' },
+]
+
+/** Un écran tactile (ou un pointeur grossier) : le doigt a un rôle à régler */
+function appareilTactile(): boolean {
+  return navigator.maxTouchPoints > 0 || (typeof matchMedia === 'function' && matchMedia('(any-pointer: coarse)').matches)
 }
 
 const TYPES_FORMES: { id: TypeForme; nom: string; touche: string }[] = [
@@ -117,7 +133,7 @@ function icone(nom: string) {
   return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONES[nom]}"/></svg>`
 }
 
-function bouton(nom: string, titre: string, action: () => void, classe = '') {
+function bouton(nom: string, titre: string, action: (e: Event) => void, classe = '') {
   const b = document.createElement('button')
   b.type = 'button'
   b.className = 'bouton ' + classe
@@ -165,6 +181,9 @@ export class UI implements Interface {
   private boutonsInstruments = new Map<NomInstrument, HTMLButtonElement>()
   private menuPartie!: HTMLDivElement
   private partie: { id: string; prise: Prise } | null = null
+  /** Le rôle du doigt : son bouton (sur un appareil tactile) et son menu */
+  private boutonDoigt!: HTMLButtonElement
+  private menuDoigt!: Menu
 
   constructor(private app: App, private racine: HTMLElement) {
     // Les menus d'abord : leur Échap passe avant celui des panneaux (voir menus.ts)
@@ -186,6 +205,17 @@ export class UI implements Interface {
       this.outils.set(o.id, b)
       outils.appendChild(b)
     }
+    // Le rôle du doigt, après « Déplacer la vue » : seulement sur un appareil
+    // tactile (sur le poste de la classe, souris et tablette graphique, il n'a
+    // pas de sens). Il ouvre son menu, à droite de la barre.
+    this.boutonDoigt = bouton('doigt', 'Rôle du doigt', e => this.basculerReglageDoigt((e as MouseEvent).detail === 0))
+    this.boutonDoigt.setAttribute('aria-haspopup', 'menu'); this.boutonDoigt.setAttribute('aria-expanded', 'false')
+    this.boutonDoigt.hidden = !appareilTactile()
+    outils.appendChild(this.boutonDoigt)
+    const menuDoigt = document.createElement('div')
+    menuDoigt.className = 'menu-flottant'; menuDoigt.setAttribute('role', 'menu'); menuDoigt.setAttribute('aria-label', 'Rôle du doigt')
+    menuDoigt.hidden = true
+    this.menuDoigt = { el: menuDoigt, bouton: this.boutonDoigt }
     outils.appendChild(Object.assign(document.createElement('hr'), { className: 'filet' }))
     for (const c of COULEURS) {
       const b = document.createElement('button')
@@ -325,7 +355,7 @@ export class UI implements Interface {
     this.panneau.setAttribute('role', 'toolbar')
     this.panneau.setAttribute('aria-label', 'Options de la figure')
 
-    this.racine.append(outils, haut, zoom, this.retour, menu, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
+    this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
     this.revue = new RevueEnClasse(this.app, this.racine)
     this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t))
@@ -346,6 +376,10 @@ export class UI implements Interface {
   maj() {
     const app = this.app
     for (const [id, b] of this.outils) b.classList.toggle('actif', app.outil === id)
+    const doigt = DOIGTS.find(d => d.id === reglages.doigt)!
+    this.boutonDoigt.dataset.badge = doigt.marque
+    const titre = doigt.id === 'auto' && reglages.styletDirect ? 'Rôle du doigt : auto (stylet détecté : il déplace la vue)' : doigt.titre
+    if (this.boutonDoigt.title !== titre) { this.boutonDoigt.title = titre; this.boutonDoigt.setAttribute('aria-label', titre) }
     this.pastilles.forEach((b, i) => b.classList.toggle('actif', COULEURS[i].valeur === app.couleur))
     this.tailles.forEach((b, i) => b.classList.toggle('actif', TAILLES[i].valeur === app.taille))
     this.boutonSupprimer.hidden = app.selection.size === 0
@@ -409,27 +443,30 @@ export class UI implements Interface {
     }, 1000)
   }
 
+  /** Une entrée d'un petit menu : un choix fait le ferme, puis agit */
+  private entreeMenu(m: HTMLElement, texte: string, faire: () => void, o: { touche?: string; aide?: string; coche?: boolean; inactif?: boolean } = {}) {
+    const b = document.createElement('button')
+    b.type = 'button'; b.className = 'menu-item'
+    b.setAttribute('role', o.coche === undefined ? 'menuitem' : 'menuitemradio')
+    if (o.coche !== undefined) b.setAttribute('aria-checked', String(o.coche))
+    if (o.inactif) b.setAttribute('aria-disabled', 'true')
+    b.innerHTML = `<span class="coche">${o.coche ? icone('coche') : ''}</span><span class="libelle"></span>` + (o.touche ? `<span class="touche">${html(o.touche)}</span>` : '')
+    const libelle = b.querySelector('.libelle')!
+    libelle.textContent = texte
+    if (o.aide) libelle.appendChild(Object.assign(document.createElement('small'), { textContent: o.aide }))
+    b.addEventListener('click', () => {
+      if (o.inactif) return
+      fermerMenu()
+      faire()
+    })
+    m.appendChild(b)
+  }
+
   /** Le menu du zoom, refait à chaque ouverture (la sélection a pu changer) */
   private construireMenuZoom() {
     const app = this.app, m = this.menuZoom.el
     m.replaceChildren()
-    const entree = (texte: string, faire: () => void, o: { touche?: string; aide?: string; coche?: boolean; inactif?: boolean } = {}) => {
-      const b = document.createElement('button')
-      b.type = 'button'; b.className = 'menu-item'
-      b.setAttribute('role', o.coche === undefined ? 'menuitem' : 'menuitemradio')
-      if (o.coche !== undefined) b.setAttribute('aria-checked', String(o.coche))
-      if (o.inactif) b.setAttribute('aria-disabled', 'true')
-      b.innerHTML = `<span class="coche">${o.coche ? icone('coche') : ''}</span><span class="libelle"></span>` + (o.touche ? `<span class="touche">${html(o.touche)}</span>` : '')
-      const libelle = b.querySelector('.libelle')!
-      libelle.textContent = texte
-      if (o.aide) libelle.appendChild(Object.assign(document.createElement('small'), { textContent: o.aide }))
-      b.addEventListener('click', () => {
-        if (o.inactif) return
-        fermerMenu()
-        faire()
-      })
-      m.appendChild(b)
-    }
+    const entree = (texte: string, faire: () => void, o: Parameters<UI['entreeMenu']>[3] = {}) => this.entreeMenu(m, texte, faire, o)
     const rien = !app.selection.size && !app.partie
     entree('100 %', () => app.zoom100(), { touche: `${CTRL} + 0` })
     entree('Tout voir', () => app.toutVoir(), { touche: 'Maj + 1' })
@@ -443,6 +480,34 @@ export class UI implements Interface {
     }, { coche: reglages.molette === choix, aide })
     molette('defile', 'Fait défiler', `${CTRL} + molette : zoomer`)
     molette('zoome', 'Zoome')
+  }
+
+  /** Le menu du rôle du doigt : ouvert par son bouton, ou par « Changer »
+   *  dans le message « Stylet détecté » */
+  ouvrirReglageDoigt() {
+    if (this.menuDoigt.el.hidden) this.basculerReglageDoigt(false)
+  }
+
+  private basculerReglageDoigt(auClavier: boolean) {
+    const m = this.menuDoigt.el
+    // Un stylet s'est posé sur l'écran : il est tactile, le bouton a sa place
+    this.boutonDoigt.hidden = false
+    if (m.hidden) this.construireMenuDoigt()
+    basculerMenu(this.menuDoigt)
+    if (m.hidden) return
+    const b = this.boutonDoigt.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
+    placerMenu(m, new DOMRect(o.left, b.top, o.width, b.height), 'droite')
+    if (auClavier) m.querySelector<HTMLElement>('.menu-item[aria-checked="true"]')?.focus()
+  }
+
+  private construireMenuDoigt() {
+    const m = this.menuDoigt.el
+    m.replaceChildren()
+    m.appendChild(Object.assign(document.createElement('div'), { className: 'menu-titre', textContent: 'Le doigt' }))
+    for (const d of DOIGTS) {
+      const aide = d.id === 'auto' && reglages.styletDirect ? 'stylet détecté : le doigt déplace la vue' : d.aide
+      this.entreeMenu(m, d.nom, () => { this.app.choisirDoigt(d.id); this.message(d.dit) }, { coche: reglages.doigt === d.id, aide })
+    }
   }
 
   // ----- Panneau d'options de la figure -----
@@ -854,11 +919,20 @@ export class UI implements Interface {
     }
   }
 
-  message(texte: string) {
-    this.toast.textContent = texte
+  /** Un message en bas de l'écran. Avec une action, un bouton suit le texte
+   *  (« Changer ») et le message reste 7 s ; seul ce bouton reçoit les appuis,
+   *  et seulement quand le message se voit. */
+  message(texte: string, action?: { libelle: string; faire: () => void }) {
+    this.toast.replaceChildren(texte)
+    if (action) {
+      const b = document.createElement('button')
+      b.type = 'button'; b.className = 'action'; b.textContent = action.libelle
+      b.addEventListener('click', () => { this.toast.classList.remove('visible'); action.faire() })
+      this.toast.appendChild(b)
+    }
     this.toast.classList.add('visible')
     clearTimeout((this.toast as unknown as { t: number }).t)
-    ;(this.toast as unknown as { t: number }).t = window.setTimeout(() => this.toast.classList.remove('visible'), Math.max(2600, texte.length * 60))
+    ;(this.toast as unknown as { t: number }).t = window.setTimeout(() => this.toast.classList.remove('visible'), action ? 7000 : Math.max(2600, texte.length * 60))
   }
 
   // ----- Éditeur de formules -----
