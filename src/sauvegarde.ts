@@ -56,8 +56,9 @@ function raison(e: unknown): string {
 }
 
 /** Un téléchargement ; le lien va dans la fenêtre ouverte s'il y en a une
- *  (hors d'elle, la page est inerte) */
-function telecharger(fichier: Blob, nom: string) {
+ *  (hors d'elle, la page est inerte). L'image copiée s'en sert aussi
+ *  (« Enregistrer l'image (.png) », voir sorties/image.ts). */
+export function telecharger(fichier: Blob, nom: string) {
   const a = document.createElement('a')
   a.href = URL.createObjectURL(fichier); a.download = nom; a.hidden = true
   ;(document.querySelector('dialog[open]') ?? document.body).appendChild(a)

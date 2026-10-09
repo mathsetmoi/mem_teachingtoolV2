@@ -260,6 +260,59 @@ describe('le journal des pages', () => {
     expect(t.pagesDeLaCorbeille()).toEqual([])
   })
 
+  it('remettre une page de la corbeille (la vue de la corbeille) : annulée, elle y retourne ; rétablie, elle revient ; jamais une pile touchée', async () => {
+    const { t, pages: [a, b, c] } = await tableau(3)
+    t.pageVue = a
+    t.jeterPages([b]); await attendre()
+    const entree = { ...t.corbeille.get(b)! }
+    const p0 = piles(t, [a, b, c])
+    const j = new JournalPages(t)
+    let place = -1
+    const k = t.film.length
+    const e = j.faire('page remise', () => { place = t.remettrePage(b) })
+    await attendre()
+    expect(e?.libelle).toBe('page remise')
+    expect(place).toBe(1)
+    expect(ordre(t)).toEqual([a, b, c])
+    expect(t.dansLaCorbeille(b)).toBe(false)
+    expect(t.corbeille.has(b)).toBe(false)
+    expect(j.annuler()).toBe('fait'); await attendre()
+    expect(ordre(t)).toEqual([a, c])
+    expect(t.dansLaCorbeille(b)).toBe(true)
+    expect(t.corbeille.get(b)).toEqual(entree)                // la même entrée : sa place et son heure
+    expect(j.retablir()).toBe('fait'); await attendre()
+    expect(ordre(t)).toEqual([a, b, c])
+    expect(t.corbeille.has(b)).toBe(false)
+    // Trois étapes, toutes seulOrdre (jamais un geste) ; aucune pile n'a bougé
+    expect(depuis(t, k).map(x => x.seulOrdre)).toEqual([true, true, true])
+    expect(piles(t, [a, b, c])).toEqual(p0)
+  })
+
+  it('remettre une page jetée par le lot 2 (sans entrée) : à la fin ; annulée, elle retourne dans la corbeille sans entrée', async () => {
+    const { t, pages: [a, b, c] } = await tableau(3)
+    t.pageVue = a
+    t.doc.transact(() => t.ordre.delete(1, 1)); await attendre()
+    expect(t.pagesDeLaCorbeille()).toMatchObject([{ id: b, t: null, ancienne: true }])
+    const j = new JournalPages(t)
+    j.faire('page remise', () => { expect(t.remettrePage(b)).toBe(2) })
+    expect(ordre(t)).toEqual([a, c, b])
+    expect(j.annuler()).toBe('fait')
+    expect(ordre(t)).toEqual([a, c])
+    expect(t.corbeille.has(b)).toBe(false)
+    expect(t.pagesDeLaCorbeille().map(x => x.id)).toEqual([b])
+  })
+
+  it('une page supprimée définitivement après une action du journal : défaire n\'est plus exact (\'change\'), rien ne revient', async () => {
+    const { t, pages: [a, b, c] } = await tableau(3)
+    t.pageVue = a
+    const j = new JournalPages(t)
+    j.faire('page supprimée', () => { t.jeterPages([b]) })
+    t.supprimerDefinitivement([b])
+    expect(j.annuler()).toBe('change')
+    expect(ordre(t)).toEqual([a, c])
+    expect(t.dansLaCorbeille(b)).toBe(false)
+  })
+
   it('vider : plus rien à annuler ni à refaire', async () => {
     const { t, pages: [, b] } = await tableau(2)
     const j = new JournalPages(t)

@@ -10,7 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
 import { LONGUEUR_NOM, Tableau, changementsDOrdre, deplacerDans, nomPropre } from '../src/document'
 import type { Trait } from '../src/types'
-import { VERSION_TABLEAU, ecrireTableau, lireTableau } from '../src/fichier'
+import { VERSION_TABLEAU, ecrireTableau, lireTableau, quandLisible } from '../src/fichier'
+import { compterCorbeille, dateDeSuppression, libelleCorbeille, texteVider } from '../src/pages/corbeille'
 
 let horloge = new Date('2026-10-09T08:00:00').getTime()
 let numero = 0
@@ -249,6 +250,51 @@ describe('la corbeille', () => {
     expect(u.peutAnnuler(x)).toBe(false)
     expect(u.annuler(x)).toBeNull()
     expect(u.ordre.toArray()).toEqual([x])
+  })
+})
+
+describe('la vue de la corbeille (src/pages/corbeille.ts)', () => {
+  it('la date : « Supprimée aujourd\'hui à 10 h 05 » ; une page jetée avant la corbeille : sa dernière écriture', async () => {
+    const { t, pages: [a, b, c] } = await tableau(3)
+    await attendre(30 * 60_000)
+    const ecrite = horloge
+    await geste(t, c, 10, 10)                                  // la dernière écriture sur c
+    await attendre(10 * 60_000)
+    // c jetée « comme au lot 2 » : sans entrée
+    t.pageVue = a
+    t.doc.transact(() => t.ordre.delete(t.ordre.toArray().indexOf(c), 1)); await attendre(500)
+    await attendre(5 * 60_000)
+    const jetee = horloge
+    await jeter(t, b, a)
+    const l = t.pagesDeLaCorbeille()
+    expect(l.map(x => x.id)).toEqual([b, c])
+    const maintenant = horloge
+    expect(dateDeSuppression(l[0], maintenant)).toBe(`Supprimée ${quandLisible(jetee, maintenant)}`)
+    expect(dateDeSuppression(l[0], maintenant)).toMatch(/^Supprimée aujourd'hui à \d+\sh\s\d\d$/)
+    expect(l[1]).toMatchObject({ t: null, ancienne: true })
+    expect(l[1].derniere).toBeGreaterThanOrEqual(ecrite)
+    expect(l[1].derniere).toBeLessThan(jetee)
+    expect(dateDeSuppression(l[1], maintenant)).toBe(`Supprimée avant cette version · dernière écriture ${quandLisible(l[1].derniere!, maintenant)}`)
+    expect(dateDeSuppression({ t: null, derniere: null }, maintenant)).toBe('Supprimée avant cette version')
+    // Le lendemain : « hier à … »
+    expect(dateDeSuppression(l[0], maintenant + 86_400_000)).toMatch(/^Supprimée hier à /)
+  })
+
+  it('le bouton du bandeau : « Corbeille (2) », « Corbeille : 2 pages » ; vide : « Corbeille », « Corbeille : vide » ; le compte sans relire le film', async () => {
+    const { t, pages: [a, b, c] } = await tableau(4)
+    expect(compterCorbeille(t)).toBe(0)
+    expect(libelleCorbeille(0)).toEqual({ texte: 'Corbeille', nom: 'Corbeille : vide' })
+    t.pageVue = a
+    t.jeterPages([b, c]); await attendre(500)
+    expect(compterCorbeille(t)).toBe(2)
+    expect(compterCorbeille(t)).toBe(t.pagesDeLaCorbeille().length)
+    // (« 2 pages » : une espace insécable, comme partout dans l'outil)
+    expect(libelleCorbeille(2)).toEqual({ texte: 'Corbeille (2)', nom: 'Corbeille : 2\u00a0pages' })
+    expect(libelleCorbeille(1)).toEqual({ texte: 'Corbeille (1)', nom: 'Corbeille : 1\u00a0page' })
+    t.supprimerDefinitivement([b])
+    expect(compterCorbeille(t)).toBe(1)
+    expect(texteVider(3)).toMatch(/^Les 3 pages de la corbeille seront supprimées définitivement : elles ne pourront plus être remises parmi les pages\. Leur histoire reste visible dans Revoir la construction/)
+    expect(texteVider(1)).toMatch(/^La page de la corbeille sera supprimée définitivement/)
   })
 })
 

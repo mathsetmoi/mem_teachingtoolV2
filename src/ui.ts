@@ -29,6 +29,8 @@ import { TAILLES_FORMULE, changerCouleur, changerEpaisseur, changerPointilles, h
 import { icone } from './icones'
 import { BarreActions } from './barre-actions'
 import { Apercus } from './sorties/apercu'
+import type { PageAPeindre } from './sorties/apercu'
+import { copierEnImage, nomDeLImage } from './sorties/image'
 import { Vignettes } from './pages/vignettes'
 import { Trieuse } from './pages/trieuse'
 import { titreModifierFormule } from './pointeurs'
@@ -42,6 +44,9 @@ const DOIGTS: { id: Doigt; nom: string; aide: string; marque: string; titre: str
   { id: 'auto', nom: 'Auto', aide: 'le doigt dessine jusqu\'au premier stylet posé sur l\'écran', marque: 'A',
     titre: 'Rôle du doigt : auto (il dessine tant qu\'aucun stylet n\'a touché l\'écran)', dit: 'Auto : le doigt dessine jusqu\'au premier stylet posé sur l\'écran.' },
 ]
+
+/** Le titre de « Copier en image » (le menu complet) */
+const TITRE_IMAGE = 'Une image PNG, à coller dans l\'ENT ou Pronote'
 
 /** Le bouton « › » : la page suivante, ou, sur la dernière page, une page de
  *  plus. Son titre commence toujours par « Page suivante » ; jamais
@@ -717,12 +722,47 @@ export class UI implements Interface {
   /** Un fichier glissé sur le tableau (.memc, ou .mem) : comme « Ouvrir un tableau » */
   ouvrirTableau(f: File) { void this.sauvegarde.ouvrirFichier(f) }
 
+  // ----- Copier en image (voir sorties/image.ts) -----
+  /** Une page telle que le document la garde : son fond, son origine, ses formes */
+  private pageAPeindre(id: string): PageAPeindre {
+    const t = this.app.tableau
+    return { fond: t.fondDe(id), origine: t.origineDe(id), formes: [...(t.formesDe(id)?.values() ?? [])] }
+  }
+
+  /** « Copier la page en image » (le menu de la page) ou « Copier en image »
+   *  (le menu complet : ce qui est pris, les points liés aux images
+   *  compris). Dans le geste : la copie part tout de suite. */
+  copierEnImage(quoi: 'page' | 'selection') {
+    const app = this.app
+    if (app.enLecture) return
+    const id = app.page, numero = app.pages.indexOf(id) + 1
+    if (quoi === 'selection') {
+      const formes = app.objetsChoisis()
+      if (!formes.length) return this.message('Rien n\'est sélectionné.')
+      copierEnImage(this, { page: this.pageAPeindre(id), formes, nom: nomDeLImage(numero, null, true) })
+      return
+    }
+    // Le point d'un simple toucher qui attend encore est de la page
+    app.poserCeQuiAttend()
+    this.copierPageEnImage(id)
+  }
+
+  /** La page entière en image (le menu de la page ; celui d'une vignette de
+   *  la trieuse, qui reste ouverte) */
+  copierPageEnImage(id: string) {
+    const page = this.pageAPeindre(id)
+    if (!page.formes.length) return this.message('La page est vide : rien à copier.')
+    const numero = this.app.pages.indexOf(id) + 1
+    copierEnImage(this, { page, nom: nomDeLImage(numero, this.app.tableau.nomDe(id), false) })
+  }
+
   /** Le menu de la page : un clic droit dans le vide (voir App.demanderOptions).
    *  Il se pose au point de l'appui, à sa droite et vers le bas comme le
    *  menu du système (de l'autre côté s'il n'y a pas la place), et se ferme
    *  comme les autres petits menus : Échap, un choix, ou un appui ailleurs
    *  (qui ne laisse pas d'encre). Coller ici, Tout sélectionner, Tout voir,
-   *  puis ce qui touche la page elle-même (Dupliquer la page, Toutes les pages…).
+   *  puis ce qui touche la page elle-même (Dupliquer la page, Toutes les
+   *  pages…), et ce qui en sort (Copier la page en image).
    *  m : le point du monde où « Coller ici »
    *  colle. Refait à chaque ouverture : la copie et la page ont pu changer.
    *  auClavier : ouvert par la touche Menu (voir App.menuAuClavier), le
@@ -742,6 +782,12 @@ export class UI implements Interface {
     // Ouverte au clavier (Entrée sur l'entrée), la trieuse rend le focus au compteur
     this.entreeMenu(el, 'Toutes les pages…', e => this.ouvrirTrieuse(e.detail === 0), { touche: 'Maj + P',
       aide: 'Les pages en vignettes : aller à une page, les ranger' })
+    // Ce qui sort de la page : son image, pour l'ENT ou Pronote (« Exporter
+    // la page en PDF… » viendra ensuite). Pas de raccourci : Ctrl + Maj + C
+    // ouvre l'inspecteur du navigateur.
+    el.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
+    this.entreeMenu(el, 'Copier la page en image', () => this.copierEnImage('page'), { inactif: app.pageVide(),
+      aide: `Une image PNG, à coller dans l'ENT ou Pronote (${CTRL}+V)` })
     ouvrirMenu(this.menuPage)
     placerMenu(el, new DOMRect(x, y, 0, 0), 'droite')
     if (auClavier) allerAuxEntrees(el, 1, ENTREES)
@@ -830,7 +876,11 @@ export class UI implements Interface {
     const l = this.panneau.offsetWidth, h = this.panneau.offsetHeight
     let top = z.top + a.y - h - 14
     if (top < 76) top = Math.min(z.top + c.y + 14, window.innerHeight - h - 8)
-    const gauche = this.barreOutils.getBoundingClientRect().right + 8
+    // À droite de la barre d'outils ; sur un téléphone, où il n'y tient pas
+    // (il passe alors à la ligne sur toute la largeur), il la couvre plutôt
+    // que de sortir de l'écran, comme la barre d'actions
+    const barre = this.barreOutils.getBoundingClientRect().right + 8
+    const gauche = l <= window.innerWidth - barre - 8 ? barre : 8
     const left = Math.max(gauche, Math.min(z.left + (a.x + c.x) / 2 - l / 2, window.innerWidth - l - 8))
     this.panneau.style.left = left + 'px'
     this.panneau.style.top = Math.max(8, top) + 'px'
@@ -862,7 +912,13 @@ export class UI implements Interface {
     const ouvrir = (s: Section) => this.basculerSection(s)
     const figure = f.type === 'polygone' || f.type === 'cercle' ? f as Figure : null
     const segment = f.type === 'polygone' && !f.ferme && f.pts.length === 4
-    const copier = () => action('Copier', `Copier (${CTRL}+C) : ${CTRL}+V la colle ici, sur une autre page ou dans un autre onglet`, () => app.copier())
+    // « Copier », puis « Copier en image » (une image PNG pour l'ENT ou
+    // Pronote, à ne pas confondre avec « Copier pour Pronote » de Publier,
+    // qui copie un lien) ; « Envoyer vers… » viendra ensuite, avant Supprimer
+    const copier = () => {
+      action('Copier', `Copier (${CTRL}+C) : ${CTRL}+V la colle ici, sur une autre page ou dans un autre onglet`, () => app.copier())
+      action('Copier en image', TITRE_IMAGE, () => this.copierEnImage('selection'))
+    }
     const jeter = () => ligne.appendChild(bouton('poubelle', 'Supprimer (Suppr)', () => app.supprimerSelection(), 'danger'))
 
     if (f.type === 'formule') {
@@ -1005,6 +1061,7 @@ export class UI implements Interface {
     this.optionMenu(ligne, 'Dupliquer', `Une copie de tous, décalée d'un centimètre (${CTRL}+D)`, () => app.dupliquerSelection())
     this.optionMenu(ligne, 'Copier', `Copier (${CTRL}+C) : ${CTRL}+V les colle ici, sur une autre page ou dans un autre onglet`, () => app.copier())
     this.optionMenu(ligne, 'Couper', `Couper (${CTRL}+X) : ils partent, ${CTRL}+V les remet`, () => app.couper())
+    this.optionMenu(ligne, 'Copier en image', TITRE_IMAGE, () => this.copierEnImage('selection'))
     ligne.appendChild(bouton('poubelle', `Supprimer les ${n} objets (Suppr)`, () => app.supprimerSelection(), 'danger'))
     p.appendChild(ligne)
     if (this.section !== 'couleur') return

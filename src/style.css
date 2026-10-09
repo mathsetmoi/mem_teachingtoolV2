@@ -761,10 +761,56 @@ body.en-trieuse .toast { z-index: 30; }
   border: 2px solid var(--bleu); border-radius: 8px; background: var(--papier); color: var(--encre);
   font: inherit; font-size: 16px; user-select: text; -webkit-user-select: text; touch-action: manipulation;
 }
+/* La corbeille (pages/corbeille.ts) : une vue de la trieuse, qui prend la
+   place du bandeau, de la grille et de l'aide. Ses cartes ont le rapport
+   des vignettes (--rapport, posé sur la trieuse) ; leurs deux boutons, l'un
+   sous l'autre, de 44 px au moins, se touchent au doigt. */
+.trieuse.en-corbeille > .trieuse-tete, .trieuse.en-corbeille > .trieuse-grille, .trieuse.en-corbeille > .trieuse-aide { display: none; }
+.trieuse-corbeille {
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+  overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+}
+.trieuse-corbeille[hidden] { display: none; }
+.corbeille-tete {
+  position: sticky; top: 0; z-index: 1;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px;
+  padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
+  background: var(--chrome); border-bottom: 1px solid var(--filet);
+}
+.corbeille-tete h2 { margin: 0; font-size: 22px; }
+.corbeille-vider { margin-left: auto; }
+.trieuse-bouton.danger { color: var(--rouge); }
+.trieuse-bouton:disabled { opacity: 0.5; cursor: default; }
+.corbeille-note {
+  margin: 0; padding: 12px max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+  color: var(--encre-douce); font-size: 15px; line-height: 1.45;
+}
+.corbeille-grille {
+  list-style: none; margin: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); align-content: start;
+  gap: 16px; padding: 16px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left));
+}
+.corbeille-grille[hidden] { display: none; }
+.carte-corbeille { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 6px; border-radius: 12px; }
+.carte-corbeille .carte-image { box-shadow: none; opacity: 0.92; }
+.corbeille-nom { font-size: 15px; font-weight: 700; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.corbeille-nom.sans-nom { font-weight: 400; color: var(--encre-douce); }
+.corbeille-date { font-size: 14px; line-height: 1.35; text-align: center; color: var(--encre-douce); }
+.corbeille-boutons { display: flex; flex-direction: column; gap: 6px; }
+.corbeille-boutons button {
+  min-height: 44px; padding: 4px 10px; border: 1px solid var(--filet); border-radius: 10px;
+  background: var(--papier); color: var(--encre); font: inherit; font-weight: 600; cursor: pointer;
+}
+.corbeille-boutons .corbeille-remettre { border-color: var(--bleu); color: var(--bleu); }
+.corbeille-boutons .danger { color: var(--rouge); }
+.corbeille-vide { margin: 0; padding: 48px 16px; text-align: center; color: var(--encre-douce); font-size: 17px; }
+.corbeille-vide[hidden] { display: none; }
+.trieuse-corbeille button:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
 @media (hover: hover) {
   .carte:hover .carte-image { border-color: var(--bleu); }
   .trieuse-bouton:hover, .carte-options:hover::before { background: #e9eef5; }
   .trieuse-bouton[aria-pressed='true']:hover { background: var(--surligneur); }
+  .corbeille-boutons button:hover { background: #e9eef5; }
 }
 @media (max-width: 640px) {
   .trieuse-actions { order: 3; flex-basis: 100%; justify-content: flex-start; }
@@ -783,6 +829,11 @@ body.en-trieuse .toast { z-index: 30; }
   .trieuse-choix { gap: 4px; }
   .trieuse-deselectionner { order: -1; }
   .trieuse-nombre { padding: 0 4px; font-size: 15px; }
+  /* La corbeille : deux colonnes ; « Vider la corbeille » passe sous le titre */
+  .corbeille-grille { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding-top: 12px; }
+  .corbeille-tete h2 { font-size: 20px; }
+  .corbeille-vider { margin-left: 0; }
+  .corbeille-boutons button { font-size: 15px; }
 }
 
 /* ---------- Petits menus flottants (menus.ts) ----------

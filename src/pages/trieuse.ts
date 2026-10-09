@@ -23,7 +23,11 @@
 // le document que tant qu'elle est ouverte (fermée, elle ne coûte rien).
 // Les morceaux suivants y ajoutent leurs boutons (le conteneur `actions`
 // du bandeau, et `groupeChoix` pour les pages choisies) et leurs entrées
-// du menu d'une vignette : la corbeille, l'image copiée, le PDF.
+// du menu d'une vignette : l'image copiée, le PDF.
+// La corbeille (corbeille.ts) est une vue de la trieuse : son bouton dans
+// le bandeau (« Corbeille (3) ») remplace la grille par les pages
+// supprimées, qu'on y remet ou supprime définitivement ; Échap ou
+// « Pages » ramènent à la grille.
 // =============================================================
 import * as Y from 'yjs'
 import type { App } from '../app'
@@ -34,6 +38,7 @@ import type { Apercus } from '../sorties/apercu'
 import { barreDInsertion, lignesDe, placeDInsertion, vitesseDefilement } from './glisser'
 import type { Rect } from './glisser'
 import * as actions from './actions'
+import { VueCorbeille, compterCorbeille, libelleCorbeille } from './corbeille'
 import { APPUI_LONG, SEUIL_GLISSER, ecranTactile, typePointeur } from '../pointeurs'
 import type { TypePointeur } from '../pointeurs'
 import type { Menu } from '../menus'
@@ -55,6 +60,10 @@ export interface HoteTrieuse {
   maj(): void
   /** La boîte du contenu d'une page (l'origine du repère qu'on lui donne) */
   readonly apercus: Apercus
+  /** « Copier en image » du menu d'une vignette : la page en PNG dans le
+   *  presse-papiers du système (voir sorties/image.ts) ; la trieuse reste
+   *  ouverte. Appelé dans le geste (le clic) : Safari l'exige. */
+  copierPageEnImage(page: string): void
 }
 
 /** La clé des messages de la trieuse (voir HoteTrieuse.message) */
@@ -127,6 +136,10 @@ export class Trieuse {
    *  Dupliquer, Supprimer, Tout désélectionner (le PDF s'y ajoutera) */
   readonly groupeChoix: HTMLElement
   readonly journal: JournalPages
+  /** La vue de la corbeille (voir corbeille.ts) */
+  readonly corbeille: VueCorbeille
+  /** Son bouton dans le bandeau : « Corbeille (3) » */
+  private boutonCorbeille: HTMLButtonElement
   /** Les pages choisies (Maj + clic, Ctrl + clic, Espace, Ctrl + A,
    *  « Choisir plusieurs ») ; vide à l'ouverture */
   readonly selection = new Set<string>()
@@ -200,7 +213,11 @@ export class Trieuse {
     // « Ajouter une page », jamais « Nouvelle page » : c'est le nom du bouton
     // du tableau, que des essais cherchent par une partie de son nom
     const ajouter = this.bouton('Ajouter une page', 'plus', () => this.ajouterALaFin(), 'Ajouter une page vide à la fin', true)
-    this.actions.append(this.groupeChoix, this.boutonChoisir, ajouter)
+    // La corbeille : son libellé dit combien de pages y attendent (il reste
+    // écrit sur un téléphone : on y lit le nombre)
+    this.boutonCorbeille = this.bouton('Corbeille', 'poubelle', () => this.ouvrirCorbeille(), 'Les pages supprimées : les remettre, ou les supprimer définitivement')
+    this.boutonCorbeille.classList.add('trieuse-bouton-corbeille')
+    this.actions.append(this.groupeChoix, this.boutonChoisir, ajouter, this.boutonCorbeille)
     const fermer = document.createElement('button')
     fermer.type = 'button'; fermer.className = 'bouton trieuse-fermer'; fermer.innerHTML = icone('fermer')
     fermer.title = 'Fermer les pages (Échap)'; fermer.setAttribute('aria-label', 'Fermer les pages')
@@ -215,9 +232,17 @@ export class Trieuse {
     this.menuEl = document.createElement('div')
     this.menuEl.className = 'menu-flottant menu-vignette'; this.menuEl.setAttribute('role', 'menu')
     this.menuEl.hidden = true
-    el.append(tete, this.grille, this.aide, this.menuEl)
-    racine.appendChild(el)
     this.journal = new JournalPages(app.tableau)
+    this.corbeille = new VueCorbeille({
+      tableau: app.tableau, journal: this.journal, vignettes,
+      message: t => this.hote.message(t),
+      annoncer: (t, e) => this.annoncer(t, e),
+      oublierAction: c => this.hote.oublierAction(c),
+      oublierJournal: () => { this.journal.vider(); this.hote.oublierAction(CLE) },
+      revenir: (page, rendreFocus) => this.revenirDeLaCorbeille(page, rendreFocus),
+    })
+    el.append(tete, this.grille, this.aide, this.corbeille.el, this.menuEl)
+    racine.appendChild(el)
     this.brancherPointeurs()
     // Ni le menu du navigateur (« Enregistrer l'image » d'un canevas), ni
     // celui qu'ouvre l'appui long sur Android ; sauf dans le champ du nom
@@ -280,6 +305,7 @@ export class Trieuse {
     window.visualViewport?.addEventListener('resize', this.surClavierVirtuel)
     this.app.tableau.ordre.observe(this.surChangement)
     this.app.tableau.noms.observe(this.surChangement)
+    this.app.tableau.corbeille.observe(this.surCorbeille)
     // La page qu'on regarde, au milieu, avec le focus
     const c = this.focusId ? this.cartes.get(this.focusId) : null
     if (c) {
@@ -303,10 +329,13 @@ export class Trieuse {
     this.annulerClicNom()
     if (this.menuCarte) fermerMenu()
     this.finirSaisie(true)
+    this.corbeille.fermer(null, true)
+    this.el.classList.remove('en-corbeille')
     window.removeEventListener('keydown', this.surTouche, true)
     window.visualViewport?.removeEventListener('resize', this.surClavierVirtuel)
     this.app.tableau.ordre.unobserve(this.surChangement)
     this.app.tableau.noms.unobserve(this.surChangement)
+    this.app.tableau.corbeille.unobserve(this.surCorbeille)
     this.io?.disconnect(); this.io = null
     this.ro?.disconnect(); this.ro = null
     cancelAnimationFrame(this.remiseATaille)
@@ -340,6 +369,13 @@ export class Trieuse {
   /** L'ordre ou les noms ont changé (une action, une annulation, un autre
    *  onglet) : la grille se refait, le focus et le défilement restent */
   private surChangement = () => { if (this.ouvert) this.refaire() }
+  /** La corbeille a changé (une page supprimée définitivement, un autre
+   *  onglet) : le bouton du bandeau, et la vue si elle est ouverte */
+  private surCorbeille = () => {
+    if (!this.ouvert) return
+    this.majBoutonCorbeille()
+    this.corbeille.prevoirMaj()
+  }
 
   /** Met la grille à jour : une carte par page, dans l'ordre (les cartes
    *  existantes sont gardées, seules celles qui ne sont pas à leur place
@@ -373,6 +409,9 @@ export class Trieuse {
     this.ordre = pages
     this.compte.textContent = pagesLisibles(pages.length)
     this.majChoix()
+    // Une page partie ou revenue change la corbeille (et un nom, ses cartes)
+    this.majBoutonCorbeille()
+    this.corbeille.prevoirMaj()
     // Déplacer une carte dans le document lui ôte le focus : il revient
     g.scrollTop = defilement
     if (avaitFocus && this.focusId && !g.contains(document.activeElement)) this.cartes.get(this.focusId)?.focus({ preventScroll: true })
@@ -446,7 +485,8 @@ export class Trieuse {
     if (!this.ouvert) return
     const z = this.hote.zoneLibre()
     const rapport = z.l > 0 && z.h > 0 ? Math.min(16 / 9, Math.max(4 / 3, z.l / z.h)) : 16 / 10
-    this.grille.style.setProperty('--rapport', rapport.toFixed(4))
+    // Sur la trieuse entière : les cartes de la corbeille ont le même rapport
+    this.el.style.setProperty('--rapport', rapport.toFixed(4))
     const image = this.grille.querySelector<HTMLElement>('.carte-image')
     if (!image) return
     const l = image.clientWidth, h = image.clientHeight
@@ -478,7 +518,41 @@ export class Trieuse {
       if (!id) continue
       if (e.isIntersecting) this.visibles.add(id); else this.visibles.delete(id)
     }
+    // La corbeille ouverte : ses vignettes passent d'abord (la grille est cachée)
+    if (!this.corbeille.ouverte) this.vignettes.prioriser(this.ordre.filter(id => this.visibles.has(id)))
+  }
+
+  // ---------- La corbeille ----------
+  /** Le libellé du bouton du bandeau : « Corbeille (3) » ; son nom « Corbeille : 3 pages », « Corbeille : vide » */
+  private majBoutonCorbeille() {
+    const { texte, nom } = libelleCorbeille(compterCorbeille(this.app.tableau))
+    const l = this.boutonCorbeille.querySelector('.libelle')!
+    if (l.textContent !== texte) l.textContent = texte
+    if (this.boutonCorbeille.getAttribute('aria-label') !== nom) this.boutonCorbeille.setAttribute('aria-label', nom)
+  }
+
+  /** Le bouton « Corbeille » : la vue de la corbeille prend la place de la
+   *  grille (le menu ouvert se ferme, le nom qu'on écrivait est gardé ; les
+   *  pages choisies le restent, Échap les retrouve au retour) */
+  private ouvrirCorbeille() {
+    if (this.glisse || this.corbeille.ouverte) return
+    this.annulerAppui(); this.annulerClicNom()
+    if (this.menuCarte) fermerMenu()
+    this.finirSaisie(true)
+    this.el.classList.add('en-corbeille')
+    this.corbeille.ouvrir()
+  }
+
+  /** La vue de la corbeille s'est fermée : la grille revient. page : une
+   *  page qu'on vient de remettre, montrée avec le focus ; sinon le focus
+   *  retourne au bouton « Corbeille » (s'il était dans la vue) */
+  private revenirDeLaCorbeille(page: string | null, rendreFocus: boolean) {
+    this.el.classList.remove('en-corbeille')
+    if (!this.ouvert) return
+    this.majBoutonCorbeille()
     this.vignettes.prioriser(this.ordre.filter(id => this.visibles.has(id)))
+    if (page && this.cartes.has(page)) this.focusCarte(page)
+    else if (rendreFocus) this.boutonCorbeille.focus()
   }
 
   /** La ligne d'aide, selon le dernier pointeur : la souris et la tablette
@@ -608,13 +682,15 @@ export class Trieuse {
    *  menus (posés au démarrage) et avant le clavier du tableau, qu'il
    *  arrête pour ce qu'il traite (ce qu'il ne traite pas passe : Ctrl + S
    *  enregistre toujours ; le tableau caché se tait de lui-même). Une
-   *  fenêtre, un menu ouvert (celui d'une vignette), un champ (le nom d'une
-   *  page) gardent leurs touches, dans cet ordre. Échap, ensuite : un
-   *  glisser en cours, la sélection, puis la trieuse. */
+   *  fenêtre (la question de la corbeille), un menu ouvert (celui d'une
+   *  vignette), un champ (le nom d'une page) gardent leurs touches, dans cet
+   *  ordre. La vue de la corbeille a les siennes (voir plus bas). Échap,
+   *  ensuite : un glisser en cours, la sélection, puis la trieuse. */
   private surTouche = (e: KeyboardEvent) => {
     const cible = e.target as HTMLElement
-    // Une fenêtre par-dessus garde son clavier, Échap compris
-    if (cible.closest?.('dialog')) return
+    // Une fenêtre par-dessus garde son clavier, Échap compris (la question
+    // de la corbeille : Échap la ferme, la corbeille reste)
+    if (cible.closest?.('dialog') || document.querySelector('dialog[open]')) return
     // Un menu ouvert (celui d'une vignette) : menus.ts traite Échap, les
     // flèches et Tab ; sinon ↑ ↓ changeraient de carte derrière lui, et Suppr
     // supprimerait la page
@@ -626,11 +702,21 @@ export class Trieuse {
     const fait = () => { e.preventDefault(); e.stopPropagation() }
     const raccourci = (e.ctrlKey || e.metaKey) && !e.altKey
     const lettre = e.key.toLowerCase()
+    // La vue de la corbeille : Échap ramène aux pages ; Maj + P ferme la
+    // trieuse ; Ctrl+Z / Ctrl+Y vont au journal (« Annuler » une remise) ;
+    // Tab, Entrée, Espace restent aux boutons. Rien de la grille (ni Suppr,
+    // ni les flèches) ; Ctrl + D et Ctrl + A ne vont pas au navigateur.
+    if (this.corbeille.ouverte) {
+      if (e.key === 'Escape') { fait(); this.corbeille.fermer(); return }
+      if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && lettre === 'p') { fait(); if (!e.repeat) this.fermer(); return }
+      if (raccourci && (lettre === 'z' || lettre === 'y')) { fait(); if (lettre === 'y' || e.shiftKey) this.retablir(); else this.annuler(); return }
+      if (toucheMarquePage(e) || (raccourci && lettre === 'a')) fait()
+      return
+    }
     if (e.key === 'Escape') {
       fait()
       if (this.glisse) { this.annulerGlisser(); return }
       this.annulerAppui()
-      // (La vue de la corbeille se fermera ici, avant la sélection)
       if (this.selection.size || this.modeChoix) { this.viderChoix(); return }
       this.fermer()
       return
@@ -732,7 +818,10 @@ export class Trieuse {
       titreMenu(m, 'Fond')
       for (const f of FONDS) entreeMenu(m, f.nom, () => this.changerFond(page, f.id), { coche: f.id === fond })
       filetMenu(m)
-      // (« Copier en image » et « Exporter en PDF… » viendront ici, avant Supprimer)
+      // L'image de la page, pour l'ENT ou Pronote (la trieuse reste ouverte) ;
+      // « Exporter en PDF… » viendra ensuite, avant Supprimer
+      entreeMenu(m, 'Copier en image', () => this.hote.copierPageEnImage(page), {
+        aide: `Une image PNG, à coller dans l'ENT ou Pronote (${CTRL}+V)`, inactif: this.vignettes.vide(page) })
       entreeMenu(m, 'Supprimer', () => this.supprimer([page]), { touche: 'Suppr' })
     }
     const options = c.querySelector<HTMLElement>('.carte-options')!
