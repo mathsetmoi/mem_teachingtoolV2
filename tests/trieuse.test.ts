@@ -255,6 +255,27 @@ describe('les actions de la trieuse', () => {
     expect(piles(t, [a, b, c])).toEqual(p0)
   })
 
+  it('insérer à un autre fond que la voisine (le second temps du menu) : une seule action, un seul Annuler', async () => {
+    const { t, ids: [a, b], j } = await pages(2)
+    t.changerFond(b, 'seyes'); await attendre()
+    const p0 = piles(t, [a, b])
+    const r = actions.inserer(t, j, b, 'apres', 'repere')!
+    expect(ordreDe(t)).toEqual([a, b, r.page])
+    expect(t.fondDe(r.page)).toBe('repere')
+    expect(t.fondDe(b)).toBe('seyes')                          // la voisine n'est pas touchée
+    const avant = actions.inserer(t, j, a, 'avant', 'blanc')!
+    expect(ordreDe(t)).toEqual([avant.page, a, b, r.page])
+    expect(t.fondDe(avant.page)).toBe('blanc')
+    await attendre()
+    // Un Annuler retire la page entière (pas de second temps « fond changé » à défaire)
+    expect(j.annuler()).toBe('fait')
+    expect(ordreDe(t)).toEqual([a, b, r.page])
+    expect(j.annuler()).toBe('fait')
+    expect(ordreDe(t)).toEqual([a, b])
+    expect(j.annuler()).not.toBe('fait')
+    expect(piles(t, [a, b])).toEqual(p0)
+  })
+
   it('dupliquer plusieurs pages : chaque copie juste après son original, avec son histoire ; annulé, copies définitives hors de la corbeille ; rétabli', async () => {
     const { t, ids: [a, b, c, d], j } = await pages(4)
     t.renommerPage(c, 'Exercice 3')

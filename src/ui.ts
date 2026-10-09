@@ -366,10 +366,12 @@ export class UI implements Interface {
     const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir())
     const revoir = bouton('revue', 'Revoir la construction : une page, une séance, pas à pas', () => this.ouvrirRevue(revoir))
     const publier = bouton('publier', 'Publier le replay pour les élèves', () => this.publication.ouvrir())
-    // Enregistrer le tableau dans un fichier, en ouvrir un : un menu discret
-    // au bout de la barre, sous son bouton, aligné à droite
+    // Enregistrer le tableau dans un fichier, en ouvrir un, l'exporter en
+    // PDF : un menu discret au bout de la barre, sous son bouton, aligné à
+    // droite. Son nom dit les trois (qui cherche « PDF » en survolant la
+    // barre, ou au lecteur d'écran, le trouve ici)
     this.sauvegarde = new Sauvegarde(app, t => this.message(t), this.racine)
-    const fichier = bouton('points', `Enregistrer ou ouvrir un tableau (${CTRL} + S, ${CTRL} + O)`, e => {
+    const fichier = bouton('points', `Enregistrer, ouvrir ou exporter en PDF (${CTRL} + S, ${CTRL} + O, ${CTRL} + P)`, e => {
       if (menuFichier.hidden) this.construireMenuFichier()
       basculerMenu(this.menuFichier)
       if (menuFichier.hidden) return
@@ -378,7 +380,7 @@ export class UI implements Interface {
     }, 'points')
     fichier.setAttribute('aria-haspopup', 'menu'); fichier.setAttribute('aria-expanded', 'false')
     const menuFichier = document.createElement('div')
-    menuFichier.className = 'menu-flottant menu-large'; menuFichier.setAttribute('role', 'menu'); menuFichier.setAttribute('aria-label', 'Enregistrer ou ouvrir un tableau')
+    menuFichier.className = 'menu-flottant menu-large'; menuFichier.setAttribute('role', 'menu'); menuFichier.setAttribute('aria-label', 'Enregistrer, ouvrir ou exporter en PDF')
     menuFichier.hidden = true
     this.menuFichier = { el: menuFichier, bouton: fichier }
     haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, revoir, publier, fichier)

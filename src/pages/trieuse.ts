@@ -185,6 +185,9 @@ export class Trieuse {
   /** Le menu d'une vignette : un seul élément, refait à chaque ouverture */
   private menuEl: HTMLElement
   private menuCarte: { page: string; menu: Menu } | null = null
+  /** Où le menu d'une vignette s'est posé la dernière fois (px, à l'écran) :
+   *  le second temps de « Insérer une page… » prend la même place */
+  private cadreMenu: { left: number; top: number; l: number } | null = null
   private saisie: Saisie | null = null
   /** Un clic sur le nom d'une page, qui attend de savoir s'il est le premier d'un double-clic */
   private clicNom: { page: string; minuterie: number } | null = null
@@ -243,6 +246,12 @@ export class Trieuse {
     this.menuEl = document.createElement('div')
     this.menuEl.className = 'menu-flottant menu-vignette'; this.menuEl.setAttribute('role', 'menu')
     this.menuEl.hidden = true
+    // Le second temps de « Insérer une page… » (le choix du fond) : le second
+    // clic d'un double-clic sur « Insérer… » tomberait sur un fond, il
+    // n'arrive pas aux entrées (en capture, sur le menu : avant elles)
+    this.menuEl.addEventListener('click', e => {
+      if (e.detail > 1 && this.menuEl.dataset.temps === 'fond') e.stopPropagation()
+    }, true)
     this.journal = new JournalPages(app.tableau)
     this.corbeille = new VueCorbeille({
       tableau: app.tableau, journal: this.journal, vignettes,
@@ -469,8 +478,6 @@ export class Trieuse {
     if (n.textContent !== numero) n.textContent = numero
     const nc = c.querySelector('.carte-nom')!, texte = nom ?? ''
     if (nc.textContent !== texte) { nc.textContent = texte; (nc as HTMLElement).title = texte ? `${texte} (double-clic : renommer)` : '' }
-    const label = `Page ${i + 1}${nom ? `, ${nom}` : ''}${actuelle ? ', page actuelle' : ''}`
-    if (c.getAttribute('aria-label') !== label) c.setAttribute('aria-label', label)
     const o = c.querySelector<HTMLElement>('.carte-options')!, titre = `Options de la page ${i + 1}`
     if (o.title !== titre) { o.title = titre; o.setAttribute('aria-label', titre) }
     c.classList.toggle('actuelle', actuelle)
@@ -479,13 +486,20 @@ export class Trieuse {
     if (c.getAttribute('aria-selected') !== choisie) c.setAttribute('aria-selected', choisie)
     const t = id === this.focusId ? 0 : -1
     if (c.tabIndex !== t) c.tabIndex = t
-    this.majVide(c, id)
+    this.majVide(c, id, i)
   }
 
-  /** « Page vide » sur la vignette d'une page sans rien */
-  private majVide(c: HTMLElement, id: string) {
+  /** « Page vide » sur la vignette d'une page sans rien, et le nom de la
+   *  carte pour un lecteur d'écran : « Page 5, Exercice 12 p. 84, vide, page
+   *  actuelle » (la vignette est un canevas, et « Page vide » y est
+   *  aria-hidden : sans cela, rien ne distinguerait une page vide d'une page
+   *  écrite). Refait quand la vignette est peinte (la page a changé). */
+  private majVide(c: HTMLElement, id: string, i = this.ordre.indexOf(id)) {
     const v = c.querySelector<HTMLElement>('.carte-vide')!, vide = this.vignettes.vide(id)
     if (v.hidden === vide) v.hidden = !vide
+    const nom = this.app.tableau.nomDe(id), actuelle = id === this.app.page
+    const label = `Page ${i + 1}${nom ? `, ${nom}` : ''}${vide ? ', vide' : ''}${actuelle ? ', page actuelle' : ''}`
+    if (c.getAttribute('aria-label') !== label) c.setAttribute('aria-label', label)
   }
 
   /** La taille des vignettes : la largeur d'une colonne, au rapport de ce
@@ -810,22 +824,41 @@ export class Trieuse {
    *  bouton ⋯, le focus dans la première entrée). Sur une page choisie
    *  parmi plusieurs, ce qu'on peut faire à toutes : les dupliquer, les
    *  supprimer. Un petit menu comme les autres (menus.ts) : Échap, un
-   *  choix ou un appui ailleurs le ferment ; le focus revient à la carte. */
-  private ouvrirMenuCarte(page: string, o: { bouton?: HTMLElement; x?: number; y?: number; clavier?: boolean }) {
+   *  choix ou un appui ailleurs le ferment ; le focus revient à la carte.
+   *  « Insérer une page avant… / après… » le refait à la même place, en
+   *  second temps (o.insertion) : le fond de la page neuve, voir plus bas. */
+  private ouvrirMenuCarte(page: string, o: { bouton?: HTMLElement; x?: number; y?: number; clavier?: boolean; insertion?: 'avant' | 'apres'; pointeY?: number }) {
     const c = this.cartes.get(page)
     if (!c || this.glisse) return
     this.finirSaisie(true)
     const m = this.menuEl
     m.replaceChildren()
+    m.dataset.temps = o.insertion ? 'fond' : ''
     const i = this.ordre.indexOf(page)
     const choisies = this.choisies()
-    if (this.selection.has(page) && choisies.length > 1) {
+    // L'entrée qui prend le focus à l'ouverture (le second temps de l'insertion)
+    let defaut: HTMLButtonElement | null = null
+    if (o.insertion) {
+      // Le fond de la page qu'on insère : les quatre, celui de sa voisine (la
+      // page du menu) coché, avec le focus, pris par Entrée ; un choix insère
+      // la page à ce fond, en une seule action (une entrée du journal, un
+      // seul « Annuler »). Le second clic d'un double-clic sur « Insérer… »,
+      // qui tomberait ici sur un fond, ne fait rien (voir le constructeur).
+      const cote = o.insertion, fond = this.app.tableau.fondDe(page)
+      const ou = cote === 'avant' ? 'avant' : 'après'
+      m.setAttribute('aria-label', `Fond de la page insérée ${ou} la page ${i + 1}`)
+      titreMenu(m, `Page vide ${ou} la page ${i + 1} : son fond`)
+      for (const f of FONDS) {
+        const b = entreeMenu(m, f.nom, () => this.inserer(page, cote, f.id), { coche: f.id === fond, aide: f.id === fond ? `Celui de la page ${i + 1}` : undefined })
+        if (f.id === fond) defaut = b
+      }
+    } else if (this.selection.has(page) && choisies.length > 1) {
       const n = choisies.length
       m.setAttribute('aria-label', `${n} pages`)
       titreMenu(m, `${n} pages`)
       entreeMenu(m, 'Dupliquer', () => this.dupliquer(choisies), { touche: `${CTRL} + D`, aide: 'Avec leur histoire, chacune juste après elle-même' })
       entreeMenu(m, 'Exporter en PDF…', () => this.hote.exporterPdf({ pages: choisies }), { touche: `${CTRL} + P`,
-        aide: 'Cadrées sur leur contenu, en feuilles A4' })
+        aide: 'Cadrées sur leur contenu, en feuilles A4', inactif: choisies.every(p => this.vignettes.vide(p)) })
       entreeMenu(m, 'Supprimer', () => this.supprimer(choisies), { touche: 'Suppr' })
     } else {
       const fond = this.app.tableau.fondDe(page)
@@ -834,8 +867,10 @@ export class Trieuse {
       filetMenu(m)
       entreeMenu(m, 'Renommer…', () => this.renommer(page), { touche: 'F2' })
       entreeMenu(m, 'Dupliquer', () => this.dupliquer([page]), { touche: `${CTRL} + D`, aide: 'Une copie juste après, avec toute son histoire' })
-      entreeMenu(m, 'Insérer une page avant', () => this.inserer(page, 'avant'))
-      entreeMenu(m, 'Insérer une page après', () => this.inserer(page, 'apres'))
+      // Le fond se choisit en second temps (à la même place, voir plus bas ;
+      // pointeY : la hauteur du clic, rien au clavier)
+      entreeMenu(m, 'Insérer une page avant…', e => this.ouvrirMenuCarte(page, { ...o, insertion: 'avant', pointeY: e.detail ? e.clientY : undefined }))
+      entreeMenu(m, 'Insérer une page après…', e => this.ouvrirMenuCarte(page, { ...o, insertion: 'apres', pointeY: e.detail ? e.clientY : undefined }))
       filetMenu(m)
       titreMenu(m, 'Fond')
       for (const f of FONDS) entreeMenu(m, f.nom, () => this.changerFond(page, f.id), { coche: f.id === fond })
@@ -844,16 +879,32 @@ export class Trieuse {
       // (la fenêtre propose aussi tout le tableau) ; la trieuse reste ouverte
       entreeMenu(m, 'Copier en image', () => this.hote.copierPageEnImage(page), {
         aide: `Une image PNG, à coller dans l'ENT ou Pronote (${CTRL}+V)`, inactif: this.vignettes.vide(page) })
-      entreeMenu(m, 'Exporter en PDF…', () => this.hote.exporterPdf({ page }), { aide: 'Cadrée sur son contenu, en feuilles A4' })
+      // Grisé sur une page vide, comme « Copier en image » et comme
+      // « Exporter la page en PDF… » au tableau (le bandeau et Ctrl + P
+      // restent là pour tout le tableau)
+      entreeMenu(m, 'Exporter en PDF…', () => this.hote.exporterPdf({ page }), { aide: 'Cadrée sur son contenu, en feuilles A4', inactif: this.vignettes.vide(page) })
       entreeMenu(m, 'Supprimer', () => this.supprimer([page]), { touche: 'Suppr' })
     }
     const options = c.querySelector<HTMLElement>('.carte-options')!
     const menu: Menu = { el: m, bouton: o.bouton, fermer: () => this.surMenuFerme(menu) }
     this.menuCarte = { page, menu }
+    // Le second temps de l'insertion garde la boîte du premier (même bord
+    // gauche, même largeur au moins) ; choisi au pointeur, il se pose de
+    // sorte que le fond de la voisine soit sous lui (un second clic au même
+    // endroit le prend ; celui d'un double-clic ne fait rien), sinon au même
+    // coin ; toujours dans l'écran
+    const cadre = o.insertion ? this.cadreMenu : null
+    m.style.minWidth = cadre ? cadre.l + 'px' : ''
     ouvrirMenu(menu)
-    if (o.bouton || o.x === undefined || o.y === undefined) placerMenu(m, options.getBoundingClientRect(), 'dessous')
+    if (cadre) {
+      const top = defaut && o.pointeY !== undefined ? o.pointeY - defaut.offsetTop - defaut.offsetHeight / 2 : cadre.top
+      m.style.left = cadre.left + 'px'
+      m.style.top = Math.max(8, Math.min(top, window.innerHeight - m.offsetHeight - 8)) + 'px'
+    } else if (o.bouton || o.x === undefined || o.y === undefined) placerMenu(m, options.getBoundingClientRect(), 'dessous')
     else placerMenu(m, new DOMRect(o.x, o.y, 0, 0), 'droite')
-    if (o.clavier) allerAuxEntrees(m, 1, ENTREES)
+    this.cadreMenu = { left: parseFloat(m.style.left) || 0, top: parseFloat(m.style.top) || 0, l: m.offsetWidth }
+    if (defaut) defaut.focus({ preventScroll: true })
+    else if (o.clavier) allerAuxEntrees(m, 1, ENTREES)
   }
 
   /** Le menu d'une vignette vient de se fermer : le focus qui y était (ou
@@ -919,9 +970,10 @@ export class Trieuse {
   }
 
   // ---------- Insérer, ajouter, changer le fond ----------
-  /** Une page vide juste avant ou juste après, au fond de cette page */
-  private inserer(page: string, cote: 'avant' | 'apres') {
-    const r = actions.inserer(this.app.tableau, this.journal, page, cote)
+  /** Une page vide juste avant ou juste après, au fond choisi au second
+   *  temps du menu (celui de cette page, par défaut) */
+  private inserer(page: string, cote: 'avant' | 'apres', fond: Fond) {
+    const r = actions.inserer(this.app.tableau, this.journal, page, cote, fond)
     if (!r) return
     this.focusCarte(r.page)
     this.annoncer(`Page vide insérée : c'est la page ${r.rang + 1}`, r.entree)

@@ -32,12 +32,13 @@ export function renommer(t: Tableau, j: JournalPages, id: string, nom: string | 
 }
 
 /** Une page neuve et vide, juste avant ou juste après la page `id`, au fond
- *  de celle-ci (on le change ensuite par « Fond »). rang : sa place (0 pour
- *  la première). */
-export function inserer(t: Tableau, j: JournalPages, id: string, cote: 'avant' | 'apres'): { entree: Entree; page: string; rang: number } | null {
+ *  choisi dans le menu de la vignette (par défaut celui de cette voisine) :
+ *  une seule entrée du journal, sans second temps par « Fond ». rang : sa
+ *  place (0 pour la première). */
+export function inserer(t: Tableau, j: JournalPages, id: string, cote: 'avant' | 'apres', fond?: Fond): { entree: Entree; page: string; rang: number } | null {
   const i = t.ordre.toArray().indexOf(id)
   if (i < 0) return null
-  return ajouterA(t, j, 'page insérée', t.fondDe(id), cote === 'avant' ? i : i + 1)
+  return ajouterA(t, j, 'page insérée', fond ?? t.fondDe(id), cote === 'avant' ? i : i + 1)
 }
 
 /** Une page neuve et vide à la fin, au fond de la dernière page (le bouton

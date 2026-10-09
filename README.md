@@ -818,7 +818,11 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
   aller ; Espace fait de même au clavier, Ctrl + A les choisit toutes. Au
   doigt et au stylet posé sur l'écran, le bouton **Choisir plusieurs** du
   bandeau (un interrupteur, comme « Ajouter » de la barre d'actions) fait de
-  chaque toucher un choix ; il s'éteint quand plus rien n'est choisi. Une
+  chaque toucher un choix ; il s'éteint quand plus rien n'est choisi. Il ne
+  s'appelle pas « Ajouter » comme au tableau : dans ce bandeau, à côté
+  d'« Ajouter une page », un second « Ajouter » se lirait comme « ajouter
+  une page » ; et il y est même quand rien n'est encore choisi, alors que
+  celui de la barre d'actions accompagne une sélection. Une
   page choisie a une coche et un fond bleu pâle ; tant qu'il y en a, chaque
   vignette montre sa coche (vide ou pleine), et le bandeau dit « 3 pages
   choisies » avec **Dupliquer**, **Supprimer**, **Exporter en PDF** (les
@@ -837,12 +841,15 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
   première entrée ; ↓ passe à la suivante sans changer de vignette, Suppr n'y
   supprime rien, Échap le ferme sans fermer la trieuse). L'appui long au
   doigt ne l'ouvre pas : il sert à tirer la page. Il propose **Aller à cette
-  page**, **Renommer…**, **Dupliquer**, **Insérer une page avant**, **Insérer
-  une page après**, le **Fond** (page blanche, petits carreaux, Seyès, repère),
+  page**, **Renommer…**, **Dupliquer**, **Insérer une page avant…**, **Insérer
+  une page après…**, le **Fond** (page blanche, petits carreaux, Seyès, repère),
   **Copier en image** (la page en PNG pour l'ENT ou Pronote, voir « Copier en
   image » ; la trieuse reste ouverte), **Exporter en PDF…** (voir « Exporter
   en PDF ») et **Supprimer** ; sur une page choisie parmi d'autres,
-  **Dupliquer**, **Exporter en PDF…** et **Supprimer** pour toutes.
+  **Dupliquer**, **Exporter en PDF…** et **Supprimer** pour toutes. Sur une
+  page vide, *Copier en image* et *Exporter en PDF…* sont grisés, comme au
+  tableau (rien à copier ni à imprimer ; le bandeau exporte tout le
+  tableau), et le lecteur d'écran dit la vignette « Page 5, vide ».
 - **Renommer** (F2, « Renommer… », ou un double-clic sur le nom) : un champ
   dans la vignette, prérempli, 60 caractères au plus, le nom étant
   facultatif ; Entrée ou cliquer ailleurs le garde, Échap le laisse tel
@@ -852,10 +859,15 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
   en a la place : voir « Changer de page »), à l'annonce du numéro et dans
   la revue. Un simple clic sur le nom mène à la page, un
   instant après (le temps de savoir si c'est un double-clic).
-- **Insérer, ajouter** : « Insérer une page avant / après » met une page vide
-  à côté, au fond de sa voisine (on le change ensuite par « Fond ») ; le
-  bouton **Ajouter une page** du bandeau en met une à la fin, au fond de la
-  dernière. La nouvelle vignette prend le focus. Annulée, une page insérée
+- **Insérer, ajouter** : « Insérer une page avant… / après… » met une page
+  vide à côté, au fond qu'on choisit : le même menu (même largeur, même bord
+  gauche) propose aussitôt les quatre fonds, celui de la voisine coché, sous
+  le focus (Entrée le prend) et, au pointeur, sous le pointeur (un second
+  clic au même endroit le prend) ; une seule action, qu'un seul « Annuler »
+  défait (pas de second temps par « Fond »). Le second clic d'un double-clic
+  sur « Insérer… » (ou le second toucher d'un double toucher) ne fait rien :
+  on reclique une fois le menu lu. Le bouton **Ajouter une page** du bandeau
+  en met une à la fin, au fond de la dernière. La nouvelle vignette prend le focus. Annulée, une page insérée
   disparaît tout à fait (ni dans l'ordre, ni dans la corbeille).
 - **Changer le fond** d'une page sans y aller : le repère prend son origine au
   centre de ce qui est écrit sur la page, calée sur le centimètre ((0, 0)
@@ -912,7 +924,8 @@ page change ; fermée, la trieuse ne coûte rien.
 Le tableau s'enregistre tout seul dans le navigateur, mais un navigateur peut
 l'oublier : un poste de lycée remis à zéro chaque soir, un iPad sur lequel on
 n'est pas revenu depuis des semaines, un historique effacé. Le bouton **⋯**, au
-bout de la barre du haut, l'emporte dans un fichier :
+bout de la barre du haut (« Enregistrer, ouvrir ou exporter en PDF », Ctrl + S,
+Ctrl + O, Ctrl + P), l'emporte dans un fichier :
 
 - **Enregistrer le tableau…** (Ctrl + S, ⌘ + S sur Mac) écrit un fichier
   `tableau-2026-10-07-14h05.memc` : toutes les pages, tout l'historique (la
@@ -1636,7 +1649,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
-| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), plusieurs pages à la fois (Maj ou Ctrl + clic, Espace, Ctrl + A, « Choisir plusieurs » au doigt), le menu d'une vignette (⋯, clic droit, bouton du stylet, touche Menu), le nom écrit dans la carte, les messages et leur « Annuler » ; « Exporter en PDF » (le bandeau, celui des pages choisies, le menu d'une vignette, Ctrl + P) ; le bouton « Corbeille (3) » du bandeau, qui ouvre la vue de la corbeille |
+| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), plusieurs pages à la fois (Maj ou Ctrl + clic, Espace, Ctrl + A, « Choisir plusieurs » au doigt), le menu d'une vignette (⋯, clic droit, bouton du stylet, touche Menu ; « Insérer une page… » y choisit le fond en second temps), le nom écrit dans la carte, les messages et leur « Annuler » ; « Exporter en PDF » (le bandeau, celui des pages choisies, le menu d'une vignette, Ctrl + P) ; le bouton « Corbeille (3) » du bandeau, qui ouvre la vue de la corbeille |
 | `src/pages/corbeille.ts` | La corbeille des pages, une vue de la trieuse : les pages supprimées en vignettes, quand (« Supprimée aujourd'hui à 10 h 05 »), Remettre (par le journal de la trieuse : « Annuler »), Supprimer définitivement et Vider (après une question, dans une fenêtre de l'outil) ; où c'est noté dans le document (la carte `corbeille`) |
 | `src/pages/actions.ts` | Ce que la trieuse fait aux pages, chaque action en une entrée de son journal : renommer, insérer une page vide avant ou après, en ajouter une à la fin, dupliquer avec l'histoire, supprimer vers la corbeille (jamais toutes ; la page où aller quand on supprime celle qu'on regarde), changer un fond (l'origine du repère au centre du contenu), ranger d'une place (pur, testé) |
 | `src/pages/glisser.ts` | Où arrive une page lâchée dans la grille (la ligne sous le point, avant la première carte dont le milieu est à droite), où se pose la barre qui le montre, la vitesse du défilement près du bord (pur, testé) |
