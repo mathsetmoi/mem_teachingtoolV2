@@ -193,15 +193,26 @@ figure, d'un trait ou d'une image :
   repère), symétrie centrale, rotation, translation (par un vecteur entre deux
   sommets ou en coordonnées), homothétie. L'image est une nouvelle figure, aux
   sommets nommés A', B', C'… ;
-- *Main levée*, *Dupliquer*, *Copier*, *Copier en image* (voir « Copier en
-  image »), *Envoyer vers…* (une autre page, voir « Envoyer vers une autre
-  page »), supprimer.
+- *Main levée*, *Dupliquer*, *Copier*, puis **⋯** (*Plus*), dont le petit
+  menu a *Copier en image* (voir « Copier en image ») et *Envoyer vers…* (une
+  autre page, voir « Envoyer vers une autre page »), enfin supprimer.
+
+La rangée de ces onglets tient sur une ligne au-dessus de la figure (le menu
+d'un rectangle fait 770 px de large, 54 px de haut) : c'est pourquoi ce qui
+sort de la page (une image, une autre page) est rangé derrière ⋯, qu'on ouvre
+d'un clic, d'un toucher, au stylet ou au clavier (Entrée, puis ↓ ; Échap
+referme ce petit menu seul et rend le focus à ⋯). Le menu complet se pose
+au-dessus de ce qu'il règle ; s'il n'y tient pas, en dessous ; sinon à côté (à
+droite, puis à gauche) ; jamais sur la figure ni ses poignées quand il a la
+place ailleurs (sinon, là où il en couvre le moins). Pendant *Désigner* ou
+*Tracer* (un axe, un centre), il reste ouvert, et la consigne (« Clique sur la
+droite qui sert d'axe. ») passe au-dessus de lui.
 
 **Une formule** se modifie au double-clic (comme un texte, partout) ; son clic
 droit ouvre son menu : *Modifier* (son infobulle rappelle le double-clic, sauf
 au doigt), *Couleur et taille* (les quatre couleurs ;
-Petite, Normale, Grande), *Dupliquer*, *Copier*, *Copier en image*, *Envoyer
-vers…*, supprimer. Pas de
+Petite, Normale, Grande), *Dupliquer*, *Copier*, ⋯ (*Copier en image*,
+*Envoyer vers…*), supprimer. Pas de
 *Transformer* : l'image d'une formule n'en déplacerait que le coin.
 
 **Plusieurs objets** sélectionnés (Maj + clic, un cadre, un lasso, Ctrl + A) :
@@ -210,8 +221,8 @@ leur menu commun, et la sélection reste entière. « 3 objets », puis *Couleur
 épaisseur* (les quatre couleurs pour tout sauf les images ; les trois
 épaisseurs pour les traits et les figures, un trait de surligneur gardant sa
 largeur de surligneur ; les pointillés s'il y a une figure ; un choix est
-marqué quand tous l'ont déjà), *Dupliquer*, *Copier*, *Couper*, *Copier en
-image*, *Envoyer vers…*, supprimer.
+marqué quand tous l'ont déjà), *Dupliquer*, *Copier*, *Couper*, ⋯ (*Copier
+en image*, *Envoyer vers…*), supprimer.
 Seulement ce qui vaut pour chacun : ni les sommets, ni le fond, ni les
 transformations. Chaque choix fait une seule étape : un Ctrl+Z rend leur
 couleur aux dix objets d'un coup. Le menu se pose au-dessus de toute la
@@ -1315,8 +1326,9 @@ coller. »
 
 **Copier en image (pour l'ENT et Pronote).** *Copier la page en image* (le
 menu de la page, au clic droit dans le vide ; le menu d'une vignette de la
-trieuse) et *Copier en image* (le menu complet de ce qui est pris, juste après
-*Copier* ; une image emporte les points qui lui sont liés) mettent une image
+trieuse) et *Copier en image* (le menu complet de ce qui est pris : le petit
+menu de son bouton ⋯, juste après *Copier* ; une image emporte les points qui
+lui sont liés) mettent une image
 PNG dans le presse-papiers de l'ordinateur : on la colle (Ctrl+V) dans le
 cahier de textes de Pronote ou un message de l'ENT, et un message le dit :
 « Image copiée : collez-la dans l'ENT ou Pronote (Ctrl+V) ». L'image est
@@ -1339,7 +1351,8 @@ page vide ; « Rien n'est sélectionné. » sans rien de pris. Pas de raccourci
 *Copier pour Pronote* de la fenêtre Publier, qui copie le lien d'un replay.
 
 **Envoyer vers une autre page.** *Envoyer vers…* (le menu complet d'un objet,
-d'une formule ou de plusieurs objets, juste après *Copier en image* ; pas dans
+d'une formule ou de plusieurs objets : le petit menu de son bouton ⋯, après
+*Copier en image* ; pas dans
 la barre d'actions, qui garde les gestes de tous les jours : *Options* y mène,
 au doigt comme au stylet) ouvre une fenêtre : « Envoyer les 3 objets vers… »,
 deux choix, *Déplacer (ils quittent cette page)*, coché, ou *Copier (ils
@@ -1392,7 +1405,8 @@ collage (la revue d'une séance entière montre un court détour par la page
 d'arrivée).
 
 Sur un téléphone, le menu complet passe à la ligne sur toute la largeur de
-l'écran (il couvre alors le haut de la barre d'outils plutôt que d'en sortir).
+l'écran (il couvre alors le haut de la barre d'outils plutôt que d'en sortir) ;
+de même en paysage quand il est plus large que la place à droite de la barre.
 
 **La barre de gauche** ne bouge pas : la poubelle y garde sa place, grisée
 quand rien n'est choisi, comme ↶ et ↷ quand il n'y a rien à faire. Sur un écran bas (moins de 900 px de haut environ),
@@ -1400,7 +1414,9 @@ ses boutons gardent leurs 44 px et elle défile, avec une fine barre de
 défilement ; les choix des Formes et du Segment suivent leur bouton.
 Les **messages** en bas de l'écran passent sous les panneaux et les menus (ils
 ne cachent jamais ce qu'on va toucher), sauf pendant la revue, la séance
-d'automatismes et le programme de construction ; un message à bouton
+d'automatismes, le programme de construction et un placement (la consigne de
+*Désigner* ou *Tracer*, que le menu complet ouvert ne doit pas cacher ; aucun
+appui ne s'arrête sur le texte d'un message) ; un message à bouton
 (« Changer ») reste 7 s, et un autre message qui arrive entre-temps s'écrit
 au-dessus de lui sans le chasser. Un message peut avoir deux boutons
 (« Aller à la page 5 », « Annuler ») ; il prend la largeur de son texte et de
@@ -1542,13 +1558,13 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
-| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le menu complet (un objet, une formule, plusieurs objets ; placé dans l'écran, sur un téléphone aussi), le menu de la page, « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯, la trieuse), les messages (un ou deux boutons), éditeur de formules |
+| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le menu complet (un objet, une formule, plusieurs objets ; sa rangée sur une ligne, son bouton ⋯ et le petit menu de *Copier en image* et *Envoyer vers…* ; placé dans l'écran, sur un téléphone aussi), le menu de la page, « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯ de la barre du haut, la trieuse), les messages (un ou deux boutons ; au-dessus des panneaux pendant un placement), éditeur de formules |
 | `src/pages/envoi.ts` | La fenêtre « Envoyer vers… » : déplacer ou copier, la liste des destinations (chaque page avec sa petite vignette, une nouvelle page juste après, à la fin), le clavier ; les textes des messages d'un envoi (pur, testé). L'envoi lui-même est `App.envoyerSelection`, son annulation `Tableau.envoyer` |
 | `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose, ce que devient un appui sur elle |
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (celles des lecteurs sont dans `src/revoir/icones.ts`) |
 | `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
 | `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; les touches qui se taisent pendant un geste ; le tableau caché (la revue, une séance d'automatismes, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) |
-| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) ; le balisage de leurs entrées, de leurs filets et de leurs titres (l'interface et la trieuse s'en servent) |
+| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) ; le balisage de leurs entrées, de leurs filets et de leurs titres (l'interface et la trieuse s'en servent) ; la place du menu complet près de ce qu'il règle, jamais dessus quand il a la place ailleurs (`positionPanneau`, pur, testé) |
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
@@ -1588,6 +1604,11 @@ n'empêche un usage payant.
 - Au TNI, une manche ou une paume qui effleure l'écran avec un doigt peut
   faire un toucher à deux doigts, qui annule : le message « Annulé » le dit,
   trois doigts ou Ctrl+Y le rattrapent, et le menu du doigt coupe ces gestes.
+- Le menu complet d'une figure reconnue d'un trait à main levée (*Main
+  levée*) ou d'un segment passe sur deux lignes, comme avant le lot 3 ; sur un
+  écran bas (1024 × 768), avec *Transformer* ouvert, il peut n'avoir de place
+  ni au-dessus, ni en dessous, ni à côté d'une figure au milieu de l'écran :
+  il en couvre alors le moins possible (17 % au lieu de 82 %, mesuré).
 
 ## Feuille de route proposée
 

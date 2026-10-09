@@ -201,8 +201,10 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
 
 /* ---------- Message ----------
    Sous les panneaux et les menus (15 à 23) : il ne cache pas ce qu'on va
-   toucher. .dessus : pendant la revue (28), qui couvre le tableau, et pour le
-   programme de construction. */
+   toucher. .dessus : pendant la revue (28), qui couvre le tableau, pour le
+   programme de construction, et pendant un placement (« Désigner »,
+   « Tracer » : le menu complet reste ouvert pendant qu'on clique où dit la
+   consigne). Aucun appui ne s'y arrête, sauf sur ses boutons. */
 .toast {
   position: absolute; z-index: 14; left: 50%; bottom: max(84px, env(safe-area-inset-bottom));
   transform: translate(-50%, 8px); opacity: 0; pointer-events: none;

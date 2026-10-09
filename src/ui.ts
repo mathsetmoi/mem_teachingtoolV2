@@ -18,7 +18,7 @@ import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
 import type { Menu, OptionsEntree } from './menus'
-import { ENTREES, allerAuxEntrees, basculerMenu, entreeMenu, fermerMenu, focusAuClavier, focusNullePart, installerMenus, ouvrirMenu, placerMenu, refaireEnGardantLeFocus } from './menus'
+import { ENTREES, allerAuxEntrees, basculerMenu, entreeMenu, fermerMenu, focusAuClavier, focusNullePart, installerMenus, ouvrirMenu, placerMenu, positionPanneau, refaireEnGardantLeFocus } from './menus'
 import { choisirGestes, choisirMolette, reglages } from './reglages'
 import type { Doigt, Molette } from './reglages'
 import { CTRL, tableauCache } from './navigateur'
@@ -48,11 +48,13 @@ const DOIGTS: { id: Doigt; nom: string; aide: string; marque: string; titre: str
     titre: 'Rôle du doigt : auto (il dessine tant qu\'aucun stylet n\'a touché l\'écran)', dit: 'Auto : le doigt dessine jusqu\'au premier stylet posé sur l\'écran.' },
 ]
 
-/** Le titre de « Copier en image » (le menu complet) */
+/** L'aide de « Copier en image » (le menu ⋯ du menu complet) */
 const TITRE_IMAGE = 'Une image PNG, à coller dans l\'ENT ou Pronote'
-/** Le titre de « Envoyer vers… » (le menu complet ; pas dans la barre
- *  d'actions, qui garde les gestes de tous les jours : « Options » y mène) */
+/** L'aide de « Envoyer vers… » (le menu ⋯ du menu complet ; pas dans la
+ *  barre d'actions, qui garde les gestes de tous les jours : « Options » y mène) */
 const TITRE_ENVOI = 'Déplacer ou copier sur une autre page'
+/** Le titre du bouton ⋯ du menu complet, qui ouvre le menu de ces deux-là */
+const TITRE_PLUS = 'Plus : copier en image (ENT, Pronote), envoyer vers une autre page'
 
 /** Le bouton « › » : la page suivante, ou, sur la dernière page, une page de
  *  plus. Son titre commence toujours par « Page suivante » ; jamais
@@ -216,6 +218,9 @@ export class UI implements Interface {
   private menuFichier!: Menu
   /** Le menu de la page (un clic droit dans le vide) : il n'a pas de bouton */
   private menuPage!: Menu
+  /** Le menu du bouton ⋯ du menu complet : « Copier en image », « Envoyer
+   *  vers… » (son bouton change quand le menu complet se refait) */
+  private menuPlus!: Menu
   /** La barre d'actions au-dessus de ce qui est pris (voir barre-actions.ts) */
   private barreActions!: BarreActions
   /** Peindre une page hors de l'écran : les vignettes, l'image copiée, le PDF
@@ -471,7 +476,13 @@ export class UI implements Interface {
     menuPage.hidden = true
     this.menuPage = { el: menuPage }
 
-    this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, menuFichier, menuPage, this.annonce, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
+    // ----- Le menu du bouton ⋯ du menu complet (voir boutonPlus) -----
+    const menuPlus = document.createElement('div')
+    menuPlus.className = 'menu-flottant menu-plus'; menuPlus.setAttribute('role', 'menu'); menuPlus.setAttribute('aria-label', 'Plus')
+    menuPlus.hidden = true
+    this.menuPlus = { el: menuPlus }
+
+    this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, menuFichier, menuPage, menuPlus, this.annonce, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
     // ----- La barre d'actions, au-dessus de ce qui est pris -----
     // Elle ne recouvre ni la barre d'outils (sauf sur un téléphone, où elle
     // n'y tient pas), ni la barre du haut
@@ -967,7 +978,12 @@ export class UI implements Interface {
     let formes: Forme[] | null = null
     if (!app.enLecture && plusieurs) formes = app.formesChoisies()
     else if (!app.enLecture && app.options) { const f = app.formeChoisie(); if (f && f.id === app.options) formes = [f] }
-    if (!formes?.length) { this.panneau.hidden = true; this.clePanneau = ''; this.formesPanneau = []; return }
+    if (!formes?.length) {
+      this.panneau.hidden = true; this.clePanneau = ''; this.formesPanneau = []
+      // Son menu ⋯ s'en va avec lui (son bouton n'est plus là)
+      if (!this.menuPlus.el.hidden) fermerMenu()
+      return
+    }
     const id = plusieurs ? TOUTE_LA_SELECTION + formes.map(f => f.id).join(',') : formes[0].id
     if (id !== this.idPanneau) { this.idPanneau = id; this.section = null }
     if (plusieurs) {
@@ -986,23 +1002,58 @@ export class UI implements Interface {
       if (cle !== this.clePanneau) { const f = formes[0]; refaireEnGardantLeFocus(this.panneau, () => this.construirePanneau(f)); this.clePanneau = cle; this.formesPanneau = [] }
     }
     this.panneau.hidden = false
-    // Au-dessus de ce qu'il règle (toute la sélection), ou en dessous s'il
-    // n'y a pas la place
+    // Au-dessus de ce qu'il règle (toute la sélection), sinon en dessous,
+    // sinon à côté : jamais dessus quand il a la place ailleurs (voir
+    // positionPanneau). Sa rangée d'onglets tient sur une ligne : ce qui
+    // sort de la page (une image, une autre page) est dans son menu ⋯.
     const b = plusieurs ? app.boiteDuContenu(formes) : app.rendu.boite(formes[0])
     if (!b) return
     const cam = app.cam, z = app.rendu.scene.getBoundingClientRect()
     const a = cam.versEcran(b.x, b.y), c = cam.versEcran(b.x + b.l, b.y + b.h)
     const l = this.panneau.offsetWidth, h = this.panneau.offsetHeight
-    let top = z.top + a.y - h - 14
-    if (top < 76) top = Math.min(z.top + c.y + 14, window.innerHeight - h - 8)
     // À droite de la barre d'outils ; sur un téléphone, où il n'y tient pas
     // (il passe alors à la ligne sur toute la largeur), il la couvre plutôt
     // que de sortir de l'écran, comme la barre d'actions
     const barre = this.barreOutils.getBoundingClientRect().right + 8
     const gauche = l <= window.innerWidth - barre - 8 ? barre : 8
-    const left = Math.max(gauche, Math.min(z.left + (a.x + c.x) / 2 - l / 2, window.innerWidth - l - 8))
-    this.panneau.style.left = left + 'px'
-    this.panneau.style.top = Math.max(8, top) + 'px'
+    const p = positionPanneau({ left: z.left + a.x, top: z.top + a.y, right: z.left + c.x, bottom: z.top + c.y }, l, h,
+      { l: window.innerWidth, h: window.innerHeight }, { gauche, haut: 76 })
+    this.panneau.style.left = p.left + 'px'
+    this.panneau.style.top = p.top + 'px'
+    // Son menu ⋯ ouvert le suit (le menu complet a pu bouger ou se refaire)
+    const plus = this.menuPlus.bouton
+    if (!this.menuPlus.el.hidden && plus && this.panneau.contains(plus)) placerMenu(this.menuPlus.el, plus.getBoundingClientRect(), 'dessous')
+  }
+
+  /** Le bouton ⋯ du menu complet, avant Supprimer : son petit menu a
+   *  « Copier en image » (une image PNG pour l'ENT ou Pronote, à ne pas
+   *  confondre avec « Copier pour Pronote » de Publier, qui copie un lien)
+   *  et « Envoyer vers… » (une autre page). Ils étaient dans la rangée ; ils
+   *  la faisaient passer sur deux lignes (le menu d'un rectangle de 728 à
+   *  820 px de large, de 54 à 96 px de haut), qui ne tenait plus au-dessus
+   *  de la figure et venait la couvrir. ⋯ ne coûte que 42 px : la rangée
+   *  reste sur une ligne comme avant le lot 3. */
+  private boutonPlus(ligne: HTMLElement) {
+    const m = this.menuPlus
+    const b = bouton('points', TITRE_PLUS, e => {
+      if (m.el.hidden) this.construireMenuPlus()
+      basculerMenu(m)
+      if (m.el.hidden) return
+      placerMenu(m.el, b.getBoundingClientRect(), 'dessous')
+      // Ouvert au clavier (Entrée, Espace) : le focus sur sa première entrée
+      if ((e as MouseEvent).detail === 0) allerAuxEntrees(m.el, 1, ENTREES)
+    }, 'points plus')                                   // ses points sont gras, comme ceux du ⋯ de la barre du haut
+    b.setAttribute('aria-haspopup', 'menu')
+    b.setAttribute('aria-expanded', String(!m.el.hidden))
+    m.bouton = b
+    ligne.appendChild(b)
+  }
+
+  private construireMenuPlus() {
+    const m = this.menuPlus.el
+    m.replaceChildren()
+    this.entreeMenu(m, 'Copier en image', () => this.copierEnImage('selection'), { aide: TITRE_IMAGE })
+    this.entreeMenu(m, 'Envoyer vers…', () => this.ouvrirEnvoi(), { aide: TITRE_ENVOI })
   }
 
   /** Un bouton texte du menu, dans sa ligne */
@@ -1031,14 +1082,11 @@ export class UI implements Interface {
     const ouvrir = (s: Section) => this.basculerSection(s)
     const figure = f.type === 'polygone' || f.type === 'cercle' ? f as Figure : null
     const segment = f.type === 'polygone' && !f.ferme && f.pts.length === 4
-    // « Copier », puis « Copier en image » (une image PNG pour l'ENT ou
-    // Pronote, à ne pas confondre avec « Copier pour Pronote » de Publier,
-    // qui copie un lien), puis « Envoyer vers… » (une autre page), avant
-    // Supprimer
+    // « Copier », puis ⋯ (« Copier en image », « Envoyer vers… » : voir
+    // boutonPlus), avant Supprimer
     const copier = () => {
       action('Copier', `Copier (${CTRL}+C) : ${CTRL}+V la colle ici, sur une autre page ou dans un autre onglet`, () => app.copier())
-      action('Copier en image', TITRE_IMAGE, () => this.copierEnImage('selection'))
-      action('Envoyer vers…', TITRE_ENVOI, () => this.ouvrirEnvoi())
+      this.boutonPlus(ligne)
     }
     const jeter = () => ligne.appendChild(bouton('poubelle', 'Supprimer (Suppr)', () => app.supprimerSelection(), 'danger'))
 
@@ -1182,8 +1230,7 @@ export class UI implements Interface {
     this.optionMenu(ligne, 'Dupliquer', `Une copie de tous, décalée d'un centimètre (${CTRL}+D)`, () => app.dupliquerSelection())
     this.optionMenu(ligne, 'Copier', `Copier (${CTRL}+C) : ${CTRL}+V les colle ici, sur une autre page ou dans un autre onglet`, () => app.copier())
     this.optionMenu(ligne, 'Couper', `Couper (${CTRL}+X) : ils partent, ${CTRL}+V les remet`, () => app.couper())
-    this.optionMenu(ligne, 'Copier en image', TITRE_IMAGE, () => this.copierEnImage('selection'))
-    this.optionMenu(ligne, 'Envoyer vers…', TITRE_ENVOI, () => this.ouvrirEnvoi())
+    this.boutonPlus(ligne)
     ligne.appendChild(bouton('poubelle', `Supprimer les ${n} objets (Suppr)`, () => app.supprimerSelection(), 'danger'))
     p.appendChild(ligne)
     if (this.section !== 'couleur') return
@@ -1575,7 +1622,9 @@ export class UI implements Interface {
    *  et les panneaux (il ne cache pas ce qu'on va toucher), sauf pendant la
    *  revue et la séance d'automatismes, qui couvrent tout, et pour le
    *  programme de construction (dessus), dont le panneau prend presque tout
-   *  l'écran d'une tablette.
+   *  l'écran d'une tablette, et pendant un placement (la consigne de
+   *  « Désigner » ou « Tracer » : le menu complet reste ouvert pendant
+   *  qu'on clique sur la page).
    *  Un message ordinaire ne chasse pas un message à action encore à l'écran
    *  (« Stylet détecté … Changer », que suit souvent la figure reconnue du
    *  premier trait) : il s'écrit au-dessus de lui, et s'en va seul.
@@ -1584,7 +1633,10 @@ export class UI implements Interface {
    *  au-dessus de la revue, et « Annuler » d'une page qu'on vient de jeter
    *  écrirait alors dans le tableau, que la revue ne doit jamais changer. */
   message(texte: string, action?: ActionMessage | ActionMessage[], dessus = false) {
-    this.toast.classList.toggle('dessus', dessus || this.app.enLecture)
+    // Pendant un placement (« Désigner », « Tracer » : la consigne dit où
+    // cliquer), le message passe aussi au-dessus des panneaux : le menu
+    // complet reste ouvert pendant qu'on clique, il ne doit pas la cacher
+    this.toast.classList.toggle('dessus', dessus || this.app.enLecture || !!this.app.placement)
     const el = document.createElement('span')
     el.className = 'ligne'
     el.append(texte)

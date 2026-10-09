@@ -262,6 +262,46 @@ export function positionMenu(ancre: { left: number; top: number; right: number; 
   return { left, top }
 }
 
+/** Un rectangle à l'écran (ce que règle le menu complet) */
+export interface Rect { left: number; top: number; right: number; bottom: number }
+
+/** Où poser le menu complet (l × h) près de ce qu'il règle (cible, à
+ *  l'écran) sans jamais le poser dessus quand il a la place ailleurs :
+ *  au-dessus, centré ; sinon en dessous ; sinon à droite, puis à gauche (à
+ *  côté, à la hauteur de la cible). Chaque place est d'abord ramenée dans
+ *  l'écran (sous la barre du haut, bornes.haut, s'il y tient ; à droite de
+ *  la barre d'outils, bornes.gauche, qui vaut 8 sur un téléphone où il n'y
+ *  tient pas) ; la première qui ne couvre ni la cible ni ses poignées
+ *  l'emporte ; s'il n'y en a pas (une figure qui remplit l'écran), celle
+ *  qui en couvre le moins, dans cet ordre à égalité. Jamais hors de la
+ *  fenêtre. Avant le lot 3, il passait sous la cible quand il ne tenait pas
+ *  au-dessus, quitte à remonter sur elle au bas de l'écran. */
+export function positionPanneau(cible: Rect, l: number, h: number, fenetre: { l: number; h: number },
+  bornes: { gauche: number; haut: number }, marge = 8, ecart = 14): { left: number; top: number } {
+  const x1 = Math.min(cible.left, cible.right), x2 = Math.max(cible.left, cible.right)
+  const y1 = Math.min(cible.top, cible.bottom), y2 = Math.max(cible.top, cible.bottom)
+  const dansX = (x: number) => Math.max(marge, Math.min(Math.max(x, bornes.gauche), fenetre.l - l - marge))
+  const dansY = (y: number) => Math.max(marge, Math.min(Math.max(y, bornes.haut), fenetre.h - h - marge))
+  const centreX = (x1 + x2) / 2 - l / 2, centreY = (y1 + y2) / 2 - h / 2
+  const places = [
+    { left: centreX, top: y1 - ecart - h },
+    { left: centreX, top: y2 + ecart },
+    { left: x2 + ecart, top: centreY },
+    { left: x1 - ecart - l, top: centreY },
+  ].map(p => ({ left: dansX(p.left), top: dansY(p.top) }))
+  // Ce qu'il ne doit pas couvrir : la cible, son cadre en tirets et ses
+  // poignées (l'écart presque entier autour d'elle)
+  const g = ecart - 1
+  const couvre = (p: { left: number; top: number }) =>
+    Math.max(0, Math.min(p.left + l, x2 + g) - Math.max(p.left, x1 - g)) * Math.max(0, Math.min(p.top + h, y2 + g) - Math.max(p.top, y1 - g))
+  let mieux = places[0]
+  for (const p of places) {
+    if (couvre(p) === 0) return p
+    if (couvre(p) < couvre(mieux)) mieux = p
+  }
+  return mieux
+}
+
 /** Place un menu déjà visible (il faut pouvoir le mesurer) */
 export function placerMenu(el: HTMLElement, ancre: DOMRect, cote: Cote) {
   const p = positionMenu(ancre, el.offsetWidth, el.offsetHeight, cote, { l: window.innerWidth, h: window.innerHeight })
