@@ -735,6 +735,14 @@ Le fichier : une première ligne de texte,
 `{"format":"mem-tableau","v":1,"app":"MEM teachingtool","date":…,"pages":…}`,
 puis le document Yjs entier, compressé (gzip). Le film élève commence lui
 aussi par `{"format":` ; chaque lecteur reconnaît le sien à ses premiers octets.
+Le fichier garde aussi la corbeille des pages, leurs noms et les copies de
+pages (qui savent de quelle page elles héritent leur passé) : c'est toujours
+la version 1, et une version d'avant les ignore sans rien casser (une copie y
+paraît d'un coup au replay, comme une page neuve). L'en-tête ne compte que les
+pages de l'ordre, pas celles de la corbeille. Une copie de page coûte le poids
+de la page dans le document (environ 400 Ko pour une page de 300 traits
+longs), jamais celui de son film : son passé se relit dans celui de
+l'original.
 
 ## Ce que fait la v0.1
 
@@ -1011,7 +1019,7 @@ cours, qui fait la latence ressentie au stylet.
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule), les fonds |
-| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert) |
+| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié) et le déplacement des pages (le plus petit changement de l'ordre) |
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris |
 | `src/rendu.ts` | Les trois couches d'affichage |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
