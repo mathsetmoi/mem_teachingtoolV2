@@ -2692,8 +2692,9 @@ export class App {
 
   private get banqueImages() { return this.tableau.doc.getMap('images') as Y.Map<string> }
 
-  /** Les pixels d'une image, chargés une fois : la banque garde les données */
-  private pixels(src: string): HTMLImageElement | null {
+  /** Les pixels d'une image, chargés une fois : la banque garde les données.
+   *  Aussi pour peindre une page hors de l'écran (src/sorties/apercu.ts) */
+  pixels(src: string): HTMLImageElement | null {
     let img = this.cachePixels.get(src)
     if (!img) {
       const donnees = this.banqueImages.get(src)

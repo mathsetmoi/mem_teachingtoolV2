@@ -41,6 +41,13 @@ function regrouper(pts: number[]): number[][] {
   return r
 }
 
+/** L'épaisseur d'un trait en esquisse, en fraction de sa taille : celle, en
+ *  moyenne, du contour de perfect-freehand (son « size » est l'épaisseur à
+ *  pleine pression ; il s'amincit avec la vitesse). Réglée en comparant les
+ *  deux sur des pages d'écriture à la souris, de 0,25 à 0,6 de zoom : la
+ *  même encre à 10 % près (voir peindreSur). */
+export const ESQUISSE = 0.5
+
 /** Contour de perfect-freehand → Path2D en courbes quadratiques */
 export function cheminDuTrait(t: { pts: number[]; taille: number; pression: boolean }, fini: boolean): Path2D {
   const contour = getStroke(regrouper(t.pts), optionsTrait(t, fini))
@@ -87,6 +94,10 @@ export class Rendu {
   private dpr = 1
   l = 0
   h = 0
+
+  /** Vrai pendant une peinture en esquisse (voir peindreSur) : les traits y
+   *  sont des lignes brisées, sans perfect-freehand ni cache */
+  private esquisse = false
 
   private chemins = new Map<string, { cle: string; chemin: Path2D }>()
   /** cachee : la formule n'est plus à l'écran, mais son rendu KaTeX est gardé en réserve */
@@ -219,12 +230,66 @@ export class Rendu {
       const dec = this.selection.has(f.id) || (lie && this.selection.has(lie)) ? this.decalage : null
       this.dessinerForme(c, f, dec)
     }
-    // Nettoie le cache des formes disparues. On en garde une bonne réserve :
-    // revenir sur une autre page, ou sur une autre image de la revue, ne
-    // recalcule pas tous ses tracés
-    if (this.chemins.size > this.formes.length + 1500) {
-      const vivants = new Set(this.formes.map(f => f.id))
+    this.purgerChemins(this.formes)
+  }
+
+  /** Nettoie le cache des formes disparues. On en garde une bonne réserve :
+   *  revenir sur une autre page, ou sur une autre image de la revue, ne
+   *  recalcule pas tous ses tracés */
+  private purgerChemins(formes: Forme[]) {
+    if (this.chemins.size > formes.length + 1500) {
+      const vivants = new Set(formes.map(f => f.id))
       for (const id of this.chemins.keys()) if (!vivants.has(id)) this.chemins.delete(id)
+    }
+  }
+
+  /**
+   * Peint une page ailleurs qu'à l'écran (une vignette, une image copiée, une
+   * feuille du PDF), vue par la caméra de CE rendu, sur un canevas de l × h
+   * px CSS à dpr pixels par px CSS. Dans l'ordre de l'écran : le fond (fond
+   * vrai : le papier et son motif ; faux : le papier blanc seul ; 'aucun' :
+   * rien, on continue une peinture commencée, par tranches de formes, les
+   * images dans les premières), les images, les autres formes (o.formes,
+   * sinon celles du rendu, par z), puis chaque formule par o.formule (à
+   * l'écran, elles sont en HTML au-dessus du canevas). Ni sélection, ni
+   * décalage, ni remplacement, ni poignées, ni instruments, ni la couche
+   * « direct ».
+   * Pendant l'appel, l, h et dpr prennent ceux de l'appel (une droite
+   * prolongée va jusqu'au bord de CE canevas), puis sont rendus ; ce que
+   * montre l'écran (peinte, formes) ne bouge pas. En esquisse, un trait est
+   * la ligne brisée de ses points (une vignette de 346 traits : 1,6 ms au
+   * lieu de 129, et à cette taille l'œil ne voit pas la différence), sans
+   * toucher au cache des tracés ; sinon le cache se purge comme à l'écran :
+   * un PDF de 60 pages ne garde pas des milliers de tracés.
+   * Pour peindre hors de l'écran, on crée un Rendu sur un élément jamais
+   * attaché au document : ses canevas restent vides et seule cette méthode
+   * sert. On ne lui pose jamais `formes` (on passe o.formes) : l'image
+   * d'écran que son constructeur a planifiée referait sinon le DOM KaTeX de
+   * chaque formule dans son élément détaché.
+   */
+  peindreSur(c: CanvasRenderingContext2D, o: {
+    l: number; h: number; dpr: number; fond: boolean | 'aucun'; formes?: Forme[]
+    formule?: (c: CanvasRenderingContext2D, f: Formule) => void; esquisse?: boolean
+  }) {
+    const garde = { l: this.l, h: this.h, dpr: this.dpr, esquisse: this.esquisse }
+    this.l = o.l; this.h = o.h; this.dpr = o.dpr; this.esquisse = !!o.esquisse
+    c.save()
+    try {
+      const cam = this.cam
+      let formes = o.formes ?? this.formes
+      if (formes.some((f, i) => i > 0 && f.z < formes[i - 1].z)) formes = [...formes].sort((a, b) => a.z - b.z)
+      if (o.fond !== 'aucun') {
+        c.setTransform(o.dpr, 0, 0, o.dpr, 0, 0)
+        dessinerFond(c, o.fond ? this.fond : 'blanc', cam, o.l, o.h, this.origine)
+      }
+      c.setTransform(o.dpr * cam.z, 0, 0, o.dpr * cam.z, o.dpr * cam.x, o.dpr * cam.y)
+      for (const f of formes) if (f.type === 'image') this.dessinerForme(c, f, null)
+      for (const f of formes) if (f.type !== 'image' && f.type !== 'formule') this.dessinerForme(c, f, null)
+      if (o.formule) for (const f of formes) if (f.type === 'formule') { c.save(); o.formule(c, f); c.restore() }
+      if (!this.esquisse) this.purgerChemins(formes)
+    } finally {
+      c.restore()
+      this.l = garde.l; this.h = garde.h; this.dpr = garde.dpr; this.esquisse = garde.esquisse
     }
   }
 
@@ -267,6 +332,7 @@ export class Rendu {
   }
 
   private dessinerTrait(c: CanvasRenderingContext2D, t: Trait, dec: { dx: number; dy: number } | null) {
+    if (this.esquisse) { this.esquisserTrait(c, t); return }
     // Le dernier point compte aussi : un trait qui se dessine garde parfois
     // le même nombre de points d'une image à l'autre, mais pas le même bout
     const n = t.pts.length
@@ -281,6 +347,31 @@ export class Rendu {
     c.globalAlpha = t.opacite
     c.fillStyle = t.couleur
     c.fill(entree.chemin)
+    c.restore()
+  }
+
+  /** Un trait en esquisse : la ligne brisée de ses points, à peu près de
+   *  l'épaisseur moyenne du contour de perfect-freehand (ESQUISSE fois la
+   *  taille), jamais plus fine que 0,8 pixel de l'image ; un point seul, un
+   *  disque. Rien n'est lu ni écrit dans le cache des tracés. */
+  private esquisserTrait(c: CanvasRenderingContext2D, t: Trait) {
+    const p = t.pts, n = Math.floor(p.length / 3)
+    if (!n) return
+    const echelle = this.dpr * this.cam.z
+    const e = Math.max(t.taille * ESQUISSE, 0.8 / (echelle || 1))
+    c.save()
+    c.translate(t.x, t.y)
+    c.globalAlpha = t.opacite
+    c.beginPath()
+    if (n === 1 || p.every((v, i) => i % 3 === 2 || v === p[i % 3])) {
+      c.fillStyle = t.couleur
+      c.arc(p[0], p[1], e / 2, 0, Math.PI * 2); c.fill()
+    } else {
+      c.strokeStyle = t.couleur; c.lineWidth = e; c.lineCap = 'round'; c.lineJoin = 'round'
+      c.moveTo(p[0], p[1])
+      for (let i = 3; i + 1 < p.length; i += 3) c.lineTo(p[i], p[i + 1])
+      c.stroke()
+    }
     c.restore()
   }
 

@@ -28,6 +28,8 @@ import type { Bords } from './camera'
 import { TAILLES_FORMULE, changerCouleur, changerEpaisseur, changerPointilles, habillageCommun, titreDuMenu } from './habillage'
 import { icone } from './icones'
 import { BarreActions } from './barre-actions'
+import { Apercus } from './sorties/apercu'
+import { Vignettes } from './pages/vignettes'
 import { titreModifierFormule } from './pointeurs'
 
 /** Le rôle du doigt : la marque de son bouton, son titre, ce qu'on en dit */
@@ -198,6 +200,13 @@ export class UI implements Interface {
   private menuPage!: Menu
   /** La barre d'actions au-dessus de ce qui est pris (voir barre-actions.ts) */
   private barreActions!: BarreActions
+  /** Peindre une page hors de l'écran : les vignettes, l'image copiée, le PDF
+   *  (voir sorties/apercu.ts) ; le réglage du fond imprimé */
+  apercus!: Apercus
+  /** Les vignettes des pages, pour la trieuse, la corbeille et « Envoyer
+   *  vers… » (voir pages/vignettes.ts) : rien ne s'y peint tant qu'aucune
+   *  n'est à l'écran */
+  vignettes!: Vignettes
 
   constructor(private app: App, private racine: HTMLElement) {
     // Les menus d'abord : leur Échap passe avant celui des panneaux (voir menus.ts)
@@ -437,6 +446,12 @@ export class UI implements Interface {
       haut: this.barreHaut.getBoundingClientRect().bottom,
     }))
     this.revue = new RevueEnClasse(this.app, this.racine)
+    // Les formules écrites comme à l'écran (voir App, rendu.rendreFormule)
+    this.apercus = new Apercus({
+      pixels: src => app.pixels(src),
+      rendreFormule: (latex, el) => katex.render(latex, el, { throwOnError: false, displayMode: false }),
+    })
+    this.vignettes = new Vignettes(app.tableau, this.apercus)
     this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
     this.seance = new Seance(this.racine)

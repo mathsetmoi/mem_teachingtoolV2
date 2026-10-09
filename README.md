@@ -1082,12 +1082,33 @@ redessiné seulement quand quelque chose change ; une couche HTML pour les
 formules KaTeX, nettes à tout zoom ; un petit canvas « direct » pour le trait en
 cours, qui fait la latence ressentie au stylet.
 
+Une page se peint aussi **hors de l'écran**, pour les vignettes des pages,
+l'image copiée et le PDF : par le même code que l'écran (`Rendu.peindreSur`,
+sur un rendu jamais attaché au document, avec sa propre caméra), sur
+n'importe quel canevas, à n'importe quelle échelle. Les formules y sont
+recopiées depuis leur rendu KaTeX : la formule est mise en page, cachée,
+comme à l'écran, puis chaque texte, trait de fraction, cadre et SVG est
+repeint à sa place sur un canevas (quelques millisecondes par formule, une par tâche ;
+un SVG « foreignObject » coûtait 55 à 105 ms et 366 Ko de polices). Comparé
+à une capture de l'écran à 100 %, l'écart moyen est de 0,01 sur 255 (0,02
+au dpr 2), et l'écran lui-même ne change pas d'un pixel. Une vignette est une
+esquisse : chaque trait y est la ligne brisée de ses points (1,6 ms au lieu
+de 129 ms pour 346 traits), les petites formules des rectangles gris ; elle
+se peint seulement quand elle est à l'écran, par tranches de 12 ms pendant
+les moments libres du navigateur (60 pages de 300 traits : toutes prêtes en
+moins d’une demi-seconde mesurée, sans jamais bloquer l’écriture), et se repeint
+quand sa page change. Le fond imprimé ou non (l'image copiée, le PDF) est un
+réglage de ce navigateur, sous la clé `mem-sortie-fond`.
+
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule), les fonds |
 | `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié) et le déplacement des pages (le plus petit changement de l'ordre) |
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris |
-| `src/rendu.ts` | Les trois couches d'affichage |
+| `src/rendu.ts` | Les trois couches d'affichage ; peindre une page sur un autre canevas (`peindreSur` : une vignette en esquisse, une image, une feuille du PDF), sans rien changer à l'écran |
+| `src/sorties/formules.ts` | Les formules KaTeX sur un canevas : mises en page cachées comme à l'écran, puis repeintes (textes, bordures, fonds, SVG coupés), les polices attendues ; leurs images gardées par échelle dans un cache borné en pixels |
+| `src/sorties/apercu.ts` | Peindre une page hors de l'écran (la boîte du contenu, les polices, les formules et les images préparées, puis la peinture) : la fondation des vignettes, de l'image copiée et du PDF ; le réglage du fond imprimé (`mem-sortie-fond`) |
+| `src/pages/vignettes.ts` | Les vignettes des pages : un canevas par page et par taille, peint plus tard par une file paresseuse (seulement s'il est à l'écran, les pages prioritaires d'abord), repeint quand sa page change ; le cadrage d'une vignette |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
 | `src/geometrie.ts` | Ce que touche la gomme ; ce que vise la sélection (la distance au tracé, l'intérieur plein ou nu, l'aire) ; ce que prend un cadre ou un lasso (la part dedans, le lasso simplifié) |
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
@@ -1110,7 +1131,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
 | `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; les touches qui se taisent pendant un geste ; le tableau caché (la revue, une séance d'automatismes, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) |
 | `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) |
-| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document |
+| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
 | `src/pages/journal.ts` | Le journal de la trieuse des pages : chaque action sur les pages (déplacer, renommer, dupliquer, insérer, supprimer, changer un fond) entre avec l'état des pages d'avant et d'après ; annuler (ou rétablir) seulement si le tableau est exactement dans l'état laissé, sinon il le dit et se vide (jamais un changement invisible ni une page perdue) ; une page créée par une action défaite ne va pas dans la corbeille ; aucune pile de page touchée |
