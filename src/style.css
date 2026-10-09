@@ -908,6 +908,32 @@ body.en-trieuse .toast { z-index: 30; }
   .dialogue-envoi { width: calc(100vw - 16px); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); padding: 16px 14px 12px; }
 }
 
+/* ---------- Exporter en PDF (sorties/export-pdf.ts) ----------
+   Ce qu'on exporte (deux choix, ou une ligne), la case du fond imprimé,
+   la note, Annuler et Exporter. Des lignes de 40 px au moins : elles se
+   touchent au doigt. */
+.dialogue-pdf { width: min(520px, calc(100vw - 24px)); }
+.dialogue-pdf .corps { display: flex; flex-direction: column; gap: 10px; }
+.pdf-quoi { display: flex; flex-direction: column; gap: 2px; }
+.dialogue-pdf .case { display: flex; align-items: center; gap: 10px; min-height: 40px; cursor: pointer; }
+.dialogue-pdf .case input { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--bleu); }
+.dialogue-pdf .pdf-seul { margin: 0; min-height: 40px; display: flex; align-items: center; font-weight: 700; color: var(--encre); }
+.dialogue-pdf .pdf-fond { border-top: 1px solid var(--filet); padding-top: 6px; }
+.dialogue-pdf .pdf-note { margin: 0 0 4px; font-size: 14px; line-height: 1.45; }
+
+/* ---------- Imprimer ----------
+   Le menu Fichier › Imprimer du navigateur imprimerait la page web (les
+   barres, le tableau coupé au bord de l'écran) : une seule phrase dit où
+   est l'impression de MEM (Ctrl + P ouvre déjà « Exporter en PDF »). */
+@media print {
+  html, body { height: auto; overflow: visible; background: #fff; }
+  body > * { display: none !important; }
+  body::before {
+    content: 'Pour imprimer : ⋯ → Exporter le tableau en PDF.';
+    display: block; margin: 2cm; color: #000; font: 16pt var(--police);
+  }
+}
+
 /* ---------- Revenir au contenu ---------- */
 .retour-contenu {
   position: absolute; z-index: 12; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%);

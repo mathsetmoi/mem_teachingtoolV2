@@ -12,7 +12,8 @@
 // un écran au dpr 2), au plus environ 4 millions de pixels et 4 096 pixels
 // de côté : une page très haute reste lisible (ses lettres gardent 25 px
 // sur 1 900 × 10 000 unités, contre 12 avec un plafond de 2 000 px par
-// côté) ; plus haute encore, le PDF la découpe en feuilles.
+// côté) ; pour une page plus haute que trois fois sa largeur, le message
+// propose « Exporter en PDF », qui la découpe en feuilles A4.
 // La copie part DANS le geste (Safari l'exige) : on vérifie tout de suite
 // qu'il y a quelque chose, puis navigator.clipboard.write reçoit un
 // ClipboardItem dont l'image est une promesse, sans rien attendre avant.
@@ -22,6 +23,7 @@
 // Publier, qui copie un lien.
 // =============================================================
 import type { Apercus, PageAPeindre } from './apercu'
+import type { ActionMessage } from '../app'
 import type { Forme } from '../types'
 import type { Boite } from '../revoir/bobine'
 import { CTRL } from '../navigateur'
@@ -114,15 +116,25 @@ export function cameraDe(b: Boite, z: number): { x: number; y: number; z: number
 /** Ce que la copie demande à l'interface */
 export interface HoteImage {
   readonly apercus: Apercus
-  message(texte: string, action?: { libelle: string; faire: () => void; cle?: string }): void
+  message(texte: string, action?: ActionMessage | ActionMessage[]): void
   /** Le bouton d'un message précédent de l'image s'en va (il parlait d'une
    *  autre copie) */
   oublierAction(cle?: string): void
 }
 
 /** Ce qu'on copie : une page (son fond, son origine, ses formes), ou
- *  seulement quelques-unes de ses formes ; nom : le fichier, si l'on enregistre */
-export interface AImager { page: PageAPeindre; formes?: Forme[]; nom: string }
+ *  seulement quelques-unes de ses formes ; nom : le fichier, si l'on
+ *  enregistre ; pdf : la page en PDF (la fenêtre de l'export), proposé
+ *  quand elle est plus haute que trois fois sa largeur */
+export interface AImager { page: PageAPeindre; formes?: Forme[]; nom: string; pdf?: () => void }
+
+/** Une page plus haute que ce nombre de fois sa largeur : le PDF la lit mieux */
+export const TRES_HAUTE = 3
+
+/** Cette boîte de contenu est-elle très haute (plus de trois fois sa largeur) ? */
+export function tresHaute(b: { l: number; h: number } | null): boolean {
+  return !!b && b.h > TRES_HAUTE * Math.max(1, b.l)
+}
 
 /** Le navigateur sait-il mettre une image dans le presse-papiers du système ? */
 function presseImage(): boolean {
@@ -155,10 +167,10 @@ export function copierEnImage(h: HoteImage, q: AImager): void {
     ecrite = navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
   } catch (e) { ecrite = Promise.reject(e) }
   ecrite.then(() => {
-    const changer = q.page.fond !== 'blanc'
-      ? { libelle: fond ? 'Sans le fond' : 'Avec le fond', faire: () => { ap.choisirFondImprime(!fond); copierEnImage(h, q) }, cle: CLE }
-      : undefined
-    h.message(`Image copiée : collez-la dans l'ENT ou Pronote (${CTRL}+V)`, changer)
+    const actions: ActionMessage[] = []
+    if (q.page.fond !== 'blanc') actions.push({ libelle: fond ? 'Sans le fond' : 'Avec le fond', faire: () => { ap.choisirFondImprime(!fond); copierEnImage(h, q) }, cle: CLE })
+    if (q.pdf && tresHaute(ap.boite(q.formes ?? q.page.formes))) actions.push({ libelle: 'Exporter en PDF', faire: q.pdf, cle: CLE })
+    h.message(`Image copiée : collez-la dans l'ENT ou Pronote (${CTRL}+V)`, actions.length ? actions : undefined)
   }, () => h.message('La copie de l\'image a été refusée.', enregistrer))
 }
 

@@ -31,6 +31,8 @@ import { BarreActions } from './barre-actions'
 import { Apercus } from './sorties/apercu'
 import type { PageAPeindre } from './sorties/apercu'
 import { copierEnImage, nomDeLImage } from './sorties/image'
+import { ouvrirFenetrePdf } from './sorties/export-pdf'
+import type { CibleExport, HoteFenetrePdf } from './sorties/export-pdf'
 import { Vignettes } from './pages/vignettes'
 import { Trieuse } from './pages/trieuse'
 import { ouvrirEnvoi } from './pages/envoi'
@@ -719,6 +721,8 @@ export class UI implements Interface {
       aide: 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder sur la clé ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).' })
     this.entreeMenu(m, 'Ouvrir un tableau…', () => s.ouvrir(), { touche: `${CTRL} + O`,
       aide: 'Remplace le tableau de ce navigateur par celui d\'un fichier .memc.' })
+    this.entreeMenu(m, 'Exporter le tableau en PDF…', () => this.exporterPdf('tout'),
+      { aide: 'Toutes les pages, cadrées sur leur contenu, en feuilles A4 à imprimer ou à déposer dans l\'ENT.' })
     m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
     m.appendChild(Object.assign(document.createElement('p'), { className: 'menu-note', textContent: s.etat() }))
   }
@@ -757,7 +761,40 @@ export class UI implements Interface {
     const page = this.pageAPeindre(id)
     if (!page.formes.length) return this.message('La page est vide : rien à copier.')
     const numero = this.app.pages.indexOf(id) + 1
-    copierEnImage(this, { page, nom: nomDeLImage(numero, this.app.tableau.nomDe(id), false) })
+    // Une page plus haute que trois fois sa largeur : le message propose le
+    // PDF, qui la découpe en feuilles A4 au lieu de la réduire
+    copierEnImage(this, { page, nom: nomDeLImage(numero, this.app.tableau.nomDe(id), false), pdf: () => this.exporterPdf({ page: id }) })
+  }
+
+  // ----- Exporter en PDF (voir sorties/export-pdf.ts) -----
+  /** La fenêtre « Exporter en PDF » : la page (le menu de la page, Ctrl + P ;
+   *  elle propose aussi tout le tableau), les pages choisies dans la
+   *  trieuse, ou tout le tableau (le menu ⋯, la trieuse). Pas pendant la
+   *  revue ni une séance, ni par-dessus une autre fenêtre ; la trieuse
+   *  reste ouverte et utilisable pendant l'export. */
+  exporterPdf(cible: CibleExport) {
+    const app = this.app
+    if (app.enLecture || this.revue.ouvert || document.body.classList.contains('en-seance') || document.querySelector('dialog[open]')) return
+    // Le point d'un simple toucher qui attend encore est de la page
+    app.poserCeQuiAttend()
+    this.fermerMenus()
+    ouvrirFenetrePdf(this.hotePdf(), cible)
+  }
+
+  /** Ce que l'export lit du tableau : le document, l'ordre, le geste en cours */
+  private hotePdf(): HoteFenetrePdf {
+    const app = this.app, t = app.tableau
+    return {
+      apercus: this.apercus,
+      fondDe: p => t.fondDe(p),
+      origineDe: p => t.origineDe(p),
+      formesDe: p => t.formesDe(p)?.values() ?? [],
+      nomDe: p => t.nomDe(p),
+      pages: () => app.pages,
+      enGeste: () => app.enGeste,
+      message: (texte, action) => this.message(texte, action),
+      maj: () => this.maj(),
+    }
   }
 
   // ----- Envoyer vers une autre page (voir pages/envoi.ts) -----
@@ -785,7 +822,8 @@ export class UI implements Interface {
    *  comme les autres petits menus : Échap, un choix, ou un appui ailleurs
    *  (qui ne laisse pas d'encre). Coller ici, Tout sélectionner, Tout voir,
    *  puis ce qui touche la page elle-même (Dupliquer la page, Toutes les
-   *  pages…), et ce qui en sort (Copier la page en image).
+   *  pages…), et ce qui en sort (Copier la page en image, Exporter la page
+   *  en PDF…).
    *  m : le point du monde où « Coller ici »
    *  colle. Refait à chaque ouverture : la copie et la page ont pu changer.
    *  auClavier : ouvert par la touche Menu (voir App.menuAuClavier), le
@@ -797,20 +835,23 @@ export class UI implements Interface {
       aide: `Le dernier objet copié dans MEM ; ${CTRL} + V colle aussi une image ou ce qu'on a copié dans une autre version de MEM` })
     this.entreeMenu(el, 'Tout sélectionner', () => app.toutSelectionner(), { touche: `${CTRL} + A`, inactif: app.pageVide() })
     this.entreeMenu(el, 'Tout voir', () => app.toutVoir(), { touche: 'Maj + 1' })
-    // La page elle-même. Ordre à venir : Dupliquer la page · Toutes les
-    // pages… · ─ · Copier la page en image · Exporter la page en PDF…
+    // La page elle-même : Dupliquer la page · Toutes les pages… · ─ ·
+    // Copier la page en image · Exporter la page en PDF…
     el.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
     this.entreeMenu(el, 'Dupliquer la page', () => app.dupliquerLaPage(), { touche: `${CTRL} + Maj + D`,
       aide: 'Une copie juste après, avec toute son histoire (Revoir la montre se construire)' })
     // Ouverte au clavier (Entrée sur l'entrée), la trieuse rend le focus au compteur
     this.entreeMenu(el, 'Toutes les pages…', e => this.ouvrirTrieuse(e.detail === 0), { touche: 'Maj + P',
       aide: 'Les pages en vignettes : aller à une page, les ranger' })
-    // Ce qui sort de la page : son image, pour l'ENT ou Pronote (« Exporter
-    // la page en PDF… » viendra ensuite). Pas de raccourci : Ctrl + Maj + C
-    // ouvre l'inspecteur du navigateur.
+    // Ce qui sort de la page : son image, pour l'ENT ou Pronote (pas de
+    // raccourci : Ctrl + Maj + C ouvre l'inspecteur du navigateur), et son
+    // PDF ; toutes deux grisées sur une page vide (tout le tableau reste à
+    // portée : le menu ⋯, et Ctrl + P, dont la fenêtre propose les deux)
     el.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
     this.entreeMenu(el, 'Copier la page en image', () => this.copierEnImage('page'), { inactif: app.pageVide(),
       aide: `Une image PNG, à coller dans l'ENT ou Pronote (${CTRL}+V)` })
+    this.entreeMenu(el, 'Exporter la page en PDF…', () => this.exporterPdf({ page: app.page }), { touche: `${CTRL} + P`,
+      inactif: app.pageVide(), aide: 'Cadrée sur son contenu, en feuilles A4 à imprimer' })
     ouvrirMenu(this.menuPage)
     placerMenu(el, new DOMRect(x, y, 0, 0), 'droite')
     if (auClavier) allerAuxEntrees(el, 1, ENTREES)

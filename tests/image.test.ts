@@ -3,7 +3,7 @@
 // plus environ 4 millions de pixels et 4 096 pixels de côté : une page très
 // haute reste lisible. Un nom de fichier propre partout (Windows compris).
 import { describe, expect, it } from 'vitest'
-import { COTE_IMAGE, MARGE_IMAGE, PIXELS_IMAGE, cameraDe, nomDeFichier, nomDeLImage, tailleImage } from '../src/sorties/image'
+import { COTE_IMAGE, MARGE_IMAGE, PIXELS_IMAGE, cameraDe, nomDeFichier, nomDeLImage, tailleImage, tresHaute } from '../src/sorties/image'
 
 describe('tailleImage', () => {
   it('une petite page : à 100 % (2 pixels par unité, la marge comprise)', () => {
@@ -32,6 +32,14 @@ describe('tailleImage', () => {
     expect(tailleImage({ l: 0, h: 0 })).toEqual({ z: 1, l: 64, h: 64 })
     const t = tailleImage({ l: NaN, h: Infinity })
     expect(t.l).toBeGreaterThan(0); expect(t.h).toBeGreaterThan(0)
+  })
+
+  it('une page plus haute que trois fois sa largeur : le message propose le PDF (découpé en A4)', () => {
+    expect(tresHaute({ l: 400, h: 1201 })).toBe(true)
+    expect(tresHaute({ l: 400, h: 1200 })).toBe(false)
+    expect(tresHaute({ l: 1900, h: 10000 })).toBe(true)
+    expect(tresHaute({ l: 0, h: 10 })).toBe(true)
+    expect(tresHaute(null)).toBe(false)
   })
 
   it('la caméra de l\'image met le coin de la boîte, moins la marge, en (0, 0)', () => {

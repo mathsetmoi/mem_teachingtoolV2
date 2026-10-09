@@ -225,7 +225,8 @@ coller), *Tout sélectionner* (Ctrl + A), *Tout voir* (Maj + 1), puis, après un
 filet, ce qui touche la page elle-même : *Dupliquer la page* (Ctrl + Maj + D,
 voir « Changer de page »), *Toutes les pages…* (Maj + P, voir « Les pages ») ;
 puis, après un second filet, ce qui en sort : *Copier la page en image* (voir
-« Copier en image », grisé sur une page vide). Il se ferme
+« Copier en image »), *Exporter la page en PDF…* (Ctrl + P, voir « Exporter
+en PDF »), toutes deux grisées sur une page vide. Il se ferme
 comme les autres menus : Échap, un choix, ou un appui ailleurs, qui ne laisse
 pas d'encre.
 
@@ -794,7 +795,8 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
   chaque toucher un choix ; il s'éteint quand plus rien n'est choisi. Une
   page choisie a une coche et un fond bleu pâle ; tant qu'il y en a, chaque
   vignette montre sa coche (vide ou pleine), et le bandeau dit « 3 pages
-  choisies » avec **Dupliquer**, **Supprimer** et **Tout désélectionner**.
+  choisies » avec **Dupliquer**, **Supprimer**, **Exporter en PDF** (les
+  pages choisies) et **Tout désélectionner**.
   Glisser une page choisie emmène toutes les pages choisies, dans leur
   ordre (leur nombre sur l'image qui suit le pointeur). Échap ferme d'abord
   un menu ouvert, arrête un glisser, laisse le nom qu'on écrivait tel qu'il
@@ -812,8 +814,9 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
   page**, **Renommer…**, **Dupliquer**, **Insérer une page avant**, **Insérer
   une page après**, le **Fond** (page blanche, petits carreaux, Seyès, repère),
   **Copier en image** (la page en PNG pour l'ENT ou Pronote, voir « Copier en
-  image » ; la trieuse reste ouverte) et **Supprimer** ; sur une page choisie
-  parmi d'autres, **Dupliquer** et **Supprimer** pour toutes.
+  image » ; la trieuse reste ouverte), **Exporter en PDF…** (voir « Exporter
+  en PDF ») et **Supprimer** ; sur une page choisie parmi d'autres,
+  **Dupliquer**, **Exporter en PDF…** et **Supprimer** pour toutes.
 - **Renommer** (F2, « Renommer… », ou un double-clic sur le nom) : un champ
   dans la vignette, prérempli, 60 caractères au plus, le nom étant
   facultatif ; Entrée ou cliquer ailleurs le garde, Échap le laisse tel
@@ -846,6 +849,10 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
   qui reste avant elle (la suivante pour la première) : après la fermeture
   de la trieuse, **Ctrl+Z** sur cette page rend celle qu'on regardait, à sa
   place, comme après la poubelle de la barre du haut.
+- **Exporter en PDF** : le bouton du bandeau exporte tout le tableau (celui
+  des pages choisies le remplace tant qu'il y en a) ; Ctrl + P exporte les
+  pages choisies, sinon tout le tableau. La trieuse reste ouverte pendant
+  l'export (voir « Exporter en PDF »).
 - **La corbeille** : le bouton **Corbeille** du bandeau (« Corbeille (3) »,
   le nombre de pages qui y attendent) remplace la grille par les pages
   supprimées, qu'on y remet ou supprime définitivement (voir « Supprimer une
@@ -904,6 +911,10 @@ bout de la barre du haut, l'emporte dans un fichier :
   ouvert sur le même tableau l'apprend aussitôt, cesse d'écrire et demande à
   être rechargé. On n'ouvre pas de tableau pendant la revue, une séance
   d'automatismes ou une fenêtre ouverte.
+- **Exporter le tableau en PDF…** : toutes les pages, cadrées sur leur
+  contenu, en feuilles A4 à imprimer ou à déposer dans l'ENT (voir
+  « Exporter en PDF »). Ce n'est pas une sauvegarde : un PDF ne se rouvre pas
+  dans MEM.
 
 Le menu rappelle le dernier enregistrement dans un fichier (« aujourd'hui à
 14 h 05 »), ou qu'il n'y en a jamais eu. C'est la passerelle entre la version
@@ -925,6 +936,91 @@ pages de l'ordre, pas celles de la corbeille. Une copie de page coûte le poids
 de la page dans le document (environ 400 Ko pour une page de 300 traits
 longs), jamais celui de son film : son passé se relit dans celui de
 l'original.
+
+## Exporter en PDF
+
+Un fichier PDF à imprimer, ou à déposer dans l'ENT pour les absents :
+
+- *Exporter la page en PDF…* (le menu de la page, au clic droit dans le
+  vide ; **Ctrl + P**, ⌘ + P sur Mac) : la page qu'on regarde ; sur un
+  tableau de plusieurs pages, la fenêtre propose aussi *Tout le tableau : 12
+  pages*.
+- *Exporter le tableau en PDF…* (le menu ⋯) et *Exporter en PDF* du bandeau
+  de la trieuse : toutes les pages, dans l'ordre.
+- Dans la trieuse : *Exporter en PDF* du bandeau des pages choisies (« Les
+  pages 2, 5 et 7 »), *Exporter en PDF…* du menu d'une vignette ; Ctrl + P y
+  exporte les pages choisies, sinon tout le tableau. La trieuse reste ouverte
+  et utilisable pendant l'export.
+
+La fenêtre dit ce qu'on exporte, porte la case *Imprimer le fond de la page
+(carreaux, Seyès, repère)* (cochée au départ ; le choix est gardé dans ce
+navigateur, le même que pour l'image copiée : `mem-sortie-fond`), une note,
+*Annuler* et *Exporter* (qui a le focus : Entrée exporte). Ctrl + P n'imprime
+plus la page web (les barres, le tableau coupé au bord de l'écran) : il ouvre
+cette fenêtre. Le menu Fichier › Imprimer du navigateur, lui, n'imprime
+qu'une phrase : « Pour imprimer : ⋯ → Exporter le tableau en PDF. »
+
+Chaque page est **cadrée sur son contenu** (2 mm d'air autour), sur des
+feuilles A4 aux marges de 12 mm (16 en bas, où tient le pied de page) :
+
+- **À l'échelle réelle** quand le contenu tient dans la largeur de la feuille
+  (18,6 cm en portrait, 27,3 cm en paysage) : 1 cm sur la page (40 unités,
+  deux petits carreaux) = 1 cm sur le papier, les longueurs se mesurent à la
+  règle sur la feuille. Sinon la page est réduite juste assez pour tenir dans
+  la largeur, et son pied de page le dit (« réduite à 72 % ») ; sous 30 %, le
+  message final le signale (« La page 4 est très large : réduite à 18 %. »).
+  Ni plancher, ni découpe en colonnes : une page bien plus large que haute
+  est rare.
+- **Portrait**, sauf un contenu nettement plus large que haut (plus de 1,25
+  fois) : **paysage**.
+- **Une page haute est découpée en feuilles A4** et continue sur les
+  suivantes. La coupe tombe entre 60 et 100 % de la feuille, là où le moins
+  d'objets passent : entre deux lignes d'écriture, au-dessus d'une figure
+  plutôt qu'au travers (une figure plus haute qu'une feuille est bien
+  coupée) ; les droites prolongées ne comptent pas, elles traversent tout.
+  Un objet à cheval sur la coupe paraît en partie sur les deux feuilles, et
+  le quadrillage continue d'une feuille à l'autre.
+- Le fond imprimé couvre la zone utile de chaque feuille, celles de suite
+  comprises ; décoché, la feuille est blanche. Les **instruments posés ne
+  sont jamais imprimés**.
+- Un **pied de page** discret (8 points, gris) : à gauche la page, son nom
+  s'il en a un, sa partie s'il y en a plusieurs (« Page 3 · Exercice 12
+  p. 84 (2/3) ») ; à droite le numéro de la feuille dans le PDF (« 4 / 12 »).
+- **Une page vide n'est pas exportée**, et le message le dit (« La page 4 est
+  vide : elle n'est pas dans le PDF. ») ; rien que des pages vides : « Rien à
+  exporter : la page est vide. », et pas de fichier.
+
+Le fichier se télécharge : « tableau-2026-10-09.pdf » (tout le tableau), le
+nom de la page (« Exercice 12 p. 84.pdf »), « page-3-2026-10-09.pdf »,
+« pages-2-5-7-2026-10-09.pdf » (au-delà de cinq pages, « pages-2026-10-09.pdf »).
+Son titre, que montre le lecteur de PDF : « Tableau du 9 octobre 2026 »,
+« Page 3 · Exercice 12 p. 84 », « Pages 2, 5 et 7 ».
+
+La qualité : une image par feuille, à 200 points par pouce (1654 × 2339
+pixels), peinte par le même code que l'écran (comme une page imprimée : les
+lignes du fond et les noms des points gardent leur épaisseur) ; les formules
+et les images y sont aussi nettes qu'à l'écran à la même échelle (moins de 6
+d'écart moyen sur 255, mesuré). Le poids : environ 0,35 Mo pour une feuille
+de Seyès pleine d'écriture (400 traits), moins de 100 Ko pour une page
+ordinaire ; dix pages pleines font 3,5 Mo.
+
+Rien ne gèle : le message dit la progression (« Export en PDF : feuille 3 sur
+12… »), puis « PDF prêt : tableau-2026-10-09.pdf (12 feuilles A4, 2,4 Mo). » ;
+l'export avance par petites tranches (dix pages pleines : environ 9 s, aucune
+tâche de plus de 150 ms, mesuré) et attend tant qu'on écrit sur le tableau :
+l'encre ne prend aucun retard. Ce qui est sur les pages est pris au
+lancement : un trait écrit pendant l'export n'y est pas, pas même à moitié.
+Un export à la fois ; ni pendant la revue, ni pendant une séance. Tout se
+fait dans le navigateur, hors connexion, dans la version en ligne comme dans
+le fichier unique de la clé USB : aucun service extérieur, aucune
+bibliothèque de plus (la compression vient de fflate, déjà là pour le
+`.memc`).
+
+Pourquoi des images plutôt que du vectoriel : un PDF vectoriel demanderait un
+second moteur de dessin (les traits de perfect-freehand, les formules, les
+fonds) et d'y embarquer les polices, pour un fichier plus lourd (mesuré :
+environ 976 Ko pour une feuille très chargée, contre 238 à 283 Ko en couleurs
+indexées, 384 à 687 Ko en JPEG).
 
 ## Ce que fait la v0.1
 
@@ -1208,7 +1304,9 @@ cadrée sur ce qui est écrit (une petite marge), aussi nette que l'écran à
 100 % (deux pixels par unité, formules et images comprises), sans les
 instruments posés ; une grande page est réduite pour tenir dans environ 4
 millions de pixels et 4 096 pixels de côté (une page très haute reste
-lisible : ses lettres gardent 25 px sur 1 900 × 10 000 unités). Le fond
+lisible : ses lettres gardent 25 px sur 1 900 × 10 000 unités ; pour une page
+plus haute que trois fois sa largeur, le message propose aussi **Exporter en
+PDF**, qui la découpe en feuilles A4). Le fond
 (carreaux, Seyès, repère) y est ou non : le bouton « Sans le fond » (ou
 « Avec le fond ») du message change ce choix et copie de nouveau ; il est
 gardé dans ce navigateur (clé `mem-sortie-fond`, la seule nouvelle, partagée
@@ -1388,17 +1486,24 @@ main (`src/sorties/pdf.ts`, sans bibliothèque, quelques kilo-octets) : une
 image par feuille A4, en couleurs indexées (les 256 couleurs les plus
 fréquentes, compressées), deux fois plus légère qu'un JPEG de même finesse et
 sans ses bavures autour des lettres, ou en JPEG pour une feuille dominée par
-une photo.
+une photo. La mise en page (`src/sorties/mise-en-page.ts`, pure) cadre chaque
+page, choisit le sens et l'échelle, et découpe une page haute là où le moins
+d'objets passent ; l'export (`src/sorties/export-pdf.ts`) prend les formes au
+lancement, peint chaque feuille par tranches d'environ 30 ms, lit ses pixels
+par bandes, les palettise par tranches de lignes et les compresse en flux, par
+morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule), les fonds |
 | `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié) et le déplacement des pages (le plus petit changement de l'ordre). Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre) ; la copie, une étape de la pile d'arrivée |
-| `src/app.ts` | Gestes au stylet, au doigt et à la souris |
+| `src/app.ts` | Gestes au stylet, au doigt et à la souris ; le clavier du tableau (Ctrl + P ouvre « Exporter en PDF ») |
 | `src/rendu.ts` | Les trois couches d'affichage ; peindre une page sur un autre canevas (`peindreSur` : une vignette en esquisse, une image, une feuille du PDF), sans rien changer à l'écran |
 | `src/sorties/formules.ts` | Les formules KaTeX sur un canevas : mises en page cachées comme à l'écran, puis repeintes (textes, bordures, fonds, SVG coupés), les polices attendues ; leurs images gardées par échelle dans un cache borné en pixels |
-| `src/sorties/image.ts` | Copier en image (pour l'ENT et Pronote) : la taille de l'image (jamais plus fine que l'écran à 100 %, environ 4 millions de pixels et 4 096 px de côté au plus), le nom du fichier, l'image PNG cadrée sur le contenu, la copie dans le presse-papiers du système dans le geste même, le repli « Enregistrer l'image (.png) » |
+| `src/sorties/image.ts` | Copier en image (pour l'ENT et Pronote) : la taille de l'image (jamais plus fine que l'écran à 100 %, environ 4 millions de pixels et 4 096 px de côté au plus), le nom du fichier, l'image PNG cadrée sur le contenu, la copie dans le presse-papiers du système dans le geste même, le repli « Enregistrer l'image (.png) » ; « Exporter en PDF » proposé pour une page très haute |
 | `src/sorties/pdf.ts` | L'écrivain de PDF, pur (sans bibliothèque) : une image par feuille, en couleurs indexées (les 256 couleurs les plus fréquentes, compressées par Flate ; aussi par tranches de lignes, pour rendre la main) ou en JPEG pour une photo ; la table des renvois exacte, le titre en UTF-16 |
+| `src/sorties/mise-en-page.ts` | La mise en page du PDF, pure (testée) : le papier A4 (marges, 200 ppp, peint comme une page à 96 ppp), l'échelle (1 cm = 1 cm tant que le contenu tient dans la largeur, sinon réduite), le sens (paysage au-delà de 1,25), la découpe d'une page haute (entre 60 et 100 % de la feuille, là où le moins de boîtes passent) ; le pied de page, le nom du fichier, le titre, les messages |
+| `src/sorties/export-pdf.ts` | Exporter en PDF : la fenêtre (ce qu'on exporte, le fond imprimé), puis l'export (les formes prises au lancement, chaque feuille peinte par tranches et coupée à sa bande, le pied de page, les pixels palettisés et compressés par morceaux, l'attente pendant un geste, la progression, un export à la fois) |
 | `src/sorties/apercu.ts` | Peindre une page hors de l'écran (la boîte du contenu, les polices, les formules et les images préparées, puis la peinture) : la fondation des vignettes, de l'image copiée et du PDF ; le réglage du fond imprimé (`mem-sortie-fond`) |
 | `src/pages/vignettes.ts` | Les vignettes des pages : un canevas par page et par taille, peint plus tard par une file paresseuse (seulement s'il est à l'écran, les pages prioritaires d'abord), repeint quand sa page change ; le cadrage d'une vignette |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
@@ -1417,7 +1522,7 @@ une photo.
 | `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
-| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le menu complet (un objet, une formule, plusieurs objets ; placé dans l'écran, sur un téléphone aussi), le menu de la page, « Copier la page en image » et « Copier en image », « Envoyer vers… », les messages (un ou deux boutons), éditeur de formules |
+| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le menu complet (un objet, une formule, plusieurs objets ; placé dans l'écran, sur un téléphone aussi), le menu de la page, « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯, la trieuse), les messages (un ou deux boutons), éditeur de formules |
 | `src/pages/envoi.ts` | La fenêtre « Envoyer vers… » : déplacer ou copier, la liste des destinations (chaque page avec sa petite vignette, une nouvelle page juste après, à la fin), le clavier ; les textes des messages d'un envoi (pur, testé). L'envoi lui-même est `App.envoyerSelection`, son annulation `Tableau.envoyer` |
 | `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose, ce que devient un appui sur elle |
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (celles des lecteurs sont dans `src/revoir/icones.ts`) |
@@ -1427,14 +1532,14 @@ une photo.
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
-| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), plusieurs pages à la fois (Maj ou Ctrl + clic, Espace, Ctrl + A, « Choisir plusieurs » au doigt), le menu d'une vignette (⋯, clic droit, bouton du stylet, touche Menu), le nom écrit dans la carte, les messages et leur « Annuler » ; le bouton « Corbeille (3) » du bandeau, qui ouvre la vue de la corbeille |
+| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), plusieurs pages à la fois (Maj ou Ctrl + clic, Espace, Ctrl + A, « Choisir plusieurs » au doigt), le menu d'une vignette (⋯, clic droit, bouton du stylet, touche Menu), le nom écrit dans la carte, les messages et leur « Annuler » ; « Exporter en PDF » (le bandeau, celui des pages choisies, le menu d'une vignette, Ctrl + P) ; le bouton « Corbeille (3) » du bandeau, qui ouvre la vue de la corbeille |
 | `src/pages/corbeille.ts` | La corbeille des pages, une vue de la trieuse : les pages supprimées en vignettes, quand (« Supprimée aujourd'hui à 10 h 05 »), Remettre (par le journal de la trieuse : « Annuler »), Supprimer définitivement et Vider (après une question, dans une fenêtre de l'outil) ; où c'est noté dans le document (la carte `corbeille`) |
 | `src/pages/actions.ts` | Ce que la trieuse fait aux pages, chaque action en une entrée de son journal : renommer, insérer une page vide avant ou après, en ajouter une à la fin, dupliquer avec l'histoire, supprimer vers la corbeille (jamais toutes ; la page où aller quand on supprime celle qu'on regarde), changer un fond (l'origine du repère au centre du contenu), ranger d'une place (pur, testé) |
 | `src/pages/glisser.ts` | Où arrive une page lâchée dans la grille (la ligne sous le point, avant la première carte dont le milieu est à droite), où se pose la barre qui le montre, la vitesse du défilement près du bord (pur, testé) |
 | `src/pages/journal.ts` | Le journal de la trieuse des pages : chaque action sur les pages (déplacer, renommer, dupliquer, insérer, supprimer, changer un fond) entre avec l'état des pages d'avant et d'après ; annuler (ou rétablir) seulement si le tableau est exactement dans l'état laissé, sinon il le dit et se vide (jamais un changement invisible ni une page perdue) ; une page créée par une action défaite ne va pas dans la corbeille, et y reste hors quand on défait les actions d'avant ; aucune pile de page touchée |
 | `src/presse-papiers.ts` | Copier, coller : la copie écrite pour le presse-papiers du système et relue sans passer par la page, chaque forme vérifiée, le collage (noms gardés ou changés, points liés) |
 | `src/fichier.ts` | Le tableau dans un fichier `.memc` : l'écrire, le relire (et refuser ce qui n'en est pas un) |
-| `src/sauvegarde.ts` | Enregistrer et ouvrir un tableau : le menu ⋯, Ctrl + S, Ctrl + O, la question avant de remplacer, les autres onglets ; le téléchargement d'un fichier (`telecharger`, que l'image copiée emprunte) |
+| `src/sauvegarde.ts` | Enregistrer et ouvrir un tableau : le menu ⋯, Ctrl + S, Ctrl + O, la question avant de remplacer, les autres onglets ; le téléchargement d'un fichier (`telecharger`, que l'image copiée et le PDF empruntent) |
 
 Toutes les briques sont sous licence MIT (Yjs, y-indexeddb,
 perfect-freehand, KaTeX, Vite) : aucune clé de licence, aucun filigrane, et rien
@@ -1466,15 +1571,14 @@ n'empêche un usage payant.
 
 ## Feuille de route proposée
 
-1. Export PDF des pages (pour l'ENT et les absents).
-2. Instruments : règle et équerre qui s'alignent l'une sur l'autre, crayon qui
+1. Instruments : règle et équerre qui s'alignent l'une sur l'autre, crayon qui
    suit l'arc du rapporteur pour reporter un angle.
-3. Constructions : plus de phrases (triangle par deux côtés et un angle,
+2. Constructions : plus de phrases (triangle par deux côtés et un angle,
    cercle circonscrit, hauteurs, symétriques…), et l'équerre qui glisse le long
    de la règle pour les parallèles.
-4. Figures liées : un point partagé par deux figures, une image qui suit sa
+3. Figures liées : un point partagé par deux figures, une image qui suit sa
    figure quand on la déplace.
-5. Import d'un PDF comme fond de page (annoter un énoncé) ; recadrer une image.
-6. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
-7. Revue : export vidéo, et alléger les très longs films (le document ne
+4. Import d'un PDF comme fond de page (annoter un énoncé) ; recadrer une image.
+5. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
+6. Revue : export vidéo, et alléger les très longs films (le document ne
    jette plus rien).

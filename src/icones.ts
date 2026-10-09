@@ -57,6 +57,8 @@ export const ICONES: Record<string, string> = {
   dupliquer: 'M8 8h11v11H8zM5 16V5h11M13.5 11v5M11 13.5h5',
   // Fermer (la trieuse des pages) : une croix
   fermer: 'M6 6l12 12M18 6L6 18',
+  // Exporter en PDF (la trieuse) : une feuille au coin plié, une flèche qui en sort vers le bas
+  pdf: 'M14 3H6v18h12V7zM14 3v4h4M12 10v7M9 14l3 3 3-3',
 }
 
 /** Le SVG d'une icône, caché aux lecteurs d'écran (le bouton porte son nom) */

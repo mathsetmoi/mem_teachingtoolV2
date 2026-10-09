@@ -21,9 +21,10 @@
 // (voir navigateur.tableauCache), et le reste de l'écran devient inerte.
 // Ses vignettes viennent de pages/vignettes.ts : les canevas ne sont dans
 // le document que tant qu'elle est ouverte (fermée, elle ne coûte rien).
-// Les morceaux suivants y ajoutent leurs boutons (le conteneur `actions`
-// du bandeau, et `groupeChoix` pour les pages choisies) et leurs entrées
-// du menu d'une vignette : l'image copiée, le PDF.
+// Ce qui sort des pages y a sa place : « Exporter en PDF » dans le bandeau
+// (tout le tableau) et dans celui des pages choisies, « Copier en image »
+// et « Exporter en PDF… » dans le menu d'une vignette ; Ctrl + P exporte
+// les pages choisies, sinon tout le tableau (voir sorties/export-pdf.ts).
 // La corbeille (corbeille.ts) est une vue de la trieuse : son bouton dans
 // le bandeau (« Corbeille (3) ») remplace la grille par les pages
 // supprimées, qu'on y remet ou supprime définitivement ; Échap ou
@@ -35,6 +36,7 @@ import { JournalPages } from './journal'
 import type { Entree } from './journal'
 import type { Vignettes } from './vignettes'
 import type { Apercus } from '../sorties/apercu'
+import type { CibleExport } from '../sorties/export-pdf'
 import { barreDInsertion, lignesDe, placeDInsertion, vitesseDefilement } from './glisser'
 import type { Rect } from './glisser'
 import * as actions from './actions'
@@ -64,6 +66,9 @@ export interface HoteTrieuse {
    *  presse-papiers du système (voir sorties/image.ts) ; la trieuse reste
    *  ouverte. Appelé dans le geste (le clic) : Safari l'exige. */
   copierPageEnImage(page: string): void
+  /** « Exporter en PDF » : la fenêtre de l'export (voir sorties/export-pdf.ts),
+   *  par-dessus la trieuse, qui reste ouverte et utilisable pendant l'export */
+  exporterPdf(cible: CibleExport): void
 }
 
 /** La clé des messages de la trieuse (voir HoteTrieuse.message) */
@@ -129,17 +134,21 @@ interface Saisie { page: string; input: HTMLInputElement }
 
 export class Trieuse {
   readonly el: HTMLElement
-  /** Le bandeau garde ici ses boutons et ceux des morceaux suivants (la
-   *  corbeille, le PDF) : il passe à la ligne sur un téléphone */
+  /** Le bandeau garde ici ses boutons (les pages choisies, Choisir
+   *  plusieurs, Ajouter une page, Exporter en PDF, la corbeille) : il passe
+   *  à la ligne sur un téléphone */
   readonly actions: HTMLElement
   /** Ce que le bandeau montre quand des pages sont choisies : leur nombre,
-   *  Dupliquer, Supprimer, Tout désélectionner (le PDF s'y ajoutera) */
+   *  Dupliquer, Supprimer, Exporter en PDF, Tout désélectionner */
   readonly groupeChoix: HTMLElement
   readonly journal: JournalPages
   /** La vue de la corbeille (voir corbeille.ts) */
   readonly corbeille: VueCorbeille
   /** Son bouton dans le bandeau : « Corbeille (3) » */
   private boutonCorbeille: HTMLButtonElement
+  /** « Exporter en PDF » du bandeau (tout le tableau) : caché tant que des
+   *  pages sont choisies (le bandeau des pages choisies a le sien) */
+  private boutonPdf: HTMLButtonElement
   /** Les pages choisies (Maj + clic, Ctrl + clic, Espace, Ctrl + A,
    *  « Choisir plusieurs ») ; vide à l'ouverture */
   readonly selection = new Set<string>()
@@ -205,6 +214,7 @@ export class Trieuse {
     this.groupeChoix.append(this.nombreChoisies,
       this.bouton('Dupliquer', 'dupliquer', () => this.dupliquer(this.choisies()), `Dupliquer les pages choisies, avec leur histoire (${CTRL} + D)`, true),
       this.bouton('Supprimer', 'poubelle', () => this.supprimer(this.choisies()), 'Supprimer les pages choisies (Suppr)', true),
+      this.bouton('Exporter en PDF', 'pdf', () => this.hote.exporterPdf({ pages: this.choisies() }), `Les pages choisies en PDF, en feuilles A4 (${CTRL} + P)`, true),
       deselectionner)
     // Au doigt (un écran tactile) : Maj + clic n'existe pas, cet interrupteur le remplace
     this.boutonChoisir = this.bouton('Choisir plusieurs', 'coche', () => this.basculerModeChoix(), 'Choisir plusieurs pages : chaque toucher en choisit une ou la retire')
@@ -217,7 +227,8 @@ export class Trieuse {
     // écrit sur un téléphone : on y lit le nombre)
     this.boutonCorbeille = this.bouton('Corbeille', 'poubelle', () => this.ouvrirCorbeille(), 'Les pages supprimées : les remettre, ou les supprimer définitivement')
     this.boutonCorbeille.classList.add('trieuse-bouton-corbeille')
-    this.actions.append(this.groupeChoix, this.boutonChoisir, ajouter, this.boutonCorbeille)
+    this.boutonPdf = this.bouton('Exporter en PDF', 'pdf', () => this.hote.exporterPdf('tout'), `Toutes les pages en PDF, cadrées sur leur contenu, en feuilles A4 (${CTRL} + P)`, true)
+    this.actions.append(this.groupeChoix, this.boutonChoisir, ajouter, this.boutonPdf, this.boutonCorbeille)
     const fermer = document.createElement('button')
     fermer.type = 'button'; fermer.className = 'bouton trieuse-fermer'; fermer.innerHTML = icone('fermer')
     fermer.title = 'Fermer les pages (Échap)'; fermer.setAttribute('aria-label', 'Fermer les pages')
@@ -670,8 +681,10 @@ export class Trieuse {
     if (this.nombreChoisies.textContent !== texte) this.nombreChoisies.textContent = texte
     const cache = !n
     if (this.groupeChoix.hidden !== cache) {
-      const perdu = cache && this.groupeChoix.contains(document.activeElement)
+      const perdu = (cache && this.groupeChoix.contains(document.activeElement)) || (!cache && this.boutonPdf === document.activeElement)
       this.groupeChoix.hidden = cache
+      // Un seul « Exporter en PDF » à la fois : celui des pages choisies, ou celui de tout le tableau
+      this.boutonPdf.hidden = !cache
       if (perdu && this.focusId) this.focusCarte(this.focusId, { defiler: false })
     }
     this.majAide()
@@ -702,6 +715,14 @@ export class Trieuse {
     const fait = () => { e.preventDefault(); e.stopPropagation() }
     const raccourci = (e.ctrlKey || e.metaKey) && !e.altKey
     const lettre = e.key.toLowerCase()
+    // Ctrl + P (⌘ + P), ici comme dans la corbeille : le PDF des pages
+    // choisies, sinon de tout le tableau, jamais l'impression de la page web
+    // (Ctrl + Maj + P reste au navigateur)
+    if (raccourci && !e.shiftKey && lettre === 'p') {
+      fait()
+      if (!e.repeat && !this.glisse) this.hote.exporterPdf(this.selection.size ? { pages: this.choisies() } : 'tout')
+      return
+    }
     // La vue de la corbeille : Échap ramène aux pages ; Maj + P ferme la
     // trieuse ; Ctrl+Z / Ctrl+Y vont au journal (« Annuler » une remise) ;
     // Tab, Entrée, Espace restent aux boutons. Rien de la grille (ni Suppr,
@@ -803,7 +824,8 @@ export class Trieuse {
       m.setAttribute('aria-label', `${n} pages`)
       titreMenu(m, `${n} pages`)
       entreeMenu(m, 'Dupliquer', () => this.dupliquer(choisies), { touche: `${CTRL} + D`, aide: 'Avec leur histoire, chacune juste après elle-même' })
-      // (Le PDF des pages choisies viendra ici)
+      entreeMenu(m, 'Exporter en PDF…', () => this.hote.exporterPdf({ pages: choisies }), { touche: `${CTRL} + P`,
+        aide: 'Cadrées sur leur contenu, en feuilles A4' })
       entreeMenu(m, 'Supprimer', () => this.supprimer(choisies), { touche: 'Suppr' })
     } else {
       const fond = this.app.tableau.fondDe(page)
@@ -818,10 +840,11 @@ export class Trieuse {
       titreMenu(m, 'Fond')
       for (const f of FONDS) entreeMenu(m, f.nom, () => this.changerFond(page, f.id), { coche: f.id === fond })
       filetMenu(m)
-      // L'image de la page, pour l'ENT ou Pronote (la trieuse reste ouverte) ;
-      // « Exporter en PDF… » viendra ensuite, avant Supprimer
+      // Ce qui sort de la page : son image, pour l'ENT ou Pronote, et son PDF
+      // (la fenêtre propose aussi tout le tableau) ; la trieuse reste ouverte
       entreeMenu(m, 'Copier en image', () => this.hote.copierPageEnImage(page), {
         aide: `Une image PNG, à coller dans l'ENT ou Pronote (${CTRL}+V)`, inactif: this.vignettes.vide(page) })
+      entreeMenu(m, 'Exporter en PDF…', () => this.hote.exporterPdf({ page }), { aide: 'Cadrée sur son contenu, en feuilles A4' })
       entreeMenu(m, 'Supprimer', () => this.supprimer([page]), { touche: 'Suppr' })
     }
     const options = c.querySelector<HTMLElement>('.carte-options')!

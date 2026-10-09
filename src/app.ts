@@ -115,6 +115,9 @@ export interface Interface {
   ouvrirTrieuse(auClavier?: boolean): void
   /** La fenêtre « Envoyer vers… » de ce qui est pris (voir pages/envoi.ts) */
   ouvrirEnvoi(): void
+  /** La fenêtre « Exporter en PDF » (voir sorties/export-pdf.ts) : la page
+   *  (elle propose aussi tout le tableau), des pages, ou tout le tableau */
+  exporterPdf(cible: { page: string } | { pages: string[] } | 'tout'): void
 }
 
 type Geste =
@@ -3513,6 +3516,17 @@ export class App {
     if (ctrl && e.shiftKey && !e.altKey && lettre === 'd') {
       e.preventDefault()
       if (!e.repeat && !document.querySelector('dialog[open]')) this.dupliquerLaPage()
+      return
+    }
+    // Ctrl + P (⌘ + P) : le réflexe de qui veut imprimer. Le navigateur
+    // imprimerait la page web (les barres comprises, le tableau coupé au bord
+    // de l'écran) : la fenêtre « Exporter en PDF » de la page s'ouvre, avec le
+    // choix de tout le tableau. Ni une touche tenue, ni en plein geste (une
+    // fenêtre ne s'ouvre pas sous un trait qu'on écrit) ; Ctrl + Maj + P
+    // reste au navigateur.
+    if (ctrl && !e.shiftKey && !e.altKey && lettre === 'p') {
+      e.preventDefault()
+      if (!e.repeat && !this.enGeste && !document.querySelector('dialog[open]')) this.ui.exporterPdf({ page: this.page })
       return
     }
     // Ctrl+A, C, X, V, D (⌘ sur Mac) : tout sélectionner, copier, couper,
