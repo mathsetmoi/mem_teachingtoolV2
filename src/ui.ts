@@ -4,7 +4,7 @@
 // lui transmet les clics. Tout est reconstruit par « maj() ».
 // =============================================================
 import katex from 'katex'
-import type { App, Interface, Prise } from './app'
+import type { ActionMessage, App, Interface, Prise } from './app'
 import { COULEURS, TAILLES, TOUTE_LA_SELECTION, poigneeDuRayon } from './app'
 import type { Bout, Figure, Forme, Formule, MarquePoint, Outil, TypeForme } from './types'
 import { CM, FONDS } from './types'
@@ -33,6 +33,7 @@ import type { PageAPeindre } from './sorties/apercu'
 import { copierEnImage, nomDeLImage } from './sorties/image'
 import { Vignettes } from './pages/vignettes'
 import { Trieuse } from './pages/trieuse'
+import { ouvrirEnvoi } from './pages/envoi'
 import { titreModifierFormule } from './pointeurs'
 
 /** Le rôle du doigt : la marque de son bouton, son titre, ce qu'on en dit */
@@ -47,6 +48,9 @@ const DOIGTS: { id: Doigt; nom: string; aide: string; marque: string; titre: str
 
 /** Le titre de « Copier en image » (le menu complet) */
 const TITRE_IMAGE = 'Une image PNG, à coller dans l\'ENT ou Pronote'
+/** Le titre de « Envoyer vers… » (le menu complet ; pas dans la barre
+ *  d'actions, qui garde les gestes de tous les jours : « Options » y mène) */
+const TITRE_ENVOI = 'Déplacer ou copier sur une autre page'
 
 /** Le bouton « › » : la page suivante, ou, sur la dernière page, une page de
  *  plus. Son titre commence toujours par « Page suivante » ; jamais
@@ -756,6 +760,25 @@ export class UI implements Interface {
     copierEnImage(this, { page, nom: nomDeLImage(numero, this.app.tableau.nomDe(id), false) })
   }
 
+  // ----- Envoyer vers une autre page (voir pages/envoi.ts) -----
+  /** « Envoyer vers… » (le menu complet) : la fenêtre des destinations, pour
+   *  ce qui est pris. Pas quand le tableau est caché, ni par-dessus une autre
+   *  fenêtre. */
+  ouvrirEnvoi() {
+    const app = this.app
+    if (tableauCache(app) || document.querySelector('dialog[open]')) return
+    app.poserCeQuiAttend()
+    const n = app.objetsChoisis().length
+    if (!n) return this.message('Rien n\'est sélectionné.')
+    ouvrirEnvoi({
+      n, pages: app.pages, page: app.page,
+      nomDe: p => app.tableau.nomDe(p),
+      vignette: (p, l, h) => this.vignettes.vignette(p, l, h),
+      envoyer: (cible, deplacer) => { app.envoyerSelection(cible, deplacer) },
+      maj: () => this.maj(),
+    })
+  }
+
   /** Le menu de la page : un clic droit dans le vide (voir App.demanderOptions).
    *  Il se pose au point de l'appui, à sa droite et vers le bas comme le
    *  menu du système (de l'autre côté s'il n'y a pas la place), et se ferme
@@ -914,10 +937,12 @@ export class UI implements Interface {
     const segment = f.type === 'polygone' && !f.ferme && f.pts.length === 4
     // « Copier », puis « Copier en image » (une image PNG pour l'ENT ou
     // Pronote, à ne pas confondre avec « Copier pour Pronote » de Publier,
-    // qui copie un lien) ; « Envoyer vers… » viendra ensuite, avant Supprimer
+    // qui copie un lien), puis « Envoyer vers… » (une autre page), avant
+    // Supprimer
     const copier = () => {
       action('Copier', `Copier (${CTRL}+C) : ${CTRL}+V la colle ici, sur une autre page ou dans un autre onglet`, () => app.copier())
       action('Copier en image', TITRE_IMAGE, () => this.copierEnImage('selection'))
+      action('Envoyer vers…', TITRE_ENVOI, () => this.ouvrirEnvoi())
     }
     const jeter = () => ligne.appendChild(bouton('poubelle', 'Supprimer (Suppr)', () => app.supprimerSelection(), 'danger'))
 
@@ -1062,6 +1087,7 @@ export class UI implements Interface {
     this.optionMenu(ligne, 'Copier', `Copier (${CTRL}+C) : ${CTRL}+V les colle ici, sur une autre page ou dans un autre onglet`, () => app.copier())
     this.optionMenu(ligne, 'Couper', `Couper (${CTRL}+X) : ils partent, ${CTRL}+V les remet`, () => app.couper())
     this.optionMenu(ligne, 'Copier en image', TITRE_IMAGE, () => this.copierEnImage('selection'))
+    this.optionMenu(ligne, 'Envoyer vers…', TITRE_ENVOI, () => this.ouvrirEnvoi())
     ligne.appendChild(bouton('poubelle', `Supprimer les ${n} objets (Suppr)`, () => app.supprimerSelection(), 'danger'))
     p.appendChild(ligne)
     if (this.section !== 'couleur') return
@@ -1445,11 +1471,15 @@ export class UI implements Interface {
 
   /** Un message en bas de l'écran. Avec une action, un bouton suit le texte
    *  (« Changer ») et le message reste 7 s ; seul ce bouton reçoit les appuis,
-   *  et seulement quand le message se voit. Il passe sous les menus et les
-   *  panneaux (il ne cache pas ce qu'on va toucher), sauf pendant la revue
-   *  et la séance d'automatismes, qui couvrent tout, et pour le programme de
-   *  construction (dessus), dont le panneau prend presque tout l'écran d'une
-   *  tablette.
+   *  et seulement quand le message se voit. Plusieurs actions : un bouton
+   *  chacune, dans l'ordre (« Aller à la page 5 », « Annuler ») ; la clé du
+   *  message est la première qu'elles donnent. Un bouton fait son action et
+   *  le message s'en va, sauf pour une action à garder : seul ce bouton
+   *  part, les autres restent le temps qu'il reste. Il passe sous les menus
+   *  et les panneaux (il ne cache pas ce qu'on va toucher), sauf pendant la
+   *  revue et la séance d'automatismes, qui couvrent tout, et pour le
+   *  programme de construction (dessus), dont le panneau prend presque tout
+   *  l'écran d'une tablette.
    *  Un message ordinaire ne chasse pas un message à action encore à l'écran
    *  (« Stylet détecté … Changer », que suit souvent la figure reconnue du
    *  premier trait) : il s'écrit au-dessus de lui, et s'en va seul.
@@ -1457,23 +1487,27 @@ export class UI implements Interface {
    *  fait rien : un message ordinaire (F5, que la télécommande envoie) passe
    *  au-dessus de la revue, et « Annuler » d'une page qu'on vient de jeter
    *  écrirait alors dans le tableau, que la revue ne doit jamais changer. */
-  message(texte: string, action?: { libelle: string; faire: () => void; cle?: string }, dessus = false) {
+  message(texte: string, action?: ActionMessage | ActionMessage[], dessus = false) {
     this.toast.classList.toggle('dessus', dessus || this.app.enLecture)
     const el = document.createElement('span')
     el.className = 'ligne'
     el.append(texte)
     const maintenant = performance.now()
-    if (action) {
-      const b = document.createElement('button')
-      b.type = 'button'; b.className = 'action'; b.textContent = action.libelle
-      b.addEventListener('click', () => {
-        if (this.app.enLecture) return
-        this.toastSimple = this.toastAction = null
-        this.majToast()
-        action.faire()
-      })
-      el.appendChild(b)
-      this.toastAction = { el, fin: maintenant + 7000, cle: action.cle }
+    const actions = action === undefined ? [] : Array.isArray(action) ? action : [action]
+    if (actions.length) {
+      const toast = { el, fin: maintenant + 7000, cle: actions.find(a => a.cle !== undefined)?.cle }
+      for (const a of actions) {
+        const b = document.createElement('button')
+        b.type = 'button'; b.className = 'action'; b.textContent = a.libelle
+        b.addEventListener('click', () => {
+          if (this.app.enLecture) return
+          if (a.garder && this.toastAction === toast) b.remove()
+          else { this.toastSimple = this.toastAction = null; this.majToast() }
+          a.faire()
+        })
+        el.appendChild(b)
+      }
+      this.toastAction = toast
       this.toastSimple = null
     } else {
       this.toastSimple = { el, fin: maintenant + Math.max(2600, texte.length * 60) }

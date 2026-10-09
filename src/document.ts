@@ -50,6 +50,52 @@ type Marque =
   | { genre: 'jetee'; id: string; apres: string | null; index: number; profondeur: number }
   | { genre: 'copie'; id: string; profondeur: number }
 
+/** Une étape d'une pile d'annulation (Yjs ne nomme pas son type) */
+export type EtapeDePile = Y.UndoManager['undoStack'][number]
+
+/** Ce que retient l'étape du retrait d'un envoi, dans la pile de la page de
+ *  départ (sa méta 'envoi', voir Tableau.envoyer) : la page d'arrivée, les
+ *  objets posés sur elle (les objets mêmes : ils y sont encore « tels quels »
+ *  tant que la page d'arrivée rend le même objet), combien d'objets ont
+ *  quitté la page de départ, et la nouvelle page créée pour eux. Après une
+ *  annulation, l'étape à refaire retient aussi ceux qu'on a retirés de
+ *  l'arrivée (à y reposer) et si la nouvelle page a quitté l'ordre. En
+ *  mémoire seulement, comme les piles. */
+interface Envoi {
+  vers: string
+  posees: Forme[]
+  n: number
+  nouvelle?: { id: string; place: number }
+  retirees?: Forme[]
+  pageRetiree?: boolean
+}
+/** La méta de l'arrivée d'une copie envoyée, dans la pile de la page d'arrivée */
+interface CopieRecue { de: string; n: number }
+const META_ENVOI = 'envoi'
+const META_COPIE = 'envoi-copie'
+
+/** Ce que rend Tableau.annuler : {} pour un geste ordinaire défait ; page :
+ *  la page jetée depuis celle-ci qui revient ; copie et retour : la copie
+ *  toute neuve qui s'en va, et son original ; envoi : un déplacement vers une
+ *  autre page défait (vers : la page d'arrivée ; revenus : les objets
+ *  revenus ; restes : ceux qui, modifiés depuis sur la page d'arrivée, y
+ *  restent aussi ; pageRetiree : la nouvelle page créée pour eux, redevenue
+ *  vide, a quitté l'ordre) ; copieRecue : l'arrivée d'une copie défaite sur
+ *  la page d'arrivée (de : la page d'où elle venait ; n : les objets). */
+export interface Annulation {
+  page?: string
+  copie?: string
+  retour?: string
+  envoi?: { vers: string; revenus: number; restes: number; pageRetiree: boolean }
+  copieRecue?: CopieRecue
+}
+
+/** Ce que rend Tableau.retablir : faux s'il n'y avait rien à refaire, vrai
+ *  pour un geste ordinaire refait ; pour un déplacement refait, la page
+ *  d'arrivée, le nombre d'objets repartis, et si la nouvelle page créée pour
+ *  eux est revenue dans l'ordre. */
+export type Retablissement = boolean | { envoi: { vers: string; repartis: number; pageRemise: boolean } }
+
 /** L'ordre, les noms et la corbeille d'un coup (voir Tableau.etatDesPages) :
  *  le cliché que garde le journal de la trieuse, avant et après chaque action. */
 export interface EtatDesPages { ordre: string[]; noms: Record<string, string>; corbeille: Record<string, EntreeCorbeille> }
@@ -797,6 +843,145 @@ export class Tableau {
     this.doc.transact(() => { for (const id of ids) formes.delete(id) }, ORIGINE_LOCALE)
   }
 
+  // ---------- Envoyer des objets vers une autre page ----------
+  /** Ce qu'on écrit pendant f se note dans le film sur cette page */
+  private surLaPage<T>(page: string, f: () => T): T {
+    const vue = this.pageVue
+    this.pageVue = page
+    try { return f() } finally { this.pageVue = vue }
+  }
+
+  /** Envoie des objets de la page `de` vers la page `vers` (« Envoyer
+   *  vers… ») : posees, ce qui arrive (leurs copies, faites par collage :
+   *  identifiants neufs, noms libres sur l'arrivée) ; ids, les objets de
+   *  départ (seuls comptent ceux qui sont encore sur la page de départ).
+   *  Pourquoi pas UNE transaction : une pile ne défait que ce qui est dans sa
+   *  portée (sa page). Ctrl+Z sur la page de départ rendrait les objets en
+   *  les laissant sur l'arrivée (un doublon caché) ; Ctrl+Z sur l'arrivée les
+   *  y retirerait sans les rendre au départ (perdus). Et si le retrait
+   *  n'était dans aucune pile, un Ctrl+Z sur la page de départ qui défait
+   *  plus tard un ancien « déplacer X » y ressusciterait l'ancienne version
+   *  de X, sa copie restant sur l'arrivée.
+   *  DÉPLACER : deux transactions, l'arrivée d'abord (jamais un instant où
+   *  l'objet n'est nulle part ; un navigateur qui s'arrêterait entre les
+   *  deux laisserait au pis un doublon visible).
+   *  1. L'arrivée, sans origine (dans aucune pile : Ctrl+Z sur l'arrivée ne
+   *     retire jamais ce qui est arrivé, mais défait ce qu'on y a changé
+   *     ensuite), notée sur la page d'arrivée.
+   *  2. Le retrait, avec l'origine locale : sa propre étape de la pile de la
+   *     page de départ, notée sur elle. Sa méta 'envoi' (voir Envoi) dit à
+   *     annuler de retirer de l'arrivée ce qui y est encore tel quel, et à
+   *     retablir de l'y reposer. Elle ne se pose que si le retrait a bien
+   *     empilé UNE étape : sinon (rien n'a changé), elle tomberait sur le
+   *     geste précédent de la page, et un Ctrl+Z retirerait des objets de
+   *     l'arrivée en défaisant tout autre chose. Alors l'arrivée repart (sans
+   *     origine, notée sur l'arrivée) et rien n'est envoyé.
+   *  COPIER : la page de départ ne change pas ; l'arrivée est une étape de la
+   *  pile de la page d'arrivée, comme un collage (Ctrl+Z y retire les
+   *  copies, sous les yeux), avec la méta 'envoi-copie' (le message le dit).
+   *  nouvelle : la page créée pour les recevoir (ajouterPage, juste avant) et
+   *  sa place ; si rien n'est envoyé, elle repart, vide. Faux : rien n'est
+   *  envoyé. */
+  envoyer(de: string, vers: string, posees: Forme[], ids: string[], o: { deplacer: boolean; nouvelle?: { id: string; place: number } }): boolean {
+    const depart = this.formesDe(de), arrivee = this.formesDe(vers)
+    const presents = depart ? [...new Set(ids)].filter(id => depart.has(id)) : []
+    const possible = !!depart && !!arrivee && de !== vers && posees.length > 0 && posees.every(f => !arrivee.has(f.id))
+    if (!possible || (o.deplacer && !presents.length)) { this.retirerNouvelle(o.nouvelle); return false }
+    if (!o.deplacer) {
+      this.nouveauGeste()
+      const u = this.annulationDe(vers)!
+      const n = u.undoStack.length
+      this.surLaPage(vers, () => this.poserPlusieurs(vers, posees))
+      this.nouveauGeste()
+      if (u.undoStack.length === n + 1) u.undoStack[u.undoStack.length - 1].meta.set(META_COPIE, { de, n: posees.length } satisfies CopieRecue)
+      return true
+    }
+    // 1. L'arrivée, hors de toute pile
+    this.surLaPage(vers, () => this.doc.transact(() => { for (const f of posees) arrivee!.set(f.id, f) }))
+    // 2. Le retrait, sa propre étape de la pile de départ
+    this.nouveauGeste()
+    const u = this.annulationDe(de)!
+    const n = u.undoStack.length
+    this.surLaPage(de, () => this.supprimer(de, presents))
+    this.nouveauGeste()
+    if (u.undoStack.length !== n + 1) {
+      this.surLaPage(vers, () => this.doc.transact(() => {
+        for (const f of posees) if (arrivee!.get(f.id) === f) arrivee!.delete(f.id)
+        this.retirerNouvelle(o.nouvelle)
+      }))
+      return false
+    }
+    const m: Envoi = { vers, posees: [...posees], n: presents.length }
+    if (o.nouvelle) m.nouvelle = { ...o.nouvelle }
+    u.undoStack[u.undoStack.length - 1].meta.set(META_ENVOI, m)
+    return true
+  }
+
+  /** La nouvelle page créée pour un envoi quitte l'ordre si elle est vide
+   *  (aucune forme, aucun nom ; elle n'entre pas dans la corbeille, où une
+   *  page vide ne figure pas) et n'est pas la seule. Notée sur elle (seule,
+   *  une étape seulOrdre). Vrai si elle est partie. */
+  private retirerNouvelle(nouvelle?: { id: string }): boolean {
+    if (!nouvelle) return false
+    const id = nouvelle.id, i = this.ordre.toArray().indexOf(id)
+    if (i < 0 || this.ordre.length <= 1 || (this.formesDe(id)?.size ?? 1) > 0 || this.nomDe(id) !== null) return false
+    this.surLaPage(id, () => this.doc.transact(() => this.ordre.delete(i, 1)))
+    return true
+  }
+
+  /** Après l'annulation d'un déplacement (les objets sont revenus au
+   *  départ) : chaque objet posé qui est ENCORE TEL QUEL sur l'arrivée (le
+   *  même objet ; une annulation faite là-bas rend le même) en part, sans
+   *  origine, en une transaction notée sur l'arrivée ; la nouvelle page créée
+   *  pour eux, si elle est vide (ce qu'on y a effacé compris : défait là-bas,
+   *  il y referait un doublon), quitte l'ordre dans la même. Un objet modifié
+   *  depuis sur l'arrivée y reste (un doublon visible, que la réponse
+   *  annonce : rien de ce qu'on a fait là-bas n'est perdu). */
+  private defaireArrivee(m: Envoi): { retirees: Forme[]; restes: number; pageRetiree: boolean } {
+    const b = this.formesDe(m.vers)
+    if (!b) return { retirees: [], restes: 0, pageRetiree: false }
+    const retirees = m.posees.filter(f => b.get(f.id) === f)
+    const restes = m.posees.filter(f => b.has(f.id) && b.get(f.id) !== f).length
+    let pageRetiree = false
+    if (retirees.length || m.nouvelle) {
+      this.surLaPage(m.vers, () => this.doc.transact(() => {
+        for (const f of retirees) b.delete(f.id)
+        pageRetiree = this.retirerNouvelle(m.nouvelle)
+      }))
+    }
+    return { retirees, restes, pageRetiree }
+  }
+
+  /** Avant de refaire un déplacement : ce qui était parti de l'arrivée y
+   *  revient (les objets mêmes), et la nouvelle page, si elle avait quitté
+   *  l'ordre, revient à sa place ; une transaction sans origine, notée sur
+   *  l'arrivée. Rend ce qui a été reposé, et si la page est revenue. */
+  private refaireArrivee(m: Envoi): { reposees: Forme[]; pageRemise: boolean } {
+    const b = this.formesDe(m.vers)
+    if (!b) return { reposees: [], pageRemise: false }
+    const reposees = (m.retirees ?? []).filter(f => !b.has(f.id))
+    const ordre = this.ordre.toArray()
+    const remettre = !!m.pageRetiree && !!m.nouvelle && !ordre.includes(m.vers) && m.nouvelle.id === m.vers
+    if (!reposees.length && !remettre) return { reposees, pageRemise: false }
+    this.surLaPage(m.vers, () => this.doc.transact(() => {
+      if (remettre) this.ordre.insert(Math.max(0, Math.min(m.nouvelle!.place, ordre.length)), [m.vers])
+      for (const f of reposees) b.set(f.id, f)
+    }))
+    return { reposees, pageRemise: remettre }
+  }
+
+  /** L'étape que Ctrl+Z défera sur cette page : celle du haut de sa pile, si
+   *  aucune marque ne passe avant elle (null sinon, ou si la pile est vide).
+   *  Le bouton « Annuler » d'un envoi ne défait que son étape, si elle est
+   *  encore la prochaine : sinon il défairait autre chose, qu'on ne voit pas. */
+  prochaineAnnulation(page: string): EtapeDePile | null {
+    const u = this.piles.get(page)
+    const haut = u?.undoStack[u.undoStack.length - 1]
+    if (!u || !haut) return null
+    const m = this.derniereMarque(page)
+    return m && u.undoStack.length <= m.profondeur ? null : haut
+  }
+
   // ---------- Les marques d'annulation ----------
   /** Pose une marque sur une page (la plus récente en dernier) */
   private marquer(page: string, m: Marque) {
@@ -905,8 +1090,14 @@ export class Tableau {
    *  moment où elle s'est posée. Une marque qu'on ne peut plus suivre (la
    *  remise ou le retrait refusé) s'en va, et l'on passe à la suivante, puis
    *  à la pile. Rétablir ne rejette jamais une page et ne recrée jamais une
-   *  copie (on ne jette pas une page sans la voir). */
-  annuler(page: string): { page?: string; copie?: string; retour?: string } | null {
+   *  copie (on ne jette pas une page sans la voir).
+   *  Le retrait d'un envoi (voir envoyer) : les objets reviennent (les mêmes
+   *  identifiants, leur dernière version), PUIS ceux qui sont encore tels
+   *  quels sur la page d'arrivée en partent (voir defaireArrivee) ; la
+   *  réponse dit combien sont revenus et combien, modifiés là-bas, y restent.
+   *  Yjs ne recopie pas la méta d'une étape sur celle qu'il pousse dans la
+   *  pile à refaire : on la recopie, avec ce qui est parti de l'arrivée. */
+  annuler(page: string): Annulation | null {
     const u = this.piles.get(page)
     for (let m = this.derniereMarque(page); m && (u?.undoStack.length ?? 0) <= m.profondeur; m = this.derniereMarque(page)) {
       if (m.genre === 'jetee') { if (this.rendrePage(m.id) >= 0) return { page: m.id } }
@@ -914,13 +1105,60 @@ export class Tableau {
       this.oublierMarque(page, m)
     }
     if (!u || !u.undoStack.length) return null
-    return u.undo() ? {} : null
+    const avant = u.redoStack.length
+    const e = u.undo()
+    if (!e) return null
+    const r = u.redoStack.length === avant + 1 ? u.redoStack[u.redoStack.length - 1] : null
+    const envoi = e.meta.get(META_ENVOI) as Envoi | undefined
+    if (envoi) {
+      const fait = this.defaireArrivee(envoi)
+      if (r) r.meta.set(META_ENVOI, { ...envoi, retirees: fait.retirees, pageRetiree: fait.pageRetiree } satisfies Envoi)
+      return { envoi: { vers: envoi.vers, revenus: envoi.n, restes: fait.restes, pageRetiree: fait.pageRetiree } }
+    }
+    const copie = e.meta.get(META_COPIE) as CopieRecue | undefined
+    if (copie) {
+      if (r) r.meta.set(META_COPIE, copie)
+      return { copieRecue: { ...copie } }
+    }
+    return {}
   }
 
-  /** Refait le dernier geste défait sur cette page. Vrai s'il y en avait un. */
-  retablir(page: string): boolean {
+  /** Refait le dernier geste défait sur cette page. Faux s'il n'y en avait
+   *  pas ; vrai sinon, ou, pour un déplacement refait, ce qu'il a fait : ce
+   *  qui était parti de l'arrivée y revient D'ABORD (et la nouvelle page à sa
+   *  place, voir refaireArrivee), puis le retrait se refait (jamais un
+   *  instant où l'objet n'est nulle part). La méta suit, sans ce qu'on vient
+   *  de reposer : à la prochaine annulation, ces objets (les mêmes) sont de
+   *  nouveau tels quels sur l'arrivée. */
+  retablir(page: string): Retablissement {
     const u = this.piles.get(page)
-    return !!u && u.redoStack.length > 0 && !!u.redo()
+    if (!u || !u.redoStack.length) return false
+    const haut = u.redoStack[u.redoStack.length - 1]
+    const envoi = haut.meta.get(META_ENVOI) as Envoi | undefined
+    const arrivee = envoi ? this.refaireArrivee(envoi) : null
+    const avant = u.undoStack.length
+    const e = u.redo()
+    if (envoi && arrivee && e !== haut) {
+      // Yjs a sauté l'étape (devenue sans effet) : ce qu'on vient de reposer
+      // repart, rien ne reste en double
+      const b = this.formesDe(envoi.vers)
+      if (b && arrivee.reposees.length) this.surLaPage(envoi.vers, () => this.doc.transact(() => { for (const f of arrivee.reposees) if (b.get(f.id) === f) b.delete(f.id) }))
+    }
+    if (!e) return false
+    const r = u.undoStack.length === avant + 1 ? u.undoStack[u.undoStack.length - 1] : null
+    const refait = e.meta.get(META_ENVOI) as Envoi | undefined
+    if (refait) {
+      // L'étape refaite est un déplacement (celui d'en haut, ou un plus ancien
+      // si Yjs a sauté celle d'en haut : on repose alors après coup)
+      const a = e === haut && arrivee ? arrivee : this.refaireArrivee(refait)
+      const m: Envoi = { vers: refait.vers, posees: refait.posees, n: refait.n }
+      if (refait.nouvelle) m.nouvelle = refait.nouvelle
+      if (r) r.meta.set(META_ENVOI, m)
+      return { envoi: { vers: refait.vers, repartis: refait.n, pageRemise: a.pageRemise } }
+    }
+    const copie = e.meta.get(META_COPIE)
+    if (copie && r) r.meta.set(META_COPIE, copie)
+    return true
   }
 
   /** Y a-t-il un geste à défaire, à refaire, sur cette page ? Une page dont la

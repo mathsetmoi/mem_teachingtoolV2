@@ -5,7 +5,7 @@
 // Les gestes arrivent ici, deviennent des formes, et partent dans
 // le document. Le rendu, lui, ne fait que lire.
 // =============================================================
-import type { Tableau } from './document'
+import type { EtapeDePile, Tableau } from './document'
 import { Camera, vuePour } from './camera'
 import { Rendu } from './rendu'
 import { aireDe, chevauche, dansLasso, distanceAuSegment, distanceAuTrace, interieur, partDedans, rectangle, simplifier, touche } from './geometrie'
@@ -35,6 +35,7 @@ import type { Vue } from './session'
 import { ecrireSession, lireSession, oublierSession } from './session'
 import type { Copie } from './presse-papiers'
 import { collage, lireHtml, lireJson, memeTexte, versHtml, versTexte } from './presse-papiers'
+import { texteEnvoi, texteEnvoiAnnule } from './pages/envoi'
 
 /** La copie gardée dans le navigateur, pour un autre onglet de la même
  *  adresse (nouvelle clé : aucune autre ne change) */
@@ -68,12 +69,17 @@ function heureDe(e: Event): number {
   return t > 0 && t <= maintenant + 100 ? t : maintenant
 }
 
+/** Un bouton d'un message (voir Interface.message). cle : ce que l'action
+ *  concerne (voir oublierAction) ; garder : le message reste après ce bouton
+ *  (sans lui), avec les autres (« Aller à la page 5 » laisse « Annuler »). */
+export interface ActionMessage { libelle: string; faire: () => void; cle?: string; garder?: boolean }
+
 export interface Interface {
   maj(): void
   editerFormule(latex: string, ecranX: number, ecranY: number): Promise<string | null>
-  /** Un message en bas de l'écran ; avec une action, un bouton à côté du
-   *  texte. cle : ce que l'action concerne (voir oublierAction) */
-  message(texte: string, action?: { libelle: string; faire: () => void; cle?: string }): void
+  /** Un message en bas de l'écran ; avec une action (ou plusieurs), un
+   *  bouton chacune à côté du texte, dans l'ordre */
+  message(texte: string, action?: ActionMessage | ActionMessage[]): void
   /** Le message à action de cette clé n'a plus d'objet (la page que son
    *  « Annuler » rendait est revenue par Ctrl+Z) : il s'en va ; sans clé,
    *  quel qu'il soit */
@@ -107,6 +113,8 @@ export interface Interface {
   /** La trieuse des pages (Maj + P) ; auClavier : elle rend le focus au
    *  compteur en se fermant */
   ouvrirTrieuse(auClavier?: boolean): void
+  /** La fenêtre « Envoyer vers… » de ce qui est pris (voir pages/envoi.ts) */
+  ouvrirEnvoi(): void
 }
 
 type Geste =
@@ -787,11 +795,18 @@ export class App {
    *  y va, un message le dit, et la réponse est 'page' (le message est déjà
    *  dit). Juste après « Dupliquer la page », sur la copie où l'on n'a rien
    *  fait, c'est la copie qui part : on revient sur l'original, « Copie
-   *  retirée », et la réponse est aussi 'page'. Sinon, vrai si un geste a
-   *  été défait. */
-  annuler(): 'page' | boolean {
+   *  retirée », et la réponse est aussi 'page'. Un envoi défait (« Envoyer
+   *  vers… », voir Tableau.envoyer) : sur la page de départ, les objets y
+   *  reviennent sous les yeux, et le message dit ceux qui ont quitté la page
+   *  d'arrivée et ceux qui, modifiés là-bas, y restent ; sur la page
+   *  d'arrivée d'une copie, les copies partent (« Copie annulée ») ; la
+   *  réponse est 'dit' (le message est dit). Sinon, vrai si un geste a été
+   *  défait. */
+  annuler(): 'page' | 'dit' | boolean {
     if (this.enLecture) return false
     this.viderPointEnAttente()
+    // Les numéros d'avant : la nouvelle page d'un envoi défait peut partir
+    const numeros = new Map(this.pages.map((p, i) => [p, i + 1]))
     const r = this.tableau.annuler(this.page)
     if (r?.page) {
       this.revenirSur(r.page, this.pages.indexOf(r.page))
@@ -803,17 +818,36 @@ export class App {
       return 'page'
     }
     this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()
+    if (r?.envoi) {
+      this.ui.oublierAction('envoi:' + r.envoi.vers)
+      this.ui.message(texteEnvoiAnnule(r.envoi, numeros.get(r.envoi.vers) ?? 0, this.pages.includes(r.envoi.vers)))
+      return 'dit'
+    }
+    if (r?.copieRecue) {
+      this.ui.oublierAction('envoi:' + this.page)
+      this.ui.message('Copie annulée')
+      return 'dit'
+    }
     return r !== null
   }
 
   /** Refait le dernier geste défait sur la page qu'on regarde. Comme annuler :
    *  la sélection se vide (ce qui revient peut recouvrir ce qui était choisi)
-   *  et l'interface se remet à jour. Vrai si un geste a été refait. */
-  retablir(): boolean {
+   *  et l'interface se remet à jour. Vrai si un geste a été refait ; 'dit'
+   *  pour un envoi refait (les objets repartent sur la page d'arrivée, et le
+   *  message le dit). */
+  retablir(): 'dit' | boolean {
     if (this.enLecture) return false
     this.viderPointEnAttente()
     const fait = this.tableau.retablir(this.page)
     this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()
+    if (typeof fait === 'object') {
+      const e = fait.envoi, k = this.pages.indexOf(e.vers) + 1
+      this.ui.oublierAction('envoi:' + e.vers)
+      const ou = k ? `${e.pageRemise ? 'la nouvelle page' : 'la page'} ${k}` : 'une page supprimée'
+      this.ui.message(e.repartis === 1 ? `Envoi refait : l'objet est reparti sur ${ou}` : `Envoi refait : les ${e.repartis} objets sont repartis sur ${ou}`)
+      return 'dit'
+    }
     return fait
   }
 
@@ -1644,7 +1678,10 @@ export class App {
       const fait = this.annuler()
       if (fait === true) this.ui.message('Annulé')
       else if (!fait) this.ui.message('Rien à annuler sur cette page')
-    } else this.ui.message(this.retablir() ? 'Rétabli' : 'Rien à rétablir sur cette page')
+    } else {
+      const fait = this.retablir()
+      if (fait !== 'dit') this.ui.message(fait ? 'Rétabli' : 'Rien à rétablir sur cette page')
+    }
   }
 
   /** Un coup de gomme : à l'outil Gomme, ou au bout gomme du stylet (le
@@ -3180,6 +3217,108 @@ export class App {
     const c: Copie = { v: 1, formes, images: {}, page: this.page, centre: { x: 0, y: 0 }, t: 0 }
     this.poserCollage(collage(c, { dx: CM, dy: CM, moi: this.tableau.moi, existantes: this.formes }))
     return true
+  }
+
+  // ---------- Envoyer vers une autre page ----------
+  /** « Envoyer vers… » (la fenêtre, voir pages/envoi.ts) : ce qui est pris
+   *  (objetsChoisis : les points liés aux images choisies suivent) part vers
+   *  une autre page. cible : une page de l'ordre, 'apres' (une nouvelle page
+   *  juste après celle-ci) ou 'fin' (une nouvelle page à la fin), au fond de
+   *  la page qu'on regarde et sur sa vue (les objets y sont à la même place
+   *  à l'écran). deplacer : ils quittent cette page (sinon ils y restent
+   *  aussi). Ce qui arrive vient du collage : identifiants neufs, même
+   *  place, au-dessus de tout, noms gardés s'ils sont libres sur la page
+   *  d'arrivée, sinon une lettre libre par point. Voir Tableau.envoyer :
+   *  l'arrivée, puis le retrait, chacun noté sur sa page ; jamais de perte ni
+   *  de doublon caché, quelle que soit la page où l'on fait Ctrl+Z. On reste
+   *  sur la page ; la sélection se vide (déplacer) ou reste (copier) ; le
+   *  menu complet se ferme ; un message le dit, avec « Aller à la page N »
+   *  et « Annuler ». Rien quand le tableau est caché. Vrai si quelque chose
+   *  est parti. */
+  envoyerSelection(cible: string, deplacer: boolean): boolean {
+    if (tableauCache(this)) return false
+    this.viderPointEnAttente()
+    const formes = this.objetsChoisis()
+    const c = formes.length ? this.faireCopie(formes) : null
+    if (!c) { this.ui.message('Rien n\'est sélectionné.'); return false }
+    const a = this.page, pages = this.pages, i = pages.indexOf(a)
+    let vers = cible
+    let nouvelle: { id: string; place: number } | undefined
+    if (cible === 'apres' || cible === 'fin') {
+      const place = cible === 'apres' ? i + 1 : pages.length
+      vers = this.tableau.ajouterPage(this.fond, place)
+      nouvelle = { id: vers, place }
+      this.copierVue(a, vers)
+    } else if (cible === a || !pages.includes(cible)) {
+      this.ui.message('Cette page n\'est plus dans le tableau : rien n\'a été envoyé.')
+      return false
+    }
+    const existantes = [...(this.tableau.formesDe(vers)?.values() ?? [])]
+    const posees = collage(c, { dx: 0, dy: 0, moi: this.tableau.moi, existantes })
+    const ok = this.tableau.envoyer(a, vers, posees, c.formes.map(f => f.id), { deplacer, nouvelle })
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    this.options = null
+    if (!ok) { this.rendu.redessinerDirect(); this.ui.maj(); this.ui.message('Rien n\'a été envoyé.'); return false }
+    // L'étape que « Annuler » défera, si elle est encore la prochaine
+    const etape = this.tableau.prochaineAnnulation(deplacer ? a : vers)
+    if (deplacer) this.selection.clear()
+    this.rendu.redessinerDirect(); this.ui.maj()
+    const k = this.pages.indexOf(vers) + 1
+    this.ui.message(texteEnvoi(posees.length, k, deplacer), [
+      { libelle: `Aller à la page ${k}`, faire: () => this.allerAuxEnvoyes(vers, posees), garder: true },
+      { libelle: 'Annuler', faire: () => deplacer ? this.annulerEnvoi(a, etape) : this.annulerCopieEnvoyee(vers, etape), cle: 'envoi:' + vers },
+    ])
+    return true
+  }
+
+  /** « Aller à la page N » du message d'un envoi : on y va, et ce qui y est
+   *  arrivé (et y est encore) devient la sélection, sans changer d'outil
+   *  (comme un collage). Si rien n'en est visible, la vue s'y porte, en
+   *  gardant le zoom s'il suffit. Le message reste, avec « Annuler ». */
+  private allerAuxEnvoyes(vers: string, posees: Forme[]) {
+    if (tableauCache(this)) return
+    this.viderPointEnAttente()
+    if (!this.pages.includes(vers)) return this.ui.message('Cette page n\'est plus dans le tableau.')
+    this.allerPage(vers)
+    const la = new Set(posees.map(f => f.id).filter(id => this.formes.some(f => f.id === id)))
+    this.selection.clear()
+    for (const id of la) this.selection.add(id)
+    this.rendu.redessinerDirect(); this.ui.maj()
+    const b = la.size ? this.boiteDuContenu(this.formes.filter(f => la.has(f.id))) : null
+    if (!b) return
+    const r = this.ui.zoneLibre()
+    const p = this.cam.versEcran(b.x, b.y), q = this.cam.versEcran(b.x + b.l, b.y + b.h)
+    const visible = q.x >= r.x && p.x <= r.x + r.l && q.y >= r.y && p.y <= r.y + r.h
+    if (!visible) this.allerVers(vuePour(b, r, this.cam.z))
+  }
+
+  /** « Annuler » du message d'un DÉPLACEMENT : seulement si son retrait est
+   *  encore la prochaine étape que Ctrl+Z défera sur la page de départ ; on
+   *  y revient s'il le faut (on a pu aller voir la page d'arrivée), et l'on
+   *  défait : les objets reparaissent sous les yeux, et le message dit qu'ils
+   *  ont quitté l'arrivée. Sinon il défairait autre chose, qu'on ne voit pas. */
+  private annulerEnvoi(de: string, etape: EtapeDePile | null) {
+    if (tableauCache(this)) return
+    this.viderPointEnAttente()
+    if (!this.pages.includes(de)) return this.ui.message('La page d\'où les objets sont partis n\'est plus dans le tableau.')
+    if (!etape || this.tableau.prochaineAnnulation(de) !== etape) return this.ui.message('La page a changé depuis : ↶ défait les gestes un à un.')
+    if (this.page !== de) this.allerPage(de)
+    this.annuler()
+  }
+
+  /** « Annuler » du message d'une COPIE : on va D'ABORD sur la page
+   *  d'arrivée (jamais un Ctrl+Z sur une page qu'on ne regarde pas), puis
+   *  l'on défait si l'arrivée est encore la prochaine étape de sa pile : les
+   *  copies partent sous les yeux. */
+  private annulerCopieEnvoyee(vers: string, etape: EtapeDePile | null) {
+    if (tableauCache(this)) return
+    this.viderPointEnAttente()
+    const k = this.pages.indexOf(vers) + 1
+    if (!k) return this.ui.message('La page où les objets ont été copiés n\'est plus dans le tableau.')
+    this.allerPage(vers)
+    if (!etape || this.tableau.prochaineAnnulation(vers) !== etape) return this.ui.message(`La page ${k} a changé depuis : ↶ y défait les gestes un à un.`)
+    this.annuler()
   }
 
   /** Ctrl+A : tout ce qui est sur la page qu'on regarde. On passe à l'outil

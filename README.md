@@ -194,12 +194,14 @@ figure, d'un trait ou d'une image :
   sommets ou en coordonnées), homothétie. L'image est une nouvelle figure, aux
   sommets nommés A', B', C'… ;
 - *Main levée*, *Dupliquer*, *Copier*, *Copier en image* (voir « Copier en
-  image »), supprimer.
+  image »), *Envoyer vers…* (une autre page, voir « Envoyer vers une autre
+  page »), supprimer.
 
 **Une formule** se modifie au double-clic (comme un texte, partout) ; son clic
 droit ouvre son menu : *Modifier* (son infobulle rappelle le double-clic, sauf
 au doigt), *Couleur et taille* (les quatre couleurs ;
-Petite, Normale, Grande), *Dupliquer*, *Copier*, *Copier en image*, supprimer. Pas de
+Petite, Normale, Grande), *Dupliquer*, *Copier*, *Copier en image*, *Envoyer
+vers…*, supprimer. Pas de
 *Transformer* : l'image d'une formule n'en déplacerait que le coin.
 
 **Plusieurs objets** sélectionnés (Maj + clic, un cadre, un lasso, Ctrl + A) :
@@ -209,7 +211,7 @@ leur menu commun, et la sélection reste entière. « 3 objets », puis *Couleur
 épaisseurs pour les traits et les figures, un trait de surligneur gardant sa
 largeur de surligneur ; les pointillés s'il y a une figure ; un choix est
 marqué quand tous l'ont déjà), *Dupliquer*, *Copier*, *Couper*, *Copier en
-image*, supprimer.
+image*, *Envoyer vers…*, supprimer.
 Seulement ce qui vaut pour chacun : ni les sommets, ni le fond, ni les
 transformations. Chaque choix fait une seule étape : un Ctrl+Z rend leur
 couleur aux dix objets d'un coup. Le menu se pose au-dessus de toute la
@@ -1044,7 +1046,10 @@ soit l'outil en main, qu'on retrouve en reprenant la pointe.
 **Annuler, rétablir.** Ctrl+Z (⌘Z sur Mac) et ↶ défont le dernier geste de la
 page qu'on regarde, et d'elle seule ; Ctrl+Y, Ctrl+Maj+Z et ↷ le refont.
 Chaque page garde sa pile : revenir sur une page, c'est retrouver ce qu'on y
-peut défaire, et rien ne change jamais sur une page qu'on ne voit pas. ↶ et ↷
+peut défaire, et rien ne change jamais sur une page qu'on ne voit pas (seule
+exception, dite par le message : Ctrl+Z sur la page d'où des objets ont été
+envoyés les retire de la page d'arrivée, voir « Envoyer vers une autre
+page »). ↶ et ↷
 gardent leur place et se grisent quand la page n'a rien à défaire ou à refaire
 (sans clavier, ils se touchent : ils se rallument dès qu'il y a de quoi). Au
 clavier, un Ctrl+Z sans rien à défaire le dit : « Rien à annuler sur cette
@@ -1214,6 +1219,60 @@ sélection. La copie part dans le clic même (Safari l'exige). Grisé sur une
 page vide ; « Rien n'est sélectionné. » sans rien de pris. Pas de raccourci
 (Ctrl + Maj + C ouvre l'inspecteur du navigateur). À ne pas confondre avec
 *Copier pour Pronote* de la fenêtre Publier, qui copie le lien d'un replay.
+
+**Envoyer vers une autre page.** *Envoyer vers…* (le menu complet d'un objet,
+d'une formule ou de plusieurs objets, juste après *Copier en image* ; pas dans
+la barre d'actions, qui garde les gestes de tous les jours : *Options* y mène,
+au doigt comme au stylet) ouvre une fenêtre : « Envoyer les 3 objets vers… »,
+deux choix, *Déplacer (ils quittent cette page)*, coché, ou *Copier (ils
+restent aussi ici)*, puis la liste des destinations, de grands boutons :
+chaque page avec sa petite vignette (« Page 2 · Exercice 12 p. 84 » ; celle
+qu'on regarde grisée, « (cette page) »), *Une nouvelle page juste après*, *Une
+nouvelle page à la fin* (au fond de la page qu'on regarde, sur sa vue). Un
+clic, un toucher ou Entrée sur une destination envoie et ferme ; au clavier,
+Tab va des deux choix à la liste puis à *Annuler*, les flèches (Début, Fin)
+parcourent la liste, Échap ferme ; sur un téléphone, elle prend toute la
+largeur et la liste défile. On reste sur la page, et un message le dit :
+« 3 objets envoyés vers la page 5 » (« 3 objets copiés sur la page 5 »), avec
+**Aller à la page 5** (ce qui y est arrivé devient la sélection ; la vue s'y
+porte si on ne le voit pas ; le message garde son *Annuler*) et **Annuler**.
+Ce qui arrive est un collage : identifiants neufs, à la même place, au-dessus
+de tout, les noms gardés s'ils sont libres sur la page d'arrivée, sinon une
+lettre libre par point (un triangle ABC envoyé sur une page qui a déjà ABC
+devient DEF) ; une image emporte les points qui lui sont liés. Déplacés, les
+objets quittent la sélection ; copiés, elle reste.
+
+L'annulation d'un envoi, sans perte ni doublon caché, avec une pile par page :
+
+- **Ctrl+Z sur la page de départ** (après un déplacement) ramène les objets
+  (les mêmes, sous les yeux) et les retire de la page d'arrivée s'ils n'y ont
+  pas changé ; un objet modifié depuis là-bas y reste aussi, et le message le
+  dit (« Envoi annulé : les 3 objets sont revenus de la page 5 ; 1 objet,
+  modifié depuis sur la page 5, y reste aussi ») : rien de ce qu'on y a fait
+  n'est perdu. Une nouvelle page créée pour l'envoi, redevenue vide, s'en va
+  (pas dans la corbeille, où une page vide ne figure pas ; la revue la garde
+  sous « Pages jetées », avec son court passage). Ctrl+Y les renvoie (« Envoi
+  refait… »), et la nouvelle page revient à sa place.
+- **Sur la page d'arrivée, Ctrl+Z ne les retire jamais** (ce serait les
+  perdre : ils ont quitté la page de départ) ; il y défait ce qu'on leur a fait
+  depuis.
+- **Une copie s'annule sur la page d'arrivée** : Ctrl+Z y retire les copies
+  (« Copie annulée »), les originaux restent ; Ctrl+Z sur la page de départ
+  n'y touche pas. *Annuler* du message d'une copie va d'abord sur la page
+  d'arrivée, puis les copies partent sous les yeux.
+- *Annuler* du message ne défait l'envoi que s'il est encore le dernier geste
+  de sa page (sinon : « La page a changé depuis : ↶ défait les gestes un à
+  un. »), en revenant sur la page de départ s'il le faut.
+
+Pourquoi deux étapes : un déplacement est l'arrivée sur la page d'arrivée
+(dans aucune pile), PUIS le retrait de la page de départ (une étape de sa
+pile, qui retient ce qui est arrivé ; jamais un instant où l'objet n'est
+nulle part) ; chacune est notée sur sa page dans le film. La revue de chaque
+page et le film élève de chacune sont justes : ce qui part disparaît de la
+page de départ, ce qui arrive se dessine sur la page d'arrivée comme un
+collage (la revue d'une séance entière montre un court détour par la page
+d'arrivée).
+
 Sur un téléphone, le menu complet passe à la ligne sur toute la largeur de
 l'écran (il couvre alors le haut de la barre d'outils plutôt que d'en sortir).
 
@@ -1225,7 +1284,10 @@ Les **messages** en bas de l'écran passent sous les panneaux et les menus (ils
 ne cachent jamais ce qu'on va toucher), sauf pendant la revue, la séance
 d'automatismes et le programme de construction ; un message à bouton
 (« Changer ») reste 7 s, et un autre message qui arrive entre-temps s'écrit
-au-dessus de lui sans le chasser. Pendant la revue, un message à bouton ne se
+au-dessus de lui sans le chasser. Un message peut avoir deux boutons
+(« Aller à la page 5 », « Annuler ») ; il prend la largeur de son texte et de
+ses boutons, jusqu'à presque tout l'écran (sur un téléphone, ils ne s'y
+écrasent pas). Pendant la revue, un message à bouton ne se
 montre pas et son bouton ne fait rien (« Annuler » d'une page qu'on vient de
 supprimer écrirait dans le tableau, que la revue ne change jamais) ; la
 revue fermée, Ctrl+Z sur la page où l'on était arrivé rend la page. Au doigt, ils parlent du bouton Annuler,
@@ -1331,7 +1393,7 @@ une photo.
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule), les fonds |
-| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié) et le déplacement des pages (le plus petit changement de l'ordre) |
+| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié) et le déplacement des pages (le plus petit changement de l'ordre). Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre) ; la copie, une étape de la pile d'arrivée |
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris |
 | `src/rendu.ts` | Les trois couches d'affichage ; peindre une page sur un autre canevas (`peindreSur` : une vignette en esquisse, une image, une feuille du PDF), sans rien changer à l'écran |
 | `src/sorties/formules.ts` | Les formules KaTeX sur un canevas : mises en page cachées comme à l'écran, puis repeintes (textes, bordures, fonds, SVG coupés), les polices attendues ; leurs images gardées par échelle dans un cache borné en pixels |
@@ -1355,7 +1417,8 @@ une photo.
 | `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
-| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le menu complet (un objet, une formule, plusieurs objets ; placé dans l'écran, sur un téléphone aussi), le menu de la page, « Copier la page en image » et « Copier en image », éditeur de formules |
+| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le menu complet (un objet, une formule, plusieurs objets ; placé dans l'écran, sur un téléphone aussi), le menu de la page, « Copier la page en image » et « Copier en image », « Envoyer vers… », les messages (un ou deux boutons), éditeur de formules |
+| `src/pages/envoi.ts` | La fenêtre « Envoyer vers… » : déplacer ou copier, la liste des destinations (chaque page avec sa petite vignette, une nouvelle page juste après, à la fin), le clavier ; les textes des messages d'un envoi (pur, testé). L'envoi lui-même est `App.envoyerSelection`, son annulation `Tableau.envoyer` |
 | `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose, ce que devient un appui sur elle |
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (celles des lecteurs sont dans `src/revoir/icones.ts`) |
 | `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
@@ -1385,7 +1448,13 @@ n'empêche un usage payant.
   par Ctrl+V (le presse-papiers du système) : *Coller ici*, dans le menu de
   la page, ne colle que ce qui a été copié à la même adresse.
 - Au replay, ce qu'on colle ou duplique se dessine en un peu plus d'une
-  seconde au plus (comme Dupliquer jusqu'ici), au lieu de paraître d'un coup.
+  seconde au plus (comme Dupliquer jusqu'ici), au lieu de paraître d'un coup ;
+  de même ce qu'on envoie sur une autre page (*Envoyer vers…*).
+- Après *Envoyer vers…* (un déplacement), on modifie un objet arrivé, on
+  défait cette modification puis tout l'envoi sur la page de départ : un
+  Ctrl+Y sur la page d'arrivée y refait la modification, et l'objet y
+  reparaît, sous les yeux, en plus de celui revenu sur la page de départ (un
+  doublon visible, jamais caché).
 - Sur iPad (et toute tablette), à l'outil Sélection ou au doigt qui
   « déplace », un appui qui marque un temps (une demi-seconde) avant de
   glisser ouvre le menu au lieu de tracer le lasso, de déplacer l'objet ou la

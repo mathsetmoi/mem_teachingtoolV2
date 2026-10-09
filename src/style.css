@@ -200,6 +200,10 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
   transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
   padding: 10px 16px; border-radius: 10px; background: var(--encre); color: #fff;
   transition: opacity 0.18s, transform 0.18s;
+  /* Sa largeur : celle du texte et de ses boutons, jusqu'à presque tout
+     l'écran (posé à left: 50 %, il n'aurait sinon que la moitié de la
+     largeur : sur un téléphone, deux boutons s'y écrasaient) */
+  width: max-content; max-width: min(760px, calc(100vw - 32px));
 }
 .toast.visible { opacity: 1; transform: translate(-50%, 0); }
 /* Deux messages à la fois (un ordinaire au-dessus d'un message à action) : un par ligne */
@@ -209,10 +213,11 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
 /* La séance d'automatismes couvre tout l'écran (barres et menus cachés) : ses
    messages passent devant elle (F5 bloqué dit comment recharger) */
 body.en-seance .toast { z-index: 41; }
-/* Le bouton d'un message (« Changer ») : seul à recevoir les appuis, et
-   seulement quand le message se voit */
+/* Le bouton d'un message (« Changer »), ou ses boutons (« Aller à la page 5 »,
+   « Annuler ») : seuls à recevoir les appuis, et seulement quand le message
+   se voit */
 .toast .action {
-  margin-left: 12px; height: 34px; padding: 0 12px; vertical-align: middle;
+  margin-left: 12px; height: 34px; padding: 0 12px; vertical-align: middle; white-space: nowrap;
   border: 0; border-radius: 8px; background: rgba(255, 255, 255, 0.16); color: #fff;
   font-weight: 700; cursor: pointer; pointer-events: none;
 }
@@ -872,6 +877,36 @@ body.en-trieuse .toast { z-index: 30; }
 .dialogue-ouvrir { width: min(520px, calc(100vw - 24px)); }
 .dialogue-ouvrir .actions { flex-wrap: wrap; }
 .dialogue-ouvrir button:disabled { opacity: 0.55; cursor: default; }
+
+/* ---------- Envoyer vers une autre page (pages/envoi.ts) ----------
+   La liste des destinations défile ; la fenêtre tient dans l'écran, pleine
+   largeur sur un téléphone. De grands boutons (52 px), une petite vignette
+   devant chaque page ; la page qu'on regarde est grisée. */
+.dialogue-envoi { width: min(480px, calc(100vw - 24px)); max-height: min(680px, calc(100vh - 32px)); padding-bottom: 16px; }
+.dialogue-envoi[open] { display: flex; flex-direction: column; }
+.dialogue-envoi .corps { display: flex; flex-direction: column; gap: 12px; min-height: 0; flex: 1 1 auto; }
+.envoi-mode { display: flex; flex-wrap: wrap; gap: 2px 18px; }
+.envoi-mode .case { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; }
+.envoi-mode .case input { width: 18px; height: 18px; margin: 0; accent-color: var(--bleu); }
+.envoi-liste {
+  display: flex; flex-direction: column; gap: 4px; min-height: 0; flex: 1 1 auto; overflow-y: auto;
+  overscroll-behavior: contain; padding: 4px; margin: 0 -4px; border-top: 1px solid var(--filet); border-bottom: 1px solid var(--filet);
+}
+.destination {
+  display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 5px 10px; flex: none;
+  border: 1px solid transparent; border-radius: 10px; background: transparent; text-align: left; cursor: pointer;
+}
+.destination:hover:not(:disabled) { background: #eef3fa; border-color: var(--filet); }
+.destination:disabled { opacity: 0.5; cursor: default; }
+.destination .vignette-envoi { flex: none; width: 64px; height: 40px; border: 1px solid var(--filet); border-radius: 4px; background: var(--papier); }
+.destination .plus {
+  flex: none; width: 64px; height: 40px; display: grid; place-items: center; font-size: 24px; color: var(--bleu);
+  border: 1px dashed var(--bleu); border-radius: 4px;
+}
+.destination .libelle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+@media (max-width: 640px) {
+  .dialogue-envoi { width: calc(100vw - 16px); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); padding: 16px 14px 12px; }
+}
 
 /* ---------- Revenir au contenu ---------- */
 .retour-contenu {
