@@ -53,8 +53,12 @@ describe('séances repérées dans le film', () => {
     t.poser(page, trait(30, 0)); await attendre(24 * 60 * MINUTE)  // le lendemain
     t.poser(page, trait(40, 0)); await attendre(1000)
     const s = seancesDuFilm(t.film.toArray())
-    expect(s.map(x => x.gestes)).toEqual([1, 2, 3])                // la plus récente d'abord
+    // La plus récente d'abord. La création de la page n'est pas un geste (sa
+    // naissance, voir Etape) : la première séance commence à elle (de), à
+    // l'heure de son premier geste (debut)
+    expect(s.map(x => x.gestes)).toEqual([1, 2, 2])
     expect(s[0].pages).toEqual([page])
+    expect([s[2].de, s[2].a, s[2].debut]).toEqual([0, 2, t.film.get(1).t])
   })
 })
 
@@ -276,7 +280,7 @@ describe('ce que la relecture a trouvé', () => {
     t.poser(page, trait(1, 0)); await attendre(6 * MINUTE)            // l'intercours
     t.poser(page, trait(2, 0)); await attendre(1000)
     expect(seancesDuFilm(t.film.toArray()).length).toBe(1)
-    expect(seancesDuFilm(t.film.toArray(), 5 * MINUTE).map(s => s.gestes)).toEqual([1, 3])
+    expect(seancesDuFilm(t.film.toArray(), 5 * MINUTE).map(s => s.gestes)).toEqual([1, 2])     // la création de la page n'est pas un geste
   })
 })
 

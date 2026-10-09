@@ -420,12 +420,16 @@ export class RevueEnClasse {
     return `${this.nommer(p.page)}, toute son histoire · ${pluriel(nb, 'séance')} depuis le ${jourDuMois(b.parties[0].heure)} · ${gestes}`
   }
 
-  /** Le nom d'une page, tel que la classe le lit */
-  private nommer(page: string): string {
+  /** Le nom d'une page, tel que la classe le lit : « Page 3 », et le nom
+   *  que le professeur lui a donné, s'il y en a un (« Page 3 · Exercice 12
+   *  p. 84 »). sur : ce qui suit le numéro (« / 7 », comme le compteur du
+   *  tableau : « Page 3 / 7 · Exercice 12 p. 84 ») */
+  private nommer(page: string, sur = ''): string {
     const pages = this.app.pages
     const i = pages.indexOf(page)
-    if (i < 0) return 'Page jetée'
-    return pages.length === 1 ? 'La page' : `Page ${i + 1}`
+    const numero = i < 0 ? 'Page jetée' : pages.length === 1 ? 'La page' : `Page ${i + 1}${sur}`
+    const nom = this.app.tableau.nomDe(page)
+    return nom ? `${numero} · ${nom}` : numero
   }
 
   /** L'heure de l'image k : celle de son geste (ou du geste que son épilogue
@@ -834,6 +838,8 @@ export class RevueEnClasse {
       nommer: p => this.nommer(p),
       pagesActuelles: this.app.pages,
       naissance: i => this.lecture?.naissance(i) ?? false,
+      copies: this.lecture.copies,
+      deLaPage: (i, p) => this.lecture?.deLaPage(i, p) ?? false,
       gestes: p => this.totalDe(p),
       portion: b.portion,
       arretAuxParties: this.arretAuxParties,
@@ -1050,7 +1056,7 @@ export class RevueEnClasse {
     const pages = this.app.pages
     const h = this.heureDe(k)
     const sur = pages.length > 1 && pages.includes(img.p) ? ` / ${pages.length}` : ''
-    this.ligne1.textContent = `${this.nommer(img.p)}${sur} · ${jourCourt(h)} · ${heureLisible(h)}`
+    this.ligne1.textContent = `${this.nommer(img.p, sur)} · ${jourCourt(h)} · ${heureLisible(h)}`
     this.ligne2.textContent = nbParties > 1 ? `Partie ${q + 1} / ${nbParties}` : ''
     this.ligne2.hidden = nbParties < 2
     this.compteur.textContent = `${b.gestes[k]} / ${b.total}`

@@ -20,8 +20,9 @@ async function demarrer() {
   if (import.meta.env.DEV) Object.assign(window, { __app: app, __parties: (await import('./instruments')).partiesDuCompas, __construction: await import('./construction'), __auto: await import('./automatismes'), __katex: (await import('katex')).default, __menus: await import('./menus') })
 
   await tableau.charger()
-  // La page qu'on regardait avant de recharger, si elle existe encore
-  app.allerPage(app.pageDeDepart())
+  // La page qu'on regardait avant de recharger, si elle existe encore (sans
+  // annoncer son numéro : on arrive, on ne change pas de page)
+  app.allerPageDeDepart()
   // Un tableau vient d'être ouvert depuis un fichier : on le dit
   ui.sauvegarde.annoncerOuverture()
   // Que le navigateur ne vide pas la base pour faire de la place. Chrome, Edge

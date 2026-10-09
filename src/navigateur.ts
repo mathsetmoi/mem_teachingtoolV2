@@ -50,6 +50,19 @@ export function toucheMenu(e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey'
   return e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)
 }
 
+/** Le tableau est-il caché ? La revue (app.enLecture), une séance
+ *  d'automatismes (body.en-seance) et la trieuse des pages (body.en-trieuse)
+ *  le couvrent : tout ce qui écrirait sur la page qu'on ne voit plus se tait
+ *  (le collage par l'événement paste, les menus du clic droit, la barre
+ *  d'actions, le zoom au clavier et le pincement de Safari, Ctrl + O,
+ *  « Dupliquer la page », l'annonce du numéro de page). Sinon un geste
+ *  invisible changerait la page, et l'on ne verrait rien. */
+export function tableauCache(app: { enLecture: boolean }): boolean {
+  if (app.enLecture) return true
+  const corps = typeof document === 'undefined' ? null : document.body
+  return !!corps && (corps.classList.contains('en-seance') || corps.classList.contains('en-trieuse'))
+}
+
 /** Les touches qui ne font rien pendant un geste (un objet qu'on glisse, un
  *  trait qu'on écrit, un cadre ou un lasso, la vue qu'on déplace) : celles
  *  qui changeraient la page, la sélection ou l'objet tenu. Le lâcher
@@ -105,8 +118,9 @@ export function installerGardes(app: App) {
       // Pendant une séance d'automatismes, le professeur peut vouloir grossir l'écran
       if (document.body.classList.contains('en-seance')) return
       e.preventDefault()
-      // Dans la revue ou une fenêtre ouverte : la page ne zoome pas, le tableau non plus
-      if (app.enLecture || document.querySelector('dialog[open]')) return
+      // Dans la revue, la trieuse des pages ou une fenêtre ouverte : la page
+      // ne zoome pas, le tableau (caché) non plus
+      if (tableauCache(app) || document.querySelector('dialog[open]')) return
       if (z === 'plus') app.zoomerClavier(1.25)
       else if (z === 'moins') app.zoomerClavier(1 / 1.25)
       else app.zoom100()
@@ -140,7 +154,7 @@ export function installerGardes(app: App) {
     e.preventDefault()
     if (!bureauSafari) return
     const g = e as GestureEvent
-    if (!app.enLecture && g.scale > 0 && echelle > 0) app.zoomerAutourClient(g.clientX, g.clientY, g.scale / echelle)
+    if (!tableauCache(app) && g.scale > 0 && echelle > 0) app.zoomerAutourClient(g.clientX, g.clientY, g.scale / echelle)
     echelle = g.scale
   }, { passive: false })
   document.addEventListener('gestureend', e => {

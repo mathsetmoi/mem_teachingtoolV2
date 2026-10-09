@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ZOOM_MAX, ZOOM_MIN, vuePour, zoneEntreBarres } from '../src/camera'
 import { PLAFOND_MOLETTE, lireMolette, toucheMarquePage, toucheMenu, toucheRecharger, toucheTenueEnGeste, toucheZoom } from '../src/navigateur'
-import { positionMenu } from '../src/menus'
+import { positionMenu, positionPanneau } from '../src/menus'
 import { ecrireSession, lireSession, oublierSession } from '../src/session'
 import { lire } from '../src/reglages'
 
@@ -223,6 +223,60 @@ describe('la place d\'un menu', () => {
     expect(positionMenu({ left: 1200, top: 100, right: 1250, bottom: 140 }, 260, 270, 'droite', fenetre).left).toBe(1200 - 260 - 6)
     const petit = positionMenu({ left: 0, top: 0, right: 40, bottom: 40 }, 500, 900, 'dessous', { l: 390, h: 844 })
     expect(petit.left).toBe(8); expect(petit.top).toBe(8)
+  })
+})
+
+describe('la place du menu complet (positionPanneau)', () => {
+  const fenetre = { l: 1366, h: 768 }, bornes = { gauche: 110, haut: 76 }
+  /** La part (en px²) de la cible, avec ses poignées (13 px autour), que le panneau couvre */
+  const couvre = (c: { left: number; top: number; right: number; bottom: number }, p: { left: number; top: number }, l: number, h: number) =>
+    Math.max(0, Math.min(p.left + l, c.right + 13) - Math.max(p.left, c.left - 13)) * Math.max(0, Math.min(p.top + h, c.bottom + 13) - Math.max(p.top, c.top - 13))
+
+  it('au-dessus de la cible, centré, quand il y tient (comme avant le lot 3)', () => {
+    const c = { left: 298, top: 248, right: 502, bottom: 372 }
+    // Centré sur la figure (x = 400), mais pas sur la barre d'outils (110)
+    expect(positionPanneau(c, 728, 54, fenetre, bornes)).toEqual({ left: 110, top: 248 - 14 - 54 })
+    expect(positionPanneau({ left: 600, top: 248, right: 800, bottom: 372 }, 728, 54, fenetre, bornes)).toEqual({ left: 700 - 364, top: 180 })
+  })
+
+  it('en dessous quand il ne tient pas au-dessus (sous la barre du haut)', () => {
+    const c = { left: 298, top: 120, right: 458, bottom: 220 }
+    expect(positionPanneau(c, 728, 54, fenetre, bornes)).toEqual({ left: 110, top: 234 })
+  })
+
+  it('le cas du rapport : ni au-dessus ni en dessous, il passe à côté au lieu de couvrir la figure', () => {
+    // Le rectangle du rapport (à l'écran, de y 348 à 472 en 1366 × 768), le
+    // panneau sur deux lignes avec « Transformer » : 820 × 297. Avant, il se
+    // posait en bas de l'écran (y 463 à 760), sur le bas du rectangle.
+    const c = { left: 298, top: 348, right: 502, bottom: 472 }
+    const p = positionPanneau(c, 820, 297, fenetre, bornes)
+    expect(couvre(c, p, 820, 297)).toBe(0)
+    expect(p.left).toBe(502 + 14)                       // à droite, il y tient (516 + 820 ≤ 1358)
+    expect(p.top).toBeGreaterThanOrEqual(76); expect(p.top + 297).toBeLessThanOrEqual(760)
+  })
+
+  it('à gauche quand la droite est prise ; jamais sur la barre d\'outils', () => {
+    const c = { left: 1100, top: 300, right: 1300, bottom: 420 }
+    const p = positionPanneau(c, 700, 500, fenetre, bornes)
+    expect(couvre(c, p, 700, 500)).toBe(0)
+    expect(p.left).toBe(1100 - 14 - 700)
+    expect(positionPanneau({ left: 600, top: 300, right: 700, bottom: 420 }, 700, 500, fenetre, bornes).left).toBeGreaterThanOrEqual(110)
+  })
+
+  it('une figure qui remplit l\'écran : la place qui en couvre le moins, toujours dans l\'écran', () => {
+    const c = { left: 120, top: 90, right: 1300, bottom: 700 }
+    const p = positionPanneau(c, 728, 300, fenetre, bornes)
+    expect(p.left).toBeGreaterThanOrEqual(8); expect(p.top).toBeGreaterThanOrEqual(8)
+    expect(p.left + 728).toBeLessThanOrEqual(1358); expect(p.top + 300).toBeLessThanOrEqual(760)
+    for (const autre of [{ left: 110, top: 76 }, { left: 400, top: 300 }]) expect(couvre(c, p, 728, 300)).toBeLessThanOrEqual(couvre(c, autre, 728, 300))
+  })
+
+  it('téléphone : sur toute la largeur, au-dessus ou en dessous, dans l\'écran', () => {
+    const t = { l: 390, h: 844 }, b = { gauche: 8, haut: 76 }
+    const p = positionPanneau({ left: 60, top: 300, right: 300, bottom: 400 }, 374, 150, t, b)
+    expect(p).toEqual({ left: 8, top: 300 - 14 - 150 })
+    const q = positionPanneau({ left: 60, top: 100, right: 300, bottom: 600 }, 374, 150, t, b)
+    expect(q.top).toBe(614); expect(q.left).toBe(8)
   })
 })
 

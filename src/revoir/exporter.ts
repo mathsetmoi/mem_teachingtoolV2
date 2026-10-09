@@ -9,9 +9,19 @@
 // la classe a vu ce trait s'écrire. Les instruments (la règle qu'on pose,
 // le compas qui trace) ne partent que tels que la classe les a vus sur une
 // page publiée, pendant la séance : voir instrumentsDuFilm, plus bas.
+//
+// Une copie de page (« Dupliquer la page ») hérite le passé de son original
+// jusqu'à sa naissance (voir heritage.ts), mais seulement si l'original n'est
+// pas publié avec elle. Publiée seule, elle se construit sous les yeux de
+// l'élève, comme l'original s'est construit en classe, puis continue avec ce
+// qu'on a fait sur elle. Publiée avec l'original, l'élève voit l'original se
+// construire, puis la copie paraître d'un coup à sa naissance, comme la
+// classe l'a vue (le lecteur la montre d'un coup : ses formes sont déjà
+// vues). Le format du film élève ne change pas.
 // =============================================================
 import type { Etape, EtatTableau, Tableau } from '../document'
 import type { Fond, Forme } from '../types'
+import { filiationDe } from '../heritage'
 import type { Chapitre, EtapeFilm, FilmEleve, Op, PageFilm } from './format'
 import { FORMAT, VERSION } from './format'
 import { lireTemps } from './main-levee'
@@ -40,20 +50,61 @@ export interface Seance {
  *  chaque silence plus long que `ecart` et à chaque changement de jour.
  *  Une étape qui ne change que l'ordre des pages (une page jetée, ou rendue)
  *  n'est ni un geste, ni une page de la séance, ni une coupure : on la
- *  saute, et le silence se mesure depuis l'étape gardée d'avant. */
+ *  saute, et le silence se mesure depuis l'étape gardée d'avant. De même la
+ *  naissance d'une page (une copie, « Dupliquer la page », ou une page vide,
+ *  voir Etape) et le rangement de la trieuse (un fond changé sans aller sur
+ *  la page) : ranger après le cours ne fait pas une séance, ni un pont entre
+ *  deux cours ; ce qu'on range pendant le cours y reste (la séance va d'une
+ *  étape à l'autre, celles qu'on saute comprises).
+ *  Une page qui naît juste avant le premier geste d'une séance (« Nouvelle
+ *  page » en arrivant, une copie qu'on va compléter), à moins d'un écart et
+ *  le même jour, est de cette séance sans en être un geste : la séance
+ *  commence à sa naissance (de), son heure reste celle du premier geste
+ *  (debut). La revue y voit ainsi une page neuve, comme quand la création
+ *  comptait pour un geste. Un fond changé dans la trieuse entre les deux
+ *  arrête cette remontée : il est d'avant la séance (l'élève voit la page
+ *  avec son nouveau fond dès le départ). */
 export function seancesDuFilm(film: readonly Etape[], ecart = ENTRE_DEUX_SEANCES): Seance[] {
   const r: Seance[] = []
   let cour: Seance | null = null
   let prec: Etape | null = null
+  const jour = (t: number) => new Date(t).toDateString()
+  /** Où commence la séance que le geste i ouvre : à la plus ancienne
+   *  naissance de la suite de naissances (et d'étapes qui ne changent que
+   *  l'ordre) qui le précède, à moins d'un écart et le même jour ; sinon à lui */
+  const depart = (i: number) => {
+    let de = i
+    for (let k = i - 1; k >= 0; k--) {
+      const x = film[k]
+      if (!(x.seulOrdre || x.naissance) || film[i].t - x.t > ecart || jour(x.t) !== jour(film[i].t)) break
+      if (x.naissance) de = k
+    }
+    return de
+  }
   film.forEach((e, i) => {
-    if (e.seulOrdre) return
-    const coupe = !prec || e.t - prec.t > ecart || new Date(e.t).toDateString() !== new Date(prec.t).toDateString()
+    if (e.seulOrdre || e.naissance || e.rangement) return
+    const coupe = !prec || e.t - prec.t > ecart || jour(e.t) !== jour(prec.t)
     prec = e
-    if (coupe || !cour) { cour = { de: i, a: i, debut: e.t, fin: e.t, gestes: 0, pages: [] }; r.push(cour) }
+    if (coupe || !cour) { cour = { de: depart(i), a: i, debut: e.t, fin: e.t, gestes: 0, pages: [] }; r.push(cour) }
     cour.a = i; cour.fin = e.t; cour.gestes++
     if (e.page && !cour.pages.includes(e.page)) cour.pages.push(e.page)
   })
   return r.reverse()
+}
+
+/** Le film élève d'une séance a-t-il quelque chose à montrer ? Au moins un
+ *  geste (un film sans geste n'est qu'une image fixe : une séance qui n'a
+ *  fait qu'effacer, ou que créer une page), et quelque chose sur ses pages. */
+export function aMontrer(f: FilmEleve): boolean {
+  return f.etapes.length > 0 && (f.pages.some(p => p.formes.length) || f.etapes.some(e => e.o.some(o => o[0] === '=')))
+}
+
+/** Les séances que la fenêtre Publier propose, la plus récente d'abord (la
+ *  première est choisie d'office) : celles dont le film élève, avec les pages
+ *  qu'elle propose, a quelque chose à montrer. */
+export function seancesAPublier(tableau: Tableau, ecart = ENTRE_DEUX_SEANCES): Seance[] {
+  return seancesDuFilm(tableau.film.toArray(), ecart)
+    .filter(s => aMontrer(exporter(tableau, { de: s.de, a: s.a, pages: pagesDeLaSeance(tableau, s), titre: '' }, { instruments: false })))
 }
 
 export interface Choix {
@@ -92,15 +143,40 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
   const propre = (f: Forme) => { let c = propres.get(f); if (!c) { c = nettoyer(f); propres.set(f, c) } return c }
   const vide: EtatTableau = { ordre: [], pages: new Map() }
 
+  // Les copies de pages : une page publiée qui est la copie d'une page non
+  // publiée se lit, avant sa naissance, dans la page d'où elle vient. Un
+  // passé ne se montre jamais deux fois : l'héritage s'arrête à une page
+  // publiée, et à une page dont une autre page publiée, née avant, descend
+  // aussi (deux copies d'un même énoncé publiées sans lui : la première se
+  // construit, la seconde paraît d'un coup à sa naissance ; sans quoi chaque
+  // geste de l'énoncé se jouerait sur les deux pages, tour à tour, avec un
+  // chapitre à chaque fois).
+  const fil = filiationDe(tableau, film)
+  const arrets = new Map<string, (o: string) => boolean>()
+  if (fil.copies) {
+    const lignees = [...gardees].map(id => ({ id, nee: fil.naissance(id), ascendants: new Set(fil.ascendants(id)) }))
+    for (const { id, nee } of lignees) {
+      const avant = lignees.filter(x => x.id !== id && x.nee >= 0 && x.nee < nee)
+      arrets.set(id, o => gardees.has(o) || avant.some(x => x.ascendants.has(o)))
+    }
+  }
+  /** La page publiée `id` juste après l'étape i : quelle page lire (null : elle n'existe pas encore) */
+  const sourceDe = (id: string, i: number) => fil.source(id, i, arrets.get(id))
+  /** Le tableau juste après l'étape i (−1 : avant tout), vu par le film élève */
+  const etatA = (i: number): EtatTableau => resoudre(i < 0 ? vide : tableau.etatA(film[i]), i, gardees, sourceDe, fil.copies)
+  /** À l'étape i, la source de la page publiée change-t-elle (sa naissance,
+   *  après le passé hérité d'une autre page) ? */
+  const jonction = (id: string, i: number) => fil.copies && sourceDe(id, i - 1) !== sourceDe(id, i)
+
   // L'état juste AVANT le premier geste de la séance : le film rejoue ce geste
-  let avant = de > 0 ? tableau.etatA(film[de - 1]) : vide
+  let avant = etatA(de - 1)
   // Les gestes d'ouverture qui ne font qu'effacer (« Effacer la page » à
   // l'arrivée de la classe) : le film part d'après eux. Ce qu'ils effacent
   // appartient à la séance d'avant, et ne part pas chez les élèves.
   let debut = de
   while (debut <= a) {
-    const e = tableau.etatA(film[debut])
-    const ops = [...gardees].flatMap(id => differences(avant.pages.get(id), e.pages.get(id), propre))
+    const e = etatA(debut)
+    const ops = [...gardees].flatMap(id => differences(avant.pages.get(id), e.pages.get(id), propre, jonction(id, debut)))
     if (ops.length && !ops.every(o => o[0] === '-' || o[0] === 'x')) break
     avant = e; debut++
   }
@@ -131,10 +207,10 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
     suivre.length = 0
   }
   for (let i = debut; i <= a; i++) {
-    const etat = tableau.etatA(film[i])
+    const etat = etatA(i)
     const parPage = new Map<string, Op[]>()
     for (const id of gardees) {
-      const o = differences(avant.pages.get(id), etat.pages.get(id), propre)
+      const o = differences(avant.pages.get(id), etat.pages.get(id), propre, jonction(id, i))
       // Une page jetée n'a plus rien à montrer : on ne la rejoue pas
       if (o.length && !(o.length === 1 && o[0][0] === 'x')) parPage.set(id, o)
     }
@@ -215,7 +291,10 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
     const heures = sources.map(k => film[k].t)
     // De la piste, on ne relit que ce qui sert à la séance : elle garde toute l'année
     const piste = new LecturePiste(morceauxEntre(tableau.piste.toArray(), heures[0] - AVANT_PROPOS, heures[heures.length - 1] + APRES_L_ETAPE + EPILOGUE))
-    const i = instrumentsDuFilm(piste, etapes, heures, film[sources[0] - 1]?.t ?? -Infinity, film[sources[sources.length - 1] + 1]?.t ?? Infinity)
+    // La piste a noté la page où l'on était : pour un geste hérité par une
+    // copie, la page d'où elle vient
+    const pistes = fil.copies ? etapes.map((g, j) => sourceDe(g.p, sources[j]) ?? g.p) : undefined
+    const i = instrumentsDuFilm(piste, etapes, heures, film[sources[0] - 1]?.t ?? -Infinity, film[sources[sources.length - 1] + 1]?.t ?? Infinity, pistes)
     if (i.depart.length) resultat.instruments = i.depart
     if (i.avant > 0) resultat.avant = i.avant
   }
@@ -231,7 +310,9 @@ export const EPILOGUE = 60_000
 
 /** Les instruments du film élève. `heures` : l'heure de l'étape d'où vient
  *  chaque geste ; `precedente` : celle de l'étape d'avant le premier ;
- *  `suivante` : celle de l'étape du tableau qui suit le dernier.
+ *  `suivante` : celle de l'étape du tableau qui suit le dernier ; `pistes` :
+ *  pour chaque geste, la page que la piste a notée (celle du geste, sauf
+ *  pour le passé hérité d'une copie : la page d'où elle vient).
  *  Le geste j rejoue ce que les instruments ont fait dans ]heure j−1, heure j]
  *  (pour le premier : l'avant-propos, au plus une minute, après l'étape
  *  d'avant), et seulement sur la page de ce geste, qui est publiée : un
@@ -246,19 +327,20 @@ export const EPILOGUE = 60_000
  *  fenêtre, datés depuis l'image d'avant (l'épilogue : depuis la fin de la
  *  fenêtre du geste), sans page. Écrit dans les gestes (inst, apres) ; rend
  *  l'état de départ et l'avant-propos. */
-export function instrumentsDuFilm(piste: LecturePiste, etapes: EtapeFilm[], heures: number[], precedente: number, suivante = Infinity): { depart: Morceau[]; avant: number } {
+export function instrumentsDuFilm(piste: LecturePiste, etapes: EtapeFilm[], heures: number[], precedente: number, suivante = Infinity, pistes?: readonly string[]): { depart: Morceau[]; avant: number } {
+  const pageDe = (j: number) => pistes?.[j] ?? etapes[j].p
   // Chaque fenêtre se coupe juste après son étape : la dernière pose du geste
   // est peinte une image d'écran après lui (voir APRES_L_ETAPE)
   const fin = (j: number) => heures[j] + APRES_L_ETAPE
   const debut0 = Math.max(heures[0] - AVANT_PROPOS, precedente + APRES_L_ETAPE)
-  const premier = piste.premierDans(debut0, fin(0), etapes[0].p)
+  const premier = piste.premierDans(debut0, fin(0), pageDe(0))
   // La fenêtre du premier geste commence juste avant le premier mouvement
   const origine = premier === null ? fin(0) : Math.max(debut0, premier - 1)
   let sim: EtatInstruments = piste.etatA(origine)
   const depart = [...sim.values()].sort((x, y) => x.rang - y.rang).map(i => instantane(i, 0))
   etapes.forEach((g, j) => {
     const a = j ? fin(j - 1) : origine, b = fin(j)
-    const d = piste.dans(a, b, g.p)
+    const d = piste.dans(a, b, pageDe(j))
     const morceaux: { t: number; m: Morceau }[] = []
     for (const x of d.poses) morceaux.push({ t: x.t0, m: ecrireMorceau(x, a) })
     for (const x of d.traces) morceaux.push({ t: x.t0, m: ecrireMorceau(x, a) })
@@ -278,7 +360,7 @@ export function instrumentsDuFilm(piste: LecturePiste, etapes: EtapeFilm[], heur
     const dernier = j + 1 >= etapes.length
     if (!dernier && etapes[j + 1].p === g.p) return
     const E = dernier ? Math.min(b + EPILOGUE, suivante + APRES_L_ETAPE) : fin(j + 1)
-    const e = E > b ? piste.dans(b, E, g.p) : null
+    const e = E > b ? piste.dans(b, E, pageDe(j)) : null
     if (!e || (!e.poses.length && !e.traces.length)) return
     g.apres = [...e.poses, ...e.traces].sort((x, y) => x.t0 - y.t0).map(x => ecrireMorceau(x, b))
     if (e.poses.length) sim = new IndexPieces(e.poses, sim).fin
@@ -298,10 +380,26 @@ function rangeIci(i: InstrumentVu, t: number): Piece {
 }
 
 /** Les pages où il se passe quelque chose pendant une séance (celles que le
- *  replay montrera) : ce sont elles que la fenêtre propose de publier */
+ *  replay montrera) : ce sont elles que la fenêtre propose de publier. Pas
+ *  une copie qui a quitté le tableau (retirée par Ctrl+Z juste après
+ *  « Dupliquer la page », ou supprimée) sans rien avoir reçu à elle pendant
+ *  la séance : son histoire est celle de son original, qui se publie déjà ;
+ *  proposée, elle rejouerait l'original une seconde fois si on décochait
+ *  celui-ci (la revue ne la range pas non plus dans « Pages jetées »). */
 export function pagesDeLaSeance(tableau: Tableau, s: Seance): string[] {
   const toutes = new Set<string>(s.pages)
-  for (let i = s.de; i <= s.a; i++) for (const p of tableau.etatA(tableau.film.get(i)).ordre) toutes.add(p)
+  const film = tableau.film.toArray()
+  for (let i = s.de; i <= s.a; i++) for (const p of tableau.etatA(film[i]).ordre) toutes.add(p)
+  const fil = filiationDe(tableau, film)
+  if (fil.copies) {
+    const actuelles = new Set(tableau.ordre.toArray())
+    const aSesGestes = new Set<string>()
+    for (let i = Math.max(0, s.de); i <= Math.min(s.a, film.length - 1); i++) {
+      const e = film[i]
+      if (e.page && !e.seulOrdre && fil.naissance(e.page) !== i) aSesGestes.add(e.page)
+    }
+    for (const p of [...toutes]) if (!actuelles.has(p) && fil.origineDe(p) && !aSesGestes.has(p)) toutes.delete(p)
+  }
   const f = exporter(tableau, { de: s.de, a: s.a, pages: [...toutes], titre: '' }, { instruments: false })
   return f.ordre
 }
@@ -312,19 +410,58 @@ function tracePose(o: Op[], avant: { formes: Map<string, Forme> } | undefined, m
   return o.some(op => op[0] === '=' && op[1].type === 'trait' && !avant?.formes.has(op[1].id) && !!lireTemps(ms, op[1].pts.length / 3))
 }
 
-/** Ce qui a changé sur une page d'un état à l'autre */
+/** Ce qui a changé sur une page d'un état à l'autre. Une forme qui n'a pas
+ *  changé est le même objet. jonction : on passe du passé hérité d'une copie
+ *  à la copie elle-même (sa naissance) ; ses formes sont des copies de
+ *  celles de la page d'où elle vient, sous les mêmes identifiants : une
+ *  forme au contenu égal n'a pas changé (sans quoi la naissance serait un
+ *  geste qui « change » tout sans rien montrer). */
 function differences(
   a: { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme> } | undefined,
   b: { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme> } | undefined,
   propre: (f: Forme) => Forme,
+  jonction = false,
 ): Op[] {
   if (!a && !b) return []
   if (a && !b) return [['x']]
   const o: Op[] = []
   if (!a || a.fond !== b!.fond || a.origine.x !== b!.origine.x || a.origine.y !== b!.origine.y) o.push(['f', b!.fond, b!.origine.x, b!.origine.y])
-  for (const [id, f] of b!.formes) if (a?.formes.get(id) !== f) o.push(['=', propre(f)])
+  for (const [id, f] of b!.formes) {
+    const g = a?.formes.get(id)
+    if (g !== f && !(jonction && g && JSON.stringify(g) === JSON.stringify(f))) o.push(['=', propre(f)])
+  }
   if (a) for (const id of a.formes.keys()) if (!b!.formes.has(id)) o.push(['-', id])
   return o
+}
+
+/** Le tableau vu par le film élève : chaque page publiée qui est une copie,
+ *  avant sa naissance, prend l'état de la page d'où elle hérite (sourceDe ;
+ *  null : elle n'existe pas encore). Dans l'ordre, une page ainsi résolue
+ *  sur une autre qui n'y est pas encore se range juste après sa source (à
+ *  la fin si la source n'y est pas) : sans cela, avant sa naissance, la
+ *  copie aurait des gestes sans être dans l'ordre, et la règle « suivre »
+ *  prendrait une étape sans effet notée sur une autre page publiée (jeter,
+ *  remettre, déplacer des pages depuis elle) pour l'abandon de la copie : un
+ *  pas vide vers l'autre page, puis le retour. Sans copie : l'état tel quel. */
+function resoudre(etat: EtatTableau, i: number, gardees: ReadonlySet<string>, sourceDe: (id: string, i: number) => string | null, copies: boolean): EtatTableau {
+  if (!copies) return etat
+  let pages: EtatTableau['pages'] | null = null
+  const rangees: [string, string][] = []
+  for (const id of gardees) {
+    const s = sourceDe(id, i)
+    if (s === id) continue
+    pages ??= new Map(etat.pages)
+    const p = s === null ? undefined : etat.pages.get(s)
+    if (p) { pages.set(id, p); rangees.push([id, s!]) } else pages.delete(id)
+  }
+  if (!pages) return etat
+  const ordre = etat.ordre.filter(id => !gardees.has(id) || pages!.has(id))
+  for (const [id, s] of rangees) {
+    if (ordre.includes(id)) continue
+    const k = ordre.indexOf(s)
+    if (k >= 0) ordre.splice(k + 1, 0, id); else ordre.push(id)
+  }
+  return { ordre, pages }
 }
 
 /** Un chapitre à chaque changement de page */

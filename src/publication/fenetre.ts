@@ -7,7 +7,7 @@
 // =============================================================
 import * as Y from 'yjs'
 import type { App } from '../app'
-import { exporter, pagesDeLaSeance, seancesDuFilm } from '../revoir/exporter'
+import { exporter, pagesDeLaSeance, seancesAPublier } from '../revoir/exporter'
 import type { Seance } from '../revoir/exporter'
 import type { FilmEleve } from '../revoir/format'
 import { ErreurFilm, ecrireFilm, lireFilm } from '../revoir/format'
@@ -39,8 +39,6 @@ const retenirCompte = (compte: string, courriel: string) => { try { if (courriel
 const memes = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
 const kilo = (n: number) => n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} Ko` : `${(n / 1024 / 1024).toFixed(1).replace('.', ',')} Mo`
 
-/** La séance a-t-elle quelque chose à montrer ? */
-const visible = (f: FilmEleve) => f.pages.some(p => p.formes.length) || f.etapes.some(e => e.o.some(o => o[0] === '='))
 
 export class Publication {
   private d: HTMLDialogElement | null = null
@@ -60,12 +58,9 @@ export class Publication {
     return servie && (import.meta.env.DEV || import.meta.env.VITE_EN_LIGNE === '1')
   }
 
-  /** Les séances du film qui ont quelque chose à montrer, la plus récente d'abord */
-  private reperer(ecart: number) {
-    const t = this.app.tableau
-    return seancesDuFilm(t.film.toArray(), ecart)
-      .filter(s => visible(exporter(t, { de: s.de, a: s.a, pages: pagesDeLaSeance(t, s), titre: '' }, { instruments: false })))
-  }
+  /** Les séances du film qui ont quelque chose à montrer, la plus récente
+   *  d'abord (voir seancesAPublier) */
+  private reperer(ecart: number) { return seancesAPublier(this.app.tableau, ecart) }
 
   ouvrir() {
     this.seances = this.reperer(DECOUPAGES[0] * MINUTE)

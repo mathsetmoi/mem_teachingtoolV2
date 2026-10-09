@@ -81,7 +81,8 @@ export interface EtatBarre {
   lecture: boolean
   placement: boolean
   seance: boolean
-  /** Une fenêtre ouverte : une fenêtre de l'outil, l'éditeur d'une formule */
+  /** Une fenêtre ouverte : une fenêtre de l'outil, l'éditeur d'une formule ;
+   *  la trieuse des pages, qui couvre le tableau, compte comme une fenêtre */
   fenetre: boolean
   /** L'outil Sélection en main */
   outilSelection: boolean
@@ -229,7 +230,8 @@ export class BarreActions {
     return barreVisible({
       pris: app.selection.size, partie: !!app.partie, options: app.options !== null, menu: menuOuvert(),
       mouvement: app.enMouvement, lecture: app.enLecture, placement: !!app.placement,
-      seance: document.body.classList.contains('en-seance'), fenetre: !!document.querySelector('dialog[open]'),
+      seance: document.body.classList.contains('en-seance'),
+      fenetre: !!document.querySelector('dialog[open]') || document.body.classList.contains('en-trieuse'),
       outilSelection: app.outil === 'selection', doigtQuiDeplace: app.doigtDeplace && app.dernierPointeur === 'touch',
     })
   }

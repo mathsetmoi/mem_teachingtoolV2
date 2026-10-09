@@ -261,7 +261,7 @@ describe('la revue et les séances après un jet suivi d\'un retour', () => {
     await geste(t, a)
     // 30 minutes entre les deux gestes : deux séances (le jet ne fait pas le pont)
     let s = seancesDuFilm(t.film.toArray())
-    expect(s).toHaveLength(3)                                   // la création des pages, puis deux séances
+    expect(s).toHaveLength(2)                                   // la création des pages n'en est pas une (leur naissance)
     expect(s.slice(0, 2).map(x => [x.gestes, x.pages])).toEqual([[1, [a]], [1, [a]]])
     // Dans une séance, la page rendue n'est pas une page de la séance
     await attendre(MINUTE)
@@ -269,12 +269,12 @@ describe('la revue et les séances après un jet suivi d\'un retour', () => {
     await attendre(MINUTE)
     await geste(t, a)
     s = seancesDuFilm(t.film.toArray())
-    expect(s).toHaveLength(3)
+    expect(s).toHaveLength(2)
     expect([s[0].gestes, s[0].pages]).toEqual([2, [a]])
     // Le lendemain, on ne fait que jeter une page : pas de séance
     await attendre(24 * 60 * MINUTE)
     await jeter(t, c, a)
-    expect(seancesDuFilm(t.film.toArray())).toHaveLength(3)
+    expect(seancesDuFilm(t.film.toArray())).toHaveLength(2)
   })
 })
 

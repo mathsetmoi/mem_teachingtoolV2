@@ -12,7 +12,9 @@
 // réglage : 'mem-presse-papiers', la dernière copie d'objets (voir app.ts),
 // qu'un autre onglet colle, oubliée au bout de 12 heures. Les clés de ce
 // fichier : 'mem-molette', 'mem-doigt', 'mem-stylet-direct', et
-// 'mem-gestes-doigts' (les gestes à deux et trois doigts, nouvelle clé).
+// 'mem-gestes-doigts' (les gestes à deux et trois doigts). Lue et écrite
+// par ses fonctions depuis src/sorties/apercu.ts : 'mem-sortie-fond', le
+// fond imprimé ou non sur l'image copiée et dans le PDF (nouvelle clé).
 // =============================================================
 import { ecranTactile } from './pointeurs'
 

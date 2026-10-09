@@ -33,8 +33,12 @@
 // pousse la règle), est une image de plus, sans geste : l'épilogue de la
 // page. La fin d'une partie et l'affiche montrent ainsi les instruments tels
 // que la classe les a vus en quittant la page.
+//
+// Une copie de page (« Dupliquer la page ») a pour histoire celle de son
+// original jusqu'à sa naissance, puis la sienne (voir heritage.ts) : les
+// étapes héritées sont notées sur l'original mais se montrent sur la copie,
+// et sa naissance n'est jamais un geste (elle ne montre rien de neuf).
 // =============================================================
-import type { Etape } from '../document'
 import type { Seance } from '../revoir/exporter'
 import { AVANT_PROPOS, EPILOGUE } from '../revoir/exporter'
 import { dureesDuTrace } from '../revoir/main-levee'
@@ -93,27 +97,42 @@ export const PARTIE_MIN = 3
 
 // ---------- Ce qu'on revoit ----------
 
-/** Les étapes du film qui appartiennent à une portion, dans l'ordre */
-export function etapesDe(film: readonly Etape[], p: Portion): number[] {
+/** Les étapes du film qui appartiennent à une portion, dans l'ordre. Pour
+ *  une portion qui a une page, celles de son histoire (voir
+ *  LectureSeule.deLaPage : pour une copie, avant sa naissance, celles de la
+ *  page d'où elle vient) ; pour une séance entière, toutes les siennes. */
+export function etapesDe(lecture: Pick<LectureSeule, 'film' | 'deLaPage'>, p: Portion): number[] {
+  const film = lecture.film
   const r: number[] = []
-  if (p.genre === 'seance') {
-    const a = Math.min(film.length - 1, p.seance.a)
-    for (let i = Math.max(0, p.seance.de); i <= a; i++) if (p.page === null || film[i].page === p.page) r.push(i)
-  } else {
-    for (let i = 0; i < film.length; i++) if (film[i].page === p.page) r.push(i)
-  }
+  const de = p.genre === 'seance' ? Math.max(0, p.seance.de) : 0
+  const a = p.genre === 'seance' ? Math.min(film.length - 1, p.seance.a) : film.length - 1
+  for (let i = de; i <= a; i++) if (p.page === null || lecture.deLaPage(i, p.page)) r.push(i)
   return r
 }
 
-/** Les séances où une page a reçu au moins un geste, les plus récentes
- *  d'abord (sa naissance seule n'en est pas un, ni une étape qui ne change
- *  que l'ordre des pages : la jeter, la rendre) */
-export function seancesDeLaPage(lecture: Pick<LectureSeule, 'film' | 'naissance'>, seances: readonly Seance[], page: string): Seance[] {
+/** Une séance concerne-t-elle une page ? Oui si l'on y a vu la page, ou si
+ *  l'une de ses étapes (hors celles qui ne changent que l'ordre) est de
+ *  l'histoire de la page : la séance où l'on a construit l'original d'une
+ *  copie concerne aussi la copie. Sans copie dans le film, rien à parcourir. */
+export function seanceTouche(lecture: Pick<LectureSeule, 'film' | 'deLaPage' | 'copies'>, s: Seance, page: string): boolean {
+  if (s.pages.includes(page)) return true
+  if (!lecture.copies) return false
+  for (let i = s.de; i <= s.a; i++) {
+    const e = lecture.film[i]
+    if (e && !e.seulOrdre && e.page !== page && lecture.deLaPage(i, page)) return true
+  }
+  return false
+}
+
+/** Les séances où une page a reçu au moins un geste de son histoire, les
+ *  plus récentes d'abord (sa naissance seule n'en est pas un, ni une étape
+ *  qui ne change que l'ordre des pages : la jeter, la rendre) */
+export function seancesDeLaPage(lecture: Pick<LectureSeule, 'film' | 'naissance' | 'deLaPage' | 'copies'>, seances: readonly Seance[], page: string): Seance[] {
   return seances.filter(s => {
-    if (!s.pages.includes(page)) return false
+    if (!seanceTouche(lecture, s, page)) return false
     for (let i = s.de; i <= s.a; i++) {
       const e = lecture.film[i]
-      if (e?.page === page && !e.seulOrdre && !lecture.naissance(i)) return true
+      if (e && !e.seulOrdre && lecture.deLaPage(i, page) && !lecture.naissance(i)) return true
     }
     return false
   })
@@ -125,7 +144,7 @@ export function seancesDeLaPage(lecture: Pick<LectureSeule, 'film' | 'naissance'
  *  toutes pages. null : rien à montrer nulle part. */
 export function bandeParDefaut(lecture: LectureSeule, seances: readonly Seance[], page: string, nommer: (page: string) => string): Bande | null {
   for (const s of seances) {                                // la plus récente d'abord
-    if (!s.pages.includes(page)) continue
+    if (!seanceTouche(lecture, s, page)) continue
     const b = construireBande(lecture, { genre: 'seance', seance: s, page }, seances, nommer)
     if (b) return b
   }
@@ -146,19 +165,22 @@ function gestesMontres(lecture: LectureSeule, p: Portion): { etapes: number[]; p
   // par Ctrl+Z) ne montre rien, nulle part : ce n'est jamais un geste. Une
   // page qui naît ne montre rien non plus : sa naissance n'est pas une image.
   // On retient seulement que la page est neuve (voir les parties, plus bas).
+  // La naissance d'une copie non plus : elle continue la page d'où elle vient.
   const neuves = new Set<string>()
-  const toutes = etapesDe(film, p).filter(i => {
+  const toutes = etapesDe(lecture, p).filter(i => {
     if (film[i].seulOrdre) return false
     if (!lecture.naissance(i)) return true
-    neuves.add(film[i].page)
+    neuves.add(p.page ?? film[i].page)
     return false
   })
   if (!toutes.length) return null
 
-  // La page de chaque étape : celle qu'on regardait, à défaut celle d'avant
+  // La page de chaque étape : celle qu'on regardait, à défaut celle d'avant.
+  // Pour une portion qui a une page, c'est elle : une étape héritée par une
+  // copie est notée sur l'original, mais se montre sur la copie.
   const repli = p.page ?? lecture.pagesActuelles()[0] ?? ''
   const pagesDe: string[] = []
-  for (let j = 0; j < toutes.length; j++) pagesDe.push(film[toutes[j]].page || (j ? pagesDe[j - 1] : repli))
+  for (let j = 0; j < toutes.length; j++) pagesDe.push(p.page ?? (film[toutes[j]].page || (j ? pagesDe[j - 1] : repli)))
   const retire = departPropre(lecture, toutes, j => pagesDe[j])
   let etapes = toutes.slice(retire), pages = pagesDe.slice(retire)
 
@@ -168,6 +190,8 @@ function gestesMontres(lecture: LectureSeule, p: Portion): { etapes: number[]; p
   // reconnaît sans tout relire, juste après une étape notée sur une page jetée
   // depuis (ou juste après une autre étape sans effet : on jette deux pages
   // de suite), et au bout de la portion (un Ctrl+Z qui change une autre page).
+  // « Une autre page » : une autre que celle qu'on lisait à l'étape d'avant
+  // (pour une copie, avant sa naissance, la page d'où elle vient).
   const actuelles = new Set(lecture.pagesActuelles())
   const rienNeChange = (j: number) => {
     const avant = lecture.page(etapes[j] - 1, pages[j]), apres = lecture.page(etapes[j], pages[j])
@@ -178,7 +202,7 @@ function gestesMontres(lecture: LectureSeule, p: Portion): { etapes: number[]; p
   const sansEffet = new Set<number>()
   for (let j = 0; j < etapes.length; j++) {
     const i = etapes[j], q = film[i - 1]?.page
-    if (((q && q !== pages[j] && !actuelles.has(q)) || sansEffet.has(i - 1)) && rienNeChange(j)) { invisibles.add(j); sansEffet.add(i) }
+    if (((q && q !== lecture.source(i - 1, pages[j]) && !actuelles.has(q)) || sansEffet.has(i - 1)) && rienNeChange(j)) { invisibles.add(j); sansEffet.add(i) }
   }
   for (let j = etapes.length - 1; j >= 0 && (invisibles.has(j) || rienNeChange(j)); j--) invisibles.add(j)
   // Deux étapes de la même page à moins de PLANCHER ms sont un seul geste (un
@@ -205,7 +229,9 @@ function gestesMontres(lecture: LectureSeule, p: Portion): { etapes: number[]; p
  *  fait depuis une autre page a pu la changer sans être noté sur elle : on
  *  finit alors sur son état vrai, comme un geste de plus (l'étape du bout ;
  *  null : la dernière image y suffit). Une page jetée depuis garde sa
- *  dernière image : il n'y a plus rien à rattraper. */
+ *  dernière image : il n'y a plus rien à rattraper. Une copie sans geste à
+ *  elle finit sur la dernière image de son original avant la copie : elle
+ *  lui est égale (memeImage), sans geste de plus. */
 function boutEnPlus(lecture: LectureSeule, p: Portion, derniere: number, page: string): number | null {
   if (p.page === null || page !== p.page) return null
   const film = lecture.film
@@ -309,7 +335,9 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
         if (premier) debutF = Math.max(debutF, fin - APRES_L_ETAPE - AVANT_PROPOS)
         // Après un épilogue, la fenêtre commence où il s'est arrêté
         const depuis = Math.max(debutF + APRES_L_ETAPE, finEpilogue)
-        const w = piste.fenetre(depuis, fin, pages[j])
+        // La piste a noté la page où l'on était : pour une étape héritée par
+        // une copie, la page d'où elle vient
+        const w = piste.fenetre(depuis, fin, lecture.source(etapes[j], pages[j]))
         manip = horaire(w.poses, w.traces, piste.etatA(depuis), Math.max(0, fin - depuis), d?.vecue ?? 0, premier ? ENTREE : d ? 0 : PLANCHER)
         etats!.push(apres(etapes[j])); manips!.push(manip)
         finEpilogue = -Infinity
@@ -329,7 +357,7 @@ export function construireBande(lecture: LectureSeule, p: Portion, seances: read
           // une minute, jusqu'à l'étape suivante du film
           const T = heureDe(etapes[j]) + APRES_L_ETAPE
           const borne = quitte ? heureDe(avants[j + 1] + 1) + APRES_L_ETAPE : Math.min(T + EPILOGUE, (film[etapes[j] + 1]?.t ?? Infinity) + APRES_L_ETAPE)
-          const w = borne > T ? piste.fenetre(T, borne, pages[j]) : null
+          const w = borne > T ? piste.fenetre(T, borne, lecture.source(etapes[j], pages[j])) : null
           if (w && (w.poses.length || w.traces.length)) {
             const base = etats![etats!.length - 1], fin = finDesPieces(w.poses, w.traces)
             const epilogue = horaire(w.poses, w.traces, base, fin, 0, 0)

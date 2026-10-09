@@ -216,15 +216,16 @@ describe('ce qu\'on revoit en ouvrant', () => {
       await attendre(pause)
       const neuve = await pageNeuve(t)                                  // « Nouvelle page », puis « Revoir »
       const r = revue(t)
-      expect(r.seances).toHaveLength(2)
-      // La dernière séance n'a fait que créer la page : elle n'a rien à montrer
-      expect(construireBande(r.lecture, { genre: 'seance', seance: r.seances[0], page: null }, r.seances, r.nommer)).toBeNull()
+      // Créer la page n'est pas un geste (sa naissance) : ce n'est pas une
+      // séance (avant le lot 3, c'en était une, qui n'avait rien à montrer)
+      expect(r.seances).toHaveLength(1)
+      expect(t.film.toArray().at(-1)).toMatchObject({ page: neuve, naissance: true })
       const b = bandeParDefaut(r.lecture, r.seances, neuve, r.nommer)!
       expect(b).not.toBeNull()
-      expect(b.portion).toMatchObject({ genre: 'seance', seance: r.seances[1], page: null })
+      expect(b.portion).toMatchObject({ genre: 'seance', seance: r.seances[0], page: null })
       expect(b.total).toBe(6)
       // Revenu sur la page 1 : sa dernière séance, avec ses six gestes
-      expect(bandeParDefaut(r.lecture, r.seances, page, r.nommer)).toMatchObject({ portion: { seance: r.seances[1], page }, total: 6 })
+      expect(bandeParDefaut(r.lecture, r.seances, page, r.nommer)).toMatchObject({ portion: { seance: r.seances[0], page }, total: 6 })
     }
     // Un tableau où il n'y a encore rien eu : rien à montrer
     const { t, page } = await nouveauTableau()
@@ -710,8 +711,10 @@ describe('le code de la revue ne peut pas écrire', () => {
     const fichiers = [
       ...readdirSync(join(racine, 'revue'), { recursive: true }).map(String).filter(f => f.endsWith('.ts')).map(f => join(racine, 'revue', f)),
       ...['rythme.ts', 'esquisse.ts', 'icones.ts', 'main-levee.ts'].map(f => join(racine, 'revoir', f)),
+      // Le passé d'une copie de page, que la revue lit
+      join(racine, 'heritage.ts'),
     ]
-    expect(fichiers.length).toBeGreaterThanOrEqual(9)
+    expect(fichiers.length).toBeGreaterThanOrEqual(10)
     const interdits = [
       /\.(poser|poserTrace|modifier|supprimer|ajouterPage|supprimerPage|jeterPage|rendrePage|poserPlusieurs|coller|collerCopie|couper|dupliquerSelection|habillerSelection|modifierFormule|changerFond|nouveauGeste|importerImage|allerPage)\(/,
       /transact\(/,
