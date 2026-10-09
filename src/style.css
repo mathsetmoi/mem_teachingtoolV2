@@ -124,7 +124,28 @@ button, select, input { font: inherit; color: inherit; }
 .taille span { width: 24px; height: var(--d); border-radius: 99px; background: var(--encre-douce); }
 .taille.actif span { background: var(--encre); box-shadow: 0 0 0 3px var(--surligneur); }
 
-.rang { min-width: 56px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rang { min-width: 56px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Le compteur est un bouton : il ouvre la trieuse des pages (Maj + P) */
+button.rang { height: 44px; padding: 0 8px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; }
+button.rang:hover { background: #e9eef5; }
+/* La largeur du compteur ne dépend pas de la page qu'on regarde (voir
+   UI.reglerCompteur) : le numéro prend la place du plus large du tableau
+   (--chiffres : ceux du total ; « 10 / 12 » tient dans 2 × 2 ch de
+   chiffres de même largeur, plus 2,5 ch pour « / » et ses espaces) */
+.rang-numero { display: inline-block; min-width: calc(var(--chiffres, 1) * 2ch + 2.5ch); }
+/* Le nom de la page, après son numéro : coupé au-delà d'une vingtaine de
+   caractères (il est entier dans le titre du compteur) ; « pre » garde
+   l'espace qui le sépare du numéro. Dès qu'une page du tableau a un nom,
+   sa place est gardée sur toutes les pages (largeur posée par le code) ;
+   faute de place dans la barre, il ne s'y montre pas (.sans-place) */
+.rang-nom {
+  display: inline-block; vertical-align: bottom; max-width: 27ch; text-align: left;
+  overflow: hidden; text-overflow: ellipsis; white-space: pre; font-weight: 400;
+}
+.rang-nom.sans-place { display: none; }
+/* Pas même dix caractères de place (une barre d'une seule rangée, à 1024 px) :
+   le nom, plus petit, dans la place qui reste */
+.rang-nom.serre { font-size: 13px; }
 
 .choix-fond {
   height: 44px; padding: 0 10px; margin: 0 2px;
@@ -183,13 +204,19 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
 
 /* ---------- Message ----------
    Sous les panneaux et les menus (15 à 23) : il ne cache pas ce qu'on va
-   toucher. .dessus : pendant la revue (28), qui couvre le tableau, et pour le
-   programme de construction. */
+   toucher. .dessus : pendant la revue (28), qui couvre le tableau, pour le
+   programme de construction, et pendant un placement (« Désigner »,
+   « Tracer » : le menu complet reste ouvert pendant qu'on clique où dit la
+   consigne). Aucun appui ne s'y arrête, sauf sur ses boutons. */
 .toast {
   position: absolute; z-index: 14; left: 50%; bottom: max(84px, env(safe-area-inset-bottom));
   transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
   padding: 10px 16px; border-radius: 10px; background: var(--encre); color: #fff;
   transition: opacity 0.18s, transform 0.18s;
+  /* Sa largeur : celle du texte et de ses boutons, jusqu'à presque tout
+     l'écran (posé à left: 50 %, il n'aurait sinon que la moitié de la
+     largeur : sur un téléphone, deux boutons s'y écrasaient) */
+  width: max-content; max-width: min(760px, calc(100vw - 32px));
 }
 .toast.visible { opacity: 1; transform: translate(-50%, 0); }
 /* Deux messages à la fois (un ordinaire au-dessus d'un message à action) : un par ligne */
@@ -199,24 +226,48 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
 /* La séance d'automatismes couvre tout l'écran (barres et menus cachés) : ses
    messages passent devant elle (F5 bloqué dit comment recharger) */
 body.en-seance .toast { z-index: 41; }
-/* Le bouton d'un message (« Changer ») : seul à recevoir les appuis, et
-   seulement quand le message se voit */
+/* Le bouton d'un message (« Changer »), ou ses boutons (« Aller à la page 5 »,
+   « Annuler ») : seuls à recevoir les appuis, et seulement quand le message
+   se voit */
 .toast .action {
-  margin-left: 12px; height: 34px; padding: 0 12px; vertical-align: middle;
+  margin-left: 12px; height: 34px; padding: 0 12px; vertical-align: middle; white-space: nowrap;
   border: 0; border-radius: 8px; background: rgba(255, 255, 255, 0.16); color: #fff;
   font-weight: 700; cursor: pointer; pointer-events: none;
 }
 .toast.visible .action { pointer-events: auto; }
 .toast .action:hover { background: rgba(255, 255, 255, 0.28); }
 
+/* ---------- Le numéro de la page, en grand, quand on change de page ----------
+   En haut au centre de ce qu'on voit (ui.annoncerPage le place), sous le
+   message (14), au-dessus du tableau ; aucun appui ne s'y arrête : le stylet
+   écrit à travers. Il paraît en 120 ms, s'efface en 300 ms (120 ms quand on
+   touche le tableau). */
+.annonce-page {
+  position: fixed; z-index: 13; transform: translateX(-50%);
+  max-width: calc(100vw - 16px); padding: 8px 24px 10px;
+  border: 1px solid var(--filet); border-radius: 14px;
+  background: rgba(246, 248, 251, 0.85); color: var(--encre);
+  text-align: center; pointer-events: none; user-select: none; -webkit-user-select: none;
+  opacity: 0; transition: opacity 0.3s ease-out;
+}
+.annonce-page.visible { opacity: 1; transition: opacity 0.12s ease-in; }
+.annonce-page.vite { transition: opacity 0.12s ease-out; }
+.annonce-numero { display: block; font-size: 48px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.annonce-nom { display: block; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.annonce-nom:empty { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .toast, .pastille::after { transition: none; }
+  .annonce-page, .annonce-page.visible, .annonce-page.vite { transition: none; }
 }
 
-/* Petits écrans : la barre du haut se resserre */
+/* Petits écrans : la barre du haut se resserre ; le compteur ne dit que le
+   numéro de la page, et l'annonce est plus petite */
 @media (max-width: 640px) {
   .barre-haut { left: 12px; right: 12px; max-width: none; justify-content: center; }
   .barre-outils { top: auto; bottom: 12px; transform: none; max-height: calc(100% - 140px); }
+  .rang-nom { display: none; }
+  .annonce-numero { font-size: 34px; }
 }
 
 /* ---------- Choix de la forme ---------- */
@@ -593,6 +644,216 @@ body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .barre-acti
 .revue-annonce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .revue-barre { transition: none; } }
 
+/* ---------- La trieuse des pages (pages/trieuse.ts) ----------
+   Plein écran, au-dessus des barres et des panneaux (10 à 20), sous les
+   menus d'un morceau (22), les petits menus (23) et la revue (28) ; ses
+   messages passent au-dessus d'elle (leurs « Annuler »). Une grille de
+   vignettes qui défile en hauteur, jamais en largeur : 200 px par colonne
+   au moins (150 sur un téléphone : deux colonnes à 390 px). Rien n'y dépend
+   du survol (TNI, doigt). Au doigt, la grille défile (pan-y) et une page se
+   tire par sa poignée ⋮⋮ ou un appui long ; sans écran tactile
+   (.sans-tactile : la souris, la tablette graphique), rien n'y défile au
+   toucher, pas même le stylet sous Windows Ink, qui suit touch-action
+   comme le doigt : un glisser vertical de la Wacom tire la page. */
+.trieuse {
+  position: fixed; inset: 0; z-index: 21;
+  display: flex; flex-direction: column;
+  background: var(--chrome); color: var(--encre);
+}
+body.en-trieuse .toast { z-index: 30; }
+.trieuse-tete {
+  position: sticky; top: 0; z-index: 1;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px;
+  padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
+  background: var(--chrome); border-bottom: 1px solid var(--filet);
+}
+.trieuse-tete h2 { margin: 0; font-size: 22px; }
+.trieuse-compte { color: var(--encre-douce); font-variant-numeric: tabular-nums; }
+.trieuse-actions { flex: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.trieuse-fermer svg { stroke-width: 2.2; }
+.trieuse-grille {
+  position: relative; flex: 1; min-height: 0;
+  overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; touch-action: pan-y;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); align-content: start;
+  gap: 16px; padding: 16px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left));
+  outline: none;
+}
+.carte {
+  position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+  padding: 6px; border-radius: 12px; cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: pan-y;
+}
+.trieuse.sans-tactile .trieuse-grille, .trieuse.sans-tactile .carte { touch-action: none; }
+.carte-image {
+  position: relative; aspect-ratio: var(--rapport, 1.6); overflow: hidden;
+  background: var(--papier); border: 1px solid var(--filet); border-radius: 8px;
+  box-shadow: 0 2px 0 var(--filet);
+}
+/* Le canevas vient à sa taille (voir Trieuse.majTailles) ; il remplit la carte entre deux mesures */
+.carte-image canvas { position: absolute; inset: 0; display: block; width: 100% !important; height: 100% !important; }
+/* La page qu'on regarde : encadrée de bleu */
+.carte.actuelle .carte-image { border-color: var(--bleu); box-shadow: 0 0 0 2px var(--bleu); }
+.carte:focus-visible { background: #e3ebf7; box-shadow: inset 0 0 0 2px var(--bleu); }
+.carte-numero {
+  position: absolute; left: 6px; top: 6px; min-width: 34px; height: 34px; padding: 0 8px;
+  display: grid; place-items: center; border-radius: 9px;
+  background: var(--encre); color: #fff; font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.carte.actuelle .carte-numero { background: var(--bleu); }
+.carte-vide { position: absolute; inset: 0; display: grid; place-items: center; color: var(--encre-douce); font-size: 15px; pointer-events: none; }
+.carte-nom { min-height: 20px; font-size: 15px; line-height: 20px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.carte-poignee {
+  position: absolute; right: 4px; top: 4px; width: 44px; height: 44px;
+  display: grid; place-items: center; border-radius: 10px;
+  background: rgba(246, 248, 251, 0.92); border: 1px solid var(--filet);
+  font-size: 18px; font-weight: 700; letter-spacing: -3px; color: var(--encre-douce);
+  touch-action: none; cursor: grab;
+}
+.trieuse.sans-tactile .carte-poignee { display: none; }
+/* Une page qu'on tire : la carte d'origine s'estompe, son fantôme suit le pointeur */
+.carte.tiree { opacity: 0.35; }
+.trieuse.en-glisser, .trieuse.en-glisser .carte { cursor: grabbing; }
+.trieuse-fantome {
+  position: fixed; left: 0; top: 0; z-index: 3; margin: 0; pointer-events: none;
+  background: var(--chrome); opacity: 0.95;
+  box-shadow: 0 18px 40px rgba(27, 34, 48, 0.28), 0 2px 0 var(--filet);
+}
+/* La place d'arrivée : une barre bleue entre deux cartes */
+.trieuse-place { position: fixed; z-index: 2; width: 4px; border-radius: 2px; background: var(--bleu); pointer-events: none; }
+.trieuse-aide {
+  margin: 0; padding: 8px max(16px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  border-top: 1px solid var(--filet); color: var(--encre-douce); font-size: 14px; text-align: center;
+}
+/* Le bandeau : des boutons à libellé, 44 px de haut au moins. « Choisir
+   plusieurs » (un interrupteur) n'est là qu'avec un écran tactile, où
+   Maj + clic n'existe pas ; allumé, le coup de surligneur des outils. */
+.trieuse-bouton {
+  min-height: 44px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); color: var(--encre);
+  font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer;
+}
+.trieuse-bouton svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.trieuse-bouton[aria-pressed='true'] { background: var(--surligneur); }
+.trieuse.sans-tactile .trieuse-choisir { display: none; }
+.trieuse-choix { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.trieuse-choix[hidden] { display: none; }
+.trieuse-nombre { padding: 0 6px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Une page choisie : un fond bleu pâle et une coche pleine. Tant que des
+   pages sont choisies (ou « Choisir plusieurs » allumé), chaque vignette
+   montre sa coche, vide ou pleine : on voit qu'un toucher choisit. */
+.carte[aria-selected='true'] { background: #dbe7f8; }
+.carte[aria-selected='true'] .carte-image { border-color: var(--bleu); }
+.carte-coche {
+  position: absolute; left: 8px; bottom: 8px; width: 30px; height: 30px;
+  display: none; place-items: center; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92); border: 2px solid var(--encre-douce); pointer-events: none;
+}
+.trieuse.en-choix .carte-coche { display: grid; }
+.carte-coche svg { width: 20px; height: 20px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; visibility: hidden; }
+.carte[aria-selected='true'] .carte-coche { background: var(--bleu); border-color: var(--bleu); }
+.carte[aria-selected='true'] .carte-coche svg { visibility: visible; }
+/* Le menu de la page : ⋯ dans le coin bas droit de la vignette, toujours
+   là (rien ne dépend du survol : TNI, doigt). Une cible de 44 × 44, mais
+   une pastille plus petite, qui cache moins la page. */
+.carte-options {
+  position: absolute; right: 0; bottom: 0; z-index: 1; isolation: isolate; width: 44px; height: 44px; padding: 0;
+  display: grid; place-items: center; border: 0; background: transparent; color: var(--encre); cursor: pointer;
+}
+.carte-options::before {
+  content: ''; position: absolute; z-index: -1; inset: 10px 5px 6px 5px; border-radius: 8px;
+  background: rgba(246, 248, 251, 0.94); border: 1px solid var(--filet);
+}
+.carte-options svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 3.4; stroke-linecap: round; }
+.carte-options[aria-expanded='true']::before { border-color: var(--bleu); background: #e3ebf7; }
+.trieuse-fantome .carte-options, .trieuse-fantome .carte-coche { display: none; }
+/* Plusieurs pages tirées : leur nombre sur le fantôme */
+.trieuse-fantome[data-nombre]::after {
+  content: attr(data-nombre); position: absolute; right: -10px; top: -10px;
+  min-width: 34px; height: 34px; padding: 0 8px; display: grid; place-items: center; border-radius: 17px;
+  background: var(--bleu); color: #fff; font-size: 18px; font-weight: 700;
+}
+/* Le nom qu'on écrit, dans la carte (16 px : l'iPad ne zoome pas la page) */
+.carte-saisie {
+  width: 100%; min-height: 44px; padding: 0 10px; box-sizing: border-box;
+  border: 2px solid var(--bleu); border-radius: 8px; background: var(--papier); color: var(--encre);
+  font: inherit; font-size: 16px; user-select: text; -webkit-user-select: text; touch-action: manipulation;
+}
+/* La corbeille (pages/corbeille.ts) : une vue de la trieuse, qui prend la
+   place du bandeau, de la grille et de l'aide. Ses cartes ont le rapport
+   des vignettes (--rapport, posé sur la trieuse) ; leurs deux boutons, l'un
+   sous l'autre, de 44 px au moins, se touchent au doigt. */
+.trieuse.en-corbeille > .trieuse-tete, .trieuse.en-corbeille > .trieuse-grille, .trieuse.en-corbeille > .trieuse-aide { display: none; }
+.trieuse-corbeille {
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+  overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+}
+.trieuse-corbeille[hidden] { display: none; }
+.corbeille-tete {
+  position: sticky; top: 0; z-index: 1;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px;
+  padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
+  background: var(--chrome); border-bottom: 1px solid var(--filet);
+}
+.corbeille-tete h2 { margin: 0; font-size: 22px; }
+.corbeille-vider { margin-left: auto; }
+.trieuse-bouton.danger { color: var(--rouge); }
+.trieuse-bouton:disabled { opacity: 0.5; cursor: default; }
+.corbeille-note {
+  margin: 0; padding: 12px max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+  color: var(--encre-douce); font-size: 15px; line-height: 1.45;
+}
+.corbeille-grille {
+  list-style: none; margin: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); align-content: start;
+  gap: 16px; padding: 16px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left));
+}
+.corbeille-grille[hidden] { display: none; }
+.carte-corbeille { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 6px; border-radius: 12px; }
+.carte-corbeille .carte-image { box-shadow: none; opacity: 0.92; }
+.corbeille-nom { font-size: 15px; font-weight: 700; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.corbeille-nom.sans-nom { font-weight: 400; color: var(--encre-douce); }
+.corbeille-date { font-size: 14px; line-height: 1.35; text-align: center; color: var(--encre-douce); }
+.corbeille-boutons { display: flex; flex-direction: column; gap: 6px; }
+.corbeille-boutons button {
+  min-height: 44px; padding: 4px 10px; border: 1px solid var(--filet); border-radius: 10px;
+  background: var(--papier); color: var(--encre); font: inherit; font-weight: 600; cursor: pointer;
+}
+.corbeille-boutons .corbeille-remettre { border-color: var(--bleu); color: var(--bleu); }
+.corbeille-boutons .danger { color: var(--rouge); }
+.corbeille-vide { margin: 0; padding: 48px 16px; text-align: center; color: var(--encre-douce); font-size: 17px; }
+.corbeille-vide[hidden] { display: none; }
+.trieuse-corbeille button:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
+@media (hover: hover) {
+  .carte:hover .carte-image { border-color: var(--bleu); }
+  .trieuse-bouton:hover, .carte-options:hover::before { background: #e9eef5; }
+  .trieuse-bouton[aria-pressed='true']:hover { background: var(--surligneur); }
+  .corbeille-boutons button:hover { background: #e9eef5; }
+}
+@media (max-width: 640px) {
+  .trieuse-actions { order: 3; flex-basis: 100%; justify-content: flex-start; }
+  .trieuse-actions:empty { display: none; }
+  .trieuse-fermer { margin-left: auto; }
+}
+@media (max-width: 480px) {
+  .trieuse-grille { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding-top: 12px; }
+  .carte-numero { font-size: 16px; min-width: 30px; height: 30px; }
+  /* Le bandeau en trois lignes au plus : des icônes seules (le bouton
+     garde son nom), la croix de « Tout désélectionner » devant le nombre */
+  .trieuse-actions { gap: 4px; }
+  .trieuse-bouton { padding: 0 10px; font-size: 15px; }
+  .trieuse-bouton.icone-seule { min-width: 44px; padding: 0; justify-content: center; }
+  .trieuse-bouton.icone-seule .libelle { display: none; }
+  .trieuse-choix { gap: 4px; }
+  .trieuse-deselectionner { order: -1; }
+  .trieuse-nombre { padding: 0 4px; font-size: 15px; }
+  /* La corbeille : deux colonnes ; « Vider la corbeille » passe sous le titre */
+  .corbeille-grille { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding-top: 12px; }
+  .corbeille-tete h2 { font-size: 20px; }
+  .corbeille-vider { margin-left: 0; }
+  .corbeille-boutons button { font-size: 15px; }
+}
+
 /* ---------- Petits menus flottants (menus.ts) ----------
    Au-dessus des menus d'un morceau de figure (22) et du message (14), sous
    la revue (28). */
@@ -629,6 +890,62 @@ body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .barre-acti
 .dialogue-ouvrir { width: min(520px, calc(100vw - 24px)); }
 .dialogue-ouvrir .actions { flex-wrap: wrap; }
 .dialogue-ouvrir button:disabled { opacity: 0.55; cursor: default; }
+
+/* ---------- Envoyer vers une autre page (pages/envoi.ts) ----------
+   La liste des destinations défile ; la fenêtre tient dans l'écran, pleine
+   largeur sur un téléphone. De grands boutons (52 px), une petite vignette
+   devant chaque page ; la page qu'on regarde est grisée. */
+.dialogue-envoi { width: min(480px, calc(100vw - 24px)); max-height: min(680px, calc(100vh - 32px)); padding-bottom: 16px; }
+.dialogue-envoi[open] { display: flex; flex-direction: column; }
+.dialogue-envoi .corps { display: flex; flex-direction: column; gap: 12px; min-height: 0; flex: 1 1 auto; }
+.envoi-mode { display: flex; flex-wrap: wrap; gap: 2px 18px; }
+.envoi-mode .case { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; }
+.envoi-mode .case input { width: 18px; height: 18px; margin: 0; accent-color: var(--bleu); }
+.envoi-liste {
+  display: flex; flex-direction: column; gap: 4px; min-height: 0; flex: 1 1 auto; overflow-y: auto;
+  overscroll-behavior: contain; padding: 4px; margin: 0 -4px; border-top: 1px solid var(--filet); border-bottom: 1px solid var(--filet);
+}
+.destination {
+  display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 5px 10px; flex: none;
+  border: 1px solid transparent; border-radius: 10px; background: transparent; text-align: left; cursor: pointer;
+}
+.destination:hover:not(:disabled) { background: #eef3fa; border-color: var(--filet); }
+.destination:disabled { opacity: 0.5; cursor: default; }
+.destination .vignette-envoi { flex: none; width: 64px; height: 40px; border: 1px solid var(--filet); border-radius: 4px; background: var(--papier); }
+.destination .plus {
+  flex: none; width: 64px; height: 40px; display: grid; place-items: center; font-size: 24px; color: var(--bleu);
+  border: 1px dashed var(--bleu); border-radius: 4px;
+}
+.destination .libelle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+@media (max-width: 640px) {
+  .dialogue-envoi { width: calc(100vw - 16px); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); padding: 16px 14px 12px; }
+}
+
+/* ---------- Exporter en PDF (sorties/export-pdf.ts) ----------
+   Ce qu'on exporte (deux choix, ou une ligne), la case du fond imprimé,
+   la note, Annuler et Exporter. Des lignes de 40 px au moins : elles se
+   touchent au doigt. */
+.dialogue-pdf { width: min(520px, calc(100vw - 24px)); }
+.dialogue-pdf .corps { display: flex; flex-direction: column; gap: 10px; }
+.pdf-quoi { display: flex; flex-direction: column; gap: 2px; }
+.dialogue-pdf .case { display: flex; align-items: center; gap: 10px; min-height: 40px; cursor: pointer; }
+.dialogue-pdf .case input { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--bleu); }
+.dialogue-pdf .pdf-seul { margin: 0; min-height: 40px; display: flex; align-items: center; font-weight: 700; color: var(--encre); }
+.dialogue-pdf .pdf-fond { border-top: 1px solid var(--filet); padding-top: 6px; }
+.dialogue-pdf .pdf-note { margin: 0 0 4px; font-size: 14px; line-height: 1.45; }
+
+/* ---------- Imprimer ----------
+   Le menu Fichier › Imprimer du navigateur imprimerait la page web (les
+   barres, le tableau coupé au bord de l'écran) : une seule phrase dit où
+   est l'impression de MEM (Ctrl + P ouvre déjà « Exporter en PDF »). */
+@media print {
+  html, body { height: auto; overflow: visible; background: #fff; }
+  body > * { display: none !important; }
+  body::before {
+    content: 'Pour imprimer : ⋯ → Exporter le tableau en PDF.';
+    display: block; margin: 2cm; color: #000; font: 16pt var(--police);
+  }
+}
 
 /* ---------- Revenir au contenu ---------- */
 .retour-contenu {

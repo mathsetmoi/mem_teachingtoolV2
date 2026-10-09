@@ -21,6 +21,15 @@ Version hors ligne en un seul fichier (clé USB) :
 npm run build        # → dist/index.html, autonome
 ```
 
+La police d'écriture (Atkinson Hyperlegible) vient de Google Fonts, sans
+jamais retenir le démarrage : sa feuille se charge à côté (`media="print"`,
+puis « all » à son arrivée, voir `index.html`). Hors connexion, ou derrière
+un proxy d'établissement qui retient les requêtes sans jamais répondre,
+l'outil s'ouvre aussitôt avec la police du système, en ligne comme en un
+seul fichier ; quand la police arrive, la barre du haut se règle de nouveau
+et le tableau se repeint avec elle. (Avant le contrôle final du lot 3, une
+feuille de police qui ne répondait jamais empêchait l'outil de s'afficher.)
+
 ## Figures géométriques
 
 **Au stylo.** Une figure fermée tracée à main levée se redresse au lever du
@@ -193,12 +202,26 @@ figure, d'un trait ou d'une image :
   repère), symétrie centrale, rotation, translation (par un vecteur entre deux
   sommets ou en coordonnées), homothétie. L'image est une nouvelle figure, aux
   sommets nommés A', B', C'… ;
-- *Main levée*, *Dupliquer*, *Copier*, supprimer.
+- *Main levée*, *Dupliquer*, *Copier*, puis **⋯** (*Plus*), dont le petit
+  menu a *Copier en image* (voir « Copier en image ») et *Envoyer vers…* (une
+  autre page, voir « Envoyer vers une autre page »), enfin supprimer.
+
+La rangée de ces onglets tient sur une ligne au-dessus de la figure (le menu
+d'un rectangle fait 770 px de large, 54 px de haut) : c'est pourquoi ce qui
+sort de la page (une image, une autre page) est rangé derrière ⋯, qu'on ouvre
+d'un clic, d'un toucher, au stylet ou au clavier (Entrée, puis ↓ ; Échap
+referme ce petit menu seul et rend le focus à ⋯). Le menu complet se pose
+au-dessus de ce qu'il règle ; s'il n'y tient pas, en dessous ; sinon à côté (à
+droite, puis à gauche) ; jamais sur la figure ni ses poignées quand il a la
+place ailleurs (sinon, là où il en couvre le moins). Pendant *Désigner* ou
+*Tracer* (un axe, un centre), il reste ouvert, et la consigne (« Clique sur la
+droite qui sert d'axe. ») passe au-dessus de lui.
 
 **Une formule** se modifie au double-clic (comme un texte, partout) ; son clic
 droit ouvre son menu : *Modifier* (son infobulle rappelle le double-clic, sauf
 au doigt), *Couleur et taille* (les quatre couleurs ;
-Petite, Normale, Grande), *Dupliquer*, *Copier*, supprimer. Pas de
+Petite, Normale, Grande), *Dupliquer*, *Copier*, ⋯ (*Copier en image*,
+*Envoyer vers…*), supprimer. Pas de
 *Transformer* : l'image d'une formule n'en déplacerait que le coin.
 
 **Plusieurs objets** sélectionnés (Maj + clic, un cadre, un lasso, Ctrl + A) :
@@ -207,7 +230,8 @@ leur menu commun, et la sélection reste entière. « 3 objets », puis *Couleur
 épaisseur* (les quatre couleurs pour tout sauf les images ; les trois
 épaisseurs pour les traits et les figures, un trait de surligneur gardant sa
 largeur de surligneur ; les pointillés s'il y a une figure ; un choix est
-marqué quand tous l'ont déjà), *Dupliquer*, *Copier*, *Couper*, supprimer.
+marqué quand tous l'ont déjà), *Dupliquer*, *Copier*, *Couper*, ⋯ (*Copier
+en image*, *Envoyer vers…*), supprimer.
 Seulement ce qui vaut pour chacun : ni les sommets, ni le fond, ni les
 transformations. Chaque choix fait une seule étape : un Ctrl+Z rend leur
 couleur aux dix objets d'un coup. Le menu se pose au-dessus de toute la
@@ -217,7 +241,12 @@ il ne reste qu'un objet.
 **Dans le vide**, le clic droit (ou l'appui long) ouvre le menu de la page,
 au point visé :
 *Coller ici* (le dernier objet copié, posé là ; grisé quand il n'y a rien à
-coller), *Tout sélectionner* (Ctrl + A), *Tout voir* (Maj + 1). Il se ferme
+coller), *Tout sélectionner* (Ctrl + A), *Tout voir* (Maj + 1), puis, après un
+filet, ce qui touche la page elle-même : *Dupliquer la page* (Ctrl + Maj + D,
+voir « Changer de page »), *Toutes les pages…* (Maj + P, voir « Les pages ») ;
+puis, après un second filet, ce qui en sort : *Copier la page en image* (voir
+« Copier en image »), *Exporter la page en PDF…* (Ctrl + P, voir « Exporter
+en PDF »), toutes deux grisées sur une page vide. Il se ferme
 comme les autres menus : Échap, un choix, ou un appui ailleurs, qui ne laisse
 pas d'encre.
 
@@ -444,6 +473,38 @@ du dernier vrai geste). Une page supprimée et jamais rendue est rangée dans
 « Pages jetées », avec toute son histoire ; rendue, elle reprend sa place et
 son histoire continue.
 
+**Une copie de page** (« Dupliquer la page ») a pour histoire celle de son
+original jusqu'au moment de la copie, puis la sienne : sa revue montre la
+page se construire comme l'original (« Toute son histoire » compte ces
+gestes, et la séance où l'on a construit l'original est aussi une séance de
+la copie), puis ce qu'on a fait sur elle. La copie elle-même n'est pas un
+geste, ni dans son histoire, ni dans le compte d'une séance, ni dans le
+découpage en séances : la page continue celle d'où elle vient, rien ne
+surgit ni ne se redessine. Une copie faite en rangeant après le cours ne
+fait donc pas une séance de plus (que Publier choisirait d'office, sans rien
+à montrer), et une copie faite entre deux cours ne les réunit pas : son
+étape dans le film le note (`naissance`, un champ facultatif qu'une version
+d'avant ignore, comme `seulOrdre`). Il en va de même de ce qu'on range dans
+la trieuse sans écrire : une page vide qu'on crée (« Nouvelle page », › sur
+la dernière page, Insérer, Ajouter une page : sa naissance aussi, que la
+revue ne comptait déjà pas) et un fond changé depuis le menu d'une vignette
+(`rangement`, même lorsque la trieuse le rend par « Annuler ») ne font ni une
+séance, ni un pont entre deux cours : Publier ne choisit plus d'office une
+séance « 22 h 04 → 22 h 04 · 1 geste » faite en rangeant. Le fond changé reste
+une image de la revue de sa page (« Toute son histoire » le montre, une
+séance pendant laquelle on l'a changé l'emporte). Une page créée juste avant
+le premier geste d'un cours (moins de vingt minutes avant, le même jour) est
+de ce cours, sans en être un geste : la revue la voit neuve, comme avant.
+Le fond changé par la barre du haut, devant la classe, reste un geste, comme
+avant le lot 3. Une copie de copie remonte toute la chaîne. Rien n'est recopié :
+la revue lit l'original dans l'instantané de chaque image (`src/heritage.ts`),
+et ce passé ne change plus, même si l'original est ensuite modifié, supprimé,
+ou supprimé définitivement. Une page de la corbeille, ou supprimée
+définitivement, reste dans « Pages jetées » avec toute son histoire ; une
+copie retirée sans qu'on y ait rien écrit n'y figure pas (son histoire est
+celle de l'original). Une page qui a un nom le montre partout où la revue la
+nomme : « Page 3 · Exercice 12 p. 84 ».
+
 **Les commandes**, toutes au clavier et en grands boutons : Espace, K ou un
 appui bref sur le tableau pour lire ou s'arrêter ; → ou Page↓ pour un pas,
 ← ou Page↑ pour revenir ; Maj+→ et Maj+← pour un seul geste visible ; [ et ]
@@ -492,7 +553,12 @@ l'ouvrent sur leur téléphone, sans compte, et appuient sur ▶.
 **Côté professeur.** La fenêtre propose la séance, repérée toute seule dans le
 film (un silence de plus de 20 minutes, ou un autre jour, en commence une
 autre ; deux cours séparés par un intercours de 5 minutes se séparent en
-réglant le découpage à 5 ou 2 minutes), les pages où l'on a écrit pendant la
+réglant le découpage à 5 ou 2 minutes ; ranger ses pages, les jeter, les
+remettre, les dupliquer, en créer une vide, changer leur fond dans la
+trieuse n'est pas un geste : ni une séance, ni un pont entre deux ; une
+séance dont le film n'aurait aucun geste, qui n'a fait qu'effacer, n'est pas
+proposée : depuis le lot 3, elle n'est plus choisie d'office devant le
+cours), les pages où l'on a écrit pendant la
 séance, un titre et le compte (Drive personnel ou du lycée). La fenêtre montre
 le compte Google connecté ; **Choisir / Changer de compte Google** ouvre la
 liste des comptes de Google. Elle retient, sur cet ordinateur, le compte avec
@@ -541,6 +607,18 @@ puis rendues. Une page supprimée pour de bon au milieu de la
 séance : le replay suit le professeur sur la page où il est arrivé (après
 plusieurs suppressions de suite, directement sur la dernière) ; supprimée
 après le dernier geste, elle n'allonge pas la séance, qui finit sur ce geste.
+Une **copie de page** publiée sans son original se construit sous les yeux
+de l'élève comme l'original s'est construit en classe (ce que l'original a
+reçu avant la copie, puis ce qu'on a fait sur elle), sans geste à la copie ;
+publiée avec son original, l'élève voit l'original se construire, puis la
+copie paraître d'un coup au moment de la copie, comme la classe l'a vue
+(ses formes ne se redessinent pas), et chacune continue. Un passé ne se joue
+jamais deux fois : deux copies d'une même page publiées sans elle, la
+première se construit, la seconde paraît d'un coup au moment de sa copie.
+Une copie partie du tableau sans avoir rien reçu à elle (retirée par Ctrl+Z
+juste après « Dupliquer la page », ou supprimée) n'est pas proposée : son
+histoire est celle de l'original. Le nom donné à une page n'y part pas : les
+chapitres restent « Page 2 ».
 Un test
 automatique le vérifie (`npm test`). Le lecteur n'écrit rien dans le navigateur
 de l'élève (ni stockage, ni cookie), ne charge aucune police ni aucun service
@@ -691,12 +769,193 @@ qui ne savent pas décompresser seuls, un petit décompresseur (fflate, 8 Ko) se
 charge à la place. Commandes de 44 px, zoom du navigateur jamais bloqué, la
 frise annonce le temps aux lecteurs d'écran.
 
+## Les pages
+
+**La trieuse des pages** montre toutes les pages en vignettes, en plein
+écran : le rendu réel de chaque page en petit (son fond, tout son contenu
+cadré), son numéro en gros dans un coin, son nom dessous s'il en a un, « Page
+vide » sur une page sans rien ; la page qu'on regarde est encadrée de bleu.
+On l'ouvre par le **compteur** « 3 / 7 » de la barre du haut (un bouton), par
+**Maj + P** (la lettre écrite sur la touche, en AZERTY comme en QWERTY ; P seul
+reste le Stylo), ou par **Toutes les pages…** dans le menu de la page (un clic
+droit dans le vide). On la ferme par Échap, par le ×, par Maj + P, ou en
+allant à une page ; ouverte au clavier, elle rend le focus au compteur. Elle
+ne s'ouvre ni pendant la revue, ni pendant une séance d'automatismes, ni
+quand une fenêtre est ouverte, ni au milieu d'un trait ou d'un objet qu'on
+glisse. En s'ouvrant, elle pose ce qui attendait (le point d'un simple
+toucher), annule un placement en attente (désigner un axe, poser une
+construction), ferme le programme de construction et les menus, et retire du
+bas de l'écran le message « … · Annuler » du tableau (il changerait une page
+qu'on ne voit plus ; Ctrl+Z, une fois la trieuse fermée, rend toujours la
+page supprimée). Tant qu'elle est ouverte, plus rien n'écrit sur la page
+cachée : ni les lettres des outils, ni Ctrl+V, ni le programme de
+construction ; Ctrl+Z, Suppr, Ctrl + D et Ctrl + A y agissent sur les pages
+(voir plus bas), jamais sur ce qui est écrit.
+
+Pourquoi plein écran plutôt qu'un panneau sur le côté (comme SMART ou
+Xournal++) : la page est infinie et le vidéoprojecteur montre tout à la
+classe ; un panneau prendrait en permanence un cinquième du tableau pour
+quatre vignettes. La grille en montre une vingtaine d'un coup sur un
+portable, une quarantaine sur un TNI en 1920 × 1080, toutes en défilant ;
+elle laisse la place de glisser loin, sert telle quelle sur un téléphone
+(deux colonnes), et fait un moment d'organisation clair pour la classe
+(comme la grille de GoodNotes ou Notability).
+
+- **Aller à une page** : un clic ou un toucher sur sa vignette, ou Entrée sur
+  celle qui a le focus ; la trieuse se ferme et le numéro de la page
+  s'annonce. Ce qui suit ce clic ne touche rien de ce qui était sous la
+  vignette : ni le clic que le navigateur tire d'un toucher (au doigt, au
+  TNI, sur un iPad, il viserait le bouton du tableau maintenant sous le
+  doigt : un outil, une couleur, le rôle du doigt), ni le second clic d'un
+  double-clic par habitude (à la souris, à la plume de la tablette
+  graphique, au doigt), qui changerait l'outil (la Gomme) ou laisserait un
+  point d'encre. Pendant une demi-seconde (le lever et le clic, 300 ms de
+  plus), à moins de 40 px du premier appui, ils ne font rien ; un clic
+  ailleurs passe aussitôt, au même endroit une seconde plus tard.
+- **Taper son numéro** : des chiffres (au clavier principal, avec ou sans Maj
+  comme en AZERTY, ou au pavé numérique) ; deux chiffres à moins de 0,8 s
+  font un seul numéro (« 1 », « 2 » : la page 12). Le focus va à sa vignette,
+  qu'Entrée ouvre. Utile au TNI avec soixante pages.
+- **Au clavier** : les flèches passent d'une vignette à l'autre (↑ et ↓ dans
+  la même colonne, selon la mise en page réelle), Début et Fin aux bouts ;
+  Tab va du bandeau à la grille (un seul arrêt pour toute la grille).
+- **Réordonner à la souris et à la tablette graphique** : on glisse la
+  vignette, de n'importe où sur elle, dès 4 px (6 au stylet), sans appui
+  long. La vignette s'estompe, son image suit le pointeur, une barre bleue
+  marque la place d'arrivée, et la grille défile seule quand on approche de
+  son bord haut ou bas. Un glisser parti du vide de la grille ne fait rien.
+  Sur un ordinateur sans écran tactile, la grille ne défile pas au toucher
+  (touch-action) : sous Windows Ink, le réglage des pilotes Wacom, le stylet
+  suivrait la même règle que le doigt, et un glisser vertical de la tablette
+  ferait défiler au lieu de tirer la page ; la grille défile à la molette, par
+  sa barre, et seule près des bords pendant un glisser.
+- **Réordonner au doigt** (et au stylet posé sur l'écran : iPad, Surface) :
+  par la poignée ⋮⋮ de la vignette, ou par un appui long d'une demi-seconde
+  (une petite vibration là où elle existe) ; sinon le doigt fait défiler la
+  grille, et un toucher bref mène à la page. Deux doigts (ou la main
+  entière, au TNI) la font défiler aussi, sans rien ouvrir : le navigateur
+  ne le ferait pas (le touch-action de la grille interdit les gestes à
+  plusieurs doigts, pour que le pincement n'agrandisse pas toute la page),
+  la trieuse le fait elle-même. Un doigt posé sur le bandeau ne compte pas,
+  et une page déjà tirée continue seule.
+- **Réordonner au clavier** : Ctrl + Maj + ← ou → (⌘ + Maj sur Mac) avance ou
+  recule d'une place la page qui a le focus (toutes les pages choisies, si
+  elle en est, regroupées dans leur ordre).
+- **Plusieurs pages à la fois** : Maj + clic ou Ctrl + clic (⌘ + clic sur Mac,
+  où Ctrl + clic est un clic droit) choisit une page ou la retire, sans y
+  aller ; Espace fait de même au clavier, Ctrl + A les choisit toutes. Au
+  doigt et au stylet posé sur l'écran, le bouton **Choisir plusieurs** du
+  bandeau (un interrupteur, comme « Ajouter » de la barre d'actions) fait de
+  chaque toucher un choix ; il s'éteint quand plus rien n'est choisi. Il ne
+  s'appelle pas « Ajouter » comme au tableau : dans ce bandeau, à côté
+  d'« Ajouter une page », un second « Ajouter » se lirait comme « ajouter
+  une page » ; et il y est même quand rien n'est encore choisi, alors que
+  celui de la barre d'actions accompagne une sélection. Une
+  page choisie a une coche et un fond bleu pâle ; tant qu'il y en a, chaque
+  vignette montre sa coche (vide ou pleine), et le bandeau dit « 3 pages
+  choisies » avec **Dupliquer**, **Supprimer**, **Exporter en PDF** (les
+  pages choisies) et **Tout désélectionner**.
+  Glisser une page choisie emmène toutes les pages choisies, dans leur
+  ordre (leur nombre sur l'image qui suit le pointeur). Échap ferme d'abord
+  un menu ouvert, arrête un glisser, laisse le nom qu'on écrivait tel qu'il
+  était, ramène de la corbeille aux pages, puis vide la sélection, et enfin
+  ferme la trieuse. Sur un
+  téléphone, le bandeau passe à la ligne (trois lignes au plus : ses
+  boutons n'y montrent que leur icône).
+- **Le menu d'une page** : son bouton ⋯ (dans le coin de la vignette, toujours
+  là), le clic droit sur la vignette (ouvert à l'appui du bouton, comme sur
+  le tableau), le bouton latéral du stylet de la tablette graphique, la
+  touche Menu ou Maj + F10 sur la vignette qui a le focus (le focus va à sa
+  première entrée ; ↓ passe à la suivante sans changer de vignette, Suppr n'y
+  supprime rien, Échap le ferme sans fermer la trieuse). L'appui long au
+  doigt ne l'ouvre pas : il sert à tirer la page. Il propose **Aller à cette
+  page**, **Renommer…**, **Dupliquer**, **Insérer une page avant…**, **Insérer
+  une page après…**, le **Fond** (page blanche, petits carreaux, Seyès, repère),
+  **Copier en image** (la page en PNG pour l'ENT ou Pronote, voir « Copier en
+  image » ; la trieuse reste ouverte), **Exporter en PDF…** (voir « Exporter
+  en PDF ») et **Supprimer** ; sur une page choisie parmi d'autres,
+  **Dupliquer**, **Exporter en PDF…** et **Supprimer** pour toutes. Sur une
+  page vide, *Copier en image* et *Exporter en PDF…* sont grisés, comme au
+  tableau (rien à copier ni à imprimer ; le bandeau exporte tout le
+  tableau), et le lecteur d'écran dit la vignette « Page 5, vide ».
+- **Renommer** (F2, « Renommer… », ou un double-clic sur le nom) : un champ
+  dans la vignette, prérempli, 60 caractères au plus, le nom étant
+  facultatif ; Entrée ou cliquer ailleurs le garde, Échap le laisse tel
+  qu'il était, un nom vidé est retiré (« Nom de la page retiré »). Au doigt,
+  la vignette reste visible au-dessus du clavier qui paraît. Le nom se lit
+  ensuite dans le compteur (« 3 / 7 · Exercice 12 p. 84 », quand la barre
+  en a la place : voir « Changer de page »), à l'annonce du numéro et dans
+  la revue. Un simple clic sur le nom mène à la page, un
+  instant après (le temps de savoir si c'est un double-clic).
+- **Insérer, ajouter** : « Insérer une page avant… / après… » met une page
+  vide à côté, au fond qu'on choisit : le même menu (même largeur, même bord
+  gauche) propose aussitôt les quatre fonds, celui de la voisine coché, sous
+  le focus (Entrée le prend) et, au pointeur, sous le pointeur (un second
+  clic au même endroit le prend) ; une seule action, qu'un seul « Annuler »
+  défait (pas de second temps par « Fond »). Le second clic d'un double-clic
+  sur « Insérer… » (ou le second toucher d'un double toucher) ne fait rien :
+  on reclique une fois le menu lu. Le bouton **Ajouter une page** du bandeau
+  en met une à la fin, au fond de la dernière. La nouvelle vignette prend le focus. Annulée, une page insérée
+  disparaît tout à fait (ni dans l'ordre, ni dans la corbeille).
+- **Changer le fond** d'une page sans y aller : le repère prend son origine au
+  centre de ce qui est écrit sur la page, calée sur le centimètre ((0, 0)
+  sur une page vide). La vignette se repeint ; la revue voit le fond changer
+  (une étape notée sur cette page). C'est du rangement : ni une séance de
+  plus si on le fait après le cours, ni un pont entre deux cours (voir
+  « Revoir la construction »).
+- **Dupliquer** (Ctrl + D, ⌘ + D sur Mac, sans jamais ouvrir le marque-page du
+  navigateur ; le menu ; le bandeau) : chaque page choisie, ou celle qui a
+  le focus, est copiée juste après elle-même, avec toute son histoire (la
+  revue et le film élève de la copie la montrent se construire, voir
+  « Revoir la construction »), le même fond et le même nom suivi de
+  « (copie) ». La copie s'ouvrira sur la vue de son original. Plusieurs
+  pages se dupliquent en une seule action. Annulée, une copie disparaît sans
+  aller dans la corbeille.
+- **Supprimer** (Suppr ou Retour arrière, le menu, le bandeau) : les pages
+  choisies, ou celle qui a le focus, vont dans la corbeille (une page vide
+  n'y va pas : « Page 3 (vide) supprimée ») ; il reste toujours au moins une
+  page. Si la page qu'on regarde en est, on passe d'abord sur la plus proche
+  qui reste avant elle (la suivante pour la première) : après la fermeture
+  de la trieuse, **Ctrl+Z** sur cette page rend celle qu'on regardait, à sa
+  place, comme après la poubelle de la barre du haut.
+- **Exporter en PDF** : le bouton du bandeau exporte tout le tableau (celui
+  des pages choisies le remplace tant qu'il y en a) ; Ctrl + P exporte les
+  pages choisies, sinon tout le tableau. La trieuse reste ouverte pendant
+  l'export (voir « Exporter en PDF »).
+- **La corbeille** : le bouton **Corbeille** du bandeau (« Corbeille (3) »,
+  le nombre de pages qui y attendent) remplace la grille par les pages
+  supprimées, qu'on y remet ou supprime définitivement (voir « Supprimer une
+  page ») ; Échap ou **Pages** ramènent à la grille.
+- **Annuler** : chaque action le dit (« Page déplacée : c'est maintenant la
+  page 5 », « Page renommée », « Page vide insérée : c'est la page 4 », « Page
+  ajoutée à la fin (page 8) », « Fond changé (page 3) », « Page 3 dupliquée :
+  la copie est la page 4 », « 3 pages dupliquées », « Page 3 supprimée »,
+  « 3 pages supprimées », « Page remise : c'est la page 4 ») avec
+  **Annuler** ; dans la trieuse, Ctrl+Z annule et
+  Ctrl+Y (ou Ctrl + Maj + Z) rétablit (« Annulé : page supprimée », « Rien à
+  annuler dans les pages »). Défaire une suppression remet les pages
+  exactement à leur place, et ramène sur la page qu'on regardait. La trieuse
+  garde son propre journal, qui ne touche à aucune pile d'annulation de
+  page : il ne défait que si les pages sont exactement telles qu'il les a
+  laissées (sinon : « Les pages ont changé depuis : rien à annuler. »), et il
+  se vide à la fermeture (son dernier « Annuler » s'en va avec lui ; la
+  corbeille reste le filet). Un déplacement, un nom, une suppression ne sont
+  un geste nulle part : ni la revue, ni les séances, ni le film élève n'y
+  voient autre chose qu'un ordre changé.
+
+Les vignettes se peignent à part (voir « Architecture ») : celles qu'on voit
+d'abord, sans jamais bloquer l'écriture (60 pages de 300 traits : les
+vignettes visibles prêtes en un tiers de seconde, toutes en moins d'une
+seconde, aucune tâche de plus de 50 ms, mesuré), et se repeignent quand leur
+page change ; fermée, la trieuse ne coûte rien.
+
 ## Enregistrer et ouvrir un tableau
 
 Le tableau s'enregistre tout seul dans le navigateur, mais un navigateur peut
 l'oublier : un poste de lycée remis à zéro chaque soir, un iPad sur lequel on
 n'est pas revenu depuis des semaines, un historique effacé. Le bouton **⋯**, au
-bout de la barre du haut, l'emporte dans un fichier :
+bout de la barre du haut (« Enregistrer, ouvrir ou exporter en PDF », Ctrl + S,
+Ctrl + O, Ctrl + P), l'emporte dans un fichier :
 
 - **Enregistrer le tableau…** (Ctrl + S, ⌘ + S sur Mac) écrit un fichier
   `tableau-2026-10-07-14h05.memc` : toutes les pages, tout l'historique (la
@@ -722,6 +981,10 @@ bout de la barre du haut, l'emporte dans un fichier :
   ouvert sur le même tableau l'apprend aussitôt, cesse d'écrire et demande à
   être rechargé. On n'ouvre pas de tableau pendant la revue, une séance
   d'automatismes ou une fenêtre ouverte.
+- **Exporter le tableau en PDF…** : toutes les pages, cadrées sur leur
+  contenu, en feuilles A4 à imprimer ou à déposer dans l'ENT (voir
+  « Exporter en PDF »). Ce n'est pas une sauvegarde : un PDF ne se rouvre pas
+  dans MEM.
 
 Le menu rappelle le dernier enregistrement dans un fichier (« aujourd'hui à
 14 h 05 »), ou qu'il n'y en a jamais eu. C'est la passerelle entre la version
@@ -735,6 +998,132 @@ Le fichier : une première ligne de texte,
 `{"format":"mem-tableau","v":1,"app":"MEM teachingtool","date":…,"pages":…}`,
 puis le document Yjs entier, compressé (gzip). Le film élève commence lui
 aussi par `{"format":` ; chaque lecteur reconnaît le sien à ses premiers octets.
+Le fichier garde aussi la corbeille des pages, leurs noms et les copies de
+pages (qui savent de quelle page elles héritent leur passé), et les notes du
+film qui disent ce qui n'est pas un geste (`seulOrdre`, `naissance`,
+`rangement`) : c'est toujours la version 1, et une version d'avant les ignore
+sans rien casser (une copie y paraît d'un coup au replay, comme une page
+neuve ; un essai le vérifie avec la version d'avant le lot 3). L'en-tête ne compte que les
+pages de l'ordre, pas celles de la corbeille. Une copie de page coûte le poids
+de la page dans le document (environ 400 Ko pour une page de 300 traits
+longs), jamais celui de son film : son passé se relit dans celui de
+l'original.
+
+## Exporter en PDF
+
+Un fichier PDF à imprimer, ou à déposer dans l'ENT pour les absents :
+
+- *Exporter la page en PDF…* (le menu de la page, au clic droit dans le
+  vide ; **Ctrl + P**, ⌘ + P sur Mac) : la page qu'on regarde ; sur un
+  tableau de plusieurs pages, la fenêtre propose aussi *Tout le tableau : 12
+  pages*.
+- *Exporter le tableau en PDF…* (le menu ⋯) et *Exporter en PDF* du bandeau
+  de la trieuse : toutes les pages, dans l'ordre.
+- Dans la trieuse : *Exporter en PDF* du bandeau des pages choisies (« Les
+  pages 2, 5 et 7 »), *Exporter en PDF…* du menu d'une vignette ; Ctrl + P y
+  exporte les pages choisies, sinon tout le tableau. La trieuse reste ouverte
+  et utilisable pendant l'export.
+
+La fenêtre dit ce qu'on exporte, porte la case *Imprimer le fond de la page
+(carreaux, Seyès, repère)* (cochée au départ ; le choix est gardé dans ce
+navigateur, le même que pour l'image copiée : `mem-sortie-fond`), une note,
+*Annuler* et *Exporter* (qui a le focus : Entrée exporte). Ctrl + P n'imprime
+plus la page web (les barres, le tableau coupé au bord de l'écran) : il ouvre
+cette fenêtre. Le menu Fichier › Imprimer du navigateur, lui, n'imprime
+qu'une phrase : « Pour imprimer : ⋯ → Exporter le tableau en PDF. »
+
+Chaque page est **cadrée sur son contenu** (2 mm d'air autour ; les noms des
+points comptent, même déplacés loin de leur point), sur des feuilles A4 aux
+marges de 12 mm (16 en bas, où tient le pied de page) :
+
+- **À l'échelle réelle** quand le contenu tient sur la feuille (18,6 × 26,9
+  cm en portrait, 27,3 × 18,2 cm en paysage) : 1 cm sur la page (40 unités,
+  deux petits carreaux) = 1 cm sur le papier, les longueurs se mesurent à la
+  règle sur la feuille. Sinon la page est réduite, et son pied de page le dit
+  (« réduite à 72 % ») ; sous 30 %, le message final le signale (« La page 4
+  est très large : réduite à 18 %. »). Ni plancher, ni découpe en colonnes :
+  une page bien plus large que haute est rare.
+- **Une page qui n'est pas haute tient sur une seule feuille**, dans le sens
+  qui la montre le plus grand : une grande figure plus large que haute, ce
+  qu'on a écrit sur un vidéoprojecteur 4:3 ou une photo 4:3 vont sur une
+  feuille **paysage**, réduits juste assez pour y tenir en largeur et en
+  hauteur (un triangle de 25 × 18,5 cm : 89 %), plutôt que d'être coupés sur
+  deux feuilles ; sinon **portrait**. Les deux à l'échelle réelle : paysage
+  pour un contenu nettement plus large que haut (plus de 1,25 fois),
+  portrait sinon. Une page qui dépasse à peine une feuille est réduite (de
+  15 % au plus) pour y tenir, plutôt que de laisser trois lignes seules sur
+  une seconde feuille.
+- **Une page haute est découpée en feuilles A4** (portrait, réduite
+  seulement si elle est trop large) et continue sur les suivantes. La coupe
+  tombe entre 60 et 100 % de la feuille, là où le moins d'objets passent :
+  entre deux lignes d'écriture, au-dessus d'une figure plutôt qu'au travers.
+  Une figure qui tient sur une feuille n'est jamais coupée quand on peut
+  l'éviter : si elle commence vers le milieu de la feuille, la coupe remonte
+  au-dessus d'elle (jusqu'à 25 % de la feuille) et la figure passe entière
+  sur la suivante ; une figure plus haute qu'une feuille, elle, est bien
+  coupée. Les droites prolongées ne comptent pas, elles traversent tout. Un
+  objet à cheval sur la coupe paraît en partie sur les deux feuilles, et le
+  quadrillage continue d'une feuille à l'autre.
+- **Un grand vide de la page infinie est sauté** : l'énoncé en haut, la
+  correction un mètre plus bas font deux feuilles, la seconde commençant
+  juste au-dessus de la correction, jamais des feuilles blanches entre les
+  deux.
+- Le fond imprimé couvre la zone utile de chaque feuille, celles de suite
+  comprises (les flèches des axes du repère au bout de cette zone) ; décoché,
+  la feuille est blanche. Les **instruments posés ne sont jamais imprimés**.
+- Un **pied de page** discret (8 points, gris) : à gauche la page, son nom
+  s'il en a un, sa partie s'il y en a plusieurs (« Page 3 · Exercice 12
+  p. 84 (2/3) ») ; à droite le numéro de la feuille dans le PDF (« 4 / 12 »).
+- **Une page vide n'est pas exportée**, et le message le dit (« La page 4 est
+  vide : elle n'est pas dans le PDF. ») ; rien que des pages vides : « Rien à
+  exporter : la page est vide. », et pas de fichier.
+
+Le fichier se télécharge : « tableau-2026-10-09.pdf » (tout le tableau), le
+nom de la page (« Exercice 12 p. 84.pdf »), « page-3-2026-10-09.pdf »,
+« pages-2-5-7-2026-10-09.pdf » (au-delà de cinq pages, « pages-2026-10-09.pdf »).
+Son titre, que montre le lecteur de PDF : « Tableau du 9 octobre 2026 »,
+« Page 3 · Exercice 12 p. 84 », « Pages 2, 5 et 7 ».
+
+La qualité : une image par feuille, à 200 points par pouce (1654 × 2339
+pixels), peinte par le même code que l'écran (comme une page imprimée : les
+lignes du fond et les noms des points gardent leur épaisseur) ; les formules
+y sont aussi nettes qu'à l'écran à la même échelle (moins de 8 d'écart moyen
+sur 255, mesuré), chacune posée sur des pixels entiers : le trait d'une
+fraction, le cadre de `\boxed` ne s'étalent pas en gris sur deux rangées,
+où que la formule tombe sur la feuille. Une feuille d'écriture et de figures part en **256
+couleurs** (compressées sans perte) : d'abord les couleurs des objets de la
+feuille, si bien qu'une petite croix verte au milieu d'une page noire et
+chargée garde son vert, puis les plus fréquentes ; si une seule surface
+devait changer de couleur (plus de 0,01 % des pixels faux de plus de 24
+niveaux et pareils à leur voisin), la feuille part en **couleurs exactes**
+(RVB sans perte, environ deux fois plus lourde). Une feuille où paraît une
+**image** (une photo, une capture) ne passe jamais par les 256 couleurs, qui
+la postériseraient : en **JPEG** quand l'image couvre au moins 15 % de la
+feuille (la photo d'un énoncé reste lisible), en RVB sans perte sinon (une
+petite illustration reste au pixel près). Le poids : environ 0,35 Mo pour
+une feuille de Seyès pleine d'écriture (400 traits), moins de 100 Ko pour
+une page ordinaire, 0,2 à 0,5 Mo pour une feuille avec une image ; dix pages
+pleines font 3,5 Mo.
+
+Rien ne gèle : le message dit la progression (« Export en PDF : feuille 3 sur
+12… »), puis « PDF prêt : tableau-2026-10-09.pdf (12 feuilles A4, 2,4 Mo). » ;
+l'export avance par petites tranches (dix pages pleines : environ 9 s, aucune
+tâche de plus de 150 ms, mesuré) et attend tant qu'on écrit sur le tableau :
+l'encre ne prend aucun retard. Ce qui est sur les pages est pris au
+lancement : un trait écrit pendant l'export n'y est pas, pas même à moitié.
+Un export à la fois (Ctrl + P pendant un export : « Un export en PDF est déjà
+en cours. », qui reste deux secondes à l'écran avant que la progression
+reprenne) ; ni pendant la revue, ni pendant une séance. Tout se
+fait dans le navigateur, hors connexion, dans la version en ligne comme dans
+le fichier unique de la clé USB : aucun service extérieur, aucune
+bibliothèque de plus (la compression vient de fflate, déjà là pour le
+`.memc`).
+
+Pourquoi des images plutôt que du vectoriel : un PDF vectoriel demanderait un
+second moteur de dessin (les traits de perfect-freehand, les formules, les
+fonds) et d'y embarquer les polices, pour un fichier plus lourd (mesuré :
+environ 976 Ko pour une feuille très chargée, contre 238 à 283 Ko en couleurs
+indexées, 531 à 589 Ko en RVB sans perte, 384 à 687 Ko en JPEG).
 
 ## Ce que fait la v0.1
 
@@ -754,7 +1143,7 @@ C…), sur le tableau ou sur une image.
 
 Stylo sensible à la pression, surligneur, gomme, segments (Maj pour
 les angles de 15°, aimant au quadrillage), formules LaTeX avec aperçu et
-raccourcis, sélection et déplacement, copier, coller, dupliquer (d'une page et d'un onglet à l'autre), annuler/rétablir (page par page ; au doigt, toucher à deux ou trois doigts), pages (supprimées sans question, et rendues par Annuler ou Ctrl+Z), fonds (blanc,
+raccourcis, sélection et déplacement, copier, coller, dupliquer (d'une page et d'un onglet à l'autre), annuler/rétablir (page par page ; au doigt, toucher à deux ou trois doigts), pages (supprimées sans question, rendues par Annuler ou Ctrl+Z, ou remises de la corbeille), fonds (blanc,
 petits carreaux, Seyès, repère gradué), zoom de 10 % à 2000 % — le quadrillage
 suit le zoom comme une carte : les carreaux trop petits s'estompent et laissent
 place à de plus grands (1 cm, 5 cm, 10 cm…), la page n'est jamais blanche.
@@ -780,6 +1169,59 @@ entière, et le balayage à deux doigts ne fait plus « page précédente ». Ch
 page garde sa vue (une nouvelle page s'ouvre à 100 %, sur l'origine) ; la page
 courante et la vue de chaque page sont retrouvées au rechargement — notées dans
 ce navigateur, hors du document : ni un fichier, ni un replay ne les emportent.
+
+**Changer de page.** ‹ et › (ou Page↑ et Page↓, que les télécommandes de
+présentation envoient) passent d'une page à l'autre. Le compteur dit
+« 3 / 7 », suivi du nom de la page si elle en a un (« 3 / 7 · Exercice 12
+p. 84 » : coupé au-delà d'une vingtaine de caractères, entier dans son
+infobulle, caché sur un téléphone) ; c'est un bouton, qui ouvre la trieuse
+des pages (Maj + P, voir « Les pages »). Sa largeur ne dépend jamais de la
+page qu'on regarde : le numéro prend la place du plus large du tableau
+(« 10 / 12 » après « 9 / 12 » ne le fait pas grandir) et, dès qu'une page
+du tableau a un nom, la place d'un nom est gardée sur toutes les pages
+(vide sur une page sans nom). Cette place est d'une vingtaine de
+caractères, moins si la barre n'a pas la place sur ses rangées : elle ne
+lui en fait jamais prendre une de plus. Sans même dix caractères de place
+(une tablette ou un vidéoprojecteur en 1024 × 768, où la barre tient juste
+sur une rangée et laisse environ 90 px), le nom s'écrit plus petit dans la
+place qui reste : on en lit une dizaine de caractères (« 2 / 3 · Exercice
+… »), entier dans l'annonce, l'infobulle et la trieuse ; il ne disparaît
+que sous 56 px de place. Ainsi ‹ et › restent à leur place : on avance en touchant toujours
+au même endroit sans tomber sur le compteur. Seuls le premier nom donné, le
+dernier retiré, le passage à dix pages, une fenêtre qui change de taille
+(une tablette qu'on tourne) et la police d'écriture qui arrive après le
+démarrage peuvent faire bouger la barre, une fois. Sur la dernière page, › devient un bouton
+d'ajout, avec sa propre icône (le chevron et un petit +, à ne pas confondre
+avec le grand + de « Nouvelle page », qui reste à sa place : aucun bouton de
+la barre ne bouge d'une page à l'autre, la poubelle reste sous la main) : il
+ajoute une page juste après, au fond de la page qu'on quitte, ouverte à 100 %
+sur l'origine. Le second clic d'un double-clic sur ›, ou un clic moins de
+600 ms après un changement de page, n'en crée pas : le double-clic qui arrive
+sur la dernière page n'en ajoute pas une de plus. Page↓, lui, ne crée jamais
+de page (une télécommande n'en fabrique pas) : sur la dernière, un message le
+dit, « Dernière page : le bouton Page suivante en ajoute une. » (au plus une
+fois toutes les 5 s). À chaque changement de page, le numéro (et le nom)
+s'affiche en grand un peu plus d'une seconde, en haut au centre de ce qu'on
+voit du tableau, jamais au milieu, là où l'on écrit en arrivant ; le stylet
+écrit à travers, et le premier appui sur le tableau l'efface. Ni au
+démarrage, ni sous la revue, une séance d'automatismes ou la trieuse des
+pages ; sans fondu sous « animations réduites ».
+
+**Dupliquer la page** (le menu de la page, au clic droit dans le vide ou au
+bouton du stylet ; Ctrl + Maj + D, ⌘ + Maj + D sur Mac) : une copie juste
+après l'original, avec les mêmes objets, le même fond, le même nom suivi de
+« (copie) », et toute son histoire (Revoir la montre se construire, voir
+« Revoir la construction ») ; on arrive dessus, sur la même vue, et un message
+le dit : « Page 3 dupliquée : vous êtes sur la copie (page 4) », avec
+**Annuler**. Ctrl+Z (ou ↶) sur la copie, tant qu'on n'y a rien fait, la
+retire aussi et ramène à l'original (« Copie retirée ») ; si l'on y a écrit,
+Ctrl+Z défait d'abord ce qu'on y a écrit, puis la retire ; « Annuler », lui,
+le dit et ne défait rien. Une copie dont l'original a été
+supprimé ne se retire plus ainsi (ce serait faire disparaître le seul
+exemplaire) : on la supprime à la poubelle. L'original n'est jamais touché, et
+chacune garde sa pile d'annulation (celle de la copie commence vide). Rien de
+cela dans un champ de saisie, une fenêtre ouverte, la revue ou une séance, ni
+pendant qu'on écrit ou qu'on glisse un objet.
 
 **Échap** annule ce qui est en cours (menu, sélection, polygone) ; s'il n'y a
 rien, il passe à l'outil Sélection, et un second Échap rend l'outil d'avant.
@@ -818,7 +1260,10 @@ soit l'outil en main, qu'on retrouve en reprenant la pointe.
 **Annuler, rétablir.** Ctrl+Z (⌘Z sur Mac) et ↶ défont le dernier geste de la
 page qu'on regarde, et d'elle seule ; Ctrl+Y, Ctrl+Maj+Z et ↷ le refont.
 Chaque page garde sa pile : revenir sur une page, c'est retrouver ce qu'on y
-peut défaire, et rien ne change jamais sur une page qu'on ne voit pas. ↶ et ↷
+peut défaire, et rien ne change jamais sur une page qu'on ne voit pas (seule
+exception, dite par le message : Ctrl+Z sur la page d'où des objets ont été
+envoyés les retire de la page d'arrivée, voir « Envoyer vers une autre
+page »). ↶ et ↷
 gardent leur place et se grisent quand la page n'a rien à défaire ou à refaire
 (sans clavier, ils se touchent : ils se rallument dès qu'il y a de quoi). Au
 clavier, un Ctrl+Z sans rien à défaire le dit : « Rien à annuler sur cette
@@ -873,9 +1318,55 @@ telle qu'elle était, sans rien redessiner. Ctrl+Y ne la supprime pas de
 nouveau. Le second clic d'un double-clic sur la poubelle ne fait rien (on ne
 jette pas deux pages d'un coup). Une page seule n'est jamais supprimée : la
 poubelle (« Effacer la page ») l'efface, avec « Page effacée · Annuler », ou
-dit « La page est déjà vide. ». Après un rechargement, une page supprimée ne
-revient plus ; son histoire reste dans « Pages jetées » de la revue. De même,
-un fichier `.memc` la garde dans l'histoire du tableau, pas parmi ses pages.
+dit « La page est déjà vide. ».
+
+**La corbeille.** Une page supprimée (par la poubelle, ou dans la trieuse)
+va dans la corbeille ; elle y reste après un rechargement, et un fichier
+`.memc` l'emporte. On l'ouvre par le bouton **Corbeille** du bandeau de la
+trieuse des pages (« Corbeille (3) » : il dit combien de pages y attendent).
+Chaque page s'y montre en vignette (son état actuel), avec son nom (ou « Page
+sans nom ») et l'heure de sa suppression : « Supprimée aujourd'hui à 10 h 05 »
+(pour une page supprimée par une version d'avant, qui ne notait pas l'heure :
+« Supprimée avant cette version · dernière écriture hier à 9 h 12 »), la
+dernière supprimée d'abord.
+- **Remettre** la rend à sa place d'avant : juste après la page qui la
+  précédait si elle est encore là (deux pages voisines supprimées ensemble
+  reviennent dans le bon ordre, quel que soit l'ordre des remises), sinon à
+  la fin. On revient aux pages, sur sa vignette, et « Page remise : c'est la
+  page 4 » porte **Annuler** (Ctrl+Z dans la trieuse aussi). Elle reprend son
+  numéro, avec toute son histoire : la revue et le replay la voient comme si
+  elle n'était jamais partie (la remettre n'est un geste nulle part).
+- **Supprimer définitivement** (une page) et **Vider la corbeille** (toutes)
+  posent d'abord la question, dans une fenêtre (« Annuler » a le focus ;
+  Échap ou un clic à côté la ferment sans rien faire, la corbeille reste
+  ouverte). C'est sans retour : ni « Annuler », ni Ctrl+Z ne la rendent plus,
+  et le message « Page N supprimée · Annuler » encore à l'écran s'en va ;
+  « Page supprimée définitivement », « Corbeille vidée (3 pages) ».
+- Ctrl+Z juste après la poubelle rend toujours la page : elle quitte alors la
+  corbeille. Une page vide supprimée n'y va pas (rien à reprendre).
+- Échap (ou le bouton **Pages**) ramène à la grille des pages ; au doigt, tout
+  s'y touche (boutons de 44 px) ; au clavier, Tab passe d'un bouton à
+  l'autre, Entrée les choisit.
+
+**Où c'est noté.** Une page est dans la corbeille quand sa Y.Map est encore
+dans la carte `pages` du document, qu'elle n'est plus dans `ordre`, qu'elle a
+quelque chose (une forme ou un nom) et que la carte `corbeille`, au premier
+niveau du document (id → { t, apres, index, definitif }), ne la marque pas
+définitive. Cette carte est hors des pages : y écrire n'est ni une étape du
+film, ni une étape d'annulation, et elle voyage avec le document
+(rechargement, fichier `.memc`, toujours en version 1). Le retrait de
+l'ordre, lui, est une étape « seulOrdre » du film, jamais un geste. Une page
+supprimée par la version d'avant (sans entrée) y figure aussi, et se remet à
+la fin ; une page effacée par la toute première suppression (sa Y.Map
+détruite, sur un tableau très ancien) n'y est pas.
+
+**Supprimée définitivement**, une page n'est pas effacée : elle garde sa
+Y.Map et son histoire, elle ne revient seulement plus parmi les pages. Dans
+la revue, elle reste une « Page jetée » du tiroir « Que revoir ? », avec toute
+son histoire, et une séance passée qui l'a vue s'exporte comme avant : le
+tableau, comme son fichier `.memc`, garde tout ce qui a été écrit (la cacher
+de la revue seule serait incohérent avec les séances qui la montrent). Une
+copie de cette page garde son passé.
 
 **Copier, coller.** Ctrl+C copie ce qui est sélectionné (la figure entière
 quand un de ses sommets est choisi ; une image emporte les points qui lui sont
@@ -920,15 +1411,130 @@ tableau ; des épaisseurs et des tailles de nom sous 1000 : un nombre démesuré
 gèlerait le dessin de la page), et tout le reste est refusé : « Le presse-papiers ne contient ni objet ni image à
 coller. »
 
+**Copier en image (pour l'ENT et Pronote).** *Copier la page en image* (le
+menu de la page, au clic droit dans le vide ; le menu d'une vignette de la
+trieuse) et *Copier en image* (le menu complet de ce qui est pris : le petit
+menu de son bouton ⋯, juste après *Copier* ; une image emporte les points qui
+lui sont liés) mettent une image
+PNG dans le presse-papiers de l'ordinateur : on la colle (Ctrl+V) dans le
+cahier de textes de Pronote ou un message de l'ENT, et un message le dit :
+« Image copiée : collez-la dans l'ENT ou Pronote (Ctrl+V) ». L'image est
+cadrée sur ce qui est écrit (une petite marge ; les noms des points
+comptent, même déplacés loin de leur point), aussi nette que l'écran à
+100 % (deux pixels par unité, formules et images comprises), sans les
+instruments posés ; une grande page est réduite pour tenir dans environ 4
+millions de pixels et 4 096 pixels de côté (une page très haute reste
+lisible : ses lettres gardent 25 px sur 1 900 × 10 000 unités ; pour une page
+plus haute que trois fois sa largeur, le message propose aussi **Exporter en
+PDF**, qui la découpe en feuilles A4). Le fond
+(carreaux, Seyès, repère) y est ou non : le bouton « Sans le fond » (ou
+« Avec le fond ») du message change ce choix et copie de nouveau ; il est
+gardé dans ce navigateur (clé `mem-sortie-fond`, la seule nouvelle, partagée
+avec le PDF). Quand le navigateur ne sait pas copier une image (Firefox avant
+la version 127) ou refuse, le message le dit et propose **Enregistrer l'image
+(.png)** : « page-3.png », le nom de la page, ou « objets-page-3.png » pour une
+sélection. La copie part dans le clic même (Safari l'exige). Grisé sur une
+page vide ; « Rien n'est sélectionné. » sans rien de pris. Pas de raccourci
+(Ctrl + Maj + C ouvre l'inspecteur du navigateur). À ne pas confondre avec
+*Copier pour Pronote* de la fenêtre Publier, qui copie le lien d'un replay.
+
+**Envoyer vers une autre page.** *Envoyer vers…* (le menu complet d'un objet,
+d'une formule ou de plusieurs objets : le petit menu de son bouton ⋯, après
+*Copier en image* ; pas dans
+la barre d'actions, qui garde les gestes de tous les jours : *Options* y mène,
+au doigt comme au stylet) ouvre une fenêtre : « Envoyer les 3 objets vers… »,
+deux choix, *Déplacer (ils quittent cette page)*, coché, ou *Copier (ils
+restent aussi ici)*, puis la liste des destinations, de grands boutons :
+chaque page avec sa petite vignette (« Page 2 · Exercice 12 p. 84 » ; celle
+qu'on regarde grisée, « (cette page) »), *Une nouvelle page juste après*, *Une
+nouvelle page à la fin* (au fond de la page qu'on regarde, sur sa vue). Un
+clic, un toucher ou Entrée sur une destination envoie et ferme ; au clavier,
+Tab va des deux choix à la liste puis à *Annuler*, les flèches (Début, Fin)
+parcourent la liste, Échap ferme ; sur un téléphone, elle prend toute la
+largeur et la liste défile. On reste sur la page, et un message le dit :
+« 3 objets envoyés vers la page 5 » (« 3 objets copiés sur la page 5 »), avec
+**Aller à la page 5** (ce qui y est arrivé devient la sélection ; la vue s'y
+porte si on ne le voit pas ; le message garde son *Annuler*) et **Annuler**.
+Ce qui arrive est un collage : identifiants neufs, à la même place, au-dessus
+de tout, les noms gardés s'ils sont libres sur la page d'arrivée, sinon une
+lettre libre par point (un triangle ABC envoyé sur une page qui a déjà ABC
+devient DEF) ; une image emporte les points qui lui sont liés. Pour un
+déplacement, « pris » compte aussi ce que Ctrl+Z ou Ctrl+Y peuvent ramener
+sur la page d'arrivée (un triangle ABC qu'on y a effacé, renommé ou envoyé
+ailleurs) : ce qui arrive n'entre dans aucune pile, et un Ctrl+Z là-bas
+pourrait sinon faire cohabiter deux triangles ABC ; un triangle ABC envoyé
+vers la page 2 puis renvoyé sur la page 1 y reste ABC. Déplacés, les
+objets quittent la sélection ; copiés, elle reste.
+
+L'annulation d'un envoi, sans perte ni doublon caché, avec une pile par page :
+
+- **Ctrl+Z sur la page de départ** (après un déplacement) ramène les objets
+  (les mêmes, sous les yeux) et les retire de la page d'arrivée s'ils n'y ont
+  pas changé ; un objet modifié depuis là-bas y reste aussi, et le message le
+  dit (« Envoi annulé : les 3 objets sont revenus de la page 5 ; 1 objet,
+  modifié depuis sur la page 5, y reste aussi ») : rien de ce qu'on y a fait
+  n'est perdu. Le message ne dit « revenus de la page 5 » que si quelque
+  chose en est vraiment parti. Une nouvelle page créée pour l'envoi, redevenue
+  vide, s'en va (pas dans la corbeille, où une page vide ne figure pas ; la
+  revue la garde sous « Pages jetées », avec son court passage). Ctrl+Y les
+  renvoie (« Envoi refait… »), et la nouvelle page revient à sa place ; vers
+  une page supprimée définitivement, Ctrl+Y ne renvoie rien (« La page
+  d'arrivée a été supprimée définitivement : l'envoi n'est pas refait. ») :
+  les objets y partiraient pour toujours (vers une page seulement dans la
+  corbeille, ils partent, et le message le dit).
+- **Des objets repartis de la page d'arrivée** (renvoyés ailleurs : l'aller-
+  retour page 1 → page 2 → page 1, ou la chaîne page 1 → 2 → 3 ; ou effacés
+  là-bas) : Ctrl+Z sur la page de départ ne défait PAS encore l'envoi, rien
+  ne change, et le message le dit (« Cet envoi ne s'annule pas encore : sur
+  la page 2, l'objet a depuis été effacé ou renvoyé ailleurs. Annulez d'abord
+  cela sur la page 2 (↶). », avec **Aller à la page 2**). Le défaire
+  laisserait un doublon caché (pour un aller-retour, deux objets exactement
+  superposés sur la page 1 ; pour une chaîne, un exemplaire oublié sur la
+  page 3), ou en préparerait un (Ctrl+Z sur la page 2 y ramènerait l'objet
+  effacé). Ctrl+Z sur la page 2 défait le renvoi (l'exemplaire renvoyé part,
+  sous les yeux s'il est sur la page 1), puis Ctrl+Z sur la page 1 défait
+  l'envoi : un seul objet au bout. Une page d'arrivée dans la corbeille
+  bloque de même (on l'en remet d'abord) ; supprimée définitivement, elle ne
+  bloque plus rien (sa pile ne servira plus) : l'objet revient, et le
+  message dit que la page supprimée ne l'avait plus.
+- **Sur la page d'arrivée, Ctrl+Z ne les retire jamais** (ce serait les
+  perdre : ils ont quitté la page de départ) ; il y défait ce qu'on leur a fait
+  depuis.
+- **Une copie s'annule sur la page d'arrivée** : Ctrl+Z y retire les copies
+  (« Copie annulée »), les originaux restent ; Ctrl+Z sur la page de départ
+  n'y touche pas. *Annuler* du message d'une copie va d'abord sur la page
+  d'arrivée, puis les copies partent sous les yeux.
+- *Annuler* du message ne défait l'envoi que s'il est encore le dernier geste
+  de sa page (sinon : « La page a changé depuis : ↶ défait les gestes un à
+  un. »), en revenant sur la page de départ s'il le faut.
+
+Pourquoi deux étapes : un déplacement est l'arrivée sur la page d'arrivée
+(dans aucune pile), PUIS le retrait de la page de départ (une étape de sa
+pile, qui retient ce qui est arrivé ; jamais un instant où l'objet n'est
+nulle part) ; chacune est notée sur sa page dans le film. La revue de chaque
+page et le film élève de chacune sont justes : ce qui part disparaît de la
+page de départ, ce qui arrive se dessine sur la page d'arrivée comme un
+collage (la revue d'une séance entière montre un court détour par la page
+d'arrivée).
+
+Sur un téléphone, le menu complet passe à la ligne sur toute la largeur de
+l'écran (il couvre alors le haut de la barre d'outils plutôt que d'en sortir) ;
+de même en paysage quand il est plus large que la place à droite de la barre.
+
 **La barre de gauche** ne bouge pas : la poubelle y garde sa place, grisée
 quand rien n'est choisi, comme ↶ et ↷ quand il n'y a rien à faire. Sur un écran bas (moins de 900 px de haut environ),
 ses boutons gardent leurs 44 px et elle défile, avec une fine barre de
 défilement ; les choix des Formes et du Segment suivent leur bouton.
 Les **messages** en bas de l'écran passent sous les panneaux et les menus (ils
 ne cachent jamais ce qu'on va toucher), sauf pendant la revue, la séance
-d'automatismes et le programme de construction ; un message à bouton
+d'automatismes, le programme de construction et un placement (la consigne de
+*Désigner* ou *Tracer*, que le menu complet ouvert ne doit pas cacher ; aucun
+appui ne s'arrête sur le texte d'un message) ; un message à bouton
 (« Changer ») reste 7 s, et un autre message qui arrive entre-temps s'écrit
-au-dessus de lui sans le chasser. Pendant la revue, un message à bouton ne se
+au-dessus de lui sans le chasser. Un message peut avoir deux boutons
+(« Aller à la page 5 », « Annuler ») ; il prend la largeur de son texte et de
+ses boutons, jusqu'à presque tout l'écran (sur un téléphone, ils ne s'y
+écrasent pas). Pendant la revue, un message à bouton ne se
 montre pas et son bouton ne fait rien (« Annuler » d'une page qu'on vient de
 supprimer écrirait dans le tableau, que la revue ne change jamais) ; la
 revue fermée, Ctrl+Z sur la page où l'on était arrivé rend la page. Au doigt, ils parlent du bouton Annuler,
@@ -1008,16 +1614,55 @@ redessiné seulement quand quelque chose change ; une couche HTML pour les
 formules KaTeX, nettes à tout zoom ; un petit canvas « direct » pour le trait en
 cours, qui fait la latence ressentie au stylet.
 
+Une page se peint aussi **hors de l'écran**, pour les vignettes des pages,
+l'image copiée et le PDF : par le même code que l'écran (`Rendu.peindreSur`,
+sur un rendu jamais attaché au document, avec sa propre caméra), sur
+n'importe quel canevas, à n'importe quelle échelle. Les formules y sont
+recopiées depuis leur rendu KaTeX : la formule est mise en page, cachée,
+comme à l'écran, puis chaque texte, trait de fraction, cadre et SVG est
+repeint à sa place sur un canevas (quelques millisecondes par formule, une par tâche ;
+un SVG « foreignObject » coûtait 55 à 105 ms et 366 Ko de polices). Comparé
+à une capture de l'écran à 100 %, l'écart moyen est de 0,01 sur 255 (0,02
+au dpr 2), et l'écran lui-même ne change pas d'un pixel. Une vignette est une
+esquisse : chaque trait y est la ligne brisée de ses points (1,6 ms au lieu
+de 129 ms pour 346 traits), les petites formules des rectangles gris ; elle
+se peint seulement quand elle est à l'écran, par tranches de 12 ms pendant
+les moments libres du navigateur (60 pages de 300 traits : toutes prêtes en
+moins d’une demi-seconde mesurée, sans jamais bloquer l’écriture), et se repeint
+quand sa page change. Le fond imprimé ou non (l'image copiée, le PDF) est un
+réglage de ce navigateur, sous la clé `mem-sortie-fond`. Le PDF s'écrit à la
+main (`src/sorties/pdf.ts`, sans bibliothèque, quelques kilo-octets) : une
+image par feuille A4, en couleurs indexées (les couleurs des objets de la
+feuille d'abord, puis les plus fréquentes, compressées), deux fois plus
+légère qu'un JPEG de même finesse et sans ses bavures autour des lettres ;
+quand 256 couleurs ne la rendent pas fidèlement (une surface changerait de
+couleur), ou qu'une petite image y paraît, en RVB sans perte (les lignes
+prédites comme celles d'un PNG) ; en JPEG quand une photo couvre au moins
+15 % de la feuille. La mise en page (`src/sorties/mise-en-page.ts`, pure) cadre chaque
+page, choisit le sens et l'échelle, et découpe une page haute là où le moins
+d'objets passent ; l'export (`src/sorties/export-pdf.ts`) prend les formes au
+lancement, peint chaque feuille par tranches d'environ 30 ms, lit ses pixels
+par bandes, les palettise par tranches de lignes et les compresse en flux, par
+morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
+
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule), les fonds |
-| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert) |
-| `src/app.ts` | Gestes au stylet, au doigt et à la souris |
-| `src/rendu.ts` | Les trois couches d'affichage |
+| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié ; sa naissance notée `naissance` dans le film, comme celle d'une page vide ; un fond changé dans la trieuse noté `rangement` : ni l'une ni l'autre ne comptent dans le découpage en séances) et le déplacement des pages (le plus petit changement de l'ordre). Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre ; elle ne se défait pas tant que la pile de l'arrivée peut y ramener des objets qui en sont repartis, et ne se refait pas vers une page supprimée définitivement) ; la copie, une étape de la pile d'arrivée ; les noms que la pile d'une page peut y ramener (`formesQuiPeuventRevenir`) |
+| `src/app.ts` | Gestes au stylet, au doigt et à la souris ; le clavier du tableau (Ctrl + P ouvre « Exporter en PDF ») |
+| `src/rendu.ts` | Les trois couches d'affichage ; peindre une page sur un autre canevas (`peindreSur` : une vignette en esquisse, une image, une feuille du PDF), sans rien changer à l'écran |
+| `src/sorties/formules.ts` | Les formules KaTeX sur un canevas : mises en page cachées comme à l'écran, puis repeintes (textes, bordures, fonds, SVG coupés), les polices attendues ; leurs images gardées par échelle dans un cache borné en pixels |
+| `src/sorties/image.ts` | Copier en image (pour l'ENT et Pronote) : la taille de l'image (jamais plus fine que l'écran à 100 %, environ 4 millions de pixels et 4 096 px de côté au plus), le nom du fichier, l'image PNG cadrée sur le contenu (noms des points compris), la copie dans le presse-papiers du système dans le geste même, le repli « Enregistrer l'image (.png) » ; « Exporter en PDF » proposé pour une page très haute |
+| `src/sorties/pdf.ts` | L'écrivain de PDF, pur (sans bibliothèque) : une image par feuille, en couleurs indexées (les couleurs des objets d'abord, puis les plus fréquentes ; l'écart borné : trop d'aplats faux, pas de palette ; compressées par Flate, par tranches de lignes pour rendre la main), en RVB sans perte (lignes prédites comme un PNG, prédicteur 15) ou en JPEG pour une photo ; la table des renvois exacte, le titre en UTF-16 |
+| `src/sorties/mise-en-page.ts` | La mise en page du PDF, pure (testée) : le papier A4 (marges, 200 ppp, peint comme une page à 96 ppp), l'échelle et le sens (1 cm = 1 cm tant que le contenu tient sur la feuille ; une page qui n'est pas haute sur une seule feuille, dans le sens qui la montre le plus grand ; une page haute en portrait, à la largeur), la découpe d'une page haute (entre 60 et 100 % de la feuille, jusqu'à 25 % pour ne pas couper une figure qui tient sur une feuille, là où le moins de boîtes passent ; les grands vides sautés) ; le pied de page, le nom du fichier, le titre, les messages |
+| `src/sorties/export-pdf.ts` | Exporter en PDF : la fenêtre (ce qu'on exporte, le fond imprimé), puis l'export (les formes prises au lancement, chaque feuille peinte par tranches et coupée à sa bande, le fond peint dans la zone utile, le pied de page ; les pixels palettisés avec les couleurs des objets, ou en RVB sans perte, ou en JPEG quand une photo couvre 15 % de la feuille, compressés par morceaux ; l'attente pendant un geste, la progression, un export à la fois) |
+| `src/sorties/apercu.ts` | Peindre une page hors de l'écran (la boîte du contenu, noms des points compris, les polices, les formules et les images préparées, puis la peinture) : la fondation des vignettes, de l'image copiée et du PDF ; le réglage du fond imprimé (`mem-sortie-fond`) |
+| `src/pages/vignettes.ts` | Les vignettes des pages : un canevas par page et par taille, peint plus tard par une file paresseuse (seulement s'il est à l'écran, les pages prioritaires d'abord), repeint quand sa page change ; le cadrage d'une vignette |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
 | `src/geometrie.ts` | Ce que touche la gomme ; ce que vise la sélection (la distance au tracé, l'intérieur plein ou nu, l'aire) ; ce que prend un cadre ou un lasso (la part dedans, le lasso simplifié) |
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
 | `src/revue/` | La revue en classe : ce qu'on revoit, les images, la frise, le choix |
+| `src/heritage.ts` | Le passé d'une copie de page : la page qu'on lit vraiment à chaque étape du film (l'original, avant la copie), pour la revue et le film élève |
 | `src/revoir/` | Le replay des élèves : format du film, rythme de la main, instruments, exporteur, bobine, lecteur (`revoir.html`), relais |
 | `src/piste.ts` | La piste des instruments : ce que la classe en a vu, noté pour le replay |
 | `src/publication/` | Publier sur le Drive : comptes et relais, connexion Google, la fenêtre |
@@ -1029,18 +1674,24 @@ cours, qui fait la latence ressentie au stylet.
 | `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
-| `src/ui.ts` | Barres d'outils, le menu complet (un objet, une formule, plusieurs objets), le menu de la page, éditeur de formules |
+| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le menu complet (un objet, une formule, plusieurs objets ; sa rangée sur une ligne, son bouton ⋯ et le petit menu de *Copier en image* et *Envoyer vers…* ; placé dans l'écran, sur un téléphone aussi), le menu de la page, « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯ de la barre du haut, la trieuse), les messages (un ou deux boutons ; au-dessus des panneaux pendant un placement), éditeur de formules |
+| `src/pages/envoi.ts` | La fenêtre « Envoyer vers… » : déplacer ou copier, la liste des destinations (chaque page avec sa petite vignette, une nouvelle page juste après, à la fin), le clavier ; les textes des messages d'un envoi (pur, testé). L'envoi lui-même est `App.envoyerSelection`, son annulation `Tableau.envoyer` |
 | `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose, ce que devient un appui sur elle |
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (celles des lecteurs sont dans `src/revoir/icones.ts`) |
 | `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
-| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; les touches qui se taisent pendant un geste |
-| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) |
-| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document |
+| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; les touches qui se taisent pendant un geste ; le tableau caché (la revue, une séance d'automatismes, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) |
+| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) ; le balisage de leurs entrées, de leurs filets et de leurs titres (l'interface et la trieuse s'en servent) ; la place du menu complet près de ce qu'il règle, jamais dessus quand il a la place ailleurs (`positionPanneau`, pur, testé) |
+| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
+| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), plusieurs pages à la fois (Maj ou Ctrl + clic, Espace, Ctrl + A, « Choisir plusieurs » au doigt), le menu d'une vignette (⋯, clic droit, bouton du stylet, touche Menu ; « Insérer une page… » y choisit le fond en second temps), le nom écrit dans la carte, les messages et leur « Annuler » ; « Exporter en PDF » (le bandeau, celui des pages choisies, le menu d'une vignette, Ctrl + P) ; le bouton « Corbeille (3) » du bandeau, qui ouvre la vue de la corbeille |
+| `src/pages/corbeille.ts` | La corbeille des pages, une vue de la trieuse : les pages supprimées en vignettes, quand (« Supprimée aujourd'hui à 10 h 05 »), Remettre (par le journal de la trieuse : « Annuler »), Supprimer définitivement et Vider (après une question, dans une fenêtre de l'outil) ; où c'est noté dans le document (la carte `corbeille`) |
+| `src/pages/actions.ts` | Ce que la trieuse fait aux pages, chaque action en une entrée de son journal : renommer, insérer une page vide avant ou après, en ajouter une à la fin, dupliquer avec l'histoire, supprimer vers la corbeille (jamais toutes ; la page où aller quand on supprime celle qu'on regarde), changer un fond (l'origine du repère au centre du contenu), ranger d'une place (pur, testé) |
+| `src/pages/glisser.ts` | Où arrive une page lâchée dans la grille (la ligne sous le point, avant la première carte dont le milieu est à droite), où se pose la barre qui le montre, la vitesse du défilement près du bord (pur, testé) |
+| `src/pages/journal.ts` | Le journal de la trieuse des pages : chaque action sur les pages (déplacer, renommer, dupliquer, insérer, supprimer, changer un fond) entre avec l'état des pages d'avant et d'après ; annuler (ou rétablir) seulement si le tableau est exactement dans l'état laissé, sinon il le dit et se vide (jamais un changement invisible ni une page perdue) ; une page créée par une action défaite ne va pas dans la corbeille, et y reste hors quand on défait les actions d'avant ; aucune pile de page touchée |
 | `src/presse-papiers.ts` | Copier, coller : la copie écrite pour le presse-papiers du système et relue sans passer par la page, chaque forme vérifiée, le collage (noms gardés ou changés, points liés) |
 | `src/fichier.ts` | Le tableau dans un fichier `.memc` : l'écrire, le relire (et refuser ce qui n'en est pas un) |
-| `src/sauvegarde.ts` | Enregistrer et ouvrir un tableau : le menu ⋯, Ctrl + S, Ctrl + O, la question avant de remplacer, les autres onglets |
+| `src/sauvegarde.ts` | Enregistrer et ouvrir un tableau : le menu ⋯, Ctrl + S, Ctrl + O, la question avant de remplacer, les autres onglets ; le téléchargement d'un fichier (`telecharger`, que l'image copiée et le PDF empruntent) |
 
 Toutes les briques sont sous licence MIT (Yjs, y-indexeddb,
 perfect-freehand, KaTeX, Vite) : aucune clé de licence, aucun filigrane, et rien
@@ -1054,9 +1705,17 @@ n'empêche un usage payant.
   par Ctrl+V (le presse-papiers du système) : *Coller ici*, dans le menu de
   la page, ne colle que ce qui a été copié à la même adresse.
 - Au replay, ce qu'on colle ou duplique se dessine en un peu plus d'une
-  seconde au plus (comme Dupliquer jusqu'ici), au lieu de paraître d'un coup.
-- Une page supprimée ne se rend plus après un rechargement (son histoire
-  reste dans la revue).
+  seconde au plus (comme Dupliquer jusqu'ici), au lieu de paraître d'un coup ;
+  de même ce qu'on envoie sur une autre page (*Envoyer vers…*).
+- Après *Envoyer vers…* (un déplacement), on modifie un objet arrivé, on
+  défait cette modification puis tout l'envoi sur la page de départ : un
+  Ctrl+Y sur la page d'arrivée y refait la modification, et l'objet y
+  reparaît, sous les yeux, en plus de celui revenu sur la page de départ (un
+  doublon visible, jamais caché).
+- Un aller-retour (page 1 → page 2 → page 1) défait sur les deux pages ne se
+  refait qu'à moitié : Ctrl+Y sur la page 1 refait l'aller, mais Ctrl+Y sur
+  la page 2 ne refait plus le retour (« Rien à rétablir ») ; l'objet reste,
+  seul, sur la page 2 (ni perdu, ni en double). On le renvoie à la main.
 - Sur iPad (et toute tablette), à l'outil Sélection ou au doigt qui
   « déplace », un appui qui marque un temps (une demi-seconde) avant de
   glisser ouvre le menu au lieu de tracer le lasso, de déplacer l'objet ou la
@@ -1065,18 +1724,31 @@ n'empêche un usage payant.
 - Au TNI, une manche ou une paume qui effleure l'écran avec un doigt peut
   faire un toucher à deux doigts, qui annule : le message « Annulé » le dit,
   trois doigts ou Ctrl+Y le rattrapent, et le menu du doigt coupe ces gestes.
+- Le lot 3 n'a été essayé qu'au navigateur Chromium (piloté par Playwright :
+  souris, clavier, doigt, stylet simulé) ; ni la tablette graphique Wacom
+  sous Windows Ink, ni un iPad, ni Firefox. À essayer en classe, en dix
+  minutes : sur le poste à la Wacom, glisser une page de la trieuse vers la
+  rangée du dessous, puis ouvrir le menu d'une vignette par le bouton
+  latéral ; sur l'iPad, glisser une page par sa poignée, faire défiler la
+  trieuse à un et deux doigts, *Copier la page en image* puis la coller dans
+  Pronote, ⌘ + P ; sous Firefox (ESR et récent), *Copier la page en image*
+  (sinon le message propose *Enregistrer l'image (.png)*) et Ctrl + P.
+- Le menu complet d'une figure reconnue d'un trait à main levée (*Main
+  levée*) ou d'un segment passe sur deux lignes, comme avant le lot 3 ; sur un
+  écran bas (1024 × 768), avec *Transformer* ouvert, il peut n'avoir de place
+  ni au-dessus, ni en dessous, ni à côté d'une figure au milieu de l'écran :
+  il en couvre alors le moins possible (17 % au lieu de 82 %, mesuré).
 
 ## Feuille de route proposée
 
-1. Export PDF des pages (pour l'ENT et les absents).
-2. Instruments : règle et équerre qui s'alignent l'une sur l'autre, crayon qui
+1. Instruments : règle et équerre qui s'alignent l'une sur l'autre, crayon qui
    suit l'arc du rapporteur pour reporter un angle.
-3. Constructions : plus de phrases (triangle par deux côtés et un angle,
+2. Constructions : plus de phrases (triangle par deux côtés et un angle,
    cercle circonscrit, hauteurs, symétriques…), et l'équerre qui glisse le long
    de la règle pour les parallèles.
-4. Figures liées : un point partagé par deux figures, une image qui suit sa
+3. Figures liées : un point partagé par deux figures, une image qui suit sa
    figure quand on la déplace.
-5. Import d'un PDF comme fond de page (annoter un énoncé) ; recadrer une image.
-6. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
-7. Revue : export vidéo, et alléger les très longs films (le document ne
+4. Import d'un PDF comme fond de page (annoter un énoncé) ; recadrer une image.
+5. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
+6. Revue : export vidéo, et alléger les très longs films (le document ne
    jette plus rien).

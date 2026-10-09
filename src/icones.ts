@@ -23,6 +23,10 @@ export const ICONES: Record<string, string> = {
   moins: 'M5 12h14',
   avant: 'M15 6l-6 6 6 6',
   apres: 'M9 6l6 6-6 6',
+  // « › » sur la dernière page : il en ajoute une. Le chevron et un petit +
+  // accolé, pour ne pas le confondre avec le grand + de « Nouvelle page »
+  // juste à côté (deux + pareils, au vidéoprojecteur, sembleraient un doublon)
+  'page-suivante-plus': 'M5 6l6 6-6 6M18 9v6M15 12h6',
   aimant: 'M6 4v8a6 6 0 0012 0V4h-4v8a2 2 0 01-4 0V4zM6 8h4M14 8h4',
   forme: 'M3 11h8v8H3zM17 13a4 4 0 100-8 4 4 0 100 8z',
   point: 'M7 7l7 7M14 7l-7 7M16 17.5h4M16.5 21l1.75-6 1.75 6',
@@ -51,6 +55,10 @@ export const ICONES: Record<string, string> = {
   // voudrait dire « Coller ») ; Dupliquer : les mêmes, et un +
   copier: 'M8 8h11v11H8zM5 16V5h11',
   dupliquer: 'M8 8h11v11H8zM5 16V5h11M13.5 11v5M11 13.5h5',
+  // Fermer (la trieuse des pages) : une croix
+  fermer: 'M6 6l12 12M18 6L6 18',
+  // Exporter en PDF (la trieuse) : une feuille au coin plié, une flèche qui en sort vers le bas
+  pdf: 'M14 3H6v18h12V7zM14 3v4h4M12 10v7M9 14l3 3 3-3',
 }
 
 /** Le SVG d'une icône, caché aux lecteurs d'écran (le bouton porte son nom) */

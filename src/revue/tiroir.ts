@@ -3,8 +3,10 @@
 // Le tiroir où le professeur choisit ce qu'il montre : la page affichée
 // (sa dernière séance, ou toute son histoire), une séance entière, ou une
 // page jetée depuis. Les heures s'y calculent sur les métadonnées du film
-// (l'heure et la page notées à chaque étape), en un seul passage, même sur un
-// film de plusieurs semaines. Le nombre de gestes de chaque ligne, lui, est
+// (l'heure et la page notées à chaque étape), en un passage pour toutes les
+// pages, et un autre pour l'histoire de la page affichée (celle d'une copie
+// commence par celle de son original), même sur un film de plusieurs
+// semaines. Le nombre de gestes de chaque ligne, lui, est
 // celui que montrera sa bande (la revue le donne) : le tiroir, le bandeau et
 // le compteur disent toujours le même, et une ligne qui ne montrerait rien
 // (une séance qui n'a fait que créer une page) n'est pas proposée.
@@ -15,7 +17,7 @@ import type { Etape } from '../document'
 import type { Seance } from '../revoir/exporter'
 import { DECOUPAGES } from '../revoir/exporter'
 import type { Portion } from './bande'
-import { heureLisible, jourDuMois, jourLisible, listeDesPages, pluriel, seancesDeLaPage } from './bande'
+import { heureLisible, jourDuMois, jourLisible, listeDesPages, pluriel, seanceTouche, seancesDeLaPage } from './bande'
 
 /** Ce que le tiroir doit savoir pour se remplir, et à qui répondre */
 export interface Contexte {
@@ -25,8 +27,14 @@ export interface Contexte {
   pageVue: string
   nommer: (page: string) => string
   pagesActuelles: readonly string[]
-  /** L'étape i ne fait-elle que créer sa page, vide ? (elle ne compte pas comme un geste) */
+  /** L'étape i ne fait-elle que créer sa page, vide ? (elle ne compte pas
+   *  comme un geste ; la naissance d'une copie non plus) */
   naissance(i: number): boolean
+  /** Au moins une page du film est une copie */
+  copies: boolean
+  /** L'étape i est-elle de l'histoire de la page ? (pour une copie, avant sa
+   *  naissance, celles de la page d'où elle vient) */
+  deLaPage(i: number, page: string): boolean
   /** Combien de gestes montre la bande d'une portion (0 : elle ne montre rien) */
   gestes(p: Portion): number
   portion: Portion | null
@@ -107,17 +115,20 @@ export class Tiroir {
     titre.textContent = 'Que revoir ?'
     el.append(titre)
 
-    // Un seul passage sur le film : combien d'étapes par page, et quand. La
-    // première d'une page est sa naissance (si elle n'a fait que la créer,
-    // vide) : on garde aussi l'heure de la suivante, son vrai premier geste.
-    // Jeter une page, la rendre ne change que l'ordre : ni geste, ni heure.
-    const parPage = new Map<string, { gestes: number; premier: number; ensuite: number; dernier: number; nee: number }>()
+    // Un seul passage sur le film : combien d'étapes notées sur chaque page,
+    // et quand. La première d'une page est sa naissance (si elle n'a fait que
+    // la créer, vide, ou si c'est une copie) : elle ne compte pas parmi ses
+    // gestes à elle. Jeter une page, la rendre ne change que l'ordre : ni
+    // geste, ni heure.
+    const parPage = new Map<string, { etapes: number; dernier: number; nee: number }>()
     c.film.forEach((e, i) => {
       if (!e.page || e.seulOrdre) return
       const m = parPage.get(e.page)
-      if (!m) parPage.set(e.page, { gestes: 1, premier: e.t, ensuite: e.t, dernier: e.t, nee: i })
-      else { if (m.gestes === 1) m.ensuite = e.t; m.gestes++; m.dernier = e.t }
+      if (!m) parPage.set(e.page, { etapes: 1, dernier: e.t, nee: i })
+      else { m.etapes++; m.dernier = e.t }
     })
+    /** Combien de gestes à elle une page a reçus (sa naissance n'en est pas un) */
+    const propres = (m: { etapes: number; nee: number }) => m.etapes - (c.naissance(m.nee) ? 1 : 0)
     /** Les `combien` premières lignes qui montrent quelque chose (avec leur
      *  nombre de gestes), et s'il en reste d'autres plus loin */
     const lignes = <T>(liste: readonly T[], combien: number, gestes: (x: T) => number) => {
@@ -128,21 +139,27 @@ export class Tiroir {
     }
 
     // La page affichée, dans la dernière séance où elle montre quelque chose
+    // (pour une copie, celle où l'on a construit son original compte aussi)
     const vue = parPage.get(c.pageVue)
     let derniere: { x: Seance; gestes: number } | undefined
     if (vue) for (const s of c.seances) {
-      const g = s.pages.includes(c.pageVue) ? c.gestes({ genre: 'seance', seance: s, page: c.pageVue }) : 0
+      const g = seanceTouche(c, s, c.pageVue) ? c.gestes({ genre: 'seance', seance: s, page: c.pageVue }) : 0
       if (g > 0) { derniere = { x: s, gestes: g }; break }
     }
+    /** Le geste i est-il de l'histoire de la page affichée ? (ni une
+     *  naissance, ni une étape qui ne change que l'ordre) */
+    const geste = (i: number) => { const e = c.film[i]; return !!e && !e.seulOrdre && c.deLaPage(i, c.pageVue) && !c.naissance(i) }
     if (vue && derniere) {
       let de = Infinity, a = -Infinity
       for (let i = derniere.x.de; i <= derniere.x.a; i++) {
-        const e = c.film[i]
-        if (e?.page !== c.pageVue || e.seulOrdre || (i === vue.nee && c.naissance(i))) continue
-        de = Math.min(de, e.t); a = Math.max(a, e.t)
+        if (!geste(i)) continue
+        const t = c.film[i].t
+        de = Math.min(de, t); a = Math.max(a, t)
       }
       const nbSeances = seancesDeLaPage(c, c.seances, c.pageVue).length
-      const depuis = c.naissance(vue.nee) ? vue.ensuite : vue.premier
+      // Depuis le premier geste de son histoire, hérité compris
+      let depuis = de
+      for (let i = 0; i < c.film.length; i++) if (geste(i)) { depuis = c.film[i].t; break }
       const sec = this.section(c.nommer(c.pageVue))
       sec.append(
         this.choix('Sa dernière séance', `${jour(de)}, ${heureLisible(de)} → ${heureLisible(a)} · ${pluriel(derniere.gestes, 'geste')}`,
@@ -171,9 +188,13 @@ export class Tiroir {
     }
 
     // Les pages jetées, les plus récemment écrites d'abord : leur histoire reste
-    // dans le film (une page jetée sans avoir rien reçu n'a rien à montrer)
+    // dans le film (une page jetée sans avoir rien reçu n'a rien à montrer).
+    // Seulement celles qui ont reçu au moins un geste à elles : une copie
+    // retirée sans qu'on y ait écrit n'a pour histoire que celle de son
+    // original, qui se revoit déjà. Une page de la corbeille, ou supprimée
+    // définitivement, y reste avec toute son histoire.
     const vivantes = new Set(c.pagesActuelles)
-    const jetees = lignes([...parPage].filter(([p]) => !vivantes.has(p)).sort((a, b) => b[1].dernier - a[1].dernier),
+    const jetees = lignes([...parPage].filter(([p, m]) => !vivantes.has(p) && propres(m) > 0).sort((a, b) => b[1].dernier - a[1].dernier),
       this.combienJetees, ([p]) => c.gestes({ genre: 'page', page: p }))
     if (jetees.r.length) {
       const sec = this.section('Pages jetées')
