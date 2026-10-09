@@ -21,7 +21,7 @@ import type { Menu } from './menus'
 import { ENTREES, allerAuxEntrees, basculerMenu, fermerMenu, focusAuClavier, focusNullePart, installerMenus, ouvrirMenu, placerMenu, refaireEnGardantLeFocus } from './menus'
 import { choisirGestes, choisirMolette, reglages } from './reglages'
 import type { Doigt, Molette } from './reglages'
-import { CTRL } from './navigateur'
+import { CTRL, tableauCache } from './navigateur'
 import { Sauvegarde } from './sauvegarde'
 import { zoneEntreBarres } from './camera'
 import type { Bords } from './camera'
@@ -39,6 +39,12 @@ const DOIGTS: { id: Doigt; nom: string; aide: string; marque: string; titre: str
   { id: 'auto', nom: 'Auto', aide: 'le doigt dessine jusqu\'au premier stylet posé sur l\'écran', marque: 'A',
     titre: 'Rôle du doigt : auto (il dessine tant qu\'aucun stylet n\'a touché l\'écran)', dit: 'Auto : le doigt dessine jusqu\'au premier stylet posé sur l\'écran.' },
 ]
+
+/** Le bouton « › » : la page suivante, ou, sur la dernière page, une page de
+ *  plus. Son titre commence toujours par « Page suivante » ; jamais
+ *  « Nouvelle page », le nom du bouton + d'à côté, qui reste seul à le porter. */
+const TITRE_SUIVANTE = 'Page suivante (Page ↓)'
+const TITRE_AJOUT = 'Page suivante : en ajouter une (c\'est la dernière)'
 
 /** Un écran tactile (ou un pointeur grossier) : le doigt a un rôle à régler */
 function appareilTactile(): boolean {
@@ -128,7 +134,20 @@ export class UI implements Interface {
   private boutonJeter!: HTMLButtonElement
   private boutonAnnuler!: HTMLButtonElement
   private boutonRetablir!: HTMLButtonElement
+  /** Le compteur « 3 / 7 », suivi du nom de la page s'il y en a un (« · Exercice 12 p. 84 ») */
   private rang!: HTMLSpanElement
+  private rangNumero!: HTMLSpanElement
+  private rangNom!: HTMLSpanElement
+  /** « › » : la page suivante, ou une page de plus sur la dernière (voir maj) */
+  private boutonApres!: HTMLButtonElement
+  /** Le numéro de la page en grand, un instant, quand on change de page (voir annoncerPage) */
+  private annonce!: HTMLDivElement
+  private annonceNumero!: HTMLSpanElement
+  private annonceNom!: HTMLSpanElement
+  private minuterieAnnonce = 0
+  /** L'heure du dernier changement de page (performance.now()) : un clic sur
+   *  « › » qui la suit de moins de 600 ms ne crée pas de page */
+  private changementDePage = -Infinity
   private choixFond!: HTMLSelectElement
   private boutonAimant!: HTMLButtonElement
   private zoomTexte!: HTMLButtonElement
@@ -251,8 +270,24 @@ export class UI implements Interface {
     haut.className = 'barre barre-haut'
     this.barreHaut = haut
     const avant = bouton('avant', 'Page précédente (Page ↑)', () => app.pageSuivante(-1))
+    // Le compteur : « 3 / 7 », puis le nom de la page s'il y en a un, coupé
+    // au-delà d'une vingtaine de caractères (entier dans son titre), et caché
+    // sur un téléphone. Sans nom, son texte reste exactement « 3 / 7 ».
     this.rang = document.createElement('span'); this.rang.className = 'rang'
-    const apres = bouton('apres', 'Page suivante (Page ↓)', () => app.pageSuivante(1))
+    this.rangNumero = Object.assign(document.createElement('span'), { className: 'rang-numero' })
+    this.rangNom = Object.assign(document.createElement('span'), { className: 'rang-nom' })
+    this.rang.append(this.rangNumero, this.rangNom)
+    // « › » : sur la dernière page, il en ajoute une (au fond de la page
+    // courante, en vue neutre), avec sa propre icône (voir maj). Le second
+    // clic d'un double-clic ne fait rien, ni un clic moins de 600 ms après un
+    // changement de page : le double-clic sur « › » qui vient d'arriver sur
+    // la dernière page n'en crée pas une de plus. Les boutons de la barre ne
+    // bougent jamais d'une page à l'autre : « Nouvelle page » reste là.
+    const apres = this.boutonApres = bouton('apres', TITRE_SUIVANTE, e => {
+      if (apres.dataset.mode !== 'ajout') { app.pageSuivante(1); return }
+      if ((e as MouseEvent).detail > 1 || performance.now() - this.changementDePage < 600) return
+      app.nouvellePage()
+    })
     const nouvelle = bouton('plus', 'Nouvelle page', () => app.nouvellePage())
     // Pas de question : la page part tout de suite, et s'annule (le message
     // « Page N supprimée · Annuler », ou Ctrl+Z). Le second clic d'un
@@ -355,6 +390,16 @@ export class UI implements Interface {
     this.toast = document.createElement('div')
     this.toast.className = 'toast'; this.toast.setAttribute('role', 'status')
 
+    // ----- Le numéro de la page, en grand, quand on change de page -----
+    // Sous le message, au-dessus du tableau ; aucun appui ne s'y arrête (le
+    // stylet écrit à travers), et le premier appui sur le tableau l'efface
+    this.annonce = document.createElement('div')
+    this.annonce.className = 'annonce-page'; this.annonce.setAttribute('aria-hidden', 'true'); this.annonce.hidden = true
+    this.annonceNumero = Object.assign(document.createElement('span'), { className: 'annonce-numero' })
+    this.annonceNom = Object.assign(document.createElement('span'), { className: 'annonce-nom' })
+    this.annonce.append(this.annonceNumero, this.annonceNom)
+    ;(document.getElementById('zone') ?? this.racine).addEventListener('pointerdown', () => this.effacerAnnonce(true), true)
+
     // ----- Choix de la forme, à côté de l'outil -----
     this.choixFormes = document.createElement('div')
     this.choixFormes.className = 'barre choix-formes'
@@ -383,7 +428,7 @@ export class UI implements Interface {
     menuPage.hidden = true
     this.menuPage = { el: menuPage }
 
-    this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, menuFichier, menuPage, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
+    this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, menuFichier, menuPage, this.annonce, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
     // ----- La barre d'actions, au-dessus de ce qui est pris -----
     // Elle ne recouvre ni la barre d'outils (sauf sur un téléphone, où elle
     // n'y tient pas), ni la barre du haut
@@ -423,7 +468,24 @@ export class UI implements Interface {
     griser(this.boutonRetablir, !app.peutRetablir())
 
     const pages = app.pages, i = pages.indexOf(app.page)
-    this.rang.textContent = pages.length ? `${i + 1} / ${pages.length}` : '…'
+    // Le compteur, et le nom de la page (il change aussi sans changer de page)
+    const numero = pages.length ? `${i + 1} / ${pages.length}` : '…'
+    const nom = i >= 0 ? app.tableau.nomDe(pages[i]) : null
+    if (this.rangNumero.textContent !== numero) this.rangNumero.textContent = numero
+    const suite = nom ? ` · ${nom}` : ''
+    if (this.rangNom.textContent !== suite) this.rangNom.textContent = suite
+    const titreRang = nom ? `Page ${numero} · ${nom}` : ''
+    if (this.rang.title !== titreRang) this.rang.title = titreRang
+    // « › » sur la dernière page : une page de plus ; son contenu ne se
+    // refait que si le mode change
+    const mode = pages.length && i === pages.length - 1 ? 'ajout' : 'suivante'
+    if (this.boutonApres.dataset.mode !== mode) {
+      this.boutonApres.dataset.mode = mode
+      this.boutonApres.innerHTML = icone(mode === 'ajout' ? 'page-suivante-plus' : 'apres')
+      const t = mode === 'ajout' ? TITRE_AJOUT : TITRE_SUIVANTE
+      this.boutonApres.title = t; this.boutonApres.setAttribute('aria-label', t)
+    }
+    if (!this.annonce.hidden) this.majAnnonce()
     const titreJeter = pages.length <= 1 ? 'Effacer la page' : 'Supprimer cette page'
     if (this.boutonJeter.title !== titreJeter) { this.boutonJeter.title = titreJeter; this.boutonJeter.setAttribute('aria-label', titreJeter) }
     this.choixFond.value = app.fond
@@ -507,6 +569,58 @@ export class UI implements Interface {
 
   entrerDansMenu() {
     if (!this.panneau.hidden) allerAuxEntrees(this.panneau, -Infinity)
+  }
+
+  /** On vient de changer de page (voir App.allerPage) : son numéro, et son
+   *  nom s'il en a un, en grand, en haut au centre de ce qu'on voit du
+   *  tableau entre les barres (jamais au milieu, où l'on écrit en arrivant),
+   *  sur un fond clair un peu transparent. Il paraît en 120 ms, reste 700 ms
+   *  et s'efface en 300 ms ; un autre changement de page le relance ; le
+   *  premier appui sur le tableau l'efface aussitôt. Aucun appui ne s'y
+   *  arrête (pointer-events: none). Sous « animations réduites », sans
+   *  fondu. Jamais quand le tableau est caché (la revue, une séance, la
+   *  trieuse). L'heure du changement est retenue : « › » s'en sert. */
+  annoncerPage() {
+    this.changementDePage = performance.now()
+    if (tableauCache(this.app)) return
+    const a = this.annonce
+    clearTimeout(this.minuterieAnnonce)
+    this.majAnnonce()
+    a.classList.remove('vite')
+    // Pas plus large que ce qu'on voit du tableau (un long nom se coupe) :
+    // sur un téléphone, il ne couvre pas la barre d'outils
+    const z = this.app.rendu.scene.getBoundingClientRect(), r = this.zoneLibre()
+    a.style.maxWidth = Math.max(160, Math.min(640, r.l)) + 'px'
+    // Caché, il repart de l'opacité nulle (le style est relu avant le fondu)
+    if (a.hidden) { a.hidden = false; void a.offsetWidth }
+    // Centré sur ce qu'on voit, mais jamais hors de l'écran
+    const demi = a.offsetWidth / 2, centre = z.left + r.x + r.l / 2
+    a.style.left = Math.max(8 + demi, Math.min(window.innerWidth - 8 - demi, centre)) + 'px'
+    a.style.top = (z.top + r.y + 16) + 'px'
+    a.classList.add('visible')
+    this.minuterieAnnonce = window.setTimeout(() => this.effacerAnnonce(false), 120 + 700)
+  }
+
+  /** Le numéro et le nom que montre l'annonce (le nombre de pages change
+   *  juste après qu'on arrive, quand on vient de supprimer celle qu'on
+   *  quittait : maj() le relit tant qu'elle se voit) */
+  private majAnnonce() {
+    const pages = this.app.pages, i = pages.indexOf(this.app.page)
+    const numero = i >= 0 ? `${i + 1} / ${pages.length}` : ''
+    const nom = (i >= 0 ? this.app.tableau.nomDe(pages[i]) : null) ?? ''
+    if (this.annonceNumero.textContent !== numero) this.annonceNumero.textContent = numero
+    if (this.annonceNom.textContent !== nom) this.annonceNom.textContent = nom
+  }
+
+  /** L'annonce s'efface : à son heure (300 ms), ou tout de suite (vite :
+   *  120 ms) quand on touche le tableau. Puis elle se cache. */
+  private effacerAnnonce(vite: boolean) {
+    const a = this.annonce
+    if (a.hidden || !a.classList.contains('visible')) return
+    clearTimeout(this.minuterieAnnonce)
+    a.classList.toggle('vite', vite)
+    a.classList.remove('visible')
+    this.minuterieAnnonce = window.setTimeout(() => { a.hidden = true; a.classList.remove('vite') }, vite ? 120 : 300)
   }
 
   /** Ce qu'on voit du tableau entre les barres, en coordonnées de la zone :
@@ -597,7 +711,9 @@ export class UI implements Interface {
    *  Il se pose au point de l'appui, à sa droite et vers le bas comme le
    *  menu du système (de l'autre côté s'il n'y a pas la place), et se ferme
    *  comme les autres petits menus : Échap, un choix, ou un appui ailleurs
-   *  (qui ne laisse pas d'encre). m : le point du monde où « Coller ici »
+   *  (qui ne laisse pas d'encre). Coller ici, Tout sélectionner, Tout voir,
+   *  puis ce qui touche la page elle-même (Dupliquer la page).
+   *  m : le point du monde où « Coller ici »
    *  colle. Refait à chaque ouverture : la copie et la page ont pu changer.
    *  auClavier : ouvert par la touche Menu (voir App.menuAuClavier), le
    *  focus va à sa première entrée active. */
@@ -608,6 +724,11 @@ export class UI implements Interface {
       aide: `Le dernier objet copié dans MEM ; ${CTRL} + V colle aussi une image ou ce qu'on a copié dans une autre version de MEM` })
     this.entreeMenu(el, 'Tout sélectionner', () => app.toutSelectionner(), { touche: `${CTRL} + A`, inactif: app.pageVide() })
     this.entreeMenu(el, 'Tout voir', () => app.toutVoir(), { touche: 'Maj + 1' })
+    // La page elle-même. Ordre à venir : Dupliquer la page · Toutes les
+    // pages… · ─ · Copier la page en image · Exporter la page en PDF…
+    el.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
+    this.entreeMenu(el, 'Dupliquer la page', () => app.dupliquerLaPage(), { touche: `${CTRL} + Maj + D`,
+      aide: 'Une copie juste après, avec toute son histoire (Revoir la montre se construire)' })
     ouvrirMenu(this.menuPage)
     placerMenu(el, new DOMRect(x, y, 0, 0), 'droite')
     if (auClavier) allerAuxEntrees(el, 1, ENTREES)

@@ -217,7 +217,9 @@ il ne reste qu'un objet.
 **Dans le vide**, le clic droit (ou l'appui long) ouvre le menu de la page,
 au point visé :
 *Coller ici* (le dernier objet copié, posé là ; grisé quand il n'y a rien à
-coller), *Tout sélectionner* (Ctrl + A), *Tout voir* (Maj + 1). Il se ferme
+coller), *Tout sélectionner* (Ctrl + A), *Tout voir* (Maj + 1), puis, après un
+filet, ce qui touche la page elle-même : *Dupliquer la page* (Ctrl + Maj + D,
+voir « Changer de page »). Il se ferme
 comme les autres menus : Échap, un choix, ou un appui ailleurs, qui ne laisse
 pas d'encre.
 
@@ -816,6 +818,43 @@ page garde sa vue (une nouvelle page s'ouvre à 100 %, sur l'origine) ; la page
 courante et la vue de chaque page sont retrouvées au rechargement — notées dans
 ce navigateur, hors du document : ni un fichier, ni un replay ne les emportent.
 
+**Changer de page.** ‹ et › (ou Page↑ et Page↓, que les télécommandes de
+présentation envoient) passent d'une page à l'autre. Le compteur dit
+« 3 / 7 », suivi du nom de la page si elle en a un (« 3 / 7 · Exercice 12
+p. 84 » : coupé au-delà d'une vingtaine de caractères, entier dans son
+infobulle, caché sur un téléphone). Sur la dernière page, › devient un bouton
+d'ajout, avec sa propre icône (le chevron et un petit +, à ne pas confondre
+avec le grand + de « Nouvelle page », qui reste à sa place : aucun bouton de
+la barre ne bouge d'une page à l'autre, la poubelle reste sous la main) : il
+ajoute une page juste après, au fond de la page qu'on quitte, ouverte à 100 %
+sur l'origine. Le second clic d'un double-clic sur ›, ou un clic moins de
+600 ms après un changement de page, n'en crée pas : le double-clic qui arrive
+sur la dernière page n'en ajoute pas une de plus. Page↓, lui, ne crée jamais
+de page (une télécommande n'en fabrique pas) : sur la dernière, un message le
+dit, « Dernière page : le bouton Page suivante en ajoute une. » (au plus une
+fois toutes les 5 s). À chaque changement de page, le numéro (et le nom)
+s'affiche en grand un peu plus d'une seconde, en haut au centre de ce qu'on
+voit du tableau, jamais au milieu, là où l'on écrit en arrivant ; le stylet
+écrit à travers, et le premier appui sur le tableau l'efface. Ni au
+démarrage, ni sous la revue, une séance d'automatismes ou la trieuse des
+pages ; sans fondu sous « animations réduites ».
+
+**Dupliquer la page** (le menu de la page, au clic droit dans le vide ou au
+bouton du stylet ; Ctrl + Maj + D, ⌘ + Maj + D sur Mac) : une copie juste
+après l'original, avec les mêmes objets, le même fond, le même nom suivi de
+« (copie) », et toute son histoire (Revoir la montre se construire, voir
+« Revoir la construction ») ; on arrive dessus, sur la même vue, et un message
+le dit : « Page 3 dupliquée : vous êtes sur la copie (page 4) », avec
+**Annuler**. Ctrl+Z (ou ↶) sur la copie, tant qu'on n'y a rien fait, la
+retire aussi et ramène à l'original (« Copie retirée ») ; si l'on y a écrit,
+Ctrl+Z défait d'abord ce qu'on y a écrit, puis la retire ; « Annuler », lui,
+le dit et ne défait rien. Une copie dont l'original a été
+supprimé ne se retire plus ainsi (ce serait faire disparaître le seul
+exemplaire) : on la supprime à la poubelle. L'original n'est jamais touché, et
+chacune garde sa pile d'annulation (celle de la copie commence vide). Rien de
+cela dans un champ de saisie, une fenêtre ouverte, la revue ou une séance, ni
+pendant qu'on écrit ou qu'on glisse un objet.
+
 **Échap** annule ce qui est en cours (menu, sélection, polygone) ; s'il n'y a
 rien, il passe à l'outil Sélection, et un second Échap rend l'outil d'avant.
 Avec la Sélection, un objet se prend à 6 px de son tracé à la souris, 10 au
@@ -1069,11 +1108,12 @@ cours, qui fait la latence ressentie au stylet.
 | `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose, ce que devient un appui sur elle |
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (celles des lecteurs sont dans `src/revoir/icones.ts`) |
 | `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
-| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; les touches qui se taisent pendant un geste |
+| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; les touches qui se taisent pendant un geste ; le tableau caché (la revue, une séance d'automatismes, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) |
 | `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) |
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
+| `src/pages/journal.ts` | Le journal de la trieuse des pages : chaque action sur les pages (déplacer, renommer, dupliquer, insérer, supprimer, changer un fond) entre avec l'état des pages d'avant et d'après ; annuler (ou rétablir) seulement si le tableau est exactement dans l'état laissé, sinon il le dit et se vide (jamais un changement invisible ni une page perdue) ; une page créée par une action défaite ne va pas dans la corbeille ; aucune pile de page touchée |
 | `src/presse-papiers.ts` | Copier, coller : la copie écrite pour le presse-papiers du système et relue sans passer par la page, chaque forme vérifiée, le collage (noms gardés ou changés, points liés) |
 | `src/fichier.ts` | Le tableau dans un fichier `.memc` : l'écrire, le relire (et refuser ce qui n'en est pas un) |
 | `src/sauvegarde.ts` | Enregistrer et ouvrir un tableau : le menu ⋯, Ctrl + S, Ctrl + O, la question avant de remplacer, les autres onglets |

@@ -28,7 +28,7 @@ import { choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, reglage
 import type { Doigt } from './reglages'
 import { APPUI_LONG, DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, SEUIL_GLISSER, TOLERANCE_PRISE, TOUCHER_DOIGTS, ToucherADoigts, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from './pointeurs'
 import type { Depart, Toucher, ToucherReconnu, TypePointeur } from './pointeurs'
-import { CTRL, MAC, lireMolette, toucheMarquePage, toucheMenu, toucheTenueEnGeste } from './navigateur'
+import { CTRL, MAC, lireMolette, tableauCache, toucheMarquePage, toucheMenu, toucheTenueEnGeste } from './navigateur'
 import { avale } from './menus'
 import type { TraitDirect } from './rendu'
 import type { Vue } from './session'
@@ -100,6 +100,9 @@ export interface Interface {
   zoneLibre(): { x: number; y: number; l: number; h: number }
   /** Un fichier glissé sur le tableau (.memc, ou .mem) : comme « Ouvrir un tableau » */
   ouvrirTableau(f: File): void
+  /** On vient de changer de page : son numéro (et son nom) en grand, un
+   *  instant, en haut de ce qu'on voit (voir App.allerPage) */
+  annoncerPage(): void
 }
 
 type Geste =
@@ -273,6 +276,9 @@ export class App {
 
     tableau.pages.observeDeep(() => this.rafraichir())
     tableau.ordre.observe(() => this.verifierPage())
+    // Les noms des pages changent sans qu'on change de page (la trieuse) : le
+    // compteur « 3 / 7 · Exercice 12 p. 84 » les relit
+    tableau.noms.observe(() => this.ui?.maj())
     // Une pile d'annulation a changé : ↶ et ↷ se remettent à jour, une fois,
     // juste après (voir Tableau.onPiles). Sans cela, ↶ resterait grisé après
     // ↷, après les flèches qui poussent la sélection, après le point d'un
@@ -519,6 +525,7 @@ export class App {
     this.viderPointEnAttente()
     if (!id || id === this.page) return
     this.arreterAnimation()
+    const avant = this.page
     if (this.page && this.rendu.l > 0) this.vues.set(this.page, this.vueActuelle())
     this.page = id
     this.tableau.pageVue = id
@@ -531,6 +538,23 @@ export class App {
     if (this.partie) this.choisirPartie(null)
     this.rafraichir()
     this.noterSession()
+    // Le numéro de la page en grand, un instant : seulement quand on regardait
+    // déjà une page et que le tableau est prêt (pas au démarrage, ni quand le
+    // chargement mène à la première page, puis à celle qu'on regardait avant
+    // de recharger), et jamais sous la revue, une séance ou la trieuse, qui
+    // cachent le tableau
+    if (avant && this.pret && !tableauCache(this)) this.ui?.annoncerPage()
+  }
+
+  /** Le tableau est chargé et l'on est sur la page de départ (voir
+   *  allerPageDeDepart) : désormais, chaque changement de page s'annonce */
+  private pret = false
+
+  /** Au démarrage (main.ts), le tableau chargé : la page qu'on regardait
+   *  avant de recharger (voir pageDeDepart), sans annoncer son numéro */
+  allerPageDeDepart() {
+    this.allerPage(this.pageDeDepart())
+    this.pret = true
   }
 
   /** La page où reprendre : celle de la session si elle existe encore, sinon la première */
@@ -541,10 +565,27 @@ export class App {
     return this.pageSession && p.includes(this.pageSession) ? this.pageSession : p[0]
   }
 
-  pageSuivante(sens: 1 | -1) {
+  /** La page d'avant ou d'après (Page↑, Page↓, ‹ et ›). Faux s'il n'y en a
+   *  pas : on ne crée jamais de page ici (voir clavier, et le bouton « › »
+   *  de la dernière page, qui appelle nouvellePage). */
+  pageSuivante(sens: 1 | -1): boolean {
     const p = this.pages, i = p.indexOf(this.page) + sens
-    if (i >= 0 && i < p.length) this.allerPage(p[i])
+    if (i < 0 || i >= p.length) return false
+    this.allerPage(p[i])
+    return true
   }
+
+  /** Page↓ sur la dernière page : une télécommande de présentation (qui
+   *  envoie Page↓) ne fabrique pas de pages. Un message dit comment en
+   *  ajouter une, au plus une fois toutes les 5 s (une touche tenue, une
+   *  télécommande qu'on presse plusieurs fois). */
+  private dernierePage() {
+    const t = performance.now()
+    if (t - this.astuceDernierePage < 5000) return
+    this.astuceDernierePage = t
+    this.ui.message('Dernière page : le bouton Page suivante en ajoute une.')
+  }
+  private astuceDernierePage = -Infinity
 
   nouvellePage() {
     const id = this.tableau.ajouterPage(this.fond, this.pages.indexOf(this.page) + 1)
@@ -614,6 +655,63 @@ export class App {
     this.ui.message(`Page ${k + 1} rétablie`)
   }
 
+  /** « Dupliquer la page » (le menu de la page, Ctrl + Maj + D) : une copie
+   *  juste après, avec toute son histoire (voir Tableau.dupliquerPage), et
+   *  l'on arrive dessus, sur la même vue. Un message le dit, avec
+   *  « Annuler » ; Ctrl+Z sur la copie, tant qu'on n'y a rien fait, la retire
+   *  aussi et ramène à l'original (la marque posée sur la copie). Rien quand
+   *  le tableau est caché (la revue, une séance, la trieuse). */
+  dupliquerLaPage() {
+    if (tableauCache(this)) return
+    this.viderPointEnAttente()
+    const p = this.page, k = this.pages.indexOf(p)
+    if (k < 0) return
+    const q = this.tableau.dupliquerPage(p, { marque: true })
+    if (!q) return
+    this.copierVue(p, q)
+    this.allerPage(q)
+    this.ui.message(`Page ${k + 1} dupliquée : vous êtes sur la copie (page ${this.pages.indexOf(q) + 1})`,
+      { libelle: 'Annuler', faire: () => this.annulerCopie(q), cle: 'copie:' + q })
+  }
+
+  /** Le bouton « Annuler » du message de « Dupliquer la page ». La copie
+   *  part seulement si elle est encore telle qu'à sa naissance et que sa
+   *  marque vaut (elle et son original sont dans l'ordre) : on y va s'il le
+   *  faut, puis on la retire, comme Ctrl+Z. Sinon un message dit pourquoi,
+   *  et rien ne change : défaire d'abord ce qu'on y a écrit, ou la supprimer
+   *  à la poubelle (son original n'est plus là, ou elle a changé autrement).
+   *  Jamais pendant la revue, ni sous la trieuse. */
+  private annulerCopie(q: string) {
+    if (tableauCache(this)) return
+    this.viderPointEnAttente()
+    if (!this.pages.includes(q)) return
+    const r = this.tableau.retraitDeCopie(q)
+    if (r === 'ecrit') return this.ui.message('Vous avez écrit sur la copie : ↶ défait d\'abord ce que vous y avez écrit.')
+    if (r === 'non') return this.ui.message('La copie ne peut plus être retirée ainsi : supprimez-la (poubelle).')
+    if (this.page !== q) this.allerPage(q)
+    const retour = this.tableau.retirerCopie(q)
+    if (retour) this.copieRetiree(q, retour)
+  }
+
+  /** La copie toute neuve vient de partir : on revient sur son original (si
+   *  l'on n'y est pas déjà, voir verifierPage), et un message le dit */
+  private copieRetiree(copie: string, retour: string) {
+    this.allerPage(retour)
+    this.ui.oublierAction('copie:' + copie)
+    this.ui.message('Copie retirée')
+  }
+
+  /** La vue gardée d'une page devient celle d'une autre, en mémoire et dans
+   *  la session de ce navigateur : une copie s'ouvre sur la vue de son
+   *  original (« Dupliquer la page », et la trieuse). La vue de la page qu'on
+   *  regarde est celle de l'écran. */
+  copierVue(de: string, vers: string) {
+    const v = de === this.page && this.rendu.l > 0 ? this.vueActuelle() : this.vues.get(de)
+    if (!v || !vers) return
+    this.vues.set(vers, { ...v })
+    this.noterSession()
+  }
+
   /** Le repère se pose au milieu de ce qu'on regarde, calé sur le centimètre. */
   changerFond(f: Fond) {
     let origine: { x: number; y: number } | undefined
@@ -624,9 +722,15 @@ export class App {
     this.tableau.changerFond(this.page, f, origine)
   }
 
+  /** L'ordre des pages a changé : si la page qu'on regardait l'a quitté, on
+   *  va sur la première, ou, pour une copie retirée (Ctrl+Z juste après
+   *  « Dupliquer la page »), sur son original */
   private verifierPage() {
     const p = this.pages
-    if (!p.includes(this.page) && p.length) this.allerPage(p[0])
+    if (!p.includes(this.page) && p.length) {
+      const de = this.page ? this.tableau.herite(this.page) : null
+      this.allerPage(de && p.includes(de) ? de : p[0])
+    }
     this.ui?.maj()
   }
 
@@ -672,13 +776,21 @@ export class App {
    *  le panneau d'options ouvert sur une figure qui n'est plus choisie.
    *  Juste après « Supprimer la page », c'est la page jetée qui revient : on
    *  y va, un message le dit, et la réponse est 'page' (le message est déjà
-   *  dit) ; sinon, vrai si un geste a été défait. */
+   *  dit). Juste après « Dupliquer la page », sur la copie où l'on n'a rien
+   *  fait, c'est la copie qui part : on revient sur l'original, « Copie
+   *  retirée », et la réponse est aussi 'page'. Sinon, vrai si un geste a
+   *  été défait. */
   annuler(): 'page' | boolean {
     if (this.enLecture) return false
     this.viderPointEnAttente()
     const r = this.tableau.annuler(this.page)
     if (r?.page) {
       this.revenirSur(r.page, this.pages.indexOf(r.page))
+      return 'page'
+    }
+    // La copie toute neuve qu'on regardait s'en va : on revient sur son original
+    if (r?.copie && r.retour) {
+      this.copieRetiree(r.copie, r.retour)
       return 'page'
     }
     this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()
@@ -2382,11 +2494,12 @@ export class App {
    *  L'objet se vise comme le clic de la Sélection, à la portée du pointeur ;
    *  l'intérieur d'une figure fermée ne compte qu'à la Sélection et au doigt
    *  qui déplace (le Stylo en main, un clic droit dans le vide d'un triangle
-   *  ouvre le menu de la page, comme à côté). Rien pendant la revue, une
-   *  séance d'automatismes, ni quand un clic est attendu ; rien sur un
+   *  ouvre le menu de la page, comme à côté). Rien quand le tableau est
+   *  caché (la revue, une séance d'automatismes, la trieuse des pages : voir
+   *  tableauCache), ni quand un clic est attendu ; rien sur un
    *  instrument, qui recouvre ce qui est dessous et n'a pas de menu. */
   demanderOptions(client: { clientX: number; clientY: number }, pointeur: TypePointeur) {
-    if (this.enLecture || this.placement || document.body.classList.contains('en-seance')) return
+    if (tableauCache(this) || this.placement) return
     this.viderPointEnAttente()
     const m = this.monde(client), s = this.ecran(client)
     if (this.instruments.size && this.instrumentSous(m)) { this.ui.fermerMenus(); return }
@@ -2422,7 +2535,7 @@ export class App {
    *  clic est attendu (la séance et les champs de saisie gardent leurs
    *  touches : voir clavier). */
   menuAuClavier() {
-    if (this.enLecture || this.placement) return
+    if (tableauCache(this) || this.placement) return
     this.viderPointEnAttente()
     this.ui.fermerMenus()
     this.toucheMenuA = performance.now()
@@ -3081,12 +3194,13 @@ export class App {
    *  autre onglet, de l'autre version) ; une image (comme avant) ; la copie
    *  gardée, si le texte du presse-papiers est vide ou est le sien (l'écriture
    *  dans le système a échoué, ou c'est bien elle) ; sinon on dit qu'il n'y a
-   *  rien à coller. Ni pendant la revue, ni pendant une séance, ni dans une
-   *  fenêtre ouverte. */
+   *  rien à coller. Ni quand le tableau est caché (la revue, une séance, la
+   *  trieuse des pages : Ctrl+V y collerait une copie sur une page qu'on ne
+   *  voit pas), ni dans une fenêtre ouverte. */
   private surColler(e: ClipboardEvent) {
     clearTimeout(this.collageAttendu); this.collageAttendu = 0
     if ((e.target as HTMLElement | null)?.closest?.('input, textarea, [contenteditable]')) return
-    if (this.enLecture || document.body.classList.contains('en-seance') || document.querySelector('dialog[open]')) return
+    if (tableauCache(this) || document.querySelector('dialog[open]')) return
     const d = e.clipboardData
     if (!d) return
     const marquee = lireHtml(d.getData('text/html'))
@@ -3214,6 +3328,10 @@ export class App {
       if (toucheMarquePage(e)) e.preventDefault()
       return
     }
+    // La trieuse des pages couvre le tableau : plus aucune touche du tableau
+    // (elle a les siennes). Après les champs de saisie : Ctrl + D dans le
+    // champ du nom d'une page reste empêché, comme ailleurs.
+    if (tableauCache(this)) return
     const ctrl = e.ctrlKey || e.metaKey
     // Le menu complet ouvert (clic droit, appui long, « Options ») ou le menu
     // d'un sommet : les flèches et Tab y mènent, Espace y appuie sur un
@@ -3237,6 +3355,15 @@ export class App {
       e.preventDefault()
       const refaire = lettre === 'y' || e.shiftKey
       if (refaire ? !this.retablir() : !this.annuler()) this.ui.message(refaire ? 'Rien à rétablir sur cette page' : 'Rien à annuler sur cette page')
+      return
+    }
+    // Ctrl + Maj + D (⌘ + Maj + D) : dupliquer la page, avec son histoire.
+    // La lettre par e.key, comme Ctrl + D (en AZERTY comme en QWERTY) ;
+    // toujours empêché, sinon le navigateur marque tous les onglets. Ni dans
+    // une fenêtre ouverte, ni une touche tenue (une copie par appui).
+    if (ctrl && e.shiftKey && !e.altKey && lettre === 'd') {
+      e.preventDefault()
+      if (!e.repeat && !document.querySelector('dialog[open]')) this.dupliquerLaPage()
       return
     }
     // Ctrl+A, C, X, V, D (⌘ sur Mac) : tout sélectionner, copier, couper,
@@ -3264,7 +3391,8 @@ export class App {
       }
     }
     if (e.key === 'Delete' || e.key === 'Backspace') { this.supprimerSelection(); return }
-    if (e.key === 'PageDown') { this.pageSuivante(1); return }
+    // Page↓ sur la dernière page ne crée rien, et le dit (voir dernierePage)
+    if (e.key === 'PageDown') { if (!this.pageSuivante(1) && this.pages.length) this.dernierePage(); return }
     if (e.key === 'PageUp') { this.pageSuivante(-1); return }
     if (e.key === 'Enter' && this.polyEnCours) { this.finirPolygone(false); return }
     if (e.key === 'Escape') { this.echap(); return }

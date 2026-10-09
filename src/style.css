@@ -124,7 +124,14 @@ button, select, input { font: inherit; color: inherit; }
 .taille span { width: 24px; height: var(--d); border-radius: 99px; background: var(--encre-douce); }
 .taille.actif span { background: var(--encre); box-shadow: 0 0 0 3px var(--surligneur); }
 
-.rang { min-width: 56px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rang { min-width: 56px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Le nom de la page, après son numéro : coupé au-delà d'une vingtaine de
+   caractères (il est entier dans le titre du compteur) ; « pre » garde
+   l'espace qui le sépare du numéro */
+.rang-nom {
+  display: inline-block; vertical-align: bottom; max-width: 27ch;
+  overflow: hidden; text-overflow: ellipsis; white-space: pre; font-weight: 400;
+}
 
 .choix-fond {
   height: 44px; padding: 0 10px; margin: 0 2px;
@@ -209,14 +216,37 @@ body.en-seance .toast { z-index: 41; }
 .toast.visible .action { pointer-events: auto; }
 .toast .action:hover { background: rgba(255, 255, 255, 0.28); }
 
+/* ---------- Le numéro de la page, en grand, quand on change de page ----------
+   En haut au centre de ce qu'on voit (ui.annoncerPage le place), sous le
+   message (14), au-dessus du tableau ; aucun appui ne s'y arrête : le stylet
+   écrit à travers. Il paraît en 120 ms, s'efface en 300 ms (120 ms quand on
+   touche le tableau). */
+.annonce-page {
+  position: fixed; z-index: 13; transform: translateX(-50%);
+  max-width: calc(100vw - 16px); padding: 8px 24px 10px;
+  border: 1px solid var(--filet); border-radius: 14px;
+  background: rgba(246, 248, 251, 0.85); color: var(--encre);
+  text-align: center; pointer-events: none; user-select: none; -webkit-user-select: none;
+  opacity: 0; transition: opacity 0.3s ease-out;
+}
+.annonce-page.visible { opacity: 1; transition: opacity 0.12s ease-in; }
+.annonce-page.vite { transition: opacity 0.12s ease-out; }
+.annonce-numero { display: block; font-size: 48px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.annonce-nom { display: block; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.annonce-nom:empty { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .toast, .pastille::after { transition: none; }
+  .annonce-page, .annonce-page.visible, .annonce-page.vite { transition: none; }
 }
 
-/* Petits écrans : la barre du haut se resserre */
+/* Petits écrans : la barre du haut se resserre ; le compteur ne dit que le
+   numéro de la page, et l'annonce est plus petite */
 @media (max-width: 640px) {
   .barre-haut { left: 12px; right: 12px; max-width: none; justify-content: center; }
   .barre-outils { top: auto; bottom: 12px; transform: none; max-height: calc(100% - 140px); }
+  .rang-nom { display: none; }
+  .annonce-numero { font-size: 34px; }
 }
 
 /* ---------- Choix de la forme ---------- */

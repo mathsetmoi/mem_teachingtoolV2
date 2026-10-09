@@ -20,6 +20,7 @@ import type { App } from './app'
 import type { EnteteTableau } from './fichier'
 import { ErreurFichier, EXTENSION_TABLEAU, dateLisible, ecrireTableau, lireTableau, nomTableau, pagesLisibles, quandLisible, tailleLisible } from './fichier'
 import { ecrire } from './reglages'
+import { tableauCache } from './navigateur'
 
 /** Quand le tableau a été enregistré dans un fichier pour la dernière fois (ms) */
 const CLE_DERNIER = 'mem-dernier-enregistrement'
@@ -91,7 +92,9 @@ export class Sauvegarde {
 
     // En capture sur window, posé au démarrage : avant le navigateur, qui
     // enregistrerait la page web ou ouvrirait un fichier, et avant la revue.
-    // e.key : en AZERTY comme en QWERTY, la lettre S est « s ».
+    // e.key : en AZERTY comme en QWERTY, la lettre S est « s ». Pendant la
+    // revue et la trieuse des pages, Ctrl + O se tait (le tableau qu'on
+    // remplacerait est caché) ; Ctrl + S, lui, enregistre toujours.
     window.addEventListener('keydown', e => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey) return
       const k = e.key.toLowerCase()
@@ -99,7 +102,7 @@ export class Sauvegarde {
       e.preventDefault()
       if (e.repeat || document.querySelector('dialog[open]') || enSeance()) return
       if (k === 's') void this.enregistrer()
-      else if (!this.app.enLecture) this.ouvrir()
+      else if (!tableauCache(this.app)) this.ouvrir()
     }, true)
   }
 

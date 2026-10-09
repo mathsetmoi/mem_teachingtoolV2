@@ -267,4 +267,30 @@ describe('Ctrl+Z sur la copie toute neuve (« Dupliquer la page » au tableau)',
     expect(t.annuler(q)).toEqual({ copie: q, retour: p })
     expect(t.ordre.toArray()).toEqual([p, b])
   })
+
+  it('retraitDeCopie (le bouton « Annuler » du message) : oui, écrit, non — sans rien changer', async () => {
+    const { t, pages: [p, b] } = await tableau(2)
+    expect(t.retraitDeCopie(p)).toBe('non')                       // pas une copie
+    expect(t.retraitDeCopie(await dupliquer(t, b))).toBe('non')    // une copie sans marque (la trieuse)
+    const q = await dupliquer(t, p, true)
+    const avant = { ordre: t.ordre.toArray(), film: t.film.length }
+    expect(t.retraitDeCopie(q)).toBe('oui')
+    await geste(t, q, 50, 50)
+    expect(t.retraitDeCopie(q)).toBe('ecrit')
+    t.annuler(q)
+    expect(t.retraitDeCopie(q)).toBe('oui')                        // le geste défait : de nouveau vierge
+    expect(t.ordre.toArray()).toEqual([...avant.ordre])
+    // Son fond changé (hors de sa pile) : elle ne se retire plus ainsi
+    t.changerFond(q, 'seyes'); await attendre(500)
+    expect(t.retraitDeCopie(q)).toBe('non')
+    t.changerFond(q, 'carreaux'); await attendre(500)
+    expect(t.retraitDeCopie(q)).toBe('oui')
+    // L'original parti : la marque ne vaut plus, même s'il revient
+    t.pageVue = q
+    t.jeterPages([p]); await attendre(500)
+    expect(t.retraitDeCopie(q)).toBe('non')
+    t.remettrePage(p); await attendre(500)
+    expect(t.retraitDeCopie(q)).toBe('non')
+    expect(t.ordre.toArray()).toContain(q)
+  })
 })

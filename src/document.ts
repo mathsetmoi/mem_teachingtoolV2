@@ -627,6 +627,21 @@ export class Tableau {
     return retour
   }
 
+  /** Ce que ferait le retrait de la copie toute neuve `id` (le bouton
+   *  « Annuler » du message de « Dupliquer la page ») : 'oui', elle
+   *  partirait ; 'ecrit', on y a fait des gestes, qu'il faut défaire d'abord
+   *  (sa pile est plus longue qu'à la copie) ; 'non', elle ne peut plus être
+   *  retirée ainsi (sa marque ne vaut plus : elle ou son original a quitté
+   *  l'ordre ; elle est la seule page ; ou elle a changé hors de sa pile, un
+   *  fond, des objets envoyés). Rien ne change. */
+  retraitDeCopie(id: string): 'oui' | 'ecrit' | 'non' {
+    const ordre = new Set(this.ordre.toArray())
+    const m = this.marques.get(id)?.find(x => x.genre === 'copie' && x.id === id)
+    if (!m || !this.marqueValable(m, ordre) || ordre.size <= 1) return 'non'
+    if ((this.piles.get(id)?.undoStack.length ?? 0) > m.profondeur) return 'ecrit'
+    return this.vierge(id) ? 'oui' : 'non'
+  }
+
   /** La copie est-elle encore telle qu'à sa naissance (la première étape du
    *  film notée sur elle) : le même fond, la même origine, les mêmes formes
    *  au même contenu ? Ce qu'on y a fait puis défait ne compte pas (le
