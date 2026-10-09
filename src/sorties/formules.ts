@@ -154,7 +154,17 @@ export class FormulesSurCanevas {
     c.save()
     c.imageSmoothingEnabled = true
     c.imageSmoothingQuality = 'high'
-    c.drawImage(img.c, f.x, f.y, img.l, img.h)
+    // Posée sur des pixels entiers du canevas : à cheval sur deux pixels, le
+    // trait d'une fraction, le cadre de \boxed s'étaleraient en gris sur
+    // deux rangées (mesuré sur une feuille du PDF : 8,7 d'écart moyen avec
+    // l'écran au lieu de 5,9, selon où tombe la formule)
+    const m = typeof c.getTransform === 'function' ? c.getTransform() : null
+    if (m && m.b === 0 && m.c === 0 && m.a > 0 && m.d > 0) {
+      const x0 = Math.round(f.x * m.a + m.e), y0 = Math.round(f.y * m.d + m.f)
+      const x1 = Math.round((f.x + img.l) * m.a + m.e), y1 = Math.round((f.y + img.h) * m.d + m.f)
+      c.setTransform(1, 0, 0, 1, 0, 0)
+      c.drawImage(img.c, x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0))
+    } else c.drawImage(img.c, f.x, f.y, img.l, img.h)
     c.restore()
     return true
   }

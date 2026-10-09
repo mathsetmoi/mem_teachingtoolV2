@@ -266,10 +266,15 @@ export class Rendu {
    * sert. On ne lui pose jamais `formes` (on passe o.formes) : l'image
    * d'écran que son constructeur a planifiée referait sinon le DOM KaTeX de
    * chaque formule dans son élément détaché.
+   * coin : où commence, sur le canevas, la zone de l h que l'on peint (en
+   * px CSS ; (0, 0) sinon) : une feuille du PDF ne peint que sa zone utile,
+   * dans ses marges, et le fond y voit les bords de cette zone (les flèches
+   * des axes du repère au bout de la zone, pas dans la marge).
    */
   peindreSur(c: CanvasRenderingContext2D, o: {
     l: number; h: number; dpr: number; fond: boolean | 'aucun'; formes?: Forme[]
     formule?: (c: CanvasRenderingContext2D, f: Formule) => void; esquisse?: boolean
+    coin?: { x: number; y: number }
   }) {
     const garde = { l: this.l, h: this.h, dpr: this.dpr, esquisse: this.esquisse }
     this.l = o.l; this.h = o.h; this.dpr = o.dpr; this.esquisse = !!o.esquisse
@@ -278,11 +283,12 @@ export class Rendu {
       const cam = this.cam
       let formes = o.formes ?? this.formes
       if (formes.some((f, i) => i > 0 && f.z < formes[i - 1].z)) formes = [...formes].sort((a, b) => a.z - b.z)
+      const cx = o.coin?.x ?? 0, cy = o.coin?.y ?? 0
       if (o.fond !== 'aucun') {
-        c.setTransform(o.dpr, 0, 0, o.dpr, 0, 0)
+        c.setTransform(o.dpr, 0, 0, o.dpr, o.dpr * cx, o.dpr * cy)
         dessinerFond(c, o.fond ? this.fond : 'blanc', cam, o.l, o.h, this.origine)
       }
-      c.setTransform(o.dpr * cam.z, 0, 0, o.dpr * cam.z, o.dpr * cam.x, o.dpr * cam.y)
+      c.setTransform(o.dpr * cam.z, 0, 0, o.dpr * cam.z, o.dpr * (cam.x + cx), o.dpr * (cam.y + cy))
       for (const f of formes) if (f.type === 'image') this.dessinerForme(c, f, null)
       for (const f of formes) if (f.type !== 'image' && f.type !== 'formule') this.dessinerForme(c, f, null)
       if (o.formule) for (const f of formes) if (f.type === 'formule') { c.save(); o.formule(c, f); c.restore() }

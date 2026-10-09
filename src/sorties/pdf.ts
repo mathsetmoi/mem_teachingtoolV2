@@ -10,12 +10,24 @@
 // (mesuré : environ 976 Ko pour une feuille très chargée, contre 238 à
 // 283 Ko ici).
 // Une feuille de tableau n'a que peu de couleurs (le papier, le quadrillage,
-// quatre encres et leurs bords lissés) : elle part en couleurs indexées
-// (les 256 couleurs les plus fréquentes, chaque pixel à la plus proche,
-// compressé par Flate), deux fois plus légère qu'un JPEG de même finesse et
-// sans ses bavures autour des lettres. Une feuille dominée par une photo
-// (les 256 premières couleurs couvrent moins de 90 % des pixels) part en
-// JPEG.
+// quelques encres et leurs bords lissés) : elle part en couleurs indexées,
+// compressées par Flate, deux fois plus légère qu'un JPEG de même finesse et
+// sans ses bavures autour des lettres. La palette (256 couleurs au plus) :
+// d'abord les couleurs des formes de la feuille (une petite croix verte au
+// milieu d'une page d'écriture noire garde son vert, même si les nuances
+// lissées de l'encre noire sont bien plus fréquentes), puis les plus
+// fréquentes, en écartant d'abord celles presque pareilles à une déjà prise.
+// Chaque pixel prend la plus proche, mais l'écart est borné. Un pixel est
+// faux à plus de 24 niveaux (distance dans l'espace RVB) de sa couleur. Les
+// bords lissés d'une écriture dense en ont toujours un peu (mesuré : 0,03 à
+// 0,05 % des pixels, des nuances uniques, invisibles une à une) ; ce qui se
+// voit, c'est un aplat faux : une marque, un dégradé, une surface d'une
+// autre couleur, des pixels faux pareils à leur voisin de gauche (mesuré :
+// 0 à 11 sur une feuille dense). Plus de 0,01 % d'aplats faux, ou plus de
+// 0,5 % de pixels faux : pas de palette, et la feuille part autrement (en
+// RVB compressé sans perte, Flate et ses lignes prédites comme celles d'un
+// PNG ; c'est l'export qui choisit, et une feuille où paraît une image n'y
+// passe jamais : une photo ne se ramène pas à 256 couleurs).
 // Le fichier : l'en-tête %PDF-1.4 et sa ligne de quatre octets binaires,
 // le catalogue, l'arbre des pages, puis pour chaque feuille sa page, son
 // flux de contenu (« pose l'image sur toute la feuille ») et son image ;
@@ -33,9 +45,12 @@ export const A4 = { l: 595.28, h: 841.89 }
 export interface ImageIndexee { genre: 'indexee'; largeur: number; hauteur: number; palette: Uint8Array; donnees: Uint8Array }
 /** Une image JPEG (en RVB), telle que le canevas l'a écrite */
 export interface ImageJpeg { genre: 'jpeg'; largeur: number; hauteur: number; donnees: Uint8Array }
+/** Une image en RVB sans perte : ses lignes prédites (voir lignesPredites),
+ *  compressées (zlib) */
+export interface ImageRvb { genre: 'rvb'; largeur: number; hauteur: number; donnees: Uint8Array }
 
 /** Une feuille du PDF : sa taille en points, et l'image qui la couvre */
-export interface Feuille { l: number; h: number; image: ImageIndexee | ImageJpeg }
+export interface Feuille { l: number; h: number; image: ImageIndexee | ImageJpeg | ImageRvb }
 
 /** Une image ramenée à sa palette (voir palettiser) */
 export interface Palettisee { palette: Uint8Array; indices: Uint8Array }
@@ -43,19 +58,35 @@ export interface Palettisee { palette: Uint8Array; indices: Uint8Array }
 /** Les 256 premières couleurs doivent couvrir au moins cette part des pixels */
 const COUVERTURE = 0.9
 const MAX_COULEURS = 256
+/** Un pixel rendu à plus de cette distance (RVB) de sa couleur est faux */
+export const ECART_MAX = 24
+/** Au-delà de cette part d'aplats faux (un pixel faux pareil à son voisin de
+ *  gauche), ou de cette part de pixels faux, pas de palette */
+export const PART_APLATS_FAUX = 0.0001
+export const PART_FAUSSE = 0.005
+/** En remplissant la palette, une couleur à moins de cette distance d'une
+ *  déjà prise attend son tour (elle s'y ramène presque sans écart) */
+const VOISINE = 6
+/** Le choix des couleurs ne regarde que les plus fréquentes */
+const CANDIDATES = 16384
+/** Au-delà de ce nombre de couleurs, on ne trie que les plus fréquentes */
+const TRI_MAX = 65536
 
 // ---------- La palette ----------
 
 /**
  * Ramène une image RVBA (le canevas d'une feuille, opaque : l'alpha est
- * ignoré) à au plus 256 couleurs : les plus fréquentes, chaque pixel prenant
- * l'indice de la plus proche (distance dans l'espace RVB, gardée en cache
- * pour chaque couleur rencontrée). null si ces 256 couleurs couvrent moins
- * de 90 % des pixels : une photo, qui partira en JPEG. Une image qui a déjà
- * 256 couleurs au plus est rendue telle quelle, au pixel près.
+ * ignoré) à au plus 256 couleurs, chaque pixel prenant l'indice de la plus
+ * proche (distance dans l'espace RVB, gardée en cache pour chaque couleur
+ * rencontrée). forcees : des couleurs (0xRRGGBB) à prendre d'abord, si elles
+ * paraissent dans l'image (celles des formes). null : pas de palette fidèle
+ * (les 256 premières couleurs couvrent moins de 90 % des pixels, plus de
+ * 0,01 % des pixels sont des aplats faux, ou plus de 0,5 % des pixels sont
+ * faux : voir plus haut). Une image qui a déjà 256 couleurs au plus est
+ * rendue telle quelle, au pixel près.
  */
-export function palettiser(rgba: Uint8ClampedArray | Uint8Array, l: number, h: number): Palettisee | null {
-  const g = palettiserLignes(rgba, l, h, h || 1)
+export function palettiser(rgba: Uint8ClampedArray | Uint8Array, l: number, h: number, forcees: readonly number[] = []): Palettisee | null {
+  const g = palettiserLignes(rgba, l, h, h || 1, forcees)
   for (;;) { const r = g.next(); if (r.done) return r.value }
 }
 
@@ -63,9 +94,10 @@ export function palettiser(rgba: Uint8ClampedArray | Uint8Array, l: number, h: n
  * La même chose par tranches de `lignes` lignes : le générateur rend la main
  * après chaque tranche (il donne l'avancement, de 0 à 1), pour que l'export
  * d'un gros tableau ne gèle pas l'interface ; sa valeur finale est celle de
- * palettiser. Deux passages : compter les couleurs, puis donner les indices.
+ * palettiser. Deux passages : compter les couleurs, puis donner les indices
+ * (et compter les pixels faux : au-delà de ce qui est permis, on s'arrête).
  */
-export function* palettiserLignes(rgba: Uint8ClampedArray | Uint8Array, l: number, h: number, lignes = 128): Generator<number, Palettisee | null, void> {
+export function* palettiserLignes(rgba: Uint8ClampedArray | Uint8Array, l: number, h: number, lignes = 128, forcees: readonly number[] = []): Generator<number, Palettisee | null, void> {
   const n = l * h
   if (!(n > 0) || rgba.length < n * 4) return null
   const pas = Math.max(1, Math.floor(lignes))
@@ -84,35 +116,86 @@ export function* palettiserLignes(rgba: Uint8ClampedArray | Uint8Array, l: numbe
     }
     yield Math.min(fin, n) / n / 2
   }
-  // 2. La palette : les plus fréquentes, assez pour couvrir l'image
-  const tri = [...compte].sort((a, b) => b[1] - a[1]).slice(0, MAX_COULEURS)
+  // 2. La palette. Les couleurs par fréquence (au-delà de 65 536 couleurs,
+  // seulement les plus fréquentes : un tri de toutes gèlerait l'interface)
+  const tri = plusFrequentes(compte)
+  if (!tri) return null
   let couvert = 0
-  for (const [, v] of tri) couvert += v
+  for (let i = 0; i < Math.min(MAX_COULEURS, tri.length); i++) couvert += tri[i][1]
   if (couvert < COUVERTURE * n) return null
-  const couleurs = tri.map(([k]) => k)
+  const couleurs: number[] = []
+  const prises = new Set<number>()
+  const prendre = (k: number) => { couleurs.push(k); prises.add(k) }
+  if (tri.length <= MAX_COULEURS) for (const [k] of tri) prendre(k)
+  else {
+    // Les couleurs des formes d'abord, celles qui paraissent ; puis les plus
+    // fréquentes, assez différentes de celles déjà prises ; enfin, s'il reste
+    // de la place, les plus fréquentes qui restent
+    for (const k of forcees) if (couleurs.length < MAX_COULEURS && compte.has(k) && !prises.has(k)) prendre(k)
+    const candidates = tri.length > CANDIDATES ? tri.slice(0, CANDIDATES) : tri
+    for (const [k] of candidates) {
+      if (couleurs.length >= MAX_COULEURS) break
+      if (!prises.has(k) && ecartMin(couleurs, k) > VOISINE * VOISINE) prendre(k)
+    }
+    for (const [k] of candidates) {
+      if (couleurs.length >= MAX_COULEURS) break
+      if (!prises.has(k)) prendre(k)
+    }
+  }
   const palette = new Uint8Array(couleurs.length * 3)
+  // L'indice de chaque couleur rencontrée, plus 256 si elle est fausse (trop
+  // loin de la couleur de la palette qui la remplace)
   const indice = new Map<number, number>()
   couleurs.forEach((k, q) => {
     palette[q * 3] = k >> 16; palette[q * 3 + 1] = (k >> 8) & 255; palette[q * 3 + 2] = k & 255
     indice.set(k, q)
   })
-  // 3. Chaque pixel prend l'indice de sa couleur, ou de la plus proche
+  // 3. Chaque pixel prend l'indice de sa couleur, ou de la plus proche ; trop
+  // de pixels faux, ou d'aplats faux : pas de palette
+  const permis = Math.floor(PART_FAUSSE * n), aplatsPermis = Math.floor(PART_APLATS_FAUX * n)
+  const loin = ECART_MAX * ECART_MAX
+  let fausses = 0, aplats = 0
   const indices = new Uint8Array(n)
   for (let y0 = 0; y0 < h; y0 += pas) {
-    const fin = Math.min(h, y0 + pas) * l
-    let dernier = -1, q = 0
-    for (let i = y0 * l; i < fin; i++) {
-      const k = cle(rgba, i)
-      if (k !== dernier) {
-        let j = indice.get(k)
-        if (j === undefined) { j = plusProche(couleurs, k); indice.set(k, j) }
-        dernier = k; q = j
+    const yf = Math.min(h, y0 + pas)
+    for (let y = y0; y < yf; y++) {
+      let dernier = -1, q = 0, faux = false
+      for (let i = y * l, fin = i + l; i < fin; i++) {
+        const k = cle(rgba, i)
+        if (k !== dernier) {
+          let j = indice.get(k)
+          if (j === undefined) {
+            const p = plusProche(couleurs, k)
+            j = p + (ecart(couleurs[p], k) > loin ? MAX_COULEURS : 0)
+            indice.set(k, j)
+          }
+          dernier = k; q = j & 255; faux = j >= MAX_COULEURS
+          if (faux && ++fausses > permis) return null
+        } else if (faux && (++fausses > permis || ++aplats > aplatsPermis)) return null
+        indices[i] = q
       }
-      indices[i] = q
     }
-    yield 0.5 + Math.min(fin, n) / n / 2
+    yield 0.5 + yf * l / n / 2
   }
   return { palette, indices }
+}
+
+/** Les couleurs comptées, des plus fréquentes aux plus rares. Au-delà de
+ *  65 536 couleurs, seulement celles qui paraissent assez souvent pour être
+ *  au plus 65 536 (le seuil se lit dans l'histogramme des comptes) ; si
+ *  moins de 256 restent, null : une photo, qu'aucune palette ne rend */
+function plusFrequentes(compte: Map<number, number>): [number, number][] | null {
+  if (compte.size <= TRI_MAX) return [...compte].sort((a, b) => b[1] - a[1])
+  const PLAFOND = 1024
+  const histo = new Uint32Array(PLAFOND + 1)
+  for (const v of compte.values()) histo[Math.min(PLAFOND, v)]++
+  // Le plus petit seuil qui garde au plus 65 536 couleurs
+  let seuil = PLAFOND + 1, gardees = 0
+  while (seuil > 1 && gardees + histo[seuil - 1] <= TRI_MAX) gardees += histo[--seuil]
+  if (gardees < MAX_COULEURS) return null
+  const r: [number, number][] = []
+  for (const e of compte) if (e[1] >= seuil) r.push(e)
+  return r.sort((a, b) => b[1] - a[1])
 }
 
 /** La couleur RVB du pixel i, en un entier 0xRRGGBB */
@@ -121,17 +204,86 @@ function cle(d: Uint8ClampedArray | Uint8Array, i: number): number {
   return (d[k] << 16) | (d[k + 1] << 8) | d[k + 2]
 }
 
+/** Le carré de la distance entre deux couleurs 0xRRGGBB */
+function ecart(c: number, k: number): number {
+  const dr = (c >> 16) - (k >> 16), dg = ((c >> 8) & 255) - ((k >> 8) & 255), db = (c & 255) - (k & 255)
+  return dr * dr + dg * dg + db * db
+}
+
+/** Le carré de la distance de k à la plus proche de ces couleurs (Infinity : aucune) */
+function ecartMin(couleurs: readonly number[], k: number): number {
+  let d = Infinity
+  for (let q = 0; q < couleurs.length; q++) { const e = ecart(couleurs[q], k); if (e < d) { d = e; if (!e) break } }
+  return d
+}
+
 /** L'indice de la couleur de la palette la plus proche de k */
 function plusProche(couleurs: readonly number[], k: number): number {
-  const r = k >> 16, g = (k >> 8) & 255, b = k & 255
   let meilleur = 0, d = Infinity
   for (let q = 0; q < couleurs.length; q++) {
-    const c = couleurs[q]
-    const dr = (c >> 16) - r, dg = ((c >> 8) & 255) - g, db = (c & 255) - b
-    const e = dr * dr + dg * dg + db * db
+    const e = ecart(couleurs[q], k)
     if (e < d) { d = e; meilleur = q; if (!e) break }
   }
   return meilleur
+}
+
+/** Une couleur CSS « #rgb » ou « #rrggbb » en 0xRRGGBB (null : une autre écriture) */
+export function couleurHex(css: string | null | undefined): number | null {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(css ?? '').trim())
+  if (!m) return null
+  const h = m[1].length === 3 ? [...m[1]].map(c => c + c).join('') : m[1]
+  return parseInt(h, 16)
+}
+
+// ---------- Le RVB sans perte ----------
+
+/**
+ * Les lignes d'une image RVBA (l'alpha ignoré) en RVB, chacune précédée de
+ * son filtre, comme celles d'un PNG (le prédicteur 15 du filtre Flate du
+ * PDF) : pour chaque ligne, le filtre (aucun, gauche, haut, Paeth) qui
+ * donne les plus petits écarts, ce qui compresse un papier quadrillé et
+ * l'écriture deux à trois fois mieux. Par tranches de `lignes` lignes (le
+ * générateur rend la main entre deux, avec l'avancement) ; sa valeur
+ * finale : h × (1 + 3 l) octets, à compresser.
+ */
+export function* lignesPredites(rgba: Uint8ClampedArray | Uint8Array, l: number, h: number, lignes = 128): Generator<number, Uint8Array, void> {
+  const w = l * 3, pas = Math.max(1, Math.floor(lignes))
+  const out = new Uint8Array(h * (w + 1))
+  let avant = new Uint8Array(w), ligne = new Uint8Array(w)
+  const essais = [new Uint8Array(w), new Uint8Array(w), new Uint8Array(w), new Uint8Array(w)]
+  for (let y = 0; y < h; y++) {
+    for (let x = 0, s = y * l * 4; x < w; x += 3, s += 4) { ligne[x] = rgba[s]; ligne[x + 1] = rgba[s + 1]; ligne[x + 2] = rgba[s + 2] }
+    // 0 aucun, 1 gauche, 2 haut, 4 Paeth (le filtre 3, la moyenne, n'aide guère ici)
+    const [e0, e1, e2, e4] = essais
+    let s0 = 0, s1 = 0, s2 = 0, s4 = 0
+    for (let x = 0; x < w; x++) {
+      const v = ligne[x], a = x >= 3 ? ligne[x - 3] : 0, b = avant[x], c = x >= 3 ? avant[x - 3] : 0
+      const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c)
+      const pr = pa <= pb && pa <= pc ? a : pb <= pc ? b : c
+      const f0 = v, f1 = (v - a) & 255, f2 = (v - b) & 255, f4 = (v - pr) & 255
+      e0[x] = f0; e1[x] = f1; e2[x] = f2; e4[x] = f4
+      s0 += f0 < 128 ? f0 : 256 - f0; s1 += f1 < 128 ? f1 : 256 - f1; s2 += f2 < 128 ? f2 : 256 - f2; s4 += f4 < 128 ? f4 : 256 - f4
+    }
+    let filtre = 0, meilleur = e0, somme = s0
+    if (s1 < somme) { filtre = 1; meilleur = e1; somme = s1 }
+    if (s2 < somme) { filtre = 2; meilleur = e2; somme = s2 }
+    if (s4 < somme) { filtre = 4; meilleur = e4 }
+    const o = y * (w + 1)
+    out[o] = filtre
+    out.set(meilleur, o + 1)
+    const t = avant; avant = ligne; ligne = t
+    if ((y + 1) % pas === 0 && y + 1 < h) yield (y + 1) / h
+  }
+  return out
+}
+
+/** L'image RVB sans perte d'une feuille (d'un coup : les essais ; l'export
+ *  passe par lignesPredites et compresse par morceaux) */
+export function imageRvb(rgba: Uint8ClampedArray | Uint8Array, largeur: number, hauteur: number, niveau: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 = 6): ImageRvb {
+  const g = lignesPredites(rgba, largeur, hauteur, hauteur || 1)
+  let r = g.next()
+  while (!r.done) r = g.next()
+  return { genre: 'rvb', largeur, hauteur, donnees: zlibSync(r.value, { level: niveau }) }
 }
 
 /** L'image indexée d'une feuille : les indices compressés (zlib, comme le
@@ -186,6 +338,8 @@ export function ecrirePdf(feuilles: readonly Feuille[], info: { titre: string; d
     if (im.genre === 'indexee') {
       const n = Math.floor(im.palette.length / 3)
       objet(np + 2, `<< ${tete} /ColorSpace [/Indexed /DeviceRGB ${Math.max(0, n - 1)} <${hex(im.palette.subarray(0, n * 3))}>] /BitsPerComponent 8 /Filter /FlateDecode /Length ${im.donnees.length} >>`, im.donnees)
+    } else if (im.genre === 'rvb') {
+      objet(np + 2, `<< ${tete} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /DecodeParms << /Predictor 15 /Colors 3 /BitsPerComponent 8 /Columns ${entier(im.largeur)} >> /Length ${im.donnees.length} >>`, im.donnees)
     } else {
       objet(np + 2, `<< ${tete} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${im.donnees.length} >>`, im.donnees)
     }

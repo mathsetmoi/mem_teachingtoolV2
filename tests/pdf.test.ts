@@ -3,10 +3,13 @@
 // lire partout : l'en-tête et sa ligne binaire, chaque décalage de la table
 // des renvois exact, l'arbre des pages, la taille A4, le titre en UTF-16 avec
 // ses accents. La palette : une image de 256 couleurs au plus revient telle
-// quelle ; du bruit (une photo) n'en a pas.
+// quelle ; du bruit (une photo) n'en a pas ; une petite marque de couleur
+// garde la sienne sur une page chargée ; un aplat qu'aucune couleur de la
+// palette ne rend refuse la palette (la feuille part en RVB sans perte, dont
+// les lignes prédites se relisent exactement).
 import { describe, expect, it } from 'vitest'
 import { unzlibSync } from 'fflate'
-import { A4, datePdf, ecrirePdf, imageIndexee, palettiser, palettiserLignes, utf16 } from '../src/sorties/pdf'
+import { A4, couleurHex, datePdf, ecrirePdf, imageIndexee, imageRvb, lignesPredites, palettiser, palettiserLignes, utf16 } from '../src/sorties/pdf'
 import type { Feuille } from '../src/sorties/pdf'
 import { DPR_PDF, MARGE_CONTENU, PPP, PX_PAR_MM, Z_REEL, dateDeFichier, decouper, listeNumeros, mettreEnPage, nomDuPdf, papier, piedDePage, texteFini, texteProgression, texteRien, titreDuPdf } from '../src/sorties/mise-en-page'
 
@@ -94,6 +97,64 @@ describe('ecrirePdf', () => {
   })
 })
 
+/** Défait les filtres PNG (0 aucun, 1 gauche, 2 haut, 3 moyenne, 4 Paeth) de
+ *  ces lignes : ce que fait un lecteur de PDF avec le prédicteur 15 */
+function defaire(o: Uint8Array, l: number, h: number): Uint8Array {
+  const w = l * 3, r = new Uint8Array(w * h)
+  for (let y = 0; y < h; y++) {
+    const f = o[y * (w + 1)]
+    for (let x = 0; x < w; x++) {
+      const v = o[y * (w + 1) + 1 + x]
+      const a = x >= 3 ? r[y * w + x - 3] : 0, b = y ? r[(y - 1) * w + x] : 0, c = x >= 3 && y ? r[(y - 1) * w + x - 3] : 0
+      const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c)
+      const pr = pa <= pb && pa <= pc ? a : pb <= pc ? b : c
+      r[y * w + x] = (v + (f === 0 ? 0 : f === 1 ? a : f === 2 ? b : f === 3 ? (a + b) >> 1 : pr)) & 255
+    }
+  }
+  return r
+}
+
+describe('le RVB sans perte', () => {
+  // Un papier quadrillé, une écriture et un dégradé : chaque filtre a sa chance
+  const l = 90, h = 60
+  const d = new Uint8ClampedArray(l * h * 4)
+  for (let y = 0; y < h; y++) for (let x = 0; x < l; x++) {
+    const k = (y * l + x) * 4
+    const ligne = x % 10 === 0 || y % 10 === 0
+    const v = x > 60 ? [x * 3, y * 4, (x + y) & 255] : ligne ? [206, 220, 240] : [255, 255, 255]
+    if ((x * 7 + y * 3) % 23 === 0) v.splice(0, 3, 27, 34, 48)
+    d.set([...v, 255], k)
+  }
+
+  it('les lignes prédites se relisent exactement (filtre par ligne, comme un PNG) ; par tranches, le même résultat', () => {
+    const g = lignesPredites(d, l, h, 7)
+    const pas: number[] = []
+    let r = g.next()
+    while (!r.done) { pas.push(r.value); r = g.next() }
+    expect(pas.length).toBe(Math.ceil(h / 7) - 1)
+    const o = r.value
+    expect(o.length).toBe(h * (1 + 3 * l))
+    const lu = defaire(o, l, h)
+    for (let i = 0; i < l * h; i++) expect([lu[i * 3], lu[i * 3 + 1], lu[i * 3 + 2]]).toEqual([d[i * 4], d[i * 4 + 1], d[i * 4 + 2]])
+    // Des filtres choisis ligne par ligne, pas toujours le même
+    const filtres = new Set(Array.from({ length: h }, (_, y) => o[y * (1 + 3 * l)]))
+    expect(filtres.size).toBeGreaterThan(1)
+    expect([...filtres].every(f => [0, 1, 2, 4].includes(f))).toBe(true)
+  })
+
+  it('dans le PDF : /DeviceRGB, FlateDecode, le prédicteur 15 et la largeur ; le flux se décompresse en ces lignes', () => {
+    const im = imageRvb(d, l, h)
+    const octets = ecrirePdf([{ l: A4.l, h: A4.h, image: im }], { titre: 't', date: 0 })
+    const texte = latin1(octets)
+    const m = new RegExp(`/Width ${l} /Height ${h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /DecodeParms << /Predictor 15 /Colors 3 /BitsPerComponent 8 /Columns ${l} >> /Length (\\d+) >>\nstream\n`).exec(texte)!
+    expect(m).not.toBeNull()
+    const debut = m.index + m[0].length, long = Number(m[1])
+    const lu = defaire(unzlibSync(octets.subarray(debut, debut + long)), l, h)
+    expect([...lu.subarray((l + 1) * 3, (l + 1) * 3 + 3)]).toEqual([255, 255, 255])
+    expect([...lu.subarray((5 * l + 70) * 3, (5 * l + 70) * 3 + 3)]).toEqual([210, 20, 75])
+  })
+})
+
 describe('palettiser', () => {
   it('256 couleurs au plus : rendues exactement, chaque pixel retrouve la sienne', () => {
     const l = 64, h = 48
@@ -135,6 +196,75 @@ describe('palettiser', () => {
     const hasard = () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 24) & 255 }
     for (let i = 0; i < l * h; i++) d.set([hasard(), hasard(), hasard(), 255], i * 4)
     expect(palettiser(d, l, h)).toBeNull()
+  })
+
+  /** Une page chargée : 300 nuances fréquentes (les bords lissés d'une encre
+   *  sur le papier, de 0 à 255 par pas de 0,85), plus fréquentes chacune que
+   *  la petite marque de couleur qu'on y pose */
+  const chargee = (l: number, h: number) => {
+    const d = new Uint8ClampedArray(l * h * 4)
+    for (let i = 0; i < l * h; i++) {
+      const t = Math.floor(i / 7) % 300, v = Math.round(t * 0.85)
+      d.set([v, v, Math.min(255, v + 14), 255], i * 4)
+    }
+    return d
+  }
+  const poser = (d: Uint8ClampedArray, l: number, x0: number, y0: number, n: number, c: number[]) => {
+    for (let y = y0; y < y0 + n; y++) for (let x = x0; x < x0 + n; x++) d.set([...c, 255], (y * l + x) * 4)
+  }
+
+  it('une petite marque de couleur sur une page chargée garde sa couleur exacte (les couleurs des formes passent d\'abord)', () => {
+    const l = 400, h = 300
+    const d = chargee(l, h)
+    const vert = [46, 158, 91], bleu = [27, 95, 191]
+    poser(d, l, 100, 100, 6, vert)
+    poser(d, l, 200, 100, 6, bleu)
+    const p = palettiser(d, l, h, [couleurHex('#2e9e5b')!, couleurHex('#1b5fbf')!, couleurHex('#123456')!])!
+    expect(p).not.toBeNull()
+    expect(p.palette.length).toBe(256 * 3)
+    const lu = (x: number, y: number) => { const q = p.indices[y * l + x]; return [p.palette[q * 3], p.palette[q * 3 + 1], p.palette[q * 3 + 2]] }
+    expect(lu(102, 102)).toEqual(vert)
+    expect(lu(202, 102)).toEqual(bleu)
+    // Une couleur forcée absente de l'image ne prend pas de place
+    const pal = Array.from({ length: 256 }, (_, q) => (p.palette[q * 3] << 16) | (p.palette[q * 3 + 1] << 8) | p.palette[q * 3 + 2])
+    expect(pal).not.toContain(0x123456)
+    // Sans les couleurs des formes, les nuances voisines s'écartent d'abord et
+    // laissent aussi la place aux marques
+    const q = palettiser(d, l, h)!
+    const lu2 = (x: number, y: number) => { const k = q.indices[y * l + x]; return [q.palette[k * 3], q.palette[k * 3 + 1], q.palette[k * 3 + 2]] }
+    expect(lu2(102, 102)).toEqual(vert)
+  })
+
+  it('un aplat qu\'aucune couleur de la palette ne rend : pas de palette (null) ; des pixels faux isolés (des bords lissés) : la palette', () => {
+    // 343 couleurs très différentes (une grille de pas 40), chacune en
+    // grands aplats : 87 ne trouvent pas de place, et leurs aplats seraient faux
+    const l = 343 * 8, h = 40
+    const grille: number[][] = []
+    for (let r = 0; r < 7; r++) for (let g = 0; g < 7; g++) for (let b = 0; b < 7; b++) grille.push([r * 40, g * 40, b * 40])
+    const d = new Uint8ClampedArray(l * h * 4)
+    for (let y = 0; y < h; y++) for (let x = 0; x < l; x++) d.set([...grille[Math.floor(x / 8)], 255], (y * l + x) * 4)
+    expect(palettiser(d, l, h)).toBeNull()
+    // 256 de ces couleurs en fond (des bandes de 7 pixels) remplissent la
+    // palette ; 40 pixels isolés d'autres couleurs de la grille (des bords
+    // lissés) sont faux, mais seuls : la palette est gardée, ils prennent la
+    // plus proche
+    const l2 = 400, h2 = 300
+    const e = new Uint8ClampedArray(l2 * h2 * 4)
+    for (let i = 0; i < l2 * h2; i++) e.set([...grille[Math.floor(i / 7) % 256], 255], i * 4)
+    for (let i = 0; i < 40; i++) e.set([...grille[256 + i], 255], (i * 2003 % (l2 * h2)) * 4)
+    expect(palettiser(e, l2, h2)).not.toBeNull()
+    // Moins de pixels faux encore, mais en un aplat de 7 × 7 : refusée
+    const f = new Uint8ClampedArray(l2 * h2 * 4)
+    for (let i = 0; i < l2 * h2; i++) f.set([...grille[Math.floor(i / 7) % 256], 255], i * 4)
+    for (let y = 50; y < 57; y++) for (let x = 50; x < 57; x++) f.set([...grille[300], 255], (y * l2 + x) * 4)
+    expect(palettiser(f, l2, h2)).toBeNull()
+  })
+
+  it('couleurHex : « #rgb », « #rrggbb » ; une autre écriture, null', () => {
+    expect(couleurHex('#1b2230')).toBe(0x1b2230)
+    expect(couleurHex('#FFF')).toBe(0xffffff)
+    expect(couleurHex('rgba(1, 2, 3, 0.5)')).toBeNull()
+    expect(couleurHex(undefined)).toBeNull()
   })
 
   it('par tranches de lignes : le même résultat, et la main rendue entre deux tranches', () => {
@@ -206,6 +336,36 @@ describe('mettreEnPage', () => {
     expect(q.k).toBeCloseTo(273 / (2016 * 0.25), 6)
   })
 
+  it('une page plus large que haute qui n\'est pas haute tient sur UNE feuille paysage, réduite à sa hauteur (pas deux feuilles)', () => {
+    // Le triangle de 25 × 18,5 cm (1 062 × 802 unités), un écran 4:3, une photo 4:3
+    for (const [l, h] of [[1062, 802], [1200, 900], [1300, 1000], [1400, 1000], [1000, 750]]) {
+      const m = mettreEnPage(boite(0, 0, l, h), [boite(0, 0, l, h)])
+      expect(m.feuilles, `${l} × ${h}`).toHaveLength(1)
+      expect(m.papier.orientation, `${l} × ${h}`).toBe('paysage')
+      // Elle tient en largeur et en hauteur ; réduite juste assez
+      const u = m.papier.utile
+      expect((l + 2 * MARGE_CONTENU) * m.z).toBeLessThanOrEqual(u.l + 1e-6)
+      expect((h + 2 * MARGE_CONTENU) * m.z).toBeLessThanOrEqual(u.h + 1e-6)
+      expect(Math.max((l + 2 * MARGE_CONTENU) * m.z / u.l, (h + 2 * MARGE_CONTENU) * m.z / u.h, m.k)).toBeCloseTo(1, 6)
+    }
+    // En paysage elle est plus grande qu'en portrait (réduite à la largeur de 186 mm)
+    const t = mettreEnPage(boite(0, 0, 1062, 802), [])
+    expect(t.k).toBeCloseTo(182 / (818 * 0.25), 6)
+    expect(t.k).toBeGreaterThan(186 / (1078 * 0.25))
+  })
+
+  it('une page qui dépasse à peine une feuille portrait y est réduite (au plus 15 %) ; au-delà, découpée à l\'échelle réelle', () => {
+    // 269 mm utiles : 1 076 unités. 1 150 unités avec l'air : réduite à 93,6 %, une feuille
+    const a = mettreEnPage(boite(0, 0, 600, 1134), [])
+    expect(a.feuilles).toHaveLength(1)
+    expect(a.papier.orientation).toBe('portrait')
+    expect(a.k).toBeCloseTo(269 / (1150 * 0.25), 6)
+    // 1 400 unités : il faudrait 77 % : deux feuilles, à l'échelle réelle
+    const b = mettreEnPage(boite(0, 0, 600, 1384), [])
+    expect(b.feuilles).toHaveLength(2)
+    expect(b.k).toBe(1)
+  })
+
   it('une page haute : le nombre de feuilles, chacune d\'au plus la hauteur utile, sans trou ni recouvrement', () => {
     // 4 016 unités avec l'air = 1 004 mm ; 269 mm par feuille : 4 feuilles
     const m = mettreEnPage(boite(0, 0, 600, 4000), [])
@@ -258,6 +418,41 @@ describe('decouper', () => {
     const bandes = decouper(bs, 0, 2000, 1000)
     expect(bandes[0].y1).toBe(899)
     expect(traverse(bs, bandes[0].y1)).toBe(0)
+  })
+
+  it('une figure qui commence vers le milieu de la feuille et tiendrait sur la suivante : coupée au-dessus d\'elle, pas au travers', () => {
+    // Une feuille de 1 076 unités ; des lignes jusqu'à la moitié, un triangle
+    // de 702 unités qui commence à 52 %, puis d'autres lignes
+    const H = 1076
+    const lignes = texte(6).map(b => ({ ...b, y: b.y - 11 }))
+    const figure = { x: 100, y: 529, l: 800, h: 702 }
+    const apres = texte(10).map(b => ({ ...b, y: b.y + 1300 }))
+    const bs = [...lignes, figure, ...apres]
+    const bandes = decouper(bs, -11, 2100, H)
+    expect(bandes[0].y1).toBe(528)
+    expect(traverse([figure], bandes[0].y1)).toBe(0)
+    // La figure est entière sur la feuille 2
+    expect(bandes[1].y0).toBeLessThanOrEqual(529)
+    expect(bandes[1].y1).toBeGreaterThanOrEqual(529 + 702)
+    // Pas plus haut que 25 % : une figure qui commence à 20 % est coupée
+    const tot = { x: 0, y: 200, l: 800, h: 1000 }
+    const b2 = decouper([tot], 0, 3000, H)
+    expect(b2[0].y1).toBe(H)
+  })
+
+  it('un grand vide de la page infinie est sauté : pas de feuille blanche ; la feuille suivante part juste au-dessus de la suite', () => {
+    // Un énoncé (5 lignes) en haut, la correction (5 lignes) un mètre plus bas
+    const haut = texte(5)
+    const bas = texte(5).map(b => ({ ...b, y: b.y + 4200 }))
+    const bandes = decouper([...haut, ...bas], -8, 4200 + 4 * 80 + 56 + 8, 1076)
+    expect(bandes).toHaveLength(2)
+    expect(bandes[1].y0).toBe(4200 - 8)
+    // Chaque feuille montre quelque chose
+    for (const b of bandes) expect([...haut, ...bas].some(x => x.y < b.y1 && x.y + x.h > b.y0)).toBe(true)
+    // Par mettreEnPage : deux feuilles, chacune avec sa caméra
+    const m = mettreEnPage({ x: 0, y: 0, l: 520, h: 4200 + 4 * 80 + 56 }, [...haut, ...bas])
+    expect(m.feuilles).toHaveLength(2)
+    expect(m.feuilles[1].y0 * m.feuilles[1].cam.z + m.feuilles[1].cam.y).toBeCloseTo(m.papier.utile.y, 6)
   })
 
   it('une figure plus haute que la fenêtre de coupe : on coupe au bas de la feuille ; sans boîte, aussi', () => {

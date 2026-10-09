@@ -7,6 +7,9 @@
 import { describe, expect, it } from 'vitest'
 import { arrondirEchelle, meilleureEchelle } from '../src/sorties/formules'
 import { MARGE_VIGNETTE, ZOOM_VIDE, ZOOM_VIGNETTE, cadrageVignette } from '../src/pages/vignettes'
+import { boiteDesNoms } from '../src/sorties/apercu'
+import { boiteDe } from '../src/revoir/bobine'
+import type { Polygone } from '../src/types'
 
 describe("l'échelle des formules", () => {
   it('arrondit au 1/20, jamais à zéro', () => {
@@ -83,5 +86,35 @@ describe("le cadrage d'une vignette", () => {
     expect(cadrageVignette(null, 240, 180)).toEqual({ x: 120 * ZOOM_VIDE, y: 120 * ZOOM_VIDE, z: ZOOM_VIDE })
     // Une vignette sans taille ne fait pas de division par zéro
     expect(cadrageVignette({ x: 0, y: 0, l: 10, h: 10 }, 0, 0).z).toBe(ZOOM_VIDE)
+  })
+})
+
+// La boîte d'une figure pour les sorties (l'image copiée, le PDF) compte
+// les noms de ses points : un nom déplacé au-dessus de son point (jusqu'à
+// 70 unités) dépasse la boîte de boiteDe, qui n'ajoute que 28 unités autour
+// des sommets ; il ne doit pas sortir du cadre ni être tranché par une coupe.
+describe('les noms des points dans la boîte des sorties', () => {
+  const triangle = (o: Partial<Polygone> = {}): Polygone => ({
+    id: 't', type: 'polygone', x: 100, y: 100, z: 1, auteur: 'a', pts: [0, 300, 400, 300, 200, 0], ferme: true,
+    couleur: '#1b5fbf', taille: 3, sommets: true, noms: ['A', 'B', 'C'], ...o,
+  })
+
+  it('un nom déplacé de 66 unités au-dessus du sommet est dans la boîte ; la boîte de boiteDe ne l\'a pas', () => {
+    const f = triangle({ posNoms: [null, null, { x: 0, y: -66 }] })
+    const b = boiteDesNoms(f)!
+    // Le nom C est centré à y = 100 - 66 = 34, haut de 1,2 × 22
+    expect(b.y).toBeCloseTo(34 - 13.2, 6)
+    expect(boiteDe(f)!.y).toBeGreaterThan(34)
+    expect(b.y).toBeLessThan(boiteDe(f)!.y)
+  })
+
+  it('un nom caché, une figure sans sommets montrés : rien ; la taille et la longueur du nom comptent', () => {
+    expect(boiteDesNoms(triangle({ sommets: false }))).toBeNull()
+    const seul = triangle({ noms: ['', '', 'C_10'], styleNoms: [null, null, { taille: 40 }] })
+    const b = boiteDesNoms(seul)!
+    // « C10 » : trois caractères de 0,7 × 40, haut de 48
+    expect(b.l).toBeCloseTo(3 * 0.7 * 40, 6)
+    expect(b.h).toBeCloseTo(48, 6)
+    expect(boiteDesNoms(triangle({ noms: ['A', 'B', 'C'], styleNoms: [{ cache: true }, { cache: true }, { cache: true }] }))).toBeNull()
   })
 })

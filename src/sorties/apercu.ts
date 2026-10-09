@@ -16,8 +16,9 @@
 import { Camera } from '../camera'
 import { Rendu } from '../rendu'
 import { boiteDe } from '../revoir/bobine'
+import { placesDesNoms } from '../formes'
 import type { Boite } from '../revoir/bobine'
-import type { Fond, Forme, Formule } from '../types'
+import type { Cercle, Fond, Forme, Formule, Polygone } from '../types'
 import { ecrire, lire } from '../reglages'
 import { FormulesSurCanevas } from './formules'
 
@@ -41,6 +42,9 @@ export interface OptionsPeinture {
   esquisse?: boolean
   /** D'autres formes que celles de la page (une tranche, une sélection) */
   formes?: Forme[]
+  /** Où commence la zone de l × h sur le canevas (px CSS ; (0, 0) sinon) :
+   *  la caméra y est relative (voir Rendu.peindreSur) */
+  coin?: { x: number; y: number }
 }
 
 export class Apercus {
@@ -64,13 +68,18 @@ export class Apercus {
 
   /** La boîte de ce qui est écrit, dans le monde (null : rien). Une droite
    *  compte par ses deux points, comme App.boiteDuContenu ; une formule par
-   *  sa taille mesurée (estimée tant qu'elle ne l'est pas). */
+   *  sa taille mesurée (estimée tant qu'elle ne l'est pas) ; une figure avec
+   *  les noms de ses points (voir boiteDesNoms) : l'image copiée et le PDF
+   *  se cadrent dessus, et les coupes du PDF les évitent. */
   boite(formes: Iterable<Forme>): Boite | null {
     let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
-    for (const f of formes) {
-      const b = f.type === 'formule' ? { x: f.x, y: f.y, ...this.formules.taille(f) } : boiteDe(f)
-      if (!b || !Number.isFinite(b.x) || !Number.isFinite(b.y)) continue
+    const ajouter = (b: Boite | null) => {
+      if (!b || !Number.isFinite(b.x) || !Number.isFinite(b.y) || !Number.isFinite(b.l) || !Number.isFinite(b.h)) return
       x1 = Math.min(x1, b.x); y1 = Math.min(y1, b.y); x2 = Math.max(x2, b.x + b.l); y2 = Math.max(y2, b.y + b.h)
+    }
+    for (const f of formes) {
+      ajouter(f.type === 'formule' ? { x: f.x, y: f.y, ...this.formules.taille(f) } : boiteDe(f))
+      if (f.type === 'polygone' || f.type === 'cercle') ajouter(boiteDesNoms(f))
     }
     return x1 === Infinity ? null : { x: x1, y: y1, l: x2 - x1, h: y2 - y1 }
   }
@@ -153,7 +162,7 @@ export class Apercus {
     this.rendu.origine = page.origine
     const echelle = cam.z * o.dpr
     this.rendu.peindreSur(c, {
-      l: o.l, h: o.h, dpr: o.dpr, fond: o.fond, esquisse: o.esquisse,
+      l: o.l, h: o.h, dpr: o.dpr, fond: o.fond, esquisse: o.esquisse, coin: o.coin,
       formes: o.formes ?? page.formes,
       formule: (c, f) => {
         const t = this.formules.taille(f)
@@ -171,6 +180,30 @@ export class Apercus {
     this.fond = oui
     ecrire(CLE_FOND, oui ? '1' : '0')
   }
+}
+
+/**
+ * La boîte des noms des points d'une figure (null : aucun nom montré), comme
+ * les peint Rendu : chacun centré sur sa place (placesDesNoms : sur la
+ * bissectrice, ou là où le professeur l'a déplacé, jusqu'à 70 unités du
+ * point), en sa taille (22 unités sans réglage). Sa largeur est estimée
+ * (0,7 de la taille par caractère, un peu large pour une lettre italique),
+ * sa hauteur à 1,2 fois la taille : un nom déplacé hors de la boîte de la
+ * figure (boiteDe ne compte que 28 unités autour des sommets) reste sur
+ * l'image copiée et dans le PDF, et une coupe de feuille ne le tranche pas.
+ */
+export function boiteDesNoms(f: Polygone | Cercle): Boite | null {
+  if (!f.sommets || !f.noms) return null
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
+  placesDesNoms(f).forEach((p, i) => {
+    const nom = f.noms?.[i], st = f.styleNoms?.[i]
+    if (!nom || st?.cache || !Number.isFinite(p?.x) || !Number.isFinite(p?.y)) return
+    const t = st?.taille ?? 22
+    const l = Math.max(1, [...nom.replace(/_(\d+)/, '$1')].length) * 0.7 * t, h = 1.2 * t
+    x1 = Math.min(x1, p.x - l / 2); x2 = Math.max(x2, p.x + l / 2)
+    y1 = Math.min(y1, p.y - h / 2); y2 = Math.max(y2, p.y + h / 2)
+  })
+  return x1 === Infinity ? null : { x: x1, y: y1, l: x2 - x1, h: y2 - y1 }
 }
 
 function formulesDe(formes: Iterable<Forme>): Formule[] {

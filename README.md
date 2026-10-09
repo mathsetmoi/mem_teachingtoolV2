@@ -987,29 +987,45 @@ plus la page web (les barres, le tableau coupé au bord de l'écran) : il ouvre
 cette fenêtre. Le menu Fichier › Imprimer du navigateur, lui, n'imprime
 qu'une phrase : « Pour imprimer : ⋯ → Exporter le tableau en PDF. »
 
-Chaque page est **cadrée sur son contenu** (2 mm d'air autour), sur des
-feuilles A4 aux marges de 12 mm (16 en bas, où tient le pied de page) :
+Chaque page est **cadrée sur son contenu** (2 mm d'air autour ; les noms des
+points comptent, même déplacés loin de leur point), sur des feuilles A4 aux
+marges de 12 mm (16 en bas, où tient le pied de page) :
 
-- **À l'échelle réelle** quand le contenu tient dans la largeur de la feuille
-  (18,6 cm en portrait, 27,3 cm en paysage) : 1 cm sur la page (40 unités,
+- **À l'échelle réelle** quand le contenu tient sur la feuille (18,6 × 26,9
+  cm en portrait, 27,3 × 18,2 cm en paysage) : 1 cm sur la page (40 unités,
   deux petits carreaux) = 1 cm sur le papier, les longueurs se mesurent à la
-  règle sur la feuille. Sinon la page est réduite juste assez pour tenir dans
-  la largeur, et son pied de page le dit (« réduite à 72 % ») ; sous 30 %, le
-  message final le signale (« La page 4 est très large : réduite à 18 %. »).
-  Ni plancher, ni découpe en colonnes : une page bien plus large que haute
-  est rare.
-- **Portrait**, sauf un contenu nettement plus large que haut (plus de 1,25
-  fois) : **paysage**.
-- **Une page haute est découpée en feuilles A4** et continue sur les
-  suivantes. La coupe tombe entre 60 et 100 % de la feuille, là où le moins
-  d'objets passent : entre deux lignes d'écriture, au-dessus d'une figure
-  plutôt qu'au travers (une figure plus haute qu'une feuille est bien
-  coupée) ; les droites prolongées ne comptent pas, elles traversent tout.
-  Un objet à cheval sur la coupe paraît en partie sur les deux feuilles, et
-  le quadrillage continue d'une feuille à l'autre.
+  règle sur la feuille. Sinon la page est réduite, et son pied de page le dit
+  (« réduite à 72 % ») ; sous 30 %, le message final le signale (« La page 4
+  est très large : réduite à 18 %. »). Ni plancher, ni découpe en colonnes :
+  une page bien plus large que haute est rare.
+- **Une page qui n'est pas haute tient sur une seule feuille**, dans le sens
+  qui la montre le plus grand : une grande figure plus large que haute, ce
+  qu'on a écrit sur un vidéoprojecteur 4:3 ou une photo 4:3 vont sur une
+  feuille **paysage**, réduits juste assez pour y tenir en largeur et en
+  hauteur (un triangle de 25 × 18,5 cm : 89 %), plutôt que d'être coupés sur
+  deux feuilles ; sinon **portrait**. Les deux à l'échelle réelle : paysage
+  pour un contenu nettement plus large que haut (plus de 1,25 fois),
+  portrait sinon. Une page qui dépasse à peine une feuille est réduite (de
+  15 % au plus) pour y tenir, plutôt que de laisser trois lignes seules sur
+  une seconde feuille.
+- **Une page haute est découpée en feuilles A4** (portrait, réduite
+  seulement si elle est trop large) et continue sur les suivantes. La coupe
+  tombe entre 60 et 100 % de la feuille, là où le moins d'objets passent :
+  entre deux lignes d'écriture, au-dessus d'une figure plutôt qu'au travers.
+  Une figure qui tient sur une feuille n'est jamais coupée quand on peut
+  l'éviter : si elle commence vers le milieu de la feuille, la coupe remonte
+  au-dessus d'elle (jusqu'à 25 % de la feuille) et la figure passe entière
+  sur la suivante ; une figure plus haute qu'une feuille, elle, est bien
+  coupée. Les droites prolongées ne comptent pas, elles traversent tout. Un
+  objet à cheval sur la coupe paraît en partie sur les deux feuilles, et le
+  quadrillage continue d'une feuille à l'autre.
+- **Un grand vide de la page infinie est sauté** : l'énoncé en haut, la
+  correction un mètre plus bas font deux feuilles, la seconde commençant
+  juste au-dessus de la correction, jamais des feuilles blanches entre les
+  deux.
 - Le fond imprimé couvre la zone utile de chaque feuille, celles de suite
-  comprises ; décoché, la feuille est blanche. Les **instruments posés ne
-  sont jamais imprimés**.
+  comprises (les flèches des axes du repère au bout de cette zone) ; décoché,
+  la feuille est blanche. Les **instruments posés ne sont jamais imprimés**.
 - Un **pied de page** discret (8 points, gris) : à gauche la page, son nom
   s'il en a un, sa partie s'il y en a plusieurs (« Page 3 · Exercice 12
   p. 84 (2/3) ») ; à droite le numéro de la feuille dans le PDF (« 4 / 12 »).
@@ -1026,10 +1042,23 @@ Son titre, que montre le lecteur de PDF : « Tableau du 9 octobre 2026 »,
 La qualité : une image par feuille, à 200 points par pouce (1654 × 2339
 pixels), peinte par le même code que l'écran (comme une page imprimée : les
 lignes du fond et les noms des points gardent leur épaisseur) ; les formules
-et les images y sont aussi nettes qu'à l'écran à la même échelle (moins de 6
-d'écart moyen sur 255, mesuré). Le poids : environ 0,35 Mo pour une feuille
-de Seyès pleine d'écriture (400 traits), moins de 100 Ko pour une page
-ordinaire ; dix pages pleines font 3,5 Mo.
+y sont aussi nettes qu'à l'écran à la même échelle (moins de 8 d'écart moyen
+sur 255, mesuré), chacune posée sur des pixels entiers : le trait d'une
+fraction, le cadre de `\boxed` ne s'étalent pas en gris sur deux rangées,
+où que la formule tombe sur la feuille. Une feuille d'écriture et de figures part en **256
+couleurs** (compressées sans perte) : d'abord les couleurs des objets de la
+feuille, si bien qu'une petite croix verte au milieu d'une page noire et
+chargée garde son vert, puis les plus fréquentes ; si une seule surface
+devait changer de couleur (plus de 0,01 % des pixels faux de plus de 24
+niveaux et pareils à leur voisin), la feuille part en **couleurs exactes**
+(RVB sans perte, environ deux fois plus lourde). Une feuille où paraît une
+**image** (une photo, une capture) ne passe jamais par les 256 couleurs, qui
+la postériseraient : en **JPEG** quand l'image couvre au moins 15 % de la
+feuille (la photo d'un énoncé reste lisible), en RVB sans perte sinon (une
+petite illustration reste au pixel près). Le poids : environ 0,35 Mo pour
+une feuille de Seyès pleine d'écriture (400 traits), moins de 100 Ko pour
+une page ordinaire, 0,2 à 0,5 Mo pour une feuille avec une image ; dix pages
+pleines font 3,5 Mo.
 
 Rien ne gèle : le message dit la progression (« Export en PDF : feuille 3 sur
 12… »), puis « PDF prêt : tableau-2026-10-09.pdf (12 feuilles A4, 2,4 Mo). » ;
@@ -1037,7 +1066,9 @@ l'export avance par petites tranches (dix pages pleines : environ 9 s, aucune
 tâche de plus de 150 ms, mesuré) et attend tant qu'on écrit sur le tableau :
 l'encre ne prend aucun retard. Ce qui est sur les pages est pris au
 lancement : un trait écrit pendant l'export n'y est pas, pas même à moitié.
-Un export à la fois ; ni pendant la revue, ni pendant une séance. Tout se
+Un export à la fois (Ctrl + P pendant un export : « Un export en PDF est déjà
+en cours. », qui reste deux secondes à l'écran avant que la progression
+reprenne) ; ni pendant la revue, ni pendant une séance. Tout se
 fait dans le navigateur, hors connexion, dans la version en ligne comme dans
 le fichier unique de la clé USB : aucun service extérieur, aucune
 bibliothèque de plus (la compression vient de fflate, déjà là pour le
@@ -1047,7 +1078,7 @@ Pourquoi des images plutôt que du vectoriel : un PDF vectoriel demanderait un
 second moteur de dessin (les traits de perfect-freehand, les formules, les
 fonds) et d'y embarquer les polices, pour un fichier plus lourd (mesuré :
 environ 976 Ko pour une feuille très chargée, contre 238 à 283 Ko en couleurs
-indexées, 384 à 687 Ko en JPEG).
+indexées, 531 à 589 Ko en RVB sans perte, 384 à 687 Ko en JPEG).
 
 ## Ce que fait la v0.1
 
@@ -1340,7 +1371,8 @@ lui sont liés) mettent une image
 PNG dans le presse-papiers de l'ordinateur : on la colle (Ctrl+V) dans le
 cahier de textes de Pronote ou un message de l'ENT, et un message le dit :
 « Image copiée : collez-la dans l'ENT ou Pronote (Ctrl+V) ». L'image est
-cadrée sur ce qui est écrit (une petite marge), aussi nette que l'écran à
+cadrée sur ce qui est écrit (une petite marge ; les noms des points
+comptent, même déplacés loin de leur point), aussi nette que l'écran à
 100 % (deux pixels par unité, formules et images comprises), sans les
 instruments posés ; une grande page est réduite pour tenir dans environ 4
 millions de pixels et 4 096 pixels de côté (une page très haute reste
@@ -1552,10 +1584,13 @@ moins d’une demi-seconde mesurée, sans jamais bloquer l’écriture), et se r
 quand sa page change. Le fond imprimé ou non (l'image copiée, le PDF) est un
 réglage de ce navigateur, sous la clé `mem-sortie-fond`. Le PDF s'écrit à la
 main (`src/sorties/pdf.ts`, sans bibliothèque, quelques kilo-octets) : une
-image par feuille A4, en couleurs indexées (les 256 couleurs les plus
-fréquentes, compressées), deux fois plus légère qu'un JPEG de même finesse et
-sans ses bavures autour des lettres, ou en JPEG pour une feuille dominée par
-une photo. La mise en page (`src/sorties/mise-en-page.ts`, pure) cadre chaque
+image par feuille A4, en couleurs indexées (les couleurs des objets de la
+feuille d'abord, puis les plus fréquentes, compressées), deux fois plus
+légère qu'un JPEG de même finesse et sans ses bavures autour des lettres ;
+quand 256 couleurs ne la rendent pas fidèlement (une surface changerait de
+couleur), ou qu'une petite image y paraît, en RVB sans perte (les lignes
+prédites comme celles d'un PNG) ; en JPEG quand une photo couvre au moins
+15 % de la feuille. La mise en page (`src/sorties/mise-en-page.ts`, pure) cadre chaque
 page, choisit le sens et l'échelle, et découpe une page haute là où le moins
 d'objets passent ; l'export (`src/sorties/export-pdf.ts`) prend les formes au
 lancement, peint chaque feuille par tranches d'environ 30 ms, lit ses pixels
@@ -1569,11 +1604,11 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris ; le clavier du tableau (Ctrl + P ouvre « Exporter en PDF ») |
 | `src/rendu.ts` | Les trois couches d'affichage ; peindre une page sur un autre canevas (`peindreSur` : une vignette en esquisse, une image, une feuille du PDF), sans rien changer à l'écran |
 | `src/sorties/formules.ts` | Les formules KaTeX sur un canevas : mises en page cachées comme à l'écran, puis repeintes (textes, bordures, fonds, SVG coupés), les polices attendues ; leurs images gardées par échelle dans un cache borné en pixels |
-| `src/sorties/image.ts` | Copier en image (pour l'ENT et Pronote) : la taille de l'image (jamais plus fine que l'écran à 100 %, environ 4 millions de pixels et 4 096 px de côté au plus), le nom du fichier, l'image PNG cadrée sur le contenu, la copie dans le presse-papiers du système dans le geste même, le repli « Enregistrer l'image (.png) » ; « Exporter en PDF » proposé pour une page très haute |
-| `src/sorties/pdf.ts` | L'écrivain de PDF, pur (sans bibliothèque) : une image par feuille, en couleurs indexées (les 256 couleurs les plus fréquentes, compressées par Flate ; aussi par tranches de lignes, pour rendre la main) ou en JPEG pour une photo ; la table des renvois exacte, le titre en UTF-16 |
-| `src/sorties/mise-en-page.ts` | La mise en page du PDF, pure (testée) : le papier A4 (marges, 200 ppp, peint comme une page à 96 ppp), l'échelle (1 cm = 1 cm tant que le contenu tient dans la largeur, sinon réduite), le sens (paysage au-delà de 1,25), la découpe d'une page haute (entre 60 et 100 % de la feuille, là où le moins de boîtes passent) ; le pied de page, le nom du fichier, le titre, les messages |
-| `src/sorties/export-pdf.ts` | Exporter en PDF : la fenêtre (ce qu'on exporte, le fond imprimé), puis l'export (les formes prises au lancement, chaque feuille peinte par tranches et coupée à sa bande, le pied de page, les pixels palettisés et compressés par morceaux, l'attente pendant un geste, la progression, un export à la fois) |
-| `src/sorties/apercu.ts` | Peindre une page hors de l'écran (la boîte du contenu, les polices, les formules et les images préparées, puis la peinture) : la fondation des vignettes, de l'image copiée et du PDF ; le réglage du fond imprimé (`mem-sortie-fond`) |
+| `src/sorties/image.ts` | Copier en image (pour l'ENT et Pronote) : la taille de l'image (jamais plus fine que l'écran à 100 %, environ 4 millions de pixels et 4 096 px de côté au plus), le nom du fichier, l'image PNG cadrée sur le contenu (noms des points compris), la copie dans le presse-papiers du système dans le geste même, le repli « Enregistrer l'image (.png) » ; « Exporter en PDF » proposé pour une page très haute |
+| `src/sorties/pdf.ts` | L'écrivain de PDF, pur (sans bibliothèque) : une image par feuille, en couleurs indexées (les couleurs des objets d'abord, puis les plus fréquentes ; l'écart borné : trop d'aplats faux, pas de palette ; compressées par Flate, par tranches de lignes pour rendre la main), en RVB sans perte (lignes prédites comme un PNG, prédicteur 15) ou en JPEG pour une photo ; la table des renvois exacte, le titre en UTF-16 |
+| `src/sorties/mise-en-page.ts` | La mise en page du PDF, pure (testée) : le papier A4 (marges, 200 ppp, peint comme une page à 96 ppp), l'échelle et le sens (1 cm = 1 cm tant que le contenu tient sur la feuille ; une page qui n'est pas haute sur une seule feuille, dans le sens qui la montre le plus grand ; une page haute en portrait, à la largeur), la découpe d'une page haute (entre 60 et 100 % de la feuille, jusqu'à 25 % pour ne pas couper une figure qui tient sur une feuille, là où le moins de boîtes passent ; les grands vides sautés) ; le pied de page, le nom du fichier, le titre, les messages |
+| `src/sorties/export-pdf.ts` | Exporter en PDF : la fenêtre (ce qu'on exporte, le fond imprimé), puis l'export (les formes prises au lancement, chaque feuille peinte par tranches et coupée à sa bande, le fond peint dans la zone utile, le pied de page ; les pixels palettisés avec les couleurs des objets, ou en RVB sans perte, ou en JPEG quand une photo couvre 15 % de la feuille, compressés par morceaux ; l'attente pendant un geste, la progression, un export à la fois) |
+| `src/sorties/apercu.ts` | Peindre une page hors de l'écran (la boîte du contenu, noms des points compris, les polices, les formules et les images préparées, puis la peinture) : la fondation des vignettes, de l'image copiée et du PDF ; le réglage du fond imprimé (`mem-sortie-fond`) |
 | `src/pages/vignettes.ts` | Les vignettes des pages : un canevas par page et par taille, peint plus tard par une file paresseuse (seulement s'il est à l'écran, les pages prioritaires d'abord), repeint quand sa page change ; le cadrage d'une vignette |
 | `src/fonds.ts` | Carreaux, Seyès, repère gradué |
 | `src/geometrie.ts` | Ce que touche la gomme ; ce que vise la sélection (la distance au tracé, l'intérieur plein ou nu, l'aire) ; ce que prend un cadre ou un lasso (la part dedans, le lasso simplifié) |

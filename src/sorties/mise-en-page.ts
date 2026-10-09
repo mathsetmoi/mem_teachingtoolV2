@@ -11,13 +11,19 @@
 // noms des points, les graduations du repère gardent leur épaisseur et leur
 // taille en px CSS, comme à l'écran (1 px = 0,26 mm).
 // L'échelle : 1 cm sur la page (40 unités) = 1 cm sur le papier quand le
-// contenu tient dans la largeur utile (186 mm en portrait, 273 mm en
-// paysage) : les longueurs mesurées à la règle sur la feuille sont vraies.
-// Sinon la page est réduite juste assez pour y tenir (k < 1), et son pied
-// de page le dit (« réduite à 72 % »). Ni plancher ni découpe en colonnes :
-// une page bien plus large que haute est rare ; le message final avertit
-// sous 30 %. Portrait, sauf un contenu nettement plus large que haut
-// (largeur / hauteur > 1,25) : paysage.
+// contenu tient sur la feuille (186 × 269 mm utiles en portrait, 273 × 182
+// en paysage) : les longueurs mesurées à la règle sur la feuille sont
+// vraies. Sinon la page est réduite (k < 1), et son pied de page le dit
+// (« réduite à 72 % »). Une page qui n'est pas haute tient sur UNE feuille,
+// dans le sens qui la montre le plus grand : réduite à la largeur et à la
+// hauteur de la feuille, en paysage si elle y est plus grande (un contenu
+// 4:3, une grande figure plus large que haute), en portrait sinon ; à
+// égalité (les deux à l'échelle réelle), paysage pour un contenu nettement
+// plus large que haut (largeur / hauteur > 1,25). Une page haute (qu'il
+// faudrait réduire de plus de 15 % pour la faire tenir sur une feuille)
+// est en portrait, réduite seulement à la largeur, et découpée en feuilles.
+// Ni plancher ni découpe en colonnes : une page bien plus large que haute
+// est rare ; le message final avertit sous 30 %.
 // Aussi les textes de l'export : le pied de page, le nom du fichier, le
 // titre du PDF, les messages. Pur : se teste sous Node (tests/pdf.test.ts).
 // =============================================================
@@ -43,8 +49,14 @@ export const MARGES = { gauche: 12, droite: 12, haut: 12, bas: 16 }
 export const MARGE_CONTENU = 8
 /** Un contenu plus large que haut de ce rapport part en paysage */
 export const RAPPORT_PAYSAGE = 1.25
-/** Une coupe tombe entre 60 % et 100 % de la hauteur utile */
+/** Une coupe tombe entre 60 % et 100 % de la hauteur utile… */
 export const DEBUT_COUPE = 0.6
+/** … ou, pour ne pas couper une figure qui tiendrait sur la feuille
+ *  suivante, jusqu'à 25 % */
+export const COUPE_AU_PLUS_HAUT = 0.25
+/** Une page qui tiendrait sur une feuille réduite d'au plus 15 % (par
+ *  rapport à sa largeur) y est réduite plutôt que découpée */
+export const REDUCTION_POUR_UNE_FEUILLE = 0.85
 /** Une coupe se pose à ce jeu (unités) au-dessus ou au-dessous d'un bord */
 const JEU = 1
 /** Sous cette réduction, le message final avertit (la page est très large) */
@@ -108,14 +120,28 @@ export interface MiseEnPage {
  * (sans les droites prolongées, qui traversent tout). Le contenu, avec un
  * air de 8 unités, est centré dans la largeur utile et calé en haut ; la
  * même caméra, décalée, sert à chaque feuille : le quadrillage du fond
- * continue d'une feuille à l'autre.
+ * continue d'une feuille à l'autre. Le sens et l'échelle : voir plus haut.
  */
 export function mettreEnPage(contenu: Boite, obstacles: readonly Boite[]): MiseEnPage {
   const fini = (v: number, d: number) => Number.isFinite(v) ? v : d
   const x0 = fini(contenu.x, 0), y0 = fini(contenu.y, 0)
   const L = Math.max(1, fini(contenu.l, 0) + 2 * MARGE_CONTENU), H = Math.max(1, fini(contenu.h, 0) + 2 * MARGE_CONTENU)
-  const p = papier(L / H > RAPPORT_PAYSAGE ? 'paysage' : 'portrait')
-  const k = Math.min(1, p.utile.l / (L * Z_REEL))
+  const portrait = papier('portrait'), paysage = papier('paysage')
+  /** L'échelle qui fait tenir le contenu dans la largeur de la feuille, et
+   *  celle qui le fait tenir sur une seule feuille */
+  const aLaLargeur = (p: Papier) => Math.min(1, p.utile.l / (L * Z_REEL))
+  const surUne = (p: Papier) => Math.min(aLaLargeur(p), p.utile.h / (H * Z_REEL))
+  const kp = surUne(portrait), kq = surUne(paysage), largeur = aLaLargeur(portrait)
+  let p: Papier, k: number
+  if (Math.max(kp, kq) >= REDUCTION_POUR_UNE_FEUILLE * largeur) {
+    // Une seule feuille, dans le sens qui la montre le plus grand
+    const egal = Math.abs(kq - kp) <= 1e-9 * Math.max(kp, kq)
+    p = kq > kp && !egal ? paysage : egal && L / H > RAPPORT_PAYSAGE ? paysage : portrait
+    k = p === paysage ? kq : kp
+  } else {
+    // Une page haute : portrait, à la largeur, découpée
+    p = portrait; k = largeur
+  }
   const z = Z_REEL * k
   const haut = y0 - MARGE_CONTENU, bas = haut + H
   const bandes = decouper(obstacles, haut, bas, p.utile.h / z)
@@ -128,40 +154,66 @@ export function mettreEnPage(contenu: Boite, obstacles: readonly Boite[]): MiseE
 
 /**
  * Découpe la hauteur de haut à bas (unités du monde) en bandes d'au plus
- * hauteurUtile. Tant que ce qui reste dépasse une feuille, on coupe entre
- * 60 % et 100 % de la hauteur utile, là où le moins de boîtes passent : les
- * places possibles sont juste au-dessus ou juste au-dessous d'un bord de
- * boîte, et le bas de la feuille ; à égalité, la plus basse (la feuille est
- * la plus remplie). Des lignes d'écriture sont coupées dans leur interligne ;
- * une figure, seulement si toute la fenêtre la traverse. Le compte se fait
- * par recherche dans les bords triés : une page de dix mille traits reste
- * rapide.
+ * hauteurUtile. Tant que ce qui reste dépasse une feuille, on coupe là où le
+ * moins de boîtes passent : d'abord le moins de boîtes qui tiendraient
+ * entières sur une feuille (une figure, une ligne d'écriture : la couper
+ * se voit, et elle tiendrait sur la suivante), puis le moins de boîtes en
+ * tout (une figure plus haute qu'une feuille est coupée de toute façon) ;
+ * à égalité, la plus basse (la feuille est la plus remplie). Les places
+ * possibles : juste au-dessus ou juste au-dessous d'un bord de boîte, et le
+ * bas de la feuille, entre 60 et 100 % de la hauteur utile ; si toutes y
+ * traversent une boîte qui tiendrait sur une feuille, aussi plus haut,
+ * jusqu'à 25 % (au-dessus d'une figure qui commence vers le milieu de la
+ * feuille : elle passe entière sur la suivante). Des lignes d'écriture
+ * sont coupées dans leur interligne. Un vide est sauté : quand rien ne
+ * passe à la coupe, la bande suivante commence juste au-dessus de la
+ * prochaine boîte (8 unités d'air), si bien qu'un grand vide de la page
+ * infinie ne donne jamais de feuille blanche ; les bandes ne se suivent
+ * alors pas (la caméra de chaque feuille part de son haut). Sans boîte, les
+ * bandes se suivent. Le compte se fait par recherche dans les bords triés :
+ * une page de dix mille traits reste rapide.
  */
 export function decouper(boites: readonly Boite[], haut: number, bas: number, hauteurUtile: number): { y0: number; y1: number }[] {
   if (!(hauteurUtile > 0) || !Number.isFinite(haut) || !(bas > haut)) return [{ y0: haut, y1: Math.max(haut, bas) }]
   const valides = boites.filter(b => Number.isFinite(b.y) && Number.isFinite(b.h) && b.h > 0)
-  const hauts = valides.map(b => b.y).sort((a, b) => a - b)
-  const bass = valides.map(b => b.y + b.h).sort((a, b) => a - b)
-  /** Combien de boîtes la ligne y traverse : celles qui commencent au-dessus
-   *  et finissent au-dessous (une boîte a une hauteur : finir au-dessus de y
-   *  suppose d'avoir commencé au-dessus) */
+  const petites = valides.filter(b => b.h <= hauteurUtile)
+  const tri = (bs: Boite[], f: (b: Boite) => number) => bs.map(f).sort((a, b) => a - b)
+  const hauts = tri(valides, b => b.y), bass = tri(valides, b => b.y + b.h)
+  const hautsP = tri(petites, b => b.y), bassP = tri(petites, b => b.y + b.h)
+  /** Combien de ces boîtes la ligne y traverse : celles qui commencent
+   *  au-dessus et finissent au-dessous (une boîte a une hauteur : finir
+   *  au-dessus de y suppose d'avoir commencé au-dessus) */
   const traversees = (y: number) => compterAvant(hauts, y, false) - compterAvant(bass, y, true)
-  const r: { y0: number; y1: number }[] = []
-  let y = haut
-  // Une coupe avance d'au moins 60 % de la hauteur utile : le nombre de
-  // tours est borné ; la garde ne sert qu'aux nombres déraisonnables
-  for (let tours = 0; bas - y > hauteurUtile * (1 + 1e-9) && tours < 100_000; tours++) {
-    const min = y + DEBUT_COUPE * hauteurUtile, max = y + hauteurUtile
-    let meilleur = max, moins = traversees(max)
-    const essayer = (c: number) => {
-      if (!(c >= min && c <= max)) return
-      const n = traversees(c)
-      if (n < moins || (n === moins && c > meilleur)) { moins = n; meilleur = c }
+  const evitables = (y: number) => compterAvant(hautsP, y, false) - compterAvant(bassP, y, true)
+  /** La meilleure coupe entre min et max (max compris) */
+  const meilleure = (min: number, max: number) => {
+    let c = max, ev = evitables(max), tr = traversees(max)
+    const essayer = (y: number) => {
+      if (!(y >= min && y <= max)) return
+      const e = evitables(y), t = traversees(y)
+      if (e < ev || (e === ev && (t < tr || (t === tr && y > c)))) { c = y; ev = e; tr = t }
     }
     for (let i = compterAvant(hauts, min + JEU, false); i < hauts.length && hauts[i] - JEU <= max; i++) essayer(hauts[i] - JEU)
     for (let i = compterAvant(bass, min - JEU, false); i < bass.length && bass[i] + JEU <= max; i++) essayer(bass[i] + JEU)
-    r.push({ y0: y, y1: meilleur })
-    y = meilleur
+    return { c, ev }
+  }
+  const r: { y0: number; y1: number }[] = []
+  let y = haut
+  // Une coupe avance d'au moins 25 % de la hauteur utile : le nombre de
+  // tours est borné ; la garde ne sert qu'aux nombres déraisonnables
+  for (let tours = 0; bas - y > hauteurUtile * (1 + 1e-9) && tours < 100_000; tours++) {
+    let m = meilleure(y + DEBUT_COUPE * hauteurUtile, y + hauteurUtile)
+    if (m.ev > 0) {
+      const plusHaut = meilleure(y + COUPE_AU_PLUS_HAUT * hauteurUtile, y + DEBUT_COUPE * hauteurUtile)
+      if (plusHaut.ev < m.ev) m = plusHaut
+    }
+    r.push({ y0: y, y1: m.c })
+    y = m.c
+    // Un vide après la coupe : la bande suivante part au-dessus de ce qui suit
+    if (traversees(y) === 0) {
+      const i = compterAvant(hauts, y, false)
+      if (i < hauts.length) y = Math.max(y, Math.min(bas, hauts[i] - MARGE_CONTENU))
+    }
   }
   r.push({ y0: y, y1: bas })
   return r
