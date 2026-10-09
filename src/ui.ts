@@ -153,6 +153,11 @@ export class UI implements Interface {
   private rang!: HTMLButtonElement
   private rangNumero!: HTMLSpanElement
   private rangNom!: HTMLSpanElement
+  /** Ce dont dépend la largeur du compteur (le nombre de chiffres du total,
+   *  une page nommée ou non dans le tableau, la taille de la fenêtre) : sa
+   *  clé, et s'il reste à la régler (voir reglerCompteur) */
+  private cleCompteur = ''
+  private compteurARegler = true
   /** « › » : la page suivante, ou une page de plus sur la dernière (voir maj) */
   private boutonApres!: HTMLButtonElement
   /** Le numéro de la page en grand, un instant, quand on change de page (voir annoncerPage) */
@@ -299,7 +304,9 @@ export class UI implements Interface {
     // au-delà d'une vingtaine de caractères (entier dans son titre), et caché
     // sur un téléphone. Sans nom, son texte reste exactement « 3 / 7 ». C'est
     // un bouton : il ouvre la trieuse des pages (comme Maj + P) ; ouverte au
-    // clavier (Entrée, Espace), elle lui rend le focus en se fermant.
+    // clavier (Entrée, Espace), elle lui rend le focus en se fermant. Sa
+    // largeur ne dépend jamais de la page qu'on regarde (voir reglerCompteur) :
+    // ‹, › et la poubelle restent sous la main d'une page à l'autre.
     this.rang = document.createElement('button'); this.rang.type = 'button'; this.rang.className = 'rang'
     this.rang.addEventListener('click', e => this.ouvrirTrieuse(e.detail === 0))
     this.rangNumero = Object.assign(document.createElement('span'), { className: 'rang-numero' })
@@ -427,6 +434,14 @@ export class UI implements Interface {
     this.annonceNom = Object.assign(document.createElement('span'), { className: 'annonce-nom' })
     this.annonce.append(this.annonceNumero, this.annonceNom)
     ;(document.getElementById('zone') ?? this.racine).addEventListener('pointerdown', () => this.effacerAnnonce(true), true)
+    // La place du nom dans le compteur se règle de nouveau quand la fenêtre
+    // change (une tablette qu'on tourne, le zoom du navigateur)
+    let regler = 0
+    window.addEventListener('resize', () => {
+      this.compteurARegler = true
+      cancelAnimationFrame(regler)
+      regler = requestAnimationFrame(() => this.maj())
+    })
 
     // ----- Choix de la forme, à côté de l'outil -----
     this.choixFormes = document.createElement('div')
@@ -488,6 +503,42 @@ export class UI implements Interface {
     window.addEventListener('keydown', e => { if (e.key === 'Escape') this.fermerMenuPartie() })
   }
 
+  /** La largeur du compteur ne dépend que du tableau, jamais de la page
+   *  qu'on regarde : sinon « 3 / 7 · Exercice 12 p. 84 » après « 2 / 7 »,
+   *  ou « 10 / 12 » après « 9 / 12 », le font grandir, et ‹, ›, « Nouvelle
+   *  page », la poubelle glissent d'une page à l'autre (le toucher suivant
+   *  sur « › » tomberait sur le compteur). Le numéro prend la place du plus
+   *  large de ce tableau (le total écrit deux fois : la feuille de style lit
+   *  --chiffres). Dès qu'une page du tableau a un nom, une place lui est
+   *  gardée sur toutes les pages, vide sur une page sans nom : une vingtaine
+   *  de caractères (22 ch), moins si la barre n'a pas la place sur ses
+   *  rangées (on essaie 22, 18, 14 puis 10 ch, sans qu'elle prenne une rangée
+   *  de plus : à 1024 px, elle n'en a qu'une) ; s'il n'y a pas même 10 ch,
+   *  le nom ne s'y montre pas (il reste dans l'infobulle, l'annonce et la
+   *  trieuse), comme sur un téléphone. Réglé seulement quand le nombre de
+   *  chiffres du total change, quand la première page reçoit un nom ou la
+   *  dernière le perd, et quand la fenêtre change : une page qu'on nomme
+   *  peut faire bouger la barre une fois, le passage d'une page à l'autre
+   *  jamais. Une barre pas encore affichée attend son prochain maj. */
+  private reglerCompteur(chiffres: number, avecNoms: boolean) {
+    const barre = this.barreHaut, nom = this.rangNom
+    if (!barre.isConnected || !barre.getClientRects().length) return
+    this.compteurARegler = false
+    this.rang.style.setProperty('--chiffres', String(chiffres))
+    nom.classList.remove('sans-place')
+    nom.style.width = ''
+    // Sur un téléphone (ou sans nom), la place du nom ne compte pas
+    if (!avecNoms || getComputedStyle(nom).display === 'none') return
+    nom.style.width = '0px'
+    const hauteur = barre.getBoundingClientRect().height
+    for (const ch of [22, 18, 14, 10]) {
+      nom.style.width = ch + 'ch'
+      if (barre.getBoundingClientRect().height <= hauteur + 0.5) return
+    }
+    nom.style.width = ''
+    nom.classList.add('sans-place')
+  }
+
   maj() {
     const app = this.app
     for (const [id, b] of this.outils) b.classList.toggle('actif', app.outil === id)
@@ -513,6 +564,10 @@ export class UI implements Interface {
     if (this.rang.title !== titreRang) this.rang.title = titreRang
     const nomRang = i >= 0 ? `Page ${i + 1} sur ${pages.length}${nom ? `, ${nom}` : ''} : toutes les pages (Maj + P)` : 'Toutes les pages (Maj + P)'
     if (this.rang.getAttribute('aria-label') !== nomRang) this.rang.setAttribute('aria-label', nomRang)
+    const avecNoms = pages.some(p => !!app.tableau.nomDe(p))
+    const cle = `${String(pages.length).length}:${avecNoms}`
+    if (cle !== this.cleCompteur) { this.cleCompteur = cle; this.compteurARegler = true }
+    if (this.compteurARegler) this.reglerCompteur(String(pages.length).length, avecNoms)
     // « › » sur la dernière page : une page de plus ; son contenu ne se
     // refait que si le mode change
     const mode = pages.length && i === pages.length - 1 ? 'ajout' : 'suivante'

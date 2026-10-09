@@ -1291,27 +1291,41 @@ export class Trieuse {
   }
 }
 
-/** Le second appui d'un double-clic (ou d'un double toucher) sur une
- *  vignette, par habitude : le premier a fermé la trieuse et mené à la page,
- *  le second tomberait sur le tableau (un point d'encre au Stylo, le menu
- *  d'un objet au double-clic). Dans la demi-seconde qui suit, à moins de
- *  40 px du premier, il ne fait rien. */
+/** Ce qui suit le clic ou le toucher qui a fermé la trieuse et mené à une
+ *  page : la vignette n'est plus là, et ce qui vient ensuite tomberait sur
+ *  le bouton du tableau qui était dessous (un outil, une couleur, la Gomme,
+ *  le menu du rôle du doigt…) ou sur la page (un point d'encre au Stylo, le
+ *  menu d'un objet au double-clic). Deux cas : le clic de compatibilité du
+ *  toucher (mousedown, mouseup, click, que le navigateur envoie APRÈS le
+ *  pointerup, en visant ce qui est maintenant sous le doigt) ; et le second
+ *  clic d'un double-clic par habitude, à la souris, à la plume de la
+ *  tablette graphique ou au doigt (un preventDefault sur son pointerdown
+ *  supprime mousedown et mouseup, pas le click). Dans la demi-seconde qui
+ *  suit (le lever et le click d'un second appui, 300 ms de plus), à moins
+ *  de 40 px du premier, ils ne font rien. Un appui ailleurs passe. */
 export function avalerLeSecondAppui(x: number, y: number, ms = 500) {
   const fin = performance.now() + ms
-  const finir = () => {
-    window.removeEventListener('pointerdown', surBas, true)
-    window.removeEventListener('dblclick', surDouble, true)
+  const pres = (e: MouseEvent) => Math.hypot(e.clientX - x, e.clientY - y) <= 40
+  // L'appui (pointerdown, et le mousedown du toucher) : dans la demi-seconde
+  const surBas = (e: MouseEvent) => {
+    if (performance.now() > fin) return
+    if (!pres(e)) return
+    e.preventDefault(); e.stopPropagation()
   }
-  const surBas = (e: PointerEvent) => {
-    if (performance.now() > fin) return finir()
-    if (Math.hypot(e.clientX - x, e.clientY - y) > 40) return
+  // Le lever et le clic qui en naissent : un peu plus longtemps
+  const surSuite = (e: MouseEvent) => {
+    if (performance.now() > fin + 300) return finir()
+    if (!pres(e)) return
     e.preventDefault(); e.stopPropagation()
   }
   const surDouble = (e: MouseEvent) => {
     if (performance.now() > fin + 300) return finir()
     e.preventDefault(); e.stopPropagation()
   }
-  window.addEventListener('pointerdown', surBas, true)
-  window.addEventListener('dblclick', surDouble, true)
+  const ecoutes: [string, (e: MouseEvent) => void][] = [
+    ['pointerdown', surBas], ['mousedown', surBas], ['mouseup', surSuite], ['click', surSuite], ['dblclick', surDouble],
+  ]
+  function finir() { for (const [t, f] of ecoutes) window.removeEventListener(t, f as EventListener, true) }
+  for (const [t, f] of ecoutes) window.addEventListener(t, f as EventListener, true)
   window.setTimeout(finir, ms + 300)
 }

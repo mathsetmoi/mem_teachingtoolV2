@@ -128,13 +128,21 @@ button, select, input { font: inherit; color: inherit; }
 /* Le compteur est un bouton : il ouvre la trieuse des pages (Maj + P) */
 button.rang { height: 44px; padding: 0 8px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; }
 button.rang:hover { background: #e9eef5; }
+/* La largeur du compteur ne dépend pas de la page qu'on regarde (voir
+   UI.reglerCompteur) : le numéro prend la place du plus large du tableau
+   (--chiffres : ceux du total ; « 10 / 12 » tient dans 2 × 2 ch de
+   chiffres de même largeur, plus 2,5 ch pour « / » et ses espaces) */
+.rang-numero { display: inline-block; min-width: calc(var(--chiffres, 1) * 2ch + 2.5ch); }
 /* Le nom de la page, après son numéro : coupé au-delà d'une vingtaine de
    caractères (il est entier dans le titre du compteur) ; « pre » garde
-   l'espace qui le sépare du numéro */
+   l'espace qui le sépare du numéro. Dès qu'une page du tableau a un nom,
+   sa place est gardée sur toutes les pages (largeur posée par le code) ;
+   faute de place dans la barre, il ne s'y montre pas (.sans-place) */
 .rang-nom {
-  display: inline-block; vertical-align: bottom; max-width: 27ch;
+  display: inline-block; vertical-align: bottom; max-width: 27ch; text-align: left;
   overflow: hidden; text-overflow: ellipsis; white-space: pre; font-weight: 400;
 }
+.rang-nom.sans-place { display: none; }
 
 .choix-fond {
   height: 44px; padding: 0 10px; margin: 0 2px;

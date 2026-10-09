@@ -761,8 +761,15 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
 
 - **Aller à une page** : un clic ou un toucher sur sa vignette, ou Entrée sur
   celle qui a le focus ; la trieuse se ferme et le numéro de la page
-  s'annonce. Le second clic d'un double-clic (par habitude) ne laisse rien
-  sur la page où l'on arrive.
+  s'annonce. Ce qui suit ce clic ne touche rien de ce qui était sous la
+  vignette : ni le clic que le navigateur tire d'un toucher (au doigt, au
+  TNI, sur un iPad, il viserait le bouton du tableau maintenant sous le
+  doigt : un outil, une couleur, le rôle du doigt), ni le second clic d'un
+  double-clic par habitude (à la souris, à la plume de la tablette
+  graphique, au doigt), qui changerait l'outil (la Gomme) ou laisserait un
+  point d'encre. Pendant une demi-seconde (le lever et le clic, 300 ms de
+  plus), à moins de 40 px du premier appui, ils ne font rien ; un clic
+  ailleurs passe aussitôt, au même endroit une seconde plus tard.
 - **Taper son numéro** : des chiffres (au clavier principal, avec ou sans Maj
   comme en AZERTY, ou au pavé numérique) ; deux chiffres à moins de 0,8 s
   font un seul numéro (« 1 », « 2 » : la page 12). Le focus va à sa vignette,
@@ -822,8 +829,9 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
   facultatif ; Entrée ou cliquer ailleurs le garde, Échap le laisse tel
   qu'il était, un nom vidé est retiré (« Nom de la page retiré »). Au doigt,
   la vignette reste visible au-dessus du clavier qui paraît. Le nom se lit
-  ensuite dans le compteur (« 3 / 7 · Exercice 12 p. 84 »), à l'annonce du
-  numéro et dans la revue. Un simple clic sur le nom mène à la page, un
+  ensuite dans le compteur (« 3 / 7 · Exercice 12 p. 84 », quand la barre
+  en a la place : voir « Changer de page »), à l'annonce du numéro et dans
+  la revue. Un simple clic sur le nom mène à la page, un
   instant après (le temps de savoir si c'est un double-clic).
 - **Insérer, ajouter** : « Insérer une page avant / après » met une page vide
   à côté, au fond de sa voisine (on le change ensuite par « Fond ») ; le
@@ -1072,7 +1080,19 @@ présentation envoient) passent d'une page à l'autre. Le compteur dit
 « 3 / 7 », suivi du nom de la page si elle en a un (« 3 / 7 · Exercice 12
 p. 84 » : coupé au-delà d'une vingtaine de caractères, entier dans son
 infobulle, caché sur un téléphone) ; c'est un bouton, qui ouvre la trieuse
-des pages (Maj + P, voir « Les pages »). Sur la dernière page, › devient un bouton
+des pages (Maj + P, voir « Les pages »). Sa largeur ne dépend jamais de la
+page qu'on regarde : le numéro prend la place du plus large du tableau
+(« 10 / 12 » après « 9 / 12 » ne le fait pas grandir) et, dès qu'une page
+du tableau a un nom, la place d'un nom est gardée sur toutes les pages
+(vide sur une page sans nom). Cette place est d'une vingtaine de
+caractères, moins si la barre n'a pas la place sur ses rangées : elle ne
+lui en fait jamais prendre une de plus. Sans même dix caractères de place
+(une tablette de 1024 px de large, où la barre tient juste sur une rangée),
+le nom ne s'y montre pas et reste dans l'annonce, l'infobulle et la
+trieuse. Ainsi ‹ et › restent à leur place : on avance en touchant toujours
+au même endroit sans tomber sur le compteur. Seuls le premier nom donné, le
+dernier retiré, le passage à dix pages et une fenêtre qui change de taille
+(une tablette qu'on tourne) peuvent faire bouger la barre, une fois. Sur la dernière page, › devient un bouton
 d'ajout, avec sa propre icône (le chevron et un petit +, à ne pas confondre
 avec le grand + de « Nouvelle page », qui reste à sa place : aucun bouton de
 la barre ne bouge d'une page à l'autre, la poubelle reste sous la main) : il
