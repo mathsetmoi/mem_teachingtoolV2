@@ -710,8 +710,10 @@ describe('le code de la revue ne peut pas écrire', () => {
     const fichiers = [
       ...readdirSync(join(racine, 'revue'), { recursive: true }).map(String).filter(f => f.endsWith('.ts')).map(f => join(racine, 'revue', f)),
       ...['rythme.ts', 'esquisse.ts', 'icones.ts', 'main-levee.ts'].map(f => join(racine, 'revoir', f)),
+      // Le passé d'une copie de page, que la revue lit
+      join(racine, 'heritage.ts'),
     ]
-    expect(fichiers.length).toBeGreaterThanOrEqual(9)
+    expect(fichiers.length).toBeGreaterThanOrEqual(10)
     const interdits = [
       /\.(poser|poserTrace|modifier|supprimer|ajouterPage|supprimerPage|jeterPage|rendrePage|poserPlusieurs|coller|collerCopie|couper|dupliquerSelection|habillerSelection|modifierFormule|changerFond|nouveauGeste|importerImage|allerPage)\(/,
       /transact\(/,

@@ -8,9 +8,13 @@
 // La revue ne touche au tableau qu'à travers une LectureSeule : une copie
 // figée du film et quelques questions sans effet. Ce module ne connaît
 // du document que ses types ; il n'a aucun moyen d'y écrire.
+// Une copie de page (« Dupliquer la page ») a pour passé celui de son
+// original jusqu'à sa naissance (voir heritage.ts) : avant elle, on lit la
+// page d'où elle vient, dans le même instantané.
 // =============================================================
 import type { Etape, ImagePage, Tableau } from '../document'
 import type { Fond, Forme } from '../types'
+import { filiationDe } from '../heritage'
 import { LecturePiste, morceauxEntre } from '../revoir/instruments-film'
 import type { ImageBande } from './bande'
 
@@ -22,8 +26,20 @@ export interface LectureSeule {
    *  qui sert entre les heures de et a (ms), à la première question sur elles
    *  (null : rien, les instruments ne se rejouent pas) */
   pisteEntre(de: number, a: number): LecturePiste | null
-  /** La page `page` juste après l'étape i ; null si i est hors du film ou si la page n'existait pas */
+  /** La page `page` juste après l'étape i ; null si i est hors du film ou si
+   *  la page n'existait pas. Avant la naissance d'une copie, c'est la page
+   *  d'où elle vient (voir source). */
   page(i: number, page: string): ImagePage | null
+  /** Au moins une page du film est une copie (sans quoi chaque page est sa
+   *  propre source, et rien n'est à chercher) */
+  readonly copies: boolean
+  /** L'étape i est-elle de l'histoire de la page ? Celles notées sur elle, et
+   *  pour une copie, avant sa naissance, celles de la page d'où elle vient */
+  deLaPage(i: number, page: string): boolean
+  /** La page qu'on lit vraiment pour montrer `page` juste après l'étape i :
+   *  elle-même, ou avant la naissance d'une copie, la page d'où elle vient
+   *  (c'est aussi celle que la piste des instruments a notée) */
+  source(i: number, page: string): string
   /** Les pages du tableau aujourd'hui, dans leur ordre */
   pagesActuelles(): readonly string[]
   /** Le fond actuel d'une page (null : la page n'existe plus) */
@@ -32,7 +48,9 @@ export interface LectureSeule {
   image(src: string): string | null
   /** L'étape i ne fait-elle que créer sa page, vide ? Une page qui naît ne
    *  montre rien (une page vide paraît là où il n'y avait rien) : ce n'est
-   *  pas un geste, la bande la saute et les comptes l'ignorent. */
+   *  pas un geste, la bande la saute et les comptes l'ignorent. La naissance
+   *  d'une copie en est toujours une, même pleine : elle ne montre rien de
+   *  neuf, la page continue celle d'où elle vient. */
   naissance(i: number): boolean
   /** La forme `id` était-elle déjà passée sur la page à l'étape i, ou avant ?
    *  Une forme absente à l'étape i qui paraît ensuite revient alors : rendue
@@ -50,12 +68,14 @@ export function lectureDe(t: Tableau, pagesActuelles: () => readonly string[], f
     return derniere ? { ...e, page: derniere } : e
   }))
   const banque = t.doc.getMap('images')
-  const page = (i: number, p: string) => i < 0 || i >= fige.length ? null : t.pageA(fige[i], p)
-  // Une page naît toujours sur la première étape notée sur elle (le tableau
-  // note la création sur la nouvelle page). On le vérifie à la première
-  // question, une fois par page : elle n'existait pas juste avant, elle est vide.
-  const premieres = new Map<string, number>()
-  fige.forEach((e, i) => { if (e.page && !premieres.has(e.page)) premieres.set(e.page, i) })
+  // De quelle page chaque copie hérite son passé, et quand elle est née :
+  // une fois pour tout le film figé (une page naît toujours sur la première
+  // étape notée sur elle : le tableau note la création sur la nouvelle page)
+  const fil = filiationDe(t, fige)
+  const source = (i: number, p: string) => fil.source(p, i) ?? p
+  const page = (i: number, p: string) => i < 0 || i >= fige.length ? null : t.pageA(fige[i], source(i, p))
+  // Une page ordinaire qui naît, on le vérifie à la première question, une
+  // fois par page : elle n'existait pas juste avant, elle est vide
   const verdicts = new Map<number, boolean>()
   const morceaux = t.piste.toArray()
   /** Les dernières pistes relues, par intervalle (les plus anciennes s'en vont d'abord) */
@@ -75,13 +95,18 @@ export function lectureDe(t: Tableau, pagesActuelles: () => readonly string[], f
       return l
     },
     page,
+    copies: fil.copies,
+    deLaPage: (i, p) => i >= 0 && i < fige.length && fil.deLaPage(i, p, fige[i].page),
+    source,
     pagesActuelles,
     fondActuel: p => pagesActuelles().includes(p) ? t.fondDe(p) : null,
     image: src => { const d = banque.get(src); return typeof d === 'string' ? d : null },
-    dejaPassee: (i, p, id) => i >= 0 && i < fige.length && t.dejaPassee(fige[i], p, id),
+    dejaPassee: (i, p, id) => i >= 0 && i < fige.length && t.dejaPassee(fige[i], source(i, p), id),
     naissance: i => {
       const p = fige[i]?.page
-      if (!p || premieres.get(p) !== i) return false
+      if (!p || fil.naissance(p) !== i) return false
+      // La naissance d'une copie : la page continue celle d'où elle vient
+      if (fil.origineDe(p)) return true
       let v = verdicts.get(i)
       if (v === undefined) {
         const apres = page(i, p)
@@ -94,12 +119,20 @@ export function lectureDe(t: Tableau, pagesActuelles: () => readonly string[], f
 }
 
 /** Deux planches identiques à l'œil : même fond, même origine, et les mêmes
- *  formes (les mêmes objets, dans le même ordre). Une forme qui n'a pas
- *  changé d'une étape à l'autre est le même objet : la comparaison est sûre. */
+ *  formes, dans le même ordre. Une forme qui n'a pas changé d'une étape à
+ *  l'autre est le même objet : c'est la comparaison sûre et sans frais. Une
+ *  page et sa copie ont des formes de même identifiant mais d'objets
+ *  distincts (des copies, dès la copie ; et après un rechargement, Yjs relit
+ *  chaque page à part) : elles comptent pour égales si leur contenu est le
+ *  même. On ne compare ce contenu qu'en dernier recours, après l'objet puis
+ *  l'identifiant : rien ne coûte quand rien ne change. */
 export function memeImage(a: ImagePage, b: ImagePage): boolean {
   if (a === b) return true
   if (a.fond !== b.fond || a.origine.x !== b.origine.x || a.origine.y !== b.origine.y || a.formes.length !== b.formes.length) return false
-  for (let i = 0; i < a.formes.length; i++) if (a.formes[i] !== b.formes[i]) return false
+  for (let i = 0; i < a.formes.length; i++) {
+    const f = a.formes[i], g = b.formes[i]
+    if (f !== g && (f.id !== g.id || JSON.stringify(f) !== JSON.stringify(g))) return false
+  }
   return true
 }
 

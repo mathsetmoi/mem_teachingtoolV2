@@ -444,6 +444,21 @@ du dernier vrai geste). Une page supprimée et jamais rendue est rangée dans
 « Pages jetées », avec toute son histoire ; rendue, elle reprend sa place et
 son histoire continue.
 
+**Une copie de page** (« Dupliquer la page ») a pour histoire celle de son
+original jusqu'au moment de la copie, puis la sienne : sa revue montre la
+page se construire comme l'original (« Toute son histoire » compte ces
+gestes, et la séance où l'on a construit l'original est aussi une séance de
+la copie), puis ce qu'on a fait sur elle. La copie elle-même n'est pas un
+geste, ni dans son histoire, ni dans le compte d'une séance : la page
+continue celle d'où elle vient, rien ne surgit ni ne se redessine. Une copie de copie remonte toute la chaîne. Rien n'est recopié :
+la revue lit l'original dans l'instantané de chaque image (`src/heritage.ts`),
+et ce passé ne change plus, même si l'original est ensuite modifié, supprimé,
+ou supprimé définitivement. Une page de la corbeille, ou supprimée
+définitivement, reste dans « Pages jetées » avec toute son histoire ; une
+copie retirée sans qu'on y ait rien écrit n'y figure pas (son histoire est
+celle de l'original). Une page qui a un nom le montre partout où la revue la
+nomme : « Page 3 · Exercice 12 p. 84 ».
+
 **Les commandes**, toutes au clavier et en grands boutons : Espace, K ou un
 appui bref sur le tableau pour lire ou s'arrêter ; → ou Page↓ pour un pas,
 ← ou Page↑ pour revenir ; Maj+→ et Maj+← pour un seul geste visible ; [ et ]
@@ -541,6 +556,18 @@ puis rendues. Une page supprimée pour de bon au milieu de la
 séance : le replay suit le professeur sur la page où il est arrivé (après
 plusieurs suppressions de suite, directement sur la dernière) ; supprimée
 après le dernier geste, elle n'allonge pas la séance, qui finit sur ce geste.
+Une **copie de page** publiée sans son original se construit sous les yeux
+de l'élève comme l'original s'est construit en classe (ce que l'original a
+reçu avant la copie, puis ce qu'on a fait sur elle), sans geste à la copie ;
+publiée avec son original, l'élève voit l'original se construire, puis la
+copie paraître d'un coup au moment de la copie, comme la classe l'a vue
+(ses formes ne se redessinent pas), et chacune continue. Un passé ne se joue
+jamais deux fois : deux copies d'une même page publiées sans elle, la
+première se construit, la seconde paraît d'un coup au moment de sa copie.
+Une copie partie du tableau sans avoir rien reçu à elle (retirée par Ctrl+Z
+juste après « Dupliquer la page », ou supprimée) n'est pas proposée : son
+histoire est celle de l'original. Le nom donné à une page n'y part pas : les
+chapitres restent « Page 2 ».
 Un test
 automatique le vérifie (`npm test`). Le lecteur n'écrit rien dans le navigateur
 de l'élève (ni stockage, ni cookie), ne charge aucune police ni aucun service
@@ -1026,6 +1053,7 @@ cours, qui fait la latence ressentie au stylet.
 | `src/geometrie.ts` | Ce que touche la gomme ; ce que vise la sélection (la distance au tracé, l'intérieur plein ou nu, l'aire) ; ce que prend un cadre ou un lasso (la part dedans, le lasso simplifié) |
 | `src/formes.ts` | Reconnaissance des figures, codage, transformations |
 | `src/revue/` | La revue en classe : ce qu'on revoit, les images, la frise, le choix |
+| `src/heritage.ts` | Le passé d'une copie de page : la page qu'on lit vraiment à chaque étape du film (l'original, avant la copie), pour la revue et le film élève |
 | `src/revoir/` | Le replay des élèves : format du film, rythme de la main, instruments, exporteur, bobine, lecteur (`revoir.html`), relais |
 | `src/piste.ts` | La piste des instruments : ce que la classe en a vu, noté pour le replay |
 | `src/publication/` | Publier sur le Drive : comptes et relais, connexion Google, la fenêtre |
