@@ -662,7 +662,7 @@ body.en-trieuse .toast { z-index: 30; }
 }
 .carte {
   position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0;
-  padding: 6px; border-radius: 12px; cursor: pointer; outline: none;
+  padding: 6px; border-radius: 12px; cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent;
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: pan-y;
 }
 .trieuse.sans-tactile .trieuse-grille, .trieuse.sans-tactile .carte { touch-action: none; }
@@ -707,8 +707,64 @@ body.en-trieuse .toast { z-index: 30; }
   margin: 0; padding: 8px max(16px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   border-top: 1px solid var(--filet); color: var(--encre-douce); font-size: 14px; text-align: center;
 }
+/* Le bandeau : des boutons à libellé, 44 px de haut au moins. « Choisir
+   plusieurs » (un interrupteur) n'est là qu'avec un écran tactile, où
+   Maj + clic n'existe pas ; allumé, le coup de surligneur des outils. */
+.trieuse-bouton {
+  min-height: 44px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); color: var(--encre);
+  font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer;
+}
+.trieuse-bouton svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.trieuse-bouton[aria-pressed='true'] { background: var(--surligneur); }
+.trieuse.sans-tactile .trieuse-choisir { display: none; }
+.trieuse-choix { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.trieuse-choix[hidden] { display: none; }
+.trieuse-nombre { padding: 0 6px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Une page choisie : un fond bleu pâle et une coche pleine. Tant que des
+   pages sont choisies (ou « Choisir plusieurs » allumé), chaque vignette
+   montre sa coche, vide ou pleine : on voit qu'un toucher choisit. */
+.carte[aria-selected='true'] { background: #dbe7f8; }
+.carte[aria-selected='true'] .carte-image { border-color: var(--bleu); }
+.carte-coche {
+  position: absolute; left: 8px; bottom: 8px; width: 30px; height: 30px;
+  display: none; place-items: center; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92); border: 2px solid var(--encre-douce); pointer-events: none;
+}
+.trieuse.en-choix .carte-coche { display: grid; }
+.carte-coche svg { width: 20px; height: 20px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; visibility: hidden; }
+.carte[aria-selected='true'] .carte-coche { background: var(--bleu); border-color: var(--bleu); }
+.carte[aria-selected='true'] .carte-coche svg { visibility: visible; }
+/* Le menu de la page : ⋯ dans le coin bas droit de la vignette, toujours
+   là (rien ne dépend du survol : TNI, doigt). Une cible de 44 × 44, mais
+   une pastille plus petite, qui cache moins la page. */
+.carte-options {
+  position: absolute; right: 0; bottom: 0; z-index: 1; isolation: isolate; width: 44px; height: 44px; padding: 0;
+  display: grid; place-items: center; border: 0; background: transparent; color: var(--encre); cursor: pointer;
+}
+.carte-options::before {
+  content: ''; position: absolute; z-index: -1; inset: 10px 5px 6px 5px; border-radius: 8px;
+  background: rgba(246, 248, 251, 0.94); border: 1px solid var(--filet);
+}
+.carte-options svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 3.4; stroke-linecap: round; }
+.carte-options[aria-expanded='true']::before { border-color: var(--bleu); background: #e3ebf7; }
+.trieuse-fantome .carte-options, .trieuse-fantome .carte-coche { display: none; }
+/* Plusieurs pages tirées : leur nombre sur le fantôme */
+.trieuse-fantome[data-nombre]::after {
+  content: attr(data-nombre); position: absolute; right: -10px; top: -10px;
+  min-width: 34px; height: 34px; padding: 0 8px; display: grid; place-items: center; border-radius: 17px;
+  background: var(--bleu); color: #fff; font-size: 18px; font-weight: 700;
+}
+/* Le nom qu'on écrit, dans la carte (16 px : l'iPad ne zoome pas la page) */
+.carte-saisie {
+  width: 100%; min-height: 44px; padding: 0 10px; box-sizing: border-box;
+  border: 2px solid var(--bleu); border-radius: 8px; background: var(--papier); color: var(--encre);
+  font: inherit; font-size: 16px; user-select: text; -webkit-user-select: text; touch-action: manipulation;
+}
 @media (hover: hover) {
   .carte:hover .carte-image { border-color: var(--bleu); }
+  .trieuse-bouton:hover, .carte-options:hover::before { background: #e9eef5; }
+  .trieuse-bouton[aria-pressed='true']:hover { background: var(--surligneur); }
 }
 @media (max-width: 640px) {
   .trieuse-actions { order: 3; flex-basis: 100%; justify-content: flex-start; }
@@ -718,6 +774,15 @@ body.en-trieuse .toast { z-index: 30; }
 @media (max-width: 480px) {
   .trieuse-grille { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding-top: 12px; }
   .carte-numero { font-size: 16px; min-width: 30px; height: 30px; }
+  /* Le bandeau en trois lignes au plus : des icônes seules (le bouton
+     garde son nom), la croix de « Tout désélectionner » devant le nombre */
+  .trieuse-actions { gap: 4px; }
+  .trieuse-bouton { padding: 0 10px; font-size: 15px; }
+  .trieuse-bouton.icone-seule { min-width: 44px; padding: 0; justify-content: center; }
+  .trieuse-bouton.icone-seule .libelle { display: none; }
+  .trieuse-choix { gap: 4px; }
+  .trieuse-deselectionner { order: -1; }
+  .trieuse-nombre { padding: 0 4px; font-size: 15px; }
 }
 
 /* ---------- Petits menus flottants (menus.ts) ----------

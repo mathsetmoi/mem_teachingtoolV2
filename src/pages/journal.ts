@@ -139,10 +139,16 @@ export class JournalPages {
   /** Rend un cliché : l'ordre, les noms et la corbeille d'un coup (une
    *  étape seulOrdre si l'ordre change, aucune sinon), puis chaque fond qui
    *  a changé, sur sa page (une étape notée sur elle : la revue voit le fond
-   *  revenir). Aucune pile d'annulation n'est touchée. */
+   *  revenir). Les entrées de corbeille des pages que le cliché ne connaît
+   *  pas restent telles quelles : une copie créée puis défaite par une
+   *  action plus récente reste définitive (elle ne reparaît pas dans la
+   *  corbeille comme une page jetée). Aucune pile d'annulation n'est
+   *  touchée. */
   private rendre(c: Cliche) {
     const t = this.tableau
-    t.retablirEtatDesPages(c.pages)
+    const corbeille = { ...c.pages.corbeille }
+    for (const [id, e] of Object.entries(t.etatDesPages().corbeille)) if (!connuDe(c, id)) corbeille[id] = e
+    t.retablirEtatDesPages({ ...c.pages, corbeille })
     for (const [id, f] of Object.entries(c.fonds)) {
       if (!t.pages.has(id)) continue
       const o = t.origineDe(id)
@@ -151,15 +157,33 @@ export class JournalPages {
   }
 }
 
-/** Deux clichés disent-ils la même chose (l'ordre, les noms, la corbeille,
- *  les fonds) ? Les pages existantes n'y comptent pas : une page créée puis
- *  retirée existe toujours (gc: false), elle a seulement quitté l'ordre. */
+/** Le tableau tel qu'il est (a) est-il dans l'état d'un cliché (b) :
+ *  l'ordre, les noms, la corbeille, les fonds ? Les pages existantes n'y
+ *  comptent pas : une page créée puis retirée existe toujours (gc: false),
+ *  elle a seulement quitté l'ordre. Une page que b ne connaît pas (créée
+ *  après lui, par une action qu'on a défaite depuis : elle est hors de
+ *  l'ordre, définitive) n'y compte pas non plus : sans cela, défaire deux
+ *  insertions de suite échouerait à la seconde, l'entrée définitive de la
+ *  première créée ne figurant pas dans le cliché d'avant elle. */
 function memeCliche(a: Cliche, b: Cliche): boolean {
   const pa = a.pages, pb = b.pages
   if (pa.ordre.length !== pb.ordre.length || pa.ordre.some((id, i) => id !== pb.ordre[i])) return false
   if (!memesCles(pa.noms, pb.noms, (x, y) => x === y)) return false
-  if (!memesCles(pa.corbeille, pb.corbeille, memeEntree)) return false
-  return memesCles(a.fonds, b.fonds, (x, y) => x.fond === y.fond && x.origine.x === y.origine.x && x.origine.y === y.origine.y)
+  const connue = (id: string) => connuDe(b, id)
+  if (!memesCles(filtrer(pa.corbeille, connue), pb.corbeille, memeEntree)) return false
+  return memesCles(filtrer(a.fonds, connue), b.fonds, (x, y) => x.fond === y.fond && x.origine.x === y.origine.x && x.origine.y === y.origine.y)
+}
+
+/** Le cliché c connaît-il la page : elle existait, ou il lui donne une
+ *  entrée de corbeille (une page que son action a créée) */
+function connuDe(c: Cliche, id: string): boolean {
+  return c.existantes.has(id) || Object.prototype.hasOwnProperty.call(c.pages.corbeille, id)
+}
+
+function filtrer<T>(o: Record<string, T>, garder: (k: string) => boolean): Record<string, T> {
+  const r: Record<string, T> = {}
+  for (const [k, v] of Object.entries(o)) if (garder(k)) r[k] = v
+  return r
 }
 
 function memesCles<T>(a: Record<string, T>, b: Record<string, T>, egal: (x: T, y: T) => boolean): boolean {

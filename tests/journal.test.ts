@@ -232,6 +232,34 @@ describe('le journal des pages', () => {
     expect(j.annulerSi(e1)).toBe('change')
   })
 
+  it('deux copies, puis une insertion, défaites une à une puis refaites : aucune ne reparaît dans la corbeille', async () => {
+    const { t, pages: [a, b] } = await tableau(2)
+    const j = new JournalPages(t)
+    let qa = '', qb = '', n = ''
+    j.faire('Dupliquer a', () => { qa = t.dupliquerPage(a)! })
+    j.faire('Dupliquer b', () => { qb = t.dupliquerPage(b)! })
+    j.faire('Insérer', () => { n = t.ajouterPage('blanc', 0) })
+    await attendre()
+    expect(ordre(t)).toEqual([n, a, qa, b, qb])
+    // Défaire la plus récente laisse une entrée définitive que les clichés
+    // plus anciens ne connaissent pas : les annulations suivantes passent
+    expect(j.annuler()).toBe('fait')
+    expect(j.annuler()).toBe('fait')
+    expect(j.annuler()).toBe('fait')
+    expect(ordre(t)).toEqual([a, b])
+    for (const p of [qa, qb, n]) expect(t.corbeille.get(p)?.definitif).toBe(true)
+    // Les copies ont des formes : sans leur entrée, elles iraient dans la corbeille
+    expect(t.pagesDeLaCorbeille()).toEqual([])
+    expect(j.retablir()).toBe('fait')
+    expect(ordre(t)).toEqual([a, qa, b])
+    expect(t.corbeille.get(qb)?.definitif).toBe(true)
+    expect(j.retablir()).toBe('fait')
+    expect(j.retablir()).toBe('fait')
+    expect(ordre(t)).toEqual([n, a, qa, b, qb])
+    expect(j.annuler()).toBe('fait')
+    expect(t.pagesDeLaCorbeille()).toEqual([])
+  })
+
   it('vider : plus rien à annuler ni à refaire', async () => {
     const { t, pages: [, b] } = await tableau(2)
     const j = new JournalPages(t)

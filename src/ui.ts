@@ -17,8 +17,8 @@ import { Constructeur } from './constructeur'
 import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
-import type { Menu } from './menus'
-import { ENTREES, allerAuxEntrees, basculerMenu, fermerMenu, focusAuClavier, focusNullePart, installerMenus, ouvrirMenu, placerMenu, refaireEnGardantLeFocus } from './menus'
+import type { Menu, OptionsEntree } from './menus'
+import { ENTREES, allerAuxEntrees, basculerMenu, entreeMenu, fermerMenu, focusAuClavier, focusNullePart, installerMenus, ouvrirMenu, placerMenu, refaireEnGardantLeFocus } from './menus'
 import { choisirGestes, choisirMolette, reglages } from './reglages'
 import type { Doigt, Molette } from './reglages'
 import { CTRL, tableauCache } from './navigateur'
@@ -676,25 +676,9 @@ export class UI implements Interface {
     }, 1000)
   }
 
-  /** Une entrée d'un petit menu : un choix fait le ferme, puis agit. coche :
-   *  un choix parmi d'autres (menuitemradio), coché ou non ; avec caseACocher,
-   *  un réglage qu'on allume ou qu'on coupe (menuitemcheckbox). */
-  private entreeMenu(m: HTMLElement, texte: string, faire: (e: MouseEvent) => void, o: { touche?: string; aide?: string; coche?: boolean; caseACocher?: boolean; inactif?: boolean } = {}) {
-    const b = document.createElement('button')
-    b.type = 'button'; b.className = 'menu-item'
-    b.setAttribute('role', o.coche === undefined ? 'menuitem' : o.caseACocher ? 'menuitemcheckbox' : 'menuitemradio')
-    if (o.coche !== undefined) b.setAttribute('aria-checked', String(o.coche))
-    if (o.inactif) b.setAttribute('aria-disabled', 'true')
-    b.innerHTML = `<span class="coche">${o.coche ? icone('coche') : ''}</span><span class="libelle"></span>` + (o.touche ? `<span class="touche">${html(o.touche)}</span>` : '')
-    const libelle = b.querySelector('.libelle')!
-    libelle.textContent = texte
-    if (o.aide) libelle.appendChild(Object.assign(document.createElement('small'), { textContent: o.aide }))
-    b.addEventListener('click', e => {
-      if (o.inactif) return
-      fermerMenu()
-      faire(e)
-    })
-    m.appendChild(b)
+  /** Une entrée d'un petit menu (voir menus.ts, entreeMenu) */
+  private entreeMenu(m: HTMLElement, texte: string, faire: (e: MouseEvent) => void, o: OptionsEntree = {}) {
+    entreeMenu(m, texte, faire, o)
   }
 
   /** Le menu du zoom, refait à chaque ouverture (la sélection a pu changer) */

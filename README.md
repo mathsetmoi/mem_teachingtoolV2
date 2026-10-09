@@ -739,8 +739,9 @@ construction), ferme le programme de construction et les menus, et retire du
 bas de l'écran le message « … · Annuler » du tableau (il changerait une page
 qu'on ne voit plus ; Ctrl+Z, une fois la trieuse fermée, rend toujours la
 page supprimée). Tant qu'elle est ouverte, plus rien n'écrit sur la page
-cachée : ni les lettres des outils, ni Ctrl+Z, Ctrl+V, Suppr, ni le
-programme de construction.
+cachée : ni les lettres des outils, ni Ctrl+V, ni le programme de
+construction ; Ctrl+Z, Suppr, Ctrl + D et Ctrl + A y agissent sur les pages
+(voir plus bas), jamais sur ce qui est écrit.
 
 Pourquoi plein écran plutôt qu'un panneau sur le côté (comme SMART ou
 Xournal++) : la page est infinie et le vidéoprojecteur montre tout à la
@@ -777,17 +778,81 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
   (une petite vibration là où elle existe) ; sinon le doigt fait défiler la
   grille, et un toucher bref mène à la page.
 - **Réordonner au clavier** : Ctrl + Maj + ← ou → (⌘ + Maj sur Mac) avance ou
-  recule d'une place la page qui a le focus.
-- **Annuler** : chaque déplacement le dit (« Page déplacée : c'est maintenant
-  la page 5 ») avec **Annuler** ; dans la trieuse, Ctrl+Z annule et Ctrl+Y
-  (ou Ctrl + Maj + Z) rétablit (« Annulé : page déplacée », « Rien à annuler
-  dans les pages »). La trieuse garde son propre journal, qui ne touche à
-  aucune pile d'annulation de page : il ne défait que si les pages sont
-  exactement telles qu'il les a laissées (sinon : « Les pages ont changé
-  depuis : rien à annuler. »), et il se vide à la fermeture (son dernier
-  « Annuler » s'en va avec lui). Un déplacement n'est un geste nulle part : ni
-  la revue, ni les séances, ni le film élève n'y voient autre chose qu'un
-  ordre changé.
+  recule d'une place la page qui a le focus (toutes les pages choisies, si
+  elle en est, regroupées dans leur ordre).
+- **Plusieurs pages à la fois** : Maj + clic ou Ctrl + clic (⌘ + clic sur Mac,
+  où Ctrl + clic est un clic droit) choisit une page ou la retire, sans y
+  aller ; Espace fait de même au clavier, Ctrl + A les choisit toutes. Au
+  doigt et au stylet posé sur l'écran, le bouton **Choisir plusieurs** du
+  bandeau (un interrupteur, comme « Ajouter » de la barre d'actions) fait de
+  chaque toucher un choix ; il s'éteint quand plus rien n'est choisi. Une
+  page choisie a une coche et un fond bleu pâle ; tant qu'il y en a, chaque
+  vignette montre sa coche (vide ou pleine), et le bandeau dit « 3 pages
+  choisies » avec **Dupliquer**, **Supprimer** et **Tout désélectionner**.
+  Glisser une page choisie emmène toutes les pages choisies, dans leur
+  ordre (leur nombre sur l'image qui suit le pointeur). Échap ferme d'abord
+  un menu ouvert, arrête un glisser, laisse le nom qu'on écrivait tel qu'il
+  était, puis vide la sélection, et enfin ferme la trieuse. Sur un
+  téléphone, le bandeau passe à la ligne (trois lignes au plus : ses
+  boutons n'y montrent que leur icône).
+- **Le menu d'une page** : son bouton ⋯ (dans le coin de la vignette, toujours
+  là), le clic droit sur la vignette (ouvert à l'appui du bouton, comme sur
+  le tableau), le bouton latéral du stylet de la tablette graphique, la
+  touche Menu ou Maj + F10 sur la vignette qui a le focus (le focus va à sa
+  première entrée ; ↓ passe à la suivante sans changer de vignette, Suppr n'y
+  supprime rien, Échap le ferme sans fermer la trieuse). L'appui long au
+  doigt ne l'ouvre pas : il sert à tirer la page. Il propose **Aller à cette
+  page**, **Renommer…**, **Dupliquer**, **Insérer une page avant**, **Insérer
+  une page après**, le **Fond** (page blanche, petits carreaux, Seyès, repère)
+  et **Supprimer** ; sur une page choisie parmi d'autres, **Dupliquer** et
+  **Supprimer** pour toutes.
+- **Renommer** (F2, « Renommer… », ou un double-clic sur le nom) : un champ
+  dans la vignette, prérempli, 60 caractères au plus, le nom étant
+  facultatif ; Entrée ou cliquer ailleurs le garde, Échap le laisse tel
+  qu'il était, un nom vidé est retiré (« Nom de la page retiré »). Au doigt,
+  la vignette reste visible au-dessus du clavier qui paraît. Le nom se lit
+  ensuite dans le compteur (« 3 / 7 · Exercice 12 p. 84 »), à l'annonce du
+  numéro et dans la revue. Un simple clic sur le nom mène à la page, un
+  instant après (le temps de savoir si c'est un double-clic).
+- **Insérer, ajouter** : « Insérer une page avant / après » met une page vide
+  à côté, au fond de sa voisine (on le change ensuite par « Fond ») ; le
+  bouton **Ajouter une page** du bandeau en met une à la fin, au fond de la
+  dernière. La nouvelle vignette prend le focus. Annulée, une page insérée
+  disparaît tout à fait (ni dans l'ordre, ni dans la corbeille).
+- **Changer le fond** d'une page sans y aller : le repère prend son origine au
+  centre de ce qui est écrit sur la page, calée sur le centimètre ((0, 0)
+  sur une page vide). La vignette se repeint ; la revue voit le fond changer
+  (une étape notée sur cette page).
+- **Dupliquer** (Ctrl + D, ⌘ + D sur Mac, sans jamais ouvrir le marque-page du
+  navigateur ; le menu ; le bandeau) : chaque page choisie, ou celle qui a
+  le focus, est copiée juste après elle-même, avec toute son histoire (la
+  revue et le film élève de la copie la montrent se construire, voir
+  « Revoir la construction »), le même fond et le même nom suivi de
+  « (copie) ». La copie s'ouvrira sur la vue de son original. Plusieurs
+  pages se dupliquent en une seule action. Annulée, une copie disparaît sans
+  aller dans la corbeille.
+- **Supprimer** (Suppr ou Retour arrière, le menu, le bandeau) : les pages
+  choisies, ou celle qui a le focus, vont dans la corbeille (une page vide
+  n'y va pas : « Page 3 (vide) supprimée ») ; il reste toujours au moins une
+  page. Si la page qu'on regarde en est, on passe d'abord sur la plus proche
+  qui reste avant elle (la suivante pour la première) : après la fermeture
+  de la trieuse, **Ctrl+Z** sur cette page rend celle qu'on regardait, à sa
+  place, comme après la poubelle de la barre du haut.
+- **Annuler** : chaque action le dit (« Page déplacée : c'est maintenant la
+  page 5 », « Page renommée », « Page vide insérée : c'est la page 4 », « Page
+  ajoutée à la fin (page 8) », « Fond changé (page 3) », « Page 3 dupliquée :
+  la copie est la page 4 », « 3 pages dupliquées », « Page 3 supprimée »,
+  « 3 pages supprimées ») avec **Annuler** ; dans la trieuse, Ctrl+Z annule et
+  Ctrl+Y (ou Ctrl + Maj + Z) rétablit (« Annulé : page supprimée », « Rien à
+  annuler dans les pages »). Défaire une suppression remet les pages
+  exactement à leur place, et ramène sur la page qu'on regardait. La trieuse
+  garde son propre journal, qui ne touche à aucune pile d'annulation de
+  page : il ne défait que si les pages sont exactement telles qu'il les a
+  laissées (sinon : « Les pages ont changé depuis : rien à annuler. »), et il
+  se vide à la fermeture (son dernier « Annuler » s'en va avec lui ; la
+  corbeille reste le filet). Un déplacement, un nom, une suppression ne sont
+  un geste nulle part : ni la revue, ni les séances, ni le film élève n'y
+  voient autre chose qu'un ordre changé.
 
 Les vignettes se peignent à part (voir « Architecture ») : celles qu'on voit
 d'abord, sans jamais bloquer l'écriture (60 pages de 300 traits : les
@@ -1206,13 +1271,14 @@ réglage de ce navigateur, sous la clé `mem-sortie-fond`.
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (celles des lecteurs sont dans `src/revoir/icones.ts`) |
 | `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
 | `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; les touches qui se taisent pendant un geste ; le tableau caché (la revue, une séance d'automatismes, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) |
-| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) |
+| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) ; le balisage de leurs entrées, de leurs filets et de leurs titres (l'interface et la trieuse s'en servent) |
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
-| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), annuler par son journal |
+| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), plusieurs pages à la fois (Maj ou Ctrl + clic, Espace, Ctrl + A, « Choisir plusieurs » au doigt), le menu d'une vignette (⋯, clic droit, bouton du stylet, touche Menu), le nom écrit dans la carte, les messages et leur « Annuler » |
+| `src/pages/actions.ts` | Ce que la trieuse fait aux pages, chaque action en une entrée de son journal : renommer, insérer une page vide avant ou après, en ajouter une à la fin, dupliquer avec l'histoire, supprimer vers la corbeille (jamais toutes ; la page où aller quand on supprime celle qu'on regarde), changer un fond (l'origine du repère au centre du contenu), ranger d'une place (pur, testé) |
 | `src/pages/glisser.ts` | Où arrive une page lâchée dans la grille (la ligne sous le point, avant la première carte dont le milieu est à droite), où se pose la barre qui le montre, la vitesse du défilement près du bord (pur, testé) |
-| `src/pages/journal.ts` | Le journal de la trieuse des pages : chaque action sur les pages (déplacer, renommer, dupliquer, insérer, supprimer, changer un fond) entre avec l'état des pages d'avant et d'après ; annuler (ou rétablir) seulement si le tableau est exactement dans l'état laissé, sinon il le dit et se vide (jamais un changement invisible ni une page perdue) ; une page créée par une action défaite ne va pas dans la corbeille ; aucune pile de page touchée |
+| `src/pages/journal.ts` | Le journal de la trieuse des pages : chaque action sur les pages (déplacer, renommer, dupliquer, insérer, supprimer, changer un fond) entre avec l'état des pages d'avant et d'après ; annuler (ou rétablir) seulement si le tableau est exactement dans l'état laissé, sinon il le dit et se vide (jamais un changement invisible ni une page perdue) ; une page créée par une action défaite ne va pas dans la corbeille, et y reste hors quand on défait les actions d'avant ; aucune pile de page touchée |
 | `src/presse-papiers.ts` | Copier, coller : la copie écrite pour le presse-papiers du système et relue sans passer par la page, chaque forme vérifiée, le collage (noms gardés ou changés, points liés) |
 | `src/fichier.ts` | Le tableau dans un fichier `.memc` : l'écrire, le relire (et refuser ce qui n'en est pas un) |
 | `src/sauvegarde.ts` | Enregistrer et ouvrir un tableau : le menu ⋯, Ctrl + S, Ctrl + O, la question avant de remplacer, les autres onglets |

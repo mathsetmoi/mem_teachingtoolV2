@@ -20,6 +20,7 @@
 // Tant qu'un de ces menus est ouvert, la barre d'actions se cache (voir
 // quandMenuChange).
 // =============================================================
+import { icone } from './icones'
 
 /** Un menu, et le bouton qui l'ouvre s'il en a un (le menu de la page n'en a
  *  pas : il s'ouvre au clic droit, là où l'on a appuyé) */
@@ -199,6 +200,41 @@ function fermer(rendreFocus: boolean): boolean {
 }
 
 export function menuOuvert(): boolean { return !!ouvert }
+
+/** Ce qu'une entrée de petit menu peut porter (voir entreeMenu) */
+export interface OptionsEntree { touche?: string; aide?: string; coche?: boolean; caseACocher?: boolean; inactif?: boolean }
+
+/** Une entrée d'un petit menu, ajoutée au bout de m : un choix fait ferme
+ *  le menu, puis agit. touche : son raccourci, à droite ; aide : une ligne
+ *  dessous ; coche : un choix parmi d'autres (menuitemradio), coché ou non ;
+ *  avec caseACocher, un réglage qu'on allume ou qu'on coupe
+ *  (menuitemcheckbox) ; inactif : grisée, elle ne fait rien. Les menus de
+ *  l'interface (ui.ts) et celui d'une vignette (pages/trieuse.ts) en sont
+ *  faits. */
+export function entreeMenu(m: HTMLElement, texte: string, faire: (e: MouseEvent) => void, o: OptionsEntree = {}): HTMLButtonElement {
+  const b = document.createElement('button')
+  b.type = 'button'; b.className = 'menu-item'
+  b.setAttribute('role', o.coche === undefined ? 'menuitem' : o.caseACocher ? 'menuitemcheckbox' : 'menuitemradio')
+  if (o.coche !== undefined) b.setAttribute('aria-checked', String(o.coche))
+  if (o.inactif) b.setAttribute('aria-disabled', 'true')
+  const coche = Object.assign(document.createElement('span'), { className: 'coche' })
+  if (o.coche) coche.innerHTML = icone('coche')
+  const libelle = Object.assign(document.createElement('span'), { className: 'libelle', textContent: texte })
+  if (o.aide) libelle.appendChild(Object.assign(document.createElement('small'), { textContent: o.aide }))
+  b.append(coche, libelle)
+  if (o.touche) b.appendChild(Object.assign(document.createElement('span'), { className: 'touche', textContent: o.touche }))
+  b.addEventListener('click', e => {
+    if (o.inactif) return
+    fermerMenu()
+    faire(e)
+  })
+  m.appendChild(b)
+  return b
+}
+
+/** Un filet entre deux groupes d'entrées, et le titre d'un groupe */
+export function filetMenu(m: HTMLElement) { m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' })) }
+export function titreMenu(m: HTMLElement, texte: string) { m.appendChild(Object.assign(document.createElement('div'), { className: 'menu-titre', textContent: texte })) }
 
 /** Cet appui vient-il de fermer un menu ? Alors il ne pose rien. */
 export function avale(e: PointerEvent): boolean {

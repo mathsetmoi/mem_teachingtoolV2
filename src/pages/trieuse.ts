@@ -3,9 +3,14 @@
 // Toutes les pages en vignettes, plein écran : on y va à une page (un clic,
 // un toucher, Entrée, son numéro tapé au clavier) et on les range (les
 // glisser à la souris, à la tablette graphique ou au doigt ; Ctrl + Maj +
-// flèches au clavier). Ce qu'on y fait s'annule (Ctrl+Z dans la trieuse,
-// « Annuler » du message) par son propre journal (voir journal.ts) : aucune
-// pile d'annulation de page n'est touchée.
+// flèches au clavier). On y choisit plusieurs pages (Maj + clic, Ctrl +
+// clic, Espace, Ctrl + A ; au doigt, « Choisir plusieurs »), et chaque
+// vignette a son menu (le bouton ⋯, le clic droit, le bouton du stylet, la
+// touche Menu) : aller, renommer, dupliquer avec l'histoire, insérer une
+// page vide avant ou après, changer le fond, supprimer (vers la corbeille).
+// Ce qu'on y fait s'annule (Ctrl+Z dans la trieuse, « Annuler » du message)
+// par son propre journal (voir journal.ts ; les actions elles-mêmes sont
+// dans actions.ts) : aucune pile d'annulation de page n'est touchée.
 // Plein écran plutôt qu'un panneau sur le côté : la page est infinie et le
 // vidéoprojecteur montre tout à la classe ; un panneau prendrait un
 // cinquième du tableau pour quatre vignettes, la grille en montre quinze à
@@ -17,22 +22,27 @@
 // Ses vignettes viennent de pages/vignettes.ts : les canevas ne sont dans
 // le document que tant qu'elle est ouverte (fermée, elle ne coûte rien).
 // Les morceaux suivants y ajoutent leurs boutons (le conteneur `actions`
-// du bandeau) : plusieurs pages à la fois, renommer, insérer, dupliquer,
-// supprimer, la corbeille, l'image copiée, le PDF.
+// du bandeau, et `groupeChoix` pour les pages choisies) et leurs entrées
+// du menu d'une vignette : la corbeille, l'image copiée, le PDF.
 // =============================================================
 import * as Y from 'yjs'
 import type { App } from '../app'
 import { JournalPages } from './journal'
 import type { Entree } from './journal'
 import type { Vignettes } from './vignettes'
+import type { Apercus } from '../sorties/apercu'
 import { barreDInsertion, lignesDe, placeDInsertion, vitesseDefilement } from './glisser'
 import type { Rect } from './glisser'
+import * as actions from './actions'
 import { APPUI_LONG, SEUIL_GLISSER, ecranTactile, typePointeur } from '../pointeurs'
 import type { TypePointeur } from '../pointeurs'
-import { menuOuvert } from '../menus'
-import { toucheMarquePage } from '../navigateur'
+import type { Menu } from '../menus'
+import { ENTREES, allerAuxEntrees, avale, entreeMenu, fermerMenu, filetMenu, menuOuvert, ouvrirMenu, placerMenu, titreMenu } from '../menus'
+import { CTRL, MAC, toucheMarquePage, toucheMenu } from '../navigateur'
 import { pagesLisibles } from '../fichier'
 import { icone } from '../icones'
+import { FONDS } from '../types'
+import type { Fond } from '../types'
 
 /** Ce que la trieuse demande à l'interface */
 export interface HoteTrieuse {
@@ -43,15 +53,21 @@ export interface HoteTrieuse {
   /** Ce qu'on voit du tableau entre les barres : le rapport des vignettes */
   zoneLibre(): { l: number; h: number }
   maj(): void
+  /** La boîte du contenu d'une page (l'origine du repère qu'on lui donne) */
+  readonly apercus: Apercus
 }
 
 /** La clé des messages de la trieuse (voir HoteTrieuse.message) */
 const CLE = 'trieuse'
 /** Deux chiffres tapés à moins de ce temps (ms) font un seul numéro (« 1 », « 2 » : la page 12) */
 const ENTRE_CHIFFRES = 800
+/** Un clic sur le nom d'une page attend ce temps (ms) qu'un second en fasse
+ *  un double-clic (renommer) avant de mener à la page */
+const DOUBLE_CLIC_NOM = 400
 
 const AIDE_SOURIS = 'Cliquer sur une page pour y aller · la glisser pour la déplacer · taper son numéro · Échap : fermer'
 const AIDE_DOIGT = 'Toucher une page pour y aller · la déplacer par ⋮⋮ ou par un appui long · × : fermer'
+const AIDE_CHOIX = 'Toucher une page pour la choisir ou la retirer · « Choisir plusieurs » : terminer'
 
 /** Le pointeur posé sur une carte, avant qu'il glisse (ou qu'il se lève :
  *  un clic, un toucher bref, qui mène à la page) */
@@ -66,6 +82,10 @@ interface Appui {
   x0: number; y0: number
   /** Parti de la poignée ⋮⋮ */
   poignee: boolean
+  /** Parti du nom de la page (un double-clic le renomme) */
+  nom: boolean
+  /** Maj, ou Ctrl (⌘ sur Mac) : le clic choisit la page au lieu d'y aller */
+  ajoute: boolean
   /** Il peut tirer la page dès qu'il passe son seuil (souris, tablette
    *  graphique, poignée) */
   arme: boolean
@@ -74,11 +94,13 @@ interface Appui {
   minuterie: number
 }
 
-/** Une page qu'on tire */
+/** Des pages qu'on tire */
 interface Glisse {
   id: number
   ids: string[]
   carte: HTMLElement
+  /** Les cartes de toutes les pages tirées (estompées) */
+  tirees: HTMLElement[]
   fantome: HTMLElement
   barre: HTMLElement
   /** Où le pointeur tient la carte (depuis son coin) */
@@ -93,17 +115,26 @@ interface Glisse {
   ecart: number
 }
 
+/** Le nom d'une page qu'on écrit, dans sa carte */
+interface Saisie { page: string; input: HTMLInputElement }
+
 export class Trieuse {
   readonly el: HTMLElement
-  /** Le bandeau garde ici les boutons des morceaux suivants (plusieurs
-   *  pages, la corbeille, le PDF) : il passe à la ligne sur un téléphone */
+  /** Le bandeau garde ici ses boutons et ceux des morceaux suivants (la
+   *  corbeille, le PDF) : il passe à la ligne sur un téléphone */
   readonly actions: HTMLElement
+  /** Ce que le bandeau montre quand des pages sont choisies : leur nombre,
+   *  Dupliquer, Supprimer, Tout désélectionner (le PDF s'y ajoutera) */
+  readonly groupeChoix: HTMLElement
   readonly journal: JournalPages
-  /** Les pages choisies (Maj + clic, au morceau suivant) : vide ici */
+  /** Les pages choisies (Maj + clic, Ctrl + clic, Espace, Ctrl + A,
+   *  « Choisir plusieurs ») ; vide à l'ouverture */
   readonly selection = new Set<string>()
   private grille: HTMLElement
   private compte: HTMLElement
   private aide: HTMLElement
+  private nombreChoisies: HTMLElement
+  private boutonChoisir: HTMLButtonElement
   private cartes = new Map<string, HTMLElement>()
   /** L'ordre que montre la grille */
   private ordre: string[] = []
@@ -126,6 +157,18 @@ export class Trieuse {
   private glisse: Glisse | null = null
   private boucle = 0
   private remiseATaille = 0
+  /** « Choisir plusieurs » allumé : chaque toucher choisit ou retire une
+   *  page au lieu d'y aller */
+  private modeChoix = false
+  /** Le menu d'une vignette : un seul élément, refait à chaque ouverture */
+  private menuEl: HTMLElement
+  private menuCarte: { page: string; menu: Menu } | null = null
+  private saisie: Saisie | null = null
+  /** Un clic sur le nom d'une page, qui attend de savoir s'il est le premier d'un double-clic */
+  private clicNom: { page: string; minuterie: number } | null = null
+  /** Les suppressions qui ont mené ailleurs : la page qu'on regardait et
+   *  celle où l'on est arrivé (annuler y ramène, rétablir y renvoie) */
+  private retours = new WeakMap<Entree, { regardee: string; arrivee: string }>()
 
   constructor(private app: App, private racine: HTMLElement, private hote: HoteTrieuse, private vignettes: Vignettes) {
     const el = this.el = document.createElement('section')
@@ -136,6 +179,28 @@ export class Trieuse {
     const titre = Object.assign(document.createElement('h2'), { textContent: 'Pages' })
     this.compte = Object.assign(document.createElement('span'), { className: 'trieuse-compte' })
     this.actions = Object.assign(document.createElement('div'), { className: 'trieuse-actions' })
+    // Les pages choisies : leur nombre (dit au lecteur d'écran), et ce qu'on peut leur faire
+    this.groupeChoix = Object.assign(document.createElement('div'), { className: 'trieuse-choix', hidden: true })
+    this.nombreChoisies = Object.assign(document.createElement('span'), { className: 'trieuse-nombre' })
+    this.nombreChoisies.setAttribute('role', 'status')
+    // Sur un téléphone, ces boutons et « Ajouter une page » ne montrent que
+    // leur icône (leur nom reste le même), et la croix de « Tout
+    // désélectionner » passe devant le nombre (comme Google Photos) : le
+    // bandeau tient en trois lignes
+    const deselectionner = this.bouton('Tout désélectionner', 'fermer', () => this.viderChoix(), 'Tout désélectionner (Échap)', true)
+    deselectionner.classList.add('trieuse-deselectionner')
+    this.groupeChoix.append(this.nombreChoisies,
+      this.bouton('Dupliquer', 'dupliquer', () => this.dupliquer(this.choisies()), `Dupliquer les pages choisies, avec leur histoire (${CTRL} + D)`, true),
+      this.bouton('Supprimer', 'poubelle', () => this.supprimer(this.choisies()), 'Supprimer les pages choisies (Suppr)', true),
+      deselectionner)
+    // Au doigt (un écran tactile) : Maj + clic n'existe pas, cet interrupteur le remplace
+    this.boutonChoisir = this.bouton('Choisir plusieurs', 'coche', () => this.basculerModeChoix(), 'Choisir plusieurs pages : chaque toucher en choisit une ou la retire')
+    this.boutonChoisir.classList.add('trieuse-choisir')
+    this.boutonChoisir.setAttribute('aria-pressed', 'false')
+    // « Ajouter une page », jamais « Nouvelle page » : c'est le nom du bouton
+    // du tableau, que des essais cherchent par une partie de son nom
+    const ajouter = this.bouton('Ajouter une page', 'plus', () => this.ajouterALaFin(), 'Ajouter une page vide à la fin', true)
+    this.actions.append(this.groupeChoix, this.boutonChoisir, ajouter)
     const fermer = document.createElement('button')
     fermer.type = 'button'; fermer.className = 'bouton trieuse-fermer'; fermer.innerHTML = icone('fermer')
     fermer.title = 'Fermer les pages (Échap)'; fermer.setAttribute('aria-label', 'Fermer les pages')
@@ -145,17 +210,36 @@ export class Trieuse {
     this.grille.setAttribute('role', 'listbox'); this.grille.setAttribute('aria-label', 'Les pages, dans l\'ordre')
     this.grille.setAttribute('aria-multiselectable', 'true')
     this.aide = Object.assign(document.createElement('p'), { className: 'trieuse-aide' })
-    el.append(tete, this.grille, this.aide)
+    // Le menu d'une vignette : un enfant de la trieuse (les menus de la racine
+    // sont inertes tant qu'elle est ouverte), un petit menu comme les autres
+    this.menuEl = document.createElement('div')
+    this.menuEl.className = 'menu-flottant menu-vignette'; this.menuEl.setAttribute('role', 'menu')
+    this.menuEl.hidden = true
+    el.append(tete, this.grille, this.aide, this.menuEl)
     racine.appendChild(el)
     this.journal = new JournalPages(app.tableau)
     this.brancherPointeurs()
     // Ni le menu du navigateur (« Enregistrer l'image » d'un canevas), ni
-    // celui qu'ouvre l'appui long sur Android
-    el.addEventListener('contextmenu', e => e.preventDefault())
+    // celui qu'ouvre l'appui long sur Android ; sauf dans le champ du nom
+    // (y coller un nom)
+    el.addEventListener('contextmenu', e => { if (!(e.target as Element).closest?.('input')) e.preventDefault() })
     document.addEventListener('pointerdown', e => { this.dernierPointeur = typePointeur(e.pointerType) }, true)
   }
 
   get ouvert() { return !this.el.hidden }
+
+  /** Un bouton du bandeau : une icône et son libellé, qui est aussi son nom
+   *  (aria-label : il le garde quand le téléphone ne montre que l'icône,
+   *  iconeSeule) */
+  private bouton(texte: string, nomIcone: string, faire: () => void, titre: string, iconeSeule = false): HTMLButtonElement {
+    const b = document.createElement('button')
+    b.type = 'button'; b.className = 'trieuse-bouton' + (iconeSeule ? ' icone-seule' : ''); b.title = titre
+    b.setAttribute('aria-label', texte)
+    b.innerHTML = icone(nomIcone)
+    b.append(Object.assign(document.createElement('span'), { className: 'libelle', textContent: texte }))
+    b.addEventListener('click', () => { if (!this.glisse) faire() })
+    return b
+  }
 
   // ---------- Ouvrir, fermer ----------
   /** retour : l'élément qui reprend le focus à la fermeture (le compteur,
@@ -176,6 +260,7 @@ export class Trieuse {
       c.inert = true; this.inertes.push(c)
     }
     this.el.classList.toggle('sans-tactile', !ecranTactile())
+    this.selection.clear(); this.modeChoix = false
     this.majAide(this.dernierPointeur ?? this.app.dernierPointeur)
     this.chiffres = { texte: '', t: -Infinity }
     this.el.hidden = false
@@ -184,6 +269,7 @@ export class Trieuse {
     this.focusId = this.app.page
     this.io = new IntersectionObserver(evts => this.surVisibles(evts), { root: this.grille, rootMargin: '120px 0px' })
     this.refaire()
+    this.majChoix()
     this.majTailles()
     this.ro = new ResizeObserver(() => {
       cancelAnimationFrame(this.remiseATaille)
@@ -191,6 +277,7 @@ export class Trieuse {
     })
     this.ro.observe(this.grille)
     window.addEventListener('keydown', this.surTouche, true)
+    window.visualViewport?.addEventListener('resize', this.surClavierVirtuel)
     this.app.tableau.ordre.observe(this.surChangement)
     this.app.tableau.noms.observe(this.surChangement)
     // La page qu'on regarde, au milieu, avec le focus
@@ -202,15 +289,22 @@ export class Trieuse {
     }
   }
 
-  /** Échap, ×, Maj + P, ou aller à une page (page). Le journal se vide et
-   *  le dernier « Annuler » de la trieuse s'en va : depuis le tableau, on
-   *  n'annule pas un changement qu'on ne voit plus (la corbeille reste le
-   *  filet). Les canevas quittent le document : ils ne se repeignent plus. */
+  /** Échap, ×, Maj + P, ou aller à une page (page). Le nom qu'on écrivait
+   *  est gardé ; le menu d'une vignette se ferme, la sélection s'oublie. Le
+   *  journal se vide et le dernier « Annuler » de la trieuse s'en va :
+   *  depuis le tableau, on n'annule pas un changement qu'on ne voit plus (la
+   *  corbeille reste le filet ; Ctrl+Z rend la page qu'on regardait, si on
+   *  l'a supprimée ici). Les canevas quittent le document : ils ne se
+   *  repeignent plus. */
   fermer(o: { page?: string } = {}) {
     if (!this.ouvert) return
     this.annulerGlisser()
     this.annulerAppui()
+    this.annulerClicNom()
+    if (this.menuCarte) fermerMenu()
+    this.finirSaisie(true)
     window.removeEventListener('keydown', this.surTouche, true)
+    window.visualViewport?.removeEventListener('resize', this.surClavierVirtuel)
     this.app.tableau.ordre.unobserve(this.surChangement)
     this.app.tableau.noms.unobserve(this.surChangement)
     this.io?.disconnect(); this.io = null
@@ -220,6 +314,7 @@ export class Trieuse {
     this.vignettes.prioriser([])
     this.journal.vider()
     this.hote.oublierAction(CLE)
+    this.selection.clear(); this.modeChoix = false
     this.el.hidden = true
     this.grille.replaceChildren()
     this.cartes.clear(); this.ordre = []; this.visibles.clear()
@@ -242,23 +337,30 @@ export class Trieuse {
   aller(id: string) { this.fermer({ page: id }) }
 
   // ---------- La grille ----------
-  /** L'ordre ou les noms ont changé (un déplacement, une annulation, un
-   *  autre onglet) : la grille se refait, le focus et le défilement restent */
+  /** L'ordre ou les noms ont changé (une action, une annulation, un autre
+   *  onglet) : la grille se refait, le focus et le défilement restent */
   private surChangement = () => { if (this.ouvert) this.refaire() }
 
   /** Met la grille à jour : une carte par page, dans l'ordre (les cartes
    *  existantes sont gardées, seules celles qui ne sont pas à leur place
-   *  bougent), leurs numéros, leurs noms, la page actuelle */
+   *  bougent), leurs numéros, leurs noms, la page actuelle, les pages
+   *  choisies. Une page partie quitte la sélection ; son menu ou son nom
+   *  qu'on écrivait s'en vont avec elle. */
   private refaire() {
     const g = this.grille, pages = this.app.pages
     const actif = document.activeElement
     const avaitFocus = !!actif && g.contains(actif)
     const defilement = g.scrollTop
     const vues = new Set(pages)
+    const choisies = this.selection.size
     for (const [id, c] of this.cartes) {
       if (vues.has(id)) continue
       this.io?.unobserve(c); c.remove(); this.cartes.delete(id); this.visibles.delete(id); this.selection.delete(id)
     }
+    if (this.menuCarte && !vues.has(this.menuCarte.page)) fermerMenu()
+    if (this.saisie && !vues.has(this.saisie.page)) this.finirSaisie(false)
+    // « Choisir plusieurs » s'éteint quand la sélection se vide
+    if (choisies && !this.selection.size) this.modeChoix = false
     if (!this.focusId || !vues.has(this.focusId)) this.focusId = vues.has(this.app.page) ? this.app.page : pages[0] ?? null
     let avant: Element | null = g.firstElementChild
     pages.forEach((id, i) => {
@@ -270,9 +372,10 @@ export class Trieuse {
     })
     this.ordre = pages
     this.compte.textContent = pagesLisibles(pages.length)
+    this.majChoix()
     // Déplacer une carte dans le document lui ôte le focus : il revient
     g.scrollTop = defilement
-    if (avaitFocus && this.focusId && document.activeElement !== this.cartes.get(this.focusId)) this.cartes.get(this.focusId)?.focus({ preventScroll: true })
+    if (avaitFocus && this.focusId && !g.contains(document.activeElement)) this.cartes.get(this.focusId)?.focus({ preventScroll: true })
     if (this.glisse) this.suivre(this.glisse.x, this.glisse.y)
   }
 
@@ -283,8 +386,23 @@ export class Trieuse {
     const numero = Object.assign(document.createElement('span'), { className: 'carte-numero' })
     const vide = Object.assign(document.createElement('span'), { className: 'carte-vide', textContent: 'Page vide', hidden: true })
     const poignee = Object.assign(document.createElement('span'), { className: 'carte-poignee', textContent: '⋮⋮' })
-    for (const x of [numero, vide, poignee]) x.setAttribute('aria-hidden', 'true')
-    image.append(numero, vide, poignee)
+    const coche = Object.assign(document.createElement('span'), { className: 'carte-coche' })
+    coche.innerHTML = icone('coche')
+    for (const x of [numero, vide, poignee, coche]) x.setAttribute('aria-hidden', 'true')
+    // Le menu de la page : hors de l'ordre de Tab (un seul arrêt pour toute
+    // la grille) ; au clavier, la touche Menu l'ouvre
+    const options = document.createElement('button')
+    options.type = 'button'; options.className = 'carte-options'; options.tabIndex = -1
+    options.innerHTML = icone('points')
+    options.setAttribute('aria-haspopup', 'menu'); options.setAttribute('aria-expanded', 'false')
+    options.addEventListener('click', e => {
+      const page = c.dataset.page!
+      if (this.glisse) return
+      if (this.menuCarte?.page === page && this.menuCarte.menu.bouton === options) { fermerMenu(); return }
+      this.focusCarte(page, { defiler: false })
+      this.ouvrirMenuCarte(page, { bouton: options, clavier: e.detail === 0 })
+    })
+    image.append(numero, vide, poignee, coche, options)
     const nom = Object.assign(document.createElement('div'), { className: 'carte-nom' })
     nom.setAttribute('aria-hidden', 'true')
     c.append(image, nom)
@@ -293,19 +411,22 @@ export class Trieuse {
     return c
   }
 
-  /** Le numéro, le nom, la page actuelle, le focus d'une carte */
+  /** Le numéro, le nom, la page actuelle, le focus, le choix d'une carte */
   private majCarte(c: HTMLElement, id: string, i: number) {
     const nom = this.app.tableau.nomDe(id), actuelle = id === this.app.page
     const numero = String(i + 1)
     const n = c.querySelector('.carte-numero')!
     if (n.textContent !== numero) n.textContent = numero
     const nc = c.querySelector('.carte-nom')!, texte = nom ?? ''
-    if (nc.textContent !== texte) { nc.textContent = texte; (nc as HTMLElement).title = texte }
+    if (nc.textContent !== texte) { nc.textContent = texte; (nc as HTMLElement).title = texte ? `${texte} (double-clic : renommer)` : '' }
     const label = `Page ${i + 1}${nom ? `, ${nom}` : ''}${actuelle ? ', page actuelle' : ''}`
     if (c.getAttribute('aria-label') !== label) c.setAttribute('aria-label', label)
+    const o = c.querySelector<HTMLElement>('.carte-options')!, titre = `Options de la page ${i + 1}`
+    if (o.title !== titre) { o.title = titre; o.setAttribute('aria-label', titre) }
     c.classList.toggle('actuelle', actuelle)
     if (actuelle) c.setAttribute('aria-current', 'page'); else c.removeAttribute('aria-current')
-    c.setAttribute('aria-selected', String(this.selection.has(id)))
+    const choisie = String(this.selection.has(id))
+    if (c.getAttribute('aria-selected') !== choisie) c.setAttribute('aria-selected', choisie)
     const t = id === this.focusId ? 0 : -1
     if (c.tabIndex !== t) c.tabIndex = t
     this.majVide(c, id)
@@ -362,10 +483,11 @@ export class Trieuse {
 
   /** La ligne d'aide, selon le dernier pointeur : la souris et la tablette
    *  graphique cliquent et glissent ; le doigt et le stylet sur l'écran
-   *  touchent, et tirent par la poignée ou un appui long */
-  private majAide(type: TypePointeur) {
+   *  touchent, et tirent par la poignée ou un appui long ; « Choisir
+   *  plusieurs » allumé, un toucher choisit */
+  private majAide(type: TypePointeur = this.dernierPointeur ?? this.app.dernierPointeur) {
     const doigt = type === 'touch' || (type === 'pen' && ecranTactile())
-    const t = doigt ? AIDE_DOIGT : AIDE_SOURIS
+    const t = this.modeChoix ? AIDE_CHOIX : doigt ? AIDE_DOIGT : AIDE_SOURIS
     if (this.aide.textContent !== t) this.aide.textContent = t
   }
 
@@ -385,11 +507,21 @@ export class Trieuse {
     if (o.defiler !== false) this.montrer(c)
   }
 
-  /** Défile la grille juste assez pour que la carte s'y voie entière */
+  /** Défile la grille juste assez pour que la carte s'y voie entière (au
+   *  dessus du clavier virtuel, quand il couvre le bas de l'écran) */
   private montrer(c: HTMLElement) {
     const g = this.grille, r = c.getBoundingClientRect(), gr = g.getBoundingClientRect(), marge = 12
+    const vv = window.visualViewport
+    const bas = vv ? Math.min(gr.bottom, vv.offsetTop + vv.height) : gr.bottom
     if (r.top < gr.top + marge) g.scrollTop -= gr.top + marge - r.top
-    else if (r.bottom > gr.bottom - marge) g.scrollTop += Math.min(r.bottom - (gr.bottom - marge), r.top - (gr.top + marge))
+    else if (r.bottom > bas - marge) g.scrollTop += Math.min(r.bottom - (bas - marge), r.top - (gr.top + marge))
+  }
+
+  /** Le clavier virtuel paraît (on renomme une page au doigt) : la carte
+   *  qu'on renomme reste visible au-dessus de lui */
+  private surClavierVirtuel = () => {
+    const s = this.saisie, c = s ? this.cartes.get(s.page) : null
+    if (c) this.montrer(c)
   }
 
   /** Les rectangles des cartes, dans l'ordre des pages */
@@ -413,20 +545,83 @@ export class Trieuse {
     return this.ordre[meilleur]
   }
 
+  // ---------- Les pages choisies ----------
+  /** Les pages choisies, dans l'ordre */
+  private choisies(): string[] { return this.ordre.filter(id => this.selection.has(id)) }
+
+  /** Ce sur quoi agit une touche (Suppr, Ctrl + D) : les pages choisies, ou
+   *  celle qui a le focus */
+  private visees(): string[] { return actions.pagesVisees(this.app.pages, this.selection, this.focusId) }
+
+  private basculerChoix(id: string) {
+    if (this.selection.has(id)) this.selection.delete(id)
+    else this.selection.add(id)
+    // « Choisir plusieurs » s'éteint quand la sélection se vide
+    if (!this.selection.size) this.modeChoix = false
+    this.majChoix()
+  }
+
+  /** Ctrl + A : toutes les pages */
+  private toutChoisir() {
+    for (const id of this.ordre) this.selection.add(id)
+    this.majChoix()
+  }
+
+  /** Échap, « Tout désélectionner » : plus rien de choisi, « Choisir
+   *  plusieurs » éteint */
+  private viderChoix() {
+    this.selection.clear()
+    this.modeChoix = false
+    this.majChoix()
+  }
+
+  private basculerModeChoix() {
+    this.modeChoix = !this.modeChoix
+    this.majChoix()
+  }
+
+  /** Les cartes (aria-selected, la coche) et le bandeau (le nombre de pages
+   *  choisies et ce qu'on peut leur faire ; l'interrupteur) suivent la
+   *  sélection. Un bouton du bandeau qui se cache en gardant le focus le
+   *  rend à la grille. */
+  private majChoix() {
+    for (const [id, c] of this.cartes) {
+      const choisie = String(this.selection.has(id))
+      if (c.getAttribute('aria-selected') !== choisie) c.setAttribute('aria-selected', choisie)
+    }
+    const n = this.selection.size
+    this.el.classList.toggle('en-choix', this.modeChoix || n > 0)
+    this.boutonChoisir.setAttribute('aria-pressed', String(this.modeChoix))
+    const texte = n ? `${n} page${n > 1 ? 's' : ''} choisie${n > 1 ? 's' : ''}` : ''
+    if (this.nombreChoisies.textContent !== texte) this.nombreChoisies.textContent = texte
+    const cache = !n
+    if (this.groupeChoix.hidden !== cache) {
+      const perdu = cache && this.groupeChoix.contains(document.activeElement)
+      this.groupeChoix.hidden = cache
+      if (perdu && this.focusId) this.focusCarte(this.focusId, { defiler: false })
+    }
+    this.majAide()
+  }
+
   // ---------- Le clavier ----------
   /** Sur window, en capture, posé à l'ouverture : il passe après ceux des
    *  menus (posés au démarrage) et avant le clavier du tableau, qu'il
    *  arrête pour ce qu'il traite (ce qu'il ne traite pas passe : Ctrl + S
-   *  enregistre toujours ; le tableau caché se tait de lui-même). */
+   *  enregistre toujours ; le tableau caché se tait de lui-même). Une
+   *  fenêtre, un menu ouvert (celui d'une vignette), un champ (le nom d'une
+   *  page) gardent leurs touches, dans cet ordre. Échap, ensuite : un
+   *  glisser en cours, la sélection, puis la trieuse. */
   private surTouche = (e: KeyboardEvent) => {
     const cible = e.target as HTMLElement
     // Une fenêtre par-dessus garde son clavier, Échap compris
     if (cible.closest?.('dialog')) return
     // Un menu ouvert (celui d'une vignette) : menus.ts traite Échap, les
-    // flèches et Tab ; sinon ↑ ↓ changeraient de carte derrière lui
+    // flèches et Tab ; sinon ↑ ↓ changeraient de carte derrière lui, et Suppr
+    // supprimerait la page
     if (menuOuvert() || cible.closest?.('.menu-flottant')) return
-    // Un champ (le nom d'une page) garde ses touches ; Ctrl + D n'y ouvre
-    // pas le marque-page du navigateur
+    // Un champ (le nom d'une page) garde ses touches, Échap et Entrée
+    // compris (voir renommer) ; Ctrl + D n'y ouvre pas le marque-page du
+    // navigateur
     if (cible.closest?.('input, textarea, select, [contenteditable]')) { if (toucheMarquePage(e)) e.preventDefault(); return }
     const fait = () => { e.preventDefault(); e.stopPropagation() }
     const raccourci = (e.ctrlKey || e.metaKey) && !e.altKey
@@ -435,6 +630,8 @@ export class Trieuse {
       fait()
       if (this.glisse) { this.annulerGlisser(); return }
       this.annulerAppui()
+      // (La vue de la corbeille se fermera ici, avant la sélection)
+      if (this.selection.size || this.modeChoix) { this.viderChoix(); return }
       this.fermer()
       return
     }
@@ -445,14 +642,18 @@ export class Trieuse {
     // Maj + P : la referme (la lettre par e.key, en AZERTY comme en QWERTY)
     if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && lettre === 'p') { fait(); if (!e.repeat) this.fermer(); return }
     if (raccourci && (lettre === 'z' || lettre === 'y')) { fait(); if (lettre === 'y' || e.shiftKey) this.retablir(); else this.annuler(); return }
-    // Ctrl + Maj + ← / → (⌘ + Maj sur Mac) : la page qui a le focus avance ou recule d'une place
+    // Ctrl + Maj + ← / → (⌘ + Maj sur Mac) : la page qui a le focus (les
+    // pages choisies, si elle en est) avance ou recule d'une place
     if (raccourci && e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       fait()
       if (this.focusId) this.deplacerDUnePlace(this.focusId, e.key === 'ArrowLeft' ? -1 : 1)
       return
     }
-    // Ctrl + D : jamais le marque-page du navigateur (dupliquer, au morceau suivant)
-    if (toucheMarquePage(e)) { fait(); return }
+    // Ctrl + D (⌘ + D) : dupliquer, jamais le marque-page du navigateur ;
+    // avec Maj (tous les onglets en marque-pages), rien
+    if (toucheMarquePage(e)) { fait(); if (!e.shiftKey && !e.repeat) this.dupliquer(this.visees()); return }
+    // Ctrl + A : toutes les pages (pas le texte de la page)
+    if (raccourci && !e.shiftKey && lettre === 'a') { fait(); this.toutChoisir(); return }
     if (raccourci || e.altKey || e.metaKey) return
     const surCarte = !!cible.closest?.('.carte')
     const nullePart = cible === document.body || cible === document.documentElement || cible === this.el || cible === this.grille
@@ -463,6 +664,8 @@ export class Trieuse {
     if (!surCarte && !nullePart) return
     const o = this.ordre, id = this.focusId ?? o[0]
     if (!id) return
+    // La touche Menu, Maj + F10 : le menu de la page qui a le focus, le focus dans sa première entrée
+    if (toucheMenu(e)) { fait(); if (!e.repeat) this.ouvrirMenuCarte(id, { clavier: true }); return }
     const i = o.indexOf(id)
     let vers: string | null | undefined
     switch (e.key) {
@@ -473,8 +676,10 @@ export class Trieuse {
       case 'Home': vers = o[0]; break
       case 'End': vers = o[o.length - 1]; break
       case 'Enter': fait(); if (!e.repeat) this.aller(id); return
-      // Espace : choisir une page, au morceau suivant ; il ne fait pas défiler la grille
-      case ' ': fait(); return
+      // Espace : choisit la page qui a le focus, ou la retire (sans faire défiler la grille)
+      case ' ': fait(); if (!e.repeat) this.basculerChoix(id); return
+      case 'F2': fait(); if (!e.repeat) this.renommer(id); return
+      case 'Delete': case 'Backspace': fait(); if (!e.repeat) this.supprimer(this.visees()); return
       default: return
     }
     fait()
@@ -492,7 +697,190 @@ export class Trieuse {
     else if (n > o.length) this.hote.message(`Pas de page ${n} : il y en a ${o.length}.`)
   }
 
+  // ---------- Le menu d'une vignette ----------
+  /** Le menu d'une page : par son bouton ⋯ (sous lui), au clic droit ou au
+   *  bouton du stylet (là où l'on a appuyé), à la touche Menu (sous le
+   *  bouton ⋯, le focus dans la première entrée). Sur une page choisie
+   *  parmi plusieurs, ce qu'on peut faire à toutes : les dupliquer, les
+   *  supprimer. Un petit menu comme les autres (menus.ts) : Échap, un
+   *  choix ou un appui ailleurs le ferment ; le focus revient à la carte. */
+  private ouvrirMenuCarte(page: string, o: { bouton?: HTMLElement; x?: number; y?: number; clavier?: boolean }) {
+    const c = this.cartes.get(page)
+    if (!c || this.glisse) return
+    this.finirSaisie(true)
+    const m = this.menuEl
+    m.replaceChildren()
+    const i = this.ordre.indexOf(page)
+    const choisies = this.choisies()
+    if (this.selection.has(page) && choisies.length > 1) {
+      const n = choisies.length
+      m.setAttribute('aria-label', `${n} pages`)
+      titreMenu(m, `${n} pages`)
+      entreeMenu(m, 'Dupliquer', () => this.dupliquer(choisies), { touche: `${CTRL} + D`, aide: 'Avec leur histoire, chacune juste après elle-même' })
+      // (Le PDF des pages choisies viendra ici)
+      entreeMenu(m, 'Supprimer', () => this.supprimer(choisies), { touche: 'Suppr' })
+    } else {
+      const fond = this.app.tableau.fondDe(page)
+      m.setAttribute('aria-label', `Page ${i + 1}`)
+      entreeMenu(m, 'Aller à cette page', () => this.aller(page), { touche: 'Entrée' })
+      filetMenu(m)
+      entreeMenu(m, 'Renommer…', () => this.renommer(page), { touche: 'F2' })
+      entreeMenu(m, 'Dupliquer', () => this.dupliquer([page]), { touche: `${CTRL} + D`, aide: 'Une copie juste après, avec toute son histoire' })
+      entreeMenu(m, 'Insérer une page avant', () => this.inserer(page, 'avant'))
+      entreeMenu(m, 'Insérer une page après', () => this.inserer(page, 'apres'))
+      filetMenu(m)
+      titreMenu(m, 'Fond')
+      for (const f of FONDS) entreeMenu(m, f.nom, () => this.changerFond(page, f.id), { coche: f.id === fond })
+      filetMenu(m)
+      // (« Copier en image » et « Exporter en PDF… » viendront ici, avant Supprimer)
+      entreeMenu(m, 'Supprimer', () => this.supprimer([page]), { touche: 'Suppr' })
+    }
+    const options = c.querySelector<HTMLElement>('.carte-options')!
+    const menu: Menu = { el: m, bouton: o.bouton, fermer: () => this.surMenuFerme(menu) }
+    this.menuCarte = { page, menu }
+    ouvrirMenu(menu)
+    if (o.bouton || o.x === undefined || o.y === undefined) placerMenu(m, options.getBoundingClientRect(), 'dessous')
+    else placerMenu(m, new DOMRect(o.x, o.y, 0, 0), 'droite')
+    if (o.clavier) allerAuxEntrees(m, 1, ENTREES)
+  }
+
+  /** Le menu d'une vignette vient de se fermer : le focus qui y était (ou
+   *  sur son bouton ⋯, ou nulle part) revient à la carte, d'où le clavier
+   *  continue ; un choix qui le prend ensuite (le champ du nom) le garde. */
+  private surMenuFerme(menu: Menu) {
+    if (this.menuCarte?.menu !== menu) return
+    const page = this.menuCarte.page
+    this.menuCarte = null
+    const a = document.activeElement
+    const perdu = !a || a === document.body || this.menuEl.contains(a) || !!(a as HTMLElement).closest?.('.carte-options')
+    if (perdu && this.ouvert && this.cartes.has(page)) this.focusCarte(page, { defiler: false })
+  }
+
+  // ---------- Renommer ----------
+  /** F2, « Renommer… », un double-clic sur le nom : un champ dans la carte,
+   *  prérempli, tout choisi. Entrée ou quitter le champ garde le nom, Échap
+   *  le laisse tel qu'il était ; un nom vide le retire. Au doigt, le clavier
+   *  virtuel paraît et la carte reste visible au-dessus de lui. */
+  private renommer(page: string) {
+    const c = this.cartes.get(page)
+    if (!c || this.glisse) return
+    if (this.saisie?.page === page) { this.saisie.input.focus(); return }
+    this.finirSaisie(true)
+    this.focusCarte(page)
+    const input = document.createElement('input')
+    input.type = 'text'; input.className = 'carte-saisie'; input.maxLength = 60
+    input.placeholder = 'Nom de la page (facultatif)'
+    input.setAttribute('aria-label', `Nom de la page ${this.ordre.indexOf(page) + 1}`)
+    input.autocomplete = 'off'; input.enterKeyHint = 'done'
+    input.value = this.app.tableau.nomDe(page) ?? ''
+    const s: Saisie = { page, input }
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); e.stopPropagation(); this.finirSaisie(true, true) }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.finirSaisie(false, true) }
+    })
+    input.addEventListener('blur', () => { if (this.saisie === s) this.finirSaisie(true) })
+    c.querySelector<HTMLElement>('.carte-nom')!.hidden = true
+    c.classList.add('en-saisie')
+    c.appendChild(input)
+    this.saisie = s
+    input.focus({ preventScroll: true })
+    input.select()
+    this.montrer(c)
+  }
+
+  /** Le champ du nom se ferme : garder (Entrée, le focus parti ailleurs, la
+   *  trieuse qui se ferme) ou non (Échap) ; rendreFocus : le focus revient à
+   *  la carte (au clavier). Le nom gardé passe par le journal, avec un
+   *  message et son « Annuler ». */
+  private finirSaisie(garder: boolean, rendreFocus = false) {
+    const s = this.saisie
+    if (!s) return
+    this.saisie = null
+    const texte = s.input.value
+    const c = this.cartes.get(s.page)
+    s.input.remove()
+    if (c) { c.querySelector<HTMLElement>('.carte-nom')!.hidden = false; c.classList.remove('en-saisie') }
+    if (rendreFocus && c) this.focusCarte(s.page, { defiler: false })
+    if (!garder) return
+    const r = actions.renommer(this.app.tableau, this.journal, s.page, texte)
+    if (r) this.annoncer(r.nom ? 'Page renommée' : 'Nom de la page retiré', r.entree)
+  }
+
+  // ---------- Insérer, ajouter, changer le fond ----------
+  /** Une page vide juste avant ou juste après, au fond de cette page */
+  private inserer(page: string, cote: 'avant' | 'apres') {
+    const r = actions.inserer(this.app.tableau, this.journal, page, cote)
+    if (!r) return
+    this.focusCarte(r.page)
+    this.annoncer(`Page vide insérée : c'est la page ${r.rang + 1}`, r.entree)
+  }
+
+  /** « Ajouter une page » du bandeau : une page vide à la fin, au fond de la dernière */
+  private ajouterALaFin() {
+    const r = actions.ajouterALaFin(this.app.tableau, this.journal)
+    if (!r) return
+    this.focusCarte(r.page)
+    this.annoncer(`Page ajoutée à la fin (page ${r.rang + 1})`, r.entree)
+  }
+
+  /** Un fond du menu : le repère prend son origine au centre de ce qui est
+   *  écrit sur la page ; la vignette se repeint (la page a changé) */
+  private changerFond(page: string, fond: Fond) {
+    const t = this.app.tableau
+    const boite = fond === 'repere' ? this.hote.apercus.boite(t.formesDe(page)?.values() ?? []) : null
+    const e = actions.changerFond(t, this.journal, page, fond, boite)
+    if (e) this.annoncer(`Fond changé (page ${this.ordre.indexOf(page) + 1})`, e)
+  }
+
+  // ---------- Dupliquer, supprimer ----------
+  /** Duplique ces pages avec leur histoire, chacune juste après elle-même
+   *  (sans marque d'annulation : le journal les annule) ; chaque copie
+   *  s'ouvrira sur la vue gardée de son original. La première copie prend
+   *  le focus. */
+  private dupliquer(ids: string[]) {
+    if (!ids.length || this.glisse) return
+    const r = actions.dupliquer(this.app.tableau, this.journal, ids)
+    if (!r) return
+    for (const { de, copie } of r.copies) this.app.copierVue(de, copie)
+    const premiere = r.copies[0]
+    this.focusCarte(premiere.copie)
+    const pages = this.app.pages
+    this.annoncer(r.copies.length > 1 ? `${r.copies.length} pages dupliquées`
+      : `Page ${pages.indexOf(premiere.de) + 1} dupliquée : la copie est la page ${pages.indexOf(premiere.copie) + 1}`, r.entree)
+  }
+
+  /** Supprime ces pages (vers la corbeille). Jamais toutes. Si celle qu'on
+   *  regarde en est, on va d'abord sur une page qui reste (voir
+   *  actions.pageDArrivee ; sans annonce, le tableau est caché) : après la
+   *  fermeture, Ctrl+Z l'y rend, comme après la poubelle de la barre du
+   *  haut. Le focus va à la carte qui prend leur place. */
+  private supprimer(ids: string[]) {
+    if (!ids.length || this.glisse) return
+    const ordre = this.app.pages
+    const liste = ordre.filter(id => ids.includes(id))
+    if (liste.length >= ordre.length) return this.hote.message('Il doit rester au moins une page.')
+    const regardee = this.app.page
+    // La carte qui prendra le focus : la première qui reste après la première supprimée, sinon avant
+    const premiere = ordre.indexOf(liste[0])
+    const suivante = ordre.slice(premiere).find(id => !liste.includes(id)) ?? [...ordre.slice(0, premiere)].reverse().find(id => !liste.includes(id))
+    const r = actions.supprimer(this.app.tableau, this.journal, liste, { regardee, aller: p => this.app.allerPage(p) })
+    if (r === 'tout') return this.hote.message('Il doit rester au moins une page.')
+    if (!r) return
+    if (r.arrivee !== regardee) this.retours.set(r.entree, { regardee, arrivee: r.arrivee })
+    // La page actuelle a pu changer : la carte encadrée suit
+    this.refaire()
+    if (suivante) this.focusCarte(suivante)
+    const n = r.retirees.length
+    this.annoncer(n > 1 ? `${n} pages supprimées` : `Page ${r.numeros[0]}${r.vides.length ? ' (vide)' : ''} supprimée`, r.entree)
+  }
+
   // ---------- Ranger, annuler ----------
+  /** Un message qui dit l'action faite, avec son « Annuler » (au-dessus de
+   *  la trieuse ; il s'en va à la fermeture) */
+  private annoncer(texte: string, e: Entree) {
+    this.hote.message(texte, { libelle: 'Annuler', faire: () => this.annulerDepuisMessage(e), cle: CLE })
+  }
+
   /** Déplace des pages (journal, message « Annuler ») : elles vont, dans
    *  leur ordre, juste avant la page qui est à l'indice `avant` (voir
    *  Tableau.deplacerPages). Rien si l'ordre ne change pas. */
@@ -500,17 +888,20 @@ export class Trieuse {
     const libelle = ids.length > 1 ? `${ids.length} pages déplacées` : 'page déplacée'
     const e = this.journal.faire(libelle, () => { this.app.tableau.deplacerPages(ids, avant) })
     if (!e) return
-    this.focusCarte(ids[0])
+    this.focusCarte(this.focusId && ids.includes(this.focusId) ? this.focusId : ids[0])
     const k = this.app.pages.indexOf(ids[0])
-    this.hote.message(ids.length > 1 ? `${ids.length} pages déplacées` : `Page déplacée : c'est maintenant la page ${k + 1}`,
-      { libelle: 'Annuler', faire: () => this.annulerDepuisMessage(e), cle: CLE })
+    this.annoncer(ids.length > 1 ? `${ids.length} pages déplacées` : `Page déplacée : c'est maintenant la page ${k + 1}`, e)
   }
 
+  /** Ctrl + Maj + ← / → : la page qui a le focus, ou toutes les pages
+   *  choisies si elle en est (regroupées, dans leur ordre) */
   private deplacerDUnePlace(id: string, sens: 1 | -1) {
-    const i = this.app.pages.indexOf(id), n = this.app.pages.length
-    if (i < 0) return
-    if (i + sens < 0 || i + sens >= n) return this.hote.message(sens < 0 ? 'C\'est déjà la première page.' : 'C\'est déjà la dernière page.')
-    this.deplacer([id], sens < 0 ? i - 1 : i + 2)
+    const ids = this.selection.has(id) ? this.choisies() : [id]
+    const avant = actions.placeDUnPas(this.app.pages, ids, sens)
+    if (avant === null) return
+    if (avant === 'debut') return this.hote.message(ids.length > 1 ? 'Elles sont déjà en tête.' : 'C\'est déjà la première page.')
+    if (avant === 'fin') return this.hote.message(ids.length > 1 ? 'Elles sont déjà à la fin.' : 'C\'est déjà la dernière page.')
+    this.deplacer(ids, avant)
   }
 
   private annuler() {
@@ -518,6 +909,7 @@ export class Trieuse {
     const r = this.journal.annuler()
     if (r === 'rien') return this.hote.message('Rien à annuler dans les pages')
     if (r === 'change') return this.hote.message('Les pages ont changé depuis : rien à annuler.')
+    this.apresDefaire(e, 'annuler')
     this.hote.oublierAction(CLE)
     this.hote.message(`Annulé : ${e?.libelle ?? 'page déplacée'}`)
   }
@@ -527,6 +919,7 @@ export class Trieuse {
     const r = this.journal.retablir()
     if (r === 'rien') return this.hote.message('Rien à rétablir dans les pages')
     if (r === 'change') return this.hote.message('Les pages ont changé depuis : rien à rétablir.')
+    this.apresDefaire(e, 'retablir')
     this.hote.oublierAction(CLE)
     this.hote.message(`Rétabli : ${e?.libelle ?? 'page déplacée'}`)
   }
@@ -535,24 +928,39 @@ export class Trieuse {
    *  dernière et que les pages sont telles qu'elle les a laissées */
   private annulerDepuisMessage(e: Entree) {
     if (!this.ouvert) return
-    if (this.journal.annulerSi(e) === 'fait') this.hote.message(`Annulé : ${e.libelle}`)
+    if (this.journal.annulerSi(e) === 'fait') { this.apresDefaire(e, 'annuler'); this.hote.message(`Annulé : ${e.libelle}`) }
     else this.hote.message('Les pages ont changé depuis : rien à annuler.')
   }
 
-  // ---------- Glisser-déposer ----------
-  /** Les pages qu'on tire en partant de cette carte : elle seule ici (la
-   *  sélection, au morceau suivant) */
-  private idsATirer(page: string): string[] { return [page] }
+  /** Une suppression qui avait mené ailleurs vient d'être annulée : on
+   *  revient sur la page qu'on regardait ; rétablie : on retourne sur la
+   *  page d'arrivée (le tableau, lui, était allé sur la première). La
+   *  carte encadrée suit. */
+  private apresDefaire(e: Entree | null, sens: 'annuler' | 'retablir') {
+    const r = e ? this.retours.get(e) : undefined
+    if (!r) return
+    const vers = sens === 'annuler' ? r.regardee : r.arrivee
+    if (this.app.page !== vers && this.app.pages.includes(vers)) { this.app.allerPage(vers); this.refaire() }
+  }
+
+  // ---------- Pointeurs : aller, choisir, ouvrir le menu, glisser ----------
+  /** Les pages qu'on tire en partant de cette carte : toutes les pages
+   *  choisies (dans leur ordre) si elle en est, sinon elle seule */
+  private idsATirer(page: string): string[] {
+    return this.selection.has(page) && this.selection.size > 1 ? this.choisies() : [page]
+  }
 
   /** À la souris et à la tablette graphique (un stylet sans écran tactile :
    *  la Wacom de la classe), le glisser part de n'importe où sur la carte,
    *  dès 4 px (6 au stylet), sans appui long. Au doigt et au stylet posé
    *  sur l'écran, seulement par la poignée (dès 8 px) ou après un appui long
    *  (500 ms sans bouger de plus de 8 px) : sinon le doigt fait défiler la
-   *  grille (touch-action: pan-y). Parti du vide de la grille, un glisser ne
-   *  fait rien à la souris et à la tablette (pas de cadre : Maj + clic, au
-   *  morceau suivant), et fait défiler au doigt. Un clic, un toucher bref
-   *  mènent à la page ; le lever qui suit un glisser, non. */
+   *  grille (touch-action: pan-y) ; l'appui long n'ouvre jamais le menu.
+   *  Parti du vide de la grille, un glisser ne fait rien à la souris et à
+   *  la tablette, et fait défiler au doigt. Un clic, un toucher bref mènent
+   *  à la page (Maj ou Ctrl, « Choisir plusieurs » : la choisissent) ; le
+   *  lever qui suit un glisser, non. Le clic droit, le bouton du stylet, Ctrl
+   *  + clic sur Mac ouvrent le menu de la page, à l'appui. */
   private brancherPointeurs() {
     const g = this.grille
     g.addEventListener('pointerdown', e => this.surBas(e))
@@ -571,17 +979,37 @@ export class Trieuse {
   }
 
   private surBas(e: PointerEvent) {
-    if (this.appui || this.glisse) return              // un second doigt : rien
-    if (e.button !== 0) return                         // le clic droit, le bouton du stylet
     const cible = e.target as HTMLElement
+    // Le champ du nom a ses propres événements (et son menu du navigateur)
+    if (cible.closest('.carte-saisie')) return
+    if (this.appui || this.glisse) return              // un second doigt : rien
     const carte = cible.closest<HTMLElement>('.carte')
     const page = carte?.dataset.page
     if (!carte || !page || !this.grille.contains(carte)) return
+    // Le clic droit (le bouton du stylet en est un ; sur Mac, Ctrl + clic) :
+    // le menu de la page, à l'APPUI du bouton, comme au tableau, n'importe
+    // où sur la carte (son bouton ⋯ compris). Le focus va d'abord à la carte
+    // (l'appui le lui donnerait ensuite, et fermerait le menu).
+    const droit = e.button === 2 || (MAC && e.ctrlKey && e.button === 0 && e.pointerType !== 'touch')
+    if (droit) {
+      this.annulerClicNom()
+      this.focusCarte(page, { defiler: false })
+      this.ouvrirMenuCarte(page, { x: e.clientX, y: e.clientY })
+      return
+    }
+    // Le bouton ⋯ a son propre clic
+    if (cible.closest('.carte-options')) return
+    if (e.button !== 0) return
+    // L'appui qui vient de fermer un menu ne fait rien d'autre
+    if (avale(e)) return
     const type = typePointeur(e.pointerType)
     const direct = type === 'touch' || (type === 'pen' && ecranTactile())
     const poignee = !!cible.closest('.carte-poignee')
+    // Parti du nom : un double-clic le renomme (voir clic)
+    const nom = !!cible.closest('.carte-nom')
     this.focusCarte(page, { defiler: false })
-    const a: Appui = { id: e.pointerId, type, direct, page, carte, x0: e.clientX, y0: e.clientY, poignee, arme: !direct || poignee, bouge: false, minuterie: 0 }
+    const a: Appui = { id: e.pointerId, type, direct, page, carte, x0: e.clientX, y0: e.clientY, poignee, nom,
+      ajoute: e.shiftKey || (MAC ? e.metaKey : e.ctrlKey), arme: !direct || poignee, bouge: false, minuterie: 0 }
     if (!a.arme) a.minuterie = window.setTimeout(() => this.appuiLong(a), APPUI_LONG)
     else try { this.grille.setPointerCapture(e.pointerId) } catch { /* pointeur déjà parti */ }
     this.appui = a
@@ -591,6 +1019,7 @@ export class Trieuse {
   private appuiLong(a: Appui) {
     if (this.appui !== a || a.bouge || this.glisse) return
     a.arme = true
+    this.annulerClicNom()
     try { navigator.vibrate?.(10) } catch { /* pas de vibreur */ }
     this.commencer(a, a.x0, a.y0)
   }
@@ -607,7 +1036,7 @@ export class Trieuse {
       return
     }
     const seuil = a.direct ? SEUIL_GLISSER.touch : SEUIL_GLISSER[a.type]
-    if (d >= seuil) this.commencer(a, e.clientX, e.clientY)
+    if (d >= seuil) { this.annulerClicNom(); this.commencer(a, e.clientX, e.clientY) }
   }
 
   private surLeve(e: PointerEvent, annule: boolean) {
@@ -616,8 +1045,36 @@ export class Trieuse {
     if (!a || a.id !== e.pointerId) return
     this.annulerAppui()
     if (annule || a.bouge) return
+    this.clic(a, e)
+  }
+
+  /** Un clic, un toucher bref sur une carte : Maj ou Ctrl (⌘), ou « Choisir
+   *  plusieurs » allumé, la choisissent ou la retirent ; sur le nom, on
+   *  attend un instant qu'un second clic en fasse un double-clic (renommer) ;
+   *  sinon on va à la page. */
+  private clic(a: Appui, e: PointerEvent) {
+    if (a.ajoute || this.modeChoix) { this.annulerClicNom(); this.basculerChoix(a.page); return }
+    if (a.nom) {
+      if (this.clicNom?.page === a.page) { this.annulerClicNom(); this.renommer(a.page); return }
+      this.annulerClicNom()
+      const page = a.page, x = e.clientX, y = e.clientY
+      this.clicNom = { page, minuterie: window.setTimeout(() => {
+        this.clicNom = null
+        if (!this.ouvert || this.saisie || menuOuvert() || !this.app.pages.includes(page)) return
+        this.aller(page)
+        avalerLeSecondAppui(x, y)
+      }, DOUBLE_CLIC_NOM) }
+      return
+    }
+    this.annulerClicNom()
     this.aller(a.page)
     avalerLeSecondAppui(e.clientX, e.clientY)
+  }
+
+  private annulerClicNom() {
+    if (!this.clicNom) return
+    clearTimeout(this.clicNom.minuterie)
+    this.clicNom = null
   }
 
   private annulerAppui() {
@@ -627,26 +1084,33 @@ export class Trieuse {
     this.appui = null
   }
 
-  /** La page part : la carte s'estompe, un fantôme suit le pointeur, une
-   *  barre bleue marque la place d'arrivée, la grille défile près du bord */
+  /** La page part : la carte s'estompe (et celles des autres pages tirées),
+   *  un fantôme suit le pointeur (le nombre de pages dessus, s'il y en a
+   *  plusieurs), une barre bleue marque la place d'arrivée, la grille défile
+   *  près du bord */
   private commencer(a: Appui, x: number, y: number) {
     this.annulerAppui()
+    if (this.menuCarte) fermerMenu()
+    this.finirSaisie(true)
     const carte = a.carte, r = carte.getBoundingClientRect()
+    const ids = this.idsATirer(a.page)
     const fantome = carte.cloneNode(true) as HTMLElement
     fantome.className = 'carte trieuse-fantome'
     for (const k of ['role', 'tabindex', 'aria-label', 'aria-selected', 'aria-current', 'data-page']) fantome.removeAttribute(k)
+    fantome.querySelector('.carte-options')?.remove()
     fantome.setAttribute('aria-hidden', 'true')
+    if (ids.length > 1) fantome.dataset.nombre = String(ids.length)
     fantome.style.width = r.width + 'px'; fantome.style.height = r.height + 'px'
     const source = carte.querySelector('canvas'), copie = fantome.querySelector('canvas')
     if (source && copie) { copie.width = source.width; copie.height = source.height; copie.getContext('2d')?.drawImage(source, 0, 0) }
     const barre = Object.assign(document.createElement('div'), { className: 'trieuse-place' })
     barre.setAttribute('aria-hidden', 'true')
     this.el.append(fantome, barre)
-    carte.classList.add('tiree')
+    const tirees = ids.map(id => this.cartes.get(id)).filter((c): c is HTMLElement => !!c)
+    for (const c of tirees) c.classList.add('tiree')
     this.el.classList.add('en-glisser')
-    const ids = this.idsATirer(a.page)
     const ecart = parseFloat(getComputedStyle(this.grille).columnGap) || 16
-    this.glisse = { id: a.id, ids, carte, fantome, barre, dx: a.x0 - r.left, dy: a.y0 - r.top, x, y, place: this.ordre.indexOf(a.page), reste: 0, ecart }
+    this.glisse = { id: a.id, ids, carte, tirees, fantome, barre, dx: a.x0 - r.left, dy: a.y0 - r.top, x, y, place: this.ordre.indexOf(a.page), reste: 0, ecart }
     try { this.grille.setPointerCapture(a.id) } catch { /* pointeur déjà parti */ }
     this.suivre(x, y)
     cancelAnimationFrame(this.boucle)
@@ -690,14 +1154,14 @@ export class Trieuse {
     this.boucle = requestAnimationFrame(this.defiler)
   }
 
-  /** Le glisser s'arrête : le fantôme et la barre s'en vont, la carte revient */
+  /** Le glisser s'arrête : le fantôme et la barre s'en vont, les cartes reviennent */
   private finirGlisser(): Glisse | null {
     const g = this.glisse
     if (!g) return null
     this.glisse = null
     cancelAnimationFrame(this.boucle); this.boucle = 0
     g.fantome.remove(); g.barre.remove()
-    g.carte.classList.remove('tiree')
+    for (const c of g.tirees) c.classList.remove('tiree')
     this.el.classList.remove('en-glisser')
     try { if (this.grille.hasPointerCapture(g.id)) this.grille.releasePointerCapture(g.id) } catch { /* déjà relâché */ }
     return g
@@ -706,7 +1170,7 @@ export class Trieuse {
   /** Échap, pointercancel : rien ne bouge */
   private annulerGlisser() { this.finirGlisser() }
 
-  /** Le lâcher : la page va à sa place d'arrivée (journal, message « Annuler ») */
+  /** Le lâcher : les pages vont à leur place d'arrivée (journal, message « Annuler ») */
   private lacher() {
     const g = this.finirGlisser()
     if (!g) return
