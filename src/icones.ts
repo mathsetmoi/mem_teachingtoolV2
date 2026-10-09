@@ -55,6 +55,8 @@ export const ICONES: Record<string, string> = {
   // voudrait dire « Coller ») ; Dupliquer : les mêmes, et un +
   copier: 'M8 8h11v11H8zM5 16V5h11',
   dupliquer: 'M8 8h11v11H8zM5 16V5h11M13.5 11v5M11 13.5h5',
+  // Fermer (la trieuse des pages) : une croix
+  fermer: 'M6 6l12 12M18 6L6 18',
 }
 
 /** Le SVG d'une icône, caché aux lecteurs d'écran (le bouton porte son nom) */

@@ -720,6 +720,81 @@ qui ne savent pas décompresser seuls, un petit décompresseur (fflate, 8 Ko) se
 charge à la place. Commandes de 44 px, zoom du navigateur jamais bloqué, la
 frise annonce le temps aux lecteurs d'écran.
 
+## Les pages
+
+**La trieuse des pages** montre toutes les pages en vignettes, en plein
+écran : le rendu réel de chaque page en petit (son fond, tout son contenu
+cadré), son numéro en gros dans un coin, son nom dessous s'il en a un, « Page
+vide » sur une page sans rien ; la page qu'on regarde est encadrée de bleu.
+On l'ouvre par le **compteur** « 3 / 7 » de la barre du haut (un bouton), par
+**Maj + P** (la lettre écrite sur la touche, en AZERTY comme en QWERTY ; P seul
+reste le Stylo), ou par **Toutes les pages…** dans le menu de la page (un clic
+droit dans le vide). On la ferme par Échap, par le ×, par Maj + P, ou en
+allant à une page ; ouverte au clavier, elle rend le focus au compteur. Elle
+ne s'ouvre ni pendant la revue, ni pendant une séance d'automatismes, ni
+quand une fenêtre est ouverte, ni au milieu d'un trait ou d'un objet qu'on
+glisse. En s'ouvrant, elle pose ce qui attendait (le point d'un simple
+toucher), annule un placement en attente (désigner un axe, poser une
+construction), ferme le programme de construction et les menus, et retire du
+bas de l'écran le message « … · Annuler » du tableau (il changerait une page
+qu'on ne voit plus ; Ctrl+Z, une fois la trieuse fermée, rend toujours la
+page supprimée). Tant qu'elle est ouverte, plus rien n'écrit sur la page
+cachée : ni les lettres des outils, ni Ctrl+Z, Ctrl+V, Suppr, ni le
+programme de construction.
+
+Pourquoi plein écran plutôt qu'un panneau sur le côté (comme SMART ou
+Xournal++) : la page est infinie et le vidéoprojecteur montre tout à la
+classe ; un panneau prendrait en permanence un cinquième du tableau pour
+quatre vignettes. La grille en montre une vingtaine d'un coup sur un
+portable, une quarantaine sur un TNI en 1920 × 1080, toutes en défilant ;
+elle laisse la place de glisser loin, sert telle quelle sur un téléphone
+(deux colonnes), et fait un moment d'organisation clair pour la classe
+(comme la grille de GoodNotes ou Notability).
+
+- **Aller à une page** : un clic ou un toucher sur sa vignette, ou Entrée sur
+  celle qui a le focus ; la trieuse se ferme et le numéro de la page
+  s'annonce. Le second clic d'un double-clic (par habitude) ne laisse rien
+  sur la page où l'on arrive.
+- **Taper son numéro** : des chiffres (au clavier principal, avec ou sans Maj
+  comme en AZERTY, ou au pavé numérique) ; deux chiffres à moins de 0,8 s
+  font un seul numéro (« 1 », « 2 » : la page 12). Le focus va à sa vignette,
+  qu'Entrée ouvre. Utile au TNI avec soixante pages.
+- **Au clavier** : les flèches passent d'une vignette à l'autre (↑ et ↓ dans
+  la même colonne, selon la mise en page réelle), Début et Fin aux bouts ;
+  Tab va du bandeau à la grille (un seul arrêt pour toute la grille).
+- **Réordonner à la souris et à la tablette graphique** : on glisse la
+  vignette, de n'importe où sur elle, dès 4 px (6 au stylet), sans appui
+  long. La vignette s'estompe, son image suit le pointeur, une barre bleue
+  marque la place d'arrivée, et la grille défile seule quand on approche de
+  son bord haut ou bas. Un glisser parti du vide de la grille ne fait rien.
+  Sur un ordinateur sans écran tactile, la grille ne défile pas au toucher
+  (touch-action) : sous Windows Ink, le réglage des pilotes Wacom, le stylet
+  suivrait la même règle que le doigt, et un glisser vertical de la tablette
+  ferait défiler au lieu de tirer la page ; la grille défile à la molette, par
+  sa barre, et seule près des bords pendant un glisser.
+- **Réordonner au doigt** (et au stylet posé sur l'écran : iPad, Surface) :
+  par la poignée ⋮⋮ de la vignette, ou par un appui long d'une demi-seconde
+  (une petite vibration là où elle existe) ; sinon le doigt fait défiler la
+  grille, et un toucher bref mène à la page.
+- **Réordonner au clavier** : Ctrl + Maj + ← ou → (⌘ + Maj sur Mac) avance ou
+  recule d'une place la page qui a le focus.
+- **Annuler** : chaque déplacement le dit (« Page déplacée : c'est maintenant
+  la page 5 ») avec **Annuler** ; dans la trieuse, Ctrl+Z annule et Ctrl+Y
+  (ou Ctrl + Maj + Z) rétablit (« Annulé : page déplacée », « Rien à annuler
+  dans les pages »). La trieuse garde son propre journal, qui ne touche à
+  aucune pile d'annulation de page : il ne défait que si les pages sont
+  exactement telles qu'il les a laissées (sinon : « Les pages ont changé
+  depuis : rien à annuler. »), et il se vide à la fermeture (son dernier
+  « Annuler » s'en va avec lui). Un déplacement n'est un geste nulle part : ni
+  la revue, ni les séances, ni le film élève n'y voient autre chose qu'un
+  ordre changé.
+
+Les vignettes se peignent à part (voir « Architecture ») : celles qu'on voit
+d'abord, sans jamais bloquer l'écriture (60 pages de 300 traits : les
+vignettes visibles prêtes en un tiers de seconde, toutes en moins d'une
+seconde, aucune tâche de plus de 50 ms, mesuré), et se repeignent quand leur
+page change ; fermée, la trieuse ne coûte rien.
+
 ## Enregistrer et ouvrir un tableau
 
 Le tableau s'enregistre tout seul dans le navigateur, mais un navigateur peut
@@ -822,7 +897,8 @@ ce navigateur, hors du document : ni un fichier, ni un replay ne les emportent.
 présentation envoient) passent d'une page à l'autre. Le compteur dit
 « 3 / 7 », suivi du nom de la page si elle en a un (« 3 / 7 · Exercice 12
 p. 84 » : coupé au-delà d'une vingtaine de caractères, entier dans son
-infobulle, caché sur un téléphone). Sur la dernière page, › devient un bouton
+infobulle, caché sur un téléphone) ; c'est un bouton, qui ouvre la trieuse
+des pages (Maj + P, voir « Les pages »). Sur la dernière page, › devient un bouton
 d'ajout, avec sa propre icône (le chevron et un petit +, à ne pas confondre
 avec le grand + de « Nouvelle page », qui reste à sa place : aucun bouton de
 la barre ne bouge d'une page à l'autre, la poubelle reste sous la main) : il
@@ -1125,7 +1201,7 @@ réglage de ce navigateur, sous la clé `mem-sortie-fond`.
 | `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
-| `src/ui.ts` | Barres d'outils, le menu complet (un objet, une formule, plusieurs objets), le menu de la page, éditeur de formules |
+| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le menu complet (un objet, une formule, plusieurs objets), le menu de la page, éditeur de formules |
 | `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose, ce que devient un appui sur elle |
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (celles des lecteurs sont dans `src/revoir/icones.ts`) |
 | `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
@@ -1134,6 +1210,8 @@ réglage de ce navigateur, sous la clé `mem-sortie-fond`.
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
+| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), annuler par son journal |
+| `src/pages/glisser.ts` | Où arrive une page lâchée dans la grille (la ligne sous le point, avant la première carte dont le milieu est à droite), où se pose la barre qui le montre, la vitesse du défilement près du bord (pur, testé) |
 | `src/pages/journal.ts` | Le journal de la trieuse des pages : chaque action sur les pages (déplacer, renommer, dupliquer, insérer, supprimer, changer un fond) entre avec l'état des pages d'avant et d'après ; annuler (ou rétablir) seulement si le tableau est exactement dans l'état laissé, sinon il le dit et se vide (jamais un changement invisible ni une page perdue) ; une page créée par une action défaite ne va pas dans la corbeille ; aucune pile de page touchée |
 | `src/presse-papiers.ts` | Copier, coller : la copie écrite pour le presse-papiers du système et relue sans passer par la page, chaque forme vérifiée, le collage (noms gardés ou changés, points liés) |
 | `src/fichier.ts` | Le tableau dans un fichier `.memc` : l'écrire, le relire (et refuser ce qui n'en est pas un) |

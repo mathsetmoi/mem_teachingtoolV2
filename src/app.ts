@@ -75,8 +75,9 @@ export interface Interface {
    *  texte. cle : ce que l'action concerne (voir oublierAction) */
   message(texte: string, action?: { libelle: string; faire: () => void; cle?: string }): void
   /** Le message à action de cette clé n'a plus d'objet (la page que son
-   *  « Annuler » rendait est revenue par Ctrl+Z) : il s'en va */
-  oublierAction(cle: string): void
+   *  « Annuler » rendait est revenue par Ctrl+Z) : il s'en va ; sans clé,
+   *  quel qu'il soit */
+  oublierAction(cle?: string): void
   /** Le menu du rôle du doigt (dessine, déplace, auto) */
   ouvrirReglageDoigt(): void
   ouvrirMenuPartie(id: string, prise: Prise, clientX: number, clientY: number): void
@@ -103,6 +104,9 @@ export interface Interface {
   /** On vient de changer de page : son numéro (et son nom) en grand, un
    *  instant, en haut de ce qu'on voit (voir App.allerPage) */
   annoncerPage(): void
+  /** La trieuse des pages (Maj + P) ; auClavier : elle rend le focus au
+   *  compteur en se fermant */
+  ouvrirTrieuse(auClavier?: boolean): void
 }
 
 type Geste =
@@ -515,6 +519,11 @@ export class App {
 
   get pages() { return this.tableau.ordre.toArray() }
   get fond(): Fond { return this.tableau.fondDe(this.page) }
+  /** Un geste est en cours (un trait qu'on écrit, un objet qu'on glisse, un
+   *  cadre, la vue qu'on déplace) ; pas le doigt retenu un instant, qui n'a
+   *  encore rien fait (voir ecrireOuRetenir). La trieuse ne s'ouvre pas au
+   *  milieu d'un geste. */
+  get enGeste(): boolean { return !!this.geste && this.geste.type !== 'retenu' }
 
   // ---------- Pages ----------
   /** Chaque page garde sa vue. Une page qu'on n'a pas encore regardée
@@ -3425,6 +3434,13 @@ export class App {
     if (e.shiftKey && !ctrl && !e.altKey && (e.code === 'Digit1' || e.code === 'Digit2')) {
       e.preventDefault()
       if (e.code === 'Digit1') this.toutVoir(); else this.voirSelection()
+      return
+    }
+    // Maj + P : la trieuse des pages (la lettre par e.key, en AZERTY comme en
+    // QWERTY) ; P seul reste le Stylo, et Maj + P ne le choisit jamais
+    if (e.shiftKey && !ctrl && !e.altKey && lettre === 'p') {
+      e.preventDefault()
+      if (!e.repeat) this.ui.ouvrirTrieuse(true)
       return
     }
     if (ctrl) return

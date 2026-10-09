@@ -125,6 +125,9 @@ button, select, input { font: inherit; color: inherit; }
 .taille.actif span { background: var(--encre); box-shadow: 0 0 0 3px var(--surligneur); }
 
 .rang { min-width: 56px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Le compteur est un bouton : il ouvre la trieuse des pages (Maj + P) */
+button.rang { height: 44px; padding: 0 8px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; }
+button.rang:hover { background: #e9eef5; }
 /* Le nom de la page, après son numéro : coupé au-delà d'une vingtaine de
    caractères (il est entier dans le titre du compteur) ; « pre » garde
    l'espace qui le sépare du numéro */
@@ -622,6 +625,100 @@ body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .barre-acti
 .revue-reglage select { height: 44px; padding: 0 10px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); }
 .revue-annonce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .revue-barre { transition: none; } }
+
+/* ---------- La trieuse des pages (pages/trieuse.ts) ----------
+   Plein écran, au-dessus des barres et des panneaux (10 à 20), sous les
+   menus d'un morceau (22), les petits menus (23) et la revue (28) ; ses
+   messages passent au-dessus d'elle (leurs « Annuler »). Une grille de
+   vignettes qui défile en hauteur, jamais en largeur : 200 px par colonne
+   au moins (150 sur un téléphone : deux colonnes à 390 px). Rien n'y dépend
+   du survol (TNI, doigt). Au doigt, la grille défile (pan-y) et une page se
+   tire par sa poignée ⋮⋮ ou un appui long ; sans écran tactile
+   (.sans-tactile : la souris, la tablette graphique), rien n'y défile au
+   toucher, pas même le stylet sous Windows Ink, qui suit touch-action
+   comme le doigt : un glisser vertical de la Wacom tire la page. */
+.trieuse {
+  position: fixed; inset: 0; z-index: 21;
+  display: flex; flex-direction: column;
+  background: var(--chrome); color: var(--encre);
+}
+body.en-trieuse .toast { z-index: 30; }
+.trieuse-tete {
+  position: sticky; top: 0; z-index: 1;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px;
+  padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
+  background: var(--chrome); border-bottom: 1px solid var(--filet);
+}
+.trieuse-tete h2 { margin: 0; font-size: 22px; }
+.trieuse-compte { color: var(--encre-douce); font-variant-numeric: tabular-nums; }
+.trieuse-actions { flex: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.trieuse-fermer svg { stroke-width: 2.2; }
+.trieuse-grille {
+  position: relative; flex: 1; min-height: 0;
+  overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; touch-action: pan-y;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); align-content: start;
+  gap: 16px; padding: 16px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left));
+  outline: none;
+}
+.carte {
+  position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+  padding: 6px; border-radius: 12px; cursor: pointer; outline: none;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: pan-y;
+}
+.trieuse.sans-tactile .trieuse-grille, .trieuse.sans-tactile .carte { touch-action: none; }
+.carte-image {
+  position: relative; aspect-ratio: var(--rapport, 1.6); overflow: hidden;
+  background: var(--papier); border: 1px solid var(--filet); border-radius: 8px;
+  box-shadow: 0 2px 0 var(--filet);
+}
+/* Le canevas vient à sa taille (voir Trieuse.majTailles) ; il remplit la carte entre deux mesures */
+.carte-image canvas { position: absolute; inset: 0; display: block; width: 100% !important; height: 100% !important; }
+/* La page qu'on regarde : encadrée de bleu */
+.carte.actuelle .carte-image { border-color: var(--bleu); box-shadow: 0 0 0 2px var(--bleu); }
+.carte:focus-visible { background: #e3ebf7; box-shadow: inset 0 0 0 2px var(--bleu); }
+.carte-numero {
+  position: absolute; left: 6px; top: 6px; min-width: 34px; height: 34px; padding: 0 8px;
+  display: grid; place-items: center; border-radius: 9px;
+  background: var(--encre); color: #fff; font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.carte.actuelle .carte-numero { background: var(--bleu); }
+.carte-vide { position: absolute; inset: 0; display: grid; place-items: center; color: var(--encre-douce); font-size: 15px; pointer-events: none; }
+.carte-nom { min-height: 20px; font-size: 15px; line-height: 20px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.carte-poignee {
+  position: absolute; right: 4px; top: 4px; width: 44px; height: 44px;
+  display: grid; place-items: center; border-radius: 10px;
+  background: rgba(246, 248, 251, 0.92); border: 1px solid var(--filet);
+  font-size: 18px; font-weight: 700; letter-spacing: -3px; color: var(--encre-douce);
+  touch-action: none; cursor: grab;
+}
+.trieuse.sans-tactile .carte-poignee { display: none; }
+/* Une page qu'on tire : la carte d'origine s'estompe, son fantôme suit le pointeur */
+.carte.tiree { opacity: 0.35; }
+.trieuse.en-glisser, .trieuse.en-glisser .carte { cursor: grabbing; }
+.trieuse-fantome {
+  position: fixed; left: 0; top: 0; z-index: 3; margin: 0; pointer-events: none;
+  background: var(--chrome); opacity: 0.95;
+  box-shadow: 0 18px 40px rgba(27, 34, 48, 0.28), 0 2px 0 var(--filet);
+}
+/* La place d'arrivée : une barre bleue entre deux cartes */
+.trieuse-place { position: fixed; z-index: 2; width: 4px; border-radius: 2px; background: var(--bleu); pointer-events: none; }
+.trieuse-aide {
+  margin: 0; padding: 8px max(16px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  border-top: 1px solid var(--filet); color: var(--encre-douce); font-size: 14px; text-align: center;
+}
+@media (hover: hover) {
+  .carte:hover .carte-image { border-color: var(--bleu); }
+}
+@media (max-width: 640px) {
+  .trieuse-actions { order: 3; flex-basis: 100%; justify-content: flex-start; }
+  .trieuse-actions:empty { display: none; }
+  .trieuse-fermer { margin-left: auto; }
+}
+@media (max-width: 480px) {
+  .trieuse-grille { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding-top: 12px; }
+  .carte-numero { font-size: 16px; min-width: 30px; height: 30px; }
+}
 
 /* ---------- Petits menus flottants (menus.ts) ----------
    Au-dessus des menus d'un morceau de figure (22) et du message (14), sous

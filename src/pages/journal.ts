@@ -50,6 +50,10 @@ export class JournalPages {
 
   get peutAnnuler(): boolean { return this.faites.length > 0 }
   get peutRetablir(): boolean { return this.defaites.length > 0 }
+  /** L'action qu'annuler défera (son libellé fait le message « Annulé : … ») */
+  get aAnnuler(): Entree | null { return this.faites[this.faites.length - 1] ?? null }
+  /** L'action que rétablir refera */
+  get aRetablir(): Entree | null { return this.defaites[this.defaites.length - 1] ?? null }
 
   /** Fait une action sur les pages et l'inscrit. Une page CRÉÉE par l'action
    *  (une insertion, une copie) reçoit, dans le cliché d'avant, une entrée

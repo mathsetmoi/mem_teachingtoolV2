@@ -30,6 +30,7 @@ import { icone } from './icones'
 import { BarreActions } from './barre-actions'
 import { Apercus } from './sorties/apercu'
 import { Vignettes } from './pages/vignettes'
+import { Trieuse } from './pages/trieuse'
 import { titreModifierFormule } from './pointeurs'
 
 /** Le rôle du doigt : la marque de son bouton, son titre, ce qu'on en dit */
@@ -136,8 +137,9 @@ export class UI implements Interface {
   private boutonJeter!: HTMLButtonElement
   private boutonAnnuler!: HTMLButtonElement
   private boutonRetablir!: HTMLButtonElement
-  /** Le compteur « 3 / 7 », suivi du nom de la page s'il y en a un (« · Exercice 12 p. 84 ») */
-  private rang!: HTMLSpanElement
+  /** Le compteur « 3 / 7 », suivi du nom de la page s'il y en a un (« · Exercice 12 p. 84 ») :
+   *  un bouton, qui ouvre la trieuse des pages (Maj + P) */
+  private rang!: HTMLButtonElement
   private rangNumero!: HTMLSpanElement
   private rangNom!: HTMLSpanElement
   /** « › » : la page suivante, ou une page de plus sur la dernière (voir maj) */
@@ -207,6 +209,9 @@ export class UI implements Interface {
    *  vers… » (voir pages/vignettes.ts) : rien ne s'y peint tant qu'aucune
    *  n'est à l'écran */
   vignettes!: Vignettes
+  /** La trieuse des pages : toutes les pages en vignettes, plein écran (voir
+   *  pages/trieuse.ts) ; le compteur, Maj + P et le menu de la page l'ouvrent */
+  trieuse!: Trieuse
 
   constructor(private app: App, private racine: HTMLElement) {
     // Les menus d'abord : leur Échap passe avant celui des panneaux (voir menus.ts)
@@ -281,8 +286,11 @@ export class UI implements Interface {
     const avant = bouton('avant', 'Page précédente (Page ↑)', () => app.pageSuivante(-1))
     // Le compteur : « 3 / 7 », puis le nom de la page s'il y en a un, coupé
     // au-delà d'une vingtaine de caractères (entier dans son titre), et caché
-    // sur un téléphone. Sans nom, son texte reste exactement « 3 / 7 ».
-    this.rang = document.createElement('span'); this.rang.className = 'rang'
+    // sur un téléphone. Sans nom, son texte reste exactement « 3 / 7 ». C'est
+    // un bouton : il ouvre la trieuse des pages (comme Maj + P) ; ouverte au
+    // clavier (Entrée, Espace), elle lui rend le focus en se fermant.
+    this.rang = document.createElement('button'); this.rang.type = 'button'; this.rang.className = 'rang'
+    this.rang.addEventListener('click', e => this.ouvrirTrieuse(e.detail === 0))
     this.rangNumero = Object.assign(document.createElement('span'), { className: 'rang-numero' })
     this.rangNom = Object.assign(document.createElement('span'), { className: 'rang-nom' })
     this.rang.append(this.rangNumero, this.rangNom)
@@ -452,6 +460,7 @@ export class UI implements Interface {
       rendreFormule: (latex, el) => katex.render(latex, el, { throwOnError: false, displayMode: false }),
     })
     this.vignettes = new Vignettes(app.tableau, this.apercus)
+    this.trieuse = new Trieuse(app, this.racine, this, this.vignettes)
     this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
     this.seance = new Seance(this.racine)
@@ -489,8 +498,10 @@ export class UI implements Interface {
     if (this.rangNumero.textContent !== numero) this.rangNumero.textContent = numero
     const suite = nom ? ` · ${nom}` : ''
     if (this.rangNom.textContent !== suite) this.rangNom.textContent = suite
-    const titreRang = nom ? `Page ${numero} · ${nom}` : ''
+    const titreRang = nom ? `Page ${numero} · ${nom} · Toutes les pages (Maj + P)` : 'Toutes les pages (Maj + P)'
     if (this.rang.title !== titreRang) this.rang.title = titreRang
+    const nomRang = i >= 0 ? `Page ${i + 1} sur ${pages.length}${nom ? `, ${nom}` : ''} : toutes les pages (Maj + P)` : 'Toutes les pages (Maj + P)'
+    if (this.rang.getAttribute('aria-label') !== nomRang) this.rang.setAttribute('aria-label', nomRang)
     // « › » sur la dernière page : une page de plus ; son contenu ne se
     // refait que si le mode change
     const mode = pages.length && i === pages.length - 1 ? 'ajout' : 'suivante'
@@ -668,7 +679,7 @@ export class UI implements Interface {
   /** Une entrée d'un petit menu : un choix fait le ferme, puis agit. coche :
    *  un choix parmi d'autres (menuitemradio), coché ou non ; avec caseACocher,
    *  un réglage qu'on allume ou qu'on coupe (menuitemcheckbox). */
-  private entreeMenu(m: HTMLElement, texte: string, faire: () => void, o: { touche?: string; aide?: string; coche?: boolean; caseACocher?: boolean; inactif?: boolean } = {}) {
+  private entreeMenu(m: HTMLElement, texte: string, faire: (e: MouseEvent) => void, o: { touche?: string; aide?: string; coche?: boolean; caseACocher?: boolean; inactif?: boolean } = {}) {
     const b = document.createElement('button')
     b.type = 'button'; b.className = 'menu-item'
     b.setAttribute('role', o.coche === undefined ? 'menuitem' : o.caseACocher ? 'menuitemcheckbox' : 'menuitemradio')
@@ -678,10 +689,10 @@ export class UI implements Interface {
     const libelle = b.querySelector('.libelle')!
     libelle.textContent = texte
     if (o.aide) libelle.appendChild(Object.assign(document.createElement('small'), { textContent: o.aide }))
-    b.addEventListener('click', () => {
+    b.addEventListener('click', e => {
       if (o.inactif) return
       fermerMenu()
-      faire()
+      faire(e)
     })
     m.appendChild(b)
   }
@@ -727,7 +738,7 @@ export class UI implements Interface {
    *  menu du système (de l'autre côté s'il n'y a pas la place), et se ferme
    *  comme les autres petits menus : Échap, un choix, ou un appui ailleurs
    *  (qui ne laisse pas d'encre). Coller ici, Tout sélectionner, Tout voir,
-   *  puis ce qui touche la page elle-même (Dupliquer la page).
+   *  puis ce qui touche la page elle-même (Dupliquer la page, Toutes les pages…).
    *  m : le point du monde où « Coller ici »
    *  colle. Refait à chaque ouverture : la copie et la page ont pu changer.
    *  auClavier : ouvert par la touche Menu (voir App.menuAuClavier), le
@@ -744,6 +755,9 @@ export class UI implements Interface {
     el.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
     this.entreeMenu(el, 'Dupliquer la page', () => app.dupliquerLaPage(), { touche: `${CTRL} + Maj + D`,
       aide: 'Une copie juste après, avec toute son histoire (Revoir la montre se construire)' })
+    // Ouverte au clavier (Entrée sur l'entrée), la trieuse rend le focus au compteur
+    this.entreeMenu(el, 'Toutes les pages…', e => this.ouvrirTrieuse(e.detail === 0), { touche: 'Maj + P',
+      aide: 'Les pages en vignettes : aller à une page, les ranger' })
     ouvrirMenu(this.menuPage)
     placerMenu(el, new DOMRect(x, y, 0, 0), 'droite')
     if (auClavier) allerAuxEntrees(el, 1, ENTREES)
@@ -1229,24 +1243,57 @@ export class UI implements Interface {
     this.placerMenuPartie()
   }
 
-  /** La revue prend tout l'écran : le programme de construction se ferme
-   *  d'abord (son clavier passerait avant le sien, et il écrit au tableau).
-   *  Un instrument qu'il amenait finit pourtant son trajet à l'image d'après,
-   *  et resterait seul sur le tableau : on le range quand le tableau revient
-   *  (ou, si la revue n'a rien eu à montrer, deux images plus tard). */
-  private ouvrirRevue(b: HTMLElement) {
+  /** La revue ou la trieuse des pages prend tout l'écran : le programme de
+   *  construction se ferme d'abord (son clavier, sur window en capture,
+   *  passerait avant le leur : Espace ou → joueraient une étape sur la page
+   *  cachée, et Échap fermerait les deux), avec le menu d'un morceau. Un
+   *  instrument qu'il amenait finit pourtant son trajet à l'image d'après, et
+   *  resterait seul sur le tableau : la fonction rendue le range quand le
+   *  tableau revient (null : le programme n'était pas ouvert). */
+  private fermerConstruction(): (() => void) | null {
     const construisait = this.constructeur.ouvert
     if (construisait) this.constructeur.fermer()
     this.fermerMenuPartie()
-    const ranger = () => {
+    if (!construisait) return null
+    return () => {
       const r = this.app.rendu
       if (this.constructeur.ouvert || !r.instrumentsAnimes.length) return
       r.instrumentsAnimes = []
       r.redessinerInstruments()
     }
-    this.revue.ouvrir(b, construisait ? ranger : undefined)
-    if (construisait && !this.revue.ouvert) requestAnimationFrame(() => requestAnimationFrame(ranger))
+  }
+
+  /** La revue prend tout l'écran (voir fermerConstruction ; si elle n'a rien
+   *  eu à montrer, l'instrument se range deux images plus tard) */
+  private ouvrirRevue(b: HTMLElement) {
+    const ranger = this.fermerConstruction()
+    this.revue.ouvrir(b, ranger ?? undefined)
+    if (ranger && !this.revue.ouvert) requestAnimationFrame(() => requestAnimationFrame(ranger))
     // La barre d'actions et le menu complet n'ont rien à faire pendant la revue
+    this.maj()
+  }
+
+  /** La trieuse des pages (le compteur, Maj + P, « Toutes les pages… » du
+   *  menu de la page). Pas pendant la revue, une séance d'automatismes, une
+   *  fenêtre ouverte, ni en plein geste (un trait, un objet qu'on glisse).
+   *  Avant, ce qui attend sur le tableau se pose (le point d'un simple
+   *  toucher), un placement en attente (désigner un axe, un centre, poser
+   *  une construction) s'annule, le programme de construction se ferme (voir
+   *  fermerConstruction), les menus aussi, et le message à action du tableau
+   *  s'en va : son « Annuler » changerait une page qu'on ne voit plus
+   *  (Ctrl+Z, une fois la trieuse fermée, et la corbeille restent).
+   *  auClavier : elle rend le focus au compteur en se fermant. */
+  ouvrirTrieuse(auClavier = false) {
+    const app = this.app
+    if (this.trieuse.ouvert || tableauCache(app) || this.revue.ouvert || document.querySelector('dialog[open]') || app.enGeste) return
+    app.poserCeQuiAttend()
+    // Sans placement, Échap changerait d'outil
+    if (app.placement) app.echap()
+    const ranger = this.fermerConstruction()
+    this.fermerMenus()
+    this.oublierAction()
+    this.trieuse.ouvrir({ retour: auClavier ? this.rang : null, auRetour: ranger })
+    // La barre d'actions ne paraît pas sous la trieuse (elle compte comme une fenêtre)
     this.maj()
   }
 
@@ -1394,9 +1441,11 @@ export class UI implements Interface {
   }
 
   /** Le message à action de cette clé s'en va, s'il est encore là : son
-   *  bouton n'a plus rien à faire (la page qu'il rendait est revenue) */
-  oublierAction(cle: string) {
-    if (this.toastAction?.cle !== cle) return
+   *  bouton n'a plus rien à faire (la page qu'il rendait est revenue). Sans
+   *  clé, quel qu'il soit (la trieuse s'ouvre : son « Annuler » changerait
+   *  une page qu'on ne voit plus). */
+  oublierAction(cle?: string) {
+    if (!this.toastAction || (cle !== undefined && this.toastAction.cle !== cle)) return
     this.toastAction = null
     this.majToast()
   }
