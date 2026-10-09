@@ -12,7 +12,7 @@ import { Filiation, filiationDe } from '../src/heritage'
 import type { Trait } from '../src/types'
 import { Piste } from '../src/piste'
 import type { Horloge, Peint } from '../src/piste'
-import { exporterDetaille, pagesDeLaSeance, seancesDuFilm } from '../src/revoir/exporter'
+import { exporterDetaille, pagesDeLaSeance, seancesAPublier, seancesDuFilm } from '../src/revoir/exporter'
 import { Bobine } from '../src/revoir/bobine'
 import type { Portion } from '../src/revue/bande'
 import { bandeParDefaut, compterGestes, construireBande, seanceTouche, seancesDeLaPage } from '../src/revue/bande'
@@ -240,9 +240,12 @@ describe('la revue : le passé d\'une copie', () => {
     expect(d.portion).toMatchObject({ genre: 'seance', page: q })
     expect(d.total).toBe(3)
     expect(r.planches.lire(d.images.at(-1)!).formes.map(f => f.id)).toEqual(['p1', 'p2', 'p3'])
-    // La séance de la copie (sa naissance seule) n'est pas une séance de la page
+    // La séance de la copie n'est pas une séance de la page : sa naissance
+    // n'y est ni un geste, ni une page (voir seancesDuFilm), et la séance
+    // suivante n'a que le geste de l'original
     expect(seancesDeLaPage(r.lecture, r.seances, q)).toHaveLength(1)
-    const seule = r.seances.find(s => s.pages.includes(q))!
+    const seule = r.seances[0]
+    expect(seule.pages).toEqual([p])
     expect(compterGestes(r.lecture, { genre: 'seance', seance: seule, page: q })).toBe(0)
     // Et l'affiche de toute son histoire n'ajoute pas de geste « bout » (la copie égale l'original d'alors)
     const b = r.bande({ genre: 'page', page: q })!
@@ -349,6 +352,73 @@ describe('le film élève d\'une copie', () => {
     const fil = filiationDe(t, t.film.toArray())
     expect(fil.copies).toBe(false)
     expect(revue(t).lecture.copies).toBe(false)
+  })
+})
+
+describe('la naissance d\'une copie dans le découpage en séances', () => {
+  it('l\'étape de naissance d\'une copie est notée (naissance), celle d\'une page ajoutée ou d\'un geste non', async () => {
+    const { t, pages: [p] } = await tableau(1)
+    await geste(t, p, 'p1')
+    const n0 = t.film.length
+    const q = await dupliquer(t, p)
+    expect(t.film.length).toBe(n0 + 1)
+    expect(t.film.get(n0)).toMatchObject({ page: q, naissance: true })
+    expect(t.film.get(n0).seulOrdre).toBeUndefined()
+    t.pageVue = p; t.ajouterPage('blanc', 2); await attendre(500)
+    await geste(t, q, 'q1')
+    expect(t.film.toArray().filter(e => e.naissance).map(e => e.page)).toEqual([q])
+  })
+
+  it('une copie faite deux heures après le cours n\'est pas une séance : Publier choisit le cours, avec son nombre de gestes (celui de la revue)', async () => {
+    const { t, pages: [p] } = await tableau(1)
+    for (let k = 0; k < 5; k++) await geste(t, p, 'c' + k)
+    await attendre(2 * 60 * MINUTE)
+    await dupliquer(t, p)
+    const s = seancesDuFilm(t.film.toArray())
+    // Avant : la plus récente était « 1 geste » (la naissance), sans rien à montrer
+    expect(s[0].gestes).toBe(5)
+    const l = lectureDe(t, () => t.ordre.toArray())
+    expect(compterGestes(l, { genre: 'seance', seance: s[0], page: null })).toBe(5)
+    const publier = seancesAPublier(t)
+    expect(publier[0]).toEqual(s[0])
+    expect(pagesDeLaSeance(t, publier[0])).toEqual([p])
+    expect(exporterDetaille(t, { de: publier[0].de, a: publier[0].a, pages: [p], titre: '' }, { instruments: false }).film.etapes).toHaveLength(5)
+  })
+
+  it('une copie entre deux cours, à moins de 20 minutes de chacun : toujours deux séances, chacune avec ses gestes', async () => {
+    const { t, pages: [p] } = await tableau(1)
+    for (let k = 0; k < 5; k++) await geste(t, p, 'a' + k)
+    await attendre(14 * MINUTE)
+    await dupliquer(t, p)
+    t.pageVue = p
+    await attendre(15 * MINUTE)
+    for (let k = 0; k < 5; k++) await geste(t, p, 'b' + k)
+    const s = seancesDuFilm(t.film.toArray())
+    // Avant : une seule séance de 11 gestes (la revue en comptait 10)
+    expect(s.slice(0, 2).map(x => x.gestes)).toEqual([5, 5])
+    const l = lectureDe(t, () => t.ordre.toArray())
+    expect(s.slice(0, 2).map(x => compterGestes(l, { genre: 'seance', seance: x, page: null }))).toEqual([5, 5])
+  })
+
+  it('une copie faite pendant le cours reste dans sa séance, et sa copie s\'y publie', async () => {
+    const { t, pages: [p] } = await tableau(1)
+    for (const id of ['p1', 'p2']) await geste(t, p, id)
+    const q = await dupliquer(t, p)
+    await geste(t, q, 'q1')
+    const s = seancesDuFilm(t.film.toArray())[0]
+    expect(s.gestes).toBe(3)
+    expect(new Set(pagesDeLaSeance(t, s))).toEqual(new Set([p, q]))
+  })
+
+  it('Publier ne propose pas une séance dont le film n\'a aucun geste (elle n\'a fait qu\'effacer)', async () => {
+    const { t, pages: [p] } = await tableau(1)
+    for (const id of ['p1', 'p2']) await geste(t, p, id)
+    await attendre(2 * 60 * MINUTE)
+    t.pageVue = p; t.nouveauGeste(); t.supprimer(p, ['p1']); await attendre(800)
+    const s = seancesDuFilm(t.film.toArray())
+    expect(s[0].gestes).toBe(1)
+    const publier = seancesAPublier(t)
+    expect(publier.map(x => x.gestes)).toEqual([2])
   })
 })
 

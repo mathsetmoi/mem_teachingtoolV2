@@ -50,13 +50,17 @@ export interface Seance {
  *  chaque silence plus long que `ecart` et à chaque changement de jour.
  *  Une étape qui ne change que l'ordre des pages (une page jetée, ou rendue)
  *  n'est ni un geste, ni une page de la séance, ni une coupure : on la
- *  saute, et le silence se mesure depuis l'étape gardée d'avant. */
+ *  saute, et le silence se mesure depuis l'étape gardée d'avant. De même la
+ *  naissance d'une copie de page (« Dupliquer la page », voir Etape) : la
+ *  copie faite en rangeant après le cours n'est pas une séance, ni un pont
+ *  entre deux cours ; une copie faite pendant le cours y reste (la séance va
+ *  d'une étape à l'autre, celles qu'on saute comprises). */
 export function seancesDuFilm(film: readonly Etape[], ecart = ENTRE_DEUX_SEANCES): Seance[] {
   const r: Seance[] = []
   let cour: Seance | null = null
   let prec: Etape | null = null
   film.forEach((e, i) => {
-    if (e.seulOrdre) return
+    if (e.seulOrdre || e.naissance) return
     const coupe = !prec || e.t - prec.t > ecart || new Date(e.t).toDateString() !== new Date(prec.t).toDateString()
     prec = e
     if (coupe || !cour) { cour = { de: i, a: i, debut: e.t, fin: e.t, gestes: 0, pages: [] }; r.push(cour) }
@@ -64,6 +68,21 @@ export function seancesDuFilm(film: readonly Etape[], ecart = ENTRE_DEUX_SEANCES
     if (e.page && !cour.pages.includes(e.page)) cour.pages.push(e.page)
   })
   return r.reverse()
+}
+
+/** Le film élève d'une séance a-t-il quelque chose à montrer ? Au moins un
+ *  geste (un film sans geste n'est qu'une image fixe : une séance qui n'a
+ *  fait qu'effacer, ou que créer une page), et quelque chose sur ses pages. */
+export function aMontrer(f: FilmEleve): boolean {
+  return f.etapes.length > 0 && (f.pages.some(p => p.formes.length) || f.etapes.some(e => e.o.some(o => o[0] === '=')))
+}
+
+/** Les séances que la fenêtre Publier propose, la plus récente d'abord (la
+ *  première est choisie d'office) : celles dont le film élève, avec les pages
+ *  qu'elle propose, a quelque chose à montrer. */
+export function seancesAPublier(tableau: Tableau, ecart = ENTRE_DEUX_SEANCES): Seance[] {
+  return seancesDuFilm(tableau.film.toArray(), ecart)
+    .filter(s => aMontrer(exporter(tableau, { de: s.de, a: s.a, pages: pagesDeLaSeance(tableau, s), titre: '' }, { instruments: false })))
 }
 
 export interface Choix {

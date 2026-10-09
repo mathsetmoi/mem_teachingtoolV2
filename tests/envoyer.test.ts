@@ -13,7 +13,7 @@ import type { Copie } from '../src/presse-papiers'
 import { compterGestes } from '../src/revue/bande'
 import { lectureDe } from '../src/revue/planches'
 import { exporterDetaille, seancesDuFilm } from '../src/revoir/exporter'
-import { libelleDestination, texteEnvoi, texteEnvoiAnnule } from '../src/pages/envoi'
+import { TEXTE_ENVOI_IMPOSSIBLE, libelleDestination, texteEnvoi, texteEnvoiAnnule, texteEnvoiBloque } from '../src/pages/envoi'
 
 const MINUTE = 60_000
 let horloge = new Date('2026-10-09T08:00:00').getTime()
@@ -48,14 +48,17 @@ async function tableau(n: number) {
   return { t, pages }
 }
 
-/** Ce que fait l'application : les objets pris sur la page `de`, leur copie
- *  par collage (même place, noms libres sur l'arrivée), puis l'envoi. On
- *  regarde la page de départ. */
+/** Ce que fait l'application (App.envoyerSelection) : les objets pris sur
+ *  la page `de`, leur copie par collage (même place, noms libres sur
+ *  l'arrivée ; pour un déplacement, les noms que la pile de l'arrivée peut y
+ *  ramener comptent pour pris), puis l'envoi. On regarde la page de départ. */
 async function envoyer(t: Tableau, de: string, vers: string, ids: string[], deplacer = true, nouvelle?: { id: string; place: number }) {
   t.pageVue = de
   const formes = [...t.formesDe(de)!.values()].filter(f => ids.includes(f.id)).sort((a, b) => a.z - b.z)
   const c: Copie = { v: 1, formes, images: {}, page: de, centre: { x: 0, y: 0 }, t: 0 }
-  const posees = collage(c, { dx: 0, dy: 0, moi: t.moi, existantes: [...t.formesDe(vers)!.values()] })
+  const existantes = [...t.formesDe(vers)!.values()]
+  if (deplacer) existantes.push(...(t.formesQuiPeuventRevenir?.(vers, { de, ids: new Set(formes.map(f => f.id)) }) ?? []))
+  const posees = collage(c, { dx: 0, dy: 0, moi: t.moi, existantes })
   const ok = t.envoyer(de, vers, posees, formes.map(f => f.id), { deplacer, nouvelle })
   await attendre(800)
   return { ok, posees }
@@ -251,6 +254,210 @@ describe('déplacer des objets vers une autre page', () => {
   })
 })
 
+/** Combien d'exemplaires d'un trait (reconnu à son x) sur chaque page */
+const exemplaires = (t: Tableau, pages: string[], x: number) => pages.map(p => [...t.formesDe(p)!.values()].filter(f => f.type === 'trait' && f.x === x).length)
+const total = (l: number[]) => l.reduce((s, n) => s + n, 0)
+
+describe('un envoi dont les objets ont quitté la page d\'arrivée : jamais de doublon caché', () => {
+  it('aller-retour 1 → 2 → 1 : Ctrl+Z sur 1 ne défait pas encore l\'aller (rien ne change) ; Ctrl+Z sur 2 défait le retour, puis Ctrl+Z sur 1 l\'aller', async () => {
+    const { t, pages: [a, b] } = await tableau(2)
+    await geste(t, a, trait(123, 0, 'x'))
+    const { posees: p1 } = await envoyer(t, a, b, ['x'])
+    await envoyer(t, b, a, [p1[0].id])
+    expect(exemplaires(t, [a, b], 123)).toEqual([1, 0])
+    const avant = ids(t, a)
+    t.pageVue = a
+    // Avant : X revenait sous X2, deux objets superposés, et « revenu de la page 2 »
+    expect(t.annuler(a)).toEqual({ envoiBloque: { vers: b, n: 1, total: 1 } })
+    expect(ids(t, a)).toEqual(avant)
+    expect(exemplaires(t, [a, b], 123)).toEqual([1, 0])
+    expect(t.peutAnnuler(a)).toBe(true)
+    // Sur la page 2, le retour se défait (X2 quitte la page 1)
+    t.pageVue = b
+    expect(t.annuler(b)).toEqual({ envoi: { vers: a, revenus: 1, restes: 0, pageRetiree: false } })
+    expect(exemplaires(t, [a, b], 123)).toEqual([0, 1])
+    // Puis l'aller, sur la page 1 : un seul objet au bout, à sa place d'origine
+    t.pageVue = a
+    expect(t.annuler(a)).toEqual({ envoi: { vers: b, revenus: 1, restes: 0, pageRetiree: false } })
+    expect(exemplaires(t, [a, b], 123)).toEqual([1, 0])
+    expect(ids(t, a)).toEqual(['x'])
+    // Ctrl+Y sur la page 1 refait l'aller. Celui de la page 2 ne se refait
+    // plus (Yjs le trouve sans effet : l'objet reposé sur la page 2 est un
+    // autre élément du document que celui qu'il avait rendu) : jamais de
+    // doublon ni de perte pour autant
+    expect(t.retablir(a)).toMatchObject({ envoi: { repartis: 1 } })
+    expect(exemplaires(t, [a, b], 123)).toEqual([0, 1])
+    t.pageVue = b
+    t.retablir(b)
+    expect(total(exemplaires(t, [a, b], 123))).toBe(1)
+  })
+
+  it('en chaîne 1 → 2 → 3 : Ctrl+Z sur 1 attend celui de la page 2 ; un seul exemplaire à chaque instant', async () => {
+    const { t, pages: [a, b, c] } = await tableau(3)
+    await geste(t, a, trait(321, 0, 'x'))
+    const { posees: p1 } = await envoyer(t, a, b, ['x'])
+    await envoyer(t, b, c, [p1[0].id])
+    t.pageVue = a
+    // Avant : X revenait sur la page 1 et son exemplaire restait sur la page 3, sans un mot
+    expect(t.annuler(a)).toEqual({ envoiBloque: { vers: b, n: 1, total: 1 } })
+    expect(exemplaires(t, [a, b, c], 321)).toEqual([0, 0, 1])
+    t.pageVue = b
+    expect(t.annuler(b)?.envoi?.vers).toBe(c)
+    expect(exemplaires(t, [a, b, c], 321)).toEqual([0, 1, 0])
+    t.pageVue = a
+    expect(t.annuler(a)?.envoi?.vers).toBe(b)
+    expect(exemplaires(t, [a, b, c], 321)).toEqual([1, 0, 0])
+  })
+
+  it('effacé sur la page 2 : Ctrl+Z sur 1 attend qu\'on y rende l\'objet (un Ctrl+Z là-bas le referait paraître en double)', async () => {
+    const { t, pages: [a, b] } = await tableau(2)
+    await geste(t, a, trait(222, 0, 'x'))
+    await geste(t, a, trait(0, 0, 'y'))
+    const { posees } = await envoyer(t, a, b, ['x', 'y'])
+    t.pageVue = b; t.nouveauGeste(); t.supprimer(b, [posees[0].id]); await attendre(800)
+    t.pageVue = a
+    expect(t.annuler(a)).toEqual({ envoiBloque: { vers: b, n: 1, total: 2 } })
+    expect(exemplaires(t, [a, b], 222)).toEqual([0, 0])
+    t.pageVue = b
+    expect(t.annuler(b)).toEqual({})
+    t.pageVue = a
+    expect(t.annuler(a)).toMatchObject({ envoi: { revenus: 2, restes: 0 } })
+    expect(exemplaires(t, [a, b], 222)).toEqual([1, 0])
+    expect(t.formesDe(b)!.size).toBe(0)
+  })
+
+  it('une page d\'arrivée dans la corbeille bloque aussi (on peut l\'en remettre, et sa pile y ramènerait l\'objet)', async () => {
+    const { t, pages: [a, b, c] } = await tableau(3)
+    await geste(t, a, trait(222, 0, 'x'))
+    await geste(t, b, trait(0, 0, 'b0'))
+    const { posees } = await envoyer(t, a, b, ['x'])
+    t.pageVue = b; t.nouveauGeste(); t.supprimer(b, [posees[0].id]); await attendre(800)
+    expect(t.jeterPage(b, c)).toBe(true)
+    t.pageVue = a
+    expect(t.annuler(a)).toEqual({ envoiBloque: { vers: b, n: 1, total: 1 } })
+    expect(t.remettrePage(b)).toBeGreaterThanOrEqual(0)
+    t.pageVue = b
+    expect(t.annuler(b)).toEqual({})
+    t.pageVue = a
+    expect(t.annuler(a)).toMatchObject({ envoi: { revenus: 1, restes: 0 } })
+    expect(exemplaires(t, [a, b], 222)).toEqual([1, 0])
+  })
+
+  it('une page d\'arrivée supprimée définitivement ne bloque plus rien : l\'objet revient, et la réponse dit qu\'il n\'y était plus (absents)', async () => {
+    const { t, pages: [a, b, c] } = await tableau(3)
+    await geste(t, a, trait(222, 0, 'x'))
+    await geste(t, b, trait(0, 0, 'b0'))
+    const { posees } = await envoyer(t, a, b, ['x'])
+    t.pageVue = b; t.nouveauGeste(); t.supprimer(b, [posees[0].id]); await attendre(800)
+    expect(t.jeterPage(b, c)).toBe(true)
+    expect(t.supprimerDefinitivement([b])).toBe(1)
+    t.pageVue = a
+    expect(t.annuler(a)).toEqual({ envoi: { vers: b, revenus: 1, restes: 0, absents: 1, pageRetiree: false } })
+    expect(exemplaires(t, [a, b, c], 222)).toEqual([1, 0, 0])
+  })
+
+  it('un objet modifié sur la page 2 ne bloque pas (il y reste, annoncé) ; le message ne dit « revenu de la page 2 » que si quelque chose en est parti', async () => {
+    const { t, pages: [a, b] } = await tableau(2)
+    await geste(t, a, trait(0, 0, 'x'))
+    const { posees } = await envoyer(t, a, b, ['x'])
+    t.pageVue = b
+    t.nouveauGeste(); t.modifier(b, [{ id: posees[0].id, patch: { x: 99 } }]); await attendre(800)
+    t.pageVue = a
+    const r = t.annuler(a)!
+    expect(r).toEqual({ envoi: { vers: b, revenus: 1, restes: 1, pageRetiree: false } })
+    expect(texteEnvoiAnnule(r.envoi!, 2, true)).toBe('Envoi annulé : l\'objet est revenu ; 1 objet, modifié depuis sur la page 2, y reste aussi')
+  })
+})
+
+describe('refaire un envoi vers une page supprimée définitivement', () => {
+  it('Ctrl+Y sur la page de départ ne l\'envoie pas vers une page qui ne revient jamais : rien ne change, l\'étape reste', async () => {
+    const { t, pages: [a, b, c] } = await tableau(3)
+    await geste(t, a, trait(555, 0, 'x'))
+    await geste(t, b, trait(0, 0, 'b0'))
+    await envoyer(t, a, b, ['x'])
+    expect(t.jeterPage(b, c)).toBe(true)
+    expect(t.supprimerDefinitivement([b])).toBe(1)
+    t.pageVue = a
+    expect(t.annuler(a)).toMatchObject({ envoi: { revenus: 1, restes: 0 } })
+    expect(exemplaires(t, [a, b], 555)).toEqual([1, 0])
+    // Avant : l'objet quittait la page 1 pour la page définitive, et un rechargement le perdait
+    expect(t.retablir(a)).toEqual({ envoiImpossible: { vers: b } })
+    expect(exemplaires(t, [a, b], 555)).toEqual([1, 0])
+    expect(t.peutRetablir(a)).toBe(true)
+    // Dans la corbeille seulement, elle le reçoit (on peut l'en remettre)
+    const { t: t2, pages: [a2, b2, c2] } = await tableau(3)
+    await geste(t2, a2, trait(555, 0, 'x'))
+    await geste(t2, b2, trait(0, 0, 'b0'))
+    await envoyer(t2, a2, b2, ['x'])
+    expect(t2.jeterPage(b2, c2)).toBe(true)
+    t2.pageVue = a2
+    t2.annuler(a2)
+    expect(t2.retablir(a2)).toMatchObject({ envoi: { vers: b2, repartis: 1 } })
+    expect(exemplaires(t2, [a2, b2], 555)).toEqual([0, 1])
+  })
+})
+
+describe('noms des points : ce que la pile de la page d\'arrivée peut y ramener', () => {
+  const noms = (t: Tableau, p: string) => [...t.formesDe(p)!.values()].filter(f => f.type === 'polygone').map(f => (f as Polygone).noms!.join('')).sort()
+
+  it('ABC effacé sur la page 1, un ABC arrive de la page 3 (déplacé) : il prend d\'autres lettres, et Ctrl+Z sur 1 ne fait pas deux ABC', async () => {
+    const { t, pages: [a, , c] } = await tableau(3)
+    await geste(t, a, triangle('t1', ['A', 'B', 'C']))
+    await geste(t, c, triangle('t3', ['A', 'B', 'C'], 400))
+    t.pageVue = a; t.nouveauGeste(); t.supprimer(a, ['t1']); await attendre(800)
+    expect(t.formesQuiPeuventRevenir(a).map(f => f.id)).toEqual(['t1'])
+    await envoyer(t, c, a, ['t3'])
+    expect(noms(t, a)).toEqual(['DEF'])
+    t.pageVue = a
+    expect(t.annuler(a)).toEqual({})
+    expect(noms(t, a)).toEqual(['ABC', 'DEF'])
+  })
+
+  it('ABC parti de la page 1 vers la 2, un ABC arrive de la page 3 : Ctrl+Z sur 1 ne fait pas deux ABC', async () => {
+    const { t, pages: [a, b, c] } = await tableau(3)
+    await geste(t, a, triangle('t1', ['A', 'B', 'C']))
+    await geste(t, c, triangle('t3', ['A', 'B', 'C'], 400))
+    await envoyer(t, a, b, ['t1'])
+    await envoyer(t, c, a, ['t3'])
+    t.pageVue = a
+    expect(t.annuler(a)?.envoi?.vers).toBe(b)
+    expect(noms(t, a)).toEqual(['ABC', 'DEF'])
+    expect(noms(t, b)).toEqual([])
+  })
+
+  it('l\'aller-retour garde ses noms (ABC parti vers la page 2 et renvoyé sur la 1 reste ABC) ; un ABC renommé sur la page 1 réserve aussi ABC', async () => {
+    const { t, pages: [a, b, c] } = await tableau(3)
+    await geste(t, a, triangle('t1', ['A', 'B', 'C']))
+    const { posees } = await envoyer(t, a, b, ['t1'])
+    await envoyer(t, b, a, [posees[0].id])
+    expect(noms(t, a)).toEqual(['ABC'])
+    // Un triangle de la page 1 renommé GHI : Ctrl+Z le rendrait ABC
+    const { t: t2, pages: [a2, , c2] } = await tableau(3)
+    await geste(t2, a2, triangle('t1', ['A', 'B', 'C']))
+    t2.pageVue = a2; t2.nouveauGeste(); t2.modifier(a2, [{ id: 't1', patch: { noms: ['G', 'H', 'I'] } as Partial<Forme> }]); await attendre(800)
+    await geste(t2, c2, triangle('t3', ['A', 'B', 'C'], 400))
+    await envoyer(t2, c2, a2, ['t3'])
+    expect(noms(t2, a2)).toEqual(['DEF', 'GHI'])
+    t2.pageVue = a2
+    t2.annuler(a2)
+    expect(noms(t2, a2)).toEqual(['ABC', 'DEF'])
+    void c
+  })
+
+  it('une copie (pas un déplacement) garde le comportement du collage : une étape de la pile d\'arrivée, défaite d\'abord', async () => {
+    const { t, pages: [a, , c] } = await tableau(3)
+    await geste(t, a, triangle('t1', ['A', 'B', 'C']))
+    await geste(t, c, triangle('t3', ['A', 'B', 'C'], 400))
+    t.pageVue = a; t.nouveauGeste(); t.supprimer(a, ['t1']); await attendre(800)
+    await envoyer(t, c, a, ['t3'], false)
+    expect(noms(t, a)).toEqual(['ABC'])
+    t.pageVue = a
+    expect(t.annuler(a)).toMatchObject({ copieRecue: { n: 1 } })
+    expect(t.annuler(a)).toEqual({})
+    expect(noms(t, a)).toEqual(['ABC'])
+  })
+})
+
 describe('avec les marques d\'annulation des pages', () => {
   it('vers une copie toute neuve : Ctrl+Z sur la copie ne la retire plus (elle a reçu des objets) ; défait au départ, elle redevient vierge', async () => {
     const { t, pages: [a, p] } = await tableau(2)
@@ -430,6 +637,18 @@ describe('les textes (pur)', () => {
     expect(texteEnvoiAnnule({ revenus: 3, restes: 2, pageRetiree: false }, 5, true)).toBe('Envoi annulé : les 3 objets sont revenus de la page 5 ; 2 objets, modifiés depuis sur la page 5, y restent aussi')
     expect(texteEnvoiAnnule({ revenus: 1, restes: 0, pageRetiree: true }, 2, false)).toBe('Envoi annulé : l\'objet est revenu ; la nouvelle page 2, vide, est retirée')
     expect(texteEnvoiAnnule({ revenus: 2, restes: 1, pageRetiree: false }, 0, false)).toBe('Envoi annulé : les 2 objets sont revenus d\'une page supprimée ; 1 objet, modifié depuis sur la page supprimée, y reste aussi')
+    // Rien n'est parti de la page d'arrivée : jamais « revenu de la page N »
+    expect(texteEnvoiAnnule({ revenus: 1, restes: 1, pageRetiree: false }, 5, true)).toBe('Envoi annulé : l\'objet est revenu ; 1 objet, modifié depuis sur la page 5, y reste aussi')
+    expect(texteEnvoiAnnule({ revenus: 1, restes: 0, absents: 1, pageRetiree: false }, 0, false)).toBe('Envoi annulé : l\'objet est revenu ; 1 objet n\'était plus sur la page supprimée (effacé ou envoyé ailleurs depuis)')
+    expect(texteEnvoiAnnule({ revenus: 3, restes: 0, absents: 2, pageRetiree: false }, 0, false)).toBe('Envoi annulé : les 3 objets sont revenus d\'une page supprimée ; 2 objets n\'étaient plus sur la page supprimée (effacés ou envoyés ailleurs depuis)')
+  })
+
+  it('le message d\'un envoi qui ne se défait pas encore, et d\'un envoi qui ne se refait pas', () => {
+    expect(texteEnvoiBloque(1, 1, 2)).toBe('Cet envoi ne s\'annule pas encore : sur la page 2, l\'objet a depuis été effacé ou renvoyé ailleurs. Annulez d\'abord cela sur la page 2 (↶).')
+    expect(texteEnvoiBloque(3, 3, 2)).toBe('Cet envoi ne s\'annule pas encore : sur la page 2, les 3 objets ont depuis été effacés ou renvoyés ailleurs. Annulez d\'abord cela sur la page 2 (↶).')
+    expect(texteEnvoiBloque(1, 3, 4)).toBe('Cet envoi ne s\'annule pas encore : sur la page 4, 1 des 3 objets a depuis été effacé ou renvoyé ailleurs. Annulez d\'abord cela sur la page 4 (↶).')
+    expect(texteEnvoiBloque(2, 3, 0)).toBe('Cet envoi ne s\'annule pas encore : sur la page supprimée où l\'envoi est arrivé, 2 des 3 objets ont depuis été effacés ou renvoyés ailleurs. Remettez cette page (Toutes les pages, corbeille), puis annulez d\'abord cela sur elle (↶).')
+    expect(TEXTE_ENVOI_IMPOSSIBLE).toBe('La page d\'arrivée a été supprimée définitivement : l\'envoi n\'est pas refait.')
   })
 
   it('le libellé d\'une destination', () => {

@@ -35,7 +35,7 @@ import type { Vue } from './session'
 import { ecrireSession, lireSession, oublierSession } from './session'
 import type { Copie } from './presse-papiers'
 import { collage, lireHtml, lireJson, memeTexte, versHtml, versTexte } from './presse-papiers'
-import { texteEnvoi, texteEnvoiAnnule } from './pages/envoi'
+import { TEXTE_ENVOI_IMPOSSIBLE, texteEnvoi, texteEnvoiAnnule, texteEnvoiBloque } from './pages/envoi'
 
 /** La copie gardée dans le navigateur, pour un autre onglet de la même
  *  adresse (nouvelle clé : aucune autre ne change) */
@@ -803,14 +803,23 @@ export class App {
    *  reviennent sous les yeux, et le message dit ceux qui ont quitté la page
    *  d'arrivée et ceux qui, modifiés là-bas, y restent ; sur la page
    *  d'arrivée d'une copie, les copies partent (« Copie annulée ») ; la
-   *  réponse est 'dit' (le message est dit). Sinon, vrai si un geste a été
-   *  défait. */
+   *  réponse est 'dit' (le message est dit). Un déplacement dont des objets
+   *  ont depuis quitté la page d'arrivée (renvoyés ailleurs, effacés) ne se
+   *  défait pas encore : rien ne change (la sélection reste), le message dit
+   *  d'y défaire cela d'abord, avec « Aller à la page N », et la réponse est
+   *  'dit'. Sinon, vrai si un geste a été défait. */
   annuler(): 'page' | 'dit' | boolean {
     if (this.enLecture) return false
     this.viderPointEnAttente()
     // Les numéros d'avant : la nouvelle page d'un envoi défait peut partir
     const numeros = new Map(this.pages.map((p, i) => [p, i + 1]))
     const r = this.tableau.annuler(this.page)
+    if (r?.envoiBloque) {
+      const { vers, n, total } = r.envoiBloque
+      const k = this.pages.indexOf(vers) + 1
+      this.ui.message(texteEnvoiBloque(n, total, k), k ? { libelle: `Aller à la page ${k}`, faire: () => { if (!tableauCache(this) && this.pages.includes(vers)) this.allerPage(vers) } } : undefined)
+      return 'dit'
+    }
     if (r?.page) {
       this.revenirSur(r.page, this.pages.indexOf(r.page))
       return 'page'
@@ -838,11 +847,17 @@ export class App {
    *  la sélection se vide (ce qui revient peut recouvrir ce qui était choisi)
    *  et l'interface se remet à jour. Vrai si un geste a été refait ; 'dit'
    *  pour un envoi refait (les objets repartent sur la page d'arrivée, et le
-   *  message le dit). */
+   *  message le dit), ou pour un envoi qui ne se refait pas (sa page
+   *  d'arrivée est supprimée définitivement : rien ne change, le message le
+   *  dit). */
   retablir(): 'dit' | boolean {
     if (this.enLecture) return false
     this.viderPointEnAttente()
     const fait = this.tableau.retablir(this.page)
+    if (typeof fait === 'object' && 'envoiImpossible' in fait) {
+      this.ui.message(TEXTE_ENVOI_IMPOSSIBLE)
+      return 'dit'
+    }
     this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()
     if (typeof fait === 'object') {
       const e = fait.envoi, k = this.pages.indexOf(e.vers) + 1
@@ -3256,7 +3271,13 @@ export class App {
       this.ui.message('Cette page n\'est plus dans le tableau : rien n\'a été envoyé.')
       return false
     }
+    // Les noms pris sur la page d'arrivée. Un déplacement y arrive hors de
+    // toute pile : un Ctrl+Z là-bas peut ensuite ramener une figure effacée
+    // ou partie (voir Tableau.formesQuiPeuventRevenir) ; ses noms comptent
+    // pour pris. Une copie, elle, est une étape de la pile d'arrivée,
+    // défaite avant tout ce qui la précède, comme un collage.
     const existantes = [...(this.tableau.formesDe(vers)?.values() ?? [])]
+    if (deplacer) existantes.push(...this.tableau.formesQuiPeuventRevenir(vers, { de: a, ids: new Set(c.formes.map(f => f.id)) }))
     const posees = collage(c, { dx: 0, dy: 0, moi: this.tableau.moi, existantes })
     const ok = this.tableau.envoyer(a, vers, posees, c.formes.map(f => f.id), { deplacer, nouvelle })
     this.ui.fermerMenuPartie()

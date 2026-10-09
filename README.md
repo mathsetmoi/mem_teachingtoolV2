@@ -469,8 +469,13 @@ original jusqu'au moment de la copie, puis la sienne : sa revue montre la
 page se construire comme l'original (« Toute son histoire » compte ces
 gestes, et la séance où l'on a construit l'original est aussi une séance de
 la copie), puis ce qu'on a fait sur elle. La copie elle-même n'est pas un
-geste, ni dans son histoire, ni dans le compte d'une séance : la page
-continue celle d'où elle vient, rien ne surgit ni ne se redessine. Une copie de copie remonte toute la chaîne. Rien n'est recopié :
+geste, ni dans son histoire, ni dans le compte d'une séance, ni dans le
+découpage en séances : la page continue celle d'où elle vient, rien ne
+surgit ni ne se redessine. Une copie faite en rangeant après le cours ne
+fait donc pas une séance de plus (que Publier choisirait d'office, sans rien
+à montrer), et une copie faite entre deux cours ne les réunit pas : son
+étape dans le film le note (`naissance`, un champ facultatif qu'une version
+d'avant ignore, comme `seulOrdre`). Une copie de copie remonte toute la chaîne. Rien n'est recopié :
 la revue lit l'original dans l'instantané de chaque image (`src/heritage.ts`),
 et ce passé ne change plus, même si l'original est ensuite modifié, supprimé,
 ou supprimé définitivement. Une page de la corbeille, ou supprimée
@@ -527,7 +532,10 @@ l'ouvrent sur leur téléphone, sans compte, et appuient sur ▶.
 **Côté professeur.** La fenêtre propose la séance, repérée toute seule dans le
 film (un silence de plus de 20 minutes, ou un autre jour, en commence une
 autre ; deux cours séparés par un intercours de 5 minutes se séparent en
-réglant le découpage à 5 ou 2 minutes), les pages où l'on a écrit pendant la
+réglant le découpage à 5 ou 2 minutes ; ranger ses pages, les jeter, les
+remettre, les dupliquer n'est pas un geste : ni une séance, ni un pont entre
+deux ; une séance dont le film n'aurait aucun geste, qui n'a fait
+qu'effacer, n'est pas proposée), les pages où l'on a écrit pendant la
 séance, un titre et le compte (Drive personnel ou du lycée). La fenêtre montre
 le compte Google connecté ; **Choisir / Changer de compte Google** ouvre la
 liste des comptes de Google. Elle retient, sur cet ordinateur, le compte avec
@@ -1370,7 +1378,12 @@ porte si on ne le voit pas ; le message garde son *Annuler*) et **Annuler**.
 Ce qui arrive est un collage : identifiants neufs, à la même place, au-dessus
 de tout, les noms gardés s'ils sont libres sur la page d'arrivée, sinon une
 lettre libre par point (un triangle ABC envoyé sur une page qui a déjà ABC
-devient DEF) ; une image emporte les points qui lui sont liés. Déplacés, les
+devient DEF) ; une image emporte les points qui lui sont liés. Pour un
+déplacement, « pris » compte aussi ce que Ctrl+Z ou Ctrl+Y peuvent ramener
+sur la page d'arrivée (un triangle ABC qu'on y a effacé, renommé ou envoyé
+ailleurs) : ce qui arrive n'entre dans aucune pile, et un Ctrl+Z là-bas
+pourrait sinon faire cohabiter deux triangles ABC ; un triangle ABC envoyé
+vers la page 2 puis renvoyé sur la page 1 y reste ABC. Déplacés, les
 objets quittent la sélection ; copiés, elle reste.
 
 L'annulation d'un envoi, sans perte ni doublon caché, avec une pile par page :
@@ -1380,10 +1393,30 @@ L'annulation d'un envoi, sans perte ni doublon caché, avec une pile par page :
   pas changé ; un objet modifié depuis là-bas y reste aussi, et le message le
   dit (« Envoi annulé : les 3 objets sont revenus de la page 5 ; 1 objet,
   modifié depuis sur la page 5, y reste aussi ») : rien de ce qu'on y a fait
-  n'est perdu. Une nouvelle page créée pour l'envoi, redevenue vide, s'en va
-  (pas dans la corbeille, où une page vide ne figure pas ; la revue la garde
-  sous « Pages jetées », avec son court passage). Ctrl+Y les renvoie (« Envoi
-  refait… »), et la nouvelle page revient à sa place.
+  n'est perdu. Le message ne dit « revenus de la page 5 » que si quelque
+  chose en est vraiment parti. Une nouvelle page créée pour l'envoi, redevenue
+  vide, s'en va (pas dans la corbeille, où une page vide ne figure pas ; la
+  revue la garde sous « Pages jetées », avec son court passage). Ctrl+Y les
+  renvoie (« Envoi refait… »), et la nouvelle page revient à sa place ; vers
+  une page supprimée définitivement, Ctrl+Y ne renvoie rien (« La page
+  d'arrivée a été supprimée définitivement : l'envoi n'est pas refait. ») :
+  les objets y partiraient pour toujours (vers une page seulement dans la
+  corbeille, ils partent, et le message le dit).
+- **Des objets repartis de la page d'arrivée** (renvoyés ailleurs : l'aller-
+  retour page 1 → page 2 → page 1, ou la chaîne page 1 → 2 → 3 ; ou effacés
+  là-bas) : Ctrl+Z sur la page de départ ne défait PAS encore l'envoi, rien
+  ne change, et le message le dit (« Cet envoi ne s'annule pas encore : sur
+  la page 2, l'objet a depuis été effacé ou renvoyé ailleurs. Annulez d'abord
+  cela sur la page 2 (↶). », avec **Aller à la page 2**). Le défaire
+  laisserait un doublon caché (pour un aller-retour, deux objets exactement
+  superposés sur la page 1 ; pour une chaîne, un exemplaire oublié sur la
+  page 3), ou en préparerait un (Ctrl+Z sur la page 2 y ramènerait l'objet
+  effacé). Ctrl+Z sur la page 2 défait le renvoi (l'exemplaire renvoyé part,
+  sous les yeux s'il est sur la page 1), puis Ctrl+Z sur la page 1 défait
+  l'envoi : un seul objet au bout. Une page d'arrivée dans la corbeille
+  bloque de même (on l'en remet d'abord) ; supprimée définitivement, elle ne
+  bloque plus rien (sa pile ne servira plus) : l'objet revient, et le
+  message dit que la page supprimée ne l'avait plus.
 - **Sur la page d'arrivée, Ctrl+Z ne les retire jamais** (ce serait les
   perdre : ils ont quitté la page de départ) ; il y défait ce qu'on leur a fait
   depuis.
@@ -1532,7 +1565,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule), les fonds |
-| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié) et le déplacement des pages (le plus petit changement de l'ordre). Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre) ; la copie, une étape de la pile d'arrivée |
+| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié ; sa naissance notée `naissance` dans le film) et le déplacement des pages (le plus petit changement de l'ordre). Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre ; elle ne se défait pas tant que la pile de l'arrivée peut y ramener des objets qui en sont repartis, et ne se refait pas vers une page supprimée définitivement) ; la copie, une étape de la pile d'arrivée ; les noms que la pile d'une page peut y ramener (`formesQuiPeuventRevenir`) |
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris ; le clavier du tableau (Ctrl + P ouvre « Exporter en PDF ») |
 | `src/rendu.ts` | Les trois couches d'affichage ; peindre une page sur un autre canevas (`peindreSur` : une vignette en esquisse, une image, une feuille du PDF), sans rien changer à l'écran |
 | `src/sorties/formules.ts` | Les formules KaTeX sur un canevas : mises en page cachées comme à l'écran, puis repeintes (textes, bordures, fonds, SVG coupés), les polices attendues ; leurs images gardées par échelle dans un cache borné en pixels |
@@ -1596,6 +1629,10 @@ n'empêche un usage payant.
   Ctrl+Y sur la page d'arrivée y refait la modification, et l'objet y
   reparaît, sous les yeux, en plus de celui revenu sur la page de départ (un
   doublon visible, jamais caché).
+- Un aller-retour (page 1 → page 2 → page 1) défait sur les deux pages ne se
+  refait qu'à moitié : Ctrl+Y sur la page 1 refait l'aller, mais Ctrl+Y sur
+  la page 2 ne refait plus le retour (« Rien à rétablir ») ; l'objet reste,
+  seul, sur la page 2 (ni perdu, ni en double). On le renvoie à la main.
 - Sur iPad (et toute tablette), à l'outil Sélection ou au doigt qui
   « déplace », un appui qui marque un temps (une demi-seconde) avant de
   glisser ouvre le menu au lieu de tracer le lasso, de déplacer l'objet ou la

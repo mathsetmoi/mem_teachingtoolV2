@@ -37,19 +37,48 @@ export function texteEnvoi(n: number, page: number, deplacer: boolean): string {
 }
 
 /** Le message d'un déplacement défait sur la page de départ (voir
- *  Tableau.annuler) : les objets revenus, d'où, et ceux qui, modifiés
- *  depuis sur la page d'arrivée, y restent aussi (un doublon visible, qu'il
- *  faut dire). page : le numéro qu'avait la page d'arrivée ; encore : elle
- *  est toujours dans l'ordre (sinon, une page supprimée depuis). */
-export function texteEnvoiAnnule(e: { revenus: number; restes: number; pageRetiree: boolean }, page: number, encore: boolean): string {
+ *  Tableau.annuler) : les objets revenus, d'où, ceux qui, modifiés depuis
+ *  sur la page d'arrivée, y restent aussi (un doublon visible, qu'il faut
+ *  dire), et ceux qui n'y étaient plus (absents : effacés ou envoyés
+ *  ailleurs depuis, sur une page supprimée définitivement). « revenus de la
+ *  page 5 » seulement si quelque chose en est vraiment parti. page : le
+ *  numéro qu'avait la page d'arrivée ; encore : elle est toujours dans
+ *  l'ordre (sinon, une page supprimée depuis). */
+export function texteEnvoiAnnule(e: { revenus: number; restes: number; absents?: number; pageRetiree: boolean }, page: number, encore: boolean): string {
+  const absents = e.absents ?? 0
+  const partis = e.revenus - e.restes - absents
   const debut = e.revenus === 1 ? 'Envoi annulé : l\'objet est revenu' : `Envoi annulé : les ${e.revenus} objets sont revenus`
   if (e.pageRetiree) return `${debut} ; la nouvelle page ${page}, vide, est retirée`
   const ou = encore && page ? `la page ${page}` : 'la page supprimée'
   const restes = !e.restes ? ''
     : e.restes === 1 ? ` ; 1 objet, modifié depuis sur ${ou}, y reste aussi`
     : ` ; ${e.restes} objets, modifiés depuis sur ${ou}, y restent aussi`
-  return `${debut} ${encore && page ? `de la page ${page}` : 'd\'une page supprimée'}${restes}`
+  const absentsTexte = !absents ? ''
+    : absents === 1 ? ` ; 1 objet n'était plus sur ${ou} (effacé ou envoyé ailleurs depuis)`
+    : ` ; ${absents} objets n'étaient plus sur ${ou} (effacés ou envoyés ailleurs depuis)`
+  const dou = partis <= 0 ? '' : ` ${encore && page ? `de la page ${page}` : 'd\'une page supprimée'}`
+  return `${debut}${dou}${restes}${absentsTexte}`
 }
+
+/** Le message d'un déplacement qui ne se défait pas encore (voir
+ *  Tableau.annuler, envoiBloque) : sur la page d'arrivée, n des objets
+ *  posés ont depuis été effacés ou renvoyés ailleurs, et la pile de cette
+ *  page peut les y ramener. On y défait d'abord cela. total : les objets de
+ *  l'envoi ; page : le numéro de la page d'arrivée (0 : elle est dans la
+ *  corbeille, on l'en remet d'abord). */
+export function texteEnvoiBloque(n: number, total: number, page: number): string {
+  const ou = page ? `sur la page ${page}` : 'sur la page supprimée où l\'envoi est arrivé'
+  const qui = total <= 1 ? 'l\'objet a depuis été effacé ou renvoyé ailleurs'
+    : n >= total ? `les ${total} objets ont depuis été effacés ou renvoyés ailleurs`
+    : n === 1 ? `1 des ${total} objets a depuis été effacé ou renvoyé ailleurs`
+    : `${n} des ${total} objets ont depuis été effacés ou renvoyés ailleurs`
+  const faire = page ? `Annulez d'abord cela sur la page ${page} (↶).` : 'Remettez cette page (Toutes les pages, corbeille), puis annulez d\'abord cela sur elle (↶).'
+  return `Cet envoi ne s'annule pas encore : ${ou}, ${qui}. ${faire}`
+}
+
+/** Le message d'un déplacement qui ne se refait pas (voir Tableau.retablir,
+ *  envoiImpossible) */
+export const TEXTE_ENVOI_IMPOSSIBLE = 'La page d\'arrivée a été supprimée définitivement : l\'envoi n\'est pas refait.'
 
 /** Le libellé d'une page de la liste : « Page 2 », « Page 2 · Exercice 12
  *  p. 84 », « Page 3 (cette page) » */
