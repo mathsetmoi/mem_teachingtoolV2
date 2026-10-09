@@ -143,6 +143,9 @@ button.rang:hover { background: #e9eef5; }
   overflow: hidden; text-overflow: ellipsis; white-space: pre; font-weight: 400;
 }
 .rang-nom.sans-place { display: none; }
+/* Pas même dix caractères de place (une barre d'une seule rangée, à 1024 px) :
+   le nom, plus petit, dans la place qui reste */
+.rang-nom.serre { font-size: 13px; }
 
 .choix-fond {
   height: 44px; padding: 0 10px; margin: 0 2px;

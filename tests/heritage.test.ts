@@ -17,6 +17,8 @@ import { Bobine } from '../src/revoir/bobine'
 import type { Portion } from '../src/revue/bande'
 import { bandeParDefaut, compterGestes, construireBande, seanceTouche, seancesDeLaPage } from '../src/revue/bande'
 import { Planches, lectureDe, memeImage } from '../src/revue/planches'
+import { JournalPages } from '../src/pages/journal'
+import * as actions from '../src/pages/actions'
 
 const MINUTE = 60_000
 let horloge = new Date('2026-10-09T08:00:00').getTime()
@@ -355,8 +357,20 @@ describe('le film élève d\'une copie', () => {
   })
 })
 
-describe('la naissance d\'une copie dans le découpage en séances', () => {
-  it('l\'étape de naissance d\'une copie est notée (naissance), celle d\'une page ajoutée ou d\'un geste non', async () => {
+/** Ce qu'on fait en rangeant, hors du cours : chaque action, sur la page p
+ *  qu'on regarde (q : une autre page). La trieuse passe par son journal,
+ *  comme dans l'application ; la barre du haut appelle le document. */
+const RANGEMENTS: [string, (t: Tableau, p: string, q: string) => Promise<void>][] = [
+  ['Dupliquer la page', async (t, p) => { await dupliquer(t, p); t.pageVue = p }],
+  ['Fond d\'une vignette, dans la trieuse', async (t, _p, q) => { actions.changerFond(t, new JournalPages(t), q, 'seyes', null); await attendre(500) }],
+  ['Fond changé dans la trieuse, puis Annuler', async (t, _p, q) => { const j = new JournalPages(t); actions.changerFond(t, j, q, 'seyes', null); await attendre(500); expect(j.annuler()).toBe('fait'); await attendre(500) }],
+  ['Insérer une page après, dans la trieuse', async (t, p) => { actions.inserer(t, new JournalPages(t), p, 'apres', 'seyes'); await attendre(500) }],
+  ['Ajouter une page, dans la trieuse', async t => { actions.ajouterALaFin(t, new JournalPages(t)); await attendre(500) }],
+  ['Nouvelle page, par la barre du haut (on y va, puis on revient)', async (t, p) => { const n = t.ajouterPage('blanc', 1); t.pageVue = n; await attendre(500); t.pageVue = p }],
+]
+
+describe('la naissance d\'une page et le rangement dans le découpage en séances', () => {
+  it('l\'étape de naissance d\'une copie ou d\'une page vide est notée (naissance), celle d\'un fond changé dans la trieuse aussi (rangement), celle d\'un geste ou d\'un fond changé au tableau non', async () => {
     const { t, pages: [p] } = await tableau(1)
     await geste(t, p, 'p1')
     const n0 = t.film.length
@@ -364,40 +378,122 @@ describe('la naissance d\'une copie dans le découpage en séances', () => {
     expect(t.film.length).toBe(n0 + 1)
     expect(t.film.get(n0)).toMatchObject({ page: q, naissance: true })
     expect(t.film.get(n0).seulOrdre).toBeUndefined()
-    t.pageVue = p; t.ajouterPage('blanc', 2); await attendre(500)
+    t.pageVue = p; const v = t.ajouterPage('blanc', 2); await attendre(500)
     await geste(t, q, 'q1')
-    expect(t.film.toArray().filter(e => e.naissance).map(e => e.page)).toEqual([q])
+    expect(t.film.toArray().filter(e => e.naissance).map(e => e.page)).toEqual([p, q, v])
+    expect(t.film.toArray().filter(e => e.rangement)).toEqual([])
+    // Le fond : par la trieuse, du rangement (et son Annuler aussi) ; par la barre du haut, un geste
+    const j = new JournalPages(t)
+    const n1 = t.film.length
+    actions.changerFond(t, j, v, 'seyes', null); await attendre(500)
+    expect(t.film.get(n1)).toMatchObject({ page: v, rangement: true })
+    j.annuler(); await attendre(500)
+    expect(t.film.get(n1 + 1)).toMatchObject({ page: v, rangement: true })
+    t.pageVue = p; t.changerFond(p, 'seyes'); await attendre(500)
+    expect(t.film.get(n1 + 2)).toMatchObject({ page: p })
+    expect(t.film.get(n1 + 2).rangement).toBeUndefined()
+    expect(t.film.get(n1 + 2).naissance).toBeUndefined()
   })
 
-  it('une copie faite deux heures après le cours n\'est pas une séance : Publier choisit le cours, avec son nombre de gestes (celui de la revue)', async () => {
-    const { t, pages: [p] } = await tableau(1)
-    for (let k = 0; k < 5; k++) await geste(t, p, 'c' + k)
-    await attendre(2 * 60 * MINUTE)
-    await dupliquer(t, p)
-    const s = seancesDuFilm(t.film.toArray())
-    // Avant : la plus récente était « 1 geste » (la naissance), sans rien à montrer
+  for (const [nom, ranger] of RANGEMENTS) {
+    it(`${nom}, deux heures après le cours, n'est pas une séance : Publier choisit le cours, avec son nombre de gestes (celui de la revue)`, async () => {
+      const { t, pages: [p, q] } = await tableau(2)
+      for (let k = 0; k < 5; k++) await geste(t, p, 'c' + k)
+      await attendre(2 * 60 * MINUTE)
+      t.pageVue = p
+      await ranger(t, p, q)
+      const s = seancesDuFilm(t.film.toArray())
+      // Avant : la plus récente était « 1 geste » (la copie, le fond), sans rien d'autre à montrer
+      expect(s[0].gestes).toBe(5)
+      const l = lectureDe(t, () => t.ordre.toArray())
+      expect(compterGestes(l, { genre: 'seance', seance: s[0], page: null })).toBe(5)
+      const publier = seancesAPublier(t)
+      expect(publier[0]).toEqual(s[0])
+      expect(pagesDeLaSeance(t, publier[0])).toEqual([p])
+      expect(exporterDetaille(t, { de: publier[0].de, a: publier[0].a, pages: [p], titre: '' }, { instruments: false }).film.etapes).toHaveLength(5)
+    })
+
+    it(`${nom}, entre deux cours, à moins de 20 minutes de chacun : toujours deux séances, chacune avec ses gestes`, async () => {
+      const { t, pages: [p, q] } = await tableau(2)
+      for (let k = 0; k < 5; k++) await geste(t, p, 'a' + k)
+      await attendre(14 * MINUTE)
+      t.pageVue = p
+      await ranger(t, p, q)
+      t.pageVue = p
+      await attendre(15 * MINUTE)
+      for (let k = 0; k < 5; k++) await geste(t, p, 'b' + k)
+      const s = seancesDuFilm(t.film.toArray())
+      // Avant : une seule séance de 11 gestes (la revue en comptait 10)
+      expect(s.slice(0, 2).map(x => x.gestes)).toEqual([5, 5])
+      const l = lectureDe(t, () => t.ordre.toArray())
+      expect(s.slice(0, 2).map(x => compterGestes(l, { genre: 'seance', seance: x, page: null }))).toEqual([5, 5])
+    })
+  }
+
+  it('le fond changé dans la trieuse reste dans la revue de sa page : « Toute son histoire » le montre, et une séance pendant laquelle on l\'a changé l\'emporte', async () => {
+    const { t, pages: [p, q] } = await tableau(2)
+    await geste(t, q, 'q0')
+    for (let k = 0; k < 2; k++) await geste(t, p, 'a' + k)
+    const j = new JournalPages(t)
+    actions.changerFond(t, j, q, 'seyes', null); await attendre(500)
+    for (let k = 0; k < 2; k++) await geste(t, p, 'b' + k)
+    const l = lectureDe(t, () => t.ordre.toArray())
+    const s = seancesDuFilm(l.film)
+    expect(s).toHaveLength(1)
     expect(s[0].gestes).toBe(5)
-    const l = lectureDe(t, () => t.ordre.toArray())
-    expect(compterGestes(l, { genre: 'seance', seance: s[0], page: null })).toBe(5)
-    const publier = seancesAPublier(t)
-    expect(publier[0]).toEqual(s[0])
-    expect(pagesDeLaSeance(t, publier[0])).toEqual([p])
-    expect(exporterDetaille(t, { de: publier[0].de, a: publier[0].a, pages: [p], titre: '' }, { instruments: false }).film.etapes).toHaveLength(5)
+    // La revue de q : q0, puis le fond qui change
+    expect(compterGestes(l, { genre: 'page', page: q })).toBe(2)
+    expect(compterGestes(l, { genre: 'seance', seance: s[0], page: q })).toBe(2)
+    const f = exporterDetaille(t, { de: s[0].de, a: s[0].a, pages: [q], titre: '' }, { instruments: false }).film
+    expect(f.pages[0].fond).toBe('carreaux')
+    expect(f.etapes).toHaveLength(2)
   })
 
-  it('une copie entre deux cours, à moins de 20 minutes de chacun : toujours deux séances, chacune avec ses gestes', async () => {
+  it('une page créée juste avant le premier geste est de la séance sans en être un geste : la revue la voit neuve (deux gestes sur elle font une partie)', async () => {
     const { t, pages: [p] } = await tableau(1)
-    for (let k = 0; k < 5; k++) await geste(t, p, 'a' + k)
-    await attendre(14 * MINUTE)
-    await dupliquer(t, p)
-    t.pageVue = p
-    await attendre(15 * MINUTE)
-    for (let k = 0; k < 5; k++) await geste(t, p, 'b' + k)
-    const s = seancesDuFilm(t.film.toArray())
-    // Avant : une seule séance de 11 gestes (la revue en comptait 10)
-    expect(s.slice(0, 2).map(x => x.gestes)).toEqual([5, 5])
-    const l = lectureDe(t, () => t.ordre.toArray())
-    expect(s.slice(0, 2).map(x => compterGestes(l, { genre: 'seance', seance: x, page: null }))).toEqual([5, 5])
+    await attendre(2 * 60 * MINUTE)
+    t.pageVue = p; const b = t.ajouterPage('blanc', 1); await attendre(5 * MINUTE)     // « Nouvelle page » en arrivant
+    for (const id of ['p1', 'p2', 'p3']) await geste(t, p, id)
+    for (const id of ['b1', 'b2']) await geste(t, b, id)
+    const { lecture, seances, bande } = revue(t)
+    expect(seances).toHaveLength(1)
+    const s = seances[0]
+    expect(s.de).toBe(naissanceDe(t, b))                     // la séance commence à la naissance de b
+    expect(s.debut).toBe(t.film.get(s.de + 1).t)               // son heure : le premier geste
+    expect(s.gestes).toBe(5)
+    expect(compterGestes(lecture, { genre: 'seance', seance: s, page: null })).toBe(5)
+    expect(bande({ genre: 'seance', seance: s, page: null })!.parties).toHaveLength(2)
+    // Créée la veille, b n'est plus neuve : ses deux gestes restent un détour
+    const u = await tableau(2)
+    await attendre(24 * 60 * MINUTE)
+    for (const id of ['p1', 'p2', 'p3']) await geste(u.t, u.pages[0], id)
+    for (const id of ['b1', 'b2']) await geste(u.t, u.pages[1], id)
+    const r = revue(u.t)
+    expect(r.seances[0].de).toBe(naissanceDe(u.t, u.pages[1]) + 1)
+    expect(r.bande({ genre: 'seance', seance: r.seances[0], page: null })!.parties).toHaveLength(1)
+  })
+
+  it('un fond changé dans la trieuse entre la naissance d\'une page et le premier geste : la séance commence au premier geste, la page a déjà son fond', async () => {
+    const { t, pages: [p] } = await tableau(1)
+    await attendre(2 * 60 * MINUTE)
+    t.pageVue = p; const b = t.ajouterPage('blanc', 1); await attendre(MINUTE)
+    actions.changerFond(t, new JournalPages(t), b, 'seyes', null); await attendre(MINUTE)
+    for (const id of ['b1', 'b2']) await geste(t, b, id)
+    const s = seancesDuFilm(t.film.toArray())[0]
+    expect(t.film.get(s.de)).toMatchObject({ page: b })
+    expect(t.film.get(s.de).rangement).toBeUndefined()
+    expect(s.gestes).toBe(2)
+    const f = exporterDetaille(t, { de: s.de, a: s.a, pages: [b], titre: '' }, { instruments: false }).film
+    expect(f.pages[0].fond).toBe('seyes')
+    expect(f.etapes).toHaveLength(2)
+  })
+
+  it('le fond changé par la barre du haut, devant la classe, reste un geste (comme avant le lot 3)', async () => {
+    const { t, pages: [p] } = await tableau(1)
+    for (let k = 0; k < 2; k++) await geste(t, p, 'c' + k)
+    await attendre(2 * 60 * MINUTE)
+    t.pageVue = p; t.changerFond(p, 'seyes'); await attendre(500)
+    expect(seancesDuFilm(t.film.toArray()).map(s => s.gestes)).toEqual([1, 2])
   })
 
   it('une copie faite pendant le cours reste dans sa séance, et sa copie s\'y publie', async () => {

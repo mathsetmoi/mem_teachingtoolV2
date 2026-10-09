@@ -442,13 +442,18 @@ export class UI implements Interface {
     this.annonce.append(this.annonceNumero, this.annonceNom)
     ;(document.getElementById('zone') ?? this.racine).addEventListener('pointerdown', () => this.effacerAnnonce(true), true)
     // La place du nom dans le compteur se règle de nouveau quand la fenêtre
-    // change (une tablette qu'on tourne, le zoom du navigateur)
+    // change (une tablette qu'on tourne, le zoom du navigateur), et quand la
+    // police d'écriture arrive : elle ne retient plus le démarrage (voir
+    // index.html), la barre peut donc changer de largeur après coup ; le
+    // tableau se repeint alors avec elle (les noms des points, les graduations)
     let regler = 0
-    window.addEventListener('resize', () => {
+    const reglerBientot = () => {
       this.compteurARegler = true
       cancelAnimationFrame(regler)
       regler = requestAnimationFrame(() => this.maj())
-    })
+    }
+    window.addEventListener('resize', reglerBientot)
+    document.fonts?.addEventListener?.('loadingdone', () => { reglerBientot(); app.rafraichir() })
 
     // ----- Choix de la forme, à côté de l'outil -----
     this.choixFormes = document.createElement('div')
@@ -526,11 +531,15 @@ export class UI implements Interface {
    *  gardée sur toutes les pages, vide sur une page sans nom : une vingtaine
    *  de caractères (22 ch), moins si la barre n'a pas la place sur ses
    *  rangées (on essaie 22, 18, 14 puis 10 ch, sans qu'elle prenne une rangée
-   *  de plus : à 1024 px, elle n'en a qu'une) ; s'il n'y a pas même 10 ch,
-   *  le nom ne s'y montre pas (il reste dans l'infobulle, l'annonce et la
-   *  trieuse), comme sur un téléphone. Réglé seulement quand le nombre de
+   *  de plus : à 1024 px, elle n'en a qu'une). S'il n'y a pas même 10 ch (une
+   *  tablette, un vidéoprojecteur en 1024 × 768 : environ 90 px), le nom
+   *  s'écrit plus petit (.serre) dans toute la place qui reste, de quoi en
+   *  lire une dizaine de caractères (« 2 / 3 · Exercice 1… ») ; sous 56 px, il
+   *  ne s'y montre pas (il reste dans l'infobulle, l'annonce et la trieuse),
+   *  comme sur un téléphone. Réglé seulement quand le nombre de
    *  chiffres du total change, quand la première page reçoit un nom ou la
-   *  dernière le perd, et quand la fenêtre change : une page qu'on nomme
+   *  dernière le perd, quand la fenêtre change et quand la police
+   *  d'écriture arrive : une page qu'on nomme
    *  peut faire bouger la barre une fois, le passage d'une page à l'autre
    *  jamais. Une barre pas encore affichée attend son prochain maj. */
   private reglerCompteur(chiffres: number, avecNoms: boolean) {
@@ -538,16 +547,25 @@ export class UI implements Interface {
     if (!barre.isConnected || !barre.getClientRects().length) return
     this.compteurARegler = false
     this.rang.style.setProperty('--chiffres', String(chiffres))
-    nom.classList.remove('sans-place')
+    nom.classList.remove('sans-place', 'serre')
     nom.style.width = ''
     // Sur un téléphone (ou sans nom), la place du nom ne compte pas
     if (!avecNoms || getComputedStyle(nom).display === 'none') return
     nom.style.width = '0px'
     const hauteur = barre.getBoundingClientRect().height
+    const tient = () => barre.getBoundingClientRect().height <= hauteur + 0.5
     for (const ch of [22, 18, 14, 10]) {
       nom.style.width = ch + 'ch'
-      if (barre.getBoundingClientRect().height <= hauteur + 0.5) return
+      if (tient()) return
     }
+    // Plus petit, dans la place qui reste (moins que 10 ch : de 2 px en 2 px)
+    const dix = nom.getBoundingClientRect().width
+    nom.classList.add('serre')
+    for (let px = Math.floor(dix) - 2; px >= 56; px -= 2) {
+      nom.style.width = px + 'px'
+      if (tient()) return
+    }
+    nom.classList.remove('serre')
     nom.style.width = ''
     nom.classList.add('sans-place')
   }

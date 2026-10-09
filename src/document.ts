@@ -38,8 +38,20 @@ const CAPTURE = 400
  *  sert au découpage en séances (seancesDuFilm), qui ne lit que le film :
  *  sans elle, une copie faite après le cours devenait une séance d'un geste
  *  (choisie d'office par Publier, sans rien à montrer), et une copie faite
- *  entre deux cours les réunissait. Facultative comme seulOrdre. */
-export interface Etape { t: number; page: string; s: Uint8Array; ms?: number[]; seulOrdre?: true; naissance?: true }
+ *  entre deux cours les réunissait. La naissance d'une page vide (ajouterPage :
+ *  « Nouvelle page », › sur la dernière page, Insérer et Ajouter une page dans
+ *  la trieuse, la page neuve d'un envoi) la porte aussi, pour la même raison :
+ *  la revue la reconnaît déjà (une page vide qui paraît là où il n'y avait
+ *  rien), le découpage en séances ne lisait que le film. Facultative comme
+ *  seulOrdre.
+ *  rangement : l'étape vient de la trieuse des pages, qui range sans écrire :
+ *  un fond changé sans aller sur la page (et ce fond rendu par son journal).
+ *  Elle reste dans la revue de la page (le fond y change), mais ce n'est pas
+ *  un geste pour le découpage en séances : ranger après le cours ne fait pas
+ *  une séance (que Publier choisirait d'office), ranger entre deux cours ne
+ *  les réunit pas. Le fond changé par la barre du haut, devant la classe, en
+ *  reste un. Facultative comme les deux autres. */
+export interface Etape { t: number; page: string; s: Uint8Array; ms?: number[]; seulOrdre?: true; naissance?: true; rangement?: true }
 
 /** L'entrée d'une page dans la corbeille (voir Tableau.corbeille). t : quand
  *  elle a quitté l'ordre (Date.now()) ; apres : la page qui la précédait
@@ -186,9 +198,10 @@ export class Tableau {
   /** L'heure de la dernière étape notée : celle d'un trait qui a attendu ne
    *  passe jamais avant elle */
   private derniereHeure = 0
-  /** La transaction en cours fait naître une copie de page (voir
-   *  dupliquerPage) : son étape le note */
-  private naissanceDeCopie = false
+  /** Ce que l'étape de la transaction en cours note (voir Etape) : la
+   *  naissance d'une page (ajouterPage, dupliquerPage), un rangement de la
+   *  trieuse (changerFond) ; null, rien */
+  private noteDeLEtape: 'naissance' | 'rangement' | null = null
 
   /** nomLocal : la base du navigateur où le tableau s'enregistre (null : nulle part, pour les tests) */
   constructor(nomLocal: string | null) {
@@ -221,7 +234,7 @@ export class Tableau {
       // compte un geste. On ne regarde que les types des pages : l'entrée de
       // corbeille écrite avec le retrait n'en est pas un.
       if (touches.every(x => x === this.ordre)) etape.seulOrdre = true
-      else if (this.naissanceDeCopie) etape.naissance = true
+      else if (this.noteDeLEtape) etape[this.noteDeLEtape] = true
       this.heureDuTrace = null
       queueMicrotask(() => this.doc.transact(() => this.film.push([etape]), ORIGINE_FILM))
     })
@@ -350,12 +363,16 @@ export class Tableau {
   }
 
   // ---------- Pages ----------
+  /** Une page neuve et vide. Sa création se note dans le film sur la
+   *  NOUVELLE page, et c'est sa naissance (voir Etape) : ni un geste, ni une
+   *  séance, ni un pont entre deux séances. */
   ajouterPage(fond: Fond, position: number): string {
     const id = uid()
     // La création se note dans le film sur la NOUVELLE page, pas sur celle
     // qu'on regarde encore : le replay ne doit pas compter celle qu'on quitte
     const vue = this.pageVue
     this.pageVue = id
+    this.noteDeLEtape = 'naissance'
     try {
       this.doc.transact(() => {
         const p = new Y.Map<unknown>()
@@ -365,6 +382,7 @@ export class Tableau {
         this.ordre.insert(Math.min(position, this.ordre.length), [id])
       })
     } finally {
+      this.noteDeLEtape = null
       // Sur un tableau neuf, on ne regardait aucune page : l'application vient
       // d'aller sur celle-ci (pendant la transaction), on la garde
       if (vue) this.pageVue = vue
@@ -650,7 +668,7 @@ export class Tableau {
     const origine = source.get('origine')
     const vue = this.pageVue
     this.pageVue = id
-    this.naissanceDeCopie = true
+    this.noteDeLEtape = 'naissance'
     try {
       this.doc.transact(() => {
         const m = new Y.Map<unknown>()
@@ -664,7 +682,7 @@ export class Tableau {
         this.ordre.insert(position, [id])
         if (nom) this.noms.set(id, nomDeCopie(nom))
       })
-    } finally { this.naissanceDeCopie = false; if (vue) this.pageVue = vue }
+    } finally { this.noteDeLEtape = null; if (vue) this.pageVue = vue }
     if (o.marque) {
       this.marquer(id, { genre: 'copie', id, profondeur: 0 })
       this.onPiles?.()
@@ -737,14 +755,17 @@ export class Tableau {
 
   fondDe(page: string): Fond { return (this.pages.get(page)?.get('fond') as Fond) || 'blanc' }
   /** Change le fond d'une page, celle qu'on regarde ou une autre (la
-   *  trieuse) : l'étape se note sur la page changée. */
-  changerFond(page: string, fond: Fond, origine?: { x: number; y: number }) {
+   *  trieuse) : l'étape se note sur la page changée. rangement : la trieuse
+   *  range (voir Etape) ; l'étape le note, et ne compte pas dans le
+   *  découpage en séances. */
+  changerFond(page: string, fond: Fond, origine?: { x: number; y: number }, o: { rangement?: boolean } = {}) {
     const p = this.pages.get(page); if (!p) return
     const vue = this.pageVue
     this.pageVue = page
+    if (o.rangement) this.noteDeLEtape = 'rangement'
     try {
       this.doc.transact(() => { p.set('fond', fond); if (origine) p.set('origine', origine) })
-    } finally { this.pageVue = vue }
+    } finally { this.noteDeLEtape = null; this.pageVue = vue }
   }
   origineDe(page: string) {
     return (this.pages.get(page)?.get('origine') as { x: number; y: number }) || { x: 0, y: 0 }

@@ -21,6 +21,15 @@ Version hors ligne en un seul fichier (clé USB) :
 npm run build        # → dist/index.html, autonome
 ```
 
+La police d'écriture (Atkinson Hyperlegible) vient de Google Fonts, sans
+jamais retenir le démarrage : sa feuille se charge à côté (`media="print"`,
+puis « all » à son arrivée, voir `index.html`). Hors connexion, ou derrière
+un proxy d'établissement qui retient les requêtes sans jamais répondre,
+l'outil s'ouvre aussitôt avec la police du système, en ligne comme en un
+seul fichier ; quand la police arrive, la barre du haut se règle de nouveau
+et le tableau se repeint avec elle. (Avant le contrôle final du lot 3, une
+feuille de police qui ne répondait jamais empêchait l'outil de s'afficher.)
+
 ## Figures géométriques
 
 **Au stylo.** Une figure fermée tracée à main levée se redresse au lever du
@@ -475,7 +484,19 @@ surgit ni ne se redessine. Une copie faite en rangeant après le cours ne
 fait donc pas une séance de plus (que Publier choisirait d'office, sans rien
 à montrer), et une copie faite entre deux cours ne les réunit pas : son
 étape dans le film le note (`naissance`, un champ facultatif qu'une version
-d'avant ignore, comme `seulOrdre`). Une copie de copie remonte toute la chaîne. Rien n'est recopié :
+d'avant ignore, comme `seulOrdre`). Il en va de même de ce qu'on range dans
+la trieuse sans écrire : une page vide qu'on crée (« Nouvelle page », › sur
+la dernière page, Insérer, Ajouter une page : sa naissance aussi, que la
+revue ne comptait déjà pas) et un fond changé depuis le menu d'une vignette
+(`rangement`, même lorsque la trieuse le rend par « Annuler ») ne font ni une
+séance, ni un pont entre deux cours : Publier ne choisit plus d'office une
+séance « 22 h 04 → 22 h 04 · 1 geste » faite en rangeant. Le fond changé reste
+une image de la revue de sa page (« Toute son histoire » le montre, une
+séance pendant laquelle on l'a changé l'emporte). Une page créée juste avant
+le premier geste d'un cours (moins de vingt minutes avant, le même jour) est
+de ce cours, sans en être un geste : la revue la voit neuve, comme avant.
+Le fond changé par la barre du haut, devant la classe, reste un geste, comme
+avant le lot 3. Une copie de copie remonte toute la chaîne. Rien n'est recopié :
 la revue lit l'original dans l'instantané de chaque image (`src/heritage.ts`),
 et ce passé ne change plus, même si l'original est ensuite modifié, supprimé,
 ou supprimé définitivement. Une page de la corbeille, ou supprimée
@@ -533,9 +554,11 @@ l'ouvrent sur leur téléphone, sans compte, et appuient sur ▶.
 film (un silence de plus de 20 minutes, ou un autre jour, en commence une
 autre ; deux cours séparés par un intercours de 5 minutes se séparent en
 réglant le découpage à 5 ou 2 minutes ; ranger ses pages, les jeter, les
-remettre, les dupliquer n'est pas un geste : ni une séance, ni un pont entre
-deux ; une séance dont le film n'aurait aucun geste, qui n'a fait
-qu'effacer, n'est pas proposée), les pages où l'on a écrit pendant la
+remettre, les dupliquer, en créer une vide, changer leur fond dans la
+trieuse n'est pas un geste : ni une séance, ni un pont entre deux ; une
+séance dont le film n'aurait aucun geste, qui n'a fait qu'effacer, n'est pas
+proposée : depuis le lot 3, elle n'est plus choisie d'office devant le
+cours), les pages où l'on a écrit pendant la
 séance, un titre et le compte (Drive personnel ou du lycée). La fenêtre montre
 le compte Google connecté ; **Choisir / Changer de compte Google** ouvre la
 liste des comptes de Google. Elle retient, sur cet ordinateur, le compte avec
@@ -809,7 +832,12 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
 - **Réordonner au doigt** (et au stylet posé sur l'écran : iPad, Surface) :
   par la poignée ⋮⋮ de la vignette, ou par un appui long d'une demi-seconde
   (une petite vibration là où elle existe) ; sinon le doigt fait défiler la
-  grille, et un toucher bref mène à la page.
+  grille, et un toucher bref mène à la page. Deux doigts (ou la main
+  entière, au TNI) la font défiler aussi, sans rien ouvrir : le navigateur
+  ne le ferait pas (le touch-action de la grille interdit les gestes à
+  plusieurs doigts, pour que le pincement n'agrandisse pas toute la page),
+  la trieuse le fait elle-même. Un doigt posé sur le bandeau ne compte pas,
+  et une page déjà tirée continue seule.
 - **Réordonner au clavier** : Ctrl + Maj + ← ou → (⌘ + Maj sur Mac) avance ou
   recule d'une place la page qui a le focus (toutes les pages choisies, si
   elle en est, regroupées dans leur ordre).
@@ -872,7 +900,9 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
 - **Changer le fond** d'une page sans y aller : le repère prend son origine au
   centre de ce qui est écrit sur la page, calée sur le centimètre ((0, 0)
   sur une page vide). La vignette se repeint ; la revue voit le fond changer
-  (une étape notée sur cette page).
+  (une étape notée sur cette page). C'est du rangement : ni une séance de
+  plus si on le fait après le cours, ni un pont entre deux cours (voir
+  « Revoir la construction »).
 - **Dupliquer** (Ctrl + D, ⌘ + D sur Mac, sans jamais ouvrir le marque-page du
   navigateur ; le menu ; le bandeau) : chaque page choisie, ou celle qui a
   le focus, est copiée juste après elle-même, avec toute son histoire (la
@@ -969,9 +999,11 @@ Le fichier : une première ligne de texte,
 puis le document Yjs entier, compressé (gzip). Le film élève commence lui
 aussi par `{"format":` ; chaque lecteur reconnaît le sien à ses premiers octets.
 Le fichier garde aussi la corbeille des pages, leurs noms et les copies de
-pages (qui savent de quelle page elles héritent leur passé) : c'est toujours
-la version 1, et une version d'avant les ignore sans rien casser (une copie y
-paraît d'un coup au replay, comme une page neuve). L'en-tête ne compte que les
+pages (qui savent de quelle page elles héritent leur passé), et les notes du
+film qui disent ce qui n'est pas un geste (`seulOrdre`, `naissance`,
+`rangement`) : c'est toujours la version 1, et une version d'avant les ignore
+sans rien casser (une copie y paraît d'un coup au replay, comme une page
+neuve ; un essai le vérifie avec la version d'avant le lot 3). L'en-tête ne compte que les
 pages de l'ordre, pas celles de la corbeille. Une copie de page coûte le poids
 de la page dans le document (environ 400 Ko pour une page de 300 traits
 longs), jamais celui de son film : son passé se relit dans celui de
@@ -1150,12 +1182,15 @@ du tableau a un nom, la place d'un nom est gardée sur toutes les pages
 (vide sur une page sans nom). Cette place est d'une vingtaine de
 caractères, moins si la barre n'a pas la place sur ses rangées : elle ne
 lui en fait jamais prendre une de plus. Sans même dix caractères de place
-(une tablette de 1024 px de large, où la barre tient juste sur une rangée),
-le nom ne s'y montre pas et reste dans l'annonce, l'infobulle et la
-trieuse. Ainsi ‹ et › restent à leur place : on avance en touchant toujours
+(une tablette ou un vidéoprojecteur en 1024 × 768, où la barre tient juste
+sur une rangée et laisse environ 90 px), le nom s'écrit plus petit dans la
+place qui reste : on en lit une dizaine de caractères (« 2 / 3 · Exercice
+… »), entier dans l'annonce, l'infobulle et la trieuse ; il ne disparaît
+que sous 56 px de place. Ainsi ‹ et › restent à leur place : on avance en touchant toujours
 au même endroit sans tomber sur le compteur. Seuls le premier nom donné, le
-dernier retiré, le passage à dix pages et une fenêtre qui change de taille
-(une tablette qu'on tourne) peuvent faire bouger la barre, une fois. Sur la dernière page, › devient un bouton
+dernier retiré, le passage à dix pages, une fenêtre qui change de taille
+(une tablette qu'on tourne) et la police d'écriture qui arrive après le
+démarrage peuvent faire bouger la barre, une fois. Sur la dernière page, › devient un bouton
 d'ajout, avec sa propre icône (le chevron et un petit +, à ne pas confondre
 avec le grand + de « Nouvelle page », qui reste à sa place : aucun bouton de
 la barre ne bouge d'une page à l'autre, la poubelle reste sous la main) : il
@@ -1613,7 +1648,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule), les fonds |
-| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié ; sa naissance notée `naissance` dans le film) et le déplacement des pages (le plus petit changement de l'ordre). Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre ; elle ne se défait pas tant que la pile de l'arrivée peut y ramener des objets qui en sont repartis, et ne se refait pas vers une page supprimée définitivement) ; la copie, une étape de la pile d'arrivée ; les noms que la pile d'une page peut y ramener (`formesQuiPeuventRevenir`) |
+| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié ; sa naissance notée `naissance` dans le film, comme celle d'une page vide ; un fond changé dans la trieuse noté `rangement` : ni l'une ni l'autre ne comptent dans le découpage en séances) et le déplacement des pages (le plus petit changement de l'ordre). Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre ; elle ne se défait pas tant que la pile de l'arrivée peut y ramener des objets qui en sont repartis, et ne se refait pas vers une page supprimée définitivement) ; la copie, une étape de la pile d'arrivée ; les noms que la pile d'une page peut y ramener (`formesQuiPeuventRevenir`) |
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris ; le clavier du tableau (Ctrl + P ouvre « Exporter en PDF ») |
 | `src/rendu.ts` | Les trois couches d'affichage ; peindre une page sur un autre canevas (`peindreSur` : une vignette en esquisse, une image, une feuille du PDF), sans rien changer à l'écran |
 | `src/sorties/formules.ts` | Les formules KaTeX sur un canevas : mises en page cachées comme à l'écran, puis repeintes (textes, bordures, fonds, SVG coupés), les polices attendues ; leurs images gardées par échelle dans un cache borné en pixels |
@@ -1689,6 +1724,15 @@ n'empêche un usage payant.
 - Au TNI, une manche ou une paume qui effleure l'écran avec un doigt peut
   faire un toucher à deux doigts, qui annule : le message « Annulé » le dit,
   trois doigts ou Ctrl+Y le rattrapent, et le menu du doigt coupe ces gestes.
+- Le lot 3 n'a été essayé qu'au navigateur Chromium (piloté par Playwright :
+  souris, clavier, doigt, stylet simulé) ; ni la tablette graphique Wacom
+  sous Windows Ink, ni un iPad, ni Firefox. À essayer en classe, en dix
+  minutes : sur le poste à la Wacom, glisser une page de la trieuse vers la
+  rangée du dessous, puis ouvrir le menu d'une vignette par le bouton
+  latéral ; sur l'iPad, glisser une page par sa poignée, faire défiler la
+  trieuse à un et deux doigts, *Copier la page en image* puis la coller dans
+  Pronote, ⌘ + P ; sous Firefox (ESR et récent), *Copier la page en image*
+  (sinon le message propose *Enregistrer l'image (.png)*) et Ctrl + P.
 - Le menu complet d'une figure reconnue d'un trait à main levée (*Main
   levée*) ou d'un segment passe sur deux lignes, comme avant le lot 3 ; sur un
   écran bas (1024 × 768), avec *Transformer* ouvert, il peut n'avoir de place

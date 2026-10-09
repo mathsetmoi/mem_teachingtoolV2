@@ -51,19 +51,41 @@ export interface Seance {
  *  Une étape qui ne change que l'ordre des pages (une page jetée, ou rendue)
  *  n'est ni un geste, ni une page de la séance, ni une coupure : on la
  *  saute, et le silence se mesure depuis l'étape gardée d'avant. De même la
- *  naissance d'une copie de page (« Dupliquer la page », voir Etape) : la
- *  copie faite en rangeant après le cours n'est pas une séance, ni un pont
- *  entre deux cours ; une copie faite pendant le cours y reste (la séance va
- *  d'une étape à l'autre, celles qu'on saute comprises). */
+ *  naissance d'une page (une copie, « Dupliquer la page », ou une page vide,
+ *  voir Etape) et le rangement de la trieuse (un fond changé sans aller sur
+ *  la page) : ranger après le cours ne fait pas une séance, ni un pont entre
+ *  deux cours ; ce qu'on range pendant le cours y reste (la séance va d'une
+ *  étape à l'autre, celles qu'on saute comprises).
+ *  Une page qui naît juste avant le premier geste d'une séance (« Nouvelle
+ *  page » en arrivant, une copie qu'on va compléter), à moins d'un écart et
+ *  le même jour, est de cette séance sans en être un geste : la séance
+ *  commence à sa naissance (de), son heure reste celle du premier geste
+ *  (debut). La revue y voit ainsi une page neuve, comme quand la création
+ *  comptait pour un geste. Un fond changé dans la trieuse entre les deux
+ *  arrête cette remontée : il est d'avant la séance (l'élève voit la page
+ *  avec son nouveau fond dès le départ). */
 export function seancesDuFilm(film: readonly Etape[], ecart = ENTRE_DEUX_SEANCES): Seance[] {
   const r: Seance[] = []
   let cour: Seance | null = null
   let prec: Etape | null = null
+  const jour = (t: number) => new Date(t).toDateString()
+  /** Où commence la séance que le geste i ouvre : à la plus ancienne
+   *  naissance de la suite de naissances (et d'étapes qui ne changent que
+   *  l'ordre) qui le précède, à moins d'un écart et le même jour ; sinon à lui */
+  const depart = (i: number) => {
+    let de = i
+    for (let k = i - 1; k >= 0; k--) {
+      const x = film[k]
+      if (!(x.seulOrdre || x.naissance) || film[i].t - x.t > ecart || jour(x.t) !== jour(film[i].t)) break
+      if (x.naissance) de = k
+    }
+    return de
+  }
   film.forEach((e, i) => {
-    if (e.seulOrdre || e.naissance) return
-    const coupe = !prec || e.t - prec.t > ecart || new Date(e.t).toDateString() !== new Date(prec.t).toDateString()
+    if (e.seulOrdre || e.naissance || e.rangement) return
+    const coupe = !prec || e.t - prec.t > ecart || jour(e.t) !== jour(prec.t)
     prec = e
-    if (coupe || !cour) { cour = { de: i, a: i, debut: e.t, fin: e.t, gestes: 0, pages: [] }; r.push(cour) }
+    if (coupe || !cour) { cour = { de: depart(i), a: i, debut: e.t, fin: e.t, gestes: 0, pages: [] }; r.push(cour) }
     cour.a = i; cour.fin = e.t; cour.gestes++
     if (e.page && !cour.pages.includes(e.page)) cour.pages.push(e.page)
   })

@@ -7,7 +7,12 @@
     <title>MEM teachingtool</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet" />
+    <!-- La police d'écriture ne retient pas le démarrage : la feuille se charge
+         sans bloquer l'affichage (media « print », puis « all » quand elle
+         arrive). Un réseau qui ne répond jamais (le proxy d'un lycée) ou coupé
+         laisse l'outil s'ouvrir, en ligne comme en un seul fichier, avec la
+         police du système ; la vraie police vient quand le réseau répond. -->
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📐</text></svg>" />
   </head>
   <body>

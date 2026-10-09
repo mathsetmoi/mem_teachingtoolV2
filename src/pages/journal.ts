@@ -138,12 +138,12 @@ export class JournalPages {
 
   /** Rend un cliché : l'ordre, les noms et la corbeille d'un coup (une
    *  étape seulOrdre si l'ordre change, aucune sinon), puis chaque fond qui
-   *  a changé, sur sa page (une étape notée sur elle : la revue voit le fond
-   *  revenir). Les entrées de corbeille des pages que le cliché ne connaît
-   *  pas restent telles quelles : une copie créée puis défaite par une
-   *  action plus récente reste définitive (elle ne reparaît pas dans la
-   *  corbeille comme une page jetée). Aucune pile d'annulation n'est
-   *  touchée. */
+   *  a changé, sur sa page (une étape de rangement notée sur elle : la revue
+   *  voit le fond revenir, les séances ne la comptent pas). Les entrées de
+   *  corbeille des pages que le cliché ne connaît pas restent telles
+   *  quelles : une copie créée puis défaite par une action plus récente
+   *  reste définitive (elle ne reparaît pas dans la corbeille comme une page
+   *  jetée). Aucune pile d'annulation n'est touchée. */
   private rendre(c: Cliche) {
     const t = this.tableau
     const corbeille = { ...c.pages.corbeille }
@@ -152,7 +152,7 @@ export class JournalPages {
     for (const [id, f] of Object.entries(c.fonds)) {
       if (!t.pages.has(id)) continue
       const o = t.origineDe(id)
-      if (t.fondDe(id) !== f.fond || o.x !== f.origine.x || o.y !== f.origine.y) t.changerFond(id, f.fond, { ...f.origine })
+      if (t.fondDe(id) !== f.fond || o.x !== f.origine.x || o.y !== f.origine.y) t.changerFond(id, f.fond, { ...f.origine }, { rangement: true })
     }
   }
 }

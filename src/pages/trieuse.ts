@@ -177,6 +177,9 @@ export class Trieuse {
   private dernierPointeur: TypePointeur | null = null
   private appui: Appui | null = null
   private glisse: Glisse | null = null
+  /** Deux doigts (ou plus) posés sur la grille : elle défile sous eux (y : la
+   *  hauteur moyenne des doigts au dernier mouvement). Voir brancherPointeurs. */
+  private deuxDoigts: { y: number } | null = null
   private boucle = 0
   private remiseATaille = 0
   /** « Choisir plusieurs » allumé : chaque toucher choisit ou retire une
@@ -1134,9 +1137,40 @@ export class Trieuse {
     // La grille perd le pointeur qu'elle tenait (pas la carte qui le lui
     // passe au début d'un glisser au doigt) : le glisser s'arrête, rien ne bouge
     g.addEventListener('lostpointercapture', e => { if (e.target === g && this.glisse?.id === e.pointerId) this.annulerGlisser() })
+    // Deux doigts qui glissent sur la grille la font défiler, comme un seul
+    // (au TNI, la main entière se pose souvent). Le navigateur ne le fait pas :
+    // touch-action: pan-y y interdit tout geste à plusieurs doigts, et
+    // pinch-zoom, qui le permettrait, laisserait aussi le pincement agrandir
+    // toute la page. On le fait donc ici, avec les doigts posés sur la grille
+    // (un doigt posé sur le bandeau n'en est pas). Le second doigt arrête le
+    // toucher du premier (ni page ouverte, ni appui long) ; une page déjà
+    // tirée continue seule. Un mouvement que le navigateur ne laisse plus
+    // annuler (il fait déjà défiler sous le premier doigt) ne s'y ajoute pas.
+    const surLaGrille = (e: TouchEvent) => [...e.touches].filter(t => t.target instanceof Node && g.contains(t.target))
+    const hauteur = (l: Touch[]) => l.reduce((s, t) => s + t.clientY, 0) / l.length
+    g.addEventListener('touchstart', e => {
+      const l = surLaGrille(e)
+      if (l.length < 2 || this.glisse) return
+      this.annulerAppui(); this.annulerClicNom()
+      this.deuxDoigts = { y: hauteur(l) }
+    }, { passive: true })
     // Une page tirée au doigt : la grille ne défile plus sous lui (son
     // touch-action, pan-y, le laisserait faire) ; elle défile seule près du bord
-    g.addEventListener('touchmove', e => { if (this.glisse || (this.appui?.arme && this.appui.direct)) e.preventDefault() }, { passive: false })
+    g.addEventListener('touchmove', e => {
+      if (this.glisse || (this.appui?.arme && this.appui.direct)) { e.preventDefault(); return }
+      const l = surLaGrille(e), d = this.deuxDoigts
+      if (!d || l.length < 2) return
+      const y = hauteur(l)
+      if (e.cancelable) { e.preventDefault(); g.scrollTop -= y - d.y }
+      d.y = y
+    }, { passive: false })
+    const leve = (e: TouchEvent) => {
+      const l = surLaGrille(e)
+      if (l.length < 2) this.deuxDoigts = null
+      else if (this.deuxDoigts) this.deuxDoigts.y = hauteur(l)
+    }
+    g.addEventListener('touchend', leve)
+    g.addEventListener('touchcancel', leve)
     // L'aide suit le pointeur, où qu'il appuie dans la trieuse
     this.el.addEventListener('pointerdown', e => this.majAide(typePointeur(e.pointerType)), true)
     g.addEventListener('dragstart', e => e.preventDefault())

@@ -135,12 +135,13 @@ export function origineAuCentre(b: Boite | null): { x: number; y: number } {
 }
 
 /** Change le fond d'une page (l'étape se note sur elle : la revue le voit
- *  changer). Le repère prend son origine au centre du contenu (boite : la
- *  boîte de ce qui y est écrit). null si la page a déjà ce fond. */
+ *  changer). C'est du rangement (voir Etape) : ni une séance, ni un pont
+ *  entre deux séances. Le repère prend son origine au centre du contenu
+ *  (boite : la boîte de ce qui y est écrit). null si la page a déjà ce fond. */
 export function changerFond(t: Tableau, j: JournalPages, id: string, fond: Fond, boite: Boite | null): Entree | null {
   if (!t.pages.has(id) || t.fondDe(id) === fond) return null
   const origine = fond === 'repere' ? origineAuCentre(boite) : undefined
-  return j.faire('fond changé', () => t.changerFond(id, fond, origine))
+  return j.faire('fond changé', () => t.changerFond(id, fond, origine, { rangement: true }))
 }
 
 /** Ctrl + Maj + ← / → : ces pages (gardées dans leur ordre) reculent ou
