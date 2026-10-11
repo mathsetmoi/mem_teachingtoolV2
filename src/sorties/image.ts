@@ -28,6 +28,7 @@ import type { Forme } from '../types'
 import type { Boite } from '../revoir/bobine'
 import { CTRL } from '../navigateur'
 import { telecharger } from '../sauvegarde'
+import { nomSur } from '../fichier'
 
 /** La marge autour du contenu, en unités du monde */
 export const MARGE_IMAGE = 16
@@ -60,21 +61,17 @@ export function tailleImage(boite: { l: number; h: number }): { z: number; l: nu
 }
 
 /**
- * Un nom de fichier propre : les blancs se regroupent en une espace ;
- * \ / : * ? < > | les guillemets et les autres caractères de contrôle
- * deviennent « - » ; les bouts sont coupés (ni espace ni point à la fin :
- * Windows les refuse), 60 caractères au plus avant l'extension. « page »
- * si rien ne reste.
+ * Un nom de fichier propre, par nomSur (voir fichier.ts : la seule
+ * fonction qui fait les noms de fichiers) : les blancs se regroupent en une
+ * espace ; \ / : * ? < > | les guillemets et les autres caractères de
+ * contrôle deviennent « - » ; les bouts sont coupés (ni espace ni point à
+ * la fin : Windows les refuse), 60 caractères au plus avant l'extension ;
+ * un nom réservé de Windows (CON, NUL…) prend « (page) ». « page » si rien
+ * ne reste.
  */
 export function nomDeFichier(base: string, ext: string): string {
-  // Les blancs d'abord (une tabulation, un saut de ligne sont des blancs, pas des « - »)
-  const propre = String(base ?? '')
-    .replace(/\s+/g, ' ')
-    .replace(/[\\/:*?<>|"“”«»\u0000-\u001f\u007f-\u009f]/g, '-')
-    .trim()
-  const court = [...propre].slice(0, 60).join('').replace(/[\s.]+$/, '').trim()
   const e = String(ext ?? '').replace(/^\.+/, '')
-  return (court || 'page') + (e ? '.' + e : '')
+  return nomSur(base, { repli: 'page', longueur: 60 }) + (e ? '.' + e : '')
 }
 
 /** Le nom du fichier de l'image : « page-3.png », le nom de la page

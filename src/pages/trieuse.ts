@@ -22,9 +22,9 @@
 // Ses vignettes viennent de pages/vignettes.ts : les canevas ne sont dans
 // le document que tant qu'elle est ouverte (fermée, elle ne coûte rien).
 // Ce qui sort des pages y a sa place : « Exporter en PDF » dans le bandeau
-// (tout le tableau) et dans celui des pages choisies, « Copier en image »
+// (tout le classeur) et dans celui des pages choisies, « Copier en image »
 // et « Exporter en PDF… » dans le menu d'une vignette ; Ctrl + P exporte
-// les pages choisies, sinon tout le tableau (voir sorties/export-pdf.ts).
+// les pages choisies, sinon tout le classeur (voir sorties/export-pdf.ts).
 // La corbeille (corbeille.ts) est une vue de la trieuse : son bouton dans
 // le bandeau (« Corbeille (3) ») remplace la grille par les pages
 // supprimées, qu'on y remet ou supprime définitivement ; Échap ou
@@ -146,7 +146,7 @@ export class Trieuse {
   readonly corbeille: VueCorbeille
   /** Son bouton dans le bandeau : « Corbeille (3) » */
   private boutonCorbeille: HTMLButtonElement
-  /** « Exporter en PDF » du bandeau (tout le tableau) : caché tant que des
+  /** « Exporter en PDF » du bandeau (tout le classeur) : caché tant que des
    *  pages sont choisies (le bandeau des pages choisies a le sien) */
   private boutonPdf: HTMLButtonElement
   /** Les pages choisies (Maj + clic, Ctrl + clic, Espace, Ctrl + A,
@@ -700,7 +700,7 @@ export class Trieuse {
     if (this.groupeChoix.hidden !== cache) {
       const perdu = (cache && this.groupeChoix.contains(document.activeElement)) || (!cache && this.boutonPdf === document.activeElement)
       this.groupeChoix.hidden = cache
-      // Un seul « Exporter en PDF » à la fois : celui des pages choisies, ou celui de tout le tableau
+      // Un seul « Exporter en PDF » à la fois : celui des pages choisies, ou celui de tout le classeur
       this.boutonPdf.hidden = !cache
       if (perdu && this.focusId) this.focusCarte(this.focusId, { defiler: false })
     }
@@ -733,7 +733,7 @@ export class Trieuse {
     const raccourci = (e.ctrlKey || e.metaKey) && !e.altKey
     const lettre = e.key.toLowerCase()
     // Ctrl + P (⌘ + P), ici comme dans la corbeille : le PDF des pages
-    // choisies, sinon de tout le tableau, jamais l'impression de la page web
+    // choisies, sinon de tout le classeur, jamais l'impression de la page web
     // (Ctrl + Maj + P reste au navigateur)
     if (raccourci && !e.shiftKey && lettre === 'p') {
       fait()
@@ -879,12 +879,12 @@ export class Trieuse {
       for (const f of FONDS) entreeMenu(m, f.nom, () => this.changerFond(page, f.id), { coche: f.id === fond })
       filetMenu(m)
       // Ce qui sort de la page : son image, pour l'ENT ou Pronote, et son PDF
-      // (la fenêtre propose aussi tout le tableau) ; la trieuse reste ouverte
+      // (la fenêtre propose aussi tout le classeur) ; la trieuse reste ouverte
       entreeMenu(m, 'Copier en image', () => this.hote.copierPageEnImage(page), {
         aide: `Une image PNG, à coller dans l'ENT ou Pronote (${CTRL}+V)`, inactif: this.vignettes.vide(page) })
       // Grisé sur une page vide, comme « Copier en image » et comme
       // « Exporter la page en PDF… » à l’écran (le bandeau et Ctrl + P
-      // restent là pour tout le tableau)
+      // restent là pour tout le classeur)
       entreeMenu(m, 'Exporter en PDF…', () => this.hote.exporterPdf({ page }), { aide: 'Cadrée sur son contenu, en feuilles A4', inactif: this.vignettes.vide(page) })
       entreeMenu(m, 'Supprimer', () => this.supprimer([page]), { touche: 'Suppr' })
     }

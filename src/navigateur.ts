@@ -16,6 +16,18 @@ export const MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(na
 /** La touche des raccourcis, comme le clavier la nomme */
 export const CTRL = MAC ? '⌘' : 'Ctrl'
 
+/** Un appareil qu'on ne fait que toucher (ni souris, ni pavé, ni stylet :
+ *  l'iPad, la tablette Android, le téléphone) n'a souvent pas de clavier :
+ *  les textes y nomment l'entrée du menu plutôt que le raccourci. L'iPad
+ *  avec son clavier et son pavé a un pointeur fin : le raccourci (⌘). */
+const TOUCHER_SEUL = typeof matchMedia === 'function'
+  && !matchMedia('(any-pointer: fine)').matches && matchMedia('(any-pointer: coarse)').matches
+/** Comment enregistrer le classeur, ou en ouvrir un, dit entre parenthèses
+ *  dans un texte : le raccourci comme le menu ⋯ le montre (Ctrl + S, ⌘ + S
+ *  sur Mac et sur iPad), ou, au doigt seulement, l'entrée du menu ⋯ */
+export const POUR_ENREGISTRER = TOUCHER_SEUL ? 'menu ⋯ → Enregistrer le classeur' : `${CTRL} + S`
+export const POUR_OUVRIR = TOUCHER_SEUL ? 'menu ⋯ → Ouvrir un classeur' : `${CTRL} + O`
+
 /** Ctrl (⌘) + « + », « − » ou « 0 », au clavier principal ou au pavé numérique.
  *  Les signes se lisent par e.key (en AZERTY, « - » est sur la touche 6) ; le
  *  zéro aussi par e.code (en AZERTY, la touche 0 sans Maj donne « à »). AltGr,
@@ -43,6 +55,21 @@ export function toucheMarquePage(e: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'met
   return (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'd'
 }
 
+/** Une fenêtre modale est-elle ouverte (Publier, Exporter en PDF, une
+ *  question…) ? Elle couvre le tableau, et une touche pressée pendant ce
+ *  temps vient d'elle, même quand son focus est tombé sur la page (un bouton
+ *  désactivé pendant un envoi le perd : la touche vise alors body, voir
+ *  App.clavier). L'éditeur d'une formule, ouvert sans être modal (show), n'en
+ *  est pas une. Un navigateur qui ne connaît pas :modal : toute fenêtre
+ *  ouverte en est une. */
+export function fenetreModaleOuverte(): boolean {
+  if (typeof document === 'undefined') return false
+  for (const d of document.querySelectorAll('dialog[open]')) {
+    try { if (d.matches(':modal')) return true } catch { return true }
+  }
+  return false
+}
+
 /** La touche Menu du clavier, ou Maj + F10 : le menu contextuel au clavier
  *  (voir App.menuAuClavier). Sans Ctrl, ⌘ ni Alt. */
 export function toucheMenu(e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey' | 'metaKey' | 'altKey'>): boolean {
@@ -51,8 +78,8 @@ export function toucheMenu(e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey'
 }
 
 /** Le tableau est-il caché ? La revue (app.enLecture), une séance
- *  d'automatismes (body.en-seance) et la trieuse des pages (body.en-trieuse)
- *  le couvrent : tout ce qui écrirait sur la page qu'on ne voit plus se tait
+ *  d'automatismes (body.en-seance), la trieuse des pages (body.en-trieuse)
+ *  et la bibliothèque des classeurs (body.en-bibliotheque) le couvrent : tout ce qui écrirait sur la page qu'on ne voit plus se tait
  *  (le collage par l'événement paste, les menus du clic droit, la barre
  *  d'actions, le zoom au clavier et le pincement de Safari, Ctrl + O,
  *  « Dupliquer la page », l'annonce du numéro de page). Sinon un geste
@@ -60,7 +87,7 @@ export function toucheMenu(e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey'
 export function tableauCache(app: { enLecture: boolean }): boolean {
   if (app.enLecture) return true
   const corps = typeof document === 'undefined' ? null : document.body
-  return !!corps && (corps.classList.contains('en-seance') || corps.classList.contains('en-trieuse'))
+  return !!corps && (corps.classList.contains('en-seance') || corps.classList.contains('en-trieuse') || corps.classList.contains('en-bibliotheque'))
 }
 
 /** Les touches qui ne font rien pendant un geste (un objet qu'on glisse, un

@@ -18,7 +18,7 @@ import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
 import type { Menu, OptionsEntree } from './menus'
-import { ENTREES, allerAuxEntrees, basculerMenu, entreeMenu, fermerMenu, focusAuClavier, focusNullePart, installerMenus, ouvrirMenu, placerMenu, positionPanneau, refaireEnGardantLeFocus } from './menus'
+import { ENTREES, allerAuxEntrees, basculerMenu, entreeMenu, fermerMenu, focusAuClavier, focusNullePart, focusVenuDuClavier, installerMenus, ouvrirMenu, placerMenu, positionPanneau, refaireEnGardantLeFocus } from './menus'
 import { choisirGestes, choisirMolette, reglages } from './reglages'
 import type { Doigt, Molette } from './reglages'
 import { CTRL, tableauCache } from './navigateur'
@@ -37,6 +37,16 @@ import { Vignettes } from './pages/vignettes'
 import { Trieuse } from './pages/trieuse'
 import { ouvrirEnvoi } from './pages/envoi'
 import { titreModifierFormule } from './pointeurs'
+import type { Surveillance } from './classeurs/surveillance'
+import type { ActionEtat, Bandeau, LigneEtat } from './classeurs/etat'
+import type { EnregistrementCle } from './classeurs/cle'
+import { AIDE_ACTIVER } from './classeurs/cle'
+import type { CopieDrive } from './classeurs/copie-drive'
+import { HORS_LIGNE_FICHIER } from './classeurs/copie-drive'
+import type { Bibliotheque } from './classeurs/bibliotheque'
+import type { Fichiers } from './classeurs/fichiers'
+import { AIDE_OUVRIR } from './classeurs/fichiers'
+import { fermerSurLeFond } from './dialogue'
 
 /** Le rôle du doigt : la marque de son bouton, son titre, ce qu'on en dit */
 const DOIGTS: { id: Doigt; nom: string; aide: string; marque: string; titre: string; dit: string }[] = [
@@ -55,6 +65,29 @@ const TITRE_IMAGE = 'Une image PNG, à coller dans l\'ENT ou Pronote'
 const TITRE_ENVOI = 'Déplacer ou copier sur une autre page'
 /** Le titre du bouton ⋯ du menu complet, qui ouvre le menu de ces deux-là */
 const TITRE_PLUS = 'Plus : copier en image (ENT, Pronote), envoyer vers une autre page'
+
+/** Le bouton ⋯ de la barre du haut */
+const TITRE_FICHIER = `Enregistrer, ouvrir ou exporter en PDF (${CTRL} + S, ${CTRL} + O, ${CTRL} + P)`
+/** Le texte caché que lit le lecteur d'écran sur le bouton du classeur : toutes les lignes de l'état */
+const ID_ETAT = 'etat-classeur-description'
+
+/** La forme du bouton du classeur (voir UI.placerBoutonClasseur) :
+ *  'large' (sa barre, le nom et l'état), 'etroit' (sa barre, l'icône et le
+ *  point), 'dans-la-barre' (le premier élément de la barre du haut, l'icône
+ *  et le point), 'cache' (le point sur le bouton ⋯) */
+export type FormeBoutonClasseur = 'large' | 'etroit' | 'dans-la-barre' | 'cache'
+
+/** Au-delà de cette hauteur, la barre du haut est sur plusieurs rangées (une rangée : 58 px) */
+const PLUSIEURS_RANGEES = 80
+
+/** Les plus longs des textes courts de l'état (voir etat.ts) : la forme large
+ *  du bouton du classeur n'est prise que s'ils y tiennent entiers. Le premier
+ *  surtout, qui dit que rien d'autre ne protège le classeur. */
+const COURTS_LES_PLUS_LONGS = ['Seulement dans ce navigateur', 'Fichier : le 28 septembre']
+/** Ce que la barre du classeur large prend autour du texte (style.css) : la
+ *  barre (6 px de marge et 1 px de bord de chaque côté), le bouton (10 px à
+ *  gauche, 12 px à droite), l'icône (24 px) et l'écart (8 px) */
+const AUTOUR_DU_TEXTE = 2 * (6 + 1) + 10 + 12 + 24 + 8
 
 /** Le bouton « › » : la page suivante, ou, sur la dernière page, une page de
  *  plus. Son titre commence toujours par « Page suivante » ; jamais
@@ -213,7 +246,7 @@ export class UI implements Interface {
   /** Le rôle du doigt : son bouton (sur un appareil tactile) et son menu */
   private boutonDoigt!: HTMLButtonElement
   private menuDoigt!: Menu
-  /** Enregistrer le tableau dans un fichier, en ouvrir un : le bouton ⋯ et son menu */
+  /** Enregistrer le classeur dans un fichier, en ouvrir un : le bouton ⋯ et son menu */
   sauvegarde!: Sauvegarde
   private menuFichier!: Menu
   /** Le menu de la page (un clic droit dans le vide) : il n'a pas de bouton */
@@ -233,6 +266,46 @@ export class UI implements Interface {
   /** La trieuse des pages : toutes les pages en vignettes, plein écran (voir
    *  pages/trieuse.ts) ; le compteur, Maj + P et le menu de la page l'ouvrent */
   trieuse!: Trieuse
+  /** Le bouton du classeur (lot 4) : le nom du classeur et l'état de sa
+   *  sauvegarde, dans sa propre barre à gauche de la barre du haut ; il
+   *  ouvre la bibliothèque (voir placerBoutonClasseur) */
+  private barreClasseur!: HTMLDivElement
+  private boutonClasseur!: HTMLButtonElement
+  private nomClasseur!: HTMLSpanElement
+  private etatClasseur!: HTMLSpanElement
+  private pointClasseur!: HTMLSpanElement
+  /** Toutes les lignes de l'état, pour le lecteur d'écran (aria-describedby) */
+  private descriptionEtat!: HTMLDivElement
+  /** La forme du bouton du classeur, réglée avec le compteur */
+  formeClasseur: FormeBoutonClasseur = 'large'
+  /** Le texte caché qui mesure les textes courts de l'état (voir placeDeLaFormeLarge) */
+  private mesureCourt: HTMLSpanElement | null = null
+  /** Le bouton ⋯ et son point, quand le bouton du classeur est caché */
+  private boutonFichier!: HTMLButtonElement
+  private pointFichier!: HTMLSpanElement
+  /** Le bloc de l'état en tête du menu ⋯, quand il est ouvert */
+  private blocEtat: HTMLElement | null = null
+  /** Le bandeau discret : seulement pour une action qui demande un clic */
+  private bandeau!: HTMLDivElement
+  /** L'état de la sauvegarde du classeur (voir classeurs/surveillance.ts) */
+  private surveillance: Surveillance | null = null
+  /** Ce que propose chaque action de l'état (un bouton) : les morceaux qui
+   *  savent la faire l'inscrivent ; une action sans inscription n'a pas de
+   *  bouton */
+  private actionsEtat = new Map<ActionEtat, { libelle: string; faire: () => void }>()
+  /** L'enregistrement automatique sur la clé (null : impossible ici) */
+  private cle: EnregistrementCle | null = null
+  /** La copie à sens unique sur le Drive (lot 4 C10 ; null : le repli, sans bibliothèque) */
+  private drive: CopieDrive | null = null
+  /** La bibliothèque des classeurs (lot 4 C5) : le bouton du classeur et
+   *  « Bibliothèque des classeurs… » du menu ⋯ l'ouvrent ; null : l'index ne
+   *  s'ouvre pas dans ce navigateur (le repli) */
+  bibliotheque: Bibliotheque | null = null
+  /** Ouvrir des fichiers (lot 4 C9 ; null : le repli, sans bibliothèque) */
+  private fichiers: Fichiers | null = null
+  /** L'index de la bibliothèque ne s'ouvre pas (le repli) : le bouton du
+   *  classeur le dit */
+  sansBibliotheque = false
 
   constructor(private app: App, private racine: HTMLElement) {
     // Les menus d'abord : leur Échap passe avant celui des panneaux (voir menus.ts)
@@ -304,6 +377,21 @@ export class UI implements Interface {
     const haut = document.createElement('div')
     haut.className = 'barre barre-haut'
     this.barreHaut = haut
+    // Le bas de la barre du haut, mesuré, dans --bas-barre-haut : sur un
+    // téléphone en portrait, elle passe sur plusieurs rangées (trois sur un
+    // iPhone 12 : jusqu'à y = 162), et la barre des outils, posée en bas, ne
+    // monte jamais sous elle (voir style.css ; le contrôle final du lot 4 :
+    // le bouton Stylo y était à moitié couvert, un toucher ne l'atteignait
+    // pas). Suivi quand elle change de taille (sa largeur, ses rangées, le
+    // bouton du classeur qui y entre), et quand la fenêtre change.
+    const basDeLaBarreDuHaut = () => {
+      const r = haut.getBoundingClientRect()
+      if (!r.height) return
+      const dans = this.racine.getBoundingClientRect().top
+      this.racine.style.setProperty('--bas-barre-haut', Math.ceil(r.bottom - dans) + 'px')
+    }
+    if (typeof ResizeObserver === 'function') new ResizeObserver(basDeLaBarreDuHaut).observe(haut)
+    window.addEventListener('resize', basDeLaBarreDuHaut)
     const avant = bouton('avant', 'Page précédente (Page ↑)', () => app.pageSuivante(-1))
     // Le compteur : « 3 / 7 », puis le nom de la page s'il y en a un, coupé
     // au-delà d'une vingtaine de caractères (entier dans son titre), et caché
@@ -366,12 +454,12 @@ export class UI implements Interface {
     const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir())
     const revoir = bouton('revue', 'Revoir la construction : une page, une séance, pas à pas', () => this.ouvrirRevue(revoir))
     const publier = bouton('publier', 'Publier le replay pour les élèves', () => this.publication.ouvrir())
-    // Enregistrer le tableau dans un fichier, en ouvrir un, l'exporter en
+    // Enregistrer le classeur dans un fichier, en ouvrir un, l'exporter en
     // PDF : un menu discret au bout de la barre, sous son bouton, aligné à
     // droite. Son nom dit les trois (qui cherche « PDF » en survolant la
     // barre, ou au lecteur d'écran, le trouve ici)
     this.sauvegarde = new Sauvegarde(app, t => this.message(t), this.racine)
-    const fichier = bouton('points', `Enregistrer, ouvrir ou exporter en PDF (${CTRL} + S, ${CTRL} + O, ${CTRL} + P)`, e => {
+    const fichier = this.boutonFichier = bouton('points', TITRE_FICHIER, e => {
       if (menuFichier.hidden) this.construireMenuFichier()
       basculerMenu(this.menuFichier)
       if (menuFichier.hidden) return
@@ -383,7 +471,48 @@ export class UI implements Interface {
     menuFichier.className = 'menu-flottant menu-large'; menuFichier.setAttribute('role', 'menu'); menuFichier.setAttribute('aria-label', 'Enregistrer, ouvrir ou exporter en PDF')
     menuFichier.hidden = true
     this.menuFichier = { el: menuFichier, bouton: fichier }
+    // Le point de l'état, quand le bouton du classeur n'a pas la place
+    this.pointFichier = Object.assign(document.createElement('span'), { className: 'point-etat', hidden: true })
+    this.pointFichier.setAttribute('aria-hidden', 'true')
+    fichier.appendChild(this.pointFichier)
     haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, revoir, publier, fichier)
+
+    // ----- Le bouton du classeur, à gauche de la barre du haut -----
+    // L'icône, le nom en gras (entier dans le titre), l'état en court ; un
+    // point ambre quand il faut y regarder. Sa place se règle avec le
+    // compteur (voir placerBoutonClasseur).
+    const barreClasseur = this.barreClasseur = document.createElement('div')
+    barreClasseur.className = 'barre barre-classeur'
+    const bc = this.boutonClasseur = document.createElement('button')
+    bc.type = 'button'; bc.className = 'bouton-classeur'
+    bc.setAttribute('aria-describedby', ID_ETAT)
+    const iconeClasseur = Object.assign(document.createElement('span'), { className: 'icone-classeur', innerHTML: icone('classeurs') })
+    this.pointClasseur = Object.assign(document.createElement('span'), { className: 'point-etat', hidden: true })
+    this.pointClasseur.setAttribute('aria-hidden', 'true')
+    iconeClasseur.appendChild(this.pointClasseur)
+    const textes = Object.assign(document.createElement('span'), { className: 'textes' })
+    this.nomClasseur = Object.assign(document.createElement('span'), { className: 'nom-classeur' })
+    this.etatClasseur = Object.assign(document.createElement('span'), { className: 'etat-classeur' })
+    textes.append(this.nomClasseur, this.etatClasseur)
+    bc.append(iconeClasseur, textes)
+    bc.addEventListener('click', () => this.ouvrirBibliotheque(bc))
+    // Espace l'ouvre aussi, au relâcher, quand le focus y est venu du
+    // clavier : l'application ne la voit pas (elle y armerait « Espace +
+    // glisser ») ; après un clic à la souris, ou au retour d'une bibliothèque
+    // ouverte d'un clic, Espace + glisser reste à elle. D'où vient le focus
+    // se retient quand il arrive (focusVenuDuClavier), jamais à la touche :
+    // Chrome rend alors :focus-visible le bouton, même cliqué
+    bc.addEventListener('keydown', e => { if (e.key === ' ' && !e.ctrlKey && !e.metaKey && !e.altKey && focusVenuDuClavier(bc)) e.stopPropagation() })
+    barreClasseur.appendChild(bc)
+    this.descriptionEtat = Object.assign(document.createElement('div'), { id: ID_ETAT, hidden: true })
+    // Le bandeau, sous le bouton du classeur (ou sous la barre du haut)
+    this.bandeau = Object.assign(document.createElement('div'), { className: 'bandeau-sauvegarde', hidden: true })
+    this.bandeau.setAttribute('role', 'status')
+    // Enregistrer le classeur : le bouton des lignes de l'état et du bandeau
+    // (la clé et le Drive inscrivent les leurs) ; comme Ctrl + S, sur la clé
+    // quand elle enregistre ce classeur
+    this.inscrireActionEtat('enregistrer', 'Enregistrer le classeur', () => void this.sauvegarde.ctrlS())
+    this.majNomClasseur()
 
     // ----- Les instruments, sous leur bouton -----
     this.choixInstruments = document.createElement('div')
@@ -489,7 +618,7 @@ export class UI implements Interface {
     menuPlus.hidden = true
     this.menuPlus = { el: menuPlus }
 
-    this.racine.append(outils, haut, zoom, this.retour, menu, menuDoigt, menuFichier, menuPage, menuPlus, this.annonce, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
+    this.racine.append(outils, barreClasseur, haut, this.bandeau, this.descriptionEtat, zoom, this.retour, menu, menuDoigt, menuFichier, menuPage, menuPlus, this.annonce, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
     // ----- La barre d'actions, au-dessus de ce qui est pris -----
     // Elle ne recouvre ni la barre d'outils (sauf sur un téléphone, où elle
     // n'y tient pas), ni la barre du haut
@@ -541,11 +670,23 @@ export class UI implements Interface {
    *  dernière le perd, quand la fenêtre change et quand la police
    *  d'écriture arrive : une page qu'on nomme
    *  peut faire bouger la barre une fois, le passage d'une page à l'autre
-   *  jamais. Une barre pas encore affichée attend son prochain maj. */
+   *  jamais. Une barre pas encore affichée attend son prochain maj.
+   *  Le bouton du classeur (lot 4) se place aux mêmes moments, et seulement
+   *  à eux : il sort d'abord de la barre du haut, le nom de la page s'y
+   *  règle sans lui, exactement comme au lot 3, puis il prend sa place
+   *  (voir placerBoutonClasseur). */
   private reglerCompteur(chiffres: number, avecNoms: boolean) {
-    const barre = this.barreHaut, nom = this.rangNom
+    const barre = this.barreHaut
     if (!barre.isConnected || !barre.getClientRects().length) return
     this.compteurARegler = false
+    this.sortirBoutonClasseur()
+    this.reglerNomDeLaPage(chiffres, avecNoms)
+    this.placerBoutonClasseur()
+  }
+
+  /** Le compteur et le nom de la page dans la barre du haut (voir reglerCompteur) */
+  private reglerNomDeLaPage(chiffres: number, avecNoms: boolean) {
+    const barre = this.barreHaut, nom = this.rangNom
     this.rang.style.setProperty('--chiffres', String(chiffres))
     nom.classList.remove('sans-place', 'serre')
     nom.style.width = ''
@@ -798,23 +939,347 @@ export class UI implements Interface {
     molette('zoome', 'Zoome')
   }
 
-  /** Le menu du bouton ⋯, refait à chaque ouverture (la date du dernier
-   *  enregistrement a pu changer) */
+  /** Le menu du bouton ⋯, refait à chaque ouverture (l'état de la
+   *  sauvegarde a pu changer) : en tête, le bloc du classeur (son nom, l'état
+   *  de sa sauvegarde, ligne par ligne, et le bouton d'une ligne qui demande
+   *  quelque chose) ; puis les entrées, chacune avec son data-action. */
   private construireMenuFichier() {
     const m = this.menuFichier.el, s = this.sauvegarde
     m.replaceChildren()
-    this.entreeMenu(m, 'Enregistrer le tableau…', () => void s.enregistrer(), { touche: `${CTRL} + S`,
-      aide: 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder sur la clé ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).' })
-    this.entreeMenu(m, 'Ouvrir un tableau…', () => s.ouvrir(), { touche: `${CTRL} + O`,
-      aide: 'Remplace le tableau de ce navigateur par celui d\'un fichier .memc.' })
-    this.entreeMenu(m, 'Exporter le tableau en PDF…', () => this.exporterPdf('tout'),
-      { aide: 'Toutes les pages, cadrées sur leur contenu, en feuilles A4 à imprimer ou à déposer dans l\'ENT.' })
+    const bloc = this.blocEtat = document.createElement('div')
+    bloc.className = 'bloc-classeur'
+    bloc.setAttribute('role', 'group')
+    this.remplirBlocEtat()
+    m.appendChild(bloc)
     m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
-    m.appendChild(Object.assign(document.createElement('p'), { className: 'menu-note', textContent: s.etat() }))
+    // La bibliothèque d'abord : les autres classeurs (le bouton du classeur
+    // y mène aussi ; caché faute de place, c'est le seul chemin)
+    this.entreeMenu(m, 'Bibliothèque des classeurs…', () => this.ouvrirBibliotheque(this.formeClasseur === 'cache' ? this.boutonFichier : this.boutonClasseur), { action: 'bibliotheque',
+      aide: 'Tous vos classeurs : en ouvrir un autre, en créer un.' })
+    m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
+    // La clé active (cet onglet écrit, rien en conflit) : Ctrl + S y écrit
+    // aussitôt ; l'Enregistrer d'avant devient « une copie »
+    const cle = this.cle
+    if (cle?.actif) {
+      if (cle.peutEnregistrer()) this.entreeMenu(m, 'Enregistrer maintenant sur la clé', () => void cle.enregistrerMaintenant(), { touche: `${CTRL} + S`, action: 'enregistrer-cle',
+        aide: `Dans « ${cle.nomFichier} », tout de suite (sinon, il s'y enregistre tout seul peu après chaque changement).` })
+      this.entreeMenu(m, 'Enregistrer une copie dans un fichier…', () => void s.enregistrer(), { touche: cle.peutEnregistrer() ? undefined : `${CTRL} + S`, action: 'enregistrer',
+        aide: 'Un autre fichier .memc, avec toutes les pages et tout l\'historique. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).' })
+      this.entreeMenu(m, 'Arrêter l\'enregistrement automatique sur la clé', () => void cle.arreter(), { action: 'arreter-cle',
+        aide: `« ${cle.nomFichier} » garde le classeur tel qu'il était à sa dernière écriture.` })
+    } else {
+      this.entreeMenu(m, 'Enregistrer le classeur…', () => void s.enregistrer(), { touche: `${CTRL} + S`, action: 'enregistrer',
+        aide: 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder sur la clé ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).' })
+      if (cle?.disponible) this.entreeMenu(m, 'Enregistrer automatiquement dans un fichier…', () => void cle.activer(), { action: 'activer-cle', aide: AIDE_ACTIVER })
+    }
+    // La copie sur le Drive (lot 4 C10) : le compte, ou pas de copie ;
+    // grisée dans la version clé USB (Google ne s'y connecte pas)
+    const drive = this.drive
+    if (drive) this.entreeMenu(m, 'Copie sur le Drive…', () => void drive.ouvrirLeChoix(), { action: 'copie-drive', inactif: !drive.enLigne,
+      aide: drive.enLigne ? 'Une copie à sens unique, dans un dossier privé de votre Drive : choisir le compte, ou pas de copie.' : HORS_LIGNE_FICHIER })
+    this.entreeMenu(m, 'Ouvrir un classeur…', () => s.ouvrir(), { touche: `${CTRL} + O`, action: 'ouvrir',
+      aide: this.fichiers ? AIDE_OUVRIR : 'Remplace ce classeur par celui d\'un fichier .memc.' })
+    this.entreeMenu(m, 'Exporter le classeur en PDF…', () => this.exporterPdf('tout'), { action: 'exporter-pdf',
+      aide: 'Toutes les pages, cadrées sur leur contenu, en feuilles A4 à imprimer ou à déposer dans l\'ENT.' })
   }
 
-  /** Un fichier glissé sur le tableau (.memc, ou .mem) : comme « Ouvrir un tableau » */
-  ouvrirTableau(f: File) { void this.sauvegarde.ouvrirFichier(f) }
+  /** Le bloc de l'état en tête du menu ⋯ : le nom du classeur, ses lignes
+   *  (data-ligne : navigateur, cle, drive, fichier), et pour une ligne qui
+   *  demande quelque chose, son bouton (une entrée du menu : les flèches y
+   *  passent). Refait quand l'état change, sauf si le focus y est. */
+  private remplirBlocEtat() {
+    const bloc = this.blocEtat
+    if (!bloc) return
+    const nom = Object.assign(document.createElement('div'), { className: 'bloc-nom', id: 'bloc-classeur-nom', textContent: this.app.classeur.nom, title: this.app.classeur.nom })
+    bloc.setAttribute('aria-labelledby', nom.id)
+    const liste = document.createElement('ul')
+    liste.className = 'bloc-lignes'
+    const lignes: LigneEtat[] = this.surveillance?.texte.lignes ?? []
+    lignes.forEach((l, i) => {
+      const li = document.createElement('li')
+      li.className = 'ligne-etat ' + l.niveau
+      li.dataset.ligne = l.quoi
+      const texte = Object.assign(document.createElement('span'), { className: 'texte-ligne', id: `ligne-etat-${i}`, textContent: l.texte })
+      li.appendChild(texte)
+      // Le bouton de la ligne, et les suivants ; pas « Enregistrer
+      // automatiquement sur la clé… » : l'entrée du menu, juste dessous, le fait
+      for (const action of [l.action, ...(l.plus ?? [])]) {
+        const a = action && action !== 'activer-cle' ? this.actionsEtat.get(action) : undefined
+        if (!a || !action) continue
+        const b = document.createElement('button')
+        b.type = 'button'; b.className = 'menu-item action-etat'
+        b.setAttribute('role', 'menuitem')
+        b.dataset.etatAction = action
+        b.setAttribute('aria-describedby', texte.id)
+        b.textContent = a.libelle
+        b.addEventListener('click', () => { fermerMenu(); a.faire() })
+        li.appendChild(b)
+      }
+      liste.appendChild(li)
+    })
+    bloc.replaceChildren(nom, liste)
+  }
+
+  // ----- Le bouton du classeur, l'état de la sauvegarde, le bandeau (lot 4) -----
+  /** Une action de l'état (le bouton d'une ligne du menu ⋯ ou du bandeau) :
+   *  la clé (C4) et le Drive (C10) inscrivent les leurs */
+  inscrireActionEtat(action: ActionEtat, libelle: string, faire: () => void) {
+    this.actionsEtat.set(action, { libelle, faire })
+    this.majEtat()
+  }
+
+  /** Ce que fait une action de l'état, si un morceau l'a inscrite (la
+   *  bibliothèque en fait les boutons de la ligne du classeur ouvert) */
+  actionEtat(action: ActionEtat): { libelle: string; faire: () => void } | undefined {
+    return this.actionsEtat.get(action)
+  }
+
+  /** L'enregistrement automatique sur la clé (lot 4, C4) : ses entrées du
+   *  menu ⋯ et les boutons de l'état et du bandeau (activer, reprendre après
+   *  un rechargement, choisir un autre fichier, remplacer quand même) */
+  brancherCle(cle: EnregistrementCle | null) {
+    this.cle = cle
+    if (!cle?.disponible) return
+    this.inscrireActionEtat('activer-cle', 'Enregistrer automatiquement sur la clé…', () => void cle.activer())
+    this.inscrireActionEtat('reprendre-cle', 'Reprendre l\'enregistrement sur la clé', () => void cle.reprendre())
+    this.inscrireActionEtat('choisir-cle', 'Choisir un autre fichier…', () => void cle.choisirUnAutre())
+    this.inscrireActionEtat('forcer-cle', 'Remplacer quand même', () => void cle.remplacerQuandMeme())
+  }
+
+  /** La copie sur le Drive (lot 4 C10) : les boutons de sa ligne et de ses
+   *  bandeaux (se connecter, récupérer la copie, la remplacer quand même),
+   *  et « Copie sur le Drive… » du menu ⋯ */
+  brancherDrive(drive: CopieDrive | null) {
+    this.drive = drive
+    if (!drive?.enLigne) return
+    this.inscrireActionEtat('connecter-drive', 'Se connecter à Google', () => void drive.seConnecter())
+    this.inscrireActionEtat('recuperer-drive', 'Récupérer la copie du Drive', () => void drive.recuperer())
+    this.inscrireActionEtat('forcer-drive', 'Remplacer quand même', () => void drive.remplacerQuandMeme())
+  }
+
+  /** L'état de la sauvegarde arrive (après le chargement du classeur) : le
+   *  bouton, le menu et le bandeau le suivent */
+  brancherEtat(s: Surveillance) {
+    this.surveillance = s
+    s.quandChange(() => this.majEtat())
+    this.majEtat()
+  }
+
+  /** Le nom du classeur (il peut changer après coup : « Premier classeur »
+   *  sur un navigateur neuf, un classeur renommé) */
+  majNomClasseur() {
+    const nom = this.app.classeur.nom, b = this.boutonClasseur
+    if (this.nomClasseur.textContent !== nom) this.nomClasseur.textContent = nom
+    if (b.title !== nom) b.title = nom
+    const nomAccessible = `Classeur « ${nom} » : ouvrir la bibliothèque`
+    if (b.getAttribute('aria-label') !== nomAccessible) b.setAttribute('aria-label', nomAccessible)
+    this.majBoutonFichier()
+  }
+
+  private get attention() { return this.surveillance?.texte.niveau === 'attention' }
+
+  /** Le bouton ⋯ quand le bouton du classeur est caché : il porte le point,
+   *  son titre nomme le classeur, le lecteur d'écran y lit l'état */
+  private majBoutonFichier() {
+    const f = this.boutonFichier, cache = this.formeClasseur === 'cache'
+    const titre = cache ? `${TITRE_FICHIER} · Classeur « ${this.app.classeur.nom} »` : TITRE_FICHIER
+    if (f.title !== titre) { f.title = titre; f.setAttribute('aria-label', titre) }
+    if (cache) f.setAttribute('aria-describedby', ID_ETAT)
+    else f.removeAttribute('aria-describedby')
+    const sansPoint = !(cache && this.attention)
+    if (this.pointFichier.hidden !== sansPoint) this.pointFichier.hidden = sansPoint
+  }
+
+  /** L'état a changé (ou il est temps de vieillir « il y a 2 min ») */
+  private majEtat() {
+    const s = this.surveillance
+    if (!s) return
+    const t = s.texte
+    this.majNomClasseur()
+    if (this.etatClasseur.textContent !== t.court) this.etatClasseur.textContent = t.court
+    if (this.boutonClasseur.dataset.niveau !== t.niveau) this.boutonClasseur.dataset.niveau = t.niveau
+    if (this.pointClasseur.hidden !== (t.niveau !== 'attention')) this.pointClasseur.hidden = t.niveau !== 'attention'
+    // Pour le lecteur d'écran : toutes les lignes, chacune finie par un point
+    const description = t.lignes.map(l => /[.…!]$/.test(l.texte) ? l.texte : l.texte + '.').join(' ')
+    if (this.descriptionEtat.textContent !== description) this.descriptionEtat.textContent = description
+    // Le bloc du menu ⋯ ouvert se refait, sauf si le focus y est (son bouton)
+    const bloc = this.blocEtat
+    if (bloc?.isConnected && !this.menuFichier.el.hidden && !bloc.contains(document.activeElement)) this.remplirBlocEtat()
+    this.majBandeau(s.bandeau)
+  }
+
+  /** Le bandeau discret : une ligne sous le bouton du classeur (ou sous la
+   *  barre du haut), seulement pour une action qui demande un clic. Son
+   *  texte est celui de son apparition (le lecteur d'écran le lit une fois). */
+  private majBandeau(b: Bandeau | null) {
+    const el = this.bandeau
+    const actions = b ? b.actions.filter(a => this.actionsEtat.has(a)) : []
+    const forme = b ? `${b.raison}|${actions.join()}|${b.fermable}` : ''
+    if (el.dataset.forme !== forme) {
+      el.dataset.forme = forme
+      el.dataset.raison = b?.raison ?? ''
+      el.replaceChildren()
+      if (b) {
+        const texte = Object.assign(document.createElement('span'), { className: 'texte-bandeau', textContent: b.texte })
+        const boutons = Object.assign(document.createElement('span'), { className: 'actions-bandeau' })
+        for (const a of actions) {
+          const x = this.actionsEtat.get(a)!
+          const bt = Object.assign(document.createElement('button'), { type: 'button', className: 'bouton-bandeau', textContent: x.libelle })
+          bt.dataset.etatAction = a
+          bt.addEventListener('click', () => x.faire())
+          boutons.appendChild(bt)
+        }
+        el.append(texte)
+        if (b.fermable) {
+          const raison = b.raison
+          const fermer = Object.assign(document.createElement('button'), { type: 'button', className: 'fermer-bandeau', innerHTML: icone('fermer') })
+          fermer.title = 'Fermer'; fermer.setAttribute('aria-label', 'Fermer')
+          fermer.addEventListener('click', () => this.surveillance?.fermerBandeau(raison))
+          el.append(fermer)
+        }
+        el.append(boutons)
+      }
+    }
+    if (el.hidden !== !b) el.hidden = !b
+    if (b) this.placerBandeau()
+  }
+
+  /** Sous le bouton du classeur quand il a sa barre ; sinon sous la barre
+   *  du haut, aligné à droite, mais jamais sous la barre des outils : sur un
+   *  téléphone en portrait, la barre du haut va d'un bord à l'autre, et la
+   *  barre des outils (au-dessus du bandeau) en cacherait le début du texte
+   *  et des boutons. Il s'arrête alors à 8 px à droite d'elle. */
+  private placerBandeau() {
+    const el = this.bandeau
+    if (el.hidden) return
+    if (this.formeClasseur === 'large' || this.formeClasseur === 'etroit') {
+      const r = this.barreClasseur.getBoundingClientRect()
+      el.style.left = Math.round(r.left) + 'px'; el.style.right = ''; el.style.top = Math.round(r.bottom + 8) + 'px'
+      el.style.maxWidth = ''
+    } else {
+      const r = this.barreHaut.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
+      const droite = Math.round(window.innerWidth - r.right), haut = Math.round(r.bottom + 8)
+      el.style.left = ''; el.style.right = droite + 'px'; el.style.top = haut + 'px'
+      const gauche = o.width > 0 && o.bottom > haut && o.left < window.innerWidth / 2 ? Math.round(o.right + 8) : 12
+      el.style.maxWidth = `min(360px, ${Math.max(160, window.innerWidth - droite - gauche)}px)`
+    }
+  }
+
+  /** Le bouton du classeur revient dans sa barre (avant de régler le nom de
+   *  la page : la barre du haut est alors celle du lot 3) */
+  private sortirBoutonClasseur() {
+    if (this.boutonClasseur.parentElement !== this.barreClasseur) this.barreClasseur.appendChild(this.boutonClasseur)
+  }
+
+  /** La place du bouton du classeur, MESURÉE, entre la barre des outils et
+   *  la barre du haut : place = bord gauche de la barre du haut − (bord droit
+   *  de la barre des outils + 12) − 12.
+   *  a) assez pour que le plus long des textes courts de l'état y tienne
+   *     entier (placeDeLaFormeLarge : 252 px), et 140 px au moins : sa propre
+   *     barre, à 12 px à droite de la barre des outils, avec l'icône, le nom
+   *     et l'état (au plus toute la place) ;
+   *  b) de 58 px à la place de a) : sa barre, avec l'icône et le point ;
+   *  c) moins, et la barre du haut déjà sur plusieurs rangées : il devient
+   *     son premier élément (l'icône et le point), s'il n'y ajoute pas de
+   *     rangée ; sinon d) ;
+   *  d) sinon, il est caché : le bouton ⋯ porte le point, son titre nomme le
+   *     classeur (« · Classeur « X » »), son menu commence par le bloc du
+   *     classeur.
+   *  Mesuré : 1366 × 768 → 424 px (a) ; 1280 × 720 → 338 (a) ; TNI 1920 →
+   *  978 (a) ; 1194 × 834 → 252 (a) ; 1180 × 820 → 238 (b : « Seulement
+   *  dans ce navigateur » y serait coupé) ; 1112 × 834 → 170 (b) ; 1024 ×
+   *  768 sans nom de page → 82 (b),
+   *  avec un nom → −5 (d : le compteur y prend la place jusqu'à x = 89 ; la
+   *  barre du haut et le nom de la page restent ceux du lot 3) ; 1100 avec
+   *  un nom → 24 (d) ; 960 × 600 → 18 sur une rangée (d : l'insérer
+   *  ajouterait une rangée) ; 768 × 1024, 820 × 1180, 844 × 390, 641 × 900
+   *  → −6 sur deux rangées (c : la hauteur reste 104) ; 390 × 844 (c : 150).
+   *  Appelé par reglerCompteur seulement (jamais d'une page à l'autre). */
+  private placerBoutonClasseur() {
+    const haut = this.barreHaut, barre = this.barreClasseur, b = this.boutonClasseur
+    const o = this.barreOutils.getBoundingClientRect(), h = haut.getBoundingClientRect()
+    const gauche = Math.round(o.right + 12)
+    const place = Math.floor(h.left - gauche - 12)
+    let forme: FormeBoutonClasseur
+    if (place >= Math.max(140, this.placeDeLaFormeLarge())) forme = 'large'
+    else if (place >= 58) forme = 'etroit'
+    else if (h.height > PLUSIEURS_RANGEES) {
+      b.classList.add('etroit')
+      haut.prepend(b)
+      forme = haut.getBoundingClientRect().height > h.height + 0.5 ? 'cache' : 'dans-la-barre'
+      if (forme === 'cache') barre.appendChild(b)
+    } else forme = 'cache'
+    this.formeClasseur = forme
+    b.classList.toggle('etroit', forme !== 'large')
+    barre.hidden = forme === 'cache' || forme === 'dans-la-barre'
+    barre.dataset.forme = forme
+    if (!barre.hidden) {
+      barre.style.left = gauche + 'px'
+      // Large : au plus toute la place, et au moins 200 px (quand elle les
+      // a), pour que la barre ne change pas de largeur à chaque minute
+      barre.style.maxWidth = forme === 'large' ? place + 'px' : ''
+      barre.style.minWidth = forme === 'large' ? Math.min(place, 200) + 'px' : ''
+    }
+    this.majBoutonFichier()
+    this.placerBandeau()
+  }
+
+  /** La place que demande la forme large pour que le plus long des textes
+   *  courts de l'état y tienne entier (« Seulement dans ce navigateur » :
+   *  184 px de texte, 252 px en tout). Mesurée dans la police de l'état, par
+   *  un texte caché (le texte du bouton est caché dans les autres formes). */
+  private placeDeLaFormeLarge(): number {
+    let m = this.mesureCourt
+    if (!m?.isConnected) {
+      m = this.mesureCourt = Object.assign(document.createElement('span'), { className: 'mesure-etat' })
+      m.setAttribute('aria-hidden', 'true')
+      document.body.appendChild(m)
+    }
+    let texte = 0
+    for (const t of COURTS_LES_PLUS_LONGS) { m.textContent = t; texte = Math.max(texte, m.getBoundingClientRect().width) }
+    return Math.ceil(texte) + AUTOUR_DU_TEXTE
+  }
+
+  /** La bibliothèque des classeurs (lot 4, C5), par-dessus le classeur : le
+   *  bouton du classeur (un clic, Entrée, Espace) et « Bibliothèque des
+   *  classeurs… » du menu ⋯. Pas pendant la revue, une séance, la trieuse,
+   *  une fenêtre ouverte, ni en plein geste ; avant, comme pour la trieuse,
+   *  ce qui attend se pose, un placement s'annule, le programme de
+   *  construction se ferme, les menus et le message à action aussi. retour :
+   *  ce qui reprend le focus à sa fermeture. Dans le repli (l'index ne
+   *  s'ouvre pas), un message le dit. */
+  ouvrirBibliotheque(retour: HTMLElement | null = this.boutonClasseur) {
+    const app = this.app, b = this.bibliotheque
+    if (b?.ouvert || tableauCache(app) || this.revue.ouvert || this.trieuse.ouvert || document.querySelector('dialog[open]') || app.enGeste) return
+    if (!b) {
+      // (pendant le chargement du classeur, elle n'est pas encore là)
+      if (this.sansBibliotheque) this.message(`La bibliothèque des classeurs ne s'ouvre pas dans ce navigateur : seul « ${app.classeur.nom} » est disponible. Enregistrez-le dans un fichier.`)
+      return
+    }
+    app.poserCeQuiAttend()
+    if (app.placement) app.echap()
+    const ranger = this.fermerConstruction()
+    this.fermerMenus()
+    this.oublierAction()
+    b.ouvrir({ retour, auRetour: ranger })
+    // La barre d'actions ne paraît pas sous la bibliothèque
+    this.maj()
+  }
+
+  /** Des fichiers glissés sur le tableau (.memc, .memb, ou .mem) : comme
+   *  « Ouvrir un classeur » (plusieurs à la fois avec la bibliothèque ; sans
+   *  elle, le premier, qui remplace le classeur ouvert) */
+  ouvrirFichiers(f: File[]) {
+    if (this.fichiers) void this.fichiers.ouvrir(f.map(fichier => ({ fichier })))
+    else if (f[0]) void this.sauvegarde.ouvrirFichier(f[0])
+  }
+
+  /** Les fichiers (lot 4 C9) : Ouvrir ajoute à la bibliothèque, et le
+   *  conflit de la clé propose d'ouvrir son fichier */
+  brancherFichiers(f: Fichiers | null) {
+    this.fichiers = f
+    if (f) this.inscrireActionEtat('ouvrir-cle', 'Ouvrir le fichier de la clé', () => void f.ouvrirLeFichierDeLaCle())
+  }
 
   // ----- Copier en image (voir sorties/image.ts) -----
   /** Une page telle que le document la garde : son fond, son origine, ses formes */
@@ -854,8 +1319,8 @@ export class UI implements Interface {
 
   // ----- Exporter en PDF (voir sorties/export-pdf.ts) -----
   /** La fenêtre « Exporter en PDF » : la page (le menu de la page, Ctrl + P ;
-   *  elle propose aussi tout le tableau), les pages choisies dans la
-   *  trieuse, ou tout le tableau (le menu ⋯, la trieuse). Pas pendant la
+   *  elle propose aussi tout le classeur), les pages choisies dans la
+   *  trieuse, ou tout le classeur (le menu ⋯, la trieuse). Pas pendant la
    *  revue ni une séance, ni par-dessus une autre fenêtre ; la trieuse
    *  reste ouverte et utilisable pendant l'export. */
   exporterPdf(cible: CibleExport) {
@@ -867,7 +1332,7 @@ export class UI implements Interface {
     ouvrirFenetrePdf(this.hotePdf(), cible)
   }
 
-  /** Ce que l'export lit du tableau : le document, l'ordre, le geste en cours */
+  /** Ce que l'export lit du classeur : le document, l'ordre, le geste en cours, son nom */
   private hotePdf(): HoteFenetrePdf {
     const app = this.app, t = app.tableau
     return {
@@ -878,6 +1343,7 @@ export class UI implements Interface {
       nomDe: p => t.nomDe(p),
       pages: () => app.pages,
       enGeste: () => app.enGeste,
+      classeur: () => app.classeur.nom,
       message: (texte, action) => this.message(texte, action),
       maj: () => this.maj(),
     }
@@ -931,7 +1397,7 @@ export class UI implements Interface {
       aide: 'Les pages en vignettes : aller à une page, les ranger' })
     // Ce qui sort de la page : son image, pour l'ENT ou Pronote (pas de
     // raccourci : Ctrl + Maj + C ouvre l'inspecteur du navigateur), et son
-    // PDF ; toutes deux grisées sur une page vide (tout le tableau reste à
+    // PDF ; toutes deux grisées sur une page vide (tout le classeur reste à
     // portée : le menu ⋯, et Ctrl + P, dont la fenêtre propose les deux)
     el.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
     this.entreeMenu(el, 'Copier la page en image', () => this.copierEnImage('page'), { inactif: app.pageVide(),
@@ -1766,7 +2232,7 @@ export class UI implements Interface {
     d.className = 'dialogue ' + classe
     d.innerHTML = `<h2></h2><div class="corps"></div>`
     d.querySelector('h2')!.textContent = titre
-    d.addEventListener('click', e => { if (e.target === d && d.open) d.close() })
+    fermerSurLeFond(d, () => { if (d.open) d.close() })
     this.racine.appendChild(d)
     this.dialogue = d
     return d

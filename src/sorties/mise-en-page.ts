@@ -31,7 +31,7 @@ import type { Boite } from '../revoir/bobine'
 import { CM } from '../types'
 import { A4 } from './pdf'
 import { nomDeFichier } from './image'
-import { tailleLisible } from '../fichier'
+import { nomSur, tailleLisible } from '../fichier'
 
 /** Les points par pouce des images des feuilles */
 export const PPP = 200
@@ -238,18 +238,30 @@ export function pourcent(k: number): string { return `${Math.round(k * 100)} %` 
 /** La page est-elle réduite (pas à sa taille réelle) ? */
 export function reduite(k: number): boolean { return k < REELLE }
 
+/** Le nom du classeur au pied de page : 40 caractères au plus */
+const NOM_AU_PIED = 40
+
+/** Le nom du classeur coupé pour le pied de page (sans couper un caractère
+ *  en deux ; « … » au bout s'il est coupé) */
+function nomAuPied(nom: string): string {
+  const c = [...nom.trim()]
+  return c.length <= NOM_AU_PIED ? c.join('') : c.slice(0, NOM_AU_PIED - 1).join('').trimEnd() + '…'
+}
+
 /**
  * Le pied de page d'une feuille : à gauche « Page 3 · Exercice 12 p. 84 »
  * (le nom s'il y en a un), « (2/3) » sur une page en plusieurs feuilles,
  * « · réduite à 72 % » si elle n'est pas à sa taille réelle ; à droite le
- * numéro de la feuille dans le PDF, « 4 / 12 ».
+ * numéro de la feuille dans le PDF, « 4 / 12 », précédé du nom du classeur
+ * s'il est donné (« Symétrie centrale · 4 / 12 », coupé à 40 caractères).
  */
-export function piedDePage(o: { numero: number; nom: string | null; partie: number; parties: number; k: number; feuille: number; feuilles: number }): { gauche: string; droite: string } {
+export function piedDePage(o: { numero: number; nom: string | null; partie: number; parties: number; k: number; feuille: number; feuilles: number; classeur?: string | null }): { gauche: string; droite: string } {
   let gauche = `Page ${o.numero}`
   if (o.nom) gauche += ` · ${o.nom}`
   if (o.parties > 1) gauche += ` (${o.partie}/${o.parties})`
   if (reduite(o.k)) gauche += ` · réduite à ${pourcent(o.k)}`
-  return { gauche, droite: `${o.feuille} / ${o.feuilles}` }
+  const feuille = `${o.feuille} / ${o.feuilles}`
+  return { gauche, droite: o.classeur?.trim() ? `${nomAuPied(o.classeur)} · ${feuille}` : feuille }
 }
 
 /** « 2 », « 2 et 5 », « 2, 5 et 7 » */
@@ -276,31 +288,36 @@ function dateEnLettres(t: number): string {
 /** Au-delà de ce nombre de numéros, le nom du fichier ne les donne plus */
 const NUMEROS_AU_PLUS = 5
 
-/** Ce qu'on exporte : tout le tableau, ou ces pages (leurs numéros dans
- *  l'ordre ; nom : celui de la page, quand il n'y en a qu'une) */
-export interface QuoiExporter { tout: boolean; numeros: readonly number[]; nom: string | null; date: number }
+/** Ce qu'on exporte : tout le classeur, ou ces pages (leurs numéros dans
+ *  l'ordre ; nom : celui de la page, quand il n'y en a qu'une). classeur :
+ *  le nom du classeur (facultatif : sans lui, les noms d'avant le lot 4) */
+export interface QuoiExporter { tout: boolean; numeros: readonly number[]; nom: string | null; date: number; classeur?: string | null }
 
 /**
- * Le nom du fichier : « tableau-2026-10-09.pdf » (tout le tableau), le nom
- * de la page nettoyé (une page nommée), « page-3-2026-10-09.pdf »,
+ * Le nom du fichier : « Symétrie centrale 2026-10-09.pdf » (tout le
+ * classeur ; « tableau-2026-10-09.pdf » sans son nom), le nom de la page
+ * nettoyé (une page nommée), « page-3-2026-10-09.pdf »,
  * « pages-2-5-7-2026-10-09.pdf » (plusieurs pages ; au-delà de cinq
  * numéros, « pages-2026-10-09.pdf »).
  */
 export function nomDuPdf(q: QuoiExporter): string {
   const jour = dateDeFichier(q.date)
-  if (q.tout) return `tableau-${jour}.pdf`
+  if (q.tout) return q.classeur?.trim() ? `${nomSur(q.classeur)} ${jour}.pdf` : `tableau-${jour}.pdf`
   if (q.numeros.length === 1) return q.nom ? nomDeFichier(q.nom, 'pdf') : `page-${q.numeros[0]}-${jour}.pdf`
   if (q.numeros.length > NUMEROS_AU_PLUS) return `pages-${jour}.pdf`
   return `pages-${q.numeros.join('-')}-${jour}.pdf`
 }
 
-/** Le titre du PDF (ce que montre le lecteur de PDF) : « Tableau du 9
- *  octobre 2026 », « Page 3 · Exercice 12 p. 84 », « Pages 2, 5 et 7 »
- *  (au-delà de cinq numéros, « 12 pages du tableau du 9 octobre 2026 ») */
+/** Le titre du PDF (ce que montre le lecteur de PDF) : « Symétrie centrale
+ *  · 9 octobre 2026 » (tout le classeur ; « Tableau du 9 octobre 2026 »
+ *  sans son nom), « Page 3 · Exercice 12 p. 84 », « Pages 2, 5 et 7 »
+ *  (au-delà de cinq numéros, « 12 pages de « Symétrie centrale » » ;
+ *  « 12 pages du tableau du 9 octobre 2026 » sans le nom) */
 export function titreDuPdf(q: QuoiExporter): string {
-  if (q.tout) return `Tableau du ${dateEnLettres(q.date)}`
+  const classeur = q.classeur?.trim()
+  if (q.tout) return classeur ? `${classeur} · ${dateEnLettres(q.date)}` : `Tableau du ${dateEnLettres(q.date)}`
   if (q.numeros.length === 1) return `Page ${q.numeros[0]}${q.nom ? ' · ' + q.nom : ''}`
-  if (q.numeros.length > NUMEROS_AU_PLUS) return `${q.numeros.length} pages du tableau du ${dateEnLettres(q.date)}`
+  if (q.numeros.length > NUMEROS_AU_PLUS) return classeur ? `${q.numeros.length} pages de « ${classeur} »` : `${q.numeros.length} pages du tableau du ${dateEnLettres(q.date)}`
   return `Pages ${listeNumeros(q.numeros)}`
 }
 
@@ -308,11 +325,11 @@ export function titreDuPdf(q: QuoiExporter): string {
 export function texteRien(quoi: 'page' | 'pages' | 'tout'): string {
   if (quoi === 'page') return 'Rien à exporter : la page est vide.'
   if (quoi === 'pages') return 'Rien à exporter : les pages choisies sont vides.'
-  return 'Rien à exporter : le tableau est vide.'
+  return 'Rien à exporter : le classeur est vide.'
 }
 
 /**
- * Le message final : « PDF prêt : tableau-2026-10-09.pdf (12 feuilles A4,
+ * Le message final : « PDF prêt : Symétrie centrale 2026-10-09.pdf (12 feuilles A4,
  * 2,4 Mo). », suivi des pages vides (« La page 4 est vide : elle n'est pas
  * dans le PDF. ») et des pages très réduites (« La page 4 est très large :
  * réduite à 18 %. »).

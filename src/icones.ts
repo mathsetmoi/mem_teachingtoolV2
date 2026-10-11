@@ -59,6 +59,20 @@ export const ICONES: Record<string, string> = {
   fermer: 'M6 6l12 12M18 6L6 18',
   // Exporter en PDF (la trieuse) : une feuille au coin plié, une flèche qui en sort vers le bas
   pdf: 'M14 3H6v18h12V7zM14 3v4h4M12 10v7M9 14l3 3 3-3',
+  // Le bouton du classeur (lot 4) : deux classeurs l'un derrière l'autre,
+  // chacun avec son dos ; l'étiquette sur celui de devant
+  classeurs: 'M4 7h12v14H4zM7 7v14M10 11h3M8 7V3h12v14h-4M11 3v4',
+  // La bibliothèque (lot 4 C5), sur les cartes des classeurs : la clé USB
+  // (son corps et sa prise, deux petits trous) et le nuage du Drive
+  cle: 'M8 10h8v11H8zM9.5 3h5v7h-5zM11 5.5v1M13 5.5v1',
+  nuage: 'M7 18h10a4 4 0 00.6-7.95A6 6 0 006.2 9.1 4.5 4.5 0 007 18z',
+  // Ranger (lot 4 C6) : un dossier, un dossier et un + (Nouveau dossier),
+  // et le tri (une flèche vers le bas, trois lignes de plus en plus courtes)
+  dossier: 'M3 7a2 2 0 012-2h4l2 2.5h8a2 2 0 012 2V18a2 2 0 01-2 2H5a2 2 0 01-2-2z',
+  'dossier-plus': 'M3 7a2 2 0 012-2h4l2 2.5h8a2 2 0 012 2V18a2 2 0 01-2 2H5a2 2 0 01-2-2zM12 11v6M9 14h6',
+  trier: 'M7 4v16M4 17l3 3 3-3M13 6h8M13 11h6M13 16h4',
+  // Ouvrir un classeur ou une bibliothèque (lot 4 C9) : un dossier et une flèche qui en sort
+  ouvrir: 'M3 7a2 2 0 012-2h4l2 2.5h8a2 2 0 012 2V18a2 2 0 01-2 2H5a2 2 0 01-2-2zM12 17.5v-7M9 13.5l3-3 3 3',
 }
 
 /** Le SVG d'une icône, caché aux lecteurs d'écran (le bouton porte son nom) */

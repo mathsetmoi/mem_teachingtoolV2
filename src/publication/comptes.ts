@@ -10,6 +10,11 @@
 //
 // Ces adresses ne sont pas des secrets : un relais ne sert que les séances
 // des dossiers des replays, une par une, et ne les liste jamais.
+//
+// Chaque compte a aussi son dossier privé des SAUVEGARDES (« MEM -
+// Sauvegardes », « LFB - Sauvegardes », lot 4 C10) : la copie à sens
+// unique des classeurs (.memc), que le relais ne sert jamais (ni ce
+// dossier, ni cette extension, ni ce contenu ne sont les siens).
 // =============================================================
 
 export interface Compte {
@@ -22,16 +27,21 @@ export interface Compte {
   dossier: string
   /** L'adresse « …/exec » du relais déployé dans ce compte (vide : pas encore déployé) */
   relais: string
+  /** Le dossier des sauvegardes des classeurs dans ce Drive (lot 4 C10).
+   *  Jamais dans la liste DOSSIERS du relais : un test y veille. */
+  sauvegardes: string
 }
 
 export const COMPTES: Compte[] = [
   // Les relais « MEM - Relais replay » (version 3), déployés le 7 octobre 2026
-  { cle: 'mem', nom: 'Drive personnel', dossier: 'MEM - Replay séances', relais: 'https://script.google.com/macros/s/AKfycbyEm-IdKOVzUPeZYlypnxXXUQZB_Ber8ttWyU2EIlgzVgZ1MFKvvtWRvXPlFAQ9F2fw/exec' },
-  { cle: 'lfb', nom: 'Drive du lycée', dossier: 'LFB - Replay séances', relais: 'https://script.google.com/macros/s/AKfycbwtm8ylsrv-R9RJDdwnIf9CMlSP-B0WdAaV9SHtfHhhD7i5YcHnnViGUMHGlKRTPEKN4w/exec' },
+  { cle: 'mem', nom: 'Drive personnel', dossier: 'MEM - Replay séances', relais: 'https://script.google.com/macros/s/AKfycbyEm-IdKOVzUPeZYlypnxXXUQZB_Ber8ttWyU2EIlgzVgZ1MFKvvtWRvXPlFAQ9F2fw/exec', sauvegardes: 'MEM - Sauvegardes' },
+  { cle: 'lfb', nom: 'Drive du lycée', dossier: 'LFB - Replay séances', relais: 'https://script.google.com/macros/s/AKfycbwtm8ylsrv-R9RJDdwnIf9CMlSP-B0WdAaV9SHtfHhhD7i5YcHnnViGUMHGlKRTPEKN4w/exec', sauvegardes: 'LFB - Sauvegardes' },
 ]
 
 /** L'extension des fichiers séance (le relais ne sert qu'elle) */
 export const EXTENSION = '.mem'
+/** L'extension des sauvegardes (celle d'un classeur enregistré, que le relais ne sert pas) */
+export const EXTENSION_SAUVEGARDE = '.memc'
 
 /** L'identifiant client Google de MEM teachingtool (pas un secret), créé dans le
  *  projet Google Cloud de l'organisation mathsetmoi : c'est le nom de son

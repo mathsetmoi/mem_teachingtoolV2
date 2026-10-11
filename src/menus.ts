@@ -43,6 +43,11 @@ let installe = false
 export function installerMenus() {
   if (installe || typeof window === 'undefined') return
   installe = true
+  // D'où vient le focus (voir focusVenuDuClavier) : le dernier geste, une
+  // touche ou un appui ; en capture sur window, avant tous les autres
+  window.addEventListener('keydown', e => { if (!MODIFICATEURS.has(e.key)) toucheEnDernier = true }, true)
+  window.addEventListener('pointerdown', () => { toucheEnDernier = false; appuis++ }, true)
+  document.addEventListener('focusin', e => noterFocus(e.target as Element, focusImpose ?? toucheEnDernier), true)
   // En capture, sur le document : avant la zone d'écriture et les boutons
   document.addEventListener('pointerdown', e => {
     if (!ouvert) return
@@ -139,9 +144,50 @@ export function allerAuxEntrees(el: HTMLElement, sens: number, selecteur = BOUTO
   return true
 }
 
+/** Les touches qui ne disent pas qu'on est passé au clavier (Ctrl seul avant
+ *  une molette, Maj avant un clic) */
+const MODIFICATEURS = new Set(['Shift', 'Control', 'Alt', 'AltGraph', 'Meta', 'OS', 'CapsLock'])
+/** Le dernier geste était une touche (Tab, Entrée, Échap…) plutôt qu'un appui
+ *  (souris, plume, doigt) */
+let toucheEnDernier = false
+/** Les appuis, comptés : un focus venu du clavier ne l'est plus après un appui */
+let appuis = 0
+/** Les éléments dont le focus est venu du clavier, avec le compte des appuis d'alors */
+const focusClavier = new WeakMap<Element, number>()
+/** Pendant rendreLeFocus : ce que le focus rendu doit compter */
+let focusImpose: boolean | null = null
+function noterFocus(el: Element, clavier: boolean) {
+  if (clavier) focusClavier.set(el, appuis)
+  else focusClavier.delete(el)
+}
+
+/** Le dernier geste était-il une touche (et non un appui) ? */
+export function dernierGesteAuClavier(): boolean { return toucheEnDernier }
+
+/** Le focus de el est-il venu du clavier, et aucun appui n'a-t-il suivi ?
+ *  Retenu quand le focus arrive (Tab, une touche qui l'y a mené ; ou ce que
+ *  dit rendreLeFocus), et non lu au moment de la touche comme focusAuClavier :
+ *  Chrome donne :focus-visible à l'élément qui a le focus dès la première
+ *  touche pressée, même s'il y est venu d'un clic. Le bouton du classeur s'en
+ *  sert : Espace ne l'ouvre que pour qui y est venu au clavier ; après un clic,
+ *  ou la bibliothèque ouverte à la souris, Espace + glisser déplace la vue. */
+export function focusVenuDuClavier(el: Element | null): boolean {
+  return !!el && focusClavier.get(el) === appuis
+}
+
+/** Rend le focus à el (à la fermeture d'un écran), en disant s'il compte
+ *  comme venu du clavier (voir focusVenuDuClavier) */
+export function rendreLeFocus(el: HTMLElement, auClavier: boolean) {
+  focusImpose = auClavier
+  try { el.focus() } finally { focusImpose = null }
+  // Il y était déjà (focus() ne refait rien) : ce qu'il compte change quand même
+  if (document.activeElement === el) noterFocus(el, auClavier)
+}
+
 /** Le focus est-il venu du clavier (son anneau se voit) ? Après un clic à
  *  la souris sur un bouton, non : pour la souris, rien ne change (Espace y
- *  reste « Espace + glisser »). */
+ *  reste « Espace + glisser »). Lu au moment même : voir focusVenuDuClavier
+ *  pour ce qui se lit à la touche suivante. */
 export function focusAuClavier(x: Element | null): boolean {
   if (!x) return false
   try { return x.matches(':focus-visible') } catch { return true }
@@ -202,13 +248,15 @@ function fermer(rendreFocus: boolean): boolean {
 export function menuOuvert(): boolean { return !!ouvert }
 
 /** Ce qu'une entrée de petit menu peut porter (voir entreeMenu) */
-export interface OptionsEntree { touche?: string; aide?: string; coche?: boolean; caseACocher?: boolean; inactif?: boolean }
+export interface OptionsEntree { touche?: string; aide?: string; coche?: boolean; caseACocher?: boolean; inactif?: boolean; action?: string }
 
 /** Une entrée d'un petit menu, ajoutée au bout de m : un choix fait ferme
  *  le menu, puis agit. touche : son raccourci, à droite ; aide : une ligne
  *  dessous ; coche : un choix parmi d'autres (menuitemradio), coché ou non ;
  *  avec caseACocher, un réglage qu'on allume ou qu'on coupe
- *  (menuitemcheckbox) ; inactif : grisée, elle ne fait rien. Les menus de
+ *  (menuitemcheckbox) ; inactif : grisée, elle ne fait rien ; action : son
+ *  nom stable (data-action), que les essais et les morceaux suivants
+ *  retrouvent quel que soit le libellé. Les menus de
  *  l'interface (ui.ts) et celui d'une vignette (pages/trieuse.ts) en sont
  *  faits. */
 export function entreeMenu(m: HTMLElement, texte: string, faire: (e: MouseEvent) => void, o: OptionsEntree = {}): HTMLButtonElement {
@@ -217,6 +265,7 @@ export function entreeMenu(m: HTMLElement, texte: string, faire: (e: MouseEvent)
   b.setAttribute('role', o.coche === undefined ? 'menuitem' : o.caseACocher ? 'menuitemcheckbox' : 'menuitemradio')
   if (o.coche !== undefined) b.setAttribute('aria-checked', String(o.coche))
   if (o.inactif) b.setAttribute('aria-disabled', 'true')
+  if (o.action) b.dataset.action = o.action
   const coche = Object.assign(document.createElement('span'), { className: 'coche' })
   if (o.coche) coche.innerHTML = icone('coche')
   const libelle = Object.assign(document.createElement('span'), { className: 'libelle', textContent: texte })

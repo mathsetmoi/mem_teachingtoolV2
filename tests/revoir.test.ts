@@ -11,6 +11,7 @@ import { exporter, exporterDetaille, pagesDeLaSeance, seancesDuFilm } from '../s
 import { ErreurFilm, ecrireFilm, lireFilm } from '../src/revoir/format'
 import { Bobine } from '../src/revoir/bobine'
 import { PLAFOND } from '../src/revoir/rythme'
+import { BASE_PREMIER, ficheDuPremier } from '../src/classeurs/demarrage'
 
 const MINUTE = 60_000
 let horloge = new Date('2026-10-07T08:00:00').getTime()
@@ -286,8 +287,15 @@ describe('ce que la relecture a trouvé', () => {
 
 describe('les tableaux déjà enregistrés chez le professeur', () => {
   it('toujours dans la même base du navigateur', () => {
+    // Le premier classeur (lot 4) est le tableau d'avant : sa base n'a pas
+    // changé de nom, et main.ts ouvre la base de la fiche choisie
+    const demarrage = readFileSync(join(__dirname, '..', 'src', 'classeurs', 'demarrage.ts'), 'utf8')
+    expect(demarrage).toContain("export const BASE_PREMIER = 'mem-tableau-local'")
+    expect(ficheDuPremier('x').base).toBe('mem-tableau-local')
+    expect(BASE_PREMIER).toBe('mem-tableau-local')
     const main = readFileSync(join(__dirname, '..', 'src', 'main.ts'), 'utf8')
-    expect(main).toContain("new Tableau('mem-tableau-local')")
+    expect(main).toContain('new Tableau(infos.base)')
+    expect(main).toContain("base: f.base")
   })
 
   it("s'ouvrent encore, même avec l'ancien réglage « les élèves peuvent écrire »", async () => {

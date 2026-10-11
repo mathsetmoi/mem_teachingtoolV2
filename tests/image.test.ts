@@ -68,6 +68,12 @@ describe('nomDeFichier', () => {
     expect(nomDeFichier('   ', 'png')).toBe('page.png')
   })
 
+  it('un nom réservé de Windows prend « (page) » (nomSur, lot 4)', () => {
+    expect(nomDeFichier('CON', 'png')).toBe('CON (page).png')
+    expect(nomDeFichier('lpt1', 'pdf')).toBe('lpt1 (page).pdf')
+    expect(nomDeFichier('Console', 'png')).toBe('Console.png')
+  })
+
   it('le nom de l\'image : page-3.png, le nom de la page, objets-page-3.png', () => {
     expect(nomDeLImage(3, null, false)).toBe('page-3.png')
     expect(nomDeLImage(3, 'Exercice 12 p. 84', false)).toBe('Exercice 12 p. 84.png')

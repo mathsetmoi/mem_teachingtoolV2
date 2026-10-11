@@ -1,7 +1,7 @@
 // =============================================================
 // EXPORTER EN PDF
 // « Exporter en PDF » la page (le menu de la page, Ctrl + P), les pages
-// choisies dans la trieuse, ou tout le tableau (le menu ⋯, la trieuse) :
+// choisies dans la trieuse, ou tout le classeur (le menu ⋯, la trieuse) :
 // chaque page cadrée sur son contenu, découpée en feuilles A4 si elle est
 // haute (voir mise-en-page.ts), une image à 200 ppp par feuille : en
 // couleurs indexées quand une palette de 256 couleurs la rend fidèlement
@@ -77,6 +77,9 @@ export interface HoteExport {
   pages(): readonly string[]
   /** Un pointeur écrit-il sur le tableau (un trait, un objet qu'on glisse) ? */
   enGeste(): boolean
+  /** Le nom du classeur (le nom du PDF, son titre, le pied de page) ;
+   *  facultatif : sans lui, les noms d'avant le lot 4 */
+  classeur?(): string
   message(texte: string, action?: ActionMessage | ActionMessage[]): void
 }
 
@@ -178,6 +181,7 @@ export async function exporterPdf(hote: HoteExport, pages: readonly string[], o:
     dire(progression)
     // 1. Tout prendre maintenant : l'ordre, les numéros, les noms, les formes
     const ordre = hote.pages()
+    const classeur = hote.classeur?.() ?? null
     const prises: PagePrise[] = pages.map(id => ({
       id, numero: ordre.indexOf(id) + 1, nom: hote.nomDe(id), boites: [],
       page: { fond: hote.fondDe(id), origine: { ...hote.origineDe(id) }, formes: ordreDePeinture(hote.formesDe(id)) },
@@ -224,7 +228,7 @@ export async function exporterPdf(hote: HoteExport, pages: readonly string[], o:
         const x = c.getContext('2d')
         if (!x) throw new Error('le navigateur n\'a pas pu préparer une feuille (mémoire ?)')
         const formes = await peindreFeuille(ap, x, p, f, pap, o.fond, pause)
-        const pied = piedDePage({ numero: p.numero, nom: p.nom, partie: f.partie, parties: f.parties, k: p.mp.k, feuille: feuilles.length + 1, feuilles: total })
+        const pied = piedDePage({ numero: p.numero, nom: p.nom, partie: f.partie, parties: f.parties, k: p.mp.k, feuille: feuilles.length + 1, feuilles: total, classeur })
         peindrePied(x, pap, pied, police)
         const n = c.width * c.height * 4
         let rgba = tampons.get(n)
@@ -240,7 +244,7 @@ export async function exporterPdf(hote: HoteExport, pages: readonly string[], o:
     hote.message(texteFini({ fichier: o.nom, feuilles: feuilles.length, octets: octets.length, vides, tresReduites }))
     return true
   } catch (e) {
-    hote.message(`L'export en PDF a échoué : ${raison(e)}. Le tableau n'a pas changé.`)
+    hote.message(`L'export en PDF a échoué : ${raison(e)}. Le classeur n'a pas changé.`)
     return false
   } finally {
     for (const c of canevas.values()) { c.width = 0; c.height = 0 }
@@ -425,7 +429,7 @@ async function comprimer(octets: Uint8Array, pause: () => Promise<void>): Promis
 // ---------- La fenêtre « Exporter en PDF » ----------
 
 /** Ce qu'on demande à exporter : la page qu'on regarde (avec le choix de
- *  tout le tableau), tout le tableau, ou les pages choisies dans la trieuse */
+ *  tout le classeur), tout le classeur, ou les pages choisies dans la trieuse */
 export type CibleExport = { page: string } | { pages: string[] } | 'tout'
 
 /** Ce que la fenêtre demande à l'interface */
@@ -444,8 +448,8 @@ function laPage(numero: number, nom: string | null): string {
 
 /**
  * La fenêtre « Exporter en PDF » : ce qu'on exporte (pour la page qu'on
- * regarde, sur un tableau de plusieurs pages, deux choix : « La page 3 »,
- * coché, ou « Tout le tableau : 12 pages ») ; la case du fond imprimé,
+ * regarde, sur un classeur de plusieurs pages, deux choix : « La page 3 »,
+ * coché, ou « Tout le classeur : 12 pages ») ; la case du fond imprimé,
  * cochée selon le réglage gardé (que l'export garde) ; la note ; Annuler et
  * Exporter (le focus). Une <dialog class="dialogue">, créée au moment de
  * s'ouvrir, modale. Rend null si elle ne s'ouvre pas (un export en cours).
@@ -453,7 +457,8 @@ function laPage(numero: number, nom: string | null): string {
 export function ouvrirFenetrePdf(hote: HoteFenetrePdf, cible: CibleExport): HTMLDialogElement | null {
   if (enCours) { direDejaEnCours(hote); return null }
   const ordre = hote.pages()
-  const tout = `Tout le tableau : ${pagesLisibles(ordre.length)}`
+  const tout = `Tout le classeur : ${pagesLisibles(ordre.length)}`
+  const classeur = hote.classeur?.() ?? null
   const d = document.createElement('dialog')
   d.className = 'dialogue dialogue-pdf'
   d.innerHTML = `<h2>Exporter en PDF</h2><div class="corps">
@@ -466,10 +471,10 @@ export function ouvrirFenetrePdf(hote: HoteFenetrePdf, cible: CibleExport): HTML
   /** Les pages à exporter, selon le choix */
   let choisir: () => { pages: string[]; q: QuoiExporter; quoi: 'page' | 'pages' | 'tout' }
   const date = Date.now()
-  const toutes = () => ({ pages: [...ordre], q: { tout: true, numeros: ordre.map((_, i) => i + 1), nom: null, date }, quoi: 'tout' as const })
+  const toutes = () => ({ pages: [...ordre], q: { tout: true, numeros: ordre.map((_, i) => i + 1), nom: null, date, classeur }, quoi: 'tout' as const })
   const unePage = (id: string) => {
     const n = ordre.indexOf(id) + 1, nom = hote.nomDe(id)
-    return { pages: [id], q: { tout: false, numeros: [n], nom, date }, quoi: 'page' as const }
+    return { pages: [id], q: { tout: false, numeros: [n], nom, date, classeur }, quoi: 'page' as const }
   }
   const ligne = (texte: string) => {
     const p = document.createElement('p'); p.className = 'pdf-seul'; p.textContent = texte
@@ -492,14 +497,14 @@ export function ouvrirFenetrePdf(hote: HoteFenetrePdf, cible: CibleExport): HTML
       choisir = () => unePage(id)
     }
   } else {
-    // Les pages choisies, dans l'ordre du tableau (aucune : rien à ouvrir)
+    // Les pages choisies, dans l'ordre du classeur (aucune : rien à ouvrir)
     const ids = ordre.filter(p => cible.pages.includes(p))
     if (!ids.length) return null
     const numeros = ids.map(p => ordre.indexOf(p) + 1)
     if (ids.length === 1) { ligne(laPage(numeros[0], hote.nomDe(ids[0]))); choisir = () => unePage(ids[0]) }
     else {
       ligne(`Les pages ${listeNumeros(numeros)}`)
-      choisir = () => ({ pages: ids, q: { tout: false, numeros, nom: null, date }, quoi: 'pages' as const })
+      choisir = () => ({ pages: ids, q: { tout: false, numeros, nom: null, date, classeur }, quoi: 'pages' as const })
     }
   }
   const caseFond = d.querySelector<HTMLInputElement>('input[name="pdf-fond"]')!

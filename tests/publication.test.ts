@@ -6,8 +6,10 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { runInNewContext } from 'node:vm'
 import { describe, expect, it } from 'vitest'
-import { COMPTES, EXTENSION, relaisValable } from '../src/publication/comptes'
+import * as Y from 'yjs'
+import { COMPTES, EXTENSION, EXTENSION_SAUVEGARDE, relaisValable } from '../src/publication/comptes'
 import { ecrireFilm } from '../src/revoir/format'
+import { ecrireTableau } from '../src/fichier'
 import type { FilmEleve } from '../src/revoir/format'
 
 const RACINE = join(__dirname, '..')
@@ -59,6 +61,16 @@ describe('le site et le relais parlent des mêmes dossiers', () => {
     expect((await ecrireFilm(filmMinimal())).startsWith(debut)).toBe(true)
   })
 
+  it('les dossiers des sauvegardes (lot 4 C10) ne sont jamais ceux que sert le relais', () => {
+    expect(COMPTES.map(c => c.sauvegardes)).toEqual(['MEM - Sauvegardes', 'LFB - Sauvegardes'])
+    for (const c of COMPTES) {
+      expect(dossiersDuRelais).not.toContain(c.sauvegardes)
+      expect(COMPTES.map(x => x.dossier)).not.toContain(c.sauvegardes)
+    }
+    expect(EXTENSION_SAUVEGARDE).toBe('.memc')
+    expect(EXTENSION_SAUVEGARDE).not.toBe(EXTENSION)
+  })
+
   it('les adresses des relais renseignés sont bien des déploiements Apps Script', () => {
     for (const c of COMPTES) if (c.relais) expect(relaisValable(c.relais), c.cle).toBe(true)
   })
@@ -94,6 +106,35 @@ describe('le relais ne sert que les replays rangés au bon endroit', () => {
       expect(JSON.parse(await servir({ [ID]: fichier }, ID)).erreur).toMatch(/introuvable/)
     })
   }
+
+  // Une sauvegarde de classeur (lot 4 C10) n'est jamais servie : ni son
+  // dossier, ni son extension, ni son contenu (il commence par
+  // {"format":"mem-tableau", et non par celui d'un replay)
+  describe('une sauvegarde de classeur (.memc) n\'est jamais servie', () => {
+    const sauvegardes: FauxDossier = { nom: 'MEM - Sauvegardes', proprietaire: MOI }
+    let memc = ''
+    const classeur = async () => {
+      if (memc) return memc
+      const doc = new Y.Doc({ gc: false })
+      doc.getArray('ordre').push(['p'])
+      // Lu comme le relais le lit (getDataAsString) : du texte, le début compris
+      memc = new TextDecoder('latin1').decode(new Uint8Array(await ecrireTableau(doc, Date.now(), { nom: 'Symétrie', id: 'aaaaaaaaaaaaaaaa' }).arrayBuffer()))
+      return memc
+    }
+    const cas: [string, () => Promise<FauxFichier>][] = [
+      ['« Symétrie.memc » dans « MEM - Sauvegardes »', async () => ({ nom: 'Symétrie.memc', contenu: await classeur(), parents: [sauvegardes] })],
+      ['un .memc renommé « x.mem » dans « MEM - Replay séances » (il commence par mem-tableau)', async () => ({ nom: 'x.mem', contenu: await classeur(), parents: [mem] })],
+      ['un .memc dans le dossier des replays', async () => ({ nom: 'Symétrie.memc', contenu: await classeur(), parents: [mem] })],
+      ['un .memc dans les deux dossiers à la fois', async () => ({ nom: 'Symétrie.memc', contenu: await classeur(), parents: [sauvegardes, lfb] })],
+    ]
+    for (const [quoi, faire] of cas) {
+      it(`refuse ${quoi}`, async () => {
+        const f = await faire()
+        expect(f.contenu.startsWith('{"format":"mem-tableau"')).toBe(true)
+        expect(JSON.parse(relais({ [ID]: f }, MOI)({ id: ID })).erreur).toMatch(/introuvable/)
+      })
+    }
+  })
 
   it('refuse un identifiant mal formé, et le ping ne dit pas quel compte sert', () => {
     const r = relais({ [ID]: { nom: 'Séance.mem', contenu: '', parents: [mem] } }, MOI)

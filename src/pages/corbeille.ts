@@ -31,6 +31,7 @@ import type { Entree, JournalPages } from './journal'
 import type { Vignettes } from './vignettes'
 import { pagesLisibles, quandLisible } from '../fichier'
 import { icone } from '../icones'
+import { fermerSurLeFond } from '../dialogue'
 
 /** Une page de la corbeille, telle que la donne Tableau.pagesDeLaCorbeille */
 export interface PageDeLaCorbeille { id: string; t: number | null; derniere: number | null; ancienne: boolean }
@@ -62,11 +63,11 @@ export function libelleCorbeille(n: number): { texte: string; nom: string } {
 /** Ce que la question dit avant de vider la corbeille de n pages */
 export function texteVider(n: number): string {
   return n > 1
-    ? `Les ${n} pages de la corbeille seront supprimées définitivement : elles ne pourront plus être remises parmi les pages. Leur histoire reste visible dans Revoir la construction (le tableau garde tout ce qui a été écrit).`
-    : 'La page de la corbeille sera supprimée définitivement : elle ne pourra plus être remise parmi les pages. Son histoire reste visible dans Revoir la construction (le tableau garde tout ce qui a été écrit).'
+    ? `Les ${n} pages de la corbeille seront supprimées définitivement : elles ne pourront plus être remises parmi les pages. Leur histoire reste visible dans Revoir la construction (le classeur garde tout ce qui a été écrit).`
+    : 'La page de la corbeille sera supprimée définitivement : elle ne pourra plus être remise parmi les pages. Son histoire reste visible dans Revoir la construction (le classeur garde tout ce qui a été écrit).'
 }
 
-const TEXTE_UNE = 'Elle ne pourra plus être remise parmi les pages. Son histoire reste visible dans Revoir la construction (le tableau garde tout ce qui a été écrit).'
+const TEXTE_UNE = 'Elle ne pourra plus être remise parmi les pages. Son histoire reste visible dans Revoir la construction (le classeur garde tout ce qui a été écrit).'
 
 /** Ce que la vue demande à la trieuse */
 export interface HoteCorbeille {
@@ -351,7 +352,7 @@ export class VueCorbeille {
         if (avant?.isConnected && !this.el.hidden) avant.focus({ preventScroll: true })
         ok(reponse)
       })
-      d.addEventListener('click', e => { if (e.target === d) d.close() })
+      fermerSurLeFond(d, () => d.close())
       non.addEventListener('click', () => d.close())
       oui.addEventListener('click', () => { reponse = true; d.close() })
       document.body.appendChild(d)

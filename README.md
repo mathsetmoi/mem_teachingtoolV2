@@ -709,6 +709,20 @@ mesure lue pendant le geste (« 30° », « r = 4 cm ») n'est pas rejouée ; le
 document du tableau garde toute la piste (`gc: false`) : son chargement au
 démarrage grandit avec elle (environ 0,1 s pour 7 h 30 d'instruments
 manipulés sans arrêt, sur un PC ordinaire).
+L'essai de bout en bout (`instruments/e2e.mjs`) compare, à chaque image
+d'écran du replay, la pose montrée à celles du direct juste avant et juste
+après le même instant, à 0,8 unité près. Il manque parfois ce seuil d'un
+rien, au début d'une manipulation du programme de construction (ses
+instruments vont vite) : 0,9 à 1,1 unité, l'équivalent de 1 à 2 ms, le replay
+un rien en retard. Le contrôle final du lot 4 l'a mesuré (`lot4/cf/instr`) :
+dans le premier classeur comme dans un autre, 1 passage sur 4 et 1 sur 5,
+avec la même signature ; ce n'est donc pas propre aux classeurs qui ne sont
+pas le premier. C'est la mesure : l'essai relit l'heure dans le lecteur un
+peu après celle que le lecteur a prise pour poser les instruments (le temps
+de les poser, ou une pause du ramasse-miettes). Relevé à l'heure même du
+lecteur, l'écart ne dépasse plus 0,35 unité (6 passages sur 6 : la
+simplification et l'arrondi, rien d'autre). Rien ne se voit ; la batterie
+d'essais rejoue une fois cet essai quand il échoue, et le note.
 
 **Où vivent les séances.** Dans un dossier privé du Drive du professeur, un
 par compte : « MEM - Replay séances » (compte mathsetmoi) et « LFB - Replay
@@ -719,7 +733,10 @@ et le lien dit lequel (`?r=mem&id=…`). Il ne sert qu'un fichier `.mem` qui est
 bien un replay, rangé dans l'un de ces deux dossiers, et ne liste jamais rien.
 Chaque dossier porte aussi la marque de son compte : un essai avec le mauvais
 compte Google ne laisse rien derrière lui, et le dossier d'un compte n'est
-jamais repris par l'autre.
+jamais repris par l'autre. Les copies des classeurs (lot 4, voir « La copie
+sur le Drive ») vont dans un autre dossier privé du même Drive, « MEM -
+Sauvegardes » ou « LFB - Sauvegardes », marqué autrement : le relais ne les
+sert jamais.
 Les noms des dossiers sont à la fois dans `src/publication/comptes.ts` et dans
 le relais : un test vérifie qu'ils concordent. Installer un relais prend cinq
 minutes (instructions en tête du script) ; le mettre à jour (Gérer les
@@ -751,16 +768,21 @@ pour l'identifiant utilisé. Pour le créer, avec le compte gmail personnel :
 Si le lycée filtre les applications tierces, son administrateur Google
 Workspace doit autoriser cet ID client (console d'administration → Sécurité →
 Contrôle des accès et des données → Commandes des API).
+La copie des classeurs sur le Drive (lot 4) passe par le même identifiant et
+le même droit `drive.file` : rien de plus à régler. Elle ne demande jamais la
+connexion sans un clic, et partage le jeton de Publier (un seul compte
+connecté à la fois, pour l'onglet ; il suit l'onglet d'un classeur à l'autre,
+voir « La copie sur le Drive »).
 
 **Mettre en ligne.** `npm run build:pages` construit le tableau et le lecteur
 dans `dist-pages/`. Le fichier `.github/workflows/pages.yml` les met en ligne
 sur GitHub Pages à chaque envoi sur `main`, après les tests (à activer une
 fois : Settings → Pages → Source : GitHub Actions). On publie depuis cette
 version en ligne : la connexion Google ne marche ni depuis le fichier unique,
-ni depuis une adresse que la console Google n'autorise pas. Attention : le
-tableau vit dans le navigateur, adresse par adresse ; celui de la version en
-ligne n'est pas celui de la clé USB. Pour passer de l'un à l'autre :
-« Enregistrer le tableau » d'un côté, « Ouvrir un tableau » de l'autre (voir
+ni depuis une adresse que la console Google n'autorise pas. Attention : les
+classeurs vivent dans le navigateur, adresse par adresse ; ceux de la version
+en ligne ne sont pas ceux de la clé USB. Pour passer de l'un à l'autre :
+« Enregistrer le classeur » d'un côté, « Ouvrir un classeur » de l'autre (voir
 plus bas). La version clé USB enregistre aussi le fichier séance.
 
 **Les téléphones des élèves.** Le lecteur vise les navigateurs depuis 2020
@@ -949,65 +971,1567 @@ vignettes visibles prêtes en un tiers de seconde, toutes en moins d'une
 seconde, aucune tâche de plus de 50 ms, mesuré), et se repeignent quand leur
 page change ; fermée, la trieuse ne coûte rien.
 
-## Enregistrer et ouvrir un tableau
+## Les classeurs : où ils vivent
 
-Le tableau s'enregistre tout seul dans le navigateur, mais un navigateur peut
-l'oublier : un poste de lycée remis à zéro chaque soir, un iPad sur lequel on
-n'est pas revenu depuis des semaines, un historique effacé. Le bouton **⋯**, au
-bout de la barre du haut (« Enregistrer, ouvrir ou exporter en PDF », Ctrl + S,
-Ctrl + O, Ctrl + P), l'emporte dans un fichier :
+Depuis le lot 4, l'unité est le **classeur** (un par chapitre, rangés par
+classe). La fondation range chaque classeur à part, sans rien perdre de ce
+qui existait ; le nom du classeur est sur le bouton du classeur, à gauche
+de la barre du haut (avec l'état de sa sauvegarde, voir « L'état de la
+sauvegarde »), dans le titre de l'onglet (« Mon tableau — MEM
+teachingtool »), dans le nom de ses fichiers et de ses PDF, et
+tout ce qui suivait le tableau suit le classeur (voir « Enregistrer et
+ouvrir un classeur »). Ce bouton ouvre la bibliothèque des classeurs, où
+l'on passe d'un classeur à l'autre et où l'on en crée (voir « La
+bibliothèque des classeurs »).
 
-- **Enregistrer le tableau…** (Ctrl + S, ⌘ + S sur Mac) écrit un fichier
-  `tableau-2026-10-07-14h05.memc` : toutes les pages, tout l'historique (la
-  revue en classe et le replay marchent sur une autre machine comme sur
-  celle-ci), les instruments, les images, la liste des séances publiées. Sur
-  Chrome et Edge, on choisit où l'écrire (la clé USB, un dossier synchronisé
-  avec le Drive) ; ailleurs, et depuis la version clé USB, il se télécharge.
-  Comme le document, il garde ce qui a été effacé : il n'est pas pour les
-  élèves (pour eux : Publier, qui donne un film aplati, `.mem`).
-- **Ouvrir un tableau…** (Ctrl + O) remplace le tableau de ce navigateur par
-  celui d'un fichier `.memc`, après une question qui dit ce qui sera remplacé
-  (« 12 pages, enregistré le mardi 7 octobre 2026 à 14 h 05. Il remplace le
-  tableau de ce navigateur (8 pages) et tout son historique ») et propose
-  **Enregistrer d'abord**. On peut aussi glisser le fichier sur la page. Le
-  fichier est relu en entier avant de toucher à quoi que ce soit : un fichier
-  abîmé (tronqué, ou d'un seul bit changé : la somme CRC-32 et la taille de la
-  fin du gzip sont vérifiées, et chaque page de l'ordre doit exister avec ses
-  formes), un film élève (`.mem`), un fichier d'une version plus récente ou un
-  fichier quelconque sont refusés avec une phrase qui dit quoi faire, et le
-  tableau n'a pas changé. Le remplacement se fait d'un bloc dans la base du
-  navigateur (s'il échoue, faute de place, l'ancien tableau reste entier),
-  puis la page se recharge : « Tableau ouvert : 12 pages ». Un autre onglet
-  ouvert sur le même tableau l'apprend aussitôt, cesse d'écrire et demande à
-  être rechargé. On n'ouvre pas de tableau pendant la revue, une séance
-  d'automatismes ou une fenêtre ouverte.
-- **Exporter le tableau en PDF…** : toutes les pages, cadrées sur leur
+- **Une base par classeur.** Chaque classeur est un document Yjs dans sa
+  propre base du navigateur (IndexedDB). Le premier est le tableau d'avant le
+  lot 4 : sa base reste `mem-tableau-local`, jamais recopiée ni renommée, avec
+  tout ce qu'elle avait (pages, film, corbeille et noms des pages, copies,
+  piste des instruments, séances publiées). Une version d'avant (la clé USB
+  du lot 3) ouverte ensuite sur la même machine retrouve ce même tableau,
+  intact, et ce qu'elle y écrit se retrouve ici. Les autres classeurs ont
+  `mem-teachingtool-classeur-<id>` (l'id : 16 caractères hexadécimaux).
+  Ouvrir un classeur ne charge que lui ; deux onglets peuvent être sur deux
+  classeurs, chacun écrit dans sa base.
+- **L'index de la bibliothèque** vit à part, dans
+  `mem-teachingtool-bibliotheque` (cinq magasins : les fiches des classeurs,
+  les dossiers, l'état, les aperçus, les fichiers de la clé). Un index unique
+  sur la base : deux fiches ne désignent jamais la même base. Il s'ouvre sans
+  numéro de version, pour qu'une version suivante puisse en ajouter sans
+  faire tomber celle-ci. Les onglets s'y disent leurs changements (canal
+  `mem-teachingtool-bibliotheque`). Pendant qu'on travaille, la fiche du
+  classeur ouvert retient, au plus toutes les 30 secondes et dès que l'onglet
+  passe en arrière-plan, quand il a changé, son nombre de pages et son
+  vecteur d'état (ce que la bibliothèque, la clé et le Drive compareront) ;
+  ce n'est pas une sauvegarde : le document s'enregistre seul dans sa base.
+  Elle s'écrit aussi tout de suite quand la bibliothèque s'ouvre (une
+  seconde au plus avant de montrer les cartes), et chaque écriture refait
+  la carte de ce classeur dans la bibliothèque de l'onglet (le canal ne
+  revient pas à qui parle) : sa carte dit toujours son vrai nombre de pages
+  et la date de son dernier changement, même la bibliothèque restée
+  ouverte.
+- **La reprise.** Au premier démarrage du lot 4, une seule transaction de
+  l'index crée la fiche du premier classeur (« Mon tableau » ; « Premier
+  classeur » sur un navigateur neuf, décidé à sa première ouverture, qui
+  prend aussi ses dates dans le film) et la marque de la reprise. Elle
+  n'ouvre jamais `mem-tableau-local`. Coupée au milieu (onglet fermé,
+  navigateur tué, transaction abandonnée), elle n'a rien écrit et se rejoue ;
+  deux onglets qui démarrent ensemble font une seule fiche. Un essai le
+  vérifie octet à octet : la base du tableau n'a gagné que les entrées vides
+  (`[0,0]`) que y-indexeddb ajoute à chaque ouverture. Une fois la marque
+  posée, la fiche du premier n'est jamais recréée. Une création de classeur
+  interrompue depuis plus de 2 minutes est reprise : adoptée si sa base a
+  quelque chose, retirée sinon. Un effacement interrompu (voir « Effacer
+  pour de bon » plus bas) commencé depuis plus de 30 secondes aussi.
+- **Les clés.** Le premier se reconnaît à sa base, jamais à un champ
+  enregistré (une fiche adoptée ou importée sur cette base l'est aussi), et
+  garde les clés d'avant : `mem-session` (la page et les vues),
+  `mem-dernier-enregistrement` (la date du dernier enregistrement dans un
+  fichier), le canal `mem-tableau`. Un autre classeur a les mêmes, suivies
+  de `:<id>` (`mem-session:<id>`, `mem-dernier-enregistrement:<id>`) ; le
+  canal `mem-tableau` n'est écouté et parlé que par le premier. Le dernier classeur
+  est retenu sous `mem-teachingtool-dernier-classeur` (son id, sa
+  base, son nom), qui se relit même sans l'index : celui qu'on ouvre (sauf
+  dans un onglet en arrière-plan, pas encore regardé), celui où l'on écrit
+  (à chaque écriture de sa fiche, au plus toutes les 30 s) et celui qu'on
+  regarde (l'onglet qui redevient visible ou prend le focus). L'identité d'un classeur
+  (id, nom) est aussi rangée dans sa base, à côté du document (le magasin
+  `custom` de y-indexeddb) : ni dans le document, ni dans un fichier. Les
+  réglages de l'appareil et le presse-papiers restent communs. Le rangement
+  de la bibliothèque n'ajoute que le tri, pour l'appareil
+  (`mem-teachingtool-tri`), et, pour l'onglet, le dossier et le filtre qu'on
+  regarde (`mem-teachingtool-dossier`, `mem-teachingtool-filtre`, dans
+  sessionStorage) ; les dossiers, leurs couleurs et les étiquettes sont dans
+  l'index. La copie sur le Drive (voir « La copie sur le Drive ») y ajoute
+  deux réglages (`copieDrive`, le Drive par défaut ; `appareil`, ce
+  navigateur, tiré une fois en une transaction) et, dans la fiche, son choix
+  (`copieDrive`) et sa dernière copie (`drive`) ; son verrou des onglets est
+  `mem-teachingtool-drive:<id>`.
+- **L'adresse.** Le classeur ouvert est dans l'adresse (`?classeur=<id>`, en
+  ligne comme en `file://`) : recharger la page le rouvre. Sans rien, c'est
+  le dernier classeur qui revient, celui où l'on a écrit en dernier ou
+  qu'on regardait (sinon celui ouvert le plus récemment, sinon le premier) :
+  rien ne change au geste du professeur en classe. Un classeur regardé un
+  instant dans un autre onglet (Ctrl + clic ou clic du milieu sur sa carte)
+  ne prend pas la place de celui où l'on a continué d'écrire ; avec deux
+  onglets sur deux classeurs, c'est celui où l'on a écrit ou regardé en
+  dernier, et non le dernier ouvert. Une adresse venue d'une autre machine (un classeur inconnu ici), ou
+  celle d'un classeur dans la corbeille, ouvre la bibliothèque seule, et un
+  message dit quoi faire (voir « La bibliothèque des classeurs ») ; de même
+  `?bibliotheque`. `revoir.html` et les liens publiés n'en dépendent pas.
+- **Le repli.** Si l'index ne s'ouvre pas (stockage refusé, base abîmée),
+  le dernier classeur ouvert s'ouvre quand même s'il a encore sa base (sinon
+  le premier), avec « La bibliothèque des classeurs ne s'ouvre pas dans ce
+  navigateur : seul « … » est disponible. Enregistrez-le dans un fichier. » ;
+  rien n'est écrit dans l'index, l'adresse ne change pas. Une base qui ne
+  s'ouvre pas du tout ne retient plus le démarrage : le document vit en
+  mémoire, et il le sait (avant, l'outil restait sans page).
+- **Des bases qu'on n'abîme jamais.** Une base ouverte sans version alors
+  qu'elle n'existe pas est créée vide (version 1, aucun magasin), et
+  y-indexeddb ne la charge plus jamais (mesuré). Hors de y-indexeddb, une
+  seule fonction ouvre une base de classeur (`ouvrirBaseExistante`), qui
+  abandonne cette création ; une base trouvée sans magasin est « abîmée »,
+  jamais écrite. Créer la base d'un classeur refuse une base qui existe, sans
+  rien y toucher ; une création qui échoue n'efface que ce qu'elle a créé.
+  Une fiche dont la base a disparu n'est pas rouverte (y-indexeddb la
+  recréerait vide) : un message le dit, et un autre classeur s'ouvre.
+- **La base supprimée ailleurs.** Si un autre onglet supprime la base du
+  classeur ouvert, le lien est coupé net : une fenêtre le dit (« Le classeur
+  a été supprimé »), aucun geste ne lève d'erreur et la base n'est pas
+  recréée. (Avant, la connexion se fermait seulement, et le geste suivant
+  levait une erreur.)
+- **Effacer pour de bon** (vider la corbeille de la bibliothèque, voir « La
+  bibliothèque des classeurs » ; `src/classeurs/effacer.ts`), jamais avec
+  une fiche menteuse : 1) la fiche reçoit `effacement` (le classeur
+  disparaît partout) ; 2) les onglets ouverts sur lui sont prévenus et
+  cessent d'écrire (canal `mem-teachingtool-classeur`, `{ type: 'supprime',
+  base }` ; pour le premier, aussi le canal d'avant, `{ type: 'remplace',
+  raison: 'supprime' }` : un onglet de la version d'avant ne lit que `type`,
+  se coupe et demande un rechargement) ; 3) ouvert dans cet onglet, le
+  Tableau coupe son lien avec la base (sa sauvegarde prévient les autres
+  par ses propres canaux : elle ne s'entend pas elle-même) et l'onglet passe
+  sans classeur ; 4) 300 ms ; 5) la base s'efface, puis la fiche, son
+  aperçu, le fichier de sa clé et ses clés de stockage (`mem-session` et
+  `mem-dernier-enregistrement`, avec `:<id>`, ou telles quelles pour le
+  premier ; le dernier classeur retenu s'il le désignait). Une base qu'un
+  onglet tient vraiment ouverte : « Le classeur sera effacé dès que l'onglet
+  où il est encore ouvert sera fermé. », et le même ménage suit ; une
+  connexion qui se ferme d'elle-même dans les 4 secondes (une lecture en
+  cours) ne le fait pas dire. Les connexions de l'écrivain se ferment après
+  lecture et dès qu'on veut effacer, et il ne calcule jamais pendant qu'une
+  autre de ses demandes tient une base ouverte (mesuré : sans cela, une
+  fusion de 30 pages retenait l'effacement le temps du calcul). Deux onglets
+  qui vident ensemble : ce qui est déjà parti ne lève rien.
+- **Les garde-fous du premier.** Il se supprime et se vide comme les
+  autres ; mais la version d'avant, rouverte ensuite à la même origine,
+  recrée `mem-tableau-local`, et ce qu'elle y écrit ne doit pas se perdre :
+  la base n'est jamais effacée toute seule (ni par l'adoption, ni par le
+  ménage), et une base sans fiche est adoptée (voir plus bas). Juste avant
+  de l'effacer, son vecteur d'état va dans sa fiche : un effacement
+  interrompu n'est relancé au démarrage que si la base n'a rien de plus ;
+  sinon (la version d'avant y a écrit entre-temps), seule la fiche s'en va,
+  et la base revient par l'adoption, avec tout.
+- **Les classeurs retrouvés** (`src/classeurs/adoption.ts`) : une base de
+  classeur qu'aucune fiche ne désigne (l'index perdu, la version d'avant qui
+  a recréé `mem-tableau-local`) est cherchée une fois par chargement de la
+  page, à la première ouverture de la bibliothèque, si le navigateur sait
+  lister ses bases (`indexedDB.databases`). Les fiches de la corbeille, en
+  effacement ou en création comptent toutes. Chaque base est lue par
+  l'écrivain, hors du fil principal (une base de 27 Mo ne gèle rien), sans
+  rien y écrire. Elle est adoptée si elle n'est pas vide au sens strict
+  (une forme dans une page, celles de la corbeille des pages comprises, ou
+  plus d'une étape de film, une piste, une séance publiée, un nom de page) :
+  une transaction relit l'index et ajoute la fiche (deux onglets ensemble :
+  une seule fiche), sous l'id et le nom rangés à côté du document (l'id s'il
+  est libre), sinon « Tableau retrouvé (version d'avant) » pour
+  `mem-tableau-local` et « Classeur retrouvé » pour les autres, à la racine ;
+  « Un classeur retrouvé dans ce navigateur a été remis dans la
+  bibliothèque : « … ». ». Une base vide qui a des entrées est laissée ;
+  seule une base `mem-teachingtool-classeur-…` sans aucune entrée (une
+  création avortée) est effacée. Après la perte de l'index, le premier
+  revient par la reprise (un id neuf) et reprend, à sa première ouverture,
+  le nom rangé à côté de son document.
+- **Le trou, et sa réparation.** Une seule écriture refusée par la base (le
+  disque plein un instant) cache au rechargement tout ce qui la suit (mesuré
+  : 3 formes en mémoire, 1 relue), parce que Yjs attend la mise à jour qui
+  manque. Le document le repère (`trou`, et `erreurBase` : `place`, `autre`,
+  `fermee` pour une connexion fermée sans qu'on l'ait demandé,
+  `indisponible`) ; l'état de la sauvegarde le dit (voir « L'état de la
+  sauvegarde »). Le document en
+  mémoire, lui, est entier : un fichier enregistré depuis l'onglet a tout.
+  `reparer()` rouvre la base avec y-indexeddb, qui commence par y ajouter
+  l'état complet du document : le trou est comblé, rien n'est effacé ; si la
+  base refuse encore, le trou reste. Elle coûte environ une seconde de
+  calcul pour 60 pages : on ne l'appelle qu'au calme (la surveillance de
+  l'état s'en charge).
+- **Une base trouée relue.** Si l'onglet est fermé (ou le poste éteint)
+  avant la réparation, le classeur rouvert a, dans Yjs, des changements en
+  attente de la mise à jour qui manque (`doc.store.pendingStructs`) : ils ne
+  s'affichent plus, et ni la base ni la mémoire n'ont ce qui manque.
+  `charger()` le repère (`incomplet`, distinct du trou de cette séance-ci :
+  la base a tout ce que la mémoire a, il n'y a rien à réparer en la
+  rouvrant). L'état le dit (« Une partie ne se relit pas », voir « L'état de
+  la sauvegarde »), l'ouverture aussi, une fois. La base n'est jamais vidée :
+  un fichier qui a la mise à jour manquante (un Ctrl + S de la séance du
+  trou, ou le fichier de la clé qui refuse alors d'être écrasé) la complète
+  encore par « Mettre à jour le classeur » (vérifié :
+  `lot4/corrections-migration.mjs`, B6). Tout ce qui s'enregistre ensuite
+  dans un fichier (Ctrl + S, la clé, le Drive, toute la bibliothèque) est
+  ce qui se relit (`fichier.etatLisible` : l'état sans les changements en
+  attente, que `encodeStateAsUpdate` emporterait, et le fichier serait
+  refusé à l'ouverture) : un fichier qui se rouvre toujours, ici comme dans
+  la version d'avant (vérifié avec 41d2739 : `lot4/migration/vt`), et le
+  message le dit. Le travail de la séance, lui, se relit normalement.
+
+## Enregistrer et ouvrir un classeur
+
+Le classeur s'enregistre tout seul dans le navigateur, mais un navigateur
+peut l'oublier : un poste de lycée remis à zéro chaque soir, un iPad sur
+lequel on n'est pas revenu depuis des semaines, un historique effacé. Le
+bouton **⋯**, au bout de la barre du haut (« Enregistrer, ouvrir ou exporter
+en PDF », Ctrl + S, Ctrl + O, Ctrl + P), l'emporte dans un fichier. Chaque
+entrée de son menu a un nom stable (`data-action` : `enregistrer`, `ouvrir`,
+`exporter-pdf`, et pour la clé `activer-cle`, `enregistrer-cle`,
+`arreter-cle`), que les essais retrouvent quel que soit le libellé.
+
+- **Enregistrer le classeur…** (Ctrl + S, ⌘ + S sur Mac) écrit un fichier
+  au nom du classeur, avec la date : `Symétrie centrale 2026-10-10
+  14h05.memc` : toutes les pages, tout l'historique (la revue en classe et le
+  replay marchent sur une autre machine comme sur celle-ci), les
+  instruments, les images, la liste des séances publiées. Sur Chrome et Edge,
+  on choisit où l'écrire (la clé USB, un dossier synchronisé avec le Drive) ;
+  ailleurs, et depuis la version clé USB, il se télécharge. Comme le
+  document, il garde ce qui a été effacé : il n'est pas pour les élèves (pour
+  eux : Publier, qui donne un film aplati, `.mem`). Les messages :
+  « Enregistrement du classeur… », puis « Classeur enregistré : Symétrie
+  centrale 2026-10-10 14h05.memc (850 Ko). », ou « Le classeur n'a pas pu
+  être enregistré : … » avec la raison (plus de place, clé retirée…). Quand
+  le classeur s'enregistre tout seul sur la clé (voir « L'enregistrement
+  automatique sur la clé »), Ctrl + S y écrit aussitôt (« Enregistrer
+  maintenant sur la clé »), et cette entrée devient **Enregistrer une copie
+  dans un fichier…**.
+- **Rien ne gèle.** Le fichier se fabrique **depuis la base du classeur, dans
+  un travailleur** (`src/classeurs/ecrivain.ts`), une fois écrit dans la base
+  tout ce que l'onglet y a mis (le point d'un simple toucher qui attend, ce
+  que les instruments viennent de faire) : le travailleur lit la base d'une
+  traite (sans jamais la créer, et en la lâchant si un autre onglet veut
+  l'effacer), fusionne ses mises à jour, rejoue le document dans un document
+  d'essai pour vérifier qu'il est entier (comme à l'ouverture d'un fichier),
+  compresse, et rend le fichier. Mesuré sur 60 pages de 300 traits (18 Mo) :
+  aucune tâche de plus de 100 ms sur le fil principal pendant
+  l'enregistrement (avant, la page gelait environ 1,7 s). Le travailleur est
+  intégré à la page : il marche aussi dans la version clé USB (`file://`,
+  vérifié dans Chromium). Si le navigateur n'a pas de travailleur, ou s'il ne
+  démarre pas, le même code tourne sur le fil principal (la page gèle alors
+  le temps de l'enregistrement) : Ctrl + S marche toujours, et l'écrivain le
+  note (`mode = 'fil'`) pour les enregistrements automatiques à venir, qui
+  ne tourneront pas ainsi.
+- **Depuis la mémoire, quand la base a un trou.** Si la base du navigateur a
+  refusé une écriture (le trou, voir « Les classeurs : où ils vivent »), ou
+  ne s'ouvre pas, ou que le travailleur ne peut pas la lire (elle est
+  abîmée, IndexedDB lui est refusé), Ctrl + S écrit le fichier depuis la
+  mémoire de l'onglet, qui a tout ce qu'il a écrit, même ce que la base a
+  refusé : « Enregistrement depuis la mémoire de cet onglet… » (la page gèle
+  un instant, comme avant le lot 4, où c'était toujours ainsi). Une base
+  trouée ne fait jamais de fichier qu'on ne pourrait pas rouvrir.
+- **Jamais un fichier qu'on ne pourrait pas rouvrir.** Une base trouée
+  relue (voir « Une base trouée relue ») : Ctrl + S écrit ce qui s'en relit,
+  depuis la base par le travailleur (`lisible`), ou depuis la mémoire
+  (`ecrireLisible`, qui ne garde que ce qui se relit et le vérifie), et dit
+  « Classeur enregistré, sans la partie qui ne se relit plus dans ce
+  navigateur : Symétrie 2026-10-10 14h05.memc (1 Ko). », jamais « Classeur
+  enregistré : ». Même chose pour « Enregistrer d'abord » (un classeur non
+  ouvert), la clé (« Classeur enregistré sur la clé, sans la partie… ») et
+  toute la bibliothèque (« « Symétrie » n'y est qu'en partie (une partie ne
+  se relit plus dans ce navigateur). »).
+- **Ouvrir un classeur…** (Ctrl + O ; « Ouvrir… » dans le bandeau de la
+  bibliothèque, ou son menu ⋯ au téléphone ; un fichier glissé sur la page ou sur la bibliothèque ;
+  `src/classeurs/fichiers.ts`) **ajoute** le classeur d'un fichier `.memc` à
+  la bibliothèque, comme un nouveau classeur, sans rien remplacer ; ou, au
+  choix, remplace celui qui est ouvert (voir plus bas). L'aide de l'entrée :
+  « Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace
+  celui-ci. ». Sur Chrome et Edge (aussi dans la version clé USB), le choix
+  passe par `showOpenFilePicker` (plusieurs fichiers à la fois, des `.memc`
+  et des `.memb` : « Classeur ou bibliothèque (MEM teachingtool) », le même
+  dossier d'une fois sur l'autre) : le navigateur donne alors le fichier
+  lui-même, où le classeur pourra s'enregistrer tout seul ; renoncer ne fait
+  rien ; ailleurs (Firefox, Safari, l'iPad, une page intégrée qui le refuse),
+  le choix de fichier d'avant, plusieurs à la fois aussi (sans filtre sur
+  l'iPad, qui griserait les `.memc`). Le fichier est lu et vérifié en entier
+  dans le travailleur de l'écrivain avant de toucher à quoi que ce soit (« Lecture
+  du fichier… » au-delà de 2 Mo ; un fichier de 18 Mo s'ouvre sans geler la page,
+  mesuré : aucune tâche de plus de 100 ms) : un fichier abîmé (tronqué, ou
+  d'un seul bit changé : la somme CRC-32 et la taille de la fin du gzip sont
+  vérifiées, et chaque page de l'ordre doit exister avec ses formes), un film
+  élève (`.mem`), un fichier d'une version plus récente ou un fichier
+  quelconque sont refusés avec une phrase qui dit quoi faire. Puis on le
+  **reconnaît** (`src/classeurs/reconnaitre.ts`, pur et testé) :
+  - **un nouveau** : « Ouvrir ce classeur ? » : « « Symétrie 2026-10-07
+    14h05.memc » : 12 pages, enregistré le mardi 7 octobre 2026 à
+    14 h 05. » [Annuler] [Remplacer « Mon tableau »…] [**Ajouter à la
+    bibliothèque**] (le focus). Ajouté : sous l'id du fichier s'il est
+    libre (aucune fiche, aucune base ; sinon un neuf), sous son nom (celui
+    de l'en-tête ; un fichier d'avant le lot 4 : d'après le nom du fichier,
+    sans sa date, et « tableau-2026-10-07-14h05 » devient « Tableau du 7
+    octobre 2026 »), dans le dossier qu'on regarde dans la bibliothèque (la
+    racine depuis le tableau), reçu et modifié à la date du fichier, qui le
+    garde depuis (l'état de la sauvegarde le sait) ; puis on y va, sans rien
+    perdre de celui-ci (voir « La bibliothèque des classeurs ») : « Classeur
+    ajouté à la bibliothèque : « Symétrie » (12 pages). » ;
+  - **déjà là** (le même id ; ou, sans id, ou un id inconnu ici, la même
+    histoire : un appareil Yjs en commun dans les vecteurs d'état, un
+    clientID tiré au hasard sur 32 bits) : « Ce classeur est déjà dans la
+    bibliothèque : « Symétrie » (modifié aujourd'hui à 14 h 05). » (ou « Ce
+    fichier ressemble au classeur « Symétrie » de la bibliothèque… : ils ont
+    la même origine. »), puis la comparaison du fichier et de la base (et,
+    s'il est ouvert ici, de ce que l'onglet n'y a pas encore écrit) :
+    « Celui de la bibliothèque contient déjà tout ce fichier. » [Ajouter
+    quand même comme copie] [**Ouvrir celui de la bibliothèque**] ; « Le
+    fichier est plus récent : il contient tout ce que la bibliothèque a de ce
+    classeur, et plus. » [Ajouter comme copie] [**Mettre à jour le
+    classeur**] ; « Le fichier et celui de la bibliothèque ont changé chacun
+    de leur côté. » [Remplacer celui de la bibliothèque…] [**Ajouter comme
+    copie**] (un id neuf, « Symétrie (copie) ») : on ne fusionne jamais deux
+    histoires qui ont divergé. Une base de cet id présente sans fiche (l'index
+    perdu) est d'abord adoptée, puis comparée : rien n'est jamais créé ni
+    effacé par-dessus ;
+  - **dans la corbeille** : « (Un classeur de même origine est dans la
+    corbeille.) », et il s'ajoute sous un id neuf.
+  Une **copie** ajoutée ainsi (« Ajouter comme copie », « Ajouter quand même
+  comme copie », un classeur de même origine dans la corbeille, un id déjà
+  pris ; plusieurs fichiers, une bibliothèque, « Récupérer une sauvegarde du
+  Drive » qui passe par le même chemin) se crée comme celle de « Dupliquer
+  le classeur » : son registre des publications vidé, et marquée comme copie
+  (voir « Dupliquer le classeur ») ; « Ses séances déjà publiées le restent
+  depuis l'original : en publier une depuis la copie fait un nouveau lien. »
+  (après plusieurs fichiers ou une bibliothèque : « Une copie ne garde pas
+  les séances publiées de son original… ») ; de même pour « Remplacer
+  « … »… » par le fichier d'un classeur de la corbeille (voir « Remplacer »).
+  Un fichier « nouveau », lui (le
+  même classeur sur un autre ordinateur), garde son id et son registre :
+  republier met à jour le lien déjà donné, comme avant.
+- **Mettre à jour le classeur, sans rien perdre** : les onglets ouverts sur
+  lui (et, pour le premier, la version d'avant) cessent d'écrire, 300 ms ;
+  ouvert ici, ce qui attend s'écrit (le point d'un simple toucher, la piste
+  des instruments, les écritures de la base ; une base trouée se répare,
+  sinon c'est refusé) et l'onglet se coupe de sa base ; puis le travailleur
+  fait UNE transaction : la base relue, fusionnée, doit être encore contenue
+  dans le fichier ; alors l'état du fichier y est **ajouté** (sans rien
+  effacer : la fusion vaut le fichier, le film reste dans l'ordre du temps) ;
+  sinon (un autre onglet a écrit entre la comparaison et le clic) rien n'est
+  écrit, et la fenêtre revient sur « … ont changé chacun de leur côté ».
+  « « Symétrie » mis à jour depuis le fichier (12 pages). » ; ouvert ici, la
+  page se recharge sur lui. Si ce fichier est celui de sa clé (rouvert
+  depuis un conflit, voir « L'enregistrement automatique sur la clé »), la
+  clé reprend sur lui.
+- **Remplacer**. « Remplacer « Mon tableau »… » (un nouveau) mène à la
+  question d'avant : elle dit ce qui sera remplacé
+  (« Ouvrir ce classeur ? » : « 12 pages, enregistré le mardi 7 octobre 2026
+  à 14 h 05. Il remplace le classeur « Mon tableau » de ce navigateur (8
+  pages) et tout son historique ») et propose **Enregistrer d'abord** ; si
+  le classeur ouvert s'enregistrait sur la clé, elle ajoute
+  « L'enregistrement automatique dans « Symétrie.memc » s'arrête : ce fichier
+  garde le classeur d'avant. ». Le remplacement se fait d'un bloc dans la
+  base du classeur (s'il échoue, faute de place, l'ancien contenu reste
+  entier), puis la page se recharge : « Classeur ouvert : 12 pages. ».
+  **Remplacer donne au classeur l'identité du fichier** : son id (s'il en a
+  un qu'aucun autre classeur de la bibliothèque n'a) et son nom ; sinon (un
+  fichier d'avant le lot 4, ou la copie d'un autre classeur d'ici) un id
+  neuf, et le nom ne change pas. La base ne change pas (le premier garde
+  `mem-tableau-local`) ; l'adresse suit (`?classeur=<id>`), les autres
+  onglets rechargent sur la nouvelle identité. Le lien avec la clé et la
+  copie du Drive de l'ancien contenu sont retirés : ces fichiers restent les
+  sauvegardes du classeur d'avant, et rien de nouveau n'y est écrit (la
+  question le dit : « Sa copie sur le Drive reste celle du classeur
+  d'avant. » ; un fichier du même classeur, la même identité, garde le lien
+  du Drive, dont le garde-fou de l'histoire ne remplace pas la copie d'avant
+  par moins qu'elle, voir « La copie sur le Drive »).
+  Le fichier d'un classeur **qui est dans la corbeille** (« (Un classeur de
+  même origine est dans la corbeille.) ») : le classeur ouvert prend un id
+  neuf, l'original pouvant être remis ; il en devient une **copie**, comme
+  par « Ajouter » : l'état du fichier, puis, dans la même transaction, la
+  petite mise à jour qui vide le registre des publications et le marque
+  (`ecrivain-pur.preparerCopie`, préparée dans le travailleur : genre
+  `preparer-copie`), et « Classeur ouvert : 12 pages. Ses séances déjà
+  publiées le restent depuis l'original : en publier une depuis la copie
+  fait un nouveau lien. » Sans cela, l'original remis, republier depuis lui
+  une séance de l'original mettrait à jour le lien déjà donné à l'autre
+  classe (trouvé en corrigeant « migration », vérifié :
+  `lot4/corrections-migration.mjs`, C).
+  « Remplacer celui de la bibliothèque… » (deux histoires qui ont divergé)
+  pose la même question pour lui (« Enregistrer d'abord » l'écrit depuis sa
+  base s'il n'est pas ouvert ici) ; il garde son identité, sa clé continue
+  sur le nouveau contenu (« Le fichier « X.memc » de la clé sera remplacé lui
+  aussi. », sauf si c'est ce fichier-là), sa copie du Drive aussi.
+- **La case Enregistrer automatiquement les changements dans ce fichier**
+  (Chrome, Edge ; le fichier vient de `showOpenFilePicker`), cochée : sur
+  « Ajouter » (un nouveau, qui garde l'id du fichier), « Ouvrir celui de la
+  bibliothèque » ou « Mettre à jour » (s'il n'a pas encore de clé), et dans
+  la question de Remplacer, le fichier ouvert devient celui de la clé, et le
+  classeur s'y enregistre ensuite tout seul. C'est le geste du poste remis à
+  zéro : ouvrir le classeur de la clé. Mais Chrome oublie son accord d'écrire
+  dans le fichier dès que la page change (vérifié dans le vrai Chromium, en
+  `file://` comme en http : voir « L'enregistrement automatique sur la
+  clé », « L'accord du navigateur ») ; ces gestes changent de page (le
+  classeur ajouté s'ouvre, le remplacé se recharge) : l'accord n'est donc
+  pas demandé dans ce clic (il serait perdu, puis redemandé), mais à
+  l'arrivée, une fois la clé vérifiée, et le message dit la vérité : « … Il
+  s'enregistre automatiquement dans « Symétrie.memc ». » seulement si le
+  navigateur le permet déjà (« Autoriser à chaque visite », donné une autre
+  fois) ; sinon « Classeur ajouté à la bibliothèque : « Symétrie » (1 page).
+  Pour qu'il s'enregistre tout seul dans « Symétrie.memc », le navigateur
+  demande votre accord. » [Autoriser] (avec « Clé en pause » et le bandeau),
+  et le clic fait la demande du navigateur (refusée : « Le navigateur n'a pas
+  permis d'écrire dans « Symétrie.memc » : l'enregistrement sur la clé reste
+  en pause. »). Seul « Ouvrir celui de la bibliothèque » sur le classeur
+  ouvert ici reste sur la page : l'accord y est demandé dans le clic. Jamais
+  pour une copie (le fichier porte l'id de l'original), ni pour le fichier
+  d'un autre classeur de la bibliothèque, ni pour un fichier lâché (pas de
+  poignée).
+- **Plusieurs fichiers** d'un coup (choisis, ou lâchés ensemble) : chacun est
+  lu et reconnu sans rien écrire, puis une seule fenêtre dit tout : « Ouvrir
+  ces fichiers ? » « 4 fichiers : 2 classeurs à ajouter ; 1 déjà dans la
+  bibliothèque (rien à faire) ; 1 plus récent dans le fichier (mis à jour) ;
+  1 illisible : « x.memc » : ce fichier .memc est abîmé. » [Annuler]
+  [Ajouter] ; un classeur qui a divergé y est ajouté comme copie (« 1 qui a
+  changé des deux côtés (ajouté comme copie) »), un même classeur deux fois
+  ne s'ajoute qu'une fois, une bibliothèque (`.memb`) est laissée (elle
+  s'ouvre seule). Puis « 3 classeurs ajoutés à la bibliothèque, 1 mis à
+  jour. » [Voir la bibliothèque]. Dans un lot, sans question fichier par
+  fichier, un fichier qui porte un id inconnu ici est ajouté sous cet id
+  même s'il partage une histoire avec un classeur d'ici (c'est le plus
+  souvent une copie faite ailleurs, un classeur à part, qu'on ne fusionne
+  pas et qu'on n'écarte pas sans le demander) : « ressemble » n'y vaut que
+  pour un fichier sans id.
+- **Glisser des fichiers** sur la bibliothèque : un cadre pointillé
+  « Lâchez pour ajouter à la bibliothèque » tant qu'ils la survolent, puis le
+  même chemin ; sur le tableau, de même. Ce qui n'est ni un `.memc` ni un
+  `.memb` : « Ce fichier n'est ni un classeur (.memc) ni une bibliothèque
+  (.memb). ». On n'ouvre pas de fichier pendant la revue, une séance
+  d'automatismes ou une fenêtre ouverte. Sans l'index de la bibliothèque (le
+  repli), « Ouvrir un classeur… » remplace le classeur ouvert, comme avant.
+- **Les autres onglets.** Un autre onglet ouvert sur le même classeur
+  l'apprend aussitôt, cesse d'écrire et le dit : « Le classeur a changé »
+  (« Le classeur « Mon tableau » a été remplacé dans un autre onglet… »,
+  Recharger) ; si la base du classeur a été supprimée définitivement
+  ailleurs : « Le classeur a été supprimé » (Ouvrir la bibliothèque : la
+  bibliothèque seule). Un
+  seul avis, même si plusieurs messages arrivent. Les onglets se parlent par
+  le canal `mem-teachingtool-classeur` (`{ type, base, id }` : un onglet
+  ouvert sur un autre classeur n'y voit rien). Le premier classeur parle et
+  écoute aussi sur `mem-tableau`, le canal d'avant : un onglet de la version
+  d'avant (la clé du lot 3) ouvert sur lui l'apprend, et réciproquement ; la
+  version d'avant ne lit que `type: 'remplace'`, la nouvelle y ajoute
+  `raison` (`remplace` ou `supprime`). La version d'avant n'est jamais
+  prévenue pour un autre classeur (vérifié sur la même origine).
+- **Exporter le classeur en PDF…** : toutes les pages, cadrées sur leur
   contenu, en feuilles A4 à imprimer ou à déposer dans l'ENT (voir
   « Exporter en PDF »). Ce n'est pas une sauvegarde : un PDF ne se rouvre pas
   dans MEM.
 
-Le menu rappelle le dernier enregistrement dans un fichier (« aujourd'hui à
-14 h 05 »), ou qu'il n'y en a jamais eu. C'est la passerelle entre la version
-en ligne et la version clé USB, et d'une machine à l'autre. Le lecteur des
-élèves refuse un `.memc` en disant où l'ouvrir. Au démarrage, l'outil demande
-aussi au navigateur de ne pas vider sa base pour faire de la place
-(`navigator.storage.persist()` : Chrome, Edge et Safari décident seuls, sans
-rien demander ; Firefox pose la question) ; ce n'est pas une sauvegarde.
+Le menu commence par l'état de la sauvegarde du classeur (voir « L'état de
+la sauvegarde »), dont le dernier enregistrement dans un fichier
+(« Dernier enregistrement dans un fichier : aujourd'hui à 14 h 05 », ou
+« Jamais enregistré dans un fichier ») ; avant le lot 4 C3, une note au bas
+du menu le disait. Le fichier est la passerelle entre la version en ligne
+et la version clé USB, et d'une machine à l'autre. Le lecteur des élèves refuse un `.memc`
+en disant où l'ouvrir (« Ce fichier est un classeur complet enregistré par
+l'enseignant (.memc) : il s'ouvre dans MEM teachingtool, pas ici. … »). Au
+démarrage, l'outil demande aussi au navigateur de ne pas vider sa base pour
+faire de la place (`navigator.storage.persist()` : Chrome, Edge et Safari
+décident seuls, sans rien demander ; Firefox pose la question) ; ce n'est
+pas une sauvegarde.
 
 Le fichier : une première ligne de texte,
-`{"format":"mem-tableau","v":1,"app":"MEM teachingtool","date":…,"pages":…}`,
-puis le document Yjs entier, compressé (gzip). Le film élève commence lui
-aussi par `{"format":` ; chaque lecteur reconnaît le sien à ses premiers octets.
-Le fichier garde aussi la corbeille des pages, leurs noms et les copies de
-pages (qui savent de quelle page elles héritent leur passé), et les notes du
-film qui disent ce qui n'est pas un geste (`seulOrdre`, `naissance`,
-`rangement`) : c'est toujours la version 1, et une version d'avant les ignore
-sans rien casser (une copie y paraît d'un coup au replay, comme une page
-neuve ; un essai le vérifie avec la version d'avant le lot 3). L'en-tête ne compte que les
-pages de l'ordre, pas celles de la corbeille. Une copie de page coûte le poids
-de la page dans le document (environ 400 Ko pour une page de 300 traits
-longs), jamais celui de son film : son passé se relit dans celui de
-l'original.
+`{"format":"mem-tableau","v":1,"app":"MEM teachingtool","date":…,"pages":…,"nom":"Symétrie centrale","id":"…"}`,
+puis le document Yjs entier, compressé (gzip). Le nom (60 caractères au
+plus, sans caractère de contrôle) et l'id (16 caractères hexadécimaux) du
+classeur sont à la fin de l'en-tête depuis le lot 4 ; c'est toujours la
+version 1 : le format reste en tête, et la version d'avant, qui ne lit que
+`format`, `v`, `date` et `pages`, ouvre ces fichiers comme les siens (un
+essai le vérifie avec 41d2739, dans les deux sens). L'en-tête tient dans les
+4 096 premiers octets, même avec un nom de 60 caractères accentués ou de
+guillemets ; `lireEntete` le lit seul, sur un début de fichier, sans rien
+décompresser (`lireTableau`, qui vérifie tout, dirait « abîmé » sur un
+début). Un nom ou un id qui ne sont pas valables sont ignorés à la lecture.
+Le film élève commence lui aussi par `{"format":` ; chaque lecteur reconnaît
+le sien à ses premiers octets. Le fichier garde aussi la corbeille des
+pages, leurs noms et les copies de pages (qui savent de quelle page elles
+héritent leur passé), et les notes du film qui disent ce qui n'est pas un
+geste (`seulOrdre`, `naissance`, `rangement`) : une version d'avant les
+ignore sans rien casser (une copie y paraît d'un coup au replay, comme une
+page neuve ; un essai le vérifie avec la version d'avant le lot 3).
+L'en-tête ne compte que les pages de l'ordre, pas celles de la corbeille.
+Une copie de page coûte le poids de la page dans le document (environ 400 Ko
+pour une page de 300 traits longs), jamais celui de son film : son passé se
+relit dans celui de l'original.
+
+Les noms de fichiers (le classeur, l'image copiée, le PDF) se font tous par
+une seule fonction, `nomSur` (`src/fichier.ts`) : les blancs réunis,
+`\ / : * ? < > |`, les guillemets et les caractères de contrôle remplacés par
+« - », ni espace ni point au bout (Windows les refuse), une longueur bornée
+(80 caractères pour un classeur, 60 pour une page), et les noms réservés de
+Windows (CON, PRN, AUX, NUL, COM1 à COM9, LPT1 à LPT9, seuls ou avant un
+point) suivis de « (classeur) » : « CON (classeur) 2026-10-10 14h05.memc ».
+
+## Toute la bibliothèque dans un fichier
+
+Pour changer d'ordinateur, ou garder une copie de tout : un seul fichier
+`.memb` avec tous les classeurs (sans la corbeille) et l'arbre des dossiers
+(`src/classeurs/archive.ts`, pur et testé ; le chemin :
+`src/classeurs/fichiers.ts`).
+
+- **Enregistrer toute la bibliothèque…** (le menu ⋯ du bandeau de la
+  bibliothèque : « Un seul fichier .memb avec tous les classeurs (sans la
+  corbeille) et les dossiers : pour changer d'ordinateur, ou garder une
+  copie de tout. ») : le nom proposé, « Bibliothèque 2026-10-10 14h05.memb »
+  (Chrome et Edge demandent où l'écrire, dans le clic ; ailleurs il se
+  télécharge). Puis, au fil de l'eau (un classeur à la fois en mémoire) :
+  l'index, chaque classeur fabriqué par l'écrivain depuis sa base, hors du
+  fil principal (« Bibliothèque : classeur 3 sur 12… » ; le classeur ouvert
+  dans l'onglet : ce qui attend s'écrit d'abord), leurs aperçus. Mesuré sur
+  30 classeurs dont un de 60 pages de 300 traits : aucune tâche de plus de
+  100 ms. « Bibliothèque enregistrée : Bibliothèque 2026-10-10 14h05.memb
+  (12 classeurs, 48 Mo). » ; un classeur qui n'a pas pu y être mis est
+  nommé. Un échec en route (la clé pleine) : l'écriture est abandonnée, le
+  fichier d'avant reste entier, et on le dit. Chaque classeur est ensuite
+  « dans un fichier » depuis cette date (l'état de la sauvegarde le sait).
+- **Le fichier** est un zip écrit à la main : d'abord `bibliotheque.json`
+  (`{ "format": "mem-bibliotheque", "v": 1, "app", "date", "dossiers",
+  "classeurs": [{ id, nom, dossier, etiquettes, cree, modifie, pages,
+  fichier: "classeurs/<id>.memc", apercu? }] }`, sans vecteurs : les
+  comparaisons se calculent à l'ouverture), puis chaque `classeurs/<id>.memc`
+  tel qu'« Enregistrer le classeur » l'écrit, puis `apercus/<id>.png`. Les
+  entrées sont stockées (un `.memc` est déjà compressé), et chaque en-tête
+  porte la somme CRC-32 et la taille de son entrée : aucun descripteur de
+  données (celui que le zip en flux de fflate écrit toujours ; relu en flux,
+  une entrée qui contient par hasard une signature « PK » y était coupée sans
+  rien dire, environ 1,3 % des bibliothèques de 18 Mo, mesuré). Pas de
+  ZIP64 : 4 Go et 65 534 fichiers au plus, sinon un refus clair avant
+  d'écrire quoi que ce soit. **Renommé en `.zip`, il s'ouvre partout**
+  (`unzip -t` le vérifie), et chaque `.memc` qu'on en sort s'ouvre seul
+  dans MEM teachingtool.
+- **Ouvrir une bibliothèque** : Ctrl + O, « Ouvrir… », ou le fichier glissé
+  sur la bibliothèque (un fichier qui commence par `PK` est une
+  bibliothèque, quel que soit son nom). Elle se lit par son répertoire
+  central : la fin du fichier, puis chaque entrée à la place qu'il dit
+  (`File.slice`), sa somme vérifiée ; rien n'est jamais balayé à la
+  recherche d'une signature. Un fichier tronqué (sans sa fin) se relit en
+  suivant les en-têtes locaux, qui ont leurs tailles : ce qui est entier
+  avant la coupure se retrouve. Chaque classeur est lu et vérifié par le
+  travailleur (sa tranche, sa somme) et comparé à ce qui est ici
+  (« Comparaison… 2 sur 3 »), puis : « Ouvrir cette bibliothèque ? »
+  « « …memb » : 12 classeurs et 4 dossiers, enregistrée le …. Déjà dans ce
+  navigateur : 3 (ils ne sont pas touchés). À ajouter : 9 (dont 1 comme
+  copie : « Symétrie », qui a changé des deux côtés). Illisible : 1 (« x » :
+  …). » ; s'il y en a de plus récents dans le fichier, la case, décochée,
+  **Mettre aussi à jour les 2 classeurs plus récents dans le fichier (ils
+  contiennent tout ce que ce navigateur en a : rien n'est perdu)** (la mise
+  à jour se fait comme pour un fichier, voir « Enregistrer et ouvrir un
+  classeur ») ; jamais un classeur d'ici remplacé sans elle. [Annuler]
+  [Ajouter] (rien à faire : [Fermer]). Les dossiers d'abord : le même id
+  qu'un dossier d'ici, on garde celui d'ici ; le même nom sous le même
+  parent, on les réunit ; sinon il est créé, avec sa couleur et son
+  étiquette de classe. Puis les classeurs, dans leurs dossiers, avec leurs
+  étiquettes et leurs aperçus (sous l'id du fichier s'il est libre) ; ce
+  qui a divergé, comme copie, nommé « … (copie) ». « Bibliothèque ouverte :
+  9 classeurs ajoutés, 2 mis à jour, 1 ajouté comme copie ; 1 illisible
+  (« x » : …). » Plus de place en route : ce qui est fait reste, ce qui
+  manque est dit (« plus de place dans ce navigateur : 3 classeurs n'ont pas
+  été ajoutés (…) »). Dans une bibliothèque, un classeur qui porte un id
+  inconnu ici s'ajoute sous cet id, même s'il partage une histoire avec un
+  classeur d'ici (une copie faite par « Dupliquer le classeur » : un
+  classeur à part).
+- **La version d'avant** (la clé du lot 3) refuse un `.memb` avec sa phrase
+  (« Ce fichier n'est pas un tableau enregistré par MEM teachingtool
+  (fichier .memc). ») : vérifié avec 41d2739.
+
+## L'enregistrement automatique sur la clé
+
+Sur Chrome et Edge, le classeur peut s'écrire tout seul dans un fichier
+`.memc` choisi une fois, sur la clé USB du professeur ou dans un dossier
+synchronisé (`src/classeurs/cle.ts`). C'est surtout fait pour la version
+d'un seul fichier, sur le poste de lycée remis à zéro chaque soir : la clé
+garde le classeur, le navigateur peut tout oublier. Ailleurs (Firefox,
+Safari, l'iPad), le navigateur ne sait pas écrire seul dans un fichier :
+pas d'entrée, la ligne de la clé le dit, et le rappel d'enregistrer (voir
+« L'état de la sauvegarde ») invite à Ctrl + S.
+
+- **L'activer.** Menu ⋯ → **Enregistrer automatiquement dans un fichier…**
+  (« Sur la clé USB ou dans un dossier : le classeur s'y enregistre tout
+  seul, peu après chaque changement. ») ; le rappel d'enregistrer le propose
+  aussi (« Enregistrer automatiquement sur la clé… »). Le navigateur demande
+  où écrire (le nom proposé : celui du classeur, `Symétrie centrale.memc`) ;
+  une première écriture part aussitôt : « Le classeur s'enregistre
+  maintenant tout seul dans « Symétrie centrale.memc ». ». Un fichier qui
+  existe déjà n'est pris que s'il ne perd rien : un fichier qui n'est pas un
+  classeur (« Ce fichier n'est pas un classeur : choisissez un fichier
+  .memc, ou un autre nom. »), un autre classeur (« Ce fichier contient un
+  autre classeur (« Fractions ») : choisissez un autre nom. »), le même
+  classeur avec des changements que celui-ci n'a pas (« … il n'est pas
+  remplacé. Pour les retrouver, ouvrez-le (Ctrl + O). ») sont refusés ; le
+  fichier d'un autre classeur de la bibliothèque aussi (« Ce fichier sert
+  déjà à l'enregistrement automatique de « Fractions » : choisissez un autre
+  nom. »). Le même classeur, qui a moins ou autant : accepté. Le fichier
+  choisi (sa poignée) est gardé dans l'index de la bibliothèque (le magasin
+  `poignees`) ; un navigateur qui ne sait pas l'y ranger le garde le temps de
+  l'onglet (« Après un rechargement, il faudra choisir de nouveau le
+  fichier. »). Une fois actif, le menu propose **Enregistrer maintenant sur
+  la clé** (Ctrl + S), **Enregistrer une copie dans un fichier…** et
+  **Arrêter l'enregistrement automatique sur la clé** (le fichier garde le
+  classeur tel qu'il était à sa dernière écriture). On l'active aussi en
+  ouvrant le fichier de la clé (la case de la fenêtre « Ouvrir ce
+  classeur ? », voir « Enregistrer et ouvrir un classeur »).
+- **Quand.** 20 secondes après le dernier changement, et au plus tard 2
+  minutes après le premier changement pas encore écrit ; seulement au calme
+  (aucun geste en cours, aucun point d'un simple toucher qui attend, 1,5 s
+  depuis le dernier : jamais pendant un trait, même de 30 s, mesuré avec une
+  horloge simulée) ; pas avant 20 fois la durée de l'écriture précédente ;
+  tout de suite quand l'onglet passe en arrière-plan. Une écriture à la
+  fois ; un changement arrivé pendant elle en appelle une autre. Une
+  écriture automatique ne pose jamais le point qui attend (le double-clic au
+  Stylo) ; Ctrl + S, lui, le pose, vide la piste des instruments, et écrit
+  aussitôt. Tant que le dernier trait n'est pas sur la clé, le texte court
+  dit **« Clé : pas encore à jour »** (et la ligne : « Sur la clé
+  (Symétrie.memc) : pas encore à jour, les derniers changements partent
+  bientôt (dernière écriture il y a 2 min) »), sans point ambre ni bandeau ;
+  « Clé : à l'instant » n'est dit qu'une fois tout écrit. Un fichier choisi
+  où rien ne s'est encore écrit (la première écriture refusée, puis un
+  rechargement) n'est jamais « à jour » : « Sur la clé (Symétrie.memc) : pas
+  encore écrit (la première écriture part bientôt) », et il ne compte pas
+  comme une sauvegarde (le rappel d'enregistrer peut venir). Le classeur
+  ouvert depuis le fichier de la clé, sans changement depuis, est « Clé : à
+  jour ».
+- **Fermer l'onglet avant l'écriture** (les 20 secondes après le dernier
+  trait : la fin du cours). Tant que des changements attendent d'être écrits
+  sur la clé par cet onglet, et qu'ils s'y écriront d'eux-mêmes (la clé à
+  jour ou en train d'écrire : ni en pause, ni en conflit, ni en échec, ni
+  écrite par l'autre onglet), fermer l'onglet ou le navigateur, ou
+  recharger, pose la question du navigateur (`beforeunload` : « Quitter le
+  site ? »), et l'écriture part aussitôt, sans attendre le calme. Rester
+  (« Annuler ») : le trait est sur la clé en un instant (mesuré : moins d'une
+  seconde après la question, au lieu de 20 s, aussi en `file://` avec un
+  vrai fichier du disque), et fermer de nouveau ne demande plus rien.
+  Quitter quand même : pendant la question, la page ne fait plus rien
+  (mesuré : ni le fil principal, ni un travailleur qu'on y lancerait), rien
+  ne peut donc s'écrire ; rien n'est perdu dans ce navigateur, et la
+  prochaine ouverture du classeur l'écrit sur la clé (« Clé : pas encore à
+  jour », puis l'écriture). Une déconnexion de la session Windows, elle, ne
+  laisse pas poser de question : le texte court est là pour le voir avant.
+  La question n'est posée que pendant ce temps-là (elle empêcherait sinon
+  certains navigateurs de garder la page en mémoire), jamais quand on part
+  par la bibliothèque (elle attend l'écriture, 10 s au plus, ou « Ouvrir
+  sans attendre »), ni quand le classeur est remplacé ou supprimé. Le
+  délai de 20 s ne change pas (essai : `lot4/corrections-sauvegardes.mjs`,
+  A et F).
+- **Comment.** Le fichier se fabrique dans le travailleur de l'écrivain,
+  depuis la base du classeur, jamais sur le fil principal : 60 pages de 300
+  traits (18 Mo), aucune tâche de plus de 100 ms (mesuré). Puis il s'écrit
+  d'un bloc (`createWritable`, `write`, `close` : Chrome écrit à côté, puis
+  remplace ; si l'écriture échoue en route, le fichier d'avant reste entier).
+  Le classeur est dans un fichier depuis cette date (la date du dernier
+  enregistrement le note). Si le travailleur manque, rien ne s'écrit seul :
+  « ce navigateur ne permet pas d'écrire le fichier en arrière-plan :
+  enregistrez le classeur (Ctrl + S) » ; Ctrl + S écrit quand même sur la
+  clé. Pendant un trou de la base (voir « Les classeurs : où ils vivent »),
+  rien ne s'écrit seul non plus (une base trouée ne fait pas de fichier) :
+  Ctrl + S écrit sur la clé depuis la mémoire de l'onglet, et l'écriture
+  automatique reprend quand la base est réparée.
+- **Les garde-fous.** Avant chaque écriture, l'en-tête du fichier (ses 4 096
+  premiers octets, rien d'autre) doit être celui de ce classeur à la date
+  écrite d'ici ; sinon il n'est pas remplacé, et l'état le dit : « Le
+  fichier « Symétrie.memc » contient un autre classeur (« Fractions ») : il
+  n'est pas remplacé. », ou « Le fichier de la clé a été modifié ailleurs
+  (le mardi 7 octobre 2026 à 21 h 30) depuis le dernier enregistrement d'ici :
+  il n'est pas remplacé. » (le poste resté sur une version ancienne
+  n'écrase pas le travail du soir). Un fichier d'avant le lot 4, sans id, est
+  accepté s'il a la bonne date. Puis le fichier fabriqué doit contenir tout
+  ce qui a été écrit la dernière fois (son vecteur d'état contient le
+  précédent) : sinon « Ce classeur a perdu une partie de son histoire depuis
+  le dernier enregistrement sur la clé (remplacé par une autre version de
+  MEM teachingtool, ou une écriture refusée par le navigateur) : le fichier
+  « Symétrie.memc » n'est pas remplacé. ». C'est ce qui protège la clé quand
+  la version d'avant (la clé du lot 3), ouverte sur la même machine,
+  remplace le premier classeur par son « Ouvrir » (vérifié avec 41d2739 :
+  la nouvelle version, rechargée, le dit aussitôt et ne réécrit pas le
+  fichier, même à Ctrl + S, qui enregistre alors une copie). Un conflit
+  propose **Ouvrir le fichier de la clé** (lot 4 C9 ; sauf pour un fichier
+  qui n'est plus un classeur : le même chemin qu'« Ouvrir un classeur »,
+  le fichier comparé à ce classeur ; plus récent, « Mettre à jour le
+  classeur » sans rien perdre, et la clé reprend sur lui, à sa date ; s'il
+  n'a rien de plus, « Ouvrir celui de la bibliothèque » fait reprendre la
+  clé, qui le remplacera par ce classeur, qui a tout et plus ; chacun a
+  changé de son côté : « Ajouter comme copie », ou « Remplacer celui de la
+  bibliothèque… »), **Choisir un autre fichier…** et **Remplacer quand même** (après
+  une question : « … ce qu'il contient de plus sera perdu. Pour le garder,
+  choisissez plutôt un autre fichier, ou ouvrez-le (Ctrl + O). »).
+- **Les échecs.** Rien n'est perdu : la base du navigateur garde tout. La
+  clé retirée ou le fichier déplacé (« la clé n'est plus là, ou le fichier a
+  été déplacé »), la clé pleine (« la clé est pleine »), un fichier en lecture
+  seule ou ouvert dans Word ou OneDrive (« le fichier est en lecture seule,
+  ou ouvert dans un autre logiciel ») : le bandeau le dit (« L'enregistrement
+  sur la clé a échoué (la clé est pleine). Rien n'est perdu. » [Choisir un
+  autre fichier…] ×), l'état aussi (« Clé : pas à jour »), et l'écriture se
+  réessaie seule après 30 s, 1 min, 2 min, puis toutes les 5 minutes ; à la
+  reprise : « Enregistrement sur la clé repris. ».
+- **L'accord du navigateur.** Vérifié dans le vrai Chromium (sous Xvfb, en
+  `file://` comme en http, `lot4/CF1-vrai-chrome.mjs`) : Chrome oublie
+  l'accord d'écrire dans le fichier dès que la page change, et chaque
+  classeur est une page : un rechargement, un autre classeur ouvert depuis
+  la bibliothèque, puis le retour, remettent la clé en pause, sauf si l'on
+  a choisi **« Autoriser à chaque visite »** dans sa demande. Alors le
+  rechargement, les changements de classeur, et même le navigateur relancé
+  (le même profil) gardent l'accord. C'est le conseil, dit pendant que le
+  navigateur pose sa question : « Dans la demande du navigateur, choisissez
+  « Autoriser à chaque visite » s'il le propose : il ne la refera plus à
+  chaque changement de classeur. » (sa demande d'après un changement de page
+  le propose ; s'il n'avait que lu le fichier, une seconde demande suit,
+  « Enregistrer les modifications apportées à « … » ? »). Sur le poste remis
+  à zéro chaque soir, le profil est neuf chaque matin : une fois par jour.
+- **Après un rechargement** (ou un changement de classeur) sans cet accord
+  gardé : l'enregistrement se met en pause (« Clé en pause ») et un bandeau
+  discret le dit : « L'enregistrement sur la clé attend votre accord. »
+  [Reprendre l'enregistrement sur la clé]. Le clic (ou Ctrl + S) demande
+  l'accord, puis l'écriture due part. Rien n'est jamais demandé sans un
+  clic ; un accord gardé par Chrome (« Autoriser à chaque visite ») : tout
+  repart seul. Un classeur ajouté, ouvert, remplacé ou créé avec la case de
+  la clé le dit en arrivant, avec [Autoriser] (voir « Enregistrer et ouvrir
+  un classeur » ; jamais « Il s'enregistre automatiquement » sans l'accord ;
+  vérifié avec des permissions simulées comme celles de Chrome :
+  `lot4/CF1-accord.mjs`).
+- **Deux onglets** sur le même classeur : un seul écrit (Web Locks,
+  `mem-teachingtool-cle:<id>`) ; l'autre dit « Clé : par l'autre onglet »,
+  annonce ses changements à celui qui écrit (au plus toutes les 5 s), et
+  prend la suite quand il se ferme : il compare alors la base (qui a tout ce
+  que le premier a écrit) et sa mémoire, réunies, à ce qui est sur la clé.
+  Si celui qui écrit est en pause, en conflit ou en échec, l'autre le dit
+  (« Clé : pas à jour », « l'autre onglet ouvert sur ce classeur attend
+  votre accord pour écrire sur la clé… ») au lieu de « par l'autre onglet ».
+  Ils se parlent sur le canal des classeurs (`mem-teachingtool-classeur` :
+  `{ type: 'change', base }`, `{ type: 'etat-cle', base, etat, message }`, et
+  `{ type: 'etat-cle?', base }` pour le demander). Deux classeurs ont deux
+  fichiers, chacun écrit par son onglet.
+- **Dans la version d'un seul fichier** (`file://`), Chromium a
+  `showSaveFilePicker`, `showOpenFilePicker`, les Web Locks et le travailleur
+  intégré (vérifié) : tout marche de même. Avec un écran (Xvfb), les vraies
+  fenêtres GTK et de vrais fichiers sur le disque (`lot4/CF1-vrai-chrome.mjs`) :
+  il range la poignée d'un vrai fichier choisi en `file://`, et la retrouve
+  après un rechargement ou un changement de classeur (l'accord, lui, comme
+  plus haut). S'il ne la rangeait pas, le fichier serait à choisir de
+  nouveau après un rechargement, et la ligne de la clé le dirait.
+
+À essayer en classe : Chrome, puis Edge, sur le poste ; la vraie clé
+(activer, écrire quelques traits, regarder l'heure de « Clé : … ») ; la
+retirer pendant le cours (le bandeau, « Rien n'est perdu »), la remettre
+(« Enregistrement sur la clé repris. » dans les 5 minutes) ; recharger la
+page, puis « Reprendre l'enregistrement sur la clé », et dans la demande de
+Chrome « Autoriser à chaque visite » (puis changer de classeur : la clé ne
+se remet plus en pause) ; ouvrir le fichier de la clé sur le poste remis à
+zéro, avec la case : à l'arrivée, [Autoriser].
+
+## La copie sur le Drive
+
+À côté de la clé, une copie de chaque classeur part sur le Drive du
+professeur, à sens unique (lot 4 C10, choix b : la sauvegarde automatique
+va aux deux endroits ; `src/classeurs/copie-drive.ts`, et
+`src/classeurs/drive-pur.ts`, pur et testé, pour ce qui se décide sans
+réseau ; l'envoi lui-même dans `src/publication/drive.ts`). Elle protège
+le classeur d'un navigateur qui oublie tout, et marche aussi là où la clé
+ne s'écrit pas seule (Firefox, Safari, l'iPad) ; mais seulement depuis la
+version en ligne : la connexion Google ne marche pas dans la version clé
+USB, et l'état le dit (« Sur le Drive : seulement depuis la version en
+ligne (la connexion Google ne marche pas dans la version clé USB) »).
+
+- **Où.** Dans le Drive choisi pour le classeur (menu ⋯ → **Copie sur le
+  Drive…** : « Drive personnel », « Drive du lycée », « Pas de copie pour ce
+  classeur », et la case « Utiliser ce choix pour tous les classeurs qui
+  n'en ont pas » ; le Drive personnel au départ), dans un dossier **privé**
+  à part : « MEM - Sauvegardes » ou « LFB - Sauvegardes ». Il porte sa
+  propre marque (`memSauvegardes`, avec `memCompte`), jamais celle des
+  replays (`memReplay`) : ni Publier ni la copie ne prennent le dossier de
+  l'autre, même renommé à la main (il reprend son nom), et un dossier partagé
+  est refusé, comme celui des replays. Le relais ne le sert jamais : ni ce
+  dossier (pas dans sa liste `DOSSIERS`), ni l'extension `.memc`, ni ce
+  contenu (il commence par `{"format":"mem-tableau"`) ; un test le vérifie
+  dans le bac à sable du relais, même pour un `.memc` renommé `x.mem` et
+  rangé dans « MEM - Replay séances ». La fenêtre « Copie sur le Drive… »
+  montre aussi le compte connecté, [Se connecter à Google], la taille de la
+  copie (« La copie fait 3,2 Mo (aujourd'hui à 14 h 05) ; le Drive en garde
+  les 10 dernières versions. ») ; dans la version clé USB, elle est grisée
+  (« Seulement depuis la version en ligne (mathsetmoi.github.io). »).
+- **Le même fichier.** Chaque copie remplace le même fichier
+  (« Symétrie centrale.memc », `application/octet-stream`, sa description
+  « Sauvegarde automatique de MEM teachingtool. Pour l'ouvrir : Bibliothèque
+  → ⋯ → Récupérer une sauvegarde du Drive. »), retrouvé par son id, sinon,
+  dans le dossier, par la marque du classeur (`memClasseur`, une copie faite
+  depuis un autre onglet ou un autre ordinateur) ; un nouveau seulement s'il
+  n'existe plus, est à la corbeille du Drive, ou a quitté le dossier. Jamais
+  de suppression du fichier. Jusqu'à 5 Mo, une seule requête (multipart, le
+  contenu binaire tel quel) ; au-delà, l'envoi reprenable (la session, puis
+  le fichier ; la session se lit dans `Location` ou se refait avec
+  `X-GUploader-UploadID`). Ses marques : `memSauvegarde` (v1), `memClasseur`
+  (l'id), `memOrigine` (cet appareil : ce navigateur, tiré une fois), `memT`
+  (la date de son contenu).
+- **Les versions.** Le Drive garde lui-même les versions précédentes d'un
+  fichier ; on n'en retient que les **10 dernières** (`elaguerVersions`, au
+  mieux : la dernière n'est jamais effacée, ni une version gardée à la main
+  dans Google Drive, « Conserver indéfiniment »). Chaque version contient
+  déjà toute l'histoire d'avant elle (le document garde tout) : dix
+  suffisent. La raison : les versions d'un fichier binaire comptent dans la
+  place du compte (à vérifier sur le vrai compte) ; cent versions de 18 Mo
+  feraient 1,8 Go par gros classeur, sur un Drive personnel de 15 Go partagé
+  avec Gmail, et un Drive plein arrêterait aussi Publier.
+- **Quand.** 2 minutes après le dernier changement, au plus tard 10 minutes
+  après le premier pas copié ; au plus une fois par max(10 min, 1 min par
+  Mo, 20 fois la durée du dernier envoi) (un gros classeur sur un réseau
+  lent ne prend pas toute la bande) ; seulement au calme (jamais pendant un
+  trait) ; aussi quand l'onglet passe en arrière-plan. Le fichier se
+  fabrique dans le travailleur, depuis la base (jamais sur le fil principal ;
+  une base trouée ne se copie pas). On ne quitte jamais un classeur en
+  attendant le Drive : les **classeurs en retard** (changés depuis leur
+  dernière copie, ou jamais copiés, et dont la copie va sur le Drive
+  connecté) se copient depuis leur base, un à la fois, quand rien d'autre
+  n'est en cours, depuis n'importe quel classeur ouvert ; pas un classeur
+  vide jamais copié (le « Premier classeur » d'un navigateur neuf, chaque
+  matin sur le poste remis à zéro, ne fait pas un fichier de plus sur le
+  Drive). Un seul onglet copie un classeur à la fois (Web Locks,
+  `mem-teachingtool-drive:<id>` ; sans eux, Safari avant 15.4, Firefox avant
+  96, sans verrou : c'est le même fichier) ; une copie faite dans un autre
+  onglet compte dans celui-ci.
+- **Fermer l'onglet avant la copie** (les 2 minutes après le dernier trait :
+  la fin du cours), quand rien d'autre ne protège le classeur (pas de clé
+  qui s'écrive, ici ou dans l'autre onglet : Firefox, l'iPad, Chrome sans
+  clé). Avant le contrôle final du lot 4, rien ne le demandait : l'onglet
+  fermé 30 s après le dernier trait, le Drive ne l'a jamais eu, et sur un
+  poste remis à zéro chaque soir plus rien ne l'avait le lendemain. Comme
+  pour la clé : fermer l'onglet ou le navigateur, ou recharger, pose la
+  question du navigateur (`beforeunload`), seulement pendant qu'une copie
+  attend et qu'elle partirait d'elle-même (connecté, en ligne), et la copie
+  part aussitôt, sans attendre le calme ni le rythme. Rester : elle est sur
+  le Drive en un instant (mesuré avec Google simulé : 0,3 s). Quitter quand
+  même : la page ne peut plus rien envoyer ; rien n'est perdu dans ce
+  navigateur, et la prochaine ouverture, connectée, fait la copie. Pas de
+  question avec la clé à jour (elle protège le classeur ; écrite ou en
+  attente, elle pose la sienne), sans connexion Google, ni en partant par la
+  bibliothèque (les classeurs en retard se copient depuis le suivant) ou en
+  connaissance de cause (`drive-pur.questionDuDrive` ; essai
+  `lot4/CF2-drive-fermer.mjs`).
+- **La connexion.** La même que Publier (le droit `drive.file`, le choix du
+  compte) ; elle se charge à l'avance, peu après l'ouverture du classeur,
+  pour que le clic sur « Se connecter à Google » ouvre la fenêtre du premier
+  coup. **Jamais de fenêtre Google sans un clic.** Le jeton dure environ une
+  heure : expiré, la copie attend (« Sur le Drive : en attente de la
+  connexion Google », [Se connecter à Google] sur la ligne du Drive). Le
+  bandeau « La copie sur le Drive attend la connexion Google. » [Se
+  connecter à Google] ne paraît que si rien d'autre ne protège le classeur,
+  qu'une copie attend, et après 2 minutes sans geste ; avec la clé à jour,
+  ce n'est qu'une ligne d'information, ni bandeau ni point (le jeton expire
+  en plein cours). Le clic : Google reprend le compte habituel sans
+  redemander (`login_hint`, sans la liste des comptes : un seul clic), la
+  copie qui attend part aussitôt (au calme). Ce compte est, dans l'ordre, le
+  dernier connecté sur ce Drive depuis cet ordinateur (par la copie ou par
+  Publier : c'est le même jeton ; retenu sous une clé à la copie,
+  `mem-teachingtool-drive-compte:<compte>`, sans toucher à ce que retient
+  Publier pour son avertissement de compte), celui de la dernière copie de
+  ce classeur (sa fiche le garde : un poste dont on a vidé les réglages le
+  retrouve), sinon celui de Publier ; sans aucun, la liste de Google
+  (`select_account`), comme pour « Changer de compte Google ». Un seul jeton,
+  celui d'un compte, partagé avec Publier : publier dans l'autre Drive met la
+  copie en attente (voulu : une seule connexion à la fois) ; et il est à
+  l'onglet. **Il suit l'onglet d'un classeur à l'autre** : changer de
+  classeur recharge la page, et le jeton (valable environ une heure) la
+  traverse par la mémoire de l'onglet (`sessionStorage`, clé
+  `mem-teachingtool-connexion-google`, avec son expiration, son compte et le
+  courriel), écrit juste avant de partir (la bibliothèque, « Ouvrir un
+  classeur », « Remplacer », « Recharger » après un changement ailleurs, une
+  page rendue par le cache du navigateur) et effacé dès que la page suivante
+  l'a lu ; jamais dans `localStorage`, jamais dans l'adresse, jamais repris
+  expiré ni pour un compte inconnu ; « Se déconnecter » (ou un refus 401)
+  l'efface aussi. Arrivé connecté, la copie du nouveau classeur part sans un
+  clic, et les classeurs en retard (dont celui qu'on vient de quitter, changé
+  juste avant) se copient d'ici 30 s plus tard. C'est le seul endroit où le
+  jeton est écrit (la règle du lot 2, « jamais écrit », est assouplie pour
+  cela : à défaut, la copie s'arrêtait à chaque changement de classeur, et en
+  silence quand la clé enregistrait) ; pendant ce rechargement, une autre
+  page du même site ouverte dans ce même onglet pourrait le lire (le droit
+  `drive.file` ne donne que les fichiers créés par MEM teachingtool). Pour
+  revenir à la règle stricte, il suffit de ne plus appeler
+  `passerLaConnexion` (`src/publication/drive.ts`). Un autre onglet, ou la
+  page rechargée (F5), se reconnecte d'un clic, comme avant.
+  Le mauvais compte Google : le courriel est montré (« Sur le Drive personnel
+  (prof@lycee.fr) : … ») ; c'est celui où est vraiment la dernière copie.
+  Connecté ensuite avec un autre compte (« Changer de compte Google », ou
+  Publier), la ligne le dit : « Sur le Drive personnel : dernière copie sur
+  prof@gmail.com (il y a 1 min) ; connecté avec autre@gmail.com : la
+  prochaine ira là », et rien ne compte comme copié sur ce compte-là (ni la
+  protection, ni le texte court) jusqu'à sa première copie ; « Copie sur le
+  Drive… » le dit aussi (« La dernière copie, sur prof@gmail.com, fait … ;
+  la prochaine ira sur autre@gmail.com. »).
+- **Sans travailleur** (l'écrivain passé sur le fil principal, par exemple
+  après un Ctrl + S quand le travailleur n'a pas démarré) : la copie ne se
+  fait plus seule, et la ligne le dit dès qu'une copie attend (« Sur le
+  Drive : ce navigateur ne permet pas de faire la copie en arrière-plan »),
+  au lieu de « la première copie part bientôt ».
+- **Les échecs.** Rien n'est perdu (la base du navigateur garde tout) ; la
+  ligne du Drive le dit, sans jamais d'heure après un échec : hors connexion
+  (« … la copie partira au retour du réseau », et elle part), un réseau qui
+  filtre Google (« Google Drive ne répond pas (le réseau filtre peut-être
+  Google) »), le Drive plein (« le Drive est plein : libérez de la place dans
+  Google Drive »), trop long (« Google Drive met trop de temps à répondre
+  (réseau lent ?) ») ; on réessaie seul après 1, 2, 5, puis toutes les 10
+  minutes (« Copie sur le Drive reprise. »). La connexion refusée (401) :
+  déconnecté, la copie attend un clic.
+- **Les garde-fous**, sans rien remplacer : la copie du Drive mise à jour
+  **depuis un autre ordinateur** (une autre `memOrigine`) avec un contenu
+  plus récent que l'arrivée de ce classeur ici (`memT` après `recu`, ou sa
+  création) : « La copie du Drive a été mise à jour depuis un autre
+  ordinateur (le … à …) : elle n'est pas remplacée. » (le soir à la maison,
+  le matin au lycée sur le classeur de la veille) ; ce classeur a **perdu
+  une partie de son histoire** depuis la dernière copie (le fichier envoyé
+  ne contient pas tout ce qu'elle avait) : « Ce classeur a perdu une partie
+  de son histoire depuis la dernière copie sur le Drive : elle n'est pas
+  remplacée. ». Les deux : un bandeau [Récupérer la copie du Drive] [Remplacer
+  quand même] (et les mêmes boutons sur la ligne du Drive). **Récupérer** la
+  télécharge et l'ouvre par le chemin d'« Ouvrir un classeur » : plus récente
+  que celui-ci, « Mettre à jour le classeur », sans rien perdre ; chacun a
+  changé de son côté, « Ajouter comme copie » ou « Remplacer celui de la
+  bibliothèque… ». **Remplacer quand même** demande d'abord (« … Ce qu'elle a
+  de plus ne restera que dans les versions précédentes que garde Google
+  Drive (les 10 dernières). »). Le poste remis à zéro, en ligne, qui rouvre le
+  matin le fichier de la clé : il arrive à la date de ce fichier, et la copie
+  de la veille (pas plus récente que lui) se remplace sans conflit.
+  « Remplacer » (la question du lot 1) dit « Sa copie sur le Drive reste
+  celle du classeur d'avant. » : avec une autre identité, le lien du Drive
+  s'en va (une nouvelle copie, un autre fichier) ; avec la même (un fichier
+  du même classeur), il reste, et le garde-fou de l'histoire ne remplace pas
+  la copie d'avant par moins qu'elle.
+- **Récupérer une sauvegarde du Drive** (le menu ⋯ du bandeau de la
+  bibliothèque ; `src/classeurs/recuperer.ts`) : la seule chose qui revient
+  du Drive, sur demande. Le choix du Drive, [Se connecter et voir les
+  sauvegardes] (la connexion dans ce clic), la liste du dossier des
+  sauvegardes, la plus récente d'abord (« Symétrie centrale », « modifiée
+  aujourd'hui à 14 h 05 · 3,2 Mo », « déjà dans la bibliothèque ») ; celle
+  qu'on choisit se télécharge (« Téléchargement… »), puis s'ouvre par le
+  chemin d'« Ouvrir un classeur » : un **nouveau** classeur, ou, déjà là,
+  comparée (ouvrir celui de la bibliothèque, le mettre à jour sans perte,
+  ajouter une copie). Grisé dans la version clé USB.
+
+À essayer une fois pour de vrai, sur le vrai compte : un classeur de plus de
+5 Mo (l'envoi reprenable), puis, dans Google Drive, le dossier « MEM -
+Sauvegardes », les versions du fichier (Gérer les versions : dix au plus) et
+la place qu'elles prennent ; laisser le jeton expirer (une heure), puis
+« Se connecter à Google » ; « Récupérer une sauvegarde du Drive » sur un
+autre poste.
+
+## L'état de la sauvegarde
+
+Où est enregistré le classeur qu'on regarde, et depuis quand : toujours
+visible, lisible d'un coup d'œil, et jamais « enregistré » quand ce n'est
+pas vrai (`src/classeurs/etat.ts`, pur et testé ; `src/classeurs/surveillance.ts`
+le tient à jour).
+
+- **Le bouton du classeur**, à gauche de la barre du haut : l'icône (deux
+  classeurs), le nom du classeur en gras (coupé, entier dans son titre), et
+  dessous, en petit et en gris, l'état en quelques mots : « Clé : il y a 2
+  min », « Drive : il y a 10 min », « Fichier : il y a 25 min », « Seulement
+  dans ce navigateur », « Clé en pause », « Clé : pas à jour », « Drive en
+  attente », « Pas enregistré ! » (28 caractères au plus, le premier qui
+  s'applique, dans cet ordre de gravité) ; « Clé : pas encore à jour » tant
+  que le dernier trait n'est pas sur la clé (jamais l'heure de la dernière
+  écriture à sa place), « Clé : à jour » pour un classeur ouvert depuis le
+  fichier de la clé, sans changement depuis. Quand il faut y regarder, un
+  **point ambre** de 8 px sur l'icône, immobile : ni animation, ni
+  transition, au vidéoprojecteur toute l'heure. Le lecteur d'écran y lit
+  « Classeur « Symétrie centrale » : ouvrir la bibliothèque », puis toutes
+  les lignes de l'état (un texte caché, `aria-describedby`). Il est inerte,
+  comme les autres barres, pendant la revue, une séance et la trieuse. Un
+  clic (Entrée, Espace au clavier) ouvre la bibliothèque des classeurs (voir
+  « La bibliothèque des classeurs ») ; « Bibliothèque des classeurs… », en
+  tête du menu ⋯, aussi (c'est le seul chemin quand le bouton est caché).
+  Espace ne l'ouvre que si le focus est venu au bouton par le clavier (Tab,
+  ou la bibliothèque ouverte et fermée au clavier) et qu'aucun appui n'a
+  suivi. Ouverte d'un clic, puis fermée par ×, par Échap ou par la carte du
+  classeur ouvert, le focus revient au bouton, mais Espace + glisser (à la
+  souris, à la plume, ou par une touche de la Wacom réglée sur Espace)
+  déplace la vue, comme sur les autres boutons de la barre. D'où vient le
+  focus se retient quand il arrive (`focusVenuDuClavier`, `src/menus.ts`),
+  jamais à la touche : Chrome rend alors `:focus-visible` le bouton, même
+  cliqué.
+- **Sa place est mesurée**, entre la barre des outils et la barre du haut
+  (place = bord gauche de la barre du haut − bord droit de la barre des
+  outils − 24) : assez pour que le plus long des textes courts de l'état
+  y tienne entier (« Seulement dans ce navigateur » : 184 px de texte, 252
+  en tout, mesurés dans sa police), sa propre barre, à 12 px de la barre des
+  outils, avec le nom et l'état (1366 × 768 : 424 px ; 1280 × 720 : 338 ;
+  un TNI en 1920 : 978 ; l'iPad 11 pouces en paysage, 1194 × 834 : 252) ;
+  de 58 px à cette place, l'icône et le point (1024 × 768 : 82 ; 1180 ×
+  820 : 238 et 1112 × 834 : 170, où « Seulement dans ce navig… » était
+  coupé ; une fenêtre de 1100 à 1190 px) ; moins, quand la barre du haut est déjà sur
+  plusieurs rangées (les tablettes, les téléphones), il devient son premier
+  bouton, s'il n'y ajoute pas de rangée ; sinon il se cache, et le bouton ⋯
+  porte le point, son titre nomme le classeur (« … · Classeur « Symétrie
+  centrale » ») et son menu commence par l'état. C'est le cas à 1024 × 768
+  dès qu'une page du classeur a un nom : le compteur du lot 3 prend alors la
+  place jusqu'au bord de la barre des outils (−5 px), et la barre du haut,
+  avec le nom de la page plus petit, reste exactement celle du lot 3 ; de
+  même à 960 × 600, où l'insérer ajouterait une rangée. Il se place aux
+  seuls moments où le compteur se règle (la fenêtre qui change, la police
+  qui arrive, le premier nom de page) : jamais d'une page à l'autre.
+- **Au téléphone en portrait**, la barre du haut passe sur plusieurs
+  rangées (trois sur un iPhone 12 ou un Pixel 5 : jusqu'à y = 162 ; quatre
+  sur un iPhone SE). La barre des outils, posée en bas, s'arrête 12 px sous
+  son bas MESURÉ (`--bas-barre-haut`, suivi par un ResizeObserver et à
+  chaque changement de taille de la fenêtre), et défile s'il le faut : avant
+  (depuis le lot 2, vu en C3), elle montait jusqu'à y = 128, sous la barre
+  du haut, et un toucher au centre du bouton Stylo ne l'atteignait pas
+  (contrôle final du lot 4 ; essai `lot4/CF3-telephone.mjs` : iPhone 12,
+  Pixel 5, iPhone SE, Galaxy S8, en paysage, iPad, PC, TNI, et la fenêtre
+  qui change de largeur).
+- **Le menu ⋯** commence par le bloc du classeur : son nom, puis une ligne
+  par endroit, dans l'ordre : « Enregistré dans ce navigateur » (ou « Ce
+  navigateur n'enregistre plus ce classeur (plus de place ?) : enregistrez-le
+  dans un fichier (Ctrl + S). ») ; la clé (« Sur la clé (Symétrie.memc) : il
+  y a 2 min », « Sur la clé : en pause, le navigateur attend votre
+  accord », « Sur la clé : » et ce qui a échoué, suivi de « Rien n'est perdu :
+  le classeur est dans ce navigateur ; l'enregistrement reprendra dès que
+  possible. » quand c'est vrai, « Pas d'enregistrement automatique sur une
+  clé », « Ce navigateur ne sait pas enregistrer tout seul dans un fichier :
+  enregistrez le classeur (Ctrl + S) de temps en temps. ») ; le Drive (« Sur
+  le Drive personnel (prof@gmail.com) : il y a 10 min », « Sur le Drive : en
+  attente de la connexion Google », « … hors connexion, la copie partira au
+  retour du réseau », « … seulement depuis la version en ligne (la connexion
+  Google ne marche pas dans la version clé USB) », « Pas de copie sur le
+  Drive », « Sur le Drive personnel (prof@gmail.com) : la première copie part
+  bientôt », « … rien à copier pour l'instant » : jamais « à jour » sans
+  copie faite ; ce qui a échoué ; les garde-fous, voir « La copie sur le
+  Drive ») ; le fichier (« Dernier enregistrement dans un fichier :
+  aujourd'hui à 14 h 05 », ou « Jamais enregistré dans un fichier »). Une
+  pastille verte dit ce qui est à jour, une ambre ce qu'il faut regarder ;
+  une ligne qui demande quelque chose porte son bouton (une entrée du menu,
+  que les flèches atteignent) : « Enregistrer le classeur » pour le
+  navigateur en erreur ou le rappel ; pour la clé, « Reprendre
+  l'enregistrement sur la clé », « Choisir un autre fichier… », « Remplacer
+  quand même » (voir « L'enregistrement automatique sur la clé ») ; pour le
+  Drive, « Se connecter à Google », « Récupérer la copie du Drive »,
+  « Remplacer quand même » (voir « La copie sur le Drive »). Les dates : « à l'instant », « il y a 7 min » pendant une heure,
+  puis « aujourd'hui à 14 h 05 » ; jamais « il y a » après un échec (l'heure
+  d'une écriture réussie avant n'est plus celle du classeur). Le raccourci
+  que donnent ces textes (et les messages du lot 4) est celui que montre le
+  menu ⋯ : Ctrl + S, Ctrl + O sur le PC, ⌘ + S, ⌘ + O sur Mac et sur l'iPad
+  à clavier ; sur un appareil qu'on ne fait que toucher (ni souris, ni pavé,
+  ni stylet : l'iPad sans clavier, la tablette Android, le téléphone),
+  l'entrée du menu à la place, « (menu ⋯ → Enregistrer le classeur) »,
+  « (menu ⋯ → Ouvrir un classeur) » (`POUR_ENREGISTRER`, `POUR_OUVRIR`,
+  `src/navigateur.ts`).
+- **Le bandeau discret**, une ligne sous le bouton du classeur (ou sous la
+  barre du haut, à droite, quand le bouton y est ou qu'il est caché), 13 px,
+  360 px au plus, jamais animé, jamais sous la barre des outils (sur un
+  téléphone en portrait, la barre du haut va d'un bord à l'autre : il
+  s'arrête à 8 px à droite de la barre des outils, qui en cachait le début
+  du texte et des boutons), caché pendant la revue, une séance et la
+  trieuse. Il ne paraît que pour ce qui demande un clic : « Ce navigateur
+  n'enregistre plus ce classeur. » [Enregistrer le classeur], sans × ; le
+  rappel (plus bas) ; la clé en pause (« L'enregistrement sur la clé attend
+  votre accord. » [Reprendre l'enregistrement sur la clé]), un fichier de la
+  clé qui n'est pas remplacé (le conflit, ses deux boutons), une écriture sur
+  la clé qui a échoué (« … Rien n'est perdu. » [Choisir un autre
+  fichier…]), un fichier de la clé que le navigateur n'a pas gardé
+  (« Choisissez de nouveau le fichier de la clé : ce navigateur ne l'a pas
+  gardé. » [Enregistrer automatiquement sur la clé…], la ligne de la clé
+  passe alors en attention, avec le point) ; la copie du Drive qui n'est pas
+  remplacée (un autre ordinateur, l'histoire perdue : [Récupérer la copie du
+  Drive] [Remplacer quand même]) ; la copie qui attend la connexion Google
+  (« La copie sur le Drive attend la connexion Google. » [Se connecter à
+  Google], seulement sans clé à jour, avec une copie qui attend, après 2
+  minutes sans geste ; une fois paru, il reste quand on se remet à écrire).
+  × le cache pour la session (le
+  rappel : pour une heure). Le lecteur d'écran le lit à
+  son apparition (`role="status"`).
+- **Le rappel d'enregistrer**, partout où rien ne protège le classeur : ni
+  une clé à jour, ni une copie du Drive de moins de 15 minutes. C'est le cas
+  sous Firefox, Safari, sur l'iPad, mais aussi sous Chrome et Edge sans
+  enregistrement automatique, et surtout dans la version d'un seul fichier,
+  sur le poste remis à zéro, où le Drive est impossible. Après au moins 20
+  minutes de travail non enregistré dans un fichier (du premier changement
+  après le dernier fichier au dernier changement ; au démarrage, le film le
+  dit), et seulement après 2 minutes sans geste ni touche, jamais en plein
+  cours : « Pas encore enregistré dans un fichier depuis 25 min de travail. »
+  [Enregistrer le classeur] ×. Le point ambre paraît avec lui. Une fois
+  paru, il reste quand on se remet à écrire, jusqu'à ce qu'on enregistre ou
+  qu'on le ferme ; au plus une fois par heure ; × le fait taire une heure.
+  Sur Chrome et Edge, il propose aussi [Enregistrer automatiquement sur la
+  clé…].
+- **Le trou réparé.** Une écriture refusée par la base (voir « Les
+  classeurs : où ils vivent ») passe l'état en « Pas enregistré ! », avec le
+  bandeau ; une promesse de la base rejetée faute de place
+  (`QuotaExceededError`, que lib0 enveloppe dans une `Error`) aussi. Ctrl + S
+  écrit alors le fichier depuis la mémoire de l'onglet, qui a tout (et l'état
+  note ce fichier). La réparation se fait au calme, 30 secondes après le
+  trou, puis de plus en plus rarement tant que la base refuse (jusqu'à 5
+  minutes : chaque essai coûte un instant au fil principal), et tout de
+  suite quand l'onglet passe en arrière-plan : « Ce classeur est de nouveau
+  enregistré dans ce navigateur. ». Tant que le trou n'est ni réparé ni
+  rattrapé par un fichier, fermer ou recharger l'onglet demande la
+  confirmation du navigateur (`beforeunload`, posé seulement à ce moment-là),
+  et changer de classeur aussi (`peutQuitter`, voir « La bibliothèque des
+  classeurs »).
+- **Une partie qui ne se relit plus** (une base trouée relue, voir « Les
+  classeurs : où ils vivent ») : jamais « Enregistré dans ce navigateur »,
+  ni « n'enregistre plus » (la base enregistre le reste) : « Une partie de
+  ce classeur ne se relit plus dans ce navigateur (une écriture refusée, une
+  autre fois) : elle n'est plus à l'écran ; le reste y est enregistré. Un
+  fichier enregistré avant peut la contenir : ouvrez-le (Ctrl + O). », en
+  attention ; le texte court « Une partie ne se relit pas » (pas plus large
+  que « Seulement dans ce navigateur ») ; dans la bibliothèque, « Une partie
+  ne se relit plus dans ce navigateur · … ». Pas de bandeau (aucun clic ne
+  la répare), pas de réparation (il n'y a rien à rouvrir), pas de question
+  en partant (la base a tout ce que la mémoire a) ; « Rien n'est perdu »
+  n'est pas dit. La clé et le Drive écrivent ce qui se relit (le garde-fou
+  de l'histoire ne laisse pas écraser un fichier qui a la partie qui
+  manque). Le message de l'ouverture le dit une fois.
+- **Le calme.** Les écritures automatiques (la réparation, la clé, le
+  Drive, les aperçus) attendent le calme (`App.calme`) : aucun
+  geste en cours, aucun point d'un simple toucher du Stylo qui attend le
+  second (le double-clic qui ouvre les options), et 1,5 s depuis le dernier
+  appui, lever ou touche ; sinon elles réessaient une seconde plus tard.
+  Elles ne posent jamais ce point qui attend : posé entre les deux appuis,
+  il ferait d'un double-clic un point d'encre. Seuls Ctrl + S et
+  « Enregistrer » le posent (un essai le vérifie, la réparation tombant
+  entre les deux appuis).
+- **Deux onglets** sur le même classeur : un fichier enregistré dans l'un se
+  lit aussitôt dans l'autre (la date du dernier enregistrement, partagée par
+  le navigateur).
+
+## La bibliothèque des classeurs
+
+L'écran d'accueil des classeurs (`src/classeurs/bibliotheque.ts`, et
+`src/classeurs/liste.ts` et `src/classeurs/arbre.ts`, purs et testés, pour
+ce qu'il montre et pour le rangement). Le bouton du
+classeur, en haut à gauche (un clic, Entrée ou Espace), et « Bibliothèque
+des classeurs… », en tête du menu ⋯, l'ouvrent par-dessus le classeur. Au
+démarrage, c'est toujours le dernier classeur qui revient : la bibliothèque
+n'est jamais imposée, rien ne change au geste du professeur en classe.
+
+- **L'écran.** Plein écran, comme la trieuse des pages (`role="dialog"`,
+  « Bibliothèque des classeurs ») : le reste de l'écran devient inerte (sauf
+  le message et les fenêtres), plus rien n'écrit sur la page cachée
+  (`body.en-bibliotheque`), la barre d'actions ne paraît pas dessous. Échap
+  ferme d'abord un menu, puis l'écran ; × « Fermer la bibliothèque
+  (Échap) » ; le focus revient au bouton du classeur (Espace n'y rouvre la
+  bibliothèque que si elle a été ouverte et fermée au clavier : voir « Le
+  bouton du classeur »). Elle ne s'ouvre ni
+  pendant la revue, ni pendant une séance, ni sur la trieuse, ni en plein
+  geste (le bouton est inerte) ; en s'ouvrant, comme la trieuse, elle pose
+  le point d'un simple toucher qui attend, annule un placement, ferme le
+  programme de construction et les menus.
+- **Ses fenêtres** (Nouveau classeur, Nouveau dossier, les étiquettes, les
+  questions, Déplacer vers…, Récupérer une sauvegarde du Drive…) se ferment
+  par Échap, « Annuler », ou un appui sur le fond, hors de leur cadre :
+  jamais par un appui dans leur marge intérieure (20 à 22 px, dans le
+  cadre), que la plume imprécise de la Wacom ou le doigt au TNI touchent
+  souvent, ni par un texte sélectionné en glissant du champ jusqu'au fond ;
+  le nom tapé reste (`src/dialogue.ts`, qui sert aussi aux fenêtres
+  d'avant : Remplacer, la formule, la corbeille des pages).
+- **Le bandeau** : « Bibliothèque », le nombre de classeurs (« 12
+  classeurs »), **Nouveau classeur**, **Nouveau dossier** (« Dossier » sur
+  un téléphone, pour tenir sur la même ligne), **Ouvrir…** (« Ouvrir un
+  classeur ou une bibliothèque (Ctrl + O) », voir « Enregistrer et ouvrir un
+  classeur » ; Ctrl + O y fait de même ; jusqu'à 600 px de large, il passe
+  en tête du menu ⋯, « Ouvrir un classeur ou une bibliothèque… »),
+  **Corbeille (3)** (grisé
+  « Corbeille » quand elle est vide ; au téléphone, l'icône et le nombre ;
+  voir « La corbeille de la bibliothèque » plus bas), le menu **⋯**
+  (« Enregistrer toute la bibliothèque… », voir « Toute la bibliothèque
+  dans un fichier » ; « Récupérer une sauvegarde du Drive… », voir « La
+  copie sur le Drive »), le ×,
+  et, en bas, la place que ce navigateur garde pour le site. Tout tient sur
+  une ligne dès 1024 px (jusqu'à 1100 px, le nombre de classeurs passe sous
+  le titre) ; plus étroit, sur deux : le titre, la corbeille, le ⋯ et le ×,
+  puis les actions (jusqu'à 1000 px). Dessous, la ligne du classeur ouvert :
+  « « Symétrie » : Enregistré dans ce navigateur · sur la clé il y a 2 min »
+  (ou ce qui manque : « jamais enregistré dans un fichier » ; ce qui est en
+  pause : « clé en pause » ; ce qui a échoué : « clé : pas à jour », jamais
+  « il y a » après un échec), un point vert, gris ou ambre, et les boutons
+  de ce qui demande un clic (Enregistrer le classeur, Reprendre
+  l'enregistrement sur la clé…).
+- **Récents** : les six derniers classeurs ouverts (au téléphone, une
+  rangée qui défile à l'horizontale), à la racine et sans filtre seulement ;
+  puis la grille du dossier où l'on est (voir « Ranger » plus bas : ses
+  dossiers, puis ses classeurs, le plus récemment modifié d'abord, ou par
+  nom). Une grille de 200 px par colonne au moins (150
+  sur un téléphone : deux colonnes à 390 px ; six à 1366 px, quatre à
+  1024, huit au TNI en 1920), sans défilement de côté.
+- **Une carte** : l'aperçu de sa première page (voir « Les aperçus » plus
+  bas ; tant qu'il n'y en a pas, les petits carreaux et « Pas encore
+  d'aperçu »), le nom (deux lignes au plus, entier dans son titre), « Modifié aujourd'hui à 14 h 05 · 12 pages », la pastille
+  « Ouvert » sur celui de cet onglet, deux petites icônes grises, la clé et
+  le nuage du Drive (« Sur la clé il y a 3 jours (Symétrie.memc) » : la date
+  de la dernière écriture réussie), ses étiquettes de classe en petites
+  puces grises (celle qui vient de son dossier plus claire), et un bouton ⋯ de 44 px (« Options de
+  « Symétrie centrale » »). Le lecteur d'écran y lit « Symétrie centrale, 12
+  pages, modifié aujourd'hui à 14 h 05 » (et « classe 5e B », « ouvert dans
+  cet onglet », la clé, le Drive). Chaque carte est un lien (`?classeur=<id>`) : **le clic du
+  milieu et Ctrl + clic ouvrent le classeur dans un autre onglet**, comme
+  partout ; le clic simple l'ouvre ici.
+- **Les pointeurs.** La souris et la plume de la tablette graphique : un
+  clic ouvre ; le clic droit, et le bouton latéral du stylet (à l'appui),
+  ouvrent le menu de la carte là où l'on a appuyé ; un glisser déplace la
+  carte (voir « Déplacer » plus bas) et n'ouvre rien.
+  Au doigt : un toucher bref ouvre, un glisser fait défiler (la grille en
+  hauteur, Récents de côté au téléphone), un appui long soulève la carte
+  pour la déplacer (voir « Déplacer » plus bas), deux doigts font défiler
+  sans rien ouvrir. Sans écran tactile (la souris, la Wacom), rien n'y
+  défile au toucher, comme dans la trieuse. L'appui qui ferme un menu ne
+  fait rien d'autre ; le second clic d'un double-clic sur le classeur de
+  l'onglet ne tombe pas sur la page.
+- **Le clavier.** Un seul arrêt de Tab par rangée (Récents, puis la
+  grille ; entre les deux, la rangée du filtre, le fil d'Ariane et
+  « Trier ») ; les flèches d'une carte à l'autre selon la mise en page
+  réelle (↓ : la carte en dessous), Début, Fin ; Entrée ouvre (un classeur)
+  ou entre (un dossier) ; F2 renomme ; la touche Menu et Maj + F10 ouvrent
+  le menu de la carte (le focus sur « Ouvrir ») ; Échap le ferme et rend le
+  focus à la carte ; Retour arrière remonte d'un dossier (hors d'un champ) ;
+  Échap enlève d'abord le filtre de classe, puis ferme l'écran. Ce sont les
+  mêmes touches en AZERTY (elles se lisent par leur nom, pas leur place).
+- **Le menu d'une carte** : « Ouvrir », puis « Renommer… » (F2) et
+  « Étiquettes de classe… », puis « Déplacer vers… », « Dupliquer le
+  classeur » et « Enregistrer dans un fichier… » (son `.memc`, fabriqué
+  depuis sa base par l'écrivain ; celui de l'onglet, comme Ctrl + S),
+  puis « Supprimer » (Suppr ; ⌘ ⌫ sur Mac). Des fichiers lâchés sur
+  l'écran : un cadre pointillé « Lâchez pour ajouter à la bibliothèque »,
+  puis « Ouvrir un classeur ». Celui d'un
+  dossier : « Ouvrir », « Renommer… », sa couleur, « Dossier d'une classe »,
+  « Déplacer vers… », « Supprimer ».
+- **Les autres onglets.** Un changement fait ailleurs (un classeur créé,
+  renommé, ouvert) ne refait que les cartes de ces classeurs-là, et le focus
+  reste où il était ; rien n'est refait pendant qu'un menu est ouvert (à sa
+  fermeture). Le classeur ouvert renommé ailleurs : son nom sur le bouton et
+  dans le titre de l'onglet suivent.
+
+**Ranger (par classe, d'abord).** Le rangement conseillé : un dossier par
+classe (« 5e B »), puis un classeur par chapitre (« Symétrie centrale ») ;
+l'autre rangement (un dossier « Symétrie », un classeur par classe) reste
+possible, et les étiquettes de classe retrouvent alors d'un geste les
+classeurs d'une classe. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
+
+- **Le conseil.** À la racine, tant qu'il n'y a aucun dossier, une carte
+  large en tête : « Rangez par classe : un dossier par classe (« 5e B »),
+  puis un classeur par chapitre (« Symétrie centrale »). Les classeurs d'un
+  dossier de classe portent son étiquette : un geste les retrouve tous. »
+  [Créer un dossier de classe] (« Nouveau dossier », la case cochée
+  d'avance) [Plus tard] (il ne revient plus : le réglage `conseil` de
+  l'index vaut `vu`). Il ne prend pas le focus.
+- **Nouveau dossier** (le bandeau) : « Nom » (40 caractères, « 5e B » en
+  exemple grisé), « Couleur » (huit pastilles, des boutons radio nommés :
+  Gris, Bleu au départ, Vert, Jaune, Orange, Rouge, Violet, Rose), la case
+  **Dossier d'une classe : ses classeurs portent l'étiquette « 5e B »**, cochée
+  d'office quand le nom ressemble à une classe (au début du nom, sans tenir
+  compte de la casse : 3e à 6e, « 5ème », « 2nde », « seconde », « 1re »,
+  « première », « Tle », « Term », « terminale », CP à CM2, BTS, CAP ; pas
+  « 3 exercices » ni « Capitales »), son libellé suivant le nom tapé ; une
+  fois touchée, elle ne bouge plus. [Annuler] [Créer] ; un nom vide : « Un
+  dossier a besoin d'un nom. ». Le dossier naît dans celui qu'on regarde
+  (« Dans : 5e B »), avec son nom pour étiquette (20 caractères) si la case
+  est cochée.
+- **Les cartes des dossiers**, avant celles des classeurs, par nom (« Ch. 2 »
+  avant « Ch. 10 », sans la casse ni les accents) : la grande icône dans sa
+  couleur, le nom, ce qu'il contient (« 4 classeurs · 2 dossiers » : les
+  classeurs de ses sous-dossiers comptent, les sous-dossiers sont ceux qu'on
+  voit en l'ouvrant ; « Vide »), la puce de son étiquette de classe ; le
+  lecteur d'écran lit « 5e B, dossier bleu, dossier d'une classe, 4
+  classeurs, 2 dossiers ». Un clic, un toucher, la plume ou Entrée y
+  entrent ; le clic droit, le bouton du stylet, ⋯, la touche Menu ouvrent
+  son menu : « Ouvrir », « Renommer… » (F2), « Couleur » (les huit en
+  pastilles, la sienne cochée), la case « Dossier d'une classe ». Chaque
+  changement a son message avec « Annuler » (7 s).
+- **Le fil d'Ariane** remplace « Tous les classeurs » : « Bibliothèque › 5e
+  B › Géométrie », chaque dossier au-dessus un bouton (on y remonte, le
+  focus sur la carte d'où l'on vient), celui où l'on est en gras (le titre
+  de la grille, pour le lecteur d'écran). **Retour arrière** remonte d'un dossier (hors d'un champ). Le dossier
+  qu'on regarde est retenu pour l'onglet (`mem-teachingtool-dossier`, dans
+  sessionStorage : recharger le garde, un autre onglet commence à la
+  racine). Un dossier vide : « Ce dossier est vide. Glissez-y un classeur, ou
+  créez-en un. » [Nouveau classeur]. « Nouveau classeur » dit « Dans : 5e B ·
+  étiquette de classe « 5e B » » : l'étiquette vient du dossier, pas de champ
+  à remplir.
+- **Les étiquettes de classe.** Un classeur a les siennes (au plus trois,
+  posées à la main) et celle du plus proche dossier de classe qui le
+  contient, **calculée, jamais écrite** : glissé dans « 5e B », il est
+  aussitôt dans le filtre « 5e B », et en sort s'il en sort. « Étiquettes de
+  classe… » (le menu d'un classeur) : ses étiquettes en puces, chacune avec
+  son × ; l'héritée grisée, sans ×, « vient du dossier « 5e B » » ; « Ajouter
+  une classe » (les étiquettes de la bibliothèque proposées ; Entrée
+  ajoute ; 20 caractères ; un double, même de l'héritée, est ignoré : « « 5e
+  B » y est déjà. ») ; à trois, le champ se ferme. Chaque changement
+  s'écrit aussitôt ; à la fermeture, « Étiquettes de « Symétrie » : 5e B,
+  Soutien » [Annuler] les rend toutes comme elles étaient.
+- **Le filtre.** Sous Récents, dès qu'une étiquette existe : « Classes :
+  [Toutes] [5e B · 4] [2nde 3 · 2] » (des boutons `aria-pressed`, dans
+  l'ordre des classes, de la 6e à la terminale, puis les autres par nom).
+  Une étiquette choisie montre, en liste plate, tous les classeurs visibles
+  qui la portent, quel que soit leur dossier, avec leur chemin sous le nom
+  (« 5e B › Géométrie ») ; le fil dit « Classe « 5e B » ». Le filtre est
+  retenu pour l'onglet (`mem-teachingtool-filtre`) ; Échap l'enlève d'abord,
+  puis ferme l'écran ; une étiquette que plus rien ne porte l'enlève aussi.
+- **Renommer** : F2 sur la carte qui a le focus, « Renommer… », ou un
+  double-clic sur le nom (un clic simple sur le nom attend un instant le
+  second, comme dans la trieuse, puis ouvre). Un champ dans la carte, sur le
+  nom, prérempli et tout choisi (60 caractères pour un classeur, 40 pour un
+  dossier ; 16 px : l'iPad ne zoome pas) ; Entrée ou un clic ailleurs
+  gardent, Échap rend l'ancien ; un nom vide est refusé (« Un classeur a
+  besoin d'un nom. », le champ reste). « Classeur renommé » [Annuler]. Le
+  nom va dans l'index et dans la base du classeur (son identité, pour
+  qu'une adoption le retrouve) ; le classeur de l'onglet renommé : son
+  bouton, le titre de l'onglet et la ligne du classeur ouvert suivent, dans
+  tous les onglets. Un dossier de classe renommé garde son étiquette
+  accordée à son nom (« 2nde 3 » devenu « 2nde 4 »). Au doigt, le champ
+  reste au-dessus du clavier virtuel (la grille gagne en bas la place qu'il
+  couvre). Pendant qu'on tape, rien ne se refait (un changement venu d'un
+  autre onglet attend que le champ se ferme) ; avant de partir vers un autre
+  classeur, ce qu'on vient d'écrire dans l'index s'écrit.
+- **Trier** : « Trier : Modifiés récemment » ouvre un petit menu
+  (« Modifiés récemment », « Nom (A → Z) ») ; le choix vaut pour les
+  classeurs de la grille et du filtre (les dossiers vont toujours par nom,
+  Récents par ouverture), retenu sur l'appareil (`mem-teachingtool-tri`).
+- **Un cycle de dossiers** (deux onglets qui rangent chacun un dossier dans
+  l'autre ; le registre le refuse dans sa transaction, mais pas des deux
+  côtés à la fois) : chaque dossier du cycle se montre à la racine, toute
+  remontée est bornée (64 niveaux, les dossiers déjà vus) ; la bibliothèque
+  s'affiche et le démarrage marche. Rien de ce rangement n'est écrit dans
+  le navigateur tant qu'on ne choisit ni dossier, ni filtre, ni tri.
+
+**Déplacer (un classeur, un dossier).** Par « Déplacer vers… » ou en
+glissant la carte (le modèle est pur et testé : `src/classeurs/deplacer.ts`,
+`tests/glisser-biblio.test.ts`).
+
+- **« Déplacer vers… »** (le menu d'un classeur ou d'un dossier) : la
+  fenêtre « Déplacer « Symétrie » vers… » (« Déplacer le dossier
+  « Géométrie » vers… ») montre l'arbre des dossiers, chacun dans sa
+  couleur et en retrait sous son parent (par nom), « Bibliothèque (la
+  racine) » en premier ; la corbeille n'y est pas. Le dossier où il est
+  déjà est grisé, « (ici) » ; pour un dossier, lui-même et tous ses
+  descendants aussi (un dossier ne va jamais dans lui-même ni dans l'un de
+  ses sous-dossiers). Des lignes de 44 px ; le lecteur d'écran lit le
+  chemin (« 5e B › Géométrie »). Au clavier : un seul arrêt de Tab dans la
+  liste, ↑ ↓ (les grisés sont sautés), Début, Fin, Entrée choisit, Échap
+  ferme sans rien faire (le focus revient à la carte), Tab mène à
+  « Annuler ». Au téléphone, la fenêtre prend toute la largeur et la liste
+  défile.
+- **Glisser une carte** (classeur ou dossier, de la grille ou de Récents),
+  comme une page dans la trieuse : à la souris dès 4 px, à la tablette
+  graphique (la Wacom sans écran) dès 6 px, de n'importe où sur la carte,
+  sans appui long ; le bouton latéral du stylet ouvre le menu, il ne tire
+  rien. Au doigt (et au stylet posé sur l'écran : iPad, Surface), par la
+  poignée ⋮⋮ (dans le coin bas gauche de l'aperçu, seulement avec un écran
+  tactile ; « Pas encore d'aperçu » se range alors à sa droite, sous le
+  bouton ⋯, sur deux lignes dans la petite carte de Récents) ou après un appui long d'une demi-seconde (une petite vibration
+  là où elle existe) ; sinon le doigt fait défiler, et deux doigts (la
+  main entière au TNI) aussi, sans rien ouvrir. Pendant le glisser, la
+  carte s'estompe, son image (réduite, tenue là où on l'a prise : la cible
+  reste visible) suit le pointeur, et les cibles possibles ont un cadre
+  bleu pointillé : les cartes des dossiers, les éléments du fil d'Ariane
+  (les dossiers au-dessus, « Bibliothèque », et celui où l'on est, pour une
+  carte de Récents) ; jamais la carte elle-même, ni l'un de ses
+  descendants, ni le dossier où elle est déjà. Celle sous le pointeur prend
+  un fond bleu pâle. La grille défile seule près de son bord haut ou bas.
+  Échap arrête tout ; lâchée hors d'une cible (ou sur son propre dossier),
+  rien ne bouge ; le clic qui suit un glisser n'ouvre rien (la carte est
+  un lien). Une paume posée sur le TNI pendant un glisser à la souris n'y
+  change rien. Avec un filtre de classe (une liste plate), il n'y a pas de
+  cible : on passe par « Déplacer vers… ».
+- **Ce qui se passe** : un classeur, seule sa fiche change (son dossier) ;
+  un dossier, par le registre, qui refuse dans sa transaction un dossier
+  dans lui-même ou l'un de ses descendants : deux onglets qui rangent en
+  même temps A dans B et B dans A, l'un passe, l'autre est refusé (« Ce
+  dossier ne peut pas aller dans l'un de ses propres sous-dossiers. »),
+  jamais de cycle. La cible est relue d'abord : supprimée ou mise à la
+  corbeille entre-temps, « Ce dossier n'existe plus. », rien ne bouge. Les
+  étiquettes propres ne bougent pas ; celles qu'il hérite suivent le
+  dossier (calculées), et le message le dit : « « Symétrie » déplacé dans
+  « 5e B » : il porte maintenant l'étiquette « 5e B » (et plus « 2nde 3 ») »,
+  « Dossier « Géométrie » déplacé à la racine de la bibliothèque : ses
+  classeurs ne portent plus l'étiquette « 5e B » », avec **Aller à
+  « 5e B »** (le dossier, le focus sur la carte) et **Annuler** (7 s : il
+  revient, s'il n'a pas bougé depuis, « « Symétrie » est revenu dans
+  « 2nde 3 » »). Le focus reste sur la carte, ou sur sa voisine si elle
+  quitte la grille.
+
+**Dupliquer le classeur** (le menu d'un classeur) : une copie complète,
+avec toute son histoire (la revue et le replay y marchent, le film est le
+même), faite par l'écrivain hors du fil principal (60 pages : 4 s, aucune
+tâche longue, mesuré) : il lit la base de l'original (sans y écrire : son
+vecteur d'état ne change pas), fusionne, vérifie, rejoue le tout une fois,
+vide le **registre des publications** de la copie et la **marque comme
+copie** (la carte `copie` du document : l'id de la copie, l'heure) dans une
+seule transaction (hors des pages : ni une étape du film, ni une
+annulation), et crée la base de la copie (`mem-teachingtool-classeur-<id>`,
+son identité à côté). Pourquoi : les séances de la copie ont la même heure
+de début que celles de l'original, donc la même clé « compte:début de la
+séance ». Avec le registre de l'original, republier depuis la copie mettrait
+à jour son fichier Drive ; sans registre mais sans marque, Publier le
+retrouverait quand même sur le Drive par cette clé (comme depuis un autre
+onglet : mesuré, corrections « migration »). Les deux fois, le lien déjà
+donné à l'autre classe montrerait la copie. Marquée, la copie publie ses
+séances sous une clé à elle (`compte:début:copie-<id>`) : un nouveau lien,
+et l'original garde le sien. Toujours, même sans séance publiée (l'original
+peut publier après la copie) ; une copie de copie a sa propre marque. Un
+classeur qui n'est pas une copie publie exactement comme avant ; la version
+d'avant ouvre le fichier d'une copie comme un autre, ignore la marque et la
+garde dans ce qu'elle enregistre (vérifié avec 41d2739 :
+`lot4/migration/vt`). La fiche
+de la copie : « Symétrie (copie) » (puis « (copie 2) »), le même dossier,
+les mêmes étiquettes propres, créée maintenant, jamais ouverte, ses pages,
+l'aperçu de l'original ; ni clé, ni Drive. « Copie du classeur… » au-delà
+de 300 ms, puis « Classeur dupliqué : « Symétrie (copie) ». » [Ouvrir] (et,
+s'il avait des séances publiées : « Ses séances déjà publiées le restent
+depuis l'original : en publier une depuis la copie fait un nouveau lien. »).
+Le classeur de l'onglet se duplique aussi : ce qui attend s'écrit d'abord
+(le point d'un simple toucher, la piste des instruments, les écritures de
+la base) ; une base trouée se répare d'abord, sinon « … : il n'est pas
+entièrement enregistré dans ce navigateur. Enregistrez-le d'abord dans un
+fichier. » (de même pour une base trouée relue, qui ne se répare pas). Plus de place : « Le classeur n'a pas pu être dupliqué : il n'y
+a plus de place dans ce navigateur. », et rien ne reste (ni fiche, ni
+base). La copie de l'état final seul (une leçon pour plusieurs classes, le
+choix (c)) reste à discuter.
+
+**Les aperçus** (`src/classeurs/apercu-classeur.ts`) : la **première page**
+de chaque classeur, en petit (320 × 200, au dpr 1, en esquisse, avec son
+fond), peinte par le même code que les vignettes de la trieuse, en PNG dans
+l'index de la bibliothèque. Elle se refait, sans jamais gêner l'écriture :
+au démarrage s'il n'y en a pas ; quand la première page a changé (ce qui y
+est écrit, son fond, une autre page passée en tête), après 30 s sans
+écrire, au calme, au plus une fois toutes les 2 minutes ; à l'ouverture de
+la bibliothèque, si elle a changé ; avant de partir vers un autre classeur.
+Toujours dans un moment libre du navigateur, et la peinture elle-même
+attend encore le calme (une couverture commencée au calme attend que le
+professeur ait fini d'écrire de nouveau) : 6 à 9 ms de fil principal pour
+une page de 300 traits, mesuré. Les cartes l'affichent en adresse objet
+(révoquée à la fermeture de la bibliothèque), l'image du glisser aussi ;
+une autre bibliothèque ouverte (un autre onglet) la voit paraître. Un
+classeur jamais ouvert depuis le lot 4 n'en a pas encore : « Pas encore
+d'aperçu ». Un navigateur qui refuse de ranger l'image (Safari en
+navigation privée) : rien n'est dit, la carte garde les petits carreaux.
+
+**La corbeille de la bibliothèque** (`src/classeurs/corbeille.ts`, pur et
+testé : `tests/corbeille-biblio.test.ts` ; la vue, `src/classeurs/vue-corbeille.ts`).
+
+- **Supprimer** (le menu d'un classeur ou d'un dossier, ou Suppr sur la
+  carte qui a le focus) : sans question, il va dans la corbeille (sa fiche
+  porte `corbeille = { t }` ; rien n'est effacé) : « « Symétrie » est dans
+  la corbeille de la bibliothèque. », « Dossier « 5e B » mis à la corbeille
+  (4 classeurs) » [Annuler] (7 s : il revient tel quel). Les classeurs d'un
+  dossier supprimé ne se montrent plus (ni dans Récents, ni dans un filtre)
+  et leur adresse mène à la bibliothèque seule. Le classeur de l'onglet (ou
+  son dossier) : la bibliothèque reste ouverte, sans × (Échap ne la ferme
+  plus) ; le Tableau garde sa base (« Annuler » le rend, et le ×) ; au
+  rechargement, la bibliothèque seule dit qu'il est dans la corbeille.
+  Supprimé dans un autre onglet pendant qu'il est ouvert ici : rien ne
+  change ici, on y écrit comme avant, jusqu'à ce qu'on le vide.
+- **La vue** (le bouton « Corbeille (3) », à la place des cartes) : les
+  dossiers et les classeurs supprimés, le dernier d'abord (un classeur
+  supprimé avant son dossier paraît aussi pour lui-même) ; chacun : son
+  aperçu (ou les petits carreaux ; un dossier, son icône dans sa couleur),
+  son nom, « Supprimé aujourd'hui à 10 h 05 » (« · 4 classeurs » pour un
+  dossier), « Était dans : 5e B », et deux boutons de 44 px, **Remettre** et
+  **Supprimer définitivement**. En haut : « Bibliothèque » (le retour ; Échap
+  aussi, le focus revient sur « Corbeille ») et **Vider la corbeille**. Tab
+  va de bouton en bouton ; le focus d'une carte qui s'en va passe à la
+  suivante.
+- **Remettre** : dans son dossier, « « Symétrie » remis dans « 5e B » » ;
+  son dossier supprimé depuis, « … remis à la racine de la bibliothèque
+  (son dossier n'existe plus) » ; son dossier lui-même dans la corbeille, à
+  la racine aussi (« (son dossier est dans la corbeille) ») ; [Annuler] le
+  renvoie dans la corbeille. Un dossier remis revient avec ses classeurs.
+  On reste dans la vue.
+- **Supprimer définitivement, Vider** : une question dans une fenêtre de
+  l'outil, « Annuler » a le focus, Échap ou un clic à côté la ferment.
+  « Supprimer définitivement « Symétrie » ? Ses 12 pages et tout son
+  historique (la revue, les séances à publier) seront effacés de ce
+  navigateur. Ce n'est pas annulable. », puis ce qui en reste ailleurs
+  (« Ses fichiers enregistrés et sa copie sur le Drive ne sont pas
+  effacés. », ou seulement l'un des deux) ; jamais enregistré dans un
+  fichier ni copié sur le Drive (ni date de dernier enregistrement, ni
+  écriture sur la clé, ni copie) : « Il n'a jamais été enregistré dans un
+  fichier ni copié sur le Drive : il n'en restera rien. » et **Enregistrer
+  d'abord** (le choix du fichier s'ouvre dans le clic, le `.memc` se
+  fabrique depuis sa base par l'écrivain, sa date est notée ; la fenêtre le
+  dit). Un dossier : « Supprimer définitivement le dossier « 5e B » ? Ses 4
+  classeurs (27 pages en tout) et ses 2 dossiers seront effacés de ce
+  navigateur. Ce n'est pas annulable. » (ceux de ses sous-dossiers
+  compris). Vider : « Vider la corbeille ? 3 classeurs (27 pages) et 1
+  dossier seront effacés de ce navigateur. Ce n'est pas annulable. », et
+  « Dont 1 qui n'a jamais été enregistré dans un fichier. » s'il le faut.
+  Puis « « Symétrie » supprimé définitivement. », « Corbeille vidée (3
+  classeurs, 1 dossier). » (l'effacement lui-même : voir « Effacer pour de
+  bon » dans « Les classeurs : où ils vivent »). Le classeur de l'onglet
+  vidé : l'onglet devient la bibliothèque seule (`?bibliotheque`, « Bibliothèque
+  — MEM teachingtool », plus rien ne s'écrit, le navigateur ne demande rien
+  en partant). Rien ne s'efface jamais tout seul : pas de purge après
+  30 jours.
+- **La place** : en bas du bandeau, « Ce navigateur garde 120 Mo pour ce
+  site. » (`navigator.storage.estimate` : l'origine `mathsetmoi.github.io`
+  est commune à tous les outils de l'organisation) ; au-delà de 80 % du
+  quota, en alerte : « Le navigateur manque de place (85 % utilisés) :
+  enregistrez vos classeurs dans des fichiers, puis videz la corbeille. » ;
+  rien si le navigateur ne le dit pas.
+
+**Ouvrir un autre classeur, sans rien perdre.** Le classeur de l'onglet :
+l'écran se ferme. Un autre : « Ouverture de « Fractions »… », puis
+
+1. si la base du navigateur a refusé une écriture (le trou, voir « Les
+   classeurs : où ils vivent ») et que des changements la suivent, une
+   question : « Ce classeur n'est pas entièrement enregistré »
+   [Annuler] [Quitter sans enregistrer] [Enregistrer le classeur] (le focus
+   sur ce dernier ; « Quitter sans enregistrer » retire la question du
+   navigateur, `beforeunload`, déjà posée ici) ;
+2. tout ce qui attend s'écrit : le point d'un simple toucher, la piste des
+   instruments, les écritures de la base, la fiche du classeur (son nombre
+   de pages), et la clé si une écriture est due (le fichier de la clé a
+   donc tout, avant de partir) ; 10 secondes au plus, avec « Ouvrir sans
+   attendre » au-delà de 5. Jamais le Drive, qui ne retient pas le départ ;
+3. le rappel d'enregistrer, s'il est dû (20 minutes de travail que rien ne
+   protège, sans attendre 2 minutes sans geste : on part, ce n'est pas le
+   plein cours), une seule fois par période de travail non enregistré :
+   « Enregistrer « Mon tableau » d'abord ? » [Annuler] [Ouvrir sans
+   enregistrer] [Enregistrer le classeur] ;
+4. la page se recharge sur l'adresse du classeur (`?classeur=<id>`) : un
+   seul classeur est chargé à la fois. **Précédent** ramène au classeur
+   d'avant ; une page rendue par le cache du navigateur (Précédent,
+   Suivant) se recharge : on ne reprend jamais un onglet figé sur un
+   classeur qui a pu changer.
+
+**Nouveau classeur** : une fenêtre, « Nom » (« Nouveau classeur », tout
+choisi, 60 caractères ; vide, il garde ce nom), « Fond de la première
+page » (Petits carreaux, coché ; Page blanche ; Seyès ; Repère) et, sur
+Chrome et Edge, la case **Enregistrer automatiquement sur la clé**, cochée
+d'office dans la version d'un seul fichier (`file://`, le poste remis à
+zéro) ; [Annuler] [Créer et ouvrir] (Entrée). La case cochée : le choix du
+fichier s'ouvre dans ce clic (le nom du classeur, le même dossier que la
+clé) ; y renoncer crée quand même le classeur, sans clé ; un fichier qui a
+déjà quelque chose n'est pas écrasé (« Ce fichier contient un autre
+classeur (« Fractions ») : choisissez un autre nom. », la fenêtre reste
+ouverte). Le classeur naît dans l'index (marqué en création), sa base
+reçoit une page au fond choisi et sa naissance dans le film, puis la marque
+s'en va ; avec la case, **la première écriture sur la clé se fait avant de
+partir** (le travailleur fabrique le fichier depuis la base neuve), puis la
+poignée est gardée et la fiche note l'écriture : à l'arrivée, la clé est
+déjà à jour (l'accord du choix du fichier vit encore dans cette page). Puis
+on part vers lui (comme plus haut) ; à l'arrivée, Chrome a oublié cet
+accord (voir « L'enregistrement automatique sur la clé », « L'accord du
+navigateur ») : « Classeur « Fractions » créé. Pour qu'il s'enregistre tout
+seul dans « Fractions.memc », le navigateur demande votre accord. »
+[Autoriser] ; s'il l'a gardé (« Autoriser à chaque visite ») : « Classeur
+« Fractions » créé. Il s'enregistre automatiquement dans « Fractions.memc ».
+». Une poignée que le navigateur ne sait pas ranger
+(`DataCloneError`) : à l'arrivée, le bandeau « Choisissez de nouveau le
+fichier de la clé… » [Enregistrer automatiquement sur la clé…]. Plus de
+place : « Le classeur n'a pas pu être créé : il n'y a plus de place dans ce
+navigateur. », et rien ne reste (ni fiche, ni base).
+
+**La bibliothèque seule.** `?bibliotheque`, l'adresse d'un classeur inconnu
+ici ou dans la corbeille, une bibliothèque vide, le classeur de l'onglet
+effacé depuis la corbeille : la bibliothèque s'ouvre
+sans classeur (ni tableau, ni barres, ni ×), l'adresse devient
+`?bibliotheque` (recharger la rouvre), le titre de l'onglet « Bibliothèque —
+MEM teachingtool », et un message dit pourquoi (« Ce classeur n'est pas dans
+la bibliothèque de ce navigateur. Pour l'y ajouter, ouvrez son fichier
+(.memc). »). Une carte, ou Nouveau classeur, ouvre un classeur. Ctrl + O
+(et « Ouvrir… ») y ajoute un classeur ou une bibliothèque, comme ailleurs
+(voir « Enregistrer et ouvrir un classeur ») ; ni Ctrl + O ni Ctrl + S n'y
+vont au navigateur. C'est aussi là que mène « Ouvrir la bibliothèque » quand un
+classeur a été supprimé dans un autre onglet. Si l'index ne s'ouvre pas du
+tout (le repli), le bouton du classeur le dit (« La bibliothèque des
+classeurs ne s'ouvre pas dans ce navigateur : seul « … » est disponible. »).
+
+**Le premier lancement après la mise à jour.** Si le premier classeur (le
+tableau d'avant) a du contenu, un message le dit une fois : « Votre tableau
+est maintenant le classeur « Mon tableau ». Son nom, en haut à gauche,
+ouvre la bibliothèque de vos classeurs. » [Voir la bibliothèque] (« Son
+bouton… » quand il n'a que son icône ; « Le menu ⋯, en haut à droite,
+ouvre la bibliothèque de vos classeurs. » quand il est caché faute de
+place). Puis `mem-teachingtool-annonce` est posée ; un navigateur neuf la
+pose sans rien dire.
 
 ## Exporter en PDF
 
@@ -1015,13 +2539,13 @@ Un fichier PDF à imprimer, ou à déposer dans l'ENT pour les absents :
 
 - *Exporter la page en PDF…* (le menu de la page, au clic droit dans le
   vide ; **Ctrl + P**, ⌘ + P sur Mac) : la page qu'on regarde ; sur un
-  tableau de plusieurs pages, la fenêtre propose aussi *Tout le tableau : 12
-  pages*.
-- *Exporter le tableau en PDF…* (le menu ⋯) et *Exporter en PDF* du bandeau
+  classeur de plusieurs pages, la fenêtre propose aussi *Tout le classeur :
+  12 pages*.
+- *Exporter le classeur en PDF…* (le menu ⋯) et *Exporter en PDF* du bandeau
   de la trieuse : toutes les pages, dans l'ordre.
 - Dans la trieuse : *Exporter en PDF* du bandeau des pages choisies (« Les
   pages 2, 5 et 7 »), *Exporter en PDF…* du menu d'une vignette ; Ctrl + P y
-  exporte les pages choisies, sinon tout le tableau. La trieuse reste ouverte
+  exporte les pages choisies, sinon tout le classeur. La trieuse reste ouverte
   et utilisable pendant l'export.
 
 La fenêtre dit ce qu'on exporte, porte la case *Imprimer le fond de la page
@@ -1030,7 +2554,7 @@ navigateur, le même que pour l'image copiée : `mem-sortie-fond`), une note,
 *Annuler* et *Exporter* (qui a le focus : Entrée exporte). Ctrl + P n'imprime
 plus la page web (les barres, le tableau coupé au bord de l'écran) : il ouvre
 cette fenêtre. Le menu Fichier › Imprimer du navigateur, lui, n'imprime
-qu'une phrase : « Pour imprimer : ⋯ → Exporter le tableau en PDF. »
+qu'une phrase : « Pour imprimer : ⋯ → Exporter le classeur en PDF. »
 
 Chaque page est **cadrée sur son contenu** (2 mm d'air autour ; les noms des
 points comptent, même déplacés loin de leur point), sur des feuilles A4 aux
@@ -1073,16 +2597,19 @@ marges de 12 mm (16 en bas, où tient le pied de page) :
   la feuille est blanche. Les **instruments posés ne sont jamais imprimés**.
 - Un **pied de page** discret (8 points, gris) : à gauche la page, son nom
   s'il en a un, sa partie s'il y en a plusieurs (« Page 3 · Exercice 12
-  p. 84 (2/3) ») ; à droite le numéro de la feuille dans le PDF (« 4 / 12 »).
+  p. 84 (2/3) ») ; à droite le nom du classeur (coupé à 40 caractères) et
+  le numéro de la feuille dans le PDF (« Symétrie centrale · 4 / 12 »).
 - **Une page vide n'est pas exportée**, et le message le dit (« La page 4 est
   vide : elle n'est pas dans le PDF. ») ; rien que des pages vides : « Rien à
-  exporter : la page est vide. », et pas de fichier.
+  exporter : la page est vide. » (« … le classeur est vide. » pour tout le
+  classeur), et pas de fichier.
 
-Le fichier se télécharge : « tableau-2026-10-09.pdf » (tout le tableau), le
-nom de la page (« Exercice 12 p. 84.pdf »), « page-3-2026-10-09.pdf »,
-« pages-2-5-7-2026-10-09.pdf » (au-delà de cinq pages, « pages-2026-10-09.pdf »).
-Son titre, que montre le lecteur de PDF : « Tableau du 9 octobre 2026 »,
-« Page 3 · Exercice 12 p. 84 », « Pages 2, 5 et 7 ».
+Le fichier se télécharge : « Symétrie centrale 2026-10-09.pdf » (tout le
+classeur, à son nom), le nom de la page (« Exercice 12 p. 84.pdf »),
+« page-3-2026-10-09.pdf », « pages-2-5-7-2026-10-09.pdf » (au-delà de cinq
+pages, « pages-2026-10-09.pdf »). Son titre, que montre le lecteur de PDF :
+« Symétrie centrale · 9 octobre 2026 », « Page 3 · Exercice 12 p. 84 »,
+« Pages 2, 5 et 7 » (au-delà de cinq, « 12 pages de « Symétrie centrale » »).
 
 La qualité : une image par feuille, à 200 points par pouce (1654 × 2339
 pixels), peinte par le même code que l'écran (comme une page imprimée : les
@@ -1106,7 +2633,7 @@ une page ordinaire, 0,2 à 0,5 Mo pour une feuille avec une image ; dix pages
 pleines font 3,5 Mo.
 
 Rien ne gèle : le message dit la progression (« Export en PDF : feuille 3 sur
-12… »), puis « PDF prêt : tableau-2026-10-09.pdf (12 feuilles A4, 2,4 Mo). » ;
+12… »), puis « PDF prêt : Symétrie centrale 2026-10-09.pdf (12 feuilles A4, 2,4 Mo). » ;
 l'export avance par petites tranches (dix pages pleines : environ 9 s, aucune
 tâche de plus de 150 ms, mesuré) et attend tant qu'on écrit sur le tableau :
 l'encre ne prend aucun retard. Ce qui est sur les pages est pris au
@@ -1225,6 +2752,13 @@ pendant qu'on écrit ou qu'on glisse un objet.
 
 **Échap** annule ce qui est en cours (menu, sélection, polygone) ; s'il n'y a
 rien, il passe à l'outil Sélection, et un second Échap rend l'outil d'avant.
+Une fenêtre ouverte (Publier, Exporter, une question) : Échap la ferme, et
+c'est tout, même quand son focus est tombé sur la page (le bouton
+« Publier », désactivé pendant l'envoi, le perdait ; il revient maintenant
+dans la fenêtre) ; aucune touche du tableau ne change ce qu'elle couvre
+(contrôle final du lot 4 : avant, Échap après « Publier » passait en
+Sélection, et le trait suivant sélectionnait au lieu d'écrire ; essai
+`lot4/CF4-echap-publier.mjs`).
 Avec la Sélection, un objet se prend à 6 px de son tracé à la souris, 10 au
 stylet, 20 au doigt ; une figure fermée sans fond se prend aussi par
 l'intérieur, le trait le plus proche passant avant elle (jamais sous le Stylo,
@@ -1364,7 +2898,7 @@ détruite, sur un tableau très ancien) n'y est pas.
 Y.Map et son histoire, elle ne revient seulement plus parmi les pages. Dans
 la revue, elle reste une « Page jetée » du tiroir « Que revoir ? », avec toute
 son histoire, et une séance passée qui l'a vue s'exporte comme avant : le
-tableau, comme son fichier `.memc`, garde tout ce qui a été écrit (la cacher
+classeur, comme son fichier `.memc`, garde tout ce qui a été écrit (la cacher
 de la revue seule serait incohérent avec les séances qui la montrent). Une
 copie de cette page garde son passé.
 
@@ -1615,7 +3149,7 @@ formules KaTeX, nettes à tout zoom ; un petit canvas « direct » pour le trait
 cours, qui fait la latence ressentie au stylet.
 
 Une page se peint aussi **hors de l'écran**, pour les vignettes des pages,
-l'image copiée et le PDF : par le même code que l'écran (`Rendu.peindreSur`,
+l'aperçu des classeurs (la bibliothèque), l'image copiée et le PDF : par le même code que l'écran (`Rendu.peindreSur`,
 sur un rendu jamais attaché au document, avec sa propre caméra), sur
 n'importe quel canevas, à n'importe quelle échelle. Les formules y sont
 recopiées depuis leur rendu KaTeX : la formule est mise en page, cachée,
@@ -1648,8 +3182,8 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule), les fonds |
-| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié ; sa naissance notée `naissance` dans le film, comme celle d'une page vide ; un fond changé dans la trieuse noté `rangement` : ni l'une ni l'autre ne comptent dans le découpage en séances) et le déplacement des pages (le plus petit changement de l'ordre). Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre ; elle ne se défait pas tant que la pile de l'arrivée peut y ramener des objets qui en sont repartis, et ne se refait pas vers une page supprimée définitivement) ; la copie, une étape de la pile d'arrivée ; les noms que la pile d'une page peut y ramener (`formesQuiPeuventRevenir`) |
-| `src/app.ts` | Gestes au stylet, au doigt et à la souris ; le clavier du tableau (Ctrl + P ouvre « Exporter en PDF ») |
+| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert ; la base supprimée ou changée ailleurs, coupée net (`onCoupee`) ; une écriture refusée repérée, le trou (`trou`, `erreurBase`), et sa réparation (`reparer`) ; une base trouée relue, dont une partie ne se relit plus (`incomplet`) ; attendre la fin des écritures (`attendreEcritures`) ; l'identité du classeur rangée à côté du document). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié ; sa naissance notée `naissance` dans le film, comme celle d'une page vide ; un fond changé dans la trieuse noté `rangement` : ni l'une ni l'autre ne comptent dans le découpage en séances) et le déplacement des pages (le plus petit changement de l'ordre). Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre ; elle ne se défait pas tant que la pile de l'arrivée peut y ramener des objets qui en sont repartis, et ne se refait pas vers une page supprimée définitivement) ; la copie, une étape de la pile d'arrivée ; les noms que la pile d'une page peut y ramener (`formesQuiPeuventRevenir`) |
+| `src/app.ts` | Gestes au stylet, au doigt et à la souris ; le clavier du tableau (Ctrl + P ouvre « Exporter en PDF ») ; le calme (`calme`, `depuisLeDernierGeste`), qu'attendent les écritures automatiques |
 | `src/rendu.ts` | Les trois couches d'affichage ; peindre une page sur un autre canevas (`peindreSur` : une vignette en esquisse, une image, une feuille du PDF), sans rien changer à l'écran |
 | `src/sorties/formules.ts` | Les formules KaTeX sur un canevas : mises en page cachées comme à l'écran, puis repeintes (textes, bordures, fonds, SVG coupés), les polices attendues ; leurs images gardées par échelle dans un cache borné en pixels |
 | `src/sorties/image.ts` | Copier en image (pour l'ENT et Pronote) : la taille de l'image (jamais plus fine que l'écran à 100 %, environ 4 millions de pixels et 4 096 px de côté au plus), le nom du fichier, l'image PNG cadrée sur le contenu (noms des points compris), la copie dans le presse-papiers du système dans le geste même, le repli « Enregistrer l'image (.png) » ; « Exporter en PDF » proposé pour une page très haute |
@@ -1665,7 +3199,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/heritage.ts` | Le passé d'une copie de page : la page qu'on lit vraiment à chaque étape du film (l'original, avant la copie), pour la revue et le film élève |
 | `src/revoir/` | Le replay des élèves : format du film, rythme de la main, instruments, exporteur, bobine, lecteur (`revoir.html`), relais |
 | `src/piste.ts` | La piste des instruments : ce que la classe en a vu, noté pour le replay |
-| `src/publication/` | Publier sur le Drive : comptes et relais, connexion Google, la fenêtre |
+| `src/publication/` | Publier sur le Drive : comptes et relais (et les dossiers des sauvegardes), connexion Google (le jeton qui suit l'onglet d'un classeur à l'autre : `passerLaConnexion`, `reprendreLaConnexion`), la fenêtre (une copie de classeur, marquée, publie ses séances sous une clé à elle : un nouveau lien) ; les sauvegardes des classeurs (lot 4 C10, `drive.ts`) : le dossier privé marqué à part, le même fichier remplacé (multipart binaire ou envoi reprenable), le garde-fou des deux ordinateurs, l'élagage des versions, la liste et la lecture des sauvegardes |
 | `relais/relais-seances.gs` | Le relais Apps Script, à déployer dans chaque compte Google |
 | `tests/` | Les tests (`npm test`) : ce qui part chez les élèves, la fidélité du replay |
 | `src/instruments.ts` | Règle, équerre, rapporteur, compas |
@@ -1674,24 +3208,56 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
-| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le menu complet (un objet, une formule, plusieurs objets ; sa rangée sur une ligne, son bouton ⋯ et le petit menu de *Copier en image* et *Envoyer vers…* ; placé dans l'écran, sur un téléphone aussi), le menu de la page, « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯ de la barre du haut, la trieuse), les messages (un ou deux boutons ; au-dessus des panneaux pendant un placement), éditeur de formules |
+| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le menu complet (un objet, une formule, plusieurs objets ; sa rangée sur une ligne, son bouton ⋯ et le petit menu de *Copier en image* et *Envoyer vers…* ; placé dans l'écran, sur un téléphone aussi), le menu de la page, « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯ de la barre du haut, la trieuse), les messages (un ou deux boutons ; au-dessus des panneaux pendant un placement), éditeur de formules ; le bouton du classeur (sa place mesurée, à quatre formes), le bloc de l'état en tête du menu ⋯, le bandeau discret |
 | `src/pages/envoi.ts` | La fenêtre « Envoyer vers… » : déplacer ou copier, la liste des destinations (chaque page avec sa petite vignette, une nouvelle page juste après, à la fin), le clavier ; les textes des messages d'un envoi (pur, testé). L'envoi lui-même est `App.envoyerSelection`, son annulation `Tableau.envoyer` |
 | `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose, ce que devient un appui sur elle |
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (celles des lecteurs sont dans `src/revoir/icones.ts`) |
 | `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
-| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; les touches qui se taisent pendant un geste ; le tableau caché (la revue, une séance d'automatismes, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) |
-| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) ; le balisage de leurs entrées, de leurs filets et de leurs titres (l'interface et la trieuse s'en servent) ; la place du menu complet près de ce qu'il règle, jamais dessus quand il a la place ailleurs (`positionPanneau`, pur, testé) |
+| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; les touches qui se taisent pendant un geste ; le tableau caché (la revue, une séance d'automatismes, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) ; la touche des raccourcis (⌘ sur Mac) et la façon de dire « enregistrer », « ouvrir » dans un texte (`POUR_ENREGISTRER`, `POUR_OUVRIR` : le raccourci, ou l'entrée du menu ⋯ sur un appareil qu'on ne fait que toucher) |
+| `src/dialogue.ts` | Le fond d'une fenêtre : un appui commencé et fini hors de son cadre la ferme, jamais un appui dans sa marge intérieure (testé) |
+| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) ; d'où vient le focus (le clavier ou un appui, retenu quand il arrive, et le focus rendu à la fermeture d'un écran) ; le balisage de leurs entrées, de leurs filets et de leurs titres (l'interface et la trieuse s'en servent) ; la place du menu complet près de ce qu'il règle, jamais dessus quand il a la place ailleurs (`positionPanneau`, pur, testé) |
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages |
-| `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document |
+| `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document ; une session par classeur (`mem-session` pour le premier, `mem-session:<id>` pour les autres) |
 | `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), plusieurs pages à la fois (Maj ou Ctrl + clic, Espace, Ctrl + A, « Choisir plusieurs » au doigt), le menu d'une vignette (⋯, clic droit, bouton du stylet, touche Menu ; « Insérer une page… » y choisit le fond en second temps), le nom écrit dans la carte, les messages et leur « Annuler » ; « Exporter en PDF » (le bandeau, celui des pages choisies, le menu d'une vignette, Ctrl + P) ; le bouton « Corbeille (3) » du bandeau, qui ouvre la vue de la corbeille |
 | `src/pages/corbeille.ts` | La corbeille des pages, une vue de la trieuse : les pages supprimées en vignettes, quand (« Supprimée aujourd'hui à 10 h 05 »), Remettre (par le journal de la trieuse : « Annuler »), Supprimer définitivement et Vider (après une question, dans une fenêtre de l'outil) ; où c'est noté dans le document (la carte `corbeille`) |
 | `src/pages/actions.ts` | Ce que la trieuse fait aux pages, chaque action en une entrée de son journal : renommer, insérer une page vide avant ou après, en ajouter une à la fin, dupliquer avec l'histoire, supprimer vers la corbeille (jamais toutes ; la page où aller quand on supprime celle qu'on regarde), changer un fond (l'origine du repère au centre du contenu), ranger d'une place (pur, testé) |
 | `src/pages/glisser.ts` | Où arrive une page lâchée dans la grille (la ligne sous le point, avant la première carte dont le milieu est à droite), où se pose la barre qui le montre, la vitesse du défilement près du bord (pur, testé) |
 | `src/pages/journal.ts` | Le journal de la trieuse des pages : chaque action sur les pages (déplacer, renommer, dupliquer, insérer, supprimer, changer un fond) entre avec l'état des pages d'avant et d'après ; annuler (ou rétablir) seulement si le tableau est exactement dans l'état laissé, sinon il le dit et se vide (jamais un changement invisible ni une page perdue) ; une page créée par une action défaite ne va pas dans la corbeille, et y reste hors quand on défait les actions d'avant ; aucune pile de page touchée |
 | `src/presse-papiers.ts` | Copier, coller : la copie écrite pour le presse-papiers du système et relue sans passer par la page, chaque forme vérifiée, le collage (noms gardés ou changés, points liés) |
-| `src/fichier.ts` | Le tableau dans un fichier `.memc` : l'écrire, le relire (et refuser ce qui n'en est pas un) |
-| `src/sauvegarde.ts` | Enregistrer et ouvrir un tableau : le menu ⋯, Ctrl + S, Ctrl + O, la question avant de remplacer, les autres onglets ; le téléchargement d'un fichier (`telecharger`, que l'image copiée et le PDF empruntent) |
+| `src/fichier.ts` | Le classeur dans un fichier `.memc` : l'écrire (l'en-tête avec le nom et l'id du classeur, à la fin), le relire (et refuser ce qui n'en est pas un), vérifier un document entier (`verifierEtat`, ou `verifierDocument` sur un document déjà rejoué), ce qui se relit d'un document où des changements attendent une mise à jour qui manque (`etatLisible`, `ecrireLisible` : un fichier qui se rouvre toujours), lire l'en-tête seul (`lireEntete`) ; la marque d'une copie (`CARTE_COPIE`, `marqueDeCopie`, que Publier lit) ; le nom de tout fichier (`nomSur`, `nomClasseur`) |
+| `src/sauvegarde.ts` | Enregistrer et ouvrir un classeur : Ctrl + S (sur la clé quand elle enregistre le classeur ; sinon le fichier par l'écrivain, ou depuis la mémoire quand la base a un trou), Ctrl + O (avec la bibliothèque, il passe la main à `classeurs/fichiers.ts` ; dans le repli, par showOpenFilePicker quand il existe, le fichier lu dans le travailleur, et il remplace le classeur), la question avant de remplacer (`proposerRemplacement`, et sa case « Enregistrer automatiquement les changements dans ce fichier »), « Remplacer » qui donne au classeur l'identité du fichier (ou en fait une copie, registre des publications vidé et marquée, pour le fichier d'un classeur de la corbeille), les autres onglets (le canal des classeurs, et `mem-tableau` pour le premier), le classeur coupé de sa base pour une mise à jour depuis un fichier, la date du dernier enregistrement de chaque classeur ; le téléchargement d'un fichier (`telecharger`, que l'image copiée et le PDF empruntent) |
+| `src/main.ts` | Le démarrage : l'index de la bibliothèque et la reprise, le classeur à ouvrir (ou le repli, ou la bibliothèque seule), l'adresse, le titre de l'onglet, puis le classeur chargé et son ouverture notée, la bibliothèque par-dessus lui (ce qui s'écrit avant d'en partir), les fichiers (`classeurs/fichiers.ts`, branchés sur la sauvegarde, la bibliothèque et l'état ; aussi dans la bibliothèque seule), le message d'arrivée, l'annonce du premier lancement ; une page du cache du navigateur se recharge |
+| `src/classeurs/demarrage.ts` | Les classeurs, pur (testé) : les noms des bases et des clés (`mem-tableau-local`, seul endroit qui l'écrit), les fiches des classeurs et des dossiers, le premier reconnu à sa base, la clé de stockage d'un classeur, la chaîne bornée des dossiers, ce qui est visible, le classeur qui s'ouvre au démarrage et ses messages, le dernier classeur retenu, l'adresse d'un classeur |
+| `src/classeurs/bases.ts` | Les bases des classeurs en IndexedDB pure : ouvrir une base sans jamais la créer (`ouvrirBaseExistante`), lire ses mises à jour, créer la base d'un nouveau classeur (jamais sur une base existante ; une mise à jour ou plusieurs, dans l'ordre : une copie), remplacer son contenu d'un bloc, y ranger l'identité, compter ses entrées (sans `databases()` aussi), l'effacer (bloquée : la suite quand elle part enfin) ; les raisons d'un refus (`ErreurBase`) |
+| `src/classeurs/registre.ts` | L'index de la bibliothèque (`mem-teachingtool-bibliotheque`) : l'ouvrir, la reprise du tableau d'avant (une transaction, rejouable) et le ménage des créations et des effacements interrompus (le garde-fou du premier), lire et écrire les fiches et les dossiers (une transaction par geste ; jamais deux fiches pour une base, jamais de cycle de dossiers), changer l'identité d'un classeur, remettre un classeur ou un dossier de la corbeille (son dossier relu dans la même transaction), retirer un classeur effacé (sa fiche, son aperçu, sa poignée), adopter une base sans fiche (une transaction : une seule fiche), les réglages, les aperçus (un, ou tous d'une lecture), les poignées des fichiers de la clé, créer un classeur sans toucher à une base pleine, noter l'ouverture (le premier repris retrouve le nom rangé à côté de son document) ; le canal des onglets |
+| `src/classeurs/neuf.ts` | L'état d'un classeur neuf : une page vide au fond choisi, et sa naissance dans le film |
+| `src/classeurs/suivi.ts` | Le suivi du classeur ouvert : sa fiche retient quand il a changé, ses pages et son vecteur d'état, au plus toutes les 30 s, dès que l'onglet passe en arrière-plan et à l'ouverture de la bibliothèque (`vider`) ; chaque écriture refait sa carte dans la bibliothèque de l'onglet (`onEcrit`) ; il s'arrête quand le classeur est effacé |
+| `src/classeurs/etat.ts` | L'état de la sauvegarde, pur (testé) : ce qui protège le classeur (`protege`, `cleProtege` : pas une clé où rien ne s'est encore écrit), les lignes (navigateur, clé, Drive, fichier) et le texte court du bouton (« Clé : pas encore à jour » tant que le dernier trait n'y est pas ; la dernière copie du Drive sur un autre compte Google), le niveau (le point ambre), les dates (« il y a 7 min »), le rappel d'enregistrer et le bandeau (et ceux du Drive : la copie qui n'est pas remplacée, la connexion qui manque) ; le nom d'une erreur de la base, même enveloppée |
+| `src/classeurs/surveillance.ts` | L'état de la sauvegarde en direct : la base (le trou, et sa réparation au calme), le dernier fichier (ici ou dans un autre onglet), le travail depuis ; `majCle` et `majDrive` pour la clé et le Drive (et `cleEnAttente` : le dernier trait pas encore sur la clé) ; `peutQuitter` et `beforeunload` ; `partirParLaBibliotheque` (la clé ne pose pas sa question quand on part par la bibliothèque) ; le bandeau (× : la session, ou une heure pour le rappel) |
+| `src/classeurs/ecrivain.ts` | L'écrivain : un seul travailleur pour la page, des demandes numérotées ; le fichier `.memc` d'un classeur depuis sa base (`fabriquerFichier`), le vecteur d'état d'une base (`vecteurDeLaBase`), un fichier lu et vérifié (`lireFichier`, pour Ouvrir ; avec la somme d'une entrée d'un `.memb`), la copie complète d'un classeur dans une base neuve (`copierClasseur`, pour Dupliquer), ce que contient une base sans fiche (`examinerBase`, pour l'adoption), un classeur mis à jour depuis un fichier sans rien perdre (`mettreAJour`), la base d'un classeur ajouté depuis un fichier (`creerBase`), la copie préparée depuis l'état d'un fichier, sans rien écrire (`preparerCopie`, pour « Remplacer » par le fichier d'un classeur de la corbeille) ; le repli sur le fil principal (`mode = 'fil'`) si le travailleur manque ou ne démarre pas, sauf pour les demandes du travailleur seul (`travailleurSeul` : les écritures automatiques, erreur `fil`) ; les erreurs typées (`ErreurEcrivain`) |
+| `src/classeurs/ecrivain.worker.ts` | Le travailleur de l'écrivain, intégré à la page (`?worker&inline` : il marche en `file://`) |
+| `src/classeurs/ecrivain-taches.ts` | Ce que fait l'écrivain, dans le travailleur ou sur le fil : les demandes (genres `fichier`, `vecteur`, `lire` (avec ou sans somme CRC-32), `copier`, `examiner`, `mettre-a-jour` : une transaction, la base relue et fusionnée dans le rappel de son getAll, l'état du fichier ajouté sans rien effacer seulement si elle y est encore contenue ; `creer` : la base d'un classeur ajouté, hors du fil principal, où ranger 18 Mo prenait près de 100 ms ; `preparer-copie` : l'état d'un fichier et la mise à jour qui vide son registre des publications et le marque, rendus sans rien écrire) et leurs réponses (l'état d'un fichier lu est transféré, sans copie) ; aucun calcul tant qu'une autre demande tient une base ouverte (un effacement n'attend jamais un calcul) ; les erreurs (`absente`, `abimee`, `indisponible`, `illisible`, `fil`, `place`, `existante`, `autre` ; `creee` : la base demandée a été créée, vide, avant l'échec) |
+| `src/classeurs/vecteurs.ts` | Comparer deux vecteurs d'état Yjs, pur (testé) : `egal`, `contient`, `contenu`, `diverge` (la clé ne remplace jamais un fichier qui contient plus que le classeur, et voit qu'un classeur a perdu une partie de son histoire) |
+| `src/classeurs/cle.ts` | L'enregistrement automatique dans un fichier de la clé (Chrome, Edge, aussi en `file://`) : l'activer (le fichier choisi, vérifié, gardé), quand écrire (20 s après le dernier changement, au plus tard 2 min, au calme), écrire d'un bloc depuis le travailleur, les garde-fous (un autre classeur, un fichier modifié ailleurs, l'histoire perdue), la permission (un clic après un rechargement), les échecs et leurs réessais, un seul onglet qui écrit (Web Locks), la question du navigateur en fermant l'onglet avant l'écriture (`beforeunload`, posée seulement pendant ce temps-là, et l'écriture part aussitôt), Arrêter, la case de la fenêtre « Ouvrir ce classeur ? » ; un conflit propose d'ouvrir le fichier de la clé (`fichierDeLaCle`), et la fiche changée dans l'onglet se relit (`resynchroniser`) |
+| `src/classeurs/bibliotheque.ts` | La bibliothèque des classeurs : l'écran (par-dessus le classeur, ou seule), le bandeau et la ligne du classeur ouvert, Récents et la grille du dossier affiché (seules les cartes changées se refont, le focus reste), les cartes des classeurs (des liens : le clic du milieu ouvre un onglet) et des dossiers, les pointeurs et le clavier, le menu d'une carte et celui d'un dossier, ouvrir un autre classeur sans rien perdre (le trou, ce qui attend, le rappel), Nouveau classeur (la case de la clé, la première écriture avant de partir) ; ranger : le conseil, Nouveau dossier, le fil d'Ariane, Retour arrière, la couleur et « Dossier d'une classe », les étiquettes de classe et leur filtre, renommer (F2, double-clic, au-dessus du clavier virtuel), trier ; déplacer (« Déplacer vers… », le glisser-déposer à la souris, à la tablette graphique et au doigt, deux doigts qui défilent), dupliquer, les aperçus en adresses objet ; la corbeille (Supprimer et Suppr, « Annuler », le bouton « Corbeille (3) », Remettre, les questions de Supprimer définitivement et de Vider, « Enregistrer d'abord », l'onglet qui passe sans classeur), l'adoption des bases sans fiche à la première ouverture, la place du navigateur ; `actionsDuBandeau`, `menuDuBandeau`, `blocsDuMenu`, `blocsDuMenuDossier` pour les morceaux suivants |
+| `src/classeurs/arbre.ts` | L'arbre de la bibliothèque, pur (testé) : les huit couleurs, les noms (d'un dossier, d'une étiquette, d'une copie), ce qui ressemble à une classe et son rang, le cycle et la remontée bornée, le parent montré, le chemin et le fil d'Ariane, les enfants et les descendants, ce que contient un dossier, les étiquettes héritées et effectives (calculées), la rangée du filtre, le tri par nom |
+| `src/classeurs/liste.ts` | Ce que montre la bibliothèque, pur (testé) : Récents (les six derniers ouverts), le tri par date, un classeur à la racine, la date et les pages d'une carte, le texte du lecteur d'écran (avec ses étiquettes et son chemin), les titres des icônes de la clé et du Drive, le nombre de classeurs, le nom d'un classeur neuf |
+| `src/classeurs/ecrivain-pur.ts` | Le fichier d'un classeur depuis les mises à jour de sa base, pur (testé) : la fusion, la vérification (une base trouée ou abîmée ne fait aucun fichier ; avec `lisible`, une base trouée relue donne ce qui s'en relit, et le dit), l'en-tête, le gzip, le vecteur d'état, la somme CRC-32 ; la copie d'un classeur (`preparerCopie` : toute l'histoire, le registre des publications vidé et la marque de copie en une transaction) ; l'examen d'une base (`examinerMisesAJour` : ses pages, les formes de toutes ses pages, son film, sa piste, ses publications, ses noms, sa corbeille de pages, ses dates) |
+| `src/classeurs/deplacer.ts` | Déplacer un classeur ou un dossier, pur (testé) : là où il est, les places interdites (ni dans soi-même ni dans un descendant, ni là où il est déjà), l'arbre de « Déplacer vers… » (borné), la cible sous le pointeur pendant un glisser (`cibleSous`), le message et ses étiquettes qui changent |
+| `src/classeurs/vers.ts` | La fenêtre « Déplacer vers… » : l'arbre des dossiers, en retrait et en couleur, « (ici) » et les grisés, le clavier (flèches, Début, Fin, Entrée, Échap, Tab vers « Annuler ») |
+| `src/classeurs/corbeille.ts` | La corbeille de la bibliothèque et les classeurs retrouvés, pur (testé) : ce qu'elle montre (le dernier supprimé d'abord), ce qu'efface un dossier ou « Vider » (tous les classeurs, les sous-dossiers du plus profond au moins profond), où va ce qu'on remet, les textes (messages, questions, ce qui reste ailleurs, jamais enregistré), la place du navigateur, ce qu'est une base vide au sens strict, la fiche d'une base retrouvée |
+| `src/classeurs/vue-corbeille.ts` | La vue de la corbeille dans la bibliothèque : les cartes (aperçu ou icône, nom, date, « Était dans »), Remettre et Supprimer définitivement (44 px), « Bibliothèque » et « Vider la corbeille » ; le focus qui suit |
+| `src/classeurs/effacer.ts` | Effacer un classeur pour de bon : la fiche marquée, les onglets prévenus (les deux canaux), celui-ci coupé, 300 ms, la base effacée (le vecteur du premier noté avant), puis la fiche, l'aperçu, la poignée et les clés de stockage ; une base bloquée par un onglet, plus tard |
+| `src/classeurs/adoption.ts` | Les bases de classeur sans fiche : les trouver (`databases()`), les examiner par l'écrivain, adopter celles qui ne sont pas vides, effacer seulement celles sans aucune entrée (jamais `mem-tableau-local`) ; une seule base (`adopterUneBase`, quand un fichier ouvert porte l'id d'une base d'ici sans fiche) |
+| `src/classeurs/enregistrer.ts` | Enregistrer un classeur depuis sa base, sans l'ouvrir (« Enregistrer d'abord », « Enregistrer dans un fichier… » du menu d'une carte) : le choix du fichier dans le clic, l'écrivain, la date notée |
+| `src/classeurs/apercu-classeur.ts` | L'aperçu d'un classeur : sa première page en PNG (320 × 200, en esquisse, par `sorties/apercu.ts`), quand le refaire (au démarrage s'il manque, 30 s après le dernier changement de la première page, au calme, au plus toutes les 2 min ; à l'ouverture de la bibliothèque ; avant de partir), rangé dans l'index |
+| `src/classeurs/fichiers.ts` | Ouvrir des fichiers (lot 4 C9) : le choix (showOpenFilePicker, plusieurs, `.memc` et `.memb` ; sinon le choix d'avant), les fichiers lâchés, la lecture dans le travailleur, la reconnaissance (une base de cet id sans fiche adoptée d'abord, les vecteurs comparés), la fenêtre d'un fichier et ses choix (Ajouter, Remplacer « … »…, Ouvrir celui de la bibliothèque, Mettre à jour sans rien perdre, Ajouter comme copie, Remplacer celui de la bibliothèque…, la case de la clé), plusieurs fichiers (la fenêtre qui dit tout, le bilan), Enregistrer et Ouvrir toute la bibliothèque (le `.memb` au fil de l'eau ; les dossiers réunis, la case des plus récents), le fichier de la clé en conflit |
+| `src/classeurs/reconnaitre.ts` | Reconnaître le classeur d'un fichier, pur (testé) : le même (son id), la corbeille, « ressemble » (un appareil Yjs en commun ; dans un lot, seulement sans id), nouveau ; la décision d'après la comparaison ; le nom d'après le nom du fichier ; les phrases des fenêtres et des bilans ; la réunion des dossiers d'une bibliothèque qu'on ouvre |
+| `src/classeurs/copie-drive.ts` | La copie à sens unique sur le Drive (lot 4 C10) : le compte du classeur, quand copier (2 min après le dernier changement, au plus tard 10 min, au plus une fois par max(10 min, 1 min par Mo, 20 fois la durée), au calme, en arrière-plan), depuis la base dans le travailleur, un onglet à la fois (Web Locks), une copie d'un autre onglet qui compte, les classeurs en retard (pas les vides), la connexion (jamais sans un clic ; arrivé connecté d'un autre classeur, les classeurs en retard se copient d'ici ; le jeton expiré, le bandeau ; le compte proposé à Google, retenu pour la copie), le compte Google où est vraiment la dernière copie, les échecs et leurs réessais, les garde-fous (récupérer, remplacer quand même), la question du navigateur en fermant l'onglet avant la copie quand rien d'autre ne protège le classeur (`beforeunload`, et la copie part aussitôt), la fenêtre « Copie sur le Drive… » |
+| `src/classeurs/drive-pur.ts` | La copie sur le Drive, pur (testé) : le compte voulu, le rythme (`prochaineCopie`, l'intervalle), le compte Google proposé à la reconnexion (`indiceGoogle`) et la copie sur un autre compte (`copieAilleurs`), la question du navigateur en fermant l'onglet (`questionDuDrive`), ce qu'on dit d'un échec, les phrases des garde-fous, les classeurs en retard |
+| `src/classeurs/recuperer.ts` | « Récupérer une sauvegarde du Drive » (le menu ⋯ du bandeau de la bibliothèque) : le Drive, la connexion dans le clic, la liste, le téléchargement, puis le chemin d'Ouvrir |
+| `src/classeurs/archive.ts` | Toute la bibliothèque dans un fichier `.memb`, pur (testé) : le zip écrit à la main (entrées stockées, somme et taille dans chaque en-tête local, aucun descripteur ; 4 Go et 65 534 entrées au plus), relu par son répertoire central (`File.slice`), un fichier tronqué par ses en-têtes locaux ; l'index `bibliotheque.json` et son format ; le nom du fichier |
 
 Toutes les briques sont sous licence MIT (Yjs, y-indexeddb,
 perfect-freehand, KaTeX, Vite) : aucune clé de licence, aucun filigrane, et rien
@@ -1738,6 +3304,57 @@ n'empêche un usage payant.
   écran bas (1024 × 768), avec *Transformer* ouvert, il peut n'avoir de place
   ni au-dessus, ni en dessous, ni à côté d'une figure au milieu de l'écran :
   il en couvre alors le moins possible (17 % au lieu de 82 %, mesuré).
+- L'enregistrement automatique sur la clé (lot 4) compare les vecteurs
+  d'état Yjs, qui ne voient pas un changement fait seulement
+  d'effacements, sans étape du film (retirer le nom d'une page) : écrire sur
+  un fichier qui n'a que ce changement-là de plus le défait. Tout geste
+  ajoute une étape au film, et se voit. Il n'a été essayé qu'avec
+  des fichiers simulés (l'espace privé du navigateur, sans écran) : la vraie
+  clé, son retrait et la permission de Chrome restent à essayer en classe.
+
+- Le glisser-déposer de la bibliothèque (lot 4) n'a été essayé qu'au
+  navigateur Chromium, piloté (la souris, un stylet `pen` simulé sans écran
+  tactile, le doigt, deux doigts, une paume au TNI) : à essayer en classe
+  sur le poste à la Wacom (glisser une carte sur un dossier, puis ouvrir le
+  menu d'une carte par le bouton latéral) et sur l'iPad (la poignée ⋮⋮,
+  l'appui long, deux doigts qui défilent).
+- L'aperçu d'un classeur ne se fait que dans l'onglet où il est ouvert : un
+  classeur jamais rouvert depuis le lot 4 dit « Pas encore d'aperçu ».
+- Les classeurs retrouvés (lot 4) ne se cherchent que là où le navigateur
+  sait lister ses bases (`indexedDB.databases` : Chrome, Edge, Safari,
+  Firefox récent) ; ailleurs, une base sans fiche reste dans le navigateur,
+  intacte, sans paraître dans la bibliothèque. Après la perte de l'index, le
+  premier classeur revient avec un id neuf (la reprise n'ouvre jamais sa
+  base) : une adresse `?classeur=` notée avant mène à la bibliothèque. Un
+  classeur neuf jamais écrit (une page blanche) est vide au sens strict : il
+  ne revient pas, et sa base reste.
+- Ouvrir un fichier (lot 4 C9) reconnaît un classeur à son id, ou à une
+  histoire commune (un appareil Yjs en commun). Un fichier seul qui porte un
+  id inconnu ici mais partage une histoire avec un classeur d'ici (une copie
+  faite par « Dupliquer le classeur » sur une autre machine) est dit « Ce
+  fichier ressemble au classeur… » : « Ajouter comme copie » le garde à part
+  (sous un id neuf, nommé « … (copie) », à renommer). Dans un lot (plusieurs
+  fichiers, une bibliothèque), un tel fichier est ajouté sous son propre id,
+  sans question. Comme pour la clé, une mise à jour qui n'apporte que des
+  effacements, sans étape du film, ne se voit pas dans les vecteurs : le
+  fichier est alors dit « déjà contenu ».
+- La copie sur le Drive (lot 4 C10) n'a été essayée qu'avec un Google
+  simulé (la connexion et l'API Drive, au navigateur Chromium piloté) : le
+  vrai compte, un classeur de plus de 5 Mo (l'envoi reprenable), les
+  versions que garde Google Drive et la place qu'elles prennent restent à
+  voir une fois pour de vrai. Comme pour la clé, elle compare les vecteurs
+  d'état Yjs : une copie qui n'aurait de plus que des effacements sans étape
+  du film serait remplacée sans le dire. Le jeton de Google est à l'onglet :
+  il suit les changements de classeur, mais après un rechargement (F5), ou
+  dans un autre onglet, la copie attend un clic sur « Se connecter à
+  Google » (avec la clé à jour, en silence : une ligne du menu ⋯
+  seulement).
+- Une bibliothèque (`.memb`) n'a pas de ZIP64 : 4 Go et 65 534 fichiers au
+  plus (un refus clair au-delà). Elle n'a été essayée qu'au navigateur
+  Chromium, piloté, avec des fichiers simulés (l'espace privé du navigateur) ;
+  la vraie clé, Firefox et l'iPad (le téléchargement, le choix de fichier
+  d'avant) restent à essayer en classe : enregistrer toute la bibliothèque
+  sur la clé, l'ouvrir sur un autre poste, renommer une copie en `.zip`.
 
 ## Feuille de route proposée
 

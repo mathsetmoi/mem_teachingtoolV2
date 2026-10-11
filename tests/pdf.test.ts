@@ -491,7 +491,21 @@ describe('les textes de l\'export', () => {
     expect(piedDePage({ numero: 1, nom: null, partie: 1, parties: 1, k: 0.996, feuille: 1, feuilles: 1 }).gauche).toBe('Page 1')
   })
 
-  it('les noms des fichiers : tout le tableau, une page, une page nommée, plusieurs pages, plus de cinq', () => {
+  it('le pied de page d\'un classeur (lot 4) : son nom à droite, coupé à 40 caractères', () => {
+    expect(piedDePage({ numero: 2, nom: null, partie: 1, parties: 1, k: 1, feuille: 2, feuilles: 5, classeur: 'Symétrie centrale' }))
+      .toEqual({ gauche: 'Page 2', droite: 'Symétrie centrale · 2 / 5' })
+    const long = 'Une leçon au nom vraiment très long, pour la 5e B et la 5e C'
+    const d = piedDePage({ numero: 1, nom: null, partie: 1, parties: 1, k: 1, feuille: 1, feuilles: 9, classeur: long }).droite
+    expect(d).toBe('Une leçon au nom vraiment très long, po… · 1 / 9')
+    expect([...d.split(' · ')[0]].length).toBe(40)
+    expect(piedDePage({ numero: 1, nom: null, partie: 1, parties: 1, k: 1, feuille: 1, feuilles: 1, classeur: '𝔸'.repeat(41) }).droite).toBe('𝔸'.repeat(39) + '… · 1 / 1')
+    expect(piedDePage({ numero: 1, nom: null, partie: 1, parties: 1, k: 1, feuille: 1, feuilles: 1, classeur: 'x'.repeat(40) }).droite).toBe('x'.repeat(40) + ' · 1 / 1')
+    // Sans nom (ou vide), comme avant
+    expect(piedDePage({ numero: 1, nom: null, partie: 1, parties: 1, k: 1, feuille: 3, feuilles: 4, classeur: null }).droite).toBe('3 / 4')
+    expect(piedDePage({ numero: 1, nom: null, partie: 1, parties: 1, k: 1, feuille: 3, feuilles: 4, classeur: '  ' }).droite).toBe('3 / 4')
+  })
+
+  it('les noms des fichiers (sans nom de classeur, comme avant le lot 4) : tout le tableau, une page, une page nommée, plusieurs pages, plus de cinq', () => {
     expect(nomDuPdf({ tout: true, numeros: [1, 2, 3], nom: null, date })).toBe('tableau-2026-10-09.pdf')
     expect(nomDuPdf({ tout: false, numeros: [3], nom: null, date })).toBe('page-3-2026-10-09.pdf')
     expect(nomDuPdf({ tout: false, numeros: [3], nom: 'Exercice 12 p. 84', date })).toBe('Exercice 12 p. 84.pdf')
@@ -500,6 +514,23 @@ describe('les textes de l\'export', () => {
     expect(nomDuPdf({ tout: false, numeros: [1, 2, 3, 4, 5], nom: null, date })).toBe('pages-1-2-3-4-5-2026-10-09.pdf')
     expect(nomDuPdf({ tout: false, numeros: [1, 2, 3, 4, 5, 6], nom: null, date })).toBe('pages-2026-10-09.pdf')
     expect(dateDeFichier(new Date(2026, 0, 5).getTime())).toBe('2026-01-05')
+  })
+
+  it('les noms et les titres d\'un classeur (lot 4) : son nom, la date ; plus de cinq pages', () => {
+    const classeur = 'Symétrie centrale'
+    expect(nomDuPdf({ tout: true, numeros: [1, 2, 3], nom: null, date, classeur })).toBe('Symétrie centrale 2026-10-09.pdf')
+    expect(nomDuPdf({ tout: true, numeros: [1], nom: null, date, classeur: '5e B : fractions/décimaux' })).toBe('5e B - fractions-décimaux 2026-10-09.pdf')
+    expect(nomDuPdf({ tout: true, numeros: [1], nom: null, date, classeur: 'NUL' })).toBe('NUL (classeur) 2026-10-09.pdf')
+    expect(titreDuPdf({ tout: true, numeros: [1, 2], nom: null, date, classeur })).toBe('Symétrie centrale · 9 octobre 2026')
+    expect(titreDuPdf({ tout: false, numeros: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], nom: null, date, classeur })).toBe('12 pages de « Symétrie centrale »')
+    // Ce qui ne dépend pas du classeur ne change pas
+    expect(nomDuPdf({ tout: false, numeros: [3], nom: null, date, classeur })).toBe('page-3-2026-10-09.pdf')
+    expect(nomDuPdf({ tout: false, numeros: [2, 5, 7], nom: null, date, classeur })).toBe('pages-2-5-7-2026-10-09.pdf')
+    expect(titreDuPdf({ tout: false, numeros: [3], nom: 'Exercice 12 p. 84', date, classeur })).toBe('Page 3 · Exercice 12 p. 84')
+    expect(titreDuPdf({ tout: false, numeros: [2, 5, 7], nom: null, date, classeur })).toBe('Pages 2, 5 et 7')
+    // Un nom vide vaut pas de nom : les noms d'avant
+    expect(nomDuPdf({ tout: true, numeros: [1], nom: null, date, classeur: '  ' })).toBe('tableau-2026-10-09.pdf')
+    expect(titreDuPdf({ tout: true, numeros: [1], nom: null, date, classeur: null })).toBe('Tableau du 9 octobre 2026')
   })
 
   it('les titres : « Tableau du 9 octobre 2026 », « Page 3 · nom », « Pages 2, 5 et 7 »', () => {
@@ -522,6 +553,7 @@ describe('les textes de l\'export', () => {
       .toContain('Les pages 4 et 6 sont vides : elles ne sont pas dans le PDF.')
     expect(texteRien('page')).toBe('Rien à exporter : la page est vide.')
     expect(texteRien('pages')).toBe('Rien à exporter : les pages choisies sont vides.')
+    expect(texteRien('tout')).toBe('Rien à exporter : le classeur est vide.')
     expect(texteProgression(3, 12)).toBe('Export en PDF : feuille 3 sur 12…')
   })
 })

@@ -148,6 +148,9 @@ export interface EtatTableau {
   pages: Map<string, { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme> }>
 }
 
+/** Ce que la base du navigateur a dit d'une écriture refusée (voir Tableau.trou) */
+export type ErreurDeLaBase = 'place' | 'autre' | 'fermee' | 'indisponible'
+
 export class Tableau {
   // gc: false — le document garde ce qui a été effacé. C'est ce qui permet
   // au lecteur de le reconstruire tel qu'il était à n'importe quelle étape.
@@ -191,6 +194,42 @@ export class Tableau {
    *  par Yjs avant que la pile ait reçu le changement. */
   onPiles?: () => void
   private local: IndexeddbPersistence | null
+  /** La base du navigateur où vit ce document (null : nulle part) */
+  readonly base: string | null
+  /** Une écriture que la base a refusée (une transaction abandonnée, ou la
+   *  connexion fermée sans qu'on l'ait demandé) : tout ce qui s'est écrit
+   *  ensuite est dans la base, mais ne s'y relirait pas (Yjs attend la mise
+   *  à jour manquante : mesuré, 3 formes en mémoire, 1 au rechargement). Le
+   *  document en mémoire, lui, est entier : un fichier enregistré depuis cet
+   *  onglet a tout, et reparer() comble le trou. */
+  trou = false
+  /** La base, relue au chargement, a des changements qui attendent une
+   *  mise à jour qui y manque (Yjs les garde en attente, dans
+   *  doc.store.pendingStructs) : une écriture refusée lors d'une séance
+   *  précédente (le trou), puis l'onglet fermé avant la réparation. Ces
+   *  changements ne s'affichent plus, et ne se relisent nulle part : ni la
+   *  base ni la mémoire n'ont ce qui manque. Ce n'est pas un trou de cette
+   *  séance-ci (la base a tout ce que la mémoire a, rien à réparer en la
+   *  rouvrant) : on le dit (voir classeurs/etat.ts), on enregistre ce qui
+   *  se relit (fichier.etatLisible : un fichier qui se rouvre), et la base
+   *  n'est jamais vidée : un fichier qui a la mise à jour manquante (un
+   *  Ctrl + S de cette séance-là) la complète encore (« Mettre à jour le
+   *  classeur », classeurs/fichiers.ts). */
+  incomplet = false
+  /** Ce que la base a dit : 'place' (QuotaExceededError), 'fermee' (la
+   *  connexion s'est fermée seule), 'indisponible' (la base ne s'ouvre pas :
+   *  le document vit en mémoire seulement), 'autre' ; null : rien */
+  erreurBase: ErreurDeLaBase | null = null
+  /** La base a été supprimée ('supprime') ou changée par une autre version
+   *  ('ailleurs') : le lien est coupé, plus rien ne s'y écrit (voir surveiller) */
+  onCoupee?: (raison: 'supprime' | 'ailleurs') => void
+  /** La base vient de refuser une écriture (voir trou) */
+  onErreurBase?: (raison: ErreurDeLaBase) => void
+  /** Pourquoi le lien a été coupé de l'extérieur : on ne le renoue pas */
+  private coupure: 'supprime' | 'ailleurs' | null = null
+  /** Les écritures refusées par la base, comptées (voir reparer) */
+  private refus = 0
+  private reparation: Promise<void> | null = null
   /** Les temps du trait que pose la transaction en cours (voir poserTrace) */
   private tempsDuTrace: number[] | null = null
   /** L'heure du lever de ce trait, s'il a attendu avant d'être posé */
@@ -217,7 +256,8 @@ export class Tableau {
     const elaguer = () => this.elaguerMarques()
     this.ordre.observe(elaguer)
     this.corbeille.observe(elaguer)
-    this.local = nomLocal ? new IndexeddbPersistence(nomLocal, this.doc) : null
+    this.base = nomLocal
+    this.local = nomLocal ? this.lier(nomLocal) : null
 
     // Chaque geste qui touche aux pages devient une étape du film. Pas le
     // chargement depuis le disque : ces étapes-là y sont déjà.
@@ -321,10 +361,152 @@ export class Tableau {
     return r
   }
 
-  /** Attend la copie locale ; crée une première page si le tableau est vide. */
-  async charger(): Promise<void> {
-    await this.local?.whenSynced
-    if (this.ordre.length === 0) this.ajouterPage('carreaux', 0)
+  /** Attend la copie locale ; crée une première page si le tableau est vide.
+   *  vide : il n'y avait rien dans la base (un navigateur neuf, un classeur
+   *  dont la base vient d'être créée vide). Une base qui ne s'ouvre pas
+   *  (IndexedDB refusé) ne retient pas le démarrage : le document vit en
+   *  mémoire seulement, et erreurBase le dit ('indisponible'). Une base
+   *  relue en partie (des changements en attente) : incomplet ; elle n'est
+   *  pas vide, même si rien ne s'en affiche. */
+  async charger(): Promise<{ vide: boolean }> {
+    const local = this.local
+    if (local && !(await this.ouverte(local))) this.signaler('indisponible')
+    if (this.local && (this.doc.store.pendingStructs || this.doc.store.pendingDs)) this.incomplet = true
+    const vide = this.ordre.length === 0
+    if (vide) this.ajouterPage('carreaux', 0)
+    return { vide: vide && !this.incomplet }
+  }
+
+  /** Le lien avec la base : y-indexeddb, et nos gestionnaires posés sur sa
+   *  connexion dès qu'elle est ouverte (voir surveiller) */
+  private lier(nom: string): IndexeddbPersistence {
+    const local = new IndexeddbPersistence(nom, this.doc)
+    local._db.then(db => this.surveiller(local, db), () => { /* voir ouverte */ })
+    return local
+  }
+
+  /** Vrai quand la base est chargée ; faux si elle ne s'ouvre pas (le lien
+   *  est alors coupé). y-indexeddb n'annonce jamais l'échec de l'ouverture :
+   *  sans cela, charger() attendrait pour toujours. */
+  private async ouverte(local: IndexeddbPersistence): Promise<boolean> {
+    const ok = await Promise.race([
+      local.whenSynced.then(() => true),
+      local._db.then(() => new Promise<boolean>(() => { /* whenSynced dira */ }), () => false),
+    ])
+    if (!ok && this.local === local) { this.local = null; local.destroy().catch(() => { /* jamais ouverte */ }) }
+    return ok
+  }
+
+  /** Les gestionnaires de la connexion de y-indexeddb :
+   *  - versionchange : une autre connexion supprime la base (newVersion
+   *    null) ou en monte la version. Celui de lib0 fermait seulement la
+   *    connexion, et le geste suivant LEVAIT (InvalidStateError, mesuré) : on
+   *    coupe franchement le lien, et onCoupee le dit ;
+   *  - abort : une écriture refusée (QuotaExceededError : 'place') fait un
+   *    trou (voir trou) ; seules comptent les transactions sur 'updates' ;
+   *  - close : la connexion fermée sans qu'on l'ait demandé (le navigateur a
+   *    vidé le site, le disque a disparu) : le lien est coupé, c'est un trou.
+   *  Une connexion qui n'est plus celle du document ne dit plus rien. */
+  private surveiller(local: IndexeddbPersistence, db: IDBDatabase) {
+    db.onversionchange = (e: IDBVersionChangeEvent) => {
+      if (this.local !== local) { db.close(); return }
+      const raison = e.newVersion === null ? 'supprime' : 'ailleurs'
+      this.coupure = raison
+      this.couper()
+      this.onCoupee?.(raison)
+    }
+    db.addEventListener('abort', e => {
+      if (this.local !== local) return
+      const tr = e.target as IDBTransaction | null
+      if (!tr?.objectStoreNames?.contains?.('updates')) return
+      this.refus++
+      this.signaler(tr.error?.name === 'QuotaExceededError' ? 'place' : 'autre')
+    })
+    db.addEventListener('close', () => {
+      if (this.local !== local) return
+      this.refus++
+      this.couper()
+      this.signaler('fermee')
+    })
+  }
+
+  private signaler(raison: ErreurDeLaBase) {
+    this.trou = true
+    this.erreurBase = raison
+    this.onErreurBase?.(raison)
+  }
+
+  /** Une écriture refusée vue d'ailleurs que par la connexion (une promesse
+   *  de y-indexeddb rejetée par QuotaExceededError, voir
+   *  classeurs/surveillance.ts) : on ne sait pas laquelle, c'est donc un
+   *  trou, que reparer() comble sans rien effacer (l'état complet du
+   *  document est ajouté à la base). Rien après une coupure ailleurs. */
+  soupconnerTrou(raison: ErreurDeLaBase) {
+    if (this.coupure || !this.base) return
+    this.refus++
+    this.signaler(raison)
+  }
+
+  /** Attend que tout ce qui a été écrit dans la base y soit : une
+   *  transaction readwrite vide sur 'updates', sur la même connexion, finit
+   *  après toutes celles d'avant. L'étape du film du dernier geste, poussée
+   *  dans une micro-tâche, passe d'abord. Tout de suite s'il n'y a pas de base. */
+  async attendreEcritures(): Promise<void> {
+    await Promise.resolve()
+    const db = this.local?.db
+    if (!db) return
+    await new Promise<void>(ok => {
+      try {
+        const tr = db.transaction(['updates'], 'readwrite')
+        tr.oncomplete = () => ok()
+        tr.onabort = () => ok()
+      } catch { ok() }
+    })
+  }
+
+  /** Comble le trou (voir trou) : on rouvre la base avec y-indexeddb, qui
+   *  commence par y AJOUTER l'état complet du document en mémoire, puis relit
+   *  ce qu'elle a (rien de neuf). Rien n'est effacé. Seulement s'il y a un
+   *  trou, et jamais après une suppression ou un changement de la base
+   *  ailleurs (voir onCoupee). Rejette si la base refuse encore (plus de
+   *  place : le trou reste). Coûte un encodeStateAsUpdate sur le fil
+   *  principal (environ 1 s pour 60 pages) : à n'appeler qu'au calme. */
+  reparer(): Promise<void> {
+    if (!this.trou || this.coupure || !this.base) return Promise.resolve()
+    if (this.reparation) return this.reparation
+    const base = this.base
+    this.reparation = (async () => {
+      this.couper()
+      const local = this.lier(base)
+      this.local = local
+      const avant = this.refus
+      if (!(await this.ouverte(local))) throw new Error('La base du navigateur ne s\'ouvre pas.')
+      await this.attendreEcritures()
+      if (this.refus !== avant || this.local !== local) throw new Error('La base du navigateur refuse encore d\'écrire.')
+      this.trou = false
+      this.erreurBase = null
+    })().finally(() => { this.reparation = null })
+    return this.reparation
+  }
+
+  /** L'identité du classeur ({ id, nom }), rangée dans sa base, à côté du
+   *  document (le magasin 'custom' de y-indexeddb) : ni dans le document, ni
+   *  dans un fichier. Si l'index de la bibliothèque se perd, la base dit
+   *  encore qui elle est. */
+  async noterIdentite(infos: { id: string; nom: string }): Promise<void> {
+    await this.local?.set('mem-classeur', infos as unknown as string)
+  }
+
+  /** L'identité rangée à côté du document (voir noterIdentite) ; undefined :
+   *  il n'y en a pas (une base d'avant le lot 4, un navigateur neuf) */
+  async lireIdentite(): Promise<{ id?: string; nom?: string } | undefined> {
+    const v = await this.local?.get('mem-classeur') as unknown
+    if (!v || typeof v !== 'object') return undefined
+    const o = v as { id?: unknown; nom?: unknown }
+    const r: { id?: string; nom?: string } = {}
+    if (typeof o.id === 'string') r.id = o.id
+    if (typeof o.nom === 'string' && o.nom.trim()) r.nom = o.nom.trim()
+    return r
   }
 
   /** Remplace, dans la base du navigateur, tout le tableau par un autre (un
@@ -334,8 +516,11 @@ export class Tableau {
    *  si elle échoue (plus de place), rien n'a changé, l'ancien tableau reste
    *  entier. Le lien avec la base est coupé juste après l'avoir ouverte :
    *  plus rien de l'ancien document ne s'y écrit, et la base ne se ferme
-   *  qu'une fois la transaction finie. Même base, même magasin. */
-  async remplacerPar(etat: Uint8Array): Promise<void> {
+   *  qu'une fois la transaction finie. Même base, même magasin. Plusieurs
+   *  mises à jour (une copie : l'état du fichier, puis celle qui vide son
+   *  registre des publications et la marque, voir sauvegarde.ts) se rangent
+   *  dans cette même transaction, dans l'ordre. */
+  async remplacerPar(etat: Uint8Array | readonly Uint8Array[]): Promise<void> {
     const local = this.local
     if (!local) throw new Error('Ce tableau n\'est enregistré nulle part.')
     await local.whenSynced
@@ -348,9 +533,9 @@ export class Tableau {
     })
     const magasin = tr.objectStore('updates')
     magasin.clear()
-    magasin.add(etat)
+    for (const m of etat instanceof Uint8Array ? [etat] : etat) magasin.add(m)
     this.local = null
-    local.destroy()
+    local.destroy().catch(() => { /* déjà fermée */ })
     await fin
   }
 
@@ -358,7 +543,7 @@ export class Tableau {
    *  d'y ranger un autre tableau) : ce qu'on écrirait encore ici serait perdu
    *  au rechargement, mais n'abîmerait pas le nouveau. */
   couper() {
-    this.local?.destroy()
+    this.local?.destroy().catch(() => { /* jamais ouverte */ })
     this.local = null
   }
 

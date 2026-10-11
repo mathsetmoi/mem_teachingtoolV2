@@ -28,11 +28,13 @@ import { choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, reglage
 import type { Doigt } from './reglages'
 import { APPUI_LONG, DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, SEUIL_GLISSER, TOLERANCE_PRISE, TOUCHER_DOIGTS, ToucherADoigts, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from './pointeurs'
 import type { Depart, Toucher, ToucherReconnu, TypePointeur } from './pointeurs'
-import { CTRL, MAC, lireMolette, tableauCache, toucheMarquePage, toucheMenu, toucheTenueEnGeste } from './navigateur'
+import { CTRL, MAC, fenetreModaleOuverte, lireMolette, tableauCache, toucheMarquePage, toucheMenu, toucheTenueEnGeste } from './navigateur'
 import { avale } from './menus'
 import type { TraitDirect } from './rendu'
 import type { Vue } from './session'
 import { ecrireSession, lireSession, oublierSession } from './session'
+import type { InfosClasseur } from './classeurs/demarrage'
+import { CLASSEUR_SEUL, CLE_SESSION, cleDuClasseur } from './classeurs/demarrage'
 import type { Copie } from './presse-papiers'
 import { collage, lireHtml, lireJson, memeTexte, versHtml, versTexte } from './presse-papiers'
 import { TEXTE_ENVOI_IMPOSSIBLE, texteEnvoi, texteEnvoiAnnule, texteEnvoiBloque } from './pages/envoi'
@@ -60,6 +62,8 @@ export const TOUTE_LA_SELECTION = '*'
 
 /** La vue d'une page neuve : 100 %, l'origine en haut à gauche */
 const VUE_NEUTRE = { x: 120, y: 120, z: 1 }
+/** Le calme (voir App.calme) : tant de temps sans geste ni touche */
+export const CALME = 1500
 
 /** L'heure d'un événement du stylet (ms, horloge de performance.now()) : celle
  *  où le stylet a touché ce point, pas celle où on le traite. Un navigateur qui
@@ -105,8 +109,9 @@ export interface Interface {
   entrerDansMenu(): void
   /** Ce qu'on voit du tableau entre les barres (coordonnées de la zone) */
   zoneLibre(): { x: number; y: number; l: number; h: number }
-  /** Un fichier glissé sur le tableau (.memc, ou .mem) : comme « Ouvrir un tableau » */
-  ouvrirTableau(f: File): void
+  /** Des fichiers glissés sur le tableau (.memc, .memb, ou .mem, refusé) :
+   *  comme « Ouvrir un classeur » */
+  ouvrirFichiers(f: File[]): void
   /** On vient de changer de page : son numéro (et son nom) en grand, un
    *  instant, en haut de ce qu'on voit (voir App.allerPage) */
   annoncerPage(): void
@@ -116,7 +121,7 @@ export interface Interface {
   /** La fenêtre « Envoyer vers… » de ce qui est pris (voir pages/envoi.ts) */
   ouvrirEnvoi(): void
   /** La fenêtre « Exporter en PDF » (voir sorties/export-pdf.ts) : la page
-   *  (elle propose aussi tout le tableau), des pages, ou tout le tableau */
+   *  (elle propose aussi tout le classeur), des pages, ou tout le classeur */
   exporterPdf(cible: { page: string } | { pages: string[] } | 'tout'): void
 }
 
@@ -275,12 +280,16 @@ export class App {
   readonly instruments = new Map<NomInstrument, EtatInstrument>()
   /** Ce que la classe voit des instruments, noté pour le replay (voir piste.ts) */
   readonly piste: Piste
+  /** La fin du dernier geste (performance.now()) : un appui ou un lever sur
+   *  le tableau, une touche ; au départ, l'ouverture du classeur (voir calme) */
+  private finDuGeste = performance.now()
 
-  constructor(readonly tableau: Tableau, private zone: HTMLElement) {
+  /** classeur : le classeur ouvert (sa session, ses clés de stockage) */
+  constructor(readonly tableau: Tableau, private zone: HTMLElement, readonly classeur: InfosClasseur = CLASSEUR_SEUL) {
     this.rendu = new Rendu(this.cam, zone)
     this.majPoignees()
     this.cam.x = VUE_NEUTRE.x; this.cam.y = VUE_NEUTRE.y
-    const session = lireSession()
+    const session = lireSession(this.cleSession)
     if (session) { this.vues = session.vues; this.pageSession = session.page }
     // Ce que la couche des instruments montre part dans la piste : les gestes,
     // le constructeur, ce qu'on montre ou range, l'état rendu au chargement
@@ -341,10 +350,11 @@ export class App {
     zone.addEventListener('dragover', e => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault() })
     zone.addEventListener('drop', e => {
       const fichiers = [...(e.dataTransfer?.files ?? [])]
-      // Un tableau enregistré (.memc), ou un film élève (.mem) qu'on refusera
-      // avec une phrase claire : comme « Ouvrir un tableau »
-      const tableau = fichiers.find(x => /\.memc?$/i.test(x.name))
-      if (tableau) { e.preventDefault(); this.ui.ouvrirTableau(tableau); return }
+      // Des classeurs (.memc), une bibliothèque (.memb, lot 4 C9), ou un film
+      // élève (.mem) qu'on refusera avec une phrase claire : comme « Ouvrir
+      // un classeur »
+      const classeurs = fichiers.filter(x => /\.mem[cb]?$/i.test(x.name))
+      if (classeurs.length) { e.preventDefault(); this.ui.ouvrirFichiers(classeurs); return }
       const f = fichiers.find(x => x.type.startsWith('image/'))
       if (f) { e.preventDefault(); this.importerImage(f) }
     })
@@ -535,6 +545,24 @@ export class App {
    *  encore rien fait (voir ecrireOuRetenir). La trieuse ne s'ouvre pas au
    *  milieu d'un geste. */
   get enGeste(): boolean { return !!this.geste && this.geste.type !== 'retenu' }
+
+  /** Le calme : aucun geste en cours (pas même le doigt retenu un instant),
+   *  aucun point d'un simple toucher du Stylo qui attend un éventuel second
+   *  toucher (le double-clic qui ouvre les options), et 1,5 s depuis la fin
+   *  du dernier geste ou de la dernière touche. Les écritures automatiques
+   *  (la clé, le Drive, les aperçus, la réparation de la base) attendent le
+   *  calme : elles peuvent prendre un moment au fil principal, jamais
+   *  pendant un trait. Elles n'appellent JAMAIS poserCeQuiAttend : posé
+   *  entre les deux appuis, le point ferait d'un double-clic au Stylo un
+   *  point d'encre ; le point qui attend compte comme un geste en cours, et
+   *  elles réessaient un peu plus tard. Seuls Ctrl + S, Enregistrer et le
+   *  départ vers un autre classeur posent ce qui attend. */
+  get calme(): boolean { return !this.geste && !this.pointEnAttente && this.depuisLeDernierGeste() >= CALME }
+
+  /** Le temps depuis la fin du dernier geste (ms) ; 0 pendant un geste */
+  depuisLeDernierGeste(): number {
+    return this.geste ? 0 : Math.max(0, performance.now() - this.finDuGeste)
+  }
 
   // ---------- Pages ----------
   /** Chaque page garde sa vue. Une page qu'on n'a pas encore regardée
@@ -1053,8 +1081,11 @@ export class App {
     clearTimeout(this.minuterieSession); this.minuterieSession = 0
     if (!this.page || this.sessionArretee) return
     if (this.rendu.l > 0) this.vues.set(this.page, this.vueActuelle())
-    ecrireSession(this.page, this.vues, this.pages)
+    ecrireSession(this.page, this.vues, this.pages, this.cleSession)
   }
+
+  /** La clé de la session de ce classeur : 'mem-session' pour le premier */
+  private get cleSession() { return cleDuClasseur(this.classeur, CLE_SESSION) }
 
   /** Un autre tableau s'ouvre (un fichier) : les vues gardées ne sont plus les
    *  siennes. Celles qu'on tient en mémoire partent aussi, sinon la prochaine
@@ -1062,10 +1093,10 @@ export class App {
   oublierVues() {
     clearTimeout(this.minuterieSession); this.minuterieSession = 0
     this.vues.clear(); this.pageSession = null
-    oublierSession()
+    oublierSession(this.cleSession)
   }
 
-  /** Avant d'enregistrer le tableau dans un fichier : le point d'un simple
+  /** Avant d'enregistrer le classeur dans un fichier : le point d'un simple
    *  toucher, qui attendait un éventuel double-clic, est posé tout de suite */
   poserCeQuiAttend() { this.viderPointEnAttente() }
 
@@ -1293,6 +1324,11 @@ export class App {
     }, true)
     window.addEventListener('keydown', e => this.clavier(e))
     window.addEventListener('keyup', e => { if (e.code === 'Space') this.espace = false })
+    // Le calme (voir calme) : chaque appui, chaque lever, chaque touche le
+    // remet à zéro ; en capture, avant que le geste ne commence ou ne finisse
+    const geste = () => { this.finDuGeste = performance.now() }
+    for (const t of ['pointerdown', 'pointerup', 'pointercancel'] as const) z.addEventListener(t, geste, true)
+    window.addEventListener('keydown', geste, true)
   }
 
   // ---------- Le rôle du doigt ----------
@@ -3501,6 +3537,16 @@ export class App {
       if (toucheMarquePage(e)) e.preventDefault()
       return
     }
+    // Une fenêtre modale ouverte dont le focus est tombé sur la page (le
+    // bouton « Publier », désactivé pendant l'envoi, l'a perdu) : la touche
+    // vient d'elle quand même. Échap la ferme (le navigateur le fait) sans
+    // passer le tableau en Sélection, et aucune autre touche ne change le
+    // tableau qu'elle couvre (le contrôle final du lot 4 : après Publier puis
+    // Échap, le premier trait sélectionnait au lieu d'écrire)
+    if (fenetreModaleOuverte()) {
+      if (toucheMarquePage(e)) e.preventDefault()
+      return
+    }
     // La trieuse des pages couvre le tableau : plus aucune touche du tableau
     // (elle a les siennes). Après les champs de saisie : Ctrl + D dans le
     // champ du nom d'une page reste empêché, comme ailleurs.
@@ -3542,7 +3588,7 @@ export class App {
     // Ctrl + P (⌘ + P) : le réflexe de qui veut imprimer. Le navigateur
     // imprimerait la page web (les barres comprises, le tableau coupé au bord
     // de l'écran) : la fenêtre « Exporter en PDF » de la page s'ouvre, avec le
-    // choix de tout le tableau. Ni une touche tenue, ni en plein geste (une
+    // choix de tout le classeur. Ni une touche tenue, ni en plein geste (une
     // fenêtre ne s'ouvre pas sous un trait qu'on écrit) ; Ctrl + Maj + P
     // reste au navigateur.
     if (ctrl && !e.shiftKey && !e.altKey && lettre === 'p') {

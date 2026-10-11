@@ -4,6 +4,13 @@
 // pages, un titre et le compte Google. Il peut la regarder comme un élève
 // avant de la publier. Il reçoit un lien stable à coller dans Pronote :
 // republier la même séance met à jour le même fichier, le lien ne change pas.
+// Une copie d'un classeur (« Dupliquer le classeur », « Ajouter comme
+// copie », lot 4) a reçu les séances de l'original avec toute son histoire,
+// donc à la même heure de début : sans registre (il est vidé), Publier
+// retrouverait quand même la séance de l'original sur le Drive par sa clé.
+// Marquée (fichier.CARTE_COPIE), elle publie sous une clé à elle : un
+// nouveau lien, et celui de l'autre classe ne change pas. Un classeur qui
+// n'est pas une copie publie exactement comme avant.
 // =============================================================
 import * as Y from 'yjs'
 import type { App } from '../app'
@@ -14,6 +21,7 @@ import { ErreurFilm, ecrireFilm, lireFilm } from '../revoir/format'
 import { Bobine } from '../revoir/bobine'
 import { essayerRelais, lireParLeRelais } from '../revoir/relais'
 import { CLIENT_GOOGLE, COMPTES, EXTENSION, compteDe, lienEleve } from './comptes'
+import { marqueDeCopie } from '../fichier'
 import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier } from './drive'
 
 /** Ce qu'on retient d'une séance publiée, dans le document du professeur
@@ -240,6 +248,9 @@ export class Publication {
       b.disabled = false
       this.majGoogle()
       this.majVerifications()
+      // Le focus perdu pendant la connexion revient dans la fenêtre (voir publier)
+      const d = this.d
+      if (d?.open && !d.contains(document.activeElement)) b.focus()
     }
   }
 
@@ -303,8 +314,10 @@ export class Publication {
       const texte = await ecrireFilm(film)
       const cle = this.cleRegistre()
       const deja = this.nouveauLien ? undefined : this.registre.get(cle)
-      // Une nouvelle séance demandée : sa propre clé, pour ne pas reprendre l'ancien fichier
-      const cleDrive = this.nouveauLien ? `${cle}:${Date.now()}` : (deja?.cle ?? cle)
+      // Une nouvelle séance demandée : sa propre clé, pour ne pas reprendre
+      // l'ancien fichier ; une copie : la sienne, pour ne pas reprendre celui de l'original
+      const copie = marqueDeCopie(this.app.tableau.doc)
+      const cleDrive = this.nouveauLien ? `${cle}:${Date.now()}` : (deja?.cle ?? (copie ? `${cle}:copie-${copie}` : cle))
       this.etat(`Envoi sur ${compte.nom} (${kilo(texte.length)})…`)
       const r = await publier(compte.dossier, film.titre, texte, cleDrive, deja?.id ?? null, async id => {
         this.etat('Vérification : on ouvre la séance comme un élève…')
@@ -350,6 +363,10 @@ export class Publication {
     } finally {
       b.disabled = false; changer.disabled = false
       this.majGoogle()
+      // Le bouton, désactivé pendant l'envoi, a perdu le focus (il est tombé
+      // sur la page) : il revient dans la fenêtre, pour le clavier (Échap,
+      // Tab) ; voir aussi App.clavier
+      if (d.open && !d.contains(document.activeElement)) (b.disabled ? d.querySelector<HTMLButtonElement>('button:not([disabled])') : b)?.focus()
     }
   }
 

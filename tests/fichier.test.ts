@@ -1,7 +1,9 @@
-// Le tableau dans un fichier (.memc) : il emporte tout le document, et la
+// Le classeur dans un fichier (.memc) : il emporte tout le document, et la
 // revue comme le replay marchent sur l'autre machine ; un film élève (.mem),
 // un fichier quelconque, abîmé ou plus récent sont refusés avec une phrase
-// claire ; le lecteur des élèves refuse un .memc.
+// claire ; le lecteur des élèves refuse un .memc. Depuis le lot 4, l'en-tête
+// dit aussi le nom et l'id du classeur (à la fin), lireEntete le lit seul, et
+// nomSur fait tous les noms de fichiers.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
 import { gzipSync, strToU8 } from 'fflate'
@@ -9,7 +11,7 @@ import { Tableau } from '../src/document'
 import type { Trait } from '../src/types'
 import { DEBUT_TABLEAU, ErreurFilm, ecrireFilm, lireFilm } from '../src/revoir/format'
 import type { FilmEleve } from '../src/revoir/format'
-import { ErreurFichier, EXTENSION_TABLEAU, VERSION_TABLEAU, crc32, dateLisible, ecrireTableau, lireTableau, nomTableau, pagesLisibles, quandLisible, tailleLisible } from '../src/fichier'
+import { ErreurFichier, EXTENSION_TABLEAU, VERSION_TABLEAU, crc32, dateLisible, ecrireTableau, lireEntete, lireTableau, nomClasseur, nomSur, nomTableau, pagesLisibles, quandLisible, tailleLisible } from '../src/fichier'
 
 let horloge = new Date('2026-10-07T14:05:00').getTime()
 let numero = 0
@@ -95,17 +97,89 @@ describe('enregistrer un tableau (.memc)', () => {
   })
 })
 
+describe('l\'en-tête d\'un classeur (lot 4) : son nom et son id, à la fin', () => {
+  const ID = '0123456789abcdef'
+  it('format, v, app, date, pages, puis nom et id ; il commence toujours par DEBUT_TABLEAU', async () => {
+    const { t } = await unTableau()
+    const o = await octets(ecrireTableau(t.doc, 1_791_000_000_000, { nom: 'Symétrie centrale', id: ID }))
+    const ligne = new TextDecoder().decode(o.subarray(0, o.indexOf(0x0a)))
+    expect(ligne).toBe(`{"format":"mem-tableau","v":1,"app":"MEM teachingtool","date":1791000000000,"pages":2,"nom":"Symétrie centrale","id":"${ID}"}`)
+    expect(ligne.startsWith(DEBUT_TABLEAU)).toBe(true)
+    const lu = lireTableau(o)
+    expect(lu.entete).toEqual({ format: 'mem-tableau', v: 1, app: 'MEM teachingtool', date: 1_791_000_000_000, pages: 2, nom: 'Symétrie centrale', id: ID })
+    expect(lu.pages).toBe(2)
+  })
+
+  it('le nom coupé à 60 caractères, les blancs réunis, sans contrôle ; un id qui n\'en est pas un n\'est pas écrit', async () => {
+    const { t } = await unTableau()
+    const ligne = async (infos: { nom?: string; id?: string }) => { const o = await octets(ecrireTableau(t.doc, 1, infos)); return JSON.parse(new TextDecoder().decode(o.subarray(0, o.indexOf(0x0a)))) }
+    expect((await ligne({ nom: 'é'.repeat(80) })).nom).toBe('é'.repeat(60))
+    expect((await ligne({ nom: '  Une\tleçon\n  bien  nommée\u0007 ' })).nom).toBe('Une leçon bien nommée')
+    expect(await ligne({ nom: '   ', id: '' })).toEqual({ format: 'mem-tableau', v: 1, app: 'MEM teachingtool', date: 1, pages: 2 })
+    expect((await ligne({ id: 'ABCDEF0123456789' })).id).toBeUndefined()        // en majuscules : pas un id
+    expect((await ligne({ id: '0123' })).id).toBeUndefined()
+  })
+
+  it('il tient dans les 4096 premiers octets, avec 60 caractères accentués et des guillemets', async () => {
+    const { t } = await unTableau()
+    for (const nom of ['é'.repeat(60), '"'.repeat(60), '«"»\\'.repeat(15), '𝔸'.repeat(60)]) {
+      const o = await octets(ecrireTableau(t.doc, Date.now(), { nom, id: ID }))
+      const fin = o.indexOf(0x0a)
+      expect(fin).toBeGreaterThan(0)
+      expect(fin).toBeLessThan(4096)
+      expect(lireTableau(o).entete.nom).toBe([...nom].slice(0, 60).join(''))
+    }
+  })
+
+  it('lireTableau ne rend que des nom et id valables', async () => {
+    const { t } = await unTableau()
+    const o = await octets(ecrireTableau(t.doc))
+    const corps = o.subarray(o.indexOf(0x0a) + 1)
+    const avec = (e: object) => lireTableau(new Uint8Array([...strToU8(JSON.stringify(e) + '\n'), ...corps])).entete
+    const base = { format: 'mem-tableau', v: 1, app: 'MEM teachingtool', date: 1, pages: 2 }
+    expect(avec({ ...base, nom: 'a'.repeat(61), id: 'ABCDEF0123456789' })).toEqual(base)
+    expect(avec({ ...base, nom: 'deux\nlignes', id: 12 })).toEqual(base)
+    expect(avec({ ...base, nom: '', id: ID + '0' })).toEqual(base)
+    expect(avec({ ...base, nom: 'Bon nom', id: ID })).toEqual({ ...base, nom: 'Bon nom', id: ID })
+  })
+
+  it('lireEntete : l\'en-tête seul, sur un début de fichier, sans rien décompresser ; null pour ce qui n\'est pas un .memc', async () => {
+    const { t } = await unTableau()
+    const o = await octets(ecrireTableau(t.doc, 7, { nom: 'Fractions', id: ID }))
+    const attendu = { format: 'mem-tableau', v: 1, app: 'MEM teachingtool', date: 7, pages: 2, nom: 'Fractions', id: ID }
+    expect(lireEntete(o)).toEqual(attendu)
+    // Le début seul (File.slice(0, 4096)), et même juste l'en-tête et un octet
+    expect(lireEntete(o.subarray(0, 4096))).toEqual(attendu)
+    expect(lireEntete(o.subarray(0, o.indexOf(0x0a) + 1))).toEqual(attendu)
+    // lireTableau, sur le même début, dirait « abîmé » : il dégonfle tout
+    expect(() => lireTableau(o.subarray(0, o.indexOf(0x0a) + 1))).toThrow(ErreurFichier)
+    // Un fichier d'avant le lot 4 : ni nom ni id
+    expect(lireEntete(await octets(ecrireTableau(t.doc, 7)))).toEqual({ format: 'mem-tableau', v: 1, app: 'MEM teachingtool', date: 7, pages: 2 })
+    // Une version plus récente : l'en-tête quand même (v le dit)
+    expect(lireEntete(strToU8('{"format":"mem-tableau","v":2,"app":"x","date":1,"pages":3}\n…'))?.v).toBe(2)
+    // Ce qui n'est pas un .memc
+    const film: FilmEleve = { format: 'mem-revoir', v: 1, titre: 'Séance', date: horloge, ordre: ['p'], pages: [{ id: 'p', fond: 'blanc', origine: { x: 0, y: 0 }, formes: [] }], etapes: [], chapitres: [], images: {} }
+    expect(lireEntete(strToU8(await ecrireFilm(film)))).toBeNull()
+    expect(lireEntete(strToU8('Bonjour'))).toBeNull()
+    expect(lireEntete(new Uint8Array(0))).toBeNull()
+    expect(lireEntete(strToU8('{"format":"mem-tableau","v":1}'))).toBeNull()           // sans saut de ligne
+    expect(lireEntete(strToU8('{"format":"mem-tableau","v":1,\n'))).toBeNull()          // pas du JSON
+    expect(lireEntete(strToU8('{"format":"mem-tableau-faux","v":1}\n'))).toBeNull()
+    expect(lireEntete(new Uint8Array([...strToU8('{"format":"mem-tableau","v":1,"nom":"'), ...new Uint8Array(5000).fill(97)]))).toBeNull()  // pas de fin dans les 4096 octets
+  })
+})
+
 describe('ouvrir un fichier qui n\'est pas un tableau qu\'on sait lire', () => {
   const refuse = (o: Uint8Array) => { try { lireTableau(o); return null } catch (e) { expect(e).toBeInstanceOf(ErreurFichier); return (e as Error).message } }
 
   it('un film élève (.mem) : il se regarde dans « Revoir la séance »', async () => {
     const film: FilmEleve = { format: 'mem-revoir', v: 1, titre: 'Séance', date: horloge, ordre: ['p'], pages: [{ id: 'p', fond: 'blanc', origine: { x: 0, y: 0 }, formes: [] }], etapes: [], chapitres: [], images: {} }
     const m = refuse(strToU8(await ecrireFilm(film)))
-    expect(m).toBe('Ce fichier est un film pour les élèves (.mem) : il se regarde dans « Revoir la séance » et ne contient pas tout le tableau. Pour ouvrir un tableau, choisissez un fichier .memc (menu ⋯ → Enregistrer le tableau).')
+    expect(m).toBe('Ce fichier est un film pour les élèves (.mem) : il se regarde dans « Revoir la séance » et ne contient pas tout le classeur. Pour ouvrir un classeur, choisissez un fichier .memc (menu ⋯ → Enregistrer le classeur).')
   })
 
   it('un fichier quelconque, vide, ou un en-tête sans saut de ligne', () => {
-    const pas = 'Ce fichier n\'est pas un tableau enregistré par MEM teachingtool (fichier .memc).'
+    const pas = 'Ce fichier n\'est pas un classeur enregistré par MEM teachingtool (fichier .memc).'
     expect(refuse(strToU8('Bonjour'))).toBe(pas)
     expect(refuse(new Uint8Array(0))).toBe(pas)
     expect(refuse(strToU8('%PDF-1.7\n…'))).toBe(pas)
@@ -119,11 +193,11 @@ describe('ouvrir un fichier qui n\'est pas un tableau qu\'on sait lire', () => {
     const fin = o.indexOf(0x0a)
     const entete = '{"format":"mem-tableau","v":2,"app":"MEM teachingtool","date":1,"pages":2}\n'
     const r = new Uint8Array([...strToU8(entete), ...o.subarray(fin + 1)])
-    expect(refuse(r)).toBe('Ce tableau a été enregistré par une version plus récente de MEM teachingtool : ouvrez-le avec la version en ligne, à jour.')
+    expect(refuse(r)).toBe('Ce classeur a été enregistré par une version plus récente de MEM teachingtool : ouvrez-le avec la version en ligne, à jour.')
   })
 
   it('un fichier abîmé : tronqué, aux octets changés, ou sans aucune page', async () => {
-    const abime = 'Ce fichier .memc est abîmé : il ne peut pas être ouvert. Le tableau actuel n\'a pas changé.'
+    const abime = 'Ce fichier .memc est abîmé : il ne peut pas être ouvert. Le classeur actuel n\'a pas changé.'
     const { t } = await unTableau()
     const o = await octets(ecrireTableau(t.doc))
     const fin = o.indexOf(0x0a)
@@ -143,7 +217,7 @@ describe('ouvrir un fichier qui n\'est pas un tableau qu\'on sait lire', () => {
   it('un seul bit changé n\'importe où dans les données compressées : refusé, ou le même tableau', async () => {
     // fflate ne vérifie pas la fin du gzip (somme CRC-32, taille) : sans ce
     // contrôle, un bit changé donnait souvent un tableau altéré, accepté
-    const abime = 'Ce fichier .memc est abîmé : il ne peut pas être ouvert. Le tableau actuel n\'a pas changé.'
+    const abime = 'Ce fichier .memc est abîmé : il ne peut pas être ouvert. Le classeur actuel n\'a pas changé.'
     const t = new Tableau(null)
     const p = t.ajouterPage('carreaux', 0); t.pageVue = p
     t.nouveauGeste(); t.poser(p, trait(140, 60)); await attendre(1000)
@@ -175,7 +249,7 @@ describe('ouvrir un fichier qui n\'est pas un tableau qu\'on sait lire', () => {
   })
 
   it('un tableau dont une page de l\'ordre n\'existe pas, ou n\'a pas de formes', () => {
-    const abime = 'Ce fichier .memc est abîmé : il ne peut pas être ouvert. Le tableau actuel n\'a pas changé.'
+    const abime = 'Ce fichier .memc est abîmé : il ne peut pas être ouvert. Le classeur actuel n\'a pas changé.'
     const entete = strToU8('{"format":"mem-tableau","v":1,"app":"MEM teachingtool","date":1,"pages":1}\n')
     const fichier = (d: Y.Doc) => new Uint8Array([...entete, ...gzipSync(Y.encodeStateAsUpdate(d))])
     // L'ordre nomme une page absente (une racine « pages » au nom changé)
@@ -198,13 +272,13 @@ describe('ouvrir un fichier qui n\'est pas un tableau qu\'on sait lire', () => {
   })
 })
 
-describe('le lecteur des élèves refuse un tableau complet', () => {
+describe('le lecteur des élèves refuse un classeur complet', () => {
   it('avec une phrase qui dit où l\'ouvrir', async () => {
     const { t } = await unTableau()
     // Le lecteur lit le fichier choisi par f.text() : du texte, puis des octets mal décodés
     const texte = new TextDecoder().decode(await octets(ecrireTableau(t.doc)))
     await expect(lireFilm(texte)).rejects.toBeInstanceOf(ErreurFilm)
-    await expect(lireFilm(texte)).rejects.toThrow('Ce fichier est un tableau complet enregistré par l\'enseignant (.memc) : il s\'ouvre dans MEM teachingtool, pas ici. Pour revoir la séance, ouvrez le fichier séance (.mem) ou le lien donné par votre enseignant.')
+    await expect(lireFilm(texte)).rejects.toThrow('Ce fichier est un classeur complet enregistré par l\'enseignant (.memc) : il s\'ouvre dans MEM teachingtool, pas ici. Pour revoir la séance, ouvrez le fichier séance (.mem) ou le lien donné par votre enseignant.')
   })
 })
 
@@ -212,6 +286,30 @@ describe('les mots', () => {
   it('le nom du fichier, à l\'heure de l\'ordinateur', () => {
     expect(nomTableau(new Date('2026-10-07T14:05:00').getTime())).toBe('tableau-2026-10-07-14h05.memc')
     expect(nomTableau(new Date('2027-01-02T08:09:00').getTime())).toBe('tableau-2027-01-02-08h09.memc')
+  })
+  it('le nom du fichier d\'un classeur : son nom, puis la date et l\'heure de l\'ordinateur', () => {
+    expect(nomClasseur('Symétrie centrale', new Date('2026-10-10T14:05:00').getTime())).toBe('Symétrie centrale 2026-10-10 14h05.memc')
+    expect(nomClasseur('5e B : fractions / décimaux', new Date('2027-01-02T08:09:00').getTime())).toBe('5e B - fractions - décimaux 2027-01-02 08h09.memc')
+    expect(nomClasseur('   ', new Date('2026-10-10T14:05:00').getTime())).toBe('Classeur 2026-10-10 14h05.memc')
+    expect(nomClasseur('CON', new Date('2026-10-10T14:05:00').getTime())).toBe('CON (classeur) 2026-10-10 14h05.memc')
+  })
+  it('nomSur : la seule façon de faire un nom de fichier', () => {
+    expect(nomSur('Exercice 12 : a/b\\c*d?e<f>g|h"i')).toBe('Exercice 12 - a-b-c-d-e-f-g-h-i')
+    expect(nomSur('  Une\tleçon\n  bien   nommée ')).toBe('Une leçon bien nommée')
+    expect(nomSur('« Citation »\u0007')).toBe('- Citation --')
+    expect(nomSur('Fin.  ')).toBe('Fin')
+    expect(nomSur('é'.repeat(100))).toBe('é'.repeat(80))
+    expect(nomSur('é'.repeat(100), { longueur: 60 })).toBe('é'.repeat(60))
+    expect(nomSur('', { repli: 'page' })).toBe('page')
+    expect(nomSur('...')).toBe('Classeur')
+    // Les noms réservés de Windows, seuls ou avant un point, quelle que soit la casse
+    for (const r of ['CON', 'prn', 'Aux', 'NUL', 'COM1', 'com9', 'LPT1', 'lpt9']) expect(nomSur(r)).toBe(`${r} (classeur)`)
+    expect(nomSur('con.txt')).toBe('con (classeur).txt')
+    expect(nomSur('CON', { repli: 'page' })).toBe('CON (page)')
+    expect(nomSur('CONTE')).toBe('CONTE')
+    expect(nomSur('COM0')).toBe('COM0')
+    expect(nomSur('LPT10')).toBe('LPT10')
+    expect(nomSur('Le CON')).toBe('Le CON')
   })
   it('la taille, les pages, la date', () => {
     expect(tailleLisible(3.2 * 1024 * 1024)).toBe('3,2 Mo')

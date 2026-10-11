@@ -231,7 +231,7 @@ export class BarreActions {
       pris: app.selection.size, partie: !!app.partie, options: app.options !== null, menu: menuOuvert(),
       mouvement: app.enMouvement, lecture: app.enLecture, placement: !!app.placement,
       seance: document.body.classList.contains('en-seance'),
-      fenetre: !!document.querySelector('dialog[open]') || document.body.classList.contains('en-trieuse'),
+      fenetre: !!document.querySelector('dialog[open]') || document.body.classList.contains('en-trieuse') || document.body.classList.contains('en-bibliotheque'),
       outilSelection: app.outil === 'selection', doigtQuiDeplace: app.doigtDeplace && app.dernierPointeur === 'touch',
     })
   }
