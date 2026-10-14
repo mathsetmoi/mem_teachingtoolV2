@@ -74,6 +74,7 @@ import { EXTENSION_TABLEAU, nomSur } from '../fichier'
 import { ecrire, lire } from '../reglages'
 import { cleDernierEnregistrement, lireDernierEnregistrement } from '../sauvegarde'
 import type { Fond } from '../types'
+import { FONDS } from '../types'
 import type { FicheClasseur, FicheDossier, InfosClasseur } from './demarrage'
 import { LONGUEUR_NOM_CLASSEUR, LONGUEUR_NOM_DOSSIER, baseDe, idClasseur, parents, urlDuClasseur, visible } from './demarrage'
 import { passerLaConnexion } from '../publication/drive'
@@ -171,13 +172,11 @@ const ECRIRE_LA_FICHE_MAX = 1000
 const RAFRAICHIR = 60_000
 /** Le nom proposé pour un classeur neuf */
 export const NOM_NOUVEAU = 'Nouveau classeur'
-/** Les fonds proposés, dans cet ordre (les petits carreaux d'abord : le cahier de maths) */
-const FONDS_NEUF: { id: Fond; nom: string }[] = [
-  { id: 'carreaux', nom: 'Petits carreaux' },
-  { id: 'blanc', nom: 'Page blanche' },
-  { id: 'seyes', nom: 'Seyès' },
-  { id: 'repere', nom: 'Repère' },
-]
+/** Les fonds proposés, dans cet ordre (les petits carreaux d'abord : le
+ *  cahier de maths ; puis, depuis le lot 5, les quatre nouveaux, après les
+ *  quatre d'avant, qui gardent leur place) ; leurs noms sont ceux des menus */
+const FONDS_NEUF: { id: Fond; nom: string }[] = (['carreaux', 'blanc', 'seyes', 'repere', 'grands-carreaux', 'millimetre', 'pointe', 'iso'] as Fond[])
+  .map(id => ({ id, nom: FONDS.find(f => f.id === id)!.nom }))
 export const PLUS_DE_PLACE = 'Le classeur n\'a pas pu être créé : il n\'y a plus de place dans ce navigateur.'
 /** Le dossier qu'on regarde, et le filtre de classe, retenus pour l'onglet
  *  (sessionStorage : un autre onglet a les siens) ; le tri, pour l'appareil */

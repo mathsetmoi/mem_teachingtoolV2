@@ -119,10 +119,11 @@ export class Tiroir {
     // et quand. La première d'une page est sa naissance (si elle n'a fait que
     // la créer, vide, ou si c'est une copie) : elle ne compte pas parmi ses
     // gestes à elle. Jeter une page, la rendre ne change que l'ordre : ni
-    // geste, ni heure.
+    // geste, ni heure ; un réglage (la verrouiller, grouper) ne change rien à
+    // l'image : ni geste, ni heure non plus.
     const parPage = new Map<string, { etapes: number; dernier: number; nee: number }>()
     c.film.forEach((e, i) => {
-      if (!e.page || e.seulOrdre) return
+      if (!e.page || e.seulOrdre || e.reglage) return
       const m = parPage.get(e.page)
       if (!m) parPage.set(e.page, { etapes: 1, dernier: e.t, nee: i })
       else { m.etapes++; m.dernier = e.t }
@@ -147,8 +148,8 @@ export class Tiroir {
       if (g > 0) { derniere = { x: s, gestes: g }; break }
     }
     /** Le geste i est-il de l'histoire de la page affichée ? (ni une
-     *  naissance, ni une étape qui ne change que l'ordre) */
-    const geste = (i: number) => { const e = c.film[i]; return !!e && !e.seulOrdre && c.deLaPage(i, c.pageVue) && !c.naissance(i) }
+     *  naissance, ni une étape qui ne change que l'ordre, ni un réglage) */
+    const geste = (i: number) => { const e = c.film[i]; return !!e && !e.seulOrdre && !e.reglage && c.deLaPage(i, c.pageVue) && !c.naissance(i) }
     if (vue && derniere) {
       let de = Infinity, a = -Infinity
       for (let i = derniere.x.de; i <= derniere.x.a; i++) {

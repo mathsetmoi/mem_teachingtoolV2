@@ -15,6 +15,7 @@
 // Rien ici n'écrit ailleurs qu'en mémoire.
 // =============================================================
 import type { Fond, Forme } from '../types'
+import { englobante } from '../geometrie'
 import type { Chapitre, FilmEleve } from './format'
 import type { Main } from './main-levee'
 import { leve, main } from './main-levee'
@@ -175,6 +176,11 @@ export class Bobine {
     return r
   }
 
+  /** L'image k coupe-t-elle un trait à la gomme qui efface là où elle passe
+   *  (lot 5, voir EtapeFilm.coupe) ? Ses morceaux paraissent alors d'un coup :
+   *  ils ont été écrits avant, on ne réinvente pas leur écriture */
+  coupe(k: number): boolean { return k > 0 && k < this.n && this.film.etapes[k - 1]?.coupe === true }
+
   /** Le trait que l'image k trace à la main, et son rythme (null : aucun) */
   main(k: number): Main | null { return this.mains[k] ?? null }
 
@@ -288,7 +294,12 @@ export function boiteDe(f: Forme): Boite | null {
     }
     case 'cercle': return { x: f.x - f.r - 8, y: f.y - f.r - 8, l: 2 * f.r + 16, h: 2 * f.r + 16 }
     case 'segment': return depuis([f.x, f.x + f.dx], [f.y, f.y + f.dy], f.taille)
-    case 'formule': return { x: f.x, y: f.y, l: Math.max(1, f.latex.length) * f.taille * 0.55, h: f.taille * 1.6 }
+    case 'formule': {
+      // Une estimation (le lecteur ne la mesure pas) ; tournée (lot 5),
+      // l'englobante de ses coins tournés : le lecteur cadre la page dessus
+      const b = { x: f.x, y: f.y, l: Math.max(1, f.latex.length) * f.taille * 0.55, h: f.taille * 1.6 }
+      return englobante(f, b)
+    }
     case 'image': {
       const [a, b, c, d] = f.m
       const xs = [0, a * f.l, c * f.h, a * f.l + c * f.h].map(v => f.x + v)

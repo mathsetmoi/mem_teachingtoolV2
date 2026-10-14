@@ -106,6 +106,23 @@ describe('où elle se pose', () => {
     expect(placeBarre(objet(500, top - 1, 700, top + 50), L, H, bords, fenetre).dessous).toBe(true)
   })
 
+  it('jamais sur la pastille ↻ du cadre de taille (lot 5) : à côté d\'elle, sinon dessous', () => {
+    // Un objet aussi haut que l'écran : la barre en haut de la zone libre, où
+    // est aussi la pastille ; elle passe à côté (au plus près)
+    const pastille = { left: 625, top: 82, right: 655, bottom: 112 }
+    const p = placeBarre(objet(400, 80, 900, 760), L, H, bords, fenetre, 10, pastille)
+    const couvre = (q: { left: number; top: number }) => q.left < pastille.right && q.left + L > pastille.left && q.top < pastille.bottom && q.top + H > pastille.top
+    expect(couvre(p)).toBe(false)
+    expect(p.top).toBe(bords.haut + 8)
+    expect(p.left).toBe(pastille.right + 8)
+    // Ailleurs (l'objet comprend sa pastille : voir App.emprise), rien ne change
+    expect(placeBarre(objet(500, 340, 700, 480), L, H, bords, fenetre, 10, { left: 585, top: 340, right: 615, bottom: 370 })).toEqual({ left: 600 - L / 2, top: 340 - 10 - H, dessous: false })
+    // Pas la place à côté (une fenêtre étroite) : dessous
+    const etroite = { l: 360, h: 768 }
+    const q = placeBarre(objet(20, 80, 340, 760), L, H, { gauche: 8, haut: 70 }, etroite, 10, { left: 165, top: 82, right: 195, bottom: 112 })
+    expect(q.top).toBe(112 + 8)
+  })
+
   it('un objet plus haut que l\'écran : en haut de la zone libre, sous la barre du haut', () => {
     const p = placeBarre(objet(400, 20, 900, 760), L, H, bords, fenetre)
     expect(p.top).toBe(bords.haut + 8)

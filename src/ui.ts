@@ -7,7 +7,8 @@ import katex from 'katex'
 import type { ActionMessage, App, Interface, Prise } from './app'
 import { COULEURS, TAILLES, TOUTE_LA_SELECTION, poigneeDuRayon } from './app'
 import type { Bout, Figure, Forme, Formule, MarquePoint, Outil, TypeForme } from './types'
-import { CM, FONDS } from './types'
+import type { Fond } from './types'
+import { CM, libre } from './types'
 import type { P, Transformation } from './formes'
 import { centreDe, image, placesDesNoms, sommetsDe, versRelatif } from './formes'
 import { etapesImage } from './construction'
@@ -18,15 +19,19 @@ import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
 import type { Menu, OptionsEntree } from './menus'
-import { ENTREES, allerAuxEntrees, basculerMenu, entreeMenu, fermerMenu, focusAuClavier, focusNullePart, focusVenuDuClavier, installerMenus, ouvrirMenu, placerMenu, positionPanneau, refaireEnGardantLeFocus } from './menus'
-import { choisirGestes, choisirMolette, reglages } from './reglages'
-import type { Doigt, Molette } from './reglages'
-import { CTRL, tableauCache } from './navigateur'
+import type { Sens } from './ordre'
+import { aidesOrdre } from './ordre'
+import { ENTREES, allerAuxEntrees, basculerMenu, entreeMenu, fermerMenu, filetMenu, focusAuClavier, focusNullePart, focusVenuDuClavier, installerMenus, naviguerDansLaGrille, ouvrirMenu, placerMenu, positionPanneau, refaireEnGardantLeFocus, titreMenu } from './menus'
+import { choisirGestes, choisirGomme, choisirMolette, choisirNomsOutils, choisirTailleGomme, nomsOutilsVisibles, reglages } from './reglages'
+import type { Doigt, ModeGomme, Molette, TailleGomme } from './reglages'
+import { APPUI_LONG, messageNomsOutils, typePointeur } from './pointeurs'
+import { CTRL, TELEPHONE, tableauCache } from './navigateur'
 import { Sauvegarde } from './sauvegarde'
 import { zoneEntreBarres } from './camera'
 import type { Bords } from './camera'
 import { TAILLES_FORMULE, changerCouleur, changerEpaisseur, changerPointilles, habillageCommun, titreDuMenu } from './habillage'
 import { icone } from './icones'
+import { VIGNETTE_BOUTON, construireMenuFonds, densite, entreeCochee, nomDuFond, peindreVignette, vignetteDuFond } from './menu-fonds'
 import { BarreActions } from './barre-actions'
 import { Apercus } from './sorties/apercu'
 import type { PageAPeindre } from './sorties/apercu'
@@ -36,7 +41,8 @@ import type { CibleExport, HoteFenetrePdf } from './sorties/export-pdf'
 import { Vignettes } from './pages/vignettes'
 import { Trieuse } from './pages/trieuse'
 import { ouvrirEnvoi } from './pages/envoi'
-import { titreModifierFormule } from './pointeurs'
+import { messageVerrou, titreModifierFormule } from './pointeurs'
+import { accorder, compterObjets, minuscule } from './verrou'
 import type { Surveillance } from './classeurs/surveillance'
 import type { ActionEtat, Bandeau, LigneEtat } from './classeurs/etat'
 import type { EnregistrementCle } from './classeurs/cle'
@@ -63,11 +69,26 @@ const TITRE_IMAGE = 'Une image PNG, à coller dans l\'ENT ou Pronote'
 /** L'aide de « Envoyer vers… » (le menu ⋯ du menu complet ; pas dans la
  *  barre d'actions, qui garde les gestes de tous les jours : « Options » y mène) */
 const TITRE_ENVOI = 'Déplacer ou copier sur une autre page'
-/** Le titre du bouton ⋯ du menu complet, qui ouvre le menu de ces deux-là */
-const TITRE_PLUS = 'Plus : copier en image (ENT, Pronote), envoyer vers une autre page'
+/** Le titre du bouton ⋯ du menu complet, qui ouvre le menu de ces deux-là
+ *  et, depuis le lot 5, de l'ordre (premier plan, avancer, reculer,
+ *  arrière-plan) et de « Protéger » (verrouiller, fixer en fond) */
+const TITRE_PLUS = 'Plus : copier en image (ENT, Pronote), envoyer vers une autre page, premier plan, arrière-plan, verrouiller'
+/** Le même bouton ⋯, dans le menu court d'un objet verrouillé (lot 5) */
+const TITRE_PLUS_VERROUILLE = 'Plus : copier en image (ENT, Pronote), envoyer vers une autre page'
 
+/** Le menu du bouton ⋯ de la barre du haut, et ce qu'il a : le classeur, et
+ *  depuis le lot 5 les réglages de cet appareil (« Contraste renforcé »,
+ *  « Noms sous les outils ») ; son titre, son nom lu et celui de son menu le
+ *  disent (vérification « conformité » du lot 5 : on n'y cherchait pas le
+ *  contraste du vidéoprojecteur). Sous son icône, son nom court reste
+ *  « Fichier » : c'est là, comme Fichier → Options d'un traitement de
+ *  texte, que l'on cherche les réglages. */
+const MENU_FICHIER = 'Enregistrer, ouvrir ou exporter en PDF ; réglages de cet appareil'
 /** Le bouton ⋯ de la barre du haut */
-const TITRE_FICHIER = `Enregistrer, ouvrir ou exporter en PDF (${CTRL} + S, ${CTRL} + O, ${CTRL} + P)`
+const TITRE_FICHIER = `${MENU_FICHIER} (${CTRL} + S, ${CTRL} + O, ${CTRL} + P)`
+/** Le même bouton ⋯, au téléphone (lot 5, K10) : « Plus », qui a aussi tout
+ *  ce que la barre du haut n'y montre pas */
+const TITRE_PLUS_TELEPHONE = 'Plus : la page, les outils de cours, le classeur, cet appareil'
 /** Le texte caché que lit le lecteur d'écran sur le bouton du classeur : toutes les lignes de l'état */
 const ID_ETAT = 'etat-classeur-description'
 
@@ -149,6 +170,13 @@ const OUTILS: { id: Outil; nom: string; touche: string }[] = [
   { id: 'main', nom: 'Déplacer la vue', touche: 'Espace' },
 ]
 
+/** Les outils qui restent dans la barre des outils au téléphone (lot 5,
+ *  K10) : ceux de tous les instants ; les autres sont dans « Autres outils » */
+const ESSENTIELS: readonly Outil[] = ['stylo', 'gomme', 'selection']
+/** La grille « Autres outils » du téléphone, dans l'ordre de la barre du
+ *  poste de la classe ; le Doigt et « Supprimer la sélection » la suivent */
+const AUTRES_OUTILS: readonly Outil[] = ['surligneur', 'point', 'segment', 'forme', 'formule', 'main']
+
 const RACCOURCIS_LATEX = [
   ['\\frac{a}{b}', '\\frac{}{}'], ['\\sqrt{x}', '\\sqrt{}'], ['x^{n}', '^{}'], ['x_{n}', '_{}'],
   ['\\vec{u}', '\\vec{}'], ['\\overrightarrow{AB}', '\\overrightarrow{}'], ['\\in', '\\in '],
@@ -167,6 +195,28 @@ function bouton(nom: string, titre: string, action: (e: Event) => void, classe =
   return b
 }
 
+/** Les noms sous les outils (lot 5, voir UI.majNomsOutils) : le mot court
+ *  de chaque outil, sous son icône */
+const NOMS_OUTILS: Record<Outil, string> = {
+  stylo: 'Stylo', surligneur: 'Surligneur', gomme: 'Gomme', point: 'Point', segment: 'Segment',
+  forme: 'Formes', formule: 'Formule', selection: 'Sélection', main: 'Vue',
+}
+
+/** Donne à un bouton des barres son nom court, sous son icône (lot 5) : un
+ *  <span class="libelle">, caché sauf sous body.noms-outils (voir
+ *  style.css). Le mot est dans data-libelle, et la feuille de style
+ *  l'écrit (content: attr(data-libelle)) : le texte du bouton reste vide,
+ *  comme avant (son nom lu, son titre, ce que cherchent les essais par le
+ *  texte — « Annuler », « Supprimer » d'une fenêtre ou d'un menu — ne
+ *  changent pas), et aria-hidden : le lecteur d'écran lit son titre. */
+function nommer(b: HTMLElement, mot: string): HTMLSpanElement {
+  const s = document.createElement('span')
+  s.className = 'libelle'; s.dataset.libelle = mot; s.setAttribute('aria-hidden', 'true')
+  b.appendChild(s)
+  b.classList.add('nomme')
+  return s
+}
+
 /** Grise un bouton de la barre (ou le rend), sans toucher au DOM s'il l'est déjà */
 function griser(b: HTMLButtonElement, gris: boolean) {
   if (b.disabled === gris) return
@@ -181,6 +231,10 @@ export class UI implements Interface {
   private boutonSupprimer!: HTMLButtonElement
   /** La poubelle de la barre du haut : supprimer la page (l'effacer, seule) */
   private boutonJeter!: HTMLButtonElement
+  /** Son nom court (lot 5) : « Supprimer », ou « Effacer » sur une page seule, comme son titre */
+  private libelleJeter!: HTMLSpanElement
+  /** Les noms sous les outils se montrent-ils (body.noms-outils) ? Voir majNomsOutils */
+  private nomsMontres = false
   private boutonAnnuler!: HTMLButtonElement
   private boutonRetablir!: HTMLButtonElement
   /** Le compteur « 3 / 7 », suivi du nom de la page s'il y en a un (« · Exercice 12 p. 84 ») :
@@ -203,7 +257,13 @@ export class UI implements Interface {
   /** L'heure du dernier changement de page (performance.now()) : un clic sur
    *  « › » qui la suit de moins de 600 ms ne crée pas de page */
   private changementDePage = -Infinity
-  private choixFond!: HTMLSelectElement
+  /** Le bouton du fond (lot 5 : il remplace la liste déroulante) : la
+   *  vignette du fond de la page, qui ouvre le menu des fonds en vignettes
+   *  (voir menu-fonds.ts) ; le fond qu'elle montre, et son canevas */
+  private boutonFond!: HTMLButtonElement
+  private vignetteFond!: HTMLCanvasElement
+  private fondMontre: Fond | null = null
+  private menuFonds!: Menu
   private boutonAimant!: HTMLButtonElement
   private zoomTexte!: HTMLButtonElement
   private barreHaut!: HTMLElement
@@ -246,6 +306,17 @@ export class UI implements Interface {
   /** Le rôle du doigt : son bouton (sur un appareil tactile) et son menu */
   private boutonDoigt!: HTMLButtonElement
   private menuDoigt!: Menu
+  /** Le menu de la Gomme (lot 5) : ce qu'elle efface et sa taille ; il
+   *  s'ouvre en retouchant la Gomme déjà en main, au clic droit ou à l'appui
+   *  long sur son bouton, et par E quand elle est en main */
+  private menuGomme!: Menu
+  /** L'appui long du doigt sur le bouton de la Gomme, qui attend d'ouvrir
+   *  son menu */
+  private appuiLongGomme = 0
+  /** Quand le clic droit ou l'appui long a ouvert le menu de la Gomme : le
+   *  clic qui suit le lever du même appui (sans nouvel appui sur le bouton)
+   *  ne le referme pas */
+  private gommeOuverteA = -Infinity
   /** Enregistrer le classeur dans un fichier, en ouvrir un : le bouton ⋯ et son menu */
   sauvegarde!: Sauvegarde
   private menuFichier!: Menu
@@ -306,13 +377,145 @@ export class UI implements Interface {
   /** L'index de la bibliothèque ne s'ouvre pas (le repli) : le bouton du
    *  classeur le dit */
   sansBibliotheque = false
+  // ----- La mise en page du téléphone (lot 5, K10 ; voir style.css) -----
+  /** La requête de la mise en page du téléphone (src/navigateur.ts), suivie */
+  private requeteTelephone: MediaQueryList | null = typeof matchMedia === 'function' ? matchMedia(TELEPHONE) : null
+  /** « Couleur » : un rond de la couleur en main ; il ouvre les pastilles et
+   *  les tailles (menuCouleur) */
+  private boutonCouleur!: HTMLButtonElement
+  private rondCouleur!: HTMLSpanElement
+  private menuCouleur!: Menu
+  /** Sur un écran qu'on touche, hors du téléphone (contrôle final du lot 5) :
+   *  les pastilles et les tailles de la barre des outils sont-elles repliées
+   *  dans « Couleur », faute de place ? Voir majCouleursRepliees */
+  private couleursRepliees = false
+  /** « Autres outils » : les points, ou l'icône de celui qu'on tient s'il en
+   *  est ; il ouvre la grille des autres outils (menuAutres) */
+  private boutonAutres!: HTMLButtonElement
+  private menuAutres!: Menu
+  /** « Nouvelle page » (+) : sous 360 px de large, au téléphone, elle passe dans « Plus » */
+  private boutonNouvelle!: HTMLButtonElement
+  /** Le choix d'un fichier d'image (le bouton Image, et « Importer une image… » de « Plus ») */
+  private choixFichier!: HTMLInputElement
+  /** Le menu des fonds ouvert depuis « Plus » au téléphone : le même menu,
+   *  rattaché au bouton « Plus » (le bouton du fond y est caché) */
+  private menuFondsPlus!: Menu
+  /** La place que prend la barre du bas (--haut-barre-bas), telle que posée */
+  private hautBarreBas = -1
+  /** Ce qui a décidé la dernière place du message au téléphone (voir placerToast) */
+  private cleToast = ''
 
   constructor(private app: App, private racine: HTMLElement) {
     // Les menus d'abord : leur Échap passe avant celui des panneaux (voir menus.ts)
     installerMenus()
     this.construire()
     app.ui = this
+    // Les deux réglages de l'affichage de cet appareil (lot 5) : le contraste
+    // renforcé (la feuille de style suit body.contraste ; le rendu, l'App l'a
+    // déjà posé) et les noms sous les outils, qui s'éteignent dans la mise en
+    // page du téléphone et reviennent en la quittant
+    document.body.classList.toggle('contraste', reglages.contraste)
+    this.majNomsOutils()
+    this.majCouleursRepliees()
+    // La mise en page du téléphone (lot 5, K10) : body.telephone la suit ; en
+    // y entrant ou en en sortant (une fenêtre qu'on rétrécit, un téléphone
+    // qu'on tourne : le paysage y reste), les barres changent : le compteur et
+    // le bouton du classeur se règlent de nouveau, ce qui flotte se replace
+    document.body.classList.toggle('telephone', this.telephone)
+    const q = this.requeteTelephone
+    if (q) {
+      const suivre = () => {
+        document.body.classList.toggle('telephone', q.matches)
+        this.compteurARegler = true
+        this.majNomsOutils()
+        this.majCouleursRepliees()
+        this.maj()
+      }
+      if (q.addEventListener) q.addEventListener('change', suivre); else q.addListener?.(suivre)
+    }
     this.maj()
+  }
+
+  /** La mise en page du téléphone est-elle celle de l'écran (lot 5, K10) ? */
+  get telephone(): boolean { return !!this.requeteTelephone?.matches }
+
+  /** Au téléphone, la barre des outils est-elle posée en bas (en portrait),
+   *  plutôt qu'à gauche (en paysage) ? Mesuré : elle est alors plus large que
+   *  haute. */
+  private barreEnBas(): boolean {
+    if (!this.telephone) return false
+    const r = this.barreOutils.getBoundingClientRect()
+    return r.width > r.height
+  }
+
+  /** Les noms sous les outils (lot 5, D15) : body.noms-outils, d'après le
+   *  réglage (voir nomsOutilsVisibles : en 'auto', l'écran décide, et la
+   *  décision ne change pas quand on tourne la tablette), jamais dans la
+   *  mise en page du téléphone. Quand ils paraissent ou s'en vont, les
+   *  barres changent de taille : le compteur et le bouton du classeur se
+   *  règlent de nouveau, la barre d'actions se replace (maj). */
+  private majNomsOutils() {
+    const oui = nomsOutilsVisibles() && !(typeof matchMedia === 'function' && matchMedia(TELEPHONE).matches)
+    if (oui === this.nomsMontres && document.body.classList.contains('noms-outils') === oui) return
+    this.nomsMontres = oui
+    document.body.classList.toggle('noms-outils', oui)
+    this.compteurARegler = true
+    if (this.app.ui === this) { this.majCouleursRepliees(); this.maj() }
+  }
+
+  /** Les couleurs et les tailles de la barre des outils, sur un écran qu'on
+   *  touche (contrôle final du lot 5 ; l'étude, [18] : des cibles agrandies
+   *  au TNI). Sur l'iPad, la tablette Android, le TNI, l'écran tactile d'un
+   *  portable (body.tactile : le doigt y a un rôle, comme pour son bouton),
+   *  les pastilles et les tailles font 44 × 44 au lieu de 44 × 34 et
+   *  44 × 30. Plus hautes, elles feraient défiler la barre sur un écran de
+   *  moins de 1100 px de haut environ (le TNI de 1080 px avec ses noms,
+   *  l'iPad couché : les derniers boutons, Annuler, Rétablir, la poubelle,
+   *  sortaient de l'écran) : la barre les replie alors dans « Couleur »,
+   *  le bouton du téléphone (un rond de la couleur en main ; son menu, les
+   *  quatre pastilles et les trois tailles en 44 × 44), à leur place, entre
+   *  les deux filets. Mesuré : dépliée, la barre dépasse-t-elle la hauteur
+   *  qu'elle a ? (la mesure se fait toujours dépliée, dans la même tâche : rien
+   *  ne se peint entre les deux, et la décision ne dépend pas de l'état
+   *  d'avant). Refait quand la fenêtre change (une tablette qu'on tourne),
+   *  quand les noms paraissent ou s'en vont, et quand le bouton du doigt
+   *  paraît. Au poste de la classe (souris, tablette graphique), rien ne
+   *  change : la barre défile sur un écran bas, comme depuis le lot 1 ; au
+   *  téléphone, « Couleur » est déjà là (sa mise en page). */
+  private majCouleursRepliees() {
+    const b = this.barreOutils
+    if (!b) return
+    const tactile = !this.boutonDoigt.hidden
+    document.body.classList.toggle('tactile', tactile)
+    let replier = false
+    if (tactile && !this.telephone) {
+      b.classList.remove('couleurs-repliees')
+      replier = b.clientHeight > 0 && b.scrollHeight > b.clientHeight + 1
+    }
+    b.classList.toggle('couleurs-repliees', replier)
+    if (replier === this.couleursRepliees) return
+    this.couleursRepliees = replier
+    // Dépliée, « Couleur » n'est plus là : son menu ouvert se ferme
+    if (!replier && !this.telephone && !this.menuCouleur.el.hidden) fermerMenu()
+    if (this.app.ui === this) this.maj()
+  }
+
+  /** « Contraste renforcé » (lot 5), du menu ⋯ de la barre du haut */
+  private choisirContraste(oui: boolean) {
+    this.app.choisirContraste(oui)
+    document.body.classList.toggle('contraste', oui)
+    this.message(oui ? 'Contraste renforcé, sur cet appareil' : 'Contraste normal')
+  }
+
+  /** « Noms sous les outils » (lot 5), du menu ⋯ de la barre du haut : le
+   *  message dit, à la souris et au stylet qui survole, que le nom paraît
+   *  encore au survol ; au doigt, au TNI, il n'y a pas de survol. Le
+   *  pointeur est celui du clic (au clavier, le dernier vu sur le tableau). */
+  private choisirNomsOutils(oui: boolean, e?: MouseEvent) {
+    choisirNomsOutils(oui)
+    this.majNomsOutils()
+    const t = (e as PointerEvent | undefined)?.pointerType
+    this.message(messageNomsOutils(oui, t ? typePointeur(t) : this.app.dernierPointeur))
   }
 
   private construire() {
@@ -323,30 +526,41 @@ export class UI implements Interface {
     outils.className = 'barre barre-outils'
     outils.setAttribute('aria-label', 'Outils')
     for (const o of OUTILS) {
-      const b = bouton(o.id, `${o.nom} (${o.touche})`, () => app.choisirOutil(o.id), 'outil')
+      const b = bouton(o.id, `${o.nom} (${o.touche})`, e => (o.id === 'gomme' ? this.toucherGomme(e as MouseEvent) : app.choisirOutil(o.id)), 'outil')
+      // Au téléphone (lot 5, K10), seuls le Stylo, la Gomme et la Sélection
+      // restent dans la barre : les autres sont dans « Autres outils »
+      if (!ESSENTIELS.includes(o.id)) b.classList.add('seulement-large')
       this.outils.set(o.id, b)
       outils.appendChild(b)
     }
+    // La Gomme a ses options (lot 5) : son menu, à droite de la barre, à la
+    // hauteur de son bouton, comme celui du doigt
+    const menuGomme = document.createElement('div')
+    menuGomme.className = 'menu-flottant'; menuGomme.setAttribute('role', 'menu'); menuGomme.setAttribute('aria-label', 'Gomme')
+    menuGomme.hidden = true
+    this.menuGomme = { el: menuGomme, bouton: this.outils.get('gomme')! }
+    this.brancherBoutonGomme(this.outils.get('gomme')!)
     // Le rôle du doigt, après « Déplacer la vue » : seulement sur un appareil
     // tactile (sur le poste de la classe, souris et tablette graphique, il n'a
     // pas de sens). Il ouvre son menu, à droite de la barre.
     this.boutonDoigt = bouton('doigt', 'Rôle du doigt', e => this.basculerReglageDoigt((e as MouseEvent).detail === 0))
     this.boutonDoigt.setAttribute('aria-haspopup', 'menu'); this.boutonDoigt.setAttribute('aria-expanded', 'false')
     this.boutonDoigt.hidden = !appareilTactile()
+    this.boutonDoigt.classList.add('seulement-large')
     outils.appendChild(this.boutonDoigt)
     const menuDoigt = document.createElement('div')
     menuDoigt.className = 'menu-flottant'; menuDoigt.setAttribute('role', 'menu'); menuDoigt.setAttribute('aria-label', 'Rôle du doigt')
     menuDoigt.hidden = true
     this.menuDoigt = { el: menuDoigt, bouton: this.boutonDoigt }
-    outils.appendChild(Object.assign(document.createElement('hr'), { className: 'filet' }))
+    outils.appendChild(Object.assign(document.createElement('hr'), { className: 'filet seulement-large' }))
     for (const c of COULEURS) {
       const b = document.createElement('button')
-      b.type = 'button'; b.className = 'pastille'; b.title = c.nom; b.setAttribute('aria-label', c.nom)
+      b.type = 'button'; b.className = 'pastille seulement-large'; b.title = c.nom; b.setAttribute('aria-label', c.nom)
       b.style.setProperty('--teinte', c.valeur)
-      b.addEventListener('click', () => { app.couleur = c.valeur; if (app.outil !== 'surligneur' && app.outil !== 'segment' && app.outil !== 'formule') app.choisirOutil('stylo'); this.maj() })
+      b.addEventListener('click', () => this.choisirCouleur(c.valeur))
       this.pastilles.push(b); outils.appendChild(b)
     }
-    const rangee = document.createElement('div'); rangee.className = 'tailles'
+    const rangee = document.createElement('div'); rangee.className = 'tailles seulement-large'
     TAILLES.forEach((t, i) => {
       const b = document.createElement('button')
       b.type = 'button'; b.className = 'taille'; b.title = t.nom; b.setAttribute('aria-label', 'Trait ' + t.nom.toLowerCase())
@@ -355,22 +569,58 @@ export class UI implements Interface {
       this.tailles.push(b); rangee.appendChild(b)
     })
     outils.appendChild(rangee)
-    outils.appendChild(Object.assign(document.createElement('hr'), { className: 'filet' }))
+    outils.appendChild(Object.assign(document.createElement('hr'), { className: 'filet seulement-large' }))
     // Annuler et rétablir n'agissent que sur la page visible : grisés quand
     // elle n'a rien à défaire ou à refaire (ils gardent leur place)
-    this.boutonAnnuler = bouton('annuler', `Annuler sur cette page (${CTRL}+Z)`, () => app.annuler())
-    this.boutonRetablir = bouton('retablir', `Rétablir sur cette page (${CTRL}+Y)`, () => app.retablir())
+    this.boutonAnnuler = bouton('annuler', `Annuler sur cette page (${CTRL}+Z)`, () => app.annuler(), 'historique')
+    this.boutonRetablir = bouton('retablir', `Rétablir sur cette page (${CTRL}+Y)`, () => app.retablir(), 'historique')
     outils.append(this.boutonAnnuler, this.boutonRetablir)
     // La poubelle garde sa place, grisée quand rien n'est choisi : la barre ne
     // saute plus à chaque sélection
-    this.boutonSupprimer = bouton('poubelle', 'Supprimer la sélection (Suppr)', () => app.supprimerSelection(), 'danger')
+    this.boutonSupprimer = bouton('poubelle', 'Supprimer la sélection (Suppr)', () => app.supprimerSelection(), 'danger seulement-large')
     outils.appendChild(this.boutonSupprimer)
+    // Au téléphone seulement (lot 5, K10) : « Couleur » (après la Sélection)
+    // et « Autres outils » (au bout), placés par la feuille de style (order) ;
+    // ajoutés à la fin de la barre, ils ne changent rien à l'ordre des
+    // boutons du poste de la classe, où ils sont cachés
+    this.construireBoutonsDuTelephone(outils)
     this.barreOutils = outils
+    // Les noms sous les outils (lot 5) : cachés, sauf sous body.noms-outils
+    for (const [id, b] of this.outils) nommer(b, NOMS_OUTILS[id])
+    nommer(this.boutonDoigt, 'Doigt')
+    nommer(this.boutonAnnuler, 'Annuler'); nommer(this.boutonRetablir, 'Rétablir'); nommer(this.boutonSupprimer, 'Supprimer')
+    // « Couleur » a son nom aussi : la barre repliée d'un TNI, où les noms
+    // sont allumés d'office, le montre (au téléphone, les noms ne viennent pas)
+    nommer(this.boutonCouleur, 'Couleur')
+    // Le bord droit de la barre des outils, mesuré, dans --droite-barre-outils
+    // (lot 5) : avec les noms, elle s'élargit (jusqu'à 80 px), et la barre du
+    // classeur, posée 12 px plus loin, et la largeur de la barre du haut
+    // (style.css) le suivent. Quand il bouge, le bouton du classeur se
+    // replace (avec le compteur, voir reglerCompteur), comme quand la
+    // fenêtre change ; les choix des Formes et du Segment, les menus du
+    // doigt et de la Gomme se placent déjà sur lui, mesuré, à chaque fois.
+    let droiteVue = -1
+    const droiteDeLaBarre = () => {
+      const r = outils.getBoundingClientRect()
+      if (!r.width) return
+      const d = Math.ceil(r.right - this.racine.getBoundingClientRect().left)
+      if (d === droiteVue) return
+      const premiere = droiteVue < 0
+      droiteVue = d
+      this.racine.style.setProperty('--droite-barre-outils', d + 'px')
+      if (!premiere) { this.compteurARegler = true; requestAnimationFrame(() => this.maj()) }
+    }
+    if (typeof ResizeObserver === 'function') new ResizeObserver(droiteDeLaBarre).observe(outils)
+    window.addEventListener('resize', droiteDeLaBarre)
+    // Sur un écran qu'on touche, la barre des outils replie ses couleurs
+    // quand elle ne tient plus dans la hauteur (voir majCouleursRepliees)
+    window.addEventListener('resize', () => this.majCouleursRepliees())
     // Sur un écran bas, la barre défile (voir style.css) : les choix des Formes
     // et du Segment suivent leur bouton, le menu du doigt le sien
     outils.addEventListener('scroll', () => {
       this.maj()
       if (!this.menuDoigt.el.hidden) this.placerMenuDoigt()
+      if (!this.menuGomme.el.hidden) this.placerMenuGomme()
     }, { passive: true })
 
     // ----- Barre des pages, en haut à droite -----
@@ -416,7 +666,7 @@ export class UI implements Interface {
       if ((e as MouseEvent).detail > 1 || performance.now() - this.changementDePage < 600) return
       app.nouvellePage()
     })
-    const nouvelle = bouton('plus', 'Nouvelle page', () => app.nouvellePage())
+    const nouvelle = this.boutonNouvelle = bouton('plus', 'Nouvelle page', () => app.nouvellePage(), 'nouvelle-page')
     // Pas de question : la page part tout de suite, et s'annule (le message
     // « Page N supprimée · Annuler », ou Ctrl+Z). Le second clic d'un
     // double-clic, et tout clic trop tôt après une suppression, ne font rien :
@@ -428,32 +678,43 @@ export class UI implements Interface {
       if ((e as MouseEvent).detail > 1 || maintenant - jeteeA < 600) return
       jeteeA = maintenant
       app.supprimerPage()
-    }, 'danger')
-    this.choixFond = document.createElement('select')
-    this.choixFond.className = 'choix-fond'
-    this.choixFond.setAttribute('aria-label', 'Fond de la page')
-    for (const f of FONDS) this.choixFond.add(new Option(f.nom, f.id))
-    this.choixFond.addEventListener('change', () => app.changerFond(this.choixFond.value as never))
-    this.boutonAimant = bouton('aimant', 'Aimanter au quadrillage', () => { app.aimant = !app.aimant; this.maj() }, 'outil')
-    this.boutonReconnaissance = bouton('reconnaissance', 'Le stylo redresse les figures (carré, cercle…)', () => {
-      app.reconnaissance = !app.reconnaissance
-      this.message(app.reconnaissance ? 'Le stylo reconnaît les figures' : 'Le stylo laisse les tracés à main levée')
-      this.maj()
-    }, 'outil')
+    }, 'danger seulement-large')
+    // Le fond de la page : un bouton qui le montre en petit, et ouvre sous
+    // lui le menu des huit fonds en vignettes (voir menu-fonds.ts). Ouvert au
+    // clavier, le focus va sur le fond de la page. Un choix le donne à la
+    // page (le repère se pose au milieu de ce qu'on regarde, voir
+    // App.changerFond) ; maj remet la vignette du bouton à jour.
+    const boutonFond = this.boutonFond = document.createElement('button')
+    boutonFond.type = 'button'; boutonFond.className = 'bouton choix-fond seulement-large'
+    boutonFond.setAttribute('aria-haspopup', 'menu'); boutonFond.setAttribute('aria-expanded', 'false')
+    this.vignetteFond = vignetteDuFond('blanc', VIGNETTE_BOUTON.l, VIGNETTE_BOUTON.h, densite())
+    boutonFond.appendChild(this.vignetteFond)
+    const menuFonds = document.createElement('div')
+    menuFonds.className = 'menu-flottant menu-fonds'; menuFonds.setAttribute('role', 'menu'); menuFonds.setAttribute('aria-label', 'Fond de la page')
+    menuFonds.hidden = true
+    this.menuFonds = { el: menuFonds, bouton: boutonFond }
+    boutonFond.addEventListener('click', e => {
+      if (menuFonds.hidden) construireMenuFonds(menuFonds, app.fond, f => app.changerFond(f))
+      menuFonds.classList.remove('deux-colonnes')
+      basculerMenu(this.menuFonds)
+      if (menuFonds.hidden) return
+      placerMenu(menuFonds, boutonFond.getBoundingClientRect(), 'dessous')
+      if (e.detail === 0) entreeCochee(menuFonds)?.focus()
+    })
+    this.boutonAimant = bouton('aimant', 'Aimanter au quadrillage', () => this.basculerAimant(), 'outil seulement-large')
+    this.boutonReconnaissance = bouton('reconnaissance', 'Le stylo redresse les figures (carré, cercle…)', () => this.basculerReconnaissance(), 'outil seulement-large')
     this.boutonInstruments = bouton('instruments', 'Instruments : règle, équerre, rapporteur, compas', () => {
       this.choixInstruments.hidden = !this.choixInstruments.hidden; this.maj()
-    }, 'outil')
-    const construire = bouton('construction', 'Programme de construction, étape par étape', () => {
-      if (this.constructeur.ouvert) this.constructeur.fermer(); else this.constructeur.ouvrir()
-    })
+    }, 'outil seulement-large')
+    const construire = bouton('construction', 'Programme de construction, étape par étape', () => this.basculerConstructeur(), 'seulement-large')
     // Importer une image : bouton, ou coller (Ctrl+V), ou glisser le fichier sur le tableau
-    const choixFichier = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*', hidden: true })
+    const choixFichier = this.choixFichier = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*', hidden: true })
     choixFichier.addEventListener('change', () => { const f = choixFichier.files?.[0]; if (f) app.importerImage(f); choixFichier.value = '' })
-    const importer = bouton('image', 'Importer une image (ou coller avec Ctrl+V, ou glisser le fichier)', () => choixFichier.click())
+    const importer = bouton('image', 'Importer une image (ou coller avec Ctrl+V, ou glisser le fichier)', () => choixFichier.click(), 'seulement-large')
     this.racine.appendChild(choixFichier)
-    const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir())
-    const revoir = bouton('revue', 'Revoir la construction : une page, une séance, pas à pas', () => this.ouvrirRevue(revoir))
-    const publier = bouton('publier', 'Publier le replay pour les élèves', () => this.publication.ouvrir())
+    const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir(), 'seulement-large')
+    const revoir = bouton('revue', 'Revoir la construction : une page, une séance, pas à pas', () => this.ouvrirRevue(revoir), 'seulement-large')
+    const publier = bouton('publier', 'Publier le replay pour les élèves', () => this.publication.ouvrir(), 'seulement-large')
     // Enregistrer le classeur dans un fichier, en ouvrir un, l'exporter en
     // PDF : un menu discret au bout de la barre, sous son bouton, aligné à
     // droite. Son nom dit les trois (qui cherche « PDF » en survolant la
@@ -463,19 +724,37 @@ export class UI implements Interface {
       if (menuFichier.hidden) this.construireMenuFichier()
       basculerMenu(this.menuFichier)
       if (menuFichier.hidden) return
-      placerMenu(menuFichier, fichier.getBoundingClientRect(), 'dessous')
+      // Toujours sous son bouton, jamais dessus : plus long que la place
+      // (depuis le lot 5, « Cet appareil » au bout ; à 1366 × 768, avec
+      // l'entrée de la clé), il défile au lieu de remonter sur la barre
+      // Au téléphone (« Plus », lot 5, K10), dans la hauteur qu'on voit
+      // vraiment (le clavier virtuel, la barre d'adresse la réduisent)
+      const r = fichier.getBoundingClientRect()
+      const visible = this.telephone ? Math.min(window.innerHeight, window.visualViewport?.height ?? Infinity) : window.innerHeight
+      menuFichier.style.maxHeight = Math.max(160, Math.floor(visible - r.bottom - 6 - 8)) + 'px'
+      menuFichier.scrollTop = 0
+      placerMenu(menuFichier, r, 'dessous')
       if ((e as MouseEvent).detail === 0) menuFichier.querySelector<HTMLElement>('.menu-item')?.focus()
     }, 'points')
     fichier.setAttribute('aria-haspopup', 'menu'); fichier.setAttribute('aria-expanded', 'false')
     const menuFichier = document.createElement('div')
-    menuFichier.className = 'menu-flottant menu-large'; menuFichier.setAttribute('role', 'menu'); menuFichier.setAttribute('aria-label', 'Enregistrer, ouvrir ou exporter en PDF')
+    menuFichier.className = 'menu-flottant menu-large'; menuFichier.setAttribute('role', 'menu'); menuFichier.setAttribute('aria-label', MENU_FICHIER)
     menuFichier.hidden = true
     this.menuFichier = { el: menuFichier, bouton: fichier }
+    // Le menu des fonds, ouvert par « Plus → Fond… » au téléphone (voir menuFondsPlus)
+    this.menuFondsPlus = { el: menuFonds, bouton: fichier }
     // Le point de l'état, quand le bouton du classeur n'a pas la place
     this.pointFichier = Object.assign(document.createElement('span'), { className: 'point-etat', hidden: true })
     this.pointFichier.setAttribute('aria-hidden', 'true')
     fichier.appendChild(this.pointFichier)
-    haut.append(avant, this.rang, apres, nouvelle, jeter, this.choixFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, revoir, publier, fichier)
+    haut.append(avant, this.rang, apres, nouvelle, jeter, boutonFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, revoir, publier, fichier)
+    // Les noms sous les outils (lot 5) : ni ‹, ni ›, ni le compteur, ni le
+    // bouton du classeur
+    nommer(nouvelle, 'Nouvelle')
+    this.libelleJeter = nommer(jeter, 'Supprimer')
+    nommer(boutonFond, 'Fond'); nommer(this.boutonAimant, 'Aimant'); nommer(this.boutonReconnaissance, 'Formes auto')
+    nommer(importer, 'Image'); nommer(this.boutonInstruments, 'Instruments'); nommer(construire, 'Construire')
+    nommer(automatismes, 'Automatismes'); nommer(revoir, 'Revoir'); nommer(publier, 'Publier'); nommer(fichier, 'Fichier')
 
     // ----- Le bouton du classeur, à gauche de la barre du haut -----
     // L'icône, le nom en gras (entier dans le titre), l'état en court ; un
@@ -548,8 +827,14 @@ export class UI implements Interface {
       // Ouvert au clavier : la première entrée prend la main
       if (e.detail === 0) menu.querySelector<HTMLElement>('.menu-item')?.focus()
     })
-    zoom.append(bouton('moins', `Dézoomer (${CTRL} + −)`, () => app.zoomer(1 / 1.25)), this.zoomTexte,
-      bouton('plus', `Zoomer (${CTRL} + +)`, () => app.zoomer(1.25)), bouton('cadre', 'Tout voir (Maj + 1)', () => app.toutVoir()))
+    // Les noms sous les outils valent aussi ici (vérification « conformité »
+    // du lot 5 : au TNI, sans survol, ⛶ n'avait pas de nom visible) ; le
+    // pourcentage se lit déjà, comme le compteur des pages
+    const moins = bouton('moins', `Dézoomer (${CTRL} + −)`, () => app.zoomer(1 / 1.25))
+    const plus = bouton('plus', `Zoomer (${CTRL} + +)`, () => app.zoomer(1.25))
+    const toutVoir = bouton('cadre', 'Tout voir (Maj + 1)', () => app.toutVoir())
+    nommer(moins, 'Dézoomer'); nommer(plus, 'Zoomer'); nommer(toutVoir, 'Tout voir')
+    zoom.append(moins, this.zoomTexte, plus, toutVoir)
 
     // ----- Revenir au contenu, quand on s'en est éloigné -----
     this.retour = document.createElement('button')
@@ -618,14 +903,14 @@ export class UI implements Interface {
     menuPlus.hidden = true
     this.menuPlus = { el: menuPlus }
 
-    this.racine.append(outils, barreClasseur, haut, this.bandeau, this.descriptionEtat, zoom, this.retour, menu, menuDoigt, menuFichier, menuPage, menuPlus, this.annonce, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments)
+    // (les deux menus du téléphone, au bout : l'ordre des autres ne change pas)
+    this.racine.append(outils, barreClasseur, haut, this.bandeau, this.descriptionEtat, zoom, this.retour, menu, menuDoigt, this.menuGomme.el, menuFichier, menuFonds, menuPage, menuPlus, this.annonce, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments,
+      this.menuCouleur.el, this.menuAutres.el)
     // ----- La barre d'actions, au-dessus de ce qui est pris -----
-    // Elle ne recouvre ni la barre d'outils (sauf sur un téléphone, où elle
-    // n'y tient pas), ni la barre du haut
-    this.barreActions = new BarreActions(app, this.racine, () => ({
-      gauche: this.barreOutils.getBoundingClientRect().right,
-      haut: this.barreHaut.getBoundingClientRect().bottom,
-    }))
+    // Elle ne recouvre ni la barre d'outils (sauf sur un écran étroit, où
+    // elle n'y tient pas ; au téléphone, jamais : voir bordsFlottants), ni la
+    // barre du haut
+    this.barreActions = new BarreActions(app, this.racine, () => this.bordsFlottants())
     this.revue = new RevueEnClasse(this.app, this.racine)
     // Les formules écrites comme à l'écran (voir App, rendu.rendreFormule)
     this.apercus = new Apercus({
@@ -713,9 +998,20 @@ export class UI implements Interface {
 
   maj() {
     const app = this.app
+    // Un objet verrouillé n'est sélectionné que le temps de son menu court
+    // (lot 5) : le menu fermé, il ne l'est plus (avant tout le reste, qui lit
+    // la sélection : le bouton Supprimer, la barre d'actions)
+    app.oublierProteges()
     for (const [id, b] of this.outils) b.classList.toggle('actif', app.outil === id)
     const doigt = DOIGTS.find(d => d.id === reglages.doigt)!
     if (this.boutonDoigt.dataset.badge !== doigt.marque) this.boutonDoigt.dataset.badge = doigt.marque
+    // La Gomme dit ce qu'elle efface (lot 5) : son titre, et sa marque ◐
+    // quand elle n'efface que là où elle passe
+    const gomme = this.outils.get('gomme')!, zone = reglages.gomme === 'zone'
+    const titreGomme = zone ? 'Gomme (E) — seulement là où elle passe ; retapez pour ses options' : 'Gomme (E) — trait entier ; retapez pour ses options'
+    if (gomme.title !== titreGomme) { gomme.title = titreGomme; gomme.setAttribute('aria-label', titreGomme) }
+    if (zone && gomme.dataset.badge !== '◐') gomme.dataset.badge = '◐'
+    else if (!zone && gomme.dataset.badge !== undefined) delete gomme.dataset.badge
     const titre = doigt.id === 'auto' && reglages.styletDirect ? 'Rôle du doigt : auto (stylet détecté : il déplace la vue)' : doigt.titre
     if (this.boutonDoigt.title !== titre) { this.boutonDoigt.title = titre; this.boutonDoigt.setAttribute('aria-label', titre) }
     this.pastilles.forEach((b, i) => b.classList.toggle('actif', COULEURS[i].valeur === app.couleur))
@@ -752,18 +1048,26 @@ export class UI implements Interface {
     if (!this.annonce.hidden) this.majAnnonce()
     const titreJeter = pages.length <= 1 ? 'Effacer la page' : 'Supprimer cette page'
     if (this.boutonJeter.title !== titreJeter) { this.boutonJeter.title = titreJeter; this.boutonJeter.setAttribute('aria-label', titreJeter) }
-    this.choixFond.value = app.fond
+    const motJeter = pages.length <= 1 ? 'Effacer' : 'Supprimer'
+    if (this.libelleJeter.dataset.libelle !== motJeter) this.libelleJeter.dataset.libelle = motJeter
+    this.majBoutonFond()
     this.boutonAimant.classList.toggle('actif', app.aimant)
     this.boutonReconnaissance.classList.toggle('actif', app.reconnaissance)
     for (const [id, b] of this.boutonsFormes) b.classList.toggle('actif', app.typeForme === id)
     for (const [id, b] of this.boutonsTraits) b.classList.toggle('actif', app.typeTrait === id)
-    // Le petit panneau à côté de l'outil choisi (Formes ou Segment)
+    // Le petit panneau à côté de l'outil choisi (Formes ou Segment) ; au
+    // téléphone, près de « Autres outils » (voir placerChoixDuTelephone)
+    const telephone = this.telephone
+    if (telephone || this.couleursRepliees) this.majBoutonsDuTelephone()
     for (const [panneau, outil] of [[this.choixFormes, 'forme'], [this.choixTraits, 'segment']] as const) {
       panneau.hidden = app.outil !== outil
       if (panneau.hidden) continue
+      if (telephone) { this.placerChoixDuTelephone(panneau); continue }
+      panneau.classList.remove('en-rangee')
       const r = this.outils.get(outil)!.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
       panneau.style.left = (o.right + 8) + 'px'
       panneau.style.top = Math.max(8, r.top - 6) + 'px'
+      this.sousLaBarreDuHaut(panneau)
     }
     for (const [id, b] of this.boutonsInstruments) {
       const oui = app.instrumentVisible(id)
@@ -771,16 +1075,140 @@ export class UI implements Interface {
     }
     this.boutonInstruments.classList.toggle('actif', !this.choixInstruments.hidden || [...this.boutonsInstruments.keys()].some(i => app.instrumentVisible(i)))
     if (!this.choixInstruments.hidden) {
-      const r = this.boutonInstruments.getBoundingClientRect()
+      // Sous son bouton ; au téléphone, où il est caché (« Plus →
+      // Instruments… »), centrée sous la barre du haut, jamais sur la barre
+      // des outils
+      const w = this.choixInstruments.offsetWidth
+      const r = telephone ? this.barreHaut.getBoundingClientRect() : this.boutonInstruments.getBoundingClientRect()
+      const min = telephone && !this.barreEnBas() ? this.barreOutils.getBoundingClientRect().right + 8 : 8
       this.choixInstruments.style.top = (r.bottom + 10) + 'px'
-      this.choixInstruments.style.left = Math.max(8, Math.min(r.left + r.width / 2 - this.choixInstruments.offsetWidth / 2, window.innerWidth - this.choixInstruments.offsetWidth - 8)) + 'px'
+      this.choixInstruments.style.left = Math.max(min, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 8)) + 'px'
     }
+    this.majHautBarreBas()
     this.majPanneau()
     this.majMenuPartie()
     this.zoomTexte.textContent = Math.round(app.cam.z * 100) + ' %'
     this.majRetour()
     // Après le menu complet : elle ne paraît que s'il est fermé
     this.barreActions.maj()
+    // Au téléphone, le message ne couvre pas ce qui est pris (voir placerToast)
+    if (telephone) this.placerToast()
+  }
+
+  /** Les choix des Formes ou du Segment au téléphone (lot 5, K10) : en
+   *  portrait, une rangée juste au-dessus de la barre du bas, alignée sur
+   *  « Autres outils » ; en paysage, une colonne à droite de la barre, à la
+   *  hauteur de ce bouton ; toujours dans l'écran */
+  private placerChoixDuTelephone(panneau: HTMLElement) {
+    const b = this.boutonAutres.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
+    const enBas = this.barreEnBas()
+    panneau.classList.toggle('en-rangee', enBas)
+    const w = panneau.offsetWidth, h = panneau.offsetHeight
+    if (enBas) {
+      panneau.style.left = Math.max(8, Math.min(b.right - w, window.innerWidth - w - 8)) + 'px'
+      panneau.style.top = Math.max(8, o.top - h - 8) + 'px'
+    } else {
+      panneau.style.left = (o.right + 8) + 'px'
+      panneau.style.top = Math.max(8, Math.min(b.top - 6, window.innerHeight - h - 8)) + 'px'
+      this.sousLaBarreDuHaut(panneau)
+    }
+  }
+
+  /** Le haut de ce qui est posé en bas de l'écran au téléphone en portrait
+   *  (la barre des outils, et les choix des Formes ou du Segment au-dessus
+   *  d'elle), en pixels de la fenêtre ; ailleurs, le bas de la fenêtre. La
+   *  barre d'actions, le menu complet, le message s'arrêtent au-dessus. */
+  private basUtile(): number {
+    if (!this.barreEnBas()) return window.innerHeight
+    let haut = this.barreOutils.getBoundingClientRect().top
+    for (const p of [this.choixFormes, this.choixTraits]) if (!p.hidden) haut = Math.min(haut, p.getBoundingClientRect().top)
+    return haut
+  }
+
+  /** --haut-barre-bas : la place que prend en bas ce qui y est posé (voir
+   *  basUtile), du bas de la zone à son haut ; 0 sans barre en bas (le poste
+   *  de la classe, le téléphone en paysage). « Revenir au contenu » et le
+   *  message se posent au-dessus (style.css). */
+  private majHautBarreBas() {
+    // (au poste de la classe, rien n'est mesuré : maj n'y fait pas plus qu'avant)
+    const place = this.barreEnBas() ? Math.max(0, Math.ceil(this.racine.getBoundingClientRect().bottom - this.basUtile())) : 0
+    if (place === this.hautBarreBas) return
+    this.hautBarreBas = place
+    this.racine.style.setProperty('--haut-barre-bas', place + 'px')
+  }
+
+  /** Les bords que ne recouvrent ni la barre d'actions ni le menu complet :
+   *  le bord droit de la barre des outils, le bas de la barre du haut, et au
+   *  téléphone le haut de la barre du bas (en portrait, la barre des outils
+   *  ne borne plus la gauche) ; au poste de la classe, exactement ceux
+   *  d'avant */
+  private bordsFlottants(): { gauche: number; haut: number; bas?: number } {
+    const o = this.barreOutils.getBoundingClientRect(), h = this.barreHaut.getBoundingClientRect()
+    if (!this.telephone) return { gauche: o.right, haut: h.bottom }
+    let gauche = this.barreEnBas() ? 0 : o.right
+    if (!this.barreEnBas()) for (const p of [this.choixFormes, this.choixTraits]) if (!p.hidden) gauche = Math.max(gauche, p.getBoundingClientRect().right)
+    return { gauche, haut: h.bottom, bas: this.basUtile() }
+  }
+
+  /** Au téléphone, le message (en bas, au-dessus de la barre du bas) ne
+   *  couvre ni les barres, ni le bandeau, ni ce qui est pris (son cadre, sa
+   *  pastille ↻), ni la barre d'actions, ni le menu complet, ni les choix des
+   *  Formes. Il essaie, dans l'ordre : en bas, sur sa largeur ; sous la barre
+   *  du haut (.en-haut) ; puis, sous la barre du haut et enfin en bas, dans
+   *  la plus large des bandes que rien n'occupe (sur un téléphone couché,
+   *  320 px de haut, un objet pris en bas : à côté de sa barre d'actions), un
+   *  peu plus étroit et plus haut. Sinon il reste en bas. Caché, il garde sa
+   *  place jusqu'au message suivant (il ne saute pas pendant qu'il
+   *  s'efface). Les boîtes sont lues sans le petit glissement de son
+   *  apparition (offsetTop). */
+  private placerToast() {
+    const t = this.toast
+    const remettre = (haut: boolean) => { t.classList.toggle('en-haut', haut); t.style.left = ''; t.style.maxWidth = '' }
+    if (!this.telephone) { if (t.classList.contains('en-haut') || t.style.left) remettre(false); return }
+    if (!t.classList.contains('visible')) return
+    const app = this.app, z = app.rendu.scene.getBoundingClientRect(), cam = app.cam
+    const obstacles: { left: number; top: number; right: number; bottom: number }[] = []
+    for (const el of [this.barreHaut, this.barreOutils, this.barreClasseur, this.barreActions.el, this.panneau, this.bandeau, this.choixFormes, this.choixTraits, this.choixInstruments]) {
+      if (el.hidden) continue
+      const r = el.getBoundingClientRect()
+      if (r.width && r.height) obstacles.push(r)
+    }
+    const ecran = (b: { x: number; y: number; l: number; h: number } | null) => {
+      if (!b) return
+      const a = cam.versEcran(b.x, b.y), c = cam.versEcran(b.x + b.l, b.y + b.h)
+      obstacles.push({ left: z.left + a.x, top: z.top + a.y, right: z.left + c.x, bottom: z.top + c.y })
+    }
+    if (app.selection.size && !app.enLecture) { ecran(app.emprise(app.objetsChoisis())); ecran(app.pastilleAEviter()) }
+    // Rien n'a bougé depuis la dernière fois (maj passe souvent) : il reste où il est
+    const cle = `${window.innerWidth}×${window.innerHeight}|${t.textContent}|` + obstacles.map(o => [o.left, o.top, o.right, o.bottom].map(Math.round).join(',')).join(';')
+    if (cle === this.cleToast) return
+    this.cleToast = cle
+    const boite = () => {
+      const l = t.offsetWidth, h = t.offsetHeight
+      return { left: t.offsetLeft - l / 2, top: t.offsetTop, right: t.offsetLeft + l / 2, bottom: t.offsetTop + h }
+    }
+    const touche = (r: { left: number; top: number; right: number; bottom: number }, o: typeof r) => r.left < o.right && r.right > o.left && r.top < o.bottom && r.bottom > o.top
+    const libre = () => { const r = boite(); return !obstacles.some(o => touche(r, o)) }
+    for (const haut of [false, true]) { remettre(haut); if (libre()) return }
+    // La plus large des bandes libres, à la hauteur du message (jusqu'à trois
+    // fois sa hauteur : plus étroit, il prend des lignes)
+    const gauche = this.barreEnBas() ? 8 : this.barreOutils.getBoundingClientRect().right + 12, droite = window.innerWidth - 8
+    for (const haut of [true, false]) {
+      remettre(haut)
+      const r = boite(), h = r.bottom - r.top
+      const bande = haut ? { top: r.top, bottom: r.top + 3 * h } : { top: r.bottom - 3 * h, bottom: r.bottom }
+      const pris = obstacles.filter(o => o.top < bande.bottom && o.bottom > bande.top).map(o => [o.left, o.right]).sort((a, b) => a[0] - b[0])
+      let mieux: [number, number] | null = null, x = gauche
+      for (const [a, b] of [...pris, [droite, droite]]) {
+        if (a - x > (mieux ? mieux[1] - mieux[0] : 0)) mieux = [x, Math.min(a, droite)]
+        x = Math.max(x, b)
+      }
+      if (!mieux || mieux[1] - mieux[0] < 140) continue
+      t.style.maxWidth = Math.floor(mieux[1] - mieux[0] - 8) + 'px'
+      t.style.left = Math.round((mieux[0] + mieux[1]) / 2) + 'px'
+      if (libre()) return
+    }
+    remettre(false)
   }
 
   /** Ferme ce qui flotte au-dessus du tableau : le petit menu ouvert, le menu
@@ -946,6 +1374,14 @@ export class UI implements Interface {
   private construireMenuFichier() {
     const m = this.menuFichier.el, s = this.sauvegarde
     m.replaceChildren()
+    // Au téléphone (lot 5, K10), « Plus » commence par ce que la barre du
+    // haut n'y montre pas : la page, les outils de cours, la vue
+    const telephone = this.telephone
+    m.setAttribute('aria-label', telephone ? 'Plus' : MENU_FICHIER)
+    if (telephone) {
+      this.sectionsDuTelephone(m)
+      filetMenu(m)
+    }
     const bloc = this.blocEtat = document.createElement('div')
     bloc.className = 'bloc-classeur'
     bloc.setAttribute('role', 'group')
@@ -981,6 +1417,68 @@ export class UI implements Interface {
       aide: this.fichiers ? AIDE_OUVRIR : 'Remplace ce classeur par celui d\'un fichier .memc.' })
     this.entreeMenu(m, 'Exporter le classeur en PDF…', () => this.exporterPdf('tout'), { action: 'exporter-pdf',
       aide: 'Toutes les pages, cadrées sur leur contenu, en feuilles A4 à imprimer ou à déposer dans l\'ENT.' })
+    // Cet appareil (lot 5) : l'affichage de CET écran, gardé dans ce
+    // navigateur ; rien ne change dans le classeur, ni pour les élèves. Les
+    // noms sous les outils ne vont pas dans la mise en page du téléphone (la
+    // place y manque) : grisés là, ils reviennent en la quittant.
+    filetMenu(m)
+    titreMenu(m, 'Cet appareil')
+    this.entreeMenu(m, 'Contraste renforcé', () => this.choisirContraste(!reglages.contraste), { action: 'contraste',
+      coche: reglages.contraste, caseACocher: true,
+      aide: 'Pour le vidéoprojecteur : lignes du fond, barres et sélection plus marquées. Rien ne change dans le classeur.' })
+    this.entreeMenu(m, 'Noms sous les outils', e => this.choisirNomsOutils(!nomsOutilsVisibles(), e), { action: 'noms-outils',
+      coche: nomsOutilsVisibles(), caseACocher: true, inactif: telephone,
+      aide: telephone ? 'Un mot sous chaque bouton des barres (pas sur un téléphone : la place manque)' : 'Un mot sous chaque bouton des barres' })
+  }
+
+  /** Les premières sections de « Plus », au téléphone (lot 5, K10) : ce que
+   *  la barre du haut et la barre des outils n'y montrent pas, chaque entrée
+   *  de 44 px au moins (le menu défile s'il dépasse l'écran : voir le bouton) :
+   *  - « Page » : « Nouvelle page » quand son bouton n'a pas la place (sous
+   *    360 px de large), « Supprimer la page » (« Effacer la page » si elle
+   *    est seule), « Fond… » (le menu des fonds en vignettes), « Aimanter au
+   *    quadrillage » et « Le stylo redresse les figures » (des cases) ;
+   *  - « Outils de cours » : « Importer une image… », « Instruments… » (leur
+   *    liste, sous la barre du haut), « Programme de construction »,
+   *    « Automatismes », « Revoir la construction », « Publier le replay » ;
+   *  - « Vue » : « 100 % », « Tout voir » (la barre du zoom est cachée : le
+   *    pincement zoome). */
+  private sectionsDuTelephone(m: HTMLElement) {
+    const app = this.app, plus = this.boutonFichier
+    titreMenu(m, 'Page')
+    if (!this.boutonNouvelle.getClientRects().length) this.entreeMenu(m, 'Nouvelle page', () => app.nouvellePage(), { action: 'nouvelle-page' })
+    const seule = app.pages.length <= 1
+    this.entreeMenu(m, seule ? 'Effacer la page' : 'Supprimer la page', () => app.supprimerPage(), { action: 'supprimer-page' })
+    this.entreeMenu(m, 'Fond…', e => this.ouvrirFondsDepuisPlus(e.detail === 0), { action: 'fond', aide: nomDuFond(app.fond) })
+    this.entreeMenu(m, 'Aimanter au quadrillage', () => this.basculerAimant(), { action: 'aimant', coche: app.aimant, caseACocher: true })
+    this.entreeMenu(m, 'Le stylo redresse les figures', () => this.basculerReconnaissance(), { action: 'reconnaissance', coche: app.reconnaissance, caseACocher: true,
+      aide: 'Carré, cercle, triangle…' })
+    filetMenu(m)
+    titreMenu(m, 'Outils de cours')
+    this.entreeMenu(m, 'Importer une image…', () => this.choixFichier.click(), { action: 'importer' })
+    this.entreeMenu(m, 'Instruments…', () => { this.choixInstruments.hidden = false; this.maj() }, { action: 'instruments',
+      aide: 'Règle, équerre, rapporteur, compas' })
+    this.entreeMenu(m, 'Programme de construction', () => this.basculerConstructeur(), { action: 'construction', aide: 'Étape par étape' })
+    this.entreeMenu(m, 'Automatismes', () => this.seance.ouvrir(), { action: 'automatismes', aide: '10 questions minutées' })
+    this.entreeMenu(m, 'Revoir la construction', () => this.ouvrirRevue(plus), { action: 'revue', aide: 'Une page, une séance, pas à pas' })
+    this.entreeMenu(m, 'Publier le replay', () => this.publication.ouvrir(), { action: 'publier', aide: 'Pour les élèves' })
+    filetMenu(m)
+    titreMenu(m, 'Vue')
+    this.entreeMenu(m, '100 %', () => app.zoom100(), { action: 'zoom-100', touche: `${CTRL} + 0` })
+    this.entreeMenu(m, 'Tout voir', () => app.toutVoir(), { action: 'tout-voir', touche: 'Maj + 1' })
+  }
+
+  /** « Plus → Fond… » au téléphone : le menu des fonds en vignettes, sous
+   *  « Plus » (son bouton à lui est caché), sur deux colonnes en portrait (en
+   *  paysage, ses deux rangées de quatre tiennent dans la hauteur, que quatre
+   *  rangées de deux dépasseraient) */
+  private ouvrirFondsDepuisPlus(auClavier: boolean) {
+    const app = this.app, el = this.menuFonds.el
+    construireMenuFonds(el, app.fond, f => app.changerFond(f))
+    el.classList.toggle('deux-colonnes', this.barreEnBas())
+    ouvrirMenu(this.menuFondsPlus)
+    placerMenu(el, this.boutonFichier.getBoundingClientRect(), 'dessous')
+    if (auClavier) entreeCochee(el)?.focus()
   }
 
   /** Le bloc de l'état en tête du menu ⋯ : le nom du classeur, ses lignes
@@ -1082,7 +1580,10 @@ export class UI implements Interface {
    *  son titre nomme le classeur, le lecteur d'écran y lit l'état */
   private majBoutonFichier() {
     const f = this.boutonFichier, cache = this.formeClasseur === 'cache'
-    const titre = cache ? `${TITRE_FICHIER} · Classeur « ${this.app.classeur.nom} »` : TITRE_FICHIER
+    // Au téléphone (lot 5, K10), il devient « Plus » : la page, les outils de
+    // cours et le classeur y sont
+    const base = this.telephone ? TITRE_PLUS_TELEPHONE : TITRE_FICHIER
+    const titre = cache ? `${base} · Classeur « ${this.app.classeur.nom} »` : base
     if (f.title !== titre) { f.title = titre; f.setAttribute('aria-label', titre) }
     if (cache) f.setAttribute('aria-describedby', ID_ETAT)
     else f.removeAttribute('aria-describedby')
@@ -1160,7 +1661,9 @@ export class UI implements Interface {
       const r = this.barreHaut.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
       const droite = Math.round(window.innerWidth - r.right), haut = Math.round(r.bottom + 8)
       el.style.left = ''; el.style.right = droite + 'px'; el.style.top = haut + 'px'
-      const gauche = o.width > 0 && o.bottom > haut && o.left < window.innerWidth / 2 ? Math.round(o.right + 8) : 12
+      // (la barre des outils posée en bas, au téléphone en portrait, n'est
+      // pas à côté de lui : lot 5, K10)
+      const gauche = o.width > 0 && o.bottom > haut && o.left < window.innerWidth / 2 && !this.barreEnBas() ? Math.round(o.right + 8) : 12
       el.style.maxWidth = `min(360px, ${Math.max(160, window.innerWidth - droite - gauche)}px)`
     }
   }
@@ -1201,7 +1704,16 @@ export class UI implements Interface {
     const gauche = Math.round(o.right + 12)
     const place = Math.floor(h.left - gauche - 12)
     let forme: FormeBoutonClasseur
-    if (place >= Math.max(140, this.placeDeLaFormeLarge())) forme = 'large'
+    if (this.telephone) {
+      // La mise en page du téléphone (lot 5, K10) : la barre du haut est sur
+      // une rangée, et le bouton du classeur en est le premier bouton (son
+      // icône et le point) s'il y tient sans en ajouter une ; sinon sa barre,
+      // étroite, si elle a la place ; sinon caché (le point sur « Plus »)
+      b.classList.add('etroit')
+      haut.prepend(b)
+      if (haut.getBoundingClientRect().height <= h.height + 0.5) forme = 'dans-la-barre'
+      else { barre.appendChild(b); forme = place >= 58 ? 'etroit' : 'cache' }
+    } else if (place >= Math.max(140, this.placeDeLaFormeLarge())) forme = 'large'
     else if (place >= 58) forme = 'etroit'
     else if (h.height > PLUSIEURS_RANGEES) {
       b.classList.add('etroit')
@@ -1351,19 +1863,20 @@ export class UI implements Interface {
 
   // ----- Envoyer vers une autre page (voir pages/envoi.ts) -----
   /** « Envoyer vers… » (le menu complet) : la fenêtre des destinations, pour
-   *  ce qui est pris. Pas quand le tableau est caché, ni par-dessus une autre
-   *  fenêtre. */
-  ouvrirEnvoi() {
+   *  ce qui est pris, ou pour ces objets (ids : les images fixées en fond,
+   *  depuis le menu de la page, lot 5). Pas quand le tableau est caché, ni
+   *  par-dessus une autre fenêtre. */
+  ouvrirEnvoi(ids?: string[]) {
     const app = this.app
     if (tableauCache(app) || document.querySelector('dialog[open]')) return
     app.poserCeQuiAttend()
-    const n = app.objetsChoisis().length
+    const n = (ids ? app.avecLeursPoints(ids) : app.objetsChoisis()).length
     if (!n) return this.message('Rien n\'est sélectionné.')
     ouvrirEnvoi({
       n, pages: app.pages, page: app.page,
       nomDe: p => app.tableau.nomDe(p),
       vignette: (p, l, h) => this.vignettes.vignette(p, l, h),
-      envoyer: (cible, deplacer) => { app.envoyerSelection(cible, deplacer) },
+      envoyer: (cible, deplacer) => { app.envoyerSelection(cible, deplacer, ids) },
       maj: () => this.maj(),
     })
   }
@@ -1373,7 +1886,9 @@ export class UI implements Interface {
    *  menu du système (de l'autre côté s'il n'y a pas la place), et se ferme
    *  comme les autres petits menus : Échap, un choix, ou un appui ailleurs
    *  (qui ne laisse pas d'encre). Coller ici, Tout sélectionner, Tout voir,
-   *  puis ce qui touche la page elle-même (Dupliquer la page, Toutes les
+   *  ce qui ne se prend pas (lot 5 : l'image fixée en fond, à détacher,
+   *  copier, envoyer ; Déverrouiller tout : voir sectionProtegee), puis ce qui
+   *  touche la page elle-même (Dupliquer la page, Toutes les
    *  pages…), et ce qui en sort (Copier la page en image, Exporter la page
    *  en PDF…).
    *  m : le point du monde où « Coller ici »
@@ -1385,8 +1900,10 @@ export class UI implements Interface {
     el.replaceChildren()
     this.entreeMenu(el, 'Coller ici', () => app.coller(m), { touche: `${CTRL} + V`, inactif: !app.peutColler(),
       aide: `Le dernier objet copié dans MEM ; ${CTRL} + V colle aussi une image ou ce qu'on a copié dans une autre version de MEM` })
-    this.entreeMenu(el, 'Tout sélectionner', () => app.toutSelectionner(), { touche: `${CTRL} + A`, inactif: app.pageVide() })
+    // Grisé aussi quand tout ce qui est sur la page est verrouillé ou fixé en fond (lot 5)
+    this.entreeMenu(el, 'Tout sélectionner', () => app.toutSelectionner(), { touche: `${CTRL} + A`, inactif: app.rienASelectionner() })
     this.entreeMenu(el, 'Tout voir', () => app.toutVoir(), { touche: 'Maj + 1' })
+    this.sectionProtegee(el, m)
     // La page elle-même : Dupliquer la page · Toutes les pages… · ─ ·
     // Copier la page en image · Exporter la page en PDF…
     el.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
@@ -1409,6 +1926,312 @@ export class UI implements Interface {
     if (auClavier) allerAuxEntrees(el, 1, ENTREES)
   }
 
+  /** Ce que le menu de la page fait de ce qui ne se prend pas (lot 5), après
+   *  un filet, s'il y en a. Les images fixées en fond : le clic droit (le
+   *  bouton du stylet, l'appui long) sur l'une d'elles ouvre ce menu, comme
+   *  dans le vide ; on y détache, copie ou envoie la plus haute de celles qui
+   *  sont sous le pointeur, ou, à côté d'elles, toutes celles de la page (un
+   *  professeur veut qu'un énoncé fixé survive à la copie et à l'envoi, et
+   *  il ne peut ni le prendre ni le sélectionner). Puis « Déverrouiller
+   *  tout », s'il y a des objets verrouillés (un réglage, comme Verrouiller). */
+  private sectionProtegee(el: HTMLElement, m: P) {
+    const app = this.app
+    const fixes = app.fixesDeLaPage(), verrous = app.verrouillesDeLaPage()
+    if (!fixes.length && !verrous.length) return
+    filetMenu(el)
+    if (fixes.length) {
+      const sous = app.fixesSous(m)
+      const cible = sous.length ? [sous[0]] : fixes
+      const ids = cible.map(f => f.id), plusieurs = cible.length > 1
+      const aide = plusieurs ? `${cible.length} images fixées en fond sur cette page` : undefined
+      this.entreeMenu(el, plusieurs ? 'Détacher le fond' : 'Détacher l\'image du fond', () => app.detacherDuFond(ids),
+        { action: 'detacher-fond', aide: aide ?? 'Elle se prend et se déplace de nouveau' })
+      this.entreeMenu(el, plusieurs ? 'Copier le fond' : 'Copier l\'image du fond', () => app.copierFond(ids),
+        { action: 'copier-fond', aide: aide ?? `${CTRL}+V la colle ici ou ailleurs, fixée en fond` })
+      this.entreeMenu(el, plusieurs ? 'Envoyer le fond vers…' : 'Envoyer l\'image du fond vers…', () => this.ouvrirEnvoi(ids),
+        { action: 'envoyer-fond', aide: aide ?? 'La déplacer ou la copier sur une autre page, fixée en fond' })
+    }
+    if (verrous.length) {
+      this.entreeMenu(el, 'Déverrouiller tout', () => app.verrouiller(false, verrous.map(f => f.id)), { action: 'deverrouiller-tout',
+        aide: accorder(compterObjets(verrous), 'objet verrouillé sur cette page', 'objets verrouillés sur cette page') })
+    }
+  }
+
+  // ----- La barre des outils du téléphone (lot 5, K10) -----
+  /** « Couleur » et « Autres outils », au bout de la barre (la feuille de
+   *  style les cache hors de la mise en page du téléphone, et les range :
+   *  Stylo, Gomme, Sélection, Couleur, Annuler, Rétablir, Autres outils), et
+   *  leurs deux petits menus (menus.ts) : un seul ouvert à la fois, Échap ou
+   *  un appui ailleurs les ferme, un choix aussi. */
+  private construireBoutonsDuTelephone(barre: HTMLElement) {
+    const couleur = this.boutonCouleur = document.createElement('button')
+    couleur.type = 'button'; couleur.className = 'bouton bouton-couleur seulement-telephone'
+    couleur.title = 'Couleur et épaisseur'; couleur.setAttribute('aria-label', 'Couleur et épaisseur')
+    couleur.setAttribute('aria-haspopup', 'menu'); couleur.setAttribute('aria-expanded', 'false')
+    this.rondCouleur = Object.assign(document.createElement('span'), { className: 'rond-couleur' })
+    this.rondCouleur.setAttribute('aria-hidden', 'true')
+    couleur.appendChild(this.rondCouleur)
+    const menuCouleur = document.createElement('div')
+    menuCouleur.className = 'menu-flottant menu-couleur'; menuCouleur.setAttribute('role', 'menu'); menuCouleur.setAttribute('aria-label', 'Couleur et épaisseur')
+    menuCouleur.hidden = true
+    this.menuCouleur = { el: menuCouleur, bouton: couleur }
+    couleur.addEventListener('click', e => this.basculerMenuDuTelephone(this.menuCouleur, () => this.construireMenuCouleur(), e.detail === 0))
+
+    const autres = this.boutonAutres = document.createElement('button')
+    autres.type = 'button'; autres.className = 'bouton autres-outils seulement-telephone'
+    autres.title = 'Autres outils'; autres.setAttribute('aria-label', 'Autres outils')
+    autres.setAttribute('aria-haspopup', 'menu'); autres.setAttribute('aria-expanded', 'false')
+    autres.dataset.icone = 'points'; autres.innerHTML = icone('points')
+    const menuAutres = document.createElement('div')
+    menuAutres.className = 'menu-flottant menu-autres'; menuAutres.setAttribute('role', 'menu'); menuAutres.setAttribute('aria-label', 'Autres outils')
+    menuAutres.hidden = true
+    this.menuAutres = { el: menuAutres, bouton: autres }
+    autres.addEventListener('click', e => this.basculerMenuDuTelephone(this.menuAutres, () => this.construireMenuAutres(), e.detail === 0))
+    barre.append(couleur, autres)
+    // (leurs menus vont à la racine avec les autres, après eux : voir construire)
+  }
+
+  /** Ouvre (ou referme) un des deux menus de la barre du téléphone (le menu
+   *  « Couleur » aussi dans la barre repliée d'un écran qu'on touche, voir
+   *  majCouleursRepliees), refait à chaque ouverture ; au clavier, le focus
+   *  va sur le choix coché */
+  private basculerMenuDuTelephone(m: Menu, construire: () => void, auClavier: boolean) {
+    if (m.el.hidden) construire()
+    basculerMenu(m)
+    if (m.el.hidden) return
+    this.placerPresDeLaBarre(m.el, m.bouton!)
+    if (auClavier) (m.el.querySelector<HTMLElement>('.menu-item[aria-checked="true"]') ?? m.el.querySelector<HTMLElement>(ENTREES))?.focus()
+  }
+
+  /** Un menu de la barre des outils, près de son bouton : au-dessus en
+   *  portrait (la barre est en bas), à droite de la barre en paysage (à la
+   *  hauteur du bouton), comme ceux de la Gomme et du doigt au poste de la
+   *  classe ; toujours dans l'écran (placerMenu) */
+  private placerPresDeLaBarre(el: HTMLElement, b: HTMLElement) {
+    const r = b.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect(), h = this.barreHaut.getBoundingClientRect()
+    // Il ne couvre ni la barre des outils ni celle du haut : il tient dans la
+    // place qui reste entre elles (sur un téléphone couché, 320 px de haut,
+    // le menu de la Gomme y défile), et s'y pose
+    if (this.barreEnBas()) {
+      el.style.maxWidth = ''
+      el.style.maxHeight = Math.max(120, Math.floor(o.top - 6 - (h.bottom + 8))) + 'px'
+      placerMenu(el, new DOMRect(r.left, o.top, r.width, o.height), 'dessus')
+      return
+    }
+    el.style.maxWidth = Math.floor(window.innerWidth - o.right - 6 - 8) + 'px'
+    el.style.maxHeight = ''
+    placerMenu(el, new DOMRect(o.left, r.top, o.width, r.height), 'droite')
+    const m = el.getBoundingClientRect()
+    if (m.right <= h.left || m.left >= h.right || m.top >= h.bottom || m.bottom <= h.top) return
+    // Sous la barre du haut : jusqu'en bas de l'écran, et il défile s'il le faut
+    el.style.maxHeight = Math.max(120, Math.floor(window.innerHeight - (h.bottom + 8) - 8)) + 'px'
+    el.style.top = Math.max(8, Math.min(h.bottom + 8, window.innerHeight - el.offsetHeight - 8)) + 'px'
+  }
+
+  /** Une couleur choisie (une pastille de la barre, ou du menu « Couleur ») :
+   *  le Stylo la prend, sauf si l'on tient le Surligneur, le Segment ou la
+   *  Formule, qui la gardent */
+  private choisirCouleur(valeur: string) {
+    const app = this.app
+    app.couleur = valeur
+    if (app.outil !== 'surligneur' && app.outil !== 'segment' && app.outil !== 'formule') app.choisirOutil('stylo')
+    this.maj()
+  }
+
+  /** Le menu « Couleur » : les quatre pastilles, puis les trois tailles,
+   *  44 × 44 chacune, en grille (les flèches s'y déplacent comme dans celle
+   *  des fonds) */
+  private construireMenuCouleur() {
+    const app = this.app, m = this.menuCouleur.el
+    m.replaceChildren()
+    const grille = Object.assign(document.createElement('div'), { className: 'grille-couleur' })
+    const choix = (classe: string, titre: string, coche: boolean, faire: () => void) => {
+      const b = document.createElement('button')
+      b.type = 'button'; b.className = 'menu-item case-couleur ' + classe
+      b.setAttribute('role', 'menuitemradio'); b.setAttribute('aria-checked', String(coche))
+      b.title = titre; b.setAttribute('aria-label', titre)
+      b.addEventListener('click', () => { fermerMenu(); faire() })
+      grille.appendChild(b)
+      return b
+    }
+    for (const c of COULEURS) choix('pastille', c.nom, app.couleur === c.valeur, () => this.choisirCouleur(c.valeur)).style.setProperty('--teinte', c.valeur)
+    TAILLES.forEach((t, i) => {
+      const b = choix('taille', 'Trait ' + t.nom.toLowerCase(), app.taille === t.valeur, () => { app.taille = t.valeur; this.maj() })
+      b.innerHTML = `<span style="--d:${4 + i * 4}px"></span>`
+    })
+    grille.addEventListener('keydown', e => naviguerDansLaGrille(grille, e))
+    m.appendChild(grille)
+  }
+
+  /** Le menu « Autres outils » : une grille de 60 × 56, l'icône et son nom
+   *  dessous : Surligneur, Point, Segment, Formes, Formule, Vue, puis le
+   *  Doigt (sur un appareil tactile : il ouvre son menu, au même endroit) et
+   *  « Supprimer la sélection » (grisée sans sélection). Formes et Segment
+   *  prennent leur outil, et leurs choix paraissent au-dessus de la barre (à
+   *  sa droite en paysage) : un type de forme ou de segment en trois
+   *  touchers (Autres outils, Formes, Rectangle). */
+  private construireMenuAutres() {
+    const app = this.app, m = this.menuAutres.el
+    m.replaceChildren()
+    const grille = Object.assign(document.createElement('div'), { className: 'grille-autres' })
+    const entree = (nomIcone: string, mot: string, titre: string, faire: () => void, o: { coche?: boolean; inactif?: boolean; menu?: boolean; danger?: boolean } = {}) => {
+      const b = document.createElement('button')
+      b.type = 'button'; b.className = 'menu-item outil-grille' + (o.danger ? ' danger' : '')
+      b.setAttribute('role', o.coche === undefined ? 'menuitem' : 'menuitemradio')
+      if (o.coche !== undefined) b.setAttribute('aria-checked', String(o.coche))
+      if (o.inactif) b.setAttribute('aria-disabled', 'true')
+      if (o.menu) b.setAttribute('aria-haspopup', 'menu')
+      b.title = titre; b.setAttribute('aria-label', titre)
+      b.dataset.action = nomIcone
+      b.innerHTML = icone(nomIcone)
+      b.appendChild(Object.assign(document.createElement('span'), { className: 'nom', textContent: mot }))
+      b.addEventListener('click', e => {
+        if (o.inactif) return
+        fermerMenu()
+        faire()
+        // Ouvert au clavier, le menu qui suit (le doigt) prend le focus
+        if (o.menu && e.detail === 0) this.menuDoigt.el.querySelector<HTMLElement>('.menu-item[aria-checked="true"]')?.focus()
+      })
+      grille.appendChild(b)
+    }
+    for (const id of AUTRES_OUTILS) {
+      const o = OUTILS.find(x => x.id === id)!
+      entree(id, NOMS_OUTILS[id], `${o.nom} (${o.touche})`, () => app.choisirOutil(id), { coche: app.outil === id })
+    }
+    if (!this.boutonDoigt.hidden) entree('doigt', 'Doigt', this.boutonDoigt.title, () => this.basculerReglageDoigt(false), { menu: true })
+    entree('poubelle', 'Supprimer', 'Supprimer la sélection (Suppr)', () => app.supprimerSelection(), { inactif: !(app.selection.size || app.partie), danger: true })
+    grille.addEventListener('keydown', e => naviguerDansLaGrille(grille, e))
+    m.appendChild(grille)
+  }
+
+  /** « Autres outils » montre l'outil qu'on tient s'il en est un (son icône et
+   *  le coup de surligneur), sinon ses points ; « Couleur », la couleur en
+   *  main */
+  private majBoutonsDuTelephone() {
+    const app = this.app, b = this.boutonAutres
+    const autre = AUTRES_OUTILS.includes(app.outil)
+    const nom = autre ? app.outil : 'points'
+    if (b.dataset.icone !== nom) { b.dataset.icone = nom; b.innerHTML = icone(nom) }
+    b.classList.toggle('actif', autre)
+    if (this.rondCouleur.style.getPropertyValue('--teinte') !== app.couleur) this.rondCouleur.style.setProperty('--teinte', app.couleur)
+  }
+
+  /** L'aimant du quadrillage (le bouton de la barre du haut, ou la case de « Plus ») */
+  private basculerAimant() {
+    this.app.aimant = !this.app.aimant
+    this.maj()
+  }
+
+  /** Le stylo qui redresse les figures (le bouton, ou la case de « Plus ») */
+  private basculerReconnaissance() {
+    const app = this.app
+    app.reconnaissance = !app.reconnaissance
+    this.message(app.reconnaissance ? 'Le stylo reconnaît les figures' : 'Le stylo laisse les tracés à main levée')
+    this.maj()
+  }
+
+  /** Le programme de construction s'ouvre ou se ferme (son bouton, ou « Plus ») */
+  private basculerConstructeur() {
+    if (this.constructeur.ouvert) this.constructeur.fermer(); else this.constructeur.ouvrir()
+  }
+
+  // ----- Le menu de la Gomme (lot 5) -----
+  /** Un clic (ou un toucher) sur le bouton de la Gomme : il la prend ; déjà
+   *  en main, il ouvre ses options (ou les referme) ; le clic qui suit
+   *  l'appui long qui les a ouvertes ne fait rien */
+  private toucherGomme(e: MouseEvent) {
+    if (performance.now() - this.gommeOuverteA < 1500) { this.gommeOuverteA = -Infinity; return }
+    if (!this.menuGomme.el.hidden) { fermerMenu(); if (this.app.outil !== 'gomme') this.app.choisirOutil('gomme'); return }
+    if (this.app.outil === 'gomme') this.ouvrirMenuGomme(e.detail === 0)
+    else this.app.choisirOutil('gomme')
+  }
+
+  /** Le clic droit sur le bouton de la Gomme (le bouton du stylet en est un)
+   *  et l'appui long du doigt ouvrent ses options, sans la prendre. (Pas
+   *  d'aria-haspopup : son clic prend d'abord l'outil, ce n'est pas un bouton
+   *  de menu ; son titre dit qu'on le retape pour ses options.) */
+  private brancherBoutonGomme(b: HTMLButtonElement) {
+    const ouvrir = () => { this.gommeOuverteA = performance.now(); this.ouvrirMenuGomme(false) }
+    b.addEventListener('contextmenu', e => { e.preventDefault(); clearTimeout(this.appuiLongGomme); ouvrir() })
+    const lacher = () => clearTimeout(this.appuiLongGomme)
+    b.addEventListener('pointerdown', e => {
+      clearTimeout(this.appuiLongGomme)
+      this.gommeOuverteA = -Infinity
+      if (e.pointerType !== 'touch' || e.button !== 0) return
+      this.appuiLongGomme = window.setTimeout(() => {
+        try { navigator.vibrate?.(10) } catch { /* pas de vibreur */ }
+        ouvrir()
+      }, APPUI_LONG)
+    })
+    b.addEventListener('pointerup', lacher)
+    b.addEventListener('pointercancel', lacher)
+    b.addEventListener('pointerleave', lacher)
+  }
+
+  ouvrirMenuGomme(auClavier: boolean) {
+    const m = this.menuGomme.el
+    if (m.hidden) { this.construireMenuGomme(); ouvrirMenu(this.menuGomme) }
+    this.placerMenuGomme()
+    if (auClavier) m.querySelector<HTMLElement>('.menu-item[aria-checked="true"]')?.focus()
+  }
+
+  /** Le bouton du fond montre le fond de la page : sa vignette, son titre et
+   *  son nom lu (« Fond de la page : Papier pointé »), refaits seulement
+   *  quand le fond change */
+  private majBoutonFond() {
+    const fond = this.app.fond
+    if (fond === this.fondMontre) return
+    this.fondMontre = fond
+    peindreVignette(this.vignetteFond, fond, VIGNETTE_BOUTON.l, VIGNETTE_BOUTON.h, densite())
+    const t = `Fond de la page : ${nomDuFond(fond)}`
+    this.boutonFond.title = t; this.boutonFond.setAttribute('aria-label', t)
+  }
+
+  /** Le menu de la Gomme, à droite de la barre, à la hauteur de son bouton ;
+   *  au téléphone, au-dessus de son bouton en portrait (voir placerPresDeLaBarre) */
+  private placerMenuGomme() {
+    if (this.telephone) { this.placerPresDeLaBarre(this.menuGomme.el, this.outils.get('gomme')!); return }
+    // (ce que la mise en page du téléphone lui avait donné ne vaut plus)
+    this.menuGomme.el.style.maxWidth = this.menuGomme.el.style.maxHeight = ''
+    const b = this.outils.get('gomme')!.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
+    placerMenu(this.menuGomme.el, new DOMRect(o.left, b.top, o.width, b.height), 'droite')
+    this.sousLaBarreDuHaut(this.menuGomme.el)
+  }
+
+  /** Un menu posé à droite de la barre des outils ne passe pas sous la barre
+   *  du haut : avec les noms sous les outils (lot 5), elle peut être sur deux
+   *  rangées (1024 × 768) et descendre jusqu'à la hauteur des boutons de la
+   *  Gomme et du doigt. Il descend alors juste sous elle (s'il y tient). */
+  private sousLaBarreDuHaut(el: HTMLElement) {
+    const m = el.getBoundingClientRect(), h = this.barreHaut.getBoundingClientRect()
+    if (!h.height || m.right <= h.left || m.left >= h.right || m.top >= h.bottom || m.bottom <= h.top) return
+    el.style.top = Math.max(8, Math.min(h.bottom + 8, window.innerHeight - m.height - 8)) + 'px'
+  }
+
+  private construireMenuGomme() {
+    const m = this.menuGomme.el, zone = reglages.gomme === 'zone'
+    m.replaceChildren()
+    titreMenu(m, 'Gomme')
+    const mode = (id: ModeGomme, texte: string, aide: string) => this.entreeMenu(m, texte, () => {
+      choisirGomme(id)
+      if (this.app.outil !== 'gomme') this.app.choisirOutil('gomme')
+      this.maj()
+      this.message(id === 'zone' ? 'La gomme efface seulement là où elle passe.' : 'La gomme efface le trait entier.')
+    }, { coche: reglages.gomme === id, aide, action: 'gomme-' + id })
+    mode('trait', 'Effacer le trait entier', 'Ce qu\'elle touche part en entier : un trait, une figure, une image, une formule')
+    mode('zone', 'Effacer seulement là où elle passe', 'Coupe l\'écriture et le surligneur ; les figures, les images et les formules restent')
+    filetMenu(m)
+    titreMenu(m, 'Taille (là où elle passe)')
+    const tailles: [TailleGomme, string][] = [['petite', 'Petite'], ['moyenne', 'Moyenne'], ['grande', 'Grande']]
+    for (const [id, nom] of tailles) {
+      this.entreeMenu(m, nom, () => {
+        choisirTailleGomme(id)
+        if (this.app.outil !== 'gomme') this.app.choisirOutil('gomme')
+        this.message(`Gomme : ${nom.toLowerCase()}.`)
+      }, { coche: reglages.tailleGomme === id, inactif: !zone, action: 'gomme-' + id })
+    }
+  }
+
   /** Le menu du rôle du doigt : ouvert par son bouton, ou par « Changer »
    *  dans le message « Stylet détecté » */
   ouvrirReglageDoigt() {
@@ -1418,7 +2241,11 @@ export class UI implements Interface {
   private basculerReglageDoigt(auClavier: boolean) {
     const m = this.menuDoigt.el
     // Un stylet s'est posé sur l'écran : il est tactile, le bouton a sa place
-    this.boutonDoigt.hidden = false
+    // (et la barre, plus haute, replie peut-être ses couleurs)
+    if (this.boutonDoigt.hidden) { this.boutonDoigt.hidden = false; this.majCouleursRepliees() }
+    // Au téléphone (lot 5, K10), le bouton du doigt est dans « Autres outils » :
+    // son menu y est rattaché (le focus y revient)
+    this.menuDoigt.bouton = this.telephone ? this.boutonAutres : this.boutonDoigt
     if (m.hidden) this.construireMenuDoigt()
     basculerMenu(this.menuDoigt)
     if (m.hidden) return
@@ -1426,10 +2253,14 @@ export class UI implements Interface {
     if (auClavier) m.querySelector<HTMLElement>('.menu-item[aria-checked="true"]')?.focus()
   }
 
-  /** Le menu du doigt, à droite de la barre, à la hauteur de son bouton */
+  /** Le menu du doigt, à droite de la barre, à la hauteur de son bouton ; au
+   *  téléphone, près de « Autres outils » */
   private placerMenuDoigt() {
+    if (this.telephone) { this.placerPresDeLaBarre(this.menuDoigt.el, this.boutonAutres); return }
+    this.menuDoigt.el.style.maxWidth = this.menuDoigt.el.style.maxHeight = ''
     const b = this.boutonDoigt.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
     placerMenu(this.menuDoigt.el, new DOMRect(o.left, b.top, o.width, b.height), 'droite')
+    this.sousLaBarreDuHaut(this.menuDoigt.el)
   }
 
   private construireMenuDoigt() {
@@ -1461,6 +2292,9 @@ export class UI implements Interface {
     const app = this.app
     const plusieurs = app.options === TOUTE_LA_SELECTION
     if (plusieurs ? app.selection.size < 2 : app.options && !(app.selection.size === 1 && app.selection.has(app.options))) app.options = null
+    // Le menu fermé, ce qui est verrouillé ne reste pas sélectionné (lot 5 ;
+    // maj l'a déjà fait, sauf si le menu vient de se fermer ici)
+    app.oublierProteges()
     let formes: Forme[] | null = null
     if (!app.enLecture && plusieurs) formes = app.formesChoisies()
     else if (!app.enLecture && app.options) { const f = app.formeChoisie(); if (f && f.id === app.options) formes = [f] }
@@ -1492,18 +2326,39 @@ export class UI implements Interface {
     // sinon à côté : jamais dessus quand il a la place ailleurs (voir
     // positionPanneau). Sa rangée d'onglets tient sur une ligne : ce qui
     // sort de la page (une image, une autre page) est dans son menu ⋯.
-    const b = plusieurs ? app.boiteDuContenu(formes) : app.rendu.boite(formes[0])
+    // Le cadre de taille et sa pastille ↻ comptent comme l'objet (lot 5 : voir
+    // App.emprise) : le menu ne les couvre pas (sans la place, il ne couvre
+    // ni la pastille, ni, s'il le peut, la figure elle-même)
+    const base = plusieurs ? app.boiteDuContenu(formes) : app.rendu.boite(formes[0])
+    const b = app.emprise(formes, base)
     if (!b) return
     const cam = app.cam, z = app.rendu.scene.getBoundingClientRect()
     const a = cam.versEcran(b.x, b.y), c = cam.versEcran(b.x + b.l, b.y + b.h)
+    const d = app.pastilleAEviter()
+    const pa = d && cam.versEcran(d.x, d.y), pb = d && cam.versEcran(d.x + d.l, d.y + d.h)
+    const fa = base && cam.versEcran(base.x, base.y), fb = base && cam.versEcran(base.x + base.l, base.y + base.h)
+    // Au téléphone (lot 5, K10) : entre la barre du haut et celle du bas (en
+    // portrait, sur toute la largeur) ou à droite de la barre des outils (en
+    // paysage), jamais sur elles ; il défile s'il est plus haut que la place
+    const telephone = this.telephone
+    let bornes: { gauche: number; haut: number; bas?: number } | null = null
+    if (telephone) {
+      const f = this.bordsFlottants()
+      bornes = { gauche: f.gauche ? f.gauche + 8 : 8, haut: Math.ceil(f.haut + 6), bas: f.bas }
+      const hauteur = Math.max(120, Math.floor((f.bas ?? window.innerHeight) - bornes.haut - 8)) + 'px'
+      if (this.panneau.style.maxHeight !== hauteur) this.panneau.style.maxHeight = hauteur
+    } else if (this.panneau.style.maxHeight) this.panneau.style.maxHeight = ''
     const l = this.panneau.offsetWidth, h = this.panneau.offsetHeight
-    // À droite de la barre d'outils ; sur un téléphone, où il n'y tient pas
+    // À droite de la barre d'outils ; sur un écran étroit où il n'y tient pas
     // (il passe alors à la ligne sur toute la largeur), il la couvre plutôt
-    // que de sortir de l'écran, comme la barre d'actions
+    // que de sortir de l'écran, comme la barre d'actions (au téléphone, il
+    // ne la couvre jamais : voir plus haut)
     const barre = this.barreOutils.getBoundingClientRect().right + 8
     const gauche = l <= window.innerWidth - barre - 8 ? barre : 8
     const p = positionPanneau({ left: z.left + a.x, top: z.top + a.y, right: z.left + c.x, bottom: z.top + c.y }, l, h,
-      { l: window.innerWidth, h: window.innerHeight }, { gauche, haut: 76 })
+      { l: window.innerWidth, h: window.innerHeight }, bornes ?? { gauche, haut: 76 }, undefined, undefined,
+      pa && pb ? { left: z.left + pa.x, top: z.top + pa.y, right: z.left + pb.x, bottom: z.top + pb.y } : undefined,
+      fa && fb ? { left: z.left + fa.x, top: z.top + fa.y, right: z.left + fb.x, bottom: z.top + fb.y } : undefined)
     this.panneau.style.left = p.left + 'px'
     this.panneau.style.top = p.top + 'px'
     // Son menu ⋯ ouvert le suit (le menu complet a pu bouger ou se refaire)
@@ -1514,14 +2369,15 @@ export class UI implements Interface {
   /** Le bouton ⋯ du menu complet, avant Supprimer : son petit menu a
    *  « Copier en image » (une image PNG pour l'ENT ou Pronote, à ne pas
    *  confondre avec « Copier pour Pronote » de Publier, qui copie un lien)
-   *  et « Envoyer vers… » (une autre page). Ils étaient dans la rangée ; ils
+   *  et « Envoyer vers… » (une autre page), puis l'ordre (lot 5 : voir
+   *  construireMenuPlus). Ils étaient dans la rangée ; ils
    *  la faisaient passer sur deux lignes (le menu d'un rectangle de 728 à
    *  820 px de large, de 54 à 96 px de haut), qui ne tenait plus au-dessus
    *  de la figure et venait la couvrir. ⋯ ne coûte que 42 px : la rangée
    *  reste sur une ligne comme avant le lot 3. */
-  private boutonPlus(ligne: HTMLElement) {
+  private boutonPlus(ligne: HTMLElement, titre = this.app.membrePris() ? TITRE_PLUS + ', sortir du groupe' : TITRE_PLUS) {
     const m = this.menuPlus
-    const b = bouton('points', TITRE_PLUS, e => {
+    const b = bouton('points', titre, e => {
       if (m.el.hidden) this.construireMenuPlus()
       basculerMenu(m)
       if (m.el.hidden) return
@@ -1535,11 +2391,95 @@ export class UI implements Interface {
     ligne.appendChild(b)
   }
 
+  /** Le petit menu ⋯ du menu complet, que partagent le menu d'un objet et
+   *  le menu commun de plusieurs. Refait à chaque ouverture (la sélection a
+   *  pu changer), en SECTIONS séparées d'un filet : chacune ajoute ses
+   *  lignes sans toucher aux autres : ce qui sort de la page, l'ordre,
+   *  « Protéger », « Groupe » pour un membre pris seul, et « Position »
+   *  quand il y a de quoi redresser (lot 5). */
   private construireMenuPlus() {
     const m = this.menuPlus.el
     m.replaceChildren()
+    // --- Ce qui sort de la page : une image, une autre page ---
     this.entreeMenu(m, 'Copier en image', () => this.copierEnImage('selection'), { aide: TITRE_IMAGE })
     this.entreeMenu(m, 'Envoyer vers…', () => this.ouvrirEnvoi(), { aide: TITRE_ENVOI })
+    // Le menu court d'un verrouillé (lot 5) : rien d'autre, il ne change plus
+    if (this.app.selectionProtegee()) return
+    // --- L'ordre, dans le calque de l'objet (voir ordre.ts) ---
+    filetMenu(m)
+    this.sectionOrdre(m)
+    // --- Protéger : verrouiller, fixer en fond (lot 5) ---
+    filetMenu(m)
+    this.sectionProteger(m)
+    // --- Groupe : sortir un membre pris seul de son groupe (lot 5) ---
+    const membre = this.app.membrePris()
+    if (membre) {
+      filetMenu(m)
+      this.sectionGroupe(m, membre)
+    }
+    // --- Position : remettre droit une image ou une formule seule tournée (lot 5) ---
+    if (this.app.redressable()) {
+      filetMenu(m)
+      this.sectionPosition(m)
+    }
+  }
+
+  /** La section « Position » du menu ⋯ (lot 5), pour une image ou une
+   *  formule seule tournée : « Remettre droit » annule sa rotation et garde
+   *  sa taille et son centre (le chemin de retour quand l'aimant de la
+   *  pastille ↻ n'a pas suffi, et le seul moyen de revenir exactement à 0) */
+  private sectionPosition(m: HTMLElement) {
+    titreMenu(m, 'Position')
+    this.entreeMenu(m, 'Remettre droit', () => this.app.redresserSelection(), { action: 'redresser', aide: 'Annule la rotation, garde la taille' })
+  }
+
+  /** La section « Protéger » du menu ⋯ (lot 5) : « Verrouiller » (Maj + L ;
+   *  son aide dit comment le déverrouiller, dans les mots du pointeur), et
+   *  « Fixer en fond » quand on n'a pris que des images (un énoncé
+   *  importé ; une formule ou une figure ne passe pas sous l'encre : voir
+   *  ordre.ts). */
+  private sectionProteger(m: HTMLElement) {
+    const app = this.app
+    titreMenu(m, 'Protéger')
+    this.entreeMenu(m, 'Verrouiller', () => app.verrouiller(true), { touche: 'Maj + L', action: 'verrouiller',
+      aide: 'Il ne bouge plus et ne se prend plus ; ' + minuscule(messageVerrou(app.dernierPointeur)) })
+    const pris = app.objetsChoisis().filter(f => app.selection.has(f.id))
+    if (pris.length && pris.every(f => f.type === 'image')) {
+      this.entreeMenu(m, 'Fixer en fond', () => app.fixerEnFond(pris.map(f => f.id)), { action: 'fixer',
+        aide: 'Sous tout le reste : on écrit et on entoure par-dessus ; le menu de la page la détache' })
+    }
+  }
+
+  /** La section « Ordre » du menu ⋯ : les quatre commandes, grisées quand
+   *  elles ne feraient rien, et leurs raccourcis (Ctrl + flèche, ⌘ sur Mac).
+   *  Une image ne passe jamais devant l'écriture, une formule jamais
+   *  derrière : l'aide de « Mettre au premier plan » (et de « Mettre à
+   *  l'arrière-plan », quand on ne le devinerait pas) le dit, d'après le
+   *  calque de ce qui est pris (aidesOrdre, dans ordre.ts). */
+  private sectionOrdre(m: HTMLElement) {
+    const app = this.app
+    titreMenu(m, 'Ordre')
+    const aides = aidesOrdre(app.objetsChoisis().filter(f => app.selection.has(f.id)))
+    const entree = (texte: string, sens: Sens, touche: string, o: OptionsEntree = {}) =>
+      this.entreeMenu(m, texte, () => app.ordonner(sens), { touche, inactif: !app.peutOrdonner(sens), action: 'ordre-' + sens, ...o })
+    entree('Mettre au premier plan', 'premier', `${CTRL} + Maj + ↑`, { aide: aides.premier })
+    entree('Avancer', 'avancer', `${CTRL} + ↑`)
+    entree('Reculer', 'reculer', `${CTRL} + ↓`)
+    entree('Mettre à l\'arrière-plan', 'arriere', `${CTRL} + Maj + ↓`, { aide: aides.arriere })
+  }
+
+  /** La section « Groupe » du menu ⋯ (lot 5), pour un membre pris seul (le
+   *  second clic, le second toucher sur un membre du groupe pris) : « Sortir
+   *  du groupe », comme Ctrl + Maj + G sur lui. La vérification
+   *  « conformité » du lot 5 : ce n'était qu'au clavier, donc impossible au
+   *  TNI, sur l'iPad et au téléphone. Les autres membres restent groupés ;
+   *  s'il n'en reste qu'un, il n'est plus groupé non plus (App.degrouper). */
+  private sectionGroupe(m: HTMLElement, membre: Forme) {
+    const app = this.app
+    titreMenu(m, 'Groupe')
+    const autres = app.membres(membre).length - 1
+    this.entreeMenu(m, 'Sortir du groupe', () => app.degrouper(), { touche: `${CTRL} + Maj + G`, action: 'sortir-du-groupe',
+      aide: autres > 1 ? 'Les autres restent groupés' : 'L\'autre n\'est plus groupé non plus' })
   }
 
   /** Un bouton texte du menu, dans sa ligne */
@@ -1562,6 +2502,8 @@ export class UI implements Interface {
   private construirePanneau(f: Forme) {
     const app = this.app
     const p = this.panneau
+    // Un objet verrouillé (lot 5) : son menu court
+    if (!libre(f)) return this.construireMenuVerrouille([f])
     p.replaceChildren()
     const ligne = document.createElement('div'); ligne.className = 'ligne'
     const action = (texte: string, titre: string, faire: () => void, actif = false) => this.optionMenu(ligne, texte, titre, faire, actif)
@@ -1701,11 +2643,18 @@ export class UI implements Interface {
    *  d'annulation, quel que soit le nombre d'objets. */
   private construireMenuPlusieurs(formes: Forme[]) {
     const app = this.app, p = this.panneau
+    // Tous verrouillés (lot 5) : leur menu court
+    if (formes.every(f => !libre(f))) return this.construireMenuVerrouille(formes)
     p.replaceChildren()
     const n = formes.length
-    p.setAttribute('aria-label', `Options des ${n} objets`)
-    const ligne = document.createElement('div'); ligne.className = 'ligne'
-    const titre = document.createElement('span'); titre.className = 'titre-selection'; titre.textContent = `${n} objets`
+    // Une sélection qui est exactement un groupe (lot 5) : « Groupe · 3
+    // objets », et Dégrouper ; une autre sélection de plusieurs : Grouper
+    const groupe = !!app.groupePris()
+    p.setAttribute('aria-label', groupe ? `Options du groupe de ${n} objets` : `Options des ${n} objets`)
+    // Une rangée un peu plus serrée (voir style.css) : avec Grouper ou
+    // Dégrouper, elle tient encore sur une ligne de 820 px au plus
+    const ligne = document.createElement('div'); ligne.className = 'ligne commun'
+    const titre = document.createElement('span'); titre.className = 'titre-selection'; titre.textContent = groupe ? `Groupe · ${n} objets` : `${n} objets`
     ligne.appendChild(titre)
     const commun = habillageCommun(formes, TAILLES.map(t => t.valeur))
     // Des formules seules n'ont pas d'épaisseur, des images rien à régler
@@ -1713,6 +2662,8 @@ export class UI implements Interface {
       const texte = commun.epaisseurs ? 'Couleur, épaisseur' : 'Couleur'
       this.optionMenu(ligne, texte, commun.epaisseurs ? 'La couleur, l\'épaisseur et les pointillés de tous' : 'La couleur de tous', () => this.basculerSection('couleur'), this.section === 'couleur')
     }
+    if (groupe) this.optionMenu(ligne, 'Dégrouper', `Dégrouper (${CTRL} + Maj + G)`, () => app.degrouper()).dataset.action = 'degrouper'
+    else this.optionMenu(ligne, 'Grouper', `Grouper (${CTRL} + G) : ils se prennent, se déplacent et se règlent ensemble`, () => app.grouper()).dataset.action = 'grouper'
     this.optionMenu(ligne, 'Dupliquer', `Une copie de tous, décalée d'un centimètre (${CTRL}+D)`, () => app.dupliquerSelection())
     this.optionMenu(ligne, 'Copier', `Copier (${CTRL}+C) : ${CTRL}+V les colle ici, sur une autre page ou dans un autre onglet`, () => app.copier())
     this.optionMenu(ligne, 'Couper', `Couper (${CTRL}+X) : ils partent, ${CTRL}+V les remet`, () => app.couper())
@@ -1738,6 +2689,30 @@ export class UI implements Interface {
     })
     if (commun.pointilles !== null) this.optionMenu(s, 'Pointillés', 'Les figures en pointillés', () => app.habillerSelection(changerPointilles(!commun.pointilles)), commun.pointilles)
     p.appendChild(s)
+  }
+
+  /** Le menu court d'un objet verrouillé, ou de plusieurs (lot 5) : le
+   *  cadenas et « Verrouillé » en tête, puis seulement ce qui ne le change
+   *  pas : « Déverrouiller » (Maj + L), « Copier » (la copie reste
+   *  verrouillée), ⋯ (Copier en image, Envoyer vers…). Ni Supprimer, ni
+   *  Dupliquer, ni Contour, ni Transformer : il ne bouge plus et ne change
+   *  plus. Il s'ouvre au clic droit, au bouton du stylet, à l'appui long sur
+   *  lui ; l'objet n'est sélectionné que le temps de ce menu. */
+  private construireMenuVerrouille(formes: Forme[]) {
+    const app = this.app, p = this.panneau
+    p.replaceChildren()
+    const n = formes.length
+    p.setAttribute('aria-label', n === 1 ? `${titreDuMenu(formes[0])}, verrouillé` : `Options des ${n} objets, verrouillés`)
+    const ligne = document.createElement('div'); ligne.className = 'ligne'
+    const titre = document.createElement('span'); titre.className = 'titre-selection verrouille'
+    titre.innerHTML = icone('cadenas')
+    titre.append(n === 1 ? 'Verrouillé' : `Verrouillés · ${n} objets`)
+    ligne.appendChild(titre)
+    this.optionMenu(ligne, 'Déverrouiller', n === 1 ? 'Déverrouiller (Maj + L) : il se prend et se déplace de nouveau'
+      : 'Déverrouiller (Maj + L) : ils se prennent et se déplacent de nouveau', () => app.verrouiller(false)).dataset.action = 'deverrouiller'
+    this.optionMenu(ligne, 'Copier', `Copier (${CTRL}+C) : ${CTRL}+V ${n === 1 ? 'la colle' : 'les colle'} ici, sur une autre page ou dans un autre onglet, ${n === 1 ? 'verrouillée' : 'verrouillées'}`, () => app.copier())
+    this.boutonPlus(ligne, TITRE_PLUS_VERROUILLE)
+    p.appendChild(ligne)
   }
 
   /** Ce qu'on a choisi dans « Transformer » : gardé quand le panneau se refait */
@@ -2147,6 +3122,7 @@ export class UI implements Interface {
       this.toastSimple = { el, fin: maintenant + Math.max(2600, texte.length * 60) }
     }
     this.majToast()
+    this.placerToast()
   }
 
   /** Le message à action de cette clé s'en va, s'il est encore là : son
@@ -2219,6 +3195,18 @@ export class UI implements Interface {
       d.style.left = Math.max(12, Math.min(sx, window.innerWidth - 440)) + 'px'
       d.style.top = Math.max(12, Math.min(sy + 16, window.innerHeight - 330)) + 'px'
       d.show()
+      // Ses boutons hors de l'écran (au téléphone, la fenêtre est plus haute :
+      // les raccourcis y passent sur deux rangées, et y font 44 px), elle
+      // remonte pour qu'ils y reviennent, et défile si l'écran est plus bas
+      // qu'elle (la vérification « conformité » du lot 5 : à 320 × 568 et
+      // couché, Annuler et Placer sortaient par le bas). Au poste de la
+      // classe, ses boutons sont toujours dans l'écran : elle ne bouge pas.
+      const bas = corps.querySelector('.actions')!.getBoundingClientRect().bottom
+      if (bas > window.innerHeight - 4) {
+        const place = window.innerHeight - 24
+        if (d.offsetHeight > place) { d.style.maxHeight = place + 'px'; d.style.overflowY = 'auto'; d.style.overscrollBehavior = 'contain' }
+        d.style.top = Math.max(12, window.innerHeight - 12 - d.offsetHeight) + 'px'
+      }
       // Ouvert, la barre d'actions s'efface : elle couvrirait la formule
       this.maj()
       montrer()

@@ -55,7 +55,11 @@ export interface Seance {
  *  voir Etape) et le rangement de la trieuse (un fond changé sans aller sur
  *  la page) : ranger après le cours ne fait pas une séance, ni un pont entre
  *  deux cours ; ce qu'on range pendant le cours y reste (la séance va d'une
- *  étape à l'autre, celles qu'on saute comprises).
+ *  étape à l'autre, celles qu'on saute comprises). De même encore un réglage
+ *  (lot 5 : verrouiller, déverrouiller, grouper, dégrouper, voir Etape), qui
+ *  ne change rien à l'image : verrouiller l'énoncé le lendemain, en
+ *  préparant, ne fait pas une séance d'un geste que Publier choisirait
+ *  d'office, et verrouiller entre deux cours ne les réunit pas.
  *  Une page qui naît juste avant le premier geste d'une séance (« Nouvelle
  *  page » en arrivant, une copie qu'on va compléter), à moins d'un écart et
  *  le même jour, est de cette séance sans en être un geste : la séance
@@ -63,7 +67,8 @@ export interface Seance {
  *  (debut). La revue y voit ainsi une page neuve, comme quand la création
  *  comptait pour un geste. Un fond changé dans la trieuse entre les deux
  *  arrête cette remontée : il est d'avant la séance (l'élève voit la page
- *  avec son nouveau fond dès le départ). */
+ *  avec son nouveau fond dès le départ) ; un réglage ne l'arrête pas (il ne
+ *  se voit pas : la copie qu'on verrouille avant d'y écrire reste neuve). */
 export function seancesDuFilm(film: readonly Etape[], ecart = ENTRE_DEUX_SEANCES): Seance[] {
   const r: Seance[] = []
   let cour: Seance | null = null
@@ -76,13 +81,13 @@ export function seancesDuFilm(film: readonly Etape[], ecart = ENTRE_DEUX_SEANCES
     let de = i
     for (let k = i - 1; k >= 0; k--) {
       const x = film[k]
-      if (!(x.seulOrdre || x.naissance) || film[i].t - x.t > ecart || jour(x.t) !== jour(film[i].t)) break
+      if (!(x.seulOrdre || x.naissance || x.reglage) || film[i].t - x.t > ecart || jour(x.t) !== jour(film[i].t)) break
       if (x.naissance) de = k
     }
     return de
   }
   film.forEach((e, i) => {
-    if (e.seulOrdre || e.naissance || e.rangement) return
+    if (e.seulOrdre || e.naissance || e.rangement || e.reglage) return
     const coupe = !prec || e.t - prec.t > ecart || jour(e.t) !== jour(prec.t)
     prec = e
     if (coupe || !cour) { cour = { de: depart(i), a: i, debut: e.t, fin: e.t, gestes: 0, pages: [] }; r.push(cour) }
@@ -118,7 +123,11 @@ export interface Choix {
 const r1 = (v: number) => Math.round(v * 10) / 10
 const r2 = (v: number) => Math.round(v * 100) / 100
 
-/** Ce qu'une forme garde dans le film élève */
+/** Ce qu'une forme garde dans le film élève : tout, sauf l'auteur et le tracé
+ *  brut d'une figure reconnue. Les champs du lot 5 (verrou, fixe, groupe, la
+ *  rotation d'une formule) y passent donc : des ajouts facultatifs, qu'un
+ *  lecteur d'avant ignore (il peint une image fixée par son z, sous les
+ *  autres images ; une formule tournée, droite). */
 function nettoyer(f: Forme): Forme {
   const { auteur: _a, ...reste } = f as Forme & { brut?: unknown }
   const c = { ...reste } as Record<string, unknown>
@@ -172,12 +181,17 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
   let avant = etatA(de - 1)
   // Les gestes d'ouverture qui ne font qu'effacer (« Effacer la page » à
   // l'arrivée de la classe) : le film part d'après eux. Ce qu'ils effacent
-  // appartient à la séance d'avant, et ne part pas chez les élèves.
+  // appartient à la séance d'avant, et ne part pas chez les élèves. Un
+  // réglage (lot 5 : l'énoncé qu'on verrouille en arrivant, voir Etape) ne
+  // commence pas le film non plus : il ne montre rien, et son changement est
+  // dans l'état de départ.
   let debut = de
   while (debut <= a) {
     const e = etatA(debut)
-    const ops = [...gardees].flatMap(id => differences(avant.pages.get(id), e.pages.get(id), propre, jonction(id, debut)))
-    if (ops.length && !ops.every(o => o[0] === '-' || o[0] === 'x')) break
+    if (!film[debut].reglage) {
+      const ops = [...gardees].flatMap(id => differences(avant.pages.get(id), e.pages.get(id), propre, jonction(id, debut)))
+      if (ops.length && !ops.every(o => o[0] === '-' || o[0] === 'x')) break
+    }
     avant = e; debut++
   }
   const depart = avant
@@ -206,13 +220,41 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
     etapes.push({ ...haut.g, dt: Math.max(0, Math.round(temps)) }); sources.push(haut.source)
     suivre.length = 0
   }
+  /** Les réglages (lot 5 : verrouiller, déverrouiller, grouper, dégrouper,
+   *  voir Etape) ne sont pas des gestes du film élève : ils ne changent rien
+   *  à l'image. Leur étape passe comme une étape sans rien de visible (son
+   *  temps va à l'attente du geste suivant), et les formes qu'ils ont
+   *  réglées, par page, attendent ici le prochain geste visible de LEUR page,
+   *  qui les emporte telles qu'elles sont alors. Pas le prochain geste
+   *  visible tout court : sur une autre page, il ferait un geste de plus
+   *  sur celle-ci, qui ne montrerait rien (et y emmènerait le replay) ; ni
+   *  le prochain changement, quel qu'il soit : une étape notée sur une page
+   *  qu'on ne publie pas deviendrait un geste. Au bout du film, ce qui
+   *  attend encore ne part pas : rien ne le montrait. */
+  const reglees = new Map<string, Set<string>>()
   for (let i = debut; i <= a; i++) {
     const etat = etatA(i)
     const parPage = new Map<string, Op[]>()
     for (const id of gardees) {
       const o = differences(avant.pages.get(id), etat.pages.get(id), propre, jonction(id, i))
+      const av = avant.pages.get(id)
+      if (film[i].reglage && o.length && o.every(op => op[0] === '=' && !!av?.formes.has(op[1].id))) {
+        let r = reglees.get(id)
+        if (!r) reglees.set(id, r = new Set())
+        for (const op of o) r.add((op[1] as Forme).id)
+        continue
+      }
       // Une page jetée n'a plus rien à montrer : on ne la rejoue pas
-      if (o.length && !(o.length === 1 && o[0][0] === 'x')) parPage.set(id, o)
+      if (o.length && !(o.length === 1 && o[0][0] === 'x')) {
+        const r = reglees.get(id), formes = etat.pages.get(id)?.formes
+        if (r && formes) {
+          // Ce que les réglages d'avant ont changé part avec ce geste-ci
+          const deja = new Set(o.map(op => op[0] === '=' ? op[1].id : op[0] === '-' ? op[1] : ''))
+          for (const fid of r) { const f = formes.get(fid); if (f && !deja.has(fid)) o.push(['=', propre(f)]) }
+          reglees.delete(id)
+        }
+        parPage.set(id, o)
+      }
     }
     // Le silence d'avant la séance ne compte pas
     const dt = i > debut ? film[i].t - film[i - 1].t : 0
@@ -240,6 +282,9 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
     let ms = film[i].ms
     ordreTouche.forEach((p, k) => {
       const g: EtapeFilm = { dt: k ? 0 : Math.max(0, Math.round(dt + attente)), p, o: parPage.get(p)! }
+      // Un trait coupé par la gomme qui efface là où elle passe (lot 5) : le
+      // lecteur fait paraître ses morceaux d'un coup (voir EtapeFilm.coupe)
+      if (film[i].coupe) g.coupe = true
       // Le rythme du trait que ce geste a tracé à la main, avec lui seul
       if (ms && tracePose(g.o, avant.pages.get(p), ms)) { g.ms = [...ms]; ms = undefined }
       etapes.push(g)
@@ -385,7 +430,8 @@ function rangeIci(i: InstrumentVu, t: number): Piece {
  *  « Dupliquer la page », ou supprimée) sans rien avoir reçu à elle pendant
  *  la séance : son histoire est celle de son original, qui se publie déjà ;
  *  proposée, elle rejouerait l'original une seconde fois si on décochait
- *  celui-ci (la revue ne la range pas non plus dans « Pages jetées »). */
+ *  celui-ci (la revue ne la range pas non plus dans « Pages jetées »). Un
+ *  réglage (verrouiller, grouper : voir Etape) n'est pas reçu à elle. */
 export function pagesDeLaSeance(tableau: Tableau, s: Seance): string[] {
   const toutes = new Set<string>(s.pages)
   const film = tableau.film.toArray()
@@ -396,7 +442,7 @@ export function pagesDeLaSeance(tableau: Tableau, s: Seance): string[] {
     const aSesGestes = new Set<string>()
     for (let i = Math.max(0, s.de); i <= Math.min(s.a, film.length - 1); i++) {
       const e = film[i]
-      if (e.page && !e.seulOrdre && fil.naissance(e.page) !== i) aSesGestes.add(e.page)
+      if (e.page && !e.seulOrdre && !e.reglage && fil.naissance(e.page) !== i) aSesGestes.add(e.page)
     }
     for (const p of [...toutes]) if (!actuelles.has(p) && fil.origineDe(p) && !aSesGestes.has(p)) toutes.delete(p)
   }

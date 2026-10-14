@@ -30,6 +30,24 @@ export const SEUIL_GLISSER: Record<TypePointeur, number> = { mouse: 4, pen: 6, t
  *  trait écrit dans un grand cadre se prend avant le cadre. */
 export const TOLERANCE_PRISE: Record<TypePointeur, number> = { mouse: 6, pen: 10, touch: 20 }
 
+/** Les poignées du cadre de taille et la pastille ↻ (lot 5 ; voir cadre.ts),
+ *  en pixels d'écran, selon le dernier pointeur vu (le survol compte) :
+ *  - prise : à quelle distance de son centre une poignée se prend (tldraw a
+ *    12 et 20 au pointeur grossier ; les 8 px que proposait l'étude étaient
+ *    trop petits au stylet et introuvables au doigt) ;
+ *  - dessin : le côté du carré blanc qu'on dessine ;
+ *  - pastille : le rayon de la pastille ↻, le même dessin que celle des
+ *    instruments ;
+ *  - ecart : la distance de la pastille au bord du cadre, au bout de son
+ *    filet (assez loin pour qu'un coin et elle ne se confondent pas au
+ *    doigt). */
+export const POIGNEE: Record<'prise' | 'dessin' | 'pastille' | 'ecart', Record<TypePointeur, number>> = {
+  prise: { mouse: 10, pen: 12, touch: 20 },
+  dessin: { mouse: 8, pen: 10, touch: 14 },
+  pastille: { mouse: 11, pen: 12, touch: 16 },
+  ecart: { mouse: 24, pen: 28, touch: 36 },
+}
+
 /** À cette distance du tracé d'un objet ou moins (pixels d'écran), un appui
  *  le SAISIT : glissé, il l'emporte. Plus loin, jusqu'à TOLERANCE_PRISE, un
  *  toucher le prend, mais un glisser entourera ce qu'on veut prendre (le
@@ -185,6 +203,45 @@ export function messageOptions(p: TypePointeur, direct = ecranTactile()): string
   if (p === 'pen') return direct ? 'Appui long ou double-clic sur l\'objet : toutes ses options'
     : 'Double-clic ou bouton du stylet sur l\'objet : toutes ses options'
   return 'Double-clic ou clic droit sur l\'objet : toutes ses options'
+}
+
+/** Comment déverrouiller un objet verrouillé (lot 5), dans les mots du
+ *  pointeur : son menu court vient du clic droit à la souris, du bouton du
+ *  stylet à la tablette graphique, de l'appui long au doigt et au stylet
+ *  posé sur l'écran (direct : voir ecranTactile). Jamais « clic » au doigt. */
+export function messageVerrou(p: TypePointeur, direct = ecranTactile()): string {
+  if (p === 'mouse') return 'Clic droit dessus pour le déverrouiller.'
+  if (p === 'pen' && !direct) return 'Bouton du stylet dessus pour le déverrouiller.'
+  return 'Appui long dessus pour le déverrouiller.'
+}
+
+/** Comment détacher une image fixée en fond (lot 5) : elle ne se prend
+ *  plus, c'est le menu de la page qui la détache, et il s'ouvre « dans le
+ *  vide » (sur l'image fixée aussi, qui pour la prise est le vide).
+ *  plusieurs : il y en a plusieurs (« les détacher ») */
+export function messageDetacher(p: TypePointeur, direct = ecranTactile(), plusieurs = false): string {
+  const la = plusieurs ? 'les' : 'la'
+  if (p === 'mouse') return `Clic droit dans le vide pour ${la} détacher.`
+  if (p === 'pen' && !direct) return `Bouton du stylet dans le vide pour ${la} détacher.`
+  return `Appui long dans le vide pour ${la} détacher.`
+}
+
+/** Ce qu'on dit la première fois de la session qu'on prend une image seule
+ *  (lot 5) : ses coins, ses côtés et sa pastille ↻. Maj + coin seulement là
+ *  où il y a un clavier : au doigt, les côtés suffisent pour la déformer. */
+export function messageCadre(p: TypePointeur): string {
+  return p === 'touch' ? 'Coins : agrandir ou réduire ; côtés : déformer ; ↻ : tourner'
+    : 'Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↻ : tourner'
+}
+
+/** Ce qu'on dit quand on allume ou qu'on éteint les noms sous les outils
+ *  (lot 5) : éteints, leur nom paraît encore au survol, à la souris et au
+ *  stylet qui survole (celui d'une tablette graphique) ; pas au doigt, ni
+ *  au stylet posé sur l'écran (direct : un TNI, un iPad), qui ne survolent
+ *  pas. */
+export function messageNomsOutils(oui: boolean, p: TypePointeur, direct = ecranTactile()): string {
+  if (oui) return 'Noms sous les outils'
+  return p === 'touch' || (p === 'pen' && direct) ? 'Outils sans noms' : 'Outils sans noms (leur nom paraît au survol)'
 }
 
 /** Le titre (l'infobulle, le nom lu) de « Modifier » pour une formule, dans

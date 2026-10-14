@@ -9,7 +9,10 @@
 // pouce (1654 × 2339 pixels) ; on la peint comme une page imprimée à 96
 // ppp, avec 200 / 96 ≈ 2,083 pixels par px CSS : les lignes du fond, les
 // noms des points, les graduations du repère gardent leur épaisseur et leur
-// taille en px CSS, comme à l'écran (1 px = 0,26 mm).
+// taille en px CSS, comme à l'écran (1 px = 0,26 mm). Le fond y est peint
+// pour le papier (voir fonds.ts dessinerFond, impression) : ses lignes sur
+// les pixels de l'image (deux pour un px CSS), et le papier millimétré avec
+// ses millimètres, d'un pixel de l'image (0,13 mm).
 // L'échelle : 1 cm sur la page (40 unités) = 1 cm sur le papier quand le
 // contenu tient sur la feuille (186 × 269 mm utiles en portrait, 273 × 182
 // en paysage) : les longueurs mesurées à la règle sur la feuille sont
@@ -28,7 +31,8 @@
 // titre du PDF, les messages. Pur : se teste sous Node (tests/pdf.test.ts).
 // =============================================================
 import type { Boite } from '../revoir/bobine'
-import { CM } from '../types'
+import type { Fond } from '../types'
+import { CM, FONDS } from '../types'
 import { A4 } from './pdf'
 import { nomDeFichier } from './image'
 import { nomSur, tailleLisible } from '../fichier'
@@ -345,4 +349,25 @@ export function texteFini(o: { fichier: string; feuilles: number; octets: number
 /** « Export en PDF : feuille 3 sur 12… » */
 export function texteProgression(feuille: number, feuilles: number): string {
   return `Export en PDF : feuille ${feuille} sur ${feuilles}…`
+}
+
+/**
+ * Le libellé de la case du fond, dans la fenêtre « Exporter en PDF », pour
+ * les fonds des pages qu'on exporte : quand elles n'en ont qu'un (la page
+ * blanche n'en est pas un), son nom (« Imprimer le fond de la page : Papier
+ * pointé », « Imprimer le fond des pages : Seyès ») ; sinon, ou sur des
+ * pages blanches, les sortes de fonds, dont ceux du lot 5 (« Imprimer le
+ * fond des pages (carreaux, Seyès, millimétré, pointé, repère…) »). Un fond
+ * inconnu (venu d'une version plus récente) ne se nomme pas.
+ */
+export function texteCaseFond(fonds: readonly Fond[]): string {
+  const page = fonds.length > 1 ? 'des pages' : 'de la page'
+  const noms = new Set<string>()
+  for (const f of fonds) {
+    if (f === 'blanc') continue
+    const nom = FONDS.find(x => x.id === f)?.nom
+    noms.add(nom ?? '?')
+  }
+  if (noms.size === 1 && !noms.has('?')) return `Imprimer le fond ${page} : ${[...noms][0]}`
+  return `Imprimer le fond ${page} (carreaux, Seyès, millimétré, pointé, repère…)`
 }

@@ -144,6 +144,33 @@ export function allerAuxEntrees(el: HTMLElement, sens: number, selecteur = BOUTO
   return true
 }
 
+/** Les flèches dans une grille d'entrées (le menu des fonds, et au téléphone
+ *  les menus « Couleur » et « Autres outils ») : ← et → la voisine (en
+ *  passant d'une rangée à l'autre), ↑ et ↓ la rangée d'à côté (autant
+ *  d'entrées qu'en compte la première rangée), en tournant ; Début, Fin.
+ *  Elles ne vont pas plus loin (le tableau y déplacerait la vue). À poser
+ *  sur la grille elle-même : elle passe avant le menu qui la contient. */
+export function naviguerDansLaGrille(grille: HTMLElement, e: KeyboardEvent, selecteur = '.menu-item') {
+  if (e.ctrlKey || e.metaKey || e.altKey) return
+  const entrees = [...grille.querySelectorAll<HTMLElement>(selecteur)]
+  const i = entrees.indexOf(document.activeElement as HTMLElement)
+  const n = entrees.length
+  const haut = entrees[0]?.offsetTop ?? 0
+  const colonnes = Math.max(1, entrees.filter(b => b.offsetTop === haut).length)
+  let j: number
+  switch (e.key) {
+    case 'ArrowRight': j = i < 0 ? 0 : (i + 1) % n; break
+    case 'ArrowLeft': j = i < 0 ? n - 1 : (i - 1 + n) % n; break
+    case 'ArrowDown': j = i < 0 ? 0 : (i + colonnes) % n; break
+    case 'ArrowUp': j = i < 0 ? n - 1 : (i - colonnes + n) % n; break
+    case 'Home': j = 0; break
+    case 'End': j = n - 1; break
+    default: return
+  }
+  e.preventDefault(); e.stopPropagation()
+  entrees[j]?.focus()
+}
+
 /** Les touches qui ne disent pas qu'on est passé au clavier (Ctrl seul avant
  *  une molette, Maj avant un clic) */
 const MODIFICATEURS = new Set(['Shift', 'Control', 'Alt', 'AltGraph', 'Meta', 'OS', 'CapsLock'])
@@ -324,13 +351,27 @@ export interface Rect { left: number; top: number; right: number; bottom: number
  *  l'emporte ; s'il n'y en a pas (une figure qui remplit l'écran), celle
  *  qui en couvre le moins, dans cet ordre à égalité. Jamais hors de la
  *  fenêtre. Avant le lot 3, il passait sous la cible quand il ne tenait pas
- *  au-dessus, quitte à remonter sur elle au bas de l'écran. */
+ *  au-dessus, quitte à remonter sur elle au bas de l'écran.
+ *  Lot 5 : la cible est l'emprise de ce qu'il règle, son cadre de taille et
+ *  sa pastille ↻ compris (voir App.emprise) ; eviter : la pastille ; figure :
+ *  ce qu'il règle, sans son cadre. Quand toutes les places couvrent la
+ *  cible, on prend d'abord une place qui ne couvre pas la figure elle-même
+ *  (le menu du lot 3 ne la couvrait pas quand il avait la place), celle qui
+ *  ne couvre pas non plus la pastille avant les autres ; sinon celle qui
+ *  couvre le moins la figure ; à égalité, le moins la cible. Une poignée
+ *  d'un coin, ou même la pastille, couverte le temps du menu, plutôt que
+ *  la figure qu'il règle (un menu de 300 px de haut, « Transformer »
+ *  ouvert, sur un écran de 768 px : fermé, on la retrouve).
+ *  Lot 5, K10 : bornes.bas, au téléphone en portrait, le haut de la barre
+ *  des outils posée en bas : le menu reste au-dessus d'elle (sans lui, le
+ *  bas de la fenêtre, comme avant). */
 export function positionPanneau(cible: Rect, l: number, h: number, fenetre: { l: number; h: number },
-  bornes: { gauche: number; haut: number }, marge = 8, ecart = 14): { left: number; top: number } {
+  bornes: { gauche: number; haut: number; bas?: number }, marge = 8, ecart = 14, eviter?: Rect, figure?: Rect): { left: number; top: number } {
   const x1 = Math.min(cible.left, cible.right), x2 = Math.max(cible.left, cible.right)
   const y1 = Math.min(cible.top, cible.bottom), y2 = Math.max(cible.top, cible.bottom)
+  const bas = Math.min(fenetre.h, bornes.bas ?? fenetre.h)
   const dansX = (x: number) => Math.max(marge, Math.min(Math.max(x, bornes.gauche), fenetre.l - l - marge))
-  const dansY = (y: number) => Math.max(marge, Math.min(Math.max(y, bornes.haut), fenetre.h - h - marge))
+  const dansY = (y: number) => Math.max(marge, Math.min(Math.max(y, bornes.haut), bas - h - marge))
   const centreX = (x1 + x2) / 2 - l / 2, centreY = (y1 + y2) / 2 - h / 2
   const places = [
     { left: centreX, top: y1 - ecart - h },
@@ -343,10 +384,18 @@ export function positionPanneau(cible: Rect, l: number, h: number, fenetre: { l:
   const g = ecart - 1
   const couvre = (p: { left: number; top: number }) =>
     Math.max(0, Math.min(p.left + l, x2 + g) - Math.max(p.left, x1 - g)) * Math.max(0, Math.min(p.top + h, y2 + g) - Math.max(p.top, y1 - g))
+  const surPastille = (p: { left: number; top: number }) => !!eviter
+    && p.left < eviter.right && p.left + l > eviter.left && p.top < eviter.bottom && p.top + h > eviter.top
+  const fx1 = figure ? Math.min(figure.left, figure.right) : 0, fx2 = figure ? Math.max(figure.left, figure.right) : 0
+  const fy1 = figure ? Math.min(figure.top, figure.bottom) : 0, fy2 = figure ? Math.max(figure.top, figure.bottom) : 0
+  const couvreFigure = (p: { left: number; top: number }) => !figure ? couvre(p)
+    : Math.max(0, Math.min(p.left + l, fx2) - Math.max(p.left, fx1)) * Math.max(0, Math.min(p.top + h, fy2) - Math.max(p.top, fy1))
+  const cout = (p: { left: number; top: number }) => { const f = couvreFigure(p); return [f > 0 ? 1 : 0, surPastille(p) ? 1 : 0, f, couvre(p)] }
+  const avant = (a: number[], b: number[]) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i]; return false }
   let mieux = places[0]
   for (const p of places) {
-    if (couvre(p) === 0) return p
-    if (couvre(p) < couvre(mieux)) mieux = p
+    if (couvre(p) === 0 && !surPastille(p)) return p
+    if (avant(cout(p), cout(mieux))) mieux = p
   }
   return mieux
 }

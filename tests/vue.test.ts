@@ -3,7 +3,7 @@
 // retrouvées au rechargement, dans ce navigateur seulement).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ZOOM_MAX, ZOOM_MIN, vuePour, zoneEntreBarres } from '../src/camera'
-import { PLAFOND_MOLETTE, lireMolette, toucheMarquePage, toucheMenu, toucheRecharger, toucheTenueEnGeste, toucheZoom } from '../src/navigateur'
+import { PLAFOND_MOLETTE, lireMolette, toucheMarquePage, toucheMenu, toucheQuitteLaPage, toucheRecharger, toucheTenueEnGeste, toucheZoom } from '../src/navigateur'
 import { positionMenu, positionPanneau } from '../src/menus'
 import { ecrireSession, lireSession, oublierSession } from '../src/session'
 import { lire } from '../src/reglages'
@@ -127,6 +127,25 @@ describe('les raccourcis du navigateur', () => {
     // Échap, Espace, Maj, une lettre d'outil, AltGr + Z : leur rôle
     for (const k of ['Escape', ' ', 'Shift', 'p']) expect(t(k), k).toBe(false)
     expect(t('z', { ctrlKey: true, altKey: true })).toBe(false)
+  })
+
+  it('Alt + ← / →, ⌘ + ← / →, Ctrl + ← / → et Ctrl (⌘) + G, Maj compris : empêchés partout hors des champs ; ni AltGr + G, ni une flèche seule', () => {
+    const t = (key: string, o: Partial<{ ctrlKey: boolean; metaKey: boolean; altKey: boolean }> = {}) =>
+      toucheQuitteLaPage({ key, ctrlKey: false, metaKey: false, altKey: false, ...o })
+    for (const key of ['ArrowLeft', 'ArrowRight']) {
+      expect(t(key, { altKey: true }), 'Alt + ' + key).toBe(true)          // Windows : la page précédente
+      expect(t(key, { metaKey: true }), '⌘ + ' + key).toBe(true)           // Mac : la page précédente
+      expect(t(key, { ctrlKey: true }), 'Ctrl + ' + key).toBe(true)
+      expect(t(key), key).toBe(false)                                      // la flèche seule : la revue, la trieuse s'en servent
+    }
+    expect(t('ArrowUp', { altKey: true })).toBe(false)
+    expect(t('ArrowUp', { ctrlKey: true })).toBe(false)                    // avancer (l'ordre), à l’écran
+    expect(t('g', { ctrlKey: true })).toBe(true)
+    expect(t('G', { ctrlKey: true })).toBe(true)                            // Ctrl + Maj + G
+    expect(t('g', { metaKey: true })).toBe(true)
+    expect(t('g', { ctrlKey: true, altKey: true })).toBe(false)             // AltGr + G
+    expect(t('g')).toBe(false)
+    expect(t('f', { ctrlKey: true })).toBe(false)                           // Ctrl + F reste au navigateur
   })
 
   it('F5 et Maj + F5 ne rechargent pas ; Ctrl + F5 reste au navigateur', () => {
@@ -261,6 +280,31 @@ describe('la place du menu complet (positionPanneau)', () => {
     expect(couvre(c, p, 700, 500)).toBe(0)
     expect(p.left).toBe(1100 - 14 - 700)
     expect(positionPanneau({ left: 600, top: 300, right: 700, bottom: 420 }, 700, 500, fenetre, bornes).left).toBeGreaterThanOrEqual(110)
+  })
+
+  it('une figure qui remplit l\'écran et la pastille ↻ de son cadre (lot 5) : jamais sur la pastille', () => {
+    const c = { left: 120, top: 90, right: 1300, bottom: 700 }
+    const pastille = { left: 695, top: 92, right: 725, bottom: 122 }
+    const p = positionPanneau(c, 728, 300, fenetre, bornes, 8, 14, pastille)
+    expect(p.left < pastille.right && p.left + 728 > pastille.left && p.top < pastille.bottom && p.top + 300 > pastille.top).toBe(false)
+  })
+
+  it('sans place hors de l\'emprise (la figure, son cadre, sa pastille) : jamais sur la figure s\'il le peut, puis pas sur la pastille', () => {
+    // Le cas de lot3/regressions-panneau (1024 × 768, un rectangle à y 420,
+    // « Transformer » ouvert, 299 px de haut) : au-dessus, ramené sous la
+    // barre du haut, il couvre la pastille mais pas le rectangle ; dessous,
+    // il couvrirait la moitié du rectangle
+    const f1024 = { l: 1024, h: 768 }, bornes1024 = { gauche: 78, haut: 76 }
+    const figure = { left: 270, top: 390, right: 490, bottom: 550 }
+    const pastille = { left: 369, top: 348, right: 391, bottom: 370 }
+    const emprise = { left: 264, top: 348, right: 496, bottom: 556 }
+    const p = positionPanneau(emprise, 770, 299, f1024, bornes1024, 8, 14, pastille, figure)
+    expect(p.top).toBe(76)
+    expect(p.top + 299).toBeLessThanOrEqual(figure.top)
+    // La pastille plus haut que le bas d'un menu ramené sous la barre du
+    // haut, et un menu qui tient au-dessus d'elle : il ne la couvre pas
+    const q = positionPanneau({ ...emprise, top: 390 }, 770, 299, f1024, bornes1024, 8, 14, { left: 369, top: 390, right: 391, bottom: 412 }, { ...figure, top: 430 })
+    expect(q.top + 299).toBeLessThanOrEqual(390)
   })
 
   it('une figure qui remplit l\'écran : la place qui en couvre le moins, toujours dans l\'écran', () => {

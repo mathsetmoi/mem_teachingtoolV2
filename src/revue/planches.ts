@@ -125,15 +125,26 @@ export function lectureDe(t: Tableau, pagesActuelles: () => readonly string[], f
  *  distincts (des copies, dès la copie ; et après un rechargement, Yjs relit
  *  chaque page à part) : elles comptent pour égales si leur contenu est le
  *  même. On ne compare ce contenu qu'en dernier recours, après l'objet puis
- *  l'identifiant : rien ne coûte quand rien ne change. */
+ *  l'identifiant : rien ne coûte quand rien ne change. Deux formes qui ne
+ *  diffèrent que par leur verrou ou leur groupe (lot 5) sont la même image :
+ *  sans quoi une page verrouillée après le cours finirait sa revue par un
+ *  geste de plus, qui ne montre rien (voir boutEnPlus). */
 export function memeImage(a: ImagePage, b: ImagePage): boolean {
   if (a === b) return true
   if (a.fond !== b.fond || a.origine.x !== b.origine.x || a.origine.y !== b.origine.y || a.formes.length !== b.formes.length) return false
   for (let i = 0; i < a.formes.length; i++) {
     const f = a.formes[i], g = b.formes[i]
-    if (f !== g && (f.id !== g.id || JSON.stringify(f) !== JSON.stringify(g))) return false
+    if (f !== g && (f.id !== g.id || !memeContenu(f, g))) return false
   }
   return true
+}
+
+/** Deux formes au même contenu, à leur verrou et leur groupe près */
+function memeContenu(f: Forme, g: Forme): boolean {
+  if (JSON.stringify(f) === JSON.stringify(g)) return true
+  if (f.verrou === undefined && f.groupe === undefined && g.verrou === undefined && g.groupe === undefined) return false
+  const sans = (x: Forme) => { const { verrou: _v, groupe: _g, ...reste } = x; return JSON.stringify(reste) }
+  return sans(f) === sans(g)
 }
 
 /** Les planches d'une revue, lues à la demande et gardées en petit nombre

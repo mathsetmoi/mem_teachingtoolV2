@@ -8,11 +8,14 @@
 import type { EtapeDePile, Tableau } from './document'
 import { Camera, vuePour } from './camera'
 import { Rendu } from './rendu'
-import { aireDe, chevauche, dansLasso, distanceAuSegment, distanceAuTrace, interieur, partDedans, rectangle, simplifier, touche } from './geometrie'
+import { cacheAuDessus, chevauche, cibleParmi, dansLasso, distanceAuSegment, englobante, partDedans, rectangle, rotationDe, simplifier, touche } from './geometrie'
+import type { Cible } from './geometrie'
+import { nouveauxRangs, ordreDAffichage } from './ordre'
+import type { Sens } from './ordre'
 import { change } from './habillage'
 import type { Retouche } from './habillage'
-import type { Figure, Fond, Forme, Formule, Habillage, Outil, Polygone, Trait, TypeForme } from './types'
-import { CM, uid } from './types'
+import type { Figure, Fond, Forme, Formule, Habillage, ImageForme, Outil, Polygone, Trait, TypeForme } from './types'
+import { CM, libre, uid } from './types'
 import type { P, Reconnue, Transformation } from './formes'
 import type { Bord, EtatInstrument, NomInstrument, Partie } from './instruments'
 import { angleLisible, bords, etatParDefaut, toucher } from './instruments'
@@ -24,13 +27,14 @@ import { Piste } from './piste'
 import type { TraceInstrument } from './piste'
 import { boiteDe } from './revoir/bobine'
 import type { Boite } from './revoir/bobine'
-import { choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, reglages } from './reglages'
+import { RAYON_TRAIT, choisirContraste as reglerContraste, choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, rayonGomme, reglages } from './reglages'
+import { GRAND_MORCEAU, LONG_MORCEAU, boutsDe, couperTrait, lePlusLong } from './gomme'
 import type { Doigt } from './reglages'
-import { APPUI_LONG, DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, SEUIL_GLISSER, TOLERANCE_PRISE, TOUCHER_DOIGTS, ToucherADoigts, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageOptions, messageReconnue, messageSecondPoint, nouveauDepart, procheDuPremier, typePointeur } from './pointeurs'
+import { APPUI_LONG, DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, SEUIL_GLISSER, TOLERANCE_PRISE, TOUCHER_DOIGTS, ToucherADoigts, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageCadre, messageDetacher, messageOptions, messageReconnue, messageSecondPoint, messageVerrou, nouveauDepart, procheDuPremier, typePointeur } from './pointeurs'
 import type { Depart, Toucher, ToucherReconnu, TypePointeur } from './pointeurs'
-import { CTRL, MAC, fenetreModaleOuverte, lireMolette, tableauCache, toucheMarquePage, toucheMenu, toucheTenueEnGeste } from './navigateur'
+import { CTRL, MAC, fenetreModaleOuverte, lireMolette, tableauCache, toucheMarquePage, toucheMenu, toucheTenueEnGeste, toucheVerrou } from './navigateur'
 import { avale } from './menus'
-import type { TraitDirect } from './rendu'
+import type { CadreVu, TraitDirect } from './rendu'
 import type { Vue } from './session'
 import { ecrireSession, lireSession, oublierSession } from './session'
 import type { InfosClasseur } from './classeurs/demarrage'
@@ -38,6 +42,10 @@ import { CLASSEUR_SEUL, CLE_SESSION, cleDuClasseur } from './classeurs/demarrage
 import type { Copie } from './presse-papiers'
 import { collage, lireHtml, lireJson, memeTexte, versHtml, versTexte } from './presse-papiers'
 import { TEXTE_ENVOI_IMPOSSIBLE, texteEnvoi, texteEnvoiAnnule, texteEnvoiBloque } from './pages/envoi'
+import { changementsDetacher, changementsFixer, changementsVerrou, compterObjets, fixesSous, minuscule, quiBouge, texteCollage } from './verrou'
+import { avecGroupes, changementsDegrouper, changementsGrouper, groupeExact, membreSeul, membresDe, porteurs, priseDuClic } from './groupes'
+import type { Cadre, Matrice, Poignee } from './cadre'
+import { IDENTITE, aimanterAngle, bornesEchelle, cadreDe, cadreTransforme, composer, curseurPoignee, dansLesBornes, deroule, estIdentite, etendueDuCadre, facteurDe, imageTournee, inverser, matriceImage, matriceTaille, poigneeSous, redresser, rotation, texteRotation, texteTaille, transformerForme, zonePastille } from './cadre'
 
 /** La copie gardée dans le navigateur, pour un autre onglet de la même
  *  adresse (nouvelle clé : aucune autre ne change) */
@@ -73,6 +81,20 @@ function heureDe(e: Event): number {
   return t > 0 && t <= maintenant + 100 ? t : maintenant
 }
 
+/** Ce qui est pris (App.selection) : un ensemble d'identifiants qui compte
+ *  ses changements (version). Le cadre de taille de la sélection (lot 5,
+ *  voir cadreDeLaSelection), relu à chaque mouvement de la souris et à
+ *  chaque peinture de la couche directe, se garde tant que ce compte, la
+ *  page, la vue et le pointeur n'ont pas changé : sur une page de 2000 mots
+ *  toute prise, le recalculer à chaque fois doublait le temps d'un survol
+ *  (la vérification du lot 5). */
+export class SelectionSuivie extends Set<string> {
+  version = 0
+  add(id: string): this { if (!this.has(id)) this.version++; return super.add(id) }
+  delete(id: string): boolean { const r = super.delete(id); if (r) this.version++; return r }
+  clear(): void { if (this.size) this.version++; super.clear() }
+}
+
 /** Un bouton d'un message (voir Interface.message). cle : ce que l'action
  *  concerne (voir oublierAction) ; garder : le message reste après ce bouton
  *  (sans lui), avec les autres (« Aller à la page 5 » laisse « Annuler »). */
@@ -90,6 +112,9 @@ export interface Interface {
   oublierAction(cle?: string): void
   /** Le menu du rôle du doigt (dessine, déplace, auto) */
   ouvrirReglageDoigt(): void
+  /** Le menu de la Gomme (lot 5 : le trait entier, ou seulement là où elle
+   *  passe, et sa taille) ; auClavier : le focus va sur l'entrée cochée */
+  ouvrirMenuGomme(auClavier: boolean): void
   ouvrirMenuPartie(id: string, prise: Prise, clientX: number, clientY: number): void
   fermerMenuPartie(): void
   /** Le menu de la page (un clic droit dans le vide), posé au point de
@@ -118,8 +143,10 @@ export interface Interface {
   /** La trieuse des pages (Maj + P) ; auClavier : elle rend le focus au
    *  compteur en se fermant */
   ouvrirTrieuse(auClavier?: boolean): void
-  /** La fenêtre « Envoyer vers… » de ce qui est pris (voir pages/envoi.ts) */
-  ouvrirEnvoi(): void
+  /** La fenêtre « Envoyer vers… » de ce qui est pris (voir pages/envoi.ts) ;
+   *  ids : d'autres objets que ce qui est pris (les images fixées en fond,
+   *  que le menu de la page envoie : elles ne se prennent pas) */
+  ouvrirEnvoi(ids?: string[]): void
   /** La fenêtre « Exporter en PDF » (voir sorties/export-pdf.ts) : la page
    *  (elle propose aussi tout le classeur), des pages, ou tout le classeur */
   exporterPdf(cible: { page: string } | { pages: string[] } | 'tout'): void
@@ -147,11 +174,14 @@ type Geste =
   | { type: 'poignee'; prise: Prise; f: Figure; bouge: boolean }
   | { type: 'instrument'; nom: NomInstrument; quoi: Partie; depart: EtatInstrument; x: number; y: number; ecart: number; balayage: number; dernier: number }
   | { type: 'longer'; bord: Bord; t0: number }
-  // stylet : le bout gomme du stylet, quel que soit l'outil en main
-  | { type: 'gomme'; effaces: Set<string>; stylet?: boolean }
+  // stylet : le bout gomme du stylet, quel que soit l'outil en main ;
+  // zone : la gomme qui efface là où elle passe (lot 5, voir Coupe)
+  | { type: 'gomme'; effaces: Set<string>; stylet?: boolean; zone?: Coupe }
   // doigt : pris par le doigt « qui déplace » ; levé sans avoir glissé, il choisit l'objet touché.
-  // retirer : Maj + clic sur un objet déjà sélectionné ; levé sans avoir glissé, il en sort
-  | { type: 'deplacer'; x: number; y: number; bouge: boolean; doigt?: boolean; retirer?: string }
+  // retirer : Maj + clic sur un objet déjà sélectionné ; levé sans avoir glissé, il en sort (avec
+  // son groupe). seul : un clic simple sur un membre du groupe qui est EXACTEMENT la sélection ;
+  // levé sans avoir glissé, il ne prend que ce membre (glissé, tout le groupe a bougé)
+  | { type: 'deplacer'; x: number; y: number; bouge: boolean; doigt?: boolean; retirer?: string[]; seul?: string }
   // Glisser depuis le vide, à l'outil Sélection : un cadre à la souris, un
   // lasso au stylet et au doigt (pts : le lasso, en monde, à plat). ajout :
   // Maj, Ctrl (⌘) ou le mode « Ajouter » ; ce qui est pris s'ajoute alors à la
@@ -160,15 +190,34 @@ type Geste =
   // glissé, il le prend
   | { type: 'zone'; forme: 'cadre' | 'lasso'; x: number; y: number; pts: number[]; ajout: boolean; candidat?: string }
   | { type: 'formule' }
+  // Le cadre de taille (lot 5, voir cadre.ts) : un coin ou un côté qu'on
+  // tire (taille), la pastille ↻ qu'on tourne (tourner). cadre : celui de
+  // l'appui ; pointeur : celui dont il a pris ses poignées ; ids : ce qui
+  // change (la sélection libre, et les points repérés sur une image prise) ;
+  // M : la transformation où l'on en est, que le rendu peint sans rien
+  // écrire (voir Rendu.transfo) et que le lâcher écrit, en une étape.
+  // bornes : les facteurs permis (voir bornesEchelle) ; image : une image
+  // seule (Maj + coin la déforme). dernier, total : l'angle du pointeur au
+  // dernier pas, et l'angle tourné depuis l'appui, déroulé.
+  | { type: 'taille'; cadre: Cadre; quoi: 'coin' | 'cote'; i: number; pointeur: TypePointeur; ids: Set<string>; bornes: { min: number; max: number }; image: boolean; M: Matrice }
+  | { type: 'tourner'; cadre: Cadre; pointeur: TypePointeur; ids: Set<string>; dernier: number; total: number; M: Matrice }
 
 /** Un doigt posé, à l'écran */
 type DoigtPose = { id: number; x: number; y: number }
 
+/** Le coup de la gomme qui efface là où elle passe (lot 5, voir gomme.ts),
+ *  gardé en mémoire tant qu'elle n'a pas quitté ce qu'elle coupe : la
+ *  dernière position de la gomme (monde), et, pour chaque trait touché
+ *  (son identifiant d'origine), ses morceaux du moment (sous des
+ *  identifiants de travail, id~n, stables pendant le geste : le cache des
+ *  tracés du rendu sert), le compteur de ces identifiants, sa boîte
+ *  d'origine (monde) et son épaisseur. Rien n'est écrit par mouvement : la
+ *  coupe d'un trait s'écrit quand la gomme l'a quitté, et ce qui reste au
+ *  lever (voir gommerLa et ecrireCoupe). */
+type Coupe = { dernier: P; traits: Map<string, { morceaux: Trait[]; n: number; boite: Boite; taille: number }> }
+
 /** Un morceau d'une figure qu'on attrape : le nom d'un point, un sommet, le rayon */
 export type Prise = { quoi: 'nom' | 'sommet'; i: number } | { quoi: 'rayon' }
-
-/** Ce que prend le pointeur, et par où (voir cibleSous) */
-type Cible = { f: Forme; par: 'trace' | 'morceau' | 'plein' | 'dedans'; ecart: number }
 
 export class App {
   readonly cam = new Camera()
@@ -190,7 +239,7 @@ export class App {
   private astuceOptions = false
   /** Le premier point d'un trait tracé en deux clics (le second clic le finit) */
   private traitEnAttente: P | null = null
-  selection = new Set<string>()
+  selection: Set<string> = new SelectionSuivie()
   /** Un seul morceau choisi (un sommet, un nom…), sans la figure entière */
   partie: { id: string; prise: Prise } | null = null
   /** Une revue occupe l'écran : on ne relit pas le document et les raccourcis se taisent */
@@ -201,6 +250,22 @@ export class App {
   private survol: string | null = null
 
   private formes: Forme[] = []
+  /** Combien la page a de formes qui ne se prennent pas (verrouillées ou
+   *  fixées en fond), et de verrouillées seulement (lot 5, voir rafraichir) */
+  private nonLibres = 0
+  private verrouilles = 0
+  /** Le cadenas montré après un appui sur un verrouillé : il reste 1,5 s,
+   *  même si le pointeur s'en va (voir appuiSurVerrouille) */
+  private cadenasTenu = false
+  private minuterieCadenas = 0
+  /** Le rappel « Objet verrouillé : … » n'est dit qu'une fois par session */
+  private astuceVerrou = false
+  /** La suite du message « Groupé : … », et celui d'un membre pris seul,
+   *  ne sont dits qu'une fois par session (lot 5) ; le second attend un
+   *  instant (voir direMembreSeul) */
+  private astuceGroupe = false
+  private astuceMembre = false
+  private minuterieMembre = 0
   /** La vue de chaque page (son centre et son zoom), retrouvée au rechargement */
   private vues = new Map<string, Vue>()
   /** La page qu'on regardait au dernier passage (voir pageDeDepart) */
@@ -209,6 +274,18 @@ export class App {
   private geste: Geste | null = null
   /** Le pointeur du dernier appui : les messages en parlent (« clic droit » ou non) */
   dernierPointeur: TypePointeur = 'mouse'
+  /** Le dernier pointeur VU sur le tableau, son survol compris (lot 5) : la
+   *  taille des poignées du cadre en dépend (voir POIGNEE et voirPointeur) */
+  pointeurPoignees: TypePointeur = 'mouse'
+  /** Le message du cadre d'une image (ses coins, ses côtés, sa pastille) n'est
+   *  dit qu'une fois par session (voir direCadre) */
+  private astuceCadre = false
+  /** « Cette gomme ne coupe que l'écriture… » n'est dit qu'une fois par
+   *  session (lot 5, voir gommerLa) */
+  private astuceGommeZone = false
+  /** Une coupe de la gomme qui efface là où elle passe s'écrit en ce moment
+   *  (voir ecrireCoupe et rafraichir) */
+  private coupeEcrite = false
   /** Où et quand le geste en cours a commencé, et s'il est devenu un glisser */
   private depart: Depart = nouveauDepart(0, 0, -1, 'mouse')
   /** Les paumes : posées sur l'écran, elles ne font rien jusqu'à leur lever */
@@ -287,6 +364,8 @@ export class App {
   /** classeur : le classeur ouvert (sa session, ses clés de stockage) */
   constructor(readonly tableau: Tableau, private zone: HTMLElement, readonly classeur: InfosClasseur = CLASSEUR_SEUL) {
     this.rendu = new Rendu(this.cam, zone)
+    // Le contraste renforcé de cet appareil (lot 5) : à l'écran seulement
+    this.rendu.contraste = reglages.contraste
     this.majPoignees()
     this.cam.x = VUE_NEUTRE.x; this.cam.y = VUE_NEUTRE.y
     const session = lireSession(this.cleSession)
@@ -295,6 +374,12 @@ export class App {
     // le constructeur, ce qu'on montre ou range, l'état rendu au chargement
     this.piste = new Piste(m => tableau.noterPiste(m), () => tableau.pageVue)
     this.rendu.temoin = (i, a, t) => this.piste.peinture(i, a, t)
+    // Le cadre de taille de ce qui est pris (lot 5) : relu juste avant chaque
+    // peinture de la couche directe (seule l'App le pose)
+    this.rendu.avantDirect = () => { this.rendu.cadre = this.cadreVu() }
+    // Les boîtes des traits, en cache (lot 5) : le rectangle sale de la gomme
+    // qui efface là où elle passe écarte vite ce qu'il n'a pas à repeindre
+    this.rendu.boiteTrait = t => this.boiteDeForme(t)
     this.rendu.temoinDirect = t => this.piste.peintureDirect(t)
     window.addEventListener('pagehide', () => this.piste.vider())
 
@@ -364,7 +449,11 @@ export class App {
     // s'il est sur le tableau ; la session se note quand on quitte la page
     zone.addEventListener('pointerdown', () => this.arreterAnimation(), true)
     zone.addEventListener('pointermove', e => { this.pointeurSurZone = { clientX: e.clientX, clientY: e.clientY } })
-    zone.addEventListener('pointerleave', () => { this.pointeurSurZone = null })
+    zone.addEventListener('pointerleave', () => {
+      this.pointeurSurZone = null
+      // Le cadenas du survol s'en va avec le pointeur (pas celui d'un appui)
+      if (!this.cadenasTenu) this.poserCadenas(null)
+    })
     window.addEventListener('pagehide', () => this.noterSession())
     // Un appui hors du tableau (un bouton, la revue qui s'ouvre…) pose tout
     // de suite le point d'encre qui attendait un double-clic
@@ -584,6 +673,7 @@ export class App {
     this.finirAjout()
     this.ui?.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
+    this.cacherCadenas()
     this.rafraichir()
     this.noterSession()
     // Le numéro de la page en grand, un instant : seulement quand on regardait
@@ -640,11 +730,15 @@ export class App {
     this.allerPage(id)
   }
 
-  /** Efface tout ce qui est sur la page (Ctrl+Z le rend) */
+  /** Efface ce qui est sur la page (Ctrl+Z le rend), sauf ce qui est
+   *  verrouillé ou fixé en fond (lot 5) : c'est pour cela qu'on l'a protégé.
+   *  Rien de libre : rien n'est écrit. */
   viderPage() {
     this.selection.clear(); this.choisirPartie(null)
+    const ids = this.formes.filter(libre).map(f => f.id)
+    if (!ids.length) return
     this.tableau.nouveauGeste()
-    this.tableau.supprimer(this.page, this.formes.map(f => f.id))
+    this.tableau.supprimer(this.page, ids)
   }
 
   /** La poubelle de la barre du haut. Pas de question : la page part tout
@@ -659,12 +753,15 @@ export class App {
     if (i < 0) return
     if (pages.length <= 1) {
       if (!this.formes.length) return this.ui.message('La page est déjà vide.')
+      // Ce qui est verrouillé ou fixé en fond reste (lot 5), et le message le dit
+      if (!this.formes.some(libre)) return this.ui.message('Rien à effacer : ce qui reste est verrouillé ou fixé en fond (menu de la page pour le détacher).')
+      const reste = this.formes.some(f => !libre(f))
       this.viderPage()
       // L'effacement fait seul son étape : rien ne s'y ajoute ensuite
       this.tableau.nouveauGeste()
       const pile = this.tableau.annulationDe(id)
       const haut = pile?.undoStack[pile.undoStack.length - 1]
-      this.ui.message('Page effacée', { libelle: 'Annuler', faire: () => {
+      this.ui.message(reste ? 'Page effacée (ce qui est verrouillé ou fixé en fond reste)' : 'Page effacée', { libelle: 'Annuler', faire: () => {
         // Le bouton ne défait que l'effacement, s'il est encore le dernier
         // geste de la page ; sinon il défairait autre chose, qu'on ne voit pas.
         // Jamais pendant la revue, qui n'écrit pas dans le tableau.
@@ -786,27 +883,51 @@ export class App {
   rafraichir() {
     if (this.enLecture) return
     const formes = this.tableau.formesDe(this.page)
-    this.formes = formes ? Array.from(formes.values()).sort((a, b) => a.z - b.z) : []
+    // Dans l'ordre où on les voit (voir ordre.ts) : les images fixées, les
+    // images, les tracés et les figures, les formules, chacun par z. L'indice
+    // dans this.formes est la hauteur VUE : la prise, le survol et le clic
+    // droit prennent ce qu'on voit (une image importée après un trait est
+    // peinte dessous, et ne le cache plus)
+    this.formes = formes ? ordreDAffichage(Array.from(formes.values())) : []
     const ids = new Set(this.formes.map(f => f.id))
     for (const id of this.selection) if (!ids.has(id)) this.selection.delete(id)
+    // Ce qui ne se prend pas (lot 5) : compté une fois, la prise s'en sert
+    // pour ne rien filtrer sur une page qui n'en a pas
+    let non = 0, verrous = 0
+    for (const f of this.formes) if (!libre(f)) { non++; if (!f.fixe) verrous++ }
+    this.nonLibres = non; this.verrouilles = verrous
+    if (this.rendu.cadenas && !ids.has(this.rendu.cadenas.id)) this.poserCadenas(null)
     this.rendu.formes = this.formes
     this.rendu.fond = this.fond
     this.rendu.origine = this.tableau.origineDe(this.page)
     this.rendu.selection = this.selection
-    this.rendu.toutRedessiner()
+    // Une coupe de la gomme qui s'écrit en plein coup (lot 5) : la scène la
+    // montre déjà telle quelle (les morceaux peints sous la gomme sont ceux
+    // qui s'écrivent, à leur identifiant près) ; la repeindre entière à
+    // chaque trait quitté ferait sauter la plume sur une page chargée. Le
+    // lever repeint tout (voir finirGomme).
+    if (this.coupeEcrite) this.rendu.redessinerDirect()
+    else this.rendu.toutRedessiner()
     this.ui?.maj()
   }
 
   // ---------- Outils ----------
+  /** Prend l'outil o. Passer à la Sélection depuis un autre outil (Échap,
+   *  V, son bouton, Ctrl + A, Détacher) retient l'outil quitté : c'est lui
+   *  que rend Échap depuis la Sélection (contrôle final du lot 5 : seul
+   *  Échap le retenait, et après V, Échap rendait l'outil quitté par un
+   *  Échap d'avant, la Formule par exemple). */
   choisirOutil(o: Outil) {
+    if (o === 'selection' && this.outil !== 'selection') this.outilAvant = this.outil
     this.viderPointEnAttente()
     this.annulerPolygone()
     this.annulerTrait()
-    this.survol = null; this.rendu.survol = null
+    this.survol = null; this.rendu.survol = null; this.rendu.survolAussi = []
     if (this.partie) this.choisirPartie(null)
     this.finirAjout()
     this.outil = o
     if (o !== 'selection') this.selection.clear()
+    this.cacherCadenas()
     this.majPoignees()
     this.rendu.gomme = null
     this.rendu.toutRedessiner()
@@ -908,11 +1029,15 @@ export class App {
     return this.pointEnAttente?.page !== this.page && this.tableau.peutRetablir(this.page)
   }
 
+  /** Suppr : ce qui est sélectionné et libre part (un objet verrouillé, dont
+   *  le menu est ouvert, reste, et le message le dit) */
   supprimerSelection() {
     if (this.partie) return this.supprimerPartie()
     if (!this.selection.size) return
+    const ids = this.formes.filter(f => this.selection.has(f.id) && libre(f)).map(f => f.id)
+    if (!ids.length) { this.ui.message('Verrouillé : déverrouillez-le d\'abord.'); return }
     this.tableau.nouveauGeste()
-    this.tableau.supprimer(this.page, [...this.selection])
+    this.tableau.supprimer(this.page, ids)
     this.selection.clear()
   }
 
@@ -999,12 +1124,22 @@ export class App {
     cam.x = c.x; cam.y = c.y; cam.z = c.z
   }
 
+  /** La boîte d'une forme, comme la veulent les fonctions de geometrie.ts :
+   *  pour une formule, sa boîte LOCALE, mesurée à l'écran (son rendu KaTeX ;
+   *  pas de cache) et non tournée (lot 5 : elles en déduisent elles-mêmes ses
+   *  coins tournés) ; pour une droite, celle de ses deux points */
   private boiteDeForme(f: Forme): Boite | null {
-    // Une formule se mesure à l'écran (son rendu KaTeX) : pas de cache
-    if (f.type === 'formule') return this.rendu.boite(f)
+    if (f.type === 'formule') return this.rendu.boiteFormule(f)
     let b = this.boites.get(f)
     if (b === undefined) { b = boiteDe(f); this.boites.set(f, b) }
     return b
+  }
+
+  /** La boîte droite de ce qu'on voit d'une forme (une formule tournée : celle
+   *  de ses coins tournés), pour écarter vite et pour cadrer */
+  private boiteVue(f: Forme): Boite | null {
+    const b = this.boiteDeForme(f)
+    return b && englobante(f, b)
   }
 
   /** La boîte de ce qui est écrit (null : rien). Une droite compte par ses deux
@@ -1012,7 +1147,7 @@ export class App {
   boiteDuContenu(formes: Iterable<Forme> = this.formes): Boite | null {
     let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
     for (const f of formes) {
-      const b = this.boiteDeForme(f)
+      const b = this.boiteVue(f)
       if (!b) continue
       x1 = Math.min(x1, b.x); y1 = Math.min(y1, b.y); x2 = Math.max(x2, b.x + b.l); y2 = Math.max(y2, b.y + b.h)
     }
@@ -1070,7 +1205,7 @@ export class App {
     const v = this.cam.visible(this.rendu.l, this.rendu.h)
     for (const f of this.formes) {
       if (f.type === 'polygone' && f.prolonge) { if (this.rendu.etendueVisible(f)) return false; continue }
-      const b = this.boiteDeForme(f)
+      const b = this.boiteVue(f)
       if (b && chevauche(v, b)) return false
     }
     return true
@@ -1132,97 +1267,103 @@ export class App {
     return { x: Math.round(p.x / pas) * pas, y: Math.round(p.y / pas) * pas }
   }
 
-  /** L'objet sous ce point du monde, le plus haut d'abord, à `rayon` pixels
-   *  d'écran près (le doigt vise moins juste que la souris) ; parmi ceux
-   *  qu'accepte `filtre`, s'il y en a un */
+  /** L'objet libre sous ce point du monde, le plus haut d'abord, à `rayon`
+   *  pixels d'écran près (le doigt vise moins juste que la souris) ; parmi
+   *  ceux qu'accepte `filtre`, s'il y en a un. Jamais ce qui est verrouillé
+   *  ou fixé en fond (lot 5) : le double-clic au Stylo sur une formule
+   *  verrouillée y pose son point d'encre, comme ailleurs. */
   private formeSous(x: number, y: number, rayon = 6, filtre?: (f: Forme) => boolean): Forme | null {
     const r = rayon / this.cam.z
     for (let i = this.formes.length - 1; i >= 0; i--) {
       const f = this.formes[i]
-      if ((!filtre || filtre(f)) && touche(f, x, y, r, g => this.rendu.boite(g))) return f
+      if (libre(f) && (!filtre || filtre(f)) && touche(f, x, y, r, this.boiteTouche)) return f
     }
     return null
   }
 
+  /** La boîte que veut touche() (geometrie.ts) : celle du rendu, et pour une
+   *  formule sa boîte locale (touche la tourne elle-même) ; une droite garde
+   *  son étendue à l'écran */
+  private boiteTouche = (g: Forme) => (g.type === 'formule' ? this.rendu.boiteFormule(g) : this.rendu.boite(g))
+
   /** Ce qu'on prend sous le pointeur (outil Sélection, doigt qui déplace,
-   *  clic droit), m dans le monde, s à l'écran, et par où on le prend :
-   *  - 'trace' : près de son tracé, à TOLERANCE_PRISE pixels d'écran au plus
-   *    selon le pointeur (ecart : à combien) ;
-   *  - 'morceau' : un morceau qui sort d'une figure (le centre d'un cercle, le
-   *    nom d'un sommet), dans n'importe quelle figure ; c'est la figure
-   *    entière qu'on prend, le morceau au clic suivant ;
-   *  - 'plein' : dans une formule, une image, une figure coloriée ;
-   *  - 'dedans' : dans une figure fermée sans fond, seulement si o.dedans
-   *    (l'outil Sélection, le toucher du doigt qui déplace : jamais sous un
-   *    outil de dessin, où écrire dans un triangle ne doit pas le prendre).
-   *  Le bord le plus proche l'emporte : un trait ou une petite figure écrits
-   *  dans un grand cadre se prennent avant le cadre. Un plein cache ce qui est
-   *  sous lui à cet endroit. L'ordre, en détail : les tracés à 6 px ou moins
-   *  (le plus proche), les morceaux, l'intérieur s'il est plein (entre lui et
-   *  les intérieurs nus, le plus petit), les tracés plus loin, enfin
-   *  l'intérieur nu. Une seule boucle sur les formes, chacune écartée d'abord
-   *  par sa boîte : le survol reste léger sur une page de milliers de traits. */
-  private cibleSous(m: P, s: P, o: { pointeur: TypePointeur; dedans: boolean }): Cible | null {
-    const z = this.cam.z, tol = TOLERANCE_PRISE[o.pointeur], r = tol / z
-    type Candidat = { f: Forme; i: number; ecart: number }
-    const traces: Candidat[] = [], pleins: Candidat[] = [], nus: Candidat[] = []
-    for (let i = 0; i < this.formes.length; i++) {
-      const f = this.formes[i]
-      const infinie = f.type === 'polygone' && !!f.prolonge          // une droite dépasse sa boîte
-      const b = this.boiteDeForme(f)
-      if (!infinie) {
-        if (!b) continue
-        // Un point seul se prend à 6 unités de plus (voir distanceAuTrace)
-        const k = r + (f.type === 'polygone' && f.pts.length === 2 ? 6 : 0)
-        if (m.x < b.x - k || m.x > b.x + b.l + k || m.y < b.y - k || m.y > b.y + b.h + k) continue
-      }
-      const d = distanceAuTrace(f, m.x, m.y, b) * z
-      if (d <= tol) traces.push({ f, i, ecart: d })
-      const dans = interieur(f, m.x, m.y, b)
-      if (dans === 'plein') pleins.push({ f, i, ecart: 0 })
-      else if (dans === 'nu' && o.dedans) nus.push({ f, i, ecart: 0 })
-    }
-    // Vu de près, l'intérieur d'une figure qui déborde tout l'écran (un grand
-    // cercle à 800 %) ne prend rien : on regarde ce qui est dedans, et un
-    // toucher dans le vide doit pouvoir désélectionner (règle de tldraw)
-    if (nus.length) {
-      const zl = this.ui?.zoneLibre() ?? { x: 0, y: 0, l: this.rendu.l, h: this.rendu.h }
-      for (let k = nus.length - 1; k >= 0; k--) {
-        const g = this.boiteGeometrique(nus[k].f)
+   *  clic droit), m dans le monde, s à l'écran, et par où on le prend (voir
+   *  Cible et cibleParmi dans geometrie.ts) : la page dans l'ordre où on la
+   *  voit, à TOLERANCE_PRISE pixels d'écran selon le pointeur, un tracé à
+   *  6 px ou moins passant avant tout. L'intérieur nu d'une figure fermée ne
+   *  compte que si o.dedans (l'outil Sélection, le toucher du doigt qui
+   *  déplace : jamais sous un outil de dessin, où écrire dans un triangle ne
+   *  doit pas le prendre), et pas quand la figure déborde tout ce qu'on voit
+   *  entre les barres. Un plein cache ce qui est sous lui, sauf une formule :
+   *  ce qu'on écrit sur elle se prend à travers elle.
+   *  Ce qui est verrouillé ou fixé en fond (lot 5) est transparent : on prend
+   *  ce qui est dessous, ou le vide. o.verrouilles (le clic droit, le bouton
+   *  du stylet, l'appui long, qui ouvrent le menu court d'un verrouillé ; le
+   *  cadenas du survol) garde les verrouillés, jamais une image fixée : pour
+   *  la prise, elle est le vide (c'est le menu de la page qui la détache). */
+  private cibleSous(m: P, s: P, o: { pointeur: TypePointeur; dedans: boolean; verrouilles?: boolean }): Cible | null {
+    let zl: { x: number; y: number; l: number; h: number } | null = null
+    const formes = this.nonLibres ? this.formes.filter(o.verrouilles ? (f => !f.fixe) : libre) : this.formes
+    return cibleParmi(formes, m.x, m.y, {
+      zoom: this.cam.z, tolerance: TOLERANCE_PRISE[o.pointeur], net: TOLERANCE_PRISE.mouse, dedans: o.dedans,
+      boite: f => this.boiteDeForme(f),
+      morceau: () => this.priseSous(s, { toutes: true })?.f ?? null,
+      deborde: f => {
+        zl ??= this.ui?.zoneLibre() ?? { x: 0, y: 0, l: this.rendu.l, h: this.rendu.h }
+        const g = this.boiteGeometrique(f)
         const a = this.cam.versEcran(g.x, g.y), c = this.cam.versEcran(g.x + g.l, g.y + g.h)
-        if (a.x <= zl.x && a.y <= zl.y && c.x >= zl.x + zl.l && c.y >= zl.y + zl.h) nus.splice(k, 1)
-      }
-    }
-    // Un plein cache ce qui est sous lui : une image posée sur un trait se
-    // prend par l'image, une formule posée sur une image par la formule
-    const haut = pleins.length ? pleins[pleins.length - 1].i : -1
-    const visibles = (l: Candidat[]) => l.filter(c => c.i >= haut)
-    const tous = visibles(traces), plein = pleins.length ? pleins[pleins.length - 1] : null, vides = visibles(nus)
-    // Le plus proche, et à un demi-pixel près, le plus haut
-    const plusProche = (l: Candidat[]) => {
-      if (!l.length) return null
-      const min = Math.min(...l.map(c => c.ecart))
-      return l.filter(c => c.ecart <= min + 0.5).reduce((a, c) => (c.i > a.i ? c : a))
-    }
-    const net = plusProche(tous.filter(c => c.ecart <= TOLERANCE_PRISE.mouse))
-    if (net) return { f: net.f, par: 'trace', ecart: net.ecart }
-    // Le sommet d'une figure cachée sous une image ne se prend pas à travers
-    // elle : c'est l'image qu'on touche, comme avant
-    const morceau = this.priseSous(s, { toutes: true })
-    if (morceau && this.formes.indexOf(morceau.f) >= haut) return { f: morceau.f, par: 'morceau', ecart: 0 }
-    // L'intérieur : le plus petit l'emporte (un triangle sans fond dans un
-    // grand rectangle colorié se prend par son milieu), puis le plus haut
-    const dedans = [...(plein ? [plein] : []), ...vides].map(c => ({ ...c, aire: aireDe(c.f, this.boiteDeForme(c.f)) }))
-    const gagnant = dedans.length ? dedans.reduce((a, c) => (c.aire < a.aire || (c.aire === a.aire && c.i > a.i) ? c : a)) : null
-    if (gagnant && gagnant === dedans[0] && plein) return { f: gagnant.f, par: 'plein', ecart: 0 }
-    const loin = plusProche(tous)
-    if (loin) return { f: loin.f, par: 'trace', ecart: loin.ecart }
-    return gagnant ? { f: gagnant.f, par: 'dedans', ecart: 0 } : null
+        return a.x <= zl.x && a.y <= zl.y && c.x >= zl.x + zl.l && c.y >= zl.y + zl.h
+      },
+    })
   }
 
   /** L'objet que prend le pointeur (voir cibleSous) */
   private objetSous(m: P, s: P, o: { pointeur: TypePointeur; dedans: boolean }): Forme | null {
     return this.cibleSous(m, s, o)?.f ?? null
+  }
+
+  /** L'objet verrouillé qu'on voit sous le pointeur (rien de libre devant
+   *  lui à prendre), s'il y en a un ; son identifiant */
+  private verrouilleSous(m: P, s: P, pointeur: TypePointeur): string | null {
+    if (!this.verrouilles) return null
+    const c = this.cibleSous(m, s, { pointeur, dedans: true, verrouilles: true })
+    return c && !libre(c.f) ? c.f.id : null
+  }
+
+  // ---------- Le cadenas (lot 5) ----------
+  /** Le cadenas sur cet objet (null : plus de cadenas). Seule l'App le pose,
+   *  à l’écran : jamais dans la revue, le lecteur ni les sorties. Celui d'un
+   *  objet dont le menu est ouvert, le rendu le peint de lui-même (ce qui
+   *  est sélectionné et verrouillé : voir Rendu.peindreDirect). */
+  private poserCadenas(id: string | null) {
+    if ((this.rendu.cadenas?.id ?? null) === id) return
+    this.rendu.cadenas = id ? { id, cadre: false } : null
+    this.rendu.redessinerDirect()
+  }
+
+  /** Plus de cadenas, même celui d'un appui (une autre page, un autre outil) */
+  private cacherCadenas() {
+    clearTimeout(this.minuterieCadenas)
+    this.cadenasTenu = false
+    this.poserCadenas(null)
+  }
+
+  /** Un appui de la Sélection (ou un toucher du doigt qui déplace) levé sans
+   *  avoir glissé ni rien pris : s'il était sur un objet verrouillé, son
+   *  cadenas le dit 1,5 s, et la première fois de la session un message dit
+   *  comment le déverrouiller. Vrai s'il y avait un verrouillé. */
+  private appuiSurVerrouille(m: P, s: P, pointeur: TypePointeur): boolean {
+    const id = this.verrouilleSous(m, s, pointeur)
+    if (!id) return false
+    clearTimeout(this.minuterieCadenas)
+    this.cadenasTenu = true
+    this.poserCadenas(id)
+    this.minuterieCadenas = window.setTimeout(() => { this.cadenasTenu = false; this.poserCadenas(null) }, 1500)
+    if (!this.astuceVerrou) {
+      this.astuceVerrou = true
+      this.ui.message('Objet verrouillé : ' + minuscule(messageVerrou(pointeur)))
+    }
+    return true
   }
 
   /** L'appui SAISIT-il l'objet visé (glissé, il l'emporte) ? Par un morceau,
@@ -1235,7 +1376,7 @@ export class App {
   /** La boîte d'une figure fermée, sans marge pour l'épaisseur ni les noms */
   private boiteGeometrique(f: Forme): Boite {
     if (f.type === 'cercle') return { x: f.x - f.r, y: f.y - f.r, l: 2 * f.r, h: 2 * f.r }
-    const b = this.boiteDeForme(f)
+    const b = this.boiteVue(f)
     if (f.type !== 'polygone') return b ?? { x: f.x, y: f.y, l: 0, h: 0 }
     let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
     for (let i = 0; i < f.pts.length; i += 2) {
@@ -1283,6 +1424,9 @@ export class App {
     // doigt, voir secondToucher)
     z.addEventListener('dblclick', e => {
       if (this.enLecture || this.partie || performance.now() - this.doubleTraite < 500) return
+      // Sur une poignée du cadre de taille ou sur sa pastille ↻ (lot 5) : rien
+      // (la pastille, hors de l'objet, est souvent au-dessus d'un autre)
+      if (this.poigneeVisee(this.ecran(e))) return
       // Au Stylo et au Surligneur, le double-clic est celui de la plume, plus
       // serré que celui du navigateur (voir secondClic) : deux points écrits
       // tout près sur une formule n'ouvrent pas son éditeur
@@ -1296,9 +1440,7 @@ export class App {
       const f = this.outil === 'selection' ? this.objetSous(p, this.ecran(e), { pointeur, dedans: true })
         : this.outil === 'main' || this.outil === 'segment' ? this.formeSous(p.x, p.y, TOLERANCE_PRISE[pointeur])
         : this.formeSous(p.x, p.y)
-      if (f && this.selection.size > 1 && this.selection.has(f.id)) this.ouvrirOptionsSelection()
-      else if (f?.type === 'formule') this.modifierFormule(f)
-      else if (f && (this.outil === 'selection' || this.outil === 'main' || this.outil === 'segment')) this.ouvrirOptions(f)
+      if (f) this.ouvrirAuDouble(f, this.outil === 'selection' || this.outil === 'main' || this.outil === 'segment')
     })
     // Le clic que le navigateur tire du lever d'un appui long : Chrome (sous
     // Windows, au TNI, sur une Surface) en donne un, même après une seconde,
@@ -1339,6 +1481,16 @@ export class App {
   choisirDoigt(d: Doigt) {
     reglerDoigt(d)
     this.majPoignees()
+    this.rendu.toutRedessiner()
+    this.ui?.maj()
+  }
+
+  /** Le contraste renforcé (lot 5), pour le vidéoprojecteur : retenu sur
+   *  cet appareil, il change l'écran et lui seul (voir Rendu.contraste ; la
+   *  feuille de style suit body.contraste, que pose l'interface) */
+  choisirContraste(oui: boolean) {
+    reglerContraste(oui)
+    this.rendu.contraste = oui
     this.rendu.toutRedessiner()
     this.ui?.maj()
   }
@@ -1391,7 +1543,9 @@ export class App {
    *  pointeur noté, le stylet qui reprend la main au doigt, deux doigts qui
    *  pincent ; puis, si rien n'est en cours, le clic droit qui ouvre un menu,
    *  un menu ouvert qui se ferme, le second toucher d'un double-clic, et
-   *  enfin ce que fait le pointeur avec l'outil (et l'appui long qui s'arme). */
+   *  enfin ce que fait le pointeur avec l'outil (et l'appui long qui s'arme) :
+   *  le bord d'un instrument, un instrument, une poignée du cadre de taille
+   *  ou sa pastille ↻ (lot 5), un sommet, puis l'objet. */
   private bas(e: PointerEvent) {
     const s = this.ecran(e)
     // Tout autre appui (le second doigt d'un pincement, une paume, le stylet)
@@ -1410,6 +1564,7 @@ export class App {
     try { this.zone.setPointerCapture(e.pointerId) } catch { /* sans capture */ }
     this.pointeurs.set(e.pointerId, { x: s.x, y: s.y, type: e.pointerType })
     this.dernierPointeur = typePointeur(e.pointerType)
+    this.voirPointeur(e.pointerType)
 
     // Le stylet : « Auto » apprend que l'écran se touche au stylet ; ce que
     // faisait le doigt (une paume posée juste avant, souvent) s'arrête là
@@ -1447,6 +1602,11 @@ export class App {
     // sommet oublie le morceau choisi, et l'appui sur un autre sommet de la
     // même figure doit le prendre
     const prise = this.priseSous(s, doigt ? { outil: 'selection' } : {})
+    // Une poignée du cadre de taille ou sa pastille ↻ (lot 5), lue elle aussi
+    // avant de fermer les menus : à l'outil Sélection, et au doigt qui
+    // déplace sous les autres outils (voir poigneesDuCadre : jamais sous la
+    // plume)
+    const poignee = e.button === 0 && !gommeDuStylet && !pan && (this.outil === 'selection' || doigt) ? this.poigneeVisee(s) : null
 
     // Un menu ouvert (un petit menu, celui d'un morceau, le panneau d'options,
     // la liste des instruments) : ce premier appui le ferme, sans encre. Il
@@ -1460,14 +1620,15 @@ export class App {
     const prend = this.outil === 'selection' || doigt
     const pointeur = typePointeur(e.pointerType)
     const vise = prend ? this.objetSous(m, s, { pointeur, dedans: true }) : null
-    const garder = !!vise && (this.options === TOUTE_LA_SELECTION ? this.selection.has(vise.id) : vise.id === this.options)
+    const garder = (!!vise && (this.options === TOUTE_LA_SELECTION ? this.selection.has(vise.id) : vise.id === this.options))
+      || (!!poignee && this.options !== null)
     const apresMenu = !pan && !this.placement && (avale(e) || this.ui.fermerMenus(garder))
     if (apresMenu) {
       // Deux doigts posés pour fermer un menu n'annulent rien
       this.toucherDoigts.oublier()
       const continuer = e.button === 0 && !gommeDuStylet && (
         (this.instruments.size > 0 && !!this.instrumentSous(m))
-        || (prend && (!!prise || !!vise))
+        || (prend && (!!prise || !!vise || !!poignee))
         || (!doigt && (this.outil === 'stylo' || this.outil === 'surligneur')))
       if (!continuer) return
     }
@@ -1503,7 +1664,7 @@ export class App {
     // Sélection, il fait comme la souris et le stylet (un doigt qui glisse dans
     // le vide trace un lasso, la vue se déplace à deux doigts), sauf quand un
     // clic est attendu : il cherche alors la place en déplaçant la vue.
-    if (doigt && (this.outil !== 'selection' || this.placement)) { this.basDoigt(e, s, m, prise); this.armerAppuiLong(e); return }
+    if (doigt && (this.outil !== 'selection' || this.placement)) { this.basDoigt(e, s, m, prise, poignee); this.armerAppuiLong(e); return }
     // Le crayon posé contre le bord d'un instrument trace le long du bord.
     // Sauf sur une pastille ↻ : à petit zoom, la portée du bord l'atteindrait
     // (celle du rapporteur est dans le prolongement de son bord)
@@ -1519,6 +1680,8 @@ export class App {
     // Un instrument : on le déplace, on le tourne, on écarte ou on tourne le compas
     const inst = this.instrumentSous(m)
     if (inst) { this.prendreInstrument(inst, m); return }
+    // Une poignée du cadre de taille, sa pastille ↻ (lot 5) : avant les sommets
+    if (poignee) { this.prendreCadre(poignee, m); return }
     // Un morceau de la figure sélectionnée (outil Sélection) : son nom, un sommet, son rayon
     if (prise) { this.prendrePoignee(prise); return }
     this.ui.fermerMenuPartie()
@@ -1579,12 +1742,20 @@ export class App {
         // fond, un tracé un peu plus loin), glisser entoure : on prend ce qu'on
         // a écrit dans un grand cadre, ou un mot dont on part à 15 px, comme
         // chez tldraw et Excalidraw ; levé sans glisser, l'appui prend l'objet.
+        // Un membre d'un groupe prend tout son groupe (lot 5, voir prendre) ;
+        // Maj + clic l'ajoute ou le retire en entier. Un clic simple sur un
+        // membre du groupe qui est exactement la sélection ne prendra que lui
+        // à son lever (glissé, il emporte tout le groupe) ; une sélection qui
+        // a le groupe ET d'autres objets n'est jamais réduite (un clic dans
+        // une sélection de plusieurs la garde).
         if (c && (this.saisi(c, pointeur) || this.selection.has(c.f.id))) {
           const f = c.f
-          const retirer = ajout && this.selection.has(f.id) ? f.id : undefined
-          if (!this.selection.has(f.id)) { if (!ajout) this.selection.clear(); this.selection.add(f.id) }
+          const deja = this.selection.has(f.id)
+          const retirer = ajout && deja ? this.membres(f).map(g => g.id) : undefined
+          const seul = !ajout && deja && f.groupe && groupeExact(this.formes, this.selection)?.includes(f) ? f.id : undefined
+          if (!deja) this.prendre(f, ajout)
           this.direOptions()
-          this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false, retirer }
+          this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false, retirer, seul }
         } else {
           // Un cadre à la souris (le pavé tactile en est une), un lasso libre au
           // stylet (tablette graphique comprise) et au doigt
@@ -1602,16 +1773,19 @@ export class App {
 
   /** Le doigt qui « déplace et sélectionne », sous un autre outil que la
    *  Sélection (ou quand un clic est attendu) : jamais d'encre. Il prend un
-   *  instrument, un morceau de la figure sélectionnée (prise, lu par bas()),
+   *  instrument, une poignée du cadre de taille ou sa pastille (poignee, lu
+   *  par bas() : lot 5), un morceau de la figure sélectionnée (prise, lu par bas()),
    *  ou ce qui est déjà sélectionné pour le déplacer ; ailleurs, même sur un
    *  objet, il déplace la vue (un doigt qui traverse une page chargée
    *  n'emporte pas un trait). Levé sans avoir glissé, il choisit l'objet
    *  touché (voir toucherObjet). Quand un clic est attendu (voir placement),
    *  il déplace la vue, ou, levé sans avoir glissé, il fait ce clic. */
-  private basDoigt(e: PointerEvent, s: P, m: P, prise: { prise: Prise; f: Figure } | null) {
+  private basDoigt(e: PointerEvent, s: P, m: P, prise: { prise: Prise; f: Figure } | null, poignee: { cadre: Cadre; p: Poignee } | null = null) {
     if (this.placement) { this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y, pointeur: e.pointerId, toucher: true }; return }
     const inst = this.instruments.size ? this.instrumentSous(m) : null
     if (inst) { this.prendreInstrument(inst, m); return }
+    // Une poignée du cadre de taille, sa pastille ↻ (lot 5) : avant les sommets
+    if (poignee) { this.prendreCadre(poignee, m); return }
     if (prise) { this.prendrePoignee(prise); return }
     // Glisser n'emporte qu'un objet sélectionné saisi par son tracé (ou son
     // plein) : un doigt qui fait défiler en partant du milieu d'un grand cadre
@@ -1741,22 +1915,175 @@ export class App {
   /** Un coup de gomme : à l'outil Gomme, ou au bout gomme du stylet (le
    *  curseur et le cercle de la gomme le temps du geste, puis l'outil d'avant,
    *  qui n'a jamais changé). Tout le coup ne fait qu'une étape d'annulation,
-   *  même lent ; le film garde une étape par trait effacé. */
+   *  même lent ; le film garde une étape par trait effacé. La gomme suit le
+   *  réglage de l'appareil (lot 5, reglages.gomme), le bout gomme du stylet
+   *  aussi : le trait entier (comme toujours), ou seulement là où elle passe
+   *  (zone : voir gommerLa). */
   private commencerGomme(m: P, stylet: boolean) {
-    const g: Geste = { type: 'gomme', effaces: new Set(), stylet: stylet || undefined }
+    const zone = reglages.gomme === 'zone'
+    const g: Geste = { type: 'gomme', effaces: new Set(), stylet: stylet || undefined, zone: zone ? { dernier: m, traits: new Map() } : undefined }
     this.geste = g
     if (stylet) { this.zone.dataset.outil = 'gomme'; this.zone.style.cursor = '' }
     this.tableau.gesteLong()
-    this.rendu.gomme = { x: m.x, y: m.y, r: 12 / this.cam.z }
-    this.gommer(m.x, m.y, g.effaces)
+    this.rendu.gomme = { x: m.x, y: m.y, r: rayonGomme(zone ? 'zone' : 'trait') / this.cam.z }
+    if (g.zone) this.gommerLa(g.zone, [m])
+    else this.gommer(m.x, m.y, g.effaces)
     this.rendu.redessinerDirect()
   }
 
+  /** La fin d'un coup de gomme (le lever, un geste abandonné : un second
+   *  doigt, le navigateur qui le coupe) : ce que la gomme qui efface là où
+   *  elle passe coupait encore s'écrit (ce qu'on a vu effacé reste effacé),
+   *  et la scène se repeint entière ; puis le coup devient UNE étape
+   *  d'annulation. */
   private finirGomme(g: Extract<Geste, { type: 'gomme' }>) {
+    if (g.zone) {
+      for (const id of [...g.zone.traits.keys()]) this.ecrireCoupe(g.zone, id)
+      this.rendu.coupe = null
+      this.rendu.toutRedessiner()
+    }
     this.tableau.finGesteLong()
     if (!g.stylet) return
     this.zone.dataset.outil = this.outil
     if (this.outil !== 'gomme') { this.rendu.gomme = null; this.rendu.redessinerDirect() }
+  }
+
+  /** La gomme qui efface là où elle passe (lot 5) a glissé jusqu'à ces
+   *  points (monde : ceux d'un mouvement, ses événements fusionnés compris).
+   *  Entre deux points, la capsule du segment parcouru coupe chaque trait
+   *  libre à main levée qu'elle touche (voir couperTrait) : ses morceaux du
+   *  moment, en mémoire ; l'encre disparaît sous la gomme sans que rien ne
+   *  s'écrive. Un trait que la gomme a quitté (son cercle hors de la boîte
+   *  du trait agrandie de son rayon) s'écrit alors, en une étape du film
+   *  (voir ecrireCoupe) : au plus une écriture par trait touché, jamais une
+   *  par mouvement (un instantané par mouvement ferait grossir le classeur
+   *  de centaines de Ko par coup). Les figures, les images, les formules ne
+   *  sont pas touchées : la première fois de la session que la gomme passe
+   *  sur l'une d'elles, un message le dit. Ce qui est verrouillé ou fixé en
+   *  fond non plus. Seul le rectangle sale se repeint (voir
+   *  Rendu.repeindreZone) : là où la gomme est passée, et chaque morceau
+   *  neuf en entier (un long morceau, à ses bouts : voir neuf). */
+  private gommerLa(z: Coupe, points: P[]) {
+    const r = rayonGomme('zone') / this.cam.z
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity, epais = 0
+    const salir = (q: Boite) => { x1 = Math.min(x1, q.x); y1 = Math.min(y1, q.y); x2 = Math.max(x2, q.x + q.l); y2 = Math.max(y2, q.y + q.h) }
+    /** Un morceau neuf (ce qui reste d'un trait, ou d'un morceau, que la
+     *  gomme vient de couper) : perfect-freehand le lisse depuis son début
+     *  (sa pression simulée, l'espacement de son contour, les premières
+     *  unités qu'il saute) jusqu'à sa fin (ses dernières unités, son bout
+     *  rond) ; coupé à un bout, tout son contour peut bouger d'une fraction
+     *  de pixel. Il se repeint en entier : un mot, une lettre, c'est peu. Un
+     *  long morceau (une spirale, des hachures, une écriture liée : voir
+     *  gomme.ts), ou grand à l'écran, seulement aux bouts que la gomme a
+     *  changés ; le reste attend que la gomme quitte le trait (ecrireCoupe)
+     *  ou le lever, où la scène se repeint entière. Le repeindre en entier à
+     *  chaque mouvement faisait traîner la gomme derrière la plume (la
+     *  vérification du lot 5). */
+    const neuf = (k: Trait, de: Trait) => {
+      const q = boiteDe(k)
+      if (!q) return
+      if (k.pts.length > 3 * LONG_MORCEAU || Math.max(q.l, q.h) * this.cam.z > GRAND_MORCEAU) { for (const b of boutsDe(k, de)) salir(b); return }
+      salir(q)
+    }
+    // Les traits que ce mouvement peut toucher, choisis une fois pour tous
+    // ses points (une plume en envoie plusieurs par image d'écran)
+    let gx1 = z.dernier.x, gy1 = z.dernier.y, gx2 = gx1, gy2 = gy1
+    for (const q of points) { gx1 = Math.min(gx1, q.x); gy1 = Math.min(gy1, q.y); gx2 = Math.max(gx2, q.x); gy2 = Math.max(gy2, q.y) }
+    const tout = { x: gx1 - r, y: gy1 - r, l: gx2 - gx1 + 2 * r, h: gy2 - gy1 + 2 * r }
+    const proches: Trait[] = []
+    for (const f of this.formes) {
+      if (f.type !== 'trait' || (this.nonLibres && !libre(f))) continue
+      const bf = this.boiteDeForme(f)
+      if (bf && chevauche(bf, tout)) proches.push(f)
+    }
+    for (const b of points) {
+      const a = z.dernier
+      z.dernier = b
+      const cap = { x: Math.min(a.x, b.x) - r, y: Math.min(a.y, b.y) - r, l: Math.abs(b.x - a.x) + 2 * r, h: Math.abs(b.y - a.y) + 2 * r }
+      let coupe = false
+      // Les traits déjà coupés pendant ce coup : leurs morceaux du moment
+      for (const [id, c] of z.traits) {
+        if (!chevauche(c.boite, cap)) continue
+        let change = false
+        const suite: Trait[] = []
+        for (const m of c.morceaux) {
+          const k = couperTrait(m, a, b, r)
+          if (k === null) { suite.push(m); continue }
+          change = true
+          for (const x of k) { if (x.id !== m.id) x.id = id + '~' + c.n++; neuf(x, m) }
+          suite.push(...k)
+        }
+        if (change) { c.morceaux = suite; coupe = true; epais = Math.max(epais, c.taille) }
+      }
+      // Les traits que la gomme touche pour la première fois
+      for (const f of proches) {
+        if (z.traits.has(f.id)) continue
+        const bf = this.boiteDeForme(f)
+        if (!bf || !chevauche(bf, cap)) continue
+        const k = couperTrait(f, a, b, r)
+        if (k === null) continue
+        const c = { morceaux: k, n: 0, boite: bf, taille: f.taille }
+        for (const x of k) { x.id = f.id + '~' + c.n++; neuf(x, f) }
+        z.traits.set(f.id, c)
+        coupe = true; epais = Math.max(epais, f.taille)
+      }
+      if (coupe) salir(cap)
+      // Une figure, une image, une formule sous la gomme : elle n'y touche
+      // pas, et le dit une fois
+      if (!this.astuceGommeZone && this.formes.some(f => f.type !== 'trait' && libre(f) && touche(f, b.x, b.y, r, this.boiteTouche))) {
+        this.astuceGommeZone = true
+        this.ui.message('Cette gomme ne coupe que l\'écriture : pour une figure, une image ou une formule, prenez « Effacer le trait entier » (retapez la Gomme).')
+      }
+    }
+    // Ce que la gomme a quitté s'écrit (la scène, qui le montre déjà, ne se
+    // repeint pas pour autant : voir rafraichir)
+    const p = z.dernier
+    for (const [id, c] of [...z.traits]) {
+      const b = c.boite, m = 2 * r
+      if (p.x < b.x - m || p.x > b.x + b.l + m || p.y < b.y - m || p.y > b.y + b.h + m) this.ecrireCoupe(z, id)
+    }
+    this.montrerCoupe(z)
+    // Le rectangle sale : les capsules du mouvement et les morceaux neufs,
+    // agrandis de la plus grande épaisseur des traits coupés (leur encre
+    // déborde leurs points)
+    if (x1 < Infinity) this.rendu.repeindreZone({ x: x1 - epais, y: y1 - epais, l: x2 - x1 + 2 * epais, h: y2 - y1 + 2 * epais })
+  }
+
+  /** La coupe d'un trait s'écrit (Tableau.couperTraits : une étape du
+   *  film, notée coupe ; l'étape d'annulation est celle du coup, voir
+   *  gesteLong) : le plus long morceau garde l'identifiant du trait, les
+   *  autres en reçoivent un neuf. Il n'est plus « en cours » : ce que la
+   *  gomme y coupera encore partira d'une nouvelle coupe. */
+  private ecrireCoupe(z: Coupe, id: string) {
+    const c = z.traits.get(id)
+    if (!c) return
+    z.traits.delete(id)
+    const long = lePlusLong(c.morceaux)
+    const morceaux = c.morceaux.map((m, k) => ({ ...m, id: k === long ? id : uid() }))
+    this.coupeEcrite = true
+    try { this.tableau.couperTraits(this.page, [{ id, morceaux }]) } finally { this.coupeEcrite = false }
+    this.montrerCoupe(z)
+    // Un long morceau ne s'est repeint qu'à ses bouts pendant le coup (voir
+    // gommerLa), et redessiné par fenêtres : la gomme l'a quitté, son
+    // contour exact se peint maintenant, une fois. (Un grand morceau de peu
+    // de points, aux points espacés, a déjà le sien hors de ses bouts.)
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity, borne = false
+    for (const m of morceaux) {
+      const b = boiteDe(m)
+      if (!b) continue
+      x1 = Math.min(x1, b.x); y1 = Math.min(y1, b.y); x2 = Math.max(x2, b.x + b.l); y2 = Math.max(y2, b.y + b.h)
+      if (m.pts.length > 3 * LONG_MORCEAU) borne = true
+    }
+    if (borne) this.rendu.repeindreZone({ x: x1, y: y1, l: x2 - x1, h: y2 - y1 })
+  }
+
+  /** Ce que le rendu montre du coup en cours : les traits coupés cachés, et
+   *  leurs morceaux à leur place */
+  private montrerCoupe(z: Coupe) {
+    if (!z.traits.size) { this.rendu.coupe = null; return }
+    const morceaux: Trait[] = []
+    for (const c of z.traits.values()) morceaux.push(...c.morceaux)
+    this.rendu.coupe = { caches: new Set(z.traits.keys()), morceaux }
   }
 
   // ---------- Le double-clic au Stylo ----------
@@ -1829,15 +2156,39 @@ export class App {
 
   /** Le double appui au doigt, au lever du second toucher : le menu complet
    *  de l'objet (une formule se modifie ; un objet d'une sélection de
-   *  plusieurs ouvre leur menu commun). Le dblclick du navigateur, s'il
+   *  plusieurs ouvre leur menu commun ; un membre d'un groupe, le menu du
+   *  groupe : voir ouvrirAuDouble). Le dblclick du navigateur, s'il
    *  suit, ne refait rien, ni le clic qu'il tire du toucher (voir brancherGestes). */
   private ouvrirParDouble(id: string) {
     const f = this.forme(id)
     if (!f) return
     this.doubleTraite = performance.now(); this.clicFantome = true
-    if (this.selection.size > 1 && this.selection.has(f.id)) this.ouvrirOptionsSelection()
-    else if (f.type === 'formule') this.modifierFormule(f)
-    else this.ouvrirOptions(f)
+    this.ouvrirAuDouble(f, true)
+  }
+
+  /** Ce qu'ouvrent le double-clic et le double appui sur f (un seul sens par
+   *  geste) : dans une sélection de plusieurs qui n'est pas son seul groupe,
+   *  leur menu commun ; une formule, son éditeur, même membre d'un groupe
+   *  (elle devient la sélection, prise seule dans son groupe) ; un autre
+   *  membre d'un groupe, le menu commun du groupe, qui redevient la
+   *  sélection, quel qu'ait été l'effet du second clic qui précède le
+   *  double-clic (il venait de ne prendre que ce membre) ; sinon, avec
+   *  menu (l'outil Sélection, la Main, le Segment, le Stylo), le menu
+   *  complet de l'objet. Pour prendre un objet dans un groupe, c'est un
+   *  second clic SIMPLE (voir bas), comme tldraw. */
+  private ouvrirAuDouble(f: Forme, menu: boolean) {
+    clearTimeout(this.minuterieMembre)
+    const m = this.membres(f)
+    const sonGroupe = m.length > 1 && m.length === this.selection.size && m.every(g => this.selection.has(g.id))
+    if (this.selection.size > 1 && this.selection.has(f.id) && !sonGroupe) return this.ouvrirOptionsSelection()
+    if (f.type === 'formule') {
+      if (m.length > 1) this.selectionner(f.id)
+      this.modifierFormule(f)
+      return
+    }
+    if (!menu) return
+    if (m.length > 1) return this.ouvrirOptionsGroupe(m)
+    this.ouvrirOptions(f)
   }
 
   /** Un simple toucher du doigt sur un objet, bref (moins de 300 ms) et levé
@@ -1871,23 +2222,31 @@ export class App {
 
   /** Un simple toucher du doigt « qui déplace » : l'objet touché (à 20 px
    *  de son tracé, par un morceau ou par son intérieur, voir cibleSous)
-   *  devient la sélection, seul ; rien dessous, elle se vide. Le mode
-   *  « Ajouter » allumé, l'objet touché y entre ou en sort, et le vide éteint
-   *  le mode. */
-  private toucherObjet(m: P, s: P) {
+   *  devient la sélection, seul, ou avec son groupe (lot 5, voir prendre) ;
+   *  rien dessous, elle se vide. Le second toucher sur un membre du groupe
+   *  qui est exactement la sélection ne prend que lui, s'il n'est pas le
+   *  second d'un double appui (double : celui-là ouvre le menu du groupe).
+   *  Le mode « Ajouter » allumé, l'objet touché y entre ou en sort, avec son
+   *  groupe, et le vide éteint le mode. */
+  private toucherObjet(m: P, s: P, double = false) {
     const f = this.objetSous(m, s, { pointeur: 'touch', dedans: true })
     this.ui.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
-    if (f && this.ajoutTactile) {
-      if (this.selection.has(f.id)) this.selection.delete(f.id)
-      else this.selection.add(f.id)
-    } else {
-      if (!f) this.finirAjout()
+    if (f && this.ajoutTactile) this.prendre(f, true)
+    else if (f && !double && f.groupe && groupeExact(this.formes, this.selection)?.includes(f)) {
+      this.selection.clear(); this.selection.add(f.id)
+      this.direMembreSeul()
+    } else if (!f) {
+      this.finirAjout()
       this.selection.clear()
-      if (f) this.selection.add(f.id)
+    } else if (!(this.selection.size === 1 && this.selection.has(f.id))) {
+      // (un membre déjà pris seul le reste : un toucher sur lui ne ressort pas du groupe)
+      this.prendre(f, false)
     }
     this.rendu.redessinerDirect(); this.ui.maj()
     if (f) this.direOptions()
+    // Rien de pris : un objet verrouillé ? son cadenas le dit
+    else this.appuiSurVerrouille(m, s, 'touch')
   }
 
   // ---------- Le mode « Ajouter » au doigt ----------
@@ -1972,6 +2331,8 @@ export class App {
 
   private bouge(e: PointerEvent) {
     if (this.ignores.has(e.pointerId)) return
+    // Le pointeur qu'on voit (le survol compte) : les poignées en prennent la taille
+    this.voirPointeur(e.pointerType)
     const s = this.ecran(e)
     const avant = this.pointeurs.get(e.pointerId)
     if (avant) { avant.x = s.x; avant.y = s.y }
@@ -1980,7 +2341,9 @@ export class App {
     const t = performance.now()
     let g = this.geste
     if (this.outil === 'gomme' || g?.type === 'gomme') {
-      this.rendu.gomme = { x: m.x, y: m.y, r: 12 / this.cam.z }
+      // Son cercle : le rayon de son mode (lot 5), celui du coup en cours s'il y en a un
+      const mode = g?.type === 'gomme' ? (g.zone ? 'zone' : 'trait') : reglages.gomme
+      this.rendu.gomme = { x: m.x, y: m.y, r: rayonGomme(mode) / this.cam.z }
       this.rendu.redessinerDirect()
     }
 
@@ -2000,7 +2363,16 @@ export class App {
       // prendre ; l'intérieur d'une figure fermée aussi
       vise = this.cibleSous(m, s, { pointeur, dedans: true })
       const id = vise && !this.selection.has(vise.f.id) ? vise.f.id : null
-      if (id !== this.survol) { this.survol = id; this.rendu.survol = id; this.rendu.redessinerDirect() }
+      // Un membre d'un groupe : tout ce que le clic prendrait s'éclaire (le
+      // groupe ; ou lui seul, d'un membre pris seul à un autre du même groupe)
+      const aussi = id && vise!.f.groupe ? priseDuClic(this.formes, this.selection, vise!.f).filter(g => g.id !== id).map(g => g.id) : []
+      const avant = this.rendu.survolAussi
+      if (id !== this.survol || aussi.length !== avant.length || aussi.some((x, k) => x !== avant[k])) {
+        this.survol = id; this.rendu.survol = id; this.rendu.survolAussi = aussi; this.rendu.redessinerDirect()
+      }
+      // Un objet verrouillé sous le pointeur, sans rien de libre devant lui :
+      // son cadenas le dit (lot 5), sans halo, puisqu'il ne se prend pas
+      if (!this.cadenasTenu) this.poserCadenas(vise ? null : this.verrouilleSous(m, s, pointeur))
     }
     if (!g && this.outil === 'segment') {
       if (this.traitEnAttente) this.apercuTrait(this.traitEnAttente, this.boutDuTrait(this.traitEnAttente, m, e.shiftKey))
@@ -2011,8 +2383,11 @@ export class App {
       // À la Sélection, le curseur dit ce que fera l'appui (au survol de la
       // tablette graphique aussi) : « move », il saisit l'objet et le glisse ;
       // « pointer », il le prend d'un clic, mais glisser entoure ; la croix,
-      // dans le vide, glisser sélectionne
-      this.zone.style.cursor = inst ? (inst.quoi === 'corps' || inst.quoi === 'pointe' ? 'grab' : 'pointer') : this.priseSous(s) ? 'move'
+      // dans le vide, glisser sélectionne. Sur une poignée du cadre de taille
+      // (lot 5) : la double flèche de son coin ou de son côté, la main sur la
+      // pastille ↻ (voir curseurPoignee)
+      const pg = !inst && this.outil === 'selection' ? this.poigneeVisee(s) : null
+      this.zone.style.cursor = inst ? (inst.quoi === 'corps' || inst.quoi === 'pointe' ? 'grab' : 'pointer') : pg ? curseurPoignee(pg.cadre, pg.p) : this.priseSous(s) ? 'move'
         : this.outil === 'selection' ? (!vise ? 'crosshair' : this.saisi(vise, pointeur) || this.selection.has(vise.f.id) ? 'move' : 'pointer') : ''
       return
     }
@@ -2118,7 +2493,11 @@ export class App {
         this.apercuTrait(g, this.boutDuTrait(g, m, e.shiftKey))
         break
       case 'gomme':
-        this.gommer(m.x, m.y, g.effaces)
+        if (g.zone) {
+          // Là où elle passe : tous les points que la plume a envoyés entre deux images
+          const evts = e.getCoalescedEvents?.() ?? []
+          this.gommerLa(g.zone, evts.length ? evts.map(ev => this.monde(ev)) : [m])
+        } else this.gommer(m.x, m.y, g.effaces)
         break
       case 'deplacer': {
         if (!glisse) break
@@ -2127,10 +2506,28 @@ export class App {
         this.rendu.toutRedessiner()
         break
       }
+      case 'taille': {
+        if (!glisse) break                               // un clic sur un coin ne change rien
+        // Maj + coin d'une image seule : ses deux axes, chacun le sien
+        const libre = g.image && g.quoi === 'coin' && e.shiftKey
+        const r = matriceTaille(g.cadre, g, m, { bornes: g.bornes, libre })
+        this.montrerTransfo(g, r.M, texteTaille(r.kx, r.ky, libre || g.quoi === 'cote'), m)
+        break
+      }
+      case 'tourner': {
+        // L'angle se suit dès l'appui (déroulé : plus d'un tour se compte),
+        // mais rien ne tourne avant le seuil du glisser
+        const c = g.cadre.centre, a = Math.atan2(m.y - c.y, m.x - c.x)
+        g.total = deroule(g.total, g.dernier, a); g.dernier = a
+        if (!glisse) break
+        const t = aimanterAngle(g.total, e.shiftKey)
+        this.montrerTransfo(g, rotation(c, t), texteRotation(t), m)
+        break
+      }
       case 'zone': {
         if (!glisse) break
         // Le halo de l'objet sous l'appui s'éteint : ce n'est plus lui qu'on prend
-        if (this.survol) { this.survol = null; this.rendu.survol = null }
+        if (this.survol) { this.survol = null; this.rendu.survol = null; this.rendu.survolAussi = [] }
         if (g.forme === 'cadre') this.rendu.cadreSelection = rectangle(g.x, g.y, m.x, m.y)
         else {
           // Un point tous les 3 px d'écran au moins : le lasso reste léger
@@ -2202,7 +2599,7 @@ export class App {
         // placement), ou choisit l'objet touché
         if (glisse) break
         if (g.toucher && this.placement) { const p = this.placement; this.placement = null; p.clic(m) }
-        else if (g.toucher) this.toucherObjet(m, this.ecran(e))
+        else if (g.toucher) this.toucherObjet(m, this.ecran(e), !!double)
         break
       case 'dessin': {
         clearTimeout(this.minuterieForme)
@@ -2259,10 +2656,19 @@ export class App {
         break
       }
       case 'deplacer':
-        if (g.doigt && !glisse) { this.rendu.decalage = { dx: 0, dy: 0 }; this.toucherObjet(m, this.ecran(e)); break }
-        // Maj + clic sur un objet déjà sélectionné : il en sort (glissé, c'est
-        // toute la sélection qui a bougé)
-        if (g.retirer && !glisse) { this.rendu.decalage = { dx: 0, dy: 0 }; this.selection.delete(g.retirer); this.rendu.redessinerDirect(); break }
+        if (g.doigt && !glisse) { this.rendu.decalage = { dx: 0, dy: 0 }; this.toucherObjet(m, this.ecran(e), !!double); break }
+        // Maj + clic sur un objet déjà sélectionné : il en sort, avec son
+        // groupe (glissé, c'est toute la sélection qui a bougé)
+        if (g.retirer && !glisse) { this.rendu.decalage = { dx: 0, dy: 0 }; for (const id of g.retirer) this.selection.delete(id); this.rendu.redessinerDirect(); break }
+        // Le second clic simple sur un membre du groupe pris : lui seul (au
+        // doigt, le second toucher d'un double appui ouvre le menu du groupe)
+        if (g.seul && !glisse && !double && this.forme(g.seul)) {
+          this.rendu.decalage = { dx: 0, dy: 0 }
+          this.selection.clear(); this.selection.add(g.seul)
+          this.direMembreSeul()
+          this.rendu.redessinerDirect()
+          break
+        }
         this.poserDeplacement(g)
         break
       case 'zone': {
@@ -2272,14 +2678,12 @@ export class App {
           if (m.x !== g.pts[n - 2] || m.y !== g.pts[n - 1]) g.pts.push(m.x, m.y)
         }
         // Un lasso resté tout petit (un doigt qui a roulé) est un toucher
-        if (glisse && !(g.forme === 'lasso' && this.petitLasso(g.pts))) this.prendreZone(g, m)
+        if (glisse && !(g.forme === 'lasso' && this.petitLasso(g.pts))) { this.prendreZone(g, m); this.direCadre() }
         else if (g.candidat && this.forme(g.candidat)) {
           // Un toucher sur l'objet qu'on ne saisissait pas : il est pris (avec
           // Maj, Ctrl ou le mode « Ajouter », il entre dans la sélection ou en sort)
-          const id = g.candidat
-          if (!g.ajout) this.selection.clear()
-          if (g.ajout && this.selection.has(id)) this.selection.delete(id)
-          else this.selection.add(id)
+          // (un membre d'un groupe prend tout son groupe : voir prendre)
+          this.prendre(this.forme(g.candidat)!, g.ajout)
           this.direOptions()
         } else {
           // Un clic dans le vide désélectionne, sauf avec Maj ou Ctrl (on a
@@ -2288,6 +2692,9 @@ export class App {
           const tactile = this.ajoutTactile
           this.finirAjout()
           if (!g.ajout || tactile) this.selection.clear()
+          // Ce « vide » (un clic, un lasso resté tout petit) était peut-être un
+          // objet verrouillé : son cadenas le dit
+          this.appuiSurVerrouille(m, this.ecran(e), typePointeur(e.pointerType))
         }
         this.rendu.redessinerDirect(); this.ui.maj()
         break
@@ -2300,6 +2707,13 @@ export class App {
         else this.nouvelleFormule(m.x, m.y, s.x, s.y)
         break
       }
+      case 'taille':
+      case 'tourner':
+        // Le lâcher écrit le geste, en une étape (voir transformerSelection) ;
+        // levé sans avoir glissé, rien
+        this.finirCadre()
+        if (glisse && !estIdentite(g.M)) this.transformerSelection(g.M)
+        break
     }
     // Le second toucher d'un double appui, bref et levé sans avoir glissé
     if (double && !glisse && performance.now() - this.depart.t < DOUBLE_TOUCHER.ms) this.ouvrirParDouble(double.objet)
@@ -2339,24 +2753,33 @@ export class App {
       dansZone = dansLasso(q)
     }
     if (!g.ajout) this.selection.clear()
+    const pris: string[] = []
     for (const f of this.formes) {
-      // Une droite compte par ses deux points (sa boîte est la leur)
-      const fb = this.boiteDeForme(f)
-      if (!fb || !chevauche(b, fb)) continue
+      // Ce qui est verrouillé ou fixé en fond ne se prend pas (lot 5) : le
+      // lasso qui part sur un énoncé fixé entoure ce qu'on a écrit dessus
+      if (!libre(f)) continue
+      // Une droite compte par ses deux points (sa boîte est la leur) ; une
+      // formule tournée s'écarte par son englobante, et se mesure dans son
+      // rectangle tourné (partDedans reçoit sa boîte locale)
+      const fb = this.boiteDeForme(f), vue = fb && englobante(f, fb)
+      if (!fb || !vue || !chevauche(b, vue)) continue
       // Toute la boîte dans le cadre : tout l'objet y est, sans rien mesurer
-      const entiere = g.forme === 'cadre' && fb.x >= b.x && fb.y >= b.y && fb.x + fb.l <= b.x + b.l && fb.y + fb.h <= b.y + b.h
-      if (entiere || partDedans(f, dansZone, fb) > 0.5) this.selection.add(f.id)
+      const entiere = g.forme === 'cadre' && vue.x >= b.x && vue.y >= b.y && vue.x + vue.l <= b.x + b.l && vue.y + vue.h <= b.y + b.h
+      if (entiere || partDedans(f, dansZone, fb) > 0.5) pris.push(f.id)
     }
+    // Un membre d'un groupe pris : tout le groupe l'est (lot 5)
+    for (const id of this.avecGroupes(pris)) this.selection.add(id)
   }
 
-  /** La sélection déplacée se pose là où on l'a laissée */
+  /** La sélection déplacée se pose là où on l'a laissée : ce qui y est libre,
+   *  et les points repérés sur une image déplacée, même verrouillés (voir
+   *  quiBouge dans verrou.ts) */
   private poserDeplacement(g: { bouge: boolean }) {
     const { dx, dy } = this.rendu.decalage
     this.rendu.decalage = { dx: 0, dy: 0 }
-    if (g.bouge && (dx || dy)) {
-      this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id) || this.lieeA(f))
-        .map(f => ({ id: f.id, patch: { x: f.x + dx, y: f.y + dy } })))
-    } else this.rendu.toutRedessiner()
+    const bougent = g.bouge && (dx || dy) ? quiBouge(this.formes, this.selection) : []
+    if (bougent.length) this.tableau.modifier(this.page, bougent.map(f => ({ id: f.id, patch: { x: f.x + dx, y: f.y + dy } })))
+    else this.rendu.toutRedessiner()
   }
 
   /** La figure dont on a tiré un morceau prend sa nouvelle forme (null : elle garde l'ancienne) */
@@ -2384,6 +2807,8 @@ export class App {
     if (g?.type === 'zone') { this.rendu.cadreSelection = null; this.rendu.lasso = null }
     if (g?.type === 'deplacer') this.rendu.decalage = { dx: 0, dy: 0 }
     if (g?.type === 'gomme') this.finirGomme(g)
+    // Le cadre de taille : tout revient comme avant l'appui, rien n'est écrit
+    if (g?.type === 'taille' || g?.type === 'tourner') this.finirCadre()
     this.geste = null
     this.rendu.toutRedessiner()
   }
@@ -2579,6 +3004,14 @@ export class App {
     this.rendu.redessinerDirect(); this.ui.maj()
   }
 
+  /** Le menu commun d'un groupe (« Groupe · N objets ») : ses membres
+   *  deviennent la sélection */
+  private ouvrirOptionsGroupe(membres: Forme[]) {
+    this.selection.clear()
+    for (const g of membres) this.selection.add(g.id)
+    this.ouvrirOptionsSelection()
+  }
+
   /** Le menu complet de ce qui est sous le pointeur (client : le point de
    *  l'appui dans la fenêtre). Le clic droit (le bouton du stylet en est
    *  un) et l'appui long (voir armerAppuiLong) passent par ici ; « Options »
@@ -2604,12 +3037,16 @@ export class App {
     const m = this.monde(client), s = this.ecran(client)
     if (this.instruments.size && this.instrumentSous(m)) { this.ui.fermerMenus(); return }
     const dedans = this.outil === 'selection' || (pointeur === 'touch' && this.doigtDeplace)
-    const c = this.cibleSous(m, s, { pointeur, dedans })
+    // Un objet verrouillé ouvre ici son menu court (lot 5) : c'est par là
+    // qu'on le déverrouille. Une image fixée en fond, jamais : pour la prise,
+    // elle est le vide, et le menu de la page la détache.
+    const c = this.cibleSous(m, s, { pointeur, dedans, verrouilles: true })
     // Le morceau visé, dans n'importe quelle figure : c'est une demande
-    // d'options. Pas à travers une image, une formule ou une figure
-    // coloriée posée dessus : c'est elle qu'on touche (voir cibleSous).
+    // d'options. Pas à travers une image ou une figure coloriée peinte
+    // dessus : c'est elle qu'on touche (voir cibleSous). Une formule, au fond
+    // transparent, ne cache pas le sommet qu'on voit à travers elle.
     let prise = this.priseSous(s, { toutes: true })
-    if (prise && this.formes.slice(this.formes.indexOf(prise.f) + 1).some(g => interieur(g, m.x, m.y, this.boiteDeForme(g)) === 'plein')) prise = null
+    if (prise && cacheAuDessus(this.formes, this.formes.indexOf(prise.f), m.x, m.y, g => this.boiteDeForme(g))) prise = null
     // Un seul menu ouvert : celui d'avant (un morceau, un objet, la liste
     // des instruments) se ferme
     this.ui.fermerMenus()
@@ -2621,7 +3058,14 @@ export class App {
     }
     this.ui.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
-    if (c) { this.ouvrirOptions(c.f); return }
+    // Un membre d'un groupe qui n'est pas pris (lot 5) : le groupe entier
+    // devient la sélection, et son menu commun s'ouvre (celui d'un groupe
+    // verrouillé : son menu court) ; un membre pris seul ouvre le sien
+    if (c) {
+      const membres = this.membres(c.f)
+      if (membres.length > 1 && !this.selection.has(c.f.id)) { this.ouvrirOptionsGroupe(membres); return }
+      this.ouvrirOptions(c.f); return
+    }
     this.ui.ouvrirMenuPage(client.clientX, client.clientY, m)
   }
 
@@ -2671,6 +3115,9 @@ export class App {
    *  appui marche toujours, mais l'appui long est le geste qu'on essaie
    *  d'instinct sur une tablette) */
   private direOptions() {
+    // Une image seule, la première fois : ce que fait son cadre (lot 5) ; le
+    // message des options attend le prochain objet pris
+    if (this.direCadre()) return
     if (this.astuceOptions || this.selection.size !== 1) return
     const f = this.formeChoisie()
     // Une formule, elle, se modifie au double-clic : le message ne lui va pas
@@ -2685,14 +3132,16 @@ export class App {
    *  Sélection (o.outil : celui qui compte, l'outil en main par défaut) :
    *  jamais sous un outil de dessin, sinon on ne pourrait plus écrire près
    *  d'un point. o.toutes : dans n'importe quelle figure, la sélectionnée
-   *  d'abord, puis la plus haute (le clic droit, qui demande des options). */
+   *  d'abord, puis la plus haute (le clic droit, qui demande des options).
+   *  Jamais un morceau d'une figure verrouillée (lot 5), même au clic droit :
+   *  ses sommets, ses noms, son centre et son rayon ne se tirent plus. */
   priseSous(s: P, o: { outil?: Outil; toutes?: boolean } = {}): { prise: Prise; f: Figure } | null {
     if (this.enLecture) return null
     const choisie = this.formeChoisie() ?? (this.partie && this.forme(this.partie.id))
     const candidates = o.toutes ? [...(choisie ? [choisie] : []), ...[...this.formes].reverse()]
       : (o.outil ?? this.outil) === 'selection' && choisie ? [choisie] : []
     for (const f of candidates) {
-      if (f.type !== 'polygone' && f.type !== 'cercle') continue
+      if ((f.type !== 'polygone' && f.type !== 'cercle') || !libre(f)) continue
       const r = this.priseDans(f, s)
       if (r) return r
     }
@@ -2768,6 +3217,9 @@ export class App {
   /** Échap : d'abord annuler ce qui est en cours ; s'il n'y a rien,
    *  passer à la Sélection — et un second Échap rend l'outil d'avant. */
   echap() {
+    // En train de changer la taille ou de tourner (lot 5) : le geste
+    // s'abandonne, tout revient, et la sélection reste
+    if (this.geste?.type === 'taille' || this.geste?.type === 'tourner') { this.abandonnerGeste(); this.ui.maj(); return }
     this.viderPointEnAttente()
     if (this.placement) { const p = this.placement; this.placement = null; p.annuler(); return }
     if (this.traitEnAttente) { this.annulerTrait(); return }
@@ -2776,7 +3228,6 @@ export class App {
     this.ui.fermerMenuPartie()
     if (!enCours) {
       if (this.outil !== 'selection') {
-        this.outilAvant = this.outil
         this.choisirOutil('selection')
         this.ui.message('Sélection : glisser un objet le déplace, glisser dans le vide sélectionne. Échap : revenir.')
       } else {
@@ -2828,7 +3279,11 @@ export class App {
       const f: Forme = { id: uid(), type: 'image', src, l, h, m: [e, 0, 0, e],
         x: v.x + v.l / 2 - l * e / 2, y: v.y + v.h / 2 - h * e / 2, z: Date.now(), auteur: this.tableau.moi }
       this.poserFigure(f)
-      this.ui.message('Image posée. L\'outil Point (X) place ses sommets ; « Transformer » construit son symétrique.')
+      // Un énoncé importé : « Fixer en fond » tout de suite, du message (rien
+      // si l'image n'est plus sur la page, ou si l'on a changé de page)
+      const page = this.page, id = f.id
+      this.ui.message('Image posée. L\'outil Point (X) place ses sommets ; « Transformer » construit son symétrique.',
+        { libelle: 'Fixer en fond', faire: () => { if (this.page === page && this.forme(id) && !tableauCache(this)) this.fixerEnFond([id]) } })
     } catch { this.ui.message('Impossible de lire cette image.') }
     finally { URL.revokeObjectURL(url) }
   }
@@ -3053,6 +3508,10 @@ export class App {
     if (!f.brut) return
     const t: Trait = { id: uid(), type: 'trait', x: f.x, y: f.y, pts: f.brut.pts, couleur: f.couleur, taille: f.brut.taille,
       opacite: 1, pression: f.brut.pression, z: f.z, auteur: this.tableau.moi }
+    // Le tracé rendu prend la place de la figure, dans son groupe (lot 5) et
+    // dans son état : sinon il en sortirait, et le groupe perdrait un membre
+    if (f.groupe) t.groupe = f.groupe
+    if (f.verrou) t.verrou = true
     this.tableau.nouveauGeste()
     this.tableau.doc.transact(() => { this.tableau.supprimer(this.page, [f.id]); this.tableau.poser(this.page, t) }, 'locale')
     this.selectionner(t.id)
@@ -3083,6 +3542,539 @@ export class App {
     return this.formes.filter(f => ids.has(f.id) || ((f.type === 'polygone' || f.type === 'cercle') && !!f.lie && ids.has(f.lie)))
   }
 
+  // ---------- L'ordre : premier plan, avancer, reculer, arrière-plan ----------
+  /** Les rangs neufs d'une commande d'ordre (voir nouveauxRangs dans
+   *  ordre.ts) pour ce qui est choisi et libre (les points liés à une image
+   *  choisie suivent, comme à la copie) ; 'verrou' : rien de libre dans ce
+   *  qui est choisi ; null : rien de choisi, ou le tableau caché (la revue,
+   *  une séance d'automatismes, la trieuse) ou en lecture. */
+  private rangsPour(sens: Sens): { id: string; z: number }[] | 'verrou' | null {
+    if (tableauCache(this)) return null
+    const choisis = this.objetsChoisis()
+    if (!choisis.length) return null
+    const libres = choisis.filter(libre)
+    if (!libres.length) return 'verrou'
+    return nouveauxRangs(this.formes, libres.map(f => f.id), sens, f => this.boiteVue(f))
+  }
+
+  /** La commande d'ordre ferait-elle quelque chose ? (le menu grise celles
+   *  qui ne feraient rien) */
+  peutOrdonner(sens: Sens): boolean {
+    const r = this.rangsPour(sens)
+    return Array.isArray(r) && r.length > 0
+  }
+
+  /** Mettre au premier plan, avancer, reculer, mettre à l'arrière-plan ce
+   *  qui est choisi, dans son calque (une image reste sous l'écriture, une
+   *  formule au-dessus de tout : voir ordre.ts). UNE transaction : un
+   *  Ctrl+Z rend tous les rangs, et le film en fait une étape (la revue et
+   *  le lecteur montrent l'ordre nouveau à l'étape d'après). La sélection
+   *  reste. Rien à faire : un message, et faux. */
+  ordonner(sens: Sens): boolean {
+    const r = this.rangsPour(sens)
+    if (r === null) return false
+    if (r === 'verrou') { this.ui.message('Verrouillé : déverrouillez-le d\'abord.'); return false }
+    if (!r.length) { this.ui.message(RIEN_A_ORDONNER[sens]); return false }
+    this.tableau.nouveauGeste()
+    this.tableau.modifier(this.page, r.map(({ id, z }) => ({ id, patch: { z } })))
+    return true
+  }
+
+  // ---------- Protéger : verrouiller, fixer en fond (lot 5) ----------
+  /** Verrouiller (oui) ou déverrouiller ces objets (ce qui est pris par
+   *  défaut : les points repérés sur une image choisie suivent son sort) :
+   *  UNE transaction notée « réglage » (un Ctrl+Z, une étape du film qui ne
+   *  change rien à l'image : ni un geste de la revue, ni une séance, ni une
+   *  étape du film élève ; voir Etape). Le menu ouvert se ferme. Verrouillés,
+   *  ils ne se prennent plus : la sélection se vide, et le message dit
+   *  comment les déverrouiller, dans les mots du pointeur. Déverrouillés, ils
+   *  deviennent la sélection (ils se prennent de nouveau). Rien à changer,
+   *  ou le tableau caché : rien, et faux. */
+  verrouiller(oui: boolean, ids: Iterable<string> = this.objetsChoisis().map(f => f.id)): boolean {
+    if (tableauCache(this)) return false
+    this.viderPointEnAttente()
+    // Tout le groupe de chacun, quel que soit son état (lot 5, voir porteurs) :
+    // verrouiller un membre pris seul verrouille son groupe, qui n'est
+    // jamais à moitié verrouillé
+    const changements = changementsVerrou(this.formes, porteurs(this.formes, ids), oui)
+    if (!changements.length) return false
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    this.options = null
+    this.tableau.nouveauGeste()
+    this.tableau.modifier(this.page, changements, { note: 'reglage' })
+    // Le message compte les objets, pas les points repérés sur une image
+    // qui change avec eux
+    const changes = new Set(changements.map(c => c.id))
+    const n = compterObjets(this.formes.filter(f => changes.has(f.id)))
+    this.selection.clear()
+    if (!oui) for (const id of changes) this.selection.add(id)
+    this.rendu.redessinerDirect(); this.ui.maj()
+    const rappel = messageVerrou(this.dernierPointeur)
+    if (oui) this.ui.message(n === 1 ? `Verrouillé : il ne bouge plus. ${rappel}` : `${n} objets verrouillés. ${rappel}`)
+    else this.ui.message(n === 1 ? 'Déverrouillé' : `${n} objets déverrouillés`)
+    return true
+  }
+
+  /** Maj + L : verrouiller ce qui est sélectionné et libre ; une sélection
+   *  toute verrouillée (son menu est ouvert), la déverrouiller */
+  basculerVerrou() {
+    const choisis = this.objetsChoisis()
+    if (!choisis.length) return
+    this.verrouiller(choisis.some(f => this.selection.has(f.id) && libre(f)))
+  }
+
+  /** « Fixer en fond » (le menu ⋯ d'une image, le message de l'import) :
+   *  ces images passent sous tout le reste et ne se prennent plus (voir
+   *  changementsFixer : sous tout, hors de tout groupe, sans verrou). Ce
+   *  n'est pas un réglage : cela se voit (l'image passe sous ce qui la
+   *  recouvrait). Un Ctrl+Z la rend. La sélection se vide ; le message dit
+   *  comment la détacher. */
+  fixerEnFond(ids: Iterable<string>): boolean {
+    if (tableauCache(this)) return false
+    this.viderPointEnAttente()
+    const changements = changementsFixer(this.formes, ids)
+    if (!changements.length) return false
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    this.options = null
+    this.tableau.nouveauGeste()
+    this.tableau.modifier(this.page, changements)
+    this.selection.clear()
+    this.rendu.redessinerDirect(); this.ui.maj()
+    const n = changements.length
+    this.ui.message((n === 1 ? 'Image fixée en fond : écrivez et entourez par-dessus. ' : `${n} images fixées en fond : écrivez et entourez par-dessus. `)
+      + messageDetacher(this.dernierPointeur, undefined, n > 1))
+    return true
+  }
+
+  /** « Détacher l'image du fond » (le menu de la page) : elles ne sont plus
+   *  fixées, et restent sous les autres images, au-dessus de celles qui
+   *  restent fixées (voir changementsDetacher : l'invariant du fond tient).
+   *  On passe à l'outil Sélection (un second Échap rend l'outil d'avant,
+   *  comme Ctrl+A) et elles deviennent la sélection : on peut aussitôt les
+   *  déplacer. Un Ctrl+Z les refixe. */
+  detacherDuFond(ids: Iterable<string>): boolean {
+    if (tableauCache(this)) return false
+    this.viderPointEnAttente()
+    const changements = changementsDetacher(this.formes, ids)
+    if (!changements.length) return false
+    this.ui.fermerMenus()
+    this.tableau.nouveauGeste()
+    this.tableau.modifier(this.page, changements)
+    if (this.outil !== 'selection') this.choisirOutil('selection')
+    this.selection.clear()
+    for (const c of changements) this.selection.add(c.id)
+    this.rendu.redessinerDirect(); this.ui.maj()
+    const n = changements.length
+    this.ui.message(n === 1 ? 'Image détachée du fond : elle se prend et se déplace de nouveau.'
+      : `${n} images détachées du fond : elles se prennent et se déplacent de nouveau.`)
+    return true
+  }
+
+  /** Les images fixées en fond sous ce point du monde, la plus haute d'abord */
+  fixesSous(m: P): ImageForme[] { return fixesSous(this.formes, m.x, m.y) }
+
+  /** Toutes les images fixées en fond de la page, la plus haute d'abord */
+  fixesDeLaPage(): ImageForme[] {
+    return this.formes.filter((f): f is ImageForme => f.type === 'image' && !!f.fixe).sort((a, b) => b.z - a.z)
+  }
+
+  /** Ce qui est verrouillé sur la page (« Déverrouiller tout ») */
+  verrouillesDeLaPage(): Forme[] { return this.verrouilles ? this.formes.filter(f => !!f.verrou && !f.fixe) : [] }
+
+  /** Ces objets, et les points repérés sur ceux qui sont des images (comme
+   *  objetsChoisis, pour ce qui n'est pas pris : les images du fond) */
+  avecLeursPoints(ids: Iterable<string>): Forme[] {
+    const l = new Set(ids)
+    return this.formes.filter(f => l.has(f.id) || ((f.type === 'polygone' || f.type === 'cercle') && !!f.lie && l.has(f.lie)))
+  }
+
+  /** « Copier l'image du fond » (le menu de la page) : comme Ctrl+C, mais
+   *  sur ces images, qui ne se prennent pas ; la copie les garde fixées
+   *  (collées, elles arrivent sous tout, sans être sélectionnées) */
+  copierFond(ids: string[]): boolean {
+    const formes = this.avecLeursPoints(ids)
+    if (!this.copier(false, formes)) return false
+    const n = formes.filter(f => f.type === 'image' && f.fixe).length
+    this.ui.message(n === 1 ? 'Image du fond copiée' : `${n} images du fond copiées`)
+    return true
+  }
+
+  /** La sélection contient-elle ce qui ne se prend pas (un objet verrouillé
+   *  dont le menu est ouvert) ? La barre d'actions ne s'y montre pas. */
+  selectionProtegee(): boolean {
+    if (!this.nonLibres || !this.selection.size) return false
+    return this.formes.some(f => !libre(f) && this.selection.has(f.id))
+  }
+
+  /** Un objet verrouillé n'est sélectionné que le temps de son menu : le
+   *  menu fermé (options revenu à null), une sélection faite seulement de ce
+   *  qui ne se prend pas se vide (l'interface l'appelle à chaque mise à
+   *  jour du menu complet). Vrai si elle s'est vidée. */
+  oublierProteges(): boolean {
+    if (this.options !== null || !this.selectionProtegee()) return false
+    if (this.formes.some(f => libre(f) && this.selection.has(f.id))) return false
+    this.selection.clear()
+    this.rendu.redessinerDirect()
+    return true
+  }
+
+  // ---------- Changer de taille, tourner (lot 5) ----------
+  /** La taille d'une formule (sa boîte locale, mesurée à l'écran) */
+  mesureFormule = (f: Formule): { l: number; h: number } => { const b = this.rendu.boiteFormule(f); return { l: b.l, h: b.h } }
+
+  /** Ce que change une transformation de ces objets (la sélection par
+   *  défaut, ou la figure du morceau choisi) : ce qui y est libre, et les
+   *  points repérés sur une image qui change, quel que soit leur verrou (ils
+   *  la suivent, comme au glisser : voir quiBouge dans verrou.ts) */
+  private aTransformer(ids?: Iterable<string>): Forme[] {
+    const pris = new Set(ids ?? (this.selection.size ? this.selection : this.partie ? [this.partie.id] : []))
+    return quiBouge(this.formes, pris)
+  }
+
+  /**
+   * Transforme ce qui est pris (ou ces objets) par M (voir cadre.ts : le
+   * cadre de taille et la pastille ↻ de K6 y mènent, et window.__app en
+   * développement) : chaque forme est réécrite ENTIÈRE (Tableau.remplacer),
+   * en UNE transaction : un Ctrl + Z la défait d'un coup, le film en fait une
+   * étape, et la revue et le lecteur montrent le résultat d'un coup, comme
+   * un déplacement (chaque forme garde son identifiant). Une rotation d'une
+   * formule revenue à zéro disparaît vraiment (modifier, qui fond un patch,
+   * la laisserait). Rien (et faux) quand rien de libre n'est pris, quand M
+   * ne change rien, quand son facteur sort de bornesEchelle (une forme
+   * deviendrait illisible, ou sa copie serait refusée), ou quand le tableau
+   * est caché ou en lecture. La sélection reste.
+   */
+  transformerSelection(M: Matrice, ids?: string[]): boolean {
+    if (tableauCache(this) || estIdentite(M)) return false
+    const formes = this.aTransformer(ids)
+    if (!formes.length) return false
+    const { min, max } = bornesEchelle(formes, this.mesureFormule), k = facteurDe(M)
+    if (!(k >= min && k <= max)) return false
+    const neuves = formes.map(f => transformerForme(f, M))
+    if (!neuves.every(dansLesBornes)) return false
+    this.viderPointEnAttente()
+    this.tableau.nouveauGeste()
+    this.tableau.remplacer(this.page, neuves)
+    return true
+  }
+
+  /** L'objet que « Remettre droit » redresserait : ce qui est pris, seul et
+   *  libre, une image tournée ou une formule tournée (null sinon) */
+  redressable(): ImageForme | Formule | null {
+    if (this.selection.size !== 1 || tableauCache(this)) return null
+    const f = this.formes.find(g => this.selection.has(g.id))
+    if (!f || !libre(f)) return null
+    if (f.type === 'image') return imageTournee(f) ? f : null
+    if (f.type === 'formule') return rotationDe(f) ? f : null
+    return null
+  }
+
+  /** « Remettre droit » (le menu ⋯, section « Position ») : la rotation de
+   *  l'image ou de la formule prise s'annule, sa taille et son centre restent
+   *  (voir redresser dans cadre.ts) ; les points repérés sur l'image la
+   *  suivent. Une transaction, par Tableau.remplacer : la clé rotation d'une
+   *  formule disparaît vraiment, et Ctrl + Z la rend. */
+  redresserSelection(): boolean {
+    const f = this.redressable()
+    const g = f && redresser(f, this.mesureFormule)
+    if (!f || !g) return false
+    const neuves: Forme[] = [g]
+    if (f.type === 'image' && g.type === 'image') {
+      // Ce que le redressement fait au plan de l'image : ses points le suivent
+      const avant = inverser(matriceImage(f))
+      if (avant) {
+        const M = composer(avant, matriceImage(g))
+        for (const l of this.liees(f.id)) neuves.push(transformerForme(l, M))
+      }
+    }
+    this.viderPointEnAttente()
+    this.tableau.nouveauGeste()
+    this.tableau.remplacer(this.page, neuves)
+    return true
+  }
+
+  // ---------- Le cadre de taille et la pastille ↻ à l'écran (lot 5) ----------
+  /** Le pointeur qu'on vient de voir sur le tableau (un appui, un mouvement,
+   *  le survol d'un stylet) : s'il change, les poignées changent de taille,
+   *  la couche directe se repeint et la barre d'actions se replace autour */
+  private voirPointeur(type: string) {
+    const p = typePointeur(type)
+    if (p === this.pointeurPoignees) return
+    this.pointeurPoignees = p
+    if (this.selection.size) { this.rendu.redessinerDirect(); this.ui?.maj() }
+  }
+
+  /** Le dernier cadre calculé par cadreDeLaSelection, et ce dont il dépend */
+  private cadreRetenu: { sel: Set<string>; version: number; formes: Forme[]; cle: string; formules: [Formule, number, number][]; cadre: Cadre | null } | null = null
+
+  /** Les poignées du cadre se prennent-elles maintenant ? À l'outil
+   *  Sélection, quel que soit le pointeur ; sous un autre outil, seulement au
+   *  doigt qui déplace (le dernier pointeur vu est un doigt) : jamais sous un
+   *  outil de dessin à la souris, jamais sous la plume au Stylo (un trait
+   *  commencé sur le coin d'une image qu'on vient d'importer écrit) */
+  private poigneesDuCadre(): boolean {
+    return this.outil === 'selection' || (this.doigtDeplace && this.pointeurPoignees === 'touch')
+  }
+
+  /**
+   * Le cadre de taille de ce qui est pris (D7, D8, D10 du lot 5 ; voir
+   * cadreDe dans cadre.ts), ou null : rien de pris ; un geste en cours qui
+   * bouge (un objet qu'on glisse, un cadre ou un lasso qu'on tire, un sommet
+   * qu'on tire, le cadre lui-même : pendant qu'on le tire, c'est le geste qui
+   * le donne, voir cadreVu ; un clic qui n'a pas encore glissé le laisse, la
+   * vue qu'on déplace ou qu'on pince aussi) ; un clic attendu ; la revue ou le
+   * tableau caché ; les poignées pas actives (voir poigneesDuCadre) ; ou un
+   * objet pris qui n'est pas libre (verrouillé, sélectionné le temps de son
+   * menu court : jamais de cadre). Les points repérés sur une image prise ne
+   * changent pas son cadre : ils la suivent (une image et ses points gardent
+   * le cadre orienté de l'image, ses côtés compris).
+   */
+  cadreDeLaSelection(): Cadre | null {
+    if (!this.selection.size || this.enLecture || this.placement || tableauCache(this) || !this.poigneesDuCadre()) return null
+    const g = this.geste
+    if (g && g.type !== 'pan' && g.type !== 'pinch' && g.type !== 'retenu' && (this.depart.parti || g.type === 'taille' || g.type === 'tourner')) return null
+    const cam = this.cam, zl = this.ui?.zoneLibre() ?? { x: 0, y: 0, l: this.rendu.l, h: this.rendu.h }
+    // Le cadre gardé (voir SelectionSuivie) : la même sélection, la même page (ses
+    // formes : un tableau neuf à chaque changement, voir rafraichir), la même
+    // vue, la même zone libre, le même pointeur, et les formules prises à la
+    // même taille (KaTeX les met en page après coup, et leurs boîtes sont
+    // celles du DOM)
+    const sel = this.selection, version = sel instanceof SelectionSuivie ? sel.version : -1
+    const cle = `${cam.x},${cam.y},${cam.z},${this.pointeurPoignees},${zl.x},${zl.y},${zl.l},${zl.h}`
+    const r = this.cadreRetenu
+    if (r && version >= 0 && r.sel === sel && r.version === version && r.formes === this.formes && r.cle === cle
+      && r.formules.every(([f, l, h]) => { const m = this.mesureFormule(f); return m.l === l && m.h === h })) return r.cadre
+    const pris = this.formes.filter(f => sel.has(f.id))
+    let cadre: Cadre | null = null
+    if (pris.length && pris.every(libre)) {
+      const formes = pris.filter(f => !((f.type === 'polygone' || f.type === 'cercle') && f.lie && sel.has(f.lie)))
+      const a = cam.versMonde(zl.x, zl.y)
+      cadre = cadreDe(formes, {
+        boite: f => this.boiteVue(f), mesure: this.mesureFormule, z: cam.z, pointeur: this.pointeurPoignees,
+        zoneLibre: { x: a.x, y: a.y, l: zl.l / cam.z, h: zl.h / cam.z },
+      })
+    }
+    const formules = pris.filter((f): f is Formule => f.type === 'formule').map(f => { const m = this.mesureFormule(f); return [f, m.l, m.h] as [Formule, number, number] })
+    this.cadreRetenu = { sel, version, formes: this.formes, cle, formules, cadre }
+    return cadre
+  }
+
+  /** Le cadre que peint le rendu : pendant qu'on le tire ou qu'on tourne,
+   *  celui de l'appui transformé (il suit) ; sinon celui de la sélection */
+  private cadreVu(): CadreVu | null {
+    const g = this.geste
+    if (g?.type === 'taille' || g?.type === 'tourner') return { cadre: cadreTransforme(g.cadre, g.M), pointeur: g.pointeur, geste: g.type }
+    const c = this.cadreDeLaSelection()
+    return c && { cadre: c, pointeur: this.pointeurPoignees, geste: null }
+  }
+
+  /** La poignée du cadre (un coin, un côté, la pastille) sous ce point de
+   *  l'écran, à la portée du dernier pointeur vu (POIGNEE.prise), avec son
+   *  cadre ; null : aucune, ou pas de cadre */
+  private poigneeVisee(s: P): { cadre: Cadre; p: Poignee } | null {
+    const c = this.cadreDeLaSelection()
+    const p = c && poigneeSous(c, s, this.cam, this.pointeurPoignees)
+    return c && p ? { cadre: c, p } : null
+  }
+
+  /** L'appui sur une poignée du cadre : le geste commence ('taille' pour un
+   *  coin ou un côté, 'tourner' pour la pastille). Rien ne bouge avant le
+   *  seuil du glisser ; le menu d'un morceau se ferme, le halo du survol
+   *  s'éteint, et un second toucher qui suivrait n'est pas un double appui. */
+  private prendreCadre(v: { cadre: Cadre; p: Poignee }, m: P) {
+    this.ui.fermerMenuPartie()
+    this.doubleEnCours = null; this.toucherPrecedent = null
+    this.survol = null; this.rendu.survol = null; this.rendu.survolAussi = []
+    const pointeur = this.pointeurPoignees, ids = new Set(this.aTransformer().map(f => f.id))
+    if (v.p.quoi === 'pastille') {
+      const c = v.cadre.centre
+      this.geste = { type: 'tourner', cadre: v.cadre, pointeur, ids, dernier: Math.atan2(m.y - c.y, m.x - c.x), total: 0, M: IDENTITE }
+      this.zone.style.cursor = 'grabbing'
+    } else {
+      const seule = this.selection.size === 1 ? this.forme([...this.selection][0]) : null
+      this.geste = { type: 'taille', cadre: v.cadre, quoi: v.p.quoi, i: v.p.i, pointeur, ids,
+        bornes: bornesEchelle(this.aTransformer(), this.mesureFormule), image: seule?.type === 'image', M: IDENTITE }
+      this.zone.style.cursor = curseurPoignee(v.cadre, v.p)
+    }
+    this.rendu.redessinerDirect()
+  }
+
+  /** Le geste du cadre en est à M : le rendu peint ce qui change sous M, sans
+   *  rien écrire (voir Rendu.transfo), la mesure près du pointeur (en m) */
+  private montrerTransfo(g: Extract<Geste, { type: 'taille' | 'tourner' }>, M: Matrice, texte: string, m: P) {
+    g.M = M
+    this.rendu.transfo = { ids: g.ids, m: M, appliquer: f => transformerForme(f, M) }
+    this.rendu.mesure = { texte, x: m.x, y: m.y }
+    this.rendu.toutRedessiner()
+  }
+
+  /** Le geste du cadre s'arrête (lâché ou abandonné) : plus d'aperçu, plus de mesure */
+  private finirCadre() {
+    this.rendu.transfo = null; this.rendu.mesure = null
+    this.zone.style.cursor = ''
+    this.rendu.toutRedessiner()
+  }
+
+  /**
+   * Ce que ces formes (ce qui est pris) occupent à l'écran, en monde, au
+   * zoom du moment : leur boîte (base, ou celle de la barre d'actions : une
+   * droite par ce qu'on en voit), et le cadre de taille, ses poignées et sa
+   * pastille ↻ quand il est montré. La barre d'actions et le menu complet se
+   * posent autour (au-dessus de la pastille, ou dessous), jamais dessus.
+   */
+  emprise(formes: Forme[], base?: Boite | null): Boite | null {
+    let b = base !== undefined ? base : this.boiteDuContenu(formes.filter(f => !(f.type === 'polygone' && f.prolonge)))
+    if (base === undefined) {
+      for (const f of formes) {
+        if (f.type !== 'polygone' || !f.prolonge) continue
+        b = union(b, this.rendu.boite(f))
+      }
+    }
+    const c = this.cadreDeLaSelection()
+    return c ? union(b, etendueDuCadre(c, this.pointeurPoignees, this.cam.z)) : b
+  }
+
+  /** Le disque de la pastille ↻ (monde), s'il est montré : la barre
+   *  d'actions et le menu complet ne le couvrent jamais */
+  pastilleAEviter(): Boite | null {
+    const c = this.cadreDeLaSelection()
+    return c && zonePastille(c, this.pointeurPoignees, this.cam.z)
+  }
+
+  /** La première fois de la session qu'on prend une image seule, son cadre
+   *  à l'écran : ce que font ses coins, ses côtés et sa pastille, dans les
+   *  mots du pointeur (voir messageCadre). Vrai si le message est dit. */
+  private direCadre(): boolean {
+    if (this.astuceCadre || this.selection.size !== 1) return false
+    const f = this.forme([...this.selection][0])
+    if (f?.type !== 'image' || !this.cadreDeLaSelection()) return false
+    this.astuceCadre = true
+    this.ui.message(messageCadre(this.dernierPointeur))
+    return true
+  }
+
+  // ---------- Les groupes (lot 5) ----------
+  /** Les membres du groupe de f sur la page, dans l'ordre d'affichage : f
+   *  seul s'il n'a pas de groupe, ou si son groupe n'a plus que lui dans
+   *  son état (voir membresDe dans groupes.ts) */
+  membres(f: Forme): Forme[] { return membresDe(this.formes, f) }
+
+  /** Ces identifiants, chacun étendu aux membres de son groupe */
+  avecGroupes(ids: Iterable<string>): Set<string> { return avecGroupes(this.formes, ids) }
+
+  /** La sélection est-elle exactement un groupe (le menu commun devient
+   *  « Groupe · N objets », avec Dégrouper) ? Ses membres, sinon null. */
+  groupePris(): Forme[] | null { return groupeExact(this.formes, this.selection) }
+
+  /** La sélection est-elle un membre pris seul (son menu ⋯ a alors « Sortir
+   *  du groupe ») ? Cette forme, sinon null. */
+  membrePris(): Forme | null { return membreSeul(this.formes, this.selection) }
+
+  /** Un clic (un toucher, un candidat levé sans glisser) prend f, qui n'est
+   *  pas sélectionné. Sans ajout, f et son groupe deviennent la sélection
+   *  (ou f seul, d'un membre pris seul à un autre membre du même groupe :
+   *  voir priseDuClic) ; avec ajout (Maj, Ctrl ou ⌘, le mode « Ajouter »),
+   *  tout son groupe entre dans la sélection, ou en sort s'il y était. */
+  private prendre(f: Forme, ajout: boolean) {
+    if (ajout) {
+      const dedans = this.selection.has(f.id)
+      for (const g of this.membres(f)) { if (dedans) this.selection.delete(g.id); else this.selection.add(g.id) }
+      return
+    }
+    const l = priseDuClic(this.formes, this.selection, f)
+    this.selection.clear()
+    for (const g of l) this.selection.add(g.id)
+    if (l.length === 1 && f.groupe && this.membres(f).length > 1) this.direMembreSeul()
+  }
+
+  /** La première fois de la session qu'on prend un seul membre d'un groupe,
+   *  un message le dit. Il attend un instant : le second clic d'un
+   *  double-clic, qui ne prend que le membre, est suivi du double-clic, qui
+   *  rend le groupe et ouvre son menu ; le message ne vient alors pas. */
+  private direMembreSeul() {
+    if (this.astuceMembre) return
+    clearTimeout(this.minuterieMembre)
+    this.minuterieMembre = window.setTimeout(() => {
+      if (this.astuceMembre || !membreSeul(this.formes, this.selection)) return
+      this.astuceMembre = true
+      this.ui.message('Un seul objet du groupe : ce que vous faites ne touche que lui.')
+    }, 500)
+  }
+
+  /** « Grouper » (Ctrl + G, le menu commun) : ce qui est choisi et libre
+   *  (les points libres repérés sur une image choisie la suivent : ils en
+   *  sont ; verrouillés, ils n'en sont pas, mais suivent toujours leur
+   *  image) devient UN groupe, sous un identifiant neuf ; les membres des
+   *  groupes qu'ils avaient le rejoignent (un seul niveau). UNE
+   *  transaction notée « réglage » : un Ctrl + Z défait le groupement d'un
+   *  coup, et ni la revue, ni les séances, ni le film des élèves n'en font
+   *  un geste (rien ne change à l'image). La sélection reste : tout le
+   *  groupe. Moins de deux objets, ou déjà ce seul groupe : un message, et
+   *  faux. */
+  grouper(): boolean {
+    if (tableauCache(this)) return false
+    this.viderPointEnAttente()
+    const choisis = this.objetsChoisis()
+    const libres = choisis.filter(libre)
+    if (choisis.length && !libres.length) { this.ui.message('Verrouillé : déverrouillez-le d\'abord.'); return false }
+    const id = uid()
+    const changements = changementsGrouper(this.formes, libres.map(f => f.id), id)
+    if (!changements.length) {
+      this.ui.message(this.avecGroupes(libres.map(f => f.id)).size >= 2 ? 'Ces objets sont déjà groupés.' : 'Sélectionnez au moins deux objets pour les grouper.')
+      return false
+    }
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    this.tableau.nouveauGeste()
+    this.tableau.modifier(this.page, changements, { note: 'reglage' })
+    const membres = this.formes.filter(f => f.groupe === id)
+    this.selection.clear()
+    for (const f of membres) this.selection.add(f.id)
+    this.rendu.redessinerDirect(); this.ui.maj()
+    let texte = `Groupé : ${membres.length} objets`
+    if (!this.astuceGroupe) {
+      this.astuceGroupe = true
+      texte += this.dernierPointeur === 'touch' ? ' — un toucher sur l\'un d\'eux, quand le groupe est pris, ne prend que lui'
+        : ' — un clic sur l\'un d\'eux, quand le groupe est pris, ne prend que lui'
+    }
+    this.ui.message(texte)
+    return true
+  }
+
+  /** « Dégrouper » (Ctrl + Maj + G, le menu du groupe) : ce qui est choisi,
+   *  libre et membre d'un groupe n'en est plus (la clé s'en va) ; un membre
+   *  pris seul sort de son groupe, et si son groupe n'a plus qu'un seul
+   *  porteur sur la page, celui-ci perd le sien aussi (un groupe d'un seul
+   *  membre n'en est plus un : rien ne traîne). UNE transaction notée
+   *  « réglage », comme Grouper. La sélection reste : les mêmes objets, un
+   *  par un. Rien à dégrouper : un message, et faux. */
+  degrouper(): boolean {
+    if (tableauCache(this)) return false
+    this.viderPointEnAttente()
+    const choisis = this.objetsChoisis()
+    const libres = choisis.filter(f => libre(f) && this.membres(f).length > 1)
+    if (!libres.length) {
+      this.ui.message(choisis.some(f => !libre(f) && this.membres(f).length > 1) ? 'Verrouillé : déverrouillez-le d\'abord.' : 'Aucun groupe dans la sélection.')
+      return false
+    }
+    const sortent = new Set(libres.map(f => f.id))
+    const changements = changementsDegrouper(this.formes, sortent)
+    // Ce qui resterait seul dans son groupe le quitte aussi
+    const restent = new Map<string, Forme[]>()
+    for (const f of this.formes) if (f.groupe && !sortent.has(f.id)) restent.set(f.groupe, [...(restent.get(f.groupe) ?? []), f])
+    const touches = new Set(libres.map(f => f.groupe!))
+    for (const [g, l] of restent) if (touches.has(g) && l.length === 1) changements.push({ id: l[0].id, patch: { groupe: undefined } })
+    this.ui.fermerMenuPartie()
+    if (this.partie) this.choisirPartie(null)
+    this.tableau.nouveauGeste()
+    this.tableau.modifier(this.page, changements, { note: 'reglage' })
+    this.rendu.redessinerDirect(); this.ui.maj()
+    this.ui.message('Dégroupé')
+    return true
+  }
+
   /** La copie de ces formes : les données de leurs images, la page, le
    *  centre de leur boîte, l'heure. Une image dont la banque a perdu les
    *  données ne se copie pas (elle ne se collerait nulle part). */
@@ -3105,10 +4097,12 @@ export class App {
   /** Ctrl+C : la copie est gardée en mémoire (cet onglet), dans le navigateur
    *  (un autre onglet de la même adresse) et dans le presse-papiers du
    *  système (la version en ligne et la version clé USB). Rien de choisi : on
-   *  le dit, et faux (le navigateur fait alors sa copie ordinaire). */
-  copier(dire = true): boolean {
+   *  le dit, et faux (le navigateur fait alors sa copie ordinaire). formes :
+   *  ce qu'on copie, ce qui est pris par défaut (le menu de la page copie
+   *  les images fixées en fond, qui ne se prennent pas). La copie garde le
+   *  verrou et le fond (lot 5 : voir collage). */
+  copier(dire = true, formes = this.objetsChoisis()): boolean {
     if (this.enLecture) return false
-    const formes = this.objetsChoisis()
     const c = formes.length ? this.faireCopie(formes) : null
     if (!c) { this.ui.message('Rien n\'est sélectionné.'); return false }
     this.copie = c
@@ -3148,11 +4142,15 @@ export class App {
   }
 
   /** Ctrl+X : la copie, puis ce qui est copié part, en une étape (Ctrl+Z le
-   *  rend). Un sommet choisi : c'est la figure copiée qui part, pas le sommet. */
+   *  rend). Un sommet choisi : c'est la figure copiée qui part, pas le sommet.
+   *  Seulement ce qui est libre (et les points repérés sur une image qui
+   *  part) : un objet verrouillé, dont le menu est ouvert, ne se coupe pas. */
   couper(): boolean {
     if (this.enLecture) return false
-    const formes = this.objetsChoisis()
-    if (!this.copier(false)) return false
+    const choisis = this.objetsChoisis()
+    const formes = quiBouge(choisis, new Set(choisis.map(f => f.id)))
+    if (choisis.length && !formes.length) { this.ui.message('Verrouillé : déverrouillez-le d\'abord.'); return false }
+    if (!this.copier(false, formes)) return false
     this.ui.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
     this.tableau.nouveauGeste()
@@ -3239,8 +4237,11 @@ export class App {
     this.poserCollage(collage({ ...c, formes }, { dx: centre.x - c.centre.x, dy: centre.y - c.centre.y, moi: this.tableau.moi, existantes: this.formes }))
   }
 
-  /** Pose ce qu'on colle ou duplique (une étape) et le sélectionne. Le menu
-   *  ouvert se ferme : il réglait l'original, pas la copie. */
+  /** Pose ce qu'on colle ou duplique (une étape) et sélectionne ce qui en
+   *  est libre. Le menu ouvert se ferme : il réglait l'original, pas la
+   *  copie. Ce qui est verrouillé ou fixé en fond le reste (lot 5 : le
+   *  collage le garde), mais ne se sélectionne pas (il ne se prend pas) :
+   *  un message le dit, sinon on croirait que rien n'a été collé. */
   private poserCollage(formes: Forme[]) {
     this.ui.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
@@ -3248,8 +4249,11 @@ export class App {
     this.tableau.nouveauGeste()
     this.tableau.poserPlusieurs(this.page, formes)
     this.selection.clear()
-    for (const f of formes) this.selection.add(f.id)
+    for (const f of formes) if (libre(f)) this.selection.add(f.id)
     this.rendu.redessinerDirect(); this.ui.maj()
+    const p = this.dernierPointeur
+    const texte = texteCollage(formes, messageVerrou(p), messageDetacher(p))
+    if (texte) this.ui.message(texte)
   }
 
   /** Ce point du monde est-il dans ce qu'on voit entre les barres ? */
@@ -3288,11 +4292,14 @@ export class App {
    *  sur la page ; la sélection se vide (déplacer) ou reste (copier) ; le
    *  menu complet se ferme ; un message le dit, avec « Aller à la page N »
    *  et « Annuler ». Rien quand le tableau est caché. Vrai si quelque chose
-   *  est parti. */
-  envoyerSelection(cible: string, deplacer: boolean): boolean {
+   *  est parti. ids : d'autres objets que ce qui est pris (les images fixées
+   *  en fond, que le menu de la page envoie, et les points repérés sur
+   *  elles) ; la sélection ne change pas. Le verrou et le fond partent avec
+   *  l'objet (lot 5 : voir collage), et une image fixée arrive sous tout. */
+  envoyerSelection(cible: string, deplacer: boolean, ids?: string[]): boolean {
     if (tableauCache(this)) return false
     this.viderPointEnAttente()
-    const formes = this.objetsChoisis()
+    const formes = ids ? this.avecLeursPoints(ids) : this.objetsChoisis()
     const c = formes.length ? this.faireCopie(formes) : null
     if (!c) { this.ui.message('Rien n\'est sélectionné.'); return false }
     const a = this.page, pages = this.pages, i = pages.indexOf(a)
@@ -3322,7 +4329,7 @@ export class App {
     if (!ok) { this.rendu.redessinerDirect(); this.ui.maj(); this.ui.message('Rien n\'a été envoyé.'); return false }
     // L'étape que « Annuler » défera, si elle est encore la prochaine
     const etape = this.tableau.prochaineAnnulation(deplacer ? a : vers)
-    if (deplacer) this.selection.clear()
+    if (deplacer && !ids) this.selection.clear()
     this.rendu.redessinerDirect(); this.ui.maj()
     const k = this.pages.indexOf(vers) + 1
     this.ui.message(texteEnvoi(posees.length, k, deplacer), [
@@ -3334,18 +4341,21 @@ export class App {
 
   /** « Aller à la page N » du message d'un envoi : on y va, et ce qui y est
    *  arrivé (et y est encore) devient la sélection, sans changer d'outil
-   *  (comme un collage). Si rien n'en est visible, la vue s'y porte, en
-   *  gardant le zoom s'il suffit. Le message reste, avec « Annuler ». */
+   *  (comme un collage), sauf ce qui est verrouillé ou fixé en fond (lot 5 :
+   *  il ne se prend pas). Si rien de ce qui est arrivé n'est visible, la vue
+   *  s'y porte, en gardant le zoom s'il suffit. Le message reste, avec
+   *  « Annuler ». */
   private allerAuxEnvoyes(vers: string, posees: Forme[]) {
     if (tableauCache(this)) return
     this.viderPointEnAttente()
     if (!this.pages.includes(vers)) return this.ui.message('Cette page n\'est plus dans le tableau.')
     this.allerPage(vers)
-    const la = new Set(posees.map(f => f.id).filter(id => this.formes.some(f => f.id === id)))
+    const envoyes = new Set(posees.map(f => f.id))
+    const la = this.formes.filter(f => envoyes.has(f.id))
     this.selection.clear()
-    for (const id of la) this.selection.add(id)
+    for (const f of la) if (libre(f)) this.selection.add(f.id)
     this.rendu.redessinerDirect(); this.ui.maj()
-    const b = la.size ? this.boiteDuContenu(this.formes.filter(f => la.has(f.id))) : null
+    const b = la.length ? this.boiteDuContenu(la) : null
     if (!b) return
     const r = this.ui.zoneLibre()
     const p = this.cam.versEcran(b.x, b.y), q = this.cam.versEcran(b.x + b.l, b.y + b.h)
@@ -3381,22 +4391,30 @@ export class App {
     this.annuler()
   }
 
-  /** Ctrl+A : tout ce qui est sur la page qu'on regarde. On passe à l'outil
-   *  Sélection, comme Échap (on peut alors glisser le tout, et un second
-   *  Échap rend l'outil d'avant). */
+  /** Ctrl+A : tout ce qui est sur la page qu'on regarde et se prend (ni ce
+   *  qui est verrouillé, ni ce qui est fixé en fond : lot 5). On passe à
+   *  l'outil Sélection, comme Échap (on peut alors glisser le tout, et un
+   *  second Échap rend l'outil d'avant). */
   toutSelectionner() {
     if (this.enLecture) return
     this.viderPointEnAttente()
     if (!this.formes.length) { this.ui.message('La page est vide.'); return }
-    if (this.outil !== 'selection') { this.outilAvant = this.outil; this.choisirOutil('selection') }
+    const libres = this.formes.filter(libre)
+    if (!libres.length) { this.ui.message('Rien à sélectionner : ce qui est sur la page est verrouillé ou fixé en fond.'); return }
+    if (this.outil !== 'selection') this.choisirOutil('selection')
     this.ui.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
     this.selection.clear()
-    for (const f of this.formes) this.selection.add(f.id)
+    for (const f of libres) this.selection.add(f.id)
     this.rendu.redessinerDirect(); this.ui.maj()
-    const n = this.formes.length
+    const n = libres.length
     this.ui.message(n === 1 ? '1 objet sélectionné' : `${n} objets sélectionnés`)
   }
+
+  /** Y a-t-il quelque chose à sélectionner sur la page (« Tout
+   *  sélectionner » se grise sinon : une page vide, ou dont tout est
+   *  verrouillé ou fixé en fond) ? */
+  rienASelectionner(): boolean { return !this.formes.some(libre) }
 
   /** Ctrl+V (ou le menu Édition du navigateur), hors d'un champ de saisie :
    *  dans l'ordre, des objets de MEM teachingtool marqués dans le HTML (d'un
@@ -3428,7 +4446,7 @@ export class App {
    *  et sert à construire son image par une transformation. */
   private placerPoint(m: P) {
     const p = this.aimanter(m)
-    const sous = [...this.formes].reverse().find(f => f.type === 'image' && touche(f, p.x, p.y, 0, g => this.rendu.boite(g)))
+    const sous = [...this.formes].reverse().find(f => f.type === 'image' && touche(f, p.x, p.y, 0, this.boiteTouche))
     const f = this.nouvelleFigure({ type: 'polygone', ferme: false, pts: [p] })
     f.sommets = true
     f.noms = nomsLibres(1, this.formes)
@@ -3444,19 +4462,18 @@ export class App {
     return this.formes.filter((g): g is Figure => (g.type === 'polygone' || g.type === 'cercle') && g.lie === id)
   }
 
-  /** La forme suit-elle une image sélectionnée ? */
-  private lieeA(f: Forme) {
-    return (f.type === 'polygone' || f.type === 'cercle') && !!f.lie && this.selection.has(f.lie)
-  }
-
   /** Origine du repère de la page (pour les transformations), si elle en a un */
   get origineRepere(): P | null { return this.fond === 'repere' ? this.tableau.origineDe(this.page) : null }
 
   sommetsDe(f: Polygone) { return sommetsDe(f) }
 
+  /** La gomme efface ce qu'elle touche, sauf ce qui est verrouillé ou fixé
+   *  en fond (lot 5) : on gomme l'écriture sur un énoncé fixé sans l'abîmer.
+   *  (La gomme au trait entier ; celle qui efface là où elle passe : voir
+   *  gommerLa) */
   private gommer(x: number, y: number, deja?: Set<string>) {
-    const r = 12 / this.cam.z
-    const touches = this.formes.filter(f => !deja?.has(f.id) && touche(f, x, y, r, g => this.rendu.boite(g)))
+    const r = RAYON_TRAIT / this.cam.z
+    const touches = this.formes.filter(f => libre(f) && !deja?.has(f.id) && touche(f, x, y, r, this.boiteTouche))
     if (!touches.length) return
     touches.forEach(f => deja?.add(f.id))
     this.tableau.supprimer(this.page, touches.map(f => f.id))
@@ -3513,8 +4530,12 @@ export class App {
   private pousser(dx: number, dy: number) {
     const haut = () => { const u = this.tableau.annulationDe(this.page); return u ? u.undoStack[u.undoStack.length - 1] : undefined }
     const p = this.poussee
+    // Ce qui est libre dans la sélection, et les points repérés sur une
+    // image qui bouge, même verrouillés (voir quiBouge) ; rien d'autre
+    const bougent = quiBouge(this.formes, this.selection)
+    if (!bougent.length) return
     if (!p || p.page !== this.page || !p.etape || p.etape !== haut()) this.tableau.nouveauGeste()
-    this.tableau.modifier(this.page, this.formes.filter(f => this.selection.has(f.id) || this.lieeA(f)).map(f => ({ id: f.id, patch: { x: f.x + dx, y: f.y + dy } })))
+    this.tableau.modifier(this.page, bougent.map(f => ({ id: f.id, patch: { x: f.x + dx, y: f.y + dy } })))
     this.poussee = { page: this.page, etape: haut() }
   }
 
@@ -3596,6 +4617,17 @@ export class App {
       if (!e.repeat && !this.enGeste && !document.querySelector('dialog[open]')) this.ui.exporterPdf({ page: this.page })
       return
     }
+    // Ctrl + G : grouper ; Ctrl + Maj + G : dégrouper (⌘ sur Mac ; lot 5,
+    // comme tldraw, Excalidraw, Figma, PowerPoint). La lettre par e.key, en
+    // AZERTY comme en QWERTY ; toujours empêché, même quand il n'y a rien à
+    // grouper (sinon la recherche du navigateur s'ouvre, ou « suivant »
+    // dans la page) ; une fois par appui ; ni dans une fenêtre ouverte (les
+    // champs de saisie se sont tus plus haut). AltGr n'en est pas un.
+    if (ctrl && !e.altKey && lettre === 'g') {
+      e.preventDefault()
+      if (!e.repeat && !document.querySelector('dialog[open]')) { if (e.shiftKey) this.degrouper(); else this.grouper() }
+      return
+    }
     // Ctrl+A, C, X, V, D (⌘ sur Mac) : tout sélectionner, copier, couper,
     // coller, dupliquer. La lettre se lit par e.key : en AZERTY, la touche
     // marquée A a pour e.code « KeyQ ». AltGr (Ctrl+Alt sous Windows) n'en
@@ -3626,9 +4658,29 @@ export class App {
     if (e.key === 'PageUp') { this.pageSuivante(-1); return }
     if (e.key === 'Enter' && this.polyEnCours) { this.finirPolygone(false); return }
     if (e.key === 'Escape') { this.echap(); return }
-    // Les flèches poussent la sélection : 1 mm, ou 1 cm avec Maj
+    // L'ordre au clavier, comme Google Slides et les dessins de Docs :
+    // Ctrl + ↑ / ↓ avance, recule ce qui est sélectionné ; avec Maj, premier
+    // plan, arrière-plan (⌘ sur Mac, où Ctrl + ↑ est Mission Control et
+    // n'arrive pas). Pas [ et ] (tldraw) : en AZERTY ils demandent AltGr, que
+    // Windows envoie comme Ctrl + Alt. Jamais avec Alt ; une fois par appui
+    // (une touche tenue ne fait rien de plus). Le menu complet ouvert ne les
+    // prend pas (voir Interface.clavierMenu) : elles marchent menu ouvert.
+    if (ctrl && !e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && this.selection.size) {
+      e.preventDefault()
+      const haut = e.key === 'ArrowUp'
+      if (!e.repeat && !document.querySelector('dialog[open]')) this.ordonner(haut ? (e.shiftKey ? 'premier' : 'avancer') : (e.shiftKey ? 'arriere' : 'reculer'))
+      return
+    }
+    // ⌘ + ← (Mac) et Alt + ← (Windows) reviennent à la page précédente du
+    // navigateur (Alt + →, à la suivante) : en plein cours, on quitterait le
+    // tableau. Hors des champs et des fenêtres (filtrés plus haut), avec ou
+    // sans sélection, elles ne font rien, ni Ctrl + ← / → (qui poussaient
+    // l'objet comme une flèche seule)
+    if ((ctrl || e.altKey) && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); return }
+    // Les flèches poussent la sélection : 1 mm, ou 1 cm avec Maj. Seules :
+    // ni avec Ctrl, ⌘ (l'ordre, ci-dessus) ni avec Alt
     const fleches: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }
-    if (fleches[e.key] && this.selection.size) {
+    if (fleches[e.key] && this.selection.size && !ctrl && !e.altKey) {
       e.preventDefault()
       const k = e.shiftKey ? CM : CM / 10, [dx, dy] = fleches[e.key]
       this.pousser(dx * k, dy * k)
@@ -3663,14 +4715,41 @@ export class App {
       if (!e.repeat) this.ui.ouvrirTrieuse(true)
       return
     }
+    // Maj + L (lot 5, comme tldraw) : verrouiller ce qui est sélectionné, ou
+    // le déverrouiller (une sélection verrouillée : son menu est ouvert). Une
+    // fois par appui ; sans rien de sélectionné, la lettre reste le Segment,
+    // comme avant (on ne retire rien à qui la tapait). En plein geste, elle ne
+    // fait rien (voir toucheTenueEnGeste, plus haut).
+    if (toucheVerrou(e) && this.selection.size) {
+      e.preventDefault()
+      if (!e.repeat && !document.querySelector('dialog[open]')) this.basculerVerrou()
+      return
+    }
     if (ctrl) return
     const raccourcis: Record<string, Outil> = { p: 'stylo', h: 'surligneur', e: 'gomme', x: 'point', l: 'segment', f: 'formule', v: 'selection' }
     const formes: Record<string, TypeForme> = { r: 'rectangle', c: 'cercle', g: 'polygone' }
     const k = e.key.toLowerCase()
     if (formes[k]) { this.typeForme = formes[k]; this.choisirOutil('forme'); return }
     const o = raccourcis[k]
+    // E quand la Gomme est déjà en main (lot 5) : ses options, au clavier
+    if (o === 'gomme' && this.outil === 'gomme') { if (!e.repeat) this.ui.ouvrirMenuGomme(true); return }
     if (o) this.choisirOutil(o)
   }
+}
+
+/** Ce que dit une commande d'ordre qui n'a rien à faire */
+const RIEN_A_ORDONNER: Record<Sens, string> = {
+  premier: 'Déjà au premier plan',
+  arriere: 'Déjà à l\'arrière-plan',
+  avancer: 'Rien à passer devant à cet endroit',
+  reculer: 'Rien à passer derrière à cet endroit',
+}
+
+/** La boîte qui contient deux boîtes (l'une peut manquer) */
+function union(a: Boite | null, b: Boite | null): Boite | null {
+  if (!a || !b) return a ?? b
+  const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y)
+  return { x, y, l: Math.max(a.x + a.l, b.x + b.l) - x, h: Math.max(a.y + a.h, b.y + b.h) - y }
 }
 
 /** Où l'on attrape un cercle pour changer son rayon : en haut à droite */

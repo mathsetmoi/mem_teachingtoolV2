@@ -266,3 +266,111 @@ describe('poser un collage dans le document', () => {
     expect(t.film.length).toBe(film0 + 2)
   })
 })
+
+describe('les attaches du lot 5 : verrou, fixation en fond, groupe, rotation d\'une formule', () => {
+  const PI = Math.PI
+  it('la liste blanche garde verrou, fixe (sur une image), groupe et la rotation d\'une formule', () => {
+    const c = validerCopie(copie([
+      { ...trait('t'), verrou: true, groupe: 'g1' },
+      { ...img('i'), fixe: true, verrou: true },
+      { ...formule('f', 'x^2'), rotation: 0.5, groupe: 'g1' },
+    ], { banque1: PNG }))!
+    expect(c).not.toBeNull()
+    expect(c.formes[0]).toMatchObject({ verrou: true, groupe: 'g1' })
+    expect(c.formes[1]).toMatchObject({ fixe: true, verrou: true })
+    expect(c.formes[2]).toMatchObject({ rotation: 0.5, groupe: 'g1' })
+    // Absents : absents (rien n'est ajouté à une forme d'avant)
+    const sans = validerCopie(copie([trait('t'), formule('f', 'x')]))!
+    for (const f of sans.formes) for (const k of ['verrou', 'fixe', 'groupe', 'rotation']) expect(k in f).toBe(false)
+  })
+
+  it('une valeur abîmée de verrou, fixe ou groupe est jetée, sans faire refuser la copie ; fixe hors d\'une image aussi', () => {
+    const abimes = [
+      { ...trait('a'), verrou: 'oui' }, { ...trait('b'), verrou: false }, { ...trait('c'), verrou: 1 },
+      { ...trait('d'), fixe: true }, { ...triangle('e', ['A', 'B', 'C']), fixe: true }, { ...formule('f', 'x'), fixe: true },
+      { ...img('g'), fixe: 'true' }, { ...trait('h'), groupe: '' }, { ...trait('i'), groupe: 'g'.repeat(65) },
+      { ...trait('j'), groupe: 42 }, { ...trait('k'), groupe: { pirate: 1 } }, { ...trait('l'), verrou: null, groupe: null, fixe: null },
+    ]
+    const c = validerCopie(copie(abimes as never, { banque1: PNG }))!
+    expect(c).not.toBeNull()
+    expect(c.formes).toHaveLength(abimes.length)
+    for (const f of c.formes) for (const k of ['verrou', 'fixe', 'groupe']) expect(k in f).toBe(false)
+    // Un groupe de 64 caractères tient encore
+    expect(validerCopie(copie([{ ...trait('a'), groupe: 'g'.repeat(64) }]))!.formes[0].groupe).toBe('g'.repeat(64))
+  })
+
+  it('la rotation d\'une formule : ramenée dans ]−π, π], absente si presque nulle ; non finie ou démesurée, la copie est refusée', () => {
+    const rot = (r: unknown) => (validerCopie(copie([{ ...formule('f', 'x'), rotation: r } as never]))?.formes[0] as Formule | undefined)
+    expect(rot(0.5)!.rotation).toBe(0.5)
+    expect(rot(PI)!.rotation).toBeCloseTo(PI, 12)
+    expect(rot(-PI)!.rotation).toBeCloseTo(PI, 12)
+    expect(rot(3 * PI / 2)!.rotation).toBeCloseTo(-PI / 2, 12)
+    expect(rot(-5 * PI / 2)!.rotation).toBeCloseTo(-PI / 2, 12)
+    expect(rot(2 * PI + 0.25)!.rotation).toBeCloseTo(0.25, 12)
+    expect('rotation' in rot(0)!).toBe(false)
+    expect('rotation' in rot(2 * PI)!).toBe(false)
+    expect('rotation' in rot(1e-9)!).toBe(false)
+    expect('rotation' in rot(null)!).toBe(false)
+    expect(rot(999)!.rotation).toBeGreaterThan(-PI)
+    for (const r of [NaN, Infinity, -Infinity, 1001, -1e9, '0.5', true, [0.5]]) expect(rot(r)).toBeUndefined()
+    // Sur une autre forme qu'une formule, la rotation est un champ inconnu : jeté
+    expect('rotation' in validerCopie(copie([{ ...trait('t'), rotation: 0.5 } as never]))!.formes[0]).toBe(false)
+  })
+
+  it('le collage : un identifiant neuf commun par groupe, un groupe d\'un seul membre retiré, verrou et fixe remis', () => {
+    const c = copie([
+      { ...trait('a', 0, 0, 1), groupe: 'g1' }, { ...triangle('b', ['A', 'B', 'C'], 2), groupe: 'g1' }, { ...formule('c', 'x', 3), groupe: 'g1', rotation: 0.5 },
+      { ...trait('d', 0, 0, 4), groupe: 'g2', verrou: true }, { ...trait('e', 0, 0, 5), groupe: 'g2', verrou: true },
+      { ...trait('s', 0, 0, 6), groupe: 'seul' },
+      { ...img('i', 'banque1', 7), fixe: true, groupe: 'g1' },
+    ], { banque1: PNG })
+    const r = collage(c, { dx: 10, dy: 10, moi: 'm', existantes: [], maintenant: 1000 })
+    const par = (id: string) => r[c.formes.findIndex(f => f.id === id)]
+    const g1 = par('a').groupe!, g2 = par('d').groupe!
+    expect(g1).toBeTruthy(); expect(g2).toBeTruthy()
+    expect(g1).not.toBe('g1'); expect(g2).not.toBe('g2'); expect(g1).not.toBe(g2)
+    expect(par('b').groupe).toBe(g1); expect(par('c').groupe).toBe(g1)
+    expect(par('e').groupe).toBe(g2)
+    expect(par('d').verrou).toBe(true); expect(par('e').verrou).toBe(true)
+    expect('verrou' in par('a')).toBe(false)
+    expect('groupe' in par('s')).toBe(false)
+    // L'image fixée reste fixée, et n'est d'aucun groupe
+    expect(par('i')).toMatchObject({ type: 'image', fixe: true })
+    expect('groupe' in par('i')).toBe(false)
+    expect((par('c') as Formule).rotation).toBe(0.5)
+    // Deux collages du même groupe : deux groupes neufs
+    const r2 = collage(c, { dx: 10, dy: 10, moi: 'm', existantes: r, maintenant: 2000 })
+    expect(r2[0].groupe).not.toBe(g1)
+    // Coller un seul membre d'un groupe : plus de groupe
+    expect('groupe' in collage(copie([{ ...trait('a'), groupe: 'g1' }]), { dx: 0, dy: 0, moi: 'm', existantes: [] })[0]).toBe(false)
+  })
+
+  it('le collage : une image fixée passe sous tout ce qui est sur la page d\'arrivée, dans son ordre ; le reste au-dessus de tout', () => {
+    const existantes = [{ ...img('x', 'banque1', 50) }, { ...img('y', 'banque1', 40), fixe: true as const }, trait('z', 0, 0, 60)]
+    const c = copie([{ ...img('i1', 'banque1', 1), fixe: true }, trait('t', 0, 0, 2), { ...img('i2', 'banque1', 3), fixe: true }, img('i3', 'banque1', 4)], { banque1: PNG })
+    const r = collage(c, { dx: 0, dy: 0, moi: 'm', existantes, maintenant: 1000 })
+    const z = (id: string) => r[c.formes.findIndex(f => f.id === id)].z
+    expect([z('i1'), z('i2')]).toEqual([38, 39])
+    expect([z('t'), z('i3')]).toEqual([1001, 1003])
+    // Sur une page vide : sous ce qu'on colle
+    const vide = collage(c, { dx: 0, dy: 0, moi: 'm', existantes: [], maintenant: 1000 })
+    expect(vide.filter(f => f.type === 'image' && f.fixe).map(f => f.z)).toEqual([998, 999])
+    // Sans image fixée, rien ne change aux rangs
+    expect(collage(copie([trait('a', 0, 0, 1), trait('b', 0, 0, 2)]), { dx: 0, dy: 0, moi: 'm', existantes, maintenant: 1000 }).map(f => f.z)).toEqual([1000, 1001])
+  })
+
+  it('par le HTML et le JSON (un autre onglet, l\'autre version), les quatre champs reviennent', () => {
+    const c = copie([{ ...trait('t'), verrou: true, groupe: 'g' }, { ...formule('f', 'x'), rotation: -1, groupe: 'g' }, { ...img('i'), fixe: true }], { banque1: PNG })
+    for (const relue of [lireHtml(versHtml(c))!, lireJson(JSON.stringify(c))!]) {
+      expect(relue.formes[0]).toMatchObject({ verrou: true, groupe: 'g' })
+      expect(relue.formes[1]).toMatchObject({ rotation: -1, groupe: 'g' })
+      expect(relue.formes[2]).toMatchObject({ fixe: true })
+      const r = collage(relue, { dx: 0, dy: 0, moi: 'm', existantes: [] })
+      expect(r[0].verrou).toBe(true)
+      expect(r[0].groupe).toBe(r[1].groupe)
+      expect(r[0].groupe).not.toBe('g')
+      expect((r[1] as Formule).rotation).toBe(-1)
+      expect(r[2].fixe).toBe(true)
+    }
+  })
+})

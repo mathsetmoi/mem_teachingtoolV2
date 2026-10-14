@@ -7,17 +7,37 @@
 // 3. « direct »  : le trait en cours, la sélection, les aperçus.
 //                  Petite, donc rapide : c'est elle qui fait la
 //                  latence ressentie au stylet.
+// Le contraste renforcé (lot 5, un réglage de l'appareil, pour le
+// vidéoprojecteur) ne change que ce que peint CE rendu, à l'écran du
+// professeur : voir contraste.
 // =============================================================
 import { getStroke } from 'perfect-freehand'
 import type { Camera } from './camera'
 import type { Bout, Figure, Fond, Forme, Formule, ImageForme, MarquePoint, Trait } from './types'
-import { coinsImage } from './geometrie'
+import { libre } from './types'
+import { coinHautDroit, coinsImage, coinsVus, ecarterCoins, englobante, rotationDe } from './geometrie'
 import { dessinerFond } from './fonds'
 import { codageDe, placesDesNoms, sommetsDe } from './formes'
 import type { EtatInstrument, NomInstrument, Partie } from './instruments'
-import { dessinerInstrument } from './instruments'
+import { dessinerInstrument, dessinerPastille } from './instruments'
+import { enOrdreDAffichage, ordreDAffichage } from './ordre'
+import { groupesTouches } from './groupes'
+import { LONG_MORCEAU, fenetresDe, passePres } from './gomme'
+import type { Cadre, Matrice } from './cadre'
+import type { TypePointeur } from './pointeurs'
+import { POIGNEE } from './pointeurs'
 
 type P = { x: number; y: number }
+/** Ce qui distingue le contour d'un trait dans le cache des tracés (voir
+ *  Rendu.dessinerTrait) : son nombre de valeurs, sa taille, sa pression, son
+ *  dernier point, son deuxième et celui du milieu */
+type CleTrait = { n: number; taille: number; pression: boolean; fx: number; fy: number; dx: number; dy: number; mx: number; my: number }
+
+/** Le cadre de taille et la pastille ↻ tels qu'on les peint (lot 5) : le
+ *  cadre (voir cadre.ts), le pointeur dont il prend la taille des poignées,
+ *  et le geste qu'on fait avec lui (la pastille est pleine pendant qu'on
+ *  tourne, comme celle d'un instrument) */
+export interface CadreVu { cadre: Cadre; pointeur: TypePointeur; geste: 'taille' | 'tourner' | null }
 
 export interface TraitDirect {
   pts: number[]; couleur: string; taille: number; opacite: number; pression: boolean
@@ -50,15 +70,22 @@ export const ESQUISSE = 0.5
 
 /** Contour de perfect-freehand → Path2D en courbes quadratiques */
 export function cheminDuTrait(t: { pts: number[]; taille: number; pression: boolean }, fini: boolean): Path2D {
+  const d = contourDuTrait(t, fini)
+  return d ? new Path2D(d) : new Path2D()
+}
+
+/** Le contour de perfect-freehand d'un trait, en chemin SVG fermé (courbes
+ *  quadratiques) ; '' : rien à peindre */
+function contourDuTrait(t: { pts: number[]; taille: number; pression: boolean }, fini: boolean): string {
   const contour = getStroke(regrouper(t.pts), optionsTrait(t, fini))
-  if (contour.length < 2) return new Path2D()
+  if (contour.length < 2) return ''
   let d = `M ${contour[0][0].toFixed(2)} ${contour[0][1].toFixed(2)} Q`
   for (let i = 0; i < contour.length; i++) {
     const [x0, y0] = contour[i]
     const [x1, y1] = contour[(i + 1) % contour.length]
     d += ` ${x0.toFixed(2)} ${y0.toFixed(2)} ${((x0 + x1) / 2).toFixed(2)} ${((y0 + y1) / 2).toFixed(2)}`
   }
-  return new Path2D(d + ' Z')
+  return d + ' Z'
 }
 
 export class Rendu {
@@ -72,6 +99,9 @@ export class Rendu {
   instrumentsCaches = false
   /** La forme sous le pointeur, avec l'outil Sélection */
   survol: string | null = null
+  /** Les autres membres de son groupe, que le clic prendrait avec elle
+   *  (lot 5) : ils s'éclairent du même halo */
+  survolAussi: string[] = []
   /** Ce qu'on vise en désignant un axe (une droite) ou un centre (un point) */
   cible: { a: { x: number; y: number }; b?: { x: number; y: number } } | null = null
   /** Une construction qu'on va poser : on la voit, en transparence, sous le pointeur */
@@ -99,11 +129,34 @@ export class Rendu {
    *  sont des lignes brisées, sans perfect-freehand ni cache */
   private esquisse = false
 
-  private chemins = new Map<string, { cle: string; chemin: Path2D }>()
-  /** cachee : la formule n'est plus à l'écran, mais son rendu KaTeX est gardé en réserve */
-  private elementsFormules = new Map<string, { cle: string; el: HTMLDivElement; cachee: boolean }>()
+  /** Le contraste renforcé (lot 5, D14), pour le vidéoprojecteur : les
+   *  lignes du fond plus marquées (fonds.ts), les cadres de la sélection en
+   *  deux tons (5 px blancs sous 3 px de bleu), les poignées, les ronds des
+   *  sommets et la pastille ↻ au filet de 2,5 px, le halo du survol plus
+   *  large, le lasso, le cadre qu'on tire et le cercle de la gomme en
+   *  2,5 px, et les figures et les anciens segments jamais affichés sous
+   *  2 px d'écran. L'écriture à main levée garde son contour (perfect-
+   *  freehand le recalculerait pour des milliers de traits à chaque cran de
+   *  zoom). Seuls le tableau et la revue en classe le posent, depuis le
+   *  réglage de l'appareil ; jamais le lecteur des élèves (qui partage
+   *  pourtant ce stockage sur GitHub Pages), et peindreSur (les vignettes,
+   *  l'image copiée, le PDF) peint toujours sans lui : rien de ce qui sort
+   *  de l'écran ne change. */
+  contraste = false
+
+  /** Le contour de chaque trait (perfect-freehand), par identifiant, avec
+   *  ce qui le distingue (cle, voir dessinerTrait) */
+  private chemins = new Map<string, { cle: CleTrait; chemin: Path2D }>()
+  /** cachee : la formule n'est plus à l'écran, mais son rendu KaTeX est gardé
+   *  en réserve ; transform : celui qui est posé sur l'élément (lot 5 : sa
+   *  rotation, et pendant qu'on la change de taille ou qu'on la tourne,
+   *  cette transformation) */
+  private elementsFormules = new Map<string, { cle: string; el: HTMLDivElement; cachee: boolean; transform: string }>()
 
   // État fourni par l'application à chaque image
+  /** Les formes de la page, dans n'importe quel ordre (le tableau les donne
+   *  déjà dans l'ordre d'affichage, la revue et le lecteur par z) : elles se
+   *  peignent dans l'ordre d'affichage (voir ordre.ts et enOrdre) */
   formes: Forme[] = []
   fond: Fond = 'carreaux'
   origine = { x: 0, y: 0 }
@@ -127,8 +180,47 @@ export class Rendu {
   poigneesActives = true
   /** Le seul morceau choisi : il est surligné, pas la figure */
   partie: { id: string; prise: { quoi: 'nom' | 'sommet'; i: number } | { quoi: 'rayon' } } | null = null
+  /** Le cadenas d'un objet verrouillé (lot 5) : au survol de l'outil
+   *  Sélection, un instant après un appui sur lui ; cadre : avec son cadre en
+   *  tirets. Seule l'App le pose (à l’écran) : jamais dans la revue, le
+   *  lecteur ni les sorties (peindreSur ne peint pas cette couche). Ce qui
+   *  est sélectionné et verrouillé (le temps de son menu) a toujours son
+   *  cadenas et son cadre, sans qu'on le pose ici. */
+  cadenas: { id: string; cadre: boolean } | null = null
+  /** Le cadre de taille et la pastille ↻ de ce qui est pris (lot 5), tel
+   *  qu'il est peint dans la couche directe (null : aucun). Seule l'App le
+   *  pose, par avantDirect, juste avant chaque peinture de cette couche : il
+   *  suit ainsi la sélection, la vue, l'outil et le pointeur sans qu'on
+   *  pense à le refaire. La revue, le lecteur et les sorties n'en ont
+   *  jamais (ni avantDirect, ni cadre). */
+  cadre: CadreVu | null = null
+  avantDirect: (() => void) | null = null
+  /** Pendant qu'on change la taille ou qu'on tourne (lot 5) : rien ne
+   *  s'écrit, ces formes (ids) sont peintes transformées par m. Un trait et
+   *  une image : leur dessin habituel sous m (le contour en cache du trait,
+   *  tel quel : agrandi, il s'épaissit comme il le fera) ; une figure et un
+   *  ancien segment : par appliquer (transformerForme, que l'App fournit :
+   *  quelques points, et leur épaisseur ne change pas, rien ne saute au
+   *  lâcher) ; une formule, par un transform CSS sur son élément. */
+  transfo: { ids: Set<string>; m: Matrice; appliquer: (f: Forme) => Forme } | null = null
+  /** Pendant un coup de la gomme qui efface là où elle passe (lot 5) : ces
+   *  traits (caches, leurs identifiants) sont cachés, et leurs morceaux du
+   *  moment (morceaux, sous des identifiants de travail id~n, stables
+   *  pendant le geste : leurs tracés restent en cache) peints à leur place,
+   *  dans l'ordre d'affichage ; rien n'est encore écrit. Seule l'App le
+   *  pose : jamais dans la revue, le lecteur ni les sorties. */
+  coupe: { caches: Set<string>; morceaux: Trait[] } | null = null
+  /** La boîte d'un trait, en monde, son encre comprise, telle que l'App la
+   *  garde en cache (voir repeindreZone) ; sans elle, celle du rendu */
+  boiteTrait: ((t: Trait) => { x: number; y: number; l: number; h: number } | null) | null = null
+  /** Combien a duré la dernière peinture de la scène (ms), et si elle était
+   *  entière ou bornée au rectangle sale : les essais la lisent */
+  derniereScene = { ms: 0, entiere: true }
 
   private sceneSale = true
+  /** Le rectangle sale (lot 5, voir repeindreZone), en pixels du canevas,
+   *  entiers : [x0, y0, x1, y1[ */
+  private zoneSale: { x0: number; y0: number; x1: number; y1: number } | null = null
   private directSale = true
   private image = 0
 
@@ -174,7 +266,7 @@ export class Rendu {
     const p = this.peinte, f = this.formes, c = this.cam
     const memeScene = !!p && p.formes.length === f.length && p.fond === this.fond && p.ox === this.origine.x && p.oy === this.origine.y
       && p.x === c.x && p.y === c.y && p.z === c.z && p.remplacement === this.remplacement && !this.selection.size
-      && !this.decalage.dx && !this.decalage.dy && p.formes.every((g, i) => g === f[i])
+      && !this.decalage.dx && !this.decalage.dy && !this.transfo && p.formes.every((g, i) => g === f[i])
     if (memeScene) this.redessinerDirect()
     else this.toutRedessiner()
   }
@@ -197,8 +289,16 @@ export class Rendu {
   private peindre(t = performance.now()) {
     this.image = 0
     if (this.instrumentsSales) { this.peindreInstruments(t); this.instrumentsSales = false }
-    if (this.sceneSale) { this.peindreScene(); this.placerFormules(); this.sceneSale = false }
-    if (this.directSale) { this.peindreDirect(); this.directSale = false; this.temoinDirect?.(t) }
+    if (this.sceneSale) {
+      const t0 = performance.now()
+      this.peindreScene(); this.placerFormules(); this.sceneSale = false; this.zoneSale = null
+      this.derniereScene = { ms: performance.now() - t0, entiere: true }
+    } else if (this.zoneSale) {
+      const t0 = performance.now()
+      this.peindreZone(); this.zoneSale = null
+      this.derniereScene = { ms: performance.now() - t0, entiere: false }
+    }
+    if (this.directSale) { this.avantDirect?.(); this.peindreDirect(); this.directSale = false; this.temoinDirect?.(t) }
   }
 
   // ---------- Couche des instruments ----------
@@ -213,24 +313,176 @@ export class Rendu {
     this.temoin?.(this.instruments, this.instrumentsAnimes, t)
   }
 
+  /** Les formes du rendu dans l'ordre d'affichage : triées seulement si elles
+   *  ne le sont pas déjà, et une fois par tableau donné (pas à chaque image
+   *  d'écran : le tableau, la revue et le lecteur donnent un tableau neuf
+   *  quand la page change) */
+  private ordre: { de: Forme[]; vers: Forme[] } | null = null
+  private enOrdre(): Forme[] {
+    const f = this.formes
+    if (this.ordre?.de !== f) this.ordre = { de: f, vers: enOrdreDAffichage(f) ? f : ordreDAffichage(f) }
+    return this.ordre.vers
+  }
+
+  /** Repeindre seulement ce rectangle de la scène (monde), à la prochaine
+   *  image d'écran : la gomme qui efface là où elle passe (lot 5) change
+   *  l'encre sous elle, et rien d'autre. Une peinture entière d'une page de
+   *  2000 mots prend 42 ms sur un poste sans carte graphique (la critique du
+   *  lot 5 l'a mesuré) : à chaque mouvement, la gomme ne suivrait plus la
+   *  plume. Le rectangle est agrandi de 2 px et porté aux pixels entiers du
+   *  canevas (un bord à cheval sur un pixel laisserait un liseré) ; deux
+   *  demandes avant la même image s'unissent. Une scène déjà sale (la vue
+   *  qui change, la page qui change ailleurs) se repeint entière, et c'est
+   *  tout. */
+  repeindreZone(b: { x: number; y: number; l: number; h: number }) {
+    if (this.sceneSale) return
+    const cam = this.cam, k = this.dpr
+    const a = cam.versEcran(b.x, b.y), c = cam.versEcran(b.x + b.l, b.y + b.h)
+    const x0 = Math.max(0, Math.floor((Math.min(a.x, c.x) - 2) * k)), y0 = Math.max(0, Math.floor((Math.min(a.y, c.y) - 2) * k))
+    const x1 = Math.min(this.scene.width, Math.ceil((Math.max(a.x, c.x) + 2) * k)), y1 = Math.min(this.scene.height, Math.ceil((Math.max(a.y, c.y) + 2) * k))
+    if (x1 <= x0 || y1 <= y0) return
+    const z = this.zoneSale
+    this.zoneSale = z ? { x0: Math.min(z.x0, x0), y0: Math.min(z.y0, y0), x1: Math.max(z.x1, x1), y1: Math.max(z.y1, y1) } : { x0, y0, x1, y1 }
+    this.planifier()
+  }
+
+  /** La scène repeinte dans le seul rectangle sale (voir repeindreZone) : le
+   *  canevas coupé à ce rectangle, le fond qui s'y redessine, puis, dans
+   *  l'ordre d'affichage, les seules formes dont la boîte (leur encre
+   *  comprise, les noms d'une figure au large) touche le rectangle, et les
+   *  morceaux d'un trait coupé à sa place. Le dessin de chacune est celui
+   *  d'une peinture entière : dedans, les pixels sont les mêmes (à
+   *  l'anticrénelage près, sur un pixel isolé ; l'essai K7 du lot 5 compare
+   *  au lever). Pendant un déplacement ou un changement de taille, tout se
+   *  repeint. */
+  private peindreZone() {
+    const z = this.zoneSale!, c = this.cs, cam = this.cam
+    if (this.transfo || this.remplacement || this.decalage.dx || this.decalage.dy) { this.peindreScene(); this.placerFormules(); return }
+    c.save()
+    try {
+      c.setTransform(1, 0, 0, 1, 0, 0)
+      c.beginPath(); c.rect(z.x0, z.y0, z.x1 - z.x0, z.y1 - z.y0); c.clip()
+      c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
+      dessinerFond(c, this.fond, cam, this.l, this.h, this.origine, { contraste: this.contraste })
+      c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
+      const k = this.dpr * cam.z
+      const w = { x: (z.x0 - this.dpr * cam.x) / k, y: (z.y0 - this.dpr * cam.y) / k, l: (z.x1 - z.x0) / k, h: (z.y1 - z.y0) / k }
+      const marge = 2 / cam.z
+      const touche = (b: { x: number; y: number; l: number; h: number } | null, m: number) =>
+        !!b && b.x - m < w.x + w.l && b.x + b.l + m > w.x && b.y - m < w.y + w.h && b.y + b.h + m > w.y
+      for (const f of this.enOrdre()) {
+        if (f.type === 'formule') continue
+        const caches = this.coupe?.caches.has(f.id)
+        if (f.type === 'trait') {
+          const b = this.boiteTrait?.(f) ?? this.boite(f)
+          if (!touche(b, marge + f.taille / 2)) continue
+          // Une boîte bien plus grande que le rectangle (un grand geste, un
+          // anneau de spirale) : son encre y passe-t-elle vraiment ?
+          if (!caches && b && (b.l > 2 * w.l || b.h > 2 * w.h) && !passePres(f, w, marge)) continue
+        } else if (!touche(this.boite(f), marge + (f.type === 'image' ? 0 : MARGE_DES_NOMS))) continue
+        if (caches) {
+          // Ses morceaux qui touchent le rectangle ; un long morceau, par
+          // fenêtres de ses points (voir dessinerPres)
+          for (const m of this.morceauxDe(f.id)) {
+            if (m.pts.length > 3 * LONG_MORCEAU) { this.dessinerPres(c, m, w, marge); continue }
+            const b = this.boiteTrait?.(m) ?? this.boite(m)
+            if (!touche(b, marge + m.taille / 2) || (b && (b.l > 2 * w.l || b.h > 2 * w.h) && !passePres(m, w, marge))) continue
+            this.dessinerForme(c, m, null)
+          }
+          continue
+        }
+        this.dessinerForme(c, f, null)
+      }
+    } finally { c.restore() }
+  }
+
+  /** Un long morceau d'un trait que la gomme coupe (lot 5, voir gomme.ts),
+   *  redessiné près de la boîte w (monde) seulement : le contour de chacune
+   *  de ses fenêtres (fenetresDe), en un seul chemin rempli une fois (une
+   *  encre transparente, celle du surligneur, ne fonce pas où deux fenêtres
+   *  se croisent : comme le trait entier). Son contour entier, que
+   *  perfect-freehand mettrait des millisecondes à recalculer à chaque
+   *  mouvement, attend le lever. */
+  private dessinerPres(c: CanvasRenderingContext2D, t: Trait, w: { x: number; y: number; l: number; h: number }, marge: number) {
+    const fenetres = fenetresDe(t, w, marge)
+    if (!fenetres.length) return
+    // Le chemin se construit par ses courbes, sans passer par le texte d'un
+    // chemin SVG (le plus long, pour un contour de milliers de points) : il
+    // ne sert que le temps d'une image, rien ne le garde
+    const chemin = new Path2D()
+    let vide = true
+    for (const [a, b] of fenetres) {
+      const contour = getStroke(regrouper(t.pts.slice(3 * a, 3 * b)), optionsTrait(t, true))
+      if (contour.length < 2) continue
+      vide = false
+      chemin.moveTo(contour[0][0], contour[0][1])
+      for (let i = 0; i < contour.length; i++) {
+        const [x0, y0] = contour[i], [x1, y1] = contour[(i + 1) % contour.length]
+        chemin.quadraticCurveTo(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2)
+      }
+      chemin.closePath()
+    }
+    if (vide) return
+    c.save()
+    c.translate(t.x, t.y)
+    c.globalAlpha = t.opacite
+    c.fillStyle = t.couleur
+    c.fill(chemin)
+    c.restore()
+  }
+
+  /** Les morceaux du moment d'un trait que la gomme coupe (voir coupe),
+   *  rangés par trait une fois par liste donnée */
+  private parTrait: { de: Trait[]; vers: Map<string, Trait[]> } | null = null
+  private morceauxDe(id: string): Trait[] {
+    const l = this.coupe?.morceaux ?? []
+    if (this.parTrait?.de !== l) {
+      const vers = new Map<string, Trait[]>()
+      for (const m of l) {
+        const i = m.id.lastIndexOf('~'), de = i < 0 ? m.id : m.id.slice(0, i)
+        const r = vers.get(de)
+        if (r) r.push(m); else vers.set(de, [m])
+      }
+      this.parTrait = { de: l, vers }
+    }
+    return this.parTrait.vers.get(id) ?? []
+  }
+
   // ---------- Couche scène ----------
   private peindreScene() {
     const c = this.cs, cam = this.cam
     this.peinte = { formes: this.formes, fond: this.fond, ox: this.origine.x, oy: this.origine.y, x: cam.x, y: cam.y, z: cam.z, remplacement: this.remplacement }
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
-    dessinerFond(c, this.fond, cam, this.l, this.h, this.origine)
+    dessinerFond(c, this.fond, cam, this.l, this.h, this.origine, { contraste: this.contraste })
     c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
-    // Les images d'abord, comme des feuilles posées sous les tracés : une
-    // image (et son papier) ne recouvre jamais un trait de construction
-    const images = this.formes.filter(f => f.type === 'image'), traces = this.formes.filter(f => f.type !== 'image')
-    for (const f0 of [...images, ...traces]) {
+    // Dans l'ordre d'affichage : les images fixées en fond, puis les images,
+    // comme des feuilles posées sous les tracés (une image et son papier ne
+    // recouvrent jamais un trait de construction), puis les tracés et les
+    // figures ; les formules sont en HTML, au-dessus (placerFormules)
+    const t = this.transfo
+    for (const f0 of this.enOrdre()) {
+      if (t && t.ids.has(f0.id)) { this.dessinerTransforme(c, f0, t); continue }
+      // Un trait que la gomme coupe (lot 5) : ses morceaux du moment
+      if (this.coupe?.caches.has(f0.id)) { for (const m of this.morceauxDe(f0.id)) this.dessinerForme(c, m, null); continue }
       const f = this.remplacement?.id === f0.id ? this.remplacement : f0
       // Ce qui est lié à une image sélectionnée bouge avec elle
       const lie = f.type === 'polygone' || f.type === 'cercle' ? f.lie : undefined
-      const dec = this.selection.has(f.id) || (lie && this.selection.has(lie)) ? this.decalage : null
+      // (ce qui est verrouillé ne bouge pas ; un point repéré sur une image
+      // la suit toujours, même verrouillé)
+      const dec = (this.selection.has(f.id) && libre(f)) || (lie && this.selection.has(lie)) ? this.decalage : null
       this.dessinerForme(c, f, dec)
     }
     this.purgerChemins(this.formes)
+  }
+
+  /** Une forme qu'on change de taille ou qu'on tourne, avant le lâcher (voir transfo) */
+  private dessinerTransforme(c: CanvasRenderingContext2D, f: Forme, t: NonNullable<Rendu['transfo']>) {
+    if (f.type === 'formule') return
+    if (f.type === 'trait' || f.type === 'image') {
+      c.save(); c.transform(...t.m); this.dessinerForme(c, f, null); c.restore()
+      return
+    }
+    this.dessinerForme(c, t.appliquer(f), null)
   }
 
   /** Nettoie le cache des formes disparues. On en garde une bonne réserve :
@@ -248,12 +500,13 @@ export class Rendu {
    * feuille du PDF), vue par la caméra de CE rendu, sur un canevas de l × h
    * px CSS à dpr pixels par px CSS. Dans l'ordre de l'écran : le fond (fond
    * vrai : le papier et son motif ; faux : le papier blanc seul ; 'aucun' :
-   * rien, on continue une peinture commencée, par tranches de formes, les
-   * images dans les premières), les images, les autres formes (o.formes,
-   * sinon celles du rendu, par z), puis chaque formule par o.formule (à
-   * l'écran, elles sont en HTML au-dessus du canevas). Ni sélection, ni
-   * décalage, ni remplacement, ni poignées, ni instruments, ni la couche
-   * « direct ».
+   * rien, on continue une peinture commencée, par tranches de formes prises
+   * dans l'ordre d'affichage), puis les formes (o.formes, sinon celles du
+   * rendu) dans l'ordre d'affichage (voir ordre.ts) : les images fixées en
+   * fond, les images, les tracés et les figures, enfin chaque formule par
+   * o.formule (à l'écran, elles sont en HTML au-dessus du canevas). Ni
+   * sélection, ni décalage, ni remplacement, ni poignées, ni instruments, ni
+   * la couche « direct ».
    * Pendant l'appel, l, h et dpr prennent ceux de l'appel (une droite
    * prolongée va jusqu'au bord de CE canevas), puis sont rendus ; ce que
    * montre l'écran (peinte, formes) ne bouge pas. En esquisse, un trait est
@@ -270,32 +523,39 @@ export class Rendu {
    * px CSS ; (0, 0) sinon) : une feuille du PDF ne peint que sa zone utile,
    * dans ses marges, et le fond y voit les bords de cette zone (les flèches
    * des axes du repère au bout de la zone, pas dans la marge).
+   * Jamais en contraste renforcé (voir contraste) : il est éteint le temps
+   * de l'appel, comme l'esquisse est posée, puis rendu.
+   * impression : la feuille d'un PDF ; son fond est peint pour le papier,
+   * à dpr pixels de son image par px CSS (voir dessinerFond : les lignes sur
+   * les pixels de l'image, les millimètres du papier millimétré).
    */
   peindreSur(c: CanvasRenderingContext2D, o: {
     l: number; h: number; dpr: number; fond: boolean | 'aucun'; formes?: Forme[]
     formule?: (c: CanvasRenderingContext2D, f: Formule) => void; esquisse?: boolean
-    coin?: { x: number; y: number }
+    coin?: { x: number; y: number }; impression?: boolean
   }) {
-    const garde = { l: this.l, h: this.h, dpr: this.dpr, esquisse: this.esquisse }
-    this.l = o.l; this.h = o.h; this.dpr = o.dpr; this.esquisse = !!o.esquisse
+    const garde = { l: this.l, h: this.h, dpr: this.dpr, esquisse: this.esquisse, contraste: this.contraste }
+    this.l = o.l; this.h = o.h; this.dpr = o.dpr; this.esquisse = !!o.esquisse; this.contraste = false
     c.save()
     try {
       const cam = this.cam
       let formes = o.formes ?? this.formes
-      if (formes.some((f, i) => i > 0 && f.z < formes[i - 1].z)) formes = [...formes].sort((a, b) => a.z - b.z)
+      if (!enOrdreDAffichage(formes)) formes = ordreDAffichage(formes)
       const cx = o.coin?.x ?? 0, cy = o.coin?.y ?? 0
       if (o.fond !== 'aucun') {
         c.setTransform(o.dpr, 0, 0, o.dpr, o.dpr * cx, o.dpr * cy)
-        dessinerFond(c, o.fond ? this.fond : 'blanc', cam, o.l, o.h, this.origine)
+        dessinerFond(c, o.fond ? this.fond : 'blanc', cam, o.l, o.h, this.origine, o.impression ? { impression: o.dpr } : {})
       }
       c.setTransform(o.dpr * cam.z, 0, 0, o.dpr * cam.z, o.dpr * (cam.x + cx), o.dpr * (cam.y + cy))
-      for (const f of formes) if (f.type === 'image') this.dessinerForme(c, f, null)
-      for (const f of formes) if (f.type !== 'image' && f.type !== 'formule') this.dessinerForme(c, f, null)
-      if (o.formule) for (const f of formes) if (f.type === 'formule') { c.save(); o.formule(c, f); c.restore() }
+      // Les formules sont dans le dernier calque : peintes après tout le reste
+      for (const f of formes) {
+        if (f.type !== 'formule') this.dessinerForme(c, f, null)
+        else if (o.formule) { c.save(); o.formule(c, f); c.restore() }
+      }
       if (!this.esquisse) this.purgerChemins(formes)
     } finally {
       c.restore()
-      this.l = garde.l; this.h = garde.h; this.dpr = garde.dpr; this.esquisse = garde.esquisse
+      this.l = garde.l; this.h = garde.h; this.dpr = garde.dpr; this.esquisse = garde.esquisse; this.contraste = garde.contraste
     }
   }
 
@@ -303,12 +563,40 @@ export class Rendu {
     if (f.type === 'trait') this.dessinerTrait(c, f, dec)
     else if (f.type === 'segment') {
       const x = f.x + (dec?.dx ?? 0), y = f.y + (dec?.dy ?? 0)
-      c.strokeStyle = f.couleur; c.lineWidth = f.taille; c.lineCap = 'round'
+      c.strokeStyle = f.couleur; c.lineWidth = this.epaisseurVue(f.taille); c.lineCap = 'round'
       c.beginPath(); c.moveTo(x, y); c.lineTo(x + f.dx, y + f.dy); c.stroke()
     }
     else if (f.type === 'polygone' || f.type === 'cercle') this.dessinerFigure(c, f, dec)
     else if (f.type === 'image') this.dessinerImage(c, f, dec)
   }
+
+  /** L'épaisseur affichée d'une figure ou d'un segment (monde) : la sienne,
+   *  et en contraste renforcé jamais moins de 2 px d'écran (un contour fin,
+   *  au vidéoprojecteur, ne se voit pas du fond de la classe) */
+  private epaisseurVue(taille: number): number {
+    return this.contraste ? Math.max(taille, 2 / (this.cam.z || 1)) : taille
+  }
+
+  /** Trace le chemin en cours comme un cadre de la sélection : un filet de
+   *  `largeur` px d'écran, de cette couleur, en tirets (px d'écran) ou plein ;
+   *  en contraste renforcé, en deux tons, 5 px blancs dessous et 3 px de sa
+   *  couleur dessus : il se voit sur l'écriture comme sur une photo */
+  private filetSelection(c: CanvasRenderingContext2D, couleur: string, largeur: number, tirets?: number[]) {
+    const z = this.cam.z
+    c.save()
+    if (this.contraste) {
+      c.setLineDash([]); c.strokeStyle = '#ffffff'; c.lineWidth = 5 / z; c.stroke()
+      largeur = 3
+    }
+    c.strokeStyle = couleur; c.lineWidth = largeur / z
+    c.setLineDash(tirets ? tirets.map(t => t / z) : [])
+    c.stroke()
+    c.restore()
+  }
+
+  /** Le filet des poignées (leurs carrés, les ronds des sommets, la pastille
+   *  ↻), en px d'écran : 2,5 en contraste renforcé */
+  private get filetPoignee(): number { return this.contraste ? 2.5 : 1.6 }
 
   /** Ce qu'on voit d'une droite ou d'une demi-droite : ses deux bouts, au bord de l'écran */
   etendue(f: Figure): [P, P] | null {
@@ -340,12 +628,22 @@ export class Rendu {
   private dessinerTrait(c: CanvasRenderingContext2D, t: Trait, dec: { dx: number; dy: number } | null) {
     if (this.esquisse) { this.esquisserTrait(c, t); return }
     // Le dernier point compte aussi : un trait qui se dessine garde parfois
-    // le même nombre de points d'une image à l'autre, mais pas le même bout
-    const n = t.pts.length
-    const cle = `${n}|${t.taille}|${t.pression}|${t.pts[n - 3]}|${t.pts[n - 2]}`
+    // le même nombre de points d'une image à l'autre, mais pas le même bout.
+    // Et le deuxième point et celui du milieu (lot 5) : un trait FERMÉ (son
+    // dernier point relatif reste (0, 0)) qu'on tourne sans changer sa
+    // taille, ou le morceau qu'une gomme partielle laisse, gardaient sinon la
+    // même clé, et l'écran repeignait l'ancien contour. Pas de cache par
+    // objet (une WeakMap) : la revue relit chaque planche en objets neufs, et
+    // recalculerait tous les contours à chaque image. Ces nombres se
+    // comparent tels quels, sans en faire une chaîne : sur une page de 2000
+    // mots, écrire la clé à chaque image coûtait plus que de peindre (5 ms
+    // par image de la scène sur un poste lent, la vérification du lot 5).
+    const p = t.pts, n = p.length, m = 3 * Math.floor(n / 6)
     let entree = this.chemins.get(t.id)
-    if (!entree || entree.cle !== cle) {
-      entree = { cle, chemin: cheminDuTrait(t, true) }
+    const k = entree?.cle
+    if (!entree || !k || k.n !== n || k.taille !== t.taille || k.pression !== t.pression || k.fx !== p[n - 3] || k.fy !== p[n - 2]
+      || k.dx !== p[3] || k.dy !== p[4] || k.mx !== p[m] || k.my !== p[m + 1]) {
+      entree = { cle: { n, taille: t.taille, pression: t.pression, fx: p[n - 3], fy: p[n - 2], dx: p[3], dy: p[4], mx: p[m], my: p[m + 1] }, chemin: cheminDuTrait(t, true) }
       this.chemins.set(t.id, entree)
     }
     c.save()
@@ -421,13 +719,14 @@ export class Rendu {
     if (f.fond && ((f.type === 'cercle' && !f.arc) || (f.type === 'polygone' && f.ferme))) {
       c.globalAlpha = 0.22; c.fillStyle = f.fond; c.fill(trace); c.globalAlpha = 1
     }
-    c.strokeStyle = f.couleur; c.lineWidth = f.taille; c.lineJoin = 'round'; c.lineCap = 'round'
-    if (f.tirets) c.setLineDash([f.taille * 3, f.taille * 2.5])
+    const e = this.epaisseurVue(f.taille)
+    c.strokeStyle = f.couleur; c.lineWidth = e; c.lineJoin = 'round'; c.lineCap = 'round'
+    if (f.tirets) c.setLineDash([e * 3, e * 2.5])
     c.stroke(trace)
     c.setLineDash([])
 
     // Codage : petits traits sur les côtés égaux, carré sur les angles droits
-    c.lineWidth = Math.max(1.5, f.taille * 0.6)
+    c.lineWidth = this.epaisseurVue(Math.max(1.5, f.taille * 0.6))
     if (f.codage && f.type === 'polygone') {
       const k = codageDe(f)
       for (const t of k.traits) {
@@ -496,16 +795,22 @@ export class Rendu {
     const cam = this.cam
     this.coucheFormules.style.transform = `translate(${cam.x}px, ${cam.y}px) scale(${cam.z})`
     const vues = new Set<string>()
-    for (const f of this.formes) {
+    // Leur rang (1, 2, 3…) dans l'ordre des z : c'est leur ordre à l'écran.
+    // (Avant le lot 5, z / 1000 : deux formules posées la même seconde
+    // avaient le même, et un z placé entre deux voisins n'a de sens que
+    // comme rang.)
+    let rang = 0
+    for (const f of this.enOrdre()) {
       if (f.type !== 'formule') continue
       vues.add(f.id)
+      rang++
       const cle = `${f.latex}|${f.couleur}|${f.taille}`
       let e = this.elementsFormules.get(f.id)
       if (!e) {
         const el = document.createElement('div')
         el.className = 'formule'
         this.coucheFormules.appendChild(el)
-        e = { cle: '', el, cachee: false }
+        e = { cle: '', el, cachee: false, transform: '' }
         this.elementsFormules.set(f.id, e)
       } else if (e.cachee) { e.cachee = false; e.el.style.visibility = '' }
       if (e.cle !== cle) {
@@ -514,10 +819,28 @@ export class Rendu {
         e.el.style.fontSize = f.taille + 'px'
         e.cle = cle
       }
-      const dec = this.selection.has(f.id) ? this.decalage : { dx: 0, dy: 0 }
+      const dec = this.selection.has(f.id) && libre(f) ? this.decalage : { dx: 0, dy: 0 }
       e.el.style.left = (f.x + dec.dx) + 'px'
       e.el.style.top = (f.y + dec.dy) + 'px'
-      e.el.style.zIndex = String(Math.floor(f.z / 1000) % 1e6)
+      e.el.style.zIndex = String(rang)
+      // Tournée (lot 5) : par CSS, autour de son coin (x, y) ; le texte reste
+      // vectoriel, net à tout zoom, et KaTeX ne la récrit pas (la clé de
+      // l'élément ne compte pas la rotation). Pendant qu'on la change de
+      // taille ou qu'on la tourne (voir transfo), la transformation en
+      // cours, composée à sa rotation : son point (u, v) va en M(coin +
+      // R(u, v)), soit, depuis son coin, la partie linéaire de M fois R, et le
+      // chemin que M fait faire au coin.
+      const r = rotationDe(f), t = this.transfo
+      let tr = r ? `rotate(${r}rad)` : ''
+      if (t?.ids.has(f.id)) {
+        const [a, b, cc, d, ex, fy] = t.m, co = Math.cos(r), si = Math.sin(r)
+        tr = `matrix(${a * co + cc * si}, ${b * co + d * si}, ${-a * si + cc * co}, ${-b * si + d * co}, ${a * f.x + cc * f.y + ex - f.x}, ${b * f.x + d * f.y + fy - f.y})`
+      }
+      if (e.transform !== tr) {
+        e.el.style.transform = tr
+        e.el.style.transformOrigin = tr ? '0 0' : ''
+        e.transform = tr
+      }
     }
     // Une formule qui s'en va est seulement cachée (sans quitter la mise en
     // page : la remontrer ne coûte rien) : revenir sur une autre page, ou sur
@@ -531,7 +854,9 @@ export class Rendu {
     }
   }
 
-  /** Boîte d'une formule, en monde (sa taille vient du rendu KaTeX) */
+  /** Boîte LOCALE d'une formule, en monde : son coin (x, y) et sa taille, qui
+   *  vient du rendu KaTeX, NON tournée (voir coinsFormule et englobante dans
+   *  geometrie.ts, qui en font le reste) */
   boiteFormule(f: Formule) {
     const vu = this.elementsFormules.get(f.id)
     const e = vu && !vu.cachee ? vu : null
@@ -563,51 +888,120 @@ export class Rendu {
       c.restore()
     }
     if (this.survol) {
-      const f = this.formes.find(x => x.id === this.survol)
-      if (f && f.type === 'formule') {
-        const b = this.boite(f), m = 5 / cam.z
-        c.fillStyle = 'rgba(59, 111, 182, 0.07)'; c.strokeStyle = 'rgba(59, 111, 182, 0.6)'; c.lineWidth = 1.5 / cam.z
-        c.beginPath(); c.roundRect(b.x - m, b.y - m, b.l + 2 * m, b.h + 2 * m, 6 / cam.z); c.fill(); c.stroke()
-      } else if (f) {
-        // Un halo bleu qui suit la forme elle-même : on voit ce qu'on va prendre
-        c.save()
-        c.shadowColor = 'rgba(31, 111, 235, 0.95)'; c.shadowBlur = 14 * this.dpr
-        this.dessinerForme(c, f, null); this.dessinerForme(c, f, null)
-        c.restore()
+      // L'objet survolé, et les autres membres de son groupe (lot 5)
+      const ids = this.survolAussi.length ? new Set([this.survol, ...this.survolAussi]) : null
+      const survoles = ids ? this.formes.filter(x => ids.has(x.id)) : this.formes.filter(x => x.id === this.survol)
+      for (const f of survoles) {
+        if (f.type === 'formule') {
+          // Son rectangle, tourné avec elle (lot 5), pas son englobante
+          const b = this.boiteFormule(f), m = 5 / cam.z
+          c.save()
+          tournerFormule(c, f, 0, 0)
+          c.fillStyle = 'rgba(59, 111, 182, 0.07)'; c.strokeStyle = 'rgba(59, 111, 182, 0.6)'; c.lineWidth = (this.contraste ? 2.5 : 1.5) / cam.z
+          c.beginPath(); c.roundRect(b.x - f.x - m, b.y - f.y - m, b.l + 2 * m, b.h + 2 * m, 6 / cam.z); c.fill(); c.stroke()
+          c.restore()
+        } else {
+          // Un halo bleu qui suit la forme elle-même : on voit ce qu'on va prendre
+          c.save()
+          // (plus large en contraste renforcé)
+          c.shadowColor = 'rgba(31, 111, 235, 0.95)'; c.shadowBlur = (this.contraste ? 24 : 14) * this.dpr
+          this.dessinerForme(c, f, null); this.dessinerForme(c, f, null)
+          c.restore()
+        }
       }
     }
     if (this.apercu) this.dessinerFigure(c, this.apercu, null)
     if (this.monSegment) {
       const s = this.monSegment
-      c.strokeStyle = s.couleur; c.lineWidth = s.taille; c.lineCap = 'round'
+      c.strokeStyle = s.couleur; c.lineWidth = this.epaisseurVue(s.taille); c.lineCap = 'round'
       c.beginPath(); c.moveTo(s.x1, s.y1); c.lineTo(s.x2, s.y2); c.stroke()
     }
 
-    // Sélection : un cadre en tirets autour de chaque forme tenue
+    // Sélection : un cadre en tirets autour de chaque forme tenue (ce qui est
+    // verrouillé, sélectionné le temps de son menu, a le sien plus bas, gris,
+    // avec son cadenas)
+    const cadenas: { f: Forme; cadre: boolean }[] = []
+    if (this.cadenas) {
+      const f = this.formes.find(x => x.id === this.cadenas!.id)
+      if (f && !this.selection.has(f.id)) cadenas.push({ f, cadre: this.cadenas.cadre })
+    }
+    // Le cadre de taille (lot 5) tient lieu du cadre plein d'un groupe pris
+    // seul : un seul dessin. Pendant qu'on change la taille ou qu'on tourne,
+    // ce qui bouge n'a que lui (ses tirets et ses poignées resteraient à
+    // l'ancienne place).
+    const leCadre = this.cadre
+    const tr = this.transfo
     if (this.selection.size) {
-      c.strokeStyle = '#3b6fb6'; c.lineWidth = 1.5 / cam.z; c.setLineDash([6 / cam.z, 4 / cam.z])
+      // Les cadres en tirets de tout ce qui est pris tiennent en UN chemin,
+      // tracé une seule fois (deux en contraste renforcé, voir
+      // filetSelection), comme avant le lot 5 : un filet par objet (save,
+      // tirets, stroke, restore) triplait le temps de la couche directe sur
+      // une page de 2000 mots toute prise (la vérification du lot 5). Les
+      // tirets repartent à chaque rectangle, comme ils le faisaient. Les
+      // halos des droites et des cercles (ce qu'on en voit) passent dessous,
+      // chacun le sien : il y en a peu.
+      const dx = this.decalage.dx, dy = this.decalage.dy, m = 6 / cam.z
+      const rects: number[] = [], tournes: P[][] = []
       for (const f0 of this.formes) {
         if (!this.selection.has(f0.id)) continue
+        if (!libre(f0)) { cadenas.push({ f: f0, cadre: true }); continue }
+        if (tr?.ids.has(f0.id)) continue
         const f = this.remplacement?.id === f0.id ? this.remplacement : f0
         const vu = f.type === 'polygone' || f.type === 'cercle' ? this.etendueVisible(f) : null
         if (vu) {
-          c.save(); c.setLineDash([]); c.globalAlpha = 0.28; c.lineCap = 'round'; c.lineWidth = (f.type === 'polygone' ? f.taille : 2) + 12 / cam.z
-          c.beginPath(); c.moveTo(vu[0].x + this.decalage.dx, vu[0].y + this.decalage.dy); c.lineTo(vu[1].x + this.decalage.dx, vu[1].y + this.decalage.dy); c.stroke()
+          c.save(); c.setLineDash([]); c.globalAlpha = this.contraste ? 0.4 : 0.28; c.lineCap = 'round'; c.strokeStyle = '#3b6fb6'; c.lineWidth = (f.type === 'polygone' ? f.taille : 2) + 12 / cam.z
+          c.beginPath(); c.moveTo(vu[0].x + dx, vu[0].y + dy); c.lineTo(vu[1].x + dx, vu[1].y + dy); c.stroke()
           c.restore()
           continue
         }
+        if (f.type === 'formule' && rotationDe(f)) {
+          // Une formule tournée : son rectangle tourné (lot 5), autour de
+          // son coin (x, y), comme tournerFormule
+          const b = this.boiteFormule(f), r = rotationDe(f), co = Math.cos(r), si = Math.sin(r)
+          const ox = f.x + dx, oy = f.y + dy, x0 = b.x - f.x - m, y0 = b.y - f.y - m, x1 = x0 + b.l + 2 * m, y1 = y0 + b.h + 2 * m
+          tournes.push([[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => ({ x: ox + x * co - y * si, y: oy + x * si + y * co })))
+          continue
+        }
         const b = this.boite(f)
-        const m = 6 / cam.z
-        c.strokeRect(b.x + this.decalage.dx - m, b.y + this.decalage.dy - m, b.l + 2 * m, b.h + 2 * m)
+        rects.push(b.x + dx - m, b.y + dy - m, b.l + 2 * m, b.h + 2 * m)
+      }
+      if (rects.length || tournes.length) {
+        c.beginPath()
+        for (let i = 0; i < rects.length; i += 4) c.rect(rects[i], rects[i + 1], rects[i + 2], rects[i + 3])
+        for (const q of tournes) { c.moveTo(q[0].x, q[0].y); c.lineTo(q[1].x, q[1].y); c.lineTo(q[2].x, q[2].y); c.lineTo(q[3].x, q[3].y); c.closePath() }
+        this.filetSelection(c, '#3b6fb6', 1.5, [6, 4])
       }
       c.setLineDash([])
+      // Les groupes que touche la sélection (lot 5) : un groupe pris, un
+      // cadre plein fin autour de la boîte de tous ses membres (en plus du
+      // cadre en tirets de chacun) ; un membre pris seul, la boîte de son
+      // groupe en pointillé très clair. Un peu plus loin que les tirets, un
+      // peu moins que la barre d'actions (10 px). Un chemin pour chaque sorte,
+      // comme les tirets (Ctrl + A sur une page de nombreux groupes).
+      const pleins: number[] = [], clairs: number[] = []
+      for (const g of groupesTouches(this.formes, this.selection)) {
+        if (leCadre && g.entier && (tr || g.membres.length === this.selection.size)) continue
+        let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
+        for (const f0 of g.membres) {
+          const f = this.remplacement?.id === f0.id ? this.remplacement : f0
+          const b = this.boite(f), d = this.selection.has(f.id) ? this.decalage : { dx: 0, dy: 0 }
+          x1 = Math.min(x1, b.x + d.dx); y1 = Math.min(y1, b.y + d.dy); x2 = Math.max(x2, b.x + b.l + d.dx); y2 = Math.max(y2, b.y + b.h + d.dy)
+        }
+        const mg = 9 / cam.z
+        ;(g.entier ? pleins : clairs).push(x1 - mg, y1 - mg, x2 - x1 + 2 * mg, y2 - y1 + 2 * mg)
+      }
+      const rectangles = (l: number[]) => { c.beginPath(); for (let i = 0; i < l.length; i += 4) c.rect(l[i], l[i + 1], l[i + 2], l[i + 3]) }
+      if (pleins.length) { rectangles(pleins); this.filetSelection(c, '#3b6fb6', 1.5) }
+      if (clairs.length) { rectangles(clairs); this.filetSelection(c, this.contraste ? 'rgba(59, 111, 182, 0.6)' : 'rgba(59, 111, 182, 0.35)', 1.5, [2, 3]) }
       // Les poignées : ce qu'on peut attraper dans la figure choisie
       const seule = this.selection.size === 1 ? this.formes.find(f => this.selection.has(f.id)) : undefined
       const f = seule && this.remplacement?.id === seule.id ? this.remplacement : seule
-      if (this.poignees && this.poigneesActives && f && (f.type === 'polygone' || f.type === 'cercle')) {
+      // Jamais sur ce qui est verrouillé : ses sommets ne se prennent pas ;
+      // ni pendant qu'on la tourne (ils resteraient à l'ancienne place)
+      if (this.poignees && this.poigneesActives && !tr && f && libre(f) && (f.type === 'polygone' || f.type === 'cercle')) {
         const pts = f.type === 'polygone' ? sommetsDe(f)
           : [{ x: f.x + f.r * Math.SQRT1_2, y: f.y - f.r * Math.SQRT1_2 }]
-        c.lineWidth = 1.6 / cam.z; c.strokeStyle = '#3b6fb6'; c.fillStyle = '#ffffff'
+        c.lineWidth = this.filetPoignee / cam.z; c.strokeStyle = '#3b6fb6'; c.fillStyle = '#ffffff'
         for (const p of pts) { c.beginPath(); c.arc(p.x, p.y, 5.5 / cam.z, 0, Math.PI * 2); c.fill(); c.stroke() }
         if (f.sommets && f.noms) {
           c.setLineDash([2 / cam.z, 3 / cam.z]); c.strokeStyle = 'rgba(59, 111, 182, 0.55)'
@@ -616,6 +1010,8 @@ export class Rendu {
         }
       }
     }
+    // Le cadre de taille et la pastille ↻ (lot 5)
+    if (leCadre) this.dessinerCadre(c, leCadre)
     // Le morceau choisi seul : un halo autour du point ou du nom
     if (this.partie && this.poignees) {
       const f0 = this.formes.find(f => f.id === this.partie!.id)
@@ -627,14 +1023,14 @@ export class Rendu {
         else if (pr.quoi === 'nom') { p = placesDesNoms(f)[pr.i]; r = 15 }
         else if (pr.quoi === 'sommet') p = f.type === 'cercle' ? { x: f.x, y: f.y } : sommetsDe(f)[pr.i]
         if (p) {
-          c.fillStyle = 'rgba(59, 111, 182, 0.16)'; c.strokeStyle = '#3b6fb6'; c.lineWidth = 2 / cam.z
+          c.fillStyle = 'rgba(59, 111, 182, 0.16)'; c.strokeStyle = '#3b6fb6'; c.lineWidth = (this.contraste ? 3 : 2) / cam.z
           c.beginPath(); c.arc(p.x, p.y, r, 0, Math.PI * 2); c.fill(); c.stroke()
         }
       }
     }
     if (this.cadreSelection) {
       const r = this.cadreSelection
-      c.fillStyle = 'rgba(59, 111, 182, 0.08)'; c.strokeStyle = '#3b6fb6'; c.lineWidth = 1 / cam.z
+      c.fillStyle = 'rgba(59, 111, 182, 0.08)'; c.strokeStyle = '#3b6fb6'; c.lineWidth = (this.contraste ? 2.5 : 1) / cam.z
       c.fillRect(r.x, r.y, r.l, r.h); c.strokeRect(r.x, r.y, r.l, r.h)
     }
     // Le lasso : un chemin fermé en tirets, sans animation (au vidéoprojecteur,
@@ -642,7 +1038,7 @@ export class Rendu {
     if (this.lasso && this.lasso.length >= 4) {
       const q = this.lasso
       c.save()
-      c.fillStyle = 'rgba(59, 111, 182, 0.08)'; c.strokeStyle = '#3b6fb6'; c.lineWidth = 1.5 / cam.z
+      c.fillStyle = 'rgba(59, 111, 182, 0.08)'; c.strokeStyle = '#3b6fb6'; c.lineWidth = (this.contraste ? 2.5 : 1.5) / cam.z
       c.setLineDash([6 / cam.z, 4 / cam.z]); c.lineJoin = 'round'
       c.beginPath(); c.moveTo(q[0], q[1])
       for (let i = 2; i < q.length; i += 2) c.lineTo(q[i], q[i + 1])
@@ -650,12 +1046,33 @@ export class Rendu {
       c.restore()
     }
     if (this.gomme) {
-      c.strokeStyle = 'rgba(27, 34, 48, 0.55)'; c.lineWidth = 1.5 / cam.z
+      c.strokeStyle = this.contraste ? 'rgba(27, 34, 48, 0.85)' : 'rgba(27, 34, 48, 0.55)'; c.lineWidth = (this.contraste ? 2.5 : 1.5) / cam.z
       c.beginPath(); c.arc(this.gomme.x, this.gomme.y, this.gomme.r, 0, Math.PI * 2); c.stroke()
     }
+    // Les cadres gris des objets verrouillés qu'on montre (ceux de leurs
+    // cadenas, à l'écran, viennent après) : autour de ce qu'on voit de
+    // l'objet, tourné avec une image ou une formule tournée (voir coinsVus)
+    const vus = cadenas.map(k => ecarterCoins(coinsVus(k.f, k.f.type === 'formule' ? this.boiteFormule(k.f) : this.boite(k.f)), k.cadre ? 6 / cam.z : 0))
+    cadenas.forEach((k, i) => {
+      if (!k.cadre) return
+      const q = vus[i]
+      c.beginPath(); c.moveTo(q[0].x, q[0].y)
+      for (let j = 1; j < q.length; j++) c.lineTo(q[j].x, q[j].y)
+      c.closePath()
+      this.filetSelection(c, '#5a6577', 1.5, [6, 4])
+    })
 
     // La mesure en cours (longueur, angle, rayon), près du pointeur
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
+    // Le cadenas : au coin haut droit de l'objet (de son cadre gris, quand
+    // il l'a), à taille d'écran constante. Une image ou une formule tournée :
+    // le coin de son rectangle tourné le plus en haut à droite, sur elle, et
+    // non celui de la boîte droite qui l'englobe (à 30°, une centaine de
+    // pixels plus loin, dans le vide : la vérification du lot 5)
+    for (const q of vus) {
+      const p = coinHautDroit(q), s = cam.versEcran(p.x, p.y)
+      dessinerCadenas(c, s.x, s.y)
+    }
     if (this.mesure) {
       const s = cam.versEcran(this.mesure.x, this.mesure.y)
       c.font = '700 14px "Atkinson Hyperlegible", system-ui, sans-serif'
@@ -667,6 +1084,51 @@ export class Rendu {
     }
   }
 
+  /** Le cadre de taille (lot 5, voir cadre.ts) : ses coins, des carrés
+   *  blancs (POIGNEE.dessin selon le pointeur) cernés du bleu de la
+   *  sélection, tournés avec lui ; les côtés d'une image, des barrettes ; et,
+   *  au bout d'un filet, la pastille ↻, exactement celle des instruments
+   *  (dessinerPastille). Ce qui est pris garde son cadre en tirets (lots 1
+   *  et 2) ; seul le cadre de plusieurs objets (ou d'un groupe) a son bord,
+   *  un trait plein fin, qui relie ses coins (sinon ils flotteraient autour
+   *  de rien), et pendant un geste (le cadre en tirets ne suit pas). Une
+   *  figure seule n'a que la pastille et son filet : ses sommets restent
+   *  ses poignées. */
+  private dessinerCadre(c: CanvasRenderingContext2D, v: CadreVu) {
+    const k = v.cadre, z = this.cam.z
+    c.save()
+    c.setLineDash([])
+    // (en contraste renforcé, le filet, le bord et les poignées plus marqués)
+    c.strokeStyle = '#3b6fb6'; c.lineWidth = (this.contraste ? 2.5 : 1.2) / z
+    c.beginPath(); c.moveTo(k.filet[0].x, k.filet[0].y); c.lineTo(k.filet[1].x, k.filet[1].y); c.stroke()
+    if (k.coins.length === 4) {
+      const q = k.coins
+      // (de l'épaisseur du cadre plein d'un groupe, dont il tient lieu)
+      if (this.selection.size > 1 || v.geste) {
+        c.beginPath(); q.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y))); c.closePath()
+        this.filetSelection(c, '#3b6fb6', 1.5)
+      }
+      const a = Math.atan2(q[1].y - q[0].y, q[1].x - q[0].x), d = POIGNEE.dessin[v.pointeur] / z
+      c.fillStyle = '#ffffff'; c.strokeStyle = '#3b6fb6'; c.lineWidth = this.filetPoignee / z
+      const poignee = (p: P, l: number, h: number, rond: number) => {
+        c.save(); c.translate(p.x, p.y); c.rotate(a)
+        c.beginPath(); c.roundRect(-l / 2, -h / 2, l, h, rond); c.fill(); c.stroke()
+        c.restore()
+      }
+      // Les côtés d'abord : un coin passe dessus si le cadre est petit
+      if (k.cotes) {
+        for (let i = 0; i < 4; i++) {
+          const m = { x: (q[i].x + q[(i + 1) % 4].x) / 2, y: (q[i].y + q[(i + 1) % 4].y) / 2 }
+          const long = 1.8 * d, court = 0.6 * d
+          poignee(m, i % 2 ? court : long, i % 2 ? long : court, court / 2)
+        }
+      }
+      for (const p of q) poignee(p, d, d, 1.5 / z)
+    }
+    dessinerPastille(c, k.pastille, z, v.geste === 'tourner', 'rotation', POIGNEE.pastille[v.pointeur], this.filetPoignee)
+    c.restore()
+  }
+
   private dessinerDirect(c: CanvasRenderingContext2D, t: TraitDirect) {
     if (t.pts.length < 3) return
     c.save()
@@ -676,9 +1138,11 @@ export class Rendu {
     c.restore()
   }
 
-  /** Boîte englobante d'une forme, en monde */
+  /** Boîte englobante d'une forme, en monde (une formule tournée : celle de
+   *  ses quatre coins tournés) : les cadres, la barre d'actions, Tout voir, la
+   *  place du menu complet */
   boite(f: Forme) {
-    if (f.type === 'formule') return this.boiteFormule(f)
+    if (f.type === 'formule') return englobante(f, this.boiteFormule(f))
     if (f.type === 'cercle') {
       const m = f.r + f.taille / 2 + (f.sommets ? 28 : 0)
       return { x: f.x - m, y: f.y - m, l: 2 * m, h: 2 * m }
@@ -707,6 +1171,39 @@ export class Rendu {
     const m = f.taille / 2
     return { x: f.x + x1 - m, y: f.y + y1 - m, l: x2 - x1 + 2 * m, h: y2 - y1 + 2 * m }
   }
+}
+
+/** Ce que dépasse, au plus, le dessin d'une figure ou d'un ancien segment de
+ *  sa boîte (monde) : ses noms déplacés (jusqu'à 70 unités de leur point,
+ *  plus leur demi-largeur), son codage, ses flèches. Le rectangle sale de la
+ *  gomme (voir Rendu.repeindreZone) repeint une figure qui en est aussi
+ *  près : en trop, elle ne coûte qu'un dessin ; en moins, son nom serait
+ *  coupé par le fond repeint. */
+const MARGE_DES_NOMS = 120
+
+/** Place le contexte (dans le repère du monde) dans celui d'une formule : son
+ *  coin (x, y), décalé de (dx, dy), en est l'origine, et ses axes tournent
+ *  avec elle ; rien d'autre sans rotation */
+function tournerFormule(c: CanvasRenderingContext2D, f: Formule, dx: number, dy: number) {
+  c.translate(f.x + dx, f.y + dy)
+  const r = rotationDe(f)
+  if (r) c.rotate(r)
+}
+
+/** Le cadenas d'un objet verrouillé, centré en (x, y) (pixels d'écran) : un
+ *  disque blanc de 11 px de rayon cerné du filet des barres (--filet), le
+ *  cadenas fermé dessus, du gris des libellés. Discret au vidéoprojecteur,
+ *  comme la barre d'actions : aucune couleur. */
+function dessinerCadenas(c: CanvasRenderingContext2D, x: number, y: number) {
+  c.save()
+  c.setLineDash([])
+  c.fillStyle = '#ffffff'; c.strokeStyle = '#d4dce8'; c.lineWidth = 1.5
+  c.beginPath(); c.arc(x, y, 11, 0, Math.PI * 2); c.fill(); c.stroke()
+  // L'anse (un arc ouvert vers le bas), puis le corps, plein
+  c.strokeStyle = '#5a6577'; c.fillStyle = '#5a6577'; c.lineWidth = 1.8; c.lineCap = 'round'
+  c.beginPath(); c.moveTo(x - 3.2, y - 0.5); c.lineTo(x - 3.2, y - 2.8); c.arc(x, y - 2.8, 3.2, Math.PI, 0); c.lineTo(x + 3.2, y - 0.5); c.stroke()
+  c.beginPath(); c.roundRect(x - 5, y - 0.8, 10, 7, 1.5); c.fill()
+  c.restore()
 }
 
 /** La marque d'un point, de demi-taille r */

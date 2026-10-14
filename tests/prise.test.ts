@@ -1,9 +1,15 @@
 // Ce que vise la sélection : la distance au tracé de chaque forme (épaisseur
 // déduite), ce qui a un intérieur (plein ou nu), et l'aire qui départage deux
 // intérieurs. Le choix entre plusieurs objets (le tracé le plus proche, puis
-// le plus petit intérieur) se vérifie dans le navigateur.
+// le plus petit intérieur), dans l'ordre où on les voit (lot 5 : une image
+// posée après un trait est peinte dessous et ne le cache pas ; une formule
+// ne cache pas ce qui est écrit sur elle), se vérifie ici (cibleParmi) et
+// dans le navigateur (lot2/M1-prise.mjs).
 import { describe, expect, it } from 'vitest'
-import { aireDe, dansImage, distanceAuTrace, interieur } from '../src/geometrie'
+import { aireDe, cacheAuDessus, cibleParmi, dansImage, distanceAuTrace, interieur } from '../src/geometrie'
+import type { Boite } from '../src/geometrie'
+import { ordreDAffichage } from '../src/ordre'
+import { boiteDe } from '../src/revoir/bobine'
 import type { Cercle, Forme, Formule, ImageForme, Polygone, Segment, Trait } from '../src/types'
 
 const base = { z: 1, auteur: 'moi' }
@@ -138,5 +144,55 @@ describe('l\'aire', () => {
     const grand: Forme = poly([0, 0, 1000, 0, 1000, 600, 0, 600])
     const petit: Forme = poly([400, 200, 500, 200, 450, 280])
     expect(aireDe(petit, null)).toBeLessThan(aireDe(grand, null))
+  })
+})
+
+describe('ce qu\'on prend parmi plusieurs objets : ce qu\'on voit (lot 5)', () => {
+  // Les formules se mesurent à l'écran : ici, une boîte fixe de 100 × 40
+  const boite = (f: Forme): Boite | null => f.type === 'formule' ? { x: f.x, y: f.y, l: 100, h: 40 } : boiteDe(f)
+  const prendre = (formes: Forme[], x: number, y: number, o: { morceau?: Forme } = {}) =>
+    cibleParmi(ordreDAffichage(formes), x, y, { zoom: 1, tolerance: 6, net: 6, dedans: true, boite, morceau: () => o.morceau ?? null })
+  const id = (f: Forme, z: number) => ({ ...f, id: f.id + z, z })
+
+  it('un soulignement écrit sur une formule se prend à 2 px ; la formule en son milieu', () => {
+    const fo = id({ ...formule, x: 100, y: 100 }, 1)
+    const sou = id(trait(100, 136, [0, 0, 0.5, 100, 0, 0.5], 4), 2)
+    expect(prendre([fo, sou], 150, 134)?.f.id).toBe(sou.id)
+    expect(prendre([fo, sou], 150, 134)?.par).toBe('trace')
+    expect(prendre([fo, sou], 150, 112)).toMatchObject({ f: { id: fo.id }, par: 'plein' })
+    // Écrit AVANT la formule (z plus petit), il se voit aussi à travers elle
+    const avant = id(trait(100, 136, [0, 0, 0.5, 100, 0, 0.5], 4), 0)
+    expect(prendre([avant, fo], 150, 134)?.f.id).toBe(avant.id)
+  })
+
+  it('une formule posée sur une image se prend par la formule ; l\'image, ailleurs', () => {
+    const im: ImageForme = { ...imageTournee(), id: 'im', z: 5, m: [1, 0, 0, 1], l: 400, h: 300 }
+    const fo = id({ ...formule, x: 100, y: 100 }, 1)
+    expect(prendre([im, fo], 150, 120)?.f.id).toBe(fo.id)
+    expect(prendre([im, fo], 300, 250)?.f.id).toBe('im')
+  })
+
+  it('une image posée après un trait : peinte dessous, elle ne le cache pas', () => {
+    const t = id(trait(50, 100, [0, 0, 0.5, 200, 0, 0.5], 4), 1)
+    const im: ImageForme = { ...imageTournee(), id: 'im', z: 9, m: [1, 0, 0, 1], l: 300, h: 200 }
+    expect(ordreDAffichage([t, im]).map(f => f.id)).toEqual(['im', t.id])
+    expect(prendre([t, im], 150, 101)).toMatchObject({ f: { id: t.id }, par: 'trace' })
+    expect(prendre([t, im], 150, 150)).toMatchObject({ f: { id: 'im' }, par: 'plein' })
+  })
+
+  it('une figure coloriée posée sur un trait le cache ; un morceau caché sous elle ne se prend pas', () => {
+    const t = id(trait(50, 50, [0, 0, 0.5, 200, 0, 0.5], 4), 1)
+    const tri = id(poly(TRIANGLE, { x: 40, y: 40 }), 2)
+    const plein = id(poly(CARRE, { x: 0, y: 0, fond: '#f00' }), 3)
+    expect(prendre([t, plein], 60, 51)?.f.id).toBe(plein.id)
+    // Sous l'écriture (z plus petit), elle ne la cache pas
+    expect(prendre([id(plein, 0), t], 60, 51)?.f.id).toBe(t.id)
+    // Le sommet (40, 40) du triangle, sous le carré colorié : c'est le carré
+    expect(prendre([tri, plein], 40, 40, { morceau: tri })?.f.id).toBe(plein.id)
+    expect(prendre([plein, id(tri, 4)], 40, 40, { morceau: id(tri, 4) })?.f.id).toBe(tri.id + 4)
+    // Le clic droit : une formule au-dessus ne cache pas le morceau, un plein si
+    const fo = id({ ...formule, x: 0, y: 0 }, 6)
+    expect(cacheAuDessus(ordreDAffichage([tri, fo]), 0, 40, 40, boite)).toBe(false)
+    expect(cacheAuDessus(ordreDAffichage([tri, plein]), 0, 40, 40, boite)).toBe(true)
   })
 })

@@ -50,8 +50,29 @@ const CAPTURE = 400
  *  un geste pour le découpage en séances : ranger après le cours ne fait pas
  *  une séance (que Publier choisirait d'office), ranger entre deux cours ne
  *  les réunit pas. Le fond changé par la barre du haut, devant la classe, en
- *  reste un. Facultative comme les deux autres. */
-export interface Etape { t: number; page: string; s: Uint8Array; ms?: number[]; seulOrdre?: true; naissance?: true; rangement?: true }
+ *  reste un. Facultative comme les deux autres.
+ *  reglage (lot 5) : l'étape ne change rien à l'image (verrouiller,
+ *  déverrouiller, grouper, dégrouper : voir modifier). C'est une étape de la
+ *  pile d'annulation de sa page et une étape du film, mais ni un geste de la
+ *  revue, ni un geste d'une séance (verrouiller l'énoncé le lendemain, en
+ *  préparant, ne fait pas une séance que Publier choisirait d'office ;
+ *  verrouiller entre deux cours ne les réunit pas), ni une étape du film
+ *  élève (son changement part avec le geste visible suivant de sa page).
+ *  Ctrl+Z et Ctrl+Y d'un réglage en sont un aussi (voir annulationDe).
+ *  Fixer une image en fond, la détacher, l'ordre, la taille et la rotation se
+ *  voient : ce sont des gestes, sans note. Facultative comme les autres : un
+ *  tableau d'avant n'en a pas, un lecteur d'avant l'ignore.
+ *  coupe (lot 5) : l'étape coupe un trait à la gomme qui efface là où elle
+ *  passe (voir couperTraits) : une étape par trait touché, comme la gomme au
+ *  trait entier fait partir les traits un à un. La revue et le lecteur font
+ *  paraître ses morceaux d'un coup, sans réinventer leur écriture (le plus
+ *  long garde l'identifiant du trait : un lecteur d'avant, qui ignore la
+ *  note, ne redessine que les petits morceaux, à vitesse de plume). Le film
+ *  élève la garde (EtapeFilm.coupe). Facultative aussi. */
+export interface Etape { t: number; page: string; s: Uint8Array; ms?: number[]; seulOrdre?: true; naissance?: true; rangement?: true; reglage?: true; coupe?: true }
+
+/** Ce qu'une transaction peut faire noter à son étape du film (voir Etape) */
+type Note = 'naissance' | 'rangement' | 'reglage' | 'coupe'
 
 /** L'entrée d'une page dans la corbeille (voir Tableau.corbeille). t : quand
  *  elle a quitté l'ordre (Date.now()) ; apres : la page qui la précédait
@@ -93,6 +114,9 @@ interface Envoi {
 interface CopieRecue { de: string; n: number }
 const META_ENVOI = 'envoi'
 const META_COPIE = 'envoi-copie'
+/** La méta d'une étape de pile faite d'un réglage seulement (voir Etape et
+ *  annulationDe) : la défaire ou la refaire ne change pas plus l'image */
+const META_REGLAGE = 'reglage'
 
 /** Ce que rend Tableau.annuler : {} pour un geste ordinaire défait ; page :
  *  la page jetée depuis celle-ci qui revient ; copie et retour : la copie
@@ -239,8 +263,9 @@ export class Tableau {
   private derniereHeure = 0
   /** Ce que l'étape de la transaction en cours note (voir Etape) : la
    *  naissance d'une page (ajouterPage, dupliquerPage), un rangement de la
-   *  trieuse (changerFond) ; null, rien */
-  private noteDeLEtape: 'naissance' | 'rangement' | null = null
+   *  trieuse (changerFond), un réglage (modifier, remplacer), une coupe de
+   *  la gomme partielle (couperTraits) ; null, rien */
+  private noteDeLEtape: Note | null = null
 
   /** nomLocal : la base du navigateur où le tableau s'enregistre (null : nulle part, pour les tests) */
   constructor(nomLocal: string | null) {
@@ -275,6 +300,15 @@ export class Tableau {
       // corbeille écrite avec le retrait n'en est pas un.
       if (touches.every(x => x === this.ordre)) etape.seulOrdre = true
       else if (this.noteDeLEtape) etape[this.noteDeLEtape] = true
+      // Ctrl+Z ou Ctrl+Y d'un réglage (déverrouiller ce qu'on vient de
+      // verrouiller, défaire un groupement) n'est pas plus un geste que le
+      // réglage lui-même : sinon le lendemain d'un cours, verrouiller puis se
+      // raviser ferait une séance d'un geste vide que Publier choisirait
+      // d'office. Pendant l'annulation, la pile tient l'étape qu'elle défait
+      // ou refait (currStackItem) : c'est elle qui porte la note (voir
+      // annulationDe), et non la première de la pile, que Yjs saute quand
+      // elle n'a plus d'effet.
+      else if (tr.origin instanceof Y.UndoManager && tr.origin.currStackItem?.meta.get(META_REGLAGE)) etape.reglage = true
       this.heureDuTrace = null
       queueMicrotask(() => this.doc.transact(() => this.film.push([etape]), ORIGINE_FILM))
     })
@@ -1058,15 +1092,90 @@ export class Tableau {
     try { this.poser(page, trait) } finally { this.tempsDuTrace = null; this.heureDuTrace = null }
   }
 
-  modifier(page: string, changements: { id: string; patch: Partial<Forme> }[]) {
+  /** Change quelques champs de formes de la page, en UNE transaction locale
+   *  (une étape de la pile de la page). Le patch se fond dans la forme : une
+   *  clé absente du patch garde sa valeur. Une clé du patch qui vaut
+   *  undefined, elle, quitte la forme (déverrouiller, dégrouper, détacher
+   *  une image du fond ; revenir d'une droite au segment, prolonge:
+   *  undefined) : elle n'y reste pas avec une valeur vide, et Ctrl+Z la rend.
+   *  note : 'reglage' pour ce qui ne change rien à l'image (verrou, groupe :
+   *  voir Etape), posée sur l'étape de cette transaction seulement. */
+  modifier(page: string, changements: { id: string; patch: Partial<Forme> }[], o: { note?: 'reglage' } = {}) {
     const formes = this.formesDe(page); if (!formes) return
     this.annulationDe(page)
-    this.doc.transact(() => {
+    this.avecNote(o.note, () => this.doc.transact(() => {
       for (const { id, patch } of changements) {
         const f = formes.get(id)
-        if (f) formes.set(id, { ...f, ...patch } as Forme)
+        if (!f) continue
+        const g = { ...f, ...patch } as Record<string, unknown>
+        for (const [k, v] of Object.entries(patch)) if (v === undefined) delete g[k]
+        formes.set(id, g as unknown as Forme)
       }
-    }, ORIGINE_LOCALE)
+    }, ORIGINE_LOCALE))
+  }
+
+  /** Écrit des formes ENTIÈRES, telles quelles, à la place de celles de même
+   *  identifiant sur la page, en UNE transaction locale (une étape de la pile
+   *  de la page). modifier fond un patch dans la forme : une clé absente du
+   *  patch y garde son ancienne valeur (une formule « redressée » par
+   *  modifier sans sa rotation resterait tournée : la critique du lot 5 l'a
+   *  vérifié). remplacer écrit tout : une clé absente de la forme neuve, ou
+   *  qui y vaut undefined, n'existe plus après, et Ctrl+Z la rend. C'est ce
+   *  qu'il faut à une forme transformée par le cadre de taille ou la pastille
+   *  ↻, à « Remettre droit », au trait coupé par la gomme partielle. Une forme
+   *  dont l'identifiant n'est pas sur la page est ignorée (rien ne naît
+   *  ici : poser et poserPlusieurs posent). note : voir Etape ('reglage',
+   *  'coupe'), posée sur l'étape de cette transaction seulement. */
+  remplacer(page: string, formes: Forme[], o: { note?: 'reglage' | 'coupe' } = {}) {
+    const carte = this.formesDe(page); if (!carte) return
+    const presentes = formes.filter(f => carte.has(f.id))
+    if (!presentes.length) return
+    this.annulationDe(page)
+    this.avecNote(o.note, () => this.doc.transact(() => {
+      for (const f of presentes) {
+        const g = { ...f } as Record<string, unknown>
+        for (const k of Object.keys(g)) if (g[k] === undefined) delete g[k]
+        carte.set(f.id, g as unknown as Forme)
+      }
+    }, ORIGINE_LOCALE))
+  }
+
+  /** La gomme qui efface là où elle passe (lot 5, voir gomme.ts) coupe des
+   *  traits : pour chacun, ses morceaux (vide : il part en entier). En UNE
+   *  transaction locale (une étape de la pile de la page ; un coup de gomme
+   *  en fait plusieurs, que gesteLong réunit en une), notée « coupe » dans
+   *  le film (voir Etape) : le replay fait paraître ses morceaux d'un coup,
+   *  sans réinventer leur écriture. Le morceau qui porte l'identifiant du
+   *  trait (le plus long, voir couperTrait ; à défaut, le premier) prend sa
+   *  place, ENTIER (comme remplacer : une clé qui n'y est plus disparaît) ;
+   *  les autres sont posés, sous le leur. Un trait qui n'est plus sur la
+   *  page est ignoré. */
+  couperTraits(page: string, l: { id: string; morceaux: Trait[] }[]) {
+    const carte = this.formesDe(page); if (!carte) return
+    const presents = l.filter(x => carte.has(x.id))
+    if (!presents.length) return
+    this.annulationDe(page)
+    this.avecNote('coupe', () => this.doc.transact(() => {
+      for (const { id, morceaux } of presents) {
+        if (!morceaux.length) { carte.delete(id); continue }
+        const garde = Math.max(0, morceaux.findIndex(m => m.id === id))
+        morceaux.forEach((m, k) => {
+          const g = { ...m, id: k === garde ? id : m.id } as Record<string, unknown>
+          for (const c of Object.keys(g)) if (g[c] === undefined) delete g[c]
+          carte.set(g.id as string, g as unknown as Forme)
+        })
+      }
+    }, ORIGINE_LOCALE))
+  }
+
+  /** Fait noter `note` à l'étape du film des transactions de f, et à elles
+   *  seules (la note retombe ensuite, même si f lève une exception). Une
+   *  transaction ouverte AUTOUR de f la perdrait : elle finit après. */
+  private avecNote<T>(note: Note | undefined, f: () => T): T {
+    if (!note) return f()
+    const avant = this.noteDeLEtape
+    this.noteDeLEtape = note
+    try { return f() } finally { this.noteDeLEtape = avant }
   }
 
   supprimer(page: string, ids: Iterable<string>) {
@@ -1389,7 +1498,19 @@ export class Tableau {
     deja?.destroy()
     const u = new Y.UndoManager(p, { trackedOrigins: new Set([ORIGINE_LOCALE]), captureTimeout: this.capture })
     const prevenir = () => this.onPiles?.()
-    u.on('stack-item-added', prevenir)
+    // La note « reglage » suit l'étape de pile (voir Etape) : posée sur
+    // l'étape d'un réglage (la transaction finit pendant avecNote), elle
+    // passe sur celle que Yjs pousse dans l'autre pile quand on la défait ou
+    // la refait (il ne recopie pas la méta), pour que Ctrl+Z et Ctrl+Y d'un
+    // réglage n'en fassent pas un geste du film. Un geste visible que la
+    // fenêtre de capture fond dans l'étape d'un réglage lui ôte la note :
+    // défaire le tout se voit.
+    u.on('stack-item-added', (ev: { stackItem: EtapeDePile; origin: unknown }) => {
+      const source = ev.origin === u ? u.currStackItem : null
+      if (source ? source.meta.get(META_REGLAGE) : this.noteDeLEtape === 'reglage') ev.stackItem.meta.set(META_REGLAGE, true)
+      prevenir()
+    })
+    u.on('stack-item-updated', (ev: { stackItem: EtapeDePile }) => { if (this.noteDeLEtape !== 'reglage') ev.stackItem.meta.delete(META_REGLAGE) })
     u.on('stack-item-popped', prevenir)
     u.on('stack-cleared', prevenir)
     this.piles.set(page, u)

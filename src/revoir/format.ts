@@ -12,8 +12,16 @@
 // La version ne monte que le jour où un champ qui existe change de sens : un
 // lecteur refuse une version plus récente que la sienne. Les ajouts sont
 // facultatifs et gardent la version 1 (le rythme de la main, ms ; les
-// instruments, inst, apres, instruments et avant) : un lecteur plus ancien
-// les ignore et rejoue le film comme avant, sans planter.
+// instruments, inst, apres, instruments et avant ; depuis le lot 5, dans les
+// formes, le verrou, la fixation en fond, le groupe et la rotation d'une
+// formule) : un lecteur plus ancien les ignore et rejoue le film comme avant,
+// sans planter (une image fixée, rangée sous les autres par son rang, y reste
+// dessous ; une formule tournée y paraît droite) ; et, dans les gestes, la
+// coupe d'un trait par la gomme qui efface là où elle passe (coupe : voir
+// EtapeFilm). Les étapes « réglage » du
+// tableau (verrouiller, grouper : voir document.ts, Etape) ne sont pas des
+// gestes du film élève : leur changement part avec le geste visible suivant
+// de leur page.
 // =============================================================
 import type { Fond, Forme } from '../types'
 import type { Morceau } from './instruments-film'
@@ -37,7 +45,12 @@ export const DEBUT_TABLEAU = '{"format":"mem-tableau"'
 export type Op = ['=', Forme] | ['-', string] | ['f', Fond, number, number] | ['x']
 
 /** Un geste du film : son écart avec le précédent (ms), la page où il a
- *  lieu, et ce qu'il change. ms : si le geste pose un trait tracé à la main,
+ *  lieu, et ce qu'il change. coupe (lot 5) : le geste coupe un trait à la
+ *  gomme qui efface là où elle passe ; le plus long morceau garde
+ *  l'identifiant du trait (il change), les autres sont neufs (ils
+ *  apparaissent) ; le lecteur les montre d'un coup, sans réinventer leur
+ *  écriture (un lecteur d'avant, qui ignore ce champ, dessine les morceaux
+ *  neufs à vitesse de plume, sans planter). ms : si le geste pose un trait tracé à la main,
  *  le temps passé sur chacun de ses points, jusqu'au lever (voir
  *  main-levee.ts). inst : ce que les instruments ont fait sur cette page
  *  depuis l'image d'avant (t : ms depuis elle, de 0 à dt ; voir
@@ -46,7 +59,7 @@ export type Op = ['=', Forme] | ['-', string] | ['f', Fond, number, number] | ['
  *  qu'on la quitte (t : ms depuis la fin de inst, c'est-à-dire depuis dt).
  *  Facultatifs : un film sans eux, ou un lecteur qui les ignore, rejoue le
  *  geste comme avant. */
-export interface EtapeFilm { dt: number; p: string; o: Op[]; ms?: number[]; inst?: Morceau[]; apres?: Morceau[] }
+export interface EtapeFilm { dt: number; p: string; o: Op[]; ms?: number[]; inst?: Morceau[]; apres?: Morceau[]; coupe?: true }
 
 /** L'état d'une page au début du film */
 export interface PageFilm { id: string; fond: Fond; origine: { x: number; y: number }; formes: Forme[] }

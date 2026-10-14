@@ -111,28 +111,30 @@ export function etapesDe(lecture: Pick<LectureSeule, 'film' | 'deLaPage'>, p: Po
 }
 
 /** Une séance concerne-t-elle une page ? Oui si l'on y a vu la page, ou si
- *  l'une de ses étapes (hors celles qui ne changent que l'ordre) est de
- *  l'histoire de la page : la séance où l'on a construit l'original d'une
- *  copie concerne aussi la copie. Sans copie dans le film, rien à parcourir. */
+ *  l'une de ses étapes (hors celles qui ne changent que l'ordre, et les
+ *  réglages, qui ne changent rien à l'image) est de l'histoire de la page :
+ *  la séance où l'on a construit l'original d'une copie concerne aussi la
+ *  copie. Sans copie dans le film, rien à parcourir. */
 export function seanceTouche(lecture: Pick<LectureSeule, 'film' | 'deLaPage' | 'copies'>, s: Seance, page: string): boolean {
   if (s.pages.includes(page)) return true
   if (!lecture.copies) return false
   for (let i = s.de; i <= s.a; i++) {
     const e = lecture.film[i]
-    if (e && !e.seulOrdre && e.page !== page && lecture.deLaPage(i, page)) return true
+    if (e && !e.seulOrdre && !e.reglage && e.page !== page && lecture.deLaPage(i, page)) return true
   }
   return false
 }
 
 /** Les séances où une page a reçu au moins un geste de son histoire, les
  *  plus récentes d'abord (sa naissance seule n'en est pas un, ni une étape
- *  qui ne change que l'ordre des pages : la jeter, la rendre) */
+ *  qui ne change que l'ordre des pages : la jeter, la rendre ; ni un
+ *  réglage : la verrouiller) */
 export function seancesDeLaPage(lecture: Pick<LectureSeule, 'film' | 'naissance' | 'deLaPage' | 'copies'>, seances: readonly Seance[], page: string): Seance[] {
   return seances.filter(s => {
     if (!seanceTouche(lecture, s, page)) return false
     for (let i = s.de; i <= s.a; i++) {
       const e = lecture.film[i]
-      if (e && !e.seulOrdre && lecture.deLaPage(i, page) && !lecture.naissance(i)) return true
+      if (e && !e.seulOrdre && !e.reglage && lecture.deLaPage(i, page) && !lecture.naissance(i)) return true
     }
     return false
   })
@@ -166,9 +168,11 @@ function gestesMontres(lecture: LectureSeule, p: Portion): { etapes: number[]; p
   // page qui naît ne montre rien non plus : sa naissance n'est pas une image.
   // On retient seulement que la page est neuve (voir les parties, plus bas).
   // La naissance d'une copie non plus : elle continue la page d'où elle vient.
+  // Un réglage (lot 5 : verrouiller, déverrouiller, grouper, dégrouper, voir
+  // Etape) ne montre rien non plus, comme une étape qui ne change que l'ordre.
   const neuves = new Set<string>()
   const toutes = etapesDe(lecture, p).filter(i => {
-    if (film[i].seulOrdre) return false
+    if (film[i].seulOrdre || film[i].reglage) return false
     if (!lecture.naissance(i)) return true
     neuves.add(p.page ?? film[i].page)
     return false

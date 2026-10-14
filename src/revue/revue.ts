@@ -301,6 +301,10 @@ export class RevueEnClasse {
       r.pixels = src => this.pixels(src)
       r.rendreFormule = (latex, e) => katex.render(latex, e, { throwOnError: false, displayMode: false })
     }
+    // Le contraste renforcé de l'écran du professeur (lot 5) : la revue se
+    // montre en classe, au vidéoprojecteur, comme le tableau (relu à chaque
+    // ouverture : le réglage a pu changer depuis la précédente)
+    this.rendu.contraste = app.rendu.contraste
     window.addEventListener('keydown', this.surTouche, true)
     window.addEventListener('keyup', this.surRelache, true)
 
@@ -466,9 +470,12 @@ export class RevueEnClasse {
     const geste = tracer ? b.manips?.[j] ?? null : null
     // Ensuite, sans trait à la main, les figures neuves se dessinent sous les yeux.
     // Ce qui revient (Ctrl+Z, Ctrl+Y) revient d'un coup, comme à l’écran, et ce
-    // qu'on vient de voir se tracer sous un instrument ne se retrace pas
+    // qu'on vient de voir se tracer sous un instrument ne se retrace pas. Les
+    // morceaux d'un trait que la gomme coupe (lot 5 : une étape « coupe »,
+    // voir Etape) paraissent d'un coup : ils ont été écrits bien avant, on ne
+    // réinvente pas leur écriture
     let esquisses: Forme[] = [], esquisse = 0
-    if (tracer && !main && !this.reduit.matches) {
+    if (tracer && !main && !this.reduit.matches && !(voisine && this.coupeEntre(voisine.e, img.e))) {
       const dessinees = apparues.filter(f => seDessine(f) && !(geste && (f.type === 'cercle' || f.type === 'polygone') && dejaTracee(f, geste.traces)))
       esquisses = voisine && dessinees.length ? this.planches!.neuves(voisine, dessinees) : []
       if (esquisses.length) {
@@ -502,6 +509,13 @@ export class RevueEnClasse {
     }
     this.peindre()
     this.majCommandes()
+  }
+
+  /** Une étape « coupe » (la gomme qui efface là où elle passe) entre les
+   *  étapes de et a du film (de exclue) ? */
+  private coupeEntre(de: number, a: number): boolean {
+    for (let i = Math.max(0, de + 1); i <= a; i++) if (this.film[i]?.coupe) return true
+    return false
   }
 
   /** Le trait que l'image trace à la main, retrouvé dans les planches : celui

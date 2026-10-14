@@ -8,11 +8,20 @@
 
 export const CM = 40
 
-export type Fond = 'blanc' | 'carreaux' | 'seyes' | 'repere'
+/** Le fond d'une page. Les quatre derniers sont du lot 5 : des valeurs
+ *  nouvelles d'un champ qui existait ; une version d'avant, ou un lecteur
+ *  élève d'avant, ne les connaît pas et peint alors le papier blanc seul,
+ *  sans erreur (aucun fond n'est validé à la lecture, voir fonds.ts). */
+export type Fond = 'blanc' | 'carreaux' | 'seyes' | 'repere' | 'grands-carreaux' | 'millimetre' | 'pointe' | 'iso'
+/** Les fonds, dans l'ordre des menus (la barre du haut, la trieuse) */
 export const FONDS: { id: Fond; nom: string }[] = [
   { id: 'blanc', nom: 'Page blanche' },
   { id: 'carreaux', nom: 'Petits carreaux' },
+  { id: 'grands-carreaux', nom: 'Grands carreaux (1 cm)' },
   { id: 'seyes', nom: 'Seyès' },
+  { id: 'millimetre', nom: 'Papier millimétré' },
+  { id: 'pointe', nom: 'Papier pointé' },
+  { id: 'iso', nom: 'Réseau isométrique' },
   { id: 'repere', nom: 'Repère' },
 ]
 
@@ -27,7 +36,28 @@ interface Base {
   y: number
   z: number          // ordre d'empilement (horodatage)
   auteur: string     // identifiant du client qui l'a posée
+  /** Verrouillé (lot 5) : l'objet ne bouge plus et ne se prend plus, ni au
+   *  clic, ni au cadre, ni au lasso, ni à la gomme ; seul son menu (clic
+   *  droit, bouton du stylet, appui long) s'ouvre encore, pour le
+   *  déverrouiller. Absent : libre, comme avant. */
+  verrou?: true
+  /** Fixé en fond (lot 5) : une image qui passe sous tout le reste et ne se
+   *  prend plus du tout ; on écrit et on entoure par-dessus, la gomme ne
+   *  l'efface pas, et c'est le menu de la page qui la détache. N'a de sens
+   *  que pour une image (ailleurs, la liste blanche du presse-papiers le
+   *  jette). */
+  fixe?: true
+  /** Le groupe (lot 5) : les formes d'une page qui portent le même
+   *  identifiant, au moins deux et dans le même état (libres, ou non), se
+   *  prennent, se déplacent et se copient ensemble. Un seul niveau : grouper
+   *  des groupes les fond en un. Un groupe ne vaut que sur sa page. */
+  groupe?: string
 }
+
+// Ces trois champs, comme la rotation d'une formule, sont FACULTATIFS : un
+// tableau d'avant le lot 5 n'en a pas, et la version d'avant (fdf3f72) les
+// ignore sans dommage (un objet verrouillé s'y déplace, une formule tournée
+// y paraît droite). Aucun ne change le sens d'un champ qui existe.
 
 /** Tracé à main levée : points relatifs à (x, y), à plat [x, y, pression, …] */
 export interface Trait extends Base {
@@ -107,6 +137,13 @@ export interface Formule extends Base {
   latex: string
   couleur: string
   taille: number      // taille de police en unités monde
+  /** La formule tournée (lot 5), en radians, dans le sens de ctx.rotate
+   *  (horaire à l'écran), autour de son coin (x, y) : sa place ne dépend que
+   *  de (x, y) et de l'angle, jamais de la mesure de KaTeX. Absent : 0. Une
+   *  formule seule garde sa rotation dans un champ (le texte reste vectoriel,
+   *  net à tout zoom) ; tout le reste « cuit » la sienne dans ses
+   *  coordonnées. */
+  rotation?: number
 }
 
 /** Image importée. Le coin (x, y) et la matrice m = [a, b, c, d] placent le
@@ -124,6 +161,9 @@ export interface ImageForme extends Base {
 
 export type Forme = Trait | Segment | Formule | Polygone | Cercle | ImageForme
 export type Figure = Polygone | Cercle
+
+/** Ce qui se prend, se gomme, se pousse : un objet ni verrouillé ni fixé en fond */
+export function libre(f: Forme): boolean { return !f.verrou && !f.fixe }
 
 export function uid(): string {
   // crypto.randomUUID n'existe pas en http:// sur le réseau local de la classe

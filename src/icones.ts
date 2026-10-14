@@ -73,6 +73,9 @@ export const ICONES: Record<string, string> = {
   trier: 'M7 4v16M4 17l3 3 3-3M13 6h8M13 11h6M13 16h4',
   // Ouvrir un classeur ou une bibliothèque (lot 4 C9) : un dossier et une flèche qui en sort
   ouvrir: 'M3 7a2 2 0 012-2h4l2 2.5h8a2 2 0 012 2V18a2 2 0 01-2 2H5a2 2 0 01-2-2zM12 17.5v-7M9 13.5l3-3 3 3',
+  // Verrouillé (lot 5), en tête du menu court d'un objet verrouillé : un
+  // cadenas fermé (son anse, son corps, le trou de la clé)
+  cadenas: 'M7.5 11V8a4.5 4.5 0 019 0v3M5 11h14v10H5zM12 15v2',
 }
 
 /** Le SVG d'une icône, caché aux lecteurs d'écran (le bouton porte son nom) */

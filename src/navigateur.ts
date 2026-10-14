@@ -16,6 +16,12 @@ export const MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(na
 /** La touche des raccourcis, comme le clavier la nomme */
 export const CTRL = MAC ? '⌘' : 'Ctrl'
 
+/** La mise en page du téléphone (lot 5, D16) : une fenêtre étroite, ou basse
+ *  sous le doigt (un téléphone en paysage). Écrite ici, une seule fois : les
+ *  noms sous les outils s'y éteignent (voir UI.majNomsOutils), et la mise en
+ *  page du téléphone la reprend. */
+export const TELEPHONE = '(max-width: 640px), (max-height: 500px) and (pointer: coarse)'
+
 /** Un appareil qu'on ne fait que toucher (ni souris, ni pavé, ni stylet :
  *  l'iPad, la tablette Android, le téléphone) n'a souvent pas de clavier :
  *  les textes y nomment l'entrée du menu plutôt que le raccourci. L'iPad
@@ -70,6 +76,21 @@ export function fenetreModaleOuverte(): boolean {
   return false
 }
 
+/** Les touches qui font quitter MEM ou ouvrent la recherche du navigateur
+ *  (lot 5, D3) : Alt + ← / → (Windows), ⌘ + ← / → (Mac) reviennent à la
+ *  page précédente du navigateur, ou vont à la suivante, en plein cours ;
+ *  Ctrl + ← / → n'y font rien d'utile hors d'un champ (à l’écran, elles
+ *  poussaient l'objet comme une flèche seule). Ctrl (⌘) + G, Maj compris :
+ *  grouper, dégrouper à l’écran, la recherche du navigateur ailleurs.
+ *  AltGr (Ctrl + Alt) + G n'en est pas : c'est une lettre. Hors des champs
+ *  et des fenêtres, on les empêche partout, à l’écran comme dans la revue,
+ *  la trieuse, la bibliothèque et la séance d'automatismes (voir
+ *  installerGardes) ; le tableau fait en plus son travail (App.clavier). */
+export function toucheQuitteLaPage(e: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey'>): boolean {
+  if ((e.ctrlKey || e.metaKey || e.altKey) && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return true
+  return (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'g'
+}
+
 /** La touche Menu du clavier, ou Maj + F10 : le menu contextuel au clavier
  *  (voir App.menuAuClavier). Sans Ctrl, ⌘ ni Alt. */
 export function toucheMenu(e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey' | 'metaKey' | 'altKey'>): boolean {
@@ -96,14 +117,25 @@ export function tableauCache(app: { enLecture: boolean }): boolean {
  *  déplacerait ce que la touche vient de prendre (tout ce que Ctrl + A a
  *  pris, la copie que Ctrl + V vient de poser), ou rien du tout (l'objet
  *  tenu que Suppr ou Ctrl + Z vient d'ôter), ou poserait sur une autre page
- *  ce qu'on écrit. Ctrl (⌘) + A, C, X, V, D, Z, Y (Maj compris), Suppr,
- *  Retour arrière, Page↑, Page↓ et la touche Menu ; les flèches quand
- *  quelque chose est sélectionné (elles le poussent). AltGr n'en fait pas
- *  des raccourcis. Les autres (Échap, Espace, Maj) gardent leur rôle. */
+ *  ce qu'on écrit. Ctrl (⌘) + A, C, X, V, D, Z, Y, G (Maj compris ; G :
+ *  grouper, dégrouper, lot 5), Suppr, Retour arrière, Page↑, Page↓ et la
+ *  touche Menu ; les flèches quand quelque chose est sélectionné (elles le
+ *  poussent), et Maj + L (lot 5 : elle verrouillerait l'objet qu'on
+ *  glisse). AltGr n'en fait pas des
+ *  raccourcis. Les autres (Échap, Espace, Maj) gardent leur rôle. */
 export function toucheTenueEnGeste(e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey' | 'metaKey' | 'altKey'>, selection: boolean): boolean {
-  if ((e.ctrlKey || e.metaKey) && !e.altKey && /^[acxdvzy]$/.test(e.key.toLowerCase())) return true
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && /^[acxdvzyg]$/.test(e.key.toLowerCase())) return true
   if (e.key === 'Delete' || e.key === 'Backspace' || e.key === 'PageUp' || e.key === 'PageDown' || toucheMenu(e)) return true
+  if (selection && toucheVerrou(e)) return true
   return selection && e.key.startsWith('Arrow')
+}
+
+/** Maj + L (lot 5, comme tldraw) : verrouiller ce qui est sélectionné, ou
+ *  le déverrouiller (son menu ouvert). La lettre par e.key, en AZERTY comme
+ *  en QWERTY ; ni avec Ctrl, ⌘ ou Alt. L seul reste le Segment (et Maj + L
+ *  sans rien de sélectionné aussi, comme avant). */
+export function toucheVerrou(e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey' | 'metaKey' | 'altKey'>): boolean {
+  return e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'l'
 }
 
 /** Un cran au plus ×1,1 par événement : exp(−0,01 · d) avec d borné */
@@ -156,6 +188,20 @@ export function installerGardes(app: App) {
     if (toucheRecharger(e)) {
       e.preventDefault()
       app.ui.message(`F5 ne recharge pas MEM teachingtool pendant le cours (les télécommandes l'envoient). Pour recharger la page : ${CTRL}+R.`)
+      return
+    }
+    // Alt + ← (⌘ + ← sur Mac) et Ctrl + G (voir toucheQuitteLaPage) : ici
+    // plutôt que dans chaque écran, parce que la revue, la trieuse et la
+    // bibliothèque arrêtent en capture ce qu'elles reçoivent (App.clavier,
+    // qui les empêche à l’écran, ne les voyait pas : la vérification du
+    // lot 5, Alt + ← dans la revue quittait MEM). Les mêmes exceptions
+    // qu'à l’écran : un champ de saisie (Ctrl + ← y va de mot en mot, ⌘ + ←
+    // au début de la ligne), une fenêtre. On empêche seulement : chaque
+    // écran fait ensuite ce qu'il fait de la touche (la trieuse déplace une
+    // page par Ctrl + Maj + ← / →, le tableau groupe par Ctrl + G).
+    if (toucheQuitteLaPage(e)) {
+      const cible = e.target as Element | null
+      if (!cible?.closest?.('input, textarea, select, [contenteditable], dialog') && !fenetreModaleOuverte()) e.preventDefault()
     }
   }, true)
 

@@ -20,10 +20,8 @@
 // libellés gris, aucune couleur vive.
 // =============================================================
 import type { App } from './app'
-import type { Forme } from './types'
 import type { TypePointeur } from './pointeurs'
 import { DOUBLE_TOUCHER, ecranTactile, titreModifierFormule } from './pointeurs'
-import type { Boite } from './revoir/bobine'
 import { CTRL } from './navigateur'
 import { icone } from './icones'
 import { menuOuvert, quandMenuChange } from './menus'
@@ -88,6 +86,9 @@ export interface EtatBarre {
   outilSelection: boolean
   /** Le doigt qui « déplace » vient de toucher */
   doigtQuiDeplace: boolean
+  /** La sélection contient ce qui ne se prend pas (lot 5 : un objet
+   *  verrouillé, sélectionné le temps de son menu court) */
+  protege?: boolean
 }
 
 /** La barre se montre-t-elle ? Il faut tout : quelque chose de sélectionné,
@@ -97,9 +98,11 @@ export interface EtatBarre {
  *  fois), rien qui bouge, ni revue, ni placement, ni séance d'automatismes,
  *  ni fenêtre ouverte ; et l'outil Sélection en main, ou le doigt qui
  *  « déplace » qui vient de toucher. Sous un outil de dessin, à la souris
- *  ou au stylet, jamais. */
+ *  ou au stylet, jamais. Jamais sur ce qui est verrouillé (lot 5) : il n'est
+ *  sélectionné que le temps de son menu court, qui a ce qu'il lui faut (la
+ *  double garde : le menu fermé, la sélection se vide d'elle-même). */
 export function barreVisible(e: EtatBarre): boolean {
-  if (!e.pris || e.partie || e.options || e.menu) return false
+  if (!e.pris || e.partie || e.options || e.menu || e.protege) return false
   if (e.mouvement || e.lecture || e.placement || e.seance || e.fenetre) return false
   return e.outilSelection || e.doigtQuiDeplace
 }
@@ -179,18 +182,36 @@ export const ECART_DOIGT = 30
  *  - jamais à gauche du bord droit de la barre d'outils (bords.gauche, plus
  *    8 px), sauf si elle n'y tient pas (un téléphone) : elle passe alors
  *    devant, à 8 px du bord de la fenêtre au moins ;
- *  - toujours dans la fenêtre, à 8 px de ses bords. */
-export function placeBarre(objet: Rect, l: number, h: number, bords: { gauche: number; haut: number },
-  fenetre: { l: number; h: number }, ecart = ECART): { left: number; top: number; dessous: boolean } {
+ *  - toujours dans la fenêtre, à 8 px de ses bords ;
+ *  - jamais sur `eviter` (lot 5 : la pastille ↻ du cadre de taille). L'objet
+ *    comprend déjà le cadre et la pastille (voir App.emprise) : au-dessus
+ *    ou dessous, la barre ne la couvre pas. Mais posée en haut de la zone
+ *    libre (un objet aussi haut que l'écran), ou ramenée dans la fenêtre,
+ *    elle pourrait : elle passe alors à gauche ou à droite de la pastille
+ *    (au plus près de sa place), sinon juste dessous, sinon juste au-dessus.
+ *  bords.bas (lot 5, K10 : le téléphone en portrait) : le haut de la barre
+ *  des outils, posée en bas ; la barre d'actions reste au-dessus, comme du
+ *  bas de la fenêtre (sans lui, le bas de la fenêtre, comme avant). */
+export function placeBarre(objet: Rect, l: number, h: number, bords: { gauche: number; haut: number; bas?: number },
+  fenetre: { l: number; h: number }, ecart = ECART, eviter?: Rect): { left: number; top: number; dessous: boolean } {
+  const bas = Math.min(fenetre.h, bords.bas ?? fenetre.h)
   let top = objet.top - ecart - h, dessous = false
   if (top < bords.haut + MARGE) {
     top = objet.bottom + ecart; dessous = true
-    if (top + h > fenetre.h - MARGE) { top = bords.haut + MARGE; dessous = false }
+    if (top + h > bas - MARGE) { top = bords.haut + MARGE; dessous = false }
   }
-  top = Math.max(MARGE, Math.min(top, fenetre.h - h - MARGE))
+  top = Math.max(MARGE, Math.min(top, bas - h - MARGE))
   const droite = fenetre.l - l - MARGE
   const min = bords.gauche + MARGE <= droite ? bords.gauche + MARGE : MARGE
-  const left = Math.max(min, Math.min((objet.left + objet.right) / 2 - l / 2, droite))
+  let left = Math.max(min, Math.min((objet.left + objet.right) / 2 - l / 2, droite))
+  const couvre = (x: number, y: number) => !!eviter && x < eviter.right && x + l > eviter.left && y < eviter.bottom && y + h > eviter.top
+  if (eviter && couvre(left, top)) {
+    const cotes = [eviter.left - MARGE - l, eviter.right + MARGE].filter(x => x >= min && x <= droite)
+      .sort((a, b) => Math.abs(a - left) - Math.abs(b - left))
+    if (cotes.length) left = cotes[0]
+    else if (eviter.bottom + MARGE + h <= bas - MARGE) top = eviter.bottom + MARGE
+    else if (eviter.top - MARGE - h >= MARGE) top = eviter.top - MARGE - h
+  }
   return { left, top, dessous }
 }
 
@@ -206,8 +227,9 @@ export class BarreActions {
   private parue = 0
 
   /** bords : le bord droit de la barre d'outils et le bas de la barre du
-   *  haut (pixels de la fenêtre), que la barre ne recouvre pas */
-  constructor(private app: App, racine: HTMLElement, private bords: () => { gauche: number; haut: number }) {
+   *  haut (pixels de la fenêtre), que la barre ne recouvre pas ; au
+   *  téléphone en portrait, le haut de la barre du bas (lot 5, K10) */
+  constructor(private app: App, racine: HTMLElement, private bords: () => { gauche: number; haut: number; bas?: number }) {
     const el = this.el = document.createElement('div')
     el.className = 'barre-actions'
     el.setAttribute('role', 'toolbar')
@@ -233,6 +255,7 @@ export class BarreActions {
       seance: document.body.classList.contains('en-seance'),
       fenetre: !!document.querySelector('dialog[open]') || document.body.classList.contains('en-trieuse') || document.body.classList.contains('en-bibliotheque'),
       outilSelection: app.outil === 'selection', doigtQuiDeplace: app.doigtDeplace && app.dernierPointeur === 'touch',
+      protege: app.selectionProtegee(),
     })
   }
 
@@ -242,7 +265,8 @@ export class BarreActions {
     const app = this.app
     if (!this.visible()) { this.cacher(); return }
     const formes = app.objetsChoisis()
-    const b = this.boiteDe(formes)
+    // Ce qui est pris, son cadre de taille et sa pastille ↻ compris (lot 5)
+    const b = app.emprise(formes)
     if (!b) { this.cacher(); return }
     // Ce qui est pris, à l'écran ; hors de la vue, rien à montrer : on
     // n'agit pas sur ce qu'on ne voit pas
@@ -266,30 +290,16 @@ export class BarreActions {
     }
     if (this.el.hidden) { this.el.hidden = false; this.parue = performance.now() }
     const ecart = pointeur === 'touch' ? ECART_DOIGT : ECART
-    const p = placeBarre(objet, this.el.offsetWidth, this.el.offsetHeight, this.bords(), { l: window.innerWidth, h: window.innerHeight }, ecart)
+    const d = app.pastilleAEviter()
+    const pa = d && cam.versEcran(d.x, d.y), pb = d && cam.versEcran(d.x + d.l, d.y + d.h)
+    const eviter: Rect | undefined = pa && pb ? { left: z.left + pa.x, top: z.top + pa.y, right: z.left + pb.x, bottom: z.top + pb.y } : undefined
+    const p = placeBarre(objet, this.el.offsetWidth, this.el.offsetHeight, this.bords(), { l: window.innerWidth, h: window.innerHeight }, ecart, eviter)
     this.el.style.left = p.left + 'px'
     this.el.style.top = p.top + 'px'
   }
 
   private cacher() {
     if (!this.el.hidden) this.el.hidden = true
-  }
-
-  /** La boîte de ce qui est pris, en monde (avec les points liés à une image).
-   *  Une droite compte par ce qu'on en voit, pas par ses deux points : la
-   *  barre se pose au-dessus de la droite qu'on a sous les yeux. */
-  private boiteDe(formes: Forme[]): Boite | null {
-    const app = this.app
-    let b = app.boiteDuContenu(formes.filter(f => !(f.type === 'polygone' && f.prolonge)))
-    for (const f of formes) {
-      if (f.type !== 'polygone' || !f.prolonge) continue
-      const d = app.rendu.boite(f)
-      b = !b ? d : {
-        x: Math.min(b.x, d.x), y: Math.min(b.y, d.y),
-        l: Math.max(b.x + b.l, d.x + d.l) - Math.min(b.x, d.x), h: Math.max(b.y + b.h, d.y + d.h) - Math.min(b.y, d.y),
-      }
-    }
-    return b
   }
 
   private construire(actions: ActionBarre[]) {

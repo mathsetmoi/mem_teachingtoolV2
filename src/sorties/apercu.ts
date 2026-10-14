@@ -17,6 +17,7 @@ import { Camera } from '../camera'
 import { Rendu } from '../rendu'
 import { boiteDe } from '../revoir/bobine'
 import { placesDesNoms } from '../formes'
+import { englobante, rotationDe } from '../geometrie'
 import type { Boite } from '../revoir/bobine'
 import type { Cercle, Fond, Forme, Formule, Polygone } from '../types'
 import { ecrire, lire } from '../reglages'
@@ -45,6 +46,9 @@ export interface OptionsPeinture {
   /** Où commence la zone de l × h sur le canevas (px CSS ; (0, 0) sinon) :
    *  la caméra y est relative (voir Rendu.peindreSur) */
   coin?: { x: number; y: number }
+  /** La feuille d'un PDF : le fond y est peint pour le papier (voir
+   *  dessinerFond), pas pour un écran */
+  impression?: boolean
 }
 
 export class Apercus {
@@ -68,7 +72,8 @@ export class Apercus {
 
   /** La boîte de ce qui est écrit, dans le monde (null : rien). Une droite
    *  compte par ses deux points, comme App.boiteDuContenu ; une formule par
-   *  sa taille mesurée (estimée tant qu'elle ne l'est pas) ; une figure avec
+   *  sa taille mesurée (estimée tant qu'elle ne l'est pas ; tournée, par
+   *  l'englobante de ses coins) ; une figure avec
    *  les noms de ses points (voir boiteDesNoms) : l'image copiée et le PDF
    *  se cadrent dessus, et les coupes du PDF les évitent. */
   boite(formes: Iterable<Forme>): Boite | null {
@@ -78,7 +83,7 @@ export class Apercus {
       x1 = Math.min(x1, b.x); y1 = Math.min(y1, b.y); x2 = Math.max(x2, b.x + b.l); y2 = Math.max(y2, b.y + b.h)
     }
     for (const f of formes) {
-      ajouter(f.type === 'formule' ? { x: f.x, y: f.y, ...this.formules.taille(f) } : boiteDe(f))
+      ajouter(f.type === 'formule' ? englobante(f, { x: f.x, y: f.y, ...this.formules.taille(f) }) : boiteDe(f))
       if (f.type === 'polygone' || f.type === 'cercle') ajouter(boiteDesNoms(f))
     }
     return x1 === Infinity ? null : { x: x1, y: y1, l: x2 - x1, h: y2 - y1 }
@@ -162,12 +167,18 @@ export class Apercus {
     this.rendu.origine = page.origine
     const echelle = cam.z * o.dpr
     this.rendu.peindreSur(c, {
-      l: o.l, h: o.h, dpr: o.dpr, fond: o.fond, esquisse: o.esquisse, coin: o.coin,
+      l: o.l, h: o.h, dpr: o.dpr, fond: o.fond, esquisse: o.esquisse, coin: o.coin, impression: o.impression,
       formes: o.formes ?? page.formes,
       formule: (c, f) => {
         const t = this.formules.taille(f)
-        if (o.esquisse && t.h * echelle < FORMULE_LISIBLE) { rectangleGris(c, f, t); return }
-        if (!this.formules.peindre(c, f, echelle)) rectangleGris(c, f, t)
+        // Tournée (lot 5) : peinte en (0, 0) dans son propre repère (son coin,
+        // ses axes) ; FormulesSurCanevas ne la cale alors plus au pixel (il le
+        // voit à getTransform), ce qui ne vaut que pour une image droite
+        const r = rotationDe(f)
+        const g = r ? { ...f, x: 0, y: 0 } : f
+        if (r) { c.translate(f.x, f.y); c.rotate(r) }
+        if (o.esquisse && t.h * echelle < FORMULE_LISIBLE) { rectangleGris(c, g, t); return }
+        if (!this.formules.peindre(c, g, echelle)) rectangleGris(c, g, t)
       },
     })
   }

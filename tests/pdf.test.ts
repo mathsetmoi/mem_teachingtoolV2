@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest'
 import { unzlibSync } from 'fflate'
 import { A4, couleurHex, datePdf, ecrirePdf, imageIndexee, imageRvb, lignesPredites, palettiser, palettiserLignes, utf16 } from '../src/sorties/pdf'
 import type { Feuille } from '../src/sorties/pdf'
-import { DPR_PDF, MARGE_CONTENU, PPP, PX_PAR_MM, Z_REEL, dateDeFichier, decouper, listeNumeros, mettreEnPage, nomDuPdf, papier, piedDePage, texteFini, texteProgression, texteRien, titreDuPdf } from '../src/sorties/mise-en-page'
+import { DPR_PDF, MARGE_CONTENU, PPP, PX_PAR_MM, Z_REEL, dateDeFichier, decouper, listeNumeros, mettreEnPage, nomDuPdf, papier, piedDePage, texteCaseFond, texteFini, texteProgression, texteRien, titreDuPdf } from '../src/sorties/mise-en-page'
 
 /** Une image RVBA l × h faite d'un motif de quelques couleurs */
 function motif(l: number, h: number, couleurs: number[][]): Uint8ClampedArray {
@@ -555,5 +555,25 @@ describe('les textes de l\'export', () => {
     expect(texteRien('pages')).toBe('Rien à exporter : les pages choisies sont vides.')
     expect(texteRien('tout')).toBe('Rien à exporter : le classeur est vide.')
     expect(texteProgression(3, 12)).toBe('Export en PDF : feuille 3 sur 12…')
+  })
+
+  it('la case du fond nomme le fond de ce qu\'on exporte quand il n\'y en a qu\'un ; sinon, les sortes de fonds, dont celles du lot 5', () => {
+    // (avant : « Imprimer le fond de la page (carreaux, Seyès, repère) »,
+    // pour tous les fonds : le papier pointé ou le réseau isométrique n'y
+    // étaient pas nommés, on pouvait croire qu'ils ne s'imprimaient pas)
+    expect(texteCaseFond(['pointe'])).toBe('Imprimer le fond de la page : Papier pointé')
+    expect(texteCaseFond(['iso'])).toBe('Imprimer le fond de la page : Réseau isométrique')
+    expect(texteCaseFond(['millimetre'])).toBe('Imprimer le fond de la page : Papier millimétré')
+    expect(texteCaseFond(['grands-carreaux'])).toBe('Imprimer le fond de la page : Grands carreaux (1 cm)')
+    expect(texteCaseFond(['carreaux'])).toBe('Imprimer le fond de la page : Petits carreaux')
+    expect(texteCaseFond(['seyes', 'seyes', 'blanc'])).toBe('Imprimer le fond des pages : Seyès')
+    const plusieurs = 'Imprimer le fond des pages (carreaux, Seyès, millimétré, pointé, repère…)'
+    expect(texteCaseFond(['seyes', 'pointe'])).toBe(plusieurs)
+    expect(texteCaseFond(['blanc', 'blanc'])).toBe(plusieurs)
+    expect(texteCaseFond(['blanc'])).toBe('Imprimer le fond de la page (carreaux, Seyès, millimétré, pointé, repère…)')
+    // Un fond inconnu (d'une version plus récente) ne se nomme pas
+    expect(texteCaseFond(['papier-du-futur' as never])).toBe('Imprimer le fond de la page (carreaux, Seyès, millimétré, pointé, repère…)')
+    expect(texteCaseFond(['repere', 'papier-du-futur' as never])).toBe(plusieurs)
+    expect(texteCaseFond([])).toBe('Imprimer le fond de la page (carreaux, Seyès, millimétré, pointé, repère…)')
   })
 })

@@ -165,7 +165,7 @@ export function dessinerInstrument(c: CanvasRenderingContext2D, nom: NomInstrume
     if (nom === 'regle') graduerRegle(c, e, z)
     else if (nom === 'equerre') graduerEquerre(c, e, z)
     else graduerRapporteur(c, e, z)
-    poignee(c, poigneeRotation(nom, e), z, actif === 'rotation', 'rotation')
+    dessinerPastille(c, poigneeRotation(nom, e), z, actif === 'rotation', 'rotation')
   }
   c.restore()
 }
@@ -274,8 +274,8 @@ function dessinerCompas(c: CanvasRenderingContext2D, e: EtatInstrument, z: numbe
   c.beginPath(); c.arc(H.x, H.y, 0.35 * CM, 0, Math.PI * 2); c.fill()
   c.strokeStyle = '#5b6b82'; c.lineWidth = 0.22 * CM
   c.beginPath(); c.moveTo(H.x, H.y); c.lineTo(T.x, T.y); c.stroke()
-  poignee(c, T, z, actif === 'tete', 'tete')
-  poignee(c, M, z, actif === 'mine', 'mine')
+  dessinerPastille(c, T, z, actif === 'tete', 'tete')
+  dessinerPastille(c, M, z, actif === 'mine', 'mine')
   // Les deux points : un anneau rouge sous la pointe, un anneau bleu sous la mine
   for (const [B, teinte] of [[P, '#d0342c'], [M, '#1f5fbf']] as const) {
     c.beginPath(); c.arc(B.x, B.y, 6 / z, 0, Math.PI * 2)
@@ -304,14 +304,21 @@ function bout(c: CanvasRenderingContext2D, H: P, B: P, corps: string, pointe: st
   c.closePath(); c.fillStyle = pointe; c.fill()
 }
 
-/** Une pastille qu'on attrape : flèche tournante (tourner, tracer) ou ↔ (écarter) */
-function poignee(c: CanvasRenderingContext2D, p: P, z: number, actif: boolean, sorte: 'rotation' | 'tete' | 'mine') {
-  const r = (sorte === 'mine' ? 8 : 11) / z
+/** Une pastille qu'on attrape : flèche tournante (tourner, tracer) ou ↔
+ *  (écarter). C'est aussi la pastille ↻ du cadre de taille (lot 5 : le
+ *  rendu la dessine au-dessus de ce qu'on a pris, à rayonPx pixels d'écran
+ *  selon le pointeur, voir POIGNEE) : le même dessin partout, on reconnaît
+ *  ce qui tourne. Sans rayonPx, celui des instruments (11, et 8 pour la
+ *  mine du compas). actif : pleine, pendant qu'on la tourne. filetPx : son
+ *  filet, en pixels d'écran (2,5 au cadre de taille en contraste renforcé ;
+ *  1,6 sinon, et toujours pour les instruments). */
+export function dessinerPastille(c: CanvasRenderingContext2D, p: P, z: number, actif: boolean, sorte: 'rotation' | 'tete' | 'mine', rayonPx?: number, filetPx = 1.6) {
+  const r = (rayonPx ?? (sorte === 'mine' ? 8 : 11)) / z
   c.save()
   c.beginPath(); c.arc(p.x, p.y, r, 0, Math.PI * 2)
   c.fillStyle = actif ? '#3b6fb6' : '#ffffff'; c.fill()
-  c.strokeStyle = '#3b6fb6'; c.lineWidth = 1.6 / z; c.stroke()
-  c.strokeStyle = actif ? '#ffffff' : '#3b6fb6'; c.lineWidth = 1.5 / z
+  c.strokeStyle = '#3b6fb6'; c.lineWidth = filetPx / z; c.stroke()
+  c.strokeStyle = actif ? '#ffffff' : '#3b6fb6'; c.lineWidth = Math.round((filetPx - 0.1) * 100) / 100 / z
   c.beginPath()
   if (sorte === 'mine') { c.moveTo(p.x - r * 0.5, p.y); c.lineTo(p.x + r * 0.5, p.y) }
   else {

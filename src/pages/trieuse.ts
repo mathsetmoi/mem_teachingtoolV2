@@ -837,6 +837,7 @@ export class Trieuse {
     const m = this.menuEl
     m.replaceChildren()
     m.dataset.temps = o.insertion ? 'fond' : ''
+    m.classList.remove('fonds-en-colonnes')
     const i = this.ordre.indexOf(page)
     const choisies = this.choisies()
     // L'entrée qui prend le focus à l'ouverture (le second temps de l'insertion)
@@ -866,6 +867,7 @@ export class Trieuse {
     } else {
       const fond = this.app.tableau.fondDe(page)
       m.setAttribute('aria-label', `Page ${i + 1}`)
+      m.classList.add('fonds-en-colonnes')
       entreeMenu(m, 'Aller à cette page', () => this.aller(page), { touche: 'Entrée' })
       filetMenu(m)
       entreeMenu(m, 'Renommer…', () => this.renommer(page), { touche: 'F2' })
@@ -875,8 +877,11 @@ export class Trieuse {
       entreeMenu(m, 'Insérer une page avant…', e => this.ouvrirMenuCarte(page, { ...o, insertion: 'avant', pointeY: e.detail ? e.clientY : undefined }))
       entreeMenu(m, 'Insérer une page après…', e => this.ouvrirMenuCarte(page, { ...o, insertion: 'apres', pointeY: e.detail ? e.clientY : undefined }))
       filetMenu(m)
+      // Les huit fonds, sur deux colonnes (voir style.css, .fonds-en-colonnes) :
+      // le menu tient encore dans l'écran du poste de la classe (768 px, moins
+      // le navigateur), sans défiler jusqu'à « Supprimer »
       titreMenu(m, 'Fond')
-      for (const f of FONDS) entreeMenu(m, f.nom, () => this.changerFond(page, f.id), { coche: f.id === fond })
+      for (const f of FONDS) entreeMenu(m, f.nom, () => this.changerFond(page, f.id), { coche: f.id === fond }).classList.add('fond-de-carte')
       filetMenu(m)
       // Ce qui sort de la page : son image, pour l'ENT ou Pronote, et son PDF
       // (la fenêtre propose aussi tout le classeur) ; la trieuse reste ouverte

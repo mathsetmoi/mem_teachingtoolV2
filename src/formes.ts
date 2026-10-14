@@ -535,8 +535,16 @@ export function applicateur(t: Transformation): (p: P) => P {
   }
 }
 
-/** L'image d'une forme : une nouvelle forme, aux noms « primés ». */
-export function image(f: Forme, t: Transformation, auteur: string): Forme {
+/** L'image d'une forme : une nouvelle forme, aux noms « primés ». C'est un
+ *  objet NEUF (Transformer, l'image pas à pas, le collage) : libre et hors
+ *  de tout groupe, quels que soient le verrou, la fixation en fond et le
+ *  groupe de l'original (lot 5). Sans quoi le symétrique d'un membre pris
+ *  seul entrerait sans rien dire dans le groupe de l'original, et celui
+ *  d'une image fixée passerait dans le fond. Le collage, lui, remet le
+ *  verrou et la fixation de ce qu'on a copié, et donne un groupe neuf (voir
+ *  presse-papiers.ts). */
+export function image(original: Forme, t: Transformation, auteur: string): Forme {
+  const f = detachee(original)
   const g = applicateur(t)
   const base = { id: uid(), z: Date.now(), auteur }
   switch (f.type) {
@@ -583,6 +591,15 @@ export function image(f: Forme, t: Transformation, auteur: string): Forme {
       return { ...f, ...base, x: a.x, y: a.y }
     }
   }
+}
+
+/** La forme sans ce qui l'attache à sa page (son groupe, son verrou, sa
+ *  fixation en fond) : la même si elle n'en a pas */
+function detachee<T extends Forme>(f: T): T {
+  if (f.groupe === undefined && f.verrou === undefined && f.fixe === undefined) return f
+  const c = { ...f }
+  delete c.groupe; delete c.verrou; delete c.fixe
+  return c
 }
 
 /** Un nom déplacé à la main suit la transformation : le symétrique de « A

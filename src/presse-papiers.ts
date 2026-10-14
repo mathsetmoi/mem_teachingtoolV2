@@ -17,11 +17,21 @@
 // forme abîmée entrerait pour toujours dans le document (gc: false) et
 // casserait le rendu, la revue ou l'export à chaque chargement.
 //
+// Ce que la liste blanche garde (types.ts) : pour chaque type, ses champs à
+// lui, vérifiés et bornés ; pour tous, depuis le lot 5, le verrou (s'il vaut
+// true), la fixation en fond (true, sur une image seulement) et le groupe
+// (une chaîne de 64 caractères au plus) — une valeur abîmée de l'un d'eux est
+// jetée sans faire refuser la copie, puisqu'ils ne changent rien à ce qu'on
+// voit ; et la rotation d'une formule (un angle fini, ramené dans ]−π, π]),
+// qui, abîmée ou démesurée, fait refuser la copie comme toute grandeur
+// abîmée. Ni l'auteur ni le tracé brut d'une figure reconnue.
+//
 // Ce fichier est pur (aucun DOM) : il se teste sous Node.
 // =============================================================
 import type { Cercle, Forme, Formule, Habillage, ImageForme, Polygone, Segment, StyleNom, StylePoint, Trait } from './types'
 import type { P } from './formes'
 import { image, nomsLibres, sommetsDe } from './formes'
+import { uid } from './types'
 
 /** Ce qu'on a copié. Les formes ont leurs coordonnées absolues (celles de la
  *  page d'où elles viennent) ; images : les données (data:image/…) des
@@ -108,7 +118,7 @@ const positif = (v: unknown): v is number => fini(v) && v > 0
  *  un millionième et 10 000. */
 export const BORNE = 1e7
 export const TAILLE_MAX = 1000
-const ECHELLE_MAX = 1e4
+export const ECHELLE_MAX = 1e4
 const borne = (v: unknown): v is number => fini(v) && Math.abs(v) <= BORNE
 const longueur = (v: unknown): v is number => positif(v) && v <= BORNE
 const taille = (v: unknown): v is number => positif(v) && v <= TAILLE_MAX
@@ -117,6 +127,10 @@ const COULEUR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
 const couleur = (v: unknown): v is string => typeof v === 'string' && COULEUR.test(v)
 const IMAGE = /^data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+={0,2}$/
 const chaineCourte = (v: unknown, max = 64): v is string => typeof v === 'string' && v.length > 0 && v.length <= max
+/** Au-delà (en radians, plus de 150 tours), la rotation d'une formule est abîmée */
+const ROTATION_MAX = 1000
+/** Un angle ramené dans ]−π, π] */
+const angleNormal = (a: number) => a - 2 * Math.PI * Math.ceil((a - Math.PI) / (2 * Math.PI))
 const MARQUES = ['aucun', 'point', 'croix', 'plus', 'rond']
 const BOUTS = ['aucun', 'fleche', 'trait', 'crochet']
 
@@ -158,9 +172,24 @@ export function validerCopie(o: unknown): Copie | null {
   } catch { return null }
 }
 
-/** Une forme refaite par la liste blanche de son type (voir types.ts) */
+/** Une forme refaite par la liste blanche de son type (voir types.ts), puis
+ *  ses attaches du lot 5 : le verrou, la fixation en fond (une image
+ *  seulement) et le groupe. Abîmés, ils sont jetés, et la forme reste : ils
+ *  ne changent rien à ce qu'on voit, et une copie d'une version plus récente
+ *  qui leur donnerait un autre sens ne doit pas être refusée pour eux. */
 function validerForme(v: unknown, prendreImage: (src: string) => boolean): Forme | null {
-  if (!estObjet(v) || !chaineCourte(v.id) || !borne(v.x) || !borne(v.y) || !fini(v.z)) return null
+  if (!estObjet(v)) return null
+  const f = refaireForme(v, prendreImage)
+  if (!f) return null
+  if (v.verrou === true) f.verrou = true
+  if (v.fixe === true && f.type === 'image') f.fixe = true
+  if (chaineCourte(v.groupe, 64)) f.groupe = v.groupe
+  return f
+}
+
+/** Les champs d'une forme, par la liste blanche de son type */
+function refaireForme(v: Record<string, unknown>, prendreImage: (src: string) => boolean): Forme | null {
+  if (!chaineCourte(v.id) || !borne(v.x) || !borne(v.y) || !fini(v.z)) return null
   const base = { id: v.id, x: v.x, y: v.y, z: v.z, auteur: '' }
   switch (v.type) {
     case 'trait': {
@@ -199,6 +228,13 @@ function validerForme(v: unknown, prendreImage: (src: string) => boolean): Forme
     case 'formule': {
       if (typeof v.latex !== 'string' || v.latex.length > 2000 || !couleur(v.couleur) || !taille(v.taille)) return null
       const f: Formule = { ...base, type: 'formule', latex: v.latex, couleur: v.couleur, taille: v.taille }
+      // La rotation (lot 5) : un angle fini et raisonnable, ramené dans
+      // ]−π, π] ; presque nul, il n'est pas écrit (une formule droite)
+      if (!absent(v.rotation)) {
+        if (!fini(v.rotation) || Math.abs(v.rotation) > ROTATION_MAX) return null
+        const r = angleNormal(v.rotation)
+        if (Math.abs(r) >= 1e-6) f.rotation = r
+      }
       return f
     }
     case 'image': {
@@ -300,15 +336,42 @@ function styleNom(o: Record<string, unknown>): StyleNom | null {
  *  triangle ABC, de la hauteur [AH] et le centre A d'un cercle) garde un seul
  *  nom. Un point lié à une image copiée avec lui suit la nouvelle image ; sans
  *  elle, il n'est plus lié à rien. Le tracé d'origine (brut) ne suit pas : une
- *  copie n'a pas été tracée à la main. */
+ *  copie n'a pas été tracée à la main.
+ *  Les attaches du lot 5 : ce qui était verrouillé ou fixé en fond l'est
+ *  encore (image() fait un objet libre, le collage remet ce qu'on a copié) ;
+ *  chaque groupe de la copie qui garde au moins deux membres devient UN
+ *  groupe neuf, le même pour tous ses membres collés (deux collages du même
+ *  groupe font deux groupes, jamais un mélange avec l'original), et un
+ *  groupe dont un seul membre est copié disparaît ; une image fixée n'est
+ *  d'aucun groupe. Une image fixée collée passe SOUS tout ce qui est déjà
+ *  sur la page d'arrivée (existantes : leur plus petit rang, moins le nombre
+ *  d'images fixées collées, dans leur ordre), au lieu d'au-dessus : sur une
+ *  page, toute image fixée reste sous toute image libre, ce que la version
+ *  d'avant, qui ignore la fixation et ne range les images que par leur
+ *  rang, peint donc aussi. */
 export function collage(c: Copie, o: { dx: number; dy: number; moi: string; existantes: Forme[]; maintenant?: number }): Forme[] {
   const t = { type: 'translation' as const, dx: o.dx, dy: o.dy }
   const ordre = [...c.formes].sort((a, b) => a.z - b.z)
   const z0 = o.maintenant ?? Date.now()
   const ids = new Map<string, string>()
+  const fixee = (f: Forme) => f.type === 'image' && f.fixe === true
+  // Les groupes qui gardent au moins deux membres, chacun sous un identifiant neuf
+  const membres = new Map<string, number>()
+  for (const f of ordre) if (f.groupe && !fixee(f)) membres.set(f.groupe, (membres.get(f.groupe) ?? 0) + 1)
+  const groupes = new Map<string, string>()
+  for (const [g, n] of membres) if (n >= 2) groupes.set(g, uid())
+  // Le fond de la page d'arrivée (et de ce qu'on colle)
+  const nFixees = ordre.filter(fixee).length
+  let bas = z0
+  if (nFixees) for (const f of o.existantes) if (f.z < bas) bas = f.z
+  let kFixee = 0
   const r: Forme[] = ordre.map((f, k) => {
     const g = image(f, t, o.moi)
-    g.z = z0 + k
+    if (fixee(f)) { g.fixe = true; g.z = bas - nFixees + kFixee++ }
+    else g.z = z0 + k
+    if (f.verrou === true) g.verrou = true
+    const neuf = f.groupe && !fixee(f) ? groupes.get(f.groupe) : undefined
+    if (neuf) g.groupe = neuf
     ids.set(f.id, g.id)
     return g
   })

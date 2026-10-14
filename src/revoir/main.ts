@@ -245,10 +245,12 @@ interface Esquisse { ids: Set<string>; depart: number; duree: number }
  *  de plume, en au plus `budget` ms (allure Normale) : seulement celles qui
  *  apparaissent (une forme déplacée ou recolorée ne se réécrit pas, ni celle
  *  qu'un Ctrl+Z rend, qui revient d'un coup, ni celle qu'on vient de voir se
- *  tracer sous un instrument). null : rien à dessiner. */
+ *  tracer sous un instrument, ni les morceaux d'un trait que la gomme coupe,
+ *  écrits bien avant). null : rien à dessiner. */
 function aEsquisser(k: number, changePage: boolean, budget: number): Esquisse | null {
-  // La figure reconnue au lever du stylo remplace le trait d'un coup, comme à l’écran
-  if (!bobine || changePage || bobine.reconnue(k)) return null
+  // La figure reconnue au lever du stylo remplace le trait d'un coup, comme
+  // à l’écran ; le trait coupé par la gomme (lot 5) laisse ses morceaux d'un coup
+  if (!bobine || changePage || bobine.reconnue(k) || bobine.coupe(k)) return null
   const nouvelles = bobine.nouvelles(k)
   const ajouts = bobine.ajoutees(k), vues = bobine.tracees(k)
   const aTracer = nouvelles.filter(f => ajouts.has(f.id) && !vues.has(f.id) && seDessine(f))

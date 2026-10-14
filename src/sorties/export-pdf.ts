@@ -33,10 +33,11 @@ import type { Fond, Forme } from '../types'
 import type { Boite } from '../revoir/bobine'
 import { couleurHex, ecrirePdf, lignesPredites, palettiserLignes } from './pdf'
 import type { Feuille, ImageIndexee, ImageJpeg, ImageRvb } from './pdf'
-import { DPR_PDF, PX_PAR_MM, TRES_REDUITE, listeNumeros, mettreEnPage, nomDuPdf, piedDePage, texteFini, texteProgression, texteRien, titreDuPdf } from './mise-en-page'
+import { DPR_PDF, PX_PAR_MM, TRES_REDUITE, listeNumeros, mettreEnPage, nomDuPdf, piedDePage, texteCaseFond, texteFini, texteProgression, texteRien, titreDuPdf } from './mise-en-page'
 import type { FeuilleDePage, MiseEnPage, Papier, QuoiExporter } from './mise-en-page'
 import { telecharger } from '../sauvegarde'
 import { pagesLisibles } from '../fichier'
+import { ordreDAffichage } from '../ordre'
 
 /** Une tranche de peinture vise ce temps (ms) : jamais une tâche longue */
 const TRANCHE_MS = 30
@@ -87,7 +88,7 @@ export interface OptionsExport {
   /** Le titre du PDF, et le nom du fichier */
   titre: string
   nom: string
-  /** Le fond de la page (carreaux, Seyès, repère) imprimé */
+  /** Le fond de la page (carreaux, Seyès, millimétré, pointé, repère…) imprimé */
   fond: boolean
   /** Ce qu'on exporte, pour dire « Rien à exporter : … » */
   quoi?: 'page' | 'pages' | 'tout'
@@ -123,15 +124,6 @@ function uneTache(): Promise<void> {
     return new Promise(r => { c.port1.onmessage = () => { c.port1.close(); r() }; c.port2.postMessage(0) })
   }
   return new Promise(r => setTimeout(r, 0))
-}
-
-/** Les images d'abord (sous tout, comme à l'écran), puis les tracés et les
- *  figures, puis les formules (au-dessus, comme leur calque HTML), chacun
- *  par z : peintes par tranches dans cet ordre, la feuille est l'écran */
-function ordreDePeinture(formes: Iterable<Forme>): Forme[] {
-  const parZ = [...formes].sort((a, b) => a.z - b.z)
-  const rang = (f: Forme) => f.type === 'image' ? 0 : f.type === 'formule' ? 2 : 1
-  return [...parZ.filter(f => rang(f) === 0), ...parZ.filter(f => rang(f) === 1), ...parZ.filter(f => rang(f) === 2)]
 }
 
 /** Une droite ou une demi-droite : elle traverse toute la page */
@@ -184,7 +176,7 @@ export async function exporterPdf(hote: HoteExport, pages: readonly string[], o:
     const classeur = hote.classeur?.() ?? null
     const prises: PagePrise[] = pages.map(id => ({
       id, numero: ordre.indexOf(id) + 1, nom: hote.nomDe(id), boites: [],
-      page: { fond: hote.fondDe(id), origine: { ...hote.origineDe(id) }, formes: ordreDePeinture(hote.formesDe(id)) },
+      page: { fond: hote.fondDe(id), origine: { ...hote.origineDe(id) }, formes: ordreDAffichage([...hote.formesDe(id)]) },
     }))
     // 2. Mesurer les formules, cadrer, découper
     const vides: number[] = [], tresReduites: { numero: number; k: number }[] = []
@@ -257,7 +249,9 @@ export async function exporterPdf(hote: HoteExport, pages: readonly string[], o:
  * zone utile, même sur une feuille de suite (la même caméra, décalée : le
  * quadrillage continue), peint comme si la zone utile était tout le
  * canevas (les flèches des axes du repère, posées au bord, tombent au bout
- * de la zone, pas dans la marge où elles seraient coupées) ; puis les
+ * de la zone, pas dans la marge où elles seraient coupées), et pour le
+ * papier (impression : les lignes sur les pixels de l'image, les
+ * millimètres du papier millimétré, que l'écran ne trace pas à 100 %) ; puis les
  * formes de la bande, coupées à la zone utile et à la bande (une droite
  * prolongée s'arrête au bord, pas dans les marges ; une forme à cheval sur
  * une coupe paraît en partie sur les deux feuilles), par tranches d'environ
@@ -274,7 +268,7 @@ async function peindreFeuille(ap: Apercus, x: CanvasRenderingContext2D, p: PageP
   if (fond && p.page.fond !== 'blanc') {
     x.save()
     x.beginPath(); x.rect(u.x * d, u.y * d, u.l * d, u.h * d); x.clip()
-    ap.peindre(x, p.page, { x: f.cam.x - u.x, y: f.cam.y - u.y, z: f.cam.z }, { l: u.l, h: u.h, dpr: d, coin: { x: u.x, y: u.y }, fond: true, formes: [] })
+    ap.peindre(x, p.page, { x: f.cam.x - u.x, y: f.cam.y - u.y, z: f.cam.z }, { l: u.l, h: u.h, dpr: d, coin: { x: u.x, y: u.y }, fond: true, formes: [], impression: true })
     x.restore()
   }
   // Les formes de cette bande (et les droites prolongées, qui passent partout)
@@ -450,7 +444,10 @@ function laPage(numero: number, nom: string | null): string {
  * La fenêtre « Exporter en PDF » : ce qu'on exporte (pour la page qu'on
  * regarde, sur un classeur de plusieurs pages, deux choix : « La page 3 »,
  * coché, ou « Tout le classeur : 12 pages ») ; la case du fond imprimé,
- * cochée selon le réglage gardé (que l'export garde) ; la note ; Annuler et
+ * cochée selon le réglage gardé (que l'export garde), qui nomme le fond des
+ * pages exportées quand elles n'en ont qu'un (« Imprimer le fond de la
+ * page : Papier pointé » ; voir texteCaseFond), et suit le choix de ce
+ * qu'on exporte ; la note ; Annuler et
  * Exporter (le focus). Une <dialog class="dialogue">, créée au moment de
  * s'ouvrir, modale. Rend null si elle ne s'ouvre pas (un export en cours).
  */
@@ -463,7 +460,7 @@ export function ouvrirFenetrePdf(hote: HoteFenetrePdf, cible: CibleExport): HTML
   d.className = 'dialogue dialogue-pdf'
   d.innerHTML = `<h2>Exporter en PDF</h2><div class="corps">
     <div class="pdf-quoi"></div>
-    <label class="case pdf-fond"><input type="checkbox" name="pdf-fond"><span>Imprimer le fond de la page (carreaux, Seyès, repère)</span></label>
+    <label class="case pdf-fond"><input type="checkbox" name="pdf-fond"><span></span></label>
     <p class="pdf-note"></p>
     <div class="actions"><button type="button" class="secondaire" data-a="annuler">Annuler</button><button type="button" class="principal" data-a="exporter">Exporter</button></div></div>`
   d.querySelector('.pdf-note')!.textContent = NOTE_PDF
@@ -509,6 +506,11 @@ export function ouvrirFenetrePdf(hote: HoteFenetrePdf, cible: CibleExport): HTML
   }
   const caseFond = d.querySelector<HTMLInputElement>('input[name="pdf-fond"]')!
   caseFond.checked = hote.apercus.fondImprime()
+  // Le libellé de la case nomme le fond de ce qu'on exporte, et le suit
+  const libelle = d.querySelector<HTMLSpanElement>('.pdf-fond span')!
+  const nommerFond = () => { libelle.textContent = texteCaseFond(choisir().pages.map(p => hote.fondDe(p))) }
+  nommerFond()
+  quoi.addEventListener('change', nommerFond)
   let exporter = false
   d.querySelector('[data-a="annuler"]')!.addEventListener('click', () => d.close())
   const bouton = d.querySelector<HTMLButtonElement>('[data-a="exporter"]')!

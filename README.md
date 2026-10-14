@@ -63,15 +63,39 @@ refermé) se prend aussi par l'intérieur, mais le tracé le plus proche passe
 avant elle : un trait écrit dans un grand cadre se prend avant le cadre, et
 entre deux intérieurs, le plus petit l'emporte (un triangle tracé dans un
 grand rectangle, même colorié, se prend par son milieu). Une image, une
-formule, une figure coloriée se prennent partout où elles sont et cachent ce
-qui est dessous ; ce qu'on a écrit par-dessus (un soulignement) se prend avant
-elles. Vu de très près, l'intérieur d'une figure qui déborde tout l'écran ne
-prend rien. Sous un autre outil que la Sélection, le doigt qui « déplace »
-prend de même d'un simple toucher, mais n'emporte un objet sélectionné que
+formule, une figure coloriée se prennent partout où elles sont ; une image et
+une figure coloriée cachent ce qui est peint sous elles, et ce qu'on a écrit
+par-dessus (un soulignement) se prend avant elles. **On prend ce qu'on voit**
+(lot 5) : la prise suit l'ordre d'affichage (voir « L'ordre » plus bas), où
+les images sont toujours sous l'écriture et les figures. Une image importée
+après un trait est peinte sous lui : un clic sur le trait prend le trait,
+ailleurs sur l'image l'image (avant le lot 5, la prise suivait l'ordre des
+rangs et ce clic prenait l'image, peinte pourtant dessous) ; de même pour le
+sommet d'un triangle tracé avant l'image. Une formule, au fond transparent,
+ne cache rien de ce qu'on voit à travers elle : un soulignement, une flèche,
+un entourage écrits sur elle se prennent à 2 px, même tracés avant elle, et
+la formule se prend encore par son milieu ; au clic droit, le sommet qu'on
+voit à travers une formule s'ouvre de même. Vu de très près, l'intérieur
+d'une figure qui déborde tout l'écran ne prend rien. Sous un autre outil que
+la Sélection, le doigt qui « déplace » prend de même d'un simple toucher,
+mais n'emporte un objet sélectionné que
 s'il le saisit à 10 px de son tracé (ou par une image, une formule, une figure
 coloriée) : parti du milieu d'un grand cadre, il déplace la vue. Jamais sous
 le Stylo : écrire dans un triangle ne le prend pas, et un clic droit dans son
-vide ne le vise pas (il ouvre le menu de la page, comme à côté).
+vide ne le vise pas (il ouvre le menu de la page, comme à côté). Ce qui est
+**verrouillé** ou **fixé en fond** (lot 5, voir « Verrouiller et fixer en
+fond » plus bas) est transparent à toutes ces prises : un clic, un cadre, un
+lasso, un double-clic, Ctrl + A, la gomme, les flèches, Suppr et les sommets
+d'une figure verrouillée passent à travers, jusqu'à ce qui est dessous (ou
+le vide). Un membre d'un **groupe** (lot 5, voir « Grouper » plus bas) prend
+tout son groupe : au clic, au toucher, au cadre et au lasso (un seul membre
+entouré suffit), au clic droit, à l'appui long, au double-clic ; un second
+clic simple sur l'un d'eux, le groupe pris, ne prend que lui. Ce qui est pris
+porte un **cadre de taille** (lot 5, voir « Changer de taille, tourner »
+plus bas) : ses coins (et les côtés d'une image) agrandissent et réduisent,
+la pastille ↻ au-dessus tourne ; ces poignées passent avant les sommets
+d'une figure et avant l'objet (un instrument posé dessus, lui, passe
+avant elles), à l'outil Sélection et au doigt qui déplace seulement.
 
 **Saisir ou entourer.** À l'outil Sélection, un appui tout près du tracé d'un
 objet (6 px à la souris et au stylet, 10 au doigt), sur un morceau, sur une
@@ -112,8 +136,12 @@ une formule, une image), c'est lui qu'il prend ; sinon il ne fait rien, et ce
 qui est pris le reste (*Options* touché juste après un lasso ne perd plus ce
 qu'on vient d'entourer : le toucher suivant l'ouvre). Elle se pose
 dessous quand il n'y a pas la place sous la barre du haut, en haut de l'écran pour un objet plus grand que lui, toujours dans
-l'écran, jamais sur la barre d'outils (sauf sur un téléphone, où elle n'y
-tiendrait pas). Elle suit la vue et l'objet (zoom, molette, flèches) ; elle
+l'écran, jamais sur la barre d'outils (au téléphone non plus depuis le lot
+5 : au-dessus de la barre du bas en portrait, à droite de la barre des outils
+couché, voir « Le téléphone »). Le cadre de taille et sa pastille ↻ (lot 5, voir « Changer
+de taille, tourner ») comptent comme une part de l'objet : elle se pose
+au-dessus de la pastille, et ne la couvre jamais (posée en haut de l'écran
+pour un objet plus grand que lui, elle passe à côté d'elle). Elle suit la vue et l'objet (zoom, molette, flèches) ; elle
 se cache pendant qu'on glisse l'objet, qu'on tire un cadre ou un lasso, qu'on
 pince à deux doigts, et revient au lâcher ; elle s'efface quand l'objet sort
 de la vue. Elle ne paraît **jamais sous le Stylo** (ni sous un autre outil de
@@ -204,7 +232,10 @@ figure, d'un trait ou d'une image :
   sommets nommés A', B', C'… ;
 - *Main levée*, *Dupliquer*, *Copier*, puis **⋯** (*Plus*), dont le petit
   menu a *Copier en image* (voir « Copier en image ») et *Envoyer vers…* (une
-  autre page, voir « Envoyer vers une autre page »), enfin supprimer.
+  autre page, voir « Envoyer vers une autre page »), puis, après un filet,
+  la section **Ordre** (voir « L'ordre » plus bas), après un autre filet la
+  section **Protéger** (*Verrouiller*, *Fixer en fond* pour une image : voir
+  « Verrouiller et fixer en fond »), enfin supprimer.
 
 La rangée de ces onglets tient sur une ligne au-dessus de la figure (le menu
 d'un rectangle fait 770 px de large, 54 px de haut) : c'est pourquoi ce qui
@@ -213,7 +244,12 @@ d'un clic, d'un toucher, au stylet ou au clavier (Entrée, puis ↓ ; Échap
 referme ce petit menu seul et rend le focus à ⋯). Le menu complet se pose
 au-dessus de ce qu'il règle ; s'il n'y tient pas, en dessous ; sinon à côté (à
 droite, puis à gauche) ; jamais sur la figure ni ses poignées quand il a la
-place ailleurs (sinon, là où il en couvre le moins). Pendant *Désigner* ou
+place ailleurs (sinon, là où il en couvre le moins), le cadre de taille et
+sa pastille ↻ comptant comme la figure (lot 5 : un menu haut, qui ne tient
+plus au-dessus d'elle à cause de la pastille, passe dessous) ; quand rien
+ne tient hors de ce cadre, il ne couvre ni la figure ni la pastille s'il le
+peut, sinon la pastille plutôt que la figure (le menu fermé, on la
+retrouve). Pendant *Désigner* ou
 *Tracer* (un axe, un centre), il reste ouvert, et la consigne (« Clique sur la
 droite qui sert d'axe. ») passe au-dessus de lui.
 
@@ -221,7 +257,8 @@ droite qui sert d'axe. ») passe au-dessus de lui.
 droit ouvre son menu : *Modifier* (son infobulle rappelle le double-clic, sauf
 au doigt), *Couleur et taille* (les quatre couleurs ;
 Petite, Normale, Grande), *Dupliquer*, *Copier*, ⋯ (*Copier en image*,
-*Envoyer vers…*), supprimer. Pas de
+*Envoyer vers…*, l'ordre, *Protéger* ; *Remettre droit* quand elle est
+tournée : voir « Changer de taille, tourner »), supprimer. Pas de
 *Transformer* : l'image d'une formule n'en déplacerait que le coin.
 
 **Plusieurs objets** sélectionnés (Maj + clic, un cadre, un lasso, Ctrl + A) :
@@ -230,19 +267,339 @@ leur menu commun, et la sélection reste entière. « 3 objets », puis *Couleur
 épaisseur* (les quatre couleurs pour tout sauf les images ; les trois
 épaisseurs pour les traits et les figures, un trait de surligneur gardant sa
 largeur de surligneur ; les pointillés s'il y a une figure ; un choix est
-marqué quand tous l'ont déjà), *Dupliquer*, *Copier*, *Couper*, ⋯ (*Copier
-en image*, *Envoyer vers…*), supprimer.
+marqué quand tous l'ont déjà), *Grouper* (lot 5 ; *Dégrouper* pour un
+groupe : voir « Grouper » plus bas), *Dupliquer*, *Copier*, *Couper*, ⋯
+(*Copier en image*, *Envoyer vers…*), supprimer. Ses boutons sont un peu
+plus serrés que ceux du menu d'un objet : avec « Groupe · 3 objets » et
+*Dégrouper*, la rangée tient encore sur une ligne de 820 px au plus (800 px
+pour deux traits et un triangle, à 1024 px de large ; sur un téléphone, elle
+passe à la ligne sur toute la largeur, comme avant).
 Seulement ce qui vaut pour chacun : ni les sommets, ni le fond, ni les
 transformations. Chaque choix fait une seule étape : un Ctrl+Z rend leur
 couleur aux dix objets d'un coup. Le menu se pose au-dessus de toute la
 sélection ; Maj + clic sur l'un d'eux l'en retire, et le menu se ferme quand
 il ne reste qu'un objet.
 
+**Grouper** (lot 5). Plusieurs objets sélectionnés se groupent par
+**Ctrl + G** (⌘ + G sur Mac, comme tldraw, Excalidraw, Figma et PowerPoint)
+ou par *Grouper*, dans leur menu commun, juste après *Couleur, épaisseur*.
+On ne groupe qu'**à la main** (au lasso ou au cadre, puis *Grouper*) : les
+groupes d'écriture automatiques — les traits écrits d'affilée qui forment
+un mot, qu'un toucher prendrait en entier et un second réduirait à un
+trait — sont remis à plus tard, au choix du professeur (choix c de
+l'étude du lot 5 ; voir la feuille de route). Le message :
+« Groupé : 3 objets » (la première fois de la séance, le message ajoute « —
+un clic sur l'un d'eux, quand le groupe est pris, ne prend que lui » ; au
+doigt, « un toucher »). Un groupe se prend d'un bloc : un clic, un toucher,
+un cadre ou un lasso qui ne prend qu'un de ses membres, le clic droit, le
+bouton du stylet, l'appui long, *Options* ou le double-clic sur l'un d'eux
+prennent tous ses membres ; Maj + clic (Ctrl + clic, ⌘ + clic, le mode
+*Ajouter* au doigt) l'ajoute ou le retire en entier ; glisser depuis un
+membre déplace tout le groupe ; le survol l'éclaire en entier. Pris, il a,
+en plus du cadre en tirets de chacun, un cadre plein fin autour de tous
+(à l'outil Sélection, c'est le cadre de taille, avec ses coins et sa
+pastille ↻ : le groupe change de taille et tourne d'un bloc, voir
+« Changer de taille, tourner »). Il
+se copie, se colle (ici et dans un autre onglet), se duplique et s'envoie
+vers une autre page d'un bloc : ce qui arrive est un groupe neuf, distinct
+de l'original (un seul membre copié n'est plus d'aucun groupe) ; Dupliquer
+la page garde le même groupe sur la copie (un groupe ne vaut que sur sa
+page). Suppr, la couleur et l'épaisseur du menu commun et l'ordre (voir
+« L'ordre ») valent pour tous ses membres, en une étape. Son menu commun
+s'appelle « Groupe · 3 objets » (« Options du groupe de 3 objets » pour un
+lecteur d'écran) et a *Dégrouper* (Ctrl + Maj + G) à la place de *Grouper* :
+« Dégroupé », et les mêmes objets restent pris, un par un.
+
+**Un objet du groupe** se prend seul par un second clic **simple** sur lui
+quand le groupe est pris (comme tldraw ; au doigt, un second toucher après
+un tiers de seconde : plus tôt, c'est un double appui) ; la boîte du groupe
+reste alors en pointillé très clair, et la première fois un message le dit :
+« Un seul objet du groupe : ce que vous faites ne touche que lui. » (il
+attend une demi-seconde : le second clic d'un double-clic ne le fait pas
+paraître). Glissé, ce membre bouge seul ; son menu (clic droit, *Options*)
+est le sien ; un clic sur un autre membre ne prend alors que celui-là ; un
+clic à côté, dans le vide, ou Échap en sortent. Une sélection faite du
+groupe et d'autres objets ne se réduit jamais par un clic sur un membre (un
+clic dans une sélection de plusieurs la garde). Le **double-clic** (et le
+double appui) garde un seul sens : sur une formule du groupe, son éditeur
+(elle seule est prise), au Stylo aussi ; sur un autre membre, le menu du
+groupe, qui reprend le groupe entier, quel qu'ait été l'effet du second clic
+qui le précède. Grouper des groupes les fond en un (un seul niveau, et
+depuis un membre pris seul tout son groupe rejoint le nouveau) ; Dégrouper
+un membre pris seul le sort de son groupe (s'il n'y restait qu'un objet,
+celui-ci n'est plus groupé non plus) : Ctrl + Maj + G sur lui, ou, sans
+clavier (au TNI, sur l'iPad, au téléphone), le ⋯ de son menu, qui a pour
+lui une section **Groupe** : *Sortir du groupe* (« Les autres restent
+groupés », ou « L'autre n'est plus groupé non plus » dans un groupe de
+deux ; le titre de ⋯ finit alors par « sortir du groupe ») — depuis la
+vérification « conformité » du lot 5, qui l'avait trouvé seulement au
+clavier. Le groupe pris entier, lui, a *Dégrouper* dans la rangée de son
+menu commun. Ctrl + G sur un groupe déjà pris le
+dit (« Ces objets sont déjà groupés. »), sans rien de choisi aussi
+(« Sélectionnez au moins deux objets pour les grouper. », « Aucun groupe dans
+la sélection. ») ; Ctrl + G et Ctrl + Maj + G sont toujours empêchés hors
+des champs (sinon la recherche du navigateur s'ouvrirait, ou « suivant »
+sur Mac), une fois par appui, et ne font rien en plein glisser ; la lettre
+se lit par la touche tapée (en AZERTY comme en QWERTY). Un point libre
+repéré sur une image groupée entre dans le groupe avec elle ; verrouillé, il
+n'y entre pas, mais suit toujours son image. Un groupe est **libre en entier
+ou verrouillé en entier** : Verrouiller, Déverrouiller, Maj + L et
+*Déverrouiller tout* agissent sur tout le groupe, même depuis un membre pris
+seul (« 3 objets verrouillés. … ») ; le clic droit sur un membre verrouillé
+ouvre le menu court de tous (« Verrouillés · 3 objets ») ; Grouper et
+Dégrouper ne touchent pas à ce qui est verrouillé (« Verrouillé :
+déverrouillez-le d'abord. »). Fixer en fond sort l'image de son groupe ; une
+image fixée n'est d'aucun groupe. L'image d'un membre par *Transformer* n'en
+est pas (c'est un objet neuf) ; la gomme n'efface que le membre qu'elle
+touche. Grouper et Dégrouper ne changent rien à l'image : chacun est une
+étape d'annulation (un Ctrl + Z défait le groupement entier) et une étape du
+film notée « réglage », que ni la revue, ni les séances, ni le film des
+élèves ne comptent comme un geste ; le groupe survit au `.memc`, au
+presse-papiers, à la copie de page, au film et à la revue.
+
+**L'ordre** (lot 5). Ce qui est sur une page se peint en calques, toujours
+dans le même ordre : les images fixées en fond, les images, l'écriture et
+les figures, les formules (`src/ordre.ts`). Une image et son papier ne
+recouvrent jamais un trait de construction, quel que soit le moment où on
+l'a importée, et les formules restent en HTML au-dessus de tout, nettes à
+tout zoom (c'est le modèle des carnets, GoodNotes ou Notability, plutôt
+que l'ordre unique de tldraw ou d'Excalidraw, qui obligerait à peindre les
+formules dans le canevas). Dans un calque, le plus récent est dessus. Le
+menu ⋯ du menu complet (d'un objet ou de plusieurs) a une section *Ordre* :
+*Mettre au premier plan* (Ctrl + Maj + ↑), *Avancer* (Ctrl + ↑), *Reculer*
+(Ctrl + ↓), *Mettre à l'arrière-plan* (Ctrl + Maj + ↓) ; ⌘ sur Mac, où
+Ctrl + ↑ est Mission Control. Elles n'agissent que dans le calque de l'objet,
+et le menu le dit (`aidesOrdre`, `src/ordre.ts`) : pour des images seules,
+l'aide de *Mettre au premier plan* est « Devant les autres images ;
+l'écriture et les figures restent devant » ; pour des formules seules,
+« Devant les autres formules ; les formules restent au-dessus de tout », et
+celle de *Mettre à l'arrière-plan* « Derrière les autres formules, toujours
+au-dessus de l'écriture et des figures » ; pour l'écriture et les figures
+(depuis la vérification « conformité » du lot 5 : un trait mis au premier
+plan restait sous une formule sans que rien ne l'explique), « Devant
+l'écriture et les figures ; les formules restent au-dessus » et « Derrière
+l'écriture et les figures ; les images restent dessous » ; pour une
+sélection mêlée, « Chacun dans son calque : images, puis écriture et
+figures, puis formules ». Une image et un trait choisis ensemble montent
+chacun dans le sien. *Avancer* et *Reculer* passent l'objet devant
+(derrière) le plus proche qui le **chevauche** (comme tldraw : sinon
+« Avancer » ne ferait souvent rien de visible) ; sans voisin qui chevauche,
+rien, et un message : « Rien à passer devant à cet endroit », « Rien à
+passer derrière à cet endroit » ; déjà en haut ou en bas de son calque,
+« Déjà au premier plan », « Déjà à l'arrière-plan ». Une entrée qui ne
+ferait rien est grisée. Une image mise à l'arrière-plan ne passe jamais sous
+une image fixée en fond : sur une page, toute image fixée reste sous toute
+image libre (la version d'avant, son lecteur et son export PDF, qui rangent
+les images par rang seulement, la peignent ainsi au même endroit). Un
+changement d'ordre est un geste : une étape d'annulation (un Ctrl+Z rend
+tous les rangs d'un coup) et une étape du film, que la revue et le lecteur
+des élèves montrent comme les autres. La sélection reste ; un objet
+verrouillé ne bouge pas (« Verrouillé : déverrouillez-le d'abord. » s'il
+n'y a que lui). Le rang n'est qu'un ordre : entre deux voisins, l'objet
+prend un rang fractionnaire ; quand l'écart s'épuise (après une douzaine
+d'allers-retours entre les deux mêmes voisins), seules les une ou deux
+formes juste au-dessus sont décalées, jamais toute la page (chaque forme
+réécrite est recopiée entière dans le document).
+
+**Changer de taille, tourner** (lot 5). À l'outil Sélection, ce qu'on a
+pris porte un **cadre de taille** : une **image** a ses quatre coins et le
+milieu de ses quatre côtés, un cadre qui tourne avec elle ; une **formule**,
+ses quatre coins, tournés avec elle ; un **trait** à main levée, un
+**groupe** et **plusieurs objets**, les quatre coins de la boîte de tout
+(6 px autour), reliés par un trait plein fin (celui d'un groupe pris tient
+lieu de son cadre plein : un seul dessin). Les coins sont des carrés
+blancs cernés du bleu de la sélection, les côtés des barrettes ; le cadre
+en tirets de chaque objet reste. Un **coin** tiré agrandit ou réduit en
+gardant les proportions, autour du coin opposé, qui ne bouge pas (comme
+Excalidraw et tldraw) ; un **côté** d'une image la déforme dans un seul
+de ses axes (sans clavier : au TNI, sur l'iPad, à la tablette graphique
+posée loin du clavier), et **Maj + coin** la déforme dans les deux à la
+fois (Excalidraw et tldraw gardent aussi les proportions d'une image par
+défaut, Maj les libère). La taille s'affiche près du pointeur (« 150 % »,
+« 150 % × 100 % » pour une image déformée) ; × 1 attire à ±3 % (on revient
+à la taille d'origine sans viser), sinon le facteur va au centième ; il ne
+passe jamais de l'autre côté du coin opposé (pas de retournement : passé
+lui, l'objet reste au plus petit) et s'arrête aux bornes (plus bas).
+Au-dessus du cadre, au milieu, au bout d'un filet, la **pastille ↻**, le même
+dessin que celle des instruments : tirée en rond, elle tourne ce qui est
+pris autour du milieu du cadre ; l'angle **tourné** s'affiche (« ↺ 30° »
+dans le sens direct, « ↻ 30° » dans l'autre), plus d'un tour se compte.
+Elle est à 24 px du cadre à la souris, 28 au stylet, 36 au doigt
+(l'étude : « détachée au-dessus du cadre », comme SMART, ActivInspire,
+Excalidraw et PowerPoint ; une poignée qu'on voit, plutôt qu'une zone
+invisible hors du coin comme tldraw ou Figma, introuvable au doigt et au
+TNI) ; pour une image ou une formule tournée, au-dessus de SON bord du
+haut ; dessous quand elle sortirait de ce qu'on voit entre les barres ; et
+pour un objet plus grand que l'écran (à 2000 %), en bas de ce qu'on voit.
+Les poignées sont plus grandes au doigt : elles se prennent à 10 px de leur
+centre à la souris, 12 au stylet, 20 au doigt (tldraw a 12 et 20 ; les
+8 px de l'étude étaient trop petits), et se dessinent en 8, 10 et 14 px,
+d'après le dernier pointeur vu (le survol de la tablette graphique
+compte) ; sur un objet trop petit à l'écran (vu de loin), les coins
+sortent du cadre et restent prenables. Au survol, le curseur dit la
+poignée : la double flèche de la diagonale d'un coin ou de l'axe d'un
+côté (elle tourne avec le cadre), la main sur la pastille. **Une figure
+géométrique seule n'a pas de coins** : ses sommets restent ses poignées
+(lots 1 et 2), les coins d'un rectangle tomberaient sur eux, et
+l'homothétie de *Transformer* garde son sens ; elle n'a que la pastille,
+qui la tourne autour de son centre (une droite seule : autour du milieu de
+[AB], la pastille au-dessus de [AB], jamais au bord de l'écran). Un point
+seul, un cercle entier : rien. Avec un groupe ou plusieurs objets, les
+figures changent de taille et tournent avec les autres. Les poignées ne
+se prennent qu'à l'outil Sélection ou au doigt qui déplace : **jamais sous
+un outil de dessin**, jamais sous la plume au Stylo (à la tablette
+graphique, un trait commencé sur le coin d'une image qu'on vient
+d'importer écrit ; sur l'iPad, le doigt qui déplace a les poignées, jamais
+le crayon), jamais pendant qu'on glisse l'objet, jamais sur un objet
+verrouillé ou fixé en fond, jamais dans la revue, le lecteur ni les
+sorties. Un instrument posé au-dessus passe avant. Pendant le geste, rien
+ne s'écrit : on voit l'objet changer (un trait agrandi s'épaissit déjà,
+une figure garde son épaisseur, une formule tourne et grandit en HTML),
+le cadre et la pastille le suivent, la barre d'actions et le menu complet
+se cachent. Au lâcher, le geste s'écrit en une étape ; lâché sans avoir
+glissé, rien ; Échap, un second doigt (on pince), le stylet qui se pose
+pendant un geste du doigt ou un geste coupé par le système l'abandonnent,
+et tout revient. Ni appui long ni double-clic sur une poignée (la
+pastille, hors de l'objet, est souvent au-dessus d'un autre). Un menu
+ouvert, l'appui sur une poignée le ferme et la tire aussitôt (comme sur un
+objet qu'on prend : le premier appui n'est pas perdu). La barre
+d'actions et le menu complet comptent le cadre, ses poignées et sa
+pastille comme une part de l'objet : la barre se pose au-dessus de la
+pastille (ou sous l'objet), et ni l'une ni l'autre ne la couvre jamais. La
+première fois qu'on prend une image seule, un message le dit :
+« Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↻ :
+tourner » (au doigt : « côtés : déformer »).
+
+Une transformation (agrandir, réduire,
+tourner) réécrit chaque forme prise **entière**, en un seul geste : une
+étape d'annulation (un Ctrl + Z la défait d'un coup, sur sa page seulement)
+et une étape du film, que la revue et le lecteur des élèves montrent d'un
+coup, comme un déplacement (la forme garde son identifiant). Tout est
+« cuit » dans ses coordonnées (les points d'un trait, les sommets d'une
+figure, la matrice d'une image) : la version d'avant le voit tel quel. Un
+**trait** agrandi s'épaissit avec lui, comme l'image d'une écriture
+(agrandir un mot, c'est en faire une image plus grande, comme dans
+GoodNotes ou OneNote ; l'étude proposait de garder l'épaisseur, avec une
+case pour choisir : un choix propre à MEM, sans case, Ctrl + Z si l'on
+voulait autre chose) ; réduit, il garde au moins 1 d'épaisseur, lisible au
+vidéoprojecteur (un trait déjà plus fin garde la sienne). Une **figure**
+garde l'épaisseur de son contour et la taille des noms de ses points, comme
+l'homothétie de *Transformer* ; les noms tournent avec elle, à la même
+distance de leur point, et son codage se recalcule (les mêmes côtés égaux,
+les mêmes angles droits) ; son tracé à main levée d'origine suit (*Main
+levée* rend le tracé tourné et agrandi). Une **image** tourne et s'agrandit
+par sa matrice, et ne se déforme que dans ses propres axes ; les points
+repérés sur elle la suivent, même verrouillés. Une **formule** change de
+taille de caractères (KaTeX la remet en page : nette) et garde sa
+**rotation** dans un champ (radians, autour de son coin) : elle tourne en
+HTML, par CSS, et son texte reste vectoriel, net à tout zoom ; elle se
+prend au clic, s'entoure au lasso et se gomme dans son **rectangle
+tourné**, jamais dans le coin vide de la boîte droite qui la contient ; son
+halo de survol et son cadre en tirets suivent ce rectangle ; l'image
+copiée, le PDF, les vignettes, la revue et le lecteur des élèves la
+montrent tournée (la version d'avant, droite). Les bornes : une formule
+reste entre 6 et 1000 de taille, une image garde au moins 4 unités de
+côté, et rien ne sort des bornes de la liste blanche du presse-papiers
+(une forme transformée se copie toujours). Les **aimants de la pastille**
+portent sur l'angle tourné : les multiples de 45° attirent à ±3°, **sauf
+0°** (un énoncé photographié de travers doit pouvoir tourner de 2°, et
+90° pile se trouve sans Maj, même au TNI) ; avec Maj, des pas de 15°
+(comme tldraw, Excalidraw, Figma) ; sinon le degré entier. C'est un écart
+voulu avec l'étude (un aimant à 0°) et avec les instruments, dont la même
+pastille aimante l'**orientation** tous les 15° à ±2,5° et affiche
+« 30° » : un instrument a une orientation qui compte en elle-même (la
+règle horizontale), un objet tourne depuis là où il est. Pour revenir
+exactement à 0, **Remettre droit** : le menu ⋯ d'une image ou d'une
+formule seule tournée a une section *Position*, avec *Remettre droit*
+(« Annule la rotation, garde la taille ») ; la rotation s'annule, la taille
+et le centre restent, et une image retournée par une symétrie le reste
+(elle est seulement remise le haut en haut). C'est un geste comme les
+autres : Ctrl + Z rend la rotation.
+
+**Verrouiller et fixer en fond** (lot 5). Deux façons de protéger ce qui est
+sur une page. **Verrouiller** (tout objet : le menu ⋯ du menu complet,
+section *Protéger*, ou **Maj + L**, comme tldraw) : l'objet ne bouge plus et
+ne se prend plus, ni au clic, ni au cadre, ni au lasso, ni au double-clic, ni
+à Ctrl + A ; la gomme, les flèches et Suppr le laissent ; les sommets, les
+noms, le centre et le rayon d'une figure verrouillée ne se tirent plus ; au
+Stylo, un double-clic sur une formule verrouillée pose son point d'encre,
+comme ailleurs. Seuls le **clic droit**, le **bouton du stylet** et
+l'**appui long** sur lui ouvrent son **menu court** : un cadenas et
+« Verrouillé », *Déverrouiller* (Maj + L), *Copier* (la copie reste
+verrouillée), ⋯ (*Copier en image*, *Envoyer vers…*) ; ni Supprimer, ni
+Dupliquer, ni Contour, ni Transformer. L'objet n'est sélectionné que le
+temps de ce menu (jamais de barre d'actions sur lui) : le menu fermé, il ne
+l'est plus. Un **cadenas** le dit, à son coin haut droit (un disque blanc,
+le cadenas gris, discret au vidéoprojecteur ; une image ou une formule
+tournée : le coin de son rectangle tourné le plus en haut à droite, sur
+elle, et son cadre gris tourné avec elle, et non la boîte droite qui
+l'englobe, où il flottait dans le vide : `coinsVus`, `coinHautDroit`,
+`src/geometrie.ts`) : au survol de l'outil
+Sélection (la souris, le stylet qui survole), pendant 1,5 s après un appui
+ou un toucher sur lui qui n'a rien pris (la première fois de la séance, un
+message dit comment le déverrouiller : « Objet verrouillé : clic droit
+dessus pour le déverrouiller. », « … bouton du stylet… » à la tablette
+graphique, « … appui long… » au doigt et au stylet posé sur l'écran), et
+tant que son menu est ouvert, avec son cadre gris ; jamais au Stylo, ni
+dans la revue, le lecteur des élèves ou les sorties. Verrouiller vide la
+sélection (« Verrouillé : il ne bouge plus. Clic droit dessus pour le
+déverrouiller. », ou « 3 objets verrouillés. … ») ; Déverrouiller le rend
+à la sélection (« Déverrouillé »). Maj + L verrouille ce qui est
+sélectionné, ou le déverrouille quand son menu court est ouvert ; sans rien
+de sélectionné, la touche reste le Segment (L), comme avant, et en plein
+glisser elle ne fait rien. Verrouiller et déverrouiller ne changent rien à
+l'image : chacun est une étape d'annulation (un Ctrl+Z) et une étape du film
+notée « réglage », que ni la revue, ni les séances, ni le film des élèves ne
+comptent comme un geste (voir « Revoir la construction »). Un point repéré
+sur une image (outil Point) la suit toujours, même verrouillé : on pousse ou
+on glisse l'image, il vient avec elle.
+
+**Fixer en fond** (une image seulement : l'énoncé photographié, une
+capture ; le menu ⋯ de l'image, ou le bouton *Fixer en fond* du message qui
+suit son import) : elle passe sous tout le reste et ne se prend plus du
+tout, pas même au clic droit ; on écrit et on entoure par-dessus (un lasso
+ou un cadre qui part sur elle entoure l'écriture, pas elle), la gomme ne
+l'efface pas, et elle sort de son groupe. C'est un geste, qui se voit (une
+étape d'annulation et du film). Pour la détacher, la copier ou l'envoyer,
+c'est le **menu de la page** : le clic droit (le bouton du stylet, l'appui
+long) dans le vide ou sur elle, sous n'importe quel outil, a *Détacher
+l'image du fond*, *Copier l'image du fond* et *Envoyer l'image du fond
+vers…* (pour la plus haute des images fixées sous le pointeur ; à côté
+d'elles, *Détacher le fond*, *Copier le fond*, *Envoyer le fond vers…* pour
+toutes, « 2 images fixées en fond sur cette page »). Détachée, elle reste
+sous les autres images et devient la sélection, l'outil Sélection en main
+(un second Échap rend l'outil d'avant). Sur une page, une image fixée reste
+toujours sous toute image libre, même en en détachant une parmi plusieurs :
+la version d'avant, son lecteur et son export PDF, qui rangent les images
+par rang seulement, les peignent ainsi dans le même ordre. Le menu de la
+page a aussi *Déverrouiller tout* quand la page a des objets verrouillés
+(« 2 objets verrouillés sur cette page »).
+
+Verrou et fond **survivent** à tout : au `.memc`, à Dupliquer la page, à
+Envoyer vers…, au collage (ici, dans un autre onglet, dans l'autre
+version), au film et au lecteur des élèves. Ce qu'on colle ou duplique de
+verrouillé ou de fixé n'est pas sélectionné, et le message le dit :
+« Collé, verrouillé. Clic droit dessus pour le déverrouiller. », « Image
+collée dans le fond. Clic droit dans le vide pour la détacher. » (une image
+fixée arrive sous tout ce qui est sur la page), ou pour un mélange « Collé ;
+ce qui est verrouillé ou fixé en fond n'est pas sélectionné. » ; « Aller à la
+page N », après un envoi, ne sélectionne que ce qui se prend. Ctrl + A ne
+prend que ce qui est libre ; quand la page n'a que du verrouillé ou du fixé
+en fond, il le dit : « Rien à sélectionner : ce qui est sur la page est
+verrouillé ou fixé en fond. » (« Tout sélectionner » est alors grisé). Une formule, une
+figure, un trait se verrouillent mais ne se fixent pas en fond : une formule
+en HTML ne passerait pas sous l'encre sans perdre sa netteté, et une figure
+fixée perdrait ses sommets.
+
 **Dans le vide**, le clic droit (ou l'appui long) ouvre le menu de la page,
 au point visé :
 *Coller ici* (le dernier objet copié, posé là ; grisé quand il n'y a rien à
-coller), *Tout sélectionner* (Ctrl + A), *Tout voir* (Maj + 1), puis, après un
-filet, ce qui touche la page elle-même : *Dupliquer la page* (Ctrl + Maj + D,
+coller), *Tout sélectionner* (Ctrl + A ; grisé aussi quand tout ce qui est
+sur la page est verrouillé ou fixé en fond), *Tout voir* (Maj + 1) ; s'il y a
+sur la page une image fixée en fond ou un objet verrouillé (lot 5), un filet
+puis *Détacher l'image du fond*, *Copier l'image du fond*, *Envoyer l'image
+du fond vers…*, *Déverrouiller tout* (voir « Verrouiller et fixer en
+fond ») ; puis, après un filet, ce qui touche la page elle-même : *Dupliquer la page* (Ctrl + Maj + D,
 voir « Changer de page »), *Toutes les pages…* (Maj + P, voir « Les pages ») ;
 puis, après un second filet, ce qui en sort : *Copier la page en image* (voir
 « Copier en image »), *Exporter la page en PDF…* (Ctrl + P, voir « Exporter
@@ -316,6 +673,18 @@ se déplace, se duplique et se **transforme** : symétrie par rapport à une dro
 tracée sur la page, à une verticale ou à un axe du repère ; symétrie centrale,
 rotation ou homothétie autour d'un point de la page. L'image est vraiment
 retournée par une symétrie axiale, et un symétrique ne recopie pas les données.
+Elle est toujours peinte sous l'écriture et les figures, même importée après
+elles, comme une feuille posée sous le tableau : ce qu'on y a écrit se voit et
+se prend (voir « Prendre un objet » et « L'ordre »).
+
+**Fixer en fond** (lot 5) : le message qui suit l'import (« Image posée.
+L'outil Point (X) place ses sommets ; « Transformer » construit son
+symétrique. ») porte un bouton *Fixer en fond*, et le menu ⋯ de l'image la
+même entrée. Fixée, l'image passe sous tout et ne se prend plus : on écrit,
+on entoure, on gomme par-dessus sans l'abîmer ; le menu de la page (clic
+droit dans le vide ou sur elle) la détache, la copie ou l'envoie sur une
+autre page (voir « Verrouiller et fixer en fond »). Ses points repérés
+restent liés à elle.
 
 **Les points d'une image** se placent à la main avec l'outil **Point** (X) :
 posé sur l'image, un point y est lié (il la suit quand on la déplace ou la
@@ -337,8 +706,12 @@ bord trace le long du bord, comme le long d'une règle.
   l'équerre, le centre du rapporteur, la pointe du compas) s'accroche aux
   points de la figure, puisque c'est de là qu'on mesure.
 - **Tourner** : la pastille ↻, autour de l'origine, au degré près, aimantée
-  tous les 15°. L'angle s'affiche. Même à petit zoom, le stylo posé sur la
-  pastille tourne l'instrument (il ne trace pas le long du bord voisin).
+  tous les 15°. L'angle s'affiche (l'orientation de l'instrument, « 30° »).
+  Même à petit zoom, le stylo posé sur la pastille tourne l'instrument (il
+  ne trace pas le long du bord voisin). C'est la même pastille, du même
+  dessin, que celle qui tourne un objet pris (lot 5, voir « Changer de
+  taille, tourner ») : on reconnaît ce qui tourne ; mais l'objet affiche
+  l'angle tourné (« ↻ 30° ») et ses aimants diffèrent (45° sauf 0°).
 - **Tracer le long d'un bord** : au stylo ou à l'outil segment, posé contre un
   bord, le trait suit le bord en ligne droite, au millimètre sur un bord gradué
   (la longueur s'affiche). L'équerre donne ainsi perpendiculaires et parallèles.
@@ -496,7 +869,34 @@ séance pendant laquelle on l'a changé l'emporte). Une page créée juste avant
 le premier geste d'un cours (moins de vingt minutes avant, le même jour) est
 de ce cours, sans en être un geste : la revue la voit neuve, comme avant.
 Le fond changé par la barre du haut, devant la classe, reste un geste, comme
-avant le lot 3. Une copie de copie remonte toute la chaîne. Rien n'est recopié :
+avant le lot 3. **Les réglages** (lot 5 : verrouiller, déverrouiller,
+grouper, dégrouper un objet) ne changent rien à ce qu'on voit : ce sont des
+étapes de l'annulation de leur page (Ctrl + Z les défait) et du film, notées
+`reglage` (un champ facultatif qu'une version d'avant ignore), mais ni un
+geste de la revue, ni un geste d'une séance, ni une coupure entre deux
+gestes : verrouiller l'énoncé le lendemain, en préparant, ne fait pas une
+séance d'un geste que Publier choisirait d'office, verrouiller entre deux
+cours ne les réunit pas, et une page verrouillée après le cours ne finit pas
+sa revue par une image de plus (deux formes qui ne diffèrent que par leur
+verrou ou leur groupe sont la même image). Ctrl + Z et Ctrl + Y d'un réglage
+en sont un aussi : se raviser le lendemain (Maj + L puis Ctrl + Z, un
+groupement défait puis refait) ne fait pas non plus de séance fantôme. La
+note suit l'étape de la pile d'annulation (sa méta `reglage`, recopiée sur
+celle que Yjs pousse dans l'autre pile, comme la méta d'un envoi) ; un geste
+visible que la fenêtre de capture fondrait dans l'étape d'un réglage la lui
+ôte, puisque la défaire se voit. Fixer une image en fond, la
+détacher, changer l'ordre, la taille ou la rotation (« Remettre droit »
+compris) se voient : ce sont des gestes, et la revue comme le lecteur des
+élèves montrent la forme transformée d'un coup, comme un déplacement (elle
+garde son identifiant ; on ne voit pas l'objet grandir ni tourner peu à peu).
+**La gomme qui efface là où elle passe** (lot 5) fait une image par trait
+touché (son étape du film, notée `coupe`) : on voit l'effacement trait par
+trait, comme la gomme au trait entier fait partir les traits l'un après
+l'autre, et chaque fois ce qui reste du trait paraît d'un coup. Ses morceaux
+ne se dessinent pas sous les yeux : ils ont été écrits bien avant (le trait
+s'est écrit, à son rythme, à son propre geste), on ne réinvente pas leur
+écriture. Le plus long garde l'identifiant du trait.
+Une copie de copie remonte toute la chaîne. Rien n'est recopié :
 la revue lit l'original dans l'instantané de chaque image (`src/heritage.ts`),
 et ce passé ne change plus, même si l'original est ensuite modifié, supprimé,
 ou supprimé définitivement. Une page de la corbeille, ou supprimée
@@ -696,6 +1096,24 @@ trait. Le format garde sa version 1 : les champs ajoutés (`inst` et `apres`
 dans un geste, `instruments` et `avant` dans le film) sont facultatifs, un
 lecteur plus ancien les ignore et rejoue le film comme avant, et un film, un
 fichier `.mem` ou un tableau sans instruments se rejoue exactement comme avant.
+Depuis le lot 5, les formes du film élève portent aussi leur verrou, leur
+fixation en fond, leur groupe et la rotation d'une formule (des champs
+facultatifs : le lecteur d'avant, déjà en cache chez un élève, les ignore et
+rejoue le film sans planter ; il y peint l'image fixée sous les autres, par
+son rang, et la formule tournée droite). Un geste qui coupe un trait à la
+gomme qui efface là où elle passe porte `coupe` (facultatif aussi) : le
+lecteur montre ses morceaux d'un coup ; celui d'avant, qui l'ignore, voit
+changer le plus long (il garde l'identifiant du trait : il ne se redessine
+pas) et apparaître les autres, qu'il dessine à vitesse de plume, sans planter.
+Le fond d'une page voyage dans le film (au départ, et `['f', fond, ox, oy]`
+quand il change) : les quatre fonds du lot 5 (grands carreaux, millimétré,
+pointé, isométrique) sont des valeurs nouvelles de ce champ, que le lecteur
+d'avant ne connaît pas ; il y peint la page blanche, sans erreur.
+Un réglage (verrouiller, grouper)
+n'y fait pas de geste : son temps passe dans l'attente du geste suivant, et
+ce qu'il a changé part avec le prochain geste visible de sa page (pas avec
+un geste d'une autre page, qui ferait sinon un geste de plus, vide, sur
+celle-ci).
 Des instruments abîmés dans un fichier sont ignorés en entier. La piste garde
 toute l'année ; l'export d'une séance et la revue n'en décodent que ce qui sert
 à la séance (`morceauxEntre` : les morceaux de la séance, et pour chaque
@@ -892,7 +1310,10 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
   supprime rien, Échap le ferme sans fermer la trieuse). L'appui long au
   doigt ne l'ouvre pas : il sert à tirer la page. Il propose **Aller à cette
   page**, **Renommer…**, **Dupliquer**, **Insérer une page avant…**, **Insérer
-  une page après…**, le **Fond** (page blanche, petits carreaux, Seyès, repère),
+  une page après…**, le **Fond** (les huit : page blanche, petits carreaux,
+  grands carreaux, Seyès, papier millimétré, papier pointé, réseau
+  isométrique, repère ; sur deux colonnes depuis le lot 5, pour que le menu
+  tienne sans défiler dans l'écran du poste de la classe),
   **Copier en image** (la page en PNG pour l'ENT ou Pronote, voir « Copier en
   image » ; la trieuse reste ouverte), **Exporter en PDF…** (voir « Exporter
   en PDF ») et **Supprimer** ; sur une page choisie parmi d'autres,
@@ -911,7 +1332,7 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
   instant après (le temps de savoir si c'est un double-clic).
 - **Insérer, ajouter** : « Insérer une page avant… / après… » met une page
   vide à côté, au fond qu'on choisit : le même menu (même largeur, même bord
-  gauche) propose aussitôt les quatre fonds, celui de la voisine coché, sous
+  gauche) propose aussitôt les huit fonds (sur une colonne), celui de la voisine coché, sous
   le focus (Entrée le prend) et, au pointeur, sous le pointeur (un second
   clic au même endroit le prend) ; une seule action, qu'un seul « Annuler »
   défait (pas de second temps par « Fond »). Le second clic d'un double-clic
@@ -1170,7 +1591,8 @@ Le classeur s'enregistre tout seul dans le navigateur, mais un navigateur
 peut l'oublier : un poste de lycée remis à zéro chaque soir, un iPad sur
 lequel on n'est pas revenu depuis des semaines, un historique effacé. Le
 bouton **⋯**, au bout de la barre du haut (« Enregistrer, ouvrir ou exporter
-en PDF », Ctrl + S, Ctrl + O, Ctrl + P), l'emporte dans un fichier. Chaque
+en PDF ; réglages de cet appareil », Ctrl + S, Ctrl + O, Ctrl + P ; son nom
+court, sous les outils, est « Fichier »), l'emporte dans un fichier. Chaque
 entrée de son menu a un nom stable (`data-action` : `enregistrer`, `ouvrir`,
 `exporter-pdf`, et pour la clé `activer-cle`, `enregistrer-cle`,
 `arreter-cle`), que les essais retrouvent quel que soit le libellé.
@@ -1439,9 +1861,16 @@ Le film élève commence lui aussi par `{"format":` ; chaque lecteur reconnaît
 le sien à ses premiers octets. Le fichier garde aussi la corbeille des
 pages, leurs noms et les copies de pages (qui savent de quelle page elles
 héritent leur passé), et les notes du film qui disent ce qui n'est pas un
-geste (`seulOrdre`, `naissance`, `rangement`) : une version d'avant les
-ignore sans rien casser (une copie y paraît d'un coup au replay, comme une
-page neuve ; un essai le vérifie avec la version d'avant le lot 3).
+geste (`seulOrdre`, `naissance`, `rangement`, et depuis le lot 5 `reglage`) :
+une version d'avant les ignore sans rien casser (une copie y paraît d'un coup
+au replay, comme une page neuve ; un essai le vérifie avec la version d'avant
+le lot 3 ; un réglage y compte pour un geste). Les champs que le lot 5 ajoute
+aux formes (verrou, fixation en fond, groupe, rotation d'une formule, voir
+`src/types.ts`) sont facultatifs : la version d'avant (fdf3f72) ouvre un
+`.memc` du lot 5, le peint, le revoit et en publie le film sans erreur, en
+les ignorant ; un `.memc` d'avant s'ouvre dans le lot 5 et s'y lit pareil
+(un banc le vérifie dans les deux sens ; voir les Limites connues pour un
+classeur repassé par la version d'avant).
 L'en-tête ne compte que les pages de l'ordre, pas celles de la corbeille.
 Une copie de page coûte le poids de la page dans le document (environ 400 Ko
 pour une page de 300 traits longs), jamais celui de son film : son passé se
@@ -1943,32 +2372,48 @@ le tient à jour).
   outils − 24) : assez pour que le plus long des textes courts de l'état
   y tienne entier (« Seulement dans ce navigateur » : 184 px de texte, 252
   en tout, mesurés dans sa police), sa propre barre, à 12 px de la barre des
-  outils, avec le nom et l'état (1366 × 768 : 424 px ; 1280 × 720 : 338 ;
-  un TNI en 1920 : 978 ; l'iPad 11 pouces en paysage, 1194 × 834 : 252) ;
-  de 58 px à cette place, l'icône et le point (1024 × 768 : 82 ; 1180 ×
-  820 : 238 et 1112 × 834 : 170, où « Seulement dans ce navig… » était
-  coupé ; une fenêtre de 1100 à 1190 px) ; moins, quand la barre du haut est déjà sur
+  outils, avec le nom et l'état (1366 × 768 : 539 px ; 1280 × 720 : 453 ;
+  un TNI en 1920 : 1093, et 875 avec les noms sous les outils, qu'il a
+  d'office depuis le lot 5 ; l'iPad 11 pouces en paysage, 1194 × 834, et
+  aussi, depuis le lot 5, 1180 × 820 : 353 et 1112 × 834) ;
+  de 58 px à cette place, l'icône et le point (1024 × 768 : 197 ; 960 ×
+  600 : 133 ; une fenêtre de moins de 1080 px environ, où « Seulement dans ce
+  navig… » serait coupé) ; moins, quand la barre du haut est déjà sur
   plusieurs rangées (les tablettes, les téléphones), il devient son premier
   bouton, s'il n'y ajoute pas de rangée ; sinon il se cache, et le bouton ⋯
   porte le point, son titre nomme le classeur (« … · Classeur « Symétrie
   centrale » ») et son menu commence par l'état. C'est le cas à 1024 × 768
   dès qu'une page du classeur a un nom : le compteur du lot 3 prend alors la
-  place jusqu'au bord de la barre des outils (−5 px), et la barre du haut,
-  avec le nom de la page plus petit, reste exactement celle du lot 3 ; de
-  même à 960 × 600, où l'insérer ajouterait une rangée. Il se place aux
+  place (il en reste 25 px), et la barre du haut reste exactement celle du
+  lot 3. Au téléphone (lot 5, K10, voir « Le téléphone »), la barre du haut
+  est sur une rangée, et il en est toujours le premier bouton (l'icône et
+  le point), s'il y tient sans en ajouter une (de 320 × 568 à 932 × 430,
+  il y tient). (Les places ont gagné 115 px au
+  lot 5 : la liste déroulante des fonds est devenue un bouton de 44 px ; elles
+  étaient de 424, 338, 978, 238 et 82 px.) Il se place aux
   seuls moments où le compteur se règle (la fenêtre qui change, la police
-  qui arrive, le premier nom de page) : jamais d'une page à l'autre.
-- **Au téléphone en portrait**, la barre du haut passe sur plusieurs
-  rangées (trois sur un iPhone 12 ou un Pixel 5 : jusqu'à y = 162 ; quatre
-  sur un iPhone SE). La barre des outils, posée en bas, s'arrête 12 px sous
-  son bas MESURÉ (`--bas-barre-haut`, suivi par un ResizeObserver et à
-  chaque changement de taille de la fenêtre), et défile s'il le faut : avant
-  (depuis le lot 2, vu en C3), elle montait jusqu'à y = 128, sous la barre
-  du haut, et un toucher au centre du bouton Stylo ne l'atteignait pas
-  (contrôle final du lot 4 ; essai `lot4/CF3-telephone.mjs` : iPhone 12,
-  Pixel 5, iPhone SE, Galaxy S8, en paysage, iPad, PC, TNI, et la fenêtre
-  qui change de largeur).
-- **Le menu ⋯** commence par le bloc du classeur : son nom, puis une ligne
+  qui arrive, le premier nom de page, et depuis le lot 5 la barre des
+  outils qui change de largeur : les noms sous les outils l'élargissent de
+  22 px, voir « Cet appareil ») : jamais d'une page à l'autre. Avec les noms
+  sous les outils, à 1024 × 768, la barre du haut passe sur deux rangées et
+  il en devient le premier bouton.
+- **Au téléphone en portrait**, jusqu'au lot 5, la barre du haut passait
+  sur plusieurs rangées (trois sur un iPhone 12 ou un Pixel 5 : jusqu'à
+  y = 162 ; quatre sur un iPhone SE), et la barre des outils, posée en bas
+  en colonne, s'arrêtait 12 px sous son bas MESURÉ (`--bas-barre-haut`,
+  suivi par un ResizeObserver et à chaque changement de taille de la
+  fenêtre) : avant (depuis le lot 2, vu en C3), elle montait jusqu'à
+  y = 128, sous la barre du haut, et un toucher au centre du bouton Stylo
+  ne l'atteignait pas (contrôle final du lot 4 ; essai
+  `lot4/CF3-telephone.mjs` : iPhone 12, Pixel 5, iPhone SE, Galaxy S8, en
+  paysage, iPad, PC, TNI, et la fenêtre qui change de largeur). Depuis le
+  lot 5 (K10), la barre du haut y tient sur une rangée et la barre des
+  outils est une rangée de sept boutons en bas, sur toute la largeur (voir
+  « Le téléphone ») ; `--bas-barre-haut` reste mesuré (le panneau du
+  programme de construction et sa consigne, et au téléphone le message
+  passé sous la barre du haut, s'y règlent).
+- **Le menu ⋯** (au téléphone, *Plus* : ses sections Page, Outils de cours
+  et Vue viennent d'abord, voir « Le téléphone ») commence par le bloc du classeur : son nom, puis une ligne
   par endroit, dans l'ordre : « Enregistré dans ce navigateur » (ou « Ce
   navigateur n'enregistre plus ce classeur (plus de place ?) : enregistrez-le
   dans un fichier (Ctrl + S). ») ; la clé (« Sur la clé (Symétrie.memc) : il
@@ -2003,13 +2448,28 @@ le tient à jour).
   ni stylet : l'iPad sans clavier, la tablette Android, le téléphone),
   l'entrée du menu à la place, « (menu ⋯ → Enregistrer le classeur) »,
   « (menu ⋯ → Ouvrir un classeur) » (`POUR_ENREGISTRER`, `POUR_OUVRIR`,
-  `src/navigateur.ts`).
+  `src/navigateur.ts`). Tout à la fin du menu (lot 5), après un filet, le
+  titre « Cet appareil » et ses deux cases : « Contraste renforcé » et « Noms
+  sous les outils » (voir « Ce que fait la v0.1 »). Le menu s'ouvre toujours
+  sous son bouton : plus long que la place qui reste en dessous (à 1366 ×
+  768, quand il porte l'entrée de la clé), il défile, au lieu de remonter
+  sur la barre du haut et de couvrir son bouton ; il se rouvre en haut. Les
+  entrées d'un petit menu qui défile gardent toujours leur hauteur, partout
+  (depuis la vérification « appareils » du lot 5 ; avant, hors du téléphone,
+  elles se tassaient jusqu'à 44 px : dans une fenêtre de Chrome de 1366 ×
+  657, l'aide d'« Enregistrer le classeur… » passait sous le titre de
+  l'entrée suivante, et un clic au bout de cette aide lançait
+  « Enregistrer automatiquement dans un fichier… ») : à 1366 × 657 ou
+  1280 × 720, le menu ⋯ défile, ses deux cases de « Cet appareil » en bas ;
+  le menu de la page aussi, quand ses entrées du lot 5 (l'image fixée en
+  fond, *Déverrouiller tout*) l'allongent au-delà de l'écran.
 - **Le bandeau discret**, une ligne sous le bouton du classeur (ou sous la
   barre du haut, à droite, quand le bouton y est ou qu'il est caché), 13 px,
-  360 px au plus, jamais animé, jamais sous la barre des outils (sur un
-  téléphone en portrait, la barre du haut va d'un bord à l'autre : il
-  s'arrête à 8 px à droite de la barre des outils, qui en cachait le début
-  du texte et des boutons), caché pendant la revue, une séance et la
+  360 px au plus, jamais animé, jamais sous la barre des outils (quand la
+  barre du haut va d'un bord à l'autre et que la barre des outils est à
+  côté de lui, il s'arrête à 8 px à droite d'elle, qui en cachait le début
+  du texte et des boutons ; au téléphone en portrait, depuis le lot 5, la
+  barre des outils est en bas, loin de lui), caché pendant la revue, une séance et la
   trieuse. Il ne paraît que pour ce qui demande un clic : « Ce navigateur
   n'enregistre plus ce classeur. » [Enregistrer le classeur], sans × ; le
   rappel (plus bas) ; la clé en pause (« L'enregistrement sur la clé attend
@@ -2483,7 +2943,9 @@ l'écran se ferme. Un autre : « Ouverture de « Fractions »… », puis
 
 **Nouveau classeur** : une fenêtre, « Nom » (« Nouveau classeur », tout
 choisi, 60 caractères ; vide, il garde ce nom), « Fond de la première
-page » (Petits carreaux, coché ; Page blanche ; Seyès ; Repère) et, sur
+page » (Petits carreaux, coché ; Page blanche ; Seyès ; Repère ; puis, depuis
+le lot 5, Grands carreaux (1 cm) ; Papier millimétré ; Papier pointé ; Réseau
+isométrique) et, sur
 Chrome et Edge, la case **Enregistrer automatiquement sur la clé**, cochée
 d'office dans la version d'un seul fichier (`file://`, le poste remis à
 zéro) ; [Annuler] [Créer et ouvrir] (Entrée). La case cochée : le choix du
@@ -2548,9 +3010,16 @@ Un fichier PDF à imprimer, ou à déposer dans l'ENT pour les absents :
   exporte les pages choisies, sinon tout le classeur. La trieuse reste ouverte
   et utilisable pendant l'export.
 
-La fenêtre dit ce qu'on exporte, porte la case *Imprimer le fond de la page
-(carreaux, Seyès, repère)* (cochée au départ ; le choix est gardé dans ce
-navigateur, le même que pour l'image copiée : `mem-sortie-fond`), une note,
+La fenêtre dit ce qu'on exporte, porte la case du fond imprimé (cochée au
+départ ; le choix est gardé dans ce navigateur, le même que pour l'image
+copiée : `mem-sortie-fond`), qui nomme le fond de ce qu'on exporte quand il
+n'y en a qu'un — *Imprimer le fond de la page : Papier pointé*, *Imprimer le
+fond des pages : Seyès* — et sinon ses sortes, *Imprimer le fond des pages
+(carreaux, Seyès, millimétré, pointé, repère…)* (de même sur une page
+blanche) ; elle suit le choix entre « La page 3 » et « Tout le classeur »
+(depuis les corrections « affichage » du lot 5 : avant, elle disait pour tous
+les fonds « (carreaux, Seyès, repère) », et l'on pouvait croire que le papier
+pointé ou le réseau isométrique ne s'imprimaient pas). Puis une note,
 *Annuler* et *Exporter* (qui a le focus : Entrée exporte). Ctrl + P n'imprime
 plus la page web (les barres, le tableau coupé au bord de l'écran) : il ouvre
 cette fenêtre. Le menu Fichier › Imprimer du navigateur, lui, n'imprime
@@ -2668,12 +3137,239 @@ polygone, tracé clic par clic, s'accroche de la même façon.
 Outil **Point** (X) : un clic pose un point marqué d'une croix et nommé (A, B,
 C…), sur le tableau ou sur une image.
 
-Stylo sensible à la pression, surligneur, gomme, segments (Maj pour
+Stylo sensible à la pression, surligneur, gomme (au trait entier, ou seulement là où elle passe), segments (Maj pour
 les angles de 15°, aimant au quadrillage), formules LaTeX avec aperçu et
 raccourcis, sélection et déplacement, copier, coller, dupliquer (d'une page et d'un onglet à l'autre), annuler/rétablir (page par page ; au doigt, toucher à deux ou trois doigts), pages (supprimées sans question, rendues par Annuler ou Ctrl+Z, ou remises de la corbeille), fonds (blanc,
-petits carreaux, Seyès, repère gradué), zoom de 10 % à 2000 % — le quadrillage
+petits carreaux, grands carreaux, Seyès, papier millimétré, papier pointé,
+réseau isométrique, repère gradué), zoom de 10 % à 2000 % — le quadrillage
 suit le zoom comme une carte : les carreaux trop petits s'estompent et laissent
 place à de plus grands (1 cm, 5 cm, 10 cm…), la page n'est jamais blanche.
+
+**Le fond de la page** (lot 5). Dans la barre du haut, le bouton du fond
+montre en petit le fond de la page (sa vignette, 30 × 22 px ; son titre et
+son nom lu : « Fond de la page : Papier pointé ») ; il ouvre sous lui le
+**menu des fonds en vignettes** : les huit fonds en 4 × 2 (deux colonnes sur
+un écran de moins de 480 px), chacun dessiné comme sur la page, à un zoom où
+son motif se lit, son nom dessous — *Page blanche*, *Petits carreaux*,
+*Grands carreaux (1 cm)*, *Seyès*, *Papier millimétré*, *Papier pointé*,
+*Réseau isométrique*, *Repère* ; celui de la page coché (cerné de bleu). Un
+clic (un toucher) le choisit et ferme le menu ; le repère se pose, comme
+avant, au milieu de ce qu'on regarde. Au clavier, Entrée sur le bouton
+l'ouvre, le focus sur le fond de la page ; ← et → passent à la vignette
+voisine, ↑ et ↓ à la rangée d'à côté (en tournant), Début et Fin à la
+première et à la dernière ; Entrée choisit, Échap ferme sans rien changer, et
+le focus revient au bouton. C'est un petit menu comme les autres : un seul
+ouvert à la fois, un appui ailleurs le ferme sans rien poser. Ses vignettes
+se peignent une fois, à la première ouverture. Les quatre nouveaux, calés
+comme les autres sur l'origine du tableau et dessinés sur la seule zone
+visible, suivent le zoom sans jamais tracer de lignes plus serrées que 6 à
+9 px d'écran (sinon, au vidéoprojecteur, un écran gris) : le niveau le plus
+fin paraît et s'efface en fondu, et le suivant, déjà là, prend le relais.
+- **Grands carreaux (1 cm)** : une ligne par centimètre, sans renfort tant
+  qu'elles sont à 18 px au moins ; plus loin, comme les petits carreaux,
+  des carreaux de 5 cm, 10 cm…
+- **Papier millimétré** : orangé, comme celui du commerce, en trois tons
+  fixes — les millimètres fins, les 5 mm moyens, les centimètres (et au-delà)
+  les plus marqués ; on trace la famille la plus fine qui fait au moins
+  6 px (en fondu de 6 à 14 px) et les deux suivantes ; une ligne commune à
+  deux familles n'est tracée qu'une fois, dans le ton de la plus grosse. À
+  100 % (1 mm = 4 px) on voit les 5 mm et les centimètres ; les millimètres
+  paraissent vers 150 %. Aucun ton ne saute d'un cran de zoom au suivant (un
+  test le vérifie de 10 % à 2000 %) : chaque famille a son ton à elle, et
+  son fondu se lit sur son propre écart (les centimètres, juste quand les
+  5 mm s'effacent vers 30 %, sont à 12 px : leur fondu, le même avant et
+  après, évite un saut que donnait « la plus fine en fondu, les autres
+  pleines »).
+- **Papier pointé** : un petit point (2 px d'écran) par centimètre ; plus
+  serrés que 12 px (ou que ce qui ferait plus de 12 000 points sur un très
+  grand écran), un point tous les 5 cm, 10 cm…, les fins s'effaçant en fondu.
+  De près, c'est du papier : à 2000 %, un point tous les 800 px.
+- **Réseau isométrique** : des triangles équilatéraux de 1 cm de côté (des
+  horizontales tous les 1 cm × √3/2 et deux familles de droites à ±60°,
+  d'un bord à l'autre de l'écran) ; sous 9 px de hauteur, des triangles de
+  5 cm, 10 cm… (un sous-réseau du même réseau, rien ne saute).
+
+Les vignettes de la trieuse et d'« Envoyer vers… », la copie en image et le
+PDF (avec la case « imprimer le fond » : le motif ; sans : la feuille
+blanche), la revue et le lecteur élève passent tous par le même dessin. Le
+PDF seul le peint **pour le papier** et non pour un écran (depuis les
+corrections « affichage » du lot 5) : ses lignes tombent sur les pixels de
+l'image de la feuille (200 ppp, deux pour un px CSS), à leur place exacte à
+un demi-pixel près — 1 cm et 5 mm y font 1 cm et 5 mm à 0,13 mm près (aux
+pixels CSS, un écart des petits carreaux faisait parfois 4,7 mm) — et le
+**papier millimétré y a ses millimètres** : à l'échelle réelle, une ligne
+par millimètre (un trait fin d'un pixel de l'image, 0,13 mm, d'un orangé un
+peu plus marqué qu'à l'écran), les 5 mm et les centimètres plus marqués, en
+deux pixels, tous à plein ton ; une page réduite pour tenir sur la feuille
+garde ses millimètres tant qu'ils y font 0,8 mm, puis n'a plus que les 5 mm
+et les centimètres. Avant, la feuille était peinte avec les seuils de
+l'écran (rien sous 6 px CSS : 1 mm n'en fait que 3,8 à l'échelle réelle) et
+n'avait que les 5 mm et les centimètres ; ces seuils, pensés pour le
+vidéoprojecteur, restent ceux de l'écran, de la revue, du lecteur, des
+vignettes et de l'image copiée. Un
+lecteur ou une version d'avant le lot 5 ne connaît pas ces quatre noms : il
+peint alors le papier blanc, sans erreur (aucun fond n'y est vérifié à la
+lecture) ; un fond qu'on ne connaît pas, venu d'une version plus récente,
+est blanc de même ici.
+
+**Cet appareil : le contraste renforcé et les noms sous les outils** (lot 5).
+Tout à la fin du menu ⋯ de la barre du haut, sous le titre « Cet appareil »,
+deux cases qui ne règlent que l'écran de CETTE machine, gardées dans ce
+navigateur (les clés `mem-contraste` et `mem-noms-outils`) ; rien ne change
+dans le classeur, ni pour les élèves. Le titre de ⋯ et son nom lu le disent
+(« Enregistrer, ouvrir ou exporter en PDF ; réglages de cet appareil (Ctrl +
+S, Ctrl + O, Ctrl + P) », son menu de même ; au téléphone, « Plus : la page,
+les outils de cours, le classeur, cet appareil ») : depuis la vérification
+« conformité » du lot 5, on y trouve le contraste du vidéoprojecteur sans
+le chercher. Son nom court sous les outils reste *Fichier* : c'est là,
+comme Fichier → Options d'un traitement de texte, qu'on cherche les
+réglages.
+- **Contraste renforcé** (« Pour le vidéoprojecteur : lignes du fond, barres
+  et sélection plus marquées. Rien ne change dans le classeur. ») : pour le
+  vidéoprojecteur de la classe, qui délave les couleurs claires (les
+  carreaux à 28 % d'opacité, un filet gris clair, un triangle d'épaisseur 1
+  ne se voient plus du fond de la salle). Coché : les lignes de tous les
+  fonds plus opaques (× 1,8, au plus 0,9) et de 2 px, calées sur les pixels
+  entiers, les points du papier pointé de 3 px, la marge du Seyès et les axes
+  du repère plus épais — les mêmes niveaux et les mêmes fondus qu'à
+  l'ordinaire, jamais un écran gris (au plus sombre, le millimétré à 30 %,
+  une luminance moyenne de 224 sur 255) ; les figures et les anciens
+  segments jamais affichés sous 2 px d'écran (un contour de 1 dézoomé à 50 %
+  en fait 4 de large) ; les cadres de la sélection en deux tons (5 px blancs
+  sous 3 px de bleu : ils se voient sur l'écriture comme sur une photo), les
+  poignées, les ronds des sommets et la pastille ↻ du cadre au filet de
+  2,5 px, le halo du survol plus large, le lasso, le cadre qu'on tire et le
+  cercle de la gomme en 2,5 px ; dans les barres et les menus, les filets et
+  les gris plus foncés, le filet des barres doublé, des icônes plus épaisses,
+  l'outil en main d'un coup de surligneur plus franc, des messages plus
+  foncés — sans qu'aucune taille ne change (rien ne bouge dans la mise en
+  page : l'essai le vérifie au pixel près). L'écriture à main levée garde son
+  trait (son contour, celui de perfect-freehand, serait à recalculer pour
+  des milliers de traits à chaque cran de zoom). La revue en classe, qui
+  passe au vidéoprojecteur, l'a aussi (relu à chaque ouverture). Jamais
+  ailleurs : ni le document, ni le .memc, ni le film, ni le film élève, ni le
+  PDF, ni l'image copiée, ni les vignettes (la trieuse ouverte en contraste
+  montre celles d'un écran sans contraste) ne changent d'un octet ou d'un
+  pixel (l'essai `lot5/K9-affichage.mjs` les compare) ; le lecteur des
+  élèves, qui sur GitHub Pages partage pourtant le stockage du tableau, ne
+  lit pas ce réglage (il n'en a pas le code). Message : « Contraste
+  renforcé, sur cet appareil », ou « Contraste normal ».
+- **Noms sous les outils** (« Un mot sous chaque bouton des barres ») : sous
+  chaque icône de la barre des outils, de la barre du haut et de la barre
+  du zoom, son nom court (11 px), comme dans la barre d'actions : *Stylo*,
+  *Surligneur*, *Gomme*, *Point*, *Segment*, *Formes*, *Formule*,
+  *Sélection*, *Vue*, *Doigt*, *Annuler*, *Rétablir*, *Supprimer* ;
+  *Nouvelle*, *Supprimer* (la poubelle de la page, *Effacer* sur une page
+  seule, comme son titre), *Fond*, *Aimant*, *Formes auto*, *Image*,
+  *Instruments*, *Construire*, *Automatismes*, *Revoir*, *Publier*,
+  *Fichier* (⋯) ; *Dézoomer*, *Zoomer*, *Tout voir* (depuis la vérification
+  « conformité » du lot 5 : au TNI, sans survol, ⛶ n'avait aucun nom
+  visible ; la barre du zoom, en bas à droite, y grandit à 54 px de haut) ;
+  ni ‹, ni ›, ni le compteur, ni le pourcentage du zoom (ils se lisent
+  déjà), ni le bouton du classeur. Les boutons font alors 54 px de haut
+  et 52 au moins de large ; ceux de la barre des outils, tous à la largeur du
+  plus large (80 px de barre au lieu de 58) ; ce qui se place à sa droite (le
+  bouton du classeur, les choix des Formes et du Segment, les menus du doigt
+  et de la Gomme) part de son bord droit MESURÉ (`--droite-barre-outils`,
+  suivi comme `--bas-barre-haut`) ; elle défile sur un écran bas, ses boutons
+  gardent leur taille (sur un écran qu'on touche, elle replie plutôt ses
+  couleurs dans « Couleur » : au TNI de 1080 px, avec ses noms, c'est le
+  cas, voir « La barre de gauche ») ; la barre du haut peut passer sur deux rangées (à
+  1024 × 768), et un menu posé à droite de la barre des outils passe alors
+  sous elle. Par défaut (« auto »), l'**écran** décide : allumés sur un écran
+  qu'on touche (ou à pointeur grossier) dont la plus petite dimension fait au
+  moins 900 px — un TNI, une grande tablette comme l'iPad Pro 12,9 pouces —,
+  éteints au poste de la classe (souris et tablette graphique : l'infobulle
+  y existe, et à 768 px de haut les noms feraient défiler la barre des
+  outils), sur un iPad de 11 pouces (820 px de côté : en paysage, la barre
+  défilerait) et au téléphone. L'écran, et non la fenêtre : la décision ne
+  change pas quand on tourne la tablette. Dès qu'on coche ou décoche, le
+  choix est retenu et l'écran ne décide plus. La mise en page du téléphone
+  (une fenêtre de 640 px de large au plus, ou basse sous le doigt) les
+  éteint toujours, l'entrée y est grisée (« … (pas sur un téléphone : la
+  place manque) »), et ils reviennent en la quittant. Message : « Noms sous
+  les outils » ; décochés, « Outils sans noms (leur nom paraît au survol) » à
+  la souris et au stylet d'une tablette graphique, qui survolent,
+  « Outils sans noms » au doigt et au stylet posé sur l'écran (le TNI,
+  l'iPad), qui ne survolent pas. Le mot est écrit par la feuille de style
+  (`data-libelle`) : le texte des boutons reste vide et leur nom lu, leur
+  titre, ne changent pas.
+
+**Le téléphone** (lot 5). Sur une fenêtre de 640 px de large au plus, ou
+basse (500 px de haut au plus) sous le doigt — un téléphone, en portrait
+comme couché —, la mise en page change (`TELEPHONE`, `src/navigateur.ts`, une
+seule requête, que reprend la feuille de style ; `body.telephone`) ; rien
+n'y sort de l'écran (essayé de 320 × 568 à 932 × 430), tout bouton y fait au
+moins 44 × 44 px — ceux des fenêtres et de la bibliothèque aussi, depuis la
+vérification « conformité » du lot 5 (*Annuler*, *Exporter*, *Mettre à
+jour*, les raccourcis de l'éditeur de formule, les cases et les choix d'une
+fenêtre, le tri, *Créer un dossier de classe*, *Plus tard*, les couleurs
+d'un dossier : ils faisaient 38 à 43 px) —, et l'essentiel reste sous le
+pouce :
+- **La barre du haut sur une rangée** : le bouton du classeur (son icône et
+  le point, en tête de la barre), ‹, le compteur (sans le nom de la page),
+  ›, *Nouvelle page* (+ ; sous 360 px de large, elle passe dans *Plus*, et ›
+  sur la dernière page en ajoute une) et ⋯, qui devient **Plus** (« Plus :
+  la page, les outils de cours, le classeur »). Le reste de la barre (la
+  poubelle de la page, le fond, l'aimant, les formes auto, l'image, les
+  instruments, construire, les automatismes, revoir, publier) est dans
+  *Plus*, qui commence par trois sections : **Page** (*Supprimer la page* —
+  *Effacer la page* sur une page seule —, *Fond…*, qui ouvre le menu des
+  fonds en vignettes, sur deux colonnes en portrait ; *Aimanter au
+  quadrillage* et *Le stylo redresse les figures*, deux cases), **Outils de
+  cours** (*Importer une image…*, *Instruments…* — leur liste, centrée sous
+  la barre du haut —, *Programme de construction*, *Automatismes*, *Revoir
+  la construction*, *Publier le replay*), **Vue** (*100 %*, *Tout voir*) ;
+  puis, comme ailleurs, le bloc du classeur et ses entrées, et « Cet
+  appareil ». Chaque entrée fait 44 px de haut au moins ; le menu s'ouvre
+  sous son bouton et défile s'il dépasse la hauteur qu'on voit.
+- **La barre des outils** : en bas, sur toute la largeur, en portrait (à
+  12 px des bords, 4 sous 360 px de large : 7 × 44 = 308 px tiennent dans
+  320) ; à gauche, en colonne, couché. Sept boutons : *Stylo*, *Gomme*,
+  *Sélection*, **Couleur** (un rond de la couleur en main, « Couleur et
+  épaisseur » : son menu a les quatre pastilles et les trois tailles, 44 ×
+  44 chacune), *Annuler*, *Rétablir*, **Autres outils** (ses points ; quand
+  on tient l'un de ces outils, il prend son icône et le coup de surligneur :
+  sa grille de 60 × 56 a *Surligneur*, *Point*, *Segment*, *Formes*,
+  *Formule*, *Vue*, *Doigt* — sur un appareil tactile : il ouvre le menu du
+  doigt — et *Supprimer* la sélection). Un outil s'atteint en deux touchers
+  au plus ; un type de forme ou de segment en trois (*Autres outils*,
+  *Formes*, *Rectangle*) : leurs choix paraissent juste au-dessus de la
+  barre du bas (à sa droite, couché), sans jamais sortir de l'écran. Le menu
+  de la Gomme s'ouvre toujours en la retouchant ; ces petits menus se posent
+  au-dessus de leur bouton (à droite de la barre, couché), entre les deux
+  barres, sans couvrir ni l'une ni l'autre (sur 320 px de haut, celui de la
+  Gomme défile).
+- **Le zoom** : la barre du zoom est cachée (le pincement zoome ; *100 %* et
+  *Tout voir* sont dans *Plus*). *Tout voir* cadre ce qu'on voit entre la
+  barre du haut et celle du bas (`zoneEntreBarres` lit la barre des outils
+  posée en bas comme celle du bas), et la pastille ↻ du cadre de taille y
+  reste.
+- **Ce qui flotte** ne couvre jamais les barres : la barre d'actions reste
+  au-dessus de la barre du bas (`placeBarre`, son bord `bas`) et, couché, à
+  droite de la barre des outils ; le menu complet aussi (`positionPanneau`,
+  de même), sur toute la largeur en portrait, défilant s'il est plus haut
+  que la place ; « Revenir au contenu » et le message se posent au-dessus
+  de la barre du bas (`--haut-barre-bas`, mesuré comme `--bas-barre-haut`),
+  couché, centrés sur ce qu'on voit du tableau ; le message ne couvre pas
+  non plus ce qui est pris (son cadre, sa pastille, sa barre d'actions, son
+  menu) : il passe alors sous la barre du haut, ou, s'il n'y a pas la place,
+  dans une bande libre, plus étroit (`UI.placerToast`) ; le bandeau de la
+  sauvegarde reste sous la barre du haut.
+- **On tourne le téléphone** : rien n'est perdu (les formes, la sélection,
+  l'outil, la page, la couleur) ; la barre des outils passe de bas à gauche,
+  et les petits menus ouverts se ferment, comme sur la tablette.
+- **L'éditeur de formule** y est plus haut (ses raccourcis sur deux
+  rangées) : il remonte pour que *Annuler* et *Placer* restent dans l'écran
+  (à 320 × 568 et couché, ils sortaient par le bas jusqu'à la vérification
+  « conformité » du lot 5), et défile sur un écran plus bas que lui
+  (568 × 320).
+Au poste de la classe (souris, tablette graphique), au TNI et sur l'iPad
+(1180 × 820, 820 × 1180), rien de tout cela : les barres y sont, au
+demi-pixel près, celles d'avant (l'essai `lot5/K10-telephone.mjs` les
+compare à leur relevé sur c72da32). Les deux boutons du téléphone sont au
+bout de la barre des outils dans le document (cachés ailleurs) : l'ordre du
+poste de la classe ne change pas, la feuille de style les range.
 
 **Se déplacer, zoomer.** La molette de la souris fait défiler la page (Maj :
 à l'horizontale) ; au pavé tactile, deux doigts qui glissent déplacent le
@@ -2684,7 +3380,8 @@ dans le menu du pourcentage (en bas à droite) : « Molette de la souris : fait
 défiler / zoome », gardé sur cet ordinateur. Ce menu donne aussi **100 %**
 (Ctrl + 0), **Tout voir** (Maj + 1, ou le bouton cadre à côté de « + » : toute
 la page entre les barres, jamais au-delà de 100 %) et **Voir la sélection**
-(Maj + 2, 200 % au plus) ; Ctrl + « + » et Ctrl + « − » zooment le tableau (au
+(Maj + 2, 200 % au plus) ; au téléphone, où la barre du zoom est cachée (lot
+5), le pincement zoome, et *Plus* a *100 %* et *Tout voir* ; Ctrl + « + » et Ctrl + « − » zooment le tableau (au
 clavier principal ou au pavé numérique, en AZERTY comme en QWERTY), autour du
 pointeur, et non plus toute la page du navigateur. Sans sélection, les flèches
 déplacent la vue d'un quart d'écran (trois quarts avec Maj, en continu si on
@@ -2709,8 +3406,9 @@ du tableau a un nom, la place d'un nom est gardée sur toutes les pages
 (vide sur une page sans nom). Cette place est d'une vingtaine de
 caractères, moins si la barre n'a pas la place sur ses rangées : elle ne
 lui en fait jamais prendre une de plus. Sans même dix caractères de place
-(une tablette ou un vidéoprojecteur en 1024 × 768, où la barre tient juste
-sur une rangée et laisse environ 90 px), le nom s'écrit plus petit dans la
+(une fenêtre de 910 px de large ou moins, où la barre tient juste sur une
+rangée ; c'était le cas en 1024 × 768 avant que le lot 5 ne remplace la
+liste déroulante des fonds par un bouton), le nom s'écrit plus petit dans la
 place qui reste : on en lit une dizaine de caractères (« 2 / 3 · Exercice
 … »), entier dans l'annonce, l'infobulle et la trieuse ; il ne disparaît
 que sous 56 px de place. Ainsi ‹ et › restent à leur place : on avance en touchant toujours
@@ -2751,7 +3449,12 @@ cela dans un champ de saisie, une fenêtre ouverte, la revue ou une séance, ni
 pendant qu'on écrit ou qu'on glisse un objet.
 
 **Échap** annule ce qui est en cours (menu, sélection, polygone) ; s'il n'y a
-rien, il passe à l'outil Sélection, et un second Échap rend l'outil d'avant.
+rien, il passe à l'outil Sélection, et un second Échap rend l'outil d'avant :
+celui qu'on a quitté pour la Sélection, de quelque façon qu'on y soit venu
+(Échap, V, son bouton, Ctrl + A, *Détacher* une image du fond) ; avant le
+contrôle final du lot 5, seul Échap le retenait, et après V, Échap rendait
+l'outil quitté par un Échap plus ancien (la Formule, dont le clic suivant
+ouvrait « Nouvelle formule » au lieu d'écrire).
 Une fenêtre ouverte (Publier, Exporter, une question) : Échap la ferme, et
 c'est tout, même quand son focus est tombé sur la page (le bouton
 « Publier », désactivé pendant l'envoi, le perdait ; il revient maintenant
@@ -2783,13 +3486,104 @@ L'objet survolé (par son tracé ou son intérieur) s'éclaire d'un halo bleu qu
 suit sa forme, avant le clic ; une droite ou une demi-droite sélectionnée se
 surligne sur toute sa longueur visible ; les flèches poussent la sélection
 d'1 mm (1 cm avec Maj), sauf quand son menu complet est ouvert : elles vont
-alors dans le menu (voir « Au clavier »).
+alors dans le menu (voir « Au clavier »). Seules : avec Ctrl, ⌘ ou Alt,
+elles ne poussent plus rien (lot 5). Ctrl + ↑ / ↓ avancent et reculent la
+sélection, avec Maj premier plan et arrière-plan (⌘ sur Mac ; voir
+« L'ordre »), une fois par appui, même le menu complet ouvert ; Maj + L
+verrouille la sélection, ou la déverrouille son menu court ouvert (voir
+« Verrouiller et fixer en fond » ; sans sélection, L reste le Segment) ;
+Ctrl + G groupe la sélection, Ctrl + Maj + G la dégroupe (⌘ sur Mac ; voir
+« Grouper »), toujours empêchés : la recherche du navigateur ne s'ouvre
+plus ; Maj, tenue en tirant un coin du cadre de taille d'une image, la
+déforme, et tenue en tournant la pastille ↻, tourne par pas de 15° (voir
+« Changer de taille, tourner ») ; Échap abandonne le geste en cours du
+cadre (tout revient) ; pas [ et ]
+comme tldraw : en AZERTY, ils demandent AltGr, que Windows envoie comme
+Ctrl + Alt. ⌘ + ← (Mac) et Alt + ← (Windows) reviennent à la page
+précédente du navigateur, Alt + → à la suivante : hors d'un champ de saisie
+et d'une fenêtre, avec ou sans sélection, elles ne font plus rien, comme
+Ctrl + ← / → (qui poussaient l'objet), et l'on ne quitte plus le tableau en
+plein cours. Ces touches, et Ctrl + G, Ctrl + Maj + G (⌘ sur Mac), sont
+empêchées de même dans la revue en classe, la trieuse des pages, la
+bibliothèque des classeurs et la séance d'automatismes (depuis la
+vérification « appareils » du lot 5 : la revue, qui arrête en capture ce
+qu'elle reçoit, laissait Alt + ← quitter MEM pendant qu'on avançait au
+clavier) : une seule garde, posée au démarrage (`toucheQuitteLaPage`,
+`installerGardes` dans `src/navigateur.ts`), avec les mêmes exceptions
+qu'à l’écran ; chaque écran garde ce qu'il fait de la touche (la trieuse
+déplace une page par Ctrl + Maj + ← / →).
 
-**La gomme** efface en entier ce qu'elle touche (un trait, une figure). Un coup de gomme, même
-lent et passant sur plusieurs traits, s'annule d'un seul Ctrl+Z (le replay,
-lui, les montre partir l'un après l'autre). Le bout gomme du stylet (le stylet
-retourné, sur une tablette graphique ou une Surface) efface de même quel que
-soit l'outil en main, qu'on retrouve en reprenant la pointe.
+**La gomme** efface en entier ce qu'elle touche (un trait, une figure, une
+image, une formule), sauf ce qui est verrouillé ou fixé en fond (lot 5 : on
+gomme l'écriture posée sur un énoncé fixé sans toucher à l'énoncé). C'est
+son réglage de toujours, et son défaut (le choix du professeur). Un coup de
+gomme, même lent et passant sur plusieurs traits, s'annule d'un seul Ctrl+Z
+(le replay, lui, les montre partir l'un après l'autre). Le bout gomme du
+stylet (le stylet retourné, sur une tablette graphique ou une Surface) efface
+de même quel que soit l'outil en main, qu'on retrouve en reprenant la pointe.
+
+**La gomme qui efface seulement là où elle passe** (lot 5). Le menu de la
+Gomme s'ouvre en retouchant la Gomme quand elle est déjà en main (d'un clic
+ou d'un toucher), par un clic droit sur son bouton (le bouton du stylet en
+est un), par un appui long du doigt dessus, et par E quand elle est déjà en
+main (le focus va alors sur l'entrée cochée), comme dans Apple Notes,
+GoodNotes et OneNote ; à droite de la barre des outils, à la hauteur de la
+Gomme (au téléphone, au-dessus d'elle en portrait, entre les deux barres).
+Il propose **Effacer le trait entier** (« Ce qu'elle
+touche part en entier : un trait, une figure, une image, une formule ») et
+**Effacer seulement là où elle passe** (« Coupe l'écriture et le
+surligneur ; les figures, les images et les formules restent »), puis sa
+**Taille (là où elle passe)** : Petite, Moyenne (le défaut), Grande, soit 6,
+14 et 30 pixels d'écran de rayon (à tout zoom, elle couvre autant de
+l'écran ; grisées au trait entier, qui garde ses 12 px). Choisir un mode
+prend aussi la Gomme, et le dit : « La gomme efface seulement là où elle
+passe. », « La gomme efface le trait entier. ». Le titre du bouton dit le
+mode (« Gomme (E) — seulement là où elle passe ; retapez pour ses
+options »), et le bouton porte alors la marque ◐, comme celui du doigt. Le
+mode et la taille sont gardés sur l'appareil (`mem-gomme`,
+`mem-gomme-taille`), hors du document ; le bout gomme du stylet suit le mode
+choisi. Ce qu'elle coupe : les traits à main levée, au stylo et au
+surligneur ; ce qui reste demeure en un, deux morceaux ou davantage, qui sont
+des traits comme les autres (leur couleur, leur épaisseur, leur opacité, la
+pression de chaque point, leur place dans l'ordre, leur groupe) ; une miette
+part avec ce qui est effacé. Elle efface l'encre et non la ligne médiane (la
+demi-épaisseur du trait compte), et tout le chemin parcouru entre deux
+mouvements, même rapides : une gomme vive ne saute rien. Ce qui reste garde
+ses points d'origine, tels quels (seul un point s'ajoute là où le trait
+franchit le bord de la gomme) : un morceau se voit comme la partie du trait
+qu'il était. Elle ne touche ni les figures, ni les images, ni les formules,
+et la première fois de la session qu'elle passe sur l'une d'elles, elle le
+dit : « Cette gomme ne coupe que l'écriture : pour une figure, une image ou
+une formule, prenez « Effacer le trait entier » (retapez la Gomme). ». C'est
+un choix propre à MEM (l'étude proposait qu'elle efface une figure en
+entier) : une gomme partielle passe surtout sur l'écriture autour d'une
+figure, et le professeur ne doit pas perdre le triangle qu'il annote ; le
+trait entier, lui, efface tout. Ce qui est verrouillé ou fixé en fond reste,
+comme sous l'autre gomme. Un coup est une étape d'annulation (Ctrl+Z rend
+tous les traits entiers d'un coup) ; le film garde une étape par trait
+touché, notée `coupe`, écrite quand la gomme a quitté le trait (et ce qui
+reste au lever, ou quand un second doigt ou le navigateur interrompt le coup :
+ce qu'on a vu effacé le reste) : jamais une par mouvement, qui ferait
+grossir le classeur de centaines de Ko par coup. Pendant le coup, rien ne
+s'écrit : l'encre disparaît sous la gomme, et la scène ne se repeint que
+dans son **rectangle sale** (là où la gomme est passée, et chaque morceau
+neuf, que perfect-freehand lisse depuis son nouveau bout), coupé aux
+pixels entiers du canevas : sur une page de 2000 mots, moins d'une
+milliseconde par mouvement au lieu d'une peinture entière (42 ms sur un poste
+sans carte graphique : la gomme ne suivrait plus la plume de la Wacom). Une
+coupe qui s'écrit en plein coup ne repeint rien (la scène la montre déjà) ;
+le lever repeint toute la scène. Un **long trait** d'un seul geste (une
+spirale, des hachures, une écriture liée : plus de 150 points), ou un
+morceau grand à l'écran (plus de 200 px), ne se repeint pendant le coup
+qu'aux bouts que la gomme vient de changer, et ne se redessine dans le
+rectangle sale que par fenêtres de ses points, sans recalculer son contour
+entier à chaque mouvement (`src/gomme.ts` : `boutsDe`, `fenetresDe`,
+`passePres`) ; son contour exact se peint quand la gomme le quitte, et au
+lever. Repeindre à chaque mouvement toute la spirale et recalculer son
+contour faisait traîner la gomme derrière la plume sur un poste lent (la
+vérification du lot 5 : sur une spirale de 5000 points, processeur ralenti
+quatre fois, la peinture du rectangle sale passe de 10 ms en moyenne, 36 au
+95e centile, à 6 et 13 ; son aire, de 6 % de l'écran à 1 %).
 
 **Annuler, rétablir.** Ctrl+Z (⌘Z sur Mac) et ↶ défont le dernier geste de la
 page qu'on regarde, et d'elle seule ; Ctrl+Y, Ctrl+Maj+Z et ↷ le refont.
@@ -2852,7 +3646,13 @@ telle qu'elle était, sans rien redessiner. Ctrl+Y ne la supprime pas de
 nouveau. Le second clic d'un double-clic sur la poubelle ne fait rien (on ne
 jette pas deux pages d'un coup). Une page seule n'est jamais supprimée : la
 poubelle (« Effacer la page ») l'efface, avec « Page effacée · Annuler », ou
-dit « La page est déjà vide. ».
+dit « La page est déjà vide. ». Ce qui est verrouillé ou fixé en fond reste
+(lot 5 : c'est pour cela qu'on l'a protégé), et le message le dit : « Page
+effacée (ce qui est verrouillé ou fixé en fond reste) », toujours avec
+*Annuler* ; s'il ne reste que cela, « Rien à effacer : ce qui reste est
+verrouillé ou fixé en fond (menu de la page pour le détacher). ». Une page
+supprimée parmi d'autres part entière, dans la corbeille, avec ce qu'elle a
+de verrouillé.
 
 **La corbeille.** Une page supprimée (par la poubelle, ou dans la trieuse)
 va dans la corbeille ; elle y reste après un rechargement, et un fichier
@@ -2906,7 +3706,7 @@ copie de cette page garde son passé.
 quand un de ses sommets est choisi ; une image emporte les points qui lui sont
 liés), Ctrl+X le coupe, Ctrl+V le colle, Ctrl+D le duplique (1 cm plus loin,
 sans passer par le presse-papiers), Ctrl+A sélectionne tout ce qui est sur la
-page et passe à l'outil Sélection (Échap vide la sélection, un second Échap
+page et se prend (ni le verrouillé ni le fixé en fond, lot 5) et passe à l'outil Sélection (Échap vide la sélection, un second Échap
 rend l'outil d'avant) ; ⌘ sur Mac. Ce sont les lettres écrites sur les
 touches, en AZERTY comme en QWERTY, et AltGr n'en fait pas un raccourci. Rien
 de tout cela dans un champ de saisie (une formule qu'on tape, les noms des
@@ -2961,7 +3761,7 @@ millions de pixels et 4 096 pixels de côté (une page très haute reste
 lisible : ses lettres gardent 25 px sur 1 900 × 10 000 unités ; pour une page
 plus haute que trois fois sa largeur, le message propose aussi **Exporter en
 PDF**, qui la découpe en feuilles A4). Le fond
-(carreaux, Seyès, repère) y est ou non : le bouton « Sans le fond » (ou
+(carreaux, Seyès, millimétré, pointé, repère…) y est ou non : le bouton « Sans le fond » (ou
 « Avec le fond ») du message change ce choix et copie de nouveau ; il est
 gardé dans ce navigateur (clé `mem-sortie-fond`, la seule nouvelle, partagée
 avec le PDF). Quand le navigateur ne sait pas copier une image (Firefox avant
@@ -3051,14 +3851,40 @@ page de départ, ce qui arrive se dessine sur la page d'arrivée comme un
 collage (la revue d'une séance entière montre un court détour par la page
 d'arrivée).
 
-Sur un téléphone, le menu complet passe à la ligne sur toute la largeur de
-l'écran (il couvre alors le haut de la barre d'outils plutôt que d'en sortir) ;
-de même en paysage quand il est plus large que la place à droite de la barre.
+Sur un téléphone (lot 5, K10, voir « Le téléphone »), le menu complet prend
+toute la largeur de l'écran en portrait, entre la barre du haut et celle du
+bas, et passe à la ligne ; couché, il se pose à droite de la barre des outils
+et passe à la ligne s'il est plus large que la place ; il ne couvre jamais les
+barres, et défile s'il est plus haut que la place (avant le lot 5, il
+couvrait le haut de la barre d'outils plutôt que de sortir de l'écran). Ses
+boutons y font 44 × 44 px au moins.
 
 **La barre de gauche** ne bouge pas : la poubelle y garde sa place, grisée
 quand rien n'est choisi, comme ↶ et ↷ quand il n'y a rien à faire. Sur un écran bas (moins de 900 px de haut environ),
 ses boutons gardent leurs 44 px et elle défile, avec une fine barre de
 défilement ; les choix des Formes et du Segment suivent leur bouton.
+**Sur un écran qu'on touche** (l'iPad, une tablette, le TNI, un portable à
+écran tactile : là où le doigt a son bouton), depuis le contrôle final du
+lot 5, les quatre pastilles de couleur et les trois tailles du trait font
+44 × 44 (au poste de la classe, 44 × 34 et 44 × 30, à la souris et à la
+tablette graphique) ; et quand la barre ne tient plus dans la hauteur de
+l'écran (le TNI de 1080 px avec ses noms, l'iPad couché, un portable de
+768 px), elles se **replient dans « Couleur »**, le bouton du téléphone (un
+rond de la couleur en main, « Couleur » dessous avec les noms), posé à leur
+place entre les deux filets : son menu, à droite de la barre, à la hauteur
+du bouton, a les quatre pastilles et les trois tailles en 44 × 44 (au
+clavier, Entrée l'ouvre sur la couleur cochée, Échap le referme). La barre
+ne défile plus : Annuler, Rétablir et la poubelle restent dans l'écran (avant,
+au TNI comme sur l'iPad couché, les derniers en sortaient, ou l'auraient fait
+avec des pastilles plus hautes). C'est mesuré, la barre dépliée : sur l'iPad
+debout, l'iPad Pro debout, le TNI sans les noms, elle tient, et les
+pastilles restent dans la barre, à un toucher ; tourner la tablette replie
+ou déplie (un menu « Couleur » ouvert se ferme alors). Au poste de la
+classe, rien ne change : la barre garde ses couleurs à un clic et défile
+sur un écran bas, comme depuis le lot 1 (voir les limites). Au
+téléphone (lot 5), elle n'a que sept boutons, en bas ou à gauche : la
+poubelle de la sélection y est dans *Autres outils* (*Supprimer*, grisée de
+même), et dans la barre d'actions (voir « Le téléphone »).
 Les **messages** en bas de l'écran passent sous les panneaux et les menus (ils
 ne cachent jamais ce qu'on va toucher), sauf pendant la revue, la séance
 d'automatismes, le programme de construction et un placement (la consigne de
@@ -3086,7 +3912,7 @@ doigt posé sur un objet le prend ou le glisse, comme la souris ; *Ajouter*,
 dans la barre d'actions, fait de chaque toucher (du doigt ou du crayon) un
 Maj + clic, jusqu'à un toucher dans le vide. Sous les autres outils, le rôle d'un seul doigt se règle
 par le bouton en forme de main de la barre de gauche (sur un appareil tactile
-seulement ; sa marque dit le choix) :
+seulement ; sa marque dit le choix ; au téléphone, *Autres outils* → *Doigt*) :
 
 - *le doigt dessine*, avec l'outil choisi, comme le stylet ;
 - *le doigt déplace et sélectionne* : le stylet écrit ; le doigt déplace la vue,
@@ -3181,50 +4007,57 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 
 | Fichier | Rôle |
 | --- | --- |
-| `src/types.ts` | Les formes (trait, segment, formule), les fonds |
-| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert ; la base supprimée ou changée ailleurs, coupée net (`onCoupee`) ; une écriture refusée repérée, le trou (`trou`, `erreurBase`), et sa réparation (`reparer`) ; une base trouée relue, dont une partie ne se relit plus (`incomplet`) ; attendre la fin des écritures (`attendreEcritures`) ; l'identité du classeur rangée à côté du document). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié ; sa naissance notée `naissance` dans le film, comme celle d'une page vide ; un fond changé dans la trieuse noté `rangement` : ni l'une ni l'autre ne comptent dans le découpage en séances) et le déplacement des pages (le plus petit changement de l'ordre). Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre ; elle ne se défait pas tant que la pile de l'arrivée peut y ramener des objets qui en sont repartis, et ne se refait pas vers une page supprimée définitivement) ; la copie, une étape de la pile d'arrivée ; les noms que la pile d'une page peut y ramener (`formesQuiPeuventRevenir`) |
-| `src/app.ts` | Gestes au stylet, au doigt et à la souris ; le clavier du tableau (Ctrl + P ouvre « Exporter en PDF ») ; le calme (`calme`, `depuisLeDernierGeste`), qu'attendent les écritures automatiques |
-| `src/rendu.ts` | Les trois couches d'affichage ; peindre une page sur un autre canevas (`peindreSur` : une vignette en esquisse, une image, une feuille du PDF), sans rien changer à l'écran |
+| `src/types.ts` | Les formes (trait, segment, formule, polygone, cercle, image), les fonds (huit depuis le lot 5, dans l'ordre des menus : `FONDS`) ; depuis le lot 5, des champs facultatifs, ignorés par la version d'avant : `verrou` (l'objet ne bouge plus et ne se prend plus), `fixe` (une image fixée en fond), `groupe` (les formes d'une page qui portent le même identifiant se prennent ensemble), la `rotation` d'une formule (radians, sens de `ctx.rotate`, autour de son coin) ; `libre` (ni verrouillé ni fixé) |
+| `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert ; la base supprimée ou changée ailleurs, coupée net (`onCoupee`) ; une écriture refusée repérée, le trou (`trou`, `erreurBase`), et sa réparation (`reparer`) ; une base trouée relue, dont une partie ne se relit plus (`incomplet`) ; attendre la fin des écritures (`attendreEcritures`) ; l'identité du classeur rangée à côté du document). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié ; sa naissance notée `naissance` dans le film, comme celle d'une page vide ; un fond changé dans la trieuse noté `rangement` : ni l'une ni l'autre ne comptent dans le découpage en séances) et le déplacement des pages (le plus petit changement de l'ordre). Changer des formes : `modifier` fond un patch (une clé qui y vaut undefined quitte la forme : déverrouiller, dégrouper), `remplacer` écrit des formes entières (une clé absente n'existe plus : une rotation revenue à zéro) ; l'un et l'autre en une étape, et la note `reglage` (lot 5 : verrouiller, grouper, rien de visible) sur l'étape du film de cette transaction seulement ; elle suit aussi l'étape de la pile (méta `reglage`) : Ctrl + Z et Ctrl + Y d'un réglage sont notés de même. `couperTraits` (lot 5) écrit la coupe d'un trait par la gomme qui efface là où elle passe : le morceau qui garde l'identifiant remplace le trait, entier, les autres sont posés, en une transaction notée `coupe`. Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre ; elle ne se défait pas tant que la pile de l'arrivée peut y ramener des objets qui en sont repartis, et ne se refait pas vers une page supprimée définitivement) ; la copie, une étape de la pile d'arrivée ; les noms que la pile d'une page peut y ramener (`formesQuiPeuventRevenir`) |
+| `src/app.ts` | Gestes au stylet, au doigt et à la souris ; les outils (`choisirOutil` retient l'outil quitté pour la Sélection, `outilAvant`, que rend Échap : contrôle final du lot 5) ; le clavier du tableau (Ctrl + P ouvre « Exporter en PDF » ; Ctrl + ↑ / ↓ l'ordre ; Maj + L le verrou ; ⌘ + ←, Alt + ← ne quittent plus la page ; E, la Gomme en main, ouvre son menu) ; la gomme (au trait entier, `gommer` ; seulement là où elle passe, lot 5 : `gommerLa`, le coup en mémoire, `Coupe`, chaque trait écrit quand la gomme l'a quitté, `ecrireCoupe`, et le reste au lever ; le rectangle sale qu'elle demande au rendu ; une coupe écrite en plein coup ne repeint pas la scène) ; l'ordre de ce qui est choisi (`ordonner`, `peutOrdonner`) ; ce qui se prend (lot 5 : `cibleSous` saute le verrouillé et le fixé en fond, sauf `verrouilles` pour le clic droit et l'appui long ; la gomme, le cadre et le lasso, Ctrl + A, Suppr, les flèches et le glisser aussi) ; verrouiller (tout le groupe de chacun), fixer en fond, détacher (`verrouiller`, `fixerEnFond`, `detacherDuFond`, `fixesSous`, `copierFond`), le cadenas (au survol, après un appui), le collage qui ne sélectionne que le libre ; les groupes (`membres`, `grouper`, `degrouper`, Ctrl + G et Ctrl + Maj + G ; ce que prennent un clic, un toucher, un cadre, un lasso, le clic droit, le double-clic : `prendre`, `ouvrirAuDouble`) ; changer de taille et tourner (lot 5 : `transformerSelection`, une transaction par `Tableau.remplacer`, les points repérés sur une image avec elle ; « Remettre droit », `redresserSelection`, `redressable`) ; le cadre de taille et la pastille ↻ à l'écran (lot 5 : `cadreDeLaSelection`, d'après le dernier pointeur vu, `pointeurPoignees`, gardé tant que la sélection (`SelectionSuivie`, un ensemble qui compte ses changements), la page, la vue, la zone libre, le pointeur et la taille des formules prises n'ont pas changé ; `poigneeVisee` dans l'appui, après les instruments et avant les sommets ; les gestes 'taille' et 'tourner', l'aperçu par `Rendu.transfo`, le lâcher par `transformerSelection` ; le curseur au survol ; `emprise` et `pastilleAEviter`, que la barre d'actions et le menu complet contournent) ; la boîte d'une formule pour geometrie.ts (locale) et pour cadrer (`boiteVue`, l'englobante) ; le calme (`calme`, `depuisLeDernierGeste`), qu'attendent les écritures automatiques |
+| `src/verrou.ts` | Verrouiller et fixer en fond (lot 5), pur (testé) : ce que changent Verrouiller, Fixer en fond (sous tout, hors de tout groupe) et Détacher (l'invariant du fond : toute image fixée sous toute image libre, même avec plusieurs images fixées), ce qui bouge quand on pousse (le libre, et les points repérés sur une image qui bouge, même verrouillés : `quiBouge`), les images fixées sous un point, ce que dit un collage qui a posé de quoi ne pas se prendre (`texteCollage`), compter les objets |
+| `src/groupes.ts` | Les groupes (lot 5), pur (testé) : les membres d'une forme (le même groupe et le même état, libres ou verrouillés ; au moins deux ; une image fixée n'en a pas : `membresDe`), chaque identifiant étendu à son groupe (`avecGroupes`), tous les porteurs d'un groupe pour Verrouiller (`porteurs`), ce qu'écrivent Grouper (des groupes fondus en un) et Dégrouper, la sélection qui est exactement un groupe (`groupeExact`) ou un membre pris seul (`membreSeul`), ce que prend un clic (`priseDuClic`), les groupes que le rendu encadre (`groupesTouches`) |
+| `src/rendu.ts` | Les trois couches d'affichage ; les formes peintes dans l'ordre d'affichage (triées seulement s'il le faut, une fois par tableau donné), les formules HTML rangées par leur rang dans l'ordre des z ; le cadenas d'un objet verrouillé (lot 5 : `cadenas`, sur la couche directe, à taille d'écran constante ; ce qui est sélectionné et verrouillé a son cadre gris, sans poignées) ; le survol de tout un groupe (`survolAussi`), le cadre plein d'un groupe pris, le pointillé clair d'un membre pris seul ; la formule tournée (lot 5 : `rotate()` en CSS autour de son coin, sans repasser par KaTeX ; son halo et son cadre en tirets tournés ; `boiteFormule` sa boîte locale, `boite` son englobante) ; la clé du cache des tracés, qui voit un trait fermé tourné (ses nombres comparés tels quels, sans en faire une chaîne à chaque image) ; les cadres en tirets de tout ce qui est pris, en un seul chemin tracé une fois (deux en contraste renforcé), comme avant le lot 5 ; le cadre de taille et la pastille ↻ (lot 5 : `cadre`, que seule l'App pose par `avantDirect` ; ses coins, les barrettes des côtés d'une image, la pastille des instruments au bout de son filet) et ce qui change de taille ou tourne avant le lâcher (`transfo` : un trait et une image sous la matrice, une figure par `transformerForme`, une formule par un transform CSS) ; la gomme qui efface là où elle passe (lot 5 : `coupe`, les traits cachés et leurs morceaux du moment peints à leur place ; `repeindreZone`, le rectangle sale aux pixels entiers du canevas, où seules les formes qui le touchent se repeignent, sur leur fond ; un long morceau, par fenêtres de ses points, `dessinerPres` ; `derniereScene`, la durée de la dernière peinture, pour les essais) ; peindre une page sur un autre canevas (`peindreSur` : une vignette en esquisse, une image, une feuille du PDF), sans rien changer à l'écran ; le contraste renforcé (lot 5 : `contraste`, que posent seuls le tableau et la revue : le fond plus marqué, les figures jamais sous 2 px d'écran, les cadres de la sélection en deux tons, les poignées au filet de 2,5 px ; `peindreSur` l'éteint le temps de l'appel) |
+| `src/ordre.ts` | L'ordre d'affichage (lot 5) : les calques (`couche` : images fixées, images, tracés et figures, formules), le tri stable par calque puis par z (`ordreDAffichage`, `enOrdreDAffichage`) ; les rangs neufs de premier plan, avancer (devant la voisine qui chevauche), reculer, arrière-plan, dans le calque de l'objet, jamais une image sous une image fixée, les verrouillées à leur place, et le repli local quand l'écart entre deux voisins s'épuise (`nouveauxRangs`) ; l'aide que le menu donne à ces commandes, d'après le calque de ce qui est pris (`aidesOrdre`). Pur, sans DOM |
+| `src/gomme.ts` | La gomme qui efface seulement là où elle passe (lot 5), le calcul pur (testé) : la part d'un côté du trait dans la capsule que la gomme a balayée entre deux mouvements (`traverse`), la coupe d'un trait (`couperTrait` : null s'il n'est pas touché, [] s'il part en entier, sinon ses morceaux, les points d'origine gardés, un point neuf au bord, les miettes jetées, le plus long sous l'identifiant du trait ; les points et les côtés loin de la gomme écartés d'un coup d'œil par la boîte de la capsule), le plus long des morceaux (`lePlusLong`) ; les longs traits pendant le coup (vérification des régressions du lot 5 : `LONG_MORCEAU`, `GRAND_MORCEAU`, `BORD`, `boutsDe` les bouts qu'une coupe a changés, `fenetresDe` les fenêtres de points à redessiner près du rectangle sale, `passePres` l'encre d'un trait passe-t-elle près d'une boîte). Sans DOM |
+| `src/cadre.ts` | Changer de taille et tourner (lot 5), le calcul pur : les matrices (`echelle`, `rotation`, `composer`, `inverser`), ce qu'une transformation fait à chaque forme (`transformerForme` : tout cuit dans les coordonnées, l'épaisseur d'un trait avec lui, au moins 1, celle d'une figure gardée, la rotation d'une formule dans son champ), les bornes (`bornesEchelle`, `dansLesBornes` : celles de la liste blanche du presse-papiers, une formule entre 6 et 1000, une image d'au moins 4 unités de côté), les aimants (`aimanterAngle` : 45° sauf 0 à ±3°, Maj tous les 15° ; `aimanterEchelle`), « Remettre droit » (`redresser`), le cadre et ses poignées (`cadreDe` : orienté pour une image ou une formule seule, droit pour un trait, un groupe ou plusieurs objets, la pastille seule pour une figure, la pastille gardée dans ce qu'on voit à 2000 % ; `poigneeSous`), les gestes du cadre (K6 : `matriceTaille` pour un coin, un côté, Maj + coin, aimanté et borné, sans retournement ; `deroule`, l'angle tourné sur plus d'un tour ; les mesures « 150 % », « ↺ 30° » ; `curseurPoignee` ; `cadreTransforme`, le cadre pendant le geste ; `etendueDuCadre` et `zonePastille`, ce que la barre d'actions et le menu complet contournent). Sans DOM |
 | `src/sorties/formules.ts` | Les formules KaTeX sur un canevas : mises en page cachées comme à l'écran, puis repeintes (textes, bordures, fonds, SVG coupés), les polices attendues ; leurs images gardées par échelle dans un cache borné en pixels |
 | `src/sorties/image.ts` | Copier en image (pour l'ENT et Pronote) : la taille de l'image (jamais plus fine que l'écran à 100 %, environ 4 millions de pixels et 4 096 px de côté au plus), le nom du fichier, l'image PNG cadrée sur le contenu (noms des points compris), la copie dans le presse-papiers du système dans le geste même, le repli « Enregistrer l'image (.png) » ; « Exporter en PDF » proposé pour une page très haute |
 | `src/sorties/pdf.ts` | L'écrivain de PDF, pur (sans bibliothèque) : une image par feuille, en couleurs indexées (les couleurs des objets d'abord, puis les plus fréquentes ; l'écart borné : trop d'aplats faux, pas de palette ; compressées par Flate, par tranches de lignes pour rendre la main), en RVB sans perte (lignes prédites comme un PNG, prédicteur 15) ou en JPEG pour une photo ; la table des renvois exacte, le titre en UTF-16 |
-| `src/sorties/mise-en-page.ts` | La mise en page du PDF, pure (testée) : le papier A4 (marges, 200 ppp, peint comme une page à 96 ppp), l'échelle et le sens (1 cm = 1 cm tant que le contenu tient sur la feuille ; une page qui n'est pas haute sur une seule feuille, dans le sens qui la montre le plus grand ; une page haute en portrait, à la largeur), la découpe d'une page haute (entre 60 et 100 % de la feuille, jusqu'à 25 % pour ne pas couper une figure qui tient sur une feuille, là où le moins de boîtes passent ; les grands vides sautés) ; le pied de page, le nom du fichier, le titre, les messages |
-| `src/sorties/export-pdf.ts` | Exporter en PDF : la fenêtre (ce qu'on exporte, le fond imprimé), puis l'export (les formes prises au lancement, chaque feuille peinte par tranches et coupée à sa bande, le fond peint dans la zone utile, le pied de page ; les pixels palettisés avec les couleurs des objets, ou en RVB sans perte, ou en JPEG quand une photo couvre 15 % de la feuille, compressés par morceaux ; l'attente pendant un geste, la progression, un export à la fois) |
-| `src/sorties/apercu.ts` | Peindre une page hors de l'écran (la boîte du contenu, noms des points compris, les polices, les formules et les images préparées, puis la peinture) : la fondation des vignettes, de l'image copiée et du PDF ; le réglage du fond imprimé (`mem-sortie-fond`) |
+| `src/sorties/mise-en-page.ts` | La mise en page du PDF, pure (testée) : le papier A4 (marges, 200 ppp, peint comme une page à 96 ppp), l'échelle et le sens (1 cm = 1 cm tant que le contenu tient sur la feuille ; une page qui n'est pas haute sur une seule feuille, dans le sens qui la montre le plus grand ; une page haute en portrait, à la largeur), la découpe d'une page haute (entre 60 et 100 % de la feuille, jusqu'à 25 % pour ne pas couper une figure qui tient sur une feuille, là où le moins de boîtes passent ; les grands vides sautés) ; le pied de page, le nom du fichier, le titre, les messages, le libellé de la case du fond (`texteCaseFond`) |
+| `src/sorties/export-pdf.ts` | Exporter en PDF : la fenêtre (ce qu'on exporte, le fond imprimé, sa case qui nomme le fond des pages : `texteCaseFond`), puis l'export (les formes prises au lancement, dans l'ordre d'affichage de l'écran, chaque feuille peinte par tranches et coupée à sa bande, le fond peint dans la zone utile et pour le papier (`impression`), le pied de page ; les pixels palettisés avec les couleurs des objets, ou en RVB sans perte, ou en JPEG quand une photo couvre 15 % de la feuille, compressés par morceaux ; l'attente pendant un geste, la progression, un export à la fois) |
+| `src/sorties/apercu.ts` | Peindre une page hors de l'écran (la boîte du contenu, noms des points compris, les polices, les formules et les images préparées, puis la peinture ; une formule tournée peinte dans son repère, lot 5) : la fondation des vignettes, de l'image copiée et du PDF ; le réglage du fond imprimé (`mem-sortie-fond`) |
 | `src/pages/vignettes.ts` | Les vignettes des pages : un canevas par page et par taille, peint plus tard par une file paresseuse (seulement s'il est à l'écran, les pages prioritaires d'abord), repeint quand sa page change ; le cadrage d'une vignette |
-| `src/fonds.ts` | Carreaux, Seyès, repère gradué |
-| `src/geometrie.ts` | Ce que touche la gomme ; ce que vise la sélection (la distance au tracé, l'intérieur plein ou nu, l'aire) ; ce que prend un cadre ou un lasso (la part dedans, le lasso simplifié) |
-| `src/formes.ts` | Reconnaissance des figures, codage, transformations |
-| `src/revue/` | La revue en classe : ce qu'on revoit, les images, la frise, le choix |
+| `src/fonds.ts` | Les fonds : petits carreaux, Seyès, repère gradué, et depuis le lot 5 grands carreaux (1 cm), papier millimétré (trois tons fixes), papier pointé, réseau isométrique ; tous calés sur l'origine, sur la seule zone visible, bornés, aucun niveau plus serré que 6 à 9 px d'écran, le plus fin en fondu ; un fond inconnu, le papier blanc seul (tests/fonds.test.ts : les écarts, les tons, rien ne saute d'un cran de zoom à l'autre) ; le contraste renforcé (lot 5 : le dernier paramètre de `dessinerFond`, `{ contraste }`, que seul l'écran du professeur demande ; `TONS_CONTRASTE`, `renforcer` : les couleurs × 1,8, des lignes de 2 px aux pixels entiers, des points de 3 px ; tests/affichage.test.ts) ; la feuille d'un PDF (`{ impression }`, que seul l'export en PDF demande : les lignes et les points sur les pixels de l'image de la feuille, le papier millimétré avec ses millimètres dès qu'ils font 0,8 mm sur la feuille, à plein ton ; tests/fonds.test.ts) |
+| `src/menu-fonds.ts` | Le menu des fonds en vignettes (lot 5) : `vignetteDuFond` et `peindreVignette` (un fond sous la caméra où son motif se lit, à la densité de l'écran, au plus 2 ; celle du bouton de la barre du haut, 30 × 22 px, et celles du menu, 76 × 52 px), `construireMenuFonds` (la grille 4 × 2 des huit fonds en menuitemradio, peinte une fois, la coche refaite à chaque ouverture ; les flèches dans la grille, `naviguerDansLaGrille` de `src/menus.ts`) ; « Plus → Fond… » au téléphone la reprend (lot 5, K10 : sous « Plus », deux colonnes en portrait) |
+| `src/geometrie.ts` | Ce que touche la gomme ; ce que vise la sélection (la distance au tracé, l'intérieur plein ou nu, l'aire, et le choix entre plusieurs objets dans l'ordre où on les voit, `cibleParmi` : une formule ne cache pas ce qui est écrit sur elle ; `cacheAuDessus` pour le clic droit) ; ce que prend un cadre ou un lasso (la part dedans, le lasso simplifié) ; la formule tournée par un seul chemin (lot 5 : chaque fonction reçoit sa boîte locale, non tournée, et ramène le point dans son repère ; `coinsFormule`, `englobante`, `rotationDe` — une rotation abîmée se lit droite) ; où se pose le cadenas d'un objet verrouillé et son cadre gris (lot 5 : `coinsVus`, le rectangle tourné d'une image ou d'une formule, `ecarterCoins`, `coinHautDroit`) |
+| `src/formes.ts` | Reconnaissance des figures, codage, transformations (l'image d'une forme est un objet neuf : ni verrou, ni fixation, ni groupe) |
+| `src/revue/` | La revue en classe : ce qu'on revoit, les images, la frise, le choix ; une étape « coupe » (lot 5) n'esquisse rien, ses morceaux paraissent d'un coup ; le contraste renforcé de l'écran du professeur, relu à chaque ouverture (lot 5) |
 | `src/heritage.ts` | Le passé d'une copie de page : la page qu'on lit vraiment à chaque étape du film (l'original, avant la copie), pour la revue et le film élève |
-| `src/revoir/` | Le replay des élèves : format du film, rythme de la main, instruments, exporteur, bobine, lecteur (`revoir.html`), relais |
+| `src/revoir/` | Le replay des élèves : format du film, rythme de la main, instruments, exporteur, bobine (sa boîte d'une formule tournée : l'englobante, lot 5 ; une étape `coupe`, que l'exporteur garde, n'esquisse rien : `Bobine.coupe`), lecteur (`revoir.html`), relais |
 | `src/piste.ts` | La piste des instruments : ce que la classe en a vu, noté pour le replay |
 | `src/publication/` | Publier sur le Drive : comptes et relais (et les dossiers des sauvegardes), connexion Google (le jeton qui suit l'onglet d'un classeur à l'autre : `passerLaConnexion`, `reprendreLaConnexion`), la fenêtre (une copie de classeur, marquée, publie ses séances sous une clé à elle : un nouveau lien) ; les sauvegardes des classeurs (lot 4 C10, `drive.ts`) : le dossier privé marqué à part, le même fichier remplacé (multipart binaire ou envoi reprenable), le garde-fou des deux ordinateurs, l'élagage des versions, la liste et la lecture des sauvegardes |
 | `relais/relais-seances.gs` | Le relais Apps Script, à déployer dans chaque compte Google |
-| `tests/` | Les tests (`npm test`) : ce qui part chez les élèves, la fidélité du replay |
-| `src/instruments.ts` | Règle, équerre, rapporteur, compas |
+| `tests/` | Les tests (`npm test`) : ce qui part chez les élèves, la fidélité du replay ; la mise en page du téléphone dans ce qu'elle a de pur (lot 5, `tests/telephone.test.ts` : `zoneEntreBarres` avec la barre des outils en bas, `placeBarre` et `positionPanneau` au-dessus d'elle, la requête) |
+| `src/camera.ts` | La caméra (le zoom, ses bornes, la vue d'une boîte, `vuePour`) et ce qu'on voit entre les barres (`zoneEntreBarres` : « Tout voir », la pastille ↻ ; depuis le lot 5, K10, la barre des outils posée en bas, au téléphone, en borne le bas) |
+| `src/instruments.ts` | Règle, équerre, rapporteur, compas ; leur pastille ↻ (`dessinerPastille`), la même que celle du cadre de taille (lot 5 ; son filet, `filetPx`, de 2,5 px au cadre en contraste renforcé, de 1,6 toujours aux instruments) |
 | `src/construction.ts` | Programme de construction → étapes et gestes |
 | `src/constructeur.ts` | Joue les étapes, avec ou sans instruments |
 | `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
 | `src/figures.ts` | Les figures SVG des automatismes |
-| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le menu complet (un objet, une formule, plusieurs objets ; sa rangée sur une ligne, son bouton ⋯ et le petit menu de *Copier en image* et *Envoyer vers…* ; placé dans l'écran, sur un téléphone aussi), le menu de la page, « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯ de la barre du haut, la trieuse), les messages (un ou deux boutons ; au-dessus des panneaux pendant un placement), éditeur de formules ; le bouton du classeur (sa place mesurée, à quatre formes), le bloc de l'état en tête du menu ⋯, le bandeau discret |
+| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le bouton du fond (lot 5 : la vignette du fond de la page, qui ouvre le menu des fonds, voir `src/menu-fonds.ts`), le menu complet (un objet, une formule, plusieurs objets, un groupe : « Groupe · 3 objets », *Grouper* ou *Dégrouper* ; sa rangée sur une ligne, son bouton ⋯ et son petit menu en sections : *Copier en image* et *Envoyer vers…*, puis *Ordre* (les aides d'`aidesOrdre`), puis *Protéger*, puis *Groupe* (*Sortir du groupe*, pour un membre pris seul : `sectionGroupe`), puis *Position* (*Remettre droit*, pour une image ou une formule seule tournée) ; placé dans l'écran, sur un téléphone aussi), le menu court d'un objet verrouillé (lot 5 : Déverrouiller, Copier, ⋯), le menu de la Gomme (lot 5 : retoucher la Gomme en main, le clic droit, l'appui long, E ; ce qu'elle efface et sa taille ; le titre et la marque ◐ de son bouton), le menu de la page (et ce qu'il fait de l'image fixée en fond : la détacher, la copier, l'envoyer ; Déverrouiller tout), « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯ de la barre du haut, la trieuse), les messages (un ou deux boutons ; au-dessus des panneaux pendant un placement), éditeur de formules ; le bouton du classeur (sa place mesurée, à quatre formes), le bloc de l'état en tête du menu ⋯, le bandeau discret ; « Cet appareil » à la fin du menu ⋯ (lot 5 : « Contraste renforcé », body.contraste ; « Noms sous les outils », body.noms-outils, le nom court de chaque bouton dans son `span.libelle` (`nommer`, le mot dans data-libelle), `majNomsOutils` qui suit la mise en page du téléphone, `--droite-barre-outils` mesuré, les menus du doigt et de la Gomme qui passent sous la barre du haut sur deux rangées) ; la mise en page du téléphone (lot 5, K10 : `body.telephone`, `telephone`, `barreEnBas` ; ce qui ne s'y montre pas, `.seulement-large` ; « Couleur » et « Autres outils », au bout de la barre des outils, leurs menus `construireMenuCouleur` et `construireMenuAutres` (« Couleur » sert aussi, depuis le contrôle final du lot 5, à la barre d'un écran qu'on touche : body.tactile, ses pastilles et ses tailles en 44 × 44, repliées dans « Couleur » quand elle ne tient pas dans la hauteur, `majCouleursRepliees`), `placerPresDeLaBarre` qui les pose entre les deux barres ; les choix des Formes et du Segment au-dessus de la barre du bas, `placerChoixDuTelephone` ; ⋯ devenu « Plus », ses sections Page, Outils de cours et Vue, `sectionsDuTelephone`, et « Fond… », `ouvrirFondsDepuisPlus` ; le bouton du classeur en tête de la barre du haut ; `--haut-barre-bas` et `basUtile`, ce que prend la barre du bas ; `bordsFlottants`, les bords que la barre d'actions et le menu complet ne passent pas ; `placerToast`, le message qui ne couvre ni les barres ni ce qui est pris ; la liste des instruments sous la barre du haut) |
 | `src/pages/envoi.ts` | La fenêtre « Envoyer vers… » : déplacer ou copier, la liste des destinations (chaque page avec sa petite vignette, une nouvelle page juste après, à la fin), le clavier ; les textes des messages d'un envoi (pur, testé). L'envoi lui-même est `App.envoyerSelection`, son annulation `Tableau.envoyer` |
-| `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose, ce que devient un appui sur elle |
-| `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (celles des lecteurs sont dans `src/revoir/icones.ts`) |
+| `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu, jamais sur ce qui est verrouillé), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose (au-dessus du cadre de taille et de sa pastille ↻, jamais sur elle : `App.emprise`, `placeBarre` ; au téléphone, au-dessus de la barre du bas : son bord `bas`, lot 5, K10), ce que devient un appui sur elle |
+| `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (le cadenas du menu court d'un verrouillé compris ; celles des lecteurs sont dans `src/revoir/icones.ts`) |
 | `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
-| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; les touches qui se taisent pendant un geste ; le tableau caché (la revue, une séance d'automatismes, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) ; la touche des raccourcis (⌘ sur Mac) et la façon de dire « enregistrer », « ouvrir » dans un texte (`POUR_ENREGISTRER`, `POUR_OUVRIR` : le raccourci, ou l'entrée du menu ⋯ sur un appareil qu'on ne fait que toucher) |
+| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; Maj + L (`toucheVerrou`) ; Alt + ← / →, ⌘ + ← / → et Ctrl + G empêchés hors des champs dans tous les écrans, la revue, la trieuse et la bibliothèque comprises (`toucheQuitteLaPage`, dans `installerGardes`) ; les touches qui se taisent pendant un geste (Maj + L et Ctrl + G comprises) ; le tableau caché (la revue, une séance d'automatismes, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) ; la touche des raccourcis (⌘ sur Mac) et la façon de dire « enregistrer », « ouvrir » dans un texte (`POUR_ENREGISTRER`, `POUR_OUVRIR` : le raccourci, ou l'entrée du menu ⋯ sur un appareil qu'on ne fait que toucher) ; la requête de la mise en page du téléphone (lot 5 : `TELEPHONE`, écrite là une fois ; l'interface en tire `body.telephone`, et la feuille de style reprend ses bornes) |
 | `src/dialogue.ts` | Le fond d'une fenêtre : un appui commencé et fini hors de son cadre la ferme, jamais un appui dans sa marge intérieure (testé) |
-| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) ; d'où vient le focus (le clavier ou un appui, retenu quand il arrive, et le focus rendu à la fermeture d'un écran) ; le balisage de leurs entrées, de leurs filets et de leurs titres (l'interface et la trieuse s'en servent) ; la place du menu complet près de ce qu'il règle, jamais dessus quand il a la place ailleurs (`positionPanneau`, pur, testé) |
-| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) |
-| `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages |
+| `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) ; d'où vient le focus (le clavier ou un appui, retenu quand il arrive, et le focus rendu à la fermeture d'un écran) ; le balisage de leurs entrées, de leurs filets et de leurs titres (l'interface et la trieuse s'en servent) ; la place du menu complet près de ce qu'il règle, jamais dessus quand il a la place ailleurs, jamais sur la pastille ↻ du cadre de taille (`positionPanneau`, pur, testé ; au téléphone, jamais sur la barre du bas : son bord `bas`, lot 5, K10) ; les flèches dans une grille d'entrées (`naviguerDansLaGrille` : le menu des fonds, et au téléphone « Couleur » et « Autres outils ») |
+| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts, et depuis le lot 5 ce qu'efface la gomme et sa taille : `mem-gomme`, `mem-gomme-taille`, `RAYON_GOMME` ; le contraste renforcé, `mem-contraste` ; les noms sous les outils, `mem-noms-outils`, écrite seulement quand on choisit, et `nomsOutilsVisibles` qui décide en « auto » d'après l'écran), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) |
+| `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages (comment déverrouiller, comment détacher une image du fond : `messageVerrou`, `messageDetacher`) ; la taille des poignées du cadre de taille et de la pastille ↻ selon le pointeur (lot 5 : `POIGNEE`, à la prise 10 / 12 / 20 px, au dessin 8 / 10 / 14, la pastille à 24 / 28 / 36 px du cadre) ; le message de la première image prise (`messageCadre`) ; celui des noms sous les outils (lot 5 : `messageNomsOutils`, le survol à la souris et au stylet qui survole, pas au doigt ni au TNI) |
 | `src/session.ts` | La page vue et la vue de chaque page, retrouvées au rechargement, hors du document ; une session par classeur (`mem-session` pour le premier, `mem-session:<id>` pour les autres) |
-| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), plusieurs pages à la fois (Maj ou Ctrl + clic, Espace, Ctrl + A, « Choisir plusieurs » au doigt), le menu d'une vignette (⋯, clic droit, bouton du stylet, touche Menu ; « Insérer une page… » y choisit le fond en second temps), le nom écrit dans la carte, les messages et leur « Annuler » ; « Exporter en PDF » (le bandeau, celui des pages choisies, le menu d'une vignette, Ctrl + P) ; le bouton « Corbeille (3) » du bandeau, qui ouvre la vue de la corbeille |
+| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), plusieurs pages à la fois (Maj ou Ctrl + clic, Espace, Ctrl + A, « Choisir plusieurs » au doigt), le menu d'une vignette (⋯, clic droit, bouton du stylet, touche Menu ; ses huit fonds sur deux colonnes ; « Insérer une page… » y choisit le fond en second temps, sur une colonne), le nom écrit dans la carte, les messages et leur « Annuler » ; « Exporter en PDF » (le bandeau, celui des pages choisies, le menu d'une vignette, Ctrl + P) ; le bouton « Corbeille (3) » du bandeau, qui ouvre la vue de la corbeille |
 | `src/pages/corbeille.ts` | La corbeille des pages, une vue de la trieuse : les pages supprimées en vignettes, quand (« Supprimée aujourd'hui à 10 h 05 »), Remettre (par le journal de la trieuse : « Annuler »), Supprimer définitivement et Vider (après une question, dans une fenêtre de l'outil) ; où c'est noté dans le document (la carte `corbeille`) |
 | `src/pages/actions.ts` | Ce que la trieuse fait aux pages, chaque action en une entrée de son journal : renommer, insérer une page vide avant ou après, en ajouter une à la fin, dupliquer avec l'histoire, supprimer vers la corbeille (jamais toutes ; la page où aller quand on supprime celle qu'on regarde), changer un fond (l'origine du repère au centre du contenu), ranger d'une place (pur, testé) |
 | `src/pages/glisser.ts` | Où arrive une page lâchée dans la grille (la ligne sous le point, avant la première carte dont le milieu est à droite), où se pose la barre qui le montre, la vitesse du défilement près du bord (pur, testé) |
 | `src/pages/journal.ts` | Le journal de la trieuse des pages : chaque action sur les pages (déplacer, renommer, dupliquer, insérer, supprimer, changer un fond) entre avec l'état des pages d'avant et d'après ; annuler (ou rétablir) seulement si le tableau est exactement dans l'état laissé, sinon il le dit et se vide (jamais un changement invisible ni une page perdue) ; une page créée par une action défaite ne va pas dans la corbeille, et y reste hors quand on défait les actions d'avant ; aucune pile de page touchée |
-| `src/presse-papiers.ts` | Copier, coller : la copie écrite pour le presse-papiers du système et relue sans passer par la page, chaque forme vérifiée, le collage (noms gardés ou changés, points liés) |
+| `src/presse-papiers.ts` | Copier, coller : la copie écrite pour le presse-papiers du système et relue sans passer par la page, chaque forme vérifiée par une liste blanche (depuis le lot 5 : verrou, fixation d'une image et groupe gardés, jetés s'ils sont abîmés ; la rotation d'une formule bornée), le collage (noms gardés ou changés, points liés ; verrou et fixation remis, un groupe neuf par groupe copié d'au moins deux membres, une image fixée sous tout ce qui est sur la page d'arrivée) |
 | `src/fichier.ts` | Le classeur dans un fichier `.memc` : l'écrire (l'en-tête avec le nom et l'id du classeur, à la fin), le relire (et refuser ce qui n'en est pas un), vérifier un document entier (`verifierEtat`, ou `verifierDocument` sur un document déjà rejoué), ce qui se relit d'un document où des changements attendent une mise à jour qui manque (`etatLisible`, `ecrireLisible` : un fichier qui se rouvre toujours), lire l'en-tête seul (`lireEntete`) ; la marque d'une copie (`CARTE_COPIE`, `marqueDeCopie`, que Publier lit) ; le nom de tout fichier (`nomSur`, `nomClasseur`) |
 | `src/sauvegarde.ts` | Enregistrer et ouvrir un classeur : Ctrl + S (sur la clé quand elle enregistre le classeur ; sinon le fichier par l'écrivain, ou depuis la mémoire quand la base a un trou), Ctrl + O (avec la bibliothèque, il passe la main à `classeurs/fichiers.ts` ; dans le repli, par showOpenFilePicker quand il existe, le fichier lu dans le travailleur, et il remplace le classeur), la question avant de remplacer (`proposerRemplacement`, et sa case « Enregistrer automatiquement les changements dans ce fichier »), « Remplacer » qui donne au classeur l'identité du fichier (ou en fait une copie, registre des publications vidé et marquée, pour le fichier d'un classeur de la corbeille), les autres onglets (le canal des classeurs, et `mem-tableau` pour le premier), le classeur coupé de sa base pour une mise à jour depuis un fichier, la date du dernier enregistrement de chaque classeur ; le téléchargement d'un fichier (`telecharger`, que l'image copiée et le PDF empruntent) |
 | `src/main.ts` | Le démarrage : l'index de la bibliothèque et la reprise, le classeur à ouvrir (ou le repli, ou la bibliothèque seule), l'adresse, le titre de l'onglet, puis le classeur chargé et son ouverture notée, la bibliothèque par-dessus lui (ce qui s'écrit avant d'en partir), les fichiers (`classeurs/fichiers.ts`, branchés sur la sauvegarde, la bibliothèque et l'état ; aussi dans la bibliothèque seule), le message d'arrivée, l'annonce du premier lancement ; une page du cache du navigateur se recharge |
@@ -3349,6 +4182,147 @@ n'empêche un usage payant.
   dans un autre onglet, la copie attend un clic sur « Se connecter à
   Google » (avec la clé à jour, en silence : une ligne du menu ⋯
   seulement).
+- Un classeur du lot 5 rouvert dans la version d'avant (fdf3f72 : la
+  version d'un seul fichier restée sur une clé USB sans être refaite, un
+  onglet ouvert avant la mise à jour) s'y ouvre et
+  s'y peint sans erreur, mais elle ne connaît ni le verrou, ni la fixation en
+  fond, ni les groupes, ni la rotation d'une formule : elle laisse prendre,
+  déplacer et effacer un objet verrouillé ou une image fixée, montre une
+  formule tournée droite, et compte un réglage (verrouiller, grouper) pour un
+  geste de sa revue. Ses doubles (Ctrl + D, Transformer, un collage dans le
+  même onglet) d'un membre de groupe, d'un objet verrouillé ou d'une image
+  fixée gardent ces champs : un classeur repassé par elle peut avoir, de
+  retour dans le lot 5, un double dans le groupe de l'original, un double
+  verrouillé, ou une seconde image fixée avec un rang au-dessus des autres
+  images. Rien ne s'y perd et rien n'y plante (un banc le vérifie).
+- Verrouiller et fixer en fond (lot 5) dans la version d'avant (fdf3f72) et
+  dans un lecteur d'avant : ils ignorent le verrou et le fond fixé. La
+  version d'avant laisse prendre, glisser, gommer et supprimer un objet
+  verrouillé ou un énoncé fixé (Ctrl + A le prend, « Effacer la page »
+  l'efface) ; l'image fixée y est peinte sous les autres images, comme ici,
+  puisque Fixer en fond et Détacher gardent toute image fixée sous toute
+  image libre (un banc le vérifie, étape par étape, et pour sa bobine). Un
+  verrouillé déplacé ou effacé par elle revient dans le lot 5 déplacé ou
+  effacé, toujours verrouillé s'il est encore là. Dans le lot 5, l'image
+  fixée se détache, se copie et s'envoie par le menu de la page seulement ;
+  le cadenas ne se voit qu'à l'écran du professeur (jamais dans la revue ni
+  chez les élèves).
+- Les groupes (lot 5) n'ont qu'un niveau : grouper des groupes les fond en
+  un, et Dégrouper rend les objets un par un (on ne retrouve pas les groupes
+  d'avant la fusion, sauf par Ctrl + Z). Un groupe ne vaut que sur sa page.
+  Dans la version d'avant (fdf3f72), qui ignore le champ, les membres d'un
+  groupe se prennent un par un. Un groupe verrouillé ne se dégroupe qu'une
+  fois déverrouillé. Un groupe pris a le cadre droit de sa boîte (quatre
+  coins) et la pastille ↻ (voir « Changer de taille, tourner ») ; après
+  une rotation, ce cadre redevient la boîte droite de ce qui a tourné (voir
+  plus bas).
+- L'ordre (lot 5) dans la version d'avant et dans un lecteur d'avant resté
+  en cache chez un élève : ils peignent les images par rang, sous
+  l'écriture, comme le lot 5 (une image mise à l'arrière-plan y reste
+  au-dessus de l'image fixée : un banc le vérifie), et les tracés par rang.
+  Mais la version d'avant prend au clic par le rang (une image mise au
+  premier plan y cache encore, à la prise, le trait peint sur elle), et elle
+  range les formules HTML par la seconde de leur rang : l'ordre changé de
+  deux formules qui se chevauchent peut ne pas s'y voir quand les rangs
+  tombent dans la même seconde.
+- Changer de taille et tourner (lot 5) : un menu complet très haut (la
+  section *Transformer*, 300 px) sur un écran de 768 px, pour une figure
+  placée bas, peut couvrir la pastille ↻ (jamais la figure s'il peut
+  l'éviter) : on le ferme pour tourner. Pendant le geste, un trait réduit
+  sous une épaisseur de 1 paraît plus fin qu'il ne le sera au lâcher (il
+  garde au moins 1) ; le cadre d'un groupe ou de plusieurs objets reste
+  droit : après une rotation, il est la boîte de ce qui a tourné (il ne
+  garde pas l'angle, comme tldraw garde celui d'une sélection). Dans la
+  version d'avant (fdf3f72) et dans un lecteur
+  d'avant resté en cache chez un élève, une formule tournée paraît droite
+  (et se prend dans sa boîte droite) ; tout le reste d'une transformation
+  (un trait agrandi, une image tournée, une figure tournée) y paraît tel
+  quel, puisqu'il est cuit dans les coordonnées (un banc le vérifie, et
+  leur revue, leur exporteur et leur bobine rejouent ces gestes sans
+  erreur). « Remettre droit » remet une image retournée par une symétrie le
+  haut en haut : retournée de haut en bas, elle devient retournée de gauche
+  à droite (Ctrl + Z si ce n'était pas voulu).
+- La gomme qui efface seulement là où elle passe (lot 5) ne coupe que les
+  traits à main levée : une figure, une image, une formule ne se gomment
+  qu'en entier (« Effacer le trait entier »), et un ancien segment (v0.1)
+  non plus. Elle ne fusionne pas de nouveau deux morceaux qui se touchent :
+  repasser une gomme le long d'un mot y laisse plus de morceaux qu'il n'y
+  paraît (des traits ordinaires, qui se prennent et se copient un à un, ou
+  au lasso). Pendant le coup, le contour d'un morceau peut différer d'une
+  fraction de pixel, sur un pixel isolé, de celui que repeint le lever
+  (l'anticrénelage d'une peinture bornée au rectangle sale) : le lever
+  repeint toute la scène. Sur un long trait (plus de 150 points) coupé
+  pendant le coup, ce qui est loin de la gomme garde jusqu'au lever (ou
+  jusqu'à ce que la gomme le quitte) le contour d'avant la coupe, que
+  perfect-freehand redessine un peu autrement depuis le nouveau bout : quelques
+  dizaines de pixels de bord par coup, au plus, qui changent d'une nuance au
+  lever (les essais comparent au lever : moins de 20 pixels par million) ;
+  rien de ce qui est effacé ne reste. Dans la version d'avant (fdf3f72) et un lecteur
+  d'avant resté en cache chez un élève, une coupe est un geste ordinaire :
+  les morceaux neufs s'y dessinent à vitesse de plume (le plus long, qui
+  garde l'identifiant du trait, ne se redessine pas), sans erreur (un banc
+  le vérifie, avec leur revue, leur exporteur et leur bobine).
+- Les quatre fonds du lot 5 (grands carreaux, papier millimétré, papier
+  pointé, réseau isométrique) dans la version d'avant (fdf3f72) et dans un
+  lecteur d'avant resté en cache chez un élève : ils ne les connaissent pas
+  et peignent la page blanche, sans erreur (un banc le vérifie, avec leur
+  revue, leur exporteur et leur bobine) ; le fond reste écrit dans le
+  classeur, et revient dans le lot 5. Au plus loin, petits et grands
+  carreaux se ressemblent (les mêmes lignes de 1 cm et de 5 cm, comme dans
+  les vignettes de la trieuse) ; au plus près, le papier pointé n'a qu'un
+  point par centimètre (tous les 800 px à 2000 %). Une feuille de PDF au
+  réseau isométrique pèse plus que les autres (ses obliques se compressent
+  mal : 260 Ko environ pour une feuille A4 contre 60 Ko au millimétré et
+  20 Ko au pointé ; 60 pages au millimétré et au pointé, 2 Mo). Les lignes
+  de 2 mm du Seyès
+  s'effacent toujours en fondu de 10 à 4 px (depuis le lot 1) : elles
+  restent le seul niveau tracé, un instant, sous 6 px.
+- Le contraste renforcé (lot 5) n'épaissit pas l'écriture à main levée (son
+  contour serait à recalculer à chaque cran de zoom) ni les instruments, et
+  il ne vaut que pour l'écran du professeur : ce que les élèves revoient
+  chez eux (le lecteur, le film élève) et ce qu'on imprime (le PDF) gardent
+  les tons ordinaires, voulus ainsi. Les noms sous les outils ne viennent
+  pas dans la mise en page du téléphone (la place manque) ; au poste de la
+  classe (souris, tablette graphique), les pastilles de couleur et les
+  tailles du trait, dans la barre des outils, gardent leurs 34 et 30 px de
+  haut (44 de large), avec ou sans noms, comme avant (sur un écran qu'on
+  touche, depuis le contrôle final du lot 5, elles font 44 × 44, ou sont
+  dans le menu « Couleur » quand la barre ne tient pas ; au téléphone,
+  depuis K10, dans ce menu). Les
+  deux réglages ne sont essayés qu'au navigateur Chromium, piloté (l'écran
+  du TNI et de l'iPad simulés) : le vrai vidéoprojecteur de la salle, un
+  vrai TNI et l'iPad restent à voir en classe.
+- Au poste de la classe, sur un écran de 768 px de haut (1366 × 768,
+  1024 × 768), la barre des outils (828 px) défile : Rétablir et la poubelle
+  ne se voient qu'en la faisant défiler (la molette sur la barre, ou sa
+  fine barre de défilement) ; dans une fenêtre de Chrome sur un tel écran
+  (1366 × 657), aussi Trait moyen, Trait épais et Annuler ; avec les noms
+  sous les outils (948 px), aussi Vert et Trait fin. C'est la règle du lot 1
+  (des boutons de 44 px qui défilent, plutôt que des boutons qui
+  rétrécissent), et les couleurs y restent à un clic ; replier les couleurs
+  dans « Couleur » là aussi, comme sur un écran qu'on touche, les ferait
+  passer à deux clics : c'est au professeur de choisir (voir la feuille de
+  route). Les raccourcis restent : Ctrl + Z, Ctrl + Y, Suppr.
+- La mise en page du téléphone (lot 5, K10) n'a été essayée qu'au navigateur
+  Chromium, piloté (iPhone et Android simulés, de 320 × 568 à 932 × 430) :
+  un vrai téléphone, Safari sur iPhone (la barre d'adresse qui grandit et
+  rapetisse, l'encoche couchée) restent à voir. Sur le plus petit téléphone
+  couché (568 × 320), il n'y a pas toujours de place pour tout : un objet
+  pris en bas de l'écran, grand, avec son menu complet ouvert, laisse ce
+  menu couvrir la pastille ↻ plutôt que l'objet (la règle du lot 5, K6, voir
+  « Le menu complet ») ; un long message, alors, n'a ni le bas ni le haut de
+  libres et reste en bas, sur la pastille (on la touche à travers lui : il
+  laisse passer les appuis, sauf sur ses boutons). Dans le document, les
+  deux boutons du téléphone (« Couleur », « Autres outils ») sont au bout de
+  la barre des outils : au clavier (un téléphone avec un clavier), Tab passe
+  par Annuler et Rétablir avant « Couleur », que l'écran montre avant eux.
+  La barre du zoom y est cachée : on zoome au pincement (« 100 % » et « Tout
+  voir » dans « Plus ») ; « Voir la sélection » n'y est pas. Sur 568 × 320,
+  l'éditeur de formule est plus haut que l'écran : il défile, et ses boutons
+  sont au bout.
+- L'éditeur de formule n'est pas une fenêtre modale (on voit la page à côté,
+  depuis le lot 1) : Échap ne le ferme pas ; on le referme par *Annuler*
+  (ou *Placer*, Entrée).
 - Une bibliothèque (`.memb`) n'a pas de ZIP64 : 4 Go et 65 534 fichiers au
   plus (un refus clair au-delà). Elle n'a été essayée qu'au navigateur
   Chromium, piloté, avec des fichiers simulés (l'espace privé du navigateur) ;
@@ -3369,3 +4343,17 @@ n'empêche un usage payant.
 5. Formes mathématiques : courbe de fonction, tableau de variations, droite graduée.
 6. Revue : export vidéo, et alléger les très longs films (le document ne
    jette plus rien).
+7. Écriture : les **groupes d'écriture automatiques** (les traits écrits
+   d'affilée forment un mot ; un toucher prend le mot entier, un second
+   n'en garde qu'un trait), remis à plus tard par le professeur au lot 5
+   (choix c : seulement « Grouper » à la main pour l'instant).
+8. Les autres sujets « plus tard » de l'étude du lot 5 : la vue « Séances »
+   par classe (et la classe demandée au début de chaque séance par un
+   bandeau qui ne bloque rien, ou déduite du classeur ouvert : à choisir) ;
+   des classeurs « Préparation » copiés pour chaque classe ; des modèles de
+   page ; la recherche ; le pointeur laser (l'import de PDF est au point 4).
+9. Au poste de la classe, sur un écran bas : replier les couleurs et les
+   tailles dans « Couleur » quand la barre des outils ne tient pas (comme
+   sur un écran qu'on touche depuis le contrôle final du lot 5), pour que
+   Annuler, Rétablir et la poubelle restent dans l'écran — au prix d'un
+   clic de plus pour changer de couleur : au choix du professeur.

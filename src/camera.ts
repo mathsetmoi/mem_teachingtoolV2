@@ -62,17 +62,23 @@ export interface Bords { left: number; top: number; right: number; bottom: numbe
  *  - sous la barre du haut, jusqu'en bas (le coin du zoom couvre alors un
  *    peu du contenu, jamais son haut) ;
  *  - en dernier recours, toute la zone avec une marge, dans la seule
- *    dimension où il ne reste presque rien. */
+ *    dimension où il ne reste presque rien.
+ *  La barre des outils posée en bas (le téléphone en portrait, lot 5, K10 :
+ *  plus large que haute, dans la moitié basse) borne le bas, et non plus la
+ *  gauche : la zone va du bord gauche jusqu'au-dessus d'elle. */
 export function zoneEntreBarres(l: number, h: number, b: { outils: Bords | null; haut: Bords | null; zoom: Bords | null }) {
   const MIN = 200
-  const x = (b.outils ? b.outils.right : 0) + 16, y = (b.haut ? b.haut.bottom : 0) + 12
-  const droite = l - 16, bas = h - 12
-  const candidats = [{ x, y, l: droite - x, h: (b.zoom ? b.zoom.top : h) - 12 - y }]
+  const o = b.outils
+  const enBas = !!o && o.right - o.left > o.bottom - o.top && o.top > h / 2
+  const gauche = enBas ? null : o, fond = enBas ? o!.top : h
+  const x = (gauche ? gauche.right : 0) + 16, y = (b.haut ? b.haut.bottom : 0) + 12
+  const droite = l - 16, bas = fond - 12
+  const candidats = [{ x, y, l: droite - x, h: (b.zoom ? Math.min(b.zoom.top, fond) : fond) - 12 - y }]
   if (b.zoom) candidats.push({ x, y, l: b.zoom.left - 12 - x, h: bas - y })
   for (const c of candidats) if (c.l >= MIN && c.h >= MIN) return c
   const large = droite - x >= MIN, haut = bas - y >= 120
   return {
     x: large ? x : 16, l: large ? droite - x : Math.max(0, l - 32),
-    y: haut ? y : 16, h: haut ? bas - y : Math.max(0, h - 32),
+    y: haut ? y : 16, h: haut ? bas - y : Math.max(0, fond - 32),
   }
 }

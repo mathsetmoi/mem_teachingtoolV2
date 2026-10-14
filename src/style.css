@@ -65,7 +65,9 @@ button, select, input { font: inherit; color: inherit; }
 .barre-haut {
   top: max(12px, env(safe-area-inset-top)); right: 12px;
   align-items: center; flex-wrap: wrap; justify-content: flex-end;
-  max-width: calc(100% - 100px);
+  /* (100 px sans les noms sous les outils : le bord droit de la barre des
+     outils, mesuré, voir UI, plus 30 px) */
+  max-width: calc(100% - var(--droite-barre-outils, 70px) - 30px);
 }
 .barre-zoom { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); align-items: center; }
 
@@ -97,7 +99,8 @@ button, select, input { font: inherit; color: inherit; }
 }
 
 /* Le rôle du doigt : une petite marque dans le coin de son bouton
-   (✎ il dessine, ✥ il déplace, A auto) ; ::before est pris par .actif */
+   (✎ il dessine, ✥ il déplace, A auto) ; la Gomme qui n'efface que là où
+   elle passe (lot 5) : ◐ ; ::before est pris par .actif */
 .bouton[data-badge]::after {
   content: attr(data-badge); position: absolute; right: 2px; bottom: 3px;
   min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
@@ -155,7 +158,7 @@ button.rang:hover { background: #e9eef5; }
    ni animation, ni transition (il est au vidéoprojecteur toute l'heure).
    Faute de place, l'icône et le point seulement (.etroit), dans sa barre
    ou en tête de la barre du haut. */
-.barre-classeur { top: max(12px, env(safe-area-inset-top)); left: 82px; }
+.barre-classeur { top: max(12px, env(safe-area-inset-top)); left: calc(var(--droite-barre-outils, 70px) + 12px); }
 .bouton-classeur {
   display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto;
   height: 44px; padding: 0 12px 0 10px; border: 0; border-radius: 10px;
@@ -212,9 +215,12 @@ button.rang:hover { background: #e9eef5; }
 body.en-seance .bandeau-sauvegarde, body.en-trieuse .bandeau-sauvegarde, body.en-bibliotheque .bandeau-sauvegarde,
 body:has(.revue:not([hidden])) .bandeau-sauvegarde { display: none; }
 
-.choix-fond {
-  height: 44px; padding: 0 10px; margin: 0 2px;
-  border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); cursor: pointer;
+/* Le bouton du fond (lot 5) : la vignette du fond de la page, 30 × 22 px,
+   cernée du filet. Le filet est une ombre : une bordure rognerait le
+   canevas, qui se dessinerait flou. */
+.choix-fond canvas {
+  display: block; width: 30px; height: 22px; border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--filet);
 }
 
 .zoom-texte {
@@ -326,22 +332,168 @@ body.en-seance .toast { z-index: 41; }
   .annonce-page, .annonce-page.visible, .annonce-page.vite { transition: none; }
 }
 
-/* Petits écrans : la barre du haut se resserre ; le compteur ne dit que le
-   numéro de la page, et l'annonce est plus petite. La barre des outils,
-   posée en bas, s'arrête 12 px sous le bas MESURÉ de la barre du haut
-   (--bas-barre-haut, voir UI : sur deux rangées, 116 px ; sur trois, comme
-   sur un iPhone 12 en portrait, 162 px) : elle ne monte jamais sous elle, et
-   défile s'il le faut (le contrôle final du lot 4 : le bouton Stylo y était
-   à moitié couvert) */
-@media (max-width: 640px) {
-  .barre-haut { left: 12px; right: 12px; max-width: none; justify-content: center; }
-  .barre-outils { top: auto; bottom: 12px; transform: none; max-height: calc(100% - var(--bas-barre-haut, 116px) - 24px); }
+/* ---------- La mise en page du téléphone (lot 5, K10) ----------
+   Une seule requête, celle de src/navigateur.ts (TELEPHONE) : une fenêtre
+   de 640 px de large au plus, ou basse (500 px au plus) sous le doigt. Rien
+   n'y sort de l'écran, et l'essentiel reste sous le pouce :
+   - la barre du haut sur UNE rangée : le bouton du classeur (son icône),
+     ‹, le compteur (sans le nom de la page), ›, « Nouvelle page » (sous
+     360 px de large, elle passe dans « Plus » : › sur la dernière page en
+     ajoute une) et ⋯, qui devient « Plus » (la page, les outils de cours, la
+     vue, le classeur, cet appareil : voir UI.construireMenuFichier) ; tout
+     le reste de la barre (.seulement-large) est caché ;
+   - la barre des outils, en bas en portrait (sur toute la largeur, en
+     rangée), à gauche en paysage (en colonne), n'a que sept boutons : Stylo,
+     Gomme, Sélection, Couleur, Annuler, Rétablir, Autres outils (.seulement-
+     telephone pour les deux nouveaux ; l'ordre est celui de la propriété
+     order, le document garde celui du poste de la classe) ; les autres
+     outils, les pastilles, les tailles, le doigt, la poubelle de la
+     sélection vivent dans les menus « Couleur » et « Autres outils » ;
+   - la barre du zoom est cachée (le pincement zoome ; « 100 % » et « Tout
+     voir » sont dans « Plus ») ; « Revenir au contenu » et le message se
+     posent au-dessus de la barre du bas (--haut-barre-bas, mesuré par UI ;
+     leurs règles sont après les leurs, en fin de fichier) ;
+   - tout bouton du tableau fait au moins 44 × 44 px.
+   Au poste de la classe et sur l'iPad (1180 × 820, 820 × 1180), rien de
+   tout cela ne s'applique : les barres y sont exactement celles d'avant. */
+.bouton.seulement-telephone { display: none; }
+@media (max-width: 640px), (max-height: 500px) and (pointer: coarse) {
+  .seulement-large { display: none !important; }
+  .bouton.seulement-telephone { display: grid; }
+  .barre-zoom { display: none; }
   .rang-nom { display: none; }
   .annonce-numero { font-size: 34px; }
+  /* En portrait : la barre du haut d'un bord à l'autre ; la barre des outils
+     en bas, sur toute la largeur, ses sept boutons répartis (à 12 px des
+     bords, 4 sous 360 px de large : 7 × 44 = 308 px tiennent dans 320) */
+  .barre-haut {
+    left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right));
+    max-width: none; justify-content: center;
+  }
+  .barre-outils {
+    top: auto; transform: none;
+    left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom));
+    flex-direction: row; justify-content: space-between; max-height: none; overflow: visible;
+  }
+  .barre-outils > .bouton-couleur { order: 1; }
+  .barre-outils > .historique { order: 2; }
+  .barre-outils > .autres-outils { order: 3; }
 }
+@media (max-width: 359px) {
+  .barre-outils { left: max(4px, env(safe-area-inset-left)); right: max(4px, env(safe-area-inset-right)); bottom: max(4px, env(safe-area-inset-bottom)); padding: 1px; gap: 0; }
+  /* « Nouvelle page » passe dans « Plus » (› sur la dernière page en ajoute une) */
+  .barre-haut > .nouvelle-page { display: none; }
+}
+/* En paysage (le téléphone couché, ou une fenêtre basse) : la barre des
+   outils à gauche, en colonne, au milieu de la hauteur (à 4 px des bords
+   sous 360 px de haut : 7 × 44 tiennent dans 320) ; la barre du haut à
+   droite d'elle, à droite ; le menu complet ne la couvre jamais, ni le
+   message, ni « Revenir au contenu », centrés sur ce qu'on voit du tableau */
+@media (max-height: 500px) and (pointer: coarse), (max-width: 640px) and (max-height: 500px) {
+  .barre-haut { left: auto; max-width: calc(100% - var(--droite-barre-outils, 70px) - 30px); justify-content: flex-end; }
+  .barre-outils {
+    top: 50%; bottom: auto; right: auto; transform: translateY(-50%);
+    left: max(12px, env(safe-area-inset-left)); padding: 6px; gap: 2px;
+    flex-direction: column; justify-content: flex-start; max-height: calc(100% - 24px); overflow-y: auto;
+  }
+}
+@media (max-height: 359px) and (pointer: coarse), (max-width: 640px) and (max-height: 359px) {
+  .barre-outils { left: max(4px, env(safe-area-inset-left)); padding: 1px; gap: 0; max-height: calc(100% - 8px); }
+}
+
+/* ---------- Les couleurs et les tailles sur un écran qu'on touche ----------
+   (contrôle final du lot 5 ; l'étude, [18] : des cibles agrandies au TNI.)
+   Sur l'iPad, la tablette, le TNI, un portable à écran tactile (body.tactile,
+   posé par UI.majCouleursRepliees), les pastilles et les tailles de la barre
+   des outils font 44 × 44. Quand la barre ne tient plus dans la hauteur
+   (.couleurs-repliees, mesuré), elles se replient dans « Couleur », le
+   bouton du téléphone, posé à leur place entre les deux filets (par order :
+   le document garde l'ordre et les classes des boutons). Au poste de la classe (souris,
+   tablette graphique), rien ne change ; au téléphone, sa mise en page. */
+body.tactile .barre-outils > .pastille { height: 44px; }
+body.tactile .barre-outils .taille { height: 44px; }
+.barre-outils.couleurs-repliees > .pastille, .barre-outils.couleurs-repliees > .tailles { display: none; }
+/* (« Couleur » a son nom, sous body.noms-outils : caché hors de la barre
+   repliée, comme au poste de la classe ; les noms ne viennent jamais au
+   téléphone) */
+body.noms-outils .bouton.nomme.seulement-telephone { display: none; }
+.barre-outils.couleurs-repliees > .bouton-couleur { display: grid; order: 1; }
+body.noms-outils .barre-outils.couleurs-repliees > .bouton-couleur.nomme { display: flex; }
+/* (le second filet : celui qui suit les tailles) */
+.barre-outils.couleurs-repliees > .tailles ~ .filet, .barre-outils.couleurs-repliees > .historique,
+.barre-outils.couleurs-repliees > .bouton.danger { order: 2; }
+
+/* Le bouton « Couleur » (téléphone) : un rond de la couleur en main, cerné
+   de blanc et d'un filet ; son menu, les quatre pastilles et les trois
+   tailles, 44 × 44 chacune */
+.bouton-couleur .rond-couleur {
+  width: 24px; height: 24px; border-radius: 50%; background: var(--teinte, var(--encre));
+  box-shadow: 0 0 0 2px var(--chrome), 0 0 0 3px var(--filet);
+}
+.menu-flottant.menu-couleur, .menu-flottant.menu-autres { min-width: 0; }
+.grille-couleur { display: grid; grid-template-columns: repeat(4, 44px); gap: 4px; }
+.menu-item.case-couleur { display: grid; place-items: center; grid-template-columns: none; width: 44px; height: 44px; min-height: 0; padding: 0; }
+.case-couleur.pastille::after { width: 24px; height: 24px; }
+.case-couleur.pastille[aria-checked='true']::after { box-shadow: 0 0 0 2px var(--papier), 0 0 0 4px var(--teinte); }
+.case-couleur.taille span { width: 26px; }
+.case-couleur.taille[aria-checked='true'] span { background: var(--encre); box-shadow: 0 0 0 3px var(--surligneur); }
+/* « Autres outils » : ses points gras, comme ceux de ⋯ (il ne porte pas la
+   classe .points, que les essais lisent comme le bouton ⋯ de la barre du haut) */
+.autres-outils[data-icone='points'] svg { stroke-width: 3.4; }
+body.contraste .autres-outils[data-icone='points'] svg { stroke-width: 3.8; }
+/* Le menu « Autres outils » (téléphone) : une grille de 60 × 56, l'icône et
+   son nom dessous ; l'outil en main d'un coup de surligneur */
+/* (60 de large : « Surligneur » y tient en 11 px) */
+.grille-autres { display: grid; grid-template-columns: repeat(4, 60px); gap: 4px; }
+.menu-item.outil-grille {
+  position: relative; isolation: isolate;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  width: 60px; height: 56px; min-height: 0; padding: 0;
+}
+.outil-grille svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.outil-grille .nom { font-size: 11px; line-height: 1; color: var(--encre-douce); white-space: nowrap; }
+.outil-grille[aria-checked='true']::before {
+  content: ''; position: absolute; z-index: -1; left: 12px; right: 12px; top: 8px; bottom: 25px;
+  background: var(--surligneur); border-radius: 3px 8px 4px 9px; transform: rotate(-6deg) skewX(-10deg);
+}
+.outil-grille[aria-checked='true'] .nom { font-weight: 700; color: var(--encre); }
+/* Les fonds, ouverts depuis « Plus » en portrait : deux colonnes */
+.menu-fonds.deux-colonnes .grille-fonds { grid-template-columns: repeat(2, auto); }
+
+/* ---------- Les noms sous les outils (lot 5) ----------
+   Un réglage de l'appareil (menu ⋯, « Cet appareil ») : body.noms-outils,
+   que pose l'interface (UI.majNomsOutils : en « auto », sur un TNI ou une
+   grande tablette ; jamais dans la mise en page du téléphone). Chaque bouton
+   des barres (celle du zoom comprise), sauf ‹, ›, le compteur et le
+   pourcentage du zoom, a son <span class="libelle"> (le
+   mot dans data-libelle, écrit ici : le texte du bouton reste vide, voir
+   nommer dans ui.ts), caché sans lui. Avec lui, comme les boutons de la
+   barre d'actions : l'icône (22 px) et le mot (11 px) dessous, 54 px de
+   haut et 52 px de large au moins. Dans la barre des outils, tous à la
+   largeur du plus large (la barre s'élargit, et ce qui se place à sa
+   droite la suit : --droite-barre-outils) ; elle défile toujours sur un
+   écran bas, ses boutons gardent leur taille. La barre du haut peut passer
+   sur deux rangées (--bas-barre-haut la suit). */
+.bouton.nomme > .libelle { display: none; }
+body.noms-outils .bouton.nomme {
+  width: auto; min-width: 52px; height: 54px; padding: 0 4px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+}
+body.noms-outils .barre-outils .bouton.nomme { align-self: stretch; }
+body.noms-outils .bouton.nomme > .libelle {
+  display: block; font-size: 11px; line-height: 1; color: var(--encre-douce); white-space: nowrap; pointer-events: none;
+}
+body.noms-outils .bouton.nomme > .libelle::before { content: attr(data-libelle); }
+/* L'outil en main : le coup de surligneur derrière l'icône seulement */
+body.noms-outils .bouton.nomme.actif::before { top: 9.5px; bottom: 24.5px; left: calc(50% - 16px); right: calc(50% - 16px); }
+/* La marque du doigt et de la Gomme : au coin haut de l'icône, au-dessus du mot */
+body.noms-outils .bouton.nomme[data-badge]::after { bottom: auto; top: 5px; right: max(2px, calc(50% - 22px)); }
+body.noms-outils .bouton.nomme > .point-etat { right: max(7px, calc(50% - 15px)); top: 6px; }
 
 /* ---------- Choix de la forme ---------- */
 .choix-formes { position: fixed; flex-direction: column; }
+/* Au téléphone en portrait (lot 5, K10) : une rangée au-dessus de la barre du bas */
+.choix-formes.en-rangee { flex-direction: row; }
 
 /* ---------- Options de la figure sélectionnée ---------- */
 .panneau-forme {
@@ -366,6 +518,15 @@ body.en-seance .toast { z-index: 41; }
 .panneau-forme .taille { width: 40px; height: 40px; }
 /* « 3 objets » : le titre du menu commun de plusieurs objets (on ne le touche pas) */
 .panneau-forme .titre-selection { padding: 0 10px 0 8px; font-weight: 700; color: var(--encre-douce); white-space: nowrap; }
+/* La rangée du menu commun (lot 5) : « Groupe · 3 objets » et Dégrouper (ou
+   Grouper) y entrent ; ses boutons un peu plus serrés, elle tient encore sur
+   une ligne de 820 px au plus (lot 3 : sinon le menu ne tient plus au-dessus
+   de ce qu'il règle) */
+.panneau-forme .ligne.commun .option { padding: 0 9px; }
+.panneau-forme .ligne.commun .titre-selection { padding: 0 6px 0 4px; }
+/* « Verrouillé » (lot 5) : le titre du menu court d'un objet verrouillé, son cadenas devant */
+.panneau-forme .titre-selection.verrouille { display: inline-flex; align-items: center; gap: 6px; }
+.titre-selection.verrouille svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .noms { display: flex; align-items: center; gap: 8px; padding: 0 6px; }
 .noms span, .champ span { font-size: 13px; color: var(--encre-douce); white-space: nowrap; }
 .noms .saisie { height: 38px; width: 180px; font-family: 'KaTeX_Math', 'Times New Roman', serif; font-style: italic; font-size: 18px; }
@@ -459,7 +620,7 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 
 /* ---------- Programme de construction ---------- */
 .panneau-construction {
-  position: absolute; z-index: 18; right: 12px; top: 84px; bottom: 84px; width: min(360px, calc(100vw - 24px));
+  position: absolute; z-index: 18; right: 12px; top: max(84px, calc(var(--bas-barre-haut, 70px) + 12px)); bottom: 84px; width: min(360px, calc(100vw - 24px));
   display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; overflow-y: auto;
   background: var(--papier); border: 1px solid var(--filet); border-radius: 16px;
   box-shadow: 0 3px 0 var(--filet), 0 18px 40px rgba(27, 34, 48, 0.12);
@@ -493,7 +654,7 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .aide-phrases p { margin: 0; }
 .consigne-construction {
   /* centré dans la partie libre, à gauche du panneau */
-  position: absolute; z-index: 17; left: calc((100% - 384px) / 2 + 40px); top: 84px; transform: translateX(-50%);
+  position: absolute; z-index: 17; left: calc((100% - 384px) / 2 + 40px); top: max(84px, calc(var(--bas-barre-haut, 70px) + 12px)); transform: translateX(-50%);
   max-width: min(720px, calc(100vw - 500px)); padding: 12px 18px; border-radius: 14px;
   background: rgba(27, 34, 48, 0.9); color: #fff; font-size: 19px; line-height: 1.4;
   display: flex; gap: 12px; align-items: baseline;
@@ -935,6 +1096,12 @@ body.en-trieuse .toast { z-index: 30; }
   box-shadow: 0 2px 0 var(--filet), 0 14px 30px rgba(27, 34, 48, 0.14);
   user-select: none; -webkit-user-select: none;
 }
+/* Un menu plus long que sa hauteur (le menu ⋯ à 1366 × 657, sous son
+   bouton ; le menu de la page ; « Plus » et celui de la Gomme sur un
+   téléphone couché) défile : ses entrées gardent leur hauteur au lieu de se
+   tasser jusqu'à 44 px (une aide sur deux lignes passait sous le titre de
+   l'entrée suivante, et un clic sur elle lançait celle-ci) */
+.menu-flottant > * { flex-shrink: 0; }
 .menu-item {
   display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 10px;
   min-height: 44px; width: 100%; padding: 6px 10px; text-align: left;
@@ -951,6 +1118,29 @@ body.en-trieuse .toast { z-index: 30; }
 .menu-item small { display: block; }
 .menu-filet { width: auto; height: 0; border: 0; border-top: 1px solid var(--filet); margin: 6px 4px; }
 .menu-titre { padding: 6px 10px 2px 42px; font-size: 13px; font-weight: 700; color: var(--encre-douce); }
+/* Le menu des fonds (menu-fonds.ts) : une grille de 4 × 2 vignettes, deux
+   colonnes sur un écran étroit ; chacune son nom dessous, sur deux lignes au
+   plus, même sans la police d'écriture (hors connexion : celle du système,
+   plus large) ; la place de deux, toujours : les rangées restent alignées ;
+   « (1 cm) » ne se coupe pas ; celle du fond de la page cernée de bleu */
+.grille-fonds { display: grid; grid-template-columns: repeat(4, auto); gap: 4px; justify-content: center; }
+@media (max-width: 480px) { .grille-fonds { grid-template-columns: repeat(2, auto); } }
+.menu-item.fond-choix {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  width: 116px; min-height: 0; padding: 6px 4px; text-align: center;
+}
+.fond-choix canvas { display: block; width: 76px; height: 52px; border-radius: 4px; box-shadow: 0 0 0 1px var(--filet); }
+.fond-choix .nom { font-size: 13px; line-height: 16px; min-height: 32px; text-wrap: balance; }
+.fond-choix .insecable { white-space: nowrap; }
+.fond-choix[aria-checked='true'] canvas { box-shadow: 0 0 0 2px var(--bleu); }
+.fond-choix[aria-checked='true'] .nom { font-weight: 700; }
+.fond-choix:focus-visible { outline: 3px solid var(--bleu); outline-offset: 0; }
+/* Le menu d'une vignette de la trieuse : ses huit fonds sur deux colonnes
+   (lot 5), le reste sur toute la largeur ; l'ordre des entrées ne change
+   pas (le clavier les parcourt ligne à ligne) */
+.menu-flottant.fonds-en-colonnes { display: grid; grid-template-columns: 1fr 1fr; column-gap: 2px; align-content: start; }
+.menu-flottant.fonds-en-colonnes > * { grid-column: 1 / -1; }
+.menu-flottant.fonds-en-colonnes > .fond-de-carte { grid-column: auto; }
 /* Un menu aux aides longues (le bouton ⋯) : une largeur fixe, les aides vont à la ligne */
 .menu-large { width: min(400px, calc(100vw - 16px)); }
 /* En tête du menu ⋯ : le classeur et l'état de sa sauvegarde, ligne par
@@ -1511,7 +1701,85 @@ body.en-bibliotheque .toast { z-index: 30; }
 .retour-contenu svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .retour-contenu:hover { background: #2c3648; }
 body.en-seance .retour-contenu { visibility: hidden; }
-@media (max-width: 640px) {
-  .retour-contenu { bottom: 76px; }          /* au-dessus de la barre du zoom */
-  .toast { bottom: 132px; }
+/* Au téléphone (lot 5, K10 ; la requête de src/navigateur.ts) : « Revenir
+   au contenu » et le message au-dessus de la barre des outils, posée en bas
+   en portrait (--haut-barre-bas : la place qu'elle prend, mesurée par UI ; 0
+   en paysage, où elle est à gauche) ; le message au-dessus de « Revenir au
+   contenu ». Sur ce qui est pris (la barre d'actions, le menu complet, la
+   pastille ↻ : voir UI.placerToast), il passe sous la barre du haut. En
+   paysage, tous deux centrés sur ce qu'on voit du tableau, à droite de la
+   barre des outils, sans jamais la couvrir. */
+@media (max-width: 640px), (max-height: 500px) and (pointer: coarse) {
+  .retour-contenu { bottom: max(16px, env(safe-area-inset-bottom), calc(var(--haut-barre-bas, 0px) + 12px)); }
+  .toast { bottom: max(68px, calc(var(--haut-barre-bas, 0px) + 68px)); }
+  .toast.en-haut { bottom: auto; top: calc(var(--bas-barre-haut, 70px) + 12px); }
 }
+@media (max-height: 500px) and (pointer: coarse), (max-width: 640px) and (max-height: 500px) {
+  .toast, .retour-contenu { left: calc(50% + var(--droite-barre-outils, 70px) / 2); }
+  .toast { max-width: min(760px, calc(100vw - var(--droite-barre-outils, 70px) - 24px)); }
+}
+/* Au téléphone, tout bouton du tableau fait 44 × 44 au moins : ceux du menu
+   complet, du menu d'un morceau de figure, de la liste des instruments, du
+   message, du bandeau et de l'état (ici, après leurs règles). Le menu
+   complet : en portrait, sur toute la largeur (au-dessus de la barre du bas,
+   voir UI.majPanneau) ; en paysage, jamais sur la barre des outils ; il
+   défile s'il est plus haut que la place (UI lui donne sa hauteur). */
+@media (max-width: 640px), (max-height: 500px) and (pointer: coarse) {
+  .panneau-forme .bouton, .panneau-forme .taille, .panneau-forme .pastille { width: 44px; height: 44px; }
+  .panneau-forme button, .menu-partie button { min-width: 44px; min-height: 44px; }
+  .option { height: 44px; }
+  .choix { min-width: 44px; height: 44px; }
+  .toast .action { height: 44px; }
+  .bouton-bandeau { min-height: 44px; }
+  .fermer-bandeau { width: 44px; height: 44px; }
+  .menu-item.action-etat { min-height: 44px; }
+  /* Les fenêtres et la bibliothèque aussi (vérification « conformité » du
+     lot 5 : 38 à 42 px) : les boutons des fenêtres (Annuler, Exporter,
+     Mettre à jour…), les raccourcis de l'éditeur de formule, les cases et
+     les choix d'une fenêtre (tout le libellé se touche), le tri, le fil
+     d'Ariane et les étiquettes de la bibliothèque, les couleurs d'un dossier */
+  .principal, .secondaire, .raccourci, .biblio-tri, .fil-bouton, .filtre-etiquette { min-height: 44px; }
+  .dialogue label.case { min-height: 44px; }
+  .pastille-couleur { width: 44px; height: 44px; }
+  .panneau-forme { width: calc(100vw - 16px); overflow-y: auto; overscroll-behavior: contain; }
+  /* La consigne du programme de construction, posée en bas sur un écran
+     étroit : au-dessus de la barre du bas */
+  .consigne-construction { bottom: max(16px, calc(var(--haut-barre-bas, 0px) + 12px)); }
+}
+@media (max-height: 500px) and (pointer: coarse), (max-width: 640px) and (max-height: 500px) {
+  .panneau-forme { width: max-content; max-width: calc(100vw - var(--droite-barre-outils, 70px) - 16px); }
+}
+
+/* ---------- Le contraste renforcé (lot 5), pour le vidéoprojecteur ----------
+   Un réglage de l'appareil (menu ⋯, « Cet appareil ») : body.contraste,
+   que pose l'interface. Les filets et les gris plus foncés ; le filet des
+   barres et des menus en 2 px (une ombre intérieure en plus de la bordure :
+   aucune taille ne change, rien ne bouge dans la mise en page) ; des icônes
+   plus épaisses ; l'outil en main d'un coup de surligneur plus franc ; des
+   entrées de menu, des survols et des messages plus foncés. Le tableau
+   (rendu.ts, fonds.ts) a son contraste à lui, au même réglage ; le lecteur
+   des élèves (revoir.html) ne le lit jamais. */
+body.contraste { --filet: #8a97ab; --encre-douce: #2c3646; }
+body.contraste .barre, body.contraste .barre-actions, body.contraste .bandeau-sauvegarde {
+  box-shadow: inset 0 0 0 1px var(--filet), 0 2px 0 var(--filet);
+}
+body.contraste .panneau-forme { box-shadow: inset 0 0 0 1px var(--filet), 0 2px 0 var(--filet), 0 10px 24px rgba(27, 34, 48, 0.1); }
+body.contraste .menu-flottant, body.contraste .menu-partie { box-shadow: inset 0 0 0 1px var(--filet), 0 2px 0 var(--filet), 0 14px 30px rgba(27, 34, 48, 0.14); }
+body.contraste .bouton svg, body.contraste .action-barre svg, body.contraste .icone-classeur svg,
+body.contraste .option.instrument svg, body.contraste .choix svg { stroke-width: 2.3; }
+body.contraste .bouton.points svg, body.contraste .action-options svg { stroke-width: 3.8; }
+body.contraste .bouton.actif::before, body.contraste .option.actif::before, body.contraste .action-barre.actif::before {
+  background: #ffd60a; box-shadow: 0 0 0 1px #b38f00;
+}
+body.contraste .taille.actif span { box-shadow: 0 0 0 3px #ffd60a, 0 0 0 4px #b38f00; }
+body.contraste .bouton:hover, body.contraste button.rang:hover, body.contraste .bouton-classeur:hover,
+body.contraste .zoom-texte:hover, body.contraste .menu-item:hover, body.contraste .option:hover,
+body.contraste .choix:hover { background: #d9e2ee; }
+@media (hover: hover) { body.contraste .action-barre:hover { background: #d9e2ee; } }
+body.contraste .bouton:disabled { opacity: 0.4; }
+body.contraste .bouton:disabled:hover { background: transparent; }
+body.contraste .menu-item { color: #0b1019; }
+body.contraste .menu-item[aria-disabled='true'] { opacity: 0.5; }
+body.contraste .menu-item[aria-disabled='true']:hover { background: transparent; }
+body.contraste .toast { background: #070a10; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9); }
+body.contraste .toast .action { background: rgba(255, 255, 255, 0.26); }
