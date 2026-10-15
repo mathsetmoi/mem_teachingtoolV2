@@ -49,6 +49,24 @@ export function vuePour(b: { x: number; y: number; l: number; h: number }, r: { 
   return { x: r.x + r.l / 2 - (b.x + b.l / 2) * z, y: r.y + r.h / 2 - (b.y + b.h / 2) * z, z }
 }
 
+/** La caméra à 100 % qui montre le début de la boîte b (monde) dans le
+ *  rectangle r de l'écran. Dans chaque sens, séparément : la boîte centrée
+ *  si elle y tient avec la marge, sinon son début (son bord gauche, son
+ *  haut) à la marge du bord de r. Un petit contenu se voit donc entier et
+ *  centré, comme avant ; un grand s'ouvre sur son coin en haut à gauche ; un
+ *  contenu haut et étroit (un exercice qui descend), centré en largeur, sur
+ *  son haut. C'est ainsi que s'ouvre une page jamais regardée qui a déjà
+ *  quelque chose (après le lot 5, le zoom est toujours à 100 % quand on
+ *  change de page ; avant, elle était réduite pour tout montrer, ce que
+ *  « Tout voir » fait toujours à la demande). Une boîte plate (un trait
+ *  horizontal) ou réduite à un point se centre. */
+export function vueAuDebut(b: { x: number; y: number; l: number; h: number }, r: { x: number; y: number; l: number; h: number },
+  marge = 32): { x: number; y: number; z: number } {
+  const sens = (debut: number, long: number, bord: number, place: number) =>
+    long <= place - 2 * marge ? bord + place / 2 - (debut + long / 2) : bord + marge - debut
+  return { x: sens(b.x, b.l, r.x, r.l), y: sens(b.y, b.h, r.y, r.h), z: 1 }
+}
+
 /** Un rectangle de l'écran par ses bords */
 export interface Bords { left: number; top: number; right: number; bottom: number }
 

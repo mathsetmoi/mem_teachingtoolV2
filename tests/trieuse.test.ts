@@ -221,21 +221,25 @@ describe('les actions de la trieuse', () => {
     expect(piles(t, ids)).toEqual(p0)
   })
 
-  it('insérer avant, après, à la fin : au fond de la voisine ; annulée, ni dans l\'ordre ni dans la corbeille ; rétablie, à sa place', async () => {
+  // Après le lot 5 (le choix du professeur) : toute page neuve est blanche,
+  // quel que soit le fond de sa voisine ou de la dernière page (avant, elle
+  // prenait le leur)
+  it('insérer avant, après, à la fin : une page blanche, quelle que soit la voisine ; annulée, ni dans l\'ordre ni dans la corbeille ; rétablie, à sa place', async () => {
     const { t, ids: [a, b, c], j } = await pages(3)
     t.changerFond(b, 'seyes'); await attendre()
     const p0 = piles(t, [a, b, c])
     const avant = actions.inserer(t, j, b, 'avant')!
     expect(avant.rang).toBe(1)
     expect(ordreDe(t)).toEqual([a, avant.page, b, c])
-    expect(t.fondDe(avant.page)).toBe('seyes')
+    expect(t.fondDe(avant.page)).toBe('blanc')                 // pas le Seyès de la voisine
     expect(t.formesDe(avant.page)?.size).toBe(0)
     const apres = actions.inserer(t, j, b, 'apres')!
     expect(ordreDe(t)).toEqual([a, avant.page, b, apres.page, c])
     expect(apres.rang).toBe(3)
+    expect(t.fondDe(apres.page)).toBe('blanc')
     const fin = actions.ajouterALaFin(t, j)!
     expect(fin.rang).toBe(5)
-    expect(t.fondDe(fin.page)).toBe('carreaux')                 // le fond de la dernière page
+    expect(t.fondDe(fin.page)).toBe('blanc')                    // pas les petits carreaux de la dernière page
     await attendre()
     // Défaire les trois : elles quittent l'ordre, et la corbeille ne les montre pas
     expect(j.annuler()).toBe('fait')

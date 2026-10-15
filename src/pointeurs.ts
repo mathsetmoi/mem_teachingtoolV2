@@ -15,6 +15,29 @@ export function typePointeur(t: string): TypePointeur {
   return t === 'pen' || t === 'touch' ? t : 'mouse'
 }
 
+/** Le pointeur d'un clic sur un bouton hors du tableau (celui d'un message,
+ *  une entrée de menu) : son pointerType, que le navigateur donne au clic ;
+ *  au clavier (Entrée, Espace : pointerType vide) ou sans lui (un navigateur
+ *  dont le clic n'est pas un PointerEvent), sinon (retouches après le lot 5 :
+ *  « Fixer en fond » touché dans le message de l'import, avant tout appui
+ *  sur le tableau, parlait de « clic droit » au doigt et au stylet). */
+export function pointeurDuClic(e: Event | undefined, sinon: TypePointeur): TypePointeur {
+  const t = (e as PointerEvent | undefined)?.pointerType
+  return t ? typePointeur(t) : sinon
+}
+
+/** Le pointeur dont parlent les messages avant tout appui sur le tableau
+ *  (retouches après le lot 5) : le doigt sur un écran tactile sans pointeur
+ *  fin (un iPad, un téléphone : fin, la souris ou le pavé tactile qu'on y
+ *  branche), la souris sinon (un ordinateur, un TNI avec sa souris, la
+ *  tablette graphique, qui se montre comme une souris tant qu'elle n'a pas
+ *  touché). Avant, toujours la souris : un fichier déposé sur l'iPad disait
+ *  « P : reprendre le Stylo ». */
+export function pointeurDeDepart(tactile = ecranTactile(),
+  fin = typeof matchMedia === 'function' && matchMedia('(any-pointer: fine)').matches): TypePointeur {
+  return tactile && !fin ? 'touch' : 'mouse'
+}
+
 /** Combien un appui doit s'éloigner de son départ (en pixels d'écran) pour
  *  devenir un glisser : un doigt tremble plus qu'un stylet, un stylet plus
  *  qu'une souris. En deçà, rien ne bouge et rien ne s'écrit. */
@@ -224,6 +247,73 @@ export function messageDetacher(p: TypePointeur, direct = ecranTactile(), plusie
   if (p === 'mouse') return `Clic droit dans le vide pour ${la} détacher.`
   if (p === 'pen' && !direct) return `Bouton du stylet dans le vide pour ${la} détacher.`
   return `Appui long dans le vide pour ${la} détacher.`
+}
+
+/** Ce que dit « Fixer en fond » (retouches après le lot 5) : on écrit
+ *  par-dessus, et pour la tourner ou la déplacer, il faut d'abord la
+ *  détacher (fixée, elle ne se prend plus, et n'a ni cadre ni pastille ↻).
+ *  Le menu de la page s'ouvre dans les mots du pointeur (voir
+ *  messageDetacher) : sur elle, il propose « Détacher l'image du fond » ;
+ *  dans le vide, pour plusieurs, « Détacher le fond ». n : combien on en a
+ *  fixé. selection : l'outil Sélection reste en main (on l'avait choisi :
+ *  voir App.fixerEnFond), qui n'écrit pas ; le message dit alors comment
+ *  reprendre le Stylo (voir messageReprise). */
+export function messageFixe(p: TypePointeur, n = 1, direct = ecranTactile(), selection = false): string {
+  const geste = p === 'mouse' ? 'clic droit' : p === 'pen' && !direct ? 'bouton du stylet' : 'appui long'
+  return (n === 1
+    ? `Image fixée en fond : écrivez et entourez par-dessus. Pour la tourner ou la déplacer : ${geste} dessus, puis « Détacher l'image du fond ».`
+    : `${n} images fixées en fond : écrivez et entourez par-dessus. Pour les tourner ou les déplacer : ${geste} dans le vide, puis « Détacher le fond ».`)
+    + (selection ? messageReprise(p, 'stylo', direct) : '')
+}
+
+/** La touche de chaque outil, et son nom, pour dire comment le reprendre
+ *  (voir messageReprise ; ce sont celles de App.clavier). La Vue n'a pas de
+ *  lettre (Espace la tient le temps d'un geste) ; les Formes ont celle de
+ *  leur forme (TOUCHE_FORME). */
+const REPRISE: Record<string, [string, string]> = {
+  stylo: ['P', 'le Stylo'], surligneur: ['H', 'le Surligneur'], gomme: ['E', 'la Gomme'],
+  point: ['X', 'le Point'], segment: ['L', 'le Segment'], formule: ['F', 'la Formule'],
+}
+const TOUCHE_FORME: Record<string, string> = { rectangle: 'R', cercle: 'C', polygone: 'G' }
+
+/** Comment reprendre l'outil qu'on avait (avant) quand une image l'a fait
+ *  passer à la Sélection (son import, « Détacher l'image du fond » :
+ *  retouches après le lot 5), en une phrase qui commence par une espace ;
+ *  rien si c'était déjà la Sélection. Avec un clavier (la souris, la
+ *  tablette graphique, ou Ctrl+V : clavier), la touche de l'outil : P rend
+ *  le Stylo, E la Gomme, R, C ou G les Formes (forme : celle qu'on avait),
+ *  etc. Elle vaut que l'image soit encore prise ou non : « Échap deux fois »,
+ *  dit avant, ramenait à la Sélection quand on l'avait déjà lâchée d'un clic
+ *  dans le vide (le premier Échap rendait l'outil, le second repassait à la
+ *  Sélection). La Vue, sans lettre : Échap, deux fois si l'image est encore
+ *  prise (voir App.echap). Au doigt et au stylet posé sur l'écran (direct :
+ *  un TNI, un iPad), son bouton. Jamais « clic » au doigt. */
+export function messageReprise(p: TypePointeur, avant: string, direct = ecranTactile(), clavier = false, forme = 'rectangle'): string {
+  if (avant === 'selection') return ''
+  if (clavier || p === 'mouse' || (p === 'pen' && !direct)) {
+    if (avant === 'forme') return ` ${TOUCHE_FORME[forme] ?? 'R'} : reprendre les Formes.`
+    const r = REPRISE[avant]
+    return r ? ` ${r[0]} : reprendre ${r[1]}.` : ' Échap : reprendre l\'outil d\'avant (deux fois si l\'image est encore prise).'
+  }
+  return avant === 'stylo' ? ' Touchez le Stylo pour écrire de nouveau.' : ' Touchez votre outil pour le reprendre.'
+}
+
+/** Ce que dit l'import d'une image (retouches après le lot 5) : elle arrive
+ *  à l'outil Sélection, avec son cadre de taille et sa pastille ↻ ; puis
+ *  comment reprendre l'outil qu'on avait (voir messageReprise). */
+export function messageImagePosee(p: TypePointeur, avant: string, direct = ecranTactile(), clavier = false, forme = 'rectangle'): string {
+  return 'Image posée : ses coins l\'agrandissent, ↻ la tourne.' + messageReprise(p, avant, direct, clavier, forme)
+}
+
+/** Ce que dit « Détacher l'image du fond » (retouches après le lot 5) : elle
+ *  se prend de nouveau, à l'outil Sélection, avec son cadre et sa pastille
+ *  ↻ (c'est le chemin que donne le message de « Fixer en fond » pour la
+ *  tourner) ; puis comment reprendre l'outil qu'on avait, comme à l'import.
+ *  n : combien on en a détaché. */
+export function messageDetache(p: TypePointeur, avant: string, n = 1, direct = ecranTactile(), forme = 'rectangle'): string {
+  return (n === 1 ? 'Image détachée du fond : elle se déplace de nouveau, ses coins l\'agrandissent, ↻ la tourne.'
+    : `${n} images détachées du fond : elles se déplacent de nouveau, les coins du cadre les agrandissent, ↻ les tourne.`)
+    + messageReprise(p, avant, direct, false, forme)
 }
 
 /** Ce qu'on dit la première fois de la session qu'on prend une image seule

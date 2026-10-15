@@ -10,7 +10,7 @@ import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import type { Fond, Forme, Trait } from './types'
 import type { Morceau } from './revoir/instruments-film'
-import { uid } from './types'
+import { FOND_NEUF, uid } from './types'
 
 export const ORIGINE_LOCALE = 'locale'
 const ORIGINE_FILM = 'film'
@@ -395,7 +395,8 @@ export class Tableau {
     return r
   }
 
-  /** Attend la copie locale ; crée une première page si le tableau est vide.
+  /** Attend la copie locale ; crée une première page si le tableau est vide
+   *  (une page blanche, comme toute page neuve : voir FOND_NEUF).
    *  vide : il n'y avait rien dans la base (un navigateur neuf, un classeur
    *  dont la base vient d'être créée vide). Une base qui ne s'ouvre pas
    *  (IndexedDB refusé) ne retient pas le démarrage : le document vit en
@@ -407,7 +408,7 @@ export class Tableau {
     if (local && !(await this.ouverte(local))) this.signaler('indisponible')
     if (this.local && (this.doc.store.pendingStructs || this.doc.store.pendingDs)) this.incomplet = true
     const vide = this.ordre.length === 0
-    if (vide) this.ajouterPage('carreaux', 0)
+    if (vide) this.ajouterPage(FOND_NEUF, 0)
     return { vide: vide && !this.incomplet }
   }
 
@@ -1413,6 +1414,14 @@ export class Tableau {
     if (!u || !haut) return null
     const m = this.derniereMarque(page)
     return m && u.undoStack.length <= m.profondeur ? null : haut
+  }
+
+  /** L'étape que Ctrl+Y refera sur cette page : celle du haut de sa pile à
+   *  refaire (null si elle est vide). Yjs en pousse une neuve à chaque
+   *  annulation : App y retrouve ce qui était pris (voir App.annuler). */
+  prochainRetablissement(page: string): EtapeDePile | null {
+    const u = this.piles.get(page)
+    return u?.redoStack[u.redoStack.length - 1] ?? null
   }
 
   // ---------- Les marques d'annulation ----------

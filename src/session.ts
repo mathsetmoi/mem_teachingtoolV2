@@ -1,8 +1,11 @@
 // =============================================================
 // LA SESSION DE CE NAVIGATEUR
 // La page qu'on regardait et, pour chaque page, la vue qu'on y avait
-// (son centre et son zoom) : au rechargement, on retrouve le tableau
-// comme on l'a laissé. C'est l'affaire de CET écran, pas du tableau :
+// (son centre et son zoom) : au rechargement, on retrouve chaque page à
+// l'endroit où on l'a laissée. Le zoom reste écrit (le format ne change
+// pas), mais on ne le reprend plus : on arrive sur une page toujours à
+// 100 % (le choix du professeur, après le lot 5 ; voir App.appliquerVue).
+// C'est l'affaire de CET écran, pas du tableau :
 // rien de tout cela n'entre dans le document (ni dans un fichier, ni
 // dans le film, ni dans une publication).
 // Une vue se garde par le point du monde au centre de l'écran : elle

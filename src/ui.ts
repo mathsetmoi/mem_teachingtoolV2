@@ -41,7 +41,8 @@ import type { CibleExport, HoteFenetrePdf } from './sorties/export-pdf'
 import { Vignettes } from './pages/vignettes'
 import { Trieuse } from './pages/trieuse'
 import { ouvrirEnvoi } from './pages/envoi'
-import { messageVerrou, titreModifierFormule } from './pointeurs'
+import { messageVerrou, pointeurDuClic, titreModifierFormule } from './pointeurs'
+import type { TypePointeur } from './pointeurs'
 import { accorder, compterObjets, minuscule } from './verrou'
 import type { Surveillance } from './classeurs/surveillance'
 import type { ActionEtat, Bandeau, LigneEtat } from './classeurs/etat'
@@ -397,12 +398,14 @@ export class UI implements Interface {
   private boutonNouvelle!: HTMLButtonElement
   /** Le choix d'un fichier d'image (le bouton Image, et « Importer une image… » de « Plus ») */
   private choixFichier!: HTMLInputElement
+  /** Le pointeur qui a touché « Importer une image » (voir choisirImage) */
+  private pointeurImport: TypePointeur | undefined
   /** Le menu des fonds ouvert depuis « Plus » au téléphone : le même menu,
    *  rattaché au bouton « Plus » (le bouton du fond y est caché) */
   private menuFondsPlus!: Menu
   /** La place que prend la barre du bas (--haut-barre-bas), telle que posée */
   private hautBarreBas = -1
-  /** Ce qui a décidé la dernière place du message au téléphone (voir placerToast) */
+  /** Ce qui a décidé la dernière place du message (voir placerToast) */
   private cleToast = ''
 
   constructor(private app: App, private racine: HTMLElement) {
@@ -565,7 +568,7 @@ export class UI implements Interface {
       const b = document.createElement('button')
       b.type = 'button'; b.className = 'taille'; b.title = t.nom; b.setAttribute('aria-label', 'Trait ' + t.nom.toLowerCase())
       b.innerHTML = `<span style="--d:${4 + i * 4}px"></span>`
-      b.addEventListener('click', () => { app.taille = t.valeur; this.maj() })
+      b.addEventListener('click', () => { app.choisirTaille(t.valeur); this.maj() })
       this.tailles.push(b); rangee.appendChild(b)
     })
     outils.appendChild(rangee)
@@ -655,8 +658,8 @@ export class UI implements Interface {
     this.rangNumero = Object.assign(document.createElement('span'), { className: 'rang-numero' })
     this.rangNom = Object.assign(document.createElement('span'), { className: 'rang-nom' })
     this.rang.append(this.rangNumero, this.rangNom)
-    // « › » : sur la dernière page, il en ajoute une (au fond de la page
-    // courante, en vue neutre), avec sa propre icône (voir maj). Le second
+    // « › » : sur la dernière page, il en ajoute une (blanche, comme toute
+    // page neuve, en vue neutre), avec sa propre icône (voir maj). Le second
     // clic d'un double-clic ne fait rien, ni un clic moins de 600 ms après un
     // changement de page : le double-clic sur « › » qui vient d'arriver sur
     // la dernière page n'en crée pas une de plus. Les boutons de la barre ne
@@ -709,8 +712,8 @@ export class UI implements Interface {
     const construire = bouton('construction', 'Programme de construction, étape par étape', () => this.basculerConstructeur(), 'seulement-large')
     // Importer une image : bouton, ou coller (Ctrl+V), ou glisser le fichier sur le tableau
     const choixFichier = this.choixFichier = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*', hidden: true })
-    choixFichier.addEventListener('change', () => { const f = choixFichier.files?.[0]; if (f) app.importerImage(f); choixFichier.value = '' })
-    const importer = bouton('image', 'Importer une image (ou coller avec Ctrl+V, ou glisser le fichier)', () => choixFichier.click(), 'seulement-large')
+    choixFichier.addEventListener('change', () => { const f = choixFichier.files?.[0]; if (f) app.importerImage(f, { pointeur: this.pointeurImport }); choixFichier.value = '' })
+    const importer = bouton('image', 'Importer une image (ou coller avec Ctrl+V, ou glisser le fichier)', e => this.choisirImage(e), 'seulement-large')
     this.racine.appendChild(choixFichier)
     const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir(), 'seulement-large')
     const revoir = bouton('revue', 'Revoir la construction : une page, une séance, pas à pas', () => this.ouvrirRevue(revoir), 'seulement-large')
@@ -1015,7 +1018,7 @@ export class UI implements Interface {
     const titre = doigt.id === 'auto' && reglages.styletDirect ? 'Rôle du doigt : auto (stylet détecté : il déplace la vue)' : doigt.titre
     if (this.boutonDoigt.title !== titre) { this.boutonDoigt.title = titre; this.boutonDoigt.setAttribute('aria-label', titre) }
     this.pastilles.forEach((b, i) => b.classList.toggle('actif', COULEURS[i].valeur === app.couleur))
-    this.tailles.forEach((b, i) => b.classList.toggle('actif', TAILLES[i].valeur === app.taille))
+    this.tailles.forEach((b, i) => b.classList.toggle('actif', TAILLES[i].valeur === app.tailleEnMain()))
     const rien = !(app.selection.size || app.partie)
     griser(this.boutonSupprimer, rien)
     griser(this.boutonAnnuler, !app.peutAnnuler())
@@ -1091,8 +1094,9 @@ export class UI implements Interface {
     this.majRetour()
     // Après le menu complet : elle ne paraît que s'il est fermé
     this.barreActions.maj()
-    // Au téléphone, le message ne couvre pas ce qui est pris (voir placerToast)
-    if (telephone) this.placerToast()
+    // Le message ne couvre ni la barre d'actions ni la pastille ↻ (au
+    // téléphone, rien de ce qui est pris : voir placerToast)
+    this.placerToast()
   }
 
   /** Les choix des Formes ou du Segment au téléphone (lot 5, K10) : en
@@ -1150,21 +1154,28 @@ export class UI implements Interface {
     return { gauche, haut: h.bottom, bas: this.basUtile() }
   }
 
-  /** Au téléphone, le message (en bas, au-dessus de la barre du bas) ne
-   *  couvre ni les barres, ni le bandeau, ni ce qui est pris (son cadre, sa
-   *  pastille ↻), ni la barre d'actions, ni le menu complet, ni les choix des
-   *  Formes. Il essaie, dans l'ordre : en bas, sur sa largeur ; sous la barre
-   *  du haut (.en-haut) ; puis, sous la barre du haut et enfin en bas, dans
-   *  la plus large des bandes que rien n'occupe (sur un téléphone couché,
-   *  320 px de haut, un objet pris en bas : à côté de sa barre d'actions), un
-   *  peu plus étroit et plus haut. Sinon il reste en bas. Caché, il garde sa
-   *  place jusqu'au message suivant (il ne saute pas pendant qu'il
-   *  s'efface). Les boîtes sont lues sans le petit glissement de son
-   *  apparition (offsetTop). */
+  /** Le message (en bas ; au téléphone, au-dessus de la barre du bas) ne
+   *  couvre ni les barres, ni le bandeau, ni la barre d'actions, ni le menu
+   *  complet, ni les choix des Formes, ni les poignées du cadre de ce qui
+   *  est pris (sa pastille ↻, ses coins, ses côtés, à la portée du pointeur :
+   *  voir App.poigneesAEviter) ; au téléphone, ni rien de ce qui est pris
+   *  (son cadre), quand au poste de la classe il peut passer sur l'objet
+   *  (retouches après le lot 5 : il ne se plaçait qu'au téléphone, et après
+   *  l'import d'une image, le message et sa barre d'actions, posée sous
+   *  elle, se couvraient ; zoomée, la pastille passait en bas, sous le
+   *  message ; puis, posé sous la barre du haut à côté de la pastille, il
+   *  couvrait le coin d'un énoncé en portrait, et son bouton « Fixer en
+   *  fond » prenait le clic qui devait l'agrandir). Il essaie, dans
+   *  l'ordre : en bas, sur sa largeur ; sous la barre du haut (.en-haut) ;
+   *  puis, sous la barre du haut et enfin en bas, dans la plus large des
+   *  bandes que rien n'occupe (sur un téléphone couché, 320 px de haut, un
+   *  objet pris en bas : à côté de sa barre d'actions), un peu plus étroit
+   *  et plus haut. Sinon il reste en bas. Caché, il garde sa place jusqu'au message
+   *  suivant (il ne saute pas pendant qu'il s'efface). Les boîtes sont lues
+   *  sans le petit glissement de son apparition (offsetTop). */
   private placerToast() {
     const t = this.toast
     const remettre = (haut: boolean) => { t.classList.toggle('en-haut', haut); t.style.left = ''; t.style.maxWidth = '' }
-    if (!this.telephone) { if (t.classList.contains('en-haut') || t.style.left) remettre(false); return }
     if (!t.classList.contains('visible')) return
     const app = this.app, z = app.rendu.scene.getBoundingClientRect(), cam = app.cam
     const obstacles: { left: number; top: number; right: number; bottom: number }[] = []
@@ -1178,7 +1189,10 @@ export class UI implements Interface {
       const a = cam.versEcran(b.x, b.y), c = cam.versEcran(b.x + b.l, b.y + b.h)
       obstacles.push({ left: z.left + a.x, top: z.top + a.y, right: z.left + c.x, bottom: z.top + c.y })
     }
-    if (app.selection.size && !app.enLecture) { ecran(app.emprise(app.objetsChoisis())); ecran(app.pastilleAEviter()) }
+    if (app.selection.size && !app.enLecture) {
+      if (this.telephone) ecran(app.emprise(app.objetsChoisis()))
+      for (const b of app.poigneesAEviter()) ecran(b)
+    }
     // Rien n'a bougé depuis la dernière fois (maj passe souvent) : il reste où il est
     const cle = `${window.innerWidth}×${window.innerHeight}|${t.textContent}|` + obstacles.map(o => [o.left, o.top, o.right, o.bottom].map(Math.round).join(',')).join(';')
     if (cle === this.cleToast) return
@@ -1347,6 +1361,17 @@ export class UI implements Interface {
     entreeMenu(m, texte, faire, o)
   }
 
+  /** « Importer une image » (le bouton de la barre du haut, ou « Plus » au
+   *  téléphone) : le choix du fichier s'ouvre. Le pointeur qui l'a touché
+   *  est noté : le message de l'import parle sa langue (P à la souris et à
+   *  la tablette graphique, le bouton Stylo au doigt ; au clavier, Entrée :
+   *  le dernier vu sur le tableau, voir App.importerImage). */
+  private choisirImage(e?: Event) {
+    const t = (e as PointerEvent | undefined)?.pointerType
+    this.pointeurImport = t ? typePointeur(t) : undefined
+    this.choixFichier.click()
+  }
+
   /** Le menu du zoom, refait à chaque ouverture (la sélection a pu changer) */
   private construireMenuZoom() {
     const app = this.app, m = this.menuZoom.el
@@ -1455,7 +1480,7 @@ export class UI implements Interface {
       aide: 'Carré, cercle, triangle…' })
     filetMenu(m)
     titreMenu(m, 'Outils de cours')
-    this.entreeMenu(m, 'Importer une image…', () => this.choixFichier.click(), { action: 'importer' })
+    this.entreeMenu(m, 'Importer une image…', e => this.choisirImage(e), { action: 'importer' })
     this.entreeMenu(m, 'Instruments…', () => { this.choixInstruments.hidden = false; this.maj() }, { action: 'instruments',
       aide: 'Règle, équerre, rapporteur, compas' })
     this.entreeMenu(m, 'Programme de construction', () => this.basculerConstructeur(), { action: 'construction', aide: 'Étape par étape' })
@@ -1944,7 +1969,7 @@ export class UI implements Interface {
       const cible = sous.length ? [sous[0]] : fixes
       const ids = cible.map(f => f.id), plusieurs = cible.length > 1
       const aide = plusieurs ? `${cible.length} images fixées en fond sur cette page` : undefined
-      this.entreeMenu(el, plusieurs ? 'Détacher le fond' : 'Détacher l\'image du fond', () => app.detacherDuFond(ids),
+      this.entreeMenu(el, plusieurs ? 'Détacher le fond' : 'Détacher l\'image du fond', e => app.detacherDuFond(ids, pointeurDuClic(e, app.dernierPointeur)),
         { action: 'detacher-fond', aide: aide ?? 'Elle se prend et se déplace de nouveau' })
       this.entreeMenu(el, plusieurs ? 'Copier le fond' : 'Copier l\'image du fond', () => app.copierFond(ids),
         { action: 'copier-fond', aide: aide ?? `${CTRL}+V la colle ici ou ailleurs, fixée en fond` })
@@ -2056,7 +2081,7 @@ export class UI implements Interface {
     }
     for (const c of COULEURS) choix('pastille', c.nom, app.couleur === c.valeur, () => this.choisirCouleur(c.valeur)).style.setProperty('--teinte', c.valeur)
     TAILLES.forEach((t, i) => {
-      const b = choix('taille', 'Trait ' + t.nom.toLowerCase(), app.taille === t.valeur, () => { app.taille = t.valeur; this.maj() })
+      const b = choix('taille', 'Trait ' + t.nom.toLowerCase(), app.tailleEnMain() === t.valeur, () => { app.choisirTaille(t.valeur); this.maj() })
       b.innerHTML = `<span style="--d:${4 + i * 4}px"></span>`
     })
     grille.addEventListener('keydown', e => naviguerDansLaGrille(grille, e))
@@ -2417,20 +2442,31 @@ export class UI implements Interface {
       filetMenu(m)
       this.sectionGroupe(m, membre)
     }
-    // --- Position : remettre droit une image ou une formule seule tournée (lot 5) ---
-    if (this.app.redressable()) {
+    // --- Position : tourner d'un quart de tour, remettre droit (lot 5, retouches) ---
+    if (this.app.tournable() || this.app.redressable()) {
       filetMenu(m)
       this.sectionPosition(m)
     }
   }
 
-  /** La section « Position » du menu ⋯ (lot 5), pour une image ou une
-   *  formule seule tournée : « Remettre droit » annule sa rotation et garde
-   *  sa taille et son centre (le chemin de retour quand l'aimant de la
-   *  pastille ↻ n'a pas suffi, et le seul moyen de revenir exactement à 0) */
+  /** La section « Position » du menu ⋯, pour ce qui tourne à la pastille ↻
+   *  (une image, une formule, un trait, une figure, un groupe, plusieurs
+   *  objets libres) : « Tourner d'un quart de tour à gauche » (↺) et « … à
+   *  droite » (↻), autour du centre de la pastille, chacun en une étape
+   *  d'annulation (retouches après le lot 5 : à la tablette graphique, le
+   *  bouton du stylet ouvre ce menu, et tourner à la pastille demande de
+   *  viser) ; puis, pour une image ou une formule seule tournée (lot 5),
+   *  « Remettre droit », qui annule sa rotation et garde sa taille et son
+   *  centre (le chemin de retour quand l'aimant de la pastille n'a pas
+   *  suffi, et le seul moyen de revenir exactement à 0) */
   private sectionPosition(m: HTMLElement) {
+    const app = this.app
     titreMenu(m, 'Position')
-    this.entreeMenu(m, 'Remettre droit', () => this.app.redresserSelection(), { action: 'redresser', aide: 'Annule la rotation, garde la taille' })
+    if (app.tournable()) {
+      this.entreeMenu(m, 'Tourner d\'un quart de tour à gauche', () => app.tournerQuart('gauche'), { action: 'quart-gauche', aide: '↺ 90°, autour de son centre' })
+      this.entreeMenu(m, 'Tourner d\'un quart de tour à droite', () => app.tournerQuart('droite'), { action: 'quart-droite', aide: '↻ 90°, autour de son centre' })
+    }
+    if (app.redressable()) this.entreeMenu(m, 'Remettre droit', () => app.redresserSelection(), { action: 'redresser', aide: 'Annule la rotation, garde la taille' })
   }
 
   /** La section « Protéger » du menu ⋯ (lot 5) : « Verrouiller » (Maj + L ;
@@ -2445,7 +2481,7 @@ export class UI implements Interface {
       aide: 'Il ne bouge plus et ne se prend plus ; ' + minuscule(messageVerrou(app.dernierPointeur)) })
     const pris = app.objetsChoisis().filter(f => app.selection.has(f.id))
     if (pris.length && pris.every(f => f.type === 'image')) {
-      this.entreeMenu(m, 'Fixer en fond', () => app.fixerEnFond(pris.map(f => f.id)), { action: 'fixer',
+      this.entreeMenu(m, 'Fixer en fond', e => app.fixerEnFond(pris.map(f => f.id), pointeurDuClic(e, app.dernierPointeur)), { action: 'fixer',
         aide: 'Sous tout le reste : on écrit et on entoure par-dessus ; le menu de la page la détache' })
     }
   }
@@ -3108,11 +3144,11 @@ export class UI implements Interface {
       for (const a of actions) {
         const b = document.createElement('button')
         b.type = 'button'; b.className = 'action'; b.textContent = a.libelle
-        b.addEventListener('click', () => {
+        b.addEventListener('click', e => {
           if (this.app.enLecture) return
           if (a.garder && this.toastAction === toast) b.remove()
           else { this.toastSimple = this.toastAction = null; this.majToast() }
-          a.faire()
+          a.faire(e)
         })
         el.appendChild(b)
       }

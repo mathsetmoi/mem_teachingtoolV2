@@ -556,6 +556,42 @@ export function poigneeSous(cadre: Cadre, s: P, cam: { x: number; y: number; z: 
   return meilleur
 }
 
+/**
+ * La poignée que prend un appui (s, en px d'écran) du pointeur qui appuie
+ * (retouches après le lot 5) : celle sous lui, à sa portée (voir
+ * poigneeSous) ; mais la pastille qu'on VOIT a pu être peinte pour un autre
+ * pointeur (peint : le cadre tel qu'il est à l'écran, et le pointeur dont il
+ * a pris la taille). Le doigt qui se pose après la souris la voit à 24 px du
+ * cadre, là où la sienne serait à 36 : un appui un peu sous son centre
+ * tombait sur le côté du haut et déformait l'image ; le crayon de l'iPad
+ * après le doigt, sans survol, la voit à 36 px, la sienne à 28. Un appui sur
+ * la pastille dessinée la prend donc, à la portée du plus large des deux
+ * pointeurs, plutôt que le coin ou le côté du cadre recalculé pour lui. Elle
+ * tourne autour du même centre (il ne dépend pas du pointeur) ; un cadre peint
+ * autour d'un autre centre est celui d'autre chose (la sélection a changé
+ * depuis la dernière image d'écran) : on n'en tient pas compte. Seulement la
+ * pastille : les coins et les côtés sont au même endroit pour les deux.
+ */
+export function poigneeDeLAppui(cadre: Cadre, s: P, cam: { x: number; y: number; z: number }, pointeur: TypePointeur,
+  peint?: { cadre: Cadre; pointeur: TypePointeur } | null): Poignee | null {
+  const p = poigneeSous(cadre, s, cam, pointeur)
+  if (p?.quoi === 'pastille' || !peint || peint.pointeur === pointeur) return p
+  if (dist(peint.cadre.centre, cadre.centre) * cam.z > 0.5) return p
+  const portee = (t: TypePointeur) => Math.max(POIGNEE.prise[t], POIGNEE.pastille[t])
+  const large = portee(peint.pointeur) >= portee(pointeur) ? peint.pointeur : pointeur
+  const q = poigneeSous(peint.cadre, s, cam, large)
+  return q?.quoi === 'pastille' ? q : p
+}
+
+/** Un quart de tour autour du centre (« Tourner d'un quart de tour », la
+ *  section Position du menu ⋯ : le chemin de la tablette graphique, dont le
+ *  bouton ouvre ce menu) : à gauche, dans le sens direct (↺, contraire des
+ *  aiguilles d'une montre à l'écran) ; à droite, dans l'autre (↻). Exact :
+ *  ses coefficients sont 0 et ±1 (voir net). */
+export function quartDeTour(centre: P, sens: 'gauche' | 'droite'): Matrice {
+  return rotation(centre, (sens === 'droite' ? 1 : -1) * Math.PI / 2)
+}
+
 // ---------- Les gestes du cadre (K6) ----------
 /** Une poignée du cadre (voir poigneeSous) */
 export type Poignee = { quoi: 'coin' | 'cote' | 'pastille'; i: number }
@@ -669,6 +705,24 @@ export function etendueDuCadre(cadre: Cadre, pointeur: TypePointeur, z: number):
 export function zonePastille(cadre: Cadre, pointeur: TypePointeur, z: number, marge = 0): Boite {
   const r = (POIGNEE.pastille[pointeur] + marge) / (z > 0 ? z : 1)
   return { x: cadre.pastille.x - r, y: cadre.pastille.y - r, l: 2 * r, h: 2 * r }
+}
+
+/** Les poignées du cadre (monde, au zoom z), là où un appui les prend : un
+ *  carré de la portée du pointeur (POIGNEE.prise) autour de chaque coin et
+ *  du milieu de chaque côté, et le disque de la pastille à la sienne (voir
+ *  poigneeSous). Ce que le message ne couvre jamais (retouches après le lot
+ *  5, voir UI.placerToast) : posé sous la barre du haut, à côté de la
+ *  pastille, il couvrait le coin en haut à droite d'un énoncé importé, et
+ *  son bouton « Fixer en fond » prenait le clic qui devait l'agrandir. */
+export function zonesDesPoignees(cadre: Cadre, pointeur: TypePointeur, z: number): Boite[] {
+  const k = z > 0 ? z : 1, r = POIGNEE.prise[pointeur] / k
+  const autour = (q: P): Boite => ({ x: q.x - r, y: q.y - r, l: 2 * r, h: 2 * r })
+  const zones = [zonePastille(cadre, pointeur, z, Math.max(0, POIGNEE.prise[pointeur] - POIGNEE.pastille[pointeur]))]
+  for (const q of cadre.coins) zones.push(autour(q))
+  if (cadre.cotes && cadre.coins.length === 4) {
+    for (let i = 0; i < 4; i++) zones.push(autour(milieu(cadre.coins[i], cadre.coins[(i + 1) % 4])))
+  }
+  return zones
 }
 
 const milieu = (a: P, b: P): P => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })

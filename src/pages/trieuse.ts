@@ -48,7 +48,7 @@ import { ENTREES, allerAuxEntrees, avale, entreeMenu, fermerMenu, filetMenu, men
 import { CTRL, MAC, toucheMarquePage, toucheMenu } from '../navigateur'
 import { pagesLisibles } from '../fichier'
 import { icone } from '../icones'
-import { FONDS } from '../types'
+import { FONDS, FOND_NEUF } from '../types'
 import type { Fond } from '../types'
 
 /** Ce que la trieuse demande à l'interface */
@@ -843,18 +843,20 @@ export class Trieuse {
     // L'entrée qui prend le focus à l'ouverture (le second temps de l'insertion)
     let defaut: HTMLButtonElement | null = null
     if (o.insertion) {
-      // Le fond de la page qu'on insère : les quatre, celui de sa voisine (la
-      // page du menu) coché, avec le focus, pris par Entrée ; un choix insère
-      // la page à ce fond, en une seule action (une entrée du journal, un
-      // seul « Annuler »). Le second clic d'un double-clic sur « Insérer… »,
-      // qui tomberait ici sur un fond, ne fait rien (voir le constructeur).
-      const cote = o.insertion, fond = this.app.tableau.fondDe(page)
+      // Le fond de la page qu'on insère : les huit, la page blanche cochée
+      // (comme toute page neuve, voir FOND_NEUF), avec le focus, prise par
+      // Entrée ; le fond de sa voisine (la page du menu) le dit, pour qui
+      // veut le même. Un choix insère la page à ce fond, en une seule action
+      // (une entrée du journal, un seul « Annuler »). Le second clic d'un
+      // double-clic sur « Insérer… », qui tomberait ici sur un fond, ne fait
+      // rien (voir le constructeur).
+      const cote = o.insertion, voisine = this.app.tableau.fondDe(page)
       const ou = cote === 'avant' ? 'avant' : 'après'
       m.setAttribute('aria-label', `Fond de la page insérée ${ou} la page ${i + 1}`)
       titreMenu(m, `Page vide ${ou} la page ${i + 1} : son fond`)
       for (const f of FONDS) {
-        const b = entreeMenu(m, f.nom, () => this.inserer(page, cote, f.id), { coche: f.id === fond, aide: f.id === fond ? `Celui de la page ${i + 1}` : undefined })
-        if (f.id === fond) defaut = b
+        const b = entreeMenu(m, f.nom, () => this.inserer(page, cote, f.id), { coche: f.id === FOND_NEUF, aide: f.id === voisine ? `Celui de la page ${i + 1}` : undefined })
+        if (f.id === FOND_NEUF) defaut = b
       }
     } else if (this.selection.has(page) && choisies.length > 1) {
       const n = choisies.length
@@ -898,9 +900,9 @@ export class Trieuse {
     this.menuCarte = { page, menu }
     // Le second temps de l'insertion garde la boîte du premier (même bord
     // gauche, même largeur au moins) ; choisi au pointeur, il se pose de
-    // sorte que le fond de la voisine soit sous lui (un second clic au même
-    // endroit le prend ; celui d'un double-clic ne fait rien), sinon au même
-    // coin ; toujours dans l'écran
+    // sorte que le fond coché (la page blanche) soit sous lui (un second
+    // clic au même endroit le prend ; celui d'un double-clic ne fait rien),
+    // sinon au même coin ; toujours dans l'écran
     const cadre = o.insertion ? this.cadreMenu : null
     m.style.minWidth = cadre ? cadre.l + 'px' : ''
     ouvrirMenu(menu)
@@ -979,7 +981,7 @@ export class Trieuse {
 
   // ---------- Insérer, ajouter, changer le fond ----------
   /** Une page vide juste avant ou juste après, au fond choisi au second
-   *  temps du menu (celui de cette page, par défaut) */
+   *  temps du menu (la page blanche, par défaut) */
   private inserer(page: string, cote: 'avant' | 'apres', fond: Fond) {
     const r = actions.inserer(this.app.tableau, this.journal, page, cote, fond)
     if (!r) return
@@ -987,7 +989,7 @@ export class Trieuse {
     this.annoncer(`Page vide insérée : c'est la page ${r.rang + 1}`, r.entree)
   }
 
-  /** « Ajouter une page » du bandeau : une page vide à la fin, au fond de la dernière */
+  /** « Ajouter une page » du bandeau : une page vide à la fin, blanche */
   private ajouterALaFin() {
     const r = actions.ajouterALaFin(this.app.tableau, this.journal)
     if (!r) return
@@ -1006,9 +1008,10 @@ export class Trieuse {
 
   // ---------- Dupliquer, supprimer ----------
   /** Duplique ces pages avec leur histoire, chacune juste après elle-même
-   *  (sans marque d'annulation : le journal les annule) ; chaque copie
-   *  s'ouvrira sur la vue gardée de son original. La première copie prend
-   *  le focus. */
+   *  (sans marque d'annulation : le journal les annule), au fond de son
+   *  original (c'est une copie) ; chaque copie s'ouvrira sur le centre gardé
+   *  de son original, à 100 % (voir App.appliquerVue). La première copie
+   *  prend le focus. */
   private dupliquer(ids: string[]) {
     if (!ids.length || this.glisse) return
     const r = actions.dupliquer(this.app.tableau, this.journal, ids)

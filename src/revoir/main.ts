@@ -80,6 +80,11 @@ const cam = new Camera()
 const rendu = new Rendu(cam, scene)
 rendu.poignees = false
 rendu.instrumentsCaches = true
+// L'accueil du lecteur (« Revoir une séance », avant tout film) garde ses
+// petits carreaux : le fond par défaut du rendu est devenu la page blanche
+// (celui d'une page neuve du tableau, après le lot 5), le lecteur ne change
+// pas. Chaque image du film pose ensuite le fond de sa page.
+rendu.fond = 'carreaux'
 
 // ---------- L'état du lecteur ----------
 let bobine: Bobine | null = null

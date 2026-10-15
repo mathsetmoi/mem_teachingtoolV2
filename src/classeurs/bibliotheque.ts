@@ -74,7 +74,7 @@ import { EXTENSION_TABLEAU, nomSur } from '../fichier'
 import { ecrire, lire } from '../reglages'
 import { cleDernierEnregistrement, lireDernierEnregistrement } from '../sauvegarde'
 import type { Fond } from '../types'
-import { FONDS } from '../types'
+import { FONDS, FOND_NEUF } from '../types'
 import type { FicheClasseur, FicheDossier, InfosClasseur } from './demarrage'
 import { LONGUEUR_NOM_CLASSEUR, LONGUEUR_NOM_DOSSIER, baseDe, idClasseur, parents, urlDuClasseur, visible } from './demarrage'
 import { passerLaConnexion } from '../publication/drive'
@@ -174,7 +174,9 @@ const RAFRAICHIR = 60_000
 export const NOM_NOUVEAU = 'Nouveau classeur'
 /** Les fonds proposés, dans cet ordre (les petits carreaux d'abord : le
  *  cahier de maths ; puis, depuis le lot 5, les quatre nouveaux, après les
- *  quatre d'avant, qui gardent leur place) ; leurs noms sont ceux des menus */
+ *  quatre d'avant, qui gardent leur place) ; leurs noms sont ceux des menus.
+ *  La page blanche est cochée d'office, comme toute page neuve (FOND_NEUF ;
+ *  avant, les petits carreaux) : l'ordre, lui, ne change pas. */
 const FONDS_NEUF: { id: Fond; nom: string }[] = (['carreaux', 'blanc', 'seyes', 'repere', 'grands-carreaux', 'millimetre', 'pointe', 'iso'] as Fond[])
   .map(id => ({ id, nom: FONDS.find(f => f.id === id)!.nom }))
 export const PLUS_DE_PLACE = 'Le classeur n\'a pas pu être créé : il n\'y a plus de place dans ce navigateur.'
@@ -2879,7 +2881,7 @@ export class Bibliotheque {
     const fonds = d.querySelector('.fonds')!
     for (const f of FONDS_NEUF) {
       const l = Object.assign(document.createElement('label'), { className: 'case' })
-      const r = Object.assign(document.createElement('input'), { type: 'radio', name: 'fond', value: f.id, checked: f.id === 'carreaux' })
+      const r = Object.assign(document.createElement('input'), { type: 'radio', name: 'fond', value: f.id, checked: f.id === FOND_NEUF })
       l.append(r, Object.assign(document.createElement('span'), { textContent: f.nom }))
       fonds.appendChild(l)
     }
@@ -2903,7 +2905,7 @@ export class Bibliotheque {
       if (enCours) return
       dire(null)
       const nom = nomDeClasseur(champ.value) ?? NOM_NOUVEAU
-      const fond = ((form.elements.namedItem('fond') as RadioNodeList | null)?.value || 'carreaux') as Fond
+      const fond = ((form.elements.namedItem('fond') as RadioNodeList | null)?.value || FOND_NEUF) as Fond
       // Le fichier de la clé : dans ce clic (le navigateur ne l'ouvre qu'au
       // plus près d'un geste)
       let h: PoigneeFichier | null = null

@@ -6,7 +6,7 @@
 // le document. Le rendu, lui, ne fait que lire.
 // =============================================================
 import type { EtapeDePile, Tableau } from './document'
-import { Camera, vuePour } from './camera'
+import { Camera, vueAuDebut, vuePour } from './camera'
 import { Rendu } from './rendu'
 import { cacheAuDessus, chevauche, cibleParmi, dansLasso, distanceAuSegment, englobante, partDedans, rectangle, rotationDe, simplifier, touche } from './geometrie'
 import type { Cible } from './geometrie'
@@ -15,7 +15,7 @@ import type { Sens } from './ordre'
 import { change } from './habillage'
 import type { Retouche } from './habillage'
 import type { Figure, Fond, Forme, Formule, Habillage, ImageForme, Outil, Polygone, Trait, TypeForme } from './types'
-import { CM, libre, uid } from './types'
+import { CM, FOND_NEUF, libre, uid } from './types'
 import type { P, Reconnue, Transformation } from './formes'
 import type { Bord, EtatInstrument, NomInstrument, Partie } from './instruments'
 import { angleLisible, bords, etatParDefaut, toucher } from './instruments'
@@ -30,7 +30,7 @@ import type { Boite } from './revoir/bobine'
 import { RAYON_TRAIT, choisirContraste as reglerContraste, choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, rayonGomme, reglages } from './reglages'
 import { GRAND_MORCEAU, LONG_MORCEAU, boutsDe, couperTrait, lePlusLong } from './gomme'
 import type { Doigt } from './reglages'
-import { APPUI_LONG, DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, SEUIL_GLISSER, TOLERANCE_PRISE, TOUCHER_DOIGTS, ToucherADoigts, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageCadre, messageDetacher, messageOptions, messageReconnue, messageSecondPoint, messageVerrou, nouveauDepart, procheDuPremier, typePointeur } from './pointeurs'
+import { APPUI_LONG, DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, SEUIL_GLISSER, TOLERANCE_PRISE, TOUCHER_DOIGTS, ToucherADoigts, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageCadre, messageDetache, messageDetacher, messageFixe, messageImagePosee, messageOptions, messageReconnue, messageSecondPoint, messageVerrou, nouveauDepart, pointeurDeDepart, pointeurDuClic, procheDuPremier, typePointeur } from './pointeurs'
 import type { Depart, Toucher, ToucherReconnu, TypePointeur } from './pointeurs'
 import { CTRL, MAC, fenetreModaleOuverte, lireMolette, tableauCache, toucheMarquePage, toucheMenu, toucheTenueEnGeste, toucheVerrou } from './navigateur'
 import { avale } from './menus'
@@ -45,7 +45,7 @@ import { TEXTE_ENVOI_IMPOSSIBLE, texteEnvoi, texteEnvoiAnnule, texteEnvoiBloque 
 import { changementsDetacher, changementsFixer, changementsVerrou, compterObjets, fixesSous, minuscule, quiBouge, texteCollage } from './verrou'
 import { avecGroupes, changementsDegrouper, changementsGrouper, groupeExact, membreSeul, membresDe, porteurs, priseDuClic } from './groupes'
 import type { Cadre, Matrice, Poignee } from './cadre'
-import { IDENTITE, aimanterAngle, bornesEchelle, cadreDe, cadreTransforme, composer, curseurPoignee, dansLesBornes, deroule, estIdentite, etendueDuCadre, facteurDe, imageTournee, inverser, matriceImage, matriceTaille, poigneeSous, redresser, rotation, texteRotation, texteTaille, transformerForme, zonePastille } from './cadre'
+import { IDENTITE, aimanterAngle, bornesEchelle, cadreDe, cadreTransforme, composer, curseurPoignee, dansLesBornes, deroule, estIdentite, etendueDuCadre, facteurDe, imageTournee, inverser, matriceImage, matriceTaille, poigneeDeLAppui, quartDeTour, redresser, rotation, texteRotation, texteTaille, transformerForme, zonePastille, zonesDesPoignees } from './cadre'
 
 /** La copie gardée dans le navigateur, pour un autre onglet de la même
  *  adresse (nouvelle clé : aucune autre ne change) */
@@ -98,7 +98,7 @@ export class SelectionSuivie extends Set<string> {
 /** Un bouton d'un message (voir Interface.message). cle : ce que l'action
  *  concerne (voir oublierAction) ; garder : le message reste après ce bouton
  *  (sans lui), avec les autres (« Aller à la page 5 » laisse « Annuler »). */
-export interface ActionMessage { libelle: string; faire: () => void; cle?: string; garder?: boolean }
+export interface ActionMessage { libelle: string; faire: (e?: MouseEvent) => void; cle?: string; garder?: boolean }
 
 export interface Interface {
   maj(): void
@@ -227,7 +227,16 @@ export class App {
   page = ''
   outil: Outil = 'stylo'
   couleur = COULEURS[0].valeur
-  taille = TAILLES[1].valeur
+  /** Le trait fin au démarrage (le choix du professeur, après le lot 5 ;
+   *  avant, le moyen) : rien ne le garde d'une session à l'autre */
+  taille = TAILLES[0].valeur
+  /** L'épaisseur du Surligneur, la sienne (retouches après le lot 5) : son
+   *  trait vaut cinq fois elle, et elle part moyenne, comme avant (22,5).
+   *  Commune au Stylo, elle serait partie fine avec lui (12,5 : un filet qui
+   *  ne couvre plus une ligne écrite) ; le professeur a voulu un trait fin,
+   *  pas un surligneur fin. Les boutons d'épaisseur règlent celle de l'outil
+   *  en main (voir tailleEnMain et choisirTaille). */
+  tailleSurligneur = TAILLES[1].valeur
   aimant = false
   reconnaissance = true               // le stylo redresse les figures
   typeForme: TypeForme = 'rectangle'
@@ -247,6 +256,13 @@ export class App {
   /** Un mode où le prochain clic pose quelque chose (une construction…) */
   placement: { bouge(w: P): void; clic(w: P): void; annuler(): void } | null = null
   private outilAvant: Outil = 'stylo'      // l'outil que rend Échap depuis la Sélection
+  /** La Sélection prêtée par une image (retouches après le lot 5 : son
+   *  import, « Détacher l'image du fond ») : l'outil qu'on avait, et les
+   *  images pour qui on l'a prise. « Fixer en fond » de l'une d'elles le
+   *  rend (fixée, elle ne se prend plus : la Sélection ne sert plus, et le
+   *  message dit d'écrire par-dessus). Tout choix d'outil l'oublie (voir
+   *  choisirOutil et preterSelection). */
+  private selectionPretee: { avant: Outil; ids: Set<string> } | null = null
   private survol: string | null = null
 
   private formes: Forme[] = []
@@ -272,8 +288,10 @@ export class App {
   private pageSession: string | null = null
   private pointeurs = new Map<number, { x: number; y: number; type: string }>()
   private geste: Geste | null = null
-  /** Le pointeur du dernier appui : les messages en parlent (« clic droit » ou non) */
-  dernierPointeur: TypePointeur = 'mouse'
+  /** Le pointeur du dernier appui : les messages en parlent (« clic droit »
+   *  ou non). Avant le premier appui, le doigt sur un écran tactile sans
+   *  souris (un iPad), la souris ailleurs (voir pointeurDeDepart) */
+  dernierPointeur: TypePointeur = pointeurDeDepart()
   /** Le dernier pointeur VU sur le tableau, son survol compris (lot 5) : la
    *  taille des poignées du cadre en dépend (voir POIGNEE et voirPointeur) */
   pointeurPoignees: TypePointeur = 'mouse'
@@ -654,10 +672,12 @@ export class App {
   }
 
   // ---------- Pages ----------
-  /** Chaque page garde sa vue. Une page qu'on n'a pas encore regardée
-   *  s'ouvre sur une vue neutre si elle est vide (une page neuve ne reprend
-   *  pas le zoom de celle qu'on quitte), sur tout son contenu sinon (un
-   *  tableau d'avant, un fichier ouvert). */
+  /** On arrive sur une page TOUJOURS à 100 % (le choix du professeur, après
+   *  le lot 5), à l'endroit où l'on était dans cette page : chaque page garde
+   *  le centre de sa vue, pas son zoom. Une page qu'on n'a pas encore
+   *  regardée s'ouvre sur une vue neutre si elle est vide (une page neuve),
+   *  sur le début de son contenu sinon (un tableau d'avant, un fichier
+   *  ouvert : voir appliquerVue). */
   allerPage(id: string) {
     this.viderPointEnAttente()
     if (!id || id === this.page) return
@@ -725,8 +745,11 @@ export class App {
   }
   private astuceDernierePage = -Infinity
 
+  /** Le bouton Nouvelle page, « › » sur la dernière : une page blanche juste
+   *  après celle-ci (voir FOND_NEUF ; avant, elle prenait le fond de la page
+   *  qu'on regardait), qui s'ouvre en vue neutre, à 100 % */
   nouvellePage() {
-    const id = this.tableau.ajouterPage(this.fond, this.pages.indexOf(this.page) + 1)
+    const id = this.tableau.ajouterPage(FOND_NEUF, this.pages.indexOf(this.page) + 1)
     this.allerPage(id)
   }
 
@@ -801,8 +824,9 @@ export class App {
   }
 
   /** « Dupliquer la page » (le menu de la page, Ctrl + Maj + D) : une copie
-   *  juste après, avec toute son histoire (voir Tableau.dupliquerPage), et
-   *  l'on arrive dessus, sur la même vue. Un message le dit, avec
+   *  juste après, avec toute son histoire (voir Tableau.dupliquerPage), au
+   *  même fond (c'est une copie), et l'on arrive dessus, au même centre, à
+   *  100 % (voir appliquerVue). Un message le dit, avec
    *  « Annuler » ; Ctrl+Z sur la copie, tant qu'on n'y a rien fait, la retire
    *  aussi et ramène à l'original (la marque posée sur la copie). Rien quand
    *  le tableau est caché (la revue, une séance, la trieuse). */
@@ -847,9 +871,10 @@ export class App {
   }
 
   /** La vue gardée d'une page devient celle d'une autre, en mémoire et dans
-   *  la session de ce navigateur : une copie s'ouvre sur la vue de son
-   *  original (« Dupliquer la page », et la trieuse). La vue de la page qu'on
-   *  regarde est celle de l'écran. */
+   *  la session de ce navigateur : une copie s'ouvre sur le centre de son
+   *  original, à 100 % comme toute page (« Dupliquer la page », la trieuse,
+   *  la nouvelle page de « Envoyer vers… »). La vue de la page qu'on regarde
+   *  est celle de l'écran. */
   copierVue(de: string, vers: string) {
     const v = de === this.page && this.rendu.l > 0 ? this.vueActuelle() : this.vues.get(de)
     if (!v || !vers) return
@@ -912,13 +937,25 @@ export class App {
   }
 
   // ---------- Outils ----------
+  /** L'épaisseur que montrent et règlent les boutons d'épaisseur : celle du
+   *  Surligneur quand on le tient, celle du Stylo (et des segments, des
+   *  formes) sinon */
+  tailleEnMain(): number { return this.outil === 'surligneur' ? this.tailleSurligneur : this.taille }
+  choisirTaille(v: number) {
+    if (this.outil === 'surligneur') this.tailleSurligneur = v
+    else this.taille = v
+  }
+
   /** Prend l'outil o. Passer à la Sélection depuis un autre outil (Échap,
    *  V, son bouton, Ctrl + A, Détacher) retient l'outil quitté : c'est lui
    *  que rend Échap depuis la Sélection (contrôle final du lot 5 : seul
    *  Échap le retenait, et après V, Échap rendait l'outil quitté par un
-   *  Échap d'avant, la Formule par exemple). */
+   *  Échap d'avant, la Formule par exemple). Tout choix oublie la Sélection
+   *  prêtée par une image (voir selectionPretee) : choisie, même à nouveau
+   *  (V, son bouton), elle n'est plus prêtée. */
   choisirOutil(o: Outil) {
     if (o === 'selection' && this.outil !== 'selection') this.outilAvant = this.outil
+    this.selectionPretee = null
     this.viderPointEnAttente()
     this.annulerPolygone()
     this.annulerTrait()
@@ -956,12 +993,16 @@ export class App {
    *  ont depuis quitté la page d'arrivée (renvoyés ailleurs, effacés) ne se
    *  défait pas encore : rien ne change (la sélection reste), le message dit
    *  d'y défaire cela d'abord, avec « Aller à la page N », et la réponse est
-   *  'dit'. Sinon, vrai si un geste a été défait. */
+   *  'dit'. Sinon, vrai si un geste a été défait. Une transformation défaite
+   *  (la taille, la rotation, un quart de tour, « Remettre droit ») laisse
+   *  pris ce qui l'était, à l'outil Sélection (voir reprendreTransformes). */
   annuler(): 'page' | 'dit' | boolean {
     if (this.enLecture) return false
     this.viderPointEnAttente()
     // Les numéros d'avant : la nouvelle page d'un envoi défait peut partir
     const numeros = new Map(this.pages.map((p, i) => [p, i + 1]))
+    const etape = this.tableau.prochaineAnnulation(this.page)
+    const prises = etape ? this.prisesDesTransformations.get(etape) : undefined
     const r = this.tableau.annuler(this.page)
     if (r?.envoiBloque) {
       const { vers, n, total } = r.envoiBloque
@@ -978,7 +1019,9 @@ export class App {
       this.copieRetiree(r.copie, r.retour)
       return 'page'
     }
-    this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()
+    this.selection.clear()
+    if (prises && r && !r.envoi && !r.copieRecue) this.reprendreTransformes(prises, this.tableau.prochainRetablissement(this.page))
+    this.rendu.redessinerDirect(); this.ui?.maj()
     if (r?.envoi) {
       this.ui.oublierAction('envoi:' + r.envoi.vers)
       this.ui.message(texteEnvoiAnnule(r.envoi, numeros.get(r.envoi.vers) ?? 0, this.pages.includes(r.envoi.vers)))
@@ -998,16 +1041,21 @@ export class App {
    *  pour un envoi refait (les objets repartent sur la page d'arrivée, et le
    *  message le dit), ou pour un envoi qui ne se refait pas (sa page
    *  d'arrivée est supprimée définitivement : rien ne change, le message le
-   *  dit). */
+   *  dit). Une transformation refaite laisse pris ce qui l'était, comme
+   *  annuler. */
   retablir(): 'dit' | boolean {
     if (this.enLecture) return false
     this.viderPointEnAttente()
+    const etape = this.tableau.prochainRetablissement(this.page)
+    const prises = etape ? this.prisesDesTransformations.get(etape) : undefined
     const fait = this.tableau.retablir(this.page)
     if (typeof fait === 'object' && 'envoiImpossible' in fait) {
       this.ui.message(TEXTE_ENVOI_IMPOSSIBLE)
       return 'dit'
     }
-    this.selection.clear(); this.rendu.redessinerDirect(); this.ui?.maj()
+    this.selection.clear()
+    if (prises && fait === true) this.reprendreTransformes(prises, this.tableau.prochaineAnnulation(this.page))
+    this.rendu.redessinerDirect(); this.ui?.maj()
     if (typeof fait === 'object') {
       const e = fait.envoi, k = this.pages.indexOf(e.vers) + 1
       this.ui.oublierAction('envoi:' + e.vers)
@@ -1016,6 +1064,33 @@ export class App {
       return 'dit'
     }
     return fait
+  }
+
+  /** Ce qui était pris quand une transformation s'est écrite (la taille ou
+   *  la rotation au cadre, un quart de tour, « Remettre droit » : voir
+   *  noterTransformation), par étape d'annulation (retouches après le lot 5) */
+  private prisesDesTransformations = new WeakMap<EtapeDePile, string[]>()
+
+  /** La transformation qu'on vient d'écrire retient ce qui est pris : Ctrl+Z
+   *  ou Ctrl+Y de son étape le reprend */
+  private noterTransformation() {
+    const e = this.tableau.prochaineAnnulation(this.page)
+    if (e && this.selection.size) this.prisesDesTransformations.set(e, [...this.selection])
+  }
+
+  /** Après Ctrl+Z ou Ctrl+Y d'une transformation (retouches après le lot 5) :
+   *  à l'outil Sélection, ce qui était pris l'est de nouveau, ce qui en est
+   *  encore sur la page et libre. Avant, la sélection se vidait comme après
+   *  tout geste défait : le cadre, la pastille et la barre d'actions
+   *  partaient, et le même coin tiré de nouveau pour agrandir un peu moins
+   *  emportait l'image. Sous un autre outil, rien n'est repris (son appui
+   *  suivant lâcherait l'objet). L'étape que Yjs a poussée en face (etape :
+   *  à refaire, ou de nouveau à défaire) le retient à son tour. */
+  private reprendreTransformes(prises: string[], etape: EtapeDePile | null) {
+    if (etape) this.prisesDesTransformations.set(etape, prises)
+    if (this.outil !== 'selection') return
+    const ici = new Set(this.formes.filter(libre).map(f => f.id))
+    for (const id of prises) if (ici.has(id)) this.selection.add(id)
   }
 
   /** ↶ a-t-il quelque chose à faire sur cette page ? Le point qui attend un
@@ -1107,18 +1182,26 @@ export class App {
     return { cx: c.x, cy: c.y, z: this.cam.z }
   }
 
-  /** La vue de la page qu'on ouvre (voir allerPage) */
+  /** La vue de la page qu'on ouvre (voir allerPage), toujours à 100 % :
+   *  une page déjà regardée reprend le centre qu'elle avait à l'écran (gardé
+   *  en mémoire et dans la session de ce navigateur, avec un zoom qui ne sert
+   *  plus) ; une page jamais regardée, le début de son contenu (vueAuDebut :
+   *  centré s'il tient entre les barres, sinon son coin en haut à gauche,
+   *  avec une marge) ; une page vide, la vue neutre. C'est vrai à
+   *  l'ouverture d'un classeur (la page de la session), à chaque changement
+   *  de page, et pour une copie (« Dupliquer la page », la trieuse, une
+   *  nouvelle page de « Envoyer vers… ») : le centre de son original. */
   private appliquerVue(id: string) {
     const cam = this.cam, l = this.rendu.l, h = this.rendu.h
     const v = this.vues.get(id)
     let c = VUE_NEUTRE
     if (l > 0 && h > 0) {
-      if (v) c = { x: l / 2 - v.cx * v.z, y: h / 2 - v.cy * v.z, z: v.z }
+      if (v) c = { x: l / 2 - v.cx, y: h / 2 - v.cy, z: 1 }
       else {
         // this.formes n'est relue qu'à rafraichir : on lit celles de la page
         const formes = this.tableau.formesDe(id)
         const b = formes?.size ? this.boiteDuContenu(formes.values()) : null
-        if (b) c = vuePour(b, this.ui?.zoneLibre() ?? { x: 0, y: 0, l, h }, 1)
+        if (b) c = vueAuDebut(b, this.ui?.zoneLibre() ?? { x: 0, y: 0, l, h })
       }
     }
     cam.x = c.x; cam.y = c.y; cam.z = c.z
@@ -1564,6 +1647,10 @@ export class App {
     try { this.zone.setPointerCapture(e.pointerId) } catch { /* sans capture */ }
     this.pointeurs.set(e.pointerId, { x: s.x, y: s.y, type: e.pointerType })
     this.dernierPointeur = typePointeur(e.pointerType)
+    // Le cadre tel qu'il est à l'écran, peint pour le pointeur d'avant (un
+    // doigt après la souris, le crayon après le doigt) : sa pastille se prend
+    // là où on la voit (voir poigneeVisee)
+    const peint = this.rendu.cadre
     this.voirPointeur(e.pointerType)
 
     // Le stylet : « Auto » apprend que l'écran se touche au stylet ; ce que
@@ -1605,8 +1692,8 @@ export class App {
     // Une poignée du cadre de taille ou sa pastille ↻ (lot 5), lue elle aussi
     // avant de fermer les menus : à l'outil Sélection, et au doigt qui
     // déplace sous les autres outils (voir poigneesDuCadre : jamais sous la
-    // plume)
-    const poignee = e.button === 0 && !gommeDuStylet && !pan && (this.outil === 'selection' || doigt) ? this.poigneeVisee(s) : null
+    // plume) ; la pastille dessinée pour un autre pointeur compte
+    const poignee = e.button === 0 && !gommeDuStylet && !pan && (this.outil === 'selection' || doigt) ? this.poigneeVisee(s, peint) : null
 
     // Un menu ouvert (un petit menu, celui d'un morceau, le panneau d'options,
     // la liste des instruments) : ce premier appui le ferme, sans encre. Il
@@ -1698,7 +1785,7 @@ export class App {
         this.rendu.monTrait = {
           pts: [m.x, m.y, e.pointerType === 'pen' ? e.pressure : 0.5],
           couleur: this.couleur,
-          taille: surligneur ? this.taille * 5 : this.taille,
+          taille: surligneur ? this.tailleSurligneur * 5 : this.taille,
           opacite: surligneur ? 0.35 : 1,
           pression: e.pointerType === 'pen' && !surligneur,
         }
@@ -3259,8 +3346,22 @@ export class App {
   }
 
   /** Importe un fichier image : réduit (1600 px au plus), rangé une fois dans
-   *  le document, posé au milieu de la vue et sélectionné */
-  async importerImage(fichier: Blob) {
+   *  le document, posé au milieu de la vue et sélectionné, à l'outil
+   *  Sélection (retouches après le lot 5) : son cadre de taille et sa
+   *  pastille ↻ tout de suite. Sous le Stylo, elle paraissait prise (son
+   *  cadre en tirets), sans coins ni pastille (voir poigneesDuCadre), et le
+   *  geste en rond pour la tourner écrivait de l'encre. L'outil quitté est
+   *  retenu, comme pour Ctrl+A et « Détacher l'image du fond » : sa touche le
+   *  rend (P le Stylo, E la Gomme…), et « Fixer en fond » aussi (la
+   *  Sélection n'était que prêtée : voir preterSelection). Le message le dit
+   *  dans les mots du pointeur (o.pointeur : celui qui a touché le bouton
+   *  Image ; sinon le dernier vu sur le tableau, pour un fichier déposé ;
+   *  o.clavier : Ctrl+V), avec ce que font les coins et la pastille (le
+   *  message du cadre, dit une fois par session, n'est plus à dire), et il
+   *  porte « Fixer en fond », dont le message parle la langue du pointeur
+   *  qui touche ce bouton (le bouton est hors du tableau : dernierPointeur
+   *  ne l'a pas vu). */
+  async importerImage(fichier: Blob, o: { pointeur?: TypePointeur; clavier?: boolean } = {}) {
     if (!fichier.type.startsWith('image/')) return this.ui.message('Ce fichier n\'est pas une image.')
     const url = URL.createObjectURL(fichier)
     try {
@@ -3278,12 +3379,14 @@ export class App {
       const e = Math.min(v.l * 0.5 / l, v.h * 0.6 / h, 1 / this.cam.z)
       const f: Forme = { id: uid(), type: 'image', src, l, h, m: [e, 0, 0, e],
         x: v.x + v.l / 2 - l * e / 2, y: v.y + v.h / 2 - h * e / 2, z: Date.now(), auteur: this.tableau.moi }
+      const avant = this.preterSelection([f.id])
       this.poserFigure(f)
+      this.astuceCadre = true
       // Un énoncé importé : « Fixer en fond » tout de suite, du message (rien
       // si l'image n'est plus sur la page, ou si l'on a changé de page)
-      const page = this.page, id = f.id
-      this.ui.message('Image posée. L\'outil Point (X) place ses sommets ; « Transformer » construit son symétrique.',
-        { libelle: 'Fixer en fond', faire: () => { if (this.page === page && this.forme(id) && !tableauCache(this)) this.fixerEnFond([id]) } })
+      const page = this.page, id = f.id, pointeur = o.pointeur ?? this.dernierPointeur
+      this.ui.message(messageImagePosee(pointeur, avant, undefined, o.clavier, this.typeForme),
+        { libelle: 'Fixer en fond', faire: e => { if (this.page === page && this.forme(id) && !tableauCache(this)) this.fixerEnFond([id], pointeurDuClic(e, pointeur)) } })
     } catch { this.ui.message('Impossible de lire cette image.') }
     finally { URL.revokeObjectURL(url) }
   }
@@ -3629,8 +3732,14 @@ export class App {
    *  changementsFixer : sous tout, hors de tout groupe, sans verrou). Ce
    *  n'est pas un réglage : cela se voit (l'image passe sous ce qui la
    *  recouvrait). Un Ctrl+Z la rend. La sélection se vide ; le message dit
-   *  comment la détacher. */
-  fixerEnFond(ids: Iterable<string>): boolean {
+   *  comment la détacher pour la tourner ou la déplacer (voir messageFixe),
+   *  dans les mots du pointeur (celui du clic sur le bouton du message ou
+   *  sur l'entrée du menu). Fixer une image pour qui la Sélection était
+   *  prêtée (son import, « Détacher l'image du fond » : retouches après le
+   *  lot 5) rend l'outil qu'on avait : le message dit d'écrire par-dessus,
+   *  et l'on écrit (avant, le trait restait un lasso). La Sélection choisie
+   *  reste ; le message dit alors comment reprendre le Stylo. */
+  fixerEnFond(ids: Iterable<string>, pointeur: TypePointeur = this.dernierPointeur): boolean {
     if (tableauCache(this)) return false
     this.viderPointEnAttente()
     const changements = changementsFixer(this.formes, ids)
@@ -3641,20 +3750,25 @@ export class App {
     this.tableau.nouveauGeste()
     this.tableau.modifier(this.page, changements)
     this.selection.clear()
+    const pretee = this.outil === 'selection' ? this.selectionPretee : null
+    if (pretee && changements.some(c => pretee.ids.has(c.id))) this.choisirOutil(pretee.avant)
     this.rendu.redessinerDirect(); this.ui.maj()
-    const n = changements.length
-    this.ui.message((n === 1 ? 'Image fixée en fond : écrivez et entourez par-dessus. ' : `${n} images fixées en fond : écrivez et entourez par-dessus. `)
-      + messageDetacher(this.dernierPointeur, undefined, n > 1))
+    // Le message dit aussi qu'on la tourne (ou la déplace) après « Détacher
+    // l'image du fond » : fixée, elle n'a ni cadre ni pastille ↻
+    this.ui.message(messageFixe(pointeur, changements.length, undefined, this.outil === 'selection'))
     return true
   }
 
   /** « Détacher l'image du fond » (le menu de la page) : elles ne sont plus
    *  fixées, et restent sous les autres images, au-dessus de celles qui
    *  restent fixées (voir changementsDetacher : l'invariant du fond tient).
-   *  On passe à l'outil Sélection (un second Échap rend l'outil d'avant,
-   *  comme Ctrl+A) et elles deviennent la sélection : on peut aussitôt les
-   *  déplacer. Un Ctrl+Z les refixe. */
-  detacherDuFond(ids: Iterable<string>): boolean {
+   *  On passe à l'outil Sélection, prêtée comme à l'import (voir
+   *  preterSelection : la touche de l'outil d'avant le rend, et « Fixer en
+   *  fond » aussi) et elles deviennent la sélection : on peut aussitôt les
+   *  déplacer, les agrandir, les tourner. Le message le dit, et comment
+   *  reprendre l'outil (voir messageDetache), dans les mots du pointeur
+   *  (celui du clic sur l'entrée du menu). Un Ctrl+Z les refixe. */
+  detacherDuFond(ids: Iterable<string>, pointeur: TypePointeur = this.dernierPointeur): boolean {
     if (tableauCache(this)) return false
     this.viderPointEnAttente()
     const changements = changementsDetacher(this.formes, ids)
@@ -3662,14 +3776,26 @@ export class App {
     this.ui.fermerMenus()
     this.tableau.nouveauGeste()
     this.tableau.modifier(this.page, changements)
-    if (this.outil !== 'selection') this.choisirOutil('selection')
+    const avant = this.preterSelection(changements.map(c => c.id))
     this.selection.clear()
     for (const c of changements) this.selection.add(c.id)
     this.rendu.redessinerDirect(); this.ui.maj()
-    const n = changements.length
-    this.ui.message(n === 1 ? 'Image détachée du fond : elle se prend et se déplace de nouveau.'
-      : `${n} images détachées du fond : elles se prennent et se déplacent de nouveau.`)
+    this.ui.message(messageDetache(pointeur, avant, changements.length, undefined, this.typeForme))
     return true
+  }
+
+  /** Passe à la Sélection pour ces images (leur import, « Détacher l'image
+   *  du fond »), en la prêtant : l'outil qu'on avait est retenu (Échap le
+   *  rend, comme pour Ctrl+A), et « Fixer en fond » de l'une d'elles le rend
+   *  aussi (voir fixerEnFond). Déjà prêtée (une deuxième image importée
+   *  aussitôt), elle le reste, pour toutes, avec le même outil. Rend l'outil
+   *  à reprendre ('selection' : on l'avait choisie, rien n'est prêté). */
+  private preterSelection(ids: Iterable<string>): Outil {
+    const pretee = this.outil === 'selection' ? this.selectionPretee : null
+    const avant = this.outil === 'selection' ? pretee?.avant ?? 'selection' : this.outil
+    if (this.outil !== 'selection') this.choisirOutil('selection')
+    this.selectionPretee = avant === 'selection' ? null : { avant, ids: new Set([...(pretee?.ids ?? []), ...ids]) }
+    return avant
   }
 
   /** Les images fixées en fond sous ce point du monde, la plus haute d'abord */
@@ -3757,6 +3883,7 @@ export class App {
     this.viderPointEnAttente()
     this.tableau.nouveauGeste()
     this.tableau.remplacer(this.page, neuves)
+    this.noterTransformation()
     return true
   }
 
@@ -3792,6 +3919,7 @@ export class App {
     this.viderPointEnAttente()
     this.tableau.nouveauGeste()
     this.tableau.remplacer(this.page, neuves)
+    this.noterTransformation()
     return true
   }
 
@@ -3847,18 +3975,49 @@ export class App {
     if (r && version >= 0 && r.sel === sel && r.version === version && r.formes === this.formes && r.cle === cle
       && r.formules.every(([f, l, h]) => { const m = this.mesureFormule(f); return m.l === l && m.h === h })) return r.cadre
     const pris = this.formes.filter(f => sel.has(f.id))
-    let cadre: Cadre | null = null
-    if (pris.length && pris.every(libre)) {
-      const formes = pris.filter(f => !((f.type === 'polygone' || f.type === 'cercle') && f.lie && sel.has(f.lie)))
-      const a = cam.versMonde(zl.x, zl.y)
-      cadre = cadreDe(formes, {
-        boite: f => this.boiteVue(f), mesure: this.mesureFormule, z: cam.z, pointeur: this.pointeurPoignees,
-        zoneLibre: { x: a.x, y: a.y, l: zl.l / cam.z, h: zl.h / cam.z },
-      })
-    }
+    const cadre = this.calculerCadre(pris, zl)
     const formules = pris.filter((f): f is Formule => f.type === 'formule').map(f => { const m = this.mesureFormule(f); return [f, m.l, m.h] as [Formule, number, number] })
     this.cadreRetenu = { sel, version, formes: this.formes, cle, formules, cadre }
     return cadre
+  }
+
+  /** Le cadre de ce qui est pris (pris : les formes sélectionnées de la
+   *  page), calculé sans rien demander à l'outil ni au geste (voir
+   *  cadreDeLaSelection, qui le montre, et tournable, qui en prend le
+   *  centre) : null si quelque chose n'y est pas libre, ou s'il n'y en a
+   *  pas (un point seul, un cercle entier). Les points repérés sur une
+   *  image prise la suivent sans changer son cadre. */
+  private calculerCadre(pris: Forme[], zl = this.ui?.zoneLibre() ?? { x: 0, y: 0, l: this.rendu.l, h: this.rendu.h }): Cadre | null {
+    if (!pris.length || !pris.every(libre)) return null
+    const cam = this.cam, sel = this.selection
+    const formes = pris.filter(f => !((f.type === 'polygone' || f.type === 'cercle') && f.lie && sel.has(f.lie)))
+    const a = cam.versMonde(zl.x, zl.y)
+    return cadreDe(formes, {
+      boite: f => this.boiteVue(f), mesure: this.mesureFormule, z: cam.z, pointeur: this.pointeurPoignees,
+      zoneLibre: { x: a.x, y: a.y, l: zl.l / cam.z, h: zl.h / cam.z },
+    })
+  }
+
+  /** Le centre autour duquel « Tourner d'un quart de tour » (le menu ⋯,
+   *  section Position) tournerait ce qui est pris : celui de la pastille ↻
+   *  (le milieu du cadre d'une image, d'une formule, d'un trait, d'un
+   *  groupe ou de plusieurs objets ; le centre d'une figure seule). null :
+   *  rien qui tourne (rien de pris, un objet qui n'est pas libre, un point
+   *  seul, un cercle entier, le tableau caché ou la revue). Sous tous les
+   *  outils : le bouton du stylet ouvre ce menu au Stylo. */
+  tournable(): P | null {
+    if (!this.selection.size || this.enLecture || tableauCache(this)) return null
+    return this.calculerCadre(this.formes.filter(f => this.selection.has(f.id)))?.centre ?? null
+  }
+
+  /** « Tourner d'un quart de tour à gauche » (↺) ou « … à droite » (↻), le
+   *  menu ⋯ (retouches après le lot 5 : le chemin de la tablette graphique,
+   *  dont le bouton latéral ouvre le menu complet) : autour du centre de la
+   *  pastille, en une étape d'annulation, comme elle (voir
+   *  transformerSelection) ; la sélection reste. */
+  tournerQuart(sens: 'gauche' | 'droite'): boolean {
+    const c = this.tournable()
+    return !!c && this.transformerSelection(quartDeTour(c, sens))
   }
 
   /** Le cadre que peint le rendu : pendant qu'on le tire ou qu'on tourne,
@@ -3872,11 +4031,15 @@ export class App {
 
   /** La poignée du cadre (un coin, un côté, la pastille) sous ce point de
    *  l'écran, à la portée du dernier pointeur vu (POIGNEE.prise), avec son
-   *  cadre ; null : aucune, ou pas de cadre */
-  private poigneeVisee(s: P): { cadre: Cadre; p: Poignee } | null {
+   *  cadre ; null : aucune, ou pas de cadre. peint (l'appui) : le cadre tel
+   *  qu'on le voyait avant lui ; peint pour un autre pointeur, un appui sur
+   *  sa pastille la prend (voir poigneeDeLAppui : un doigt après la souris
+   *  déformait l'image au lieu de la tourner) */
+  private poigneeVisee(s: P, peint?: CadreVu | null): { cadre: Cadre; p: Poignee } | null {
     const c = this.cadreDeLaSelection()
-    const p = c && poigneeSous(c, s, this.cam, this.pointeurPoignees)
-    return c && p ? { cadre: c, p } : null
+    if (!c) return null
+    const p = poigneeDeLAppui(c, s, this.cam, this.pointeurPoignees, peint && !peint.geste ? peint : null)
+    return p ? { cadre: c, p } : null
   }
 
   /** L'appui sur une poignée du cadre : le geste commence ('taille' pour un
@@ -3941,6 +4104,15 @@ export class App {
   pastilleAEviter(): Boite | null {
     const c = this.cadreDeLaSelection()
     return c && zonePastille(c, this.pointeurPoignees, this.cam.z)
+  }
+
+  /** Les poignées du cadre de ce qui est pris (monde : ses coins, ses côtés,
+   *  sa pastille ↻, à la portée du dernier pointeur vu), s'il est montré :
+   *  le message ne les couvre jamais (voir UI.placerToast et
+   *  zonesDesPoignees) */
+  poigneesAEviter(): Boite[] {
+    const c = this.cadreDeLaSelection()
+    return c ? zonesDesPoignees(c, this.pointeurPoignees, this.cam.z) : []
   }
 
   /** La première fois de la session qu'on prend une image seule, son cadre
@@ -4281,9 +4453,10 @@ export class App {
   /** « Envoyer vers… » (la fenêtre, voir pages/envoi.ts) : ce qui est pris
    *  (objetsChoisis : les points liés aux images choisies suivent) part vers
    *  une autre page. cible : une page de l'ordre, 'apres' (une nouvelle page
-   *  juste après celle-ci) ou 'fin' (une nouvelle page à la fin), au fond de
-   *  la page qu'on regarde et sur sa vue (les objets y sont à la même place
-   *  à l'écran). deplacer : ils quittent cette page (sinon ils y restent
+   *  juste après celle-ci) ou 'fin' (une nouvelle page à la fin), blanche
+   *  comme toute page neuve (voir FOND_NEUF) et sur la vue de la page qu'on
+   *  regarde, à 100 % (les objets y sont à la même place, autour du centre
+   *  de l'écran). deplacer : ils quittent cette page (sinon ils y restent
    *  aussi). Ce qui arrive vient du collage : identifiants neufs, même
    *  place, au-dessus de tout, noms gardés s'ils sont libres sur la page
    *  d'arrivée, sinon une lettre libre par point. Voir Tableau.envoyer :
@@ -4307,7 +4480,7 @@ export class App {
     let nouvelle: { id: string; place: number } | undefined
     if (cible === 'apres' || cible === 'fin') {
       const place = cible === 'apres' ? i + 1 : pages.length
-      vers = this.tableau.ajouterPage(this.fond, place)
+      vers = this.tableau.ajouterPage(FOND_NEUF, place)
       nouvelle = { id: vers, place }
       this.copierVue(a, vers)
     } else if (cible === a || !pages.includes(cible)) {
@@ -4343,8 +4516,8 @@ export class App {
    *  arrivé (et y est encore) devient la sélection, sans changer d'outil
    *  (comme un collage), sauf ce qui est verrouillé ou fixé en fond (lot 5 :
    *  il ne se prend pas). Si rien de ce qui est arrivé n'est visible, la vue
-   *  s'y porte, en gardant le zoom s'il suffit. Le message reste, avec
-   *  « Annuler ». */
+   *  s'y porte, à 100 % comme toute page où l'on arrive (sur son début s'il
+   *  ne tient pas : voir vueAuDebut). Le message reste, avec « Annuler ». */
   private allerAuxEnvoyes(vers: string, posees: Forme[]) {
     if (tableauCache(this)) return
     this.viderPointEnAttente()
@@ -4360,7 +4533,7 @@ export class App {
     const r = this.ui.zoneLibre()
     const p = this.cam.versEcran(b.x, b.y), q = this.cam.versEcran(b.x + b.l, b.y + b.h)
     const visible = q.x >= r.x && p.x <= r.x + r.l && q.y >= r.y && p.y <= r.y + r.h
-    if (!visible) this.allerVers(vuePour(b, r, this.cam.z))
+    if (!visible) this.allerVers(vueAuDebut(b, r))
   }
 
   /** « Annuler » du message d'un DÉPLACEMENT : seulement si son retrait est
@@ -4425,6 +4598,8 @@ export class App {
    *  trieuse des pages : Ctrl+V y collerait une copie sur une page qu'on ne
    *  voit pas), ni dans une fenêtre ouverte. */
   private surColler(e: ClipboardEvent) {
+    // Ctrl+V vient d'être pressé (voir clavier) : un clavier est là
+    const auClavier = this.collageAttendu !== 0
     clearTimeout(this.collageAttendu); this.collageAttendu = 0
     if ((e.target as HTMLElement | null)?.closest?.('input, textarea, [contenteditable]')) return
     if (tableauCache(this) || document.querySelector('dialog[open]')) return
@@ -4433,7 +4608,7 @@ export class App {
     const marquee = lireHtml(d.getData('text/html'))
     if (marquee) { e.preventDefault(); this.collerCopie(marquee); return }
     const f = [...d.files].find(x => x.type.startsWith('image/'))
-    if (f) { e.preventDefault(); this.importerImage(f); return }
+    if (f) { e.preventDefault(); this.importerImage(f, { clavier: auClavier }); return }
     const gardee = this.copieGardee(), texte = d.getData('text/plain')
     // Le presse-papiers du système a refusé cette copie : il a encore autre
     // chose, mais c'est bien elle qu'on vient de copier

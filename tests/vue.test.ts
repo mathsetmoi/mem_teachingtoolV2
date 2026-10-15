@@ -2,7 +2,7 @@
 // la place des menus, et la session (la page et la vue de chaque page,
 // retrouvées au rechargement, dans ce navigateur seulement).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ZOOM_MAX, ZOOM_MIN, vuePour, zoneEntreBarres } from '../src/camera'
+import { ZOOM_MAX, ZOOM_MIN, vueAuDebut, vuePour, zoneEntreBarres } from '../src/camera'
 import { PLAFOND_MOLETTE, lireMolette, toucheMarquePage, toucheMenu, toucheQuitteLaPage, toucheRecharger, toucheTenueEnGeste, toucheZoom } from '../src/navigateur'
 import { positionMenu, positionPanneau } from '../src/menus'
 import { ecrireSession, lireSession, oublierSession } from '../src/session'
@@ -187,6 +187,68 @@ describe('vuePour : cadrer une boîte', () => {
   it('le zoom reste entre ZOOM_MIN et ZOOM_MAX', () => {
     expect(vuePour({ x: 0, y: 0, l: 1e9, h: 1e9 }, r, 1).z).toBe(ZOOM_MIN)
     expect(vuePour({ x: 0, y: 0, l: 1, h: 1 }, r, 100).z).toBe(ZOOM_MAX)
+  })
+})
+
+// Après le lot 5 (le choix du professeur) : une page jamais regardée qui a
+// déjà quelque chose s'ouvre à 100 %, sur le début de son contenu (centré
+// s'il tient, sinon son coin en haut à gauche, à 32 px du bord de la zone)
+describe('vueAuDebut : une page qu\'on ouvre, à 100 %, sur le début de son contenu', () => {
+  const r = { x: 86, y: 82, l: 1264, h: 604 }
+  const ecran = (v: { x: number; y: number; z: number }, x: number, y: number) => ({ x: x * v.z + v.x, y: y * v.z + v.y })
+
+  it('toujours à 100 %, petit ou grand contenu', () => {
+    expect(vueAuDebut({ x: 0, y: 0, l: 10, h: 10 }, r).z).toBe(1)
+    expect(vueAuDebut({ x: -3000, y: -800, l: 5100, h: 2400 }, r).z).toBe(1)
+    expect(vueAuDebut({ x: 0, y: 0, l: 1e9, h: 1e9 }, r).z).toBe(1)
+  })
+
+  it('un contenu qui tient avec la marge : centré dans la zone, comme avant', () => {
+    const b = { x: 2000, y: 1500, l: 100, h: 60 }
+    const v = vueAuDebut(b, r)
+    const c = ecran(v, b.x + b.l / 2, b.y + b.h / 2)
+    expect(c.x).toBeCloseTo(r.x + r.l / 2, 9)
+    expect(c.y).toBeCloseTo(r.y + r.h / 2, 9)
+    // Le même cadrage que vuePour à 100 % au plus : rien ne change pour lui
+    const w = vuePour(b, r, 1)
+    expect(v).toEqual({ x: w.x, y: w.y, z: 1 })
+  })
+
+  it('un grand contenu : son coin en haut à gauche, à la marge du coin de la zone', () => {
+    const b = { x: -3000, y: -800, l: 5100, h: 2400 }
+    const v = vueAuDebut(b, r)
+    const coin = ecran(v, b.x, b.y)
+    expect(coin.x).toBeCloseTo(r.x + 32, 9)
+    expect(coin.y).toBeCloseTo(r.y + 32, 9)
+    // Une autre marge
+    const m = vueAuDebut(b, r, 10)
+    expect(ecran(m, b.x, b.y)).toEqual({ x: r.x + 10, y: r.y + 10 })
+  })
+
+  it('chaque sens à part : haut et étroit, centré en largeur, sur son haut ; large et bas, sur sa gauche, centré en hauteur', () => {
+    const haut = { x: 100, y: 0, l: 400, h: 3000 }
+    const v = vueAuDebut(haut, r)
+    expect(ecran(v, haut.x + haut.l / 2, 0).x).toBeCloseTo(r.x + r.l / 2, 9)
+    expect(ecran(v, 0, haut.y).y).toBeCloseTo(r.y + 32, 9)
+    const large = { x: -50, y: 300, l: 4000, h: 200 }
+    const w = vueAuDebut(large, r)
+    expect(ecran(w, large.x, 0).x).toBeCloseTo(r.x + 32, 9)
+    expect(ecran(w, 0, large.y + large.h / 2).y).toBeCloseTo(r.y + r.h / 2, 9)
+  })
+
+  it('à la limite (la zone moins deux marges), pas de saut : centré ou sur son début, le bord est au même endroit', () => {
+    const tient = { x: 0, y: 0, l: r.l - 64, h: 10 }
+    expect(ecran(vueAuDebut(tient, r), 0, 0).x).toBeCloseTo(r.x + 32, 9)  // centré : le même bord
+    const deborde = { x: 0, y: 0, l: r.l - 63, h: 10 }
+    expect(ecran(vueAuDebut(deborde, r), 0, 0).x).toBeCloseTo(r.x + 32, 9)
+    expect(ecran(vueAuDebut({ x: 0, y: 0, l: r.l, h: 10 }, r), 0, 0).x).toBeCloseTo(r.x + 32, 9)
+  })
+
+  it('une boîte plate ou réduite à un point : centrée, sans NaN ; une zone minuscule : le début à la marge', () => {
+    const p = vueAuDebut({ x: 10, y: 20, l: 0, h: 0 }, r)
+    expect(ecran(p, 10, 20)).toEqual({ x: r.x + r.l / 2, y: r.y + r.h / 2 })
+    const petite = vueAuDebut({ x: 5, y: 7, l: 100, h: 100 }, { x: 0, y: 0, l: 40, h: 40 })
+    expect(ecran(petite, 5, 7)).toEqual({ x: 32, y: 32 })
   })
 })
 

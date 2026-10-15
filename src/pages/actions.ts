@@ -14,7 +14,7 @@ import type { Tableau } from '../document'
 import type { Entree, JournalPages } from './journal'
 import type { Boite } from '../revoir/bobine'
 import type { Fond } from '../types'
-import { CM } from '../types'
+import { CM, FOND_NEUF } from '../types'
 
 /** Les pages sur lesquelles agit une action : les pages choisies, dans
  *  l'ordre du tableau ; sans page choisie, celle qui a le focus. */
@@ -32,21 +32,20 @@ export function renommer(t: Tableau, j: JournalPages, id: string, nom: string | 
 }
 
 /** Une page neuve et vide, juste avant ou juste après la page `id`, au fond
- *  choisi dans le menu de la vignette (par défaut celui de cette voisine) :
- *  une seule entrée du journal, sans second temps par « Fond ». rang : sa
- *  place (0 pour la première). */
+ *  choisi dans le menu de la vignette (par défaut la page blanche, comme
+ *  toute page neuve : voir FOND_NEUF) : une seule entrée du journal, sans
+ *  second temps par « Fond ». rang : sa place (0 pour la première). */
 export function inserer(t: Tableau, j: JournalPages, id: string, cote: 'avant' | 'apres', fond?: Fond): { entree: Entree; page: string; rang: number } | null {
   const i = t.ordre.toArray().indexOf(id)
   if (i < 0) return null
-  return ajouterA(t, j, 'page insérée', fond ?? t.fondDe(id), cote === 'avant' ? i : i + 1)
+  return ajouterA(t, j, 'page insérée', fond ?? FOND_NEUF, cote === 'avant' ? i : i + 1)
 }
 
-/** Une page neuve et vide à la fin, au fond de la dernière page (le bouton
- *  « Ajouter une page » du bandeau) */
+/** Une page neuve et vide à la fin, blanche (le bouton « Ajouter une page »
+ *  du bandeau ; voir FOND_NEUF : avant, elle prenait le fond de la dernière) */
 export function ajouterALaFin(t: Tableau, j: JournalPages): { entree: Entree; page: string; rang: number } | null {
   const ordre = t.ordre.toArray()
-  const derniere = ordre[ordre.length - 1]
-  return ajouterA(t, j, 'page ajoutée', derniere ? t.fondDe(derniere) : 'carreaux', ordre.length)
+  return ajouterA(t, j, 'page ajoutée', FOND_NEUF, ordre.length)
 }
 
 function ajouterA(t: Tableau, j: JournalPages, libelle: string, fond: Fond, place: number) {

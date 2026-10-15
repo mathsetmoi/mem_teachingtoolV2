@@ -294,6 +294,11 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
 .toast .ligne { display: block; }
 .toast .ligne + .ligne { margin-top: 8px; }
 .toast.dessus { z-index: 30; }
+/* Sur ce qui est pris (sa barre d'actions, sa pastille ↻ ; au téléphone,
+   l'objet aussi, et le menu complet : voir UI.placerToast), il passe sous la
+   barre du haut, au poste de la classe comme au téléphone (retouches après
+   le lot 5 : seulement au téléphone avant) */
+.toast.en-haut { bottom: auto; top: calc(var(--bas-barre-haut, 70px) + 12px); }
 /* La séance d'automatismes couvre tout l'écran (barres et menus cachés) : ses
    messages passent devant elle (F5 bloqué dit comment recharger) */
 body.en-seance .toast { z-index: 41; }
@@ -1706,13 +1711,13 @@ body.en-seance .retour-contenu { visibility: hidden; }
    en portrait (--haut-barre-bas : la place qu'elle prend, mesurée par UI ; 0
    en paysage, où elle est à gauche) ; le message au-dessus de « Revenir au
    contenu ». Sur ce qui est pris (la barre d'actions, le menu complet, la
-   pastille ↻ : voir UI.placerToast), il passe sous la barre du haut. En
+   pastille ↻ : voir UI.placerToast), il passe sous la barre du haut
+   (.toast.en-haut, plus haut, la même règle partout). En
    paysage, tous deux centrés sur ce qu'on voit du tableau, à droite de la
    barre des outils, sans jamais la couvrir. */
 @media (max-width: 640px), (max-height: 500px) and (pointer: coarse) {
   .retour-contenu { bottom: max(16px, env(safe-area-inset-bottom), calc(var(--haut-barre-bas, 0px) + 12px)); }
   .toast { bottom: max(68px, calc(var(--haut-barre-bas, 0px) + 68px)); }
-  .toast.en-haut { bottom: auto; top: calc(var(--bas-barre-haut, 70px) + 12px); }
 }
 @media (max-height: 500px) and (pointer: coarse), (max-width: 640px) and (max-height: 500px) {
   .toast, .retour-contenu { left: calc(50% + var(--droite-barre-outils, 70px) / 2); }

@@ -14,7 +14,7 @@
 import { getStroke } from 'perfect-freehand'
 import type { Camera } from './camera'
 import type { Bout, Figure, Fond, Forme, Formule, ImageForme, MarquePoint, Trait } from './types'
-import { libre } from './types'
+import { FOND_NEUF, libre } from './types'
 import { coinHautDroit, coinsImage, coinsVus, ecarterCoins, englobante, rotationDe } from './geometrie'
 import { dessinerFond } from './fonds'
 import { codageDe, placesDesNoms, sommetsDe } from './formes'
@@ -158,7 +158,8 @@ export class Rendu {
    *  déjà dans l'ordre d'affichage, la revue et le lecteur par z) : elles se
    *  peignent dans l'ordre d'affichage (voir ordre.ts et enOrdre) */
   formes: Forme[] = []
-  fond: Fond = 'carreaux'
+  /** Le fond peint (celui de la page ; d'abord celui d'une page neuve) */
+  fond: Fond = FOND_NEUF
   origine = { x: 0, y: 0 }
   selection = new Set<string>()
   decalage = { dx: 0, dy: 0 }                     // déplacement en cours de la sélection

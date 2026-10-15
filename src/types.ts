@@ -24,6 +24,15 @@ export const FONDS: { id: Fond; nom: string }[] = [
   { id: 'iso', nom: 'Réseau isométrique' },
   { id: 'repere', nom: 'Repère' },
 ]
+/** Le fond de toute page qui naît vide : la page blanche (le choix du
+ *  professeur, après le lot 5 ; avant, les petits carreaux). Le bouton
+ *  Nouvelle page, « › » sur la dernière page, la première page d'un
+ *  classeur neuf (ou d'une base vide), une page insérée ou ajoutée dans la
+ *  trieuse, celle qu'ouvre « Envoyer vers… une nouvelle page » : toutes
+ *  partent de lui, quel que soit le fond de la page qu'on regarde. Une page
+ *  dupliquée garde le sien (c'est une copie) ; les pages qui existent déjà
+ *  ne changent pas. */
+export const FOND_NEUF: Fond = 'blanc'
 
 export type Outil = 'stylo' | 'surligneur' | 'gomme' | 'point' | 'segment' | 'forme' | 'formule' | 'selection' | 'main'
 
