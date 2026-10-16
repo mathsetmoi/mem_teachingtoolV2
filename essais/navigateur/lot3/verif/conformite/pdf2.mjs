@@ -1,0 +1,35 @@
+// PDF : Ctrl+P à l’écran, pages choisies dans la trieuse, fond décoché gardé ; titre du bouton ⋯
+import { ouvrir, preparer, etat, verifier, fin, pause, D } from './lib.mjs'
+import { execSync } from 'node:child_process'
+
+const { page } = await ouvrir({ acceptDownloads: true })
+await preparer(page, 7, { ici: 0 })
+const titre = await page.evaluate(() => { const b = [...document.querySelectorAll('.barre-haut button')].at(-1); return { title: b.title, aria: b.getAttribute('aria-label') } })
+console.log('bouton ⋯', titre)
+await page.keyboard.press('Control+p'); await pause(300)
+let fen = await page.evaluate(() => document.querySelector('dialog[open]')?.innerText)
+console.log('Ctrl+P :', fen?.split('\n').slice(0, 3))
+// Décocher le fond, exporter la page
+await page.locator('dialog[open] input[type=checkbox]').uncheck()
+let dl = page.waitForEvent('download')
+await page.locator('dialog[open] button', { hasText: 'Exporter' }).click()
+let f = await dl; await f.saveAs(D + '/sansfond.pdf'); await pause(400)
+console.log('fichier', f.suggestedFilename())
+execSync(`pdftoppm -r 40 -png "${D}/sansfond.pdf" "${D}/sansfond"`)
+// Trieuse : choisir 2, 5, 7 ; Ctrl+P
+await page.keyboard.press('Shift+P'); await pause(500)
+for (const i of [1, 4, 6]) await page.locator('.trieuse .carte').nth(i).click({ modifiers: ['Shift'] })
+await pause(200)
+await page.keyboard.press('Control+p'); await pause(300)
+fen = await page.evaluate(() => ({ txt: document.querySelector('dialog[open]')?.innerText, coche: document.querySelector('dialog[open] input[type=checkbox]')?.checked }))
+console.log('trieuse Ctrl+P :', fen)
+verifier('Le fond décoché est gardé', fen.coche === false)
+dl = page.waitForEvent('download')
+await page.locator('dialog[open] button', { hasText: 'Exporter' }).click()
+f = await dl; await pause(400)
+const e = await etat(page)
+console.log('fichier', f.suggestedFilename(), e.msgs.at(-1), 'trieuse ouverte', e.ouverte)
+// La date du jour (l'essai l'avait écrite en dur, le 9 octobre 2026)
+const AUJOURDHUI = (d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)(new Date())
+verifier(`Nom « pages-2-5-7-${AUJOURDHUI}.pdf »`, f.suggestedFilename() === `pages-2-5-7-${AUJOURDHUI}.pdf`, f.suggestedFilename())
+await fin()

@@ -1,0 +1,55 @@
+// La version d'un seul fichier (dist/index.html) en file:// : l'adresse, un
+// nouveau classeur depuis la bibliothèque, l'aller et retour, le retour au
+// premier, les traits gardés, la session.
+import { RACINE_ESSAIS, RACINE_DEPOT } from '../../../commun/racines.mjs'
+import { chromium } from '../../../commun/playwright.mjs'
+const R = `${RACINE_DEPOT}`
+const dort = ms => new Promise(r => setTimeout(r, ms))
+let echecs = 0
+const ok = (c, m, d) => { if (!c) echecs++; console.log(c ? 'OK   ' : 'ÉCHEC', m, !c && d !== undefined ? '— ' + JSON.stringify(d).slice(0, 600) : '') }
+const nav = await chromium.launch()
+const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 } })
+const p = await ctx.newPage()
+const erreurs = []; p.on('pageerror', e => erreurs.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !/ERR_|Failed to load/.test(m.text())) erreurs.push(m.text()) })
+const pret = () => p.waitForFunction(() => document.querySelector('.rang')?.textContent?.includes('/'), null, { timeout: 30000 })
+await p.goto('file://' + R + '/dist/index.html'); await pret(); await p.waitForTimeout(1500)
+ok(new URL(p.url()).searchParams.has('classeur'), 'file:// : l\'adresse garde le classeur (' + p.url().split('?')[1] + ')')
+const premierUrl = p.url()
+const zone = await p.locator('#zone').boundingBox()
+const trait = async (x, y) => { await p.mouse.move(zone.x + x, zone.y + y); await p.mouse.down(); for (let i = 1; i <= 12; i++) { await p.mouse.move(zone.x + x + i * 8, zone.y + y + Math.sin(i / 2) * 14); await dort(10) } await p.mouse.up(); await dort(300) }
+await trait(300, 300); await trait(300, 380)
+await p.reload(); await pret(); await p.waitForTimeout(800)
+const titre = await p.title()
+ok(/— MEM teachingtool$/.test(titre), 'le titre de l\'onglet : ' + titre)
+// la bibliothèque, Nouveau classeur
+await p.click('.bouton-classeur'); await p.waitForTimeout(800)
+ok(await p.evaluate(() => !document.querySelector('.bibliotheque').hidden), 'la bibliothèque s\'ouvre')
+await p.click('.biblio-nouveau'); await p.waitForTimeout(600)
+const d = await p.evaluate(() => { const d = document.querySelector('dialog[open]'); return d ? { titre: d.querySelector('h2')?.textContent, cases: [...d.querySelectorAll('input[type=checkbox]')].map(c => ({ texte: c.closest('label')?.textContent?.trim(), coche: c.checked })) } : null })
+console.log('   la fenêtre :', JSON.stringify(d))
+// on ne coche pas la clé (aucune fenêtre de choix sans écran)
+await p.evaluate(() => { for (const c of document.querySelectorAll('dialog[open] input[type=checkbox]')) if (/clé/.test(c.closest('label')?.textContent || '')) c.checked = false })
+await p.fill('dialog[open] input[type=text]', 'Fractions 5e B')
+await Promise.all([p.waitForNavigation({ timeout: 20000 }).catch(e => e), p.evaluate(() => (document.querySelector('dialog[open] button[type=submit]') || [...document.querySelectorAll('dialog[open] button')].find(b => /Créer/.test(b.textContent)))?.click())])
+await pret(); await p.waitForTimeout(800)
+const u = new URL(p.url())
+ok(u.protocol === 'file:' && u.searchParams.has('classeur') && p.url() !== premierUrl, 'le nouveau classeur s\'ouvre en file:// : ' + u.search)
+ok((await p.title()).startsWith('Fractions 5e B'), 'son titre : ' + await p.title())
+await trait(500, 300)
+await p.reload(); await pret(); await p.waitForTimeout(800)
+ok((await p.title()).startsWith('Fractions 5e B'), 'rechargé : toujours lui')
+// retour au premier par la bibliothèque (une carte)
+await p.click('.bouton-classeur'); await p.waitForTimeout(800)
+const cartes = await p.evaluate(() => [...document.querySelectorAll('.grille-classeurs.tous > li')].map(li => li.querySelector('.carte-nom-classeur')?.textContent))
+ok(cartes.length === 2, 'deux cartes : ' + cartes.join(', '))
+const lien = await p.evaluate(() => [...document.querySelectorAll('.grille-classeurs.tous > li a')].map(a => a.href))
+console.log('   liens :', lien.join(' | '))
+const autre = await p.evaluate(() => { const li = [...document.querySelectorAll('.grille-classeurs.tous > li')].find(li => !/Fractions/.test(li.textContent)); return li?.querySelector('a') ? true : false })
+await Promise.all([p.waitForNavigation({ timeout: 20000 }).catch(e => e), p.evaluate(() => { const li = [...document.querySelectorAll('.grille-classeurs.tous > li')].find(li => !/Fractions/.test(li.textContent)); li.querySelector('a').click() })])
+await pret(); await p.waitForTimeout(1000)
+const n = await p.evaluate(() => document.querySelectorAll('canvas').length)
+ok(!(await p.title()).startsWith('Fractions'), 'retour au premier : ' + await p.title())
+console.log('erreurs :', erreurs)
+ok(!erreurs.length, 'aucune erreur JS')
+await nav.close()
+console.log(echecs ? `${echecs} ÉCHEC(S)` : 'Tout est vert.')

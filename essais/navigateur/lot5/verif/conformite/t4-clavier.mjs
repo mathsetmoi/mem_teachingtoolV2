@@ -1,0 +1,50 @@
+// Les menus nouveaux au clavier et pour un lecteur d'écran (1366 × 768, souris et clavier).
+import * as O from './lib/outils.mjs'
+const { ok, note, C } = O
+const ctx = await O.contexte()
+const { p } = await O.ouvrir(ctx, 'clavier')
+const actif = () => p.evaluate(() => { const e = document.activeElement; return e && { tag: e.tagName, role: e.getAttribute('role'), txt: (e.textContent || '').trim().slice(0, 60), aria: e.getAttribute('aria-label'), checked: e.getAttribute('aria-checked'), cls: e.className } })
+// 1. La gomme : E puis E
+await p.mouse.move(700, 400)
+await p.keyboard.press('e'); await p.waitForTimeout(100)
+note('outil après E', await p.evaluate(() => window.__app.outil))
+await p.keyboard.press('e'); await p.waitForTimeout(150)
+note('E une 2e fois : menu ouvert ?', await p.evaluate(() => !document.querySelector('.menu-flottant[aria-label="Gomme"]').hidden))
+note('focus', await actif())
+await p.keyboard.press('ArrowDown'); await p.waitForTimeout(60)
+note('↓', await actif())
+await p.keyboard.press('Enter'); await p.waitForTimeout(150)
+note('Entrée : réglage', await p.evaluate(() => ({ mode: localStorage.getItem('mem-gomme'), ouvert: !document.querySelector('.menu-flottant[aria-label="Gomme"]').hidden, msgs: window.__msgs.slice(-2) })))
+note('focus après Entrée', await actif())
+// rouvrir, aller aux tailles
+await p.keyboard.press('e'); await p.waitForTimeout(150)
+note('rouvert, focus', await actif())
+for (let i = 0; i < 3; i++) { await p.keyboard.press('ArrowDown'); await p.waitForTimeout(40) }
+note('↓↓↓', await actif())
+await p.keyboard.press('Enter'); await p.waitForTimeout(150)
+note('taille', await p.evaluate(() => ({ t: localStorage.getItem('mem-gomme-taille'), msgs: window.__msgs.slice(-2) })))
+await p.keyboard.press('Escape'); await p.waitForTimeout(60)
+// remettre le trait entier
+await p.evaluate(() => { localStorage.setItem('mem-gomme', 'trait') })
+// 2. le menu des fonds au clavier
+await p.locator('.choix-fond').focus(); await p.keyboard.press('Enter'); await p.waitForTimeout(250)
+note('fonds : focus', await actif())
+await p.keyboard.press('ArrowRight'); await p.waitForTimeout(40); note('→', await actif())
+await p.keyboard.press('ArrowDown'); await p.waitForTimeout(40); note('↓', await actif())
+await p.keyboard.press('End'); await p.waitForTimeout(40); note('Fin', await actif())
+await p.keyboard.press('Home'); await p.waitForTimeout(40); note('Début', await actif())
+await p.keyboard.press('ArrowLeft'); await p.waitForTimeout(40); note('← depuis le premier', await actif())
+await p.keyboard.press('Escape'); await p.waitForTimeout(80); note('Échap : focus', await actif())
+note('bouton fond', await p.evaluate(() => { const b = document.querySelector('.choix-fond'); return { aria: b.getAttribute('aria-label'), title: b.title, pop: b.getAttribute('aria-haspopup'), exp: b.getAttribute('aria-expanded') } }))
+// 3. Cet appareil
+const bf = p.locator('button[aria-label^="Enregistrer, ouvrir"]')
+await bf.focus(); await p.keyboard.press('Enter'); await p.waitForTimeout(250)
+const fin = await p.evaluate(() => { const m = document.querySelector('.menu-flottant[aria-label^="Enregistrer, ouvrir"]'); return [...m.children].slice(-5).map(b => ({ tag: b.tagName, role: b.getAttribute('role'), txt: b.textContent, checked: b.getAttribute('aria-checked'), dis: b.getAttribute('aria-disabled') })) })
+note('fin du menu ⋯', fin)
+await p.keyboard.press('End'); await p.waitForTimeout(60); note('Fin', await actif())
+await p.keyboard.press('Enter'); await p.waitForTimeout(150)
+note('après Entrée sur la dernière', await p.evaluate(() => ({ noms: document.body.classList.contains('noms-outils'), cle: localStorage.getItem('mem-noms-outils'), msgs: window.__msgs.slice(-1), ouvert: !document.querySelector('.menu-flottant[aria-label^="Enregistrer, ouvrir"]').hidden })))
+note('focus', await actif())
+await p.screenshot({ path: C + '/captures/t4-noms.png' })
+await p.keyboard.press('Escape')
+await O.fin()

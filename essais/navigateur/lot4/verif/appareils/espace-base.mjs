@@ -1,0 +1,21 @@
+import { lancer, contexte, ouvrir, info, dort, ecrireTraits } from './outils.mjs'
+const nav = await lancer()
+for (const focus of ['rien', 'bouton-zoom', 'bouton-classeur-clic']) {
+  const ctx = await contexte(nav)
+  const p = await ouvrir(ctx, '', 'base')
+  await ecrireTraits(p, 3)
+  if (focus === 'bouton-zoom') await p.click('.zoom-texte'), await p.keyboard.press('Escape')
+  if (focus === 'bouton-classeur-clic') await p.evaluate(() => document.querySelector('.bouton-classeur').focus())
+  await dort(300)
+  const f = await p.evaluate(() => ({ actif: document.activeElement?.className, visible: document.activeElement?.matches?.(':focus-visible') }))
+  const cam = () => p.evaluate(() => { const a = window.__app; const c = a.cam ?? a.camera ?? a.vueCamera; return JSON.stringify(Object.entries(a).filter(([k, v]) => v && typeof v === 'object' && 'zoom' in v).map(([k, v]) => [k, v.x, v.y, v.zoom])) })
+  const c0 = await cam()
+  await p.keyboard.down(' ')
+  await p.mouse.move(700, 400); await p.mouse.down()
+  for (let i = 1; i <= 10; i++) await p.mouse.move(700 + i * 15, 400 + i * 10)
+  await p.mouse.up(); await p.keyboard.up(' ')
+  await dort(500)
+  info(focus, { f, formes: await p.evaluate(() => window.__app.formes.length), c0, c1: await cam(), biblio: await p.evaluate(() => !document.querySelector('.bibliotheque')?.hidden) })
+  await ctx.close()
+}
+await nav.close()

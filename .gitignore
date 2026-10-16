@@ -2,3 +2,5 @@ node_modules
 dist
 .env
 dist-pages
+# Les sorties de la batterie des essais du navigateur (essais/navigateur/tout.sh)
+essais/navigateur/sorties/
