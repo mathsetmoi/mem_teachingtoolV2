@@ -705,15 +705,16 @@ export class Sauvegarde {
   }
 
   /** Au démarrage : un classeur vient d'être ouvert depuis un fichier, on le dit */
-  annoncerOuverture() {
+  annoncerOuverture(): boolean {
     let texte: string | null = null
-    try { texte = sessionStorage.getItem(CLE_OUVERT); sessionStorage.removeItem(CLE_OUVERT) } catch { return }
+    try { texte = sessionStorage.getItem(CLE_OUVERT); sessionStorage.removeItem(CLE_OUVERT) } catch { return false }
     const o = lireOuvert(texte)
-    if (!o) return
+    if (!o) return false
     const t = o.message ?? `Classeur ouvert : ${pagesLisibles(o.pages)}.`
     // Le fichier ouvert est celui de la clé : ce qu'il en est, une fois vérifiée
     if (o.cle && this.cle) void this.cle.direALArrivee(t, o.cle)
     else this.dire(t)
+    return true
   }
 }
 

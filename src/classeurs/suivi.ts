@@ -65,11 +65,13 @@ export class SuiviDuClasseur {
     try { this.onNote?.() } catch { /* rien de gardé */ }
     const modifie = this.dernierChangement
     const pages = this.tableau.ordre.length
+    const seances = this.tableau.seancesDuClasseur().length
     const vecteur = Y.encodeStateVector(this.tableau.doc)
     this.ecriture = this.ecriture
       .then(() => this.registre.modifierClasseur(this.id, f => {
         f.modifie = Math.max(f.modifie || 0, modifie)
         f.pages = pages
+        if (seances) f.seances = seances
         f.vecteur = vecteur
       }))
       .then(() => { try { this.onEcrit?.() } catch { /* la carte se refera à la prochaine ouverture */ } }, () => { /* la prochaine écriture la remettra à jour */ })

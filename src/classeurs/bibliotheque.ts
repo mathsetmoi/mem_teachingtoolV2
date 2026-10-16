@@ -2845,6 +2845,9 @@ export class Bibliotheque {
   }
 
   // ---------- Nouveau classeur ----------
+  /** Le dossier où naîtra le classeur de la fenêtre « Nouveau classeur » */
+  private dossierDuNouveau: string | null = null
+
   /** La fenêtre « Nouveau classeur » : le nom (« Nouveau classeur », tout
    *  choisi), le fond de la première page, et, quand le navigateur sait
    *  écrire seul dans un fichier, « Enregistrer automatiquement sur la
@@ -2852,19 +2855,25 @@ export class Bibliotheque {
    *  remis à zéro). Le choix du fichier s'ouvre dans le clic sur « Créer et
    *  ouvrir » ; y renoncer crée quand même le classeur, sans clé. Puis le
    *  classeur s'ouvre (voir ouvrirClasseur). */
-  nouveauClasseur() {
+  nouveauClasseur(o: { chapitre?: { dossier: string | null; dossiers: ReadonlyMap<string, FicheDossier> } } = {}) {
     if (document.querySelector('dialog[open]') || this.depart) return
     this.finirSaisie(true)
     const offrirCle = ecritDansUnFichier() && ecrivain.mode !== 'fil'
     // Il naît dans le dossier affiché, et en prend l'étiquette de classe
-    // (calculée : pas de champ à remplir)
-    const dans = this.dossierAffiche !== null && this.dossiers.has(this.dossierAffiche) ? this.dossierAffiche : null
+    // (calculée : pas de champ à remplir). « Nouveau chapitre… » (lot 6, la
+    // fenêtre d'accueil) : dans le dossier de la classe, seulement le nom
+    // (la première page est blanche) ; la clé comme pour un nouveau classeur
+    const chapitre = o.chapitre
+    if (chapitre) this.dossiers = new Map(chapitre.dossiers)
+    const dossierVoulu = chapitre ? chapitre.dossier : this.dossierAffiche
+    const dans = dossierVoulu !== null && this.dossiers.has(dossierVoulu) ? dossierVoulu : null
+    this.dossierDuNouveau = dans
     const d = document.createElement('dialog')
-    d.className = 'dialogue dialogue-nouveau'
-    d.innerHTML = `<form method="dialog"><h2>Nouveau classeur</h2><div class="corps">
+    d.className = 'dialogue dialogue-nouveau' + (chapitre ? ' dialogue-chapitre' : '')
+    d.innerHTML = `<form method="dialog"><h2>${chapitre ? 'Nouveau chapitre' : 'Nouveau classeur'}</h2><div class="corps">
       ${dans !== null ? '<p class="dans"></p>' : ''}
       <label class="champ"><span>Nom</span><input type="text" name="nom" maxlength="${LONGUEUR_NOM_CLASSEUR}" autocomplete="off" spellcheck="false"></label>
-      <fieldset class="fonds"><legend>Fond de la première page</legend></fieldset>
+      <fieldset class="fonds"${chapitre ? ' hidden' : ''}><legend>Fond de la première page</legend></fieldset>
       ${offrirCle ? '<label class="case case-cle"><input type="checkbox" name="cle"><span>Enregistrer automatiquement sur la clé<small></small></span></label>' : ''}
       <p class="erreur" role="alert" hidden></p>
       <div class="actions">
@@ -2877,7 +2886,7 @@ export class Bibliotheque {
     }
     const form = d.querySelector('form')!
     const champ = d.querySelector<HTMLInputElement>('input[name="nom"]')!
-    champ.value = NOM_NOUVEAU
+    champ.value = chapitre ? 'Nouveau chapitre' : NOM_NOUVEAU
     const fonds = d.querySelector('.fonds')!
     for (const f of FONDS_NEUF) {
       const l = Object.assign(document.createElement('label'), { className: 'case' })
@@ -2904,7 +2913,7 @@ export class Bibliotheque {
       e.preventDefault()
       if (enCours) return
       dire(null)
-      const nom = nomDeClasseur(champ.value) ?? NOM_NOUVEAU
+      const nom = nomDeClasseur(champ.value) ?? (chapitre ? 'Nouveau chapitre' : NOM_NOUVEAU)
       const fond = ((form.elements.namedItem('fond') as RadioNodeList | null)?.value || FOND_NEUF) as Fond
       // Le fichier de la clé : dans ce clic (le navigateur ne l'ouvre qu'au
       // plus près d'un geste)
@@ -2978,7 +2987,7 @@ export class Bibliotheque {
    *  va (voir Registre.creerClasseur : rien ne reste si cela échoue) */
   private async creer(nom: string, fond: Fond): Promise<FicheClasseur> {
     const id = idClasseur(), t = Date.now()
-    const dossier = this.dossierAffiche !== null && this.dossiers.has(this.dossierAffiche) ? this.dossierAffiche : null
+    const dossier = this.dossierDuNouveau !== null && this.dossiers.has(this.dossierDuNouveau) ? this.dossierDuNouveau : null
     const fiche: FicheClasseur = { id, base: baseDe(id), nom, dossier, etiquettes: [], cree: t, modifie: t, ouvert: t, pages: 1 }
     return this.registre.creerClasseur(fiche, async base => creerBase(base, await etatNeuf(fond), { id, nom }))
   }

@@ -39,8 +39,9 @@ export interface Contexte {
   gestes(p: Portion): number
   portion: Portion | null
   arretAuxParties: boolean
-  /** Le silence qui sépare deux séances, en ms */
-  ecart: number
+  /** Le silence qui sépare deux séances, en ms ; null : les séances sont
+   *  explicites (lot 6), rien à découper */
+  ecart: number | null
   surPortion(p: Portion): void
   surArret(b: boolean): void
   surEcart(ms: number): void
@@ -182,7 +183,11 @@ export class Tiroir {
           const t = document.createElement('h4'); t.textContent = j
           sec.append(t)
         }
-        sec.append(this.choix(`${heureLisible(s.debut)} → ${heureLisible(s.fin)}`, `${listeDesPages(s.pages, c.pagesActuelles)} · ${pluriel(gestes, 'geste')}`,
+        // Une séance explicite (lot 6) : son nom, et ses pages numérotées en elle
+        const x = s as Seance & { nom?: string | null; pagesDeSeance?: string[] }
+        const vivantes = new Set(c.pagesActuelles)
+        const numerotees = x.pagesDeSeance ? x.pagesDeSeance.filter(p => vivantes.has(p)) : c.pagesActuelles
+        sec.append(this.choix(`${x.nom ? x.nom + ' · ' : ''}${heureLisible(s.debut)} → ${heureLisible(s.fin)}`, `${listeDesPages(s.pages, numerotees)} · ${pluriel(gestes, 'geste')}`,
           { genre: 'seance', seance: s, page: null }, 'revue-seance'))
       }
       if (seances.reste) this.plusAnciennes(sec, '.revue-seance', this.combien, () => { this.combien += PAR_PAQUET })
@@ -219,13 +224,14 @@ export class Tiroir {
     ecart.innerHTML = '<span>Nouvelle séance après une pause de</span><select></select>'
     const liste = ecart.querySelector('select')!
     for (const m of DECOUPAGES) liste.add(new Option(`${m} min`, String(m * MINUTE)))
-    liste.value = String(c.ecart)
+    liste.value = String(c.ecart ?? DECOUPAGES[0] * MINUTE)
     liste.addEventListener('change', () => {
       this.c?.surEcart(Number(liste.value))
       // Le tiroir a été rempli à nouveau : on rend la main à la liste
       ;(this.el.querySelector('.revue-reglage select') as HTMLElement | null)?.focus()
     })
-    sec.append(arret, ecart)
+    sec.append(arret)
+    if (c.ecart !== null) sec.append(ecart)
   }
 
   /** « Plus anciennes » au bas d'une liste coupée : le paquet suivant arrive,

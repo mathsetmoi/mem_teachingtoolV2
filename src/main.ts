@@ -22,6 +22,12 @@ import { Bibliotheque, CLE_ARRIVEE } from './classeurs/bibliotheque'
 import { ecrivain } from './classeurs/ecrivain'
 import { Fichiers } from './classeurs/fichiers'
 import type { ActionMessage } from './app'
+import type { SeanceDuClasseur } from './seances'
+import { deLaSeance } from './seances'
+import type { ChapitreAccueil } from './seances-vue'
+import { ouvrirAccueil } from './seances-vue'
+import { comparerEtiquettes, etiquetteHeritee } from './classeurs/arbre'
+import type { FicheDossier } from './classeurs/demarrage'
 
 /** Le classeur qui s'ouvre : sa fiche dans l'index (null : l'index ne
  *  s'ouvre pas, c'est le repli), ce que l'application en sait, et ce qu'il
@@ -192,6 +198,9 @@ async function demarrer() {
   // La page qu'on regardait avant de recharger, si elle existe encore (sans
   // annoncer son numéro : on arrive, on ne change pas de page)
   app.allerPageDeDepart()
+  // La séance (lot 6) : on reste dans celle du jour si elle a servi depuis
+  // moins d'une heure ; sinon, la fenêtre d'accueil (à la fin du démarrage)
+  const depart = app.seanceAuDemarrage({ nouvelle: lireNouvelleSeance(infos.id) })
   // L'état de la sauvegarde : le bouton du classeur, le menu ⋯, le bandeau
   // (après le chargement : il lit le film pour savoir le travail non
   // enregistré, et le chargement n'est pas un changement)
@@ -311,7 +320,7 @@ async function demarrer() {
     if (import.meta.env.DEV) Object.assign(window, { __bibliotheque: ui.bibliotheque, __fichiers: fichiers })
   }
   // Un classeur vient d'être ouvert depuis un fichier, ou créé : on le dit
-  ui.sauvegarde.annoncerOuverture()
+  const ouvertDUnFichier = ui.sauvegarde.annoncerOuverture()
   // Arrivé avec la case de la clé : ce qu'il en est vraiment se dit une
   // fois la clé vérifiée (Chrome oublie son accord en changeant de page)
   const arrivee = messageDArrivee(infos.id)
@@ -322,6 +331,14 @@ async function demarrer() {
   // autre séance) : on le dit en arrivant, l'état le garde ensuite
   if (tableau.incomplet) ui.message(TEXTE_INCOMPLET)
   annoncerLaBibliotheque(ui, infos, vide, !!(registre && fiche))
+  // La séance (lot 6) : « Séance de 14 h reprise », quand rien d'autre ne
+  // se dit en arrivant (un fichier ouvert, un classeur créé, la clé…) ; la
+  // fenêtre d'accueil, pas sur un classeur qu'on vient d'ouvrir d'un
+  // fichier, ou d'ajouter, de créer (l'arrivée a son message) : on l'a
+  // choisi, on le regarde (sa dernière séance continue)
+  const autreMessage = ouvertDUnFichier || !!arrivee || !!message || tableau.incomplet
+  if (depart.genre === 'reprise' && depart.seance && !autreMessage) ui.message(`Séance ${deLaSeance(depart.seance, Date.now())} reprise`)
+  else if (depart.genre === 'accueil' && depart.seance && !ouvertDUnFichier && !arrivee) void ouvrirLAccueil(app, ui, registre, fiche, depart.seance)
   // Que le navigateur ne vide pas la base pour faire de la place. Chrome, Edge
   // et Safari décident seuls, sans rien demander ; Firefox pose sa question.
   // Rien n'est montré ici : ce n'est pas une sauvegarde (voir « Enregistrer le classeur »).
@@ -345,3 +362,90 @@ function annoncerLaBibliotheque(ui: UI, infos: InfosClasseur, vide: boolean, ave
 }
 
 demarrer()
+
+/** On part vers un autre classeur pour y commencer une séance (la fenêtre
+ *  d'accueil : une autre classe, un autre chapitre) : la clé de cet onglet,
+ *  { id, t }, valable une minute */
+const CLE_NOUVELLE_SEANCE = 'mem-teachingtool-nouvelle-seance'
+
+function lireNouvelleSeance(id: string): boolean {
+  try {
+    const t = sessionStorage.getItem(CLE_NOUVELLE_SEANCE)
+    sessionStorage.removeItem(CLE_NOUVELLE_SEANCE)
+    const o = t ? JSON.parse(t) : null
+    return !!o && o.id === id && typeof o.t === 'number' && Date.now() - o.t < 60_000
+  } catch { return false }
+}
+
+function noterNouvelleSeance(id: string) {
+  try { sessionStorage.setItem(CLE_NOUVELLE_SEANCE, JSON.stringify({ id, t: Date.now() })) } catch { /* on arrivera sans nouvelle séance */ }
+}
+
+/** Les dossiers et tout ce qui est dedans (les sous-dossiers compris) */
+function sousDossiers(racine: string, dossiers: readonly FicheDossier[]): Set<string> {
+  const r = new Set([racine])
+  for (let change = true; change;) {
+    change = false
+    for (const d of dossiers) if (d.parent !== null && r.has(d.parent) && !r.has(d.id)) { r.add(d.id); change = true }
+  }
+  return r
+}
+
+/** La fenêtre d'accueil (lot 6, voir seances-vue.ts), remplie avec la
+ *  bibliothèque : la classe (le plus proche dossier de classe du classeur),
+ *  les autres classes (les dossiers de classe), les chapitres de la classe
+ *  (les classeurs de son dossier, avec leur nombre de séances). Sans
+ *  bibliothèque (le repli), ni classes ni chapitres. */
+async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche: FicheClasseur | null, seance: SeanceDuClasseur) {
+  let dossiers: FicheDossier[] = [], fiches: FicheClasseur[] = []
+  if (registre && fiche) {
+    try { [dossiers, fiches] = await Promise.all([registre.dossiers(), registre.classeurs()]) } catch { /* sans la bibliothèque */ }
+  }
+  const vivants = dossiers.filter(d => !d.corbeille)
+  const carte = new Map(vivants.map(d => [d.id, d]))
+  const ici = fiche ? fiches.find(f => f.id === fiche.id) ?? fiche : null
+  const classe = ici && ici.dossier !== null ? etiquetteHeritee(ici.dossier, carte) : null
+  const dossierDuChapitre = classe ? classe.dossier.id : ici?.dossier ?? null
+  const ouvrables = fiches.filter(f => !f.corbeille && !f.effacement && !f.creation)
+  const dans = (d: string | null) => {
+    if (d === null) return ouvrables.filter(f => f.dossier === null || !carte.has(f.dossier))
+    const tous = sousDossiers(d, vivants)
+    return ouvrables.filter(f => f.dossier !== null && tous.has(f.dossier))
+  }
+  const partir = (f: FicheClasseur) => {
+    if (!ui.bibliotheque) return
+    noterNouvelleSeance(f.id)
+    void ui.bibliotheque.ouvrirClasseur(f)
+  }
+  const nouveauChapitre = (d: string | null) => ui.bibliotheque?.nouveauClasseur({ chapitre: { dossier: d, dossiers: carte } })
+  const classes = vivants.filter(d => d.etiquette && d.id !== classe?.dossier.id)
+    .sort((a, b) => comparerEtiquettes(a.nom, b.nom)).map(d => ({ id: d.id, nom: d.nom }))
+  const avecBibliotheque = !!(registre && fiche && ui.bibliotheque)
+  if (document.querySelector('dialog[open]')) return
+  ouvrirAccueil(document.getElementById('app')!, {
+    classe: classe ? classe.dossier.nom : null,
+    chapitre: app.classeur.nom,
+    continuer: deLaSeance(seance, Date.now(), true),
+    classes: avecBibliotheque ? classes : [],
+    chapitres: avecBibliotheque ? async () => {
+      const l: ChapitreAccueil[] = dans(dossierDuChapitre).map(f => ({ id: f.id, nom: f.nom, ici: f.id === ici?.id, seances: f.id === ici?.id ? app.tableau.seancesDuClasseur().length : f.seances ?? null }))
+      return l.sort((a, b) => Number(b.ici) - Number(a.ici) || (fiches.find(f => f.id === b.id)?.ouvert ?? 0) - (fiches.find(f => f.id === a.id)?.ouvert ?? 0))
+    } : null,
+    nouvelleSeance: () => {
+      app.nouvelleSeance()
+    },
+    continuerSeance: () => { ui.message(`Séance ${deLaSeance(seance, Date.now())} : vous la continuez`) },
+    autreClasse: id => {
+      // Le chapitre en cours de cette classe : le dernier classeur ouvert dans son dossier
+      const l = dans(id).sort((a, b) => (b.ouvert - a.ouvert) || (b.modifie - a.modifie))
+      if (l.length) partir(l[0])
+      else { ui.message(`La classe « ${carte.get(id)?.nom ?? ''} » n'a pas encore de chapitre : créez-le.`); nouveauChapitre(id) }
+    },
+    ouvrirChapitre: id => {
+      if (id === ici?.id) { app.nouvelleSeance(); return }
+      const f = ouvrables.find(x => x.id === id)
+      if (f) partir(f)
+    },
+    nouveauChapitre: () => nouveauChapitre(dossierDuChapitre),
+  })
+}

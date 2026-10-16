@@ -11,6 +11,9 @@ import { IndexeddbPersistence } from 'y-indexeddb'
 import type { Fond, Forme, Trait } from './types'
 import type { Morceau } from './revoir/instruments-film'
 import { FOND_NEUF, uid } from './types'
+import type { FicheSeance, SeanceDuClasseur } from './seances'
+import { ficheValable, migration, nomDeSeance, rangerLesPages } from './seances'
+import { seancesDuFilm } from './revoir/exporter'
 
 export const ORIGINE_LOCALE = 'locale'
 const ORIGINE_FILM = 'film'
@@ -90,6 +93,7 @@ export interface EntreeCorbeille { t: number; apres?: string | null; index?: num
 type Marque =
   | { genre: 'jetee'; id: string; apres: string | null; index: number; profondeur: number }
   | { genre: 'copie'; id: string; profondeur: number }
+  | { genre: 'reprise'; id: string; profondeur: number; remplacee?: { id: string; place: number } }
 
 /** Une étape d'une pile d'annulation (Yjs ne nomme pas son type) */
 export type EtapeDePile = Y.UndoManager['undoStack'][number]
@@ -132,10 +136,13 @@ const META_REGLAGE = 'reglage'
  *  défait pas encore, RIEN n'a changé (vers : la page d'arrivée ; n : les
  *  objets qui en sont repartis par un autre envoi, ou y ont été effacés, et
  *  que la pile de cette page-là peut y ramener ; total : les objets de
- *  l'envoi ; voir annuler). */
+ *  l'envoi ; voir annuler). reprise et retour : la page reprise d'une
+ *  séance passée (lot 6, voir reprendrePage), toute neuve, qui s'en va, et
+ *  la page de la séance du jour où l'on revient. */
 export interface Annulation {
   page?: string
   copie?: string
+  reprise?: string
   retour?: string
   envoi?: { vers: string; revenus: number; restes: number; absents?: number; pageRetiree: boolean }
   copieRecue?: CopieRecue
@@ -197,6 +204,34 @@ export class Tableau {
   /** Les noms des pages (facultatifs, 60 caractères) : id → nom. Hors des
    *  pages comme la corbeille : ni étape du film, ni annulation de page. */
   readonly noms: Y.Map<string>
+  /** Les séances du classeur (lot 6, voir seances.ts) : id → FicheSeance ;
+   *  et la séance de chaque page (page → id). Hors des pages comme les noms :
+   *  ni étape du film, ni annulation de page ; un fichier .memc les garde. */
+  readonly seances: Y.Map<FicheSeance>
+  readonly seanceDesPages: Y.Map<string>
+  /** Le rangement des pages par séance, gardé entre deux transactions */
+  private rangement: SeanceDuClasseur[] | null = null
+  /** Les séances sont en service (lot 6 : l'application les met en
+   *  service ; les essais du document, et un tableau d'avant lu ailleurs, non).
+   *  Un classeur qui n'a encore aucune séance écrite (d'avant le lot 6, ou
+   *  neuf) a alors des séances « en attente » : celles de la migration (voir
+   *  seances.migration), calculées, jamais écrites tant qu'on ne change rien.
+   *  Ouvrir un classeur ne l'écrit donc pas (sa base, sa clé, son fichier ne
+   *  changent pas d'un octet) ; elles s'écrivent juste avant le premier
+   *  changement (voir ecrireLesSeances). */
+  get seancesActives() { return this.actives }
+  set seancesActives(oui: boolean) { this.actives = oui; this.rangement = null }
+  private actives = false
+  private enAttente: { cle: string; seances: [string, FicheSeance][]; seanceDe: Map<string, string> } | null = null
+  /** L'heure de création de ce document en mémoire : le début de la séance
+   *  en attente d'un tableau dont le film est encore vide */
+  private readonly ne = Date.now()
+  /** La garde des séances passées (lot 6) : avant d'écrire sur une page,
+   *  le tableau lui demande si c'est permis. Faux : rien ne s'écrit, et
+   *  refaire(page) refera la même écriture sur une autre page (la copie
+   *  reprise dans la séance du jour, qui a les mêmes identifiants de
+   *  formes). Sans garde (les tests, un tableau d'avant), tout s'écrit. */
+  garde: ((page: string, refaire: (page: string) => void) => boolean) | null = null
   /** La page que l'on regarde : notée avec chaque étape du film */
   pageVue = ''
   readonly moi = uid()
@@ -275,6 +310,13 @@ export class Tableau {
     this.piste = this.doc.getArray('piste')
     this.corbeille = this.doc.getMap('corbeille')
     this.noms = this.doc.getMap('nomsPages')
+    this.seances = this.doc.getMap('seances')
+    this.seanceDesPages = this.doc.getMap('seanceDesPages')
+    // Le rangement par séance se refait après chaque changement (avant les
+    // observateurs, qui le lisent ; jamais gardé au milieu d'une transaction)
+    const oublier = () => { this.rangement = null }
+    this.doc.on('beforeTransaction', oublier)
+    this.doc.on('beforeObserverCalls', oublier)
     // Une marque qui ne vaut plus s'en va tout de suite, quel que soit le
     // chemin (la trieuse, la corbeille, un fichier) : une copie partie puis
     // remise, une page jetée puis revenue, ne réveillent pas une vieille marque
@@ -586,8 +628,12 @@ export class Tableau {
   /** Une page neuve et vide. Sa création se note dans le film sur la
    *  NOUVELLE page, et c'est sa naissance (voir Etape) : ni un geste, ni une
    *  séance, ni un pont entre deux séances. */
-  ajouterPage(fond: Fond, position: number): string {
+  ajouterPage(fond: Fond, position: number, o: { seance?: string } = {}): string {
+    this.ecrireLesSeances()
     const id = uid()
+    // Sa séance (lot 6) : celle qu'on dit, sinon la séance du jour (la plus
+    // récente) ; rien sur un tableau sans séances
+    const seance = o.seance ?? this.derniereSeance()?.id ?? null
     // La création se note dans le film sur la NOUVELLE page, pas sur celle
     // qu'on regarde encore : le replay ne doit pas compter celle qu'on quitte
     const vue = this.pageVue
@@ -600,6 +646,7 @@ export class Tableau {
         p.set('formes', new Y.Map<Forme>())
         this.pages.set(id, p)
         this.ordre.insert(Math.min(position, this.ordre.length), [id])
+        if (seance) this.seanceDesPages.set(id, seance)
       })
     } finally {
       this.noteDeLEtape = null
@@ -847,6 +894,232 @@ export class Tableau {
     return true
   }
 
+  // ---------- Les séances (lot 6, voir seances.ts) ----------
+  /** Les séances, de la plus ancienne à la plus récente, chacune avec ses
+   *  pages (dans l'ordre du document) ; vide sur un tableau sans séances */
+  seancesDuClasseur(): SeanceDuClasseur[] {
+    if (this.rangement) return this.rangement
+    const attente = !this.seances.size && this.seancesActives && this.ordre.length ? this.seancesEnAttente() : null
+    const r = attente
+      ? rangerLesPages(this.ordre.toArray(), attente.seances, p => this.seanceDesPages.get(p) ?? attente.seanceDe.get(p))
+      : rangerLesPages(this.ordre.toArray(), this.seances.entries(), p => this.seanceDesPages.get(p))
+    // Au milieu d'une transaction, l'ordre peut encore changer : pas gardé
+    if (!(this.doc as unknown as { _transaction: unknown })._transaction) this.rangement = r
+    return r
+  }
+
+  /** La séance du jour : la plus récente qui a des pages (une séance sans
+   *  page, que rien ne devrait laisser, ne l'est pas) ; null : aucune séance */
+  derniereSeance(): SeanceDuClasseur | null {
+    const l = this.seancesDuClasseur()
+    for (let k = l.length - 1; k >= 0; k--) if (l[k].pages.length) return l[k]
+    return l.length ? l[l.length - 1] : null
+  }
+
+  /** La séance d'une page : celle du rangement pour une page de l'ordre,
+   *  celle qu'elle a notée pour une page hors de l'ordre (la corbeille) ;
+   *  null sans séances */
+  seanceDe(page: string): SeanceDuClasseur | null {
+    const l = this.seancesDuClasseur()
+    if (!l.length) return null
+    for (const s of l) if (s.pages.includes(page)) return s
+    const v = this.seanceDesPages.get(page)
+    return l.find(s => s.id === v) ?? null
+  }
+
+  /** Les pages d'une séance (vide : elle n'existe pas) */
+  pagesDeLaSeance(id: string): string[] {
+    return this.seancesDuClasseur().find(s => s.id === id)?.pages ?? []
+  }
+
+  /** Les séances en attente (voir seancesActives), calculées une fois par
+   *  état du film et des pages */
+  private seancesEnAttente(): { seances: [string, FicheSeance][]; seanceDe: Map<string, string> } {
+    const cle = `${this.film.length}:${this.pages.size}`
+    if (this.enAttente?.cle === cle) return this.enAttente
+    const film = this.film.toArray()
+    const m = migration(film, seancesDuFilm(film), this.pages.keys(), this.ne)
+    this.enAttente = { cle, seances: m.seances, seanceDe: new Map(m.seanceDe) }
+    return this.enAttente
+  }
+
+  /** Les séances en attente s'écrivent (voir seancesActives), telles qu'on
+   *  les voit : juste avant le premier changement (une écriture sur une page,
+   *  une page ajoutée, une séance neuve, un nom de séance). Hors annulation,
+   *  hors film (deux cartes hors des pages). Vrai si quelque chose s'est écrit. */
+  ecrireLesSeances(): boolean {
+    if (this.seances.size || !this.seancesActives || !this.ordre.length) return false
+    const m = this.seancesEnAttente()
+    this.doc.transact(() => {
+      for (const [id, f] of m.seances) this.seances.set(id, f)
+      for (const [p, id] of m.seanceDe) this.seanceDesPages.set(p, id)
+    })
+    return true
+  }
+
+  /** Les séances repérées dans le film d'un classeur d'avant le lot 6
+   *  deviennent ses séances (voir seances.migration) : une fois, quand il
+   *  n'en a aucune et qu'il a des pages. Hors annulation, hors film (deux
+   *  cartes hors des pages). Vrai si quelque chose s'est écrit. (Les essais ;
+   *  l'application passe par les séances en attente, voir seancesActives.) */
+  migrerSeances(maintenant = Date.now()): boolean {
+    if (this.seances.size || !this.ordre.length) return false
+    const film = this.film.toArray()
+    const m = migration(film, seancesDuFilm(film), this.pages.keys(), maintenant)
+    this.doc.transact(() => {
+      for (const [id, f] of m.seances) this.seances.set(id, f)
+      for (const [p, id] of m.seanceDe) this.seanceDesPages.set(p, id)
+    })
+    return true
+  }
+
+  /** Une séance neuve qui commence à t, avec sa page 1 (vide, au fond
+   *  donné), au bout de l'ordre. Deux transactions hors des piles : la
+   *  séance (hors des pages : pas d'étape), puis la page (sa naissance, voir
+   *  ajouterPage), qui lui appartient. Ni l'une ni l'autre ne s'annule par
+   *  Ctrl+Z : on change de séance par la fenêtre d'accueil ou le menu, pas
+   *  par mégarde. */
+  nouvelleSeance(o: { t?: number; fond?: Fond; nom?: string | null } = {}): { seance: string; page: string } {
+    this.ecrireLesSeances()
+    const id = uid()
+    const fiche: FicheSeance = { debut: o.t ?? Date.now() }
+    const nom = nomDeSeance(o.nom)
+    if (nom) fiche.nom = nom
+    this.doc.transact(() => this.seances.set(id, fiche))
+    const page = this.ajouterPage(o.fond ?? FOND_NEUF, this.ordre.length, { seance: id })
+    return { seance: id, page }
+  }
+
+  /** La séance recommence maintenant (son début change) : une séance où
+   *  rien n'a été écrit, qu'on reprend au lieu d'en créer une autre */
+  recommencerSeance(id: string, t = Date.now()) {
+    this.ecrireLesSeances()
+    const f = this.seances.get(id)
+    if (!ficheValable(f)) return
+    const g: FicheSeance = { debut: t }
+    if (f.nom) g.nom = f.nom
+    this.doc.transact(() => this.seances.set(id, g))
+  }
+
+  /** Nomme une séance (vide : son nom part, elle reprend sa date) ; faux si
+   *  rien ne change */
+  renommerSeance(id: string, nom: string | null): boolean {
+    this.ecrireLesSeances()
+    const f = this.seances.get(id)
+    if (!ficheValable(f)) return false
+    const propre = nomDeSeance(nom)
+    if ((f.nom ?? null) === propre) return false
+    const g: FicheSeance = { ...f }
+    if (propre) g.nom = propre; else delete g.nom
+    this.doc.transact(() => this.seances.set(id, g))
+    return true
+  }
+
+  /** La séance n'a encore rien : ni forme ni nom sur ses pages, ni page
+   *  dans la corbeille */
+  seanceVierge(id: string): boolean {
+    const s = this.seancesDuClasseur().find(x => x.id === id)
+    if (!s) return false
+    if (s.pages.some(p => (this.formesDe(p)?.size ?? 0) > 0 || this.nomDe(p) !== null)) return false
+    const ordre = new Set(this.ordre.toArray())
+    for (const [p, v] of this.seanceDesPages) if (v === id && this.dansLaCorbeille(p, ordre)) return false
+    return true
+  }
+
+  /** L'heure de la dernière activité d'une séance : sa dernière étape du
+   *  film notée sur l'une de ses pages (ou sur une page qu'elle a eue), au
+   *  plus tôt son début */
+  derniereActivite(id: string): number {
+    const s = this.seancesDuClasseur().find(x => x.id === id)
+    if (!s) return 0
+    const pages = new Set(s.pages)
+    for (const [p, v] of this.seanceDesPages) if (v === id) pages.add(p)
+    const film = this.film.toArray()
+    for (let i = film.length - 1; i >= 0; i--) {
+      const e = film[i]
+      if (e.t < s.depuis) break
+      if (pages.has(e.page)) return Math.max(e.t, s.debut)
+    }
+    return s.debut
+  }
+
+  /** La page de la séance où l'on a écrit en dernier (sa dernière étape du
+   *  film qui n'est pas une naissance ni un ordre changé), sinon sa dernière
+   *  page ; null : elle n'a pas de page */
+  derniereEcriteDe(id: string): string | null {
+    const s = this.seancesDuClasseur().find(x => x.id === id)
+    if (!s || !s.pages.length) return null
+    const pages = new Set(s.pages)
+    const film = this.film.toArray()
+    for (let i = film.length - 1; i >= 0; i--) {
+      const e = film[i]
+      if (e.t < s.depuis) break
+      if (pages.has(e.page) && !e.seulOrdre && !e.naissance && !e.reglage) return e.page
+    }
+    return s.pages[s.pages.length - 1]
+  }
+
+  /** Reprend une page d'une séance passée dans une autre (la séance du jour,
+   *  lot 6) : une copie avec son histoire (voir dupliquerPage : même fond,
+   *  même origine, mêmes formes sous les mêmes identifiants, herite), sous
+   *  le MÊME nom, rangée dans `seance`, juste après la page `apres` (au bout
+   *  de l'ordre si null). remplace : une page vide de la séance (sa page 1
+   *  blanche) que la copie remplace, à sa place ; elle quitte l'ordre (vide,
+   *  elle ne va pas dans la corbeille). La copie porte une marque : Ctrl+Z
+   *  sur elle, tant qu'elle est vierge, la retire et remet la page vide
+   *  (voir retirerReprise). Rend la copie (null : rien n'a pu se faire). */
+  reprendrePage(source: string, o: { seance: string; apres: string | null; remplace?: string | null }): string | null {
+    const ordre = this.ordre.toArray()
+    const vide = o.remplace && ordre.includes(o.remplace) && (this.formesDe(o.remplace)?.size ?? 1) === 0 && this.nomDe(o.remplace) === null ? o.remplace : null
+    const position = vide ? ordre.indexOf(vide) : o.apres && ordre.includes(o.apres) ? ordre.indexOf(o.apres) + 1 : ordre.length
+    const q = this.dupliquerPage(source, { position, seance: o.seance, memeNom: true })
+    if (!q) return null
+    let remplacee: { id: string; place: number } | undefined
+    if (vide) {
+      const i = this.ordre.toArray().indexOf(vide)
+      if (i >= 0) {
+        this.surLaPage(q, () => this.doc.transact(() => this.ordre.delete(i, 1)))
+        remplacee = { id: vide, place: i }
+      }
+    }
+    this.marquer(q, { genre: 'reprise', id: q, profondeur: 0, ...(remplacee ? { remplacee } : {}) })
+    this.onPiles?.()
+    return q
+  }
+
+  /** Retire une page reprise toute neuve (Ctrl+Z sur elle, « Annuler » du
+   *  message) : elle quitte l'ordre, définitive (comme une copie retirée :
+   *  pas dans la corbeille), et la page vide qu'elle avait remplacée revient
+   *  à sa place, dans la même transaction (la séance n'est jamais sans page).
+   *  Refuse (null) ce qui n'est pas une reprise marquée dans l'ordre, une
+   *  copie qui n'est plus vierge (voir vierge), et la seule page de sa
+   *  séance quand rien ne revient à sa place. Rend la page où revenir : la
+   *  page remise, sinon la voisine d'avant dans sa séance (la suivante). */
+  retirerReprise(id: string): string | null {
+    const ordre = this.ordre.toArray()
+    const i = ordre.indexOf(id)
+    const m = this.marques.get(id)?.find(x => x.genre === 'reprise' && x.id === id) as Extract<Marque, { genre: 'reprise' }> | undefined
+    if (i < 0 || !m || !this.vierge(id)) return null
+    const remise = m.remplacee && !ordre.includes(m.remplacee.id) && this.pages.get(m.remplacee.id) instanceof Y.Map ? m.remplacee : null
+    const voisines = this.seanceDe(id)?.pages ?? []
+    const k = voisines.indexOf(id)
+    const retour = remise ? remise.id : (voisines[k - 1] ?? voisines[k + 1] ?? null)
+    if (!retour) return null
+    const vue = this.pageVue
+    this.pageVue = retour
+    try {
+      this.doc.transact(() => {
+        this.ordre.delete(i, 1)
+        this.corbeille.set(id, { t: Date.now(), apres: i > 0 ? ordre[i - 1] : null, index: i, definitif: true })
+        // À la place même de la copie (qu'elle avait prise)
+        if (remise) this.ordre.insert(Math.max(0, Math.min(i, this.ordre.length)), [remise.id])
+      })
+    } finally { this.pageVue = vue }
+    this.oublierMarques(id)
+    this.onPiles?.()
+    return retour
+  }
+
   // ---------- La copie d'une page, avec son histoire ----------
   /** La page dont celle-ci est la copie (null : une page ordinaire, ou d'un
    *  tableau d'avant). La revue et l'exporteur lisent, avant la naissance de
@@ -876,16 +1149,18 @@ export class Tableau {
    *  tant qu'elle est vierge, la retire (« Dupliquer la page » à l’écran ;
    *  la trieuse duplique sans marque, son journal l'annule). Rend la copie,
    *  ou null si la page n'a pas de Y.Map avec ses formes. */
-  dupliquerPage(p: string, o: { position?: number; marque?: boolean } = {}): string | null {
+  dupliquerPage(p: string, o: { position?: number; marque?: boolean; seance?: string; memeNom?: boolean } = {}): string | null {
     const source = this.pages.get(p)
     const formes = this.formesDe(p)
     if (!(source instanceof Y.Map) || !formes) return null
+    this.ecrireLesSeances()
     const id = uid()
     const ordre = this.ordre.toArray()
     const k = ordre.indexOf(p)
     const position = Math.max(0, Math.min(o.position ?? (k >= 0 ? k + 1 : ordre.length), ordre.length))
     const nom = this.nomDe(p)
     const origine = source.get('origine')
+    const seance = o.seance ?? this.derniereSeance()?.id ?? null
     const vue = this.pageVue
     this.pageVue = id
     this.noteDeLEtape = 'naissance'
@@ -900,7 +1175,8 @@ export class Tableau {
         m.set('formes', f)
         this.pages.set(id, m)
         this.ordre.insert(position, [id])
-        if (nom) this.noms.set(id, nomDeCopie(nom))
+        if (nom) this.noms.set(id, o.memeNom ? nom : nomDeCopie(nom))
+        if (seance) this.seanceDesPages.set(id, seance)
       })
     } finally { this.noteDeLEtape = null; if (vue) this.pageVue = vue }
     if (o.marque) {
@@ -946,7 +1222,7 @@ export class Tableau {
    *  fond, des objets envoyés). Rien ne change. */
   retraitDeCopie(id: string): 'oui' | 'ecrit' | 'non' {
     const ordre = new Set(this.ordre.toArray())
-    const m = this.marques.get(id)?.find(x => x.genre === 'copie' && x.id === id)
+    const m = this.marques.get(id)?.find(x => (x.genre === 'copie' || x.genre === 'reprise') && x.id === id)
     if (!m || !this.marqueValable(m, ordre) || ordre.size <= 1) return 'non'
     if ((this.piles.get(id)?.undoStack.length ?? 0) > m.profondeur) return 'ecrit'
     return this.vierge(id) ? 'oui' : 'non'
@@ -980,6 +1256,7 @@ export class Tableau {
    *  découpage en séances. */
   changerFond(page: string, fond: Fond, origine?: { x: number; y: number }, o: { rangement?: boolean } = {}) {
     const p = this.pages.get(page); if (!p) return
+    if (!this.permis(page, q => this.changerFond(q, fond, origine, o))) return
     const vue = this.pageVue
     this.pageVue = page
     if (o.rangement) this.noteDeLEtape = 'rangement'
@@ -1067,6 +1344,7 @@ export class Tableau {
   // Chacune demande d'abord la pile de sa page (voir annulationDe).
   poser(page: string, forme: Forme) {
     const formes = this.formesDe(page); if (!formes) return
+    if (!this.permis(page, q => this.poser(q, forme))) return
     this.annulationDe(page)
     this.doc.transact(() => formes.set(forme.id, forme), ORIGINE_LOCALE)
   }
@@ -1076,6 +1354,7 @@ export class Tableau {
    *  collage) et une étape du film (le replay les montre paraître ensemble). */
   poserPlusieurs(page: string, liste: Forme[]) {
     const formes = this.formesDe(page); if (!formes || !liste.length) return
+    if (!this.permis(page, q => this.poserPlusieurs(q, liste))) return
     this.annulationDe(page)
     this.doc.transact(() => { for (const f of liste) formes.set(f.id, f) }, ORIGINE_LOCALE)
   }
@@ -1088,6 +1367,7 @@ export class Tableau {
    *  point d'un simple toucher, qui attend un éventuel double-clic) ; sans
    *  elle, l'étape prend l'heure où il est posé. */
   poserTrace(page: string, trait: Trait, ms: number[], heure?: number) {
+    if (this.formesDe(page) && !this.permis(page, q => this.poserTrace(q, trait, ms, heure))) return
     this.tempsDuTrace = ms.length && ms.length === trait.pts.length / 3 ? ms : null
     this.heureDuTrace = heure ?? null
     try { this.poser(page, trait) } finally { this.tempsDuTrace = null; this.heureDuTrace = null }
@@ -1103,6 +1383,7 @@ export class Tableau {
    *  voir Etape), posée sur l'étape de cette transaction seulement. */
   modifier(page: string, changements: { id: string; patch: Partial<Forme> }[], o: { note?: 'reglage' } = {}) {
     const formes = this.formesDe(page); if (!formes) return
+    if (!this.permis(page, q => this.modifier(q, changements, o))) return
     this.annulationDe(page)
     this.avecNote(o.note, () => this.doc.transact(() => {
       for (const { id, patch } of changements) {
@@ -1131,6 +1412,7 @@ export class Tableau {
     const carte = this.formesDe(page); if (!carte) return
     const presentes = formes.filter(f => carte.has(f.id))
     if (!presentes.length) return
+    if (!this.permis(page, q => this.remplacer(q, formes, o))) return
     this.annulationDe(page)
     this.avecNote(o.note, () => this.doc.transact(() => {
       for (const f of presentes) {
@@ -1155,6 +1437,7 @@ export class Tableau {
     const carte = this.formesDe(page); if (!carte) return
     const presents = l.filter(x => carte.has(x.id))
     if (!presents.length) return
+    if (!this.permis(page, q => this.couperTraits(q, l))) return
     this.annulationDe(page)
     this.avecNote('coupe', () => this.doc.transact(() => {
       for (const { id, morceaux } of presents) {
@@ -1181,8 +1464,17 @@ export class Tableau {
 
   supprimer(page: string, ids: Iterable<string>) {
     const formes = this.formesDe(page); if (!formes) return
+    const liste = [...ids]
+    if (!this.permis(page, q => this.supprimer(q, liste))) return
+    ids = liste
     this.annulationDe(page)
     this.doc.transact(() => { for (const id of ids) formes.delete(id) }, ORIGINE_LOCALE)
+  }
+
+  /** La garde des séances passées permet-elle d'écrire sur cette page ?
+   *  (voir garde) */
+  private permis(page: string, refaire: (page: string) => void): boolean {
+    return !this.garde || this.garde(page, refaire)
   }
 
   // ---------- Envoyer des objets vers une autre page ----------
@@ -1225,6 +1517,10 @@ export class Tableau {
    *  sa place ; si rien n'est envoyé, elle repart, vide. Faux : rien n'est
    *  envoyé. */
   envoyer(de: string, vers: string, posees: Forme[], ids: string[], o: { deplacer: boolean; nouvelle?: { id: string; place: number } }): boolean {
+    // Une séance passée (lot 6) : on n'en retire rien (déplacer), on n'y
+    // pose rien ; copier depuis elle vers la séance du jour, si
+    if (o.deplacer && this.formesDe(de) && !this.permis(de, q => this.envoyer(q, vers, posees, ids, o))) { this.retirerNouvelle(o.nouvelle); return false }
+    if (this.formesDe(vers) && !this.permis(vers, () => {})) { this.retirerNouvelle(o.nouvelle); return false }
     const depart = this.formesDe(de), arrivee = this.formesDe(vers)
     const presents = depart ? [...new Set(ids)].filter(id => depart.has(id)) : []
     const possible = !!depart && !!arrivee && de !== vers && posees.length > 0 && posees.every(f => !arrivee.has(f.id))
@@ -1457,6 +1753,9 @@ export class Tableau {
   private marqueValable(m: Marque, ordre: ReadonlySet<string>): boolean {
     if (m.genre === 'jetee') return !ordre.has(m.id) && this.pages.get(m.id) instanceof Y.Map && !this.entree(m.id)?.definitif
     const de = this.herite(m.id)
+    // Une page reprise d'une séance passée : tant qu'elle est dans l'ordre
+    // (son original est dans sa séance, en lecture : il ne la quitte pas)
+    if (m.genre === 'reprise') return ordre.has(m.id) && de !== null
     return ordre.has(m.id) && de !== null && ordre.has(de)
   }
 
@@ -1566,6 +1865,7 @@ export class Tableau {
     const u = this.piles.get(page)
     for (let m = this.derniereMarque(page); m && (u?.undoStack.length ?? 0) <= m.profondeur; m = this.derniereMarque(page)) {
       if (m.genre === 'jetee') { if (this.rendrePage(m.id) >= 0) return { page: m.id } }
+      else if (m.genre === 'reprise') { const retour = this.retirerReprise(m.id); if (retour) return { reprise: m.id, retour } }
       else { const retour = this.retirerCopie(m.id); if (retour) return { copie: m.id, retour } }
       this.oublierMarque(page, m)
     }

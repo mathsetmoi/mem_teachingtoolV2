@@ -934,8 +934,9 @@ du tableau rangées par jour (douze à la fois, puis « Plus anciennes »), et
 les pages jetées depuis, dont l'histoire reste lisible. Chaque ligne dit
 combien de gestes elle montrera, comme le bandeau et le compteur ; une séance
 qui n'a fait que créer ou jeter une page n'y figure pas. On y règle aussi
-l'arrêt en fin de partie et le découpage des séances (une pause de 20, 10, 5
-ou 2 minutes en sépare deux, comme dans la fenêtre Publier).
+l'arrêt en fin de partie, et, pour un tableau sans séances seulement, le
+découpage des séances (une pause de 20, 10, 5 ou 2 minutes en sépare deux) :
+depuis le lot 6, les séances sont celles du classeur (voir « Les séances »).
 
 **Parties et pas.** Ce qu'on revoit est découpé en parties titrées avec
 l'heure réelle : une par page où l'on s'est attardé pendant une séance, une
@@ -1058,8 +1059,10 @@ Le bouton **Publier le replay** (la flèche qui sort d'une boîte, à côté de 
 donne aux élèves un lien à coller dans le cahier de textes Pronote. Ils
 l'ouvrent sur leur téléphone, sans compte, et appuient sur ▶.
 
-**Côté professeur.** La fenêtre propose la séance, repérée toute seule dans le
-film (un silence de plus de 20 minutes, ou un autre jour, en commence une
+**Côté professeur.** Depuis le lot 6, la fenêtre propose les séances du
+classeur (voir « Les séances »), celle du jour d'abord, avec exactement ses
+pages. Avant, et encore pour un tableau sans séances, elle proposait la
+séance repérée toute seule dans le film (un silence de plus de 20 minutes, ou un autre jour, en commence une
 autre ; deux cours séparés par un intercours de 5 minutes se séparent en
 réglant le découpage à 5 ou 2 minutes ; ranger ses pages, les jeter, les
 remettre, les dupliquer, en créer une vide, changer leur fond dans la
@@ -1319,7 +1322,9 @@ frise annonce le temps aux lecteurs d'écran.
 
 ## Les pages
 
-**La trieuse des pages** montre toutes les pages en vignettes, en plein
+**La trieuse des pages** montre les pages de la séance du jour en vignettes
+(depuis le lot 6 ; les séances passées sont dessous, repliées : voir « Les
+séances »), en plein
 écran : le rendu réel de chaque page en petit (son fond, tout son contenu
 cadré), son numéro en gros dans un coin, son nom dessous s'il en a un, « Page
 vide » sur une page sans rien ; la page qu'on regarde est encadrée de bleu.
@@ -1502,6 +1507,170 @@ d'abord, sans jamais bloquer l'écriture (60 pages de 300 traits : les
 vignettes visibles prêtes en un tiers de seconde, toutes en moins d'une
 seconde, aucune tâche de plus de 50 ms, mesuré), et se repeignent quand leur
 page change ; fermée, la trieuse ne coûte rien.
+
+## Les séances (lot 6)
+
+Le rangement : **un dossier de la bibliothèque = une classe** (les dossiers
+marqués « Dossier d'une classe », lot 4), **un classeur = un chapitre**, et
+dans un classeur, **des séances**, chacune avec SES pages, numérotées à partir
+de 1. Une séance commence quand on la crée : on n'a plus à la deviner dans le
+film.
+
+**Le compteur** « 1 / 2 » a sa séance juste dessous : une étiquette
+« Séance du mar 14 oct 14h » (ou son nom, si on lui en a donné un), accrochée
+sous la barre du haut au bord gauche du compteur, hors du flux de la barre
+(ses boutons, et le bouton du classeur, ne bougent pas d'un pixel ; un clic
+sur l'étiquette ouvre aussi la trieuse). Sur un téléphone, elle n'y est pas :
+la séance se lit dans la trieuse et le menu « Plus ».
+On ne feuillette (‹ ›, Page↑ Page↓, « Nouvelle page », la ligne des pages de
+la trieuse, « Envoyer vers… ») que les pages de la séance du jour.
+
+**Au lancement**, et à l'ouverture d'un classeur par la bibliothèque (la même
+règle : c'est le même démarrage, avec la même fenêtre entière ; mais pas
+quand on arrive sur un classeur qu'on vient d'ouvrir d'un fichier, d'ajouter
+ou de créer : on l'a choisi, on le regarde, et sa dernière séance continue ;
+« Séance … reprise » ne se dit pas non plus quand un autre message d'arrivée
+se dit) :
+- la dernière séance du classeur a servi il y a moins d'une heure : on y
+  reste, sur la même page, et un message le dit (« Séance de 14 h reprise ») ;
+- plus d'une heure : la fenêtre **« Bonjour ! »**, par-dessus la dernière
+  page, grisée derrière. Le gros bouton, choisi d'office (Entrée suffit) :
+  « Nouvelle séance avec la 5A » (le plus proche dossier de classe du
+  classeur ; sans dossier de classe, « Nouvelle séance »). Dessous : « Fractions
+  — changer de chapitre » (les classeurs du dossier de la classe, avec leur
+  nombre de séances, le chapitre ouvert en tête, et « + Nouveau chapitre… » :
+  le nom seulement, rangé dans le dossier, page blanche, et la case de la clé
+  comme pour un nouveau classeur ; la copie sur le Drive suit comme pour tout
+  classeur). « Continuer la séance de lundi 8 h ». « Une autre classe : 5B ·
+  4C · 3A » (les autres dossiers de classe) : un clic ouvre le chapitre en
+  cours de cette classe, le dernier classeur ouvert dans son dossier (ses
+  sous-dossiers compris), et y commence une séance ; une classe sans classeur
+  ouvre « Nouveau chapitre » dans son dossier. Échap ferme la fenêtre et
+  laisse la dernière page telle quelle (la séance continue) ;
+- un classeur où rien n'est encore écrit (un classeur neuf, un nouveau
+  chapitre) commence sa séance sans question.
+Le menu ⋯ a, après ce qui touche au classeur, **Nouvelle séance**, **Renommer
+la séance…** (un nom facultatif, 60 caractères ; vide, elle reprend sa date),
+**Séance précédente…** (au téléphone et sur un écran qu'on touche ; ailleurs,
+son bouton est à côté de l'étiquette de la séance), et **Retour à
+aujourd'hui** quand on regarde une séance passée (des entrées courtes, sans
+aide : le menu tient encore sans défiler au poste de la classe). Une nouvelle séance s'ouvre sur une page 1 blanche, à 100 %.
+Une séance du jour où rien n'est écrit (ni trait ni nom sur ses pages) ne se
+double pas : « Nouvelle séance » la fait recommencer maintenant.
+
+**Reprendre.** En début de séance, un bandeau (fermable ×) rappelle où la
+précédente s'est arrêtée : « Lundi 8 h s'est arrêté page 3 · « Exercice 3 ».
+[Reprendre la page] [Voir la séance] » (la page où l'on a écrit en dernier).
+Il s'en va dès qu'on écrit sur une page de la séance, ou qu'on change de
+séance. Le bouton **Séance précédente**, à côté de l'étiquette de la séance
+sous le compteur (là seulement quand il y en a une ; au téléphone, dans le
+menu « Plus »), ouvre en bas les vignettes de la séance précédente,
+avec « Reprendre la page », « Voir la page » et « ‹ Séance d'avant ».
+REPRENDRE fait une copie de la page (fond, nom, contenu) dans la séance du
+jour, qui hérite son passé (voir `heritage.ts`) : si la page 1 du jour est
+encore vide, la copie la remplace, sinon elle vient juste après la page du
+jour où l'on était. Un message dit « Page reprise de lundi · Annuler ».
+Dans le replay de la séance du jour, la page reprise démarre telle qu'elle
+était à la fin de la séance d'origine (son passé n'est pas rejoué une
+seconde fois), puis on voit les ajouts. La page d'origine ne change pas.
+
+**Les séances passées se regardent sans s'écrire.** « Voir la page » (le
+tiroir, la trieuse) montre une page d'une séance passée : le compteur
+« Lun 13 oct 8h · page 3 » sur fond ambre, un bandeau « Séance de lundi :
+vous la regardez sans la modifier » avec « Reprendre la page » et « Retour à
+aujourd'hui ». On y feuillette ses pages (‹ ›), on y sélectionne et on y
+copie ; le menu de la sélection (⋯) et celui de la page (clic droit, bouton
+latéral de la plume de la tablette graphique) proposent **« Copier dans la
+séance d'aujourd'hui »** (collé sur la page du jour où l'on était, à la même
+place). Toute écriture sur une page d'une séance passée (un trait, la gomme,
+déplacer, un fond, coller, Suppr, une construction, à la souris, au doigt ou
+à la plume) ne se fait pas : le tableau la refuse (`Tableau.garde`), et une
+fenêtre demande « Cette page est dans la séance de lundi… [Juste regarder]
+[Reprendre et écrire] ». « Reprendre et écrire » reprend la page dans la
+séance du jour et y refait ce qui avait été refusé (le trait part sur la
+copie, qui a les mêmes identifiants de formes) ; on arrive dessus. Ctrl+Z,
+Ctrl+Y et la poubelle n'y font rien (un message le dit).
+
+**La trieuse** range par séance : en haut « Aujourd'hui · mar 14 oct 14h » et
+la grille des pages du jour (toutes ses actions, comme avant) ; dessous, les
+séances passées, repliées (« ▸ Lun 13 oct 8h · 3 pages »), de la plus récente
+à la plus ancienne ; dépliée, une séance montre ses vignettes, et un clic
+sur l'une ferme la trieuse et ouvre la page en lecture. Une page reprise est
+bordée de bleu et marquée « Reprise de lundi ».
+
+**Publier** propose les séances explicites, celle du jour d'abord (choisie
+d'office), avec SA plage de temps et exactement SES pages cochées (« Page 1 ·
+Exercice 3 (reprise de lundi) ») ; plus de réglage du découpage. « Copier pour
+Pronote » ne change pas, ni le format du film élève (`.mem`). Republier une
+séance d'avant le lot 6 la retrouve au même lien (sa clé est son début, qui
+ne change pas à la migration). **La revue en classe** (« Que revoir ? ») montre
+les séances explicites, leur nom s'il y en a un, les pages numérotées dans
+leur séance ; le réglage « Nouvelle séance après une pause de… » n'y est plus.
+
+**Le PDF.** « Exporter le classeur en PDF… » (le menu ⋯) exporte tout le
+classeur, séance après séance (les numéros sont ceux de l'ordre du classeur).
+Le menu de la page (Ctrl + P) et la trieuse exportent la séance qu'on regarde
+(la trieuse : celle du jour, ou les pages choisies), numérotée dans la
+séance : la fenêtre dit « Toute la séance : 3 pages » (« Tout le classeur »
+quand le classeur n'a qu'une séance).
+
+### Les décisions
+
+- **Le modèle.** Deux cartes de premier niveau du document Yjs du classeur :
+  `seances` (id → { debut, nom?, depuis?, ancienne? }) et `seanceDesPages`
+  (page → id de sa séance). Hors des pages, comme les noms et la corbeille :
+  ni étape du film, ni pile d'annulation ; un `.memc` (et un `.memb`, la clé,
+  le Drive) les garde sans autre code. L'ordre des pages reste UN seul (la
+  carte `ordre` d'avant) : les pages d'une séance sont celles de l'ordre qui
+  sont à elle, dans cet ordre. Une séance neuve met sa page 1 au bout de
+  l'ordre ; une page ajoutée se place à côté de celle qu'on regarde. Une
+  version d'avant le lot 6 qui ouvre le fichier voit donc toutes les pages,
+  séance après séance ; une page qu'elle ajoute n'a pas de séance : elle est
+  de la séance de la page qui la précède dans l'ordre (à défaut de la
+  suivante, à défaut de la dernière séance), sans que rien ne s'écrive. Le
+  calcul est pur (`src/seances.ts`, essais dans `tests/seances.test.ts`).
+- **La migration.** Un classeur qui n'a aucune séance écrite (d'avant le lot
+  6, ou neuf) a des **séances en attente** (`Tableau.seancesActives`) :
+  calculées, montrées, jamais écrites tant qu'on n'y change rien (l'ouvrir ne
+  change pas un octet de sa base, de sa clé ni de son fichier : un fichier
+  plus récent se met encore à jour sans conflit) ; elles s'écrivent, telles
+  qu'on les voyait, juste avant le premier changement (une écriture sur une
+  page, une page ajoutée, une séance neuve, un nom de séance :
+  `ecrireLesSeances`). Les
+  séances que repérait le découpage d'avant (20 min de silence, ou un autre
+  jour) deviennent des séances nommées par leur date ; **chaque page va dans
+  la séance où elle est née** (la première étape du film notée sur elle ; née
+  avant toutes : la première). Une séance repérée où aucune page n'est née
+  (on a continué les pages de la veille) ne devient pas une séance : sa
+  plage du film va à la séance d'avant, et Publier propose, pour une séance
+  migrée, aussi les pages où l'on a écrit pendant elle (une page née lundi et
+  continuée mardi reste publiée avec mardi). Rien ne se perd, ni ne bouge :
+  l'ordre des pages ne change pas. Un classeur sans aucun geste a une seule
+  séance. Les identifiants sont tirés des heures (deux onglets écrivent la
+  même chose).
+- **L'annulation.** Créer une séance est hors annulation (comme nommer une
+  page) : on change de séance par la fenêtre d'accueil ou le menu, jamais
+  par Ctrl+Z. La reprise d'une page, elle, s'annule : « Annuler » de son
+  message, ou Ctrl+Z sur la copie tant qu'on n'y a rien écrit (une marque,
+  comme « Dupliquer la page ») retire la copie (sans la mettre dans la
+  corbeille) et remet la page 1 vide qu'elle avait remplacée, dans la même
+  transaction. Après un rechargement, Ctrl+Z ne la retire plus (les piles
+  sont en mémoire) : la poubelle, si.
+- **Pas de déplacement entre séances.** La trieuse ne montre et ne range
+  que les pages du jour (déplacer, insérer, dupliquer, supprimer, la
+  corbeille, « Envoyer vers… » : vers les pages du jour seulement). Une page
+  d'une séance passée ne passe dans la séance du jour que reprise (une
+  copie) : la séance passée reste telle que la classe l'a vue. Une page
+  remise de la corbeille revient dans sa séance.
+- **Le PDF** : le classeur entier par le menu ⋯, la séance par la page et la
+  trieuse (voir plus haut).
+- **L'ouverture par la bibliothèque** applique la même règle d'une heure,
+  avec la fenêtre entière (la liste des classes comprise) : c'est le même
+  démarrage. Arrivé par « Une autre classe » ou un autre chapitre, la séance
+  commence sans question (une clé de l'onglet, `mem-teachingtool-nouvelle-seance`,
+  valable une minute ; aucune clé existante ne change).
+- **Une heure** : la dernière activité d'une séance est sa dernière étape du
+  film notée sur l'une de ses pages (au plus tôt son début).
 
 ## Les classeurs : où ils vivent
 
@@ -4201,6 +4370,8 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/constructeur.ts` | Joue les étapes, avec ou sans instruments |
 | `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
 | `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
+| `src/seances.ts` | Les séances d'un classeur (lot 6) : le rangement des pages par séance (pur), la migration d'un classeur d'avant, les mots des dates (« Séance du mar 14 oct 14h », « de lundi ») ; dans `document.ts`, les deux cartes (`seances`, `seanceDesPages`), la séance neuve, la reprise d'une page (`reprendrePage`, `retirerReprise`) et la garde des séances passées (`garde`) ; dans `revoir/exporter.ts`, les séances lues dans le film (`seancesExplicitesDuFilm`, `pagesAPublier`) |
+| `src/seances-vue.ts` | Les séances à l'écran (lot 6) : la fenêtre « Bonjour ! », la question « Cette page est dans la séance de lundi… », « Renommer la séance… », les bandeaux (la lecture, « Reprendre ») et le tiroir de la séance précédente |
 | `src/figures.ts` | Les figures SVG des automatismes |
 | `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le bouton du fond (lot 5 : la vignette du fond de la page, qui ouvre le menu des fonds, voir `src/menu-fonds.ts`), le menu complet (un objet, une formule, plusieurs objets, un groupe : « Groupe · 3 objets », *Grouper* ou *Dégrouper* ; sa rangée sur une ligne, son bouton ⋯ et son petit menu en sections : *Copier en image* et *Envoyer vers…*, puis *Ordre* (les aides d'`aidesOrdre`), puis *Protéger*, puis *Groupe* (*Sortir du groupe*, pour un membre pris seul : `sectionGroupe`), puis *Position* (*Tourner d'un quart de tour à gauche* et *… à droite*, pour ce qui a la pastille ↻, retouches après le lot 5 ; *Remettre droit*, pour une image ou une formule seule tournée) ; placé dans l'écran, sur un téléphone aussi), le menu court d'un objet verrouillé (lot 5 : Déverrouiller, Copier, ⋯), le menu de la Gomme (lot 5 : retoucher la Gomme en main, le clic droit, l'appui long, E ; ce qu'elle efface et sa taille ; le titre et la marque ◐ de son bouton), le menu de la page (et ce qu'il fait de l'image fixée en fond : la détacher, la copier, l'envoyer ; Déverrouiller tout), « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯ de la barre du haut, la trieuse), les messages (un ou deux boutons ; au-dessus des panneaux pendant un placement), éditeur de formules ; le bouton du classeur (sa place mesurée, à quatre formes), le bloc de l'état en tête du menu ⋯, le bandeau discret ; « Cet appareil » à la fin du menu ⋯ (lot 5 : « Contraste renforcé », body.contraste ; « Noms sous les outils », body.noms-outils, le nom court de chaque bouton dans son `span.libelle` (`nommer`, le mot dans data-libelle), `majNomsOutils` qui suit la mise en page du téléphone, `--droite-barre-outils` mesuré, les menus du doigt et de la Gomme qui passent sous la barre du haut sur deux rangées) ; la mise en page du téléphone (lot 5, K10 : `body.telephone`, `telephone`, `barreEnBas` ; ce qui ne s'y montre pas, `.seulement-large` ; « Couleur » et « Autres outils », au bout de la barre des outils, leurs menus `construireMenuCouleur` et `construireMenuAutres` (« Couleur » sert aussi, depuis le contrôle final du lot 5, à la barre d'un écran qu'on touche : body.tactile, ses pastilles et ses tailles en 44 × 44, repliées dans « Couleur » quand elle ne tient pas dans la hauteur, `majCouleursRepliees`), `placerPresDeLaBarre` qui les pose entre les deux barres ; les choix des Formes et du Segment au-dessus de la barre du bas, `placerChoixDuTelephone` ; ⋯ devenu « Plus », ses sections Page, Outils de cours et Vue, `sectionsDuTelephone`, et « Fond… », `ouvrirFondsDepuisPlus` ; le bouton du classeur en tête de la barre du haut ; `--haut-barre-bas` et `basUtile`, ce que prend la barre du bas ; `bordsFlottants`, les bords que la barre d'actions et le menu complet ne passent pas ; `placerToast`, le message qui ne couvre ni les barres ni ce qui est pris (depuis les retouches après le lot 5, au poste de la classe aussi : ni la barre d'actions ni la pastille ↻) ; la liste des instruments sous la barre du haut) |
 | `src/pages/envoi.ts` | La fenêtre « Envoyer vers… » : déplacer ou copier, la liste des destinations (chaque page avec sa petite vignette, une nouvelle page juste après, à la fin), le clavier ; les textes des messages d'un envoi (pur, testé). L'envoi lui-même est `App.envoyerSelection`, son annulation `Tableau.envoyer` |
@@ -4258,6 +4429,15 @@ perfect-freehand, KaTeX, Vite) : aucune clé de licence, aucun filigrane, et rie
 n'empêche un usage payant.
 
 ## Limites connues de la v0.1
+
+**Les séances (lot 6).** Une page d'une séance passée ne se supprime ni ne
+se range : elle reste telle que la classe l'a vue (on la reprend dans la
+séance du jour). On ne supprime pas une séance entière. Après un
+rechargement, Ctrl+Z ne retire plus une page reprise (les piles d'annulation
+sont en mémoire) : la poubelle, si. Sur un téléphone, l'étiquette de la
+séance n'est pas sous le compteur (la séance se lit dans la trieuse et le
+menu « Plus »). Le découpage d'avant (20, 10, 5 ou 2 minutes) ne sert plus
+qu'au document sans séances (hors de l'application).
 
 - Tout est redessiné à chaque déplacement de la vue. Au-delà de quelques
   milliers de traits sur une page, il faudra un index spatial (quadtree).
@@ -4508,10 +4688,9 @@ n'empêche un usage payant.
    d'affilée forment un mot ; un toucher prend le mot entier, un second
    n'en garde qu'un trait), remis à plus tard par le professeur au lot 5
    (choix c : seulement « Grouper » à la main pour l'instant).
-8. Les autres sujets « plus tard » de l'étude du lot 5 : la vue « Séances »
-   par classe (et la classe demandée au début de chaque séance par un
-   bandeau qui ne bloque rien, ou déduite du classeur ouvert : à choisir) ;
-   des classeurs « Préparation » copiés pour chaque classe ; des modèles de
+8. Les autres sujets « plus tard » de l'étude du lot 5 (les séances
+   explicites et la classe demandée au début de chaque séance sont faites
+   au lot 6) : des classeurs « Préparation » copiés pour chaque classe ; des modèles de
    page ; la recherche ; le pointeur laser (l'import de PDF est au point 4).
 9. Au poste de la classe, sur un écran bas : replier les couleurs et les
    tailles dans « Couleur » quand la barre des outils ne tient pas (comme

@@ -28,7 +28,7 @@ import type { EtatInstruments, GesteAuxInstruments } from '../revoir/instruments
 import { dansLOrdre, dejaTracee } from '../revoir/instruments-film'
 import { boiteDe } from '../revoir/bobine'
 import type { Boite } from '../revoir/bobine'
-import { DECOUPAGES, seancesDuFilm } from '../revoir/exporter'
+import { DECOUPAGES, seancesDuFilm, seancesDuTableau } from '../revoir/exporter'
 import type { Seance } from '../revoir/exporter'
 import { dureeDuTrace, esquisse, seDessine } from '../revoir/esquisse'
 import type { Main } from '../revoir/main-levee'
@@ -278,9 +278,10 @@ export class RevueEnClasse {
     this.ouverteA = performance.now()
     this.retour = retour ?? null
     this.auRetour = auRetour ?? null
-    this.lecture = lectureDe(app.tableau, () => app.pages, film)
+    // Toutes les pages du classeur (lot 6 : pas seulement la séance qu'on regarde)
+    this.lecture = lectureDe(app.tableau, () => app.tableau.ordre.toArray(), film)
     this.film = this.lecture.film
-    this.seances = seancesDuFilm(this.film, this.ecart)
+    this.seances = this.reperer()
     this.planches = new Planches(this.lecture)
     this.totaux.clear()
 
@@ -418,10 +419,31 @@ export class RevueEnClasse {
       }
       const j = jour(s.debut)
       const quand = j === 'aujourd\'hui' ? 'Séance d\'aujourd\'hui' : j === 'hier' ? 'Séance d\'hier' : `Séance du ${j}`
-      return `${quand}, ${heureLisible(s.debut)} → ${heureLisible(s.fin)} · ${listeDesPages(s.pages, this.app.pages)} · ${gestes}`
+      const x = s as Seance & { nom?: string | null; pagesDeSeance?: string[] }
+      const vivantes = new Set(this.app.tableau.ordre.toArray())
+      const numerotees = x.pagesDeSeance ? x.pagesDeSeance.filter(q => vivantes.has(q)) : this.app.tableau.ordre.toArray()
+      return `${x.nom ? x.nom + ' · ' : ''}${quand}, ${heureLisible(s.debut)} → ${heureLisible(s.fin)} · ${listeDesPages(s.pages, numerotees)} · ${gestes}`
     }
     const nb = seancesDeLaPage(this.lecture!, this.seances, p.page).length
     return `${this.nommer(p.page)}, toute son histoire · ${pluriel(nb, 'séance')} depuis le ${jourDuMois(b.parties[0].heure)} · ${gestes}`
+  }
+
+  /** Les séances de la revue : celles du classeur (lot 6, explicites), qui
+   *  ont au moins un geste ; sinon (un tableau d'avant, sans séances) celles
+   *  que le découpage repère dans le film */
+  private reperer(): Seance[] {
+    const l = seancesDuTableau(this.app.tableau, this.film)
+    return l ? l.filter(s => s.gestes > 0) : seancesDuFilm(this.film, this.ecart)
+  }
+
+  /** Les séances sont-elles explicites (lot 6) ? */
+  private get explicites() { return this.app.tableau.seancesDuClasseur().length > 0 }
+
+  /** Les pages parmi lesquelles une page a son numéro : celles de sa séance
+   *  (lot 6) ; tout l'ordre sans séances */
+  private pagesDe(page: string): string[] {
+    const s = this.app.tableau.seanceDe(page)
+    return s ? s.pages : this.app.tableau.ordre.toArray()
   }
 
   /** Le nom d'une page, tel que la classe le lit : « Page 3 », et le nom
@@ -429,7 +451,8 @@ export class RevueEnClasse {
    *  p. 84 »). sur : ce qui suit le numéro (« / 7 », comme le compteur du
    *  tableau : « Page 3 / 7 · Exercice 12 p. 84 ») */
   private nommer(page: string, sur = ''): string {
-    const pages = this.app.pages
+    // Son numéro dans sa séance (lot 6)
+    const pages = this.pagesDe(page)
     const i = pages.indexOf(page)
     const numero = i < 0 ? 'Page jetée' : pages.length === 1 ? 'La page' : `Page ${i + 1}${sur}`
     const nom = this.app.tableau.nomDe(page)
@@ -850,14 +873,14 @@ export class RevueEnClasse {
       seances: this.seances,
       pageVue: b.images[this.k].p,
       nommer: p => this.nommer(p),
-      pagesActuelles: this.app.pages,
+      pagesActuelles: this.app.tableau.ordre.toArray(),
       naissance: i => this.lecture?.naissance(i) ?? false,
       copies: this.lecture.copies,
       deLaPage: (i, p) => this.lecture?.deLaPage(i, p) ?? false,
       gestes: p => this.totalDe(p),
       portion: b.portion,
       arretAuxParties: this.arretAuxParties,
-      ecart: this.ecart,
+      ecart: this.explicites ? null : this.ecart,
       surPortion: p => { this.choisirPortion(p); this.boutonLire.focus() },
       surArret: oui => {
         this.arretAuxParties = oui
@@ -866,7 +889,7 @@ export class RevueEnClasse {
       surEcart: ms => {
         // Le découpage change la liste des séances, pas ce qu'on regarde
         this.ecart = ms
-        this.seances = seancesDuFilm(this.film, ms)
+        this.seances = this.reperer()
         this.ouvrirTiroir()
       },
     })
@@ -1067,7 +1090,7 @@ export class RevueEnClasse {
     if (!b) return
     const n = b.images.length, k = this.k, img = b.images[k]
     const q = partieDe(b, k), nbParties = b.parties.length
-    const pages = this.app.pages
+    const pages = this.pagesDe(img.p)
     const h = this.heureDe(k)
     const sur = pages.length > 1 && pages.includes(img.p) ? ` / ${pages.length}` : ''
     this.ligne1.textContent = `${this.nommer(img.p, sur)} · ${jourCourt(h)} · ${heureLisible(h)}`

@@ -81,6 +81,12 @@ export interface HoteExport {
   /** Le nom du classeur (le nom du PDF, son titre, le pied de page) ;
    *  facultatif : sans lui, les noms d'avant le lot 4 */
   classeur?(): string
+  /** Ce que dit la fenêtre de « tout » (lot 6 : « Toute la séance : 3 pages ») ;
+   *  sans lui, « Tout le classeur : 3 pages » */
+  toutLibelle?(n: number): string
+  /** Toutes les pages du classeur, séance après séance (lot 6 : « Exporter
+   *  le classeur en PDF… ») ; sans lui, pages() */
+  toutesLesPages?(): readonly string[]
   message(texte: string, action?: ActionMessage | ActionMessage[]): void
 }
 
@@ -424,7 +430,9 @@ async function comprimer(octets: Uint8Array, pause: () => Promise<void>): Promis
 
 /** Ce qu'on demande à exporter : la page qu'on regarde (avec le choix de
  *  tout le classeur), tout le classeur, ou les pages choisies dans la trieuse */
-export type CibleExport = { page: string } | { pages: string[] } | 'tout'
+/** 'tout' : toutes les pages que donne hote.pages() (lot 6 : la séance) ;
+ *  'classeur' : tout le classeur (hote.toutesLesPages, toutes les séances) */
+export type CibleExport = { page: string } | { pages: string[] } | 'tout' | 'classeur'
 
 /** Ce que la fenêtre demande à l'interface */
 export interface HoteFenetrePdf extends HoteExport {
@@ -453,8 +461,10 @@ function laPage(numero: number, nom: string | null): string {
  */
 export function ouvrirFenetrePdf(hote: HoteFenetrePdf, cible: CibleExport): HTMLDialogElement | null {
   if (enCours) { direDejaEnCours(hote); return null }
-  const ordre = hote.pages()
-  const tout = `Tout le classeur : ${pagesLisibles(ordre.length)}`
+  const classeurEntier = cible === 'classeur'
+  const c: Exclude<CibleExport, 'classeur'> = cible === 'classeur' ? 'tout' : cible
+  const ordre = classeurEntier ? hote.toutesLesPages?.() ?? hote.pages() : hote.pages()
+  const tout = classeurEntier ? `Tout le classeur : ${pagesLisibles(ordre.length)}` : hote.toutLibelle?.(ordre.length) ?? `Tout le classeur : ${pagesLisibles(ordre.length)}`
   const classeur = hote.classeur?.() ?? null
   const d = document.createElement('dialog')
   d.className = 'dialogue dialogue-pdf'
@@ -477,11 +487,11 @@ export function ouvrirFenetrePdf(hote: HoteFenetrePdf, cible: CibleExport): HTML
     const p = document.createElement('p'); p.className = 'pdf-seul'; p.textContent = texte
     quoi.appendChild(p)
   }
-  if (cible === 'tout') {
+  if (c === 'tout') {
     ligne(tout)
     choisir = toutes
-  } else if ('page' in cible) {
-    const id = cible.page, n = ordre.indexOf(id) + 1
+  } else if ('page' in c) {
+    const id = c.page, n = ordre.indexOf(id) + 1
     if (ordre.length > 1) {
       quoi.setAttribute('role', 'radiogroup'); quoi.setAttribute('aria-label', 'Ce qu\'on exporte')
       quoi.innerHTML = `<label class="case"><input type="radio" name="pdf-quoi" value="page" checked><span></span></label>
@@ -495,7 +505,7 @@ export function ouvrirFenetrePdf(hote: HoteFenetrePdf, cible: CibleExport): HTML
     }
   } else {
     // Les pages choisies, dans l'ordre du classeur (aucune : rien à ouvrir)
-    const ids = ordre.filter(p => cible.pages.includes(p))
+    const ids = ordre.filter(p => c.pages.includes(p))
     if (!ids.length) return null
     const numeros = ids.map(p => ordre.indexOf(p) + 1)
     if (ids.length === 1) { ligne(laPage(numeros[0], hote.nomDe(ids[0]))); choisir = () => unePage(ids[0]) }

@@ -50,6 +50,7 @@ import { pagesLisibles } from '../fichier'
 import { icone } from '../icones'
 import { FONDS, FOND_NEUF } from '../types'
 import type { Fond } from '../types'
+import { dateCourteMajuscule, deLaSeance, libelleSeance } from '../seances'
 
 /** Ce que la trieuse demande à l'interface */
 export interface HoteTrieuse {
@@ -153,6 +154,14 @@ export class Trieuse {
    *  « Choisir plusieurs ») ; vide à l'ouverture */
   readonly selection = new Set<string>()
   private grille: HTMLElement
+  /** Les séances (lot 6) : le titre de celle du jour, au-dessus de la
+   *  grille ; les séances passées, repliables, sous elle */
+  private titreSeance: HTMLElement
+  private anciennes: HTMLElement
+  /** Ce que montrent les séances passées (refaites seulement s'il change),
+   *  et celles qu'on a dépliées */
+  private cleAnciennes = ''
+  private deplies = new Set<string>()
   private compte: HTMLElement
   private aide: HTMLElement
   private nombreChoisies: HTMLElement
@@ -239,11 +248,15 @@ export class Trieuse {
     fermer.type = 'button'; fermer.className = 'bouton trieuse-fermer'; fermer.innerHTML = icone('fermer')
     fermer.title = 'Fermer les pages (Échap)'; fermer.setAttribute('aria-label', 'Fermer les pages')
     fermer.addEventListener('click', () => this.fermer())
-    tete.append(titre, this.compte, this.actions, fermer)
+    // La séance du jour (lot 6), dans le bandeau : la grille ne bouge pas
+    this.titreSeance = Object.assign(document.createElement('span'), { className: 'trieuse-seance-du-jour', hidden: true })
+    tete.append(titre, this.titreSeance, this.compte, this.actions, fermer)
     this.grille = document.createElement('div'); this.grille.className = 'trieuse-grille'
     this.grille.setAttribute('role', 'listbox'); this.grille.setAttribute('aria-label', 'Les pages, dans l\'ordre')
     this.grille.setAttribute('aria-multiselectable', 'true')
     this.aide = Object.assign(document.createElement('p'), { className: 'trieuse-aide' })
+    this.anciennes = Object.assign(document.createElement('div'), { className: 'trieuse-seances', hidden: true })
+    this.anciennes.setAttribute('aria-label', 'Les séances passées')
     // Le menu d'une vignette : un enfant de la trieuse (les menus de la racine
     // sont inertes tant qu'elle est ouverte), un petit menu comme les autres
     this.menuEl = document.createElement('div')
@@ -264,7 +277,7 @@ export class Trieuse {
       oublierJournal: () => { this.journal.vider(); this.hote.oublierAction(CLE) },
       revenir: (page, rendreFocus) => this.revenirDeLaCorbeille(page, rendreFocus),
     })
-    el.append(tete, this.grille, this.aide, this.corbeille.el, this.menuEl)
+    el.append(tete, this.grille, this.anciennes, this.aide, this.corbeille.el, this.menuEl)
     racine.appendChild(el)
     this.brancherPointeurs()
     // Ni le menu du navigateur (« Enregistrer l'image » d'un canevas), ni
@@ -369,12 +382,13 @@ export class Trieuse {
     this.selection.clear(); this.modeChoix = false
     this.el.hidden = true
     this.grille.replaceChildren()
+    this.anciennes.replaceChildren(); this.cleAnciennes = ''
     this.cartes.clear(); this.ordre = []; this.visibles.clear()
     document.body.classList.remove('en-trieuse')
     for (const c of this.inertes) c.inert = false
     this.inertes = []
     // Le tableau revient, puis la page choisie (son numéro s'annonce)
-    if (o.page && o.page !== this.app.page && this.app.pages.includes(o.page)) this.app.allerPage(o.page)
+    if (o.page && o.page !== this.app.page && this.app.tableau.ordre.toArray().includes(o.page)) this.app.allerPage(o.page)
     this.hote.maj()
     const retour = this.retour
     this.retour = null
@@ -406,7 +420,7 @@ export class Trieuse {
    *  choisies. Une page partie quitte la sélection ; son menu ou son nom
    *  qu'on écrivait s'en vont avec elle. */
   private refaire() {
-    const g = this.grille, pages = this.app.pages
+    const g = this.grille, pages = this.app.pagesDuJour
     const actif = document.activeElement
     const avaitFocus = !!actif && g.contains(actif)
     const defilement = g.scrollTop
@@ -431,6 +445,7 @@ export class Trieuse {
     })
     this.ordre = pages
     this.compte.textContent = pagesLisibles(pages.length)
+    this.majSeances()
     this.majChoix()
     // Une page partie ou revenue change la corbeille (et un nom, ses cartes)
     this.majBoutonCorbeille()
@@ -439,6 +454,64 @@ export class Trieuse {
     g.scrollTop = defilement
     if (avaitFocus && this.focusId && !g.contains(document.activeElement)) this.cartes.get(this.focusId)?.focus({ preventScroll: true })
     if (this.glisse) this.suivre(this.glisse.x, this.glisse.y)
+  }
+
+  /** Les séances (lot 6) : « Aujourd'hui · mar 14 oct 14h » au-dessus de la
+   *  grille (qui ne montre que les pages de la séance du jour : on n'y
+   *  déplace pas une page d'une séance à l'autre) ; sous elle, les séances
+   *  passées, de la plus récente à la plus ancienne, repliées (« ▸ Lun 13
+   *  oct 8h · 3 pages ») ; dépliée, une séance montre ses vignettes, et un
+   *  clic sur l'une ouvre la page en lecture (la trieuse se ferme). */
+  private majSeances() {
+    const t = this.app.tableau, l = t.seancesDuClasseur(), jour = t.derniereSeance()
+    this.titreSeance.hidden = !jour
+    if (jour) {
+      const titre = `Aujourd'hui · ${jour.nom ?? dateCourteMajuscule(jour.debut).replace(/^./, c => c.toLowerCase())}`
+      if (this.titreSeance.textContent !== titre) this.titreSeance.textContent = titre
+    }
+    const passees = l.filter(s => s.id !== jour?.id && s.pages.length).reverse()
+    const cle = passees.map(s => `${s.id}:${s.nom ?? ''}:${s.pages.join(',')}`).join('|')
+    if (cle === this.cleAnciennes) return
+    this.cleAnciennes = cle
+    this.anciennes.hidden = !passees.length
+    this.anciennes.replaceChildren()
+    for (const s of passees) {
+      const d = document.createElement('details')
+      d.className = 'trieuse-une-seance'; d.dataset.seance = s.id
+      d.open = this.deplies.has(s.id)
+      const resume = document.createElement('summary')
+      resume.textContent = `${s.nom ? s.nom + ' · ' + dateCourteMajuscule(s.debut) : dateCourteMajuscule(s.debut)} · ${pagesLisibles(s.pages.length)}`
+      d.append(resume)
+      const rangee = Object.assign(document.createElement('div'), { className: 'trieuse-seance-pages' })
+      d.append(rangee)
+      const remplir = () => {
+        if (rangee.childElementCount) return
+        s.pages.forEach((p, i) => {
+          const b = document.createElement('button')
+          b.type = 'button'; b.className = 'trieuse-vignette-passee'; b.dataset.page = p
+          const nom = t.nomDe(p), reprise = this.reprise(p)
+          if (reprise) b.classList.add('reprise')
+          b.title = `Voir la page ${i + 1}${nom ? ` · ${nom}` : ''} (${libelleSeance(s)}), sans la modifier${reprise ? ` · reprise ${reprise}` : ''}`
+          b.setAttribute('aria-label', b.title)
+          const n = Object.assign(document.createElement('span'), { className: 'numero', textContent: String(i + 1) })
+          b.append(this.vignettes.vignette(p, 144, 90), n)
+          if (nom) b.append(Object.assign(document.createElement('span'), { className: 'nom', textContent: nom }))
+          b.addEventListener('click', () => { if (this.glisse) return; this.fermer(); this.app.voirPage(p) })
+          rangee.append(b)
+        })
+      }
+      if (d.open) remplir()
+      d.addEventListener('toggle', () => { if (d.open) { this.deplies.add(s.id); remplir() } else this.deplies.delete(s.id) })
+      this.anciennes.append(d)
+    }
+  }
+
+  /** Une page reprise d'une autre séance (lot 6) : « de lundi », sinon null */
+  private reprise(p: string): string | null {
+    const t = this.app.tableau, de = t.herite(p)
+    if (!de) return null
+    const s = t.seanceDe(de), ici = t.seanceDe(p)
+    return s && ici && s.id !== ici.id ? deLaSeance(s, Date.now()) : null
   }
 
   private creerCarte(id: string): HTMLElement {
@@ -485,6 +558,11 @@ export class Trieuse {
     if (o.title !== titre) { o.title = titre; o.setAttribute('aria-label', titre) }
     c.classList.toggle('actuelle', actuelle)
     if (actuelle) c.setAttribute('aria-current', 'page'); else c.removeAttribute('aria-current')
+    // Une page reprise d'une séance passée (lot 6) : bordée de bleu
+    const reprise = this.reprise(id)
+    c.classList.toggle('reprise', !!reprise)
+    const marque = reprise ? `Reprise ${reprise}` : ''
+    if ((c.dataset.reprise ?? '') !== marque) { if (marque) c.dataset.reprise = marque; else delete c.dataset.reprise }
     const choisie = String(this.selection.has(id))
     if (c.getAttribute('aria-selected') !== choisie) c.setAttribute('aria-selected', choisie)
     const t = id === this.focusId ? 0 : -1
@@ -653,7 +731,7 @@ export class Trieuse {
 
   /** Ce sur quoi agit une touche (Suppr, Ctrl + D) : les pages choisies, ou
    *  celle qui a le focus */
-  private visees(): string[] { return actions.pagesVisees(this.app.pages, this.selection, this.focusId) }
+  private visees(): string[] { return actions.pagesVisees(this.app.pagesDuJour, this.selection, this.focusId) }
 
   private basculerChoix(id: string) {
     if (this.selection.has(id)) this.selection.delete(id)
@@ -986,15 +1064,15 @@ export class Trieuse {
     const r = actions.inserer(this.app.tableau, this.journal, page, cote, fond)
     if (!r) return
     this.focusCarte(r.page)
-    this.annoncer(`Page vide insérée : c'est la page ${r.rang + 1}`, r.entree)
+    this.annoncer(`Page vide insérée : c'est la page ${this.app.pagesDuJour.indexOf(r.page) + 1}`, r.entree)
   }
 
   /** « Ajouter une page » du bandeau : une page vide à la fin, blanche */
   private ajouterALaFin() {
-    const r = actions.ajouterALaFin(this.app.tableau, this.journal)
+    const r = actions.ajouterALaFin(this.app.tableau, this.journal, this.app.pagesDuJour)
     if (!r) return
     this.focusCarte(r.page)
-    this.annoncer(`Page ajoutée à la fin (page ${r.rang + 1})`, r.entree)
+    this.annoncer(`Page ajoutée à la fin (page ${this.app.pagesDuJour.indexOf(r.page) + 1})`, r.entree)
   }
 
   /** Un fond du menu : le repère prend son origine au centre de ce qui est
@@ -1019,7 +1097,7 @@ export class Trieuse {
     for (const { de, copie } of r.copies) this.app.copierVue(de, copie)
     const premiere = r.copies[0]
     this.focusCarte(premiere.copie)
-    const pages = this.app.pages
+    const pages = this.app.pagesDuJour
     this.annoncer(r.copies.length > 1 ? `${r.copies.length} pages dupliquées`
       : `Page ${pages.indexOf(premiere.de) + 1} dupliquée : la copie est la page ${pages.indexOf(premiere.copie) + 1}`, r.entree)
   }
@@ -1031,14 +1109,14 @@ export class Trieuse {
    *  haut. Le focus va à la carte qui prend leur place. */
   private supprimer(ids: string[]) {
     if (!ids.length || this.glisse) return
-    const ordre = this.app.pages
+    const ordre = this.app.pagesDuJour
     const liste = ordre.filter(id => ids.includes(id))
     if (liste.length >= ordre.length) return this.hote.message('Il doit rester au moins une page.')
     const regardee = this.app.page
     // La carte qui prendra le focus : la première qui reste après la première supprimée, sinon avant
     const premiere = ordre.indexOf(liste[0])
     const suivante = ordre.slice(premiere).find(id => !liste.includes(id)) ?? [...ordre.slice(0, premiere)].reverse().find(id => !liste.includes(id))
-    const r = actions.supprimer(this.app.tableau, this.journal, liste, { regardee, aller: p => this.app.allerPage(p) })
+    const r = actions.supprimer(this.app.tableau, this.journal, liste, { regardee, aller: p => this.app.allerPage(p), pages: ordre })
     if (r === 'tout') return this.hote.message('Il doit rester au moins une page.')
     if (!r) return
     if (r.arrivee !== regardee) this.retours.set(r.entree, { regardee, arrivee: r.arrivee })
@@ -1061,10 +1139,13 @@ export class Trieuse {
    *  Tableau.deplacerPages). Rien si l'ordre ne change pas. */
   private deplacer(ids: string[], avant: number) {
     const libelle = ids.length > 1 ? `${ids.length} pages déplacées` : 'page déplacée'
-    const e = this.journal.faire(libelle, () => { this.app.tableau.deplacerPages(ids, avant) })
+    // avant : une place dans la séance du jour (lot 6), dite dans l'ordre du document
+    const jour = this.app.pagesDuJour, ordre = this.app.tableau.ordre.toArray()
+    const g = avant < jour.length ? ordre.indexOf(jour[avant]) : jour.length ? ordre.indexOf(jour[jour.length - 1]) + 1 : ordre.length
+    const e = this.journal.faire(libelle, () => { this.app.tableau.deplacerPages(ids, g < 0 ? avant : g) })
     if (!e) return
     this.focusCarte(this.focusId && ids.includes(this.focusId) ? this.focusId : ids[0])
-    const k = this.app.pages.indexOf(ids[0])
+    const k = this.app.pagesDuJour.indexOf(ids[0])
     this.annoncer(ids.length > 1 ? `${ids.length} pages déplacées` : `Page déplacée : c'est maintenant la page ${k + 1}`, e)
   }
 
@@ -1072,7 +1153,7 @@ export class Trieuse {
    *  choisies si elle en est (regroupées, dans leur ordre) */
   private deplacerDUnePlace(id: string, sens: 1 | -1) {
     const ids = this.selection.has(id) ? this.choisies() : [id]
-    const avant = actions.placeDUnPas(this.app.pages, ids, sens)
+    const avant = actions.placeDUnPas(this.app.pagesDuJour, ids, sens)
     if (avant === null) return
     if (avant === 'debut') return this.hote.message(ids.length > 1 ? 'Elles sont déjà en tête.' : 'C\'est déjà la première page.')
     if (avant === 'fin') return this.hote.message(ids.length > 1 ? 'Elles sont déjà à la fin.' : 'C\'est déjà la dernière page.')
@@ -1115,7 +1196,7 @@ export class Trieuse {
     const r = e ? this.retours.get(e) : undefined
     if (!r) return
     const vers = sens === 'annuler' ? r.regardee : r.arrivee
-    if (this.app.page !== vers && this.app.pages.includes(vers)) { this.app.allerPage(vers); this.refaire() }
+    if (this.app.page !== vers && this.app.pagesDuJour.includes(vers)) { this.app.allerPage(vers); this.refaire() }
   }
 
   // ---------- Pointeurs : aller, choisir, ouvrir le menu, glisser ----------
@@ -1266,7 +1347,7 @@ export class Trieuse {
       const page = a.page, x = e.clientX, y = e.clientY
       this.clicNom = { page, minuterie: window.setTimeout(() => {
         this.clicNom = null
-        if (!this.ouvert || this.saisie || menuOuvert() || !this.app.pages.includes(page)) return
+        if (!this.ouvert || this.saisie || menuOuvert() || !this.app.pagesDuJour.includes(page)) return
         this.aller(page)
         avalerLeSecondAppui(x, y)
       }, DOUBLE_CLIC_NOM) }

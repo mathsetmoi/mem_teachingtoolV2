@@ -43,6 +43,8 @@ import type { Copie } from './presse-papiers'
 import { collage, lireHtml, lireJson, memeTexte, versHtml, versTexte } from './presse-papiers'
 import { TEXTE_ENVOI_IMPOSSIBLE, texteEnvoi, texteEnvoiAnnule, texteEnvoiBloque } from './pages/envoi'
 import { changementsDetacher, changementsFixer, changementsVerrou, compterObjets, fixesSous, minuscule, quiBouge, texteCollage } from './verrou'
+import type { SeanceDuClasseur } from './seances'
+import { UNE_HEURE, deLaSeance } from './seances'
 import { avecGroupes, changementsDegrouper, changementsGrouper, groupeExact, membreSeul, membresDe, porteurs, priseDuClic } from './groupes'
 import type { Cadre, Matrice, Poignee } from './cadre'
 import { IDENTITE, aimanterAngle, bornesEchelle, cadreDe, cadreTransforme, composer, curseurPoignee, dansLesBornes, deroule, estIdentite, etendueDuCadre, facteurDe, imageTournee, inverser, matriceImage, matriceTaille, poigneeDeLAppui, quartDeTour, redresser, rotation, texteRotation, texteTaille, transformerForme, zonePastille, zonesDesPoignees } from './cadre'
@@ -150,6 +152,11 @@ export interface Interface {
   /** La fenêtre « Exporter en PDF » (voir sorties/export-pdf.ts) : la page
    *  (elle propose aussi tout le classeur), des pages, ou tout le classeur */
   exporterPdf(cible: { page: string } | { pages: string[] } | 'tout'): void
+  /** Les séances (lot 6) : une écriture refusée sur une page d'une séance
+   *  passée (la fenêtre « Cette page est dans la séance de lundi… ») ; une
+   *  séance qui commence (le bandeau « Reprendre ») */
+  ecritureSurSeancePassee?(page: string): void
+  seanceCommencee?(precedente: SeanceDuClasseur | null): void
 }
 
 type Geste =
@@ -406,6 +413,9 @@ export class App {
     // Les noms des pages changent sans qu'on change de page (la trieuse) : le
     // compteur « 3 / 7 · Exercice 12 p. 84 » les relit
     tableau.noms.observe(() => this.ui?.maj())
+    // Les séances (lot 6) : un nom, un début changés (ici ou dans un autre onglet)
+    tableau.seances.observe(() => this.ui?.maj())
+    tableau.seanceDesPages.observe(() => this.verifierPage())
     // Une pile d'annulation a changé : ↶ et ↷ se remettent à jour, une fois,
     // juste après (voir Tableau.onPiles). Sans cela, ↶ resterait grisé après
     // ↷, après les flèches qui poussent la sélection, après le point d'un
@@ -415,6 +425,11 @@ export class App {
       this.majPiles = true
       queueMicrotask(() => { this.majPiles = false; this.ui?.maj() })
     }
+
+    // Les séances (lot 6) : en service ; les séances passées se regardent
+    // sans s'écrire (voir gardeSeance)
+    tableau.seancesActives = true
+    tableau.garde = (page, refaire) => this.gardeSeance(page, refaire)
 
     this.brancherGestes()
 
@@ -645,7 +660,28 @@ export class App {
     return { k: 'seg', ax: f.x, ay: f.y, zx: f.x + f.pts[2], zy: f.y + f.pts[3], couleur: f.couleur, taille: f.taille }
   }
 
-  get pages() { return this.tableau.ordre.toArray() }
+  /** Les pages qu'on feuillette (lot 6) : celles de la séance de la page
+   *  qu'on regarde (la séance du jour, ou une séance passée qu'on regarde en
+   *  lecture) ; tout l'ordre sur un tableau sans séances */
+  get pages() {
+    const s = this.tableau.seanceDe(this.page) ?? this.tableau.derniereSeance()
+    return s ? s.pages : this.tableau.ordre.toArray()
+  }
+  /** Les pages de la séance du jour (la trieuse, « Envoyer vers… ») */
+  get pagesDuJour() {
+    const s = this.tableau.derniereSeance()
+    return s ? s.pages : this.tableau.ordre.toArray()
+  }
+  /** La séance de la page qu'on regarde (null : un tableau sans séances) */
+  get seanceVue(): SeanceDuClasseur | null { return this.tableau.seanceDe(this.page) }
+  /** On regarde une page d'une séance passée : en lecture (lot 6) */
+  get enSeancePassee(): boolean {
+    const s = this.seanceVue, d = this.tableau.derniereSeance()
+    return !!s && !!d && s.id !== d.id
+  }
+  /** La dernière page de la séance du jour où l'on était : « Retour à
+   *  aujourd'hui » y revient */
+  private pageDuJour = ''
   get fond(): Fond { return this.tableau.fondDe(this.page) }
   /** Un geste est en cours (un trait qu'on écrit, un objet qu'on glisse, un
    *  cadre, la vue qu'on déplace) ; pas le doigt retenu un instant, qui n'a
@@ -686,6 +722,7 @@ export class App {
     if (this.page && this.rendu.l > 0) this.vues.set(this.page, this.vueActuelle())
     this.page = id
     this.tableau.pageVue = id
+    if (!this.enSeancePassee) this.pageDuJour = id
     this.appliquerVue(id)
     // Rien ne reste choisi d'une page à l'autre : ni la sélection, ni un
     // morceau de figure (Suppr, au retour, l'ôterait sans qu'on le voie choisi)
@@ -713,14 +750,22 @@ export class App {
   allerPageDeDepart() {
     this.allerPage(this.pageDeDepart())
     this.pret = true
+    // Les séances viennent peut-être d'être rangées (voir pageDeDepart) : le compteur les dit
+    this.ui?.maj()
   }
 
   /** La page où reprendre : celle de la session si elle existe encore, sinon la première */
   pageDeDepart(): string {
     // Les vues d'un autre tableau (aucune page commune) ne servent jamais :
     // leurs pages n'existent pas ici, et la prochaine écriture les oublie
-    const p = this.pages
-    return this.pageSession && p.includes(this.pageSession) ? this.pageSession : p[0]
+    // Les séances (lot 6 ; celles d'un classeur qui n'en a pas encore écrit
+    // sont en attente, voir Tableau.seancesActives) : on arrive dans la séance du jour, la plus
+    // récente ; sur la page de la session si elle en est, sinon sur sa
+    // première page
+    const d = this.tableau.derniereSeance()
+    const p = d ? d.pages : this.pages
+    if (this.pageSession && p.includes(this.pageSession)) return this.pageSession
+    return p[0] ?? this.tableau.ordre.get(0)
   }
 
   /** La page d'avant ou d'après (Page↑, Page↓, ‹ et ›). Faux s'il n'y en a
@@ -738,6 +783,8 @@ export class App {
    *  ajouter une, au plus une fois toutes les 5 s (une touche tenue, une
    *  télécommande qu'on presse plusieurs fois). */
   private dernierePage() {
+    // Une séance passée, en lecture : on n'y ajoute pas de page
+    if (this.enSeancePassee) return
     const t = performance.now()
     if (t - this.astuceDernierePage < 5000) return
     this.astuceDernierePage = t
@@ -749,7 +796,11 @@ export class App {
    *  après celle-ci (voir FOND_NEUF ; avant, elle prenait le fond de la page
    *  qu'on regardait), qui s'ouvre en vue neutre, à 100 % */
   nouvellePage() {
-    const id = this.tableau.ajouterPage(FOND_NEUF, this.pages.indexOf(this.page) + 1)
+    // Depuis une séance passée (en lecture) : la page neuve est de la séance
+    // du jour, juste après celle où l'on y était
+    if (this.enSeancePassee) this.retourAujourdhui()
+    const ordre = this.tableau.ordre.toArray()
+    const id = this.tableau.ajouterPage(FOND_NEUF, this.page ? ordre.indexOf(this.page) + 1 : ordre.length)
     this.allerPage(id)
   }
 
@@ -772,6 +823,7 @@ export class App {
    *  s'annule aussi ; vide, il n'y a rien à faire. */
   supprimerPage() {
     this.viderPointEnAttente()
+    if (this.enSeancePassee) return this.direLecture()
     const pages = this.pages, id = this.page, i = pages.indexOf(id)
     if (i < 0) return
     if (pages.length <= 1) {
@@ -833,6 +885,8 @@ export class App {
   dupliquerLaPage() {
     if (tableauCache(this)) return
     this.viderPointEnAttente()
+    // Une page d'une séance passée : la copie va dans la séance du jour (la reprendre)
+    if (this.enSeancePassee) { this.reprendrePage(this.page); return }
     const p = this.page, k = this.pages.indexOf(p)
     if (k < 0) return
     const q = this.tableau.dupliquerPage(p, { marque: true })
@@ -870,6 +924,173 @@ export class App {
     this.ui.message('Copie retirée')
   }
 
+  // ---------- Les séances (lot 6) ----------
+  /** Les écritures refusées sur une page d'une séance passée (voir
+   *  gardeSeance), à refaire sur la copie si l'on choisit « Reprendre et
+   *  écrire » : la page d'où elles viennent, et chacune */
+  private retenues: { page: string; refaire: ((page: string) => void)[] } | null = null
+
+  /** La garde du tableau (voir Tableau.garde) : on n'écrit que dans la
+   *  séance du jour. Une écriture sur une page d'une séance passée ne se fait
+   *  pas ; elle attend (retenues), et la fenêtre « Cette page est dans la
+   *  séance de lundi… » s'ouvre une fois le geste fini. Un tableau sans
+   *  séances écrit partout. */
+  private gardeSeance(page: string, refaire: (page: string) => void): boolean {
+    // Le premier changement écrit les séances en attente, telles qu'on les voit
+    this.tableau.ecrireLesSeances()
+    const d = this.tableau.derniereSeance()
+    if (!d) return true
+    const s = this.tableau.seanceDe(page)
+    if (!s || s.id === d.id) return true
+    if (this.retenues && this.retenues.page === page) { this.retenues.refaire.push(refaire); return false }
+    this.retenues = { page, refaire: [refaire] }
+    const demander = () => {
+      if (this.geste && this.geste.type !== 'retenu') { window.setTimeout(demander, 120); return }
+      if (!this.retenues || this.retenues.page !== page) return
+      if (this.ui?.ecritureSurSeancePassee) this.ui.ecritureSurSeancePassee(page)
+      else this.retenues = null
+    }
+    queueMicrotask(demander)
+    return false
+  }
+
+  /** La réponse à la fenêtre « Cette page est dans la séance de lundi… » :
+   *  « Juste regarder » oublie ce qu'on voulait écrire ; « Reprendre et
+   *  écrire » reprend la page dans la séance du jour, y refait ce qui a été
+   *  refusé, et l'on arrive dessus */
+  repondreSeancePassee(reprendre: boolean) {
+    const r = this.retenues
+    this.retenues = null
+    this.rafraichir()
+    if (!reprendre || !r) return
+    const q = this.reprendrePage(r.page)
+    if (!q) return
+    this.tableau.nouveauGeste()
+    for (const f of r.refaire) f(q)
+    this.tableau.nouveauGeste()
+  }
+
+  /** Le message d'une action qui ne se fait pas sur une séance passée */
+  private direLecture() {
+    const s = this.seanceVue
+    this.ui.message(`Séance ${s ? deLaSeance(s, Date.now()) : 'passée'} : vous la regardez sans la modifier.`,
+      [{ libelle: 'Reprendre la page', faire: () => this.reprendrePage(this.page) }, { libelle: 'Retour à aujourd\'hui', faire: () => this.retourAujourdhui() }])
+  }
+
+  /** Au démarrage (main.ts), le classeur chargé et la page de départ prise :
+   *  que faire de la séance. Un classeur où rien n'est écrit (un classeur
+   *  neuf) : sa séance commence, sans question ('rien'). Une séance du jour
+   *  active depuis moins d'une heure : on y reste ('reprise' : un message le
+   *  dit). Plus d'une heure : la fenêtre d'accueil ('accueil'). nouvelle :
+   *  on arrive pour une nouvelle séance (une autre classe, un autre chapitre,
+   *  depuis la fenêtre d'accueil d'un autre classeur) : elle commence. */
+  seanceAuDemarrage(o: { nouvelle?: boolean; maintenant?: number } = {}): { genre: 'rien' | 'reprise' | 'accueil'; seance?: SeanceDuClasseur } {
+    const t = this.tableau, d = t.derniereSeance()
+    if (!d) return { genre: 'rien' }
+    const maintenant = o.maintenant ?? Date.now()
+    if (t.seancesDuClasseur().every(s => t.seanceVierge(s.id))) {
+      if (maintenant - t.derniereActivite(d.id) > UNE_HEURE) t.recommencerSeance(d.id, maintenant)
+      return { genre: 'rien' }
+    }
+    if (o.nouvelle) { this.nouvelleSeance(); return { genre: 'rien' } }
+    if (maintenant - t.derniereActivite(d.id) <= UNE_HEURE) return { genre: 'reprise', seance: d }
+    return { genre: 'accueil', seance: d }
+  }
+
+  /** Une nouvelle séance (la fenêtre d'accueil, le menu ⋯) : sa page 1,
+   *  blanche, à 100 %. La séance du jour qui n'a encore rien (ni écrit ni
+   *  nom sur ses pages) ne se double pas : elle recommence maintenant (on
+   *  ouvre MEM, on ne fait pas cours, on revient le lendemain). Hors
+   *  annulation (voir Tableau.nouvelleSeance). Le bandeau « Reprendre »
+   *  propose la dernière page de la séance d'avant. */
+  nouvelleSeance() {
+    if (this.enLecture) return
+    this.viderPointEnAttente()
+    const d = this.tableau.derniereSeance()
+    let page: string
+    if (d && d.pages.length && this.tableau.seanceVierge(d.id)) {
+      this.tableau.recommencerSeance(d.id)
+      page = d.pages[0]
+    } else page = this.tableau.nouvelleSeance().page
+    const l = this.tableau.seancesDuClasseur()
+    const precedente = [...l].reverse().find(s => s.id !== this.tableau.derniereSeance()?.id && s.pages.length) ?? null
+    this.vues.delete(page)
+    this.allerPage(page)
+    this.ui?.seanceCommencee?.(precedente)
+    this.ui?.maj()
+  }
+
+  /** Reprendre une page d'une séance passée dans la séance du jour (lot 6,
+   *  voir Tableau.reprendrePage) : une copie qui hérite son passé, sous le
+   *  même nom ; si la page 1 du jour est encore vide, la copie la remplace,
+   *  sinon elle vient juste après la page du jour où l'on était. On arrive
+   *  dessus, au centre de l'original, à 100 %. Le message le dit, avec
+   *  « Annuler » ; Ctrl+Z sur la copie toute neuve la retire aussi. Rend la
+   *  copie (null : rien). */
+  reprendrePage(source: string): string | null {
+    if (this.enLecture) return null
+    this.viderPointEnAttente()
+    const d = this.tableau.derniereSeance(), s = this.tableau.seanceDe(source)
+    if (!d || !s || s.id === d.id) return null
+    const jour = d.pages
+    const apres = jour.includes(this.page) ? this.page : jour.includes(this.pageDuJour) ? this.pageDuJour : jour[jour.length - 1] ?? null
+    const q = this.tableau.reprendrePage(source, { seance: d.id, apres, remplace: jour[0] ?? null })
+    if (!q) return null
+    this.copierVue(source, q)
+    this.allerPage(q)
+    this.ui.message(`Page reprise ${deLaSeance(s, Date.now())}`, { libelle: 'Annuler', faire: () => this.annulerReprise(q), cle: 'reprise:' + q })
+    return q
+  }
+
+  /** « Annuler » du message « Page reprise de lundi » : comme Ctrl+Z sur la
+   *  copie toute neuve (voir Tableau.retirerReprise) ; sinon un message dit
+   *  pourquoi */
+  annulerReprise(q: string) {
+    if (tableauCache(this)) return
+    this.viderPointEnAttente()
+    if (!this.tableau.ordre.toArray().includes(q)) return
+    const r = this.tableau.retraitDeCopie(q)
+    if (r === 'ecrit') return this.ui.message('Vous avez écrit sur la page reprise : ↶ défait d\'abord ce que vous y avez écrit.')
+    if (r === 'non') return this.ui.message('La page reprise ne peut plus être retirée ainsi : supprimez-la (poubelle).')
+    const retour = this.tableau.retirerReprise(q)
+    if (retour) this.repriseRetiree(q, retour)
+  }
+
+  private repriseRetiree(q: string, retour: string) {
+    this.allerPage(retour)
+    this.ui.oublierAction('reprise:' + q)
+    this.ui.message('Reprise annulée')
+  }
+
+  /** Regarder une page d'une séance passée (lot 6) : en lecture */
+  voirPage(id: string) {
+    if (this.enLecture || !this.tableau.ordre.toArray().includes(id)) return
+    this.allerPage(id)
+  }
+
+  /** « Retour à aujourd'hui » : la page de la séance du jour où l'on était */
+  retourAujourdhui() {
+    const j = this.pagesDuJour
+    const id = j.includes(this.pageDuJour) ? this.pageDuJour : j[j.length - 1]
+    if (!id || id === this.page) return
+    this.allerPage(id)
+  }
+
+  /** « Copier dans la séance d'aujourd'hui » (une page d'une séance passée,
+   *  en lecture) : ce qui est pris est copié (comme Ctrl+C), puis collé sur la
+   *  page de la séance du jour où l'on était, à la même place */
+  copierVersAujourdhui(formes: Forme[] = this.objetsChoisis()): boolean {
+    if (this.enLecture || !this.enSeancePassee) return false
+    if (!formes.length) { this.ui.message('Rien n\'est sélectionné.'); return false }
+    if (!this.copier(false, formes)) return false
+    const c = this.copie!
+    this.retourAujourdhui()
+    if (this.enSeancePassee) return false
+    this.collerCopie(c, { ...c.centre })
+    this.ui.message(`Copié dans la page ${this.pages.indexOf(this.page) + 1}`)
+    return true
+  }
+
   /** La vue gardée d'une page devient celle d'une autre, en mémoire et dans
    *  la session de ce navigateur : une copie s'ouvre sur le centre de son
    *  original, à 100 % comme toute page (« Dupliquer la page », la trieuse,
@@ -900,6 +1121,10 @@ export class App {
     if (!p.includes(this.page) && p.length) {
       const de = this.page ? this.tableau.herite(this.page) : null
       this.allerPage(de && p.includes(de) ? de : p[0])
+    } else if (!p.length && this.tableau.ordre.length) {
+      // La séance de la page qu'on regardait n'a plus de page : la séance du jour
+      const j = this.pagesDuJour
+      this.allerPage(j.includes(this.pageDuJour) ? this.pageDuJour : j[0] ?? this.tableau.ordre.get(0))
     }
     this.ui?.maj()
   }
@@ -999,6 +1224,7 @@ export class App {
   annuler(): 'page' | 'dit' | boolean {
     if (this.enLecture) return false
     this.viderPointEnAttente()
+    if (this.enSeancePassee) { this.direLecture(); return 'dit' }
     // Les numéros d'avant : la nouvelle page d'un envoi défait peut partir
     const numeros = new Map(this.pages.map((p, i) => [p, i + 1]))
     const etape = this.tableau.prochaineAnnulation(this.page)
@@ -1012,6 +1238,11 @@ export class App {
     }
     if (r?.page) {
       this.revenirSur(r.page, this.pages.indexOf(r.page))
+      return 'page'
+    }
+    // La page reprise toute neuve s'en va (lot 6) : on revient dans la séance du jour
+    if (r?.reprise && r.retour) {
+      this.repriseRetiree(r.reprise, r.retour)
       return 'page'
     }
     // La copie toute neuve qu'on regardait s'en va : on revient sur son original
@@ -1046,6 +1277,7 @@ export class App {
   retablir(): 'dit' | boolean {
     if (this.enLecture) return false
     this.viderPointEnAttente()
+    if (this.enSeancePassee) { this.direLecture(); return 'dit' }
     const etape = this.tableau.prochainRetablissement(this.page)
     const prises = etape ? this.prisesDesTransformations.get(etape) : undefined
     const fait = this.tableau.retablir(this.page)
@@ -1299,7 +1531,7 @@ export class App {
     clearTimeout(this.minuterieSession); this.minuterieSession = 0
     if (!this.page || this.sessionArretee) return
     if (this.rendu.l > 0) this.vues.set(this.page, this.vueActuelle())
-    ecrireSession(this.page, this.vues, this.pages, this.cleSession)
+    ecrireSession(this.page, this.vues, this.tableau.ordre.toArray(), this.cleSession)
   }
 
   /** La clé de la session de ce classeur : 'mem-session' pour le premier */
@@ -4475,11 +4707,14 @@ export class App {
     const formes = ids ? this.avecLeursPoints(ids) : this.objetsChoisis()
     const c = formes.length ? this.faireCopie(formes) : null
     if (!c) { this.ui.message('Rien n\'est sélectionné.'); return false }
-    const a = this.page, pages = this.pages, i = pages.indexOf(a)
+    // Les pages de la séance du jour (lot 6) : on n'envoie que vers elles,
+    // même depuis une séance passée (en lecture : copier, oui ; déplacer, non)
+    const a = this.page, pages = this.pagesDuJour, ordre = this.tableau.ordre.toArray()
     let vers = cible
     let nouvelle: { id: string; place: number } | undefined
     if (cible === 'apres' || cible === 'fin') {
-      const place = cible === 'apres' ? i + 1 : pages.length
+      const fin = pages.length ? ordre.indexOf(pages[pages.length - 1]) + 1 : ordre.length
+      const place = cible === 'apres' && pages.includes(a) ? ordre.indexOf(a) + 1 : fin
       vers = this.tableau.ajouterPage(FOND_NEUF, place)
       nouvelle = { id: vers, place }
       this.copierVue(a, vers)
@@ -4504,7 +4739,7 @@ export class App {
     const etape = this.tableau.prochaineAnnulation(deplacer ? a : vers)
     if (deplacer && !ids) this.selection.clear()
     this.rendu.redessinerDirect(); this.ui.maj()
-    const k = this.pages.indexOf(vers) + 1
+    const k = this.pagesDuJour.indexOf(vers) + 1
     this.ui.message(texteEnvoi(posees.length, k, deplacer), [
       { libelle: `Aller à la page ${k}`, faire: () => this.allerAuxEnvoyes(vers, posees), garder: true },
       { libelle: 'Annuler', faire: () => deplacer ? this.annulerEnvoi(a, etape) : this.annulerCopieEnvoyee(vers, etape), cle: 'envoi:' + vers },
@@ -4521,7 +4756,7 @@ export class App {
   private allerAuxEnvoyes(vers: string, posees: Forme[]) {
     if (tableauCache(this)) return
     this.viderPointEnAttente()
-    if (!this.pages.includes(vers)) return this.ui.message('Cette page n\'est plus dans le tableau.')
+    if (!this.pagesDuJour.includes(vers)) return this.ui.message('Cette page n\'est plus dans le tableau.')
     this.allerPage(vers)
     const envoyes = new Set(posees.map(f => f.id))
     const la = this.formes.filter(f => envoyes.has(f.id))

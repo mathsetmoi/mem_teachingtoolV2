@@ -603,6 +603,8 @@ export class Registre {
       }
       x.ouvert = maintenant
       x.pages = tableau.ordre.length
+      const seances = tableau.seancesDuClasseur().length
+      if (seances) x.seances = seances
       x.vecteur = Y.encodeStateVector(tableau.doc)
     })
     if (!f) return undefined

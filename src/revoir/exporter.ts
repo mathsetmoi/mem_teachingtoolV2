@@ -97,6 +97,67 @@ export function seancesDuFilm(film: readonly Etape[], ecart = ENTRE_DEUX_SEANCES
   return r.reverse()
 }
 
+/** Une séance explicite (lot 6, voir seances.ts), lue dans le film comme
+ *  une séance repérée (de, a, debut, fin, gestes, pages : les pages où l'on
+ *  a écrit), avec son id, son nom, son début tel qu'il est écrit (debut :
+ *  sa création, la clé de sa publication) et SES pages (pagesDeSeance, dans
+ *  l'ordre du document). */
+export interface SeanceExplicite extends Seance {
+  id: string
+  nom: string | null
+  ancienne: boolean
+  pagesDeSeance: string[]
+}
+
+/** Les séances explicites dans le film, de la plus récente à la plus
+ *  ancienne. Le film se partage en plages qui se suivent : celle d'une
+ *  séance va de sa première étape (la première dont l'heure n'est pas
+ *  avant son début, ou depuis pour une séance reprise du découpage d'avant)
+ *  jusqu'à l'étape avant celle de la séance suivante ; la première séance
+ *  prend aussi ce qui la précède (la naissance de la toute première page).
+ *  Une séance sans étape a de > a. gestes, fin et pages comptent comme
+ *  seancesDuFilm (ni l'ordre changé, ni une naissance, ni un rangement, ni
+ *  un réglage) ; debut reste celui de la séance. */
+export function seancesExplicitesDuFilm(film: readonly Etape[], seances: readonly { id: string; debut: number; depuis: number; nom: string | null; ancienne?: boolean; pages: string[] }[]): SeanceExplicite[] {
+  const asc = [...seances].sort((x, y) => x.debut - y.debut)
+  const departs: number[] = []
+  let i = 0
+  asc.forEach((s, k) => {
+    if (k === 0) { departs.push(0); return }
+    while (i < film.length && film[i].t < s.depuis) i++
+    departs.push(Math.max(i, departs[k - 1]))
+  })
+  const jour = (t: number) => new Date(t).toDateString()
+  const r: SeanceExplicite[] = asc.map((s, k) => {
+    let de = departs[k]
+    const a = (k + 1 < asc.length ? departs[k + 1] : film.length) - 1
+    // Ce qui précède le premier geste (la naissance de la page 1, un ordre
+    // changé, un rangement) n'est de la plage que comme dans seancesDuFilm :
+    // une page qui naît juste avant le premier geste (moins de 20 minutes, le
+    // même jour) en est ; plus tôt, elle est dans l'état de départ du film
+    let g = de
+    while (g <= a && (film[g].seulOrdre || film[g].naissance || film[g].rangement || film[g].reglage)) g++
+    if (g <= a) {
+      let d = g
+      for (let j = g - 1; j >= de; j--) {
+        const x = film[j]
+        if (!(x.seulOrdre || x.naissance || x.reglage) || film[g].t - x.t > ENTRE_DEUX_SEANCES || jour(x.t) !== jour(film[g].t)) break
+        if (x.naissance) d = j
+      }
+      de = d
+    }
+    const x: SeanceExplicite = { id: s.id, nom: s.nom, ancienne: !!s.ancienne, pagesDeSeance: [...s.pages], de, a, debut: s.debut, fin: s.debut, gestes: 0, pages: [] }
+    for (let j = de; j <= a; j++) {
+      const e = film[j]
+      if (e.seulOrdre || e.naissance || e.rangement || e.reglage) continue
+      x.gestes++; x.fin = Math.max(x.fin, e.t)
+      if (e.page && !x.pages.includes(e.page)) x.pages.push(e.page)
+    }
+    return x
+  })
+  return r.reverse()
+}
+
 /** Le film élève d'une séance a-t-il quelque chose à montrer ? Au moins un
  *  geste (un film sans geste n'est qu'une image fixe : une séance qui n'a
  *  fait qu'effacer, ou que créer une page), et quelque chose sur ses pages. */
@@ -108,8 +169,38 @@ export function aMontrer(f: FilmEleve): boolean {
  *  première est choisie d'office) : celles dont le film élève, avec les pages
  *  qu'elle propose, a quelque chose à montrer. */
 export function seancesAPublier(tableau: Tableau, ecart = ENTRE_DEUX_SEANCES): Seance[] {
+  const explicites = seancesDuTableau(tableau)
+  if (explicites) return explicites.filter(s => s.de <= s.a && aMontrer(exporter(tableau, { de: s.de, a: s.a, pages: pagesAPublier(tableau, s), titre: '' }, { instruments: false })))
   return seancesDuFilm(tableau.film.toArray(), ecart)
     .filter(s => aMontrer(exporter(tableau, { de: s.de, a: s.a, pages: pagesDeLaSeance(tableau, s), titre: '' }, { instruments: false })))
+}
+
+/** Les séances explicites du tableau (lot 6), la plus récente d'abord ;
+ *  null s'il n'en a pas (un tableau d'avant, les essais) */
+export function seancesDuTableau(tableau: Tableau, film: readonly Etape[] = tableau.film.toArray()): SeanceExplicite[] | null {
+  const l = tableau.seancesDuClasseur()
+  if (!l.length) return null
+  // Les pages qu'une séance a eues, même hors de l'ordre (la corbeille)
+  const eues = new Map<string, string[]>()
+  for (const [p, id] of tableau.seanceDesPages) { const x = eues.get(id) ?? []; x.push(p); eues.set(id, x) }
+  return seancesExplicitesDuFilm(film, l.map(s => ({ ...s, pages: [...s.pages, ...(eues.get(s.id) ?? []).filter(p => !s.pages.includes(p))] })))
+}
+
+/** Les pages que Publier coche pour une séance explicite (lot 6) : SES pages,
+ *  dans son ordre (celles de l'ordre du document), puis celles qu'on a
+ *  jetées pendant elle et où il s'est passé quelque chose ; pour une séance reprise
+ *  du découpage d'avant, aussi les pages où l'on a écrit pendant elle (une
+ *  page née dans une séance et continuée dans la suivante y était publiée,
+ *  elle l'est encore). */
+export function pagesAPublier(tableau: Tableau, s: SeanceExplicite): string[] {
+  const ordre = new Set(tableau.ordre.toArray())
+  const vues = pagesDeLaSeance(tableau, s)
+  const siennes = s.pagesDeSeance.filter(p => ordre.has(p))
+  // Une page de la séance jetée pendant elle, où il s'est passé quelque chose
+  // (pas la page 1 vide qu'une page reprise a remplacée : elle n'a rien)
+  const jetees = vues.filter(p => !ordre.has(p) && s.pagesDeSeance.includes(p) && (tableau.formesDe(p)?.size ?? 0) > 0)
+  const autres = s.ancienne ? vues.filter(p => !siennes.includes(p) && !jetees.includes(p)) : []
+  return [...siennes, ...jetees, ...autres]
 }
 
 export interface Choix {

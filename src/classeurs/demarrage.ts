@@ -81,6 +81,9 @@ export interface FicheClasseur {
   copieDrive?: CompteDrive | 'aucune'
   drive?: { compte: CompteDrive; id: string; t: number; taille: number; courriel?: string; vecteur?: Uint8Array }
   cle?: { nom: string; t?: number; date?: number; taille?: number; vecteur?: Uint8Array }
+  /** Le nombre de séances du chapitre (lot 6), à sa dernière écriture ;
+   *  absent : on ne le sait pas (pas ouvert depuis le lot 6) */
+  seances?: number
 }
 
 /** Un dossier de la bibliothèque (parent null : à la racine) */

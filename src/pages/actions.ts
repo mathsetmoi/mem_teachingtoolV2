@@ -43,9 +43,11 @@ export function inserer(t: Tableau, j: JournalPages, id: string, cote: 'avant' |
 
 /** Une page neuve et vide à la fin, blanche (le bouton « Ajouter une page »
  *  du bandeau ; voir FOND_NEUF : avant, elle prenait le fond de la dernière) */
-export function ajouterALaFin(t: Tableau, j: JournalPages): { entree: Entree; page: string; rang: number } | null {
+export function ajouterALaFin(t: Tableau, j: JournalPages, pages?: readonly string[]): { entree: Entree; page: string; rang: number } | null {
   const ordre = t.ordre.toArray()
-  return ajouterA(t, j, 'page ajoutée', FOND_NEUF, ordre.length)
+  // Les pages de la séance du jour (lot 6) : juste après la dernière d'elles
+  const derniere = pages?.length ? ordre.indexOf(pages[pages.length - 1]) : -1
+  return ajouterA(t, j, 'page ajoutée', FOND_NEUF, derniere >= 0 ? derniere + 1 : ordre.length)
 }
 
 function ajouterA(t: Tableau, j: JournalPages, libelle: string, fond: Fond, place: number) {
@@ -104,8 +106,9 @@ export interface Suppression {
  *  après la fermeture de la trieuse (le journal vidé), Ctrl+Z sur la page
  *  d'arrivée la rend, comme après la poubelle de la barre du haut. Les
  *  autres pages n'ont que le journal, puis la corbeille. */
-export function supprimer(t: Tableau, j: JournalPages, ids: readonly string[], o: { regardee: string; aller: (page: string) => void }): Suppression | 'tout' | null {
-  const ordre = t.ordre.toArray()
+export function supprimer(t: Tableau, j: JournalPages, ids: readonly string[], o: { regardee: string; aller: (page: string) => void; pages?: readonly string[] }): Suppression | 'tout' | null {
+  // pages : celles de la séance du jour (lot 6) ; il en reste toujours une
+  const ordre = o.pages ? [...o.pages] : t.ordre.toArray()
   const liste = ordre.filter(id => ids.includes(id))
   if (!liste.length) return null
   if (liste.length >= ordre.length) return 'tout'

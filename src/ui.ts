@@ -54,6 +54,11 @@ import type { Bibliotheque } from './classeurs/bibliotheque'
 import type { Fichiers } from './classeurs/fichiers'
 import { AIDE_OUVRIR } from './classeurs/fichiers'
 import { fermerSurLeFond } from './dialogue'
+import { pagesLisibles } from './fichier'
+import { BandeauxSeances, demanderNomDeSeance, demanderReprise } from './seances-vue'
+import { ecranTactile } from './pointeurs'
+import type { SeanceDuClasseur } from './seances'
+import { dateCourte, dateCourteMajuscule, deLaSeance, libelleSeance } from './seances'
 
 /** Le rôle du doigt : la marque de son bouton, son titre, ce qu'on en dit */
 const DOIGTS: { id: Doigt; nom: string; aide: string; marque: string; titre: string; dit: string }[] = [
@@ -241,6 +246,10 @@ export class UI implements Interface {
   /** Le compteur « 3 / 7 », suivi du nom de la page s'il y en a un (« · Exercice 12 p. 84 ») :
    *  un bouton, qui ouvre la trieuse des pages (Maj + P) */
   private rang!: HTMLButtonElement
+  /** La séance, devant le numéro (lot 6) : « Séance du mar 14 oct 14h · » */
+  private rangSeance!: HTMLDivElement
+  /** Son texte (« Séance du mar 14 oct 14h ») ; le bouton « Séance précédente » est à côté */
+  private rangSeanceTexte!: HTMLSpanElement
   private rangNumero!: HTMLSpanElement
   private rangNom!: HTMLSpanElement
   /** Ce dont dépend la largeur du compteur (le nombre de chiffres du total,
@@ -248,6 +257,8 @@ export class UI implements Interface {
    *  clé, et s'il reste à la régler (voir reglerCompteur) */
   private cleCompteur = ''
   private compteurARegler = true
+  /** « Séance précédente » (lot 6), caché sans séance d'avant */
+  private boutonPrecedente!: HTMLButtonElement
   /** « › » : la page suivante, ou une page de plus sur la dernière (voir maj) */
   private boutonApres!: HTMLButtonElement
   /** Le numéro de la page en grand, un instant, quand on change de page (voir annoncerPage) */
@@ -338,6 +349,8 @@ export class UI implements Interface {
   /** La trieuse des pages : toutes les pages en vignettes, plein écran (voir
    *  pages/trieuse.ts) ; le compteur, Maj + P et le menu de la page l'ouvrent */
   trieuse!: Trieuse
+  /** Les bandeaux des séances (lot 6, voir seances-vue.ts) */
+  bandeauxSeances!: BandeauxSeances
   /** Le bouton du classeur (lot 4) : le nom du classeur et l'état de sa
    *  sauvegarde, dans sa propre barre à gauche de la barre du haut ; il
    *  ouvre la bibliothèque (voir placerBoutonClasseur) */
@@ -655,6 +668,14 @@ export class UI implements Interface {
     // ‹, › et la poubelle restent sous la main d'une page à l'autre.
     this.rang = document.createElement('button'); this.rang.type = 'button'; this.rang.className = 'rang'
     this.rang.addEventListener('click', e => this.ouvrirTrieuse(e.detail === 0))
+    // La séance (lot 6) : une étiquette accrochée sous le compteur, hors de
+    // son bouton (son texte reste « 3 / 7 ») et hors du flux de la barre (ses
+    // boutons et le bouton du classeur ne bougent pas) ; un clic dessus ouvre
+    // aussi la trieuse
+    this.rangSeance = Object.assign(document.createElement('div'), { className: 'rang-seance' })
+    this.rangSeanceTexte = Object.assign(document.createElement('span'), { className: 'texte' })
+    this.rangSeanceTexte.addEventListener('click', () => this.ouvrirTrieuse(false))
+    this.rangSeance.appendChild(this.rangSeanceTexte)
     this.rangNumero = Object.assign(document.createElement('span'), { className: 'rang-numero' })
     this.rangNom = Object.assign(document.createElement('span'), { className: 'rang-nom' })
     this.rang.append(this.rangNumero, this.rangNom)
@@ -670,6 +691,15 @@ export class UI implements Interface {
       app.nouvellePage()
     })
     const nouvelle = this.boutonNouvelle = bouton('plus', 'Nouvelle page', () => app.nouvellePage(), 'nouvelle-page')
+    // « Séance précédente » (lot 6) : les vignettes de la séance d'avant, à
+    // reprendre ou à regarder ; seulement quand il y en a une
+    const precedente = this.boutonPrecedente = bouton('seance-precedente', 'Séance précédente : ses pages, à reprendre ou à regarder', () => {
+      if (this.bandeauxSeances.tiroirOuvert) this.bandeauxSeances.fermerTiroir(); else this.bandeauxSeances.ouvrirSeancePrecedente()
+    }, 'seance-precedente')
+    precedente.hidden = true
+    // Avec l'étiquette de la séance, sous la barre (rien ne bouge dans la barre)
+    precedente.insertAdjacentHTML('beforeend', '<span class="libelle-precedente">Séance précédente</span>')
+    this.rangSeance.appendChild(precedente)
     // Pas de question : la page part tout de suite, et s'annule (le message
     // « Page N supprimée · Annuler », ou Ctrl+Z). Le second clic d'un
     // double-clic, et tout clic trop tôt après une suppression, ne font rien :
@@ -754,6 +784,8 @@ export class UI implements Interface {
     // Les noms sous les outils (lot 5) : ni ‹, ni ›, ni le compteur, ni le
     // bouton du classeur
     nommer(nouvelle, 'Nouvelle')
+    // (pas de nom sous « Séance précédente » : il n'est là qu'avec une séance d'avant)
+    this.racine.appendChild(this.rangSeance)
     this.libelleJeter = nommer(jeter, 'Supprimer')
     nommer(boutonFond, 'Fond'); nommer(this.boutonAimant, 'Aimant'); nommer(this.boutonReconnaissance, 'Formes auto')
     nommer(importer, 'Image'); nommer(this.boutonInstruments, 'Instruments'); nommer(construire, 'Construire')
@@ -921,6 +953,8 @@ export class UI implements Interface {
       rendreFormule: (latex, el) => katex.render(latex, el, { throwOnError: false, displayMode: false }),
     })
     this.vignettes = new Vignettes(app.tableau, this.apercus)
+    // Les séances (lot 6) : la lecture d'une séance passée, « Reprendre », la séance précédente
+    this.bandeauxSeances = new BandeauxSeances(app, this.racine, this.vignettes)
     this.trieuse = new Trieuse(app, this.racine, this, this.vignettes)
     this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
@@ -970,6 +1004,20 @@ export class UI implements Interface {
     this.sortirBoutonClasseur()
     this.reglerNomDeLaPage(chiffres, avecNoms)
     this.placerBoutonClasseur()
+    this.reglerSeance()
+  }
+
+  /** La séance sous le compteur (lot 6) : une étiquette accrochée sous la
+   *  barre du haut, hors de son flux (rien n'y bouge), au bord gauche du
+   *  compteur. Sur un téléphone, elle n'y est pas (elle reste dans le titre
+   *  du compteur, la trieuse et le menu « Plus »). */
+  private reglerSeance() {
+    const seance = this.rangSeance, haut = this.barreHaut
+    // Sous la barre du haut, son bord gauche sur celui du compteur (hors de
+    // la barre : ni ses enfants ni sa mise en page ne changent)
+    const r = this.rang.getBoundingClientRect(), h = haut.getBoundingClientRect(), dans = this.racine.getBoundingClientRect()
+    seance.style.left = Math.max(4, Math.round(r.left - dans.left)) + 'px'
+    seance.style.top = Math.round(h.bottom - dans.top + 2) + 'px'
   }
 
   /** Le compteur et le nom de la page dans la barre du haut (voir reglerCompteur) */
@@ -1025,23 +1073,33 @@ export class UI implements Interface {
     griser(this.boutonRetablir, !app.peutRetablir())
 
     const pages = app.pages, i = pages.indexOf(app.page)
-    // Le compteur, et le nom de la page (il change aussi sans changer de page)
-    const numero = pages.length ? `${i + 1} / ${pages.length}` : '…'
+    // Le compteur, et le nom de la page (il change aussi sans changer de page).
+    // Devant (lot 6), la séance : « Séance du mar 14 oct 14h · 1 / 2 » (ou
+    // son nom) ; une séance passée, en lecture : « Lun 13 oct 8h · page 3 »
+    const seance = app.seanceVue, passee = app.enSeancePassee
+    const numero = !pages.length ? '…' : passee ? `page ${i + 1}` : `${i + 1} / ${pages.length}`
     const nom = i >= 0 ? app.tableau.nomDe(pages[i]) : null
+    const texteSeance = !seance ? '' : passee ? `${seance.nom ?? dateCourteMajuscule(seance.debut)} · en lecture` : libelleSeance(seance)
+    if (this.rangSeanceTexte.textContent !== texteSeance) this.rangSeanceTexte.textContent = texteSeance
+    this.rangSeance.hidden = !texteSeance
+    this.rang.classList.toggle('en-lecture', passee)
+    this.rangSeance.classList.toggle('en-lecture', passee)
     if (this.rangNumero.textContent !== numero) this.rangNumero.textContent = numero
     const suite = nom ? ` · ${nom}` : ''
     if (this.rangNom.textContent !== suite) this.rangNom.textContent = suite
+    const titreSeance = seance ? `${passee ? `Séance passée, en lecture : ${libelleSeance(seance)}` : libelleSeance(seance)} · Toutes les pages (Maj + P)` : ''
+    if (this.rangSeanceTexte.title !== titreSeance) this.rangSeanceTexte.title = titreSeance
     const titreRang = nom ? `Page ${numero} · ${nom} · Toutes les pages (Maj + P)` : 'Toutes les pages (Maj + P)'
     if (this.rang.title !== titreRang) this.rang.title = titreRang
-    const nomRang = i >= 0 ? `Page ${i + 1} sur ${pages.length}${nom ? `, ${nom}` : ''} : toutes les pages (Maj + P)` : 'Toutes les pages (Maj + P)'
+    const nomRang = `${passee && seance ? libelleSeance(seance) + ', en lecture, ' : ''}${i >= 0 ? `Page ${i + 1} sur ${pages.length}${nom ? `, ${nom}` : ''} : toutes les pages (Maj + P)` : 'Toutes les pages (Maj + P)'}`
     if (this.rang.getAttribute('aria-label') !== nomRang) this.rang.setAttribute('aria-label', nomRang)
     const avecNoms = pages.some(p => !!app.tableau.nomDe(p))
-    const cle = `${String(pages.length).length}:${avecNoms}`
+    const cle = `${String(pages.length).length}:${avecNoms}:${texteSeance}:${passee}`
     if (cle !== this.cleCompteur) { this.cleCompteur = cle; this.compteurARegler = true }
     if (this.compteurARegler) this.reglerCompteur(String(pages.length).length, avecNoms)
     // « › » sur la dernière page : une page de plus ; son contenu ne se
     // refait que si le mode change
-    const mode = pages.length && i === pages.length - 1 ? 'ajout' : 'suivante'
+    const mode = pages.length && i === pages.length - 1 && !passee ? 'ajout' : 'suivante'
     if (this.boutonApres.dataset.mode !== mode) {
       this.boutonApres.dataset.mode = mode
       this.boutonApres.innerHTML = icone(mode === 'ajout' ? 'page-suivante-plus' : 'apres')
@@ -1049,6 +1107,10 @@ export class UI implements Interface {
       this.boutonApres.title = t; this.boutonApres.setAttribute('aria-label', t)
     }
     if (!this.annonce.hidden) this.majAnnonce()
+    this.bandeauxSeances?.maj()
+    const ici = seance ?? app.tableau.derniereSeance()
+    const sansAvant = !ici || !app.tableau.seancesDuClasseur().some(x => x.pages.length && x.id !== ici.id && x.debut < ici.debut)
+    if (this.boutonPrecedente.hidden !== sansAvant) { this.boutonPrecedente.hidden = sansAvant; this.compteurARegler = true }
     const titreJeter = pages.length <= 1 ? 'Effacer la page' : 'Supprimer cette page'
     if (this.boutonJeter.title !== titreJeter) { this.boutonJeter.title = titreJeter; this.boutonJeter.setAttribute('aria-label', titreJeter) }
     const motJeter = pages.length <= 1 ? 'Effacer' : 'Supprimer'
@@ -1312,7 +1374,7 @@ export class UI implements Interface {
    *  quittait : maj() le relit tant qu'elle se voit) */
   private majAnnonce() {
     const pages = this.app.pages, i = pages.indexOf(this.app.page)
-    const numero = i >= 0 ? `${i + 1} / ${pages.length}` : ''
+    const numero = i < 0 ? '' : this.app.enSeancePassee ? `page ${i + 1}` : `${i + 1} / ${pages.length}`
     const nom = (i >= 0 ? this.app.tableau.nomDe(pages[i]) : null) ?? ''
     if (this.annonceNumero.textContent !== numero) this.annonceNumero.textContent = numero
     if (this.annonceNom.textContent !== nom) this.annonceNom.textContent = nom
@@ -1440,8 +1502,23 @@ export class UI implements Interface {
       aide: drive.enLigne ? 'Une copie à sens unique, dans un dossier privé de votre Drive : choisir le compte, ou pas de copie.' : HORS_LIGNE_FICHIER })
     this.entreeMenu(m, 'Ouvrir un classeur…', () => s.ouvrir(), { touche: `${CTRL} + O`, action: 'ouvrir',
       aide: this.fichiers ? AIDE_OUVRIR : 'Remplace ce classeur par celui d\'un fichier .memc.' })
-    this.entreeMenu(m, 'Exporter le classeur en PDF…', () => this.exporterPdf('tout'), { action: 'exporter-pdf',
+    // Tout le classeur, séance après séance (lot 6 : la trieuse et le menu de la page exportent la séance)
+    this.entreeMenu(m, 'Exporter le classeur en PDF…', () => this.exporterPdf('classeur'), { action: 'exporter-pdf',
       aide: 'Toutes les pages, cadrées sur leur contenu, en feuilles A4 à imprimer ou à déposer dans l\'ENT.' })
+    // Les séances du chapitre (lot 6), après ce qui touche au classeur
+    const seance = this.app.seanceVue
+    // (courtes, sans aide : le menu tient sans défiler au poste de la classe ;
+    // « Séance précédente » est à côté de l'étiquette de la séance, et ici
+    // au téléphone, où l'étiquette n'est pas, et sur un écran qu'on touche,
+    // où son petit bouton est loin du doigt)
+    if (seance) {
+      filetMenu(m)
+      this.entreeMenu(m, 'Nouvelle séance', () => this.nouvelleSeance(), { action: 'nouvelle-seance' })
+      this.entreeMenu(m, 'Renommer la séance…', () => void this.renommerSeance(), { action: 'renommer-seance' })
+      const avant = this.app.tableau.seancesDuClasseur().filter(x => x.pages.length && x.debut < seance.debut).length > 0
+      if (telephone || ecranTactile()) this.entreeMenu(m, 'Séance précédente…', () => this.bandeauxSeances.ouvrirSeancePrecedente(), { action: 'seance-precedente', inactif: !avant })
+      if (this.app.enSeancePassee) this.entreeMenu(m, 'Retour à aujourd\'hui', () => this.app.retourAujourdhui(), { action: 'retour-aujourdhui' })
+    }
     // Cet appareil (lot 5) : l'affichage de CET écran, gardé dans ce
     // navigateur ; rien ne change dans le classeur, ni pour les élèves. Les
     // noms sous les outils ne vont pas dans la mise en page du téléphone (la
@@ -1878,12 +1955,48 @@ export class UI implements Interface {
       origineDe: p => t.origineDe(p),
       formesDe: p => t.formesDe(p)?.values() ?? [],
       nomDe: p => t.nomDe(p),
-      pages: () => app.pages,
+      // Le PDF d'une séance (lot 6) : celle qu'on regarde (la trieuse : celle du jour)
+      pages: () => this.trieuse?.ouvert ? app.pagesDuJour : app.pages,
+      // (« Toute la séance » quand le classeur en a d'autres ; une seule : c'est tout le classeur)
+      toutLibelle: n => `${n < t.ordre.length ? 'Toute la séance' : 'Tout le classeur'} : ${pagesLisibles(n)}`,
+      toutesLesPages: () => t.ordre.toArray(),
       enGeste: () => app.enGeste,
       classeur: () => app.classeur.nom,
       message: (texte, action) => this.message(texte, action),
       maj: () => this.maj(),
     }
+  }
+
+  // ----- Les séances (lot 6, voir seances-vue.ts) -----
+  /** Une écriture sur une page d'une séance passée a été retenue : la
+   *  question « Juste regarder / Reprendre et écrire » (une seule à la fois) */
+  ecritureSurSeancePassee(page: string) {
+    const s = this.app.tableau.seanceDe(page)
+    if (!s || document.querySelector('dialog.dialogue-reprise')) return
+    if (document.querySelector('dialog[open]')) { this.app.repondreSeancePassee(false); return }
+    this.fermerMenus()
+    void demanderReprise(this.racine, s).then(oui => this.app.repondreSeancePassee(oui))
+  }
+
+  /** Une séance commence : le bandeau « Reprendre » */
+  seanceCommencee(precedente: SeanceDuClasseur | null) { this.bandeauxSeances.seanceCommencee(precedente) }
+
+  /** « Renommer la séance… » (le menu ⋯) : la séance qu'on regarde */
+  async renommerSeance() {
+    const s = this.app.seanceVue
+    if (!s || document.querySelector('dialog[open]')) return
+    const nom = await demanderNomDeSeance(this.racine, s)
+    if (nom === null) return
+    if (this.app.tableau.renommerSeance(s.id, nom || null)) this.message(nom ? `Séance renommée : « ${nom} »` : `Nom de la séance retiré : « ${libelleSeance({ debut: s.debut, nom: null })} »`)
+    this.maj()
+  }
+
+  /** « Nouvelle séance » (le menu ⋯) */
+  nouvelleSeance() {
+    if (tableauCache(this.app) || document.querySelector('dialog[open]')) return
+    this.app.nouvelleSeance()
+    const s = this.app.seanceVue
+    if (s) this.message(`Nouvelle séance : ${libelleSeance(s)}`)
   }
 
   // ----- Envoyer vers une autre page (voir pages/envoi.ts) -----
@@ -1898,7 +2011,7 @@ export class UI implements Interface {
     const n = (ids ? app.avecLeursPoints(ids) : app.objetsChoisis()).length
     if (!n) return this.message('Rien n\'est sélectionné.')
     ouvrirEnvoi({
-      n, pages: app.pages, page: app.page,
+      n, pages: app.pagesDuJour, page: app.page,
       nomDe: p => app.tableau.nomDe(p),
       vignette: (p, l, h) => this.vignettes.vignette(p, l, h),
       envoyer: (cible, deplacer) => { app.envoyerSelection(cible, deplacer, ids) },
@@ -1929,6 +2042,15 @@ export class UI implements Interface {
     this.entreeMenu(el, 'Tout sélectionner', () => app.toutSelectionner(), { touche: `${CTRL} + A`, inactif: app.rienASelectionner() })
     this.entreeMenu(el, 'Tout voir', () => app.toutVoir(), { touche: 'Maj + 1' })
     this.sectionProtegee(el, m)
+    // Une page d'une séance passée (lot 6) : la reprendre, ou en copier ce qui est pris
+    if (app.enSeancePassee) {
+      filetMenu(el)
+      if (app.selection.size) this.entreeMenu(el, 'Copier dans la séance d\'aujourd\'hui', () => app.copierVersAujourdhui(), { action: 'copier-aujourdhui',
+        aide: 'Sur la page du jour où vous étiez, à la même place' })
+      this.entreeMenu(el, 'Reprendre la page', () => app.reprendrePage(app.page), { action: 'reprendre-page',
+        aide: 'Une copie dans la séance du jour, telle qu\'elle est ici ; celle-ci ne change pas' })
+      this.entreeMenu(el, 'Retour à aujourd\'hui', () => app.retourAujourdhui(), { action: 'retour-aujourdhui' })
+    }
     // La page elle-même : Dupliquer la page · Toutes les pages… · ─ ·
     // Copier la page en image · Exporter la page en PDF…
     el.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
@@ -2426,6 +2548,8 @@ export class UI implements Interface {
     const m = this.menuPlus.el
     m.replaceChildren()
     // --- Ce qui sort de la page : une image, une autre page ---
+    if (this.app.enSeancePassee) this.entreeMenu(m, 'Copier dans la séance d\'aujourd\'hui', () => this.app.copierVersAujourdhui(), { action: 'copier-aujourdhui',
+      aide: 'Sur la page du jour où vous étiez, à la même place' })
     this.entreeMenu(m, 'Copier en image', () => this.copierEnImage('selection'), { aide: TITRE_IMAGE })
     this.entreeMenu(m, 'Envoyer vers…', () => this.ouvrirEnvoi(), { aide: TITRE_ENVOI })
     // Le menu court d'un verrouillé (lot 5) : rien d'autre, il ne change plus

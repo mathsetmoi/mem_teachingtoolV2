@@ -14,8 +14,9 @@
 // =============================================================
 import * as Y from 'yjs'
 import type { App } from '../app'
-import { exporter, pagesDeLaSeance, seancesAPublier } from '../revoir/exporter'
-import type { Seance } from '../revoir/exporter'
+import { exporter, pagesAPublier, pagesDeLaSeance, seancesAPublier } from '../revoir/exporter'
+import type { Seance, SeanceExplicite } from '../revoir/exporter'
+import { deLaSeance, libelleSeance } from '../seances'
 import type { FilmEleve } from '../revoir/format'
 import { ErreurFilm, ecrireFilm, lireFilm } from '../revoir/format'
 import { Bobine } from '../revoir/bobine'
@@ -111,6 +112,11 @@ export class Publication {
     const q = <T extends HTMLElement>(s: string) => d.querySelector(s) as T
 
     q<HTMLSelectElement>('.p-seance').addEventListener('change', () => this.choisirSeance())
+    // Des séances explicites (lot 6) : rien à découper
+    if (this.explicites) {
+      q<HTMLSelectElement>('.p-decoupage').closest('label')!.hidden = true
+      q('.p-pages legend').textContent = 'Les pages de la séance'
+    }
     q<HTMLSelectElement>('.p-decoupage').addEventListener('change', () => {
       const s = this.reperer(Number(q<HTMLSelectElement>('.p-decoupage').value) * MINUTE)
       if (s.length) { this.seances = s; this.remplirSeances() }
@@ -145,9 +151,19 @@ export class Publication {
     q('.p-seance').focus()
   }
 
+  /** Les séances sont-elles explicites (lot 6 : le classeur a des séances) ? */
+  private get explicites() { return !!this.seances.length && 'pagesDeSeance' in this.seances[0] }
+
   private remplirSeances() {
     const choix = this.d!.querySelector('.p-seance') as HTMLSelectElement
-    choix.innerHTML = this.seances.map((s, i) => `<option value="${i}">${echapper(jour(s.debut))}, ${heure(s.debut)} → ${heure(s.fin)} · ${s.gestes} geste${s.gestes > 1 ? 's' : ''}</option>`).join('')
+    // Une séance explicite (lot 6) : son nom ou sa date, et sa plage de temps ;
+    // la séance du jour est choisie d'office (elle est la première)
+    const jourId = this.app.tableau.derniereSeance()?.id
+    choix.innerHTML = this.seances.map((s, i) => {
+      const x = s as Partial<SeanceExplicite>
+      const qui = x.id ? `${echapper(x.nom ?? jour(s.debut))}${x.id === jourId ? ' (aujourd\'hui)' : ''}, ` : `${echapper(jour(s.debut))}, `
+      return `<option value="${i}">${qui}${heure(s.debut)} → ${heure(s.fin)} · ${s.gestes} geste${s.gestes > 1 ? 's' : ''}</option>`
+    }).join('')
     this.choisirSeance()
   }
 
@@ -159,14 +175,24 @@ export class Publication {
   private choisirSeance() {
     const d = this.d!, s = this.seance, t = this.app.tableau
     const ordre = t.ordre.toArray()
-    // Seules les pages où il se passe quelque chose : les autres ne seraient pas montrées
-    const pages = pagesDeLaSeance(t, s)
+    // Seules les pages où il se passe quelque chose : les autres ne seraient pas montrées.
+    // Une séance explicite (lot 6) : exactement SES pages, numérotées dans la séance
+    const x = s as Partial<SeanceExplicite>
+    const pages = x.pagesDeSeance ? pagesAPublier(t, s as SeanceExplicite) : pagesDeLaSeance(t, s)
+    const maintenant = Date.now()
     d.querySelector('.p-pages .cases')!.innerHTML = pages.map(p => {
-      const n = ordre.indexOf(p)
-      return `<label class="case"><input type="checkbox" value="${echapper(p)}" checked><span>${n >= 0 ? `Page ${n + 1}` : 'Page jetée depuis'}</span></label>`
+      let texte: string
+      if (!x.pagesDeSeance) { const n = ordre.indexOf(p); texte = n >= 0 ? `Page ${n + 1}` : 'Page jetée depuis' }
+      else {
+        const sa = t.seanceDe(p), k = sa ? sa.pages.indexOf(p) : -1, nom = t.nomDe(p)
+        const de = t.herite(p), source = de ? t.seanceDe(de) : null
+        const reprise = source && sa && source.id !== sa.id ? ` (reprise ${deLaSeance(source, maintenant)})` : ''
+        texte = k < 0 ? 'Page jetée depuis' : `Page ${k + 1}${nom ? ` · ${nom}` : ''}${reprise}${sa && sa.id !== x.id ? ` — ${libelleSeance(sa)}` : ''}`
+      }
+      return `<label class="case"><input type="checkbox" value="${echapper(p)}" checked><span>${echapper(texte)}</span></label>`
     }).join('')
     const deja = this.registre.get(this.cleRegistre())
-    ;(d.querySelector('.p-titre') as HTMLInputElement).value = deja?.titre ?? `Séance du ${new Date(s.debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`
+    ;(d.querySelector('.p-titre') as HTMLInputElement).value = deja?.titre ?? x.nom ?? `Séance du ${new Date(s.debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`
     ;(d.querySelector('.p-resultat') as HTMLElement).hidden = true
     this.majNouveauLien()
     this.majVerifications()
