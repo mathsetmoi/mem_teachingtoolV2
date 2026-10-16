@@ -6,7 +6,10 @@
     "build": "tsc && vite build",
     "preview": "vite preview --host",
     "test": "vitest run",
-    "build:pages": "tsc && vite build --config vite.pages.config.ts"
+    "build:pages": "tsc && vite build --config vite.pages.config.ts",
+    "essais:navigateur": "sh essais/navigateur/tout.sh",
+    "essais:navigateur:1": "sh essais/navigateur/tout.sh 1",
+    "essais:navigateur:2": "sh essais/navigateur/tout.sh 2"
   },
   "dependencies": {
     "fflate": "^0.8.3",

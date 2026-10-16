@@ -1,0 +1,63 @@
+// Au doigt (iPad, sans clavier) : le bouton ↶ de la barre du haut après une
+// suppression dans la trieuse, après « Dupliquer la page », après un envoi.
+import { ouvrir, preparer, etat, carte, centre, attendreOuverte, verifier, pause, fin, doigtCDP } from './lib.mjs'
+
+const { ctx, page } = await ouvrir({ hasTouch: true, viewport: { width: 1180, height: 820 } }, 'ipad')
+const cdp = await ctx.newCDPSession(page)
+const doigts = doigtCDP(cdp)
+const P = await preparer(page, 4, { ici: 2 })
+const touche = async sel => { const c = await centre(page, sel); await page.touchscreen.tap(c.x, c.y); await pause(250) }
+const annuler = 'button[aria-label^="Annuler sur cette page"]'
+// 1. Supprimer la page qu'on regarde (3) depuis le menu de sa vignette, fermer, ↶
+await touche('.rang'); await attendreOuverte(page); await pause(400)
+const opt = await page.evaluate(() => { const o = document.querySelectorAll('.trieuse .carte-options')[2].getBoundingClientRect(); return { x: o.left + o.width / 2, y: o.top + o.height / 2 } })
+await page.touchscreen.tap(opt.x, opt.y); await pause(250)
+await page.locator('.menu-vignette .menu-item', { hasText: 'Supprimer' }).tap(); await pause(250)
+let e = await etat(page)
+verifier('Doigt : « Supprimer » (menu de la vignette 3, la page qu\'on regarde) : 3 pages, on regarde la page 2', e.pages.length === 3 && e.page === P[1], { n: e.pages.length, page: P.indexOf(e.page) + 1 })
+await touche('.trieuse-fermer')
+e = await etat(page)
+const grise = await page.evaluate(s => document.querySelector(s).getAttribute('aria-disabled') === 'true' || document.querySelector(s).disabled || document.querySelector(s).classList.contains('grise'), annuler)
+verifier('Trieuse fermée, sur la page 2 : ↶ est actif', !e.ouverte && !grise, { grise })
+await touche(annuler)
+e = await etat(page)
+verifier('↶ touché : la page 3 revient à sa place, on y est', JSON.stringify(e.pages) === JSON.stringify(P) && e.page === P[2], { pages: e.pages.map(x => P.indexOf(x) + 1), page: P.indexOf(e.page) + 1, m: e.msgs.slice(-2) })
+// 2. Dupliquer la page par le menu de la page (appui long dans le vide), puis ↶ sur la copie vierge
+await pause(800)
+const z = await centre(page, '#zone')
+await page.evaluate(() => window.__app.choisirOutil('selection'))
+await doigts('touchStart', [[z.x + 250, z.y + 200]]); await pause(800); await doigts('touchEnd', []); await pause(300)
+e = await etat(page)
+const menuPage = e.menu.includes('Page')
+if (menuPage) await page.locator('.menu-flottant[aria-label="Page"] .menu-item', { hasText: 'Dupliquer la page' }).tap()
+await pause(300)
+e = await etat(page)
+verifier('Appui long dans le vide : le menu de la page ; « Dupliquer la page » : on est sur la copie (page 4)', menuPage && e.pages.length === 5 && e.page === e.pages[3], { menu: e.menu, n: e.pages.length, m: e.msgs.slice(-1) })
+const copie = e.page
+await touche(annuler)
+e = await etat(page)
+verifier('↶ sur la copie vierge : elle disparaît, retour à l\'original', e.pages.length === 4 && e.page === P[2] && !e.pages.includes(copie), { n: e.pages.length, m: e.msgs.slice(-1) })
+// 3. Envoyer le trait de la page 3 vers la page 1 (barre d'actions → Options), puis ↶
+await page.evaluate(() => window.__app.choisirOutil('selection'))
+const f = await page.evaluate(() => { const a = window.__app, b = a.ui.apercus.boite(a.formes); const c = a.cam; return { x: (b.x + b.l / 2) * c.z + c.x, y: (b.y + b.h / 2) * c.z + c.y } })
+// toucher le trait : le point le plus proche du trait (le premier point)
+const p0 = await page.evaluate(() => { const a = window.__app, t = a.formes[0], c = a.cam, r = document.getElementById('zone').getBoundingClientRect(); return { x: (t.x + t.pts[15 * 3]) * c.z + c.x + r.left, y: (t.y + t.pts[15 * 3 + 1]) * c.z + c.y + r.top } })
+await page.touchscreen.tap(p0.x, p0.y); await pause(400)
+e = await etat(page)
+const barre = await page.evaluate(() => [...document.querySelectorAll('.barre-actions button')].filter(b => b.offsetParent).map(b => b.textContent.trim()))
+verifier('Toucher le trait : la barre d\'actions (avec Options)', barre.includes('Options'), barre)
+await page.locator('.barre-actions button', { hasText: 'Options' }).tap(); await pause(300)
+// « Envoyer vers… » est dans le petit menu ⋯ (Plus) du menu complet depuis les corrections « regressions »
+await page.locator('.panneau-forme .ligne button.plus').tap(); await pause(300)
+await page.locator('.menu-plus .menu-item', { hasText: 'Envoyer vers' }).first().tap(); await pause(400)
+await page.locator('dialog[open] .destination', { hasText: 'Page 1' }).tap(); await pause(400)
+e = await etat(page)
+const boutons = await page.evaluate(() => [...document.querySelectorAll('.toast button')].map(b => b.textContent))
+verifier('Envoyé vers la page 1 : on reste sur la page 3, le message « 1 objet envoyé vers la page 1 » avec « Aller à la page 1 » et « Annuler »', e.page === P[2] && e.n === 0 && /envoyé vers la page 1/.test(e.msgs.at(-1)) && boutons.includes('Aller à la page 1') && boutons.includes('Annuler'), { m: e.msgs.at(-1), boutons, n: e.n })
+await pause(4500)
+await touche(annuler)
+e = await etat(page)
+const surP1 = await page.evaluate(id => window.__app.tableau.formesDe(id).size, P[0])
+verifier('↶ sur la page 3 : le trait revient, il quitte la page 1', e.page === P[2] && e.n === 1 && surP1 === 1, { n: e.n, surP1, m: e.msgs.at(-1) })
+await ctx.close()
+await fin()

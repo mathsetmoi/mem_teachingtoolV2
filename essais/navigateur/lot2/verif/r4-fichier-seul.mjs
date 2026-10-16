@@ -1,0 +1,55 @@
+// Régressions : la version en un seul fichier (dist/index.html, ouverte en
+// file://, sans window.__app). On n'y lit que l'interface : le rang des pages,
+// les messages, ↶ grisé, les menus.
+import { verifier, contexte, surveiller, erreurs, attendre, fin } from './commun.mjs'
+
+const fichier = process.argv[2]
+const ctx = await contexte()
+const page = await ctx.newPage()
+surveiller(page, 'file')
+await page.goto('file://' + fichier)
+await page.waitForSelector('#zone')
+await attendre(1500)
+const rang = () => page.evaluate(() => document.querySelector('.rang')?.textContent)
+const toast = () => page.evaluate(() => document.querySelector('.toast')?.textContent ?? '')
+const gris = titre => page.evaluate(t => document.querySelector(`button[title^="${t}"]`)?.getAttribute('aria-disabled'), titre)
+verifier('file:// : le tableau démarre (1 / 1)', (await rang()) === '1 / 1', await rang())
+verifier('file:// : ↶ grisé au départ', (await gris('Annuler sur cette page')) === 'true', await gris('Annuler sur cette page'))
+// Un trait à la souris (outil Stylo par défaut)
+const m = page.mouse
+await m.move(400, 300); await m.down(); for (let k = 1; k <= 10; k++) await m.move(400 + k * 12, 300 + k * 3); await m.up()
+await attendre(300)
+verifier('file:// : après un trait, ↶ s\'allume', (await gris('Annuler sur cette page')) === 'false', await gris('Annuler sur cette page'))
+// Ctrl+A, Ctrl+C, Ctrl+V
+await page.keyboard.press('Control+a'); await attendre(200)
+let t = await toast()
+verifier('file:// : Ctrl+A sélectionne le trait', /1 objet sélectionné/.test(t), t)
+await page.keyboard.press('Control+c'); await attendre(200)
+t = await toast()
+verifier('file:// : Ctrl+C le copie', /1 objet copié/.test(t), t)
+await page.keyboard.press('Control+v'); await attendre(500)
+await page.keyboard.press('Escape'); await attendre(100)
+await page.keyboard.press('Control+a'); await attendre(200)
+t = await toast()
+verifier('file:// : Ctrl+V a collé (Ctrl+A en voit deux)', /2 objets sélectionnés/.test(t), t)
+await page.keyboard.press('Escape'); await page.keyboard.press('Escape'); await attendre(150)
+// Nouvelle page, puis la supprimer, puis Annuler
+await page.click('button[title="Nouvelle page"]'); await attendre(300)
+verifier('file:// : une nouvelle page (2 / 2)', (await rang()) === '2 / 2', await rang())
+await page.click('button[title="Supprimer cette page"]'); await attendre(300)
+t = await toast()
+verifier('file:// : la poubelle supprime la page sans question (1 / 1, « Page 2 supprimée »)', (await rang()) === '1 / 1' && /Page 2 supprimée/.test(t) && !(await page.$('dialog[open]')), { rang: await rang(), t })
+const annuler = await page.$('.toast button')
+if (annuler) await annuler.click()
+await attendre(300)
+verifier('file:// : « Annuler » rend la page (2 / 2)', (await rang()) === '2 / 2', await rang())
+// Clic droit dans le vide : le menu de la page
+await m.click(800, 500, { button: 'right' }); await attendre(200)
+const menuPage = await page.evaluate(() => { const el = document.querySelector('.menu-flottant[aria-label="Page"]'); return !!el && !el.hidden })
+verifier('file:// : clic droit dans le vide, le menu de la page', menuPage)
+await page.keyboard.press('Escape'); await attendre(100)
+// Recharger : tout est là (IndexedDB en file://)
+await page.reload(); await page.waitForSelector('#zone'); await attendre(1500)
+verifier('file:// : rechargé, deux pages', (await rang())?.endsWith('/ 2'), await rang())
+await ctx.close()
+await fin()

@@ -30,6 +30,22 @@ seul fichier ; quand la police arrive, la barre du haut se règle de nouveau
 et le tableau se repeint avec elle. (Avant le contrôle final du lot 3, une
 feuille de police qui ne répondait jamais empêchait l'outil de s'afficher.)
 
+## Les essais
+
+```bash
+npm test                      # les tests sous Node (tests/), quelques secondes
+npm run essais:navigateur:1   # la batterie du navigateur, partie 1 (~1 h 40)
+npm run essais:navigateur:2   # partie 2 (~1 h)
+```
+
+La batterie des essais du navigateur (environ 350 essais Playwright, dans
+`essais/navigateur/`) pilote un vrai Chromium sur l'outil : elle construit
+les deux versions, lance son propre serveur de développement et écrit son
+résumé dans `essais/navigateur/sorties/RESUME.txt`. Elle est pour les gros
+lots, pas pour une petite retouche ; ce qu'elle demande (Playwright et son
+Chromium déjà installés) et comment la lire : voir
+[`essais/navigateur/README.md`](essais/navigateur/README.md).
+
 ## Figures géométriques
 
 **Au stylo.** Une figure fermée tracée à main levée se redresse au lever du
@@ -1862,7 +1878,7 @@ bibliothèque des classeurs »).
   ce qui se relit (`fichier.etatLisible` : l'état sans les changements en
   attente, que `encodeStateAsUpdate` emporterait, et le fichier serait
   refusé à l'ouverture) : un fichier qui se rouvre toujours, ici comme dans
-  la version d'avant (vérifié avec 41d2739 : `lot4/migration/vt`), et le
+  la version d'avant (vérifié avec 94c518f : `lot4/migration/vt`), et le
   message le dit. Le travail de la séance, lui, se relit normalement.
 
 ## Enregistrer et ouvrir un classeur
@@ -2132,7 +2148,7 @@ plus, sans caractère de contrôle) et l'id (16 caractères hexadécimaux) du
 classeur sont à la fin de l'en-tête depuis le lot 4 ; c'est toujours la
 version 1 : le format reste en tête, et la version d'avant, qui ne lit que
 `format`, `v`, `date` et `pages`, ouvre ces fichiers comme les siens (un
-essai le vérifie avec 41d2739, dans les deux sens). L'en-tête tient dans les
+essai le vérifie avec 94c518f, dans les deux sens). L'en-tête tient dans les
 4 096 premiers octets, même avec un nom de 60 caractères accentués ou de
 guillemets ; `lireEntete` le lit seul, sur un début de fichier, sans rien
 décompresser (`lireTableau`, qui vérifie tout, dirait « abîmé » sur un
@@ -2146,7 +2162,7 @@ une version d'avant les ignore sans rien casser (une copie y paraît d'un coup
 au replay, comme une page neuve ; un essai le vérifie avec la version d'avant
 le lot 3 ; un réglage y compte pour un geste). Les champs que le lot 5 ajoute
 aux formes (verrou, fixation en fond, groupe, rotation d'une formule, voir
-`src/types.ts`) sont facultatifs : la version d'avant (fdf3f72) ouvre un
+`src/types.ts`) sont facultatifs : la version d'avant (6aee150) ouvre un
 `.memc` du lot 5, le peint, le revoit et en publie le film sans erreur, en
 les ignorant ; un `.memc` d'avant s'ouvre dans le lot 5 et s'y lit pareil
 (un banc le vérifie dans les deux sens ; voir les Limites connues pour un
@@ -2234,7 +2250,7 @@ Pour changer d'ordinateur, ou garder une copie de tout : un seul fichier
   classeur à part).
 - **La version d'avant** (la clé du lot 3) refuse un `.memb` avec sa phrase
   (« Ce fichier n'est pas un tableau enregistré par MEM teachingtool
-  (fichier .memc). ») : vérifié avec 41d2739.
+  (fichier .memc). ») : vérifié avec 94c518f.
 
 ## L'enregistrement automatique sur la clé
 
@@ -2342,7 +2358,7 @@ pas d'entrée, la ligne de la clé le dit, et le rappel d'enregistrer (voir
   MEM teachingtool, ou une écriture refusée par le navigateur) : le fichier
   « Symétrie.memc » n'est pas remplacé. ». C'est ce qui protège la clé quand
   la version d'avant (la clé du lot 3), ouverte sur la même machine,
-  remplace le premier classeur par son « Ouvrir » (vérifié avec 41d2739 :
+  remplace le premier classeur par son « Ouvrir » (vérifié avec 94c518f :
   la nouvelle version, rechargée, le dit aussitôt et ne réécrit pas le
   fichier, même à Ctrl + S, qui enregistre alors une copie). Un conflit
   propose **Ouvrir le fichier de la clé** (lot 4 C9 ; sauf pour un fichier
@@ -3098,7 +3114,7 @@ et l'original garde le sien. Toujours, même sans séance publiée (l'original
 peut publier après la copie) ; une copie de copie a sa propre marque. Un
 classeur qui n'est pas une copie publie exactement comme avant ; la version
 d'avant ouvre le fichier d'une copie comme un autre, ignore la marque et la
-garde dans ce qu'elle enregistre (vérifié avec 41d2739 :
+garde dans ce qu'elle enregistre (vérifié avec 94c518f :
 `lot4/migration/vt`). La fiche
 de la copie : « Symétrie (copie) » (puis « (copie 2) »), le même dossier,
 les mêmes étiquettes propres, créée maintenant, jamais ouverte, ses pages,
@@ -3690,7 +3706,7 @@ pouce :
 Au poste de la classe (souris, tablette graphique), au TNI et sur l'iPad
 (1180 × 820, 820 × 1180), rien de tout cela : les barres y sont, au
 demi-pixel près, celles d'avant (l'essai `lot5/K10-telephone.mjs` les
-compare à leur relevé sur c72da32). Les deux boutons du téléphone sont au
+compare à leur relevé de référence). Les deux boutons du téléphone sont au
 bout de la barre des outils dans le document (cachés ailleurs) : l'ordre du
 poste de la classe ne change pas, la feuille de style les range.
 
@@ -4523,7 +4539,7 @@ qu'au document sans séances (hors de l'application).
   dans un autre onglet, la copie attend un clic sur « Se connecter à
   Google » (avec la clé à jour, en silence : une ligne du menu ⋯
   seulement).
-- Un classeur du lot 5 rouvert dans la version d'avant (fdf3f72 : la
+- Un classeur du lot 5 rouvert dans la version d'avant (6aee150 : la
   version d'un seul fichier restée sur une clé USB sans être refaite, un
   onglet ouvert avant la mise à jour) s'y ouvre et
   s'y peint sans erreur, mais elle ne connaît ni le verrou, ni la fixation en
@@ -4536,7 +4552,7 @@ qu'au document sans séances (hors de l'application).
   retour dans le lot 5, un double dans le groupe de l'original, un double
   verrouillé, ou une seconde image fixée avec un rang au-dessus des autres
   images. Rien ne s'y perd et rien n'y plante (un banc le vérifie).
-- Verrouiller et fixer en fond (lot 5) dans la version d'avant (fdf3f72) et
+- Verrouiller et fixer en fond (lot 5) dans la version d'avant (6aee150) et
   dans un lecteur d'avant : ils ignorent le verrou et le fond fixé. La
   version d'avant laisse prendre, glisser, gommer et supprimer un objet
   verrouillé ou un énoncé fixé (Ctrl + A le prend, « Effacer la page »
@@ -4551,7 +4567,7 @@ qu'au document sans séances (hors de l'application).
 - Les groupes (lot 5) n'ont qu'un niveau : grouper des groupes les fond en
   un, et Dégrouper rend les objets un par un (on ne retrouve pas les groupes
   d'avant la fusion, sauf par Ctrl + Z). Un groupe ne vaut que sur sa page.
-  Dans la version d'avant (fdf3f72), qui ignore le champ, les membres d'un
+  Dans la version d'avant (6aee150), qui ignore le champ, les membres d'un
   groupe se prennent un par un. Un groupe verrouillé ne se dégroupe qu'une
   fois déverrouillé. Un groupe pris a le cadre droit de sa boîte (quatre
   coins) et la pastille ↻ (voir « Changer de taille, tourner ») ; après
@@ -4574,7 +4590,7 @@ qu'au document sans séances (hors de l'application).
   garde au moins 1) ; le cadre d'un groupe ou de plusieurs objets reste
   droit : après une rotation, il est la boîte de ce qui a tourné (il ne
   garde pas l'angle, comme tldraw garde celui d'une sélection). Dans la
-  version d'avant (fdf3f72) et dans un lecteur
+  version d'avant (6aee150) et dans un lecteur
   d'avant resté en cache chez un élève, une formule tournée paraît droite
   (et se prend dans sa boîte droite) ; tout le reste d'une transformation
   (un trait agrandi, une image tournée, une figure tournée) y paraît tel
@@ -4598,13 +4614,13 @@ qu'au document sans séances (hors de l'application).
   perfect-freehand redessine un peu autrement depuis le nouveau bout : quelques
   dizaines de pixels de bord par coup, au plus, qui changent d'une nuance au
   lever (les essais comparent au lever : moins de 20 pixels par million) ;
-  rien de ce qui est effacé ne reste. Dans la version d'avant (fdf3f72) et un lecteur
+  rien de ce qui est effacé ne reste. Dans la version d'avant (6aee150) et un lecteur
   d'avant resté en cache chez un élève, une coupe est un geste ordinaire :
   les morceaux neufs s'y dessinent à vitesse de plume (le plus long, qui
   garde l'identifiant du trait, ne se redessine pas), sans erreur (un banc
   le vérifie, avec leur revue, leur exporteur et leur bobine).
 - Les quatre fonds du lot 5 (grands carreaux, papier millimétré, papier
-  pointé, réseau isométrique) dans la version d'avant (fdf3f72) et dans un
+  pointé, réseau isométrique) dans la version d'avant (6aee150) et dans un
   lecteur d'avant resté en cache chez un élève : ils ne les connaissent pas
   et peignent la page blanche, sans erreur (un banc le vérifie, avec leur
   revue, leur exporteur et leur bobine) ; le fond reste écrit dans le

@@ -1,0 +1,30 @@
+// Dupliquer la page depuis le tableau : menu, Ctrl+Maj+D, nom, vue, message, Ctrl+Z
+import { ouvrir, preparer, etat, verifier, fin, pause, D } from './lib.mjs'
+
+const { page } = await ouvrir()
+await preparer(page, 2, { ici: 0, noms: { 0: 'Exercice 12 p. 84' } })
+await page.evaluate(() => { const a = window.__app; a.tableau.changerFond(a.page, 'seyes'); a.allerVers({ x: -300, y: -150, z: 1.6 }, 0) })
+await pause(400)
+const cam0 = await page.evaluate(() => { const a = window.__app; return { ...a.cam, c: a.cam.versMonde(a.rendu.l / 2, a.rendu.h / 2) } })
+await page.mouse.click(1000, 650, { button: 'right' }); await pause(300)
+await page.locator('.menu-flottant .menu-item', { hasText: 'Dupliquer la page' }).click(); await pause(400)
+let e = await etat(page)
+const info = await page.evaluate(() => { const a = window.__app; return { cam: { ...a.cam }, c: a.cam.versMonde(a.rendu.l / 2, a.rendu.h / 2), nom: a.tableau.nomDe(a.page), fond: a.tableau.fondDe(a.page), i: a.pages.indexOf(a.page), n: a.formes.length, rang: document.querySelector('.rang').textContent } })
+console.log('copie', info, e.toast, 'cam0', cam0)
+// Retouches après le lot 5 : on arrive sur une page toujours à 100 %, au centre où l'on était (la copie : celui de son original)
+verifier('Copie juste après, même nom + « (copie) », même fond, même centre de vue, à 100 %', info.i === 1 && info.nom === 'Exercice 12 p. 84 (copie)' && info.fond === 'seyes' && info.cam.z === 1 && Math.abs(info.c.x - cam0.c.x) < 1e-6 && Math.abs(info.c.y - cam0.c.y) < 1e-6, { info, cam0 })
+verifier('Message « Page 1 dupliquée : vous êtes sur la copie (page 2) · Annuler »', e.toast === 'Page 1 dupliquée : vous êtes sur la copie (page 2)Annuler', e.toast)
+await pause(1300)
+await page.keyboard.press('Control+z'); await pause(300)
+e = await etat(page)
+console.log('Ctrl+Z', e.msgs.at(-1), e.pages.length, e.pages.indexOf(e.page) + 1)
+verifier('Ctrl+Z sur la copie vierge la retire et ramène à l\'original', e.pages.length === 2 && e.pages.indexOf(e.page) === 0 && e.msgs.at(-1) === 'Copie retirée')
+// Ctrl+Maj+D, puis copie de copie
+await page.keyboard.press('Control+Shift+D'); await pause(300)
+await page.keyboard.press('Control+Shift+D'); await pause(300)
+e = await etat(page)
+const noms = await page.evaluate(() => window.__app.pages.map(p => window.__app.tableau.nomDe(p)))
+console.log('noms', noms, e.msgs.slice(-2))
+// Revue : la copie de copie se construit
+await pause(1300)
+await fin()
