@@ -9,7 +9,7 @@ export { Y }
 export const R = `${RACINE_ESSAIS}/lot1/verif`
 export const DEV = 'http://localhost:5173/'
 export const PAGES = 'http://127.0.0.1:4180/'
-// La version « clé USB » : le build courant du dépôt (npm run build), pas
+// La version hors ligne : le build courant du dépôt (npm run build), pas
 // une copie figée (lot1/verif/dist-un était celle du lot 1)
 export const UN = `file://${RACINE_DEPOT}/dist/index.html`
 

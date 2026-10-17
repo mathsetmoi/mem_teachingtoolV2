@@ -1,6 +1,6 @@
 // ESSAI DES SÉANCES (lot 6) SUR LES VERSIONS CONSTRUITES, comme le
 // professeur, sans window.__app : la version en ligne (dist-pages, servie en
-// http par cet essai), puis la clé USB (dist/index.html en file://). Tout se
+// http par cet essai), puis la version hors ligne (dist/index.html en file://). Tout se
 // lit à l'écran : le compteur, les bandeaux, les fenêtres, la trieuse.
 // Un classeur neuf a sa séance ; on écrit deux pages ; « Nouvelle séance »
 // (le menu ⋯) ouvre une page 1 blanche et le bandeau « Reprendre » ;
@@ -83,7 +83,7 @@ async function essai(nom, url) {
 }
 
 await essai('en ligne', `http://127.0.0.1:${serveur.address().port}/index.html`)
-await essai('clé USB', 'file://' + R + '/dist/index.html')
+await essai('hors ligne', 'file://' + R + '/dist/index.html')
 ok(!erreurs.length, 'aucune erreur JS', erreurs)
 await nav.close()
 serveur.close()

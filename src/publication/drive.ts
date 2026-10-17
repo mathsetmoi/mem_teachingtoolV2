@@ -341,7 +341,7 @@ export async function publier(nomDossier: string, nom: string, texte: string, cl
 // =============================================================
 
 /** La version en ligne (ou celle de développement) peut se connecter à
- *  Google ; la version « un seul fichier » (clé USB, file://) non. C'est la
+ *  Google ; la version hors ligne (file://) non. C'est la
  *  règle de Publication.enLigne (fenetre.ts), reprise ici telle quelle pour
  *  la copie sur le Drive (Publier n'en change pas). */
 export function versionEnLigne(): boolean {

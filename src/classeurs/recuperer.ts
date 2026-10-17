@@ -29,7 +29,7 @@ import { fermerSurLeFond } from '../dialogue'
 export const AIDE_RECUPERER = 'Les copies de vos classeurs sur le Drive : en ouvrir une, comme un classeur enregistré dans un fichier.'
 
 /** « Récupérer une sauvegarde du Drive… » au menu ⋯ du bandeau de la
- *  bibliothèque (grisé dans la version clé USB, qui le dit) */
+ *  bibliothèque (grisé dans la version hors ligne, qui le dit) */
 export function brancherRecuperer(b: Bibliotheque, fichiers: Fichiers, registre: Registre) {
   const enLigne = versionEnLigne() && !!CLIENT_GOOGLE
   b.menuDuBandeau.push(m => {

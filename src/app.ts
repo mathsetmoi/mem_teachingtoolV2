@@ -4500,7 +4500,7 @@ export class App {
 
   /** Ctrl+C : la copie est gardée en mémoire (cet onglet), dans le navigateur
    *  (un autre onglet de la même adresse) et dans le presse-papiers du
-   *  système (la version en ligne et la version clé USB). Rien de choisi : on
+   *  système (la version en ligne et la version hors ligne). Rien de choisi : on
    *  le dit, et faux (le navigateur fait alors sa copie ordinaire). formes :
    *  ce qu'on copie, ce qui est pris par défaut (le menu de la page copie
    *  les images fixées en fond, qui ne se prennent pas). La copie garde le

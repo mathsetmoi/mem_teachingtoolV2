@@ -3,7 +3,7 @@
 // Un seul travailleur pour toute la page, des demandes numérotées (voir
 // ecrivain-taches.ts) ; il démarre à la première demande et dit qu'il est
 // prêt. Le travailleur est intégré à la page (?worker&inline) : il marche
-// aussi dans la version d'un seul fichier (file://).
+// aussi dans la version hors ligne (file://).
 //
 // Si Worker manque, ou si le travailleur ne démarre pas (il ne dit pas
 // qu'il est prêt dans les 10 s, ou tombe avant), le même code tourne sur le

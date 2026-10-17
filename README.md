@@ -15,7 +15,7 @@ npm install
 npm run dev          # l'outil (http://localhost:5173)
 ```
 
-Version hors ligne en un seul fichier (clé USB) :
+Version hors ligne (un seul fichier) :
 
 ```bash
 npm run build        # → dist/index.html, autonome
@@ -1326,9 +1326,9 @@ fois : Settings → Pages → Source : GitHub Actions). On publie depuis cette
 version en ligne : la connexion Google ne marche ni depuis le fichier unique,
 ni depuis une adresse que la console Google n'autorise pas. Attention : les
 classeurs vivent dans le navigateur, adresse par adresse ; ceux de la version
-en ligne ne sont pas ceux de la clé USB. Pour passer de l'un à l'autre :
+en ligne ne sont pas ceux de la version hors ligne. Pour passer de l'un à l'autre :
 « Enregistrer le classeur » d'un côté, « Ouvrir un classeur » de l'autre (voir
-plus bas). La version clé USB enregistre aussi le fichier séance.
+plus bas). La version hors ligne enregistre aussi le fichier séance.
 
 **Les téléphones des élèves.** Le lecteur vise les navigateurs depuis 2020
 (Safari 14, Chrome 87, Firefox 78) ; sur les iPhone et iPad d'avant iOS 16.4,
@@ -1705,7 +1705,7 @@ bibliothèque des classeurs »).
   propre base du navigateur (IndexedDB). Le premier est le tableau d'avant le
   lot 4 : sa base reste `mem-tableau-local`, jamais recopiée ni renommée, avec
   tout ce qu'elle avait (pages, film, corbeille et noms des pages, copies,
-  piste des instruments, séances publiées). Une version d'avant (la clé USB
+  piste des instruments, séances publiées). Une version d'avant (la version hors ligne
   du lot 3) ouverte ensuite sur la même machine retrouve ce même tableau,
   intact, et ce qu'elle y écrit se retrouve ici. Les autres classeurs ont
   `mem-teachingtool-classeur-<id>` (l'id : 16 caractères hexadécimaux).
@@ -1899,7 +1899,7 @@ entrée de son menu a un nom stable (`data-action` : `enregistrer`, `ouvrir`,
   replay marchent sur une autre machine comme sur celle-ci), les
   instruments, les images, la liste des séances publiées. Sur Chrome et Edge,
   on choisit où l'écrire (la clé USB, un dossier synchronisé avec le Drive) ;
-  ailleurs, et depuis la version clé USB, il se télécharge. Comme le
+  ailleurs, et depuis la version hors ligne, il se télécharge. Comme le
   document, il garde ce qui a été effacé : il n'est pas pour les élèves (pour
   eux : Publier, qui donne un film aplati, `.mem`). Les messages :
   « Enregistrement du classeur… », puis « Classeur enregistré : Symétrie
@@ -1919,7 +1919,7 @@ entrée de son menu a un nom stable (`data-action` : `enregistrer`, `ouvrir`,
   compresse, et rend le fichier. Mesuré sur 60 pages de 300 traits (18 Mo) :
   aucune tâche de plus de 100 ms sur le fil principal pendant
   l'enregistrement (avant, la page gelait environ 1,7 s). Le travailleur est
-  intégré à la page : il marche aussi dans la version clé USB (`file://`,
+  intégré à la page : il marche aussi dans la version hors ligne (`file://`,
   vérifié dans Chromium). Si le navigateur n'a pas de travailleur, ou s'il ne
   démarre pas, le même code tourne sur le fil principal (la page gèle alors
   le temps de l'enregistrement) : Ctrl + S marche toujours, et l'écrivain le
@@ -1949,7 +1949,7 @@ entrée de son menu a un nom stable (`data-action` : `enregistrer`, `ouvrir`,
   la bibliothèque, comme un nouveau classeur, sans rien remplacer ; ou, au
   choix, remplace celui qui est ouvert (voir plus bas). L'aide de l'entrée :
   « Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace
-  celui-ci. ». Sur Chrome et Edge (aussi dans la version clé USB), le choix
+  celui-ci. ». Sur Chrome et Edge (aussi dans la version hors ligne), le choix
   passe par `showOpenFilePicker` (plusieurs fichiers à la fois, des `.memc`
   et des `.memb` : « Classeur ou bibliothèque (MEM teachingtool) », le même
   dossier d'une fois sur l'autre) : le navigateur donne alors le fichier
@@ -2133,7 +2133,7 @@ la sauvegarde »), dont le dernier enregistrement dans un fichier
 (« Dernier enregistrement dans un fichier : aujourd'hui à 14 h 05 », ou
 « Jamais enregistré dans un fichier ») ; avant le lot 4 C3, une note au bas
 du menu le disait. Le fichier est la passerelle entre la version en ligne
-et la version clé USB, et d'une machine à l'autre. Le lecteur des élèves refuse un `.memc`
+et la version hors ligne, et d'une machine à l'autre. Le lecteur des élèves refuse un `.memc`
 en disant où l'ouvrir (« Ce fichier est un classeur complet enregistré par
 l'enseignant (.memc) : il s'ouvre dans MEM teachingtool, pas ici. … »). Au
 démarrage, l'outil demande aussi au navigateur de ne pas vider sa base pour
@@ -2257,7 +2257,7 @@ Pour changer d'ordinateur, ou garder une copie de tout : un seul fichier
 Sur Chrome et Edge, le classeur peut s'écrire tout seul dans un fichier
 `.memc` choisi une fois, sur la clé USB du professeur ou dans un dossier
 synchronisé (`src/classeurs/cle.ts`). C'est surtout fait pour la version
-d'un seul fichier, sur le poste de lycée remis à zéro chaque soir : la clé
+hors ligne, sur le poste de lycée remis à zéro chaque soir : la clé
 garde le classeur, le navigateur peut tout oublier. Ailleurs (Firefox,
 Safari, l'iPad), le navigateur ne sait pas écrire seul dans un fichier :
 pas d'entrée, la ligne de la clé le dit, et le rappel d'enregistrer (voir
@@ -2417,7 +2417,7 @@ pas d'entrée, la ligne de la clé le dit, et le rappel d'enregistrer (voir
   `{ type: 'change', base }`, `{ type: 'etat-cle', base, etat, message }`, et
   `{ type: 'etat-cle?', base }` pour le demander). Deux classeurs ont deux
   fichiers, chacun écrit par son onglet.
-- **Dans la version d'un seul fichier** (`file://`), Chromium a
+- **Dans la version hors ligne** (`file://`), Chromium a
   `showSaveFilePicker`, `showOpenFilePicker`, les Web Locks et le travailleur
   intégré (vérifié) : tout marche de même. Avec un écran (Xvfb), les vraies
   fenêtres GTK et de vrais fichiers sur le disque (`lot4/CF1-vrai-chrome.mjs`) :
@@ -2446,7 +2446,7 @@ le classeur d'un navigateur qui oublie tout, et marche aussi là où la clé
 ne s'écrit pas seule (Firefox, Safari, l'iPad) ; mais seulement depuis la
 version en ligne : la connexion Google ne marche pas dans la version clé
 USB, et l'état le dit (« Sur le Drive : seulement depuis la version en
-ligne (la connexion Google ne marche pas dans la version clé USB) »).
+ligne (la connexion Google ne marche pas dans la version hors ligne) »).
 
 - **Où.** Dans le Drive choisi pour le classeur (menu ⋯ → **Copie sur le
   Drive…** : « Drive personnel », « Drive du lycée », « Pas de copie pour ce
@@ -2463,7 +2463,7 @@ ligne (la connexion Google ne marche pas dans la version clé USB) »).
   rangé dans « MEM - Replay séances ». La fenêtre « Copie sur le Drive… »
   montre aussi le compte connecté, [Se connecter à Google], la taille de la
   copie (« La copie fait 3,2 Mo (aujourd'hui à 14 h 05) ; le Drive en garde
-  les 10 dernières versions. ») ; dans la version clé USB, elle est grisée
+  les 10 dernières versions. ») ; dans la version hors ligne, elle est grisée
   (« Seulement depuis la version en ligne (mathsetmoi.github.io). »).
 - **Le même fichier.** Chaque copie remplace le même fichier
   (« Symétrie centrale.memc », `application/octet-stream`, sa description
@@ -2620,7 +2620,7 @@ ligne (la connexion Google ne marche pas dans la version clé USB) »).
   qu'on choisit se télécharge (« Téléchargement… »), puis s'ouvre par le
   chemin d'« Ouvrir un classeur » : un **nouveau** classeur, ou, déjà là,
   comparée (ouvrir celui de la bibliothèque, le mettre à jour sans perte,
-  ajouter une copie). Grisé dans la version clé USB.
+  ajouter une copie). Grisé dans la version hors ligne.
 
 À essayer une fois pour de vrai, sur le vrai compte : un classeur de plus de
 5 Mo (l'envoi reprenable), puis, dans Google Drive, le dossier « MEM -
@@ -2722,7 +2722,7 @@ le tient à jour).
   le Drive personnel (prof@gmail.com) : il y a 10 min », « Sur le Drive : en
   attente de la connexion Google », « … hors connexion, la copie partira au
   retour du réseau », « … seulement depuis la version en ligne (la connexion
-  Google ne marche pas dans la version clé USB) », « Pas de copie sur le
+  Google ne marche pas dans la version hors ligne) », « Pas de copie sur le
   Drive », « Sur le Drive personnel (prof@gmail.com) : la première copie part
   bientôt », « … rien à copier pour l'instant » : jamais « à jour » sans
   copie faite ; ce qui a échoué ; les garde-fous, voir « La copie sur le
@@ -2787,7 +2787,7 @@ le tient à jour).
 - **Le rappel d'enregistrer**, partout où rien ne protège le classeur : ni
   une clé à jour, ni une copie du Drive de moins de 15 minutes. C'est le cas
   sous Firefox, Safari, sur l'iPad, mais aussi sous Chrome et Edge sans
-  enregistrement automatique, et surtout dans la version d'un seul fichier,
+  enregistrement automatique, et surtout dans la version hors ligne,
   sur le poste remis à zéro, où le Drive est impossible. Après au moins 20
   minutes de travail non enregistré dans un fichier (du premier changement
   après le dernier fichier au dernier changement ; au démarrage, le film le
@@ -3244,7 +3244,7 @@ d'après le lot 5 — avant, les petits carreaux — ; Seyès ; Repère ; puis,
 depuis le lot 5, Grands carreaux (1 cm) ; Papier millimétré ; Papier pointé ;
 Réseau isométrique) et, sur
 Chrome et Edge, la case **Enregistrer automatiquement sur la clé**, cochée
-d'office dans la version d'un seul fichier (`file://`, le poste remis à
+d'office dans la version hors ligne (`file://`, le poste remis à
 zéro) ; [Annuler] [Créer et ouvrir] (Entrée). La case cochée : le choix du
 fichier s'ouvre dans ce clic (le nom du classeur, le même dossier que la
 clé) ; y renoncer crée quand même le classeur, sans clé ; un fichier qui a
@@ -3408,7 +3408,7 @@ Un export à la fois (Ctrl + P pendant un export : « Un export en PDF est déj�
 en cours. », qui reste deux secondes à l'écran avant que la progression
 reprenne) ; ni pendant la revue, ni pendant une séance. Tout se
 fait dans le navigateur, hors connexion, dans la version en ligne comme dans
-le fichier unique de la clé USB : aucun service extérieur, aucune
+le fichier unique de la version hors ligne : aucun service extérieur, aucune
 bibliothèque de plus (la compression vient de fflate, déjà là pour le
 `.memc`).
 
@@ -4077,7 +4077,7 @@ même page), jamais des primes (A' veut dire « l'image de A ») ; un point lié
 une image collée avec lui suit la nouvelle image. La copie passe d'une page à l'autre, d'un onglet à l'autre
 (elle est gardée dans ce navigateur, 12 heures au plus : on ne colle pas le
 lendemain ce qu'on avait oublié avoir copié), et entre la version en ligne et
-la version clé USB par le presse-papiers du système, images comprises (leurs
+la version hors ligne par le presse-papiers du système, images comprises (leurs
 pixels voyagent avec elles). Collées dans un autre logiciel, des formules
 seules donnent leur LaTeX. Une image copiée ailleurs (une capture d'écran) se
 colle toujours comme une image importée. Ce qui vient du presse-papiers du
@@ -4457,7 +4457,7 @@ qu'au document sans séances (hors de l'application).
 
 - Tout est redessiné à chaque déplacement de la vue. Au-delà de quelques
   milliers de traits sur une page, il faudra un index spatial (quadtree).
-- Entre la version en ligne et la version clé USB, la copie passe seulement
+- Entre la version en ligne et la version hors ligne, la copie passe seulement
   par Ctrl+V (le presse-papiers du système) : *Coller ici*, dans le menu de
   la page, ne colle que ce qui a été copié à la même adresse.
 - Au replay, ce qu'on colle ou duplique se dessine en un peu plus d'une
@@ -4540,7 +4540,7 @@ qu'au document sans séances (hors de l'application).
   Google » (avec la clé à jour, en silence : une ligne du menu ⋯
   seulement).
 - Un classeur du lot 5 rouvert dans la version d'avant (6aee150 : la
-  version d'un seul fichier restée sur une clé USB sans être refaite, un
+  version hors ligne restée sur une clé USB sans être refaite, un
   onglet ouvert avant la mise à jour) s'y ouvre et
   s'y peint sans erreur, mais elle ne connaît ni le verrou, ni la fixation en
   fond, ni les groupes, ni la rotation d'une formule : elle laisse prendre,

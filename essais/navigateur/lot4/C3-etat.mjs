@@ -629,7 +629,7 @@ console.log('=== G. deux onglets ===')
 // =====================================================================
 // H. LA VERSION D'UN SEUL FICHIER (file://)
 // =====================================================================
-console.log('=== H. la version clé USB (file://) ===')
+console.log('=== H. la version hors ligne (file://) ===')
 if (existsSync(R + '/dist/index.html')) {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 } })
   const p = await ctx.newPage(); suivre(p, 'H')

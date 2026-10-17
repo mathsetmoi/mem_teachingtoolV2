@@ -86,7 +86,7 @@ const ETAT = () => {
 const etat = () => p.evaluate(ETAT)
 const toasts = () => p.evaluate(() => window.__toasts.splice(0))
 let e = await etat()
-ok(/Sur le Drive : seulement depuis la version en ligne \(la connexion Google ne marche pas dans la version clé USB\)/.test(e.description), 'file:// : l\'état dit que le Drive demande la version en ligne', e.description)
+ok(/Sur le Drive : seulement depuis la version en ligne \(la connexion Google ne marche pas dans la version hors ligne\)/.test(e.description), 'file:// : l\'état dit que le Drive demande la version en ligne', e.description)
 // Une vraie poignée : le fichier du disque glissé sur la page
 const cdp = await ctx.newCDPSession(p)
 await p.evaluate(() => { window.__attraper = true })

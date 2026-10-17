@@ -1496,7 +1496,7 @@ export class UI implements Interface {
       if (cle?.disponible) this.entreeMenu(m, 'Enregistrer automatiquement dans un fichier…', () => void cle.activer(), { action: 'activer-cle', aide: AIDE_ACTIVER })
     }
     // La copie sur le Drive (lot 4 C10) : le compte, ou pas de copie ;
-    // grisée dans la version clé USB (Google ne s'y connecte pas)
+    // grisée dans la version hors ligne (Google ne s'y connecte pas)
     const drive = this.drive
     if (drive) this.entreeMenu(m, 'Copie sur le Drive…', () => void drive.ouvrirLeChoix(), { action: 'copie-drive', inactif: !drive.enLigne,
       aide: drive.enLigne ? 'Une copie à sens unique, dans un dossier privé de votre Drive : choisir le compte, ou pas de copie.' : HORS_LIGNE_FICHIER })

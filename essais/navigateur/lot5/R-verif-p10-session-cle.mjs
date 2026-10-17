@@ -1,7 +1,7 @@
 // SONDE DE VÉRIFICATION reprise dans la batterie (corrections des vérifications
 // des retouches après le lot 5) : la session en file:// : dix rechargements.
 // Copie de retouches/verif/regressions/p10-session-cle.mjs ; autonome.
-// Sonde 10 : la session en file:// (la clé USB, dist/index.html), sans aucun
+// Sonde 10 : la session en file:// (la version hors ligne, dist/index.html), sans aucun
 // script d'initialisation : page 2, déplacée et zoomée à la main, puis dix
 // rechargements de suite : la page 2 revient chaque fois, au même centre, à
 // 100 %. Sans window.__app : le centre se lit par la position d'un trait
