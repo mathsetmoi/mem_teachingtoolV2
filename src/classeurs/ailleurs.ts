@@ -15,8 +15,8 @@
 //
 // Le Drive : seulement depuis la version en ligne (la version hors ligne
 // le grise et le dit). La connexion Google se fait toujours dans un clic,
-// jamais sans lui. MEM teachingtool ne voit du Drive que ce qu'il y a créé,
-// et ce que le professeur choisit dans la fenêtre de Google (selecteur.ts).
+// jamais sans lui. MEM teachingtool ne voit du Drive que ce qu'il y a créé
+// (le droit drive.file) : « MEM - Classeurs », « MEM - Sauvegardes ».
 // =============================================================
 import type { CompteDrive, FicheClasseur, FicheDossier, InfosClasseur } from './demarrage'
 import { idClasseur, visible } from './demarrage'
@@ -38,7 +38,6 @@ import type { ClasseDuDrive } from '../publication/drive'
 import {
   connecte, connecter, courrielDe, dernierCompteGoogle, dossierDeClasse, envoyerDansLeDrive, listerLesClasses, lireFichierDuDrive, preparerGoogle, versionEnLigne,
 } from '../publication/drive'
-import { choisirDansLeDrive, preparerSelecteur } from '../publication/selecteur'
 import { choixValable, raisonDrive } from './drive-pur'
 import { EXTENSION_TABLEAU, nomSur, quandLisible, tailleLisible } from '../fichier'
 import { fermerSurLeFond } from '../dialogue'
@@ -126,7 +125,7 @@ export class Ailleurs {
   /** La fenêtre « Ouvrir » */
   async ouvrir(): Promise<void> {
     if (document.querySelector('dialog[open]')) { this.h.message('Fermez d\'abord la fenêtre ouverte.'); return }
-    if (this.enLigne) { preparerGoogle(); preparerSelecteur() }
+    if (this.enLigne) preparerGoogle()
     const defaut = await this.registre.reglage('copieDrive').catch(() => undefined)
     const connu = COMPTES.find(c => connecte(c.cle))?.cle ?? (choixValable(defaut) && defaut !== 'aucune' ? defaut : 'mem')
     const d = document.createElement('dialog')
@@ -154,8 +153,7 @@ export class Ailleurs {
           <p class="a-google"><span class="a-qui"></span> <button type="button" class="principal a-connecter">Se connecter à Google</button></p>
           <p class="a-etat" role="status" aria-live="polite"></p>
           <div class="a-classes" hidden></div>
-          <p class="boutons"><button type="button" class="secondaire a-picker" disabled>Choisir dans le Drive…</button></p>
-          <p class="aide">« Choisir dans le Drive » montre tout votre Drive : seuls les fichiers que vous y choisissez sont lus. Pour tout un dossier, entrez dedans et sélectionnez tout (${navigator.platform?.startsWith('Mac') ? '⌘' : 'Ctrl'} + A).</p>
+          <p class="aide">MEM teachingtool ne voit que ce qu'il a rangé lui-même sur le Drive. Un classeur déposé ailleurs dans le Drive : téléchargez-le, puis ouvrez-le depuis « Cet ordinateur ».</p>
         </div>
       </div>
       <div class="actions"><button type="button" class="secondaire a-fermer">Annuler</button></div></div>`
@@ -181,7 +179,6 @@ export class Ailleurs {
       const c = compte(), qui = courrielDe(c)
       q('.a-qui').textContent = connecte(c) ? `Connecté : ${qui || 'compte Google'}.` : dernierCompteGoogle(c) ? `Google proposera ${dernierCompteGoogle(c)}.` : ''
       q<HTMLButtonElement>('.a-connecter').hidden = connecte(c)
-      q<HTMLButtonElement>('.a-picker').disabled = !connecte(c)
     }
     let fini = false
     const fermer = () => { if (!fini) { fini = true; d.close() } }
@@ -214,7 +211,7 @@ export class Ailleurs {
       if (compte() !== c) return
       classes.replaceChildren()
       const dossierDrive = compteDe(c)?.classeurs ?? 'MEM - Classeurs'
-      if (!l.length) { etat(`Rien encore dans « ${dossierDrive} » sur ce Drive. Pour le reste du Drive : « Choisir dans le Drive… ».`); return }
+      if (!l.length) { etat(`Rien encore dans « ${dossierDrive} » sur ce Drive.`); return }
       etat(`Dans « ${dossierDrive} » :`)
       for (const x of l) {
         const bloc = Object.assign(document.createElement('div'), { className: 'classe-drive' })
@@ -255,15 +252,6 @@ export class Ailleurs {
       }
       regler()
       await lister(c)
-    })
-    q('.a-picker').addEventListener('click', async () => {
-      const c = compte()
-      let choisis
-      try { choisis = await choisirDansLeDrive(c) } catch (e) { etat(e instanceof Error ? e.message : 'La fenêtre du Drive ne s\'ouvre pas.', true); return }
-      const bons = choisis.filter(x => /\.mem[cb]?$/i.test(x.nom))
-      if (!bons.length) { if (choisis.length) etat('Ce ne sont ni des classeurs (.memc) ni une bibliothèque (.memb).', true); return }
-      fermer()
-      await this.ouvrirDuDrive(c, bons.map(x => ({ id: x.id, nom: x.nom, taille: 0, modifie: 0 })), {})
     })
     d.addEventListener('change', e => {
       if (!(e.target as HTMLElement).closest('.a-comptes')) return

@@ -2,8 +2,8 @@
 // Le serveur de développement (port 5173) et la version hors ligne
 // (dist/index.html, en file://). Google est simulé comme dans lot4/C10 (le
 // faux Google de lot4/verif/migration, avec en plus le déplacement d'un
-// fichier, addParents/removeParents, et la fenêtre de Google, le
-// sélecteur). Les dossiers de l'ordinateur sont des dossiers de l'OPFS
+// fichier, addParents/removeParents ; aucun code de Google n'est chargé
+// pour ouvrir : seule l'API Drive). Les dossiers de l'ordinateur sont des dossiers de l'OPFS
 // (showDirectoryPicker simulé), comme les fichiers de lot4/C9 ; sans
 // accents dans les noms (l'OPFS de Chromium refuse parfois « Symétrie.memc »
 // dans un dossier qui existe déjà, ce que ne fait pas un vrai dossier).
@@ -18,7 +18,7 @@
 //    écrasé.
 // D. La même classe sur le Drive : « MEM - Classeurs › 4B », la copie d'avant
 //    déplacée (pas une seconde copie) ; la fenêtre « Ouvrir » montre la
-//    classe ; le sélecteur de Google ouvre un fichier choisi ; toute la
+//    classe, et un de ses classeurs s'ouvre comme un fichier ; toute la
 //    bibliothèque déposée une fois.
 // E. « Retirer » : plus relié, rien d'effacé.
 // F. La version hors ligne : le Drive grisé, et dit ; rien vers Google.
@@ -36,25 +36,13 @@ const suivre = (p, nom) => {
   p.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|ERR_CERT|net::|ERR_INTERNET_DISCONNECTED/.test(m.text())) erreurs.push(`${nom}: ${m.text()}`) })
 }
 
-// ---------- Le faux Google, avec le déplacement et le sélecteur ----------
+// ---------- Le faux Google, avec le déplacement ----------
 class FauxGoogle7 extends FauxGoogle {
-  constructor() { super(); this.choixPicker = [] }
+  constructor() { super(); this.autresScripts = [] }
   async brancher(ctx) {
     await super.brancher(ctx)
-    const g = this
-    await ctx.exposeFunction('__picker', () => g.choixPicker)
-    // La fenêtre de Google : elle « choisit » ce que l'essai a prévu
-    await ctx.route(/apis\.google\.com\/js\/api\.js/, r => r.fulfill({ contentType: 'text/javascript', body: `window.gapi = { load: (n, o) => setTimeout(() => {
-      window.google = window.google || {}
-      const P = window.google.picker = { ViewId: { DOCS: 'docs' }, Feature: { MULTISELECT_ENABLED: 'multi' }, Action: { PICKED: 'picked', CANCEL: 'cancel' },
-        Response: { ACTION: 'action', DOCUMENTS: 'docs' }, Document: { ID: 'id', NAME: 'name' },
-        DocsView: function () { this.setIncludeFolders = () => this },
-        PickerBuilder: function () { const b = this; let cb = null; window.__pickerVu = { appId: null, jeton: null }
-          b.addView = () => b; b.setOAuthToken = t => { window.__pickerVu.jeton = t; return b }; b.setDeveloperKey = () => b
-          b.setAppId = a => { window.__pickerVu.appId = a; return b }; b.setLocale = () => b; b.setTitle = () => b; b.enableFeature = () => b
-          b.setCallback = f => { cb = f; return b }
-          b.build = () => ({ setVisible: async () => { const l = await window.__picker(); cb(l.length ? { action: 'picked', docs: l } : { action: 'cancel' }) } }) } }
-      o.callback() }, 10) }` }))
+    // Aucun autre code de Google ne doit être demandé (pas de fenêtre de Google)
+    await ctx.route(/apis\.google\.com/, r => { this.autresScripts.push(r.request().url()); return r.fulfill({ status: 404, body: '' }) })
   }
   async repondre(r) {
     const req = r.request(), u = new URL(req.url())
@@ -342,24 +330,12 @@ try {
   await p.waitForSelector('dialog[open] .classe-drive', { timeout: 15000 })
   const vues = await p.evaluate(() => [...document.querySelectorAll('dialog[open] .classe-drive')].map(c => c.textContent.replace(/[  ]/g, ' ')))
   ok(vues.length === 1 && /4B/.test(vues[0]) && /Calcul\.memc/.test(vues[0]) && /Triangles\.memc/.test(vues[0]) && /Ouvrir toute la classe/.test(vues[0]), 'D9) « Ouvrir » › Google Drive : la classe « 4B » et ses classeurs', vues)
-  // Le sélecteur de Google : un fichier choisi s'ouvre (le dépôt d'un fichier fait ailleurs)
-  await p.waitForFunction(() => !!window.google?.picker, null, { timeout: 10000 }).catch(() => {})
-  const neuf = await p.evaluate(async () => {
-    const dem = await import('/src/classeurs/demarrage.ts')
-    const { Tableau } = await import('/src/document.ts'), fichier = await import('/src/fichier.ts')
-    const t = new Tableau(null); const a = t.ajouterPage('blanche', 0); await Promise.resolve(); t.pageVue = a
-    const blob = fichier.ecrireTableau(t.doc, Date.now(), { nom: 'Venu du Drive', id: dem.idClasseur() })
-    const o = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (const x of o) s += String.fromCharCode(x)
-    return btoa(s)
-  })
-  g.drive('prof@example.com').set('autre1xxxxxxxxxx', { id: 'autre1xxxxxxxxxx', name: 'Venu du Drive.memc', mimeType: 'application/octet-stream', parents: ['racine'], octets: Buffer.from(neuf, 'base64'), modifie: Date.now(), versions: [] })
-  g.choixPicker = [{ id: 'autre1xxxxxxxxxx', name: 'Venu du Drive.memc' }]
-  await p.click('dialog[open] .a-picker')
+  ok(await p.$('dialog[open] .a-picker') === null, 'D10) Pas de « Choisir dans le Drive… » (pas de fenêtre de Google)')
+  // Un classeur de la classe : il s'ouvre comme un fichier (déjà là : comparé)
+  await p.click('dialog[open] .fichier-drive:has-text("Calcul.memc")')
   await p.waitForSelector('dialog[open]:not(.dialogue-ouvrir-ailleurs)', { timeout: 15000 })
   f = await fenetre(p)
-  const pickerVu = await p.evaluate(() => window.__pickerVu)
-  ok(/Ouvrir ce classeur/.test(f?.titre ?? '') && /Venu du Drive/.test(f?.texte ?? ''), 'D10) « Choisir dans le Drive… » : le fichier choisi s\'ouvre comme un fichier', f)
-  ok(pickerVu?.appId === '41829434463' && pickerVu?.jeton === 'jeton:prof@example.com', 'D11) La fenêtre de Google : le numéro du projet (setAppId) et le jeton du compte', pickerVu)
+  ok(/Ouvrir ce classeur/.test(f?.titre ?? '') && /Calcul/.test(f?.texte ?? ''), 'D11) Un classeur de la classe s\'ouvre comme un fichier (« Ouvrir ce classeur ? »)', f)
   await p.click('dialog[open] [data-a="annuler"]'); await p.waitForTimeout(300)
   // Toute la bibliothèque, une fois, sur le Drive
   await p.keyboard.press('Escape').catch(() => {})
@@ -374,7 +350,7 @@ try {
   // Récupérer une sauvegarde : celles des classes y sont aussi
   const rec = await p.evaluate(async () => (await window.__google.listerSauvegardes('mem')).map(s => s.nom))
   ok(rec.includes('Calcul.memc') && rec.includes('Triangles.memc'), 'D14) « Récupérer une sauvegarde du Drive » voit aussi celles des classes', rec)
-  ok(g.depuis(avant).every(r => !/script\.google/.test(r.chemin)), 'D15) Rien que l\'API Drive')
+  ok(g.depuis(avant).every(r => !/script\.google/.test(r.chemin)) && g.autresScripts.length === 0, 'D15) Rien que l\'API Drive (aucun autre code de Google)', g.autresScripts)
   await toasts(p)
 
   // =====================================================================

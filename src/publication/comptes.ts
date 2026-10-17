@@ -60,15 +60,6 @@ export const EXTENSION_SAUVEGARDE = '.memc'
  *  resterait possible. Voir le README. */
 export const CLIENT_GOOGLE = '41829434463-j9dekdpg6c9va9pd00fanof7h3lphkjm.apps.googleusercontent.com'
 
-/** Le numéro du projet Google Cloud (le début de l'identifiant client) : le
- *  sélecteur de fichiers de Google (lot 7) le demande, pour que MEM
- *  teachingtool puisse lire les fichiers qu'on y choisit avec le seul droit
- *  drive.file */
-export const PROJET_GOOGLE = CLIENT_GOOGLE.split('-')[0]
-/** La clé d'API du sélecteur de fichiers de Google (pas un secret, limitée au
- *  site dans la console). Vide : le sélecteur s'ouvre sans elle. */
-export const CLE_API_GOOGLE = ''
-
 export const compteDe = (cle: string) => COMPTES.find(c => c.cle === cle) ?? null
 
 const CHEMIN_EXEC = /^\/(?:a\/macros\/[^/]+|macros)\/s\/[^/]+\/exec$/

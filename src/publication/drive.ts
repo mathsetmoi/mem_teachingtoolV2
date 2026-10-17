@@ -29,8 +29,7 @@
 // nom du chapitre, au lieu du dossier des sauvegardes (sauvegarder, avec
 // `dossier` : le fichier d'avant y est déplacé, ses versions le suivent).
 // listerLesClasses les montre à la fenêtre « Ouvrir » ; envoyerDansLeDrive
-// y dépose un fichier une fois (toute la bibliothèque). Le jeton sert aussi
-// au sélecteur de fichiers de Google (jetonDe, voir selecteur.ts).
+// y dépose un fichier une fois (toute la bibliothèque).
 // =============================================================
 import { CLIENT_GOOGLE, COMPTES, EXTENSION, EXTENSION_SAUVEGARDE, compteDe } from './comptes'
 import { nomSur } from '../fichier'
@@ -90,9 +89,6 @@ let jeton = '', expiration = 0, compteDuJeton = '', courriel = ''
 export const connecte = (compte: string) => !!jeton && compteDuJeton === compte && Date.now() < expiration
 /** L'adresse du compte Google connecté pour `compte` ('' : pas connecté, ou inconnue) */
 export const courrielDe = (compte: string) => connecte(compte) ? courriel : ''
-/** Le jeton de connexion de `compte`, pour le sélecteur de fichiers de
- *  Google (lot 7) ; '' : pas connecté */
-export const jetonDe = (compte: string) => connecte(compte) ? jeton : ''
 export function deconnecter() { jeton = ''; expiration = 0; compteDuJeton = ''; courriel = ''; oublierLeRelais(); signalerConnexion() }
 
 /** La clé de l'onglet (sessionStorage) où la connexion attend le temps d'un

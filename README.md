@@ -2650,9 +2650,9 @@ emplacements »** en haut de la bibliothèque (3A).
   n'existe pas. La case « Garder ce dossier relié », cochée d'avance, en
   fait l'emplacement de la classe : chaque classeur y garde son fichier.
   Google Drive → les classes de « MEM - Classeurs » sont listées, avec
-  **Ouvrir toute la classe** (elle reste reliée au Drive) ; **Choisir dans
-  le Drive…** ouvre la fenêtre de Google pour le reste du Drive (pour tout
-  un dossier : y entrer, Ctrl + A).
+  **Ouvrir toute la classe** (elle reste reliée au Drive), et chacun de
+  leurs classeurs. Un classeur déposé ailleurs dans le Drive n'y est pas
+  (voir plus bas) : le télécharger, puis « Cet ordinateur ».
 - **Enregistrer.** Menu ⋯ du classeur → **Enregistrer sur le Drive ou
   ailleurs…**, ou le menu d'un dossier → **Enregistrer ce dossier…** :
   - **Quoi ?** Ce classeur, le dossier de la classe (son dossier le plus
@@ -2708,29 +2708,28 @@ emplacements »** en haut de la bibliothèque (3A).
   classeur). Ces fichiers gardent la marque des sauvegardes :
   « Récupérer une sauvegarde du Drive » les voit aussi (seulement ceux du
   compte choisi).
-- **La fenêtre de Google** (`src/publication/selecteur.ts`) : le droit
-  Google reste `drive.file` (MEM teachingtool ne voit que ce qu'il a créé).
-  Ce que le professeur choisit dans la fenêtre de Google, et seulement
-  cela, devient lisible (`setAppId` : le numéro du projet). Son code
-  (`apis.google.com/js/api.js`) se charge quand la fenêtre « Ouvrir »
-  s'ouvre.
+- **Le droit Google reste `drive.file`** : MEM teachingtool ne voit du
+  Drive que ce qu'il y a créé. Pas de fenêtre de Google pour choisir un
+  fichier ailleurs dans le Drive (elle demande un réglage de plus dans la
+  console Google, peut-être une clé d'API) : choix du professeur, le 17
+  octobre 2026, pour ne rien ouvrir de plus côté Google pour l'instant.
 - **L'index** : la liste des emplacements dans le réglage `emplacements`
   (une clé nouvelle) ; la fiche d'un classeur gagne un champ facultatif
   `drive.dossier`. Aucune base, aucune clé existante, aucun format de
   fichier ne change.
 - **Les essais** : `tests/emplacements.test.ts` (sous Node) et
   `essais/navigateur/lot7/E1-ailleurs.mjs` (Google simulé, avec le
-  déplacement et la fenêtre de Google ; les dossiers de l'ordinateur dans
+  déplacement ; les dossiers de l'ordinateur dans
   l'OPFS). Adapté : `lot4/C9-fichiers.mjs`, où « Ouvrir… » du bandeau montre
   maintenant la fenêtre « Ouvrir » avant le choix des fichiers.
 
 ### Limites, et ce qu'il faut faire une fois
 
-- **À activer dans la console Google Cloud** (le projet de la connexion
-  Google, `41829434463`) : l'API **Google Picker**, sans quoi « Choisir
-  dans le Drive… » ne s'ouvre pas (le reste du lot n'en dépend pas). Une
-  clé d'API n'est pas nécessaire pour l'instant (`CLE_API_GOOGLE`, vide) ;
-  si Google la demande, la créer, limitée au site, et la mettre là.
+- Rien à régler dans la console Google : le lot n'utilise que la
+  connexion et l'API Drive de Publier et de la copie.
+- Un classeur déposé à la main ailleurs dans le Drive ne se voit pas
+  depuis l'onglet « Google Drive » : le télécharger (ou passer par
+  G:\Mon Drive avec Google Drive pour ordinateur), puis « Cet ordinateur ».
 - Un classeur ajouté plus tard dans une classe reliée y arrive avec
   **Mettre à jour** (la liste le signale) ; sur l'ordinateur, chaque fichier
   se met à jour quand son classeur est ouvert, comme la clé.
@@ -2739,7 +2738,7 @@ emplacements »** en haut de la bibliothèque (3A).
   fois ; le Drive y marche.
 - À essayer une fois pour de vrai, sur le vrai compte : relier une classe au
   Drive personnel, regarder « MEM - Classeurs » dans Google Drive, puis
-  « Choisir dans le Drive… » sur un `.memc` glissé à la main dans le Drive.
+  rouvrir la classe depuis l'onglet « Google Drive » sur un autre poste.
 
 ## L'état de la sauvegarde
 
