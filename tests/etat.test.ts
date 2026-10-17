@@ -82,7 +82,7 @@ describe('les lignes', () => {
     expect(drive({ etat: 'connexion', enAttente: false })[0].niveau).toBe('info')
     expect(drive({ etat: 'connexion', enAttente: true }, { etat: 'ok', t: T })[0].niveau).toBe('info')
     expect(drive({ etat: 'hors-ligne' })[0].texte).toBe('Sur le Drive : hors connexion, la copie partira au retour du réseau')
-    expect(drive({ etat: 'impossible' })[0].texte).toBe('Sur le Drive : seulement depuis la version en ligne (la connexion Google ne marche pas dans la version clé USB)')
+    expect(drive({ etat: 'impossible' })[0].texte).toBe('Sur le Drive : seulement depuis la version en ligne (la connexion Google ne marche pas dans la version hors ligne)')
     expect(drive({ etat: 'absente' })[0].texte).toBe('Pas de copie sur le Drive')
     expect(drive({ etat: 'erreur', message: 'le Drive est plein.', enAttente: true })[0]).toEqual({ quoi: 'drive', niveau: 'attention', texte: 'Sur le Drive : le Drive est plein' })
     expect(drive({ etat: 'conflit', message: 'La sauvegarde du Drive a changé ailleurs.' })[0].texte).toBe('La sauvegarde du Drive a changé ailleurs.')
