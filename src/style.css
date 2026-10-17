@@ -1878,3 +1878,61 @@ body.en-revue .bandeau-seance, body.en-trieuse .bandeau-seance, body.en-trieuse 
 .tiroir-vignette .numero { position: absolute; left: 8px; top: 8px; min-width: 24px; height: 24px; display: grid; place-items: center; padding: 0 6px; border-radius: 7px; background: var(--encre); color: #fff; font-size: 13px; font-weight: 700; }
 .tiroir-vignette .nom { max-width: 128px; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tiroir-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ===== Ouvrir et enregistrer, sur l'ordinateur ou sur le Drive (lot 7,
+   classeurs/ailleurs.ts) : deux onglets dans « Ouvrir », « Quoi ? » et
+   « Où ? » dans « Enregistrer », des cases de 44 px ; et « Mes
+   emplacements » en haut de la bibliothèque. */
+.dialogue-ailleurs { width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto; }
+.dialogue-ailleurs .corps { display: grid; gap: 12px; }
+.dialogue-ailleurs .corps p { margin: 0; }
+.dialogue-ailleurs [hidden] { display: none !important; }
+.dialogue-ailleurs fieldset { border: 1px solid var(--filet); border-radius: 12px; padding: 6px 12px 8px; margin: 0; }
+.dialogue-ailleurs legend { font-weight: 700; font-size: 14px; padding: 0 4px; }
+.dialogue-ailleurs .choix, .dialogue-ailleurs .cases { display: flex; flex-wrap: wrap; gap: 0 18px; }
+.dialogue-enregistrer-ailleurs .e-quoi .choix { flex-direction: column; }
+.dialogue-ailleurs .case { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.dialogue-ailleurs .case input { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--bleu); }
+.dialogue-ailleurs .case small { color: var(--encre-douce); font-size: 13px; }
+.dialogue-ailleurs input:disabled + span { opacity: 0.55; }
+.dialogue-ailleurs button:disabled { opacity: 0.55; cursor: default; }
+.dialogue-ailleurs .aide { font-size: 13px; color: var(--encre-douce); }
+.dialogue-ailleurs .boutons { display: flex; flex-wrap: wrap; gap: 8px; }
+.dialogue-ailleurs .actions { flex-wrap: wrap; }
+.dialogue-ailleurs .onglets { display: flex; gap: 4px; border-bottom: 1px solid var(--filet); }
+.dialogue-ailleurs .onglet {
+  min-height: 44px; padding: 0 16px; border: 0; border-bottom: 3px solid transparent; background: transparent;
+  color: var(--encre-douce); font: inherit; font-weight: 700; cursor: pointer;
+}
+.dialogue-ailleurs .onglet[aria-selected="true"] { color: var(--encre); border-bottom-color: var(--bleu); }
+.dialogue-ailleurs .onglet:focus-visible { outline: 3px solid var(--bleu); outline-offset: -3px; }
+.dialogue-ailleurs .panneau { display: grid; gap: 10px; }
+.dialogue-ailleurs .hors-ligne, .a-etat.erreur, .e-etat.erreur { color: var(--encre); background: #fff6d6; border-radius: 8px; padding: 6px 10px; }
+.a-google { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 14px; }
+.a-etat:empty, .e-etat:empty { display: none; }
+.a-classes { display: grid; gap: 8px; max-height: min(320px, 45vh); overflow-y: auto; overscroll-behavior: contain; }
+.classe-drive { border: 1px solid var(--filet); border-radius: 10px; padding: 6px 8px; }
+.classe-drive .tete { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.classe-drive .tete .nom { font-weight: 700; }
+.classe-drive .tete .n { font-size: 13px; color: var(--encre-douce); flex: 1; }
+.classe-drive ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; }
+.fichier-drive {
+  display: grid; gap: 2px; width: 100%; min-height: 44px; padding: 4px 10px; text-align: left;
+  border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--encre); cursor: pointer; font: inherit;
+}
+.fichier-drive:hover { background: #eef3fa; border-color: var(--filet); }
+.fichier-drive:focus-visible { outline: 3px solid var(--bleu); outline-offset: 0; }
+.fichier-drive .r-nom { font-weight: 700; overflow-wrap: anywhere; }
+.fichier-drive .r-quand { font-size: 13px; color: var(--encre-douce); }
+.emplacements { margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--filet); border-radius: 12px; background: #f7f9fc; }
+.emplacements[hidden] { display: none; }
+.emplacements h3 { margin: 0 0 4px; font-size: 14px; }
+.emplacements ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.emplacement { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 44px; }
+.emplacement .texte { flex: 1; min-width: 200px; overflow-wrap: anywhere; }
+.emplacement .ou { color: var(--encre-douce); }
+.emplacement .manque { display: block; font-size: 12px; color: var(--encre); }
+.emplacement button { min-height: 36px; }
+@media (max-width: 480px) {
+  .dialogue-ailleurs { width: calc(100vw - 16px); padding: 16px 14px; }
+}

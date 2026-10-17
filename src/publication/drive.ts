@@ -21,6 +21,15 @@
 // (elaguerVersions). listerSauvegardes et lireSauvegarde servent à
 // « Récupérer une sauvegarde du Drive ». Rien de cela ne touche à publier()
 // ni au dossier des replays.
+//
+// LES CLASSES RELIÉES AU DRIVE (lot 7) : un dossier de classe de la
+// bibliothèque relié au Drive a son sous-dossier dans un troisième dossier
+// privé (« MEM - Classeurs »…), marqué par l'id du dossier de la
+// bibliothèque (dossierDeClasse) ; la copie de ses classeurs y va, sous le
+// nom du chapitre, au lieu du dossier des sauvegardes (sauvegarder, avec
+// `dossier` : le fichier d'avant y est déplacé, ses versions le suivent).
+// listerLesClasses les montre à la fenêtre « Ouvrir » ; envoyerDansLeDrive
+// y dépose un fichier une fois (toute la bibliothèque).
 // =============================================================
 import { CLIENT_GOOGLE, COMPTES, EXTENSION, EXTENSION_SAUVEGARDE, compteDe } from './comptes'
 import { nomSur } from '../fichier'
@@ -37,6 +46,13 @@ const MARQUE_DOSSIER: MarqueDossier = { cle: 'memReplay', valeur: 'dossier-v1', 
  *  des replays ; le dossier des replays n'est donc jamais pris pour lui,
  *  ni lui pour celui des replays */
 const MARQUE_SAUVEGARDES: MarqueDossier = { cle: 'memSauvegardes', valeur: 'dossier-v1', quoi: 'des sauvegardes' }
+/** La marque du dossier des classes (lot 7), à lui seul ; et celle de
+ *  chacun de ses sous-dossiers : l'id du dossier de classe de la bibliothèque */
+const MARQUE_CLASSES: MarqueDossier = { cle: 'memClasses', valeur: 'dossier-v1', quoi: 'des classes' }
+const MARQUE_CLASSE = 'memClasse'
+/** Un fichier déposé une fois sur le Drive (toute la bibliothèque, lot 7) */
+const MARQUE_DEPOT = { cle: 'memDepot', valeur: 'v1' }
+const DOSSIER_DRIVE = 'application/vnd.google-apps.folder'
 /** La marque d'une sauvegarde, et celle du classeur qu'elle copie */
 const MARQUE_SAUVEGARDE = { cle: 'memSauvegarde', valeur: 'v1' }
 const MARQUE_CLASSEUR = 'memClasseur'
@@ -224,7 +240,7 @@ const partage = (f: Fiche) => (f.permissions ?? []).some(p => p.type === 'anyone
 
 /** Le compte (« mem », « lfb ») dont `nom` est le dossier des replays ou
  *  celui des sauvegardes */
-const compteDuDossier = (nom: string) => COMPTES.find(c => c.dossier === nom || c.sauvegardes === nom)?.cle ?? nom
+const compteDuDossier = (nom: string) => COMPTES.find(c => c.dossier === nom || c.sauvegardes === nom || c.classeurs === nom)?.cle ?? nom
 
 /** Le dossier privé `nom` de ce Drive, reconnu à sa marque (celle des
  *  replays d'abord, celle des sauvegardes pour le lot 4 C10) et à celle de
@@ -408,6 +424,9 @@ async function envoyer(id: string | null, meta: Record<string, unknown>, fichier
 export interface SauvegardeAFaire {
   compte: string; classeur: string; nom: string; fichier: Blob; idExistant: string | null
   origine: string; t: number; recu: number; forcer?: boolean; signal?: AbortSignal
+  /** Le dossier du Drive où va la copie (celui d'une classe reliée, lot 7) ;
+   *  absent : le dossier des sauvegardes du compte */
+  dossier?: string
 }
 /** Ce qui s'est passé : l'id du fichier, s'il vient d'être créé ; conflit :
  *  il a été mis à jour depuis un autre ordinateur, avec un contenu plus
@@ -430,14 +449,22 @@ export interface SauvegardeFaite { id: string; cree: boolean; conflit?: { t: num
 export async function sauvegarder(o: SauvegardeAFaire): Promise<SauvegardeFaite> {
   const c = compteDe(o.compte)
   if (!c) throw new Error('Ce compte n\'existe pas.')
-  const { dossier } = await dossierPrive(c.sauvegardes, MARQUE_SAUVEGARDES)
+  const dossier = o.dossier ? { id: o.dossier } : (await dossierPrive(c.sauvegardes, MARQUE_SAUVEGARDES)).dossier
   const lireFiche = (id: string) => appeler<Fiche>(`${API}/${encodeURIComponent(id)}?fields=${encodeURIComponent(CHAMPS_SAUVEGARDE)}`, { signal: o.signal })
-  const estLaSienne = (f: Fiche) => !f.trashed && !!f.parents?.includes(dossier.id)
+  const deCeClasseur = (f: Fiche) => !f.trashed
     && f.appProperties?.[MARQUE_SAUVEGARDE.cle] === MARQUE_SAUVEGARDE.valeur && f.appProperties?.[MARQUE_CLASSEUR] === o.classeur
+  const estLaSienne = (f: Fiche) => deCeClasseur(f) && !!f.parents?.includes(dossier.id)
   let existant: Fiche | null = null
   if (o.idExistant) {
     try {
-      const f = await lireFiche(o.idExistant)
+      let f = await lireFiche(o.idExistant)
+      // La copie d'avant est ailleurs (le dossier des sauvegardes, une autre
+      // classe : lot 7) : elle est déplacée ici, avec ses versions
+      if (deCeClasseur(f) && !estLaSienne(f) && !partage(f)) {
+        const p = new URLSearchParams({ addParents: dossier.id, removeParents: (f.parents ?? []).join(','), fields: 'id' })
+        await appeler(`${API}/${encodeURIComponent(f.id)}?${p}`, { ...enJson('PATCH', {}), signal: o.signal })
+        f = await lireFiche(f.id)
+      }
       if (estLaSienne(f)) existant = f
     } catch (e) {
       // Seul « le fichier n'existe plus » permet d'en chercher ou d'en créer un autre
@@ -518,21 +545,31 @@ export interface SauvegardeListee { id: string; nom: string; modifie: number; ta
 export async function listerSauvegardes(compte: string): Promise<SauvegardeListee[]> {
   const c = compteDe(compte)
   if (!c) return []
+  // Celles du dossier des sauvegardes et celles des classes reliées de ce
+  // compte (lot 7) : toutes portent la marque des sauvegardes
+  const parents: string[] = []
   const dossier = await trouverDossier(c.sauvegardes, MARQUE_SAUVEGARDES)
-  if (!dossier) return []
-  const q = `trashed=false and '${dossier.id}' in parents and appProperties has { key='${MARQUE_SAUVEGARDE.cle}' and value='${MARQUE_SAUVEGARDE.valeur}' }`
+  if (dossier) parents.push(dossier.id)
+  const classes = await trouverDossier(c.classeurs, MARQUE_CLASSES)
+  if (classes) {
+    const q = `trashed=false and '${classes.id}' in parents and mimeType='${DOSSIER_DRIVE}'`
+    parents.push(...(await chercherTout(q, 'id,name,mimeType,trashed')).filter(f => !f.trashed && f.mimeType === DOSSIER_DRIVE).map(f => f.id))
+  }
   const toutes: SauvegardeListee[] = []
-  let page = ''
-  for (let n = 0; n < 20; n++) {
-    const p = new URLSearchParams({ q, fields: 'nextPageToken,files(id,name,size,modifiedTime,trashed,appProperties)', pageSize: '100', orderBy: 'modifiedTime desc' })
-    if (page) p.set('pageToken', page)
-    const r = await appeler<{ files?: Fiche[]; nextPageToken?: string }>(`${API}?${p}`)
-    for (const f of r.files ?? []) {
-      if (f.trashed || f.appProperties?.[MARQUE_SAUVEGARDE.cle] !== MARQUE_SAUVEGARDE.valeur) continue
-      toutes.push({ id: f.id, nom: f.name, modifie: Date.parse(f.modifiedTime ?? '') || 0, taille: Number(f.size) || 0, classeur: f.appProperties?.[MARQUE_CLASSEUR] ?? '' })
+  for (const parent of parents) {
+    const q = `trashed=false and '${parent}' in parents and appProperties has { key='${MARQUE_SAUVEGARDE.cle}' and value='${MARQUE_SAUVEGARDE.valeur}' }`
+    let page = ''
+    for (let n = 0; n < 20; n++) {
+      const p = new URLSearchParams({ q, fields: 'nextPageToken,files(id,name,size,modifiedTime,trashed,appProperties)', pageSize: '100', orderBy: 'modifiedTime desc' })
+      if (page) p.set('pageToken', page)
+      const r = await appeler<{ files?: Fiche[]; nextPageToken?: string }>(`${API}?${p}`)
+      for (const f of r.files ?? []) {
+        if (f.trashed || f.appProperties?.[MARQUE_SAUVEGARDE.cle] !== MARQUE_SAUVEGARDE.valeur) continue
+        toutes.push({ id: f.id, nom: f.name, modifie: Date.parse(f.modifiedTime ?? '') || 0, taille: Number(f.size) || 0, classeur: f.appProperties?.[MARQUE_CLASSEUR] ?? '' })
+      }
+      page = r.nextPageToken ?? ''
+      if (!page) break
     }
-    page = r.nextPageToken ?? ''
-    if (!page) break
   }
   return toutes.sort((a, b) => b.modifie - a.modifie)
 }
@@ -542,3 +579,117 @@ export async function lireSauvegarde(id: string): Promise<Uint8Array> {
   const r = await demander(`${API}/${encodeURIComponent(id)}?alt=media`)
   return new Uint8Array(await r.arrayBuffer())
 }
+
+// =============================================================
+// LES CLASSES RELIÉES AU DRIVE (lot 7)
+// =============================================================
+
+const echapper = (t: string) => t.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+
+/** Une page après l'autre (au plus 20) d'une recherche dans le Drive */
+async function chercherTout(q: string, champs: string): Promise<Fiche[]> {
+  const tous: Fiche[] = []
+  let page = ''
+  for (let n = 0; n < 20; n++) {
+    const p = new URLSearchParams({ q, fields: `nextPageToken,files(${champs})`, pageSize: '100' })
+    if (page) p.set('pageToken', page)
+    const r = await appeler<{ files?: Fiche[]; nextPageToken?: string }>(`${API}?${p}`)
+    tous.push(...(r.files ?? []))
+    page = r.nextPageToken ?? ''
+    if (!page) break
+  }
+  return tous
+}
+
+/** Le dossier d'une classe dans le Drive de `compte` : le sous-dossier de
+ *  « MEM - Classeurs » (privé, créé au besoin) marqué par l'id du dossier de
+ *  la bibliothèque, créé au besoin, privé ; il porte le nom de la classe (un
+ *  renommage dans la bibliothèque le suit). Partagé : on refuse, comme pour
+ *  les autres dossiers. */
+export async function dossierDeClasse(compte: string, classe: { id: string; nom: string }): Promise<{ id: string; nom: string }> {
+  // Retenu quelques minutes : chaque copie d'un classeur de la classe le demande
+  const cle = `${compte}\n${classe.id}\n${classe.nom}`
+  const connu = dossiersDeClasse.get(cle)
+  if (connu && Date.now() - connu.t < 10 * 60_000 && connecte(compte)) return connu.dossier
+  const dossier = await chercherLeDossierDeClasse(compte, classe)
+  dossiersDeClasse.set(cle, { dossier, t: Date.now() })
+  return dossier
+}
+const dossiersDeClasse = new Map<string, { dossier: { id: string; nom: string }; t: number }>()
+
+async function chercherLeDossierDeClasse(compte: string, classe: { id: string; nom: string }): Promise<{ id: string; nom: string }> {
+  const c = compteDe(compte)
+  if (!c) throw new Error('Ce compte n\'existe pas.')
+  const { dossier: parent } = await dossierPrive(c.classeurs, MARQUE_CLASSES)
+  const nom = nomSur(classe.nom, { repli: 'Classe' })
+  const q = `trashed=false and '${parent.id}' in parents and mimeType='${DOSSIER_DRIVE}' and appProperties has { key='${MARQUE_CLASSE}' and value='${echapper(classe.id)}' }`
+  const trouves = (await chercherTout(q, CHAMPS)).filter(f => !f.trashed && f.appProperties?.[MARQUE_CLASSE] === classe.id)
+  const trouve = trouves.find(f => !partage(f)) ?? trouves[0]
+  if (trouve) {
+    if (partage(trouve)) throw new Error(`Le dossier « ${trouve.name} » de ce Drive est partagé. Dans Google Drive, remettez son accès sur « Limité » (seulement vous), puis réessayez.`)
+    if (trouve.name !== nom) await appeler(`${API}/${encodeURIComponent(trouve.id)}`, enJson('PATCH', { name: nom }))
+    return { id: trouve.id, nom }
+  }
+  const cree = await appeler<{ id: string }>(`${API}?fields=id&ignoreDefaultVisibility=true`, enJson('POST', {
+    name: nom, mimeType: DOSSIER_DRIVE, parents: [parent.id], appProperties: { [MARQUE_CLASSE]: classe.id },
+  }))
+  if (partage(await fiche(cree.id))) {
+    await appeler(`${API}/${encodeURIComponent(cree.id)}`, enJson('PATCH', { trashed: true })).catch(() => {})
+    throw new Error('Le dossier créé sur le Drive était visible de tout l\'établissement : il a été mis à la corbeille. Vérifiez les réglages de partage de ce Drive.')
+  }
+  return { id: cree.id, nom }
+}
+
+/** Un fichier du Drive que la fenêtre « Ouvrir » peut proposer */
+export interface FichierDuDrive { id: string; nom: string; modifie: number; taille: number }
+/** Une classe reliée au Drive, telle que la fenêtre « Ouvrir » la montre */
+export interface ClasseDuDrive { id: string; nom: string; classe: string; fichiers: FichierDuDrive[] }
+
+const enFichier = (f: Fiche): FichierDuDrive => ({ id: f.id, nom: f.name, modifie: Date.parse(f.modifiedTime ?? '') || 0, taille: Number(f.size) || 0 })
+const ouvrable = (f: Fiche) => f.mimeType !== DOSSIER_DRIVE && !f.trashed && /\.mem[cb]$/i.test(f.name)
+
+/** Ce que contient « MEM - Classeurs » dans ce Drive : ses classes (par
+ *  ordre alphabétique) et leurs classeurs, puis ce qui est à sa racine
+ *  (toute la bibliothèque déposée une fois, sous id ''). Rien s'il n'existe
+ *  pas encore : on n'en crée pas pour regarder. */
+export async function listerLesClasses(compte: string): Promise<ClasseDuDrive[]> {
+  const c = compteDe(compte)
+  if (!c) return []
+  const racine = await trouverDossier(c.classeurs, MARQUE_CLASSES)
+  if (!racine) return []
+  const champs = 'id,name,mimeType,parents,trashed,appProperties,size,modifiedTime'
+  const dedans = await chercherTout(`trashed=false and '${racine.id}' in parents`, champs)
+  const classes: ClasseDuDrive[] = []
+  const tri = (a: { nom: string }, b: { nom: string }) => a.nom.localeCompare(b.nom, 'fr', { numeric: true })
+  for (const d of dedans.filter(f => f.mimeType === DOSSIER_DRIVE && !f.trashed)) {
+    const fichiers = (await chercherTout(`trashed=false and '${d.id}' in parents`, champs)).filter(ouvrable).map(enFichier).sort(tri)
+    classes.push({ id: d.id, nom: d.name, classe: d.appProperties?.[MARQUE_CLASSE] ?? '', fichiers })
+  }
+  classes.sort(tri)
+  const aLaRacine = dedans.filter(ouvrable).map(enFichier).sort(tri)
+  if (aLaRacine.length) classes.push({ id: racine.id, nom: c.classeurs, classe: '', fichiers: aLaRacine })
+  return classes
+}
+
+/** Dépose un fichier une fois dans le Drive (toute la bibliothèque, lot 7) :
+ *  dans le dossier d'une classe, ou à la racine de « MEM - Classeurs ».
+ *  Toujours un nouveau fichier (son nom porte la date). Rend son id. */
+export async function envoyerDansLeDrive(compte: string, classe: { id: string; nom: string } | null, nom: string, fichier: Blob): Promise<{ id: string; dossier: string }> {
+  const c = compteDe(compte)
+  if (!c) throw new Error('Ce compte n\'existe pas.')
+  const dossier = classe ? await dossierDeClasse(compte, classe) : { id: (await dossierPrive(c.classeurs, MARQUE_CLASSES)).dossier.id, nom: c.classeurs }
+  const id = await envoyer(null, {
+    name: nom, mimeType: 'application/octet-stream', parents: [dossier.id],
+    description: 'Enregistré par MEM teachingtool. Pour l\'ouvrir : Bibliothèque → Ouvrir… → Google Drive.',
+    appProperties: { [MARQUE_DEPOT.cle]: MARQUE_DEPOT.valeur },
+  }, fichier)
+  if (partage(await fiche(id))) {
+    await appeler(`${API}/${encodeURIComponent(id)}`, enJson('PATCH', { trashed: true })).catch(() => {})
+    throw new Error('Le fichier envoyé sur le Drive était visible de tout l\'établissement : il a été mis à la corbeille. Vérifiez les réglages de partage de ce Drive.')
+  }
+  return { id, dossier: dossier.nom }
+}
+
+/** Le contenu d'un fichier du Drive (une classe, ou choisi dans le
+ *  sélecteur de Google), tel quel */
+export const lireFichierDuDrive = lireSauvegarde

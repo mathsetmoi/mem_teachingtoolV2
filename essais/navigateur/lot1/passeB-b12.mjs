@@ -116,9 +116,11 @@ const A = await ouvrir(ctxA, 'A')
   const biblio = m.entrees[0]
   m.entrees = m.entrees.slice(1)
   const drive = m.entrees[2]
-  m.entrees = m.entrees.filter((_, i) => i !== 2)
+  // (Adapté au lot 7 : « Enregistrer sur le Drive ou ailleurs… » suit volontairement la copie sur le Drive)
+  const ailleurs = m.entrees[3]
+  m.entrees = m.entrees.filter((_, i) => i !== 2 && i !== 3)
   const trois = m.entrees.filter((_, i) => i !== 1)
-  verifier('Ses trois entrées, leurs raccourcis et leurs aides (et celle de la clé, et la bibliothèque en tête, lot 4)', biblio?.libelle === 'Bibliothèque des classeurs…' && drive?.libelle === 'Copie sur le Drive…' && m.entrees.length === 4 && m.entrees[1].libelle === 'Enregistrer automatiquement dans un fichier…'
+  verifier('Ses trois entrées, leurs raccourcis et leurs aides (et celle de la clé, et la bibliothèque en tête, lot 4)', biblio?.libelle === 'Bibliothèque des classeurs…' && drive?.libelle === 'Copie sur le Drive…' && ailleurs?.libelle === 'Enregistrer sur le Drive ou ailleurs…' && m.entrees.length === 4 && m.entrees[1].libelle === 'Enregistrer automatiquement dans un fichier…'
     && trois[0].libelle === 'Enregistrer le classeur…' && trois[0].touche === 'Ctrl + S'
     && trois[0].aide === 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder sur la clé ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).'
     && trois[1].libelle === 'Ouvrir un classeur…' && trois[1].touche === 'Ctrl + O' && trois[1].aide === 'Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace celui-ci.'

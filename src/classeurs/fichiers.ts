@@ -30,7 +30,7 @@ import * as Y from 'yjs'
 import type { ActionMessage, App } from '../app'
 import type { Sauvegarde } from '../sauvegarde'
 import { cleDernierEnregistrement, lireDernierEnregistrement, raison, telecharger } from '../sauvegarde'
-import { ErreurFichier, crc32, ecrireLisible, lireTableau, pagesLisibles, tailleLisible } from '../fichier'
+import { ErreurFichier, crc32, ecrireLisible, lireTableau, nomSur, pagesLisibles, tailleLisible } from '../fichier'
 import { ecrire as ecrireCle } from '../reglages'
 import type { FicheClasseur, InfosClasseur } from './demarrage'
 import { CANAL_CLASSEUR, CANAL_PREMIER, baseDe, estPremier, idClasseur, urlDuClasseur, visible } from './demarrage'
@@ -52,7 +52,7 @@ import type { Surveillance } from './surveillance'
 import { ecritDansUnFichier } from './surveillance'
 import { enregistrerDepuisLaBase } from './enregistrer'
 import { nomDeClasseur } from './liste'
-import { dossierVisible, nomDEtiquette, nomLibre, cleDe, ETIQUETTES_MAX } from './arbre'
+import { descendants, dossierVisible, nomDEtiquette, nomLibre, cleDe, ETIQUETTES_MAX } from './arbre'
 import type { Identite, Prevu, Bilan } from './reconnaitre'
 import {
   TEXTE_CORBEILLE, TEXTE_PUBLIEES_COPIE, bilanVide, decisionDe, identiteDuFichier, nomDepuisFichier, planDesDossiers, raisonCourte, texteApresBibliotheque,
@@ -270,19 +270,25 @@ export class Fichiers {
   }
 
   /** Ouvre des fichiers : un seul (sa question), plusieurs (une fenêtre
-   *  qui dit tout), une bibliothèque (.memb) */
-  async ouvrir(choisis: Choisi[]): Promise<void> {
-    if (!choisis.length) return
+   *  qui dit tout), une bibliothèque (.memb). Lot 7 (la fenêtre « Ouvrir »,
+   *  un dossier, le Drive) : dossier, le dossier de la bibliothèque où vont
+   *  les classeurs ajoutés (sinon celui qu'on regarde) ; lot, la fenêtre de
+   *  plusieurs fichiers même pour un seul (on reste dans la bibliothèque).
+   *  Rend faux si l'on a renoncé (ou rien pu faire). */
+  async ouvrir(choisis: Choisi[], o: { dossier?: string | null; lot?: boolean } = {}): Promise<boolean> {
+    if (!choisis.length) return false
     const r = this.refus()
-    if (r) { this.hote.message(r); return }
+    if (r) { this.hote.message(r); return false }
     this.enCours = true
+    this.dossierImpose = o.dossier
     try {
-      if (choisis.length === 1) await this.ouvrirUn(choisis[0])
-      else await this.ouvrirPlusieurs(choisis)
+      if (choisis.length === 1 && !o.lot) { await this.ouvrirUn(choisis[0]); return true }
+      return await this.ouvrirPlusieurs(choisis)
     } catch (e) {
       this.hote.message(`Le fichier n'a pas pu être ouvert : ${raisonDe(e)}.`)
       if (this.coupe) this.recharger(this.hote.classeur()?.id ?? '', null)
-    } finally { this.enCours = false }
+      return false
+    } finally { this.enCours = false; this.dossierImpose = undefined }
   }
 
   // ---------- Lire, reconnaître ----------
@@ -484,7 +490,9 @@ export class Fichiers {
 
   /** Le dossier où va un classeur ajouté : celui qu'on regarde dans la
    *  bibliothèque, ou la racine depuis le tableau */
-  private dossierCible(): string | null { return this.biblio.dossierPourAjouter() }
+  private dossierCible(): string | null { return this.dossierImpose !== undefined ? this.dossierImpose : this.biblio.dossierPourAjouter() }
+  /** Le dossier imposé par la fenêtre « Ouvrir » (lot 7) le temps d'ouvrir */
+  private dossierImpose: string | null | undefined = undefined
 
   /** Ajoute le classeur d'un fichier à la bibliothèque (Registre.creerClasseur :
    *  rien ne reste si cela échoue). Son id : celui du fichier s'il est libre,
@@ -785,7 +793,7 @@ export class Fichiers {
    *  1 déjà dans la bibliothèque… »), puis on ajoute, on met à jour (sans
    *  perte), on ajoute comme copie ce qui a divergé, et un bilan le dit. Un
    *  .memb se laisse de côté : une bibliothèque s'ouvre seule. */
-  private async ouvrirPlusieurs(choisis: Choisi[]) {
+  private async ouvrirPlusieurs(choisis: Choisi[]): Promise<boolean> {
     this.hote.message(`Lecture de ${choisis.length} fichiers…`)
     this.poserIci()
     const prevision: Prevision = { fiches: [], vecteurs: new Map() }
@@ -818,7 +826,8 @@ export class Fichiers {
       boutons: aFaire.length ? [ANNULER, { cle: 'ajouter', libelle: 'Ajouter', classe: 'principal' }] : [{ cle: 'annuler', libelle: 'Fermer', classe: 'principal' }],
       focus: aFaire.length ? 'ajouter' : 'annuler',
     })
-    if (choix.cle !== 'ajouter') return
+    // Rien à faire (tout est déjà là) n'est pas renoncer
+    if (choix.cle !== 'ajouter') return !aFaire.length
     const bilan = bilanVide()
     for (const l of lignes) if (l.genre === 'illisible') bilan.illisibles.push({ nom: l.nom, raison: l.raison })
     // Celui de cet onglet en dernier : sa mise à jour coupe l'onglet, qui se recharge
@@ -857,9 +866,10 @@ export class Fichiers {
       }
     }
     const texte = texteApresPlusieurs(bilan)
-    if (recharger || this.coupe) { this.recharger(this.hote.classeur()?.id ?? '', texte); return }
+    if (recharger || this.coupe) { this.recharger(this.hote.classeur()?.id ?? '', texte); return true }
     void this.biblio.charger()
     this.hote.message(texte, this.biblio.ouvert || !this.hote.voirLaBibliotheque ? undefined : { libelle: 'Voir la bibliothèque', faire: () => this.hote.voirLaBibliotheque?.() })
+    return true
   }
 
   // ---------- Toute la bibliothèque ----------
@@ -872,17 +882,24 @@ export class Fichiers {
    *  hors du fil principal (« Bibliothèque : classeur 3 sur 12… »), les
    *  aperçus, le répertoire. Un échec en route : abort, le fichier d'avant
    *  reste entier, et on le dit. Chaque classeur est ensuite dans un fichier
-   *  depuis cette date. */
-  async enregistrerLaBibliotheque(): Promise<boolean> {
+   *  depuis cette date.
+   *  Lot 7 : classe, seulement les classeurs de ce dossier de classe (et de
+   *  ses sous-dossiers), la classe à la racine du fichier (« 5A 2026-10-17
+   *  14h05.memb ») ; rendre, le fichier fini passe à rendre (l'envoi sur le
+   *  Drive) au lieu d'être écrit ou téléchargé (ou : où il est allé). */
+  async enregistrerLaBibliotheque(o: { classe?: string; rendre?: (fichier: Blob, nom: string) => Promise<string> } = {}): Promise<boolean> {
     if (this.enCours) { this.hote.message('Un fichier est déjà en cours.'); return false }
     const reg = this.registre
     const date = Date.now()
-    const nom = nomBibliotheque(date)
+    const laClasse = o.classe ? await reg.dossier(o.classe).catch(() => undefined) : undefined
+    if (o.classe && !laClasse) { this.hote.message('Ce dossier n\'est plus dans la bibliothèque.'); return false }
+    const nom = laClasse ? nomBibliotheque(date).replace(/^Bibliothèque/, nomSur(laClasse.nom, { repli: 'Classe' })) : nomBibliotheque(date)
+    const quoi = laClasse ? `« ${laClasse.nom} »` : 'Bibliothèque'
     // Le choix du fichier d'abord : le geste ne le permet que quelques secondes
     interface Ecriture { write(d: Blob | Uint8Array): Promise<void>; close(): Promise<void>; abort?(): Promise<void> }
     let choisi: { name: string; createWritable(): Promise<Ecriture> } | null = null
     const choisir = (window as unknown as { showSaveFilePicker?: (o: unknown) => Promise<{ name: string; createWritable(): Promise<Ecriture> }> }).showSaveFilePicker
-    if (typeof choisir === 'function') {
+    if (typeof choisir === 'function' && !o.rendre) {
       try { choisi = await choisir.call(window, { suggestedName: nom, id: ID_CHOIX, types: TYPES_BIBLIOTHEQUE }) } catch (e) {
         if ((e as { name?: string } | null)?.name === 'AbortError') return false
         choisi = null
@@ -892,13 +909,17 @@ export class Fichiers {
     let sortie: Ecriture | null = null
     try {
       const [fiches, dossiers, apercus] = await Promise.all([reg.classeurs(), reg.dossiers(), reg.apercus().catch(() => new Map<string, Blob>())])
-      // Les classeurs visibles qui ont encore leur base (le premier : toujours)
-      const tous = fiches.filter(f => visible(f, dossiers)).sort((a, b) => cleDe(a.nom) < cleDe(b.nom) ? -1 : 1)
+      // Les classeurs visibles qui ont encore leur base (le premier : toujours) ;
+      // ceux de la classe seulement (lot 7)
+      const dansLaClasse = laClasse ? new Set([laClasse.id, ...descendants(laClasse.id, dossiers).map(d => d.id)]) : null
+      const tous = fiches.filter(f => visible(f, dossiers) && (!dansLaClasse || (f.dossier !== null && dansLaClasse.has(f.dossier))))
+        .sort((a, b) => cleDe(a.nom) < cleDe(b.nom) ? -1 : 1)
       const classeurs: FicheClasseur[] = []
       for (const f of tous) if (estPremier(f) || this.estIci(f) || await compterEntrees(f.base).catch(() => 1) > 0) classeurs.push(f)
-      if (!classeurs.length) { this.hote.message('La bibliothèque est vide : il n\'y a rien à enregistrer.'); return false }
-      const gardes = dossiers.filter(d => dossierVisible(d, dossiers))
-      this.hote.message(`Bibliothèque : classeur 1 sur ${classeurs.length}…`)
+      if (!classeurs.length) { this.hote.message(laClasse ? `${quoi} n'a aucun classeur : il n'y a rien à enregistrer.` : 'La bibliothèque est vide : il n\'y a rien à enregistrer.'); return false }
+      const gardes = dossiers.filter(d => dossierVisible(d, dossiers) && (!dansLaClasse || dansLaClasse.has(d.id)))
+        .map(d => d.id === laClasse?.id ? { ...d, parent: null } : d)
+      this.hote.message(`${quoi} : classeur 1 sur ${classeurs.length}…`)
       await uneImage()
       // Le classeur de cet onglet : ce qui attend s'écrit d'abord
       const app = this.hote.app
@@ -925,7 +946,7 @@ export class Fichiers {
       const enPartie: string[] = []
       for (let k = 0; k < classeurs.length; k++) {
         const f = classeurs[k]
-        if (k) this.hote.message(`Bibliothèque : classeur ${k + 1} sur ${classeurs.length}…`)
+        if (k) this.hote.message(`${quoi} : classeur ${k + 1} sur ${classeurs.length}…`)
         let fab: { fichier: Blob; crc: number; incomplet?: boolean }
         try {
           if (this.estIci(f) && app?.tableau.trou) throw new ErreurEcrivain('abimee', 'trou')
@@ -955,7 +976,10 @@ export class Fichiers {
         await ecrire(o)
       }
       await ecrire(z.fin())
-      if (sortie) { await sortie.close(); sortie = null } else telecharger(new Blob(morceaux as BlobPart[], { type: 'application/octet-stream' }), nom)
+      let ou = choisi?.name || nom
+      if (sortie) { await sortie.close(); sortie = null }
+      else if (o.rendre) ou = await o.rendre(new Blob(morceaux as BlobPart[], { type: 'application/octet-stream' }), nom)
+      else telecharger(new Blob(morceaux as BlobPart[], { type: 'application/octet-stream' }), nom)
       // Chaque classeur est dans un fichier depuis cette date
       for (const f of classeurs) {
         if (absents.has(f.id)) continue
@@ -964,11 +988,11 @@ export class Fichiers {
       }
       const n = classeurs.length - manques.length
       const partie = enPartie.length ? ` ${enPartie.length > 1 ? `Ceux-ci n'y sont qu'en partie : ${enPartie.join(', ')} (une partie ne se relit plus dans ce navigateur).` : `${enPartie[0]} n'y est qu'en partie (une partie ne se relit plus dans ce navigateur).`}` : ''
-      this.hote.message(`Bibliothèque enregistrée : ${choisi?.name || nom} (${n} classeur${n > 1 ? 's' : ''}, ${tailleLisible(total)}).${manques.length ? ` ${manques.length > 1 ? 'Ceux-ci n\'ont' : 'Celui-ci n\'a'} pas pu y être mis : ${manques.join(', ')}.` : ''}${partie}`)
+      this.hote.message(`${laClasse ? `${quoi} enregistrée` : 'Bibliothèque enregistrée'} : ${ou} (${n} classeur${n > 1 ? 's' : ''}, ${tailleLisible(total)}).${manques.length ? ` ${manques.length > 1 ? 'Ceux-ci n\'ont' : 'Celui-ci n\'a'} pas pu y être mis : ${manques.join(', ')}.` : ''}${partie}`)
       return true
     } catch (e) {
       try { await sortie?.abort?.() } catch { /* déjà fermé */ }
-      this.hote.message(`La bibliothèque n'a pas pu être enregistrée : ${e instanceof ErreurArchive ? e.message.replace(/\.$/, '') : raisonDe(e)}.`)
+      this.hote.message(`${laClasse ? `${quoi} n'a pas pu être enregistrée` : 'La bibliothèque n\'a pas pu être enregistrée'} : ${e instanceof ErreurArchive ? e.message.replace(/\.$/, '') : raisonDe(e)}.`)
       return false
     } finally { this.enCours = false }
   }

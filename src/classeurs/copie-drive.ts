@@ -73,10 +73,16 @@
 // copie du Drive » (le chemin d'« Ouvrir un classeur », lot 4 C9 : comparée,
 // mise à jour sans perte, ou ajoutée comme copie) et « Remplacer quand
 // même ». Une base trouée ne se copie pas (elle attend sa réparation).
+//
+// UNE CLASSE RELIÉE AU DRIVE (lot 7, voir emplacements.ts) : la copie d'un
+// classeur de cette classe, sur ce Drive, va dans le dossier de la classe
+// (« MEM - Classeurs » › « 5A ») au lieu du dossier des sauvegardes ; la
+// copie d'avant y est déplacée (drive.ts). Arrivé là depuis ailleurs, un
+// classeur s'y copie même si rien n'a changé depuis sa dernière copie.
 // =============================================================
 import * as Y from 'yjs'
 import type { App } from '../app'
-import type { CompteDrive, FicheClasseur } from './demarrage'
+import type { CompteDrive, FicheClasseur, FicheDossier } from './demarrage'
 import { CANAL_CLASSEUR, idClasseur, visible } from './demarrage'
 import type { Registre } from './registre'
 import type { Surveillance } from './surveillance'
@@ -84,7 +90,7 @@ import type { EtatSauvegarde } from './etat'
 import type { Fichiers } from './fichiers'
 import { CLIENT_GOOGLE, COMPTES, compteDe } from '../publication/comptes'
 import {
-  VERSIONS_GARDEES, connecte, connecter, courrielDe, dernierCompteGoogle, elaguerVersions, lireSauvegarde, nomDeSauvegarde, preparerGoogle,
+  VERSIONS_GARDEES, connecte, connecter, courrielDe, dernierCompteGoogle, dossierDeClasse, elaguerVersions, lireSauvegarde, nomDeSauvegarde, preparerGoogle,
   sauvegarder, surConnexion, versionEnLigne,
 } from '../publication/drive'
 import { ecrivain, fabriquerFichier } from './ecrivain'
@@ -98,6 +104,7 @@ import {
   questionDuDrive, raisonDrive, reessai,
 } from './drive-pur'
 import { fermerSurLeFond } from '../dialogue'
+import { emplacementDe, emplacements } from './emplacements'
 
 type EtatDrive = EtatSauvegarde['drive']
 type DriveFiche = NonNullable<FicheClasseur['drive']>
@@ -152,6 +159,73 @@ async function sousLeVerrou<T>(nom: string, f: () => Promise<T>, siLibre = false
 }
 
 type Resultat = 'copie' | 'deja' | 'rien' | 'connexion' | 'conflit' | 'erreur'
+/** Le dossier du Drive où va la copie de ce classeur : celui de sa classe,
+ *  si elle est reliée à ce Drive (lot 7) ; undefined : le dossier des
+ *  sauvegardes */
+async function dossierDeLaCopie(registre: Registre, f: FicheClasseur, compte: CompteDrive): Promise<string | undefined> {
+  const [liste, dossiers] = await Promise.all([emplacements(registre), registre.dossiers()])
+  const e = emplacementDe(f.dossier, 'drive', liste, dossiers)
+  const d = e && e.compte === compte ? dossiers.find(x => x.id === e.dossier) : undefined
+  return d ? (await dossierDeClasse(compte, { id: d.id, nom: d.nom })).id : undefined
+}
+
+/** L'appareil, pour le garde-fou des deux ordinateurs (drive.ts) */
+export const origineDe = (registre: Registre) => registre.reglageOuCreer('appareil', () => idClasseur()).catch(() => 'onglet-' + idClasseur())
+
+/** Ce qu'a fait copierDepuisLaBase : copié ; rien à faire (pas voulu, ou sa
+ *  copie est déjà à jour, là où elle doit être) ; écarté (vide et jamais
+ *  copié, une histoire perdue, la copie changée depuis un autre ordinateur :
+ *  son onglet le dira) ; occupé (son onglet est en train de le copier) */
+export type CopieDepuisLaBase = 'copie' | 'rien' | 'ecarte' | 'occupe'
+
+/** Copie un classeur sur le Drive de `compte` depuis sa base, sous son
+ *  verrou s'il est libre : les classeurs en retard (rattraper), et ceux
+ *  d'une classe qu'on vient de relier au Drive (lot 7, ailleurs.ts). voulu :
+ *  la fiche relue sous le verrou doit encore l'être. Les erreurs du Drive
+ *  remontent. */
+export async function copierDepuisLaBase(registre: Registre, id: string, compte: CompteDrive, o: {
+  origine: string; voulu: (x: FicheClasseur, dossiers: FicheDossier[]) => boolean
+}): Promise<CopieDepuisLaBase> {
+  const r = await sousLeVerrou(VERROU_DRIVE + id, async (): Promise<CopieDepuisLaBase> => {
+    const [x, dossiers] = await Promise.all([registre.classeur(id), registre.dossiers()])
+    if (!x || !o.voulu(x, dossiers)) return 'rien'
+    const d = x.drive?.compte === compte ? x.drive : null
+    // Jamais copié et vide (le « Premier classeur » d'un navigateur neuf,
+    // chaque matin sur le poste remis à zéro) : rien à protéger, et pas
+    // un fichier de plus sur le Drive à chaque fois
+    if (!d) {
+      const { examen } = await ecrivain.examinerBase(x.base, { travailleurSeul: true })
+      if (estVide(examen)) return 'ecarte'
+    }
+    const date = Date.now()
+    const fab = await fabriquerFichier(x.base, { nom: x.nom, id: x.id }, date, { travailleurSeul: true })
+    const dossier = await dossierDeLaCopie(registre, x, compte)
+    if (d?.vecteur) {
+      const c = comparerVecteurs(fab.vecteur, d.vecteur)
+      // Rien de neuf : sa copie est à jour à cette heure (et déjà dans sa classe)
+      if (c === 'egal' && (d.dossier ?? '') === (dossier ?? '')) { await registre.modifierClasseur(x.id, y => { if (y.drive) y.drive = { ...y.drive, t: Date.now() } }); return 'rien' }
+      // Il a perdu une partie de son histoire : son onglet le dira
+      if (c !== 'contient' && c !== 'egal') return 'ecarte'
+    }
+    const ac = new AbortController()
+    const delai = window.setTimeout(() => ac.abort(), delaiDEnvoi(fab.fichier.size))
+    let s: Awaited<ReturnType<typeof sauvegarder>>
+    try {
+      s = await sauvegarder({
+        compte, classeur: x.id, nom: x.nom, fichier: fab.fichier, idExistant: d?.id ?? null,
+        origine: o.origine, t: Math.min(date, x.modifie || date), recu: x.recu ?? x.cree ?? 0, signal: ac.signal, ...(dossier ? { dossier } : {}),
+      })
+    } finally { clearTimeout(delai) }
+    if (s.conflit) return 'ecarte'
+    const courriel = courrielDe(compte)
+    const nouvelle: DriveFiche = { compte, id: s.id, t: Date.now(), taille: fab.fichier.size, vecteur: fab.vecteur, ...(courriel ? { courriel } : {}), ...(dossier ? { dossier } : {}) }
+    await registre.modifierClasseur(x.id, y => { y.drive = nouvelle })
+    void elaguerVersions(s.id).catch(() => 0)
+    return 'copie'
+  }, true)
+  return r
+}
+
 interface OptionsCopie { manuel?: boolean; forcer?: boolean }
 
 export class CopieDrive {
@@ -212,7 +286,7 @@ export class CopieDrive {
     this.id = fiche.id
     this.base = fiche.base
     this.enLigne = versionEnLigne() && !!CLIENT_GOOGLE
-    this.origine = registre.reglageOuCreer('appareil', () => idClasseur()).catch(() => 'onglet-' + idClasseur())
+    this.origine = origineDe(registre)
     app.tableau.doc.on('update', () => this.change(Date.now()))
     try {
       this.canal = new BroadcastChannel(CANAL_CLASSEUR)
@@ -463,12 +537,14 @@ export class CopieDrive {
     // garde-fou de l'histoire ne laisse pas écraser une copie qui a plus)
     const fab = await fabriquerFichier(this.base, { nom: fiche.nom, id: this.id }, date, { travailleurSeul: true, lisible: this.app.tableau.incomplet })
     if (this.suspendu || this.compte !== compte) return 'rien'
+    const dossier = await dossierDeLaCopie(this.registre, fiche, compte)
     const d = this.derniere
     if (d?.vecteur && !o.forcer) {
       const c = comparerVecteurs(fab.vecteur, d.vecteur)
-      // Rien de neuf depuis la dernière copie (un autre onglet l'a faite)
-      if (c === 'egal') return 'deja'
-      if (c !== 'contient') { this.mettreEnConflit({ genre: 'histoire', idDrive: d.id }); return 'conflit' }
+      // Rien de neuf depuis la dernière copie (un autre onglet l'a faite),
+      // et elle est déjà là où elle doit être
+      if (c === 'egal' && (d.dossier ?? '') === (dossier ?? '')) return 'deja'
+      if (c !== 'contient' && c !== 'egal') { this.mettreEnConflit({ genre: 'histoire', idDrive: d.id }); return 'conflit' }
     }
     const origine = await this.origine
     const modifie = Math.min(date, Math.max(fiche.modifie || 0, this.dernierChangement || 0, this.surveillance.etat.modifie ?? 0)) || date
@@ -478,12 +554,12 @@ export class CopieDrive {
     try {
       r = await sauvegarder({
         compte, classeur: this.id, nom: fiche.nom, fichier: fab.fichier, idExistant: d?.id ?? null,
-        origine, t: modifie, recu: fiche.recu ?? fiche.cree ?? 0, forcer: o.forcer, signal: ac.signal,
+        origine, t: modifie, recu: fiche.recu ?? fiche.cree ?? 0, forcer: o.forcer, signal: ac.signal, ...(dossier ? { dossier } : {}),
       })
     } finally { clearTimeout(delai) }
     if (r.conflit) { this.mettreEnConflit({ genre: 'origine', idDrive: r.id, t: r.conflit.t }); return 'conflit' }
     const courriel = courrielDe(compte) || d?.courriel
-    const nouvelle: DriveFiche = { compte, id: r.id, t: Date.now(), taille: fab.fichier.size, vecteur: fab.vecteur, ...(courriel ? { courriel } : {}) }
+    const nouvelle: DriveFiche = { compte, id: r.id, t: Date.now(), taille: fab.fichier.size, vecteur: fab.vecteur, ...(courriel ? { courriel } : {}), ...(dossier ? { dossier } : {}) }
     this.derniere = nouvelle
     this.tailleDerniere = nouvelle.taille
     await this.registre.modifierClasseur(this.id, x => { x.drive = nouvelle }).catch(() => { /* this.derniere s'en souvient */ })
@@ -554,43 +630,11 @@ export class CopieDrive {
    *  libre : sinon son onglet le copie) */
   private async copierUnAutre(f: FicheClasseur, compte: CompteDrive, defaut: unknown): Promise<'copie' | 'rien' | 'arret'> {
     try {
-      const r = await sousLeVerrou(VERROU_DRIVE + f.id, async () => {
-        const [x, dossiers] = await Promise.all([this.registre.classeur(f.id), this.registre.dossiers()])
-        if (!x || !enRetard([x], { compte, defaut, ici: this.id, ecartes: this.ecartes, montre: y => visible(y, dossiers) }).length) return 'rien' as const
-        const d = x.drive?.compte === compte ? x.drive : null
-        // Jamais copié et vide (le « Premier classeur » d'un navigateur neuf,
-        // chaque matin sur le poste remis à zéro) : rien à protéger, et pas
-        // un fichier de plus sur le Drive à chaque fois
-        if (!d) {
-          const { examen } = await ecrivain.examinerBase(x.base, { travailleurSeul: true })
-          if (estVide(examen)) { this.ecartes.add(x.id); return 'rien' as const }
-        }
-        const date = Date.now()
-        const fab = await fabriquerFichier(x.base, { nom: x.nom, id: x.id }, date, { travailleurSeul: true })
-        if (d?.vecteur) {
-          const c = comparerVecteurs(fab.vecteur, d.vecteur)
-          // Rien de neuf : sa copie est à jour à cette heure
-          if (c === 'egal') { await this.registre.modifierClasseur(x.id, y => { if (y.drive) y.drive = { ...y.drive, t: Date.now() } }); return 'rien' as const }
-          // Il a perdu une partie de son histoire : son onglet le dira
-          if (c !== 'contient') { this.ecartes.add(x.id); return 'rien' as const }
-        }
-        const ac = new AbortController()
-        const delai = window.setTimeout(() => ac.abort(), delaiDEnvoi(fab.fichier.size))
-        let s: Awaited<ReturnType<typeof sauvegarder>>
-        try {
-          s = await sauvegarder({
-            compte, classeur: x.id, nom: x.nom, fichier: fab.fichier, idExistant: d?.id ?? null,
-            origine: await this.origine, t: Math.min(date, x.modifie || date), recu: x.recu ?? x.cree ?? 0, signal: ac.signal,
-          })
-        } finally { clearTimeout(delai) }
-        if (s.conflit) { this.ecartes.add(x.id); return 'rien' as const }
-        const courriel = courrielDe(compte)
-        const nouvelle: DriveFiche = { compte, id: s.id, t: Date.now(), taille: fab.fichier.size, vecteur: fab.vecteur, ...(courriel ? { courriel } : {}) }
-        await this.registre.modifierClasseur(x.id, y => { y.drive = nouvelle })
-        void elaguerVersions(s.id).catch(() => 0)
-        return 'copie' as const
-      }, true)
-      if (r === 'occupe') { this.ecartes.add(f.id); return 'rien' }
+      const r = await copierDepuisLaBase(this.registre, f.id, compte, {
+        origine: await this.origine,
+        voulu: (x, dossiers) => enRetard([x], { compte, defaut, ici: this.id, ecartes: this.ecartes, montre: y => visible(y, dossiers) }).length > 0,
+      })
+      if (r === 'ecarte' || r === 'occupe') { this.ecartes.add(f.id); return 'rien' }
       return r
     } catch (e) {
       const r = raisonDrive(e, enLigneReseau())
