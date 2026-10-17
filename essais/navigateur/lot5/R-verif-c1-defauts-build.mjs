@@ -2,7 +2,7 @@
 // des retouches après le lot 5) : les réglages par défaut, version construite.
 // Copie de retouches/verif/conformite/c1-defauts-build.mjs ; elle lit les versions construites du dépôt (voir R-verif/lib.mjs).
 // Conformité A1, A2 (et un peu de A3) sur la VERSION CONSTRUITE (en ligne en
-// http, clé USB en file://), sans window.__app : ce que voit le professeur.
+// http, version hors ligne en file://), sans window.__app : ce que voit le professeur.
 import { demarrer, contexte, ouvrir, ecran, ok, note, fin, D, clic, clicSur, trait, session } from './R-verif/lib.mjs'
 
 const { serveur, URLS, nav } = await demarrer()

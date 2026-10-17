@@ -13,7 +13,7 @@
 // Drive… »), sinon celui de la bibliothèque (le réglage « copieDrive »),
 // sinon le Drive personnel ; « aucune » : pas de copie. Seulement depuis la
 // version en ligne (la connexion Google ne marche pas en file://) : la
-// version clé USB le dit (« impossible »). Dès qu'une copie est voulue, la
+// version hors ligne le dit (« impossible »). Dès qu'une copie est voulue, la
 // connexion Google se charge à l'avance : le clic « Se connecter » ouvre sa
 // fenêtre du premier coup.
 //
@@ -619,7 +619,7 @@ export class CopieDrive {
    *  la copie qui attend part aussitôt (au calme). */
   async seConnecter(compte: ChoixDrive = this.compte, o: { changer?: boolean; silencieux?: boolean; erreur?: (texte: string) => void } = {}): Promise<boolean> {
     if (compte === 'aucune') return false
-    if (!this.enLigne) { this.app.ui?.message(`La copie sur le Drive ne marche pas dans la version clé USB : ${HORS_LIGNE_FICHIER.toLowerCase()}`); return false }
+    if (!this.enLigne) { this.app.ui?.message(`La copie sur le Drive ne marche pas dans la version hors ligne : ${HORS_LIGNE_FICHIER.toLowerCase()}`); return false }
     const indice = this.indicePour(compte)
     // Changer de compte (déjà connecté), ou aucun compte retenu : la liste de Google
     try { await connecter(compte, indice, o.changer || !indice ? 'select_account' : '') } catch (e) {

@@ -1,8 +1,8 @@
 # La batterie des essais du navigateur
 
 Ces essais pilotent un vrai navigateur (Chromium, par Playwright) sur l'outil :
-le serveur de développement, la version d'un seul fichier (`dist/index.html`,
-la clé USB, ouverte en `file://`) et la version en ligne (`dist-pages`). Ils
+le serveur de développement, la version hors ligne (`dist/index.html`,
+la version hors ligne, ouverte en `file://`) et la version en ligne (`dist-pages`). Ils
 rejouent ce que fait le professeur (la souris, le doigt, le stylet, le
 clavier, le téléphone, l'iPad, le TNI…), relisent ce qui est enregistré
 (IndexedDB, les fichiers `.memc` et `.mem`, la clé, le Drive simulé) et

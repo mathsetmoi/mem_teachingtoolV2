@@ -13,7 +13,7 @@
 # le résumé des DEUX parties (le dernier passage de chacune) dans
 # essais/navigateur/sorties/RESUME.txt, refait à la fin de chaque partie.
 #
-# Elle construit d'abord les deux versions (la clé USB, dist/index.html, que
+# Elle construit d'abord les deux versions (la version hors ligne, dist/index.html, que
 # lisent passeB-b12 et les essais en file:// ; la version en ligne,
 # dist-pages, servie sur :4180 pour les essais aller-retour, deux-onglets et
 # session-stockage), et lance SON PROPRE serveur de développement, neuf, sur
@@ -63,7 +63,7 @@ H=$(date -u +%H | sed 's/^0//'); N=$(( (12 - H + 24) % 24 )); [ $N -gt 14 ] && N
 if [ $N -ge 0 ]; then MIDI="Etc/GMT-$N"; else MIDI="Etc/GMT+$((-N))"; fi
 if [ $P = 1 ]; then
 LISTE="lot1/donnees/abime.mjs lot1/regr/regr.mjs test42.mjs test46-lecteur.mjs test47-casse-lecteur.mjs instruments/e2e.mjs test50.mjs lot1/passeA.mjs lot1/passeB-b045.mjs lot1/passeB-b69.mjs lot1/passeB-b10.mjs lot1/passeB-b12.mjs lot1/appareils/appareils.mjs"
-# Les seize essais de vérification du lot 1 (données : la clé USB et la
+# Les seize essais de vérification du lot 1 (données : la version hors ligne et la
 # version en ligne, l'une après l'autre ; les appareils : le doigt, Android,
 # le téléphone, le PC) et les sondes du lot 2 qu'a reprises le contrôle final
 for v in aller-retour cas-limites deux-onglets session-stockage apres-ouverture android carre centre detection divers nom partie paysage pc telephone toucher; do

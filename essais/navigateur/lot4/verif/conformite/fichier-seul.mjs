@@ -1,5 +1,5 @@
 // CONFORMITÉ, points 4, 5 et 6 dans la version d'un seul fichier (file://,
-// la clé USB sur le poste remis à zéro), construite depuis le dépôt actuel
+// la version hors ligne sur le poste remis à zéro), construite depuis le dépôt actuel
 // dans ./dist : l'enregistrement automatique sur la clé possible (Chromium),
 // la copie sur le Drive dite impossible, clairement ; le rappel.
 import * as O from './outils.mjs'

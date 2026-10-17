@@ -28,7 +28,7 @@
 //    classeurs en retard.
 // G. Plus de 5 Mo : l'envoi reprenable, avec et sans Location lisible.
 // H. Firefox, l'iPad (sans showSaveFilePicker, sans Web Locks) : la copie
-//    marche ; la version clé USB (file://) : « impossible », rien vers Google.
+//    marche ; la version hors ligne (file://) : « impossible », rien vers Google.
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
 import { gunzipSync, gzipSync } from 'node:zlib'
@@ -917,10 +917,10 @@ if (seul('G')) {
 }
 
 // =====================================================================
-// H. FIREFOX, L'IPAD ; LA VERSION CLÉ USB
+// H. FIREFOX, L'IPAD ; LA VERSION HORS LIGNE
 // =====================================================================
 if (seul('H')) {
-  console.log('=== H. sans showSaveFilePicker ni Web Locks (Firefox, l\'iPad) ; la version clé USB ===')
+  console.log('=== H. sans showSaveFilePicker ni Web Locks (Firefox, l\'iPad) ; la version hors ligne ===')
   const g = new FauxGoogle()
   const SANS = () => { delete window.showSaveFilePicker; delete window.showOpenFilePicker; try { Object.defineProperty(Navigator.prototype, 'locks', { get: () => undefined, configurable: true }) } catch { /* rien */ } }
   const ctx = await contexte(g, { scripts: [SANS] })
@@ -947,8 +947,8 @@ if (seul('H')) {
     const b = document.getElementById('description-etat') ?? document.querySelector('[id^="etat"]')
     return { description: n([...document.querySelectorAll('div[hidden]')].map(x => x.textContent).find(t => /Sur le Drive|Pas de copie/.test(t))), court: n(document.querySelector('.etat-classeur')?.textContent), point: !document.querySelector('.bouton-classeur .point-etat').hidden, b: !!b }
   })
-  ok(/Sur le Drive : seulement depuis la version en ligne \(la connexion Google ne marche pas dans la version clé USB\)\./.test(ef.description ?? '') && !ef.point,
-    'H2) la version clé USB : « Sur le Drive : seulement depuis la version en ligne (la connexion Google ne marche pas dans la version clé USB) », sans point', ef)
+  ok(/Sur le Drive : seulement depuis la version en ligne \(la connexion Google ne marche pas dans la version hors ligne\)\./.test(ef.description ?? '') && !ef.point,
+    'H2) la version hors ligne : « Sur le Drive : seulement depuis la version en ligne (la connexion Google ne marche pas dans la version hors ligne) », sans point', ef)
   await ecrire(f, 300, 300); await f.waitForTimeout(500)
   await f.click('.barre-haut .bouton.points'); await f.waitForTimeout(200)
   const mf = await f.evaluate(() => { const e = document.querySelector('.menu-flottant:not([hidden]) .menu-item[data-action="copie-drive"]'); return e && { inactif: e.getAttribute('aria-disabled'), aide: e.querySelector('small')?.textContent } })

@@ -18,7 +18,7 @@
 //      en classe et le lecteur élève ne changent pas.
 // I.  La VERSION CONSTRUITE, comme le professeur, sans window.__app : la
 //     version en ligne (dist-pages, servie en http par cet essai), puis la
-//     clé USB (dist/index.html en file://). Tout se lit à l'écran : le
+//     version hors ligne (dist/index.html en file://). Tout se lit à l'écran : le
 //     bouton d'épaisseur actif, le titre du bouton du fond, le pourcentage du
 //     zoom, le compteur, les pixels du tableau, la session de ce navigateur
 //     (localStorage, que l'application écrit d'après sa caméra).
@@ -177,7 +177,7 @@ async function allerA(p, k) {
 const ENTREES_VIGNETTE = () => [...document.querySelectorAll('.menu-vignette .menu-item')].map(b => ({ t: b.querySelector('.libelle').firstChild.textContent, aide: b.querySelector('small')?.textContent ?? null, coche: b.getAttribute('aria-checked'), focus: document.activeElement === b }))
 
 // =====================================================================
-// I. LA VERSION CONSTRUITE : en ligne (http), puis la clé USB (file://)
+// I. LA VERSION CONSTRUITE : en ligne (http), puis la version hors ligne (file://)
 // =====================================================================
 async function parcours(url, nom) {
   console.log(`\n=== I. ${nom} : ${url}`)
@@ -313,7 +313,7 @@ if (seul('construite')) {
   if (!existsSync(PAGES + '/index.html') || !existsSync(UN)) ok(false, 'Les versions construites manquent (npm run build, npm run build:pages)')
   else {
     await parcours(EN_LIGNE, 'en ligne')
-    await parcours(CLE_USB, 'clé USB')
+    await parcours(CLE_USB, 'hors ligne')
   }
 }
 

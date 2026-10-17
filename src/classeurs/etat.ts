@@ -48,7 +48,7 @@ export const COURT_MAX = 28
 export type EtatCle = 'absente' | 'impossible' | 'ok' | 'en-cours' | 'permission' | 'erreur' | 'autre-onglet' | 'conflit'
 /** La copie sur le Drive (lot 4 C10, voir copie-drive.ts) : connexion, la
  *  connexion Google manque ou a expiré (un clic la renouvelle) ;
- *  hors-ligne, pas de réseau ; impossible, la version clé USB (file://), où
+ *  hors-ligne, pas de réseau ; impossible, la version hors ligne (file://), où
  *  Google ne se connecte pas ; conflit, la copie du Drive n'est pas
  *  remplacée (changée depuis un autre ordinateur, ou ce classeur a perdu
  *  une partie de son histoire depuis elle). ok sans t : connecté, rien
@@ -243,7 +243,7 @@ export function texteEtat(e: EtatSauvegarde, maintenant: number, o: { rappel?: b
       break
     case 'hors-ligne': lignes.push({ quoi: 'drive', niveau: 'info', texte: 'Sur le Drive : hors connexion, la copie partira au retour du réseau' }); break
     case 'impossible':
-      lignes.push({ quoi: 'drive', niveau: 'info', texte: 'Sur le Drive : seulement depuis la version en ligne (la connexion Google ne marche pas dans la version clé USB)' })
+      lignes.push({ quoi: 'drive', niveau: 'info', texte: 'Sur le Drive : seulement depuis la version en ligne (la connexion Google ne marche pas dans la version hors ligne)' })
       break
     case 'absente': lignes.push({ quoi: 'drive', niveau: 'info', texte: 'Pas de copie sur le Drive' }); break
     case 'erreur':
@@ -290,7 +290,7 @@ export function texteEtat(e: EtatSauvegarde, maintenant: number, o: { rappel?: b
 
 /** Le rappel d'enregistrer est-il dû ? Rien ne protège le classeur (ni la
  *  clé, ni une copie récente du Drive : Firefox, Safari, l'iPad, mais aussi
- *  Chrome et Edge sans enregistrement automatique, et la version clé USB,
+ *  Chrome et Edge sans enregistrement automatique, et la version hors ligne,
  *  où le Drive est impossible) ; au moins 20 minutes de travail non
  *  enregistré (du premier changement après le dernier fichier au dernier
  *  changement) ; et 2 minutes sans geste : jamais en plein cours.

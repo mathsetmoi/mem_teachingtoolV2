@@ -1,7 +1,7 @@
 // ESSAI DES CORRECTIONS DES VÉRIFICATIONS DES RETOUCHES APRÈS LE LOT 5
 // (les rapports « parcours », « regressions » et « conformite »).
 // Comme le professeur, dans la VERSION CONSTRUITE (la version en ligne,
-// dist-pages servie en http par cet essai, puis la clé USB, dist/index.html
+// dist-pages servie en http par cet essai, puis la version hors ligne, dist/index.html
 // en file://), sans window.__app ; tout se lit à l'écran (l'outil de la
 // zone, le message, les pixels du tableau et de la couche directe).
 // 1. « Fixer en fond » juste après l'import rend l'outil qu'on avait : 3
@@ -230,7 +230,7 @@ async function menuPlus(p, ptr, x, y) {
 }
 
 for (const lieu of LIEUX) {
-  const url = URLS[lieu], nom = lieu === 'ligne' ? 'en ligne' : 'clé USB'
+  const url = URLS[lieu], nom = lieu === 'ligne' ? 'en ligne' : 'hors ligne'
   console.log(`\n=== ${nom} : ${url}`)
 
   // =================================================================

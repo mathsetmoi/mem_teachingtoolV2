@@ -2,7 +2,7 @@
 // LES CLASSEURS : OÙ ILS VIVENT, LEQUEL S'OUVRE AU DÉMARRAGE
 // Chaque classeur est un document Yjs dans SA base IndexedDB. Le premier
 // est le tableau d'avant le lot 4 : sa base reste 'mem-tableau-local',
-// jamais recopiée ni renommée (une version d'avant, la clé USB du lot 3,
+// jamais recopiée ni renommée (une version d'avant, la version hors ligne du lot 3,
 // la retrouve intacte). Les autres ont 'mem-teachingtool-classeur-<id>'.
 // L'index de la bibliothèque (les fiches des classeurs, les dossiers, les
 // aperçus) vit dans une base à part, 'mem-teachingtool-bibliotheque' (voir

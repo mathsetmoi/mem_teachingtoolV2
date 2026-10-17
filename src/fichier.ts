@@ -2,7 +2,7 @@
 // LE CLASSEUR DANS UN FICHIER (« .memc », version 1)
 // Le classeur vit dans le navigateur ; ce fichier l'emporte tout entier,
 // pour le garder sur une clé, l'ouvrir sur une autre machine, passer de
-// la version en ligne à la version d'un seul fichier (et retour).
+// la version en ligne à la version hors ligne (et retour).
 //
 // Le fichier :
 //   ligne 1   {"format":"mem-tableau","v":1,"app":"MEM teachingtool","date":…,"pages":…,"nom":…,"id":…}

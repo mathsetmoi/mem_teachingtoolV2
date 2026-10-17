@@ -1,5 +1,5 @@
 // Deux onglets sur le même tableau, dans la version d'un seul fichier
-// (file://, la clé USB) et dans la version en ligne construite : l'un ouvre
+// (file://, la version hors ligne) et dans la version en ligne construite : l'un ouvre
 // un .memc ; l'autre doit cesser d'écrire, sinon il mêle l'ancien tableau au
 // nouveau dans la base.
 import { chromium } from '../../commun/playwright.mjs'

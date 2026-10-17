@@ -5,7 +5,7 @@
 // cadre en tirets) mais n'avait ni coins ni pastille ↻ (les poignées ne
 // vivent qu'à l'outil Sélection), et le geste en rond écrivait de l'encre.
 // Ce qui est vérifié, comme le professeur, dans la VERSION CONSTRUITE (la
-// version en ligne, dist-pages servie en http par cet essai, puis la clé USB,
+// version en ligne, dist-pages servie en http par cet essai, puis la version hors ligne,
 // dist/index.html en file://), sans window.__app, sans écran tactile
 // (navigator.maxTouchPoints = 0), en 1366 × 768 et en 1024 × 768 :
 // (B1) 3 façons d'importer × la souris et le stylet de la tablette graphique
@@ -236,7 +236,7 @@ async function vider(p) {
 
 // =====================================================================
 for (const lieu of LIEUX) for (const L of TAILLES) {
-  const url = URLS[lieu], nom = `${lieu === 'ligne' ? 'en ligne' : 'clé USB'} ${L}×768`
+  const url = URLS[lieu], nom = `${lieu === 'ligne' ? 'en ligne' : 'hors ligne'} ${L}×768`
   console.log(`\n=== ${nom} : ${url}`)
   const ctx = await contexte(url, L, 768)
   const { p, souris, wacom } = await ouvrir(ctx, url, nom)
@@ -367,7 +367,7 @@ for (const lieu of LIEUX) for (const L of TAILLES) {
 // =====================================================================
 // B3 : un écran tactile (un ordinateur à écran tactile, un TNI, un iPad)
 for (const lieu of TACTILE ? LIEUX : []) {
-  const url = URLS[lieu], nom = `${lieu === 'ligne' ? 'en ligne' : 'clé USB'}, écran tactile`
+  const url = URLS[lieu], nom = `${lieu === 'ligne' ? 'en ligne' : 'hors ligne'}, écran tactile`
   console.log(`\n=== ${nom}`)
   const ctx = await contexte(url, 1366, 768, { hasTouch: true })
   const { p, souris, doigt, crayon } = await ouvrir(ctx, url, nom)

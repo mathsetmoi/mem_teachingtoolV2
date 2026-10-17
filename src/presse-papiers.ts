@@ -6,7 +6,7 @@
 // Elle voyage de trois façons : en mémoire (le même onglet), dans le
 // navigateur (localStorage : un autre onglet de la même adresse) et dans
 // le presse-papiers du système, marquée dans le text/html (la version en
-// ligne et la version clé USB, qui ne partagent rien d'autre).
+// ligne et la version hors ligne, qui ne partagent rien d'autre).
 //
 // Ce qui revient du presse-papiers du système vient de n'importe où : un
 // site quelconque peut y avoir mis un text/html piégé. On ne le met donc

@@ -4,7 +4,7 @@
 // « Enregistrer le classeur » l'emporte tout entier dans un fichier .memc
 // (voir fichier.ts), « Ouvrir un classeur » remplace celui qui est ouvert
 // par celui d'un fichier. C'est la passerelle entre la version en ligne et
-// la version d'un seul fichier (clé USB), et d'une machine à l'autre.
+// la version hors ligne, et d'une machine à l'autre.
 // - Chrome et Edge demandent où enregistrer (showSaveFilePicker) ; les
 //   autres navigateurs, ou une page ouverte depuis la clé (file://),
 //   téléchargent le fichier. Il s'appelle comme le classeur, avec la date :

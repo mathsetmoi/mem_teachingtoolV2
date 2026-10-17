@@ -2851,7 +2851,7 @@ export class Bibliotheque {
   /** La fenêtre « Nouveau classeur » : le nom (« Nouveau classeur », tout
    *  choisi), le fond de la première page, et, quand le navigateur sait
    *  écrire seul dans un fichier, « Enregistrer automatiquement sur la
-   *  clé » (cochée d'office dans la version d'un seul fichier : le poste
+   *  clé » (cochée d'office dans la version hors ligne : le poste
    *  remis à zéro). Le choix du fichier s'ouvre dans le clic sur « Créer et
    *  ouvrir » ; y renoncer crée quand même le classeur, sans clé. Puis le
    *  classeur s'ouvre (voir ouvrirClasseur). */

@@ -5,7 +5,7 @@
 // Copie de retouches/verif/regressions/p7-fixer-construit.mjs ; autonome.
 // Sonde 7 : le chemin de l'énoncé dans la VERSION CONSTRUITE, comme le
 // professeur (sans window.__app ; la version en ligne servie en http, puis la
-// clé USB en file://), à la souris puis au stylet de la tablette graphique
+// version hors ligne en file://), à la souris puis au stylet de la tablette graphique
 // (CDP pointerType 'pen', qui survole) : au Stylo (le départ), le bouton
 // Image, un énoncé (une image pâle) ; « Fixer en fond » du message ; puis un
 // trait à main levée par-dessus l'énoncé, comme le message de Fixer le dit.
@@ -42,7 +42,7 @@ const ENCRE = ({ x1, y1, x2, y2 }) => {
 for (const [nom, v] of Object.entries(VERSIONS)) {
   if (!existsSync(v.un)) { console.log(`(${nom} : pas de version construite ${v.un})`); continue }
   const serveur = await servir(v.pages)
-  for (const [lieu, url] of [['en ligne', `http://127.0.0.1:${serveur.address().port}/index.html`], ['clé USB', 'file://' + v.un]]) {
+  for (const [lieu, url] of [['en ligne', `http://127.0.0.1:${serveur.address().port}/index.html`], ['hors ligne', 'file://' + v.un]]) {
     for (const ptr of ['souris', 'wacom']) {
       const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 } })
       await ctx.route(/accounts\.google\.com|apis\.google\.com|fonts\.g/, r => r.fulfill({ contentType: 'text/javascript', body: '' }))

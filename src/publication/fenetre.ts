@@ -61,7 +61,7 @@ export class Publication {
   private get registre() { return this.app.tableau.doc.getMap('publications') as Y.Map<Publiee> }
   private get lecteur() { return new URL('revoir.html', location.href).toString() }
   /** La version en ligne (ou celle de développement) a le lecteur à côté d'elle et peut se connecter à
-   *  Google ; la version « un seul fichier » (clé USB) ne peut qu'enregistrer le fichier séance */
+   *  Google ; la version hors ligne ne peut qu'enregistrer le fichier séance */
   private get enLigne() {
     const servie = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1'
     return servie && (import.meta.env.DEV || import.meta.env.VITE_EN_LIGNE === '1')
@@ -143,7 +143,7 @@ export class Publication {
     if (!this.enLigne) {
       q('.p-apercu').hidden = true
       q<HTMLButtonElement>('.p-publier').disabled = true
-      this.etat('Cette version de MEM teachingtool (un seul fichier) ne peut ni publier ni montrer l\'aperçu : enregistrez le fichier séance, ou utilisez MEM teachingtool en ligne pour publier.')
+      this.etat('La version hors ligne de MEM teachingtool ne peut ni publier ni montrer l\'aperçu : enregistrez le fichier séance, ou utilisez MEM teachingtool en ligne pour publier.')
     }
     this.remplirSeances()
     this.majGoogle()
