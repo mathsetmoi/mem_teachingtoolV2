@@ -337,6 +337,9 @@ if (seul('A')) {
   ok(titreOuvrir === 'Ouvrir un classeur ou une bibliothèque (Ctrl + O)', 'A6) Le bandeau : « Ouvrir… » (Ouvrir un classeur ou une bibliothèque (Ctrl + O))', titreOuvrir)
   await p.evaluate(() => { window.__aOuvrir = 'Fractions.memc' })
   await p.click('.biblio-bouton[data-action="ouvrir-fichier"]')
+  // (Adapté au lot 7 : « Ouvrir… » montre d'abord la fenêtre « Ouvrir » ;
+  // son « Choisir des fichiers… » est le choix d'avant)
+  await p.click('dialog.dialogue-ouvrir-ailleurs[open] .a-fichiers')
   const d3 = await dialogue(p)
   ok(d3?.case?.coche === true, '   … la fenêtre, avec la case cochée', d3)
   await Promise.all([p.waitForEvent('load', { timeout: 30000 }), cliquer(p, 'ajouter')])
@@ -992,6 +995,8 @@ if (seul('L')) {
       await opfsEcrire(p, 'l0.memc', faireMemc(Y.encodeStateAsUpdate(unClasseur(['L0'])), { date: Date.now(), pages: 1, nom: 'Par le menu', id: '5a5a5a5a5a5a5a5b' }))
       await p.evaluate(() => { window.__aOuvrir = 'l0.memc' })
       await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="ouvrir-fichier"]')
+      // (Adapté au lot 7 : d'abord la fenêtre « Ouvrir », puis « Choisir des fichiers… »)
+      await p.click('dialog.dialogue-ouvrir-ailleurs[open] .a-fichiers')
       const d0 = await dialogue(p)
       ok(d0?.titre === 'Ouvrir ce classeur ?', '   … et il ouvre le choix des fichiers (puis « Ouvrir ce classeur ? »)', d0)
       await cliquer(p, 'annuler')

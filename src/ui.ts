@@ -1500,6 +1500,9 @@ export class UI implements Interface {
     const drive = this.drive
     if (drive) this.entreeMenu(m, 'Copie sur le Drive…', () => void drive.ouvrirLeChoix(), { action: 'copie-drive', inactif: !drive.enLigne,
       aide: drive.enLigne ? 'Une copie à sens unique, dans un dossier privé de votre Drive : choisir le compte, ou pas de copie.' : HORS_LIGNE_FICHIER })
+    // Le lot 7 : l'ordinateur ou le Drive, ce classeur ou toute sa classe
+    const ailleurs = this.enregistrerAilleurs
+    if (ailleurs) this.entreeMenu(m, 'Enregistrer sur le Drive ou ailleurs…', () => ailleurs(), { action: 'enregistrer-ailleurs' })
     this.entreeMenu(m, 'Ouvrir un classeur…', () => s.ouvrir(), { touche: `${CTRL} + O`, action: 'ouvrir',
       aide: this.fichiers ? AIDE_OUVRIR : 'Remplace ce classeur par celui d\'un fichier .memc.' })
     // Tout le classeur, séance après séance (lot 6 : la trieuse et le menu de la page exportent la séance)
@@ -1890,6 +1893,10 @@ export class UI implements Interface {
 
   /** Les fichiers (lot 4 C9) : Ouvrir ajoute à la bibliothèque, et le
    *  conflit de la clé propose d'ouvrir son fichier */
+  /** La fenêtre « Enregistrer » du lot 7 (l'ordinateur ou le Drive, ce
+   *  classeur, sa classe, toute la bibliothèque) ; posée par main.ts */
+  enregistrerAilleurs: (() => void) | null = null
+
   brancherFichiers(f: Fichiers | null) {
     this.fichiers = f
     if (f) this.inscrireActionEtat('ouvrir-cle', 'Ouvrir le fichier de la clé', () => void f.ouvrirLeFichierDeLaCle())

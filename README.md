@@ -2629,6 +2629,118 @@ la place qu'elles prennent ; laisser le jeton expirer (une heure), puis
 « Se connecter à Google » ; « Récupérer une sauvegarde du Drive » sur un
 autre poste.
 
+## Ouvrir et enregistrer, sur l'ordinateur ou sur le Drive (lot 7)
+
+Deux fenêtres, une liste (`src/classeurs/ailleurs.ts`, d'après les maquettes
+validées par le professeur le 17 octobre 2026). Ses trois choix : **un
+dossier de classe est un vrai dossier**, un `.memc` par chapitre, tenu à
+jour tout seul (1B) ; sur le Drive, le dossier **« MEM - Classeurs »** (ou
+« LFB - Classeurs »), avec un sous-dossier par classe (2A) ; la liste **« Mes
+emplacements »** en haut de la bibliothèque (3A).
+
+### Le mode d'emploi
+
+- **Ouvrir un classeur.** Dans la bibliothèque, **Ouvrir…** : la fenêtre
+  « Ouvrir » a deux onglets, **Cet ordinateur** et **Google Drive**.
+  « Choisir des fichiers… » est le choix d'avant (Ctrl + O y mène toujours
+  directement, et un fichier glissé sur la page s'ouvre comme avant).
+- **Ouvrir toute une classe.** Cet ordinateur → **Choisir un dossier…**
+  (Chrome et Edge) : tous les classeurs du dossier (et de ses sous-dossiers)
+  arrivent dans le dossier du même nom de la bibliothèque, créé s'il
+  n'existe pas. La case « Garder ce dossier relié », cochée d'avance, en
+  fait l'emplacement de la classe : chaque classeur y garde son fichier.
+  Google Drive → les classes de « MEM - Classeurs » sont listées, avec
+  **Ouvrir toute la classe** (elle reste reliée au Drive) ; **Choisir dans
+  le Drive…** ouvre la fenêtre de Google pour le reste du Drive (pour tout
+  un dossier : y entrer, Ctrl + A).
+- **Enregistrer.** Menu ⋯ du classeur → **Enregistrer sur le Drive ou
+  ailleurs…**, ou le menu d'un dossier → **Enregistrer ce dossier…** :
+  - **Quoi ?** Ce classeur, le dossier de la classe (son dossier le plus
+    haut), ou toute la bibliothèque.
+  - **Où ?** Cet ordinateur (une clé, un dossier, G:\Mon Drive…) ou Google
+    Drive.
+  - **Le garder à jour tout seul** (coché) : ce classeur sur l'ordinateur,
+    c'est l'enregistrement automatique sur la clé d'avant ; le dossier de la
+    classe sur l'ordinateur : on choisit un dossier, chaque classeur y prend
+    son fichier (« Fractions.memc », dans les mêmes sous-dossiers que dans
+    la bibliothèque) ; sur le Drive : « MEM - Classeurs › 5A », un fichier
+    par classeur. Décoché : un seul fichier `.memb` de la classe,
+    enregistré une fois. Toute la bibliothèque : toujours une fois (un
+    `.memb`, à la racine de « MEM - Classeurs » pour le Drive). Ce classeur
+    sur le Drive : une fois, à la racine de « MEM - Classeurs » (la fenêtre
+    dit d'enregistrer plutôt le dossier de sa classe pour qu'il se tienne à
+    jour).
+- **Mes emplacements.** En haut de la bibliothèque : chaque classe reliée
+  (« 5A → Drive personnel › MEM - Classeurs › 5A », « 4B → Cet ordinateur ›
+  Cle 4B »), ce qui n'y est pas encore (« 2 classeurs pas encore dedans »),
+  **Mettre à jour** (y met chaque classeur de la classe, l'accord du
+  navigateur ou la connexion Google dans ce clic) et **Retirer** (ne plus
+  tenir ce dossier à jour : rien n'y est effacé). À la racine : toutes les
+  classes reliées ; dans un dossier : celles de sa classe.
+- **Dans la version hors ligne**, le Drive est grisé dans les deux
+  fenêtres, et elles le disent : « Le Drive marche seulement depuis la
+  version en ligne (mathsetmoi.github.io). » Rien ne part vers Google.
+
+### Comment c'est fait
+
+- **Un dossier de l'ordinateur relié** (`src/classeurs/ordinateur.ts`) :
+  `showDirectoryPicker` (Chrome, Edge), la poignée du dossier gardée dans
+  l'index (le réglage `emplacement-poignee:<id>`, à part du magasin
+  `poignees`, qui ne garde que les fichiers des classeurs). Chaque
+  classeur de la classe y prend un fichier qui devient **le fichier de sa
+  clé** (`cle.ts`) : il s'y écrit peu après chaque changement, quand le
+  classeur est ouvert, avec tous les garde-fous de la clé. Jamais rien
+  d'écrasé : le fichier du même classeur, sans rien de plus que la
+  bibliothèque (le dossier rouvert le matin sur le poste remis à zéro), est
+  adopté tel quel ; s'il a des changements que la bibliothèque n'a pas, il
+  n'est pas touché (le message dit de l'ouvrir d'abord) ; un fichier qui
+  n'est pas à lui laisse la place à « Fractions (2).memc ». Un classeur qui
+  a déjà sa clé ailleurs la garde.
+- **Une classe reliée au Drive** (`src/publication/drive.ts`) : un troisième
+  dossier privé, « MEM - Classeurs » (marque `memClasses`), et dans lui le
+  dossier de chaque classe, marqué par l'id du dossier de la bibliothèque
+  (`memClasse` ; un renommage dans la bibliothèque le suit). La copie sur le
+  Drive des classeurs de cette classe (`copie-drive.ts`, lot 4 C10) y va au
+  lieu de « MEM - Sauvegardes » : la copie d'avant y est **déplacée**
+  (`addParents`/`removeParents`), avec ses versions, jamais doublée. Relier
+  la classe met la copie de chacun de ses classeurs sur ce Drive et les
+  copie tout de suite (`copierDepuisLaBase`, sous le verrou de chaque
+  classeur). Ces fichiers gardent la marque des sauvegardes :
+  « Récupérer une sauvegarde du Drive » les voit aussi (seulement ceux du
+  compte choisi).
+- **La fenêtre de Google** (`src/publication/selecteur.ts`) : le droit
+  Google reste `drive.file` (MEM teachingtool ne voit que ce qu'il a créé).
+  Ce que le professeur choisit dans la fenêtre de Google, et seulement
+  cela, devient lisible (`setAppId` : le numéro du projet). Son code
+  (`apis.google.com/js/api.js`) se charge quand la fenêtre « Ouvrir »
+  s'ouvre.
+- **L'index** : la liste des emplacements dans le réglage `emplacements`
+  (une clé nouvelle) ; la fiche d'un classeur gagne un champ facultatif
+  `drive.dossier`. Aucune base, aucune clé existante, aucun format de
+  fichier ne change.
+- **Les essais** : `tests/emplacements.test.ts` (sous Node) et
+  `essais/navigateur/lot7/E1-ailleurs.mjs` (Google simulé, avec le
+  déplacement et la fenêtre de Google ; les dossiers de l'ordinateur dans
+  l'OPFS). Adapté : `lot4/C9-fichiers.mjs`, où « Ouvrir… » du bandeau montre
+  maintenant la fenêtre « Ouvrir » avant le choix des fichiers.
+
+### Limites, et ce qu'il faut faire une fois
+
+- **À activer dans la console Google Cloud** (le projet de la connexion
+  Google, `41829434463`) : l'API **Google Picker**, sans quoi « Choisir
+  dans le Drive… » ne s'ouvre pas (le reste du lot n'en dépend pas). Une
+  clé d'API n'est pas nécessaire pour l'instant (`CLE_API_GOOGLE`, vide) ;
+  si Google la demande, la créer, limitée au site, et la mettre là.
+- Un classeur ajouté plus tard dans une classe reliée y arrive avec
+  **Mettre à jour** (la liste le signale) ; sur l'ordinateur, chaque fichier
+  se met à jour quand son classeur est ouvert, comme la clé.
+- Firefox, Safari et l'iPad ne savent pas écrire dans un dossier : sur
+  l'ordinateur, le dossier de la classe y est un `.memb` enregistré une
+  fois ; le Drive y marche.
+- À essayer une fois pour de vrai, sur le vrai compte : relier une classe au
+  Drive personnel, regarder « MEM - Classeurs » dans Google Drive, puis
+  « Choisir dans le Drive… » sur un `.memc` glissé à la main dans le Drive.
+
 ## L'état de la sauvegarde
 
 Où est enregistré le classeur qu'on regarde, et depuis quand : toujours

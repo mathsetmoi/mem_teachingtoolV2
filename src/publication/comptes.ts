@@ -15,6 +15,11 @@
 // Sauvegardes », « LFB - Sauvegardes », lot 4 C10) : la copie à sens
 // unique des classeurs (.memc), que le relais ne sert jamais (ni ce
 // dossier, ni cette extension, ni ce contenu ne sont les siens).
+//
+// Et son dossier privé des CLASSES (« MEM - Classeurs », « LFB -
+// Classeurs », lot 7) : un sous-dossier par dossier de classe relié au
+// Drive, où chaque chapitre de la classe a son .memc, tenu à jour par la
+// même copie ; le relais ne le sert pas davantage.
 // =============================================================
 
 export interface Compte {
@@ -30,12 +35,15 @@ export interface Compte {
   /** Le dossier des sauvegardes des classeurs dans ce Drive (lot 4 C10).
    *  Jamais dans la liste DOSSIERS du relais : un test y veille. */
   sauvegardes: string
+  /** Le dossier des classes reliées au Drive (lot 7) : un sous-dossier par
+   *  classe. Jamais dans la liste DOSSIERS du relais : un test y veille. */
+  classeurs: string
 }
 
 export const COMPTES: Compte[] = [
   // Les relais « MEM - Relais replay » (version 3), déployés le 7 octobre 2026
-  { cle: 'mem', nom: 'Drive personnel', dossier: 'MEM - Replay séances', relais: 'https://script.google.com/macros/s/AKfycbyEm-IdKOVzUPeZYlypnxXXUQZB_Ber8ttWyU2EIlgzVgZ1MFKvvtWRvXPlFAQ9F2fw/exec', sauvegardes: 'MEM - Sauvegardes' },
-  { cle: 'lfb', nom: 'Drive du lycée', dossier: 'LFB - Replay séances', relais: 'https://script.google.com/macros/s/AKfycbwtm8ylsrv-R9RJDdwnIf9CMlSP-B0WdAaV9SHtfHhhD7i5YcHnnViGUMHGlKRTPEKN4w/exec', sauvegardes: 'LFB - Sauvegardes' },
+  { cle: 'mem', nom: 'Drive personnel', dossier: 'MEM - Replay séances', relais: 'https://script.google.com/macros/s/AKfycbyEm-IdKOVzUPeZYlypnxXXUQZB_Ber8ttWyU2EIlgzVgZ1MFKvvtWRvXPlFAQ9F2fw/exec', sauvegardes: 'MEM - Sauvegardes', classeurs: 'MEM - Classeurs' },
+  { cle: 'lfb', nom: 'Drive du lycée', dossier: 'LFB - Replay séances', relais: 'https://script.google.com/macros/s/AKfycbwtm8ylsrv-R9RJDdwnIf9CMlSP-B0WdAaV9SHtfHhhD7i5YcHnnViGUMHGlKRTPEKN4w/exec', sauvegardes: 'LFB - Sauvegardes', classeurs: 'LFB - Classeurs' },
 ]
 
 /** L'extension des fichiers séance (le relais ne sert qu'elle) */
@@ -51,6 +59,15 @@ export const EXTENSION_SAUVEGARDE = '.memc'
  *  publication serait désactivée, seul l'enregistrement du fichier séance
  *  resterait possible. Voir le README. */
 export const CLIENT_GOOGLE = '41829434463-j9dekdpg6c9va9pd00fanof7h3lphkjm.apps.googleusercontent.com'
+
+/** Le numéro du projet Google Cloud (le début de l'identifiant client) : le
+ *  sélecteur de fichiers de Google (lot 7) le demande, pour que MEM
+ *  teachingtool puisse lire les fichiers qu'on y choisit avec le seul droit
+ *  drive.file */
+export const PROJET_GOOGLE = CLIENT_GOOGLE.split('-')[0]
+/** La clé d'API du sélecteur de fichiers de Google (pas un secret, limitée au
+ *  site dans la console). Vide : le sélecteur s'ouvre sans elle. */
+export const CLE_API_GOOGLE = ''
 
 export const compteDe = (cle: string) => COMPTES.find(c => c.cle === cle) ?? null
 

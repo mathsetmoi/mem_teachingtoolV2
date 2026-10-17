@@ -114,6 +114,11 @@ import type { Fichiers } from './fichiers'
 import { AIDE_ENREGISTRER_TOUT } from './fichiers'
 import { fermerSurLeFond } from '../dialogue'
 
+/** « Ouvrir… » du bandeau : le même titre qu'avant le lot 7 (Ctrl + O
+ *  choisit toujours des fichiers ; le bouton montre la fenêtre « Ouvrir ») */
+const TITRE_OUVRIR = `Ouvrir un classeur ou une bibliothèque (${CTRL} + O)`
+const AIDE_OUVRIR_FENETRE = 'Depuis l\'ordinateur ou le Drive : un classeur, une bibliothèque, ou tout un dossier de classe.'
+
 /** Ce que la bibliothèque demande à qui l'ouvre */
 export interface HoteBibliotheque {
   /** Le classeur ouvert dans cet onglet ; null : la bibliothèque seule (ou
@@ -303,6 +308,14 @@ export class Bibliotheque {
   tri: Tri = 'modifie'
   /** Ouvrir et enregistrer des fichiers (lot 4 C9) : posé par brancherFichiers */
   fichiers: Fichiers | null = null
+  /** La fenêtre « Ouvrir » (lot 7 : l'ordinateur ou le Drive, un dossier) :
+   *  « Ouvrir… » du bandeau la montre ; sans elle, le choix des fichiers */
+  ouvrirFenetre: (() => void) | null = null
+  /** En haut des cartes : « Mes emplacements » (lot 7) */
+  readonly hautDuCorps: HTMLElement
+  /** Après chaque rendu des cartes (lot 7 : « Mes emplacements » suit le
+   *  dossier qu'on regarde) */
+  readonly apresRendu: (() => void)[] = []
   /** « Ouvrir… », dans le bandeau (caché tant que les fichiers ne sont pas branchés) */
   private boutonOuvrir: HTMLButtonElement
   /** Le cadre pointillé des fichiers qu'on lâche, et combien d'entrées le survolent */
@@ -417,7 +430,7 @@ export class Bibliotheque {
       Object.assign(document.createElement('span'), { className: 'libelle-court', textContent: 'Dossier' }))
     this.actionsDuBandeau.appendChild(nouveauDossier)
     // Ouvrir un classeur ou une bibliothèque (lot 4 C9)
-    this.boutonOuvrir = this.bouton('Ouvrir…', 'ouvrir', () => { this.finirSaisie(true); this.fichiers?.choisir() }, `Ouvrir un classeur ou une bibliothèque (${CTRL} + O)`)
+    this.boutonOuvrir = this.bouton('Ouvrir…', 'ouvrir', () => { this.finirSaisie(true); this.choisirOuvrir() }, TITRE_OUVRIR)
     this.boutonOuvrir.dataset.action = 'ouvrir-fichier'
     this.boutonOuvrir.hidden = true
     this.actionsDuBandeau.appendChild(this.boutonOuvrir)
@@ -510,7 +523,8 @@ export class Bibliotheque {
     this.vide = Object.assign(document.createElement('div'), { className: 'biblio-vide', hidden: true })
     this.vide.append(Object.assign(document.createElement('p'), { textContent: 'Aucun classeur dans cette bibliothèque : créez-en un.' }),
       this.bouton('Nouveau classeur', 'plus', () => this.nouveauClasseur(), 'Créer un classeur et l\'ouvrir'))
-    this.corps.append(this.conseil, this.sectionRecents, this.filtreEl, this.sectionTous, this.vide)
+    this.hautDuCorps = Object.assign(document.createElement('div'), { className: 'biblio-haut' })
+    this.corps.append(this.hautDuCorps, this.conseil, this.sectionRecents, this.filtreEl, this.sectionTous, this.vide)
     // ----- Les menus (des enfants de la bibliothèque : le reste est inerte) -----
     this.menuEl = document.createElement('div')
     this.menuEl.className = 'menu-flottant menu-classeur'; this.menuEl.setAttribute('role', 'menu'); this.menuEl.hidden = true
@@ -599,11 +613,17 @@ export class Bibliotheque {
     etroit?.addEventListener?.('change', regler)
     this.menuDuBandeau.push(m => {
       if (this.boutonOuvrir.hidden) {
-        entreeMenu(m, 'Ouvrir un classeur ou une bibliothèque…', () => { this.finirSaisie(true); f.choisir() }, { touche: `${CTRL} + O`, action: 'ouvrir-fichier' })
+        entreeMenu(m, 'Ouvrir un classeur ou une bibliothèque…', () => { this.finirSaisie(true); this.choisirOuvrir() }, { action: 'ouvrir-fichier', aide: AIDE_OUVRIR_FENETRE })
       }
       entreeMenu(m, 'Enregistrer toute la bibliothèque…', () => void f.enregistrerLaBibliotheque(), { action: 'enregistrer-bibliotheque', aide: AIDE_ENREGISTRER_TOUT })
     })
     if (this.ouvert) this.boutonBandeau.hidden = false
+  }
+
+  /** « Ouvrir… » : la fenêtre du lot 7, sinon le choix des fichiers */
+  private choisirOuvrir() {
+    if (this.ouvrirFenetre) this.ouvrirFenetre()
+    else this.fichiers?.choisir()
   }
 
   /** Le dossier où va un classeur ajouté depuis un fichier : celui qu'on
@@ -619,7 +639,7 @@ export class Bibliotheque {
   /** « Enregistrer dans un fichier… » (le menu d'un classeur) : celui de
    *  l'onglet par sa sauvegarde (ce qui attend s'écrit d'abord), un autre
    *  depuis sa base, par l'écrivain */
-  private async enregistrerUnClasseur(id: string): Promise<boolean> {
+  async enregistrerUnClasseur(id: string): Promise<boolean> {
     const f = this.fiches.get(id)
     if (!f) return false
     if (this.hote.classeur?.id === id && this.hote.ui) return this.hote.ui.sauvegarde.enregistrer()
@@ -898,6 +918,7 @@ export class Bibliotheque {
     this.majLigneOuvert()
     this.conseil.hidden = !(aLaRacine && this.conseilVu === false && d.size === 0)
     this.majCorbeille()
+    for (const f of this.apresRendu) f()
   }
 
   private reconcilier(l: Liste, cles: string[], changes: Set<string> | null, o: { chemin?: boolean } = {}) {

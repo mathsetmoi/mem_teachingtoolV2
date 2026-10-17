@@ -14,6 +14,7 @@ import type { CleALArrivee } from './classeurs/cle'
 import { EnregistrementCle, lireCleALArrivee } from './classeurs/cle'
 import { CopieDrive } from './classeurs/copie-drive'
 import { brancherRecuperer } from './classeurs/recuperer'
+import { Ailleurs } from './classeurs/ailleurs'
 import { ApercuDuClasseur } from './classeurs/apercu-classeur'
 import { ErreurBase, ouvrirBaseExistante } from './classeurs/bases'
 import { passerLaConnexion } from './publication/drive'
@@ -138,6 +139,8 @@ function bibliothequeSeule(racine: HTMLElement, registre: Registre, message?: st
   b.brancherFichiers(fichiers)
   // Récupérer une sauvegarde du Drive (lot 4 C10) : la seule chose qui en revient, sur demande
   brancherRecuperer(b, fichiers, registre)
+  // Ouvrir et enregistrer sur l'ordinateur ou sur le Drive, Mes emplacements (lot 7)
+  const ailleurs = new Ailleurs({ registre, bibliotheque: b, fichiers, message: dire, classeur: () => null })
   b.ouvrir()
   window.addEventListener('keydown', e => {
     if (!(e.ctrlKey || e.metaKey) || e.altKey) return
@@ -146,7 +149,7 @@ function bibliothequeSeule(racine: HTMLElement, registre: Registre, message?: st
   }, true)
   // Une bibliothèque vide le dit déjà sur l'écran
   if (message && message !== MESSAGE_VIDE) dire(message)
-  if (import.meta.env.DEV) Object.assign(window, { __registre: registre, __bibliotheque: b, __fichiers: fichiers })
+  if (import.meta.env.DEV) Object.assign(window, { __registre: registre, __bibliotheque: b, __fichiers: fichiers, __ailleurs: ailleurs })
 }
 
 /** Un message gardé le temps d'arriver sur ce classeur (« Classeur « X »
@@ -317,6 +320,22 @@ async function demarrer() {
     ui.bibliotheque.brancherFichiers(fichiers)
     brancherRecuperer(ui.bibliotheque, fichiers, registre)
     ui.brancherFichiers(fichiers)
+    // Ouvrir et enregistrer sur l'ordinateur ou sur le Drive, Mes
+    // emplacements (lot 7) : « Enregistrer… » du menu ⋯ y mène
+    const ailleurs = new Ailleurs({
+      registre, bibliotheque: ui.bibliotheque, fichiers, message: (t, a) => ui.message(t, a), classeur: () => hote.classeur,
+      activerCle: cle?.disponible ? () => void cle.activer() : undefined,
+      enregistrerClasseur: () => void ui.sauvegarde.enregistrer(),
+      // Le classeur de cet onglet : ce qui attend s'écrit dans sa base d'abord
+      avantDEcrire: async f => {
+        if (f.id !== infos.id || !hote.classeur) return
+        app.poserCeQuiAttend()
+        app.piste.vider()
+        await app.tableau.attendreEcritures()
+      },
+    })
+    ui.enregistrerAilleurs = () => void ailleurs.enregistrer()
+    if (import.meta.env.DEV) Object.assign(window, { __ailleurs: ailleurs })
     if (import.meta.env.DEV) Object.assign(window, { __bibliotheque: ui.bibliotheque, __fichiers: fichiers })
   }
   // Un classeur vient d'être ouvert depuis un fichier, ou créé : on le dit

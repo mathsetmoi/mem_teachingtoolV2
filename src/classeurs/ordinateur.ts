@@ -1,0 +1,168 @@
+// =============================================================
+// UN DOSSIER DE L'ORDINATEUR RELIÉ À UNE CLASSE (lot 7)
+// Chrome et Edge savent choisir un dossier (showDirectoryPicker) et y
+// écrire ; ailleurs (Firefox, Safari, l'iPad), on choisit des fichiers.
+// Relier une classe à un dossier : chacun de ses classeurs y prend un
+// fichier à son nom (« Fractions.memc », dans les mêmes sous-dossiers que
+// dans la bibliothèque), qui devient le fichier de sa clé (cle.ts) : il
+// s'y écrit peu après chaque changement, avec tous ses garde-fous. Un
+// classeur qui a déjà le fichier de sa clé ailleurs le garde.
+//
+// Jamais rien d'écrasé :
+// - un fichier du même classeur, qui n'a rien de plus que la bibliothèque
+//   (le dossier rouvert le matin sur le poste remis à zéro, juste ouvert
+//   dans la bibliothèque), devient tel quel le fichier de la clé ;
+// - un fichier du même classeur qui a des changements que la bibliothèque
+//   n'a pas n'est pas touché (le dire : l'ouvrir d'abord) ;
+// - un fichier qui n'est pas à lui : le classeur prend un autre nom
+//   (« Fractions (2).memc »).
+// =============================================================
+import type { PoigneeFichier } from './cle'
+import { ecrireLeNeuf, memeFichier, permission } from './cle'
+import type { FicheClasseur } from './demarrage'
+import type { Registre } from './registre'
+import { classeursDeLaClasse, nomDeFichierLibre, sousDossiers } from './emplacements'
+import { ecrivain } from './ecrivain'
+import { comparerVecteurs } from './vecteurs'
+import { EXTENSION_TABLEAU, nomSur } from '../fichier'
+
+/** Ce qu'on utilise d'un FileSystemDirectoryHandle (Chrome, Edge) */
+export interface PoigneeDossier {
+  readonly kind: 'directory'
+  readonly name: string
+  getDirectoryHandle(nom: string, o?: { create?: boolean }): Promise<PoigneeDossier>
+  getFileHandle(nom: string, o?: { create?: boolean }): Promise<PoigneeFichier>
+  values(): AsyncIterable<{ kind: 'file' | 'directory'; name: string }>
+  queryPermission?(o: { mode: 'readwrite' }): Promise<PermissionState>
+  requestPermission?(o: { mode: 'readwrite' }): Promise<PermissionState>
+  isSameEntry?(autre: unknown): Promise<boolean>
+}
+
+/** Ce navigateur sait choisir un dossier et y écrire (Chrome, Edge) */
+export const choisitUnDossier = () => typeof (window as unknown as { showDirectoryPicker?: unknown }).showDirectoryPicker === 'function'
+
+/** Le choix du dossier, dans le clic ; null : on a renoncé */
+export async function choisirUnDossier(): Promise<PoigneeDossier | null> {
+  const choisir = (window as unknown as { showDirectoryPicker?: (o: unknown) => Promise<PoigneeDossier> }).showDirectoryPicker
+  if (typeof choisir !== 'function') return null
+  try { return await choisir.call(window, { id: 'mem-classes', mode: 'readwrite' }) } catch (e) {
+    if ((e as { name?: string } | null)?.name === 'AbortError') return null
+    throw e
+  }
+}
+
+/** L'accord d'écrire dans le dossier ; demander : dans un clic seulement */
+export async function accordDuDossier(d: PoigneeDossier, demander: boolean): Promise<boolean> {
+  return await permission(d as unknown as PoigneeFichier, demander) === 'granted'
+}
+
+/** Un classeur (ou une bibliothèque) trouvé dans le dossier ; chemin : ses
+ *  sous-dossiers */
+export interface FichierDuDossier { fichier: File; poignee: PoigneeFichier; chemin: string[] }
+
+/** Les .memc et .memb du dossier et de ses sous-dossiers (jusqu'à
+ *  `profondeur`), sans les fichiers cachés */
+export async function lireLeDossier(d: PoigneeDossier, profondeur = 4, chemin: string[] = []): Promise<FichierDuDossier[]> {
+  const trouves: FichierDuDossier[] = []
+  for await (const x of d.values()) {
+    if (x.name.startsWith('.')) continue
+    if (x.kind === 'directory') {
+      if (profondeur > 0) trouves.push(...await lireLeDossier(x as unknown as PoigneeDossier, profondeur - 1, [...chemin, x.name]))
+      continue
+    }
+    if (!/\.mem[cb]$/i.test(x.name)) continue
+    const poignee = x as unknown as PoigneeFichier
+    try { trouves.push({ fichier: await poignee.getFile(), poignee, chemin }) } catch { /* illisible : on passe */ }
+  }
+  return trouves.sort((a, b) => [...a.chemin, a.fichier.name].join('/').localeCompare([...b.chemin, b.fichier.name].join('/'), 'fr', { numeric: true }))
+}
+
+/** Ce qu'a fait le lien : des noms de classeurs */
+export interface BilanRelier {
+  /** Écrits dans un fichier neuf du dossier */
+  ecrits: string[]
+  /** Leur fichier était déjà là, à jour : il devient celui de la clé */
+  adoptes: string[]
+  /** Leur fichier du dossier a des changements que la bibliothèque n'a pas */
+  plusRiches: string[]
+  /** Ils gardent le fichier de leur clé, ailleurs */
+  ailleurs: string[]
+  echecs: string[]
+}
+
+/** Les noms déjà pris dans un dossier */
+async function nomsDe(d: PoigneeDossier): Promise<string[]> {
+  const n: string[] = []
+  for await (const x of d.values()) n.push(x.name)
+  return n
+}
+
+/** Relie les classeurs de la classe `classe` au dossier `d` (voir plus
+ *  haut). avantDEcrire : le classeur de cet onglet écrit d'abord ce qui
+ *  attend dans sa base ; progres : « 3 sur 12 » */
+export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, classe: string, o: {
+  avantDEcrire?: (f: FicheClasseur) => Promise<void>; progres?: (n: number, total: number) => void
+} = {}): Promise<BilanRelier> {
+  const [fiches, dossiers] = await Promise.all([registre.classeurs(), registre.dossiers()])
+  const classeurs = classeursDeLaClasse(classe, fiches, dossiers)
+  const bilan: BilanRelier = { ecrits: [], adoptes: [], plusRiches: [], ailleurs: [], echecs: [] }
+  const sous = new Map<string, { d: PoigneeDossier; noms: string[] }>()
+  const dossierPour = async (chemin: string[]) => {
+    const cle = chemin.join('/')
+    let x = sous.get(cle)
+    if (x) return x
+    let ici = d
+    for (const n of chemin) ici = await ici.getDirectoryHandle(nomSur(n, { repli: 'Dossier' }), { create: true })
+    x = { d: ici, noms: await nomsDe(ici) }
+    sous.set(cle, x)
+    return x
+  }
+  for (let k = 0; k < classeurs.length; k++) {
+    const f = classeurs[k]
+    o.progres?.(k + 1, classeurs.length)
+    try {
+      // Un classeur qui a déjà sa clé la garde (ici ou ailleurs)
+      const deja = f.cle ? await registre.poignee<PoigneeFichier>(f.id).catch(() => undefined) : undefined
+      if (deja) {
+        const ici = await dossierPour(sousDossiers(f.dossier, classe, dossiers))
+        const lie = await ici.d.getFileHandle(deja.name).then(h => memeFichier(h, deja)).catch(() => false)
+        if (!lie) bilan.ailleurs.push(f.nom)
+        continue
+      }
+      const ici = await dossierPour(sousDossiers(f.dossier, classe, dossiers))
+      const base = nomSur(f.nom)
+      const prevu = base + EXTENSION_TABLEAU
+      if (ici.noms.some(n => n.toLocaleLowerCase('fr') === prevu.toLocaleLowerCase('fr'))) {
+        const h = await ici.d.getFileHandle(ici.noms.find(n => n.toLocaleLowerCase('fr') === prevu.toLocaleLowerCase('fr'))!)
+        const r = await adopterSiLeMeme(registre, f, h)
+        if (r === 'adopte') { bilan.adoptes.push(f.nom); continue }
+        if (r === 'plus-riche') { bilan.plusRiches.push(f.nom); continue }
+      }
+      // Un fichier neuf, à un nom libre
+      const nom = nomDeFichierLibre(base, EXTENSION_TABLEAU, ici.noms)
+      const h = await ici.d.getFileHandle(nom, { create: true })
+      ici.noms.push(nom)
+      await o.avantDEcrire?.(f)
+      const r = await ecrireLeNeuf(registre, h, { id: f.id, base: f.base, nom: f.nom })
+      if (r.date === null) bilan.echecs.push(f.nom); else bilan.ecrits.push(f.nom)
+    } catch { bilan.echecs.push(f.nom) }
+  }
+  return bilan
+}
+
+/** Le fichier du dossier est-il celui de ce classeur, sans rien de plus que
+ *  sa base ? Alors il devient le fichier de sa clé tel quel (sa date et son
+ *  vecteur notés, comme une écriture d'ici). */
+async function adopterSiLeMeme(registre: Registre, f: FicheClasseur, h: PoigneeFichier): Promise<'adopte' | 'plus-riche' | 'autre'> {
+  const fichier = await h.getFile()
+  if (!fichier.size) return 'autre'
+  let lu
+  try { lu = await ecrivain.lireFichier(fichier) } catch { return 'autre' }
+  if (lu.entete.id !== f.id) return 'autre'
+  const { vecteur } = await ecrivain.vecteurDeLaBase(f.base)
+  const c = comparerVecteurs(vecteur, lu.vecteur)
+  if (c !== 'egal' && c !== 'contient') return 'plus-riche'
+  await registre.garderPoignee(f.id, h)
+  await registre.modifierClasseur(f.id, x => { x.cle = { nom: h.name, t: Date.now(), date: lu.entete.date, taille: fichier.size, vecteur: lu.vecteur } })
+  return 'adopte'
+}

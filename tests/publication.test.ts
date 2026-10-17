@@ -71,6 +71,14 @@ describe('le site et le relais parlent des mêmes dossiers', () => {
     expect(EXTENSION_SAUVEGARDE).not.toBe(EXTENSION)
   })
 
+  it('les dossiers des classes (lot 7) ne sont jamais ceux que sert le relais', () => {
+    expect(COMPTES.map(c => c.classeurs)).toEqual(['MEM - Classeurs', 'LFB - Classeurs'])
+    for (const c of COMPTES) {
+      expect(dossiersDuRelais).not.toContain(c.classeurs)
+      expect(COMPTES.flatMap(x => [x.dossier, x.sauvegardes])).not.toContain(c.classeurs)
+    }
+  })
+
   it('les adresses des relais renseignés sont bien des déploiements Apps Script', () => {
     for (const c of COMPTES) if (c.relais) expect(relaisValable(c.relais), c.cle).toBe(true)
   })
@@ -125,6 +133,7 @@ describe('le relais ne sert que les replays rangés au bon endroit', () => {
       ['« Symétrie.memc » dans « MEM - Sauvegardes »', async () => ({ nom: 'Symétrie.memc', contenu: await classeur(), parents: [sauvegardes] })],
       ['un .memc renommé « x.mem » dans « MEM - Replay séances » (il commence par mem-tableau)', async () => ({ nom: 'x.mem', contenu: await classeur(), parents: [mem] })],
       ['un .memc dans le dossier des replays', async () => ({ nom: 'Symétrie.memc', contenu: await classeur(), parents: [mem] })],
+      ['« Symétrie.memc » dans le dossier d\'une classe (« MEM - Classeurs », lot 7)', async () => ({ nom: 'Symétrie.memc', contenu: await classeur(), parents: [{ nom: '5A', proprietaire: MOI }] })],
       ['un .memc dans les deux dossiers à la fois', async () => ({ nom: 'Symétrie.memc', contenu: await classeur(), parents: [sauvegardes, lfb] })],
     ]
     for (const [quoi, faire] of cas) {
