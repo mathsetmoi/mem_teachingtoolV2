@@ -267,9 +267,10 @@ if (seul('B')) {
   await p.click('.barre-haut .bouton.points'); await p.waitForTimeout(150)
   // (Adapté au lot 5, morceau K9 : « Cet appareil » et ses deux cases entrent volontairement au bout du menu ⋯ ; lot5/K9-affichage.mjs les vérifie)
   const entrees = await p.evaluate(() => [...[...document.querySelectorAll('.menu-flottant')].find(x => !x.hidden).querySelectorAll('.menu-item:not([data-action="contraste"]):not([data-action="noms-outils"]):not([data-action="nouvelle-seance"]):not([data-action="renommer-seance"]):not([data-action="seance-precedente"]):not([data-action="retour-aujourdhui"])')].map(e => e.dataset.action ?? 'etat'))
-  // (Adapté au lot 4, morceau C10 : « Copie sur le Drive… » (copie-drive) entre volontairement dans le menu ⋯, avant « Ouvrir un classeur… »)
+  // (Adapté au lot 4, morceau C10 : « Copie sur le Drive… » (copie-drive) entre volontairement dans le menu ⋯, avant « Ouvrir un classeur… » ;
+// adapté au lot 7 : « Enregistrer sur le Drive ou ailleurs… » (enregistrer-ailleurs) aussi, juste après)
   // (et la ligne du Drive, en tête, porte son bouton « Se connecter à Google » : une copie attend)
-  ok(entrees.filter(x => x !== 'etat')[0] === 'bibliotheque' && JSON.stringify(entrees.filter(x => x !== 'etat')) === '["bibliotheque","enregistrer","activer-cle","copie-drive","ouvrir","exporter-pdf"]', 'Le menu ⋯ : « Bibliothèque des classeurs… » (data-action bibliotheque) en tête des entrées', entrees)
+  ok(entrees.filter(x => x !== 'etat')[0] === 'bibliotheque' && JSON.stringify(entrees.filter(x => x !== 'etat')) === '["bibliotheque","enregistrer","activer-cle","copie-drive","enregistrer-ailleurs","ouvrir","exporter-pdf"]', 'Le menu ⋯ : « Bibliothèque des classeurs… » (data-action bibliotheque) en tête des entrées', entrees)
   await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="bibliotheque"]'); await p.waitForTimeout(300)
   ok((await vue(p)).ouvert, '   … elle ouvre la bibliothèque')
   // Le menu ⋯ du bandeau : caché tant qu'aucun morceau n'y met d'entrée

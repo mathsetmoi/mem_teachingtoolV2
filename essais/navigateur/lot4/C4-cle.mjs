@@ -284,8 +284,9 @@ if (seul('A')) {
   // ---- A1. L'entrée du menu ----
   let m = await menu(p)
   // (Adapté au lot 4, morceau C5 : « Bibliothèque des classeurs… » en tête du menu)
-  // (Adapté au lot 4, morceau C10 : « Copie sur le Drive… » (copie-drive) entre volontairement dans le menu ⋯, avant « Ouvrir un classeur… »)
-  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","activer-cle","copie-drive","ouvrir","exporter-pdf"]'
+  // (Adapté au lot 4, morceau C10 : « Copie sur le Drive… » (copie-drive) entre volontairement dans le menu ⋯, avant « Ouvrir un classeur… » ;
+// adapté au lot 7 : « Enregistrer sur le Drive ou ailleurs… » (enregistrer-ailleurs) aussi, juste après)
+  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","activer-cle","copie-drive","enregistrer-ailleurs","ouvrir","exporter-pdf"]'
     && m.libelles['activer-cle'].texte === 'Enregistrer automatiquement dans un fichier…'
     && m.libelles['activer-cle'].aide === 'Sur la clé USB ou dans un dossier : le classeur s\'y enregistre tout seul, peu après chaque changement.',
     'A1) le menu ⋯ : « Enregistrer automatiquement dans un fichier… » (data-action activer-cle), avec son aide, après « Enregistrer le classeur… »', m)
@@ -315,7 +316,7 @@ if (seul('A')) {
   ok(t0.includes(`Le classeur s'enregistre maintenant tout seul dans « ${FICHIER} ».`), '   … le message', t0)
   ok(Number(await p.evaluate(() => localStorage.getItem('mem-dernier-enregistrement'))) === lu.entete.date, '   … le classeur est dans un fichier depuis cette date (mem-dernier-enregistrement)')
   m = await menu(p)
-  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer-cle","enregistrer","arreter-cle","copie-drive","ouvrir","exporter-pdf"]'
+  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer-cle","enregistrer","arreter-cle","copie-drive","enregistrer-ailleurs","ouvrir","exporter-pdf"]'
     && m.libelles['enregistrer-cle'].texte === 'Enregistrer maintenant sur la clé' && m.libelles['enregistrer-cle'].touche === 'Ctrl + S'
     && m.libelles['enregistrer'].texte === 'Enregistrer une copie dans un fichier…' && m.libelles['enregistrer'].touche === null
     && m.libelles['arreter-cle'].texte === 'Arrêter l\'enregistrement automatique sur la clé',

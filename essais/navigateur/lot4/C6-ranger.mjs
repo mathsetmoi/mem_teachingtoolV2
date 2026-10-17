@@ -29,6 +29,7 @@
 //    autrement ; Retour arrière dans un champ ; la bibliothèque seule.
 // M. La version d'un seul fichier (file://).
 // (Adapté au lot 4, morceau C8 : les menus d'un classeur et d'un dossier finissent par « Supprimer ».)
+// (Adapté au lot 7 : « Enregistrer ce dossier… » entre volontairement au menu d'un dossier, avant « Supprimer ».)
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
 import { existsSync, mkdirSync } from 'node:fs'
@@ -395,7 +396,7 @@ if (etat.p && (seul('D') || seul('E') || seul('F'))) {
   await ouvrirMenu(p, 'd:' + etat.d5)
   let v = await vue(p)
   // (Adapté au lot 4, morceau C7 : le menu d'un dossier gagne « Déplacer vers… » à la fin)
-  ok(v.menu?.label === 'Dossier « 5e B »' && v.menu.entrees.join() === 'ouvrir-dossier,renommer-dossier,couleur,couleur*,couleur,couleur,couleur,couleur,couleur,couleur,classe-dossier*,deplacer-dossier,supprimer-dossier',
+  ok(v.menu?.label === 'Dossier « 5e B »' && v.menu.entrees.join() === 'ouvrir-dossier,renommer-dossier,couleur,couleur*,couleur,couleur,couleur,couleur,couleur,couleur,classe-dossier*,deplacer-dossier,enregistrer-dossier,supprimer-dossier',
     'Le menu d\'un dossier : « Ouvrir », « Renommer… », les 8 couleurs (Bleu cochée), « Dossier d\'une classe » (cochée)', v.menu)
   ok(v.menu.libelles.slice(2, 10).join() === 'Gris,Bleu,Vert,Jaune,Orange,Rouge,Violet,Rose' && v.menu.libelles[10] === 'Dossier d\'une classeSes classeurs portent l\'étiquette « 5e B »', '   … les couleurs nommées pour le lecteur d\'écran ; l\'aide de la case', v.menu.libelles)
   await p.screenshot({ path: CAPTURES + 'D-menu-dossier.png' })

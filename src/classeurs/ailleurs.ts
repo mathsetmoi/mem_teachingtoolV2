@@ -106,7 +106,8 @@ export class Ailleurs {
   constructor(private h: HoteAilleurs) {
     const b = h.bibliotheque
     b.ouvrirFenetre = () => void this.ouvrir()
-    b.blocsDuMenuDossier.push((d, m) => {
+    // Avant « Supprimer », qui finit le menu d'un dossier (le dernier bloc)
+    b.blocsDuMenuDossier.splice(Math.max(0, b.blocsDuMenuDossier.length - 1), 0, (d, m) => {
       entreeMenu(m, 'Enregistrer ce dossier…', () => void this.enregistrer({ quoi: 'classe', classe: d.id }), { action: 'enregistrer-dossier',
         aide: 'Sur l\'ordinateur ou sur le Drive, tenu à jour tout seul' })
     })
