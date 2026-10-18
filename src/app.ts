@@ -1194,6 +1194,9 @@ export class App {
     this.rendu.gomme = null
     this.rendu.toutRedessiner()
     this.zone.dataset.outil = o
+    // La sorte de trait ou de forme : le curseur en montre l'icône (curseurs.ts)
+    this.zone.dataset.trait = this.typeTrait
+    this.zone.dataset.forme = this.typeForme
     this.ui?.maj()
   }
 
