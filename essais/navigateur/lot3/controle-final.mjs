@@ -181,7 +181,10 @@ if (faire('nom')) {
   // 44 px, la barre du haut a 115 px de moins ; à 1024 × 768 le nom se lit
   // désormais en entier, à sa taille : le compteur ne se resserre qu'à
   // 910 px et moins, essayé à 900 × 768. Adapté volontairement.)
-  for (const [l, h, serre] of [[1024, 768, false], [900, 768, true], [1366, 768, false]]) {
+  // (Adapté au catalogue : la barre du haut a un bouton de plus, 46 px ; le
+  // compteur se resserre dès 970 px environ, et à 900 px le nom n'a plus la
+  // place : le cas resserré est essayé à 950 × 768.)
+  for (const [l, h, serre] of [[1024, 768, false], [950, 768, true], [1366, 768, false]]) {
     const { ctx, page } = await ouvrir({ viewport: { width: l, height: h } }, `nom ${l}`)
     const h0 = (await compteur(page)).hauteur
     await page.evaluate(() => { const a = window.__app; a.nouvellePage(); a.nouvellePage(); a.tableau.renommerPage(a.pages[1], 'Exercice 12 p. 84'); a.allerPage(a.pages[0]) })
