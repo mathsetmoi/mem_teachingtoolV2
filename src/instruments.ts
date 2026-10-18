@@ -320,13 +320,25 @@ export function dessinerPastille(c: CanvasRenderingContext2D, p: P, z: number, a
   c.strokeStyle = '#3b6fb6'; c.lineWidth = filetPx / z; c.stroke()
   c.strokeStyle = actif ? '#ffffff' : '#3b6fb6'; c.lineWidth = Math.round((filetPx - 0.1) * 100) / 100 / z
   c.beginPath()
-  if (sorte === 'mine') { c.moveTo(p.x - r * 0.5, p.y); c.lineTo(p.x + r * 0.5, p.y) }
+  if (sorte === 'mine') { c.moveTo(p.x - r * 0.5, p.y); c.lineTo(p.x + r * 0.5, p.y); c.stroke() }
   else {
-    c.arc(p.x, p.y, r * 0.5, -Math.PI * 0.9, Math.PI * 0.4)
-    const a = Math.PI * 0.4, q = { x: p.x + Math.cos(a) * r * 0.5, y: p.y + Math.sin(a) * r * 0.5 }
-    c.moveTo(q.x - r * 0.3, q.y); c.lineTo(q.x, q.y); c.lineTo(q.x, q.y - r * 0.3)
+    // ↻ (retouches après le lot 5, le souhait du professeur : on doit voir
+    // la flèche) : trois quarts de tour dans le sens des aiguilles d'une
+    // montre, du haut à droite au haut à gauche, et au bout une pointe
+    // pleine, bien visible, qui repart vers la droite
+    const ra = r * 0.52, a0 = -Math.PI * 0.2, a1 = a0 + Math.PI * 1.4
+    c.lineCap = 'round'
+    c.arc(p.x, p.y, ra, a0, a1 - 0.25)
+    c.stroke()
+    const q = { x: p.x + Math.cos(a1) * ra, y: p.y + Math.sin(a1) * ra }
+    const t = { x: -Math.sin(a1), y: Math.cos(a1) }, n = { x: -t.y, y: t.x }, h = r * 0.6, w = r * 0.36
+    c.beginPath()
+    c.moveTo(q.x + t.x * h * 0.6, q.y + t.y * h * 0.6)
+    c.lineTo(q.x - t.x * h * 0.4 + n.x * w, q.y - t.y * h * 0.4 + n.y * w)
+    c.lineTo(q.x - t.x * h * 0.4 - n.x * w, q.y - t.y * h * 0.4 - n.y * w)
+    c.closePath()
+    c.fillStyle = actif ? '#ffffff' : '#3b6fb6'; c.fill()
   }
-  c.stroke()
   c.restore()
 }
 

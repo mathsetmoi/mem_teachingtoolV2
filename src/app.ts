@@ -30,7 +30,7 @@ import type { Boite } from './revoir/bobine'
 import { RAYON_TRAIT, choisirContraste as reglerContraste, choisirDoigt as reglerDoigt, leDoigtDeplace, noterStyletDirect, rayonGomme, reglages } from './reglages'
 import { GRAND_MORCEAU, LONG_MORCEAU, boutsDe, couperTrait, lePlusLong } from './gomme'
 import type { Doigt } from './reglages'
-import { APPUI_LONG, DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, SEUIL_GLISSER, TOLERANCE_PRISE, TOUCHER_DOIGTS, ToucherADoigts, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageCadre, messageDetache, messageDetacher, messageFixe, messageImagePosee, messageOptions, messageReconnue, messageSecondPoint, messageVerrou, nouveauDepart, pointeurDeDepart, pointeurDuClic, procheDuPremier, typePointeur } from './pointeurs'
+import { APPUI_LONG, POIGNEE, DOUBLE_CLIC_PLUME, DOUBLE_TOUCHER, PRISE_GLISSER, SEUIL_GLISSER, TOLERANCE_PRISE, TOUCHER_DOIGTS, ToucherADoigts, contactLarge, depasseSeuil, doubleToucher, ecranTactile, messageCadre, messageDetache, messageDetacher, messageFixe, messageImagePosee, messageOptions, messageReconnue, messageSecondPoint, messageVerrou, nouveauDepart, pointeurDeDepart, pointeurDuClic, procheDuPremier, typePointeur } from './pointeurs'
 import type { Depart, Toucher, ToucherReconnu, TypePointeur } from './pointeurs'
 import { CTRL, MAC, fenetreModaleOuverte, lireMolette, tableauCache, toucheMarquePage, toucheMenu, toucheTenueEnGeste, toucheVerrou } from './navigateur'
 import { avale } from './menus'
@@ -48,6 +48,8 @@ import { UNE_HEURE, deLaSeance } from './seances'
 import { avecGroupes, changementsDegrouper, changementsGrouper, groupeExact, membreSeul, membresDe, porteurs, priseDuClic } from './groupes'
 import type { Cadre, Matrice, Poignee } from './cadre'
 import { IDENTITE, aimanterAngle, bornesEchelle, cadreDe, cadreTransforme, composer, curseurPoignee, dansLesBornes, deroule, estIdentite, etendueDuCadre, facteurDe, imageTournee, inverser, matriceImage, matriceTaille, poigneeDeLAppui, quartDeTour, redresser, rotation, texteRotation, texteTaille, transformerForme, zonePastille, zonesDesPoignees } from './cadre'
+import type { PartieGardee, PriseRognage } from './rognage'
+import { coinsGardes, curseurRognage, imageRognee, priseRognage, rienARogner, tirerPartie, toute, versImage } from './rognage'
 
 /** La copie gardée dans le navigateur, pour un autre onglet de la même
  *  adresse (nouvelle clé : aucune autre ne change) */
@@ -208,6 +210,10 @@ type Geste =
   // dernier pas, et l'angle tourné depuis l'appui, déroulé.
   | { type: 'taille'; cadre: Cadre; quoi: 'coin' | 'cote'; i: number; pointeur: TypePointeur; ids: Set<string>; bornes: { min: number; max: number }; image: boolean; M: Matrice }
   | { type: 'tourner'; cadre: Cadre; pointeur: TypePointeur; ids: Set<string>; dernier: number; total: number; M: Matrice }
+  // Rogner une image (voir rognage.ts) : la prise (un coin, un côté, la
+  // partie gardée), la partie gardée à l'appui, et le point d'appui dans le
+  // repère de l'image
+  | { type: 'rogner'; prise: PriseRognage; depart: PartieGardee; u: P }
 
 /** Un doigt posé, à l'écran */
 type DoigtPose = { id: number; x: number; y: number }
@@ -262,6 +268,9 @@ export class App {
   enLecture = false
   /** Un mode où le prochain clic pose quelque chose (une construction…) */
   placement: { bouge(w: P): void; clic(w: P): void; annuler(): void } | null = null
+  /** L'image qu'on rogne (voir rognage.ts) : son identifiant, sa page, la
+   *  partie gardée ; null : on ne rogne rien */
+  rognage: { id: string; page: string; partie: PartieGardee } | null = null
   private outilAvant: Outil = 'stylo'      // l'outil que rend Échap depuis la Sélection
   /** La Sélection prêtée par une image (retouches après le lot 5 : son
    *  import, « Détacher l'image du fond ») : l'outil qu'on avait, et les
@@ -332,6 +341,10 @@ export class App {
   /** L'heure du dernier double appui traité : le dblclick du navigateur qui
    *  le suit ne refait rien */
   private doubleTraite = -Infinity
+  /** Le dernier quart de tour d'un clic sur la pastille ↻ : son heure et sa
+   *  place à l'écran (un second clic juste après, au même endroit, tourne
+   *  encore ; le dblclick du navigateur qui suit n'ouvre rien) */
+  private quartAuClic: { t: number; x: number; y: number } | null = null
   /** Le clic qui suit un double appui traité est encore à venir (voir brancherGestes) */
   private clicFantome = false
   /** Le dernier simple toucher du doigt sur un objet (outil Sélection, ou
@@ -1742,6 +1755,7 @@ export class App {
     // doigt, voir secondToucher)
     z.addEventListener('dblclick', e => {
       if (this.enLecture || this.partie || performance.now() - this.doubleTraite < 500) return
+      if (this.quartAuClic && performance.now() - this.quartAuClic.t < 600) return
       // Sur une poignée du cadre de taille ou sur sa pastille ↻ (lot 5) : rien
       // (la pastille, hors de l'objet, est souvent au-dessus d'un autre)
       if (this.poigneeVisee(this.ecran(e))) return
@@ -1905,6 +1919,8 @@ export class App {
       return
     }
     if (this.geste) return
+    // Pendant qu'on rogne, l'appui est pour l'image (sauf pour déplacer la vue)
+    if (this.rognage && e.button !== 1 && !this.espace) { this.basRognage(e, s); return }
 
     // Le clic droit (le bouton du stylet en est un ; sur Mac, Ctrl + clic) :
     // le menu complet, à l'APPUI du bouton, et aucun geste. Seulement quand
@@ -1928,7 +1944,15 @@ export class App {
     // avant de fermer les menus : à l'outil Sélection, et au doigt qui
     // déplace sous les autres outils (voir poigneesDuCadre : jamais sous la
     // plume) ; la pastille dessinée pour un autre pointeur compte
-    const poignee = e.button === 0 && !gommeDuStylet && !pan && (this.outil === 'selection' || doigt) ? this.poigneeVisee(s, peint) : null
+    let poignee = e.button === 0 && !gommeDuStylet && !pan && (this.outil === 'selection' || doigt) ? this.poigneeVisee(s, peint) : null
+    // Juste après un quart de tour d'un clic sur la pastille, un clic au même
+    // endroit la reprend : elle a tourné avec l'objet, mais le second clic
+    // d'un double-clic (un demi-tour) est encore pour elle
+    const q = this.quartAuClic
+    if (!poignee && q && e.button === 0 && !pan && performance.now() - q.t < 600 && Math.hypot(s.x - q.x, s.y - q.y) < 12) {
+      const c = this.cadreDeLaSelection()
+      if (c) poignee = { cadre: c, p: { quoi: 'pastille', i: 0 } }
+    }
 
     // Un menu ouvert (un petit menu, celui d'un morceau, le panneau d'options,
     // la liste des instruments) : ce premier appui le ferme, sans encre. Il
@@ -2677,6 +2701,15 @@ export class App {
     }
 
     if (this.placement && !g) { this.placement.bouge(m); this.zone.style.cursor = 'copy'; return }
+    // Pendant qu'on rogne : le curseur dit ce que prendrait l'appui, rien ne s'éclaire
+    if (this.rognage && !g) {
+      const r = this.rognage, f = this.forme(r.id)
+      if (f?.type === 'image') {
+        const prise = priseRognage(f, r.partie, s, p => this.cam.versEcran(p.x, p.y), POIGNEE.prise[this.pointeurPoignees])
+        this.zone.style.cursor = curseurRognage(prise, coinsGardes(f, r.partie))
+      }
+      return
+    }
     // Ce qu'un appui de l'outil Sélection prendrait ici (voir cibleSous)
     const pointeur = typePointeur(e.pointerType)
     let vise: Cible | null = null
@@ -2742,6 +2775,7 @@ export class App {
       if (!g) return
     }
     switch (g.type) {
+      case 'rogner': this.tirerRognage(g, m); break
       case 'instrument':
         if (g.quoi !== 'tete' && !glisse) break          // l'arc du compas, lui, se trace tout de suite
         this.geste_instrument(g, m, e.shiftKey)
@@ -2916,6 +2950,7 @@ export class App {
     const m = this.monde(e)
     if (!double) this.noterToucher(e, g, glisse, m)
     switch (g.type) {
+      case 'rogner': break                               // la partie gardée suit déjà le pointeur
       case 'pan':
         // Un simple toucher du doigt « qui déplace » fait le clic attendu (voir
         // placement), ou choisit l'objet touché
@@ -3032,9 +3067,16 @@ export class App {
       case 'taille':
       case 'tourner':
         // Le lâcher écrit le geste, en une étape (voir transformerSelection) ;
-        // levé sans avoir glissé, rien
+        // levé sans avoir glissé, rien sur un coin ou un côté, et un quart de
+        // tour à droite (↻ 90°) sur la pastille (retouches après le lot 5, le
+        // souhait du professeur : un clic, et l'énoncé photographié couché
+        // se relève), autour du même centre qu'en la tournant
         this.finirCadre()
         if (glisse && !estIdentite(g.M)) this.transformerSelection(g.M)
+        else if (!glisse && g.type === 'tourner' && this.transformerSelection(quartDeTour(g.cadre.centre, 'droite'))) {
+          const s = this.ecran(e)
+          this.quartAuClic = { t: performance.now(), x: s.x, y: s.y }
+        }
         break
     }
     // Le second toucher d'un double appui, bref et levé sans avoir glissé
@@ -3539,6 +3581,7 @@ export class App {
   /** Échap : d'abord annuler ce qui est en cours ; s'il n'y a rien,
    *  passer à la Sélection — et un second Échap rend l'outil d'avant. */
   echap() {
+    if (this.rognage) { this.finirRognage(false); return }
     // En train de changer la taille ou de tourner (lot 5) : le geste
     // s'abandonne, tout revient, et la sélection reste
     if (this.geste?.type === 'taille' || this.geste?.type === 'tourner') { this.abandonnerGeste(); this.ui.maj(); return }
@@ -4253,6 +4296,103 @@ export class App {
   tournerQuart(sens: 'gauche' | 'droite'): boolean {
     const c = this.tournable()
     return !!c && this.transformerSelection(quartDeTour(c, sens))
+  }
+
+  // ---------- Rogner une image (retouches après le lot 5, voir rognage.ts) ----------
+  /** L'image que « Rogner » rognerait : ce qui est pris, seul, une image
+   *  libre (null sinon, et pendant la revue) */
+  rognable(): ImageForme | null {
+    if (this.selection.size !== 1 || this.enLecture || tableauCache(this)) return null
+    const f = this.forme([...this.selection][0])
+    return f?.type === 'image' && libre(f) ? f : null
+  }
+
+  /** « Rogner » (la barre d'actions d'une image, son menu ⋯) : l'image
+   *  entière paraît, la partie gardée claire et le reste assombri, avec ses
+   *  huit poignées ; la sélection se vide le temps de rogner (ni cadre, ni
+   *  barre d'actions dessus). Le message dit comment finir, dans les mots du
+   *  pointeur, avec « Terminer » et « Annuler ». */
+  commencerRognage(): boolean {
+    const f = this.rognable()
+    if (!f) return false
+    this.ui.fermerMenus()
+    this.rognage = { id: f.id, page: this.page, partie: toute(f) }
+    this.selection.clear()
+    this.survol = null; this.rendu.survol = null; this.rendu.survolAussi = []
+    this.majRognage()
+    const doigt = this.dernierPointeur === 'touch'
+    this.ui.message(doigt ? 'Rogner : tirez les coins ou les côtés, puis touchez à côté.'
+      : 'Rogner : tirez les coins ou les côtés, puis cliquez à côté (Échap : annuler).',
+      [{ libelle: 'Terminer', cle: 'rognage', faire: () => this.finirRognage(true) }, { libelle: 'Annuler', cle: 'rognage', faire: () => this.finirRognage(false) }])
+    this.ui.maj()
+    return true
+  }
+
+  /** Le rendu suit la partie gardée */
+  private majRognage() {
+    const r = this.rognage
+    this.rendu.rognage = r && { id: r.id, partie: r.partie, pointeur: this.pointeurPoignees }
+    this.rendu.redessinerDirect()
+  }
+
+  /** Un appui pendant qu'on rogne : une poignée ou la partie gardée se
+   *  prend ; à côté (ou l'image disparue), on a fini, la partie gardée est
+   *  rognée. Le clic droit (le bouton du stylet) ne fait rien. */
+  private basRognage(e: PointerEvent, s: P) {
+    if (e.button !== 0) return
+    const r = this.rognage!
+    const f = this.forme(r.id)
+    if (f?.type !== 'image' || r.page !== this.page) { this.finirRognage(false); return }
+    const cam = this.cam
+    const prise = priseRognage(f, r.partie, s, p => cam.versEcran(p.x, p.y), POIGNEE.prise[this.pointeurPoignees])
+    const u = versImage(f, this.monde(e))
+    if (!prise || !u) { this.finirRognage(true); return }
+    this.depart = nouveauDepart(s.x, s.y, e.pointerId, e.pointerType, performance.now())
+    this.geste = { type: 'rogner', prise, depart: { ...r.partie }, u }
+  }
+
+  /** La prise tirée jusqu'en m (monde) */
+  private tirerRognage(g: Extract<Geste, { type: 'rogner' }>, m: P) {
+    const r = this.rognage, f = r && this.forme(r.id)
+    if (!r || f?.type !== 'image') return
+    const u = versImage(f, m)
+    if (!u) return
+    r.partie = tirerPartie(g.depart, g.prise, u.x - g.u.x, u.y - g.u.y, f)
+    this.majRognage()
+  }
+
+  /** On a fini de rogner : garder (Entrée, « Terminer », un clic à côté)
+   *  écrit l'image rognée, en une étape d'annulation, et la reprend ;
+   *  sinon (Échap, « Annuler ») rien ne change, et elle est reprise aussi */
+  finirRognage(garder: boolean) {
+    const r = this.rognage
+    if (!r) return
+    this.rognage = null
+    if (this.geste?.type === 'rogner') this.geste = null
+    this.ui.oublierAction('rognage')
+    this.zone.style.cursor = ''
+    this.majRognage()
+    const f = this.forme(r.id)
+    if (f?.type !== 'image' || r.page !== this.page) { this.ui.maj(); return }
+    if (garder && !rienARogner(f, r.partie)) {
+      const img = this.pixels(f.src)
+      if (img?.complete && img.naturalWidth) {
+        const px = img.naturalWidth / f.l, py = img.naturalHeight / f.h
+        const src = uid()
+        const { patch, decoupe } = imageRognee(f, r.partie, src, px, py)
+        const cv = Object.assign(document.createElement('canvas'), { width: decoupe.l, height: decoupe.h })
+        cv.getContext('2d')!.drawImage(img, decoupe.x, decoupe.y, decoupe.l, decoupe.h, 0, 0, decoupe.l, decoupe.h)
+        const avant = this.banqueImages.get(f.src) ?? ''
+        const png = avant.startsWith('data:image/png') || avant.startsWith('data:image/gif')
+        this.banqueImages.set(src, cv.toDataURL(png ? 'image/png' : 'image/jpeg', 0.9))
+        this.viderPointEnAttente()
+        this.tableau.nouveauGeste()
+        this.tableau.modifier(this.page, [{ id: f.id, patch }])
+        this.ui.message('Image rognée (Ctrl + Z : la rendre entière)')
+      } else this.ui.message('L\'image n\'est pas encore chargée : réessayez dans un instant.')
+    }
+    this.selection.clear(); this.selection.add(f.id)
+    this.rendu.toutRedessiner(); this.ui.maj()
   }
 
   /** Le cadre que peint le rendu : pendant qu'on le tire ou qu'on tourne,
@@ -5069,6 +5209,7 @@ export class App {
     // Page↓ sur la dernière page ne crée rien, et le dit (voir dernierePage)
     if (e.key === 'PageDown') { if (!this.pageSuivante(1) && this.pages.length) this.dernierePage(); return }
     if (e.key === 'PageUp') { this.pageSuivante(-1); return }
+    if (e.key === 'Enter' && this.rognage) { this.finirRognage(true); return }
     if (e.key === 'Enter' && this.polyEnCours) { this.finirPolygone(false); return }
     if (e.key === 'Escape') { this.echap(); return }
     // L'ordre au clavier, comme Google Slides et les dessins de Docs :

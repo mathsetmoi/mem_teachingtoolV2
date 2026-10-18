@@ -2588,7 +2588,7 @@ export class UI implements Interface {
       this.sectionGroupe(m, membre)
     }
     // --- Position : tourner d'un quart de tour, remettre droit (lot 5, retouches) ---
-    if (this.app.tournable() || this.app.redressable()) {
+    if (this.app.tournable() || this.app.redressable() || this.app.rognable()) {
       filetMenu(m)
       this.sectionPosition(m)
     }
@@ -2612,6 +2612,7 @@ export class UI implements Interface {
       this.entreeMenu(m, 'Tourner d\'un quart de tour à droite', () => app.tournerQuart('droite'), { action: 'quart-droite', aide: '↻ 90°, autour de son centre' })
     }
     if (app.redressable()) this.entreeMenu(m, 'Remettre droit', () => app.redresserSelection(), { action: 'redresser', aide: 'Annule la rotation, garde la taille' })
+    if (app.rognable()) this.entreeMenu(m, 'Rogner', () => app.commencerRognage(), { action: 'rogner', aide: 'Ne garder qu\'une partie de l\'image' })
   }
 
   /** La section « Protéger » du menu ⋯ (lot 5) : « Verrouiller » (Maj + L ;
@@ -2728,6 +2729,8 @@ export class UI implements Interface {
         () => app.basculerSommets(figure), !!figure.sommets)
       if (!segment) action('Codage', 'Côtés de même longueur, angles droits', () => app.habiller(f, { codage: !figure.codage }), !!figure.codage)
     }
+    // Une image : la rogner d'abord (une photo d'énoncé avec le bureau autour)
+    if (f.type === 'image' && app.rognable()) action('Rogner', 'Ne garder qu\'une partie de l\'image', () => app.commencerRognage())
     if (f.type !== 'image') action('Contour', 'Couleur, épaisseur, pointillés', () => ouvrir('contour'), this.section === 'contour')
     if (figure && ((f.type === 'cercle' && !f.arc) || (f.type === 'polygone' && f.ferme))) action('Fond', 'Remplir la figure', () => ouvrir('fond'), this.section === 'fond')
     action('Transformer', 'Translation, rotation, symétrie, homothétie', () => ouvrir('transformer'), this.section === 'transformer')

@@ -16,7 +16,8 @@
 //    saut d'épaisseur au lâcher ; Échap pendant le geste ; un instrument posé
 //    dessus gagne ; zoom 10 % (les coins sortis, prenables) et 2000 % (la
 //    pastille dans la zone libre) ; un verrouillé, une image fixée : jamais de
-//    cadre ; le double-clic sur la pastille ne fait rien ; la durée des
+//    cadre ; le double-clic sur la pastille n'ouvre rien (chaque clic tourne
+//    d'un quart de tour) ; la durée des
 //    images pendant la rotation d'un groupe de 500 traits.
 // B. 1024 × 768 (le vidéoprojecteur) : cadre, pastille, barre d'actions,
 //    menu complet et barres de l'outil ne se chevauchent pas.
@@ -227,7 +228,7 @@ await souris.survol(...Object.values(await ecran(P, 450, 350))); await P.mouse.c
 let k = await cadre(P)
 ok(meme(await sel(P), [I]) && k?.cadre.genre === 'oriente' && k.cadre.coins.length === 4 && k.cadre.cotes && k.pointeur === 'mouse', 'A1) Une image prise : un cadre orienté, quatre coins et des côtés, aux poignées de la souris', k)
 ok(Math.abs(k.cadre.pastille.y - (250 - 24)) < 0.01 && Math.abs(k.cadre.pastille.x - 450) < 0.01 && !k.cadre.dessous, '   … la pastille au-dessus du cadre, au milieu, à 24 px', k.cadre.pastille)
-ok((await msgs(P)).includes('Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↻ : tourner'), '   … le message de la première image prise', await msgs(P))
+ok((await msgs(P)).includes('Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↻ : tourner (un clic : un quart de tour)'), '   … le message de la première image prise', await msgs(P))
 // A2. Les curseurs au survol
 const curseur = async (x, y) => { const s = await ecran(P, x, y); await P.mouse.move(s.x, s.y); await P.waitForTimeout(60); return P.evaluate(() => document.getElementById('zone').style.cursor) }
 const cs = { coin: await curseur(600, 450), coinHautDroit: await curseur(600, 250), cote: await curseur(600, 350), haut: await curseur(450, 250), pastille: await curseur(450, 226), dedans: await curseur(450, 350) }
@@ -291,11 +292,18 @@ const apresEchap = await P.evaluate(PENDANT, I)
 await souris.va(s0.x + 120, s0.y + 100); await souris.haut(s0.x + 120, s0.y + 100); await P.waitForTimeout(150)
 const finEchap = { forme: (await etats(P, [I]))[0] === avant[0], pile: await pile(P), n0, sel: await sel(P) }
 ok(apresEchap.forme === avant[0] && !apresEchap.transfo && !apresEchap.mesure && finEchap.forme && finEchap.pile === n0 && meme(finEchap.sel, [I]), 'A7) Échap pendant le geste : rien ne change, rien ne s\'écrit au lever, la sélection reste', { apresEchap, finEchap })
-// A8. Le double-clic sur la pastille n'ouvre rien
+// A8. Le double-clic sur la pastille n'ouvre rien ; chaque clic tourne d'un
+// quart de tour à droite (retouches après le lot 5, le souhait du
+// professeur : avant, un clic ne faisait rien) : un demi-tour, deux étapes,
+// que deux Ctrl + Z défont
 k = await cadre(P); v = await vue(P)
 let sp = versF(v, k.cadre.pastille)
+const m0 = (await forme(P, I)).m
 await P.mouse.dblclick(sp.x, sp.y); await P.waitForTimeout(250)
-ok(await P.evaluate(() => window.__app.options === null && !document.querySelector('.menu-flottant:not([hidden])')) && (await etats(P, [I]))[0] === avant[0], 'A8) Un double-clic sur la pastille n\'ouvre aucun menu et ne change rien', await P.evaluate(() => window.__app.options))
+const m2 = (await forme(P, I)).m
+ok(await P.evaluate(() => window.__app.options === null && !document.querySelector('.menu-flottant:not([hidden])')) && m2.every((x, i) => Math.abs(x + m0[i]) < 1e-9), 'A8) Un double-clic sur la pastille n\'ouvre aucun menu et tourne de deux quarts de tour', { options: await P.evaluate(() => window.__app.options), m0, m2 })
+await P.keyboard.press('Control+z'); await P.keyboard.press('Control+z'); await P.waitForTimeout(250)
+ok((await etats(P, [I]))[0] === avant[0], 'A8) … deux Ctrl + Z la rendent comme avant')
 await vider(P)
 
 // A9. Une formule × 2, puis tournée de 90° pile (sans Maj) et de 2°
@@ -590,7 +598,7 @@ let sD = await ecran(Dd.p, 450, 350)
 await Dd.doigt.bas(sD.x, sD.y); await attendre(50); await Dd.doigt.haut(); await Dd.p.waitForTimeout(400)
 k = await cadre(Dd.p)
 ok(meme(await sel(Dd.p), [ID]) && k?.pointeur === 'touch' && Math.abs(k.cadre.pastille.y - (250 - 36)) < 0.01, 'D1) Un toucher prend l\'image : les poignées du doigt (la pastille à 36 px)', k)
-ok((await msgs(Dd.p)).includes('Coins : agrandir ou réduire ; côtés : déformer ; ↻ : tourner'), '   … le message du doigt (sans « Maj »)', await msgs(Dd.p))
+ok((await msgs(Dd.p)).includes('Coins : agrandir ou réduire ; côtés : déformer ; ↻ : tourner (touchez-la : un quart de tour)'), '   … le message du doigt (sans « Maj »)', await msgs(Dd.p))
 // À 18 px du coin : la poignée se prend encore au doigt (20 px)
 avant = await etats(Dd.p, [ID])
 await glisser(Dd.p, Dd.doigt, { x: 612, y: 462 }, { x: 750, y: 550 })

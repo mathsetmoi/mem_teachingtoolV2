@@ -15,7 +15,7 @@ import { getStroke } from 'perfect-freehand'
 import type { Camera } from './camera'
 import type { Bout, Figure, Fond, Forme, Formule, ImageForme, MarquePoint, Trait } from './types'
 import { FOND_NEUF, libre } from './types'
-import { coinHautDroit, coinsImage, coinsVus, ecarterCoins, englobante, rotationDe } from './geometrie'
+import { coinHautDroit, coinsAjustes, coinsImage, coinsVus, ecarterCoins, englobante, rotationDe } from './geometrie'
 import { dessinerFond } from './fonds'
 import { codageDe, placesDesNoms, sommetsDe } from './formes'
 import type { EtatInstrument, NomInstrument, Partie } from './instruments'
@@ -24,6 +24,9 @@ import { enOrdreDAffichage, ordreDAffichage } from './ordre'
 import { groupesTouches } from './groupes'
 import { LONG_MORCEAU, fenetresDe, passePres } from './gomme'
 import type { Cadre, Matrice } from './cadre'
+import { ajusteTourne, rectangleDe } from './cadre'
+import type { PartieGardee } from './rognage'
+import { coinsGardes } from './rognage'
 import type { TypePointeur } from './pointeurs'
 import { POIGNEE } from './pointeurs'
 
@@ -195,6 +198,9 @@ export class Rendu {
    *  pense à le refaire. La revue, le lecteur et les sorties n'en ont
    *  jamais (ni avantDirect, ni cadre). */
   cadre: CadreVu | null = null
+  /** L'image qu'on rogne (voir rognage.ts) : la partie gardée, et le
+   *  pointeur dont les poignées prennent la taille */
+  rognage: { id: string; partie: PartieGardee; pointeur: TypePointeur } | null = null
   avantDirect: (() => void) | null = null
   /** Pendant qu'on change la taille ou qu'on tourne (lot 5) : rien ne
    *  s'écrit, ces formes (ids) sont peintes transformées par m. Un trait et
@@ -942,7 +948,7 @@ export class Rendu {
       // halos des droites et des cercles (ce qu'on en voit) passent dessous,
       // chacun le sien : il y en a peu.
       const dx = this.decalage.dx, dy = this.decalage.dy, m = 6 / cam.z
-      const rects: number[] = [], tournes: P[][] = []
+      const rects: number[] = [], tournes: P[][] = [], ronds: number[] = []
       for (const f0 of this.formes) {
         if (!this.selection.has(f0.id)) continue
         if (!libre(f0)) { cadenas.push({ f: f0, cadre: true }); continue }
@@ -963,13 +969,32 @@ export class Rendu {
           tournes.push([[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => ({ x: ox + x * co - y * si, y: oy + x * si + y * co })))
           continue
         }
+        // Au plus près de l'objet (retouches après le lot 5, le souhait du
+        // professeur) : une image, le tour de l'image elle-même (tournée avec
+        // elle, ses poignées dessus) ; un cercle entier, un cercle ; un trait
+        // ou une figure, le rectangle ajusté à son tracé, penché avec une
+        // droite oblique (voir rectangleDe)
+        if (f.type === 'image') {
+          tournes.push(coinsImage(f).map(p => ({ x: p.x + dx, y: p.y + dy })))
+          continue
+        }
+        if (f.type === 'cercle' && !f.arc) {
+          ronds.push(f.x + dx, f.y + dy, f.r + f.taille / 2 + m)
+          continue
+        }
+        const r = rectangleDe(f)
+        if (ajusteTourne(r)) {
+          tournes.push(coinsAjustes(r, m).map(p => ({ x: p.x + dx, y: p.y + dy })))
+          continue
+        }
         const b = this.boite(f)
         rects.push(b.x + dx - m, b.y + dy - m, b.l + 2 * m, b.h + 2 * m)
       }
-      if (rects.length || tournes.length) {
+      if (rects.length || tournes.length || ronds.length) {
         c.beginPath()
         for (let i = 0; i < rects.length; i += 4) c.rect(rects[i], rects[i + 1], rects[i + 2], rects[i + 3])
         for (const q of tournes) { c.moveTo(q[0].x, q[0].y); c.lineTo(q[1].x, q[1].y); c.lineTo(q[2].x, q[2].y); c.lineTo(q[3].x, q[3].y); c.closePath() }
+        for (let i = 0; i < ronds.length; i += 3) { c.moveTo(ronds[i] + ronds[i + 2], ronds[i + 1]); c.arc(ronds[i], ronds[i + 1], ronds[i + 2], 0, Math.PI * 2) }
         this.filetSelection(c, '#3b6fb6', 1.5, [6, 4])
       }
       c.setLineDash([])
@@ -1013,6 +1038,7 @@ export class Rendu {
     }
     // Le cadre de taille et la pastille ↻ (lot 5)
     if (leCadre) this.dessinerCadre(c, leCadre)
+    if (this.rognage) this.dessinerRognage(c, this.rognage)
     // Le morceau choisi seul : un halo autour du point ou du nom
     if (this.partie && this.poignees) {
       const f0 = this.formes.find(f => f.id === this.partie!.id)
@@ -1127,6 +1153,39 @@ export class Rendu {
       for (const p of q) poignee(p, d, d, 1.5 / z)
     }
     dessinerPastille(c, k.pastille, z, v.geste === 'tourner', 'rotation', POIGNEE.pastille[v.pointeur], this.filetPoignee)
+    c.restore()
+  }
+
+  /** Rogner une image (voir rognage.ts) : ce qu'on enlève, assombri ; le
+   *  bord de la partie gardée, en blanc sous le bleu de la sélection (il se
+   *  voit sur une photo sombre comme sur une feuille) ; ses huit poignées,
+   *  celles du cadre de taille (des carrés aux coins, des barrettes aux
+   *  côtés), tournées avec l'image */
+  private dessinerRognage(c: CanvasRenderingContext2D, v: { id: string; partie: PartieGardee; pointeur: TypePointeur }) {
+    const f = this.formes.find(g => g.id === v.id)
+    if (f?.type !== 'image') return
+    const z = this.cam.z, tout = coinsImage(f), q = coinsGardes(f, v.partie)
+    const chemin = (p: P[]) => { c.moveTo(p[0].x, p[0].y); for (let i = 1; i < 4; i++) c.lineTo(p[i].x, p[i].y); c.closePath() }
+    c.save()
+    c.setLineDash([])
+    c.beginPath(); chemin(tout); chemin(q)
+    c.fillStyle = 'rgba(27, 34, 48, 0.55)'; c.fill('evenodd')
+    c.beginPath(); chemin(q)
+    c.strokeStyle = '#ffffff'; c.lineWidth = 4 / z; c.stroke()
+    c.strokeStyle = '#3b6fb6'; c.lineWidth = (this.contraste ? 2.5 : 1.8) / z; c.stroke()
+    const a = Math.atan2(q[1].y - q[0].y, q[1].x - q[0].x), d = POIGNEE.dessin[v.pointeur] / z
+    c.fillStyle = '#ffffff'; c.strokeStyle = '#3b6fb6'; c.lineWidth = this.filetPoignee / z
+    const poignee = (p: P, l: number, h: number, rond: number) => {
+      c.save(); c.translate(p.x, p.y); c.rotate(a)
+      c.beginPath(); c.roundRect(-l / 2, -h / 2, l, h, rond); c.fill(); c.stroke()
+      c.restore()
+    }
+    for (let i = 0; i < 4; i++) {
+      const m = { x: (q[i].x + q[(i + 1) % 4].x) / 2, y: (q[i].y + q[(i + 1) % 4].y) / 2 }
+      const long = 1.8 * d, court = 0.6 * d
+      poignee(m, i % 2 ? court : long, i % 2 ? long : court, court / 2)
+    }
+    for (const p of q) poignee(p, d, d, 1.5 / z)
     c.restore()
   }
 
