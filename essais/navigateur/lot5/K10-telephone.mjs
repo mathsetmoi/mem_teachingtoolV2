@@ -424,7 +424,7 @@ for (const [L, H, dpr] of APPAREILS) {
     .map(e => e.classList.contains('menu-titre') ? '# ' + e.textContent : e.classList.contains('bloc-classeur') ? '[classeur]' : e.querySelector('.libelle')?.firstChild?.textContent ?? e.textContent))
   const tete = entrees.slice(0, entrees.indexOf('[classeur]'))
   const attendu = ['# Page', ...(L < 360 ? ['Nouvelle page'] : []), 'Effacer la page', 'Fond…', 'Aimanter au quadrillage', 'Le stylo redresse les figures',
-    '# Outils de cours', 'Importer une image…', 'Instruments…', 'Programme de construction', 'Automatismes', 'Revoir la construction', 'Publier le replay', '# Vue', '100 %', 'Tout voir']
+    '# Outils de cours', 'Importer une image…', 'Instruments…', 'Programme de construction', 'Catalogue', 'Automatismes', 'Revoir la construction', 'Publier le replay', '# Vue', '100 %', 'Tout voir']
   ok(mPlus && JSON.stringify(tete) === JSON.stringify(attendu) && entrees.includes('# Cet appareil') && entrees.indexOf('# Cet appareil') > entrees.indexOf('[classeur]'),
     `E1) ${T} : « Plus » : Page, Outils de cours, Vue, puis le classeur, puis Cet appareil`, { tete, entrees })
   const hauteurs = await p.evaluate(() => [...document.querySelectorAll('.menu-flottant[aria-label="Plus"] .menu-item')].filter(b => b.getClientRects().length).map(b => [b.textContent.slice(0, 24), Math.round(b.getBoundingClientRect().height)]))

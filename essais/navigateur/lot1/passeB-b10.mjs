@@ -319,6 +319,10 @@ for (const h of [768, 700]) {
   await page.waitForTimeout(400)
   const e5b = await page.evaluate(() => ({ dialogues: document.querySelectorAll('dialog[open]').length, formule: !!document.querySelector('dialog[open].dialogue-formule'), n: window.__app.formes.length, film: window.__app.tableau.film.length }))
   verifier('Le doigt qui dessine, outil Stylo, deux touchers sur une formule : son éditeur s\'ouvre et reste ouvert, aucun point', e5b.dialogues === 1 && e5b.formule && e5b.n === nF.n && e5b.film === nF.film, JSON.stringify(e5b))
+  // (Adapté au catalogue : l'éditeur a une rangée de symboles de plus, et
+  // plus haut, il couvrirait la figure touchée ensuite ; Échap ne le ferme
+  // pas : on le ferme par « Annuler », comme corrections-conformite)
+  await page.evaluate(() => document.querySelector('dialog[open].dialogue-formule .secondaire')?.click())
   await page.keyboard.press('Escape')
   await page.waitForTimeout(150)
 

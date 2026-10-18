@@ -47,6 +47,8 @@ export const ICONES: Record<string, string> = {
   rapporteur: 'M3 17a9 9 0 0118 0zM12 17V12M12 8V9M7 11l1 1M17 11l-1 1',
   compas: 'M12 3v2M12 5l-6 15M12 5l6 15M9.5 13h5',
   construction: 'M4 5h9M4 10h7M4 15h5M15 20l2-9 2 9M17 11V8M15.6 16h2.8',
+  // Le catalogue : deux ovales emboîtés
+  catalogue: 'M12 20c4.97 0 9-3.36 9-7.5S16.97 5 12 5 3 8.36 3 12.5 7.03 20 12 20zM9.5 17c2.49 0 4.5-1.57 4.5-3.5S11.99 10 9.5 10 5 11.57 5 13.5 7.01 17 9.5 17z',
   automatismes: 'M12 21a8 8 0 100-16 8 8 0 100 16zM12 9v4l2.5 2.5M10 2h4M12 2v3',
   cadre: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
   coche: 'M5 12.5l4.5 4.5L19 7.5',

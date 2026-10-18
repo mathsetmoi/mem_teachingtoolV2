@@ -692,9 +692,45 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 @media (max-width: 640px) { .choix-sur-tableau { grid-template-columns: 1fr auto auto !important; } }
 .principal.danger-plein { background: var(--rouge); }
 
+/* ---------- Le catalogue ---------- */
+/* Le même panneau que le programme de construction, à la même place */
+.panneau-catalogue {
+  position: absolute; z-index: 18; right: 12px; top: max(84px, calc(var(--bas-barre-haut, 70px) + 12px)); bottom: 84px; width: min(360px, calc(100vw - 24px));
+  display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; overflow-y: auto;
+  background: var(--papier); border: 1px solid var(--filet); border-radius: 16px;
+  box-shadow: 0 3px 0 var(--filet), 0 18px 40px rgba(27, 34, 48, 0.12);
+}
+.panneau-catalogue .tete { display: flex; align-items: center; justify-content: space-between; }
+.panneau-catalogue h2 { margin: 0; font-size: 18px; }
+.panneau-catalogue h3 { margin: 0; font-size: 15px; }
+.panneau-catalogue .fermer { width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; font-size: 24px; cursor: pointer; }
+.panneau-catalogue .fermer:hover { background: #e9eef5; }
+.panneau-catalogue .exemples { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--encre-douce); }
+.panneau-catalogue .exemples select { flex: 1; height: 38px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); padding: 0 8px; color: var(--encre); }
+.panneau-catalogue .element { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--filet); }
+.panneau-catalogue .champ { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--encre-douce); }
+.panneau-catalogue textarea {
+  width: 100%; min-height: 64px; resize: vertical; padding: 8px 10px; line-height: 1.5; color: var(--encre);
+  border: 1px solid var(--filet); border-radius: 10px; background: #fbfcfe; font: inherit; font-size: 15px;
+}
+.panneau-catalogue textarea:focus { outline: 2px solid var(--bleu); outline-offset: 1px; }
+.panneau-catalogue .erreurs p { margin: 0 0 4px; padding: 6px 10px; border-radius: 8px; background: #fdecea; color: #9b2620; font-size: 14px; }
+.panneau-catalogue .erreurs:empty { display: none; }
+.panneau-catalogue .note { margin: 0; font-size: 13px; line-height: 1.4; color: var(--encre-douce); }
+.panneau-catalogue .demos { display: flex; flex-direction: column; gap: 6px; }
+.panneau-catalogue .demos .secondaire { text-align: left; }
+.panneau-catalogue .etapes { margin: 0; padding-left: 24px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.45; }
+.panneau-catalogue .etapes:empty { display: none; }
+.panneau-catalogue .etapes li { color: var(--encre-douce); }
+.panneau-catalogue .etapes li.faite { color: var(--encre); }
+.panneau-catalogue .etapes li.faite::marker { content: '✓  '; color: #1e8a4c; }
+.panneau-catalogue .etapes li.courante { color: var(--encre); font-weight: 700; }
+.mesure-catalogue { position: fixed; left: -10000px; top: 0; visibility: hidden; pointer-events: none; }
+.mesure-catalogue .formule { position: absolute; }
+
 /* ---------- Automatismes ---------- */
 .seance { position: fixed; inset: 0; z-index: 40; background: var(--papier); color: var(--encre); overflow: auto; }
-body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .barre-actions, body.en-seance .panneau-construction { visibility: hidden; }
+body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .barre-actions, body.en-seance .panneau-construction, body.en-seance .panneau-catalogue { visibility: hidden; }
 .seance .fermer { width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; font-size: 28px; cursor: pointer; }
 .seance .fermer:hover { background: #e9eef5; }
 .seance-reglages { max-width: 1100px; margin: 0 auto; padding: 20px 24px 40px; }

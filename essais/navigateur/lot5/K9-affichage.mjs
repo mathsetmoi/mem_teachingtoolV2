@@ -428,7 +428,7 @@ await ctxA.close()
 // =====================================================================
 console.log('=== D. les noms sous les outils ===')
 const OUTILS_MOTS = ['Stylo', 'Surligneur', 'Gomme', 'Point', 'Segment', 'Formes', 'Formule', 'Sélection', 'Vue', 'Doigt', 'Annuler', 'Rétablir', 'Supprimer']
-const HAUT_MOTS = ['Nouvelle', 'Effacer', 'Fond', 'Aimant', 'Formes auto', 'Image', 'Instruments', 'Construire', 'Automatismes', 'Revoir', 'Publier', 'Fichier']
+const HAUT_MOTS = ['Nouvelle', 'Effacer', 'Fond', 'Aimant', 'Formes auto', 'Image', 'Instruments', 'Construire', 'Catalogue', 'Automatismes', 'Revoir', 'Publier', 'Fichier']
 const NOMS = () => {
   const lire = sel => [...document.querySelectorAll(sel)].map(b => ({ mot: b.querySelector(':scope > .libelle')?.dataset.libelle ?? null, texte: b.textContent,
     vu: (() => { const s = b.querySelector(':scope > .libelle'); return s ? getComputedStyle(s).display !== 'none' && getComputedStyle(s, '::before').content : null })(),

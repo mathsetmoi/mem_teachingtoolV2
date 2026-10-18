@@ -933,6 +933,45 @@ dessins (« Quelle est la vue de dessus ? », « Lequel est un patron de
 cube ? »). Le patron se vérifie en faisant rouler un dé sur ses cases : sur
 les 35 assemblages de six carrés, on retrouve bien les 11 patrons du cube.
 
+## Le catalogue
+
+Le bouton « Catalogue » de la barre du haut (au téléphone : Plus → Outils de
+cours) ouvre, à droite, des éléments de cours tout prêts, rangés par thème.
+Ce qu'il pose est fait d'objets ordinaires du tableau (des figures, des
+formules), **groupés** : on le déplace, on l'agrandit, on écrit dessus, on
+le dégroupe ; un Ctrl + Z le retire d'un coup. Il passe dans le replay de la
+séance comme le reste, et marche dans la version hors ligne. Le panneau prend
+la place du programme de construction (l'un ferme l'autre).
+
+Premier thème, en 2nde : **Ensembles de nombres**.
+
+- **Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ** : cinq ovales emboîtés, chacun de sa
+  couleur, avec son nom (22,5 cm sur 13 à 100 %). Il suit le pointeur en
+  transparence ; un clic le pose, Échap annule. Les nombres tapés dans le
+  champ, séparés par des points-virgules (la virgule est celle des
+  décimaux), vont chacun dans **le plus petit ensemble qui le contient**.
+  **Compléter** range de nouveaux nombres dans un dessin déjà posé : celui
+  qui est pris, sinon le dernier posé sur la page, même déplacé ou agrandi
+  (les nombres prennent sa taille). Un nombre déjà dans le dessin n'est pas
+  remis ; une zone pleine le dit (on agrandit le dessin, puis on complète).
+  On peut écrire `−5`, `2,7`, `1/3`, `−2/7`, `√16`, `√(1/4)`, `π`, `2π`,
+  `1 + √2`, `10^-2`, `0,333…` (ou `0,333...` : la période est la plus courte
+  qui se répète à la fin), et aussi `\frac{1}{3}`, `\sqrt{2}`, `sqrt(2)`.
+  Le calcul est exact (`√2 × √8` va dans ℕ, `√8/√2` aussi) ; ce qu'il ne sait
+  pas trancher (`π − π`) va dans ℝ avec un avertissement, et ce qu'il ne sait
+  pas lire est dit, jamais deviné. Le texte du champ est retenu sur
+  l'appareil (`mem-catalogue-nombres`).
+- **Démonstrations** : « 1/3 n'est pas décimal » et « √2 n'est pas
+  rationnel », par l'absurde. Le titre se pose d'un clic, puis chaque ligne
+  avec → (ou Espace, ou « Suivante »), ← la retire, ⏩ montre tout.
+
+Le calcul (lire un nombre, le classer, trouver sa place dans sa zone) est
+dans `src/catalogue.ts`, sans rien toucher à l'écran ; le panneau dans
+`src/catalogue-vue.ts`.
+
+L'éditeur de formule a aussi les symboles du thème : ∉, ⊂, ⊄, ∩, ∪, ∅, ℕ,
+ℤ, 𝔻, ℚ, ℝ*₊ et +∞ (∈ et ℝ y étaient déjà).
+
 ## Revoir la construction (en classe)
 
 Le bouton **Revoir** de la barre du haut (la flèche qui tourne autour d'un
