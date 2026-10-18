@@ -29,8 +29,8 @@
 // de ses noms, comme l'homothétie de « Transformer » ; ses noms tournent
 // avec elle à la même distance de leur point, et son codage se recalcule.
 // =============================================================
-import type { Boite } from './geometrie'
-import { coinsFormule, coinsImage, rotationDe } from './geometrie'
+import type { Boite, RectangleAjuste } from './geometrie'
+import { coinsAjustes, coinsFormule, coinsImage, rectangleAjuste, rotationDe } from './geometrie'
 import type { P } from './formes'
 import { centreDe, sommetsDe, versRelatif } from './formes'
 import type { Forme, Formule, Habillage, ImageForme } from './types'
@@ -386,6 +386,47 @@ export function redresser(f: Forme, mesure?: (f: Formule) => { l: number; h: num
   return null
 }
 
+// ---------- Le cadre ajusté à l'objet ----------
+const ajustes = new WeakMap<Forme, RectangleAjuste | null>()
+
+/**
+ * Le rectangle ajusté au tracé d'un objet (voir rectangleAjuste), là où se
+ * posent son cadre en tirets et, pour un trait seul, son cadre de taille
+ * (retouches après le lot 5) : une droite oblique a une bande fine le long
+ * d'elle. Un trait, un ancien segment, une figure (ses sommets ; un arc,
+ * des points pris le long de lui), l'épaisseur comprise. null : un autre
+ * objet (une image, une formule, une droite qui file au bord de l'écran,
+ * un cercle entier), ou rien à entourer. Gardé tant que l'objet ne change
+ * pas : une page entière prise ne recalcule rien d'une image à l'autre.
+ */
+export function rectangleDe(f: Forme): RectangleAjuste | null {
+  if (ajustes.has(f)) return ajustes.get(f)!
+  let r: RectangleAjuste | null = null
+  switch (f.type) {
+    case 'trait': {
+      const pts: P[] = []
+      for (let i = 0; i + 1 < f.pts.length; i += 3) pts.push({ x: f.x + f.pts[i], y: f.y + f.pts[i + 1] })
+      if (!pts.length) pts.push({ x: f.x, y: f.y })
+      r = rectangleAjuste(pts, f.taille / 2)
+      break
+    }
+    case 'segment': r = rectangleAjuste([{ x: f.x, y: f.y }, { x: f.x + f.dx, y: f.y + f.dy }], f.taille / 2); break
+    case 'polygone': if (!f.prolonge) r = rectangleAjuste(sommetsDe(f), f.taille / 2); break
+    case 'cercle':
+      if (f.arc) {
+        const pts: P[] = [], n = 32, { a0, a1 } = f.arc
+        for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; pts.push({ x: f.x + f.r * Math.cos(a), y: f.y + f.r * Math.sin(a) }) }
+        r = rectangleAjuste(pts, f.taille / 2)
+      }
+      break
+  }
+  ajustes.set(f, r)
+  return r
+}
+
+/** Le rectangle ajusté est-il tourné (sinon c'est la boîte droite) ? */
+export const ajusteTourne = (r: RectangleAjuste | null): r is RectangleAjuste => !!r && r.angle !== 0
+
 // ---------- Le cadre et ses poignées ----------
 /**
  * Le cadre de taille de ce qu'on a pris, dans le monde (D7 et D8 du lot 5) :
@@ -470,6 +511,11 @@ export function cadreDe(formes: readonly Forme[], o: {
     const r = grandir(b, marge)
     const haut = { x: r.x + r.l / 2, y: r.y }, bas = { x: r.x + r.l / 2, y: r.y + r.h }
     return { genre: 'pastille', coins: [], cotes: false, centre, ...pastille(haut, bas, { x: 0, y: -1 }, z, o, r) }
+  } else if (seule && (seule.type === 'trait' || seule.type === 'segment') && ajusteTourne(rectangleDe(seule))) {
+    // Un trait oblique seul (une droite tracée à la règle, une flèche) : son
+    // cadre suit sa pente, serré autour de lui (retouches après le lot 5)
+    genre = 'oriente'; coins = coinsAjustes(rectangleDe(seule)!, marge)
+    centre = milieu(coins[0], coins[2])
   } else {
     // Un trait, un ancien segment, un groupe, plusieurs objets : la boîte de tout
     let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity

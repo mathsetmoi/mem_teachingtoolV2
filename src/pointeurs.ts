@@ -320,8 +320,8 @@ export function messageDetache(p: TypePointeur, avant: string, n = 1, direct = e
  *  (lot 5) : ses coins, ses côtés et sa pastille ↻. Maj + coin seulement là
  *  où il y a un clavier : au doigt, les côtés suffisent pour la déformer. */
 export function messageCadre(p: TypePointeur): string {
-  return p === 'touch' ? 'Coins : agrandir ou réduire ; côtés : déformer ; ↻ : tourner'
-    : 'Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↻ : tourner'
+  return p === 'touch' ? 'Coins : agrandir ou réduire ; côtés : déformer ; ↻ : tourner (touchez-la : un quart de tour)'
+    : 'Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↻ : tourner (un clic : un quart de tour)'
 }
 
 /** Ce qu'on dit quand on allume ou qu'on éteint les noms sous les outils

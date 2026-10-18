@@ -555,3 +555,74 @@ export function simplifier(pts: number[], tolerance: number): number[] {
   for (let i = 0; i < n; i++) if (garde[i]) r.push(pts[2 * i], pts[2 * i + 1])
   return r
 }
+
+/**
+ * Le rectangle le plus serré autour de ces points (retouches après le lot 5,
+ * le souhait du professeur : un cadre de sélection qui ne prend pas toute la
+ * place). Il tourne quand c'est nettement plus serré (moins de 60 % de l'aire
+ * de la boîte droite) : une droite oblique a une bande fine le long d'elle,
+ * et non un grand rectangle autour ; une écriture garde sa boîte droite (un
+ * mot n'est pas « penché » de 4°). Les points sont ceux du tracé, chacun
+ * comptant pour un disque de rayon `epais` (la moitié de l'épaisseur du
+ * trait). angle : celui de son bord du haut, dans ]−45°, 45°] (le haut reste
+ * en haut à l'écran) ; 0 pour la boîte droite. u0…v1 : l'étendue des points
+ * le long de cet axe (u) et de sa perpendiculaire vers le bas (v), épaisseur
+ * comprise. null : aucun point.
+ */
+export interface RectangleAjuste { angle: number; u0: number; u1: number; v0: number; v1: number }
+
+export function rectangleAjuste(pts: readonly { x: number; y: number }[], epais = 0): RectangleAjuste | null {
+  if (!pts.length) return null
+  const etendue = (a: number, liste: readonly { x: number; y: number }[]) => {
+    const c = Math.cos(a), s = Math.sin(a)
+    let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity
+    for (const p of liste) {
+      const u = p.x * c + p.y * s, v = -p.x * s + p.y * c
+      if (u < u0) u0 = u; if (u > u1) u1 = u; if (v < v0) v0 = v; if (v > v1) v1 = v
+    }
+    return { angle: a, u0: u0 - epais, u1: u1 + epais, v0: v0 - epais, v1: v1 + epais }
+  }
+  const aire = (r: RectangleAjuste) => (r.u1 - r.u0) * (r.v1 - r.v0)
+  const droit = etendue(0, pts)
+  if (pts.length < 2) return droit
+  // L'enveloppe convexe (la chaîne monotone) : le rectangle le plus serré a
+  // un côté le long de l'un de ses bords
+  const tri = [...pts].sort((a, b) => a.x - b.x || a.y - b.y)
+  const vect = (o: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) =>
+    (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+  const bas: { x: number; y: number }[] = [], haut: { x: number; y: number }[] = []
+  for (const p of tri) {
+    while (bas.length >= 2 && vect(bas[bas.length - 2], bas[bas.length - 1], p) <= 0) bas.pop()
+    bas.push(p)
+  }
+  for (let i = tri.length - 1; i >= 0; i--) {
+    const p = tri[i]
+    while (haut.length >= 2 && vect(haut[haut.length - 2], haut[haut.length - 1], p) <= 0) haut.pop()
+    haut.push(p)
+  }
+  const env = bas.slice(0, -1).concat(haut.slice(0, -1))
+  let mieux = droit
+  const quart = Math.PI / 2
+  for (let i = 0; i < env.length; i++) {
+    const a = env[i], b = env[(i + 1) % env.length]
+    if (a.x === b.x && a.y === b.y) continue
+    // L'angle du bord, ramené dans ]−45°, 45°] (un rectangle revient tous les quarts de tour)
+    let t = Math.atan2(b.y - a.y, b.x - a.x)
+    t -= quart * Math.round(t / quart)
+    if (t <= -Math.PI / 4) t += quart
+    const r = etendue(t, env)
+    if (aire(r) < aire(mieux)) mieux = r
+  }
+  // Tourné seulement quand c'est nettement mieux, et d'au moins 2°
+  if (mieux === droit || Math.abs(mieux.angle) < 2 * Math.PI / 180 || aire(mieux) >= 0.6 * aire(droit)) return droit
+  return mieux
+}
+
+/** Les quatre coins (haut-gauche, haut-droit, bas-droit, bas-gauche) d'un
+ *  rectangle ajusté, écarté de m de chaque côté */
+export function coinsAjustes(r: RectangleAjuste, m = 0): { x: number; y: number }[] {
+  const c = Math.cos(r.angle), s = Math.sin(r.angle)
+  const p = (u: number, v: number) => ({ x: u * c - v * s, y: u * s + v * c })
+  const u0 = r.u0 - m, u1 = r.u1 + m, v0 = r.v0 - m, v1 = r.v1 + m
+  return [p(u0, v0), p(u1, v0), p(u1, v1), p(u0, v1)]
+}

@@ -4,7 +4,7 @@
 // clic, Maj + clic, un cadre, un lasso, Ctrl + A, ce qu'on vient de
 // coller ou de dupliquer ; au doigt qui « déplace » : un toucher), une
 // petite barre paraît juste au-dessus : Dupliquer, Copier, Supprimer et
-// Options, à portée du doigt, sans clavier ni clic droit (le choix du
+// Options (Modifier en tête pour une formule, Rogner pour une image), à portée du doigt, sans clavier ni clic droit (le choix du
 // professeur : elle vient tout de suite, sans geste à apprendre). Le
 // menu complet (Options, le clic droit, le double-clic) garde tout le
 // reste ; la barre ne fait que les gestes de tous les jours.
@@ -26,7 +26,7 @@ import { CTRL } from './navigateur'
 import { icone } from './icones'
 import { menuOuvert, quandMenuChange } from './menus'
 
-export type IdAction = 'modifier' | 'dupliquer' | 'copier' | 'supprimer' | 'ajouter' | 'options'
+export type IdAction = 'modifier' | 'rogner' | 'dupliquer' | 'copier' | 'supprimer' | 'ajouter' | 'options'
 
 /** Un bouton de la barre : son icône, son libellé court (sous l'icône), son
  *  titre (l'infobulle et le nom lu, avec le raccourci) */
@@ -50,10 +50,11 @@ export interface ActionBarre {
  *  jamais « clic » au doigt ; le stylet posé sur l'écran (direct, l'Apple
  *  Pencil, qui n'a pas de bouton) a l'appui long, celui d'une tablette
  *  graphique son bouton. */
-export function actionsDe(pris: { n: number; formule: boolean }, pointeur: TypePointeur, ctrl = CTRL, direct = ecranTactile()): ActionBarre[] {
+export function actionsDe(pris: { n: number; formule: boolean; image?: boolean }, pointeur: TypePointeur, ctrl = CTRL, direct = ecranTactile()): ActionBarre[] {
   const seul = pris.n === 1, doigt = pointeur === 'touch', sansClavier = doigt || (pointeur === 'pen' && direct)
   const l: ActionBarre[] = []
   if (seul && pris.formule) l.push({ id: 'modifier', icone: 'stylo', libelle: 'Modifier', titre: titreModifierFormule(pointeur) })
+  if (seul && pris.image) l.push({ id: 'rogner', icone: 'rogner', libelle: 'Rogner', titre: 'Rogner : ne garder qu\'une partie de l\'image' })
   l.push({ id: 'dupliquer', icone: 'dupliquer', libelle: 'Dupliquer', titre: `Dupliquer (${ctrl} + D)` })
   l.push({ id: 'copier', icone: 'copier', libelle: 'Copier', titre: `Copier (${ctrl} + C)` })
   l.push({ id: 'supprimer', icone: 'poubelle', libelle: 'Supprimer', titre: seul ? 'Supprimer (Suppr)' : `Supprimer les ${pris.n} objets (Suppr)`, danger: true })
@@ -279,7 +280,7 @@ export class BarreActions {
     const pointeur = app.dernierPointeur
     const cle = `${seul ? seul.type : 'plusieurs'}|${app.selection.size}|${pointeur}`
     if (cle !== this.cle) {
-      this.construire(actionsDe({ n: app.selection.size, formule: seul?.type === 'formule' }, pointeur))
+      this.construire(actionsDe({ n: app.selection.size, formule: seul?.type === 'formule', image: !!app.rognable() }, pointeur))
       this.cle = cle
     }
     const ajouter = this.boutons.get('ajouter')
@@ -340,6 +341,7 @@ export class BarreActions {
     const seul = app.selection.size === 1 ? app.forme([...app.selection][0]) : null
     switch (id) {
       case 'modifier': if (seul?.type === 'formule') void app.modifierFormule(seul); break
+      case 'rogner': app.commencerRognage(); break
       case 'dupliquer': app.dupliquerSelection(); break
       case 'copier': app.copier(); break
       case 'supprimer': app.supprimerSelection(); break

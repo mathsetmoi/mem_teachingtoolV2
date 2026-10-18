@@ -57,6 +57,8 @@ export const ICONES: Record<string, string> = {
   // Copier : deux feuilles décalées, comme partout (le presse-papiers à pince
   // voudrait dire « Coller ») ; Dupliquer : les mêmes, et un +
   copier: 'M8 8h11v11H8zM5 16V5h11',
+  // Rogner : les deux équerres du massicot, qui se croisent
+  rogner: 'M7 3v14h14M3 7h14v14',
   dupliquer: 'M8 8h11v11H8zM5 16V5h11M13.5 11v5M11 13.5h5',
   // Fermer (la trieuse des pages) : une croix
   fermer: 'M6 6l12 12M18 6L6 18',

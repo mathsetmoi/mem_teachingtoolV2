@@ -561,7 +561,38 @@ quart de tour à gauche* (« ↺ 90°, autour de son centre ») et *… à droit
 0 et ±1, `quartDeTour`), en une étape d'annulation, comme elle. C'est le
 chemin de la **tablette graphique** : au Stylo, son bouton latéral (un clic
 droit) ouvre le menu complet de l'image, puis ⋯, sans viser la pastille ni
-changer d'outil ; quatre quarts de tour la ramènent droite.
+changer d'outil ; quatre quarts de tour la ramènent droite. **Un clic sur la pastille ↻**
+(retouches après le lot 5, le souhait du professeur) tourne aussi d'un
+quart de tour à droite, autour du même centre, en une étape : un énoncé
+photographié couché se relève d'un clic. Le second clic d'un double-clic,
+au même endroit juste après (la pastille a tourné avec l'objet), tourne
+encore : un demi-tour, et aucun menu ne s'ouvre. La pastille elle-même est
+redessinée : trois quarts de tour dans le sens des aiguilles d'une montre,
+avec une pointe pleine bien visible au bout (la même sur les instruments).
+
+**Le cadre de la sélection au plus près de l'objet** (retouches après le
+lot 5 : les grands rectangles en tirets prenaient trop de place). Une image
+prise a ses tirets sur son propre bord, tournés avec elle, ses poignées
+dessus ; un cercle entier, un cercle en tirets ; un trait, un segment, une
+figure, le rectangle le plus serré autour de leur tracé (`rectangleAjuste`,
+`src/geometrie.ts`), penché quand c'est nettement plus serré que la boîte
+droite (moins de 60 %) : une droite oblique a une bande fine le long
+d'elle. Une écriture garde sa boîte droite (un mot n'est pas penché de 4°).
+Un trait oblique seul a aussi son cadre de taille penché avec lui
+(`rectangleDe`, `src/cadre.ts`). Plusieurs objets gardent leur cadre commun,
+droit, autour de tout.
+
+**Rogner une image** (retouches après le lot 5). *Rogner* est dans la barre
+d'actions d'une image seule (en tête), dans son menu court (le clic droit,
+le bouton du stylet) et dans la section *Position* du menu ⋯. L'image paraît
+entière, ce qu'on enlève assombri, la partie gardée claire avec huit
+poignées (quatre coins, quatre côtés), tournées avec l'image ; on tire une
+poignée, on glisse la partie gardée. Pour finir : un clic (un toucher) à
+côté de l'image, Entrée ou *Terminer* ; Échap ou *Annuler* rend l'image
+telle quelle. L'image rognée est une image neuve, faite des seuls pixels
+gardés, posée exactement là où ils étaient (même matrice) : la version
+d'avant, le replay et la copie la voient comme une image ordinaire, et
+Ctrl + Z rend l'image entière. Le calcul est dans `src/rognage.ts`.
 
 **Verrouiller et fixer en fond** (lot 5). Deux façons de protéger ce qui est
 sur une page. **Verrouiller** (tout objet : le menu ⋯ du menu complet,

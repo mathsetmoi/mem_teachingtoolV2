@@ -647,8 +647,8 @@ describe('les gestes du cadre (K6) : taille, rotation, curseurs, emprise', () =>
   })
 
   it('le message de la première image prise : Maj + coin seulement là où il y a un clavier', () => {
-    expect(messageCadre('mouse')).toBe('Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↻ : tourner')
-    expect(messageCadre('pen')).toBe('Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↻ : tourner')
-    expect(messageCadre('touch')).toBe('Coins : agrandir ou réduire ; côtés : déformer ; ↻ : tourner')
+    expect(messageCadre('mouse')).toBe('Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↻ : tourner (un clic : un quart de tour)')
+    expect(messageCadre('pen')).toBe('Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↻ : tourner (un clic : un quart de tour)')
+    expect(messageCadre('touch')).toBe('Coins : agrandir ou réduire ; côtés : déformer ; ↻ : tourner (touchez-la : un quart de tour)')
   })
 })
