@@ -35,6 +35,7 @@ import { icone } from './icones'
 import { VIGNETTE_BOUTON, construireMenuFonds, densite, entreeCochee, nomDuFond, peindreVignette, vignetteDuFond } from './menu-fonds'
 import { BarreActions } from './barre-actions'
 import { Apercus } from './sorties/apercu'
+import { VignetteEnonce } from './enonce'
 import type { PageAPeindre } from './sorties/apercu'
 import { copierEnImage, nomDeLImage } from './sorties/image'
 import { ouvrirFenetrePdf } from './sorties/export-pdf'
@@ -348,6 +349,8 @@ export class UI implements Interface {
   /** Peindre une page hors de l'écran : les vignettes, l'image copiée, le PDF
    *  (voir sorties/apercu.ts) ; le réglage du fond imprimé */
   apercus!: Apercus
+  /** La vignette de l'énoncé, quand il est sorti de l'écran par le haut */
+  vignetteEnonce!: VignetteEnonce
   /** Les vignettes des pages, pour la trieuse, la corbeille et « Envoyer
    *  vers… » (voir pages/vignettes.ts) : rien ne s'y peint tant qu'aucune
    *  n'est à l'écran */
@@ -960,6 +963,8 @@ export class UI implements Interface {
       rendreFormule: (latex, el) => katex.render(latex, el, { throwOnError: false, displayMode: false }),
     })
     this.vignettes = new Vignettes(app.tableau, this.apercus)
+    this.vignetteEnonce = new VignetteEnonce(app, this.apercus, () => this.zoneLibre())
+    this.racine.append(this.vignetteEnonce.el)
     // Les séances (lot 6) : la lecture d'une séance passée, « Reprendre », la séance précédente
     this.bandeauxSeances = new BandeauxSeances(app, this.racine, this.vignettes)
     this.trieuse = new Trieuse(app, this.racine, this, this.vignettes)
@@ -1162,6 +1167,7 @@ export class UI implements Interface {
     this.majMenuPartie()
     this.zoomTexte.textContent = Math.round(app.cam.z * 100) + ' %'
     this.majRetour()
+    this.vignetteEnonce?.maj()
     // Après le menu complet : elle ne paraît que s'il est fermé
     this.barreActions.maj()
     // Le message ne couvre ni la barre d'actions ni la pastille ↻ (au
