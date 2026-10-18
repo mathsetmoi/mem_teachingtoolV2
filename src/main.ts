@@ -27,6 +27,7 @@ import type { SeanceDuClasseur } from './seances'
 import { deLaSeance } from './seances'
 import type { ChapitreAccueil } from './seances-vue'
 import { ouvrirAccueil } from './seances-vue'
+import { installerCurseurs } from './curseurs'
 import { comparerEtiquettes, etiquetteHeritee } from './classeurs/arbre'
 import type { FicheDossier } from './classeurs/demarrage'
 
@@ -193,6 +194,8 @@ async function demarrer() {
   // Le navigateur ne prend plus Ctrl + « + », F5 ni les gestes du tableau
   installerGardes(app)
   zone.dataset.outil = app.outil
+  // Le curseur prend l'icône de l'outil en main
+  installerCurseurs()
   document.title = `${infos.nom} — MEM teachingtool`
   // Pour les tests automatiques, en développement seulement
   if (import.meta.env.DEV) Object.assign(window, { __app: app, __registre: registre, __ecrivain: (await import('./classeurs/ecrivain')).ecrivain, __parties: (await import('./instruments')).partiesDuCompas, __construction: await import('./construction'), __auto: await import('./automatismes'), __katex: (await import('katex')).default, __menus: await import('./menus'), __google: await import('./publication/drive') })

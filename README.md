@@ -3545,6 +3545,14 @@ polygone, tracé clic par clic, s'accroche de la même façon.
 Outil **Point** (X) : un clic pose un point marqué d'une croix et nommé (A, B,
 C…), sur le tableau ou sur une image.
 
+**Le curseur montre l'outil en main.** À la souris et au survol de la
+tablette graphique, il prend l'icône du bouton de l'outil : le stylo et le
+surligneur écrivent par leur pointe, le Point se pose au centre de sa croix ;
+le Segment (segment, droite ou demi-droite), les Formes (rectangle, cercle,
+polygone) et la Formule visent avec une petite croix, leur icône à côté. La
+Sélection garde la croix, la Main le curseur « main », la Gomme son cercle.
+Au doigt, il n'y a pas de curseur : rien ne change (`src/curseurs.ts`).
+
 Stylo sensible à la pression, surligneur, gomme (au trait entier, ou seulement là où elle passe), segments (Maj pour
 les angles de 15°, aimant au quadrillage), formules LaTeX avec aperçu et
 raccourcis, sélection et déplacement, copier, coller, dupliquer (d'une page et d'un onglet à l'autre), annuler/rétablir (page par page ; au doigt, toucher à deux ou trois doigts), pages (supprimées sans question, rendues par Annuler ou Ctrl+Z, ou remises de la corbeille), fonds (blanc,
@@ -4504,6 +4512,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/pages/envoi.ts` | La fenêtre « Envoyer vers… » : déplacer ou copier, la liste des destinations (chaque page avec sa petite vignette, une nouvelle page juste après, à la fin), le clavier ; les textes des messages d'un envoi (pur, testé). L'envoi lui-même est `App.envoyerSelection`, son annulation `Tableau.envoyer` |
 | `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu, jamais sur ce qui est verrouillé), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose (au-dessus du cadre de taille et de sa pastille ↻, jamais sur elle : `App.emprise`, `placeBarre` ; au téléphone, au-dessus de la barre du bas : son bord `bas`, lot 5, K10), ce que devient un appui sur elle |
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (le cadenas du menu court d'un verrouillé compris ; celles des lecteurs sont dans `src/revoir/icones.ts`) |
+| `src/curseurs.ts` | Le curseur de chaque outil : son icône (celle de `src/icones.ts`) en SVG data:, liseré blanc, le point actif là où il agit ; une petite croix et l'icône pour le Segment, les Formes et la Formule (selon `data-trait` et `data-forme` de la zone, écrits par `App.choisirOutil`) ; les règles ajoutées à la page au lancement (`installerCurseurs`) |
 | `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
 | `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; Maj + L (`toucheVerrou`) ; Alt + ← / →, ⌘ + ← / → et Ctrl + G empêchés hors des champs dans tous les écrans, la revue, la trieuse et la bibliothèque comprises (`toucheQuitteLaPage`, dans `installerGardes`) ; les touches qui se taisent pendant un geste (Maj + L et Ctrl + G comprises) ; le tableau caché (la revue, une séance d'automatismes, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) ; la touche des raccourcis (⌘ sur Mac) et la façon de dire « enregistrer », « ouvrir » dans un texte (`POUR_ENREGISTRER`, `POUR_OUVRIR` : le raccourci, ou l'entrée du menu ⋯ sur un appareil qu'on ne fait que toucher) ; la requête de la mise en page du téléphone (lot 5 : `TELEPHONE`, écrite là une fois ; l'interface en tire `body.telephone`, et la feuille de style reprend ses bornes) |
 | `src/dialogue.ts` | Le fond d'une fenêtre : un appui commencé et fini hors de son cadre la ferme, jamais un appui dans sa marge intérieure (testé) |
