@@ -118,22 +118,27 @@ console.log('=== A. la place du bouton du classeur ===')
 // 960 × 600 à l'icône et au point, 1100 × 768 nommée aussi ; 844 × 390, la
 // barre du haut tient sur une rangée et le bouton se cache, le point sur ⋯.
 // Les places d'avant : 424, 338, 978, 238, 82 / −5, 24, 18, −6.)
+// (Adapté au catalogue : la barre du haut a un bouton de plus, « Catalogue »,
+// 46 px avec son écart ; le curseur de l'outil (PR 6) l'avait déjà fait
+// bouger de 3 px. Le bouton du classeur a d'autant moins de place ; il garde
+// sa forme partout, sauf à 1100 × 768 nommée, où il se cache (le point sur
+// ⋯). Les places d'avant : 539, 453, 875, 353, 197 / 25, 63, 133.)
 const ECRANS = [
-  { l: 1366, h: 768, sans: ['large', 539] },
-  { l: 1280, h: 720, sans: ['large', 453] },
+  { l: 1366, h: 768, sans: ['large', 496] },
+  { l: 1280, h: 720, sans: ['large', 410] },
   // (Adapté au lot 5, morceau K9 : un TNI, tactile, de 1920 × 1080, a d'office
   // les noms sous les outils, voulus ainsi : la barre des outils fait 80 px,
   // la barre du haut 68 px de haut et 196 px de plus ; la place, 1093 px sans
   // eux, est de 875 ; lot5/K9-affichage.mjs vérifie le reste)
-  { l: 1920, h: 1080, t: true, sans: ['large', 875, 68] },
+  { l: 1920, h: 1080, t: true, sans: ['large', 863, 68] },
   // (Adapté aux corrections « appareils » du lot 4 : la forme large demande
   // la place du plus long des textes courts, 252 px ; à 1180 × 820, l'état
   // « Seulement dans ce navigateur » y était coupé : l'icône et le point —
   // depuis le lot 5, K8, il y tient : 353 px)
-  { l: 1180, h: 820, t: true, sans: ['large', 353] },
-  { l: 1024, h: 768, sans: ['etroit', 197], avec: ['cache', 25] },
-  { l: 1100, h: 768, avec: ['etroit', 63] },
-  { l: 960, h: 600, sans: ['etroit', 133] },
+  { l: 1180, h: 820, t: true, sans: ['large', 310] },
+  { l: 1024, h: 768, sans: ['etroit', 154], avec: ['cache', 17] },
+  { l: 1100, h: 768, avec: ['cache', 16] },
+  { l: 960, h: 600, sans: ['etroit', 90] },
   { l: 768, h: 1024, t: true, sans: ['dans-la-barre', -6, 104] },
   { l: 820, h: 1180, t: true, sans: ['dans-la-barre', -6, 104] },
   // (Adapté au lot 5, K10, la mise en page du téléphone, voulue : la barre

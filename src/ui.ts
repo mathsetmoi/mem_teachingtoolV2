@@ -14,6 +14,7 @@ import { centreDe, image, placesDesNoms, sommetsDe, versRelatif } from './formes
 import { etapesImage } from './construction'
 import { RevueEnClasse } from './revue/revue'
 import { Publication } from './publication/fenetre'
+import { Catalogue } from './catalogue-vue'
 import { Constructeur } from './constructeur'
 import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
@@ -188,6 +189,10 @@ const RACCOURCIS_LATEX = [
   ['\\vec{u}', '\\vec{}'], ['\\overrightarrow{AB}', '\\overrightarrow{}'], ['\\in', '\\in '],
   ['\\mathbb{R}', '\\mathbb{R}'], ['\\leqslant', '\\leqslant '], ['\\infty', '\\infty'],
   ['\\pi', '\\pi'], ['\\lim', '\\lim_{x \\to }'],
+  // Les ensembles de nombres (2nde)
+  ['\\notin', '\\notin '], ['\\subset', '\\subset '], ['\\not\\subset', '\\not\\subset '], ['\\cap', '\\cap '], ['\\cup', '\\cup '],
+  ['\\varnothing', '\\varnothing'], ['\\mathbb{N}', '\\mathbb{N}'], ['\\mathbb{Z}', '\\mathbb{Z}'], ['\\mathbb{D}', '\\mathbb{D}'],
+  ['\\mathbb{Q}', '\\mathbb{Q}'], ['\\mathbb{R}^{*}_{+}', '\\mathbb{R}^{*}_{+}'], ['+\\infty', '+\\infty'],
 ]
 
 function bouton(nom: string, titre: string, action: (e: Event) => void, classe = '') {
@@ -309,6 +314,7 @@ export class UI implements Interface {
   private revue!: RevueEnClasse
   private publication!: Publication
   private constructeur!: Constructeur
+  private catalogue!: Catalogue
   private seance!: Seance
   private choixInstruments!: HTMLDivElement
   private boutonInstruments!: HTMLButtonElement
@@ -740,6 +746,7 @@ export class UI implements Interface {
       this.choixInstruments.hidden = !this.choixInstruments.hidden; this.maj()
     }, 'outil seulement-large')
     const construire = bouton('construction', 'Programme de construction, étape par étape', () => this.basculerConstructeur(), 'seulement-large')
+    const catalogue = bouton('catalogue', 'Catalogue : des éléments de cours tout prêts', () => this.basculerCatalogue(), 'seulement-large')
     // Importer une image : bouton, ou coller (Ctrl+V), ou glisser le fichier sur le tableau
     const choixFichier = this.choixFichier = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*', hidden: true })
     choixFichier.addEventListener('change', () => { const f = choixFichier.files?.[0]; if (f) app.importerImage(f, { pointeur: this.pointeurImport }); choixFichier.value = '' })
@@ -780,7 +787,7 @@ export class UI implements Interface {
     this.pointFichier = Object.assign(document.createElement('span'), { className: 'point-etat', hidden: true })
     this.pointFichier.setAttribute('aria-hidden', 'true')
     fichier.appendChild(this.pointFichier)
-    haut.append(avant, this.rang, apres, nouvelle, jeter, boutonFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, automatismes, revoir, publier, fichier)
+    haut.append(avant, this.rang, apres, nouvelle, jeter, boutonFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, catalogue, automatismes, revoir, publier, fichier)
     // Les noms sous les outils (lot 5) : ni ‹, ni ›, ni le compteur, ni le
     // bouton du classeur
     nommer(nouvelle, 'Nouvelle')
@@ -788,7 +795,7 @@ export class UI implements Interface {
     this.racine.appendChild(this.rangSeance)
     this.libelleJeter = nommer(jeter, 'Supprimer')
     nommer(boutonFond, 'Fond'); nommer(this.boutonAimant, 'Aimant'); nommer(this.boutonReconnaissance, 'Formes auto')
-    nommer(importer, 'Image'); nommer(this.boutonInstruments, 'Instruments'); nommer(construire, 'Construire')
+    nommer(importer, 'Image'); nommer(this.boutonInstruments, 'Instruments'); nommer(construire, 'Construire'); nommer(catalogue, 'Catalogue')
     nommer(automatismes, 'Automatismes'); nommer(revoir, 'Revoir'); nommer(publier, 'Publier'); nommer(fichier, 'Fichier')
 
     // ----- Le bouton du classeur, à gauche de la barre du haut -----
@@ -958,6 +965,7 @@ export class UI implements Interface {
     this.trieuse = new Trieuse(app, this.racine, this, this.vignettes)
     this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
+    this.catalogue = new Catalogue(app, this.racine, t => this.message(t, undefined, true))
     this.seance = new Seance(this.racine)
 
     // ----- Menu d'un morceau de figure (point, extrémité, nom, rayon) -----
@@ -1564,6 +1572,7 @@ export class UI implements Interface {
     this.entreeMenu(m, 'Instruments…', () => { this.choixInstruments.hidden = false; this.maj() }, { action: 'instruments',
       aide: 'Règle, équerre, rapporteur, compas' })
     this.entreeMenu(m, 'Programme de construction', () => this.basculerConstructeur(), { action: 'construction', aide: 'Étape par étape' })
+    this.entreeMenu(m, 'Catalogue', () => this.basculerCatalogue(), { action: 'catalogue', aide: 'Ensembles de nombres…' })
     this.entreeMenu(m, 'Automatismes', () => this.seance.ouvrir(), { action: 'automatismes', aide: '10 questions minutées' })
     this.entreeMenu(m, 'Revoir la construction', () => this.ouvrirRevue(plus), { action: 'revue', aide: 'Une page, une séance, pas à pas' })
     this.entreeMenu(m, 'Publier le replay', () => this.publication.ouvrir(), { action: 'publier', aide: 'Pour les élèves' })
@@ -2286,8 +2295,13 @@ export class UI implements Interface {
 
   /** Le programme de construction s'ouvre ou se ferme (son bouton, ou « Plus ») */
   private basculerConstructeur() {
-    if (this.constructeur.ouvert) this.constructeur.fermer(); else this.constructeur.ouvrir()
+    if (this.constructeur.ouvert) this.constructeur.fermer(); else { if (this.catalogue.ouvert) this.catalogue.fermer(); this.constructeur.ouvrir() }
   }
+  /** Le catalogue prend la place du programme de construction, à droite */
+  private basculerCatalogue() {
+    if (this.catalogue.ouvert) this.catalogue.fermer(); else { if (this.constructeur.ouvert) this.constructeur.fermer(); this.catalogue.ouvrir() }
+  }
+
 
   // ----- Le menu de la Gomme (lot 5) -----
   /** Un clic (ou un toucher) sur le bouton de la Gomme : il la prend ; déjà
@@ -3091,6 +3105,7 @@ export class UI implements Interface {
   private fermerConstruction(): (() => void) | null {
     const construisait = this.constructeur.ouvert
     if (construisait) this.constructeur.fermer()
+    if (this.catalogue.ouvert) this.catalogue.fermer()
     this.fermerMenuPartie()
     if (!construisait) return null
     return () => {

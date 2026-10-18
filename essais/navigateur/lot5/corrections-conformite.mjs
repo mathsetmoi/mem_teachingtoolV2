@@ -225,8 +225,10 @@ for (const [w, h] of [[320, 568], [390, 844], [844, 390], [568, 320]]) {
   // boutons y sont dans l'écran ; passeB-b10 touche juste au-dessus)
   await p.evaluate(() => document.querySelector('dialog[open].dialogue-formule .secondaire')?.click()); await p.waitForTimeout(200)
   await p.evaluate(() => { window.__app.ui.editerFormule('x^2', 100, 720) }); await p.waitForTimeout(600)
-  const bas = await p.evaluate(() => { const d = document.querySelector('dialog[open].dialogue-formule'); return { top: d.style.top, maxH: d.style.maxHeight, boutons: Math.round(d.querySelector('.actions').getBoundingClientRect().bottom) } })
-  ok(bas.top === '438px' && !bas.maxH && bas.boutons <= 768, 'B) … pour une formule tout en bas, à sa place d\'avant (316 → 438 : innerHeight − 330), ses boutons dans l\'écran', bas)
+  const bas = await p.evaluate(() => { const d = document.querySelector('dialog[open].dialogue-formule'); return { top: d.style.top, maxH: d.style.maxHeight, h: d.offsetHeight, boutons: Math.round(d.querySelector('.actions').getBoundingClientRect().bottom) } })
+  // (Adapté au catalogue : l'éditeur a une rangée de symboles de plus (∉, ⊂,
+  // ℕ, ℤ…) ; plus haut, il remonte pour tenir dans l'écran, au-dessus de 438)
+  ok(parseFloat(bas.top) < 438 && parseFloat(bas.top) + bas.h <= 768 && bas.h > 330 && !bas.maxH && bas.boutons <= 768, 'B) … pour une formule tout en bas, à sa place d\'avant (316 → plus haut que 438, entier dans l\'écran), ses boutons dans l\'écran', bas)
   await c.close()
 }
 
