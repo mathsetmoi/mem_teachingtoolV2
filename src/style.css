@@ -1770,6 +1770,27 @@ body.en-bibliotheque .toast { z-index: 30; }
   }
 }
 
+/* ---------- La vignette de l'énoncé (src/enonce.ts) ----------
+   En haut à droite de ce qu'on voit du tableau quand l'énoncé est sorti de
+   l'écran par le haut : un clic l'agrandit, un autre la réduit, la croix la
+   cache. Sous les menus et les messages, au-dessus du tableau. */
+.vignette-enonce {
+  position: fixed; z-index: 11; padding: 0; border-radius: 8px; overflow: hidden; cursor: zoom-in;
+  background: #fff; border: 1px solid var(--filet, #c9d1dc); box-shadow: 0 6px 18px rgba(27, 34, 48, 0.2);
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.vignette-enonce.grande { cursor: zoom-out; }
+.vignette-enonce canvas { display: block; }
+.vignette-enonce:focus-visible { outline: 3px solid var(--accent, #3b6fb6); outline-offset: 2px; }
+.vignette-enonce-fermer {
+  position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 16px;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  background: rgba(27, 34, 48, 0.72); color: #fff;
+}
+.vignette-enonce-fermer:hover { background: rgba(27, 34, 48, 0.9); }
+.vignette-enonce-fermer svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+body.en-seance .vignette-enonce { visibility: hidden; }
+
 /* ---------- Revenir au contenu ---------- */
 .retour-contenu {
   position: absolute; z-index: 12; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%);

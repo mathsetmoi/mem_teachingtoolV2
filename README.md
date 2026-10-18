@@ -3925,6 +3925,18 @@ courante et le centre de chaque page sont retrouvés au rechargement, à 100 % �
 notés dans ce navigateur, hors du document : ni un fichier, ni un replay ne
 les emportent.
 
+**La vignette de l'énoncé.** L'énoncé (une image) reste à sa place en haut
+de la page et la correction descend dessous. Quand on fait défiler le
+tableau et que l'énoncé sort de l'écran par le haut (il en reste moins du
+quart), une vignette de l'énoncé paraît en haut à droite, avec ce qui est
+écrit dessus : plus besoin de remonter, ni de recoller l'image plus bas. Un
+clic (souris, stylet, doigt) l'agrandit pour la lire, un autre la réduit ;
+la croix la cache jusqu'à ce que l'énoncé revienne à l'écran. Quand la page
+a plusieurs exercices, c'est le plus proche au-dessus qui se montre, et la
+vignette part dès que l'image de l'exercice suivant est à l'écran (au moins
+à moitié). Ce n'est que de l'affichage : rien ne change dans le classeur,
+le PDF ni le replay (`src/enonce.ts`, tests/enonce.test.ts).
+
 **Changer de page.** ‹ et › (ou Page↑ et Page↓, que les télécommandes de
 présentation envoient) passent d'une page à l'autre. Le compteur dit
 « 3 / 7 », suivi du nom de la page si elle en a un (« 3 / 7 · Exercice 12
@@ -4569,6 +4581,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/publication/` | Publier sur le Drive : comptes et relais (et les dossiers des sauvegardes), connexion Google (le jeton qui suit l'onglet d'un classeur à l'autre : `passerLaConnexion`, `reprendreLaConnexion`), la fenêtre (une copie de classeur, marquée, publie ses séances sous une clé à elle : un nouveau lien) ; les sauvegardes des classeurs (lot 4 C10, `drive.ts`) : le dossier privé marqué à part, le même fichier remplacé (multipart binaire ou envoi reprenable), le garde-fou des deux ordinateurs, l'élagage des versions, la liste et la lecture des sauvegardes |
 | `relais/relais-seances.gs` | Le relais Apps Script, à déployer dans chaque compte Google |
 | `tests/` | Les tests (`npm test`) : ce qui part chez les élèves, la fidélité du replay ; la mise en page du téléphone dans ce qu'elle a de pur (lot 5, `tests/telephone.test.ts` : `zoneEntreBarres` avec la barre des outils en bas, `placeBarre` et `positionPanneau` au-dessus d'elle, la requête) ; les réglages par défaut (retouches après le lot 5, `tests/defauts.test.ts` : la page blanche de toute page neuve, la copie qui garde son fond ; `tests/vue.test.ts` : `vueAuDebut`) ; la rotation d'une image importée (retouches après le lot 5, `tests/rotation.test.ts` : la pastille dessinée pour un autre pointeur, `poigneeDeLAppui` ; le quart de tour, exact et en une étape ; les messages de l'import et de « Fixer en fond ») ; les corrections de leurs vérifications (`tests/verifications.test.ts` : la touche de l'outil d'avant, `messageReprise` ; les messages de « Détacher l'image du fond » et de « Fixer en fond » à la Sélection choisie ; `pointeurDuClic`, `pointeurDeDepart` ; `zonesDesPoignees` ; l'étape à refaire, `prochainRetablissement`) |
+| `src/enonce.ts` | La vignette de l'énoncé : quelle image montrer quand l'énoncé est sorti de l'écran par le haut (`enonceHorsVue`, pur), sa taille petite ou agrandie (`tailleVignette`), la vignette elle-même (sa place sous la barre du haut, le clic qui l'agrandit, la croix, la peinture de la zone de l'image par `Apercus`) |
 | `src/camera.ts` | La caméra (le zoom, ses bornes, la vue d'une boîte, `vuePour` ; à 100 %, le début d'une boîte, `vueAuDebut` : une page jamais regardée s'ouvre ainsi, retouches après le lot 5, tests/vue.test.ts) et ce qu'on voit entre les barres (`zoneEntreBarres` : « Tout voir », la pastille ↻ ; depuis le lot 5, K10, la barre des outils posée en bas, au téléphone, en borne le bas) |
 | `src/instruments.ts` | Règle, équerre, rapporteur, compas ; leur pastille ↻ (`dessinerPastille`), la même que celle du cadre de taille (lot 5 ; son filet, `filetPx`, de 2,5 px au cadre en contraste renforcé, de 1,6 toujours aux instruments) |
 | `src/construction.ts` | Programme de construction → étapes et gestes |
