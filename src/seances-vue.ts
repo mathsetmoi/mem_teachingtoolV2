@@ -2,7 +2,8 @@
 // LES SÉANCES À L'ÉCRAN (lot 6)
 // - la fenêtre d'accueil (« Bonjour ! ») : une nouvelle séance avec la
 //   classe, changer de chapitre, continuer la séance d'avant, une autre
-//   classe (voir main.ts, qui la remplit avec la bibliothèque) ;
+//   classe, un nouveau classeur vierge (voir main.ts, qui la remplit avec
+//   la bibliothèque) ;
 // - la fenêtre « Cette page est dans la séance de lundi… », au premier
 //   geste d'écriture sur une page d'une séance passée ;
 // - trois bandeaux posés sur le tableau, sous la barre du haut : la lecture
@@ -52,6 +53,8 @@ export interface HoteAccueil {
   autreClasse(id: string): void
   ouvrirChapitre(id: string): void
   nouveauChapitre(): void
+  /** Un classeur vierge, hors de toute classe (null : pas de bibliothèque) */
+  nouveauClasseurVierge: (() => void) | null
 }
 
 /** « la 5A », « la 5e B » ; un nom qui n'est pas une classe reste entre guillemets */
@@ -84,6 +87,12 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
     const p = el('p', 'accueil-classes', 'Une autre classe : ')
     for (const c of h.classes) p.append(bouton('pastille-classe', c.nom, faire(() => h.autreClasse(c.id))))
     principale.append(p)
+  }
+  if (h.nouveauClasseurVierge) {
+    const vierge = el('p', 'accueil-vierge')
+    vierge.append(bouton('lien accueil-classeur-vierge', 'Nouveau classeur vierge…', faire(h.nouveauClasseurVierge)),
+      el('small', '', 'Sans classe : vous l\'enregistrez quand vous voulez.'))
+    principale.append(vierge)
   }
   // La liste des chapitres de la classe
   const liste = el('div', 'accueil-vue accueil-liste')

@@ -1642,7 +1642,10 @@ se dit) :
   4C · 3A » (les autres dossiers de classe) : un clic ouvre le chapitre en
   cours de cette classe, le dernier classeur ouvert dans son dossier (ses
   sous-dossiers compris), et y commence une séance ; une classe sans classeur
-  ouvre « Nouveau chapitre » dans son dossier. Échap ferme la fenêtre et
+  ouvre « Nouveau chapitre » dans son dossier. En bas, « Nouveau classeur
+  vierge… » ouvre la fenêtre « Nouveau classeur » de la bibliothèque (page
+  blanche cochée), rangé hors de toute classe, à enregistrer plus tard comme
+  tout classeur. Échap ferme la fenêtre et
   laisse la dernière page telle quelle (la séance continue) ;
 - un classeur où rien n'est encore écrit (un classeur neuf, un nouveau
   chapitre) commence sa séance sans question.

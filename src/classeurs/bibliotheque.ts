@@ -2875,8 +2875,10 @@ export class Bibliotheque {
    *  clé » (cochée d'office dans la version hors ligne : le poste
    *  remis à zéro). Le choix du fichier s'ouvre dans le clic sur « Créer et
    *  ouvrir » ; y renoncer crée quand même le classeur, sans clé. Puis le
-   *  classeur s'ouvre (voir ouvrirClasseur). */
-  nouveauClasseur(o: { chapitre?: { dossier: string | null; dossiers: ReadonlyMap<string, FicheDossier> } } = {}) {
+   *  classeur s'ouvre (voir ouvrirClasseur). « Nouveau classeur vierge… »
+   *  (la fenêtre d'accueil) : le même, mais à la racine, hors de toute
+   *  classe, quel que soit le dossier affiché. */
+  nouveauClasseur(o: { chapitre?: { dossier: string | null; dossiers: ReadonlyMap<string, FicheDossier> }; vierge?: boolean } = {}) {
     if (document.querySelector('dialog[open]') || this.depart) return
     this.finirSaisie(true)
     const offrirCle = ecritDansUnFichier() && ecrivain.mode !== 'fil'
@@ -2886,7 +2888,7 @@ export class Bibliotheque {
     // (la première page est blanche) ; la clé comme pour un nouveau classeur
     const chapitre = o.chapitre
     if (chapitre) this.dossiers = new Map(chapitre.dossiers)
-    const dossierVoulu = chapitre ? chapitre.dossier : this.dossierAffiche
+    const dossierVoulu = chapitre ? chapitre.dossier : o.vierge ? null : this.dossierAffiche
     const dans = dossierVoulu !== null && this.dossiers.has(dossierVoulu) ? dossierVoulu : null
     this.dossierDuNouveau = dans
     const d = document.createElement('dialog')
