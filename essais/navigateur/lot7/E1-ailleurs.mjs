@@ -13,9 +13,9 @@
 //    la bibliothèque, le dossier relié (chaque classeur y garde son fichier),
 //    « Mes emplacements ».
 // C. « Enregistrer sur le Drive ou ailleurs… » (menu ⋯) : le dossier de la
-//    classe sur l'ordinateur, tenu à jour : un .memc par classeur, dans les
-//    mêmes sous-dossiers ; un fichier déjà là qui n'est pas à lui n'est pas
-//    écrasé.
+//    classe sur l'ordinateur, tenu à jour : un .memc par classeur, dans un
+//    dossier du chapitre rangé comme dans la bibliothèque ; un fichier déjà
+//    là qui n'est pas à lui n'est pas écrasé.
 // D. La même classe sur le Drive : « MEM - Classeurs › 4B », la copie d'avant
 //    déplacée (pas une seconde copie) ; la fenêtre « Ouvrir » montre la
 //    classe, et un de ses classeurs s'ouvre comme un fichier ; toute la
@@ -245,8 +245,8 @@ try {
   const d4 = await p.evaluate(() => window.__dossier('4B'))
   const dGeo = await p.evaluate(d => window.__dossier('Geometrie', d), d4)
   const ids4 = await p.evaluate(([a, b]) => window.__creer([{ nom: 'Calcul', dossier: a }, { nom: 'Triangles', dossier: b }]), [d4, dGeo])
-  // Un fichier « Calcul.memc » qui n'est pas à lui, déjà dans le dossier choisi
-  await p.evaluate(() => window.__ecrireOpfs('Cle 4B', 'Calcul.memc', 'un autre fichier'))
+  // Un fichier « Calcul.memc » qui n'est pas à lui, déjà dans le dossier du chapitre « Calcul »
+  await p.evaluate(() => window.__ecrireOpfs('Cle 4B/Calcul', 'Calcul.memc', 'un autre fichier'))
   await p.keyboard.press('Escape')
   await p.evaluate(() => { if (window.__bibliotheque.ouvert) window.__bibliotheque.fermer?.() })
   await p.evaluate(() => window.__app.ui.enregistrerAilleurs?.())
@@ -270,12 +270,12 @@ try {
   await attendreToast(p, /reliée au dossier « Cle 4B »/, 20000)
   const t4 = (await toasts(p)).join(' / ')
   contenu = await p.evaluate(() => window.__lister('Cle 4B'))
-  ok(contenu['Calcul (2).memc'] > 0 && contenu['Calcul.memc'] === 'un autre fichier'.length && contenu['Geometrie']?.['Triangles.memc'] > 0,
-    'C5) Un .memc par classeur, dans les mêmes sous-dossiers ; le fichier qui n\'est pas à lui n\'est pas touché (« Calcul (2).memc »)', contenu)
+  ok(contenu['Calcul']?.['Calcul (2).memc'] > 0 && contenu['Calcul']?.['Calcul.memc'] === 'un autre fichier'.length && contenu['Geometrie']?.['Triangles']?.['Triangles.memc'] > 0,
+    'C5) Un dossier par chapitre, rangé comme dans la bibliothèque, avec son .memc ; le fichier qui n\'est pas à lui n\'est pas touché (« Calcul (2).memc »)', contenu)
   ok(/2 classeurs dans « Cle 4B »/.test(t4), 'C6) Le message le dit', t4)
   fs = await fiches(p)
   ok(fs.find(x => x.id === ids4[0])?.cle === 'Calcul (2).memc' && fs.find(x => x.id === ids4[1])?.cle === 'Triangles.memc', 'C7) Chacun l\'a pour fichier de sa clé', fs)
-  const ent = await p.evaluate(() => window.__entete('Cle 4B/Geometrie', 'Triangles.memc'))
+  const ent = await p.evaluate(() => window.__entete('Cle 4B/Geometrie/Triangles', 'Triangles.memc'))
   ok(ent.nom === 'Triangles' && ent.id === ids4[1], 'C8) Le fichier est bien celui du classeur (son en-tête)', ent)
   // Mettre à jour : rien en double
   await voirBibliotheque(p)
@@ -286,7 +286,7 @@ try {
   await p.click('.emplacement:has-text("4B") .e-maj')
   await attendreToast(p, /4B/, 20000)
   contenu = await p.evaluate(() => window.__lister('Cle 4B'))
-  ok(Object.keys(contenu).sort().join('|') === 'Calcul (2).memc|Calcul.memc|Geometrie', '   … « Mettre à jour » : rien en double', contenu)
+  ok(Object.keys(contenu).sort().join('|') === 'Calcul|Geometrie' && Object.keys(contenu['Calcul']).sort().join('|') === 'Calcul (2).memc|Calcul.memc', '   … « Mettre à jour » : rien en double', contenu)
   await toasts(p)
 
   // =====================================================================
