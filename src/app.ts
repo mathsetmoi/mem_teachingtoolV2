@@ -209,7 +209,7 @@ type Geste =
   // seule (Maj + coin la déforme). dernier, total : l'angle du pointeur au
   // dernier pas, et l'angle tourné depuis l'appui, déroulé.
   | { type: 'taille'; cadre: Cadre; quoi: 'coin' | 'cote'; i: number; pointeur: TypePointeur; ids: Set<string>; bornes: { min: number; max: number }; image: boolean; M: Matrice }
-  | { type: 'tourner'; cadre: Cadre; pointeur: TypePointeur; ids: Set<string>; dernier: number; total: number; M: Matrice }
+  | { type: 'tourner'; cadre: Cadre; pointeur: TypePointeur; ids: Set<string>; dernier: number; total: number; M: Matrice; sens: 'droite' | 'gauche' }
   // Rogner une image (voir rognage.ts) : la prise (un coin, un côté, la
   // partie gardée), la partie gardée à l'appui, et le point d'appui dans le
   // repère de l'image
@@ -344,7 +344,7 @@ export class App {
   /** Le dernier quart de tour d'un clic sur la pastille ↻ : son heure et sa
    *  place à l'écran (un second clic juste après, au même endroit, tourne
    *  encore ; le dblclick du navigateur qui suit n'ouvre rien) */
-  private quartAuClic: { t: number; x: number; y: number } | null = null
+  private quartAuClic: { t: number; x: number; y: number; i: number } | null = null
   /** Le clic qui suit un double appui traité est encore à venir (voir brancherGestes) */
   private clicFantome = false
   /** Le dernier simple toucher du doigt sur un objet (outil Sélection, ou
@@ -1951,7 +1951,7 @@ export class App {
     const q = this.quartAuClic
     if (!poignee && q && e.button === 0 && !pan && performance.now() - q.t < 600 && Math.hypot(s.x - q.x, s.y - q.y) < 12) {
       const c = this.cadreDeLaSelection()
-      if (c) poignee = { cadre: c, p: { quoi: 'pastille', i: 0 } }
+      if (c) poignee = { cadre: c, p: { quoi: 'pastille', i: q.i } }
     }
 
     // Un menu ouvert (un petit menu, celui d'un morceau, le panneau d'options,
@@ -3068,14 +3068,15 @@ export class App {
       case 'tourner':
         // Le lâcher écrit le geste, en une étape (voir transformerSelection) ;
         // levé sans avoir glissé, rien sur un coin ou un côté, et un quart de
-        // tour à droite (↻ 90°) sur la pastille (retouches après le lot 5, le
-        // souhait du professeur : un clic, et l'énoncé photographié couché
-        // se relève), autour du même centre qu'en la tournant
+        // tour sur une pastille (retouches après le lot 5, le souhait du
+        // professeur : un clic, et l'énoncé photographié couché se relève) :
+        // à droite sur ↻, à gauche sur ↺, autour du même centre qu'en la
+        // tournant
         this.finirCadre()
         if (glisse && !estIdentite(g.M)) this.transformerSelection(g.M)
-        else if (!glisse && g.type === 'tourner' && this.transformerSelection(quartDeTour(g.cadre.centre, 'droite'))) {
+        else if (!glisse && g.type === 'tourner' && this.transformerSelection(quartDeTour(g.cadre.centre, g.sens))) {
           const s = this.ecran(e)
-          this.quartAuClic = { t: performance.now(), x: s.x, y: s.y }
+          this.quartAuClic = { t: performance.now(), x: s.x, y: s.y, i: g.sens === 'gauche' ? 1 : 0 }
         }
         break
     }
@@ -4302,8 +4303,10 @@ export class App {
   /** L'image que « Rogner » rognerait : ce qui est pris, seul, une image
    *  libre (null sinon, et pendant la revue) */
   rognable(): ImageForme | null {
-    if (this.selection.size !== 1 || this.enLecture || tableauCache(this)) return null
-    const f = this.forme([...this.selection][0])
+    if (!this.selection.size || this.enLecture || tableauCache(this)) return null
+    // Les points repérés sur l'image prise ne comptent pas : ils restent où ils sont
+    const pris = this.formes.filter(f => this.selection.has(f.id) && !((f.type === 'polygone' || f.type === 'cercle') && f.lie && this.selection.has(f.lie)))
+    const f = pris.length === 1 ? pris[0] : null
     return f?.type === 'image' && libre(f) ? f : null
   }
 
@@ -4399,7 +4402,7 @@ export class App {
    *  celui de l'appui transformé (il suit) ; sinon celui de la sélection */
   private cadreVu(): CadreVu | null {
     const g = this.geste
-    if (g?.type === 'taille' || g?.type === 'tourner') return { cadre: cadreTransforme(g.cadre, g.M), pointeur: g.pointeur, geste: g.type }
+    if (g?.type === 'taille' || g?.type === 'tourner') return { cadre: cadreTransforme(g.cadre, g.M), pointeur: g.pointeur, geste: g.type, gauche: g.type === 'tourner' && g.sens === 'gauche' }
     const c = this.cadreDeLaSelection()
     return c && { cadre: c, pointeur: this.pointeurPoignees, geste: null }
   }
@@ -4428,7 +4431,7 @@ export class App {
     const pointeur = this.pointeurPoignees, ids = new Set(this.aTransformer().map(f => f.id))
     if (v.p.quoi === 'pastille') {
       const c = v.cadre.centre
-      this.geste = { type: 'tourner', cadre: v.cadre, pointeur, ids, dernier: Math.atan2(m.y - c.y, m.x - c.x), total: 0, M: IDENTITE }
+      this.geste = { type: 'tourner', cadre: v.cadre, pointeur, ids, dernier: Math.atan2(m.y - c.y, m.x - c.x), total: 0, M: IDENTITE, sens: v.p.i === 1 ? 'gauche' : 'droite' }
       this.zone.style.cursor = 'grabbing'
     } else {
       const seule = this.selection.size === 1 ? this.forme([...this.selection][0]) : null

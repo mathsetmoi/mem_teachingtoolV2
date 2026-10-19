@@ -24,7 +24,7 @@ import { enOrdreDAffichage, ordreDAffichage } from './ordre'
 import { groupesTouches } from './groupes'
 import { LONG_MORCEAU, fenetresDe, passePres } from './gomme'
 import type { Cadre, Matrice } from './cadre'
-import { ajusteTourne, rectangleDe } from './cadre'
+import { rectangleDe } from './cadre'
 import type { PartieGardee } from './rognage'
 import { coinsGardes } from './rognage'
 import type { TypePointeur } from './pointeurs'
@@ -40,7 +40,7 @@ type CleTrait = { n: number; taille: number; pression: boolean; fx: number; fy: 
  *  cadre (voir cadre.ts), le pointeur dont il prend la taille des poignées,
  *  et le geste qu'on fait avec lui (la pastille est pleine pendant qu'on
  *  tourne, comme celle d'un instrument) */
-export interface CadreVu { cadre: Cadre; pointeur: TypePointeur; geste: 'taille' | 'tourner' | null }
+export interface CadreVu { cadre: Cadre; pointeur: TypePointeur; geste: 'taille' | 'tourner' | null; gauche?: boolean }
 
 export interface TraitDirect {
   pts: number[]; couleur: string; taille: number; opacite: number; pression: boolean
@@ -949,10 +949,16 @@ export class Rendu {
       // chacun le sien : il y en a peu.
       const dx = this.decalage.dx, dy = this.decalage.dy, m = 6 / cam.z
       const rects: number[] = [], tournes: P[][] = [], ronds: number[] = []
+      // Un seul objet pris (les points repérés sur une image prise ne
+      // comptent pas) et son cadre de taille montré : son trait fin suffit,
+      // sans tirets autour (retouches après le lot 5, le souhait du
+      // professeur : « trop de traits »)
+      const principaux = this.formes.filter(f => this.selection.has(f.id) && !((f.type === 'polygone' || f.type === 'cercle') && f.lie && this.selection.has(f.lie)))
+      const sansTirets = !!leCadre && leCadre.cadre.coins.length === 4 && principaux.length === 1
       for (const f0 of this.formes) {
         if (!this.selection.has(f0.id)) continue
         if (!libre(f0)) { cadenas.push({ f: f0, cadre: true }); continue }
-        if (tr?.ids.has(f0.id)) continue
+        if (tr?.ids.has(f0.id) || sansTirets) continue
         const f = this.remplacement?.id === f0.id ? this.remplacement : f0
         const vu = f.type === 'polygone' || f.type === 'cercle' ? this.etendueVisible(f) : null
         if (vu) {
@@ -983,10 +989,13 @@ export class Rendu {
           continue
         }
         const r = rectangleDe(f)
-        if (ajusteTourne(r)) {
+        if (r?.angle) {
           tournes.push(coinsAjustes(r, m).map(p => ({ x: p.x + dx, y: p.y + dy })))
           continue
         }
+        // Droit : serré autour du tracé (sans la place des noms d'une figure,
+        // ni le carré d'un cercle autour d'un arc)
+        if (r) { rects.push(r.u0 + dx - m, r.v0 + dy - m, r.u1 - r.u0 + 2 * m, r.v1 - r.v0 + 2 * m); continue }
         const b = this.boite(f)
         rects.push(b.x + dx - m, b.y + dy - m, b.l + 2 * m, b.h + 2 * m)
       }
@@ -1131,10 +1140,10 @@ export class Rendu {
     if (k.coins.length === 4) {
       const q = k.coins
       // (de l'épaisseur du cadre plein d'un groupe, dont il tient lieu)
-      if (this.selection.size > 1 || v.geste) {
-        c.beginPath(); q.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y))); c.closePath()
-        this.filetSelection(c, '#3b6fb6', 1.5)
-      }
+      // Toujours son bord, un trait plein fin : ses coins sont dessus (seul,
+      // l'objet n'a plus de tirets en plus, voir sansTirets)
+      c.beginPath(); q.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y))); c.closePath()
+      this.filetSelection(c, '#3b6fb6', 1.2)
       const a = Math.atan2(q[1].y - q[0].y, q[1].x - q[0].x), d = POIGNEE.dessin[v.pointeur] / z
       c.fillStyle = '#ffffff'; c.strokeStyle = '#3b6fb6'; c.lineWidth = this.filetPoignee / z
       const poignee = (p: P, l: number, h: number, rond: number) => {
@@ -1152,7 +1161,11 @@ export class Rendu {
       }
       for (const p of q) poignee(p, d, d, 1.5 / z)
     }
-    dessinerPastille(c, k.pastille, z, v.geste === 'tourner', 'rotation', POIGNEE.pastille[v.pointeur], this.filetPoignee)
+    dessinerPastille(c, k.pastille, z, v.geste === 'tourner' && !v.gauche, 'rotation', POIGNEE.pastille[v.pointeur], this.filetPoignee)
+    // ↺, à côté : la même, retournée (retouches après le lot 5)
+    c.save(); c.translate(k.inverse.x, k.inverse.y); c.scale(-1, 1); c.translate(-k.inverse.x, -k.inverse.y)
+    dessinerPastille(c, k.inverse, z, v.geste === 'tourner' && !!v.gauche, 'rotation', POIGNEE.pastille[v.pointeur], this.filetPoignee)
+    c.restore()
     c.restore()
   }
 

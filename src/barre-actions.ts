@@ -54,7 +54,8 @@ export function actionsDe(pris: { n: number; formule: boolean; image?: boolean }
   const seul = pris.n === 1, doigt = pointeur === 'touch', sansClavier = doigt || (pointeur === 'pen' && direct)
   const l: ActionBarre[] = []
   if (seul && pris.formule) l.push({ id: 'modifier', icone: 'stylo', libelle: 'Modifier', titre: titreModifierFormule(pointeur) })
-  if (seul && pris.image) l.push({ id: 'rogner', icone: 'rogner', libelle: 'Rogner', titre: 'Rogner : ne garder qu\'une partie de l\'image' })
+  // image : une image à rogner (voir App.rognable : seule, ses points repérés à part)
+  if (pris.image) l.push({ id: 'rogner', icone: 'rogner', libelle: 'Rogner', titre: 'Rogner : ne garder qu\'une partie de l\'image' })
   l.push({ id: 'dupliquer', icone: 'dupliquer', libelle: 'Dupliquer', titre: `Dupliquer (${ctrl} + D)` })
   l.push({ id: 'copier', icone: 'copier', libelle: 'Copier', titre: `Copier (${ctrl} + C)` })
   l.push({ id: 'supprimer', icone: 'poubelle', libelle: 'Supprimer', titre: seul ? 'Supprimer (Suppr)' : `Supprimer les ${pris.n} objets (Suppr)`, danger: true })
@@ -278,9 +279,10 @@ export class BarreActions {
 
     const seul = app.selection.size === 1 ? formes.find(f => app.selection.has(f.id)) ?? null : null
     const pointeur = app.dernierPointeur
-    const cle = `${seul ? seul.type : 'plusieurs'}|${app.selection.size}|${pointeur}`
+    const rognable = !!app.rognable()
+    const cle = `${seul ? seul.type : 'plusieurs'}|${app.selection.size}|${pointeur}|${rognable}`
     if (cle !== this.cle) {
-      this.construire(actionsDe({ n: app.selection.size, formule: seul?.type === 'formule', image: !!app.rognable() }, pointeur))
+      this.construire(actionsDe({ n: app.selection.size, formule: seul?.type === 'formule', image: rognable }, pointeur))
       this.cle = cle
     }
     const ajouter = this.boutons.get('ajouter')

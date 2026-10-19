@@ -569,6 +569,12 @@ au même endroit juste après (la pastille a tourné avec l'objet), tourne
 encore : un demi-tour, et aucun menu ne s'ouvre. La pastille elle-même est
 redessinée : trois quarts de tour dans le sens des aiguilles d'une montre,
 avec une pointe pleine bien visible au bout (la même sur les instruments).
+Deuxième retouche, à la demande du professeur : **↺ à côté de ↻**, la même
+pastille retournée, qui tourne aussi (un clic : un quart de tour à
+gauche) ; et **les pastilles restent en haut** : le haut du cadre d'une
+image ou d'une formule est son bord le plus haut à l'écran, plus le haut
+de l'objet, si bien qu'après un quart de tour elles ne passent plus sur le
+côté.
 
 **Le cadre de la sélection au plus près de l'objet** (retouches après le
 lot 5 : les grands rectangles en tirets prenaient trop de place). Une image
@@ -580,7 +586,12 @@ droite (moins de 60 %) : une droite oblique a une bande fine le long
 d'elle. Une écriture garde sa boîte droite (un mot n'est pas penché de 4°).
 Un trait oblique seul a aussi son cadre de taille penché avec lui
 (`rectangleDe`, `src/cadre.ts`). Plusieurs objets gardent leur cadre commun,
-droit, autour de tout.
+droit, autour de tout. Deuxième retouche (« trop de traits ») : un objet
+seul qui a un cadre de taille (une image, une formule, un trait) n'a plus
+qu'un trait plein fin, celui du cadre, ses poignées dessus, sans tirets en
+plus ; les points repérés sur une image prise n'ajoutent pas de tirets ;
+un objet droit a ses tirets serrés autour de son tracé, sans la place des
+noms ni le carré d'un cercle autour d'un arc.
 
 **Rogner une image** (retouches après le lot 5). *Rogner* est dans la barre
 d'actions d'une image seule (en tête), dans son menu court (le clic droit,
