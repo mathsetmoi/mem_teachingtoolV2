@@ -469,5 +469,6 @@ async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche
       if (f) partir(f)
     },
     nouveauChapitre: () => nouveauChapitre(dossierDuChapitre),
+    nouveauClasseurVierge: avecBibliotheque ? () => ui.bibliotheque?.nouveauClasseur({ vierge: true }) : null,
   })
 }

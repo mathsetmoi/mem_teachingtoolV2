@@ -6,7 +6,8 @@
 // classe, avec leur nombre de séances, et « + Nouveau chapitre… » : le nom
 // seulement, rangé dans le dossier), « Une autre classe : 4C · 5B » (un clic
 // ouvre le chapitre en cours de la classe et y commence une séance ; une
-// classe sans classeur propose d'en créer un).
+// classe sans classeur propose d'en créer un), et « Nouveau classeur
+// vierge… » (la fenêtre « Nouveau classeur », rangé hors de toute classe).
 // Une ligne « ✓ » ou « ✗ ÉCHEC » par vérification ; code de sortie 1 s'il y
 // a un échec ou une erreur JS.
 import { chromium } from '../commun/playwright.mjs'
@@ -91,6 +92,24 @@ await p.waitForFunction(() => window.__app?.classeur?.nom === 'Proportionnalité
 await pret()
 e = await p.evaluate(async () => ({ nom: window.__app.classeur.nom, dossier: (await window.__registre.classeur(window.__app.classeur.id))?.dossier, dlg: !!document.querySelector('dialog[open]'), s: window.__app.tableau.seancesDuClasseur().length, fond: window.__app.fond }))
 ok(e.nom === 'Proportionnalité' && e.dossier === 'd4c' && !e.dlg && e.s === 1 && e.fond === 'blanc', 'le nouveau chapitre s\'ouvre, rangé dans le dossier 4C, page blanche, sa séance commencée', e)
+
+// « Nouveau classeur vierge… » : la fenêtre « Nouveau classeur », à la racine, page blanche
+await trait(500, 300)
+await p.clock.setSystemTime(T0 + 120 * H)
+await p.reload(); await pret()
+await p.click('.accueil-classeur-vierge'); await p.waitForTimeout(300)
+const vierge = await p.evaluate(() => { const d = document.querySelector('dialog.dialogue-nouveau[open]'); return { titre: d?.querySelector('h2')?.textContent, dans: !!d?.querySelector('.dans'), chapitre: d?.classList.contains('dialogue-chapitre'), fond: d?.querySelector('input[name="fond"]:checked')?.value } })
+ok(vierge.titre === 'Nouveau classeur' && !vierge.dans && !vierge.chapitre && vierge.fond === 'blanc', '« Nouveau classeur vierge… » : la fenêtre « Nouveau classeur », sans dossier, page blanche cochée', vierge)
+await p.fill('dialog.dialogue-nouveau input[name="nom"]', 'Brouillon')
+await p.evaluate(() => { const c = document.querySelector('dialog.dialogue-nouveau input[name="cle"]'); if (c) c.checked = false })
+await p.click('dialog.dialogue-nouveau [data-a="creer"]')
+for (let k = 0; k < 40 && (await p.evaluate(() => window.__app?.classeur?.nom).catch(() => null)) !== 'Brouillon'; k++) {
+  await p.clock.runFor(500).catch(() => {}); await p.waitForTimeout(100)
+  await p.evaluate(() => [...document.querySelectorAll('dialog[open] button')].find(b => b.textContent === 'Ouvrir sans enregistrer')?.click()).catch(() => {})
+}
+await pret()
+e = await p.evaluate(async () => ({ nom: window.__app.classeur.nom, dossier: (await window.__registre.classeur(window.__app.classeur.id))?.dossier, dlg: !!document.querySelector('dialog[open]'), fond: window.__app.fond }))
+ok(e.nom === 'Brouillon' && e.dossier === null && !e.dlg && e.fond === 'blanc', 'le classeur vierge s\'ouvre, hors de toute classe, page blanche', e)
 
 ok(!erreurs.length, 'aucune erreur JS', erreurs)
 await nav.close()
