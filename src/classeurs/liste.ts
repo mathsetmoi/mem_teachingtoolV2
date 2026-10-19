@@ -116,6 +116,31 @@ export function lignesDesSeances(f: FicheClasseur): LigneSeance[] {
     .map(s => ({ id: s.id, date: dateCourteMajuscule(s.debut), nom: s.nom ?? null, pages: pagesLisibles(s.pages) }))
 }
 
+/** Une séance dans la liste « Séances » de la bibliothèque : d'où elle vient
+ *  (le classeur, son dossier), sa date, ses pages */
+export interface RangeeSeance { classeur: string; seance: string; nomClasseur: string; chemin: string; debut: number; date: string; nom: string | null; pages: string }
+
+/** Les séances de ces classeurs, la plus récente d'abord, rangées par mois
+ *  (« Octobre 2026 »). `chemin` dit le dossier d'un classeur. */
+export function seancesParMois(fiches: readonly FicheClasseur[], chemin: (f: FicheClasseur) => string): { mois: string; seances: RangeeSeance[] }[] {
+  const toutes: RangeeSeance[] = []
+  for (const f of fiches) {
+    for (const s of f.listeSeances ?? []) {
+      toutes.push({ classeur: f.id, seance: s.id, nomClasseur: f.nom, chemin: chemin(f), debut: s.debut, date: dateCourteMajuscule(s.debut), nom: s.nom ?? null, pages: pagesLisibles(s.pages) })
+    }
+  }
+  toutes.sort((a, b) => b.debut - a.debut || (a.seance < b.seance ? -1 : a.seance > b.seance ? 1 : a.classeur < b.classeur ? -1 : 1))
+  const groupes: { mois: string; seances: RangeeSeance[] }[] = []
+  for (const r of toutes) {
+    const m = new Date(r.debut).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    const mois = m.charAt(0).toUpperCase() + m.slice(1)
+    const dernier = groupes[groupes.length - 1]
+    if (dernier && dernier.mois === mois) dernier.seances.push(r)
+    else groupes.push({ mois, seances: [r] })
+  }
+  return groupes
+}
+
 /** Le titre de la petite icône de la clé (null : pas d'enregistrement
  *  automatique sur une clé) : « Sur la clé il y a 3 jours (Symétrie.memc) ».
  *  C'est la date de la dernière écriture réussie, pas une promesse : l'état

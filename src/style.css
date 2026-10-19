@@ -1676,6 +1676,31 @@ body.en-bibliotheque .toast { z-index: 30; }
 .biblio-place[hidden] { display: none; }
 .biblio-place.alerte { color: #7a4f00; font-weight: 700; }
 .bibliotheque.en-corbeille > .biblio-corps { display: none; }
+.bibliotheque.en-seances > .biblio-corps { display: none; }
+.biblio-vue-seances {
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+  padding: 0 max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+.biblio-vue-seances[hidden] { display: none; }
+.biblio-seances-tete { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 14px 0 10px; }
+.biblio-seances-tete h3 { margin: 0; font-size: 19px; }
+.biblio-seances-choix { display: inline-flex; margin-left: auto; border: 1px solid var(--bordure, #c9ced6); border-radius: 10px; overflow: hidden; }
+.biblio-seances-choix-bouton { min-height: 44px; padding: 0 14px; border: 0; background: transparent; font: inherit; font-size: 15px; cursor: pointer; }
+.biblio-seances-choix-bouton[aria-pressed="true"] { background: var(--bleu); color: #fff; font-weight: 700; }
+.biblio-seances-choix-bouton:disabled { opacity: 0.5; cursor: default; }
+.biblio-vue-seances button:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
+.seances-mois h4 { margin: 14px 0 6px; font-size: 15px; color: var(--encre-douce); }
+.seances-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.seance-ligne {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; width: 100%; min-height: 44px; padding: 8px 12px;
+  border: 1px solid var(--bordure, #d5d9e0); border-radius: 10px; background: transparent; font: inherit; text-align: left; cursor: pointer;
+}
+.seance-ligne:hover { background: rgba(59, 111, 182, 0.08); }
+.seance-date { font-weight: 700; min-width: 8ch; }
+.seance-classeur { font-weight: 700; }
+.seance-chemin, .seance-pages, .seance-nom { font-size: 14px; color: var(--encre-douce); }
+.biblio-seances-vide { margin: 0; padding: 48px 16px; text-align: center; color: var(--encre-douce); font-size: 17px; }
+.biblio-seances-vide[hidden] { display: none; }
 .biblio-vue-corbeille {
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
   padding: 0 max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));

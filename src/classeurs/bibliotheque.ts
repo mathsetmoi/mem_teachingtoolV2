@@ -110,6 +110,7 @@ import { adopterLesOrphelines } from './adoption'
 import { enregistrerDepuisLaBase } from './enregistrer'
 import { TEXTE_PUBLIEES_COPIE } from './reconnaitre'
 import { VueCorbeilleBiblio } from './vue-corbeille'
+import { VueSeancesBiblio } from './vue-seances'
 import type { Fichiers } from './fichiers'
 import { AIDE_ENREGISTRER_TOUT } from './fichiers'
 import { fermerSurLeFond } from '../dialogue'
@@ -336,6 +337,9 @@ export class Bibliotheque {
   /** « Corbeille (3) » (lot 4 C8), et la vue qu'il montre */
   private boutonCorbeille: HTMLButtonElement
   private vue: VueCorbeilleBiblio
+  /** « Séances » (idée B du lot 8) : toutes les séances par date, à la place des cartes */
+  private boutonSeances: HTMLButtonElement
+  private vueSeances: VueSeancesBiblio
   /** « Ce navigateur garde 120 Mo pour ce site. » */
   private placeEl: HTMLElement
   /** Les bases sans fiche ont été cherchées (une fois par chargement) */
@@ -449,6 +453,10 @@ export class Bibliotheque {
     this.boutonCorbeille.querySelector('.libelle')!.replaceChildren(
       Object.assign(document.createElement('span'), { className: 'libelle-long' }),
       Object.assign(document.createElement('span'), { className: 'libelle-court' }))
+    this.boutonSeances = this.bouton('Séances', 'automatismes', () => this.basculerVueSeances(), 'Toutes les séances, la plus récente d\'abord')
+    this.boutonSeances.classList.add('biblio-bouton-seances')
+    this.boutonSeances.dataset.action = 'seances'
+    this.boutonSeances.setAttribute('aria-pressed', 'false')
     this.boutonBandeau = this.bouton('Plus', 'points', () => this.basculerMenuBandeau(), 'Plus d\'actions sur la bibliothèque', true)
     this.boutonBandeau.setAttribute('aria-haspopup', 'menu'); this.boutonBandeau.setAttribute('aria-expanded', 'false')
     this.boutonBandeau.classList.add('biblio-plus')
@@ -468,7 +476,7 @@ export class Bibliotheque {
     // corbeille et le × tiennent sur la même ligne)
     const titreBloc = Object.assign(document.createElement('div'), { className: 'biblio-titre' })
     titreBloc.append(titre, this.compte)
-    tete.append(titreBloc, actions, this.boutonCorbeille, this.boutonBandeau, fermer, this.placeEl)
+    tete.append(titreBloc, actions, this.boutonSeances, this.boutonCorbeille, this.boutonBandeau, fermer, this.placeEl)
     // ----- La ligne du classeur ouvert -----
     this.ligneOuvert = Object.assign(document.createElement('div'), { className: 'biblio-ouvert', hidden: true })
     // ----- Les cartes -----
@@ -547,11 +555,23 @@ export class Bibliotheque {
       vider: () => void this.viderLaCorbeille(),
       revenir: () => this.quitterCorbeille(),
     })
+    this.vueSeances = new VueSeancesBiblio({
+      fiches: () => this.visibles(),
+      classeurOuvert: () => { const id = this.hote.classeur?.id; return id ? this.fiches.get(id) ?? null : null },
+      chemin: f => cheminLisible(f.dossier, this.dossiers),
+      voir: (classeur, seance) => {
+        const f = this.fiches.get(classeur)
+        if (!f) return
+        this.quitterVueSeances(false)
+        void this.ouvrirClasseur(f, { seance })
+      },
+      revenir: () => this.quitterVueSeances(),
+    })
     // Le cadre des fichiers qu'on lâche sur l'écran (lot 4 C9)
     this.depot = Object.assign(document.createElement('div'), { className: 'biblio-depot', hidden: true })
     this.depot.append(Object.assign(document.createElement('p'), { textContent: 'Lâchez pour ajouter à la bibliothèque' }))
     this.depot.setAttribute('aria-hidden', 'true')
-    el.append(tete, this.ligneOuvert, this.vue.el, this.corps, this.menuEl, this.menuBandeau, this.menuTriEl, this.depot)
+    el.append(tete, this.ligneOuvert, this.vue.el, this.vueSeances.el, this.corps, this.menuEl, this.menuBandeau, this.menuTriEl, this.depot)
     this.racine.appendChild(el)
     this.brancherPointeurs()
     // Ni le menu du navigateur sur un lien (« Ouvrir dans un nouvel onglet »
@@ -757,6 +777,7 @@ export class Bibliotheque {
     if (!this.ouvert || !this.peutFermer) return
     this.annulerGlisser()
     if (this.vue.ouverte) this.quitterCorbeille(false)
+    if (this.vueSeances.ouverte) this.quitterVueSeances(false)
     if (this.menuCarte || this.menuBandeauOuvert || this.menuTriOuvert) fermerMenu()
     this.finirSaisie(true)
     this.annulerClicNom()
@@ -1394,6 +1415,10 @@ export class Bibliotheque {
     // La vue de la corbeille : Échap ramène aux cartes ; Tab va de bouton en bouton
     if (this.vue.ouverte) {
       if (e.key === 'Escape') { fait(); this.quitterCorbeille() }
+      return
+    }
+    if (this.vueSeances.ouverte) {
+      if (e.key === 'Escape') { fait(); this.quitterVueSeances() }
       return
     }
     if (e.key === 'Escape') {
@@ -2437,6 +2462,7 @@ export class Bibliotheque {
     const sansCroix = !this.peutFermer
     if (this.fermerBouton.hidden !== sansCroix) this.fermerBouton.hidden = sansCroix
     if (this.vue.ouverte) this.vue.maj()
+    if (this.vueSeances.ouverte) this.vueSeances.maj()
   }
 
   private basculerCorbeille() {
@@ -2447,6 +2473,7 @@ export class Bibliotheque {
   /** La vue de la corbeille, à la place des cartes */
   ouvrirCorbeille() {
     if (!this.ouvert || this.depart || this.vue.ouverte) return
+    if (this.vueSeances.ouverte) this.quitterVueSeances(false)
     this.annulerGlisser()
     if (this.menuCarte || this.menuBandeauOuvert || this.menuTriOuvert) fermerMenu()
     this.finirSaisie(true)
@@ -2470,6 +2497,36 @@ export class Bibliotheque {
       if (!this.boutonCorbeille.disabled) this.boutonCorbeille.focus()
       else this.el.querySelector<HTMLElement>('.biblio-nouveau')?.focus()
     }
+  }
+
+  // ---------- La vue « Séances » (lot 8, idée B) ----------
+  private basculerVueSeances() {
+    if (this.vueSeances.ouverte) this.quitterVueSeances()
+    else this.ouvrirVueSeances()
+  }
+
+  /** Toutes les séances, à la place des cartes */
+  ouvrirVueSeances() {
+    if (!this.ouvert || this.depart || this.vueSeances.ouverte) return
+    if (this.vue.ouverte) this.quitterCorbeille(false)
+    this.annulerGlisser()
+    if (this.menuCarte || this.menuBandeauOuvert || this.menuTriOuvert) fermerMenu()
+    this.finirSaisie(true)
+    this.annulerClicNom()
+    this.el.classList.add('en-seances')
+    this.boutonSeances.setAttribute('aria-pressed', 'true')
+    this.vueSeances.ouvrir()
+  }
+
+  /** Retour aux cartes (« Bibliothèque », Échap, le bouton « Séances ») */
+  quitterVueSeances(rendreFocus = true) {
+    if (!this.vueSeances.ouverte) return
+    const avait = this.vueSeances.el.contains(document.activeElement)
+    this.vueSeances.fermer()
+    this.el.classList.remove('en-seances')
+    this.boutonSeances.setAttribute('aria-pressed', 'false')
+    this.rendre(null)
+    if (this.ouvert && (rendreFocus || avait)) this.boutonSeances.focus()
   }
 
   /** « Supprimer » (le menu d'une carte, Suppr) : le classeur ou le dossier

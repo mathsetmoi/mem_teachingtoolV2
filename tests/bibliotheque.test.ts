@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import type { FicheClasseur, FicheDossier } from '../src/classeurs/demarrage'
 import { baseDe } from '../src/classeurs/demarrage'
-import { RECENTS, aLaRacine, depuisQuand, libelleCarte, libelleSeances, lignesDesSeances, nombreDeClasseurs, nomDeClasseur, parDate, quandCourt, recents, texteLecteur, titreCle, titreDrive } from '../src/classeurs/liste'
+import { RECENTS, aLaRacine, depuisQuand, libelleCarte, libelleSeances, lignesDesSeances, seancesParMois, nombreDeClasseurs, nomDeClasseur, parDate, quandCourt, recents, texteLecteur, titreCle, titreDrive } from '../src/classeurs/liste'
 import type { EtatSauvegarde } from '../src/classeurs/etat'
 import { rappelAuDepart, resumeEtat } from '../src/classeurs/etat'
 
@@ -109,6 +109,25 @@ describe('les séances sous la carte d\'un classeur', () => {
 
   it('la fiche d\'un classeur sans liste n\'a aucune ligne', () => {
     expect(lignesDesSeances(fiche('x'))).toEqual([])
+  })
+})
+
+describe('la vue « Séances » de la bibliothèque', () => {
+  const t = (j: number, h = 9) => new Date(2026, j < 100 ? 9 : 10, j < 100 ? j : j - 100, h, 0).getTime()
+  const a = fiche('a', { nom: 'Fractions', listeSeances: [{ id: 's1', debut: t(5), pages: 2 }, { id: 's2', debut: t(12), pages: 3 }] })
+  const b = fiche('b', { nom: 'Triangles', listeSeances: [{ id: 's3', debut: t(103), nom: 'Révisions', pages: 1 }] })
+
+  it('la plus récente d\'abord, rangées par mois', () => {
+    const g = seancesParMois([a, b], f => f.id === 'a' ? '5ème › Fractions' : '5ème')
+    expect(g.map(x => x.mois)).toEqual(['Novembre 2026', 'Octobre 2026'])
+    expect(g[0].seances.map(x => x.seance)).toEqual(['s3'])
+    expect(g[1].seances.map(x => x.seance)).toEqual(['s2', 's1'])
+    expect(g[0].seances[0]).toMatchObject({ classeur: 'b', nomClasseur: 'Triangles', chemin: '5ème', nom: 'Révisions' })
+  })
+
+  it('un seul classeur, ou aucune séance', () => {
+    expect(seancesParMois([a], () => '').flatMap(x => x.seances).map(x => x.classeur)).toEqual(['a', 'a'])
+    expect(seancesParMois([fiche('c')], () => '')).toEqual([])
   })
 })
 
