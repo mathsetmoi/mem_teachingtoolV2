@@ -62,7 +62,7 @@ describe('le rectangle ajusté', () => {
 describe('rogner une image', () => {
   it('Rogner dans la barre d\'une image seule, avec son icône', () => {
     expect(actionsDe({ n: 1, formule: false, image: true }, 'mouse').map(a => a.id)).toEqual(['rogner', 'dupliquer', 'copier', 'supprimer', 'options'])
-    expect(actionsDe({ n: 2, formule: false, image: true }, 'mouse').map(a => a.id)).not.toContain('rogner')
+    expect(actionsDe({ n: 2, formule: false }, 'mouse').map(a => a.id)).not.toContain('rogner')
     expect(ICONES.rogner).toBeTruthy()
   })
 

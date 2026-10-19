@@ -452,6 +452,9 @@ export interface Cadre {
   cotes: boolean
   centre: P
   pastille: P
+  /** La pastille ↺, à gauche de ↻ (retouches après le lot 5) : elle tourne
+   *  aussi, et un clic dessus tourne d'un quart de tour à gauche */
+  inverse: P
   filet: [P, P]
   dessous: boolean
 }
@@ -530,6 +533,21 @@ export function cadreDe(formes: readonly Forme[], o: {
     coins = [{ x: r.x, y: r.y }, { x: r.x + r.l, y: r.y }, { x: r.x + r.l, y: r.y + r.h }, { x: r.x, y: r.y + r.h }]
     centre = { x: r.x + r.l / 2, y: r.y + r.h / 2 }
   }
+  // Le haut du cadre orienté est son bord le plus haut à l'écran (retouches
+  // après le lot 5, le souhait du professeur) : après un quart de tour, les
+  // pastilles restent au-dessus, là où on les attend, au lieu de suivre le
+  // haut de l'image sur le côté. Les coins tournent dans leur ordre : un coin
+  // et un côté gardent leur sens (voir matriceTaille).
+  if (genre === 'oriente') {
+    // (celui dont la normale, du centre vers son milieu, monte le plus)
+    let k = 0, ymin = Infinity
+    for (let i = 0; i < 4; i++) {
+      const mx = (coins[i].x + coins[(i + 1) % 4].x) / 2 - centre.x, my = (coins[i].y + coins[(i + 1) % 4].y) / 2 - centre.y
+      const l = Math.hypot(mx, my), y = l > 0 ? my / l : 0
+      if (y < ymin - 1e-9) { ymin = y; k = i }
+    }
+    if (k) coins = [...coins.slice(k), ...coins.slice(0, k)]
+  }
   // Les axes du cadre : u le long du bord du haut, v le long du bord de
   // gauche (vers le bas de l'objet)
   const lu = dist(coins[0], coins[1]), lv = dist(coins[0], coins[3])
@@ -556,7 +574,14 @@ export function cadreDe(formes: readonly Forme[], o: {
  *  milieu du bord du bas (la barre d'actions se pose alors en haut de la
  *  zone, voir placeBarre) ; seulement quand l'objet est en vue (cadre : sa
  *  boîte), sinon on montrerait une pastille sans objet. */
-function pastille(haut: P, bas: P, n: P, z: number, o: { pointeur: TypePointeur; zoneLibre: Boite }, cadre: Boite): Pick<Cadre, 'pastille' | 'filet' | 'dessous'> {
+function pastille(haut: P, bas: P, n: P, z: number, o: { pointeur: TypePointeur; zoneLibre: Boite }, cadre: Boite): Pick<Cadre, 'pastille' | 'inverse' | 'filet' | 'dessous'> {
+  // ↺ à gauche de ↻, le long du bord (n tourné d'un quart de tour), à un
+  // diamètre et 8 px d'écran
+  const r = placerPastille(haut, bas, n, z, o, cadre), d = (2 * POIGNEE.pastille[o.pointeur] + 8) / z
+  return { ...r, inverse: { x: r.pastille.x + n.y * d, y: r.pastille.y - n.x * d } }
+}
+
+function placerPastille(haut: P, bas: P, n: P, z: number, o: { pointeur: TypePointeur; zoneLibre: Boite }, cadre: Boite): Pick<Cadre, 'pastille' | 'filet' | 'dessous'> {
   const e = POIGNEE.ecart[o.pointeur] / z
   const dessus = { x: haut.x + n.x * e, y: haut.y + n.y * e }
   const zl = o.zoneLibre
@@ -595,6 +620,7 @@ export function poigneeSous(cadre: Cadre, s: P, cam: { x: number; y: number; z: 
     if (d <= rayon && d < dmin) { dmin = d; meilleur = { quoi, i } }
   }
   essayer(cadre.pastille, 'pastille', 0, Math.max(r, POIGNEE.pastille[pointeur]))
+  essayer(cadre.inverse, 'pastille', 1, Math.max(r, POIGNEE.pastille[pointeur]))
   cadre.coins.forEach((c, i) => essayer(c, 'coin', i, r))
   if (cadre.cotes && cadre.coins.length === 4) {
     for (let i = 0; i < 4; i++) essayer(milieu(cadre.coins[i], cadre.coins[(i + 1) % 4]), 'cote', i, r)
@@ -733,7 +759,11 @@ export function cadreTransforme(cadre: Cadre, M: Matrice): Cadre {
   const e = Math.hypot(d.x, d.y)
   const t = { x: M[0] * d.x + M[2] * d.y, y: M[1] * d.x + M[3] * d.y }, lt = Math.hypot(t.x, t.y)
   const p = lt > 0 ? { x: base.x + t.x / lt * e, y: base.y + t.y / lt * e } : appliquer(M, cadre.pastille)
-  return { ...cadre, coins: cadre.coins.map(q => appliquer(M, q)), centre: appliquer(M, cadre.centre), pastille: p, filet: [base, p] }
+  // ↺ reste à côté de ↻, à la même distance, tournée comme elle
+  const di = { x: cadre.inverse.x - cadre.pastille.x, y: cadre.inverse.y - cadre.pastille.y }, ei = Math.hypot(di.x, di.y)
+  const ti = { x: M[0] * di.x + M[2] * di.y, y: M[1] * di.x + M[3] * di.y }, lti = Math.hypot(ti.x, ti.y)
+  const inverse = lti > 0 ? { x: p.x + ti.x / lti * ei, y: p.y + ti.y / lti * ei } : { x: p.x + di.x, y: p.y + di.y }
+  return { ...cadre, coins: cadre.coins.map(q => appliquer(M, q)), centre: appliquer(M, cadre.centre), pastille: p, inverse, filet: [base, p] }
 }
 
 /** Ce que le cadre occupe (monde, au zoom z), ses poignées et sa pastille
@@ -741,7 +771,8 @@ export function cadreTransforme(cadre: Cadre, M: Matrice): Cadre {
  *  App.emprise), jamais dessus */
 export function etendueDuCadre(cadre: Cadre, pointeur: TypePointeur, z: number): Boite {
   const k = z > 0 ? z : 1, d = POIGNEE.dessin[pointeur] / 2 / k, r = POIGNEE.pastille[pointeur] / k
-  let x1 = cadre.pastille.x - r, y1 = cadre.pastille.y - r, x2 = cadre.pastille.x + r, y2 = cadre.pastille.y + r
+  let x1 = Math.min(cadre.pastille.x, cadre.inverse.x) - r, y1 = Math.min(cadre.pastille.y, cadre.inverse.y) - r
+  let x2 = Math.max(cadre.pastille.x, cadre.inverse.x) + r, y2 = Math.max(cadre.pastille.y, cadre.inverse.y) + r
   for (const q of cadre.coins) { x1 = Math.min(x1, q.x - d); y1 = Math.min(y1, q.y - d); x2 = Math.max(x2, q.x + d); y2 = Math.max(y2, q.y + d) }
   return { x: x1, y: y1, l: x2 - x1, h: y2 - y1 }
 }
@@ -750,7 +781,8 @@ export function etendueDuCadre(cadre: Cadre, pointeur: TypePointeur, z: number):
  *  ce que la barre d'actions et le menu complet ne couvrent jamais */
 export function zonePastille(cadre: Cadre, pointeur: TypePointeur, z: number, marge = 0): Boite {
   const r = (POIGNEE.pastille[pointeur] + marge) / (z > 0 ? z : 1)
-  return { x: cadre.pastille.x - r, y: cadre.pastille.y - r, l: 2 * r, h: 2 * r }
+  const x1 = Math.min(cadre.pastille.x, cadre.inverse.x) - r, y1 = Math.min(cadre.pastille.y, cadre.inverse.y) - r
+  return { x: x1, y: y1, l: Math.max(cadre.pastille.x, cadre.inverse.x) + r - x1, h: Math.max(cadre.pastille.y, cadre.inverse.y) + r - y1 }
 }
 
 /** Les poignées du cadre (monde, au zoom z), là où un appui les prend : un

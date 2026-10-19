@@ -370,10 +370,16 @@ describe('le cadre et ses poignées', () => {
     expect(c.dessous).toBe(false)
     // Au doigt et zoomé : plus loin à l'écran, autant dans le monde divisé par le zoom
     expect(cadreDe([image()], o(2, 'touch'))!.pastille.y).toBeCloseTo(-POIGNEE.ecart.touch / 2)
-    // Retournée la tête en bas (un demi-tour) : la pastille au-dessus de SON haut, sous elle à l'écran
+    // Retournée la tête en bas (un demi-tour), ou d'un quart de tour : la
+    // pastille reste au-dessus à l'écran (retouches après le lot 5 : elle ne
+    // suit plus le haut de l'image sur le côté), ↺ à sa gauche
     const r = transformerForme(image(), rotation({ x: 100, y: 50 }, Math.PI)) as ImageForme
     const cr = cadreDe([r], o())!
-    expect(cr.pastille.x).toBeCloseTo(100); expect(cr.pastille.y).toBeCloseTo(100 + POIGNEE.ecart.mouse)
+    expect(cr.pastille.x).toBeCloseTo(100); expect(cr.pastille.y).toBeCloseTo(-POIGNEE.ecart.mouse)
+    const q = transformerForme(image(), rotation({ x: 100, y: 50 }, Math.PI / 2)) as ImageForme
+    const cq = cadreDe([q], o())!
+    expect(cq.pastille.x).toBeCloseTo(100); expect(cq.pastille.y).toBeCloseTo(-50 - POIGNEE.ecart.mouse)
+    expect(cq.inverse.y).toBeCloseTo(cq.pastille.y); expect(cq.inverse.x).toBeCloseTo(100 - 2 * POIGNEE.pastille.mouse - 8)
   })
 
   it('une formule seule : orientée avec elle, quatre coins, pas de côtés', () => {
@@ -607,10 +613,11 @@ describe('les gestes du cadre (K6) : taille, rotation, curseurs, emprise', () =>
     expect(curseurPoignee(c, { quoi: 'cote', i: 0 })).toBe('ns-resize')
     expect(curseurPoignee(c, { quoi: 'cote', i: 1 })).toBe('ew-resize')
     expect(curseurPoignee(c, { quoi: 'pastille', i: 0 })).toBe('grab')
-    // Un quart de tour : les côtés échangent leur double flèche
+    // Un quart de tour : le haut du cadre reste le bord du haut à l'écran,
+    // les mêmes flèches
     const t = cadreDe([transformerForme(image(), rotation({ x: 100, y: 50 }, Math.PI / 2))], o())!
-    expect(curseurPoignee(t, { quoi: 'cote', i: 0 })).toBe('ew-resize')
-    expect(curseurPoignee(t, { quoi: 'coin', i: 0 })).toBe('nesw-resize')
+    expect(curseurPoignee(t, { quoi: 'cote', i: 0 })).toBe('ns-resize')
+    expect(curseurPoignee(t, { quoi: 'coin', i: 0 })).toBe('nwse-resize')
   })
 
   it('le cadre pendant le geste : ses coins par M ; la pastille tourne avec lui, sans s\'éloigner quand il grandit', () => {
@@ -628,10 +635,11 @@ describe('les gestes du cadre (K6) : taille, rotation, curseurs, emprise', () =>
     const e = etendueDuCadre(c, 'touch', 2)
     expect(e.x).toBeCloseTo(-POIGNEE.dessin.touch / 4)
     expect(e.y).toBeCloseTo(c.pastille.y - POIGNEE.pastille.touch / 2)
-    const d = zonePastille(c, 'mouse', 1)
-    expect(d.l).toBe(2 * POIGNEE.pastille.mouse)
-    expect(zonePastille(c, 'mouse', 2, 4).l).toBe(POIGNEE.pastille.mouse + 4)
-    expect(d.x + d.l / 2).toBeCloseTo(c.pastille.x)
+    // Les deux disques, ↺ et ↻ côte à côte
+    const d = zonePastille(c, 'mouse', 1), ecart = 2 * POIGNEE.pastille.mouse + 8
+    expect(d.l).toBe(2 * POIGNEE.pastille.mouse + ecart)
+    expect(d.h).toBe(2 * POIGNEE.pastille.mouse)
+    expect(d.x + d.l / 2).toBeCloseTo((c.pastille.x + c.inverse.x) / 2)
   })
 
   it('un objet plus grand que ce qu\'on voit (2000 %) : la pastille reste dans la zone libre, en bas ; hors de la vue, rien ne bouge', () => {
@@ -647,8 +655,8 @@ describe('les gestes du cadre (K6) : taille, rotation, curseurs, emprise', () =>
   })
 
   it('le message de la première image prise : Maj + coin seulement là où il y a un clavier', () => {
-    expect(messageCadre('mouse')).toBe('Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↻ : tourner (un clic : un quart de tour)')
-    expect(messageCadre('pen')).toBe('Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↻ : tourner (un clic : un quart de tour)')
-    expect(messageCadre('touch')).toBe('Coins : agrandir ou réduire ; côtés : déformer ; ↻ : tourner (touchez-la : un quart de tour)')
+    expect(messageCadre('mouse')).toBe('Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↺ ↻ : tourner (un clic : un quart de tour)')
+    expect(messageCadre('pen')).toBe('Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↺ ↻ : tourner (un clic : un quart de tour)')
+    expect(messageCadre('touch')).toBe('Coins : agrandir ou réduire ; côtés : déformer ; ↺ ↻ : tourner (touchez-les : un quart de tour)')
   })
 })

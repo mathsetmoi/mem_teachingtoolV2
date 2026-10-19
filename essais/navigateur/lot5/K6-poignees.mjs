@@ -228,7 +228,7 @@ await souris.survol(...Object.values(await ecran(P, 450, 350))); await P.mouse.c
 let k = await cadre(P)
 ok(meme(await sel(P), [I]) && k?.cadre.genre === 'oriente' && k.cadre.coins.length === 4 && k.cadre.cotes && k.pointeur === 'mouse', 'A1) Une image prise : un cadre orienté, quatre coins et des côtés, aux poignées de la souris', k)
 ok(Math.abs(k.cadre.pastille.y - (250 - 24)) < 0.01 && Math.abs(k.cadre.pastille.x - 450) < 0.01 && !k.cadre.dessous, '   … la pastille au-dessus du cadre, au milieu, à 24 px', k.cadre.pastille)
-ok((await msgs(P)).includes('Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↻ : tourner (un clic : un quart de tour)'), '   … le message de la première image prise', await msgs(P))
+ok((await msgs(P)).includes('Coins : agrandir ou réduire ; côtés ou Maj + coin : déformer ; ↺ ↻ : tourner (un clic : un quart de tour)'), '   … le message de la première image prise', await msgs(P))
 // A2. Les curseurs au survol
 const curseur = async (x, y) => { const s = await ecran(P, x, y); await P.mouse.move(s.x, s.y); await P.waitForTimeout(60); return P.evaluate(() => document.getElementById('zone').style.cursor) }
 const cs = { coin: await curseur(600, 450), coinHautDroit: await curseur(600, 250), cote: await curseur(600, 350), haut: await curseur(450, 250), pastille: await curseur(450, 226), dedans: await curseur(450, 350) }
@@ -598,7 +598,7 @@ let sD = await ecran(Dd.p, 450, 350)
 await Dd.doigt.bas(sD.x, sD.y); await attendre(50); await Dd.doigt.haut(); await Dd.p.waitForTimeout(400)
 k = await cadre(Dd.p)
 ok(meme(await sel(Dd.p), [ID]) && k?.pointeur === 'touch' && Math.abs(k.cadre.pastille.y - (250 - 36)) < 0.01, 'D1) Un toucher prend l\'image : les poignées du doigt (la pastille à 36 px)', k)
-ok((await msgs(Dd.p)).includes('Coins : agrandir ou réduire ; côtés : déformer ; ↻ : tourner (touchez-la : un quart de tour)'), '   … le message du doigt (sans « Maj »)', await msgs(Dd.p))
+ok((await msgs(Dd.p)).includes('Coins : agrandir ou réduire ; côtés : déformer ; ↺ ↻ : tourner (touchez-les : un quart de tour)'), '   … le message du doigt (sans « Maj »)', await msgs(Dd.p))
 // À 18 px du coin : la poignée se prend encore au doigt (20 px)
 avant = await etats(Dd.p, [ID])
 await glisser(Dd.p, Dd.doigt, { x: 612, y: 462 }, { x: 750, y: 550 })
