@@ -76,7 +76,7 @@
 //
 // UNE CLASSE RELIÉE AU DRIVE (lot 7, voir emplacements.ts) : la copie d'un
 // classeur de cette classe, sur ce Drive, va dans le dossier de la classe
-// (« MEM - Classeurs » › « 5A ») au lieu du dossier des sauvegardes ; la
+// (« MEM - Classeurs » › « 5A » › le dossier du chapitre) au lieu du dossier des sauvegardes ; la
 // copie d'avant y est déplacée (drive.ts). Arrivé là depuis ailleurs, un
 // classeur s'y copie même si rien n'a changé depuis sa dernière copie.
 // =============================================================
@@ -90,7 +90,7 @@ import type { EtatSauvegarde } from './etat'
 import type { Fichiers } from './fichiers'
 import { CLIENT_GOOGLE, COMPTES, compteDe } from '../publication/comptes'
 import {
-  VERSIONS_GARDEES, connecte, connecter, courrielDe, dernierCompteGoogle, dossierDeClasse, elaguerVersions, lireSauvegarde, nomDeSauvegarde, preparerGoogle,
+  VERSIONS_GARDEES, connecte, connecter, courrielDe, dernierCompteGoogle, dossierDuChapitre, elaguerVersions, lireSauvegarde, nomDeSauvegarde, preparerGoogle,
   sauvegarder, surConnexion, versionEnLigne,
 } from '../publication/drive'
 import { ecrivain, fabriquerFichier } from './ecrivain'
@@ -159,14 +159,14 @@ async function sousLeVerrou<T>(nom: string, f: () => Promise<T>, siLibre = false
 }
 
 type Resultat = 'copie' | 'deja' | 'rien' | 'connexion' | 'conflit' | 'erreur'
-/** Le dossier du Drive où va la copie de ce classeur : celui de sa classe,
- *  si elle est reliée à ce Drive (lot 7) ; undefined : le dossier des
- *  sauvegardes */
+/** Le dossier du Drive où va la copie de ce classeur : celui de son chapitre,
+ *  dans le dossier de sa classe, si elle est reliée à ce Drive (lot 7) ;
+ *  undefined : le dossier des sauvegardes */
 async function dossierDeLaCopie(registre: Registre, f: FicheClasseur, compte: CompteDrive): Promise<string | undefined> {
   const [liste, dossiers] = await Promise.all([emplacements(registre), registre.dossiers()])
   const e = emplacementDe(f.dossier, 'drive', liste, dossiers)
   const d = e && e.compte === compte ? dossiers.find(x => x.id === e.dossier) : undefined
-  return d ? (await dossierDeClasse(compte, { id: d.id, nom: d.nom })).id : undefined
+  return d ? (await dossierDuChapitre(compte, { id: d.id, nom: d.nom }, { id: f.id, nom: f.nom })).id : undefined
 }
 
 /** L'appareil, pour le garde-fou des deux ordinateurs (drive.ts) */
