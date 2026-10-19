@@ -88,6 +88,13 @@ export function rangerLesPages(ordre: readonly string[], seances: Iterable<[stri
   return r
 }
 
+/** Les séances où l'on a écrit (une page au moins), telles que la fiche du
+ *  classeur les garde pour la bibliothèque : de la plus ancienne à la plus
+ *  récente */
+export function resumeDesSeances(l: readonly SeanceDuClasseur[]): { id: string; debut: number; nom?: string; pages: number }[] {
+  return l.filter(s => s.pages.length > 0).map(s => ({ id: s.id, debut: s.debut, ...(s.nom ? { nom: s.nom } : {}), pages: s.pages.length }))
+}
+
 /** La séance d'une page selon ce rangement (null : aucune séance) */
 export function seanceDeLaPage(rangees: readonly SeanceDuClasseur[], page: string): SeanceDuClasseur | null {
   for (const s of rangees) if (s.pages.includes(page)) return s

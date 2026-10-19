@@ -87,6 +87,10 @@ export interface FicheClasseur {
   /** Le nombre de séances du chapitre (lot 6), à sa dernière écriture ;
    *  absent : on ne le sait pas (pas ouvert depuis le lot 6) */
   seances?: number
+  /** Ses séances (celles où l'on a écrit), de la plus ancienne à la plus
+   *  récente, à sa dernière écriture : la carte les montre sans ouvrir le
+   *  classeur. Facultatif : un classeur pas ouvert depuis ne les a pas. */
+  listeSeances?: { id: string; debut: number; nom?: string; pages: number }[]
 }
 
 /** Un dossier de la bibliothèque (parent null : à la racine) */
@@ -245,10 +249,12 @@ export function ecrireDernier(f: { id: string; base: string; nom: string }) {
  *  ligne comme en file://, depuis la clé). Recharger la page rouvre ce
  *  classeur. revoir.html et les liens publiés n'en dépendent pas : new
  *  URL('revoir.html', …) laisse tomber la requête, lienEleve la vide. */
-export function urlDuClasseur(href: string, id: string): string {
+export function urlDuClasseur(href: string, id: string, seance?: string): string {
   const u = new URL(href)
   u.search = ''; u.hash = ''
   u.searchParams.set('classeur', id)
+  // Arriver sur une séance précise (la carte, « 4 séances »)
+  if (seance) u.searchParams.set('seance', seance)
   return u.toString()
 }
 

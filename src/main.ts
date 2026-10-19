@@ -206,7 +206,10 @@ async function demarrer() {
   app.allerPageDeDepart()
   // La séance (lot 6) : on reste dans celle du jour si elle a servi depuis
   // moins d'une heure ; sinon, la fenêtre d'accueil (à la fin du démarrage)
-  const depart = app.seanceAuDemarrage({ nouvelle: lireNouvelleSeance(infos.id) })
+  let depart = app.seanceAuDemarrage({ nouvelle: lireNouvelleSeance(infos.id) })
+  // Arrivé par la ligne « séances » d'une carte : on va à cette séance, sans
+  // la fenêtre d'accueil (on l'a choisie)
+  if (SEANCE_VOULUE && voirLaSeance(app, SEANCE_VOULUE)) depart = { genre: 'rien' }
   // L'état de la sauvegarde : le bouton du classeur, le menu ⋯, le bandeau
   // (après le chargement : il lit le film pour savoir le travail non
   // enregistré, et le chargement n'est pas un changement)
@@ -282,6 +285,7 @@ async function demarrer() {
       tableau, ui, surveillance,
       // Renommé dans la bibliothèque de cet onglet (le canal ne revient pas à qui parle)
       classeurChange: nommer,
+      voirSeance: id => voirLaSeance(app, id),
       oublierMessage: cle => ui.oublierAction(cle),
       // Effacé depuis la corbeille de cet onglet (lot 4 C8) : les autres onglets
       // sont prévenus par la sauvegarde, plus rien ne s'écrit dans la base (ni
@@ -365,6 +369,20 @@ async function demarrer() {
   // et Safari décident seuls, sans rien demander ; Firefox pose sa question.
   // Rien n'est montré ici : ce n'est pas une sauvegarde (voir « Enregistrer le classeur »).
   navigator.storage?.persisted?.().then(oui => oui || navigator.storage.persist()).catch(() => {})
+}
+
+/** La séance où l'on arrive (« ?classeur=…&seance=… », par la ligne « séances »
+ *  d'une carte), lue avant que le démarrage remette l'adresse au propre : un
+ *  rechargement ne la rejoue pas */
+const SEANCE_VOULUE = new URLSearchParams(location.search).get('seance')
+
+/** Va à la première page d'une séance du classeur ouvert ; faux : elle n'existe
+ *  plus, ou n'a pas de page */
+function voirLaSeance(app: App, id: string): boolean {
+  const s = app.tableau.seancesDuClasseur().find(x => x.id === id)
+  if (!s || !s.pages.length) return false
+  app.voirPage(s.pages[0])
+  return true
 }
 
 /** La première fois que cette version ouvre le tableau d'avant (le premier

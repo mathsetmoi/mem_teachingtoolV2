@@ -12,6 +12,7 @@
 import type { FicheClasseur, FicheDossier } from './demarrage'
 import { LONGUEUR_NOM_CLASSEUR } from './demarrage'
 import { pagesLisibles } from '../fichier'
+import { dateCourteMajuscule } from '../seances'
 import { heureLisible } from '../revue/bande'
 
 /** Le nombre de classeurs dans « Récents » */
@@ -95,6 +96,24 @@ export function libelleCarte(f: FicheClasseur, maintenant: number): string {
   else if (f.cree > 0) parts.push(`Créé ${quandCourt(f.cree, maintenant)}`)
   if (f.pages !== null && f.pages > 0) parts.push(pagesLisibles(f.pages))
   return parts.length ? parts.join(' · ') : 'Pas encore ouvert depuis la mise à jour'
+}
+
+/** Ce que dit la ligne « séances » sous la carte d'un classeur : « 4
+ *  séances », « 1 séance » ; null : rien à déplier (aucune séance où l'on a
+ *  écrit, ou le classeur n'a pas été ouvert depuis qu'il en garde la liste) */
+export function libelleSeances(f: FicheClasseur): string | null {
+  const n = f.listeSeances?.length ?? 0
+  return n ? `${n} séance${n > 1 ? 's' : ''}` : null
+}
+
+/** Une ligne de la liste dépliée : « Lun 19 oct 8h », son nom s'il en a un,
+ *  « 3 pages » */
+export interface LigneSeance { id: string; date: string; nom: string | null; pages: string }
+
+/** Les séances d'un classeur, la plus récente d'abord */
+export function lignesDesSeances(f: FicheClasseur): LigneSeance[] {
+  return [...(f.listeSeances ?? [])].sort((a, b) => b.debut - a.debut || (a.id < b.id ? -1 : 1))
+    .map(s => ({ id: s.id, date: dateCourteMajuscule(s.debut), nom: s.nom ?? null, pages: pagesLisibles(s.pages) }))
 }
 
 /** Le titre de la petite icône de la clé (null : pas d'enregistrement
