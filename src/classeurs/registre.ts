@@ -29,6 +29,7 @@ import type { OuRemettre } from './corbeille'
 import { ouRemettre } from './corbeille'
 import { comparerVecteurs } from './vecteurs'
 import { oublierLesCles } from './effacer'
+import { resumeDesSeances } from '../seances'
 
 const MAGASINS = ['classeurs', 'dossiers', 'etat', 'apercus', 'poignees'] as const
 /** Le canal des onglets de ce navigateur sur la bibliothèque */
@@ -603,8 +604,10 @@ export class Registre {
       }
       x.ouvert = maintenant
       x.pages = tableau.ordre.length
-      const seances = tableau.seancesDuClasseur().length
-      if (seances) x.seances = seances
+      const rangees = tableau.seancesDuClasseur()
+      if (rangees.length) x.seances = rangees.length
+      const liste = resumeDesSeances(rangees)
+      if (liste.length) x.listeSeances = liste
       x.vecteur = Y.encodeStateVector(tableau.doc)
     })
     if (!f) return undefined

@@ -13,11 +13,11 @@
 //    la bibliothèque, le dossier relié (chaque classeur y garde son fichier),
 //    « Mes emplacements ».
 // C. « Enregistrer sur le Drive ou ailleurs… » (menu ⋯) : le dossier de la
-//    classe sur l'ordinateur, tenu à jour : un .memc par classeur, dans les
-//    mêmes sous-dossiers ; un fichier déjà là qui n'est pas à lui n'est pas
-//    écrasé.
+//    classe sur l'ordinateur, tenu à jour : un .memc par classeur, dans un
+//    dossier du chapitre rangé comme dans la bibliothèque ; un fichier déjà
+//    là qui n'est pas à lui n'est pas écrasé.
 // D. La même classe sur le Drive : « MEM - Classeurs › 4B », la copie d'avant
-//    déplacée (pas une seconde copie) ; la fenêtre « Ouvrir » montre la
+//    déplacée (pas une seconde copie) dans le dossier de son chapitre ; la fenêtre « Ouvrir » montre la
 //    classe, et un de ses classeurs s'ouvre comme un fichier ; toute la
 //    bibliothèque déposée une fois.
 // E. « Retirer » : plus relié, rien d'effacé.
@@ -245,8 +245,8 @@ try {
   const d4 = await p.evaluate(() => window.__dossier('4B'))
   const dGeo = await p.evaluate(d => window.__dossier('Geometrie', d), d4)
   const ids4 = await p.evaluate(([a, b]) => window.__creer([{ nom: 'Calcul', dossier: a }, { nom: 'Triangles', dossier: b }]), [d4, dGeo])
-  // Un fichier « Calcul.memc » qui n'est pas à lui, déjà dans le dossier choisi
-  await p.evaluate(() => window.__ecrireOpfs('Cle 4B', 'Calcul.memc', 'un autre fichier'))
+  // Un fichier « Calcul.memc » qui n'est pas à lui, déjà dans le dossier du chapitre « Calcul »
+  await p.evaluate(() => window.__ecrireOpfs('Cle 4B/Calcul', 'Calcul.memc', 'un autre fichier'))
   await p.keyboard.press('Escape')
   await p.evaluate(() => { if (window.__bibliotheque.ouvert) window.__bibliotheque.fermer?.() })
   await p.evaluate(() => window.__app.ui.enregistrerAilleurs?.())
@@ -270,12 +270,12 @@ try {
   await attendreToast(p, /reliée au dossier « Cle 4B »/, 20000)
   const t4 = (await toasts(p)).join(' / ')
   contenu = await p.evaluate(() => window.__lister('Cle 4B'))
-  ok(contenu['Calcul (2).memc'] > 0 && contenu['Calcul.memc'] === 'un autre fichier'.length && contenu['Geometrie']?.['Triangles.memc'] > 0,
-    'C5) Un .memc par classeur, dans les mêmes sous-dossiers ; le fichier qui n\'est pas à lui n\'est pas touché (« Calcul (2).memc »)', contenu)
+  ok(contenu['Calcul']?.['Calcul (2).memc'] > 0 && contenu['Calcul']?.['Calcul.memc'] === 'un autre fichier'.length && contenu['Geometrie']?.['Triangles']?.['Triangles.memc'] > 0,
+    'C5) Un dossier par chapitre, rangé comme dans la bibliothèque, avec son .memc ; le fichier qui n\'est pas à lui n\'est pas touché (« Calcul (2).memc »)', contenu)
   ok(/2 classeurs dans « Cle 4B »/.test(t4), 'C6) Le message le dit', t4)
   fs = await fiches(p)
   ok(fs.find(x => x.id === ids4[0])?.cle === 'Calcul (2).memc' && fs.find(x => x.id === ids4[1])?.cle === 'Triangles.memc', 'C7) Chacun l\'a pour fichier de sa clé', fs)
-  const ent = await p.evaluate(() => window.__entete('Cle 4B/Geometrie', 'Triangles.memc'))
+  const ent = await p.evaluate(() => window.__entete('Cle 4B/Geometrie/Triangles', 'Triangles.memc'))
   ok(ent.nom === 'Triangles' && ent.id === ids4[1], 'C8) Le fichier est bien celui du classeur (son en-tête)', ent)
   // Mettre à jour : rien en double
   await voirBibliotheque(p)
@@ -286,7 +286,7 @@ try {
   await p.click('.emplacement:has-text("4B") .e-maj')
   await attendreToast(p, /4B/, 20000)
   contenu = await p.evaluate(() => window.__lister('Cle 4B'))
-  ok(Object.keys(contenu).sort().join('|') === 'Calcul (2).memc|Calcul.memc|Geometrie', '   … « Mettre à jour » : rien en double', contenu)
+  ok(Object.keys(contenu).sort().join('|') === 'Calcul|Geometrie' && Object.keys(contenu['Calcul']).sort().join('|') === 'Calcul (2).memc|Calcul.memc', '   … « Mettre à jour » : rien en double', contenu)
   await toasts(p)
 
   // =====================================================================
@@ -313,12 +313,16 @@ try {
   const racineC = g.fichiers().find(x => x.name === 'MEM - Classeurs')
   const d4Drive = g.fichiers().find(x => x.name === '4B' && x.parents?.includes(racineC?.id))
   ok(!!racineC && racineC.appProperties?.memClasses === 'dossier-v1' && d4Drive?.appProperties?.memClasse === d4, 'D2) « MEM - Classeurs » et son sous-dossier « 4B », marqués', g.dossiers().map(x => [x.name, x.appProperties]))
-  const dansD4 = g.sauvegardes().filter(x => x.parents?.includes(d4Drive?.id))
-  ok(dansD4.map(x => x.name).sort().join('|') === 'Calcul.memc|Triangles.memc', 'D3) Ses deux classeurs dedans', dansD4.map(x => x.name))
+  // Un dossier par chapitre dans celui de la classe, marqué par l'id du classeur
+  const chapitres = g.dossiers().filter(x => x.parents?.includes(d4Drive?.id))
+  const chapitreDe = id => chapitres.find(x => x.appProperties?.memChapitre === id)
+  const dansD4 = g.sauvegardes().filter(x => chapitres.some(c => x.parents?.includes(c.id)))
+  ok(chapitres.map(x => x.name).sort().join('|') === 'Calcul|Triangles' && ids4.every(id => !!chapitreDe(id)), 'D3a) Un dossier par chapitre dans « 4B », marqué par le classeur', g.dossiers().map(x => [x.name, x.appProperties]))
+  ok(dansD4.map(x => x.name).sort().join('|') === 'Calcul.memc|Triangles.memc' && ids4.every(id => dansD4.some(x => x.appProperties?.memClasseur === id && x.parents?.includes(chapitreDe(id)?.id))), 'D3) Ses deux classeurs, chacun dans le dossier de son chapitre', dansD4.map(x => x.name))
   ok(g.sauvegardes().filter(x => x.appProperties?.memClasseur === ids4[0]).length === 1 && dansD4.some(x => x.id === ancienne.id), 'D4) La copie d\'avant de « Calcul » y a été déplacée (pas de seconde copie)', g.sauvegardes().map(x => [x.name, x.parents]))
   ok(/2 classeurs copiés|Tout y était/.test(tD), 'D5) Le message le dit', tD)
   fs = await fiches(p)
-  ok(fs.filter(x => ids4.includes(x.id)).every(x => x.copieDrive === 'mem' && x.drive?.dossier === d4Drive?.id), 'D6) Les fiches : copie voulue sur ce Drive, dans le dossier de la classe', fs.filter(x => ids4.includes(x.id)))
+  ok(fs.filter(x => ids4.includes(x.id)).every(x => x.copieDrive === 'mem' && x.drive?.dossier === chapitreDe(x.id)?.id), 'D6) Les fiches : copie voulue sur ce Drive, dans le dossier du chapitre', fs.filter(x => ids4.includes(x.id)))
   em = await lesEmplacements(p)
   ok(em.some(e => e.genre === 'drive' && e.dossier === d4 && e.compte === 'mem' && e.nom === '4B'), 'D7) L\'emplacement Drive est noté', em)
   ok(g.relais.length === 0, 'D8) Rien vers le relais des replays')

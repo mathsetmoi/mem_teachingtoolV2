@@ -3,10 +3,12 @@
 // Chrome et Edge savent choisir un dossier (showDirectoryPicker) et y
 // écrire ; ailleurs (Firefox, Safari, l'iPad), on choisit des fichiers.
 // Relier une classe à un dossier : chacun de ses classeurs y prend un
-// fichier à son nom (« Fractions.memc », dans les mêmes sous-dossiers que
-// dans la bibliothèque), qui devient le fichier de sa clé (cle.ts) : il
+// fichier à son nom, dans un dossier à lui (« Fractions / Fractions.memc »,
+// rangé dans les mêmes sous-dossiers que dans la bibliothèque : le dossier
+// du chapitre), qui devient le fichier de sa clé (cle.ts) : il
 // s'y écrit peu après chaque changement, avec tous ses garde-fous. Un
-// classeur qui a déjà le fichier de sa clé ailleurs le garde.
+// classeur qui a déjà le fichier de sa clé ailleurs le garde, et un fichier
+// du même classeur déjà là, à plat (le rangement d'avant), est repris où il est.
 //
 // Jamais rien d'écrasé :
 // - un fichier du même classeur, qui n'a rien de plus que la bibliothèque
@@ -106,13 +108,16 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
   const [fiches, dossiers] = await Promise.all([registre.classeurs(), registre.dossiers()])
   const classeurs = classeursDeLaClasse(classe, fiches, dossiers)
   const bilan: BilanRelier = { ecrits: [], adoptes: [], plusRiches: [], ailleurs: [], echecs: [] }
-  const sous = new Map<string, { d: PoigneeDossier; noms: string[] }>()
-  const dossierPour = async (chemin: string[]) => {
+  const sous = new Map<string, { d: PoigneeDossier; noms: string[] }>() // les dossiers déjà ouverts, par chemin
+  /** Le dossier de ce chemin sous le dossier relié ; `creer` faux : null s'il n'existe pas encore */
+  const dossierPour = async (chemin: string[], creer = true): Promise<{ d: PoigneeDossier; noms: string[] } | null> => {
     const cle = chemin.join('/')
     let x = sous.get(cle)
     if (x) return x
     let ici = d
-    for (const n of chemin) ici = await ici.getDirectoryHandle(nomSur(n, { repli: 'Dossier' }), { create: true })
+    for (const n of chemin) {
+      try { ici = await ici.getDirectoryHandle(nomSur(n, { repli: 'Dossier' }), { create: creer }) } catch (e) { if (creer) throw e; return null }
+    }
     x = { d: ici, noms: await nomsDe(ici) }
     sous.set(cle, x)
     return x
@@ -123,22 +128,32 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
     try {
       // Un classeur qui a déjà sa clé la garde (ici ou ailleurs)
       const deja = f.cle ? await registre.poignee<PoigneeFichier>(f.id).catch(() => undefined) : undefined
+      const sous = sousDossiers(f.dossier, classe, dossiers)
+      const base = nomSur(f.nom)
       if (deja) {
-        const ici = await dossierPour(sousDossiers(f.dossier, classe, dossiers))
-        const lie = await ici.d.getFileHandle(deja.name).then(h => memeFichier(h, deja)).catch(() => false)
+        // Il peut être dans le dossier de son chapitre, ou à plat (le rangement d'avant)
+        let lie = false
+        for (const chemin of [[...sous, base], sous]) {
+          const ici = await dossierPour(chemin, false)
+          if (ici && await ici.d.getFileHandle(deja.name).then(h => memeFichier(h, deja)).catch(() => false)) { lie = true; break }
+        }
         if (!lie) bilan.ailleurs.push(f.nom)
         continue
       }
-      const ici = await dossierPour(sousDossiers(f.dossier, classe, dossiers))
-      const base = nomSur(f.nom)
       const prevu = base + EXTENSION_TABLEAU
-      if (ici.noms.some(n => n.toLocaleLowerCase('fr') === prevu.toLocaleLowerCase('fr'))) {
-        const h = await ici.d.getFileHandle(ici.noms.find(n => n.toLocaleLowerCase('fr') === prevu.toLocaleLowerCase('fr'))!)
-        const r = await adopterSiLeMeme(registre, f, h)
-        if (r === 'adopte') { bilan.adoptes.push(f.nom); continue }
-        if (r === 'plus-riche') { bilan.plusRiches.push(f.nom); continue }
+      // Un fichier de ce classeur déjà là (dans le dossier de son chapitre, ou à plat) est repris tel quel
+      let adopte = false
+      for (const chemin of [[...sous, base], sous]) {
+        const ici = await dossierPour(chemin, false)
+        const nomLa = ici?.noms.find(n => n.toLocaleLowerCase('fr') === prevu.toLocaleLowerCase('fr'))
+        if (!ici || !nomLa) continue
+        const r = await adopterSiLeMeme(registre, f, await ici.d.getFileHandle(nomLa))
+        if (r === 'adopte') { bilan.adoptes.push(f.nom); adopte = true; break }
+        if (r === 'plus-riche') { bilan.plusRiches.push(f.nom); adopte = true; break }
       }
-      // Un fichier neuf, à un nom libre
+      if (adopte) continue
+      // Un fichier neuf, dans le dossier de son chapitre, à un nom libre
+      const ici = (await dossierPour([...sous, base]))!
       const nom = nomDeFichierLibre(base, EXTENSION_TABLEAU, ici.noms)
       const h = await ici.d.getFileHandle(nom, { create: true })
       ici.noms.push(nom)

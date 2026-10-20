@@ -2828,6 +2828,56 @@ emplacements »** en haut de la bibliothèque (3A).
   Drive personnel, regarder « MEM - Classeurs » dans Google Drive, puis
   rouvrir la classe depuis l'onglet « Google Drive » sur un autre poste.
 
+## Un dossier par chapitre, et toutes les séances au même endroit (lot 8)
+
+Choix du professeur, le 19 octobre 2026 (maquettes validées) : **dossier =
+la classe (« 5ème », « Auguste »), chapitre = un classeur**, et toutes les
+séances du chapitre au même endroit. Pas de distinction 5A / 5B.
+
+### Le mode d'emploi
+
+- **Sur l'ordinateur et sur le Drive, un chapitre est un vrai dossier.** Un
+  classeur relié à un dossier de classe s'écrit dans un dossier à son nom :
+  `5ème/Fractions/Fractions.memc` ; sur le Drive, « MEM - Classeurs › 5ème ›
+  Fractions › Fractions.memc ». Les sous-dossiers de la bibliothèque
+  (« Géométrie ») se retrouvent sur l'ordinateur ; le Drive garde un seul
+  niveau (classe › chapitre).
+- **Ce qui existait déjà ne se perd pas.** Un `.memc` posé à plat dans le
+  dossier de la classe est adopté tel quel s'il est le même classeur ; sur
+  le Drive, la copie d'avant est **déplacée** dans le dossier du chapitre à
+  la prochaine copie (jamais doublée).
+- **Les séances sous la carte.** Une carte dit « 3 séances » : un clic la
+  déplie, la plus récente d'abord, avec ses pages. Un clic sur une séance
+  ouvre le classeur à la première page de cette séance (en lecture si elle
+  est passée). Pour le clavier : le menu ⋯ de la carte, « Voir les séances ».
+- **Le bouton « Séances ».** Dans le bandeau de la bibliothèque, à côté de
+  « Corbeille » : toutes les séances, la plus récente d'abord, par mois.
+  « Chapitre en cours » (le classeur ouvert) est le choix de départ ; « Tous
+  les chapitres » montre toute la bibliothèque. Un clic ouvre la séance ;
+  Échap revient aux cartes.
+- **Les replays `.mem`** ne bougent pas : le lien des élèves passe toujours
+  par « MEM - Replay séances » (les liens déjà envoyés restent bons). Les
+  ranger aussi dans le dossier du chapitre n'est pas fait.
+
+### Comment c'est fait
+
+- `src/classeurs/ordinateur.ts` : `relierLesClasseurs` écrit chaque classeur
+  dans `[sous-dossiers…, nom du chapitre]`.
+- `src/publication/drive.ts` : `dossierDuChapitre` (marque `memChapitre` =
+  id du classeur, comme `memClasse` pour la classe) ; `listerLesClasses` et
+  `listerSauvegardes` regardent aussi ces sous-dossiers. `copie-drive.ts`
+  y envoie la copie.
+- La fiche d'un classeur gagne un champ **facultatif** `listeSeances`
+  (`{ id, debut, nom?, pages }[]`, écrit avec `seances` par `suivi.ts` et
+  `registre.noterOuverture`) ; l'adresse accepte `?classeur=ID&seance=SID`
+  (`main.ts`, lue avant que le démarrage ne nettoie l'adresse).
+- `src/classeurs/liste.ts` : `libelleSeances`, `lignesDesSeances`,
+  `seancesParMois` ; `vue-seances.ts` : la vue du bouton « Séances ».
+- Aucune base, aucune clé de stockage, aucun format de fichier ne change.
+- Les essais : `tests/bibliotheque.test.ts`, `lot7/E1-ailleurs.mjs` (adapté :
+  dossiers de chapitre), `lot8/E1-seances-carte.mjs`,
+  `lot8/E2-onglet-seances.mjs`.
+
 ## Reprendre un ancien tableau (.prof)
 
 Les séances d'avant ce classeur sont des **anciens tableaux** : un fichier

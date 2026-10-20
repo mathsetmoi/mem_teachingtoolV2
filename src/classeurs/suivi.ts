@@ -14,6 +14,7 @@
 import * as Y from 'yjs'
 import type { Tableau } from '../document'
 import type { Registre } from './registre'
+import { resumeDesSeances } from '../seances'
 
 /** Au plus une écriture de la fiche toutes les… */
 const INTERVALLE = 30_000
@@ -65,13 +66,16 @@ export class SuiviDuClasseur {
     try { this.onNote?.() } catch { /* rien de gardé */ }
     const modifie = this.dernierChangement
     const pages = this.tableau.ordre.length
-    const seances = this.tableau.seancesDuClasseur().length
+    const rangees = this.tableau.seancesDuClasseur()
+    const seances = rangees.length
+    const liste = resumeDesSeances(rangees)
     const vecteur = Y.encodeStateVector(this.tableau.doc)
     this.ecriture = this.ecriture
       .then(() => this.registre.modifierClasseur(this.id, f => {
         f.modifie = Math.max(f.modifie || 0, modifie)
         f.pages = pages
         if (seances) f.seances = seances
+        if (liste.length) f.listeSeances = liste
         f.vecteur = vecteur
       }))
       .then(() => { try { this.onEcrit?.() } catch { /* la carte se refera à la prochaine ouverture */ } }, () => { /* la prochaine écriture la remettra à jour */ })

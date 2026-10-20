@@ -50,6 +50,8 @@ const MARQUE_SAUVEGARDES: MarqueDossier = { cle: 'memSauvegardes', valeur: 'doss
  *  chacun de ses sous-dossiers : l'id du dossier de classe de la bibliothèque */
 const MARQUE_CLASSES: MarqueDossier = { cle: 'memClasses', valeur: 'dossier-v1', quoi: 'des classes' }
 const MARQUE_CLASSE = 'memClasse'
+/** Le dossier d'un chapitre dans celui de sa classe : l'id du classeur */
+const MARQUE_CHAPITRE = 'memChapitre'
 /** Un fichier déposé une fois sur le Drive (toute la bibliothèque, lot 7) */
 const MARQUE_DEPOT = { cle: 'memDepot', valeur: 'v1' }
 const DOSSIER_DRIVE = 'application/vnd.google-apps.folder'
@@ -553,7 +555,13 @@ export async function listerSauvegardes(compte: string): Promise<SauvegardeListe
   const classes = await trouverDossier(c.classeurs, MARQUE_CLASSES)
   if (classes) {
     const q = `trashed=false and '${classes.id}' in parents and mimeType='${DOSSIER_DRIVE}'`
-    parents.push(...(await chercherTout(q, 'id,name,mimeType,trashed')).filter(f => !f.trashed && f.mimeType === DOSSIER_DRIVE).map(f => f.id))
+    const dossiersDeClasses = (await chercherTout(q, 'id,name,mimeType,trashed')).filter(f => !f.trashed && f.mimeType === DOSSIER_DRIVE).map(f => f.id)
+    parents.push(...dossiersDeClasses)
+    // et le dossier de chaque chapitre dans celui de sa classe
+    for (const cl of dossiersDeClasses) {
+      const qc = `trashed=false and '${cl}' in parents and mimeType='${DOSSIER_DRIVE}'`
+      parents.push(...(await chercherTout(qc, 'id,name,mimeType,trashed,appProperties')).filter(f => !f.trashed && f.mimeType === DOSSIER_DRIVE && f.appProperties?.[MARQUE_CHAPITRE]).map(f => f.id))
+    }
   }
   const toutes: SauvegardeListee[] = []
   for (const parent of parents) {
@@ -621,9 +629,15 @@ async function chercherLeDossierDeClasse(compte: string, classe: { id: string; n
   const c = compteDe(compte)
   if (!c) throw new Error('Ce compte n\'existe pas.')
   const { dossier: parent } = await dossierPrive(c.classeurs, MARQUE_CLASSES)
-  const nom = nomSur(classe.nom, { repli: 'Classe' })
-  const q = `trashed=false and '${parent.id}' in parents and mimeType='${DOSSIER_DRIVE}' and appProperties has { key='${MARQUE_CLASSE}' and value='${echapper(classe.id)}' }`
-  const trouves = (await chercherTout(q, CHAMPS)).filter(f => !f.trashed && f.appProperties?.[MARQUE_CLASSE] === classe.id)
+  return dossierMarque(parent.id, MARQUE_CLASSE, classe.id, nomSur(classe.nom, { repli: 'Classe' }))
+}
+
+/** Le sous-dossier de `parent` marqué `cle` = `id` : trouvé, ou créé privé ;
+ *  il porte `nom` (un renommage dans la bibliothèque le suit). Partagé : on
+ *  refuse, comme pour les autres dossiers. */
+async function dossierMarque(parent: string, cle: string, id: string, nom: string): Promise<{ id: string; nom: string }> {
+  const q = `trashed=false and '${parent}' in parents and mimeType='${DOSSIER_DRIVE}' and appProperties has { key='${cle}' and value='${echapper(id)}' }`
+  const trouves = (await chercherTout(q, CHAMPS)).filter(f => !f.trashed && f.appProperties?.[cle] === id)
   const trouve = trouves.find(f => !partage(f)) ?? trouves[0]
   if (trouve) {
     if (partage(trouve)) throw new Error(`Le dossier « ${trouve.name} » de ce Drive est partagé. Dans Google Drive, remettez son accès sur « Limité » (seulement vous), puis réessayez.`)
@@ -631,7 +645,7 @@ async function chercherLeDossierDeClasse(compte: string, classe: { id: string; n
     return { id: trouve.id, nom }
   }
   const cree = await appeler<{ id: string }>(`${API}?fields=id&ignoreDefaultVisibility=true`, enJson('POST', {
-    name: nom, mimeType: DOSSIER_DRIVE, parents: [parent.id], appProperties: { [MARQUE_CLASSE]: classe.id },
+    name: nom, mimeType: DOSSIER_DRIVE, parents: [parent], appProperties: { [cle]: id },
   }))
   if (partage(await fiche(cree.id))) {
     await appeler(`${API}/${encodeURIComponent(cree.id)}`, enJson('PATCH', { trashed: true })).catch(() => {})
@@ -639,6 +653,21 @@ async function chercherLeDossierDeClasse(compte: string, classe: { id: string; n
   }
   return { id: cree.id, nom }
 }
+
+/** Le dossier d'un chapitre (un classeur) dans le dossier de sa classe :
+ *  « MEM - Classeurs › 5ème › Fractions », marqué par l'id du classeur, créé
+ *  au besoin, privé. La copie du classeur et ses séances publiées y vont. */
+export async function dossierDuChapitre(compte: string, classe: { id: string; nom: string }, classeur: { id: string; nom: string }): Promise<{ id: string; nom: string }> {
+  // Retenu quelques minutes : chaque copie du classeur le demande
+  const cle = `${compte}\n${classe.id}\n${classe.nom}\n${classeur.id}\n${classeur.nom}`
+  const connu = dossiersDeChapitre.get(cle)
+  if (connu && Date.now() - connu.t < 10 * 60_000 && connecte(compte)) return connu.dossier
+  const parent = await dossierDeClasse(compte, classe)
+  const dossier = await dossierMarque(parent.id, MARQUE_CHAPITRE, classeur.id, nomSur(classeur.nom, { repli: 'Chapitre' }))
+  dossiersDeChapitre.set(cle, { dossier, t: Date.now() })
+  return dossier
+}
+const dossiersDeChapitre = new Map<string, { dossier: { id: string; nom: string }; t: number }>()
 
 /** Un fichier du Drive que la fenêtre « Ouvrir » peut proposer */
 export interface FichierDuDrive { id: string; nom: string; modifie: number; taille: number }
@@ -662,7 +691,11 @@ export async function listerLesClasses(compte: string): Promise<ClasseDuDrive[]>
   const classes: ClasseDuDrive[] = []
   const tri = (a: { nom: string }, b: { nom: string }) => a.nom.localeCompare(b.nom, 'fr', { numeric: true })
   for (const d of dedans.filter(f => f.mimeType === DOSSIER_DRIVE && !f.trashed)) {
-    const fichiers = (await chercherTout(`trashed=false and '${d.id}' in parents`, champs)).filter(ouvrable).map(enFichier).sort(tri)
+    // Ceux de la classe elle-même (le rangement d'avant) et ceux du dossier de chaque chapitre
+    const contenu = await chercherTout(`trashed=false and '${d.id}' in parents`, champs)
+    const lots = [contenu]
+    for (const ch of contenu.filter(f => f.mimeType === DOSSIER_DRIVE && !f.trashed)) lots.push(await chercherTout(`trashed=false and '${ch.id}' in parents`, champs))
+    const fichiers = lots.flat().filter(ouvrable).map(enFichier).sort(tri)
     classes.push({ id: d.id, nom: d.name, classe: d.appProperties?.[MARQUE_CLASSE] ?? '', fichiers })
   }
   classes.sort(tri)

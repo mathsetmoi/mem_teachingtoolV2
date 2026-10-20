@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import type { FicheClasseur, FicheDossier } from '../src/classeurs/demarrage'
 import { baseDe } from '../src/classeurs/demarrage'
-import { RECENTS, aLaRacine, depuisQuand, libelleCarte, nombreDeClasseurs, nomDeClasseur, parDate, quandCourt, recents, texteLecteur, titreCle, titreDrive } from '../src/classeurs/liste'
+import { RECENTS, aLaRacine, depuisQuand, libelleCarte, libelleSeances, lignesDesSeances, seancesParMois, nombreDeClasseurs, nomDeClasseur, parDate, quandCourt, recents, texteLecteur, titreCle, titreDrive } from '../src/classeurs/liste'
 import type { EtatSauvegarde } from '../src/classeurs/etat'
 import { rappelAuDepart, resumeEtat } from '../src/classeurs/etat'
 
@@ -84,6 +84,50 @@ describe('les dates des cartes', () => {
     expect(sp(depuisQuand(T - 3 * J, T))).toBe('il y a 3 jours')
     expect(sp(depuisQuand(T - 6 * J, T))).toBe('il y a 6 jours')
     expect(sp(depuisQuand(T - 9 * J, T))).toBe('le 1er octobre')
+  })
+})
+
+describe('les séances sous la carte d\'un classeur', () => {
+  const lundi = new Date(2026, 9, 12, 8, 0).getTime(), mercredi = new Date(2026, 9, 14, 10, 0).getTime(), vendredi = new Date(2026, 9, 16, 14, 0).getTime()
+  const f = fiche('x', { listeSeances: [{ id: 'b', debut: mercredi, pages: 4 }, { id: 'a', debut: lundi, nom: 'Rappels du cours', pages: 3 }, { id: 'c', debut: vendredi, pages: 1 }] })
+
+  it('« 3 séances », « 1 séance » ; rien quand on ne les connaît pas', () => {
+    expect(libelleSeances(f)).toBe('3 séances')
+    expect(libelleSeances(fiche('x', { listeSeances: [{ id: 'a', debut: lundi, pages: 2 }] }))).toBe('1 séance')
+    expect(libelleSeances(fiche('x'))).toBeNull()
+    expect(libelleSeances(fiche('x', { listeSeances: [] }))).toBeNull()
+  })
+
+  it('la plus récente d\'abord, avec son nom et ses pages', () => {
+    const l = lignesDesSeances(f)
+    expect(l.map(x => x.id)).toEqual(['c', 'b', 'a'])
+    expect(l.map(x => sp(x.pages))).toEqual(['1 page', '4 pages', '3 pages'])
+    expect(l[2].nom).toBe('Rappels du cours')
+    expect(l[0].nom).toBeNull()
+    expect(sp(l[0].date)).toMatch(/^Ven 16 oct 14h/)
+  })
+
+  it('la fiche d\'un classeur sans liste n\'a aucune ligne', () => {
+    expect(lignesDesSeances(fiche('x'))).toEqual([])
+  })
+})
+
+describe('la vue « Séances » de la bibliothèque', () => {
+  const t = (j: number, h = 9) => new Date(2026, j < 100 ? 9 : 10, j < 100 ? j : j - 100, h, 0).getTime()
+  const a = fiche('a', { nom: 'Fractions', listeSeances: [{ id: 's1', debut: t(5), pages: 2 }, { id: 's2', debut: t(12), pages: 3 }] })
+  const b = fiche('b', { nom: 'Triangles', listeSeances: [{ id: 's3', debut: t(103), nom: 'Révisions', pages: 1 }] })
+
+  it('la plus récente d\'abord, rangées par mois', () => {
+    const g = seancesParMois([a, b], f => f.id === 'a' ? '5ème › Fractions' : '5ème')
+    expect(g.map(x => x.mois)).toEqual(['Novembre 2026', 'Octobre 2026'])
+    expect(g[0].seances.map(x => x.seance)).toEqual(['s3'])
+    expect(g[1].seances.map(x => x.seance)).toEqual(['s2', 's1'])
+    expect(g[0].seances[0]).toMatchObject({ classeur: 'b', nomClasseur: 'Triangles', chemin: '5ème', nom: 'Révisions' })
+  })
+
+  it('un seul classeur, ou aucune séance', () => {
+    expect(seancesParMois([a], () => '').flatMap(x => x.seances).map(x => x.classeur)).toEqual(['a', 'a'])
+    expect(seancesParMois([fiche('c')], () => '')).toEqual([])
   })
 })
 

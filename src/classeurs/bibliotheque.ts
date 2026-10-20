@@ -99,7 +99,7 @@ import type { ActionEtat } from './etat'
 import { rappelAuDepart, resumeEtat, texteRappel } from './etat'
 import type { CleALArrivee, PoigneeFichier } from './cle'
 import { AIDE_ACTIVER, ID_CHOIX, TYPES_CLASSEUR, ecrireLeNeuf, examinerPourUnNeuf, raisonCle } from './cle'
-import { libelleCarte, nombreDeClasseurs, nomDeClasseur, recents, texteLecteur, titreCle, titreDrive } from './liste'
+import { libelleCarte, libelleSeances, lignesDesSeances, nombreDeClasseurs, nomDeClasseur, recents, texteLecteur, titreCle, titreDrive } from './liste'
 import {
   BLOQUE, PAS_EFFACE, TITRE_VIDER, contenuDeLaCorbeille, contenuDuDossier, elementsDeLaCorbeille, jamaisEnregistre, libelleCorbeille, pagesDe,
   sauvegardesDe, texteCeQuiReste, texteDefinitifClasseur, texteDefinitifDossier, texteEfface, texteJamais, texteMisALaCorbeille, textePlace,
@@ -110,6 +110,7 @@ import { adopterLesOrphelines } from './adoption'
 import { enregistrerDepuisLaBase } from './enregistrer'
 import { TEXTE_PUBLIEES_COPIE } from './reconnaitre'
 import { VueCorbeilleBiblio } from './vue-corbeille'
+import { VueSeancesBiblio } from './vue-seances'
 import type { Fichiers } from './fichiers'
 import { AIDE_ENREGISTRER_TOUT } from './fichiers'
 import { fermerSurLeFond } from '../dialogue'
@@ -159,6 +160,9 @@ export interface HoteBibliotheque {
   /** Le message à action de cette clé s'en va (son « Annuler » n'a plus
    *  d'objet : ce qu'il rendait vient d'être effacé) */
   oublierMessage?(cle: string): void
+  /** Aller à la première page d'une séance du classeur de cet onglet (la
+   *  ligne « séances » de sa carte) ; faux : cette séance n'existe plus */
+  voirSeance?(id: string): boolean
 }
 
 /** Ce qu'on dit au classeur où l'on arrive (sessionStorage, le temps du
@@ -333,6 +337,9 @@ export class Bibliotheque {
   /** « Corbeille (3) » (lot 4 C8), et la vue qu'il montre */
   private boutonCorbeille: HTMLButtonElement
   private vue: VueCorbeilleBiblio
+  /** « Séances » (idée B du lot 8) : toutes les séances par date, à la place des cartes */
+  private boutonSeances: HTMLButtonElement
+  private vueSeances: VueSeancesBiblio
   /** « Ce navigateur garde 120 Mo pour ce site. » */
   private placeEl: HTMLElement
   /** Les bases sans fiche ont été cherchées (une fois par chargement) */
@@ -389,6 +396,8 @@ export class Bibliotheque {
   private copieEnCours = false
   /** On part vers un autre classeur (une seule fois) */
   private depart = false
+  /** Les classeurs dont la ligne « séances » est dépliée */
+  private seancesOuvertes = new Set<string>()
   /** Les changements venus d'ailleurs, à faire quand plus rien n'est ouvert */
   private aAppliquer = { classeurs: new Set<string>(), dossiers: false }
   /** Tout est à refaire quand le champ du nom se fermera */
@@ -444,6 +453,11 @@ export class Bibliotheque {
     this.boutonCorbeille.querySelector('.libelle')!.replaceChildren(
       Object.assign(document.createElement('span'), { className: 'libelle-long' }),
       Object.assign(document.createElement('span'), { className: 'libelle-court' }))
+    this.boutonSeances = this.bouton('Séances', 'automatismes', () => this.basculerVueSeances(), 'Toutes les séances, la plus récente d\'abord')
+    this.boutonSeances.classList.add('biblio-bouton-seances')
+    this.boutonSeances.setAttribute('aria-label', 'Séances')
+    this.boutonSeances.dataset.action = 'seances'
+    this.boutonSeances.setAttribute('aria-pressed', 'false')
     this.boutonBandeau = this.bouton('Plus', 'points', () => this.basculerMenuBandeau(), 'Plus d\'actions sur la bibliothèque', true)
     this.boutonBandeau.setAttribute('aria-haspopup', 'menu'); this.boutonBandeau.setAttribute('aria-expanded', 'false')
     this.boutonBandeau.classList.add('biblio-plus')
@@ -463,7 +477,7 @@ export class Bibliotheque {
     // corbeille et le × tiennent sur la même ligne)
     const titreBloc = Object.assign(document.createElement('div'), { className: 'biblio-titre' })
     titreBloc.append(titre, this.compte)
-    tete.append(titreBloc, actions, this.boutonCorbeille, this.boutonBandeau, fermer, this.placeEl)
+    tete.append(titreBloc, actions, this.boutonSeances, this.boutonCorbeille, this.boutonBandeau, fermer, this.placeEl)
     // ----- La ligne du classeur ouvert -----
     this.ligneOuvert = Object.assign(document.createElement('div'), { className: 'biblio-ouvert', hidden: true })
     // ----- Les cartes -----
@@ -542,11 +556,23 @@ export class Bibliotheque {
       vider: () => void this.viderLaCorbeille(),
       revenir: () => this.quitterCorbeille(),
     })
+    this.vueSeances = new VueSeancesBiblio({
+      fiches: () => this.visibles(),
+      classeurOuvert: () => { const id = this.hote.classeur?.id; return id ? this.fiches.get(id) ?? null : null },
+      chemin: f => cheminLisible(f.dossier, this.dossiers),
+      voir: (classeur, seance) => {
+        const f = this.fiches.get(classeur)
+        if (!f) return
+        this.quitterVueSeances(false)
+        void this.ouvrirClasseur(f, { seance })
+      },
+      revenir: () => this.quitterVueSeances(),
+    })
     // Le cadre des fichiers qu'on lâche sur l'écran (lot 4 C9)
     this.depot = Object.assign(document.createElement('div'), { className: 'biblio-depot', hidden: true })
     this.depot.append(Object.assign(document.createElement('p'), { textContent: 'Lâchez pour ajouter à la bibliothèque' }))
     this.depot.setAttribute('aria-hidden', 'true')
-    el.append(tete, this.ligneOuvert, this.vue.el, this.corps, this.menuEl, this.menuBandeau, this.menuTriEl, this.depot)
+    el.append(tete, this.ligneOuvert, this.vue.el, this.vueSeances.el, this.corps, this.menuEl, this.menuBandeau, this.menuTriEl, this.depot)
     this.racine.appendChild(el)
     this.brancherPointeurs()
     // Ni le menu du navigateur sur un lien (« Ouvrir dans un nouvel onglet »
@@ -752,6 +778,7 @@ export class Bibliotheque {
     if (!this.ouvert || !this.peutFermer) return
     this.annulerGlisser()
     if (this.vue.ouverte) this.quitterCorbeille(false)
+    if (this.vueSeances.ouverte) this.quitterVueSeances(false)
     if (this.menuCarte || this.menuBandeauOuvert || this.menuTriOuvert) fermerMenu()
     this.finirSaisie(true)
     this.annulerClicNom()
@@ -1002,8 +1029,71 @@ export class Bibliotheque {
     const etiquettes = Object.assign(document.createElement('span'), { className: 'carte-etiquettes', hidden: true })
     for (const x of [apercu, nom, chemin, infos, etiquettes]) x.setAttribute('aria-hidden', 'true')
     a.append(apercu, nom, chemin, infos, etiquettes)
-    li.append(a, this.boutonOptions(li))
+    li.append(a, this.boutonOptions(li), ...this.zoneSeances(li))
     return li
+  }
+
+  /** La ligne « 4 séances ▸ » sous la carte d'un classeur et sa liste
+   *  dépliée (les séances où l'on a écrit, la plus récente d'abord) : hors de
+   *  l'ordre de Tab comme le ⋯ ; au clavier, le menu de la carte la déplie.
+   *  Chaque séance ouvre le classeur sur sa première page. */
+  private zoneSeances(li: HTMLElement): [HTMLButtonElement, HTMLUListElement] {
+    const bascule = document.createElement('button')
+    bascule.type = 'button'; bascule.className = 'carte-seances-bascule'; bascule.hidden = true; bascule.tabIndex = -1
+    bascule.setAttribute('aria-expanded', 'false')
+    bascule.append(Object.assign(document.createElement('span'), { className: 'carte-seances-texte' }),
+      Object.assign(document.createElement('span'), { className: 'carte-seances-fleche', textContent: '▸' }))
+    bascule.querySelector('.carte-seances-fleche')!.setAttribute('aria-hidden', 'true')
+    bascule.addEventListener('click', e => { e.stopPropagation(); this.basculerSeances(li.dataset.cle!) })
+    const liste = document.createElement('ul')
+    liste.className = 'carte-seances-liste'; liste.hidden = true
+    return [bascule, liste]
+  }
+
+  /** Déplier ou replier les séances d'un classeur */
+  private basculerSeances(cle: string) {
+    if (this.seancesOuvertes.has(cle)) this.seancesOuvertes.delete(cle); else this.seancesOuvertes.add(cle)
+    this.rendre(new Set([cle]))
+  }
+
+  /** La ligne « séances » et sa liste (rien n'est touché qui n'a pas changé) */
+  private majSeances(c: HTMLElement, f: FicheClasseur) {
+    const bascule = c.querySelector<HTMLButtonElement>('.carte-seances-bascule')
+    const liste = c.querySelector<HTMLElement>('.carte-seances-liste')
+    if (!bascule || !liste) return
+    const texte = libelleSeances(f)
+    const ouvert = !!texte && this.seancesOuvertes.has(f.id)
+    if (bascule.hidden === !!texte) bascule.hidden = !texte
+    if (texte) {
+      const t = bascule.querySelector<HTMLElement>('.carte-seances-texte')!
+      if (t.textContent !== texte) t.textContent = texte
+      const aria = String(ouvert)
+      if (bascule.getAttribute('aria-expanded') !== aria) bascule.setAttribute('aria-expanded', aria)
+      const label = `${texte} de « ${f.nom} »`
+      if (bascule.getAttribute('aria-label') !== label) bascule.setAttribute('aria-label', label)
+    }
+    if (liste.hidden === ouvert) liste.hidden = !ouvert
+    if (!ouvert) { if (liste.childElementCount) { liste.replaceChildren(); delete liste.dataset.sig } return }
+    const lignes = lignesDesSeances(f)
+    const sig = lignes.map(l => `${l.id}\u0001${l.date}\u0001${l.nom ?? ''}\u0001${l.pages}`).join('\u0002') + '\u0003' + f.nom
+    if (liste.dataset.sig === sig) return
+    liste.dataset.sig = sig
+    liste.setAttribute('aria-label', `Séances de « ${f.nom} »`)
+    liste.replaceChildren(...lignes.map(l => {
+      const li = document.createElement('li')
+      const b = document.createElement('button')
+      b.type = 'button'; b.className = 'carte-seance'
+      b.append(Object.assign(document.createElement('span'), { className: 'seance-date', textContent: l.date }),
+        Object.assign(document.createElement('span'), { className: 'seance-pages', textContent: l.pages }))
+      if (l.nom) b.append(Object.assign(document.createElement('span'), { className: 'seance-nom', textContent: l.nom }))
+      b.addEventListener('click', e => {
+        e.stopPropagation()
+        const x = this.fiches.get(f.id)
+        if (x) void this.ouvrirClasseur(x, { seance: l.id, ...(e.detail !== 0 ? { x: e.clientX, y: e.clientY } : {}) })
+      })
+      li.append(b)
+      return li
+    }))
   }
 
   /** Le nom, la date et les pages, les étiquettes, le chemin (avec un
@@ -1042,6 +1132,7 @@ export class Bibliotheque {
     if (x) { if (img.getAttribute('src') !== x.url) img.src = x.url; if (img.hidden) img.hidden = false }
     else if (img.hasAttribute('src') || !img.hidden) { img.removeAttribute('src'); img.hidden = true }
     this.montrerSansApercu(c, !x)
+    this.majSeances(c, f)
   }
 
   /** « Pas encore d'aperçu » et les petits carreaux, ou l'image */
@@ -1327,6 +1418,10 @@ export class Bibliotheque {
       if (e.key === 'Escape') { fait(); this.quitterCorbeille() }
       return
     }
+    if (this.vueSeances.ouverte) {
+      if (e.key === 'Escape') { fait(); this.quitterVueSeances() }
+      return
+    }
     if (e.key === 'Escape') {
       fait()
       if (this.filtre !== null) this.choisirFiltre(null)
@@ -1476,7 +1571,7 @@ export class Bibliotheque {
       this.ouvrirMenuCarte(id, { x: e.clientX, y: e.clientY })
       return
     }
-    if (cible.closest('.options-classeur') || e.button !== 0) return
+    if (cible.closest('.options-classeur, .carte-seances-bascule, .carte-seances-liste') || e.button !== 0) return
     // Un second doigt : rien (voir touchstart, qui arrête le premier)
     if (this.appui) return
     const l = this.listeDe(carte)
@@ -1569,6 +1664,8 @@ export class Bibliotheque {
       for (const k of ['data-cle', 'data-id', 'data-dossier', 'tabindex', 'aria-label', 'aria-current', 'href', 'title']) x.removeAttribute(k)
     }
     fantome.querySelector('.options-classeur')?.remove()
+    fantome.querySelector('.carte-seances-bascule')?.remove()
+    fantome.querySelector('.carte-seances-liste')?.remove()
     fantome.querySelector('.biblio-poignee')?.remove()
     fantome.querySelector('.carte-saisie')?.remove()
     fantome.setAttribute('aria-hidden', 'true')
@@ -1808,6 +1905,8 @@ export class Bibliotheque {
   entreesDuMenu(f: FicheClasseur, m: HTMLElement) {
     const ici = this.hote.classeur?.id === f.id
     entreeMenu(m, 'Ouvrir', () => void this.ouvrirClasseur(f), { touche: 'Entrée', action: 'ouvrir-classeur', aide: ici ? 'Il est ouvert dans cet onglet' : undefined })
+    const seances = libelleSeances(f)
+    if (seances) entreeMenu(m, this.seancesOuvertes.has(f.id) ? 'Cacher les séances' : `Voir les séances (${seances})`, () => this.basculerSeances(f.id), { action: 'voir-seances' })
     for (const bloc of this.blocsDuMenu) { filetMenu(m); bloc(f, m) }
   }
 
@@ -2364,6 +2463,7 @@ export class Bibliotheque {
     const sansCroix = !this.peutFermer
     if (this.fermerBouton.hidden !== sansCroix) this.fermerBouton.hidden = sansCroix
     if (this.vue.ouverte) this.vue.maj()
+    if (this.vueSeances.ouverte) this.vueSeances.maj()
   }
 
   private basculerCorbeille() {
@@ -2374,6 +2474,7 @@ export class Bibliotheque {
   /** La vue de la corbeille, à la place des cartes */
   ouvrirCorbeille() {
     if (!this.ouvert || this.depart || this.vue.ouverte) return
+    if (this.vueSeances.ouverte) this.quitterVueSeances(false)
     this.annulerGlisser()
     if (this.menuCarte || this.menuBandeauOuvert || this.menuTriOuvert) fermerMenu()
     this.finirSaisie(true)
@@ -2397,6 +2498,36 @@ export class Bibliotheque {
       if (!this.boutonCorbeille.disabled) this.boutonCorbeille.focus()
       else this.el.querySelector<HTMLElement>('.biblio-nouveau')?.focus()
     }
+  }
+
+  // ---------- La vue « Séances » (lot 8, idée B) ----------
+  private basculerVueSeances() {
+    if (this.vueSeances.ouverte) this.quitterVueSeances()
+    else this.ouvrirVueSeances()
+  }
+
+  /** Toutes les séances, à la place des cartes */
+  ouvrirVueSeances() {
+    if (!this.ouvert || this.depart || this.vueSeances.ouverte) return
+    if (this.vue.ouverte) this.quitterCorbeille(false)
+    this.annulerGlisser()
+    if (this.menuCarte || this.menuBandeauOuvert || this.menuTriOuvert) fermerMenu()
+    this.finirSaisie(true)
+    this.annulerClicNom()
+    this.el.classList.add('en-seances')
+    this.boutonSeances.setAttribute('aria-pressed', 'true')
+    this.vueSeances.ouvrir()
+  }
+
+  /** Retour aux cartes (« Bibliothèque », Échap, le bouton « Séances ») */
+  quitterVueSeances(rendreFocus = true) {
+    if (!this.vueSeances.ouverte) return
+    const avait = this.vueSeances.el.contains(document.activeElement)
+    this.vueSeances.fermer()
+    this.el.classList.remove('en-seances')
+    this.boutonSeances.setAttribute('aria-pressed', 'false')
+    this.rendre(null)
+    if (this.ouvert && (rendreFocus || avait)) this.boutonSeances.focus()
   }
 
   /** « Supprimer » (le menu d'une carte, Suppr) : le classeur ou le dossier
@@ -2778,10 +2909,11 @@ export class Bibliotheque {
    *  4) la page se recharge sur l'adresse du classeur.
    *  Celui de l'onglet : l'écran se ferme (le second clic d'un double-clic
    *  ne tombe pas sur le tableau). arrivee : ce qu'on dira en arrivant. */
-  async ouvrirClasseur(f: FicheClasseur, o: { x?: number; y?: number; arrivee?: string; cle?: CleALArrivee } = {}) {
+  async ouvrirClasseur(f: FicheClasseur, o: { x?: number; y?: number; arrivee?: string; cle?: CleALArrivee; seance?: string } = {}) {
     const ici = this.hote.classeur
     if (ici && f.id === ici.id) {
       this.fermer()
+      if (o.seance && this.hote.voirSeance?.(o.seance) === false) this.hote.message('Cette séance n\'existe plus dans ce classeur.')
       if (o.x !== undefined && o.y !== undefined) avalerLeSecondAppui(o.x, o.y)
       return
     }
@@ -2838,7 +2970,7 @@ export class Bibliotheque {
       // La connexion Google suit l'onglet d'un classeur à l'autre (la copie
       // sur le Drive continue sans un clic, voir publication/drive.ts)
       passerLaConnexion()
-      location.assign(urlDuClasseur(location.href, f.id))
+      location.assign(urlDuClasseur(location.href, f.id, o.seance))
     } finally {
       if (!parti) this.depart = false
     }

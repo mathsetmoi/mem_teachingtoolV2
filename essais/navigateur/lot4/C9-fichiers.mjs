@@ -293,12 +293,12 @@ if (seul('A')) {
   await p.click('.barre-haut .bouton.points'); await p.waitForTimeout(150)
   const aide = await p.evaluate(() => document.querySelector('.menu-flottant:not([hidden]) .menu-item[data-action="ouvrir"] small')?.textContent)
   await p.keyboard.press('Escape')
-  ok(aide === 'Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace celui-ci.', 'A1) Le menu ⋯ : « Ouvrir un classeur… » (Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace celui-ci.)', aide)
+  ok(aide === 'Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace celui-ci. Reprend aussi un ancien tableau (.prof).', 'A1) Le menu ⋯ : « Ouvrir un classeur… » (Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace celui-ci. Reprend aussi un ancien tableau (.prof).)', aide)
   await ctrlO(p, 'Symétrie centrale 2026-10-07 14h05.memc')
   const d = await dialogue(p)
   const choix = await p.evaluate(() => window.__choix.at(-1))
-  ok(choix?.o?.multiple === true && choix.o.id === 'mem-classeurs' && JSON.stringify(choix.o.types) === JSON.stringify([{ description: 'Classeur ou bibliothèque (MEM teachingtool)', accept: { 'application/octet-stream': ['.memc', '.memb'] } }]),
-    'A2) Ctrl + O : showOpenFilePicker({ multiple: true, id: mem-classeurs, types : .memc et .memb })', choix)
+  ok(choix?.o?.multiple === true && choix.o.id === 'mem-classeurs' && JSON.stringify(choix.o.types) === JSON.stringify([{ description: 'Classeur, bibliothèque ou ancien tableau (MEM teachingtool)', accept: { 'application/octet-stream': ['.memc', '.memb', '.prof'] } }]),
+    'A2) Ctrl + O : showOpenFilePicker({ multiple: true, id: mem-classeurs, types : .memc, .memb et .prof })', choix)
   ok(d?.titre === 'Ouvrir ce classeur ?' && /^« Symétrie centrale 2026-10-07 14h05\.memc » : 1 page, enregistré le \S+ \d+(er)? \S+ \d{4} à \d+ h \d\d\.$/.test(d.textes[0]) && d.textes.length === 1,
     `A3) « Ouvrir ce classeur ? » : « ${d?.textes[0]} »`, d)
   ok(boutons(d) === 'Annuler | Remplacer « Premier classeur »… | Ajouter à la bibliothèque' && d.boutons[2].principal && !d.boutons[1].principal && d.focus === 'ajouter',
@@ -893,7 +893,7 @@ if (seul('I')) {
   await p.keyboard.press('Control+o')
   const ch = await fc
   const acc = await ch.element().getAttribute('accept')
-  ok(ch.isMultiple() && acc === '.memc,.memb', `I1) Sans showOpenFilePicker : le choix de fichier d'avant, plusieurs à la fois, accept « ${acc} »`)
+  ok(ch.isMultiple() && acc === '.memc,.memb,.prof', `I1) Sans showOpenFilePicker : le choix de fichier d'avant, plusieurs à la fois, accept « ${acc} »`)
   await ch.setFiles([TRAVAIL + 'I-un.memc', TRAVAIL + 'I-deux.memc'])
   const d = await dialogue(p)
   ok(d?.textes[0] === '2 fichiers : 2 classeurs à ajouter.' && !d.case, '   … deux fichiers : « 2 fichiers : 2 classeurs à ajouter. » (aucune case : pas de poignée)', d)
