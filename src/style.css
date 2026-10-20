@@ -2221,7 +2221,7 @@ body.en-revue .bandeau-seance, body.en-trieuse .bandeau-seance, body.en-trieuse 
 }
 .biblio-recherche:focus-within { border-color: var(--bleu); box-shadow: 0 0 0 3px #dfe9f7; }
 .biblio-recherche svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.biblio-recherche input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 15px; color: var(--encre); }
+.biblio-recherche input { flex: 1; min-width: 0; align-self: stretch; margin: -1px 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 15px; color: var(--encre); }
 .biblio-recherche input::-webkit-search-cancel-button { display: none; }
 .bibliotheque.en-recherche .biblio-corps > :not(.resultats-biblio):not(.biblio-haut) { display: none !important; }
 .resultats-biblio { max-width: 1100px; }
