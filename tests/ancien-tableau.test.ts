@@ -6,7 +6,7 @@ import type { AncienTableau, PreparerImage } from '../src/classeurs/ancien-table
 import { ErreurAncien, finDuClasseur, latexDuTexte, lireAncienTableau, reprendre, texteDuBilan, textesAvantAnciens } from '../src/classeurs/ancien-tableau'
 import { ecrireTableau, lireTableau } from '../src/fichier'
 import { seancesDuTableau } from '../src/revoir/exporter'
-import type { Formule, ImageForme, Trait } from '../src/types'
+import type { Cercle, Formule, ImageForme, Polygone, Trait } from '../src/types'
 
 const T0 = new Date(2026, 8, 29, 8, 0).getTime()
 const MIN = 60_000
@@ -81,8 +81,8 @@ describe('reprendre un ancien tableau', () => {
     const tab = new Tableau(null)
     const a = lireAncienTableau(fichier(), 'Séance.prof')
     const b = await reprendre(tab, a, preparer)
-    expect(b).toEqual({ pages: 2, traits: 3, images: 1, textes: 1, laisses: 1, imagesIllisibles: 0 })
-    expect(texteDuBilan(a, b)).toBe('« Séance » : 2 pages, 3 traits, 1 image, 1 texte (devenu une formule), avec son film. 1 objet (figures, courbes ou post-its) n\'a pas été repris.')
+    expect(b).toEqual({ pages: 2, traits: 3, images: 1, textes: 1, figures: 0, laisses: 1, imagesIllisibles: 0 })
+    expect(texteDuBilan(a, b)).toBe('« Séance » : 2 pages, 3 traits, 1 image, 1 texte (devenu une formule), avec son film. 1 objet (cercles, polygones, courbes ou post-its) n\'a pas été repris.')
     const seances = tab.seancesDuClasseur()
     expect(seances).toHaveLength(1)
     expect(seances[0].debut).toBe(T0)
@@ -113,6 +113,49 @@ describe('reprendre un ancien tableau', () => {
     expect(tab.doc.getMap('images').get(im.src)).toBe(PNG)
     const fo = formes.find((f): f is Formule => f.type === 'formule')!
     expect([fo.x, fo.y, fo.couleur, fo.taille]).toEqual([120, 80, '#16a085', 20])
+  })
+
+  it('les figures : points en croix, segment et droite qui suivent leurs points, arc au compas, liés à leur image', async () => {
+    const tab = new Tableau(null)
+    const image = { id: 1, x: 0, y: 0, w: 400, h: 200, cx: 0, cy: 0, cw: 400, ch: 200, srcRef: 'a1', z: 1 }
+    const A = { id: 2, x: 10, y: 20, color: '#e74c3c', shape: 'cross', z: 2 }, B = { id: 3, x: 110, y: 20, color: '#e74c3c', shape: 'cross', z: 3 }
+    const C = { id: 4, x: 50, y: 300, color: '#2d3436', shape: 'cross', z: 4 }
+    const seg = { id: 5, p1_id: 2, p2_id: 3, lineType: 'segment', color: '#e74c3c', width: 3, dash: 'solid', arrowStart: 0, arrowEnd: 0, z: 5, surObjet: { type: 'image', id: 1, aCote: false } }
+    const droite = { id: 6, p1_id: 2, p2_id: 4, lineType: 'droite', color: '#2d3436', width: 8, dash: 'dashed', arrowStart: 0, arrowEnd: 0, z: 6 }
+    const arc = { id: 7, type: 'arc', cx: 0, cy: 0, radius: 100, startAngle: 3, endAngle: 0.5, counterClockwise: false, color: '#2d3436', width: 3, dash: 'dotted', z: 7 }
+    const B2 = { ...B, y: 60 }
+    const a = lireAncienTableau(JSON.stringify({ name: 'x', data: { assets: { a1: PNG }, pages: [{
+      ...vide, images: [image], points: [A, B2, C], segments: [seg, droite], arcs: [arc],
+      filmArchive: [{ ...vide, images: [image], t: T0 }],
+      film: [
+        { points: { '+': [A, B] }, segments: { '+': [seg] }, t: T0 + MIN },
+        { points: { '+': [C] }, segments: { '+': [droite] }, arcs: { '+': [arc] }, t: T0 + 2 * MIN },
+        // B bouge : le segment le suit
+        { points: [A, B2, C], t: T0 + 3 * MIN },
+      ],
+    }] } }))
+    const b = await reprendre(tab, a, preparer)
+    expect(b.figures).toBe(6)
+    expect(b.laisses).toBe(0)
+    expect(texteDuBilan(a, b)).toBe('« x » : 1 page, 0 trait, 1 image, 6 figures, avec son film.')
+    const formes = [...tab.formesDe(tab.ordre.get(0))!.values()]
+    const im = formes.find(f => f.type === 'image')!
+    const lignes = formes.filter((f): f is Polygone => f.type === 'polygone' && f.pts.length === 4)
+    const points = formes.filter((f): f is Polygone => f.type === 'polygone' && f.pts.length === 2)
+    expect(points).toHaveLength(3)
+    for (const p of points) expect([p.sommets, p.stylePoints, p.noms]).toEqual([true, [{ marque: 'croix' }], undefined])
+    // A et B, sous le segment posé sur l'image, la suivent ; C non
+    expect(points.filter(p => p.lie === im.id)).toHaveLength(2)
+    const s = lignes.find(l => !l.prolonge)!, dr = lignes.find(l => l.prolonge)!
+    expect(s.lie).toBe(im.id)
+    expect([s.x - im.x, s.y - im.y, s.pts]).toEqual([10, 20, [0, 0, 100, 40]])
+    expect([dr.prolonge, dr.tirets, dr.taille, dr.couleur, dr.lie]).toEqual(['droite', true, 4.5, '#2d3436', undefined])
+    const ce = formes.find((f): f is Cercle => f.type === 'cercle')!
+    expect([ce.x - im.x, ce.y - im.y, ce.r, ce.tirets]).toEqual([0, 0, 100, true])
+    expect(ce.arc!.a0).toBe(3)
+    expect(ce.arc!.a1).toBeCloseTo(0.5 + 2 * Math.PI)
+    // Le film : le segment est posé, puis reposé quand B bouge
+    expect(tab.film.toArray().map(e => e.t)).toEqual([T0, T0, T0 + MIN, T0 + 2 * MIN, T0 + 3 * MIN])
   })
 
   it('une image tournée garde son centre', async () => {
@@ -168,7 +211,7 @@ describe('reprendre un ancien tableau', () => {
     expect(textesAvantAnciens([a], null)).toEqual({
       textes: [
         '« 2 - Mardi 29 septembre 2026 » : séance du mardi 29 septembre 2026, 2 pages.',
-        'Il devient une séance d\'un classeur, avec ses traits, ses images, ses textes et son film.',
+        'Il devient une séance d\'un classeur, avec ses traits, ses images, ses figures, ses textes et son film.',
       ],
       ajoutable: false,
     })

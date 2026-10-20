@@ -20,10 +20,15 @@
 //   (comme « Rogner » ici) ; une image posée en fond est fixée en fond ;
 // - les textes : des formules (\text{…}), à leur place, de leur couleur et
 //   de leur taille ; la mise en forme (gras, listes, bulles) se perd ;
+// - les figures : un point devient un point marqué de sa croix (comme
+//   l'outil Point, sans nom) ; un segment ou une droite, une ligne entre
+//   ses deux points (prolongée pour une droite), qui suit ses points s'ils
+//   bougent ; un arc tracé au compas, un arc de cercle. Les pointillés
+//   restent en tirets ; une figure posée sur une image lui reste liée ;
 // - le film : chaque geste devient une étape du film, à son heure, sur sa
 //   page. « Revoir la construction » et Publier le rejouent comme une
 //   séance écrite ici.
-// Le reste (figures, courbes, post-its) n'est pas repris : le bilan le
+// Le reste (cercles, rectangles, polygones, courbes, post-its) n'est pas repris : le bilan le
 // compte, rien ne disparaît sans qu'on le dise.
 // Le tableau est décalé pour que ce qui est écrit commence en haut à
 // gauche de la page (on écrivait autour du centre de l'écran).
@@ -33,7 +38,7 @@
 // =============================================================
 import type { Tableau } from '../document'
 import { ORIGINE_LOCALE } from '../document'
-import type { Fond, Forme, Formule, ImageForme, Trait } from '../types'
+import type { Cercle, Fond, Forme, Formule, ImageForme, MarquePoint, Polygone, Trait } from '../types'
 import { uid } from '../types'
 
 export const EXTENSION_ANCIEN = '.prof'
@@ -42,7 +47,7 @@ export const EXTENSION_ANCIEN = '.prof'
 const FAMILLES = ['points', 'segments', 'circles', 'rectangles', 'texts', 'freehands', 'curves', 'polygons', 'images', 'arcs', 'htmlPostits'] as const
 type Famille = typeof FAMILLES[number]
 /** Celles qui se reprennent */
-const REPRISES: readonly Famille[] = ['freehands', 'images', 'texts']
+const REPRISES: readonly Famille[] = ['freehands', 'images', 'texts', 'points', 'segments', 'arcs']
 
 /** Les fonds d'un ancien tableau, dans son ordre, et ce qu'ils deviennent :
  *  le Seyès avec marge et la copie double perdent leur marge */
@@ -50,6 +55,12 @@ const FONDS: Fond[] = ['blanc', 'carreaux', 'seyes', 'seyes', 'carreaux', 'milli
 
 /** L'opacité du surligneur, comme celui d'ici (voir App, case 'surligneur') */
 const OPACITE_SURLIGNEUR = 0.35
+
+/** L'épaisseur d'une figure ne dépasse pas celle d'ici (voir App.figure) */
+const TAILLE_FIGURE_MAX = 4.5
+
+/** Les marques d'un point d'un ancien tableau, et ce qu'elles deviennent */
+const MARQUES: Record<string, MarquePoint> = { cross: 'croix', plus: 'plus', dot: 'point', point: 'point', circle: 'rond', none: 'aucun' }
 
 type Objet = Record<string, unknown> & { id?: unknown }
 type Etat = Record<Famille, Objet[]>
@@ -80,7 +91,9 @@ export interface BilanAncien {
   traits: number
   images: number
   textes: number
-  /** Les objets qui ne se reprennent pas (figures, courbes, post-its),
+  /** Points, segments, droites et arcs */
+  figures: number
+  /** Les objets qui ne se reprennent pas (cercles, courbes, post-its…),
    *  comptés une fois chacun, qu'ils soient restés ou non */
   laisses: number
   /** Des images qui n'ont pas pu être lues */
@@ -196,8 +209,38 @@ function boiteImage(o: Objet): { x: number; y: number; w: number; h: number } | 
 function coins(f: Famille, o: Objet): P[] {
   if (f === 'freehands') return pointsDe(o)
   if (f === 'images') { const b = boiteImage(o); return b ? [{ x: b.x, y: b.y }, { x: b.x + b.w, y: b.y + b.h }] : [] }
-  if (f === 'texts' && Number.isFinite(o.x) && Number.isFinite(o.y)) return [{ x: o.x as number, y: o.y as number }]
+  if ((f === 'texts' || f === 'points') && Number.isFinite(o.x) && Number.isFinite(o.y)) return [{ x: o.x as number, y: o.y as number }]
+  if (f === 'arcs') { const a = arcDe(o); return a ? Array.from({ length: 17 }, (_, i) => { const t = a.a0 + (a.a1 - a.a0) * i / 16; return { x: a.x + a.r * Math.cos(t), y: a.y + a.r * Math.sin(t) } }) : [] }
+  // Un segment va d'un point à l'autre : ses points sont comptés
   return []
+}
+
+/** Un arc d'un ancien tableau : son centre, son rayon, ses angles dans le
+ *  sens du tracé (comme Cercle.arc : a1 < a0 quand il tourne à l'envers) */
+function arcDe(o: Objet): { x: number; y: number; r: number; a0: number; a1: number } | null {
+  const x = nombre(o.cx, NaN), y = nombre(o.cy, NaN), r = nombre(o.radius, NaN)
+  const a0 = nombre(o.startAngle, NaN)
+  let a1 = nombre(o.endAngle, NaN)
+  if (!Number.isFinite(x + y + r + a0 + a1) || r <= 0) return null
+  const tour = Math.PI * 2
+  if (o.counterClockwise === true) { while (a1 > a0) a1 -= tour }
+  else { while (a1 < a0) a1 += tour }
+  return { x, y, r, a0, a1 }
+}
+
+/** Les deux points d'un segment, dans l'état où il est (null : un point
+ *  manque) */
+function boutsDuSegment(o: Objet, etat: Etat): [Objet, Objet] | null {
+  const p1 = etat.points.find(q => q.id === o.p1_id), p2 = etat.points.find(q => q.id === o.p2_id)
+  return p1 && p2 && Number.isFinite(p1.x) && Number.isFinite(p1.y) && Number.isFinite(p2.x) && Number.isFinite(p2.y) ? [p1, p2] : null
+}
+
+/** L'image sur laquelle une figure a été posée (son id ici), si elle est là */
+function imageSous(o: Objet, etat: Etat, idDe: (o: Objet) => string): string | undefined {
+  const s = o.surObjet && typeof o.surObjet === 'object' ? o.surObjet as Record<string, unknown> : null
+  if (!s || s.type !== 'image') return undefined
+  const im = etat.images.find(i => i.id === s.id)
+  return im ? idDe(im) : undefined
 }
 
 /** Le texte d'un bloc de texte : ses lignes, sans balises */
@@ -253,7 +296,7 @@ export function finDuClasseur(t: Tableau): number {
  *  rejouant son film (voir en tête). Le document ne doit avoir rien d'écrit
  *  après son début (voir finDuClasseur). */
 export async function reprendre(tab: Tableau, a: AncienTableau, preparer: PreparerImage): Promise<BilanAncien> {
-  const bilan: BilanAncien = { pages: a.pages.length, traits: 0, images: 0, textes: 0, laisses: 0, imagesIllisibles: 0 }
+  const bilan: BilanAncien = { pages: a.pages.length, traits: 0, images: 0, textes: 0, figures: 0, laisses: 0, imagesIllisibles: 0 }
   const marque = uid()
   const idDe = (o: Objet) => `${marque}-${String(o.id)}`
 
@@ -284,7 +327,14 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
     return Number.isFinite(x) ? { x: -x, y: -y } : { x: 0, y: 0 }
   })
 
-  const forme = (f: Famille, o: Objet, page: number): Forme | null => {
+  // Un point sous un segment posé sur une image suit l'image, comme lui
+  const pointsSurImage = a.pages.map(p => {
+    const l = new Map<unknown, Objet>()
+    for (const { etat } of p.etats) for (const s of etat.segments) if (s.surObjet) { l.set(s.p1_id, s); l.set(s.p2_id, s) }
+    return l
+  })
+
+  const forme = (f: Famille, o: Objet, page: number, etat: Etat): Forme | null => {
     const d = decalages[page]
     const id = idDe(o), z = nombre(o.z), auteur = tab.moi
     if (f === 'freehands') {
@@ -330,7 +380,54 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
       }
       return fo
     }
+    const couleur = typeof (o.strokeColor ?? o.color) === 'string' ? (o.strokeColor ?? o.color) as string : '#1b2230'
+    const taille = Math.min(nombre(o.width, 3) || 3, TAILLE_FIGURE_MAX)
+    if (f === 'points') {
+      if (!Number.isFinite(o.x) || !Number.isFinite(o.y)) return null
+      const po: Polygone = {
+        id, type: 'polygone', ferme: false, pts: [0, 0], z, auteur, couleur, taille: 3,
+        x: (o.x as number) + d.x, y: (o.y as number) + d.y,
+        sommets: true, stylePoints: [{ marque: MARQUES[String(o.shape)] ?? 'croix' }],
+      }
+      const sous = pointsSurImage[page].get(o.id)
+      const lie = sous && imageSous(sous, etat, idDe)
+      if (lie) po.lie = lie
+      return po
+    }
+    if (f === 'segments') {
+      const b = boutsDuSegment(o, etat)
+      if (!b) return null
+      const [p1, p2] = b
+      const x = (p1.x as number) + d.x, y = (p1.y as number) + d.y
+      const se: Polygone = {
+        id, type: 'polygone', ferme: false, z, auteur, couleur, taille, x, y,
+        pts: [0, 0, (p2.x as number) - (p1.x as number), (p2.y as number) - (p1.y as number)],
+      }
+      const genre = String(o.lineType ?? '')
+      if (genre === 'droite') se.prolonge = 'droite'
+      else if (/demi|ray/i.test(genre)) se.prolonge = 'demi'
+      if (o.dash && o.dash !== 'solid') se.tirets = true
+      if (nombre(o.arrowStart) || nombre(o.arrowEnd)) se.stylePoints = [nombre(o.arrowStart) ? { bout: 'fleche' } : null, nombre(o.arrowEnd) ? { bout: 'fleche' } : null]
+      const lie = imageSous(o, etat, idDe)
+      if (lie) se.lie = lie
+      return se
+    }
+    if (f === 'arcs') {
+      const ar = arcDe(o)
+      if (!ar) return null
+      const ce: Cercle = { id, type: 'cercle', x: ar.x + d.x, y: ar.y + d.y, r: ar.r, arc: { a0: ar.a0, a1: ar.a1 }, z, auteur, couleur, taille }
+      if (o.dash && o.dash !== 'solid') ce.tirets = true
+      const lie = imageSous(o, etat, idDe)
+      if (lie) ce.lie = lie
+      return ce
+    }
     return null
+  }
+  // Ce qui fait qu'un objet a changé : lui, et pour un segment, ses points
+  const empreinte = (f: Famille, o: Objet, etat: Etat) => {
+    if (f !== 'segments') return JSON.stringify(o)
+    const b = boutsDuSegment(o, etat)
+    return JSON.stringify([o, b && [b[0].x, b[0].y, b[1].x, b[1].y]])
   }
 
   // Les gestes de toutes les pages, dans l'ordre des heures
@@ -343,7 +440,8 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
       const poser: Forme[] = [], retirer: string[] = []
       for (const f of FAMILLES) {
         const nouveaux = etat[f], anciens = avant ? avant[f] : []
-        if (nouveaux === anciens) continue
+        // (un segment suit ses points : il change quand eux changent)
+        if (nouveaux === anciens && !(f === 'segments' && avant && etat.points !== avant.points)) continue
         if (!REPRISES.includes(f)) { for (const o of nouveaux) laisses.add(`${f}:${String(o.id)}`); continue }
         const deja = new Map(anciens.map(o => [String(o.id), o]))
         const restent = new Set<string>()
@@ -351,9 +449,10 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
           const k = String(o.id)
           restent.add(k)
           const v = deja.get(k)
-          if (v === o || (v && JSON.stringify(v) === JSON.stringify(o))) continue
-          const g = forme(f, o, page)
+          if ((v === o && f !== 'segments') || (v && empreinte(f, v, avant!) === empreinte(f, o, etat))) continue
+          const g = forme(f, o, page, etat)
           if (g) { poser.push(g); reprises.get(f)!.add(k) }
+          else if (v) retirer.push(`${marque}-${k}`)
         }
         for (const k of deja.keys()) if (!restent.has(k)) retirer.push(`${marque}-${k}`)
       }
@@ -400,6 +499,7 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
     bilan.traits += fin.freehands.filter(o => reprises.get('freehands')!.has(String(o.id))).length
     bilan.images += fin.images.filter(o => reprises.get('images')!.has(String(o.id))).length
     bilan.textes += fin.texts.filter(o => reprises.get('texts')!.has(String(o.id))).length
+    for (const f of ['points', 'segments', 'arcs'] as const) bilan.figures += fin[f].filter(o => reprises.get(f)!.has(String(o.id))).length
   }
   bilan.laisses = laisses.size
   bilan.imagesIllisibles = illisibles.size
@@ -421,9 +521,10 @@ const pluriel = (n: number, mot: string, pl = mot + 's') => `${n} ${n > 1 ? pl :
 /** Ce qu'on dit d'un ancien tableau repris */
 export function texteDuBilan(a: AncienTableau, b: BilanAncien): string {
   const morceaux = [pluriel(b.pages, 'page'), pluriel(b.traits, 'trait'), pluriel(b.images, 'image')]
+  if (b.figures) morceaux.push(pluriel(b.figures, 'figure'))
   if (b.textes) morceaux.push(`${pluriel(b.textes, 'texte')} (${b.textes > 1 ? 'devenus des formules' : 'devenu une formule'})`)
   let t = `« ${a.nom} » : ${morceaux.join(', ')}${a.film ? ', avec son film' : ''}.`
-  if (b.laisses) t += ` ${pluriel(b.laisses, 'objet')} (figures, courbes ou post-its) ${b.laisses > 1 ? 'n\'ont' : 'n\'a'} pas été repris.`
+  if (b.laisses) t += ` ${pluriel(b.laisses, 'objet')} (cercles, polygones, courbes ou post-its) ${b.laisses > 1 ? 'n\'ont' : 'n\'a'} pas été repris.`
   if (b.imagesIllisibles) t += ` ${pluriel(b.imagesIllisibles, 'image')} n'${b.imagesIllisibles > 1 ? 'ont' : 'a'} pas pu être ${b.imagesIllisibles > 1 ? 'lues' : 'lue'}.`
   return t
 }
@@ -444,8 +545,8 @@ export function textesAvantAnciens(anciens: readonly AncienTableau[], ici: { nom
   const textes = anciens.length === 1 ? [ligne(anciens[0])]
     : [`${anciens.length} anciens tableaux, du plus ancien au plus récent :`, ...anciens.map(ligne)]
   textes.push(anciens.length === 1
-    ? 'Il devient une séance d\'un classeur, avec ses traits, ses images, ses textes et son film.'
-    : 'Chacun devient une séance du même classeur, avec ses traits, ses images, ses textes et son film.')
+    ? 'Il devient une séance d\'un classeur, avec ses traits, ses images, ses figures, ses textes et son film.'
+    : 'Chacun devient une séance du même classeur, avec ses traits, ses images, ses figures, ses textes et son film.')
   const ajoutable = !!ici && anciens.length > 0 && ici.fin <= anciens[0].debut
   if (ici && !ajoutable) textes.push(`« ${ici.nom} » a déjà une séance plus récente : on ne peut y ajouter que des séances qui viennent après la sienne. Ajoutez les séances dans l'ordre des dates, la plus ancienne d'abord.`)
   return { textes, ajoutable }
