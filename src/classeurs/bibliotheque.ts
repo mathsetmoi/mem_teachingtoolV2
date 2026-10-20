@@ -114,6 +114,8 @@ import { VueSeancesBiblio } from './vue-seances'
 import type { Fichiers } from './fichiers'
 import { AIDE_ENREGISTRER_TOUT } from './fichiers'
 import { fermerSurLeFond } from '../dialogue'
+import { RechercheBiblio } from './recherche-biblio-vue'
+import { lireContenu } from '../recherche'
 
 /** « Ouvrir… » du bandeau : le même titre qu'avant le lot 7 (Ctrl + O
  *  choisit toujours des fichiers ; le bouton montre la fenêtre « Ouvrir ») */
@@ -163,6 +165,9 @@ export interface HoteBibliotheque {
   /** Aller à la première page d'une séance du classeur de cet onglet (la
    *  ligne « séances » de sa carte) ; faux : cette séance n'existe plus */
   voirSeance?(id: string): boolean
+  /** Va à une page du classeur de cet onglet, une formule prise (la
+   *  recherche) ; faux : elle n'existe plus */
+  voirPage?(page: string, forme: string | null): boolean
 }
 
 /** Ce qu'on dit au classeur où l'on arrive (sessionStorage, le temps du
@@ -326,6 +331,7 @@ export class Bibliotheque {
   private depot: HTMLElement
   private survols = 0
   private fiches = new Map<string, FicheClasseur>()
+  private recherche: RechercheBiblio
   private dossiers = new Map<string, FicheDossier>()
   /** Les fiches ont été lues au moins une fois */
   private lu = false
@@ -477,7 +483,17 @@ export class Bibliotheque {
     // corbeille et le × tiennent sur la même ligne)
     const titreBloc = Object.assign(document.createElement('div'), { className: 'biblio-titre' })
     titreBloc.append(titre, this.compte)
-    tete.append(titreBloc, actions, this.boutonSeances, this.boutonCorbeille, this.boutonBandeau, fermer, this.placeEl)
+    // La recherche (recherche-biblio-vue.ts) : son champ après le titre, ses
+    // résultats à la place des cartes
+    this.recherche = new RechercheBiblio({
+      fiches: () => this.visibles(),
+      dossiers: () => this.dossiers,
+      contenuOuvert: () => this.hote.classeur && this.hote.tableau ? { id: this.hote.classeur.id, contenu: lireContenu(this.hote.tableau.doc, this.hote.tableau.seancesDuClasseur()) } : null,
+      ouvrir: (f, o) => void this.ouvrirClasseur(f, o),
+      allerAuDossier: id => { this.changerFiltre(null); this.changerDossier(id); this.rendre(null) },
+      enRecherche: oui => this.el.classList.toggle('en-recherche', oui),
+    })
+    tete.append(titreBloc, this.recherche.champ, actions, this.boutonSeances, this.boutonCorbeille, this.boutonBandeau, fermer, this.placeEl)
     // ----- La ligne du classeur ouvert -----
     this.ligneOuvert = Object.assign(document.createElement('div'), { className: 'biblio-ouvert', hidden: true })
     // ----- Les cartes -----
@@ -538,7 +554,7 @@ export class Bibliotheque {
     this.vide.append(Object.assign(document.createElement('p'), { textContent: 'Aucun classeur dans cette bibliothèque : créez-en un.' }),
       this.bouton('Nouveau classeur', 'plus', () => this.nouveauClasseur(), 'Créer un classeur et l\'ouvrir'))
     this.hautDuCorps = Object.assign(document.createElement('div'), { className: 'biblio-haut' })
-    this.corps.append(this.hautDuCorps, this.conseil, this.sectionRecents, this.filtreEl, this.sectionTous, this.vide)
+    this.corps.append(this.hautDuCorps, this.recherche.resultats, this.conseil, this.sectionRecents, this.filtreEl, this.sectionTous, this.vide)
     // ----- Les menus (des enfants de la bibliothèque : le reste est inerte) -----
     this.menuEl = document.createElement('div')
     this.menuEl.className = 'menu-flottant menu-classeur'; this.menuEl.setAttribute('role', 'menu'); this.menuEl.hidden = true
@@ -725,6 +741,9 @@ export class Bibliotheque {
     this.ouverteAuClavier = dernierGesteAuClavier()
     this.auRetour = o.auRetour ?? null
     document.body.classList.add('en-bibliotheque')
+    // La recherche relit les classeurs (ils ont pu changer depuis)
+    this.recherche.oublier()
+    if (this.recherche.active) this.recherche.rafraichir()
     // Le reste de l'écran ne répond plus, ni au clavier ni au lecteur
     // d'écran ; sauf le message (il passe au-dessus d'elle) et les fenêtres
     this.inertes = []
@@ -1399,6 +1418,13 @@ export class Bibliotheque {
       return
     }
     if (cible.closest?.('dialog') || document.querySelector('dialog[open]')) return
+    // Ctrl + F (⌘ + F) : le champ de la recherche (pas dans la corbeille ni
+    // les séances, qui ont la place des cartes)
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f') {
+      e.preventDefault(); e.stopPropagation()
+      if (!e.repeat && !this.vue.ouverte && !this.vueSeances.ouverte) { if (this.menuCarte || this.menuBandeauOuvert || this.menuTriOuvert) fermerMenu(); this.recherche.focus() }
+      return
+    }
     // Ctrl + O (⌘ + O) : ouvrir un classeur ou une bibliothèque (lot 4 C9 ;
     // la sauvegarde laisse la touche à la bibliothèque quand elle est ouverte)
     if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'o') {
@@ -2909,11 +2935,12 @@ export class Bibliotheque {
    *  4) la page se recharge sur l'adresse du classeur.
    *  Celui de l'onglet : l'écran se ferme (le second clic d'un double-clic
    *  ne tombe pas sur le tableau). arrivee : ce qu'on dira en arrivant. */
-  async ouvrirClasseur(f: FicheClasseur, o: { x?: number; y?: number; arrivee?: string; cle?: CleALArrivee; seance?: string } = {}) {
+  async ouvrirClasseur(f: FicheClasseur, o: { x?: number; y?: number; arrivee?: string; cle?: CleALArrivee; seance?: string; page?: string; forme?: string } = {}) {
     const ici = this.hote.classeur
     if (ici && f.id === ici.id) {
       this.fermer()
       if (o.seance && this.hote.voirSeance?.(o.seance) === false) this.hote.message('Cette séance n\'existe plus dans ce classeur.')
+      if (o.page && this.hote.voirPage?.(o.page, o.forme ?? null) === false) this.hote.message('Cette page n\'existe plus dans ce classeur.')
       if (o.x !== undefined && o.y !== undefined) avalerLeSecondAppui(o.x, o.y)
       return
     }
@@ -2970,7 +2997,7 @@ export class Bibliotheque {
       // La connexion Google suit l'onglet d'un classeur à l'autre (la copie
       // sur le Drive continue sans un clic, voir publication/drive.ts)
       passerLaConnexion()
-      location.assign(urlDuClasseur(location.href, f.id, o.seance))
+      location.assign(urlDuClasseur(location.href, f.id, o.seance, { page: o.page, forme: o.forme }))
     } finally {
       if (!parti) this.depart = false
     }

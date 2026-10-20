@@ -83,6 +83,17 @@ export class Constructeur {
     this.suivante()
   }
 
+  /** Ouvre le programme avec un exemple déjà écrit (depuis la recherche :
+   *  « médiatrice ») */
+  ouvrirAvec(texte: string) {
+    if (!this.ouvert) this.ouvrir()
+    this.champ.value = texte
+    this.messages = []
+    this.oublier()
+    this.afficher()
+    this.champ.focus()
+  }
+
   ouvrir() {
     this.panneau.hidden = false
     this.noter()

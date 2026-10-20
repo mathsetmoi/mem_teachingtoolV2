@@ -481,7 +481,9 @@ if (seul('D')) {
   ok(t0.n > 0 && !v.sansTactile && t0.ta === 'pan-y' && t0.poignee !== 'none', 'D1) Un écran tactile : touch-action pan-y, la poignée ⋮⋮ est là', t0)
   // L'appui long, puis glisser sur « 5e B »
   const dossier = await p.locator(sel('d:' + d5b)).boundingBox()
-  const cible = { x: dossier.x + dossier.width / 2, y: dossier.y + dossier.height / 2 }
+  // Vers le haut de la carte : le champ « Rechercher » a sa rangée au
+  // téléphone, la carte est plus bas, et le message du Drive en couvre le milieu
+  const cible = { x: dossier.x + dossier.width / 2, y: dossier.y + 50 }
   const premiere = await p.locator(sel(ids[9])).boundingBox()
   let pendant = null
   await p.evaluate(() => { window.__vibre = 0; navigator.vibrate = () => { window.__vibre++; return true } })

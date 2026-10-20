@@ -1059,6 +1059,47 @@ suivant. Ce qui reste sur l'appareil : `mem-minuteur-son` (le son coupé ou
 non), `mem-tirage-<dossier>` (la liste et le tour en cours de chaque
 classe), `mem-conseils` (les conseils déjà vus).
 
+## La recherche
+
+**Ctrl F** (⌘ F sur Mac), depuis le tableau, ou le champ **Rechercher** à
+droite du nom du classeur (quand il a la place ; sinon sa loupe seule),
+ouvre une fenêtre au milieu de l'écran. On tape quelques mots, sans
+accent ni majuscule à respecter ; les résultats viennent en trois groupes :
+
+- **Outils** : les boutons et réglages par leur nom ou ce qu'ils font.
+  « rapporteur » pose le rapporteur, « Seyès » change le fond, « minuteur »
+  le lance, « médiatrice » ouvre le programme de construction avec la
+  phrase, « ensembles » pose le dessin du catalogue, « fraction » coche ce
+  thème des automatismes. Entrée fait l'action.
+- **Formules écrites** : celles des pages de tous les classeurs de ce
+  navigateur, avec des mots simples : « racine », « fraction », « pi »,
+  « carré », « réels », « vecteur »… trouvent √, les fractions, π, x², ℝ,
+  les vecteurs. Un clic ouvre la page, la formule prise et montrée (au zoom
+  où l'on est) ; une page d'une séance passée s'ouvre en lecture.
+- **Classeurs, pages et séances** : un classeur par son nom ou sa classe,
+  une page par son nom, une séance par sa date (« 16 octobre », « mardi »,
+  « 16/10 ») ou son nom.
+
+↑ ↓ choisissent, Entrée ouvre, Échap efface le texte, puis ferme.
+L'écriture au stylo ne se recherche pas.
+
+Dans **la bibliothèque**, le même champ est sous le titre (Ctrl F y va) :
+dès qu'on tape, les résultats prennent la place des cartes, en groupes
+(classeurs, dossiers, séances, formules) ; Échap efface et les cartes
+reviennent.
+
+Comment c'est fait : `src/recherche.ts` (le calcul : le texte mis à plat,
+les formules lues en mots, la comparaison, le contenu d'un classeur lu dans
+son document ; testé dans `tests/recherche.test.ts`), `src/recherche-vue.ts`
+(la fenêtre), `src/classeurs/recherche-bibliotheque.ts` (les classeurs de
+ce navigateur, lus dans leur base en lecture seule : une transaction
+readonly, le document refait en mémoire puis détruit, rien n'est écrit ; le
+classeur ouvert est lu dans le tableau), `src/classeurs/recherche-biblio-vue.ts`
+(le champ de la bibliothèque). Pour ouvrir un autre classeur sur une page,
+l'adresse prend deux paramètres facultatifs, `&page=…&forme=…`, lus au
+démarrage comme `&seance=…`. Un conseil de premier lancement présente la
+recherche (`mem-conseils` passe à la série 2).
+
 ## Revoir la construction (en classe)
 
 Le bouton **Revoir** de la barre du haut (la flèche qui tourne autour d'un

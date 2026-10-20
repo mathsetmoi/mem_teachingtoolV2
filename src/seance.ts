@@ -53,7 +53,9 @@ export class Seance {
     racine.appendChild(this.ecran)
   }
 
-  ouvrir() {
+  /** choisis : les automatismes à cocher (depuis la recherche : un thème) */
+  ouvrir(choisis?: string[]) {
+    if (choisis?.length) { this.reglages.choisis = choisis; this.garder() }
     this.ecran.hidden = false
     document.body.classList.add('en-seance')
     window.addEventListener('keydown', this.clavier, true)

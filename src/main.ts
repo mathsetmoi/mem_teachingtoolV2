@@ -29,6 +29,7 @@ import type { ChapitreAccueil } from './seances-vue'
 import { ouvrirAccueil } from './seances-vue'
 import { installerCurseurs } from './curseurs'
 import { comparerEtiquettes, etiquetteHeritee } from './classeurs/arbre'
+import { classeursCherches, contenuDeLaBase } from './classeurs/recherche-bibliotheque'
 import type { FicheDossier } from './classeurs/demarrage'
 
 /** Le classeur qui s'ouvre : sa fiche dans l'index (null : l'index ne
@@ -212,6 +213,8 @@ async function demarrer() {
   // Arrivé par la ligne « séances » d'une carte : on va à cette séance, sans
   // la fenêtre d'accueil (on l'a choisie)
   if (SEANCE_VOULUE && voirLaSeance(app, SEANCE_VOULUE)) depart = { genre: 'rien' }
+  // Arrivé par la recherche : la page, la formule prise
+  if (PAGE_VOULUE && voirLaPage(app, PAGE_VOULUE, FORME_VOULUE)) depart = { genre: 'rien' }
   // L'état de la sauvegarde : le bouton du classeur, le menu ⋯, le bandeau
   // (après le chargement : il lit le film pour savoir le travail non
   // enregistré, et le chargement n'est pas un changement)
@@ -288,6 +291,7 @@ async function demarrer() {
       // Renommé dans la bibliothèque de cet onglet (le canal ne revient pas à qui parle)
       classeurChange: nommer,
       voirSeance: id => voirLaSeance(app, id),
+      voirPage: (page, forme) => voirLaPage(app, page, forme),
       oublierMessage: cle => ui.oublierAction(cle),
       // Effacé depuis la corbeille de cet onglet (lot 4 C8) : les autres onglets
       // sont prévenus par la sauvegarde, plus rien ne s'écrit dans la base (ni
@@ -326,6 +330,16 @@ async function demarrer() {
       const classe = etiquetteHeritee(ici.dossier, carte)
       const d = classe?.dossier ?? carte.get(ici.dossier)
       return d ? { id: d.id, nom: d.nom } : null
+    }
+    // La recherche : tous les classeurs de ce navigateur (lus en lecture
+    // seule), et l'ouverture d'un autre classeur, comme depuis sa carte
+    ui.idClasseur = infos.id
+    ui.rechercheClasseurs = () => classeursCherches(registre, infos.id)
+    ui.contenuClasseur = async c => { const f = (c as { fiche?: FicheClasseur }).fiche; return f ? contenuDeLaBase(f) : null }
+    ui.ouvrirAilleurs = async d => {
+      const f = await registre.classeur(d.classeur)
+      if (f && !f.corbeille) void ui.bibliotheque?.ouvrirClasseur(f, { seance: d.seance, page: d.page, forme: d.forme })
+      else ui.message('Ce classeur n\'est plus dans la bibliothèque.')
     }
     suivi.onEcrit = () => { if (hote.classeur) ui.bibliotheque?.ficheChange(infos.id) }
     // Ouvrir des fichiers (lot 4 C9) : un classeur s'ajoute à la bibliothèque
@@ -388,6 +402,19 @@ async function demarrer() {
  *  d'une carte), lue avant que le démarrage remette l'adresse au propre : un
  *  rechargement ne la rejoue pas */
 const SEANCE_VOULUE = new URLSearchParams(location.search).get('seance')
+/** La page où l'on arrive, et la formule à y prendre (« &page=…&forme=… »,
+ *  par la recherche), lues de même */
+const PAGE_VOULUE = new URLSearchParams(location.search).get('page')
+const FORME_VOULUE = new URLSearchParams(location.search).get('forme')
+
+/** Va à une page du classeur ouvert (en lecture si elle est d'une séance
+ *  passée), la formule prise ; faux : la page n'existe plus */
+function voirLaPage(app: App, page: string, forme: string | null): boolean {
+  if (!app.tableau.ordre.toArray().includes(page)) return false
+  app.voirPage(page)
+  if (forme) requestAnimationFrame(() => app.montrerForme(forme))
+  return true
+}
 
 /** Va à la première page d'une séance du classeur ouvert ; faux : elle n'existe
  *  plus, ou n'a pas de page */
