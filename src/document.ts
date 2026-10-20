@@ -234,6 +234,11 @@ export class Tableau {
   garde: ((page: string, refaire: (page: string) => void) => boolean) | null = null
   /** La page que l'on regarde : notée avec chaque étape du film */
   pageVue = ''
+  /** L'heure de chaque étape du film qui n'en reçoit pas d'autre (celle d'un
+   *  trait qui a attendu, voir poserTrace) : maintenant. Seule la reprise
+   *  d'un ancien tableau la change, le temps de rejouer ses gestes à leur
+   *  heure (voir classeurs/ancien-tableau.ts). */
+  horloge: () => number = Date.now
   readonly moi = uid()
   /** Une pile d'annulation par page (voir annulationDe) : en mémoire
    *  seulement, jamais dans le document ni dans un fichier */
@@ -332,7 +337,7 @@ export class Tableau {
       if (tr.origin === ORIGINE_FILM || (this.local && tr.origin === this.local)) return
       const touches = [...tr.changedParentTypes.keys()].filter(x => this.dansLesPages(x))
       if (!touches.length) return
-      const t = this.heureDuTrace !== null ? Math.max(this.heureDuTrace, this.derniereHeure) : Date.now()
+      const t = this.heureDuTrace !== null ? Math.max(this.heureDuTrace, this.derniereHeure) : this.horloge()
       this.derniereHeure = t
       const etape: Etape = { t, page: this.pageVue, s: Y.encodeSnapshot(Y.snapshot(this.doc)) }
       if (this.tempsDuTrace) { etape.ms = this.tempsDuTrace; this.tempsDuTrace = null }
@@ -361,6 +366,14 @@ export class Tableau {
       if (x === this.pages || x === this.ordre) return true
     }
     return false
+  }
+
+  /** Pose dans ce document tout un état déjà enregistré (celui d'un
+   *  classeur, Y.encodeStateAsUpdate) : ses étapes du film y sont déjà, on
+   *  n'en note aucune. Pour un document qui ne vit nulle part (null), qu'on
+   *  complète avant d'en faire un fichier (voir classeurs/ancien-tableau.ts). */
+  lireEtat(etat: Uint8Array) {
+    Y.applyUpdate(this.doc, etat, ORIGINE_FILM)
   }
 
   /** Le tableau tel qu'il était à une étape du film. On le lit directement
