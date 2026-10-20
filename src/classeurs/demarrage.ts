@@ -90,7 +90,7 @@ export interface FicheClasseur {
   /** Ses séances (celles où l'on a écrit), de la plus ancienne à la plus
    *  récente, à sa dernière écriture : la carte les montre sans ouvrir le
    *  classeur. Facultatif : un classeur pas ouvert depuis ne les a pas. */
-  listeSeances?: { id: string; debut: number; nom?: string; pages: number }[]
+  listeSeances?: { id: string; debut: number; nom?: string; rang?: number; pages: number }[]
 }
 
 /** Un dossier de la bibliothèque (parent null : à la racine) */

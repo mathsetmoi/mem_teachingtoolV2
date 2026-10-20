@@ -50,7 +50,7 @@ import { pagesLisibles } from '../fichier'
 import { icone } from '../icones'
 import { FONDS, FOND_NEUF } from '../types'
 import type { Fond } from '../types'
-import { dateCourteMajuscule, deLaSeance, libelleSeance } from '../seances'
+import { dateCourteMajuscule, deLaSeance, libelleSeance, seancesDansLOrdre } from '../seances'
 
 /** Ce que la trieuse demande à l'interface */
 export interface HoteTrieuse {
@@ -459,7 +459,8 @@ export class Trieuse {
   /** Les séances (lot 6) : « Aujourd'hui · mar 14 oct 14h » au-dessus de la
    *  grille (qui ne montre que les pages de la séance du jour : on n'y
    *  déplace pas une page d'une séance à l'autre) ; sous elle, les séances
-   *  passées, de la plus récente à la plus ancienne, repliées (« ▸ Lun 13
+   *  passées, de la plus récente à la plus ancienne (ou dans l'ordre choisi
+   *  à la main dans la bibliothèque), repliées (« ▸ Lun 13
    *  oct 8h · 3 pages ») ; dépliée, une séance montre ses vignettes, et un
    *  clic sur l'une ouvre la page en lecture (la trieuse se ferme). */
   private majSeances() {
@@ -469,7 +470,8 @@ export class Trieuse {
       const titre = `Aujourd'hui · ${jour.nom ?? dateCourteMajuscule(jour.debut).replace(/^./, c => c.toLowerCase())}`
       if (this.titreSeance.textContent !== titre) this.titreSeance.textContent = titre
     }
-    const passees = l.filter(s => s.id !== jour?.id && s.pages.length).reverse()
+    // Dans l'ordre de la bibliothèque : la plus récente d'abord, ou l'ordre choisi à la main
+    const passees = seancesDansLOrdre(l.filter(s => s.id !== jour?.id && s.pages.length))
     const cle = passees.map(s => `${s.id}:${s.nom ?? ''}:${s.pages.join(',')}`).join('|')
     if (cle === this.cleAnciennes) return
     this.cleAnciennes = cle

@@ -99,6 +99,7 @@ import type { ActionEtat } from './etat'
 import { rappelAuDepart, resumeEtat, texteRappel } from './etat'
 import type { CleALArrivee, PoigneeFichier } from './cle'
 import { AIDE_ACTIVER, ID_CHOIX, TYPES_CLASSEUR, ecrireLeNeuf, examinerPourUnNeuf, raisonCle } from './cle'
+import type { LigneSeance } from './liste'
 import { libelleCarte, libelleSeances, lignesDesSeances, nombreDeClasseurs, nomDeClasseur, recents, texteLecteur, titreCle, titreDrive } from './liste'
 import {
   BLOQUE, PAS_EFFACE, TITRE_VIDER, contenuDeLaCorbeille, contenuDuDossier, elementsDeLaCorbeille, jamaisEnregistre, libelleCorbeille, pagesDe,
@@ -111,6 +112,9 @@ import { enregistrerDepuisLaBase } from './enregistrer'
 import { TEXTE_PUBLIEES_COPIE } from './reconnaitre'
 import { VueCorbeilleBiblio } from './vue-corbeille'
 import { VueSeancesBiblio } from './vue-seances'
+import { copierSeance, retirerSeance, supprimerSeance } from '../deplacer-seance'
+import { dateCourteMajuscule, libelleSeance, ordreALaMain, ordreApres } from '../seances'
+import { demanderNomDeSeance } from '../seances-vue'
 import type { Fichiers } from './fichiers'
 import { AIDE_ENREGISTRER_TOUT } from './fichiers'
 import { fermerSurLeFond } from '../dialogue'
@@ -364,6 +368,10 @@ export class Bibliotheque {
   private menuEl: HTMLElement
   private menuTriEl: HTMLElement
   private menuCarte: { id: string; menu: Menu } | null = null
+  /** Une séance est en train d'être changée (voir changerSeances) */
+  private seancesOccupees = false
+  /** La séance qu'on tire par sa poignée : de quoi arrêter (voir glisserSeance) */
+  private seanceTiree: ((garder: boolean) => void) | null = null
   private menuBandeauOuvert: Menu | null = null
   private menuTriOuvert: Menu | null = null
   private saisie: Saisie | null = null
@@ -1075,25 +1083,61 @@ export class Bibliotheque {
     if (liste.hidden === ouvert) liste.hidden = !ouvert
     if (!ouvert) { if (liste.childElementCount) { liste.replaceChildren(); delete liste.dataset.sig } return }
     const lignes = lignesDesSeances(f)
-    const sig = lignes.map(l => `${l.id}\u0001${l.date}\u0001${l.nom ?? ''}\u0001${l.pages}`).join('\u0002') + '\u0003' + f.nom
+    const aLaMain = ordreALaMain(f.listeSeances ?? [])
+    const sig = lignes.map(l => `${l.id}\u0001${l.date}\u0001${l.nom ?? ''}\u0001${l.pages}`).join('\u0002') + '\u0003' + f.nom + (aLaMain ? '\u0004' : '')
     if (liste.dataset.sig === sig) return
+    const focus = document.activeElement instanceof HTMLElement && liste.contains(document.activeElement) ? document.activeElement.closest<HTMLElement>('.carte-seance-ligne')?.dataset.seance : undefined
     liste.dataset.sig = sig
     liste.setAttribute('aria-label', `Séances de « ${f.nom} »`)
-    liste.replaceChildren(...lignes.map(l => {
-      const li = document.createElement('li')
-      const b = document.createElement('button')
-      b.type = 'button'; b.className = 'carte-seance'
-      b.append(Object.assign(document.createElement('span'), { className: 'seance-date', textContent: l.date }),
-        Object.assign(document.createElement('span'), { className: 'seance-pages', textContent: l.pages }))
-      if (l.nom) b.append(Object.assign(document.createElement('span'), { className: 'seance-nom', textContent: l.nom }))
-      b.addEventListener('click', e => {
-        e.stopPropagation()
-        const x = this.fiches.get(f.id)
-        if (x) void this.ouvrirClasseur(x, { seance: l.id, ...(e.detail !== 0 ? { x: e.clientX, y: e.clientY } : {}) })
-      })
-      li.append(b)
-      return li
-    }))
+    const lis: HTMLLIElement[] = []
+    if (aLaMain) {
+      const li = Object.assign(document.createElement('li'), { className: 'carte-seances-ordre' })
+      const remettre = Object.assign(document.createElement('button'), { type: 'button', className: 'lien-ordre-dates', textContent: 'Remettre dans l\'ordre des dates' })
+      remettre.dataset.action = 'seances-par-dates'
+      remettre.addEventListener('click', e => { e.stopPropagation(); void this.remettreSeancesParDates(f.id) })
+      li.append(Object.assign(document.createElement('span'), { textContent: 'Ordre choisi à la main' }), remettre)
+      lis.push(li)
+    }
+    for (const l of lignes) lis.push(this.ligneSeance(f, l))
+    liste.replaceChildren(...lis)
+    if (focus) liste.querySelector<HTMLElement>(`.carte-seance-ligne[data-seance="${CSS.escape(focus)}"] .carte-seance`)?.focus({ preventScroll: true })
+  }
+
+  /** Une séance de la liste dépliée : la poignée ⠿ (la glisser : plus haut,
+   *  plus bas, ou sur un autre classeur), la séance (un clic l'ouvre), et son
+   *  bouton … (son menu ; aussi au clic droit, au bouton du stylet, à la
+   *  touche Menu) */
+  private ligneSeance(f: FicheClasseur, l: LigneSeance): HTMLLIElement {
+    const li = document.createElement('li')
+    li.className = 'carte-seance-ligne'; li.dataset.seance = l.id
+    const poignee = Object.assign(document.createElement('span'), { className: 'poignee-seance', textContent: '⠿' })
+    poignee.title = 'Glisser pour changer la séance de place, ou vers un autre classeur'
+    poignee.setAttribute('aria-hidden', 'true')
+    poignee.addEventListener('pointerdown', e => this.glisserSeance(e, f.id, l.id, li))
+    const b = document.createElement('button')
+    b.type = 'button'; b.className = 'carte-seance'
+    b.append(Object.assign(document.createElement('span'), { className: 'seance-date', textContent: l.date }),
+      Object.assign(document.createElement('span'), { className: 'seance-pages', textContent: l.pages }))
+    if (l.nom) b.append(Object.assign(document.createElement('span'), { className: 'seance-nom', textContent: l.nom }))
+    b.setAttribute('aria-keyshortcuts', 'F2 Delete Alt+ArrowUp Alt+ArrowDown')
+    b.addEventListener('click', e => {
+      e.stopPropagation()
+      const x = this.fiches.get(f.id)
+      if (x) void this.ouvrirClasseur(x, { seance: l.id, ...(e.detail !== 0 ? { x: e.clientX, y: e.clientY } : {}) })
+    })
+    b.addEventListener('dblclick', e => e.stopPropagation())
+    const options = document.createElement('button')
+    options.type = 'button'; options.className = 'options-seance'; options.tabIndex = -1
+    options.innerHTML = icone('points')
+    options.setAttribute('aria-label', `Actions de la séance ${l.nom ? `« ${l.nom} »` : `du ${l.date}`}`)
+    options.setAttribute('aria-haspopup', 'menu'); options.setAttribute('aria-expanded', 'false')
+    options.addEventListener('click', e => {
+      e.stopPropagation()
+      if (this.menuCarte?.menu.bouton === options) { fermerMenu(); return }
+      this.ouvrirMenuSeance(f.id, l.id, { bouton: options, clavier: e.detail === 0 })
+    })
+    li.append(poignee, b, options)
+    return li
   }
 
   /** Le nom, la date et les pages, les étiquettes, le chemin (avec un
@@ -1392,6 +1436,12 @@ export class Bibliotheque {
    *  et Maj + F10 ; Entrée est celle du lien ou du bouton (son clic). */
   private surTouche = (e: KeyboardEvent) => {
     const cible = e.target as HTMLElement
+    // Une séance qu'on tire par sa poignée : Échap l'arrête aussi
+    if (this.seanceTiree) {
+      e.preventDefault(); e.stopPropagation()
+      if (e.key === 'Escape') this.seanceTiree(false)
+      return
+    }
     // Une carte qu'on tire : Échap l'arrête (rien ne bouge) ; le reste attend
     if (this.glisse) {
       e.preventDefault(); e.stopPropagation()
@@ -1433,6 +1483,8 @@ export class Bibliotheque {
       if (!e.repeat) this.remonter()
       return
     }
+    const ligneSeance = cible.closest?.('.carte-seance-ligne') as HTMLElement | null
+    if (ligneSeance) { if (this.toucheSeance(e, ligneSeance)) fait(); return }
     const carte = cible.closest?.(CASE)
     const l = carte ? this.listeDe(carte) : undefined
     const id = (carte as HTMLElement | null)?.dataset.cle
@@ -1564,6 +1616,12 @@ export class Bibliotheque {
     const id = carte?.dataset.cle
     if (!carte || !id || cible.closest('.carte-saisie')) return
     const droit = e.button === 2 || (MAC && e.ctrlKey && e.button === 0 && e.pointerType !== 'touch')
+    const ligneSeance = cible.closest<HTMLElement>('.carte-seance-ligne')
+    if (droit && ligneSeance?.dataset.seance) {
+      e.preventDefault()
+      this.ouvrirMenuSeance(id, ligneSeance.dataset.seance, { x: e.clientX, y: e.clientY })
+      return
+    }
     if (droit) {
       e.preventDefault()
       const l = this.listeDe(carte)
@@ -1897,6 +1955,345 @@ export class Bibliotheque {
     } catch (e) {
       this.hote.message(`${cle.startsWith(DOSSIER) ? 'Le dossier' : 'Le classeur'} n'a pas pu être renommé : ${messageDe(e)}.`)
     }
+  }
+
+  // ---------- Les séances d'un classeur ----------
+  // Sous la carte d'un classeur, chaque séance a son menu … : l'ouvrir, la
+  // renommer, la monter ou la descendre (l'ordre choisi à la main), la
+  // déplacer vers un autre classeur, la supprimer. Le classeur est lu, changé
+  // et réécrit par les fichiers (voir fichiers.lireUnClasseur), même s'il
+  // n'est pas ouvert ; ce qui se fait est dans deplacer-seance.ts.
+
+  /** Une séance de la liste dépliée d'un classeur, à l'écran */
+  private ligneDeSeance(fid: string, sid: string): HTMLElement | null {
+    for (const x of this.el.querySelectorAll<HTMLElement>(`.case-classeur[data-cle="${CSS.escape(fid)}"] .carte-seance-ligne[data-seance="${CSS.escape(sid)}"]`)) {
+      if (x.offsetParent) return x
+    }
+    return null
+  }
+
+  /** Les touches d'une séance de la liste : Menu, F2, Suppr, Alt + ↑ ↓ (la
+   *  changer de place), ↑ ↓ (aller à la voisine). Vrai : la touche est prise. */
+  private toucheSeance(e: KeyboardEvent, ligne: HTMLElement): boolean {
+    const fid = ligne.closest<HTMLElement>('.case-classeur')?.dataset.cle, sid = ligne.dataset.seance
+    if (!fid || !sid) return false
+    if (toucheMenu(e)) { if (!e.repeat) this.ouvrirMenuSeance(fid, sid, { clavier: true }); return true }
+    if ((e.key === 'Delete' && !e.ctrlKey && !e.metaKey && !e.altKey) || (MAC && e.key === 'Backspace' && e.metaKey && !e.altKey)) {
+      if (!e.repeat) void this.supprimerSeanceDe(fid, sid)
+      return true
+    }
+    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      if (!e.repeat) void this.placerSeance(fid, sid, { pas: e.key === 'ArrowUp' ? -1 : 1 })
+      return true
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return false
+    if (e.key === 'F2') { if (!e.repeat) void this.renommerSeanceDe(fid, sid); return true }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      const lignes = [...(ligne.parentElement?.querySelectorAll<HTMLElement>('.carte-seance-ligne') ?? [])]
+      const i = lignes.indexOf(ligne) + (e.key === 'ArrowUp' ? -1 : 1)
+      if (i >= 0 && i < lignes.length) lignes[i].querySelector<HTMLElement>('.carte-seance')?.focus()
+      else ligne.closest<HTMLElement>('.case-classeur')?.querySelector<HTMLElement>(FOCUSABLE)?.focus()
+      return true
+    }
+    return false
+  }
+
+  /** Le menu d'une séance : par son bouton …, au clic droit ou au bouton du
+   *  stylet (là où l'on a appuyé), à la touche Menu */
+  private ouvrirMenuSeance(fid: string, sid: string, o: { bouton?: HTMLElement; x?: number; y?: number; clavier?: boolean }) {
+    const f = this.fiches.get(fid)
+    const lignes = f ? lignesDesSeances(f) : []
+    const i = lignes.findIndex(l => l.id === sid)
+    if (!f || i < 0) return
+    this.finirSaisie(true)
+    this.annulerClicNom()
+    const l = lignes[i]
+    const m = this.menuEl
+    m.replaceChildren()
+    m.setAttribute('aria-label', l.nom ?? `Séance du ${l.date}`)
+    entreeMenu(m, 'Ouvrir la séance', () => void this.ouvrirClasseur(f, { seance: sid }), { touche: 'Entrée', action: 'ouvrir-seance' })
+    entreeMenu(m, 'Renommer…', () => void this.renommerSeanceDe(fid, sid), { touche: 'F2', action: 'renommer-seance' })
+    filetMenu(m)
+    if (i > 0) entreeMenu(m, 'Monter', () => void this.placerSeance(fid, sid, { pas: -1 }), { touche: 'Alt + ↑', action: 'monter-seance' })
+    if (i < lignes.length - 1) entreeMenu(m, 'Descendre', () => void this.placerSeance(fid, sid, { pas: 1 }), { touche: 'Alt + ↓', action: 'descendre-seance' })
+    if (ordreALaMain(f.listeSeances ?? [])) entreeMenu(m, 'Remettre dans l\'ordre des dates', () => void this.remettreSeancesParDates(fid), { action: 'seances-par-dates' })
+    entreeMenu(m, 'Déplacer vers…', () => void this.choisirClasseurPour(fid, sid), { action: 'deplacer-seance', aide: 'Un autre classeur' })
+    filetMenu(m)
+    entreeMenu(m, 'Supprimer la séance', () => void this.supprimerSeanceDe(fid, sid), { touche: 'Suppr', action: 'supprimer-seance' })
+    const ligne = this.ligneDeSeance(fid, sid)
+    const menu: Menu = {
+      el: m, bouton: o.bouton,
+      fermer: () => {
+        if (this.menuCarte?.menu !== menu) return
+        this.menuCarte = null
+        const a = document.activeElement
+        if ((!a || a === document.body || this.menuEl.contains(a)) && this.ouvert) this.ligneDeSeance(fid, sid)?.querySelector<HTMLElement>('.carte-seance')?.focus({ preventScroll: true })
+        if (this.ouvert) void this.appliquer()
+      },
+    }
+    this.menuCarte = { id: fid, menu }
+    ouvrirMenu(menu)
+    const ancre = o.bouton ?? ligne?.querySelector<HTMLElement>('.options-seance') ?? null
+    if (ancre && (o.bouton || o.x === undefined || o.y === undefined)) placerMenu(m, ancre.getBoundingClientRect(), 'dessous')
+    else placerMenu(m, new DOMRect(o.x ?? 0, o.y ?? 0, 0, 0), 'droite')
+    if (o.clavier) allerAuxEntrees(m, 1, ENTREES)
+  }
+
+  /** Une séance dite dans un message : « la séance du Lun 5 oct 7h39 », ou son nom */
+  private texteSeance(f: FicheClasseur | undefined, sid: string): string {
+    const s = f?.listeSeances?.find(x => x.id === sid)
+    if (!s) return 'La séance'
+    return s.nom ? `La séance « ${s.nom} »` : `La séance du ${dateCourteMajuscule(s.debut)}`
+  }
+
+  /** La fiche d'un classeur relue après un changement, et sa carte refaite */
+  private async rafraichirFiche(id: string) {
+    const f = await this.registre.classeur(id).catch(() => null)
+    if (!f) return
+    this.fiches.set(id, f)
+    if (this.ouvert) this.rendre(new Set([id]))
+  }
+
+  /** Change un classeur (voir l'en-tête de ce morceau) ; ok dit si ce qu'a
+   *  rendu faire mérite d'être écrit. Une seule chose à la fois. */
+  private async changerSeances<R>(fid: string, faire: (t: Tableau) => R, ok: (r: R) => boolean): Promise<R | null> {
+    const F = this.fiches.get(fid)
+    if (!F || !this.fichiers || this.seancesOccupees) return null
+    this.seancesOccupees = true
+    try {
+      const t = await this.fichiers.lireUnClasseur(F)
+      if (!t) return null
+      const r = faire(t)
+      if (!ok(r)) return r
+      if (!(await this.fichiers.ecrireUnClasseur(F, t))) return null
+      await this.rafraichirFiche(fid)
+      return r
+    } finally { this.seancesOccupees = false }
+  }
+
+  /** « Renommer… » (F2) : le nom d'une séance (vide : elle reprend sa date) */
+  private async renommerSeanceDe(fid: string, sid: string) {
+    const f = this.fiches.get(fid)
+    const s = f?.listeSeances?.find(x => x.id === sid)
+    if (!s) return
+    const nom = await demanderNomDeSeance(this.racine, { id: sid, debut: s.debut, depuis: s.debut, nom: s.nom ?? null, ancienne: false, rang: null, pages: [] })
+    if (nom === null) return
+    const r = await this.changerSeances(fid, t => t.renommerSeance(sid, nom || null), x => x)
+    if (r) this.hote.message(nom ? `Séance renommée : « ${nom} »` : `Nom de la séance retiré : « ${libelleSeance({ debut: s.debut, nom: null })} »`)
+  }
+
+  /** Monter, Descendre (Alt + ↑ ↓), ou glisser à une autre place : l'ordre
+   *  choisi à la main (voir seances.ts) */
+  private async placerSeance(fid: string, sid: string, o: { pas?: -1 | 1; vers?: number }) {
+    const f = this.fiches.get(fid)
+    if (!f) return
+    const ordre = ordreApres(lignesDesSeances(f).map(l => l.id), sid, o)
+    if (!ordre) return
+    this.seancesOuvertes.add(fid)
+    await this.changerSeances(fid, t => t.rangerLesSeances(ordre), x => x)
+  }
+
+  /** « Remettre dans l'ordre des dates » */
+  private async remettreSeancesParDates(fid: string) {
+    if (await this.changerSeances(fid, t => t.rangerLesSeances(null), x => x)) this.hote.message('Séances remises dans l\'ordre des dates.')
+  }
+
+  /** « Supprimer la séance » (Suppr) : ses pages vont dans la corbeille du
+   *  classeur ; « Annuler » les rend. La seule séance d'un classeur : c'est
+   *  le classeur qui va dans la corbeille de la bibliothèque. */
+  private async supprimerSeanceDe(fid: string, sid: string) {
+    const f = this.fiches.get(fid)
+    if (!f) return
+    if ((f.listeSeances?.length ?? 0) <= 1) { await this.supprimer(fid); return }
+    const texte = this.texteSeance(f, sid)
+    const r = await this.changerSeances(fid, t => supprimerSeance(t, sid), x => 'pages' in x)
+    if (!r) return
+    if ('refus' in r) {
+      if (r.refus === 'seule') await this.supprimer(fid)
+      else this.hote.message('Cette séance n\'est plus dans le classeur.')
+      return
+    }
+    const pages = r.pages
+    this.hote.message(`${texte} est supprimée : ses pages sont dans la corbeille du classeur.`, {
+      libelle: ANNULER, cle: CLE_MESSAGE + 'seance-' + sid,
+      faire: () => void this.changerSeances(fid, t => t.rendrePages(pages), n => n > 0).then(n => { if (n) this.hote.message(`${texte} est de retour.`) }),
+    })
+  }
+
+  /** « Déplacer vers… » : la fenêtre des autres classeurs, par dossier */
+  private async choisirClasseurPour(fid: string, sid: string) {
+    const f = this.fiches.get(fid)
+    const s = f?.listeSeances?.find(x => x.id === sid)
+    if (!f || !s) return
+    const chemin = (x: FicheClasseur) => cheminLisible(x.dossier, this.dossiers) || 'Bibliothèque'
+    const ici = chemin(f)
+    const autres = this.visibles().filter(x => x.id !== fid)
+    if (!autres.length) { this.hote.message('Il n\'y a pas d\'autre classeur où la mettre.'); return }
+    const groupes = new Map<string, FicheClasseur[]>()
+    for (const x of autres.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))) {
+      const c = chemin(x)
+      groupes.set(c, [...(groupes.get(c) ?? []), x])
+    }
+    const noms = [...groupes.keys()].sort((a, b) => (a === ici ? -1 : b === ici ? 1 : a.localeCompare(b, 'fr')))
+    const choix = await new Promise<string | null>(fin => {
+      const d = document.createElement('dialog')
+      d.className = 'dialogue dialogue-deplacer-seance'
+      const form = document.createElement('form'); form.method = 'dialog'
+      const titre = Object.assign(document.createElement('h2'), { textContent: 'Déplacer la séance' })
+      const texte = Object.assign(document.createElement('p'), { textContent: `${this.texteSeance(f, sid)}, ${s.pages > 1 ? `${s.pages} pages` : '1 page'}. Elle part avec ses pages et son film, et se range à sa date.` })
+      const liste = Object.assign(document.createElement('div'), { className: 'classeurs-cibles' })
+      let reponse: string | null = null
+      const garder = Object.assign(document.createElement('button'), { type: 'submit', className: 'principal', textContent: 'Déplacer', disabled: true })
+      for (const n of noms) {
+        const g = document.createElement('fieldset')
+        g.append(Object.assign(document.createElement('legend'), { textContent: n }))
+        for (const x of groupes.get(n)!) {
+          const lab = document.createElement('label')
+          const r = Object.assign(document.createElement('input'), { type: 'radio', name: 'cible', value: x.id, id: 'cible-' + x.id })
+          r.addEventListener('change', () => { garder.disabled = false })
+          lab.addEventListener('dblclick', () => { reponse = x.id; d.close() })
+          lab.append(r, Object.assign(document.createElement('span'), { textContent: x.nom }))
+          g.append(lab)
+        }
+        liste.append(g)
+      }
+      const actions = Object.assign(document.createElement('div'), { className: 'actions' })
+      const annuler = Object.assign(document.createElement('button'), { type: 'button', className: 'secondaire', textContent: ANNULER })
+      annuler.addEventListener('click', () => { reponse = null; d.close() })
+      actions.append(annuler, garder)
+      form.append(titre, texte, liste, actions)
+      form.addEventListener('submit', e => { e.preventDefault(); reponse = (form.querySelector<HTMLInputElement>('input[name="cible"]:checked'))?.value ?? null; d.close() })
+      d.append(form)
+      d.addEventListener('close', () => { d.remove(); fin(reponse) })
+      fermerSurLeFond(d, () => d.close())
+      this.racine.appendChild(d)
+      d.showModal()
+      annuler.focus()
+    })
+    if (choix) await this.deplacerSeanceVers(fid, sid, choix)
+  }
+
+  /** Déplace une séance vers un autre classeur (voir deplacer-seance.ts) :
+   *  copiée là-bas, à sa date, puis retirée d'ici. La seule séance d'un
+   *  classeur : il part ensuite, vide, dans la corbeille de la bibliothèque.
+   *  « Annuler » la remet où elle était. */
+  private async deplacerSeanceVers(fid: string, sid: string, gid: string) {
+    const F = this.fiches.get(fid), G = this.fiches.get(gid)
+    if (!F || !G || !this.fichiers || this.seancesOccupees || fid === gid) return
+    const texte = this.texteSeance(F, sid)
+    this.seancesOccupees = true
+    try {
+      this.hote.message(`Déplacement vers « ${G.nom} »…`)
+      const source = await this.fichiers.lireUnClasseur(F)
+      const cible = source && await this.fichiers.lireUnClasseur(G)
+      if (!source || !cible) return
+      const r = copierSeance(source, sid, cible)
+      if ('refus' in r) {
+        this.hote.message(r.refus === 'chevauche'
+          ? `« ${G.nom} » a déjà quelque chose pendant cette séance (une séance à la même heure) : elle n'a pas été déplacée.`
+          : 'Cette séance n\'est plus dans le classeur.')
+        return
+      }
+      const retrait = retirerSeance(source, sid)
+      const seule = !('pages' in retrait)
+      if (!(await this.fichiers.ecrireUnClasseur(G, cible))) return
+      await this.rafraichirFiche(gid)
+      this.seancesOuvertes.add(gid)
+      let t = 0
+      if (!seule) {
+        if (!(await this.fichiers.ecrireUnClasseur(F, source))) {
+          this.hote.message(`${texte} est maintenant aussi dans « ${G.nom} », mais elle n'a pas pu être retirée de « ${F.nom} ».`)
+          return
+        }
+      } else {
+        t = Date.now()
+        await this.registre.modifierClasseur(fid, x => { if (x.effacement == null) x.corbeille = { t } }).catch(() => undefined)
+      }
+      await this.rafraichirFiche(fid)
+      if (this.ouvert) this.rendre(null)
+      const pagesIci = 'pages' in retrait ? retrait.pages : []
+      this.hote.message(`${texte} est dans « ${G.nom} ».${seule ? ` « ${F.nom} », vide, est dans la corbeille.` : ''}`, {
+        libelle: ANNULER, cle: CLE_MESSAGE + 'seance-' + sid,
+        faire: () => void this.annulerDeplacement(fid, gid, r.pages, pagesIci, t, texte),
+      })
+    } finally { this.seancesOccupees = false }
+  }
+
+  /** « Annuler » après un déplacement : la séance quitte le classeur
+   *  d'arrivée et revient dans le sien (ou le sien sort de la corbeille) */
+  private async annulerDeplacement(fid: string, gid: string, arrivees: string[], parties: string[], t: number, texte: string) {
+    const r = await this.changerSeances(gid, x => { const p = x.jeterPages(arrivees); x.marquerDefinitives(p); return p.length }, n => n > 0)
+    if (!r) { this.hote.message(`${texte} n'a pas pu être retirée du classeur où elle est arrivée.`); return }
+    if (t) {
+      await this.registre.modifierClasseur(fid, x => { if (x.corbeille?.t === t) delete x.corbeille }).catch(() => undefined)
+      await this.rafraichirFiche(fid)
+      if (this.ouvert) this.rendre(null)
+    } else await this.changerSeances(fid, x => x.rendrePages(parties), n => n > 0)
+    this.hote.message(`${texte} est de retour.`)
+  }
+
+  /** Glisser une séance par sa poignée ⠿ : dans sa liste, elle change de
+   *  place ; lâchée sur un autre classeur, elle y part (comme « Déplacer
+   *  vers… »). Échap, ou lâcher ailleurs : rien ne bouge. */
+  private glisserSeance(e: PointerEvent, fid: string, sid: string, li: HTMLElement) {
+    if (e.button !== 0 || this.glisse || this.seancesOccupees || this.seanceTiree) return
+    e.preventDefault(); e.stopPropagation()
+    const liste = li.parentElement
+    if (!liste) return
+    const x0 = e.clientX, y0 = e.clientY
+    let fantome: HTMLElement | null = null
+    let but: { genre: 'place'; vers: number } | { genre: 'classeur'; id: string } | null = null
+    const effacer = () => {
+      for (const x of liste.querySelectorAll('.dessus, .dessous')) x.classList.remove('dessus', 'dessous')
+      for (const x of this.el.querySelectorAll('.cible-seance')) x.classList.remove('cible-seance')
+    }
+    const bouger = (ev: PointerEvent) => {
+      if (ev.pointerId !== e.pointerId) return
+      if (!fantome) {
+        if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return
+        fantome = li.cloneNode(true) as HTMLElement
+        fantome.classList.add('fantome-seance')
+        fantome.style.width = li.getBoundingClientRect().width + 'px'
+        fantome.setAttribute('aria-hidden', 'true')
+        document.body.append(fantome)
+        li.classList.add('seance-tiree')
+      }
+      fantome.style.transform = `translate(${ev.clientX + 10}px, ${ev.clientY + 10}px)`
+      effacer()
+      but = null
+      const sous = document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null
+      const ligne = sous?.closest<HTMLElement>('.carte-seance-ligne')
+      if (ligne && ligne.parentElement === liste) {
+        const lignes = [...liste.querySelectorAll<HTMLElement>('.carte-seance-ligne')]
+        const r = ligne.getBoundingClientRect(), haut = ev.clientY < r.top + r.height / 2
+        const k = lignes.indexOf(ligne) + (haut ? 0 : 1), i = lignes.indexOf(li)
+        const vers = k > i ? k - 1 : k
+        if (vers !== i) { ligne.classList.add(haut ? 'dessus' : 'dessous'); but = { genre: 'place', vers } }
+        return
+      }
+      const carte = sous?.closest<HTMLElement>('.case-classeur')
+      const gid = carte?.dataset.cle
+      if (carte && gid && gid !== fid && this.fiches.has(gid)) { carte.classList.add('cible-seance'); but = { genre: 'classeur', id: gid } }
+    }
+    const finir = (garder: boolean) => {
+      window.removeEventListener('pointermove', bouger, true)
+      window.removeEventListener('pointerup', lever, true)
+      window.removeEventListener('pointercancel', abandon, true)
+      this.seanceTiree = null
+      const etait = !!fantome
+      fantome?.remove(); fantome = null
+      li.classList.remove('seance-tiree')
+      effacer()
+      if (!garder || !etait || !but) return
+      if (but.genre === 'place') void this.placerSeance(fid, sid, { vers: but.vers })
+      else void this.deplacerSeanceVers(fid, sid, but.id)
+    }
+    const lever = (ev: PointerEvent) => { if (ev.pointerId === e.pointerId) finir(true) }
+    const abandon = (ev: PointerEvent) => { if (ev.pointerId === e.pointerId) finir(false) }
+    this.seanceTiree = finir
+    window.addEventListener('pointermove', bouger, true)
+    window.addEventListener('pointerup', lever, true)
+    window.addEventListener('pointercancel', abandon, true)
   }
 
   // ---------- Le menu d'une carte ----------

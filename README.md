@@ -2878,6 +2878,64 @@ séances du chapitre au même endroit. Pas de distinction 5A / 5B.
   dossiers de chapitre), `lot8/E1-seances-carte.mjs`,
   `lot8/E2-onglet-seances.mjs`.
 
+## Ranger les séances d'un classeur (lot 9)
+
+Demande du professeur, le 20 octobre 2026 (maquette validée) : renommer une
+séance, la supprimer, changer sa place dans le classeur, la déplacer vers un
+autre classeur.
+
+### Le mode d'emploi
+
+Dans la bibliothèque, sous la carte dépliée d'un classeur, chaque séance a
+une poignée ⠿ à gauche et un bouton … à droite (aussi : clic droit sur la
+séance, ou la touche Menu).
+
+- **Renommer…** (F2) : le nom s'écrit sous la date. Effacer le nom remet la
+  date seule.
+- **Monter / Descendre** (Alt + ↑ / Alt + ↓), ou glisser la poignée : l'ordre
+  devient libre, la date reste affichée telle quelle, et la liste dit
+  « Ordre choisi à la main ». « Remettre dans l'ordre des dates » revient à
+  l'ordre habituel. Une nouvelle séance arrive toujours en haut. Échap
+  pendant le glisser : rien ne bouge.
+- **Supprimer** (Suppr) : les pages de la séance vont dans la corbeille du
+  classeur ; « Annuler » dans le message remet tout, avec le nom. La seule
+  séance d'un classeur : c'est le classeur entier qui va dans la corbeille.
+- **Déplacer vers…**, ou glisser la séance sur la carte d'un autre
+  classeur : la séance part avec ses pages, son nom, sa date et son film
+  (Revoir et Publier marchent comme avant), et se range à sa date dans
+  l'autre classeur. « Annuler » la ramène. Un classeur qui a déjà une séance
+  à la même heure refuse, et rien ne bouge.
+- **Les replays déjà publiés ne bougent pas** : le lien des élèves reste
+  bon. Une séance déplacée garde ses publications : la republier depuis son
+  nouveau classeur remplace le même replay (même lien).
+- Le classeur ouvert dans l'onglet suit aussitôt ; si la séance qu'on
+  regarde part, le tableau montre une autre page.
+- Les pages restent numérotées à partir de 1 dans chaque séance.
+
+### Comment c'est fait
+
+- `src/seances.ts` : la fiche d'une séance gagne un champ **facultatif**
+  `rang` (l'ordre choisi à la main) ; `seancesDansLOrdre`, `ordreALaMain`,
+  `rangsDeLOrdre`, `ordreApres`. Les rangs partent de la date la plus
+  récente et descendent : une séance nouvelle, sans rang, passe devant.
+- `src/deplacer-seance.ts` : `supprimerSeance`, `copierSeance`,
+  `retirerSeance`. La copie rejoue le film de la séance dans un tableau
+  neuf (nouveaux identifiants de pages, images de la banque, héritages
+  gardés seulement si la page mère part aussi), puis glisse ses étapes à
+  leur heure dans le film de l'autre classeur, avec des instantanés
+  recalculés : le film reste rangé par heure, comme le veut l'export. Une
+  étape de dessin de l'autre classeur au milieu de la séance : refus.
+- `src/document.ts` : `rangerLesSeances`, `rendrePages`, `marquerDefinitives`,
+  `pagesA`, `ecrireSansFilm`.
+- `src/classeurs/fichiers.ts` : `lireUnClasseur` et `ecrireUnClasseur`
+  (le classeur ouvert dans l'onglet reçoit la différence, les autres sont
+  réécrits dans leur base) ; `bibliotheque.ts` : le menu, le clavier, le
+  glisser, la fenêtre « Déplacer vers… ».
+- Aucune base, aucune clé de stockage ne change ; `.memc`, `.memb` et `.mem`
+  gardent leur format (le seul champ nouveau, `rang`, est facultatif).
+- Les essais : `tests/deplacer-seance.test.ts`,
+  `essais/navigateur/lot9/E1-ranger-seances.mjs`.
+
 ## Reprendre un ancien tableau (.prof)
 
 Les séances d'avant ce classeur sont des **anciens tableaux** : un fichier

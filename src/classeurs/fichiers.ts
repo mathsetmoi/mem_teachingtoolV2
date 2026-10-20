@@ -65,6 +65,7 @@ import {
 } from './archive'
 import { fermerSurLeFond } from '../dialogue'
 import { Tableau } from '../document'
+import { resumeDesSeances } from '../seances'
 import type { AncienTableau, Rognure } from './ancien-tableau'
 import { EXTENSION_ANCIEN, ErreurAncien, finDuClasseur, lireAncienTableau, reprendre, texteDuBilan, textesAvantAnciens } from './ancien-tableau'
 
@@ -478,6 +479,74 @@ export class Fichiers {
     const fait = await this.mettreAJour(F, lu, { texte: `${anciens.length > 1 ? 'Séances ajoutées' : 'Séance ajoutée'} à « ${F.nom} ». ${bilans.join(' ')}` })
     if (fait === 'diverge') this.hote.message(`« ${F.nom} » a changé pendant la reprise : rien n'a été ajouté. Recommencez.`)
     return fait === 'fait'
+  }
+
+  // ---------- Les séances d'un classeur, depuis la bibliothèque ----------
+  /** Un classeur de la bibliothèque, lu dans un document qui ne vit nulle
+   *  part, pour y ranger ses séances (voir deplacer-seance.ts) : celui de
+   *  cet onglet tel qu'il est en mémoire, un autre tel que sa base le garde.
+   *  null : il n'a pas pu être lu (on le dit). */
+  async lireUnClasseur(F: FicheClasseur): Promise<Tableau | null> {
+    const r = this.refusMaintenant() ?? (this.enCours ? 'Un fichier est en train de s\'ouvrir : attendez un instant.' : null)
+    if (r) { this.hote.message(r); return null }
+    const tab = new Tableau(null)
+    tab.seancesActives = true
+    const app = this.hote.app
+    try {
+      if (this.estIci(F) && app && this.hote.sauvegarde) {
+        app.poserCeQuiAttend()
+        app.piste.vider()
+        await app.tableau.attendreEcritures()
+        tab.lireEtat(Y.encodeStateAsUpdate(app.tableau.doc))
+      } else {
+        const f = await ecrivain.fabriquerFichier(F.base, { nom: F.nom, id: F.id })
+        tab.lireEtat((await this.lire(f.fichier)).etat)
+      }
+    } catch (e) {
+      this.hote.message(`« ${F.nom} » n'a pas pu être lu : ${raisonDe(e)}. Rien n'a changé.`)
+      return null
+    }
+    return tab
+  }
+
+  /** Ce qu'on a changé dans un classeur lu par lireUnClasseur s'y écrit :
+   *  celui de cet onglet le reçoit tout de suite (sa base, sa clé, son Drive
+   *  suivent comme pour tout changement) ; un autre, dans sa base, sans rien
+   *  perdre (comme « Mettre à jour le classeur » : s'il a changé entre-temps,
+   *  rien ne s'écrit), et les onglets qui l'ont ouvert sont prévenus. Sa
+   *  fiche suit (ses pages, ses séances). Faux : rien n'a changé (on le dit). */
+  async ecrireUnClasseur(F: FicheClasseur, tab: Tableau): Promise<boolean> {
+    const app = this.hote.app
+    let vecteur: Uint8Array
+    try {
+      if (this.estIci(F) && app && this.hote.sauvegarde && !this.coupe) {
+        app.tableau.lireEtat(Y.encodeStateAsUpdate(tab.doc, Y.encodeStateVector(app.tableau.doc)))
+        vecteur = Y.encodeStateVector(app.tableau.doc)
+      } else {
+        const lu = await this.lire(ecrireTableau(tab.doc, Date.now(), { nom: F.nom, id: F.id }))
+        this.prevenir(F, 'remplace')
+        const r = await ecrivain.mettreAJour(F.base, lu.etat, lu.vecteur)
+        if (!r.misAJour) {
+          this.hote.message(`« ${F.nom} » a changé pendant ce temps : rien n'a été modifié. Recommencez.`)
+          return false
+        }
+        vecteur = r.vecteur
+      }
+    } catch (e) {
+      this.hote.message(`« ${F.nom} » n'a pas pu être modifié : ${raisonDe(e)}. Rien n'a changé.`)
+      return false
+    }
+    const t = this.estIci(F) && app ? app.tableau : tab
+    const rangees = t.seancesDuClasseur()
+    const liste = resumeDesSeances(rangees)
+    await this.registre.modifierClasseur(F.id, x => {
+      x.modifie = Math.max(x.modifie || 0, Date.now())
+      x.pages = t.ordre.length
+      if (rangees.length) x.seances = rangees.length
+      if (liste.length) x.listeSeances = liste; else delete x.listeSeances
+      x.vecteur = vecteur
+    }).catch(() => undefined)
+    return true
   }
 
   // ---------- Un fichier ----------

@@ -1432,6 +1432,27 @@ body.en-bibliotheque .toast { z-index: 30; }
 .grille-classeurs.recents .carte-seances-bascule, .grille-classeurs.recents .carte-seances-liste { display: none; }
 @media (hover: hover) { .carte-seance:hover, .carte-seances-bascule:hover { background: #e9eef5; } }
 @media (prefers-reduced-motion: reduce) { .carte-seances-fleche { transition: none; } }
+/* Chaque séance : la poignée ⠿ (la glisser), la séance, son bouton … */
+.carte-seance-ligne { display: grid; grid-template-columns: 20px minmax(0, 1fr) 36px; align-items: center; position: relative; }
+.carte-seance-ligne .carte-seance { grid-template-columns: minmax(0, 1fr); padding: 5px 2px; }
+.carte-seance-ligne .seance-pages { font-size: 12px; line-height: 16px; }
+.poignee-seance { align-self: stretch; display: grid; place-items: center; color: var(--encre-douce); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; font-size: 15px; }
+.options-seance { width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--encre-douce); cursor: pointer; }
+.options-seance svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 3.4; stroke-linecap: round; }
+.options-seance[aria-expanded='true'] { background: #e9eef5; color: var(--encre); }
+@media (hover: hover) { .options-seance:hover { background: #e9eef5; color: var(--encre); } }
+.carte-seance-ligne.dessus { box-shadow: inset 0 3px 0 var(--bleu); }
+.carte-seance-ligne.dessous { box-shadow: inset 0 -3px 0 var(--bleu); }
+.carte-seance-ligne.seance-tiree { opacity: 0.4; }
+.fantome-seance { position: fixed; left: 0; top: 0; z-index: 1000; pointer-events: none; background: var(--papier); border: 1px solid var(--filet); border-radius: 8px; box-shadow: 0 6px 20px rgba(20, 35, 60, 0.2); list-style: none; }
+.case-classeur.cible-seance { outline: 3px dashed var(--bleu); outline-offset: 4px; border-radius: 12px; }
+.carte-seances-ordre { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; padding: 6px 10px; color: var(--encre-douce); font-size: 13px; }
+.lien-ordre-dates { border: 0; padding: 0; background: none; color: var(--bleu); font: inherit; text-decoration: underline; cursor: pointer; }
+.dialogue-deplacer-seance .classeurs-cibles { max-height: min(50vh, 360px); overflow: auto; border: 1px solid var(--filet); border-radius: 8px; margin: 12px 0; }
+.dialogue-deplacer-seance fieldset { border: 0; margin: 0; padding: 4px 0; }
+.dialogue-deplacer-seance legend { padding: 6px 12px 2px; color: var(--encre-douce); font-size: 13px; font-weight: 700; }
+.dialogue-deplacer-seance label { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 12px 4px 20px; cursor: pointer; }
+@media (hover: hover) { .dialogue-deplacer-seance label:hover { background: #e9eef5; } }
 /* Le menu du classeur : ⋯ dans le coin haut droit de l'aperçu, toujours là
    (rien ne dépend du survol). Une cible de 44 × 44, une pastille plus petite. */
 .options-classeur {
