@@ -12,10 +12,16 @@
 //
 // Repère de l'instrument : u le long de son bord, v à 90° (vers le bas
 // de l'écran quand l'instrument est droit). Coordonnées monde, 40 = 1 cm.
+//
+// Le pointeur laser (outils de classe) passe par la même couche, et donc par
+// la même piste : les élèves voient au replay ce que le professeur montrait.
+// Ce n'est pas un instrument qu'on pose : il n'est pas dans la liste des
+// instruments, ne s'attrape pas et n'a aucun bord ; son état n'est que le
+// point qu'il montre (x, y).
 // =============================================================
 import { CM } from './types'
 
-export type NomInstrument = 'regle' | 'equerre' | 'rapporteur' | 'compas'
+export type NomInstrument = 'regle' | 'equerre' | 'rapporteur' | 'compas' | 'laser'
 export const INSTRUMENTS: { id: NomInstrument; nom: string }[] = [
   { id: 'regle', nom: 'Règle' },
   { id: 'equerre', nom: 'Équerre' },
@@ -46,6 +52,7 @@ export function etatParDefaut(nom: NomInstrument, centre: P): EtatInstrument {
     case 'equerre': return { x: centre.x - 13 * CM, y: centre.y + 2.5 * CM, a: 0, r: 0 }
     case 'rapporteur': return { x: centre.x + 8 * CM, y: centre.y + 2.5 * CM, a: 0, r: 0 }
     case 'compas': return { x: centre.x - 2 * CM, y: centre.y + 1 * CM, a: 0, r: 4 * CM }
+    case 'laser': return { x: centre.x, y: centre.y, a: 0, r: 0 }
   }
 }
 
@@ -69,7 +76,7 @@ function contour(nom: NomInstrument, e: EtatInstrument): P[] {
       for (let k = 0; k <= 36; k++) { const f = Math.PI * k / 36; r.push(pt(-Math.cos(f) * RAPPORTEUR.r, -Math.sin(f) * RAPPORTEUR.r)) }
       return r
     }
-    case 'compas': return []
+    case 'compas': case 'laser': return []
   }
 }
 
@@ -118,6 +125,7 @@ function distanceAuSegment(p: P, a: P, b: P) {
 
 /** `rayon` : la portée de la main, en unités monde */
 export function toucher(nom: NomInstrument, e: EtatInstrument, w: P, rayon: number): Partie | null {
+  if (nom === 'laser') return null
   if (nom === 'compas') {
     const c = partiesDuCompas(e)
     if (dist(w, c.T) < rayon * 1.6) return 'tete'
@@ -148,7 +156,7 @@ export function bords(nom: NomInstrument, e: EtatInstrument): Bord[] {
       ]
     }
     case 'rapporteur': return [{ o, u, debut: -RAPPORTEUR.r, fin: RAPPORTEUR.r, gradue: true }]
-    case 'compas': return []
+    case 'compas': case 'laser': return []
   }
 }
 
@@ -156,7 +164,8 @@ export function bords(nom: NomInstrument, e: EtatInstrument): Bord[] {
 export function dessinerInstrument(c: CanvasRenderingContext2D, nom: NomInstrument, e: EtatInstrument, z: number, actif: Partie | null) {
   c.save()
   c.lineJoin = 'round'; c.lineCap = 'round'
-  if (nom === 'compas') dessinerCompas(c, e, z, actif)
+  if (nom === 'laser') dessinerLaser(c, e, z)
+  else if (nom === 'compas') dessinerCompas(c, e, z, actif)
   else {
     const corps = contour(nom, e)
     c.beginPath(); corps.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)); c.closePath()
@@ -166,6 +175,43 @@ export function dessinerInstrument(c: CanvasRenderingContext2D, nom: NomInstrume
     else if (nom === 'equerre') graduerEquerre(c, e, z)
     else graduerRapporteur(c, e, z)
     dessinerPastille(c, poigneeRotation(nom, e), z, actif === 'rotation', 'rotation')
+  }
+  c.restore()
+}
+
+/** Le rouge du pointeur laser */
+export const ROUGE_LASER = '#ff2a2a'
+/** Son rayon à l'écran (px), quel que soit le zoom */
+export const RAYON_LASER = 7
+
+/** Le point du laser : un disque rouge dans un halo, de la même taille à
+ *  l'écran à tout zoom (au tableau, au replay, à la revue) */
+function dessinerLaser(c: CanvasRenderingContext2D, e: EtatInstrument, z: number) {
+  const r = RAYON_LASER / z
+  c.fillStyle = 'rgba(255, 42, 42, 0.22)'
+  c.beginPath(); c.arc(e.x, e.y, r * 2.2, 0, 2 * Math.PI); c.fill()
+  c.fillStyle = ROUGE_LASER
+  c.beginPath(); c.arc(e.x, e.y, r, 0, 2 * Math.PI); c.fill()
+  c.strokeStyle = 'rgba(255, 255, 255, 0.9)'; c.lineWidth = 1.5 / z; c.stroke()
+}
+
+/** La traînée du laser, à l'écran du professeur seulement : les points des
+ *  dernières LASER_TRAINEE ms, de plus en plus pâles et fins vers le passé */
+export const LASER_TRAINEE = 1000
+export function dessinerTraineeLaser(c: CanvasRenderingContext2D, pts: readonly { x: number; y: number; t: number }[], z: number, maintenant: number) {
+  c.save()
+  c.lineJoin = 'round'; c.lineCap = 'round'
+  // Des tons pleins, du rouge au rose pâle (et non une transparence : les
+  // bouts arrondis de deux morceaux voisins, superposés, feraient des points
+  // plus sombres le long de la traînée)
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i]
+    const vie = 1 - (maintenant - b.t) / LASER_TRAINEE
+    if (vie <= 0) continue
+    const pale = Math.round(255 - (255 - 120) * vie)
+    c.strokeStyle = `rgb(255, ${pale}, ${pale})`
+    c.lineWidth = (2 + 5 * vie) / z
+    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke()
   }
   c.restore()
 }

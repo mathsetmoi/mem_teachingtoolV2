@@ -9,7 +9,8 @@
 //   C. Le texte court de l'état n'est jamais coupé dans la forme large
 //      (1180 × 820, 1112 × 834 : l'icône et le point ; 1194 × 834 : entier ;
 //      depuis le lot 5, K8, la barre du haut plus étroite : 1060 × 800,
-//      1000 × 800 l'icône et le point ; 1112, 1180, 1194 : entier).
+//      1000 × 800 l'icône et le point ; 1112, 1180, 1194 : entier ; avec
+//      le bouton « Classe », 1112 × 834 : l'icône et le point).
 //   D. Un appui dans la marge intérieure des fenêtres « Nouveau classeur » et
 //      « Nouveau dossier » (souris, doigt) ne les ferme pas ; sur le fond, si.
 //   E. Au démarrage revient le classeur où l'on a écrit en dernier, pas celui
@@ -181,7 +182,9 @@ if (seul('C')) {
   // lieu de la liste déroulante) ; à 1180 × 820 et 1112 × 834, l'état tient
   // désormais entier : la forme large ; l'icône et le point viennent sous
   // 1080 px environ, essayés à 1060 × 800 et 1000 × 800. Adapté volontairement.)
-  for (const [w, h, forme] of [[1060, 800, 'etroit'], [1000, 800, 'etroit'], [1180, 820, 'large'], [1112, 834, 'large'], [1194, 834, 'large'], [1366, 768, 'large'], [1280, 720, 'large']]) {
+  // (Adapté aux outils de classe : le bouton « Classe » prend 46 px ; à
+  // 1112 × 834, l'état ne tient plus entier : l'icône et le point.)
+  for (const [w, h, forme] of [[1060, 800, 'etroit'], [1000, 800, 'etroit'], [1180, 820, 'large'], [1112, 834, 'etroit'], [1194, 834, 'large'], [1366, 768, 'large'], [1280, 720, 'large']]) {
     const { ctx, p } = await ouvrir({ viewport: { width: w, height: h }, hasTouch: w < 1300 }, 'C')
     await p.evaluate(() => document.fonts.ready); await dort(300)
     const g = await p.evaluate(() => {

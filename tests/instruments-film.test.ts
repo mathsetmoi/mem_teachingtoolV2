@@ -330,6 +330,8 @@ describe('la piste : le format, relu défensivement', () => {
   it('refuse les entiers abîmés, le mauvais pas, un instrument inconnu', () => {
     const bon = { t: 5, n: 'regle', d: [0, 10, 20, 30] }
     expect(lireMorceau(bon)).not.toBeNull()
+    // Le pointeur laser se relit comme un instrument (il est dans le replay)
+    expect(lireMorceau({ ...bon, n: 'laser' })).not.toBeNull()
     for (const m of [
       { ...bon, d: [0, 10, 20] },                 // pas un multiple du pas
       { ...bon, d: [3, 10, 20, 30] },             // première pose relative

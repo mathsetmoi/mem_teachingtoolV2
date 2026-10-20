@@ -19,10 +19,12 @@ import { Constructeur } from './constructeur'
 import { Seance } from './seance'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
+import { OutilsDeClasse } from './outils-classe'
+import { montrerConseils, ouvrirAide } from './aide'
 import type { Menu, OptionsEntree } from './menus'
 import type { Sens } from './ordre'
 import { aidesOrdre } from './ordre'
-import { ENTREES, allerAuxEntrees, basculerMenu, entreeMenu, fermerMenu, filetMenu, focusAuClavier, focusNullePart, focusVenuDuClavier, installerMenus, naviguerDansLaGrille, ouvrirMenu, placerMenu, positionPanneau, refaireEnGardantLeFocus, titreMenu } from './menus'
+import { ENTREES, allerAuxEntrees, basculerMenu, entreeMenu, fermerMenu, filetMenu, focusAuClavier, focusNullePart, focusVenuDuClavier, installerMenus, menuOuvert, naviguerDansLaGrille, ouvrirMenu, placerMenu, positionPanneau, refaireEnGardantLeFocus, titreMenu } from './menus'
 import { choisirGestes, choisirGomme, choisirMolette, choisirNomsOutils, choisirTailleGomme, nomsOutilsVisibles, reglages } from './reglages'
 import type { Doigt, ModeGomme, Molette, TailleGomme } from './reglages'
 import { APPUI_LONG, messageNomsOutils, typePointeur } from './pointeurs'
@@ -319,6 +321,13 @@ export class UI implements Interface {
   private seance!: Seance
   private choixInstruments!: HTMLDivElement
   private boutonInstruments!: HTMLButtonElement
+  /** Les outils de classe (rideau, minuteur, tirage au sort ; le laser est à l'App) */
+  outilsDeClasse!: OutilsDeClasse
+  private boutonOutilsClasse!: HTMLButtonElement
+  private menuOutilsClasse!: Menu
+  /** La classe du classeur ouvert, que la bibliothèque connaît (main.ts) :
+   *  le tirage au sort prend sa liste */
+  classeDuClasseur: () => Promise<{ id: string; nom: string } | null> = async () => null
   private boutonsInstruments = new Map<NomInstrument, HTMLButtonElement>()
   private menuPartie!: HTMLDivElement
   private partie: { id: string; prise: Prise } | null = null
@@ -756,6 +765,33 @@ export class UI implements Interface {
     const importer = bouton('image', 'Importer une image (ou coller avec Ctrl+V, ou glisser le fichier)', e => this.choisirImage(e), 'seulement-large')
     this.racine.appendChild(choixFichier)
     const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir(), 'seulement-large')
+    // Les outils de classe : rideau, pointeur laser, minuteur, tirage au
+    // sort, aide (voir outils-classe.ts) ; un menu sous leur bouton
+    this.outilsDeClasse = new OutilsDeClasse(this.racine, {
+      laser: () => app.laser,
+      basculerLaser: () => app.basculerLaser(),
+      ouvrirAide: () => this.ouvrirAide(),
+      classe: () => this.classeDuClasseur(),
+      message: t => this.message(t),
+    }, () => {
+      // Le rideau commence sous la barre du haut (et l'étiquette de la séance)
+      let bas = haut.getBoundingClientRect().bottom
+      const s = this.rangSeance.getBoundingClientRect()
+      if (s.height && s.top < bas + 40) bas = Math.max(bas, s.bottom)
+      return Math.ceil(bas + 8)
+    })
+    const menuOutilsClasse = document.createElement('div')
+    menuOutilsClasse.className = 'menu-flottant menu-outils-classe'; menuOutilsClasse.setAttribute('role', 'menu'); menuOutilsClasse.setAttribute('aria-label', 'Outils de classe')
+    menuOutilsClasse.hidden = true
+    const outilsClasse = this.boutonOutilsClasse = bouton('outils-classe', 'Outils de classe : rideau, pointeur laser, minuteur, tirage au sort, aide', e => {
+      if (menuOutilsClasse.hidden) this.construireMenuOutilsClasse(menuOutilsClasse)
+      basculerMenu(this.menuOutilsClasse)
+      if (menuOutilsClasse.hidden) return
+      placerMenu(menuOutilsClasse, outilsClasse.getBoundingClientRect(), 'dessous')
+      if ((e as MouseEvent).detail === 0) menuOutilsClasse.querySelector<HTMLElement>('.menu-item')?.focus()
+    }, 'seulement-large outils-classe')
+    outilsClasse.setAttribute('aria-haspopup', 'menu'); outilsClasse.setAttribute('aria-expanded', 'false')
+    this.menuOutilsClasse = { el: menuOutilsClasse, bouton: outilsClasse }
     const revoir = bouton('revue', 'Revoir la construction : une page, une séance, pas à pas', () => this.ouvrirRevue(revoir), 'seulement-large')
     const publier = bouton('publier', 'Publier le replay pour les élèves', () => this.publication.ouvrir(), 'seulement-large')
     // Enregistrer le classeur dans un fichier, en ouvrir un, l'exporter en
@@ -790,7 +826,7 @@ export class UI implements Interface {
     this.pointFichier = Object.assign(document.createElement('span'), { className: 'point-etat', hidden: true })
     this.pointFichier.setAttribute('aria-hidden', 'true')
     fichier.appendChild(this.pointFichier)
-    haut.append(avant, this.rang, apres, nouvelle, jeter, boutonFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, catalogue, automatismes, revoir, publier, fichier)
+    haut.append(avant, this.rang, apres, nouvelle, jeter, boutonFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, catalogue, automatismes, outilsClasse, revoir, publier, fichier)
     // Les noms sous les outils (lot 5) : ni ‹, ni ›, ni le compteur, ni le
     // bouton du classeur
     nommer(nouvelle, 'Nouvelle')
@@ -799,7 +835,7 @@ export class UI implements Interface {
     this.libelleJeter = nommer(jeter, 'Supprimer')
     nommer(boutonFond, 'Fond'); nommer(this.boutonAimant, 'Aimant'); nommer(this.boutonReconnaissance, 'Formes auto')
     nommer(importer, 'Image'); nommer(this.boutonInstruments, 'Instruments'); nommer(construire, 'Construire'); nommer(catalogue, 'Catalogue')
-    nommer(automatismes, 'Automatismes'); nommer(revoir, 'Revoir'); nommer(publier, 'Publier'); nommer(fichier, 'Fichier')
+    nommer(automatismes, 'Automatismes'); nommer(outilsClasse, 'Classe'); nommer(revoir, 'Revoir'); nommer(publier, 'Publier'); nommer(fichier, 'Fichier')
 
     // ----- Le bouton du classeur, à gauche de la barre du haut -----
     // L'icône, le nom en gras (entier dans le titre), l'état en court ; un
@@ -949,7 +985,7 @@ export class UI implements Interface {
     this.menuPlus = { el: menuPlus }
 
     // (les deux menus du téléphone, au bout : l'ordre des autres ne change pas)
-    this.racine.append(outils, barreClasseur, haut, this.bandeau, this.descriptionEtat, zoom, this.retour, menu, menuDoigt, this.menuGomme.el, menuFichier, menuFonds, menuPage, menuPlus, this.annonce, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments,
+    this.racine.append(outils, barreClasseur, haut, this.bandeau, this.descriptionEtat, zoom, this.retour, menu, menuDoigt, this.menuGomme.el, menuFichier, menuFonds, this.menuOutilsClasse.el, menuPage, menuPlus, this.annonce, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments,
       this.menuCouleur.el, this.menuAutres.el)
     // ----- La barre d'actions, au-dessus de ce qui est pris -----
     // Elle ne recouvre ni la barre d'outils (sauf sur un écran étroit, où
@@ -1437,6 +1473,35 @@ export class UI implements Interface {
     entreeMenu(m, texte, faire, o)
   }
 
+  /** Le menu des outils de classe : chaque outil avec son icône, coché quand
+   *  il est à l'écran (un second choix le range) */
+  private construireMenuOutilsClasse(m: HTMLElement) {
+    m.replaceChildren()
+    for (const x of this.outilsDeClasse.entrees()) {
+      if (x.id === 'aide') filetMenu(m)
+      const b = entreeMenu(m, x.texte, x.faire, { action: 'outil-classe-' + x.id, aide: x.aide, touche: x.touche,
+        ...(x.id === 'aide' ? {} : { coche: x.coche, caseACocher: true }) })
+      // Rien de coché : l'icône de l'outil tient la place de la coche
+      const coche = b.querySelector('.coche')
+      if (coche && !x.coche) { coche.innerHTML = icone(x.icone); coche.classList.add('icone-entree') }
+    }
+  }
+
+  /** L'aide et les raccourcis (la touche « ? », ou les outils de classe) */
+  ouvrirAide() {
+    fermerMenu()
+    ouvrirAide(this.racine)
+  }
+
+  /** Les conseils du premier lancement (voir aide.ts) : une fois le tableau
+   *  prêt, quand aucune fenêtre n'est ouverte */
+  lancerConseils() {
+    montrerConseils(this.racine, [
+      { titre: 'Nouveau : les outils de classe', texte: 'Le rideau, le pointeur laser, le minuteur et le tirage au sort sont réunis sous ce bouton.', ancre: () => this.boutonOutilsClasse },
+      { titre: 'L\'aide, à tout moment', texte: 'La touche « ? » ouvre l\'aide : tous les raccourcis du clavier et les gestes.', ancre: () => this.boutonOutilsClasse },
+    ], () => !document.querySelector('dialog[open]') && !document.body.classList.contains('en-seance') && !document.body.classList.contains('en-bibliotheque') && !menuOuvert())
+  }
+
   /** « Importer une image » (le bouton de la barre du haut, ou « Plus » au
    *  téléphone) : le choix du fichier s'ouvre. Le pointeur qui l'a touché
    *  est noté : le message de l'import parle sa langue (P à la souris et à
@@ -1580,12 +1645,21 @@ export class UI implements Interface {
     this.entreeMenu(m, 'Programme de construction', () => this.basculerConstructeur(), { action: 'construction', aide: 'Étape par étape' })
     this.entreeMenu(m, 'Catalogue', () => this.basculerCatalogue(), { action: 'catalogue', aide: 'Ensembles de nombres…' })
     this.entreeMenu(m, 'Automatismes', () => this.seance.ouvrir(), { action: 'automatismes', aide: '10 questions minutées' })
+    this.entreeMenu(m, 'Outils de classe…', () => this.ouvrirOutilsClasseDepuisPlus(), { action: 'outils-classe', aide: 'Rideau, laser, minuteur, tirage au sort' })
     this.entreeMenu(m, 'Revoir la construction', () => this.ouvrirRevue(plus), { action: 'revue', aide: 'Une page, une séance, pas à pas' })
     this.entreeMenu(m, 'Publier le replay', () => this.publication.ouvrir(), { action: 'publier', aide: 'Pour les élèves' })
     filetMenu(m)
     titreMenu(m, 'Vue')
     this.entreeMenu(m, '100 %', () => app.zoom100(), { action: 'zoom-100', touche: `${CTRL} + 0` })
     this.entreeMenu(m, 'Tout voir', () => app.toutVoir(), { action: 'tout-voir', touche: 'Maj + 1' })
+  }
+
+  /** « Plus → Outils de classe… » au téléphone : leur menu, sous « Plus » */
+  private ouvrirOutilsClasseDepuisPlus() {
+    const el = this.menuOutilsClasse.el
+    this.construireMenuOutilsClasse(el)
+    ouvrirMenu({ el, bouton: this.boutonFichier })
+    placerMenu(el, this.boutonFichier.getBoundingClientRect(), 'dessous')
   }
 
   /** « Plus → Fond… » au téléphone : le menu des fonds en vignettes, sous

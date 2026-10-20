@@ -16,7 +16,7 @@
 // la barre des outils est en bas (portrait) ou à gauche (paysage) ; la
 // fenêtre qui rétrécit de 600 à 360 px ne fait donc plus descendre la barre
 // du haut. Le changement de rangée se vérifie là où il a encore lieu, hors
-// de la mise en page du téléphone (900 → 660 → 900 px de large, au doigt) ;
+// de la mise en page du téléphone (960 → 660 → 960 px de large, au doigt) ;
 // et de 600 à 360 px, on vérifie que la barre du haut reste sur une rangée,
 // la barre des outils en bas, sans rien couvrir.
 // Lancer : node CF3-telephone.mjs [adresse du serveur de développement]
@@ -70,17 +70,19 @@ for (const [nom, o] of APPAREILS) {
 }
 // La fenêtre change : la barre du haut gagne ou perd une rangée, la barre
 // des outils ne passe jamais sous elle (hors de la mise en page du téléphone)
+// (Adapté aux outils de classe : avec le bouton « Classe », la barre du haut
+// a déjà deux rangées à 900 px ; l'essai part de 960 px, où elle n'en a qu'une)
 {
-  const c = await nav.newContext({ viewport: { width: 900, height: 800 }, hasTouch: true, isMobile: true })
+  const c = await nav.newContext({ viewport: { width: 960, height: 800 }, hasTouch: true, isMobile: true })
   const p = await c.newPage(); p.on('pageerror', e => erreurs.push('redim: ' + e.message))
   await p.goto(DEV); await p.waitForFunction(() => window.__app && document.querySelector('.rang')?.textContent?.includes('/')); await p.waitForTimeout(1000)
   const a = await p.evaluate(MESURER)
   await p.setViewportSize({ width: 660, height: 800 }); await p.waitForTimeout(800)
   const b = await p.evaluate(MESURER)
-  await p.setViewportSize({ width: 900, height: 800 }); await p.waitForTimeout(800)
+  await p.setViewportSize({ width: 960, height: 800 }); await p.waitForTimeout(800)
   const d = await p.evaluate(MESURER)
   ok(b.haut.b > a.haut.b && !b.croise && !b.couverts.length && !d.croise && !d.couverts.length && d.haut.b === a.haut.b,
-    `La fenêtre rétrécit (900 → 660 px) : la barre du haut descend (${a.haut.b} → ${b.haut.b}) sans que la barre des outils (${b.outils.t}–${b.outils.b}) passe sous elle ; puis elle remonte (${d.haut.b})`, { a, b, d })
+    `La fenêtre rétrécit (960 → 660 px) : la barre du haut descend (${a.haut.b} → ${b.haut.b}) sans que la barre des outils (${b.outils.t}–${b.outils.b}) passe sous elle ; puis elle remonte (${d.haut.b})`, { a, b, d })
   await c.close()
 }
 // Au téléphone (600 → 360 → 600 px de large) : la barre du haut reste sur une

@@ -123,22 +123,26 @@ console.log('=== A. la place du bouton du classeur ===')
 // bouger de 3 px. Le bouton du classeur a d'autant moins de place ; il garde
 // sa forme partout, sauf à 1100 × 768 nommée, où il se cache (le point sur
 // ⋯). Les places d'avant : 539, 453, 875, 353, 197 / 25, 63, 133.)
+// (Adapté aux outils de classe : encore un bouton, « Classe », 46 px. Le
+// bouton du classeur garde sa forme, sauf à 960 × 600 sans nom, où il se
+// cache (le point sur ⋯). Les places d'avant : 496, 410, 863, 310, 154 /
+// 17, 16, 90.)
 const ECRANS = [
-  { l: 1366, h: 768, sans: ['large', 496] },
-  { l: 1280, h: 720, sans: ['large', 410] },
+  { l: 1366, h: 768, sans: ['large', 450] },
+  { l: 1280, h: 720, sans: ['large', 364] },
   // (Adapté au lot 5, morceau K9 : un TNI, tactile, de 1920 × 1080, a d'office
   // les noms sous les outils, voulus ainsi : la barre des outils fait 80 px,
   // la barre du haut 68 px de haut et 196 px de plus ; la place, 1093 px sans
   // eux, est de 875 ; lot5/K9-affichage.mjs vérifie le reste)
-  { l: 1920, h: 1080, t: true, sans: ['large', 863, 68] },
+  { l: 1920, h: 1080, t: true, sans: ['large', 809, 68] },
   // (Adapté aux corrections « appareils » du lot 4 : la forme large demande
   // la place du plus long des textes courts, 252 px ; à 1180 × 820, l'état
   // « Seulement dans ce navigateur » y était coupé : l'icône et le point —
   // depuis le lot 5, K8, il y tient : 353 px)
-  { l: 1180, h: 820, t: true, sans: ['large', 310] },
-  { l: 1024, h: 768, sans: ['etroit', 154], avec: ['cache', 17] },
-  { l: 1100, h: 768, avec: ['cache', 16] },
-  { l: 960, h: 600, sans: ['etroit', 90] },
+  { l: 1180, h: 820, t: true, sans: ['large', 264] },
+  { l: 1024, h: 768, sans: ['etroit', 108], avec: ['cache', 10] },
+  { l: 1100, h: 768, avec: ['cache', 9] },
+  { l: 960, h: 600, sans: ['cache', 44] },
   { l: 768, h: 1024, t: true, sans: ['dans-la-barre', -6, 104] },
   { l: 820, h: 1180, t: true, sans: ['dans-la-barre', -6, 104] },
   // (Adapté au lot 5, K10, la mise en page du téléphone, voulue : la barre
