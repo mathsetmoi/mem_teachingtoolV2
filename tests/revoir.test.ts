@@ -207,6 +207,29 @@ describe('la bobine rejoue fidèlement', () => {
     expect(b.chapitres[1].i).toBe(3)
     expect(b.finDuChapitre(0)).toBe(2)
   })
+
+  it('des pages créées d’avance ne font pas de chapitres vides', async () => {
+    // Comme un ancien tableau repris : toutes les pages naissent au début,
+    // puis on écrit la page 1, la 2, la 3. Une page neuve paraît avec son
+    // premier geste ; une page jamais écrite ne part pas.
+    const t = new Tableau(null)
+    const { page } = t.nouvelleSeance({ fond: 'blanc' })
+    const p2 = t.ajouterPage('blanc', 1), p3 = t.ajouterPage('blanc', 2), p4 = t.ajouterPage('blanc', 3)
+    await attendre(1000)
+    for (const p of [page, p2, p3]) {
+      t.pageVue = p
+      t.poser(p, trait(0, 0)); await attendre(1000)
+      t.poser(p, trait(5, 5)); await attendre(1000)
+    }
+    const film = t.film.toArray()
+    const r = exporter(t, { de: 0, a: film.length - 1, pages: [page, p2, p3, p4], titre: 'x' })
+    expect(r.chapitres.map(c => c.titre)).toEqual(['Page 1', 'Page 2', 'Page 3'])
+    expect(r.etapes).toHaveLength(6)
+    expect(r.etapes[2].o[0][0]).toBe('f')                    // la page 2 paraît avec son premier trait
+    expect(r.ordre).not.toContain(p4)
+    const b = new Bobine(r)
+    expect(b.chapitres.map(c => c.i)).toEqual([0, 3, 5])
+  })
 })
 
 describe('un fichier qui n’est pas une séance', () => {
