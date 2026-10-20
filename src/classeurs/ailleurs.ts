@@ -138,7 +138,7 @@ export class Ailleurs {
         <button type="button" role="tab" class="onglet" data-ou="drive" aria-selected="false">Google Drive</button>
       </div>
       <div class="panneau" data-ou="ordinateur">
-        <p>Un classeur (.memc) ou une bibliothèque (.memb). Vous pouvez aussi glisser les fichiers sur la page.</p>
+        <p>Un classeur (.memc), une bibliothèque (.memb) ou un ancien tableau (.prof). Vous pouvez aussi glisser les fichiers sur la page.</p>
         <p class="boutons"><button type="button" class="principal a-fichiers">Choisir des fichiers…</button>
         <button type="button" class="secondaire a-dossier"${dossierOk ? '' : ' hidden'}>Choisir un dossier…</button></p>
         <p class="aide">${dossierOk

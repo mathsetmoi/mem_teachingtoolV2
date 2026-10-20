@@ -323,6 +323,14 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
    *  qu'on ne publie pas deviendrait un geste. Au bout du film, ce qui
    *  attend encore ne part pas : rien ne le montrait. */
   const reglees = new Map<string, Set<string>>()
+  /** Une page neuve, encore vide, ne se montre pas à sa naissance : son fond
+   *  attend ici le premier geste écrit sur ELLE, et paraît avec lui. Sans
+   *  quoi des pages créées d'avance (un ancien tableau repris, voir
+   *  classeurs/ancien-tableau.ts ; « Nouvelle page » deux fois de suite)
+   *  feraient chacune un chapitre vide au début du replay, l'élève y
+   *  relançant la lecture pour rien. Une page qu'on n'écrit jamais ne part
+   *  pas (voir montrees). */
+  const naissances = new Map<string, Op[]>()
   for (let i = debut; i <= a; i++) {
     const etat = etatA(i)
     const parPage = new Map<string, Op[]>()
@@ -335,8 +343,11 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
         for (const op of o) r.add((op[1] as Forme).id)
         continue
       }
+      if (!av && o.length && o.every(op => op[0] === 'f') && !etat.pages.get(id)?.formes.size) { naissances.set(id, o); continue }
       // Une page jetée n'a plus rien à montrer : on ne la rejoue pas
       if (o.length && !(o.length === 1 && o[0][0] === 'x')) {
+        const n = naissances.get(id)
+        if (n) { o.unshift(...n); naissances.delete(id) }
         const r = reglees.get(id), formes = etat.pages.get(id)?.formes
         if (r && formes) {
           // Ce que les réglages d'avant ont changé part avec ce geste-ci

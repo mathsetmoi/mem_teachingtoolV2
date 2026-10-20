@@ -30,7 +30,7 @@ import * as Y from 'yjs'
 import type { ActionMessage, App } from '../app'
 import type { Sauvegarde } from '../sauvegarde'
 import { cleDernierEnregistrement, lireDernierEnregistrement, raison, telecharger } from '../sauvegarde'
-import { ErreurFichier, crc32, ecrireLisible, lireTableau, nomSur, pagesLisibles, tailleLisible } from '../fichier'
+import { ErreurFichier, crc32, ecrireLisible, ecrireTableau, lireTableau, nomSur, pagesLisibles, tailleLisible } from '../fichier'
 import { ecrire as ecrireCle } from '../reglages'
 import type { FicheClasseur, InfosClasseur } from './demarrage'
 import { CANAL_CLASSEUR, CANAL_PREMIER, baseDe, estPremier, idClasseur, urlDuClasseur, visible } from './demarrage'
@@ -64,6 +64,9 @@ import {
   estUneArchive, indexDe, lireArchive, lireEntree, lireIndex, nomBibliotheque,
 } from './archive'
 import { fermerSurLeFond } from '../dialogue'
+import { Tableau } from '../document'
+import type { AncienTableau, Rognure } from './ancien-tableau'
+import { EXTENSION_ANCIEN, ErreurAncien, finDuClasseur, lireAncienTableau, reprendre, texteDuBilan, textesAvantAnciens } from './ancien-tableau'
 
 /** Ce que demandent les fichiers à qui les ouvre (main.ts) */
 export interface HoteFichiers {
@@ -86,14 +89,16 @@ export interface HoteFichiers {
 export interface Choisi { fichier: File; poignee?: PoigneeFichier }
 
 /** Le choix des fichiers à ouvrir : des classeurs et des bibliothèques */
-export const TYPES_OUVRIR = [{ description: 'Classeur ou bibliothèque (MEM teachingtool)', accept: { 'application/octet-stream': ['.memc', '.memb'] } }]
+export const TYPES_OUVRIR = [{ description: 'Classeur, bibliothèque ou ancien tableau (MEM teachingtool)', accept: { 'application/octet-stream': ['.memc', '.memb', EXTENSION_ANCIEN] } }]
 export const TYPES_BIBLIOTHEQUE = [{ description: 'Bibliothèque (MEM teachingtool)', accept: { 'application/octet-stream': [EXTENSION_BIBLIOTHEQUE] } }]
-/** Un fichier qu'on peut lâcher : un classeur, une bibliothèque (ou un film
- *  élève, refusé avec sa phrase) */
-export const FICHIER_OUVRABLE = /\.mem[cb]?$/i
+/** Un fichier qu'on peut lâcher : un classeur, une bibliothèque, un ancien
+ *  tableau (ou un film élève, refusé avec sa phrase) */
+export const FICHIER_OUVRABLE = /\.(mem[cb]?|prof)$/i
+/** Un ancien tableau (voir ancien-tableau.ts) */
+const ANCIEN = /\.prof$/i
 
 /** L'aide de « Ouvrir un classeur… » (le menu ⋯) */
-export const AIDE_OUVRIR = 'Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace celui-ci.'
+export const AIDE_OUVRIR = 'Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace celui-ci. Reprend aussi un ancien tableau (.prof).'
 export const AIDE_ENREGISTRER_TOUT = 'Un seul fichier .memb avec tous les classeurs (sans la corbeille) et les dossiers : pour changer d\'ordinateur, ou garder une copie de tout.'
 const PAS_DE_PLACE = 'il n\'y a plus de place dans ce navigateur'
 /** Le fichier de la clé, rouvert (après un conflit) : la clé reprend sur lui */
@@ -113,6 +118,25 @@ const uneImage = () => new Promise<void>(ok => { requestAnimationFrame(() => set
 const dateValable = (t: unknown): t is number => typeof t === 'number' && Number.isFinite(t) && t > 0
 const estPlace = (e: unknown) => (e instanceof ErreurBase && e.raison === 'place') || (e instanceof ErreurEcrivain && e.raison === 'place')
   || (e as { name?: string } | null)?.name === 'QuotaExceededError'
+
+/** Une image d'un ancien tableau, lue, rognée (la partie gardée) et
+ *  réduite comme une image importée (1600 px au plus) ; telle quelle si
+ *  rien de cela ne la change. null : elle ne se lit pas. */
+async function preparerImage(donnees: string, r: Rognure | null): Promise<{ donnees: string; l: number; h: number } | null> {
+  const img = await new Promise<HTMLImageElement | null>(ok => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = donnees })
+  if (!img || !img.naturalWidth || !img.naturalHeight) return null
+  const W = img.naturalWidth, H = img.naturalHeight
+  const x = Math.min(Math.max(0, r?.x ?? 0), W - 1), y = Math.min(Math.max(0, r?.y ?? 0), H - 1)
+  const gl = Math.min(r?.l ?? W, W - x), gh = Math.min(r?.h ?? H, H - y)
+  if (gl < 1 || gh < 1) return null
+  const k = Math.min(1, 1600 / Math.max(gl, gh))
+  if (x < 1 && y < 1 && Math.abs(gl - W) < 1 && Math.abs(gh - H) < 1 && k === 1) return { donnees, l: W, h: H }
+  const l = Math.max(1, Math.round(gl * k)), h = Math.max(1, Math.round(gh * k))
+  const cv = Object.assign(document.createElement('canvas'), { width: l, height: h })
+  cv.getContext('2d')!.drawImage(img, x, y, gl, gh, 0, 0, l, h)
+  const png = /^data:image\/(png|gif)/.test(donnees)
+  return { donnees: cv.toDataURL(png ? 'image/png' : 'image/jpeg', 0.86), l, h }
+}
 
 /** Ce qu'on dit d'un classeur qui n'a pas pu être lu, mis à jour… */
 function raisonDe(e: unknown): string {
@@ -195,7 +219,7 @@ export class Fichiers {
 
   constructor(private hote: HoteFichiers, racine: HTMLElement) {
     this.choix = Object.assign(document.createElement('input'), { type: 'file', hidden: true, multiple: true })
-    if (!IOS) this.choix.accept = '.memc,.memb'
+    if (!IOS) this.choix.accept = `.memc,.memb,${EXTENSION_ANCIEN}`
     this.choix.className = 'choix-fichiers'
     this.choix.setAttribute('aria-hidden', 'true')
     this.choix.addEventListener('change', () => {
@@ -282,6 +306,11 @@ export class Fichiers {
     this.enCours = true
     this.dossierImpose = o.dossier
     try {
+      const anciens = choisis.filter(c => ANCIEN.test(c.fichier.name))
+      if (anciens.length) {
+        if (anciens.length < choisis.length) { this.hote.message('Ouvrez les anciens tableaux (.prof) à part, sans classeur ni bibliothèque avec eux.'); return false }
+        return await this.ouvrirAnciens(anciens)
+      }
       if (choisis.length === 1 && !o.lot) { await this.ouvrirUn(choisis[0]); return true }
       return await this.ouvrirPlusieurs(choisis)
     } catch (e) {
@@ -391,6 +420,64 @@ export class Fichiers {
       if (a.id !== id && await memeFichier(poignee, a.poignee)) return false
     }
     return true
+  }
+
+  // ---------- D'anciens tableaux (.prof) ----------
+  /** Un ou plusieurs anciens tableaux (voir ancien-tableau.ts) : chacun
+   *  devient une séance, avec son film, du plus ancien au plus récent, dans
+   *  un classeur neuf, ou au bout du classeur ouvert (s'il n'a rien de plus
+   *  récent). Le classeur se fait en mémoire, puis entre dans la
+   *  bibliothèque comme un fichier .memc : ajouté (un neuf), ou mis à jour
+   *  sans rien perdre (celui qui est ouvert). */
+  private async ouvrirAnciens(choisis: Choisi[]): Promise<boolean> {
+    this.hote.message(choisis.length > 1 ? 'Lecture des anciens tableaux…' : 'Lecture de l\'ancien tableau…')
+    await uneImage()
+    const anciens: AncienTableau[] = []
+    for (const { fichier } of choisis) {
+      try { anciens.push(lireAncienTableau(await fichier.text(), fichier.name)) } catch (e) {
+        this.hote.message(`« ${fichier.name} » : ${e instanceof ErreurAncien ? e.message : `ce fichier n'a pas pu être lu (${raisonDe(e)})`}`)
+        return false
+      }
+    }
+    anciens.sort((a, b) => a.debut - b.debut)
+    this.poserIci()
+    const r = this.refusMaintenant()
+    if (r) { this.hote.message(r); return false }
+    const ici = this.ici && this.hote.sauvegarde && !this.coupe ? this.ici : null
+    const app = this.hote.app
+    const { textes, ajoutable } = textesAvantAnciens(anciens, ici && app ? { nom: ici.nom, fin: finDuClasseur(app.tableau) } : null)
+    const boutons: Bouton[] = [ANNULER]
+    if (ici && ajoutable) boutons.push({ cle: 'ajouter-ici', libelle: `Ajouter à «\u00a0${ici.nom}\u00a0»`, classe: 'secondaire' })
+    boutons.push({ cle: 'nouveau', libelle: 'Nouveau classeur', classe: 'principal' })
+    const choix = await fenetre({ titre: anciens.length > 1 ? 'Reprendre ces anciens tableaux ?' : 'Reprendre cet ancien tableau ?', textes, boutons, focus: 'nouveau' })
+    if (choix.cle !== 'nouveau' && choix.cle !== 'ajouter-ici') return false
+    const tab = new Tableau(null)
+    let F: FicheClasseur | null = null
+    if (choix.cle === 'ajouter-ici' && ici && app) {
+      F = await this.registre.classeur(ici.id).catch(() => null) ?? null
+      if (!F) { this.hote.message(`« ${ici.nom} » n'est plus dans la bibliothèque.`); return false }
+      app.poserCeQuiAttend()
+      await app.tableau.attendreEcritures()
+      tab.lireEtat(Y.encodeStateAsUpdate(app.tableau.doc))
+      if (finDuClasseur(tab) > anciens[0].debut) { this.hote.message(`« ${ici.nom} » a changé entre-temps : il a maintenant une séance plus récente. Rien n'a été ajouté.`); return false }
+    }
+    const bilans: string[] = []
+    try {
+      for (const a of anciens) {
+        this.hote.message(`Reprise de « ${a.nom} »…`)
+        await uneImage()
+        bilans.push(texteDuBilan(a, await reprendre(tab, a, preparerImage)))
+      }
+    } catch (e) {
+      this.hote.message(`L'ancien tableau n'a pas pu être repris : ${raisonDe(e)}. Rien n'a changé.`)
+      return false
+    }
+    const nom = nomDeClasseur(F?.nom ?? anciens[0].nom) ?? 'Ancien tableau'
+    const lu = await this.lire(ecrireTableau(tab.doc, Date.now(), F ? { nom: F.nom, id: F.id } : { nom }))
+    if (!F) { await this.ajouterEtOuvrir(`${nom}.memc`, lu, { apres: bilans.join(' ') }); return true }
+    const fait = await this.mettreAJour(F, lu, { texte: `${anciens.length > 1 ? 'Séances ajoutées' : 'Séance ajoutée'} à « ${F.nom} ». ${bilans.join(' ')}` })
+    if (fait === 'diverge') this.hote.message(`« ${F.nom} » a changé pendant la reprise : rien n'a été ajouté. Recommencez.`)
+    return fait === 'fait'
   }
 
   // ---------- Un fichier ----------
@@ -541,7 +628,7 @@ export class Fichiers {
 
   /** Après « Ajouter » (un seul fichier) : on ouvre le classeur ajouté (en
    *  partant de celui-ci sans rien perdre, voir Bibliotheque.ouvrirClasseur) */
-  private async ajouterEtOuvrir(nomFichier: string, lu: FichierLu, o: { copie?: boolean; neuf?: boolean; de?: FicheClasseur; cle?: { poignee: PoigneeFichier; accord: boolean } | null }) {
+  private async ajouterEtOuvrir(nomFichier: string, lu: FichierLu, o: { copie?: boolean; neuf?: boolean; de?: FicheClasseur; cle?: { poignee: PoigneeFichier; accord: boolean } | null; apres?: string }) {
     let fiche: FicheClasseur, publications: number
     try { ({ fiche, publications } = await this.ajouter(nomFichier, lu, { ...o, dossier: this.dossierCible() })) } catch (e) {
       this.hote.message(`Le classeur n'a pas pu être ajouté : ${raisonDe(e)}.`)
@@ -549,7 +636,7 @@ export class Fichiers {
       return
     }
     const g = o.cle ? await this.garderCommeCle(fiche, o.cle.poignee, o.cle.accord, lu) : { texte: '', cle: null }
-    const texte = `Classeur ajouté à la bibliothèque : « ${fiche.nom} » (${pagesLisibles(lu.pages)}).${g.texte}${publications ? ` ${TEXTE_PUBLIEES_COPIE}` : ''}`
+    const texte = `Classeur ajouté à la bibliothèque : « ${fiche.nom} » (${pagesLisibles(lu.pages)}).${g.texte}${publications ? ` ${TEXTE_PUBLIEES_COPIE}` : ''}${o.apres ? ` ${o.apres}` : ''}`
     // La clé : ce qu'il en est se dira à l'arrivée, une fois vérifiée là-bas
     if (this.coupe) { this.recharger(fiche.id, texte, g.cle); return }
     await this.biblio.ouvrirClasseur(fiche, { arrivee: texte, ...(g.cle ? { cle: g.cle } : {}) })
@@ -656,7 +743,7 @@ export class Fichiers {
    *     le sien), puis la page se recharge si le classeur était ouvert ici.
    *  Rend 'fait', 'diverge' ou 'echec' (dit). silencieux : un lot (le bilan
    *  dira) ; recharger faux : la page se rechargera à la fin du lot. */
-  private async mettreAJour(F: FicheClasseur, lu: FichierLu, o: { poignee?: PoigneeFichier; cle?: { poignee: PoigneeFichier; accord: boolean } | null; absente?: boolean; silencieux?: boolean; recharger?: boolean } = {}): Promise<'fait' | 'diverge' | 'echec'> {
+  private async mettreAJour(F: FicheClasseur, lu: FichierLu, o: { poignee?: PoigneeFichier; cle?: { poignee: PoigneeFichier; accord: boolean } | null; absente?: boolean; silencieux?: boolean; recharger?: boolean; texte?: string } = {}): Promise<'fait' | 'diverge' | 'echec'> {
     const app = this.hote.app, sauvegarde = this.hote.sauvegarde
     const ici = this.estIci(F) && !!app && !!sauvegarde
     if (ici && app!.tableau.trou) {
@@ -701,7 +788,7 @@ export class Fichiers {
       : laCle && F.cle ? { texte: '', cle: { nom: F.cle.nom, ok: REPREND } } : { texte: '', cle: null }
     // Le classeur est maintenant celui du fichier, ni plus ni moins
     this.noterDepuis(F, date)
-    const texte = `« ${F.nom} » mis à jour depuis le fichier (${pagesLisibles(lu.pages)}).${g.texte}`
+    const texte = o.texte ?? `« ${F.nom} » mis à jour depuis le fichier (${pagesLisibles(lu.pages)}).${g.texte}`
     if (ici) {
       // La clé : ce qu'il en est se dira à l'arrivée, une fois vérifiée
       if (o.recharger !== false) this.recharger(F.id, texte, g.cle)

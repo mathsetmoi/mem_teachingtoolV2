@@ -118,6 +118,15 @@ export class Bobine {
     for (let k = 1; k < this.n; k++) this.temps.push(this.temps[k - 1] + this.delai(k))
     this.chapitres = (film.chapitres.length ? film.chapitres : [{ i: 0, titre: 'La séance' }])
       .filter(c => c.i >= 0 && c.i < this.n).sort((a, b) => a.i - b.i)
+    // Un arrêt par passage sur une page : quand on revient sur une page déjà
+    // vue, l'arrêt s'appelle « Page 1 (suite) », pour que l'élève ne croie
+    // pas revoir la même chose (les fichiers déjà publiés en profitent aussi)
+    const vus = new Set<string>()
+    this.chapitres = this.chapitres.map(c => {
+      const deja = vus.has(c.titre)
+      vus.add(c.titre)
+      return deja ? { ...c, titre: `${c.titre} (suite)` } : c
+    })
   }
 
   get duree() { return this.temps[this.n - 1] }

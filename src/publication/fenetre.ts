@@ -228,7 +228,7 @@ export class Publication {
     const images = Object.keys(f.images).length
     const deja = this.registre.get(this.cleRegistre())
     const items = [
-      `<li>${f.etapes.length} geste${f.etapes.length > 1 ? 's' : ''} · ${mmss(new Bobine(f).duree)} de replay · ${f.chapitres.length} chapitre${f.chapitres.length > 1 ? 's' : ''}</li>`,
+      `<li>${f.etapes.length} geste${f.etapes.length > 1 ? 's' : ''} · ${mmss(new Bobine(f).duree)} de replay · ${f.ordre.length} page${f.ordre.length > 1 ? 's' : ''}</li>`,
       images ? `<li class="alerte">${images} image${images > 1 ? 's' : ''} importée${images > 1 ? 's' : ''} : vérifiez qu'aucune ne montre un nom, une copie ou un visage d'élève.</li>` : '',
       '<li class="alerte">Vérifiez qu\'aucun prénom n\'a été écrit pendant la séance : tout ce qui a été visible pendant la séance part, même effacé ensuite. Rejouez l\'aperçu pour le voir.</li>',
       this.enLigne && !CLIENT_GOOGLE ? '<li class="alerte">La publication sur Google Drive n\'est pas encore réglée sur ce site (identifiant Google à créer, voir le mode d\'emploi). En attendant, enregistrez le fichier séance.</li>' : '',
@@ -399,7 +399,7 @@ export class Publication {
   private pourPronote(film: FilmEleve, lien: string) {
     const b = new Bobine(film)
     const chapitres = b.chapitres.length > 1
-      ? '\nChapitres : ' + b.chapitres.map((c, i) => `${i + 1}. ${c.titre} (${mmss(b.temps[c.i])})`).join(' · ')
+      ? '\nPages : ' + b.chapitres.map(c => `${c.titre} (${mmss(b.temps[c.i])})`).join(' · ')
       : ''
     return `Revoir la séance : ${film.titre}\n${lien}${chapitres}`
   }

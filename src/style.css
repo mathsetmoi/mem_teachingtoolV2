@@ -1945,6 +1945,8 @@ body.contraste .toast .action { background: rgba(255, 255, 255, 0.26); }
 .accueil-nouvelle { height: auto; min-height: 56px; padding: 12px 18px; font-size: 18px; text-align: left; }
 .accueil-chapitre { margin: -4px 0 0 !important; color: var(--encre-douce); }
 .dialogue-accueil .lien { border: 0; background: none; padding: 6px 0; min-height: 32px; color: var(--bleu); text-decoration: underline; cursor: pointer; font: inherit; text-align: left; }
+.accueil-vierge { margin: 4px 0 0 !important; padding-top: 10px; border-top: 1px solid var(--filet); display: grid; gap: 2px; }
+.accueil-vierge small { color: var(--encre-douce); }
 .accueil-classes { margin: 4px 0 0 !important; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--encre); }
 .pastille-classe { min-height: 40px; padding: 0 14px; border: 1px solid var(--filet); border-radius: 999px; background: var(--chrome); font: inherit; font-weight: 700; cursor: pointer; }
 .pastille-classe:hover, .accueil-un-chapitre:hover { background: #e3ebf7; }

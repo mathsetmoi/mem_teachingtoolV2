@@ -1175,7 +1175,7 @@ prévient avant d'envoyer si l'on est connecté avec un autre. **Voir comme un �
 le lecteur dans un onglet, sans rien publier. **Publier** se connecte à Google,
 envoie la séance sur le Drive, la relit par le relais comme le fera l'élève, et
 donne le lien, avec **Copier pour Pronote** (le titre, le lien et les
-chapitres avec leur minute). Republier la même séance met à jour le même
+pages avec leur minute). Republier la même séance met à jour le même
 fichier : le lien déjà collé montre la nouvelle version, même depuis un autre
 onglet ou un autre ordinateur, et même si le fichier était passé à la
 corbeille du Drive (il en revient). « Publier comme une nouvelle séance »
@@ -1189,11 +1189,15 @@ cours (les longs silences sont écourtés) aux allures Lent, Normal, Rapide ou
 Très rapide ; à l'allure Normale, chaque lettre s'écrit comme en direct, au
 rythme de la main (voir « Le rythme de la main ») ; les figures se dessinent
 sous les yeux.
-Pas à pas, frise, chapitres (un par page pour l'instant), pages qui changent
-toutes seules, pincer ou la molette pour zoomer, glisser pour se déplacer,
-double-clic pour revoir toute la page. **La lecture s'arrête à la fin de chaque
-chapitre** : l'élève relance quand il a recopié (`&continu=1` dans le lien pour
-un replay d'un seul tenant, `&c=2` pour ouvrir au chapitre 2). Clavier :
+Pas à pas, frise, liste des pages, pages qui changent toutes seules, pincer
+ou la molette pour zoomer, glisser pour se déplacer, double-clic pour revoir
+toute la page. Les traits bleus de la frise marquent chaque changement de
+page : au survol, ils disent « Page 2 », « Page 3 »… et un clic y mène. Une
+page neuve paraît avec son premier trait (des pages créées d'avance ne font
+pas d'arrêt vide). **La lecture s'arrête à la fin de chaque page** : l'élève
+relance quand il a recopié. Quand on revient sur une page déjà écrite, son
+arrêt s'appelle « Page 1 (suite) ». `&continu=1` dans le lien donne un replay
+d'un seul tenant, `&c=2` l'ouvre au deuxième arrêt. Clavier :
 Espace, ← →, [ ], Origine, Fin.
 
 **Ce qui part chez les élèves, et ce qui n'y part pas.** On ne publie jamais
@@ -1226,7 +1230,7 @@ première se construit, la seconde paraît d'un coup au moment de sa copie.
 Une copie partie du tableau sans avoir rien reçu à elle (retirée par Ctrl+Z
 juste après « Dupliquer la page », ou supprimée) n'est pas proposée : son
 histoire est celle de l'original. Le nom donné à une page n'y part pas : les
-chapitres restent « Page 2 ».
+arrêts restent « Page 2 ».
 Un test
 automatique le vérifie (`npm test`). Le lecteur n'écrit rien dans le navigateur
 de l'élève (ni stockage, ni cookie), ne charge aucune police ni aucun service
@@ -1642,7 +1646,10 @@ se dit) :
   4C · 3A » (les autres dossiers de classe) : un clic ouvre le chapitre en
   cours de cette classe, le dernier classeur ouvert dans son dossier (ses
   sous-dossiers compris), et y commence une séance ; une classe sans classeur
-  ouvre « Nouveau chapitre » dans son dossier. Échap ferme la fenêtre et
+  ouvre « Nouveau chapitre » dans son dossier. En bas, « Nouveau classeur
+  vierge… » ouvre la fenêtre « Nouveau classeur » de la bibliothèque (page
+  blanche cochée), rangé hors de toute classe, à enregistrer plus tard comme
+  tout classeur. Échap ferme la fenêtre et
   laisse la dernière page telle quelle (la séance continue) ;
 - un classeur où rien n'est encore écrit (un classeur neuf, un nouveau
   chapitre) commence sa séance sans question.
@@ -2870,6 +2877,70 @@ séances du chapitre au même endroit. Pas de distinction 5A / 5B.
 - Les essais : `tests/bibliotheque.test.ts`, `lot7/E1-ailleurs.mjs` (adapté :
   dossiers de chapitre), `lot8/E1-seances-carte.mjs`,
   `lot8/E2-onglet-seances.mjs`.
+
+## Reprendre un ancien tableau (.prof)
+
+Les séances d'avant ce classeur sont des **anciens tableaux** : un fichier
+`.prof` par séance. Ils s'ouvrent comme un classeur (`src/classeurs/ancien-tableau.ts`,
+la fenêtre dans `src/classeurs/fichiers.ts`), et chacun devient **une séance**
+d'un classeur, avec son film.
+
+### Le mode d'emploi
+
+- **Ouvrir…** (Cet ordinateur → Choisir des fichiers…), Ctrl + O, ou le
+  fichier glissé sur la page : un ou plusieurs `.prof` à la fois (sans
+  classeur ni bibliothèque avec eux : on le dit).
+- La fenêtre « Reprendre cet ancien tableau ? » dit chaque séance (« « 2 -
+  Mardi 29 septembre 2026 » : séance du mardi 29 septembre 2026, 1 page. »),
+  du plus ancien au plus récent. Deux choix :
+  - **Nouveau classeur** : un classeur neuf, au nom du premier fichier, dans
+    le dossier qu'on regarde ; il s'ouvre ;
+  - **Ajouter à « … »** : au bout du classeur ouvert, s'il n'a rien de plus
+    récent que la séance (le film se lit dans l'ordre des heures). Sinon le
+    bouton n'est pas là, et la fenêtre dit pourquoi : on ajoute les séances
+    dans l'ordre des dates, la plus ancienne d'abord.
+- Pour ranger les séances dans leurs chapitres : la première séance d'un
+  chapitre en **Nouveau classeur**, puis, ce classeur ouvert, les suivantes
+  en **Ajouter à « … »**.
+- Le message de la fin fait le bilan : « « 2 - Mardi 29 septembre 2026 » :
+  1 page, 97 traits, 4 images, avec son film. » ; ce qui n'a pas été repris
+  y est compté.
+
+### Ce qui est repris
+
+- **Les traits**, avec leur pression ; le surligneur reste un surligneur
+  (transparent).
+- **Les images**, à leur place, à leur taille, tournées comme elles
+  l'étaient ; une image rognée devient la partie gardée (comme « Rogner ») ;
+  réduites comme une image importée (1600 px au plus) ; les mêmes pixels ne
+  sont gardés qu'une fois dans le classeur. Une image posée en fond est
+  fixée en fond.
+- **Les textes** deviennent des formules (`\text{…}`), à leur place, de leur
+  couleur et de leur taille ; ce qui était entre `$…$` reste une formule ;
+  la mise en forme (gras, listes, bulles) se perd.
+- **Le film** : chaque geste de l'ancien tableau (son état après chaque
+  geste, avec son heure) devient une étape du film, à son heure, sur sa
+  page. « Revoir la construction » et Publier rejouent la séance comme une
+  séance écrite ici. La séance commence au premier geste ; une page sans
+  film paraît avec lui ; si le film ne finit pas sur la page enregistrée,
+  c'est elle qui fait foi.
+- Le fond (le Seyès avec marge et la copie double perdent leur marge).
+- Ce qui est écrit est décalé pour commencer en haut à gauche de la page.
+
+Ne sont pas repris (et le bilan le compte) : les figures, les courbes, les
+post-its. Les outils posés comme des images restent des images.
+
+### Comment c'est fait
+
+Le fichier est lu en entier (`lireAncienTableau`), son film rejoué page
+par page ; le classeur se fait **en mémoire** (un `Tableau` qui ne vit
+nulle part : un classeur neuf, ou l'état du classeur ouvert, `lireEtat`),
+chaque geste en une transaction, avec l'heure de son étape
+(`Tableau.horloge`) ; puis il entre dans la bibliothèque **comme un fichier
+`.memc`** : ajouté (Ajouter à la bibliothèque), ou le classeur ouvert mis à
+jour sans rien perdre (le chemin de « Mettre à jour le classeur »). Rien
+ne s'écrit si la reprise échoue. Essais : `tests/ancien-tableau.test.ts`,
+`essais/navigateur/lot7/E2-ancien-tableau.mjs`.
 
 ## L'état de la sauvegarde
 
@@ -4698,6 +4769,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/classeurs/enregistrer.ts` | Enregistrer un classeur depuis sa base, sans l'ouvrir (« Enregistrer d'abord », « Enregistrer dans un fichier… » du menu d'une carte) : le choix du fichier dans le clic, l'écrivain, la date notée |
 | `src/classeurs/apercu-classeur.ts` | L'aperçu d'un classeur : sa première page en PNG (320 × 200, en esquisse, par `sorties/apercu.ts`), quand le refaire (au démarrage s'il manque, 30 s après le dernier changement de la première page, au calme, au plus toutes les 2 min ; à l'ouverture de la bibliothèque ; avant de partir), rangé dans l'index |
 | `src/classeurs/fichiers.ts` | Ouvrir des fichiers (lot 4 C9) : le choix (showOpenFilePicker, plusieurs, `.memc` et `.memb` ; sinon le choix d'avant), les fichiers lâchés, la lecture dans le travailleur, la reconnaissance (une base de cet id sans fiche adoptée d'abord, les vecteurs comparés), la fenêtre d'un fichier et ses choix (Ajouter, Remplacer « … »…, Ouvrir celui de la bibliothèque, Mettre à jour sans rien perdre, Ajouter comme copie, Remplacer celui de la bibliothèque…, la case de la clé), plusieurs fichiers (la fenêtre qui dit tout, le bilan), Enregistrer et Ouvrir toute la bibliothèque (le `.memb` au fil de l'eau ; les dossiers réunis, la case des plus récents), le fichier de la clé en conflit |
+| `src/classeurs/ancien-tableau.ts` | Reprendre un ancien tableau (.prof) : le lire et rejouer son film, chaque geste à son heure, dans une séance neuve ; les traits, les images (rognées, tournées, fixées en fond), les textes en formules ; le bilan, les textes de la fenêtre (pur, testé) |
 | `src/classeurs/reconnaitre.ts` | Reconnaître le classeur d'un fichier, pur (testé) : le même (son id), la corbeille, « ressemble » (un appareil Yjs en commun ; dans un lot, seulement sans id), nouveau ; la décision d'après la comparaison ; le nom d'après le nom du fichier ; les phrases des fenêtres et des bilans ; la réunion des dossiers d'une bibliothèque qu'on ouvre |
 | `src/classeurs/copie-drive.ts` | La copie à sens unique sur le Drive (lot 4 C10) : le compte du classeur, quand copier (2 min après le dernier changement, au plus tard 10 min, au plus une fois par max(10 min, 1 min par Mo, 20 fois la durée), au calme, en arrière-plan), depuis la base dans le travailleur, un onglet à la fois (Web Locks), une copie d'un autre onglet qui compte, les classeurs en retard (pas les vides), la connexion (jamais sans un clic ; arrivé connecté d'un autre classeur, les classeurs en retard se copient d'ici ; le jeton expiré, le bandeau ; le compte proposé à Google, retenu pour la copie), le compte Google où est vraiment la dernière copie, les échecs et leurs réessais, les garde-fous (récupérer, remplacer quand même), la question du navigateur en fermant l'onglet avant la copie quand rien d'autre ne protège le classeur (`beforeunload`, et la copie part aussitôt), la fenêtre « Copie sur le Drive… » |
 | `src/classeurs/drive-pur.ts` | La copie sur le Drive, pur (testé) : le compte voulu, le rythme (`prochaineCopie`, l'intervalle), le compte Google proposé à la reconnexion (`indiceGoogle`) et la copie sur un autre compte (`copieAilleurs`), la question du navigateur en fermant l'onglet (`questionDuDrive`), ce qu'on dit d'un échec, les phrases des garde-fous, les classeurs en retard |

@@ -1206,10 +1206,10 @@ if (!SEULEMENT || SEULEMENT === 'eleves') {
         while (w.enMarche && performance.now() - t < 8000) await new Promise(q => requestAnimationFrame(q))
         return { k: w.k, fin, carte: document.querySelector('.carte h2')?.textContent, n: b.chapitres.length }
       })
-      verifier('Élèves : l\'arrêt aux chapitres est inchangé', chapitres.n > 1 && chapitres.k === chapitres.fin && /^Chapitre 2/.test(chapitres.carte), JSON.stringify(chapitres))
+      verifier('Élèves : l\'arrêt aux chapitres est inchangé', chapitres.n > 1 && chapitres.k === chapitres.fin && /^Page /.test(chapitres.carte), JSON.stringify(chapitres))
     } else if (nom === 'chapitre') {
       const carte = await page.evaluate(() => ({ h2: document.querySelector('.carte h2')?.textContent, k: window.__revoir.k }))
-      verifier('Élèves : ?c=2 ouvre au chapitre 2', /^Chapitre 2/.test(carte.h2), JSON.stringify(carte))
+      verifier('Élèves : ?c=2 ouvre au chapitre 2', /^Page /.test(carte.h2), JSON.stringify(carte))
     } else {
       const sansArret = await page.evaluate(async () => {
         const w = window.__revoir, b = w.bobine
