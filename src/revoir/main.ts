@@ -43,8 +43,8 @@ racine.innerHTML = `
   <main class="scene" aria-label="La séance"></main>
   <div class="bandeau-apercu" hidden>Aperçu : voici ce que verront les élèves. Rien n'est encore publié.</div>
   <section class="carte" role="dialog" aria-modal="false" hidden></section>
-  <aside class="tiroir" aria-label="Chapitres" hidden>
-    <div class="tiroir-tete"><h2>Chapitres</h2><button type="button" class="bouton fermer-tiroir" aria-label="Fermer la liste des chapitres">${svg('fermer')}</button></div>
+  <aside class="tiroir" aria-label="Pages" hidden>
+    <div class="tiroir-tete"><h2>Pages</h2><button type="button" class="bouton fermer-tiroir" aria-label="Fermer la liste des pages">${svg('fermer')}</button></div>
     <ol class="liste-chapitres"></ol>
   </aside>
   <footer class="commandes" hidden>
@@ -55,12 +55,12 @@ racine.innerHTML = `
     <div class="rangee">
       <span class="temps" aria-live="off"></span>
       <div class="boutons">
-        <button type="button" class="bouton b-chapitres" aria-label="Chapitres" title="Chapitres">${svg('liste')}</button>
-        <button type="button" class="bouton b-chap-avant" aria-label="Chapitre précédent" title="Chapitre précédent ([)">${svg('partieAvant')}</button>
+        <button type="button" class="bouton b-chapitres" aria-label="Pages" title="Pages">${svg('liste')}</button>
+        <button type="button" class="bouton b-chap-avant" aria-label="Page précédente" title="Page précédente ([)">${svg('partieAvant')}</button>
         <button type="button" class="bouton b-avant" aria-label="Geste précédent" title="Geste précédent (←)">${svg('pasAvant')}</button>
         <button type="button" class="bouton principal b-lire" aria-label="Lire" title="Lire (Espace)">${svg('lire')}</button>
         <button type="button" class="bouton b-apres" aria-label="Geste suivant" title="Geste suivant (→)">${svg('pasApres')}</button>
-        <button type="button" class="bouton b-chap-apres" aria-label="Chapitre suivant" title="Chapitre suivant (])">${svg('partieApres')}</button>
+        <button type="button" class="bouton b-chap-apres" aria-label="Page suivante" title="Page suivante (])">${svg('partieApres')}</button>
       </div>
       <div class="reglages">
         <button type="button" class="bouton texte b-vitesse" aria-label="Allure : Normal" title="Allure de lecture">Normal</button>
@@ -73,6 +73,11 @@ racine.innerHTML = `
 const $ = <T extends HTMLElement>(s: string) => racine.querySelector(s) as T
 const scene = $('.scene'), carte = $('.carte'), tiroir = $('.tiroir'), commandes = $('.commandes')
 const curseur = $<HTMLInputElement>('.curseur'), marques = $('.marques'), temps = $('.temps'), ou = $('.ou')
+// Un clic sur un trait bleu de la frise : le début de sa page
+marques.addEventListener('click', e => {
+  const c = (e.target as HTMLElement).dataset.c
+  if (c) allerAuChapitre(Number(c))
+})
 const boutonLire = $<HTMLButtonElement>('.b-lire'), boutonVitesse = $<HTMLButtonElement>('.b-vitesse')
 const annonce = $('.annonce')
 
@@ -513,7 +518,7 @@ function allerAuChapitre(c: number) {
   c = Math.max(0, Math.min(bobine.chapitres.length - 1, c))
   pause(); fermerCarte()
   montrer(bobine.chapitres[c].i, false)
-  annoncer(`Chapitre ${c + 1} : ${bobine.chapitres[c].titre}`)
+  annoncer(bobine.chapitres[c].titre)
 }
 
 // ---------- Les commandes ----------
@@ -522,7 +527,7 @@ function majCommandes() {
   curseur.value = String(k)
   const c = bobine.chapitreDe(k), ch = bobine.chapitres[c]
   const pages = bobine.nombreDePages
-  ou.textContent = [pages > 1 ? `Page ${bobine.numero(page)} / ${pages}` : '', bobine.chapitres.length > 1 ? `Chapitre ${c + 1} / ${bobine.chapitres.length}` : ''].filter(Boolean).join(' · ')
+  ou.textContent = pages > 1 ? `Page ${bobine.numero(page)} / ${pages}` : ''
   temps.textContent = `${mmss(bobine.temps[k])} / ${mmss(bobine.duree)}`
   const icone = enMarche ? 'pause' : 'lire'
   if (boutonLire.dataset.icone !== icone) {
@@ -540,7 +545,7 @@ function majCommandes() {
 
 function dessinerMarques() {
   if (!bobine) return
-  marques.innerHTML = bobine.chapitres.slice(1).map(c => `<span style="left:${(c.i / Math.max(1, bobine!.n - 1)) * 100}%"></span>`).join('')
+  marques.innerHTML = bobine.chapitres.slice(1).map((c, i) => `<span style="left:${(c.i / Math.max(1, bobine!.n - 1)) * 100}%" title="${echapper(c.titre)}" data-c="${i + 1}"></span>`).join('')
 }
 
 function remplirChapitres() {
@@ -636,7 +641,7 @@ function fermerCarte() {
 
 function carteAffiche() {
   const b = bobine!, f = b.film
-  const details = [mmss(b.duree), b.nombreDePages > 1 ? `${b.nombreDePages} pages` : '', b.chapitres.length > 1 ? `${b.chapitres.length} chapitres` : '']
+  const details = [mmss(b.duree), b.nombreDePages > 1 ? `${b.nombreDePages} pages` : '']
   // L'affiche montre la page du dernier geste, telle qu'elle était à la fin
   const derniere = b.numero(b.page(b.n - 1))
   const voir = b.nombreDePages > 1 && derniere > 0 ? `Voir la fin de la page ${derniere}` : 'Voir la fin de la séance'
@@ -648,21 +653,28 @@ function carteAffiche() {
       <button type="button" class="principal grand" data-a="lire">${svg('lire')}<span>Rejouer la séance</span></button>
       <button type="button" class="secondaire" data-a="voir">${voir}</button>
     </div>
-    ${arretAuxChapitres && b.chapitres.length > 1 ? '<p class="aide">La lecture s\'arrête à la fin de chaque chapitre : relancez quand vous avez recopié.</p>' : ''}`)
+    ${arretAuxChapitres && b.chapitres.length > 1 ? '<p class="aide">La lecture s\'arrête à la fin de chaque page : relancez quand vous avez recopié.</p>' : ''}`)
   brancher({ lire: () => { montrer(0, false); lire() }, voir: () => { fermerCarte(); majCommandes() } })
+}
+
+/** « Fin de la page 1 » : le titre d'un arrêt dans une phrase */
+function finDe(titre: string) {
+  if (/^Page \d/.test(titre)) return 'la p' + titre.slice(1)
+  if (titre === 'La séance') return 'la séance'
+  return `« ${titre} »`
 }
 
 function carteChapitre(c: number, debut: boolean) {
   const b = bobine!, ch = b.chapitres[c]
   const precedent = c > 0 ? b.chapitres[c - 1] : null
   carteHTML(`
-    ${debut || !precedent ? '' : `<p class="surtitre">Fin de « ${echapper(precedent.titre)} »</p>`}
-    <h2>Chapitre ${c + 1} : ${echapper(ch.titre)}</h2>
+    ${debut || !precedent ? '' : `<p class="surtitre">Fin de ${echapper(finDe(precedent.titre))}</p>`}
+    <h2>${echapper(ch.titre)}</h2>
     <div class="actions">
-      <button type="button" class="principal grand" data-a="continuer">${svg('lire')}<span>${debut ? 'Lire ce chapitre' : 'Continuer'}</span></button>
-      ${precedent && !debut ? '<button type="button" class="secondaire" data-a="revoir">Revoir le chapitre précédent</button>' : ''}
+      <button type="button" class="principal grand" data-a="continuer">${svg('lire')}<span>${debut ? 'Lire cette page' : 'Continuer'}</span></button>
+      ${precedent && !debut ? '<button type="button" class="secondaire" data-a="revoir">Revoir la page précédente</button>' : ''}
     </div>`)
-  annoncer(debut ? `Chapitre ${c + 1} : ${ch.titre}` : `Fin du chapitre. Suivant : ${ch.titre}`)
+  annoncer(debut ? ch.titre : `Fin de ${finDe(precedent?.titre ?? '')}. Suivant : ${ch.titre}`)
   brancher({
     continuer: () => { if (k < ch.i - 1 || k > ch.i) montrer(Math.max(0, ch.i - 1), false); lire() },
     // On repart juste avant le chapitre : son premier geste se redessine, et l'on s'arrête à sa fin

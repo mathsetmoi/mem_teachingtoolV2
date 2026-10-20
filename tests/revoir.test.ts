@@ -230,6 +230,18 @@ describe('la bobine rejoue fidèlement', () => {
     const b = new Bobine(r)
     expect(b.chapitres.map(c => c.i)).toEqual([0, 3, 5])
   })
+
+  it('un retour sur une page déjà vue s’appelle « (suite) »', async () => {
+    const { t, page } = await nouveauTableau()
+    const autre = t.ajouterPage('blanc', 1); await attendre(500)
+    t.pageVue = page; t.poser(page, trait(0, 0)); await attendre(1000)
+    t.pageVue = autre; t.poser(autre, trait(1, 1)); await attendre(1000)
+    t.pageVue = page; t.poser(page, trait(2, 2)); await attendre(1000)
+    const film = t.film.toArray()
+    const r = exporter(t, { de: 0, a: film.length - 1, pages: [page, autre], titre: 'x' })
+    expect(new Bobine(r).chapitres.map(c => c.titre)).toEqual(['Page 1', 'Page 2', 'Page 1 (suite)'])
+    expect(r.chapitres.map(c => c.titre)).toEqual(['Page 1', 'Page 2', 'Page 1'])   // le fichier ne change pas
+  })
 })
 
 describe('un fichier qui n’est pas une séance', () => {
