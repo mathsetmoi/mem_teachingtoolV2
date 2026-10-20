@@ -28,8 +28,10 @@
  *  même lien). depuis : pour une séance reprise du découpage d'avant (la
  *  migration), l'heure de la première étape du film qui est d'elle (une page
  *  née juste avant le premier geste) ; sans lui, debut. ancienne : née de
- *  la migration (son nom par défaut est sa date). */
-export interface FicheSeance { debut: number; nom?: string; depuis?: number; ancienne?: true }
+ *  la migration (son nom par défaut est sa date). rang : sa place quand le
+ *  professeur a choisi l'ordre à la main (voir seancesDansLOrdre) ; une
+ *  version d'avant l'ignore et range par dates. */
+export interface FicheSeance { debut: number; nom?: string; depuis?: number; ancienne?: true; rang?: number }
 
 /** Une séance, avec ses pages (dans l'ordre du document) */
 export interface SeanceDuClasseur {
@@ -38,6 +40,8 @@ export interface SeanceDuClasseur {
   depuis: number
   nom: string | null
   ancienne: boolean
+  /** Sa place choisie à la main (null : celle de sa date) */
+  rang: number | null
   pages: string[]
 }
 
@@ -68,7 +72,8 @@ export function rangerLesPages(ordre: readonly string[], seances: Iterable<[stri
   if (!triees.length) return []
   const r = triees.map(({ id, fiche }) => ({
     id, debut: fiche.debut, depuis: typeof fiche.depuis === 'number' && Number.isFinite(fiche.depuis) ? fiche.depuis : fiche.debut,
-    nom: typeof fiche.nom === 'string' && fiche.nom.trim() ? fiche.nom.trim() : null, ancienne: !!fiche.ancienne, pages: [] as string[],
+    nom: typeof fiche.nom === 'string' && fiche.nom.trim() ? fiche.nom.trim() : null, ancienne: !!fiche.ancienne,
+    rang: typeof fiche.rang === 'number' && Number.isFinite(fiche.rang) ? fiche.rang : null, pages: [] as string[],
   }))
   const parId = new Map(r.map(s => [s.id, s]))
   const attente: string[] = []
@@ -91,8 +96,56 @@ export function rangerLesPages(ordre: readonly string[], seances: Iterable<[stri
 /** Les séances où l'on a écrit (une page au moins), telles que la fiche du
  *  classeur les garde pour la bibliothèque : de la plus ancienne à la plus
  *  récente */
-export function resumeDesSeances(l: readonly SeanceDuClasseur[]): { id: string; debut: number; nom?: string; pages: number }[] {
-  return l.filter(s => s.pages.length > 0).map(s => ({ id: s.id, debut: s.debut, ...(s.nom ? { nom: s.nom } : {}), pages: s.pages.length }))
+export function resumeDesSeances(l: readonly SeanceDuClasseur[]): { id: string; debut: number; nom?: string; rang?: number; pages: number }[] {
+  return l.filter(s => s.pages.length > 0).map(s => ({ id: s.id, debut: s.debut, ...(s.nom ? { nom: s.nom } : {}), ...(s.rang !== null ? { rang: s.rang } : {}), pages: s.pages.length }))
+}
+
+// ---------- L'ordre choisi à la main ----------
+// Les séances se montrent la plus récente d'abord. Le professeur peut en
+// changer l'ordre (glisser une séance, « Monter », « Descendre ») : chaque
+// séance reçoit alors un rang, un nombre qui remplace sa date pour la
+// ranger (et pour elle seule : le film, Publier et la revue lisent toujours
+// les dates). Les rangs sont tirés de la date la plus récente du classeur,
+// en descendant d'une milliseconde par place : une séance neuve, qui n'a
+// pas de rang, a une date plus récente que tous, et se met en haut.
+// « Remettre dans l'ordre des dates » retire tous les rangs.
+
+/** Ce qui range une séance : son rang, sinon sa date */
+export function cleDeRangement(s: { debut: number; rang?: number | null }): number {
+  return typeof s.rang === 'number' && Number.isFinite(s.rang) ? s.rang : s.debut
+}
+
+/** Des séances dans l'ordre où on les montre : la première en haut (la plus
+ *  récente, ou celle que le professeur y a mise) */
+export function seancesDansLOrdre<T extends { id: string; debut: number; rang?: number | null }>(l: readonly T[]): T[] {
+  return [...l].sort((a, b) => (cleDeRangement(b) - cleDeRangement(a)) || (b.debut - a.debut) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+}
+
+/** L'ordre a-t-il été choisi à la main (une séance au moins a un rang, et
+ *  l'ordre montré n'est pas celui des dates) ? */
+export function ordreALaMain(l: readonly { id: string; debut: number; rang?: number | null }[]): boolean {
+  if (!l.some(s => typeof s.rang === 'number')) return false
+  const parDates = [...l].sort((a, b) => (b.debut - a.debut) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).map(s => s.id).join(',')
+  return seancesDansLOrdre(l).map(s => s.id).join(',') !== parDates
+}
+
+/** Les rangs d'un ordre choisi (ids, la première en haut) : id → rang */
+export function rangsDeLOrdre(ids: readonly string[], debuts: readonly number[]): Map<string, number> {
+  const haut = debuts.length ? Math.max(...debuts) : 0
+  return new Map(ids.map((id, i) => [id, haut - i]))
+}
+
+/** L'ordre après avoir déplacé la séance `id` d'un cran (−1 : vers le haut,
+ *  +1 : vers le bas), ou à la place `vers` (sa place dans l'ordre d'après) ;
+ *  null : rien ne bouge */
+export function ordreApres(ids: readonly string[], id: string, o: { pas?: -1 | 1; vers?: number }): string[] | null {
+  const i = ids.indexOf(id)
+  if (i < 0) return null
+  const j = o.vers !== undefined ? Math.max(0, Math.min(ids.length - 1, o.vers)) : i + (o.pas ?? 0)
+  if (j === i || j < 0 || j >= ids.length) return null
+  const r = ids.filter(x => x !== id)
+  r.splice(j, 0, id)
+  return r
 }
 
 /** La séance d'une page selon ce rangement (null : aucune séance) */

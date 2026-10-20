@@ -12,7 +12,7 @@ import type { Fond, Forme, Trait } from './types'
 import type { Morceau } from './revoir/instruments-film'
 import { FOND_NEUF, uid } from './types'
 import type { FicheSeance, SeanceDuClasseur } from './seances'
-import { ficheValable, migration, nomDeSeance, rangerLesPages } from './seances'
+import { ficheValable, migration, nomDeSeance, rangerLesPages, rangsDeLOrdre } from './seances'
 import { seancesDuFilm } from './revoir/exporter'
 
 export const ORIGINE_LOCALE = 'locale'
@@ -170,6 +170,8 @@ const PAS_DE_VOISINES = 64
 
 /** Ce qu'il y avait sur une page à une étape du film */
 export interface ImagePage { fond: Fond; origine: { x: number; y: number }; formes: Forme[] }
+/** Une page à une étape du film, ses formes par identifiant (voir Tableau.pagesA) */
+export interface EtatDePage { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme> }
 
 /** Tout le tableau à une étape du film : l'ordre des pages, et chacune
  *  avec ses formes. Les formes sont les objets mêmes du document : une forme
@@ -1027,6 +1029,80 @@ export class Tableau {
     this.doc.transact(() => this.seances.set(id, g))
     return true
   }
+
+  /** L'ordre des séances choisi à la main (voir seances.ts, « L'ordre
+   *  choisi à la main ») : ids, la première en haut ; null : l'ordre des
+   *  dates revient (tous les rangs partent). Hors des pages, comme un nom de
+   *  séance. Faux si rien ne change. */
+  rangerLesSeances(ids: readonly string[] | null): boolean {
+    this.ecrireLesSeances()
+    const fiches = [...this.seances.entries()].filter(([, f]) => ficheValable(f)) as [string, FicheSeance][]
+    const rangs = ids ? rangsDeLOrdre(ids.filter(id => this.seances.has(id)), fiches.map(([, f]) => f.debut)) : new Map<string, number>()
+    const changes: [string, FicheSeance][] = []
+    for (const [id, f] of fiches) {
+      const r = rangs.get(id)
+      if (r === undefined ? f.rang === undefined : f.rang === r) continue
+      const g: FicheSeance = { ...f }
+      if (r === undefined) delete g.rang; else g.rang = r
+      changes.push([id, g])
+    }
+    if (!changes.length) return false
+    this.doc.transact(() => { for (const [id, g] of changes) this.seances.set(id, g) })
+    return true
+  }
+
+  /** Remet dans l'ordre des pages jetées ensemble (« Annuler » après avoir
+   *  supprimé ou déplacé une séance depuis la bibliothèque), même vides,
+   *  même marquées définitives : chacune à sa place d'avant (voir
+   *  remettrePage), dans une transaction (une étape seulOrdre). Rend le
+   *  nombre de pages remises. */
+  rendrePages(ids: readonly string[]): number {
+    const a = ids.filter(id => this.pages.get(id) instanceof Y.Map && !this.ordre.toArray().includes(id))
+    if (!a.length) return 0
+    const vue = this.pageVue
+    this.pageVue = a[0]
+    try {
+      this.doc.transact(() => {
+        for (const id of a) {
+          const ordre = this.ordre.toArray()
+          this.ordre.insert(this.placeDeRetour(id, ordre), [id])
+          this.corbeille.delete(id)
+        }
+      })
+    } finally { if (vue) this.pageVue = vue }
+    for (const id of a) this.oublierMarques(id)
+    this.onPiles?.()
+    return a.length
+  }
+
+  /** Des pages jetées que plus rien ne remet (une séance déplacée vers un
+   *  autre classeur : elle n'y est plus, même dans la corbeille). Comme
+   *  supprimerDefinitivement, mais aussi pour une page vide. */
+  marquerDefinitives(ids: readonly string[]): void {
+    const ordre = new Set(this.ordre.toArray())
+    const a = ids.filter(id => !ordre.has(id) && this.pages.get(id) instanceof Y.Map)
+    if (!a.length) return
+    const t = Date.now()
+    this.doc.transact(() => { for (const id of a) this.corbeille.set(id, { ...(this.entree(id) ?? { t, apres: null, index: 0 }), definitif: true }) })
+    for (const id of a) this.oublierMarques(id)
+  }
+
+  /** Plusieurs pages telles qu'elles étaient à une étape du film, en un seul
+   *  décodage de l'instantané (null : la page n'existait pas). Les formes qui
+   *  n'ont pas changé d'une étape à l'autre sont les mêmes objets. */
+  pagesA(etape: Etape, pages: readonly string[]): Map<string, EtatDePage | null> {
+    const snap = Y.decodeSnapshot(etape.s)
+    const r = new Map<string, EtatDePage | null>()
+    for (const page of pages) {
+      const p = Y.typeMapGetSnapshot(this.pages, page, snap)
+      r.set(page, p instanceof Y.Map ? this.lirePage(p, snap) : null)
+    }
+    return r
+  }
+
+  /** Des écritures qui ne font pas d'étape du film : celui qui les fait
+   *  note lui-même les siennes (voir deplacer-seance.ts) */
+  ecrireSansFilm(f: () => void) { this.doc.transact(f, ORIGINE_FILM) }
 
   /** La séance n'a encore rien : ni forme ni nom sur ses pages, ni page
    *  dans la corbeille */

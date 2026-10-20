@@ -12,7 +12,7 @@
 import type { FicheClasseur, FicheDossier } from './demarrage'
 import { LONGUEUR_NOM_CLASSEUR } from './demarrage'
 import { pagesLisibles } from '../fichier'
-import { dateCourteMajuscule } from '../seances'
+import { dateCourteMajuscule, seancesDansLOrdre } from '../seances'
 import { heureLisible } from '../revue/bande'
 
 /** Le nombre de classeurs dans « Récents » */
@@ -110,9 +110,10 @@ export function libelleSeances(f: FicheClasseur): string | null {
  *  « 3 pages » */
 export interface LigneSeance { id: string; date: string; nom: string | null; pages: string }
 
-/** Les séances d'un classeur, la plus récente d'abord */
+/** Les séances d'un classeur, la plus récente d'abord (ou dans l'ordre
+ *  choisi à la main, voir seances.seancesDansLOrdre) */
 export function lignesDesSeances(f: FicheClasseur): LigneSeance[] {
-  return [...(f.listeSeances ?? [])].sort((a, b) => b.debut - a.debut || (a.id < b.id ? -1 : 1))
+  return seancesDansLOrdre(f.listeSeances ?? [])
     .map(s => ({ id: s.id, date: dateCourteMajuscule(s.debut), nom: s.nom ?? null, pages: pagesLisibles(s.pages) }))
 }
 
