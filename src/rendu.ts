@@ -19,7 +19,7 @@ import { coinHautDroit, coinsAjustes, coinsImage, coinsVus, ecarterCoins, englob
 import { dessinerFond } from './fonds'
 import { codageDe, placesDesNoms, sommetsDe } from './formes'
 import type { EtatInstrument, NomInstrument, Partie } from './instruments'
-import { dessinerInstrument, dessinerPastille } from './instruments'
+import { dessinerInstrument, dessinerPastille, dessinerTraineeLaser } from './instruments'
 import { enOrdreDAffichage, ordreDAffichage } from './ordre'
 import { groupesTouches } from './groupes'
 import { LONG_MORCEAU, fenetresDe, passePres } from './gomme'
@@ -100,6 +100,9 @@ export class Rendu {
   /** Les instruments posés, dans l'ordre (le dernier est dessus) */
   instruments: { nom: NomInstrument; etat: EtatInstrument; actif: Partie | null }[] = []
   instrumentsCaches = false
+  /** La traînée du pointeur laser (outils de classe), à l'écran du
+   *  professeur seulement : ni la piste, ni le replay ne la voient */
+  traineeLaser: { x: number; y: number; t: number }[] = []
   /** La forme sous le pointeur, avec l'outil Sélection */
   survol: string | null = null
   /** Les autres membres de son groupe, que le clic prendrait avec elle
@@ -315,6 +318,7 @@ export class Rendu {
     c.clearRect(0, 0, this.coucheInstruments.width, this.coucheInstruments.height)
     if (this.instrumentsCaches) { this.temoin?.([], [], t); return }
     c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
+    if (this.traineeLaser.length > 1) dessinerTraineeLaser(c, this.traineeLaser, cam.z, t)
     for (const i of this.instruments) dessinerInstrument(c, i.nom, i.etat, cam.z, i.actif)
     for (const i of this.instrumentsAnimes) dessinerInstrument(c, i.nom, i.etat, cam.z, i.actif)
     this.temoin?.(this.instruments, this.instrumentsAnimes, t)

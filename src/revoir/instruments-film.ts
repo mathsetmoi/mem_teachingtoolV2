@@ -61,7 +61,8 @@ export interface MorceauTrace {
 }
 export type Morceau = MorceauPoses | MorceauTrace
 
-const NOMS: ReadonlySet<string> = new Set(['regle', 'equerre', 'rapporteur', 'compas'])
+// Le laser (outils de classe) : ses poses ne disent que le point montré
+const NOMS: ReadonlySet<string> = new Set(['regle', 'equerre', 'rapporteur', 'compas', 'laser'])
 const PARTIES: ReadonlySet<string> = new Set(['corps', 'rotation', 'pointe', 'mine', 'tete'])
 
 /** Les tolérances : deux poses plus proches que ceci sont la même à l'œil

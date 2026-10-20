@@ -188,6 +188,8 @@ async function demarrer() {
   const app = new App(tableau, zone, infos)
   const ui = new UI(app, racine)
   ui.sansBibliotheque = !registre || !fiche
+  // Les conseils du premier lancement (les outils de classe, l'aide)
+  ui.lancerConseils()
   // La base vient d'être supprimée ou changée ailleurs : plus rien ne s'y
   // écrit, une fenêtre le dit
   tableau.onCoupee = raison => ui.sauvegarde.remplaceAilleurs(raison === 'supprime' ? 'supprime' : 'remplace')
@@ -310,6 +312,17 @@ async function demarrer() {
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') noterDernier() })
     window.addEventListener('focus', noterDernier)
     ui.bibliotheque = new Bibliotheque(hote, registre, racine)
+    // La classe du classeur (le tirage au sort y prend sa liste) : son plus
+    // proche dossier de classe, sinon le dossier où il est rangé
+    ui.classeDuClasseur = async () => {
+      const [dossiers, fiches] = await Promise.all([registre.dossiers(), registre.classeurs()])
+      const carte = new Map(dossiers.filter(d => !d.corbeille).map(d => [d.id, d]))
+      const ici = fiches.find(f => f.id === infos.id)
+      if (!ici || ici.dossier === null) return null
+      const classe = etiquetteHeritee(ici.dossier, carte)
+      const d = classe?.dossier ?? carte.get(ici.dossier)
+      return d ? { id: d.id, nom: d.nom } : null
+    }
     suivi.onEcrit = () => { if (hote.classeur) ui.bibliotheque?.ficheChange(infos.id) }
     // Ouvrir des fichiers (lot 4 C9) : un classeur s'ajoute à la bibliothèque
     // (ou remplace celui-ci), plusieurs, une bibliothèque (.memb) ;
