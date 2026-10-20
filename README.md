@@ -1175,7 +1175,7 @@ prévient avant d'envoyer si l'on est connecté avec un autre. **Voir comme un �
 le lecteur dans un onglet, sans rien publier. **Publier** se connecte à Google,
 envoie la séance sur le Drive, la relit par le relais comme le fera l'élève, et
 donne le lien, avec **Copier pour Pronote** (le titre, le lien et les
-chapitres avec leur minute). Republier la même séance met à jour le même
+pages avec leur minute). Republier la même séance met à jour le même
 fichier : le lien déjà collé montre la nouvelle version, même depuis un autre
 onglet ou un autre ordinateur, et même si le fichier était passé à la
 corbeille du Drive (il en revient). « Publier comme une nouvelle séance »
@@ -1189,11 +1189,15 @@ cours (les longs silences sont écourtés) aux allures Lent, Normal, Rapide ou
 Très rapide ; à l'allure Normale, chaque lettre s'écrit comme en direct, au
 rythme de la main (voir « Le rythme de la main ») ; les figures se dessinent
 sous les yeux.
-Pas à pas, frise, chapitres (un par page pour l'instant), pages qui changent
-toutes seules, pincer ou la molette pour zoomer, glisser pour se déplacer,
-double-clic pour revoir toute la page. **La lecture s'arrête à la fin de chaque
-chapitre** : l'élève relance quand il a recopié (`&continu=1` dans le lien pour
-un replay d'un seul tenant, `&c=2` pour ouvrir au chapitre 2). Clavier :
+Pas à pas, frise, liste des pages, pages qui changent toutes seules, pincer
+ou la molette pour zoomer, glisser pour se déplacer, double-clic pour revoir
+toute la page. Les traits bleus de la frise marquent chaque changement de
+page : au survol, ils disent « Page 2 », « Page 3 »… et un clic y mène. Une
+page neuve paraît avec son premier trait (des pages créées d'avance ne font
+pas d'arrêt vide). **La lecture s'arrête à la fin de chaque page** : l'élève
+relance quand il a recopié. Quand on revient sur une page déjà écrite, son
+arrêt s'appelle « Page 1 (suite) ». `&continu=1` dans le lien donne un replay
+d'un seul tenant, `&c=2` l'ouvre au deuxième arrêt. Clavier :
 Espace, ← →, [ ], Origine, Fin.
 
 **Ce qui part chez les élèves, et ce qui n'y part pas.** On ne publie jamais
@@ -1226,7 +1230,7 @@ première se construit, la seconde paraît d'un coup au moment de sa copie.
 Une copie partie du tableau sans avoir rien reçu à elle (retirée par Ctrl+Z
 juste après « Dupliquer la page », ou supprimée) n'est pas proposée : son
 histoire est celle de l'original. Le nom donné à une page n'y part pas : les
-chapitres restent « Page 2 ».
+arrêts restent « Page 2 ».
 Un test
 automatique le vérifie (`npm test`). Le lecteur n'écrit rien dans le navigateur
 de l'élève (ni stockage, ni cookie), ne charge aucune police ni aucun service
