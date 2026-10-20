@@ -455,6 +455,7 @@ export class Bibliotheque {
       Object.assign(document.createElement('span'), { className: 'libelle-court' }))
     this.boutonSeances = this.bouton('Séances', 'automatismes', () => this.basculerVueSeances(), 'Toutes les séances, la plus récente d\'abord')
     this.boutonSeances.classList.add('biblio-bouton-seances')
+    this.boutonSeances.setAttribute('aria-label', 'Séances')
     this.boutonSeances.dataset.action = 'seances'
     this.boutonSeances.setAttribute('aria-pressed', 'false')
     this.boutonBandeau = this.bouton('Plus', 'points', () => this.basculerMenuBandeau(), 'Plus d\'actions sur la bibliothèque', true)

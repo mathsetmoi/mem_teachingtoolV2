@@ -1734,6 +1734,8 @@ body.en-bibliotheque .toast { z-index: 30; }
 @media (max-width: 1000px) {
   /* La ligne du titre : « Bibliothèque », le nombre, puis la corbeille, le ⋯
      et le × à droite */
+  .biblio-bouton-seances { margin-left: auto; }
+  .biblio-bouton-seances + .biblio-bouton-corbeille { margin-left: 0; }
   .biblio-bouton-corbeille { margin-left: auto; }
   .biblio-bouton-corbeille + .biblio-plus + .biblio-fermer, .biblio-bouton-corbeille + .biblio-fermer, .biblio-plus + .biblio-fermer { margin-left: 0; }
 }
@@ -1747,6 +1749,9 @@ body.en-bibliotheque .toast { z-index: 30; }
 @media (max-width: 480px) {
   .biblio-tete { column-gap: 8px; }
   .biblio-bouton-corbeille { min-width: 44px; padding: 0 8px; gap: 4px; justify-content: center; }
+  /* « Séances » : l'icône seule sur la ligne du titre (le nom reste dit au lecteur d'écran) */
+  .biblio-bouton-seances { min-width: 44px; padding: 0 8px; justify-content: center; }
+  .biblio-tete .biblio-bouton-seances .libelle { display: none; }
   .biblio-corbeille-grille { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
   .biblio-vider { margin-left: 0; }
   .carte-corbeille-biblio .corbeille-boutons button { font-size: 15px; }
