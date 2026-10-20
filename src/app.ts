@@ -18,7 +18,7 @@ import type { Figure, Fond, Forme, Formule, Habillage, ImageForme, Outil, Polygo
 import { CM, FOND_NEUF, libre, uid } from './types'
 import type { P, Reconnue, Transformation } from './formes'
 import type { Bord, EtatInstrument, NomInstrument, Partie } from './instruments'
-import { angleLisible, bords, etatParDefaut, toucher } from './instruments'
+import { LASER_TRAINEE, angleLisible, bords, etatParDefaut, toucher } from './instruments'
 import * as Y from 'yjs'
 import katex from 'katex'
 import { Immobilite, bornerDecalage, image, nomsLibres, placesDesNoms, reconnaitre, sommetsDe, versRelatif } from './formes'
@@ -147,6 +147,8 @@ export interface Interface {
   /** La trieuse des pages (Maj + P) ; auClavier : elle rend le focus au
    *  compteur en se fermant */
   ouvrirTrieuse(auClavier?: boolean): void
+  /** L'aide et les raccourcis (outils de classe, touche « ? ») */
+  ouvrirAide(): void
   /** La fenêtre « Envoyer vers… » de ce qui est pris (voir pages/envoi.ts) ;
    *  ids : d'autres objets que ce qui est pris (les images fixées en fond,
    *  que le menu de la page envoie : elles ne se prennent pas) */
@@ -497,6 +499,7 @@ export class App {
     zone.addEventListener('pointermove', e => { this.pointeurSurZone = { clientX: e.clientX, clientY: e.clientY } })
     zone.addEventListener('pointerleave', () => {
       this.pointeurSurZone = null
+      if (this.laser) this.bougerLaser(null)
       // Le cadenas du survol s'en va avec le pointeur (pas celui d'un appui)
       if (!this.cadenasTenu) this.poserCadenas(null)
     })
@@ -530,9 +533,75 @@ export class App {
   }
 
   private majInstruments(actif?: { nom: NomInstrument; quoi: Partie }) {
-    this.rendu.instruments = [...this.instruments].map(([nom, etat]) => ({ nom, etat, actif: actif?.nom === nom ? actif.quoi : null }))
+    this.rendu.instruments = this.peints(actif)
     this.rendu.redessinerInstruments()
     this.ui?.maj()
+  }
+
+  /** Ce que peint la couche des instruments : les instruments posés, puis
+   *  le point du laser, toujours dessus */
+  private peints(actif?: { nom: NomInstrument; quoi: Partie }): Rendu['instruments'] {
+    const r: Rendu['instruments'] = [...this.instruments].map(([nom, etat]) => ({ nom, etat, actif: actif?.nom === nom ? actif.quoi : null }))
+    if (this.laser && this.pointLaser) r.push({ nom: 'laser', etat: { x: this.pointLaser.x, y: this.pointLaser.y, a: 0, r: 0 }, actif: null })
+    return r
+  }
+
+  // ---------- Le pointeur laser (outils de classe) ----------
+  // Un point rouge suit la souris, le survol de la tablette graphique ou le
+  // doigt posé, pour montrer sans écrire ; derrière lui, une traînée qui
+  // s'efface en une seconde. Il n'écrit rien, ne prend rien et ne passe pas
+  // dans l'annulation. Il est peint dans la couche des instruments : la
+  // piste le note comme un instrument, et les élèves le voient au replay (le
+  // point seul, sans la traînée). Ce n'est pas un outil : il laisse l'outil
+  // en main, qu'un outil choisi (un bouton, une lettre) ou Échap rendent.
+
+  /** Le pointeur laser est-il en main ? */
+  laser = false
+  /** Le point qu'il montre (monde), null : le pointeur n'est pas sur le tableau */
+  private pointLaser: P | null = null
+  private animationLaser = 0
+
+  /** Prend ou rend le pointeur laser */
+  basculerLaser(oui = !this.laser) {
+    if (oui === this.laser) return
+    this.laser = oui
+    this.pointLaser = null
+    this.rendu.traineeLaser = []
+    if (oui) {
+      // Rien de ce que l'outil préparait ne reste à moitié fait
+      this.viderPointEnAttente(); this.annulerPolygone(); this.annulerTrait()
+      this.survol = null; this.rendu.survol = null; this.rendu.survolAussi = []
+      this.zone.style.cursor = ''
+    }
+    this.zone.toggleAttribute('data-laser', oui)
+    this.majInstruments()
+    this.rendu.toutRedessiner()
+    if (oui) this.ui?.message('Pointeur laser : survolez ou appuyez pour montrer. Échap ou un outil pour l\'arrêter.')
+  }
+
+  /** Le laser montre ce point (null : il quitte le tableau) */
+  private bougerLaser(m: P | null) {
+    if (!m && !this.pointLaser) return
+    this.pointLaser = m
+    if (m) this.rendu.traineeLaser.push({ x: m.x, y: m.y, t: performance.now() })
+    this.rendu.instruments = this.peints()
+    this.rendu.redessinerInstruments()
+    this.animerTraineeLaser()
+  }
+
+  /** La traînée pâlit à chaque image d'écran, jusqu'à disparaître */
+  private animerTraineeLaser() {
+    if (this.animationLaser) return
+    const image = () => {
+      this.animationLaser = 0
+      const l = this.rendu.traineeLaser, avant = performance.now() - LASER_TRAINEE
+      let k = 0
+      while (k < l.length && l[k].t < avant) k++
+      if (k) l.splice(0, k)
+      this.rendu.redessinerInstruments()
+      if (l.length) this.animationLaser = requestAnimationFrame(image)
+    }
+    this.animationLaser = requestAnimationFrame(image)
   }
 
   /** L'instrument sous le pointeur, le plus haut d'abord */
@@ -1192,6 +1261,7 @@ export class App {
    *  prêtée par une image (voir selectionPretee) : choisie, même à nouveau
    *  (V, son bouton), elle n'est plus prêtée. */
   choisirOutil(o: Outil) {
+    if (this.laser) this.basculerLaser(false)
     if (o === 'selection' && this.outil !== 'selection') this.outilAvant = this.outil
     this.selectionPretee = null
     this.viderPointEnAttente()
@@ -1879,6 +1949,8 @@ export class App {
    *  le bord d'un instrument, un instrument, une poignée du cadre de taille
    *  ou sa pastille ↻ (lot 5), un sommet, puis l'objet. */
   private bas(e: PointerEvent) {
+    // Le pointeur laser : un appui montre, il n'écrit ni ne prend rien
+    if (this.laser) { e.preventDefault(); this.bougerLaser(this.monde(e)); return }
     const s = this.ecran(e)
     // Tout autre appui (le second doigt d'un pincement, une paume, le stylet)
     // n'est plus un appui long
@@ -2677,6 +2749,7 @@ export class App {
 
   private bouge(e: PointerEvent) {
     if (this.ignores.has(e.pointerId)) return
+    if (this.laser) { this.bougerLaser(this.monde(e)); return }
     // Le pointeur qu'on voit (le survol compte) : les poignées en prennent la taille
     this.voirPointeur(e.pointerType)
     const s = this.ecran(e)
@@ -2901,6 +2974,9 @@ export class App {
    *  deux ou trois doigts se reconnaît au lever du dernier doigt (voir
    *  ToucherADoigts), et n'agit qu'une fois ce lever fait. */
   private haut(e: PointerEvent, annule = false) {
+    // Le doigt qui montrait au laser se lève : le point s'en va (la souris et
+    // le stylet qui survole, eux, le gardent tant qu'ils sont sur le tableau)
+    if (this.laser && !this.pointeurs.has(e.pointerId)) { if (e.pointerType === 'touch' || annule) this.bougerLaser(null); return }
     // Une paume, ou le doigt d'un appui long, sort de la liste à son lever,
     // sans rien faire d'autre (le clic qui suit le lever d'un appui long non
     // plus : voir brancherGestes)
@@ -3582,6 +3658,7 @@ export class App {
   /** Échap : d'abord annuler ce qui est en cours ; s'il n'y a rien,
    *  passer à la Sélection — et un second Échap rend l'outil d'avant. */
   echap() {
+    if (this.laser) { this.basculerLaser(false); this.ui.message('Pointeur laser rangé'); return }
     if (this.rognage) { this.finirRognage(false); return }
     // En train de changer la taille ou de tourner (lot 5) : le geste
     // s'abandonne, tout revient, et la sélection reste
@@ -5280,6 +5357,12 @@ export class App {
     if (toucheVerrou(e) && this.selection.size) {
       e.preventDefault()
       if (!e.repeat && !document.querySelector('dialog[open]')) this.basculerVerrou()
+      return
+    }
+    // « ? » : l'aide et les raccourcis (Maj + virgule en AZERTY, Maj + / en QWERTY)
+    if (e.key === '?' && !ctrl && !e.altKey) {
+      e.preventDefault()
+      if (!e.repeat) this.ui.ouvrirAide()
       return
     }
     if (ctrl) return

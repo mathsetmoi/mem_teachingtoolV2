@@ -81,6 +81,24 @@ export const ICONES: Record<string, string> = {
   // Verrouillé (lot 5), en tête du menu court d'un objet verrouillé : un
   // cadenas fermé (son anse, son corps, le trou de la clé)
   cadenas: 'M7.5 11V8a4.5 4.5 0 019 0v3M5 11h14v10H5zM12 15v2',
+  // Les outils de classe : quatre cases, la dernière faite d'un +
+  'outils-classe': 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM17 14v6M14 17h6',
+  // Le rideau : un écran à moitié couvert, une flèche vers le bas
+  rideau: 'M3 4h18v16H3zM3 12h18M6 8h12M10 15l2 2 2-2',
+  'rideau-tirer': 'M12 5v14M8 15l4 4 4-4M8 9l4-4 4 4',
+  // Le pointeur laser : un point dans son halo, la traînée derrière
+  laser: 'M17 9.5a2.5 2.5 0 100-.01M3 20c3-1 5-4 7-7s3.5-4 5-4.5',
+  // Le minuteur : un sablier
+  sablier: 'M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9',
+  // Le tirage au sort : un dé
+  de: 'M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1zM8.5 8.5h.01M15.5 8.5h.01M12 12h.01M8.5 15.5h.01M15.5 15.5h.01',
+  // L'aide : un point d'interrogation dans un rond
+  aide: 'M12 21a9 9 0 100-18 9 9 0 100 18zM9.5 9.5a2.5 2.5 0 114 2c-1 .7-1.5 1.2-1.5 2.5M12 17h.01',
+  // Le son du minuteur : un haut-parleur, avec ses ondes ou barré
+  son: 'M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12',
+  'son-coupe': 'M4 9h4l5-4v14l-5-4H4zM16 9l6 6M22 9l-6 6',
+  // Rechercher : une loupe
+  loupe: 'M11 18a7 7 0 100-14 7 7 0 100 14zM20 20l-4-4',
 }
 
 /** Le SVG d'une icône, caché aux lecteurs d'écran (le bouton porte son nom) */

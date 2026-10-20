@@ -1014,6 +1014,51 @@ dans `src/catalogue.ts`, sans rien toucher à l'écran ; le panneau dans
 L'éditeur de formule a aussi les symboles du thème : ∉, ⊂, ⊄, ∩, ∪, ∅, ℕ,
 ℤ, 𝔻, ℚ, ℝ*₊ et +∞ (∈ et ℝ y étaient déjà).
 
+## Les outils de classe
+
+Le bouton **Classe** de la barre du haut (entre Automatismes et Revoir ; sur
+le téléphone, « Outils de classe… » dans Plus) ouvre un menu de petits
+outils pour le cours, à l'écran :
+
+- **Le rideau** couvre le tableau. On le fait glisser vers le bas (sa
+  poignée, n'importe où sur lui, ou la molette) pour dévoiler une correction
+  ligne après ligne. Il reste fixé à l'écran : la page défile dessous. On
+  n'écrit pas sous lui ; les barres restent devant.
+- **Le pointeur laser** : un point rouge qui suit la souris, le stylet de la
+  tablette graphique (au survol, sans appuyer) ou le doigt, avec une courte
+  traînée qui s'efface en une seconde. Il n'écrit rien sur la page. Échap
+  ou un autre outil le range. Le point (sans sa traînée) **est dans le
+  replay** des élèves et dans Revoir : il est noté comme un instrument.
+- **Le minuteur** : 1, 3, 5 ou 10 minutes, ou une durée tapée (« 5 »,
+  « 2:30 », « 90 s », « 1 min 30 », jusqu'à 3 h). À la fin il clignote en
+  rouge et sonne trois notes, fabriquées par le navigateur : la version hors
+  ligne sonne aussi. Le haut-parleur coupe le son ; ce choix reste sur cet
+  appareil.
+- **Le tirage au sort** : la liste des élèves de la classe (le dossier de
+  classe du classeur ouvert), un prénom par ligne, qu'on peut coller depuis
+  un tableur. Un élève tiré ne revient pas avant que toute la classe soit
+  passée. La liste reste dans ce navigateur, jamais dans le classeur, le
+  replay, le PDF ni le Drive.
+- **Aide et raccourcis** (aussi la touche **?**) : les raccourcis du clavier,
+  et les gestes à la souris, à la tablette graphique et au doigt.
+
+Les panneaux du minuteur et du tirage se déplacent par leur titre. Au
+premier lancement après leur arrivée, quelques bulles de conseil, une à la
+fois, montrent ces nouveautés ; une fois vues (ou passées), elles ne
+reviennent plus sur cet appareil.
+
+Comment c'est fait : `src/outils-classe.ts` (le rideau, le minuteur, le
+tirage, et leur calcul, testé dans `tests/outils-classe.test.ts`),
+`src/aide.ts` (l'aide et les conseils). Le laser est un pseudo-instrument
+`laser` peint dans le calque des instruments (`src/instruments.ts`,
+`App.basculerLaser`) : la piste le note comme une règle ou un compas, et
+le lecteur le relit (`src/revoir/instruments-film.ts`). Un lecteur resté
+dans le cache d'un ancien navigateur, qui ne connaît pas encore ce nom,
+montre le film sans les instruments ; il se met à jour au chargement
+suivant. Ce qui reste sur l'appareil : `mem-minuteur-son` (le son coupé ou
+non), `mem-tirage-<dossier>` (la liste et le tour en cours de chaque
+classe), `mem-conseils` (les conseils déjà vus).
+
 ## Revoir la construction (en classe)
 
 Le bouton **Revoir** de la barre du haut (la flèche qui tourne autour d'un

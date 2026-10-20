@@ -38,6 +38,8 @@ button, select, input { font: inherit; color: inherit; }
 #zone[data-outil='selection'] { cursor: crosshair; }
 #zone[data-outil='gomme'] { cursor: none; }
 #zone[data-outil='formule'] { cursor: text; }
+/* Le pointeur laser (outils de classe) : le point rouge tient lieu de curseur */
+#zone[data-laser] { cursor: none !important; }
 
 .couche { position: absolute; inset: 0; pointer-events: none; }
 .couche-formules { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
@@ -2068,3 +2070,111 @@ body.en-revue .bandeau-seance, body.en-trieuse .bandeau-seance, body.en-trieuse 
 @media (max-width: 480px) {
   .dialogue-ailleurs { width: calc(100vw - 16px); padding: 16px 14px; }
 }
+
+/* ---------- Les outils de classe (outils-classe.ts) ---------- */
+/* Dans leur menu, l'icône de l'outil tient la place de la coche */
+.menu-item .coche.icone-entree svg { stroke: var(--encre); stroke-width: 1.8; width: 20px; height: 20px; }
+
+/* Le rideau : fixé à l'écran, sous les barres (z-index 10), au-dessus du
+   tableau ; il prend les appuis (on n'écrit pas dessous) */
+.rideau {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 9;
+  display: flex; flex-direction: column; align-items: center;
+  background: repeating-linear-gradient(135deg, #5d6878 0 14px, #566172 14px 28px);
+  color: #fff; cursor: ns-resize; touch-action: none;
+  box-shadow: 0 -2px 10px rgba(27, 34, 48, 0.25);
+  user-select: none; -webkit-user-select: none;
+}
+.rideau-poignee {
+  margin-top: -20px; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px;
+  background: var(--papier); color: var(--encre); border: 1px solid var(--filet); border-radius: 999px;
+  font-weight: 700; font-size: 14px; box-shadow: 0 4px 12px rgba(27, 34, 48, 0.2);
+}
+.rideau-poignee svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rideau.tire .rideau-poignee { background: var(--surligneur); }
+.rideau-mot { margin-top: 36px; font-size: 15px; opacity: 0.85; padding: 0 16px; text-align: center; }
+.rideau .rideau-fermer { position: absolute; right: max(14px, env(safe-area-inset-right)); top: 12px; color: #fff; background: rgba(255, 255, 255, 0.16); }
+.rideau .rideau-fermer:hover { background: rgba(255, 255, 255, 0.3); }
+
+/* Les panneaux du minuteur et du tirage, qui se déplacent par leur titre */
+.panneau-classe {
+  position: fixed; z-index: 16; right: 24px; top: max(96px, calc(var(--bas-barre-haut, 70px) + 26px));
+  width: min(290px, calc(100vw - 24px)); padding: 10px 14px 14px;
+  background: var(--papier); color: var(--encre); border: 1px solid var(--filet); border-radius: 14px;
+  box-shadow: 0 2px 0 var(--filet), 0 14px 30px rgba(27, 34, 48, 0.16);
+}
+.panneau-tete { display: flex; align-items: center; gap: 4px; margin: -2px -6px 4px 0; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.panneau-titre { flex: 1; font-size: 13.5px; color: var(--encre-douce); font-weight: 700; }
+.bouton-panneau {
+  width: 36px; height: 36px; display: grid; place-items: center; flex: none;
+  border: 0; border-radius: 9px; background: transparent; color: inherit; cursor: pointer;
+}
+.bouton-panneau:hover { background: #e9eef5; }
+.bouton-panneau svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.panneau-classe .principal.petit, .panneau-classe .secondaire.petit { height: 38px; padding: 0 12px; font-size: 13.5px; }
+
+.minuteur-temps { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 56px; line-height: 1.1; text-align: center; letter-spacing: -0.02em; margin: 2px 0 8px; }
+.minuteur-jauge { height: 8px; border-radius: 4px; background: #e8edf5; overflow: hidden; }
+.minuteur-jauge i { display: block; height: 100%; background: var(--bleu); border-radius: 4px; transition: width 0.2s linear; }
+.minuteur-durees { display: flex; gap: 6px; margin-top: 12px; }
+.minuteur-duree {
+  flex: 1; min-width: 0; height: 36px; padding: 0; border: 1px solid var(--filet); border-radius: 8px;
+  background: var(--papier); color: var(--encre); font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.minuteur-duree[aria-pressed='true'] { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+.minuteur-autre { display: flex; gap: 6px; margin-top: 8px; }
+.minuteur-saisie { flex: 1; min-width: 0; height: 38px; padding: 0 10px; border: 1px solid var(--filet); border-radius: 8px; font-size: 15px; }
+.minuteur-actions { display: flex; gap: 8px; margin-top: 10px; }
+.minuteur-actions > * { flex: 1; }
+.minuteur.fini { border-color: var(--rouge); box-shadow: 0 0 0 3px var(--rouge), 0 14px 30px rgba(27, 34, 48, 0.16); }
+.minuteur.fini .minuteur-temps, .minuteur.fini .panneau-titre { color: var(--rouge); }
+.minuteur.fini { animation: minuteur-fini 0.5s step-end 12; }
+@keyframes minuteur-fini { 50% { box-shadow: 0 0 0 3px transparent, 0 14px 30px rgba(27, 34, 48, 0.16); background: #fdecec; } }
+@media (prefers-reduced-motion: reduce) { .minuteur.fini { animation: none; } }
+
+.tirage { right: auto; left: max(96px, calc(50% - 360px)); width: min(360px, calc(100vw - 24px)); }
+.tirage-nom { min-height: 70px; font-size: 46px; font-weight: 700; text-align: center; margin: 8px 0 2px; overflow-wrap: anywhere; line-height: 1.3; }
+.tirage-nom.defile { color: var(--encre-douce); }
+.tirage-reste { text-align: center; color: var(--encre-douce); font-size: 13.5px; }
+.tirage-deja { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; max-height: 84px; overflow-y: auto; }
+.tirage-deja span { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--chrome); border: 1px solid var(--filet); color: var(--encre-douce); text-decoration: line-through; }
+.tirage-boutons { display: flex; gap: 8px; margin-top: 12px; }
+.tirage-boutons > * { flex: 1; height: 40px; padding: 0 10px; }
+.tirage-aide { margin: 4px 0 8px; font-size: 13.5px; color: var(--encre-douce); }
+.tirage-liste { width: 100%; height: 200px; padding: 8px 10px; resize: vertical; border: 1px solid var(--filet); border-radius: 8px; font: 15px/1.5 var(--police); color: var(--encre); background: #fbfcfe; }
+.tirage-prive { display: flex; gap: 6px; align-items: flex-start; margin: 8px 0 0; font-size: 12.5px; color: var(--encre-douce); }
+.tirage-prive svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; margin-top: 1px; }
+
+/* ---------- L'aide (aide.ts) ---------- */
+.dialogue.dialogue-aide { width: min(980px, calc(100vw - 24px)); max-height: calc(100vh - 32px); padding: 18px 24px; }
+.aide-tete { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.aide-tete h2 { margin: 0; }
+.aide-onglets { display: flex; gap: 6px; margin: 12px 0 4px; flex-wrap: wrap; }
+.aide-onglet { height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--encre-douce); font-weight: 700; font-size: 14px; cursor: pointer; }
+.aide-onglet[aria-selected='true'] { background: #eef3fb; color: var(--bleu); }
+.aide-colonnes { columns: 3 260px; column-gap: 28px; margin-top: 8px; }
+.aide-groupe { break-inside: avoid; margin-bottom: 14px; }
+.aide-groupe h3 { margin: 0 0 4px; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--encre-douce); }
+.aide-groupe dl { margin: 0; }
+.aide-ligne { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 4px 0; border-bottom: 1px solid #edf1f6; font-size: 14px; }
+.aide-ligne dt { margin: 0; }
+.aide-ligne dd { margin: 0; text-align: right; flex: none; max-width: 60%; }
+.aide-ligne kbd, .menu-item .touche kbd {
+  display: inline-block; font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 12px; line-height: 1.5;
+  padding: 0 6px; border: 1px solid var(--filet); border-bottom-width: 2px; border-radius: 5px; background: var(--chrome); color: var(--encre); white-space: nowrap;
+}
+.dialogue-aide .aide-pied { margin: 8px 0 0; font-size: 13px; }
+
+/* Les conseils du premier lancement : une bulle sous son bouton */
+.conseil {
+  position: fixed; z-index: 24; width: min(340px, calc(100vw - 16px)); padding: 12px 14px;
+  background: var(--encre); color: #fff; border-radius: 12px; font-size: 14px; line-height: 1.45;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
+}
+.conseil::before { content: ''; position: absolute; top: -7px; left: calc(var(--fleche, 40px) - 7px); border: 7px solid transparent; border-top: 0; border-bottom-color: var(--encre); }
+.conseil b { display: block; font-size: 15px; margin-bottom: 3px; }
+.conseil-bas { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12.5px; }
+.conseil-bas > span { flex: 1; opacity: 0.8; }
+.conseil-bas button { height: 32px; padding: 0 12px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; }
+.conseil-passer { border: 1px solid rgba(255, 255, 255, 0.4); background: transparent; color: #fff; }
+.conseil-suivant { border: 0; background: #fff; color: var(--encre); }
