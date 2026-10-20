@@ -184,7 +184,10 @@ if (faire('nom')) {
   // (Adapté au catalogue : la barre du haut a un bouton de plus, 46 px ; le
   // compteur se resserre dès 970 px environ, et à 900 px le nom n'a plus la
   // place : le cas resserré est essayé à 950 × 768.)
-  for (const [l, h, serre] of [[1024, 768, false], [950, 768, true], [1366, 768, false]]) {
+  // (Adapté aux outils de classe : un bouton de plus, « Classe », 46 px ;
+  // le compteur se resserre dès 1 016 px environ : le cas resserré passe à
+  // 990 × 768.)
+  for (const [l, h, serre] of [[1024, 768, false], [990, 768, true], [1366, 768, false]]) {
     const { ctx, page } = await ouvrir({ viewport: { width: l, height: h } }, `nom ${l}`)
     const h0 = (await compteur(page)).hauteur
     await page.evaluate(() => { const a = window.__app; a.nouvellePage(); a.nouvellePage(); a.tableau.renommerPage(a.pages[1], 'Exercice 12 p. 84'); a.allerPage(a.pages[0]) })
