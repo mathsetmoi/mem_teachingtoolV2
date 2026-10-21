@@ -5,18 +5,20 @@
 // tableau (des figures, des formules), groupés : on le déplace, on
 // l'agrandit, on écrit dessus, on le dégroupe ; un Ctrl + Z le retire.
 //
-// Thème « Ensembles de nombres » :
-//  - le dessin des ensembles emboîtés, vide ou avec des nombres ;
-//    « Compléter le dessin » range les nombres tapés dans un dessin déjà
-//    posé (le dernier, ou celui qui est pris), même déplacé ou agrandi ;
-//  - deux démonstrations, posées ligne par ligne (→, Espace, ←).
+// Rangé comme le programme : un onglet par niveau (2nde, 1re spé), ses
+// thèmes, et dans chaque thème des chapitres qu'on déplie. Une recherche,
+// en haut, cherche dans tous les niveaux à la fois.
+//  - le dessin des ensembles emboîtés (2nde, Nombres réels), vide ou avec
+//    des nombres ; « Compléter » range les nombres tapés dans un dessin
+//    déjà posé (le dernier, ou celui qui est pris), même déplacé ou agrandi ;
+//  - les démonstrations du programme, posées ligne par ligne (→, Espace, ←).
 // =============================================================
 import katex from 'katex'
 import type { App } from './app'
-import type { Boite, Demonstration, Ensemble, Theme } from './catalogue'
+import type { Boite, Demonstration, Ensemble, Niveau } from './catalogue'
 import {
   classerNombre, COULEURS, DEMONSTRATIONS, dessinEnsembles, ENSEMBLES, HAUTEUR_DESSIN, LARGEUR_DESSIN,
-  LATEX_ENSEMBLE, ligneEnLatex, lireListe, placeDansZone, SYMBOLE, THEMES,
+  LATEX_ENSEMBLE, ligneEnLatex, lireListe, PLACE_ENSEMBLES, placeDansZone, PROGRAMME, SYMBOLE,
 } from './catalogue'
 import type { P } from './construction'
 import type { Figure, Forme, Formule } from './types'
@@ -24,7 +26,10 @@ import { uid } from './types'
 
 const html = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
 const CLE_NOMBRES = 'mem-catalogue-nombres'
-const CLE_THEME = 'mem-catalogue-theme'
+const CLE_NIVEAU = 'mem-catalogue-niveau'
+const CLE_OUVERTS = 'mem-catalogue-ouverts'
+/** Pour chercher sans se soucier des majuscules ni des accents */
+const sansAccents = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 /** Tailles des formules, en unités du tableau, pour un dessin à sa taille */
 const TAILLE_NOM = 36, TAILLE_NOMBRE = 24
@@ -56,7 +61,10 @@ export class Catalogue {
   private erreurs!: HTMLDivElement
   private liste!: HTMLOListElement
   private demo: DemoEnCours | null = null
-  private theme: Theme = 'nombres'
+  private niveau: Niveau = '2nde'
+  /** Les chapitres dépliés, « niveau|chapitre » */
+  private ouverts = new Set<string>()
+  private recherche!: HTMLInputElement
   private mesureur: HTMLDivElement
   private clavier = (e: KeyboardEvent) => this.touche(e)
 
@@ -96,14 +104,14 @@ export class Catalogue {
     let nombres = ''
     try {
       nombres = localStorage.getItem(CLE_NOMBRES) ?? ''
-      const t = localStorage.getItem(CLE_THEME)
-      if (THEMES.some(x => x.id === t)) this.theme = t as Theme
+      const n = localStorage.getItem(CLE_NIVEAU)
+      if (PROGRAMME.some(x => x.niveau === n)) this.niveau = n as Niveau
+      const o = JSON.parse(localStorage.getItem(CLE_OUVERTS) ?? 'null')
+      if (Array.isArray(o)) this.ouverts = new Set(o.filter((x): x is string => typeof x === 'string'))
     } catch { /* navigateur sans mémoire */ }
-    p.innerHTML = `
-      <div class="tete"><h2>Catalogue</h2><button type="button" class="fermer" aria-label="Fermer" title="Fermer">×</button></div>
-      <label class="exemples"><span>Thème</span><select class="theme" aria-label="Thème">${THEMES.map(t => `<option value="${t.id}">${html(t.nom)}</option>`).join('')}</select></label>
-      <section class="element ensembles" data-theme="nombres">
-        <h3>Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ</h3>
+    const ensembles = `
+      <div class="ensembles">
+        <h4>Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ</h4>
         <label class="champ"><span>Nombres à ranger (facultatif), séparés par des points-virgules</span>
           <textarea class="nombres" spellcheck="false" rows="3" placeholder="−5 ; 3 ; 2,7 ; 1/3 ; √2 ; π"></textarea></label>
         <div class="actions-construction">
@@ -112,13 +120,29 @@ export class Catalogue {
         </div>
         <div class="erreurs" role="status"></div>
         <p class="note">Chaque nombre va dans le plus petit ensemble qui le contient. On peut écrire 1/3, √2, π, 2,5, 0,333…, 10^-2.</p>
-      </section>
-      <section class="element">
-        <h3>Démonstrations</h3>
-        <div class="demos">${DEMONSTRATIONS.map((d, i) => `<button type="button" class="secondaire demo" data-demo="${i}" data-theme="${d.theme}">${html(d.nom)}</button>`).join('')}</div>
-        <p class="note aucune-demo">Le programme ne demande pas de démonstration dans ce thème.</p>
+      </div>`
+    const boutonDemo = (i: number) => `<button type="button" class="secondaire demo" data-demo="${i}">${html(DEMONSTRATIONS[i].nom)}</button>`
+    const niveaux = PROGRAMME.map(n => `
+      <div class="niveau" data-niveau="${n.niveau}">${n.themes.map(t => `
+        <h3>${html(t.nom)}</h3>${t.chapitres.length ? t.chapitres.map(c => {
+          const demos = DEMONSTRATIONS.map((d, i) => d.niveau === n.niveau && d.chapitre === c ? i : -1).filter(i => i >= 0)
+          const dessin = PLACE_ENSEMBLES.niveau === n.niveau && PLACE_ENSEMBLES.chapitre === c
+          return `<details class="chapitre" data-cle="${html(n.niveau + '|' + c)}"${this.ouverts.has(n.niveau + '|' + c) ? ' open' : ''}>
+            <summary>${html(c)}<span class="nombre">${demos.length + (dessin ? 1 : 0)}</span></summary>
+            <div class="demos">${dessin ? ensembles : ''}${demos.map(boutonDemo).join('')}</div>
+          </details>`
+        }).join('') : '<p class="note">Le programme ne demande pas de démonstration dans ce thème.</p>'}`).join('')}
+      </div>`).join('')
+    p.innerHTML = `
+      <div class="tete"><h2>Catalogue</h2><button type="button" class="fermer" aria-label="Fermer" title="Fermer">×</button></div>
+      <input type="search" class="recherche" placeholder="Chercher : tangente, suite, √2…" aria-label="Chercher dans le catalogue" spellcheck="false">
+      <div class="onglets" role="group" aria-label="Niveau">${PROGRAMME.map(n => `<button type="button" class="onglet" data-niveau="${n.niveau}">${html(n.nom)}</button>`).join('')}</div>
+      <div class="rangement">${niveaux}</div>
+      <div class="resultats" hidden></div>
+      <section class="element en-cours" hidden>
+        <h3>Démonstration en cours</h3>
         <ol class="etapes"></ol>
-        <div class="commandes" hidden>
+        <div class="commandes">
           <button type="button" class="secondaire precedente" title="Ligne précédente (←)">◀</button>
           <button type="button" class="principal suivante" title="Ligne suivante (→, Espace)">Suivante ▶</button>
           <button type="button" class="secondaire tout" title="Tout montrer">⏩</button>
@@ -126,35 +150,82 @@ export class Catalogue {
       </section>`
     const q = <T extends HTMLElement>(s: string) => p.querySelector(s) as T
     this.nombres = q('.nombres'); this.erreurs = q('.erreurs'); this.liste = q('.etapes')
+    this.recherche = q('.recherche')
     this.nombres.value = nombres
     this.nombres.addEventListener('input', () => {
       try { localStorage.setItem(CLE_NOMBRES, this.nombres.value) } catch { /* navigateur sans mémoire */ }
     })
-    const theme = q<HTMLSelectElement>('.theme')
-    theme.value = this.theme
-    theme.addEventListener('change', () => {
-      this.theme = theme.value as Theme
-      try { localStorage.setItem(CLE_THEME, this.theme) } catch { /* navigateur sans mémoire */ }
-      this.montrerTheme()
-    })
-    this.montrerTheme()
+    p.querySelectorAll<HTMLButtonElement>('.onglet').forEach(b => b.addEventListener('click', () => {
+      this.niveau = b.dataset.niveau as Niveau
+      try { localStorage.setItem(CLE_NIVEAU, this.niveau) } catch { /* navigateur sans mémoire */ }
+      this.montrerNiveau()
+    }))
+    p.querySelectorAll<HTMLDetailsElement>('.chapitre').forEach(d => d.addEventListener('toggle', () => {
+      if (d.open) this.ouverts.add(d.dataset.cle!); else this.ouverts.delete(d.dataset.cle!)
+      try { localStorage.setItem(CLE_OUVERTS, JSON.stringify([...this.ouverts])) } catch { /* navigateur sans mémoire */ }
+    }))
+    this.recherche.addEventListener('input', () => this.chercher())
+    this.montrerNiveau()
     q('.fermer').addEventListener('click', () => this.fermer())
     q('.poser-dessin').addEventListener('click', () => this.poserDessin())
     q('.completer').addEventListener('click', () => this.completer())
-    p.querySelectorAll<HTMLButtonElement>('.demo').forEach(b => b.addEventListener('click', () => this.poserDemo(DEMONSTRATIONS[Number(b.dataset.demo)])))
+    p.addEventListener('click', e => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('.demo, .aller-ensembles')
+      if (!b) return
+      if (b.classList.contains('aller-ensembles')) this.allerAuxEnsembles()
+      else this.poserDemo(DEMONSTRATIONS[Number(b.dataset.demo)])
+    })
     q('.suivante').addEventListener('click', () => this.suivante())
     q('.precedente').addEventListener('click', () => this.precedente())
     q('.tout').addEventListener('click', () => { while (this.suivante()) { /* jusqu'au bout */ } })
   }
 
-  /** Ne montre que ce qui est rangé dans le thème choisi */
-  private montrerTheme() {
-    let demos = 0
-    this.panneau.querySelectorAll<HTMLElement>('[data-theme]').forEach(e => {
-      e.hidden = e.dataset.theme !== this.theme
-      if (!e.hidden && e.classList.contains('demo')) demos++
+  /** Ne montre que le niveau choisi */
+  private montrerNiveau() {
+    this.panneau.querySelectorAll<HTMLElement>('.niveau').forEach(e => { e.hidden = e.dataset.niveau !== this.niveau })
+    this.panneau.querySelectorAll<HTMLButtonElement>('.onglet').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.niveau === this.niveau)))
+  }
+
+  /** La recherche : tant qu'on tape, une seule liste de ce qui correspond, tous niveaux confondus */
+  private chercher() {
+    const mots = sansAccents(this.recherche.value).split(/\s+/).filter(Boolean)
+    const res = this.panneau.querySelector('.resultats') as HTMLElement
+    const cherche = mots.length > 0
+    res.hidden = !cherche
+    ;(this.panneau.querySelector('.rangement') as HTMLElement).hidden = cherche
+    ;(this.panneau.querySelector('.onglets') as HTMLElement).hidden = cherche
+    if (!cherche) { res.innerHTML = ''; return }
+    const nomNiveau = (n: Niveau) => PROGRAMME.find(x => x.niveau === n)!.nom
+    const themeDe = (n: Niveau, c: string) => PROGRAMME.find(x => x.niveau === n)!.themes.find(t => t.chapitres.includes(c))!.nom
+    const elements = [
+      { cle: 'ens', niveau: PLACE_ENSEMBLES.niveau, chapitre: PLACE_ENSEMBLES.chapitre, nom: 'Dessin des ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ', mots: 'ensembles de nombres entiers decimaux rationnels reels completer' },
+      ...DEMONSTRATIONS.map((d, i) => ({ cle: String(i), niveau: d.niveau, chapitre: d.chapitre, nom: d.nom, mots: d.titre.replace(/\\[a-zA-Z]+/g, ' ') })),
+    ]
+    const trouves = elements.filter(e => {
+      const texte = sansAccents([e.nom, e.chapitre, themeDe(e.niveau, e.chapitre), nomNiveau(e.niveau), e.mots].join(' '))
+      return mots.every(m => texte.includes(m))
     })
-    ;(this.panneau.querySelector('.aucune-demo') as HTMLElement).hidden = demos > 0
+    let lieu = ''
+    res.innerHTML = trouves.length ? trouves.map(e => {
+      const ici = `${nomNiveau(e.niveau)} · ${e.chapitre}`
+      const tete = ici !== lieu ? `<p class="lieu">${html(ici)}</p>` : ''
+      lieu = ici
+      return tete + (e.cle === 'ens'
+        ? `<button type="button" class="secondaire aller-ensembles">${html(e.nom)}</button>`
+        : `<button type="button" class="secondaire demo" data-demo="${e.cle}">${html(e.nom)}</button>`)
+    }).join('') : '<p class="note">Rien ne correspond. Essayez un autre mot.</p>'
+  }
+
+  /** Le dessin des ensembles trouvé par la recherche : on ouvre son chapitre */
+  private allerAuxEnsembles() {
+    this.recherche.value = ''
+    this.chercher()
+    this.niveau = PLACE_ENSEMBLES.niveau
+    this.montrerNiveau()
+    const d = this.panneau.querySelector<HTMLDetailsElement>(`.chapitre[data-cle="${PLACE_ENSEMBLES.niveau}|${PLACE_ENSEMBLES.chapitre}"]`)!
+    d.open = true
+    this.nombres.focus()
+    d.scrollIntoView({ block: 'nearest' })
   }
 
   /** Une ligne dans le panneau : le texte en clair pour qu'il passe à la ligne, seules les maths par KaTeX */
@@ -167,8 +238,7 @@ export class Catalogue {
     const faites = d ? d.posees.length : 0
     this.liste.innerHTML = d ? d.d.etapes.map((e, i) =>
       `<li class="${i < faites ? 'faite' : i === faites ? 'courante' : ''}">${e.map(l => this.ligneHtml(l)).join(' ')}</li>`).join('') : ''
-    const cmd = this.panneau.querySelector('.commandes') as HTMLElement
-    cmd.hidden = !d
+    ;(this.panneau.querySelector('.en-cours') as HTMLElement).hidden = !d
     const fini = !!d && faites >= d.d.etapes.length
     const suiv = this.panneau.querySelector('.suivante') as HTMLButtonElement
     suiv.disabled = fini
@@ -180,6 +250,8 @@ export class Catalogue {
   private touche(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       if ((e.target as HTMLElement).closest?.('dialog')) return
+      // Échap dans la recherche l'efface d'abord
+      if (e.target === this.recherche && this.recherche.value) { e.preventDefault(); e.stopPropagation(); this.recherche.value = ''; this.chercher(); return }
       e.preventDefault(); e.stopPropagation()
       if (this.app.placement) this.app.echap(); else this.fermer()
       return
