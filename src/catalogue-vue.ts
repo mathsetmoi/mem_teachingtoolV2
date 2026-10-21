@@ -13,10 +13,10 @@
 // =============================================================
 import katex from 'katex'
 import type { App } from './app'
-import type { Boite, Demonstration, Ensemble } from './catalogue'
+import type { Boite, Demonstration, Ensemble, Theme } from './catalogue'
 import {
   classerNombre, COULEURS, DEMONSTRATIONS, dessinEnsembles, ENSEMBLES, HAUTEUR_DESSIN, LARGEUR_DESSIN,
-  LATEX_ENSEMBLE, ligneEnLatex, lireListe, placeDansZone, SYMBOLE,
+  LATEX_ENSEMBLE, ligneEnLatex, lireListe, placeDansZone, SYMBOLE, THEMES,
 } from './catalogue'
 import type { P } from './construction'
 import type { Figure, Forme, Formule } from './types'
@@ -24,6 +24,7 @@ import { uid } from './types'
 
 const html = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
 const CLE_NOMBRES = 'mem-catalogue-nombres'
+const CLE_THEME = 'mem-catalogue-theme'
 
 /** Tailles des formules, en unités du tableau, pour un dessin à sa taille */
 const TAILLE_NOM = 36, TAILLE_NOMBRE = 24
@@ -55,6 +56,7 @@ export class Catalogue {
   private erreurs!: HTMLDivElement
   private liste!: HTMLOListElement
   private demo: DemoEnCours | null = null
+  private theme: Theme = 'nombres'
   private mesureur: HTMLDivElement
   private clavier = (e: KeyboardEvent) => this.touche(e)
 
@@ -92,11 +94,15 @@ export class Catalogue {
   private construire() {
     const p = this.panneau
     let nombres = ''
-    try { nombres = localStorage.getItem(CLE_NOMBRES) ?? '' } catch { /* navigateur sans mémoire */ }
+    try {
+      nombres = localStorage.getItem(CLE_NOMBRES) ?? ''
+      const t = localStorage.getItem(CLE_THEME)
+      if (THEMES.some(x => x.id === t)) this.theme = t as Theme
+    } catch { /* navigateur sans mémoire */ }
     p.innerHTML = `
       <div class="tete"><h2>Catalogue</h2><button type="button" class="fermer" aria-label="Fermer" title="Fermer">×</button></div>
-      <label class="exemples"><span>Thème</span><select aria-label="Thème"><option>Ensembles de nombres</option></select></label>
-      <section class="element">
+      <label class="exemples"><span>Thème</span><select class="theme" aria-label="Thème">${THEMES.map(t => `<option value="${t.id}">${html(t.nom)}</option>`).join('')}</select></label>
+      <section class="element ensembles" data-theme="nombres">
         <h3>Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ</h3>
         <label class="champ"><span>Nombres à ranger (facultatif), séparés par des points-virgules</span>
           <textarea class="nombres" spellcheck="false" rows="3" placeholder="−5 ; 3 ; 2,7 ; 1/3 ; √2 ; π"></textarea></label>
@@ -109,7 +115,8 @@ export class Catalogue {
       </section>
       <section class="element">
         <h3>Démonstrations</h3>
-        <div class="demos">${DEMONSTRATIONS.map((d, i) => `<button type="button" class="secondaire demo" data-demo="${i}">${html(d.nom)}</button>`).join('')}</div>
+        <div class="demos">${DEMONSTRATIONS.map((d, i) => `<button type="button" class="secondaire demo" data-demo="${i}" data-theme="${d.theme}">${html(d.nom)}</button>`).join('')}</div>
+        <p class="note aucune-demo">Pas encore de démonstration dans ce thème.</p>
         <ol class="etapes"></ol>
         <div class="commandes" hidden>
           <button type="button" class="secondaire precedente" title="Ligne précédente (←)">◀</button>
@@ -123,6 +130,14 @@ export class Catalogue {
     this.nombres.addEventListener('input', () => {
       try { localStorage.setItem(CLE_NOMBRES, this.nombres.value) } catch { /* navigateur sans mémoire */ }
     })
+    const theme = q<HTMLSelectElement>('.theme')
+    theme.value = this.theme
+    theme.addEventListener('change', () => {
+      this.theme = theme.value as Theme
+      try { localStorage.setItem(CLE_THEME, this.theme) } catch { /* navigateur sans mémoire */ }
+      this.montrerTheme()
+    })
+    this.montrerTheme()
     q('.fermer').addEventListener('click', () => this.fermer())
     q('.poser-dessin').addEventListener('click', () => this.poserDessin())
     q('.completer').addEventListener('click', () => this.completer())
@@ -130,6 +145,16 @@ export class Catalogue {
     q('.suivante').addEventListener('click', () => this.suivante())
     q('.precedente').addEventListener('click', () => this.precedente())
     q('.tout').addEventListener('click', () => { while (this.suivante()) { /* jusqu'au bout */ } })
+  }
+
+  /** Ne montre que ce qui est rangé dans le thème choisi */
+  private montrerTheme() {
+    let demos = 0
+    this.panneau.querySelectorAll<HTMLElement>('[data-theme]').forEach(e => {
+      e.hidden = e.dataset.theme !== this.theme
+      if (!e.hidden && e.classList.contains('demo')) demos++
+    })
+    ;(this.panneau.querySelector('.aucune-demo') as HTMLElement).hidden = demos > 0
   }
 
   private afficher() {

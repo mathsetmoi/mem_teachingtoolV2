@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classerNombre, dansPolygone, dessinEnsembles, DEMONSTRATIONS, ENSEMBLES, ligneEnLatex, lireListe, placeDansZone } from '../src/catalogue'
+import { THEMES, classerNombre, dansPolygone, dessinEnsembles, DEMONSTRATIONS, ENSEMBLES, ligneEnLatex, lireListe, placeDansZone } from '../src/catalogue'
 import type { Boite } from '../src/catalogue'
 
 const ens = (t: string) => { const r = classerNombre(t); return 'erreur' in r ? 'erreur : ' + r.erreur : r.ensemble + (r.doute ? '?' : '') }
@@ -80,5 +80,12 @@ describe('Le catalogue : les démonstrations', () => {
   it('les deux démonstrations du programme', () => {
     expect(DEMONSTRATIONS.map(d => d.nom)).toEqual(['1/3 n\'est pas décimal', '√2 n\'est pas rationnel'])
     for (const d of DEMONSTRATIONS) for (const e of d.etapes) for (const l of e) expect(l.split('$').length % 2).toBe(1)
+  })
+})
+
+describe('Le catalogue : les thèmes', () => {
+  it('chaque démonstration est rangée dans un thème du panneau', () => {
+    const ids = new Set(THEMES.map(t => t.id))
+    for (const d of DEMONSTRATIONS) expect(ids.has(d.theme)).toBe(true)
   })
 })

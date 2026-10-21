@@ -406,8 +406,19 @@ export function ligneEnLatex(ligne: string): string {
   return ligne.split('$').map((m, i) => i % 2 ? m : m ? `\\text{${m.replace(/[\\{}]/g, c => '\\' + c)}}` : '').join('')
 }
 
+/** Les thèmes du programme de seconde, dans l'ordre du panneau */
+export type Theme = 'nombres' | 'geometrie' | 'fonctions' | 'statistiques'
+export const THEMES: readonly { id: Theme; nom: string }[] = [
+  { id: 'nombres', nom: 'Nombres et calculs' },
+  { id: 'geometrie', nom: 'Géométrie' },
+  { id: 'fonctions', nom: 'Fonctions' },
+  { id: 'statistiques', nom: 'Statistiques et probabilités' },
+]
+
 export interface Demonstration {
   nom: string
+  /** Le thème du programme où elle se range */
+  theme: Theme
   /** Le titre, posé d'emblée */
   titre: string
   /** Les étapes, montrées une à une ; chacune a une ou deux lignes */
@@ -417,6 +428,7 @@ export interface Demonstration {
 export const DEMONSTRATIONS: readonly Demonstration[] = [
   {
     nom: '1/3 n\'est pas décimal',
+    theme: 'nombres',
     titre: '\\textbf{Démonstration : } \\dfrac{1}{3} \\textbf{ n\'est pas un nombre décimal.}',
     etapes: [
       ['Raisonnons par l\'absurde : supposons que $\\dfrac{1}{3}$ est décimal.',
@@ -430,6 +442,7 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   },
   {
     nom: '√2 n\'est pas rationnel',
+    theme: 'nombres',
     titre: '\\textbf{Démonstration : } \\sqrt{2} \\textbf{ n\'est pas un nombre rationnel.}',
     etapes: [
       ['Raisonnons par l\'absurde : supposons que $\\sqrt{2}$ est rationnel.',
