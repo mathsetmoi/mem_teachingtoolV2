@@ -90,6 +90,15 @@ export class Catalogue {
     this.afficher()
   }
 
+  /** Pose un élément du catalogue (depuis la recherche) : le panneau
+   *  s'ouvre, et l'élément suit le pointeur jusqu'au clic, comme depuis son
+   *  bouton. demo : le nom d'une démonstration ; sans lui, les ensembles. */
+  poserElement(demo?: string) {
+    if (!this.ouvert) this.ouvrir()
+    const d = demo ? DEMONSTRATIONS.find(x => x.nom === demo) : undefined
+    if (d) this.poserDemo(d); else this.poserDessin()
+  }
+
   fermer() {
     if (this.app.placement) this.app.echap()
     this.panneau.hidden = true

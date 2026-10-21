@@ -7,8 +7,8 @@
 // App.clavier, et le README).
 //
 // Les conseils : au premier lancement après leur arrivée, quelques bulles,
-// une à la fois, montrent ce qui est nouveau (les outils de classe et
-// l'aide). On les passe d'un clic (« Suivant », « Passer ») ou
+// une à la fois, montrent ce qui est nouveau (les outils de classe,
+// l'aide, puis la recherche). On les passe d'un clic (« Suivant », « Passer ») ou
 // d'Échap ; une fois vues, elles ne reviennent plus sur cet appareil
 // (mem-conseils). Elles ne couvrent rien d'autre que leur bulle et ne
 // prennent ni le focus ni le clavier, sauf Échap.
@@ -42,7 +42,7 @@ const RACCOURCIS: Groupe[] = [
     ['Déplacer la vue (sans sélection)', ['← ↑ → ↓']],
   ] },
   { titre: 'Classeur', lignes: [
-    ['Enregistrer', [`${CTRL} S`]], ['Ouvrir', [`${CTRL} O`]], ['Exporter en PDF', [`${CTRL} P`]],
+    ['Enregistrer', [`${CTRL} S`]], ['Ouvrir', [`${CTRL} O`]], ['Exporter en PDF', [`${CTRL} P`]], ['Rechercher', [`${CTRL} F`]],
   ] },
   { titre: 'Cette aide', lignes: [['Ouvrir, fermer', ['?', 'Échap']]] },
 ]
@@ -141,10 +141,16 @@ export function ouvrirAide(racine: HTMLElement): HTMLDialogElement {
 
 // ---------- Les conseils ----------
 const CLE_CONSEILS = 'mem-conseils'
-/** La série de conseils vue sur cet appareil : on montre ceux d'après */
-const SERIE = 1
+/** La série de conseils vue sur cet appareil : on montre ceux d'après
+ *  (1 : les outils de classe et l'aide ; 2 : la recherche) */
+const SERIE = 2
 
-export interface Conseil { titre: string; texte: string; ancre: () => HTMLElement | null }
+export interface Conseil { titre: string; texte: string; ancre: () => HTMLElement | null; serie?: number }
+
+/** La série déjà vue sur cet appareil */
+function serieVue(): number {
+  try { return Number(localStorage.getItem(CLE_CONSEILS) ?? '0') || 0 } catch { return SERIE }
+}
 
 /** L'adresse les demande : lue au chargement, avant que le démarrage la
  *  remplace par celle du classeur */
@@ -157,7 +163,7 @@ function conseilsPermis(): boolean {
   try {
     if (CONSEILS_DEMANDES) return true
     if (navigator.webdriver) return false
-    return Number(localStorage.getItem(CLE_CONSEILS) ?? '0') < SERIE
+    return serieVue() < SERIE
   } catch { return false }
 }
 
@@ -176,7 +182,8 @@ export function montrerConseils(racine: HTMLElement, conseils: Conseil[], libre:
     lancer()
   }
   const lancer = () => {
-    const visibles = conseils.filter(c => { const a = c.ancre(); return !!a && a.getClientRects().length > 0 })
+    const vue = CONSEILS_DEMANDES ? 0 : serieVue()
+    const visibles = conseils.filter(c => { const a = c.ancre(); return (c.serie ?? 1) > vue && !!a && a.getClientRects().length > 0 })
     if (!visibles.length) { conseilsVus(); return }
     const bulle = el('div', 'conseil')
     bulle.setAttribute('role', 'status')

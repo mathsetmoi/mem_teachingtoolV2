@@ -99,6 +99,9 @@ export const ICONES: Record<string, string> = {
   'son-coupe': 'M4 9h4l5-4v14l-5-4H4zM16 9l6 6M22 9l-6 6',
   // Rechercher : une loupe
   loupe: 'M11 18a7 7 0 100-14 7 7 0 100 14zM20 20l-4-4',
+  // Une feuille, coin plié (une page trouvée) ; un calendrier (une séance)
+  feuille: 'M6 3h9l4 4v14H6zM15 3v4h4M9 12h7M9 16h5',
+  calendrier: 'M4 6h16v15H4zM4 10h16M8 3v5M16 3v5M8 14h2M12 14h2M16 14h2M8 18h2M12 18h2',
 }
 
 /** Le SVG d'une icône, caché aux lecteurs d'écran (le bouton porte son nom) */

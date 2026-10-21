@@ -1571,6 +1571,23 @@ export class App {
     this.allerVers(vuePour(b, this.ui.zoneLibre(), 2))
   }
 
+  /** Prend un objet de la page (la recherche : une formule trouvée) et le
+   *  montre, au zoom où l'on est : la vue ne bouge que s'il n'est pas déjà
+   *  entier à l'écran (il vient alors au centre). Faux : il n'est pas là. */
+  montrerForme(id: string): boolean {
+    const f = this.formes.find(x => x.id === id)
+    const b = f ? this.boiteDuContenu([f]) : null
+    if (!f || !b) return false
+    this.selection.clear()
+    this.selection.add(id)
+    this.rafraichir()
+    const r = this.ui.zoneLibre(), z = this.cam.z
+    const g = b.x * z + this.cam.x, h = b.y * z + this.cam.y
+    if (g < r.x || h < r.y || g + b.l * z > r.x + r.l || h + b.h * z > r.y + r.h)
+      this.allerVers({ x: r.x + r.l / 2 - (b.x + b.l / 2) * z, y: r.y + r.h / 2 - (b.y + b.h / 2) * z, z })
+    return true
+  }
+
   /** Les boutons − et + : autour du centre de l'écran, tout de suite */
   zoomer(facteur: number) {
     this.arreterAnimation()
