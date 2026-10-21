@@ -25,6 +25,7 @@ import { COMPOSITION_PAR_DEFAUT, NIVEAUX, themesDe, tirerFlash } from './automat
 import type { Formule, ImageForme } from './types'
 import { uid } from './types'
 import { fermerSurLeFond } from './dialogue'
+import { toucheQuitteLaPage } from './navigateur'
 
 const html = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
 const mmss = (s: number) => { const t = Math.max(0, Math.ceil(s - 1e-6)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}` }
@@ -262,6 +263,10 @@ export class Flash {
       fermer()
       void this.lancer(r)
     })
+    // Alt + ← / → (⌘ sur Mac) quitteraient MEM en plein cours, Ctrl + G
+    // ouvrirait la recherche du navigateur : le réglage n'a pas de champ de
+    // texte où elles serviraient, on les empêche comme sur le tableau
+    d.addEventListener('keydown', e => { if (toucheQuitteLaPage(e)) e.preventDefault() })
     d.addEventListener('close', () => { d.remove(); if (this.dialogue === d) this.dialogue = null })
     fermerSurLeFond(d, fermer)
     document.getElementById('app')?.appendChild(d) ?? document.body.appendChild(d)
