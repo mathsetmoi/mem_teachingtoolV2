@@ -780,10 +780,10 @@ export class UI implements Interface {
     }, 'outil seulement-large')
     const construire = bouton('construction', 'Programme de construction, étape par étape', () => this.basculerConstructeur(), 'seulement-large')
     const catalogue = bouton('catalogue', 'Catalogue : des éléments de cours tout prêts', () => this.basculerCatalogue(), 'seulement-large')
-    // Importer une image : bouton, ou coller (Ctrl+V), ou glisser le fichier sur le tableau
-    const choixFichier = this.choixFichier = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*', hidden: true })
+    // Importer une image ou un PDF : bouton, ou coller (Ctrl+V), ou glisser le fichier sur le tableau
+    const choixFichier = this.choixFichier = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*,application/pdf,.pdf', hidden: true })
     choixFichier.addEventListener('change', () => { const f = choixFichier.files?.[0]; if (f) app.importerImage(f, { pointeur: this.pointeurImport }); choixFichier.value = '' })
-    const importer = bouton('image', 'Importer une image (ou coller avec Ctrl+V, ou glisser le fichier)', e => this.choisirImage(e), 'seulement-large')
+    const importer = bouton('image', 'Importer une image ou un PDF (ou coller avec Ctrl+V, ou glisser le fichier)', e => this.choisirImage(e), 'seulement-large')
     this.racine.appendChild(choixFichier)
     const automatismes = bouton('automatismes', 'Automatismes : un flash de questions sur une page de la séance', () => this.flash.ouvrir(), 'seulement-large')
     // Les outils de classe : rideau, pointeur laser, minuteur, tirage au
@@ -1601,7 +1601,7 @@ export class UI implements Interface {
       { titre: 'Toutes les pages', icone: 'trier', touche: 'Maj P', mots: 'pages trier ranger vignettes', faire: () => this.ouvrirTrieuse() },
       { titre: '100 %', icone: 'loupe', touche: `${CTRL} 0`, mots: 'zoom cent pour cent', faire: () => app.zoom100() },
       { titre: 'Tout voir', icone: 'loupe', touche: 'Maj 1', mots: 'zoom toute la page', faire: () => app.toutVoir() },
-      { titre: 'Importer une image', icone: 'image', mots: 'image photo fichier', faire: () => this.choisirImage() },
+      { titre: 'Importer une image ou un PDF', icone: 'image', mots: 'image photo fichier pdf fiche énoncé', faire: () => this.choisirImage() },
       { titre: 'Programme de construction', icone: 'construction', mots: 'construire etape par etape', faire: () => this.basculerConstructeur() },
       { titre: 'Catalogue', icone: 'catalogue', mots: 'elements de cours tout prets', faire: () => this.basculerCatalogue() },
       { titre: 'Automatismes', icone: 'automatismes', mots: 'flash questions calcul mental', faire: () => this.flash.ouvrir() },
@@ -1775,7 +1775,7 @@ export class UI implements Interface {
       aide: 'Carré, cercle, triangle…' })
     filetMenu(m)
     titreMenu(m, 'Outils de cours')
-    this.entreeMenu(m, 'Importer une image…', e => this.choisirImage(e), { action: 'importer' })
+    this.entreeMenu(m, 'Importer une image ou un PDF…', e => this.choisirImage(e), { action: 'importer' })
     this.entreeMenu(m, 'Instruments…', () => { this.choixInstruments.hidden = false; this.maj() }, { action: 'instruments',
       aide: 'Règle, équerre, rapporteur, compas' })
     this.entreeMenu(m, 'Programme de construction', () => this.basculerConstructeur(), { action: 'construction', aide: 'Étape par étape' })

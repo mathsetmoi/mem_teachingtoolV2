@@ -761,7 +761,8 @@ figure sans noms donne des lettres libres aux autres.
 ## Images
 
 Le bouton image de la barre du haut importe une photo ou une capture (on peut
-aussi la coller avec Ctrl+V, ou glisser le fichier sur le tableau). Réduite à
+aussi la coller avec Ctrl+V, ou glisser le fichier sur le tableau) ; un PDF
+aussi (voir « Importer un PDF »). Réduite à
 1600 px, elle est rangée une seule fois dans le document. Comme une figure, elle
 se déplace, se duplique et se **transforme** : symétrie par rapport à une droite
 tracée sur la page, à une verticale ou à un axe du repère ; symétrie centrale,
@@ -3835,6 +3836,41 @@ ouvre la bibliothèque de vos classeurs. » quand il est caché faute de
 place). Puis `mem-teachingtool-annonce` est posée ; un navigateur neuf la
 pose sans rien dire.
 
+## Importer un PDF
+
+Une fiche, un énoncé, un sujet en PDF se pose sur le tableau pour écrire
+dessus. Il arrive comme une image : le bouton image de la barre du haut
+(« Importer une image ou un PDF »), un fichier glissé sur le tableau, ou
+Ctrl+V. La fenêtre « Importer un PDF » montre ses pages en vignettes, toutes
+cochées : un clic sur une page la prend ou la laisse (« Importer 3 pages »).
+Puis où les mettre :
+
+- **une page du tableau par page du PDF** (le choix de départ) : elles
+  s'ajoutent à la séance juste après la page qu'on regarde (depuis une
+  séance passée, à la séance du jour, comme Nouvelle page), la feuille en
+  haut à gauche, assez large pour se lire à 100 % (la place entre les
+  barres, au plus 1000), avec de la place en dessous pour la correction ; on
+  arrive sur la première ;
+- **toutes sur cette page**, l'une sous l'autre, en haut de ce qu'on voit
+  (pas offert dans une séance passée, en lecture).
+
+La case **Fixer en fond**, cochée au départ, les fixe comme « Fixer en
+fond » (lot 5) : la feuille ne bouge plus quand on écrit dessus, et la gomme
+n'efface que l'écriture ; on la détache par le menu de la page. Décochée,
+elles arrivent sélectionnées, comme une image importée. Le choix des deux
+réglages est retenu le temps de la session (aucune clé de stockage neuve).
+
+Chaque page devient une image ordinaire (JPEG, 1600 px de large, au plus
+2400 de haut) : le classeur, le replay, l'export en PDF et le Drive n'ont
+rien de neuf à connaître, et les formats ne changent pas. La lecture se fait
+sur l'ordinateur par pdf.js (`pdfjs-dist`, sa version « legacy », pour les
+navigateurs de quelques années), chargé au premier PDF : son travailleur est
+rangé dans l'outil comme un texte et lancé en travailleur classique (Chrome
+refuse un travailleur « module » fait d'un texte en `file://`). La version
+hors ligne lit donc les PDF sans internet ; son fichier passe d'environ 3,2 à
+5 Mo. Un PDF protégé par un mot de passe ou abîmé : « Impossible de lire ce
+PDF ». Code : `src/import-pdf.ts` ; essai : `essais/navigateur/lot11/E1-import-pdf.mjs`.
+
 ## Exporter en PDF
 
 Un fichier PDF à imprimer, ou à déposer dans l'ENT pour les absents :
@@ -4205,7 +4241,7 @@ pouce :
   *Effacer la page* sur une page seule —, *Fond…*, qui ouvre le menu des
   fonds en vignettes, sur deux colonnes en portrait ; *Aimanter au
   quadrillage* et *Le stylo redresse les figures*, deux cases), **Outils de
-  cours** (*Importer une image…*, *Instruments…* — leur liste, centrée sous
+  cours** (*Importer une image ou un PDF…*, *Instruments…* — leur liste, centrée sous
   la barre du haut —, *Programme de construction*, *Automatismes*, *Revoir
   la construction*, *Publier le replay*), **Vue** (*100 %*, *Tout voir*) ;
   puis, comme ailleurs, le bloc du classeur et ses entrées, et « Cet
