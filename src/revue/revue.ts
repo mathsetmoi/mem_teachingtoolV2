@@ -274,6 +274,7 @@ export class RevueEnClasse {
       app.ui.message('Rien à revoir pour l\'instant : la revue montre ce qui a été écrit pendant les séances.')
       return
     }
+    app.finirTexte()
     app.enLecture = true
     this.ouverteA = performance.now()
     this.retour = retour ?? null

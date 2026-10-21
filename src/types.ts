@@ -34,7 +34,7 @@ export const FONDS: { id: Fond; nom: string }[] = [
  *  ne changent pas. */
 export const FOND_NEUF: Fond = 'blanc'
 
-export type Outil = 'stylo' | 'surligneur' | 'gomme' | 'point' | 'segment' | 'forme' | 'formule' | 'selection' | 'main'
+export type Outil = 'stylo' | 'surligneur' | 'gomme' | 'point' | 'segment' | 'forme' | 'formule' | 'texte' | 'selection' | 'main'
 
 /** Ce que trace l'outil « Formes » */
 export type TypeForme = 'rectangle' | 'cercle' | 'polygone'
@@ -153,7 +153,23 @@ export interface Formule extends Base {
    *  net à tout zoom) ; tout le reste « cuit » la sienne dans ses
    *  coordonnées. */
   rotation?: number
+  /** Un texte tapé au clavier (l'outil Texte) : ses lignes, chacune faite de
+   *  morceaux (du texte, en gras, en italique, souligné, d'une couleur, ou
+   *  une formule entre $…$). Facultatif : sans lui, c'est une formule. Le
+   *  champ latex garde alors une version KaTeX du même texte, qu'une version
+   *  d'avant affiche (voir texte.ts). */
+  texte?: LigneTexte[]
+  /** La largeur choisie d'un texte (unités monde, sa marge comprise) : il passe
+   *  à la ligne tout seul. Absente : une ligne aussi longue qu'il faut. */
+  largeur?: number
 }
+
+/** Un morceau d'une ligne d'un texte : t, ce qui est écrit (le LaTeX d'une
+ *  formule si f) ; g gras, i italique, s souligné ; c sa couleur, quand ce
+ *  n'est pas celle du texte */
+export interface MorceauTexte { t: string; g?: true; i?: true; s?: true; c?: string; f?: true }
+/** Une ligne d'un texte ; puce : elle commence par une puce (•) */
+export interface LigneTexte { morceaux: MorceauTexte[]; puce?: true }
 
 /** Image importée. Le coin (x, y) et la matrice m = [a, b, c, d] placent le
  *  point (u, v) de l'image (en pixels) en (x + a·u + c·v, y + b·u + d·v) :

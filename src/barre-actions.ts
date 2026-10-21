@@ -25,6 +25,7 @@ import { DOUBLE_TOUCHER, ecranTactile, titreModifierFormule } from './pointeurs'
 import { CTRL } from './navigateur'
 import { icone } from './icones'
 import { menuOuvert, quandMenuChange } from './menus'
+import { estTexte } from './texte'
 
 export type IdAction = 'modifier' | 'rogner' | 'dupliquer' | 'copier' | 'supprimer' | 'ajouter' | 'options'
 
@@ -50,10 +51,10 @@ export interface ActionBarre {
  *  jamais « clic » au doigt ; le stylet posé sur l'écran (direct, l'Apple
  *  Pencil, qui n'a pas de bouton) a l'appui long, celui d'une tablette
  *  graphique son bouton. */
-export function actionsDe(pris: { n: number; formule: boolean; image?: boolean }, pointeur: TypePointeur, ctrl = CTRL, direct = ecranTactile()): ActionBarre[] {
+export function actionsDe(pris: { n: number; formule: boolean; image?: boolean; texte?: boolean }, pointeur: TypePointeur, ctrl = CTRL, direct = ecranTactile()): ActionBarre[] {
   const seul = pris.n === 1, doigt = pointeur === 'touch', sansClavier = doigt || (pointeur === 'pen' && direct)
   const l: ActionBarre[] = []
-  if (seul && pris.formule) l.push({ id: 'modifier', icone: 'stylo', libelle: 'Modifier', titre: titreModifierFormule(pointeur) })
+  if (seul && pris.formule) l.push({ id: 'modifier', icone: 'stylo', libelle: 'Modifier', titre: titreModifierFormule(pointeur, !!pris.texte) })
   // image : une image à rogner (voir App.rognable : seule, ses points repérés à part)
   if (pris.image) l.push({ id: 'rogner', icone: 'rogner', libelle: 'Rogner', titre: 'Rogner : ne garder qu\'une partie de l\'image' })
   l.push({ id: 'dupliquer', icone: 'dupliquer', libelle: 'Dupliquer', titre: `Dupliquer (${ctrl} + D)` })
@@ -280,7 +281,7 @@ export class BarreActions {
     const rognable = !!app.rognable()
     const cle = `${seul ? seul.type : 'plusieurs'}|${app.selection.size}|${pointeur}|${rognable}`
     if (cle !== this.cle) {
-      this.construire(actionsDe({ n: app.selection.size, formule: seul?.type === 'formule', image: rognable }, pointeur))
+      this.construire(actionsDe({ n: app.selection.size, formule: seul?.type === 'formule', image: rognable, texte: estTexte(seul) }, pointeur))
       this.cle = cle
     }
     const ajouter = this.boutons.get('ajouter')

@@ -25,7 +25,7 @@ export const TAILLES_FORMULE = [
 export function titreDuMenu(f: Forme): string {
   switch (f.type) {
     case 'trait': return 'Options du trait'
-    case 'formule': return 'Options de la formule'
+    case 'formule': return Array.isArray(f.texte) ? 'Options du texte' : 'Options de la formule'
     case 'image': return "Options de l'image"
     case 'segment': return 'Options du segment'
     case 'cercle': return f.arc ? "Options de l'arc" : 'Options du cercle'

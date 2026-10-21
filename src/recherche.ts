@@ -11,6 +11,8 @@
 import type * as Y from 'yjs'
 import type { SeanceDuClasseur } from './seances'
 import { rangerLesPages } from './seances'
+import type { LigneTexte } from './types'
+import { texteBrut } from './texte'
 
 /** Un texte mis à plat : minuscules, sans accent, les ligatures défaites,
  *  les espaces resserrés */
@@ -125,7 +127,15 @@ export interface PageLue {
   numero: number
   seance: { id: string; debut: number; nom: string | null } | null
 }
-export interface FormuleLue { id: string; page: string; latex: string }
+/** Ce qu'on cherche dans une formule (ses mots, voir motsDeLatex) ou dans
+ *  un texte (ses mots tels qu'il les écrit, et ceux de ses formules) */
+export function motsDeFormule(f: { latex: string; texte?: string }): string {
+  return f.texte !== undefined ? `${f.texte} ${motsDeLatex(f.texte.match(/\$[^$]*\$/g)?.join(' ') ?? '')}` : motsDeLatex(f.latex)
+}
+
+/** Une formule écrite sur une page ; texte : un texte tapé (l'outil Texte),
+ *  à plat (voir texte.ts), qu'on cherche mot à mot */
+export interface FormuleLue { id: string; page: string; latex: string; texte?: string }
 export interface ContenuClasseur {
   pages: PageLue[]
   formules: FormuleLue[]
@@ -155,8 +165,10 @@ export function lireContenu(doc: Y.Doc, seances?: readonly SeanceDuClasseur[]): 
     const formes = pages.get(id)?.get?.('formes') as Y.Map<unknown> | undefined
     if (!formes || typeof formes.forEach !== 'function') return
     formes.forEach((f, fid) => {
-      const o = f as { type?: unknown; latex?: unknown }
-      if (o && o.type === 'formule' && typeof o.latex === 'string' && o.latex.trim()) r.formules.push({ id: fid, page: id, latex: o.latex })
+      const o = f as { type?: unknown; latex?: unknown; texte?: unknown }
+      if (!o || o.type !== 'formule' || typeof o.latex !== 'string') return
+      if (Array.isArray(o.texte)) r.formules.push({ id: fid, page: id, latex: o.latex, texte: texteBrut(o.texte as LigneTexte[]) })
+      else if (o.latex.trim()) r.formules.push({ id: fid, page: id, latex: o.latex })
     })
   })
   return r

@@ -14,7 +14,7 @@ import type { FicheClasseur, FicheDossier } from './demarrage'
 import { cheminLisible, etiquetteHeritee } from './arbre'
 import { contenuDeLaBase } from './recherche-bibliotheque'
 import type { ContenuClasseur } from '../recherche'
-import { dateEnMots, morceaux, motsDeLatex, score } from '../recherche'
+import { dateEnMots, morceaux, motsDeFormule, score } from '../recherche'
 import { icone } from '../icones'
 import { TOUCHE_RECHERCHE } from '../recherche-vue'
 
@@ -153,13 +153,15 @@ export class RechercheBiblio {
       }
       const pages = new Map(k.pages.map(p => [p.id, p]))
       for (const fo of k.formules) {
-        const v = score(q, motsDeLatex(fo.latex))
+        const v = score(q, motsDeFormule(fo))
         if (v === null) continue
         const p = pages.get(fo.page)
-        formules.push({ score: v + f.modifie / 1e15, faire: () => this.hote.ouvrir(f, { page: fo.page, forme: fo.id }), rendre: () => {
+        formules.push({ score: v + f.modifie / 1e15, faire: () => this.hote.ouvrir(f, { page: fo.page, forme: fo.id }), rendre: q => {
           const b = this.bouton(null)
           const m = el('span', 'rb-formule')
-          try { m.innerHTML = katex.renderToString(fo.latex, { throwOnError: false, output: 'html' }) } catch { m.textContent = fo.latex }
+          // Un texte tapé : à plat, les mots cherchés marqués
+          if (fo.texte !== undefined) m.appendChild(surligne(fo.texte.replace(/\s+/g, ' ').slice(0, 120), q))
+          else try { m.innerHTML = katex.renderToString(fo.latex, { throwOnError: false, output: 'html' }) } catch { m.textContent = fo.latex }
           b.prepend(m)
           b.append(el('span', 'rb-titre', `${f.nom} · page ${p?.numero ?? '?'}`),
             el('small', 'rb-note', p?.seance ? 'Séance du ' + dateCourte(p.seance.debut) : ''))
@@ -197,7 +199,7 @@ export class RechercheBiblio {
     groupe('Classeurs', classeurs, 30)
     if (lesDossiers.length) groupe('Dossiers', lesDossiers, 12)
     groupe('Séances', seances, 20)
-    groupe('Formules', formules, 20)
+    groupe('Formules et textes', formules, 20)
     if (!classeurs.length && !lesDossiers.length && !seances.length && !formules.length && !lecture)
       this.resultats.appendChild(el('p', 'rb-vide', 'Rien trouvé. L\'écriture au stylo ne se recherche pas.'))
   }

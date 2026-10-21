@@ -32,6 +32,7 @@ import type { Cercle, Forme, Formule, Habillage, ImageForme, Polygone, Segment, 
 import type { P } from './formes'
 import { image, nomsLibres, sommetsDe } from './formes'
 import { uid } from './types'
+import { estTexte, latexDuTexte, lireTexte, texteBrut } from './texte'
 
 /** Ce qu'on a copié. Les formes ont leurs coordonnées absolues (celles de la
  *  page d'où elles viennent) ; images : les données (data:image/…) des
@@ -59,10 +60,11 @@ export function versHtml(c: Copie): string {
 }
 
 /** Le text/plain : ce qu'un autre logiciel en ferait de mieux. Des formules
- *  seules donnent leur LaTeX, une par ligne (on les colle dans un document) ;
+ *  seules donnent leur LaTeX, une par ligne (on les colle dans un document),
+ *  un texte ses lignes à plat (ses formules entre $) ;
  *  sinon une phrase qui dit ce que c'est. */
 export function versTexte(c: Copie): string {
-  if (c.formes.length && c.formes.every(f => f.type === 'formule')) return c.formes.map(f => (f as Formule).latex).join('\n')
+  if (c.formes.length && c.formes.every(f => f.type === 'formule')) return c.formes.map(f => estTexte(f) ? texteBrut(f.texte) : (f as Formule).latex).join('\n')
   const n = c.formes.length
   return `MEM teachingtool : ${n} objet${n > 1 ? 's' : ''}`
 }
@@ -226,6 +228,22 @@ function refaireForme(v: Record<string, unknown>, prendreImage: (src: string) =>
       return s
     }
     case 'formule': {
+      // Un texte (l'outil Texte) : ses lignes relues une à une ; son latex
+      // (ce qu'affiche une version d'avant) refait d'après elles ; sa
+      // largeur choisie, dans les bornes
+      if (!absent(v.texte)) {
+        const t = lireTexte(v.texte)
+        if (!t || !couleur(v.couleur) || !taille(v.taille)) return null
+        if (!absent(v.largeur) && (!fini(v.largeur) || v.largeur < 1 || v.largeur > BORNE)) return null
+        const f: Formule = { ...base, type: 'formule', latex: latexDuTexte(t), texte: t, couleur: v.couleur, taille: v.taille }
+        if (!absent(v.largeur)) f.largeur = v.largeur as number
+        if (!absent(v.rotation)) {
+          if (!fini(v.rotation) || Math.abs(v.rotation) > ROTATION_MAX) return null
+          const r = angleNormal(v.rotation)
+          if (Math.abs(r) >= 1e-6) f.rotation = r
+        }
+        return f
+      }
       if (typeof v.latex !== 'string' || v.latex.length > 2000 || !couleur(v.couleur) || !taille(v.taille)) return null
       const f: Formule = { ...base, type: 'formule', latex: v.latex, couleur: v.couleur, taille: v.taille }
       // La rotation (lot 5) : un angle fini et raisonnable, ramené dans

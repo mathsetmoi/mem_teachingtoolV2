@@ -23,6 +23,7 @@
 // de 40 formules ne fait jamais une tâche de 300 ms.
 // =============================================================
 import type { Formule } from '../types'
+import { cleDuContenu, ecrireContenu, tailleEstimee } from '../texte'
 
 /** Le cache des images, au plus ce nombre de pixels en tout (les plus
  *  anciennement servies s'en vont) */
@@ -80,7 +81,7 @@ export class FormulesSurCanevas {
    *  compris. Exacte quand elle a été mesurée ; sinon l'estimation de
    *  Rendu.boiteFormule. */
   taille(f: Formule): { l: number; h: number } {
-    return this.mesures.get(cleMesure(f)) ?? { l: f.taille * Math.max(1, f.latex.length * 0.5), h: f.taille * 1.4 }
+    return this.mesures.get(cleMesure(f)) ?? tailleEstimee(f)
   }
 
   /** La taille de cette formule est-elle encore une estimation ? */
@@ -199,7 +200,7 @@ export class FormulesSurCanevas {
     div.style.fontSize = f.taille + 'px'
     div.style.color = f.couleur
     this.boite().appendChild(div)
-    try { this.rendre(f.latex || '\\square', div) } catch { div.remove(); return null }
+    try { ecrireContenu(f, div, this.rendre) } catch { div.remove(); return null }
     return div
   }
 
@@ -257,8 +258,8 @@ export class FormulesSurCanevas {
   }
 }
 
-const cleMesure = (f: Formule) => `${f.latex}|${f.taille}`
-const cleImage = (f: Formule) => `${f.latex}|${f.couleur}|${f.taille}`
+const cleMesure = (f: Formule) => cleDuContenu(f)
+const cleImage = (f: Formule) => `${cleDuContenu(f)}|${f.couleur}`
 
 /** Les nœuds de texte visibles d'un rendu KaTeX (pas sa copie MathML,
  *  cachée, pour les lecteurs d'écran) */
@@ -332,6 +333,12 @@ async function peindreRendu(el: HTMLElement, echelle: number): Promise<{ c: HTML
         x.fillStyle = st.color
         x.textBaseline = 'alphabetic'; x.textAlign = 'left'
         x.fillText(n.textContent ?? '', q.left - ox, px(y - oy))
+        // Le souligné d'un texte (voir texte.ts : chaque mot dans un élément
+        // qui porte son style), sous la ligne de base
+        if (st.textDecorationLine.includes('underline')) {
+          const taille = parseFloat(st.fontSize) || 16
+          x.fillRect(q.left - ox, px(y - oy) + taille * 0.12, q.width, Math.max(1, taille / 16))
+        }
         return
       }
       if (n.nodeType !== Node.ELEMENT_NODE) return

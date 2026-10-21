@@ -24,11 +24,12 @@ import { enOrdreDAffichage, ordreDAffichage } from './ordre'
 import { groupesTouches } from './groupes'
 import { LONG_MORCEAU, fenetresDe, passePres } from './gomme'
 import type { Cadre, Matrice } from './cadre'
-import { rectangleDe } from './cadre'
+import { cotesDe, rectangleDe } from './cadre'
 import type { PartieGardee } from './rognage'
 import { coinsGardes } from './rognage'
 import type { TypePointeur } from './pointeurs'
 import { POIGNEE } from './pointeurs'
+import { cleDuContenu, ecrireContenu, estTexte, tailleEstimee } from './texte'
 
 type P = { x: number; y: number }
 /** Ce qui distingue le contour d'un trait dans le cache des tracés (voir
@@ -112,6 +113,8 @@ export class Rendu {
   cible: { a: { x: number; y: number }; b?: { x: number; y: number } } | null = null
   /** Une construction qu'on va poser : on la voit, en transparence, sous le pointeur */
   fantomes: Figure[] = []
+  /** Le cadre qu'on glisse à l'outil Texte (monde) */
+  cadreTexte: { x: number; y: number; l: number; h: number } | null = null
   /** Ceux que manie le constructeur, en plus de ceux de l'utilisateur */
   instrumentsAnimes: { nom: NomInstrument; etat: EtatInstrument; actif: Partie | null }[] = []
   /** Appelé chaque fois que la couche des instruments est peinte, avec ce
@@ -125,6 +128,9 @@ export class Rendu {
   /** Une mesure lue pendant un geste (« 4,5 cm », « 30° »), en monde */
   mesure: { texte: string; x: number; y: number } | null = null
   readonly coucheFormules: HTMLDivElement
+  /** La couche du texte qu'on tape (voir texte-editeur.ts), au-dessus de
+   *  tout, qui suit la vue comme celle des formules */
+  readonly coucheEdition: HTMLDivElement
   private cs: CanvasRenderingContext2D
   private cd: CanvasRenderingContext2D
   private dpr = 1
@@ -243,7 +249,9 @@ export class Rendu {
     this.scene.className = 'couche couche-scene'
     this.direct.className = 'couche couche-direct'
     this.coucheFormules.className = 'couche-formules'
-    conteneur.append(this.scene, this.coucheFormules, this.coucheInstruments, this.direct)
+    this.coucheEdition = document.createElement('div')
+    this.coucheEdition.className = 'couche-formules couche-edition'
+    conteneur.append(this.scene, this.coucheFormules, this.coucheInstruments, this.direct, this.coucheEdition)
     this.ci = this.coucheInstruments.getContext('2d')!
     this.cs = this.scene.getContext('2d')!
     // Pas de « desynchronized » : sur certaines cartes graphiques, Chrome
@@ -696,6 +704,9 @@ export class Rendu {
   /** Comment écrire une formule. Le tableau y branche KaTeX ; le lecteur des
    *  élèves ne le charge que si la séance a des formules. */
   rendreFormule: (latex: string, el: HTMLElement) => void = (latex, el) => { el.textContent = latex }
+  /** Le texte qu'on tape (son identifiant) : son élément est caché, l'éditeur
+   *  est à sa place (voir texte-editeur.ts) */
+  enEdition: string | null = null
   /** À appeler quand la façon d'écrire les formules change : on les réécrit toutes */
   reecrireFormules() { for (const e of this.elementsFormules.values()) e.cle = ''; this.toutRedessiner() }
 
@@ -805,17 +816,26 @@ export class Rendu {
   private placerFormules() {
     const cam = this.cam
     this.coucheFormules.style.transform = `translate(${cam.x}px, ${cam.y}px) scale(${cam.z})`
+    if (this.coucheEdition.firstChild) {
+      this.coucheEdition.style.transform = this.coucheFormules.style.transform
+      this.coucheEdition.style.setProperty('--zoom', String(cam.z))
+    }
     const vues = new Set<string>()
     // Leur rang (1, 2, 3…) dans l'ordre des z : c'est leur ordre à l'écran.
     // (Avant le lot 5, z / 1000 : deux formules posées la même seconde
     // avaient le même, et un z placé entre deux voisins n'a de sens que
     // comme rang.)
     let rang = 0
-    for (const f of this.enOrdre()) {
-      if (f.type !== 'formule') continue
-      vues.add(f.id)
+    for (const f0 of this.enOrdre()) {
+      if (f0.type !== 'formule') continue
+      vues.add(f0.id)
       rang++
-      const cle = `${f.latex}|${f.couleur}|${f.taille}`
+      // Un texte à largeur choisie qu'on change de taille (voir transfo) : il
+      // se remet en page à chaque pas, à sa nouvelle largeur (tiré par un
+      // côté, il repasse à la ligne sous les yeux, sans s'étirer)
+      const vif = this.transfo?.ids.has(f0.id) && estTexte(f0) && f0.largeur ? this.transfo.appliquer(f0) as Formule : null
+      const f = vif ?? f0
+      const cle = `${cleDuContenu(f)}|${f.couleur}`
       let e = this.elementsFormules.get(f.id)
       if (!e) {
         const el = document.createElement('div')
@@ -824,8 +844,11 @@ export class Rendu {
         e = { cle: '', el, cachee: false, transform: '' }
         this.elementsFormules.set(f.id, e)
       } else if (e.cachee) { e.cachee = false; e.el.style.visibility = '' }
+      // Le texte qu'on est en train de taper (voir texte-editeur.ts) : son
+      // éditeur est à sa place, lui ne se montre pas
+      e.el.style.visibility = f.id === this.enEdition ? 'hidden' : ''
       if (e.cle !== cle) {
-        this.rendreFormule(f.latex || '\\square', e.el)
+        ecrireContenu(f, e.el, this.rendreFormule)
         e.el.style.color = f.couleur
         e.el.style.fontSize = f.taille + 'px'
         e.cle = cle
@@ -843,7 +866,7 @@ export class Rendu {
       // chemin que M fait faire au coin.
       const r = rotationDe(f), t = this.transfo
       let tr = r ? `rotate(${r}rad)` : ''
-      if (t?.ids.has(f.id)) {
+      if (t?.ids.has(f.id) && !vif) {
         const [a, b, cc, d, ex, fy] = t.m, co = Math.cos(r), si = Math.sin(r)
         tr = `matrix(${a * co + cc * si}, ${b * co + d * si}, ${-a * si + cc * co}, ${-b * si + d * co}, ${a * f.x + cc * f.y + ex - f.x}, ${b * f.x + d * f.y + fy - f.y})`
       }
@@ -871,9 +894,8 @@ export class Rendu {
   boiteFormule(f: Formule) {
     const vu = this.elementsFormules.get(f.id)
     const e = vu && !vu.cachee ? vu : null
-    const l = e ? e.el.offsetWidth : f.taille * Math.max(1, f.latex.length * 0.5)
-    const h = e ? e.el.offsetHeight : f.taille * 1.4
-    return { x: f.x, y: f.y, l, h }
+    if (!e) return { x: f.x, y: f.y, ...tailleEstimee(f) }
+    return { x: f.x, y: f.y, l: e.el.offsetWidth, h: e.el.offsetHeight }
   }
 
   // ---------- Couche directe ----------
@@ -886,6 +908,13 @@ export class Rendu {
     if (this.enAttente) this.dessinerDirect(c, this.enAttente)
     if (this.monTrait) this.dessinerDirect(c, this.monTrait)
 
+    // Le cadre qu'on glisse à l'outil Texte : la largeur du texte à venir
+    if (this.cadreTexte) {
+      const b = this.cadreTexte
+      c.save(); c.strokeStyle = '#3b6fb6'; c.lineWidth = 1.5 / cam.z; c.setLineDash([6 / cam.z, 4 / cam.z])
+      c.strokeRect(b.x, b.y, b.l, b.h)
+      c.restore()
+    }
     if (this.fantomes.length) {
       c.save(); c.globalAlpha = 0.38
       for (const f of this.fantomes) this.dessinerFigure(c, f, null)
@@ -1157,7 +1186,7 @@ export class Rendu {
       }
       // Les côtés d'abord : un coin passe dessus si le cadre est petit
       if (k.cotes) {
-        for (let i = 0; i < 4; i++) {
+        for (const i of cotesDe(k)) {
           const m = { x: (q[i].x + q[(i + 1) % 4].x) / 2, y: (q[i].y + q[(i + 1) % 4].y) / 2 }
           const long = 1.8 * d, court = 0.6 * d
           poignee(m, i % 2 ? court : long, i % 2 ? long : court, court / 2)

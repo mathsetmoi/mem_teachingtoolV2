@@ -14,6 +14,7 @@ export const ICONES: Record<string, string> = {
   gomme: 'M8 20h12M4.5 15.5l9-9 6 6-7.5 7.5H8.5z',
   segment: 'M6 18L18 6M4 18a2 2 0 104 0 2 2 0 10-4 0M16 6a2 2 0 104 0 2 2 0 10-4 0',
   formule: 'M3 13h3l3 7 4-16h8',
+  texte: 'M5 7V5h14v2M12 5v14M9 19h6',
   selection: 'M5 3l14 8-6.5 1.8L10.5 19z',
   main: 'M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3',
   annuler: 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3',

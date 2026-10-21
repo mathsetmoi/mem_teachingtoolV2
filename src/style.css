@@ -44,6 +44,15 @@ button, select, input { font: inherit; color: inherit; }
 .couche { position: absolute; inset: 0; pointer-events: none; }
 .couche-formules { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
 .formule { position: absolute; white-space: nowrap; line-height: 1.2; padding: 2px 4px; }
+/* Un texte tapé au clavier (l'outil Texte, voir texte.ts) : une ligne par
+   bloc, aussi longue qu'il faut ; à largeur choisie, il passe à la ligne
+   tout seul. Une ligne à puce garde son retrait quand elle passe à la ligne. */
+.formule.texte { font-family: Arial, 'Helvetica Neue', Helvetica, 'Liberation Sans', Arimo, sans-serif; white-space: pre; line-height: 1.3; }
+.formule.texte.large { white-space: pre-wrap; overflow-wrap: anywhere; }
+.formule.texte .ligne.puce { display: flex; }
+.formule.texte .marque-puce { flex: none; width: 1em; }
+.formule.texte .corps { min-width: 0; }
+.formule.texte .katex { font-size: 1.1em; }
 
 /* ---------- Barres ---------- */
 .barre {
@@ -2243,3 +2252,48 @@ body.en-revue .bandeau-seance, body.en-trieuse .bandeau-seance, body.en-trieuse 
   .resultat-biblio, .resultat-biblio:has(.rb-formule) { grid-template-columns: minmax(0, 1fr) auto; }
   .rb-icone, .rb-note { display: none; }
 }
+
+/* ---------- Le texte qu'on tape (l'outil Texte, voir texte-editeur.ts) ---------- */
+/* L'éditeur, posé sur la page à la place du texte : son cadre en tirets
+   garde 1,5 px d'écran à tout zoom (la couche est agrandie de --zoom) */
+.couche-edition { z-index: 6; }
+.editeur-texte {
+  pointer-events: auto; cursor: text; user-select: text; -webkit-user-select: text;
+  min-width: 0.6em; min-height: 1.3em; outline: none;
+  box-shadow: 0 0 0 calc(1.5px / var(--zoom, 1)) var(--bleu);
+  background: rgba(255, 255, 255, 0.55); caret-color: currentColor;
+  white-space: pre-wrap;
+}
+.editeur-texte:not(.large) { width: max-content; }
+/* La puce d'une ligne ; la ligne reste un bloc ordinaire (en flex, comme
+   au rendu, Entrée après un mot en couleur n'y commençait plus de ligne
+   dans Chrome) */
+.formule.texte.editeur-texte .ligne.puce { display: block; padding-left: 1em; position: relative; }
+.formule.texte.editeur-texte .ligne.puce::before { content: '•'; position: absolute; left: 0; }
+.editeur-texte .math { cursor: pointer; border-radius: 3px; }
+.editeur-texte .math:hover { background: rgba(59, 111, 182, 0.12); }
+#zone[data-outil='texte'] { cursor: text; }
+
+/* La petite barre au-dessus du texte qu'on tape */
+.barre-texte {
+  position: fixed; z-index: 40; display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+  max-width: calc(100vw - 16px); box-sizing: border-box; padding: 4px;
+  background: var(--papier); border: 1px solid var(--filet); border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(27, 34, 48, 0.14); font-family: var(--police); color: var(--encre);
+}
+.bouton-texte {
+  min-width: 36px; height: 36px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent;
+  color: var(--encre); font: inherit; font-size: 14px; cursor: pointer;
+}
+.bouton-texte:hover { background: var(--chrome); }
+.bouton-texte.actif { background: #e3ecf8; box-shadow: inset 0 0 0 1.5px var(--bleu); }
+.bouton-texte.gras { font-weight: 700; font-size: 16px; }
+.bouton-texte.italique { font-style: italic; font-family: Georgia, serif; font-size: 16px; }
+.bouton-texte.souligne { text-decoration: underline; font-size: 16px; }
+.bouton-texte.fini { font-weight: 700; color: var(--bleu); }
+.bouton-texte.pastille-texte { min-width: 32px; padding: 0; display: grid; place-items: center; }
+.bouton-texte.pastille-texte::after { content: ''; width: 20px; height: 20px; border-radius: 50%; background: var(--teinte); }
+.bouton-texte.pastille-texte.actif { box-shadow: none; background: transparent; }
+.bouton-texte.pastille-texte.actif::after { box-shadow: 0 0 0 2px var(--papier), 0 0 0 4px var(--teinte); }
+.separation-texte { width: 1px; height: 24px; background: var(--filet); margin: 0 4px; }
+body.tactile .bouton-texte { min-width: 44px; height: 44px; }

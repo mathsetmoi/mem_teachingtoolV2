@@ -272,7 +272,7 @@ export function messageFixe(p: TypePointeur, n = 1, direct = ecranTactile(), sel
  *  leur forme (TOUCHE_FORME). */
 const REPRISE: Record<string, [string, string]> = {
   stylo: ['P', 'le Stylo'], surligneur: ['H', 'le Surligneur'], gomme: ['E', 'la Gomme'],
-  point: ['X', 'le Point'], segment: ['L', 'le Segment'], formule: ['F', 'la Formule'],
+  point: ['X', 'le Point'], segment: ['L', 'le Segment'], formule: ['F', 'la Formule'], texte: ['T', 'le Texte'],
 }
 const TOUCHE_FORME: Record<string, string> = { rectangle: 'R', cercle: 'C', polygone: 'G' }
 
@@ -338,8 +338,9 @@ export function messageNomsOutils(oui: boolean, p: TypePointeur, direct = ecranT
  *  sa barre d'actions comme dans son menu complet : son double-clic, sauf
  *  au doigt, où l'on ne clique pas (le double appui marche aussi, mais
  *  jamais « clic » au doigt) */
-export function titreModifierFormule(p: TypePointeur): string {
-  return p === 'touch' ? 'Modifier la formule' : 'Modifier la formule (double-clic)'
+export function titreModifierFormule(p: TypePointeur, texte = false): string {
+  const quoi = texte ? 'Modifier le texte' : 'Modifier la formule'
+  return p === 'touch' ? quoi : `${quoi} (double-clic)`
 }
 
 /** Le second point d'un trait tracé en deux appuis */

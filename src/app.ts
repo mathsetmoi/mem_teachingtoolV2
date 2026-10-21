@@ -14,7 +14,9 @@ import { nouveauxRangs, ordreDAffichage } from './ordre'
 import type { Sens } from './ordre'
 import { change } from './habillage'
 import type { Retouche } from './habillage'
-import type { Figure, Fond, Forme, Formule, Habillage, ImageForme, Outil, Polygone, Trait, TypeForme } from './types'
+import type { Figure, Fond, Forme, Formule, Habillage, ImageForme, LigneTexte, Outil, Polygone, Trait, TypeForme } from './types'
+import { LARGEUR_MIN, TAILLE_TEXTE, champsDuTexte, estTexte } from './texte'
+import { EditeurTexte } from './texte-editeur'
 import { CM, FOND_NEUF, libre, uid } from './types'
 import type { P, Reconnue, Transformation } from './formes'
 import type { Bord, EtatInstrument, NomInstrument, Partie } from './instruments'
@@ -201,6 +203,8 @@ type Geste =
   // glissé, il le prend
   | { type: 'zone'; forme: 'cadre' | 'lasso'; x: number; y: number; pts: number[]; ajout: boolean; candidat?: string }
   | { type: 'formule' }
+  // L'outil Texte : un clic (le texte s'allonge), ou un cadre glissé depuis (x, y) (sa largeur)
+  | { type: 'texte'; x: number; y: number }
   // Le cadre de taille (lot 5, voir cadre.ts) : un coin ou un côté qu'on
   // tire (taille), la pastille ↻ qu'on tourne (tourner). cadre : celui de
   // l'appui ; pointeur : celui dont il a pris ses poignées ; ids : ce qui
@@ -799,6 +803,7 @@ export class App {
   allerPage(id: string) {
     this.viderPointEnAttente()
     if (!id || id === this.page) return
+    this.finirTexte()
     this.arreterAnimation()
     const avant = this.page
     if (this.page && this.rendu.l > 0) this.vues.set(this.page, this.vueActuelle())
@@ -1261,6 +1266,7 @@ export class App {
    *  prêtée par une image (voir selectionPretee) : choisie, même à nouveau
    *  (V, son bouton), elle n'est plus prêtée. */
   choisirOutil(o: Outil) {
+    this.finirTexte()
     if (this.laser) this.basculerLaser(false)
     if (o === 'selection' && this.outil !== 'selection') this.outilAvant = this.outil
     this.selectionPretee = null
@@ -2025,6 +2031,9 @@ export class App {
     // Déplacer la vue (bouton du milieu, Espace, outil Main) n'écrit jamais :
     // le menu d'un morceau et le panneau d'options restent (ils suivent la vue)
     const pan = e.button === 1 || this.espace || (this.outil === 'main' && !gommeDuStylet)
+    // Un appui sur la page pendant qu'on tape un texte le finit, et rien d'autre
+    // (le clic suivant, à l'outil Texte, en commence un autre)
+    if (this.edition && !pan) { this.finirTexte(); return }
     // Le morceau visé se lit avant de fermer les menus : fermer le menu d'un
     // sommet oublie le morceau choisi, et l'appui sur un autre sommet de la
     // même figure doit le prendre
@@ -2202,6 +2211,9 @@ export class App {
       }
       case 'formule':
         this.geste = { type: 'formule' }
+        break
+      case 'texte':
+        this.geste = { type: 'texte', x: m.x, y: m.y }
         break
     }
   }
@@ -2617,6 +2629,7 @@ export class App {
     const sonGroupe = m.length > 1 && m.length === this.selection.size && m.every(g => this.selection.has(g.id))
     if (this.selection.size > 1 && this.selection.has(f.id) && !sonGroupe) return this.ouvrirOptionsSelection()
     if (f.type === 'formule') {
+      if (estTexte(f)) { this.modifierTexte(f); return }
       if (m.length > 1) this.selectionner(f.id)
       this.modifierFormule(f)
       return
@@ -2886,6 +2899,11 @@ export class App {
         this.rendu.apercu = this.figureTiree(g, this.aimanter(m), e.shiftKey)
         this.rendu.redessinerDirect()
         break
+      case 'texte':
+        if (!glisse) break
+        this.rendu.cadreTexte = cadreDuTexte(g, m)
+        this.rendu.redessinerDirect()
+        break
       case 'pinch': {
         const doigts = this.doigts()
         if (doigts.length < 2) return
@@ -3153,8 +3171,20 @@ export class App {
         if (glisse) break
         const s = this.ecran(e)
         const f = this.formeSous(m.x, m.y)
-        if (f?.type === 'formule') this.modifierFormule(f)
+        if (f?.type === 'formule' && !estTexte(f)) this.modifierFormule(f)
         else this.nouvelleFormule(m.x, m.y, s.x, s.y)
+        break
+      }
+      case 'texte': {
+        // Un cadre glissé assez large : un texte de cette largeur, qui passe
+        // à la ligne tout seul ; un clic (sur un texte : il se modifie) : un
+        // texte qui s'allonge avec ce qu'on tape
+        this.rendu.cadreTexte = null; this.rendu.redessinerDirect()
+        const b = glisse ? cadreDuTexte(g, m) : null
+        if (b && b.l >= LARGEUR_MIN) { this.ouvrirTexte({ x: b.x, y: b.y, largeur: b.l }); break }
+        const f = this.formeSous(m.x, m.y)
+        if (estTexte(f) && libre(f)) { this.modifierTexte(f); break }
+        this.ouvrirTexte({ x: m.x - 4, y: m.y - TAILLE_TEXTE * 0.65 - 2 })
         break
       }
       case 'taille':
@@ -4260,7 +4290,7 @@ export class App {
     if (!formes.length) return false
     const { min, max } = bornesEchelle(formes, this.mesureFormule), k = facteurDe(M)
     if (!(k >= min && k <= max)) return false
-    const neuves = formes.map(f => transformerForme(f, M))
+    const neuves = formes.map(f => transformerForme(f, M, this.mesureFormule))
     if (!neuves.every(dansLesBornes)) return false
     this.viderPointEnAttente()
     this.tableau.nouveauGeste()
@@ -4549,7 +4579,7 @@ export class App {
    *  rien écrire (voir Rendu.transfo), la mesure près du pointeur (en m) */
   private montrerTransfo(g: Extract<Geste, { type: 'taille' | 'tourner' }>, M: Matrice, texte: string, m: P) {
     g.M = M
-    this.rendu.transfo = { ids: g.ids, m: M, appliquer: f => transformerForme(f, M) }
+    this.rendu.transfo = { ids: g.ids, m: M, appliquer: f => transformerForme(f, M, this.mesureFormule) }
     this.rendu.mesure = { texte, x: m.x, y: m.y }
     this.rendu.toutRedessiner()
   }
@@ -5132,7 +5162,9 @@ export class App {
    *  gommerLa) */
   private gommer(x: number, y: number, deja?: Set<string>) {
     const r = RAYON_TRAIT / this.cam.z
-    const touches = this.formes.filter(f => libre(f) && !deja?.has(f.id) && touche(f, x, y, r, this.boiteTouche))
+    // Un texte ne s'efface pas à la gomme (on gomme ce qu'on a écrit dessus) :
+    // il part par la corbeille de son menu, ou Suppr
+    const touches = this.formes.filter(f => libre(f) && !estTexte(f) && !deja?.has(f.id) && touche(f, x, y, r, this.boiteTouche))
     if (!touches.length) return
     touches.forEach(f => deja?.add(f.id))
     this.tableau.supprimer(this.page, touches.map(f => f.id))
@@ -5150,6 +5182,7 @@ export class App {
   /** L'éditeur d'une formule : son double-clic, « Modifier » de son menu
    *  (qui se ferme : l'éditeur prend sa place) */
   async modifierFormule(f: Formule) {
+    if (estTexte(f)) { this.modifierTexte(f); return }
     if (this.enLecture) return
     if (this.options) { this.options = null; this.ui.maj() }
     const s = this.cam.versEcran(f.x, f.y)
@@ -5158,6 +5191,74 @@ export class App {
     this.tableau.nouveauGeste()
     if (latex === '') this.tableau.supprimer(this.page, [f.id])
     else this.tableau.modifier(this.page, [{ id: f.id, patch: { latex } }])
+  }
+
+  // ---------- Textes ----------
+  /** Le texte qu'on tape (voir texte-editeur.ts) : son éditeur, la page où
+   *  il s'écrit, le texte qu'il modifie (null : un texte neuf), et où il se
+   *  pose */
+  private edition: { ed: EditeurTexte; page: string; f: Formule | null; x: number; y: number; largeur?: number; couleur: string } | null = null
+
+  /** On tape un texte en ce moment ? */
+  get enTrainDeTaper(): boolean { return !!this.edition }
+
+  /** Un texte neuf, à cet endroit (son coin haut-gauche, monde) ; largeur :
+   *  il passe à la ligne tout seul. Il ne se pose qu'à la fin (voir
+   *  finirTexte), et seulement s'il n'est pas vide. */
+  ouvrirTexte(o: { x: number; y: number; largeur?: number }) {
+    if (this.enLecture) return
+    this.finirTexte()
+    this.commencerEdition(null, { ...o, taille: TAILLE_TEXTE, couleur: this.couleur })
+  }
+
+  /** L'éditeur d'un texte posé : son double-clic, « Modifier » de son menu,
+   *  un clic à l'outil Texte */
+  modifierTexte(f: Formule) {
+    if (this.enLecture || !estTexte(f)) return
+    this.finirTexte()
+    if (this.options) { this.options = null; this.ui.maj() }
+    this.selection.clear()
+    this.commencerEdition(f, { x: f.x, y: f.y, largeur: f.largeur, taille: f.taille, couleur: f.couleur, rotation: rotationDe(f), lignes: f.texte })
+  }
+
+  private commencerEdition(f: Formule | null, o: { x: number; y: number; largeur?: number; taille: number; couleur: string; rotation?: number; lignes?: LigneTexte[] }) {
+    const page = this.page
+    const ed = new EditeurTexte({
+      ...o, couleurs: COULEURS, couche: this.rendu.coucheEdition,
+      rendreFormule: this.rendu.rendreFormule,
+      fini: r => this.texteFini(r),
+    })
+    this.edition = { ed, page, f, x: o.x, y: o.y, largeur: o.largeur, couleur: o.couleur }
+    this.rendu.enEdition = f?.id ?? null
+    this.rendu.toutRedessiner(); this.ui.maj()
+  }
+
+  /** Finit le texte qu'on tape (garder : il se pose ; sinon, rien ne change) */
+  finirTexte(garder = true) { this.edition?.ed.finir(garder) }
+
+  /** Le texte fini : posé, modifié, ou supprimé s'il est vide ; une seule
+   *  étape d'annulation, et rien si rien n'a changé */
+  private texteFini(r: { lignes: LigneTexte[]; taille: number } | null) {
+    const e = this.edition
+    if (!e) return
+    this.edition = null
+    this.rendu.enEdition = null
+    const c = r ? champsDuTexte(r.lignes) : null
+    if (r && e.f) {
+      const avant = e.f
+      if (!c) { this.tableau.nouveauGeste(); this.tableau.supprimer(e.page, [avant.id]) }
+      else if (JSON.stringify(c.texte) !== JSON.stringify(avant.texte) || r.taille !== avant.taille) {
+        this.tableau.nouveauGeste()
+        this.tableau.modifier(e.page, [{ id: avant.id, patch: { texte: c.texte, latex: c.latex, taille: r.taille } }])
+      }
+    } else if (r && c) {
+      const f: Formule = { id: uid(), type: 'formule', x: e.x, y: e.y, latex: c.latex, texte: c.texte, couleur: e.couleur,
+        taille: r.taille, z: Date.now(), auteur: this.tableau.moi }
+      if (e.largeur) f.largeur = e.largeur
+      this.tableau.nouveauGeste()
+      this.tableau.poser(e.page, f)
+    }
+    this.rendu.toutRedessiner(); this.ui.maj()
   }
 
   // ---------- Molette et clavier ----------
@@ -5384,7 +5485,7 @@ export class App {
       return
     }
     if (ctrl) return
-    const raccourcis: Record<string, Outil> = { p: 'stylo', h: 'surligneur', e: 'gomme', x: 'point', l: 'segment', f: 'formule', v: 'selection' }
+    const raccourcis: Record<string, Outil> = { p: 'stylo', h: 'surligneur', e: 'gomme', x: 'point', l: 'segment', f: 'formule', t: 'texte', v: 'selection' }
     const formes: Record<string, TypeForme> = { r: 'rectangle', c: 'cercle', g: 'polygone' }
     const k = e.key.toLowerCase()
     if (formes[k]) { this.typeForme = formes[k]; this.choisirOutil('forme'); return }
@@ -5413,4 +5514,9 @@ function union(a: Boite | null, b: Boite | null): Boite | null {
 /** Où l'on attrape un cercle pour changer son rayon : en haut à droite */
 export function poigneeDuRayon(f: { x: number; y: number; r: number }): P {
   return { x: f.x + f.r * Math.SQRT1_2, y: f.y - f.r * Math.SQRT1_2 }
+}
+
+/** Le cadre glissé à l'outil Texte, de son départ au pointeur (monde) */
+function cadreDuTexte(g: { x: number; y: number }, m: P): Boite {
+  return { x: Math.min(g.x, m.x), y: Math.min(g.y, m.y), l: Math.abs(m.x - g.x), h: Math.abs(m.y - g.y) }
 }
