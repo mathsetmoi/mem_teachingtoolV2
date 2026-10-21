@@ -29,8 +29,6 @@ await p.evaluate(() => window.__app.ui.ouvrirTrieuse()); await p.waitForTimeout(
 const r2 = await essai('dans la trieuse')
 ok(r2.filter(x => x[1]).every(x => x[4]), 'Dans la trieuse : Alt + ← / → empêchés', r2)
 await p.keyboard.press('Escape'); await p.waitForTimeout(400)
-await p.locator('.barre-haut button[title^="Automatismes"]').click(); await p.waitForTimeout(600)
-note('séance ouverte', await p.evaluate(() => !document.querySelector('.seance').hidden))
-const r3 = await essai('dans la séance d\'automatismes')
-ok(r3.filter(x => x[1]).every(x => x[4]), 'Dans la séance d\'automatismes : Alt + ← / → empêchés', r3)
+// (la séance d'automatismes, qui cachait le tableau, n'existe plus : le
+// flash se règle dans une fenêtre, comme les autres fenêtres de l'outil)
 await O.fin()

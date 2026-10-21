@@ -5,9 +5,10 @@
 //     double appui), passe à la page : un double appui un peu haut ouvre le
 //     menu au lieu d'effacer l'objet ; la souris et la tablette graphique
 //     cliquent la barre aussitôt ; Entrée sur un de ses boutons agit toujours ;
-//  2. pendant une séance d'automatismes (tableau caché), aucune touche ne
-//     change le tableau (Ctrl+Z, Ctrl+Y, Suppr, les flèches, Page↓, Maj+1, les
-//     lettres des outils, Espace) ; la séance fermée, tout remarche ;
+//  2. pendant le réglage d'un flash d'automatismes (une fenêtre ; avant, la
+//     séance d'automatismes cachait le tableau), aucune touche ne change le
+//     tableau (Ctrl+Z, Ctrl+Y, Suppr, les flèches, Page↓, Maj+1, les lettres
+//     des outils, Espace) ; la fenêtre fermée, tout remarche ;
 //  3. une poussée aux flèches est sa propre étape d'annulation, jamais fondue
 //     avec Ctrl+D, Ctrl+V ou une couleur choisie juste avant ; une rafale de
 //     flèches reste une seule étape ;
@@ -191,7 +192,7 @@ const bouton = (e, lib) => e.barre?.boutons.find(b => b.lib === lib)
   await ctx.close()
 }
 
-// =============== 2. Pendant une séance d'automatismes, aucune touche ne change le tableau ===============
+// =============== 2. Pendant le réglage d'un flash d'automatismes, aucune touche ne change le tableau ===============
 {
   const ctx = await contexte()
   const { page } = await charger(ctx, 'seance')
@@ -204,35 +205,36 @@ const bouton = (e, lib) => e.barre?.boutons.find(b => b.lib === lib)
   await page.mouse.click(c.x, c.y); await page.waitForTimeout(60)
   const avant = await etat(page), fAvant = await forme(page, T)
   await page.click('button[title^="Automatismes"]'); await page.waitForTimeout(300)
-  const enSeance = await page.evaluate(() => document.body.classList.contains('en-seance'))
+  const enSeance = await page.evaluate(() => !!document.querySelector('dialog.dialogue-flash[open]'))
   await page.evaluate(() => { window.__msgs.length = 0 })
   for (const k of ['Control+z', 'Control+y', 'Control+Shift+z', 'Delete', 'Backspace', 'ArrowRight', 'ArrowDown', 'PageDown', 'Shift+Digit1', 'p', 'Control+d', 'Control+a']) {
     await page.keyboard.press(k); await page.waitForTimeout(40)
   }
-  // Les barres du tableau sont cachées : le bouton « Automatismes » n'a plus
-  // le focus, Espace ne le rappuie pas (les réglages ne sont pas refaits)
-  await page.evaluate(() => { document.querySelector('.seance .seance-reglages').dataset.marque = '1' })
+  // Le focus est dans la fenêtre (sur « Lancer le flash », éteint : aucun
+  // thème coché) : Espace ne rappuie pas le bouton « Automatismes » (la
+  // fenêtre n'est pas refaite)
+  await page.evaluate(() => { document.querySelector('dialog.dialogue-flash').dataset.marque = '1' })
   const focus = await page.evaluate(() => document.activeElement?.title ?? '')
   await page.keyboard.down('Space')
   const espace = (await etat(page)).espace
   await page.keyboard.up('Space')
   await page.waitForTimeout(300)
-  const reglages = await page.evaluate(() => document.querySelector('.seance .seance-reglages')?.dataset.marque === '1')
+  const reglages = await page.evaluate(() => document.querySelector('dialog.dialogue-flash[open]')?.dataset.marque === '1')
   const pendant = await etat(page), fPendant = await forme(page, T)
-  verifier('Séance ouverte (tableau caché)', enSeance)
-  verifier('Séance : Ctrl+Z, Ctrl+Y, Suppr, Retour arrière, Ctrl+D ne changent rien à la page cachée', pendant.n === avant.n && fPendant && fPendant.x === fAvant.x && fPendant.y === fAvant.y, D(avant.n, pendant.n, fAvant, fPendant))
-  verifier('Séance : ni page, ni outil, ni vue, ni sélection ne changent ; aucun message', pendant.page === avant.page && pendant.outil === avant.outil
+  verifier('Réglage du flash ouvert', enSeance)
+  verifier('Réglage : Ctrl+Z, Ctrl+Y, Suppr, Retour arrière, Ctrl+D ne changent rien à la page', pendant.n === avant.n && fPendant && fPendant.x === fAvant.x && fPendant.y === fAvant.y, D(avant.n, pendant.n, fAvant, fPendant))
+  verifier('Réglage : ni page, ni outil, ni vue, ni sélection ne changent ; aucun message', pendant.page === avant.page && pendant.outil === avant.outil
     && JSON.stringify(pendant.cam) === JSON.stringify(avant.cam) && JSON.stringify(pendant.sel) === JSON.stringify(avant.sel) && !pendant.msgs.length, D(avant, pendant))
-  verifier('Séance : Espace n\'arme pas « Espace + glisser » du tableau', espace === false, D(espace))
-  verifier('Séance : Espace n\'actionne aucun bouton caché du tableau (ses réglages ne sont pas refaits)', reglages, D(focus, reglages))
+  verifier('Réglage : Espace n\'arme pas « Espace + glisser » du tableau', espace === false, D(espace))
+  verifier('Réglage : Espace n\'actionne aucun bouton du tableau (la fenêtre n\'est pas refaite)', reglages, D(focus, reglages))
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
-  const ferme = !(await page.evaluate(() => document.body.classList.contains('en-seance')))
+  const ferme = !(await page.evaluate(() => !!document.querySelector('dialog.dialogue-flash[open]')))
   await page.keyboard.press('ArrowRight'); await page.waitForTimeout(100)
   const fPousse = await forme(page, T)
   await page.keyboard.press('Control+z'); await page.waitForTimeout(100)
   await page.keyboard.press('Control+z'); await page.waitForTimeout(100)
   const apres = await etat(page)
-  verifier('La séance fermée, les flèches et Ctrl+Z remarchent', ferme && fPousse.x === fAvant.x + 4 && apres.n === avant.n - 1, D(ferme, fPousse.x, apres.n))
+  verifier('La fenêtre fermée, les flèches et Ctrl+Z remarchent', ferme && fPousse.x === fAvant.x + 4 && apres.n === avant.n - 1, D(ferme, fPousse.x, apres.n))
   await ctx.close()
 }
 

@@ -231,7 +231,7 @@ button.rang.en-lecture { background: #fff3d6; box-shadow: inset 0 0 0 1px #e6c36
 }
 .fermer-bandeau:hover { background: #e9eef5; }
 .fermer-bandeau svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-body.en-seance .bandeau-sauvegarde, body.en-trieuse .bandeau-sauvegarde, body.en-bibliotheque .bandeau-sauvegarde,
+body.en-trieuse .bandeau-sauvegarde, body.en-bibliotheque .bandeau-sauvegarde,
 body:has(.revue:not([hidden])) .bandeau-sauvegarde { display: none; }
 
 /* Le bouton du fond (lot 5) : la vignette du fond de la page, 30 × 22 px,
@@ -318,9 +318,6 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
    barre du haut, au poste de la classe comme au téléphone (retouches après
    le lot 5 : seulement au téléphone avant) */
 .toast.en-haut { bottom: auto; top: calc(var(--bas-barre-haut, 70px) + 12px); }
-/* La séance d'automatismes couvre tout l'écran (barres et menus cachés) : ses
-   messages passent devant elle (F5 bloqué dit comment recharger) */
-body.en-seance .toast { z-index: 41; }
 /* Le bouton d'un message (« Changer »), ou ses boutons (« Aller à la page 5 »,
    « Annuler ») : seuls à recevoir les appuis, et seulement quand le message
    se voit */
@@ -749,91 +746,45 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .mesure-catalogue { position: fixed; left: -10000px; top: 0; visibility: hidden; pointer-events: none; }
 .mesure-catalogue .formule { position: absolute; }
 
-/* ---------- Automatismes ---------- */
-.seance { position: fixed; inset: 0; z-index: 40; background: var(--papier); color: var(--encre); overflow: auto; }
-body.en-seance .barre, body.en-seance .panneau-forme, body.en-seance .barre-actions, body.en-seance .panneau-construction, body.en-seance .panneau-catalogue { visibility: hidden; }
-.seance .fermer { width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; font-size: 28px; cursor: pointer; }
-.seance .fermer:hover { background: #e9eef5; }
-.seance-reglages { max-width: 1100px; margin: 0 auto; padding: 20px 24px 40px; }
-.seance-tete { display: flex; align-items: center; justify-content: space-between; }
-.seance-tete h2 { margin: 0; font-size: 24px; }
-.seance-colonnes { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; margin-top: 12px; }
-@media (max-width: 860px) { .seance-colonnes { grid-template-columns: 1fr; } }
-.seance fieldset { border: 1px solid var(--filet); border-radius: 14px; padding: 10px 14px 14px; margin: 0 0 14px; }
-.seance legend { font-weight: 700; padding: 0 6px; }
-.seance legend .compte { font-weight: 400; color: var(--encre-douce); font-size: 13px; }
-.liste-autos .theme h3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--encre-douce); }
-.seance label { display: flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer; }
-.seance label input[type=checkbox], .seance label input[type=radio] { width: 18px; height: 18px; accent-color: var(--bleu); flex: none; }
-.liste-autos label span { flex: 1; }
-.apercu-auto { border: 0; background: transparent; cursor: pointer; opacity: .55; font-size: 15px; border-radius: 8px; padding: 4px 6px; }
-.apercu-auto:hover { opacity: 1; background: #e9eef5; }
-.seance label.nombre span { min-width: 150px; }
-.seance label.nombre input { width: 70px; height: 36px; padding: 0 8px; border: 1px solid var(--filet); border-radius: 8px; font: inherit; }
-.exemple-auto { min-height: 44px; padding: 10px 12px; margin-bottom: 12px; border-radius: 10px; background: var(--chrome); font-size: 15px; line-height: 1.6; }
-.exemple-auto:empty { display: none; }
-.exemple-auto .rep { color: #1e8a4c; font-weight: 700; }
-.tout-theme { border: 0; background: transparent; color: var(--bleu); font: inherit; font-size: 12px; text-transform: none; letter-spacing: 0; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
-.tout-theme:hover { background: #e9eef5; }
-.exemple-auto .figure-auto svg { max-height: 150px; }
-.exemple-auto .rep svg { max-height: 70px; vertical-align: middle; }
-/* Les figures des automatismes */
-.figure-auto { display: flex; justify-content: center; margin: .2em 0 .6em; }
-.figure-auto svg { width: auto; max-width: 100%; height: auto; max-height: 9em; }
-.scene-seance.diapo .figure-auto svg { max-height: 30vh; }
-.scene-seance.diapo .figure-auto svg.fig-carree { max-height: 26vh; }
-.scene-seance.diapo .options.longues { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.scene-seance.diapo .question-auto.avec-figure { font-size: clamp(18px, min(2.8vw, 3.8vh), 34px); padding: clamp(14px, 2.6vh, 30px) 40px; }
-.question-auto svg.fig { color: var(--encre); overflow: visible; }
-.question-auto .options.dessins li { justify-content: center; }
-.question-auto .options.dessins svg { width: auto; max-width: 100%; height: auto; max-height: 4.2em; }
-.scene-seance.diapo .options.dessins { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.scene-seance.diapo .options.dessins svg { max-height: 16vh; }
-.question-auto .propose svg, .question-auto .correction svg { max-height: 4em; vertical-align: middle; }
-.question-auto .mots { font-size: .92em; }
-.seance .lancer { width: 100%; height: 52px; font-size: 17px; }
-.seance .lancer:disabled { opacity: .45; }
-
-.seance-jeu { min-height: 100%; display: flex; flex-direction: column; }
-.barre-seance { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 10px 16px; background: var(--chrome); border-bottom: 1px solid var(--filet); }
-.titre-seance { font-weight: 700; font-size: 17px; }
-.temps { text-align: center; }
-.chrono { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: pre; }
-.jauge { width: 240px; height: 8px; border-radius: 4px; background: var(--filet); overflow: hidden; margin: 4px auto 0; }
-.jauge > div { height: 100%; background: var(--bleu); transition: width .2s linear; }
-.jauge > div.presque { background: var(--rouge); }
-.commandes-seance { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
-.commandes-seance button { height: 42px; padding: 0 14px; }
-@media (max-width: 900px) { .barre-seance { grid-template-columns: 1fr; } .commandes-seance { justify-content: center; } }
-
-.scene-seance { flex: 1; padding: 24px; }
-.scene-seance.diapo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(10px, 2.5vh, 28px); padding: clamp(10px, 2vh, 24px); }
-.scene-seance.diapo .question-auto { width: min(1000px, 100%); font-size: clamp(20px, min(3.2vw, 5vh), 40px); padding: clamp(16px, 3.5vh, 36px) 44px; }
-.points-diapo { display: flex; gap: 10px; }
-.points-diapo span { width: 14px; height: 14px; border-radius: 50%; background: var(--filet); }
-.points-diapo span.vu { background: #9bb6dc; }
-.points-diapo span.ici { background: var(--bleu); transform: scale(1.25); }
-/* Les 10 d'un coup : deux rangées de cinq sur un écran de classe */
-.scene-seance.grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; align-content: start; font-size: clamp(15px, 1.25vw, 20px); padding: 16px; }
-@media (min-width: 1250px) { .scene-seance.grille { grid-template-columns: repeat(5, 1fr); } }
-.scene-seance.grille .question-auto { padding: 12px 14px; min-width: 0; }
-.question-auto .options.longues { grid-template-columns: minmax(0, 1fr); }
-.question-auto { background: var(--papier); border: 1px solid var(--filet); border-radius: 16px; padding: 16px 20px; box-shadow: 0 2px 0 var(--filet); }
-.question-auto header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-.question-auto .numero { min-width: 1.6em; height: 1.6em; display: inline-grid; place-items: center; border-radius: 50%; background: var(--surligneur); font-weight: 700; font-size: .8em; }
-.question-auto .genre { font-size: .55em; text-transform: uppercase; letter-spacing: .06em; color: var(--encre-douce); }
-.question-auto .enonce { margin: .3em 0 .6em; line-height: 1.5; }
-.question-auto .options { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .4em .8em; }
-.question-auto .options li { display: flex; align-items: center; gap: .5em; padding: .3em .5em; border-radius: 10px; border: 2px solid transparent; }
-.question-auto .lettre { min-width: 1.5em; height: 1.5em; display: inline-grid; place-items: center; border-radius: 8px; background: var(--chrome); border: 1px solid var(--filet); font-weight: 700; font-size: .75em; }
-.question-auto .juste { border-color: #1e8a4c !important; background: #e5f4ea; }
-.question-auto .ecartee { opacity: .4; }
-.question-auto .vf { display: flex; gap: .8em; }
-.question-auto .vf span { padding: .2em .9em; border-radius: 10px; border: 2px solid var(--filet); font-weight: 700; }
-.question-auto .propose { margin: 0 0 .5em; }
-.question-auto .correction { margin: .4em 0 0; color: #1e6b3d; font-weight: 700; }
-.question-auto .a-repondre { margin: 0; color: var(--encre-douce); }
-.seance-message { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); padding: 12px 20px; border-radius: 12px; background: var(--encre); color: #fff; font-size: 18px; }
+/* ---------- Le flash d'automatismes (src/flash.ts) ---------- */
+.dialogue-flash { width: min(820px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto; }
+.dialogue-flash h2 { font-size: 22px; }
+.dialogue-flash .note-flash { margin: 0 0 12px; }
+.colonnes-flash { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+@media (max-width: 700px) { .colonnes-flash { grid-template-columns: 1fr; } }
+.dialogue-flash fieldset { border: 1px solid var(--filet); border-radius: 14px; padding: 8px 14px 12px; margin: 0 0 12px; min-width: 0; }
+.dialogue-flash legend { font-weight: 700; padding: 0 6px; }
+.dialogue-flash label { display: flex; align-items: center; gap: 10px; min-height: 34px; cursor: pointer; }
+.dialogue-flash label input[type=checkbox], .dialogue-flash label input[type=radio] { width: 18px; height: 18px; accent-color: var(--bleu); flex: none; }
+.dialogue-flash label span { flex: 1; }
+.dialogue-flash label small { color: var(--encre-douce); font-variant-numeric: tabular-nums; }
+.dialogue-flash label.nombre { padding-left: 28px; min-height: 30px; color: var(--encre-douce); }
+.dialogue-flash label.nombre span { flex: none; }
+.dialogue-flash label.nombre input { width: 68px; height: 32px; padding: 0 8px; border: 1px solid var(--filet); border-radius: 8px; font: inherit; }
+.niveaux-flash { display: flex; flex-wrap: wrap; gap: 6px; }
+.niveau-flash { min-height: 38px; padding: 0 14px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); color: var(--encre); font: inherit; font-weight: 700; cursor: pointer; }
+.niveau-flash[aria-pressed=true] { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+.niveau-flash:disabled { opacity: .5; cursor: default; font-weight: 400; }
+.niveau-flash small { font-weight: 400; font-size: 11px; }
+.themes-niveau h3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0 2px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--encre-douce); }
+.themes-niveau .lien { border: 0; background: none; color: var(--bleu); font: inherit; font-size: 12px; text-transform: none; letter-spacing: 0; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.forme-flash { display: grid; grid-template-columns: 1fr 36px 2.4em 36px; align-items: center; gap: 6px; min-height: 42px; }
+.forme-flash button { width: 36px; height: 36px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); color: var(--bleu); font: inherit; font-size: 20px; font-weight: 700; cursor: pointer; }
+.forme-flash button:disabled { opacity: .35; cursor: default; }
+.forme-flash output { text-align: center; font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
+.total-flash { margin: 6px 0 0 !important; padding-top: 6px; border-top: 1px solid var(--filet); font-weight: 700; color: var(--encre) !important; }
+.dialogue-flash .lancer:disabled { opacity: .45; }
+/* Le bandeau du flash : sur le tableau, sous la barre du haut, hors de la page */
+.bandeau-flash {
+  position: absolute; z-index: 17; left: 50%; transform: translateX(-50%); top: calc(var(--bas-barre-haut, 70px) + 28px);
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 24px);
+  padding: 6px 8px 6px 14px; background: var(--papier); border: 1px solid var(--filet); border-radius: 14px; box-shadow: 0 6px 18px rgba(27, 34, 48, 0.12);
+}
+.bandeau-flash .etat-flash { font-weight: 700; font-variant-numeric: tabular-nums; margin-right: 6px; white-space: nowrap; }
+.bandeau-flash.presque .etat-flash { color: var(--rouge); }
+.bandeau-flash button { height: 38px; padding: 0 12px; }
+.bandeau-flash .fermer { width: 38px; padding: 0; border: 0; border-radius: 10px; background: transparent; font-size: 24px; cursor: pointer; color: var(--encre); }
+.bandeau-flash .fermer:hover { background: #e9eef5; }
 
 /* ---------- Publier le replay ---------- */
 .dialogue-publier { width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto; }
@@ -1883,7 +1834,6 @@ body.en-bibliotheque .toast { z-index: 30; }
 }
 .vignette-enonce-fermer:hover { background: rgba(27, 34, 48, 0.9); }
 .vignette-enonce-fermer svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
-body.en-seance .vignette-enonce { visibility: hidden; }
 
 /* ---------- Revenir au contenu ---------- */
 .retour-contenu {
@@ -1894,7 +1844,6 @@ body.en-seance .vignette-enonce { visibility: hidden; }
 }
 .retour-contenu svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .retour-contenu:hover { background: #2c3648; }
-body.en-seance .retour-contenu { visibility: hidden; }
 /* Au téléphone (lot 5, K10 ; la requête de src/navigateur.ts) : « Revenir
    au contenu » et le message au-dessus de la barre des outils, posée en bas
    en portrait (--haut-barre-bas : la place qu'elle prend, mesurée par UI ; 0
@@ -1985,6 +1934,8 @@ body.contraste .toast .action { background: rgba(255, 255, 255, 0.26); }
 .dialogue-accueil h2 { font-size: 24px; margin-bottom: 14px; }
 .accueil-vue { display: grid; gap: 12px; }
 .accueil-nouvelle { height: auto; min-height: 56px; padding: 12px 18px; font-size: 18px; text-align: left; }
+.accueil-case-automatismes { display: flex; align-items: center; gap: 10px; min-height: 36px; margin-top: -4px; cursor: pointer; font-weight: 700; }
+.accueil-case-automatismes input { width: 20px; height: 20px; accent-color: var(--bleu); flex: none; }
 .accueil-chapitre { margin: -4px 0 0 !important; color: var(--encre-douce); }
 .dialogue-accueil .lien { border: 0; background: none; padding: 6px 0; min-height: 32px; color: var(--bleu); text-decoration: underline; cursor: pointer; font: inherit; text-align: left; }
 .accueil-vierge { margin: 4px 0 0 !important; padding-top: 10px; border-top: 1px solid var(--filet); display: grid; gap: 2px; }

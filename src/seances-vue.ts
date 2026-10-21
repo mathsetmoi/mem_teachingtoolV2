@@ -48,10 +48,11 @@ export interface HoteAccueil {
   classes: { id: string; nom: string }[]
   /** Les chapitres de la classe (null : pas de bibliothèque) */
   chapitres: (() => Promise<ChapitreAccueil[]>) | null
-  nouvelleSeance(): void
-  continuerSeance(): void
-  autreClasse(id: string): void
-  ouvrirChapitre(id: string): void
+  /** automatismes : la case « Commencer par des automatismes » est cochée */
+  nouvelleSeance(automatismes: boolean): void
+  continuerSeance(automatismes: boolean): void
+  autreClasse(id: string, automatismes: boolean): void
+  ouvrirChapitre(id: string, automatismes: boolean): void
   nouveauChapitre(): void
   /** Un classeur vierge, hors de toute classe (null : pas de bibliothèque) */
   nouveauClasseurVierge: (() => void) | null
@@ -64,7 +65,11 @@ export function avecLaClasse(nom: string): string {
 
 /** La fenêtre « Bonjour ! » : par-dessus la dernière page, grisée. Le gros
  *  bouton (une nouvelle séance) a le focus : Entrée suffit. Échap ferme, et
- *  laisse la dernière page telle quelle (on continue la séance). */
+ *  laisse la dernière page telle quelle (on continue la séance). Sous le
+ *  gros bouton, la case « Commencer par des automatismes », jamais cochée
+ *  d'office : le professeur décide chaque jour ; cochée, la séance (nouvelle,
+ *  continuée, ou dans un autre chapitre, une autre classe) s'ouvre sur le
+ *  réglage d'un flash (voir flash.ts). */
 export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogElement {
   document.querySelector('dialog.dialogue-accueil')?.remove()
   const d = el('dialog', 'dialogue dialogue-accueil')
@@ -74,18 +79,23 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
   // La vue principale
   const principale = el('div', 'accueil-vue')
   const titre = el('h2', '', 'Bonjour !'); titre.id = 'accueil-titre'
-  const gros = bouton('principal accueil-nouvelle', h.classe ? `Nouvelle séance avec ${avecLaClasse(h.classe)}` : 'Nouvelle séance', faire(() => h.nouvelleSeance()))
+  const auto = el('input') as HTMLInputElement
+  auto.type = 'checkbox'; auto.className = 'accueil-automatismes'
+  const caseAuto = el('label', 'accueil-case-automatismes')
+  caseAuto.append(auto, el('span', '', 'Commencer par des automatismes'))
+  const avecAuto = () => auto.checked
+  const gros = bouton('principal accueil-nouvelle', h.classe ? `Nouvelle séance avec ${avecLaClasse(h.classe)}` : 'Nouvelle séance', faire(() => h.nouvelleSeance(avecAuto())))
   const chapitre = el('p', 'accueil-chapitre')
   chapitre.append(el('span', 'accueil-nom-chapitre', h.chapitre))
   if (h.chapitres) {
     chapitre.append(' — ')
     chapitre.append(bouton('lien accueil-changer', 'changer de chapitre', () => void montrerChapitres()))
   }
-  principale.append(titre, gros, chapitre)
-  if (h.continuer) principale.append(bouton('lien accueil-continuer', `Continuer la séance ${h.continuer}`, faire(() => h.continuerSeance())))
+  principale.append(titre, gros, caseAuto, chapitre)
+  if (h.continuer) principale.append(bouton('lien accueil-continuer', `Continuer la séance ${h.continuer}`, faire(() => h.continuerSeance(avecAuto()))))
   if (h.classes.length) {
     const p = el('p', 'accueil-classes', 'Une autre classe : ')
-    for (const c of h.classes) p.append(bouton('pastille-classe', c.nom, faire(() => h.autreClasse(c.id))))
+    for (const c of h.classes) p.append(bouton('pastille-classe', c.nom, faire(() => h.autreClasse(c.id, avecAuto()))))
     principale.append(p)
   }
   if (h.nouveauClasseurVierge) {
@@ -105,7 +115,7 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
     const neuf = el('li'); neuf.append(bouton('secondaire accueil-nouveau-chapitre', '+ Nouveau chapitre…', faire(() => h.nouveauChapitre()))); ul.append(neuf)
     for (const c of l) {
       const li = el('li')
-      const b = bouton('accueil-un-chapitre' + (c.ici ? ' ici' : ''), '', faire(() => h.ouvrirChapitre(c.id)))
+      const b = bouton('accueil-un-chapitre' + (c.ici ? ' ici' : ''), '', faire(() => h.ouvrirChapitre(c.id, avecAuto())))
       b.append(el('span', 'nom', c.nom), el('span', 'nombre', c.seances === null ? '' : ` · ${pluriel(c.seances, 'séance')}`))
       if (c.ici) b.setAttribute('aria-current', 'true')
       li.append(b); ul.append(li)

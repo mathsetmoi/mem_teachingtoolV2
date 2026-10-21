@@ -84,7 +84,7 @@ export function fenetreModaleOuverte(): boolean {
  *  grouper, dégrouper à l’écran, la recherche du navigateur ailleurs.
  *  AltGr (Ctrl + Alt) + G n'en est pas : c'est une lettre. Hors des champs
  *  et des fenêtres, on les empêche partout, à l’écran comme dans la revue,
- *  la trieuse, la bibliothèque et la séance d'automatismes (voir
+ *  la trieuse et la bibliothèque (voir
  *  installerGardes) ; le tableau fait en plus son travail (App.clavier). */
 export function toucheQuitteLaPage(e: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey'>): boolean {
   if ((e.ctrlKey || e.metaKey || e.altKey) && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return true
@@ -98,8 +98,8 @@ export function toucheMenu(e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey'
   return e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)
 }
 
-/** Le tableau est-il caché ? La revue (app.enLecture), une séance
- *  d'automatismes (body.en-seance), la trieuse des pages (body.en-trieuse)
+/** Le tableau est-il caché ? La revue (app.enLecture), la trieuse
+ *  des pages (body.en-trieuse)
  *  et la bibliothèque des classeurs (body.en-bibliotheque) le couvrent : tout ce qui écrirait sur la page qu'on ne voit plus se tait
  *  (le collage par l'événement paste, les menus du clic droit, la barre
  *  d'actions, le zoom au clavier et le pincement de Safari, Ctrl + O,
@@ -108,7 +108,7 @@ export function toucheMenu(e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKey'
 export function tableauCache(app: { enLecture: boolean }): boolean {
   if (app.enLecture) return true
   const corps = typeof document === 'undefined' ? null : document.body
-  return !!corps && (corps.classList.contains('en-seance') || corps.classList.contains('en-trieuse') || corps.classList.contains('en-bibliotheque'))
+  return !!corps && (corps.classList.contains('en-trieuse') || corps.classList.contains('en-bibliotheque'))
 }
 
 /** Les touches qui ne font rien pendant un geste (un objet qu'on glisse, un
@@ -174,8 +174,6 @@ export function installerGardes(app: App) {
   window.addEventListener('keydown', e => {
     const z = toucheZoom(e)
     if (z) {
-      // Pendant une séance d'automatismes, le professeur peut vouloir grossir l'écran
-      if (document.body.classList.contains('en-seance')) return
       e.preventDefault()
       // Dans la revue, la trieuse des pages ou une fenêtre ouverte : la page
       // ne zoome pas, le tableau (caché) non plus

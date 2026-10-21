@@ -930,13 +930,8 @@ if (seul('J')) {
     void window.__fichiers.ouvrir([{ fichier: f }])
   })
   ok(await attendreToast(p, /^Fermez d'abord la revue\.$/), 'J1) Pendant la revue : « Fermez d\'abord la revue. »', await toasts(p))
-  await p.evaluate(async () => {
-    window.__app.enLecture = false
-    document.body.classList.add('en-seance')
-    const f = await (await (await navigator.storage.getDirectory()).getFileHandle('j.memc')).getFile()
-    void window.__fichiers.ouvrir([{ fichier: f }])
-  })
-  ok(await attendreToast(p, /^Fermez d'abord la séance d'automatismes\.$/), '   … pendant une séance : « Fermez d\'abord la séance d\'automatismes. »', await toasts(p))
+  // (… pendant une séance d'automatismes : retiré avec elle, le flash se
+  // joue maintenant sur une page de la séance)
   ok((await dialogues(p)).length === 0, '   … aucune fenêtre')
   await ctx.close()
 }

@@ -5,7 +5,7 @@
 // haut de la zone libre pour un objet plus haut que l'écran), dans la fenêtre,
 // sans cacher l'objet ; elle suit la vue, se cache pendant un déplacement, un
 // cadre, un lasso, un pincement, et revient au lâcher ; jamais sous le Stylo à
-// la souris ou au stylet ; ni pendant la revue, la séance, l'éditeur d'une
+// la souris ou au stylet ; ni pendant la revue, l'éditeur d'une
 // formule, un placement, le menu complet ou le menu d'un morceau. Contenu
 // selon ce qui est pris et le pointeur ; « Ajouter » au doigt. Un stylet qui
 // se pose sur la barre du doigt (Stylo en main) écrit, sans rien déclencher.
@@ -323,9 +323,11 @@ async function clicBarre(page, lib) {
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
   verifier('… la revue fermée, la barre revient sur ce qui est pris', !(await page.evaluate(() => window.__app.enLecture)) && (await barre(page)).visible)
   await page.click('button[title^="Automatismes"]'); await page.waitForTimeout(200)
-  verifier('Une séance d\'automatismes : la barre ne se voit pas', await page.evaluate(() => document.body.classList.contains('en-seance')) && !(await barre(page)).visible)
-  await page.click('.seance .fermer'); await page.waitForTimeout(150)
-  verifier('… la séance fermée, elle revient', (await barre(page)).visible)
+  // (avant : la séance d'automatismes cachait le tableau et sa barre ; le
+  // flash se règle maintenant dans une fenêtre posée devant le tableau)
+  verifier('Le réglage du flash d\'automatismes s\'ouvre', await page.evaluate(() => !!document.querySelector('dialog.dialogue-flash[open]')))
+  await page.click('dialog.dialogue-flash .annuler'); await page.waitForTimeout(150)
+  verifier('… le réglage fermé, la barre est toujours là', (await barre(page)).visible)
   await page.screenshot({ path: CAPTURES + '/M7-souris-formule.png' })
 
   // ----- Ctrl+A (Stylo en main) : la Sélection, la barre au-dessus de tout -----

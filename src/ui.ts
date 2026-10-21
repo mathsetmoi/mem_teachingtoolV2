@@ -16,7 +16,7 @@ import { RevueEnClasse } from './revue/revue'
 import { Publication } from './publication/fenetre'
 import { Catalogue } from './catalogue-vue'
 import { Constructeur } from './constructeur'
-import { Seance } from './seance'
+import { Flash } from './flash'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
 import { OutilsDeClasse } from './outils-classe'
@@ -326,7 +326,8 @@ export class UI implements Interface {
   private publication!: Publication
   private constructeur!: Constructeur
   private catalogue!: Catalogue
-  private seance!: Seance
+  /** Le flash d'automatismes (voir flash.ts) */
+  flash!: Flash
   private choixInstruments!: HTMLDivElement
   private boutonInstruments!: HTMLButtonElement
   /** Les outils de classe (rideau, minuteur, tirage au sort ; le laser est à l'App) */
@@ -784,7 +785,7 @@ export class UI implements Interface {
     choixFichier.addEventListener('change', () => { const f = choixFichier.files?.[0]; if (f) app.importerImage(f, { pointeur: this.pointeurImport }); choixFichier.value = '' })
     const importer = bouton('image', 'Importer une image (ou coller avec Ctrl+V, ou glisser le fichier)', e => this.choisirImage(e), 'seulement-large')
     this.racine.appendChild(choixFichier)
-    const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir(), 'seulement-large')
+    const automatismes = bouton('automatismes', 'Automatismes : un flash de questions sur une page de la séance', () => this.flash.ouvrir(), 'seulement-large')
     // Les outils de classe : rideau, pointeur laser, minuteur, tirage au
     // sort, aide (voir outils-classe.ts) ; un menu sous leur bouton
     this.outilsDeClasse = new OutilsDeClasse(this.racine, {
@@ -830,7 +831,7 @@ export class UI implements Interface {
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'f') return
       if (document.body.classList.contains('en-bibliotheque')) return
       e.preventDefault()
-      if (e.repeat || this.recherche.ouverte || document.querySelector('dialog[open]') || document.body.classList.contains('en-seance')) return
+      if (e.repeat || this.recherche.ouverte || document.querySelector('dialog[open]')) return
       this.ouvrirRecherche()
     })
     const revoir = bouton('revue', 'Revoir la construction : une page, une séance, pas à pas', () => this.ouvrirRevue(revoir), 'seulement-large')
@@ -1052,7 +1053,7 @@ export class UI implements Interface {
     this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
     this.catalogue = new Catalogue(app, this.racine, t => this.message(t, undefined, true))
-    this.seance = new Seance(this.racine)
+    this.flash = new Flash(app, this.racine, t => this.message(t, undefined, true))
 
     // ----- Menu d'un morceau de figure (point, extrémité, nom, rayon) -----
     this.menuPartie = document.createElement('div')
@@ -1603,7 +1604,7 @@ export class UI implements Interface {
       { titre: 'Importer une image', icone: 'image', mots: 'image photo fichier', faire: () => this.choisirImage() },
       { titre: 'Programme de construction', icone: 'construction', mots: 'construire etape par etape', faire: () => this.basculerConstructeur() },
       { titre: 'Catalogue', icone: 'catalogue', mots: 'elements de cours tout prets', faire: () => this.basculerCatalogue() },
-      { titre: 'Automatismes', icone: 'automatismes', mots: 'questions minutees calcul mental', faire: () => this.seance.ouvrir() },
+      { titre: 'Automatismes', icone: 'automatismes', mots: 'flash questions calcul mental', faire: () => this.flash.ouvrir() },
       { titre: 'Revoir la construction', icone: 'revue', mots: 'revoir replay pas a pas', faire: () => this.ouvrirRevue(this.champRecherche.hidden ? this.boutonFichier : this.champRecherche) },
       { titre: 'Publier le replay', icone: 'publier', mots: 'publier eleves drive lien', faire: () => this.publication.ouvrir() },
       { titre: 'Bibliothèque des classeurs', icone: 'classeurs', mots: 'classeurs dossiers', faire: () => this.ouvrirBibliotheque() },
@@ -1614,10 +1615,10 @@ export class UI implements Interface {
     for (const e of EXEMPLES) l.push({ titre: e.nom, genre: 'Construction', icone: 'construction', detail: 'Programme de construction', mots: e.texte, faire: () => this.constructeur.ouvrirAvec(e.texte) })
     l.push({ titre: 'Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ', genre: 'Catalogue', icone: 'catalogue', detail: 'Le dessin à poser', mots: 'ensembles de nombres entiers naturels relatifs decimaux rationnels reels', faire: () => this.catalogue.poserElement() })
     for (const d of DEMONSTRATIONS) l.push({ titre: d.nom, genre: 'Catalogue', icone: 'catalogue', detail: 'Démonstration à poser', mots: `demonstration ${d.titre} ${d.nom.replace('√', ' racine ')}`, faire: () => this.catalogue.poserElement(d.nom) })
-    const themes = new Map<string, string[]>()
-    for (const a of AUTOMATISMES_5E) themes.set(a.theme, [...(themes.get(a.theme) ?? []), a.id])
-    for (const [theme, ids] of themes) l.push({ titre: theme, genre: 'Automatismes', icone: 'automatismes', detail: 'Le thème coché', mots: AUTOMATISMES_5E.filter(a => a.theme === theme).map(a => a.titre).join(' '), faire: () => this.seance.ouvrir(ids) })
-    for (const a of AUTOMATISMES_5E) l.push({ titre: a.titre, genre: 'Automatismes', icone: 'automatismes', detail: a.theme, faire: () => this.seance.ouvrir([a.id]) })
+    const themes = new Set<string>()
+    for (const a of AUTOMATISMES_5E) themes.add(a.theme)
+    for (const theme of themes.keys()) l.push({ titre: theme, genre: 'Automatismes', icone: 'automatismes', detail: 'Le thème coché', mots: AUTOMATISMES_5E.filter(a => a.theme === theme).map(a => a.titre).join(' '), faire: () => this.flash.ouvrir([`5e/${theme}`]) })
+    for (const a of AUTOMATISMES_5E) l.push({ titre: a.titre, genre: 'Automatismes', icone: 'automatismes', detail: a.theme, faire: () => this.flash.ouvrir([`5e/${a.theme}`]) })
     return l
   }
 
@@ -1634,7 +1635,7 @@ export class UI implements Interface {
       { titre: 'Nouveau : les outils de classe', texte: 'Le rideau, le pointeur laser, le minuteur et le tirage au sort sont réunis sous ce bouton.', ancre: () => this.boutonOutilsClasse },
       { titre: 'L\'aide, à tout moment', texte: 'La touche « ? » ouvre l\'aide : tous les raccourcis du clavier et les gestes.', ancre: () => this.boutonOutilsClasse },
       { titre: 'Nouveau : la recherche', texte: `Un outil, une formule écrite dans n'importe quel classeur, une page, une séance : tapez quelques mots ici, ou ${TOUCHE_RECHERCHE} depuis n'importe où.`, ancre: () => this.champRecherche, serie: 2 },
-    ], () => !document.querySelector('dialog[open]') && !document.body.classList.contains('en-seance') && !document.body.classList.contains('en-bibliotheque') && !menuOuvert())
+    ], () => !document.querySelector('dialog[open]') && !document.body.classList.contains('en-bibliotheque') && !menuOuvert())
   }
 
   /** « Importer une image » (le bouton de la barre du haut, ou « Plus » au
@@ -1779,7 +1780,7 @@ export class UI implements Interface {
       aide: 'Règle, équerre, rapporteur, compas' })
     this.entreeMenu(m, 'Programme de construction', () => this.basculerConstructeur(), { action: 'construction', aide: 'Étape par étape' })
     this.entreeMenu(m, 'Catalogue', () => this.basculerCatalogue(), { action: 'catalogue', aide: 'Ensembles de nombres…' })
-    this.entreeMenu(m, 'Automatismes', () => this.seance.ouvrir(), { action: 'automatismes', aide: '10 questions minutées' })
+    this.entreeMenu(m, 'Automatismes', () => this.flash.ouvrir(), { action: 'automatismes', aide: 'Un flash de questions' })
     this.entreeMenu(m, 'Outils de classe…', () => this.ouvrirOutilsClasseDepuisPlus(), { action: 'outils-classe', aide: 'Rideau, laser, minuteur, tirage au sort' })
     this.entreeMenu(m, 'Revoir la construction', () => this.ouvrirRevue(plus), { action: 'revue', aide: 'Une page, une séance, pas à pas' })
     this.entreeMenu(m, 'Publier le replay', () => this.publication.ouvrir(), { action: 'publier', aide: 'Pour les élèves' })
@@ -2171,7 +2172,7 @@ export class UI implements Interface {
    *  reste ouverte et utilisable pendant l'export. */
   exporterPdf(cible: CibleExport) {
     const app = this.app
-    if (app.enLecture || this.revue.ouvert || document.body.classList.contains('en-seance') || document.querySelector('dialog[open]')) return
+    if (app.enLecture || this.revue.ouvert || document.querySelector('dialog[open]')) return
     // Le point d'un simple toucher qui attend encore est de la page
     app.poserCeQuiAttend()
     this.fermerMenus()
@@ -3346,7 +3347,7 @@ export class UI implements Interface {
   }
 
   /** La trieuse des pages (le compteur, Maj + P, « Toutes les pages… » du
-   *  menu de la page). Pas pendant la revue, une séance d'automatismes, une
+   *  menu de la page). Pas pendant la revue, une
    *  fenêtre ouverte, ni en plein geste (un trait, un objet qu'on glisse).
    *  Avant, ce qui attend sur le tableau se pose (le point d'un simple
    *  toucher), un placement en attente (désigner un axe, un centre, poser
@@ -3482,7 +3483,7 @@ export class UI implements Interface {
    *  le message s'en va, sauf pour une action à garder : seul ce bouton
    *  part, les autres restent le temps qu'il reste. Il passe sous les menus
    *  et les panneaux (il ne cache pas ce qu'on va toucher), sauf pendant la
-   *  revue et la séance d'automatismes, qui couvrent tout, et pour le
+   *  revue, qui couvre tout, et pour le
    *  programme de construction (dessus), dont le panneau prend presque tout
    *  l'écran d'une tablette, et pendant un placement (la consigne de
    *  « Désigner » ou « Tracer » : le menu complet reste ouvert pendant

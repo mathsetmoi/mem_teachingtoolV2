@@ -228,25 +228,13 @@ await essai(async () => {
   await ctx.close()
 })
 
-// ---------- 5. F5 pendant une séance d'automatismes : le message se voit ----------
+// ---------- 5. Le message de F5 reste sous les menus ----------
+// (Retiré avec la séance d'automatismes, qui cachait le tableau : le flash
+// se règle maintenant dans une fenêtre, puis se joue sur une page de la séance.)
 await essai(async () => {
-  const { page, ctx, cdp } = await ouvrir(nav, {}, 'seance')
-  await page.click('button[title^="Automatismes"]'); await page.waitForTimeout(500)
-  await ev(page, () => { window.__charge = 1 })
-  await touche(cdp, 'F5', 'F5', 0, { vk: 116 }); await page.waitForTimeout(300)
-  const r = await ev(page, () => {
-    // Le message ne reçoit pas les appuis : on le rend touchable le temps de voir ce qui est devant
-    const t = document.querySelector('.toast'), b = t.getBoundingClientRect()
-    t.style.pointerEvents = 'auto'
-    const d = document.elementFromPoint(b.left + 20, b.top + b.height / 2)
-    t.style.pointerEvents = ''
-    return { pasRecharge: window.__charge === 1, visible: t.classList.contains('visible'), dessus: !!d && t.contains(d), texte: t.textContent }
-  })
-  noter('Séance : F5 ne recharge pas, et son message passe devant la séance', r.pasRecharge && r.visible && r.dessus && /Ctrl\+R/.test(r.texte), JSON.stringify(r))
-  // Hors séance, le message reste sous les menus
-  await page.click('.seance .fermer'); await page.waitForTimeout(200)
+  const { page, ctx } = await ouvrir(nav, {}, 'seance')
   const z = await ev(page, () => getComputedStyle(document.querySelector('.toast')).zIndex)
-  noter('… hors séance, le message reste sous les menus (z-index 14)', z === '14', z)
+  noter('Le message reste sous les menus (z-index 14)', z === '14', z)
   await ctx.close()
 })
 

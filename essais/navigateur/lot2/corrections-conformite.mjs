@@ -1,10 +1,11 @@
 // Essais au navigateur des corrections « conformite » du lot 2 :
-//  1. pendant une séance d'automatismes (le tableau caché sous son écran),
-//     Ctrl+Z, Ctrl+Y, Ctrl+Maj+Z, Suppr, Retour arrière, Page↓, Page↑ et les
-//     flèches ne changent ni la page cachée, ni la page montrée, ni la vue,
-//     et ne disent rien ; la séance ouverte par son bouton comme par
-//     seance.ouvrir(), et sur ses réglages comme pendant les questions ; la
-//     séance fermée, Ctrl+Z, Ctrl+Y et Suppr remarchent ;
+//  1. pendant le réglage d'un flash d'automatismes (une fenêtre), Ctrl+Z,
+//     Ctrl+Y, Ctrl+Maj+Z, Suppr, Retour arrière, Page↓, Page↑ et les flèches
+//     ne changent ni la page, ni la vue, et ne disent rien ; la fenêtre
+//     ouverte par son bouton comme par flash.ouvrir() ; fermée, Ctrl+Z, Ctrl+Y
+//     et Suppr remarchent. (Avant, la séance d'automatismes cachait le
+//     tableau, pendant ses questions aussi ; le flash se joue maintenant sur
+//     la page, où Ctrl+Z défait ce qu'il vient de poser, comme tout geste.)
 //  2. un menu ouvert au clic droit (ou à l'appui long) prend le clavier,
 //     comme le menu du système : le menu de la page (↓, ↑, Début, Fin, Tab,
 //     Maj+Tab y mènent, ← → ne font pas défiler le tableau derrière lui,
@@ -84,8 +85,8 @@ const etat = page => page.evaluate(() => {
 })
 const presser = async (page, k, ms = 60) => { await page.keyboard.press(k); await page.waitForTimeout(ms) }
 
-// =============== 1. Séance d'automatismes : aucune touche ne change le tableau caché ===============
-for (const [maniere, ouvrir] of [['par son bouton', p => p.click('button[title^="Automatismes"]')], ['par seance.ouvrir()', p => p.evaluate(() => window.__app.ui.seance.ouvrir())]]) {
+// =============== 1. Réglage d'un flash d'automatismes : aucune touche ne change le tableau ===============
+for (const [maniere, ouvrir] of [['par son bouton', p => p.click('button[title^="Automatismes"]')], ['par flash.ouvrir()', p => p.evaluate(() => window.__app.ui.flash.ouvrir())]]) {
   const { ctx, page } = await charger('seance')
   // Deux pages ; sur la seconde, deux traits (deux gestes), le premier sélectionné
   await page.evaluate(() => { const a = window.__app; a.nouvellePage(); a.selection.clear(); a.cam.x = 120; a.cam.y = 120; a.rendu.toutRedessiner(); a.ui.maj() })
@@ -95,38 +96,22 @@ for (const [maniere, ouvrir] of [['par son bouton', p => p.click('button[title^=
   // Une annulation à rétablir : Ctrl+Y aurait de quoi faire
   const avant0 = await etat(page)
   await ouvrir(page); await page.waitForTimeout(300)
-  const ouverte = await page.evaluate(() => document.body.classList.contains('en-seance'))
-  verifier(`Séance ouverte ${maniere} : le tableau est caché`, ouverte)
+  const ouverte = await page.evaluate(() => !!document.querySelector('dialog.dialogue-flash[open]'))
+  verifier(`Réglage ouvert ${maniere}`, ouverte)
   await page.evaluate(() => { window.__msgs.length = 0 })
   const touches = ['Control+z', 'Control+y', 'Control+Shift+z', 'Meta+z', 'Delete', 'Backspace', 'PageDown', 'PageUp', 'ArrowDown', 'ArrowRight', 'Home', 'End']
   for (const k of touches) {
     await presser(page, k, 40)
     const e = await etat(page)
-    verifier(`Séance ouverte ${maniere}, sur ses réglages : ${k} ne change rien (formes, places, page, vue, sélection, aucun message)`,
+    verifier(`Réglage ouvert ${maniere} : ${k} ne change rien (formes, places, page, vue, sélection, aucun message)`,
       e.n === avant0.n && D(e.pos) === D(avant0.pos) && e.page === avant0.page && D(e.cam) === D(avant0.cam) && D(e.sel) === D(avant0.sel) && !e.msgs.length,
       { avant: avant0, apres: e })
   }
-  // Pendant les questions (la séance lancée) : la séance garde ses touches
-  // (Page↓, flèches), le tableau caché ne bouge toujours pas
-  const lancee = await page.evaluate(() => {
-    const b = [...document.querySelectorAll('.seance button')].find(x => /lancer|commencer/i.test(x.textContent))
-    if (b) b.click()
-    return !!b
-  })
-  await page.waitForTimeout(300)
-  if (lancee) {
-    for (const k of ['Control+z', 'Control+y', 'Delete', 'PageDown']) {
-      await presser(page, k, 40)
-      const e = await etat(page)
-      verifier(`Séance lancée ${maniere} : ${k} ne change rien à la page cachée`,
-        e.n === avant0.n && D(e.pos) === D(avant0.pos) && e.page === avant0.page && !e.msgs.length, { avant: avant0, apres: e })
-    }
-  } else verifier(`Séance ${maniere} : le bouton qui lance les questions existe`, false)
-  await page.evaluate(() => window.__app.ui.seance.fermer()); await page.waitForTimeout(200)
+  await page.evaluate(() => document.querySelector('dialog.dialogue-flash .annuler')?.click()); await page.waitForTimeout(200)
   // Fermée, les touches remarchent
   await presser(page, 'Control+z', 80)
   let e = await etat(page)
-  verifier(`Séance fermée (${maniere}) : Ctrl+Z défait le dernier trait`, e.n === avant0.n - 1 && !e.pos.some(p => p.startsWith(T2 + ':')), e)
+  verifier(`Réglage fermé (${maniere}) : Ctrl+Z défait le dernier trait`, e.n === avant0.n - 1 && !e.pos.some(p => p.startsWith(T2 + ':')), e)
   await presser(page, 'Control+y', 80)
   e = await etat(page)
   verifier(`… Ctrl+Y le rend`, e.n === avant0.n, e)

@@ -244,7 +244,7 @@ export class Sauvegarde {
       const k = e.key.toLowerCase()
       if (k !== 's' && k !== 'o') return
       e.preventDefault()
-      if (e.repeat || document.querySelector('dialog[open]') || enSeance()) return
+      if (e.repeat || document.querySelector('dialog[open]')) return
       if (k === 's') void this.ctrlS()
       else if (!tableauCache(this.app)) this.ouvrir()
     }, true)
@@ -368,7 +368,6 @@ export class Sauvegarde {
   private refus(): string | null {
     if (this.perime) return 'Rechargez d\'abord la page.'
     if (this.app.enLecture) return 'Fermez d\'abord la revue.'
-    if (enSeance()) return 'Fermez d\'abord la séance d\'automatismes.'
     if (document.querySelector('dialog[open]')) return 'Fermez d\'abord la fenêtre ouverte.'
     return null
   }
@@ -718,4 +717,3 @@ export class Sauvegarde {
   }
 }
 
-function enSeance(): boolean { return document.body.classList.contains('en-seance') }

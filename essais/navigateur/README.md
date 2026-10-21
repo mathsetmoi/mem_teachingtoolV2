@@ -20,6 +20,7 @@ dossiers d'essais vitest, le banc d'écriture), rangés par lot :
 | `lot7/` | ouvrir et enregistrer sur l'ordinateur ou sur le Drive, « Mes emplacements » (`E1-ailleurs.mjs`) ; reprendre un ancien tableau, `.prof` (`E2-ancien-tableau.mjs`) |
 | `lot8/` | les séances sous la carte d'un classeur (`E1-seances-carte.mjs`) et le bouton « Séances » de la bibliothèque (`E2-onglet-seances.mjs`) |
 | `lot9/` | ranger les séances depuis la bibliothèque : renommer, changer l'ordre, supprimer, déplacer vers un autre classeur (`E1-ranger-seances.mjs`) |
+| `lot10/` | le flash d'automatismes sur une page de la séance : le réglage (rien de montré), une question à la fois, la correction, la case de « Bonjour ! », toutes d'un coup, « Nouveaux exemples » (`E1-flash.mjs`) |
 | `ecriture/` | le banc d'écriture (le trait en direct et au replay) |
 | `commun/` | `racines.mjs` (les chemins, calculés depuis l'emplacement des fichiers) et `playwright.mjs` (où trouver Playwright) |
 | `tout.sh` | le lanceur |

@@ -249,7 +249,6 @@ export class Fichiers {
   private refusMaintenant(): string | null {
     if (this.hote.classeur() && this.hote.sauvegarde?.estPerime && !this.coupe) return 'Rechargez d\'abord la page.'
     if (this.hote.app?.enLecture) return 'Fermez d\'abord la revue.'
-    if (document.body.classList.contains('en-seance')) return 'Fermez d\'abord la séance d\'automatismes.'
     if (document.querySelector('dialog[open]')) return 'Fermez d\'abord la fenêtre ouverte.'
     return null
   }

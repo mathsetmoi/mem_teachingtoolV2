@@ -15,7 +15,7 @@
 // entoure, qu'on pince, quand le menu complet est ouvert (il contient
 // tout : un clic droit ouvre ce menu, pas la barre) ou un petit menu (celui
 // de la page, du zoom… : un seul menu à la fois), pendant la revue,
-// une séance d'automatismes, un placement, ou quand une fenêtre est
+// un placement, ou quand une fenêtre est
 // ouverte. Discrète au vidéoprojecteur : le gris des barres, des
 // libellés gris, aucune couleur vive.
 // =============================================================
@@ -80,7 +80,6 @@ export interface EtatBarre {
   mouvement: boolean
   lecture: boolean
   placement: boolean
-  seance: boolean
   /** Une fenêtre ouverte : une fenêtre de l'outil, l'éditeur d'une formule ;
    *  la trieuse des pages, qui couvre le tableau, compte comme une fenêtre */
   fenetre: boolean
@@ -97,7 +96,7 @@ export interface EtatBarre {
  *  aucun morceau de figure choisi, aucun menu ouvert (le menu complet
  *  contient déjà tout ; un petit menu, comme celui de la page au clic
  *  droit dans le vide, ne se superpose pas à elle : un seul menu à la
- *  fois), rien qui bouge, ni revue, ni placement, ni séance d'automatismes,
+ *  fois), rien qui bouge, ni revue, ni placement,
  *  ni fenêtre ouverte ; et l'outil Sélection en main, ou le doigt qui
  *  « déplace » qui vient de toucher. Sous un outil de dessin, à la souris
  *  ou au stylet, jamais. Jamais sur ce qui est verrouillé (lot 5) : il n'est
@@ -105,7 +104,7 @@ export interface EtatBarre {
  *  double garde : le menu fermé, la sélection se vide d'elle-même). */
 export function barreVisible(e: EtatBarre): boolean {
   if (!e.pris || e.partie || e.options || e.menu || e.protege) return false
-  if (e.mouvement || e.lecture || e.placement || e.seance || e.fenetre) return false
+  if (e.mouvement || e.lecture || e.placement || e.fenetre) return false
   return e.outilSelection || e.doigtQuiDeplace
 }
 
@@ -254,7 +253,6 @@ export class BarreActions {
     return barreVisible({
       pris: app.selection.size, partie: !!app.partie, options: app.options !== null, menu: menuOuvert(),
       mouvement: app.enMouvement, lecture: app.enLecture, placement: !!app.placement,
-      seance: document.body.classList.contains('en-seance'),
       fenetre: !!document.querySelector('dialog[open]') || document.body.classList.contains('en-trieuse') || document.body.classList.contains('en-bibliotheque'),
       outilSelection: app.outil === 'selection', doigtQuiDeplace: app.doigtDeplace && app.dernierPointeur === 'touch',
       protege: app.selectionProtegee(),
