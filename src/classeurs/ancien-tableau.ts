@@ -25,10 +25,14 @@
 //   ses deux points (prolongée pour une droite), qui suit ses points s'ils
 //   bougent ; un arc tracé au compas, un arc de cercle. Les pointillés
 //   restent en tirets ; une figure posée sur une image lui reste liée ;
+//   un rectangle, un rectangle (rempli comme ici s'il l'était) ; un cache
+//   (un rectangle plein posé pour masquer une partie d'une image) devient
+//   un aplat opaque de sa couleur, une petite image étirée, qu'on efface
+//   pour découvrir ce qu'il cachait ; les coins d'un cache ne se voient pas ;
 // - le film : chaque geste devient une étape du film, à son heure, sur sa
 //   page. « Revoir la construction » et Publier le rejouent comme une
 //   séance écrite ici.
-// Le reste (cercles, rectangles, polygones, courbes, post-its) n'est pas repris : le bilan le
+// Le reste (cercles, polygones, courbes, post-its) n'est pas repris : le bilan le
 // compte, rien ne disparaît sans qu'on le dise.
 // Le tableau est décalé pour que ce qui est écrit commence en haut à
 // gauche de la page (on écrivait autour du centre de l'écran).
@@ -47,7 +51,9 @@ export const EXTENSION_ANCIEN = '.prof'
 const FAMILLES = ['points', 'segments', 'circles', 'rectangles', 'texts', 'freehands', 'curves', 'polygons', 'images', 'arcs', 'htmlPostits'] as const
 type Famille = typeof FAMILLES[number]
 /** Celles qui se reprennent */
-const REPRISES: readonly Famille[] = ['freehands', 'images', 'texts', 'points', 'segments', 'arcs']
+const REPRISES: readonly Famille[] = ['freehands', 'images', 'texts', 'points', 'segments', 'arcs', 'rectangles']
+/** Celles qui vont d'un point à l'autre : elles suivent leurs points */
+const SUR_POINTS: readonly Famille[] = ['segments', 'rectangles']
 
 /** Les fonds d'un ancien tableau, dans son ordre, et ce qu'ils deviennent :
  *  le Seyès avec marge et la copie double perdent leur marge */
@@ -98,6 +104,9 @@ export interface BilanAncien {
   laisses: number
   /** Des images qui n'ont pas pu être lues */
   imagesIllisibles: number
+  /** Des images effacées pendant la séance dont le fichier n'a pas gardé
+   *  les données : elles manquent au film seulement */
+  imagesHorsFilm: number
 }
 
 /** La partie gardée d'une image, en pixels de l'image */
@@ -158,10 +167,37 @@ export function lireAncienTableau(texte: string, nomFichier = ''): AncienTableau
   // séance : elle paraît avec le premier geste du tableau (sans film du
   // tout, à son enregistrement)
   const connues = pages.flatMap(p => p.etats.map(e => e.t)).filter(t => t > 0)
-  const premiere = connues.length ? Math.min(...connues) : enregistre
-  for (const p of pages) for (const x of p.etats) if (!x.t) x.t = premiere
+  if (connues.length) {
+    const premiere = Math.min(...connues)
+    for (const p of pages) for (const x of p.etats) if (!x.t) x.t = premiere
+  } else {
+    // Aucune heure : le film a été enregistré sans elles. La séance prend
+    // la date écrite dans son nom (son enregistrement peut venir bien plus
+    // tard : un tableau rouvert la veille d'un autre cours), à 8 h ; ses
+    // gestes se suivent, PAS_SANS_HEURE l'un après l'autre, page après page
+    const jour = dateDuNom(nom) ?? dateDuNom(typeof r!.name === 'string' ? r!.name : '') ?? dateDuNom(typeof data.nomDuTableau === 'string' ? data.nomDuTableau : '')
+    let t = jour ?? enregistre
+    for (const p of pages) for (const x of p.etats) { x.t = t; t += PAS_SANS_HEURE }
+  }
   const heures = pages.flatMap(p => p.etats.map(e => e.t))
   return { nom, debut: Math.min(...heures), fin: Math.max(...heures), fond, pages, sources, film }
+}
+
+/** L'écart entre deux gestes d'un film sans heures */
+const PAS_SANS_HEURE = 5000
+
+const MOIS_DU_NOM = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre']
+/** La date écrite dans un nom (« Mardi 22 septembre 2026 », « 1er
+ *  octobre 2026 », « 2026-10-13 »), à 8 h ; null s'il n'y en a pas */
+export function dateDuNom(nom: string): number | null {
+  const n = nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const m = n.match(/\b(\d{1,2})(?:er)?\s+(janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre)\s+(\d{4})\b/)
+  const d = m ? { a: Number(m[3]), m: MOIS_DU_NOM.indexOf(m[2]), j: Number(m[1]) } : null
+  const iso = d ? null : n.match(/\b(\d{4})-(\d{2})-(\d{2})\b/)
+  const x = d ?? (iso ? { a: Number(iso[1]), m: Number(iso[2]) - 1, j: Number(iso[3]) } : null)
+  if (!x || x.m < 0 || x.m > 11 || x.j < 1 || x.j > 31) return null
+  const t = new Date(x.a, x.m, x.j, 8, 0)
+  return t.getDate() === x.j ? t.getTime() : null
 }
 
 function etatDe(p: Record<string, unknown>): Etat {
@@ -228,9 +264,9 @@ function arcDe(o: Objet): { x: number; y: number; r: number; a0: number; a1: num
   return { x, y, r, a0, a1 }
 }
 
-/** Les deux points d'un segment, dans l'état où il est (null : un point
- *  manque) */
-function boutsDuSegment(o: Objet, etat: Etat): [Objet, Objet] | null {
+/** Les deux points d'un segment ou d'un rectangle (deux coins opposés),
+ *  dans l'état où il est (null : un point manque) */
+function boutsDe(o: Objet, etat: Etat): [Objet, Objet] | null {
   const p1 = etat.points.find(q => q.id === o.p1_id), p2 = etat.points.find(q => q.id === o.p2_id)
   return p1 && p2 && Number.isFinite(p1.x) && Number.isFinite(p1.y) && Number.isFinite(p2.x) && Number.isFinite(p2.y) ? [p1, p2] : null
 }
@@ -296,7 +332,7 @@ export function finDuClasseur(t: Tableau): number {
  *  rejouant son film (voir en tête). Le document ne doit avoir rien d'écrit
  *  après son début (voir finDuClasseur). */
 export async function reprendre(tab: Tableau, a: AncienTableau, preparer: PreparerImage): Promise<BilanAncien> {
-  const bilan: BilanAncien = { pages: a.pages.length, traits: 0, images: 0, textes: 0, figures: 0, laisses: 0, imagesIllisibles: 0 }
+  const bilan: BilanAncien = { pages: a.pages.length, traits: 0, images: 0, textes: 0, figures: 0, laisses: 0, imagesIllisibles: 0, imagesHorsFilm: 0 }
   const marque = uid()
   const idDe = (o: Objet) => `${marque}-${String(o.id)}`
 
@@ -327,12 +363,30 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
     return Number.isFinite(x) ? { x: -x, y: -y } : { x: 0, y: 0 }
   })
 
-  // Un point sous un segment posé sur une image suit l'image, comme lui
+  // Un point sous un segment (ou un rectangle) posé sur une image suit
+  // l'image, comme lui ; les coins d'un cache ne se montrent pas (sauf
+  // s'ils servent aussi à un segment)
   const pointsSurImage = a.pages.map(p => {
     const l = new Map<unknown, Objet>()
-    for (const { etat } of p.etats) for (const s of etat.segments) if (s.surObjet) { l.set(s.p1_id, s); l.set(s.p2_id, s) }
+    for (const { etat } of p.etats) for (const f of SUR_POINTS) for (const s of etat[f]) if (s.surObjet) { l.set(s.p1_id, s); l.set(s.p2_id, s) }
     return l
   })
+  const coinsCaches = a.pages.map(p => {
+    const caches = new Set<unknown>(), segments = new Set<unknown>()
+    for (const { etat } of p.etats) {
+      for (const r of etat.rectangles) if (r.cache === true) { caches.add(r.p1_id); caches.add(r.p2_id) }
+      for (const s of etat.segments) { segments.add(s.p1_id); segments.add(s.p2_id) }
+    }
+    for (const k of segments) caches.delete(k)
+    return caches
+  })
+  // Les aplats des caches : une image d'un pixel par couleur, gardée une fois
+  const aplat = (couleur: string) => {
+    const donnees = pixel(couleur)
+    let src = memes.get(donnees)
+    if (!src) { src = `${marque}-aplat-${memes.size}`; banque.set(src, donnees); memes.set(donnees, src) }
+    return src
+  }
 
   const forme = (f: Famille, o: Objet, page: number, etat: Etat): Forme | null => {
     const d = decalages[page]
@@ -383,7 +437,7 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
     const couleur = typeof (o.strokeColor ?? o.color) === 'string' ? (o.strokeColor ?? o.color) as string : '#1b2230'
     const taille = Math.min(nombre(o.width, 3) || 3, TAILLE_FIGURE_MAX)
     if (f === 'points') {
-      if (!Number.isFinite(o.x) || !Number.isFinite(o.y)) return null
+      if (!Number.isFinite(o.x) || !Number.isFinite(o.y) || coinsCaches[page].has(o.id)) return null
       const po: Polygone = {
         id, type: 'polygone', ferme: false, pts: [0, 0], z, auteur, couleur, taille: 3,
         x: (o.x as number) + d.x, y: (o.y as number) + d.y,
@@ -395,7 +449,7 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
       return po
     }
     if (f === 'segments') {
-      const b = boutsDuSegment(o, etat)
+      const b = boutsDe(o, etat)
       if (!b) return null
       const [p1, p2] = b
       const x = (p1.x as number) + d.x, y = (p1.y as number) + d.y
@@ -412,6 +466,24 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
       if (lie) se.lie = lie
       return se
     }
+    if (f === 'rectangles') {
+      const b = boutsDe(o, etat)
+      if (!b) return null
+      const x0 = Math.min(b[0].x as number, b[1].x as number), y0 = Math.min(b[0].y as number, b[1].y as number)
+      const l = Math.abs((b[1].x as number) - (b[0].x as number)), h = Math.abs((b[1].y as number) - (b[0].y as number))
+      if (!l || !h) return null
+      const fond = typeof o.fillColor === 'string' ? o.fillColor : couleur
+      if (o.cache === true) {
+        const im: ImageForme = { id, type: 'image', src: aplat(fond), l: 1, h: 1, m: [l, 0, 0, h], x: x0 + d.x, y: y0 + d.y, z, auteur }
+        return im
+      }
+      const re: Polygone = { id, type: 'polygone', ferme: true, z, auteur, couleur, taille, x: x0 + d.x, y: y0 + d.y, pts: [0, 0, l, 0, l, h, 0, h] }
+      if (o.isFilled === true) re.fond = fond
+      if (o.dash && o.dash !== 'solid') re.tirets = true
+      const lie = imageSous(o, etat, idDe)
+      if (lie) re.lie = lie
+      return re
+    }
     if (f === 'arcs') {
       const ar = arcDe(o)
       if (!ar) return null
@@ -423,10 +495,11 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
     }
     return null
   }
-  // Ce qui fait qu'un objet a changé : lui, et pour un segment, ses points
+  // Ce qui fait qu'un objet a changé : lui, et pour un segment ou un
+  // rectangle, ses points
   const empreinte = (f: Famille, o: Objet, etat: Etat) => {
-    if (f !== 'segments') return JSON.stringify(o)
-    const b = boutsDuSegment(o, etat)
+    if (!SUR_POINTS.includes(f)) return JSON.stringify(o)
+    const b = boutsDe(o, etat)
     return JSON.stringify([o, b && [b[0].x, b[0].y, b[1].x, b[1].y]])
   }
 
@@ -441,7 +514,7 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
       for (const f of FAMILLES) {
         const nouveaux = etat[f], anciens = avant ? avant[f] : []
         // (un segment suit ses points : il change quand eux changent)
-        if (nouveaux === anciens && !(f === 'segments' && avant && etat.points !== avant.points)) continue
+        if (nouveaux === anciens && !(SUR_POINTS.includes(f) && avant && etat.points !== avant.points)) continue
         if (!REPRISES.includes(f)) { for (const o of nouveaux) laisses.add(`${f}:${String(o.id)}`); continue }
         const deja = new Map(anciens.map(o => [String(o.id), o]))
         const restent = new Set<string>()
@@ -449,7 +522,7 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
           const k = String(o.id)
           restent.add(k)
           const v = deja.get(k)
-          if ((v === o && f !== 'segments') || (v && empreinte(f, v, avant!) === empreinte(f, o, etat))) continue
+          if ((v === o && !SUR_POINTS.includes(f)) || (v && empreinte(f, v, avant!) === empreinte(f, o, etat))) continue
           const g = forme(f, o, page, etat)
           if (g) { poser.push(g); reprises.get(f)!.add(k) }
           else if (v) retirer.push(`${marque}-${k}`)
@@ -499,11 +572,39 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
     bilan.traits += fin.freehands.filter(o => reprises.get('freehands')!.has(String(o.id))).length
     bilan.images += fin.images.filter(o => reprises.get('images')!.has(String(o.id))).length
     bilan.textes += fin.texts.filter(o => reprises.get('texts')!.has(String(o.id))).length
-    for (const f of ['points', 'segments', 'arcs'] as const) bilan.figures += fin[f].filter(o => reprises.get(f)!.has(String(o.id))).length
+    for (const f of ['points', 'segments', 'arcs', 'rectangles'] as const) bilan.figures += fin[f].filter(o => reprises.get(f)!.has(String(o.id))).length
   }
   bilan.laisses = laisses.size
-  bilan.imagesIllisibles = illisibles.size
+  // Une image illisible encore sur une page manque à la page ; effacée en
+  // route, elle ne manque qu'au film
+  const restees = new Set(a.pages.flatMap(p => p.etats[p.etats.length - 1]?.etat.images.map(o => cleImage(o)?.cle) ?? []))
+  for (const c of illisibles) if (restees.has(c)) bilan.imagesIllisibles++; else bilan.imagesHorsFilm++
   return bilan
+}
+
+/** Une image PNG d'un pixel, de cette couleur (#rrggbb) : l'aplat d'un
+ *  cache. Écrite à la main (ni canevas ni bibliothèque : se fait sous Node) */
+function pixel(couleur: string): string {
+  const c = /^#([0-9a-f]{6})$/i.exec(couleur.trim())?.[1] ?? 'ffffff'
+  const rvb = [0, 2, 4].map(i => parseInt(c.slice(i, i + 2), 16))
+  const crc = (o: number[]) => {
+    let r = -1
+    for (const b of o) { r ^= b; for (let k = 0; k < 8; k++) r = (r >>> 1) ^ (0xedb88320 & -(r & 1)) }
+    return ~r >>> 0
+  }
+  const mot = (n: number) => [n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]
+  const morceau = (type: string, o: number[]) => { const t = [...type].map(x => x.charCodeAt(0)).concat(o); return [...mot(o.length), ...t, ...mot(crc(t))] }
+  // La ligne : un filtre (0) et le pixel ; zlib sans compression
+  const ligne = [0, ...rvb]
+  let s1 = 1, s2 = 0
+  for (const b of ligne) { s1 = (s1 + b) % 65521; s2 = (s2 + s1) % 65521 }
+  const octets = [
+    137, 80, 78, 71, 13, 10, 26, 10,
+    ...morceau('IHDR', [...mot(1), ...mot(1), 8, 2, 0, 0, 0]),
+    ...morceau('IDAT', [0x78, 0x01, 1, ligne.length, 0, 255 - ligne.length, 255, ...ligne, ...mot((s2 << 16 | s1) >>> 0)]),
+    ...morceau('IEND', []),
+  ]
+  return 'data:image/png;base64,' + btoa(String.fromCharCode(...octets))
 }
 
 /** Ce qui distingue une image à préparer : sa source et sa partie gardée */
@@ -526,6 +627,7 @@ export function texteDuBilan(a: AncienTableau, b: BilanAncien): string {
   let t = `« ${a.nom} » : ${morceaux.join(', ')}${a.film ? ', avec son film' : ''}.`
   if (b.laisses) t += ` ${pluriel(b.laisses, 'objet')} (cercles, polygones, courbes ou post-its) ${b.laisses > 1 ? 'n\'ont' : 'n\'a'} pas été repris.`
   if (b.imagesIllisibles) t += ` ${pluriel(b.imagesIllisibles, 'image')} n'${b.imagesIllisibles > 1 ? 'ont' : 'a'} pas pu être ${b.imagesIllisibles > 1 ? 'lues' : 'lue'}.`
+  if (b.imagesHorsFilm) t += ` ${b.imagesHorsFilm > 1 ? `${b.imagesHorsFilm} images effacées` : '1 image effacée'} pendant la séance ${b.imagesHorsFilm > 1 ? 'manquent' : 'manque'} au film.`
   return t
 }
 
