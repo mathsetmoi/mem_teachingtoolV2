@@ -985,9 +985,11 @@ le dégroupe ; un Ctrl + Z le retire d'un coup. Il passe dans le replay de la
 séance comme le reste, et marche dans la version hors ligne. Le panneau prend
 la place du programme de construction (l'un ferme l'autre).
 
-Premier thème, en 2nde : **Ensembles de nombres**.
+En haut du panneau, on choisit le thème du programme de seconde (BO du
+2 avril 2026) : Nombres et calculs, Géométrie, Fonctions, Statistiques et
+probabilités. Le choix est retenu sur l'appareil (`mem-catalogue-theme`).
 
-- **Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ** : cinq ovales emboîtés, chacun de sa
+- **Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ** (Nombres et calculs) : cinq ovales emboîtés, chacun de sa
   couleur, avec son nom (22,5 cm sur 13 à 100 %). Il suit le pointeur en
   transparence ; un clic le pose, Échap annule. Les nombres tapés dans le
   champ, séparés par des points-virgules (la virgule est celle des
@@ -1003,9 +1005,23 @@ Premier thème, en 2nde : **Ensembles de nombres**.
   pas trancher (`π − π`) va dans ℝ avec un avertissement, et ce qu'il ne sait
   pas lire est dit, jamais deviné. Le texte du champ est retenu sur
   l'appareil (`mem-catalogue-nombres`).
-- **Démonstrations** : « 1/3 n'est pas décimal » et « √2 n'est pas
-  rationnel », par l'absurde. Le titre se pose d'un clic, puis chaque ligne
-  avec → (ou Espace, ou « Suivante »), ← la retire, ⏩ montre tout.
+- **Démonstrations** : toutes celles que le programme de seconde demande,
+  chacune dans son thème.
+  - Nombres et calculs : la somme de deux multiples de 7 est un multiple
+    de 7 ; le carré d'un impair est impair ; 1/3 n'est pas décimal ; √2 est
+    irrationnel ; √(ab) = √a × √b.
+  - Géométrie : colinéarité de deux vecteurs non nuls (déterminant nul,
+    coordonnées proportionnelles) ; forme générale ax + by + c = 0 d'une
+    équation de droite, par le déterminant.
+  - Fonctions : variations des fonctions affines ; position des courbes
+    y = x et y = x² pour x ⩾ 0 ; variations de la fonction carré ;
+    variations de la fonction inverse.
+  - Statistiques et probabilités : le programme n'en demande pas, le
+    panneau le dit.
+
+  Le titre se pose d'un clic, puis chaque ligne avec → (ou Espace, ou
+  « Suivante »), ← la retire, ⏩ montre tout. Dans le panneau, le texte des
+  étapes passe à la ligne pour tenir dans sa largeur.
 
 Le calcul (lire un nombre, le classer, trouver sa place dans sa zone) est
 dans `src/catalogue.ts`, sans rien toucher à l'écran ; le panneau dans

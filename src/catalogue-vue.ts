@@ -116,7 +116,7 @@ export class Catalogue {
       <section class="element">
         <h3>Démonstrations</h3>
         <div class="demos">${DEMONSTRATIONS.map((d, i) => `<button type="button" class="secondaire demo" data-demo="${i}" data-theme="${d.theme}">${html(d.nom)}</button>`).join('')}</div>
-        <p class="note aucune-demo">Pas encore de démonstration dans ce thème.</p>
+        <p class="note aucune-demo">Le programme ne demande pas de démonstration dans ce thème.</p>
         <ol class="etapes"></ol>
         <div class="commandes" hidden>
           <button type="button" class="secondaire precedente" title="Ligne précédente (←)">◀</button>
@@ -157,11 +157,16 @@ export class Catalogue {
     ;(this.panneau.querySelector('.aucune-demo') as HTMLElement).hidden = demos > 0
   }
 
+  /** Une ligne dans le panneau : le texte en clair pour qu'il passe à la ligne, seules les maths par KaTeX */
+  private ligneHtml(l: string): string {
+    return l.split('$').map((m, i) => i % 2 ? katex.renderToString(m, { throwOnError: false }) : html(m)).join('')
+  }
+
   private afficher() {
     const d = this.demo
     const faites = d ? d.posees.length : 0
     this.liste.innerHTML = d ? d.d.etapes.map((e, i) =>
-      `<li class="${i < faites ? 'faite' : i === faites ? 'courante' : ''}">${e.map(l => katex.renderToString(ligneEnLatex(l), { throwOnError: false })).join(' ')}</li>`).join('') : ''
+      `<li class="${i < faites ? 'faite' : i === faites ? 'courante' : ''}">${e.map(l => this.ligneHtml(l)).join(' ')}</li>`).join('') : ''
     const cmd = this.panneau.querySelector('.commandes') as HTMLElement
     cmd.hidden = !d
     const fini = !!d && faites >= d.d.etapes.length

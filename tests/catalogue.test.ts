@@ -77,8 +77,14 @@ describe('Le catalogue : les démonstrations', () => {
     expect(ligneEnLatex('Donc $10^n$ est pair.')).toBe('\\text{Donc }10^n\\text{ est pair.}')
     expect(ligneEnLatex('$p$ et {q}')).toBe('p\\text{ et \\{q\\}}')
   })
-  it('les deux démonstrations du programme', () => {
-    expect(DEMONSTRATIONS.map(d => d.nom)).toEqual(['1/3 n\'est pas décimal', '√2 n\'est pas rationnel'])
+  it('toutes les démonstrations du programme de seconde, dans son ordre', () => {
+    expect(DEMONSTRATIONS.map(d => d.theme + ' : ' + d.nom)).toEqual([
+      'nombres : Somme de deux multiples', 'nombres : Le carré d\'un impair est impair', 'nombres : 1/3 n\'est pas décimal',
+      'nombres : √2 n\'est pas rationnel', 'nombres : √(ab) = √a × √b', 'geometrie : Colinéarité et déterminant',
+      'geometrie : Équation cartésienne d\'une droite', 'fonctions : Variations des fonctions affines',
+      'fonctions : Position de y = x et y = x²', 'fonctions : Variations de la fonction carré',
+      'fonctions : Variations de la fonction inverse',
+    ])
     for (const d of DEMONSTRATIONS) for (const e of d.etapes) for (const l of e) expect(l.split('$').length % 2).toBe(1)
   })
 })
@@ -87,5 +93,15 @@ describe('Le catalogue : les thèmes', () => {
   it('chaque démonstration est rangée dans un thème du panneau', () => {
     const ids = new Set(THEMES.map(t => t.id))
     for (const d of DEMONSTRATIONS) expect(ids.has(d.theme)).toBe(true)
+  })
+})
+
+describe('Le catalogue : KaTeX lit chaque ligne', () => {
+  it('aucune erreur de rendu, ni dans les titres ni dans les étapes', async () => {
+    const katex = (await import('katex')).default
+    for (const d of DEMONSTRATIONS) {
+      expect(() => katex.renderToString(d.titre, { throwOnError: true })).not.toThrow()
+      for (const e of d.etapes) for (const l of e) expect(() => katex.renderToString(ligneEnLatex(l), { throwOnError: true }), l).not.toThrow()
+    }
   })
 })
