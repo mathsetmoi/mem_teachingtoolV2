@@ -22,6 +22,7 @@ import { leve, main } from './main-levee'
 import { PLANCHER, tasser } from './rythme'
 import type { EtatInstruments, GesteAuxInstruments, Piece, PieceTrace } from './instruments-film'
 import { IndexPieces, dejaTracee, finDesPieces, horaire, lireInstruments } from './instruments-film'
+import { estTexte, tailleEstimee } from '../texte'
 
 const TOUS_LES = 32
 
@@ -306,7 +307,7 @@ export function boiteDe(f: Forme): Boite | null {
     case 'formule': {
       // Une estimation (le lecteur ne la mesure pas) ; tournée (lot 5),
       // l'englobante de ses coins tournés : le lecteur cadre la page dessus
-      const b = { x: f.x, y: f.y, l: Math.max(1, f.latex.length) * f.taille * 0.55, h: f.taille * 1.6 }
+      const b = estTexte(f) ? { x: f.x, y: f.y, ...tailleEstimee(f) } : { x: f.x, y: f.y, l: Math.max(1, f.latex.length) * f.taille * 0.55, h: f.taille * 1.6 }
       return englobante(f, b)
     }
     case 'image': {

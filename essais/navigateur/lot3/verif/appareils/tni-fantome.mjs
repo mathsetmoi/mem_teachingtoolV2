@@ -8,7 +8,7 @@ const rang = await page.evaluate(() => { const r = document.querySelector('.rang
 await page.touchscreen.tap(rang.x, rang.y); await attendreOuverte(page); await pause(500)
 const sous = await page.evaluate(bs => bs.map(b => { const el = document.elementFromPoint(b.x, b.y); const c = el?.closest?.('.carte'); return c && !el.closest('.carte-options') && !el.closest('.carte-nom') && !el.closest('.carte-poignee') ? { ...b, page: c.dataset.page } : null }).filter(Boolean), boutons)
 console.log('TNI, sous les vignettes :', sous.map(s => s.nom).join(' ; '))
-const rouge = sous.find(s => s.nom === 'Rouge') || sous.find(s => /Gomme/.test(s.nom))
+const rouge = sous.find(s => s.nom === 'Rouge') || sous.find(s => /Gomme/.test(s.nom)) || sous.find(s => /Surligneur/.test(s.nom))
 const avant = await page.evaluate(() => ({ couleur: window.__app.couleur, outil: window.__app.outil }))
 await page.touchscreen.tap(rouge.x, rouge.y); await pause(600)
 const e = await etat(page)

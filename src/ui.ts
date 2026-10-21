@@ -55,6 +55,7 @@ import { Trieuse } from './pages/trieuse'
 import { ouvrirEnvoi } from './pages/envoi'
 import { messageVerrou, pointeurDuClic, titreModifierFormule } from './pointeurs'
 import type { TypePointeur } from './pointeurs'
+import { estTexte } from './texte'
 import { accorder, compterObjets, minuscule } from './verrou'
 import type { Surveillance } from './classeurs/surveillance'
 import type { ActionEtat, Bandeau, LigneEtat } from './classeurs/etat'
@@ -184,6 +185,7 @@ const OUTILS: { id: Outil; nom: string; touche: string }[] = [
   { id: 'segment', nom: 'Segment, droite, demi-droite (Maj : angles de 15°)', touche: 'L' },
   { id: 'forme', nom: 'Formes : rectangle, cercle, polygone', touche: 'R, C, G' },
   { id: 'formule', nom: 'Formule', touche: 'F' },
+  { id: 'texte', nom: 'Texte : cliquez et tapez au clavier (glisser : choisir sa largeur)', touche: 'T' },
   { id: 'selection', nom: 'Sélectionner et déplacer', touche: 'V' },
   { id: 'main', nom: 'Déplacer la vue', touche: 'Espace' },
 ]
@@ -193,7 +195,7 @@ const OUTILS: { id: Outil; nom: string; touche: string }[] = [
 const ESSENTIELS: readonly Outil[] = ['stylo', 'gomme', 'selection']
 /** La grille « Autres outils » du téléphone, dans l'ordre de la barre du
  *  poste de la classe ; le Doigt et « Supprimer la sélection » la suivent */
-const AUTRES_OUTILS: readonly Outil[] = ['surligneur', 'point', 'segment', 'forme', 'formule', 'main']
+const AUTRES_OUTILS: readonly Outil[] = ['surligneur', 'point', 'segment', 'forme', 'formule', 'texte', 'main']
 
 const RACCOURCIS_LATEX = [
   ['\\frac{a}{b}', '\\frac{}{}'], ['\\sqrt{x}', '\\sqrt{}'], ['x^{n}', '^{}'], ['x_{n}', '_{}'],
@@ -221,7 +223,7 @@ function bouton(nom: string, titre: string, action: (e: Event) => void, classe =
  *  de chaque outil, sous son icône */
 const NOMS_OUTILS: Record<Outil, string> = {
   stylo: 'Stylo', surligneur: 'Surligneur', gomme: 'Gomme', point: 'Point', segment: 'Segment',
-  forme: 'Formes', formule: 'Formule', selection: 'Sélection', main: 'Vue',
+  forme: 'Formes', formule: 'Formule', texte: 'Texte', selection: 'Sélection', main: 'Vue',
 }
 
 /** Donne à un bouton des barres son nom court, sous son icône (lot 5) : un
@@ -1589,6 +1591,7 @@ export class UI implements Interface {
       outil('forme', 'Cercle', 'C', 'rond disque forme figure', 'cercle', () => { app.typeForme = 'cercle' }),
       outil('forme', 'Polygone', 'G', 'triangle forme figure', 'polygone', () => { app.typeForme = 'polygone' }),
       outil('formule', 'Formule', 'F', 'latex equation ecrire calcul racine fraction puissance'),
+      outil('texte', 'Texte', 'T', 'taper clavier ecrire phrase traitement de texte consigne enonce titre'),
       outil('selection', 'Sélection', 'V', 'selectionner prendre deplacer bouger agrandir tourner'),
       outil('main', 'Déplacer la vue', 'Espace', 'main vue faire defiler'),
     ]
@@ -2924,7 +2927,7 @@ export class UI implements Interface {
       p.setAttribute('aria-label', titreDuMenu(f))
       // Son titre parle la langue du pointeur qui a ouvert le menu : jamais
       // « double-clic » au doigt
-      action('Modifier', titreModifierFormule(app.dernierPointeur), () => app.modifierFormule(f))
+      action('Modifier', titreModifierFormule(app.dernierPointeur, estTexte(f)), () => app.modifierFormule(f))
       action('Couleur et taille', 'La couleur et la taille des caractères', () => ouvrir('couleur'), this.section === 'couleur')
       action('Dupliquer', `Une copie, décalée d'un centimètre (${CTRL}+D)`, () => app.dupliquerSelection())
       copier(); jeter()

@@ -37,6 +37,7 @@ import type { Forme, Formule, Habillage, ImageForme } from './types'
 import { BORNE, ECHELLE_MAX, TAILLE_MAX } from './presse-papiers'
 import type { TypePointeur } from './pointeurs'
 import { POIGNEE } from './pointeurs'
+import { LARGEUR_MIN, estTexte } from './texte'
 
 const DEG = Math.PI / 180
 
@@ -174,7 +175,7 @@ function transformerBrut(b: Habillage['brut'], de: P, vers: P, M: Matrice, k: nu
  *   l'angle de M ; ses noms et son tracé d'origine comme ci-dessus ;
  * - un ancien segment (v0.1) : ses deux bouts par M, son épaisseur gardée.
  */
-export function transformerForme(f: Forme, M: Matrice): Forme {
+export function transformerForme(f: Forme, M: Matrice, mesure?: (f: Formule) => { l: number; h: number }): Forme {
   const k = facteurDe(M), t = angleDe(M)
   const par = (x: number, y: number) => appliquer(M, { x, y })
   switch (f.type) {
@@ -193,7 +194,19 @@ export function transformerForme(f: Forme, M: Matrice): Forme {
     }
     case 'formule': {
       const o = par(f.x, f.y)
+      // Un texte tiré par un côté (ses seules poignées de côté : à gauche et
+      // à droite) : sa largeur change, pas ses caractères ; il repasse à la
+      // ligne (un texte qui s'allongeait prend ainsi une largeur)
+      if (estTexte(f)) {
+        const r = rotationDe(f), lin = (x: number, y: number) => Math.hypot(M[0] * x + M[2] * y, M[1] * x + M[3] * y)
+        const su = lin(Math.cos(r), Math.sin(r)), sv = lin(-Math.sin(r), Math.cos(r))
+        const l = f.largeur ?? mesure?.(f).l
+        if (Math.abs(sv - 1) < 1e-6 && Math.abs(su - 1) > 1e-6 && l) {
+          return { ...f, x: o.x, y: o.y, largeur: Math.min(BORNE, Math.max(LARGEUR_MIN, Math.round(l * su))) }
+        }
+      }
       const g: Formule = { ...f, x: o.x, y: o.y, taille: borner(f.taille, k, TAILLE_FORMULE_MIN, TAILLE_MAX, demi) }
+      if (g.largeur) g.largeur = Math.min(BORNE, Math.max(LARGEUR_MIN, Math.round(g.largeur * g.taille / f.taille)))
       const r = angleNormal(rotationDe(f) + t)
       if (Math.abs(r) < 1e-6) delete g.rotation
       else g.rotation = r
@@ -449,7 +462,9 @@ export const ajusteTourne = (r: RectangleAjuste | null): r is RectangleAjuste =>
 export interface Cadre {
   genre: 'oriente' | 'droit' | 'pastille'
   coins: P[]
-  cotes: boolean
+  /** Des poignées au milieu des côtés : les quatre (une image), ou seulement
+   *  à gauche et à droite (un texte : sa largeur) */
+  cotes: boolean | 'lateraux'
   centre: P
   pastille: P
   /** La pastille ↺, à gauche de ↻ (retouches après le lot 5) : elle tourne
@@ -488,13 +503,14 @@ export function cadreDe(formes: readonly Forme[], o: {
   if (!formes.length) return null
   const z = o.z > 0 ? o.z : 1, seule = formes.length === 1 ? formes[0] : null
   const marge = MARGE_CADRE / z
-  let genre: Cadre['genre'], coins: P[], cotes = false, centre: P
+  let genre: Cadre['genre'], coins: P[], cotes: Cadre['cotes'] = false, centre: P
   if (seule?.type === 'image') {
     genre = 'oriente'; coins = coinsImage(seule); cotes = true
     centre = milieu(coins[0], coins[2])
   } else if (seule?.type === 'formule') {
     const m = o.mesure(seule)
     genre = 'oriente'; coins = coinsFormule(seule, { x: seule.x, y: seule.y, l: m.l, h: m.h })
+    if (estTexte(seule)) cotes = 'lateraux'
     centre = milieu(coins[0], coins[2])
   } else if (seule && (seule.type === 'polygone' || seule.type === 'cercle')) {
     if (seule.type === 'cercle' ? !seule.arc : seule.pts.length < 4) return null
@@ -623,7 +639,7 @@ export function poigneeSous(cadre: Cadre, s: P, cam: { x: number; y: number; z: 
   essayer(cadre.inverse, 'pastille', 1, Math.max(r, POIGNEE.pastille[pointeur]))
   cadre.coins.forEach((c, i) => essayer(c, 'coin', i, r))
   if (cadre.cotes && cadre.coins.length === 4) {
-    for (let i = 0; i < 4; i++) essayer(milieu(cadre.coins[i], cadre.coins[(i + 1) % 4]), 'cote', i, r)
+    for (const i of cotesDe(cadre)) essayer(milieu(cadre.coins[i], cadre.coins[(i + 1) % 4]), 'cote', i, r)
   }
   return meilleur
 }
@@ -798,9 +814,14 @@ export function zonesDesPoignees(cadre: Cadre, pointeur: TypePointeur, z: number
   const zones = [zonePastille(cadre, pointeur, z, Math.max(0, POIGNEE.prise[pointeur] - POIGNEE.pastille[pointeur]))]
   for (const q of cadre.coins) zones.push(autour(q))
   if (cadre.cotes && cadre.coins.length === 4) {
-    for (let i = 0; i < 4; i++) zones.push(autour(milieu(cadre.coins[i], cadre.coins[(i + 1) % 4])))
+    for (const i of cotesDe(cadre)) zones.push(autour(milieu(cadre.coins[i], cadre.coins[(i + 1) % 4])))
   }
   return zones
+}
+
+/** Les côtés qui ont une poignée (0 en haut, 1 à droite, 2 en bas, 3 à gauche) */
+export function cotesDe(cadre: Cadre): number[] {
+  return !cadre.cotes ? [] : cadre.cotes === 'lateraux' ? [1, 3] : [0, 1, 2, 3]
 }
 
 const milieu = (a: P, b: P): P => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })

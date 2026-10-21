@@ -427,7 +427,7 @@ await ctxA.close()
 
 // =====================================================================
 console.log('=== D. les noms sous les outils ===')
-const OUTILS_MOTS = ['Stylo', 'Surligneur', 'Gomme', 'Point', 'Segment', 'Formes', 'Formule', 'Sélection', 'Vue', 'Doigt', 'Annuler', 'Rétablir', 'Supprimer']
+const OUTILS_MOTS = ['Stylo', 'Surligneur', 'Gomme', 'Point', 'Segment', 'Formes', 'Formule', 'Texte', 'Sélection', 'Vue', 'Doigt', 'Annuler', 'Rétablir', 'Supprimer']
 // (Adapté aux outils de classe : « Classe », entre Automatismes et Revoir)
 const HAUT_MOTS = ['Nouvelle', 'Effacer', 'Fond', 'Aimant', 'Formes auto', 'Image', 'Instruments', 'Construire', 'Catalogue', 'Automatismes', 'Classe', 'Revoir', 'Publier', 'Fichier']
 const NOMS = () => {
@@ -587,10 +587,10 @@ for (const [nom, o] of CAS) {
     await p.click('.barre-outils > .bouton:nth-child(3)', { button: 'right' }); await p.waitForTimeout(250)
     menus.gomme = await boite(p, '.menu-flottant[aria-label="Gomme"]')
     await p.keyboard.press('Escape'); await p.waitForTimeout(150)
-    const doigtVu = await p.evaluate(() => { const b = document.querySelector('.barre-outils > .bouton:nth-child(10)'); return !!b && !b.hidden })
+    const doigtVu = await p.evaluate(() => { const b = document.querySelector('.barre-outils > .bouton:nth-child(11)'); return !!b && !b.hidden })
     if (doigtVu) {
-      await p.evaluate(() => document.querySelector('.barre-outils > .bouton:nth-child(10)').scrollIntoView({ block: 'nearest' }))
-      await p.click('.barre-outils > .bouton:nth-child(10)'); await p.waitForTimeout(250)
+      await p.evaluate(() => document.querySelector('.barre-outils > .bouton:nth-child(11)').scrollIntoView({ block: 'nearest' }))
+      await p.click('.barre-outils > .bouton:nth-child(11)'); await p.waitForTimeout(250)
       menus.doigt = await boite(p, '.menu-flottant[aria-label="Rôle du doigt"]')
       await p.keyboard.press('Escape'); await p.waitForTimeout(150)
     }

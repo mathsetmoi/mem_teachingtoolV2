@@ -25,7 +25,7 @@ interface Groupe { titre: string; lignes: Ligne[] }
 const RACCOURCIS: Groupe[] = [
   { titre: 'Outils', lignes: [
     ['Stylo', ['P']], ['Surligneur', ['H']], ['Gomme (et ses options)', ['E']], ['Point', ['X']],
-    ['Segment, droite, demi-droite', ['L']], ['Rectangle, cercle, polygone', ['R', 'C', 'G']], ['Formule', ['F']],
+    ['Segment, droite, demi-droite', ['L']], ['Rectangle, cercle, polygone', ['R', 'C', 'G']], ['Formule', ['F']], ['Texte (taper au clavier)', ['T']],
     ['Sélection', ['V']], ['Déplacer la vue (en glissant)', ['Espace']], ['Revenir à la Sélection, puis à l\'outil d\'avant', ['Échap']],
   ] },
   { titre: 'Modifier', lignes: [

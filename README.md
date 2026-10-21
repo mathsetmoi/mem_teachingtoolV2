@@ -1135,11 +1135,13 @@ accent ni majuscule à respecter ; les résultats viennent en trois groupes :
   le lance, « médiatrice » ouvre le programme de construction avec la
   phrase, « ensembles » pose le dessin du catalogue, « fraction » coche ce
   thème des automatismes. Entrée fait l'action.
-- **Formules écrites** : celles des pages de tous les classeurs de ce
+- **Formules et textes écrits** : celles des pages de tous les classeurs de ce
   navigateur, avec des mots simples : « racine », « fraction », « pi »,
   « carré », « réels », « vecteur »… trouvent √, les fractions, π, x², ℝ,
-  les vecteurs. Un clic ouvre la page, la formule prise et montrée (au zoom
-  où l'on est) ; une page d'une séance passée s'ouvre en lecture.
+  les vecteurs ; les textes tapés au clavier (l'outil Texte), par leurs
+  mots, montrés à plat, les mots cherchés marqués. Un clic ouvre la page,
+  la formule (ou le texte) prise et montrée (au zoom où l'on est) ; une
+  page d'une séance passée s'ouvre en lecture.
 - **Classeurs, pages et séances** : un classeur par son nom ou sa classe,
   une page par son nom, une séance par sa date (« 16 octobre », « mardi »,
   « 16/10 ») ou son nom.
@@ -1163,6 +1165,94 @@ classeur ouvert est lu dans le tableau), `src/classeurs/recherche-biblio-vue.ts`
 l'adresse prend deux paramètres facultatifs, `&page=…&forme=…`, lus au
 démarrage comme `&seance=…`. Un conseil de premier lancement présente la
 recherche (`mem-conseils` passe à la série 2).
+
+## Taper du texte au clavier (lot 12)
+
+L'outil **Texte** (le T de la barre des outils, touche **T**) écrit sur la
+page au clavier, comme un traitement de texte.
+
+### Le mode d'emploi
+
+- **Un clic** sur la page : on tape tout de suite, à cet endroit. Entrée
+  passe à la ligne ; le texte s'allonge avec ce qu'on tape.
+- **Un cadre glissé** : le texte prend cette largeur et passe à la ligne
+  tout seul (pour un énoncé à côté d'une figure).
+- **La petite barre**, au-dessus du texte pendant qu'on tape : **G**
+  (gras), *I* (italique), S (souligné), les quatre couleurs (sur ce qui est
+  choisi, ou pour la suite), trois tailles (Petite, Normale, Grande : tout
+  le texte), **• Puces** (les lignes choisies), **$ Formule**, et
+  **Terminé**. Au clavier : Ctrl + G (ou Ctrl + B), Ctrl + I, Ctrl + U.
+- **Une formule au milieu d'une phrase** : on la tape entre deux $, en
+  LaTeX, comme à l'outil Formule (`$\frac{1}{3}$`, `$x^2$`). Elle s'affiche
+  dès le second $ ; un double-clic dessus la rend à son texte. « $ Formule »
+  pose les deux $ (ou entoure ce qui est choisi).
+- **Pour finir** : Échap, « Terminé », Ctrl + Entrée, ou un clic ailleurs
+  (ce clic ne fait rien d'autre ; le suivant commence un autre texte). Un
+  texte vidé s'en va. L'outil reste le Texte.
+- **Ensuite**, le texte se manie comme une formule : il se prend, se
+  déplace, tourne à la pastille ↻ ; ses **coins** l'agrandissent
+  (caractères et largeur ensemble) ; ses **côtés**, à gauche et à droite,
+  changent sa largeur sans toucher aux caractères (un texte qui
+  s'allongeait prend ainsi une largeur et passe à la ligne). Pour le
+  retoucher : double-clic, « Modifier » de son menu ou de la barre
+  d'actions, ou un clic dessus à l'outil Texte. Son menu a aussi « Couleur
+  et taille » (la couleur de tout ce qui n'en a pas reçu une), Dupliquer,
+  Copier, ⋯ et la corbeille.
+- **On écrit dessus** au stylo ; **la gomme ne l'efface pas** (elle gomme
+  l'écriture posée dessus) : il part par Suppr ou la corbeille.
+- **Partout** : la recherche (Ctrl F) le trouve par ses mots ; il est dans
+  les vignettes, le PDF, « Copier en image », le replay des élèves et la
+  revue ; copié vers un autre logiciel, il donne son texte à plat (ses
+  formules entre $). Le coller dans le texte qu'on tape ne prend que le
+  texte (pas les styles d'une page web) ; ce qui est entre $ y devient une
+  formule.
+
+### Comment c'est fait
+
+Un texte est une **formule qui porte en plus ses lignes** (le champ
+facultatif `texte` : des lignes, chacune de morceaux, gras, italique,
+souligné, d'une couleur, ou une formule) et, s'il a une largeur choisie,
+`largeur` (unités monde, sa marge comprise). Tout ce qui sait prendre,
+déplacer, tourner, copier, ordonner et peindre une formule le sait donc
+pour un texte, sans autre type d'objet. Son champ `latex` garde une version
+KaTeX du même texte (`latexDuTexte` : une ligne par ligne, le gras,
+l'italique, la couleur, les formules) : une version d'avant, qui ignore
+`texte`, l'affiche comme une formule, et le classeur ne perd rien (les
+formats `.memc`, `.memb` et `.mem` ne changent pas : deux champs
+facultatifs). La police est Arial et ses jumelles (Helvetica, Liberation
+Sans, Arimo) : un texte à largeur choisie passe à la ligne au même mot sur
+le poste de la classe, dans la version hors ligne et chez les élèves.
+
+- `src/texte.ts` : le modèle, pur et testé (`tests/texte.test.ts`) :
+  `nettoyer` (les lignes vides de la fin s'en vont ; un texte vide n'est
+  plus rien), `formulesDe` (les $ vont par deux, de gauche à droite, sur une
+  ligne), `lireTexte` (relu d'ailleurs : tout ou rien, les couleurs en
+  #rrggbb), `texteBrut` (à plat : la recherche, la copie), `latexDuTexte`,
+  `cleDuContenu` (la clé de son rendu), `tailleEstimee` ; et son rendu HTML
+  (`ecrireContenu`), le même à l'écran (`rendu.ts`) et dans le rendu caché
+  des sorties (`sorties/formules.ts`, qui peint chaque mot à sa place et son
+  souligné ; chaque mot est séparé de ses espaces, pour que la ligne de base
+  se lise sur sa ligne).
+- `src/texte-editeur.ts` : l'éditeur (un élément `contenteditable`, posé
+  dans une couche qui suit la vue, `Rendu.coucheEdition`, à la place du
+  texte, que le rendu cache : `Rendu.enEdition`), sa barre, les $ qui
+  deviennent des formules (`convertirFormules`), et la relecture
+  (`lireEditeur` : par les styles calculés, quoi que le navigateur ait
+  écrit, `<b>`, `<font>` ou des styles).
+- `src/app.ts` : l'outil (`ouvrirTexte`, `modifierTexte`, `finirTexte`,
+  `texteFini` : posé, modifié ou supprimé en une étape d'annulation, rien
+  si rien n'a changé) ; un appui sur la page pendant qu'on tape finit le
+  texte et rien d'autre ; changer d'outil, de page ou ouvrir la revue le
+  finit aussi ; la gomme saute les textes.
+- `src/cadre.ts` : `transformerForme` (un côté change `largeur`, un coin
+  la taille et la largeur), `cotesDe` (les poignées de côté d'un texte : à
+  gauche et à droite) ; pendant le geste, un texte à largeur choisie se
+  remet en page à chaque pas (`Rendu.placerFormules`).
+- `src/presse-papiers.ts` : la liste blanche relit `texte` (`lireTexte`),
+  refait `latex` d'après lui, borne `largeur`.
+- `src/recherche.ts` : `lireContenu` lit les textes à plat
+  (`FormuleLue.texte`), `motsDeFormule` ce qu'on y cherche.
+- L'essai du navigateur : `essais/navigateur/lot12/E1-texte.mjs`.
 
 ## Revoir la construction (en classe)
 
@@ -4956,7 +5046,9 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 
 | Fichier | Rôle |
 | --- | --- |
-| `src/types.ts` | Les formes (trait, segment, formule, polygone, cercle, image), les fonds (huit depuis le lot 5, dans l'ordre des menus : `FONDS`), le fond de toute page qui naît vide (`FOND_NEUF`, la page blanche : retouches après le lot 5) ; depuis le lot 5, des champs facultatifs, ignorés par la version d'avant : `verrou` (l'objet ne bouge plus et ne se prend plus), `fixe` (une image fixée en fond), `groupe` (les formes d'une page qui portent le même identifiant se prennent ensemble), la `rotation` d'une formule (radians, sens de `ctx.rotate`, autour de son coin) ; `libre` (ni verrouillé ni fixé) |
+| `src/types.ts` | Les formes (trait, segment, formule, polygone, cercle, image), les fonds (huit depuis le lot 5, dans l'ordre des menus : `FONDS`), le fond de toute page qui naît vide (`FOND_NEUF`, la page blanche : retouches après le lot 5) ; depuis le lot 5, des champs facultatifs, ignorés par la version d'avant : `verrou` (l'objet ne bouge plus et ne se prend plus), `fixe` (une image fixée en fond), `groupe` (les formes d'une page qui portent le même identifiant se prennent ensemble), la `rotation` d'une formule (radians, sens de `ctx.rotate`, autour de son coin) ; `libre` (ni verrouillé ni fixé) ; depuis le lot 12, le `texte` et la `largeur` d'un texte tapé au clavier (des champs facultatifs d'une formule) |
+| `src/texte.ts` | Le texte tapé au clavier (lot 12) : son modèle, pur (lignes, morceaux, `$…$`, sa version KaTeX, sa lecture prudente, à plat) et son rendu HTML, le même à l'écran et dans les sorties (voir « Taper du texte au clavier ») |
+| `src/texte-editeur.ts` | L'éditeur d'un texte, posé sur la page pendant qu'on tape, sa petite barre, sa relecture en lignes du modèle (lot 12) |
 | `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert ; la base supprimée ou changée ailleurs, coupée net (`onCoupee`) ; une écriture refusée repérée, le trou (`trou`, `erreurBase`), et sa réparation (`reparer`) ; une base trouée relue, dont une partie ne se relit plus (`incomplet`) ; attendre la fin des écritures (`attendreEcritures`) ; l'identité du classeur rangée à côté du document). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié ; sa naissance notée `naissance` dans le film, comme celle d'une page vide ; un fond changé dans la trieuse noté `rangement` : ni l'une ni l'autre ne comptent dans le découpage en séances) et le déplacement des pages (le plus petit changement de l'ordre). Changer des formes : `modifier` fond un patch (une clé qui y vaut undefined quitte la forme : déverrouiller, dégrouper), `remplacer` écrit des formes entières (une clé absente n'existe plus : une rotation revenue à zéro) ; l'un et l'autre en une étape, et la note `reglage` (lot 5 : verrouiller, grouper, rien de visible) sur l'étape du film de cette transaction seulement ; elle suit aussi l'étape de la pile (méta `reglage`) : Ctrl + Z et Ctrl + Y d'un réglage sont notés de même. `couperTraits` (lot 5) écrit la coupe d'un trait par la gomme qui efface là où elle passe : le morceau qui garde l'identifiant remplace le trait, entier, les autres sont posés, en une transaction notée `coupe`. Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre ; elle ne se défait pas tant que la pile de l'arrivée peut y ramener des objets qui en sont repartis, et ne se refait pas vers une page supprimée définitivement) ; la copie, une étape de la pile d'arrivée ; les noms que la pile d'une page peut y ramener (`formesQuiPeuventRevenir`) |
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris ; les outils (`choisirOutil` retient l'outil quitté pour la Sélection, `outilAvant`, que rend Échap : contrôle final du lot 5) ; les réglages du départ (retouches après le lot 5 : le trait fin, `taille` ; une page neuve blanche, `nouvellePage`, `envoyerSelection` ; la vue d'une page où l'on arrive toujours à 100 %, au centre gardé ou sur le début de son contenu, `appliquerVue`) ; le clavier du tableau (Ctrl + P ouvre « Exporter en PDF » ; Ctrl + ↑ / ↓ l'ordre ; Maj + L le verrou ; ⌘ + ←, Alt + ← ne quittent plus la page ; E, la Gomme en main, ouvre son menu) ; la gomme (au trait entier, `gommer` ; seulement là où elle passe, lot 5 : `gommerLa`, le coup en mémoire, `Coupe`, chaque trait écrit quand la gomme l'a quitté, `ecrireCoupe`, et le reste au lever ; le rectangle sale qu'elle demande au rendu ; une coupe écrite en plein coup ne repeint pas la scène) ; l'ordre de ce qui est choisi (`ordonner`, `peutOrdonner`) ; ce qui se prend (lot 5 : `cibleSous` saute le verrouillé et le fixé en fond, sauf `verrouilles` pour le clic droit et l'appui long ; la gomme, le cadre et le lasso, Ctrl + A, Suppr, les flèches et le glisser aussi) ; verrouiller (tout le groupe de chacun), fixer en fond, détacher (`verrouiller`, `fixerEnFond`, `detacherDuFond`, `fixesSous`, `copierFond`), le cadenas (au survol, après un appui), le collage qui ne sélectionne que le libre ; les groupes (`membres`, `grouper`, `degrouper`, Ctrl + G et Ctrl + Maj + G ; ce que prennent un clic, un toucher, un cadre, un lasso, le clic droit, le double-clic : `prendre`, `ouvrirAuDouble`) ; changer de taille et tourner (lot 5 : `transformerSelection`, une transaction par `Tableau.remplacer`, les points repérés sur une image avec elle ; « Remettre droit », `redresserSelection`, `redressable` ; retouches après le lot 5 : les quarts de tour du menu ⋯, `tournable`, `tournerQuart`, autour du centre de la pastille, `calculerCadre`) ; l'image importée (`importerImage` : à l'outil Sélection, l'outil quitté retenu, le message dans les mots du pointeur du bouton Image, de Ctrl+V ou du dernier vu ; retouches après le lot 5) ; le cadre de taille et la pastille ↻ à l'écran (lot 5 : `cadreDeLaSelection`, d'après le dernier pointeur vu, `pointeurPoignees`, gardé tant que la sélection (`SelectionSuivie`, un ensemble qui compte ses changements), la page, la vue, la zone libre, le pointeur et la taille des formules prises n'ont pas changé ; `poigneeVisee` dans l'appui, après les instruments et avant les sommets, avec le cadre tel qu'il était peint, `Rendu.cadre`, pour un autre pointeur peut-être : sa pastille se prend là où on la voit ; les gestes 'taille' et 'tourner', l'aperçu par `Rendu.transfo`, le lâcher par `transformerSelection` ; le curseur au survol ; `emprise` et `pastilleAEviter`, que la barre d'actions et le menu complet contournent) ; la boîte d'une formule pour geometrie.ts (locale) et pour cadrer (`boiteVue`, l'englobante) ; le calme (`calme`, `depuisLeDernierGeste`), qu'attendent les écritures automatiques |
 | `src/verrou.ts` | Verrouiller et fixer en fond (lot 5), pur (testé) : ce que changent Verrouiller, Fixer en fond (sous tout, hors de tout groupe) et Détacher (l'invariant du fond : toute image fixée sous toute image libre, même avec plusieurs images fixées), ce qui bouge quand on pousse (le libre, et les points repérés sur une image qui bouge, même verrouillés : `quiBouge`), les images fixées sous un point, ce que dit un collage qui a posé de quoi ne pas se prendre (`texteCollage`), compter les objets |

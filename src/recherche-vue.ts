@@ -21,7 +21,7 @@
 // =============================================================
 import katex from 'katex'
 import type { ContenuClasseur } from './recherche'
-import { dateEnMots, morceaux, motsDeLatex, score } from './recherche'
+import { dateEnMots, morceaux, motsDeFormule, score } from './recherche'
 import { fermerSurLeFond } from './dialogue'
 import { icone } from './icones'
 
@@ -73,6 +73,8 @@ export interface Resultat {
   detail?: string
   note?: string
   latex?: string
+  /** Un texte tapé : montré à plat, à la place de sa formule */
+  texte?: string
   icone?: string
   touche?: string
   faire: () => void
@@ -80,7 +82,7 @@ export interface Resultat {
 
 const GROUPES: { id: Resultat['groupe']; titre: string; max: number }[] = [
   { id: 'outils', titre: 'Outils', max: 6 },
-  { id: 'formules', titre: 'Formules écrites', max: 8 },
+  { id: 'formules', titre: 'Formules et textes écrits', max: 8 },
   { id: 'classeurs', titre: 'Classeurs, pages et séances', max: 8 },
 ]
 
@@ -130,10 +132,10 @@ export function chercher(requete: string, actions: readonly Action[], classeurs:
     }
     const pages = new Map(k.pages.map(p => [p.id, p]))
     for (const f of k.formules) {
-      const s = score(requete, motsDeLatex(f.latex))
+      const s = score(requete, motsDeFormule(f))
       if (s === null) continue
       const p = pages.get(f.page)
-      r.push({ groupe: 'formules', score: s + bonus, titre: `${c.nom} · page ${p?.numero ?? '?'}`, latex: f.latex,
+      r.push({ groupe: 'formules', score: s + bonus, titre: `${c.nom} · page ${p?.numero ?? '?'}`, latex: f.latex, texte: f.texte,
         note: [p?.seance ? 'Séance du ' + dateCourte(p.seance.debut) : '', c.classe ?? ''].filter(Boolean).join(' · '),
         faire: () => aller({ classeur: c.id, page: f.page, forme: f.id }) })
     }
@@ -268,7 +270,12 @@ export class FenetreRecherche {
         const i = this.resultats.length
         this.resultats.push(r)
         const b = el('div', 'res'); b.id = 'recherche-r-' + i; b.setAttribute('role', 'option')
-        if (r.latex !== undefined) {
+        if (r.texte !== undefined) {
+          const f = el('span', 'res-formule res-texte')
+          f.appendChild(surligne(r.texte.replace(/\s+/g, ' ').slice(0, 120), q))
+          b.classList.add('avec-formule')
+          b.appendChild(f)
+        } else if (r.latex !== undefined) {
           const f = el('span', 'res-formule')
           try { f.innerHTML = katex.renderToString(r.latex, { throwOnError: false, output: 'html' }) } catch { f.textContent = r.latex }
           b.classList.add('avec-formule')
