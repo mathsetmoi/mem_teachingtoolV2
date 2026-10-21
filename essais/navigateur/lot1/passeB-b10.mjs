@@ -367,9 +367,10 @@ for (const h of [768, 700]) {
 // 700 px de haut, elle ne défile plus que d'une dizaine de pixels, et plus
 // bas, où elle défilerait davantage, le menu du doigt (253 px) ne tient plus
 // à la hauteur de son bouton : il suit donc un défilement de 10 px, et non
-// plus de 80)
+// plus de 80). Depuis le Texte (lot 12), la barre a un bouton de plus
+// (46 px) : la même situation se voit à 750 px de haut
 {
-  const ctx = await nav.newContext({ viewport: { width: 1366, height: 700 }, hasTouch: true })
+  const ctx = await nav.newContext({ viewport: { width: 1366, height: 750 }, hasTouch: true })
   const page = await ouvrir(ctx, 'menu-doigt')
   const bouton = '.barre-outils button[aria-haspopup=menu]'
   await page.click(bouton)
