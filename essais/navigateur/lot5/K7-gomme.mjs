@@ -50,7 +50,7 @@ const suivre = (p, nom) => {
 }
 const pret = p => p.waitForFunction(() => document.querySelector('.rang')?.textContent?.includes('/'), null, { timeout: 30000 })
 const attendre = ms => new Promise(r => setTimeout(r, ms))
-const MSG_FIGURE = 'Cette gomme ne coupe que l\'écriture : pour une figure, une image ou une formule, prenez « Effacer le trait entier » (retapez la Gomme).'
+const MSG_FIGURE = 'Cette gomme ne coupe que l\'écriture : pour une figure ou une formule, prenez « Effacer le trait entier » (retapez la Gomme). Une image s\'enlève par Supprimer.'
 const BOUTON = 'button[title^="Gomme"]'
 const MENU = '.menu-flottant[aria-label="Gomme"]'
 
@@ -191,7 +191,7 @@ const contenu = await P.evaluate(s => {
 ok(await menuOuvert(P), 'A2) Retoucher la Gomme déjà en main ouvre son menu')
 ok(JSON.stringify(contenu.titres) === JSON.stringify(['Gomme', 'Taille (là où elle passe)'])
   && contenu.entrees.map(e => e.t).join('|') === 'Effacer le trait entier|Effacer seulement là où elle passe|Petite|Moyenne|Grande'
-  && contenu.entrees[0].aide === 'Ce qu\'elle touche part en entier : un trait, une figure, une image, une formule'
+  && contenu.entrees[0].aide === 'Ce qu\'elle touche part en entier : un trait, une figure, une formule (jamais une image)'
   && contenu.entrees[1].aide === 'Coupe l\'écriture et le surligneur ; les figures, les images et les formules restent'
   && contenu.entrees.every(e => e.role === 'menuitemradio')
   && contenu.entrees[0].coche === 'true' && contenu.entrees[3].coche === 'true'

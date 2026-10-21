@@ -911,6 +911,18 @@ export class Rendu {
           c.fillStyle = 'rgba(59, 111, 182, 0.07)'; c.strokeStyle = 'rgba(59, 111, 182, 0.6)'; c.lineWidth = (this.contraste ? 2.5 : 1.5) / cam.z
           c.beginPath(); c.roundRect(b.x - f.x - m, b.y - f.y - m, b.l + 2 * m, b.h + 2 * m, 6 / cam.z); c.fill(); c.stroke()
           c.restore()
+        } else if (f.type === 'image') {
+          // Une image : le halo suit son seul tour. La repeindre ici, sur la
+          // couche directe, la mettrait au-dessus de ce qu'on a écrit
+          // dessus : l'écriture semblait disparaître dès qu'on la survolait
+          // ou qu'on cliquait dessus
+          const q = coinsImage(f)
+          c.save()
+          c.shadowColor = 'rgba(31, 111, 235, 0.95)'; c.shadowBlur = (this.contraste ? 24 : 14) * this.dpr
+          c.strokeStyle = 'rgba(31, 111, 235, 0.55)'; c.lineWidth = (this.contraste ? 3 : 2) / cam.z; c.lineJoin = 'round'
+          c.beginPath(); c.moveTo(q[0].x, q[0].y); for (let i = 1; i < 4; i++) c.lineTo(q[i].x, q[i].y); c.closePath()
+          c.stroke(); c.stroke()
+          c.restore()
         } else {
           // Un halo bleu qui suit la forme elle-même : on voit ce qu'on va prendre
           c.save()
