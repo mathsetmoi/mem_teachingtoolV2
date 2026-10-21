@@ -127,28 +127,8 @@ await page.mouse.move(600, 400)
   noter('F5 : message « Ctrl+R »', /Ctrl\+R/.test(t), t)
 }
 
-// F5 pendant une séance d'automatismes : le message se voit-il ?
-{
-  await page.click('button[title^="Automatismes"]')
-  await page.waitForTimeout(400)
-  const enSeance = await ev(() => document.body.classList.contains('en-seance'))
-  const avant = page.url()
-  await touche(cdp, 'F5', 'F5', 0, { vk: 116 })
-  await page.waitForTimeout(300)
-  const r = await ev(() => {
-    const t = document.querySelector('.toast'), b = t.getBoundingClientRect()
-    t.style.pointerEvents = 'auto'
-    const dessus = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)
-    t.style.pointerEvents = ''
-    return { visible: t.classList.contains('visible'), texte: t.textContent, voit: t.contains(dessus), dessus: dessus?.className, zToast: getComputedStyle(t).zIndex }
-  })
-  noter('Séance d\'automatismes : F5 bloqué ET son message lisible', enSeance && page.url() === avant && r.visible && r.voit, JSON.stringify({ enSeance, ...r }))
-  await page.keyboard.press('Escape')
-  await page.waitForTimeout(200)
-  await ev(() => { document.querySelector('.seance .fermer, .seance button[title*="ermer"]')?.click() })
-  await page.waitForTimeout(200)
-  await ev(() => window.__app.seance)
-}
+// (Retiré avec la séance d'automatismes, qui cachait le tableau : le flash
+// se règle maintenant dans une fenêtre, puis se joue sur une page de la séance.)
 
 // ---------- Tablette graphique (stylet, écran non tactile) ----------
 await page.goto('about:blank'); await page.goto('http://localhost:5173/')

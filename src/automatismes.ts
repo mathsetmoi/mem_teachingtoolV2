@@ -3,8 +3,10 @@
 // Rangés comme la liste officielle des automatismes de 5e. Chaque
 // automatisme est un GÉNÉRATEUR : il tire des valeurs au hasard et rend
 // une question, sa réponse, et des réponses fausses qui sont de vraies
-// erreurs d'élèves (pour le QCM et le vrai/faux). Une séance en tire
-// dix ; « Nouveaux exemples » en tire dix autres.
+// erreurs d'élèves (pour le QCM). Beaucoup savent aussi poser leur
+// question « à trou » (une égalité à compléter). Un flash (voir
+// src/flash.ts) tire ses questions dans les thèmes choisis : par défaut
+// 2 QCM, 2 questions directes et 1 question à trou (tirerFlash).
 //
 // Les réponses sont du LaTeX (KaTeX), un texte (préfixe §, avec $…$
 // pour les maths) ou un dessin SVG. Une question peut porter une
@@ -24,6 +26,13 @@ export interface Automatisme {
   titre: string
   theme: string
   generer: () => Question
+  /** La même chose posée « à trou » : une égalité ou une phrase à
+   *  compléter, avec … à la place de la réponse. Absent : l'automatisme ne
+   *  s'y prête pas. */
+  trou?: () => Question
+  /** Seulement en QCM : la réponse est un dessin, qu'on ne peut pas
+   *  demander d'écrire (vue de dessus, patron, perspective) */
+  qcmSeulement?: boolean
 }
 
 // ---------- Outils ----------
@@ -31,7 +40,7 @@ const ent = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1)
 const choix = <T,>(t: T[]): T => t[Math.floor(Math.random() * t.length)]
 const pgcd = (a: number, b: number): number => b ? pgcd(b, a % b) : Math.abs(a)
 const arrondi = (x: number) => Math.round(x * 1e6) / 1e6
-const melange = <T,>(t: T[]) => [...t].sort(() => Math.random() - 0.5)
+const melange = <T,>(t: T[]) => { const r = [...t]; for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]] } return r }
 
 /** Un nombre décimal à la française : 3{,}5 (et −4) */
 export const nb = (x: number) => {
@@ -235,7 +244,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
       do { n = ent(1, 9); d = ent(2, 10) } while (pgcd(n, d) !== 1)
       const k = ent(2, 8)
       if (Math.random() < 0.5) {
-        return { enonce: `Compléter : $${frac(n, d)} = \\frac{\\ldots}{${d * k}}$`, reponse: nb(n * k),
+        return { enonce: `Compléter : $${frac(n, d)} = \\dfrac{\\ldots}{${d * k}}$`, reponse: nb(n * k),
           faux: fausses(nb(n * k), [nb(n + k), nb(n * k + d), nb(d * k - n)], autour(n * k)) }
       }
       // Laquelle est égale ? (on ajoute le même nombre en haut et en bas : l'erreur classique)
@@ -763,18 +772,181 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
 ]
 
-/** Dix questions différentes (on évite deux fois le même énoncé) */
-export function dixQuestions(autos: Automatisme[], n = 10): { auto: Automatisme; q: Question }[] {
-  const r: { auto: Automatisme; q: Question }[] = []
-  const vus = new Set<string>()
-  for (let essai = 0; r.length < n && essai < n * 40; essai++) {
-    const auto = autos[r.length % autos.length]
-    const q = auto.generer()
-    const cle = q.enonce + (q.figure ?? '') + q.reponse
-    if (vus.has(cle)) continue
-    vus.add(cle); r.push({ auto, q })
+// =============================================================
+// LES QUESTIONS À TROU
+// Une égalité ou une phrase à compléter : l'élève écrit le nombre qui
+// manque. Les automatismes dont la question est déjà « Compléter… »
+// la reprennent telle quelle.
+// =============================================================
+const aTrou = (enonce: string, reponse: string): Question => ({ enonce, reponse, faux: [] })
+const mille = (k: number) => k === 1000 ? '1\\,000' : String(k)
+const terme = (k: number) => k === 1 ? 'x' : `${k}x`
+const memeQuestion = (id: string) => () => AUTOMATISMES_5E.find(a => a.id === id)!.generer()
+
+const TROUS: Record<string, () => Question> = {
+  'division-euclidienne': () => {
+    const b = ent(3, 9), q = ent(3, 15), r = ent(1, b - 1)
+    return aTrou(`Compléter : $${b * q + r} = ${b} \\times \\ldots + ${r}$`, nb(q))
+  },
+  'factoriser-tables': () => { const a = ent(2, 9), b = ent(2, 9); return aTrou(`Compléter : $${a * b} = ${a} \\times \\ldots$`, nb(b)) },
+  'produit-derive': () => {
+    const a = ent(2, 9), b = ent(2, 9), e1 = choix([-1, 0, 1, 2]), e2 = choix([-2, -1, 1])
+    return aTrou(`Compléter : $${nb(a * 10 ** e1)} \\times \\ldots = ${nb(a * b * 10 ** (e1 + e2))}$`, nb(b * 10 ** e2))
+  },
+  'decimal-fois-10': () => {
+    const x = ent(11, 999) / choix([10, 100]), k = choix([10, 100, 1000])
+    return aTrou(`Compléter : $${nb(x)} \\times \\ldots = ${nb(x * k)}$`, mille(k))
+  },
+  'decimal-divise-10': () => {
+    const x = choix([ent(11, 999) / 10, ent(2, 9999)]), k = choix([10, 100, 1000])
+    return aTrou(`Compléter : $${nb(x)} \\div \\ldots = ${nb(x / k)}$`, mille(k))
+  },
+  'decimaux-addition': () => {
+    const a = ent(11, 99) / 10, b = ent(101, 999) / 100
+    return aTrou(`Compléter : $${nb(a)} + \\ldots = ${nb(arrondi(a + b))}$`, nb(b))
+  },
+  'decimaux-soustraction': () => {
+    let a: number, b: number
+    do { a = ent(21, 199) / 10; b = ent(101, 999) / 100 } while (b >= a)
+    return aTrou(`Compléter : $${nb(a)} - \\ldots = ${nb(arrondi(a - b))}$`, nb(b))
+  },
+  'tables': () => { const a = ent(2, 10), b = ent(2, 10); return aTrou(`Compléter : $${a} \\times \\ldots = ${a * b}$`, nb(b)) },
+  'relatifs-addsub': () => {
+    const a = ent(1, 15) * choix([-1, 1]), b = ent(1, 15) * choix([-1, 1])
+    return aTrou(`Compléter : $${rel(a)} + \\ldots = ${nb(a + b)}$`, nb(b))
+  },
+  'relatifs-produit': () => {
+    const a = ent(2, 10) * choix([-1, 1]), b = ent(2, 10) * choix([-1, 1])
+    return aTrou(`Compléter : $${rel(a)} \\times \\ldots = ${nb(a * b)}$`, nb(b))
+  },
+  'relatifs-trou': memeQuestion('relatifs-trou'),
+  'fraction-decimal': () => {
+    const [n, d] = choix([[1, 2], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5], [7, 10], [3, 2], [5, 4], [7, 2], [9, 10], [3, 10]])
+    return aTrou(`Compléter : $\\dfrac{\\ldots}{${d}} = ${nb(n / d)}$`, nb(n))
+  },
+  'quotient-trou': memeQuestion('quotient-trou'),
+  'fraction-egales': () => {
+    let n: number, d: number
+    do { n = ent(1, 9); d = ent(2, 10) } while (pgcd(n, d) !== 1)
+    const k = ent(2, 8)
+    return aTrou(`Compléter : $${frac(n, d)} = \\dfrac{\\ldots}{${d * k}}$`, nb(n * k))
+  },
+  'comparer-fractions': memeQuestion('comparer-fractions'),
+  'entier-plus-fraction': () => {
+    const d = ent(2, 9), q = ent(1, 6), r = ent(1, d - 1)
+    return aTrou(`Compléter : $${frac(q * d + r, d)} = ${q} + \\dfrac{\\ldots}{${d}}$`, nb(r))
+  },
+  'fraction-quantite': () => {
+    let n: number, d: number
+    do { n = ent(1, 7); d = ent(2, 10) } while (n >= d || pgcd(n, d) !== 1)
+    const N = d * ent(2, 12)
+    return aTrou(`Compléter : $\\dfrac{\\ldots}{${d}}$ de $${N}$, c'est $${nb(N / d * n)}$.`, nb(n))
+  },
+  'pourcentages-1-10-50': () => {
+    const p = choix([1, 10, 50]), N = choix([200, 300, 400, 500, 600, 800, 1000, 1200])
+    return aTrou(`Compléter : $\\ldots\\,\\%$ de $${N}$, c'est $${nb(N * p / 100)}$.`, nb(p))
+  },
+  'ecritures-nombre': () => {
+    const [n, d] = choix([[1, 2], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5], [1, 10], [3, 10], [7, 10], [9, 10], [3, 20]])
+    return aTrou(`Compléter : $${nb(n / d)} = \\ldots\\,\\%$`, nb(arrondi(n / d * 100)))
+  },
+  'carres': () => { const n = ent(2, 15); return aTrou(`Compléter avec un nombre positif : $\\ldots^2 = ${n * n}$`, nb(n)) },
+  'angles-triangle': () => {
+    const a = ent(25, 95), b = ent(20, 150 - a)
+    return aTrou(`Dans un triangle, compléter : $${a}° + ${b}° + \\ldots = 180°$`, deg(180 - a - b))
+  },
+  'proportionnalite-procedure': () => {
+    const k = choix([1.5, 2, 2.5, 3, 4, 5]), a = ent(2, 5)
+    let b = ent(2, 9); while (b === a) b = ent(2, 9)
+    return aTrou(`Compléter ce tableau de proportionnalité : $${tableau([nb(a), nb(b)], [nb(a * k), '\\ldots'])}$`, nb(b * k))
+  },
+  'priorites': () => {
+    const a = ent(2, 12), b = ent(2, 9), c = ent(2, 9)
+    return aTrou(`Compléter : $${a} + ${b} \\times \\ldots = ${a + b * c}$`, nb(c))
+  },
+  'litteral-reduire': () => {
+    const a = ent(2, 9), b = ent(2, 9)
+    return aTrou(`Compléter : $${terme(a)} + ${terme(b)} = \\ldots x$`, nb(a + b))
+  },
+  'conversions': memeQuestion('conversions'),
+  'aires-perimetres': () => {
+    const a = ent(3, 12), b = ent(2, 12)
+    return aTrou(`Un rectangle de longueur $${a}$ cm et de largeur $\\ldots$ cm a une aire de $${a * b}\\text{ cm}^2$.`, unite(nb(b), 'cm'))
+  },
+}
+const QCM_SEULEMENT = new Set(['vues-cubes', 'cavaliere', 'patron-cube'])
+for (const a of AUTOMATISMES_5E) {
+  if (TROUS[a.id]) a.trou = TROUS[a.id]
+  if (QCM_SEULEMENT.has(a.id)) a.qcmSeulement = true
+}
+
+// =============================================================
+// LES NIVEAUX
+// Ceux qui n'ont pas encore d'automatismes paraissent dans le panneau,
+// grisés (« bientôt »).
+// =============================================================
+export interface Niveau { id: string; nom: string; automatismes: Automatisme[] }
+export const NIVEAUX: Niveau[] = [
+  { id: '5e', nom: '5e', automatismes: AUTOMATISMES_5E },
+  { id: '4e', nom: '4e', automatismes: [] },
+  { id: '3e', nom: '3e', automatismes: [] },
+  { id: '2nde', nom: '2nde', automatismes: [] },
+  { id: '1re', nom: '1re', automatismes: [] },
+]
+/** Les thèmes d'un niveau, dans l'ordre de la liste */
+export const themesDe = (n: Niveau) => [...new Set(n.automatismes.map(a => a.theme))]
+
+// =============================================================
+// LE TIRAGE D'UN FLASH
+// =============================================================
+export type FormeQuestion = 'qcm' | 'directe' | 'trou'
+export interface Composition { qcm: number; directe: number; trou: number }
+export const COMPOSITION_PAR_DEFAUT: Composition = { qcm: 2, directe: 2, trou: 1 }
+export interface QuestionFlash {
+  auto: Automatisme
+  q: Question
+  forme: FormeQuestion
+  /** En QCM : la bonne réponse et les fausses, mélangées */
+  options: string[]
+}
+
+/** Les questions d'un flash, dans l'ordre : les QCM, les questions
+ *  directes, puis les questions à trou. Les thèmes choisis passent chacun
+ *  leur tour ; on évite de reprendre deux fois le même automatisme tant
+ *  qu'il en reste, et deux fois le même énoncé. Une
+ *  question à trou qu'aucun automatisme choisi ne sait poser devient une
+ *  question directe (trousRemplaces le compte) ; une question directe
+ *  qu'aucun ne sait poser (que des dessins) devient un QCM. */
+export function tirerFlash(autos: Automatisme[], c: Composition): { questions: QuestionFlash[]; trousRemplaces: number } {
+  const formes: FormeQuestion[] = [
+    ...Array<FormeQuestion>(Math.max(0, c.qcm)).fill('qcm'),
+    ...Array<FormeQuestion>(Math.max(0, c.directe)).fill('directe'),
+    ...Array<FormeQuestion>(Math.max(0, c.trou)).fill('trou'),
+  ]
+  const questions: QuestionFlash[] = [], pris = new Map<string, number>(), vus = new Set<string>()
+  let trousRemplaces = 0
+  if (!autos.length) return { questions, trousRemplaces }
+  for (let forme of formes) {
+    if (forme === 'trou' && !autos.some(a => a.trou)) { forme = 'directe'; trousRemplaces++ }
+    if (forme === 'directe' && autos.every(a => a.qcmSeulement)) forme = 'qcm'
+    const lot = autos.filter(a => forme === 'trou' ? !!a.trou : forme === 'directe' ? !a.qcmSeulement : true)
+    let auto = lot[0], q = auto.generer()
+    for (let essai = 0; essai < 30; essai++) {
+      // D'abord le thème le moins servi (un thème de 3 automatismes vaut un
+      // thème de 10), puis son automatisme le moins servi
+      const fois = (l: Automatisme[]) => l.reduce((n, a) => n + (pris.get(a.id) ?? 0), 0)
+      const themes = [...new Set(lot.map(a => a.theme))]
+      const moinsTheme = Math.min(...themes.map(t => fois(lot.filter(a => a.theme === t))))
+      const theme = choix(themes.filter(t => fois(lot.filter(a => a.theme === t)) === moinsTheme))
+      const dans = lot.filter(a => a.theme === theme)
+      const moins = Math.min(...dans.map(a => pris.get(a.id) ?? 0))
+      auto = choix(dans.filter(a => (pris.get(a.id) ?? 0) === moins))
+      q = forme === 'trou' ? auto.trou!() : auto.generer()
+      if (!vus.has(q.enonce + (q.figure ?? '') + q.reponse)) break
+    }
+    vus.add(q.enonce + (q.figure ?? '') + q.reponse)
+    pris.set(auto.id, (pris.get(auto.id) ?? 0) + 1)
+    questions.push({ auto, q, forme, options: forme === 'qcm' ? melange([q.reponse, ...q.faux.slice(0, 3)]) : [] })
   }
-  // Plusieurs automatismes : on mélange l'ordre
-  if (autos.length > 1) r.sort(() => Math.random() - 0.5)
-  return r
+  return { questions, trousRemplaces }
 }

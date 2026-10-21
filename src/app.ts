@@ -3469,7 +3469,7 @@ export class App {
    *  l'intérieur d'une figure fermée ne compte qu'à la Sélection et au doigt
    *  qui déplace (le Stylo en main, un clic droit dans le vide d'un triangle
    *  ouvre le menu de la page, comme à côté). Rien quand le tableau est
-   *  caché (la revue, une séance d'automatismes, la trieuse des pages : voir
+   *  caché (la revue, la trieuse des pages : voir
    *  tableauCache), ni quand un clic est attendu ; rien sur un
    *  instrument, qui recouvre ce qui est dessous et n'a pas de menu. */
   demanderOptions(client: { clientX: number; clientY: number }, pointeur: TypePointeur) {
@@ -3685,6 +3685,15 @@ export class App {
   private cachePixels = new Map<string, HTMLImageElement>()
 
   private get banqueImages() { return this.tableau.doc.getMap('images') as Y.Map<string> }
+
+  /** Range des pixels (une adresse data:) dans le classeur, une fois : rend
+   *  la clé qu'une image du tableau porte dans src (les dessins d'un flash
+   *  d'automatismes, voir flash.ts) */
+  rangerImage(donnees: string): string {
+    const src = uid()
+    this.banqueImages.set(src, donnees)
+    return src
+  }
 
   /** Les pixels d'une image, chargés une fois : la banque garde les données.
    *  Aussi pour peindre une page hors de l'écran (src/sorties/apercu.ts) */
@@ -4006,7 +4015,7 @@ export class App {
    *  ordre.ts) pour ce qui est choisi et libre (les points liés à une image
    *  choisie suivent, comme à la copie) ; 'verrou' : rien de libre dans ce
    *  qui est choisi ; null : rien de choisi, ou le tableau caché (la revue,
-   *  une séance d'automatismes, la trieuse) ou en lecture. */
+   *  la trieuse) ou en lecture. */
   private rangsPour(sens: Sens): { id: string; z: number }[] | 'verrou' | null {
     if (tableauCache(this)) return null
     const choisis = this.objetsChoisis()
@@ -5174,14 +5183,6 @@ export class App {
 
   private clavier(e: KeyboardEvent) {
     if (this.enLecture) return
-    // Pendant une séance d'automatismes, le tableau est caché : aucune touche
-    // ne le change (ni Ctrl+Z, ni Suppr, ni les flèches qui pousseraient un
-    // objet resté sélectionné) ni ne bouge sa vue ; on ne verrait rien. La
-    // séance a ses propres touches (seance.ts), et le navigateur garde les
-    // siennes (Ctrl+C dans une question, Ctrl + = pour grossir l'écran ;
-    // Espace et Entrée sur ses boutons). Les barres du tableau sont cachées
-    // (visibility: hidden) : aucun de leurs boutons ne garde le focus.
-    if (document.body.classList.contains('en-seance')) return
     const cible = e.target as HTMLElement
     // Dans une fenêtre (publier, formule…), les raccourcis du tableau se
     // taisent. Ctrl+D (⌘D) n'y écrit rien : on empêche seulement le

@@ -446,14 +446,14 @@ async function sourisDehors(page) { await page.mouse.move(400, 10); await page.m
   verifier('Pendant la revue, Ctrl+A, C, V, D, X et un collage ne font rien', enRevue && e.n === a0.n && e.film === a0.film && JSON.stringify(e.sel) === JSON.stringify(a0.sel), JSON.stringify({ enRevue, a0, e }))
   await page.keyboard.press('Escape'); await page.waitForTimeout(300)
 
-  // ----- Pendant une séance d'automatismes : rien -----
+  // ----- Pendant le réglage d'un flash d'automatismes (une fenêtre) : rien -----
   await page.evaluate(T => { const a = window.__app; a.selection.clear(); a.selection.add(T) }, T)
-  await page.getByRole('button', { name: 'Automatismes : 10 questions minutées' }).click(); await page.waitForTimeout(300)
+  await page.getByRole('button', { name: 'Automatismes : un flash de questions sur une page de la séance' }).click(); await page.waitForTimeout(300)
   a0 = await etat(page)
   await ctrl(cdp, 'd'); await ctrl(cdp, 'x'); await touche(cdp, 'a', 'KeyQ', 2)
   e = await etat(page)
-  verifier('Pendant une séance d\'automatismes, Ctrl+D, Ctrl+X, Ctrl+A ne font rien', e.n === a0.n && e.sel.length === 1, JSON.stringify({ a0, e }))
-  await page.evaluate(() => document.querySelector('.seance .fermer')?.click()); await page.waitForTimeout(150)
+  verifier('Pendant le réglage d\'un flash d\'automatismes, Ctrl+D, Ctrl+X, Ctrl+A ne font rien', e.n === a0.n && e.sel.length === 1, JSON.stringify({ a0, e }))
+  await page.evaluate(() => document.querySelector('dialog.dialogue-flash .annuler')?.click()); await page.waitForTimeout(150)
 
   // ----- Page vide -----
   await page.evaluate(() => window.__app.nouvellePage()); await page.waitForTimeout(100)

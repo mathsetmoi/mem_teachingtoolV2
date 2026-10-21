@@ -1,7 +1,7 @@
 // Corrections du rapport « regressions » du lot 1 :
 //  A. le doigt « qui déplace » pendant un clic attendu (construction, Désigner, Tracer un axe)
 //  B. le double-clic au Stylo resserré (deux points serrés restent deux points), l'heure du point dans le film
-//  C. F5 pendant une séance d'automatismes : le message se voit
+//  (C. F5 pendant une séance d'automatismes : retiré avec elle)
 // URL0=http://localhost:5195/ pour la version d'avant la correction.
 import { chromium } from '../../commun/playwright.mjs'
 
@@ -277,27 +277,8 @@ const POSER = () => {
   await ctx.close()
 }
 
-// ======================= C. F5 pendant une séance d'automatismes =======================
-{
-  const { ctx, page } = await ouvrir({ viewport: { width: 1366, height: 768 } })
-  await page.getByRole('button', { name: /^Automatismes/ }).click()
-  await attendre(500)
-  let recharge = false
-  page.once('load', () => { recharge = true })
-  await page.keyboard.press('F5')
-  await attendre(300)
-  // Le message ne reçoit pas les appuis (pointer-events: none) : on le rend
-  // touchable le temps de demander ce qui est dessiné au-dessus
-  const vu = await page.evaluate(() => {
-    const t = document.querySelector('.toast'), r = t.getBoundingClientRect()
-    t.style.pointerEvents = 'auto'
-    const d = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
-    t.style.pointerEvents = ''
-    return { seance: document.body.classList.contains('en-seance'), visible: t.classList.contains('visible'), devant: !!d && (d === t || t.contains(d)), texte: t.textContent }
-  })
-  verifier('C1. Séance d\'automatismes : F5 ne recharge pas, et son message se voit devant la séance', vu.seance && !recharge && vu.visible && vu.devant && /Ctrl\+R/.test(vu.texte), JSON.stringify({ recharge, ...vu }))
-  await ctx.close()
-}
+// (Retiré avec la séance d'automatismes, qui cachait le tableau : le flash
+// se règle maintenant dans une fenêtre, puis se joue sur une page de la séance.)
 
 console.log(erreurs.length ? 'Erreurs JS :\n' + erreurs.join('\n') : 'Aucune erreur JS')
 console.log(`${resultats.filter(r => r.ok).length} / ${resultats.length}`)

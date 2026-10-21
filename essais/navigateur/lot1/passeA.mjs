@@ -132,14 +132,8 @@ const DANS_ZONE_LIBRE = () => {
   })
   verifier('Dialogue ouvert : Ctrl + = bloqué, sans effet', dlg && pres((await page.evaluate(CAM)).z, zAvantDlg))
 
-  // La séance d'automatismes : le professeur peut grossir l'écran
-  const seance = await page.evaluate(() => {
-    document.body.classList.add('en-seance')
-    const r = document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '=', code: 'Equal', ctrlKey: true, bubbles: true, cancelable: true }))
-    document.body.classList.remove('en-seance')
-    return r
-  })
-  verifier('Séance ouverte : Ctrl + = reste au navigateur', seance && pres((await page.evaluate(CAM)).z, zAvantDlg))
+  // (Retiré avec la séance d'automatismes, qui cachait le tableau : le flash
+  // se règle maintenant dans une fenêtre, puis se joue sur une page de la séance.)
 
   // Molette avec Ctrl au-dessus des barres : la page ne zoome pas
   const roues = await page.evaluate(() => {

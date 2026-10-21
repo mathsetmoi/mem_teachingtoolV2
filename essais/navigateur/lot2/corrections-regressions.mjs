@@ -1,10 +1,10 @@
-// Essais des corrections « regressions » du lot 2. Pendant une séance
-// d'automatismes, le tableau est caché : Suppr, Retour arrière, Ctrl+Z, Ctrl+Y,
-// Ctrl+Maj+Z (et ⌘ sur Mac) ne le changent pas (point 7 : jamais un
-// changement invisible). Avant la correction, Suppr effaçait l'objet resté
-// sélectionné et Ctrl+Z défaisait le dernier geste de la page cachée ; à la
-// fermeture de la séance, il manquait un trait. La séance fermée, ces touches
-// remarchent. Serveur de développement sur :5173 (ou l'adresse en argument).
+// Essais des corrections « regressions » du lot 2. Pendant le réglage d'un
+// flash d'automatismes (une fenêtre ; avant, la séance d'automatismes cachait
+// le tableau) : Suppr, Retour arrière, Ctrl+Z, Ctrl+Y, Ctrl+Maj+Z (et ⌘ sur
+// Mac) ne changent pas la page (point 7 : jamais un changement qu'on n'a pas
+// voulu). Avant la correction, Suppr effaçait l'objet resté sélectionné et
+// Ctrl+Z défaisait le dernier geste de la page cachée. La fenêtre fermée, ces
+// touches remarchent. Serveur de développement sur :5173 (ou l'adresse en argument).
 // Une ligne « OK … » ou « ÉCHEC … » par vérification ; code de sortie 1 s'il y
 // a un échec ou une erreur JS.
 import { chromium } from '../commun/playwright.mjs'
@@ -33,7 +33,7 @@ const etat = () => page.evaluate(() => {
   return {
     n: a.formes.length, ids: a.formes.map(f => f.id).sort(), pos: a.formes.map(f => f.id + ':' + f.x + ',' + f.y).sort(),
     sel: [...a.selection], page: a.page, cam: [a.cam.x, a.cam.y, a.cam.z], msgs: window.__msgs.slice(),
-    seance: document.body.classList.contains('en-seance'),
+    seance: !!document.querySelector('dialog.dialogue-flash[open]'),
   }
 })
 const ecranDe = (x, y) => page.evaluate(([x, y]) => {
@@ -59,23 +59,23 @@ verifier('Préparation : deux traits, le premier sélectionné', avant.n === 2 &
 
 await page.click('button[title^="Automatismes"]'); await page.waitForTimeout(400)
 let e = await etat()
-verifier('La séance est ouverte (tableau caché)', e.seance, e)
+verifier('Le réglage du flash est ouvert', e.seance, e)
 await page.evaluate(() => { window.__msgs.length = 0 })
 for (const [touche, nom] of [['Delete', 'Suppr'], ['Backspace', 'Retour arrière'], ['Control+z', 'Ctrl+Z'], ['Control+y', 'Ctrl+Y'],
   ['Control+Shift+z', 'Ctrl+Maj+Z'], ['Meta+z', '⌘Z'], ['Meta+Shift+z', '⌘⇧Z']]) {
   await page.keyboard.press(touche); await page.waitForTimeout(80)
   e = await etat()
-  verifier(`Séance ouverte : ${nom} ne change rien à la page cachée (ni forme, ni place, ni page, ni message)`,
+  verifier(`Réglage ouvert : ${nom} ne change rien à la page (ni forme, ni place, ni page, ni message)`,
     e.n === avant.n && JSON.stringify(e.pos) === JSON.stringify(avant.pos) && e.page === avant.page && !e.msgs.length, { n: e.n, pos: e.pos, msgs: e.msgs })
 }
 await page.keyboard.press('Escape'); await page.waitForTimeout(400)
 e = await etat()
-verifier('Séance fermée : le tableau a ses deux traits, à leur place', !e.seance && e.n === 2 && JSON.stringify(e.pos) === JSON.stringify(avant.pos), e)
+verifier('Réglage fermé : le tableau a ses deux traits, à leur place', !e.seance && e.n === 2 && JSON.stringify(e.pos) === JSON.stringify(avant.pos), e)
 
-// La séance fermée, les touches remarchent
+// La fenêtre fermée, les touches remarchent
 await page.keyboard.press('Control+z'); await page.waitForTimeout(100)
 e = await etat()
-verifier('Séance fermée : Ctrl+Z défait le dernier trait', e.n === 1 && JSON.stringify(e.ids) === '["T300"]', e.ids)
+verifier('Réglage fermé : Ctrl+Z défait le dernier trait', e.n === 1 && JSON.stringify(e.ids) === '["T300"]', e.ids)
 await page.keyboard.press('Control+y'); await page.waitForTimeout(100)
 e = await etat()
 verifier('… Ctrl+Y le rend', e.n === 2, e.ids)

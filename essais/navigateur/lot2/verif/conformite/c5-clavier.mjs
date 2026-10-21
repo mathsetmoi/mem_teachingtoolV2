@@ -1,31 +1,26 @@
-// Conformité lot 2 : séance d'automatismes et Ctrl+Z/Ctrl+V, collage d'une page à l'autre,
+// Conformité lot 2 : réglage du flash d'automatismes et Ctrl+Z/Ctrl+V, collage d'une page à l'autre,
 // Ctrl+X et collage multiple en une étape, la vue d'une page rendue
 import { contexte, charger, etat, barre, boiteEcran, outil, poser, vider, verifier, note, fin, msgsDepuis, attendre } from './lib.mjs'
 
 const ctx = await contexte()
 const { page } = await charger(ctx, 'clavier')
 
-// ---- Séance d'automatismes ouverte : Ctrl+Z ne doit rien changer d'invisible ----
+// ---- Réglage d'un flash d'automatismes ouvert : Ctrl+Z ne doit rien changer ----
+// (avant : la séance d'automatismes cachait le tableau ; le flash se règle
+// maintenant dans une fenêtre, et se joue ensuite sur une page de la séance)
 const S = await poser(page, { type: 'trait', x: 300, y: 300 })
-await page.evaluate(() => window.__app.ui.seance.ouvrir())
+await page.evaluate(() => window.__app.ui.flash.ouvrir())
 await page.waitForTimeout(200)
-const couvre = await page.evaluate(() => {
-  const s = document.querySelector('.seance'), r = s.getBoundingClientRect()
-  const z = document.getElementById('zone')
-  return { seance: { l: r.width, h: r.height, vis: getComputedStyle(s).visibility }, zoneVis: getComputedStyle(z).visibility, dessus: document.elementFromPoint(420, 420)?.className }
-})
-note('séance', couvre)
 let k = (await etat(page)).msgs
 await page.keyboard.press('Control+z')
 await page.waitForTimeout(100)
 let e = await etat(page)
 const ms = await msgsDepuis(page, k)
-verifier('séance ouverte (tableau caché) : Ctrl+Z ne défait rien sur la page cachée', e.n === 1, { n: e.n, ms, couvre })
-await page.keyboard.press('Control+y')
-await page.evaluate(() => window.__app.ui.seance.fermer())
+verifier('réglage du flash ouvert : Ctrl+Z ne défait rien sur la page', e.n === 1, { n: e.n, ms })
+await page.evaluate(() => document.querySelector('dialog.dialogue-flash .annuler')?.click())
 await page.waitForTimeout(100)
 e = await etat(page)
-note('après fermeture de la séance', { n: e.n })
+note('après fermeture du réglage', { n: e.n })
 
 // ---- Copier, autre page, coller ----
 await vider(page)

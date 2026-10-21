@@ -16,7 +16,7 @@ import { RevueEnClasse } from './revue/revue'
 import { Publication } from './publication/fenetre'
 import { Catalogue } from './catalogue-vue'
 import { Constructeur } from './constructeur'
-import { Seance } from './seance'
+import { Flash } from './flash'
 import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
 import { OutilsDeClasse } from './outils-classe'
@@ -318,7 +318,8 @@ export class UI implements Interface {
   private publication!: Publication
   private constructeur!: Constructeur
   private catalogue!: Catalogue
-  private seance!: Seance
+  /** Le flash d'automatismes (voir flash.ts) */
+  flash!: Flash
   private choixInstruments!: HTMLDivElement
   private boutonInstruments!: HTMLButtonElement
   /** Les outils de classe (rideau, minuteur, tirage au sort ; le laser est à l'App) */
@@ -764,7 +765,7 @@ export class UI implements Interface {
     choixFichier.addEventListener('change', () => { const f = choixFichier.files?.[0]; if (f) app.importerImage(f, { pointeur: this.pointeurImport }); choixFichier.value = '' })
     const importer = bouton('image', 'Importer une image (ou coller avec Ctrl+V, ou glisser le fichier)', e => this.choisirImage(e), 'seulement-large')
     this.racine.appendChild(choixFichier)
-    const automatismes = bouton('automatismes', 'Automatismes : 10 questions minutées', () => this.seance.ouvrir(), 'seulement-large')
+    const automatismes = bouton('automatismes', 'Automatismes : un flash de questions sur une page de la séance', () => this.flash.ouvrir(), 'seulement-large')
     // Les outils de classe : rideau, pointeur laser, minuteur, tirage au
     // sort, aide (voir outils-classe.ts) ; un menu sous leur bouton
     this.outilsDeClasse = new OutilsDeClasse(this.racine, {
@@ -1007,7 +1008,7 @@ export class UI implements Interface {
     this.publication = new Publication(app, this.racine)
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
     this.catalogue = new Catalogue(app, this.racine, t => this.message(t, undefined, true))
-    this.seance = new Seance(this.racine)
+    this.flash = new Flash(app, this.racine, t => this.message(t, undefined, true))
 
     // ----- Menu d'un morceau de figure (point, extrémité, nom, rayon) -----
     this.menuPartie = document.createElement('div')
@@ -1499,7 +1500,7 @@ export class UI implements Interface {
     montrerConseils(this.racine, [
       { titre: 'Nouveau : les outils de classe', texte: 'Le rideau, le pointeur laser, le minuteur et le tirage au sort sont réunis sous ce bouton.', ancre: () => this.boutonOutilsClasse },
       { titre: 'L\'aide, à tout moment', texte: 'La touche « ? » ouvre l\'aide : tous les raccourcis du clavier et les gestes.', ancre: () => this.boutonOutilsClasse },
-    ], () => !document.querySelector('dialog[open]') && !document.body.classList.contains('en-seance') && !document.body.classList.contains('en-bibliotheque') && !menuOuvert())
+    ], () => !document.querySelector('dialog[open]') && !document.body.classList.contains('en-bibliotheque') && !menuOuvert())
   }
 
   /** « Importer une image » (le bouton de la barre du haut, ou « Plus » au
@@ -1644,7 +1645,7 @@ export class UI implements Interface {
       aide: 'Règle, équerre, rapporteur, compas' })
     this.entreeMenu(m, 'Programme de construction', () => this.basculerConstructeur(), { action: 'construction', aide: 'Étape par étape' })
     this.entreeMenu(m, 'Catalogue', () => this.basculerCatalogue(), { action: 'catalogue', aide: 'Ensembles de nombres…' })
-    this.entreeMenu(m, 'Automatismes', () => this.seance.ouvrir(), { action: 'automatismes', aide: '10 questions minutées' })
+    this.entreeMenu(m, 'Automatismes', () => this.flash.ouvrir(), { action: 'automatismes', aide: 'Un flash de questions' })
     this.entreeMenu(m, 'Outils de classe…', () => this.ouvrirOutilsClasseDepuisPlus(), { action: 'outils-classe', aide: 'Rideau, laser, minuteur, tirage au sort' })
     this.entreeMenu(m, 'Revoir la construction', () => this.ouvrirRevue(plus), { action: 'revue', aide: 'Une page, une séance, pas à pas' })
     this.entreeMenu(m, 'Publier le replay', () => this.publication.ouvrir(), { action: 'publier', aide: 'Pour les élèves' })
@@ -2035,7 +2036,7 @@ export class UI implements Interface {
    *  reste ouverte et utilisable pendant l'export. */
   exporterPdf(cible: CibleExport) {
     const app = this.app
-    if (app.enLecture || this.revue.ouvert || document.body.classList.contains('en-seance') || document.querySelector('dialog[open]')) return
+    if (app.enLecture || this.revue.ouvert || document.querySelector('dialog[open]')) return
     // Le point d'un simple toucher qui attend encore est de la page
     app.poserCeQuiAttend()
     this.fermerMenus()
@@ -3210,7 +3211,7 @@ export class UI implements Interface {
   }
 
   /** La trieuse des pages (le compteur, Maj + P, « Toutes les pages… » du
-   *  menu de la page). Pas pendant la revue, une séance d'automatismes, une
+   *  menu de la page). Pas pendant la revue, une
    *  fenêtre ouverte, ni en plein geste (un trait, un objet qu'on glisse).
    *  Avant, ce qui attend sur le tableau se pose (le point d'un simple
    *  toucher), un placement en attente (désigner un axe, un centre, poser
@@ -3346,7 +3347,7 @@ export class UI implements Interface {
    *  le message s'en va, sauf pour une action à garder : seul ce bouton
    *  part, les autres restent le temps qu'il reste. Il passe sous les menus
    *  et les panneaux (il ne cache pas ce qu'on va toucher), sauf pendant la
-   *  revue et la séance d'automatismes, qui couvrent tout, et pour le
+   *  revue, qui couvre tout, et pour le
    *  programme de construction (dessus), dont le panneau prend presque tout
    *  l'écran d'une tablette, et pendant un placement (la consigne de
    *  « Désigner » ou « Tracer » : le menu complet reste ouvert pendant

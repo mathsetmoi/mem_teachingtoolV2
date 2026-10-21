@@ -150,7 +150,7 @@ describe('où elle se pose', () => {
 describe('quand elle paraît', () => {
   // Un trait pris à l'outil Sélection, rien d'autre d'ouvert
   const base: EtatBarre = { pris: 1, partie: false, options: false, menu: false, mouvement: false, lecture: false, placement: false,
-    seance: false, fenetre: false, outilSelection: true, doigtQuiDeplace: false }
+    fenetre: false, outilSelection: true, doigtQuiDeplace: false }
 
   it('quelque chose de pris, à la Sélection ou au doigt qui déplace ; jamais sous un outil de dessin', () => {
     expect(barreVisible(base)).toBe(true)
@@ -167,7 +167,7 @@ describe('quand elle paraît', () => {
   })
 
   it('cachée quand quelque chose bouge, pendant la revue, une séance, un placement, une fenêtre ouverte', () => {
-    for (const k of ['mouvement', 'lecture', 'placement', 'seance', 'fenetre'] as const) expect(barreVisible({ ...base, [k]: true }), k).toBe(false)
+    for (const k of ['mouvement', 'lecture', 'placement', 'fenetre'] as const) expect(barreVisible({ ...base, [k]: true }), k).toBe(false)
   })
 
   it('un petit menu qui s\'ouvre ou se ferme le dit (la barre se cache, puis revient)', () => {

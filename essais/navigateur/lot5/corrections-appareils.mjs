@@ -7,8 +7,8 @@
 //    plus long que la place, le menu défile, sous son bouton, et sa dernière
 //    entrée s'atteint. Sur un grand écran (1920 × 969), il tient sans défiler.
 // B. Alt + ← / →, Ctrl + G, Ctrl + Maj + G (PC) et ⌘ + ← / →, ⌘ + G (Mac)
-//    empêchés dans la revue en classe, la trieuse, la bibliothèque et la
-//    séance d'automatismes, comme à l’écran ; pas dans un champ (le nom
+//    empêchés dans la revue en classe, la trieuse, la bibliothèque (le
+//    réglage du flash d'automatismes, une fenêtre, s'ouvre aussi), comme à l’écran ; pas dans un champ (le nom
 //    d'une page dans la trieuse : Ctrl + ← y va de mot en mot) ; la trieuse
 //    déplace toujours une page par Ctrl + Maj + → ; la revue avance
 //    toujours à la flèche seule.
@@ -233,12 +233,12 @@ for (const mac of [false, true]) {
   ok(biblio, `B) ${mac ? 'Mac' : 'PC'} — la bibliothèque est ouverte`)
   if (biblio) await ecran('dans la bibliothèque')
   await p.keyboard.press('Escape'); await attendre(800)
-  // La séance d'automatismes
+  // Le réglage du flash d'automatismes (avant : la séance d'automatismes)
   await p.evaluate(() => { const b = [...document.querySelectorAll('button')].find(b => b.offsetWidth && /^Automatismes/.test(b.title)); b?.click() })
   await attendre(800)
-  const seance = await p.evaluate(() => document.body.classList.contains('en-seance'))
-  ok(seance, `B) ${mac ? 'Mac' : 'PC'} — la séance d'automatismes est ouverte`)
-  if (seance) await ecran('dans la séance d\'automatismes')
+  const seance = await p.evaluate(() => !!document.querySelector('dialog.dialogue-flash[open]'))
+  ok(seance, `B) ${mac ? 'Mac' : 'PC'} — le réglage du flash d'automatismes est ouvert`)
+  if (seance) await ecran('dans le réglage du flash d\'automatismes')
   await p.keyboard.press('Escape'); await attendre(500)
   await ctx.close()
 }

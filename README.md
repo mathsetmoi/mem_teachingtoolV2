@@ -171,7 +171,7 @@ elle n'était pas là). Un clic droit, un double-clic ou un appui long ouvrent
 directement le menu complet, qui contient tout : la barre lui laisse la place, comme au menu
 d'un morceau, à un petit menu (celui de la page, au clic droit dans le vide,
 celui du zoom… : un seul menu à la fois ; elle revient quand il se ferme), à
-la revue, à une séance d'automatismes, à l'éditeur d'une formule, à une
+la revue, à l'éditeur d'une formule, à une
 fenêtre ouverte. Discrète au vidéoprojecteur : le gris des
 barres, des libellés gris, aucune couleur.
 
@@ -942,22 +942,51 @@ et parenthèses sont facultatifs ; les majuscules désignent les points.
 
 ## Automatismes
 
-Le bouton « Automatismes » (chronomètre) de la barre du haut ouvre une séance
-plein écran. Les automatismes suivent la **liste officielle de 5e**, rangés
-par thème : opérations, nombres relatifs, nombres rationnels (fractions,
-pourcentages), puissances et calcul littéral, repérage, représentation de
-l'espace, transformations, angles, triangles, parallélogrammes et polygones,
-probabilités, proportionnalité — 42 automatismes, plus 10 « hors liste
-officielle » (priorités, conversions, moyenne…). « tout cocher » prend un thème
-entier, l'œil montre un exemple. On choisit aussi un **mode**
-— réponse directe, QCM, vrai/faux, ou **au hasard** (un mode tiré pour chaque
-question) — et un **affichage** : diaporama (une question à la fois, qui
-change toutes les 30 s) ou les 10 questions d'un coup.
+Le bouton « Automatismes » (chronomètre) de la barre du haut prépare un
+**flash** : quelques questions courtes, posées **sur une page de la séance**.
+Le flash est donc dans le replay, comme tout le reste. On peut aussi le
+demander au démarrage : la fenêtre « Bonjour ! » a une case « Commencer par
+des automatismes », **jamais cochée d'office** ; cochée, le réglage s'ouvre
+dès que la séance commence, sur sa première page, vide.
 
-Une minuterie de 5 min tourne (Pause / Espace). La correction s'affiche à la
-fin du temps, ou quand le professeur la demande (bouton ou touche C) ; en QCM,
-la bonne proposition est mise en évidence, en vrai/faux la bonne réponse est
-rappelée. « Nouveaux exemples » tire dix autres questions.
+**Le réglage** est une fenêtre. Pendant qu'on règle, les élèves ne voient
+**aucune question** : rien n'est tiré, rien n'est montré, pas d'exemple, la
+page derrière reste vide. On y choisit :
+- un ou plusieurs **niveaux** (5e aujourd'hui ; 4e, 3e, 2nde et 1re sont
+  marqués « bientôt ») ;
+- un ou plusieurs **thèmes** de chaque niveau (« tout cocher » prend tout le
+  niveau). Les automatismes de 5e suivent la **liste officielle**, rangés par
+  thème : opérations, nombres relatifs, nombres rationnels (fractions,
+  pourcentages), puissances et calcul littéral, repérage, représentation de
+  l'espace, transformations, angles, triangles, parallélogrammes et
+  polygones, probabilités, proportionnalité — 42 automatismes, plus 10
+  « hors liste officielle » (priorités, conversions, moyenne…) ;
+- combien de questions de chaque forme, avec − et + : par défaut **5
+  questions, 2 QCM, 2 questions directes** (une seule réponse) **et 1
+  question à trou** (à compléter). Elles viennent dans cet ordre. Un
+  automatisme qui n'a pas de forme « à trou » n'en donne pas ; si aucun des
+  thèmes choisis n'en a, une question directe la remplace, et un message le
+  dit ;
+- l'**affichage** : une question à la fois (30 s chacune par défaut), ou
+  toutes d'un coup avec une minuterie (5 min par défaut).
+
+Le dernier réglage est retenu sur l'appareil, et pour chaque classeur
+(`mem-flash`, `mem-flash-<classeur>`). Les thèmes sont répartis le plus
+également possible, et deux questions ne se répètent pas.
+
+**« Lancer le flash »** tire les questions et les pose : sur la page où l'on
+est si elle est vide, sinon sur une nouvelle page juste après. Chaque question
+est faite d'objets ordinaires du tableau (une formule, une figure, les
+propositions du QCM), groupés : on écrit dessus au stylet, on les déplace.
+Le titre « Automatismes — » et la date est en haut de la page. Le temps et le
+numéro de la question sont dans un bandeau, pas sur la page : Pause (ou
+Espace), Suivante (ou →), Correction (ou C), Nouveaux exemples, et × pour
+arrêter. Une question à la fois : la question en grand à droite, et quand son
+temps est passé elle va se ranger dans sa case à gauche. Si l'on va sur une
+autre page, le temps attend. **La correction** remet toutes les questions en
+grille et écrit chaque réponse en vert dessous (en QCM, la lettre et la bonne
+proposition). « Nouveaux exemples » pose un autre flash sur une nouvelle page
+juste après. Il n'y a ni bilan, ni suivi de la classe.
 
 Chaque automatisme est un générateur (`src/automatismes.ts`) : les valeurs sont
 tirées au hasard, et les trois réponses fausses d'un QCM sont de vraies erreurs
@@ -1495,7 +1524,7 @@ On l'ouvre par le **compteur** « 3 / 7 » de la barre du haut (un bouton), par
 reste le Stylo), ou par **Toutes les pages…** dans le menu de la page (un clic
 droit dans le vide). On la ferme par Échap, par le ×, par Maj + P, ou en
 allant à une page ; ouverte au clavier, elle rend le focus au compteur. Elle
-ne s'ouvre ni pendant la revue, ni pendant une séance d'automatismes, ni
+ne s'ouvre ni pendant la revue, ni
 quand une fenêtre est ouverte, ni au milieu d'un trait ou d'un objet qu'on
 glisse. En s'ouvrant, elle pose ce qui attendait (le point d'un simple
 toucher), annule un placement en attente (désigner un axe, poser une
@@ -1710,7 +1739,10 @@ se dit) :
   ouvre « Nouveau chapitre » dans son dossier. En bas, « Nouveau classeur
   vierge… » ouvre la fenêtre « Nouveau classeur » de la bibliothèque (page
   blanche cochée), rangé hors de toute classe, à enregistrer plus tard comme
-  tout classeur. Échap ferme la fenêtre et
+  tout classeur. Sous le gros bouton, la case « Commencer par des
+  automatismes », jamais cochée d'office : cochée, quel que soit le bouton
+  choisi, la séance s'ouvre sur le réglage d'un flash (voir Automatismes).
+  Échap ferme la fenêtre et
   laisse la dernière page telle quelle (la séance continue) ;
 - un classeur où rien n'est encore écrit (un classeur neuf, un nouveau
   chapitre) commence sa séance sans question.
@@ -2255,8 +2287,8 @@ entrée de son menu a un nom stable (`data-action` : `enregistrer`, `ouvrir`,
   « Lâchez pour ajouter à la bibliothèque » tant qu'ils la survolent, puis le
   même chemin ; sur le tableau, de même. Ce qui n'est ni un `.memc` ni un
   `.memb` : « Ce fichier n'est ni un classeur (.memc) ni une bibliothèque
-  (.memb). ». On n'ouvre pas de fichier pendant la revue, une séance
-  d'automatismes ou une fenêtre ouverte. Sans l'index de la bibliothèque (le
+  (.memb). ». On n'ouvre pas de fichier pendant la revue ou une fenêtre
+  ouverte. Sans l'index de la bibliothèque (le
   repli), « Ouvrir un classeur… » remplace le classeur ouvert, comme avant.
 - **Les autres onglets.** Un autre onglet ouvert sur le même classeur
   l'apprend aussitôt, cesse d'écrire et le dit : « Le classeur a changé »
@@ -4231,7 +4263,7 @@ fois toutes les 5 s). À chaque changement de page, le numéro (et le nom)
 s'affiche en grand un peu plus d'une seconde, en haut au centre de ce qu'on
 voit du tableau, jamais au milieu, là où l'on écrit en arrivant ; le stylet
 écrit à travers, et le premier appui sur le tableau l'efface. Ni au
-démarrage, ni sous la revue, une séance d'automatismes ou la trieuse des
+démarrage, ni sous la revue ou la trieuse des
 pages ; sans fondu sous « animations réduites ».
 
 **Dupliquer la page** (le menu de la page, au clic droit dans le vide ou au
@@ -4308,7 +4340,7 @@ et d'une fenêtre, avec ou sans sélection, elles ne font plus rien, comme
 Ctrl + ← / → (qui poussaient l'objet), et l'on ne quitte plus le tableau en
 plein cours. Ces touches, et Ctrl + G, Ctrl + Maj + G (⌘ sur Mac), sont
 empêchées de même dans la revue en classe, la trieuse des pages, la
-bibliothèque des classeurs et la séance d'automatismes (depuis la
+bibliothèque des classeurs (depuis la
 vérification « appareils » du lot 5 : la revue, qui arrête en capture ce
 qu'elle reçoit, laissait Alt + ← quitter MEM pendant qu'on avançait au
 clavier) : une seule garde, posée au démarrage (`toucheQuitteLaPage`,
@@ -4402,9 +4434,9 @@ page ». Un geste fait une étape : un coup de gomme, même lent, même sur une
 page relue du disque ; une image transformée avec ses points ; une figure
 reconnue en fait une seconde (Ctrl+Z rend le tracé). Une rafale de flèches
 qui pousse la sélection fait une étape, séparée de ce qui la précède : Ctrl+D
-puis → aussitôt, Ctrl+Z ne défait que la poussée. Pendant une séance
-d'automatismes, le tableau est caché : aucune touche ne le change (ni Ctrl+Z,
-ni Suppr, ni les flèches). Pendant qu'on glisse un objet, qu'on écrit, qu'on
+puis → aussitôt, Ctrl+Z ne défait que la poussée. Pendant le réglage d'un
+flash d'automatismes (une fenêtre), aucune touche ne change le tableau (ni
+Ctrl+Z, ni Suppr, ni les flèches). Pendant qu'on glisse un objet, qu'on écrit, qu'on
 tire un cadre ou un lasso, ou qu'on déplace la vue, les touches qui
 changeraient la page ou la sélection ne font rien : Ctrl+Z, Ctrl+Y, Suppr,
 Retour arrière, Page↑, Page↓, la touche Menu, les flèches qui pousseraient la
@@ -4514,7 +4546,7 @@ rend l'outil d'avant) ; ⌘ sur Mac. Ce sont les lettres écrites sur les
 touches, en AZERTY comme en QWERTY, et AltGr n'en fait pas un raccourci. Rien
 de tout cela dans un champ de saisie (une formule qu'on tape, les noms des
 sommets : on y copie du texte ; Ctrl+D n'y ouvre pas non plus le marque-page
-du navigateur, il ne fait rien), pendant la revue, une séance d'automatismes,
+du navigateur, il ne fait rien), pendant la revue,
 quand une fenêtre est ouverte, ni pendant qu'on glisse un objet ou qu'on
 écrit (le lâcher déplacerait ce que la touche vient de prendre) ; sans rien
 de choisi, un message le dit.
@@ -4691,8 +4723,7 @@ téléphone (lot 5), elle n'a que sept boutons, en bas ou à gauche : la
 poubelle de la sélection y est dans *Autres outils* (*Supprimer*, grisée de
 même), et dans la barre d'actions (voir « Le téléphone »).
 Les **messages** en bas de l'écran passent sous les panneaux et les menus (ils
-ne cachent jamais ce qu'on va toucher), sauf pendant la revue, la séance
-d'automatismes, le programme de construction et un placement (la consigne de
+ne cachent jamais ce qu'on va toucher), sauf pendant la revue, le programme de construction et un placement (la consigne de
 *Désigner* ou *Tracer*, que le menu complet ouvert ne doit pas cacher ; aucun
 appui ne s'arrête sur le texte d'un message) ; un message à bouton
 (« Changer ») reste 7 s, et un autre message qui arrive entre-temps s'écrit
@@ -4844,8 +4875,8 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/instruments.ts` | Règle, équerre, rapporteur, compas ; leur pastille ↻ (`dessinerPastille`), la même que celle du cadre de taille (lot 5 ; son filet, `filetPx`, de 2,5 px au cadre en contraste renforcé, de 1,6 toujours aux instruments) |
 | `src/construction.ts` | Programme de construction → étapes et gestes |
 | `src/constructeur.ts` | Joue les étapes, avec ou sans instruments |
-| `src/automatismes.ts` | Les automatismes de 5e (générateurs) |
-| `src/seance.ts` | La séance d'automatismes : modes, diaporama, minuterie |
+| `src/automatismes.ts` | Les automatismes (générateurs, par niveau et par thème) et le tirage d'un flash (`tirerFlash`) |
+| `src/flash.ts` | Le flash d'automatismes : le réglage, les questions posées sur une page de la séance, le bandeau, la correction |
 | `src/seances.ts` | Les séances d'un classeur (lot 6) : le rangement des pages par séance (pur), la migration d'un classeur d'avant, les mots des dates (« Séance du mar 14 oct 14h », « de lundi ») ; dans `document.ts`, les deux cartes (`seances`, `seanceDesPages`), la séance neuve, la reprise d'une page (`reprendrePage`, `retirerReprise`) et la garde des séances passées (`garde`) ; dans `revoir/exporter.ts`, les séances lues dans le film (`seancesExplicitesDuFilm`, `pagesAPublier`) |
 | `src/seances-vue.ts` | Les séances à l'écran (lot 6) : la fenêtre « Bonjour ! », la question « Cette page est dans la séance de lundi… », « Renommer la séance… », les bandeaux (la lecture, « Reprendre ») et le tiroir de la séance précédente |
 | `src/figures.ts` | Les figures SVG des automatismes |
@@ -4855,7 +4886,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (le cadenas du menu court d'un verrouillé compris ; celles des lecteurs sont dans `src/revoir/icones.ts`) |
 | `src/curseurs.ts` | Le curseur de chaque outil : son icône (celle de `src/icones.ts`) en SVG data:, liseré blanc, le point actif là où il agit ; une petite croix et l'icône pour le Segment, les Formes et la Formule (selon `data-trait` et `data-forme` de la zone, écrits par `App.choisirOutil`) ; les règles ajoutées à la page au lancement (`installerCurseurs`) |
 | `src/habillage.ts` | Ce que règle le menu de plusieurs objets (couleur, épaisseur, pointillés), ce qui y est actif ; les tailles d'une formule ; le nom du menu complet d'un objet |
-| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; Maj + L (`toucheVerrou`) ; Alt + ← / →, ⌘ + ← / → et Ctrl + G empêchés hors des champs dans tous les écrans, la revue, la trieuse et la bibliothèque comprises (`toucheQuitteLaPage`, dans `installerGardes`) ; les touches qui se taisent pendant un geste (Maj + L et Ctrl + G comprises) ; le tableau caché (la revue, une séance d'automatismes, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) ; la touche des raccourcis (⌘ sur Mac) et la façon de dire « enregistrer », « ouvrir » dans un texte (`POUR_ENREGISTRER`, `POUR_OUVRIR` : le raccourci, ou l'entrée du menu ⋯ sur un appareil qu'on ne fait que toucher) ; la requête de la mise en page du téléphone (lot 5 : `TELEPHONE`, écrite là une fois ; l'interface en tire `body.telephone`, et la feuille de style reprend ses bornes) |
+| `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; Maj + L (`toucheVerrou`) ; Alt + ← / →, ⌘ + ← / → et Ctrl + G empêchés hors des champs dans tous les écrans, la revue, la trieuse et la bibliothèque comprises (`toucheQuitteLaPage`, dans `installerGardes`) ; les touches qui se taisent pendant un geste (Maj + L et Ctrl + G comprises) ; le tableau caché (la revue, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) ; la touche des raccourcis (⌘ sur Mac) et la façon de dire « enregistrer », « ouvrir » dans un texte (`POUR_ENREGISTRER`, `POUR_OUVRIR` : le raccourci, ou l'entrée du menu ⋯ sur un appareil qu'on ne fait que toucher) ; la requête de la mise en page du téléphone (lot 5 : `TELEPHONE`, écrite là une fois ; l'interface en tire `body.telephone`, et la feuille de style reprend ses bornes) |
 | `src/dialogue.ts` | Le fond d'une fenêtre : un appui commencé et fini hors de son cadre la ferme, jamais un appui dans sa marge intérieure (testé) |
 | `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) ; d'où vient le focus (le clavier ou un appui, retenu quand il arrive, et le focus rendu à la fermeture d'un écran) ; le balisage de leurs entrées, de leurs filets et de leurs titres (l'interface et la trieuse s'en servent) ; la place du menu complet près de ce qu'il règle, jamais dessus quand il a la place ailleurs, jamais sur la pastille ↻ du cadre de taille (`positionPanneau`, pur, testé ; au téléphone, jamais sur la barre du bas : son bord `bas`, lot 5, K10) ; les flèches dans une grille d'entrées (`naviguerDansLaGrille` : le menu des fonds, et au téléphone « Couleur » et « Autres outils ») |
 | `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts, et depuis le lot 5 ce qu'efface la gomme et sa taille : `mem-gomme`, `mem-gomme-taille`, `RAYON_GOMME` ; le contraste renforcé, `mem-contraste` ; les noms sous les outils, `mem-noms-outils`, écrite seulement quand on choisit, et `nomsOutilsVisibles` qui décide en « auto » d'après l'écran), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) |
