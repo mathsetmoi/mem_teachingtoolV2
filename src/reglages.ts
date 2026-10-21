@@ -61,7 +61,7 @@ const CLE_STYLET_DIRECT = 'mem-stylet-direct'
 const CLE_GESTES = 'mem-gestes-doigts'
 
 /** Ce qu'efface la gomme (lot 5) : 'trait', ce qu'elle touche part en
- *  entier (un trait, une figure, une image, une formule : la gomme de
+ *  entier (un trait, une figure, une formule, jamais une image : la gomme de
  *  toujours, le défaut, choisi par le professeur) ; 'zone', seulement là où
  *  elle passe : elle coupe l'écriture et le surligneur, et laisse le reste
  *  (voir gomme.ts). Le bout gomme du stylet suit le même choix. */

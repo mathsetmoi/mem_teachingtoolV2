@@ -761,7 +761,8 @@ figure sans noms donne des lettres libres aux autres.
 ## Images
 
 Le bouton image de la barre du haut importe une photo ou une capture (on peut
-aussi la coller avec Ctrl+V, ou glisser le fichier sur le tableau). Réduite à
+aussi la coller avec Ctrl+V, ou glisser le fichier sur le tableau) ; un PDF
+aussi (voir « Importer un PDF »). Réduite à
 1600 px, elle est rangée une seule fois dans le document. Comme une figure, elle
 se déplace, se duplique et se **transforme** : symétrie par rapport à une droite
 tracée sur la page, à une verticale ou à un axe du repère ; symétrie centrale,
@@ -1165,7 +1166,7 @@ l'adresse prend deux paramètres facultatifs, `&page=…&forme=…`, lus au
 démarrage comme `&seance=…`. Un conseil de premier lancement présente la
 recherche (`mem-conseils` passe à la série 2).
 
-## Taper du texte au clavier (lot 11)
+## Taper du texte au clavier (lot 12)
 
 L'outil **Texte** (le T de la barre des outils, touche **T**) écrit sur la
 page au clavier, comme un traitement de texte.
@@ -1251,7 +1252,7 @@ le poste de la classe, dans la version hors ligne et chez les élèves.
   refait `latex` d'après lui, borne `largeur`.
 - `src/recherche.ts` : `lireContenu` lit les textes à plat
   (`FormuleLue.texte`), `motsDeFormule` ce qu'on y cherche.
-- L'essai du navigateur : `essais/navigateur/lot11/E1-texte.mjs`.
+- L'essai du navigateur : `essais/navigateur/lot12/E1-texte.mjs`.
 
 ## Revoir la construction (en classe)
 
@@ -3925,6 +3926,41 @@ ouvre la bibliothèque de vos classeurs. » quand il est caché faute de
 place). Puis `mem-teachingtool-annonce` est posée ; un navigateur neuf la
 pose sans rien dire.
 
+## Importer un PDF
+
+Une fiche, un énoncé, un sujet en PDF se pose sur le tableau pour écrire
+dessus. Il arrive comme une image : le bouton image de la barre du haut
+(« Importer une image ou un PDF »), un fichier glissé sur le tableau, ou
+Ctrl+V. La fenêtre « Importer un PDF » montre ses pages en vignettes, toutes
+cochées : un clic sur une page la prend ou la laisse (« Importer 3 pages »).
+Puis où les mettre :
+
+- **une page du tableau par page du PDF** (le choix de départ) : elles
+  s'ajoutent à la séance juste après la page qu'on regarde (depuis une
+  séance passée, à la séance du jour, comme Nouvelle page), la feuille en
+  haut à gauche, assez large pour se lire à 100 % (la place entre les
+  barres, au plus 1000), avec de la place en dessous pour la correction ; on
+  arrive sur la première ;
+- **toutes sur cette page**, l'une sous l'autre, en haut de ce qu'on voit
+  (pas offert dans une séance passée, en lecture).
+
+La case **Fixer en fond**, cochée au départ, les fixe comme « Fixer en
+fond » (lot 5) : la feuille ne bouge plus quand on écrit dessus, et la gomme
+n'efface que l'écriture ; on la détache par le menu de la page. Décochée,
+elles arrivent sélectionnées, comme une image importée. Le choix des deux
+réglages est retenu le temps de la session (aucune clé de stockage neuve).
+
+Chaque page devient une image ordinaire (JPEG, 1600 px de large, au plus
+2400 de haut) : le classeur, le replay, l'export en PDF et le Drive n'ont
+rien de neuf à connaître, et les formats ne changent pas. La lecture se fait
+sur l'ordinateur par pdf.js (`pdfjs-dist`, sa version « legacy », pour les
+navigateurs de quelques années), chargé au premier PDF : son travailleur est
+rangé dans l'outil comme un texte et lancé en travailleur classique (Chrome
+refuse un travailleur « module » fait d'un texte en `file://`). La version
+hors ligne lit donc les PDF sans internet ; son fichier passe d'environ 3,2 à
+5 Mo. Un PDF protégé par un mot de passe ou abîmé : « Impossible de lire ce
+PDF ». Code : `src/import-pdf.ts` ; essai : `essais/navigateur/lot11/E1-import-pdf.mjs`.
+
 ## Exporter en PDF
 
 Un fichier PDF à imprimer, ou à déposer dans l'ENT pour les absents :
@@ -4295,7 +4331,7 @@ pouce :
   *Effacer la page* sur une page seule —, *Fond…*, qui ouvre le menu des
   fonds en vignettes, sur deux colonnes en portrait ; *Aimanter au
   quadrillage* et *Le stylo redresse les figures*, deux cases), **Outils de
-  cours** (*Importer une image…*, *Instruments…* — leur liste, centrée sous
+  cours** (*Importer une image ou un PDF…*, *Instruments…* — leur liste, centrée sous
   la barre du haut —, *Programme de construction*, *Automatismes*, *Revoir
   la construction*, *Publier le replay*), **Vue** (*100 %*, *Tout voir*) ;
   puis, comme ailleurs, le bloc du classeur et ses entrées, et « Cet
@@ -4480,7 +4516,8 @@ déplace toute la sélection) ; un clic droit dans une sélection de plusieurs
 objets ouvre leur menu commun et la laisse entière. À la Sélection, la vue se déplace à deux doigts, au
 bouton du milieu, avec Espace + glisser, à la molette ou avec l'outil Main.
 L'objet survolé (par son tracé ou son intérieur) s'éclaire d'un halo bleu qui
-suit sa forme, avant le clic ; une droite ou une demi-droite sélectionnée se
+suit sa forme, avant le clic (une image, son seul tour : la repeindre
+par-dessus cacherait ce qu'on a écrit sur elle) ; une droite ou une demi-droite sélectionnée se
 surligne sur toute sa longueur visible ; les flèches poussent la sélection
 d'1 mm (1 cm avec Maj), sauf quand son menu complet est ouvert : elles vont
 alors dans le menu (voir « Au clavier »). Seules : avec Ctrl, ⌘ ou Alt,
@@ -4527,7 +4564,8 @@ main (le focus va alors sur l'entrée cochée), comme dans Apple Notes,
 GoodNotes et OneNote ; à droite de la barre des outils, à la hauteur de la
 Gomme (au téléphone, au-dessus d'elle en portrait, entre les deux barres).
 Il propose **Effacer le trait entier** (« Ce qu'elle
-touche part en entier : un trait, une figure, une image, une formule ») et
+touche part en entier : un trait, une figure, une formule (jamais une
+image) ») et
 **Effacer seulement là où elle passe** (« Coupe l'écriture et le
 surligneur ; les figures, les images et les formules restent »), puis sa
 **Taille (là où elle passe)** : Petite, Moyenne (le défaut), Grande, soit 6,
@@ -4550,12 +4588,15 @@ ses points d'origine, tels quels (seul un point s'ajoute là où le trait
 franchit le bord de la gomme) : un morceau se voit comme la partie du trait
 qu'il était. Elle ne touche ni les figures, ni les images, ni les formules,
 et la première fois de la session qu'elle passe sur l'une d'elles, elle le
-dit : « Cette gomme ne coupe que l'écriture : pour une figure, une image ou
-une formule, prenez « Effacer le trait entier » (retapez la Gomme). ». C'est
+dit : « Cette gomme ne coupe que l'écriture : pour une figure ou une
+formule, prenez « Effacer le trait entier » (retapez la Gomme). Une image
+s'enlève par Supprimer. ». C'est
 un choix propre à MEM (l'étude proposait qu'elle efface une figure en
 entier) : une gomme partielle passe surtout sur l'écriture autour d'une
 figure, et le professeur ne doit pas perdre le triangle qu'il annote ; le
-trait entier, lui, efface tout. Ce qui est verrouillé ou fixé en fond reste,
+trait entier, lui, efface tout le reste. Aucune gomme n'efface une image :
+on écrit dessus, et la gomme ne doit y enlever que l'écriture ; une image
+s'enlève par Supprimer (le souhait du professeur, après le lot 10). Ce qui est verrouillé ou fixé en fond reste,
 comme sous l'autre gomme. Un coup est une étape d'annulation (Ctrl+Z rend
 tous les traits entiers d'un coup) ; le film garde une étape par trait
 touché, notée `coupe`, écrite quand la gomme a quitté le trait (et ce qui
@@ -5005,9 +5046,9 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 
 | Fichier | Rôle |
 | --- | --- |
-| `src/types.ts` | Les formes (trait, segment, formule, polygone, cercle, image), les fonds (huit depuis le lot 5, dans l'ordre des menus : `FONDS`), le fond de toute page qui naît vide (`FOND_NEUF`, la page blanche : retouches après le lot 5) ; depuis le lot 5, des champs facultatifs, ignorés par la version d'avant : `verrou` (l'objet ne bouge plus et ne se prend plus), `fixe` (une image fixée en fond), `groupe` (les formes d'une page qui portent le même identifiant se prennent ensemble), la `rotation` d'une formule (radians, sens de `ctx.rotate`, autour de son coin) ; `libre` (ni verrouillé ni fixé) ; depuis le lot 11, le `texte` et la `largeur` d'un texte tapé au clavier (des champs facultatifs d'une formule) |
-| `src/texte.ts` | Le texte tapé au clavier (lot 11) : son modèle, pur (lignes, morceaux, `$…$`, sa version KaTeX, sa lecture prudente, à plat) et son rendu HTML, le même à l'écran et dans les sorties (voir « Taper du texte au clavier ») |
-| `src/texte-editeur.ts` | L'éditeur d'un texte, posé sur la page pendant qu'on tape, sa petite barre, sa relecture en lignes du modèle (lot 11) |
+| `src/types.ts` | Les formes (trait, segment, formule, polygone, cercle, image), les fonds (huit depuis le lot 5, dans l'ordre des menus : `FONDS`), le fond de toute page qui naît vide (`FOND_NEUF`, la page blanche : retouches après le lot 5) ; depuis le lot 5, des champs facultatifs, ignorés par la version d'avant : `verrou` (l'objet ne bouge plus et ne se prend plus), `fixe` (une image fixée en fond), `groupe` (les formes d'une page qui portent le même identifiant se prennent ensemble), la `rotation` d'une formule (radians, sens de `ctx.rotate`, autour de son coin) ; `libre` (ni verrouillé ni fixé) ; depuis le lot 12, le `texte` et la `largeur` d'un texte tapé au clavier (des champs facultatifs d'une formule) |
+| `src/texte.ts` | Le texte tapé au clavier (lot 12) : son modèle, pur (lignes, morceaux, `$…$`, sa version KaTeX, sa lecture prudente, à plat) et son rendu HTML, le même à l'écran et dans les sorties (voir « Taper du texte au clavier ») |
+| `src/texte-editeur.ts` | L'éditeur d'un texte, posé sur la page pendant qu'on tape, sa petite barre, sa relecture en lignes du modèle (lot 12) |
 | `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert ; la base supprimée ou changée ailleurs, coupée net (`onCoupee`) ; une écriture refusée repérée, le trou (`trou`, `erreurBase`), et sa réparation (`reparer`) ; une base trouée relue, dont une partie ne se relit plus (`incomplet`) ; attendre la fin des écritures (`attendreEcritures`) ; l'identité du classeur rangée à côté du document). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié ; sa naissance notée `naissance` dans le film, comme celle d'une page vide ; un fond changé dans la trieuse noté `rangement` : ni l'une ni l'autre ne comptent dans le découpage en séances) et le déplacement des pages (le plus petit changement de l'ordre). Changer des formes : `modifier` fond un patch (une clé qui y vaut undefined quitte la forme : déverrouiller, dégrouper), `remplacer` écrit des formes entières (une clé absente n'existe plus : une rotation revenue à zéro) ; l'un et l'autre en une étape, et la note `reglage` (lot 5 : verrouiller, grouper, rien de visible) sur l'étape du film de cette transaction seulement ; elle suit aussi l'étape de la pile (méta `reglage`) : Ctrl + Z et Ctrl + Y d'un réglage sont notés de même. `couperTraits` (lot 5) écrit la coupe d'un trait par la gomme qui efface là où elle passe : le morceau qui garde l'identifiant remplace le trait, entier, les autres sont posés, en une transaction notée `coupe`. Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre ; elle ne se défait pas tant que la pile de l'arrivée peut y ramener des objets qui en sont repartis, et ne se refait pas vers une page supprimée définitivement) ; la copie, une étape de la pile d'arrivée ; les noms que la pile d'une page peut y ramener (`formesQuiPeuventRevenir`) |
 | `src/app.ts` | Gestes au stylet, au doigt et à la souris ; les outils (`choisirOutil` retient l'outil quitté pour la Sélection, `outilAvant`, que rend Échap : contrôle final du lot 5) ; les réglages du départ (retouches après le lot 5 : le trait fin, `taille` ; une page neuve blanche, `nouvellePage`, `envoyerSelection` ; la vue d'une page où l'on arrive toujours à 100 %, au centre gardé ou sur le début de son contenu, `appliquerVue`) ; le clavier du tableau (Ctrl + P ouvre « Exporter en PDF » ; Ctrl + ↑ / ↓ l'ordre ; Maj + L le verrou ; ⌘ + ←, Alt + ← ne quittent plus la page ; E, la Gomme en main, ouvre son menu) ; la gomme (au trait entier, `gommer` ; seulement là où elle passe, lot 5 : `gommerLa`, le coup en mémoire, `Coupe`, chaque trait écrit quand la gomme l'a quitté, `ecrireCoupe`, et le reste au lever ; le rectangle sale qu'elle demande au rendu ; une coupe écrite en plein coup ne repeint pas la scène) ; l'ordre de ce qui est choisi (`ordonner`, `peutOrdonner`) ; ce qui se prend (lot 5 : `cibleSous` saute le verrouillé et le fixé en fond, sauf `verrouilles` pour le clic droit et l'appui long ; la gomme, le cadre et le lasso, Ctrl + A, Suppr, les flèches et le glisser aussi) ; verrouiller (tout le groupe de chacun), fixer en fond, détacher (`verrouiller`, `fixerEnFond`, `detacherDuFond`, `fixesSous`, `copierFond`), le cadenas (au survol, après un appui), le collage qui ne sélectionne que le libre ; les groupes (`membres`, `grouper`, `degrouper`, Ctrl + G et Ctrl + Maj + G ; ce que prennent un clic, un toucher, un cadre, un lasso, le clic droit, le double-clic : `prendre`, `ouvrirAuDouble`) ; changer de taille et tourner (lot 5 : `transformerSelection`, une transaction par `Tableau.remplacer`, les points repérés sur une image avec elle ; « Remettre droit », `redresserSelection`, `redressable` ; retouches après le lot 5 : les quarts de tour du menu ⋯, `tournable`, `tournerQuart`, autour du centre de la pastille, `calculerCadre`) ; l'image importée (`importerImage` : à l'outil Sélection, l'outil quitté retenu, le message dans les mots du pointeur du bouton Image, de Ctrl+V ou du dernier vu ; retouches après le lot 5) ; le cadre de taille et la pastille ↻ à l'écran (lot 5 : `cadreDeLaSelection`, d'après le dernier pointeur vu, `pointeurPoignees`, gardé tant que la sélection (`SelectionSuivie`, un ensemble qui compte ses changements), la page, la vue, la zone libre, le pointeur et la taille des formules prises n'ont pas changé ; `poigneeVisee` dans l'appui, après les instruments et avant les sommets, avec le cadre tel qu'il était peint, `Rendu.cadre`, pour un autre pointeur peut-être : sa pastille se prend là où on la voit ; les gestes 'taille' et 'tourner', l'aperçu par `Rendu.transfo`, le lâcher par `transformerSelection` ; le curseur au survol ; `emprise` et `pastilleAEviter`, que la barre d'actions et le menu complet contournent) ; la boîte d'une formule pour geometrie.ts (locale) et pour cadrer (`boiteVue`, l'englobante) ; le calme (`calme`, `depuisLeDernierGeste`), qu'attendent les écritures automatiques |
 | `src/verrou.ts` | Verrouiller et fixer en fond (lot 5), pur (testé) : ce que changent Verrouiller, Fixer en fond (sous tout, hors de tout groupe) et Détacher (l'invariant du fond : toute image fixée sous toute image libre, même avec plusieurs images fixées), ce qui bouge quand on pousse (le libre, et les points repérés sur une image qui bouge, même verrouillés : `quiBouge`), les images fixées sous un point, ce que dit un collage qui a posé de quoi ne pas se prendre (`texteCollage`), compter les objets |
@@ -5257,8 +5298,9 @@ qu'au document sans séances (hors de l'application).
   haut en haut : retournée de haut en bas, elle devient retournée de gauche
   à droite (Ctrl + Z si ce n'était pas voulu).
 - La gomme qui efface seulement là où elle passe (lot 5) ne coupe que les
-  traits à main levée : une figure, une image, une formule ne se gomment
-  qu'en entier (« Effacer le trait entier »), et un ancien segment (v0.1)
+  traits à main levée : une figure, une formule ne se gomment qu'en entier
+  (« Effacer le trait entier »), une image jamais (elle s'enlève par
+  Supprimer), et un ancien segment (v0.1)
   non plus. Elle ne fusionne pas de nouveau deux morceaux qui se touchent :
   repasser une gomme le long d'un mot y laisse plus de morceaux qu'il n'y
   paraît (des traits ordinaires, qui se prennent et se copient un à un, ou

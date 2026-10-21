@@ -51,6 +51,8 @@ import { avecGroupes, changementsDegrouper, changementsGrouper, groupeExact, mem
 import type { Cadre, Matrice, Poignee } from './cadre'
 import { IDENTITE, aimanterAngle, bornesEchelle, cadreDe, cadreTransforme, composer, curseurPoignee, dansLesBornes, deroule, estIdentite, etendueDuCadre, facteurDe, imageTournee, inverser, matriceImage, matriceTaille, poigneeDeLAppui, quartDeTour, redresser, rotation, texteRotation, texteTaille, transformerForme, zonePastille, zonesDesPoignees } from './cadre'
 import type { PartieGardee, PriseRognage } from './rognage'
+import type { ChoixPdf, PdfOuvert } from './import-pdf'
+import { HAUTEUR_MAX_IMAGE, LARGEUR_IMAGE, estPdf, ouvrirFenetreImportPdf, ouvrirPdf, texteImportPdf } from './import-pdf'
 import { coinsGardes, curseurRognage, imageRognee, priseRognage, rienARogner, tirerPartie, toute, versImage } from './rognage'
 
 /** La copie gardée dans le navigateur, pour un autre onglet de la même
@@ -492,7 +494,7 @@ export class App {
       // un classeur »
       const classeurs = fichiers.filter(x => /\.mem[cb]?$/i.test(x.name))
       if (classeurs.length) { e.preventDefault(); this.ui.ouvrirFichiers(classeurs); return }
-      const f = fichiers.find(x => x.type.startsWith('image/'))
+      const f = fichiers.find(x => x.type.startsWith('image/') || estPdf(x))
       if (f) { e.preventDefault(); this.importerImage(f) }
     })
 
@@ -2479,7 +2481,7 @@ export class App {
       // pas, et le dit une fois
       if (!this.astuceGommeZone && this.formes.some(f => f.type !== 'trait' && libre(f) && touche(f, b.x, b.y, r, this.boiteTouche))) {
         this.astuceGommeZone = true
-        this.ui.message('Cette gomme ne coupe que l\'écriture : pour une figure, une image ou une formule, prenez « Effacer le trait entier » (retapez la Gomme).')
+        this.ui.message('Cette gomme ne coupe que l\'écriture : pour une figure ou une formule, prenez « Effacer le trait entier » (retapez la Gomme). Une image s\'enlève par Supprimer.')
       }
     }
     // Ce que la gomme a quitté s'écrit (la scène, qui le montre déjà, ne se
@@ -3774,7 +3776,9 @@ export class App {
    *  qui touche ce bouton (le bouton est hors du tableau : dernierPointeur
    *  ne l'a pas vu). */
   async importerImage(fichier: Blob, o: { pointeur?: TypePointeur; clavier?: boolean } = {}) {
-    if (!fichier.type.startsWith('image/')) return this.ui.message('Ce fichier n\'est pas une image.')
+    // Un PDF a sa fenêtre : ses pages, où les mettre (voir import-pdf.ts)
+    if (estPdf(fichier)) return this.importerPdf(fichier)
+    if (!fichier.type.startsWith('image/')) return this.ui.message('Ce fichier n\'est ni une image ni un PDF.')
     const url = URL.createObjectURL(fichier)
     try {
       const img = await new Promise<HTMLImageElement>((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = url })
@@ -3801,6 +3805,90 @@ export class App {
         { libelle: 'Fixer en fond', faire: e => { if (this.page === page && this.forme(id) && !tableauCache(this)) this.fixerEnFond([id], pointeurDuClic(e, pointeur)) } })
     } catch { this.ui.message('Impossible de lire cette image.') }
     finally { URL.revokeObjectURL(url) }
+  }
+
+  /** Un PDF à importer (le bouton Image, un fichier glissé, Ctrl+V) : on
+   *  le lit, puis la fenêtre « Importer un PDF » s'ouvre (ses pages en
+   *  vignettes, où les mettre, « Fixer en fond » ; voir import-pdf.ts). */
+  async importerPdf(fichier: Blob) {
+    if (tableauCache(this) || document.querySelector('dialog[open]')) return
+    this.ui.message('Lecture du PDF…')
+    let pdf: PdfOuvert
+    try { pdf = await ouvrirPdf(fichier) } catch { return this.ui.message('Impossible de lire ce PDF (abîmé, ou protégé par un mot de passe).') }
+    if (!pdf.pages) { pdf.fermer(); return this.ui.message('Ce PDF n\'a aucune page.') }
+    if (tableauCache(this) || document.querySelector('dialog[open]')) { pdf.fermer(); return }
+    const nom = (fichier as File).name || 'PDF'
+    ouvrirFenetreImportPdf({
+      numeroPage: Math.max(1, this.pages.indexOf(this.page) + 1),
+      lecture: this.enSeancePassee,
+      maj: () => this.ui.maj(),
+      importer: c => { void this.poserPdf(pdf, c).finally(() => pdf.fermer()) },
+    }, pdf, nom)
+  }
+
+  /** Les pages choisies du PDF deviennent des images du tableau. Chacune est
+   *  peinte à LARGEUR_IMAGE pixels (au plus HAUTEUR_MAX_IMAGE de haut), et
+   *  posée assez large pour se lire à 100 % (la place entre les barres, au
+   *  plus 1000). Une page du tableau par page du PDF : elles s'ajoutent
+   *  après celle qu'on regarde (depuis une séance passée : à la séance du
+   *  jour, comme Nouvelle page), la feuille en haut à gauche, et l'on va à
+   *  la première. Sinon, toutes sur la page qu'on regarde, l'une sous
+   *  l'autre, en haut de ce qu'on voit. Fixées en fond, elles passent sous
+   *  tout ; sinon elles arrivent sélectionnées, comme une image importée. */
+  private async poserPdf(pdf: PdfOuvert, c: ChoixPdf) {
+    const images: { src: string; donnees: string; l: number; h: number }[] = []
+    for (const [k, n] of c.pages.entries()) {
+      if (c.pages.length > 1) this.ui.message(`Import du PDF : page ${k + 1} sur ${c.pages.length}…`)
+      try {
+        const cv = await pdf.dessiner(n, LARGEUR_IMAGE, HAUTEUR_MAX_IMAGE)
+        images.push({ src: uid(), donnees: cv.toDataURL('image/jpeg', 0.88), l: cv.width, h: cv.height })
+      } catch { return this.ui.message(`Impossible de lire la page ${n} du PDF : rien n'a été importé.`) }
+    }
+    if (tableauCache(this)) return this.ui.message('Import du PDF abandonné : le tableau n\'est plus affiché.')
+    this.viderPointEnAttente()
+    const zone = this.ui.zoneLibre()
+    const moi = this.tableau.moi
+    if (!c.ici) {
+      if (this.enSeancePassee) this.retourAujourdhui()
+      const largeur = Math.max(400, Math.min(1000, zone.l - 64))
+      const place = this.tableau.ordre.toArray().indexOf(this.page) + 1
+      const pages: string[] = []
+      for (const [k, im] of images.entries()) {
+        const e = largeur / im.l
+        this.banqueImages.set(im.src, im.donnees)
+        const page = this.tableau.ajouterPage(FOND_NEUF, place + k)
+        const f: Forme = { id: uid(), type: 'image', src: im.src, l: im.l, h: im.h, m: [e, 0, 0, e], x: 0, y: 0, z: Date.now(), auteur: moi }
+        if (c.fond) f.fixe = true
+        this.tableau.poserSurLaPage(page, [f])
+        pages.push(page)
+      }
+      this.allerPage(pages[0])
+      const numeros = pages.map(p => this.pages.indexOf(p) + 1)
+      return this.ui.message(texteImportPdf(images.length, numeros, c.fond))
+    }
+    if (this.enSeancePassee) return this.direLecture()
+    // Sur la page qu'on regarde : en haut de ce qu'on voit, au milieu,
+    // l'une sous l'autre
+    const z = this.cam.z, largeur = Math.max(400, Math.min(1000, (zone.l - 64) / z))
+    const haut = this.cam.versMonde(zone.x + zone.l / 2, zone.y + 32)
+    let y = haut.y, zmin = Infinity
+    for (const f of this.formes) if (f.z < zmin) zmin = f.z
+    if (!Number.isFinite(zmin)) zmin = Date.now()
+    const formes: Forme[] = images.map((im, k) => {
+      const e = largeur / im.l
+      const f: Forme = { id: uid(), type: 'image', src: im.src, l: im.l, h: im.h, m: [e, 0, 0, e], x: haut.x - largeur / 2, y, z: c.fond ? zmin - images.length + k : Date.now() + k, auteur: moi }
+      if (c.fond) f.fixe = true
+      y += im.h * e + 24
+      return f
+    })
+    for (const im of images) this.banqueImages.set(im.src, im.donnees)
+    const avant = c.fond ? null : this.preterSelection(formes.map(f => f.id))
+    this.tableau.nouveauGeste()
+    this.tableau.poserPlusieurs(this.page, formes)
+    this.selection.clear()
+    if (avant !== null) for (const f of formes) this.selection.add(f.id)
+    this.rendu.redessinerDirect(); this.ui.maj()
+    this.ui.message(texteImportPdf(formes.length, null, c.fond))
   }
 
   /** Désigner sur le tableau une droite ou un point parmi des candidats :
@@ -5121,7 +5209,7 @@ export class App {
     if (!d) return
     const marquee = lireHtml(d.getData('text/html'))
     if (marquee) { e.preventDefault(); this.collerCopie(marquee); return }
-    const f = [...d.files].find(x => x.type.startsWith('image/'))
+    const f = [...d.files].find(x => x.type.startsWith('image/') || estPdf(x))
     if (f) { e.preventDefault(); this.importerImage(f, { clavier: auClavier }); return }
     const gardee = this.copieGardee(), texte = d.getData('text/plain')
     // Le presse-papiers du système a refusé cette copie : il a encore autre
@@ -5162,9 +5250,9 @@ export class App {
    *  gommerLa) */
   private gommer(x: number, y: number, deja?: Set<string>) {
     const r = RAYON_TRAIT / this.cam.z
-    // Un texte ne s'efface pas à la gomme (on gomme ce qu'on a écrit dessus) :
-    // il part par la corbeille de son menu, ou Suppr
-    const touches = this.formes.filter(f => libre(f) && !estTexte(f) && !deja?.has(f.id) && touche(f, x, y, r, this.boiteTouche))
+    // Jamais une image ni un texte : on écrit dessus, la gomme n'y efface que
+    // l'écriture (le souhait du professeur) ; ils s'enlèvent par « Supprimer »
+    const touches = this.formes.filter(f => f.type !== 'image' && !estTexte(f) && libre(f) && !deja?.has(f.id) && touche(f, x, y, r, this.boiteTouche))
     if (!touches.length) return
     touches.forEach(f => deja?.add(f.id))
     this.tableau.supprimer(this.page, touches.map(f => f.id))

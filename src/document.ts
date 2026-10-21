@@ -1448,6 +1448,13 @@ export class Tableau {
     this.doc.transact(() => { for (const f of liste) formes.set(f.id, f) }, ORIGINE_LOCALE)
   }
 
+  /** Pose des formes sur une page qu'on ne regarde pas (les feuilles d'un
+   *  PDF, chacune sur sa page neuve) : comme poserPlusieurs, l'étape du film
+   *  se notant sur cette page */
+  poserSurLaPage(page: string, liste: Forme[]) {
+    this.surLaPage(page, () => this.poserPlusieurs(page, liste))
+  }
+
   /** Pose un trait tracé à la main. L'étape du film qu'il fait naître note le
    *  temps passé sur chacun de ses points (ms, un par point) : le replay le
    *  retracera au rythme de la main. Le trait, lui, reste un trait comme les
