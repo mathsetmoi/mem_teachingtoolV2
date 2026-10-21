@@ -162,12 +162,15 @@ export class Flash {
     try { localStorage.setItem(cleDuClasseur(this.app.classeur.id), t); localStorage.setItem(CLE, t) } catch { /* le réglage vaut pour cette fois */ }
   }
 
-  /** Ouvre la fenêtre de réglage. Rien n'est tiré avant « Lancer le flash ». */
-  ouvrir() {
+  /** Ouvre la fenêtre de réglage. Rien n'est tiré avant « Lancer le flash ».
+   *  cocher : les thèmes à cocher, seuls (« 5e/Opérations », depuis la
+   *  recherche) ; sinon le dernier réglage */
+  ouvrir(cocher?: string[]) {
     if (this.app.enLecture) { this.message('Cette séance est passée : elle est en lecture seule.'); return }
     if (this.dialogue?.open) return
     if (this.flash) this.arreter()
     const R = this.lireLeReglage()
+    if (cocher?.length) { R.themes = cocher; R.niveaux = [...new Set(cocher.map(t => t.split('/')[0]))] }
     const d = this.dialogue = document.createElement('dialog')
     d.className = 'dialogue dialogue-flash'
     d.setAttribute('aria-labelledby', 'flash-titre')

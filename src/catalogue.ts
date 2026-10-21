@@ -406,19 +406,41 @@ export function ligneEnLatex(ligne: string): string {
   return ligne.split('$').map((m, i) => i % 2 ? m : m ? `\\text{${m.replace(/[\\{}]/g, c => '\\' + c)}}` : '').join('')
 }
 
-/** Les thèmes du programme de seconde, dans l'ordre du panneau */
-export type Theme = 'nombres' | 'geometrie' | 'fonctions' | 'statistiques'
-export const THEMES: readonly { id: Theme; nom: string }[] = [
-  { id: 'nombres', nom: 'Nombres et calculs' },
-  { id: 'geometrie', nom: 'Géométrie' },
-  { id: 'fonctions', nom: 'Fonctions' },
-  { id: 'statistiques', nom: 'Statistiques et probabilités' },
+/** Les niveaux du catalogue */
+export type Niveau = '2nde' | '1re'
+
+/**
+ * Le rangement du programme (BO 2026) : pour chaque niveau, ses thèmes, et
+ * dans chaque thème ses chapitres. Un thème sans chapitre est un thème où le
+ * programme ne demande aucune démonstration.
+ */
+export const PROGRAMME: readonly { niveau: Niveau; nom: string; themes: readonly { nom: string; chapitres: readonly string[] }[] }[] = [
+  {
+    niveau: '2nde', nom: '2nde', themes: [
+      { nom: 'Nombres et calculs', chapitres: ['Arithmétique', 'Nombres réels', 'Algèbre'] },
+      { nom: 'Géométrie', chapitres: ['Vecteurs', 'Droites du plan'] },
+      { nom: 'Fonctions', chapitres: ['Variations et extrémums'] },
+      { nom: 'Statistiques et probabilités', chapitres: [] },
+    ],
+  },
+  {
+    niveau: '1re', nom: '1re spé', themes: [
+      { nom: 'Algèbre', chapitres: ['Suites', 'Second degré'] },
+      { nom: 'Analyse', chapitres: ['Dérivation', 'Trigonométrie'] },
+      { nom: 'Géométrie', chapitres: ['Produit scalaire'] },
+      { nom: 'Probabilités et statistiques', chapitres: [] },
+    ],
+  },
 ]
+
+/** Le dessin des ensembles de nombres se range ici */
+export const PLACE_ENSEMBLES = { niveau: '2nde' as Niveau, chapitre: 'Nombres réels' }
 
 export interface Demonstration {
   nom: string
-  /** Le thème du programme où elle se range */
-  theme: Theme
+  niveau: Niveau
+  /** Le chapitre du programme où elle se range (un nom de PROGRAMME) */
+  chapitre: string
   /** Le titre, posé d'emblée */
   titre: string
   /** Les étapes, montrées une à une ; chacune a une ou deux lignes */
@@ -428,7 +450,8 @@ export interface Demonstration {
 export const DEMONSTRATIONS: readonly Demonstration[] = [
   {
     nom: 'Somme de deux multiples',
-    theme: 'nombres',
+    niveau: '2nde',
+    chapitre: 'Arithmétique',
     titre: '\\textbf{Démonstration : la somme de deux multiples de } 7 \\textbf{ est un multiple de } 7\\textbf{.}',
     etapes: [
       ['Soit $m$ et $n$ deux multiples de $7$.',
@@ -441,7 +464,8 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   },
   {
     nom: 'Le carré d\'un impair est impair',
-    theme: 'nombres',
+    niveau: '2nde',
+    chapitre: 'Arithmétique',
     titre: '\\textbf{Démonstration : le carré d\'un nombre impair est impair.}',
     etapes: [
       ['Soit $n$ un nombre impair : il existe un entier $k$ tel que $n = 2k + 1$.'],
@@ -453,7 +477,8 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   },
   {
     nom: '1/3 n\'est pas décimal',
-    theme: 'nombres',
+    niveau: '2nde',
+    chapitre: 'Nombres réels',
     titre: '\\textbf{Démonstration : } \\dfrac{1}{3} \\textbf{ n\'est pas un nombre décimal.}',
     etapes: [
       ['Raisonnons par l\'absurde : supposons que $\\dfrac{1}{3}$ est décimal.',
@@ -467,7 +492,8 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   },
   {
     nom: '√2 n\'est pas rationnel',
-    theme: 'nombres',
+    niveau: '2nde',
+    chapitre: 'Nombres réels',
     titre: '\\textbf{Démonstration : } \\sqrt{2} \\textbf{ n\'est pas un nombre rationnel.}',
     etapes: [
       ['Raisonnons par l\'absurde : supposons que $\\sqrt{2}$ est rationnel.',
@@ -483,7 +509,8 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   },
   {
     nom: '√(ab) = √a × √b',
-    theme: 'nombres',
+    niveau: '2nde',
+    chapitre: 'Algèbre',
     titre: '\\textbf{Démonstration : pour tous réels positifs } a \\textbf{ et } b\\textbf{, } \\sqrt{ab} = \\sqrt{a} \\times \\sqrt{b}\\textbf{.}',
     etapes: [
       ['Soit $a$ et $b$ deux réels positifs.'],
@@ -495,7 +522,8 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   },
   {
     nom: 'Colinéarité et déterminant',
-    theme: 'geometrie',
+    niveau: '2nde',
+    chapitre: 'Vecteurs',
     titre: '\\textbf{Démonstration : caractérisations de la colinéarité de deux vecteurs non nuls.}',
     etapes: [
       ['Dans une base orthonormée, soit $\\vec{u}\\begin{pmatrix}x\\\\y\\end{pmatrix}$ et $\\vec{v}\\begin{pmatrix}x\'\\\\y\'\\end{pmatrix}$ deux vecteurs non nuls,',
@@ -512,7 +540,8 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   },
   {
     nom: 'Équation cartésienne d\'une droite',
-    theme: 'geometrie',
+    niveau: '2nde',
+    chapitre: 'Droites du plan',
     titre: '\\textbf{Démonstration : forme générale d\'une équation de droite.}',
     etapes: [
       ['Soit $d$ la droite passant par $A(x_A\\,;y_A)$, de vecteur directeur $\\vec{u}\\begin{pmatrix}\\alpha\\\\\\beta\\end{pmatrix}$ non nul.'],
@@ -530,7 +559,8 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   },
   {
     nom: 'Variations des fonctions affines',
-    theme: 'fonctions',
+    niveau: '2nde',
+    chapitre: 'Variations et extrémums',
     titre: '\\textbf{Démonstration : variations de la fonction affine } f : x \\mapsto mx + p\\textbf{.}',
     etapes: [
       ['Soit $a$ et $b$ deux réels tels que $a < b$.'],
@@ -543,7 +573,8 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   },
   {
     nom: 'Position de y = x et y = x²',
-    theme: 'fonctions',
+    niveau: '2nde',
+    chapitre: 'Variations et extrémums',
     titre: '\\textbf{Démonstration : position relative des courbes d\'équation } y = x \\textbf{ et } y = x^2 \\textbf{ pour } x \\geqslant 0\\textbf{.}',
     etapes: [
       ['On étudie le signe de la différence $x^2 - x = x(x - 1)$ pour $x \\geqslant 0$.'],
@@ -556,7 +587,8 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   },
   {
     nom: 'Variations de la fonction carré',
-    theme: 'fonctions',
+    niveau: '2nde',
+    chapitre: 'Variations et extrémums',
     titre: '\\textbf{Démonstration : variations de la fonction carré } f : x \\mapsto x^2\\textbf{.}',
     etapes: [
       ['Soit $a$ et $b$ deux réels tels que $a < b$ : $f(b) - f(a) = b^2 - a^2 = (b - a)(b + a)$, avec $b - a > 0$.'],
@@ -568,7 +600,8 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   },
   {
     nom: 'Variations de la fonction inverse',
-    theme: 'fonctions',
+    niveau: '2nde',
+    chapitre: 'Variations et extrémums',
     titre: '\\textbf{Démonstration : variations de la fonction inverse } f : x \\mapsto \\dfrac{1}{x}\\textbf{.}',
     etapes: [
       ['Soit $a$ et $b$ deux réels non nuls tels que $a < b$ : $f(b) - f(a) = \\dfrac{1}{b} - \\dfrac{1}{a} = \\dfrac{a - b}{ab}$, avec $a - b < 0$.'],
@@ -577,6 +610,183 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
       ['Sur $\\mathopen{]}-\\infty\\,;0[$ : si $a < b < 0$, alors $ab > 0$ (même signe), donc $f(b) - f(a) < 0$ : $f(a) > f(b)$.',
         '$f$ est strictement décroissante sur $\\mathopen{]}-\\infty\\,;0[$.'],
       ['Attention : $f$ n\'est pas décroissante sur $\\mathbb{R}^*$ tout entier : $-1 < 1$ et $f(-1) = -1 < f(1) = 1$.'],
+    ],
+  },
+  {
+    nom: 'Terme général d\'une suite arithmétique',
+    niveau: '1re',
+    chapitre: 'Suites',
+    titre: '\\textbf{Démonstration : terme général d\'une suite arithmétique.}',
+    etapes: [
+      ['Soit $(u_n)$ une suite arithmétique de raison $r$ : pour tout $n \\in \\mathbb{N}$, $u_{n+1} = u_n + r$.'],
+      ['Pour $n \\geqslant 1$, on écrit : $u_1 = u_0 + r$, $u_2 = u_1 + r$, …, $u_n = u_{n-1} + r$.'],
+      ['On additionne ces $n$ égalités membre à membre.',
+        'Les termes $u_1, u_2, \\ldots, u_{n-1}$ sont des deux côtés et s\'éliminent.'],
+      ['Il reste $u_n = u_0 + nr$, ce qui est vrai aussi pour $n = 0$.'],
+      ['Conclusion : pour tout $n \\in \\mathbb{N}$, $u_n = u_0 + nr$, et pour tous $n$ et $p$, $u_n = u_p + (n - p)r$.'],
+    ],
+  },
+  {
+    nom: 'Terme général d\'une suite géométrique',
+    niveau: '1re',
+    chapitre: 'Suites',
+    titre: '\\textbf{Démonstration : terme général d\'une suite géométrique.}',
+    etapes: [
+      ['Soit $(u_n)$ une suite géométrique de raison $q$ : pour tout $n \\in \\mathbb{N}$, $u_{n+1} = q \\times u_n$.'],
+      ['De proche en proche : $u_1 = q u_0$, $u_2 = q u_1 = q^2 u_0$, $u_3 = q u_2 = q^3 u_0$.'],
+      ['À chaque rang, on multiplie encore par $q$ : après $n$ multiplications par $q$, on obtient $u_n = q^n u_0$.'],
+      ['Conclusion : pour tout $n \\in \\mathbb{N}$, $u_n = u_0 \\times q^n$, et pour tous $n$ et $p$, $u_n = u_p \\times q^{n-p}$.'],
+    ],
+  },
+  {
+    nom: 'Somme 1 + 2 + … + n',
+    niveau: '1re',
+    chapitre: 'Suites',
+    titre: '\\textbf{Démonstration : pour tout } n \\in \\mathbb{N}^*\\textbf{, } 1 + 2 + \\cdots + n = \\dfrac{n(n+1)}{2}\\textbf{.}',
+    etapes: [
+      ['On note $S = 1 + 2 + \\cdots + (n - 1) + n$.'],
+      ['On l\'écrit aussi dans l\'autre sens : $S = n + (n - 1) + \\cdots + 2 + 1$.'],
+      ['On additionne terme à terme : $1 + n = n + 1$, $2 + (n - 1) = n + 1$, …, $n + 1 = n + 1$.'],
+      ['Donc $2S = (n + 1) + (n + 1) + \\cdots + (n + 1)$, avec $n$ termes : $2S = n(n + 1)$.'],
+      ['Conclusion : $S = 1 + 2 + \\cdots + n = \\dfrac{n(n + 1)}{2}$.'],
+    ],
+  },
+  {
+    nom: 'Somme 1 + q + … + qⁿ',
+    niveau: '1re',
+    chapitre: 'Suites',
+    titre: '\\textbf{Démonstration : pour } q \\neq 1\\textbf{, } 1 + q + q^2 + \\cdots + q^n = \\dfrac{1 - q^{n+1}}{1 - q}\\textbf{.}',
+    etapes: [
+      ['Soit $q$ un réel différent de $1$ et $n \\in \\mathbb{N}$. On note $S = 1 + q + q^2 + \\cdots + q^n$.'],
+      ['En multipliant par $q$ : $qS = q + q^2 + q^3 + \\cdots + q^{n+1}$.'],
+      ['On soustrait : dans $S - qS$, les termes $q, q^2, \\ldots, q^n$ s\'éliminent, donc $S - qS = 1 - q^{n+1}$.'],
+      ['Soit $(1 - q)S = 1 - q^{n+1}$. Comme $q \\neq 1$, on peut diviser par $1 - q \\neq 0$.'],
+      ['Conclusion : $1 + q + \\cdots + q^n = \\dfrac{1 - q^{n+1}}{1 - q}$. (Si $q = 1$, la somme vaut $n + 1$.)'],
+    ],
+  },
+  {
+    nom: 'Équation du second degré',
+    niveau: '1re',
+    chapitre: 'Second degré',
+    titre: '\\textbf{Démonstration : résolution de l\'équation } ax^2 + bx + c = 0 \\textbf{ avec } a \\neq 0\\textbf{.}',
+    etapes: [
+      ['On factorise par $a$ : $ax^2 + bx + c = a\\left(x^2 + \\dfrac{b}{a}x + \\dfrac{c}{a}\\right)$.'],
+      ['Or $x^2 + \\dfrac{b}{a}x = \\left(x + \\dfrac{b}{2a}\\right)^2 - \\dfrac{b^2}{4a^2}$, donc $ax^2 + bx + c = a\\left[\\left(x + \\dfrac{b}{2a}\\right)^2 - \\dfrac{b^2 - 4ac}{4a^2}\\right]$.'],
+      ['On pose $\\Delta = b^2 - 4ac$. Comme $a \\neq 0$, l\'équation équivaut à $\\left(x + \\dfrac{b}{2a}\\right)^2 = \\dfrac{\\Delta}{4a^2}$.'],
+      ['Si $\\Delta < 0$ : $\\dfrac{\\Delta}{4a^2} < 0$ alors qu\'un carré est positif. L\'équation n\'a pas de solution.'],
+      ['Si $\\Delta = 0$ : $\\left(x + \\dfrac{b}{2a}\\right)^2 = 0$, donc une seule solution : $x_0 = -\\dfrac{b}{2a}$.'],
+      ['Si $\\Delta > 0$ : $\\dfrac{\\Delta}{4a^2} = \\left(\\dfrac{\\sqrt{\\Delta}}{2a}\\right)^2$, donc $x + \\dfrac{b}{2a} = \\dfrac{\\sqrt{\\Delta}}{2a}$ ou $x + \\dfrac{b}{2a} = -\\dfrac{\\sqrt{\\Delta}}{2a}$.'],
+      ['Deux solutions : $x_1 = \\dfrac{-b - \\sqrt{\\Delta}}{2a}$ et $x_2 = \\dfrac{-b + \\sqrt{\\Delta}}{2a}$.'],
+    ],
+  },
+  {
+    nom: 'Équation de la tangente',
+    niveau: '1re',
+    chapitre: 'Dérivation',
+    titre: '\\textbf{Démonstration : équation de la tangente à la courbe de } f \\textbf{ au point d\'abscisse } a\\textbf{.}',
+    etapes: [
+      ['Soit $f$ dérivable en $a$ et $A(a\\,;f(a))$.',
+        'La tangente en $A$ est la droite passant par $A$ de coefficient directeur $f\'(a)$.'],
+      ['Elle n\'est pas parallèle à l\'axe des ordonnées : elle a une équation de la forme $y = f\'(a)\\,x + p$.'],
+      ['$A$ est sur la tangente : $f(a) = f\'(a) \\times a + p$, donc $p = f(a) - a\\,f\'(a)$.'],
+      ['Donc $y = f\'(a)\\,x + f(a) - a\\,f\'(a)$.'],
+      ['Conclusion : la tangente a pour équation $y = f(a) + f\'(a)(x - a)$.'],
+    ],
+  },
+  {
+    nom: '√ n\'est pas dérivable en 0',
+    niveau: '1re',
+    chapitre: 'Dérivation',
+    titre: '\\textbf{Démonstration : la fonction racine carrée n\'est pas dérivable en } 0\\textbf{.}',
+    etapes: [
+      ['Pour $h > 0$, le taux de variation de $x \\mapsto \\sqrt{x}$ entre $0$ et $h$ vaut $\\dfrac{\\sqrt{h} - \\sqrt{0}}{h} = \\dfrac{\\sqrt{h}}{h} = \\dfrac{1}{\\sqrt{h}}$.'],
+      ['Quand $h$ se rapproche de $0$, $\\sqrt{h}$ se rapproche de $0$, donc $\\dfrac{1}{\\sqrt{h}}$ devient aussi grand qu\'on veut.',
+        'Par exemple, pour $h = 10^{-2n}$, le taux vaut $10^n$.'],
+      ['Le taux de variation n\'a donc pas de limite finie quand $h$ tend vers $0$.'],
+      ['Conclusion : la fonction racine carrée n\'est pas dérivable en $0$.',
+        'Sa courbe a une tangente verticale à l\'origine.'],
+    ],
+  },
+  {
+    nom: 'Dérivée de la fonction carré',
+    niveau: '1re',
+    chapitre: 'Dérivation',
+    titre: '\\textbf{Démonstration : la fonction } f : x \\mapsto x^2 \\textbf{ a pour dérivée } f\'(x) = 2x\\textbf{.}',
+    etapes: [
+      ['Soit $a$ un réel et $h \\neq 0$. Le taux de variation de $f$ entre $a$ et $a + h$ vaut $\\dfrac{(a + h)^2 - a^2}{h}$.'],
+      ['$\\dfrac{(a + h)^2 - a^2}{h} = \\dfrac{a^2 + 2ah + h^2 - a^2}{h} = \\dfrac{h(2a + h)}{h} = 2a + h$.'],
+      ['Quand $h$ tend vers $0$, $2a + h$ tend vers $2a$ : $f$ est dérivable en $a$ et $f\'(a) = 2a$.'],
+      ['Conclusion : $f$ est dérivable sur $\\mathbb{R}$ et, pour tout réel $x$, $f\'(x) = 2x$.'],
+    ],
+  },
+  {
+    nom: 'Dérivée de la fonction inverse',
+    niveau: '1re',
+    chapitre: 'Dérivation',
+    titre: '\\textbf{Démonstration : la fonction } f : x \\mapsto \\dfrac{1}{x} \\textbf{ a pour dérivée } f\'(x) = -\\dfrac{1}{x^2}\\textbf{.}',
+    etapes: [
+      ['Soit $a \\neq 0$ et $h \\neq 0$ tel que $a + h \\neq 0$. Le taux de variation vaut $\\dfrac{1}{h}\\left(\\dfrac{1}{a + h} - \\dfrac{1}{a}\\right)$.'],
+      ['$\\dfrac{1}{a + h} - \\dfrac{1}{a} = \\dfrac{a - (a + h)}{a(a + h)} = \\dfrac{-h}{a(a + h)}$, donc le taux vaut $\\dfrac{-1}{a(a + h)}$.'],
+      ['Quand $h$ tend vers $0$, $a(a + h)$ tend vers $a^2$ : le taux tend vers $-\\dfrac{1}{a^2}$.'],
+      ['Conclusion : $f$ est dérivable sur $\\mathopen{]}-\\infty\\,;0[$ et sur $]0\\,;+\\infty[$, et $f\'(x) = -\\dfrac{1}{x^2}$.'],
+    ],
+  },
+  {
+    nom: 'Dérivée d\'un produit',
+    niveau: '1re',
+    chapitre: 'Dérivation',
+    titre: '\\textbf{Démonstration : } (uv)\' = u\'v + uv\'\\textbf{.}',
+    etapes: [
+      ['Soit $u$ et $v$ dérivables en $a$, et $h \\neq 0$. Le taux de variation de $uv$ vaut $\\dfrac{u(a + h)v(a + h) - u(a)v(a)}{h}$.'],
+      ['On ajoute et on retranche $u(a)v(a + h)$ au numérateur :',
+        '$u(a + h)v(a + h) - u(a)v(a + h) + u(a)v(a + h) - u(a)v(a)$.'],
+      ['Le taux s\'écrit donc $\\dfrac{u(a + h) - u(a)}{h} \\times v(a + h) + u(a) \\times \\dfrac{v(a + h) - v(a)}{h}$.'],
+      ['Quand $h$ tend vers $0$ : $\\dfrac{u(a + h) - u(a)}{h}$ tend vers $u\'(a)$, $\\dfrac{v(a + h) - v(a)}{h}$ tend vers $v\'(a)$,',
+        'et $v(a + h)$ tend vers $v(a)$ (admis : une fonction dérivable en $a$ y est continue).'],
+      ['Conclusion : $uv$ est dérivable en $a$ et $(uv)\'(a) = u\'(a)v(a) + u(a)v\'(a)$.'],
+    ],
+  },
+  {
+    nom: 'cos et sin de π/4 et de π/3',
+    niveau: '1re',
+    chapitre: 'Trigonométrie',
+    titre: '\\textbf{Démonstration : valeurs de } \\cos \\textbf{ et } \\sin \\textbf{ en } \\dfrac{\\pi}{4} \\textbf{ et } \\dfrac{\\pi}{3}\\textbf{.}',
+    etapes: [
+      ['Sur le cercle trigonométrique de centre $O$, on note $I(1\\,;0)$ et $M$ le point associé au réel $x$.',
+        '$M$ a pour coordonnées $(\\cos x\\,;\\sin x)$, et $\\cos^2 x + \\sin^2 x = 1$.'],
+      ['Pour $x = \\dfrac{\\pi}{4}$ : $M$ est sur la bissectrice du premier quadrant, donc $\\cos\\dfrac{\\pi}{4} = \\sin\\dfrac{\\pi}{4} = c$ avec $c > 0$.'],
+      ['Alors $c^2 + c^2 = 1$, soit $c^2 = \\dfrac{1}{2}$ et $c = \\dfrac{1}{\\sqrt{2}} = \\dfrac{\\sqrt{2}}{2}$ : $\\cos\\dfrac{\\pi}{4} = \\sin\\dfrac{\\pi}{4} = \\dfrac{\\sqrt{2}}{2}$.'],
+      ['Pour $x = \\dfrac{\\pi}{3}$ : $OI = OM = 1$ et $\\widehat{IOM} = 60°$, donc le triangle $OIM$ est équilatéral.'],
+      ['Le projeté $H$ de $M$ sur $(OI)$ est le pied d\'une hauteur, qui est aussi une médiane.',
+        '$H$ est donc le milieu de $[OI]$ : $\\cos\\dfrac{\\pi}{3} = OH = \\dfrac{1}{2}$.'],
+      ['Puis $\\sin^2\\dfrac{\\pi}{3} = 1 - \\dfrac{1}{4} = \\dfrac{3}{4}$, avec $\\sin\\dfrac{\\pi}{3} > 0$ : $\\sin\\dfrac{\\pi}{3} = \\dfrac{\\sqrt{3}}{2}$.'],
+    ],
+  },
+  {
+    nom: 'Formule d\'Al-Kashi',
+    niveau: '1re',
+    chapitre: 'Produit scalaire',
+    titre: '\\textbf{Démonstration : formule d\'Al-Kashi } BC^2 = AB^2 + AC^2 - 2\\,AB \\times AC \\times \\cos\\widehat{A}\\textbf{.}',
+    etapes: [
+      ['Soit $ABC$ un triangle. D\'après la relation de Chasles, $\\overrightarrow{BC} = \\overrightarrow{BA} + \\overrightarrow{AC} = \\overrightarrow{AC} - \\overrightarrow{AB}$.'],
+      ['Donc $BC^2 = \\left\\|\\overrightarrow{AC} - \\overrightarrow{AB}\\right\\|^2 = AC^2 - 2\\,\\overrightarrow{AB} \\cdot \\overrightarrow{AC} + AB^2$.'],
+      ['Or $\\overrightarrow{AB} \\cdot \\overrightarrow{AC} = AB \\times AC \\times \\cos\\widehat{BAC}$.'],
+      ['Conclusion : $BC^2 = AB^2 + AC^2 - 2\\,AB \\times AC \\times \\cos\\widehat{BAC}$.',
+        'Avec $a = BC$, $b = AC$, $c = AB$ : $a^2 = b^2 + c^2 - 2bc\\cos\\widehat{A}$.'],
+    ],
+  },
+  {
+    nom: 'Points M tels que MA · MB = 0',
+    niveau: '1re',
+    chapitre: 'Produit scalaire',
+    titre: '\\textbf{Démonstration : ensemble des points } M \\textbf{ tels que } \\overrightarrow{MA} \\cdot \\overrightarrow{MB} = 0\\textbf{.}',
+    etapes: [
+      ['Soit $A$ et $B$ deux points distincts et $I$ le milieu de $[AB]$ : $\\overrightarrow{IB} = -\\overrightarrow{IA}$.'],
+      ['$\\overrightarrow{MA} \\cdot \\overrightarrow{MB} = \\left(\\overrightarrow{MI} + \\overrightarrow{IA}\\right) \\cdot \\left(\\overrightarrow{MI} + \\overrightarrow{IB}\\right) = \\left(\\overrightarrow{MI} + \\overrightarrow{IA}\\right) \\cdot \\left(\\overrightarrow{MI} - \\overrightarrow{IA}\\right)$.'],
+      ['Donc $\\overrightarrow{MA} \\cdot \\overrightarrow{MB} = MI^2 - IA^2 = MI^2 - \\dfrac{AB^2}{4}$.'],
+      ['Ainsi $\\overrightarrow{MA} \\cdot \\overrightarrow{MB} = 0 \\iff MI^2 = \\dfrac{AB^2}{4} \\iff MI = \\dfrac{AB}{2}$.'],
+      ['Conclusion : l\'ensemble cherché est le cercle de centre $I$ et de rayon $\\dfrac{AB}{2}$,',
+        'c\'est-à-dire le cercle de diamètre $[AB]$.'],
     ],
   },
 ]

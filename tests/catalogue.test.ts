@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { THEMES, classerNombre, dansPolygone, dessinEnsembles, DEMONSTRATIONS, ENSEMBLES, ligneEnLatex, lireListe, placeDansZone } from '../src/catalogue'
+import { PLACE_ENSEMBLES, PROGRAMME, classerNombre, dansPolygone, dessinEnsembles, DEMONSTRATIONS, ENSEMBLES, ligneEnLatex, lireListe, placeDansZone } from '../src/catalogue'
 import type { Boite } from '../src/catalogue'
 
 const ens = (t: string) => { const r = classerNombre(t); return 'erreur' in r ? 'erreur : ' + r.erreur : r.ensemble + (r.doute ? '?' : '') }
@@ -77,22 +77,38 @@ describe('Le catalogue : les démonstrations', () => {
     expect(ligneEnLatex('Donc $10^n$ est pair.')).toBe('\\text{Donc }10^n\\text{ est pair.}')
     expect(ligneEnLatex('$p$ et {q}')).toBe('p\\text{ et \\{q\\}}')
   })
-  it('toutes les démonstrations du programme de seconde, dans son ordre', () => {
-    expect(DEMONSTRATIONS.map(d => d.theme + ' : ' + d.nom)).toEqual([
-      'nombres : Somme de deux multiples', 'nombres : Le carré d\'un impair est impair', 'nombres : 1/3 n\'est pas décimal',
-      'nombres : √2 n\'est pas rationnel', 'nombres : √(ab) = √a × √b', 'geometrie : Colinéarité et déterminant',
-      'geometrie : Équation cartésienne d\'une droite', 'fonctions : Variations des fonctions affines',
-      'fonctions : Position de y = x et y = x²', 'fonctions : Variations de la fonction carré',
-      'fonctions : Variations de la fonction inverse',
+  it('toutes les démonstrations du programme, de la 2nde et de la 1re spé, dans son ordre', () => {
+    expect(DEMONSTRATIONS.map(d => d.niveau + ' · ' + d.chapitre + ' : ' + d.nom)).toEqual([
+      '2nde · Arithmétique : Somme de deux multiples', '2nde · Arithmétique : Le carré d\'un impair est impair',
+      '2nde · Nombres réels : 1/3 n\'est pas décimal', '2nde · Nombres réels : √2 n\'est pas rationnel',
+      '2nde · Algèbre : √(ab) = √a × √b', '2nde · Vecteurs : Colinéarité et déterminant',
+      '2nde · Droites du plan : Équation cartésienne d\'une droite',
+      '2nde · Variations et extrémums : Variations des fonctions affines', '2nde · Variations et extrémums : Position de y = x et y = x²',
+      '2nde · Variations et extrémums : Variations de la fonction carré', '2nde · Variations et extrémums : Variations de la fonction inverse',
+      '1re · Suites : Terme général d\'une suite arithmétique', '1re · Suites : Terme général d\'une suite géométrique',
+      '1re · Suites : Somme 1 + 2 + … + n', '1re · Suites : Somme 1 + q + … + qⁿ',
+      '1re · Second degré : Équation du second degré',
+      '1re · Dérivation : Équation de la tangente', '1re · Dérivation : √ n\'est pas dérivable en 0',
+      '1re · Dérivation : Dérivée de la fonction carré', '1re · Dérivation : Dérivée de la fonction inverse',
+      '1re · Dérivation : Dérivée d\'un produit', '1re · Trigonométrie : cos et sin de π/4 et de π/3',
+      '1re · Produit scalaire : Formule d\'Al-Kashi', '1re · Produit scalaire : Points M tels que MA · MB = 0',
     ])
     for (const d of DEMONSTRATIONS) for (const e of d.etapes) for (const l of e) expect(l.split('$').length % 2).toBe(1)
   })
 })
 
-describe('Le catalogue : les thèmes', () => {
-  it('chaque démonstration est rangée dans un thème du panneau', () => {
-    const ids = new Set(THEMES.map(t => t.id))
-    for (const d of DEMONSTRATIONS) expect(ids.has(d.theme)).toBe(true)
+describe('Le catalogue : le rangement', () => {
+  const chapitres = (n: string) => PROGRAMME.find(p => p.niveau === n)!.themes.flatMap(t => t.chapitres)
+  it('chaque démonstration est rangée dans un chapitre de son niveau', () => {
+    for (const d of DEMONSTRATIONS) expect(chapitres(d.niveau), d.nom).toContain(d.chapitre)
+    expect(chapitres(PLACE_ENSEMBLES.niveau)).toContain(PLACE_ENSEMBLES.chapitre)
+  })
+  it('chaque chapitre a au moins une démonstration, et un nom unique dans son niveau', () => {
+    for (const p of PROGRAMME) {
+      const c = chapitres(p.niveau)
+      expect(new Set(c).size).toBe(c.length)
+      for (const ch of c) expect(DEMONSTRATIONS.some(d => d.niveau === p.niveau && d.chapitre === ch), ch).toBe(true)
+    }
   })
 })
 

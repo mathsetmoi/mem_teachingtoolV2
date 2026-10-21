@@ -1007,18 +1007,27 @@ les 35 assemblages de six carrés, on retrouve bien les 11 patrons du cube.
 ## Le catalogue
 
 Le bouton « Catalogue » de la barre du haut (au téléphone : Plus → Outils de
-cours) ouvre, à droite, des éléments de cours tout prêts, rangés par thème.
+cours) ouvre, à droite, des éléments de cours tout prêts, rangés par niveau.
 Ce qu'il pose est fait d'objets ordinaires du tableau (des figures, des
 formules), **groupés** : on le déplace, on l'agrandit, on écrit dessus, on
 le dégroupe ; un Ctrl + Z le retire d'un coup. Il passe dans le replay de la
 séance comme le reste, et marche dans la version hors ligne. Le panneau prend
 la place du programme de construction (l'un ferme l'autre).
 
-En haut du panneau, on choisit le thème du programme de seconde (BO du
-2 avril 2026) : Nombres et calculs, Géométrie, Fonctions, Statistiques et
-probabilités. Le choix est retenu sur l'appareil (`mem-catalogue-theme`).
+Le panneau est rangé comme les programmes (BO 2026) : un onglet par niveau
+(**2nde**, **1re spé**), puis les thèmes du niveau, et dans chaque thème ses
+chapitres, qu'on déplie d'un clic (le nombre d'éléments est à droite). Un
+thème où le programme ne demande pas de démonstration le dit. Le niveau
+choisi et les chapitres dépliés sont retenus sur l'appareil
+(`mem-catalogue-niveau`, `mem-catalogue-ouverts`).
 
-- **Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ** (Nombres et calculs) : cinq ovales emboîtés, chacun de sa
+La **recherche**, en haut, cherche dans tous les niveaux à la fois, sans se
+soucier des majuscules ni des accents (« tangente », « derivee », « suite »,
+« produit scalaire ») : tant qu'on tape, les onglets laissent la place à la
+liste de ce qui correspond, avec son niveau et son chapitre ; Échap efface la
+recherche. Le dessin des ensembles, trouvé ainsi, ouvre son chapitre.
+
+- **Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ** (2nde, Nombres réels) : cinq ovales emboîtés, chacun de sa
   couleur, avec son nom (22,5 cm sur 13 à 100 %). Il suit le pointeur en
   transparence ; un clic le pose, Échap annule. Les nombres tapés dans le
   champ, séparés par des points-virgules (la virgule est celle des
@@ -1034,23 +1043,32 @@ probabilités. Le choix est retenu sur l'appareil (`mem-catalogue-theme`).
   pas trancher (`π − π`) va dans ℝ avec un avertissement, et ce qu'il ne sait
   pas lire est dit, jamais deviné. Le texte du champ est retenu sur
   l'appareil (`mem-catalogue-nombres`).
-- **Démonstrations** : toutes celles que le programme de seconde demande,
-  chacune dans son thème.
-  - Nombres et calculs : la somme de deux multiples de 7 est un multiple
-    de 7 ; le carré d'un impair est impair ; 1/3 n'est pas décimal ; √2 est
-    irrationnel ; √(ab) = √a × √b.
-  - Géométrie : colinéarité de deux vecteurs non nuls (déterminant nul,
-    coordonnées proportionnelles) ; forme générale ax + by + c = 0 d'une
-    équation de droite, par le déterminant.
-  - Fonctions : variations des fonctions affines ; position des courbes
-    y = x et y = x² pour x ⩾ 0 ; variations de la fonction carré ;
-    variations de la fonction inverse.
-  - Statistiques et probabilités : le programme n'en demande pas, le
-    panneau le dit.
+- **Démonstrations** : toutes celles que les programmes demandent, chacune
+  dans son chapitre.
+  - 2nde, Nombres et calculs : la somme de deux multiples de 7 est un
+    multiple de 7 ; le carré d'un impair est impair (Arithmétique) ; 1/3
+    n'est pas décimal ; √2 est irrationnel (Nombres réels) ; √(ab) = √a × √b
+    (Algèbre).
+  - 2nde, Géométrie : colinéarité de deux vecteurs non nuls (Vecteurs) ;
+    forme générale ax + by + c = 0 d'une équation de droite, par le
+    déterminant (Droites du plan).
+  - 2nde, Fonctions (Variations et extrémums) : fonctions affines ; position
+    des courbes y = x et y = x² pour x ⩾ 0 ; fonction carré ; fonction
+    inverse.
+  - 1re spé, Algèbre : terme général d'une suite arithmétique, d'une suite
+    géométrique ; 1 + 2 + … + n ; 1 + q + … + qⁿ (Suites) ; résolution de
+    l'équation du second degré (Second degré).
+  - 1re spé, Analyse : équation de la tangente ; la racine carrée n'est pas
+    dérivable en 0 ; dérivées de la fonction carré, de la fonction inverse,
+    d'un produit (Dérivation) ; cos et sin de π/4 et de π/3 (Trigonométrie).
+  - 1re spé, Géométrie (Produit scalaire) : formule d'Al-Kashi ; ensemble des
+    points M tels que MA→ · MB→ = 0.
+  - Statistiques et probabilités : aucun des deux programmes n'en demande.
 
   Le titre se pose d'un clic, puis chaque ligne avec → (ou Espace, ou
-  « Suivante »), ← la retire, ⏩ montre tout. Dans le panneau, le texte des
-  étapes passe à la ligne pour tenir dans sa largeur.
+  « Suivante »), ← la retire, ⏩ montre tout. Le bas du panneau montre la
+  démonstration en cours, étape par étape ; son texte passe à la ligne pour
+  tenir dans sa largeur.
 
 Le calcul (lire un nombre, le classer, trouver sa place dans sa zone) est
 dans `src/catalogue.ts`, sans rien toucher à l'écran ; le panneau dans
@@ -1103,6 +1121,47 @@ montre le film sans les instruments ; il se met à jour au chargement
 suivant. Ce qui reste sur l'appareil : `mem-minuteur-son` (le son coupé ou
 non), `mem-tirage-<dossier>` (la liste et le tour en cours de chaque
 classe), `mem-conseils` (les conseils déjà vus).
+
+## La recherche
+
+**Ctrl F** (⌘ F sur Mac), depuis le tableau, ou le champ **Rechercher** à
+droite du nom du classeur (quand il a la place ; sinon sa loupe seule),
+ouvre une fenêtre au milieu de l'écran. On tape quelques mots, sans
+accent ni majuscule à respecter ; les résultats viennent en trois groupes :
+
+- **Outils** : les boutons et réglages par leur nom ou ce qu'ils font.
+  « rapporteur » pose le rapporteur, « Seyès » change le fond, « minuteur »
+  le lance, « médiatrice » ouvre le programme de construction avec la
+  phrase, « ensembles » pose le dessin du catalogue, « fraction » coche ce
+  thème des automatismes. Entrée fait l'action.
+- **Formules écrites** : celles des pages de tous les classeurs de ce
+  navigateur, avec des mots simples : « racine », « fraction », « pi »,
+  « carré », « réels », « vecteur »… trouvent √, les fractions, π, x², ℝ,
+  les vecteurs. Un clic ouvre la page, la formule prise et montrée (au zoom
+  où l'on est) ; une page d'une séance passée s'ouvre en lecture.
+- **Classeurs, pages et séances** : un classeur par son nom ou sa classe,
+  une page par son nom, une séance par sa date (« 16 octobre », « mardi »,
+  « 16/10 ») ou son nom.
+
+↑ ↓ choisissent, Entrée ouvre, Échap efface le texte, puis ferme.
+L'écriture au stylo ne se recherche pas.
+
+Dans **la bibliothèque**, le même champ est sous le titre (Ctrl F y va) :
+dès qu'on tape, les résultats prennent la place des cartes, en groupes
+(classeurs, dossiers, séances, formules) ; Échap efface et les cartes
+reviennent.
+
+Comment c'est fait : `src/recherche.ts` (le calcul : le texte mis à plat,
+les formules lues en mots, la comparaison, le contenu d'un classeur lu dans
+son document ; testé dans `tests/recherche.test.ts`), `src/recherche-vue.ts`
+(la fenêtre), `src/classeurs/recherche-bibliotheque.ts` (les classeurs de
+ce navigateur, lus dans leur base en lecture seule : une transaction
+readonly, le document refait en mémoire puis détruit, rien n'est écrit ; le
+classeur ouvert est lu dans le tableau), `src/classeurs/recherche-biblio-vue.ts`
+(le champ de la bibliothèque). Pour ouvrir un autre classeur sur une page,
+l'adresse prend deux paramètres facultatifs, `&page=…&forme=…`, lus au
+démarrage comme `&seance=…`. Un conseil de premier lancement présente la
+recherche (`mem-conseils` passe à la série 2).
 
 ## Revoir la construction (en classe)
 

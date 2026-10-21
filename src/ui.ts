@@ -21,6 +21,14 @@ import type { NomInstrument } from './instruments'
 import { INSTRUMENTS } from './instruments'
 import { OutilsDeClasse } from './outils-classe'
 import { montrerConseils, ouvrirAide } from './aide'
+import type { Action, ClasseurCherche, Destination } from './recherche-vue'
+import { FenetreRecherche, TOUCHE_RECHERCHE } from './recherche-vue'
+import type { ContenuClasseur } from './recherche'
+import { lireContenu } from './recherche'
+import { EXEMPLES } from './construction'
+import { DEMONSTRATIONS } from './catalogue'
+import { AUTOMATISMES_5E } from './automatismes'
+import { FONDS } from './types'
 import type { Menu, OptionsEntree } from './menus'
 import type { Sens } from './ordre'
 import { aidesOrdre } from './ordre'
@@ -329,6 +337,18 @@ export class UI implements Interface {
   /** La classe du classeur ouvert, que la bibliothèque connaît (main.ts) :
    *  le tirage au sort prend sa liste */
   classeDuClasseur: () => Promise<{ id: string; nom: string } | null> = async () => null
+  /** La recherche (Ctrl F, le champ à côté du nom du classeur ; voir
+   *  recherche-vue.ts) */
+  recherche!: FenetreRecherche
+  private champRecherche!: HTMLButtonElement
+  /** Ce que la bibliothèque donne à la recherche (main.ts) : les classeurs
+   *  de ce navigateur, le contenu d'un classeur fermé, et l'ouverture d'un
+   *  autre classeur. Sans bibliothèque : le classeur ouvert seul. */
+  idClasseur = ''
+  rechercheClasseurs: () => Promise<ClasseurCherche[]> = async () =>
+    [{ id: this.idClasseur, nom: 'Ce classeur', classe: null, chemin: '', modifie: Date.now(), courant: true, contenu: null }]
+  contenuClasseur: (c: ClasseurCherche) => Promise<ContenuClasseur | null> = async () => null
+  ouvrirAilleurs: (d: Destination) => void = () => {}
   private boutonsInstruments = new Map<NomInstrument, HTMLButtonElement>()
   private menuPartie!: HTMLDivElement
   private partie: { id: string; prise: Prise } | null = null
@@ -793,6 +813,27 @@ export class UI implements Interface {
     }, 'seulement-large outils-classe')
     outilsClasse.setAttribute('aria-haspopup', 'menu'); outilsClasse.setAttribute('aria-expanded', 'false')
     this.menuOutilsClasse = { el: menuOutilsClasse, bouton: outilsClasse }
+    // La recherche : sa fenêtre, Ctrl F (⌘ F) ; le champ est posé plus bas
+    // (voir placerChampRecherche). Dans la bibliothèque, Ctrl F va à son
+    // propre champ.
+    this.recherche = new FenetreRecherche(this.racine, {
+      actions: () => this.actionsDeRecherche(),
+      classeurs: () => this.rechercheClasseurs(),
+      contenu: c => c.courant ? Promise.resolve(lireContenu(app.tableau.doc, app.tableau.seancesDuClasseur())) : this.contenuClasseur(c),
+      aller: d => this.allerA(d),
+    })
+    const champ = this.champRecherche = document.createElement('button')
+    champ.type = 'button'; champ.className = 'champ-recherche'; champ.hidden = true
+    champ.title = `Rechercher un outil, une formule, un classeur, une page (${TOUCHE_RECHERCHE})`
+    champ.innerHTML = `${icone('loupe')}<span>Rechercher</span><kbd>${TOUCHE_RECHERCHE}</kbd>`
+    champ.addEventListener('click', () => this.ouvrirRecherche())
+    window.addEventListener('keydown', e => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'f') return
+      if (document.body.classList.contains('en-bibliotheque')) return
+      e.preventDefault()
+      if (e.repeat || this.recherche.ouverte || document.querySelector('dialog[open]')) return
+      this.ouvrirRecherche()
+    })
     const revoir = bouton('revue', 'Revoir la construction : une page, une séance, pas à pas', () => this.ouvrirRevue(revoir), 'seulement-large')
     const publier = bouton('publier', 'Publier le replay pour les élèves', () => this.publication.ouvrir(), 'seulement-large')
     // Enregistrer le classeur dans un fichier, en ouvrir un, l'exporter en
@@ -844,6 +885,8 @@ export class UI implements Interface {
     // compteur (voir placerBoutonClasseur).
     const barreClasseur = this.barreClasseur = document.createElement('div')
     barreClasseur.className = 'barre barre-classeur'
+    // Le champ de la recherche suit la largeur du bouton (le nom, l'état)
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => this.placerChampRecherche()).observe(barreClasseur)
     const bc = this.boutonClasseur = document.createElement('button')
     bc.type = 'button'; bc.className = 'bouton-classeur'
     bc.setAttribute('aria-describedby', ID_ETAT)
@@ -988,6 +1031,8 @@ export class UI implements Interface {
     // (les deux menus du téléphone, au bout : l'ordre des autres ne change pas)
     this.racine.append(outils, barreClasseur, haut, this.bandeau, this.descriptionEtat, zoom, this.retour, menu, menuDoigt, this.menuGomme.el, menuFichier, menuFonds, this.menuOutilsClasse.el, menuPage, menuPlus, this.annonce, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments,
       this.menuCouleur.el, this.menuAutres.el)
+    // (le champ de la recherche au bout : l'ordre des autres ne change pas)
+    this.racine.appendChild(this.champRecherche)
     // ----- La barre d'actions, au-dessus de ce qui est pris -----
     // Elle ne recouvre ni la barre d'outils (sauf sur un écran étroit, où
     // elle n'y tient pas ; au téléphone, jamais : voir bordsFlottants), ni la
@@ -1488,6 +1533,95 @@ export class UI implements Interface {
     }
   }
 
+  /** Le champ « Rechercher », à droite du bouton du classeur, dans la place
+   *  qui reste entre lui et la barre du haut : seulement s'il y tient
+   *  (150 px au moins, 240 au plus), sinon sa loupe seule (44 px) ; il ne
+   *  prend rien à la place du bouton du classeur, qui se règle sans lui.
+   *  Sans place du tout : Ctrl F. */
+  private placerChampRecherche() {
+    const c = this.champRecherche
+    if (!c) return
+    const barre = this.barreClasseur
+    if (this.telephone || this.formeClasseur !== 'large' || barre.hidden) { c.hidden = true; return }
+    const r = barre.getBoundingClientRect(), h = this.barreHaut.getBoundingClientRect()
+    const libre = Math.floor(h.left - 12 - (r.right + 12))
+    if (libre < 44 || r.width === 0) { c.hidden = true; return }
+    c.hidden = false
+    c.classList.toggle('compact', libre < 150)
+    c.style.left = Math.round(r.right + 12) + 'px'
+    c.style.top = Math.round(r.top + (r.height - 40) / 2) + 'px'
+    c.style.width = (libre < 150 ? 44 : Math.min(240, libre)) + 'px'
+  }
+
+  /** La fenêtre de la recherche (Ctrl F, le champ) */
+  ouvrirRecherche(texte = '') {
+    fermerMenu()
+    this.recherche.ouvrir(texte)
+  }
+
+  /** Va où la recherche mène : dans ce classeur, la page (la formule prise)
+   *  ou la séance ; dans un autre, il s'ouvre (main.ts) */
+  private allerA(d: Destination) {
+    const app = this.app
+    if (d.classeur !== this.idClasseur) { this.ouvrirAilleurs(d); return }
+    if (this.bibliotheque?.ouvert) this.bibliotheque.fermer()
+    const page = d.page ?? (d.seance ? app.tableau.seancesDuClasseur().find(s => s.id === d.seance)?.pages[0] : undefined)
+    if (page) app.voirPage(page)
+    if (d.forme) { const f = d.forme; requestAnimationFrame(() => { if (!app.montrerForme(f)) this.message('Cette formule n\'est plus sur la page.') }) }
+  }
+
+  /** Tout ce que la recherche trouve parmi les outils : les outils, les
+   *  instruments, les fonds, les fenêtres, les outils de classe, les
+   *  programmes de construction, le catalogue, les automatismes */
+  private actionsDeRecherche(): Action[] {
+    const app = this.app
+    const outil = (o: Outil, titre: string, touche: string, mots: string, ic: string = o, avant?: () => void): Action =>
+      ({ titre, genre: 'Outil', touche, mots, icone: ic, faire: () => { avant?.(); app.choisirOutil(o) } })
+    const l: Action[] = [
+      outil('stylo', 'Stylo', 'P', 'ecrire crayon main levee dessiner'),
+      outil('surligneur', 'Surligneur', 'H', 'surligner fluo mettre en evidence'),
+      outil('gomme', 'Gomme', 'E', 'effacer'),
+      outil('point', 'Point', 'X', 'placer nommer un point'),
+      outil('segment', 'Segment', 'L', 'trait regle tracer', 'trait-segment', () => { app.typeTrait = 'segment' }),
+      outil('segment', 'Droite', 'L', 'trait tracer', 'trait-droite', () => { app.typeTrait = 'droite' }),
+      outil('segment', 'Demi-droite', 'L', 'trait tracer', 'trait-demi', () => { app.typeTrait = 'demi' }),
+      outil('forme', 'Rectangle', 'R', 'carre forme figure', 'rectangle', () => { app.typeForme = 'rectangle' }),
+      outil('forme', 'Cercle', 'C', 'rond disque forme figure', 'cercle', () => { app.typeForme = 'cercle' }),
+      outil('forme', 'Polygone', 'G', 'triangle forme figure', 'polygone', () => { app.typeForme = 'polygone' }),
+      outil('formule', 'Formule', 'F', 'latex equation ecrire calcul racine fraction puissance'),
+      outil('selection', 'Sélection', 'V', 'selectionner prendre deplacer bouger agrandir tourner'),
+      outil('main', 'Déplacer la vue', 'Espace', 'main vue faire defiler'),
+    ]
+    for (const i of INSTRUMENTS) l.push({ titre: i.nom, genre: 'Instrument', icone: i.id, mots: 'instrument poser mesurer angle', faire: () => { app.basculerInstrument(i.id); this.maj() } })
+    for (const f of FONDS) l.push({ titre: f.nom, genre: 'Fond', icone: 'cadre', mots: 'fond page papier quadrillage', faire: () => app.changerFond(f.id) })
+    const mots: Record<string, string> = { rideau: 'cacher devoiler correction masquer', laser: 'montrer pointer', minuteur: 'chrono chronometre temps compte a rebours sablier', tirage: 'hasard eleve interroger au sort', aide: 'raccourcis clavier gestes' }
+    for (const x of this.outilsDeClasse.entrees()) l.push({ titre: x.texte, genre: x.id === 'aide' ? undefined : 'Outil de classe', detail: x.aide, icone: x.icone, touche: x.touche, mots: mots[x.id], faire: x.faire })
+    l.push(
+      { titre: 'Nouvelle page', icone: 'plus', mots: 'ajouter page', faire: () => app.nouvellePage() },
+      { titre: 'Toutes les pages', icone: 'trier', touche: 'Maj P', mots: 'pages trier ranger vignettes', faire: () => this.ouvrirTrieuse() },
+      { titre: '100 %', icone: 'loupe', touche: `${CTRL} 0`, mots: 'zoom cent pour cent', faire: () => app.zoom100() },
+      { titre: 'Tout voir', icone: 'loupe', touche: 'Maj 1', mots: 'zoom toute la page', faire: () => app.toutVoir() },
+      { titre: 'Importer une image', icone: 'image', mots: 'image photo fichier', faire: () => this.choisirImage() },
+      { titre: 'Programme de construction', icone: 'construction', mots: 'construire etape par etape', faire: () => this.basculerConstructeur() },
+      { titre: 'Catalogue', icone: 'catalogue', mots: 'elements de cours tout prets', faire: () => this.basculerCatalogue() },
+      { titre: 'Automatismes', icone: 'automatismes', mots: 'flash questions calcul mental', faire: () => this.flash.ouvrir() },
+      { titre: 'Revoir la construction', icone: 'revue', mots: 'revoir replay pas a pas', faire: () => this.ouvrirRevue(this.champRecherche.hidden ? this.boutonFichier : this.champRecherche) },
+      { titre: 'Publier le replay', icone: 'publier', mots: 'publier eleves drive lien', faire: () => this.publication.ouvrir() },
+      { titre: 'Bibliothèque des classeurs', icone: 'classeurs', mots: 'classeurs dossiers', faire: () => this.ouvrirBibliotheque() },
+      { titre: 'Enregistrer le classeur', icone: 'cle', touche: `${CTRL} S`, mots: 'sauvegarder fichier memc', faire: () => void this.sauvegarde.ctrlS() },
+      { titre: 'Ouvrir un classeur', icone: 'ouvrir', touche: `${CTRL} O`, mots: 'fichier memc', faire: () => this.sauvegarde.ouvrir() },
+      { titre: 'Exporter le classeur en PDF', icone: 'pdf', mots: 'imprimer pdf', faire: () => this.exporterPdf('classeur') },
+    )
+    for (const e of EXEMPLES) l.push({ titre: e.nom, genre: 'Construction', icone: 'construction', detail: 'Programme de construction', mots: e.texte, faire: () => this.constructeur.ouvrirAvec(e.texte) })
+    l.push({ titre: 'Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ', genre: 'Catalogue', icone: 'catalogue', detail: 'Le dessin à poser', mots: 'ensembles de nombres entiers naturels relatifs decimaux rationnels reels', faire: () => this.catalogue.poserElement() })
+    for (const d of DEMONSTRATIONS) l.push({ titre: d.nom, genre: 'Catalogue', icone: 'catalogue', detail: 'Démonstration à poser', mots: `demonstration ${d.titre} ${d.nom.replace('√', ' racine ')}`, faire: () => this.catalogue.poserElement(d.nom) })
+    const themes = new Set<string>()
+    for (const a of AUTOMATISMES_5E) themes.add(a.theme)
+    for (const theme of themes.keys()) l.push({ titre: theme, genre: 'Automatismes', icone: 'automatismes', detail: 'Le thème coché', mots: AUTOMATISMES_5E.filter(a => a.theme === theme).map(a => a.titre).join(' '), faire: () => this.flash.ouvrir([`5e/${theme}`]) })
+    for (const a of AUTOMATISMES_5E) l.push({ titre: a.titre, genre: 'Automatismes', icone: 'automatismes', detail: a.theme, faire: () => this.flash.ouvrir([`5e/${a.theme}`]) })
+    return l
+  }
+
   /** L'aide et les raccourcis (la touche « ? », ou les outils de classe) */
   ouvrirAide() {
     fermerMenu()
@@ -1500,6 +1634,7 @@ export class UI implements Interface {
     montrerConseils(this.racine, [
       { titre: 'Nouveau : les outils de classe', texte: 'Le rideau, le pointeur laser, le minuteur et le tirage au sort sont réunis sous ce bouton.', ancre: () => this.boutonOutilsClasse },
       { titre: 'L\'aide, à tout moment', texte: 'La touche « ? » ouvre l\'aide : tous les raccourcis du clavier et les gestes.', ancre: () => this.boutonOutilsClasse },
+      { titre: 'Nouveau : la recherche', texte: `Un outil, une formule écrite dans n'importe quel classeur, une page, une séance : tapez quelques mots ici, ou ${TOUCHE_RECHERCHE} depuis n'importe où.`, ancre: () => this.champRecherche, serie: 2 },
     ], () => !document.querySelector('dialog[open]') && !document.body.classList.contains('en-bibliotheque') && !menuOuvert())
   }
 
@@ -1918,6 +2053,7 @@ export class UI implements Interface {
     } else forme = 'cache'
     this.formeClasseur = forme
     b.classList.toggle('etroit', forme !== 'large')
+    this.placerChampRecherche()
     barre.hidden = forme === 'cache' || forme === 'dans-la-barre'
     barre.dataset.forme = forme
     if (!barre.hidden) {
