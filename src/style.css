@@ -720,7 +720,26 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .panneau-catalogue .erreurs:empty { display: none; }
 .panneau-catalogue .note { margin: 0; font-size: 13px; line-height: 1.4; color: var(--encre-douce); }
 .panneau-catalogue .demos { display: flex; flex-direction: column; gap: 6px; }
-.panneau-catalogue .demos .secondaire { text-align: left; }
+.panneau-catalogue .demo, .panneau-catalogue .aller-ensembles { height: auto; min-height: 40px; padding: 8px 12px; text-align: left; line-height: 1.3; }
+.panneau-catalogue .recherche { height: 40px; padding: 0 12px; border: 1px solid var(--filet); border-radius: 10px; background: #fbfcfe; color: var(--encre); font: inherit; font-size: 15px; }
+.panneau-catalogue .recherche:focus { outline: 2px solid var(--bleu); outline-offset: 1px; }
+.panneau-catalogue .onglets { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--chrome); }
+.panneau-catalogue .onglets[hidden] { display: none; }
+.panneau-catalogue .onglet { flex: 1; height: 36px; border: 0; border-radius: 9px; background: transparent; color: var(--encre-douce); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.panneau-catalogue .onglet[aria-pressed="true"] { background: var(--papier); color: var(--encre); box-shadow: 0 1px 4px rgba(27, 34, 48, 0.15); }
+.panneau-catalogue .niveau, .panneau-catalogue .resultats { display: flex; flex-direction: column; gap: 6px; }
+.panneau-catalogue .niveau h3 { margin-top: 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--encre-douce); }
+.panneau-catalogue .chapitre { border: 1px solid var(--filet); border-radius: 10px; }
+.panneau-catalogue .chapitre[open] { background: var(--chrome); }
+.panneau-catalogue .chapitre summary { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-weight: 700; cursor: pointer; list-style: none; }
+.panneau-catalogue .chapitre summary::-webkit-details-marker { display: none; }
+.panneau-catalogue .chapitre summary::before { content: '▸'; color: var(--encre-douce); }
+.panneau-catalogue .chapitre[open] summary::before { content: '▾'; }
+.panneau-catalogue .chapitre .nombre { margin-left: auto; font-weight: 400; font-size: 13px; color: var(--encre-douce); }
+.panneau-catalogue .chapitre .demos { padding: 0 8px 8px; }
+.panneau-catalogue .ensembles { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px dashed var(--filet); border-radius: 10px; background: var(--papier); }
+.panneau-catalogue .ensembles h4 { margin: 0; font-size: 14px; }
+.panneau-catalogue .lieu { margin: 6px 0 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--encre-douce); }
 .panneau-catalogue .etapes { margin: 0; padding-left: 24px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.45; }
 .panneau-catalogue .etapes:empty { display: none; }
 .panneau-catalogue .etapes li { color: var(--encre-douce); }

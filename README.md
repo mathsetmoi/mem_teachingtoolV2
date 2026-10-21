@@ -978,18 +978,27 @@ les 35 assemblages de six carrés, on retrouve bien les 11 patrons du cube.
 ## Le catalogue
 
 Le bouton « Catalogue » de la barre du haut (au téléphone : Plus → Outils de
-cours) ouvre, à droite, des éléments de cours tout prêts, rangés par thème.
+cours) ouvre, à droite, des éléments de cours tout prêts, rangés par niveau.
 Ce qu'il pose est fait d'objets ordinaires du tableau (des figures, des
 formules), **groupés** : on le déplace, on l'agrandit, on écrit dessus, on
 le dégroupe ; un Ctrl + Z le retire d'un coup. Il passe dans le replay de la
 séance comme le reste, et marche dans la version hors ligne. Le panneau prend
 la place du programme de construction (l'un ferme l'autre).
 
-En haut du panneau, on choisit le thème du programme de seconde (BO du
-2 avril 2026) : Nombres et calculs, Géométrie, Fonctions, Statistiques et
-probabilités. Le choix est retenu sur l'appareil (`mem-catalogue-theme`).
+Le panneau est rangé comme les programmes (BO 2026) : un onglet par niveau
+(**2nde**, **1re spé**), puis les thèmes du niveau, et dans chaque thème ses
+chapitres, qu'on déplie d'un clic (le nombre d'éléments est à droite). Un
+thème où le programme ne demande pas de démonstration le dit. Le niveau
+choisi et les chapitres dépliés sont retenus sur l'appareil
+(`mem-catalogue-niveau`, `mem-catalogue-ouverts`).
 
-- **Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ** (Nombres et calculs) : cinq ovales emboîtés, chacun de sa
+La **recherche**, en haut, cherche dans tous les niveaux à la fois, sans se
+soucier des majuscules ni des accents (« tangente », « derivee », « suite »,
+« produit scalaire ») : tant qu'on tape, les onglets laissent la place à la
+liste de ce qui correspond, avec son niveau et son chapitre ; Échap efface la
+recherche. Le dessin des ensembles, trouvé ainsi, ouvre son chapitre.
+
+- **Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ** (2nde, Nombres réels) : cinq ovales emboîtés, chacun de sa
   couleur, avec son nom (22,5 cm sur 13 à 100 %). Il suit le pointeur en
   transparence ; un clic le pose, Échap annule. Les nombres tapés dans le
   champ, séparés par des points-virgules (la virgule est celle des
@@ -1005,23 +1014,32 @@ probabilités. Le choix est retenu sur l'appareil (`mem-catalogue-theme`).
   pas trancher (`π − π`) va dans ℝ avec un avertissement, et ce qu'il ne sait
   pas lire est dit, jamais deviné. Le texte du champ est retenu sur
   l'appareil (`mem-catalogue-nombres`).
-- **Démonstrations** : toutes celles que le programme de seconde demande,
-  chacune dans son thème.
-  - Nombres et calculs : la somme de deux multiples de 7 est un multiple
-    de 7 ; le carré d'un impair est impair ; 1/3 n'est pas décimal ; √2 est
-    irrationnel ; √(ab) = √a × √b.
-  - Géométrie : colinéarité de deux vecteurs non nuls (déterminant nul,
-    coordonnées proportionnelles) ; forme générale ax + by + c = 0 d'une
-    équation de droite, par le déterminant.
-  - Fonctions : variations des fonctions affines ; position des courbes
-    y = x et y = x² pour x ⩾ 0 ; variations de la fonction carré ;
-    variations de la fonction inverse.
-  - Statistiques et probabilités : le programme n'en demande pas, le
-    panneau le dit.
+- **Démonstrations** : toutes celles que les programmes demandent, chacune
+  dans son chapitre.
+  - 2nde, Nombres et calculs : la somme de deux multiples de 7 est un
+    multiple de 7 ; le carré d'un impair est impair (Arithmétique) ; 1/3
+    n'est pas décimal ; √2 est irrationnel (Nombres réels) ; √(ab) = √a × √b
+    (Algèbre).
+  - 2nde, Géométrie : colinéarité de deux vecteurs non nuls (Vecteurs) ;
+    forme générale ax + by + c = 0 d'une équation de droite, par le
+    déterminant (Droites du plan).
+  - 2nde, Fonctions (Variations et extrémums) : fonctions affines ; position
+    des courbes y = x et y = x² pour x ⩾ 0 ; fonction carré ; fonction
+    inverse.
+  - 1re spé, Algèbre : terme général d'une suite arithmétique, d'une suite
+    géométrique ; 1 + 2 + … + n ; 1 + q + … + qⁿ (Suites) ; résolution de
+    l'équation du second degré (Second degré).
+  - 1re spé, Analyse : équation de la tangente ; la racine carrée n'est pas
+    dérivable en 0 ; dérivées de la fonction carré, de la fonction inverse,
+    d'un produit (Dérivation) ; cos et sin de π/4 et de π/3 (Trigonométrie).
+  - 1re spé, Géométrie (Produit scalaire) : formule d'Al-Kashi ; ensemble des
+    points M tels que MA→ · MB→ = 0.
+  - Statistiques et probabilités : aucun des deux programmes n'en demande.
 
   Le titre se pose d'un clic, puis chaque ligne avec → (ou Espace, ou
-  « Suivante »), ← la retire, ⏩ montre tout. Dans le panneau, le texte des
-  étapes passe à la ligne pour tenir dans sa largeur.
+  « Suivante »), ← la retire, ⏩ montre tout. Le bas du panneau montre la
+  démonstration en cours, étape par étape ; son texte passe à la ligne pour
+  tenir dans sa largeur.
 
 Le calcul (lire un nombre, le classer, trouver sa place dans sa zone) est
 dans `src/catalogue.ts`, sans rien toucher à l'écran ; le panneau dans
