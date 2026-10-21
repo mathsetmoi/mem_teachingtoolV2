@@ -4390,7 +4390,8 @@ déplace toute la sélection) ; un clic droit dans une sélection de plusieurs
 objets ouvre leur menu commun et la laisse entière. À la Sélection, la vue se déplace à deux doigts, au
 bouton du milieu, avec Espace + glisser, à la molette ou avec l'outil Main.
 L'objet survolé (par son tracé ou son intérieur) s'éclaire d'un halo bleu qui
-suit sa forme, avant le clic ; une droite ou une demi-droite sélectionnée se
+suit sa forme, avant le clic (une image, son seul tour : la repeindre
+par-dessus cacherait ce qu'on a écrit sur elle) ; une droite ou une demi-droite sélectionnée se
 surligne sur toute sa longueur visible ; les flèches poussent la sélection
 d'1 mm (1 cm avec Maj), sauf quand son menu complet est ouvert : elles vont
 alors dans le menu (voir « Au clavier »). Seules : avec Ctrl, ⌘ ou Alt,
@@ -4437,7 +4438,8 @@ main (le focus va alors sur l'entrée cochée), comme dans Apple Notes,
 GoodNotes et OneNote ; à droite de la barre des outils, à la hauteur de la
 Gomme (au téléphone, au-dessus d'elle en portrait, entre les deux barres).
 Il propose **Effacer le trait entier** (« Ce qu'elle
-touche part en entier : un trait, une figure, une image, une formule ») et
+touche part en entier : un trait, une figure, une formule (jamais une
+image) ») et
 **Effacer seulement là où elle passe** (« Coupe l'écriture et le
 surligneur ; les figures, les images et les formules restent »), puis sa
 **Taille (là où elle passe)** : Petite, Moyenne (le défaut), Grande, soit 6,
@@ -4460,12 +4462,15 @@ ses points d'origine, tels quels (seul un point s'ajoute là où le trait
 franchit le bord de la gomme) : un morceau se voit comme la partie du trait
 qu'il était. Elle ne touche ni les figures, ni les images, ni les formules,
 et la première fois de la session qu'elle passe sur l'une d'elles, elle le
-dit : « Cette gomme ne coupe que l'écriture : pour une figure, une image ou
-une formule, prenez « Effacer le trait entier » (retapez la Gomme). ». C'est
+dit : « Cette gomme ne coupe que l'écriture : pour une figure ou une
+formule, prenez « Effacer le trait entier » (retapez la Gomme). Une image
+s'enlève par Supprimer. ». C'est
 un choix propre à MEM (l'étude proposait qu'elle efface une figure en
 entier) : une gomme partielle passe surtout sur l'écriture autour d'une
 figure, et le professeur ne doit pas perdre le triangle qu'il annote ; le
-trait entier, lui, efface tout. Ce qui est verrouillé ou fixé en fond reste,
+trait entier, lui, efface tout le reste. Aucune gomme n'efface une image :
+on écrit dessus, et la gomme ne doit y enlever que l'écriture ; une image
+s'enlève par Supprimer (le souhait du professeur, après le lot 10). Ce qui est verrouillé ou fixé en fond reste,
 comme sous l'autre gomme. Un coup est une étape d'annulation (Ctrl+Z rend
 tous les traits entiers d'un coup) ; le film garde une étape par trait
 touché, notée `coupe`, écrite quand la gomme a quitté le trait (et ce qui
@@ -5165,8 +5170,9 @@ qu'au document sans séances (hors de l'application).
   haut en haut : retournée de haut en bas, elle devient retournée de gauche
   à droite (Ctrl + Z si ce n'était pas voulu).
 - La gomme qui efface seulement là où elle passe (lot 5) ne coupe que les
-  traits à main levée : une figure, une image, une formule ne se gomment
-  qu'en entier (« Effacer le trait entier »), et un ancien segment (v0.1)
+  traits à main levée : une figure, une formule ne se gomment qu'en entier
+  (« Effacer le trait entier »), une image jamais (elle s'enlève par
+  Supprimer), et un ancien segment (v0.1)
   non plus. Elle ne fusionne pas de nouveau deux morceaux qui se touchent :
   repasser une gomme le long d'un mot y laisse plus de morceaux qu'il n'y
   paraît (des traits ordinaires, qui se prennent et se copient un à un, ou

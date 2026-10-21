@@ -2467,7 +2467,7 @@ export class App {
       // pas, et le dit une fois
       if (!this.astuceGommeZone && this.formes.some(f => f.type !== 'trait' && libre(f) && touche(f, b.x, b.y, r, this.boiteTouche))) {
         this.astuceGommeZone = true
-        this.ui.message('Cette gomme ne coupe que l\'écriture : pour une figure, une image ou une formule, prenez « Effacer le trait entier » (retapez la Gomme).')
+        this.ui.message('Cette gomme ne coupe que l\'écriture : pour une figure ou une formule, prenez « Effacer le trait entier » (retapez la Gomme). Une image s\'enlève par Supprimer.')
       }
     }
     // Ce que la gomme a quitté s'écrit (la scène, qui le montre déjà, ne se
@@ -5132,7 +5132,9 @@ export class App {
    *  gommerLa) */
   private gommer(x: number, y: number, deja?: Set<string>) {
     const r = RAYON_TRAIT / this.cam.z
-    const touches = this.formes.filter(f => libre(f) && !deja?.has(f.id) && touche(f, x, y, r, this.boiteTouche))
+    // Jamais une image : on écrit dessus, la gomme n'y efface que l'écriture
+    // (le souhait du professeur) ; une image s'enlève par « Supprimer »
+    const touches = this.formes.filter(f => f.type !== 'image' && libre(f) && !deja?.has(f.id) && touche(f, x, y, r, this.boiteTouche))
     if (!touches.length) return
     touches.forEach(f => deja?.add(f.id))
     this.tableau.supprimer(this.page, touches.map(f => f.id))

@@ -2603,7 +2603,7 @@ export class UI implements Interface {
       this.maj()
       this.message(id === 'zone' ? 'La gomme efface seulement là où elle passe.' : 'La gomme efface le trait entier.')
     }, { coche: reglages.gomme === id, aide, action: 'gomme-' + id })
-    mode('trait', 'Effacer le trait entier', 'Ce qu\'elle touche part en entier : un trait, une figure, une image, une formule')
+    mode('trait', 'Effacer le trait entier', 'Ce qu\'elle touche part en entier : un trait, une figure, une formule (jamais une image)')
     mode('zone', 'Effacer seulement là où elle passe', 'Coupe l\'écriture et le surligneur ; les figures, les images et les formules restent')
     filetMenu(m)
     titreMenu(m, 'Taille (là où elle passe)')
