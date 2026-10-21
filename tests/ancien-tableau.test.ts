@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import { Tableau } from '../src/document'
 import type { AncienTableau, PreparerImage } from '../src/classeurs/ancien-tableau'
-import { ErreurAncien, finDuClasseur, latexDuTexte, lireAncienTableau, reprendre, texteDuBilan, textesAvantAnciens } from '../src/classeurs/ancien-tableau'
+import { ErreurAncien, dateDuNom, finDuClasseur, latexDuTexte, lireAncienTableau, reprendre, texteDuBilan, textesAvantAnciens } from '../src/classeurs/ancien-tableau'
 import { ecrireTableau, lireTableau } from '../src/fichier'
 import { seancesDuTableau } from '../src/revoir/exporter'
 import type { Cercle, Formule, ImageForme, Polygone, Trait } from '../src/types'
@@ -81,7 +81,7 @@ describe('reprendre un ancien tableau', () => {
     const tab = new Tableau(null)
     const a = lireAncienTableau(fichier(), 'Séance.prof')
     const b = await reprendre(tab, a, preparer)
-    expect(b).toEqual({ pages: 2, traits: 3, images: 1, textes: 1, figures: 0, laisses: 1, imagesIllisibles: 0 })
+    expect(b).toEqual({ pages: 2, traits: 3, images: 1, textes: 1, figures: 0, laisses: 1, imagesIllisibles: 0, imagesHorsFilm: 0 })
     expect(texteDuBilan(a, b)).toBe('« Séance » : 2 pages, 3 traits, 1 image, 1 texte (devenu une formule), avec son film. 1 objet (cercles, polygones, courbes ou post-its) n\'a pas été repris.')
     const seances = tab.seancesDuClasseur()
     expect(seances).toHaveLength(1)
@@ -156,6 +156,48 @@ describe('reprendre un ancien tableau', () => {
     expect(ce.arc!.a1).toBeCloseTo(0.5 + 2 * Math.PI)
     // Le film : le segment est posé, puis reposé quand B bouge
     expect(tab.film.toArray().map(e => e.t)).toEqual([T0, T0, T0 + MIN, T0 + 2 * MIN, T0 + 3 * MIN])
+  })
+
+  it('un rectangle, rempli ou non ; un cache devient un aplat opaque, sans ses coins', async () => {
+    const tab = new Tableau(null)
+    const image = { id: 1, x: 0, y: 0, w: 400, h: 200, cx: 0, cy: 0, cw: 400, ch: 200, srcRef: 'a1', z: 1 }
+    const pt = (id: number, x: number, y: number) => ({ id, x, y, color: '#e74c3c', shape: 'cross', z: id })
+    const cadre = { id: 4, p1_id: 2, p2_id: 3, color: '#2ecc71', width: 3, dash: 'solid', isFilled: false, fillColor: '#e74c3c', fillOpacity: 0.2, z: 4 }
+    const plein = { id: 7, p1_id: 5, p2_id: 6, color: '#e74c3c', width: 3, dash: 'dashed', isFilled: true, fillColor: '#3498db', fillOpacity: 0.2, z: 7 }
+    const cache = { id: 10, p1_id: 8, p2_id: 9, color: '#ffffff', width: 1, dash: 'solid', isFilled: true, fillColor: '#ffffff', fillOpacity: 1, cache: true, z: 10, surObjet: { type: 'image', id: 1, aCote: false } }
+    const a = lireAncienTableau(JSON.stringify({ name: 'x', data: { assets: { a1: PNG }, pages: [{
+      ...vide, images: [image], points: [pt(2, 10, 10), pt(3, 110, 60), pt(5, 300, 100), pt(6, 200, 150), pt(8, 50, 50), pt(9, 150, 100)], rectangles: [cadre, plein, cache],
+    }] } }))
+    const b = await reprendre(tab, a, preparer)
+    // 4 coins visibles (ceux du cache, non) et 3 rectangles
+    expect(b.figures).toBe(7)
+    const formes = [...tab.formesDe(tab.ordre.get(0))!.values()]
+    const rect = formes.filter((f): f is Polygone => f.type === 'polygone' && f.ferme)
+    expect(rect).toHaveLength(2)
+    const vide_ = rect.find(r => !r.fond)!, rempli = rect.find(r => r.fond)!
+    expect([vide_.pts, vide_.tirets, vide_.couleur]).toEqual([[0, 0, 100, 0, 100, 50, 0, 50], undefined, '#2ecc71'])
+    expect([rempli.pts, rempli.fond, rempli.tirets]).toEqual([[0, 0, 100, 0, 100, 50, 0, 50], '#3498db', true])
+    expect(formes.filter(f => f.type === 'polygone' && !f.ferme)).toHaveLength(4)
+    const ap = formes.find((f): f is ImageForme => f.type === 'image' && f.l === 1)!
+    expect([ap.x, ap.y, ap.m]).toEqual([50, 50, [100, 0, 0, 50]])
+    // Un PNG d'un pixel blanc, valable
+    const png = atob((tab.doc.getMap('images').get(ap.src) as string).split(',')[1])
+    expect(png.slice(1, 4)).toBe('PNG')
+    expect(png.length).toBe(72)
+  })
+
+  it('un film sans heures : la date de son nom, à 8 h, ses gestes à la suite', () => {
+    expect(dateDuNom('4 - Mardi 22 septembre 2026')).toBe(new Date(2026, 8, 22, 8, 0).getTime())
+    expect(dateDuNom('5A - Jeudi 1er octobre 2026')).toBe(new Date(2026, 9, 1, 8, 0).getTime())
+    expect(dateDuNom('2026-10-13-5a-mardi')).toBe(new Date(2026, 9, 13, 8, 0).getTime())
+    expect(dateDuNom('Février 2026')).toBe(null)
+    const t1 = trait(1, 0, 0), t2 = trait(2, 9, 9)
+    const a = lireAncienTableau(JSON.stringify({ name: 'x', enregistreLe: T0 + 13 * 24 * 60 * MIN, data: { pages: [{
+      ...vide, freehands: [t1, t2], film: [{ ...vide }, { freehands: { '+': [t1] } }, { freehands: { '+': [t2] } }],
+    }] } }), '4 - Mardi 22 septembre 2026.prof')
+    const d = new Date(2026, 8, 22, 8, 0).getTime()
+    expect(a.pages[0].etats.map(e => e.t)).toEqual([d, d + 5000, d + 10000])
+    expect([a.debut, a.fin]).toEqual([d, d + 10000])
   })
 
   it('une image tournée garde son centre', async () => {

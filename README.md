@@ -3141,11 +3141,24 @@ d'un classeur, avec son film.
   pointillés restent en tirets, les flèches en flèches ; l'épaisseur ne
   dépasse pas celle d'une figure d'ici. Une figure posée sur une image lui
   reste liée (elle la suit), et les points de ses segments aussi.
+- **Les rectangles** : des rectangles (remplis s'ils l'étaient), qui suivent
+  leurs coins. Un **cache** (un rectangle plein posé pour masquer une partie
+  d'une image) devient un aplat opaque de sa couleur (une image d'un pixel,
+  étirée) : on l'efface pour découvrir ce qu'il cachait ; ses coins ne se
+  voient pas.
 - Le fond (le Seyès avec marge et la copie double perdent leur marge).
 - Ce qui est écrit est décalé pour commencer en haut à gauche de la page.
 
-Ne sont pas repris (et le bilan le compte) : les cercles, rectangles et
-polygones tracés comme figures, les courbes, les post-its. Les outils posés comme des images restent des images.
+Ne sont pas repris (et le bilan le compte) : les cercles et polygones
+tracés comme figures, les courbes, les post-its. Une image effacée pendant
+la séance dont le fichier n'a pas gardé les données manque au film (le
+bilan le dit).
+
+**Un film sans heures** (certains anciens tableaux l'ont enregistré sans
+elles) : la séance prend la date écrite dans son nom (« Mardi 22 septembre
+2026 », « 2026-10-13 »), à 8 h, et non celle de son dernier enregistrement,
+qui peut venir bien plus tard ; ses gestes se suivent, 5 secondes l'un
+après l'autre. Les outils posés comme des images restent des images.
 
 ### Comment c'est fait
 
@@ -4985,7 +4998,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/classeurs/enregistrer.ts` | Enregistrer un classeur depuis sa base, sans l'ouvrir (« Enregistrer d'abord », « Enregistrer dans un fichier… » du menu d'une carte) : le choix du fichier dans le clic, l'écrivain, la date notée |
 | `src/classeurs/apercu-classeur.ts` | L'aperçu d'un classeur : sa première page en PNG (320 × 200, en esquisse, par `sorties/apercu.ts`), quand le refaire (au démarrage s'il manque, 30 s après le dernier changement de la première page, au calme, au plus toutes les 2 min ; à l'ouverture de la bibliothèque ; avant de partir), rangé dans l'index |
 | `src/classeurs/fichiers.ts` | Ouvrir des fichiers (lot 4 C9) : le choix (showOpenFilePicker, plusieurs, `.memc` et `.memb` ; sinon le choix d'avant), les fichiers lâchés, la lecture dans le travailleur, la reconnaissance (une base de cet id sans fiche adoptée d'abord, les vecteurs comparés), la fenêtre d'un fichier et ses choix (Ajouter, Remplacer « … »…, Ouvrir celui de la bibliothèque, Mettre à jour sans rien perdre, Ajouter comme copie, Remplacer celui de la bibliothèque…, la case de la clé), plusieurs fichiers (la fenêtre qui dit tout, le bilan), Enregistrer et Ouvrir toute la bibliothèque (le `.memb` au fil de l'eau ; les dossiers réunis, la case des plus récents), le fichier de la clé en conflit |
-| `src/classeurs/ancien-tableau.ts` | Reprendre un ancien tableau (.prof) : le lire et rejouer son film, chaque geste à son heure, dans une séance neuve ; les traits, les images (rognées, tournées, fixées en fond), les textes en formules, les figures (points, segments, droites, arcs) ; le bilan, les textes de la fenêtre (pur, testé) |
+| `src/classeurs/ancien-tableau.ts` | Reprendre un ancien tableau (.prof) : le lire et rejouer son film, chaque geste à son heure, dans une séance neuve ; les traits, les images (rognées, tournées, fixées en fond), les textes en formules, les figures (points, segments, droites, arcs, rectangles, caches) ; le bilan, les textes de la fenêtre (pur, testé) |
 | `src/classeurs/reconnaitre.ts` | Reconnaître le classeur d'un fichier, pur (testé) : le même (son id), la corbeille, « ressemble » (un appareil Yjs en commun ; dans un lot, seulement sans id), nouveau ; la décision d'après la comparaison ; le nom d'après le nom du fichier ; les phrases des fenêtres et des bilans ; la réunion des dossiers d'une bibliothèque qu'on ouvre |
 | `src/classeurs/copie-drive.ts` | La copie à sens unique sur le Drive (lot 4 C10) : le compte du classeur, quand copier (2 min après le dernier changement, au plus tard 10 min, au plus une fois par max(10 min, 1 min par Mo, 20 fois la durée), au calme, en arrière-plan), depuis la base dans le travailleur, un onglet à la fois (Web Locks), une copie d'un autre onglet qui compte, les classeurs en retard (pas les vides), la connexion (jamais sans un clic ; arrivé connecté d'un autre classeur, les classeurs en retard se copient d'ici ; le jeton expiré, le bandeau ; le compte proposé à Google, retenu pour la copie), le compte Google où est vraiment la dernière copie, les échecs et leurs réessais, les garde-fous (récupérer, remplacer quand même), la question du navigateur en fermant l'onglet avant la copie quand rien d'autre ne protège le classeur (`beforeunload`, et la copie part aussitôt), la fenêtre « Copie sur le Drive… » |
 | `src/classeurs/drive-pur.ts` | La copie sur le Drive, pur (testé) : le compte voulu, le rythme (`prochaineCopie`, l'intervalle), le compte Google proposé à la reconnexion (`indiceGoogle`) et la copie sur un autre compte (`copieAilleurs`), la question du navigateur en fermant l'onglet (`questionDuDrive`), ce qu'on dit d'un échec, les phrases des garde-fous, les classeurs en retard |
