@@ -771,6 +771,8 @@ export class App {
    *  aujourd'hui » y revient */
   private pageDuJour = ''
   get fond(): Fond { return this.tableau.fondDe(this.page) }
+  /** La page qu'on regarde est-elle en mode nuit (voir nuit.ts) ? */
+  get nuit(): boolean { return this.tableau.nuitDe(this.page) }
   /** Un geste est en cours (un trait qu'on écrit, un objet qu'on glisse, un
    *  cadre, la vue qu'on déplace) ; pas le doigt retenu un instant, qui n'a
    *  encore rien fait (voir ecrireOuRetenir). La trieuse ne s'ouvre pas au
@@ -1202,6 +1204,15 @@ export class App {
     this.tableau.changerFond(this.page, f, origine)
   }
 
+  /** Passe la page qu'on regarde en mode nuit, ou la remet de jour (le
+   *  bouton lune, la touche N) : comme un changement de fond, une étape du
+   *  film notée sur elle (le replay des élèves la voit basculer). Rien
+   *  d'autre ne change : l'écriture garde ses couleurs, qui s'affichent
+   *  autrement (voir nuit.ts). */
+  basculerNuit(nuit = !this.nuit) {
+    this.tableau.changerNuit(this.page, nuit)
+  }
+
   /** L'ordre des pages a changé : si la page qu'on regardait l'a quitté, on
    *  va sur la première, ou, pour une copie retirée (Ctrl+Z juste après
    *  « Dupliquer la page »), sur son original */
@@ -1238,6 +1249,10 @@ export class App {
     if (this.rendu.cadenas && !ids.has(this.rendu.cadenas.id)) this.poserCadenas(null)
     this.rendu.formes = this.formes
     this.rendu.fond = this.fond
+    this.rendu.nuit = this.nuit
+    // Les barres s'assombrissent avec la page (le choix du professeur : rien
+    // d'éblouissant autour d'une page noire, au vidéoprojecteur)
+    document.body.classList.toggle('page-nuit', this.rendu.nuit)
     this.rendu.origine = this.tableau.origineDe(this.page)
     this.rendu.selection = this.selection
     // Une coupe de la gomme qui s'écrit en plein coup (lot 5) : la scène la
@@ -5576,6 +5591,8 @@ export class App {
     const raccourcis: Record<string, Outil> = { p: 'stylo', h: 'surligneur', e: 'gomme', x: 'point', l: 'segment', f: 'formule', t: 'texte', v: 'selection' }
     const formes: Record<string, TypeForme> = { r: 'rectangle', c: 'cercle', g: 'polygone' }
     const k = e.key.toLowerCase()
+    // N : la page en mode nuit, ou de nouveau de jour (une fois par appui)
+    if (k === 'n' && !e.shiftKey && !e.altKey) { if (!e.repeat) this.basculerNuit(); return }
     if (formes[k]) { this.typeForme = formes[k]; this.choisirOutil('forme'); return }
     const o = raccourcis[k]
     // E quand la Gomme est déjà en main (lot 5) : ses options, au clavier

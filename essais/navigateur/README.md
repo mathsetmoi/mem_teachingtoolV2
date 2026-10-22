@@ -23,6 +23,7 @@ dossiers d'essais vitest, le banc d'écriture), rangés par lot :
 | `lot10/` | le flash d'automatismes sur une page de la séance : le réglage (rien de montré), une question à la fois, la correction, la case de « Bonjour ! », toutes d'un coup, « Nouveaux exemples » (`E1-flash.mjs`) |
 | `lot11/` | importer un PDF : la fenêtre (les pages, où les mettre, « Fixer en fond »), une page du tableau par page du PDF, toutes sur cette page, Annuler, et la version hors ligne sans internet (`E1-import-pdf.mjs`) |
 | `lot12/` | l'outil Texte : un clic, deux lignes, une formule entre $, le gras et la couleur, un cadre glissé (la largeur), le double-clic, la gomme qui ne l'efface pas, copier-coller, les puces, les côtés du cadre, la recherche (`E1-texte.mjs`) |
+| `lot13/` | le mode nuit d'une page : la touche N et le bouton lune, le papier noir et l'encre claire, les barres foncées, une autre page de jour, la case de la trieuse et sa vignette, le replay des élèves qui bascule au même moment (`N1-nuit.mjs`) |
 | `ecriture/` | le banc d'écriture (le trait en direct et au replay) |
 | `commun/` | `racines.mjs` (les chemins, calculés depuis l'emplacement des fichiers) et `playwright.mjs` (où trouver Playwright) |
 | `tout.sh` | le lanceur |

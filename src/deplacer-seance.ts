@@ -79,7 +79,7 @@ export function supprimerSeance(t: Tableau, id: string): { pages: string[] } | {
 /** Deux états d'une page diffèrent-ils (les formes inchangées sont les mêmes objets) ? */
 function differe(a: EtatDePage | null | undefined, b: EtatDePage | null | undefined): boolean {
   if (!a || !b) return !!a !== !!b
-  if (a.fond !== b.fond || a.origine.x !== b.origine.x || a.origine.y !== b.origine.y || a.formes.size !== b.formes.size) return true
+  if (a.fond !== b.fond || !!a.nuit !== !!b.nuit || a.origine.x !== b.origine.x || a.origine.y !== b.origine.y || a.formes.size !== b.formes.size) return true
   for (const [id, f] of b.formes) if (a.formes.get(id) !== f) return true
   return false
 }
@@ -124,7 +124,7 @@ export function copierSeance(source: Tableau, id: string, cible: Tableau): Seanc
     const actuel = new Map<string, EtatDePage | null>()
     for (const p of absentes) {
       const f = source.formesDe(p)
-      actuel.set(p, { fond: source.fondDe(p), origine: source.origineDe(p), formes: new Map([...(f?.entries() ?? [])]) })
+      actuel.set(p, { fond: source.fondDe(p), ...(source.nuitDe(p) ? { nuit: true } : {}), origine: source.origineDe(p), formes: new Map([...(f?.entries() ?? [])]) })
     }
     if (pas.length) { for (const p of absentes) { pas[0].etats.set(p, actuel.get(p)!); pas[0].changees.push(p) } }
     else pas.push({ e: { t: s.debut, page: absentes[0], s: new Uint8Array() }, changees: absentes, etats: actuel })
@@ -204,6 +204,7 @@ export function copierSeance(source: Tableau, id: string, cible: Tableau): Seanc
         if (!(m instanceof Y.Map)) {
           m = new Y.Map<unknown>()
           m.set('fond', etat.fond)
+          if (etat.nuit) m.set('nuit', true)
           if (etat.origine.x || etat.origine.y) m.set('origine', etat.origine)
           m.set('formes', new Y.Map<Forme>())
           const de = source.herite(p)
@@ -217,6 +218,7 @@ export function copierSeance(source: Tableau, id: string, cible: Tableau): Seanc
           cible.seanceDesPages.set(nid, sid)
         } else {
           if (!avant || avant.fond !== etat.fond) m.set('fond', etat.fond)
+          if (!!avant?.nuit !== !!etat.nuit) m.set('nuit', !!etat.nuit)
           if (!avant || avant.origine.x !== etat.origine.x || avant.origine.y !== etat.origine.y) m.set('origine', etat.origine)
         }
         const formes = m.get('formes') as Y.Map<Forme>

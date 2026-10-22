@@ -18,7 +18,9 @@
 // sans planter (une image fixée, rangée sous les autres par son rang, y reste
 // dessous ; une formule tournée y paraît droite) ; et, dans les gestes, la
 // coupe d'un trait par la gomme qui efface là où elle passe (coupe : voir
-// EtapeFilm). Les étapes « réglage » du
+// EtapeFilm) ; et le mode nuit d'une page (nuit dans PageFilm, la cinquième
+// valeur de l'opération 'f' : voir Op), qu'un lecteur d'avant ignore (il
+// montre la page de jour). Les étapes « réglage » du
 // tableau (verrouiller, grouper : voir document.ts, Etape) ne sont pas des
 // gestes du film élève : leur changement part avec le geste visible suivant
 // de leur page.
@@ -41,8 +43,10 @@ export const DEBUT_TABLEAU = '{"format":"mem-tableau"'
  *  ['=', forme]            la forme apparaît, ou change (elle remplace l'ancienne)
  *  ['-', id]               la forme disparaît
  *  ['f', fond, ox, oy]     le fond de la page change (et l'origine du repère)
+ *  ['f', fond, ox, oy, n]  de même, et la page passe en mode nuit (n = 1) ou
+ *                          revient de jour (n = 0) ; sans n, de jour
  *  ['x']                   la page est supprimée */
-export type Op = ['=', Forme] | ['-', string] | ['f', Fond, number, number] | ['x']
+export type Op = ['=', Forme] | ['-', string] | ['f', Fond, number, number] | ['f', Fond, number, number, 0 | 1] | ['x']
 
 /** Un geste du film : son écart avec le précédent (ms), la page où il a
  *  lieu, et ce qu'il change. coupe (lot 5) : le geste coupe un trait à la
@@ -61,8 +65,8 @@ export type Op = ['=', Forme] | ['-', string] | ['f', Fond, number, number] | ['
  *  geste comme avant. */
 export interface EtapeFilm { dt: number; p: string; o: Op[]; ms?: number[]; inst?: Morceau[]; apres?: Morceau[]; coupe?: true }
 
-/** L'état d'une page au début du film */
-export interface PageFilm { id: string; fond: Fond; origine: { x: number; y: number }; formes: Forme[] }
+/** L'état d'une page au début du film ; nuit : en mode nuit (facultatif) */
+export interface PageFilm { id: string; fond: Fond; nuit?: true; origine: { x: number; y: number }; formes: Forme[] }
 
 /** Un chapitre commence à l'image i (0 : l'état de départ) */
 export interface Chapitre { i: number; titre: string }

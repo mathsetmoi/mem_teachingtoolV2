@@ -19,7 +19,7 @@
 // classe l'a vue (le lecteur la montre d'un coup : ses formes sont déjà
 // vues). Le format du film élève ne change pas.
 // =============================================================
-import type { Etape, EtatTableau, Tableau } from '../document'
+import type { Etape, EtatDePage, EtatTableau, Tableau } from '../document'
 import type { Fond, Forme } from '../types'
 import { filiationDe } from '../heritage'
 import type { Chapitre, EtapeFilm, FilmEleve, Op, PageFilm } from './format'
@@ -410,7 +410,7 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
   const pages: PageFilm[] = []
   for (const [id, p] of depart.pages) {
     if (!montrees.has(id)) continue
-    pages.push({ id, fond: p.fond, origine: p.origine, formes: [...p.formes.values()].map(propre) })
+    pages.push({ id, fond: p.fond, ...(p.nuit ? { nuit: true as const } : {}), origine: p.origine, formes: [...p.formes.values()].map(propre) })
   }
   // L'ordre final des pages (celui du tableau), complété de celles qu'on a vues passer
   const fin = avant.ordre.filter(id => montrees.has(id))
@@ -565,15 +565,19 @@ function tracePose(o: Op[], avant: { formes: Map<string, Forme> } | undefined, m
  *  forme au contenu égal n'a pas changé (sans quoi la naissance serait un
  *  geste qui « change » tout sans rien montrer). */
 function differences(
-  a: { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme> } | undefined,
-  b: { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme> } | undefined,
+  a: EtatDePage | undefined,
+  b: EtatDePage | undefined,
   propre: (f: Forme) => Forme,
   jonction = false,
 ): Op[] {
   if (!a && !b) return []
   if (a && !b) return [['x']]
   const o: Op[] = []
-  if (!a || a.fond !== b!.fond || a.origine.x !== b!.origine.x || a.origine.y !== b!.origine.y) o.push(['f', b!.fond, b!.origine.x, b!.origine.y])
+  // Le mode nuit part avec le fond, en cinquième valeur (1 : de nuit), et
+  // seulement s'il y a lieu : une page de jour s'écrit comme avant
+  if (!a || a.fond !== b!.fond || !!a.nuit !== !!b!.nuit || a.origine.x !== b!.origine.x || a.origine.y !== b!.origine.y) {
+    o.push(b!.nuit || a?.nuit ? ['f', b!.fond, b!.origine.x, b!.origine.y, b!.nuit ? 1 : 0] : ['f', b!.fond, b!.origine.x, b!.origine.y])
+  }
   for (const [id, f] of b!.formes) {
     const g = a?.formes.get(id)
     if (g !== f && !(jonction && g && JSON.stringify(g) === JSON.stringify(f))) o.push(['=', propre(f)])

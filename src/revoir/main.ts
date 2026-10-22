@@ -377,8 +377,9 @@ function poserApercu(f: Figure | null) {
 /** Le temps qu'il reste au trait qui s'écrit (ms d'horloge ; 0 : aucun) */
 const resteDuTrace = () => enTrace ? Math.max(0, enTrace.debut + enTrace.duree - performance.now()) : 0
 
-function afficher(formes: Forme[], img: { fond: Rendu['fond']; origine: Rendu['origine'] }) {
-  rendu.formes = formes; rendu.fond = img.fond; rendu.origine = img.origine
+function afficher(formes: Forme[], img: { fond: Rendu['fond']; nuit?: boolean; origine: Rendu['origine'] }) {
+  // nuit : la page est en mode nuit à cette image, comme à l'écran en classe
+  rendu.formes = formes; rendu.fond = img.fond; rendu.nuit = !!img.nuit; rendu.origine = img.origine
   // Au début d'un trait qui s'écrit, la page est celle qui est déjà là (mêmes formes,
   // même vue) : seul le trait en cours se peint
   rendu.redessinerSiBesoin()

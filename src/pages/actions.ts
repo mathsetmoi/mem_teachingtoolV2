@@ -146,6 +146,13 @@ export function changerFond(t: Tableau, j: JournalPages, id: string, fond: Fond,
   return j.faire('fond changé', () => t.changerFond(id, fond, origine, { rangement: true }))
 }
 
+/** Passe une page en mode nuit, ou la remet de jour (l'étape se note sur
+ *  elle, comme un fond changé : du rangement). null si elle l'est déjà. */
+export function changerNuit(t: Tableau, j: JournalPages, id: string, nuit: boolean): Entree | null {
+  if (!t.pages.has(id) || t.nuitDe(id) === nuit) return null
+  return j.faire(nuit ? 'mode nuit' : 'mode jour', () => t.changerNuit(id, nuit, { rangement: true }))
+}
+
 /** Ctrl + Maj + ← / → : ces pages (gardées dans leur ordre) reculent ou
  *  avancent d'une place, regroupées ; rend l'indice `avant` de
  *  Tableau.deplacerPages, ou 'debut' / 'fin' si la première est déjà en

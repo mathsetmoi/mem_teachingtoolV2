@@ -24,10 +24,14 @@
 // pixel de l'image près (0,13 mm) ; le papier millimétré y trace ses
 // millimètres, que l'écran ne montre qu'à partir de 150 % environ (voir
 // papierMillimetre).
+// Le mode nuit d'une page (voir nuit.ts) : le papier presque noir, les
+// mêmes motifs en lignes claires et discrètes (TONS_NUIT), plus marquées en
+// contraste renforcé. Jamais sur la feuille d'un PDF.
 // =============================================================
 import type { Camera } from './camera'
 import type { Fond } from './types'
 import { CM } from './types'
+import { PAPIER_NUIT, nocturne } from './nuit'
 
 // Les couleurs, chacune nommée
 const PAPIER = '#ffffff'
@@ -60,6 +64,8 @@ const ENCRE_AXES = '#1b2230'
 export interface Tons {
   bleu: string; bleuFort: string; violet: string; rouge: string
   mmFin: string; mmMoyen: string; mmFort: string; point: string
+  /** L'encre des axes du repère et de leurs graduations */
+  encre: string
   ligne: number; cotePoint: number; marge: number; axes: number; graduations: number
 }
 
@@ -75,7 +81,7 @@ export function renforcer(couleur: string): string {
 /** Le fond de toujours */
 export const TONS_NORMAUX: Tons = {
   bleu: BLEU_LIGNE, bleuFort: BLEU_FORT, violet: VIOLET_SEYES, rouge: ROUGE_MARGE,
-  mmFin: MM_FIN, mmMoyen: MM_MOYEN, mmFort: MM_FORT, point: POINT,
+  mmFin: MM_FIN, mmMoyen: MM_MOYEN, mmFort: MM_FORT, point: POINT, encre: ENCRE_AXES,
   ligne: 1, cotePoint: 2, marge: 1.5, axes: 1.6, graduations: 1.4,
 }
 /** Le contraste renforcé (lot 5) : chaque couleur plus opaque (voir
@@ -85,15 +91,36 @@ export const TONS_NORMAUX: Tons = {
  *  zoom, et jamais un écran gris (l'essai K9 du lot 5 le mesure). */
 export const TONS_CONTRASTE: Tons = {
   bleu: renforcer(BLEU_LIGNE), bleuFort: renforcer(BLEU_FORT), violet: renforcer(VIOLET_SEYES), rouge: renforcer(ROUGE_MARGE),
-  mmFin: renforcer(MM_FIN), mmMoyen: renforcer(MM_MOYEN), mmFort: renforcer(MM_FORT), point: renforcer(POINT),
+  mmFin: renforcer(MM_FIN), mmMoyen: renforcer(MM_MOYEN), mmFort: renforcer(MM_FORT), point: renforcer(POINT), encre: ENCRE_AXES,
   ligne: 2, cotePoint: 3, marge: 2.5, axes: 2.6, graduations: 2,
+}
+
+/** Le mode nuit (voir nuit.ts) : les mêmes familles, en tons clairs sur le
+ *  papier noir, un peu moins opaques que de jour (une ligne claire sur du
+ *  noir se voit plus qu'une ligne bleue sur du blanc) ; la marge du Seyès
+ *  et les axes, éclaircis comme l'encre. */
+export const TONS_NUIT: Tons = {
+  ...TONS_NORMAUX,
+  bleu: 'rgba(150, 180, 230, 0.22)', bleuFort: 'rgba(150, 180, 230, 0.42)', violet: 'rgba(190, 160, 240, 0.34)',
+  rouge: 'rgba(255, 120, 110, 0.7)',
+  mmFin: 'rgba(240, 160, 90, 0.16)', mmMoyen: 'rgba(240, 160, 90, 0.30)', mmFort: 'rgba(240, 160, 90, 0.48)',
+  point: 'rgba(190, 205, 230, 0.55)', encre: nocturne(ENCRE_AXES),
+}
+/** Le mode nuit en contraste renforcé : ses couleurs plus opaques, et les
+ *  largeurs du contraste renforcé */
+export const TONS_NUIT_CONTRASTE: Tons = {
+  ...TONS_CONTRASTE,
+  bleu: renforcer(TONS_NUIT.bleu), bleuFort: renforcer(TONS_NUIT.bleuFort), violet: renforcer(TONS_NUIT.violet), rouge: renforcer(TONS_NUIT.rouge),
+  mmFin: renforcer(TONS_NUIT.mmFin), mmMoyen: renforcer(TONS_NUIT.mmMoyen), mmFort: renforcer(TONS_NUIT.mmFort), point: renforcer(TONS_NUIT.point),
+  encre: TONS_NUIT.encre,
 }
 
 /** Ce que demande celui qui peint : le contraste renforcé (lot 5), à
  *  l'écran du professeur seulement ; impression : la feuille d'un PDF,
  *  peinte comme une page à 96 ppp (1 px CSS = 1/96 de pouce), à ce nombre de
- *  pixels de son image par px CSS (voir Feuille) */
-export interface OptionsFond { contraste?: boolean; impression?: number }
+ *  pixels de son image par px CSS (voir Feuille) ; nuit : la page est en
+ *  mode nuit (jamais sur une feuille : on imprime de jour) */
+export interface OptionsFond { contraste?: boolean; impression?: number; nuit?: boolean }
 
 /** Les pixels de la feuille d'un PDF, sur l'axe des x et sur celui des y :
  *  un point à s px CSS tombe au pixel a × s + b de l'image (la transformation
@@ -226,10 +253,11 @@ const RACINE3 = Math.sqrt(3)
  */
 export function dessinerFond(ctx: CanvasRenderingContext2D, fond: Fond, cam: Camera, l: number, h: number,
   origine = { x: 0, y: 0 }, o: OptionsFond = {}) {
-  ctx.fillStyle = PAPIER
-  ctx.fillRect(0, 0, l, h)
-  const t = o.contraste ? TONS_CONTRASTE : TONS_NORMAUX, e = t.ligne
   const f = o.impression && o.impression > 0 ? feuilleDe(ctx, o.impression) : null
+  const nuit = !!o.nuit && !f
+  ctx.fillStyle = nuit ? PAPIER_NUIT : PAPIER
+  ctx.fillRect(0, 0, l, h)
+  const t = nuit ? (o.contraste ? TONS_NUIT_CONTRASTE : TONS_NUIT) : o.contraste ? TONS_CONTRASTE : TONS_NORMAUX, e = t.ligne
 
   switch (fond) {
     case 'carreaux':
@@ -449,7 +477,7 @@ function triangles(ctx: CanvasRenderingContext2D, cam: Camera, l: number, h: num
 /** Axes passant par l'origine choisie, 1 unité = 1 cm, gradués. */
 function dessinerAxes(ctx: CanvasRenderingContext2D, cam: Camera, l: number, h: number, origine: { x: number; y: number }, t: Tons) {
   const o = cam.versEcran(origine.x, origine.y)
-  ctx.strokeStyle = ENCRE_AXES; ctx.fillStyle = ENCRE_AXES; ctx.lineWidth = t.axes
+  ctx.strokeStyle = t.encre; ctx.fillStyle = t.encre; ctx.lineWidth = t.axes
   ctx.beginPath()
   if (o.y > -10 && o.y < h + 10) { ctx.moveTo(0, o.y); ctx.lineTo(l, o.y) }
   if (o.x > -10 && o.x < l + 10) { ctx.moveTo(o.x, 0); ctx.lineTo(o.x, h) }
