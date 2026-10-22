@@ -32,6 +32,7 @@ import type { Tableau } from '../document'
 import type { Apercus } from '../sorties/apercu'
 import type { Formule } from '../types'
 import { ECHELLE_FORMULES, cadrageVignette } from '../pages/vignettes'
+import { formulesDeNuit } from '../nuit'
 
 /** La taille de la couverture, en px CSS (au dpr 1) : celle de la carte, 16 / 10 */
 export const APERCU = { l: 320, h: 200 } as const
@@ -187,7 +188,9 @@ export class ApercuDuClasseur {
     const apercus = this.apercus
     // Les polices des noms, la taille exacte des formules, celles qui se
     // liront à cette taille, les images : chacune dans sa tâche
-    let formes = [...(t.formesDe(page)?.values() ?? [])]
+    // De nuit, ses formules en couleurs de nuit (voir formulesDeNuit)
+    const lues = () => { const l = [...(t.formesDe(page)?.values() ?? [])]; return t.nuitDe(page) ? formulesDeNuit(l) : l }
+    let formes = lues()
     await apercus.mesurer(formes)
     let cam = cadrageVignette(apercus.boite(formes), APERCU.l, APERCU.h)
     const lisibles = apercus.manques(formes, cam.z, true).formules
@@ -207,9 +210,9 @@ export class ApercuDuClasseur {
     c.width = APERCU.l; c.height = APERCU.h
     const ctx = c.getContext('2d')
     if (!ctx) return false
-    formes = [...(t.formesDe(page)?.values() ?? [])]
+    formes = lues()
     cam = cadrageVignette(apercus.boite(formes), APERCU.l, APERCU.h)
-    apercus.peindre(ctx, { fond: t.fondDe(page), origine: t.origineDe(page), formes }, cam, { l: APERCU.l, h: APERCU.h, dpr: 1, fond: true, esquisse: true })
+    apercus.peindre(ctx, { fond: t.fondDe(page), nuit: t.nuitDe(page), origine: t.origineDe(page), formes }, cam, { l: APERCU.l, h: APERCU.h, dpr: 1, fond: true, esquisse: true })
     const fin = performance.now()
     this.derniereDuree = fin - debut
     this.dernierePeinture = { debut, fin }

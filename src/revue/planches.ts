@@ -131,7 +131,7 @@ export function lectureDe(t: Tableau, pagesActuelles: () => readonly string[], f
  *  geste de plus, qui ne montre rien (voir boutEnPlus). */
 export function memeImage(a: ImagePage, b: ImagePage): boolean {
   if (a === b) return true
-  if (a.fond !== b.fond || a.origine.x !== b.origine.x || a.origine.y !== b.origine.y || a.formes.length !== b.formes.length) return false
+  if (a.fond !== b.fond || !!a.nuit !== !!b.nuit || a.origine.x !== b.origine.x || a.origine.y !== b.origine.y || a.formes.length !== b.formes.length) return false
   for (let i = 0; i < a.formes.length; i++) {
     const f = a.formes[i], g = b.formes[i]
     if (f !== g && (f.id !== g.id || !memeContenu(f, g))) return false
@@ -204,7 +204,7 @@ export function departPropre(lecture: LectureSeule, etapes: number[], pageDe: (j
 
 /** `apres` ne fait que retirer des formes à `avant`, sans rien changer d'autre */
 function effaceSeulement(avant: ImagePage, apres: ImagePage): boolean {
-  if (apres.fond !== avant.fond || apres.origine.x !== avant.origine.x || apres.origine.y !== avant.origine.y) return false
+  if (apres.fond !== avant.fond || !!apres.nuit !== !!avant.nuit || apres.origine.x !== avant.origine.x || apres.origine.y !== avant.origine.y) return false
   if (apres.formes.length >= avant.formes.length) return false
   const presentes = new Set(avant.formes)
   return apres.formes.every(f => presentes.has(f))

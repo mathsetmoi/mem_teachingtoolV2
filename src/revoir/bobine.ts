@@ -26,10 +26,11 @@ import { estTexte, tailleEstimee } from '../texte'
 
 const TOUS_LES = 32
 
-interface EtatPage { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme>; supprimee?: boolean }
+interface EtatPage { fond: Fond; nuit?: boolean; origine: { x: number; y: number }; formes: Map<string, Forme>; supprimee?: boolean }
 type Etat = Map<string, EtatPage>
 
-export interface Image { page: string; fond: Fond; origine: { x: number; y: number }; formes: Forme[] }
+/** nuit : la page est en mode nuit à cette image (voir nuit.ts) */
+export interface Image { page: string; fond: Fond; nuit?: boolean; origine: { x: number; y: number }; formes: Forme[] }
 export interface Boite { x: number; y: number; l: number; h: number }
 
 /** Copie d'un état : les formes ne changent jamais, on ne copie que les listes */
@@ -66,7 +67,7 @@ export class Bobine {
   constructor(readonly film: FilmEleve) {
     this.n = film.etapes.length + 1
     const depart: Etat = new Map()
-    for (const p of film.pages) depart.set(p.id, { fond: p.fond, origine: p.origine, formes: new Map(p.formes.map(f => [f.id, f])) })
+    for (const p of film.pages) depart.set(p.id, { fond: p.fond, nuit: p.nuit === true, origine: p.origine, formes: new Map(p.formes.map(f => [f.id, f])) })
     let e = depart
     this.reperes.push(copie(e))
     /** Les formes déjà montrées, sur une page ou une autre */
@@ -219,6 +220,7 @@ export class Bobine {
     return {
       page,
       fond: p?.fond ?? 'blanc',
+      nuit: !!p?.nuit,
       origine: p?.origine ?? { x: 0, y: 0 },
       formes: p && !p.supprimee ? [...p.formes.values()].sort((a, b) => a.z - b.z) : [],
     }
@@ -270,7 +272,9 @@ export class Bobine {
         p.formes.set(o[1].id, o[1]); p.supprimee = false
       }
       else if (o[0] === '-') p.formes.delete(o[1])
-      else if (o[0] === 'f') { p.fond = o[1]; p.origine = { x: Number(o[2]) || 0, y: Number(o[3]) || 0 }; p.supprimee = false }
+      // Sans cinquième valeur (un film d'avant le mode nuit, une page de
+      // jour) : de jour
+      else if (o[0] === 'f') { p.fond = o[1]; p.origine = { x: Number(o[2]) || 0, y: Number(o[3]) || 0 }; p.nuit = o[4] === 1; p.supprimee = false }
       else if (o[0] === 'x') { p.formes.clear(); p.supprimee = true }
     }
   }

@@ -30,8 +30,9 @@ const CLE_FOND = 'mem-sortie-fond'
  *  de haut est un simple rectangle : illisible de toute façon */
 export const FORMULE_LISIBLE = 6
 
-/** Une page à peindre : ce qu'en lit le document */
-export interface PageAPeindre { fond: Fond; origine: { x: number; y: number }; formes: Forme[] }
+/** Une page à peindre : ce qu'en lit le document. nuit : en mode nuit (les
+ *  vignettes la montrent ainsi ; la feuille d'un PDF, jamais) */
+export interface PageAPeindre { fond: Fond; nuit?: boolean; origine: { x: number; y: number }; formes: Forme[] }
 
 export interface OptionsPeinture {
   /** La taille du canevas en px CSS, et ses pixels par px CSS */
@@ -164,6 +165,7 @@ export class Apercus {
   peindre(c: CanvasRenderingContext2D, page: PageAPeindre, cam: { x: number; y: number; z: number }, o: OptionsPeinture) {
     this.cam.x = cam.x; this.cam.y = cam.y; this.cam.z = cam.z
     this.rendu.fond = page.fond
+    this.rendu.nuit = !!page.nuit
     this.rendu.origine = page.origine
     const echelle = cam.z * o.dpr
     this.rendu.peindreSur(c, {

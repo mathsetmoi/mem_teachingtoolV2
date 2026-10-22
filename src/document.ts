@@ -168,17 +168,18 @@ export const LONGUEUR_NOM = 60
 /** La chaîne des voisines suivie pour remettre une page (voir placeDeRetour) */
 const PAS_DE_VOISINES = 64
 
-/** Ce qu'il y avait sur une page à une étape du film */
-export interface ImagePage { fond: Fond; origine: { x: number; y: number }; formes: Forme[] }
+/** Ce qu'il y avait sur une page à une étape du film. nuit : la page était
+ *  en mode nuit (voir nuit.ts ; facultatif, absent de jour) */
+export interface ImagePage { fond: Fond; nuit?: boolean; origine: { x: number; y: number }; formes: Forme[] }
 /** Une page à une étape du film, ses formes par identifiant (voir Tableau.pagesA) */
-export interface EtatDePage { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme> }
+export interface EtatDePage { fond: Fond; nuit?: boolean; origine: { x: number; y: number }; formes: Map<string, Forme> }
 
 /** Tout le tableau à une étape du film : l'ordre des pages, et chacune
  *  avec ses formes. Les formes sont les objets mêmes du document : une forme
  *  qui n'a pas changé d'une étape à l'autre est le même objet. */
 export interface EtatTableau {
   ordre: string[]
-  pages: Map<string, { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme> }>
+  pages: Map<string, EtatDePage>
 }
 
 /** Ce que la base du navigateur a dit d'une écriture refusée (voir Tableau.trou) */
@@ -189,7 +190,7 @@ export class Tableau {
   // au lecteur de le reconstruire tel qu'il était à n'importe quelle étape.
   readonly doc = new Y.Doc({ gc: false })
   readonly ordre: Y.Array<string>                 // ordre des pages
-  readonly pages: Y.Map<Y.Map<unknown>>           // id → { fond, formes }
+  readonly pages: Y.Map<Y.Map<unknown>>           // id → { fond, nuit, formes }
   readonly film: Y.Array<Etape>                   // une étape par geste, pour le lecteur
   /** Ce que les instruments ont fait, au temps réel (voir piste.ts) : à côté
    *  du film, hors des pages. Ni étape, ni annulation, ni forme. */
@@ -401,7 +402,7 @@ export class Tableau {
     const p = Y.typeMapGetSnapshot(this.pages, page, snap)
     if (!(p instanceof Y.Map)) return null
     const l = this.lirePage(p, snap)
-    return { fond: l.fond, origine: l.origine, formes: [...l.formes.values()].sort((a, b) => a.z - b.z) }
+    return { fond: l.fond, ...(l.nuit ? { nuit: true } : {}), origine: l.origine, formes: [...l.formes.values()].sort((a, b) => a.z - b.z) }
   }
 
   /** La forme `id` était-elle déjà passée sur la page à cette étape du film,
@@ -421,8 +422,8 @@ export class Tableau {
     return (snap.sv.get(v.id.client) ?? 0) > v.id.clock
   }
 
-  /** Le fond, l'origine et les formes d'une page dans un instantané */
-  private lirePage(p: Y.Map<unknown>, snap: Y.Snapshot): { fond: Fond; origine: { x: number; y: number }; formes: Map<string, Forme> } {
+  /** Le fond, le mode nuit, l'origine et les formes d'une page dans un instantané */
+  private lirePage(p: Y.Map<unknown>, snap: Y.Snapshot): EtatDePage {
     const formes = Y.typeMapGetSnapshot(p, 'formes', snap)
     const liste = formes instanceof Y.Map ? Y.typeMapGetAllSnapshot(formes, snap) as Record<string, Forme | undefined> : {}
     // Un document dont Yjs a fait le ménage (gc) peut avoir perdu le
@@ -431,6 +432,7 @@ export class Tableau {
     for (const [k, f] of Object.entries(liste)) if (f && typeof f === 'object' && typeof (f as Forme).type === 'string') presentes.set(k, f)
     return {
       fond: (Y.typeMapGetSnapshot(p, 'fond', snap) as Fond) || 'blanc',
+      ...((Y.typeMapGetSnapshot(p, 'nuit', snap) as unknown) === true ? { nuit: true } : {}),
       origine: (Y.typeMapGetSnapshot(p, 'origine', snap) as { x: number; y: number }) || { x: 0, y: 0 },
       formes: presentes,
     }
@@ -445,6 +447,7 @@ export class Tableau {
     const formes = p.get('formes')
     const r: ImagePage = {
       fond: (p.get('fond') as Fond) || 'blanc',
+      ...(p.get('nuit') === true ? { nuit: true } : {}),
       origine: (p.get('origine') as { x: number; y: number }) || { x: 0, y: 0 },
       formes: formes instanceof Y.Map ? Array.from((formes as Y.Map<Forme>).values()).sort((a, b) => a.z - b.z) : [],
     }
@@ -1257,6 +1260,7 @@ export class Tableau {
       this.doc.transact(() => {
         const m = new Y.Map<unknown>()
         m.set('fond', this.fondDe(p))
+        if (this.nuitDe(p)) m.set('nuit', true)
         if (origine && typeof origine === 'object') m.set('origine', JSON.parse(JSON.stringify(origine)))
         m.set('herite', { de: p })
         const f = new Y.Map<Forme>()
@@ -1330,7 +1334,7 @@ export class Tableau {
     for (const e of this.film.toArray()) if (e.page === id) { naissance = e; break }
     if (!naissance) return true
     const avant = this.lirePage(p, Y.decodeSnapshot(naissance.s))
-    if (avant.fond !== this.fondDe(id) || JSON.stringify(avant.origine) !== JSON.stringify(this.origineDe(id)) || avant.formes.size !== formes.size) return false
+    if (avant.fond !== this.fondDe(id) || !!avant.nuit !== this.nuitDe(id) || JSON.stringify(avant.origine) !== JSON.stringify(this.origineDe(id)) || avant.formes.size !== formes.size) return false
     for (const [k, f] of formes) {
       const g = avant.formes.get(k)
       if (!g || (g !== f && JSON.stringify(g) !== JSON.stringify(f))) return false
@@ -1351,6 +1355,25 @@ export class Tableau {
     if (o.rangement) this.noteDeLEtape = 'rangement'
     try {
       this.doc.transact(() => { p.set('fond', fond); if (origine) p.set('origine', origine) })
+    } finally { this.noteDeLEtape = null; this.pageVue = vue }
+  }
+  /** La page est-elle en mode nuit (voir nuit.ts) ? Le champ « nuit » de la
+   *  page, facultatif : absent (toute page d'avant, toute page neuve), elle
+   *  est de jour. */
+  nuitDe(page: string): boolean { return this.pages.get(page)?.get('nuit') === true }
+  /** Passe une page en mode nuit, ou la remet de jour, comme on change son
+   *  fond (voir changerFond) : l'étape se note sur la page changée, et la
+   *  revue et le replay des élèves la voient basculer à ce moment. De jour,
+   *  le champ s'écrit faux (rien ne s'efface du document). rangement : la
+   *  trieuse range (voir Etape). */
+  changerNuit(page: string, nuit: boolean, o: { rangement?: boolean } = {}) {
+    const p = this.pages.get(page); if (!p || this.nuitDe(page) === nuit) return
+    if (!this.permis(page, q => this.changerNuit(q, nuit, o))) return
+    const vue = this.pageVue
+    this.pageVue = page
+    if (o.rangement) this.noteDeLEtape = 'rangement'
+    try {
+      this.doc.transact(() => { p.set('nuit', nuit) })
     } finally { this.noteDeLEtape = null; this.pageVue = vue }
   }
   origineDe(page: string) {
