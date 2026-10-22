@@ -127,22 +127,26 @@ console.log('=== A. la place du bouton du classeur ===')
 // bouton du classeur garde sa forme, sauf à 960 × 600 sans nom, où il se
 // cache (le point sur ⋯). Les places d'avant : 496, 410, 863, 310, 154 /
 // 17, 16, 90.)
+// (Adapté au mode nuit, lot 13 : encore un bouton, la lune, 46 px (54 au
+// TNI). Le bouton du classeur garde sa forme au poste de la classe ; à
+// 1180 × 820 il passe à l'icône et au point, à 1024 × 768 sans nom aussi.
+// Les places d'avant : 450, 364, 809, 264, 108 / 10, 9, 44.)
 const ECRANS = [
-  { l: 1366, h: 768, sans: ['large', 450] },
-  { l: 1280, h: 720, sans: ['large', 364] },
+  { l: 1366, h: 768, sans: ['large', 404] },
+  { l: 1280, h: 720, sans: ['large', 318] },
   // (Adapté au lot 5, morceau K9 : un TNI, tactile, de 1920 × 1080, a d'office
   // les noms sous les outils, voulus ainsi : la barre des outils fait 80 px,
   // la barre du haut 68 px de haut et 196 px de plus ; la place, 1093 px sans
   // eux, est de 875 ; lot5/K9-affichage.mjs vérifie le reste)
-  { l: 1920, h: 1080, t: true, sans: ['large', 809, 68] },
+  { l: 1920, h: 1080, t: true, sans: ['large', 755, 68] },
   // (Adapté aux corrections « appareils » du lot 4 : la forme large demande
   // la place du plus long des textes courts, 252 px ; à 1180 × 820, l'état
   // « Seulement dans ce navigateur » y était coupé : l'icône et le point —
   // depuis le lot 5, K8, il y tient : 353 px)
-  { l: 1180, h: 820, t: true, sans: ['large', 264] },
-  { l: 1024, h: 768, sans: ['etroit', 108], avec: ['cache', 10] },
-  { l: 1100, h: 768, avec: ['cache', 9] },
-  { l: 960, h: 600, sans: ['cache', 44] },
+  { l: 1180, h: 820, t: true, sans: ['etroit', 218] },
+  { l: 1024, h: 768, sans: ['etroit', 62], avec: ['cache', -5] },
+  { l: 1100, h: 768, avec: ['cache', 1] },
+  { l: 960, h: 600, sans: ['cache', -2] },
   { l: 768, h: 1024, t: true, sans: ['dans-la-barre', -6, 104] },
   { l: 820, h: 1180, t: true, sans: ['dans-la-barre', -6, 104] },
   // (Adapté au lot 5, K10, la mise en page du téléphone, voulue : la barre
@@ -256,8 +260,9 @@ for (const e of ECRANS) {
     // taille, sans se resserrer ; lot3/controle-final.mjs essaie le
     // resserrement à 900 × 768. Adapté volontairement.)
     const g2 = await p.evaluate(GEOMETRIE)
-    ok(g2.nom.visible && g2.nom.texte === '2 / 3 · Exercice 12 p. 84' && !g2.nom.serre && g2.hauteurAvec === g0.hauteurSans && g2.hauteurAvec === 58,
-      '1024 × 768 : « 2 / 3 · Exercice 12 p. 84 » se lit dans le compteur, à sa taille, la barre garde une rangée', g2.nom)
+    // (Adapté au mode nuit, lot 13 : la lune prend 46 px, le nom s'y resserre)
+    ok(g2.nom.visible && g2.nom.texte === '2 / 3 · Exercice 12 p. 84' && g2.hauteurAvec === g0.hauteurSans && g2.hauteurAvec === 58,
+      '1024 × 768 : « 2 / 3 · Exercice 12 p. 84 » se lit dans le compteur, la barre garde une rangée', g2.nom)
     await p.screenshot({ path: ICI + 'A-1024-nommee.png' })
   }
   if (e.l === 1280) ok(g1.forme === 'etroit', '1280 × 720 nommée : l\'icône et le point (la place se réduit à ' + g1.place + ' px)', g1)
