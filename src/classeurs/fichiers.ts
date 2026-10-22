@@ -68,6 +68,7 @@ import { Tableau } from '../document'
 import { resumeDesSeances } from '../seances'
 import type { AncienTableau, Rognure } from './ancien-tableau'
 import { EXTENSION_ANCIEN, ErreurAncien, finDuClasseur, lireAncienTableau, reprendre, texteDuBilan, textesAvantAnciens } from './ancien-tableau'
+import { imageDeCalculatrice } from '../calculatrice/dessin'
 
 /** Ce que demandent les fichiers à qui les ouvre (main.ts) */
 export interface HoteFichiers {
@@ -466,7 +467,7 @@ export class Fichiers {
       for (const a of anciens) {
         this.hote.message(`Reprise de « ${a.nom} »…`)
         await uneImage()
-        bilans.push(texteDuBilan(a, await reprendre(tab, a, preparerImage)))
+        bilans.push(texteDuBilan(a, await reprendre(tab, a, preparerImage, imageDeCalculatrice)))
       }
     } catch (e) {
       this.hote.message(`L'ancien tableau n'a pas pu être repris : ${raisonDe(e)}. Rien n'a changé.`)

@@ -81,7 +81,7 @@ describe('reprendre un ancien tableau', () => {
     const tab = new Tableau(null)
     const a = lireAncienTableau(fichier(), 'Séance.prof')
     const b = await reprendre(tab, a, preparer)
-    expect(b).toEqual({ pages: 2, traits: 3, images: 1, textes: 1, figures: 0, laisses: 1, imagesIllisibles: 0, imagesHorsFilm: 0 })
+    expect(b).toEqual({ pages: 2, traits: 3, images: 1, textes: 1, figures: 0, calculatrices: 0, laisses: 1, imagesIllisibles: 0, imagesHorsFilm: 0 })
     expect(texteDuBilan(a, b)).toBe('« Séance » : 2 pages, 3 traits, 1 image, 1 texte (devenu une formule), avec son film. 1 objet (cercles, polygones, courbes ou post-its) n\'a pas été repris.')
     const seances = tab.seancesDuClasseur()
     expect(seances).toHaveLength(1)
@@ -220,6 +220,30 @@ describe('reprendre un ancien tableau', () => {
     const film = tab.film.toArray()
     expect(film.every(e => e.t >= T0)).toBe(true)
     expect(tab.seancesDuClasseur()[0].debut).toBe(T0)
+  })
+
+  it('une calculatrice NumWorks : une calculatrice d\'ici, tenue et centrée dans son cadre, qui bouge dans le film', async () => {
+    const tab = new Tableau(null)
+    const calc = (x: number, w: number, h: number) => ({ id: 5, x, y: 0, w, h, mode: 'web', titre: 'NumWorks lycée', url: 'https://example.com/calculatrice.html?modele=lycee', content: '', z: 5 })
+    const autre = { id: 6, x: 0, y: 0, w: 100, h: 100, mode: 'web', titre: 'Une page', url: 'https://example.com/', content: '', z: 6 }
+    const a = lireAncienTableau(JSON.stringify({ name: 'x', data: { pages: [{
+      ...vide, htmlPostits: [calc(100, 720, 660), autre],
+      filmArchive: [{ ...vide, t: T0 }],
+      film: [{ htmlPostits: { '+': [calc(0, 360, 660)] }, t: T0 + MIN }, { htmlPostits: [calc(100, 720, 660), autre], t: T0 + 2 * MIN }],
+    }] } }))
+    const vus: string[] = []
+    const b = await reprendre(tab, a, preparer, m => { vus.push(m); return PNG })
+    expect([b.calculatrices, b.laisses]).toEqual([1, 1])
+    expect(texteDuBilan(a, b)).toContain('1 calculatrice, avec son film. 1 objet')
+    expect(vus).toEqual(['lycee'])
+    expect(tab.doc.getMap('images').get('calc-accueil-lycee')).toBe(PNG)
+    const [c] = [...tab.formesDe(tab.ordre.get(0))!.values()] as ImageForme[]
+    // 720 × 660 : la calculatrice tient en hauteur (échelle 1), centrée en largeur
+    expect([c.type, c.calculatrice, c.src, c.l, c.h, c.m, c.x, c.y]).toEqual(['image', 'lycee', 'calc-accueil-lycee', 360, 660, [1, 0, 0, 1], 280, 0])
+    expect(tab.film.toArray().map(e => e.t)).toEqual([T0, T0 + MIN, T0 + 2 * MIN])
+    // Sans dessin donné, elle n'est pas reprise (comptée)
+    const b2 = await reprendre(new Tableau(null), a, preparer)
+    expect([b2.calculatrices, b2.laisses]).toEqual([0, 2])
   })
 
   it('une image tournée garde son centre', async () => {

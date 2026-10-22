@@ -29,6 +29,11 @@
 //   (un rectangle plein posé pour masquer une partie d'une image) devient
 //   un aplat opaque de sa couleur, une petite image étirée, qu'on efface
 //   pour découvrir ce qu'il cachait ; les coins d'un cache ne se voient pas ;
+// - une calculatrice NumWorks (un post-it qui la montrait, lycée ou
+//   collège) : une calculatrice d'ici (voir calculatrice/), son dessin à
+//   l'écran d'accueil, tenu dans le cadre du post-it, centré ; elle paraît,
+//   bouge et s'en va dans le film comme lui. Le dessin est donné par
+//   l'appelant (il demande un canevas) ;
 // - le mode nuit : un tableau enregistré en mode nuit (ou une page qui
 //   l'était) donne des pages en mode nuit (voir nuit.ts), dès le début de
 //   la séance (l'ancien film ne dit pas quand il a basculé) ; son encre
@@ -37,7 +42,7 @@
 // - le film : chaque geste devient une étape du film, à son heure, sur sa
 //   page. « Revoir la construction » et Publier le rejouent comme une
 //   séance écrite ici.
-// Le reste (cercles, polygones, courbes, post-its) n'est pas repris : le bilan le
+// Le reste (cercles, polygones, courbes, les autres post-its) n'est pas repris : le bilan le
 // compte, rien ne disparaît sans qu'on le dise.
 // Le tableau est décalé pour que ce qui est écrit commence en haut à
 // gauche de la page (on écrivait autour du centre de l'écran).
@@ -47,7 +52,7 @@
 // =============================================================
 import type { Tableau } from '../document'
 import { ORIGINE_LOCALE } from '../document'
-import type { Cercle, Fond, Forme, Formule, ImageForme, MarquePoint, Polygone, Trait } from '../types'
+import type { Cercle, Fond, Forme, Formule, ImageForme, MarquePoint, ModeleCalculatrice, Polygone, Trait } from '../types'
 import { uid } from '../types'
 
 export const EXTENSION_ANCIEN = '.prof'
@@ -56,7 +61,7 @@ export const EXTENSION_ANCIEN = '.prof'
 const FAMILLES = ['points', 'segments', 'circles', 'rectangles', 'texts', 'freehands', 'curves', 'polygons', 'images', 'arcs', 'htmlPostits'] as const
 type Famille = typeof FAMILLES[number]
 /** Celles qui se reprennent */
-const REPRISES: readonly Famille[] = ['freehands', 'images', 'texts', 'points', 'segments', 'arcs', 'rectangles']
+const REPRISES: readonly Famille[] = ['freehands', 'images', 'texts', 'points', 'segments', 'arcs', 'rectangles', 'htmlPostits']
 /** Celles qui vont d'un point à l'autre : elles suivent leurs points */
 const SUR_POINTS: readonly Famille[] = ['segments', 'rectangles']
 
@@ -104,6 +109,8 @@ export interface BilanAncien {
   textes: number
   /** Points, segments, droites et arcs */
   figures: number
+  /** Les calculatrices NumWorks */
+  calculatrices: number
   /** Les objets qui ne se reprennent pas (cercles, courbes, post-its…),
    *  comptés une fois chacun, qu'ils soient restés ou non */
   laisses: number
@@ -119,6 +126,10 @@ export interface Rognure { x: number; y: number; l: number; h: number }
 /** Lit une image (et la rogne) : ses données et sa taille en pixels ; null si
  *  elle ne se lit pas. Dans le navigateur, une image et un canevas. */
 export type PreparerImage = (donnees: string, rognure: Rognure | null) => Promise<{ donnees: string; l: number; h: number } | null>
+/** Le dessin d'une calculatrice à l'écran d'accueil (data:image/png),
+ *  LARGEUR_CALCULATRICE × HAUTEUR_CALCULATRICE (voir calculatrice/dessin.ts) */
+export type DessinerCalculatrice = (modele: ModeleCalculatrice) => string
+const LARGEUR_CALCULATRICE = 360, HAUTEUR_CALCULATRICE = 660
 
 export class ErreurAncien extends Error {}
 export const PAS_UN_ANCIEN = 'Ce fichier n\'est pas un ancien tableau (.prof) qu\'on sait lire.'
@@ -268,9 +279,18 @@ function coins(f: Famille, o: Objet): P[] {
   if (f === 'freehands') return pointsDe(o)
   if (f === 'images') { const b = boiteImage(o); return b ? [{ x: b.x, y: b.y }, { x: b.x + b.w, y: b.y + b.h }] : [] }
   if ((f === 'texts' || f === 'points') && Number.isFinite(o.x) && Number.isFinite(o.y)) return [{ x: o.x as number, y: o.y as number }]
+  if (f === 'htmlPostits' && modeleDe(o)) { const b = boiteImage(o); return b ? [{ x: b.x, y: b.y }, { x: b.x + b.w, y: b.y + b.h }] : [] }
   if (f === 'arcs') { const a = arcDe(o); return a ? Array.from({ length: 17 }, (_, i) => { const t = a.a0 + (a.a1 - a.a0) * i / 16; return { x: a.x + a.r * Math.cos(t), y: a.y + a.r * Math.sin(t) } }) : [] }
   // Un segment va d'un point à l'autre : ses points sont comptés
   return []
+}
+
+/** Le modèle d'une calculatrice NumWorks montrée par un post-it (son titre
+ *  ou son adresse le disent), sinon null */
+function modeleDe(o: Objet): ModeleCalculatrice | null {
+  const t = `${typeof o.titre === 'string' ? o.titre : ''} ${typeof o.url === 'string' ? o.url : ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  if (!t.includes('numworks')) return null
+  return t.includes('college') ? 'college' : 'lycee'
 }
 
 /** Un arc d'un ancien tableau : son centre, son rayon, ses angles dans le
@@ -353,8 +373,8 @@ export function finDuClasseur(t: Tableau): number {
 /** Ajoute un ancien tableau au document, comme une séance neuve, en
  *  rejouant son film (voir en tête). Le document ne doit avoir rien d'écrit
  *  après son début (voir finDuClasseur). */
-export async function reprendre(tab: Tableau, a: AncienTableau, preparer: PreparerImage): Promise<BilanAncien> {
-  const bilan: BilanAncien = { pages: a.pages.length, traits: 0, images: 0, textes: 0, figures: 0, laisses: 0, imagesIllisibles: 0, imagesHorsFilm: 0 }
+export async function reprendre(tab: Tableau, a: AncienTableau, preparer: PreparerImage, calculatrice?: DessinerCalculatrice): Promise<BilanAncien> {
+  const bilan: BilanAncien = { pages: a.pages.length, traits: 0, images: 0, textes: 0, figures: 0, calculatrices: 0, laisses: 0, imagesIllisibles: 0, imagesHorsFilm: 0 }
   const marque = uid()
   const idDe = (o: Objet) => `${marque}-${String(o.id)}`
 
@@ -513,6 +533,18 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
       if (lie) re.lie = lie
       return re
     }
+    if (f === 'htmlPostits') {
+      const modele = modeleDe(o), b = boiteImage(o)
+      if (!modele || !b || !calculatrice) return null
+      const src = `calc-accueil-${modele}`
+      if (!banque.has(src)) banque.set(src, calculatrice(modele))
+      const k = Math.min(Math.abs(b.w) / LARGEUR_CALCULATRICE, Math.abs(b.h) / HAUTEUR_CALCULATRICE)
+      const ca: ImageForme = {
+        id, type: 'image', src, l: LARGEUR_CALCULATRICE, h: HAUTEUR_CALCULATRICE, m: [k, 0, 0, k], calculatrice: modele, z, auteur,
+        x: b.x + (b.w - LARGEUR_CALCULATRICE * k) / 2 + d.x, y: b.y + (b.h - HAUTEUR_CALCULATRICE * k) / 2 + d.y,
+      }
+      return ca
+    }
     if (f === 'arcs') {
       const ar = arcDe(o)
       if (!ar) return null
@@ -555,6 +587,8 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
           const g = forme(f, o, page, etat)
           if (g) { poser.push(g); reprises.get(f)!.add(k) }
           else if (v) retirer.push(`${marque}-${k}`)
+          // Un post-it qui n'est pas une calculatrice ne se reprend pas
+          if (!g && f === 'htmlPostits') laisses.add(`${f}:${k}`)
         }
         for (const k of deja.keys()) if (!restent.has(k)) retirer.push(`${marque}-${k}`)
       }
@@ -602,6 +636,7 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
     bilan.traits += fin.freehands.filter(o => reprises.get('freehands')!.has(String(o.id))).length
     bilan.images += fin.images.filter(o => reprises.get('images')!.has(String(o.id))).length
     bilan.textes += fin.texts.filter(o => reprises.get('texts')!.has(String(o.id))).length
+    bilan.calculatrices += fin.htmlPostits.filter(o => reprises.get('htmlPostits')!.has(String(o.id))).length
     for (const f of ['points', 'segments', 'arcs', 'rectangles'] as const) bilan.figures += fin[f].filter(o => reprises.get(f)!.has(String(o.id))).length
   }
   bilan.laisses = laisses.size
@@ -653,6 +688,7 @@ const pluriel = (n: number, mot: string, pl = mot + 's') => `${n} ${n > 1 ? pl :
 export function texteDuBilan(a: AncienTableau, b: BilanAncien): string {
   const morceaux = [pluriel(b.pages, 'page'), pluriel(b.traits, 'trait'), pluriel(b.images, 'image')]
   if (b.figures) morceaux.push(pluriel(b.figures, 'figure'))
+  if (b.calculatrices) morceaux.push(pluriel(b.calculatrices, 'calculatrice'))
   if (b.textes) morceaux.push(`${pluriel(b.textes, 'texte')} (${b.textes > 1 ? 'devenus des formules' : 'devenu une formule'})`)
   let t = `« ${a.nom} » : ${morceaux.join(', ')}${a.film ? ', avec son film' : ''}.`
   if (b.laisses) t += ` ${pluriel(b.laisses, 'objet')} (cercles, polygones, courbes ou post-its) ${b.laisses > 1 ? 'n\'ont' : 'n\'a'} pas été repris.`
