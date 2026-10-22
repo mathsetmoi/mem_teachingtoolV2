@@ -200,6 +200,28 @@ describe('reprendre un ancien tableau', () => {
     expect([a.debut, a.fin]).toEqual([d, d + 10000])
   })
 
+  it('un tableau en mode nuit : ses pages de nuit dès le début, son encre blanche devient le Noir', async () => {
+    const tab = new Tableau(null)
+    const blanc = trait(1, 0, 0, { color: '#ffffff' }), rouge = trait(2, 9, 9, { color: '#e74c3c' })
+    const a = lireAncienTableau(JSON.stringify({ name: 'x', data: { modeNuit: true, pages: [
+      { ...vide, freehands: [blanc, rouge], texts: [{ id: 3, x: 0, y: 0, content: 'A', color: '#FFF', fontSize: 20, z: 3 }],
+        filmArchive: [{ ...vide, t: T0 }], film: [{ freehands: { '+': [blanc, rouge] }, t: T0 + MIN }, { texts: [{ id: 3, x: 0, y: 0, content: 'A', color: '#FFF', fontSize: 20, z: 3 }], t: T0 + 2 * MIN }] },
+      // Une page qui dit être de jour le reste, son blanc aussi
+      { ...vide, modeNuit: false, freehands: [trait(4, 0, 0, { color: '#ffffff' })] },
+    ] } }))
+    expect(a.pages.map(p => !!p.nuit)).toEqual([true, false])
+    await reprendre(tab, a, preparer)
+    const [p1, p2] = [tab.ordre.get(0), tab.ordre.get(1)]
+    expect([tab.nuitDe(p1), tab.nuitDe(p2)]).toEqual([true, false])
+    const couleurs = (id: string) => [...tab.formesDe(id)!.values()].map(f => (f as Trait).couleur).sort()
+    expect(couleurs(p1)).toEqual(['#1b2230', '#1b2230', '#e74c3c'])
+    expect(couleurs(p2)).toEqual(['#ffffff'])
+    // La bascule est au début de la séance, avant les gestes
+    const film = tab.film.toArray()
+    expect(film.every(e => e.t >= T0)).toBe(true)
+    expect(tab.seancesDuClasseur()[0].debut).toBe(T0)
+  })
+
   it('une image tournée garde son centre', async () => {
     const tab = new Tableau(null)
     const image = { id: 1, x: 0, y: 0, w: 200, h: 100, cx: 0, cy: 0, cw: 400, ch: 200, srcRef: 'a1', angle: Math.PI / 2 }
