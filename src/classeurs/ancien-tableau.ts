@@ -54,6 +54,7 @@ import type { Tableau } from '../document'
 import { ORIGINE_LOCALE } from '../document'
 import type { Cercle, Fond, Forme, Formule, ImageForme, MarquePoint, ModeleCalculatrice, Polygone, Trait } from '../types'
 import { uid } from '../types'
+import { HAUTEUR as HAUTEUR_CALCULATRICE, LARGEURS as LARGEURS_CALCULATRICE } from '../calculatrice/dessin'
 
 export const EXTENSION_ANCIEN = '.prof'
 
@@ -126,10 +127,9 @@ export interface Rognure { x: number; y: number; l: number; h: number }
 /** Lit une image (et la rogne) : ses données et sa taille en pixels ; null si
  *  elle ne se lit pas. Dans le navigateur, une image et un canevas. */
 export type PreparerImage = (donnees: string, rognure: Rognure | null) => Promise<{ donnees: string; l: number; h: number } | null>
-/** Le dessin d'une calculatrice à l'écran d'accueil (data:image/png),
- *  LARGEUR_CALCULATRICE × HAUTEUR_CALCULATRICE (voir calculatrice/dessin.ts) */
+/** Le dessin d'une calculatrice à l'écran d'accueil (data:image/png), de
+ *  LARGEURS[modele] × HAUTEUR (voir calculatrice/dessin.ts) */
 export type DessinerCalculatrice = (modele: ModeleCalculatrice) => string
-const LARGEUR_CALCULATRICE = 360, HAUTEUR_CALCULATRICE = 660
 
 export class ErreurAncien extends Error {}
 export const PAS_UN_ANCIEN = 'Ce fichier n\'est pas un ancien tableau (.prof) qu\'on sait lire.'
@@ -536,7 +536,8 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
     if (f === 'htmlPostits') {
       const modele = modeleDe(o), b = boiteImage(o)
       if (!modele || !b || !calculatrice) return null
-      const src = `calc-accueil-${modele}`
+      const LARGEUR_CALCULATRICE = LARGEURS_CALCULATRICE[modele]
+      const src = `calc-accueil-${modele}-${LARGEUR_CALCULATRICE}`
       if (!banque.has(src)) banque.set(src, calculatrice(modele))
       const k = Math.min(Math.abs(b.w) / LARGEUR_CALCULATRICE, Math.abs(b.h) / HAUTEUR_CALCULATRICE)
       const ca: ImageForme = {

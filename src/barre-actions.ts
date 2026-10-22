@@ -251,6 +251,9 @@ export class BarreActions {
   /** Voir barreVisible */
   private visible(): boolean {
     const app = this.app
+    // Une calculatrice seule n'a pas de barre : ses boutons ↺ et × suffisent
+    const pris = app.selection.size === 1 ? app.objetsChoisis() : []
+    if (pris.length === 1 && pris[0].type === 'image' && pris[0].calculatrice) return false
     return barreVisible({
       pris: app.selection.size, partie: !!app.partie, options: app.options !== null, menu: menuOuvert(),
       mouvement: app.enMouvement, lecture: app.enLecture, placement: !!app.placement,

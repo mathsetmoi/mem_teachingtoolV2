@@ -29,7 +29,7 @@
 import type { Camera } from '../camera'
 import type { Matrice } from '../cadre'
 import type { Forme, ImageForme, ModeleCalculatrice } from '../types'
-import { BANDE, ECRAN, HAUTEUR, LARGEUR, dessinerCalculatrice, empreinte, nomDuModele } from './dessin'
+import { BANDE, ECRAN, HAUTEUR, dessinerCalculatrice, empreinte, nomDuModele } from './dessin'
 import { lireEmulateur } from './emulateurs'
 
 export type Calculatrice = ImageForme & { calculatrice: ModeleCalculatrice }
@@ -56,6 +56,9 @@ export interface HoteCalculatrices {
   retirer(id: string): void
   /** La fenêtre d'installation */
   installer(modele: ModeleCalculatrice): void
+  /** Un appui sur le corps de la calculatrice, ses mouvements, son lever
+   *  (client : le point, dans la page de l'outil) : le tableau la déplace */
+  saisir(id: string, type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel', e: PointerEvent, client: { x: number; y: number }): void
 }
 
 /** Après un appui, on regarde l'écran à ces moments (ms) */
@@ -70,12 +73,15 @@ const GARDER_IMAGE = '<script>(function(){var g=HTMLCanvasElement.prototype.getC
 
 /** Et ce qui range la page de l'émulateur dans le cadre : la calculatrice
  *  seule, aussi grande que le cadre le permet, sans le fond gris de la page
- *  ni ses boutons du dessous (plein écran, photo, partage) */
+ *  ni ses boutons du dessous (plein écran, photo, partage) ; le curseur dit
+ *  que son corps la déplace (voir brancherCorps) */
 const DANS_LE_CADRE = '<style>html,body{background:transparent!important;margin:0!important;overflow:hidden!important}'
   + '.actions,#errors,.col-fullscreen{display:none!important}'
   + '.col-calculator{width:100%!important;float:none!important}'
-  + '.calculator-container{margin:4px 0 0!important}'
-  + '.calculator-container img{max-height:calc(100vh - 8px)!important;max-width:100%!important}</style>'
+  + '.calculator-container{margin:0!important;vertical-align:top}'
+  + '.calculator-container img{max-height:100vh!important;max-width:100vw!important}'
+  + '.calculator-shadow .calculator::before{box-shadow:none!important}'
+  + 'html,body,.calculator{cursor:move!important}.calculator canvas{cursor:default!important}</style>'
 
 /** La page de l'émulateur, avec ces lignes en tête */
 export function pagePourLeCadre(html: string): string {
@@ -104,6 +110,8 @@ interface Vivante {
   el: HTMLDivElement
   cadre: HTMLIFrameElement | null
   page: string
+  /** La largeur de son image (voir LARGEURS) : le nouvel écran se dessine à la même */
+  largeur: number
   /** La dernière copie de l'écran (son adresse), pour ne rien écrire deux fois */
   dernier: string
   regards: number[]
@@ -176,7 +184,7 @@ export class Calculatrices {
   private creer(f: Calculatrice, page: string): Vivante {
     const el = document.createElement('div')
     el.className = 'calculatrice-vivante'
-    el.style.width = LARGEUR + 'px'; el.style.height = HAUTEUR + 'px'
+    el.style.width = f.l + 'px'; el.style.height = HAUTEUR + 'px'
     const bande = document.createElement('div')
     bande.className = 'calculatrice-bande'
     bande.style.height = BANDE + 'px'
@@ -190,7 +198,7 @@ export class Calculatrices {
     corps.style.top = BANDE + 'px'
     el.append(bande, corps)
     this.couche.appendChild(el)
-    const v: Vivante = { id: f.id, modele: f.calculatrice, el, cadre: null, page, dernier: '', regards: [], vue: 0, transform: '' }
+    const v: Vivante = { id: f.id, modele: f.calculatrice, el, cadre: null, page, largeur: f.l, dernier: '', regards: [], vue: 0, transform: '' }
     this.vivantes.set(f.id, v)
     // Les boutons ne laissent pas l'appui au tableau (il prendrait l'image)
     for (const b of [zero, croix]) b.addEventListener('pointerdown', e => e.stopPropagation())
@@ -225,6 +233,7 @@ export class Calculatrices {
       const doc = cadre.contentDocument
       if (!doc) return
       const appui = () => this.regarderBientot(v)
+      this.brancherCorps(v, cadre, doc)
       doc.addEventListener('pointerup', appui, true)
       doc.addEventListener('keyup', appui, true)
       doc.addEventListener('touchend', appui, true)
@@ -233,6 +242,41 @@ export class Calculatrices {
     cadre.srcdoc = pagePourLeCadre(emu.html)
     v.cadre = cadre
     corps.appendChild(cadre)
+  }
+
+  /** Le corps de la calculatrice (tout sauf ses touches et son écran) la
+   *  prend et la déplace, sous tous les outils : l'appui, ses mouvements et
+   *  son lever passent au tableau, ramenés à la page de l'outil. Les touches
+   *  et l'écran restent à la calculatrice. */
+  private brancherCorps(v: Vivante, cadre: HTMLIFrameElement, doc: Document) {
+    let saisi: number | null = null
+    // Le point de la page de l'outil sous ce point du cadre (le cadre suit la
+    // vue : il est agrandi, réduit, déplacé, jamais tourné)
+    const client = (e: PointerEvent) => {
+      const r = cadre.getBoundingClientRect()
+      return { x: r.left + e.clientX * r.width / (cadre.clientWidth || 1), y: r.top + e.clientY * r.height / (cadre.clientHeight || 1) }
+    }
+    const touche = (t: EventTarget | null) => t instanceof doc.defaultView!.Element && !!t.closest('[data-key], canvas, .loader')
+    doc.addEventListener('pointerdown', e => {
+      if (saisi !== null || e.button !== 0 || touche(e.target)) return
+      e.preventDefault(); e.stopPropagation()
+      saisi = e.pointerId
+      try { (e.target as Element).setPointerCapture(e.pointerId) } catch { /* sans capture */ }
+      this.hote.saisir(v.id, 'pointerdown', e, client(e))
+    }, true)
+    doc.addEventListener('pointermove', e => {
+      if (e.pointerId !== saisi) return
+      e.stopPropagation()
+      this.hote.saisir(v.id, 'pointermove', e, client(e))
+    }, true)
+    const lever = (e: PointerEvent) => {
+      if (e.pointerId !== saisi) return
+      e.stopPropagation()
+      saisi = null
+      this.hote.saisir(v.id, e.type === 'pointercancel' ? 'pointercancel' : 'pointerup', e, client(e))
+    }
+    doc.addEventListener('pointerup', lever, true)
+    doc.addEventListener('pointercancel', lever, true)
   }
 
   private regarderBientot(v: Vivante, quand = REGARDS) {
@@ -248,9 +292,9 @@ export class Calculatrices {
     const ecran = copie.toDataURL('image/png')
     if (ecran === v.dernier) return
     v.dernier = ecran
-    const cv = Object.assign(document.createElement('canvas'), { width: LARGEUR, height: HAUTEUR })
-    dessinerCalculatrice(cv.getContext('2d')!, v.modele, copie)
-    const src = `calc-${v.modele}-${empreinte(ecran)}`
+    const cv = Object.assign(document.createElement('canvas'), { width: v.largeur, height: HAUTEUR })
+    dessinerCalculatrice(cv.getContext('2d')!, v.modele, copie, v.largeur)
+    const src = `calc-${v.modele}-${v.largeur === 360 ? '' : v.largeur + '-'}${empreinte(ecran)}`
     this.hote.ranger(src, cv.toDataURL('image/png'))
     this.hote.ecran(v.page, v.id, src)
   }
