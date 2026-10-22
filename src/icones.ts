@@ -93,6 +93,8 @@ export const ICONES: Record<string, string> = {
   sablier: 'M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9',
   // Le tirage au sort : un dé
   de: 'M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1zM8.5 8.5h.01M15.5 8.5h.01M12 12h.01M8.5 15.5h.01M15.5 15.5h.01',
+  // La calculatrice NumWorks : son boîtier, son écran, ses touches
+  calculatrice: 'M7 2h10a2 2 0 012 2v16a2 2 0 01-2 2H7a2 2 0 01-2-2V4a2 2 0 012-2zM8 5h8v5H8zM8.5 14h.01M12 14h.01M15.5 14h.01M8.5 17.5h.01M12 17.5h.01M15.5 17.5h.01',
   // L'aide : un point d'interrogation dans un rond
   aide: 'M12 21a9 9 0 100-18 9 9 0 100 18zM9.5 9.5a2.5 2.5 0 114 2c-1 .7-1.5 1.2-1.5 2.5M12 17h.01',
   // Le son du minuteur : un haut-parleur, avec ses ondes ou barré

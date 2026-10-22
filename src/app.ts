@@ -53,6 +53,11 @@ import { IDENTITE, aimanterAngle, bornesEchelle, cadreDe, cadreTransforme, compo
 import type { PartieGardee, PriseRognage } from './rognage'
 import type { ChoixPdf, PdfOuvert } from './import-pdf'
 import { HAUTEUR_MAX_IMAGE, LARGEUR_IMAGE, estPdf, ouvrirFenetreImportPdf, ouvrirPdf, texteImportPdf } from './import-pdf'
+import { Calculatrices, estCalculatrice } from './calculatrice/vivantes'
+import { BANDE, echelleDePose, imageDeCalculatrice, nomDuModele } from './calculatrice/dessin'
+import { lireEmulateur } from './calculatrice/emulateurs'
+import { ouvrirInstallation } from './calculatrice/fenetre'
+import type { ModeleCalculatrice } from './types'
 import { coinsGardes, curseurRognage, imageRognee, priseRognage, rienARogner, tirerPartie, toute, versImage } from './rognage'
 
 /** La copie gardée dans le navigateur, pour un autre onglet de la même
@@ -403,6 +408,8 @@ export class App {
   readonly instruments = new Map<NomInstrument, EtatInstrument>()
   /** Ce que la classe voit des instruments, noté pour le replay (voir piste.ts) */
   readonly piste: Piste
+  /** Les calculatrices NumWorks vivantes de la page (voir calculatrice/vivantes.ts) */
+  readonly calculatrices: Calculatrices
   /** La fin du dernier geste (performance.now()) : un appui ou un lever sur
    *  le tableau, une touche ; au départ, l'ouverture du classeur (voir calme) */
   private finDuGeste = performance.now()
@@ -427,6 +434,21 @@ export class App {
     // qui efface là où elle passe écarte vite ce qu'il n'a pas à repeindre
     this.rendu.boiteTrait = t => this.boiteDeForme(t)
     this.rendu.temoinDirect = t => this.piste.peintureDirect(t)
+    // Les calculatrices NumWorks : la vraie calculatrice sur chaque image de
+    // calculatrice, au-dessus de la scène et des formules, sous les instruments
+    this.calculatrices = new Calculatrices(zone, zone.querySelector('.couche-instruments'), {
+      cam: this.cam,
+      page: () => this.page,
+      formes: () => this.formes,
+      vivante: () => !this.enLecture && !this.enSeancePassee,
+      decalage: f => this.rendu.selection.has(f.id) && libre(f) && (this.rendu.decalage.dx || this.rendu.decalage.dy) ? this.rendu.decalage : null,
+      transfo: f => this.rendu.transfo?.ids.has(f.id) ? this.rendu.transfo.m : null,
+      ranger: (src, donnees) => { if (!this.banqueImages.has(src)) this.banqueImages.set(src, donnees) },
+      ecran: (page, id, src) => this.tableau.ecranDeCalculatrice(page, id, src),
+      retirer: id => { this.selection.delete(id); this.tableau.supprimer(this.page, [id]); this.ui.maj() },
+      installer: m => this.installerCalculatrice(m),
+    })
+    this.rendu.apresFormules = () => this.calculatrices.placer()
     window.addEventListener('pagehide', () => this.piste.vider())
 
     tableau.pages.observeDeep(() => this.rafraichir())
@@ -2130,6 +2152,15 @@ export class App {
     if (poignee) { this.prendreCadre(poignee, m); return }
     // Un morceau de la figure sélectionnée (outil Sélection) : son nom, un sommet, son rayon
     if (prise) { this.prendrePoignee(prise); return }
+    // La bande du nom d'une calculatrice (voir calculatrice/) : elle se prend
+    // et se glisse sous tous les outils, comme à la Sélection
+    const bande = this.outil !== 'selection' ? this.bandeDeCalculatrice(m) : null
+    if (bande) {
+      if (!this.selection.has(bande.id)) { this.selection.clear(); this.prendre(bande, false) }
+      this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false }
+      this.rendu.redessinerDirect(); this.ui.maj()
+      return
+    }
     this.ui.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
     // Sous un outil de dessin, ce qui restait sélectionné (une copie, une
@@ -3807,6 +3838,48 @@ export class App {
     finally { URL.revokeObjectURL(url) }
   }
 
+  /** Pose une calculatrice NumWorks (le menu Classe) : son dessin, une image
+   *  marquée (voir calculatrice/dessin.ts), au milieu de la vue, sur les
+   *  trois quarts de sa hauteur, prise à l'outil Sélection comme une image
+   *  importée (ses coins l'agrandissent) ; la vraie calculatrice s'y pose
+   *  aussitôt (vivantes.ts). Pas encore installée sur cet ordinateur : la
+   *  fenêtre d'installation s'ouvre aussi. */
+  async poserCalculatrice(modele: ModeleCalculatrice) {
+    const src = `calc-accueil-${modele}`
+    if (!this.banqueImages.has(src)) this.banqueImages.set(src, imageDeCalculatrice(modele))
+    const v = this.cam.visible(this.rendu.l, this.rendu.h)
+    const e = echelleDePose(v.h, this.cam.z)
+    const l = 360, h = 660
+    const f: Forme = { id: uid(), type: 'image', src, l, h, m: [e, 0, 0, e], calculatrice: modele,
+      x: v.x + v.l / 2 - l * e / 2, y: v.y + v.h / 2 - h * e / 2, z: Date.now(), auteur: this.tableau.moi }
+    this.calculatrices.posee(f.id)
+    this.preterSelection([f.id])
+    this.poserFigure(f)
+    if (!this.forme(f.id)) return
+    if (!(await lireEmulateur(modele))) this.installerCalculatrice(modele)
+    else this.ui.message(`${nomDuModele(modele)} : la barre du haut la déplace, ses coins l'agrandissent, × la range.`)
+  }
+
+  /** La fenêtre « Installer la calculatrice NumWorks » */
+  installerCalculatrice(modele?: ModeleCalculatrice) {
+    ouvrirInstallation({ maj: () => this.ui.maj(), change: () => this.calculatrices.rafraichir(), message: t => this.ui.message(t) }, modele)
+  }
+
+  /** La calculatrice dont la bande du nom est sous ce point (monde), la plus
+   *  haute : elle se prend par là sous tous les outils (voir bas) */
+  private bandeDeCalculatrice(m: P): ImageForme | null {
+    for (let i = this.formes.length - 1; i >= 0; i--) {
+      const f = this.formes[i]
+      if (!estCalculatrice(f) || !libre(f)) continue
+      const [a, b, c, d] = f.m, det = a * d - b * c
+      if (!det) continue
+      const x = m.x - f.x, y = m.y - f.y
+      const u = (d * x - c * y) / det, w = (-b * x + a * y) / det
+      if (u >= 0 && u <= f.l && w >= 0 && w <= BANDE) return f
+    }
+    return null
+  }
+
   /** Un PDF à importer (le bouton Image, un fichier glissé, Ctrl+V) : on
    *  le lit, puis la fenêtre « Importer un PDF » s'ouvre (ses pages en
    *  vignettes, où les mettre, « Fixer en fond » ; voir import-pdf.ts). */
@@ -4528,7 +4601,7 @@ export class App {
     // Les points repérés sur l'image prise ne comptent pas : ils restent où ils sont
     const pris = this.formes.filter(f => this.selection.has(f.id) && !((f.type === 'polygone' || f.type === 'cercle') && f.lie && this.selection.has(f.lie)))
     const f = pris.length === 1 ? pris[0] : null
-    return f?.type === 'image' && libre(f) ? f : null
+    return f?.type === 'image' && libre(f) && !f.calculatrice ? f : null
   }
 
   /** « Rogner » (la barre d'actions d'une image, son menu ⋯) : l'image

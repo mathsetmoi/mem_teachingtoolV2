@@ -262,6 +262,8 @@ function refaireForme(v: Record<string, unknown>, prendreImage: (src: string) =>
       const det = m[0] * m[3] - m[1] * m[2]
       if (!Number.isFinite(det) || Math.abs(det) < 1e-12 || !prendreImage(v.src)) return null
       const i: ImageForme = { ...base, type: 'image', src: v.src, l: v.l, h: v.h, m: [m[0], m[1], m[2], m[3]] }
+      // Une calculatrice collée reste une calculatrice (voir calculatrice/)
+      if (v.calculatrice === 'lycee' || v.calculatrice === 'college') i.calculatrice = v.calculatrice
       return i
     }
   }

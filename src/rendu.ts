@@ -211,6 +211,11 @@ export class Rendu {
    *  pointeur dont les poignées prennent la taille */
   rognage: { id: string; partie: PartieGardee; pointeur: TypePointeur } | null = null
   avantDirect: (() => void) | null = null
+  /** Appelé chaque fois que les formules sont posées (la vue, la page, un
+   *  déplacement en cours ont changé) : l'App y pose les calculatrices
+   *  vivantes (voir calculatrice/vivantes.ts). La revue, le lecteur et les
+   *  sorties n'en ont pas. */
+  apresFormules: (() => void) | null = null
   /** Pendant qu'on change la taille ou qu'on tourne (lot 5) : rien ne
    *  s'écrit, ces formes (ids) sont peintes transformées par m. Un trait et
    *  une image : leur dessin habituel sous m (le contour en cache du trait,
@@ -886,6 +891,7 @@ export class Rendu {
       if (purger) { e.el.remove(); this.elementsFormules.delete(id) }
       else if (!e.cachee) { e.cachee = true; e.el.style.visibility = 'hidden' }
     }
+    this.apresFormules?.()
   }
 
   /** Boîte LOCALE d'une formule, en monde : son coin (x, y) et sa taille, qui

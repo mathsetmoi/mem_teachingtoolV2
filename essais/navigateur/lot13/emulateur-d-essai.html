@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Émulateur d'essai (NumWorks)</title>
+<!-- Une page d'essai qui se fait passer pour l'émulateur de NumWorks : un
+     écran (un canevas de 320 × 240) et quelques touches. Ce n'est pas
+     l'émulateur de NumWorks, seulement de quoi essayer l'outil sans lui. -->
+<style>
+  html, body { margin: 0; height: 100%; background: #444b57; font: 16px sans-serif; }
+  body { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px; box-sizing: border-box; }
+  canvas { width: 320px; height: 240px; background: #fff; }
+  .touches { display: grid; grid-template-columns: repeat(4, 64px); gap: 8px; }
+  button { height: 44px; font-size: 20px; }
+</style>
+</head>
+<body>
+<canvas id="ecran" width="320" height="240"></canvas>
+<div class="touches"></div>
+<script>
+  const c = document.getElementById('ecran').getContext('2d')
+  let ligne = '', resultat = '', curseur = true
+  function peindre() {
+    c.fillStyle = '#fff'; c.fillRect(0, 0, 320, 240)
+    c.fillStyle = '#ffb734'; c.fillRect(0, 0, 320, 22)
+    c.fillStyle = '#000'; c.font = '14px sans-serif'; c.fillText('calculs', 8, 16)
+    c.font = '22px sans-serif'
+    c.fillText(ligne + (curseur ? '|' : ''), 10, 70)
+    if (resultat) { c.textAlign = 'right'; c.fillText(resultat, 310, 110); c.textAlign = 'left' }
+  }
+  for (const t of ['7','8','9','+','4','5','6','-','1','2','3','×','0','C','EXE','÷']) {
+    const b = document.createElement('button'); b.textContent = t; b.dataset.t = t
+    b.onclick = () => {
+      if (t === 'C') { ligne = ''; resultat = '' }
+      else if (t === 'EXE') { try { resultat = String(Function('return ' + ligne.replace(/×/g, '*').replace(/÷/g, '/'))()) } catch { resultat = 'erreur' } }
+      else ligne += t
+      peindre()
+    }
+    document.querySelector('.touches').appendChild(b)
+  }
+  document.addEventListener('keydown', e => { if (/^[0-9+\-]$/.test(e.key)) { ligne += e.key; peindre() } })
+  // Le curseur clignote, comme sur la vraie : sans appui, rien ne doit s'écrire
+  setInterval(() => { curseur = !curseur; peindre() }, 500)
+  peindre()
+</script>
+</body>
+</html>

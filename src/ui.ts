@@ -796,6 +796,7 @@ export class UI implements Interface {
       ouvrirAide: () => this.ouvrirAide(),
       classe: () => this.classeDuClasseur(),
       message: t => this.message(t),
+      poserCalculatrice: m => void app.poserCalculatrice(m),
     }, () => {
       // Le rideau commence sous la barre du haut (et l'étiquette de la séance)
       let bas = haut.getBoundingClientRect().bottom
@@ -1526,9 +1527,11 @@ export class UI implements Interface {
   private construireMenuOutilsClasse(m: HTMLElement) {
     m.replaceChildren()
     for (const x of this.outilsDeClasse.entrees()) {
-      if (x.id === 'aide') filetMenu(m)
+      if (x.id === 'aide' || x.id === 'calculatrice-lycee') filetMenu(m)
+      // L'aide et les calculatrices ne se cochent pas : on les ouvre, on les pose
+      const action = x.id === 'aide' || x.id.startsWith('calculatrice')
       const b = entreeMenu(m, x.texte, x.faire, { action: 'outil-classe-' + x.id, aide: x.aide, touche: x.touche,
-        ...(x.id === 'aide' ? {} : { coche: x.coche, caseACocher: true }) })
+        ...(action ? {} : { coche: x.coche, caseACocher: true }) })
       // Rien de coché : l'icône de l'outil tient la place de la coche
       const coche = b.querySelector('.coche')
       if (coche && !x.coche) { coche.innerHTML = icone(x.icone); coche.classList.add('icone-entree') }
@@ -1597,7 +1600,8 @@ export class UI implements Interface {
     ]
     for (const i of INSTRUMENTS) l.push({ titre: i.nom, genre: 'Instrument', icone: i.id, mots: 'instrument poser mesurer angle', faire: () => { app.basculerInstrument(i.id); this.maj() } })
     for (const f of FONDS) l.push({ titre: f.nom, genre: 'Fond', icone: 'cadre', mots: 'fond page papier quadrillage', faire: () => app.changerFond(f.id) })
-    const mots: Record<string, string> = { rideau: 'cacher devoiler correction masquer', laser: 'montrer pointer', minuteur: 'chrono chronometre temps compte a rebours sablier', tirage: 'hasard eleve interroger au sort', aide: 'raccourcis clavier gestes' }
+    const mots: Record<string, string> = { rideau: 'cacher devoiler correction masquer', laser: 'montrer pointer', minuteur: 'chrono chronometre temps compte a rebours sablier', tirage: 'hasard eleve interroger au sort', aide: 'raccourcis clavier gestes',
+      'calculatrice-lycee': 'calculatrice numworks graphique emulateur lycee', 'calculatrice-college': 'calculatrice numworks scientifique emulateur college' }
     for (const x of this.outilsDeClasse.entrees()) l.push({ titre: x.texte, genre: x.id === 'aide' ? undefined : 'Outil de classe', detail: x.aide, icone: x.icone, touche: x.touche, mots: mots[x.id], faire: x.faire })
     l.push(
       { titre: 'Nouvelle page', icone: 'plus', mots: 'ajouter page', faire: () => app.nouvellePage() },
