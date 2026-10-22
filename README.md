@@ -1123,7 +1123,7 @@ suivant. Ce qui reste sur l'appareil : `mem-minuteur-son` (le son coupé ou
 non), `mem-tirage-<dossier>` (la liste et le tour en cours de chaque
 classe), `mem-conseils` (les conseils déjà vus).
 
-## La calculatrice NumWorks (lot 13)
+## La calculatrice NumWorks (lot 14)
 
 ### Le mode d'emploi
 
@@ -1198,7 +1198,7 @@ Limite : une fois qu'elle a noté un écran, Ctrl+Z ne la retire plus et ne
 défait plus ce qu'on lui a fait avant (la pose, un déplacement) : l'image a
 changé depuis, et ces Ctrl+Z-là ne font rien. Elle se range par ×, et un
 déplacement se refait à la main. Essais :
-`tests/calculatrice.test.ts` et `essais/navigateur/lot13/E1-calculatrice.mjs`,
+`tests/calculatrice.test.ts` et `essais/navigateur/lot14/E1-calculatrice.mjs`,
 avec une page d'essai qui se fait passer pour l'émulateur
 (`emulateur-d-essai.html`), puisque celui de NumWorks n'est pas dans le dépôt.
 
@@ -1332,6 +1332,69 @@ le poste de la classe, dans la version hors ligne et chez les élèves.
 - `src/recherche.ts` : `lireContenu` lit les textes à plat
   (`FormuleLue.texte`), `motsDeFormule` ce qu'on y cherche.
 - L'essai du navigateur : `essais/navigateur/lot12/E1-texte.mjs`.
+
+## Le mode nuit d'une page (lot 13)
+
+Chaque page peut passer en **mode nuit** : le papier devient presque noir,
+l'écriture claire. Les autres pages ne changent pas.
+
+### Le mode d'emploi
+
+- **Le bouton lune** de la barre du haut, juste après le fond, ou la
+  touche **N** : la page qu'on regarde passe en nuit, ou revient de jour. Le
+  bouton reste allumé tant que la page est de nuit. Aussi : la case « Mode
+  nuit » du menu d'une page dans la trieuse, « Plus → Mode nuit » au
+  téléphone, et la recherche (Ctrl F, « Mode nuit »).
+- **Sur une page de nuit**, les barres qui restent à l'écran (outils, haut,
+  zoom, classeur, recherche, séance, barre d'actions) passent en gris très
+  foncé : rien d'éblouissant autour d'une page noire, au vidéoprojecteur.
+  Les menus et les fenêtres gardent leurs couleurs de jour.
+- **Rien n'est réécrit** : seul l'affichage de la page change. Le Noir de
+  la palette s'y écrit en blanc (sa pastille s'appelle alors « Blanc »), le
+  bleu et le vert s'éclaircissent, le rouge et le jaune du surligneur ne
+  bougent pas, et un cache blanc devient noir. Repasser de jour rend la page
+  exactement comme avant. Les images et les PDF importés restent tels quels.
+- **Tous les fonds** marchent de nuit, en lignes claires et discrètes (plus
+  marquées en contraste renforcé).
+- **Une page neuve** naît toujours de jour ; « Dupliquer » garde le mode de
+  la page copiée.
+- **Partout** : les vignettes (trieuse, bibliothèque, énoncé), la revue en
+  classe et le **replay des élèves** montrent la page de nuit, à partir du
+  moment où elle y est passée. **Le PDF et « Copier en image »** restent de
+  jour (on imprime de jour).
+- Comme un changement de fond, la bascule ne se défait pas par Ctrl + Z :
+  on rappuie sur la lune (ou N). Dans la trieuse, son « Annuler » la défait.
+
+### Comment c'est fait
+
+- `src/nuit.ts` : `PAPIER_NUIT`, `nocturne` (une couleur telle qu'elle
+  s'affiche de nuit : sa teinte et son opacité gardées, sa luminosité
+  changée par `luminositeDeNuit` ; une encre sombre devient claire, une encre
+  presque blanche le noir du papier, le milieu ne change pas), `formeDeNuit`
+  (une copie d'une forme en couleurs de nuit, gardée par forme),
+  `formulesDeNuit` (les formules d'une page de nuit peinte hors de l'écran).
+  Testé dans `tests/nuit.test.ts`.
+- Le document : un champ **facultatif** `nuit` dans la page (`true` de
+  nuit ; écrit `false` quand on revient de jour ; absent sur toute page
+  d'avant et toute page neuve). `Tableau.nuitDe`, `Tableau.changerNuit`
+  (une étape du film notée sur la page, comme `changerFond` ; `rangement`
+  depuis la trieuse). Les formats `.memc` et `.memb` ne changent pas ; une
+  version d'avant ignore le champ et montre la page de jour.
+- Le film élève (`.mem`, version 1) : `nuit: true` dans l'état de départ
+  d'une page (`PageFilm`), et une cinquième valeur à l'opération du fond,
+  `['f', fond, ox, oy, 1]` (nuit) ou `… 0` (de nouveau de jour), seulement
+  quand il y a lieu : une page de jour s'écrit comme avant. Un lecteur
+  d'avant ignore les deux et montre la page de jour, sans erreur.
+- Le rendu (`Rendu.nuit`) : le papier et les tons du fond (`TONS_NUIT`,
+  `TONS_NUIT_CONTRASTE` dans `fonds.ts`), chaque couleur des formes par
+  `formeDeNuit` ou `nocturne`, les formules (leur couleur et celle de leurs
+  morceaux). `peindreSur` garde la nuit, sauf sur la feuille d'un PDF.
+- L'interface : `App.nuit`, `App.basculerNuit`, la touche N,
+  `body.page-nuit` (les barres foncées, fin de `style.css`), le bouton lune
+  et les pastilles en couleurs de nuit (`ui.ts`), la case de la trieuse
+  (`pages/actions.ts`, `changerNuit` ; le journal de la trieuse garde le
+  mode de chaque page).
+- L'essai du navigateur : `essais/navigateur/lot13/N1-nuit.mjs`.
 
 ## Revoir la construction (en classe)
 
@@ -3316,6 +3379,11 @@ d'un classeur, avec son film.
   d'une image) devient un aplat opaque de sa couleur (une image d'un pixel,
   étirée) : on l'efface pour découvrir ce qu'il cachait ; ses coins ne se
   voient pas.
+- **Le mode nuit** : un ancien tableau enregistré en mode nuit (ou une page
+  qui l'était) donne des pages en mode nuit, dès le début de la séance
+  (l'ancien film ne dit pas quand il a basculé). Son encre blanche y devient
+  le Noir, que le mode nuit montre presque blanc ; les autres couleurs ne
+  changent pas.
 - Le fond (le Seyès avec marge et la copie double perdent leur marge).
 - Ce qui est écrit est décalé pour commencer en haut à gauche de la page.
 
@@ -5126,6 +5194,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | Fichier | Rôle |
 | --- | --- |
 | `src/types.ts` | Les formes (trait, segment, formule, polygone, cercle, image), les fonds (huit depuis le lot 5, dans l'ordre des menus : `FONDS`), le fond de toute page qui naît vide (`FOND_NEUF`, la page blanche : retouches après le lot 5) ; depuis le lot 5, des champs facultatifs, ignorés par la version d'avant : `verrou` (l'objet ne bouge plus et ne se prend plus), `fixe` (une image fixée en fond), `groupe` (les formes d'une page qui portent le même identifiant se prennent ensemble), la `rotation` d'une formule (radians, sens de `ctx.rotate`, autour de son coin) ; `libre` (ni verrouillé ni fixé) ; depuis le lot 12, le `texte` et la `largeur` d'un texte tapé au clavier (des champs facultatifs d'une formule) |
+| `src/nuit.ts` | Le mode nuit d'une page (lot 13) : le papier de nuit, les couleurs telles qu'elles s'affichent de nuit (`nocturne`, `formeDeNuit`, `formulesDeNuit`) ; voir « Le mode nuit d'une page » |
 | `src/texte.ts` | Le texte tapé au clavier (lot 12) : son modèle, pur (lignes, morceaux, `$…$`, sa version KaTeX, sa lecture prudente, à plat) et son rendu HTML, le même à l'écran et dans les sorties (voir « Taper du texte au clavier ») |
 | `src/texte-editeur.ts` | L'éditeur d'un texte, posé sur la page pendant qu'on tape, sa petite barre, sa relecture en lignes du modèle (lot 12) |
 | `src/document.ts` | Document Yjs : pages (jetées et rendues sans rien recopier), formes, annulation (une pile par page, et des marques pour une page jetée ou une copie toute neuve, en mémoire), film, enregistrement dans le navigateur (et remplacement par un fichier ouvert ; la base supprimée ou changée ailleurs, coupée net (`onCoupee`) ; une écriture refusée repérée, le trou (`trou`, `erreurBase`), et sa réparation (`reparer`) ; une base trouée relue, dont une partie ne se relit plus (`incomplet`) ; attendre la fin des écritures (`attendreEcritures`) ; l'identité du classeur rangée à côté du document). Aussi la corbeille des pages et leurs noms (deux cartes hors des pages, `corbeille` et `nomsPages` : ni étape du film, ni annulation), la copie d'une page avec son histoire (mêmes identifiants de formes, `herite: { de }` ; rien du film n'est recopié ; sa naissance notée `naissance` dans le film, comme celle d'une page vide ; un fond changé dans la trieuse noté `rangement` : ni l'une ni l'autre ne comptent dans le découpage en séances) et le déplacement des pages (le plus petit changement de l'ordre). Changer des formes : `modifier` fond un patch (une clé qui y vaut undefined quitte la forme : déverrouiller, dégrouper), `remplacer` écrit des formes entières (une clé absente n'existe plus : une rotation revenue à zéro) ; l'un et l'autre en une étape, et la note `reglage` (lot 5 : verrouiller, grouper, rien de visible) sur l'étape du film de cette transaction seulement ; elle suit aussi l'étape de la pile (méta `reglage`) : Ctrl + Z et Ctrl + Y d'un réglage sont notés de même. `couperTraits` (lot 5) écrit la coupe d'un trait par la gomme qui efface là où elle passe : le morceau qui garde l'identifiant remplace le trait, entier, les autres sont posés, en une transaction notée `coupe`. Envoyer des objets vers une autre page : l'arrivée (dans aucune pile), puis le retrait (une étape de la pile de départ, avec sa méta `envoi`, recopiée d'une pile à l'autre ; elle ne se défait pas tant que la pile de l'arrivée peut y ramener des objets qui en sont repartis, et ne se refait pas vers une page supprimée définitivement) ; la copie, une étape de la pile d'arrivée ; les noms que la pile d'une page peut y ramener (`formesQuiPeuventRevenir`) |

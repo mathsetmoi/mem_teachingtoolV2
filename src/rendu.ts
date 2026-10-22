@@ -10,6 +10,9 @@
 // Le contraste renforcé (lot 5, un réglage de l'appareil, pour le
 // vidéoprojecteur) ne change que ce que peint CE rendu, à l'écran du
 // professeur : voir contraste.
+// Le mode nuit d'une page (voir nuit.ts) change ce que peint tout rendu qui
+// la montre : le papier, et chaque couleur (formeDeNuit) ; jamais la
+// feuille d'un PDF ni l'image copiée (voir peindreSur).
 // =============================================================
 import { getStroke } from 'perfect-freehand'
 import type { Camera } from './camera'
@@ -30,6 +33,7 @@ import { coinsGardes } from './rognage'
 import type { TypePointeur } from './pointeurs'
 import { POIGNEE } from './pointeurs'
 import { cleDuContenu, ecrireContenu, estTexte, tailleEstimee } from './texte'
+import { PAPIER_NUIT, formeDeNuit, nocturne } from './nuit'
 
 type P = { x: number; y: number }
 /** Ce qui distingue le contour d'un trait dans le cache des tracés (voir
@@ -172,6 +176,8 @@ export class Rendu {
   formes: Forme[] = []
   /** Le fond peint (celui de la page ; d'abord celui d'une page neuve) */
   fond: Fond = FOND_NEUF
+  /** La page est en mode nuit (voir nuit.ts) : le papier noir, l'encre claire */
+  nuit = false
   origine = { x: 0, y: 0 }
   selection = new Set<string>()
   decalage = { dx: 0, dy: 0 }                     // déplacement en cours de la sélection
@@ -279,7 +285,7 @@ export class Rendu {
   toutRedessiner() { this.sceneSale = true; this.directSale = true; this.instrumentsSales = true; this.planifier() }
 
   /** Ce que montre la scène peinte en dernier (voir redessinerSiBesoin) */
-  private peinte: { formes: Forme[]; fond: Fond; ox: number; oy: number; x: number; y: number; z: number; remplacement: Figure | null } | null = null
+  private peinte: { formes: Forme[]; fond: Fond; nuit: boolean; ox: number; oy: number; x: number; y: number; z: number; remplacement: Figure | null } | null = null
 
   /** Redessine la couche « direct » seulement si la scène montre déjà ces formes
    *  (les mêmes, dans le même ordre), ce fond et cette vue ; tout sinon. C'est le
@@ -287,7 +293,7 @@ export class Rendu {
    *  trait en cours avance, comme sous le stylo à l’écran. */
   redessinerSiBesoin() {
     const p = this.peinte, f = this.formes, c = this.cam
-    const memeScene = !!p && p.formes.length === f.length && p.fond === this.fond && p.ox === this.origine.x && p.oy === this.origine.y
+    const memeScene = !!p && p.formes.length === f.length && p.fond === this.fond && p.nuit === this.nuit && p.ox === this.origine.x && p.oy === this.origine.y
       && p.x === c.x && p.y === c.y && p.z === c.z && p.remplacement === this.remplacement && !this.selection.size
       && !this.decalage.dx && !this.decalage.dy && !this.transfo && p.formes.every((g, i) => g === f[i])
     if (memeScene) this.redessinerDirect()
@@ -387,7 +393,7 @@ export class Rendu {
       c.setTransform(1, 0, 0, 1, 0, 0)
       c.beginPath(); c.rect(z.x0, z.y0, z.x1 - z.x0, z.y1 - z.y0); c.clip()
       c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
-      dessinerFond(c, this.fond, cam, this.l, this.h, this.origine, { contraste: this.contraste })
+      dessinerFond(c, this.fond, cam, this.l, this.h, this.origine, { contraste: this.contraste, nuit: this.nuit })
       c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
       const k = this.dpr * cam.z
       const w = { x: (z.x0 - this.dpr * cam.x) / k, y: (z.y0 - this.dpr * cam.y) / k, l: (z.x1 - z.x0) / k, h: (z.y1 - z.y0) / k }
@@ -450,7 +456,7 @@ export class Rendu {
     c.save()
     c.translate(t.x, t.y)
     c.globalAlpha = t.opacite
-    c.fillStyle = t.couleur
+    c.fillStyle = this.encre(t.couleur)
     c.fill(chemin)
     c.restore()
   }
@@ -475,9 +481,9 @@ export class Rendu {
   // ---------- Couche scène ----------
   private peindreScene() {
     const c = this.cs, cam = this.cam
-    this.peinte = { formes: this.formes, fond: this.fond, ox: this.origine.x, oy: this.origine.y, x: cam.x, y: cam.y, z: cam.z, remplacement: this.remplacement }
+    this.peinte = { formes: this.formes, fond: this.fond, nuit: this.nuit, ox: this.origine.x, oy: this.origine.y, x: cam.x, y: cam.y, z: cam.z, remplacement: this.remplacement }
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
-    dessinerFond(c, this.fond, cam, this.l, this.h, this.origine, { contraste: this.contraste })
+    dessinerFond(c, this.fond, cam, this.l, this.h, this.origine, { contraste: this.contraste, nuit: this.nuit })
     c.setTransform(this.dpr * cam.z, 0, 0, this.dpr * cam.z, this.dpr * cam.x, this.dpr * cam.y)
     // Dans l'ordre d'affichage : les images fixées en fond, puis les images,
     // comme des feuilles posées sous les tracés (une image et son papier ne
@@ -548,7 +554,8 @@ export class Rendu {
    * dans ses marges, et le fond y voit les bords de cette zone (les flèches
    * des axes du repère au bout de la zone, pas dans la marge).
    * Jamais en contraste renforcé (voir contraste) : il est éteint le temps
-   * de l'appel, comme l'esquisse est posée, puis rendu.
+   * de l'appel, comme l'esquisse est posée, puis rendu. Le mode nuit (nuit),
+   * oui, sauf sur la feuille d'un PDF (impression), qui s'imprime de jour.
    * impression : la feuille d'un PDF ; son fond est peint pour le papier,
    * à dpr pixels de son image par px CSS (voir dessinerFond : les lignes sur
    * les pixels de l'image, les millimètres du papier millimétré).
@@ -558,8 +565,9 @@ export class Rendu {
     formule?: (c: CanvasRenderingContext2D, f: Formule) => void; esquisse?: boolean
     coin?: { x: number; y: number }; impression?: boolean
   }) {
-    const garde = { l: this.l, h: this.h, dpr: this.dpr, esquisse: this.esquisse, contraste: this.contraste }
+    const garde = { l: this.l, h: this.h, dpr: this.dpr, esquisse: this.esquisse, contraste: this.contraste, nuit: this.nuit }
     this.l = o.l; this.h = o.h; this.dpr = o.dpr; this.esquisse = !!o.esquisse; this.contraste = false
+    if (o.impression) this.nuit = false
     c.save()
     try {
       const cam = this.cam
@@ -568,7 +576,7 @@ export class Rendu {
       const cx = o.coin?.x ?? 0, cy = o.coin?.y ?? 0
       if (o.fond !== 'aucun') {
         c.setTransform(o.dpr, 0, 0, o.dpr, o.dpr * cx, o.dpr * cy)
-        dessinerFond(c, o.fond ? this.fond : 'blanc', cam, o.l, o.h, this.origine, o.impression ? { impression: o.dpr } : {})
+        dessinerFond(c, o.fond ? this.fond : 'blanc', cam, o.l, o.h, this.origine, o.impression ? { impression: o.dpr } : { nuit: this.nuit })
       }
       c.setTransform(o.dpr * cam.z, 0, 0, o.dpr * cam.z, o.dpr * (cam.x + cx), o.dpr * (cam.y + cy))
       // Les formules sont dans le dernier calque : peintes après tout le reste
@@ -579,7 +587,7 @@ export class Rendu {
       if (!this.esquisse) this.purgerChemins(formes)
     } finally {
       c.restore()
-      this.l = garde.l; this.h = garde.h; this.dpr = garde.dpr; this.esquisse = garde.esquisse; this.contraste = garde.contraste
+      this.l = garde.l; this.h = garde.h; this.dpr = garde.dpr; this.esquisse = garde.esquisse; this.contraste = garde.contraste; this.nuit = garde.nuit
     }
   }
 
@@ -587,12 +595,16 @@ export class Rendu {
     if (f.type === 'trait') this.dessinerTrait(c, f, dec)
     else if (f.type === 'segment') {
       const x = f.x + (dec?.dx ?? 0), y = f.y + (dec?.dy ?? 0)
-      c.strokeStyle = f.couleur; c.lineWidth = this.epaisseurVue(f.taille); c.lineCap = 'round'
+      c.strokeStyle = this.encre(f.couleur); c.lineWidth = this.epaisseurVue(f.taille); c.lineCap = 'round'
       c.beginPath(); c.moveTo(x, y); c.lineTo(x + f.dx, y + f.dy); c.stroke()
     }
     else if (f.type === 'polygone' || f.type === 'cercle') this.dessinerFigure(c, f, dec)
     else if (f.type === 'image') this.dessinerImage(c, f, dec)
   }
+
+  /** Une couleur telle qu'elle se peint sur cette page : de nuit, éclaircie
+   *  ou assombrie (voir nocturne) ; de jour, elle-même */
+  private encre(c: string): string { return this.nuit ? nocturne(c) : c }
 
   /** L'épaisseur affichée d'une figure ou d'un segment (monde) : la sienne,
    *  et en contraste renforcé jamais moins de 2 px d'écran (un contour fin,
@@ -673,7 +685,7 @@ export class Rendu {
     c.save()
     c.translate(t.x + (dec?.dx ?? 0), t.y + (dec?.dy ?? 0))
     c.globalAlpha = t.opacite
-    c.fillStyle = t.couleur
+    c.fillStyle = this.encre(t.couleur)
     c.fill(entree.chemin)
     c.restore()
   }
@@ -692,10 +704,10 @@ export class Rendu {
     c.globalAlpha = t.opacite
     c.beginPath()
     if (n === 1 || p.every((v, i) => i % 3 === 2 || v === p[i % 3])) {
-      c.fillStyle = t.couleur
+      c.fillStyle = this.encre(t.couleur)
       c.arc(p[0], p[1], e / 2, 0, Math.PI * 2); c.fill()
     } else {
-      c.strokeStyle = t.couleur; c.lineWidth = e; c.lineCap = 'round'; c.lineJoin = 'round'
+      c.strokeStyle = this.encre(t.couleur); c.lineWidth = e; c.lineCap = 'round'; c.lineJoin = 'round'
       c.moveTo(p[0], p[1])
       for (let i = 3; i + 1 < p.length; i += 3) c.lineTo(p[i], p[i + 1])
       c.stroke()
@@ -726,7 +738,9 @@ export class Rendu {
   }
 
   // ---------- Figures géométriques ----------
-  dessinerFigure(c: CanvasRenderingContext2D, f0: Figure, dec: { dx: number; dy: number } | null) {
+  dessinerFigure(c: CanvasRenderingContext2D, f1: Figure, dec: { dx: number; dy: number } | null) {
+    // De nuit, ses couleurs (son encre, son remplissage, ses points, ses noms)
+    const f0 = this.nuit ? formeDeNuit(f1) : f1
     const f = dec ? { ...f0, x: f0.x + dec.dx, y: f0.y + dec.dy } : f0
     const trace = new Path2D()
     if (f.type === 'cercle') {
@@ -800,7 +814,7 @@ export class Rendu {
       const st = f.stylePoints?.[i]
       // Sans réglage : un point si les sommets sont affichés — sauf sous une flèche ou un trait
       const marque = st?.marque ?? (f.sommets && f.type === 'polygone' && !(st?.bout && st.bout !== 'aucun') ? 'point' : 'aucun')
-      if (marque !== 'aucun') dessinerMarque(c, p, marque, st?.couleur ?? f.couleur, Math.max(2.5, f.taille * 0.7) * (st?.taille ?? 1))
+      if (marque !== 'aucun') dessinerMarque(c, p, marque, st?.couleur ?? f.couleur, Math.max(2.5, f.taille * 0.7) * (st?.taille ?? 1), this.nuit ? PAPIER_NUIT : '#ffffff')
     })
 
     // Noms
@@ -839,7 +853,9 @@ export class Rendu {
       // se remet en page à chaque pas, à sa nouvelle largeur (tiré par un
       // côté, il repasse à la ligne sous les yeux, sans s'étirer)
       const vif = this.transfo?.ids.has(f0.id) && estTexte(f0) && f0.largeur ? this.transfo.appliquer(f0) as Formule : null
-      const f = vif ?? f0
+      const f1 = vif ?? f0
+      // De nuit, ses couleurs (celle du texte, celles de ses morceaux)
+      const f = this.nuit ? formeDeNuit(f1) : f1
       const cle = `${cleDuContenu(f)}|${f.couleur}`
       let e = this.elementsFormules.get(f.id)
       if (!e) {
@@ -971,7 +987,7 @@ export class Rendu {
     if (this.apercu) this.dessinerFigure(c, this.apercu, null)
     if (this.monSegment) {
       const s = this.monSegment
-      c.strokeStyle = s.couleur; c.lineWidth = this.epaisseurVue(s.taille); c.lineCap = 'round'
+      c.strokeStyle = this.encre(s.couleur); c.lineWidth = this.epaisseurVue(s.taille); c.lineCap = 'round'
       c.beginPath(); c.moveTo(s.x1, s.y1); c.lineTo(s.x2, s.y2); c.stroke()
     }
 
@@ -1257,7 +1273,7 @@ export class Rendu {
     if (t.pts.length < 3) return
     c.save()
     c.globalAlpha = t.opacite
-    c.fillStyle = t.couleur
+    c.fillStyle = this.encre(t.couleur)
     c.fill(cheminDuTrait(t, false))
     c.restore()
   }
@@ -1331,12 +1347,12 @@ function dessinerCadenas(c: CanvasRenderingContext2D, x: number, y: number) {
 }
 
 /** La marque d'un point, de demi-taille r */
-function dessinerMarque(c: CanvasRenderingContext2D, p: { x: number; y: number }, m: MarquePoint, couleur: string, r: number) {
+function dessinerMarque(c: CanvasRenderingContext2D, p: { x: number; y: number }, m: MarquePoint, couleur: string, r: number, papier = '#ffffff') {
   c.save()
   c.fillStyle = couleur; c.strokeStyle = couleur; c.lineWidth = Math.max(1.5, r * 0.55); c.lineCap = 'round'
   c.beginPath()
   if (m === 'point') { c.arc(p.x, p.y, r, 0, Math.PI * 2); c.fill() }
-  else if (m === 'rond') { c.arc(p.x, p.y, r * 1.5, 0, Math.PI * 2); c.fillStyle = '#ffffff'; c.fill(); c.stroke() }
+  else if (m === 'rond') { c.arc(p.x, p.y, r * 1.5, 0, Math.PI * 2); c.fillStyle = papier; c.fill(); c.stroke() }
   else {
     const k = r * 2.2
     if (m === 'croix') { c.moveTo(p.x - k, p.y - k); c.lineTo(p.x + k, p.y + k); c.moveTo(p.x + k, p.y - k); c.lineTo(p.x - k, p.y + k) }

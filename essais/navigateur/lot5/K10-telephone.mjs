@@ -424,7 +424,8 @@ for (const [L, H, dpr] of APPAREILS) {
     .map(e => e.classList.contains('menu-titre') ? '# ' + e.textContent : e.classList.contains('bloc-classeur') ? '[classeur]' : e.querySelector('.libelle')?.firstChild?.textContent ?? e.textContent))
   const tete = entrees.slice(0, entrees.indexOf('[classeur]'))
   // (Adapté aux outils de classe : « Outils de classe… » entre Automatismes et Revoir)
-  const attendu = ['# Page', ...(L < 360 ? ['Nouvelle page'] : []), 'Effacer la page', 'Fond…', 'Aimanter au quadrillage', 'Le stylo redresse les figures',
+  // (Adapté au mode nuit, lot 13 : « Mode nuit » juste après « Fond… »)
+  const attendu = ['# Page', ...(L < 360 ? ['Nouvelle page'] : []), 'Effacer la page', 'Fond…', 'Mode nuit', 'Aimanter au quadrillage', 'Le stylo redresse les figures',
     '# Outils de cours', 'Importer une image ou un PDF…', 'Instruments…', 'Programme de construction', 'Catalogue', 'Automatismes', 'Outils de classe…', 'Revoir la construction', 'Publier le replay', '# Vue', '100 %', 'Tout voir']
   ok(mPlus && JSON.stringify(tete) === JSON.stringify(attendu) && entrees.includes('# Cet appareil') && entrees.indexOf('# Cet appareil') > entrees.indexOf('[classeur]'),
     `E1) ${T} : « Plus » : Page, Outils de cours, Vue, puis le classeur, puis Cet appareil`, { tete, entrees })

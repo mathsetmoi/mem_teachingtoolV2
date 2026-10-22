@@ -1,4 +1,4 @@
-// ESSAI DU LOT 13 : la calculatrice NumWorks.
+// ESSAI DU LOT 14 : la calculatrice NumWorks.
 // Le serveur de développement (port 5173), puis la version hors ligne
 // (dist/index.html en file://, internet coupé : `npm run build` d'abord).
 // L'émulateur de NumWorks n'est pas dans le dépôt : l'essai donne à l'outil
@@ -25,8 +25,8 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { RACINE_DEPOT as RACINE } from '../commun/racines.mjs'
 
-const DEV = 'http://localhost:5173/'
-const EMU = join(RACINE, 'essais/navigateur/lot13/emulateur-d-essai.html')
+const DEV = process.env.DEV ?? 'http://localhost:5173/'
+const EMU = join(RACINE, 'essais/navigateur/lot14/emulateur-d-essai.html')
 let echecs = 0
 const ok = (c, m, d) => { if (!c) echecs++; console.log(c ? '✓' : '✗ ÉCHEC', m, !c && d !== undefined ? '— ' + JSON.stringify(d).slice(0, 1500) : '') }
 const erreurs = []

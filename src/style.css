@@ -2320,6 +2320,22 @@ body.en-revue .bandeau-seance, body.en-trieuse .bandeau-seance, body.en-trieuse 
 .separation-texte { width: 1px; height: 24px; background: var(--filet); margin: 0 4px; }
 body.tactile .bouton-texte { min-width: 44px; height: 44px; }
 
+/* ---------- Le mode nuit d'une page ----------
+   Tant qu'on regarde une page de nuit (voir nuit.ts), body.page-nuit : les
+   barres qui restent à l'écran (outils, haut, zoom, classeur, recherche,
+   séance, barre d'actions) passent en gris très foncé, pour ne pas éblouir
+   autour d'une page noire au vidéoprojecteur. Les menus et les fenêtres
+   gardent leurs couleurs de jour : ils ne font que passer. */
+body.page-nuit :is(.barre, .barre-actions, .rang-seance, .champ-recherche) {
+  --chrome: #1d2430; --filet: #343e4f; --encre: #e8ecf3; --encre-douce: #a3adbd; --papier: #121820;
+  color: var(--encre); color-scheme: dark;
+}
+body.page-nuit :is(.bouton, button.rang, .bouton-classeur, .zoom-texte):hover { background: #2a3342; }
+body.page-nuit .bouton.actif::before { background: #8a7400; }
+body.page-nuit .rang-seance.en-lecture, body.page-nuit button.rang.en-lecture { background: #4a3d12; border-color: #8a6f1e; box-shadow: none; }
+body.page-nuit.contraste :is(.barre, .barre-actions, .rang-seance, .champ-recherche) { --filet: #6b7890; --encre-douce: #d0d6e0; }
+body.page-nuit.contraste :is(.bouton, button.rang, .bouton-classeur, .zoom-texte, .option, .choix):hover { background: #34405a; }
+
 /* ---------- La calculatrice NumWorks (voir calculatrice/) ---------- */
 /* Sa couche suit la vue comme celle des formules ; seule la calculatrice
    prend les appuis (la bande du nom les laisse au tableau, sauf ↺ et ×) */

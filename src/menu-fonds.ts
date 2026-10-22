@@ -50,8 +50,9 @@ export function nomDuFond(fond: Fond): string {
  *  caméra est celle de sa vignette, l'origine du monde (où tous les fonds
  *  sont calés) un peu en retrait du coin, pour qu'une ligne des centimètres
  *  passe près du bord ; le Seyès y montre sa marge, le repère son origine
- *  au centre. Un fond inconnu y est blanc, comme partout. */
-export function peindreVignette(c: HTMLCanvasElement, fond: Fond, l: number, h: number, dpr: number) {
+ *  au centre. Un fond inconnu y est blanc, comme partout. nuit : de nuit
+ *  (le bouton du fond, sur une page de nuit). */
+export function peindreVignette(c: HTMLCanvasElement, fond: Fond, l: number, h: number, dpr: number, nuit = false) {
   const W = Math.round(l * dpr), H = Math.round(h * dpr)
   if (c.width !== W) c.width = W
   if (c.height !== H) c.height = H
@@ -66,7 +67,7 @@ export function peindreVignette(c: HTMLCanvasElement, fond: Fond, l: number, h: 
   else { cam.x = petite ? 3 : 6; cam.y = petite ? 3 : 6 }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, l, h)
-  dessinerFond(ctx, fond, cam, l, h, { x: 0, y: 0 })
+  dessinerFond(ctx, fond, cam, l, h, { x: 0, y: 0 }, { nuit })
 }
 
 /** Une vignette du fond : un canevas de l × h px CSS (à la densité dpr) */

@@ -19,7 +19,7 @@ import type { EntreeCorbeille, EtatDesPages, Tableau } from '../document'
 import type { Fond } from '../types'
 
 /** Le fond d'une page et l'origine de son repère */
-interface FondDePage { fond: Fond; origine: { x: number; y: number } }
+interface FondDePage { fond: Fond; nuit: boolean; origine: { x: number; y: number } }
 
 /** Ce que le journal photographie avant et après chaque action. pages :
  *  l'ordre, les noms et la corbeille (Tableau.etatDesPages) ; fonds : le
@@ -132,7 +132,7 @@ export class JournalPages {
     for (const [id, e] of Object.entries(pages.corbeille)) if (existantes.has(id) && !ordre.has(id) && !e.definitif) suivies.add(id)
     for (const id of existantes) if (!suivies.has(id) && t.dansLaCorbeille(id, ordre)) suivies.add(id)
     const fonds: Record<string, FondDePage> = {}
-    for (const id of suivies) fonds[id] = { fond: t.fondDe(id), origine: { ...t.origineDe(id) } }
+    for (const id of suivies) fonds[id] = { fond: t.fondDe(id), nuit: t.nuitDe(id), origine: { ...t.origineDe(id) } }
     return { pages, fonds, existantes }
   }
 
@@ -153,6 +153,8 @@ export class JournalPages {
       if (!t.pages.has(id)) continue
       const o = t.origineDe(id)
       if (t.fondDe(id) !== f.fond || o.x !== f.origine.x || o.y !== f.origine.y) t.changerFond(id, f.fond, { ...f.origine }, { rangement: true })
+      // Le mode nuit (un cliché d'avant lui n'en dit rien : la page restait de jour)
+      if (t.nuitDe(id) !== !!f.nuit) t.changerNuit(id, !!f.nuit, { rangement: true })
     }
   }
 }
@@ -171,7 +173,7 @@ function memeCliche(a: Cliche, b: Cliche): boolean {
   if (!memesCles(pa.noms, pb.noms, (x, y) => x === y)) return false
   const connue = (id: string) => connuDe(b, id)
   if (!memesCles(filtrer(pa.corbeille, connue), pb.corbeille, memeEntree)) return false
-  return memesCles(filtrer(a.fonds, connue), b.fonds, (x, y) => x.fond === y.fond && x.origine.x === y.origine.x && x.origine.y === y.origine.y)
+  return memesCles(filtrer(a.fonds, connue), b.fonds, (x, y) => x.fond === y.fond && !!x.nuit === !!y.nuit && x.origine.x === y.origine.x && x.origine.y === y.origine.y)
 }
 
 /** Le cliché c connaît-il la page : elle existait, ou il lui donne une

@@ -23,6 +23,7 @@ import type { Tableau } from '../document'
 import type { Apercus } from '../sorties/apercu'
 import type { Boite } from '../revoir/bobine'
 import type { Formule } from '../types'
+import { formulesDeNuit } from '../nuit'
 
 /** La marge autour du contenu, en unités du monde */
 export const MARGE_VIGNETTE = 16
@@ -216,9 +217,11 @@ export class Vignettes {
       this.onPeinte?.(v.page, v.c)
       return
     }
-    const formes = [...(t.formesDe(v.page)?.values() ?? [])]
+    // De nuit, ses formules en couleurs de nuit (voir formulesDeNuit)
+    const nuit = t.nuitDe(v.page), toutes = [...(t.formesDe(v.page)?.values() ?? [])]
+    const formes = nuit ? formulesDeNuit(toutes) : toutes
     const cam = cadrageVignette(this.apercus.boite(formes), v.l, v.h)
-    this.apercus.peindre(c, { fond: t.fondDe(v.page), origine: t.origineDe(v.page), formes }, cam, { l: v.l, h: v.h, dpr: v.dpr, fond: true, esquisse: true })
+    this.apercus.peindre(c, { fond: t.fondDe(v.page), nuit, origine: t.origineDe(v.page), formes }, cam, { l: v.l, h: v.h, dpr: v.dpr, fond: true, esquisse: true })
     const m = this.apercus.manques(formes, cam.z * v.dpr, true)
     if (m.mesures.length || m.formules.length || m.images) this.preparerPage(v.page)
     this.onPeinte?.(v.page, v.c)
@@ -241,7 +244,8 @@ export class Vignettes {
         this.aPreparer.forEach((p, k) => { if ((this.priorite.get(p) ?? Infinity) < (this.priorite.get(this.aPreparer[i]) ?? Infinity)) i = k })
         const page = this.aPreparer.splice(i, 1)[0]
         try {
-          const formes = [...(this.tableau.formesDe(page)?.values() ?? [])]
+          const toutes = [...(this.tableau.formesDe(page)?.values() ?? [])]
+          const formes = this.tableau.nuitDe(page) ? formulesDeNuit(toutes) : toutes
           const formules = formes.filter((f): f is Formule => f.type === 'formule')
           await this.apercus.formules.mesurer(formules)
           // Les tailles exactes connues, celles qui seront lisibles sur l'une de ses vignettes

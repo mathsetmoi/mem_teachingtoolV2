@@ -20,6 +20,7 @@ import { boiteDe } from './revoir/bobine'
 import type { Apercus } from './sorties/apercu'
 import { tableauCache } from './navigateur'
 import { icone } from './icones'
+import { formulesDeNuit } from './nuit'
 
 /** L'énoncé n'est plus lisible quand il en reste moins que cette part à l'écran */
 export const PART_CACHEE = 0.25
@@ -135,7 +136,7 @@ export class VignetteEnonce {
     el.style.left = (z.left + zl.x + zl.l - t.l - 12) + 'px'
     el.style.top = (z.top + zl.y + 12) + 'px'
     this.canevas.style.width = t.l + 'px'; this.canevas.style.height = t.h + 'px'
-    const cle = `${app.page}|${id}|${t.l}x${t.h}|${formes.size}|${choisi.b.x},${choisi.b.y},${choisi.b.l},${choisi.b.h}`
+    const cle = `${app.page}|${app.nuit ? 'nuit' : 'jour'}|${id}|${t.l}x${t.h}|${formes.size}|${choisi.b.x},${choisi.b.y},${choisi.b.l},${choisi.b.h}`
     if (cle !== this.peinte) { this.peinte = cle; void this.peindre(choisi.b, t, [...formes.values()]) }
   }
 
@@ -146,11 +147,12 @@ export class VignetteEnonce {
     const z = t.l / b.l
     const cam = { x: -b.x * z, y: -b.y * z, z }
     // Seulement ce qui touche la zone de l'image
-    const formes = toutes.filter(f => {
+    // De nuit, ses formules en couleurs de nuit (voir formulesDeNuit)
+    const formes = (app.nuit ? formulesDeNuit(toutes) : toutes).filter(f => {
       const c = f.type === 'formule' ? { x: f.x, y: f.y, l: 1, h: 1 } : boiteDe(f)
       return !c || (c.x < b.x + b.l && c.x + c.l > b.x && c.y < b.y + b.h && c.y + c.h > b.y)
     })
-    const page = { fond: app.fond, origine: app.tableau.origineDe(app.page), formes }
+    const page = { fond: app.fond, nuit: app.nuit, origine: app.tableau.origineDe(app.page), formes }
     try { await this.apercus.preparer(formes, z * dpr) } catch { /* on peint ce qui est prêt */ }
     if (jeton !== this.jeton) return
     const cv = this.canevas

@@ -964,6 +964,9 @@ export class Trieuse {
       // le navigateur), sans défiler jusqu'à « Supprimer »
       titreMenu(m, 'Fond')
       for (const f of FONDS) entreeMenu(m, f.nom, () => this.changerFond(page, f.id), { coche: f.id === fond }).classList.add('fond-de-carte')
+      // Le mode nuit (voir nuit.ts), une case sous les fonds
+      const nuit = this.app.tableau.nuitDe(page)
+      entreeMenu(m, 'Mode nuit', () => this.changerNuit(page, !nuit), { coche: nuit, caseACocher: true, aide: 'Fond noir, écriture claire' })
       filetMenu(m)
       // Ce qui sort de la page : son image, pour l'ENT ou Pronote, et son PDF
       // (la fenêtre propose aussi tout le classeur) ; la trieuse reste ouverte
@@ -1084,6 +1087,12 @@ export class Trieuse {
     const boite = fond === 'repere' ? this.hote.apercus.boite(t.formesDe(page)?.values() ?? []) : null
     const e = actions.changerFond(t, this.journal, page, fond, boite)
     if (e) this.annoncer(`Fond changé (page ${this.ordre.indexOf(page) + 1})`, e)
+  }
+
+  /** Le mode nuit d'une page, depuis son menu ; la vignette se repeint */
+  private changerNuit(page: string, nuit: boolean) {
+    const e = actions.changerNuit(this.app.tableau, this.journal, page, nuit)
+    if (e) this.annoncer(`${nuit ? 'Mode nuit' : 'Mode jour'} (page ${this.ordre.indexOf(page) + 1})`, e)
   }
 
   // ---------- Dupliquer, supprimer ----------

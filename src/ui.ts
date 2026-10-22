@@ -42,6 +42,7 @@ import { zoneEntreBarres } from './camera'
 import type { Bords } from './camera'
 import { TAILLES_FORMULE, changerCouleur, changerEpaisseur, changerPointilles, habillageCommun, titreDuMenu } from './habillage'
 import { icone } from './icones'
+import { nocturne } from './nuit'
 import { VIGNETTE_BOUTON, construireMenuFonds, densite, entreeCochee, nomDuFond, peindreVignette, vignetteDuFond } from './menu-fonds'
 import { BarreActions } from './barre-actions'
 import { Apercus } from './sorties/apercu'
@@ -251,6 +252,8 @@ function griser(b: HTMLButtonElement, gris: boolean) {
 export class UI implements Interface {
   private outils = new Map<Outil, HTMLButtonElement>()
   private pastilles: HTMLButtonElement[] = []
+  /** Les pastilles sont-elles peintes pour une page de nuit ? */
+  private pastillesDeNuit = false
   private tailles: HTMLButtonElement[] = []
   private boutonSupprimer!: HTMLButtonElement
   /** La poubelle de la barre du haut : supprimer la page (l'effacer, seule) */
@@ -293,8 +296,11 @@ export class UI implements Interface {
   private boutonFond!: HTMLButtonElement
   private vignetteFond!: HTMLCanvasElement
   private fondMontre: Fond | null = null
+  /** …et sa vignette est-elle de nuit ? */
+  private fondMontreDeNuit = false
   private menuFonds!: Menu
   private boutonAimant!: HTMLButtonElement
+  private boutonNuit!: HTMLButtonElement
   private zoomTexte!: HTMLButtonElement
   private barreHaut!: HTMLElement
   private barreZoom!: HTMLElement
@@ -775,6 +781,10 @@ export class UI implements Interface {
       placerMenu(menuFonds, boutonFond.getBoundingClientRect(), 'dessous')
       if (e.detail === 0) entreeCochee(menuFonds)?.focus()
     })
+    // Le mode nuit de la page (voir nuit.ts) : allumé tant que la page qu'on
+    // regarde est de nuit ; la touche N fait de même
+    this.boutonNuit = bouton('lune', 'Mode nuit de cette page : fond noir, écriture claire (N)', () => app.basculerNuit(), 'outil seulement-large')
+    this.boutonNuit.setAttribute('aria-pressed', 'false')
     this.boutonAimant = bouton('aimant', 'Aimanter au quadrillage', () => this.basculerAimant(), 'outil seulement-large')
     this.boutonReconnaissance = bouton('reconnaissance', 'Le stylo redresse les figures (carré, cercle…)', () => this.basculerReconnaissance(), 'outil seulement-large')
     this.boutonInstruments = bouton('instruments', 'Instruments : règle, équerre, rapporteur, compas', () => {
@@ -871,14 +881,14 @@ export class UI implements Interface {
     this.pointFichier = Object.assign(document.createElement('span'), { className: 'point-etat', hidden: true })
     this.pointFichier.setAttribute('aria-hidden', 'true')
     fichier.appendChild(this.pointFichier)
-    haut.append(avant, this.rang, apres, nouvelle, jeter, boutonFond, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, catalogue, automatismes, outilsClasse, revoir, publier, fichier)
+    haut.append(avant, this.rang, apres, nouvelle, jeter, boutonFond, this.boutonNuit, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, catalogue, automatismes, outilsClasse, revoir, publier, fichier)
     // Les noms sous les outils (lot 5) : ni ‹, ni ›, ni le compteur, ni le
     // bouton du classeur
     nommer(nouvelle, 'Nouvelle')
     // (pas de nom sous « Séance précédente » : il n'est là qu'avec une séance d'avant)
     this.racine.appendChild(this.rangSeance)
     this.libelleJeter = nommer(jeter, 'Supprimer')
-    nommer(boutonFond, 'Fond'); nommer(this.boutonAimant, 'Aimant'); nommer(this.boutonReconnaissance, 'Formes auto')
+    nommer(boutonFond, 'Fond'); nommer(this.boutonNuit, 'Nuit'); nommer(this.boutonAimant, 'Aimant'); nommer(this.boutonReconnaissance, 'Formes auto')
     nommer(importer, 'Image'); nommer(this.boutonInstruments, 'Instruments'); nommer(construire, 'Construire'); nommer(catalogue, 'Catalogue')
     nommer(automatismes, 'Automatismes'); nommer(outilsClasse, 'Classe'); nommer(revoir, 'Revoir'); nommer(publier, 'Publier'); nommer(fichier, 'Fichier')
 
@@ -1164,6 +1174,16 @@ export class UI implements Interface {
     const titre = doigt.id === 'auto' && reglages.styletDirect ? 'Rôle du doigt : auto (stylet détecté : il déplace la vue)' : doigt.titre
     if (this.boutonDoigt.title !== titre) { this.boutonDoigt.title = titre; this.boutonDoigt.setAttribute('aria-label', titre) }
     this.pastilles.forEach((b, i) => b.classList.toggle('actif', COULEURS[i].valeur === app.couleur))
+    // Sur une page de nuit, les pastilles montrent les couleurs telles
+    // qu'elles s'y affichent (le Noir s'y écrit en blanc, et s'appelle ainsi)
+    if (this.pastillesDeNuit !== app.nuit) {
+      this.pastillesDeNuit = app.nuit
+      this.pastilles.forEach((b, i) => {
+        const c = COULEURS[i], nom = app.nuit && c.nom === 'Noir' ? 'Blanc' : c.nom
+        b.style.setProperty('--teinte', app.nuit ? nocturne(c.valeur) : c.valeur)
+        b.title = nom; b.setAttribute('aria-label', nom)
+      })
+    }
     this.tailles.forEach((b, i) => b.classList.toggle('actif', TAILLES[i].valeur === app.tailleEnMain()))
     const rien = !(app.selection.size || app.partie)
     griser(this.boutonSupprimer, rien)
@@ -1215,6 +1235,10 @@ export class UI implements Interface {
     if (this.libelleJeter.dataset.libelle !== motJeter) this.libelleJeter.dataset.libelle = motJeter
     this.majBoutonFond()
     this.boutonAimant.classList.toggle('actif', app.aimant)
+    if (this.boutonNuit.classList.contains('actif') !== app.nuit) {
+      this.boutonNuit.classList.toggle('actif', app.nuit)
+      this.boutonNuit.setAttribute('aria-pressed', String(app.nuit))
+    }
     this.boutonReconnaissance.classList.toggle('actif', app.reconnaissance)
     for (const [id, b] of this.boutonsFormes) b.classList.toggle('actif', app.typeForme === id)
     for (const [id, b] of this.boutonsTraits) b.classList.toggle('actif', app.typeTrait === id)
@@ -1600,6 +1624,7 @@ export class UI implements Interface {
     ]
     for (const i of INSTRUMENTS) l.push({ titre: i.nom, genre: 'Instrument', icone: i.id, mots: 'instrument poser mesurer angle', faire: () => { app.basculerInstrument(i.id); this.maj() } })
     for (const f of FONDS) l.push({ titre: f.nom, genre: 'Fond', icone: 'cadre', mots: 'fond page papier quadrillage', faire: () => app.changerFond(f.id) })
+    l.push({ titre: 'Mode nuit', detail: 'Cette page : fond noir, écriture claire', icone: 'lune', touche: 'N', mots: 'nuit noir sombre fond page jour', faire: () => app.basculerNuit() })
     const mots: Record<string, string> = { rideau: 'cacher devoiler correction masquer', laser: 'montrer pointer', minuteur: 'chrono chronometre temps compte a rebours sablier', tirage: 'hasard eleve interroger au sort', aide: 'raccourcis clavier gestes',
       'calculatrice-lycee': 'calculatrice numworks graphique emulateur lycee', 'calculatrice-college': 'calculatrice numworks scientifique emulateur college' }
     for (const x of this.outilsDeClasse.entrees()) l.push({ titre: x.texte, genre: x.id === 'aide' ? undefined : 'Outil de classe', detail: x.aide, icone: x.icone, touche: x.touche, mots: mots[x.id], faire: x.faire })
@@ -1777,6 +1802,7 @@ export class UI implements Interface {
     const seule = app.pages.length <= 1
     this.entreeMenu(m, seule ? 'Effacer la page' : 'Supprimer la page', () => app.supprimerPage(), { action: 'supprimer-page' })
     this.entreeMenu(m, 'Fond…', e => this.ouvrirFondsDepuisPlus(e.detail === 0), { action: 'fond', aide: nomDuFond(app.fond) })
+    this.entreeMenu(m, 'Mode nuit', () => app.basculerNuit(), { action: 'nuit', coche: app.nuit, caseACocher: true, aide: 'Fond noir, écriture claire' })
     this.entreeMenu(m, 'Aimanter au quadrillage', () => this.basculerAimant(), { action: 'aimant', coche: app.aimant, caseACocher: true })
     this.entreeMenu(m, 'Le stylo redresse les figures', () => this.basculerReconnaissance(), { action: 'reconnaissance', coche: app.reconnaissance, caseACocher: true,
       aide: 'Carré, cercle, triangle…' })
@@ -2500,7 +2526,8 @@ export class UI implements Interface {
     const nom = autre ? app.outil : 'points'
     if (b.dataset.icone !== nom) { b.dataset.icone = nom; b.innerHTML = icone(nom) }
     b.classList.toggle('actif', autre)
-    if (this.rondCouleur.style.getPropertyValue('--teinte') !== app.couleur) this.rondCouleur.style.setProperty('--teinte', app.couleur)
+    const teinte = app.nuit ? nocturne(app.couleur) : app.couleur
+    if (this.rondCouleur.style.getPropertyValue('--teinte') !== teinte) this.rondCouleur.style.setProperty('--teinte', teinte)
   }
 
   /** L'aimant du quadrillage (le bouton de la barre du haut, ou la case de « Plus ») */
@@ -2571,10 +2598,10 @@ export class UI implements Interface {
    *  son nom lu (« Fond de la page : Papier pointé »), refaits seulement
    *  quand le fond change */
   private majBoutonFond() {
-    const fond = this.app.fond
-    if (fond === this.fondMontre) return
-    this.fondMontre = fond
-    peindreVignette(this.vignetteFond, fond, VIGNETTE_BOUTON.l, VIGNETTE_BOUTON.h, densite())
+    const fond = this.app.fond, nuit = this.app.nuit
+    if (fond === this.fondMontre && nuit === this.fondMontreDeNuit) return
+    this.fondMontre = fond; this.fondMontreDeNuit = nuit
+    peindreVignette(this.vignetteFond, fond, VIGNETTE_BOUTON.l, VIGNETTE_BOUTON.h, densite(), nuit)
     const t = `Fond de la page : ${nomDuFond(fond)}`
     this.boutonFond.title = t; this.boutonFond.setAttribute('aria-label', t)
   }

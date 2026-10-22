@@ -599,6 +599,7 @@ export class RevueEnClasse {
     this.poserInstruments(instruments)
     this.poserApercu(apercu)
     r.fond = planche.fond
+    r.nuit = !!planche.nuit
     r.origine = planche.origine
     // Au début d'un trait qui s'écrit, la page est souvent celle qui est déjà là : seul le trait se peint
     r.redessinerSiBesoin()
