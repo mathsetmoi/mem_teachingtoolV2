@@ -3387,6 +3387,11 @@ d'un classeur, avec son film.
   d'une image) devient un aplat opaque de sa couleur (une image d'un pixel,
   étirée) : on l'efface pour découvrir ce qu'il cachait ; ses coins ne se
   voient pas.
+- **Les calculatrices NumWorks** (lycée ou collège, posées dans un post-it) :
+  des calculatrices d'ici (voir le lot de la calculatrice), à l'écran
+  d'accueil, tenues et centrées dans le cadre du post-it ; elles paraissent,
+  bougent et s'en vont dans le film comme lui. Les autres post-its ne sont
+  pas repris (comptés).
 - **Le mode nuit** : un ancien tableau enregistré en mode nuit (ou une page
   qui l'était) donne des pages en mode nuit, dès le début de la séance
   (l'ancien film ne dit pas quand il a basculé). Son encre blanche y devient
@@ -3396,7 +3401,7 @@ d'un classeur, avec son film.
 - Ce qui est écrit est décalé pour commencer en haut à gauche de la page.
 
 Ne sont pas repris (et le bilan le compte) : les cercles et polygones
-tracés comme figures, les courbes, les post-its. Une image effacée pendant
+tracés comme figures, les courbes, les post-its (sauf les calculatrices). Une image effacée pendant
 la séance dont le fichier n'a pas gardé les données manque au film (le
 bilan le dit).
 
