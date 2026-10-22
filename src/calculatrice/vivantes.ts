@@ -23,7 +23,8 @@
 // Pour pouvoir copier l'écran, le cadre a la même origine que l'outil
 // (srcdoc), et une ligne ajoutée en tête de la page de l'émulateur demande
 // aux canevas WebGL de garder leur image (preserveDrawingBuffer) : sinon la
-// copie serait noire.
+// copie serait noire. Une autre y range la calculatrice seule, à la taille
+// du cadre.
 // =============================================================
 import type { Camera } from '../camera'
 import type { Matrice } from '../cadre'
@@ -67,13 +68,23 @@ const GARDER_IMAGE = '<script>(function(){var g=HTMLCanvasElement.prototype.getC
   + 'HTMLCanvasElement.prototype.getContext=function(t,o){if(/webgl/.test(String(t)))'
   + 'o=Object.assign({},o||{},{preserveDrawingBuffer:true});return g.call(this,t,o)}})()</script>'
 
-/** La page de l'émulateur, avec cette ligne en tête */
+/** Et ce qui range la page de l'émulateur dans le cadre : la calculatrice
+ *  seule, aussi grande que le cadre le permet, sans le fond gris de la page
+ *  ni ses boutons du dessous (plein écran, photo, partage) */
+const DANS_LE_CADRE = '<style>html,body{background:transparent!important;margin:0!important;overflow:hidden!important}'
+  + '.actions,#errors,.col-fullscreen{display:none!important}'
+  + '.col-calculator{width:100%!important;float:none!important}'
+  + '.calculator-container{margin:4px 0 0!important}'
+  + '.calculator-container img{max-height:calc(100vh - 8px)!important;max-width:100%!important}</style>'
+
+/** La page de l'émulateur, avec ces lignes en tête */
 export function pagePourLeCadre(html: string): string {
   const tete = /<head[^>]*>/i.exec(html)
-  if (tete) return html.slice(0, tete.index + tete[0].length) + GARDER_IMAGE + html.slice(tete.index + tete[0].length)
+  const ajout = GARDER_IMAGE + DANS_LE_CADRE
+  if (tete) return html.slice(0, tete.index + tete[0].length) + ajout + html.slice(tete.index + tete[0].length)
   const doctype = /^\s*<!doctype[^>]*>/i.exec(html)
-  if (doctype) return doctype[0] + GARDER_IMAGE + html.slice(doctype[0].length)
-  return GARDER_IMAGE + html
+  if (doctype) return doctype[0] + ajout + html.slice(doctype[0].length)
+  return ajout + html
 }
 
 /** La transformation CSS qui pose l'élément (en pixels de l'image) sur la
@@ -247,7 +258,7 @@ export class Calculatrices {
 
 /** L'écran de l'émulateur, copié à la taille de l'écran du dessin : son plus
  *  grand canevas (l'écran, en 4:3 ; un canevas d'une autre forme y tient
- *  tout entier, centré). null : rien à copier (pas encore de canevas, un
+ *  tout entier, centré, sur la couleur de son coin). null : rien à copier (pas encore de canevas, un
  *  canevas vide, un cadre qu'on ne peut pas lire). */
 export function copierEcran(cadre: HTMLIFrameElement): HTMLCanvasElement | null {
   let doc: Document | null = null
@@ -262,7 +273,6 @@ export function copierEcran(cadre: HTMLIFrameElement): HTMLCanvasElement | null 
   const c = copie.getContext('2d')!
   const k = Math.min(ECRAN.l / source.width, ECRAN.h / source.height)
   const l = source.width * k, h = source.height * k
-  c.fillStyle = '#ffffff'; c.fillRect(0, 0, ECRAN.l, ECRAN.h)
   try {
     // Un canevas tout transparent (rien encore de peint) ne compte pas
     const s = Object.assign(document.createElement('canvas'), { width: 32, height: 24 })
@@ -272,6 +282,11 @@ export function copierEcran(cadre: HTMLIFrameElement): HTMLCanvasElement | null 
     let peint = false
     for (let i = 3; i < d.length; i += 4) if (d[i]) { peint = true; break }
     if (!peint) return null
+    // Un écran plus allongé (la calculatrice collège) : autour, la couleur
+    // de son coin, pour qu'il paraisse remplir l'écran du dessin
+    const coin = cs.getImageData(0, 0, 1, 1).data
+    c.fillStyle = `rgb(${coin[0]}, ${coin[1]}, ${coin[2]})`
+    c.fillRect(0, 0, ECRAN.l, ECRAN.h)
     c.drawImage(source, (ECRAN.l - l) / 2, (ECRAN.h - h) / 2, l, h)
   } catch { return null }
   return copie

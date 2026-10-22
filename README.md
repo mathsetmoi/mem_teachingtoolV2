@@ -1200,7 +1200,15 @@ changé depuis, et ces Ctrl+Z-là ne font rien. Elle se range par ×, et un
 déplacement se refait à la main. Essais :
 `tests/calculatrice.test.ts` et `essais/navigateur/lot14/E1-calculatrice.mjs`,
 avec une page d'essai qui se fait passer pour l'émulateur
-(`emulateur-d-essai.html`), puisque celui de NumWorks n'est pas dans le dépôt.
+(`emulateur-d-essai.html`), puisque celui de NumWorks n'est pas dans le dépôt ;
+et, quand on lui donne les deux fichiers de NumWorks (`NUMWORKS_LYCEE`,
+`NUMWORKS_COLLEGE`), `essais/navigateur/lot14/E2-vrais-emulateurs.mjs`
+(essayé avec la calculatrice graphique 26.3.0 et la scientifique 4.1.0).
+
+Dans son cadre, la page de l'émulateur ne garde que la calculatrice, aussi
+grande que le cadre le permet : ni son fond gris, ni ses boutons du dessous
+(plein écran, photo, partage). L'écran plus allongé de la calculatrice
+collège est copié sur la couleur de son coin, pour remplir l'écran du dessin.
 
 ## La recherche
 
