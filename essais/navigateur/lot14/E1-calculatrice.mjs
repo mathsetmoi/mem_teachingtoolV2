@@ -5,15 +5,16 @@
 // une page qui s'en donne l'air (emulateur-d-essai.html : un écran, des
 // touches, un curseur qui clignote).
 // A. Le menu Classe a « Calculatrice NumWorks lycée » et « … collège » ; la
-//    lycée se pose sur la page, prise à la Sélection ; pas encore installée,
-//    la fenêtre d'installation s'ouvre ;
+//    lycée se pose sur la page, prise à la Sélection, sans pastilles ni
+//    côtés ni barre d'actions ; pas encore installée, la fenêtre
+//    d'installation s'ouvre ;
 // B. le fichier donné dans la case « NumWorks lycée » : « Installée » ; la
 //    vraie calculatrice se pose sur l'image, et son écran d'accueil est noté ;
 // C. 2 + 3 EXE : l'image de la calculatrice prend l'écran « 5 » (une étape
 //    du film), sans étape d'annulation ; sans appui (le curseur clignote),
 //    rien de plus ne s'écrit ;
 // D. au Stylo, la bande du nom la déplace (pas d'encre) et la vraie
-//    calculatrice suit ; un trait ailleurs s'écrit encore ;
+//    calculatrice suit ; son corps (hors des touches et de l'écran) aussi ; un trait ailleurs s'écrit encore ;
 // E. × la range, Ctrl+Z la rend ;
 // F. « Voir comme un élève » : le lecteur s'ouvre sans erreur ;
 // G. la version hors ligne, sans internet : installer, calculer, l'écran
@@ -84,7 +85,10 @@ const calc = p => p.evaluate(() => {
   ok(entrees.some(t => t.includes('Calculatrice NumWorks lycée')) && entrees.some(t => t.includes('Calculatrice NumWorks collège')), 'A) Le menu Classe a les deux calculatrices', entrees)
   await p.waitForSelector('dialog.dialogue-calculatrice[open]', { timeout: 10000 })
   const a = await calc(p)
-  ok(a && a.pris && a.outil === 'selection' && a.src === 'calc-accueil-lycee', 'A) Posée, prise à la Sélection ; la fenêtre d\'installation s\'ouvre', a)
+  ok(a && a.pris && a.outil === 'selection' && a.src === 'calc-accueil-lycee-314', 'A) Posée, prise à la Sélection ; la fenêtre d\'installation s\'ouvre', a)
+  const cadreVu = await p.evaluate(() => ({ fixe: !!window.__app.rendu.cadre?.cadre?.fixe, cotes: window.__app.rendu.cadre?.cadre?.cotes,
+    barre: !!document.querySelector('.barre-actions:not([hidden])'), l: window.__app.formes.find(f => f.calculatrice).l }))
+  ok(cadreVu.fixe && !cadreVu.cotes && !cadreVu.barre && cadreVu.l === 314, 'A) Ni pastilles ↻ ↺, ni côtés, ni barre d\'actions ; 314 de large', cadreVu)
   const etat = await installer(p, 0)
   ok(/Installée/.test(etat ?? ''), 'B) Le fichier donné : « Installée »', etat)
   await p.waitForSelector('iframe.calculatrice-cadre', { timeout: 10000 })
@@ -112,6 +116,14 @@ const calc = p => p.evaluate(() => {
   const d = await calc(p)
   ok(d && d.outil === 'stylo' && Math.abs(d.x - c.x + 100) < 2 && Math.abs(d.y - c.y - 30) < 2 && d.traits === 0 && d.transform.endsWith(`${+d.x.toFixed(3)}, ${+d.y.toFixed(3)})`) && pendant.transform !== c.transform,
     'D) Au Stylo, la bande la déplace, la vraie calculatrice suit, sans encre', { c, pendant, d })
+  // Le corps de la calculatrice (hors des touches et de l'écran), au Stylo
+  // aussi : il la déplace
+  const r2 = await p.locator('.calculatrice-vivante').boundingBox()
+  await p.mouse.move(r2.x + 8, r2.y + r2.height - 8); await p.mouse.down()
+  await p.mouse.move(r2.x + 58, r2.y + r2.height + 12, { steps: 8 }); await p.mouse.up(); await p.waitForTimeout(400)
+  const d2 = await calc(p)
+  ok(d2 && Math.abs(d2.x - d.x - 50) < 2 && Math.abs(d2.y - d.y - 20) < 2 && d2.traits === 0 && d2.film === d.film + 1,
+    'D) Au Stylo, le corps de la calculatrice la déplace aussi, sans encre', { d, d2 })
   await p.mouse.move(1150, 500); await p.mouse.down(); await p.mouse.move(1250, 560, { steps: 6 }); await p.mouse.up()
   await p.waitForTimeout(300)
   ok((await calc(p)).traits === 1, 'D) Un trait ailleurs s\'écrit encore')

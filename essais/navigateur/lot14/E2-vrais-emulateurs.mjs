@@ -9,7 +9,8 @@
 // calculatrice : installée, posée ; son écran d'accueil est noté ; à la
 // souris sur ses touches, accueil, OK, 2 + 3 EXE : un écran neuf, une étape
 // du film ; la page de l'émulateur ne garde que la calculatrice (ni fond
-// gris, ni boutons du dessous). Aucune erreur.
+// gris, ni boutons du dessous), juste à la taille du cadre ; au Stylo, son
+// corps la déplace. Aucune erreur.
 import { chromium } from '../commun/playwright.mjs'
 import { existsSync } from 'node:fs'
 
@@ -54,15 +55,28 @@ for (const [nom, rang, fichier] of FICHIERS) {
   const fr = p.frameLocator('iframe.calculatrice-cadre').last()
   const page = await cadre.evaluate(c => {
     const d = c.contentDocument, im = d.querySelector('.calculator-container img')?.getBoundingClientRect()
-    return { fond: getComputedStyle(d.body).backgroundColor, actions: d.querySelector('.actions')?.getBoundingClientRect().height ?? 0, haut: im?.height ?? 0, cadre: c.getBoundingClientRect().height }
+    return { fond: getComputedStyle(d.body).backgroundColor, actions: d.querySelector('.actions')?.getBoundingClientRect().height ?? 0,
+      haut: im?.height ?? 0, large: im?.width ?? 0, cadre: c.clientHeight, cadreLarge: c.clientWidth }
   })
-  ok(page.fond === 'rgba(0, 0, 0, 0)' && page.actions === 0 && page.haut > page.cadre * 0.9, `${nom} : la calculatrice seule, à la taille du cadre`, page)
+  ok(page.fond === 'rgba(0, 0, 0, 0)' && page.actions === 0 && Math.abs(page.haut - page.cadre) < 2 && Math.abs(page.large - page.cadreLarge) < 3,
+    `${nom} : la calculatrice seule, juste à la taille du cadre (ses coins sont ceux de la sélection)`, page)
+
+  // Au Stylo, un appui sur le corps (entre l'écran et les flèches, sur le
+  // bord) la déplace, sans encre
+  await p.mouse.click(1350, 820); await p.keyboard.press('p')
+  const avant = await p.evaluate(m => { const f = window.__app.formes.find(f => f.calculatrice === m); return { x: f.x, y: f.y, traits: window.__app.formes.filter(g => g.type === 'trait').length } }, m)
+  const r = await p.locator('.calculatrice-vivante').last().boundingBox()
+  await p.mouse.move(r.x + r.width * 0.03, r.y + r.height * 0.6); await p.mouse.down()
+  await p.mouse.move(r.x + r.width * 0.03 - 60, r.y + r.height * 0.6 + 10, { steps: 8 }); await p.mouse.up(); await p.waitForTimeout(400)
+  const apres = await p.evaluate(m => { const f = window.__app.formes.find(f => f.calculatrice === m); return { x: f.x, y: f.y, traits: window.__app.formes.filter(g => g.type === 'trait').length } }, m)
+  ok(Math.abs(apres.x - avant.x + 60) < 2 && Math.abs(apres.y - avant.y - 10) < 2 && apres.traits === avant.traits, `${nom} : au Stylo, son corps la déplace`, { avant, apres })
 
   for (const k of ['home', 'ok', 'two', 'plus', 'three', 'exe']) { await fr.locator(`span[data-key="${k}"]`).click(); await p.waitForTimeout(400) }
   await p.waitForTimeout(3500)
   const b = await calc(m)
   ok(b && b.src !== a.src && b.film > a.film, `${nom} : 2 + 3 EXE, un écran neuf, une étape du film`, { a, b })
-  await p.mouse.click(1350, 820)
+  if (process.env.CAPTURES) await p.screenshot({ path: `${process.env.CAPTURES}/calculatrice-${m}.png` })
+  await p.mouse.click(1350, 820); await p.keyboard.press('v')
 }
 ok(erreurs.length === 0, 'Aucune erreur', erreurs)
 await nav.close()

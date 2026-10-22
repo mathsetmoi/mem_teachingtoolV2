@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <title>Émulateur d'essai (NumWorks)</title>
 <!-- Une page d'essai qui se fait passer pour l'émulateur de NumWorks : un
-     écran (un canevas de 320 × 240) et quelques touches. Ce n'est pas
+     écran (un canevas de 320 × 240) et quelques touches (data-key, comme
+     celles de NumWorks). Ce n'est pas
      l'émulateur de NumWorks, seulement de quoi essayer l'outil sans lui. -->
 <style>
   html, body { margin: 0; height: 100%; background: #444b57; font: 16px sans-serif; }
@@ -29,7 +30,7 @@
     if (resultat) { c.textAlign = 'right'; c.fillText(resultat, 310, 110); c.textAlign = 'left' }
   }
   for (const t of ['7','8','9','+','4','5','6','-','1','2','3','×','0','C','EXE','÷']) {
-    const b = document.createElement('button'); b.textContent = t; b.dataset.t = t
+    const b = document.createElement('button'); b.textContent = t; b.dataset.t = t; b.dataset.key = t
     b.onclick = () => {
       if (t === 'C') { ligne = ''; resultat = '' }
       else if (t === 'EXE') { try { resultat = String(Function('return ' + ligne.replace(/×/g, '*').replace(/÷/g, '/'))()) } catch { resultat = 'erreur' } }

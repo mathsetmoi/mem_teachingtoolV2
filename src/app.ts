@@ -54,7 +54,7 @@ import type { PartieGardee, PriseRognage } from './rognage'
 import type { ChoixPdf, PdfOuvert } from './import-pdf'
 import { HAUTEUR_MAX_IMAGE, LARGEUR_IMAGE, estPdf, ouvrirFenetreImportPdf, ouvrirPdf, texteImportPdf } from './import-pdf'
 import { Calculatrices, estCalculatrice } from './calculatrice/vivantes'
-import { BANDE, echelleDePose, imageDeCalculatrice, nomDuModele } from './calculatrice/dessin'
+import { BANDE, HAUTEUR as HAUTEUR_CALCULATRICE, echelleDePose, imageDeCalculatrice, largeurDuModele, nomDuModele } from './calculatrice/dessin'
 import { lireEmulateur } from './calculatrice/emulateurs'
 import { ouvrirInstallation } from './calculatrice/fenetre'
 import type { ModeleCalculatrice } from './types'
@@ -447,6 +447,7 @@ export class App {
       ecran: (page, id, src) => this.tableau.ecranDeCalculatrice(page, id, src),
       retirer: id => { this.selection.delete(id); this.tableau.supprimer(this.page, [id]); this.ui.maj() },
       installer: m => this.installerCalculatrice(m),
+      saisir: (id, type, e, client) => this.saisirCalculatrice(id, type, e, client),
     })
     this.rendu.apresFormules = () => this.calculatrices.placer()
     window.addEventListener('pagehide', () => this.piste.vider())
@@ -2125,6 +2126,10 @@ export class App {
     this.secondToucher(e, s, m)
 
     this.depart = nouveauDepart(s.x, s.y, e.pointerId, e.pointerType, performance.now())
+    // Le corps d'une calculatrice, pris dans son cadre (voir saisirCalculatrice) :
+    // elle se déplace, sous tous les outils
+    const saisie = this.calculatriceSaisie ? this.forme(this.calculatriceSaisie) : null
+    if (saisie?.type === 'image') { this.deplacerCalculatrice(saisie, m); return }
     if (pan) {
       this.geste = { type: 'pan', dernierX: s.x, dernierY: s.y }
       // L'outil Main au doigt qui « déplace » : l'appui long y ouvre le menu,
@@ -2170,12 +2175,7 @@ export class App {
     // La bande du nom d'une calculatrice (voir calculatrice/) : elle se prend
     // et se glisse sous tous les outils, comme à la Sélection
     const bande = this.outil !== 'selection' ? this.bandeDeCalculatrice(m) : null
-    if (bande) {
-      if (!this.selection.has(bande.id)) { this.selection.clear(); this.prendre(bande, false) }
-      this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false }
-      this.rendu.redessinerDirect(); this.ui.maj()
-      return
-    }
+    if (bande) { this.deplacerCalculatrice(bande, m); return }
     this.ui.fermerMenuPartie()
     if (this.partie) this.choisirPartie(null)
     // Sous un outil de dessin, ce qui restait sélectionné (une copie, une
@@ -3021,7 +3021,7 @@ export class App {
       case 'taille': {
         if (!glisse) break                               // un clic sur un coin ne change rien
         // Maj + coin d'une image seule : ses deux axes, chacun le sien
-        const libre = g.image && g.quoi === 'coin' && e.shiftKey
+        const libre = g.image && !g.cadre.fixe && g.quoi === 'coin' && e.shiftKey
         const r = matriceTaille(g.cadre, g, m, { bornes: g.bornes, libre })
         this.montrerTransfo(g, r.M, texteTaille(r.kx, r.ky, libre || g.quoi === 'cote'), m)
         break
@@ -3860,11 +3860,11 @@ export class App {
    *  aussitôt (vivantes.ts). Pas encore installée sur cet ordinateur : la
    *  fenêtre d'installation s'ouvre aussi. */
   async poserCalculatrice(modele: ModeleCalculatrice) {
-    const src = `calc-accueil-${modele}`
+    const l = largeurDuModele(modele), h = HAUTEUR_CALCULATRICE
+    const src = `calc-accueil-${modele}-${l}`
     if (!this.banqueImages.has(src)) this.banqueImages.set(src, imageDeCalculatrice(modele))
     const v = this.cam.visible(this.rendu.l, this.rendu.h)
     const e = echelleDePose(v.h, this.cam.z)
-    const l = 360, h = 660
     const f: Forme = { id: uid(), type: 'image', src, l, h, m: [e, 0, 0, e], calculatrice: modele,
       x: v.x + v.l / 2 - l * e / 2, y: v.y + v.h / 2 - h * e / 2, z: Date.now(), auteur: this.tableau.moi }
     this.calculatrices.posee(f.id)
@@ -3872,12 +3872,36 @@ export class App {
     this.poserFigure(f)
     if (!this.forme(f.id)) return
     if (!(await lireEmulateur(modele))) this.installerCalculatrice(modele)
-    else this.ui.message(`${nomDuModele(modele)} : la barre du haut la déplace, ses coins l'agrandissent, × la range.`)
+    else this.ui.message(`${nomDuModele(modele)} : elle se déplace en la prenant hors des touches et de l'écran, ses coins l'agrandissent, × la range.`)
   }
 
   /** La fenêtre « Installer la calculatrice NumWorks » */
   installerCalculatrice(modele?: ModeleCalculatrice) {
     ouvrirInstallation({ maj: () => this.ui.maj(), change: () => this.calculatrices.rafraichir(), message: t => this.ui.message(t) }, modele)
+  }
+
+  /** Prend la calculatrice et commence à la déplacer depuis m (monde) */
+  private deplacerCalculatrice(f: ImageForme, m: P) {
+    if (!this.selection.has(f.id)) { this.selection.clear(); this.prendre(f, false) }
+    this.geste = { type: 'deplacer', x: m.x, y: m.y, bouge: false }
+    this.rendu.redessinerDirect(); this.ui.maj()
+  }
+
+  /** La calculatrice qu'un appui sur son corps vient de prendre (voir saisirCalculatrice) */
+  private calculatriceSaisie: string | null = null
+
+  /** Un appui sur le corps de la vraie calculatrice (hors des touches et de
+   *  l'écran), puis ses mouvements et son lever, reçus dans son cadre (voir
+   *  calculatrice/vivantes.ts) : ils passent au tableau comme s'ils y
+   *  avaient eu lieu, à ce point de l'écran (client) ; l'appui y prend la
+   *  calculatrice et la déplace. */
+  saisirCalculatrice(id: string, type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel', e: PointerEvent, client: P) {
+    const copie = new PointerEvent(type, {
+      bubbles: true, cancelable: true, clientX: client.x, clientY: client.y, pointerId: e.pointerId, pointerType: e.pointerType,
+      isPrimary: e.isPrimary, button: e.button, buttons: e.buttons, pressure: e.pressure, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, altKey: e.altKey, metaKey: e.metaKey,
+    })
+    this.calculatriceSaisie = type === 'pointerdown' ? id : null
+    try { this.zone.dispatchEvent(copie) } finally { this.calculatriceSaisie = null }
   }
 
   /** La calculatrice dont la bande du nom est sous ce point (monde), la plus

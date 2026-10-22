@@ -7,7 +7,8 @@ import { strToU8 } from 'fflate'
 import { Tableau } from '../src/document'
 import type { ImageForme } from '../src/types'
 import { validerCopie } from '../src/presse-papiers'
-import { empreinte, echelleDePose, HAUTEUR } from '../src/calculatrice/dessin'
+import { cadreDe, poigneeSous, zonesDesPoignees } from '../src/cadre'
+import { empreinte, echelleDePose, ecranDuDessin, HAUTEUR, LARGEURS } from '../src/calculatrice/dessin'
 import { rangerLesVoisins, ressembleAEmulateur } from '../src/calculatrice/emulateurs'
 import { estCalculatrice, matriceCss, pagePourLeCadre } from '../src/calculatrice/vivantes'
 
@@ -72,6 +73,23 @@ describe('la calculatrice comme objet de la page', () => {
     expect(matriceCss(f, { dx: 5, dy: -5 }, null)).toBe('matrix(0.5, 0, 0, 0.5, 15, 15)')
     // Doublée autour de l'origine du monde
     expect(matriceCss(f, null, [2, 0, 0, 2, 0, 0])).toBe('matrix(1, 0, 0, 1, 20, 40)')
+  })
+
+  it('prise seule, elle n\'a que ses quatre coins : ni pastilles ↻ ↺, ni côtés', () => {
+    const o = { boite: () => null, mesure: () => ({ l: 0, h: 0 }), z: 1, pointeur: 'mouse' as const, zoneLibre: { x: -1000, y: -1000, l: 4000, h: 4000 } }
+    const k = cadreDe([calculatrice()], o)!
+    expect([k.fixe, k.cotes, k.coins.length]).toEqual([true, false, 4])
+    expect(poigneeSous(k, k.pastille, { x: 0, y: 0, z: 1 }, 'mouse')).toBeNull()
+    expect(poigneeSous(k, k.coins[2], { x: 0, y: 0, z: 1 }, 'mouse')).toEqual({ quoi: 'coin', i: 2 })
+    expect(zonesDesPoignees(k, 'mouse', 1)).toHaveLength(4)
+    // Une image ordinaire garde les siennes
+    const { calculatrice: _, ...image } = calculatrice()
+    expect(cadreDe([image as ImageForme], o)!.fixe).toBeUndefined()
+  })
+
+  it('a la largeur de la vraie calculatrice, et son écran en 4:3', () => {
+    expect(LARGEURS).toEqual({ lycee: 314, college: 356 })
+    expect(ecranDuDessin(314)).toEqual({ x: 20, y: 60, l: 274, h: 205.5 })
   })
 
   it('se pose aux trois quarts de la vue, jamais plus grande que nature à ce zoom', () => {

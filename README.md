@@ -1130,15 +1130,19 @@ classe), `mem-conseils` (les conseils déjà vus).
 Le menu **Classe** a deux lignes de plus : **Calculatrice NumWorks lycée**
 (la graphique : calculs, graphes, Python) et **Calculatrice NumWorks
 collège** (la scientifique). Un clic pose la calculatrice au milieu de ce
-qu'on voit, sur les trois quarts de la hauteur, prise à l'outil Sélection
-comme une image importée : ses coins l'agrandissent. Chaque page peut avoir
-la sienne (ou plusieurs).
+qu'on voit, sur les trois quarts de la hauteur, prise à l'outil Sélection :
+ses quatre coins, posés sur la calculatrice, l'agrandissent ou la
+réduisent, sans la déformer. Elle ne tourne pas : ni pastilles ↻ ↺, ni
+barre d'actions (Dupliquer, Copier…) ; ses boutons ↺ et × suffisent.
+Chaque page peut avoir la sienne (ou plusieurs).
 
 - On tape au stylet de la tablette, à la souris, au doigt, ou au clavier
   une fois qu'on a cliqué dedans ; un clic sur le tableau rend le clavier
   au tableau (P, E, Ctrl+Z…).
-- **La bande du nom**, en haut, la déplace, sous n'importe quel outil (au
-  Stylo, elle ne laisse pas d'encre). **↺** la remet à zéro, **×** la
+- **Elle se déplace en la prenant** par la bande du nom, en haut, ou par
+  son corps, partout sauf sur ses touches et son écran (le curseur en
+  croix fléchée le montre), sous n'importe quel outil (au Stylo, elle ne
+  laisse pas d'encre). **↺** la remet à zéro, **×** la
   range (Ctrl+Z la rend).
 - Elle reste sur sa page : elle suit le défilement et le zoom, et l'on
   retrouve son calcul en revenant sur la page (les quatre dernières restent
@@ -1164,7 +1168,11 @@ sauvegarde ni le Drive.
 Une calculatrice est une **image** de la page (`ImageForme`) avec un champ
 facultatif, `calculatrice: 'lycee' | 'college'` : son dessin (un boîtier
 simple, son nom, l'écran, des touches esquissées : `src/calculatrice/dessin.ts`,
-360 × 660 pixels). Tout ce qui sait montrer une image la montre déjà : le
+660 pixels de haut, et de large ceux de la vraie calculatrice posée sous la
+bande à ses proportions, `LARGEURS` : 314 pour la lycée, 356 pour la
+collège ; celles posées avant, de 360, gardent leur largeur et la vraie s'y
+centre). Seule, prise, elle a un cadre « fixe » (`Cadre.fixe`, dans
+`src/cadre.ts`) : ses coins seulement. Tout ce qui sait montrer une image la montre déjà : le
 replay, la revue, les vignettes, l'export en PDF, une version d'avant et le
 lecteur resté dans le cache d'un ancien navigateur. Le format des fichiers
 ne change pas. Elle ne se rogne pas ; copiée et collée, elle reste une
@@ -1175,7 +1183,11 @@ par-dessus chaque image la vraie calculatrice : un cadre `<iframe srcdoc>`
 avec la page de l'émulateur, dans une couche qui suit la vue comme celle
 des formules (`Rendu.apresFormules`), avec le déplacement et le
 changement de taille en cours ; sous la bande du nom, qui laisse l'appui au
-tableau (`App.bandeDeCalculatrice`, dans `bas`). Après chaque appui dans la
+tableau (`App.bandeDeCalculatrice`, dans `bas`). Un appui sur son corps
+(hors de `[data-key]`, les touches, et du canevas, l'écran) est reçu dans
+le cadre, puis passé au tableau avec ses mouvements et son lever, ramenés
+à la page (`brancherCorps`, `App.saisirCalculatrice`) : il la déplace comme
+la bande. Après chaque appui dans la
 calculatrice, son écran (son plus grand canevas) est copié 0,2 s, 0,8 s et
 2,5 s plus tard ; s'il a changé, le dessin est refait avec lui, rangé une
 fois dans la banque d'images (`calc-<modèle>-<empreinte>` : deux écrans

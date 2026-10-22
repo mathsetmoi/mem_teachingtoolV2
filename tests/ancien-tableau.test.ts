@@ -236,10 +236,10 @@ describe('reprendre un ancien tableau', () => {
     expect([b.calculatrices, b.laisses]).toEqual([1, 1])
     expect(texteDuBilan(a, b)).toContain('1 calculatrice, avec son film. 1 objet')
     expect(vus).toEqual(['lycee'])
-    expect(tab.doc.getMap('images').get('calc-accueil-lycee')).toBe(PNG)
+    expect(tab.doc.getMap('images').get('calc-accueil-lycee-314')).toBe(PNG)
     const [c] = [...tab.formesDe(tab.ordre.get(0))!.values()] as ImageForme[]
-    // 720 × 660 : la calculatrice tient en hauteur (échelle 1), centrée en largeur
-    expect([c.type, c.calculatrice, c.src, c.l, c.h, c.m, c.x, c.y]).toEqual(['image', 'lycee', 'calc-accueil-lycee', 360, 660, [1, 0, 0, 1], 280, 0])
+    // 720 × 660 : la calculatrice (314 de large) tient en hauteur (échelle 1), centrée en largeur
+    expect([c.type, c.calculatrice, c.src, c.l, c.h, c.m, c.x, c.y]).toEqual(['image', 'lycee', 'calc-accueil-lycee-314', 314, 660, [1, 0, 0, 1], 303, 0])
     expect(tab.film.toArray().map(e => e.t)).toEqual([T0, T0 + MIN, T0 + 2 * MIN])
     // Sans dessin donné, elle n'est pas reprise (comptée)
     const b2 = await reprendre(new Tableau(null), a, preparer)

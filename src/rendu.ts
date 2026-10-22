@@ -1203,7 +1203,7 @@ export class Rendu {
     c.setLineDash([])
     // (en contraste renforcé, le filet, le bord et les poignées plus marqués)
     c.strokeStyle = '#3b6fb6'; c.lineWidth = (this.contraste ? 2.5 : 1.2) / z
-    c.beginPath(); c.moveTo(k.filet[0].x, k.filet[0].y); c.lineTo(k.filet[1].x, k.filet[1].y); c.stroke()
+    if (!k.fixe) { c.beginPath(); c.moveTo(k.filet[0].x, k.filet[0].y); c.lineTo(k.filet[1].x, k.filet[1].y); c.stroke() }
     if (k.coins.length === 4) {
       const q = k.coins
       // (de l'épaisseur du cadre plein d'un groupe, dont il tient lieu)
@@ -1228,6 +1228,8 @@ export class Rendu {
       }
       for (const p of q) poignee(p, d, d, 1.5 / z)
     }
+    // Une calculatrice ne tourne pas : ni ↻ ni ↺
+    if (k.fixe) { c.restore(); return }
     dessinerPastille(c, k.pastille, z, v.geste === 'tourner' && !v.gauche, 'rotation', POIGNEE.pastille[v.pointeur], this.filetPoignee)
     // ↺, à côté : la même, retournée (retouches après le lot 5)
     c.save(); c.translate(k.inverse.x, k.inverse.y); c.scale(-1, 1); c.translate(-k.inverse.x, -k.inverse.y)

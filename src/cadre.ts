@@ -472,6 +472,9 @@ export interface Cadre {
   inverse: P
   filet: [P, P]
   dessous: boolean
+  /** Une calculatrice seule : ni pastilles ↻ ↺ (elle ne tourne pas), ni
+   *  côtés (elle garde ses proportions) ; ses coins seulement */
+  fixe?: boolean
 }
 
 /** La marge du cadre droit autour de la boîte de ce qu'on a pris (px d'écran),
@@ -504,8 +507,9 @@ export function cadreDe(formes: readonly Forme[], o: {
   const z = o.z > 0 ? o.z : 1, seule = formes.length === 1 ? formes[0] : null
   const marge = MARGE_CADRE / z
   let genre: Cadre['genre'], coins: P[], cotes: Cadre['cotes'] = false, centre: P
+  const fixe = seule?.type === 'image' && !!seule.calculatrice
   if (seule?.type === 'image') {
-    genre = 'oriente'; coins = coinsImage(seule); cotes = true
+    genre = 'oriente'; coins = coinsImage(seule); cotes = !fixe
     centre = milieu(coins[0], coins[2])
   } else if (seule?.type === 'formule') {
     const m = o.mesure(seule)
@@ -580,7 +584,9 @@ export function cadreDe(formes: readonly Forme[], o: {
     cotes = false
   }
   const haut = milieu(coins[0], coins[1]), bas = milieu(coins[3], coins[2])
-  return { genre, coins, cotes, centre, ...pastille(haut, bas, { x: -v.x, y: -v.y }, z, o, boiteDes(coins)) }
+  const k: Cadre = { genre, coins, cotes, centre, ...pastille(haut, bas, { x: -v.x, y: -v.y }, z, o, boiteDes(coins)) }
+  if (fixe) k.fixe = true
+  return k
 }
 
 /** La pastille au-dessus du bord du haut (n : vers le dehors, depuis lui), ou
@@ -635,8 +641,10 @@ export function poigneeSous(cadre: Cadre, s: P, cam: { x: number; y: number; z: 
     const d = dist(ecran(p), s)
     if (d <= rayon && d < dmin) { dmin = d; meilleur = { quoi, i } }
   }
-  essayer(cadre.pastille, 'pastille', 0, Math.max(r, POIGNEE.pastille[pointeur]))
-  essayer(cadre.inverse, 'pastille', 1, Math.max(r, POIGNEE.pastille[pointeur]))
+  if (!cadre.fixe) {
+    essayer(cadre.pastille, 'pastille', 0, Math.max(r, POIGNEE.pastille[pointeur]))
+    essayer(cadre.inverse, 'pastille', 1, Math.max(r, POIGNEE.pastille[pointeur]))
+  }
   cadre.coins.forEach((c, i) => essayer(c, 'coin', i, r))
   if (cadre.cotes && cadre.coins.length === 4) {
     for (const i of cotesDe(cadre)) essayer(milieu(cadre.coins[i], cadre.coins[(i + 1) % 4]), 'cote', i, r)
@@ -789,6 +797,7 @@ export function etendueDuCadre(cadre: Cadre, pointeur: TypePointeur, z: number):
   const k = z > 0 ? z : 1, d = POIGNEE.dessin[pointeur] / 2 / k, r = POIGNEE.pastille[pointeur] / k
   let x1 = Math.min(cadre.pastille.x, cadre.inverse.x) - r, y1 = Math.min(cadre.pastille.y, cadre.inverse.y) - r
   let x2 = Math.max(cadre.pastille.x, cadre.inverse.x) + r, y2 = Math.max(cadre.pastille.y, cadre.inverse.y) + r
+  if (cadre.fixe) { x1 = y1 = Infinity; x2 = y2 = -Infinity }
   for (const q of cadre.coins) { x1 = Math.min(x1, q.x - d); y1 = Math.min(y1, q.y - d); x2 = Math.max(x2, q.x + d); y2 = Math.max(y2, q.y + d) }
   return { x: x1, y: y1, l: x2 - x1, h: y2 - y1 }
 }
@@ -811,7 +820,7 @@ export function zonePastille(cadre: Cadre, pointeur: TypePointeur, z: number, ma
 export function zonesDesPoignees(cadre: Cadre, pointeur: TypePointeur, z: number): Boite[] {
   const k = z > 0 ? z : 1, r = POIGNEE.prise[pointeur] / k
   const autour = (q: P): Boite => ({ x: q.x - r, y: q.y - r, l: 2 * r, h: 2 * r })
-  const zones = [zonePastille(cadre, pointeur, z, Math.max(0, POIGNEE.prise[pointeur] - POIGNEE.pastille[pointeur]))]
+  const zones = cadre.fixe ? [] : [zonePastille(cadre, pointeur, z, Math.max(0, POIGNEE.prise[pointeur] - POIGNEE.pastille[pointeur]))]
   for (const q of cadre.coins) zones.push(autour(q))
   if (cadre.cotes && cadre.coins.length === 4) {
     for (const i of cotesDe(cadre)) zones.push(autour(milieu(cadre.coins[i], cadre.coins[(i + 1) % 4])))

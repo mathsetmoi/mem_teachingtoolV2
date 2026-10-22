@@ -12,15 +12,28 @@
 // =============================================================
 import type { ModeleCalculatrice } from '../types'
 
-/** La taille du dessin, en pixels de l'image */
-export const LARGEUR = 360
+/** La hauteur du dessin, en pixels de l'image */
 export const HAUTEUR = 660
 /** La bande du haut, avec le nom : elle sert de poignée sur la page */
 export const BANDE = 44
-/** L'écran dans le dessin : celui de la NumWorks fait 320 × 240 pixels */
-export const ECRAN = { x: 20, y: BANDE + 16, l: 320, h: 240 }
-/** La zone où la vraie calculatrice se pose, à l’écran : tout sous la bande */
-export const VIVANTE = { x: 0, y: BANDE, l: LARGEUR, h: HAUTEUR - BANDE }
+/** La largeur du dessin : celle de la vraie calculatrice posée sous la bande
+ *  (HAUTEUR − BANDE de haut), à ses proportions (celles des émulateurs de
+ *  NumWorks : la graphique est plus élancée que la scientifique). Le cadre de
+ *  la sélection et ses coins tombent ainsi sur la calculatrice. Celles posées
+ *  avant (360 de large) gardent leur largeur : la vraie s'y centre. */
+export const LARGEURS: Record<ModeleCalculatrice, number> = { lycee: 314, college: 356 }
+/** L'ancienne largeur, la plus grande */
+export const LARGEUR = 360
+/** La copie de l'écran : celui de la NumWorks lycée fait 320 × 240 pixels */
+export const ECRAN = { l: 320, h: 240 }
+
+export function largeurDuModele(m: ModeleCalculatrice): number { return LARGEURS[m] }
+
+/** L'écran dans un dessin de cette largeur, sous la bande, en 4:3 */
+export function ecranDuDessin(largeur: number): { x: number; y: number; l: number; h: number } {
+  const l = largeur - 40
+  return { x: 20, y: BANDE + 16, l, h: l * 3 / 4 }
+}
 
 export function nomDuModele(m: ModeleCalculatrice): string {
   return m === 'lycee' ? 'NumWorks lycée' : 'NumWorks collège'
@@ -37,12 +50,14 @@ function arrondi(c: CanvasRenderingContext2D, x: number, y: number, l: number, h
 }
 
 /**
- * Peint la calculatrice dans c, de (0, 0) à (LARGEUR, HAUTEUR) : le boîtier,
+ * Peint la calculatrice dans c, de (0, 0) à (largeur, HAUTEUR) : le boîtier,
  * la bande du nom, l'écran (ecran : l'image copiée de la vraie calculatrice,
  * étirée à la taille de l'écran ; sans elle, l'écran d'accueil, son nom au
  * milieu) et les touches esquissées.
  */
-export function dessinerCalculatrice(c: CanvasRenderingContext2D, modele: ModeleCalculatrice, ecran: CanvasImageSource | null) {
+export function dessinerCalculatrice(c: CanvasRenderingContext2D, modele: ModeleCalculatrice, ecran: CanvasImageSource | null,
+  largeur = largeurDuModele(modele)) {
+  const LARGEUR = largeur
   c.save()
   // Le boîtier et sa bande
   arrondi(c, 0.5, 0.5, LARGEUR - 1, HAUTEUR - 1, 14)
@@ -57,7 +72,7 @@ export function dessinerCalculatrice(c: CanvasRenderingContext2D, modele: Modele
   c.textBaseline = 'middle'; c.textAlign = 'left'
   c.fillText(nomDuModele(modele), 16, BANDE / 2 + 1)
   // L'écran, dans son cadre sombre
-  const E = ECRAN
+  const E = ecranDuDessin(largeur)
   c.fillStyle = '#2b3240'; arrondi(c, E.x - 6, E.y - 6, E.l + 12, E.h + 12, 6); c.fill()
   c.fillStyle = '#ffffff'; c.fillRect(E.x, E.y, E.l, E.h)
   if (ecran) {
@@ -92,9 +107,10 @@ export function dessinerCalculatrice(c: CanvasRenderingContext2D, modele: Modele
 /** Le dessin de la calculatrice en image PNG (une adresse data:), prête à
  *  ranger dans le classeur. ecran : comme pour dessinerCalculatrice. Aussi
  *  pour la conversion d'un ancien tableau, qui n'a pas gardé l'écran. */
-export function imageDeCalculatrice(modele: ModeleCalculatrice, ecran: CanvasImageSource | null = null): string {
-  const cv = Object.assign(document.createElement('canvas'), { width: LARGEUR, height: HAUTEUR })
-  dessinerCalculatrice(cv.getContext('2d')!, modele, ecran)
+export function imageDeCalculatrice(modele: ModeleCalculatrice, ecran: CanvasImageSource | null = null,
+  largeur = largeurDuModele(modele)): string {
+  const cv = Object.assign(document.createElement('canvas'), { width: largeur, height: HAUTEUR })
+  dessinerCalculatrice(cv.getContext('2d')!, modele, ecran, largeur)
   return cv.toDataURL('image/png')
 }
 
