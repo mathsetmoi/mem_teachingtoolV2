@@ -29,6 +29,11 @@
 //   (un rectangle plein posé pour masquer une partie d'une image) devient
 //   un aplat opaque de sa couleur, une petite image étirée, qu'on efface
 //   pour découvrir ce qu'il cachait ; les coins d'un cache ne se voient pas ;
+// - le mode nuit : un tableau enregistré en mode nuit (ou une page qui
+//   l'était) donne des pages en mode nuit (voir nuit.ts), dès le début de
+//   la séance (l'ancien film ne dit pas quand il a basculé) ; son encre
+//   blanche y devient le Noir, que le mode nuit montre presque blanc (le
+//   blanc, lui, y deviendrait le noir du papier) ;
 // - le film : chaque geste devient une étape du film, à son heure, sur sa
 //   page. « Revoir la construction » et Publier le rejouent comme une
 //   séance écrite ici.
@@ -74,7 +79,7 @@ type Pas = Partial<Record<Famille, Objet[] | { '+'?: Objet[] }>> & { t?: unknown
 
 /** Une page d'un ancien tableau : ses états, dans l'ordre, chacun à son
  *  heure ; le dernier est la page telle qu'elle a été enregistrée */
-interface PageAncienne { etats: { t: number; etat: Etat }[] }
+interface PageAncienne { etats: { t: number; etat: Etat }[]; nuit?: boolean }
 
 export interface AncienTableau {
   /** Son nom (celui du tableau, sinon du fichier) */
@@ -140,6 +145,7 @@ export function lireAncienTableau(texte: string, nomFichier = ''): AncienTableau
     for (const [k, v] of Object.entries(data.assets as Record<string, unknown>)) if (typeof v === 'string' && v.startsWith('data:image/')) sources.set(k, v)
   }
   const fond = FONDS[nombre(data.currentBgIndex)] ?? 'blanc'
+  const nuitDuTableau = data.modeNuit === true
   let film = false
   const pages: PageAncienne[] = data.pages.map((p: unknown) => {
     const page = p && typeof p === 'object' ? p as Record<string, unknown> : {}
@@ -161,7 +167,9 @@ export function lireAncienTableau(texte: string, nomFichier = ''): AncienTableau
     // film, ou un film coupé), elle est le dernier état (0 : sans heure)
     const finale = etatDe(page)
     if (!cour || !memesObjets(cour, finale)) etats.push({ t: etats.length ? etats[etats.length - 1].t : 0, etat: finale })
-    return { etats }
+    // De nuit : la page le dit, sinon le tableau entier
+    const nuit = page.modeNuit === true || (page.modeNuit !== false && nuitDuTableau)
+    return nuit ? { etats, nuit } : { etats }
   })
   // Une page sans aucune heure (sans film) était là dès le début de la
   // séance : elle paraît avec le premier geste du tableau (sans film du
@@ -181,6 +189,20 @@ export function lireAncienTableau(texte: string, nomFichier = ''): AncienTableau
   }
   const heures = pages.flatMap(p => p.etats.map(e => e.t))
   return { nom, debut: Math.min(...heures), fin: Math.max(...heures), fond, pages, sources, film }
+}
+
+/** Le Noir de la palette : l'encre par défaut, et celle qui remplace le
+ *  blanc d'une page de nuit */
+const NOIR = '#1b2230'
+
+/** Une couleur presque blanche (#rgb, #rrggbb, white) */
+function presqueBlanc(c: string): boolean {
+  const s = c.trim().toLowerCase()
+  if (s === 'white') return true
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/.exec(s)
+  if (!m) return false
+  const h = m[1].length === 3 ? [...m[1]].map(x => x + x).join('') : m[1]
+  return [0, 2, 4].every(i => parseInt(h.slice(i, i + 2), 16) >= 235)
 }
 
 /** L'écart entre deux gestes d'un film sans heures */
@@ -388,6 +410,12 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
     return src
   }
 
+  // L'encre d'une page de nuit : le blanc devient le Noir (voir en tête)
+  const encre = (c: unknown, page: number, sinon = NOIR) => {
+    const x = typeof c === 'string' ? c : sinon
+    return a.pages[page].nuit && presqueBlanc(x) ? NOIR : x
+  }
+
   const forme = (f: Famille, o: Objet, page: number, etat: Etat): Forme | null => {
     const d = decalages[page]
     const id = idDe(o), z = nombre(o.z), auteur = tab.moi
@@ -400,7 +428,7 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
       const t: Trait = {
         id, type: 'trait', x: x0 + d.x, y: y0 + d.y, z, auteur,
         pts: pts.flatMap(q => [Math.round((q.x - x0) * 10) / 10, Math.round((q.y - y0) * 10) / 10, Math.round(q.p * 100) / 100]),
-        couleur: typeof (o.strokeColor ?? o.color) === 'string' ? (o.strokeColor ?? o.color) as string : '#1b2230',
+        couleur: encre(o.strokeColor ?? o.color, page),
         taille: nombre(o.width, 3) || 3,
         opacite: surligneur ? OPACITE_SURLIGNEUR : Math.min(1, Math.max(0.05, nombre(o.strokeOpacity ?? o.opacity, 1))),
         pression: !surligneur && pts.some(q => Math.abs(q.p - p0) > 0.02),
@@ -429,12 +457,12 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
       if (!latex || !Number.isFinite(o.x) || !Number.isFinite(o.y)) return null
       const fo: Formule = {
         id, type: 'formule', latex, z, auteur,
-        couleur: typeof (o.strokeColor ?? o.color) === 'string' ? (o.strokeColor ?? o.color) as string : '#1b2230',
+        couleur: encre(o.strokeColor ?? o.color, page),
         taille: tailleDuTexte(o), x: (o.x as number) + d.x, y: (o.y as number) + d.y,
       }
       return fo
     }
-    const couleur = typeof (o.strokeColor ?? o.color) === 'string' ? (o.strokeColor ?? o.color) as string : '#1b2230'
+    const couleur = encre(o.strokeColor ?? o.color, page)
     const taille = Math.min(nombre(o.width, 3) || 3, TAILLE_FIGURE_MAX)
     if (f === 'points') {
       if (!Number.isFinite(o.x) || !Number.isFinite(o.y) || coinsCaches[page].has(o.id)) return null
@@ -474,11 +502,12 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
       if (!l || !h) return null
       const fond = typeof o.fillColor === 'string' ? o.fillColor : couleur
       if (o.cache === true) {
+        // (un cache est une image : il reste de sa couleur, de nuit aussi)
         const im: ImageForme = { id, type: 'image', src: aplat(fond), l: 1, h: 1, m: [l, 0, 0, h], x: x0 + d.x, y: y0 + d.y, z, auteur }
         return im
       }
       const re: Polygone = { id, type: 'polygone', ferme: true, z, auteur, couleur, taille, x: x0 + d.x, y: y0 + d.y, pts: [0, 0, l, 0, l, h, 0, h] }
-      if (o.isFilled === true) re.fond = fond
+      if (o.isFilled === true) re.fond = encre(fond, page)
       if (o.dash && o.dash !== 'solid') re.tirets = true
       const lie = imageSous(o, etat, idDe)
       if (lie) re.lie = lie
@@ -546,6 +575,7 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
     const { seance, page } = tab.nouvelleSeance({ t: a.debut, fond: a.fond })
     const pages = [page]
     for (let k = 1; k < a.pages.length; k++) pages.push(tab.ajouterPage(a.fond, tab.ordre.length, { seance }))
+    a.pages.forEach((p, k) => { if (p.nuit) tab.changerNuit(pages[k], true) })
     for (const g of gestes) {
       const id = pages[g.page]
       const formes = tab.formesDe(id)

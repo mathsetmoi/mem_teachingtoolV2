@@ -3300,6 +3300,11 @@ d'un classeur, avec son film.
   d'une image) devient un aplat opaque de sa couleur (une image d'un pixel,
   étirée) : on l'efface pour découvrir ce qu'il cachait ; ses coins ne se
   voient pas.
+- **Le mode nuit** : un ancien tableau enregistré en mode nuit (ou une page
+  qui l'était) donne des pages en mode nuit, dès le début de la séance
+  (l'ancien film ne dit pas quand il a basculé). Son encre blanche y devient
+  le Noir, que le mode nuit montre presque blanc ; les autres couleurs ne
+  changent pas.
 - Le fond (le Seyès avec marge et la copie double perdent leur marge).
 - Ce qui est écrit est décalé pour commencer en haut à gauche de la page.
 
