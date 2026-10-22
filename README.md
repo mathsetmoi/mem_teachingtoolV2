@@ -1123,6 +1123,93 @@ suivant. Ce qui reste sur l'appareil : `mem-minuteur-son` (le son coupé ou
 non), `mem-tirage-<dossier>` (la liste et le tour en cours de chaque
 classe), `mem-conseils` (les conseils déjà vus).
 
+## La calculatrice NumWorks (lot 14)
+
+### Le mode d'emploi
+
+Le menu **Classe** a deux lignes de plus : **Calculatrice NumWorks lycée**
+(la graphique : calculs, graphes, Python) et **Calculatrice NumWorks
+collège** (la scientifique). Un clic pose la calculatrice au milieu de ce
+qu'on voit, sur les trois quarts de la hauteur, prise à l'outil Sélection
+comme une image importée : ses coins l'agrandissent. Chaque page peut avoir
+la sienne (ou plusieurs).
+
+- On tape au stylet de la tablette, à la souris, au doigt, ou au clavier
+  une fois qu'on a cliqué dedans ; un clic sur le tableau rend le clavier
+  au tableau (P, E, Ctrl+Z…).
+- **La bande du nom**, en haut, la déplace, sous n'importe quel outil (au
+  Stylo, elle ne laisse pas d'encre). **↺** la remet à zéro, **×** la
+  range (Ctrl+Z la rend).
+- Elle reste sur sa page : elle suit le défilement et le zoom, et l'on
+  retrouve son calcul en revenant sur la page (les quatre dernières restent
+  allumées). Sur une séance passée, dans la revue, les vignettes et le PDF,
+  c'est son dessin, avec l'écran tel que la classe l'a vu en dernier.
+- **Dans le replay**, l'élève la voit à sa place, et son écran change à
+  chaque touche, au rythme du cours. Il ne tape pas dedans.
+
+**L'installation, une fois par ordinateur.** NumWorks donne ses émulateurs
+gratuitement, en un fichier qui marche sans internet, mais en garde les
+droits : l'outil ne les contient pas (le dépôt est public). La première
+fois, la fenêtre « Installer la calculatrice NumWorks » s'ouvre (elle a un
+lien vers la page de téléchargement de chaque calculatrice) : on glisse le
+fichier téléchargé dans la case de sa calculatrice, ou « Choisir le
+fichier ». Un .zip est accepté aussi (sa page et les scripts à côté).
+« Remplacer… » prend une nouvelle version, « Retirer » l'enlève. Le fichier
+reste dans ce navigateur : la version hors ligne et la version en ligne
+ont chacune le leur, et il ne part jamais dans un classeur, un replay, une
+sauvegarde ni le Drive.
+
+### Comment c'est fait
+
+Une calculatrice est une **image** de la page (`ImageForme`) avec un champ
+facultatif, `calculatrice: 'lycee' | 'college'` : son dessin (un boîtier
+simple, son nom, l'écran, des touches esquissées : `src/calculatrice/dessin.ts`,
+360 × 660 pixels). Tout ce qui sait montrer une image la montre déjà : le
+replay, la revue, les vignettes, l'export en PDF, une version d'avant et le
+lecteur resté dans le cache d'un ancien navigateur. Le format des fichiers
+ne change pas. Elle ne se rogne pas ; copiée et collée, elle reste une
+calculatrice.
+
+À l’écran, sur une page qu'on écrit, `src/calculatrice/vivantes.ts` pose
+par-dessus chaque image la vraie calculatrice : un cadre `<iframe srcdoc>`
+avec la page de l'émulateur, dans une couche qui suit la vue comme celle
+des formules (`Rendu.apresFormules`), avec le déplacement et le
+changement de taille en cours ; sous la bande du nom, qui laisse l'appui au
+tableau (`App.bandeDeCalculatrice`, dans `bas`). Après chaque appui dans la
+calculatrice, son écran (son plus grand canevas) est copié 0,2 s, 0,8 s et
+2,5 s plus tard ; s'il a changé, le dessin est refait avec lui, rangé une
+fois dans la banque d'images (`calc-<modèle>-<empreinte>` : deux écrans
+pareils n'en font qu'un), et l'image de la calculatrice prend ce nouveau
+dessin par `Tableau.ecranDeCalculatrice` : une étape du film (origine
+`calculatrice`), jamais une étape d'annulation. Sans appui, rien ne
+s'écrit (le curseur qui clignote ne fait pas de séance le lendemain) ; une
+calculatrice qu'on vient de poser note seulement son écran d'accueil. Pour
+pouvoir copier l'écran, la page de l'émulateur reçoit en tête une ligne qui
+demande aux canevas WebGL de garder leur image (`preserveDrawingBuffer`).
+
+Les émulateurs sont dans une base à eux, `mem-teachingtool-calculatrices`
+(nouvelle : aucune autre base ni clé ne change), lus par
+`src/calculatrice/emulateurs.ts` ; la fenêtre est dans
+`src/calculatrice/fenetre.ts`. Un ancien tableau (.prof) qui avait une
+calculatrice peut la reprendre avec `imageDeCalculatrice(modele)` : sa place
+et sa taille, sur son écran d'accueil (l'écran n'était pas gardé).
+
+Limite : une fois qu'elle a noté un écran, Ctrl+Z ne la retire plus et ne
+défait plus ce qu'on lui a fait avant (la pose, un déplacement) : l'image a
+changé depuis, et ces Ctrl+Z-là ne font rien. Elle se range par ×, et un
+déplacement se refait à la main. Essais :
+`tests/calculatrice.test.ts` et `essais/navigateur/lot14/E1-calculatrice.mjs`,
+avec une page d'essai qui se fait passer pour l'émulateur
+(`emulateur-d-essai.html`), puisque celui de NumWorks n'est pas dans le dépôt ;
+et, quand on lui donne les deux fichiers de NumWorks (`NUMWORKS_LYCEE`,
+`NUMWORKS_COLLEGE`), `essais/navigateur/lot14/E2-vrais-emulateurs.mjs`
+(essayé avec la calculatrice graphique 26.3.0 et la scientifique 4.1.0).
+
+Dans son cadre, la page de l'émulateur ne garde que la calculatrice, aussi
+grande que le cadre le permet : ni son fond gris, ni ses boutons du dessous
+(plein écran, photo, partage). L'écran plus allongé de la calculatrice
+collège est copié sur la couleur de son coin, pour remplir l'écran du dessin.
+
 ## La recherche
 
 **Ctrl F** (⌘ F sur Mac), depuis le tableau, ou le champ **Rechercher** à

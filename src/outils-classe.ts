@@ -25,6 +25,7 @@
 // et testé (tests/outils-classe.test.ts).
 // =============================================================
 import { icone } from './icones'
+import type { ModeleCalculatrice } from './types'
 
 // ---------- Le calcul ----------
 
@@ -100,6 +101,8 @@ export interface HoteOutils {
   /** La classe du classeur ouvert (son dossier de classe), si elle est connue */
   classe(): Promise<{ id: string; nom: string } | null>
   message(texte: string): void
+  /** Pose une calculatrice NumWorks sur la page (voir calculatrice/) */
+  poserCalculatrice(m: ModeleCalculatrice): void
 }
 
 /** La mémoire de cet appareil : sans elle (navigation privée, réglage du
@@ -535,6 +538,8 @@ export class OutilsDeClasse {
       { id: 'laser', texte: 'Pointeur laser', aide: 'Montrer sans écrire', icone: 'laser', faire: () => h.basculerLaser(), coche: h.laser() },
       { id: 'minuteur', texte: 'Minuteur', aide: '1, 3, 5, 10 min ou au choix', icone: 'sablier', faire: () => this.minuteur.basculer(), coche: this.minuteur.ouvert },
       { id: 'tirage', texte: 'Tirage au sort', aide: 'Un élève de la classe', icone: 'de', faire: () => this.tirage.basculer(), coche: this.tirage.ouvert },
+      { id: 'calculatrice-lycee', texte: 'Calculatrice NumWorks lycée', aide: 'Calculs, graphes, Python, sur la page', icone: 'calculatrice', faire: () => h.poserCalculatrice('lycee'), coche: false },
+      { id: 'calculatrice-college', texte: 'Calculatrice NumWorks collège', aide: 'La calculatrice scientifique, sur la page', icone: 'calculatrice', faire: () => h.poserCalculatrice('college'), coche: false },
       { id: 'aide', texte: 'Aide et raccourcis', aide: 'Les gestes et les touches', icone: 'aide', faire: () => h.ouvrirAide(), coche: false, touche: '?' },
     ]
   }

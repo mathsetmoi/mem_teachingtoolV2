@@ -19,6 +19,10 @@ export const ORIGINE_LOCALE = 'locale'
 const ORIGINE_FILM = 'film'
 /** Les écritures de la piste des instruments : ni étape du film, ni annulation */
 const ORIGINE_PISTE = 'piste'
+/** Les écrans d'une calculatrice NumWorks (voir calculatrice/vivantes.ts) :
+ *  des étapes du film (le replay montre l'écran changer), jamais de
+ *  l'annulation (Ctrl+Z ne défait pas un calcul) */
+const ORIGINE_CALCULATRICE = 'calculatrice'
 /** Deux changements à moins de 400 ms l'un de l'autre font une seule étape
  *  d'annulation (le stylo qui se reprend, un nom qu'on retouche) */
 const CAPTURE = 400
@@ -1588,6 +1592,17 @@ export class Tableau {
     ids = liste
     this.annulationDe(page)
     this.doc.transact(() => { for (const id of ids) formes.delete(id) }, ORIGINE_LOCALE)
+  }
+
+  /** L'écran d'une calculatrice a changé (src : l'image de son nouveau
+   *  dessin, déjà rangée) : une étape du film sur sa page, hors de
+   *  l'annulation. Rien si la calculatrice n'y est plus, ou montre déjà cet
+   *  écran. */
+  ecranDeCalculatrice(page: string, id: string, src: string) {
+    const formes = this.formesDe(page)
+    const f = formes?.get(id)
+    if (!formes || f?.type !== 'image' || !f.calculatrice || f.src === src) return
+    this.surLaPage(page, () => this.doc.transact(() => formes.set(id, { ...f, src }), ORIGINE_CALCULATRICE))
   }
 
   /** La garde des séances passées permet-elle d'écrire sur cette page ?

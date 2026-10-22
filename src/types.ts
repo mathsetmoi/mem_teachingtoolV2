@@ -182,7 +182,15 @@ export interface ImageForme extends Base {
   l: number          // largeur, en pixels de l'image
   h: number
   m: [number, number, number, number]
+  /** Une calculatrice NumWorks (voir calculatrice/) : l'image est son dessin,
+   *  avec l'écran tel que la classe l'a vu en dernier ; à l’écran, la vraie
+   *  calculatrice se pose par-dessus. Facultatif : sans lui, une image ; une
+   *  version d'avant, le lecteur d'avant, la montrent comme une image. */
+  calculatrice?: ModeleCalculatrice
 }
+
+/** Les deux calculatrices NumWorks : la graphique (lycée), la scientifique (collège) */
+export type ModeleCalculatrice = 'lycee' | 'college'
 
 export type Forme = Trait | Segment | Formule | Polygone | Cercle | ImageForme
 export type Figure = Polygone | Cercle
