@@ -944,7 +944,11 @@ et parenthèses sont facultatifs ; les majuscules désignent les points.
 ## Automatismes
 
 Le bouton « Automatismes » (chronomètre) de la barre du haut prépare un
-**flash** : quelques questions courtes, posées **sur une page de la séance**.
+**flash** : quelques questions à **réponse courte**, posées **sur une page de
+la séance**. Il suit les modalités du brevet et de l'épreuve anticipée de
+mathématiques à partir de 2027 : plus de QCM, l'élève écrit sa réponse, et
+aucune question ne se réussit avec une chance sur deux (pas de « oui ou
+non », pas de dessin à choisir).
 Le flash est donc dans le replay, comme tout le reste. On peut aussi le
 demander au démarrage : la fenêtre « Bonjour ! » a une case « Commencer par
 des automatismes », **jamais cochée d'office** ; cochée, le réglage s'ouvre
@@ -962,37 +966,40 @@ page derrière reste vide. On y choisit :
   l'espace, transformations, angles, triangles, parallélogrammes et
   polygones, probabilités, proportionnalité — 42 automatismes, plus 10
   « hors liste officielle » (priorités, conversions, moyenne…) ;
-- combien de questions de chaque forme, avec − et + : par défaut **5
-  questions, 2 QCM, 2 questions directes** (une seule réponse) **et 1
-  question à trou** (à compléter). Elles viennent dans cet ordre. Un
-  automatisme qui n'a pas de forme « à trou » n'en donne pas ; si aucun des
-  thèmes choisis n'en a, une question directe la remplace, et un message le
-  dit ;
+- combien de questions de chaque sorte, avec − et + : par défaut **5
+  questions, 2 questions de cours** (une définition, une propriété, le
+  vocabulaire : « La médiatrice d'un segment est la droite… ») **puis 3
+  exercices d'application** (un calcul, une figure à lire). Parmi les
+  exercices se glisse parfois une question à trou (« Compléter : 42 = 6 ×
+  … »). Si aucun des thèmes choisis n'a de question de cours, un exercice
+  la remplace, et un message le dit ;
 - l'**affichage** : une question à la fois (30 s chacune par défaut), ou
   toutes d'un coup avec une minuterie (5 min par défaut).
 
 Le dernier réglage est retenu sur l'appareil, et pour chaque classeur
-(`mem-flash`, `mem-flash-<classeur>`). Les thèmes sont répartis le plus
+(`mem-flash`, `mem-flash-<classeur>`). Un réglage d'avant les réponses
+courtes garde ses niveaux, ses thèmes et son affichage ; ses nombres de
+questions repassent à 2 + 3. Les thèmes sont répartis le plus
 également possible, et deux questions ne se répètent pas.
 
 **« Lancer le flash »** tire les questions et les pose : sur la page où l'on
 est si elle est vide, sinon sur une nouvelle page juste après. Chaque question
-est faite d'objets ordinaires du tableau (une formule, une figure, les
-propositions du QCM), groupés : on écrit dessus au stylet, on les déplace.
+est faite d'objets ordinaires du tableau (des formules, une figure), groupés :
+on écrit dessus au stylet, on les déplace. Une question de cours porte la
+mention « Cours » après son numéro.
 Le titre « Automatismes — » et la date est en haut de la page. Le temps et le
 numéro de la question sont dans un bandeau, pas sur la page : Pause (ou
 Espace), Suivante (ou →), Correction (ou C), Nouveaux exemples, et × pour
 arrêter. Une question à la fois : la question en grand à droite, et quand son
 temps est passé elle va se ranger dans sa case à gauche. Si l'on va sur une
 autre page, le temps attend. **La correction** remet toutes les questions en
-grille et écrit chaque réponse en vert dessous (en QCM, la lettre et la bonne
-proposition). « Nouveaux exemples » pose un autre flash sur une nouvelle page
+grille et écrit chaque réponse en vert dessous (une réponse de cours un peu
+longue passe à la ligne). « Nouveaux exemples » pose un autre flash sur une nouvelle page
 juste après. Il n'y a ni bilan, ni suivi de la classe.
 
 Chaque automatisme est un générateur (`src/automatismes.ts`) : les valeurs sont
-tirées au hasard, et les trois réponses fausses d'un QCM sont de vraies erreurs
-d'élèves (calcul de gauche à droite, signe oublié, numérateurs et dénominateurs
-additionnés, virgule mal placée…). Écrits pour ce projet, ils ne reprennent le
+tirées au hasard. Les questions de cours (`COURS_5E`, deux à cinq par thème)
+sont écrites telles quelles. Écrits pour ce projet, ils ne reprennent le
 contenu d'aucun autre site.
 
 Les questions de géométrie et d'espace portent une **figure** tirée elle aussi
@@ -1000,10 +1007,12 @@ au hasard (`src/figures.ts`, en SVG) : droite graduée, repère, angles,
 bissectrice, triangles et quadrilatères codés (tournés au hasard : seul le
 codage permet de conclure), médiatrice, symétrique sur quadrillage,
 empilements de cubes en perspective cavalière, patrons, pavés, motifs,
-échelle de probabilité. En QCM, les propositions peuvent elles-mêmes être des
-dessins (« Quelle est la vue de dessus ? », « Lequel est un patron de
-cube ? »). Le patron se vérifie en faisant rouler un dé sur ses cases : sur
-les 35 assemblages de six carrés, on retrouve bien les 11 patrons du cube.
+échelle de probabilité. Les questions sur un dessin attendent un nombre ou un
+mot : combien de carrés sur la vue de dessus, la longueur réelle d'une arête
+d'un pavé en perspective, la face opposée à la face 1 sur un patron numéroté,
+les coordonnées du symétrique d'un point dans un repère. Le patron se plie en
+faisant rouler un dé sur ses cases : sur les 35 assemblages de six carrés, on
+retrouve bien les 11 patrons du cube, et chaque face a sa face opposée.
 
 ## Le catalogue
 

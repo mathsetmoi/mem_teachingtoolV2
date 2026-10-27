@@ -3,8 +3,8 @@
 // Des dessins SVG tirés au hasard comme les nombres : droite graduée,
 // repère, angles, triangles et quadrilatères codés, empilements de
 // cubes, patrons, perspective cavalière, symétrie, motifs. Chaque
-// fonction rend une chaîne <svg…>, qui s'affiche telle quelle dans une
-// question ou dans une proposition de QCM.
+// fonction rend une chaîne <svg…>, qui s'affiche telle quelle sous une
+// question.
 // =============================================================
 
 type P = { x: number; y: number }
@@ -219,23 +219,28 @@ export function mediatriceFig(perpendiculaire: boolean, auMilieu: boolean, tourn
 const choixDe = <T,>(t: T[]): T => t[Math.floor(Math.random() * t.length)]
 
 // ---------- Symétrie axiale ----------
-/** La figure rouge et une figure bleue ; l'erreur dit ce qui cloche (ou « aucune ») */
-export function symetrie(forme: P[], axe: 'vertical' | 'horizontal', erreur: 'aucune' | 'translation' | 'decalage' | 'rotation') {
-  const c = 22, n = 12
+/** Un repère quadrillé (de −5 à 5), la droite (d) en pointillés (x = k pour
+ *  un axe vertical, y = k pour un axe horizontal) et le point A */
+export function symetriePoint(px: number, py: number, axe: 'vertical' | 'horizontal', k: number) {
+  const n = 5, c = 24, O = { x: 20 + n * c, y: 20 + n * c }, T = 40 + 2 * n * c
   let r = ''
-  for (let k = 0; k <= n; k++) { r += ligne({ x: 10 + k * c, y: 10 }, { x: 10 + k * c, y: 10 + n * c }, 'stroke="#c9d6ea" stroke-width="1"'); r += ligne({ x: 10, y: 10 + k * c }, { x: 10 + n * c, y: 10 + k * c }, 'stroke="#c9d6ea" stroke-width="1"') }
-  // La forme est donnée pour un axe vertical (x = 6) ; on la transpose pour un axe horizontal
-  const T = (q: P) => axe === 'vertical' ? q : { x: q.y, y: q.x }
-  const X = (q: P) => { const t = T(q); return { x: 10 + t.x * c, y: 10 + t.y * c } }
-  let image = forme.map(q => ({ x: 12 - q.x, y: q.y }))
-  if (erreur === 'translation') image = forme.map(q => ({ x: q.x + 6, y: q.y }))
-  if (erreur === 'decalage') image = image.map(q => ({ x: q.x + 1, y: q.y }))
-  if (erreur === 'rotation') image = forme.map(q => ({ x: 12 - q.x, y: 12 - q.y }))
-  r += axe === 'vertical' ? ligne({ x: 10 + 6 * c, y: 2 }, { x: 10 + 6 * c, y: 18 + n * c }, 'stroke-width="2.4" stroke-dasharray="8 5"')
-    : ligne({ x: 2, y: 10 + 6 * c }, { x: 18 + n * c, y: 10 + 6 * c }, 'stroke-width="2.4" stroke-dasharray="8 5"')
-  r += poly(forme.map(X), 'stroke="#d0342c" fill="rgba(208,52,44,.15)" stroke-width="2.6"') + poly(image.map(X), 'stroke="#1f5fbf" fill="rgba(31,95,191,.15)" stroke-width="2.6"')
-  r += axe === 'vertical' ? nom({ x: 34 + 6 * c, y: 24 }, '(d)', 20) : nom({ x: n * c - 6, y: 6 * c - 6 }, '(d)', 20)
-  return svg(20 + n * c, 20 + n * c, r, 'fig fig-carree')
+  for (let i = -n; i <= n; i++) {
+    r += ligne({ x: O.x + i * c, y: 20 }, { x: O.x + i * c, y: T - 20 }, 'stroke="#9bb6dc" stroke-width="1"')
+    r += ligne({ x: 20, y: O.y + i * c }, { x: T - 20, y: O.y + i * c }, 'stroke="#9bb6dc" stroke-width="1"')
+  }
+  r += ligne({ x: 14, y: O.y }, { x: T - 10, y: O.y }) + ligne({ x: O.x, y: T - 14 }, { x: O.x, y: 10 })
+  r += `<path d="M${T - 18} ${O.y - 6}L${T - 10} ${O.y}L${T - 18} ${O.y + 6}M${O.x - 6} 18L${O.x} 10L${O.x + 6} 18"/>`
+  r += texte({ x: O.x - 10, y: O.y + 14 }, '0', 'font-size="14"') + texte({ x: O.x + c, y: O.y + 14 }, '1', 'font-size="14"') + texte({ x: O.x - 12, y: O.y - c }, '1', 'font-size="14"')
+  if (axe === 'vertical') {
+    const x = O.x + k * c
+    r += ligne({ x, y: 14 }, { x, y: T - 14 }, 'stroke="#1f5fbf" stroke-width="2.6" stroke-dasharray="8 5"') + nom({ x: x + 20, y: 30 }, '(d)', 19)
+  } else {
+    const y = O.y - k * c
+    r += ligne({ x: 14, y }, { x: T - 14, y }, 'stroke="#1f5fbf" stroke-width="2.6" stroke-dasharray="8 5"') + nom({ x: T - 34, y: y - 14 }, '(d)', 19)
+  }
+  const A = { x: O.x + px * c, y: O.y - py * c }
+  r += `<circle cx="${A.x}" cy="${A.y}" r="5" fill="#d0342c" stroke="none"/>` + nom({ x: A.x + 12, y: A.y - 12 }, 'A', 19)
+  return svg(T, T, r)
 }
 
 // ---------- Empilements de cubes ----------
@@ -259,18 +264,12 @@ export function empilement(h: number[][]) {
   return cadre(pts, r, 6)
 }
 
-/** Une vue (de dessus) : les cases remplies d'une grille */
-export function vueGrille(cases: boolean[][]) {
-  const c = 26, n = cases.length, m = cases[0].length
-  let r = ''
-  cases.forEach((l, i) => l.forEach((v, j) => { if (v) r += `<rect x="${4 + j * c}" y="${4 + i * c}" width="${c}" height="${c}" fill="#b9c9e4" stroke-width="1.6"/>` }))
-  return svg(8 + m * c, 8 + n * c, r, 'fig fig-petite')
-}
-
 // ---------- Patrons de cube ----------
 export type Cases = [number, number][]
-/** Le patron se replie-t-il en cube ? On fait rouler un dé sur ses cases. */
-export function estPatronDeCube(cases: Cases): boolean {
+/** On replie le patron en faisant rouler un dé sur ses cases : la face
+ *  du cube (B, H, N, S, E, O) qui revient à chaque case, ou null si deux
+ *  cases tombent sur la même face (ce n'est pas un patron de cube) */
+export function plierPatron(cases: Cases): Map<string, string> | null {
   const cle = (c: [number, number]) => c.join(',')
   const ens = new Set(cases.map(cle))
   const depart = { bas: 'B', haut: 'H', n: 'N', s: 'S', e: 'E', o: 'O' }
@@ -286,7 +285,17 @@ export function estPatronDeCube(cases: Cases): boolean {
     ]
     for (const [c, nd] of voisins) if (ens.has(cle(c)) && !vues.has(cle(c))) { vues.set(cle(c), nd.bas); pile.push([c, nd]) }
   }
-  return vues.size === 6 && new Set(vues.values()).size === 6
+  return vues.size === 6 && new Set(vues.values()).size === 6 ? vues : null
+}
+/** Le patron se replie-t-il en cube ? */
+export const estPatronDeCube = (cases: Cases): boolean => plierPatron(cases) !== null
+/** Dans un patron de cube, la case opposée à la case i (son indice) */
+export function caseOpposee(cases: Cases, i: number): number {
+  const faces = plierPatron(cases)
+  if (!faces) return -1
+  const OPPOSEE: Record<string, string> = { B: 'H', H: 'B', N: 'S', S: 'N', E: 'O', O: 'E' }
+  const f = OPPOSEE[faces.get(cases[i].join(','))!]
+  return cases.findIndex(c => faces.get(c.join(',')) === f)
 }
 /** Six cases d'un seul tenant, tirées au hasard */
 export function hexomino(): Cases {
@@ -300,27 +309,34 @@ export function hexomino(): Cases {
   const mx = Math.min(...r.map(c => c[0])), my = Math.min(...r.map(c => c[1]))
   return r.map(([x, y]) => [x - mx, y - my] as [number, number])
 }
-export function patron(cases: Cases) {
-  const c = 24, L = Math.max(...cases.map(q => q[0])) + 1, H = Math.max(...cases.map(q => q[1])) + 1
-  return svg(8 + L * c, 8 + H * c, cases.map(([x, y]) => `<rect x="${4 + x * c}" y="${4 + y * c}" width="${c}" height="${c}" fill="#e8eef8" stroke-width="1.6"/>`).join(''), 'fig fig-petite')
+/** Un patron ; numeros : le numéro écrit dans chaque case (dans l'ordre des cases) */
+export function patron(cases: Cases, numeros?: number[]) {
+  const c = numeros ? 34 : 24, L = Math.max(...cases.map(q => q[0])) + 1, H = Math.max(...cases.map(q => q[1])) + 1
+  return svg(8 + L * c, 8 + H * c, cases.map(([x, y], i) => `<rect x="${4 + x * c}" y="${4 + y * c}" width="${c}" height="${c}" fill="#e8eef8" stroke-width="1.6"/>`
+    + (numeros ? texte({ x: 4 + x * c + c / 2, y: 4 + y * c + c / 2 + 1 }, String(numeros[i]), 'font-size="18"') : '')).join(''), numeros ? 'fig' : 'fig fig-petite')
 }
 
 // ---------- Perspective cavalière ----------
-/** Un pavé l × h × p en perspective cavalière ; `faute` : ce qui rend le dessin faux */
-export type Faute = 'aucune' | 'caches-pleins' | 'fuyantes' | 'face'
-export function cavaliere(l: number, h: number, p: number, faute: Faute = 'aucune') {
-  const k = 0.5, s = 26
+/** Un pavé droit ABCDEFGH en perspective cavalière (face avant ABCD, A en
+ *  bas à gauche ; EFGH derrière), avec la longueur de [AB], [BC] et [BF]
+ *  écrite à côté (en cm) */
+export function paveCote(l: number, h: number, p: number) {
+  const k = 0.5, s = 30
   const d = { x: p * k * s * Math.SQRT1_2, y: -p * k * s * Math.SQRT1_2 }
-  // Face avant ABCD (A en bas à gauche), face arrière EFGH = ABCD décalée selon les fuyantes
-  const pen = faute === 'face' ? 0.35 * h * s : 0
-  const A = { x: 0, y: 0 }, B = { x: l * s, y: 0 }, C = { x: l * s + pen, y: -h * s }, D = { x: pen, y: -h * s }
+  const A = { x: 0, y: 0 }, B = { x: l * s, y: 0 }, C = { x: l * s, y: -h * s }, D = { x: 0, y: -h * s }
   const plus = (q: P, v: P) => ({ x: q.x + v.x, y: q.y + v.y })
-  const dG = faute === 'fuyantes' ? { x: d.x * 1.6, y: d.y * 0.45 } : d
-  const E = plus(A, d), F = plus(B, d), G = plus(C, dG), H = plus(D, d)
-  const cache = faute === 'caches-pleins' ? '' : 'stroke-dasharray="6 5"'
-  const r = poly([A, B, C, D]) + ligne(B, F) + ligne(C, G) + ligne(D, H) + ligne(F, G) + ligne(G, H)
+  const E = plus(A, d), F = plus(B, d), G = plus(C, d), H = plus(D, d)
+  const cache = 'stroke-dasharray="6 5"'
+  let r = poly([A, B, C, D]) + ligne(B, F) + ligne(C, G) + ligne(D, H) + ligne(F, G) + ligne(G, H)
     + ligne(A, E, cache) + ligne(E, F, cache) + ligne(E, H, cache)
-  return cadre([A, B, C, D, E, F, G, H], r, 8, 'fig fig-petite')
+  const sommets: [P, string][] = [[A, 'A'], [B, 'B'], [C, 'C'], [D, 'D'], [E, 'E'], [F, 'F'], [G, 'G'], [H, 'H']]
+  const c = centre(sommets.map(([q]) => q))
+  r += sommets.map(([q, t]) => nomDehors(q, c, t)).join('')
+  const cm = (v: number) => `${v} cm`
+  r += texte({ x: l * s / 2, y: 22 }, cm(l), 'font-size="16"')
+  r += texte({ x: -30, y: -h * s / 2 }, cm(h), 'font-size="16"')
+  r += `<text x="${f2(B.x + d.x / 2 + 14)}" y="${f2(B.y + d.y / 2 + 8)}" fill="currentColor" stroke="none" dominant-baseline="middle" font-size="16">${cm(p)}</text>`
+  return cadre([A, B, C, D, E, F, G, H, { x: B.x + d.x / 2 + 70, y: 0 }, { x: -62, y: 0 }], r, 30)
 }
 
 // ---------- Motifs ----------

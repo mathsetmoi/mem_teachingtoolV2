@@ -6,8 +6,8 @@
 // où elles sont venues, avec ce que le professeur écrit par-dessus.
 //
 // 1. Le réglage (une fenêtre) : les niveaux, les thèmes, le nombre de
-//    questions de chaque forme (par défaut 2 QCM, 2 questions directes et
-//    1 question à trou), l'affichage. Rien n'est tiré pendant le réglage,
+//    questions de cours et d'exercices d'application (par défaut 2 et 3,
+//    toutes à réponse courte), l'affichage. Rien n'est tiré pendant le réglage,
 //    et rien n'en est montré : les élèves voient la fenêtre.
 // 2. Le flash : sur la page du jour si elle est encore vide, sinon sur
 //    une page neuve juste après. Une question à la fois, en grand au
@@ -20,7 +20,7 @@
 // =============================================================
 import katex from 'katex'
 import type { App } from './app'
-import type { Automatisme, Composition, QuestionFlash } from './automatismes'
+import type { Automatisme, Composition, QuestionCours, QuestionFlash } from './automatismes'
 import { COMPOSITION_PAR_DEFAUT, NIVEAUX, themesDe, tirerFlash } from './automatismes'
 import type { Formule, ImageForme } from './types'
 import { uid } from './types'
@@ -29,7 +29,6 @@ import { toucheQuitteLaPage } from './navigateur'
 
 const html = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
 const mmss = (s: number) => { const t = Math.max(0, Math.ceil(s - 1e-6)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}` }
-const LETTRES = ['A', 'B', 'C', 'D']
 /** Le vert de la correction : celui du stylo */
 const VERT = '#1e8a4c'
 const MAX_PAR_FORME = 10
@@ -63,20 +62,26 @@ export function lireReglages(t: string | null): ReglagesFlash {
   if (Array.isArray(o.niveaux)) r.niveaux = o.niveaux.filter(n => typeof n === 'string' && NIVEAUX.some(x => x.id === n && x.automatismes.length))
   if (!r.niveaux.length) r.niveaux = [...REGLAGES_PAR_DEFAUT.niveaux]
   if (Array.isArray(o.themes)) r.themes = o.themes.filter(x => typeof x === 'string')
-  r.qcm = entier(o.qcm, 0, MAX_PAR_FORME, r.qcm)
-  r.directe = entier(o.directe, 0, MAX_PAR_FORME, r.directe)
-  r.trou = entier(o.trou, 0, MAX_PAR_FORME, r.trou)
-  if (r.qcm + r.directe + r.trou === 0) Object.assign(r, COMPOSITION_PAR_DEFAUT)
+  // Un réglage d'avant les réponses courtes (QCM, directes, à trou) :
+  // ses nombres ne valent plus, on reprend 2 + 3
+  r.cours = entier(o.cours, 0, MAX_PAR_FORME, r.cours)
+  r.application = entier(o.application, 0, MAX_PAR_FORME, r.application)
+  if (r.cours + r.application === 0) Object.assign(r, COMPOSITION_PAR_DEFAUT)
   if (o.affichage === 'toutes' || o.affichage === 'une') r.affichage = o.affichage
   r.parQuestion = entier(o.parQuestion, 5, 300, r.parQuestion)
   r.minutes = entier(o.minutes, 1, 60, r.minutes)
   return r
 }
 
-/** Les automatismes des thèmes cochés, dans les niveaux cochés */
+/** Les automatismes (exercices d'application) des thèmes cochés, dans les niveaux cochés */
 export function automatismesChoisis(r: ReglagesFlash): Automatisme[] {
   return NIVEAUX.filter(n => r.niveaux.includes(n.id))
     .flatMap(n => n.automatismes.filter(a => r.themes.includes(`${n.id}/${a.theme}`)))
+}
+/** Les questions de cours des thèmes cochés, dans les niveaux cochés */
+export function coursChoisis(r: ReglagesFlash): QuestionCours[] {
+  return NIVEAUX.filter(n => r.niveaux.includes(n.id))
+    .flatMap(n => n.cours.filter(c => r.themes.includes(`${n.id}/${c.theme}`)))
 }
 
 /** Un texte avec des $…$ en LaTeX : le texte dans \text{}, les maths telles quelles */
@@ -86,7 +91,8 @@ function texteEnLatex(t: string): string {
 /** Une réponse en LaTeX : un texte (§…), ou déjà du LaTeX (entre
  *  accolades : « −3 » après une lettre garde le signe d'un nombre) */
 const reponseEnLatex = (r: string) => r.startsWith('§') ? texteEnLatex(r.slice(1)) : `{${r}}`
-const estDessin = (r: string) => r.startsWith('<svg')
+/** Le numéro d'une question dans sa case ; « Cours » à côté pour une question de cours */
+const numeroEnLatex = (it: QuestionFlash, k: number) => `\\textbf{${k}.}` + (it.forme === 'cours' ? '\\;\\;{\\small\\textsf{Cours}}' : '')
 
 /** La taille d'un dessin SVG (sa viewBox) */
 function tailleSvg(svg: string): { l: number; h: number } {
@@ -200,7 +206,8 @@ export class Flash {
         </div>
         <div>
           <fieldset><legend>Questions</legend>
-            ${forme('qcm', 'QCM')}${forme('directe', 'Questions directes')}${forme('trou', 'Questions à trou')}
+            ${forme('cours', 'Questions de cours')}${forme('application', 'Exercices d\'application')}
+            <p class="note-flash">Toutes à réponse courte.</p>
             <p class="total-flash"></p>
           </fieldset>
           <fieldset><legend>Affichage</legend>
@@ -216,7 +223,7 @@ export class Flash {
         <button type="button" class="principal lancer">Lancer le flash</button>
       </div>`
     const q = <T extends HTMLElement>(s: string) => d.querySelector(s) as T
-    const compo: Composition = { qcm: R.qcm, directe: R.directe, trou: R.trou }
+    const compo: Composition = { cours: R.cours, application: R.application }
     const maj = () => {
       const choisis = new Set([...d.querySelectorAll<HTMLButtonElement>('.niveau-flash[aria-pressed=true]')].map(b => b.dataset.niveau!))
       d.querySelectorAll<HTMLElement>('.themes-niveau').forEach(e => { e.hidden = !choisis.has(e.dataset.niveau!) })
@@ -227,7 +234,7 @@ export class Flash {
         ;(e.querySelector('.moins') as HTMLButtonElement).disabled = compo[k] <= 0
         ;(e.querySelector('.plus') as HTMLButtonElement).disabled = compo[k] >= MAX_PAR_FORME
       })
-      const n = compo.qcm + compo.directe + compo.trou
+      const n = compo.cours + compo.application
       q('.total-flash').textContent = n ? `${n} question${n > 1 ? 's' : ''}` : 'Aucune question'
       const lancer = q<HTMLButtonElement>('.lancer')
       lancer.disabled = !n || !themes || !choisis.size
@@ -283,17 +290,14 @@ export class Flash {
     if (app.enLecture) { this.message('Cette séance est passée : elle est en lecture seule.'); return }
     const autos = automatismesChoisis(r)
     if (!autos.length) { this.message('Cochez au moins un thème.'); return }
-    const { questions, trousRemplaces } = tirerFlash(autos, r)
+    const { questions, coursRemplaces } = tirerFlash(autos, coursChoisis(r), r)
     if (!questions.length) return
     if (app.enSeancePassee || (app.tableau.formesDe(app.page)?.size ?? 0) > 0) app.nouvellePage()
     const page = app.page
     // Les dessins, rangés une fois dans le classeur (des images)
     const images = new Map<string, { src: string; l: number; h: number }>()
     const dessins = new Set<string>()
-    for (const it of questions) {
-      if (it.q.figure) dessins.add(it.q.figure)
-      for (const o of it.options) if (estDessin(o)) dessins.add(o)
-    }
+    for (const it of questions) if (it.q.figure) dessins.add(it.q.figure)
     for (const svg of dessins) {
       const img = await rasteriser(svg, app.couleur).catch(() => null)
       if (img) images.set(svg, { src: app.rangerImage(img.donnees), l: img.l, h: img.h })
@@ -327,9 +331,9 @@ export class Flash {
       }
       this.majBandeau()
     }, 200)
-    if (trousRemplaces) this.message(trousRemplaces > 1
-      ? `Les thèmes choisis n'ont pas de question à trou : ${trousRemplaces} questions directes à la place.`
-      : 'Les thèmes choisis n\'ont pas de question à trou : une question directe à la place.')
+    if (coursRemplaces) this.message(coursRemplaces > 1
+      ? `Les thèmes choisis n'ont pas de question de cours : ${coursRemplaces} exercices d'application à la place.`
+      : 'Les thèmes choisis n\'ont pas de question de cours : un exercice d\'application à la place.')
   }
 
   /** Le titre de la page, et la place de chaque case (et de la question en
@@ -370,7 +374,7 @@ export class Flash {
       // La hauteur de chaque case ; deux colonnes : la coupure (dans
       // l'ordre) qui rend la plus haute la moins haute possible
       const h = f.questions.map((it, k) => this.bloc(f, it, colonnes[0].l, T, k + 1, false).h)
-      const pas = h.map(v => v + (grille ? T * 1.5 : 0) + T * 1.1)
+      const pas = h.map((v, k) => v + (grille ? this.hauteurReponse(f.questions[k], k + 1, colonnes[0].l, T) + T * 0.3 : 0) + T * 1.1)
       let coupe = n
       if (colonnes.length === 2) {
         let mieux = Infinity
@@ -395,15 +399,13 @@ export class Flash {
   }
 
   /** Une question, mise en page dans la largeur l à la taille T : son
-   *  numéro (dans une case), son énoncé coupé en lignes, sa figure, ses
-   *  propositions (QCM) */
+   *  numéro (dans une case), son énoncé coupé en lignes, sa figure */
   private bloc(f: EnCours, it: QuestionFlash, l: number, T: number, numero: number | null, grand: boolean): Bloc {
     const morceaux: Morceau[] = []
     let retrait = 0, y = 0
     if (numero !== null) {
-      const n = `\\textbf{${numero}.}`
-      morceaux.push({ genre: 'formule', latex: n, dx: 0, dy: 0, taille: T })
-      retrait = this.mesurer(n, T).l + T * 0.45
+      morceaux.push({ genre: 'formule', latex: numeroEnLatex(it, numero), dx: 0, dy: 0, taille: T })
+      retrait = this.retrait(it, numero, T)
     }
     const W = Math.max(T * 6, l - retrait)
     for (const ligne of this.couper(it.q.enonce, W, T)) {
@@ -419,53 +421,25 @@ export class Flash {
       morceaux.push({ genre: 'dessin', svg: it.q.figure, dx: retrait, dy: y, l: s.l * k, h: s.h * k })
       y += s.h * k + T * 0.3
     }
-    if (it.forme === 'qcm') y = this.propositions(it, morceaux, retrait, y + T * 0.3, W, T, grand)
     return { morceaux, h: y }
   }
 
-  /** Les propositions d'un QCM, en une rangée si elles tiennent, sinon en
-   *  deux colonnes, sinon une par ligne ; rend le bas */
-  private propositions(it: QuestionFlash, morceaux: Morceau[], x: number, y: number, W: number, T: number, grand: boolean): number {
-    const n = it.options.length, ecart = T * 1.4
-    const lettres = it.options.map((_, j) => `\\textbf{${LETTRES[j]}}`)
-    if (it.options.some(estDessin)) {
-      // Des dessins : sur une rangée, ou deux colonnes s'ils seraient trop petits
-      const cols = W / n >= T * 6 ? n : 2, cellule = (W - ecart * (cols - 1)) / cols
-      const lettreL = this.mesurer(lettres[0], T).l + T * 0.4
-      let hRangee = 0
-      it.options.forEach((o, j) => {
-        const c = j % cols, rang = Math.floor(j / cols)
-        if (c === 0 && rang > 0) { y += hRangee + T * 0.5; hRangee = 0 }
-        const cx = x + c * (cellule + ecart)
-        morceaux.push({ genre: 'formule', latex: lettres[j], dx: cx, dy: y, taille: T })
-        if (estDessin(o)) {
-          const s = tailleSvg(o), k = Math.min((grand ? T * 4 : T * 3.2) / s.h, (cellule - lettreL) / s.l)
-          morceaux.push({ genre: 'dessin', svg: o, dx: cx + lettreL, dy: y, l: s.l * k, h: s.h * k })
-          hRangee = Math.max(hRangee, s.h * k, T * 1.2)
-        } else {
-          const latex = `${lettres[j]}\\;\\; ${reponseEnLatex(o)}`
-          morceaux.pop()
-          morceaux.push({ genre: 'formule', latex, dx: cx, dy: y, taille: T })
-          hRangee = Math.max(hRangee, this.mesurer(latex, T).h)
-        }
-      })
-      return y + hRangee
-    }
-    const latex = it.options.map((o, j) => `${lettres[j]}\\;\\; ${reponseEnLatex(o)}`)
-    const tailles = latex.map(t => this.mesurer(t, T))
-    const hLigne = Math.max(T * 1.25, ...tailles.map(m => m.h))
-    if (tailles.reduce((s, m) => s + m.l, 0) + ecart * (n - 1) <= W) {
-      let cx = x
-      latex.forEach((t, j) => { morceaux.push({ genre: 'formule', latex: t, dx: cx, dy: y, taille: T }); cx += tailles[j].l + ecart })
-      return y + hLigne
-    }
-    const moitie = (W - ecart) / 2
-    if (tailles.every(m => m.l <= moitie)) {
-      latex.forEach((t, j) => morceaux.push({ genre: 'formule', latex: t, dx: x + (j % 2) * (moitie + ecart), dy: y + Math.floor(j / 2) * (hLigne + T * 0.3), taille: T }))
-      return y + Math.ceil(n / 2) * (hLigne + T * 0.3) - T * 0.3
-    }
-    latex.forEach((t, j) => { morceaux.push({ genre: 'formule', latex: t, dx: x, dy: y, taille: T }); y += tailles[j].h + T * 0.3 })
-    return y - T * 0.3
+  /** Où commence le texte d'une question, après son numéro */
+  private retrait(it: QuestionFlash, numero: number, T: number): number {
+    return this.mesurer(numeroEnLatex(it, numero), T).l + T * 0.45
+  }
+
+  /** La réponse (en LaTeX), en lignes qui tiennent dans la case sous
+   *  l'énoncé : un texte se coupe (une réponse de cours peut être une
+   *  phrase), une formule reste sur une ligne */
+  private lignesReponse(it: QuestionFlash, numero: number, l: number, T: number): string[] {
+    const r = it.q.reponse
+    if (!r.startsWith('§')) return [`\\text{Réponse : }${reponseEnLatex(r)}`]
+    const W = Math.max(T * 6, l - this.retrait(it, numero, T))
+    return this.couper('Réponse : ' + r.slice(1), W, T).map(texteEnLatex)
+  }
+  private hauteurReponse(it: QuestionFlash, numero: number, l: number, T: number): number {
+    return this.lignesReponse(it, numero, l, T).reduce((s, t) => s + Math.max(this.mesurer(t, T).h, T * 1.2), 0)
   }
 
   /** L'énoncé coupé en lignes qui tiennent dans la largeur W (les maths,
@@ -540,7 +514,7 @@ export class Flash {
       b = this.bloc(f, f.questions[k], g.l, T, null, true)
       if (b.h <= g.h) break
     }
-    const titre = `\\text{Question ${k + 1}}`
+    const titre = `\\text{Question ${k + 1}${f.questions[k].forme === 'cours' ? ' · Cours' : ''}}`
     const groupe = uid()
     f.enGrand = [this.poserFormule(f.page, titre, g.x, g.y, 18, '#6b7686', groupe), ...this.poserBloc(f, b!, g.x, g.y + 34, groupe)]
   }
@@ -586,13 +560,12 @@ export class Flash {
     }
     f.questions.forEach((it, k) => {
       const c = f.cases[k]
-      const juste = it.forme === 'qcm' ? it.options.indexOf(it.q.reponse) : -1
-      const rep = juste >= 0
-        ? `\\textbf{${LETTRES[juste]}}${estDessin(it.q.reponse) ? '' : `\\;\\; ${reponseEnLatex(it.q.reponse)}`}`
-        : estDessin(it.q.reponse) ? '' : reponseEnLatex(it.q.reponse)
-      if (!rep) return
-      const retrait = this.mesurer(`\\textbf{${k + 1}.}`, c.taille).l + c.taille * 0.45
-      this.poserFormule(f.page, `\\text{Réponse : }${rep}`, c.x + retrait, c.y + c.reponseDy, c.taille, VERT, c.groupe)
+      const T = c.taille, retrait = this.retrait(it, k + 1, T)
+      let y = c.y + c.reponseDy
+      for (const t of this.lignesReponse(it, k + 1, c.l, T)) {
+        this.poserFormule(f.page, t, c.x + retrait, y, T, VERT, c.groupe)
+        y += Math.max(this.mesurer(t, T).h, T * 1.2)
+      }
     })
     f.corrige = true
     this.majBandeau()

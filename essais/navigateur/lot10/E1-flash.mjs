@@ -2,7 +2,8 @@
 // Le serveur de développement (port 5173).
 // A. Le bouton « Automatismes » ouvre le réglage ; rien n'est posé sur la
 //    page pendant le réglage, aucune question n'est montrée ; « Lancer » est
-//    grisé sans thème ; par défaut 2 QCM, 2 directes, 1 à trou (5 questions) ;
+//    grisé sans thème ; par défaut 2 questions de cours et 3 exercices
+//    d'application (5 questions) ;
 // B. lancé, une question à la fois : la première en grand, → passe à la
 //    suivante, Espace met en pause ; C corrige : les réponses en vert ; après
 //    la correction, C redevient le raccourci de l'outil ;
