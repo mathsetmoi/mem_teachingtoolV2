@@ -1,12 +1,19 @@
 // =============================================================
 // LES AUTOMATISMES (5e)
-// Rangés comme la liste officielle des automatismes de 5e. Chaque
-// automatisme est un GÉNÉRATEUR : il tire des valeurs au hasard et rend
-// une question, sa réponse, et des réponses fausses qui sont de vraies
-// erreurs d'élèves (pour le QCM). Beaucoup savent aussi poser leur
-// question « à trou » (une égalité à compléter). Un flash (voir
-// src/flash.ts) tire ses questions dans les thèmes choisis : par défaut
-// 2 QCM, 2 questions directes et 1 question à trou (tirerFlash).
+// Rangés comme la liste officielle des automatismes de 5e. Toutes les
+// questions sont à RÉPONSE COURTE, comme au brevet et à l'épreuve
+// anticipée à partir de 2027 : l'élève écrit sa réponse, on ne lui
+// montre jamais de propositions, et aucune question ne se réussit avec
+// une chance sur deux (pas de « oui ou non »).
+// - Les exercices d'application : chaque automatisme est un GÉNÉRATEUR,
+//   qui tire des valeurs au hasard et rend une question et sa réponse.
+//   Beaucoup savent aussi poser leur question « à trou » (une égalité à
+//   compléter), qui se mélange aux autres.
+// - Les questions de cours (COURS_5E) : une définition, une propriété,
+//   le vocabulaire, rangés dans les mêmes thèmes.
+// Un flash (voir src/flash.ts) tire ses questions dans les thèmes
+// choisis : par défaut 2 questions de cours, puis 3 exercices
+// d'application (tirerFlash).
 //
 // Les réponses sont du LaTeX (KaTeX), un texte (préfixe §, avec $…$
 // pour les maths) ou un dessin SVG. Une question peut porter une
@@ -17,8 +24,10 @@ import * as F from './figures'
 export interface Question {
   enonce: string            // texte, avec $…$ pour les maths
   figure?: string           // un dessin SVG sous l'énoncé
-  reponse: string           // LaTeX, §texte ou <svg…>
-  faux: string[]            // une à trois réponses fausses, même format
+  reponse: string           // LaTeX ou §texte
+  /** Des erreurs d'élèves fréquentes (même format). Elles ne sont plus
+   *  montrées depuis la fin des QCM ; facultatives. */
+  faux?: string[]
 }
 
 export interface Automatisme {
@@ -30,9 +39,6 @@ export interface Automatisme {
    *  compléter, avec … à la place de la réponse. Absent : l'automatisme ne
    *  s'y prête pas. */
   trou?: () => Question
-  /** Seulement en QCM : la réponse est un dessin, qu'on ne peut pas
-   *  demander d'écrire (vue de dessus, patron, perspective) */
-  qcmSeulement?: boolean
 }
 
 // ---------- Outils ----------
@@ -75,7 +81,6 @@ function fausses(bonne: string, candidates: string[], secours?: () => string): s
 const autour = (v: number, pas = 1) => () => nb(v + choix([-3, -2, -1, 1, 2, 3]) * pas)
 /** Une réponse parmi des mots : la bonne et trois autres du même lot */
 const parmi = (bonne: string, lot: string[]) => ({ reponse: mot(bonne), faux: melange(lot.filter(x => x !== bonne)).slice(0, 3).map(mot) })
-const OUI_NON = (oui: boolean) => ({ reponse: mot(oui ? 'Oui' : 'Non'), faux: [mot(oui ? 'Non' : 'Oui')] })
 const tableau = (l1: string[], l2: string[]) => `\\begin{array}{|${'c|'.repeat(l1.length)}}\\hline ${l1.join(' & ')} \\\\ \\hline ${l2.join(' & ')} \\\\ \\hline\\end{array}`
 
 /** Un empilement : h[x][y] cubes, plus hauts vers le fond pour qu'aucun ne soit caché par devant */
@@ -94,11 +99,11 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   {
     id: 'divisibilite-2-5-10', theme: 'Opérations', titre: 'Divisibilité par 2, 5 et 10',
     generer() {
-      const LOT = ['par 2 seulement', 'par 5 seulement', 'par 2, par 5 et par 10', 'ni par 2, ni par 5']
+      const LOT = ['par $2$ seulement', 'par $5$ seulement', 'par $2$, par $5$ et par $10$', 'par aucun des trois']
       const fin = choix([0, 5, 2, 4, 6, 8, 1, 3, 7, 9])
       const N = ent(10, 999) * 10 + fin
       const bonne = fin === 0 ? LOT[2] : fin === 5 ? LOT[1] : fin % 2 === 0 ? LOT[0] : LOT[3]
-      return { enonce: `Le nombre $${N}$ est divisible…`, reponse: mot(bonne), faux: LOT.filter(x => x !== bonne).map(mot) }
+      return { enonce: `Par lesquels des nombres $2$, $5$ et $10$ le nombre $${N}$ est-il divisible ?`, reponse: mot(bonne), faux: LOT.filter(x => x !== bonne).map(mot) }
     },
   },
   {
@@ -114,12 +119,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
     id: 'factoriser-tables', theme: 'Opérations', titre: 'Factoriser un entier avec les tables',
     generer() {
       const a = ent(2, 9), b = ent(2, 9), N = a * b
-      if (Math.random() < 0.5) {
-        return { enonce: `Compléter : $${N} = ${a} \\times \\ldots$`, reponse: nb(b), faux: fausses(nb(b), [nb(b + 1), nb(b - 1), nb(N - a)], autour(b)) }
-      }
-      const p = (x: number, y: number) => `${x} \\times ${y}`
-      const cands = [[a, b + 1], [a + 1, b - 1], [a - 1, b + 1], [a + 1, b], [a, b - 1]].filter(([x, y]) => x > 1 && y > 1 && x * y !== N).map(([x, y]) => p(x, y))
-      return { enonce: `Quel produit est égal à $${N}$ ?`, reponse: p(a, b), faux: fausses(p(a, b), cands, () => p(a + ent(1, 2), b + ent(1, 2))) }
+      return { enonce: `Compléter : $${N} = ${a} \\times \\ldots$`, reponse: nb(b), faux: fausses(nb(b), [nb(b + 1), nb(b - 1), nb(N - a)], autour(b)) }
     },
   },
   {
@@ -247,21 +247,30 @@ export const AUTOMATISMES_5E: Automatisme[] = [
         return { enonce: `Compléter : $${frac(n, d)} = \\dfrac{\\ldots}{${d * k}}$`, reponse: nb(n * k),
           faux: fausses(nb(n * k), [nb(n + k), nb(n * k + d), nb(d * k - n)], autour(n * k)) }
       }
-      // Laquelle est égale ? (on ajoute le même nombre en haut et en bas : l'erreur classique)
-      return { enonce: `Quelle fraction est égale à $${frac(n, d)}$ ?`, reponse: frac(n * k, d * k),
-        faux: fausses(frac(n * k, d * k), [frac(n + k, d + k), frac(n * k, d + k), frac(n + k, d * k), frac(d * k, n * k)].filter(t => t !== frac(n, d))) }
+      // Le dénominateur qui manque (l'erreur classique : ajouter le même nombre en haut et en bas)
+      return { enonce: `Compléter : $${frac(n, d)} = \\dfrac{${n * k}}{\\ldots}$`, reponse: nb(d * k),
+        faux: fausses(nb(d * k), [nb(d + n * k - n), nb(d * k + n), nb(n * k - d)], autour(d * k)) }
     },
   },
   {
-    id: 'comparer-fractions', theme: 'Nombres rationnels', titre: 'Comparer deux fractions',
+    id: 'comparer-fractions', theme: 'Nombres rationnels', titre: 'Comparer des fractions',
     generer() {
-      let a: number, b: number, c: number, d: number
+      // Trois fractions de valeurs différentes : même dénominateur, même
+      // numérateur, ou un dénominateur multiple de l'autre. Les ranger
+      // (six ordres possibles) : on ne trouve pas au hasard.
       const sorte = ent(0, 2)
-      if (sorte === 0) { d = b = ent(3, 12); a = ent(1, 15); do { c = ent(1, 15) } while (c === a) }
-      else if (sorte === 1) { a = c = ent(1, 9); b = ent(2, 12); do { d = ent(2, 12) } while (d === b) }
-      else { b = ent(2, 6); const k = ent(2, 3); d = b * k; a = ent(1, 2 * b); c = ent(1, 2 * d) }
-      const s = a * d < c * b ? '<' : a * d > c * b ? '>' : '='
-      return { enonce: `Compléter par $<$, $>$ ou $=$ : $${frac(a, b)} \\;\\ldots\\; ${frac(c, d)}$`, reponse: s, faux: ['<', '>', '='].filter(x => x !== s) }
+      let f: [number, number][]
+      for (;;) {
+        if (sorte === 0) { const d = ent(3, 12); f = melange([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15]).slice(0, 3).map(n => [n, d] as [number, number]) }
+        else if (sorte === 1) { const n = ent(1, 9); f = melange([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]).slice(0, 3).map(d => [n, d] as [number, number]) }
+        else { const b = ent(2, 5), d = b * ent(2, 3); f = [[ent(1, 2 * b), b], [ent(1, 2 * d), d], [ent(1, 2 * d), d]] }
+        const v = f.map(([n, d]) => n / d)
+        if (new Set(v.map(x => arrondi(x))).size === 3 && f.every(([n, d]) => n % d !== 0)) break
+      }
+      const ecrire = (l: [number, number][]) => l.map(([n, d]) => frac(n, d)).join(' < ')
+      const croissant = [...f].sort((x, y) => x[0] / x[1] - y[0] / y[1])
+      return { enonce: `Ranger dans l'ordre croissant : $${f.map(([n, d]) => frac(n, d)).join(' \\; ; \\; ')}$`, reponse: ecrire(croissant),
+        faux: [ecrire([...croissant].reverse())] }
     },
   },
   {
@@ -381,13 +390,14 @@ export const AUTOMATISMES_5E: Automatisme[] = [
       const dessus = Array.from({ length: Y }, (_, i) => Array.from({ length: X }, (_, x) => h[x][Y - 1 - i] > 0))
       const face = Array.from({ length: H }, (_, i) => Array.from({ length: X }, (_, x) => Math.max(...h[x]) > H - 1 - i))
       const droite = Array.from({ length: H }, (_, i) => Array.from({ length: Y }, (_, y) => Math.max(...h.map(c => c[y])) > H - 1 - i))
-      const miroir = (g: boolean[][]) => g.map(l => [...l].reverse())
-      const vue = Math.random() < 0.5 ? 'dessus' : 'face'
-      const bonne = vue === 'dessus' ? dessus : face
-      const faux = vue === 'dessus' ? [face, miroir(dessus), droite] : [dessus, miroir(face), droite]
-      const abime = () => { const g = bonne.map(l => [...l]); const i = ent(0, g.length - 1), j = ent(0, g[0].length - 1); g[i][j] = !g[i][j]; return F.vueGrille(g) }
-      return { enonce: `Quelle est la vue de ${vue === 'dessus' ? 'dessus' : 'face'} de cet empilement ?`, figure: F.empilement(h),
-        reponse: F.vueGrille(bonne), faux: fausses(F.vueGrille(bonne), faux.map(F.vueGrille), abime) }
+      // Combien de carrés sur la vue : on la dessine dans sa tête, on ne
+      // compte pas les cubes (l'erreur : le nombre de cubes)
+      const vue = choix(['dessus', 'face', 'droite'] as const)
+      const v = { dessus, face, droite }[vue].flat().filter(Boolean).length
+      const total = h.flat().reduce((s, x) => s + x, 0)
+      const nom = { dessus: 'de dessus', face: 'de face', droite: 'de droite' }[vue]
+      return { enonce: `Combien de carrés compte la vue ${nom} de cet empilement ?`, figure: F.empilement(h),
+        reponse: nb(v), faux: fausses(nb(v), [nb(total), nb(v + 1), nb(v - 1)].filter(t => Number(t) > 0)) }
     },
   },
   {
@@ -402,45 +412,45 @@ export const AUTOMATISMES_5E: Automatisme[] = [
     },
   },
   {
-    id: 'cavaliere', theme: 'Représentation de l’espace', titre: 'Cube ou pavé en perspective cavalière',
+    id: 'cavaliere', theme: 'Représentation de l’espace', titre: 'Pavé droit en perspective cavalière',
     generer() {
-      const cube = Math.random() < 0.4
-      const l = cube ? ent(3, 4) : ent(4, 6), h = cube ? l : ent(2, l - 1), p = cube ? l : ent(2, 5)
-      const dessin = (f: F.Faute) => F.cavaliere(l, h, p, f)
-      return { enonce: `Quel dessin représente correctement ${cube ? 'un cube' : 'un pavé droit'} en perspective cavalière ?`,
-        reponse: dessin('aucune'), faux: (['caches-pleins', 'fuyantes', 'face'] as F.Faute[]).map(dessin) }
+      // Trois longueurs différentes ; on demande une arête parallèle à
+      // l'une d'elles, souvent une fuyante (dessinée plus courte) ou une
+      // arête cachée
+      let l: number, h: number, p: number
+      do { l = ent(4, 8); h = ent(2, 5); p = ent(3, 7) } while (new Set([l, h, p]).size < 3)
+      const [arete, v] = choix<[string, number]>([['DC', l], ['HG', l], ['EF', l], ['AD', h], ['FG', h], ['EH', h], ['AE', p], ['CG', p], ['DH', p], ['CG', p], ['DH', p]])
+      return { enonce: `Ce pavé droit est dessiné en perspective cavalière. Quelle est la longueur réelle de l'arête $[${arete}]$ ?`, figure: F.paveCote(l, h, p),
+        reponse: unite(nb(v), 'cm'), faux: fausses(unite(nb(v), 'cm'), [l, h, p].filter(x => x !== v).map(x => unite(nb(x), 'cm'))) }
     },
   },
   {
-    id: 'patron-cube', theme: 'Représentation de l’espace', titre: 'Reconnaître un patron de cube',
+    id: 'patron-cube', theme: 'Représentation de l’espace', titre: 'Patron de cube : les faces opposées',
     generer() {
-      const tirer = (bon: boolean) => { for (;;) { const c = F.hexomino(); if (F.estPatronDeCube(c) === bon) return F.patron(c) } }
-      const bonne = tirer(true)
-      return { enonce: `Lequel de ces assemblages est un patron de cube ?`, reponse: bonne, faux: fausses(bonne, [tirer(false), tirer(false), tirer(false)], () => tirer(false)) }
+      let c: F.Cases
+      do c = F.hexomino(); while (!F.estPatronDeCube(c))
+      // Les numéros dans l'ordre de lecture (de haut en bas, de gauche à droite)
+      const ordre = c.map((_, i) => i).sort((i, j) => c[i][1] - c[j][1] || c[i][0] - c[j][0])
+      const numeros = c.map((_, i) => ordre.indexOf(i) + 1)
+      const i = ent(0, 5), o = F.caseOpposee(c, i)
+      return { enonce: `On plie ce patron pour former un cube. Quelle face sera opposée à la face $${numeros[i]}$ ?`, figure: F.patron(c, numeros),
+        reponse: nb(numeros[o]), faux: numeros.filter((n, j) => j !== o && j !== i).slice(0, 3).map(nb) }
     },
   },
 
   // ================= TRANSFORMATIONS =================
   {
-    id: 'symetrie-axiale', theme: 'Transformations', titre: 'Reconnaître le symétrique d’une figure',
+    id: 'symetrie-axiale', theme: 'Transformations', titre: 'Construire le symétrique d’un point',
     generer() {
-      const FORMES = [
-        [[0, 0], [3, 0], [3, 1], [1, 1], [1, 3], [0, 3]],
-        [[0, 0], [3, 0], [0, 4]],
-        [[0, 0], [4, 0], [3, 2], [0, 2]],
-        [[0, 0], [0, 5], [3, 4], [1, 3], [1, 0]],
-        [[0, 0], [2, 0], [2, 1], [4, 1], [4, 3], [0, 3]],
-      ]
-      let f = choix(FORMES).map(([x, y]) => ({ x, y }))
-      const w = Math.max(...f.map(q => q.x)), h = Math.max(...f.map(q => q.y))
-      if (Math.random() < 0.5) f = f.map(q => ({ x: w - q.x, y: q.y }))
-      if (Math.random() < 0.5) f = f.map(q => ({ x: q.x, y: h - q.y }))
-      const dx = ent(1, 5 - w), dy = ent(1, 11 - h)
-      f = f.map(q => ({ x: q.x + dx, y: q.y + dy }))
-      const LOT: Record<string, string> = { aucune: 'Oui', translation: 'Non, elle a glissé', decalage: 'Non, mauvaise distance à l’axe', rotation: 'Non, elle a fait un demi-tour' }
-      const erreur = choix(['aucune', 'aucune', 'translation', 'decalage', 'rotation'] as const)
-      return { enonce: `La figure bleue est-elle la symétrique de la rouge par rapport à $(d)$ ?`, figure: F.symetrie(f, choix(['vertical', 'horizontal']), erreur),
-        reponse: mot(LOT[erreur]), faux: Object.values(LOT).filter(x => x !== LOT[erreur]).map(mot) }
+      // Un axe parallèle à un axe du repère (sans être l'un d'eux), A à 1 à
+      // 4 carreaux de lui, et son symétrique A' encore dans le repère (de −5 à 5)
+      const axe = choix(['vertical', 'horizontal'] as const)
+      let k: number, a: number, b: number, s: number
+      do { k = ent(-3, 3); a = k + choix([-1, 1]) * ent(1, 4); b = ent(-4, 4); s = 2 * k - a } while (k === 0 || Math.abs(a) > 5 || Math.abs(s) > 5 || a === 0 || s === 0)
+      const [x, y, xs, ys] = axe === 'vertical' ? [a, b, s, b] : [b, a, b, s]
+      const c = (u: number, v: number) => `(${nb(u)}\\,;\\,${nb(v)})`
+      return { enonce: `Quelles sont les coordonnées du point $A'$, symétrique du point $A$ par rapport à la droite $(d)$ ?`, figure: F.symetriePoint(x, y, axe, k),
+        reponse: c(xs, ys), faux: fausses(c(xs, ys), [c(-x, y), c(x, -y), axe === 'vertical' ? c(xs, -ys) : c(-xs, ys)]) }
     },
   },
 
@@ -462,15 +472,16 @@ export const AUTOMATISMES_5E: Automatisme[] = [
       else if (sorte === 'opposes') m1 = ent(50, 70)
       else { const t = sorte === 'supplementaires' ? 180 : 90; m1 = ent(t === 180 ? 40 : 20, t === 180 ? 140 : 70); m2 = t - m1 }
       const NOMS = { adjacents: 'adjacents', opposes: 'opposés par le sommet', supplementaires: 'supplémentaires', complementaires: 'complémentaires' }
-      return { enonce: `Ces deux angles sont…`, figure: F.deuxAngles(sorte, m1, m2), reponse: mot(NOMS[sorte]), faux: Object.values(NOMS).filter(x => x !== NOMS[sorte]).map(mot) }
+      return { enonce: `Comment appelle-t-on ces deux angles ?`, figure: F.deuxAngles(sorte, m1, m2), reponse: mot(NOMS[sorte]), faux: Object.values(NOMS).filter(x => x !== NOMS[sorte]).map(mot) }
     },
   },
   {
     id: 'bissectrice', theme: 'Angles', titre: 'Reconnaître une bissectrice',
     generer() {
       if (Math.random() < 0.5) {
-        const m1 = ent(20, 55), egal = Math.random() < 0.5, m2 = egal ? m1 : m1 + choix([-1, 1]) * ent(4, 12)
-        return { enonce: `La demi-droite $[Oz)$ est-elle la bissectrice de l'angle $\\widehat{xOy}$ ?`, figure: F.bissectriceFig(m1, m2), ...OUI_NON(egal) }
+        const m = ent(15, 80)
+        return { enonce: `La demi-droite $[Oz)$ est la bissectrice de l'angle $\\widehat{xOy}$, et $\\widehat{xOz} = ${m}°$. Combien mesure l'angle $\\widehat{xOy}$ ?`, figure: F.bissectriceFig(m, m), reponse: deg(2 * m),
+          faux: fausses(deg(2 * m), [deg(m), deg(m / 2), deg(180 - m)]) }
       }
       const t = 2 * ent(15, 80)
       return { enonce: `La demi-droite $[Oz)$ est la bissectrice de l'angle $\\widehat{xOy}$, qui mesure $${t}°$. Combien mesure l'angle $\\widehat{xOz}$ ?`, reponse: deg(t / 2),
@@ -484,7 +495,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
     generer() {
       const sorte = choix(['isocele', 'equilateral', 'rectangle', 'rectangle-isocele', 'quelconque'] as F.Triangle[])
       const NOMS: Record<F.Triangle, string> = { isocele: 'isocèle', equilateral: 'équilatéral', rectangle: 'rectangle', 'rectangle-isocele': 'rectangle isocèle', quelconque: 'quelconque' }
-      return { enonce: `D'après le codage, ce triangle est…`, figure: F.triangleCode(sorte, ent(0, 23) * 15), ...parmi(NOMS[sorte], Object.values(NOMS)) }
+      return { enonce: `D'après le codage, quelle est la nature de ce triangle ?`, figure: F.triangleCode(sorte, ent(0, 23) * 15), ...parmi(NOMS[sorte], Object.values(NOMS)) }
     },
   },
   {
@@ -503,20 +514,15 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   {
     id: 'mediatrice', theme: 'Triangles', titre: 'Médiatrice et cercle circonscrit',
     generer() {
-      const sorte = ent(0, 4)
       const [P, Q] = choix(['AB', 'EF', 'IJ', 'RS', 'CD'])
-      if (sorte <= 2) {
-        const perp = Math.random() < 0.5, mil = Math.random() < (perp ? 0.6 : 0.5)
-        const LOT = ['Oui', `Non : elle n'est pas perpendiculaire à $[${P}${Q}]$`, `Non : elle ne passe pas par le milieu de $[${P}${Q}]$`, 'Non : ni perpendiculaire, ni par le milieu']
-        const bonne = perp && mil ? LOT[0] : !perp && mil ? LOT[1] : perp ? LOT[2] : LOT[3]
-        return { enonce: `La droite $(d)$ est-elle la médiatrice du segment $[${P}${Q}]$ ?`, figure: F.mediatriceFig(perp, mil, ent(-6, 6) * 6, P + Q), reponse: mot(bonne), faux: LOT.filter(x => x !== bonne).map(mot) }
-      }
-      if (sorte === 3) {
-        const l = ent(2, 12) + choix([0, 0, 0.5])
-        return { enonce: `Le point $M$ est sur la médiatrice de $[${P}${Q}]$ et $M${P} = ${nb(l)}$ cm. Combien mesure $M${Q}$ ?`, reponse: unite(nb(l), 'cm'),
+      const l = ent(2, 12) + choix([0, 0, 0.5])
+      if (Math.random() < 0.5) {
+        return { enonce: `Le point $M$ est sur la médiatrice de $[${P}${Q}]$ et $M${P} = ${nb(l)}$ cm. Combien mesure $M${Q}$ ?`, figure: F.mediatriceFig(true, true, ent(-6, 6) * 6, P + Q), reponse: unite(nb(l), 'cm'),
           faux: fausses(unite(nb(l), 'cm'), [unite(nb(2 * l), 'cm'), unite(nb(l / 2), 'cm'), mot('On ne peut pas savoir')]) }
       }
-      return { enonce: `Le centre du cercle circonscrit à un triangle est le point de concours de ses…`, ...parmi('médiatrices', ['médiatrices', 'hauteurs', 'médianes', 'bissectrices']) }
+      const [A, B, C] = choix(['ABC', 'EFG', 'RST', 'IJK'])
+      return { enonce: `Le point $O$ est le centre du cercle circonscrit au triangle $${A}${B}${C}$, et $O${A} = ${nb(l)}$ cm. Combien mesure $O${C}$ ?`, reponse: unite(nb(l), 'cm'),
+        faux: fausses(unite(nb(l), 'cm'), [unite(nb(2 * l), 'cm'), unite(nb(l / 2), 'cm')]) }
     },
   },
 
@@ -527,7 +533,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
       const sorte = choix(['carre', 'rectangle', 'losange', 'parallelogramme', 'trapeze', 'pentagone', 'hexagone', 'quadrilatere'] as F.Polygone[])
       const NOMS: Record<F.Polygone, string> = { carre: 'un carré', rectangle: 'un rectangle', losange: 'un losange', parallelogramme: 'un parallélogramme', trapeze: 'un trapèze', pentagone: 'un pentagone', hexagone: 'un hexagone', quadrilatere: 'un quadrilatère quelconque' }
       const proches: Record<F.Polygone, F.Polygone[]> = { carre: ['losange', 'rectangle', 'parallelogramme'], rectangle: ['carre', 'parallelogramme', 'losange'], losange: ['carre', 'parallelogramme', 'rectangle'], parallelogramme: ['losange', 'rectangle', 'trapeze'], trapeze: ['parallelogramme', 'quadrilatere', 'rectangle'], pentagone: ['hexagone', 'quadrilatere', 'trapeze'], hexagone: ['pentagone', 'quadrilatere', 'losange'], quadrilatere: ['trapeze', 'parallelogramme', 'losange'] }
-      return { enonce: `Ce polygone est…`, figure: F.polygone(sorte, ent(0, 23) * 15), reponse: mot(NOMS[sorte]), faux: proches[sorte].map(x => mot(NOMS[x])) }
+      return { enonce: `Comment s'appelle ce polygone ?`, figure: F.polygone(sorte, ent(0, 23) * 15), reponse: mot(NOMS[sorte]), faux: proches[sorte].map(x => mot(NOMS[x])) }
     },
   },
   {
@@ -537,7 +543,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
       const noms = choix(['ABCD', 'EFGH', 'IJKL', 'MNOP', 'RSTU'])
       const LOT = ['un carré', 'un losange', 'un rectangle', 'un parallélogramme quelconque']
       const bonne = lg && dr ? LOT[0] : lg ? LOT[1] : dr ? LOT[2] : LOT[3]
-      return { enonce: `$${noms}$ est un parallélogramme. D'après le codage, c'est…`, figure: F.parallelogrammeCode(lg, dr, noms, ent(-4, 4) * 10, ent(0, 3)), reponse: mot(bonne), faux: LOT.filter(x => x !== bonne).map(mot) }
+      return { enonce: `$${noms}$ est un parallélogramme. D'après le codage, quelle est sa nature ?`, figure: F.parallelogrammeCode(lg, dr, noms, ent(-4, 4) * 10, ent(0, 3)), reponse: mot(bonne), faux: LOT.filter(x => x !== bonne).map(mot) }
     },
   },
 
@@ -568,24 +574,19 @@ export const AUTOMATISMES_5E: Automatisme[] = [
 
   // ================= PROPORTIONNALITÉ =================
   {
-    id: 'situation-proportionnelle', theme: 'Proportionnalité', titre: 'Reconnaître une situation de proportionnalité',
+    id: 'situation-proportionnelle', theme: 'Proportionnalité', titre: 'Le coefficient de proportionnalité',
     generer() {
-      if (Math.random() < 0.55) {
-        const k = choix([2, 3, 4, 5, 1.5, 2.5]), xs = melange([1, 2, 3, 4, 5, 6, 8, 10]).slice(0, 3).sort((a, b) => a - b)
-        const oui = Math.random() < 0.5
-        const ys = xs.map(x => x * k)
-        if (!oui) { if (Math.random() < 0.5) { const d = ent(1, 3); for (let i = 0; i < 3; i++) ys[i] += d } else ys[ent(1, 2)] += choix([-1, 1]) }
-        return { enonce: `Ce tableau est-il un tableau de proportionnalité ? $${tableau(xs.map(nb), ys.map(nb))}$`, ...OUI_NON(oui) }
+      const k = choix([2, 3, 4, 5, 6, 1.5, 2.5, 0.5]), xs = melange([1, 2, 3, 4, 5, 6, 8, 10]).slice(0, 3).sort((a, b) => a - b)
+      const ys = xs.map(x => arrondi(x * k))
+      if (Math.random() < 0.5) {
+        return { enonce: `Ce tableau est un tableau de proportionnalité. Par quel nombre multiplie-t-on la première ligne pour obtenir la deuxième ? $${tableau(xs.map(nb), ys.map(nb))}$`, reponse: nb(k),
+          faux: fausses(nb(k), [nb(ys[0] - xs[0]), nb(arrondi(1 / k)), nb(ys[1] - ys[0])].filter(t => t !== '0'), autour(k)) }
       }
-      const [phrase, oui] = choix<[string, boolean]>([
-        ['Le prix payé et la masse de pommes achetées à 2 € le kilo.', true], ['L’âge d’un enfant et sa taille.', false],
-        ['Le périmètre d’un carré et la longueur de son côté.', true], ['L’aire d’un carré et la longueur de son côté.', false],
-        ['Le prix d’une course en taxi (3 € de prise en charge, puis 1 € par km) et la distance parcourue.', false],
-        ['La quantité d’essence et le prix payé à la pompe.', true], ['La distance parcourue à vitesse constante et la durée du trajet.', true],
-        ['La pointure d’une personne et son âge.', false], ['Le nombre de tickets de bus achetés au même prix et la somme payée.', true],
-        ['La température extérieure et l’heure de la journée.', false], ['Le nombre d’œufs et la masse de farine dans une recette.', true],
-        ['Le prix d’un abonnement de 10 € par mois plus 2 € par séance et le nombre de séances.', false]])
-      return { enonce: `Est-ce une situation de proportionnalité ? ${phrase}`, ...OUI_NON(oui) }
+      // Le prix à l'unité : le coefficient en situation
+      const [chose, pu] = choix<[string, number]>([['cahiers', 2], ['stylos', 1.5], ['baguettes', 1.2], ['croissants', 1.1], ['places de cinéma', 8], ['tickets de bus', 1.6]])
+      const n = ent(2, 9)
+      return { enonce: `$${n}$ ${chose} coûtent $${nb(arrondi(n * pu))}$ €. Quel est le prix d'un seul ?`, reponse: unite(nb(pu), '€'),
+        faux: fausses(unite(nb(pu), '€'), [unite(nb(arrondi(n * pu - n)), '€'), unite(nb(arrondi(n * pu * n)), '€')]) }
     },
   },
   {
@@ -687,7 +688,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
         const ok = cibles.filter(k => N % k === 0 && !(k === 3 && N % 9 === 0))
         const vrais = cibles.filter(k => N % k === 0)
         if (vrais.length === 1 && ok.length === 1) {
-          return { enonce: `Le nombre $${N}$ est divisible par :`, reponse: nb(ok[0]), faux: cibles.filter(k => k !== ok[0]).map(nb) }
+          return { enonce: `Par lequel des nombres $2$, $3$, $5$ et $9$ le nombre $${N}$ est-il divisible ?`, reponse: nb(ok[0]), faux: cibles.filter(k => k !== ok[0]).map(nb) }
         }
       }
     },
@@ -831,7 +832,6 @@ const TROUS: Record<string, () => Question> = {
     const k = ent(2, 8)
     return aTrou(`Compléter : $${frac(n, d)} = \\dfrac{\\ldots}{${d * k}}$`, nb(n * k))
   },
-  'comparer-fractions': memeQuestion('comparer-fractions'),
   'entier-plus-fraction': () => {
     const d = ent(2, 9), q = ent(1, 6), r = ent(1, d - 1)
     return aTrou(`Compléter : $${frac(q * d + r, d)} = ${q} + \\dfrac{\\ldots}{${d}}$`, nb(r))
@@ -874,24 +874,98 @@ const TROUS: Record<string, () => Question> = {
     return aTrou(`Un rectangle de longueur $${a}$ cm et de largeur $\\ldots$ cm a une aire de $${a * b}\\text{ cm}^2$.`, unite(nb(b), 'cm'))
   },
 }
-const QCM_SEULEMENT = new Set(['vues-cubes', 'cavaliere', 'patron-cube'])
-for (const a of AUTOMATISMES_5E) {
-  if (TROUS[a.id]) a.trou = TROUS[a.id]
-  if (QCM_SEULEMENT.has(a.id)) a.qcmSeulement = true
-}
+for (const a of AUTOMATISMES_5E) if (TROUS[a.id]) a.trou = TROUS[a.id]
+
+// =============================================================
+// LES QUESTIONS DE COURS (5e)
+// Une définition, une propriété, le vocabulaire : on les apprend, on
+// ne les calcule pas. La réponse attendue est courte ; la correction
+// l'écrit telle quelle. Aucune ne se réussit avec une chance sur deux.
+// Les utiliser sur un exemple, c'est un exercice d'application.
+// =============================================================
+export interface QuestionCours { id: string; theme: string; enonce: string; reponse: string }
+const cours = (theme: string, liste: [string, string][]): QuestionCours[] =>
+  liste.map(([enonce, reponse], i) => ({ id: `cours-${theme}-${i + 1}`, theme, enonce, reponse: mot(reponse) }))
+
+export const COURS_5E: QuestionCours[] = [
+  ...cours('Opérations', [
+    ['Un nombre entier est divisible par $2$ quand…', 'son chiffre des unités est $0$, $2$, $4$, $6$ ou $8$'],
+    ['Un nombre entier est divisible par $5$ quand…', 'son chiffre des unités est $0$ ou $5$'],
+    ['Dans la division euclidienne de $a$ par $b$, le reste est toujours…', 'plus petit que $b$'],
+  ]),
+  ...cours('Nombres relatifs', [
+    ['Quelle est la somme de deux nombres opposés ?', '$0$'],
+    ['Soustraire un nombre revient à…', 'ajouter son opposé'],
+    ['Quelle est la règle des signes pour le produit de deux nombres relatifs ?', 'même signe : positif ; signes contraires : négatif'],
+  ]),
+  ...cours('Nombres rationnels', [
+    ['Le quotient de $a$ par $b$ est le nombre qui, multiplié par $b$, donne…', '$a$'],
+    ['On obtient une fraction égale en multipliant le numérateur et le dénominateur…', 'par un même nombre non nul'],
+    ['Prendre $10\\,\\%$ d\'un nombre revient à…', 'le diviser par $10$'],
+    ['Pour additionner deux fractions de même dénominateur…', 'on additionne les numérateurs et on garde le dénominateur'],
+  ]),
+  ...cours('Puissances et calcul littéral', [
+    ['Que signifie $7^2$ ?', '$7 \\times 7$'],
+    ['Dans l\'expression $3x$, quelle opération est sous-entendue ?', 'une multiplication ($3 \\times x$)'],
+  ]),
+  ...cours('Repérage', [
+    ['Dans $A(3\\,;\\,5)$, comment s\'appelle le nombre $3$ ?', 'l\'abscisse du point $A$'],
+    ['Comment s\'appelle le point de coordonnées $(0\\,;\\,0)$ ?', 'l\'origine du repère'],
+  ]),
+  ...cours('Représentation de l’espace', [
+    ['Combien un cube a-t-il de faces, d\'arêtes et de sommets ?', '$6$ faces, $12$ arêtes, $8$ sommets'],
+    ['En perspective cavalière, comment dessine-t-on les arêtes cachées ?', 'en pointillés'],
+    ['En perspective cavalière, comment la face avant est-elle dessinée ?', 'en vraie grandeur'],
+  ]),
+  ...cours('Transformations', [
+    ['Que conserve la symétrie axiale ?', 'les longueurs, les angles et les aires'],
+    ['Quel est le symétrique d\'un point de l\'axe ?', 'le point lui-même'],
+  ]),
+  ...cours('Angles', [
+    ['Entre quelles mesures un angle obtus est-il compris ?', 'entre $90°$ et $180°$'],
+    ['Que peut-on dire de deux angles opposés par le sommet ?', 'ils ont la même mesure'],
+    ['La bissectrice d\'un angle est la demi-droite qui…', 'le partage en deux angles de même mesure'],
+  ]),
+  ...cours('Triangles', [
+    ['Combien vaut la somme des angles d\'un triangle ?', '$180°$'],
+    ['La médiatrice d\'un segment est la droite…', 'perpendiculaire au segment en son milieu'],
+    ['Que peut-on dire d\'un point de la médiatrice de $[AB]$ ?', 'il est à égale distance de $A$ et de $B$'],
+    ['Le centre du cercle circonscrit à un triangle est le point de concours de ses…', 'médiatrices'],
+    ['Combien mesure chaque angle d\'un triangle équilatéral ?', '$60°$'],
+  ]),
+  ...cours('Parallélogrammes et polygones', [
+    ['Que peut-on dire des diagonales d\'un parallélogramme ?', 'elles se coupent en leur milieu'],
+    ['Un parallélogramme qui a un angle droit est un…', 'rectangle'],
+    ['Un parallélogramme qui a deux côtés consécutifs de même longueur est un…', 'losange'],
+    ['Que peut-on dire des diagonales d\'un losange ?', 'elles sont perpendiculaires'],
+  ]),
+  ...cours('Probabilités', [
+    ['Une probabilité est un nombre compris entre…', '$0$ et $1$'],
+    ['Quelle est la probabilité d\'un évènement impossible ? d\'un évènement certain ?', '$0$ ; $1$'],
+  ]),
+  ...cours('Proportionnalité', [
+    ['Dans un tableau de proportionnalité, on passe d\'une ligne à l\'autre en…', 'multipliant par un même nombre'],
+    ['Comment s\'appelle le nombre par lequel on multiplie une ligne d\'un tableau de proportionnalité pour obtenir l\'autre ?', 'le coefficient de proportionnalité'],
+  ]),
+  ...cours('Hors liste officielle', [
+    ['Quelle est la formule de l\'aire d\'un rectangle ?', 'longueur $\\times$ largeur'],
+    ['Dans un calcul sans parenthèses, que fait-on en premier ?', 'les multiplications et les divisions'],
+    ['Combien y a-t-il de mètres dans $1$ km ?', '$1\\,000$ m'],
+  ]),
+]
 
 // =============================================================
 // LES NIVEAUX
 // Ceux qui n'ont pas encore d'automatismes paraissent dans le panneau,
 // grisés (« bientôt »).
 // =============================================================
-export interface Niveau { id: string; nom: string; automatismes: Automatisme[] }
+export interface Niveau { id: string; nom: string; automatismes: Automatisme[]; cours: QuestionCours[] }
 export const NIVEAUX: Niveau[] = [
-  { id: '5e', nom: '5e', automatismes: AUTOMATISMES_5E },
-  { id: '4e', nom: '4e', automatismes: [] },
-  { id: '3e', nom: '3e', automatismes: [] },
-  { id: '2nde', nom: '2nde', automatismes: [] },
-  { id: '1re', nom: '1re', automatismes: [] },
+  { id: '5e', nom: '5e', automatismes: AUTOMATISMES_5E, cours: COURS_5E },
+  { id: '4e', nom: '4e', automatismes: [], cours: [] },
+  { id: '3e', nom: '3e', automatismes: [], cours: [] },
+  { id: '2nde', nom: '2nde', automatismes: [], cours: [] },
+  { id: '1re', nom: '1re', automatismes: [], cours: [] },
 ]
 /** Les thèmes d'un niveau, dans l'ordre de la liste */
 export const themesDe = (n: Niveau) => [...new Set(n.automatismes.map(a => a.theme))]
@@ -899,54 +973,60 @@ export const themesDe = (n: Niveau) => [...new Set(n.automatismes.map(a => a.the
 // =============================================================
 // LE TIRAGE D'UN FLASH
 // =============================================================
-export type FormeQuestion = 'qcm' | 'directe' | 'trou'
-export interface Composition { qcm: number; directe: number; trou: number }
-export const COMPOSITION_PAR_DEFAUT: Composition = { qcm: 2, directe: 2, trou: 1 }
+export type FormeQuestion = 'cours' | 'application'
+export interface Composition { cours: number; application: number }
+export const COMPOSITION_PAR_DEFAUT: Composition = { cours: 2, application: 3 }
+/** Une question à trou, quand l'automatisme en a une : une fois sur trois */
+const PART_DES_TROUS = 1 / 3
 export interface QuestionFlash {
-  auto: Automatisme
+  /** L'automatisme (un exercice d'application) ou la question de cours */
+  id: string
+  theme: string
   q: Question
   forme: FormeQuestion
-  /** En QCM : la bonne réponse et les fausses, mélangées */
-  options: string[]
 }
 
-/** Les questions d'un flash, dans l'ordre : les QCM, les questions
- *  directes, puis les questions à trou. Les thèmes choisis passent chacun
- *  leur tour ; on évite de reprendre deux fois le même automatisme tant
- *  qu'il en reste, et deux fois le même énoncé. Une
- *  question à trou qu'aucun automatisme choisi ne sait poser devient une
- *  question directe (trousRemplaces le compte) ; une question directe
- *  qu'aucun ne sait poser (que des dessins) devient un QCM. */
-export function tirerFlash(autos: Automatisme[], c: Composition): { questions: QuestionFlash[]; trousRemplaces: number } {
-  const formes: FormeQuestion[] = [
-    ...Array<FormeQuestion>(Math.max(0, c.qcm)).fill('qcm'),
-    ...Array<FormeQuestion>(Math.max(0, c.directe)).fill('directe'),
-    ...Array<FormeQuestion>(Math.max(0, c.trou)).fill('trou'),
-  ]
-  const questions: QuestionFlash[] = [], pris = new Map<string, number>(), vus = new Set<string>()
-  let trousRemplaces = 0
-  if (!autos.length) return { questions, trousRemplaces }
-  for (let forme of formes) {
-    if (forme === 'trou' && !autos.some(a => a.trou)) { forme = 'directe'; trousRemplaces++ }
-    if (forme === 'directe' && autos.every(a => a.qcmSeulement)) forme = 'qcm'
-    const lot = autos.filter(a => forme === 'trou' ? !!a.trou : forme === 'directe' ? !a.qcmSeulement : true)
-    let auto = lot[0], q = auto.generer()
-    for (let essai = 0; essai < 30; essai++) {
-      // D'abord le thème le moins servi (un thème de 3 automatismes vaut un
-      // thème de 10), puis son automatisme le moins servi
-      const fois = (l: Automatisme[]) => l.reduce((n, a) => n + (pris.get(a.id) ?? 0), 0)
-      const themes = [...new Set(lot.map(a => a.theme))]
-      const moinsTheme = Math.min(...themes.map(t => fois(lot.filter(a => a.theme === t))))
-      const theme = choix(themes.filter(t => fois(lot.filter(a => a.theme === t)) === moinsTheme))
-      const dans = lot.filter(a => a.theme === theme)
-      const moins = Math.min(...dans.map(a => pris.get(a.id) ?? 0))
-      auto = choix(dans.filter(a => (pris.get(a.id) ?? 0) === moins))
-      q = forme === 'trou' ? auto.trou!() : auto.generer()
-      if (!vus.has(q.enonce + (q.figure ?? '') + q.reponse)) break
-    }
-    vus.add(q.enonce + (q.figure ?? '') + q.reponse)
-    pris.set(auto.id, (pris.get(auto.id) ?? 0) + 1)
-    questions.push({ auto, q, forme, options: forme === 'qcm' ? melange([q.reponse, ...q.faux.slice(0, 3)]) : [] })
+/** Une question tirée dans un lot, en faisant passer les thèmes chacun
+ *  leur tour : d'abord le thème le moins servi (un thème de 3 questions
+ *  vaut un thème de 10), puis sa question la moins servie ; on évite deux
+ *  fois le même énoncé. */
+function tirerDans<T extends { id: string; theme: string }>(lot: T[], pris: Map<string, number>, vus: Set<string>, poser: (x: T) => Question): { x: T; q: Question } {
+  let x = lot[0], q = poser(x)
+  for (let essai = 0; essai < 30; essai++) {
+    const fois = (l: T[]) => l.reduce((n, a) => n + (pris.get(a.id) ?? 0), 0)
+    const themes = [...new Set(lot.map(a => a.theme))]
+    const moinsTheme = Math.min(...themes.map(t => fois(lot.filter(a => a.theme === t))))
+    const theme = choix(themes.filter(t => fois(lot.filter(a => a.theme === t)) === moinsTheme))
+    const dans = lot.filter(a => a.theme === theme)
+    const moins = Math.min(...dans.map(a => pris.get(a.id) ?? 0))
+    x = choix(dans.filter(a => (pris.get(a.id) ?? 0) === moins))
+    q = poser(x)
+    if (!vus.has(q.enonce + (q.figure ?? '') + q.reponse)) break
   }
-  return { questions, trousRemplaces }
+  vus.add(q.enonce + (q.figure ?? '') + q.reponse)
+  pris.set(x.id, (pris.get(x.id) ?? 0) + 1)
+  return { x, q }
+}
+
+/** Les questions d'un flash, dans l'ordre : les questions de cours, puis
+ *  les exercices d'application (une question à trou s'y glisse parfois).
+ *  Les thèmes choisis passent chacun leur tour ; on évite de reprendre
+ *  deux fois la même question tant qu'il en reste. Une question de cours
+ *  qu'aucun thème choisi n'a devient un exercice d'application
+ *  (coursRemplaces le compte). */
+export function tirerFlash(autos: Automatisme[], lecons: QuestionCours[], c: Composition): { questions: QuestionFlash[]; coursRemplaces: number } {
+  const questions: QuestionFlash[] = [], pris = new Map<string, number>(), vus = new Set<string>()
+  let coursRemplaces = 0
+  const nCours = Math.max(0, c.cours), nAppli = Math.max(0, c.application)
+  for (let k = 0; k < nCours; k++) {
+    if (!lecons.length) { coursRemplaces = nCours - k; break }
+    const { x, q } = tirerDans(lecons, pris, vus, l => ({ enonce: l.enonce, reponse: l.reponse }))
+    questions.push({ id: x.id, theme: x.theme, q, forme: 'cours' })
+  }
+  if (!autos.length) return { questions, coursRemplaces: questions.length ? coursRemplaces : 0 }
+  for (let k = 0; k < nAppli + coursRemplaces; k++) {
+    const { x, q } = tirerDans(autos, pris, vus, a => a.trou && Math.random() < PART_DES_TROUS ? a.trou() : a.generer())
+    questions.push({ id: x.id, theme: x.theme, q, forme: 'application' })
+  }
+  return { questions, coursRemplaces }
 }
