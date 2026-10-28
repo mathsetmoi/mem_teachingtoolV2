@@ -819,6 +819,20 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .p-etat { margin: 0 !important; min-height: 1.4em; font-size: 14px; color: var(--encre-douce); }
 .p-etat.erreur { color: var(--rouge); font-weight: 700; }
 .p-resultat { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: #e9f5ee; }
+/* Le résumé (lot 16) : la séance et ses pages, où va le replay, « Modifier… »,
+   et un gros « Publier ». Le reste de la fenêtre est là, replié : « Modifier… »
+   le remontre ; les vérifications et « Voir comme un élève » restent visibles. */
+.p-resume { display: grid; gap: 6px; padding: 12px; border-radius: 12px; background: var(--chrome); font-size: 15px; line-height: 1.4; }
+.p-resume p { margin: 0; }
+.p-resume-seance { font-weight: 700; }
+.p-resume p:last-child { margin-top: 4px; }
+.dialogue-publier.resume .corps > .champ, .dialogue-publier.resume .p-pages, .dialogue-publier.resume .p-lieu,
+.dialogue-publier.resume .p-dossier, .dialogue-publier.resume .p-comptes, .dialogue-publier.resume .p-drive-retenu,
+.dialogue-publier.resume .p-nouveau-lien, .dialogue-publier.resume .p-fichier { display: none; }
+.dialogue-publier.resume .p-publier { flex: 1 1 100%; height: 52px; font-size: 17px; }
+/* Plus serré en résumé : la fenêtre tient sur un écran de 1366 × 657 sans défiler */
+.dialogue-publier.resume .corps { gap: 10px; }
+.dialogue-publier.resume .p-verifier li { padding: 6px 10px; }
 .bouton-lien { display: inline-flex; align-items: center; text-decoration: none; color: inherit; height: 42px; padding: 0 18px; border-radius: 10px; font-weight: 700; }
 
 /* ---------- Revoir la construction ----------
