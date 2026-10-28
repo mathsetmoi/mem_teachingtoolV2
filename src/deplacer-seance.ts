@@ -98,6 +98,34 @@ function instantane(doc: Y.Doc, base: Y.Snapshot, moi: number): Uint8Array {
   return Y.encodeSnapshot(Y.createSnapshot(ds, sv))
 }
 
+/** Une séance déjà passée par ce classeur puis retirée (« Annuler » après un
+ *  déplacement, ou « Supprimer » : ses pages sont dans la corbeille ou
+ *  supprimées pour de bon) y a laissé sa fiche et ses étapes du film. Déplacée
+ *  de nouveau, elle croiserait sa propre trace ('chevauche') : la nouvelle
+ *  copie la remplace, on oublie d'abord ces restes, et ses pages de la
+ *  corbeille deviennent définitives. Seule une séance du même début (la même
+ *  séance : c'est la clé de ses publications) et sans aucune page dans
+ *  l'ordre est ainsi remplacée. */
+function oublierLesCopiesRetirees(cible: Tableau, debut: number) {
+  const pagesDe = new Map<string, string[]>()
+  for (const [p, id] of cible.seanceDesPages) pagesDe.set(id, [...(pagesDe.get(id) ?? []), p])
+  const retirees = cible.seancesDuClasseur().filter(x => x.debut === debut && !x.pages.length)
+  if (!retirees.length) return
+  const pages = new Set(retirees.flatMap(x => pagesDe.get(x.id) ?? []))
+  const film = cible.film.toArray()
+  cible.ecrireSansFilm(() => {
+    for (let i = film.length - 1; i >= 0; i--) {
+      if (!pages.has(film[i].page)) continue
+      let j = i
+      while (j > 0 && pages.has(film[j - 1].page)) j--
+      cible.film.delete(j, i - j + 1)
+      i = j
+    }
+    for (const x of retirees) cible.seances.delete(x.id)
+  })
+  cible.marquerDefinitives([...pages])
+}
+
 /** Copie la séance `id` de `source` dans `cible`, à sa date, avec son film
  *  (voir l'en-tête). `cible` est un document qui ne vit nulle part (un
  *  Tableau(null) où l'on a lu le classeur d'arrivée) : tout ce qu'il écrit
@@ -135,6 +163,7 @@ export function copierSeance(source: Tableau, id: string, cible: Tableau): Seanc
   // (voir l'en-tête), rien pendant la séance, et sa place dans le film
   if (cible.doc.store.clients.has(cible.doc.clientID)) throw new Error('Le classeur d\'arrivée doit être lu dans un document neuf.')
   cible.ecrireLesSeances()
+  oublierLesCopiesRetirees(cible, s.debut)
   const film = cible.film.toArray()
   const autres = cible.seancesDuClasseur()
   if (autres.some(x => (x.debut >= lo && x.debut <= hi) || (x.depuis >= lo && x.depuis <= hi))) return { refus: 'chevauche' }

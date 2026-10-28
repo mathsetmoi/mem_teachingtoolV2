@@ -233,6 +233,36 @@ describe('déplacer une séance vers un autre classeur', () => {
     expect(C.doc.getMap('images').get(arrivee.src)).toBe(donnees)
   })
 
+  it('une séance déjà passée par ce classeur puis supprimée y revient : la nouvelle copie remplace l\'ancienne', async () => {
+    const lundi = new Date('2026-10-12T08:00:00').getTime()
+    const A = new Tableau(null), B = new Tableau(null)
+    const a = await seance(A, lundi, 'A')
+    await seance(B, lundi + 3 * JOUR, 'B')
+    const pubA = publie(A, a.id)
+    // Une première fois, puis supprimée dans le classeur d'arrivée (ses pages à la corbeille)
+    const C = new Tableau(null); C.lireEtat(Y.encodeStateAsUpdate(B.doc))
+    const r1 = copierSeance(A, a.id, C)
+    if ('refus' in r1) throw new Error(r1.refus)
+    await attendre(10)
+    expect(supprimerSeance(C, r1.seance)).toEqual({ pages: r1.pages })
+    const filmApres1 = C.film.length
+    // De nouveau : acceptée (avant, elle croisait sa propre trace)
+    const D = new Tableau(null); D.lireEtat(Y.encodeStateAsUpdate(C.doc))
+    const r2 = copierSeance(A, a.id, D)
+    if ('refus' in r2) throw new Error(r2.refus)
+    await attendre(10)
+    const vues = D.seancesDuClasseur().filter(x => x.debut === D.seances.get(r2.seance)!.debut)
+    expect(vues.map(x => x.id)).toEqual([r2.seance])
+    expect(D.pagesDeLaSeance(r2.seance)).toEqual(r2.pages)
+    // Le film n'a pas de doublon, il reste dans l'ordre des heures
+    expect(D.film.length).toBe(filmApres1)
+    const t = D.film.toArray().map(e => e.t)
+    expect([...t].sort((x, y) => x - y)).toEqual(t)
+    expect(publie(D, r2.seance)).toEqual(pubA)
+    // Les pages de l'ancienne copie ne sont plus à remettre
+    expect(r1.pages.map(p => D.corbeille.get(p)?.definitif)).toEqual([true, true])
+  })
+
   it('refuse une séance qui croise une séance de l\'autre classeur', async () => {
     const lundi = new Date('2026-10-12T08:00:00').getTime()
     const A = new Tableau(null), B = new Tableau(null)

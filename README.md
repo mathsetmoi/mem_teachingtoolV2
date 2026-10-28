@@ -3347,7 +3347,10 @@ séance, ou la touche Menu).
   classeur : la séance part avec ses pages, ses images, son nom, sa date et
   son film (Revoir et Publier marchent comme avant), et se range à sa date
   dans l'autre classeur. « Annuler » la ramène. Un classeur qui a déjà une
-  séance à la même heure refuse, et rien ne bouge.
+  séance à la même heure refuse, et rien ne bouge. Une séance qui est déjà
+  passée par ce classeur puis a été supprimée (ses pages sont à la
+  corbeille) y revient sans être refusée : la nouvelle copie remplace
+  l'ancienne, dont les pages de la corbeille ne sont plus à remettre.
 - **Images retrouvées** : jusqu'au 28 octobre 2026, une séance déplacée
   arrivait sans ses images (des cadres gris à leur place). En ouvrant le
   classeur, celles qui manquent sont cherchées dans les autres classeurs de
