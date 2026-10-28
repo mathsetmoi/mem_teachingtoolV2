@@ -83,7 +83,7 @@ const CORBEILLE = () => [...document.querySelectorAll('.carte-corbeille')].map(c
   const jetees = t.find(s => s.h === 'Pages jetées')
   verifier('la revue : b sous « Pages jetées » (2 gestes)', jetees && jetees.lignes.length === 1 && /2 gestes$/.test(jetees.lignes[0]), t)
   // Publier la séance 1 (celle où b a été écrite) : le fichier part sans erreur
-  await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]')
+  await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]'); await page.check('input[name="p-lieu"][value="google"]', { timeout: 2000 }).catch(() => {})
   const seances = await page.$$eval('.dialogue-publier[open] select option', l => l.map(o => o.textContent)).catch(() => [])
   const cases = await page.$$eval('.p-pages input', l => l.map(i => ({ v: i.value, c: i.checked })))
   console.log('Publier : séances', JSON.stringify(seances), 'pages', JSON.stringify(cases.map(c => [Object.keys(ids).find(k => ids[k] === c.v), c.c])))

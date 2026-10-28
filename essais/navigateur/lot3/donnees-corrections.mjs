@@ -203,14 +203,14 @@ if (faire('seance')) {
       await avancer(15 * 60_000)
       for (let i = 0; i < 5; i++) { await avancer(4000); await poser('d' + i); await page.waitForTimeout(40) }
       await page.waitForTimeout(200)
-      await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]')
+      await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]'); await page.check('input[name="p-lieu"][value="google"]', { timeout: 2000 }).catch(() => {})
       const d = await page.evaluate(() => [...document.querySelector('.dialogue-publier[open] .p-seance').options].map(o => o.textContent))
       verifier(`${nom}, entre deux cours : Publier propose deux séances de 5 gestes (pas une de 11)`, d.length === 2 && d.every(o => /· 5 gestes/.test(net(o))), d.map(net))
       await page.focus('.p-titre'); await page.keyboard.press('Escape'); await page.waitForTimeout(200)
       await ctx.close()
       continue
     }
-    await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]')
+    await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]'); await page.check('input[name="p-lieu"][value="google"]', { timeout: 2000 }).catch(() => {})
     const d = await page.evaluate(() => {
       const s = document.querySelector('.dialogue-publier[open] .p-seance')
       return { choisie: s.options[s.selectedIndex].textContent, n: [...s.options].filter(o => /geste/.test(o.textContent)).length, pages: [...document.querySelectorAll('.p-pages input')].map(i => i.parentElement.textContent.trim() + (i.checked ? ' (cochée)' : '')) }

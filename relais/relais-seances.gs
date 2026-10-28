@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * MEM — RELAIS DES REPLAYS (version 3), à déployer dans Google Apps Script
+ * MEM — RELAIS DES REPLAYS (version 4), à déployer dans Google Apps Script
  * ============================================================================
  * Ce petit script lit, dans votre Drive, la séance qu'un élève demande par
  * son lien, et la lui envoie. Il ne fait rien d'autre.
@@ -11,15 +11,25 @@
  * clé ne circule.
  *
  * CE QU'IL SERT, ET RIEN D'AUTRE. Un fichier « .mem » qui est un replay
- * (il commence par {"format":"mem-revoir"), rangé dans l'un des dossiers
- * ci-dessous (DOSSIERS), dont ce compte est le propriétaire, ni l'un ni
- * l'autre à la corbeille. Tout autre identifiant est refusé. Le script ne
- * liste jamais un dossier : sans le lien d'une séance, on ne la trouve pas.
+ * (il commence par {"format":"mem-revoir"), et de deux façons :
+ *  - par son identifiant (« ?id=… »), s'il est rangé dans l'un des dossiers
+ *    ci-dessous (DOSSIERS), dont ce compte est le propriétaire, ni l'un ni
+ *    l'autre à la corbeille (les liens d'avant, et la publication par Google) ;
+ *  - par son code (« ?code=… », version 4) : le fichier « Titre [code].mem »
+ *    posé par MEM teachingtool dans n'importe quel dossier du Drive de ce
+ *    compte (le dossier du chapitre, par Google Drive pour ordinateur). Le
+ *    code, tiré au hasard (8 signes), est dans le lien et dans le nom du
+ *    fichier ; le fichier doit appartenir à ce compte et ne pas être à la
+ *    corbeille. Un .memc n'est jamais servi : ni son extension, ni son début.
+ * Tout autre identifiant ou code est refusé. Le script ne liste jamais un
+ * dossier : sans le lien d'une séance, on ne la trouve pas.
  *
  * UN RELAIS PAR COMPTE. Le script s'exécute sous un seul compte : on le
- * déploie dans chaque compte Google qui publie des séances (mathsetmoi, LFB).
+ * déploie dans chaque compte Google qui publie des séances (mathsetmoi, LFB,
+ * LyFEL).
  * C'est le même fichier partout. Chaque déploiement a son adresse, que le
- * site range sous un nom court (« mem », « lfb ») ; le lien dit lequel ouvrir.
+ * site range sous un nom court (« mem », « lfb », « lyfel ») ; le lien dit
+ * lequel ouvrir.
  *
  * ---------------------------------------------------------------------------
  * INSTALLER, une fois par compte (cinq minutes)
@@ -36,7 +46,7 @@
  *     en « /dev », qui n'ouvre que pour vous). Celle d'un compte
  *     d'établissement contient « /a/macros/… » : elle est bonne telle quelle.
  *  5. Mettre cette adresse dans src/publication/comptes.ts, en face du compte
- *     (« mem » ou « lfb »), et remettre le site en ligne.
+ *     (« mem », « lfb » ou « lyfel »), et remettre le site en ligne.
  *  6. Vérifier : ouvrir l'adresse suivie de « ?ping=1 » dans une fenêtre de
  *     navigation privée. Il doit s'afficher une ligne de texte commençant par
  *     {"relais":"MEM Replay" — et non une page de connexion Google.
@@ -62,6 +72,12 @@ var DOSSIERS = ['MEM - Replay séances', 'LFB - Replay séances'];
 var EXTENSION = '.mem';
 var DEBUT = '{"format":"mem-revoir"';
 
+/** La version de ce relais (le site la vérifie). */
+var VERSION = 4;
+
+/** Le code d'un replay posé dans un dossier du Drive : 8 signes tirés au hasard. */
+var FORME_CODE = /^[a-z0-9]{8}$/;
+
 /** Combien de temps on retient le dossier trouvé (pour « ?ping=1 »). */
 var GARDE_DOSSIER = 6 * 60 * 60; // secondes
 
@@ -74,11 +90,23 @@ function doGet(e) {
   var p = (e && e.parameter) || {};
   try {
     if (p.ping) return enJson(etatDuRelais());
+    var texte;
+    if (p.code !== undefined) {
+      var code = String(p.code);
+      if (!FORME_CODE.test(code)) {
+        return enJson({ erreur: 'Ce lien est incomplet : demandez-en un nouveau à votre enseignant.' });
+      }
+      texte = seanceParSonCode(code);
+      if (texte === null) {
+        return enJson({ erreur: 'Séance introuvable ou pas encore arrivée sur le Drive. Réessayez dans quelques minutes, ou demandez le lien à votre enseignant.' });
+      }
+      return ContentService.createTextOutput(texte).setMimeType(ContentService.MimeType.JSON);
+    }
     var id = String(p.id || '');
     if (!/^[A-Za-z0-9_-]{10,}$/.test(id)) {
       return enJson({ erreur: 'Ce lien est incomplet : demandez-en un nouveau à votre enseignant.' });
     }
-    var texte = seanceServie(id);
+    texte = seanceServie(id);
     if (texte === null) {
       return enJson({ erreur: 'Séance introuvable ou retirée. Demandez le lien à votre enseignant.' });
     }
@@ -89,7 +117,7 @@ function doGet(e) {
     // presque toujours l'autorisation pas encore donnée (étape 3), ou un
     // déploiement qui s'exécute en tant que « l'utilisateur » au lieu de « Moi ».
     if (p.ping) {
-      return enJson({ relais: 'MEM Replay', version: 3, pret: false,
+      return enJson({ relais: 'MEM Replay', version: VERSION, pret: false,
         erreur: 'Le relais répond mais ne lit pas le Drive : ' + String((err && err.message) || err).slice(0, 300)
           + ' — lancez « verifierLInstallation » depuis l’éditeur, et vérifiez que le déploiement s’exécute en tant que « Moi ».' });
     }
@@ -109,6 +137,31 @@ function seanceServie(id) {
   if (nom.slice(-EXTENSION.length) !== EXTENSION) return null;
   if (!dansUnDossierDesReplays(fichier)) return null;
   var texte = fichier.getBlob().getDataAsString('UTF-8');
+  return texte.slice(0, DEBUT.length) === DEBUT ? texte : null;
+}
+
+/**
+ * Le texte du replay « Titre [code].mem » posé n'importe où dans le Drive de
+ * ce compte (le plus récent s'il y en a plusieurs : un titre changé à la
+ * republication laisse l'ancien nom), sinon null. Il doit appartenir à ce
+ * compte, ne pas être à la corbeille, porter exactement « [code].mem » à la
+ * fin de son nom et commencer comme un replay.
+ */
+function seanceParSonCode(code) {
+  var moi = Session.getEffectiveUser().getEmail();
+  var fin = '[' + code + ']' + EXTENSION;
+  var trouves = DriveApp.searchFiles("title contains '" + code + "' and trashed = false");
+  var meilleur = null, quand = 0;
+  while (trouves.hasNext()) {
+    var f = trouves.next();
+    if (f.isTrashed() || f.getName().slice(-fin.length) !== fin) continue;
+    var proprietaire = f.getOwner();
+    if (!proprietaire || proprietaire.getEmail() !== moi) continue;
+    var t = f.getLastUpdated().getTime();
+    if (!meilleur || t > quand) { meilleur = f; quand = t; }
+  }
+  if (!meilleur) return null;
+  var texte = meilleur.getBlob().getDataAsString('UTF-8');
   return texte.slice(0, DEBUT.length) === DEBUT ? texte : null;
 }
 
@@ -146,7 +199,7 @@ function dossierTrouve() {
  */
 function etatDuRelais() {
   var dossier = dossierTrouve();
-  return { relais: 'MEM Replay', version: 3, dossier: dossier, pret: !!dossier };
+  return { relais: 'MEM Replay', version: VERSION, dossier: dossier, pret: !!dossier };
 }
 
 function enJson(objet) {

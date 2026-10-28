@@ -370,6 +370,7 @@ async function demarrer() {
       },
     })
     ui.enregistrerAilleurs = () => void ailleurs.enregistrer()
+    ui.brancherReplay(registre, infos.id)
     if (import.meta.env.DEV) Object.assign(window, { __ailleurs: ailleurs })
     if (import.meta.env.DEV) Object.assign(window, { __bibliotheque: ui.bibliotheque, __fichiers: fichiers })
   }

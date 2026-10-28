@@ -61,6 +61,7 @@ import { accorder, compterObjets, minuscule } from './verrou'
 import type { Surveillance } from './classeurs/surveillance'
 import type { ActionEtat, Bandeau, LigneEtat } from './classeurs/etat'
 import type { EnregistrementCle } from './classeurs/cle'
+import type { Registre } from './classeurs/registre'
 import { AIDE_ACTIVER } from './classeurs/cle'
 import type { CopieDrive } from './classeurs/copie-drive'
 import { HORS_LIGNE_FICHIER } from './classeurs/copie-drive'
@@ -2155,6 +2156,8 @@ export class UI implements Interface {
   /** La fenêtre « Enregistrer » du lot 7 (l'ordinateur ou le Drive, ce
    *  classeur, sa classe, toute la bibliothèque) ; posée par main.ts */
   enregistrerAilleurs: (() => void) | null = null
+  /** La bibliothèque et ce classeur : Publier retrouve le dossier du chapitre et retient le dossier et le Drive choisis */
+  brancherReplay(registre: Registre, idClasseur: string) { this.publication.lieu = { registre, idClasseur } }
 
   brancherFichiers(f: Fichiers | null) {
     this.fichiers = f

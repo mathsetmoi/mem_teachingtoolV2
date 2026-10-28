@@ -20,18 +20,30 @@ import { deLaSeance, libelleSeance } from '../seances'
 import type { FilmEleve } from '../revoir/format'
 import { ErreurFilm, ecrireFilm, lireFilm } from '../revoir/format'
 import { Bobine } from '../revoir/bobine'
-import { essayerRelais, lireParLeRelais } from '../revoir/relais'
-import { CLIENT_GOOGLE, COMPTES, EXTENSION, compteDe, lienEleve } from './comptes'
+import { essayerRelais, lireParLeRelais, lireParSonCode } from '../revoir/relais'
+import { CLIENT_GOOGLE, COMPTES, EXTENSION, RELAIS_REPLAY, compteDe, lienEleve, lienEleveParCode, nouveauCode, relaisDe } from './comptes'
+import type { PoigneeDossier } from '../classeurs/ordinateur'
+import { accordDuDossier, choisitUnDossier } from '../classeurs/ordinateur'
+import type { Registre } from '../classeurs/registre'
+import type { Proposition, ReglageReplay } from './replay-dossier'
+import { choisirLeDossier, deposerLeReplay, dossierDuChapitre, lireReglage, nomDuReplay, retenirReglage } from './replay-dossier'
 import { marqueDeCopie } from '../fichier'
 import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier } from './drive'
 
 /** Ce qu'on retient d'une séance publiée, dans le document du professeur
  *  (jamais dans le film élève) : de quoi republier au même lien */
-interface Publiee { compte: string; id: string; titre: string; quand: number; cle?: string }
+interface Publiee { compte: string; id: string; titre: string; quand: number; cle?: string
+  /** Rangée dans un dossier de l'ordinateur : le code du fichier « Titre [code].mem » (id vide) */
+  code?: string }
 
 const MINUTE = 60_000
 /** La version du relais (relais/relais-seances.gs) que ce site attend */
-const VERSION_RELAIS = 3
+const VERSION_RELAIS = 4
+/** Publier avec la connexion Google (l'ancien envoi) se contente de la version 3 du relais */
+const VERSION_RELAIS_GOOGLE = 3
+/** Le replay rangé dans un dossier : on redemande au relais toutes les 5 secondes, 10 minutes au plus */
+const ATTENTE_RELAIS = 5_000
+const ESSAIS_RELAIS = 120
 /** Les découpages proposés : un silence plus long sépare deux séances */
 const DECOUPAGES = [20, 10, 5, 2]
 
@@ -46,6 +58,8 @@ const MEMOIRE_COMPTE = 'tableau-mem:compte-google:'
 const dernierCompte = (compte: string) => { try { return localStorage.getItem(MEMOIRE_COMPTE + compte) ?? '' } catch { return '' } }
 const retenirCompte = (compte: string, courriel: string) => { try { if (courriel) localStorage.setItem(MEMOIRE_COMPTE + compte, courriel) } catch { /* navigation privée */ } }
 const memes = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+/** L'accord d'écrire dans un dossier retenu (Chrome le redemande après un redémarrage) : dans le clic */
+const choisirAccord = (x: PoigneeDossier) => accordDuDossier(x, true).catch(() => false)
 const kilo = (n: number) => n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} Ko` : `${(n / 1024 / 1024).toFixed(1).replace('.', ',')} Mo`
 
 
@@ -55,6 +69,16 @@ export class Publication {
   private textePronote = ''
   /** Publier quand même avec un autre compte que d'habitude : « compte:adresse » confirmé */
   private autreCompteAccepte = ''
+  /** La bibliothèque et le classeur ouvert (main.ts) : de quoi retrouver le dossier du chapitre
+   *  et retenir le dossier et le Drive choisis ; absent : on choisit à chaque fois */
+  lieu: { registre: Registre; idClasseur: string } | null = null
+  /** Ce qui est retenu pour ce classeur, et le dossier proposé (classe reliée à l'ordinateur) */
+  private retenu: ReglageReplay = {}
+  private propose: Proposition | null = null
+  /** Le dossier qu'on vient de choisir dans cette fenêtre (sinon : le retenu, puis le proposé) */
+  private choisi: PoigneeDossier | null = null
+  /** Quelle vérification du lien est en cours (une seule : la fenêtre ou la séance change) */
+  private attente = 0
 
   constructor(private app: App, private racine: HTMLElement) {}
 
@@ -87,6 +111,14 @@ export class Publication {
           <select class="p-decoupage">${DECOUPAGES.map(m => `<option value="${m}">${m} minutes</option>`).join('')}</select></label>
         <fieldset class="p-pages"><legend>Pages où l'on a écrit pendant la séance</legend><div class="cases"></div></fieldset>
         <label class="champ"><span>Titre (les élèves le voient)</span><input class="p-titre" maxlength="120" /></label>
+        <fieldset class="p-lieu"><legend>Où ranger le replay</legend><div class="cases">
+          <label class="case"><input type="radio" name="p-lieu" value="dossier"><span>Dans un dossier de l'ordinateur ou de Google Drive pour ordinateur (sans connexion Google)</span></label>
+          <label class="case"><input type="radio" name="p-lieu" value="google"><span>Sur le Drive, en me connectant à Google</span></label></div></fieldset>
+        <div class="p-dossier">
+          <label class="champ"><span>Nom du fichier (le code entre crochets est ajouté tout seul)</span><input class="p-nomfichier" maxlength="80" /></label>
+          <p>Ranger dans : <strong class="p-chemin">…</strong> <button type="button" class="secondaire petit p-choisir">Choisir…</button></p>
+          <p class="p-drive-retenu" hidden>Drive des élèves : <strong class="p-drive-nom"></strong> <button type="button" class="secondaire petit p-drive-changer">Changer</button></p>
+        </div>
         <fieldset class="p-comptes"><legend>Publier dans</legend><div class="cases"></div>
           <p class="p-google"><span class="p-qui"></span> <button type="button" class="secondaire petit p-changer">Choisir le compte Google</button></p></fieldset>
         <label class="case p-nouveau-lien" hidden><input type="checkbox" class="p-nouveau"><span>Publier comme une nouvelle séance (nouveau lien, l'ancien reste tel quel)</span></label>
@@ -102,7 +134,7 @@ export class Publication {
           <div class="actions">
             <button type="button" class="secondaire p-copier">Copier le lien</button>
             <button type="button" class="principal p-pronote">Copier pour Pronote</button>
-            <a class="secondaire bouton-lien p-ouvrir" target="_blank" rel="noopener">Ouvrir</a>
+            <a class="secondaire bouton-lien p-ouvrir" target="_blank" rel="noopener">Tester le lien</a>
           </div>
         </div>
         <div class="actions fin"><button type="button" class="secondaire p-fermer">Fermer</button></div>
@@ -121,34 +153,103 @@ export class Publication {
       const s = this.reperer(Number(q<HTMLSelectElement>('.p-decoupage').value) * MINUTE)
       if (s.length) { this.seances = s; this.remplirSeances() }
     })
-    // Coché d'avance : le premier compte dont le relais est installé
-    const parDefaut = COMPTES.find(c => c.relais) ?? COMPTES[0]
-    q('.p-comptes .cases').innerHTML = COMPTES.map(c => `
-      <label class="case"><input type="radio" name="p-compte" value="${echapper(c.cle)}"${c === parDefaut ? ' checked' : ''}${c.relais ? '' : ' disabled'}>
-      <span>${echapper(c.nom)}${c.relais ? '' : ' <em>(relais à installer)</em>'}</span></label>`).join('')
+    // Dans un dossier de l'ordinateur d'abord, quand ce navigateur sait y écrire (Chrome, Edge) ;
+    // sinon, comme avant, sur le Drive avec la connexion Google
+    const dossierPossible = choisitUnDossier()
+    const googlePossible = this.enLigne && !!CLIENT_GOOGLE
+    const premier = dossierPossible ? 'dossier' : 'google'
+    for (const r of d.querySelectorAll<HTMLInputElement>('input[name=p-lieu]')) {
+      r.checked = r.value === premier
+      r.disabled = r.value === 'dossier' ? !dossierPossible : !googlePossible
+    }
+    d.querySelector('.p-lieu')!.toggleAttribute('hidden', !dossierPossible && !googlePossible)
+    this.retenu = {}; this.propose = null; this.choisi = null
+    this.remplirComptes()
 
     q('.p-apercu').addEventListener('click', () => this.apercu())
     q('.p-fichier').addEventListener('click', () => this.enregistrer())
     q('.p-publier').addEventListener('click', () => this.publier())
     q('.p-changer').addEventListener('click', () => this.choisirCompteGoogle())
+    q('.p-choisir').addEventListener('click', () => void this.choisirLeDossier())
+    q('.p-drive-changer').addEventListener('click', () => { q('.p-drive-retenu').hidden = true; q('.p-comptes').hidden = false })
     q('.p-copier').addEventListener('click', () => this.copier(q<HTMLInputElement>('.p-lien').value, 'Lien copié'))
     q('.p-pronote').addEventListener('click', () => this.copier(this.textePronote, 'Texte copié : collez-le dans le cahier de textes'))
     q('.p-fermer').addEventListener('click', () => d.close())
     d.addEventListener('close', () => { d.remove(); if (this.d === d) this.d = null })
     d.addEventListener('change', e => {
+      if ((e.target as HTMLElement).closest('.p-lieu')) { this.remplirComptes(); this.majLieu(); this.majNouveauLien(); this.majGoogle() }
       if ((e.target as HTMLElement).closest('.p-comptes')) { this.majNouveauLien(); this.majGoogle() }
-      if ((e.target as HTMLElement).closest('.p-pages, .p-comptes, .p-nouveau-lien')) this.majVerifications()
+      if ((e.target as HTMLElement).closest('.p-lieu, .p-pages, .p-comptes, .p-nouveau-lien')) this.majVerifications()
     })
 
     if (!this.enLigne) {
       q('.p-apercu').hidden = true
-      q<HTMLButtonElement>('.p-publier').disabled = true
-      this.etat('La version hors ligne de MEM teachingtool ne peut ni publier ni montrer l\'aperçu : enregistrez le fichier séance, ou utilisez MEM teachingtool en ligne pour publier.')
+      this.etat(choisitUnDossier()
+        ? 'La version hors ligne range le replay dans le dossier choisi, mais ne montre ni l\'aperçu ni le lien : pour le lien des élèves, publiez le même replay avec MEM teachingtool en ligne.'
+        : 'La version hors ligne de MEM teachingtool ne peut ni publier ni montrer l\'aperçu : enregistrez le fichier séance, ou utilisez MEM teachingtool en ligne pour publier.')
     }
     this.remplirSeances()
+    this.majLieu()
     this.majGoogle()
     d.showModal()
     q('.p-seance').focus()
+    void this.chargerLieu()
+  }
+
+  /** Dans un dossier de l'ordinateur, ou sur le Drive avec la connexion Google ? */
+  private get mode(): 'dossier' | 'google' {
+    const r = this.d?.querySelector('input[name=p-lieu]:checked') as HTMLInputElement | null
+    return r?.value === 'google' ? 'google' : 'dossier'
+  }
+
+  /** Les Drive proposés : pour un dossier de l'ordinateur, les relais (dont LyFEL) ;
+   *  pour la connexion Google, les comptes qui ont leurs dossiers */
+  private remplirComptes() {
+    const d = this.d!
+    const liste = this.mode === 'dossier' ? RELAIS_REPLAY : COMPTES
+    const garde = this.compte || this.retenu.compte
+    // Coché d'avance : celui que cette classe a déjà, sinon le premier dont le relais est installé
+    const parDefaut = liste.find(c => c.cle === garde && c.relais) ?? liste.find(c => c.relais) ?? liste[0]
+    d.querySelector('.p-comptes .cases')!.innerHTML = liste.map(c => `
+      <label class="case"><input type="radio" name="p-compte" value="${echapper(c.cle)}"${c === parDefaut ? ' checked' : ''}${c.relais ? '' : ' disabled'}>
+      <span>${echapper(c.nom)}${c.relais ? '' : ' <em>(relais à installer)</em>'}</span></label>`).join('')
+    d.querySelector('.p-comptes legend')!.textContent = this.mode === 'dossier' ? 'Le Drive de ce dossier (pour le lien des élèves)' : 'Publier dans'
+  }
+
+  /** Ce que montre la fenêtre selon le lieu : le dossier et le nom du fichier, ou la connexion Google */
+  private majLieu() {
+    const d = this.d!, dossier = this.mode === 'dossier'
+    ;(d.querySelector('.p-dossier') as HTMLElement).hidden = !dossier
+    // Le Drive n'est demandé que la première fois pour une classe : ensuite, une ligne
+    const retenu = dossier && !!this.retenu.compte && relaisDe(this.retenu.compte)?.relais
+    ;(d.querySelector('.p-comptes') as HTMLElement).hidden = !!retenu
+    ;(d.querySelector('.p-drive-retenu') as HTMLElement).hidden = !retenu
+    if (retenu) (d.querySelector('.p-drive-nom') as HTMLElement).textContent = relaisDe(this.retenu.compte!)!.nom
+    const nom = d.querySelector('.p-nomfichier') as HTMLInputElement
+    if (dossier && !nom.value) nom.value = (d.querySelector('.p-titre') as HTMLInputElement).value
+    const chemin = this.choisi?.name ?? this.retenu.poignee?.name ?? this.propose?.chemin
+    ;(d.querySelector('.p-chemin') as HTMLElement).textContent = chemin ?? 'aucun dossier choisi'
+  }
+
+  /** Ce qui est retenu pour ce classeur, et le dossier du chapitre (classe reliée à l'ordinateur) */
+  private async chargerLieu() {
+    const d = this.d
+    if (!d || !this.lieu) return
+    const { registre, idClasseur } = this.lieu
+    const [retenu, propose] = await Promise.all([lireReglage(registre, idClasseur), dossierDuChapitre(registre, idClasseur)])
+    if (this.d !== d) return
+    this.retenu = retenu; this.propose = propose
+    this.remplirComptes(); this.majLieu(); this.majNouveauLien(); this.majVerifications()
+  }
+
+  /** « Choisir… » : un autre dossier de l'ordinateur (une clé, G:\Mon Drive\…) */
+  private async choisirLeDossier() {
+    try {
+      const x = await choisirLeDossier()
+      if (!x || !this.d) return
+      this.choisi = x
+      this.majLieu(); this.majVerifications()
+    } catch { this.etat('Le dossier n\'a pas pu être choisi. Réessayez.', true) }
   }
 
   /** Les séances sont-elles explicites (lot 6 : le classeur a des séances) ? */
@@ -194,6 +295,9 @@ export class Publication {
     const deja = this.registre.get(this.cleRegistre())
     ;(d.querySelector('.p-titre') as HTMLInputElement).value = deja?.titre ?? x.nom ?? `Séance du ${new Date(s.debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`
     ;(d.querySelector('.p-resultat') as HTMLElement).hidden = true
+    // Le nom du fichier suit le titre de la séance choisie
+    ;(d.querySelector('.p-nomfichier') as HTMLInputElement).value = (d.querySelector('.p-titre') as HTMLInputElement).value
+    this.attente++
     this.majNouveauLien()
     this.majVerifications()
   }
@@ -221,7 +325,10 @@ export class Publication {
     const d = this.d!, ul = d.querySelector('.p-verifier')!
     const pages = this.pagesChoisies()
     const publier = d.querySelector('.p-publier') as HTMLButtonElement
-    publier.disabled = !pages.length || !this.enLigne || !CLIENT_GOOGLE || !compteDe(this.compte)?.relais
+    const dossier = this.mode === 'dossier'
+    publier.disabled = !pages.length || (dossier
+      ? !relaisDe(this.compte)?.relais || !(this.choisi || this.retenu.poignee || this.propose)
+      : !this.enLigne || !CLIENT_GOOGLE || !compteDe(this.compte)?.relais)
     ;(d.querySelector('.p-fichier') as HTMLButtonElement).disabled = !pages.length
     if (!pages.length) { ul.innerHTML = '<li class="alerte">Cochez au moins une page.</li>'; return }
     const f = this.film()
@@ -231,8 +338,10 @@ export class Publication {
       `<li>${f.etapes.length} geste${f.etapes.length > 1 ? 's' : ''} · ${mmss(new Bobine(f).duree)} de replay · ${f.ordre.length} page${f.ordre.length > 1 ? 's' : ''}</li>`,
       images ? `<li class="alerte">${images} image${images > 1 ? 's' : ''} importée${images > 1 ? 's' : ''} : vérifiez qu'aucune ne montre un nom, une copie ou un visage d'élève.</li>` : '',
       '<li class="alerte">Vérifiez qu\'aucun prénom n\'a été écrit pendant la séance : tout ce qui a été visible pendant la séance part, même effacé ensuite. Rejouez l\'aperçu pour le voir.</li>',
-      this.enLigne && !CLIENT_GOOGLE ? '<li class="alerte">La publication sur Google Drive n\'est pas encore réglée sur ce site (identifiant Google à créer, voir le mode d\'emploi). En attendant, enregistrez le fichier séance.</li>' : '',
-      deja && !this.nouveauLien ? `<li>Déjà publiée le ${new Date(deja.quand).toLocaleDateString('fr-FR')} : publier à nouveau met à jour cette séance, au même lien.</li>` : '',
+      dossier && !(this.choisi || this.retenu.poignee || this.propose) ? '<li class="alerte">Choisissez le dossier où ranger le replay (« Choisir… »).</li>' : '',
+      !dossier && this.enLigne && !CLIENT_GOOGLE ? '<li class="alerte">La publication sur Google Drive n\'est pas encore réglée sur ce site (identifiant Google à créer, voir le mode d\'emploi). En attendant, enregistrez le fichier séance.</li>' : '',
+      dossier && deja && !deja.code && !this.nouveauLien ? '<li>Cette séance a déjà un lien (publiée sur le Drive avec la connexion Google). Ranger le replay dans un dossier donne un NOUVEAU lien : recopiez-le dans Pronote.</li>' : '',
+      deja && !this.nouveauLien && (!dossier || deja.code) ? `<li>Déjà publiée le ${new Date(deja.quand).toLocaleDateString('fr-FR')} : publier à nouveau met à jour cette séance, au même lien.</li>` : '',
     ]
     ul.innerHTML = items.join('')
   }
@@ -314,7 +423,96 @@ export class Publication {
     this.etat(`Fichier enregistré (${kilo(texte.length)}).`)
   }
 
-  private async publier() {
+  private publier() { return this.mode === 'dossier' ? this.publierDansUnDossier() : this.publierSurLeDrive() }
+
+  /** Ranger le replay dans un dossier de l'ordinateur (ou de Google Drive pour
+   *  ordinateur) : pas de connexion Google. Le lien porte le code du fichier ;
+   *  le relais du Drive le retrouve quand Google Drive pour ordinateur l'a envoyé. */
+  private async publierDansUnDossier() {
+    const d = this.d!, b = d.querySelector('.p-publier') as HTMLButtonElement
+    const relais = relaisDe(this.compte)
+    if (!relais?.relais) return this.etat('Ce Drive n\'a pas encore de relais : choisissez-en un autre.', true)
+    b.disabled = true
+    try {
+      // D'abord, tant que le clic est tout frais : le dossier et l'accord du navigateur d'y écrire
+      this.etat('Ouverture du dossier…')
+      const dossier = await this.dossierCible()
+      if (!dossier) return this.etat('Le dossier n\'est pas accessible : cliquez « Choisir… » pour le choisir (et accepter l\'accès).', true)
+      // Un relais d'avant ne retrouve pas un fichier par son code : on le dit avant d'écrire
+      const etat = await essayerRelais(relais.relais).catch(() => null)
+      if (etat && (etat.version ?? 1) < VERSION_RELAIS) throw new Error(`Le relais de « ${relais.nom} » n'est pas à jour (version ${etat.version ?? 1}, il faut la ${VERSION_RELAIS}) : collez la nouvelle version de relais/relais-seances.gs dans son projet Apps Script, puis Déployer → Gérer les déploiements → Version : Nouvelle version. Réessayez ensuite.`)
+      this.etat('Préparation de la séance…')
+      const film = this.film()
+      const texte = await ecrireFilm(film)
+      const cle = this.cleRegistre()
+      const deja = this.nouveauLien ? undefined : this.registre.get(cle)
+      // Republier : le même code, donc le même lien ; sinon un code neuf
+      const code = deja?.code ?? nouveauCode()
+      const nom = nomDuReplay((d.querySelector('.p-nomfichier') as HTMLInputElement).value || film.titre, code)
+      this.etat(`Écriture de « ${nom} » (${kilo(texte.length)})…`)
+      await deposerLeReplay(dossier, nom, texte, code)
+      this.registre.set(cle, { compte: this.compte, id: '', code, titre: film.titre, quand: Date.now() })
+      if (this.lieu) {
+        await retenirReglage(this.lieu.registre, this.lieu.idClasseur, { compte: this.compte, ...(this.choisi ? { poignee: this.choisi } : {}) })
+        this.retenu = { ...this.retenu, compte: this.compte, ...(this.choisi ? { poignee: this.choisi } : {}) }
+      }
+      this.majLieu()
+      ;(d.querySelector('.p-nouveau') as HTMLInputElement).checked = false
+      if (!this.enLigne) {
+        this.textePronote = ''
+        this.etat(`Replay rangé dans « ${nom} ». Pour le lien des élèves, publiez ce replay avec MEM teachingtool en ligne : le lien sera celui-là.`)
+        return
+      }
+      const lien = lienEleveParCode(this.lecteur, this.compte, code)
+      ;(d.querySelector('.p-lien') as HTMLInputElement).value = lien
+      ;(d.querySelector('.p-ouvrir') as HTMLAnchorElement).href = lien
+      ;(d.querySelector('.p-resultat') as HTMLElement).hidden = false
+      this.textePronote = this.pourPronote(film, lien)
+      this.majNouveauLien()
+      this.majVerifications()
+      void this.attendreLeRelais(this.compte, code, film, nom)
+    } catch (e) {
+      this.etat(e instanceof Error ? e.message : 'Le replay n\'a pas pu être rangé. Réessayez.', true)
+    } finally {
+      b.disabled = false
+      this.majVerifications()
+      const d2 = this.d
+      if (d2?.open && !d2.contains(document.activeElement)) (b.disabled ? d2.querySelector<HTMLButtonElement>('button:not([disabled])') : b)?.focus()
+    }
+  }
+
+  /** Le dossier où écrire : celui qu'on vient de choisir, sinon le retenu, sinon le dossier du chapitre */
+  private async dossierCible(): Promise<PoigneeDossier | null> {
+    const x = this.choisi ?? this.retenu.poignee ?? null
+    if (x) return await choisirAccord(x) ? x : null
+    return this.propose ? this.propose.ouvrir(true) : null
+  }
+
+  /** Après avoir écrit le fichier : on redemande le replay au relais, comme le fera l'élève,
+   *  jusqu'à ce que Google Drive pour ordinateur l'ait envoyé (10 minutes au plus) */
+  private async attendreLeRelais(compte: string, code: string, film: FilmEleve, nom: string) {
+    const moi = ++this.attente, d = this.d
+    const encore = () => this.d === d && this.attente === moi
+    for (let i = 0; i < ESSAIS_RELAIS && encore(); i++) {
+      this.etat(`En attente de Google Drive pour ordinateur… (« ${nom} » doit arriver sur le Drive ; le lien est déjà prêt, vous pouvez le copier)`)
+      try {
+        const relu = await lireFilm(await lireParSonCode(compte, code))
+        if (!encore()) return
+        if (relu.etapes.length !== film.etapes.length) { await new Promise(r => setTimeout(r, ATTENTE_RELAIS)); continue }
+        return this.etat('✓ Le replay est en ligne : le lien marche. Copiez-le dans le cahier de textes.')
+      } catch (e) {
+        if (!encore()) return
+        const m = e instanceof ErreurFilm ? e.message : ''
+        // Le relais d'avant ne connaît pas « ?code= » : il répond que le lien est incomplet
+        if (/incomplet/i.test(m)) return this.etat(`Le relais de « ${relaisDe(compte)?.nom ?? compte} » n'est pas à jour : collez la version ${VERSION_RELAIS} de relais/relais-seances.gs dans son projet Apps Script (Nouvelle version du déploiement).`, true)
+        if (m && !/introuvable|pas encore/i.test(m)) return this.etat(m, true)
+      }
+      await new Promise(r => setTimeout(r, ATTENTE_RELAIS))
+    }
+    if (encore()) this.etat('Le replay n\'est pas encore arrivé sur le Drive. Vérifiez que Google Drive pour ordinateur est connecté et que le dossier est bien dans ce Drive, puis cliquez « Tester le lien ».', true)
+  }
+
+  private async publierSurLeDrive() {
     const d = this.d!, b = d.querySelector('.p-publier') as HTMLButtonElement
     const compte = compteDe(this.compte)
     if (!compte?.relais) return this.etat('Ce compte n\'a pas encore de relais : choisissez-en un autre.', true)
@@ -355,7 +553,7 @@ export class Publication {
           if (/introuvable/i.test(m)) {
             // Un relais d'une version d'avant ne connaît ni ces dossiers ni « .mem »
             const etat = await essayerRelais(compte.relais).catch(() => null)
-            if (etat && etat.version !== VERSION_RELAIS) throw new Error(`Le relais de « ${compte.nom} » n'est pas à jour (version ${etat.version ?? 1}, il faut la ${VERSION_RELAIS}) : collez la nouvelle version de relais/relais-seances.gs dans son projet Apps Script, puis Déployer → Gérer les déploiements → Version : Nouvelle version. Réessayez ensuite.`)
+            if (etat && (etat.version ?? 1) < VERSION_RELAIS_GOOGLE) throw new Error(`Le relais de « ${compte.nom} » n'est pas à jour (version ${etat.version ?? 1}, il faut la ${VERSION_RELAIS_GOOGLE}) : collez la nouvelle version de relais/relais-seances.gs dans son projet Apps Script, puis Déployer → Gérer les déploiements → Version : Nouvelle version. Réessayez ensuite.`)
             mauvaisCompte = true
             const qui = courrielDe(compte.cle)
             throw new Error(`Le relais de « ${compte.nom} » ne trouve pas la séance qu'on vient d'envoyer : ${qui ? `le compte ${qui} n'est sans doute pas le sien` : 'vous êtes sans doute connecté à un autre compte Google'}. Réessayez en choisissant le bon compte.`)

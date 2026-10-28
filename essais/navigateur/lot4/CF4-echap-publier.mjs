@@ -76,7 +76,7 @@ const toast = () => p.evaluate(() => (document.querySelector('.toast.visible')?.
 
 console.log('\n=== A. Publier, puis Échap ===')
 for (let i = 0; i < 3; i++) await ecrire(300, 200 + i * 60)
-await p.click('button[title="Publier le replay pour les élèves"]'); await p.waitForSelector('.dialogue-publier[open]')
+await p.click('button[title="Publier le replay pour les élèves"]'); await p.waitForSelector('.dialogue-publier[open]'); await p.check('input[name="p-lieu"][value="google"]', { timeout: 2000 }).catch(() => {})
 await p.check('input[name=p-compte][value=mem]')
 await p.click('.p-publier')
 await p.waitForFunction(() => { const e = document.querySelector('.p-etat'); return /publiée|mise à jour|remise|erreur/.test(e.textContent) && !/Connexion|Envoi|Vérification|Préparation/.test(e.textContent) }, null, { timeout: 20000 })
@@ -91,7 +91,7 @@ await ecrire(520, 430)
 ok(await nf() === n0 + 1, `A3) le trait suivant écrit (${n0} → ${await nf()} formes)`)
 
 console.log('\n=== B. Une fenêtre modale, le focus tombé sur la page ===')
-await p.click('button[title="Publier le replay pour les élèves"]'); await p.waitForSelector('.dialogue-publier[open]')
+await p.click('button[title="Publier le replay pour les élèves"]'); await p.waitForSelector('.dialogue-publier[open]'); await p.check('input[name="p-lieu"][value="google"]', { timeout: 2000 }).catch(() => {})
 await p.evaluate(() => { document.activeElement?.blur(); window.__app.selection.add(window.__app.formes[0].id) })
 const ciblee = await p.evaluate(() => document.activeElement?.tagName)
 const avant = await p.evaluate(() => ({ n: window.__app.formes.length, cam: { ...window.__app.cam } }))

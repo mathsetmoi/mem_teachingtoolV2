@@ -46,6 +46,36 @@ export const COMPTES: Compte[] = [
   { cle: 'lfb', nom: 'Drive du lycée', dossier: 'LFB - Replay séances', relais: 'https://script.google.com/macros/s/AKfycbwtm8ylsrv-R9RJDdwnIf9CMlSP-B0WdAaV9SHtfHhhD7i5YcHnnViGUMHGlKRTPEKN4w/exec', sauvegardes: 'LFB - Sauvegardes', classeurs: 'LFB - Classeurs' },
 ]
 
+/** Les Drive où l'on peut ranger un replay dans un dossier de l'ordinateur
+ *  (Google Drive pour ordinateur). Chacun a son relais, qui retrouve le
+ *  fichier par son code où qu'il soit dans le Drive. Les deux premiers sont
+ *  ceux de COMPTES ; « lyfel » n'a, lui, ni dossiers des sauvegardes ni des
+ *  classes : il ne sert qu'à cela. Sa clé et son nom ne changent plus.
+ *  Relais vide : à installer (voir relais/relais-seances.gs). */
+export interface RelaisReplay { cle: string; nom: string; relais: string }
+export const RELAIS_REPLAY: RelaisReplay[] = [
+  ...COMPTES.map(c => ({ cle: c.cle, nom: c.nom, relais: c.relais })),
+  { cle: 'lyfel', nom: 'Drive LyFEL', relais: '' },
+]
+export const relaisDe = (cle: string) => RELAIS_REPLAY.find(c => c.cle === cle) ?? null
+
+/** Le code d'un replay rangé dans un dossier de l'ordinateur : 8 signes tirés
+ *  au hasard (a-z, 0-9), dans son nom (« Titre [code].mem ») et dans le lien */
+export const FORME_CODE = /^[a-z0-9]{8}$/
+export function nouveauCode(hasard: (n: number) => Uint8Array = n => crypto.getRandomValues(new Uint8Array(n))): string {
+  const signes = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  // 256 n'est pas un multiple de 36 : on écarte le haut pour que chaque signe soit aussi probable
+  let code = ''
+  while (code.length < 8) for (const o of hasard(16)) if (o < 252 && code.length < 8) code += signes[o % 36]
+  return code
+}
+
+/** Le code d'un nom de fichier « Titre [code].mem » ; null : ce n'est pas un replay rangé par son code */
+export function codeDuNom(nom: string): string | null {
+  const m = /\[([a-z0-9]{8})\]\.mem$/.exec(nom)
+  return m ? m[1] : null
+}
+
 /** L'extension des fichiers séance (le relais ne sert qu'elle) */
 export const EXTENSION = '.mem'
 /** L'extension des sauvegardes (celle d'un classeur enregistré, que le relais ne sert pas) */
@@ -70,6 +100,17 @@ export function relaisValable(adresse: string) {
     const u = new URL(adresse)
     return u.protocol === 'https:' && u.hostname === 'script.google.com' && CHEMIN_EXEC.test(u.pathname)
   } catch { return false }
+}
+
+/** Le lien d'un replay rangé dans un dossier du Drive : la page du lecteur,
+ *  le relais et le code (le relais retrouve le fichier par son code) */
+export function lienEleveParCode(lecteur: string, cle: string, code: string, chapitre?: number) {
+  const u = new URL(lecteur)
+  u.search = ''; u.hash = ''
+  u.searchParams.set('r', cle)
+  u.searchParams.set('code', code)
+  if (chapitre && chapitre > 1) u.searchParams.set('c', String(chapitre))
+  return u.toString()
 }
 
 /** Le lien que l'élève ouvre : la page du lecteur, le relais et le fichier */

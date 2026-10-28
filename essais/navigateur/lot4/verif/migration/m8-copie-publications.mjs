@@ -18,7 +18,7 @@ const F = M + 'fichiers/'
 async function trait(p, x, y) { await p.mouse.move(x, y); await p.mouse.down(); for (let k = 1; k < 12; k++) await p.mouse.move(x + k * 15, y + Math.sin(k) * 10); await p.mouse.up(); await dort(250) }
 async function publier(p) {
   await p.click('button[title="Publier le replay pour les élèves"]')
-  await p.waitForSelector('.dialogue-publier[open]')
+  await p.waitForSelector('.dialogue-publier[open]'); await p.check('input[name="p-lieu"][value="google"]', { timeout: 2000 }).catch(() => {})
   const texte = (await p.textContent('.dialogue-publier[open]')).replace(/\s+/g, ' ')
   await p.click('.p-publier')
   await p.waitForFunction(() => { const e = document.querySelector('.p-etat'); return /publiée|mise à jour|erreur|pas à jour|ne trouve pas/.test(e.textContent) && !/Connexion|Envoi|Vérification|Préparation/.test(e.textContent) }, null, { timeout: 20000 })

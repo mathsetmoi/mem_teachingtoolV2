@@ -94,7 +94,7 @@ verifier('revue de Q : 5 gestes, rien de R ni de p3', rQ.r.total === 5 && rQ.ima
 
 // Publier R seule, fichier .mem, revoir.html
 await page.evaluate(p => window.__app.allerPage(p), R); await page.waitForTimeout(400)
-await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]')
+await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]'); await page.check('input[name="p-lieu"][value="google"]', { timeout: 2000 }).catch(() => {})
 const cases = await page.$$eval('.p-pages input', l => l.map(i => ({ v: i.value, c: i.checked, t: i.parentElement.textContent })))
 console.log('Publier propose :', JSON.stringify(cases.map(c => [c.v === P ? 'P' : c.v === Q ? 'Q' : c.v === R ? 'R' : '?', c.c, c.t])))
 for (const c of cases) if (c.v !== R && c.c) await page.uncheck(`.p-pages input[value="${c.v}"]`)
