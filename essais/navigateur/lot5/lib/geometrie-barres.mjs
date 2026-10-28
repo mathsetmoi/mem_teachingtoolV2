@@ -22,7 +22,9 @@ export const MESURER_BARRES = () => {
     const barre = document.querySelector(s)
     if (!barre || !barre.getClientRects().length) { out[s] = null; continue }
     const enfants = []
-    for (const e of barre.querySelectorAll('button, .tailles, hr, .rang')) {
+    // (depuis les gains rapides du lot 16, plus de rangée .tailles : l'épaisseur
+    // est un bouton, et les pastilles, des boutons, sont dans une grille)
+    for (const e of barre.querySelectorAll('button, hr, .rang')) {
       if (!e.getClientRects().length) continue
       // (le nom d'un élément sans titre : sa classe, sans celle que K10 ajoute
       // à ce qui se cache au téléphone, qui ne change rien ici)

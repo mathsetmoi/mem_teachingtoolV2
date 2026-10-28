@@ -255,16 +255,29 @@ export class UI implements Interface {
   private pastilles: HTMLButtonElement[] = []
   /** Les pastilles sont-elles peintes pour une page de nuit ? */
   private pastillesDeNuit = false
-  private tailles: HTMLButtonElement[] = []
-  private boutonSupprimer!: HTMLButtonElement
+  /** La grille 2 × 2 des pastilles, dans la barre des outils (gains rapides, lot 16) */
+  private grillePastilles!: HTMLDivElement
+  /** « Épaisseur du trait » (gains rapides, lot 16) : un seul bouton, qui
+   *  montre l'épaisseur de l'outil en main et ouvre le menu des trois */
+  private boutonEpaisseur!: HTMLButtonElement
+  /** Le trait dessiné sur ce bouton (sa hauteur, --d, suit l'épaisseur) */
+  private traitEpaisseur!: HTMLSpanElement
+  private menuEpaisseur!: Menu
+  /** L'épaisseur que montre le bouton (le nom de TAILLES), pour ne le refaire que si elle change */
+  private epaisseurMontree = ''
   /** La poubelle de la barre du haut : supprimer la page (l'effacer, seule) */
   private boutonJeter!: HTMLButtonElement
   /** Son nom court (lot 5) : « Supprimer », ou « Effacer » sur une page seule, comme son titre */
   private libelleJeter!: HTMLSpanElement
   /** Les noms sous les outils se montrent-ils (body.noms-outils) ? Voir majNomsOutils */
   private nomsMontres = false
+  /** Annuler et Rétablir (gains rapides, lot 16) : en tête de la barre du
+   *  haut, toujours dans l'écran ; au téléphone, dans la barre du bas (voir
+   *  placerHistorique : les mêmes deux boutons, déplacés d'une barre à l'autre) */
   private boutonAnnuler!: HTMLButtonElement
   private boutonRetablir!: HTMLButtonElement
+  /** Le petit filet vertical qui les sépare de ‹, dans la barre du haut */
+  private filetHistorique!: HTMLElement
   /** Le compteur « 3 / 7 », suivi du nom de la page s'il y en a un (« · Exercice 12 p. 84 ») :
    *  un bouton, qui ouvre la trieuse des pages (Maj + P) */
   private rang!: HTMLButtonElement
@@ -448,8 +461,9 @@ export class UI implements Interface {
   private rondCouleur!: HTMLSpanElement
   private menuCouleur!: Menu
   /** Sur un écran qu'on touche, hors du téléphone (contrôle final du lot 5) :
-   *  les pastilles et les tailles de la barre des outils sont-elles repliées
-   *  dans « Couleur », faute de place ? Voir majCouleursRepliees */
+   *  la grille des pastilles et le bouton de l'épaisseur de la barre des
+   *  outils sont-ils repliés dans « Couleur », faute de place ? Voir
+   *  majCouleursRepliees */
   private couleursRepliees = false
   /** « Autres outils » : les points, ou l'icône de celui qu'on tient s'il en
    *  est ; il ouvre la grille des autres outils (menuAutres) */
@@ -491,6 +505,7 @@ export class UI implements Interface {
       const suivre = () => {
         document.body.classList.toggle('telephone', q.matches)
         this.compteurARegler = true
+        this.placerHistorique()
         this.majNomsOutils()
         this.majCouleursRepliees()
         this.maj()
@@ -527,25 +542,28 @@ export class UI implements Interface {
     if (this.app.ui === this) { this.majCouleursRepliees(); this.maj() }
   }
 
-  /** Les couleurs et les tailles de la barre des outils, sur un écran qu'on
+  /** Les couleurs et l'épaisseur de la barre des outils, sur un écran qu'on
    *  touche (contrôle final du lot 5 ; l'étude, [18] : des cibles agrandies
    *  au TNI). Sur l'iPad, la tablette Android, le TNI, l'écran tactile d'un
    *  portable (body.tactile : le doigt y a un rôle, comme pour son bouton),
-   *  les pastilles et les tailles font 44 × 44 au lieu de 44 × 34 et
-   *  44 × 30. Plus hautes, elles feraient défiler la barre sur un écran de
-   *  moins de 1100 px de haut environ (le TNI de 1080 px avec ses noms,
-   *  l'iPad couché : les derniers boutons, Annuler, Rétablir, la poubelle,
-   *  sortaient de l'écran) : la barre les replie alors dans « Couleur »,
-   *  le bouton du téléphone (un rond de la couleur en main ; son menu, les
-   *  quatre pastilles et les trois tailles en 44 × 44), à leur place, entre
-   *  les deux filets. Mesuré : dépliée, la barre dépasse-t-elle la hauteur
-   *  qu'elle a ? (la mesure se fait toujours dépliée, dans la même tâche : rien
-   *  ne se peint entre les deux, et la décision ne dépend pas de l'état
-   *  d'avant). Refait quand la fenêtre change (une tablette qu'on tourne),
-   *  quand les noms paraissent ou s'en vont, et quand le bouton du doigt
-   *  paraît. Au poste de la classe (souris, tablette graphique), rien ne
-   *  change : la barre défile sur un écran bas, comme depuis le lot 1 ; au
-   *  téléphone, « Couleur » est déjà là (sa mise en page). */
+   *  les pastilles de la grille font 44 × 44 au lieu de 34 × 34. Plus
+   *  hautes, elles feraient défiler la barre sur un écran bas (depuis les
+   *  gains rapides du lot 16, la barre est plus courte : Annuler et Rétablir
+   *  sont en haut, l'épaisseur tient sur un bouton ; elle tient sur le TNI
+   *  avec ses noms et sur l'iPad couché, et ne se replie plus que sur un
+   *  écran de moins de 700 px de haut environ, une fenêtre de Chrome sur un
+   *  portable tactile) : la barre replie alors la grille et le bouton de
+   *  l'épaisseur dans « Couleur », le bouton du téléphone (un rond de la
+   *  couleur en main ; son menu, les quatre pastilles et les trois tailles
+   *  en 44 × 44), à leur place, après le filet. Mesuré : dépliée, la barre
+   *  dépasse-t-elle la hauteur qu'elle a ? (la mesure se fait toujours
+   *  dépliée, dans la même tâche : rien ne se peint entre les deux, et la
+   *  décision ne dépend pas de l'état d'avant). Refait quand la fenêtre
+   *  change (une tablette qu'on tourne), quand les noms paraissent ou s'en
+   *  vont, et quand le bouton du doigt paraît. Au poste de la classe
+   *  (souris, tablette graphique), rien ne change : la barre défile sur un
+   *  écran très bas, comme depuis le lot 1 ; au téléphone, « Couleur » est
+   *  déjà là (sa mise en page). */
   private majCouleursRepliees() {
     const b = this.barreOutils
     if (!b) return
@@ -617,44 +635,49 @@ export class UI implements Interface {
     menuDoigt.hidden = true
     this.menuDoigt = { el: menuDoigt, bouton: this.boutonDoigt }
     outils.appendChild(Object.assign(document.createElement('hr'), { className: 'filet seulement-large' }))
+    // Les quatre couleurs, en grille 2 × 2 (gains rapides, lot 16 : Noir,
+    // Bleu / Rouge, Vert), chacune à un clic ; la grille tient la place de
+    // deux pastilles d'avant, et la barre tient dans un écran de 657 px
+    const grille = this.grillePastilles = document.createElement('div')
+    grille.className = 'grille-pastilles seulement-large'
     for (const c of COULEURS) {
       const b = document.createElement('button')
-      b.type = 'button'; b.className = 'pastille seulement-large'; b.title = c.nom; b.setAttribute('aria-label', c.nom)
+      b.type = 'button'; b.className = 'pastille'; b.title = c.nom; b.setAttribute('aria-label', c.nom)
       b.style.setProperty('--teinte', c.valeur)
       b.addEventListener('click', () => this.choisirCouleur(c.valeur))
-      this.pastilles.push(b); outils.appendChild(b)
+      this.pastilles.push(b); grille.appendChild(b)
     }
-    const rangee = document.createElement('div'); rangee.className = 'tailles seulement-large'
-    TAILLES.forEach((t, i) => {
-      const b = document.createElement('button')
-      b.type = 'button'; b.className = 'taille'; b.title = t.nom; b.setAttribute('aria-label', 'Trait ' + t.nom.toLowerCase())
-      b.innerHTML = `<span style="--d:${4 + i * 4}px"></span>`
-      b.addEventListener('click', () => { app.choisirTaille(t.valeur); this.maj() })
-      this.tailles.push(b); rangee.appendChild(b)
-    })
-    outils.appendChild(rangee)
-    outils.appendChild(Object.assign(document.createElement('hr'), { className: 'filet seulement-large' }))
-    // Annuler et rétablir n'agissent que sur la page visible : grisés quand
-    // elle n'a rien à défaire ou à refaire (ils gardent leur place)
-    this.boutonAnnuler = bouton('annuler', `Annuler sur cette page (${CTRL}+Z)`, () => app.annuler(), 'historique')
-    this.boutonRetablir = bouton('retablir', `Rétablir sur cette page (${CTRL}+Y)`, () => app.retablir(), 'historique')
-    outils.append(this.boutonAnnuler, this.boutonRetablir)
-    // La poubelle garde sa place, grisée quand rien n'est choisi : la barre ne
-    // saute plus à chaque sélection
-    this.boutonSupprimer = bouton('poubelle', 'Supprimer la sélection (Suppr)', () => app.supprimerSelection(), 'danger seulement-large')
-    outils.appendChild(this.boutonSupprimer)
-    // Au téléphone seulement (lot 5, K10) : « Couleur » (après la Sélection)
-    // et « Autres outils » (au bout), placés par la feuille de style (order) ;
-    // ajoutés à la fin de la barre, ils ne changent rien à l'ordre des
-    // boutons du poste de la classe, où ils sont cachés
+    outils.appendChild(grille)
+    // L'épaisseur du trait (gains rapides, lot 16) : un seul bouton, qui
+    // montre l'épaisseur de l'outil en main (le trait dessiné dessus, comme
+    // sur les trois boutons d'avant), et ouvre le menu des trois, à droite
+    // de la barre, à la hauteur du bouton (comme celui de la Gomme). Le
+    // Surligneur garde son épaisseur à lui (voir App.tailleEnMain).
+    const epaisseur = this.boutonEpaisseur = document.createElement('button')
+    epaisseur.type = 'button'; epaisseur.className = 'bouton bouton-epaisseur seulement-large'
+    epaisseur.setAttribute('aria-haspopup', 'menu'); epaisseur.setAttribute('aria-expanded', 'false')
+    this.traitEpaisseur = Object.assign(document.createElement('span'), { className: 'trait' })
+    this.traitEpaisseur.setAttribute('aria-hidden', 'true')
+    epaisseur.appendChild(this.traitEpaisseur)
+    const menuEpaisseur = document.createElement('div')
+    menuEpaisseur.className = 'menu-flottant menu-epaisseur'; menuEpaisseur.setAttribute('role', 'menu'); menuEpaisseur.setAttribute('aria-label', 'Épaisseur du trait')
+    menuEpaisseur.hidden = true
+    this.menuEpaisseur = { el: menuEpaisseur, bouton: epaisseur }
+    epaisseur.addEventListener('click', e => this.basculerMenuEpaisseur((e as MouseEvent).detail === 0))
+    outils.appendChild(epaisseur)
+    this.majBoutonEpaisseur()
+    // « Couleur » (au téléphone, et sur un écran qu'on touche où la barre
+    // replie ses couleurs) et « Autres outils » (au téléphone seulement) ;
+    // au téléphone, Annuler et Rétablir viennent entre les deux (voir
+    // placerHistorique) : le document a l'ordre de l'écran
     this.construireBoutonsDuTelephone(outils)
     this.barreOutils = outils
     // Les noms sous les outils (lot 5) : cachés, sauf sous body.noms-outils
     for (const [id, b] of this.outils) nommer(b, NOMS_OUTILS[id])
     nommer(this.boutonDoigt, 'Doigt')
-    nommer(this.boutonAnnuler, 'Annuler'); nommer(this.boutonRetablir, 'Rétablir'); nommer(this.boutonSupprimer, 'Supprimer')
-    // « Couleur » a son nom aussi : la barre repliée d'un TNI, où les noms
-    // sont allumés d'office, le montre (au téléphone, les noms ne viennent pas)
+    nommer(epaisseur, 'Épaisseur')
+    // « Couleur » a son nom aussi : la barre repliée d'un écran qu'on touche,
+    // avec les noms allumés, le montre (au téléphone, les noms ne viennent pas)
     nommer(this.boutonCouleur, 'Couleur')
     // Le bord droit de la barre des outils, mesuré, dans --droite-barre-outils
     // (lot 5) : avec les noms, elle s'élargit (jusqu'à 80 px), et la barre du
@@ -685,6 +708,7 @@ export class UI implements Interface {
       this.maj()
       if (!this.menuDoigt.el.hidden) this.placerMenuDoigt()
       if (!this.menuGomme.el.hidden) this.placerMenuGomme()
+      if (!this.menuEpaisseur.el.hidden) this.placerMenuEpaisseur()
     }, { passive: true })
 
     // ----- Barre des pages, en haut à droite -----
@@ -706,6 +730,15 @@ export class UI implements Interface {
     }
     if (typeof ResizeObserver === 'function') new ResizeObserver(basDeLaBarreDuHaut).observe(haut)
     window.addEventListener('resize', basDeLaBarreDuHaut)
+    // Annuler et Rétablir, en tête de la barre du haut (gains rapides, lot
+    // 16 : toujours dans l'écran, là où la barre de gauche les faisait
+    // défiler sur un écran bas) ; un petit filet vertical les sépare de ‹.
+    // Ils n'agissent que sur la page visible : grisés quand elle n'a rien à
+    // défaire ou à refaire (ils gardent leur place). Au téléphone, les mêmes
+    // deux boutons sont dans la barre du bas (voir placerHistorique).
+    this.boutonAnnuler = bouton('annuler', `Annuler sur cette page (${CTRL}+Z)`, () => app.annuler(), 'historique')
+    this.boutonRetablir = bouton('retablir', `Rétablir sur cette page (${CTRL}+Y)`, () => app.retablir(), 'historique')
+    this.filetHistorique = Object.assign(document.createElement('hr'), { className: 'filet-vertical seulement-large' })
     const avant = bouton('avant', 'Page précédente (Page ↑)', () => app.pageSuivante(-1))
     // Le compteur : « 3 / 7 », puis le nom de la page s'il y en a un, coupé
     // au-delà d'une vingtaine de caractères (entier dans son titre), et caché
@@ -882,9 +915,10 @@ export class UI implements Interface {
     this.pointFichier = Object.assign(document.createElement('span'), { className: 'point-etat', hidden: true })
     this.pointFichier.setAttribute('aria-hidden', 'true')
     fichier.appendChild(this.pointFichier)
-    haut.append(avant, this.rang, apres, nouvelle, jeter, boutonFond, this.boutonNuit, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, catalogue, automatismes, outilsClasse, revoir, publier, fichier)
+    haut.append(this.boutonAnnuler, this.boutonRetablir, this.filetHistorique, avant, this.rang, apres, nouvelle, jeter, boutonFond, this.boutonNuit, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, catalogue, automatismes, outilsClasse, revoir, publier, fichier)
     // Les noms sous les outils (lot 5) : ni ‹, ni ›, ni le compteur, ni le
     // bouton du classeur
+    nommer(this.boutonAnnuler, 'Annuler'); nommer(this.boutonRetablir, 'Rétablir')
     nommer(nouvelle, 'Nouvelle')
     // (pas de nom sous « Séance précédente » : il n'est là qu'avec une séance d'avant)
     this.racine.appendChild(this.rangSeance)
@@ -1044,7 +1078,9 @@ export class UI implements Interface {
 
     // (les deux menus du téléphone, au bout : l'ordre des autres ne change pas)
     this.racine.append(outils, barreClasseur, haut, this.bandeau, this.descriptionEtat, zoom, this.retour, menu, menuDoigt, this.menuGomme.el, menuFichier, menuFonds, this.menuOutilsClasse.el, menuPage, menuPlus, this.annonce, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments,
-      this.menuCouleur.el, this.menuAutres.el)
+      this.menuCouleur.el, this.menuAutres.el, this.menuEpaisseur.el)
+    // Annuler et Rétablir dans la barre qui leur revient (les deux barres existent)
+    this.placerHistorique()
     // (le champ de la recherche au bout : l'ordre des autres ne change pas)
     this.racine.appendChild(this.champRecherche)
     // ----- La barre d'actions, au-dessus de ce qui est pris -----
@@ -1160,7 +1196,7 @@ export class UI implements Interface {
     const app = this.app
     // Un objet verrouillé n'est sélectionné que le temps de son menu court
     // (lot 5) : le menu fermé, il ne l'est plus (avant tout le reste, qui lit
-    // la sélection : le bouton Supprimer, la barre d'actions)
+    // la sélection : la barre d'actions, « Supprimer » d'« Autres outils »)
     app.oublierProteges()
     for (const [id, b] of this.outils) b.classList.toggle('actif', app.outil === id)
     const doigt = DOIGTS.find(d => d.id === reglages.doigt)!
@@ -1185,9 +1221,7 @@ export class UI implements Interface {
         b.title = nom; b.setAttribute('aria-label', nom)
       })
     }
-    this.tailles.forEach((b, i) => b.classList.toggle('actif', TAILLES[i].valeur === app.tailleEnMain()))
-    const rien = !(app.selection.size || app.partie)
-    griser(this.boutonSupprimer, rien)
+    this.majBoutonEpaisseur()
     griser(this.boutonAnnuler, !app.peutAnnuler())
     griser(this.boutonRetablir, !app.peutRetablir())
 
@@ -2375,10 +2409,12 @@ export class UI implements Interface {
 
   // ----- La barre des outils du téléphone (lot 5, K10) -----
   /** « Couleur » et « Autres outils », au bout de la barre (la feuille de
-   *  style les cache hors de la mise en page du téléphone, et les range :
-   *  Stylo, Gomme, Sélection, Couleur, Annuler, Rétablir, Autres outils), et
-   *  leurs deux petits menus (menus.ts) : un seul ouvert à la fois, Échap ou
-   *  un appui ailleurs les ferme, un choix aussi. */
+   *  style les cache hors de la mise en page du téléphone ; au téléphone, la
+   *  barre montre Stylo, Gomme, Sélection, Couleur, Annuler, Rétablir, Autres
+   *  outils, dans l'ordre du document : Annuler et Rétablir viennent entre
+   *  les deux, voir placerHistorique), et leurs deux petits menus (menus.ts) :
+   *  un seul ouvert à la fois, Échap ou un appui ailleurs les ferme, un choix
+   *  aussi. */
   private construireBoutonsDuTelephone(barre: HTMLElement) {
     const couleur = this.boutonCouleur = document.createElement('button')
     couleur.type = 'button'; couleur.className = 'bouton bouton-couleur seulement-telephone'
@@ -2477,6 +2513,78 @@ export class UI implements Interface {
     })
     grille.addEventListener('keydown', e => naviguerDansLaGrille(grille, e))
     m.appendChild(grille)
+  }
+
+  // ----- Annuler, Rétablir et l'épaisseur du trait (gains rapides, lot 16) -----
+  /** Annuler et Rétablir dans la barre qui leur revient : en tête de la
+   *  barre du haut, devant leur filet (toujours dans l'écran) ; dans la mise
+   *  en page du téléphone, dans la barre du bas, entre « Couleur » et
+   *  « Autres outils » (l'ordre de l'écran, lot 5, K10). Les mêmes deux
+   *  boutons, déplacés d'une barre à l'autre quand la mise en page change
+   *  (au départ, et dans suivre), comme le bouton du classeur. */
+  private placerHistorique() {
+    const telephone = this.telephone
+    const dans = telephone ? this.barreOutils : this.barreHaut
+    if (this.boutonAnnuler.parentElement === dans) return
+    if (telephone) this.boutonAutres.before(this.boutonAnnuler, this.boutonRetablir)
+    else this.filetHistorique.before(this.boutonAnnuler, this.boutonRetablir)
+  }
+
+  /** Le bouton de l'épaisseur montre celle de l'outil en main (au
+   *  Surligneur, la sienne) : son trait (--d : 4, 8 ou 12 px), son titre
+   *  (« Épaisseur du trait : Fin ») et data-taille ; refait seulement quand
+   *  elle change. Une épaisseur qui n'est pas l'une des trois (un vieux
+   *  réglage) montre la plus proche. */
+  private majBoutonEpaisseur() {
+    const v = this.app.tailleEnMain()
+    const i = TAILLES.reduce((meilleur, t, k) => Math.abs(t.valeur - v) < Math.abs(TAILLES[meilleur].valeur - v) ? k : meilleur, 0)
+    const nom = TAILLES[i].nom
+    if (nom === this.epaisseurMontree) return
+    this.epaisseurMontree = nom
+    this.traitEpaisseur.style.setProperty('--d', `${4 + i * 4}px`)
+    const t = `Épaisseur du trait : ${nom}`
+    this.boutonEpaisseur.title = t; this.boutonEpaisseur.setAttribute('aria-label', t)
+    this.boutonEpaisseur.dataset.taille = nom
+  }
+
+  /** Le menu de l'épaisseur : ouvert (ou refermé) par son bouton, refait à
+   *  chaque ouverture, posé à droite de la barre ; ouvert au clavier, le
+   *  focus va sur l'épaisseur cochée (Échap le ferme et le rend au bouton) */
+  private basculerMenuEpaisseur(auClavier: boolean) {
+    const m = this.menuEpaisseur
+    if (m.el.hidden) this.construireMenuEpaisseur()
+    basculerMenu(m)
+    if (m.el.hidden) return
+    this.placerMenuEpaisseur()
+    if (auClavier) m.el.querySelector<HTMLElement>('.menu-item[aria-checked="true"]')?.focus()
+  }
+
+  /** Les trois épaisseurs, en rangée (44 × 44 chacune, comme dans le menu
+   *  « Couleur » ; les flèches s'y déplacent, Entrée choisit) : un choix
+   *  règle l'épaisseur de l'outil en main et ferme le menu */
+  private construireMenuEpaisseur() {
+    const app = this.app, m = this.menuEpaisseur.el
+    m.replaceChildren()
+    const grille = Object.assign(document.createElement('div'), { className: 'grille-epaisseur' })
+    TAILLES.forEach((t, i) => {
+      const b = document.createElement('button')
+      b.type = 'button'; b.className = 'menu-item case-couleur taille'
+      b.setAttribute('role', 'menuitemradio'); b.setAttribute('aria-checked', String(app.tailleEnMain() === t.valeur))
+      b.title = t.nom; b.setAttribute('aria-label', 'Trait ' + t.nom.toLowerCase())
+      b.innerHTML = `<span style="--d:${4 + i * 4}px"></span>`
+      b.addEventListener('click', () => { fermerMenu(); app.choisirTaille(t.valeur); this.maj() })
+      grille.appendChild(b)
+    })
+    grille.addEventListener('keydown', e => naviguerDansLaGrille(grille, e))
+    m.appendChild(grille)
+  }
+
+  /** Le menu de l'épaisseur, à droite de la barre, à la hauteur de son
+   *  bouton, jamais sous la barre du haut (comme celui de la Gomme) */
+  private placerMenuEpaisseur() {
+    const b = this.boutonEpaisseur.getBoundingClientRect(), o = this.barreOutils.getBoundingClientRect()
+    placerMenu(this.menuEpaisseur.el, new DOMRect(o.left, b.top, o.width, b.height), 'droite')
+    this.sousLaBarreDuHaut(this.menuEpaisseur.el)
   }
 
   /** Le menu « Autres outils » : une grille de 60 × 56, l'icône et son nom

@@ -96,11 +96,11 @@ export async function trait(p, ptr, x0, y0, x1, y1, n = 16) {
 
 export const ECRAN = () => {
   const z = document.getElementById('zone')
-  const t = [...document.querySelectorAll('.barre-outils .tailles .taille')]
-  const i = t.findIndex(b => b.classList.contains('actif'))
+  // (Adapté aux gains rapides du lot 16 : l'épaisseur en main se lit sur le
+  // bouton de l'épaisseur, data-taille : « Fin », « Moyen », « Épais »)
   return {
     outil: z.dataset.outil, curseur: z.style.cursor || getComputedStyle(z).cursor,
-    taille: t[i]?.title ?? null,
+    taille: document.querySelector('.barre-outils .bouton-epaisseur')?.dataset.taille ?? null,
     fond: (document.querySelector('button.choix-fond')?.title ?? '').replace('Fond de la page : ', ''),
     zoom: (document.querySelector('.zoom-texte')?.textContent ?? '').replace(/\s/g, ' '),
     rang: (document.querySelector('.rang-numero')?.textContent ?? '').replace(/\s/g, ' '),

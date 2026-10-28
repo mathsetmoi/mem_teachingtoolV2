@@ -18,8 +18,10 @@ for (const [nom, url] of Object.entries(URLS)) {
   const { p, souris } = await ouvrir(ctx, url, nom)
   let e = await ecran(p)
   // A1
-  const tailles = await p.evaluate(() => [...document.querySelectorAll('.barre-outils .tailles .taille')].map(b => [b.title, b.classList.contains('actif')]))
-  ok(tailles[0]?.[1] === true && /fin/i.test(tailles[0]?.[0] ?? ''), `${nom} A1 : au démarrage, l'épaisseur active est la première (« Fin »)`, tailles)
+  // (Adapté aux gains rapides du lot 16 : l'épaisseur en main se lit sur le
+  // bouton de l'épaisseur, data-taille)
+  const taille = await p.evaluate(() => document.querySelector('.barre-outils .bouton-epaisseur')?.dataset.taille ?? null)
+  ok(/^fin$/i.test(taille ?? ''), `${nom} A1 : au démarrage, l'épaisseur en main est la première (« Fin »)`, taille)
   // A2 : la première page d'un navigateur neuf
   ok(e.fond === 'Page blanche' && e.zoom === '100 %', `${nom} A2 : première page d'un navigateur neuf blanche, à 100 %`, e)
   // La page 1 en Seyès, + : blanche

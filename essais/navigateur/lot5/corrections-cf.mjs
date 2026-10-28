@@ -14,30 +14,44 @@
 //    D. Ce qui marchait reste : Gomme, Échap, Échap ; Stylo, Ctrl + A, Échap,
 //       Échap ; L, V, V, Échap.
 // II. Sur un écran qu'on touche (TNI, iPad, tablette, portable tactile), les
-//    pastilles de couleur et les tailles du trait de la barre des outils font
-//    44 × 44 ; quand la barre ne tient plus dans la hauteur, elles se
-//    replient dans « Couleur » (le bouton et le menu du téléphone), à leur
-//    place, et la barre ne défile plus. Au poste de la classe (souris,
-//    tablette graphique) et au téléphone, rien ne change (point 4) :
-//    A. TNI 1920 × 1080 (les noms allumés d'office) : la barre repliée, sans
-//       défilement ; « Couleur » (son nom dessous) entre les deux filets,
-//       entre le Doigt et Annuler ; tout bouton de la barre en 44 × 44 au
-//       moins ; son menu à droite de la barre, à la hauteur du bouton, dans
-//       l'écran : quatre pastilles et trois tailles de 44 × 44 ; Rouge, puis
-//       Trait épais s'appliquent (le rond du bouton devient rouge).
-//    B. TNI sans les noms : dépliée, pastilles et tailles en 44 × 44 dans la
-//       barre, « Couleur » caché, pas de défilement.
-//    C. iPad 11 pouces couché : repliée, Annuler, Rétablir et la poubelle
-//       dans l'écran ; tourné : dépliée, en 44 × 44 ; le menu ouvert se ferme
-//       quand on le tourne ; de nouveau couché : repliée.
+//    pastilles de couleur de la barre des outils font 44 × 44 ; quand la
+//    barre ne tient plus dans la hauteur, la grille des couleurs et le bouton
+//    de l'épaisseur se replient dans « Couleur » (le bouton et le menu du
+//    téléphone), à leur place, et la barre ne défile plus. Au poste de la
+//    classe (souris, tablette graphique) et au téléphone, rien ne change
+//    (point 4).
+//    (Adapté aux gains rapides du lot 16 : Annuler et Rétablir sont en tête
+//    de la barre du haut, la poubelle de la sélection a quitté la barre des
+//    outils, les quatre couleurs sont en grille 2 × 2 et l'épaisseur tient
+//    sur un bouton qui ouvre un menu. La barre, plus courte, tient sur le
+//    TNI avec ses noms et sur l'iPad couché, où elle se repliait : elle ne se
+//    replie plus que sur un écran bas, une fenêtre de Chrome de 657 px sur
+//    un portable tactile, où l'on vérifie le repli ; les tailles mesurées au
+//    poste de la classe sont celles d'aujourd'hui.)
+//    A. Portable tactile de 1366 × 768, les noms allumés (dépliée, 787 px,
+//       la barre ne tiendrait pas) : la barre repliée, sans défilement ;
+//       « Couleur » (son nom dessous) après le filet, au bout de la barre,
+//       après le Doigt ; tout bouton de la barre en 44 × 44 au moins ; son
+//       menu à droite de la barre, le long du bouton (remonté pour tenir
+//       dans l'écran, le bouton étant près du bas) : quatre pastilles et
+//       trois tailles de 44 × 44 ; Rouge, puis Trait épais s'appliquent (le
+//       rond du bouton devient rouge).
+//    B. TNI 1920 × 1080, avec ses noms (allumés d'office) et sans : dépliée,
+//       les pastilles en grille, en 44 × 44, le bouton de l'épaisseur,
+//       « Couleur » caché, pas de défilement, tout bouton en 44 × 44 au moins.
+//    C. iPad 11 pouces couché : dépliée, rien ne défile, tout dans l'écran ;
+//       tourné : dépliée aussi. Une fenêtre tactile de 1366 × 657 : repliée ;
+//       agrandie à 768 px de haut : dépliée, le menu « Couleur » ouvert se
+//       ferme ; de nouveau à 657 : repliée.
 //    D. iPad Pro debout (les noms) : dépliée, 44 × 44, sans défiler.
 //    E. Le poste de la classe (1366 × 768, 1024 × 768, et avec les noms) :
-//       exactement comme avant (44 × 34, 44 × 30, pas de « Couleur », la
-//       barre de 828 px, 948 avec les noms, qui défile).
+//       pas de « Couleur », les pastilles en 34 × 34, le bouton de
+//       l'épaisseur de 44 px, la barre de 601 px (711 avec les noms), qui ne
+//       défile pas.
 //    F. Le téléphone (390 × 844, 844 × 390) : sa barre, sans la classe repliée.
-//    G. Au clavier sur la barre repliée : Entrée sur « Couleur » ouvre son
-//       menu (le focus sur la couleur cochée), Échap le ferme (le focus
-//       revient au bouton) ; Tab y arrive.
+//    G. Au clavier sur la barre repliée (1366 × 657, tactile) : Entrée sur
+//       « Couleur » ouvre son menu (le focus sur la couleur cochée), Échap le
+//       ferme (le focus revient au bouton) ; Tab y arrive depuis le Doigt.
 // Serveur de développement sur :5173 (window.__app). Une ligne « ✓ » ou
 // « ✗ ÉCHEC » par vérification ; code de sortie 1 s'il y a un échec ou une
 // erreur JS. Captures dans lot5/corrections-cf/essai.
@@ -182,8 +196,9 @@ const BARRE = () => {
     ordre: enfants.map(e => e.nom), boutons,
     petits: boutons.filter(x => x.l < 43.5 || x.h < 43.5).map(x => `${x.nom} ${x.l}×${x.h}`),
     dehors: boutons.filter(x => x.bas > Math.min(innerHeight, r.bottom) + 0.5).map(x => x.nom),
-    pastilles: [...b.querySelectorAll(':scope > .pastille')].filter(vis).map(x => `${Math.round(x.getBoundingClientRect().width)}×${Math.round(x.getBoundingClientRect().height)}`),
-    tailles: [...b.querySelectorAll('.tailles .taille')].filter(vis).map(x => `${Math.round(x.getBoundingClientRect().width)}×${Math.round(x.getBoundingClientRect().height)}`),
+    pastilles: [...b.querySelectorAll('.grille-pastilles > .pastille')].filter(vis).map(x => `${Math.round(x.getBoundingClientRect().width)}×${Math.round(x.getBoundingClientRect().height)}`),
+    // (lot 16 : le bouton de l'épaisseur, à la place des trois tailles)
+    epaisseur: (() => { const e = b.querySelector('.bouton-epaisseur'); if (!e || !vis(e)) return null; const q = e.getBoundingClientRect(); return { l: Math.round(q.width), h: Math.round(q.height), taille: e.dataset.taille } })(),
     couleur: couleur && vis(couleur) ? { ...(() => { const q = couleur.getBoundingClientRect(); return { l: Math.round(q.width), h: Math.round(q.height), x: q.left + q.width / 2, y: q.top + q.height / 2, haut: q.top } })(), nom: couleur.querySelector('.libelle')?.dataset.libelle ?? null, nomVu: !!couleur.querySelector('.libelle') && getComputedStyle(couleur.querySelector('.libelle')).display !== 'none', rond: getComputedStyle(couleur.querySelector('.rond-couleur')).backgroundColor } : null,
   }
 }
@@ -200,24 +215,29 @@ const MENU = () => {
 // l'outil en main, que donne tailleEnMain : ici, au Surligneur, la sienne)
 const etat = p => p.evaluate(() => ({ couleur: window.__app.couleur, taille: window.__app.tailleEnMain?.() ?? window.__app.taille, outil: window.__app.outil }))
 
-console.log('--- II. Les couleurs et les tailles sur un écran qu\'on touche')
-// A. TNI avec ses noms
+console.log('--- II. Les couleurs et l\'épaisseur sur un écran qu\'on touche')
+// A. Un portable tactile de 1366 × 768, avec les noms : la barre se replie
+// (adapté au lot 16 : le TNI avec ses noms ne se replie plus ; ici, dépliée,
+// elle ferait 787 px pour 744 de place, et repliée 697)
 {
-  const { c, p } = await ouvrir('tni', { viewport: { width: 1920, height: 1080 }, hasTouch: true })
+  const { c, p } = await ouvrir('portable-noms', { viewport: { width: 1366, height: 768 }, hasTouch: true }, '1')
   const b = await p.evaluate(BARRE)
-  ok(b.tactile && b.noms, 'II.A. TNI : body.tactile et les noms allumés d\'office', b)
-  ok(b.replie && b.pastilles.length === 0 && b.tailles.length === 0, 'II.A. la barre repliée : ni pastille ni taille dans la barre', b)
+  ok(b.tactile && b.noms, 'II.A. portable tactile 1366 × 768, les noms allumés : body.tactile et body.noms-outils', b)
+  ok(b.replie && b.pastilles.length === 0 && !b.epaisseur, 'II.A. la barre repliée : ni la grille des couleurs ni le bouton de l\'épaisseur dans la barre', b)
   ok(b.sh <= b.ch + 1 && b.dehors.length === 0, `II.A. elle ne défile pas (${b.sh} ≤ ${b.ch}), aucun bouton sous son bord`, b)
   ok(b.petits.length === 0, 'II.A. tout bouton de la barre fait 44 × 44 au moins', b.petits)
-  const iD = b.ordre.indexOf('Rôle'), iC = b.ordre.indexOf('Couleur'), iA = b.ordre.indexOf('Annuler')
-  ok(iC > iD && iC < iA && b.ordre[iC - 1] === '—' && b.ordre[iC + 1] === '—', 'II.A. « Couleur » entre les deux filets, après le Doigt, avant Annuler', b.ordre)
+  const iD = b.ordre.indexOf('Rôle'), iC = b.ordre.indexOf('Couleur')
+  ok(iC > iD && b.ordre[iC - 1] === '—' && iC === b.ordre.length - 1, 'II.A. « Couleur » après le filet, au bout de la barre, après le Doigt (Annuler et Rétablir sont en haut)', b.ordre)
   ok(b.couleur && b.couleur.nom === 'Couleur' && b.couleur.nomVu && b.couleur.l >= 44 && b.couleur.h >= 44, 'II.A. « Couleur » a son nom dessous, et 44 × 44 au moins', b.couleur)
-  await p.screenshot({ path: D + '/A-tni.png' })
+  await p.screenshot({ path: D + '/A-portable.png' })
   await p.touchscreen.tap(b.couleur.x, b.couleur.y); await p.waitForTimeout(250)
   let m = await p.evaluate(MENU)
-  ok(m && m.gauche >= m.barreDroite && m.droite <= m.W && m.bas <= m.H && Math.abs(m.haut - b.couleur.haut) < 2, 'II.A. son menu : à droite de la barre, à la hauteur du bouton, dans l\'écran', m)
+  // (« Couleur » est au bout de la barre, près du bas de l'écran : le menu,
+  // plus haut que le bouton, remonte pour tenir dans l'écran ; il reste à la
+  // hauteur du bouton, c'est-à-dire qu'il le longe)
+  ok(m && m.gauche >= m.barreDroite && m.droite <= m.W && m.bas <= m.H && m.haut <= b.couleur.haut + 2 && m.bas >= b.couleur.haut + b.couleur.h - 2, 'II.A. son menu : à droite de la barre, le long du bouton (remonté pour tenir dans l\'écran), dans l\'écran', { m, bouton: b.couleur })
   ok(m && m.cases.length === 7 && m.cases.every(x => x.l >= 44 && x.h >= 44), 'II.A. quatre pastilles et trois tailles de 44 × 44', m?.cases)
-  await p.screenshot({ path: D + '/A-tni-menu.png' })
+  await p.screenshot({ path: D + '/A-portable-menu.png' })
   await p.evaluate(() => window.__app.choisirOutil('surligneur'))
   const rouge = await p.evaluate(() => { const b = document.querySelector('.menu-couleur [aria-label="Rouge"]'), r = b?.getBoundingClientRect(); return r && { x: r.left + r.width / 2, y: r.top + r.height / 2, teinte: b.style.getPropertyValue('--teinte') } })
   // (le menu a été refait par le changement d'outil ? il reste ouvert)
@@ -235,33 +255,49 @@ console.log('--- II. Les couleurs et les tailles sur un écran qu\'on touche')
   await c.close()
 }
 
-// B. TNI sans les noms
-{
-  const { c, p } = await ouvrir('tni-sans-noms', { viewport: { width: 1920, height: 1080 }, hasTouch: true }, '0')
+// B. Le TNI, avec ses noms (allumés d'office) et sans : la barre tient
+// dépliée (adapté au lot 16 : avant, avec ses noms, elle se repliait)
+for (const [nom, noms] of [['avec ses noms', null], ['sans les noms', '0']]) {
+  const { c, p } = await ouvrir('tni', { viewport: { width: 1920, height: 1080 }, hasTouch: true }, noms)
   const b = await p.evaluate(BARRE)
-  ok(!b.noms && b.tactile && !b.replie, 'II.B. TNI sans les noms : la barre dépliée', b)
-  ok(b.pastilles.length === 4 && b.pastilles.every(x => x === '44×44') && b.tailles.length === 3 && b.tailles.every(x => x === '44×44'), 'II.B. pastilles et tailles dans la barre, en 44 × 44', { p: b.pastilles, t: b.tailles })
-  ok(!b.couleur && b.sh <= b.ch + 1 && b.petits.length === 0, 'II.B. « Couleur » caché, la barre ne défile pas, tout bouton en 44 × 44', b)
-  await p.screenshot({ path: D + '/B-tni-sans-noms.png' })
+  ok(b.noms === !noms && b.tactile && !b.replie, `II.B. TNI ${nom} : body.tactile, la barre dépliée`, b)
+  ok(b.pastilles.length === 4 && b.pastilles.every(x => x === '44×44') && b.epaisseur && b.epaisseur.l >= 44 && b.epaisseur.h >= 44 && b.epaisseur.taille === 'Fin',
+    `II.B. TNI ${nom} : les quatre pastilles en grille, en 44 × 44, et le bouton de l'épaisseur (« Fin »), de 44 px au moins`, { p: b.pastilles, e: b.epaisseur })
+  ok(!b.couleur && b.sh <= b.ch + 1 && b.dehors.length === 0 && b.petits.length === 0, `II.B. TNI ${nom} : « Couleur » caché, la barre ne défile pas, tout bouton en 44 × 44`, b)
+  await p.screenshot({ path: D + `/B-tni-${noms ? 'sans-noms' : 'noms'}.png` })
   await c.close()
 }
 
-// C. iPad 11 pouces, couché puis debout
+// C. iPad 11 pouces, couché puis debout : dépliée dans les deux sens
+// (adapté au lot 16 : couché, elle se repliait) ; le repli, et le menu
+// « Couleur » qui se ferme quand « Couleur » s'en va, sur une fenêtre
+// tactile qu'on agrandit (657 → 768 px de haut)
 {
   const { c, p } = await ouvrir('ipad', { viewport: { width: 1180, height: 820 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 })
   let b = await p.evaluate(BARRE)
-  ok(b.replie && b.sh <= b.ch + 1 && b.dehors.length === 0 && b.petits.length === 0, 'II.C. iPad couché : repliée, rien ne défile, Annuler, Rétablir et la poubelle dans l\'écran', b)
+  ok(!b.replie && b.sh <= b.ch + 1 && b.dehors.length === 0 && b.petits.length === 0 && b.pastilles.length === 4 && b.pastilles.every(x => x === '44×44') && !!b.epaisseur,
+    'II.C. iPad couché : dépliée (les couleurs à un toucher), rien ne défile, tout dans l\'écran, tout bouton en 44 × 44', b)
   await p.screenshot({ path: D + '/C-ipad-couche.png' })
-  await p.touchscreen.tap(b.couleur.x, b.couleur.y); await p.waitForTimeout(250)
-  ok(!!(await p.evaluate(MENU)), 'II.C. le menu « Couleur » ouvert', null)
   await p.setViewportSize({ width: 820, height: 1180 }); await p.waitForTimeout(400)
   b = await p.evaluate(BARRE)
-  ok(!b.replie && b.pastilles.length === 4 && b.pastilles.every(x => x === '44×44') && b.tailles.every(x => x === '44×44') && b.sh <= b.ch + 1, 'II.C. tourné debout : dépliée, en 44 × 44, sans défiler', b)
-  ok(!(await p.evaluate(MENU)), 'II.C. le menu « Couleur » s\'est fermé (son bouton n\'est plus là)', await p.evaluate(MENU))
+  ok(!b.replie && b.pastilles.length === 4 && b.pastilles.every(x => x === '44×44') && !!b.epaisseur && b.sh <= b.ch + 1, 'II.C. tourné debout : dépliée, en 44 × 44, sans défiler', b)
   await p.screenshot({ path: D + '/C-ipad-debout.png' })
-  await p.setViewportSize({ width: 1180, height: 820 }); await p.waitForTimeout(400)
+  await c.close()
+}
+{
+  const { c, p } = await ouvrir('fenetre-tactile', { viewport: { width: 1366, height: 657 }, hasTouch: true })
+  let b = await p.evaluate(BARRE)
+  ok(b.replie && b.sh <= b.ch + 1 && b.dehors.length === 0 && b.petits.length === 0, 'II.C. fenêtre tactile de 1366 × 657 : repliée, rien ne défile, tout dans l\'écran', b)
+  await p.touchscreen.tap(b.couleur.x, b.couleur.y); await p.waitForTimeout(250)
+  ok(!!(await p.evaluate(MENU)), 'II.C. le menu « Couleur » ouvert', null)
+  await p.setViewportSize({ width: 1366, height: 768 }); await p.waitForTimeout(400)
   b = await p.evaluate(BARRE)
-  ok(b.replie && b.sh <= b.ch + 1, 'II.C. de nouveau couché : repliée', b)
+  ok(!b.replie && b.pastilles.length === 4 && b.pastilles.every(x => x === '44×44') && !!b.epaisseur && b.sh <= b.ch + 1, 'II.C. agrandie à 768 px : dépliée, en 44 × 44, sans défiler', b)
+  ok(!(await p.evaluate(MENU)), 'II.C. le menu « Couleur » s\'est fermé (son bouton n\'est plus là)', await p.evaluate(MENU))
+  await p.screenshot({ path: D + '/C-fenetre-768.png' })
+  await p.setViewportSize({ width: 1366, height: 657 }); await p.waitForTimeout(400)
+  b = await p.evaluate(BARRE)
+  ok(b.replie && b.sh <= b.ch + 1, 'II.C. de nouveau à 657 px : repliée', b)
   await c.close()
 }
 
@@ -269,17 +305,19 @@ console.log('--- II. Les couleurs et les tailles sur un écran qu\'on touche')
 {
   const { c, p } = await ouvrir('ipadpro', { viewport: { width: 1024, height: 1366 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 })
   const b = await p.evaluate(BARRE)
-  ok(b.noms && !b.replie && b.pastilles.every(x => x === '44×44') && b.pastilles.length === 4 && b.sh <= b.ch + 1 && b.petits.length === 0, 'II.D. iPad Pro debout (les noms) : dépliée, 44 × 44, sans défiler', b)
+  ok(b.noms && !b.replie && b.pastilles.every(x => x === '44×44') && b.pastilles.length === 4 && !!b.epaisseur && b.sh <= b.ch + 1 && b.petits.length === 0, 'II.D. iPad Pro debout (les noms) : dépliée, 44 × 44, sans défiler', b)
   await c.close()
 }
 
-// E. Le poste de la classe : rien ne change
+// E. Le poste de la classe : pas de « Couleur », la barre tient sans
+// défiler (adapté au lot 16 : 601 px, 711 avec les noms ; avant, 874 et
+// 1004, qui défilaient)
 for (const [w, h, noms] of [[1366, 768, null], [1024, 768, null], [1366, 768, '1']]) {
   const { c, p } = await ouvrir('poste', { viewport: { width: w, height: h } }, noms)
   const b = await p.evaluate(BARRE)
-  const sh = noms ? 948 : 828
-  ok(!b.tactile && !b.replie && !b.couleur && b.pastilles.length === 4 && b.pastilles.every(x => x === '44×34') && b.tailles.every(x => x === '44×30') && b.sh === sh,
-    `II.E. poste ${w} × ${h}${noms ? ' avec les noms' : ''} : comme avant (44 × 34, 44 × 30, pas de « Couleur », ${sh} px qui défilent)`, b)
+  const sh = noms ? 711 : 601
+  ok(!b.tactile && !b.replie && !b.couleur && b.pastilles.length === 4 && b.pastilles.every(x => x === '34×34') && b.epaisseur && b.epaisseur.l >= 44 && b.epaisseur.h >= 44 && b.sh === sh && b.sh <= b.ch + 1,
+    `II.E. poste ${w} × ${h}${noms ? ' avec les noms' : ''} : pastilles en 34 × 34, le bouton de l'épaisseur, pas de « Couleur », ${sh} px qui ne défilent pas`, b)
   await c.close()
 }
 
@@ -291,11 +329,12 @@ for (const [w, h] of [[390, 844], [844, 390]]) {
   await c.close()
 }
 
-// G. Le clavier sur la barre repliée
+// G. Le clavier sur la barre repliée (adapté au lot 16 : à 768 px de haut,
+// elle ne se replie plus ; à 657, si)
 {
-  const { c, p } = await ouvrir('clavier', { viewport: { width: 1366, height: 768 }, hasTouch: true })
+  const { c, p } = await ouvrir('clavier', { viewport: { width: 1366, height: 657 }, hasTouch: true })
   const b = await p.evaluate(BARRE)
-  ok(b.replie, 'II.G. portable tactile 1366 × 768 : repliée', b)
+  ok(b.replie, 'II.G. portable tactile 1366 × 657 : repliée', b)
   await p.evaluate(() => document.querySelector('.barre-outils .bouton-couleur').focus())
   await p.keyboard.press('Enter'); await p.waitForTimeout(250)
   let m = await p.evaluate(MENU)
@@ -304,12 +343,12 @@ for (const [w, h] of [[390, 844], [844, 390]]) {
   m = await p.evaluate(MENU)
   const f = await p.evaluate(() => document.activeElement?.getAttribute('aria-label'))
   ok(!m && /^Couleur/.test(f ?? ''), 'II.G. Échap le ferme, le focus revient au bouton', { m, f })
-  // Tab y arrive depuis la poubelle (le document garde son ordre : Couleur est après elle)
-  await p.evaluate(() => document.querySelector('.barre-outils .bouton.danger').removeAttribute('disabled'))
-  await p.evaluate(() => document.querySelector('.barre-outils .bouton.danger').focus())
+  // Tab y arrive depuis le Doigt (la grille et le bouton de l'épaisseur,
+  // repliés, sont sautés ; la poubelle n'est plus dans la barre, lot 16)
+  await p.evaluate(() => document.querySelector('.barre-outils .bouton[title^="Rôle du doigt"]').focus())
   await p.keyboard.press('Tab')
   const g = await p.evaluate(() => document.activeElement?.getAttribute('aria-label'))
-  ok(/^Couleur/.test(g ?? ''), 'II.G. Tab atteint « Couleur »', g)
+  ok(/^Couleur/.test(g ?? ''), 'II.G. Tab atteint « Couleur » depuis le Doigt', g)
   await c.close()
 }
 

@@ -18,11 +18,13 @@ const ev = (f, a) => page.evaluate(f, a)
   const a = await ev(() => ({ partie: window.__app.partie, menu: !document.querySelector('.menu-partie').hidden }))
   await ev(() => window.__app.nouvellePage())
   await page.waitForTimeout(200)
+  // (Adapté aux gains rapides du lot 16 : la poubelle a quitté la barre des
+  // outils ; « rien à supprimer » se lit à la barre d'actions, cachée sans sélection)
   const b = await ev(() => {
-    const p = document.querySelector('button[title^="Supprimer la sélection"]')
-    return { partie: window.__app.partie, sel: window.__app.selection.size, n: window.__app.formes.length, poubelle: { disabled: p.disabled, aria: p.getAttribute('aria-disabled') }, menu: !document.querySelector('.menu-partie').hidden }
+    const p = document.querySelector('.barre-actions')
+    return { partie: window.__app.partie, sel: window.__app.selection.size, n: window.__app.formes.length, poubelle: { disabled: !p || p.hidden || !p.offsetWidth }, menu: !document.querySelector('.menu-partie').hidden }
   })
-  noter('Sommet choisi puis nouvelle page (vide) : la poubelle est grisée', a.partie && a.menu && b.poubelle.disabled, JSON.stringify({ a, b }))
+  noter('Sommet choisi puis nouvelle page (vide) : rien à supprimer (la barre d\'actions est cachée)', a.partie && a.menu && b.poubelle.disabled, JSON.stringify({ a, b }))
   await page.keyboard.press('Delete')
   await ev(() => window.__app.pageSuivante(-1))
   await page.waitForTimeout(150)

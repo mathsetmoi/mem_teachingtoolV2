@@ -217,7 +217,9 @@ await essai(async () => {
   const s = await ecranDe(page, 500, 200)
   await page.mouse.click(s.x, s.y); await page.waitForTimeout(350)
   await page.mouse.click(s.x, s.y); await page.waitForTimeout(200)
-  const poubelle = () => ev(page, () => document.querySelector('button[title^="Supprimer la sélection"]').disabled)
+  // (Adapté aux gains rapides du lot 16 : la poubelle a quitté la barre des
+  // outils ; « rien à supprimer » se lit à la barre d'actions, cachée sans sélection)
+  const poubelle = () => ev(page, () => { const b = document.querySelector('.barre-actions'); return !b || b.hidden || !b.offsetWidth })
   const a = await ev(page, () => window.__app.partie)
   await ev(page, () => window.__app.nouvellePage()); await page.waitForTimeout(150)
   const b = { partie: await ev(page, () => window.__app.partie), grisee: await poubelle(), menu: await ev(page, () => !document.querySelector('.menu-partie').hidden) }

@@ -99,11 +99,12 @@ async function recharger(p, oublier = false) {
 }
 
 /** Ce que montre l'écran : l'épaisseur active, le fond, le zoom, le compteur */
+// (Adapté aux gains rapides du lot 16 : l'épaisseur en main se lit sur le
+// bouton de l'épaisseur, data-taille : « Fin », « Moyen », « Épais »)
 const ECRAN = () => {
-  const t = [...document.querySelectorAll('.barre-outils .tailles .taille')]
-  const i = t.findIndex(b => b.classList.contains('actif'))
+  const nom = document.querySelector('.barre-outils .bouton-epaisseur')?.dataset.taille ?? null
   return {
-    taille: i, tailleNom: t[i]?.title ?? null,
+    taille: ['Fin', 'Moyen', 'Épais'].indexOf(nom), tailleNom: nom,
     fond: (document.querySelector('button.choix-fond')?.title ?? '').replace('Fond de la page : ', ''),
     zoom: (document.querySelector('.zoom-texte')?.textContent ?? '').replace(/\s/g, ' '),
     rang: (document.querySelector('.rang-numero')?.textContent ?? '').replace(/\s/g, ' '),
@@ -344,8 +345,8 @@ if (seul('dev')) {
   let p = await ouvrirDev(ctx, 'dev')
 
   // A1 et le départ
-  let d = await p.evaluate(() => { const a = window.__app; return { taille: a.taille, fin: a.taille === 2.5, actif: [...document.querySelectorAll('.barre-outils .tailles .taille')].map(b => b.classList.contains('actif')), fond: a.fond, rendu: a.rendu.fond, z: a.cam.z, x: a.cam.x, y: a.cam.y, pages: a.pages.length } })
-  ok(d.taille === 2.5 && JSON.stringify(d.actif) === '[true,false,false]', 'A1. Une session neuve : app.taille vaut 2,5 (TAILLES[0], « Fin »), son bouton est le seul actif', d)
+  let d = await p.evaluate(() => { const a = window.__app; return { taille: a.taille, fin: a.taille === 2.5, bouton: document.querySelector('.barre-outils .bouton-epaisseur')?.dataset.taille, fond: a.fond, rendu: a.rendu.fond, z: a.cam.z, x: a.cam.x, y: a.cam.y, pages: a.pages.length } })
+  ok(d.taille === 2.5 && d.bouton === 'Fin', 'A1. Une session neuve : app.taille vaut 2,5 (TAILLES[0], « Fin »), le bouton de l\'épaisseur la montre', d)
   ok(d.fond === 'blanc' && d.rendu === 'blanc' && d.pages === 1 && d.z === 1 && d.x === 120 && d.y === 120, 'A2/A3. … une seule page, blanche (le rendu aussi), en vue neutre à 100 %', d)
   // Le trait fin tracé : un trait de 2,5
   await ecrire(p, 500, 300, 700, 330)
