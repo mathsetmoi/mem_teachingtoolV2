@@ -3344,10 +3344,15 @@ séance, ou la touche Menu).
   classeur ; « Annuler » dans le message remet tout, avec le nom. La seule
   séance d'un classeur : c'est le classeur entier qui va dans la corbeille.
 - **Déplacer vers…**, ou glisser la séance sur la carte d'un autre
-  classeur : la séance part avec ses pages, son nom, sa date et son film
-  (Revoir et Publier marchent comme avant), et se range à sa date dans
-  l'autre classeur. « Annuler » la ramène. Un classeur qui a déjà une séance
-  à la même heure refuse, et rien ne bouge.
+  classeur : la séance part avec ses pages, ses images, son nom, sa date et
+  son film (Revoir et Publier marchent comme avant), et se range à sa date
+  dans l'autre classeur. « Annuler » la ramène. Un classeur qui a déjà une
+  séance à la même heure refuse, et rien ne bouge.
+- **Images retrouvées** : jusqu'au 28 octobre 2026, une séance déplacée
+  arrivait sans ses images (des cadres gris à leur place). En ouvrant le
+  classeur, celles qui manquent sont cherchées dans les autres classeurs de
+  la bibliothèque, ceux de la corbeille compris, et remises à leur place ;
+  un message dit combien et d'où (`Fichiers.retrouverImages`).
 - **Les replays déjà publiés ne bougent pas** : le lien des élèves reste
   bon. Une séance déplacée garde ses publications : la republier depuis son
   nouveau classeur remplace le même replay (même lien).

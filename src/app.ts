@@ -3790,13 +3790,29 @@ export class App {
     return src
   }
 
+  /** Une image montrée sans ses pixels (une séance déplacée d'un autre
+   *  classeur avant le 28 octobre 2026 : ses images y étaient restées) :
+   *  on les cherche, une fois par classeur ouvert (voir
+   *  Fichiers.retrouverImages), et la page se redessine quand elles arrivent */
+  chercherImages: (() => Promise<boolean | null>) | null = null
+  private imagesCherchees = false
+  private signalerImageManquante() {
+    if (this.imagesCherchees || !this.chercherImages) return
+    this.imagesCherchees = true
+    // null : pas encore possible (le classeur s'ouvre) ; on cherchera à la prochaine
+    void this.chercherImages().then(trouve => {
+      if (trouve === null) this.imagesCherchees = false
+      else if (trouve) this.rendu.toutRedessiner()
+    }, () => undefined)
+  }
+
   /** Les pixels d'une image, chargés une fois : la banque garde les données.
    *  Aussi pour peindre une page hors de l'écran (src/sorties/apercu.ts) */
   pixels(src: string): HTMLImageElement | null {
     let img = this.cachePixels.get(src)
     if (!img) {
       const donnees = this.banqueImages.get(src)
-      if (!donnees) return null
+      if (!donnees) { this.signalerImageManquante(); return null }
       img = new Image()
       img.onload = () => this.rendu.toutRedessiner()
       img.src = donnees
