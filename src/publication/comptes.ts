@@ -55,7 +55,8 @@ export const COMPTES: Compte[] = [
 export interface RelaisReplay { cle: string; nom: string; relais: string }
 export const RELAIS_REPLAY: RelaisReplay[] = [
   ...COMPTES.map(c => ({ cle: c.cle, nom: c.nom, relais: c.relais })),
-  { cle: 'lyfel', nom: 'Drive LyFEL', relais: '' },
+  // Le relais du compte lyfel.org (version 4), déployé le 28 octobre 2026
+  { cle: 'lyfel', nom: 'Drive LyFEL', relais: 'https://script.google.com/macros/s/AKfycbwC2pAjW5MKMZXxAXev_MDcLKu2-UM3W37erRBDpH2fzuVsysDzKSKIU5wjph_ZUbdh2g/exec' },
 ]
 export const relaisDe = (cle: string) => RELAIS_REPLAY.find(c => c.cle === cle) ?? null
 

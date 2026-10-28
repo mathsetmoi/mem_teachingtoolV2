@@ -1797,8 +1797,8 @@ lien s'affiche tout de suite (« Copier pour Pronote », « Tester le lien ») e
 l'outil interroge le relais toutes les 5 secondes, 10 minutes au plus :
 « En attente de Google Drive… » puis « ✓ Le replay est en ligne ». Un relais
 qui n'est pas à jour est signalé avant d'écrire. Trois Drive, donc trois
-relais : MEM, LFB et LyFEL (le dernier sert seulement aux replays ; son adresse
-`/exec` reste à ajouter dans `RELAIS_REPLAY`, `src/publication/comptes.ts`).
+relais : MEM, LFB et LyFEL (le dernier, compte lyfel.org, sert seulement aux replays ; son
+adresse est dans `RELAIS_REPLAY`, `src/publication/comptes.ts`).
 Le Drive des élèves ne se demande qu'une fois par classe (« Changer »). La
 version hors ligne écrit le fichier mais n'affiche pas de lien. Après la mise
 à jour de `relais/relais-seances.gs`, chaque relais se redéploie une fois

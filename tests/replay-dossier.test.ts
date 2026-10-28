@@ -58,9 +58,10 @@ describe('le code et le nom du fichier', () => {
     expect(lienEleveParCode('https://exemple.fr/revoir.html', 'mem', 'k7f3q9xa', 3)).toBe('https://exemple.fr/revoir.html?r=mem&code=k7f3q9xa&c=3')
   })
 
-  it('trois Drive : MEM, LFB et LyFEL (celui-ci sans relais tant qu’il n’est pas installé)', () => {
+  it('trois Drive : MEM, LFB et LyFEL, chacun avec son relais', () => {
     expect(RELAIS_REPLAY.map(r => r.cle)).toEqual(['mem', 'lfb', 'lyfel'])
     expect(relaisDe('lyfel')?.nom).toBe('Drive LyFEL')
+    expect(RELAIS_REPLAY.every(r => /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(r.relais))).toBe(true)
     expect(relaisDe('inconnu')).toBeNull()
   })
 })
