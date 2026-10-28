@@ -96,7 +96,7 @@ import { ecritDansUnFichier } from './surveillance'
 import type { CopieFaite } from './ecrivain'
 import { ecrivain } from './ecrivain'
 import type { ActionEtat } from './etat'
-import { rappelAuDepart, resumeEtat, texteRappel } from './etat'
+import { rappelAuDepart, resumeEtat, texteRappelDepart } from './etat'
 import type { CleALArrivee, PoigneeFichier } from './cle'
 import { AIDE_ACTIVER, ID_CHOIX, TYPES_CLASSEUR, ecrireLeNeuf, examinerPourUnNeuf, raisonCle } from './cle'
 import type { LigneSeance } from './liste'
@@ -177,9 +177,26 @@ export interface HoteBibliotheque {
 /** Ce qu'on dit au classeur où l'on arrive (sessionStorage, le temps du
  *  chargement) : JSON { id, message } */
 export const CLE_ARRIVEE = 'mem-teachingtool-arrivee'
-/** Le rappel d'enregistrer, avant de quitter un classeur : une fois par
+/** Le rappel d'enregistrer, quand on quitte un classeur : une fois par
  *  période de travail non enregistré (JSON { id, depuis }) */
 const CLE_RAPPEL_DEPART = 'mem-teachingtool-rappel-depart'
+/** Ce rappel, lu en arrivant sur l'autre classeur (sessionStorage, le temps
+ *  du chargement) : JSON { pour, id, nom, texte } (pour : le classeur où
+ *  l'on arrive ; id, nom : le classeur quitté ; texte : voir
+ *  texteRappelDepart). Pas dans CLE_ARRIVEE : un message d'arrivée fait
+ *  taire « Séance … reprise » et la fenêtre d'accueil, pas ce rappel. */
+export const CLE_RAPPEL_ARRIVEE = 'mem-teachingtool-rappel-arrivee'
+/** Ce que main.ts en relit : le classeur quitté (id, nom) et le texte */
+export interface RappelArrivee { id: string; nom: string; texte: string }
+
+/** Relu à l'arrivée (sessionStorage) : le rappel écrit pour ce classeur-ci
+ *  (pour), ou null (rien, pas pour lui, rien de valable) */
+export function lireRappelArrivee(x: unknown, pour: string): RappelArrivee | null {
+  const o = x as { pour?: unknown; id?: unknown; nom?: unknown; texte?: unknown } | null
+  if (!o || typeof o !== 'object' || o.pour !== pour) return null
+  if (typeof o.id !== 'string' || !o.id || typeof o.nom !== 'string' || !o.nom || typeof o.texte !== 'string' || !o.texte) return null
+  return { id: o.id, nom: o.nom, texte: o.texte }
+}
 /** Au-delà de ce temps, « Ouvrir sans attendre » ; au plus ce temps-là */
 const PATIENCE = 5000
 const DEPART_MAX = 10_000
@@ -3328,7 +3345,10 @@ export class Bibliotheque {
    *     (Enregistrer le classeur, Quitter sans enregistrer, Annuler) ;
    *  2) tout ce qui attend s'écrit (avantDeQuitter : 10 s au plus, « Ouvrir
    *     sans attendre » au-delà de 5 s) ;
-   *  3) le rappel d'enregistrer, s'il est dû, une fois ;
+   *  3) le rappel d'enregistrer, s'il est dû, une fois par période de
+   *     travail non enregistré : rien ne bloque, il se lira en arrivant,
+   *     avec un bouton qui enregistre le classeur quitté depuis sa base
+   *     (CLE_RAPPEL_ARRIVEE, voir main.ts) ;
    *  4) la page se recharge sur l'adresse du classeur.
    *  Celui de l'onglet : l'écran se ferme (le second clic d'un double-clic
    *  ne tombe pas sur le tableau). arrivee : ce qu'on dira en arrivant. */
@@ -3366,21 +3386,12 @@ export class Bibliotheque {
       }
       // 2) Tout ce qui attend s'écrit
       await this.attendreLeDepart(f)
-      // 3) Le rappel d'enregistrer, une fois par période de travail non enregistré
+      // 3) Le rappel d'enregistrer, une fois par période de travail non
+      // enregistré : plus de question ici, on part ; il se lira à l'arrivée
       if (s && ici && rappelAuDepart(s.etat, Date.now()) && !rappelDejaFait(ici.id, s.etat.nonEnregistreDepuis)) {
         noterRappel(ici.id, s.etat.nonEnregistreDepuis)
-        const r = await question({
-          titre: `Enregistrer « ${ici.nom} » d'abord ?`,
-          texte: `${texteRappel(s.etat, Date.now())} Il reste dans ce navigateur, mais un navigateur peut l'oublier (un poste remis à zéro) : un fichier le garde.`,
-          boutons: [
-            { cle: 'annuler', libelle: 'Annuler', classe: 'secondaire' },
-            { cle: 'partir', libelle: 'Ouvrir sans enregistrer', classe: 'secondaire' },
-            { cle: 'enregistrer', libelle: 'Enregistrer le classeur', classe: 'principal' },
-          ],
-          focus: 'enregistrer',
-        })
-        if (r === 'annuler') return
-        if (r === 'enregistrer' && !await this.enregistrer()) return
+        const rappel: RappelArrivee & { pour: string } = { pour: f.id, id: ici.id, nom: ici.nom, texte: texteRappelDepart(ici.nom, s.etat, Date.now()) }
+        try { sessionStorage.setItem(CLE_RAPPEL_ARRIVEE, JSON.stringify(rappel)) } catch { /* on arrivera sans le rappel */ }
       }
       // 4) La page se recharge sur le classeur, une fois écrit ce qu'on vient
       // de changer dans la bibliothèque (un nom, des étiquettes)
@@ -3584,6 +3595,8 @@ async function memesOctets(a: Blob, b: Blob): Promise<boolean> {
 }
 
 // ---------- Le rappel au départ, une fois ----------
+/** Une fois par période de travail non enregistré : le classeur et le début
+ *  de cette période (nonEnregistreDepuis), notés pour l'onglet */
 function rappelDejaFait(id: string, depuis: number | null): boolean {
   try {
     const o = JSON.parse(sessionStorage.getItem(CLE_RAPPEL_DEPART) || 'null')

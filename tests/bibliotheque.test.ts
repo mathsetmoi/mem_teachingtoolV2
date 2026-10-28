@@ -2,13 +2,14 @@
 // dans « Tous les classeurs », dans quel ordre, ce qu'on lit sur une carte
 // (la date, les pages, le lecteur d'écran, la clé et le Drive), le nom d'un
 // classeur neuf ; la ligne de l'état du classeur ouvert et le rappel au
-// départ. Tout est pur.
+// départ (ce que l'arrivée en relit : lireRappelArrivee). Tout est pur.
 import { describe, expect, it } from 'vitest'
 import type { FicheClasseur, FicheDossier } from '../src/classeurs/demarrage'
 import { baseDe } from '../src/classeurs/demarrage'
 import { RECENTS, aLaRacine, depuisQuand, libelleCarte, libelleSeances, lignesDesSeances, seancesParMois, nombreDeClasseurs, nomDeClasseur, parDate, quandCourt, recents, texteLecteur, titreCle, titreDrive } from '../src/classeurs/liste'
 import type { EtatSauvegarde } from '../src/classeurs/etat'
 import { rappelAuDepart, resumeEtat } from '../src/classeurs/etat'
+import { CLE_RAPPEL_ARRIVEE, lireRappelArrivee } from '../src/classeurs/bibliotheque'
 
 const MIN = 60_000, H = 60 * MIN, J = 24 * H
 /** Le samedi 10 octobre 2026 à 14 h 05, à l'heure de la machine */
@@ -212,5 +213,22 @@ describe('le rappel au départ', () => {
     expect(rappelAuDepart(etat({ nonEnregistreDepuis: T - 25 * MIN, modifie: T, cle: { etat: 'ok', t: T } }), T)).toBe(false)
     expect(rappelAuDepart(etat({ nonEnregistreDepuis: T - 25 * MIN, modifie: T, drive: { etat: 'ok', t: T - 5 * MIN } }), T)).toBe(false)
     expect(rappelAuDepart(etat({ nonEnregistreDepuis: T - 25 * MIN, modifie: T, cle: { etat: 'permission' } }), T)).toBe(true)
+  })
+
+  it('ce que l\'arrivée relit : le rappel écrit pour ce classeur-ci, rien d\'autre', () => {
+    expect(CLE_RAPPEL_ARRIVEE).toBe('mem-teachingtool-rappel-arrivee')
+    const r = { pour: 'b', id: 'a', nom: 'Fractions', texte: '« Fractions » n\'est pas encore enregistré dans un fichier : 25 min de travail.' }
+    expect(lireRappelArrivee(r, 'b')).toEqual({ id: 'a', nom: 'Fractions', texte: r.texte })
+    // pas pour lui (on est arrivé ailleurs entre-temps), ou rien
+    expect(lireRappelArrivee(r, 'c')).toBeNull()
+    expect(lireRappelArrivee(null, 'b')).toBeNull()
+    expect(lireRappelArrivee('texte', 'b')).toBeNull()
+    expect(lireRappelArrivee({}, 'b')).toBeNull()
+    // un champ qui manque ou vide : rien de valable
+    expect(lireRappelArrivee({ ...r, id: '' }, 'b')).toBeNull()
+    expect(lireRappelArrivee({ ...r, nom: 3 }, 'b')).toBeNull()
+    expect(lireRappelArrivee({ ...r, texte: undefined }, 'b')).toBeNull()
+    // un champ de plus (une version à venir) ne gêne pas
+    expect(lireRappelArrivee({ ...r, autre: 1 }, 'b')).toEqual({ id: 'a', nom: 'Fractions', texte: r.texte })
   })
 })

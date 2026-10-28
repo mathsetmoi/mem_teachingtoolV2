@@ -3,7 +3,7 @@
 // quand la base a dit une erreur, ce qui protège, le rappel et le bandeau.
 import { describe, expect, it } from 'vitest'
 import type { EtatCle, EtatDrive, EtatSauvegarde, MemoireBandeau } from '../src/classeurs/etat'
-import { COURT_MAX, TEXTE_INCOMPLET, bandeauDu, ilYA, ilYACourt, nomDErreur, protege, rappelDu, resumeEtat, texteEtat, texteRappel } from '../src/classeurs/etat'
+import { COURT_MAX, TEXTE_INCOMPLET, bandeauDu, ilYA, ilYACourt, nomDErreur, protege, rappelDu, resumeEtat, texteEtat, texteRappel, texteRappelDepart } from '../src/classeurs/etat'
 
 const MIN = 60_000
 /** Le samedi 10 octobre 2026 à 14 h 05, à l'heure de la machine */
@@ -200,6 +200,13 @@ describe('le rappel', () => {
     expect(sp(texteRappel(travail(70), T))).toBe('Pas encore enregistré dans un fichier depuis 1 h 10 de travail.')
     expect(sp(texteRappel(travail(120), T))).toBe('Pas encore enregistré dans un fichier depuis 2 h de travail.')
     expect(sp(texteRappel(etat({ nonEnregistreDepuis: T - 24 * 60 * MIN, modifie: T }), T))).toBe('Pas encore enregistré dans un fichier depuis hier à 14 h 05.')
+  })
+
+  it('le texte lu en arrivant sur un autre classeur, pour celui qu\'on a quitté', () => {
+    const suite = ' Il reste dans ce navigateur, mais un navigateur peut l\'oublier.'
+    expect(sp(texteRappelDepart('Fractions', travail(25), T))).toBe('« Fractions » n\'est pas encore enregistré dans un fichier : 25 min de travail.' + suite)
+    expect(sp(texteRappelDepart('Fractions', travail(70), T))).toBe('« Fractions » n\'est pas encore enregistré dans un fichier : 1 h 10 de travail.' + suite)
+    expect(sp(texteRappelDepart('Fractions', etat({ nonEnregistreDepuis: T - 24 * 60 * MIN, modifie: T }), T))).toBe('« Fractions » n\'est pas enregistré dans un fichier depuis hier à 14 h 05.' + suite)
   })
 })
 

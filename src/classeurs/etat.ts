@@ -300,15 +300,37 @@ export function rappelDu(e: EtatSauvegarde, maintenant: number, depuisGeste: num
   return e.modifie - e.nonEnregistreDepuis >= RAPPEL_TRAVAIL && depuisGeste >= RAPPEL_SANS_GESTE
 }
 
+/** Le travail non enregistré dans un fichier : depuis quand (le premier
+ *  changement après le dernier fichier), combien (ms, jusqu'au dernier
+ *  changement), et si ce premier changement est d'aujourd'hui */
+function travailNonEnregistre(e: EtatSauvegarde, maintenant: number): { debut: number; travail: number; memeJour: boolean } {
+  const debut = e.nonEnregistreDepuis ?? maintenant
+  const travail = (e.modifie ?? maintenant) - debut
+  const memeJour = new Date(debut).toDateString() === new Date(maintenant).toDateString()
+  return { debut, travail, memeJour }
+}
+
 /** Le texte du rappel : « Pas encore enregistré dans un fichier depuis 25
  *  min de travail. » ; sur plus d'une journée, la date du premier changement
  *  (« … depuis hier à 14 h 05. ») */
 export function texteRappel(e: EtatSauvegarde, maintenant: number): string {
-  const debut = e.nonEnregistreDepuis ?? maintenant
-  const travail = (e.modifie ?? maintenant) - debut
-  const memeJour = new Date(debut).toDateString() === new Date(maintenant).toDateString()
+  const { debut, travail, memeJour } = travailNonEnregistre(e, maintenant)
   if (memeJour) return `Pas encore enregistré dans un fichier depuis ${duree(travail)} de travail.`
   return `Pas encore enregistré dans un fichier depuis ${quandLisible(debut, maintenant)}.`
+}
+
+/** Le rappel qu'on lit en arrivant sur un autre classeur, pour celui qu'on
+ *  vient de quitter sans l'avoir enregistré (voir Bibliotheque.ouvrirClasseur
+ *  et main.ts) : « « Fractions » n'est pas encore enregistré dans un
+ *  fichier : 25 min de travail. Il reste dans ce navigateur, mais un
+ *  navigateur peut l'oublier. » ; sur plus d'une journée, la date du
+ *  premier changement (« … n'est pas enregistré dans un fichier depuis hier
+ *  à 14 h 05. … »). nom : le nom du classeur quitté. */
+export function texteRappelDepart(nom: string, e: EtatSauvegarde, maintenant: number): string {
+  const { debut, travail, memeJour } = travailNonEnregistre(e, maintenant)
+  const suite = 'Il reste dans ce navigateur, mais un navigateur peut l\'oublier.'
+  if (memeJour) return `« ${nom} » n'est pas encore enregistré dans un fichier : ${duree(travail)} de travail. ${suite}`
+  return `« ${nom} » n'est pas enregistré dans un fichier depuis ${quandLisible(debut, maintenant)}. ${suite}`
 }
 
 /** Pourquoi le bandeau paraît : seulement pour une action qui demande un

@@ -110,8 +110,10 @@ export class SelectionSuivie extends Set<string> {
 
 /** Un bouton d'un message (voir Interface.message). cle : ce que l'action
  *  concerne (voir oublierAction) ; garder : le message reste après ce bouton
- *  (sans lui), avec les autres (« Aller à la page 5 » laisse « Annuler »). */
-export interface ActionMessage { libelle: string; faire: (e?: MouseEvent) => void; cle?: string; garder?: boolean }
+ *  (sans lui), avec les autres (« Aller à la page 5 » laisse « Annuler ») ;
+ *  duree : le message reste au moins tant de ms (7 s sans rien dire ; le
+ *  rappel d'enregistrer le classeur quitté en demande 30). */
+export interface ActionMessage { libelle: string; faire: (e?: MouseEvent) => void; cle?: string; garder?: boolean; duree?: number }
 
 export interface Interface {
   maj(): void

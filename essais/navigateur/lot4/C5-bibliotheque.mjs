@@ -21,7 +21,9 @@
 //    refusé ; renoncer crée sans clé. Plus de place : rien ne reste.
 // H. La bibliothèque seule : ?bibliotheque, ?classeur=inconnu.
 // I. Le trou simulé : changer de classeur demande d'enregistrer ; le rappel
-//    au départ, une fois.
+//    au départ : plus de question avant de partir (gains rapides, lot 16),
+//    il se lit à l'arrivée, avec un bouton qui enregistre le classeur quitté
+//    depuis sa base, 30 s ; une fois par période de travail non enregistré.
 // J. Deux onglets : un renommage ailleurs ne vole pas le focus, ne refait
 //    que sa carte ; le nom du bouton et le titre suivent.
 // K. Inerte pendant la revue, la trieuse, une séance.
@@ -668,7 +670,7 @@ if (seul('H')) {
 // I. LE TROU ; LE RAPPEL AU DÉPART
 // =====================================================================
 if (seul('I')) {
-  console.log('\n=== I. le trou simulé ; le rappel au départ ===')
+  console.log('\n=== I. le trou simulé ; le rappel au départ, lu à l\'arrivée ===')
   const ctx = await contexte()
   const p = await ouvrir(ctx, '', 'I')
   const premier = await p.evaluate(() => window.__app.classeur.id)
@@ -701,17 +703,61 @@ if (seul('I')) {
   await p.click(carte('tous', ids[1])); await p.waitForTimeout(400)
   await allerPar(p, () => p.click('dialog [data-a="quitter"]'))
   ok(await p.evaluate(() => window.__app.classeur.id) === ids[1] && !avantDecharger.length, '   … Quitter sans enregistrer : « Chapitre 2 » s\'ouvre, sans la question du navigateur (beforeunload)', avantDecharger)
-  // Le rappel au départ : 25 min de travail que rien ne protège
+  // Le rappel au départ : 25 min de travail que rien ne protège. Depuis les
+  // gains rapides (lot 16), plus de question avant de partir (avant :
+  // « Enregistrer « Chapitre 2 » d'abord ? » [Annuler] [Ouvrir sans
+  // enregistrer] [Enregistrer le classeur]) : on part, et le rappel se lit
+  // en arrivant, avec un bouton qui enregistre « Chapitre 2 » depuis sa base
   await ouvrirBiblio(p)
-  await p.evaluate(() => { const e = window.__surveillance.etat; e.nonEnregistreDepuis = Date.now() - 25 * 60_000; e.modifie = Date.now() })
-  await p.click(carte('tous', ids[2])); await p.waitForTimeout(600)
-  d = await dialogues(p)
-  ok(d.length === 1 && d[0].titre === 'Enregistrer « Chapitre 2 » d\'abord ?' && /^Pas encore enregistré dans un fichier depuis 2\d min de travail\. Il reste dans ce navigateur/.test(d[0].texte) && JSON.stringify(d[0].boutons) === '["Annuler","Ouvrir sans enregistrer","Enregistrer le classeur"]',
-    'Le rappel au départ : « Enregistrer « Chapitre 2 » d\'abord ? » (25 min de travail non enregistré)', d)
-  await p.click('dialog [data-a="annuler"]'); await p.waitForTimeout(300)
-  ok(p.url().endsWith(ids[1]), '   … Annuler : on reste')
+  await p.evaluate(() => {
+    const e = window.__surveillance.etat; e.nonEnregistreDepuis = Date.now() - 25 * 60_000; e.modifie = Date.now()
+    // Une fenêtre de question qui paraîtrait avant de partir se noterait (sessionStorage survit au départ)
+    new MutationObserver(() => { if (document.querySelector('dialog.dialogue-quitter')) sessionStorage.setItem('__question', '1') }).observe(document.body, { childList: true, subtree: true })
+  })
+  await toasts(p)
+  const t0 = Date.now()
   await allerPar(p, () => p.click(carte('tous', ids[2])))
-  ok(await p.evaluate(() => window.__app.classeur.id) === ids[2], '   … une seule fois : la deuxième fois, on part sans le redemander')
+  const arrive = await p.evaluate(() => ({ id: window.__app.classeur.id, question: sessionStorage.getItem('__question'), dlg: document.querySelectorAll('dialog[open]').length }))
+  ok(arrive.id === ids[2] && !arrive.question && !arrive.dlg, `Le rappel au départ : plus de question, « Chapitre 3 » s'ouvre tout de suite (${Date.now() - t0} ms)`, arrive)
+  // À l'arrivée : le message, avec le bouton
+  await p.waitForFunction(() => [...document.querySelectorAll('.toast .action')].some(b => b.textContent === 'Enregistrer « Chapitre 2 » dans un fichier'), null, { timeout: 10000 }).catch(() => {})
+  const message = () => p.evaluate(() => ({ visible: document.querySelector('.toast').classList.contains('visible'), texte: document.querySelector('.toast .ligne')?.firstChild?.textContent, boutons: [...document.querySelectorAll('.toast .action')].map(b => b.textContent) }))
+  let m = await message()
+  ok(m.visible && /^« Chapitre 2 » n'est pas encore enregistré dans un fichier : 2\d min de travail\. Il reste dans ce navigateur, mais un navigateur peut l'oublier\.$/.test(norm(m.texte)) && JSON.stringify(m.boutons) === '["Enregistrer « Chapitre 2 » dans un fichier"]',
+    '   … à l\'arrivée, le message « « Chapitre 2 » n\'est pas encore enregistré dans un fichier : 25 min de travail. Il reste dans ce navigateur, mais un navigateur peut l\'oublier. » [Enregistrer « Chapitre 2 » dans un fichier]', m)
+  await p.screenshot({ path: CAPTURES + 'I-rappel-arrivee.png' })
+  // Il reste 30 s (un message à bouton ordinaire : 7 s)
+  await p.waitForTimeout(8000)
+  m = await message()
+  ok(m.visible && m.boutons.length === 1, '   … il reste à l\'écran au-delà de 7 s (30 s)', m)
+  // Le bouton : le choix du fichier dans le clic (le faux showSaveFilePicker de
+  // l'essai écrit dans l'OPFS), le fichier a « Chapitre 2 », sans l'ouvrir
+  await p.evaluate(() => { window.__choix = [] })
+  await p.click('.toast .action')
+  await p.waitForFunction(() => window.__toasts.some(t => /^Classeur enregistré : /.test(t)), null, { timeout: 15000 }).catch(() => {})
+  const apres = await p.evaluate(() => ({ choix: window.__choix, toasts: window.__toasts.splice(0) }))
+  const nomFichier = apres.choix[0]?.nom ?? ''
+  ok(apres.choix.length === 1 && /^Chapitre 2 \d{4}-\d\d-\d\d \d\dh\d\d\.memc$/.test(nomFichier) && apres.choix[0].actif && apres.toasts.some(t => t.startsWith(`Classeur enregistré : ${nomFichier}`)),
+    `   … le bouton : le choix du fichier dans le clic (« ${nomFichier} »), puis « Classeur enregistré : … »`, apres)
+  const octets = await opfsLire(p, nomFichier)
+  const lu = octets ? lireMemc(octets) : null
+  ok(lu && lu.entete.id === ids[1] && lu.entete.nom === 'Chapitre 2' && lu.pages === 1 && await p.evaluate(() => window.__app.classeur.id) === ids[2],
+    '   … le fichier écrit est « Chapitre 2 » (son id, 1 page), depuis sa base : « Chapitre 3 » reste ouvert', lu && { entete: lu.entete, pages: lu.pages })
+  // Une seule fois par période de travail non enregistré : le même début ne
+  // le fait pas revenir (parti de « Chapitre 3 » vers « Chapitre 2 », deux fois)
+  const D = Date.now() - 30 * 60_000
+  const partirDeChapitre3 = async () => {
+    await ouvrirBiblio(p)
+    await p.evaluate(D => { const e = window.__surveillance.etat; e.nonEnregistreDepuis = D; e.modifie = Date.now() }, D)
+    await toasts(p)
+    await allerPar(p, () => p.click(carte('tous', ids[1])))
+    await p.waitForTimeout(1500)
+    return (await toasts(p)).some(t => t.includes('Enregistrer « Chapitre 3 » dans un fichier'))
+  }
+  ok(await partirDeChapitre3(), 'Parti de « Chapitre 3 » (30 min non enregistrées) : le rappel à l\'arrivée sur « Chapitre 2 »')
+  await ouvrirBiblio(p)
+  await allerPar(p, () => p.click(carte('tous', ids[2])))
+  ok(!await partirDeChapitre3() && await p.evaluate(() => window.__app.classeur.id) === ids[1], '   … une seule fois : reparti avec la même période, pas de rappel')
   await ctx.close()
 }
 

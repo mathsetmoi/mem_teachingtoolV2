@@ -112,6 +112,9 @@ const TITRE_FICHIER = `${MENU_FICHIER} (${CTRL} + S, ${CTRL} + O, ${CTRL} + P)`
 const TITRE_PLUS_TELEPHONE = 'Plus : la page, les outils de cours, le classeur, cet appareil'
 /** Le texte caché que lit le lecteur d'écran sur le bouton du classeur : toutes les lignes de l'état */
 const ID_ETAT = 'etat-classeur-description'
+/** Un message à bouton reste tant de ms (voir message) ; la bibliothèque
+ *  seule a le sien (main.ts), à la même règle */
+export const DUREE_MESSAGE_ACTION = 7000
 
 /** La forme du bouton du classeur (voir UI.placerBoutonClasseur) :
  *  'large' (sa barre, le nom et l'état), 'etroit' (sa barre, l'icône et le
@@ -3543,7 +3546,8 @@ export class UI implements Interface {
     const maintenant = performance.now()
     const actions = action === undefined ? [] : Array.isArray(action) ? action : [action]
     if (actions.length) {
-      const toast = { el, fin: maintenant + 7000, cle: actions.find(a => a.cle !== undefined)?.cle }
+      // 7 s, ou plus si une action le demande (ActionMessage.duree)
+      const toast = { el, fin: maintenant + Math.max(DUREE_MESSAGE_ACTION, ...actions.map(a => a.duree ?? 0)), cle: actions.find(a => a.cle !== undefined)?.cle }
       for (const a of actions) {
         const b = document.createElement('button')
         b.type = 'button'; b.className = 'action'; b.textContent = a.libelle
@@ -3562,6 +3566,14 @@ export class UI implements Interface {
     }
     this.majToast()
     this.placerToast()
+  }
+
+  /** Dans combien de temps (ms) ce que le message montre s'en va ; 0 : rien
+   *  à l'écran. Ce qu'on veut dire sans couvrir le message en cours attend
+   *  tant (le rappel d'enregistrer le classeur quitté, voir main.ts). */
+  finDuMessage(): number {
+    const maintenant = performance.now()
+    return Math.max(0, ...[this.toastSimple, this.toastAction].filter(p => p !== null).map(p => p.fin - maintenant))
   }
 
   /** Le message à action de cette clé s'en va, s'il est encore là : son

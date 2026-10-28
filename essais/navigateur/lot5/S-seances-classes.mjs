@@ -69,11 +69,12 @@ await trait(500, 300)
 await p.clock.setSystemTime(T0 + 60 * H)
 await p.reload(); await pret()
 await p.click('.pastille-classe >> text=5B')
-// Le départ attend ses écritures (des minuteries : l'horloge de l'essai avance)
-// (le rappel d'enregistrer le classeur qu'on quitte, s'il vient : « Ouvrir sans enregistrer »)
+// Le départ attend ses écritures (des minuteries : l'horloge de l'essai avance).
+// (Le rappel d'enregistrer le classeur qu'on quitte ne pose plus de question
+// avant de partir depuis les gains rapides, lot 16 : il se lit à l'arrivée ;
+// la boucle n'a donc plus de bouton « Ouvrir sans enregistrer » à cliquer.)
 for (let k = 0; k < 40 && !p.url().includes(ids.symetrie); k++) {
   await p.clock.runFor(500).catch(() => {}); await p.waitForTimeout(100)
-  await p.evaluate(() => [...document.querySelectorAll('dialog[open] button')].find(b => b.textContent === 'Ouvrir sans enregistrer')?.click()).catch(() => {})
 }
 await pret()
 e = await p.evaluate(() => ({ url: location.href, nom: window.__app.classeur.nom, dlg: !!document.querySelector('dialog[open]'), s: window.__app.tableau.seancesDuClasseur().length, rang: [document.querySelector('.rang-seance .texte').textContent, document.querySelector('.rang').textContent].filter(Boolean).join(' · ') }))
@@ -105,7 +106,6 @@ await p.evaluate(() => { const c = document.querySelector('dialog.dialogue-nouve
 await p.click('dialog.dialogue-nouveau [data-a="creer"]')
 for (let k = 0; k < 40 && (await p.evaluate(() => window.__app?.classeur?.nom).catch(() => null)) !== 'Brouillon'; k++) {
   await p.clock.runFor(500).catch(() => {}); await p.waitForTimeout(100)
-  await p.evaluate(() => [...document.querySelectorAll('dialog[open] button')].find(b => b.textContent === 'Ouvrir sans enregistrer')?.click()).catch(() => {})
 }
 await pret()
 e = await p.evaluate(async () => ({ nom: window.__app.classeur.nom, dossier: (await window.__registre.classeur(window.__app.classeur.id))?.dossier, dlg: !!document.querySelector('dialog[open]'), fond: window.__app.fond }))
