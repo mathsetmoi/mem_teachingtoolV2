@@ -1108,7 +1108,7 @@ outils pour le cours, à l'écran :
   ligne sonne aussi. Le haut-parleur coupe le son ; ce choix reste sur cet
   appareil.
 - **Le tirage au sort** : la liste des élèves de la classe (le dossier de
-  classe du classeur ouvert), un prénom par ligne, qu'on peut coller depuis
+  niveau du classeur ouvert : une même liste pour tout le niveau), un prénom par ligne, qu'on peut coller depuis
   un tableur. Un élève tiré ne revient pas avant que toute la classe soit
   passée. La liste reste dans ce navigateur, jamais dans le classeur, le
   replay, le PDF ni le Drive.
@@ -1130,7 +1130,7 @@ dans le cache d'un ancien navigateur, qui ne connaît pas encore ce nom,
 montre le film sans les instruments ; il se met à jour au chargement
 suivant. Ce qui reste sur l'appareil : `mem-minuteur-son` (le son coupé ou
 non), `mem-tirage-<dossier>` (la liste et le tour en cours de chaque
-classe), `mem-conseils` (les conseils déjà vus).
+niveau, c'est-à-dire de chaque dossier), `mem-conseils` (les conseils déjà vus).
 
 ## La calculatrice NumWorks (lot 14)
 
@@ -1250,7 +1250,7 @@ accent ni majuscule à respecter ; les résultats viennent en trois groupes :
   mots, montrés à plat, les mots cherchés marqués. Un clic ouvre la page,
   la formule (ou le texte) prise et montrée (au zoom où l'on est) ; une
   page d'une séance passée s'ouvre en lecture.
-- **Classeurs, pages et séances** : un classeur par son nom ou sa classe,
+- **Classeurs, pages et séances** : un classeur par son nom ou son niveau,
   une page par son nom, une séance par sa date (« 16 octobre », « mardi »,
   « 16/10 ») ou son nom.
 
@@ -1785,7 +1785,7 @@ sert jamais.
 **Publier dans un dossier de l'ordinateur (lot 15).** Publier peut aussi
 poser le replay dans un dossier du PC, y compris un dossier de Google Drive
 pour ordinateur (Chrome et Edge), sans connexion Google : le dossier du
-chapitre quand la classe est reliée à un dossier de l'ordinateur (son chemin
+chapitre quand le niveau est relié à un dossier de l'ordinateur (son chemin
 est affiché), sinon un dossier choisi avec « Choisir… » (retenu pour ce
 classeur). Le fichier s'appelle « Titre [code].mem » : le titre se modifie, le
 code de 8 caractères (a-z, 0-9) est ajouté par l'outil, et le fichier peut être
@@ -1802,17 +1802,17 @@ l'outil interroge le relais toutes les 5 secondes, 10 minutes au plus :
 qui n'est pas à jour est signalé avant d'écrire. Trois Drive, donc trois
 relais : MEM, LFB et LyFEL (le dernier, compte lyfel.org, sert seulement aux replays ; son
 adresse est dans `RELAIS_REPLAY`, `src/publication/comptes.ts`).
-Le Drive des élèves ne se demande qu'une fois par classe (« Changer »). La
+Le Drive des élèves ne se demande qu'une fois par niveau (« Changer »). La
 version hors ligne écrit le fichier mais n'affiche pas de lien. Après la mise
 à jour de `relais/relais-seances.gs`, chaque relais se redéploie une fois
 (Gérer les déploiements › crayon › Nouvelle version). L'ancien envoi par
 connexion Google reste choisi par « Sur le Drive, en me connectant à Google ».
 Réglages ajoutés (clés nouvelles, rien d'existant changé) :
-`replay-dossier:<classeur>` et `replay-compte:<classe>`.
+`replay-dossier:<classeur>` et `replay-compte:<dossier du niveau>`.
 
 *Le résumé (lot 16).* Dès que le Drive des élèves et le dossier sont retenus
-pour ce classeur (le dossier choisi, ou celui du chapitre quand la classe est
-reliée à l'ordinateur) et qu'une séance du classeur a déjà été rangée dans un
+pour ce classeur (le dossier choisi, ou celui du chapitre quand le niveau est
+relié à l'ordinateur) et qu'une séance du classeur a déjà été rangée dans un
 dossier, la fenêtre s'ouvre en résumé : « Séance du mer 28 oct 14h
 (aujourd'hui) · 3 pages », « Rangé dans « Fractions » · Drive personnel », le
 titre seulement s'il diffère de celui proposé d'office, **Modifier…** et un
@@ -1824,7 +1824,7 @@ sans se replier sous les yeux. Si le navigateur ne donne plus l'accès au
 dossier retenu (après un redémarrage, l'accord refusé), ou si ce dossier a été
 supprimé ou renommé, Publier déplie la fenêtre et le dit (« choisissez-le à
 nouveau avec « Choisir… » »), sans rien écrire. Un classeur à la racine de la
-bibliothèque (hors de tout dossier) n'a pas de classe pour porter le Drive : il
+bibliothèque (hors de tout dossier) n'a pas de niveau pour porter le Drive : il
 le garde avec lui, dans sa clé `replay-dossier:<classeur>` (champ `compte`,
 facultatif, que la lecture connaissait déjà), et il a le résumé aussi. Aucune
 clé nouvelle.
@@ -2073,8 +2073,8 @@ page change ; fermée, la trieuse ne coûte rien.
 
 ## Les séances (lot 6)
 
-Le rangement : **un dossier de la bibliothèque = une classe** (les dossiers
-marqués « Dossier d'une classe », lot 4), **un classeur = un chapitre**, et
+Le rangement : **un dossier de la bibliothèque = un niveau** (« 5ème »,
+« 2nde » ; les dossiers marqués « Dossier d'un niveau », lot 4), **un classeur = un chapitre**, et
 dans un classeur, **des séances**, chacune avec SES pages, numérotées à partir
 de 1. Une séance commence quand on la crée : on n'a plus à la deviner dans le
 film.
@@ -2098,19 +2098,20 @@ se dit) :
   reste, sur la même page, et un message le dit (« Séance de 14 h reprise ») ;
 - plus d'une heure : la fenêtre **« Bonjour ! »**, par-dessus la dernière
   page, grisée derrière. Le gros bouton, choisi d'office (Entrée suffit) :
-  « Nouvelle séance avec la 5A » (le plus proche dossier de classe du
-  classeur ; sans dossier de classe, « Nouvelle séance »). Dessous : « Fractions
-  — changer de chapitre » (les classeurs du dossier de la classe, avec leur
+  « Nouvelle séance en 5ème » (le plus proche dossier de niveau du
+  classeur ; sans dossier de niveau, « Nouvelle séance » ; un dossier dont
+  le nom n'est pas un niveau : « Nouvelle séance dans « Soutien » »). Dessous : « Fractions
+  — changer de chapitre » (« Chapitres de 5ème » : les classeurs du dossier du niveau, avec leur
   nombre de séances, le chapitre ouvert en tête, et « + Nouveau chapitre… » :
   le nom seulement, rangé dans le dossier, page blanche, et la case de la clé
   comme pour un nouveau classeur ; la copie sur le Drive suit comme pour tout
-  classeur). « Continuer la séance de lundi 8 h ». « Une autre classe : 5B ·
-  4C · 3A » (les autres dossiers de classe) : un clic ouvre le chapitre en
-  cours de cette classe, le dernier classeur ouvert dans son dossier (ses
-  sous-dossiers compris), et y commence une séance ; une classe sans classeur
+  classeur). « Continuer la séance de lundi 8 h ». « Un autre niveau : 4ème ·
+  3ème · 2nde » (les autres dossiers de niveau) : un clic ouvre le chapitre en
+  cours de ce niveau, le dernier classeur ouvert dans son dossier (ses
+  sous-dossiers compris), et y commence une séance ; un niveau sans classeur
   ouvre « Nouveau chapitre » dans son dossier. En bas, « Nouveau classeur
   vierge… » ouvre la fenêtre « Nouveau classeur » de la bibliothèque (page
-  blanche cochée), rangé hors de toute classe, à enregistrer plus tard comme
+  blanche cochée), rangé hors de tout niveau, à enregistrer plus tard comme
   tout classeur. Sous le gros bouton, la case « Commencer par des
   automatismes », jamais cochée d'office : cochée, quel que soit le bouton
   choisi, la séance s'ouvre sur le réglage d'un flash (voir Automatismes).
@@ -2234,8 +2235,8 @@ quand le classeur n'a qu'une séance).
 - **Le PDF** : le classeur entier par le menu ⋯, la séance par la page et la
   trieuse (voir plus haut).
 - **L'ouverture par la bibliothèque** applique la même règle d'une heure,
-  avec la fenêtre entière (la liste des classes comprise) : c'est le même
-  démarrage. Arrivé par « Une autre classe » ou un autre chapitre, la séance
+  avec la fenêtre entière (la liste des niveaux comprise) : c'est le même
+  démarrage. Arrivé par « Un autre niveau » ou un autre chapitre, la séance
   commence sans question (une clé de l'onglet, `mem-teachingtool-nouvelle-seance`,
   valable une minute ; aucune clé existante ne change).
 - **Une heure** : la dernière activité d'une séance est sa dernière étape du
@@ -2244,7 +2245,7 @@ quand le classeur n'a qu'une séance).
 ## Les classeurs : où ils vivent
 
 Depuis le lot 4, l'unité est le **classeur** (un par chapitre, rangés par
-classe). La fondation range chaque classeur à part, sans rien perdre de ce
+niveau). La fondation range chaque classeur à part, sans rien perdre de ce
 qui existait ; le nom du classeur est sur le bouton du classeur, à gauche
 de la barre du haut (avec l'état de sa sauvegarde, voir « L'état de la
 sauvegarde »), dans le titre de l'onglet (« Mon tableau — MEM
@@ -2791,7 +2792,7 @@ Pour changer d'ordinateur, ou garder une copie de tout : un seul fichier
   [Ajouter] (rien à faire : [Fermer]). Les dossiers d'abord : le même id
   qu'un dossier d'ici, on garde celui d'ici ; le même nom sous le même
   parent, on les réunit ; sinon il est créé, avec sa couleur et son
-  étiquette de classe. Puis les classeurs, dans leurs dossiers, avec leurs
+  étiquette de niveau. Puis les classeurs, dans leurs dossiers, avec leurs
   étiquettes et leurs aperçus (sous l'id du fichier s'il est libre) ; ce
   qui a divergé, comme copie, nommé « … (copie) ». « Bibliothèque ouverte :
   9 classeurs ajoutés, 2 mis à jour, 1 ajouté comme copie ; 1 illisible
@@ -3186,9 +3187,9 @@ autre poste.
 
 Deux fenêtres, une liste (`src/classeurs/ailleurs.ts`, d'après les maquettes
 validées par le professeur le 17 octobre 2026). Ses trois choix : **un
-dossier de classe est un vrai dossier**, un `.memc` par chapitre, tenu à
+dossier de niveau est un vrai dossier**, un `.memc` par chapitre, tenu à
 jour tout seul (1B) ; sur le Drive, le dossier **« MEM - Classeurs »** (ou
-« LFB - Classeurs »), avec un sous-dossier par classe (2A) ; la liste **« Mes
+« LFB - Classeurs »), avec un sous-dossier par niveau (2A) ; la liste **« Mes
 emplacements »** en haut de la bibliothèque (3A).
 
 ### Le mode d'emploi
@@ -3197,39 +3198,39 @@ emplacements »** en haut de la bibliothèque (3A).
   « Ouvrir » a deux onglets, **Cet ordinateur** et **Google Drive**.
   « Choisir des fichiers… » est le choix d'avant (Ctrl + O y mène toujours
   directement, et un fichier glissé sur la page s'ouvre comme avant).
-- **Ouvrir toute une classe.** Cet ordinateur → **Choisir un dossier…**
+- **Ouvrir tout un niveau.** Cet ordinateur → **Choisir un dossier…**
   (Chrome et Edge) : tous les classeurs du dossier (et de ses sous-dossiers)
   arrivent dans le dossier du même nom de la bibliothèque, créé s'il
   n'existe pas. La case « Garder ce dossier relié », cochée d'avance, en
-  fait l'emplacement de la classe : chaque classeur y garde son fichier.
-  Google Drive → les classes de « MEM - Classeurs » sont listées, avec
-  **Ouvrir toute la classe** (elle reste reliée au Drive), et chacun de
+  fait l'emplacement du niveau : chaque classeur y garde son fichier.
+  Google Drive → les niveaux de « MEM - Classeurs » sont listés, avec
+  **Ouvrir tout le niveau** (il reste relié au Drive), et chacun de
   leurs classeurs. Un classeur déposé ailleurs dans le Drive n'y est pas
   (voir plus bas) : le télécharger, puis « Cet ordinateur ».
 - **Enregistrer.** Menu ⋯ du classeur → **Enregistrer sur le Drive ou
   ailleurs…**, ou le menu d'un dossier → **Enregistrer ce dossier…** :
-  - **Quoi ?** Ce classeur, le dossier de la classe (son dossier le plus
+  - **Quoi ?** Ce classeur, le dossier du niveau (son dossier le plus
     haut), ou toute la bibliothèque.
   - **Où ?** Cet ordinateur (une clé, un dossier, G:\Mon Drive…) ou Google
     Drive.
   - **Le garder à jour tout seul** (coché) : ce classeur sur l'ordinateur,
-    c'est l'enregistrement automatique sur la clé d'avant ; le dossier de la
-    classe sur l'ordinateur : on choisit un dossier, chaque classeur y prend
+    c'est l'enregistrement automatique sur la clé d'avant ; le dossier du
+    niveau sur l'ordinateur : on choisit un dossier, chaque classeur y prend
     son fichier (« Fractions.memc », dans les mêmes sous-dossiers que dans
-    la bibliothèque) ; sur le Drive : « MEM - Classeurs › 5A », un fichier
-    par classeur. Décoché : un seul fichier `.memb` de la classe,
+    la bibliothèque) ; sur le Drive : « MEM - Classeurs › 5ème », un fichier
+    par classeur. Décoché : un seul fichier `.memb` du niveau,
     enregistré une fois. Toute la bibliothèque : toujours une fois (un
     `.memb`, à la racine de « MEM - Classeurs » pour le Drive). Ce classeur
     sur le Drive : une fois, à la racine de « MEM - Classeurs » (la fenêtre
-    dit d'enregistrer plutôt le dossier de sa classe pour qu'il se tienne à
+    dit d'enregistrer plutôt le dossier de son niveau pour qu'il se tienne à
     jour).
-- **Mes emplacements.** En haut de la bibliothèque : chaque classe reliée
-  (« 5A → Drive personnel › MEM - Classeurs › 5A », « 4B → Cet ordinateur ›
-  Cle 4B »), ce qui n'y est pas encore (« 2 classeurs pas encore dedans »),
-  **Mettre à jour** (y met chaque classeur de la classe, l'accord du
+- **Mes emplacements.** En haut de la bibliothèque : chaque niveau relié
+  (« 5ème → Drive personnel › MEM - Classeurs › 5ème », « 4ème → Cet ordinateur ›
+  Cle 4ème »), ce qui n'y est pas encore (« 2 classeurs pas encore dedans »),
+  **Mettre à jour** (y met chaque classeur du niveau, l'accord du
   navigateur ou la connexion Google dans ce clic) et **Retirer** (ne plus
-  tenir ce dossier à jour : rien n'y est effacé). À la racine : toutes les
-  classes reliées ; dans un dossier : celles de sa classe.
+  tenir ce dossier à jour : rien n'y est effacé). À la racine : tous les
+  niveaux reliés ; dans un dossier : celui de son niveau.
 - **Dans la version hors ligne**, le Drive est grisé dans les deux
   fenêtres, et elles le disent : « Le Drive marche seulement depuis la
   version en ligne (mathsetmoi.github.io). » Rien ne part vers Google.
@@ -3240,7 +3241,7 @@ emplacements »** en haut de la bibliothèque (3A).
   `showDirectoryPicker` (Chrome, Edge), la poignée du dossier gardée dans
   l'index (le réglage `emplacement-poignee:<id>`, à part du magasin
   `poignees`, qui ne garde que les fichiers des classeurs). Chaque
-  classeur de la classe y prend un fichier qui devient **le fichier de sa
+  classeur du niveau y prend un fichier qui devient **le fichier de sa
   clé** (`cle.ts`) : il s'y écrit peu après chaque changement, quand le
   classeur est ouvert, avec tous les garde-fous de la clé. Jamais rien
   d'écrasé : le fichier du même classeur, sans rien de plus que la
@@ -3249,14 +3250,14 @@ emplacements »** en haut de la bibliothèque (3A).
   n'est pas touché (le message dit de l'ouvrir d'abord) ; un fichier qui
   n'est pas à lui laisse la place à « Fractions (2).memc ». Un classeur qui
   a déjà sa clé ailleurs la garde.
-- **Une classe reliée au Drive** (`src/publication/drive.ts`) : un troisième
+- **Un niveau relié au Drive** (`src/publication/drive.ts`) : un troisième
   dossier privé, « MEM - Classeurs » (marque `memClasses`), et dans lui le
-  dossier de chaque classe, marqué par l'id du dossier de la bibliothèque
+  dossier de chaque niveau, marqué par l'id du dossier de la bibliothèque
   (`memClasse` ; un renommage dans la bibliothèque le suit). La copie sur le
-  Drive des classeurs de cette classe (`copie-drive.ts`, lot 4 C10) y va au
+  Drive des classeurs de ce niveau (`copie-drive.ts`, lot 4 C10) y va au
   lieu de « MEM - Sauvegardes » : la copie d'avant y est **déplacée**
   (`addParents`/`removeParents`), avec ses versions, jamais doublée. Relier
-  la classe met la copie de chacun de ses classeurs sur ce Drive et les
+  le niveau met la copie de chacun de ses classeurs sur ce Drive et les
   copie tout de suite (`copierDepuisLaBase`, sous le verrou de chaque
   classeur). Ces fichiers gardent la marque des sauvegardes :
   « Récupérer une sauvegarde du Drive » les voit aussi (seulement ceux du
@@ -3283,32 +3284,33 @@ emplacements »** en haut de la bibliothèque (3A).
 - Un classeur déposé à la main ailleurs dans le Drive ne se voit pas
   depuis l'onglet « Google Drive » : le télécharger (ou passer par
   G:\Mon Drive avec Google Drive pour ordinateur), puis « Cet ordinateur ».
-- Un classeur ajouté plus tard dans une classe reliée y arrive avec
+- Un classeur ajouté plus tard dans un niveau relié y arrive avec
   **Mettre à jour** (la liste le signale) ; sur l'ordinateur, chaque fichier
   se met à jour quand son classeur est ouvert, comme la clé.
 - Firefox, Safari et l'iPad ne savent pas écrire dans un dossier : sur
-  l'ordinateur, le dossier de la classe y est un `.memb` enregistré une
+  l'ordinateur, le dossier du niveau y est un `.memb` enregistré une
   fois ; le Drive y marche.
-- À essayer une fois pour de vrai, sur le vrai compte : relier une classe au
+- À essayer une fois pour de vrai, sur le vrai compte : relier un niveau au
   Drive personnel, regarder « MEM - Classeurs » dans Google Drive, puis
-  rouvrir la classe depuis l'onglet « Google Drive » sur un autre poste.
+  rouvrir le niveau depuis l'onglet « Google Drive » sur un autre poste.
 
 ## Un dossier par chapitre, et toutes les séances au même endroit (lot 8)
 
 Choix du professeur, le 19 octobre 2026 (maquettes validées) : **dossier =
-la classe (« 5ème », « Auguste »), chapitre = un classeur**, et toutes les
-séances du chapitre au même endroit. Pas de distinction 5A / 5B.
+le niveau (« 5ème », « Auguste »), chapitre = un classeur**, et toutes les
+séances du chapitre au même endroit. Pas de distinction 5A / 5B (l'outil dit
+« niveau » partout depuis les gains rapides du lot 16).
 
 ### Le mode d'emploi
 
 - **Sur l'ordinateur et sur le Drive, un chapitre est un vrai dossier.** Un
-  classeur relié à un dossier de classe s'écrit dans un dossier à son nom :
+  classeur relié à un dossier de niveau s'écrit dans un dossier à son nom :
   `5ème/Fractions/Fractions.memc` ; sur le Drive, « MEM - Classeurs › 5ème ›
   Fractions › Fractions.memc ». Les sous-dossiers de la bibliothèque
   (« Géométrie ») se retrouvent sur l'ordinateur ; le Drive garde un seul
-  niveau (classe › chapitre).
+  étage (niveau › chapitre).
 - **Ce qui existait déjà ne se perd pas.** Un `.memc` posé à plat dans le
-  dossier de la classe est adopté tel quel s'il est le même classeur ; sur
+  dossier du niveau est adopté tel quel s'il est le même classeur ; sur
   le Drive, la copie d'avant est **déplacée** dans le dossier du chapitre à
   la prochaine copie (jamais doublée).
 - **Les séances sous la carte.** Une carte dit « 3 séances » : un clic la
@@ -3329,7 +3331,7 @@ séances du chapitre au même endroit. Pas de distinction 5A / 5B.
 - `src/classeurs/ordinateur.ts` : `relierLesClasseurs` écrit chaque classeur
   dans `[sous-dossiers…, nom du chapitre]`.
 - `src/publication/drive.ts` : `dossierDuChapitre` (marque `memChapitre` =
-  id du classeur, comme `memClasse` pour la classe) ; `listerLesClasses` et
+  id du classeur, comme `memClasse` pour le niveau) ; `listerLesClasses` et
   `listerSauvegardes` regardent aussi ces sous-dossiers. `copie-drive.ts`
   y envoie la copie.
 - La fiche d'un classeur gagne un champ **facultatif** `listeSeances`
@@ -3782,10 +3784,10 @@ n'est jamais imposée, rien ne change au geste du professeur en classe.
   d'aperçu »), le nom (deux lignes au plus, entier dans son titre), « Modifié aujourd'hui à 14 h 05 · 12 pages », la pastille
   « Ouvert » sur celui de cet onglet, deux petites icônes grises, la clé et
   le nuage du Drive (« Sur la clé il y a 3 jours (Symétrie.memc) » : la date
-  de la dernière écriture réussie), ses étiquettes de classe en petites
+  de la dernière écriture réussie), ses étiquettes de niveau en petites
   puces grises (celle qui vient de son dossier plus claire), et un bouton ⋯ de 44 px (« Options de
   « Symétrie centrale » »). Le lecteur d'écran y lit « Symétrie centrale, 12
-  pages, modifié aujourd'hui à 14 h 05 » (et « classe 5e B », « ouvert dans
+  pages, modifié aujourd'hui à 14 h 05 » (et « niveau 5e B », « ouvert dans
   cet onglet », la clé, le Drive). Chaque carte est un lien (`?classeur=<id>`) : **le clic du
   milieu et Ctrl + clic ouvrent le classeur dans un autre onglet**, comme
   partout ; le clic simple l'ouvre ici.
@@ -3807,16 +3809,16 @@ n'est jamais imposée, rien ne change au geste du professeur en classe.
   ou entre (un dossier) ; F2 renomme ; la touche Menu et Maj + F10 ouvrent
   le menu de la carte (le focus sur « Ouvrir ») ; Échap le ferme et rend le
   focus à la carte ; Retour arrière remonte d'un dossier (hors d'un champ) ;
-  Échap enlève d'abord le filtre de classe, puis ferme l'écran. Ce sont les
+  Échap enlève d'abord le filtre de niveau, puis ferme l'écran. Ce sont les
   mêmes touches en AZERTY (elles se lisent par leur nom, pas leur place).
 - **Le menu d'une carte** : « Ouvrir », puis « Renommer… » (F2) et
-  « Étiquettes de classe… », puis « Déplacer vers… », « Dupliquer le
+  « Étiquettes de niveau… », puis « Déplacer vers… », « Dupliquer le
   classeur » et « Enregistrer dans un fichier… » (son `.memc`, fabriqué
   depuis sa base par l'écrivain ; celui de l'onglet, comme Ctrl + S),
   puis « Supprimer » (Suppr ; ⌘ ⌫ sur Mac). Des fichiers lâchés sur
   l'écran : un cadre pointillé « Lâchez pour ajouter à la bibliothèque »,
   puis « Ouvrir un classeur ». Celui d'un
-  dossier : « Ouvrir », « Renommer… », sa couleur, « Dossier d'une classe »,
+  dossier : « Ouvrir », « Renommer… », sa couleur, « Dossier d'un niveau »,
   « Déplacer vers… », « Supprimer ».
 - **Les autres onglets.** Un changement fait ailleurs (un classeur créé,
   renommé, ouvert) ne refait que les cartes de ces classeurs-là, et le focus
@@ -3824,24 +3826,25 @@ n'est jamais imposée, rien ne change au geste du professeur en classe.
   fermeture). Le classeur ouvert renommé ailleurs : son nom sur le bouton et
   dans le titre de l'onglet suivent.
 
-**Ranger (par classe, d'abord).** Le rangement conseillé : un dossier par
-classe (« 5e B »), puis un classeur par chapitre (« Symétrie centrale ») ;
-l'autre rangement (un dossier « Symétrie », un classeur par classe) reste
-possible, et les étiquettes de classe retrouvent alors d'un geste les
-classeurs d'une classe. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
+**Ranger (par niveau, d'abord).** Le rangement conseillé : un dossier par
+niveau (« 5ème » ; un dossier = un niveau, pas une classe 5A / 5B, décision
+du 19 octobre 2026), puis un classeur par chapitre (« Symétrie centrale ») ;
+l'autre rangement (un dossier « Symétrie », un classeur par niveau) reste
+possible, et les étiquettes de niveau retrouvent alors d'un geste les
+classeurs d'un niveau. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
 
 - **Le conseil.** À la racine, tant qu'il n'y a aucun dossier, une carte
-  large en tête : « Rangez par classe : un dossier par classe (« 5e B »),
+  large en tête : « Rangez par niveau : un dossier par niveau (« 5ème »),
   puis un classeur par chapitre (« Symétrie centrale »). Les classeurs d'un
-  dossier de classe portent son étiquette : un geste les retrouve tous. »
-  [Créer un dossier de classe] (« Nouveau dossier », la case cochée
+  dossier de niveau portent son étiquette : un geste les retrouve tous. »
+  [Créer un dossier de niveau] (« Nouveau dossier », la case cochée
   d'avance) [Plus tard] (il ne revient plus : le réglage `conseil` de
   l'index vaut `vu`). Il ne prend pas le focus.
-- **Nouveau dossier** (le bandeau) : « Nom » (40 caractères, « 5e B » en
+- **Nouveau dossier** (le bandeau) : « Nom » (40 caractères, « 5ème » en
   exemple grisé), « Couleur » (huit pastilles, des boutons radio nommés :
   Gris, Bleu au départ, Vert, Jaune, Orange, Rouge, Violet, Rose), la case
-  **Dossier d'une classe : ses classeurs portent l'étiquette « 5e B »**, cochée
-  d'office quand le nom ressemble à une classe (au début du nom, sans tenir
+  **Dossier d'un niveau : ses classeurs portent l'étiquette « 5ème »**, cochée
+  d'office quand le nom ressemble à un niveau (au début du nom, sans tenir
   compte de la casse : 3e à 6e, « 5ème », « 2nde », « seconde », « 1re »,
   « première », « Tle », « Term », « terminale », CP à CM2, BTS, CAP ; pas
   « 3 exercices » ni « Capitales »), son libellé suivant le nom tapé ; une
@@ -3853,12 +3856,12 @@ classeurs d'une classe. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
   avant « Ch. 10 », sans la casse ni les accents) : la grande icône dans sa
   couleur, le nom, ce qu'il contient (« 4 classeurs · 2 dossiers » : les
   classeurs de ses sous-dossiers comptent, les sous-dossiers sont ceux qu'on
-  voit en l'ouvrant ; « Vide »), la puce de son étiquette de classe ; le
-  lecteur d'écran lit « 5e B, dossier bleu, dossier d'une classe, 4
+  voit en l'ouvrant ; « Vide »), la puce de son étiquette de niveau ; le
+  lecteur d'écran lit « 5e B, dossier bleu, dossier d'un niveau, 4
   classeurs, 2 dossiers ». Un clic, un toucher, la plume ou Entrée y
   entrent ; le clic droit, le bouton du stylet, ⋯, la touche Menu ouvrent
   son menu : « Ouvrir », « Renommer… » (F2), « Couleur » (les huit en
-  pastilles, la sienne cochée), la case « Dossier d'une classe ». Chaque
+  pastilles, la sienne cochée), la case « Dossier d'un niveau ». Chaque
   changement a son message avec « Annuler » (7 s).
 - **Le fil d'Ariane** remplace « Tous les classeurs » : « Bibliothèque › 5e
   B › Géométrie », chaque dossier au-dessus un bouton (on y remonte, le
@@ -3868,25 +3871,25 @@ classeurs d'une classe. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
   sessionStorage : recharger le garde, un autre onglet commence à la
   racine). Un dossier vide : « Ce dossier est vide. Glissez-y un classeur, ou
   créez-en un. » [Nouveau classeur]. « Nouveau classeur » dit « Dans : 5e B ·
-  étiquette de classe « 5e B » » : l'étiquette vient du dossier, pas de champ
+  étiquette de niveau « 5e B » » : l'étiquette vient du dossier, pas de champ
   à remplir.
-- **Les étiquettes de classe.** Un classeur a les siennes (au plus trois,
-  posées à la main) et celle du plus proche dossier de classe qui le
+- **Les étiquettes de niveau.** Un classeur a les siennes (au plus trois,
+  posées à la main) et celle du plus proche dossier de niveau qui le
   contient, **calculée, jamais écrite** : glissé dans « 5e B », il est
   aussitôt dans le filtre « 5e B », et en sort s'il en sort. « Étiquettes de
-  classe… » (le menu d'un classeur) : ses étiquettes en puces, chacune avec
+  niveau… » (le menu d'un classeur) : ses étiquettes en puces, chacune avec
   son × ; l'héritée grisée, sans ×, « vient du dossier « 5e B » » ; « Ajouter
-  une classe » (les étiquettes de la bibliothèque proposées ; Entrée
+  un niveau » (les étiquettes de la bibliothèque proposées ; Entrée
   ajoute ; 20 caractères ; un double, même de l'héritée, est ignoré : « « 5e
   B » y est déjà. ») ; à trois, le champ se ferme. Chaque changement
   s'écrit aussitôt ; à la fermeture, « Étiquettes de « Symétrie » : 5e B,
   Soutien » [Annuler] les rend toutes comme elles étaient.
-- **Le filtre.** Sous Récents, dès qu'une étiquette existe : « Classes :
-  [Toutes] [5e B · 4] [2nde 3 · 2] » (des boutons `aria-pressed`, dans
-  l'ordre des classes, de la 6e à la terminale, puis les autres par nom).
+- **Le filtre.** Sous Récents, dès qu'une étiquette existe : « Niveaux :
+  [Tous] [5e B · 4] [2nde 3 · 2] » (des boutons `aria-pressed`, dans
+  l'ordre des niveaux, de la 6e à la terminale, puis les autres par nom).
   Une étiquette choisie montre, en liste plate, tous les classeurs visibles
   qui la portent, quel que soit leur dossier, avec leur chemin sous le nom
-  (« 5e B › Géométrie ») ; le fil dit « Classe « 5e B » ». Le filtre est
+  (« 5e B › Géométrie ») ; le fil dit « Niveau « 5e B » ». Le filtre est
   retenu pour l'onglet (`mem-teachingtool-filtre`) ; Échap l'enlève d'abord,
   puis ferme l'écran ; une étiquette que plus rien ne porte l'enlève aussi.
 - **Renommer** : F2 sur la carte qui a le focus, « Renommer… », ou un
@@ -3899,7 +3902,7 @@ classeurs d'une classe. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
   nom va dans l'index et dans la base du classeur (son identité, pour
   qu'une adoption le retrouve) ; le classeur de l'onglet renommé : son
   bouton, le titre de l'onglet et la ligne du classeur ouvert suivent, dans
-  tous les onglets. Un dossier de classe renommé garde son étiquette
+  tous les onglets. Un dossier de niveau renommé garde son étiquette
   accordée à son nom (« 2nde 3 » devenu « 2nde 4 »). Au doigt, le champ
   reste au-dessus du clavier virtuel (la grille gagne en bas la place qu'il
   couvre). Pendant qu'on tape, rien ne se refait (un changement venu d'un
@@ -3953,7 +3956,7 @@ glissant la carte (le modèle est pur et testé : `src/classeurs/deplacer.ts`,
   Échap arrête tout ; lâchée hors d'une cible (ou sur son propre dossier),
   rien ne bouge ; le clic qui suit un glisser n'ouvre rien (la carte est
   un lien). Une paume posée sur le TNI pendant un glisser à la souris n'y
-  change rien. Avec un filtre de classe (une liste plate), il n'y a pas de
+  change rien. Avec un filtre de niveau (une liste plate), il n'y a pas de
   cible : on passe par « Déplacer vers… ».
 - **Ce qui se passe** : un classeur, seule sa fiche change (son dossier) ;
   un dossier, par le registre, qui refuse dans sa transaction un dossier
@@ -4401,7 +4404,7 @@ supprimer » se lit à la barre d'actions, cachée), `lot1/verif/telephone.mjs`.
 ### Plus de question au départ
 
 **Ce qui change pour le professeur.** Changer de classeur (une carte de la
-bibliothèque, « Une autre classe » ou un chapitre de la fenêtre
+bibliothèque, « Un autre niveau » ou un chapitre de la fenêtre
 « Bonjour ! », la recherche) ne pose plus la question « Enregistrer
 « Fractions » d'abord ? » quand le classeur quitté a 20 minutes de travail
 que rien ne protège : on part tout de suite. Le rappel se lit en arrivant
@@ -4438,7 +4441,7 @@ dans le message de la bibliothèque seule. Le bouton passe par
 `lot4/C5-bibliotheque.mjs` (section I) vérifie le départ sans fenêtre, le
 message et son bouton à l'arrivée, le fichier écrit, et « une seule fois » ;
 `lot5/S-seances-classes.mjs` n'a plus de bouton « Ouvrir sans enregistrer »
-à cliquer en changeant de classe.
+à cliquer en changeant de niveau.
 
 ### Publier en un clic
 
@@ -4469,6 +4472,51 @@ du classeur quand il est à la racine de la bibliothèque, sans jamais effacer l
 dossier déjà retenu. Essai navigateur : `essais/navigateur/lot15/P1-publier-dossier.mjs`
 (sections G, H, I). En DEV, `window.__app.ui.publication.ouvrir({ complet: true })`
 ouvre la fenêtre complète quoi qu'il soit retenu.
+
+### Niveau plutôt que classe
+
+**Ce qui change pour le professeur.** Un dossier de la bibliothèque est un
+**niveau** (« 5ème », « 4ème », « 3ème », « 2nde », « 1re spé », « Tle spé »),
+pas une classe (5A / 5B) : décision du 19 octobre 2026 (lot 8). L'outil le
+dit maintenant partout : le conseil « Rangez par niveau : un dossier par
+niveau (« 5ème »)… » et son bouton **Créer un dossier de niveau** ; la case
+**Dossier d'un niveau** de « Nouveau dossier » (« 5ème » en exemple grisé) et
+du menu d'un dossier ; « Étiquettes de niveau… », « Ajouter un niveau » ; la
+rangée du filtre « Niveaux : [Tous] [5ème · 4] » et le fil « Niveau « 5ème » »,
+« Classeurs du niveau « 5ème » » ; ce que lit le lecteur d'écran (« dossier
+d'un niveau », « niveau 5ème ») ; la fenêtre « Bonjour ! » : **« Nouvelle
+séance en 5ème »** (« en 2nde », « en 1re spé », « en Tle spé » ; un dossier
+dont le nom n'est pas un niveau : « Nouvelle séance dans « Soutien » »),
+« Chapitres de 5ème », « Un autre niveau : 4ème · 3ème », « Sans niveau : vous
+l'enregistrez quand vous voulez. », « Le niveau « 3ème » n'a pas encore de
+chapitre » ; les fenêtres « Ouvrir » et « Enregistrer » du lot 7 (« Recherche
+de vos niveaux sur le Drive… », **Ouvrir tout le niveau**, « Le dossier du
+niveau », « Un seul fichier .memb avec tout le niveau ») et leurs messages,
+accordés au masculin (« « 5ème » est relié au dossier « Cle 5ème » »,
+« « 5ème » enregistré : … »). Le mot « classe » reste quand il s'agit des
+élèves ou de la salle : le bouton **Classe** et ses outils, « en classe », le
+tirage au sort (« Un élève de la classe »).
+
+**Comment c'est fait.** Seuls les textes changent. Les marques Drive
+`memClasses` et `memClasse`, le champ `etiquette` de la fiche d'un dossier, les
+clés `replay-compte:<id>`, `mem-tirage-<id>` et les réglages, les noms des bases,
+les identifiants du code (`rangDeClasse`, `ressembleAUneClasse`,
+`classeursDeLaClasse`, `dossierDeClasse`, les champs `classe` / `classes`, la
+case `name="classe"`, `.case-classe`, `.pastille-classe`, `data-action`
+`classe-dossier`) gardent leur nom : rien à migrer, les Drive et les fichiers
+déjà marqués se relisent tels quels. `src/seances-vue.ts` : `enNiveau` et
+`deNiveau` remplacent `avecLaClasse` et suivent `ressembleAUneClasse`
+(`arbre.ts`), la règle de la case « Dossier d'un niveau » : « 5A » n'y est pas
+un niveau et s'écrit « dans « 5A » » (essayé dans `tests/seances.test.ts`). Les
+trois replis `'Classe'` d'un nom de dossier (`ailleurs.ts`, `drive.ts`,
+`fichiers.ts`) deviennent `'Niveau'` ensemble. Essais adaptés :
+`lot4/C6-ranger.mjs` (les textes du conseil, de la case, du filtre « Tous », du
+fil, des étiquettes, du lecteur d'écran), `lot5/S-seances-classes.mjs` (ses
+dossiers sont « 5ème », « 4ème », « 3ème » ; « Nouvelle séance en 5ème »,
+« Chapitres de 5ème »), `lot7/E1-ailleurs.mjs` (« relié », « Ouvrir tout le
+niveau »), `tests/arbre.test.ts`, `tests/bibliotheque.test.ts`. À noter : la
+liste du tirage au sort est celle du dossier (`mem-tirage-<id>`), donc du
+niveau : la même pour la 5A et la 5B.
 
 ## Ce que fait la v0.1
 
@@ -4704,7 +4752,7 @@ n'y sort de l'écran (essayé de 320 × 568 à 932 × 430), tout bouton y fait a
 moins 44 × 44 px — ceux des fenêtres et de la bibliothèque aussi, depuis la
 vérification « conformité » du lot 5 (*Annuler*, *Exporter*, *Mettre à
 jour*, les raccourcis de l'éditeur de formule, les cases et les choix d'une
-fenêtre, le tri, *Créer un dossier de classe*, *Plus tard*, les couleurs
+fenêtre, le tri, *Créer un dossier de niveau*, *Plus tard*, les couleurs
 d'un dossier : ils faisaient 38 à 43 px) —, et l'essentiel reste sous le
 pouce :
 - **La barre du haut sur une rangée** : le bouton du classeur (son icône et
@@ -5522,7 +5570,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/classeurs/vecteurs.ts` | Comparer deux vecteurs d'état Yjs, pur (testé) : `egal`, `contient`, `contenu`, `diverge` (la clé ne remplace jamais un fichier qui contient plus que le classeur, et voit qu'un classeur a perdu une partie de son histoire) |
 | `src/classeurs/cle.ts` | L'enregistrement automatique dans un fichier de la clé (Chrome, Edge, aussi en `file://`) : l'activer (le fichier choisi, vérifié, gardé), quand écrire (20 s après le dernier changement, au plus tard 2 min, au calme), écrire d'un bloc depuis le travailleur, les garde-fous (un autre classeur, un fichier modifié ailleurs, l'histoire perdue), la permission (un clic après un rechargement), les échecs et leurs réessais, un seul onglet qui écrit (Web Locks), la question du navigateur en fermant l'onglet avant l'écriture (`beforeunload`, posée seulement pendant ce temps-là, et l'écriture part aussitôt), Arrêter, la case de la fenêtre « Ouvrir ce classeur ? » ; un conflit propose d'ouvrir le fichier de la clé (`fichierDeLaCle`), et la fiche changée dans l'onglet se relit (`resynchroniser`) |
 | `src/classeurs/bibliotheque.ts` | La bibliothèque des classeurs : l'écran (par-dessus le classeur, ou seule), le bandeau et la ligne du classeur ouvert, Récents et la grille du dossier affiché (seules les cartes changées se refont, le focus reste), les cartes des classeurs (des liens : le clic du milieu ouvre un onglet) et des dossiers, les pointeurs et le clavier, le menu d'une carte et celui d'un dossier, ouvrir un autre classeur sans rien perdre (le trou, ce qui attend, le rappel d'enregistrer noté pour l'arrivée, `CLE_RAPPEL_ARRIVEE` et `lireRappelArrivee`, sans question depuis le lot 16), Nouveau classeur (la case de la clé, la première écriture avant de partir) ; ranger : le conseil, Nouveau dossier, le fil d'Ariane, Retour arrière, la couleur et « Dossier d'une classe », les étiquettes de classe et leur filtre, renommer (F2, double-clic, au-dessus du clavier virtuel), trier ; déplacer (« Déplacer vers… », le glisser-déposer à la souris, à la tablette graphique et au doigt, deux doigts qui défilent), dupliquer, les aperçus en adresses objet ; la corbeille (Supprimer et Suppr, « Annuler », le bouton « Corbeille (3) », Remettre, les questions de Supprimer définitivement et de Vider, « Enregistrer d'abord », l'onglet qui passe sans classeur), l'adoption des bases sans fiche à la première ouverture, la place du navigateur ; `actionsDuBandeau`, `menuDuBandeau`, `blocsDuMenu`, `blocsDuMenuDossier` pour les morceaux suivants |
-| `src/classeurs/arbre.ts` | L'arbre de la bibliothèque, pur (testé) : les huit couleurs, les noms (d'un dossier, d'une étiquette, d'une copie), ce qui ressemble à une classe et son rang, le cycle et la remontée bornée, le parent montré, le chemin et le fil d'Ariane, les enfants et les descendants, ce que contient un dossier, les étiquettes héritées et effectives (calculées), la rangée du filtre, le tri par nom |
+| `src/classeurs/arbre.ts` | L'arbre de la bibliothèque, pur (testé) : les huit couleurs, les noms (d'un dossier, d'une étiquette, d'une copie), ce qui ressemble à un niveau (« 5ème », « 2nde ») et son rang, le cycle et la remontée bornée, le parent montré, le chemin et le fil d'Ariane, les enfants et les descendants, ce que contient un dossier, les étiquettes héritées et effectives (calculées), la rangée du filtre, le tri par nom |
 | `src/classeurs/liste.ts` | Ce que montre la bibliothèque, pur (testé) : Récents (les six derniers ouverts), le tri par date, un classeur à la racine, la date et les pages d'une carte, le texte du lecteur d'écran (avec ses étiquettes et son chemin), les titres des icônes de la clé et du Drive, le nombre de classeurs, le nom d'un classeur neuf |
 | `src/classeurs/ecrivain-pur.ts` | Le fichier d'un classeur depuis les mises à jour de sa base, pur (testé) : la fusion, la vérification (une base trouée ou abîmée ne fait aucun fichier ; avec `lisible`, une base trouée relue donne ce qui s'en relit, et le dit), l'en-tête, le gzip, le vecteur d'état, la somme CRC-32 ; la copie d'un classeur (`preparerCopie` : toute l'histoire, le registre des publications vidé et la marque de copie en une transaction) ; l'examen d'une base (`examinerMisesAJour` : ses pages, les formes de toutes ses pages, son film, sa piste, ses publications, ses noms, sa corbeille de pages, ses dates) |
 | `src/classeurs/deplacer.ts` | Déplacer un classeur ou un dossier, pur (testé) : là où il est, les places interdites (ni dans soi-même ni dans un descendant, ni là où il est déjà), l'arbre de « Déplacer vers… » (borné), la cible sous le pointeur pendant un glisser (`cibleSous`), le message et ses étiquettes qui changent |
@@ -5812,7 +5860,7 @@ qu'au document sans séances (hors de l'application).
    n'en garde qu'un trait), remis à plus tard par le professeur au lot 5
    (choix c : seulement « Grouper » à la main pour l'instant).
 8. Les autres sujets « plus tard » de l'étude du lot 5 (les séances
-   explicites et la classe demandée au début de chaque séance sont faites
+   explicites et le niveau demandé au début de chaque séance sont faites
    au lot 6) : des classeurs « Préparation » copiés pour chaque classe ; des modèles de
    page ; la recherche ; le pointeur laser (l'import de PDF est au point 4).
 9. *(Fait aux gains rapides du lot 16, autrement qu'en repliant les

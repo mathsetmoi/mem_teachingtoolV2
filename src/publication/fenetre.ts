@@ -79,7 +79,7 @@ export class Publication {
   /** La bibliothèque et le classeur ouvert (main.ts) : de quoi retrouver le dossier du chapitre
    *  et retenir le dossier et le Drive choisis ; absent : on choisit à chaque fois */
   lieu: { registre: Registre; idClasseur: string } | null = null
-  /** Ce qui est retenu pour ce classeur, et le dossier proposé (classe reliée à l'ordinateur) */
+  /** Ce qui est retenu pour ce classeur, et le dossier proposé (niveau relié à l'ordinateur) */
   private retenu: ReglageReplay = {}
   private propose: Proposition | null = null
   /** Le dossier qu'on vient de choisir dans cette fenêtre (sinon : le retenu, puis le proposé) */
@@ -109,8 +109,8 @@ export class Publication {
     this.seances = this.reperer(DECOUPAGES[0] * MINUTE)
     if (!this.seances.length) return this.app.ui.message('Rien à publier pour l\'instant : le replay commence avec ce que vous écrivez pendant la séance.')
     if (this.enLigne) preparerGoogle()
-    // Ce qui est retenu pour ce classeur, et le dossier du chapitre (classe
-    // reliée à l'ordinateur) : lus AVANT de construire la fenêtre, pour qu'elle
+    // Ce qui est retenu pour ce classeur, et le dossier du chapitre (niveau
+    // relié à l'ordinateur) : lus AVANT de construire la fenêtre, pour qu'elle
     // s'ouvre d'emblée telle qu'elle sera (en résumé, ou complète avec le
     // dossier retenu), sans se replier une fois affichée
     const demande = ++this.ouverture
@@ -281,7 +281,7 @@ export class Publication {
     const d = this.d!
     const liste = this.mode === 'dossier' ? RELAIS_REPLAY : COMPTES
     const garde = this.compte || this.retenu.compte
-    // Coché d'avance : celui que cette classe a déjà, sinon le premier dont le relais est installé
+    // Coché d'avance : celui que ce niveau a déjà, sinon le premier dont le relais est installé
     const parDefaut = liste.find(c => c.cle === garde && c.relais) ?? liste.find(c => c.relais) ?? liste[0]
     d.querySelector('.p-comptes .cases')!.innerHTML = liste.map(c => `
       <label class="case"><input type="radio" name="p-compte" value="${echapper(c.cle)}"${c === parDefaut ? ' checked' : ''}${c.relais ? '' : ' disabled'}>
@@ -293,7 +293,7 @@ export class Publication {
   private majLieu() {
     const d = this.d!, dossier = this.mode === 'dossier'
     ;(d.querySelector('.p-dossier') as HTMLElement).hidden = !dossier
-    // Le Drive n'est demandé que la première fois pour une classe : ensuite, une ligne
+    // Le Drive n'est demandé que la première fois pour un niveau : ensuite, une ligne
     const retenu = dossier && !!this.retenu.compte && relaisDe(this.retenu.compte)?.relais
     ;(d.querySelector('.p-comptes') as HTMLElement).hidden = !!retenu
     ;(d.querySelector('.p-drive-retenu') as HTMLElement).hidden = !retenu

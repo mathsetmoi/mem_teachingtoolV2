@@ -123,7 +123,7 @@ function liste(noms: string[]): string {
 
 /** Le message d'un déplacement : « « Symétrie » déplacé dans « 5e B » »,
  *  « Dossier « Géométrie » déplacé dans « 5e B » », « « Symétrie » déplacé à
- *  la racine de la bibliothèque » ; et, quand ses étiquettes de classe
+ *  la racine de la bibliothèque » ; et, quand ses étiquettes de niveau
  *  (calculées, voir arbre.etiquettesEffectives) changent, ce qu'il porte
  *  maintenant : « … : il porte maintenant l'étiquette « 5e B » », « … : il
  *  ne porte plus l'étiquette « 2nde 3 » » (pour un dossier : « ses

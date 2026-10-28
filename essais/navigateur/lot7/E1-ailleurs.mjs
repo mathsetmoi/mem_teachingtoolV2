@@ -12,13 +12,13 @@
 // B. « Choisir un dossier… » : ses classeurs dans le dossier du même nom de
 //    la bibliothèque, le dossier relié (chaque classeur y garde son fichier),
 //    « Mes emplacements ».
-// C. « Enregistrer sur le Drive ou ailleurs… » (menu ⋯) : le dossier de la
-//    classe sur l'ordinateur, tenu à jour : un .memc par classeur, dans un
+// C. « Enregistrer sur le Drive ou ailleurs… » (menu ⋯) : le dossier du
+//    niveau sur l'ordinateur, tenu à jour : un .memc par classeur, dans un
 //    dossier du chapitre rangé comme dans la bibliothèque ; un fichier déjà
 //    là qui n'est pas à lui n'est pas écrasé.
-// D. La même classe sur le Drive : « MEM - Classeurs › 4B », la copie d'avant
-//    déplacée (pas une seconde copie) dans le dossier de son chapitre ; la fenêtre « Ouvrir » montre la
-//    classe, et un de ses classeurs s'ouvre comme un fichier ; toute la
+// D. Le même niveau sur le Drive : « MEM - Classeurs › 4B », la copie d'avant
+//    déplacée (pas une seconde copie) dans le dossier de son chapitre ; la fenêtre « Ouvrir » montre le
+//    niveau, et un de ses classeurs s'ouvre comme un fichier ; toute la
 //    bibliothèque déposée une fois.
 // E. « Retirer » : plus relié, rien d'effacé.
 // F. La version hors ligne : le Drive grisé, et dit ; rien vers Google.
@@ -241,7 +241,7 @@ try {
   await toasts(p)
 
   // =====================================================================
-  console.log('\n— C. « Enregistrer… » : le dossier de la classe sur l\'ordinateur')
+  console.log('\n— C. « Enregistrer… » : le dossier du niveau sur l\'ordinateur')
   const d4 = await p.evaluate(() => window.__dossier('4B'))
   const dGeo = await p.evaluate(d => window.__dossier('Geometrie', d), d4)
   const ids4 = await p.evaluate(([a, b]) => window.__creer([{ nom: 'Calcul', dossier: a }, { nom: 'Triangles', dossier: b }]), [d4, dGeo])
@@ -262,12 +262,12 @@ try {
   // Le menu du dossier « 4B » : « Enregistrer ce dossier… »
   await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), d4)
   await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
-  ok(await p.isChecked('dialog[open] input[name=e-quoi][value=classe]'), 'C3) « Le dossier de la classe » choisi (« 4B »)')
+  ok(await p.isChecked('dialog[open] input[name=e-quoi][value=classe]'), 'C3) « Le dossier du niveau » choisi (« 4B »)')
   f = await fenetre(p)
   ok(/« 4B » · 2 classeurs/.test(f.texte) && /chaque classeur de « 4B » y aura son fichier/.test(f.texte), 'C4) « 4B » · 2 classeurs, et ce que fera « Le garder à jour tout seul »', f.texte)
   await p.evaluate(() => { window.__dossierChoisi = 'Cle 4B' })
   await p.click('dialog[open] .e-ok')
-  await attendreToast(p, /reliée au dossier « Cle 4B »/, 20000)
+  await attendreToast(p, /» est relié au dossier « Cle 4B »/, 20000)
   const t4 = (await toasts(p)).join(' / ')
   contenu = await p.evaluate(() => window.__lister('Cle 4B'))
   ok(contenu['Calcul']?.['Calcul (2).memc'] > 0 && contenu['Calcul']?.['Calcul.memc'] === 'un autre fichier'.length && contenu['Geometrie']?.['Triangles']?.['Triangles.memc'] > 0,
@@ -282,7 +282,7 @@ try {
   await p.evaluate(() => window.__bibliotheque.allerA(null))
   await p.waitForTimeout(300)
   const n = await p.evaluate(() => document.querySelectorAll('.emplacements li').length)
-  ok(n === 2, 'C9) À la racine, « Mes emplacements » montre les deux classes reliées', n)
+  ok(n === 2, 'C9) À la racine, « Mes emplacements » montre les deux niveaux reliés', n)
   await p.click('.emplacement:has-text("4B") .e-maj')
   await attendreToast(p, /4B/, 20000)
   contenu = await p.evaluate(() => window.__lister('Cle 4B'))
@@ -290,7 +290,7 @@ try {
   await toasts(p)
 
   // =====================================================================
-  console.log('\n— D. La classe sur le Drive')
+  console.log('\n— D. Le niveau sur le Drive')
   // Une copie d'avant dans « MEM - Sauvegardes » (la copie du lot 4)
   await p.evaluate(() => window.__google.connecter('mem', '', 'select_account')).catch(() => {})
   const avant = g.requetes.length
@@ -308,12 +308,12 @@ try {
   f = await fenetre(p)
   ok(/MEM - Classeurs › 4B/.test(f.texte), 'D1) Le Drive : « MEM - Classeurs › 4B », un fichier par classeur', f.texte)
   await p.click('dialog[open] .e-ok')
-  await attendreToast(p, /reliée au Drive/, 30000)
+  await attendreToast(p, /» est relié au Drive/, 30000)
   const tD = (await toasts(p)).join(' / ')
   const racineC = g.fichiers().find(x => x.name === 'MEM - Classeurs')
   const d4Drive = g.fichiers().find(x => x.name === '4B' && x.parents?.includes(racineC?.id))
   ok(!!racineC && racineC.appProperties?.memClasses === 'dossier-v1' && d4Drive?.appProperties?.memClasse === d4, 'D2) « MEM - Classeurs » et son sous-dossier « 4B », marqués', g.dossiers().map(x => [x.name, x.appProperties]))
-  // Un dossier par chapitre dans celui de la classe, marqué par l'id du classeur
+  // Un dossier par chapitre dans celui du niveau, marqué par l'id du classeur
   const chapitres = g.dossiers().filter(x => x.parents?.includes(d4Drive?.id))
   const chapitreDe = id => chapitres.find(x => x.appProperties?.memChapitre === id)
   const dansD4 = g.sauvegardes().filter(x => chapitres.some(c => x.parents?.includes(c.id)))
@@ -326,20 +326,20 @@ try {
   em = await lesEmplacements(p)
   ok(em.some(e => e.genre === 'drive' && e.dossier === d4 && e.compte === 'mem' && e.nom === '4B'), 'D7) L\'emplacement Drive est noté', em)
   ok(g.relais.length === 0, 'D8) Rien vers le relais des replays')
-  // « Ouvrir » : l'onglet Drive montre la classe
+  // « Ouvrir » : l'onglet Drive montre le niveau
   await voirBibliotheque(p)
   await p.click('.biblio-bouton[data-action="ouvrir-fichier"]')
   await p.waitForSelector('dialog.dialogue-ouvrir-ailleurs[open]')
   await p.click('dialog[open] .onglet[data-ou="drive"]')
   await p.waitForSelector('dialog[open] .classe-drive', { timeout: 15000 })
   const vues = await p.evaluate(() => [...document.querySelectorAll('dialog[open] .classe-drive')].map(c => c.textContent.replace(/[  ]/g, ' ')))
-  ok(vues.length === 1 && /4B/.test(vues[0]) && /Calcul\.memc/.test(vues[0]) && /Triangles\.memc/.test(vues[0]) && /Ouvrir toute la classe/.test(vues[0]), 'D9) « Ouvrir » › Google Drive : la classe « 4B » et ses classeurs', vues)
+  ok(vues.length === 1 && /4B/.test(vues[0]) && /Calcul\.memc/.test(vues[0]) && /Triangles\.memc/.test(vues[0]) && /Ouvrir tout le niveau/.test(vues[0]), 'D9) « Ouvrir » › Google Drive : le niveau « 4B » et ses classeurs, « Ouvrir tout le niveau »', vues)
   ok(await p.$('dialog[open] .a-picker') === null, 'D10) Pas de « Choisir dans le Drive… » (pas de fenêtre de Google)')
-  // Un classeur de la classe : il s'ouvre comme un fichier (déjà là : comparé)
+  // Un classeur du niveau : il s'ouvre comme un fichier (déjà là : comparé)
   await p.click('dialog[open] .fichier-drive:has-text("Calcul.memc")')
   await p.waitForSelector('dialog[open]:not(.dialogue-ouvrir-ailleurs)', { timeout: 15000 })
   f = await fenetre(p)
-  ok(/Ouvrir ce classeur/.test(f?.titre ?? '') && /Calcul/.test(f?.texte ?? ''), 'D11) Un classeur de la classe s\'ouvre comme un fichier (« Ouvrir ce classeur ? »)', f)
+  ok(/Ouvrir ce classeur/.test(f?.titre ?? '') && /Calcul/.test(f?.texte ?? ''), 'D11) Un classeur du niveau s\'ouvre comme un fichier (« Ouvrir ce classeur ? »)', f)
   await p.click('dialog[open] [data-a="annuler"]'); await p.waitForTimeout(300)
   // Toute la bibliothèque, une fois, sur le Drive
   await p.keyboard.press('Escape').catch(() => {})
@@ -351,9 +351,9 @@ try {
   await attendreToast(p, /Bibliothèque enregistrée/, 30000)
   const depot = g.fichiers().find(x => /^Bibliothèque .*\.memb$/.test(x.name))
   ok(!!depot && depot.parents?.includes(racineC.id) && depot.appProperties?.memDepot === 'v1', 'D13) Le .memb dans « MEM - Classeurs », marqué comme dépôt', g.fichiers().map(x => x.name))
-  // Récupérer une sauvegarde : celles des classes y sont aussi
+  // Récupérer une sauvegarde : celles des niveaux y sont aussi
   const rec = await p.evaluate(async () => (await window.__google.listerSauvegardes('mem')).map(s => s.nom))
-  ok(rec.includes('Calcul.memc') && rec.includes('Triangles.memc'), 'D14) « Récupérer une sauvegarde du Drive » voit aussi celles des classes', rec)
+  ok(rec.includes('Calcul.memc') && rec.includes('Triangles.memc'), 'D14) « Récupérer une sauvegarde du Drive » voit aussi celles des niveaux', rec)
   ok(g.depuis(avant).every(r => !/script\.google/.test(r.chemin)) && g.autresScripts.length === 0, 'D15) Rien que l\'API Drive (aucun autre code de Google)', g.autresScripts)
   await toasts(p)
 
@@ -364,7 +364,7 @@ try {
   await p.waitForTimeout(300)
   const avantRetirer = await p.evaluate(() => window.__lister('Classe 5A'))
   await p.click('.emplacement:has-text("Classe 5A") .e-retirer')
-  await attendreToast(p, /n'est plus reliée/, 10000)
+  await attendreToast(p, /n'est plus relié à/, 10000)
   em = await lesEmplacements(p)
   ok(!em.some(e => e.nom === 'Classe 5A'), 'E1) Plus dans la liste', em)
   ok(JSON.stringify(await p.evaluate(() => window.__lister('Classe 5A'))) === JSON.stringify(avantRetirer), 'E2) Rien d\'effacé dans le dossier')

@@ -1477,7 +1477,7 @@ body.en-bibliotheque .toast { z-index: 30; }
 .biblio-vide { padding: 48px 16px; text-align: center; color: var(--encre-douce); font-size: 17px; }
 .biblio-vide p { margin: 0 0 14px; }
 /* ---------- Ranger (lot 4 C6) ----------
-   Le conseil du rangement par classe, la rangée du filtre de classe, le fil
+   Le conseil du rangement par niveau, la rangée du filtre de niveau, le fil
    d'Ariane et le tri, les cartes des dossiers (leur grande icône dans leur
    couleur, --c), les puces des étiquettes, le champ du nom. Des cibles de
    40 px au moins (le doigt, le TNI) ; rien ne dépend du survol. */
@@ -1575,7 +1575,7 @@ body.en-bibliotheque .toast { z-index: 30; }
 .dialogue-nouveau .dans { margin: 0; color: var(--encre); font-weight: 600; }
 .dialogue-nouveau .case-classe { align-items: flex-start; padding-top: 4px; }
 .dialogue-nouveau .case-classe input { margin-top: 2px; }
-/* « Étiquettes de classe… » : les puces (× pour retirer), l'héritée grisée */
+/* « Étiquettes de niveau… » : les puces (× pour retirer), l'héritée grisée */
 .dialogue-etiquettes .pour { margin: 0; }
 .dialogue-etiquettes .puces { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .dialogue-etiquettes .puce {

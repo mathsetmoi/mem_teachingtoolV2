@@ -22,7 +22,7 @@
 // « Récupérer une sauvegarde du Drive ». Rien de cela ne touche à publier()
 // ni au dossier des replays.
 //
-// LES CLASSES RELIÉES AU DRIVE (lot 7) : un dossier de classe de la
+// LES NIVEAUX RELIÉS AU DRIVE (lot 7) : un dossier de niveau de la
 // bibliothèque relié au Drive a son sous-dossier dans un troisième dossier
 // privé (« MEM - Classeurs »…), marqué par l'id du dossier de la
 // bibliothèque (dossierDeClasse) ; la copie de ses classeurs y va, sous le
@@ -46,11 +46,13 @@ const MARQUE_DOSSIER: MarqueDossier = { cle: 'memReplay', valeur: 'dossier-v1', 
  *  des replays ; le dossier des replays n'est donc jamais pris pour lui,
  *  ni lui pour celui des replays */
 const MARQUE_SAUVEGARDES: MarqueDossier = { cle: 'memSauvegardes', valeur: 'dossier-v1', quoi: 'des sauvegardes' }
-/** La marque du dossier des classes (lot 7), à lui seul ; et celle de
- *  chacun de ses sous-dossiers : l'id du dossier de classe de la bibliothèque */
-const MARQUE_CLASSES: MarqueDossier = { cle: 'memClasses', valeur: 'dossier-v1', quoi: 'des classes' }
+/** La marque du dossier des niveaux (lot 7), à lui seul ; et celle de
+ *  chacun de ses sous-dossiers : l'id du dossier de niveau de la bibliothèque.
+ *  Les clés memClasses et memClasse gardent leur nom (un dossier était « une
+ *  classe » avant le 19 octobre 2026) : les Drive déjà marqués restent lus. */
+const MARQUE_CLASSES: MarqueDossier = { cle: 'memClasses', valeur: 'dossier-v1', quoi: 'des niveaux' }
 const MARQUE_CLASSE = 'memClasse'
-/** Le dossier d'un chapitre dans celui de sa classe : l'id du classeur */
+/** Le dossier d'un chapitre dans celui de son niveau : l'id du classeur */
 const MARQUE_CHAPITRE = 'memChapitre'
 /** Un fichier déposé une fois sur le Drive (toute la bibliothèque, lot 7) */
 const MARQUE_DEPOT = { cle: 'memDepot', valeur: 'v1' }
@@ -426,7 +428,7 @@ async function envoyer(id: string | null, meta: Record<string, unknown>, fichier
 export interface SauvegardeAFaire {
   compte: string; classeur: string; nom: string; fichier: Blob; idExistant: string | null
   origine: string; t: number; recu: number; forcer?: boolean; signal?: AbortSignal
-  /** Le dossier du Drive où va la copie (celui d'une classe reliée, lot 7) ;
+  /** Le dossier du Drive où va la copie (celui d'un niveau relié, lot 7) ;
    *  absent : le dossier des sauvegardes du compte */
   dossier?: string
 }
@@ -460,8 +462,8 @@ export async function sauvegarder(o: SauvegardeAFaire): Promise<SauvegardeFaite>
   if (o.idExistant) {
     try {
       let f = await lireFiche(o.idExistant)
-      // La copie d'avant est ailleurs (le dossier des sauvegardes, une autre
-      // classe : lot 7) : elle est déplacée ici, avec ses versions
+      // La copie d'avant est ailleurs (le dossier des sauvegardes, un autre
+      // niveau : lot 7) : elle est déplacée ici, avec ses versions
       if (deCeClasseur(f) && !estLaSienne(f) && !partage(f)) {
         const p = new URLSearchParams({ addParents: dossier.id, removeParents: (f.parents ?? []).join(','), fields: 'id' })
         await appeler(`${API}/${encodeURIComponent(f.id)}?${p}`, { ...enJson('PATCH', {}), signal: o.signal })
@@ -547,7 +549,7 @@ export interface SauvegardeListee { id: string; nom: string; modifie: number; ta
 export async function listerSauvegardes(compte: string): Promise<SauvegardeListee[]> {
   const c = compteDe(compte)
   if (!c) return []
-  // Celles du dossier des sauvegardes et celles des classes reliées de ce
+  // Celles du dossier des sauvegardes et celles des niveaux reliés de ce
   // compte (lot 7) : toutes portent la marque des sauvegardes
   const parents: string[] = []
   const dossier = await trouverDossier(c.sauvegardes, MARQUE_SAUVEGARDES)
@@ -557,7 +559,7 @@ export async function listerSauvegardes(compte: string): Promise<SauvegardeListe
     const q = `trashed=false and '${classes.id}' in parents and mimeType='${DOSSIER_DRIVE}'`
     const dossiersDeClasses = (await chercherTout(q, 'id,name,mimeType,trashed')).filter(f => !f.trashed && f.mimeType === DOSSIER_DRIVE).map(f => f.id)
     parents.push(...dossiersDeClasses)
-    // et le dossier de chaque chapitre dans celui de sa classe
+    // et le dossier de chaque chapitre dans celui de son niveau
     for (const cl of dossiersDeClasses) {
       const qc = `trashed=false and '${cl}' in parents and mimeType='${DOSSIER_DRIVE}'`
       parents.push(...(await chercherTout(qc, 'id,name,mimeType,trashed,appProperties')).filter(f => !f.trashed && f.mimeType === DOSSIER_DRIVE && f.appProperties?.[MARQUE_CHAPITRE]).map(f => f.id))
@@ -589,7 +591,7 @@ export async function lireSauvegarde(id: string): Promise<Uint8Array> {
 }
 
 // =============================================================
-// LES CLASSES RELIÉES AU DRIVE (lot 7)
+// LES NIVEAUX RELIÉS AU DRIVE (lot 7)
 // =============================================================
 
 const echapper = (t: string) => t.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
@@ -609,13 +611,13 @@ async function chercherTout(q: string, champs: string): Promise<Fiche[]> {
   return tous
 }
 
-/** Le dossier d'une classe dans le Drive de `compte` : le sous-dossier de
+/** Le dossier d'un niveau dans le Drive de `compte` : le sous-dossier de
  *  « MEM - Classeurs » (privé, créé au besoin) marqué par l'id du dossier de
- *  la bibliothèque, créé au besoin, privé ; il porte le nom de la classe (un
+ *  la bibliothèque, créé au besoin, privé ; il porte le nom du niveau (un
  *  renommage dans la bibliothèque le suit). Partagé : on refuse, comme pour
  *  les autres dossiers. */
 export async function dossierDeClasse(compte: string, classe: { id: string; nom: string }): Promise<{ id: string; nom: string }> {
-  // Retenu quelques minutes : chaque copie d'un classeur de la classe le demande
+  // Retenu quelques minutes : chaque copie d'un classeur du niveau le demande
   const cle = `${compte}\n${classe.id}\n${classe.nom}`
   const connu = dossiersDeClasse.get(cle)
   if (connu && Date.now() - connu.t < 10 * 60_000 && connecte(compte)) return connu.dossier
@@ -629,7 +631,7 @@ async function chercherLeDossierDeClasse(compte: string, classe: { id: string; n
   const c = compteDe(compte)
   if (!c) throw new Error('Ce compte n\'existe pas.')
   const { dossier: parent } = await dossierPrive(c.classeurs, MARQUE_CLASSES)
-  return dossierMarque(parent.id, MARQUE_CLASSE, classe.id, nomSur(classe.nom, { repli: 'Classe' }))
+  return dossierMarque(parent.id, MARQUE_CLASSE, classe.id, nomSur(classe.nom, { repli: 'Niveau' }))
 }
 
 /** Le sous-dossier de `parent` marqué `cle` = `id` : trouvé, ou créé privé ;
@@ -654,7 +656,7 @@ async function dossierMarque(parent: string, cle: string, id: string, nom: strin
   return { id: cree.id, nom }
 }
 
-/** Le dossier d'un chapitre (un classeur) dans le dossier de sa classe :
+/** Le dossier d'un chapitre (un classeur) dans le dossier de son niveau :
  *  « MEM - Classeurs › 5ème › Fractions », marqué par l'id du classeur, créé
  *  au besoin, privé. La copie du classeur et ses séances publiées y vont. */
 export async function dossierDuChapitre(compte: string, classe: { id: string; nom: string }, classeur: { id: string; nom: string }): Promise<{ id: string; nom: string }> {
@@ -671,13 +673,13 @@ const dossiersDeChapitre = new Map<string, { dossier: { id: string; nom: string 
 
 /** Un fichier du Drive que la fenêtre « Ouvrir » peut proposer */
 export interface FichierDuDrive { id: string; nom: string; modifie: number; taille: number }
-/** Une classe reliée au Drive, telle que la fenêtre « Ouvrir » la montre */
+/** Un niveau relié au Drive, tel que la fenêtre « Ouvrir » le montre */
 export interface ClasseDuDrive { id: string; nom: string; classe: string; fichiers: FichierDuDrive[] }
 
 const enFichier = (f: Fiche): FichierDuDrive => ({ id: f.id, nom: f.name, modifie: Date.parse(f.modifiedTime ?? '') || 0, taille: Number(f.size) || 0 })
 const ouvrable = (f: Fiche) => f.mimeType !== DOSSIER_DRIVE && !f.trashed && /\.mem[cb]$/i.test(f.name)
 
-/** Ce que contient « MEM - Classeurs » dans ce Drive : ses classes (par
+/** Ce que contient « MEM - Classeurs » dans ce Drive : ses niveaux (par
  *  ordre alphabétique) et leurs classeurs, puis ce qui est à sa racine
  *  (toute la bibliothèque déposée une fois, sous id ''). Rien s'il n'existe
  *  pas encore : on n'en crée pas pour regarder. */
@@ -691,7 +693,7 @@ export async function listerLesClasses(compte: string): Promise<ClasseDuDrive[]>
   const classes: ClasseDuDrive[] = []
   const tri = (a: { nom: string }, b: { nom: string }) => a.nom.localeCompare(b.nom, 'fr', { numeric: true })
   for (const d of dedans.filter(f => f.mimeType === DOSSIER_DRIVE && !f.trashed)) {
-    // Ceux de la classe elle-même (le rangement d'avant) et ceux du dossier de chaque chapitre
+    // Ceux du niveau lui-même (le rangement d'avant) et ceux du dossier de chaque chapitre
     const contenu = await chercherTout(`trashed=false and '${d.id}' in parents`, champs)
     const lots = [contenu]
     for (const ch of contenu.filter(f => f.mimeType === DOSSIER_DRIVE && !f.trashed)) lots.push(await chercherTout(`trashed=false and '${ch.id}' in parents`, champs))
@@ -705,7 +707,7 @@ export async function listerLesClasses(compte: string): Promise<ClasseDuDrive[]>
 }
 
 /** Dépose un fichier une fois dans le Drive (toute la bibliothèque, lot 7) :
- *  dans le dossier d'une classe, ou à la racine de « MEM - Classeurs ».
+ *  dans le dossier d'un niveau, ou à la racine de « MEM - Classeurs ».
  *  Toujours un nouveau fichier (son nom porte la date). Rend son id. */
 export async function envoyerDansLeDrive(compte: string, classe: { id: string; nom: string } | null, nom: string, fichier: Blob): Promise<{ id: string; dossier: string }> {
   const c = compteDe(compte)
@@ -723,6 +725,6 @@ export async function envoyerDansLeDrive(compte: string, classe: { id: string; n
   return { id, dossier: dossier.nom }
 }
 
-/** Le contenu d'un fichier du Drive (une classe, ou choisi dans le
+/** Le contenu d'un fichier du Drive (un niveau, ou choisi dans le
  *  sélecteur de Google), tel quel */
 export const lireFichierDuDrive = lireSauvegarde

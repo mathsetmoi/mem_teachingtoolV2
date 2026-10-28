@@ -1,6 +1,6 @@
 // L'arbre de la bibliothèque (lot 4, C6) : les dossiers imbriqués et
-// colorés, les étiquettes de classe (propres, ou héritées du dossier de
-// classe, calculées et jamais écrites), le filtre, le tri, le nom d'une
+// colorés, les étiquettes de niveau (propres, ou héritées du dossier de
+// niveau, calculées et jamais écrites), le filtre, le tri, le nom d'une
 // copie. Tout est pur ; un cycle de dossiers (deux onglets) ne fait jamais
 // boucler une remontée.
 import { describe, expect, it } from 'vitest'
@@ -22,8 +22,8 @@ function dossier(id: string, o: Partial<FicheDossier> = {}): FicheDossier {
 }
 const carte = (...d: FicheDossier[]) => new Map(d.map(x => [x.id, x]))
 
-describe('les classes', () => {
-  it('ressemble à une classe : au début du nom, sans tenir compte de la casse', () => {
+describe('les niveaux', () => {
+  it('ressemble à un niveau : au début du nom, sans tenir compte de la casse', () => {
     for (const n of ['5e B', '5eB', '5E B', '6e1', '3ème A', '4eme 2', '4è C', '5ÈME B', '2nde 3', '2de A', 'Seconde 4', '2NDE-1',
       '1re S', '1ère G', '1ere 2', 'Première B', 'Tle S', 'Term ES', 'Terminale 2', 'CP', 'CE1', 'ce2 a', 'CM1', 'CM2 B', 'BTS SIO', 'CAP 1', '5e']) {
       expect(ressembleAUneClasse(n), n).toBe(true)
@@ -90,7 +90,9 @@ describe('les dossiers', () => {
     expect(libelleDossier({ classeurs: 1, dossiers: 0 })).toBe('1 classeur')
     expect(libelleDossier({ classeurs: 0, dossiers: 3 })).toBe('3 dossiers')
     expect(libelleDossier({ classeurs: 0, dossiers: 0 })).toBe('Vide')
-    expect(texteLecteurDossier(classe, { classeurs: 4, dossiers: 2 })).toBe('5e B, dossier bleu, dossier d\'une classe, 4 classeurs, 2 dossiers')
+    expect(texteLecteurDossier(classe, { classeurs: 4, dossiers: 2 })).toBe('5e B, dossier bleu, dossier d\'un niveau, 4 classeurs, 2 dossiers')
+    // L'étiquette qui diffère du nom (un nom coupé à 20 caractères) : « dossier du niveau … »
+    expect(texteLecteurDossier(dossier('c', { nom: 'Cinquième B', etiquette: '5e B' }), { classeurs: 1, dossiers: 0 })).toBe('Cinquième B, dossier bleu, dossier du niveau 5e B, 1 classeur')
     expect(texteLecteurDossier(arch, { classeurs: 0, dossiers: 0 })).toBe('Archives, dossier bleu, vide')
   })
 
@@ -165,13 +167,13 @@ describe('un cycle de dossiers (deux onglets) : rien ne boucle', () => {
   })
 })
 
-describe('les étiquettes de classe', () => {
+describe('les étiquettes de niveau', () => {
   const classe = dossier('b', { nom: '5e B', etiquette: '5e B' })
   const geo = dossier('g', { nom: 'Géométrie', parent: 'b' })
   const arch = dossier('a', { nom: 'Archives' })
   const D = carte(classe, geo, arch)
 
-  it('héritée du plus proche dossier de classe, calculée : elle suit le classeur', () => {
+  it('héritée du plus proche dossier de niveau, calculée : elle suit le classeur', () => {
     const f = fiche('1', { dossier: 'g' })
     expect(etiquetteHeritee('g', D)).toEqual({ nom: '5e B', dossier: classe })
     expect(etiquettesEffectives(f, D)).toEqual([{ nom: '5e B', dossier: classe }])
@@ -191,14 +193,14 @@ describe('les étiquettes de classe', () => {
     expect(etiquettesEffectives(fiche('3', { dossier: 'b', etiquettes: ['Soutien'] }), D)).toEqual([{ nom: 'Soutien' }, { nom: '5e B', dossier: classe }])
   })
 
-  it('la rangée du filtre : chaque étiquette une fois, son nombre, dans l\'ordre des classes', () => {
+  it('la rangée du filtre : chaque étiquette une fois, son nombre, dans l\'ordre des niveaux', () => {
     const fiches = [
       fiche('1', { dossier: 'b' }), fiche('2', { dossier: 'g' }), fiche('3', { dossier: 'g', etiquettes: ['Soutien'] }),
       fiche('4', { dossier: 'a', etiquettes: ['5e b'] }), fiche('5', { etiquettes: ['2nde 3'] }), fiche('6', { etiquettes: ['2nde 3', '6e A'] }),
     ]
     expect(etiquettesDe(fiches, D)).toEqual([{ nom: '6e A', n: 1 }, { nom: '5e B', n: 4 }, { nom: '2nde 3', n: 2 }, { nom: 'Soutien', n: 1 }])
     expect(etiquettesDe([], D)).toEqual([])
-    // Écrite comme son dossier de classe l'écrit, quel que soit l'ordre des fiches
+    // Écrite comme son dossier de niveau l'écrit, quel que soit l'ordre des fiches
     const avant = [fiche('9', { etiquettes: ['5E b'] }), fiche('8', { etiquettes: ['5E b'] }), fiche('7', { dossier: 'b' })]
     expect(etiquettesDe(avant, D)).toEqual([{ nom: '5e B', n: 3 }])
     expect(etiquettesDe([...avant].reverse(), D)).toEqual([{ nom: '5e B', n: 3 }])

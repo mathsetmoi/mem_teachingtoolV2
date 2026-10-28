@@ -1078,8 +1078,8 @@ export class Fichiers {
    *  aperçus, le répertoire. Un échec en route : abort, le fichier d'avant
    *  reste entier, et on le dit. Chaque classeur est ensuite dans un fichier
    *  depuis cette date.
-   *  Lot 7 : classe, seulement les classeurs de ce dossier de classe (et de
-   *  ses sous-dossiers), la classe à la racine du fichier (« 5A 2026-10-17
+   *  Lot 7 : classe, seulement les classeurs de ce dossier de niveau (et de
+   *  ses sous-dossiers), le niveau à la racine du fichier (« 5ème 2026-10-17
    *  14h05.memb ») ; rendre, le fichier fini passe à rendre (l'envoi sur le
    *  Drive) au lieu d'être écrit ou téléchargé (ou : où il est allé). */
   async enregistrerLaBibliotheque(o: { classe?: string; rendre?: (fichier: Blob, nom: string) => Promise<string> } = {}): Promise<boolean> {
@@ -1088,7 +1088,7 @@ export class Fichiers {
     const date = Date.now()
     const laClasse = o.classe ? await reg.dossier(o.classe).catch(() => undefined) : undefined
     if (o.classe && !laClasse) { this.hote.message('Ce dossier n\'est plus dans la bibliothèque.'); return false }
-    const nom = laClasse ? nomBibliotheque(date).replace(/^Bibliothèque/, nomSur(laClasse.nom, { repli: 'Classe' })) : nomBibliotheque(date)
+    const nom = laClasse ? nomBibliotheque(date).replace(/^Bibliothèque/, nomSur(laClasse.nom, { repli: 'Niveau' })) : nomBibliotheque(date)
     const quoi = laClasse ? `« ${laClasse.nom} »` : 'Bibliothèque'
     // Le choix du fichier d'abord : le geste ne le permet que quelques secondes
     interface Ecriture { write(d: Blob | Uint8Array): Promise<void>; close(): Promise<void>; abort?(): Promise<void> }
@@ -1105,7 +1105,7 @@ export class Fichiers {
     try {
       const [fiches, dossiers, apercus] = await Promise.all([reg.classeurs(), reg.dossiers(), reg.apercus().catch(() => new Map<string, Blob>())])
       // Les classeurs visibles qui ont encore leur base (le premier : toujours) ;
-      // ceux de la classe seulement (lot 7)
+      // ceux du niveau seulement (lot 7)
       const dansLaClasse = laClasse ? new Set([laClasse.id, ...descendants(laClasse.id, dossiers).map(d => d.id)]) : null
       const tous = fiches.filter(f => visible(f, dossiers) && (!dansLaClasse || (f.dossier !== null && dansLaClasse.has(f.dossier))))
         .sort((a, b) => cleDe(a.nom) < cleDe(b.nom) ? -1 : 1)
@@ -1183,11 +1183,11 @@ export class Fichiers {
       }
       const n = classeurs.length - manques.length
       const partie = enPartie.length ? ` ${enPartie.length > 1 ? `Ceux-ci n'y sont qu'en partie : ${enPartie.join(', ')} (une partie ne se relit plus dans ce navigateur).` : `${enPartie[0]} n'y est qu'en partie (une partie ne se relit plus dans ce navigateur).`}` : ''
-      this.hote.message(`${laClasse ? `${quoi} enregistrée` : 'Bibliothèque enregistrée'} : ${ou} (${n} classeur${n > 1 ? 's' : ''}, ${tailleLisible(total)}).${manques.length ? ` ${manques.length > 1 ? 'Ceux-ci n\'ont' : 'Celui-ci n\'a'} pas pu y être mis : ${manques.join(', ')}.` : ''}${partie}`)
+      this.hote.message(`${laClasse ? `${quoi} enregistré` : 'Bibliothèque enregistrée'} : ${ou} (${n} classeur${n > 1 ? 's' : ''}, ${tailleLisible(total)}).${manques.length ? ` ${manques.length > 1 ? 'Ceux-ci n\'ont' : 'Celui-ci n\'a'} pas pu y être mis : ${manques.join(', ')}.` : ''}${partie}`)
       return true
     } catch (e) {
       try { await sortie?.abort?.() } catch { /* déjà fermé */ }
-      this.hote.message(`${laClasse ? `${quoi} n'a pas pu être enregistrée` : 'La bibliothèque n\'a pas pu être enregistrée'} : ${e instanceof ErreurArchive ? e.message.replace(/\.$/, '') : raisonDe(e)}.`)
+      this.hote.message(`${laClasse ? `${quoi} n'a pas pu être enregistré` : 'La bibliothèque n\'a pas pu être enregistrée'} : ${e instanceof ErreurArchive ? e.message.replace(/\.$/, '') : raisonDe(e)}.`)
       return false
     } finally { this.enCours = false }
   }

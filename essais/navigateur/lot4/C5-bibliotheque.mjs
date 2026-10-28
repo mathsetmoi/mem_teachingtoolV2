@@ -296,7 +296,7 @@ if (seul('B')) {
   await p.mouse.click(r.x + 60, r.y + 40, { button: 'right' }); await p.waitForTimeout(200)
   v = await vue(p)
   // (Adapté au lot 4, morceau C6 : le menu d'un classeur gagne « Renommer… »
-  // et « Étiquettes de classe… » après « Ouvrir », qui reste en tête ; puis,
+  // et « Étiquettes de niveau… » après « Ouvrir », qui reste en tête ; puis,
   // au morceau C7, « Déplacer vers… » et « Dupliquer le classeur » ; au
   // morceau C9, « Enregistrer dans un fichier… »)
   ok(v.menu && v.menu.label === 'Chapitre 2' && v.menu.entrees[0] === 'ouvrir-classeur' && v.menu.entrees.join() === 'ouvrir-classeur,renommer,etiquettes,deplacer,dupliquer,enregistrer-classeur,supprimer' && Math.abs(v.menu.r.l - (r.x + 66)) < 8 && v.focus === ids[1], 'Le clic droit sur une carte : son menu (« Ouvrir » en tête), là où l\'on a appuyé', v.menu)
@@ -386,7 +386,7 @@ if (seul('D')) {
   const p = await ouvrir(ctx, '', 'D')
   const ids = await creerPlusieurs(p, 12)
   await ouvrirBiblio(p)
-  // (Adapté au lot 4, morceau C6 : le conseil du rangement par classe paraît
+  // (Adapté au lot 4, morceau C6 : le conseil du rangement par niveau paraît
   // en tête de la bibliothèque tant qu'il n'y a aucun dossier ; on l'écarte
   // d'abord (« Plus tard »), comme le professeur, pour que la grille soit là
   // où cet essai pose le doigt)

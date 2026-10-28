@@ -80,8 +80,8 @@ export interface FicheClasseur {
   recu?: number
   copieDrive?: CompteDrive | 'aucune'
   drive?: { compte: CompteDrive; id: string; t: number; taille: number; courriel?: string; vecteur?: Uint8Array
-    /** Le dossier du Drive où est cette copie, quand c'est celui d'une
-     *  classe reliée (lot 7) ; absent : le dossier des sauvegardes */
+    /** Le dossier du Drive où est cette copie, quand c'est celui d'un
+     *  niveau relié (lot 7) ; absent : le dossier des sauvegardes */
     dossier?: string }
   cle?: { nom: string; t?: number; date?: number; taille?: number; vecteur?: Uint8Array }
   /** Le nombre de séances du chapitre (lot 6), à sa dernière écriture ;

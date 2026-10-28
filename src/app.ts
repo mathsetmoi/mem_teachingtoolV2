@@ -1098,7 +1098,7 @@ export class App {
    *  neuf) : sa séance commence, sans question ('rien'). Une séance du jour
    *  active depuis moins d'une heure : on y reste ('reprise' : un message le
    *  dit). Plus d'une heure : la fenêtre d'accueil ('accueil'). nouvelle :
-   *  on arrive pour une nouvelle séance (une autre classe, un autre chapitre,
+   *  on arrive pour une nouvelle séance (un autre niveau, un autre chapitre,
    *  depuis la fenêtre d'accueil d'un autre classeur) : elle commence. */
   seanceAuDemarrage(o: { nouvelle?: boolean; maintenant?: number } = {}): { genre: 'rien' | 'reprise' | 'accueil'; seance?: SeanceDuClasseur } {
     const t = this.tableau, d = t.derniereSeance()

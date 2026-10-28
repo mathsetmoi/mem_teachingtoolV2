@@ -162,7 +162,7 @@ export function titreDrive(f: FicheClasseur, maintenant: number): string | null 
 
 /** Ce que lit le lecteur d'écran sur une carte : « Symétrie centrale, 12
  *  pages, modifié aujourd'hui à 14 h 05 », puis, s'il y a lieu, ses
- *  étiquettes de classe (« classe 5e B »), son dossier quand un filtre les
+ *  étiquettes de niveau (« niveau 5e B »), son dossier quand un filtre les
  *  montre tous ensemble (« dans 5e B › Géométrie »), « ouvert dans cet
  *  onglet », la clé et le Drive (les icônes et les puces, elles, sont
  *  muettes) */
@@ -172,7 +172,7 @@ export function texteLecteur(f: FicheClasseur, maintenant: number, o: { ouvertIc
   if (f.modifie > 0) parts.push(`modifié ${quandCourt(f.modifie, maintenant)}`)
   else if (f.cree > 0) parts.push(`créé ${quandCourt(f.cree, maintenant)}`)
   else parts.push('pas encore ouvert depuis la mise à jour')
-  if (o.etiquettes?.length) parts.push(`${o.etiquettes.length > 1 ? 'classes' : 'classe'} ${o.etiquettes.join(', ')}`)
+  if (o.etiquettes?.length) parts.push(`${o.etiquettes.length > 1 ? 'niveaux' : 'niveau'} ${o.etiquettes.join(', ')}`)
   if (o.chemin) parts.push(`dans ${o.chemin}`)
   if (o.ouvertIci) parts.push('ouvert dans cet onglet')
   const cle = titreCle(f, maintenant), drive = titreDrive(f, maintenant)

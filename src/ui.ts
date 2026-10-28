@@ -359,8 +359,8 @@ export class UI implements Interface {
   outilsDeClasse!: OutilsDeClasse
   private boutonOutilsClasse!: HTMLButtonElement
   private menuOutilsClasse!: Menu
-  /** La classe du classeur ouvert, que la bibliothèque connaît (main.ts) :
-   *  le tirage au sort prend sa liste */
+  /** Le niveau du classeur ouvert (son dossier de niveau), que la
+   *  bibliothèque connaît (main.ts) : le tirage au sort y prend sa liste */
   classeDuClasseur: () => Promise<{ id: string; nom: string } | null> = async () => null
   /** La recherche (Ctrl F, le champ à côté du nom du classeur ; voir
    *  recherche-vue.ts) */
@@ -1785,7 +1785,7 @@ export class UI implements Interface {
     const drive = this.drive
     if (drive) this.entreeMenu(m, 'Copie sur le Drive…', () => void drive.ouvrirLeChoix(), { action: 'copie-drive', inactif: !drive.enLigne,
       aide: drive.enLigne ? 'Une copie à sens unique, dans un dossier privé de votre Drive : choisir le compte, ou pas de copie.' : HORS_LIGNE_FICHIER })
-    // Le lot 7 : l'ordinateur ou le Drive, ce classeur ou toute sa classe
+    // Le lot 7 : l'ordinateur ou le Drive, ce classeur ou tout son niveau
     const ailleurs = this.enregistrerAilleurs
     if (ailleurs) this.entreeMenu(m, 'Enregistrer sur le Drive ou ailleurs…', () => ailleurs(), { action: 'enregistrer-ailleurs' })
     this.entreeMenu(m, 'Ouvrir un classeur…', () => s.ouvrir(), { touche: `${CTRL} + O`, action: 'ouvrir',
@@ -2191,7 +2191,7 @@ export class UI implements Interface {
   /** Les fichiers (lot 4 C9) : Ouvrir ajoute à la bibliothèque, et le
    *  conflit de la clé propose d'ouvrir son fichier */
   /** La fenêtre « Enregistrer » du lot 7 (l'ordinateur ou le Drive, ce
-   *  classeur, sa classe, toute la bibliothèque) ; posée par main.ts */
+   *  classeur, son niveau, toute la bibliothèque) ; posée par main.ts */
   enregistrerAilleurs: (() => void) | null = null
   /** La bibliothèque et ce classeur : Publier retrouve le dossier du chapitre et retient le dossier et le Drive choisis */
   brancherReplay(registre: Registre, idClasseur: string) { this.publication.lieu = { registre, idClasseur } }

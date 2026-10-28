@@ -24,9 +24,9 @@
 // Ranger (lot 4 C6) : des dossiers imbriqués et colorés (« Nouveau
 // dossier », leurs cartes avant celles des classeurs, le fil d'Ariane
 // « Bibliothèque › 5e B › Géométrie », Retour arrière qui remonte), les
-// étiquettes de classe (propres, ou héritées du dossier de classe, voir
+// étiquettes de niveau (propres, ou héritées du dossier de niveau, voir
 // arbre.ts) et leur filtre, renommer (F2, « Renommer… », un double-clic sur
-// le nom), trier (par date, par nom), et le conseil du rangement par classe.
+// le nom), trier (par date, par nom), et le conseil du rangement par niveau.
 // Le dossier affiché et le filtre sont retenus pour l'onglet
 // (sessionStorage), le tri pour l'appareil (localStorage).
 //
@@ -124,7 +124,7 @@ import { lireContenu } from '../recherche'
 /** « Ouvrir… » du bandeau : le même titre qu'avant le lot 7 (Ctrl + O
  *  choisit toujours des fichiers ; le bouton montre la fenêtre « Ouvrir ») */
 const TITRE_OUVRIR = `Ouvrir un classeur ou une bibliothèque (${CTRL} + O)`
-const AIDE_OUVRIR_FENETRE = 'Depuis l\'ordinateur ou le Drive : un classeur, une bibliothèque, ou tout un dossier de classe.'
+const AIDE_OUVRIR_FENETRE = 'Depuis l\'ordinateur ou le Drive : un classeur, une bibliothèque, ou tout un dossier de niveau.'
 
 /** Ce que la bibliothèque demande à qui l'ouvre */
 export interface HoteBibliotheque {
@@ -215,14 +215,14 @@ export const NOM_NOUVEAU = 'Nouveau classeur'
 const FONDS_NEUF: { id: Fond; nom: string }[] = (['carreaux', 'blanc', 'seyes', 'repere', 'grands-carreaux', 'millimetre', 'pointe', 'iso'] as Fond[])
   .map(id => ({ id, nom: FONDS.find(f => f.id === id)!.nom }))
 export const PLUS_DE_PLACE = 'Le classeur n\'a pas pu être créé : il n\'y a plus de place dans ce navigateur.'
-/** Le dossier qu'on regarde, et le filtre de classe, retenus pour l'onglet
+/** Le dossier qu'on regarde, et le filtre de niveau, retenus pour l'onglet
  *  (sessionStorage : un autre onglet a les siens) ; le tri, pour l'appareil */
 export const CLE_DOSSIER = 'mem-teachingtool-dossier'
 export const CLE_FILTRE = 'mem-teachingtool-filtre'
 export const CLE_TRI = 'mem-teachingtool-tri'
 /** Le réglage de la bibliothèque qui fait taire le conseil (« Plus tard ») */
 const REGLAGE_CONSEIL = 'conseil'
-export const CONSEIL = 'Rangez par classe : un dossier par classe (« 5e B »), puis un classeur par chapitre (« Symétrie centrale »). Les classeurs d\'un dossier de classe portent son étiquette : un geste les retrouve tous.'
+export const CONSEIL = 'Rangez par niveau : un dossier par niveau (« 5ème »), puis un classeur par chapitre (« Symétrie centrale »). Les classeurs d\'un dossier de niveau portent son étiquette : un geste les retrouve tous.'
 export const VIDE_DOSSIER = 'Ce dossier est vide. Glissez-y un classeur, ou créez-en un.'
 /** Dupliquer le classeur : ce qu'on dit quand il n'a pas pu l'être */
 const PAS_DUPLIQUE = 'Le classeur n\'a pas pu être dupliqué'
@@ -324,15 +324,15 @@ export class Bibliotheque {
    *  bouton ⋯ ne paraît pas */
   readonly menuDuBandeau: ((m: HTMLElement) => void)[] = []
   /** Les blocs du menu d'une carte, après « Ouvrir » (C6 : renommer, les
-   *  étiquettes de classe ; C7 à C10 : déplacer, dupliquer, supprimer…),
+   *  étiquettes de niveau ; C7 à C10 : déplacer, dupliquer, supprimer…),
    *  séparés par un filet */
   readonly blocsDuMenu: ((f: FicheClasseur, m: HTMLElement) => void)[] = []
-  /** Les blocs du menu d'un dossier, après sa couleur et « Dossier d'une
-   *  classe » (C7 : déplacer ; C8 : supprimer) */
+  /** Les blocs du menu d'un dossier, après sa couleur et « Dossier d'un
+   *  niveau » (C7 : déplacer ; C8 : supprimer) */
   readonly blocsDuMenuDossier: ((d: FicheDossier, m: HTMLElement) => void)[] = []
   /** Le dossier qu'on regarde (null : la racine), retenu pour l'onglet */
   dossierAffiche: string | null = null
-  /** Le filtre de classe (une étiquette ; null : toutes), retenu pour l'onglet */
+  /** Le filtre de niveau (une étiquette ; null : tous), retenu pour l'onglet */
   filtre: string | null = null
   /** Le tri des classeurs, retenu sur l'appareil */
   tri: Tri = 'modifie'
@@ -356,7 +356,7 @@ export class Bibliotheque {
   private dossiers = new Map<string, FicheDossier>()
   /** Les fiches ont été lues au moins une fois */
   private lu = false
-  /** Le conseil du rangement par classe a été écarté (« Plus tard ») ;
+  /** Le conseil du rangement par niveau a été écarté (« Plus tard ») ;
    *  null : pas encore lu */
   private conseilVu: boolean | null = null
   private compte: HTMLElement
@@ -523,7 +523,7 @@ export class Bibliotheque {
     this.ligneOuvert = Object.assign(document.createElement('div'), { className: 'biblio-ouvert', hidden: true })
     // ----- Les cartes -----
     this.corps = Object.assign(document.createElement('div'), { className: 'biblio-corps' })
-    // Le conseil du rangement par classe : à la racine, tant qu'il n'y a
+    // Le conseil du rangement par niveau : à la racine, tant qu'il n'y a
     // aucun dossier et qu'on ne l'a pas écarté
     this.conseil = document.createElement('aside')
     this.conseil.className = 'biblio-conseil'; this.conseil.hidden = true
@@ -532,7 +532,7 @@ export class Bibliotheque {
     conseilIcone.style.setProperty('--c', COULEUR_DEFAUT)
     const conseilTexte = Object.assign(document.createElement('p'), { textContent: CONSEIL })
     const conseilActions = Object.assign(document.createElement('div'), { className: 'conseil-actions' })
-    const creerClasse = Object.assign(document.createElement('button'), { type: 'button', className: 'principal', textContent: 'Créer un dossier de classe' })
+    const creerClasse = Object.assign(document.createElement('button'), { type: 'button', className: 'principal', textContent: 'Créer un dossier de niveau' })
     creerClasse.dataset.action = 'conseil-creer'
     creerClasse.addEventListener('click', () => this.nouveauDossier({ classe: true }))
     const plusTard = Object.assign(document.createElement('button'), { type: 'button', className: 'secondaire', textContent: 'Plus tard' })
@@ -550,9 +550,9 @@ export class Bibliotheque {
     s.append(h, ul)
     this.sectionRecents = s
     this.recents = { el: ul, cartes: new Map(), ordre: [], focusId: null }
-    // La rangée du filtre de classe (s'il y a au moins une étiquette)
+    // La rangée du filtre de niveau (s'il y a au moins une étiquette)
     this.filtreEl = Object.assign(document.createElement('div'), { className: 'biblio-filtre', hidden: true })
-    this.filtreEl.setAttribute('role', 'group'); this.filtreEl.setAttribute('aria-label', 'Filtrer par classe')
+    this.filtreEl.setAttribute('role', 'group'); this.filtreEl.setAttribute('aria-label', 'Filtrer par niveau')
     // La grille du dossier affiché : son fil d'Ariane et le tri, les dossiers
     // puis les classeurs
     this.sectionTous = Object.assign(document.createElement('section'), { className: 'biblio-section tous' })
@@ -629,11 +629,11 @@ export class Bibliotheque {
       this.avalerClicJusqua = 0
       e.preventDefault(); e.stopPropagation()
     }, true)
-    // Le menu d'un classeur : renommer, ses étiquettes de classe ; le
+    // Le menu d'un classeur : renommer, ses étiquettes de niveau ; le
     // déplacer, le dupliquer
     this.blocsDuMenu.push((f, m) => {
       entreeMenu(m, 'Renommer…', () => this.renommer(f.id), { touche: 'F2', action: 'renommer' })
-      entreeMenu(m, 'Étiquettes de classe…', () => this.etiquettesDuClasseur(f.id), { action: 'etiquettes' })
+      entreeMenu(m, 'Étiquettes de niveau…', () => this.etiquettesDuClasseur(f.id), { action: 'etiquettes' })
     })
     this.blocsDuMenu.push((f, m) => {
       entreeMenu(m, 'Déplacer vers…', () => this.deplacer(f.id), { action: 'deplacer' })
@@ -694,7 +694,7 @@ export class Bibliotheque {
   }
 
   /** Le dossier où va un classeur ajouté depuis un fichier : celui qu'on
-   *  regarde (s'il existe encore, et sans filtre de classe ni la corbeille) ;
+   *  regarde (s'il existe encore, et sans filtre de niveau ni la corbeille) ;
    *  la racine sinon, et depuis le tableau */
   dossierPourAjouter(): string | null {
     const d = this.dossierAffiche
@@ -932,7 +932,7 @@ export class Bibliotheque {
     ecrireSession(CLE_DOSSIER, id)
   }
 
-  /** Change le filtre de classe (null : toutes), retenu pour l'onglet */
+  /** Change le filtre de niveau (null : tous), retenu pour l'onglet */
   private changerFiltre(nom: string | null) {
     this.filtre = nom
     ecrireSession(CLE_FILTRE, nom)
@@ -981,7 +981,7 @@ export class Bibliotheque {
     this.vide.hidden = !rienDuTout
     const n = nombreDeClasseurs(tous.length)
     if (this.compte.textContent !== n) this.compte.textContent = n
-    const label = filtre !== null ? `Classeurs de la classe « ${filtre} »` : ici === null ? 'Bibliothèque' : `Dossier « ${d.get(ici)?.nom ?? ''} »`
+    const label = filtre !== null ? `Classeurs du niveau « ${filtre} »` : ici === null ? 'Bibliothèque' : `Dossier « ${d.get(ici)?.nom ?? ''} »`
     if (this.tous.el.getAttribute('aria-label') !== label) this.tous.el.setAttribute('aria-label', label)
     this.majFiltre(etiquettes)
     this.majFil()
@@ -1069,7 +1069,7 @@ export class Bibliotheque {
     const drive = Object.assign(document.createElement('span'), { className: 'carte-icone icone-drive', innerHTML: icone('nuage'), hidden: true })
     sauvegardes.append(cle, drive)
     infos.append(date, sauvegardes)
-    // Les étiquettes de classe (propres, et celle héritée du dossier)
+    // Les étiquettes de niveau (propres, et celle héritée du dossier)
     const etiquettes = Object.assign(document.createElement('span'), { className: 'carte-etiquettes', hidden: true })
     for (const x of [apercu, nom, chemin, infos, etiquettes]) x.setAttribute('aria-hidden', 'true')
     a.append(apercu, nom, chemin, infos, etiquettes)
@@ -1187,7 +1187,7 @@ export class Bibliotheque {
     poser(c.querySelector('.carte-date')!, libelleCarte(f, maintenant))
     const effectives = etiquettesEffectives(f, this.dossiers)
     this.majPuces(c.querySelector<HTMLElement>('.carte-etiquettes')!, effectives.map(e => ({
-      nom: e.nom, heritee: !!e.dossier, titre: e.dossier ? `Étiquette du dossier « ${e.dossier.nom} »` : `Étiquette de classe « ${e.nom} »`,
+      nom: e.nom, heritee: !!e.dossier, titre: e.dossier ? `Étiquette du dossier « ${e.dossier.nom} »` : `Étiquette de niveau « ${e.nom} »`,
     })))
     const ch = c.querySelector<HTMLElement>('.carte-chemin')!
     const chemin = avecChemin ? cheminLisible(f.dossier, this.dossiers) : ''
@@ -1245,7 +1245,7 @@ export class Bibliotheque {
 
   /** La carte d'un dossier : sa grande icône dans sa couleur, son nom, ce
    *  qu'il contient (« 4 classeurs · 2 dossiers »), l'étiquette d'un dossier
-   *  de classe ; un clic, un toucher ou Entrée y entre */
+   *  de niveau ; un clic, un toucher ou Entrée y entre */
   private creerCarteDossier(id: string): HTMLElement {
     const li = document.createElement('li')
     li.className = 'case-dossier'; li.dataset.dossier = id; li.dataset.cle = DOSSIER + id
@@ -1271,7 +1271,7 @@ export class Bibliotheque {
     const couleur = couleurDe(d.couleur).valeur
     if (c.style.getPropertyValue('--c') !== couleur) c.style.setProperty('--c', couleur)
     this.majPuces(c.querySelector<HTMLElement>('.carte-etiquettes')!, d.etiquette
-      ? [{ nom: d.etiquette, heritee: false, titre: `Dossier d'une classe : ses classeurs portent l'étiquette « ${d.etiquette} »` }] : [])
+      ? [{ nom: d.etiquette, heritee: false, titre: `Dossier d'un niveau : ses classeurs portent l'étiquette « ${d.etiquette} »` }] : [])
     const b = c.querySelector<HTMLElement>('.carte-dossier')!
     const label = texteLecteurDossier(d, n)
     if (b.getAttribute('aria-label') !== label) b.setAttribute('aria-label', label)
@@ -1280,7 +1280,7 @@ export class Bibliotheque {
     if (o.title !== titre) { o.title = titre; o.setAttribute('aria-label', titre) }
   }
 
-  /** La rangée du filtre : « Classes : [Toutes] [5e B · 4] [2nde 3 · 2] »
+  /** La rangée du filtre : « Niveaux : [Tous] [5ème · 4] [2nde · 2] »
    *  (aria-pressed), s'il y a au moins une étiquette. Refaite seulement si
    *  elle a changé ; le focus reste sur le même bouton. */
   private majFiltre(etiquettes: { nom: string; n: number }[]) {
@@ -1291,7 +1291,7 @@ export class Bibliotheque {
     this.cleFiltre = sig
     f.hidden = !etiquettes.length
     const focus = (document.activeElement as HTMLElement | null)?.closest?.('.biblio-filtre') ? (document.activeElement as HTMLElement).dataset.etiquette : undefined
-    const titre = Object.assign(document.createElement('span'), { className: 'filtre-titre', textContent: 'Classes :' })
+    const titre = Object.assign(document.createElement('span'), { className: 'filtre-titre', textContent: 'Niveaux :' })
     titre.setAttribute('aria-hidden', 'true')
     const bouton = (texte: string, cle: string, nom: string | null, label: string) => {
       const b = Object.assign(document.createElement('button'), { type: 'button', className: 'filtre-etiquette', textContent: texte })
@@ -1301,7 +1301,7 @@ export class Bibliotheque {
       b.addEventListener('click', () => this.choisirFiltre(nom !== null && cleDe(nom) === actif ? null : nom))
       return b
     }
-    const boutons = [bouton('Toutes', '', null, 'Toutes les classes'),
+    const boutons = [bouton('Tous', '', null, 'Tous les niveaux'),
       ...etiquettes.map(e => bouton(`${e.nom} · ${e.n}`, cleDe(e.nom), e.nom, `${e.nom}, ${nombreDeClasseurs(e.n).toLowerCase()}`))]
     f.replaceChildren(titre, ...boutons)
     if (focus !== undefined) (boutons.find(b => b.dataset.etiquette === focus) ?? boutons[0]).focus({ preventScroll: true })
@@ -1309,7 +1309,7 @@ export class Bibliotheque {
 
   /** Le fil d'Ariane : « Bibliothèque › 5e B › Géométrie », chaque dossier
    *  au-dessus un bouton, celui où l'on est en gras (aria-current) ; avec un
-   *  filtre, « Classe « 5e B » ». Refait seulement s'il a changé. */
+   *  filtre, « Niveau « 5ème » ». Refait seulement s'il a changé. */
   private majFil() {
     const chaine = this.filtre === null ? filAriane(this.dossierAffiche, this.dossiers) : []
     const sig = this.filtre !== null ? `f:${this.filtre}` : `r:${chaine.map(d => `${d.id}:${d.nom}`).join('|')}`
@@ -1333,7 +1333,7 @@ export class Bibliotheque {
       b.addEventListener('click', () => this.allerA(id, venuDe))
       return b
     }
-    if (this.filtre !== null) items.push(ici(`Classe « ${this.filtre} »`))
+    if (this.filtre !== null) items.push(ici(`Niveau « ${this.filtre} »`))
     else {
       items.push(element('Bibliothèque', null, chaine[0]?.id ?? null, !chaine.length))
       chaine.forEach((d, i) => items.push(element(d.nom, d.id, chaine[i + 1]?.id ?? null, i === chaine.length - 1)))
@@ -1466,7 +1466,7 @@ export class Bibliotheque {
 
   /** Sur window, en capture, posé à l'ouverture (après ceux des menus, posés
    *  au démarrage). Une fenêtre, un menu, un champ gardent leurs touches.
-   *  Échap enlève d'abord le filtre de classe, puis ferme l'écran (un menu se
+   *  Échap enlève d'abord le filtre de niveau, puis ferme l'écran (un menu se
    *  ferme avant tout, par menus.ts) ; Retour arrière remonte d'un dossier.
    *  Sur une carte : les flèches, Début, Fin, F2 (renommer), la touche Menu
    *  et Maj + F10 ; Entrée est celle du lien ou du bouton (son clic). */
@@ -1734,7 +1734,7 @@ export class Bibliotheque {
   /** Les cibles du glisser, telles qu'on les voit : les éléments du fil
    *  d'Ariane (les dossiers au-dessus, « Bibliothèque », et celui où l'on
    *  est), puis les cartes des dossiers de la grille. Avec un filtre de
-   *  classe (une liste plate), il n'y en a pas. */
+   *  niveau (une liste plate), il n'y en a pas. */
   private ciblesDuGlisser(): { id: string | null; el: HTMLElement }[] {
     const r: { id: string | null; el: HTMLElement }[] = []
     if (this.filtre !== null) return r
@@ -1964,7 +1964,7 @@ export class Bibliotheque {
    *  (7 s). Un classeur : sa fiche, puis son identité dans sa base (pour
    *  qu'une adoption retrouve son nom ; sans attendre) ; celui de cet onglet,
    *  son bouton et le titre de l'onglet suivent (les autres onglets
-   *  l'apprennent par le canal). Un dossier de classe renommé garde son
+   *  l'apprennent par le canal). Un dossier de niveau renommé garde son
    *  étiquette accordée à son nom. siEncore : seulement si le nom n'a pas
    *  changé entre-temps (« Annuler »). */
   private async donnerUnNom(cle: string, nom: string, ancien: string, siEncore?: string) {
@@ -2351,7 +2351,7 @@ export class Bibliotheque {
   }
 
   /** Ce que propose le menu d'un dossier : « Ouvrir », « Renommer… », sa
-   *  couleur (les huit, la sienne cochée), « Dossier d'une classe » ; puis
+   *  couleur (les huit, la sienne cochée), « Dossier d'un niveau » ; puis
    *  les blocs des morceaux suivants (blocsDuMenuDossier) */
   entreesDuMenuDossier(d: FicheDossier, m: HTMLElement) {
     entreeMenu(m, 'Ouvrir', () => this.allerA(d.id), { touche: 'Entrée', action: 'ouvrir-dossier' })
@@ -2369,7 +2369,7 @@ export class Bibliotheque {
     }
     m.appendChild(rangee)
     const etiquette = etiquetteDuNom(d.nom) ?? d.nom
-    entreeMenu(m, 'Dossier d\'une classe', () => void this.basculerClasse(d.id), {
+    entreeMenu(m, 'Dossier d\'un niveau', () => void this.basculerClasse(d.id), {
       coche: !!d.etiquette, caseACocher: true, action: 'classe-dossier',
       aide: d.etiquette ? `Ses classeurs portent l'étiquette « ${d.etiquette} »` : `Ses classeurs porteront l'étiquette « ${etiquette} »`,
     })
@@ -2448,7 +2448,7 @@ export class Bibliotheque {
     if (focusAuClavier(this.triBouton)) allerAuxEntrees(m, 1, ENTREES)
   }
 
-  // ---------- Les dossiers : couleur, dossier de classe, nouveau dossier ----------
+  // ---------- Les dossiers : couleur, dossier de niveau, nouveau dossier ----------
   /** Un dossier est relu, changé, écrit (une transaction), puis l'écran se
    *  refait ; null : il n'existe plus */
   private async changerDossierFiche(id: string, f: (d: FicheDossier) => void): Promise<FicheDossier | null> {
@@ -2474,7 +2474,7 @@ export class Bibliotheque {
       annulation ? undefined : { libelle: ANNULER, faire: () => void this.changerCouleur(id, avant, true) })
   }
 
-  /** « Dossier d'une classe » : ses classeurs portent son nom en étiquette
+  /** « Dossier d'un niveau » : ses classeurs portent son nom en étiquette
    *  (calculée : rien n'est écrit dans les classeurs), ou plus */
   private async basculerClasse(id: string, vers?: string | null) {
     const x0 = this.dossiers.get(id)
@@ -2484,10 +2484,10 @@ export class Bibliotheque {
     const d = await this.changerDossierFiche(id, x => { if (apres) x.etiquette = apres; else delete x.etiquette })
     if (!d) return
     const annuler = vers === undefined ? { libelle: ANNULER, faire: () => void this.basculerClasse(id, avant) } : undefined
-    this.hote.message(d.etiquette ? `« ${d.nom} » est un dossier de classe : ses classeurs portent l'étiquette « ${d.etiquette} ».` : `« ${d.nom} » n'est plus un dossier de classe.`, annuler)
+    this.hote.message(d.etiquette ? `« ${d.nom} » est un dossier de niveau : ses classeurs portent l'étiquette « ${d.etiquette} ».` : `« ${d.nom} » n'est plus un dossier de niveau.`, annuler)
   }
 
-  /** Le conseil du rangement par classe ne revient plus (« Plus tard ») */
+  /** Le conseil du rangement par niveau ne revient plus (« Plus tard ») */
   private ecarterConseil() {
     this.conseilVu = true
     this.registre.ecrireReglage(REGLAGE_CONSEIL, 'vu').catch(() => { /* il reviendra à la prochaine ouverture */ })
@@ -2502,8 +2502,8 @@ export class Bibliotheque {
   }
 
   /** « Nouveau dossier » : son nom (40 caractères, « 5e B » en exemple), sa
-   *  couleur (Bleu), « Dossier d'une classe » (cochée d'office quand le nom
-   *  ressemble à une classe ; son libellé suit le nom tapé). Il se crée dans
+   *  couleur (Bleu), « Dossier d'un niveau » (cochée d'office quand le nom
+   *  ressemble à un niveau ; son libellé suit le nom tapé). Il se crée dans
    *  le dossier affiché. classe : la case cochée d'avance (le conseil). */
   nouveauDossier(o: { classe?: boolean } = {}) {
     if (document.querySelector('dialog[open]') || this.depart) return
@@ -2513,7 +2513,7 @@ export class Bibliotheque {
     d.className = 'dialogue dialogue-nouveau dialogue-dossier'
     d.innerHTML = `<form method="dialog"><h2>Nouveau dossier</h2><div class="corps">
       ${parent !== null ? '<p class="dans"></p>' : ''}
-      <label class="champ"><span>Nom</span><input type="text" name="nom" maxlength="${LONGUEUR_NOM_DOSSIER}" placeholder="5e B" autocomplete="off" spellcheck="false"></label>
+      <label class="champ"><span>Nom</span><input type="text" name="nom" maxlength="${LONGUEUR_NOM_DOSSIER}" placeholder="5ème" autocomplete="off" spellcheck="false"></label>
       <fieldset class="couleurs"><legend>Couleur</legend></fieldset>
       <label class="case case-classe"><input type="checkbox" name="classe"><span></span></label>
       <p class="erreur" role="alert" hidden></p>
@@ -2542,7 +2542,7 @@ export class Bibliotheque {
     caseClasse.checked = !!o.classe
     const majClasse = () => {
       const e = etiquetteDuNom(champ.value)
-      libelleClasse.textContent = e ? `Dossier d'une classe : ses classeurs portent l'étiquette « ${e} »` : 'Dossier d\'une classe : ses classeurs portent son nom en étiquette'
+      libelleClasse.textContent = e ? `Dossier d'un niveau : ses classeurs portent l'étiquette « ${e} »` : 'Dossier d\'un niveau : ses classeurs portent son nom en étiquette'
       if (!touchee) caseClasse.checked = ressembleAUneClasse(champ.value)
     }
     majClasse()
@@ -2579,7 +2579,7 @@ export class Bibliotheque {
       enCours = false
       fermer()
       this.dossiers.set(fiche.id, fiche)
-      // Il paraît là où l'on est, même si l'on regardait une classe
+      // Il paraît là où l'on est, même si l'on regardait un niveau
       if (this.filtre !== null) this.changerFiltre(null)
       if (this.dossierAffiche !== parent) this.changerDossier(parent)
       this.rendre(null)
@@ -2591,10 +2591,10 @@ export class Bibliotheque {
     champ.focus()
   }
 
-  // ---------- Les étiquettes de classe d'un classeur ----------
-  /** « Étiquettes de classe… » : ses étiquettes propres (chacune avec ×),
-   *  celle qu'il hérite de son dossier (grisée, sans ×) ; « Ajouter une
-   *  classe » (les étiquettes déjà là sont proposées ; Entrée ajoute), 3 au
+  // ---------- Les étiquettes de niveau d'un classeur ----------
+  /** « Étiquettes de niveau… » : ses étiquettes propres (chacune avec ×),
+   *  celle qu'il hérite de son dossier (grisée, sans ×) ; « Ajouter un
+   *  niveau » (les étiquettes déjà là sont proposées ; Entrée ajoute), 3 au
    *  plus, de 20 caractères, un double ignoré. Chaque changement s'écrit
    *  aussitôt ; à la fermeture, un message avec « Annuler » les rend toutes
    *  comme elles étaient. */
@@ -2607,10 +2607,10 @@ export class Bibliotheque {
     d.className = 'dialogue dialogue-nouveau dialogue-etiquettes'
     d.setAttribute('aria-labelledby', 'etiquettes-titre')
     const idListe = 'etiquettes-connues'
-    d.innerHTML = `<h2 id="etiquettes-titre">Étiquettes de classe</h2><div class="corps">
+    d.innerHTML = `<h2 id="etiquettes-titre">Étiquettes de niveau</h2><div class="corps">
       <p class="pour"></p>
       <ul class="puces" aria-label="Ses étiquettes"></ul>
-      <label class="champ"><span>Ajouter une classe</span><input type="text" name="etiquette" maxlength="${LONGUEUR_ETIQUETTE}" list="${idListe}" placeholder="5e B" autocomplete="off" spellcheck="false" enterkeyhint="done"></label>
+      <label class="champ"><span>Ajouter un niveau</span><input type="text" name="etiquette" maxlength="${LONGUEUR_ETIQUETTE}" list="${idListe}" placeholder="5ème" autocomplete="off" spellcheck="false" enterkeyhint="done"></label>
       <datalist id="${idListe}"></datalist>
       <p class="note" aria-live="polite"></p>
       <div class="actions"><button type="button" class="principal" data-a="fermer">Fermer</button></div>
@@ -3443,15 +3443,15 @@ export class Bibliotheque {
    *  remis à zéro). Le choix du fichier s'ouvre dans le clic sur « Créer et
    *  ouvrir » ; y renoncer crée quand même le classeur, sans clé. Puis le
    *  classeur s'ouvre (voir ouvrirClasseur). « Nouveau classeur vierge… »
-   *  (la fenêtre d'accueil) : le même, mais à la racine, hors de toute
-   *  classe, quel que soit le dossier affiché. */
+   *  (la fenêtre d'accueil) : le même, mais à la racine, hors de tout
+   *  niveau, quel que soit le dossier affiché. */
   nouveauClasseur(o: { chapitre?: { dossier: string | null; dossiers: ReadonlyMap<string, FicheDossier> }; vierge?: boolean } = {}) {
     if (document.querySelector('dialog[open]') || this.depart) return
     this.finirSaisie(true)
     const offrirCle = ecritDansUnFichier() && ecrivain.mode !== 'fil'
-    // Il naît dans le dossier affiché, et en prend l'étiquette de classe
+    // Il naît dans le dossier affiché, et en prend l'étiquette de niveau
     // (calculée : pas de champ à remplir). « Nouveau chapitre… » (lot 6, la
-    // fenêtre d'accueil) : dans le dossier de la classe, seulement le nom
+    // fenêtre d'accueil) : dans le dossier du niveau, seulement le nom
     // (la première page est blanche) ; la clé comme pour un nouveau classeur
     const chapitre = o.chapitre
     if (chapitre) this.dossiers = new Map(chapitre.dossiers)
@@ -3472,7 +3472,7 @@ export class Bibliotheque {
       </div></div></form>`
     if (dans !== null) {
       const h = etiquetteHeritee(dans, this.dossiers)
-      d.querySelector('.dans')!.textContent = `Dans : ${cheminLisible(dans, this.dossiers)}${h ? ` · étiquette de classe « ${h.nom} »` : ''}`
+      d.querySelector('.dans')!.textContent = `Dans : ${cheminLisible(dans, this.dossiers)}${h ? ` · étiquette de niveau « ${h.nom} »` : ''}`
     }
     const form = d.querySelector('form')!
     const champ = d.querySelector<HTMLInputElement>('input[name="nom"]')!

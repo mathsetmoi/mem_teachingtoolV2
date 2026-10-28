@@ -12,7 +12,7 @@
 //    Envoyer vers…, Publier, Nouveau classeur, Nouveau dossier) et la
 //    bibliothèque, tout ce qui se touche fait 44 px au moins (les raccourcis
 //    LaTeX, Annuler, Mettre à jour, Exporter, les cases, le tri, Créer un
-//    dossier de classe, Plus tard, les couleurs d'un dossier), et rien ne
+//    dossier de niveau, Plus tard, les couleurs d'un dossier), et rien ne
 //    sort de l'écran ; de 320 × 568 à 844 × 390. Au poste de la classe, rien
 //    ne change (les boutons des fenêtres gardent leurs 42 px, les raccourcis
 //    leurs 38). L'éditeur de formule, plus haut au téléphone, remonte pour

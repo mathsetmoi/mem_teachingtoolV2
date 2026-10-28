@@ -1,8 +1,8 @@
 // =============================================================
 // LES SÉANCES À L'ÉCRAN (lot 6)
-// - la fenêtre d'accueil (« Bonjour ! ») : une nouvelle séance avec la
-//   classe, changer de chapitre, continuer la séance d'avant, une autre
-//   classe, un nouveau classeur vierge (voir main.ts, qui la remplit avec
+// - la fenêtre d'accueil (« Bonjour ! ») : une nouvelle séance dans le
+//   niveau du classeur, changer de chapitre, continuer la séance d'avant,
+//   un autre niveau, un nouveau classeur vierge (voir main.ts, qui la remplit avec
 //   la bibliothèque) ;
 // - la fenêtre « Cette page est dans la séance de lundi… », au premier
 //   geste d'écriture sur une page d'une séance passée ;
@@ -19,6 +19,7 @@ import type { SeanceDuClasseur } from './seances'
 import { dateCourteMajuscule, deLaSeance, libelleSeance, nomDeSeance, quandMajuscule, LONGUEUR_NOM_SEANCE } from './seances'
 import type { Vignettes } from './pages/vignettes'
 import { fermerSurLeFond } from './dialogue'
+import { ressembleAUneClasse } from './classeurs/arbre'
 import { icone } from './icones'
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, classe = '', texte = ''): HTMLElementTagNameMap[K] => {
@@ -38,15 +39,15 @@ const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 // ---------- La fenêtre d'accueil ----------
 export interface ChapitreAccueil { id: string; nom: string; seances: number | null; ici: boolean }
 export interface HoteAccueil {
-  /** La classe (le nom de son dossier de classe), sinon null */
+  /** Le niveau (le nom de son dossier de niveau), sinon null */
   classe: string | null
   /** Le chapitre : le nom du classeur */
   chapitre: string
   /** La séance qu'on peut continuer (la dernière), dite dans une phrase */
   continuer: string | null
-  /** Les autres dossiers de classe */
+  /** Les autres dossiers de niveau */
   classes: { id: string; nom: string }[]
-  /** Les chapitres de la classe (null : pas de bibliothèque) */
+  /** Les chapitres du niveau (null : pas de bibliothèque) */
   chapitres: (() => Promise<ChapitreAccueil[]>) | null
   /** automatismes : la case « Commencer par des automatismes » est cochée */
   nouvelleSeance(automatismes: boolean): void
@@ -54,13 +55,23 @@ export interface HoteAccueil {
   autreClasse(id: string, automatismes: boolean): void
   ouvrirChapitre(id: string, automatismes: boolean): void
   nouveauChapitre(): void
-  /** Un classeur vierge, hors de toute classe (null : pas de bibliothèque) */
+  /** Un classeur vierge, hors de tout niveau (null : pas de bibliothèque) */
   nouveauClasseurVierge: (() => void) | null
 }
 
-/** « la 5A », « la 5e B » ; un nom qui n'est pas une classe reste entre guillemets */
-export function avecLaClasse(nom: string): string {
-  return /^(\d|cp|ce\d|cm\d|seconde|2nde|1re|1ère|premi|tle|term|bts|cap)/i.test(nom.trim()) ? `la ${nom.trim()}` : `« ${nom.trim()} »`
+/** Le nom du dossier de niveau dans la phrase : « en 5ème », « en 2nde »,
+ *  « en 1re spé », « en Tle spé ». Un nom qui n'est pas un niveau (la même
+ *  règle que la case « Dossier d'un niveau », voir arbre.ts) reste entre
+ *  guillemets : « dans « Soutien » ». */
+export function enNiveau(nom: string): string {
+  const n = nom.trim()
+  return ressembleAUneClasse(n) ? `en ${n}` : `dans « ${n} »`
+}
+
+/** De même avec « de » : « de 5ème », « de Tle spé » ; sinon « de « Soutien » » */
+export function deNiveau(nom: string): string {
+  const n = nom.trim()
+  return ressembleAUneClasse(n) ? `de ${n}` : `de « ${n} »`
 }
 
 /** La fenêtre « Bonjour ! » : par-dessus la dernière page, grisée. Le gros
@@ -68,7 +79,7 @@ export function avecLaClasse(nom: string): string {
  *  laisse la dernière page telle quelle (on continue la séance). Sous le
  *  gros bouton, la case « Commencer par des automatismes », jamais cochée
  *  d'office : le professeur décide chaque jour ; cochée, la séance (nouvelle,
- *  continuée, ou dans un autre chapitre, une autre classe) s'ouvre sur le
+ *  continuée, ou dans un autre chapitre, un autre niveau) s'ouvre sur le
  *  réglage d'un flash (voir flash.ts). */
 export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogElement {
   document.querySelector('dialog.dialogue-accueil')?.remove()
@@ -84,7 +95,7 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
   const caseAuto = el('label', 'accueil-case-automatismes')
   caseAuto.append(auto, el('span', '', 'Commencer par des automatismes'))
   const avecAuto = () => auto.checked
-  const gros = bouton('principal accueil-nouvelle', h.classe ? `Nouvelle séance avec ${avecLaClasse(h.classe)}` : 'Nouvelle séance', faire(() => h.nouvelleSeance(avecAuto())))
+  const gros = bouton('principal accueil-nouvelle', h.classe ? `Nouvelle séance ${enNiveau(h.classe)}` : 'Nouvelle séance', faire(() => h.nouvelleSeance(avecAuto())))
   const chapitre = el('p', 'accueil-chapitre')
   chapitre.append(el('span', 'accueil-nom-chapitre', h.chapitre))
   if (h.chapitres) {
@@ -94,23 +105,23 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
   principale.append(titre, gros, caseAuto, chapitre)
   if (h.continuer) principale.append(bouton('lien accueil-continuer', `Continuer la séance ${h.continuer}`, faire(() => h.continuerSeance(avecAuto()))))
   if (h.classes.length) {
-    const p = el('p', 'accueil-classes', 'Une autre classe : ')
+    const p = el('p', 'accueil-classes', 'Un autre niveau : ')
     for (const c of h.classes) p.append(bouton('pastille-classe', c.nom, faire(() => h.autreClasse(c.id, avecAuto()))))
     principale.append(p)
   }
   if (h.nouveauClasseurVierge) {
     const vierge = el('p', 'accueil-vierge')
     vierge.append(bouton('lien accueil-classeur-vierge', 'Nouveau classeur vierge…', faire(h.nouveauClasseurVierge)),
-      el('small', '', 'Sans classe : vous l\'enregistrez quand vous voulez.'))
+      el('small', '', 'Sans niveau : vous l\'enregistrez quand vous voulez.'))
     principale.append(vierge)
   }
-  // La liste des chapitres de la classe
+  // La liste des chapitres du niveau
   const liste = el('div', 'accueil-vue accueil-liste')
   liste.hidden = true
   const montrerChapitres = async () => {
     const l = await h.chapitres!().catch(() => [] as ChapitreAccueil[])
     liste.replaceChildren()
-    const t = el('h2', '', h.classe ? `Chapitre de ${avecLaClasse(h.classe)}` : 'Changer de chapitre')
+    const t = el('h2', '', h.classe ? `Chapitres ${deNiveau(h.classe)}` : 'Changer de chapitre')
     const ul = el('ul', 'accueil-chapitres')
     const neuf = el('li'); neuf.append(bouton('secondaire accueil-nouveau-chapitre', '+ Nouveau chapitre…', faire(() => h.nouveauChapitre()))); ul.append(neuf)
     for (const c of l) {

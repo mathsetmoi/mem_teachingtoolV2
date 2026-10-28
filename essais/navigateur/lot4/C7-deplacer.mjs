@@ -217,7 +217,7 @@ if (seul('A')) {
   await p.keyboard.press('Shift+Tab'); await p.keyboard.press('Escape'); await p.waitForTimeout(200)
   f = await fenetre(p); v = await vue(p)
   ok(!f && v.focus === sym && (await fiche(p, sym)).dossier === d23, '   … Échap : fermée, rien n\'a bougé, le focus revient à la carte', { f, focus: v.focus })
-  // Déplacer dans « Géométrie » (sous « 5e B », dossier de classe) au clavier
+  // Déplacer dans « Géométrie » (sous « 5e B », dossier de niveau) au clavier
   await p.keyboard.press('Shift+F10'); await p.waitForTimeout(150)
   await entree(p, 'deplacer')
   await p.keyboard.press('ArrowDown'); await p.keyboard.press('ArrowDown')
@@ -267,7 +267,7 @@ if (seul('A')) {
   const d5 = await dossierLu(p, d5b)
   const t4 = (await toasts(p)).join('|')
   ok(d5.parent === d23 && t4.includes('Dossier « 5e B » déplacé dans « 2nde 3 »'), 'A8) Le dossier « 5e B » va dans « 2nde 3 » (deplacerDossier)', { parent: d5.parent, t4 })
-  ok(!t4.includes('ses classeurs portent maintenant'), '   … un dossier de classe garde son étiquette : le message n\'en dit rien', t4)
+  ok(!t4.includes('ses classeurs portent maintenant'), '   … un dossier de niveau garde son étiquette : le message n\'en dit rien', t4)
   // « Géométrie » à la racine : ses classeurs perdent « 5e B »
   await p.evaluate(({ id }) => window.__bibliotheque.deplacerVers('d:' + id, null), { id: dgeo }); await p.waitForTimeout(400)
   const t5 = (await toasts(p)).join('|')

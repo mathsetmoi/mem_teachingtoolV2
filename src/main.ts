@@ -352,8 +352,8 @@ async function demarrer() {
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') noterDernier() })
     window.addEventListener('focus', noterDernier)
     ui.bibliotheque = new Bibliotheque(hote, registre, racine)
-    // La classe du classeur (le tirage au sort y prend sa liste) : son plus
-    // proche dossier de classe, sinon le dossier où il est rangé
+    // Le niveau du classeur (le tirage au sort y prend sa liste) : son plus
+    // proche dossier de niveau, sinon le dossier où il est rangé
     ui.classeDuClasseur = async () => {
       const [dossiers, fiches] = await Promise.all([registre.dossiers(), registre.classeurs()])
       const carte = new Map(dossiers.filter(d => !d.corbeille).map(d => [d.id, d]))
@@ -499,7 +499,7 @@ function annoncerLaBibliotheque(ui: UI, infos: InfosClasseur, vide: boolean, ave
 demarrer()
 
 /** On part vers un autre classeur pour y commencer une séance (la fenêtre
- *  d'accueil : une autre classe, un autre chapitre) : la clé de cet onglet,
+ *  d'accueil : un autre niveau, un autre chapitre) : la clé de cet onglet,
  *  { id, t, automatismes? }, valable une minute ; automatismes : la case
  *  « Commencer par des automatismes » était cochée */
 const CLE_NOUVELLE_SEANCE = 'mem-teachingtool-nouvelle-seance'
@@ -529,10 +529,10 @@ function sousDossiers(racine: string, dossiers: readonly FicheDossier[]): Set<st
 }
 
 /** La fenêtre d'accueil (lot 6, voir seances-vue.ts), remplie avec la
- *  bibliothèque : la classe (le plus proche dossier de classe du classeur),
- *  les autres classes (les dossiers de classe), les chapitres de la classe
+ *  bibliothèque : le niveau (le plus proche dossier de niveau du classeur),
+ *  les autres niveaux (les dossiers de niveau), les chapitres du niveau
  *  (les classeurs de son dossier, avec leur nombre de séances). Sans
- *  bibliothèque (le repli), ni classes ni chapitres. */
+ *  bibliothèque (le repli), ni niveaux ni chapitres. */
 async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche: FicheClasseur | null, seance: SeanceDuClasseur): Promise<HTMLDialogElement | null> {
   let dossiers: FicheDossier[] = [], fiches: FicheClasseur[] = []
   if (registre && fiche) {
@@ -577,10 +577,10 @@ async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche
       if (auto) ui.flash.ouvrir()
     },
     autreClasse: (id, auto) => {
-      // Le chapitre en cours de cette classe : le dernier classeur ouvert dans son dossier
+      // Le chapitre en cours de ce niveau : le dernier classeur ouvert dans son dossier
       const l = dans(id).sort((a, b) => (b.ouvert - a.ouvert) || (b.modifie - a.modifie))
       if (l.length) partir(l[0], auto)
-      else { ui.message(`La classe « ${carte.get(id)?.nom ?? ''} » n'a pas encore de chapitre : créez-le.`); nouveauChapitre(id) }
+      else { ui.message(`Le niveau « ${carte.get(id)?.nom ?? ''} » n'a pas encore de chapitre : créez-le.`); nouveauChapitre(id) }
     },
     ouvrirChapitre: (id, auto) => {
       if (id === ici?.id) { app.nouvelleSeance(); if (auto) ui.flash.ouvrir(); return }

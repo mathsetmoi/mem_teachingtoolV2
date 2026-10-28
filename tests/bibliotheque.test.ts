@@ -149,10 +149,10 @@ describe('la carte d\'un classeur', () => {
     expect(texteLecteur(fiche('x', { nom: 'Mon tableau', modifie: 0, cree: 0, pages: null }), T)).toBe('Mon tableau, pas encore ouvert depuis la mise à jour')
     const avec = { ...f, cle: { nom: 'Symétrie.memc', t: T - 3 * J }, drive: { compte: 'mem' as const, id: 'f', t: T - 10 * MIN, taille: 1 } }
     expect(sp(texteLecteur(avec, T))).toBe('Symétrie centrale, 12 pages, modifié aujourd\'hui à 13 h 55, sur la clé il y a 3 jours (Symétrie.memc), sur le Drive il y a 10 min')
-    // (C6) Ses étiquettes de classe, et son dossier quand un filtre les montre tous ensemble
+    // (C6) Ses étiquettes de niveau, et son dossier quand un filtre les montre tous ensemble
     expect(sp(texteLecteur(f, T, { etiquettes: ['5e B'], chemin: '5e B › Géométrie', ouvertIci: true })))
-      .toBe('Symétrie centrale, 12 pages, modifié aujourd\'hui à 13 h 55, classe 5e B, dans 5e B › Géométrie, ouvert dans cet onglet')
-    expect(sp(texteLecteur(f, T, { etiquettes: ['5e B', 'Soutien'] }))).toBe('Symétrie centrale, 12 pages, modifié aujourd\'hui à 13 h 55, classes 5e B, Soutien')
+      .toBe('Symétrie centrale, 12 pages, modifié aujourd\'hui à 13 h 55, niveau 5e B, dans 5e B › Géométrie, ouvert dans cet onglet')
+    expect(sp(texteLecteur(f, T, { etiquettes: ['5e B', 'Soutien'] }))).toBe('Symétrie centrale, 12 pages, modifié aujourd\'hui à 13 h 55, niveaux 5e B, Soutien')
   })
 
   it('les icônes de la clé et du Drive : la date de la dernière écriture réussie', () => {

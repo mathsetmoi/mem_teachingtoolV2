@@ -3,12 +3,12 @@
 // Deux fenêtres, comme sur les maquettes validées par le professeur :
 // - « Ouvrir » (le bouton « Ouvrir… » de la bibliothèque) : deux onglets,
 //   « Cet ordinateur » (des fichiers, ou tout un dossier : Chrome et Edge)
-//   et « Google Drive » (les classes de « MEM - Classeurs », et la fenêtre
+//   et « Google Drive » (les niveaux de « MEM - Classeurs », et la fenêtre
 //   de Google pour le reste du Drive). Les classeurs d'un dossier arrivent
 //   dans le dossier du même nom de la bibliothèque (créé s'il n'existe pas),
 //   et ce dossier peut rester RELIÉ : tenu à jour tout seul (choix 1B).
 // - « Enregistrer » (le menu ⋯ du classeur, le menu d'un dossier) : quoi
-//   (ce classeur, le dossier de la classe, toute la bibliothèque), où (cet
+//   (ce classeur, le dossier du niveau, toute la bibliothèque), où (cet
 //   ordinateur, le Drive), et « Le garder à jour tout seul ».
 // Et « Mes emplacements », en haut de la bibliothèque (choix 3A) : les
 // dossiers reliés, avec « Mettre à jour » et « Retirer ».
@@ -204,7 +204,7 @@ export class Ailleurs {
 
     // ---- Google Drive ----
     const lister = async (c: CompteDrive) => {
-      etat(`Recherche de vos classes sur le ${compteDe(c)?.nom ?? 'Drive'}…`)
+      etat(`Recherche de vos niveaux sur le ${compteDe(c)?.nom ?? 'Drive'}…`)
       classes.hidden = true
       let l: ClasseDuDrive[]
       try { l = await listerLesClasses(c) } catch (e) { etat(texteErreurDrive(e), true); regler(); return }
@@ -219,7 +219,7 @@ export class Ailleurs {
         tete.append(Object.assign(document.createElement('span'), { className: 'nom', textContent: x.classe ? x.nom : 'Fichiers déposés' }),
           Object.assign(document.createElement('span'), { className: 'n', textContent: pluriel(x.fichiers.length, 'fichier') }))
         if (x.classe && x.fichiers.length) {
-          const tout = Object.assign(document.createElement('button'), { type: 'button', className: 'secondaire ouvrir-classe', textContent: 'Ouvrir toute la classe' })
+          const tout = Object.assign(document.createElement('button'), { type: 'button', className: 'secondaire ouvrir-classe', textContent: 'Ouvrir tout le niveau' })
           tout.addEventListener('click', () => { fermer(); void this.ouvrirDuDrive(c, x.fichiers, { classe: x }) })
           tete.appendChild(tout)
         }
@@ -268,14 +268,14 @@ export class Ailleurs {
 
   /** Le dossier de la bibliothèque, à la racine, qui porte ce nom (sans
    *  tenir compte des majuscules), sinon un nouveau ; marque : celui qui a
-   *  déjà cet id (une classe du Drive) passe d'abord */
+   *  déjà cet id (un niveau du Drive) passe d'abord */
   private async dossierNomme(nom: string, id?: string): Promise<FicheDossier> {
     const dossiers = await this.registre.dossiers()
     const vivants = dossiers.filter(x => dossierVisible(x, dossiers))
     const deja = (id ? vivants.find(x => x.id === id) : undefined)
       ?? vivants.find(x => x.parent === null && x.nom.toLocaleLowerCase('fr') === nom.toLocaleLowerCase('fr'))
     if (deja) return deja
-    const fiche: FicheDossier = { id: idClasseur(), nom: nom.slice(0, 80) || 'Classe', parent: null, couleur: COULEUR_DEFAUT, cree: Date.now() }
+    const fiche: FicheDossier = { id: idClasseur(), nom: nom.slice(0, 80) || 'Niveau', parent: null, couleur: COULEUR_DEFAUT, cree: Date.now() }
     const etiquette = etiquetteDuNom(fiche.nom)
     if (etiquette) fiche.etiquette = etiquette
     await this.registre.ajouterDossier(fiche)
@@ -284,7 +284,7 @@ export class Ailleurs {
 
   /** Tout un dossier de l'ordinateur : ses classeurs dans le dossier du même
    *  nom de la bibliothèque ; relier : ce dossier devient l'emplacement de
-   *  cette classe (chaque classeur y garde son fichier) */
+   *  ce niveau (chaque classeur y garde son fichier) */
   private async ouvrirUnDossier(d: PoigneeDossier, relier: boolean) {
     this.h.message(`Lecture du dossier « ${d.name} »…`)
     let trouves
@@ -301,9 +301,9 @@ export class Ailleurs {
   }
 
   /** Des fichiers du Drive : téléchargés, puis ouverts comme des fichiers.
-   *  classe : ceux d'une classe de « MEM - Classeurs », rangés dans le
-   *  dossier de cette classe (seul : un seul classeur, avec sa question) ;
-   *  toute la classe reste reliée au Drive. */
+   *  classe : ceux d'un niveau de « MEM - Classeurs », rangés dans le
+   *  dossier de ce niveau (seul : un seul classeur, avec sa question) ;
+   *  tout le niveau reste relié au Drive. */
   private async ouvrirDuDrive(compte: CompteDrive, l: { id: string; nom: string; taille: number }[], o: { classe?: ClasseDuDrive; seul?: boolean }) {
     const choisis: Choisi[] = []
     for (let k = 0; k < l.length; k++) {
@@ -320,10 +320,10 @@ export class Ailleurs {
     if (o.classe?.classe) {
       try { classe = await this.dossierNomme(o.classe.nom, o.classe.classe); dossier = classe.id } catch { dossier = undefined }
     }
-    // Un seul fichier : sa question ; toute une classe : la fenêtre de plusieurs
+    // Un seul fichier : sa question ; tout un niveau : la fenêtre de plusieurs
     const lot = o.seul ? false : !!o.classe || choisis.length > 1
     const ok = await this.h.fichiers.ouvrir(choisis, { ...(dossier !== undefined ? { dossier } : {}), lot })
-    // Toute la classe ouverte : elle reste reliée à ce Drive
+    // Tout le niveau ouvert : il reste relié à ce Drive
     if (ok && classe && !o.seul) await this.relierDrive(classe, compte, { silencieux: true })
     void this.h.bibliotheque.charger()
   }
@@ -332,7 +332,7 @@ export class Ailleurs {
   // ENREGISTRER
   // =============================================================
 
-  /** La classe d'un classeur ou d'un dossier : son dossier le plus haut */
+  /** Le niveau d'un classeur ou d'un dossier : son dossier le plus haut */
   private async classeDe(dossierId: string | null): Promise<FicheDossier | null> {
     if (!dossierId) return null
     const dossiers = await this.registre.dossiers()
@@ -374,7 +374,7 @@ export class Ailleurs {
     const quoiEl = q('.e-quoi .choix')
     const options: { v: Quoi; titre: string; detail: string }[] = []
     if (fiche) options.push({ v: 'classeur', titre: 'Ce classeur', detail: `« ${fiche.nom} » · .memc` })
-    if (classe) options.push({ v: 'classe', titre: 'Le dossier de la classe', detail: `« ${classe.nom} » · ${pluriel(nClasse, 'classeur')}` })
+    if (classe) options.push({ v: 'classe', titre: 'Le dossier du niveau', detail: `« ${classe.nom} » · ${pluriel(nClasse, 'classeur')}` })
     options.push({ v: 'bibliotheque', titre: 'Toute la bibliothèque', detail: `${pluriel(nTous, 'classeur')} · .memb` })
     const premier = options.find(x => x.v === o.quoi)?.v ?? options[0].v
     for (const x of options) {
@@ -413,8 +413,8 @@ export class Ailleurs {
             : 'Un fichier .memc, enregistré une fois (ce navigateur ne sait pas le tenir à jour tout seul).'
         } else {
           explication = classe
-            ? `Une fois, dans « ${dossierDrive} ». Pour qu'il se tienne à jour tout seul sur le Drive, enregistrez le dossier de sa classe « ${classe.nom} ».`
-            : `Une fois, dans « ${dossierDrive} ». Pour qu'il se tienne à jour tout seul sur le Drive, rangez-le dans le dossier d'une classe.`
+            ? `Une fois, dans « ${dossierDrive} ». Pour qu'il se tienne à jour tout seul sur le Drive, enregistrez le dossier de son niveau « ${classe.nom} ».`
+            : `Une fois, dans « ${dossierDrive} ». Pour qu'il se tienne à jour tout seul sur le Drive, rangez-le dans le dossier d'un niveau.`
         }
       } else if (x === 'classe' && classe) {
         const relie = liste.find(e => e.dossier === classe.id && e.genre === y)
@@ -422,12 +422,12 @@ export class Ailleurs {
           garder = choisitUnDossier()
           explication = garder
             ? (garderEl.checked ? `Choisissez un dossier (sur la clé, dans G:\\Mon Drive…) : chaque classeur de « ${classe.nom} » y aura son fichier, remplacé peu après chaque changement.${relie ? ` Il remplacera le dossier « ${relie.nom} ».` : ''}` : `Un seul fichier .memb avec toute la classe, enregistré une fois.`)
-            : 'Un seul fichier .memb avec toute la classe, enregistré une fois (ce navigateur ne sait pas écrire dans un dossier).'
+            : 'Un seul fichier .memb avec tout le niveau, enregistré une fois (ce navigateur ne sait pas écrire dans un dossier).'
         } else {
           garder = true
           explication = garderEl.checked
-            ? `Dans « ${dossierDrive} › ${nomSur(classe.nom, { repli: 'Classe' })} » : un fichier par classeur, remplacé peu après chaque changement.`
-            : `Un seul fichier .memb avec toute la classe, dans « ${dossierDrive} ».`
+            ? `Dans « ${dossierDrive} › ${nomSur(classe.nom, { repli: 'Niveau' })} » : un fichier par classeur, remplacé peu après chaque changement.`
+            : `Un seul fichier .memb avec tout le niveau, dans « ${dossierDrive} ».`
         }
       } else {
         explication = y === 'ordinateur' ? 'Un seul fichier .memb avec tous les classeurs et les dossiers, enregistré une fois.' : `Un seul fichier .memb, une fois, dans « ${dossierDrive} ».`
@@ -511,10 +511,10 @@ export class Ailleurs {
   }
 
   // =============================================================
-  // RELIER UNE CLASSE
+  // RELIER UN NIVEAU
   // =============================================================
 
-  /** La classe reliée à un dossier de l'ordinateur (accord déjà demandé
+  /** Le niveau relié à un dossier de l'ordinateur (accord déjà demandé
    *  dans le clic) ; silencieux : ne dit le bilan que s'il y a un souci */
   private async relierOrdinateur(classe: FicheDossier, d: PoigneeDossier, o: { silencieux?: boolean } = {}) {
     if (this.occupe) return
@@ -527,7 +527,7 @@ export class Ailleurs {
       const deja = (await emplacements(this.registre)).find(e => e.dossier === classe.id && e.genre === 'ordinateur')
       const e: Emplacement = { id: deja?.id ?? nouvelId(), genre: 'ordinateur', dossier: classe.id, nom: d.name, cree: deja?.cree ?? Date.now() }
       try { await this.registre.ecrireReglage(reglagePoignee(e.id), d) } catch {
-        this.h.message('Ce navigateur ne peut pas garder le dossier : enregistrez plutôt la classe dans un fichier.')
+        this.h.message('Ce navigateur ne peut pas garder le dossier : enregistrez plutôt le niveau dans un fichier.')
         return
       }
       await garderEmplacement(this.registre, e)
@@ -536,16 +536,16 @@ export class Ailleurs {
         progres: (n, total) => this.h.message(`« ${classe.nom} » : classeur ${n} sur ${total}…`),
       })
       const souci = b.plusRiches.length + b.echecs.length + b.ailleurs.length > 0
-      if (!o.silencieux || souci) this.h.message(`« ${classe.nom} » est reliée au dossier « ${d.name} ». ${texteDuBilan(b, d.name)}`)
+      if (!o.silencieux || souci) this.h.message(`« ${classe.nom} » est relié au dossier « ${d.name} ». ${texteDuBilan(b, d.name)}`)
     } catch (e) {
-      this.h.message(`« ${classe.nom} » n'a pas pu être reliée : ${e instanceof Error ? e.message : 'erreur inconnue'}.`)
+      this.h.message(`« ${classe.nom} » n'a pas pu être relié : ${e instanceof Error ? e.message : 'erreur inconnue'}.`)
     } finally {
       this.occupe = false
       void this.h.bibliotheque.charger()
     }
   }
 
-  /** La classe reliée au Drive (connecté) : son dossier dans « MEM -
+  /** Le niveau relié au Drive (connecté) : son dossier dans « MEM -
    *  Classeurs », la copie de ses classeurs voulue sur ce Drive, et chacun
    *  copié tout de suite (ceux qui y sont déjà : rien) */
   private async relierDrive(classe: FicheDossier, compte: CompteDrive, o: { silencieux?: boolean } = {}) {
@@ -559,22 +559,22 @@ export class Ailleurs {
       const r = await this.copierLaClasse(classe, compte)
       const souci = r.ecartes.length + r.echecs.length > 0
       if (!o.silencieux || souci) {
-        const t = [`« ${classe.nom} » est reliée au ${nomDrive} (« ${compteDe(compte)?.classeurs ?? ''} › ${dd.nom} »).`]
+        const t = [`« ${classe.nom} » est relié au ${nomDrive} (« ${compteDe(compte)?.classeurs ?? ''} › ${dd.nom} »).`]
         t.push(r.copies ? `${pluriel(r.copies, 'classeur')} copié${r.copies > 1 ? 's' : ''}.` : 'Tout y était déjà.')
         if (r.ecartes.length) t.push(`${noms(r.ecartes)} : pas copié${r.ecartes.length > 1 ? 's' : ''} (ouvrez-le${r.ecartes.length > 1 ? 's' : ''} pour voir pourquoi).`)
         if (r.echecs.length) t.push(`${noms(r.echecs)} : ${r.raison}`)
         this.h.message(t.join(' '))
       }
     } catch (e) {
-      this.h.message(`« ${classe.nom} » n'a pas pu être reliée au ${nomDrive} : ${texteErreurDrive(e)}`)
+      this.h.message(`« ${classe.nom} » n'a pas pu être relié au ${nomDrive} : ${texteErreurDrive(e)}`)
     } finally {
       this.occupe = false
       void this.h.bibliotheque.charger()
     }
   }
 
-  /** Chaque classeur de la classe : sa copie voulue sur ce Drive, puis
-   *  copiée depuis sa base (dans le dossier de la classe) */
+  /** Chaque classeur du niveau : sa copie voulue sur ce Drive, puis
+   *  copiée depuis sa base (dans le dossier du niveau) */
   private async copierLaClasse(classe: FicheDossier, compte: CompteDrive): Promise<{ copies: number; ecartes: string[]; echecs: string[]; raison: string }> {
     const [fiches, dossiers] = await Promise.all([this.registre.classeurs(), this.registre.dossiers()])
     const l = classeursDeLaClasse(classe.id, fiches, dossiers)
@@ -605,7 +605,7 @@ export class Ailleurs {
   // =============================================================
 
   /** La liste en haut de la bibliothèque : à la racine, tous les dossiers
-   *  reliés ; dans un dossier, ceux de sa classe */
+   *  reliés ; dans un dossier, ceux de son niveau */
   private async majEmplacements() {
     const b = this.h.bibliotheque
     const [liste, fiches, dossiers] = await Promise.all([emplacements(this.registre), this.registre.classeurs().catch(() => []), this.registre.dossiers().catch(() => [])])
@@ -654,7 +654,7 @@ export class Ailleurs {
     s.hidden = false
   }
 
-  /** « Mettre à jour » : chaque classeur de la classe dans son dossier relié
+  /** « Mettre à jour » : chaque classeur du niveau dans son dossier relié
    *  (l'accord du navigateur, ou la connexion Google, dans ce clic) */
   private async mettreAJour(e: Emplacement, classe: FicheDossier) {
     if (this.occupe) return
@@ -685,8 +685,8 @@ export class Ailleurs {
     if (this.occupe) return
     await retirerEmplacement(this.registre, e.id)
     this.h.message(e.genre === 'drive'
-      ? `« ${classe.nom} » n'est plus reliée au Drive : ses classeurs y restent, et leur copie privée continue sur le Drive.`
-      : `« ${classe.nom} » n'est plus reliée à « ${e.nom} » : les fichiers y restent. Chaque classeur garde son enregistrement automatique (menu ⋯ du classeur pour l'arrêter).`)
+      ? `« ${classe.nom} » n'est plus relié au Drive : ses classeurs y restent, et leur copie privée continue sur le Drive.`
+      : `« ${classe.nom} » n'est plus relié à « ${e.nom} » : les fichiers y restent. Chaque classeur garde son enregistrement automatique (menu ⋯ du classeur pour l'arrêter).`)
     void this.majEmplacements()
   }
 }

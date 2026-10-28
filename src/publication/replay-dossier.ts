@@ -6,7 +6,7 @@
 // Le lien des élèves porte le code ; le relais du Drive retrouve le fichier
 // par ce code, où qu'il soit rangé (relais/relais-seances.gs). L'outil ne se
 // connecte pas à Google pour cela.
-// Le dossier proposé est celui du chapitre quand la classe est reliée à un
+// Le dossier proposé est celui du chapitre quand le niveau est relié à un
 // dossier de l'ordinateur (lot 7) ; un autre dossier choisi est retenu pour
 // ce classeur, avec le Drive des élèves (« mem », « lfb », « lyfel »).
 // Quand tout est retenu et qu'une séance du classeur a déjà été rangée, la
@@ -44,14 +44,14 @@ export async function deposerLeReplay(d: PoigneeDossier, nom: string, texte: str
 
 // ---------- Où : le dossier proposé, ou celui qu'on a choisi ----------
 
-/** Ce qui est retenu pour un classeur : le dossier choisi ; et pour sa classe
+/** Ce qui est retenu pour un classeur : le dossier choisi ; et pour son niveau
  *  (le dossier le plus haut de la bibliothèque), le Drive des élèves : on ne
- *  le choisit qu'une fois par classe */
+ *  le choisit qu'une fois par niveau */
 export interface ReglageReplay { poignee?: PoigneeDossier; compte?: string }
 const reglage = (idClasseur: string) => 'replay-dossier:' + idClasseur
 const reglageCompte = (classe: string) => 'replay-compte:' + classe
 
-/** La classe d'un classeur : son dossier le plus haut dans la bibliothèque (null : à la racine) */
+/** Le niveau d'un classeur : son dossier le plus haut dans la bibliothèque (null : à la racine) */
 async function classeDe(registre: Registre, idClasseur: string): Promise<string | null> {
   const f = await registre.classeur(idClasseur).catch(() => undefined)
   if (!f || f.dossier === null) return null
@@ -70,7 +70,7 @@ export async function lireReglage(registre: Registre, idClasseur: string): Promi
 
 export async function retenirReglage(registre: Registre, idClasseur: string, r: ReglageReplay): Promise<void> {
   const classe = r.compte ? await classeDe(registre, idClasseur) : null
-  // Le Drive se retient par classe ; un classeur à la racine de la bibliothèque
+  // Le Drive se retient par niveau ; un classeur à la racine de la bibliothèque
   // n'en a pas : il le garde avec lui, dans sa propre clé (lot 16)
   const compte = r.compte && !classe ? r.compte : undefined
   // Le dossier n'est réécrit que s'il vient d'être choisi ; ce qui était déjà
@@ -98,7 +98,7 @@ export function texteDuResume(o: { libelle: string; aujourdhui: boolean; pages: 
   }
 }
 
-/** Le dossier du chapitre quand la classe est reliée à un dossier de
+/** Le dossier du chapitre quand le niveau est relié à un dossier de
  *  l'ordinateur (sinon null) : son chemin pour l'affichage, et de quoi
  *  l'ouvrir (créé s'il manque, au moment de publier) */
 export interface Proposition { chemin: string; ouvrir(creer: boolean): Promise<PoigneeDossier | null> }
@@ -111,7 +111,7 @@ export async function dossierDuChapitre(registre: Registre, idClasseur: string):
     if (!e) return null
     const racine = await registre.reglage<PoigneeDossier>(reglagePoignee(e.id))
     if (!racine) return null
-    // Le même chemin que relierLesClasseurs : sous-dossiers de la classe, puis le dossier du chapitre
+    // Le même chemin que relierLesClasseurs : sous-dossiers du niveau, puis le dossier du chapitre
     const segments = [...sousDossiers(f.dossier, e.dossier, dossiers), nomSur(f.nom)].map(n => nomSur(n, { repli: 'Dossier' }))
     return {
       chemin: [racine.name, ...segments].join(' › '),
