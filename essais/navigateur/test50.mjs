@@ -63,7 +63,7 @@ await p.evaluate(async () => {
   const trait = (x, y) => { const pts = []; for (let i = 0; i < 25; i++) pts.push(i * 6, Math.sin(i / 3) * 30, 0.5); return { id: 'T' + Math.random().toString(36).slice(2), type: 'trait', x, y, z: Date.now(), auteur: t.moi, pts, couleur: '#1b2230', taille: 4, opacite: 1, pression: false } }
   for (let i = 0; i < 4; i++) { t.poser(a.page, trait(100 + i * 40, 100 + i * 50)); await attendre(40) }
 })
-const ouvrir = async () => { await p.click('button[title="Publier le replay pour les élèves"]'); await p.waitForSelector('.dialogue-publier[open]') }
+const ouvrir = async () => { await p.click('button[title="Publier le replay pour les élèves"]'); await p.waitForSelector('.dialogue-publier[open]'); await p.check('input[name="p-lieu"][value="google"]', { timeout: 2000 }).catch(() => {}) }
 await ouvrir()
 const etat = () => p.textContent('.p-etat')
 const dossiers = () => [...drive.values()].filter(d => d.mimeType === 'application/vnd.google-apps.folder').map(d => `${d.owner}:${d.name}`)

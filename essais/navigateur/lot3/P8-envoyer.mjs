@@ -495,7 +495,7 @@ if (faire('revue')) {
   r = await page.evaluate(REVUE)
   verifier('La revue de la page 2 : l\'arrivée est un geste, elle finit avec les objets arrivés', r.page === p2 && r.total === g1[1] && r.ids.length === 3, r)
   await fermerRevue()
-  await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]')
+  await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]'); await page.check('input[name="p-lieu"][value="google"]', { timeout: 2000 }).catch(() => {})
   const [ap] = await Promise.all([ctx.waitForEvent('page'), page.click('.p-apercu')])
   surveiller(ap, 'apercu')
   await ap.waitForSelector('.carte h1', { timeout: 8000 })

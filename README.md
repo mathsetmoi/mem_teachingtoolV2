@@ -1778,6 +1778,35 @@ jamais repris par l'autre. Les copies des classeurs (lot 4, voir « La copie
 sur le Drive ») vont dans un autre dossier privé du même Drive, « MEM -
 Sauvegardes » ou « LFB - Sauvegardes », marqué autrement : le relais ne les
 sert jamais.
+
+**Publier dans un dossier de l'ordinateur (lot 15).** Publier peut aussi
+poser le replay dans un dossier du PC, y compris un dossier de Google Drive
+pour ordinateur (Chrome et Edge), sans connexion Google : le dossier du
+chapitre quand la classe est reliée à un dossier de l'ordinateur (son chemin
+est affiché), sinon un dossier choisi avec « Choisir… » (retenu pour ce
+classeur). Le fichier s'appelle « Titre [code].mem » : le titre se modifie, le
+code de 8 caractères (a-z, 0-9) est ajouté par l'outil, et le fichier peut être
+renommé dans l'Explorateur tant que le code reste dans le nom. Republier garde
+le même code (donc le même lien) et remplace le fichier. Le lien est
+`revoir.html?r=mem|lfb|lyfel&code=…` ; Google Drive pour ordinateur envoie le
+fichier, et le relais (version 4) le retrouve par son code, n'importe où dans
+le Drive du compte, en plus de l'ancien dossier « Replay séances » (les anciens
+liens `?id=` marchent toujours). Il ne sert qu'un `.mem` qui est un replay,
+appartenant au compte, hors corbeille ; jamais un `.memc`. Après Publier, le
+lien s'affiche tout de suite (« Copier pour Pronote », « Tester le lien ») et
+l'outil interroge le relais toutes les 5 secondes, 10 minutes au plus :
+« En attente de Google Drive… » puis « ✓ Le replay est en ligne ». Un relais
+qui n'est pas à jour est signalé avant d'écrire. Trois Drive, donc trois
+relais : MEM, LFB et LyFEL (le dernier sert seulement aux replays ; son adresse
+`/exec` reste à ajouter dans `RELAIS_REPLAY`, `src/publication/comptes.ts`).
+Le Drive des élèves ne se demande qu'une fois par classe (« Changer »). La
+version hors ligne écrit le fichier mais n'affiche pas de lien. Après la mise
+à jour de `relais/relais-seances.gs`, chaque relais se redéploie une fois
+(Gérer les déploiements › crayon › Nouvelle version). L'ancien envoi par
+connexion Google reste choisi par « Sur le Drive, en me connectant à Google ».
+Réglages ajoutés (clés nouvelles, rien d'existant changé) :
+`replay-dossier:<classeur>` et `replay-compte:<classe>`.
+
 Les noms des dossiers sont à la fois dans `src/publication/comptes.ts` et dans
 le relais : un test vérifie qu'ils concordent. Installer un relais prend cinq
 minutes (instructions en tête du script) ; le mettre à jour (Gérer les

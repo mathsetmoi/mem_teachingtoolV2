@@ -26,7 +26,7 @@ import { pointsPoses, traitEnCours } from './main-levee'
 import type { EtatInstruments, GesteAuxInstruments } from './instruments-film'
 import { dansLOrdre } from './instruments-film'
 import type { Figure } from '../types'
-import { lireParLeRelais } from './relais'
+import { lireParLeRelais, lireParSonCode } from './relais'
 import { ALLURES } from './rythme'
 
 const mmss = (ms: number) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
@@ -140,9 +140,10 @@ rendu.pixels = src => {
 
 // ---------- Démarrage : d'où vient la séance ? ----------
 async function demarrer() {
-  const cle = params.get('r'), id = params.get('id')
+  const cle = params.get('r'), id = params.get('id'), code = params.get('code')
   if (location.hash === '#apercu' && window.opener) return attendreApercu()
   if (cle && id) return charger(() => lireParLeRelais(cle, id))
+  if (cle && code) return charger(() => lireParSonCode(cle, code))
   montrerFichier()
 }
 

@@ -41,7 +41,7 @@ async function scenario(nom, organiser) {
   await organiser(page)
   await page.waitForTimeout(300)
   // Publier
-  await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]')
+  await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]'); await page.check('input[name="p-lieu"][value="google"]', { timeout: 2000 }).catch(() => {})
   const d = await page.evaluate(() => {
     const s = document.querySelector('.dialogue-publier[open] .p-seance')
     return { choisie: s.options[s.selectedIndex].textContent, options: [...s.options].map(o => o.textContent).filter(t => /geste/.test(t)), pages: [...document.querySelectorAll('.p-pages input')].map(i => i.parentElement.textContent + (i.checked ? ' (cochée)' : '')) }

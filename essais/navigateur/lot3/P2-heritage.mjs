@@ -160,7 +160,7 @@ await fermerRevue()
 
 // =============== 3. Le film élève ===============
 async function lirePublier(decocher = []) {
-  await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]')
+  await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]'); await page.check('input[name="p-lieu"][value="google"]', { timeout: 2000 }).catch(() => {})
   const cases = await page.$$eval('.p-pages input', l => l.map(i => ({ v: i.value, c: i.checked })))
   for (const v of decocher) await page.uncheck(`.p-pages input[value="${v}"]`)
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('.p-fichier')])

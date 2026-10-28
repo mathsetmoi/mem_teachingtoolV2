@@ -16,7 +16,7 @@ const RACINE = join(__dirname, '..')
 const SOURCE_RELAIS = readFileSync(join(RACINE, 'relais/relais-seances.gs'), 'utf8')
 
 interface FauxDossier { nom: string; proprietaire: string; corbeille?: boolean }
-interface FauxFichier { nom: string; contenu: string; parents: FauxDossier[]; corbeille?: boolean }
+interface FauxFichier { nom: string; contenu: string; parents: FauxDossier[]; corbeille?: boolean; proprietaire?: string; modifie?: number }
 
 /** Le relais, chargé avec un faux Drive dont `moi` est le compte */
 function relais(fichiers: Record<string, FauxFichier>, moi = 'prof@exemple.fr') {
@@ -33,6 +33,14 @@ function relais(fichiers: Record<string, FauxFichier>, moi = 'prof@exemple.fr') 
         const f = fichiers[id]
         if (!f) throw new Error('introuvable')
         return { getName: () => f.nom, isTrashed: () => !!f.corbeille, getParents: () => iterer(f.parents.map(dossier)), getBlob: () => ({ getDataAsString: () => f.contenu }) }
+      },
+      // La recherche du Drive : « title contains 'code' and trashed = false »
+      searchFiles(requete: string) {
+        const mot = /contains '([^']+)'/.exec(requete)?.[1] ?? ''
+        return iterer(Object.values(fichiers).filter(f => f.nom.includes(mot) && !f.corbeille).map(f => ({
+          getName: () => f.nom, isTrashed: () => !!f.corbeille, getOwner: () => ({ getEmail: () => f.proprietaire ?? moi }),
+          getLastUpdated: () => new Date(f.modifie ?? 0), getBlob: () => ({ getDataAsString: () => f.contenu }),
+        })))
       },
       getFoldersByName: (nom: string) => iterer(Object.values(fichiers).flatMap(f => f.parents).filter(d => d.nom === nom).map(dossier)),
     },
@@ -149,8 +157,61 @@ describe('le relais ne sert que les replays rangés au bon endroit', () => {
     const r = relais({ [ID]: { nom: 'Séance.mem', contenu: '', parents: [mem] } }, MOI)
     expect(JSON.parse(r({ id: '../x' })).erreur).toMatch(/incomplet/)
     const ping = r({ ping: '1' })
-    expect(JSON.parse(ping)).toMatchObject({ relais: 'MEM Replay', version: 3, pret: true, dossier: 'MEM - Replay séances' })
+    expect(JSON.parse(ping)).toMatchObject({ relais: 'MEM Replay', version: 4, pret: true, dossier: 'MEM - Replay séances' })
     expect(ping).not.toContain(MOI)
+  })
+})
+
+describe('le relais sert aussi un replay posé dans un dossier du Drive, par son code (version 4)', () => {
+  const MOI = 'prof@exemple.fr'
+  const CODE = 'k7f3q9xa'
+  let replay = ''
+  const servir = async (fichiers: Record<string, FauxFichier>, code: string) => {
+    replay ||= await ecrireFilm(filmMinimal())
+    for (const f of Object.values(fichiers)) if (f.contenu === 'REPLAY') f.contenu = replay
+    return relais(fichiers, MOI)({ code })
+  }
+  const chapitre: FauxDossier = { nom: '02 - Limites de suites', proprietaire: MOI }
+
+  it('sert le fichier « Titre [code].mem » de n’importe quel dossier', async () => {
+    expect(await servir({ a1: { nom: `Mercredi 7 octobre 2026 [${CODE}].mem`, contenu: 'REPLAY', parents: [chapitre] } }, CODE)).toBe(replay)
+  })
+
+  it('prend le plus récent quand le titre a changé à la republication', async () => {
+    const vieux = JSON.stringify({ format: 'mem-revoir', v: 1, titre: 'Ancien' })
+    const r = await servir({
+      a1: { nom: `Ancien titre [${CODE}].mem`, contenu: vieux, parents: [chapitre], modifie: 1 },
+      a2: { nom: `Nouveau titre [${CODE}].mem`, contenu: 'REPLAY', parents: [chapitre], modifie: 2 },
+    }, CODE)
+    expect(r).toBe(replay)
+  })
+
+  const refus: [string, FauxFichier][] = [
+    ['un autre code', { nom: 'Séance [zzzzzzzz].mem', contenu: 'REPLAY', parents: [chapitre] }],
+    ['un code sans crochets', { nom: `Séance ${CODE}.mem`, contenu: 'REPLAY', parents: [chapitre] }],
+    ['une autre extension', { nom: `Séance [${CODE}].json`, contenu: 'REPLAY', parents: [chapitre] }],
+    ['un .memc', { nom: `Séance [${CODE}].memc`, contenu: 'REPLAY', parents: [chapitre] }],
+    ['un fichier d’un autre compte', { nom: `Séance [${CODE}].mem`, contenu: 'REPLAY', parents: [chapitre], proprietaire: 'autre@exemple.fr' }],
+    ['un fichier à la corbeille', { nom: `Séance [${CODE}].mem`, contenu: 'REPLAY', parents: [chapitre], corbeille: true }],
+    ['un .mem qui n’est pas un replay', { nom: `Notes [${CODE}].mem`, contenu: '{"secret":"bulletins"}', parents: [chapitre] }],
+  ]
+  for (const [cas, fichier] of refus) {
+    it(`refuse ${cas}`, async () => {
+      expect(JSON.parse(await servir({ a1: fichier }, CODE)).erreur).toMatch(/introuvable/)
+    })
+  }
+
+  it('refuse un code mal formé, sans interroger le Drive', async () => {
+    for (const mauvais of ['', 'abc', "k7f3q9x' or 1=1", 'K7F3Q9XA', 'k7f3q9xaa']) {
+      expect(JSON.parse(await servir({}, mauvais)).erreur, mauvais).toMatch(/incomplet/)
+    }
+  })
+
+  it('l’identifiant d’avant marche comme avant (les liens déjà donnés)', async () => {
+    const ID = 'abcdefghij12345'
+    const mem: FauxDossier = { nom: 'MEM - Replay séances', proprietaire: MOI }
+    replay ||= await ecrireFilm(filmMinimal())
+    expect(relais({ [ID]: { nom: 'Séance.mem', contenu: replay, parents: [mem] } }, MOI)({ id: ID })).toBe(replay)
   })
 })
 

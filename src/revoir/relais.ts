@@ -1,15 +1,25 @@
 // Demander une séance au relais du compte qui l'a publiée.
 // Le relais répond le fichier tel quel, ou { erreur } avec une phrase pour l'élève.
-import { compteDe, relaisValable } from '../publication/comptes'
+import { FORME_CODE, relaisDe, relaisValable } from '../publication/comptes'
 import { ErreurFilm } from './format'
 
 /** Le texte du fichier séance, ou une ErreurFilm qu'on peut montrer telle quelle */
-export async function lireParLeRelais(cle: string, id: string, adresse = compteDe(cle)?.relais ?? ''): Promise<unknown> {
+export async function lireParLeRelais(cle: string, id: string, adresse = relaisDe(cle)?.relais ?? ''): Promise<unknown> {
   if (!/^[A-Za-z0-9_-]{10,}$/.test(id)) throw new ErreurFilm('Ce lien est incomplet : demandez-en un nouveau à votre enseignant.')
+  return demander(cle, 'id', id, adresse)
+}
+
+/** Le replay rangé dans un dossier du Drive, demandé par son code (lien « ?code=… ») */
+export async function lireParSonCode(cle: string, code: string, adresse = relaisDe(cle)?.relais ?? ''): Promise<unknown> {
+  if (!FORME_CODE.test(code)) throw new ErreurFilm('Ce lien est incomplet : demandez-en un nouveau à votre enseignant.')
+  return demander(cle, 'code', code, adresse)
+}
+
+async function demander(cle: string, parametre: 'id' | 'code', valeur: string, adresse: string): Promise<unknown> {
   if (!adresse) throw new ErreurFilm(`Ce lien désigne un compte que ce site ne connaît pas encore (« ${cle} »). Prévenez votre enseignant.`)
   if (!relaisValable(adresse)) throw new ErreurFilm('L\'adresse du relais de ce compte est mal réglée. Prévenez votre enseignant.')
   const u = new URL(adresse)
-  u.searchParams.set('id', id)
+  u.searchParams.set(parametre, valeur)
   let r: Response
   try {
     r = await fetch(u.toString(), { cache: 'no-store', credentials: 'omit', redirect: 'follow' })

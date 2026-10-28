@@ -274,7 +274,7 @@ async function cliquerAnnulerDuMessage(page) { await page.click('.toast.visible 
     return t
   }
   async function lirePublier() {
-    await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]')
+    await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]'); await page.check('input[name="p-lieu"][value="google"]', { timeout: 2000 }).catch(() => {})
     const options = await page.$$eval('.p-seance option', l => l.map(o => o.textContent.replace(/[  ]/g, ' ')))
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('.p-fichier')])
     const contenu = readFileSync(await dl.path(), 'utf8')
@@ -309,7 +309,7 @@ async function cliquerAnnulerDuMessage(page) { await page.click('.toast.visible 
   const gestes = s => Number((s.match(/· (\d+) geste/) || [])[1])
   verifier('… « · N gestes » de la séance : un de plus', gestes(publierC.options[0]) === gestes(publierA.options[0]) + 1, JSON.stringify(publierC.options))
   // « Voir comme un élève »
-  await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]')
+  await page.click('button[title="Publier le replay pour les élèves"]'); await page.waitForSelector('.dialogue-publier[open]'); await page.check('input[name="p-lieu"][value="google"]', { timeout: 2000 }).catch(() => {})
   const [ap] = await Promise.all([ctx.waitForEvent('page'), page.click('.p-apercu')])
   surveiller(ap, 'apercu')
   await ap.waitForSelector('.carte h1', { timeout: 8000 })

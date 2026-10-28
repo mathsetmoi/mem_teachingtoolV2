@@ -38,16 +38,19 @@ export interface PoigneeDossier {
   queryPermission?(o: { mode: 'readwrite' }): Promise<PermissionState>
   requestPermission?(o: { mode: 'readwrite' }): Promise<PermissionState>
   isSameEntry?(autre: unknown): Promise<boolean>
+  /** Retirer un fichier du dossier (le replay d'avant, sous un autre titre) */
+  removeEntry?(nom: string): Promise<void>
 }
 
 /** Ce navigateur sait choisir un dossier et y écrire (Chrome, Edge) */
 export const choisitUnDossier = () => typeof (window as unknown as { showDirectoryPicker?: unknown }).showDirectoryPicker === 'function'
 
-/** Le choix du dossier, dans le clic ; null : on a renoncé */
-export async function choisirUnDossier(): Promise<PoigneeDossier | null> {
+/** Le choix du dossier, dans le clic ; null : on a renoncé. `id` : le navigateur
+ *  rouvre le dernier dossier choisi sous ce nom (un par usage). */
+export async function choisirUnDossier(id = 'mem-classes'): Promise<PoigneeDossier | null> {
   const choisir = (window as unknown as { showDirectoryPicker?: (o: unknown) => Promise<PoigneeDossier> }).showDirectoryPicker
   if (typeof choisir !== 'function') return null
-  try { return await choisir.call(window, { id: 'mem-classes', mode: 'readwrite' }) } catch (e) {
+  try { return await choisir.call(window, { id, mode: 'readwrite' }) } catch (e) {
     if ((e as { name?: string } | null)?.name === 'AbortError') return null
     throw e
   }
