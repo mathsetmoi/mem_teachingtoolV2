@@ -1,13 +1,13 @@
 // =============================================================
-// MES EMPLACEMENTS : LES DOSSIERS DE CLASSE RELIÉS (lot 7)
-// Un dossier de classe de la bibliothèque peut être RELIÉ à un vrai
+// MES EMPLACEMENTS : LES DOSSIERS DE NIVEAU RELIÉS (lot 7)
+// Un dossier de niveau de la bibliothèque peut être RELIÉ à un vrai
 // dossier, où chacun de ses classeurs (un chapitre) a son fichier .memc,
 // tenu à jour tout seul (choix 1B du professeur) :
 // - sur l'ordinateur (Chrome, Edge : showDirectoryPicker) : le dossier
-//   choisi (la clé USB, G:\Mon Drive…) ; chaque classeur de la classe y
+//   choisi (la clé USB, G:\Mon Drive…) ; chaque classeur du niveau y
 //   prend son fichier comme fichier de la clé (cle.ts), qui l'écrit peu
 //   après chaque changement quand il est ouvert ;
-// - sur le Drive (version en ligne) : le sous-dossier de la classe dans
+// - sur le Drive (version en ligne) : le sous-dossier du niveau dans
 //   « MEM - Classeurs » (choix 2A), où va la copie sur le Drive de ses
 //   classeurs (copie-drive.ts, publication/drive.ts) au lieu du dossier
 //   des sauvegardes.
@@ -15,8 +15,8 @@
 // une clé nouvelle : aucune clé existante ne change) ; le dossier de
 // l'ordinateur (sa poignée) dans le réglage 'emplacement-poignee:<id>', à
 // part des fichiers de la clé (le magasin 'poignees' ne garde que ceux des
-// classeurs). Une classe peut avoir un emplacement de chaque sorte ; ses
-// sous-dossiers suivent la classe.
+// classeurs). Un niveau peut avoir un emplacement de chaque sorte ; ses
+// sous-dossiers suivent le niveau.
 //
 // Le début de ce fichier est pur (sans IndexedDB) : il se teste sous Node.
 // =============================================================
@@ -27,15 +27,15 @@ import type { Registre } from './registre'
 
 export type GenreEmplacement = 'ordinateur' | 'drive'
 
-/** Un emplacement : un dossier de classe de la bibliothèque relié à un
+/** Un emplacement : un dossier de niveau de la bibliothèque relié à un
  *  dossier de l'ordinateur ou du Drive */
 export interface Emplacement {
   id: string
   genre: GenreEmplacement
-  /** Le dossier de la bibliothèque relié (la classe) */
+  /** Le dossier de la bibliothèque relié (le niveau) */
   dossier: string
   /** Le nom du dossier relié : celui choisi sur l'ordinateur ; sur le
-   *  Drive, celui du sous-dossier de la classe */
+   *  Drive, celui du sous-dossier du niveau */
   nom: string
   /** Le Drive (seulement pour le Drive) */
   compte?: CompteDrive
@@ -66,7 +66,7 @@ export function lireEmplacements(x: unknown): Emplacement[] {
 
 /** L'emplacement de cette sorte qui vaut pour un classeur rangé dans
  *  `dossierId` : celui de son dossier, sinon du plus proche dossier parent
- *  relié (un sous-dossier suit sa classe) ; null : aucun. Un dossier dans la
+ *  relié (un sous-dossier suit son niveau) ; null : aucun. Un dossier dans la
  *  corbeille ne relie plus rien. */
 export function emplacementDe(dossierId: string | null, genre: GenreEmplacement, liste: readonly Emplacement[], dossiers: ReadonlyMap<string, FicheDossier> | readonly FicheDossier[]): Emplacement | null {
   const chaine = remontee(dossierId, dossiers)
@@ -78,7 +78,7 @@ export function emplacementDe(dossierId: string | null, genre: GenreEmplacement,
   return null
 }
 
-/** Les classeurs visibles d'une classe : ceux de son dossier et de ses
+/** Les classeurs visibles d'un niveau : ceux de son dossier et de ses
  *  sous-dossiers, par nom */
 export function classeursDeLaClasse(dossierId: string, fiches: readonly FicheClasseur[], dossiers: readonly FicheDossier[]): FicheClasseur[] {
   const dedans = new Set([dossierId, ...descendants(dossierId, dossiers).map(d => d.id)])
@@ -86,8 +86,8 @@ export function classeursDeLaClasse(dossierId: string, fiches: readonly FicheCla
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { numeric: true }) || (a.id < b.id ? -1 : 1))
 }
 
-/** Les noms des sous-dossiers entre la classe et le dossier d'un classeur
- *  (vide : il est dans la classe elle-même) : le même rangement sur
+/** Les noms des sous-dossiers entre le niveau et le dossier d'un classeur
+ *  (vide : il est dans le niveau lui-même) : le même rangement sur
  *  l'ordinateur */
 export function sousDossiers(dossierId: string | null, classe: string, dossiers: readonly FicheDossier[]): string[] {
   const chaine = remontee(dossierId, dossiers)
@@ -112,7 +112,7 @@ export async function emplacements(registre: Registre): Promise<Emplacement[]> {
   return lireEmplacements(await registre.reglage(REGLAGE_EMPLACEMENTS).catch(() => undefined))
 }
 
-/** Ajoute (ou remplace : la même classe, la même sorte) un emplacement */
+/** Ajoute (ou remplace : le même niveau, la même sorte) un emplacement */
 export async function garderEmplacement(registre: Registre, e: Emplacement): Promise<void> {
   const tous = await emplacements(registre)
   const remplaces = tous.filter(x => x.dossier === e.dossier && x.genre === e.genre && x.id !== e.id)

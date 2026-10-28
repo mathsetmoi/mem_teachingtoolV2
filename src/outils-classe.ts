@@ -16,7 +16,8 @@
 //   navigateur : rien à télécharger, la version hors ligne sonne aussi). Le
 //   haut-parleur coupe le son ; le choix reste sur cet appareil.
 // - Le TIRAGE AU SORT : la liste des élèves de la classe (le dossier de
-//   classe du classeur), un prénom par ligne. Un élève tiré ne revient pas
+//   niveau du classeur : une même liste pour tout le niveau), un prénom par
+//   ligne. Un élève tiré ne revient pas
 //   avant que toute la classe soit passée. La liste reste dans ce
 //   navigateur (sa mémoire locale), jamais dans le classeur ni ses fichiers.
 //
@@ -98,7 +99,7 @@ export interface HoteOutils {
   basculerLaser(): void
   /** L'aide et les raccourcis */
   ouvrirAide(): void
-  /** La classe du classeur ouvert (son dossier de classe), si elle est connue */
+  /** Le niveau du classeur ouvert (son dossier de niveau), s'il est connu */
   classe(): Promise<{ id: string; nom: string } | null>
   message(texte: string): void
   /** Pose une calculatrice NumWorks sur la page (voir calculatrice/) */

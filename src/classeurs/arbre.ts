@@ -1,14 +1,16 @@
 // =============================================================
 // L'ARBRE DE LA BIBLIOTHÈQUE (un modèle pur)
-// Les dossiers imbriqués et colorés, les étiquettes de classe, le tri.
-// Le professeur range PAR CLASSE : un dossier « 5e B », puis un classeur par
-// chapitre (« Symétrie centrale ») ; le rangement par chapitre reste
-// possible (un dossier « Symétrie », un classeur par classe), et les
-// étiquettes de classe retrouvent alors les classeurs d'une classe d'un
-// seul geste.
+// Les dossiers imbriqués et colorés, les étiquettes de niveau, le tri.
+// Le professeur range PAR NIVEAU (« 5ème », « 2nde » : un dossier = un niveau,
+// pas une classe 5A / 5B, décision du 19 octobre 2026) : un dossier « 5ème »,
+// puis un classeur par chapitre (« Symétrie centrale ») ; le rangement par
+// chapitre reste possible (un dossier « Symétrie », un classeur par niveau),
+// et les étiquettes de niveau retrouvent alors les classeurs d'un niveau d'un
+// seul geste. Les identifiants du code (rangDeClasse, etiquette…) gardent
+// leur nom : seuls les textes disent « niveau ».
 //
-// Une étiquette de classe est PROPRE à un classeur (au plus 3, posées à la
-// main), ou HÉRITÉE du plus proche dossier de classe qui le contient.
+// Une étiquette de niveau est PROPRE à un classeur (au plus 3, posées à la
+// main), ou HÉRITÉE du plus proche dossier de niveau qui le contient.
 // L'héritée est calculée ici, jamais écrite : un classeur glissé dans
 // « 5e B » est aussitôt dans le filtre « 5e B », et en sort s'il en sort.
 //
@@ -90,8 +92,8 @@ export function nomLibre(nom: string, existants: Iterable<string>, max = LONGUEU
   return avec(10_000)
 }
 
-// ---------- Les classes ----------
-/** Le début d'un nom de classe, et son rang dans l'école (pour ranger les
+// ---------- Les niveaux ----------
+/** Le début d'un nom de niveau, et son rang dans l'école (pour ranger les
  *  étiquettes de la 6e à la terminale) : un chiffre de 3 à 6 suivi de e, è,
  *  ème ou eme ; 2nde, 2de, seconde ; 1re, 1ère, première ; Tle, Term,
  *  terminale ; CP, CE1, CE2, CM1, CM2 ; BTS, CAP */
@@ -104,12 +106,12 @@ const DEBUTS: { motif: RegExp; rang: (m: RegExpExecArray) => number }[] = [
   { motif: /^(?:bts|cap)/iu, rang: m => m[0].toLowerCase() === 'bts' ? 12 : 13 },
 ]
 
-/** Le rang d'une classe dans l'école (CP 0… 6e 5, 5e 6… 3e 8, 2nde 9, 1re
- *  10, Tle 11, BTS, CAP), ou null : ce nom ne ressemble pas à une classe. Au
+/** Le rang d'un niveau dans l'école (CP 0… 6e 5, 5e 6… 3e 8, 2nde 9, 1re
+ *  10, Tle 11, BTS, CAP), ou null : ce nom ne ressemble pas à un niveau. Au
  *  début du nom seulement, sans tenir compte de la casse ; après, rien, un
  *  signe qui n'est pas une lettre (« 5e B », « 5e2 », « 2nde-3 »), ou une
  *  capitale seule (« 5eB ») : « 3 exercices », « Capitales », « Termes » ou
- *  « Premières notions » ne sont pas des classes. */
+ *  « Premières notions » ne sont pas des niveaux. */
 export function rangDeClasse(nom: string): number | null {
   const t = String(nom ?? '').normalize('NFC').trim()
   for (const d of DEBUTS) {
@@ -121,8 +123,9 @@ export function rangDeClasse(nom: string): number | null {
   return null
 }
 
-/** Le nom ressemble-t-il à une classe (« 5e B », « 2nde 3 », « Tle S ») ?
- *  Alors « Nouveau dossier » coche d'office « Dossier d'une classe ». */
+/** Le nom ressemble-t-il à un niveau (« 5ème », « 2nde », « 1re spé », « Tle
+ *  spé » ; aussi « 5e B ») ? Alors « Nouveau dossier » coche d'office « Dossier
+ *  d'un niveau », et la fenêtre « Bonjour ! » dit « en 5ème » (seances-vue.ts). */
 export const ressembleAUneClasse = (nom: string) => rangDeClasse(nom) !== null
 
 // ---------- Les dossiers ----------
@@ -233,20 +236,20 @@ export function libelleDossier(c: { classeurs: number; dossiers: number }): stri
 }
 
 /** Ce que lit le lecteur d'écran sur la carte d'un dossier : « 5e B,
- *  dossier bleu, dossier d'une classe, 4 classeurs, 2 dossiers » */
+ *  dossier bleu, dossier d'un niveau, 4 classeurs, 2 dossiers » */
 export function texteLecteurDossier(d: FicheDossier, c: { classeurs: number; dossiers: number }): string {
   const parts = [d.nom, `dossier ${couleurDe(d.couleur).nom.toLowerCase()}`]
-  if (d.etiquette) parts.push(cleDe(d.etiquette) === cleDe(d.nom) ? 'dossier d\'une classe' : `dossier de la classe ${d.etiquette}`)
+  if (d.etiquette) parts.push(cleDe(d.etiquette) === cleDe(d.nom) ? 'dossier d\'un niveau' : `dossier du niveau ${d.etiquette}`)
   const l = libelleDossier(c)
   parts.push(l === 'Vide' ? 'vide' : l.replace(' · ', ', '))
   return parts.join(', ')
 }
 
-// ---------- Les étiquettes de classe ----------
-/** Une étiquette de classe d'un classeur ; dossier : héritée de ce dossier */
+// ---------- Les étiquettes de niveau ----------
+/** Une étiquette de niveau d'un classeur ; dossier : héritée de ce dossier */
 export interface Etiquette { nom: string; dossier?: FicheDossier }
 
-/** L'étiquette du plus proche dossier de classe (le dossier lui-même
+/** L'étiquette du plus proche dossier de niveau (le dossier lui-même
  *  d'abord), en remontant ; null s'il n'y en a pas */
 export function etiquetteHeritee(dossierId: string | null, dossiers: Dossiers): { nom: string; dossier: FicheDossier } | null {
   for (const d of remontee(dossierId, dossiers)) {
@@ -277,8 +280,8 @@ export function porte(f: FicheClasseur, etiquette: string, dossiers: Dossiers): 
   return etiquettesEffectives(f, dossiers).some(e => cleDe(e.nom) === k)
 }
 
-/** Ordre des étiquettes : celui des classes dans l'école (de la 6e à la
- *  terminale, « 5e A » avant « 5e B »), puis les autres par nom */
+/** Ordre des étiquettes : celui des niveaux dans l'école (de la 6e à la
+ *  terminale, « 5ème » avant « 4ème »), puis les autres par nom */
 export function comparerEtiquettes(a: string, b: string): number {
   const ra = rangDeClasse(a) ?? 99, rb = rangDeClasse(b) ?? 99
   return (ra - rb) || COLLATEUR.compare(a, b)
@@ -286,9 +289,9 @@ export function comparerEtiquettes(a: string, b: string): number {
 
 /** Les étiquettes effectives de ces classeurs (les visibles), chacune une
  *  fois, avec le nombre de classeurs qui la portent, dans l'ordre des
- *  classes : la rangée du filtre, « Classes : [Toutes] [5e B · 4] [2nde 3 ·
+ *  niveaux : la rangée du filtre, « Niveaux : [Tous] [5ème · 4] [2nde ·
  *  2] ». « 5e B » et « 5e b » sont la même ; elle s'écrit comme son dossier
- *  de classe l'écrit, sinon comme le plus de classeurs l'écrivent (l'ordre
+ *  de niveau l'écrit, sinon comme le plus de classeurs l'écrivent (l'ordre
  *  des fiches ne la change pas). */
 export function etiquettesDe(fiches: readonly FicheClasseur[], dossiers: Dossiers): { nom: string; n: number }[] {
   const carte = enCarte(dossiers)
@@ -310,7 +313,7 @@ export function etiquettesDe(fiches: readonly FicheClasseur[], dossiers: Dossier
   }).sort((a, b) => comparerEtiquettes(a.nom, b.nom))
 }
 
-/** Ajoute une étiquette propre (« Étiquettes de classe… ») : rien de
+/** Ajoute une étiquette propre (« Étiquettes de niveau… ») : rien de
  *  changé, avec la raison, pour un texte vide, un double (de ses étiquettes
  *  ou de celle qu'il hérite), ou s'il en a déjà 3 */
 export function ajouterEtiquette(propres: readonly string[], texte: string, heritee?: string | null): { etiquettes: string[]; ajoutee?: string; refus?: 'vide' | 'double' | 'plein' } {
@@ -323,7 +326,7 @@ export function ajouterEtiquette(propres: readonly string[], texte: string, heri
   return { etiquettes: [...l, nom], ajoutee: nom }
 }
 
-/** L'étiquette d'un dossier de classe : son nom, coupé à 20 caractères */
+/** L'étiquette d'un dossier de niveau : son nom, coupé à 20 caractères */
 export const etiquetteDuNom = (nom: string) => nomDEtiquette(nom)
 
 // ---------- Le tri ----------

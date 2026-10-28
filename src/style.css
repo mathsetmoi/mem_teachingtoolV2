@@ -83,6 +83,8 @@ button, select, input { font: inherit; color: inherit; }
 .barre-zoom { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); align-items: center; }
 
 .filet { width: 70%; height: 0; border: 0; border-top: 1px solid var(--filet); margin: 6px 0; }
+/* Le petit filet vertical de la barre du haut, entre Rétablir et ‹ (gains rapides, lot 16) */
+.filet-vertical { flex: none; width: 1px; height: 24px; border: 0; margin: 0 4px; background: var(--filet); }
 
 .bouton {
   position: relative; isolation: isolate;
@@ -132,11 +134,24 @@ button, select, input { font: inherit; color: inherit; }
   transition: box-shadow 0.12s;
 }
 .pastille.actif::after { box-shadow: 0 0 0 2px var(--chrome), 0 0 0 4px var(--teinte); }
+/* Dans la barre des outils (gains rapides, lot 16) : les quatre couleurs en
+   grille 2 × 2, Noir, Bleu / Rouge, Vert, des cases de 34 × 34 (le rond
+   garde ses 20 px) ; sur un écran qu'on touche, 44 × 44 (voir plus bas) */
+.grille-pastilles { display: grid; grid-template-columns: repeat(2, 34px); }
+.grille-pastilles > .pastille { width: 34px; height: 34px; }
 
-.tailles { display: flex; flex-direction: column; }
+/* L'épaisseur du trait : les trois choix (le menu de l'épaisseur, le menu
+   « Couleur » du téléphone, le panneau d'une figure), un trait de 4, 8 ou
+   12 px (--d) ; celui qu'on tient, cerné de surligneur */
 .taille { width: 44px; height: 30px; border: 0; background: transparent; cursor: pointer; display: grid; place-items: center; border-radius: 8px; }
 .taille span { width: 24px; height: var(--d); border-radius: 99px; background: var(--encre-douce); }
 .taille.actif span { background: var(--encre); box-shadow: 0 0 0 3px var(--surligneur); }
+/* Le bouton de l'épaisseur, dans la barre des outils (gains rapides, lot
+   16) : un seul, 44 × 44, qui montre l'épaisseur de l'outil en main (le
+   même trait) et ouvre le menu des trois, à droite de la barre */
+.bouton-epaisseur > .trait { width: 24px; height: var(--d, 4px); border-radius: 99px; background: var(--encre); }
+.menu-flottant.menu-epaisseur { min-width: 0; }
+.grille-epaisseur { display: grid; grid-template-columns: repeat(3, 44px); gap: 4px; }
 
 .rang { min-width: 56px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* Le compteur est un bouton : il ouvre la trieuse des pages (Maj + P) */
@@ -375,10 +390,11 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
    - la barre des outils, en bas en portrait (sur toute la largeur, en
      rangée), à gauche en paysage (en colonne), n'a que sept boutons : Stylo,
      Gomme, Sélection, Couleur, Annuler, Rétablir, Autres outils (.seulement-
-     telephone pour les deux nouveaux ; l'ordre est celui de la propriété
-     order, le document garde celui du poste de la classe) ; les autres
-     outils, les pastilles, les tailles, le doigt, la poubelle de la
-     sélection vivent dans les menus « Couleur » et « Autres outils » ;
+     telephone pour « Couleur » et « Autres outils » ; Annuler et Rétablir,
+     ceux de la barre du haut, y sont déplacés par UI.placerHistorique, entre
+     les deux : le document a l'ordre de l'écran) ; les autres outils, les
+     pastilles, l'épaisseur, le doigt, la poubelle de la sélection vivent
+     dans les menus « Couleur » et « Autres outils » ;
    - la barre du zoom est cachée (le pincement zoome ; « 100 % » et « Tout
      voir » sont dans « Plus ») ; « Revenir au contenu » et le message se
      posent au-dessus de la barre du bas (--haut-barre-bas, mesuré par UI ;
@@ -406,9 +422,6 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
     left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom));
     flex-direction: row; justify-content: space-between; max-height: none; overflow: visible;
   }
-  .barre-outils > .bouton-couleur { order: 1; }
-  .barre-outils > .historique { order: 2; }
-  .barre-outils > .autres-outils { order: 3; }
 }
 @media (max-width: 359px) {
   .barre-outils { left: max(4px, env(safe-area-inset-left)); right: max(4px, env(safe-area-inset-right)); bottom: max(4px, env(safe-area-inset-bottom)); padding: 1px; gap: 0; }
@@ -432,27 +445,28 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--bleu); out
   .barre-outils { left: max(4px, env(safe-area-inset-left)); padding: 1px; gap: 0; max-height: calc(100% - 8px); }
 }
 
-/* ---------- Les couleurs et les tailles sur un écran qu'on touche ----------
+/* ---------- Les couleurs et l'épaisseur sur un écran qu'on touche ----------
    (contrôle final du lot 5 ; l'étude, [18] : des cibles agrandies au TNI.)
    Sur l'iPad, la tablette, le TNI, un portable à écran tactile (body.tactile,
-   posé par UI.majCouleursRepliees), les pastilles et les tailles de la barre
+   posé par UI.majCouleursRepliees), les pastilles de la grille de la barre
    des outils font 44 × 44. Quand la barre ne tient plus dans la hauteur
-   (.couleurs-repliees, mesuré), elles se replient dans « Couleur », le
-   bouton du téléphone, posé à leur place entre les deux filets (par order :
-   le document garde l'ordre et les classes des boutons). Au poste de la classe (souris,
-   tablette graphique), rien ne change ; au téléphone, sa mise en page. */
-body.tactile .barre-outils > .pastille { height: 44px; }
-body.tactile .barre-outils .taille { height: 44px; }
-.barre-outils.couleurs-repliees > .pastille, .barre-outils.couleurs-repliees > .tailles { display: none; }
+   (.couleurs-repliees, mesuré ; depuis les gains rapides du lot 16, sur un
+   écran de moins de 700 px de haut environ), la grille et le bouton de
+   l'épaisseur se replient dans « Couleur », le bouton du téléphone, qui
+   vient à leur place après le filet (le document garde l'ordre et les
+   classes des boutons). Au poste de la classe (souris, tablette graphique),
+   rien ne change ; au téléphone, sa mise en page. */
+body.tactile .grille-pastilles { grid-template-columns: repeat(2, 44px); }
+body.tactile .grille-pastilles > .pastille { width: 44px; height: 44px; }
+.barre-outils.couleurs-repliees > .grille-pastilles, .barre-outils.couleurs-repliees > .bouton-epaisseur { display: none; }
+/* (avec les noms sous les outils, la règle des boutons nommés, plus forte, le remontrerait) */
+body.noms-outils .barre-outils.couleurs-repliees > .bouton-epaisseur.nomme { display: none; }
 /* (« Couleur » a son nom, sous body.noms-outils : caché hors de la barre
    repliée, comme au poste de la classe ; les noms ne viennent jamais au
    téléphone) */
 body.noms-outils .bouton.nomme.seulement-telephone { display: none; }
-.barre-outils.couleurs-repliees > .bouton-couleur { display: grid; order: 1; }
+.barre-outils.couleurs-repliees > .bouton-couleur { display: grid; }
 body.noms-outils .barre-outils.couleurs-repliees > .bouton-couleur.nomme { display: flex; }
-/* (le second filet : celui qui suit les tailles) */
-.barre-outils.couleurs-repliees > .tailles ~ .filet, .barre-outils.couleurs-repliees > .historique,
-.barre-outils.couleurs-repliees > .bouton.danger { order: 2; }
 
 /* Le bouton « Couleur » (téléphone) : un rond de la couleur en main, cerné
    de blanc et d'un filet ; son menu, les quatre pastilles et les trois
@@ -819,6 +833,20 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .p-etat { margin: 0 !important; min-height: 1.4em; font-size: 14px; color: var(--encre-douce); }
 .p-etat.erreur { color: var(--rouge); font-weight: 700; }
 .p-resultat { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: #e9f5ee; }
+/* Le résumé (lot 16) : la séance et ses pages, où va le replay, « Modifier… »,
+   et un gros « Publier ». Le reste de la fenêtre est là, replié : « Modifier… »
+   le remontre ; les vérifications et « Voir comme un élève » restent visibles. */
+.p-resume { display: grid; gap: 6px; padding: 12px; border-radius: 12px; background: var(--chrome); font-size: 15px; line-height: 1.4; }
+.p-resume p { margin: 0; }
+.p-resume-seance { font-weight: 700; }
+.p-resume p:last-child { margin-top: 4px; }
+.dialogue-publier.resume .corps > .champ, .dialogue-publier.resume .p-pages, .dialogue-publier.resume .p-lieu,
+.dialogue-publier.resume .p-dossier, .dialogue-publier.resume .p-comptes, .dialogue-publier.resume .p-drive-retenu,
+.dialogue-publier.resume .p-nouveau-lien, .dialogue-publier.resume .p-fichier { display: none; }
+.dialogue-publier.resume .p-publier { flex: 1 1 100%; height: 52px; font-size: 17px; }
+/* Plus serré en résumé : la fenêtre tient sur un écran de 1366 × 657 sans défiler */
+.dialogue-publier.resume .corps { gap: 10px; }
+.dialogue-publier.resume .p-verifier li { padding: 6px 10px; }
 .bouton-lien { display: inline-flex; align-items: center; text-decoration: none; color: inherit; height: 42px; padding: 0 18px; border-radius: 10px; font-weight: 700; }
 
 /* ---------- Revoir la construction ----------
@@ -1449,7 +1477,7 @@ body.en-bibliotheque .toast { z-index: 30; }
 .biblio-vide { padding: 48px 16px; text-align: center; color: var(--encre-douce); font-size: 17px; }
 .biblio-vide p { margin: 0 0 14px; }
 /* ---------- Ranger (lot 4 C6) ----------
-   Le conseil du rangement par classe, la rangée du filtre de classe, le fil
+   Le conseil du rangement par niveau, la rangée du filtre de niveau, le fil
    d'Ariane et le tri, les cartes des dossiers (leur grande icône dans leur
    couleur, --c), les puces des étiquettes, le champ du nom. Des cibles de
    40 px au moins (le doigt, le TNI) ; rien ne dépend du survol. */
@@ -1547,7 +1575,7 @@ body.en-bibliotheque .toast { z-index: 30; }
 .dialogue-nouveau .dans { margin: 0; color: var(--encre); font-weight: 600; }
 .dialogue-nouveau .case-classe { align-items: flex-start; padding-top: 4px; }
 .dialogue-nouveau .case-classe input { margin-top: 2px; }
-/* « Étiquettes de classe… » : les puces (× pour retirer), l'héritée grisée */
+/* « Étiquettes de niveau… » : les puces (× pour retirer), l'héritée grisée */
 .dialogue-etiquettes .pour { margin: 0; }
 .dialogue-etiquettes .puces { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .dialogue-etiquettes .puce {

@@ -16,9 +16,9 @@
 // unique des classeurs (.memc), que le relais ne sert jamais (ni ce
 // dossier, ni cette extension, ni ce contenu ne sont les siens).
 //
-// Et son dossier privé des CLASSES (« MEM - Classeurs », « LFB -
-// Classeurs », lot 7) : un sous-dossier par dossier de classe relié au
-// Drive, où chaque chapitre de la classe a son .memc, tenu à jour par la
+// Et son dossier privé des NIVEAUX (« MEM - Classeurs », « LFB -
+// Classeurs », lot 7) : un sous-dossier par dossier de niveau relié au
+// Drive, où chaque chapitre du niveau a son .memc, tenu à jour par la
 // même copie ; le relais ne le sert pas davantage.
 // =============================================================
 
@@ -35,8 +35,8 @@ export interface Compte {
   /** Le dossier des sauvegardes des classeurs dans ce Drive (lot 4 C10).
    *  Jamais dans la liste DOSSIERS du relais : un test y veille. */
   sauvegardes: string
-  /** Le dossier des classes reliées au Drive (lot 7) : un sous-dossier par
-   *  classe. Jamais dans la liste DOSSIERS du relais : un test y veille. */
+  /** Le dossier des niveaux reliés au Drive (lot 7) : un sous-dossier par
+   *  niveau. Jamais dans la liste DOSSIERS du relais : un test y veille. */
   classeurs: string
 }
 
@@ -50,7 +50,7 @@ export const COMPTES: Compte[] = [
  *  (Google Drive pour ordinateur). Chacun a son relais, qui retrouve le
  *  fichier par son code où qu'il soit dans le Drive. Les deux premiers sont
  *  ceux de COMPTES ; « lyfel » n'a, lui, ni dossiers des sauvegardes ni des
- *  classes : il ne sert qu'à cela. Sa clé et son nom ne changent plus.
+ *  niveaux : il ne sert qu'à cela. Sa clé et son nom ne changent plus.
  *  Relais vide : à installer (voir relais/relais-seances.gs). */
 export interface RelaisReplay { cle: string; nom: string; relais: string }
 export const RELAIS_REPLAY: RelaisReplay[] = [

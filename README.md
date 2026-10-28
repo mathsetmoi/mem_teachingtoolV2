@@ -1108,7 +1108,7 @@ outils pour le cours, à l'écran :
   ligne sonne aussi. Le haut-parleur coupe le son ; ce choix reste sur cet
   appareil.
 - **Le tirage au sort** : la liste des élèves de la classe (le dossier de
-  classe du classeur ouvert), un prénom par ligne, qu'on peut coller depuis
+  niveau du classeur ouvert : une même liste pour tout le niveau), un prénom par ligne, qu'on peut coller depuis
   un tableur. Un élève tiré ne revient pas avant que toute la classe soit
   passée. La liste reste dans ce navigateur, jamais dans le classeur, le
   replay, le PDF ni le Drive.
@@ -1130,7 +1130,7 @@ dans le cache d'un ancien navigateur, qui ne connaît pas encore ce nom,
 montre le film sans les instruments ; il se met à jour au chargement
 suivant. Ce qui reste sur l'appareil : `mem-minuteur-son` (le son coupé ou
 non), `mem-tirage-<dossier>` (la liste et le tour en cours de chaque
-classe), `mem-conseils` (les conseils déjà vus).
+niveau, c'est-à-dire de chaque dossier), `mem-conseils` (les conseils déjà vus).
 
 ## La calculatrice NumWorks (lot 14)
 
@@ -1250,7 +1250,7 @@ accent ni majuscule à respecter ; les résultats viennent en trois groupes :
   mots, montrés à plat, les mots cherchés marqués. Un clic ouvre la page,
   la formule (ou le texte) prise et montrée (au zoom où l'on est) ; une
   page d'une séance passée s'ouvre en lecture.
-- **Classeurs, pages et séances** : un classeur par son nom ou sa classe,
+- **Classeurs, pages et séances** : un classeur par son nom ou son niveau,
   une page par son nom, une séance par sa date (« 16 octobre », « mardi »,
   « 16/10 ») ou son nom.
 
@@ -1592,7 +1592,10 @@ onglet ou un autre ordinateur, et même si le fichier était passé à la
 corbeille du Drive (il en revient). « Publier comme une nouvelle séance »
 donne volontairement un autre lien. **Enregistrer le
 fichier** donne un fichier `.mem` à déposer dans l'ENT ou sur une clé USB ; le
-lecteur l'ouvre aussi.
+lecteur l'ouvre aussi. Quand le replay va dans un dossier de l'ordinateur et
+que tout est déjà retenu pour ce classeur, la fenêtre s'ouvre en résumé avec un
+gros **Publier** : un clic suffit ; **Modifier…** remontre tout (lot 16, voir
+« Gains rapides »).
 
 **Côté élève** (`revoir.html`). L'affiche montre la fin de la séance (la page
 du dernier geste), le titre, la date et la durée. Le replay suit le rythme du
@@ -1782,7 +1785,7 @@ sert jamais.
 **Publier dans un dossier de l'ordinateur (lot 15).** Publier peut aussi
 poser le replay dans un dossier du PC, y compris un dossier de Google Drive
 pour ordinateur (Chrome et Edge), sans connexion Google : le dossier du
-chapitre quand la classe est reliée à un dossier de l'ordinateur (son chemin
+chapitre quand le niveau est relié à un dossier de l'ordinateur (son chemin
 est affiché), sinon un dossier choisi avec « Choisir… » (retenu pour ce
 classeur). Le fichier s'appelle « Titre [code].mem » : le titre se modifie, le
 code de 8 caractères (a-z, 0-9) est ajouté par l'outil, et le fichier peut être
@@ -1799,13 +1802,32 @@ l'outil interroge le relais toutes les 5 secondes, 10 minutes au plus :
 qui n'est pas à jour est signalé avant d'écrire. Trois Drive, donc trois
 relais : MEM, LFB et LyFEL (le dernier, compte lyfel.org, sert seulement aux replays ; son
 adresse est dans `RELAIS_REPLAY`, `src/publication/comptes.ts`).
-Le Drive des élèves ne se demande qu'une fois par classe (« Changer »). La
+Le Drive des élèves ne se demande qu'une fois par niveau (« Changer »). La
 version hors ligne écrit le fichier mais n'affiche pas de lien. Après la mise
 à jour de `relais/relais-seances.gs`, chaque relais se redéploie une fois
 (Gérer les déploiements › crayon › Nouvelle version). L'ancien envoi par
 connexion Google reste choisi par « Sur le Drive, en me connectant à Google ».
 Réglages ajoutés (clés nouvelles, rien d'existant changé) :
-`replay-dossier:<classeur>` et `replay-compte:<classe>`.
+`replay-dossier:<classeur>` et `replay-compte:<dossier du niveau>`.
+
+*Le résumé (lot 16).* Dès que le Drive des élèves et le dossier sont retenus
+pour ce classeur (le dossier choisi, ou celui du chapitre quand le niveau est
+relié à l'ordinateur) et qu'une séance du classeur a déjà été rangée dans un
+dossier, la fenêtre s'ouvre en résumé : « Séance du mer 28 oct 14h
+(aujourd'hui) · 3 pages », « Rangé dans « Fractions » · Drive personnel », le
+titre seulement s'il diffère de celui proposé d'office, **Modifier…** et un
+gros **Publier** ; les vérifications et **Voir comme un élève** restent.
+**Modifier…** déplie la fenêtre complète (séance, pages, titre, nom du
+fichier, dossier, Drive, **Enregistrer le fichier**). Les réglages sont lus
+avant d'afficher la fenêtre : elle s'ouvre d'emblée en résumé ou complète,
+sans se replier sous les yeux. Si le navigateur ne donne plus l'accès au
+dossier retenu (après un redémarrage, l'accord refusé), ou si ce dossier a été
+supprimé ou renommé, Publier déplie la fenêtre et le dit (« choisissez-le à
+nouveau avec « Choisir… » »), sans rien écrire. Un classeur à la racine de la
+bibliothèque (hors de tout dossier) n'a pas de niveau pour porter le Drive : il
+le garde avec lui, dans sa clé `replay-dossier:<classeur>` (champ `compte`,
+facultatif, que la lecture connaissait déjà), et il a le résumé aussi. Aucune
+clé nouvelle.
 
 Les noms des dossiers sont à la fois dans `src/publication/comptes.ts` et dans
 le relais : un test vérifie qu'ils concordent. Installer un relais prend cinq
@@ -2051,8 +2073,8 @@ page change ; fermée, la trieuse ne coûte rien.
 
 ## Les séances (lot 6)
 
-Le rangement : **un dossier de la bibliothèque = une classe** (les dossiers
-marqués « Dossier d'une classe », lot 4), **un classeur = un chapitre**, et
+Le rangement : **un dossier de la bibliothèque = un niveau** (« 5ème »,
+« 2nde » ; les dossiers marqués « Dossier d'un niveau », lot 4), **un classeur = un chapitre**, et
 dans un classeur, **des séances**, chacune avec SES pages, numérotées à partir
 de 1. Une séance commence quand on la crée : on n'a plus à la deviner dans le
 film.
@@ -2076,19 +2098,20 @@ se dit) :
   reste, sur la même page, et un message le dit (« Séance de 14 h reprise ») ;
 - plus d'une heure : la fenêtre **« Bonjour ! »**, par-dessus la dernière
   page, grisée derrière. Le gros bouton, choisi d'office (Entrée suffit) :
-  « Nouvelle séance avec la 5A » (le plus proche dossier de classe du
-  classeur ; sans dossier de classe, « Nouvelle séance »). Dessous : « Fractions
-  — changer de chapitre » (les classeurs du dossier de la classe, avec leur
+  « Nouvelle séance en 5ème » (le plus proche dossier de niveau du
+  classeur ; sans dossier de niveau, « Nouvelle séance » ; un dossier dont
+  le nom n'est pas un niveau : « Nouvelle séance dans « Soutien » »). Dessous : « Fractions
+  — changer de chapitre » (« Chapitres de 5ème » : les classeurs du dossier du niveau, avec leur
   nombre de séances, le chapitre ouvert en tête, et « + Nouveau chapitre… » :
   le nom seulement, rangé dans le dossier, page blanche, et la case de la clé
   comme pour un nouveau classeur ; la copie sur le Drive suit comme pour tout
-  classeur). « Continuer la séance de lundi 8 h ». « Une autre classe : 5B ·
-  4C · 3A » (les autres dossiers de classe) : un clic ouvre le chapitre en
-  cours de cette classe, le dernier classeur ouvert dans son dossier (ses
-  sous-dossiers compris), et y commence une séance ; une classe sans classeur
+  classeur). « Continuer la séance de lundi 8 h ». « Un autre niveau : 4ème ·
+  3ème · 2nde » (les autres dossiers de niveau) : un clic ouvre le chapitre en
+  cours de ce niveau, le dernier classeur ouvert dans son dossier (ses
+  sous-dossiers compris), et y commence une séance ; un niveau sans classeur
   ouvre « Nouveau chapitre » dans son dossier. En bas, « Nouveau classeur
   vierge… » ouvre la fenêtre « Nouveau classeur » de la bibliothèque (page
-  blanche cochée), rangé hors de toute classe, à enregistrer plus tard comme
+  blanche cochée), rangé hors de tout niveau, à enregistrer plus tard comme
   tout classeur. Sous le gros bouton, la case « Commencer par des
   automatismes », jamais cochée d'office : cochée, quel que soit le bouton
   choisi, la séance s'ouvre sur le réglage d'un flash (voir Automatismes).
@@ -2212,8 +2235,8 @@ quand le classeur n'a qu'une séance).
 - **Le PDF** : le classeur entier par le menu ⋯, la séance par la page et la
   trieuse (voir plus haut).
 - **L'ouverture par la bibliothèque** applique la même règle d'une heure,
-  avec la fenêtre entière (la liste des classes comprise) : c'est le même
-  démarrage. Arrivé par « Une autre classe » ou un autre chapitre, la séance
+  avec la fenêtre entière (la liste des niveaux comprise) : c'est le même
+  démarrage. Arrivé par « Un autre niveau » ou un autre chapitre, la séance
   commence sans question (une clé de l'onglet, `mem-teachingtool-nouvelle-seance`,
   valable une minute ; aucune clé existante ne change).
 - **Une heure** : la dernière activité d'une séance est sa dernière étape du
@@ -2222,7 +2245,7 @@ quand le classeur n'a qu'une séance).
 ## Les classeurs : où ils vivent
 
 Depuis le lot 4, l'unité est le **classeur** (un par chapitre, rangés par
-classe). La fondation range chaque classeur à part, sans rien perdre de ce
+niveau). La fondation range chaque classeur à part, sans rien perdre de ce
 qui existait ; le nom du classeur est sur le bouton du classeur, à gauche
 de la barre du haut (avec l'état de sa sauvegarde, voir « L'état de la
 sauvegarde »), dans le titre de l'onglet (« Mon tableau — MEM
@@ -2769,7 +2792,7 @@ Pour changer d'ordinateur, ou garder une copie de tout : un seul fichier
   [Ajouter] (rien à faire : [Fermer]). Les dossiers d'abord : le même id
   qu'un dossier d'ici, on garde celui d'ici ; le même nom sous le même
   parent, on les réunit ; sinon il est créé, avec sa couleur et son
-  étiquette de classe. Puis les classeurs, dans leurs dossiers, avec leurs
+  étiquette de niveau. Puis les classeurs, dans leurs dossiers, avec leurs
   étiquettes et leurs aperçus (sous l'id du fichier s'il est libre) ; ce
   qui a divergé, comme copie, nommé « … (copie) ». « Bibliothèque ouverte :
   9 classeurs ajoutés, 2 mis à jour, 1 ajouté comme copie ; 1 illisible
@@ -3164,9 +3187,9 @@ autre poste.
 
 Deux fenêtres, une liste (`src/classeurs/ailleurs.ts`, d'après les maquettes
 validées par le professeur le 17 octobre 2026). Ses trois choix : **un
-dossier de classe est un vrai dossier**, un `.memc` par chapitre, tenu à
+dossier de niveau est un vrai dossier**, un `.memc` par chapitre, tenu à
 jour tout seul (1B) ; sur le Drive, le dossier **« MEM - Classeurs »** (ou
-« LFB - Classeurs »), avec un sous-dossier par classe (2A) ; la liste **« Mes
+« LFB - Classeurs »), avec un sous-dossier par niveau (2A) ; la liste **« Mes
 emplacements »** en haut de la bibliothèque (3A).
 
 ### Le mode d'emploi
@@ -3175,39 +3198,39 @@ emplacements »** en haut de la bibliothèque (3A).
   « Ouvrir » a deux onglets, **Cet ordinateur** et **Google Drive**.
   « Choisir des fichiers… » est le choix d'avant (Ctrl + O y mène toujours
   directement, et un fichier glissé sur la page s'ouvre comme avant).
-- **Ouvrir toute une classe.** Cet ordinateur → **Choisir un dossier…**
+- **Ouvrir tout un niveau.** Cet ordinateur → **Choisir un dossier…**
   (Chrome et Edge) : tous les classeurs du dossier (et de ses sous-dossiers)
   arrivent dans le dossier du même nom de la bibliothèque, créé s'il
   n'existe pas. La case « Garder ce dossier relié », cochée d'avance, en
-  fait l'emplacement de la classe : chaque classeur y garde son fichier.
-  Google Drive → les classes de « MEM - Classeurs » sont listées, avec
-  **Ouvrir toute la classe** (elle reste reliée au Drive), et chacun de
+  fait l'emplacement du niveau : chaque classeur y garde son fichier.
+  Google Drive → les niveaux de « MEM - Classeurs » sont listés, avec
+  **Ouvrir tout le niveau** (il reste relié au Drive), et chacun de
   leurs classeurs. Un classeur déposé ailleurs dans le Drive n'y est pas
   (voir plus bas) : le télécharger, puis « Cet ordinateur ».
 - **Enregistrer.** Menu ⋯ du classeur → **Enregistrer sur le Drive ou
   ailleurs…**, ou le menu d'un dossier → **Enregistrer ce dossier…** :
-  - **Quoi ?** Ce classeur, le dossier de la classe (son dossier le plus
+  - **Quoi ?** Ce classeur, le dossier du niveau (son dossier le plus
     haut), ou toute la bibliothèque.
   - **Où ?** Cet ordinateur (une clé, un dossier, G:\Mon Drive…) ou Google
     Drive.
   - **Le garder à jour tout seul** (coché) : ce classeur sur l'ordinateur,
-    c'est l'enregistrement automatique sur la clé d'avant ; le dossier de la
-    classe sur l'ordinateur : on choisit un dossier, chaque classeur y prend
+    c'est l'enregistrement automatique sur la clé d'avant ; le dossier du
+    niveau sur l'ordinateur : on choisit un dossier, chaque classeur y prend
     son fichier (« Fractions.memc », dans les mêmes sous-dossiers que dans
-    la bibliothèque) ; sur le Drive : « MEM - Classeurs › 5A », un fichier
-    par classeur. Décoché : un seul fichier `.memb` de la classe,
+    la bibliothèque) ; sur le Drive : « MEM - Classeurs › 5ème », un fichier
+    par classeur. Décoché : un seul fichier `.memb` du niveau,
     enregistré une fois. Toute la bibliothèque : toujours une fois (un
     `.memb`, à la racine de « MEM - Classeurs » pour le Drive). Ce classeur
     sur le Drive : une fois, à la racine de « MEM - Classeurs » (la fenêtre
-    dit d'enregistrer plutôt le dossier de sa classe pour qu'il se tienne à
+    dit d'enregistrer plutôt le dossier de son niveau pour qu'il se tienne à
     jour).
-- **Mes emplacements.** En haut de la bibliothèque : chaque classe reliée
-  (« 5A → Drive personnel › MEM - Classeurs › 5A », « 4B → Cet ordinateur ›
-  Cle 4B »), ce qui n'y est pas encore (« 2 classeurs pas encore dedans »),
-  **Mettre à jour** (y met chaque classeur de la classe, l'accord du
+- **Mes emplacements.** En haut de la bibliothèque : chaque niveau relié
+  (« 5ème → Drive personnel › MEM - Classeurs › 5ème », « 4ème → Cet ordinateur ›
+  Cle 4ème »), ce qui n'y est pas encore (« 2 classeurs pas encore dedans »),
+  **Mettre à jour** (y met chaque classeur du niveau, l'accord du
   navigateur ou la connexion Google dans ce clic) et **Retirer** (ne plus
-  tenir ce dossier à jour : rien n'y est effacé). À la racine : toutes les
-  classes reliées ; dans un dossier : celles de sa classe.
+  tenir ce dossier à jour : rien n'y est effacé). À la racine : tous les
+  niveaux reliés ; dans un dossier : celui de son niveau.
 - **Dans la version hors ligne**, le Drive est grisé dans les deux
   fenêtres, et elles le disent : « Le Drive marche seulement depuis la
   version en ligne (mathsetmoi.github.io). » Rien ne part vers Google.
@@ -3218,7 +3241,7 @@ emplacements »** en haut de la bibliothèque (3A).
   `showDirectoryPicker` (Chrome, Edge), la poignée du dossier gardée dans
   l'index (le réglage `emplacement-poignee:<id>`, à part du magasin
   `poignees`, qui ne garde que les fichiers des classeurs). Chaque
-  classeur de la classe y prend un fichier qui devient **le fichier de sa
+  classeur du niveau y prend un fichier qui devient **le fichier de sa
   clé** (`cle.ts`) : il s'y écrit peu après chaque changement, quand le
   classeur est ouvert, avec tous les garde-fous de la clé. Jamais rien
   d'écrasé : le fichier du même classeur, sans rien de plus que la
@@ -3227,14 +3250,14 @@ emplacements »** en haut de la bibliothèque (3A).
   n'est pas touché (le message dit de l'ouvrir d'abord) ; un fichier qui
   n'est pas à lui laisse la place à « Fractions (2).memc ». Un classeur qui
   a déjà sa clé ailleurs la garde.
-- **Une classe reliée au Drive** (`src/publication/drive.ts`) : un troisième
+- **Un niveau relié au Drive** (`src/publication/drive.ts`) : un troisième
   dossier privé, « MEM - Classeurs » (marque `memClasses`), et dans lui le
-  dossier de chaque classe, marqué par l'id du dossier de la bibliothèque
+  dossier de chaque niveau, marqué par l'id du dossier de la bibliothèque
   (`memClasse` ; un renommage dans la bibliothèque le suit). La copie sur le
-  Drive des classeurs de cette classe (`copie-drive.ts`, lot 4 C10) y va au
+  Drive des classeurs de ce niveau (`copie-drive.ts`, lot 4 C10) y va au
   lieu de « MEM - Sauvegardes » : la copie d'avant y est **déplacée**
   (`addParents`/`removeParents`), avec ses versions, jamais doublée. Relier
-  la classe met la copie de chacun de ses classeurs sur ce Drive et les
+  le niveau met la copie de chacun de ses classeurs sur ce Drive et les
   copie tout de suite (`copierDepuisLaBase`, sous le verrou de chaque
   classeur). Ces fichiers gardent la marque des sauvegardes :
   « Récupérer une sauvegarde du Drive » les voit aussi (seulement ceux du
@@ -3261,32 +3284,33 @@ emplacements »** en haut de la bibliothèque (3A).
 - Un classeur déposé à la main ailleurs dans le Drive ne se voit pas
   depuis l'onglet « Google Drive » : le télécharger (ou passer par
   G:\Mon Drive avec Google Drive pour ordinateur), puis « Cet ordinateur ».
-- Un classeur ajouté plus tard dans une classe reliée y arrive avec
+- Un classeur ajouté plus tard dans un niveau relié y arrive avec
   **Mettre à jour** (la liste le signale) ; sur l'ordinateur, chaque fichier
   se met à jour quand son classeur est ouvert, comme la clé.
 - Firefox, Safari et l'iPad ne savent pas écrire dans un dossier : sur
-  l'ordinateur, le dossier de la classe y est un `.memb` enregistré une
+  l'ordinateur, le dossier du niveau y est un `.memb` enregistré une
   fois ; le Drive y marche.
-- À essayer une fois pour de vrai, sur le vrai compte : relier une classe au
+- À essayer une fois pour de vrai, sur le vrai compte : relier un niveau au
   Drive personnel, regarder « MEM - Classeurs » dans Google Drive, puis
-  rouvrir la classe depuis l'onglet « Google Drive » sur un autre poste.
+  rouvrir le niveau depuis l'onglet « Google Drive » sur un autre poste.
 
 ## Un dossier par chapitre, et toutes les séances au même endroit (lot 8)
 
 Choix du professeur, le 19 octobre 2026 (maquettes validées) : **dossier =
-la classe (« 5ème », « Auguste »), chapitre = un classeur**, et toutes les
-séances du chapitre au même endroit. Pas de distinction 5A / 5B.
+le niveau (« 5ème », « Auguste »), chapitre = un classeur**, et toutes les
+séances du chapitre au même endroit. Pas de distinction 5A / 5B (l'outil dit
+« niveau » partout depuis les gains rapides du lot 16).
 
 ### Le mode d'emploi
 
 - **Sur l'ordinateur et sur le Drive, un chapitre est un vrai dossier.** Un
-  classeur relié à un dossier de classe s'écrit dans un dossier à son nom :
+  classeur relié à un dossier de niveau s'écrit dans un dossier à son nom :
   `5ème/Fractions/Fractions.memc` ; sur le Drive, « MEM - Classeurs › 5ème ›
   Fractions › Fractions.memc ». Les sous-dossiers de la bibliothèque
   (« Géométrie ») se retrouvent sur l'ordinateur ; le Drive garde un seul
-  niveau (classe › chapitre).
+  étage (niveau › chapitre).
 - **Ce qui existait déjà ne se perd pas.** Un `.memc` posé à plat dans le
-  dossier de la classe est adopté tel quel s'il est le même classeur ; sur
+  dossier du niveau est adopté tel quel s'il est le même classeur ; sur
   le Drive, la copie d'avant est **déplacée** dans le dossier du chapitre à
   la prochaine copie (jamais doublée).
 - **Les séances sous la carte.** Une carte dit « 3 séances » : un clic la
@@ -3307,7 +3331,7 @@ séances du chapitre au même endroit. Pas de distinction 5A / 5B.
 - `src/classeurs/ordinateur.ts` : `relierLesClasseurs` écrit chaque classeur
   dans `[sous-dossiers…, nom du chapitre]`.
 - `src/publication/drive.ts` : `dossierDuChapitre` (marque `memChapitre` =
-  id du classeur, comme `memClasse` pour la classe) ; `listerLesClasses` et
+  id du classeur, comme `memClasse` pour le niveau) ; `listerLesClasses` et
   `listerSauvegardes` regardent aussi ces sous-dossiers. `copie-drive.ts`
   y envoie la copie.
 - La fiche d'un classeur gagne un champ **facultatif** `listeSeances`
@@ -3649,7 +3673,12 @@ le tient à jour).
   paru, il reste quand on se remet à écrire, jusqu'à ce qu'on enregistre ou
   qu'on le ferme ; au plus une fois par heure ; × le fait taire une heure.
   Sur Chrome et Edge, il propose aussi [Enregistrer automatiquement sur la
-  clé…].
+  clé…]. Le fichier d'un dossier relié (lot 7) est la clé du classeur : il
+  protège tant que l'accord du navigateur tient. Après un rechargement
+  (F5), la clé attend cet accord (« Clé en pause », un clic) et la copie du
+  Drive sa connexion Google : rien ne protège plus, et le rappel peut donc
+  revenir ; au départ vers un autre classeur, il se lit à l'arrivée (voir
+  « Gains rapides (lot 16) »).
 - **Le trou réparé.** Une écriture refusée par la base (voir « Les
   classeurs : où ils vivent ») passe l'état en « Pas enregistré ! », avec le
   bandeau ; une promesse de la base rejetée faute de place
@@ -3755,10 +3784,10 @@ n'est jamais imposée, rien ne change au geste du professeur en classe.
   d'aperçu »), le nom (deux lignes au plus, entier dans son titre), « Modifié aujourd'hui à 14 h 05 · 12 pages », la pastille
   « Ouvert » sur celui de cet onglet, deux petites icônes grises, la clé et
   le nuage du Drive (« Sur la clé il y a 3 jours (Symétrie.memc) » : la date
-  de la dernière écriture réussie), ses étiquettes de classe en petites
+  de la dernière écriture réussie), ses étiquettes de niveau en petites
   puces grises (celle qui vient de son dossier plus claire), et un bouton ⋯ de 44 px (« Options de
   « Symétrie centrale » »). Le lecteur d'écran y lit « Symétrie centrale, 12
-  pages, modifié aujourd'hui à 14 h 05 » (et « classe 5e B », « ouvert dans
+  pages, modifié aujourd'hui à 14 h 05 » (et « niveau 5e B », « ouvert dans
   cet onglet », la clé, le Drive). Chaque carte est un lien (`?classeur=<id>`) : **le clic du
   milieu et Ctrl + clic ouvrent le classeur dans un autre onglet**, comme
   partout ; le clic simple l'ouvre ici.
@@ -3780,16 +3809,16 @@ n'est jamais imposée, rien ne change au geste du professeur en classe.
   ou entre (un dossier) ; F2 renomme ; la touche Menu et Maj + F10 ouvrent
   le menu de la carte (le focus sur « Ouvrir ») ; Échap le ferme et rend le
   focus à la carte ; Retour arrière remonte d'un dossier (hors d'un champ) ;
-  Échap enlève d'abord le filtre de classe, puis ferme l'écran. Ce sont les
+  Échap enlève d'abord le filtre de niveau, puis ferme l'écran. Ce sont les
   mêmes touches en AZERTY (elles se lisent par leur nom, pas leur place).
 - **Le menu d'une carte** : « Ouvrir », puis « Renommer… » (F2) et
-  « Étiquettes de classe… », puis « Déplacer vers… », « Dupliquer le
+  « Étiquettes de niveau… », puis « Déplacer vers… », « Dupliquer le
   classeur » et « Enregistrer dans un fichier… » (son `.memc`, fabriqué
   depuis sa base par l'écrivain ; celui de l'onglet, comme Ctrl + S),
   puis « Supprimer » (Suppr ; ⌘ ⌫ sur Mac). Des fichiers lâchés sur
   l'écran : un cadre pointillé « Lâchez pour ajouter à la bibliothèque »,
   puis « Ouvrir un classeur ». Celui d'un
-  dossier : « Ouvrir », « Renommer… », sa couleur, « Dossier d'une classe »,
+  dossier : « Ouvrir », « Renommer… », sa couleur, « Dossier d'un niveau »,
   « Déplacer vers… », « Supprimer ».
 - **Les autres onglets.** Un changement fait ailleurs (un classeur créé,
   renommé, ouvert) ne refait que les cartes de ces classeurs-là, et le focus
@@ -3797,24 +3826,25 @@ n'est jamais imposée, rien ne change au geste du professeur en classe.
   fermeture). Le classeur ouvert renommé ailleurs : son nom sur le bouton et
   dans le titre de l'onglet suivent.
 
-**Ranger (par classe, d'abord).** Le rangement conseillé : un dossier par
-classe (« 5e B »), puis un classeur par chapitre (« Symétrie centrale ») ;
-l'autre rangement (un dossier « Symétrie », un classeur par classe) reste
-possible, et les étiquettes de classe retrouvent alors d'un geste les
-classeurs d'une classe. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
+**Ranger (par niveau, d'abord).** Le rangement conseillé : un dossier par
+niveau (« 5ème » ; un dossier = un niveau, pas une classe 5A / 5B, décision
+du 19 octobre 2026), puis un classeur par chapitre (« Symétrie centrale ») ;
+l'autre rangement (un dossier « Symétrie », un classeur par niveau) reste
+possible, et les étiquettes de niveau retrouvent alors d'un geste les
+classeurs d'un niveau. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
 
 - **Le conseil.** À la racine, tant qu'il n'y a aucun dossier, une carte
-  large en tête : « Rangez par classe : un dossier par classe (« 5e B »),
+  large en tête : « Rangez par niveau : un dossier par niveau (« 5ème »),
   puis un classeur par chapitre (« Symétrie centrale »). Les classeurs d'un
-  dossier de classe portent son étiquette : un geste les retrouve tous. »
-  [Créer un dossier de classe] (« Nouveau dossier », la case cochée
+  dossier de niveau portent son étiquette : un geste les retrouve tous. »
+  [Créer un dossier de niveau] (« Nouveau dossier », la case cochée
   d'avance) [Plus tard] (il ne revient plus : le réglage `conseil` de
   l'index vaut `vu`). Il ne prend pas le focus.
-- **Nouveau dossier** (le bandeau) : « Nom » (40 caractères, « 5e B » en
+- **Nouveau dossier** (le bandeau) : « Nom » (40 caractères, « 5ème » en
   exemple grisé), « Couleur » (huit pastilles, des boutons radio nommés :
   Gris, Bleu au départ, Vert, Jaune, Orange, Rouge, Violet, Rose), la case
-  **Dossier d'une classe : ses classeurs portent l'étiquette « 5e B »**, cochée
-  d'office quand le nom ressemble à une classe (au début du nom, sans tenir
+  **Dossier d'un niveau : ses classeurs portent l'étiquette « 5ème »**, cochée
+  d'office quand le nom ressemble à un niveau (au début du nom, sans tenir
   compte de la casse : 3e à 6e, « 5ème », « 2nde », « seconde », « 1re »,
   « première », « Tle », « Term », « terminale », CP à CM2, BTS, CAP ; pas
   « 3 exercices » ni « Capitales »), son libellé suivant le nom tapé ; une
@@ -3826,12 +3856,12 @@ classeurs d'une classe. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
   avant « Ch. 10 », sans la casse ni les accents) : la grande icône dans sa
   couleur, le nom, ce qu'il contient (« 4 classeurs · 2 dossiers » : les
   classeurs de ses sous-dossiers comptent, les sous-dossiers sont ceux qu'on
-  voit en l'ouvrant ; « Vide »), la puce de son étiquette de classe ; le
-  lecteur d'écran lit « 5e B, dossier bleu, dossier d'une classe, 4
+  voit en l'ouvrant ; « Vide »), la puce de son étiquette de niveau ; le
+  lecteur d'écran lit « 5e B, dossier bleu, dossier d'un niveau, 4
   classeurs, 2 dossiers ». Un clic, un toucher, la plume ou Entrée y
   entrent ; le clic droit, le bouton du stylet, ⋯, la touche Menu ouvrent
   son menu : « Ouvrir », « Renommer… » (F2), « Couleur » (les huit en
-  pastilles, la sienne cochée), la case « Dossier d'une classe ». Chaque
+  pastilles, la sienne cochée), la case « Dossier d'un niveau ». Chaque
   changement a son message avec « Annuler » (7 s).
 - **Le fil d'Ariane** remplace « Tous les classeurs » : « Bibliothèque › 5e
   B › Géométrie », chaque dossier au-dessus un bouton (on y remonte, le
@@ -3841,25 +3871,25 @@ classeurs d'une classe. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
   sessionStorage : recharger le garde, un autre onglet commence à la
   racine). Un dossier vide : « Ce dossier est vide. Glissez-y un classeur, ou
   créez-en un. » [Nouveau classeur]. « Nouveau classeur » dit « Dans : 5e B ·
-  étiquette de classe « 5e B » » : l'étiquette vient du dossier, pas de champ
+  étiquette de niveau « 5e B » » : l'étiquette vient du dossier, pas de champ
   à remplir.
-- **Les étiquettes de classe.** Un classeur a les siennes (au plus trois,
-  posées à la main) et celle du plus proche dossier de classe qui le
+- **Les étiquettes de niveau.** Un classeur a les siennes (au plus trois,
+  posées à la main) et celle du plus proche dossier de niveau qui le
   contient, **calculée, jamais écrite** : glissé dans « 5e B », il est
   aussitôt dans le filtre « 5e B », et en sort s'il en sort. « Étiquettes de
-  classe… » (le menu d'un classeur) : ses étiquettes en puces, chacune avec
+  niveau… » (le menu d'un classeur) : ses étiquettes en puces, chacune avec
   son × ; l'héritée grisée, sans ×, « vient du dossier « 5e B » » ; « Ajouter
-  une classe » (les étiquettes de la bibliothèque proposées ; Entrée
+  un niveau » (les étiquettes de la bibliothèque proposées ; Entrée
   ajoute ; 20 caractères ; un double, même de l'héritée, est ignoré : « « 5e
   B » y est déjà. ») ; à trois, le champ se ferme. Chaque changement
   s'écrit aussitôt ; à la fermeture, « Étiquettes de « Symétrie » : 5e B,
   Soutien » [Annuler] les rend toutes comme elles étaient.
-- **Le filtre.** Sous Récents, dès qu'une étiquette existe : « Classes :
-  [Toutes] [5e B · 4] [2nde 3 · 2] » (des boutons `aria-pressed`, dans
-  l'ordre des classes, de la 6e à la terminale, puis les autres par nom).
+- **Le filtre.** Sous Récents, dès qu'une étiquette existe : « Niveaux :
+  [Tous] [5e B · 4] [2nde 3 · 2] » (des boutons `aria-pressed`, dans
+  l'ordre des niveaux, de la 6e à la terminale, puis les autres par nom).
   Une étiquette choisie montre, en liste plate, tous les classeurs visibles
   qui la portent, quel que soit leur dossier, avec leur chemin sous le nom
-  (« 5e B › Géométrie ») ; le fil dit « Classe « 5e B » ». Le filtre est
+  (« 5e B › Géométrie ») ; le fil dit « Niveau « 5e B » ». Le filtre est
   retenu pour l'onglet (`mem-teachingtool-filtre`) ; Échap l'enlève d'abord,
   puis ferme l'écran ; une étiquette que plus rien ne porte l'enlève aussi.
 - **Renommer** : F2 sur la carte qui a le focus, « Renommer… », ou un
@@ -3872,7 +3902,7 @@ classeurs d'une classe. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
   nom va dans l'index et dans la base du classeur (son identité, pour
   qu'une adoption le retrouve) ; le classeur de l'onglet renommé : son
   bouton, le titre de l'onglet et la ligne du classeur ouvert suivent, dans
-  tous les onglets. Un dossier de classe renommé garde son étiquette
+  tous les onglets. Un dossier de niveau renommé garde son étiquette
   accordée à son nom (« 2nde 3 » devenu « 2nde 4 »). Au doigt, le champ
   reste au-dessus du clavier virtuel (la grille gagne en bas la place qu'il
   couvre). Pendant qu'on tape, rien ne se refait (un changement venu d'un
@@ -3926,7 +3956,7 @@ glissant la carte (le modèle est pur et testé : `src/classeurs/deplacer.ts`,
   Échap arrête tout ; lâchée hors d'une cible (ou sur son propre dossier),
   rien ne bouge ; le clic qui suit un glisser n'ouvre rien (la carte est
   un lien). Une paume posée sur le TNI pendant un glisser à la souris n'y
-  change rien. Avec un filtre de classe (une liste plate), il n'y a pas de
+  change rien. Avec un filtre de niveau (une liste plate), il n'y a pas de
   cible : on passe par « Déplacer vers… ».
 - **Ce qui se passe** : un classeur, seule sa fiche change (son dossier) ;
   un dossier, par le registre, qui refuse dans sa transaction un dossier
@@ -4080,9 +4110,18 @@ l'écran se ferme. Un autre : « Ouverture de « Fractions »… », puis
    attendre » au-delà de 5. Jamais le Drive, qui ne retient pas le départ ;
 3. le rappel d'enregistrer, s'il est dû (20 minutes de travail que rien ne
    protège, sans attendre 2 minutes sans geste : on part, ce n'est pas le
-   plein cours), une seule fois par période de travail non enregistré :
+   plein cours), une seule fois par période de travail non enregistré. Il
+   ne pose plus de question avant de partir (gains rapides, lot 16 ; avant :
    « Enregistrer « Mon tableau » d'abord ? » [Annuler] [Ouvrir sans
-   enregistrer] [Enregistrer le classeur] ;
+   enregistrer] [Enregistrer le classeur]) : il est noté pour l'arrivée
+   (`mem-teachingtool-rappel-arrivee`, sessionStorage, le temps du
+   chargement) et se lit sur l'autre classeur, en bas, 30 secondes :
+   « « Mon tableau » n'est pas encore enregistré dans un fichier : 25 min
+   de travail. Il reste dans ce navigateur, mais un navigateur peut
+   l'oublier. » [Enregistrer « Mon tableau » dans un fichier] (le bouton
+   enregistre le classeur quitté depuis sa base, sans l'ouvrir, comme
+   « Enregistrer dans un fichier… » du menu d'une carte ; voir « Gains
+   rapides (lot 16) ») ;
 4. la page se recharge sur l'adresse du classeur (`?classeur=<id>`) : un
    seul classeur est chargé à la fois. **Précédent** ramène au classeur
    d'avant ; une page rendue par le cache du navigateur (Précédent,
@@ -4305,6 +4344,182 @@ fonds) et d'y embarquer les polices, pour un fichier plus lourd (mesuré :
 environ 976 Ko pour une feuille très chargée, contre 238 à 283 Ko en couleurs
 indexées, 531 à 589 Ko en RVB sans perte, 384 à 687 Ko en JPEG).
 
+## Gains rapides (lot 16)
+
+De petites modifications, une par conversation, chacune un gain net en
+classe et avec son essai. Aucune ne change un format de fichier, une clé
+de stockage ni un classeur.
+
+### Annuler et Rétablir en haut, une épaisseur
+
+Au poste de la classe, la barre de gauche (876 px) ne tenait pas dans un
+écran de 768 px de haut, ni surtout dans une fenêtre de Chrome sur un tel
+écran (1366 × 657, 633 px de place) : Annuler, Rétablir et la poubelle, en
+bas, ne se voyaient qu'en la faisant défiler (voir la feuille de route,
+point 9). La barre est raccourcie, sans replier les couleurs :
+
+- **Annuler et Rétablir** (↶, ↷) sont en **tête de la barre du haut**, à
+  gauche de ‹, séparés par un petit filet vertical : toujours dans l'écran,
+  grisés quand la page n'a rien à défaire ou à refaire, les mêmes raccourcis
+  (Ctrl + Z, Ctrl + Y). Au téléphone, ils restent dans la barre du bas, à
+  la même place (Stylo, Gomme, Sélection, Couleur, Annuler, Rétablir, Autres
+  outils) : ce sont les deux mêmes boutons, déplacés d'une barre à l'autre
+  quand la mise en page change (`UI.placerHistorique`).
+- Les **quatre couleurs** sont en **grille 2 × 2** (Noir, Bleu / Rouge,
+  Vert ; des cases de 34 × 34, le rond garde ses 20 px ; 44 × 44 sur un
+  écran qu'on touche), à la place de la colonne des pastilles : chacune
+  reste à un clic.
+- L'**épaisseur** tient sur **un bouton** (« Épaisseur du trait : Fin »,
+  « Épaisseur » avec les noms sous les outils), qui montre le trait de
+  l'outil en main (fin, moyen ou épais ; au Surligneur, le sien) et ouvre
+  un petit menu à droite de la barre, à la hauteur du bouton : Fin, Moyen,
+  Épais, en 44 × 44 ; un choix le referme. Au clavier, Entrée l'ouvre sur
+  l'épaisseur cochée, les flèches y passent, Échap le referme. (Changer
+  d'épaisseur demande donc deux clics au lieu d'un, voir les limites.)
+- La **poubelle de la sélection** quitte la barre de gauche : Suppr, le
+  bouton *Supprimer* de la barre d'actions et, au téléphone, *Autres
+  outils* suffisent.
+
+Mesuré : la barre de gauche fait 601 px (711 avec les noms) et ne défile
+plus à 1366 × 657, 1366 × 768, 1280 × 720 ni 1024 × 768 ; avec les noms,
+plus rien n'est caché à 1366 × 768. Sur un écran qu'on touche, elle tient
+dépliée sur le TNI avec ses noms et sur l'iPad couché (les couleurs à un
+toucher, là où elles se repliaient dans « Couleur ») et ne se replie plus
+que sous 700 px de haut environ (une fenêtre de 1366 × 657 sur un portable
+tactile). La barre du haut, plus longue de 105 px, reste sur une rangée à
+1366 et 1280 de large ; à 1024 × 768 elle passe sur deux rangées (ce que le
+code gérait déjà : le bouton du classeur en devient le premier bouton, les
+menus posés à droite de la barre de gauche passent sous elle) ; à
+1280 × 720 le bouton du classeur prend sa forme étroite (voir les limites).
+Les essais adaptés le disent en tête : `lot5/corrections-cf.mjs` (II),
+`lot5/K10-telephone.mjs` (G1, sa référence refaite), `lot5/K9-affichage.mjs`
+(les mots des barres), `lot1/passeB-b10.mjs` (la barre défile à 540 px),
+`lot2/M3-annulation.mjs`, `lot5/R-defauts.mjs`, `lot5/R-corrections.mjs`,
+`lot5/R-verif/lib.mjs`, `lot5/R-verif-c1-defauts-build.mjs`,
+`lot13/N1-nuit.mjs` (l'épaisseur se lit sur `data-taille` du bouton
+`.bouton-epaisseur`, « Trait épais » est dans son menu), `lot1/appareils/
+appareils.mjs`, `lot1/verif/divers.mjs`, `lot1/verif/partie.mjs` (« rien à
+supprimer » se lit à la barre d'actions, cachée), `lot1/verif/telephone.mjs`,
+`lot4/CF3-telephone.mjs` (la fenêtre qui rétrécit part de 1200 px : la barre
+du haut a deux rangées dès 1100).
+
+### Plus de question au départ
+
+**Ce qui change pour le professeur.** Changer de classeur (une carte de la
+bibliothèque, « Un autre niveau » ou un chapitre de la fenêtre
+« Bonjour ! », la recherche) ne pose plus la question « Enregistrer
+« Fractions » d'abord ? » quand le classeur quitté a 20 minutes de travail
+que rien ne protège : on part tout de suite. Le rappel se lit en arrivant
+sur l'autre classeur, en bas de l'écran, pendant 30 secondes :
+« « Fractions » n'est pas encore enregistré dans un fichier : 25 min de
+travail. Il reste dans ce navigateur, mais un navigateur peut l'oublier. »
+[Enregistrer « Fractions » dans un fichier] (sur plus d'une journée :
+« « Fractions » n'est pas enregistré dans un fichier depuis hier à
+14 h 05. … »). Le bouton enregistre le classeur quitté **sans l'ouvrir**,
+depuis sa base (le choix du fichier s'ouvre dans le clic sur Chrome et
+Edge ; ailleurs, le fichier se télécharge), puis « Classeur enregistré :
+Fractions 2026-10-10 14h05.memc (120 ko). » ; s'il a été supprimé
+entre-temps : « Ce classeur n'est plus dans la bibliothèque. ». Rien
+d'autre ne change : le trou (une écriture refusée par la base) demande
+toujours avant de partir, et le rappel ne vient qu'une fois par période de
+travail non enregistré.
+
+**Comment c'est fait.** `Bibliotheque.ouvrirClasseur` (étape 3) note le
+rappel dans `sessionStorage` (`mem-teachingtool-rappel-arrivee` :
+`{ pour, id, nom, texte }`, le classeur où l'on va, celui qu'on quitte, et
+le texte de `texteRappelDepart`, `src/classeurs/etat.ts`), sans passer par
+le message d'arrivée (`mem-teachingtool-arrivee`), qui fait taire « Séance
+… reprise » et la fenêtre « Bonjour ! » : le rappel, lui, ne les fait pas
+taire. `main.ts` le relit (`lireRappelArrivee`, pur, testé) et le dit une
+fois dit ce que l'arrivée avait à dire (le message d'arrivée, la clé
+vérifiée et son « Autoriser ») et une fois fermée la fenêtre ouverte en
+arrivant (« Bonjour ! », le flash d'automatismes : un bouton sous une
+fenêtre ne se clique pas) ; `UI.finDuMessage` dit combien attendre pour ne
+pas couvrir le message en cours. Un bouton de message peut demander une
+durée (`ActionMessage.duree`, ici 30 s ; 7 s sinon), dans l'interface comme
+dans le message de la bibliothèque seule. Le bouton passe par
+`enregistrerDepuisLaBase` (`src/classeurs/enregistrer.ts`), comme
+« Enregistrer dans un fichier… » du menu d'une carte. L'essai
+`lot4/C5-bibliotheque.mjs` (section I) vérifie le départ sans fenêtre, le
+message et son bouton à l'arrivée, le fichier écrit, et « une seule fois » ;
+`lot5/S-seances-classes.mjs` n'a plus de bouton « Ouvrir sans enregistrer »
+à cliquer en changeant de niveau.
+
+### Publier en un clic
+
+**Le mode d'emploi.** Une fois un replay du classeur rangé dans un dossier de
+l'ordinateur (lot 15), la fenêtre **Publier le replay** s'ouvre en résumé pour
+ce classeur : la séance du jour et ses pages, où le replay va (le dossier et le
+Drive des élèves), le titre s'il a été changé, **Modifier…** et un gros
+**Publier**. Un clic range le replay et donne le lien, comme d'habitude.
+**Voir comme un élève** et les vérifications (images, prénoms) restent là.
+**Modifier…** remontre toute la fenêtre pour changer la séance, les pages, le
+titre, le nom du fichier, le dossier ou le Drive, ou enregistrer le fichier.
+La fenêtre reste complète tant que rien n'est retenu (un classeur neuf, un
+dossier jamais choisi), pour l'envoi par connexion Google, et dans la version
+hors ligne comme en ligne quand aucune séance n'a encore été rangée. Si le
+dossier retenu n'est plus accessible, la fenêtre se déplie et dit de le choisir
+à nouveau.
+
+**Comment c'est fait.** `src/publication/fenetre.ts` : `ouvrir({ complet })`
+lit ce qui est retenu (`lireReglage`, `dossierDuChapitre`) avant de construire
+la fenêtre ; `resumePossible` dit si le résumé suffit (mode dossier, un Drive
+retenu dont le relais existe, un dossier retenu ou proposé, une entrée de
+`publications` avec un code) ; `afficherResume` replie ou déplie (classe
+`resume` de `.dialogue-publier`, tout le reste de la fenêtre reste dans la page
+avec ses valeurs : Publier marche tel quel) ; `majResume` écrit les lignes avec
+`texteDuResume` (`src/publication/replay-dossier.ts`, essayé dans
+`tests/replay-dossier.test.ts`). `retenirReglage` garde le Drive dans la clé
+du classeur quand il est à la racine de la bibliothèque, sans jamais effacer le
+dossier déjà retenu. Essai navigateur : `essais/navigateur/lot15/P1-publier-dossier.mjs`
+(sections G, H, I). En DEV, `window.__app.ui.publication.ouvrir({ complet: true })`
+ouvre la fenêtre complète quoi qu'il soit retenu.
+
+### Niveau plutôt que classe
+
+**Ce qui change pour le professeur.** Un dossier de la bibliothèque est un
+**niveau** (« 5ème », « 4ème », « 3ème », « 2nde », « 1re spé », « Tle spé »),
+pas une classe (5A / 5B) : décision du 19 octobre 2026 (lot 8). L'outil le
+dit maintenant partout : le conseil « Rangez par niveau : un dossier par
+niveau (« 5ème »)… » et son bouton **Créer un dossier de niveau** ; la case
+**Dossier d'un niveau** de « Nouveau dossier » (« 5ème » en exemple grisé) et
+du menu d'un dossier ; « Étiquettes de niveau… », « Ajouter un niveau » ; la
+rangée du filtre « Niveaux : [Tous] [5ème · 4] » et le fil « Niveau « 5ème » »,
+« Classeurs du niveau « 5ème » » ; ce que lit le lecteur d'écran (« dossier
+d'un niveau », « niveau 5ème ») ; la fenêtre « Bonjour ! » : **« Nouvelle
+séance en 5ème »** (« en 2nde », « en 1re spé », « en Tle spé » ; un dossier
+dont le nom n'est pas un niveau : « Nouvelle séance dans « Soutien » »),
+« Chapitres de 5ème », « Un autre niveau : 4ème · 3ème », « Sans niveau : vous
+l'enregistrez quand vous voulez. », « Le niveau « 3ème » n'a pas encore de
+chapitre » ; les fenêtres « Ouvrir » et « Enregistrer » du lot 7 (« Recherche
+de vos niveaux sur le Drive… », **Ouvrir tout le niveau**, « Le dossier du
+niveau », « Un seul fichier .memb avec tout le niveau ») et leurs messages,
+accordés au masculin (« « 5ème » est relié au dossier « Cle 5ème » »,
+« « 5ème » enregistré : … »). Le mot « classe » reste quand il s'agit des
+élèves ou de la salle : le bouton **Classe** et ses outils, « en classe », le
+tirage au sort (« Un élève de la classe »).
+
+**Comment c'est fait.** Seuls les textes changent. Les marques Drive
+`memClasses` et `memClasse`, le champ `etiquette` de la fiche d'un dossier, les
+clés `replay-compte:<id>`, `mem-tirage-<id>` et les réglages, les noms des bases,
+les identifiants du code (`rangDeClasse`, `ressembleAUneClasse`,
+`classeursDeLaClasse`, `dossierDeClasse`, les champs `classe` / `classes`, la
+case `name="classe"`, `.case-classe`, `.pastille-classe`, `data-action`
+`classe-dossier`) gardent leur nom : rien à migrer, les Drive et les fichiers
+déjà marqués se relisent tels quels. `src/seances-vue.ts` : `enNiveau` et
+`deNiveau` remplacent `avecLaClasse` et suivent `ressembleAUneClasse`
+(`arbre.ts`), la règle de la case « Dossier d'un niveau » : « 5A » n'y est pas
+un niveau et s'écrit « dans « 5A » » (essayé dans `tests/seances.test.ts`). Les
+trois replis `'Classe'` d'un nom de dossier (`ailleurs.ts`, `drive.ts`,
+`fichiers.ts`) deviennent `'Niveau'` ensemble. Essais adaptés :
+`lot4/C6-ranger.mjs` (les textes du conseil, de la case, du filtre « Tous », du
+fil, des étiquettes, du lecteur d'écran), `lot5/S-seances-classes.mjs` (ses
+dossiers sont « 5ème », « 4ème », « 3ème » ; « Nouvelle séance en 5ème »,
+« Chapitres de 5ème »), `lot7/E1-ailleurs.mjs` (« relié », « Ouvrir tout le
+niveau »), `tests/arbre.test.ts`, `tests/bibliotheque.test.ts`. À noter : la
+liste du tirage au sort est celle du dossier (`mem-tirage-<id>`), donc du
+niveau : la même pour la 5A et la 5B.
+
 ## Ce que fait la v0.1
 
 Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment
@@ -4489,11 +4704,14 @@ réglages.
 - **Noms sous les outils** (« Un mot sous chaque bouton des barres ») : sous
   chaque icône de la barre des outils, de la barre du haut et de la barre
   du zoom, son nom court (11 px), comme dans la barre d'actions : *Stylo*,
-  *Surligneur*, *Gomme*, *Point*, *Segment*, *Formes*, *Formule*,
-  *Sélection*, *Vue*, *Doigt*, *Annuler*, *Rétablir*, *Supprimer* ;
-  *Nouvelle*, *Supprimer* (la poubelle de la page, *Effacer* sur une page
-  seule, comme son titre), *Fond*, *Aimant*, *Formes auto*, *Image*,
-  *Instruments*, *Construire*, *Automatismes*, *Revoir*, *Publier*,
+  *Surligneur*, *Gomme*, *Point*, *Segment*, *Formes*, *Formule*, *Texte*,
+  *Sélection*, *Vue*, *Doigt*, *Épaisseur* (depuis les gains rapides du
+  lot 16 ; les pastilles de couleur n'ont pas de nom) ; *Annuler*,
+  *Rétablir* (en tête de la barre du haut depuis le lot 16), *Nouvelle*,
+  *Supprimer* (la poubelle de la page, *Effacer* sur une page
+  seule, comme son titre), *Fond*, *Nuit*, *Aimant*, *Formes auto*, *Image*,
+  *Instruments*, *Construire*, *Catalogue*, *Automatismes*, *Classe*,
+  *Revoir*, *Publier*,
   *Fichier* (⋯) ; *Dézoomer*, *Zoomer*, *Tout voir* (depuis la vérification
   « conformité » du lot 5 : au TNI, sans survol, ⛶ n'avait aucun nom
   visible ; la barre du zoom, en bas à droite, y grandit à 54 px de haut) ;
@@ -4503,18 +4721,19 @@ réglages.
   plus large (80 px de barre au lieu de 58) ; ce qui se place à sa droite (le
   bouton du classeur, les choix des Formes et du Segment, les menus du doigt
   et de la Gomme) part de son bord droit MESURÉ (`--droite-barre-outils`,
-  suivi comme `--bas-barre-haut`) ; elle défile sur un écran bas, ses boutons
-  gardent leur taille (sur un écran qu'on touche, elle replie plutôt ses
-  couleurs dans « Couleur » : au TNI de 1080 px, avec ses noms, c'est le
-  cas, voir « La barre de gauche ») ; la barre du haut peut passer sur deux rangées (à
+  suivi comme `--bas-barre-haut`) ; elle défile sur un écran très bas, ses
+  boutons gardent leur taille (depuis les gains rapides du lot 16, avec ses
+  noms, elle tient dans 768 px de haut : 711 px ; sur un écran qu'on touche,
+  elle replie plutôt ses couleurs dans « Couleur » quand elle ne tient pas,
+  voir « La barre de gauche ») ; la barre du haut peut passer sur deux rangées (à
   1024 × 768), et un menu posé à droite de la barre des outils passe alors
   sous elle. Par défaut (« auto »), l'**écran** décide : allumés sur un écran
   qu'on touche (ou à pointeur grossier) dont la plus petite dimension fait au
   moins 900 px — un TNI, une grande tablette comme l'iPad Pro 12,9 pouces —,
   éteints au poste de la classe (souris et tablette graphique : l'infobulle
-  y existe, et à 768 px de haut les noms feraient défiler la barre des
-  outils), sur un iPad de 11 pouces (820 px de côté : en paysage, la barre
-  défilerait) et au téléphone. L'écran, et non la fenêtre : la décision ne
+  y existe, et avec les noms la barre du haut, plus large, ne laisse plus de
+  place au bouton du classeur à 1366 × 768), sur un iPad de 11 pouces (820 px
+  de côté) et au téléphone. L'écran, et non la fenêtre : la décision ne
   change pas quand on tourne la tablette. Dès qu'on coche ou décoche, le
   choix est retenu et l'écran ne décide plus. La mise en page du téléphone
   (une fenêtre de 640 px de large au plus, ou basse sous le doigt) les
@@ -4535,7 +4754,7 @@ n'y sort de l'écran (essayé de 320 × 568 à 932 × 430), tout bouton y fait a
 moins 44 × 44 px — ceux des fenêtres et de la bibliothèque aussi, depuis la
 vérification « conformité » du lot 5 (*Annuler*, *Exporter*, *Mettre à
 jour*, les raccourcis de l'éditeur de formule, les cases et les choix d'une
-fenêtre, le tri, *Créer un dossier de classe*, *Plus tard*, les couleurs
+fenêtre, le tri, *Créer un dossier de niveau*, *Plus tard*, les couleurs
 d'un dossier : ils faisaient 38 à 43 px) —, et l'essentiel reste sous le
 pouce :
 - **La barre du haut sur une rangée** : le bouton du classeur (son icône et
@@ -4560,7 +4779,10 @@ pouce :
   320) ; à gauche, en colonne, couché. Sept boutons : *Stylo*, *Gomme*,
   *Sélection*, **Couleur** (un rond de la couleur en main, « Couleur et
   épaisseur » : son menu a les quatre pastilles et les trois tailles, 44 ×
-  44 chacune), *Annuler*, *Rétablir*, **Autres outils** (ses points ; quand
+  44 chacune), *Annuler*, *Rétablir* (depuis les gains rapides du lot 16,
+  ce sont les deux boutons de la barre du haut, déplacés ici, à la même
+  place qu'avant ; la grille des couleurs et le bouton de l'épaisseur de la
+  barre de gauche n'y sont pas), **Autres outils** (ses points ; quand
   on tient l'un de ces outils, il prend son icône et le coup de surligneur :
   sa grille de 60 × 56 a *Surligneur*, *Point*, *Segment*, *Formes*,
   *Formule*, *Vue*, *Doigt* — sur un appareil tactile : il ouvre le menu du
@@ -5117,29 +5339,41 @@ barres, et défile s'il est plus haut que la place (avant le lot 5, il
 couvrait le haut de la barre d'outils plutôt que de sortir de l'écran). Ses
 boutons y font 44 × 44 px au moins.
 
-**La barre de gauche** ne bouge pas : la poubelle y garde sa place, grisée
-quand rien n'est choisi, comme ↶ et ↷ quand il n'y a rien à faire. Sur un écran bas (moins de 900 px de haut environ),
-ses boutons gardent leurs 44 px et elle défile, avec une fine barre de
-défilement ; les choix des Formes et du Segment suivent leur bouton.
+**La barre de gauche** ne bouge pas : rien ne s'y allume ni ne s'y éteint
+avec la sélection. Depuis les gains rapides du lot 16 (voir « Gains rapides
+(lot 16) »), la poubelle de la sélection n'y est plus (Suppr, la barre
+d'actions et, au téléphone, *Autres outils* suffisent), et ↶ et ↷, grisés
+quand il n'y a rien à faire, sont en tête de la barre du haut, toujours
+dans l'écran. Elle a les dix outils, le Doigt sur un écran qu'on touche, un
+filet, les **quatre couleurs en grille 2 × 2** (Noir, Bleu / Rouge, Vert :
+des cases de 34 × 34, chacune à un clic) et le **bouton de l'épaisseur**
+(le trait de l'outil en main dessiné dessus, « Épaisseur du trait : Fin » ;
+son menu, à droite de la barre, à la hauteur du bouton : Fin, Moyen, Épais,
+en 44 × 44, un choix le referme ; au clavier, Entrée l'ouvre sur
+l'épaisseur cochée, les flèches y passent, Échap le referme ; le Surligneur
+garde son épaisseur à lui, le bouton montre celle de l'outil en main) :
+601 px en tout (711 avec les noms sous les outils), elle tient dans une
+fenêtre de 657 px de haut sans défiler. Sur un écran plus bas encore
+(moins de 625 px environ), ses boutons gardent leurs 44 px et elle défile,
+avec une fine barre de défilement ; les choix des Formes et du Segment, les
+menus de la Gomme et de l'épaisseur suivent leur bouton.
 **Sur un écran qu'on touche** (l'iPad, une tablette, le TNI, un portable à
 écran tactile : là où le doigt a son bouton), depuis le contrôle final du
-lot 5, les quatre pastilles de couleur et les trois tailles du trait font
-44 × 44 (au poste de la classe, 44 × 34 et 44 × 30, à la souris et à la
-tablette graphique) ; et quand la barre ne tient plus dans la hauteur de
-l'écran (le TNI de 1080 px avec ses noms, l'iPad couché, un portable de
-768 px), elles se **replient dans « Couleur »**, le bouton du téléphone (un
-rond de la couleur en main, « Couleur » dessous avec les noms), posé à leur
-place entre les deux filets : son menu, à droite de la barre, à la hauteur
-du bouton, a les quatre pastilles et les trois tailles en 44 × 44 (au
-clavier, Entrée l'ouvre sur la couleur cochée, Échap le referme). La barre
-ne défile plus : Annuler, Rétablir et la poubelle restent dans l'écran (avant,
-au TNI comme sur l'iPad couché, les derniers en sortaient, ou l'auraient fait
-avec des pastilles plus hautes). C'est mesuré, la barre dépliée : sur l'iPad
-debout, l'iPad Pro debout, le TNI sans les noms, elle tient, et les
-pastilles restent dans la barre, à un toucher ; tourner la tablette replie
-ou déplie (un menu « Couleur » ouvert se ferme alors). Au poste de la
-classe, rien ne change : la barre garde ses couleurs à un clic et défile
-sur un écran bas, comme depuis le lot 1 (voir les limites). Au
+lot 5, les pastilles de couleur font 44 × 44 (au poste de la classe,
+34 × 34, à la souris et à la tablette graphique) ; et quand la barre ne
+tient plus dans la hauteur de l'écran (depuis le lot 16, seulement sur un
+écran de moins de 700 px de haut environ : une fenêtre de Chrome de 657 px
+sur un portable tactile ; le TNI de 1080 px avec ses noms et l'iPad couché,
+où elle se repliait, la gardent dépliée, les couleurs à un toucher), la
+grille et le bouton de l'épaisseur se **replient dans « Couleur »**, le
+bouton du téléphone (un rond de la couleur en main, « Couleur » dessous
+avec les noms), posé à leur place après le filet : son menu, à droite de
+la barre, à la hauteur du bouton, a les quatre pastilles et les trois
+tailles en 44 × 44 (au clavier, Entrée l'ouvre sur la couleur cochée, Échap
+le referme). La barre ne défile pas. C'est mesuré, la barre dépliée :
+tourner la tablette ou agrandir la fenêtre replie ou déplie (un menu
+« Couleur » ouvert se ferme alors). Au poste de la classe, rien ne se
+replie : la barre garde ses couleurs à un clic (voir les limites). Au
 téléphone (lot 5), elle n'a que sept boutons, en bas ou à gauche : la
 poubelle de la sélection y est dans *Autres outils* (*Supprimer*, grisée de
 même), et dans la barre d'actions (voir « Le téléphone »).
@@ -5304,7 +5538,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/seances.ts` | Les séances d'un classeur (lot 6) : le rangement des pages par séance (pur), la migration d'un classeur d'avant, les mots des dates (« Séance du mar 14 oct 14h », « de lundi ») ; dans `document.ts`, les deux cartes (`seances`, `seanceDesPages`), la séance neuve, la reprise d'une page (`reprendrePage`, `retirerReprise`) et la garde des séances passées (`garde`) ; dans `revoir/exporter.ts`, les séances lues dans le film (`seancesExplicitesDuFilm`, `pagesAPublier`) |
 | `src/seances-vue.ts` | Les séances à l'écran (lot 6) : la fenêtre « Bonjour ! », la question « Cette page est dans la séance de lundi… », « Renommer la séance… », les bandeaux (la lecture, « Reprendre ») et le tiroir de la séance précédente |
 | `src/figures.ts` | Les figures SVG des automatismes |
-| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le bouton du fond (lot 5 : la vignette du fond de la page, qui ouvre le menu des fonds, voir `src/menu-fonds.ts`), le menu complet (un objet, une formule, plusieurs objets, un groupe : « Groupe · 3 objets », *Grouper* ou *Dégrouper* ; sa rangée sur une ligne, son bouton ⋯ et son petit menu en sections : *Copier en image* et *Envoyer vers…*, puis *Ordre* (les aides d'`aidesOrdre`), puis *Protéger*, puis *Groupe* (*Sortir du groupe*, pour un membre pris seul : `sectionGroupe`), puis *Position* (*Tourner d'un quart de tour à gauche* et *… à droite*, pour ce qui a la pastille ↻, retouches après le lot 5 ; *Remettre droit*, pour une image ou une formule seule tournée) ; placé dans l'écran, sur un téléphone aussi), le menu court d'un objet verrouillé (lot 5 : Déverrouiller, Copier, ⋯), le menu de la Gomme (lot 5 : retoucher la Gomme en main, le clic droit, l'appui long, E ; ce qu'elle efface et sa taille ; le titre et la marque ◐ de son bouton), le menu de la page (et ce qu'il fait de l'image fixée en fond : la détacher, la copier, l'envoyer ; Déverrouiller tout), « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯ de la barre du haut, la trieuse), les messages (un ou deux boutons ; au-dessus des panneaux pendant un placement), éditeur de formules ; le bouton du classeur (sa place mesurée, à quatre formes), le bloc de l'état en tête du menu ⋯, le bandeau discret ; « Cet appareil » à la fin du menu ⋯ (lot 5 : « Contraste renforcé », body.contraste ; « Noms sous les outils », body.noms-outils, le nom court de chaque bouton dans son `span.libelle` (`nommer`, le mot dans data-libelle), `majNomsOutils` qui suit la mise en page du téléphone, `--droite-barre-outils` mesuré, les menus du doigt et de la Gomme qui passent sous la barre du haut sur deux rangées) ; la mise en page du téléphone (lot 5, K10 : `body.telephone`, `telephone`, `barreEnBas` ; ce qui ne s'y montre pas, `.seulement-large` ; « Couleur » et « Autres outils », au bout de la barre des outils, leurs menus `construireMenuCouleur` et `construireMenuAutres` (« Couleur » sert aussi, depuis le contrôle final du lot 5, à la barre d'un écran qu'on touche : body.tactile, ses pastilles et ses tailles en 44 × 44, repliées dans « Couleur » quand elle ne tient pas dans la hauteur, `majCouleursRepliees`), `placerPresDeLaBarre` qui les pose entre les deux barres ; les choix des Formes et du Segment au-dessus de la barre du bas, `placerChoixDuTelephone` ; ⋯ devenu « Plus », ses sections Page, Outils de cours et Vue, `sectionsDuTelephone`, et « Fond… », `ouvrirFondsDepuisPlus` ; le bouton du classeur en tête de la barre du haut ; `--haut-barre-bas` et `basUtile`, ce que prend la barre du bas ; `bordsFlottants`, les bords que la barre d'actions et le menu complet ne passent pas ; `placerToast`, le message qui ne couvre ni les barres ni ce qui est pris (depuis les retouches après le lot 5, au poste de la classe aussi : ni la barre d'actions ni la pastille ↻) ; la liste des instruments sous la barre du haut) |
+| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le bouton du fond (lot 5 : la vignette du fond de la page, qui ouvre le menu des fonds, voir `src/menu-fonds.ts`), le menu complet (un objet, une formule, plusieurs objets, un groupe : « Groupe · 3 objets », *Grouper* ou *Dégrouper* ; sa rangée sur une ligne, son bouton ⋯ et son petit menu en sections : *Copier en image* et *Envoyer vers…*, puis *Ordre* (les aides d'`aidesOrdre`), puis *Protéger*, puis *Groupe* (*Sortir du groupe*, pour un membre pris seul : `sectionGroupe`), puis *Position* (*Tourner d'un quart de tour à gauche* et *… à droite*, pour ce qui a la pastille ↻, retouches après le lot 5 ; *Remettre droit*, pour une image ou une formule seule tournée) ; placé dans l'écran, sur un téléphone aussi), le menu court d'un objet verrouillé (lot 5 : Déverrouiller, Copier, ⋯), le menu de la Gomme (lot 5 : retoucher la Gomme en main, le clic droit, l'appui long, E ; ce qu'elle efface et sa taille ; le titre et la marque ◐ de son bouton), le menu de la page (et ce qu'il fait de l'image fixée en fond : la détacher, la copier, l'envoyer ; Déverrouiller tout), « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯ de la barre du haut, la trieuse), les messages (un ou deux boutons ; au-dessus des panneaux pendant un placement), éditeur de formules ; le bouton du classeur (sa place mesurée, à quatre formes), le bloc de l'état en tête du menu ⋯, le bandeau discret ; « Cet appareil » à la fin du menu ⋯ (lot 5 : « Contraste renforcé », body.contraste ; « Noms sous les outils », body.noms-outils, le nom court de chaque bouton dans son `span.libelle` (`nommer`, le mot dans data-libelle), `majNomsOutils` qui suit la mise en page du téléphone, `--droite-barre-outils` mesuré, les menus du doigt et de la Gomme qui passent sous la barre du haut sur deux rangées) ; la mise en page du téléphone (lot 5, K10 : `body.telephone`, `telephone`, `barreEnBas` ; ce qui ne s'y montre pas, `.seulement-large` ; « Couleur » et « Autres outils », au bout de la barre des outils, leurs menus `construireMenuCouleur` et `construireMenuAutres` (« Couleur » sert aussi, depuis le contrôle final du lot 5, à la barre d'un écran qu'on touche : body.tactile, ses pastilles et ses tailles en 44 × 44, repliées dans « Couleur » quand elle ne tient pas dans la hauteur, `majCouleursRepliees`), `placerPresDeLaBarre` qui les pose entre les deux barres ; les choix des Formes et du Segment au-dessus de la barre du bas, `placerChoixDuTelephone` ; ⋯ devenu « Plus », ses sections Page, Outils de cours et Vue, `sectionsDuTelephone`, et « Fond… », `ouvrirFondsDepuisPlus` ; le bouton du classeur en tête de la barre du haut ; `--haut-barre-bas` et `basUtile`, ce que prend la barre du bas ; `bordsFlottants`, les bords que la barre d'actions et le menu complet ne passent pas ; `placerToast`, le message qui ne couvre ni les barres ni ce qui est pris (depuis les retouches après le lot 5, au poste de la classe aussi : ni la barre d'actions ni la pastille ↻) ; la liste des instruments sous la barre du haut) ; les gains rapides du lot 16 : Annuler et Rétablir en tête de la barre du haut (`placerHistorique` les déplace dans la barre du bas au téléphone), la grille 2 × 2 des pastilles (`grillePastilles`), le bouton de l'épaisseur et son menu (`majBoutonEpaisseur`, `basculerMenuEpaisseur`, `construireMenuEpaisseur`, `placerMenuEpaisseur`) |
 | `src/pages/envoi.ts` | La fenêtre « Envoyer vers… » : déplacer ou copier, la liste des destinations (chaque page avec sa petite vignette, une nouvelle page juste après, à la fin), le clavier ; les textes des messages d'un envoi (pur, testé). L'envoi lui-même est `App.envoyerSelection`, son annulation `Tableau.envoyer` |
 | `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu, jamais sur ce qui est verrouillé), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose (au-dessus du cadre de taille et de sa pastille ↻, jamais sur elle : `App.emprise`, `placeBarre` ; au téléphone, au-dessus de la barre du bas : son bord `bas`, lot 5, K10), ce que devient un appui sur elle |
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (le cadenas du menu court d'un verrouillé compris ; celles des lecteurs sont dans `src/revoir/icones.ts`) |
@@ -5324,21 +5558,21 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/presse-papiers.ts` | Copier, coller : la copie écrite pour le presse-papiers du système et relue sans passer par la page, chaque forme vérifiée par une liste blanche (depuis le lot 5 : verrou, fixation d'une image et groupe gardés, jetés s'ils sont abîmés ; la rotation d'une formule bornée), le collage (noms gardés ou changés, points liés ; verrou et fixation remis, un groupe neuf par groupe copié d'au moins deux membres, une image fixée sous tout ce qui est sur la page d'arrivée) |
 | `src/fichier.ts` | Le classeur dans un fichier `.memc` : l'écrire (l'en-tête avec le nom et l'id du classeur, à la fin), le relire (et refuser ce qui n'en est pas un), vérifier un document entier (`verifierEtat`, ou `verifierDocument` sur un document déjà rejoué), ce qui se relit d'un document où des changements attendent une mise à jour qui manque (`etatLisible`, `ecrireLisible` : un fichier qui se rouvre toujours), lire l'en-tête seul (`lireEntete`) ; la marque d'une copie (`CARTE_COPIE`, `marqueDeCopie`, que Publier lit) ; le nom de tout fichier (`nomSur`, `nomClasseur`) |
 | `src/sauvegarde.ts` | Enregistrer et ouvrir un classeur : Ctrl + S (sur la clé quand elle enregistre le classeur ; sinon le fichier par l'écrivain, ou depuis la mémoire quand la base a un trou), Ctrl + O (avec la bibliothèque, il passe la main à `classeurs/fichiers.ts` ; dans le repli, par showOpenFilePicker quand il existe, le fichier lu dans le travailleur, et il remplace le classeur), la question avant de remplacer (`proposerRemplacement`, et sa case « Enregistrer automatiquement les changements dans ce fichier »), « Remplacer » qui donne au classeur l'identité du fichier (ou en fait une copie, registre des publications vidé et marquée, pour le fichier d'un classeur de la corbeille), les autres onglets (le canal des classeurs, et `mem-tableau` pour le premier), le classeur coupé de sa base pour une mise à jour depuis un fichier, la date du dernier enregistrement de chaque classeur ; le téléchargement d'un fichier (`telecharger`, que l'image copiée et le PDF empruntent) |
-| `src/main.ts` | Le démarrage : l'index de la bibliothèque et la reprise, le classeur à ouvrir (ou le repli, ou la bibliothèque seule), l'adresse, le titre de l'onglet, puis le classeur chargé et son ouverture notée, la bibliothèque par-dessus lui (ce qui s'écrit avant d'en partir), les fichiers (`classeurs/fichiers.ts`, branchés sur la sauvegarde, la bibliothèque et l'état ; aussi dans la bibliothèque seule), le message d'arrivée, l'annonce du premier lancement ; une page du cache du navigateur se recharge |
+| `src/main.ts` | Le démarrage : l'index de la bibliothèque et la reprise, le classeur à ouvrir (ou le repli, ou la bibliothèque seule), l'adresse, le titre de l'onglet, puis le classeur chargé et son ouverture notée, la bibliothèque par-dessus lui (ce qui s'écrit avant d'en partir), les fichiers (`classeurs/fichiers.ts`, branchés sur la sauvegarde, la bibliothèque et l'état ; aussi dans la bibliothèque seule), le message d'arrivée, le rappel d'enregistrer le classeur quitté (lot 16 : lu à l'arrivée, après le message d'arrivée et la fenêtre ouverte, son bouton enregistre depuis la base), l'annonce du premier lancement ; une page du cache du navigateur se recharge |
 | `src/classeurs/demarrage.ts` | Les classeurs, pur (testé) : les noms des bases et des clés (`mem-tableau-local`, seul endroit qui l'écrit), les fiches des classeurs et des dossiers, le premier reconnu à sa base, la clé de stockage d'un classeur, la chaîne bornée des dossiers, ce qui est visible, le classeur qui s'ouvre au démarrage et ses messages, le dernier classeur retenu, l'adresse d'un classeur |
 | `src/classeurs/bases.ts` | Les bases des classeurs en IndexedDB pure : ouvrir une base sans jamais la créer (`ouvrirBaseExistante`), lire ses mises à jour, créer la base d'un nouveau classeur (jamais sur une base existante ; une mise à jour ou plusieurs, dans l'ordre : une copie), remplacer son contenu d'un bloc, y ranger l'identité, compter ses entrées (sans `databases()` aussi), l'effacer (bloquée : la suite quand elle part enfin) ; les raisons d'un refus (`ErreurBase`) |
 | `src/classeurs/registre.ts` | L'index de la bibliothèque (`mem-teachingtool-bibliotheque`) : l'ouvrir, la reprise du tableau d'avant (une transaction, rejouable) et le ménage des créations et des effacements interrompus (le garde-fou du premier), lire et écrire les fiches et les dossiers (une transaction par geste ; jamais deux fiches pour une base, jamais de cycle de dossiers), changer l'identité d'un classeur, remettre un classeur ou un dossier de la corbeille (son dossier relu dans la même transaction), retirer un classeur effacé (sa fiche, son aperçu, sa poignée), adopter une base sans fiche (une transaction : une seule fiche), les réglages, les aperçus (un, ou tous d'une lecture), les poignées des fichiers de la clé, créer un classeur sans toucher à une base pleine, noter l'ouverture (le premier repris retrouve le nom rangé à côté de son document) ; le canal des onglets |
 | `src/classeurs/neuf.ts` | L'état d'un classeur neuf : une page vide au fond choisi (la fenêtre coche la page blanche), et sa naissance dans le film |
 | `src/classeurs/suivi.ts` | Le suivi du classeur ouvert : sa fiche retient quand il a changé, ses pages et son vecteur d'état, au plus toutes les 30 s, dès que l'onglet passe en arrière-plan et à l'ouverture de la bibliothèque (`vider`) ; chaque écriture refait sa carte dans la bibliothèque de l'onglet (`onEcrit`) ; il s'arrête quand le classeur est effacé |
-| `src/classeurs/etat.ts` | L'état de la sauvegarde, pur (testé) : ce qui protège le classeur (`protege`, `cleProtege` : pas une clé où rien ne s'est encore écrit), les lignes (navigateur, clé, Drive, fichier) et le texte court du bouton (« Clé : pas encore à jour » tant que le dernier trait n'y est pas ; la dernière copie du Drive sur un autre compte Google), le niveau (le point ambre), les dates (« il y a 7 min »), le rappel d'enregistrer et le bandeau (et ceux du Drive : la copie qui n'est pas remplacée, la connexion qui manque) ; le nom d'une erreur de la base, même enveloppée |
+| `src/classeurs/etat.ts` | L'état de la sauvegarde, pur (testé) : ce qui protège le classeur (`protege`, `cleProtege` : pas une clé où rien ne s'est encore écrit), les lignes (navigateur, clé, Drive, fichier) et le texte court du bouton (« Clé : pas encore à jour » tant que le dernier trait n'y est pas ; la dernière copie du Drive sur un autre compte Google), le niveau (le point ambre), les dates (« il y a 7 min »), le rappel d'enregistrer (et son texte lu à l'arrivée sur un autre classeur, `texteRappelDepart`) et le bandeau (et ceux du Drive : la copie qui n'est pas remplacée, la connexion qui manque) ; le nom d'une erreur de la base, même enveloppée |
 | `src/classeurs/surveillance.ts` | L'état de la sauvegarde en direct : la base (le trou, et sa réparation au calme), le dernier fichier (ici ou dans un autre onglet), le travail depuis ; `majCle` et `majDrive` pour la clé et le Drive (et `cleEnAttente` : le dernier trait pas encore sur la clé) ; `peutQuitter` et `beforeunload` ; `partirParLaBibliotheque` (la clé ne pose pas sa question quand on part par la bibliothèque) ; le bandeau (× : la session, ou une heure pour le rappel) |
 | `src/classeurs/ecrivain.ts` | L'écrivain : un seul travailleur pour la page, des demandes numérotées ; le fichier `.memc` d'un classeur depuis sa base (`fabriquerFichier`), le vecteur d'état d'une base (`vecteurDeLaBase`), un fichier lu et vérifié (`lireFichier`, pour Ouvrir ; avec la somme d'une entrée d'un `.memb`), la copie complète d'un classeur dans une base neuve (`copierClasseur`, pour Dupliquer), ce que contient une base sans fiche (`examinerBase`, pour l'adoption), un classeur mis à jour depuis un fichier sans rien perdre (`mettreAJour`), la base d'un classeur ajouté depuis un fichier (`creerBase`), la copie préparée depuis l'état d'un fichier, sans rien écrire (`preparerCopie`, pour « Remplacer » par le fichier d'un classeur de la corbeille) ; le repli sur le fil principal (`mode = 'fil'`) si le travailleur manque ou ne démarre pas, sauf pour les demandes du travailleur seul (`travailleurSeul` : les écritures automatiques, erreur `fil`) ; les erreurs typées (`ErreurEcrivain`) |
 | `src/classeurs/ecrivain.worker.ts` | Le travailleur de l'écrivain, intégré à la page (`?worker&inline` : il marche en `file://`) |
 | `src/classeurs/ecrivain-taches.ts` | Ce que fait l'écrivain, dans le travailleur ou sur le fil : les demandes (genres `fichier`, `vecteur`, `lire` (avec ou sans somme CRC-32), `copier`, `examiner`, `mettre-a-jour` : une transaction, la base relue et fusionnée dans le rappel de son getAll, l'état du fichier ajouté sans rien effacer seulement si elle y est encore contenue ; `creer` : la base d'un classeur ajouté, hors du fil principal, où ranger 18 Mo prenait près de 100 ms ; `preparer-copie` : l'état d'un fichier et la mise à jour qui vide son registre des publications et le marque, rendus sans rien écrire) et leurs réponses (l'état d'un fichier lu est transféré, sans copie) ; aucun calcul tant qu'une autre demande tient une base ouverte (un effacement n'attend jamais un calcul) ; les erreurs (`absente`, `abimee`, `indisponible`, `illisible`, `fil`, `place`, `existante`, `autre` ; `creee` : la base demandée a été créée, vide, avant l'échec) |
 | `src/classeurs/vecteurs.ts` | Comparer deux vecteurs d'état Yjs, pur (testé) : `egal`, `contient`, `contenu`, `diverge` (la clé ne remplace jamais un fichier qui contient plus que le classeur, et voit qu'un classeur a perdu une partie de son histoire) |
 | `src/classeurs/cle.ts` | L'enregistrement automatique dans un fichier de la clé (Chrome, Edge, aussi en `file://`) : l'activer (le fichier choisi, vérifié, gardé), quand écrire (20 s après le dernier changement, au plus tard 2 min, au calme), écrire d'un bloc depuis le travailleur, les garde-fous (un autre classeur, un fichier modifié ailleurs, l'histoire perdue), la permission (un clic après un rechargement), les échecs et leurs réessais, un seul onglet qui écrit (Web Locks), la question du navigateur en fermant l'onglet avant l'écriture (`beforeunload`, posée seulement pendant ce temps-là, et l'écriture part aussitôt), Arrêter, la case de la fenêtre « Ouvrir ce classeur ? » ; un conflit propose d'ouvrir le fichier de la clé (`fichierDeLaCle`), et la fiche changée dans l'onglet se relit (`resynchroniser`) |
-| `src/classeurs/bibliotheque.ts` | La bibliothèque des classeurs : l'écran (par-dessus le classeur, ou seule), le bandeau et la ligne du classeur ouvert, Récents et la grille du dossier affiché (seules les cartes changées se refont, le focus reste), les cartes des classeurs (des liens : le clic du milieu ouvre un onglet) et des dossiers, les pointeurs et le clavier, le menu d'une carte et celui d'un dossier, ouvrir un autre classeur sans rien perdre (le trou, ce qui attend, le rappel), Nouveau classeur (la case de la clé, la première écriture avant de partir) ; ranger : le conseil, Nouveau dossier, le fil d'Ariane, Retour arrière, la couleur et « Dossier d'une classe », les étiquettes de classe et leur filtre, renommer (F2, double-clic, au-dessus du clavier virtuel), trier ; déplacer (« Déplacer vers… », le glisser-déposer à la souris, à la tablette graphique et au doigt, deux doigts qui défilent), dupliquer, les aperçus en adresses objet ; la corbeille (Supprimer et Suppr, « Annuler », le bouton « Corbeille (3) », Remettre, les questions de Supprimer définitivement et de Vider, « Enregistrer d'abord », l'onglet qui passe sans classeur), l'adoption des bases sans fiche à la première ouverture, la place du navigateur ; `actionsDuBandeau`, `menuDuBandeau`, `blocsDuMenu`, `blocsDuMenuDossier` pour les morceaux suivants |
-| `src/classeurs/arbre.ts` | L'arbre de la bibliothèque, pur (testé) : les huit couleurs, les noms (d'un dossier, d'une étiquette, d'une copie), ce qui ressemble à une classe et son rang, le cycle et la remontée bornée, le parent montré, le chemin et le fil d'Ariane, les enfants et les descendants, ce que contient un dossier, les étiquettes héritées et effectives (calculées), la rangée du filtre, le tri par nom |
+| `src/classeurs/bibliotheque.ts` | La bibliothèque des classeurs : l'écran (par-dessus le classeur, ou seule), le bandeau et la ligne du classeur ouvert, Récents et la grille du dossier affiché (seules les cartes changées se refont, le focus reste), les cartes des classeurs (des liens : le clic du milieu ouvre un onglet) et des dossiers, les pointeurs et le clavier, le menu d'une carte et celui d'un dossier, ouvrir un autre classeur sans rien perdre (le trou, ce qui attend, le rappel d'enregistrer noté pour l'arrivée, `CLE_RAPPEL_ARRIVEE` et `lireRappelArrivee`, sans question depuis le lot 16), Nouveau classeur (la case de la clé, la première écriture avant de partir) ; ranger : le conseil, Nouveau dossier, le fil d'Ariane, Retour arrière, la couleur et « Dossier d'une classe », les étiquettes de classe et leur filtre, renommer (F2, double-clic, au-dessus du clavier virtuel), trier ; déplacer (« Déplacer vers… », le glisser-déposer à la souris, à la tablette graphique et au doigt, deux doigts qui défilent), dupliquer, les aperçus en adresses objet ; la corbeille (Supprimer et Suppr, « Annuler », le bouton « Corbeille (3) », Remettre, les questions de Supprimer définitivement et de Vider, « Enregistrer d'abord », l'onglet qui passe sans classeur), l'adoption des bases sans fiche à la première ouverture, la place du navigateur ; `actionsDuBandeau`, `menuDuBandeau`, `blocsDuMenu`, `blocsDuMenuDossier` pour les morceaux suivants |
+| `src/classeurs/arbre.ts` | L'arbre de la bibliothèque, pur (testé) : les huit couleurs, les noms (d'un dossier, d'une étiquette, d'une copie), ce qui ressemble à un niveau (« 5ème », « 2nde ») et son rang, le cycle et la remontée bornée, le parent montré, le chemin et le fil d'Ariane, les enfants et les descendants, ce que contient un dossier, les étiquettes héritées et effectives (calculées), la rangée du filtre, le tri par nom |
 | `src/classeurs/liste.ts` | Ce que montre la bibliothèque, pur (testé) : Récents (les six derniers ouverts), le tri par date, un classeur à la racine, la date et les pages d'une carte, le texte du lecteur d'écran (avec ses étiquettes et son chemin), les titres des icônes de la clé et du Drive, le nombre de classeurs, le nom d'un classeur neuf |
 | `src/classeurs/ecrivain-pur.ts` | Le fichier d'un classeur depuis les mises à jour de sa base, pur (testé) : la fusion, la vérification (une base trouée ou abîmée ne fait aucun fichier ; avec `lisible`, une base trouée relue donne ce qui s'en relit, et le dit), l'en-tête, le gzip, le vecteur d'état, la somme CRC-32 ; la copie d'un classeur (`preparerCopie` : toute l'histoire, le registre des publications vidé et la marque de copie en une transaction) ; l'examen d'une base (`examinerMisesAJour` : ses pages, les formes de toutes ses pages, son film, sa piste, ses publications, ses noms, sa corbeille de pages, ses dates) |
 | `src/classeurs/deplacer.ts` | Déplacer un classeur ou un dossier, pur (testé) : là où il est, les places interdites (ni dans soi-même ni dans un descendant, ni là où il est déjà), l'arbre de « Déplacer vers… » (borné), la cible sous le pointeur pendant un glisser (`cibleSous`), le message et ses étiquettes qui changent |
@@ -5558,26 +5792,30 @@ qu'au document sans séances (hors de l'application).
   chez eux (le lecteur, le film élève) et ce qu'on imprime (le PDF) gardent
   les tons ordinaires, voulus ainsi. Les noms sous les outils ne viennent
   pas dans la mise en page du téléphone (la place manque) ; au poste de la
-  classe (souris, tablette graphique), les pastilles de couleur et les
-  tailles du trait, dans la barre des outils, gardent leurs 34 et 30 px de
-  haut (44 de large), avec ou sans noms, comme avant (sur un écran qu'on
-  touche, depuis le contrôle final du lot 5, elles font 44 × 44, ou sont
-  dans le menu « Couleur » quand la barre ne tient pas ; au téléphone,
-  depuis K10, dans ce menu). Les
+  classe (souris, tablette graphique), les pastilles de couleur, en grille
+  2 × 2 dans la barre des outils, font 34 × 34, avec ou sans noms (sur un
+  écran qu'on touche, depuis le contrôle final du lot 5, 44 × 44, ou dans
+  le menu « Couleur » quand la barre ne tient pas ; au téléphone, depuis
+  K10, dans ce menu) ; l'épaisseur du trait se change dans le menu de son
+  bouton (deux clics, depuis les gains rapides du lot 16), au lieu d'un clic
+  sur l'un des trois boutons d'avant. Les
   deux réglages ne sont essayés qu'au navigateur Chromium, piloté (l'écran
   du TNI et de l'iPad simulés) : le vrai vidéoprojecteur de la salle, un
   vrai TNI et l'iPad restent à voir en classe.
-- Au poste de la classe, sur un écran de 768 px de haut (1366 × 768,
-  1024 × 768), la barre des outils (828 px) défile : Rétablir et la poubelle
-  ne se voient qu'en la faisant défiler (la molette sur la barre, ou sa
-  fine barre de défilement) ; dans une fenêtre de Chrome sur un tel écran
-  (1366 × 657), aussi Trait moyen, Trait épais et Annuler ; avec les noms
-  sous les outils (948 px), aussi Vert et Trait fin. C'est la règle du lot 1
-  (des boutons de 44 px qui défilent, plutôt que des boutons qui
-  rétrécissent), et les couleurs y restent à un clic ; replier les couleurs
-  dans « Couleur » là aussi, comme sur un écran qu'on touche, les ferait
-  passer à deux clics : c'est au professeur de choisir (voir la feuille de
-  route). Les raccourcis restent : Ctrl + Z, Ctrl + Y, Suppr.
+- Au poste de la classe, la barre des outils (601 px depuis les gains
+  rapides du lot 16 ; 874 avant) tient dans une fenêtre de 657 px de haut
+  sans défiler : plus rien n'en sort à 1366 × 768, 1280 × 720, 1024 × 768,
+  ni dans une fenêtre de Chrome de 1366 × 657, ni avec les noms sous les
+  outils à 1366 × 768 (711 px). Sur un écran plus bas encore (moins de
+  625 px environ ; avec les noms, moins de 735), elle défile : la règle du
+  lot 1 (des boutons de 44 px qui défilent, plutôt que des boutons qui
+  rétrécissent), et Annuler et Rétablir, en haut, restent dans l'écran. En
+  échange, la barre du haut est plus longue de deux boutons et d'un filet
+  (105 px) : à 1024 × 768 elle passe sur deux rangées (le bouton du classeur
+  en devient le premier bouton, son icône) ; à 1280 × 720, le bouton du
+  classeur n'a plus que son icône et son point (sa forme étroite) ; avec les
+  noms sous les outils, à 1366 × 768, il est caché (le point sur ⋯, et son
+  menu). Les raccourcis restent : Ctrl + Z, Ctrl + Y, Suppr.
 - La mise en page du téléphone (lot 5, K10) n'a été essayée qu'au navigateur
   Chromium, piloté (iPhone et Android simulés, de 320 × 568 à 932 × 430) :
   un vrai téléphone, Safari sur iPhone (la barre d'adresse qui grandit et
@@ -5587,10 +5825,11 @@ qu'au document sans séances (hors de l'application).
   menu couvrir la pastille ↻ plutôt que l'objet (la règle du lot 5, K6, voir
   « Le menu complet ») ; un long message, alors, n'a ni le bas ni le haut de
   libres et reste en bas, sur la pastille (on la touche à travers lui : il
-  laisse passer les appuis, sauf sur ses boutons). Dans le document, les
-  deux boutons du téléphone (« Couleur », « Autres outils ») sont au bout de
-  la barre des outils : au clavier (un téléphone avec un clavier), Tab passe
-  par Annuler et Rétablir avant « Couleur », que l'écran montre avant eux.
+  laisse passer les appuis, sauf sur ses boutons). Dans le document, la
+  barre des outils du téléphone a l'ordre de l'écran depuis les gains
+  rapides du lot 16 (Annuler et Rétablir y sont déplacés entre « Couleur »
+  et « Autres outils ») : au clavier (un téléphone avec un clavier), Tab les
+  suit dans cet ordre.
   La barre du zoom y est cachée : on zoome au pincement (« 100 % » et « Tout
   voir » dans « Plus ») ; « Voir la sélection » n'y est pas. Sur 568 × 320,
   l'éditeur de formule est plus haut que l'écran : il défile, et ses boutons
@@ -5623,11 +5862,12 @@ qu'au document sans séances (hors de l'application).
    n'en garde qu'un trait), remis à plus tard par le professeur au lot 5
    (choix c : seulement « Grouper » à la main pour l'instant).
 8. Les autres sujets « plus tard » de l'étude du lot 5 (les séances
-   explicites et la classe demandée au début de chaque séance sont faites
+   explicites et le niveau demandé au début de chaque séance sont faites
    au lot 6) : des classeurs « Préparation » copiés pour chaque classe ; des modèles de
    page ; la recherche ; le pointeur laser (l'import de PDF est au point 4).
-9. Au poste de la classe, sur un écran bas : replier les couleurs et les
-   tailles dans « Couleur » quand la barre des outils ne tient pas (comme
-   sur un écran qu'on touche depuis le contrôle final du lot 5), pour que
-   Annuler, Rétablir et la poubelle restent dans l'écran — au prix d'un
-   clic de plus pour changer de couleur : au choix du professeur.
+9. *(Fait aux gains rapides du lot 16, autrement qu'en repliant les
+   couleurs : Annuler et Rétablir en tête de la barre du haut, toujours
+   dans l'écran ; les couleurs en grille 2 × 2, toujours à un clic ;
+   l'épaisseur sur un bouton qui ouvre un menu ; la poubelle de la
+   sélection retirée de la barre de gauche, qui tient dans 657 px de haut.
+   Voir « Gains rapides (lot 16) ».)*

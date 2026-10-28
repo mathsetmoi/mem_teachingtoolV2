@@ -12,7 +12,7 @@
 //   navigateur, avec des mots simples (« racine », « fraction », « pi »,
 //   « carré » : voir recherche.ts). Un clic ouvre la page, la formule
 //   prise ; une page d'une séance passée s'ouvre en lecture.
-// - CLASSEURS, PAGES ET SÉANCES : par leur nom, leur classe (le dossier),
+// - CLASSEURS, PAGES ET SÉANCES : par leur nom, leur niveau (le dossier),
 //   le nom des pages, la date des séances.
 // Sans accent ni majuscule à respecter. Les autres classeurs sont lus dans
 // leur base, en lecture seule, à l'ouverture de la fenêtre (les résultats
@@ -43,7 +43,7 @@ export interface Action {
 export interface ClasseurCherche {
   id: string
   nom: string
-  /** La classe (le dossier, ou celle qu'il hérite), son chemin */
+  /** Le niveau (le dossier, ou celui qu'il hérite), son chemin */
   classe: string | null
   chemin: string
   modifie: number

@@ -20,7 +20,8 @@ for (const [l, h, nom] of [[390, 844, 'portrait'], [844, 390, 'paysage']]) {
     const vus = l => l.filter(b => b.getClientRects().length)
     const t = l => vus(l).map(b => [Math.round(b.getBoundingClientRect().width), Math.round(b.getBoundingClientRect().height)])
     return { outils: r('.barre-outils'), haut: r('.barre-haut'), zoom: r('.barre-zoom'), sh: o.scrollHeight, ch: o.clientHeight,
-      tailles: t([...o.querySelectorAll(':scope > button:not(.pastille)')]), pastillesDansLaBarre: vus([...o.querySelectorAll(':scope > .pastille')]).length }
+      // (gains rapides, lot 16 : les pastilles sont dans une grille, cachée au téléphone)
+      tailles: t([...o.querySelectorAll(':scope > button:not(.pastille)')]), pastillesDansLaBarre: vus([...o.querySelectorAll('.grille-pastilles > .pastille')]).length }
   })
   noter(`${nom} : les sept boutons de la barre des outils font 44 × 44 (pas de pastilles dans la barre : elles sont dans « Couleur »)`,
     geo.tailles.length === 7 && geo.tailles.every(([w, h]) => w === 44 && h === 44) && geo.pastillesDansLaBarre === 0, JSON.stringify(geo))

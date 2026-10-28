@@ -25,7 +25,7 @@ dossiers d'essais vitest, le banc d'écriture), rangés par lot :
 | `lot12/` | l'outil Texte : un clic, deux lignes, une formule entre $, le gras et la couleur, un cadre glissé (la largeur), le double-clic, la gomme qui ne l'efface pas, copier-coller, les puces, les côtés du cadre, la recherche (`E1-texte.mjs`) |
 | `lot13/` | le mode nuit d'une page : la touche N et le bouton lune, le papier noir et l'encre claire, les barres foncées, une autre page de jour, la case de la trieuse et sa vignette, le replay des élèves qui bascule au même moment (`N1-nuit.mjs`) |
 | `lot14/` | la calculatrice NumWorks : le menu Classe, l'installation (avec une page d'essai qui se fait passer pour l'émulateur), l'écran noté dans le film à chaque appui et jamais sans appui, la bande qui la déplace au Stylo, × et Ctrl+Z, le lecteur, la version hors ligne sans internet (`E1-calculatrice.mjs`) ; avec les vrais fichiers de NumWorks, s'ils sont donnés par `NUMWORKS_LYCEE` et `NUMWORKS_COLLEGE` (sinon il ne fait rien) : installer, calculer, l'écran noté (`E2-vrais-emulateurs.mjs`) |
-| `lot15/` | Publier dans un dossier de l'ordinateur, sans connexion Google : le fichier « Titre [code].mem », le lien avec le code, l'attente puis « en ligne », republier sous un autre nom (même code, un seul fichier), un relais pas à jour signalé avant d'écrire (`P1-publier-dossier.mjs`) |
+| `lot15/` | Publier dans un dossier de l'ordinateur, sans connexion Google : le fichier « Titre [code].mem », le lien avec le code, l'attente puis « en ligne », republier sous un autre nom (même code, un seul fichier), un relais pas à jour signalé avant d'écrire ; puis Publier en un clic (lot 16) : la fenêtre en résumé quand tout est retenu, « Modifier… », l'accord du dossier refusé qui déplie sans rien écrire (`P1-publier-dossier.mjs`) |
 | `ecriture/` | le banc d'écriture (le trait en direct et au replay) |
 | `commun/` | `racines.mjs` (les chemins, calculés depuis l'emplacement des fichiers) et `playwright.mjs` (où trouver Playwright) |
 | `tout.sh` | le lanceur |
@@ -143,7 +143,9 @@ tel qu'il est.
   `lot5/verif/regressions/vt/rendu-reference.json` (l'empreinte des appels
   du rendu d'une page sans rien du lot 5), `lot5/K10-telephone/
   reference-barres.json` (la géométrie des barres relevée avant le morceau
-  K10).
+  K10 ; refaite avec `releverBarres` de `lot5/lib/geometrie-barres.mjs` aux
+  gains rapides du lot 16, où les barres changent voulument : elle était
+  déjà périmée depuis le bouton Texte du lot 12).
 - Fabriqués au passage au lieu d'être versionnés (des images, un gros
   fichier) : le `.memc` de 53 Mo de `lot1/donnees/abime` (40 images de
   bruit, enregistrées par l'outil), la feuille JPEG de `lot3/P7/vt` (une page

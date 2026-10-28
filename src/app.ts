@@ -110,8 +110,10 @@ export class SelectionSuivie extends Set<string> {
 
 /** Un bouton d'un message (voir Interface.message). cle : ce que l'action
  *  concerne (voir oublierAction) ; garder : le message reste après ce bouton
- *  (sans lui), avec les autres (« Aller à la page 5 » laisse « Annuler »). */
-export interface ActionMessage { libelle: string; faire: (e?: MouseEvent) => void; cle?: string; garder?: boolean }
+ *  (sans lui), avec les autres (« Aller à la page 5 » laisse « Annuler ») ;
+ *  duree : le message reste au moins tant de ms (7 s sans rien dire ; le
+ *  rappel d'enregistrer le classeur quitté en demande 30). */
+export interface ActionMessage { libelle: string; faire: (e?: MouseEvent) => void; cle?: string; garder?: boolean; duree?: number }
 
 export interface Interface {
   maj(): void
@@ -1096,7 +1098,7 @@ export class App {
    *  neuf) : sa séance commence, sans question ('rien'). Une séance du jour
    *  active depuis moins d'une heure : on y reste ('reprise' : un message le
    *  dit). Plus d'une heure : la fenêtre d'accueil ('accueil'). nouvelle :
-   *  on arrive pour une nouvelle séance (une autre classe, un autre chapitre,
+   *  on arrive pour une nouvelle séance (un autre niveau, un autre chapitre,
    *  depuis la fenêtre d'accueil d'un autre classeur) : elle commence. */
   seanceAuDemarrage(o: { nouvelle?: boolean; maintenant?: number } = {}): { genre: 'rien' | 'reprise' | 'accueil'; seance?: SeanceDuClasseur } {
     const t = this.tableau, d = t.derniereSeance()

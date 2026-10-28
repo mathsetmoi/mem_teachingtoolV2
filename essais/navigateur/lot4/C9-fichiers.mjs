@@ -677,7 +677,7 @@ if (seul('E')) {
   const sq = fq.find(f => f.id === S1)
   const geoQ = dq.find(x => x.nom === 'Géométrie'), classeQ = dq.find(x => x.nom === '5e B')
   ok(sq && sq.dossier === geoQ?.id && geoQ.parent === classeQ?.id && classeQ.etiquette === '5e B' && classeQ.couleur === '#2f8a57' && geoQ.couleur === '#c24a4a' && JSON.stringify(sq.etiquettes) === '["Soutien"]',
-    '   … les dossiers (5e B › Géométrie, leurs couleurs, l\'étiquette de classe), « Symétrie » dans le sien avec son étiquette', { sq, dq })
+    '   … les dossiers (5e B › Géométrie, leurs couleurs, l\'étiquette de niveau), « Symétrie » dans le sien avec son étiquette', { sq, dq })
   ok(fq.some(f => f.id === F1 && f.dossier === null) && fq.some(f => f.nom === 'Premier classeur' && f.base.startsWith(PREFIXE)) && (await q.evaluate(id => window.__registre.apercu(id).then(b => b?.size ?? 0), S1)) > 0,
     '   … « Fractions » à la racine, le premier de l\'autre profil comme un classeur à part, l\'aperçu repris', fq)
   ok((await baseDeNode(q, PREFIXE + S1)).ids.sort().join() === 'S1,S2', '   … ses traits')

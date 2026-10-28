@@ -8,6 +8,7 @@ import { Tableau } from '../src/document'
 import type { Trait } from '../src/types'
 import { dateCourte, deLaSeance, libelleSeance, migration, nomDeSeance, quandDit, rangerLesPages } from '../src/seances'
 import { exporter, pagesAPublier, seancesAPublier, seancesDuFilm, seancesDuTableau } from '../src/revoir/exporter'
+import { deNiveau, enNiveau } from '../src/seances-vue'
 
 let horloge = new Date('2026-10-13T08:00:00').getTime()
 let numero = 0
@@ -300,5 +301,29 @@ describe('les séances en attente (un classeur qu\'on ouvre sans rien y changer)
     const p3 = t.ajouterPage('blanc', 2); await attendre(100)
     expect(t.seances.size).toBe(2)
     expect(t.seancesDuClasseur().map(s => [s.id, s.pages])).toEqual([vues[0], [vues[1][0], [p2, p3]]])
+  })
+})
+
+// La fenêtre « Bonjour ! » dit « niveau » (gains rapides du lot 16) : le nom
+// du dossier de niveau dans la phrase, avec la même règle que la case
+// « Dossier d'un niveau » (ressembleAUneClasse, arbre.ts).
+describe('le niveau dans la phrase (seances-vue)', () => {
+  it('enNiveau : « en 5ème », « en 2nde », « en 1re spé », « en Tle spé »', () => {
+    expect(enNiveau('5ème')).toBe('en 5ème')
+    expect(enNiveau('2nde')).toBe('en 2nde')
+    expect(enNiveau('1re spé')).toBe('en 1re spé')
+    expect(enNiveau('Tle spé')).toBe('en Tle spé')
+    expect(enNiveau('  4ème ')).toBe('en 4ème')
+    expect(enNiveau('5e B')).toBe('en 5e B')
+  })
+  it('un nom qui n\'est pas un niveau reste entre guillemets : « dans « Soutien » »', () => {
+    expect(enNiveau('Soutien')).toBe('dans « Soutien »')
+    expect(enNiveau('Auguste')).toBe('dans « Auguste »')
+    expect(enNiveau('3 exercices')).toBe('dans « 3 exercices »')
+  })
+  it('deNiveau : « de 5ème », « de Tle spé » ; sinon « de « Soutien » »', () => {
+    expect(deNiveau('5ème')).toBe('de 5ème')
+    expect(deNiveau('Tle spé')).toBe('de Tle spé')
+    expect(deNiveau('Soutien')).toBe('de « Soutien »')
   })
 })

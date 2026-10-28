@@ -135,9 +135,10 @@ async function tourner(p, ptr, q, c, deg, pas = 20) {
 // ---------- Ce qu'on lit à l'écran ----------
 const etat = p => p.evaluate(() => {
   const z = document.getElementById('zone')
-  const t = [...document.querySelectorAll('.barre-outils .tailles .taille')]
+  // (Adapté aux gains rapides du lot 16 : l'épaisseur en main se lit sur le
+  // bouton de l'épaisseur, data-taille : « Fin », « Moyen », « Épais »)
   const sansBoutons = el => { const c = el.cloneNode(true); c.querySelectorAll('button').forEach(b => b.remove()); return c.textContent.trim() }
-  return { outil: z.dataset.outil, taille: t.find(b => b.classList.contains('actif'))?.title ?? null,
+  return { outil: z.dataset.outil, taille: document.querySelector('.barre-outils .bouton-epaisseur')?.dataset.taille ?? null,
     toast: [...document.querySelectorAll('.toast.visible')].map(sansBoutons).join(' | ') }
 })
 const LIRE = () => {
@@ -424,7 +425,10 @@ for (const lieu of LIEUX) {
     const e1 = await etat(p)
     ok(e0.outil === 'surligneur' && e0.taille === 'Moyen' && ep >= 12 && e1.taille === 'Fin', `${nom} — au démarrage, le Surligneur montre « Moyen » et couvre une ligne (${ep} px à l'écran) ; le Stylo reste « Fin »`, { e0, ep, e1 })
     await clicSur(p, wacom, '.barre-outils button[title^="Surligneur"]'); await p.waitForTimeout(150)
-    await clicSur(p, wacom, '.barre-outils .tailles .taille[title="Épais"]'); await p.waitForTimeout(150)
+    // (Adapté aux gains rapides du lot 16 : « Épais » est dans le menu du
+    // bouton de l'épaisseur, qu'on ouvre d'abord)
+    await clicSur(p, wacom, '.barre-outils .bouton-epaisseur'); await p.waitForTimeout(200)
+    await clicSur(p, wacom, '.menu-epaisseur .menu-item[title="Épais"]'); await p.waitForTimeout(150)
     const e2 = await etat(p)
     await clicSur(p, wacom, '.barre-outils button[title^="Stylo"]'); await p.waitForTimeout(150)
     const e3 = await etat(p)

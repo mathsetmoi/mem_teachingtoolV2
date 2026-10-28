@@ -3,16 +3,16 @@
   ".barre-outils": {
    "b": [
     12,
-    12,
-    58,
-    744
+    82.5,
+    82,
+    603
    ],
    "enfants": [
     {
      "q": "Stylo (P)",
      "b": [
-      19,
-      19,
+      31,
+      89.5,
       44,
       44
      ]
@@ -20,8 +20,8 @@
     {
      "q": "Surligneur (H)",
      "b": [
-      19,
-      65,
+      31,
+      135.5,
       44,
       44
      ]
@@ -29,8 +29,8 @@
     {
      "q": "Gomme (E) — trait entier ; retapez pour ",
      "b": [
-      19,
-      111,
+      31,
+      181.5,
       44,
       44
      ]
@@ -38,8 +38,8 @@
     {
      "q": "Point : un clic le pose et le nomme (X)",
      "b": [
-      19,
-      157,
+      31,
+      227.5,
       44,
       44
      ]
@@ -47,8 +47,8 @@
     {
      "q": "Segment, droite, demi-droite (Maj : angl",
      "b": [
-      19,
-      203,
+      31,
+      273.5,
       44,
       44
      ]
@@ -56,8 +56,8 @@
     {
      "q": "Formes : rectangle, cercle, polygone (R,",
      "b": [
-      19,
-      249,
+      31,
+      319.5,
       44,
       44
      ]
@@ -65,8 +65,17 @@
     {
      "q": "Formule (F)",
      "b": [
-      19,
-      295,
+      31,
+      365.5,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Texte : cliquez et tapez au clavier (gli",
+     "b": [
+      31,
+      411.5,
       44,
       44
      ]
@@ -74,8 +83,8 @@
     {
      "q": "Sélectionner et déplacer (V)",
      "b": [
-      19,
-      341,
+      31,
+      457.5,
       44,
       44
      ]
@@ -83,8 +92,8 @@
     {
      "q": "Déplacer la vue (Espace)",
      "b": [
-      19,
-      387,
+      31,
+      503.5,
       44,
       44
      ]
@@ -92,9 +101,9 @@
     {
      "q": "filet",
      "b": [
-      25.5,
-      439,
-      31,
+      29,
+      555.5,
+      47.5,
       1
      ]
     },
@@ -102,17 +111,17 @@
      "q": "Noir",
      "b": [
       19,
-      448,
-      44,
+      564.5,
+      34,
       34
      ]
     },
     {
      "q": "Bleu",
      "b": [
-      19,
-      484,
-      44,
+      53,
+      564.5,
+      34,
       34
      ]
     },
@@ -120,88 +129,25 @@
      "q": "Rouge",
      "b": [
       19,
-      520,
-      44,
+      598.5,
+      34,
       34
      ]
     },
     {
      "q": "Vert",
      "b": [
-      19,
-      556,
-      44,
+      53,
+      598.5,
+      34,
       34
      ]
     },
     {
-     "q": "tailles",
+     "q": "Épaisseur du trait : Fin",
      "b": [
-      19,
-      592,
-      44,
-      90
-     ]
-    },
-    {
-     "q": "Fin",
-     "b": [
-      19,
-      592,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Moyen",
-     "b": [
-      19,
-      622,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Épais",
-     "b": [
-      19,
-      652,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "filet",
-     "b": [
-      25.5,
-      690,
       31,
-      1
-     ]
-    },
-    {
-     "q": "Annuler sur cette page (Ctrl+Z)",
-     "b": [
-      19,
-      699,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Rétablir sur cette page (Ctrl+Y)",
-     "b": [
-      19,
-      745,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Supprimer la sélection (Suppr)",
-     "b": [
-      19,
-      791,
+      634.5,
       44,
       44
      ]
@@ -210,16 +156,43 @@
   },
   ".barre-haut": {
    "b": [
-    633,
+    395,
     12,
-    721,
+    959,
     58
    ],
    "enfants": [
     {
+     "q": "Annuler sur cette page (Ctrl+Z)",
+     "b": [
+      402,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Rétablir sur cette page (Ctrl+Y)",
+     "b": [
+      448,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      498,
+      29,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Page précédente (Page ↑)",
      "b": [
-      640,
+      505,
       19,
       44,
       44
@@ -228,16 +201,16 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      686,
+      551,
       19,
-      63,
+      60,
       44
      ]
     },
     {
      "q": "Page suivante : en ajouter une (c'est la",
      "b": [
-      751,
+      613,
       19,
       44,
       44
@@ -246,7 +219,7 @@
     {
      "q": "Nouvelle page",
      "b": [
-      797,
+      659,
       19,
       44,
       44
@@ -255,16 +228,25 @@
     {
      "q": "Effacer la page",
      "b": [
-      843,
+      705,
       19,
       44,
       44
      ]
     },
     {
-     "q": "Fond de la page : Petits carreaux",
+     "q": "Fond de la page : Page blanche",
      "b": [
-      889,
+      751,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Mode nuit de cette page : fond noir, écr",
+     "b": [
+      797,
       19,
       44,
       44
@@ -273,7 +255,7 @@
     {
      "q": "Aimanter au quadrillage",
      "b": [
-      935,
+      843,
       19,
       44,
       44
@@ -282,7 +264,7 @@
     {
      "q": "Le stylo redresse les figures (carré, ce",
      "b": [
-      981,
+      889,
       19,
       44,
       44
@@ -291,7 +273,7 @@
     {
      "q": "Importer une image ou un PDF (ou coller ",
      "b": [
-      1027,
+      935,
       19,
       44,
       44
@@ -300,7 +282,7 @@
     {
      "q": "Instruments : règle, équerre, rapporteur",
      "b": [
-      1073,
+      981,
       19,
       44,
       44
@@ -309,6 +291,24 @@
     {
      "q": "Programme de construction, étape par éta",
      "b": [
+      1027,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Catalogue : des éléments de cours tout p",
+     "b": [
+      1073,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Automatismes : un flash de questions sur",
+     "b": [
       1119,
       19,
       44,
@@ -316,7 +316,7 @@
      ]
     },
     {
-     "q": "Automatismes : un flash de questions sur une page de la séance",
+     "q": "Outils de classe : rideau, pointeur lase",
      "b": [
       1165,
       19,
@@ -343,7 +343,7 @@
      ]
     },
     {
-     "q": "Enregistrer, ouvrir ou exporter en PDF (",
+     "q": "Enregistrer, ouvrir ou exporter en PDF ;",
      "b": [
       1303,
       19,
@@ -401,18 +401,18 @@
   },
   ".barre-classeur": {
    "b": [
-    82,
+    106,
     12,
-    252,
+    227.5,
     58
    ],
    "enfants": [
     {
      "q": "Premier classeur",
      "b": [
-      89,
+      113,
       19,
-      238,
+      213.5,
       44
      ]
     }
@@ -423,16 +423,16 @@
   ".barre-outils": {
    "b": [
     12,
-    12,
-    58,
-    744
+    82.5,
+    82,
+    603
    ],
    "enfants": [
     {
      "q": "Stylo (P)",
      "b": [
-      19,
-      19,
+      31,
+      89.5,
       44,
       44
      ]
@@ -440,8 +440,8 @@
     {
      "q": "Surligneur (H)",
      "b": [
-      19,
-      65,
+      31,
+      135.5,
       44,
       44
      ]
@@ -449,8 +449,8 @@
     {
      "q": "Gomme (E) — trait entier ; retapez pour ",
      "b": [
-      19,
-      111,
+      31,
+      181.5,
       44,
       44
      ]
@@ -458,8 +458,8 @@
     {
      "q": "Point : un clic le pose et le nomme (X)",
      "b": [
-      19,
-      157,
+      31,
+      227.5,
       44,
       44
      ]
@@ -467,8 +467,8 @@
     {
      "q": "Segment, droite, demi-droite (Maj : angl",
      "b": [
-      19,
-      203,
+      31,
+      273.5,
       44,
       44
      ]
@@ -476,8 +476,8 @@
     {
      "q": "Formes : rectangle, cercle, polygone (R,",
      "b": [
-      19,
-      249,
+      31,
+      319.5,
       44,
       44
      ]
@@ -485,8 +485,17 @@
     {
      "q": "Formule (F)",
      "b": [
-      19,
-      295,
+      31,
+      365.5,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Texte : cliquez et tapez au clavier (gli",
+     "b": [
+      31,
+      411.5,
       44,
       44
      ]
@@ -494,8 +503,8 @@
     {
      "q": "Sélectionner et déplacer (V)",
      "b": [
-      19,
-      341,
+      31,
+      457.5,
       44,
       44
      ]
@@ -503,8 +512,8 @@
     {
      "q": "Déplacer la vue (Espace)",
      "b": [
-      19,
-      387,
+      31,
+      503.5,
       44,
       44
      ]
@@ -512,9 +521,9 @@
     {
      "q": "filet",
      "b": [
-      25.5,
-      439,
-      31,
+      29,
+      555.5,
+      47.5,
       1
      ]
     },
@@ -522,17 +531,17 @@
      "q": "Noir",
      "b": [
       19,
-      448,
-      44,
+      564.5,
+      34,
       34
      ]
     },
     {
      "q": "Bleu",
      "b": [
-      19,
-      484,
-      44,
+      53,
+      564.5,
+      34,
       34
      ]
     },
@@ -540,88 +549,25 @@
      "q": "Rouge",
      "b": [
       19,
-      520,
-      44,
+      598.5,
+      34,
       34
      ]
     },
     {
      "q": "Vert",
      "b": [
-      19,
-      556,
-      44,
+      53,
+      598.5,
+      34,
       34
      ]
     },
     {
-     "q": "tailles",
+     "q": "Épaisseur du trait : Fin",
      "b": [
-      19,
-      592,
-      44,
-      90
-     ]
-    },
-    {
-     "q": "Fin",
-     "b": [
-      19,
-      592,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Moyen",
-     "b": [
-      19,
-      622,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Épais",
-     "b": [
-      19,
-      652,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "filet",
-     "b": [
-      25.5,
-      690,
       31,
-      1
-     ]
-    },
-    {
-     "q": "Annuler sur cette page (Ctrl+Z)",
-     "b": [
-      19,
-      699,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Rétablir sur cette page (Ctrl+Y)",
-     "b": [
-      19,
-      745,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Supprimer la sélection (Suppr)",
-     "b": [
-      19,
-      791,
+      634.5,
       44,
       44
      ]
@@ -630,16 +576,52 @@
   },
   ".barre-haut": {
    "b": [
-    291,
+    112,
     12,
-    721,
-    58
+    900,
+    104
    ],
    "enfants": [
     {
+     "q": "Premier classeur",
+     "b": [
+      152,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Annuler sur cette page (Ctrl+Z)",
+     "b": [
+      198,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Rétablir sur cette page (Ctrl+Y)",
+     "b": [
+      244,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      294,
+      29,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Page précédente (Page ↑)",
      "b": [
-      298,
+      301,
       19,
       44,
       44
@@ -648,9 +630,9 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      344,
+      347,
       19,
-      63,
+      60,
       44
      ]
     },
@@ -682,7 +664,7 @@
      ]
     },
     {
-     "q": "Fond de la page : Petits carreaux",
+     "q": "Fond de la page : Page blanche",
      "b": [
       547,
       19,
@@ -691,7 +673,7 @@
      ]
     },
     {
-     "q": "Aimanter au quadrillage",
+     "q": "Mode nuit de cette page : fond noir, écr",
      "b": [
       593,
       19,
@@ -700,7 +682,7 @@
      ]
     },
     {
-     "q": "Le stylo redresse les figures (carré, ce",
+     "q": "Aimanter au quadrillage",
      "b": [
       639,
       19,
@@ -709,7 +691,7 @@
      ]
     },
     {
-     "q": "Importer une image ou un PDF (ou coller ",
+     "q": "Le stylo redresse les figures (carré, ce",
      "b": [
       685,
       19,
@@ -718,7 +700,7 @@
      ]
     },
     {
-     "q": "Instruments : règle, équerre, rapporteur",
+     "q": "Importer une image ou un PDF (ou coller ",
      "b": [
       731,
       19,
@@ -727,7 +709,7 @@
      ]
     },
     {
-     "q": "Programme de construction, étape par éta",
+     "q": "Instruments : règle, équerre, rapporteur",
      "b": [
       777,
       19,
@@ -736,9 +718,36 @@
      ]
     },
     {
-     "q": "Automatismes : un flash de questions sur une page de la séance",
+     "q": "Programme de construction, étape par éta",
      "b": [
       823,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Catalogue : des éléments de cours tout p",
+     "b": [
+      869,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Automatismes : un flash de questions sur",
+     "b": [
+      915,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Outils de classe : rideau, pointeur lase",
+     "b": [
+      961,
       19,
       44,
       44
@@ -748,7 +757,7 @@
      "q": "Revoir la construction : une page, une s",
      "b": [
       869,
-      19,
+      65,
       44,
       44
      ]
@@ -757,16 +766,16 @@
      "q": "Publier le replay pour les élèves",
      "b": [
       915,
-      19,
+      65,
       44,
       44
      ]
     },
     {
-     "q": "Enregistrer, ouvrir ou exporter en PDF (",
+     "q": "Enregistrer, ouvrir ou exporter en PDF ;",
      "b": [
       961,
-      19,
+      65,
       44,
       44
      ]
@@ -819,40 +828,22 @@
     }
    ]
   },
-  ".barre-classeur": {
-   "b": [
-    82,
-    12,
-    58,
-    58
-   ],
-   "enfants": [
-    {
-     "q": "Premier classeur",
-     "b": [
-      89,
-      19,
-      44,
-      44
-     ]
-    }
-   ]
-  }
+  ".barre-classeur": null
  },
  "PC 1280 × 720 (souris)": {
   ".barre-outils": {
    "b": [
     12,
-    12,
-    58,
-    696
+    58.5,
+    82,
+    603
    ],
    "enfants": [
     {
      "q": "Stylo (P)",
      "b": [
-      19,
-      19,
+      31,
+      65.5,
       44,
       44
      ]
@@ -860,8 +851,8 @@
     {
      "q": "Surligneur (H)",
      "b": [
-      19,
-      65,
+      31,
+      111.5,
       44,
       44
      ]
@@ -869,8 +860,8 @@
     {
      "q": "Gomme (E) — trait entier ; retapez pour ",
      "b": [
-      19,
-      111,
+      31,
+      157.5,
       44,
       44
      ]
@@ -878,8 +869,8 @@
     {
      "q": "Point : un clic le pose et le nomme (X)",
      "b": [
-      19,
-      157,
+      31,
+      203.5,
       44,
       44
      ]
@@ -887,8 +878,8 @@
     {
      "q": "Segment, droite, demi-droite (Maj : angl",
      "b": [
-      19,
-      203,
+      31,
+      249.5,
       44,
       44
      ]
@@ -896,8 +887,8 @@
     {
      "q": "Formes : rectangle, cercle, polygone (R,",
      "b": [
-      19,
-      249,
+      31,
+      295.5,
       44,
       44
      ]
@@ -905,8 +896,17 @@
     {
      "q": "Formule (F)",
      "b": [
-      19,
-      295,
+      31,
+      341.5,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Texte : cliquez et tapez au clavier (gli",
+     "b": [
+      31,
+      387.5,
       44,
       44
      ]
@@ -914,8 +914,8 @@
     {
      "q": "Sélectionner et déplacer (V)",
      "b": [
-      19,
-      341,
+      31,
+      433.5,
       44,
       44
      ]
@@ -923,8 +923,8 @@
     {
      "q": "Déplacer la vue (Espace)",
      "b": [
-      19,
-      387,
+      31,
+      479.5,
       44,
       44
      ]
@@ -932,9 +932,9 @@
     {
      "q": "filet",
      "b": [
-      25.5,
-      439,
-      31,
+      29,
+      531.5,
+      47.5,
       1
      ]
     },
@@ -942,17 +942,17 @@
      "q": "Noir",
      "b": [
       19,
-      448,
-      44,
+      540.5,
+      34,
       34
      ]
     },
     {
      "q": "Bleu",
      "b": [
-      19,
-      484,
-      44,
+      53,
+      540.5,
+      34,
       34
      ]
     },
@@ -960,88 +960,25 @@
      "q": "Rouge",
      "b": [
       19,
-      520,
-      44,
+      574.5,
+      34,
       34
      ]
     },
     {
      "q": "Vert",
      "b": [
-      19,
-      556,
-      44,
+      53,
+      574.5,
+      34,
       34
      ]
     },
     {
-     "q": "tailles",
+     "q": "Épaisseur du trait : Fin",
      "b": [
-      19,
-      592,
-      44,
-      90
-     ]
-    },
-    {
-     "q": "Fin",
-     "b": [
-      19,
-      592,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Moyen",
-     "b": [
-      19,
-      622,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Épais",
-     "b": [
-      19,
-      652,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "filet",
-     "b": [
-      25.5,
-      690,
       31,
-      1
-     ]
-    },
-    {
-     "q": "Annuler sur cette page (Ctrl+Z)",
-     "b": [
-      19,
-      699,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Rétablir sur cette page (Ctrl+Y)",
-     "b": [
-      19,
-      745,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Supprimer la sélection (Suppr)",
-     "b": [
-      19,
-      791,
+      610.5,
       44,
       44
      ]
@@ -1050,16 +987,43 @@
   },
   ".barre-haut": {
    "b": [
-    547,
+    309,
     12,
-    721,
+    959,
     58
    ],
    "enfants": [
     {
+     "q": "Annuler sur cette page (Ctrl+Z)",
+     "b": [
+      316,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Rétablir sur cette page (Ctrl+Y)",
+     "b": [
+      362,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      412,
+      29,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Page précédente (Page ↑)",
      "b": [
-      554,
+      419,
       19,
       44,
       44
@@ -1068,16 +1032,16 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      600,
+      465,
       19,
-      63,
+      60,
       44
      ]
     },
     {
      "q": "Page suivante : en ajouter une (c'est la",
      "b": [
-      665,
+      527,
       19,
       44,
       44
@@ -1086,7 +1050,7 @@
     {
      "q": "Nouvelle page",
      "b": [
-      711,
+      573,
       19,
       44,
       44
@@ -1095,16 +1059,25 @@
     {
      "q": "Effacer la page",
      "b": [
-      757,
+      619,
       19,
       44,
       44
      ]
     },
     {
-     "q": "Fond de la page : Petits carreaux",
+     "q": "Fond de la page : Page blanche",
      "b": [
-      803,
+      665,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Mode nuit de cette page : fond noir, écr",
+     "b": [
+      711,
       19,
       44,
       44
@@ -1113,7 +1086,7 @@
     {
      "q": "Aimanter au quadrillage",
      "b": [
-      849,
+      757,
       19,
       44,
       44
@@ -1122,7 +1095,7 @@
     {
      "q": "Le stylo redresse les figures (carré, ce",
      "b": [
-      895,
+      803,
       19,
       44,
       44
@@ -1131,7 +1104,7 @@
     {
      "q": "Importer une image ou un PDF (ou coller ",
      "b": [
-      941,
+      849,
       19,
       44,
       44
@@ -1140,7 +1113,7 @@
     {
      "q": "Instruments : règle, équerre, rapporteur",
      "b": [
-      987,
+      895,
       19,
       44,
       44
@@ -1149,6 +1122,24 @@
     {
      "q": "Programme de construction, étape par éta",
      "b": [
+      941,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Catalogue : des éléments de cours tout p",
+     "b": [
+      987,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Automatismes : un flash de questions sur",
+     "b": [
       1033,
       19,
       44,
@@ -1156,7 +1147,7 @@
      ]
     },
     {
-     "q": "Automatismes : un flash de questions sur une page de la séance",
+     "q": "Outils de classe : rideau, pointeur lase",
      "b": [
       1079,
       19,
@@ -1183,7 +1174,7 @@
      ]
     },
     {
-     "q": "Enregistrer, ouvrir ou exporter en PDF (",
+     "q": "Enregistrer, ouvrir ou exporter en PDF ;",
      "b": [
       1217,
       19,
@@ -1241,18 +1232,18 @@
   },
   ".barre-classeur": {
    "b": [
-    82,
+    106,
     12,
-    252,
+    58,
     58
    ],
    "enfants": [
     {
      "q": "Premier classeur",
      "b": [
-      89,
+      113,
       19,
-      238,
+      44,
       44
      ]
     }
@@ -1263,17 +1254,17 @@
   ".barre-outils": {
    "b": [
     12,
-    37,
-    79.5,
-    1006
+    145.5,
+    102,
+    789
    ],
    "enfants": [
     {
      "q": "Stylo (P)",
      "b": [
       19,
-      44,
-      65.5,
+      152.5,
+      88,
       54
      ]
     },
@@ -1281,8 +1272,8 @@
      "q": "Surligneur (H)",
      "b": [
       19,
-      100,
-      65.5,
+      208.5,
+      88,
       54
      ]
     },
@@ -1290,8 +1281,8 @@
      "q": "Gomme (E) — trait entier ; retapez pour ",
      "b": [
       19,
-      156,
-      65.5,
+      264.5,
+      88,
       54
      ]
     },
@@ -1299,8 +1290,8 @@
      "q": "Point : un clic le pose et le nomme (X)",
      "b": [
       19,
-      212,
-      65.5,
+      320.5,
+      88,
       54
      ]
     },
@@ -1308,8 +1299,8 @@
      "q": "Segment, droite, demi-droite (Maj : angl",
      "b": [
       19,
-      268,
-      65.5,
+      376.5,
+      88,
       54
      ]
     },
@@ -1317,8 +1308,8 @@
      "q": "Formes : rectangle, cercle, polygone (R,",
      "b": [
       19,
-      324,
-      65.5,
+      432.5,
+      88,
       54
      ]
     },
@@ -1326,8 +1317,17 @@
      "q": "Formule (F)",
      "b": [
       19,
-      380,
-      65.5,
+      488.5,
+      88,
+      54
+     ]
+    },
+    {
+     "q": "Texte : cliquez et tapez au clavier (gli",
+     "b": [
+      19,
+      544.5,
+      88,
       54
      ]
     },
@@ -1335,8 +1335,8 @@
      "q": "Sélectionner et déplacer (V)",
      "b": [
       19,
-      436,
-      65.5,
+      600.5,
+      88,
       54
      ]
     },
@@ -1344,8 +1344,8 @@
      "q": "Déplacer la vue (Espace)",
      "b": [
       19,
-      492,
-      65.5,
+      656.5,
+      88,
       54
      ]
     },
@@ -1353,125 +1353,62 @@
      "q": "Rôle du doigt : auto (il dessine tant qu",
      "b": [
       19,
-      548,
-      65.5,
+      712.5,
+      88,
       54
      ]
     },
     {
      "q": "filet",
      "b": [
-      29,
-      610,
-      46,
+      32,
+      774.5,
+      61.5,
       1
      ]
     },
     {
      "q": "Noir",
      "b": [
-      30,
-      619,
+      19,
+      783.5,
       44,
-      34
+      44
      ]
     },
     {
      "q": "Bleu",
      "b": [
-      30,
-      655,
+      63,
+      783.5,
       44,
-      34
+      44
      ]
     },
     {
      "q": "Rouge",
      "b": [
-      30,
-      691,
+      19,
+      827.5,
       44,
-      34
+      44
      ]
     },
     {
      "q": "Vert",
      "b": [
-      30,
-      727,
+      63,
+      827.5,
       44,
-      34
+      44
      ]
     },
     {
-     "q": "tailles",
-     "b": [
-      30,
-      763,
-      44,
-      90
-     ]
-    },
-    {
-     "q": "Fin",
-     "b": [
-      30,
-      763,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Moyen",
-     "b": [
-      30,
-      793,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Épais",
-     "b": [
-      30,
-      823,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "filet",
-     "b": [
-      29,
-      861,
-      46,
-      1
-     ]
-    },
-    {
-     "q": "Annuler sur cette page (Ctrl+Z)",
+     "q": "Épaisseur du trait : Fin",
      "b": [
       19,
-      870,
-      65.5,
-      54
-     ]
-    },
-    {
-     "q": "Rétablir sur cette page (Ctrl+Y)",
-     "b": [
-      19,
-      926,
-      65.5,
-      54
-     ]
-    },
-    {
-     "q": "Supprimer la sélection (Suppr)",
-     "b": [
-      19,
-      982,
-      65.5,
+      873.5,
+      88,
       54
      ]
     }
@@ -1479,16 +1416,43 @@
   },
   ".barre-haut": {
    "b": [
-    992,
+    745,
     12,
-    916,
+    1163,
     68
    ],
    "enfants": [
     {
+     "q": "Annuler sur cette page (Ctrl+Z)",
+     "b": [
+      752,
+      19,
+      52,
+      54
+     ]
+    },
+    {
+     "q": "Rétablir sur cette page (Ctrl+Y)",
+     "b": [
+      806,
+      19,
+      52,
+      54
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      864,
+      34,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Page précédente (Page ↑)",
      "b": [
-      999,
+      871,
       24,
       44,
       44
@@ -1497,16 +1461,16 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      1045,
+      917,
       24,
-      63,
+      60,
       44
      ]
     },
     {
      "q": "Page suivante : en ajouter une (c'est la",
      "b": [
-      1110,
+      979,
       24,
       44,
       44
@@ -1515,25 +1479,34 @@
     {
      "q": "Nouvelle page",
      "b": [
-      1156,
-      19,
-      56,
-      54
-     ]
-    },
-    {
-     "q": "Effacer la page",
-     "b": [
-      1214,
+      1025,
       19,
       52,
       54
      ]
     },
     {
-     "q": "Fond de la page : Petits carreaux",
+     "q": "Effacer la page",
      "b": [
-      1268,
+      1079,
+      19,
+      52,
+      54
+     ]
+    },
+    {
+     "q": "Fond de la page : Page blanche",
+     "b": [
+      1133,
+      19,
+      52,
+      54
+     ]
+    },
+    {
+     "q": "Mode nuit de cette page : fond noir, écr",
+     "b": [
+      1187,
       19,
       52,
       54
@@ -1542,7 +1515,7 @@
     {
      "q": "Aimanter au quadrillage",
      "b": [
-      1322,
+      1241,
       19,
       52,
       54
@@ -1551,16 +1524,16 @@
     {
      "q": "Le stylo redresse les figures (carré, ce",
      "b": [
-      1376,
+      1295,
       19,
-      76.5,
+      68.5,
       54
      ]
     },
     {
      "q": "Importer une image ou un PDF (ou coller ",
      "b": [
-      1454.5,
+      1365.5,
       19,
       52,
       54
@@ -1569,27 +1542,45 @@
     {
      "q": "Instruments : règle, équerre, rapporteur",
      "b": [
-      1508.5,
+      1419.5,
       19,
-      74.5,
+      66.5,
       54
      ]
     },
     {
      "q": "Programme de construction, étape par éta",
      "b": [
-      1584.5,
+      1488.5,
       19,
-      65,
+      58.5,
       54
      ]
     },
     {
-     "q": "Automatismes : un flash de questions sur une page de la séance",
+     "q": "Catalogue : des éléments de cours tout p",
      "b": [
-      1651.5,
+      1548.5,
       19,
-      87.5,
+      57,
+      54
+     ]
+    },
+    {
+     "q": "Automatismes : un flash de questions sur",
+     "b": [
+      1608,
+      19,
+      77,
+      54
+     ]
+    },
+    {
+     "q": "Outils de classe : rideau, pointeur lase",
+     "b": [
+      1687,
+      19,
+      52,
       54
      ]
     },
@@ -1612,7 +1603,7 @@
      ]
     },
     {
-     "q": "Enregistrer, ouvrir ou exporter en PDF (",
+     "q": "Enregistrer, ouvrir ou exporter en PDF ;",
      "b": [
       1849,
       19,
@@ -1624,26 +1615,26 @@
   },
   ".barre-zoom": {
    "b": [
-    1692,
-    1010,
-    216,
-    58
+    1662.5,
+    1000,
+    245.5,
+    68
    ],
    "enfants": [
     {
      "q": "Dézoomer (Ctrl + −)",
      "b": [
-      1699,
-      1017,
-      44,
-      44
+      1669.5,
+      1007,
+      57.5,
+      54
      ]
     },
     {
      "q": "Zoom et molette de la souris",
      "b": [
-      1745,
-      1017,
+      1729,
+      1012,
       64,
       44
      ]
@@ -1651,37 +1642,37 @@
     {
      "q": "Zoomer (Ctrl + +)",
      "b": [
-      1811,
-      1017,
-      44,
-      44
+      1795,
+      1007,
+      52,
+      54
      ]
     },
     {
      "q": "Tout voir (Maj + 1)",
      "b": [
-      1857,
-      1017,
-      44,
-      44
+      1849,
+      1007,
+      52,
+      54
      ]
     }
    ]
   },
   ".barre-classeur": {
    "b": [
-    104,
+    126,
     12,
-    252,
+    227.5,
     58
    ],
    "enfants": [
     {
      "q": "Premier classeur",
      "b": [
-      111,
+      133,
       19,
-      238,
+      213.5,
       44
      ]
     }
@@ -1692,16 +1683,16 @@
   ".barre-outils": {
    "b": [
     12,
-    12,
-    58,
-    796
+    75.5,
+    102,
+    669
    ],
    "enfants": [
     {
      "q": "Stylo (P)",
      "b": [
-      19,
-      19,
+      41,
+      82.5,
       44,
       44
      ]
@@ -1709,8 +1700,8 @@
     {
      "q": "Surligneur (H)",
      "b": [
-      19,
-      65,
+      41,
+      128.5,
       44,
       44
      ]
@@ -1718,8 +1709,8 @@
     {
      "q": "Gomme (E) — trait entier ; retapez pour ",
      "b": [
-      19,
-      111,
+      41,
+      174.5,
       44,
       44
      ]
@@ -1727,8 +1718,8 @@
     {
      "q": "Point : un clic le pose et le nomme (X)",
      "b": [
-      19,
-      157,
+      41,
+      220.5,
       44,
       44
      ]
@@ -1736,8 +1727,8 @@
     {
      "q": "Segment, droite, demi-droite (Maj : angl",
      "b": [
-      19,
-      203,
+      41,
+      266.5,
       44,
       44
      ]
@@ -1745,8 +1736,8 @@
     {
      "q": "Formes : rectangle, cercle, polygone (R,",
      "b": [
-      19,
-      249,
+      41,
+      312.5,
       44,
       44
      ]
@@ -1754,8 +1745,17 @@
     {
      "q": "Formule (F)",
      "b": [
-      19,
-      295,
+      41,
+      358.5,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Texte : cliquez et tapez au clavier (gli",
+     "b": [
+      41,
+      404.5,
       44,
       44
      ]
@@ -1763,8 +1763,8 @@
     {
      "q": "Sélectionner et déplacer (V)",
      "b": [
-      19,
-      341,
+      41,
+      450.5,
       44,
       44
      ]
@@ -1772,8 +1772,8 @@
     {
      "q": "Déplacer la vue (Espace)",
      "b": [
-      19,
-      387,
+      41,
+      496.5,
       44,
       44
      ]
@@ -1781,8 +1781,8 @@
     {
      "q": "Rôle du doigt : auto (il dessine tant qu",
      "b": [
-      19,
-      433,
+      41,
+      542.5,
       44,
       44
      ]
@@ -1790,9 +1790,9 @@
     {
      "q": "filet",
      "b": [
-      25.5,
-      485,
-      31,
+      32,
+      594.5,
+      61.5,
       1
      ]
     },
@@ -1800,106 +1800,43 @@
      "q": "Noir",
      "b": [
       19,
-      494,
+      603.5,
       44,
-      34
+      44
      ]
     },
     {
      "q": "Bleu",
      "b": [
-      19,
-      530,
+      63,
+      603.5,
       44,
-      34
+      44
      ]
     },
     {
      "q": "Rouge",
      "b": [
       19,
-      566,
+      647.5,
       44,
-      34
+      44
      ]
     },
     {
      "q": "Vert",
      "b": [
-      19,
-      602,
-      44,
-      34
-     ]
-    },
-    {
-     "q": "tailles",
-     "b": [
-      19,
-      638,
-      44,
-      90
-     ]
-    },
-    {
-     "q": "Fin",
-     "b": [
-      19,
-      638,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Moyen",
-     "b": [
-      19,
-      668,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Épais",
-     "b": [
-      19,
-      698,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "filet",
-     "b": [
-      25.5,
-      736,
-      31,
-      1
-     ]
-    },
-    {
-     "q": "Annuler sur cette page (Ctrl+Z)",
-     "b": [
-      19,
-      745,
+      63,
+      647.5,
       44,
       44
      ]
     },
     {
-     "q": "Rétablir sur cette page (Ctrl+Y)",
+     "q": "Épaisseur du trait : Fin",
      "b": [
-      19,
-      791,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Supprimer la sélection (Suppr)",
-     "b": [
-      19,
-      837,
+      41,
+      693.5,
       44,
       44
      ]
@@ -1908,16 +1845,43 @@
   },
   ".barre-haut": {
    "b": [
-    447,
+    209,
     12,
-    721,
+    959,
     58
    ],
    "enfants": [
     {
+     "q": "Annuler sur cette page (Ctrl+Z)",
+     "b": [
+      216,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Rétablir sur cette page (Ctrl+Y)",
+     "b": [
+      262,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      312,
+      29,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Page précédente (Page ↑)",
      "b": [
-      454,
+      319,
       19,
       44,
       44
@@ -1926,16 +1890,16 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      500,
+      365,
       19,
-      63,
+      60,
       44
      ]
     },
     {
      "q": "Page suivante : en ajouter une (c'est la",
      "b": [
-      565,
+      427,
       19,
       44,
       44
@@ -1944,7 +1908,7 @@
     {
      "q": "Nouvelle page",
      "b": [
-      611,
+      473,
       19,
       44,
       44
@@ -1953,16 +1917,25 @@
     {
      "q": "Effacer la page",
      "b": [
-      657,
+      519,
       19,
       44,
       44
      ]
     },
     {
-     "q": "Fond de la page : Petits carreaux",
+     "q": "Fond de la page : Page blanche",
      "b": [
-      703,
+      565,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Mode nuit de cette page : fond noir, écr",
+     "b": [
+      611,
       19,
       44,
       44
@@ -1971,7 +1944,7 @@
     {
      "q": "Aimanter au quadrillage",
      "b": [
-      749,
+      657,
       19,
       44,
       44
@@ -1980,7 +1953,7 @@
     {
      "q": "Le stylo redresse les figures (carré, ce",
      "b": [
-      795,
+      703,
       19,
       44,
       44
@@ -1989,7 +1962,7 @@
     {
      "q": "Importer une image ou un PDF (ou coller ",
      "b": [
-      841,
+      749,
       19,
       44,
       44
@@ -1998,7 +1971,7 @@
     {
      "q": "Instruments : règle, équerre, rapporteur",
      "b": [
-      887,
+      795,
       19,
       44,
       44
@@ -2007,6 +1980,24 @@
     {
      "q": "Programme de construction, étape par éta",
      "b": [
+      841,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Catalogue : des éléments de cours tout p",
+     "b": [
+      887,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Automatismes : un flash de questions sur",
+     "b": [
       933,
       19,
       44,
@@ -2014,7 +2005,7 @@
      ]
     },
     {
-     "q": "Automatismes : un flash de questions sur une page de la séance",
+     "q": "Outils de classe : rideau, pointeur lase",
      "b": [
       979,
       19,
@@ -2041,7 +2032,7 @@
      ]
     },
     {
-     "q": "Enregistrer, ouvrir ou exporter en PDF (",
+     "q": "Enregistrer, ouvrir ou exporter en PDF ;",
      "b": [
       1117,
       19,
@@ -2099,18 +2090,18 @@
   },
   ".barre-classeur": {
    "b": [
-    82,
+    126,
     12,
-    252,
+    58,
     58
    ],
    "enfants": [
     {
      "q": "Premier classeur",
      "b": [
-      89,
+      133,
       19,
-      238,
+      44,
       44
      ]
     }
@@ -2121,16 +2112,16 @@
   ".barre-outils": {
    "b": [
     12,
-    152,
-    58,
-    876
+    255.5,
+    102,
+    669
    ],
    "enfants": [
     {
      "q": "Stylo (P)",
      "b": [
-      19,
-      159,
+      41,
+      262.5,
       44,
       44
      ]
@@ -2138,8 +2129,8 @@
     {
      "q": "Surligneur (H)",
      "b": [
-      19,
-      205,
+      41,
+      308.5,
       44,
       44
      ]
@@ -2147,8 +2138,8 @@
     {
      "q": "Gomme (E) — trait entier ; retapez pour ",
      "b": [
-      19,
-      251,
+      41,
+      354.5,
       44,
       44
      ]
@@ -2156,8 +2147,8 @@
     {
      "q": "Point : un clic le pose et le nomme (X)",
      "b": [
-      19,
-      297,
+      41,
+      400.5,
       44,
       44
      ]
@@ -2165,8 +2156,8 @@
     {
      "q": "Segment, droite, demi-droite (Maj : angl",
      "b": [
-      19,
-      343,
+      41,
+      446.5,
       44,
       44
      ]
@@ -2174,8 +2165,8 @@
     {
      "q": "Formes : rectangle, cercle, polygone (R,",
      "b": [
-      19,
-      389,
+      41,
+      492.5,
       44,
       44
      ]
@@ -2183,8 +2174,17 @@
     {
      "q": "Formule (F)",
      "b": [
-      19,
-      435,
+      41,
+      538.5,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Texte : cliquez et tapez au clavier (gli",
+     "b": [
+      41,
+      584.5,
       44,
       44
      ]
@@ -2192,8 +2192,8 @@
     {
      "q": "Sélectionner et déplacer (V)",
      "b": [
-      19,
-      481,
+      41,
+      630.5,
       44,
       44
      ]
@@ -2201,8 +2201,8 @@
     {
      "q": "Déplacer la vue (Espace)",
      "b": [
-      19,
-      527,
+      41,
+      676.5,
       44,
       44
      ]
@@ -2210,8 +2210,8 @@
     {
      "q": "Rôle du doigt : auto (il dessine tant qu",
      "b": [
-      19,
-      573,
+      41,
+      722.5,
       44,
       44
      ]
@@ -2219,9 +2219,9 @@
     {
      "q": "filet",
      "b": [
-      25.5,
-      625,
-      31,
+      32,
+      774.5,
+      61.5,
       1
      ]
     },
@@ -2229,106 +2229,43 @@
      "q": "Noir",
      "b": [
       19,
-      634,
+      783.5,
       44,
-      34
+      44
      ]
     },
     {
      "q": "Bleu",
      "b": [
-      19,
-      670,
+      63,
+      783.5,
       44,
-      34
+      44
      ]
     },
     {
      "q": "Rouge",
      "b": [
       19,
-      706,
+      827.5,
       44,
-      34
+      44
      ]
     },
     {
      "q": "Vert",
      "b": [
-      19,
-      742,
-      44,
-      34
-     ]
-    },
-    {
-     "q": "tailles",
-     "b": [
-      19,
-      778,
-      44,
-      90
-     ]
-    },
-    {
-     "q": "Fin",
-     "b": [
-      19,
-      778,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Moyen",
-     "b": [
-      19,
-      808,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Épais",
-     "b": [
-      19,
-      838,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "filet",
-     "b": [
-      25.5,
-      876,
-      31,
-      1
-     ]
-    },
-    {
-     "q": "Annuler sur cette page (Ctrl+Z)",
-     "b": [
-      19,
-      885,
+      63,
+      827.5,
       44,
       44
      ]
     },
     {
-     "q": "Rétablir sur cette page (Ctrl+Y)",
+     "q": "Épaisseur du trait : Fin",
      "b": [
-      19,
-      931,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Supprimer la sélection (Suppr)",
-     "b": [
-      19,
-      977,
+      41,
+      873.5,
       44,
       44
      ]
@@ -2337,25 +2274,52 @@
   },
   ".barre-haut": {
    "b": [
-    88,
+    132,
     12,
-    720,
+    676,
     104
    ],
    "enfants": [
     {
      "q": "Premier classeur",
      "b": [
-      140,
+      178,
       19,
       44,
       44
      ]
     },
     {
+     "q": "Annuler sur cette page (Ctrl+Z)",
+     "b": [
+      224,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Rétablir sur cette page (Ctrl+Y)",
+     "b": [
+      270,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      320,
+      29,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Page précédente (Page ↑)",
      "b": [
-      186,
+      327,
       19,
       44,
       44
@@ -2364,41 +2328,14 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      232,
+      373,
       19,
-      63,
+      60,
       44
      ]
     },
     {
      "q": "Page suivante : en ajouter une (c'est la",
-     "b": [
-      297,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Nouvelle page",
-     "b": [
-      343,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Effacer la page",
-     "b": [
-      389,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Fond de la page : Petits carreaux",
      "b": [
       435,
       19,
@@ -2407,7 +2344,7 @@
      ]
     },
     {
-     "q": "Aimanter au quadrillage",
+     "q": "Nouvelle page",
      "b": [
       481,
       19,
@@ -2416,7 +2353,7 @@
      ]
     },
     {
-     "q": "Le stylo redresse les figures (carré, ce",
+     "q": "Effacer la page",
      "b": [
       527,
       19,
@@ -2425,7 +2362,7 @@
      ]
     },
     {
-     "q": "Importer une image ou un PDF (ou coller ",
+     "q": "Fond de la page : Page blanche",
      "b": [
       573,
       19,
@@ -2434,7 +2371,7 @@
      ]
     },
     {
-     "q": "Instruments : règle, équerre, rapporteur",
+     "q": "Mode nuit de cette page : fond noir, écr",
      "b": [
       619,
       19,
@@ -2443,7 +2380,7 @@
      ]
     },
     {
-     "q": "Programme de construction, étape par éta",
+     "q": "Aimanter au quadrillage",
      "b": [
       665,
       19,
@@ -2452,7 +2389,7 @@
      ]
     },
     {
-     "q": "Automatismes : un flash de questions sur une page de la séance",
+     "q": "Le stylo redresse les figures (carré, ce",
      "b": [
       711,
       19,
@@ -2461,10 +2398,64 @@
      ]
     },
     {
-     "q": "Revoir la construction : une page, une s",
+     "q": "Importer une image ou un PDF (ou coller ",
      "b": [
       757,
       19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Instruments : règle, équerre, rapporteur",
+     "b": [
+      435,
+      65,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Programme de construction, étape par éta",
+     "b": [
+      481,
+      65,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Catalogue : des éléments de cours tout p",
+     "b": [
+      527,
+      65,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Automatismes : un flash de questions sur",
+     "b": [
+      573,
+      65,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Outils de classe : rideau, pointeur lase",
+     "b": [
+      619,
+      65,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Revoir la construction : une page, une s",
+     "b": [
+      665,
+      65,
       44,
       44
      ]
@@ -2479,7 +2470,7 @@
      ]
     },
     {
-     "q": "Enregistrer, ouvrir ou exporter en PDF (",
+     "q": "Enregistrer, ouvrir ou exporter en PDF ;",
      "b": [
       757,
       65,
@@ -2541,16 +2532,16 @@
   ".barre-outils": {
    "b": [
     12,
-    74,
-    58,
-    876
+    177.5,
+    102,
+    669
    ],
    "enfants": [
     {
      "q": "Stylo (P)",
      "b": [
-      19,
-      81,
+      41,
+      184.5,
       44,
       44
      ]
@@ -2558,8 +2549,8 @@
     {
      "q": "Surligneur (H)",
      "b": [
-      19,
-      127,
+      41,
+      230.5,
       44,
       44
      ]
@@ -2567,8 +2558,8 @@
     {
      "q": "Gomme (E) — trait entier ; retapez pour ",
      "b": [
-      19,
-      173,
+      41,
+      276.5,
       44,
       44
      ]
@@ -2576,8 +2567,8 @@
     {
      "q": "Point : un clic le pose et le nomme (X)",
      "b": [
-      19,
-      219,
+      41,
+      322.5,
       44,
       44
      ]
@@ -2585,8 +2576,8 @@
     {
      "q": "Segment, droite, demi-droite (Maj : angl",
      "b": [
-      19,
-      265,
+      41,
+      368.5,
       44,
       44
      ]
@@ -2594,8 +2585,8 @@
     {
      "q": "Formes : rectangle, cercle, polygone (R,",
      "b": [
-      19,
-      311,
+      41,
+      414.5,
       44,
       44
      ]
@@ -2603,8 +2594,17 @@
     {
      "q": "Formule (F)",
      "b": [
-      19,
-      357,
+      41,
+      460.5,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Texte : cliquez et tapez au clavier (gli",
+     "b": [
+      41,
+      506.5,
       44,
       44
      ]
@@ -2612,8 +2612,8 @@
     {
      "q": "Sélectionner et déplacer (V)",
      "b": [
-      19,
-      403,
+      41,
+      552.5,
       44,
       44
      ]
@@ -2621,8 +2621,8 @@
     {
      "q": "Déplacer la vue (Espace)",
      "b": [
-      19,
-      449,
+      41,
+      598.5,
       44,
       44
      ]
@@ -2630,8 +2630,8 @@
     {
      "q": "Rôle du doigt : auto (il dessine tant qu",
      "b": [
-      19,
-      495,
+      41,
+      644.5,
       44,
       44
      ]
@@ -2639,9 +2639,9 @@
     {
      "q": "filet",
      "b": [
-      25.5,
-      547,
-      31,
+      32,
+      696.5,
+      61.5,
       1
      ]
     },
@@ -2649,106 +2649,43 @@
      "q": "Noir",
      "b": [
       19,
-      556,
+      705.5,
       44,
-      34
+      44
      ]
     },
     {
      "q": "Bleu",
      "b": [
-      19,
-      592,
+      63,
+      705.5,
       44,
-      34
+      44
      ]
     },
     {
      "q": "Rouge",
      "b": [
       19,
-      628,
+      749.5,
       44,
-      34
+      44
      ]
     },
     {
      "q": "Vert",
      "b": [
-      19,
-      664,
-      44,
-      34
-     ]
-    },
-    {
-     "q": "tailles",
-     "b": [
-      19,
-      700,
-      44,
-      90
-     ]
-    },
-    {
-     "q": "Fin",
-     "b": [
-      19,
-      700,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Moyen",
-     "b": [
-      19,
-      730,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "Épais",
-     "b": [
-      19,
-      760,
-      44,
-      30
-     ]
-    },
-    {
-     "q": "filet",
-     "b": [
-      25.5,
-      798,
-      31,
-      1
-     ]
-    },
-    {
-     "q": "Annuler sur cette page (Ctrl+Z)",
-     "b": [
-      19,
-      807,
+      63,
+      749.5,
       44,
       44
      ]
     },
     {
-     "q": "Rétablir sur cette page (Ctrl+Y)",
+     "q": "Épaisseur du trait : Fin",
      "b": [
-      19,
-      853,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Supprimer la sélection (Suppr)",
-     "b": [
-      19,
-      899,
+      41,
+      795.5,
       44,
       44
      ]
@@ -2757,25 +2694,52 @@
   },
   ".barre-haut": {
    "b": [
-    88,
+    132,
     12,
-    668,
+    624,
     104
    ],
    "enfants": [
     {
      "q": "Premier classeur",
      "b": [
-      134,
+      172,
       19,
       44,
       44
      ]
     },
     {
+     "q": "Annuler sur cette page (Ctrl+Z)",
+     "b": [
+      218,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Rétablir sur cette page (Ctrl+Y)",
+     "b": [
+      264,
+      19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      314,
+      29,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Page précédente (Page ↑)",
      "b": [
-      180,
+      321,
       19,
       44,
       44
@@ -2784,41 +2748,14 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      226,
+      367,
       19,
-      63,
+      60,
       44
      ]
     },
     {
      "q": "Page suivante : en ajouter une (c'est la",
-     "b": [
-      291,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Nouvelle page",
-     "b": [
-      337,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Effacer la page",
-     "b": [
-      383,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Fond de la page : Petits carreaux",
      "b": [
       429,
       19,
@@ -2827,7 +2764,7 @@
      ]
     },
     {
-     "q": "Aimanter au quadrillage",
+     "q": "Nouvelle page",
      "b": [
       475,
       19,
@@ -2836,7 +2773,7 @@
      ]
     },
     {
-     "q": "Le stylo redresse les figures (carré, ce",
+     "q": "Effacer la page",
      "b": [
       521,
       19,
@@ -2845,7 +2782,7 @@
      ]
     },
     {
-     "q": "Importer une image ou un PDF (ou coller ",
+     "q": "Fond de la page : Page blanche",
      "b": [
       567,
       19,
@@ -2854,7 +2791,7 @@
      ]
     },
     {
-     "q": "Instruments : règle, équerre, rapporteur",
+     "q": "Mode nuit de cette page : fond noir, écr",
      "b": [
       613,
       19,
@@ -2863,7 +2800,7 @@
      ]
     },
     {
-     "q": "Programme de construction, étape par éta",
+     "q": "Aimanter au quadrillage",
      "b": [
       659,
       19,
@@ -2872,10 +2809,64 @@
      ]
     },
     {
-     "q": "Automatismes : un flash de questions sur une page de la séance",
+     "q": "Le stylo redresse les figures (carré, ce",
      "b": [
       705,
       19,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Importer une image ou un PDF (ou coller ",
+     "b": [
+      337,
+      65,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Instruments : règle, équerre, rapporteur",
+     "b": [
+      383,
+      65,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Programme de construction, étape par éta",
+     "b": [
+      429,
+      65,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Catalogue : des éléments de cours tout p",
+     "b": [
+      475,
+      65,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Automatismes : un flash de questions sur",
+     "b": [
+      521,
+      65,
+      44,
+      44
+     ]
+    },
+    {
+     "q": "Outils de classe : rideau, pointeur lase",
+     "b": [
+      567,
+      65,
       44,
       44
      ]
@@ -2899,7 +2890,7 @@
      ]
     },
     {
-     "q": "Enregistrer, ouvrir ou exporter en PDF (",
+     "q": "Enregistrer, ouvrir ou exporter en PDF ;",
      "b": [
       705,
       65,

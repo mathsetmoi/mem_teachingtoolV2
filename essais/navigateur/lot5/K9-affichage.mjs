@@ -427,10 +427,13 @@ await ctxA.close()
 
 // =====================================================================
 console.log('=== D. les noms sous les outils ===')
-const OUTILS_MOTS = ['Stylo', 'Surligneur', 'Gomme', 'Point', 'Segment', 'Formes', 'Formule', 'Texte', 'Sélection', 'Vue', 'Doigt', 'Annuler', 'Rétablir', 'Supprimer']
+// (Adapté aux gains rapides du lot 16 : Annuler et Rétablir sont en tête de
+// la barre du haut, la poubelle de la sélection a quitté la barre des outils,
+// et l'épaisseur du trait tient sur un bouton, « Épaisseur », au bout)
+const OUTILS_MOTS = ['Stylo', 'Surligneur', 'Gomme', 'Point', 'Segment', 'Formes', 'Formule', 'Texte', 'Sélection', 'Vue', 'Doigt', 'Épaisseur']
 // (Adapté aux outils de classe : « Classe », entre Automatismes et Revoir)
 // (Adapté au mode nuit, lot 13 : « Nuit », la lune, juste après Fond)
-const HAUT_MOTS = ['Nouvelle', 'Effacer', 'Fond', 'Nuit', 'Aimant', 'Formes auto', 'Image', 'Instruments', 'Construire', 'Catalogue', 'Automatismes', 'Classe', 'Revoir', 'Publier', 'Fichier']
+const HAUT_MOTS = ['Annuler', 'Rétablir', 'Nouvelle', 'Effacer', 'Fond', 'Nuit', 'Aimant', 'Formes auto', 'Image', 'Instruments', 'Construire', 'Catalogue', 'Automatismes', 'Classe', 'Revoir', 'Publier', 'Fichier']
 const NOMS = () => {
   const lire = sel => [...document.querySelectorAll(sel)].map(b => ({ mot: b.querySelector(':scope > .libelle')?.dataset.libelle ?? null, texte: b.textContent,
     vu: (() => { const s = b.querySelector(':scope > .libelle'); return s ? getComputedStyle(s).display !== 'none' && getComputedStyle(s, '::before').content : null })(),

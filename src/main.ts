@@ -2,7 +2,7 @@ import 'katex/dist/katex.min.css'
 import './style.css'
 import { Tableau } from './document'
 import { App } from './app'
-import { UI } from './ui'
+import { DUREE_MESSAGE_ACTION, UI } from './ui'
 import { installerGardes } from './navigateur'
 import type { FicheClasseur, InfosClasseur } from './classeurs/demarrage'
 import { BASE_PREMIER, CLASSEUR_SEUL, CLE_DERNIER_CLASSEUR, MESSAGE_VIDE, NOM_PREMIER, choisirAuDemarrage, ecrireDernier, estPremier, lireDernier, urlBibliotheque, urlDuClasseur } from './classeurs/demarrage'
@@ -18,8 +18,9 @@ import { Ailleurs } from './classeurs/ailleurs'
 import { ApercuDuClasseur } from './classeurs/apercu-classeur'
 import { ErreurBase, ouvrirBaseExistante } from './classeurs/bases'
 import { passerLaConnexion } from './publication/drive'
-import type { HoteBibliotheque } from './classeurs/bibliotheque'
-import { Bibliotheque, CLE_ARRIVEE } from './classeurs/bibliotheque'
+import type { HoteBibliotheque, RappelArrivee } from './classeurs/bibliotheque'
+import { Bibliotheque, CLE_ARRIVEE, CLE_RAPPEL_ARRIVEE, lireRappelArrivee } from './classeurs/bibliotheque'
+import { enregistrerDepuisLaBase } from './classeurs/enregistrer'
 import { ecrivain } from './classeurs/ecrivain'
 import { Fichiers } from './classeurs/fichiers'
 import type { ActionMessage } from './app'
@@ -124,7 +125,8 @@ function bibliothequeSeule(racine: HTMLElement, registre: Registre, message?: st
   let minuterie = 0
   const dire = (texte: string, action?: ActionMessage | ActionMessage[]) => {
     const ligne = Object.assign(document.createElement('span'), { className: 'ligne', textContent: texte })
-    for (const a of action === undefined ? [] : Array.isArray(action) ? action : [action]) {
+    const actions = action === undefined ? [] : Array.isArray(action) ? action : [action]
+    for (const a of actions) {
       const b = Object.assign(document.createElement('button'), { type: 'button', className: 'action', textContent: a.libelle })
       b.addEventListener('click', () => { toast.classList.remove('visible'); a.faire() })
       ligne.appendChild(b)
@@ -132,7 +134,9 @@ function bibliothequeSeule(racine: HTMLElement, registre: Registre, message?: st
     toast.replaceChildren(ligne)
     toast.classList.add('visible')
     clearTimeout(minuterie)
-    minuterie = window.setTimeout(() => toast.classList.remove('visible'), action ? 7000 : Math.max(2600, texte.length * 60))
+    // Comme UI.message : 7 s avec un bouton, ou plus si une action le demande
+    const duree = actions.length ? Math.max(DUREE_MESSAGE_ACTION, ...actions.map(a => a.duree ?? 0)) : Math.max(2600, texte.length * 60)
+    minuterie = window.setTimeout(() => toast.classList.remove('visible'), duree)
   }
   const hote: HoteBibliotheque = { classeur: null, message: dire, avantDeQuitter: async () => {} }
   const b = new Bibliotheque(hote, registre, racine)
@@ -164,6 +168,33 @@ function messageDArrivee(id: string): { message: string; cle: CleALArrivee | nul
     const o = t ? JSON.parse(t) : null
     return o && o.id === id && typeof o.message === 'string' && o.message ? { message: o.message, cle: lireCleALArrivee(o.cle) } : null
   } catch { return null }
+}
+
+/** Le rappel d'enregistrer le classeur qu'on vient de quitter, gardé le
+ *  temps d'arriver sur celui-ci (voir Bibliotheque.ouvrirClasseur) :
+ *  seulement s'il est pour lui */
+function rappelDArrivee(id: string): RappelArrivee | null {
+  try {
+    const t = sessionStorage.getItem(CLE_RAPPEL_ARRIVEE)
+    sessionStorage.removeItem(CLE_RAPPEL_ARRIVEE)
+    return lireRappelArrivee(t ? JSON.parse(t) : null, id)
+  } catch { return null }
+}
+
+/** Ce rappel reste à l'écran tant de ms (un message à bouton : 7 s sinon) */
+const DUREE_RAPPEL_ARRIVEE = 30_000
+
+/** Le rappel lu : le message, et son bouton, qui enregistre le classeur
+ *  quitté depuis sa base (sans l'ouvrir, voir classeurs/enregistrer.ts ; le
+ *  choix du fichier s'ouvre dans le clic) */
+function direLeRappel(ui: UI, registre: Registre, r: RappelArrivee) {
+  ui.message(r.texte, { libelle: `Enregistrer « ${r.nom} » dans un fichier`, duree: DUREE_RAPPEL_ARRIVEE, faire: () => void enregistrerLeQuitte(ui, registre, r.id) })
+}
+async function enregistrerLeQuitte(ui: UI, registre: Registre, id: string) {
+  let f: FicheClasseur | undefined
+  try { f = await registre.classeur(id) } catch { f = undefined }
+  if (!f || f.corbeille) { ui.message('Ce classeur n\'est plus dans la bibliothèque.'); return }
+  await enregistrerDepuisLaBase(f, t => ui.message(t))
 }
 
 async function demarrer() {
@@ -321,8 +352,8 @@ async function demarrer() {
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') noterDernier() })
     window.addEventListener('focus', noterDernier)
     ui.bibliotheque = new Bibliotheque(hote, registre, racine)
-    // La classe du classeur (le tirage au sort y prend sa liste) : son plus
-    // proche dossier de classe, sinon le dossier où il est rangé
+    // Le niveau du classeur (le tirage au sort y prend sa liste) : son plus
+    // proche dossier de niveau, sinon le dossier où il est rangé
     ui.classeDuClasseur = async () => {
       const [dossiers, fiches] = await Promise.all([registre.dossiers(), registre.classeurs()])
       const carte = new Map(dossiers.filter(d => !d.corbeille).map(d => [d.id, d]))
@@ -380,7 +411,9 @@ async function demarrer() {
   // Arrivé avec la case de la clé : ce qu'il en est vraiment se dit une
   // fois la clé vérifiée (Chrome oublie son accord en changeant de page)
   const arrivee = messageDArrivee(infos.id)
-  if (arrivee?.cle && cle) void cle.direALArrivee(arrivee.message, arrivee.cle)
+  const rappel = rappelDArrivee(infos.id)
+  let ditALArrivee: Promise<void> = Promise.resolve()
+  if (arrivee?.cle && cle) ditALArrivee = cle.direALArrivee(arrivee.message, arrivee.cle)
   else if (arrivee) ui.message(arrivee.message)
   if (message) ui.message(message)
   // Une partie du classeur ne se relit plus (une écriture refusée lors d'une
@@ -393,10 +426,27 @@ async function demarrer() {
   // fichier, ou d'ajouter, de créer (l'arrivée a son message) : on l'a
   // choisi, on le regarde (sa dernière séance continue)
   const autreMessage = ouvertDUnFichier || !!arrivee || !!message || tableau.incomplet
+  let accueil: Promise<HTMLDialogElement | null> | null = null
   if (depart.genre === 'reprise' && depart.seance && !autreMessage) ui.message(`Séance ${deLaSeance(depart.seance, Date.now())} reprise`)
-  else if (depart.genre === 'accueil' && depart.seance && !ouvertDUnFichier && !arrivee) void ouvrirLAccueil(app, ui, registre, fiche, depart.seance)
+  else if (depart.genre === 'accueil' && depart.seance && !ouvertDUnFichier && !arrivee) accueil = ouvrirLAccueil(app, ui, registre, fiche, depart.seance)
   // Parti d'un autre classeur avec « Commencer par des automatismes » cochée
   if (arrivage.automatismes && !document.querySelector('dialog[open]')) ui.flash.ouvrir()
+  // Le rappel d'enregistrer le classeur qu'on vient de quitter (20 minutes
+  // de travail que rien ne protège, voir Bibliotheque.ouvrirClasseur) : un
+  // message avec un bouton, 30 s, une fois dit ce que l'arrivée avait à
+  // dire (la clé vérifiée, son « Autoriser »), et une fois fermée la
+  // fenêtre qui s'ouvre en arrivant (l'accueil, le flash d'automatismes :
+  // un bouton sous une fenêtre ne se clique pas). Il ne compte pas parmi
+  // les autres annonces : la fenêtre et « Séance … reprise » gardent leur
+  // règle.
+  if (rappel && registre) {
+    const dire = () => {
+      const d = document.querySelector<HTMLDialogElement>('dialog[open]')
+      if (d) d.addEventListener('close', dire, { once: true })
+      else window.setTimeout(() => direLeRappel(ui, registre, rappel), ui.finDuMessage())
+    }
+    void (accueil ?? ditALArrivee).then(dire)
+  }
   // Que le navigateur ne vide pas la base pour faire de la place. Chrome, Edge
   // et Safari décident seuls, sans rien demander ; Firefox pose sa question.
   // Rien n'est montré ici : ce n'est pas une sauvegarde (voir « Enregistrer le classeur »).
@@ -449,7 +499,7 @@ function annoncerLaBibliotheque(ui: UI, infos: InfosClasseur, vide: boolean, ave
 demarrer()
 
 /** On part vers un autre classeur pour y commencer une séance (la fenêtre
- *  d'accueil : une autre classe, un autre chapitre) : la clé de cet onglet,
+ *  d'accueil : un autre niveau, un autre chapitre) : la clé de cet onglet,
  *  { id, t, automatismes? }, valable une minute ; automatismes : la case
  *  « Commencer par des automatismes » était cochée */
 const CLE_NOUVELLE_SEANCE = 'mem-teachingtool-nouvelle-seance'
@@ -479,11 +529,11 @@ function sousDossiers(racine: string, dossiers: readonly FicheDossier[]): Set<st
 }
 
 /** La fenêtre d'accueil (lot 6, voir seances-vue.ts), remplie avec la
- *  bibliothèque : la classe (le plus proche dossier de classe du classeur),
- *  les autres classes (les dossiers de classe), les chapitres de la classe
+ *  bibliothèque : le niveau (le plus proche dossier de niveau du classeur),
+ *  les autres niveaux (les dossiers de niveau), les chapitres du niveau
  *  (les classeurs de son dossier, avec leur nombre de séances). Sans
- *  bibliothèque (le repli), ni classes ni chapitres. */
-async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche: FicheClasseur | null, seance: SeanceDuClasseur) {
+ *  bibliothèque (le repli), ni niveaux ni chapitres. */
+async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche: FicheClasseur | null, seance: SeanceDuClasseur): Promise<HTMLDialogElement | null> {
   let dossiers: FicheDossier[] = [], fiches: FicheClasseur[] = []
   if (registre && fiche) {
     try { [dossiers, fiches] = await Promise.all([registre.dossiers(), registre.classeurs()]) } catch { /* sans la bibliothèque */ }
@@ -508,8 +558,8 @@ async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche
   const classes = vivants.filter(d => d.etiquette && d.id !== classe?.dossier.id)
     .sort((a, b) => comparerEtiquettes(a.nom, b.nom)).map(d => ({ id: d.id, nom: d.nom }))
   const avecBibliotheque = !!(registre && fiche && ui.bibliotheque)
-  if (document.querySelector('dialog[open]')) return
-  ouvrirAccueil(document.getElementById('app')!, {
+  if (document.querySelector('dialog[open]')) return null
+  return ouvrirAccueil(document.getElementById('app')!, {
     classe: classe ? classe.dossier.nom : null,
     chapitre: app.classeur.nom,
     continuer: deLaSeance(seance, Date.now(), true),
@@ -527,10 +577,10 @@ async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche
       if (auto) ui.flash.ouvrir()
     },
     autreClasse: (id, auto) => {
-      // Le chapitre en cours de cette classe : le dernier classeur ouvert dans son dossier
+      // Le chapitre en cours de ce niveau : le dernier classeur ouvert dans son dossier
       const l = dans(id).sort((a, b) => (b.ouvert - a.ouvert) || (b.modifie - a.modifie))
       if (l.length) partir(l[0], auto)
-      else { ui.message(`La classe « ${carte.get(id)?.nom ?? ''} » n'a pas encore de chapitre : créez-le.`); nouveauChapitre(id) }
+      else { ui.message(`Le niveau « ${carte.get(id)?.nom ?? ''} » n'a pas encore de chapitre : créez-le.`); nouveauChapitre(id) }
     },
     ouvrirChapitre: (id, auto) => {
       if (id === ici?.id) { app.nouvelleSeance(); if (auto) ui.flash.ouvrir(); return }

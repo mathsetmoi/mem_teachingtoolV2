@@ -1,17 +1,17 @@
 // ESSAI DU MORCEAU C6-ranger (lot 4) : ranger la bibliothèque.
-// A. Le conseil du rangement par classe ; « Nouveau dossier » : « 5e B »
+// A. Le conseil du rangement par niveau ; « Nouveau dossier » : « 5e B »
 //    (cochée d'office), « 2nde 3 », « Archives » (pas cochée) ; les cartes
 //    des dossiers d'abord, par nom ; « Plus tard ».
 // B. Un classeur créé dans « 5e B » est dans le filtre « 5e B », sans
 //    étiquette propre ; un classeur d'« Archives » avec l'étiquette propre
-//    « 5e B » est trouvé aussi ; la fenêtre « Étiquettes de classe… » (3 au
+//    « 5e B » est trouvé aussi ; la fenêtre « Étiquettes de niveau… » (3 au
 //    plus, un double ignoré, l'héritée grisée) ; la rangée du filtre ;
 //    Échap enlève le filtre d'abord.
 // C. Un sous-dossier, le fil d'Ariane, Retour arrière, le dossier retenu
 //    pour l'onglet ; un dossier vide.
-// D. Le menu d'un dossier : sa couleur, « Dossier d'une classe », Annuler.
+// D. Le menu d'un dossier : sa couleur, « Dossier d'un niveau », Annuler.
 // E. Renommer : à la souris (double-clic sur le nom), au clavier (F2), un
-//    nom vide refusé, « Annuler » ; un dossier de classe renommé ; le
+//    nom vide refusé, « Annuler » ; un dossier de niveau renommé ; le
 //    classeur de l'onglet (son bouton, le titre de l'onglet) ; le clic
 //    simple sur le nom ouvre quand même.
 // F. Trier par nom (« Ch. 2 » avant « Ch. 10 »), retenu sur l'appareil.
@@ -23,7 +23,7 @@
 //    clavier virtuel), pas de défilement de côté.
 // J. 30 classeurs dans 8 dossiers sur 3 niveaux ; le TNI (1920 × 1080,
 //    tactile) ; le stylet (bouton latéral, toucher).
-// K. Le conseil : « Plus tard », « Créer un dossier de classe » ; aucune clé
+// K. Le conseil : « Plus tard », « Créer un dossier de niveau » ; aucune clé
 //    écrite sans rien choisir.
 // L. Un dossier qui porte le nom d'une étiquette ; une étiquette écrite
 //    autrement ; Retour arrière dans un champ ; la bibliothèque seule.
@@ -162,8 +162,8 @@ if (seul('A') || seul('B') || seul('C') || seul('D') || seul('E') || seul('F')) 
   etat.premier = await p.evaluate(() => window.__app.classeur.id)
   await ouvrirBiblio(p)
   let v = await vue(p)
-  ok(v.conseil && v.conseilTexte === 'Rangez par classe : un dossier par classe (« 5e B »), puis un classeur par chapitre (« Symétrie centrale »). Les classeurs d\'un dossier de classe portent son étiquette : un geste les retrouve tous.',
-    'À la racine, sans aucun dossier : le conseil du rangement par classe', v.conseilTexte)
+  ok(v.conseil && v.conseilTexte === 'Rangez par niveau : un dossier par niveau (« 5ème »), puis un classeur par chapitre (« Symétrie centrale »). Les classeurs d\'un dossier de niveau portent son étiquette : un geste les retrouve tous.',
+    'À la racine, sans aucun dossier : le conseil du rangement par niveau (« niveau », pas « classe » : gains rapides du lot 16)', v.conseilTexte)
   ok(JSON.stringify(v.fil) === '["Bibliothèque*"]' && v.grilleLabel === 'Bibliothèque' && v.tri === 'Trier : Modifiés récemment', '   … le fil d\'Ariane « Bibliothèque », « Trier : Modifiés récemment »', v)
   ok(v.focus === etat.premier, '   … le focus reste sur la carte du classeur ouvert (le conseil ne le prend pas)', v.focus)
   await p.screenshot({ path: CAPTURES + 'A-conseil.png' })
@@ -176,12 +176,12 @@ if (seul('A') || seul('B') || seul('C') || seul('D') || seul('E') || seul('F')) 
       classe: { coche: d.querySelector('input[name="classe"]').checked, texte: d.querySelector('.case-classe span').textContent }, boutons: [...d.querySelectorAll('.actions button')].map(b => b.textContent),
       dans: d.querySelector('.dans')?.textContent ?? null }
   })
-  ok(d0.titre === 'Nouveau dossier' && d0.max === 40 && d0.ph === '5e B' && d0.focus && d0.dans === null, '« Nouveau dossier » : « Nom », 40 caractères, l\'exemple grisé « 5e B », le focus dedans', d0)
+  ok(d0.titre === 'Nouveau dossier' && d0.max === 40 && d0.ph === '5ème' && d0.focus && d0.dans === null, '« Nouveau dossier » : « Nom », 40 caractères, l\'exemple grisé « 5ème », le focus dedans', d0)
   ok(d0.legende === 'Couleur' && d0.couleurs.join() === 'Gris,Bleu*,Vert,Jaune,Orange,Rouge,Violet,Rose' && d0.valeurs.join() === '#8a94a6,#3b6fb6,#2f8a57,#b8901f,#cf7a2b,#c24a4a,#7d5ba6,#b9578a', '   … « Couleur » : 8 pastilles (boutons radio nommés), Bleu au départ', d0.couleurs)
-  ok(!d0.classe.coche && JSON.stringify(d0.boutons) === '["Annuler","Créer"]', '   … la case « Dossier d\'une classe », décochée tant que rien n\'est tapé ; [Annuler] [Créer]', d0)
+  ok(!d0.classe.coche && JSON.stringify(d0.boutons) === '["Annuler","Créer"]', '   … la case « Dossier d\'un niveau », décochée tant que rien n\'est tapé ; [Annuler] [Créer]', d0)
   await p.keyboard.type('5e B'); await p.waitForTimeout(50)
   let c = await p.evaluate(() => ({ coche: document.querySelector('dialog input[name="classe"]').checked, texte: document.querySelector('dialog .case-classe span').textContent.replace(/[  ]/g, ' ') }))
-  ok(c.coche && c.texte === 'Dossier d\'une classe : ses classeurs portent l\'étiquette « 5e B »', '   … « 5e B » tapé : cochée d\'office, son libellé suit le nom', c)
+  ok(c.coche && c.texte === 'Dossier d\'un niveau : ses classeurs portent l\'étiquette « 5e B »', '   … « 5e B » tapé : cochée d\'office, son libellé suit le nom', c)
   await p.screenshot({ path: CAPTURES + 'A-nouveau-dossier.png' })
   await p.keyboard.press('Enter'); await p.waitForTimeout(400)
   v = await vue(p)
@@ -212,7 +212,7 @@ if (seul('A') || seul('B') || seul('C') || seul('D') || seul('E') || seul('F')) 
   ok(vide[0]?.erreur === 'Un dossier a besoin d\'un nom.', '   … un nom vide : « Un dossier a besoin d\'un nom. », la fenêtre reste', vide)
   ok(JSON.stringify(ds) === JSON.stringify([{ nom: '2nde 3', etiquette: '2nde 3', couleur: '#2f8a57' }, { nom: '5e B', etiquette: '5e B', couleur: '#3b6fb6' }, { nom: 'Archives', etiquette: null, couleur: '#3b6fb6' }]), '   … dans l\'index : « 2nde 3 » (vert, étiquette), « 5e B », « Archives » (sans étiquette)', ds)
   ok(v.grille.map(x => (x.dossier ? 'd:' : '') + x.nom).join() === 'd:2nde 3,d:5e B,d:Archives,Premier classeur', '   … la grille : les dossiers d\'abord, par nom (« 2nde 3 » avant « 5e B »), puis les classeurs', v.grille.map(x => x.nom))
-  ok(v.grille.find(x => x.nom === '2nde 3')?.couleur === '#2f8a57' && v.grille.find(x => x.nom === '2nde 3').label === '2nde 3, dossier vert, dossier d\'une classe, vide', '   … la carte de « 2nde 3 » : sa couleur, « 2nde 3, dossier vert, dossier d\'une classe, vide » au lecteur d\'écran', v.grille.find(x => x.nom === '2nde 3'))
+  ok(v.grille.find(x => x.nom === '2nde 3')?.couleur === '#2f8a57' && v.grille.find(x => x.nom === '2nde 3').label === '2nde 3, dossier vert, dossier d\'un niveau, vide', '   … la carte de « 2nde 3 » : sa couleur, « 2nde 3, dossier vert, dossier d\'une classe, vide » au lecteur d\'écran', v.grille.find(x => x.nom === '2nde 3'))
   etat.d2 = v.grille.find(x => x.nom === '2nde 3').cle.slice(2)
   etat.dA = v.grille.find(x => x.nom === 'Archives').cle.slice(2)
   ok(v.filtre === null, '   … pas encore de rangée de filtre : aucun classeur ne porte d\'étiquette')
@@ -220,7 +220,7 @@ if (seul('A') || seul('B') || seul('C') || seul('D') || seul('E') || seul('F')) 
 }
 
 // =====================================================================
-// B. LE FILTRE DE CLASSE ET LES ÉTIQUETTES
+// B. LE FILTRE DE NIVEAU ET LES ÉTIQUETTES
 // =====================================================================
 if (etat.p && (seul('B') || seul('C') || seul('D') || seul('E') || seul('F'))) {
   console.log('\n=== B. un classeur dans « 5e B », les étiquettes, le filtre ===')
@@ -234,7 +234,7 @@ if (etat.p && (seul('B') || seul('C') || seul('D') || seul('E') || seul('F'))) {
   // Nouveau classeur dans « 5e B »
   await p.click('.biblio-nouveau'); await p.waitForTimeout(250)
   const dans = await p.evaluate(() => document.querySelector('dialog.dialogue-nouveau[open] .dans')?.textContent.replace(/[  ]/g, ' '))
-  ok(dans === 'Dans : 5e B · étiquette de classe « 5e B »', `« Nouveau classeur » dans « 5e B » : « ${dans} » (pas de champ d'étiquette)`, dans)
+  ok(dans === 'Dans : 5e B · étiquette de niveau « 5e B »', `« Nouveau classeur » dans « 5e B » : « ${dans} » (pas de champ d'étiquette)`, dans)
   await p.fill('dialog input[name="nom"]', 'Symétrie centrale')
   await allerPar(p, () => p.keyboard.press('Enter'))
   const sym = await p.evaluate(() => window.__app.classeur.id)
@@ -245,8 +245,8 @@ if (etat.p && (seul('B') || seul('C') || seul('D') || seul('E') || seul('F'))) {
   v = await vue(p)
   const cs = v.grille.find(x => x.cle === sym)
   ok(JSON.stringify(v.fil) === '["Bibliothèque","5e B*"]' && cs && cs.puces.join() === '~5e B' && cs.titres[0] === 'Étiquette du dossier « 5e B »', 'Revenu dans la bibliothèque : on est toujours dans « 5e B » (l\'onglet) ; sa puce « 5e B », héritée (« Étiquette du dossier « 5e B » »)', { fil: v.fil, cs })
-  ok(/classe 5e B, ouvert dans cet onglet$/.test(cs?.label ?? ''), `   … le lecteur d'écran : « ${cs?.label} »`, cs)
-  ok(JSON.stringify(v.filtre) === '["Toutes*","5e B · 1"]', '   … la rangée du filtre paraît : « Toutes », « 5e B · 1 »', v.filtre)
+  ok(/niveau 5e B, ouvert dans cet onglet$/.test(cs?.label ?? ''), `   … le lecteur d'écran : « ${cs?.label} »`, cs)
+  ok(JSON.stringify(v.filtre) === '["Tous*","5e B · 1"]', '   … la rangée du filtre paraît : « Niveaux : », « Tous », « 5e B · 1 »', v.filtre)
   // Un classeur dans « Archives » avec l'étiquette propre « 5e B », par la fenêtre
   const [vieux] = await creerPlusieurs(p, 1, { dossier: etat.dA, noms: ['Symétrie 2025'] })
   etat.vieux = vieux
@@ -259,10 +259,10 @@ if (etat.p && (seul('B') || seul('C') || seul('D') || seul('E') || seul('F'))) {
   // (Adapté au lot 4, morceau C7 : le menu gagne, après ces trois entrées,
   // « Déplacer vers… » et « Dupliquer le classeur » ; au morceau C9,
   // « Enregistrer dans un fichier… »)
-  ok(v.menu?.entrees.join() === 'ouvrir-classeur,renommer,etiquettes,deplacer,dupliquer,enregistrer-classeur,supprimer' && v.menu.libelles.slice(0, 3).join('|') === 'OuvrirEntrée|Renommer…F2|Étiquettes de classe…', 'Le menu d\'un classeur : « Ouvrir », « Renommer… » (F2), « Étiquettes de classe… »', v.menu)
+  ok(v.menu?.entrees.join() === 'ouvrir-classeur,renommer,etiquettes,deplacer,dupliquer,enregistrer-classeur,supprimer' && v.menu.libelles.slice(0, 3).join('|') === 'OuvrirEntrée|Renommer…F2|Étiquettes de niveau…', 'Le menu d\'un classeur : « Ouvrir », « Renommer… » (F2), « Étiquettes de classe… »', v.menu)
   await choisir(p, 'etiquettes')
   const e0 = await p.evaluate(() => { const d = document.querySelector('dialog.dialogue-etiquettes[open]'); return { titre: d?.querySelector('h2').textContent, pour: d?.querySelector('.pour').textContent.replace(/[  ]/g, ' '), puces: [...d.querySelectorAll('.puces li')].map(l => l.textContent), focus: document.activeElement?.name, liste: [...d.querySelectorAll('datalist option')].map(o => o.value), max: d.querySelector('input[name="etiquette"]').maxLength, label: d.querySelector('.champ span').textContent } })
-  ok(e0.titre === 'Étiquettes de classe' && e0.label === 'Ajouter une classe' && e0.focus === 'etiquette' && e0.max === 20 && JSON.stringify(e0.puces) === '["Aucune étiquette"]', '« Étiquettes de classe… » : « Ajouter une classe » (20 caractères), le focus dedans, aucune étiquette', e0)
+  ok(e0.titre === 'Étiquettes de niveau' && e0.label === 'Ajouter un niveau' && e0.focus === 'etiquette' && e0.max === 20 && JSON.stringify(e0.puces) === '["Aucune étiquette"]', '« Étiquettes de niveau… » : « Ajouter un niveau » (20 caractères), le focus dedans, aucune étiquette', e0)
   ok(JSON.stringify(e0.liste) === '["5e B"]', '   … les étiquettes de la bibliothèque proposées (datalist) : « 5e B »', e0.liste)
   await p.keyboard.type('5e B'); await p.keyboard.press('Enter'); await p.waitForTimeout(300)
   await p.keyboard.type('5e b'); await p.keyboard.press('Enter'); await p.waitForTimeout(200)
@@ -282,7 +282,7 @@ if (etat.p && (seul('B') || seul('C') || seul('D') || seul('E') || seul('F'))) {
   v = await vue(p)
   const cv = v.grille.find(x => x.cle === vieux)
   ok(cv?.puces.join() === '5e B,Soutien' && v.focus === vieux, '   … sa carte : « 5e B », « Soutien » (propres, pas grisées) ; le focus revient à la carte', { cv, f: v.focus })
-  ok(JSON.stringify(v.filtre) === '["Toutes*","5e B · 2","Soutien · 1"]', '   … le filtre : « 5e B · 2 », « Soutien · 1 » (les classes d\'abord)', v.filtre)
+  ok(JSON.stringify(v.filtre) === '["Tous*","5e B · 2","Soutien · 1"]', '   … le filtre : « 5e B · 2 », « Soutien · 1 » (les niveaux d\'abord)', v.filtre)
   // Annuler (le message) : les étiquettes d'avant
   await p.click('.toast .action'); await p.waitForTimeout(400)
   fv = await fiche(p, vieux)
@@ -308,8 +308,8 @@ if (etat.p && (seul('B') || seul('C') || seul('D') || seul('E') || seul('F'))) {
   // Le filtre « 5e B » : les deux, avec leur chemin, quel que soit leur dossier
   await p.click('.biblio-filtre .filtre-etiquette[data-etiquette="5e b"]'); await p.waitForTimeout(300)
   v = await vue(p)
-  ok(JSON.stringify(v.filtre) === '["Toutes","5e B · 2*"]' && JSON.stringify(v.fil) === '["Classe « 5e B »*"]' && v.grilleLabel === 'Classeurs de la classe « 5e B »' && v.session.filtre === '5e B',
-    'Le filtre « 5e B » (aria-pressed) : « Classe « 5e B » », retenu pour l\'onglet', v)
+  ok(JSON.stringify(v.filtre) === '["Tous","5e B · 2*"]' && JSON.stringify(v.fil) === '["Niveau « 5e B »*"]' && v.grilleLabel === 'Classeurs du niveau « 5e B »' && v.session.filtre === '5e B',
+    'Le filtre « 5e B » (aria-pressed) : « Niveau « 5e B » », retenu pour l\'onglet', v)
   ok(v.grille.length === 2 && v.grille.every(x => !x.dossier) && JSON.stringify(v.grille.map(x => [x.nom, x.chemin]).sort()) === JSON.stringify([['Symétrie 2025', 'Archives'], ['Symétrie centrale', '5e B']]),
     '   … tous les classeurs qui la portent, en liste plate, avec leur chemin sous le nom : « Symétrie centrale » (5e B), « Symétrie 2025 » (Archives)', v.grille)
   ok(/dans Archives/.test(v.grille.find(x => x.nom === 'Symétrie 2025')?.label ?? ''), '   … le lecteur d\'écran dit le dossier (« dans Archives »)', v.grille)
@@ -317,15 +317,15 @@ if (etat.p && (seul('B') || seul('C') || seul('D') || seul('E') || seul('F'))) {
   // Échap : le filtre d'abord, puis l'écran
   await p.keyboard.press('Escape'); await p.waitForTimeout(250)
   v = await vue(p)
-  ok(v.ouvert && JSON.stringify(v.filtre) === '["Toutes*","5e B · 2"]' && JSON.stringify(v.fil) === '["Bibliothèque","5e B*"]' && v.session.filtre === null, 'Échap : le filtre s\'en va d\'abord (on retrouve « 5e B »), l\'écran reste', v)
+  ok(v.ouvert && JSON.stringify(v.filtre) === '["Tous*","5e B · 2"]' && JSON.stringify(v.fil) === '["Bibliothèque","5e B*"]' && v.session.filtre === null, 'Échap : le filtre s\'en va d\'abord (on retrouve « 5e B »), l\'écran reste', v)
   // Glissé hors de « 5e B » (comme le fera « Déplacer vers… ») : il quitte le filtre
   await p.evaluate(async ({ id, d }) => { await window.__registre.modifierClasseur(id, x => { x.dossier = d }) }, { id: sym, d: etat.dA })
   await p.evaluate(() => window.__bibliotheque.charger()); await p.waitForTimeout(200)
   v = await vue(p)
-  ok(JSON.stringify(v.filtre) === '["Toutes*","5e B · 1"]', 'Rangé dans « Archives », il sort du filtre « 5e B » (l\'étiquette n\'était pas écrite)', v.filtre)
+  ok(JSON.stringify(v.filtre) === '["Tous*","5e B · 1"]', 'Rangé dans « Archives », il sort du filtre « 5e B » (l\'étiquette n\'était pas écrite)', v.filtre)
   await p.evaluate(async ({ id, d }) => { await window.__registre.modifierClasseur(id, x => { x.dossier = d }) }, { id: sym, d: etat.d5 })
   await p.evaluate(() => window.__bibliotheque.charger()); await p.waitForTimeout(200)
-  ok(JSON.stringify((await vue(p)).filtre) === '["Toutes*","5e B · 2"]', '   … remis dans « 5e B », il y revient', (await vue(p)).filtre)
+  ok(JSON.stringify((await vue(p)).filtre) === '["Tous*","5e B · 2"]', '   … remis dans « 5e B », il y revient', (await vue(p)).filtre)
 }
 
 // =====================================================================
@@ -343,18 +343,18 @@ if (etat.p && (seul('C') || seul('D') || seul('E') || seul('F'))) {
   let v = await vue(p)
   const geo = v.grille.find(x => x.dossier && x.nom === 'Géométrie')
   etat.geo = geo?.cle.slice(2)
-  ok(dansDossier === 'Dans : 5e B' && !cg && geo && (await dossierLu(p, etat.geo)).parent === etat.d5, '« Nouveau dossier » dans « 5e B » : « Dans : 5e B », pas une classe ; il se crée dans « 5e B »', { dansDossier, cg, geo })
+  ok(dansDossier === 'Dans : 5e B' && !cg && geo && (await dossierLu(p, etat.geo)).parent === etat.d5, '« Nouveau dossier » dans « 5e B » : « Dans : 5e B », pas un niveau ; il se crée dans « 5e B »', { dansDossier, cg, geo })
   ok(v.grille.map(x => x.nom).join() === 'Géométrie,Symétrie centrale', '   … la grille de « 5e B » : le sous-dossier, puis le classeur', v.grille.map(x => x.nom))
   // Entrée sur le dossier (le clavier)
   await p.focus(carteCle('d:' + etat.geo)); await p.keyboard.press('Enter'); await p.waitForTimeout(300)
   v = await vue(p)
   ok(JSON.stringify(v.fil) === '["Bibliothèque","5e B","Géométrie*"]' && v.videDossier && v.grilleLabel === 'Dossier « Géométrie »', 'Entrée sur « Géométrie » : « Bibliothèque › 5e B › Géométrie », chaque dossier au-dessus un bouton', v)
-  // Un classeur dedans : il hérite de « 5e B » (le plus proche dossier de classe)
+  // Un classeur dedans : il hérite de « 5e B » (le plus proche dossier de niveau)
   const [tri] = await creerPlusieurs(p, 1, { dossier: etat.geo, noms: ['Triangles'] })
   etat.tri = tri
   await p.evaluate(() => window.__bibliotheque.charger()); await p.waitForTimeout(250)
   v = await vue(p)
-  ok(v.grille.find(x => x.cle === tri)?.puces.join() === '~5e B', '   … un classeur de « Géométrie » porte « 5e B », hérité du plus proche dossier de classe', v.grille)
+  ok(v.grille.find(x => x.cle === tri)?.puces.join() === '~5e B', '   … un classeur de « Géométrie » porte « 5e B », hérité du plus proche dossier de niveau', v.grille)
   // Le fil : « 5e B » ramène dans « 5e B », le focus sur « Géométrie »
   await p.click('.biblio-fil button:text("5e B")'); await p.waitForTimeout(300)
   v = await vue(p)
@@ -367,7 +367,7 @@ if (etat.p && (seul('C') || seul('D') || seul('E') || seul('F'))) {
   v = await vue(p)
   const cd5 = v.grille.find(x => x.cle === 'd:' + etat.d5)
   ok(JSON.stringify(v.fil) === '["Bibliothèque*"]' && v.focus === 'd:' + etat.d5 && v.recents.length > 0 && v.session.dossier === null, 'Retour arrière : la racine (Récents revient), le focus sur « 5e B »', v)
-  ok(cd5?.infos === '2 classeurs · 1 dossier' && cd5.label === '5e B, dossier bleu, dossier d\'une classe, 2 classeurs, 1 dossier', `   … « 5e B » : « ${cd5?.infos} » (sous-dossiers compris)`, cd5)
+  ok(cd5?.infos === '2 classeurs · 1 dossier' && cd5.label === '5e B, dossier bleu, dossier d\'un niveau, 2 classeurs, 1 dossier', `   … « 5e B » : « ${cd5?.infos} » (sous-dossiers compris)`, cd5)
   // Dans un champ, Retour arrière efface (il ne remonte pas)
   await p.keyboard.press('Backspace'); await p.waitForTimeout(150)
   ok((await vue(p)).ouvert, '   … à la racine, Retour arrière ne fait rien (l\'écran reste)')
@@ -391,14 +391,14 @@ if (etat.p && (seul('C') || seul('D') || seul('E') || seul('F'))) {
 // D. LE MENU D'UN DOSSIER
 // =====================================================================
 if (etat.p && (seul('D') || seul('E') || seul('F'))) {
-  console.log('\n=== D. le menu d\'un dossier : couleur, « Dossier d\'une classe » ===')
+  console.log('\n=== D. le menu d\'un dossier : couleur, « Dossier d\'un niveau » ===')
   const p = etat.p
   await ouvrirMenu(p, 'd:' + etat.d5)
   let v = await vue(p)
   // (Adapté au lot 4, morceau C7 : le menu d'un dossier gagne « Déplacer vers… » à la fin)
   ok(v.menu?.label === 'Dossier « 5e B »' && v.menu.entrees.join() === 'ouvrir-dossier,renommer-dossier,couleur,couleur*,couleur,couleur,couleur,couleur,couleur,couleur,classe-dossier*,deplacer-dossier,enregistrer-dossier,supprimer-dossier',
-    'Le menu d\'un dossier : « Ouvrir », « Renommer… », les 8 couleurs (Bleu cochée), « Dossier d\'une classe » (cochée)', v.menu)
-  ok(v.menu.libelles.slice(2, 10).join() === 'Gris,Bleu,Vert,Jaune,Orange,Rouge,Violet,Rose' && v.menu.libelles[10] === 'Dossier d\'une classeSes classeurs portent l\'étiquette « 5e B »', '   … les couleurs nommées pour le lecteur d\'écran ; l\'aide de la case', v.menu.libelles)
+    'Le menu d\'un dossier : « Ouvrir », « Renommer… », les 8 couleurs (Bleu cochée), « Dossier d\'un niveau » (cochée)', v.menu)
+  ok(v.menu.libelles.slice(2, 10).join() === 'Gris,Bleu,Vert,Jaune,Orange,Rouge,Violet,Rose' && v.menu.libelles[10] === 'Dossier d\'un niveauSes classeurs portent l\'étiquette « 5e B »', '   … les couleurs nommées pour le lecteur d\'écran ; l\'aide de la case', v.menu.libelles)
   await p.screenshot({ path: CAPTURES + 'D-menu-dossier.png' })
   await p.click('.menu-flottant:not([hidden]) .menu-item[data-couleur="#c24a4a"]'); await p.waitForTimeout(300)
   v = await vue(p)
@@ -406,14 +406,14 @@ if (etat.p && (seul('D') || seul('E') || seul('F'))) {
   ok(v.grille.find(x => x.cle === 'd:' + etat.d5)?.couleur === '#c24a4a' && (await dossierLu(p, etat.d5)).couleur === '#c24a4a' && t.some(x => x.includes('Couleur du dossier « 5e B » : rouge') && x.includes('Annuler')), 'Rouge : la carte et l\'index ; « Couleur du dossier « 5e B » : rouge » [Annuler]', t)
   await p.click('.toast .action'); await p.waitForTimeout(300)
   ok((await dossierLu(p, etat.d5)).couleur === '#3b6fb6', '   … Annuler : Bleu de nouveau')
-  // La case : plus un dossier de classe → ses classeurs perdent l'étiquette
+  // La case : plus un dossier de niveau → ses classeurs perdent l'étiquette
   await ouvrirMenu(p, 'd:' + etat.d5); await choisir(p, 'classe-dossier')
   v = await vue(p)
-  ok(!(await dossierLu(p, etat.d5)).etiquette && JSON.stringify(v.filtre) === '["Toutes*","5e B · 1"]' && v.grille.find(x => x.cle === 'd:' + etat.d5)?.puces.length === 0 && (await toasts(p)).some(x => x.includes('« 5e B » n\'est plus un dossier de classe.')),
-    '« Dossier d\'une classe » décochée : ses classeurs ne portent plus « 5e B » (il ne reste que celui d\'Archives)', v.filtre)
+  ok(!(await dossierLu(p, etat.d5)).etiquette && JSON.stringify(v.filtre) === '["Tous*","5e B · 1"]' && v.grille.find(x => x.cle === 'd:' + etat.d5)?.puces.length === 0 && (await toasts(p)).some(x => x.includes('« 5e B » n\'est plus un dossier de niveau.')),
+    '« Dossier d\'un niveau » décochée : ses classeurs ne portent plus « 5e B » (il ne reste que celui d\'Archives)', v.filtre)
   await p.click('.toast .action'); await p.waitForTimeout(300)
   v = await vue(p)
-  ok((await dossierLu(p, etat.d5)).etiquette === '5e B' && JSON.stringify(v.filtre) === '["Toutes*","5e B · 3"]', '   … Annuler : de nouveau un dossier de classe (3 classeurs, avec celui de « Géométrie »)', v.filtre)
+  ok((await dossierLu(p, etat.d5)).etiquette === '5e B' && JSON.stringify(v.filtre) === '["Tous*","5e B · 3"]', '   … Annuler : de nouveau un dossier de niveau (3 classeurs, avec celui de « Géométrie »)', v.filtre)
   // Au clavier : Menu, puis les flèches jusqu'à « Renommer… »
   await p.focus(carteCle('d:' + etat.d5))
   await p.keyboard.press('ContextMenu'); await p.waitForTimeout(150)
@@ -469,7 +469,7 @@ if (etat.p && (seul('E') || seul('F'))) {
   await p.keyboard.press('F2'); await p.waitForTimeout(150)
   await p.keyboard.type('Ch. 2'); await p.click('.biblio-tete h2'); await p.waitForTimeout(400)
   ok((await fiche(p, b)).nom === 'Ch. 2' && !(await vue(p)).saisie, 'Un clic ailleurs garde le nom tapé (« Ch. 2 »)')
-  // Un dossier : « Renommer… » ; un dossier de classe garde son étiquette accordée
+  // Un dossier : « Renommer… » ; un dossier de niveau garde son étiquette accordée
   await ouvrirMenu(p, 'd:' + etat.d2); await choisir(p, 'renommer-dossier')
   v = await vue(p)
   ok(v.saisie?.max === 40 && v.saisie.valeur === '2nde 3', '« Renommer… » d\'un dossier : 40 caractères', v.saisie)
@@ -477,7 +477,7 @@ if (etat.p && (seul('E') || seul('F'))) {
   ok((await toasts(p)).some(x => x.includes('Un dossier a besoin d\'un nom.')), '   … vide : « Un dossier a besoin d\'un nom. »')
   await p.keyboard.type('2nde 4'); await p.keyboard.press('Enter'); await p.waitForTimeout(400)
   const d2 = await dossierLu(p, etat.d2)
-  ok(d2.nom === '2nde 4' && d2.etiquette === '2nde 4' && (await toasts(p)).some(x => x.includes('Dossier renommé')), '   … « 2nde 4 » : son étiquette de classe suit son nom ; « Dossier renommé »', d2)
+  ok(d2.nom === '2nde 4' && d2.etiquette === '2nde 4' && (await toasts(p)).some(x => x.includes('Dossier renommé')), '   … « 2nde 4 » : son étiquette de niveau suit son nom ; « Dossier renommé »', d2)
   // Le classeur de l'onglet (« Symétrie centrale », dans Récents) : son bouton et le titre de l'onglet suivent
   await p.focus(`.grille-classeurs.recents li[data-cle="${ici}"] .carte-classeur`); await p.keyboard.press('F2'); await p.waitForTimeout(150)
   await p.keyboard.type('Mon cahier de 5e'); await p.keyboard.press('Enter'); await p.waitForTimeout(400)
@@ -669,7 +669,7 @@ if (seul('J')) {
   let v = await vue(p)
   const compte = Object.fromEntries(v.grille.filter(x => x.dossier).map(x => [x.nom, x.infos]))
   ok(JSON.stringify(compte) === JSON.stringify({ '2nde 3': '9 classeurs · 2 dossiers', '5e B': '15 classeurs · 2 dossiers', Archives: '6 classeurs' }), `30 classeurs dans 8 dossiers : « 5e B » 15 classeurs · 2 dossiers, « 2nde 3 » 9, « Archives » 6 (ouvert en ${ms} ms)`, compte)
-  ok(JSON.stringify(v.filtre) === '["Toutes*","5e B · 15","2nde 3 · 9"]', '   … le filtre : « 5e B · 15 », « 2nde 3 · 9 » (tous les niveaux héritent)', v.filtre)
+  ok(JSON.stringify(v.filtre) === '["Tous*","5e B · 15","2nde 3 · 9"]', '   … le filtre : « 5e B · 15 », « 2nde 3 · 9 » (tous les sous-dossiers héritent)', v.filtre)
   const colonnes = new Set(v.grille.filter(x => x.y === v.grille[0].y).map(x => x.x)).size
   ok(colonnes <= 8 && v.grille.length === 4, `   … au TNI : la grille (${colonnes} cartes sur la rangée)`, colonnes)
   // Au doigt (TNI) : un toucher entre, trois niveaux
@@ -715,10 +715,10 @@ if (seul('J')) {
 }
 
 // =====================================================================
-// K. LE CONSEIL ÉCARTÉ ; « CRÉER UN DOSSIER DE CLASSE »
+// K. LE CONSEIL ÉCARTÉ ; « CRÉER UN DOSSIER DE NIVEAU »
 // =====================================================================
 if (seul('K')) {
-  console.log('\n=== K. le conseil : « Plus tard », « Créer un dossier de classe » ===')
+  console.log('\n=== K. le conseil : « Plus tard », « Créer un dossier de niveau » ===')
   const ctx = await contexte()
   const p = await ouvrir(ctx, '', 'K')
   await ouvrirBiblio(p)
@@ -726,7 +726,7 @@ if (seul('K')) {
   const c = await p.evaluate(() => ({ coche: document.querySelector('dialog.dialogue-dossier[open] input[name="classe"]')?.checked }))
   await p.keyboard.type('Archives'); await p.waitForTimeout(50)
   const c2 = await p.evaluate(() => document.querySelector('dialog input[name="classe"]').checked)
-  ok(c.coche && c2, '« Créer un dossier de classe » : « Nouveau dossier », la case cochée d\'avance (elle le reste, quel que soit le nom)', { c, c2 })
+  ok(c.coche && c2, '« Créer un dossier de niveau » : « Nouveau dossier », la case cochée d\'avance (elle le reste, quel que soit le nom)', { c, c2 })
   await p.keyboard.press('Escape'); await p.waitForTimeout(150)
   ok((await vue(p)).conseil, '   … Annuler : le conseil reste')
   await p.click('.biblio-conseil [data-action="conseil-plus-tard"]'); await p.waitForTimeout(250)
@@ -749,18 +749,18 @@ if (seul('L')) {
   console.log('\n=== L. un dossier qui porte le nom d\'une étiquette ; Retour arrière dans un champ ===')
   const ctx = await contexte()
   const p = await ouvrir(ctx, '', 'L')
-  // « Soutien » : un dossier ordinaire (pas de classe) ; un classeur à la racine porte l'étiquette propre « Soutien »
+  // « Soutien » : un dossier ordinaire (pas un niveau) ; un classeur à la racine porte l'étiquette propre « Soutien »
   const soutien = await creerDossier(p, 'Soutien')
   const d5 = await creerDossier(p, '5e B', { etiquette: '5e B' })
   const [s1] = await creerPlusieurs(p, 1, { etiquettes: ['Soutien'], noms: ['Remédiation'] })
-  // « 5E b » écrit autrement par deux classeurs d'ailleurs : c'est la même classe, écrite comme son dossier
+  // « 5E b » écrit autrement par deux classeurs d'ailleurs : c'est le même niveau, écrit comme son dossier
   await creerPlusieurs(p, 2, { etiquettes: ['5E b'], prefixe: 'Ancien' })
   await creerPlusieurs(p, 1, { dossier: d5, noms: ['Symétrie'] })
   await ouvrirBiblio(p)
   let v = await vue(p)
   const cs = v.grille.find(x => x.cle === 'd:' + soutien)
-  ok(JSON.stringify(v.filtre) === '["Toutes*","5e B · 3","Soutien · 1"]', 'Le filtre : « 5e B · 3 » (écrite comme son dossier de classe), « Soutien · 1 »', v.filtre)
-  ok(cs && cs.puces.length === 0 && cs.infos === 'Vide', '   … le dossier « Soutien » (pas une classe) : ni puce, « Vide » ; l\'étiquette « Soutien » ne vient pas de lui', cs)
+  ok(JSON.stringify(v.filtre) === '["Tous*","5e B · 3","Soutien · 1"]', 'Le filtre : « 5e B · 3 » (écrite comme son dossier de niveau), « Soutien · 1 »', v.filtre)
+  ok(cs && cs.puces.length === 0 && cs.infos === 'Vide', '   … le dossier « Soutien » (pas un niveau) : ni puce, « Vide » ; l\'étiquette « Soutien » ne vient pas de lui', cs)
   await p.click('.biblio-filtre .filtre-etiquette[data-etiquette="soutien"]'); await p.waitForTimeout(250)
   v = await vue(p)
   ok(v.grille.length === 1 && v.grille[0].cle === s1 && v.grille[0].chemin === 'Bibliothèque', '   … le filtre « Soutien » : le classeur qui la porte (à la racine : « Bibliothèque »), pas le dossier', v.grille)
@@ -802,7 +802,7 @@ if (seul('M')) {
     await p.click('.biblio-conseil [data-action="conseil-creer"]'); await p.waitForTimeout(200)
     await p.keyboard.type('4e A'); await p.keyboard.press('Enter'); await p.waitForTimeout(500)
     const d = await p.evaluate(() => document.querySelector('.grille-classeurs.tous .case-dossier')?.dataset.dossier)
-    ok(!!d, '   … « Créer un dossier de classe » : « 4e A »', d)
+    ok(!!d, '   … « Créer un dossier de niveau » : « 4e A »', d)
     await p.click('.grille-classeurs.tous .case-dossier .dossier-icone'); await p.waitForTimeout(300)
     await p.click('.biblio-vide-dossier .biblio-bouton'); await p.waitForTimeout(250)
     const dans = await p.evaluate(() => document.querySelector('dialog .dans')?.textContent.replace(/[  ]/g, ' '))
@@ -811,7 +811,7 @@ if (seul('M')) {
     await p.fill('dialog input[name="nom"]', 'Angles')
     await Promise.all([p.waitForNavigation({ timeout: 20000 }), p.click('dialog [data-a="creer"]')])
     await p.waitForFunction(() => document.querySelector('.rang')?.textContent?.includes('/'), null, { timeout: 30000 }); await p.waitForTimeout(800)
-    ok(dans === 'Dans : 4e A · étiquette de classe « 4e A »' && await p.evaluate(() => document.title) === 'Angles — MEM teachingtool', '   … « Nouveau classeur » dans « 4e A » : « Angles » s\'ouvre', dans)
+    ok(dans === 'Dans : 4e A · étiquette de niveau « 4e A »' && await p.evaluate(() => document.title) === 'Angles — MEM teachingtool', '   … « Nouveau classeur » dans « 4e A » : « Angles » s\'ouvre', dans)
     await p.evaluate(() => document.querySelector('.bouton-classeur').click()); await p.waitForTimeout(600)
     const v = await vue(p)
     ok(JSON.stringify(v.fil) === '["Bibliothèque","4e A*"]' && v.grille[0]?.nom === 'Angles' && v.grille[0].puces.join() === '~4e A', '   … revenu dans la bibliothèque : toujours dans « 4e A », « Angles » porte « 4e A »', v)

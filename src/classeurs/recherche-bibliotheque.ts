@@ -1,7 +1,7 @@
 // =============================================================
 // LA RECHERCHE DANS LA BIBLIOTHÈQUE
 // Ce que la recherche (recherche-vue.ts, et le champ de la bibliothèque)
-// sait des classeurs de ce navigateur : leur fiche (nom, classe, date), puis
+// sait des classeurs de ce navigateur : leur fiche (nom, niveau, date), puis
 // leur contenu (pages, séances, formules), lu dans leur base en lecture
 // seule — une transaction readonly, le document refait en mémoire, lu,
 // détruit ; rien n'est écrit. Le classeur ouvert est lu dans le tableau
@@ -19,7 +19,7 @@ import type { ClasseurCherche } from '../recherche-vue'
 
 const gardes = new Map<string, { modifie: number; contenu: ContenuClasseur | null }>()
 
-/** Les classeurs (hors corbeille), avec leur classe et leur chemin ;
+/** Les classeurs (hors corbeille), avec leur niveau et leur chemin ;
  *  courant : l'id du classeur ouvert dans cet onglet */
 export async function classeursCherches(registre: Registre, courant: string | null): Promise<(ClasseurCherche & { fiche: FicheClasseur })[]> {
   const [fiches, dossiers] = await Promise.all([registre.classeurs(), registre.dossiers()])

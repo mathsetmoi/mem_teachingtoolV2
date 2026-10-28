@@ -7,6 +7,12 @@
 // C. Republier sous un autre nom : même code, un seul fichier.
 // D. Un relais pas à jour (version 3) est signalé avant d'écrire.
 // E. Aucune connexion ni appel à l'API Drive de Google (le script de connexion peut se charger, sans effet).
+// Publier en un clic (lot 16) :
+// G. Tout est retenu (le dossier, le Drive) et une séance a déjà été rangée : la fenêtre
+//    s'ouvre en résumé (la séance et ses pages, où va le replay), le focus sur Publier ;
+//    Publier réécrit le fichier sous le même code, le lien ne change pas.
+// H. « Modifier… » déplie la fenêtre complète.
+// I. L'accord du dossier refusé : la fenêtre se déplie, dit de le choisir à nouveau, rien n'est écrit.
 import { chromium } from '../commun/playwright.mjs'
 
 const DEV = 'http://localhost:5173/'
@@ -40,6 +46,17 @@ await p.addInitScript(() => {
   window.showDirectoryPicker = async () => (await navigator.storage.getDirectory()).getDirectoryHandle('classe', { create: true })
 })
 await p.goto(DEV); await p.waitForSelector('.rang'); await p.waitForTimeout(400)
+// Le dossier choisi est une poignée de l'OPFS : la relire depuis IndexedDB fait
+// tomber ce Chromium d'essai (SIGTRAP du navigateur, headless shell comme Chromium
+// complet). En vrai Chrome, avec un vrai dossier, l'aller-retour marche (le lot 15
+// en vit à chaque ouverture). Ici, le réglage « replay-dossier:… » reste en
+// mémoire dans la page ; les autres réglages vont dans la base comme d'habitude.
+await p.evaluate(() => {
+  const r = window.__registre, memoire = new Map()
+  const lire = r.reglage.bind(r), ecrire = r.ecrireReglage.bind(r)
+  r.reglage = cle => memoire.has(cle) ? Promise.resolve(memoire.get(cle)) : lire(cle)
+  r.ecrireReglage = (cle, v) => { if (cle.startsWith('replay-dossier:')) { memoire.set(cle, v); return Promise.resolve() } return ecrire(cle, v) }
+})
 await p.evaluate(async () => {
   const a = window.__app, t = a.tableau
   const pts = []; for (let i = 0; i < 25; i++) pts.push(i * 6, Math.sin(i / 3) * 30, 0.5)
@@ -53,6 +70,9 @@ appelsGoogle = 0 // (le chargement de la page peut préparer Google ; Publier, l
 // A. dossier choisi, nom
 await p.check('input[name="p-lieu"][value="dossier"]')
 ok(await p.isVisible('.p-nomfichier'), 'A1) Le nom du fichier est proposé')
+// L'OPFS de l'environnement d'essai refuse les noms accentués (« Séance du… ») :
+// un titre sans accent, qui sera le nom du fichier écrit en résumé (G)
+await p.fill('.p-titre', 'Equations')
 await p.fill('.p-nomfichier', 'Equations Essai')
 await p.click('.p-choisir'); await p.waitForTimeout(300)
 ok(!/aucun dossier/.test(await p.textContent('.p-chemin')), 'A2) Le dossier choisi s\'affiche', await p.textContent('.p-chemin'))
@@ -86,6 +106,42 @@ fichiers = await liste()
 ok(fichiers.length === 1, 'D2) Rien n\'est écrit avant', fichiers)
 // E
 ok(appelsGoogle === 0, 'E1) Aucun appel à l\'API de Google', appelsGoogle)
+// G. Publier en un clic : tout est retenu, la fenêtre s'ouvre en résumé
+version = 4
+const rouvrir = async (resume = true) => {
+  await p.keyboard.press('Escape'); await p.waitForSelector('.dialogue-publier[open]', { state: 'detached' })
+  await p.click('button[title="Publier le replay pour les élèves"]'); await p.waitForSelector(resume ? '.dialogue-publier.resume[open]' : '.dialogue-publier[open]')
+}
+await rouvrir(false)
+ok(await p.isVisible('.dialogue-publier.resume[open]'), 'G1) La fenêtre s\'ouvre en résumé')
+const resumeSeance = await p.textContent('.p-resume-seance'), resumeLieu = await p.textContent('.p-resume-lieu')
+ok(/^Séance du .+ · 1 page$/.test(resumeSeance), 'G2) La séance et ses pages', resumeSeance)
+ok(/Rangé dans « .+ » · Drive personnel/.test(resumeLieu), 'G3) Le dossier et le Drive', resumeLieu)
+ok(!await p.isVisible('.p-seance') && !await p.isVisible('.p-choisir') && !await p.isVisible('.p-fichier') && await p.isVisible('.p-apercu') && await p.isVisible('.p-verifier'), 'G4) La séance, « Choisir… » et « Enregistrer le fichier » sont repliés ; « Voir comme un élève » et les vérifications restent')
+const focus = await p.evaluate(() => document.activeElement?.className ?? '')
+ok(/p-publier/.test(focus), 'G5) Le focus est sur Publier', focus)
+const tient = await p.evaluate(() => { const d = document.querySelector('.dialogue-publier'); return { scroll: d.scrollHeight, client: d.clientHeight, fenetre: innerHeight } })
+ok(tient.scroll <= tient.client, 'G6) La fenêtre en résumé tient sans défiler (1280 × 900 ici)', tient)
+await p.click('.p-publier')
+await p.waitForFunction(() => /Le replay est en ligne/.test(document.querySelector('.p-etat').textContent), null, { timeout: 20000 })
+fichiers = await liste()
+ok(fichiers.length === 1 && fichiers[0] === `Equations [${m?.[1]}].mem`, 'G7) Publier réécrit le fichier sous le même code, au nom du titre', fichiers)
+ok(await p.inputValue('.p-lien') === lien, 'G8) Le lien ne change pas')
+// H. « Modifier… » déplie
+await rouvrir()
+await p.click('.p-modifier'); await p.waitForTimeout(100)
+ok(!await p.isVisible('.dialogue-publier.resume') && await p.isVisible('.p-choisir') && await p.isVisible('.p-seance'), 'H1) « Modifier… » remontre la séance et « Choisir… »')
+ok(await p.isVisible('.p-lieu') && (await p.isVisible('.p-drive-retenu') || await p.isVisible('.p-comptes')), 'H2) « Où ranger » et le Drive sont revenus')
+ok(!await p.isVisible('.p-resume') && await p.isVisible('.p-fichier'), 'H3) Le résumé est caché, « Enregistrer le fichier » revient')
+// I. l'accord du dossier perdu
+await p.evaluate(() => { window.FileSystemHandle.prototype.requestPermission = async () => 'denied' })
+await rouvrir()
+const avantI = await liste()
+await p.click('.p-publier')
+await p.waitForFunction(() => /Choisir…/.test(document.querySelector('.p-etat').textContent), null, { timeout: 15000 })
+ok(!await p.isVisible('.dialogue-publier.resume') && await p.isVisible('.p-choisir'), 'I1) L\'accord refusé : la fenêtre se déplie')
+ok(/n'est plus accessible/.test(await etat()), 'I2) Le message dit de choisir le dossier à nouveau', await etat())
+ok(JSON.stringify(await liste()) === JSON.stringify(avantI), 'I3) Rien n\'est écrit', await liste())
 ok(erreurs.length === 0, 'F) Aucune erreur de page', erreurs)
 await b.close()
 console.log(echecs ? `\n${echecs} échec(s)` : '\nTout passe')

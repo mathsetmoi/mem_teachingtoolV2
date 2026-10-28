@@ -1,5 +1,5 @@
 // CONFORMITÉ, point 2 : la bibliothèque pour un lecteur d'écran (l'arbre
-// d'accessibilité) et au clavier seul : ouvrir, créer un dossier de classe,
+// d'accessibilité) et au clavier seul : ouvrir, créer un dossier de niveau,
 // y ranger un classeur, filtrer, trier, revenir.
 import * as O from './outils.mjs'
 const { ok, norm } = O

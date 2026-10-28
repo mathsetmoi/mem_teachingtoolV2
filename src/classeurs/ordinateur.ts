@@ -1,8 +1,8 @@
 // =============================================================
-// UN DOSSIER DE L'ORDINATEUR RELIÉ À UNE CLASSE (lot 7)
+// UN DOSSIER DE L'ORDINATEUR RELIÉ À UN NIVEAU (lot 7)
 // Chrome et Edge savent choisir un dossier (showDirectoryPicker) et y
 // écrire ; ailleurs (Firefox, Safari, l'iPad), on choisit des fichiers.
-// Relier une classe à un dossier : chacun de ses classeurs y prend un
+// Relier un niveau à un dossier : chacun de ses classeurs y prend un
 // fichier à son nom, dans un dossier à lui (« Fractions / Fractions.memc »,
 // rangé dans les mêmes sous-dossiers que dans la bibliothèque : le dossier
 // du chapitre), qui devient le fichier de sa clé (cle.ts) : il
@@ -102,7 +102,7 @@ async function nomsDe(d: PoigneeDossier): Promise<string[]> {
   return n
 }
 
-/** Relie les classeurs de la classe `classe` au dossier `d` (voir plus
+/** Relie les classeurs du niveau `classe` au dossier `d` (voir plus
  *  haut). avantDEcrire : le classeur de cet onglet écrit d'abord ce qui
  *  attend dans sa base ; progres : « 3 sur 12 » */
 export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, classe: string, o: {

@@ -74,9 +74,9 @@
 // mise à jour sans perte, ou ajoutée comme copie) et « Remplacer quand
 // même ». Une base trouée ne se copie pas (elle attend sa réparation).
 //
-// UNE CLASSE RELIÉE AU DRIVE (lot 7, voir emplacements.ts) : la copie d'un
-// classeur de cette classe, sur ce Drive, va dans le dossier de la classe
-// (« MEM - Classeurs » › « 5A » › le dossier du chapitre) au lieu du dossier des sauvegardes ; la
+// UN NIVEAU RELIÉ AU DRIVE (lot 7, voir emplacements.ts) : la copie d'un
+// classeur de ce niveau, sur ce Drive, va dans le dossier du niveau
+// (« MEM - Classeurs » › « 5ème » › le dossier du chapitre) au lieu du dossier des sauvegardes ; la
 // copie d'avant y est déplacée (drive.ts). Arrivé là depuis ailleurs, un
 // classeur s'y copie même si rien n'a changé depuis sa dernière copie.
 // =============================================================
@@ -160,7 +160,7 @@ async function sousLeVerrou<T>(nom: string, f: () => Promise<T>, siLibre = false
 
 type Resultat = 'copie' | 'deja' | 'rien' | 'connexion' | 'conflit' | 'erreur'
 /** Le dossier du Drive où va la copie de ce classeur : celui de son chapitre,
- *  dans le dossier de sa classe, si elle est reliée à ce Drive (lot 7) ;
+ *  dans le dossier de son niveau, s'il est relié à ce Drive (lot 7) ;
  *  undefined : le dossier des sauvegardes */
 async function dossierDeLaCopie(registre: Registre, f: FicheClasseur, compte: CompteDrive): Promise<string | undefined> {
   const [liste, dossiers] = await Promise.all([emplacements(registre), registre.dossiers()])
@@ -180,7 +180,7 @@ export type CopieDepuisLaBase = 'copie' | 'rien' | 'ecarte' | 'occupe'
 
 /** Copie un classeur sur le Drive de `compte` depuis sa base, sous son
  *  verrou s'il est libre : les classeurs en retard (rattraper), et ceux
- *  d'une classe qu'on vient de relier au Drive (lot 7, ailleurs.ts). voulu :
+ *  d'un niveau qu'on vient de relier au Drive (lot 7, ailleurs.ts). voulu :
  *  la fiche relue sous le verrou doit encore l'être. Les erreurs du Drive
  *  remontent. */
 export async function copierDepuisLaBase(registre: Registre, id: string, compte: CompteDrive, o: {
@@ -202,7 +202,7 @@ export async function copierDepuisLaBase(registre: Registre, id: string, compte:
     const dossier = await dossierDeLaCopie(registre, x, compte)
     if (d?.vecteur) {
       const c = comparerVecteurs(fab.vecteur, d.vecteur)
-      // Rien de neuf : sa copie est à jour à cette heure (et déjà dans sa classe)
+      // Rien de neuf : sa copie est à jour à cette heure (et déjà dans son niveau)
       if (c === 'egal' && (d.dossier ?? '') === (dossier ?? '')) { await registre.modifierClasseur(x.id, y => { if (y.drive) y.drive = { ...y.drive, t: Date.now() } }); return 'rien' }
       // Il a perdu une partie de son histoire : son onglet le dira
       if (c !== 'contient' && c !== 'egal') return 'ecarte'

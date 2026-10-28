@@ -2,7 +2,7 @@
 // LA RECHERCHE DANS LA BIBLIOTHÈQUE : LE CHAMP ET SES RÉSULTATS
 // En haut de la bibliothèque, un champ « Rechercher » (Ctrl F y va) : dès
 // qu'on tape, les résultats prennent la place des cartes, en quatre
-// groupes : les classeurs (par leur nom, leur classe, le nom d'une de leurs
+// groupes : les classeurs (par leur nom, leur niveau, le nom d'une de leurs
 // pages), les dossiers, les séances (par leur date ou leur nom), les
 // formules écrites. Un clic ouvre le classeur (à la séance, à la page, la
 // formule prise) ou le dossier. Échap efface ; le champ vide, les cartes
