@@ -4399,7 +4399,9 @@ Les essais adaptés le disent en tête : `lot5/corrections-cf.mjs` (II),
 `lot13/N1-nuit.mjs` (l'épaisseur se lit sur `data-taille` du bouton
 `.bouton-epaisseur`, « Trait épais » est dans son menu), `lot1/appareils/
 appareils.mjs`, `lot1/verif/divers.mjs`, `lot1/verif/partie.mjs` (« rien à
-supprimer » se lit à la barre d'actions, cachée), `lot1/verif/telephone.mjs`.
+supprimer » se lit à la barre d'actions, cachée), `lot1/verif/telephone.mjs`,
+`lot4/CF3-telephone.mjs` (la fenêtre qui rétrécit part de 1200 px : la barre
+du haut a deux rangées dès 1100).
 
 ### Plus de question au départ
 
