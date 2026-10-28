@@ -1,9 +1,11 @@
 // Le replay rangé dans un dossier de l'ordinateur : le nom du fichier, son
-// code, le lien des élèves, et le dépôt dans un dossier (faux dossier).
+// code, le lien des élèves, le dépôt dans un dossier (faux dossier), ce qui
+// est retenu pour un classeur (faux registre) et les lignes du résumé (lot 16).
 import { describe, expect, it } from 'vitest'
 import { FORME_CODE, RELAIS_REPLAY, codeDuNom, lienEleveParCode, nouveauCode, relaisDe } from '../src/publication/comptes'
-import { deposerLeReplay, nomDuReplay } from '../src/publication/replay-dossier'
+import { deposerLeReplay, lireReglage, nomDuReplay, retenirReglage, texteDuResume } from '../src/publication/replay-dossier'
 import type { PoigneeDossier } from '../src/classeurs/ordinateur'
+import type { Registre } from '../src/classeurs/registre'
 
 /** Un faux dossier : des fichiers (nom → texte), comme showDirectoryPicker en donne un */
 function fauxDossier(fichiers: Record<string, string>, o: { retraitImpossible?: boolean } = {}) {
@@ -83,5 +85,72 @@ describe('déposer le replay dans le dossier', () => {
     const f: Record<string, string> = { 'Ancien [k7f3q9xa].mem': 'vieux' }
     await deposerLeReplay(fauxDossier(f, { retraitImpossible: true }), 'Nouveau [k7f3q9xa].mem', 'neuf', 'k7f3q9xa')
     expect(f['Nouveau [k7f3q9xa].mem']).toBe('neuf')
+  })
+})
+
+/** Un faux registre : des fiches de classeurs et de dossiers, et les réglages en mémoire */
+function fauxRegistre(classeurs: Record<string, string | null>, dossiers: { id: string; parent: string | null }[] = []) {
+  const etat = new Map<string, unknown>()
+  const r = {
+    async classeur(id: string) { return id in classeurs ? { id, nom: 'Fractions', dossier: classeurs[id] } : undefined },
+    async dossiers() { return dossiers.map(d => ({ ...d, nom: d.id, couleur: '', cree: 0 })) },
+    async reglage(cle: string) { return etat.get(cle) },
+    async ecrireReglage(cle: string, v: unknown) { etat.set(cle, v) },
+  }
+  return { registre: r as unknown as Registre, etat }
+}
+const poignee = (name: string) => ({ kind: 'directory', name }) as unknown as PoigneeDossier
+
+describe('ce qui est retenu pour un classeur', () => {
+  it('à la racine de la bibliothèque : le dossier ET le Drive dans la clé du classeur, aucune clé de classe', async () => {
+    const { registre, etat } = fauxRegistre({ c1: null })
+    const p = poignee('Fractions')
+    await retenirReglage(registre, 'c1', { compte: 'mem', poignee: p })
+    expect([...etat.keys()]).toEqual(['replay-dossier:c1'])
+    expect(etat.get('replay-dossier:c1')).toEqual({ poignee: p, compte: 'mem' })
+    expect(await lireReglage(registre, 'c1')).toEqual({ poignee: p, compte: 'mem' })
+    // Republier sans rechoisir le dossier, avec un autre Drive : le dossier retenu reste
+    await retenirReglage(registre, 'c1', { compte: 'lfb' })
+    expect(await lireReglage(registre, 'c1')).toEqual({ poignee: p, compte: 'lfb' })
+  })
+
+  it('dans une classe : le dossier par classeur, le Drive par classe (le dossier le plus haut), partagé par ses classeurs', async () => {
+    const { registre, etat } = fauxRegistre({ c1: 'd2', c2: 'd2', c3: null }, [{ id: 'd1', parent: null }, { id: 'd2', parent: 'd1' }])
+    const p = poignee('Fractions')
+    await retenirReglage(registre, 'c1', { compte: 'lfb', poignee: p })
+    expect(etat.get('replay-dossier:c1')).toEqual({ poignee: p })
+    expect(etat.get('replay-compte:d1')).toBe('lfb')
+    expect(await lireReglage(registre, 'c1')).toEqual({ poignee: p, compte: 'lfb' })
+    expect(await lireReglage(registre, 'c2')).toEqual({ poignee: undefined, compte: 'lfb' })
+    // Un classeur à la racine n'a rien à voir avec cette classe
+    expect(await lireReglage(registre, 'c3')).toEqual({})
+  })
+
+  it('rien de retenu : rien n’est écrit, et la lecture rend un réglage vide', async () => {
+    const { registre, etat } = fauxRegistre({ c1: null })
+    await retenirReglage(registre, 'c1', {})
+    expect(etat.size).toBe(0)
+    expect(await lireReglage(registre, 'c1')).toEqual({})
+  })
+})
+
+describe('les lignes du résumé (Publier en un clic)', () => {
+  it('une page, la séance du jour, le titre proposé d’office : deux lignes', () => {
+    const t = texteDuResume({ libelle: 'Séance du mer 28 oct 14h', aujourdhui: true, pages: 1, titre: '', chemin: 'Fractions', drive: 'Drive personnel' })
+    expect(t.seance).toBe('Séance du mer 28 oct 14h (aujourd\'hui) · 1 page')
+    expect(t.lieu).toBe('Rangé dans « Fractions » · Drive personnel')
+    expect(t.titre).toBeNull()
+  })
+
+  it('trois pages, une séance passée, le dossier du chapitre, un titre différent : trois lignes', () => {
+    const t = texteDuResume({ libelle: 'Séance du lun 13 oct 8h', aujourdhui: false, pages: 3, titre: 'Fractions : addition', chemin: 'Mon Drive › 5e › Fractions', drive: 'Drive du lycée' })
+    expect(t.seance).toBe('Séance du lun 13 oct 8h · 3 pages')
+    expect(t.lieu).toBe('Rangé dans « Mon Drive › 5e › Fractions » · Drive du lycée')
+    expect(t.titre).toBe('Titre pour les élèves : « Fractions : addition »')
+  })
+
+  it('un titre égal au libellé de la séance (ou vide d’espaces) ne fait pas de ligne', () => {
+    expect(texteDuResume({ libelle: 'Chapitre 3', aujourdhui: false, pages: 2, titre: ' Chapitre 3 ', chemin: 'Fractions', drive: 'Drive personnel' }).titre).toBeNull()
+    expect(texteDuResume({ libelle: 'Chapitre 3', aujourdhui: false, pages: 2, titre: '   ', chemin: 'Fractions', drive: 'Drive personnel' }).titre).toBeNull()
   })
 })

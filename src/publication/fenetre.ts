@@ -11,6 +11,13 @@
 // Marquée (fichier.CARTE_COPIE), elle publie sous une clé à elle : un
 // nouveau lien, et celui de l'autre classe ne change pas. Un classeur qui
 // n'est pas une copie publie exactement comme avant.
+// Publier en un clic (lot 16) : quand le replay va dans un dossier de
+// l'ordinateur et que tout est retenu pour ce classeur (le Drive des élèves,
+// le dossier choisi ou celui du chapitre), et qu'une séance du classeur y a
+// déjà été rangée, la fenêtre s'ouvre en résumé : la séance du jour et ses
+// pages, où le replay va, un gros « Publier ». « Modifier… » déplie tout.
+// Les réglages sont lus avant d'afficher : la fenêtre s'ouvre telle qu'elle
+// sera, sans se replier sous les yeux du professeur.
 // =============================================================
 import * as Y from 'yjs'
 import type { App } from '../app'
@@ -26,7 +33,7 @@ import type { PoigneeDossier } from '../classeurs/ordinateur'
 import { accordDuDossier, choisitUnDossier } from '../classeurs/ordinateur'
 import type { Registre } from '../classeurs/registre'
 import type { Proposition, ReglageReplay } from './replay-dossier'
-import { choisirLeDossier, deposerLeReplay, dossierDuChapitre, lireReglage, nomDuReplay, retenirReglage } from './replay-dossier'
+import { choisirLeDossier, deposerLeReplay, dossierDuChapitre, lireReglage, nomDuReplay, retenirReglage, texteDuResume } from './replay-dossier'
 import { marqueDeCopie } from '../fichier'
 import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier } from './drive'
 
@@ -79,6 +86,8 @@ export class Publication {
   private choisi: PoigneeDossier | null = null
   /** Quelle vérification du lien est en cours (une seule : la fenêtre ou la séance change) */
   private attente = 0
+  /** Quelle ouverture est en cours (les réglages se lisent avant d'afficher : le dernier clic gagne) */
+  private ouverture = 0
 
   constructor(private app: App, private racine: HTMLElement) {}
 
@@ -95,10 +104,23 @@ export class Publication {
    *  d'abord (voir seancesAPublier) */
   private reperer(ecart: number) { return seancesAPublier(this.app.tableau, ecart) }
 
-  ouvrir() {
+  /** La fenêtre. complet : tout montrer même quand le résumé suffirait (les essais) */
+  async ouvrir(o: { complet?: boolean } = {}) {
     this.seances = this.reperer(DECOUPAGES[0] * MINUTE)
     if (!this.seances.length) return this.app.ui.message('Rien à publier pour l\'instant : le replay commence avec ce que vous écrivez pendant la séance.')
     if (this.enLigne) preparerGoogle()
+    // Ce qui est retenu pour ce classeur, et le dossier du chapitre (classe
+    // reliée à l'ordinateur) : lus AVANT de construire la fenêtre, pour qu'elle
+    // s'ouvre d'emblée telle qu'elle sera (en résumé, ou complète avec le
+    // dossier retenu), sans se replier une fois affichée
+    const demande = ++this.ouverture
+    let retenu: ReglageReplay = {}, propose: Proposition | null = null
+    if (this.lieu) {
+      const { registre, idClasseur } = this.lieu
+      ;[retenu, propose] = await Promise.all([lireReglage(registre, idClasseur), dossierDuChapitre(registre, idClasseur)])
+      // Un autre clic a demandé la fenêtre pendant la lecture : c'est lui qui la montre
+      if (this.ouverture !== demande) return
+    }
     this.d?.remove()
     const d = document.createElement('dialog')
     d.className = 'dialogue dialogue-publier'
@@ -106,6 +128,12 @@ export class Publication {
     d.innerHTML = `
       <h2 id="titre-publier">Publier le replay pour les élèves</h2>
       <div class="corps">
+        <div class="p-resume" hidden>
+          <p class="p-resume-seance"></p>
+          <p class="p-resume-lieu"></p>
+          <p class="p-resume-titre" hidden></p>
+          <p><button type="button" class="secondaire petit p-modifier" title="Changer la séance, les pages, le titre, le dossier ou le Drive">Modifier…</button></p>
+        </div>
         <label class="champ"><span>Séance</span><select class="p-seance"></select></label>
         <label class="champ"><span>Deux cours se suivent de près ? Séparer les séances aux pauses de plus de</span>
           <select class="p-decoupage">${DECOUPAGES.map(m => `<option value="${m}">${m} minutes</option>`).join('')}</select></label>
@@ -163,7 +191,7 @@ export class Publication {
       r.disabled = r.value === 'dossier' ? !dossierPossible : !googlePossible
     }
     d.querySelector('.p-lieu')!.toggleAttribute('hidden', !dossierPossible && !googlePossible)
-    this.retenu = {}; this.propose = null; this.choisi = null
+    this.retenu = retenu; this.propose = propose; this.choisi = null
     this.remplirComptes()
 
     q('.p-apercu').addEventListener('click', () => this.apercu())
@@ -171,6 +199,7 @@ export class Publication {
     q('.p-publier').addEventListener('click', () => this.publier())
     q('.p-changer').addEventListener('click', () => this.choisirCompteGoogle())
     q('.p-choisir').addEventListener('click', () => void this.choisirLeDossier())
+    q('.p-modifier').addEventListener('click', () => this.afficherResume(false))
     q('.p-drive-changer').addEventListener('click', () => { q('.p-drive-retenu').hidden = true; q('.p-comptes').hidden = false })
     q('.p-copier').addEventListener('click', () => this.copier(q<HTMLInputElement>('.p-lien').value, 'Lien copié'))
     q('.p-pronote').addEventListener('click', () => this.copier(this.textePronote, 'Texte copié : collez-le dans le cahier de textes'))
@@ -180,6 +209,7 @@ export class Publication {
       if ((e.target as HTMLElement).closest('.p-lieu')) { this.remplirComptes(); this.majLieu(); this.majNouveauLien(); this.majGoogle() }
       if ((e.target as HTMLElement).closest('.p-comptes')) { this.majNouveauLien(); this.majGoogle() }
       if ((e.target as HTMLElement).closest('.p-lieu, .p-pages, .p-comptes, .p-nouveau-lien')) this.majVerifications()
+      if ((e.target as HTMLElement).closest('.p-pages, .p-comptes')) this.majResume()
     })
 
     if (!this.enLigne) {
@@ -192,8 +222,51 @@ export class Publication {
     this.majLieu()
     this.majGoogle()
     d.showModal()
-    q('.p-seance').focus()
-    void this.chargerLieu()
+    this.afficherResume(this.resumePossible && !o.complet)
+  }
+
+  /** Le résumé suffit : le replay va dans un dossier de l'ordinateur, tout est
+   *  retenu pour ce classeur (le Drive des élèves, le dossier choisi ou celui du
+   *  chapitre), et une séance du classeur y a déjà été rangée. Sinon, la
+   *  fenêtre complète, comme la première fois. */
+  private get resumePossible() {
+    if (!this.lieu || this.mode !== 'dossier') return false
+    const compte = this.retenu.compte
+    if (!compte || !relaisDe(compte)?.relais) return false
+    if (!this.retenu.poignee && !this.propose) return false
+    for (const p of this.registre.values()) if (p.code) return true
+    return false
+  }
+
+  /** En résumé (deux lignes, « Modifier… », un gros « Publier »), ou complète */
+  private afficherResume(oui: boolean) {
+    const d = this.d
+    if (!d) return
+    d.classList.toggle('resume', oui)
+    ;(d.querySelector('.p-resume') as HTMLElement).hidden = !oui
+    this.majResume()
+    ;(d.querySelector(oui ? '.p-publier' : '.p-seance') as HTMLElement).focus()
+  }
+
+  /** Les lignes du résumé : la séance et ses pages, le dossier et le Drive, le
+   *  titre quand le professeur en a donné un autre que celui proposé d'office */
+  private majResume() {
+    const d = this.d
+    if (!d) return
+    const s = this.seance, x = s as Partial<SeanceExplicite>
+    const libelle = x.id ? libelleSeance({ debut: s.debut, nom: x.nom ?? null }) : `Séance du ${jour(s.debut)}`
+    const titre = (d.querySelector('.p-titre') as HTMLInputElement).value
+    const compte = this.compte || this.retenu.compte || ''
+    const t = texteDuResume({
+      libelle, aujourdhui: !!x.id && x.id === this.app.tableau.derniereSeance()?.id, pages: this.pagesChoisies().length,
+      titre: titre === this.titreParDefaut(s) ? '' : titre,
+      chemin: this.choisi?.name ?? this.retenu.poignee?.name ?? this.propose?.chemin ?? 'aucun dossier choisi',
+      drive: relaisDe(compte)?.nom ?? 'aucun Drive',
+    })
+    d.querySelector('.p-resume-seance')!.textContent = t.seance
+    d.querySelector('.p-resume-lieu')!.textContent = t.lieu
+    const pt = d.querySelector('.p-resume-titre') as HTMLElement
+    pt.hidden = t.titre === null; pt.textContent = t.titre ?? ''
   }
 
   /** Dans un dossier de l'ordinateur, ou sur le Drive avec la connexion Google ? */
@@ -229,17 +302,7 @@ export class Publication {
     if (dossier && !nom.value) nom.value = (d.querySelector('.p-titre') as HTMLInputElement).value
     const chemin = this.choisi?.name ?? this.retenu.poignee?.name ?? this.propose?.chemin
     ;(d.querySelector('.p-chemin') as HTMLElement).textContent = chemin ?? 'aucun dossier choisi'
-  }
-
-  /** Ce qui est retenu pour ce classeur, et le dossier du chapitre (classe reliée à l'ordinateur) */
-  private async chargerLieu() {
-    const d = this.d
-    if (!d || !this.lieu) return
-    const { registre, idClasseur } = this.lieu
-    const [retenu, propose] = await Promise.all([lireReglage(registre, idClasseur), dossierDuChapitre(registre, idClasseur)])
-    if (this.d !== d) return
-    this.retenu = retenu; this.propose = propose
-    this.remplirComptes(); this.majLieu(); this.majNouveauLien(); this.majVerifications()
+    this.majResume()
   }
 
   /** « Choisir… » : un autre dossier de l'ordinateur (une clé, G:\Mon Drive\…) */
@@ -293,13 +356,20 @@ export class Publication {
       return `<label class="case"><input type="checkbox" value="${echapper(p)}" checked><span>${echapper(texte)}</span></label>`
     }).join('')
     const deja = this.registre.get(this.cleRegistre())
-    ;(d.querySelector('.p-titre') as HTMLInputElement).value = deja?.titre ?? x.nom ?? `Séance du ${new Date(s.debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`
+    ;(d.querySelector('.p-titre') as HTMLInputElement).value = deja?.titre ?? this.titreParDefaut(s)
     ;(d.querySelector('.p-resultat') as HTMLElement).hidden = true
     // Le nom du fichier suit le titre de la séance choisie
     ;(d.querySelector('.p-nomfichier') as HTMLInputElement).value = (d.querySelector('.p-titre') as HTMLInputElement).value
     this.attente++
     this.majNouveauLien()
     this.majVerifications()
+    this.majResume()
+  }
+
+  /** Le titre proposé d'office : le nom de la séance, sinon sa date */
+  private titreParDefaut(s: Seance) {
+    const x = s as Partial<SeanceExplicite>
+    return x.nom ?? `Séance du ${new Date(s.debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`
   }
 
   private majNouveauLien() {
@@ -437,7 +507,11 @@ export class Publication {
       // D'abord, tant que le clic est tout frais : le dossier et l'accord du navigateur d'y écrire
       this.etat('Ouverture du dossier…')
       const dossier = await this.dossierCible()
-      if (!dossier) return this.etat('Le dossier n\'est pas accessible : cliquez « Choisir… » pour le choisir (et accepter l\'accès).', true)
+      if (!dossier) {
+        // Le résumé ne montre pas « Choisir… » : la fenêtre se déplie pour le dire
+        this.afficherResume(false)
+        return this.etat('Le dossier n\'est plus accessible : choisissez-le à nouveau avec « Choisir… » (et acceptez l\'accès).', true)
+      }
       // Un relais d'avant ne retrouve pas un fichier par son code : on le dit avant d'écrire
       const etat = await essayerRelais(relais.relais).catch(() => null)
       if (etat && (etat.version ?? 1) < VERSION_RELAIS) throw new Error(`Le relais de « ${relais.nom} » n'est pas à jour (version ${etat.version ?? 1}, il faut la ${VERSION_RELAIS}) : collez la nouvelle version de relais/relais-seances.gs dans son projet Apps Script, puis Déployer → Gérer les déploiements → Version : Nouvelle version. Réessayez ensuite.`)
@@ -472,7 +546,11 @@ export class Publication {
       this.majVerifications()
       void this.attendreLeRelais(this.compte, code, film, nom)
     } catch (e) {
-      this.etat(e instanceof Error ? e.message : 'Le replay n\'a pas pu être rangé. Réessayez.', true)
+      // Le dossier retenu a été supprimé ou renommé : le navigateur ne le trouve plus
+      if ((e as DOMException | null)?.name === 'NotFoundError') {
+        this.afficherResume(false)
+        this.etat('Le dossier retenu n\'existe plus : choisissez-en un autre avec « Choisir… ».', true)
+      } else this.etat(e instanceof Error ? e.message : 'Le replay n\'a pas pu être rangé. Réessayez.', true)
     } finally {
       b.disabled = false
       this.majVerifications()

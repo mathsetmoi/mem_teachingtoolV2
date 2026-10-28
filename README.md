@@ -1592,7 +1592,10 @@ onglet ou un autre ordinateur, et même si le fichier était passé à la
 corbeille du Drive (il en revient). « Publier comme une nouvelle séance »
 donne volontairement un autre lien. **Enregistrer le
 fichier** donne un fichier `.mem` à déposer dans l'ENT ou sur une clé USB ; le
-lecteur l'ouvre aussi.
+lecteur l'ouvre aussi. Quand le replay va dans un dossier de l'ordinateur et
+que tout est déjà retenu pour ce classeur, la fenêtre s'ouvre en résumé avec un
+gros **Publier** : un clic suffit ; **Modifier…** remontre tout (lot 16, voir
+« Gains rapides »).
 
 **Côté élève** (`revoir.html`). L'affiche montre la fin de la séance (la page
 du dernier geste), le titre, la date et la durée. Le replay suit le rythme du
@@ -1807,6 +1810,25 @@ connexion Google reste choisi par « Sur le Drive, en me connectant à Google »
 Réglages ajoutés (clés nouvelles, rien d'existant changé) :
 `replay-dossier:<classeur>` et `replay-compte:<classe>`.
 
+*Le résumé (lot 16).* Dès que le Drive des élèves et le dossier sont retenus
+pour ce classeur (le dossier choisi, ou celui du chapitre quand la classe est
+reliée à l'ordinateur) et qu'une séance du classeur a déjà été rangée dans un
+dossier, la fenêtre s'ouvre en résumé : « Séance du mer 28 oct 14h
+(aujourd'hui) · 3 pages », « Rangé dans « Fractions » · Drive personnel », le
+titre seulement s'il diffère de celui proposé d'office, **Modifier…** et un
+gros **Publier** ; les vérifications et **Voir comme un élève** restent.
+**Modifier…** déplie la fenêtre complète (séance, pages, titre, nom du
+fichier, dossier, Drive, **Enregistrer le fichier**). Les réglages sont lus
+avant d'afficher la fenêtre : elle s'ouvre d'emblée en résumé ou complète,
+sans se replier sous les yeux. Si le navigateur ne donne plus l'accès au
+dossier retenu (après un redémarrage, l'accord refusé), ou si ce dossier a été
+supprimé ou renommé, Publier déplie la fenêtre et le dit (« choisissez-le à
+nouveau avec « Choisir… » »), sans rien écrire. Un classeur à la racine de la
+bibliothèque (hors de tout dossier) n'a pas de classe pour porter le Drive : il
+le garde avec lui, dans sa clé `replay-dossier:<classeur>` (champ `compte`,
+facultatif, que la lecture connaissait déjà), et il a le résumé aussi. Aucune
+clé nouvelle.
+
 Les noms des dossiers sont à la fois dans `src/publication/comptes.ts` et dans
 le relais : un test vérifie qu'ils concordent. Installer un relais prend cinq
 minutes (instructions en tête du script) ; le mettre à jour (Gérer les
@@ -1860,6 +1882,41 @@ plus bas). La version hors ligne enregistre aussi le fichier séance.
 qui ne savent pas décompresser seuls, un petit décompresseur (fflate, 8 Ko) se
 charge à la place. Commandes de 44 px, zoom du navigateur jamais bloqué, la
 frise annonce le temps aux lecteurs d'écran.
+
+## Gains rapides (lot 16)
+
+De petites modifications qui font gagner du temps en classe, chacune avec son
+essai. Aucune ne change un format de fichier ni une clé de stockage.
+
+### Publier en un clic
+
+**Le mode d'emploi.** Une fois un replay du classeur rangé dans un dossier de
+l'ordinateur (lot 15), la fenêtre **Publier le replay** s'ouvre en résumé pour
+ce classeur : la séance du jour et ses pages, où le replay va (le dossier et le
+Drive des élèves), le titre s'il a été changé, **Modifier…** et un gros
+**Publier**. Un clic range le replay et donne le lien, comme d'habitude.
+**Voir comme un élève** et les vérifications (images, prénoms) restent là.
+**Modifier…** remontre toute la fenêtre pour changer la séance, les pages, le
+titre, le nom du fichier, le dossier ou le Drive, ou enregistrer le fichier.
+La fenêtre reste complète tant que rien n'est retenu (un classeur neuf, un
+dossier jamais choisi), pour l'envoi par connexion Google, et dans la version
+hors ligne comme en ligne quand aucune séance n'a encore été rangée. Si le
+dossier retenu n'est plus accessible, la fenêtre se déplie et dit de le choisir
+à nouveau.
+
+**Comment c'est fait.** `src/publication/fenetre.ts` : `ouvrir({ complet })`
+lit ce qui est retenu (`lireReglage`, `dossierDuChapitre`) avant de construire
+la fenêtre ; `resumePossible` dit si le résumé suffit (mode dossier, un Drive
+retenu dont le relais existe, un dossier retenu ou proposé, une entrée de
+`publications` avec un code) ; `afficherResume` replie ou déplie (classe
+`resume` de `.dialogue-publier`, tout le reste de la fenêtre reste dans la page
+avec ses valeurs : Publier marche tel quel) ; `majResume` écrit les lignes avec
+`texteDuResume` (`src/publication/replay-dossier.ts`, essayé dans
+`tests/replay-dossier.test.ts`). `retenirReglage` garde le Drive dans la clé
+du classeur quand il est à la racine de la bibliothèque, sans jamais effacer le
+dossier déjà retenu. Essai navigateur : `essais/navigateur/lot15/P1-publier-dossier.mjs`
+(sections G, H, I). En DEV, `window.__app.ui.publication.ouvrir({ complet: true })`
+ouvre la fenêtre complète quoi qu'il soit retenu.
 
 ## Les pages
 
