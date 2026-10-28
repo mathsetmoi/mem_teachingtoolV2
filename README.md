@@ -1883,41 +1883,6 @@ qui ne savent pas décompresser seuls, un petit décompresseur (fflate, 8 Ko) se
 charge à la place. Commandes de 44 px, zoom du navigateur jamais bloqué, la
 frise annonce le temps aux lecteurs d'écran.
 
-## Gains rapides (lot 16)
-
-De petites modifications qui font gagner du temps en classe, chacune avec son
-essai. Aucune ne change un format de fichier ni une clé de stockage.
-
-### Publier en un clic
-
-**Le mode d'emploi.** Une fois un replay du classeur rangé dans un dossier de
-l'ordinateur (lot 15), la fenêtre **Publier le replay** s'ouvre en résumé pour
-ce classeur : la séance du jour et ses pages, où le replay va (le dossier et le
-Drive des élèves), le titre s'il a été changé, **Modifier…** et un gros
-**Publier**. Un clic range le replay et donne le lien, comme d'habitude.
-**Voir comme un élève** et les vérifications (images, prénoms) restent là.
-**Modifier…** remontre toute la fenêtre pour changer la séance, les pages, le
-titre, le nom du fichier, le dossier ou le Drive, ou enregistrer le fichier.
-La fenêtre reste complète tant que rien n'est retenu (un classeur neuf, un
-dossier jamais choisi), pour l'envoi par connexion Google, et dans la version
-hors ligne comme en ligne quand aucune séance n'a encore été rangée. Si le
-dossier retenu n'est plus accessible, la fenêtre se déplie et dit de le choisir
-à nouveau.
-
-**Comment c'est fait.** `src/publication/fenetre.ts` : `ouvrir({ complet })`
-lit ce qui est retenu (`lireReglage`, `dossierDuChapitre`) avant de construire
-la fenêtre ; `resumePossible` dit si le résumé suffit (mode dossier, un Drive
-retenu dont le relais existe, un dossier retenu ou proposé, une entrée de
-`publications` avec un code) ; `afficherResume` replie ou déplie (classe
-`resume` de `.dialogue-publier`, tout le reste de la fenêtre reste dans la page
-avec ses valeurs : Publier marche tel quel) ; `majResume` écrit les lignes avec
-`texteDuResume` (`src/publication/replay-dossier.ts`, essayé dans
-`tests/replay-dossier.test.ts`). `retenirReglage` garde le Drive dans la clé
-du classeur quand il est à la racine de la bibliothèque, sans jamais effacer le
-dossier déjà retenu. Essai navigateur : `essais/navigateur/lot15/P1-publier-dossier.mjs`
-(sections G, H, I). En DEV, `window.__app.ui.publication.ouvrir({ complet: true })`
-ouvre la fenêtre complète quoi qu'il soit retenu.
-
 ## Les pages
 
 **La trieuse des pages** montre les pages de la séance du jour en vignettes
@@ -4215,53 +4180,6 @@ ouvre la bibliothèque de vos classeurs. » quand il est caché faute de
 place). Puis `mem-teachingtool-annonce` est posée ; un navigateur neuf la
 pose sans rien dire.
 
-## Gains rapides (lot 16)
-
-De petites retouches, chacune un gain net en classe, sans rien changer aux
-fichiers ni aux bases.
-
-### Plus de question au départ
-
-**Ce qui change pour le professeur.** Changer de classeur (une carte de la
-bibliothèque, « Une autre classe » ou un chapitre de la fenêtre
-« Bonjour ! », la recherche) ne pose plus la question « Enregistrer
-« Fractions » d'abord ? » quand le classeur quitté a 20 minutes de travail
-que rien ne protège : on part tout de suite. Le rappel se lit en arrivant
-sur l'autre classeur, en bas de l'écran, pendant 30 secondes :
-« « Fractions » n'est pas encore enregistré dans un fichier : 25 min de
-travail. Il reste dans ce navigateur, mais un navigateur peut l'oublier. »
-[Enregistrer « Fractions » dans un fichier] (sur plus d'une journée :
-« « Fractions » n'est pas enregistré dans un fichier depuis hier à
-14 h 05. … »). Le bouton enregistre le classeur quitté **sans l'ouvrir**,
-depuis sa base (le choix du fichier s'ouvre dans le clic sur Chrome et
-Edge ; ailleurs, le fichier se télécharge), puis « Classeur enregistré :
-Fractions 2026-10-10 14h05.memc (120 ko). » ; s'il a été supprimé
-entre-temps : « Ce classeur n'est plus dans la bibliothèque. ». Rien
-d'autre ne change : le trou (une écriture refusée par la base) demande
-toujours avant de partir, et le rappel ne vient qu'une fois par période de
-travail non enregistré.
-
-**Comment c'est fait.** `Bibliotheque.ouvrirClasseur` (étape 3) note le
-rappel dans `sessionStorage` (`mem-teachingtool-rappel-arrivee` :
-`{ pour, id, nom, texte }`, le classeur où l'on va, celui qu'on quitte, et
-le texte de `texteRappelDepart`, `src/classeurs/etat.ts`), sans passer par
-le message d'arrivée (`mem-teachingtool-arrivee`), qui fait taire « Séance
-… reprise » et la fenêtre « Bonjour ! » : le rappel, lui, ne les fait pas
-taire. `main.ts` le relit (`lireRappelArrivee`, pur, testé) et le dit une
-fois dit ce que l'arrivée avait à dire (le message d'arrivée, la clé
-vérifiée et son « Autoriser ») et une fois fermée la fenêtre ouverte en
-arrivant (« Bonjour ! », le flash d'automatismes : un bouton sous une
-fenêtre ne se clique pas) ; `UI.finDuMessage` dit combien attendre pour ne
-pas couvrir le message en cours. Un bouton de message peut demander une
-durée (`ActionMessage.duree`, ici 30 s ; 7 s sinon), dans l'interface comme
-dans le message de la bibliothèque seule. Le bouton passe par
-`enregistrerDepuisLaBase` (`src/classeurs/enregistrer.ts`), comme
-« Enregistrer dans un fichier… » du menu d'une carte. L'essai
-`lot4/C5-bibliotheque.mjs` (section I) vérifie le départ sans fenêtre, le
-message et son bouton à l'arrivée, le fichier écrit, et « une seule fois » ;
-`lot5/S-seances-classes.mjs` n'a plus de bouton « Ouvrir sans enregistrer »
-à cliquer en changeant de classe.
-
 ## Importer un PDF
 
 Une fiche, un énoncé, un sujet en PDF se pose sur le tableau pour écrire
@@ -4422,6 +4340,135 @@ second moteur de dessin (les traits de perfect-freehand, les formules, les
 fonds) et d'y embarquer les polices, pour un fichier plus lourd (mesuré :
 environ 976 Ko pour une feuille très chargée, contre 238 à 283 Ko en couleurs
 indexées, 531 à 589 Ko en RVB sans perte, 384 à 687 Ko en JPEG).
+
+## Gains rapides (lot 16)
+
+De petites modifications, une par conversation, chacune un gain net en
+classe et avec son essai. Aucune ne change un format de fichier, une clé
+de stockage ni un classeur.
+
+### Annuler et Rétablir en haut, une épaisseur
+
+Au poste de la classe, la barre de gauche (876 px) ne tenait pas dans un
+écran de 768 px de haut, ni surtout dans une fenêtre de Chrome sur un tel
+écran (1366 × 657, 633 px de place) : Annuler, Rétablir et la poubelle, en
+bas, ne se voyaient qu'en la faisant défiler (voir la feuille de route,
+point 9). La barre est raccourcie, sans replier les couleurs :
+
+- **Annuler et Rétablir** (↶, ↷) sont en **tête de la barre du haut**, à
+  gauche de ‹, séparés par un petit filet vertical : toujours dans l'écran,
+  grisés quand la page n'a rien à défaire ou à refaire, les mêmes raccourcis
+  (Ctrl + Z, Ctrl + Y). Au téléphone, ils restent dans la barre du bas, à
+  la même place (Stylo, Gomme, Sélection, Couleur, Annuler, Rétablir, Autres
+  outils) : ce sont les deux mêmes boutons, déplacés d'une barre à l'autre
+  quand la mise en page change (`UI.placerHistorique`).
+- Les **quatre couleurs** sont en **grille 2 × 2** (Noir, Bleu / Rouge,
+  Vert ; des cases de 34 × 34, le rond garde ses 20 px ; 44 × 44 sur un
+  écran qu'on touche), à la place de la colonne des pastilles : chacune
+  reste à un clic.
+- L'**épaisseur** tient sur **un bouton** (« Épaisseur du trait : Fin »,
+  « Épaisseur » avec les noms sous les outils), qui montre le trait de
+  l'outil en main (fin, moyen ou épais ; au Surligneur, le sien) et ouvre
+  un petit menu à droite de la barre, à la hauteur du bouton : Fin, Moyen,
+  Épais, en 44 × 44 ; un choix le referme. Au clavier, Entrée l'ouvre sur
+  l'épaisseur cochée, les flèches y passent, Échap le referme. (Changer
+  d'épaisseur demande donc deux clics au lieu d'un, voir les limites.)
+- La **poubelle de la sélection** quitte la barre de gauche : Suppr, le
+  bouton *Supprimer* de la barre d'actions et, au téléphone, *Autres
+  outils* suffisent.
+
+Mesuré : la barre de gauche fait 601 px (711 avec les noms) et ne défile
+plus à 1366 × 657, 1366 × 768, 1280 × 720 ni 1024 × 768 ; avec les noms,
+plus rien n'est caché à 1366 × 768. Sur un écran qu'on touche, elle tient
+dépliée sur le TNI avec ses noms et sur l'iPad couché (les couleurs à un
+toucher, là où elles se repliaient dans « Couleur ») et ne se replie plus
+que sous 700 px de haut environ (une fenêtre de 1366 × 657 sur un portable
+tactile). La barre du haut, plus longue de 105 px, reste sur une rangée à
+1366 et 1280 de large ; à 1024 × 768 elle passe sur deux rangées (ce que le
+code gérait déjà : le bouton du classeur en devient le premier bouton, les
+menus posés à droite de la barre de gauche passent sous elle) ; à
+1280 × 720 le bouton du classeur prend sa forme étroite (voir les limites).
+Les essais adaptés le disent en tête : `lot5/corrections-cf.mjs` (II),
+`lot5/K10-telephone.mjs` (G1, sa référence refaite), `lot5/K9-affichage.mjs`
+(les mots des barres), `lot1/passeB-b10.mjs` (la barre défile à 540 px),
+`lot2/M3-annulation.mjs`, `lot5/R-defauts.mjs`, `lot5/R-corrections.mjs`,
+`lot5/R-verif/lib.mjs`, `lot5/R-verif-c1-defauts-build.mjs`,
+`lot13/N1-nuit.mjs` (l'épaisseur se lit sur `data-taille` du bouton
+`.bouton-epaisseur`, « Trait épais » est dans son menu), `lot1/appareils/
+appareils.mjs`, `lot1/verif/divers.mjs`, `lot1/verif/partie.mjs` (« rien à
+supprimer » se lit à la barre d'actions, cachée), `lot1/verif/telephone.mjs`.
+
+### Plus de question au départ
+
+**Ce qui change pour le professeur.** Changer de classeur (une carte de la
+bibliothèque, « Une autre classe » ou un chapitre de la fenêtre
+« Bonjour ! », la recherche) ne pose plus la question « Enregistrer
+« Fractions » d'abord ? » quand le classeur quitté a 20 minutes de travail
+que rien ne protège : on part tout de suite. Le rappel se lit en arrivant
+sur l'autre classeur, en bas de l'écran, pendant 30 secondes :
+« « Fractions » n'est pas encore enregistré dans un fichier : 25 min de
+travail. Il reste dans ce navigateur, mais un navigateur peut l'oublier. »
+[Enregistrer « Fractions » dans un fichier] (sur plus d'une journée :
+« « Fractions » n'est pas enregistré dans un fichier depuis hier à
+14 h 05. … »). Le bouton enregistre le classeur quitté **sans l'ouvrir**,
+depuis sa base (le choix du fichier s'ouvre dans le clic sur Chrome et
+Edge ; ailleurs, le fichier se télécharge), puis « Classeur enregistré :
+Fractions 2026-10-10 14h05.memc (120 ko). » ; s'il a été supprimé
+entre-temps : « Ce classeur n'est plus dans la bibliothèque. ». Rien
+d'autre ne change : le trou (une écriture refusée par la base) demande
+toujours avant de partir, et le rappel ne vient qu'une fois par période de
+travail non enregistré.
+
+**Comment c'est fait.** `Bibliotheque.ouvrirClasseur` (étape 3) note le
+rappel dans `sessionStorage` (`mem-teachingtool-rappel-arrivee` :
+`{ pour, id, nom, texte }`, le classeur où l'on va, celui qu'on quitte, et
+le texte de `texteRappelDepart`, `src/classeurs/etat.ts`), sans passer par
+le message d'arrivée (`mem-teachingtool-arrivee`), qui fait taire « Séance
+… reprise » et la fenêtre « Bonjour ! » : le rappel, lui, ne les fait pas
+taire. `main.ts` le relit (`lireRappelArrivee`, pur, testé) et le dit une
+fois dit ce que l'arrivée avait à dire (le message d'arrivée, la clé
+vérifiée et son « Autoriser ») et une fois fermée la fenêtre ouverte en
+arrivant (« Bonjour ! », le flash d'automatismes : un bouton sous une
+fenêtre ne se clique pas) ; `UI.finDuMessage` dit combien attendre pour ne
+pas couvrir le message en cours. Un bouton de message peut demander une
+durée (`ActionMessage.duree`, ici 30 s ; 7 s sinon), dans l'interface comme
+dans le message de la bibliothèque seule. Le bouton passe par
+`enregistrerDepuisLaBase` (`src/classeurs/enregistrer.ts`), comme
+« Enregistrer dans un fichier… » du menu d'une carte. L'essai
+`lot4/C5-bibliotheque.mjs` (section I) vérifie le départ sans fenêtre, le
+message et son bouton à l'arrivée, le fichier écrit, et « une seule fois » ;
+`lot5/S-seances-classes.mjs` n'a plus de bouton « Ouvrir sans enregistrer »
+à cliquer en changeant de classe.
+
+### Publier en un clic
+
+**Le mode d'emploi.** Une fois un replay du classeur rangé dans un dossier de
+l'ordinateur (lot 15), la fenêtre **Publier le replay** s'ouvre en résumé pour
+ce classeur : la séance du jour et ses pages, où le replay va (le dossier et le
+Drive des élèves), le titre s'il a été changé, **Modifier…** et un gros
+**Publier**. Un clic range le replay et donne le lien, comme d'habitude.
+**Voir comme un élève** et les vérifications (images, prénoms) restent là.
+**Modifier…** remontre toute la fenêtre pour changer la séance, les pages, le
+titre, le nom du fichier, le dossier ou le Drive, ou enregistrer le fichier.
+La fenêtre reste complète tant que rien n'est retenu (un classeur neuf, un
+dossier jamais choisi), pour l'envoi par connexion Google, et dans la version
+hors ligne comme en ligne quand aucune séance n'a encore été rangée. Si le
+dossier retenu n'est plus accessible, la fenêtre se déplie et dit de le choisir
+à nouveau.
+
+**Comment c'est fait.** `src/publication/fenetre.ts` : `ouvrir({ complet })`
+lit ce qui est retenu (`lireReglage`, `dossierDuChapitre`) avant de construire
+la fenêtre ; `resumePossible` dit si le résumé suffit (mode dossier, un Drive
+retenu dont le relais existe, un dossier retenu ou proposé, une entrée de
+`publications` avec un code) ; `afficherResume` replie ou déplie (classe
+`resume` de `.dialogue-publier`, tout le reste de la fenêtre reste dans la page
+avec ses valeurs : Publier marche tel quel) ; `majResume` écrit les lignes avec
+`texteDuResume` (`src/publication/replay-dossier.ts`, essayé dans
+`tests/replay-dossier.test.ts`). `retenirReglage` garde le Drive dans la clé
+du classeur quand il est à la racine de la bibliothèque, sans jamais effacer le
+dossier déjà retenu. Essai navigateur : `essais/navigateur/lot15/P1-publier-dossier.mjs`
+(sections G, H, I). En DEV, `window.__app.ui.publication.ouvrir({ complet: true })`
+ouvre la fenêtre complète quoi qu'il soit retenu.
 
 ## Ce que fait la v0.1
 
@@ -5331,62 +5378,6 @@ restent où il les a laissées). Partout, un appui ne devient un glisser qu'à
 ne déplace rien, ne pose ni rectangle, ni cercle, ni segment le long d'un
 instrument, et n'ajoute rien à l'historique. L'encre (stylo, surligneur, l'arc
 du compas) part tout de suite.
-
-## Gains rapides (lot 16)
-
-De petites modifications, une par conversation, qui changent la classe sans
-rien changer aux fichiers ni aux classeurs.
-
-### Annuler et Rétablir en haut, une épaisseur
-
-Au poste de la classe, la barre de gauche (876 px) ne tenait pas dans un
-écran de 768 px de haut, ni surtout dans une fenêtre de Chrome sur un tel
-écran (1366 × 657, 633 px de place) : Annuler, Rétablir et la poubelle, en
-bas, ne se voyaient qu'en la faisant défiler (voir la feuille de route,
-point 9). La barre est raccourcie, sans replier les couleurs :
-
-- **Annuler et Rétablir** (↶, ↷) sont en **tête de la barre du haut**, à
-  gauche de ‹, séparés par un petit filet vertical : toujours dans l'écran,
-  grisés quand la page n'a rien à défaire ou à refaire, les mêmes raccourcis
-  (Ctrl + Z, Ctrl + Y). Au téléphone, ils restent dans la barre du bas, à
-  la même place (Stylo, Gomme, Sélection, Couleur, Annuler, Rétablir, Autres
-  outils) : ce sont les deux mêmes boutons, déplacés d'une barre à l'autre
-  quand la mise en page change (`UI.placerHistorique`).
-- Les **quatre couleurs** sont en **grille 2 × 2** (Noir, Bleu / Rouge,
-  Vert ; des cases de 34 × 34, le rond garde ses 20 px ; 44 × 44 sur un
-  écran qu'on touche), à la place de la colonne des pastilles : chacune
-  reste à un clic.
-- L'**épaisseur** tient sur **un bouton** (« Épaisseur du trait : Fin »,
-  « Épaisseur » avec les noms sous les outils), qui montre le trait de
-  l'outil en main (fin, moyen ou épais ; au Surligneur, le sien) et ouvre
-  un petit menu à droite de la barre, à la hauteur du bouton : Fin, Moyen,
-  Épais, en 44 × 44 ; un choix le referme. Au clavier, Entrée l'ouvre sur
-  l'épaisseur cochée, les flèches y passent, Échap le referme. (Changer
-  d'épaisseur demande donc deux clics au lieu d'un, voir les limites.)
-- La **poubelle de la sélection** quitte la barre de gauche : Suppr, le
-  bouton *Supprimer* de la barre d'actions et, au téléphone, *Autres
-  outils* suffisent.
-
-Mesuré : la barre de gauche fait 601 px (711 avec les noms) et ne défile
-plus à 1366 × 657, 1366 × 768, 1280 × 720 ni 1024 × 768 ; avec les noms,
-plus rien n'est caché à 1366 × 768. Sur un écran qu'on touche, elle tient
-dépliée sur le TNI avec ses noms et sur l'iPad couché (les couleurs à un
-toucher, là où elles se repliaient dans « Couleur ») et ne se replie plus
-que sous 700 px de haut environ (une fenêtre de 1366 × 657 sur un portable
-tactile). La barre du haut, plus longue de 105 px, reste sur une rangée à
-1366 et 1280 de large ; à 1024 × 768 elle passe sur deux rangées (ce que le
-code gérait déjà : le bouton du classeur en devient le premier bouton, les
-menus posés à droite de la barre de gauche passent sous elle) ; à
-1280 × 720 le bouton du classeur prend sa forme étroite (voir les limites).
-Les essais adaptés le disent en tête : `lot5/corrections-cf.mjs` (II),
-`lot5/K10-telephone.mjs` (G1, sa référence refaite), `lot5/K9-affichage.mjs`
-(les mots des barres), `lot1/passeB-b10.mjs` (la barre défile à 540 px),
-`lot2/M3-annulation.mjs`, `lot5/R-defauts.mjs`, `lot5/R-corrections.mjs`,
-`lot5/R-verif/lib.mjs`, `lot5/R-verif-c1-defauts-build.mjs`,
-`lot13/N1-nuit.mjs` (l'épaisseur se lit sur `data-taille` du bouton
-`.bouton-epaisseur`, « Trait épais » est dans son menu), `lot1/appareils/
-appareils.mjs`, `lot1/verif/divers.mjs`, `lot1/verif/partie.mjs` (« rien à
-supprimer » se lit à la barre d'actions, cachée), `lot1/verif/telephone.mjs`.
 
 ## Architecture
 
