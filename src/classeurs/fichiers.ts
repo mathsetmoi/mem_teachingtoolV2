@@ -509,6 +509,45 @@ export class Fichiers {
     return tab
   }
 
+  /** Les images que le classeur de cet onglet montre sans leurs pixels,
+   *  cherchées dans les autres classeurs de la bibliothèque (ceux de la
+   *  corbeille compris) et rangées dans le sien. Avant le 28 octobre 2026,
+   *  une séance déplacée vers un autre classeur y arrivait sans ses images :
+   *  elles étaient restées, sous le même nom, dans le classeur d'où elle
+   *  venait. Vrai : il en a reçu (on le dit) ; null : pas maintenant. */
+  async retrouverImages(): Promise<boolean | null> {
+    const ici = this.ici, app = this.hote.app
+    if (!ici || !app || !this.hote.sauvegarde || this.refusMaintenant()) return null
+    const banque = app.tableau.doc.getMap('images') as Y.Map<string>
+    const manquantes = new Set<string>()
+    for (const id of app.tableau.pages.keys()) {
+      for (const f of app.tableau.formesDe(id)?.values() ?? []) if (f.type === 'image' && !banque.has(f.src)) manquantes.add(f.src)
+    }
+    if (!manquantes.size) return false
+    const trouvees = new Map<string, string>()
+    const sources = new Set<string>()
+    const fiches = await this.registre.classeurs().catch(() => [] as FicheClasseur[])
+    for (const F of fiches) {
+      if (F.id === ici.id || F.effacement != null || trouvees.size === manquantes.size) continue
+      try {
+        const f = await ecrivain.fabriquerFichier(F.base, { nom: F.nom, id: F.id })
+        const doc = new Y.Doc()
+        Y.applyUpdate(doc, (await this.lire(f.fichier)).etat)
+        const autre = doc.getMap('images') as Y.Map<string>
+        for (const src of manquantes) {
+          const d = autre.get(src)
+          if (typeof d === 'string' && !trouvees.has(src)) { trouvees.set(src, d); sources.add(F.nom) }
+        }
+        doc.destroy()
+      } catch { /* un classeur illisible : on cherche dans les autres */ }
+    }
+    if (!trouvees.size || this.ici?.id !== ici.id) return false
+    app.tableau.ecrireSansFilm(() => { for (const [src, d] of trouvees) if (!banque.has(src)) banque.set(src, d) })
+    const noms = [...sources].map(n => `« ${n} »`).join(', ')
+    this.hote.message(`${trouvees.size > 1 ? `${trouvees.size} images retrouvées` : '1 image retrouvée'} dans ${noms}.`)
+    return true
+  }
+
   /** Ce qu'on a changé dans un classeur lu par lireUnClasseur s'y écrit :
    *  celui de cet onglet le reçoit tout de suite (sa base, sa clé, son Drive
    *  suivent comme pour tout changement) ; un autre, dans sa base, sans rien

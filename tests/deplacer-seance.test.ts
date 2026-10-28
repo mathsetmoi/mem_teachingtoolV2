@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
 import { Tableau } from '../src/document'
-import type { Trait } from '../src/types'
+import type { ImageForme, Trait } from '../src/types'
 import { copierSeance, retirerSeance, supprimerSeance } from '../src/deplacer-seance'
 import { ordreALaMain, ordreApres, resumeDesSeances, seancesDansLOrdre } from '../src/seances'
 import { exporter, pagesAPublier, seancesDuTableau } from '../src/revoir/exporter'
@@ -211,6 +211,26 @@ describe('déplacer une séance vers un autre classeur', () => {
     // Au bout de son film, ses pages sont toujours là
     const fin = C.etatA(C.film.get(C.film.length - 1))
     expect(r.pages.every(p => fin.ordre.includes(p))).toBe(true)
+  })
+
+  it('avec les images qu\'elle montre : la banque de l\'autre classeur les reçoit', async () => {
+    const lundi = new Date('2026-10-12T08:00:00').getTime()
+    const A = new Tableau(null), B = new Tableau(null)
+    const a = await seance(A, lundi, 'A')
+    const donnees = 'data:image/png;base64,iVBORw0KGgo='
+    const p = a.pages[0]
+    A.pageVue = p; A.nouveauGeste()
+    A.doc.getMap('images').set('photo', donnees)
+    const im: ImageForme = { id: 'I1', type: 'image', src: 'photo', l: 40, h: 20, m: [1, 0, 0, 1], x: 0, y: 0, z: numero++, auteur: 'moi' }
+    A.poser(p, im)
+    await attendre(800)
+    await seance(B, lundi + JOUR, 'B')
+    const C = new Tableau(null)
+    C.lireEtat(Y.encodeStateAsUpdate(B.doc))
+    const r = copierSeance(A, a.id, C)
+    if ('refus' in r) throw new Error(r.refus)
+    const arrivee = C.formesDe(r.pages[0])!.get('I1') as ImageForme
+    expect(C.doc.getMap('images').get(arrivee.src)).toBe(donnees)
   })
 
   it('refuse une séance qui croise une séance de l\'autre classeur', async () => {

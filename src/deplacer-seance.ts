@@ -194,7 +194,6 @@ export function copierSeance(source: Tableau, id: string, cible: Tableau): Seanc
   const ecrit = new Map<string, EtatDePage | null>()
   for (const { e, changees, etats } of pas) {
     cible.ecrireSansFilm(() => {
-      for (const [n, d] of aPoser) { if (!banqueC.has(n)) banqueC.set(n, d) }
       for (const p of changees) {
         const etat = etats.get(p)
         if (!etat) continue
@@ -226,6 +225,9 @@ export function copierSeance(source: Tableau, id: string, cible: Tableau): Seanc
         if (avant) for (const fid of avant.formes.keys()) if (!etat.formes.has(fid)) formes.delete(fid)
         ecrit.set(p, etat)
       }
+      // Les images que ces formes montrent, dans la même étape qu'elles :
+      // forme() ne les note qu'en copiant leurs formes, juste au-dessus
+      for (const [n, d] of aPoser) { if (!banqueC.has(n)) banqueC.set(n, d) }
       aPoser.clear()
     })
     const x: Etape = { t: e.t, page: neuf.get(e.page) ?? neuf.get(changees[0])!, s: instantane(cible.doc, base, moi) }

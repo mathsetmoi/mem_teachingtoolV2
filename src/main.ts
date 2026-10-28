@@ -351,6 +351,7 @@ async function demarrer() {
       app, sauvegarde: ui.sauvegarde, cle, surveillance, voirLaBibliotheque: () => ui.ouvrirBibliotheque(),
     }, racine)
     ui.sauvegarde.fichiers = fichiers
+    app.chercherImages = () => fichiers.retrouverImages()
     if (drive) drive.fichiers = fichiers
     ui.bibliotheque.brancherFichiers(fichiers)
     brancherRecuperer(ui.bibliotheque, fichiers, registre)
