@@ -143,7 +143,9 @@ tel qu'il est.
   `lot5/verif/regressions/vt/rendu-reference.json` (l'empreinte des appels
   du rendu d'une page sans rien du lot 5), `lot5/K10-telephone/
   reference-barres.json` (la géométrie des barres relevée avant le morceau
-  K10).
+  K10 ; refaite avec `releverBarres` de `lot5/lib/geometrie-barres.mjs` aux
+  gains rapides du lot 16, où les barres changent voulument : elle était
+  déjà périmée depuis le bouton Texte du lot 12).
 - Fabriqués au passage au lieu d'être versionnés (des images, un gros
   fichier) : le `.memc` de 53 Mo de `lot1/donnees/abime` (40 images de
   bruit, enregistrées par l'outil), la feuille JPEG de `lot3/P7/vt` (une page

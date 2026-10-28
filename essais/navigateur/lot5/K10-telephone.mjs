@@ -40,9 +40,15 @@
 //    gauche, rien ne sort ni ne se chevauche.
 // G. Au poste de la classe (1366 × 768, 1024 × 768, 1280 × 720, à la
 //    souris), au TNI et sur l'iPad (1180 × 820, 820 × 1180, iPad Mini) : pas
-//    de body.telephone, les barres EXACTEMENT celles d'avant K10 (relevées
-//    avant le morceau, figée : K10-telephone/reference-barres.json) ; les deux boutons
-//    du téléphone cachés.
+//    de body.telephone, les barres EXACTEMENT celles de la référence (relevée
+//    avant le morceau, figée : K10-telephone/reference-barres.json ; refaite
+//    aux gains rapides du lot 16, où les barres changent voulument : Annuler
+//    et Rétablir en tête de la barre du haut, les couleurs en grille 2 × 2,
+//    l'épaisseur sur un bouton, plus de poubelle dans la barre des outils ;
+//    elle était déjà périmée depuis le bouton Texte du lot 12) ; les deux
+//    boutons du téléphone cachés.
+//    (A5 ne change pas : au téléphone, Annuler et Rétablir, les boutons de
+//    la barre du haut, sont déplacés dans la barre du bas, à la même place.)
 // Serveur de développement sur :5173 (window.__app). Une ligne « ✓ » ou
 // « ✗ ÉCHEC » par vérification ; code de sortie 1 s'il y a un échec ou une
 // erreur JS.
@@ -260,8 +266,10 @@ for (const [L, H, dpr] of APPAREILS) {
     const icone = await p.evaluate(() => { const b = document.querySelector('.barre-outils > .autres-outils'); return { icone: b.dataset.icone, actif: b.classList.contains('actif') } })
     autres.push({ id, outil: e.outil, ferme: !(await menuOuvert(p)).includes('Autres outils'), icone })
   }
-  ok(menuB.ok && JSON.stringify(menuB.mots) === JSON.stringify(['Surligneur', 'Point', 'Segment', 'Formes', 'Formule', 'Vue', 'Doigt', 'Supprimer']),
-    `B2) ${T} : « Autres outils » : la grille (Surligneur, Point, Segment, Formes, Formule, Vue, Doigt, Supprimer), dans la fenêtre, ni sur la barre des outils ni sur celle du haut, ses boutons de 56 px au moins`, menuB)
+  // (Adapté au Texte, lot 12 : « Texte » entre Formule et Vue ; l'essai ne
+  // l'avait pas été alors, et échouait depuis)
+  ok(menuB.ok && JSON.stringify(menuB.mots) === JSON.stringify(['Surligneur', 'Point', 'Segment', 'Formes', 'Formule', 'Texte', 'Vue', 'Doigt', 'Supprimer']),
+    `B2) ${T} : « Autres outils » : la grille (Surligneur, Point, Segment, Formes, Formule, Texte, Vue, Doigt, Supprimer), dans la fenêtre, ni sur la barre des outils ni sur celle du haut, ses boutons de 56 px au moins`, menuB)
   ok(autres.every(a => a.outil === a.id && a.ferme && a.icone.icone === a.id && a.icone.actif), `B3) ${T} : chacun des six autres outils en deux touchers ; le bouton prend son icône et le coup de surligneur`, autres)
   await toucherEl(`.barre-outils > .bouton[title="Stylo (P)"]`)
   const revenu = await p.evaluate(() => { const b = document.querySelector('.barre-outils > .autres-outils'); return { icone: b.dataset.icone, actif: b.classList.contains('actif') } })
@@ -568,9 +576,12 @@ for (const [nom, o] of [['PC 1366 × 768', { viewport: { width: 1366, height: 76
   const r = await p.evaluate(() => ({ tel: document.body.classList.contains('telephone'), couleur: !!document.querySelector('.bouton-couleur').getClientRects().length, replie: document.querySelector('.barre-outils').classList.contains('couleurs-repliees'),
     autres: !!document.querySelector('.autres-outils').getClientRects().length, zoom: !!document.querySelector('.barre-zoom').getClientRects().length, titre: document.querySelector('.barre-haut > .bouton.points').title }))
   // (contrôle final du lot 5 : sur l'iPad couché, la barre des outils, qui
-  // ne tient pas, replie ses couleurs dans « Couleur » ; ce n'est pas la mise
-  // en page du téléphone : ni body.telephone, ni « Autres outils »)
-  const replie = /iPad/.test(nom)
+  // ne tenait pas, repliait ses couleurs dans « Couleur » ; ce n'est pas la
+  // mise en page du téléphone : ni body.telephone, ni « Autres outils ».
+  // Adapté aux gains rapides du lot 16 : la barre, plus courte, tient sur
+  // l'iPad couché, dépliée, « Couleur » caché ; « Couleur » ne paraît que
+  // dans une barre repliée, ce qu'on vérifie toujours)
+  const replie = false
   ok(!r.tel && r.couleur === replie && r.couleur === r.replie && !r.autres && r.zoom && /^Enregistrer, ouvrir ou exporter en PDF ; réglages de cet appareil/.test(r.titre), `G2) ${nom} : pas de mise en page du téléphone (${replie ? '« Couleur » seulement dans la barre repliée' : 'ni « Couleur »'}, ni « Autres outils » ; la barre du zoom ; ⋯ garde son titre)`, r)
   await c.close()
 }

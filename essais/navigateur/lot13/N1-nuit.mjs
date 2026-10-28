@@ -44,7 +44,10 @@ await p.waitForTimeout(400)
 const page1 = await p.evaluate(() => window.__app.page)
 // Un trait noir, épais, horizontal
 await p.keyboard.press('p')
-await p.click('button[aria-label="Trait épais"]')
+// (Adapté aux gains rapides du lot 16 : « Trait épais » est dans le menu du
+// bouton de l'épaisseur, qu'on ouvre d'abord)
+await p.click('.barre-outils .bouton-epaisseur'); await p.waitForTimeout(200)
+await p.click('.menu-epaisseur button[aria-label="Trait épais"]'); await p.waitForTimeout(150)
 await p.mouse.move(400, 400); await p.mouse.down()
 for (let i = 1; i <= 30; i++) await p.mouse.move(400 + i * 10, 400)
 await p.mouse.up(); await p.waitForTimeout(300)

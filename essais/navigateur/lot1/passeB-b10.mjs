@@ -1,6 +1,12 @@
 // Essais au navigateur du morceau B10 du lot 1 : la barre de gauche stable
-// (poubelle grisée, barre qui défile), les messages sous les menus et les
+// (barre qui défile sur un écran très bas), les messages sous les menus et les
 // panneaux, leurs mots selon le pointeur, le double appui au doigt.
+// (Adapté aux gains rapides du lot 16 : la poubelle de la sélection a quitté
+// la barre de gauche, Annuler et Rétablir sont en tête de la barre du haut,
+// les couleurs en grille 2 × 2 et l'épaisseur sur un bouton ; la barre, plus
+// courte (601 px), ne défile plus à 768 ni à 700 px de haut : elle défile à
+// 540 px, où l'on vérifie la règle du lot 1, des boutons de 44 px qui
+// défilent plutôt que des boutons qui rétrécissent.)
 // Serveur de développement sur :5173.
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
@@ -55,11 +61,14 @@ const RIEN = () => { const a = window.__app; a.selection.clear(); a.choisirParti
 const BARRE = () => {
   const b = document.querySelector('.barre-outils'), r = b.getBoundingClientRect(), cs = getComputedStyle(b)
   const p = b.querySelector('.bouton.danger')
+  // Annuler, dans la barre du haut depuis le lot 16 : grisé sans rien à défaire
+  const a = document.querySelector('.barre-haut .bouton.historique')
   return { rect: [r.left, r.top, r.width, r.height].map(v => Math.round(v * 100) / 100), sh: b.scrollHeight, ch: b.clientHeight, sw: cs.scrollbarWidth, os: cs.overscrollBehaviorY,
     // (adapté au lot 5, K10 : sans « Couleur » et « Autres outils », les deux
     // boutons de la mise en page du téléphone, cachés ici par la feuille de style)
     hauteurs: [...new Set([...b.querySelectorAll('.bouton:not(.seulement-telephone)')].filter(x => !x.hidden).map(x => Math.round(x.getBoundingClientRect().height * 100) / 100))],
-    poubelle: { dom: !!p && b.contains(p), cache: p.hidden, disabled: p.disabled, aria: p.getAttribute('aria-disabled'), opacite: getComputedStyle(p).opacity, curseur: getComputedStyle(p).cursor } }
+    poubelle: { dom: !!p && b.contains(p) },
+    annuler: a && { disabled: a.disabled, aria: a.getAttribute('aria-disabled'), opacite: getComputedStyle(a).opacity, curseur: getComputedStyle(a).cursor } }
 }
 function outilsCdp(cdp) {
   const stylet = {
@@ -72,43 +81,20 @@ function outilsCdp(cdp) {
 }
 
 // =============== 1. La barre de gauche, à la souris ===============
-for (const h of [768, 700]) {
+for (const h of [768, 540]) {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: h } })
   const page = await ouvrir(ctx, 'barre' + h)
   const b0 = await page.evaluate(BARRE)
-  verifier(`${h} px de haut : chaque bouton de la barre garde 44 px, la barre défile (barre fine), sans entraîner la page`,
-    b0.hauteurs.length === 1 && b0.hauteurs[0] === 44 && b0.sh > b0.ch && b0.sw === 'thin' && b0.os === 'contain', JSON.stringify(b0))
-  verifier(`${h} px : la poubelle est dans la barre, grisée et désactivée sans sélection`,
-    b0.poubelle.dom && !b0.poubelle.cache && b0.poubelle.disabled && b0.poubelle.aria === 'true' && b0.poubelle.opacite === '0.3' && b0.poubelle.curseur === 'default', JSON.stringify(b0.poubelle))
   if (h === 768) {
-    // Une sélection : la poubelle s'allume, la barre ne bouge pas d'un pixel
-    const A = await page.evaluate(POSER, { x: 500, y: 300, l: 200, h: 140 })
-    await page.keyboard.press('v')
-    const c = await page.evaluate(ECRAN, { x: 600, y: 300 })
-    await page.mouse.click(c.x, c.y)
-    await page.waitForTimeout(80)
-    const b1 = await page.evaluate(BARRE)
-    verifier('Une sélection : la poubelle s\'allume, la barre garde exactement sa place et sa taille',
-      !b1.poubelle.disabled && b1.poubelle.aria === 'false' && b1.poubelle.opacite === '1' && JSON.stringify(b1.rect) === JSON.stringify(b0.rect), JSON.stringify({ avant: b0.rect, apres: b1.rect }))
-    const m1 = await page.evaluate(ETAT)
-    // Lot 2, M8 : « toutes ses options » (le menu complet)
-    verifier('À la souris, prendre un objet : « Double-clic ou clic droit sur l\'objet : toutes ses options »', m1.toast === 'Double-clic ou clic droit sur l\'objet : toutes ses options', m1.toast)
-    // Un morceau choisi seul (un sommet) : la poubelle reste allumée
-    await page.evaluate(id => { const a = window.__app; a.selection.clear(); a.choisirPartie(id, { quoi: 'sommet', i: 0 }); a.ui.maj() }, A)
-    const b2 = await page.evaluate(BARRE)
-    verifier('Un sommet choisi seul : la poubelle reste allumée', !b2.poubelle.disabled && JSON.stringify(b2.rect) === JSON.stringify(b0.rect), JSON.stringify(b2.poubelle))
-    // Rien : grisée de nouveau ; un clic dessus ne fait rien
-    await page.evaluate(RIEN)
-    const n0 = await page.evaluate(() => window.__app.formes.length)
-    await page.evaluate(() => document.querySelector('.barre-outils').scrollTop = 1e4)
-    await page.waitForTimeout(50)
-    const pb = await page.evaluate(() => { const r = document.querySelector('.barre-outils .bouton.danger').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 } })
-    await page.mouse.click(pb.x, pb.y)
-    await page.waitForTimeout(50)
-    const b3 = await page.evaluate(BARRE)
-    verifier('Plus rien de choisi : la poubelle est grisée, un clic dessus ne fait rien', b3.poubelle.disabled && await page.evaluate(() => window.__app.formes.length) === n0)
-    await page.evaluate(() => document.querySelector('.barre-outils').scrollTop = 0)
-
+    verifier(`${h} px de haut : chaque bouton de la barre garde 44 px, et la barre tient dans l'écran sans défiler (lot 16)`,
+      b0.hauteurs.length === 1 && b0.hauteurs[0] === 44 && b0.sh <= b0.ch + 1, JSON.stringify(b0))
+  } else {
+    verifier(`${h} px de haut : chaque bouton de la barre garde 44 px, la barre défile (barre fine), sans entraîner la page`,
+      b0.hauteurs.length === 1 && b0.hauteurs[0] === 44 && b0.sh > b0.ch && b0.sw === 'thin' && b0.os === 'contain', JSON.stringify(b0))
+  }
+  verifier(`${h} px : plus de poubelle dans la barre de gauche ; Annuler, dans la barre du haut, grisé et désactivé sans rien à défaire`,
+    !b0.poubelle.dom && b0.annuler && b0.annuler.disabled && b0.annuler.aria === 'true' && b0.annuler.opacite === '0.3' && b0.annuler.curseur === 'default', JSON.stringify(b0))
+  if (h === 540) {
     // La barre défile : le choix des formes suit le bouton des Formes
     await page.keyboard.press('r')
     await page.waitForTimeout(50)
@@ -131,6 +117,34 @@ for (const h of [768, 700]) {
     const w = await page.evaluate(() => ({ st: document.querySelector('.barre-outils').scrollTop, cam: [window.__app.cam.x, window.__app.cam.y, window.__app.cam.z].join() }))
     verifier('La molette sur la barre la fait défiler, la vue du tableau ne bouge pas', w.st > 0 && w.cam === z0, JSON.stringify(w))
     await page.evaluate(() => document.querySelector('.barre-outils').scrollTop = 0)
+    await page.keyboard.press('p')
+    await page.screenshot({ path: `${D}/01-barre-${h}.png` })
+  }
+  if (h === 768) {
+    // Une sélection : Annuler reste tel quel (rien à défaire : une figure
+    // posée par l'essai n'est pas un geste), la barre de gauche ne bouge pas
+    // d'un pixel (elle n'a plus de poubelle à allumer)
+    const A = await page.evaluate(POSER, { x: 500, y: 300, l: 200, h: 140 })
+    await page.keyboard.press('v')
+    const c = await page.evaluate(ECRAN, { x: 600, y: 300 })
+    await page.mouse.click(c.x, c.y)
+    await page.waitForTimeout(80)
+    const b1 = await page.evaluate(BARRE)
+    verifier('Une sélection : la barre de gauche garde exactement sa place et sa taille',
+      JSON.stringify(b1.rect) === JSON.stringify(b0.rect) && (await page.evaluate(() => window.__app.selection.size)) === 1, JSON.stringify({ avant: b0.rect, apres: b1.rect }))
+    const m1 = await page.evaluate(ETAT)
+    // Lot 2, M8 : « toutes ses options » (le menu complet)
+    verifier('À la souris, prendre un objet : « Double-clic ou clic droit sur l\'objet : toutes ses options »', m1.toast === 'Double-clic ou clic droit sur l\'objet : toutes ses options', m1.toast)
+    // Un morceau choisi seul (un sommet) : la barre ne bouge pas non plus
+    await page.evaluate(id => { const a = window.__app; a.selection.clear(); a.choisirPartie(id, { quoi: 'sommet', i: 0 }); a.ui.maj() }, A)
+    const b2 = await page.evaluate(BARRE)
+    verifier('Un sommet choisi seul : la barre de gauche ne bouge pas', JSON.stringify(b2.rect) === JSON.stringify(b0.rect), JSON.stringify(b2.rect))
+    // Rien : Suppr ne retire rien
+    await page.evaluate(RIEN)
+    const n0 = await page.evaluate(() => window.__app.formes.length)
+    await page.keyboard.press('Delete')
+    await page.waitForTimeout(50)
+    verifier('Plus rien de choisi : Suppr ne retire rien', await page.evaluate(() => window.__app.formes.length) === n0)
     await page.screenshot({ path: `${D}/01-barre-${h}.png` })
 
     // Les messages passent sous les panneaux et les menus
@@ -363,28 +377,30 @@ for (const h of [768, 700]) {
 
 // =============== 4. Le menu du doigt suit la barre qui défile ===============
 // (contrôle final du lot 5 : sur un écran qu'on touche, la barre replie ses
-// couleurs dans « Couleur » quand elle ne tient pas dans la hauteur ; à
-// 700 px de haut, elle ne défile plus que d'une dizaine de pixels, et plus
-// bas, où elle défilerait davantage, le menu du doigt (253 px) ne tient plus
-// à la hauteur de son bouton : il suit donc un défilement de 10 px, et non
-// plus de 80). Depuis le Texte (lot 12), la barre a un bouton de plus
-// (46 px) : la même situation se voit à 750 px de haut
+// couleurs dans « Couleur » quand elle ne tient pas dans la hauteur, et ne
+// défile donc presque jamais. Adapté aux gains rapides du lot 16 : la barre,
+// plus courte, ne défile plus à 750 px, même au doigt ; à 540 px de haut, à
+// la souris, elle défile de 85 px, et c'est le menu de la Gomme, à la
+// hauteur de son bouton (resté en haut de la barre), qui suit le
+// défilement, comme celui du doigt sur un écran qu'on touche : de 36 px,
+// pas plus, car plus haut il passerait sous la barre du haut, et la règle
+// du lot 5 le pose alors juste sous elle.)
 {
-  const ctx = await nav.newContext({ viewport: { width: 1366, height: 750 }, hasTouch: true })
-  const page = await ouvrir(ctx, 'menu-doigt')
-  const bouton = '.barre-outils button[aria-haspopup=menu]'
-  await page.click(bouton)
+  const ctx = await nav.newContext({ viewport: { width: 1366, height: 540 } })
+  const page = await ouvrir(ctx, 'menu-gomme')
+  const bouton = '.barre-outils button[title^="Gomme"]'
+  await page.evaluate(() => window.__app.ui.ouvrirMenuGomme(false))
   await page.waitForTimeout(80)
   const pos = () => page.evaluate(s => {
     const b = document.querySelector(s).getBoundingClientRect(), m = [...document.querySelectorAll('.menu-flottant')].find(x => !x.hidden)
     return { bouton: b.top, menu: m ? m.getBoundingClientRect().top : null }
   }, bouton)
   const p0 = await pos()
-  await page.evaluate(() => document.querySelector('.barre-outils').scrollTop = 80)
+  await page.evaluate(() => document.querySelector('.barre-outils').scrollTop = 36)
   await page.waitForTimeout(80)
   const p1 = await pos()
-  verifier('Barre qui défile, menu du doigt ouvert : il reste à la hauteur de son bouton', p0.menu !== null && p1.menu !== null && Math.abs(p0.menu - p0.bouton) < 1 && Math.abs(p1.menu - p1.bouton) < 1 && p1.bouton < p0.bouton - 5, JSON.stringify({ p0, p1 }))
-  await page.screenshot({ path: `${D}/04-menu-doigt.png` })
+  verifier('Barre qui défile, menu de la Gomme ouvert : il reste à la hauteur de son bouton', p0.menu !== null && p1.menu !== null && Math.abs(p0.menu - p0.bouton) < 1 && Math.abs(p1.menu - p1.bouton) < 1 && p1.bouton < p0.bouton - 5, JSON.stringify({ p0, p1 }))
+  await page.screenshot({ path: `${D}/04-menu-gomme.png` })
   await ctx.close()
 }
 

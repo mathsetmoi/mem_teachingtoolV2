@@ -4607,11 +4607,14 @@ réglages.
 - **Noms sous les outils** (« Un mot sous chaque bouton des barres ») : sous
   chaque icône de la barre des outils, de la barre du haut et de la barre
   du zoom, son nom court (11 px), comme dans la barre d'actions : *Stylo*,
-  *Surligneur*, *Gomme*, *Point*, *Segment*, *Formes*, *Formule*,
-  *Sélection*, *Vue*, *Doigt*, *Annuler*, *Rétablir*, *Supprimer* ;
-  *Nouvelle*, *Supprimer* (la poubelle de la page, *Effacer* sur une page
-  seule, comme son titre), *Fond*, *Aimant*, *Formes auto*, *Image*,
-  *Instruments*, *Construire*, *Automatismes*, *Revoir*, *Publier*,
+  *Surligneur*, *Gomme*, *Point*, *Segment*, *Formes*, *Formule*, *Texte*,
+  *Sélection*, *Vue*, *Doigt*, *Épaisseur* (depuis les gains rapides du
+  lot 16 ; les pastilles de couleur n'ont pas de nom) ; *Annuler*,
+  *Rétablir* (en tête de la barre du haut depuis le lot 16), *Nouvelle*,
+  *Supprimer* (la poubelle de la page, *Effacer* sur une page
+  seule, comme son titre), *Fond*, *Nuit*, *Aimant*, *Formes auto*, *Image*,
+  *Instruments*, *Construire*, *Catalogue*, *Automatismes*, *Classe*,
+  *Revoir*, *Publier*,
   *Fichier* (⋯) ; *Dézoomer*, *Zoomer*, *Tout voir* (depuis la vérification
   « conformité » du lot 5 : au TNI, sans survol, ⛶ n'avait aucun nom
   visible ; la barre du zoom, en bas à droite, y grandit à 54 px de haut) ;
@@ -4621,18 +4624,19 @@ réglages.
   plus large (80 px de barre au lieu de 58) ; ce qui se place à sa droite (le
   bouton du classeur, les choix des Formes et du Segment, les menus du doigt
   et de la Gomme) part de son bord droit MESURÉ (`--droite-barre-outils`,
-  suivi comme `--bas-barre-haut`) ; elle défile sur un écran bas, ses boutons
-  gardent leur taille (sur un écran qu'on touche, elle replie plutôt ses
-  couleurs dans « Couleur » : au TNI de 1080 px, avec ses noms, c'est le
-  cas, voir « La barre de gauche ») ; la barre du haut peut passer sur deux rangées (à
+  suivi comme `--bas-barre-haut`) ; elle défile sur un écran très bas, ses
+  boutons gardent leur taille (depuis les gains rapides du lot 16, avec ses
+  noms, elle tient dans 768 px de haut : 711 px ; sur un écran qu'on touche,
+  elle replie plutôt ses couleurs dans « Couleur » quand elle ne tient pas,
+  voir « La barre de gauche ») ; la barre du haut peut passer sur deux rangées (à
   1024 × 768), et un menu posé à droite de la barre des outils passe alors
   sous elle. Par défaut (« auto »), l'**écran** décide : allumés sur un écran
   qu'on touche (ou à pointeur grossier) dont la plus petite dimension fait au
   moins 900 px — un TNI, une grande tablette comme l'iPad Pro 12,9 pouces —,
   éteints au poste de la classe (souris et tablette graphique : l'infobulle
-  y existe, et à 768 px de haut les noms feraient défiler la barre des
-  outils), sur un iPad de 11 pouces (820 px de côté : en paysage, la barre
-  défilerait) et au téléphone. L'écran, et non la fenêtre : la décision ne
+  y existe, et avec les noms la barre du haut, plus large, ne laisse plus de
+  place au bouton du classeur à 1366 × 768), sur un iPad de 11 pouces (820 px
+  de côté) et au téléphone. L'écran, et non la fenêtre : la décision ne
   change pas quand on tourne la tablette. Dès qu'on coche ou décoche, le
   choix est retenu et l'écran ne décide plus. La mise en page du téléphone
   (une fenêtre de 640 px de large au plus, ou basse sous le doigt) les
@@ -4678,7 +4682,10 @@ pouce :
   320) ; à gauche, en colonne, couché. Sept boutons : *Stylo*, *Gomme*,
   *Sélection*, **Couleur** (un rond de la couleur en main, « Couleur et
   épaisseur » : son menu a les quatre pastilles et les trois tailles, 44 ×
-  44 chacune), *Annuler*, *Rétablir*, **Autres outils** (ses points ; quand
+  44 chacune), *Annuler*, *Rétablir* (depuis les gains rapides du lot 16,
+  ce sont les deux boutons de la barre du haut, déplacés ici, à la même
+  place qu'avant ; la grille des couleurs et le bouton de l'épaisseur de la
+  barre de gauche n'y sont pas), **Autres outils** (ses points ; quand
   on tient l'un de ces outils, il prend son icône et le coup de surligneur :
   sa grille de 60 × 56 a *Surligneur*, *Point*, *Segment*, *Formes*,
   *Formule*, *Vue*, *Doigt* — sur un appareil tactile : il ouvre le menu du
@@ -5235,29 +5242,41 @@ barres, et défile s'il est plus haut que la place (avant le lot 5, il
 couvrait le haut de la barre d'outils plutôt que de sortir de l'écran). Ses
 boutons y font 44 × 44 px au moins.
 
-**La barre de gauche** ne bouge pas : la poubelle y garde sa place, grisée
-quand rien n'est choisi, comme ↶ et ↷ quand il n'y a rien à faire. Sur un écran bas (moins de 900 px de haut environ),
-ses boutons gardent leurs 44 px et elle défile, avec une fine barre de
-défilement ; les choix des Formes et du Segment suivent leur bouton.
+**La barre de gauche** ne bouge pas : rien ne s'y allume ni ne s'y éteint
+avec la sélection. Depuis les gains rapides du lot 16 (voir « Gains rapides
+(lot 16) »), la poubelle de la sélection n'y est plus (Suppr, la barre
+d'actions et, au téléphone, *Autres outils* suffisent), et ↶ et ↷, grisés
+quand il n'y a rien à faire, sont en tête de la barre du haut, toujours
+dans l'écran. Elle a les dix outils, le Doigt sur un écran qu'on touche, un
+filet, les **quatre couleurs en grille 2 × 2** (Noir, Bleu / Rouge, Vert :
+des cases de 34 × 34, chacune à un clic) et le **bouton de l'épaisseur**
+(le trait de l'outil en main dessiné dessus, « Épaisseur du trait : Fin » ;
+son menu, à droite de la barre, à la hauteur du bouton : Fin, Moyen, Épais,
+en 44 × 44, un choix le referme ; au clavier, Entrée l'ouvre sur
+l'épaisseur cochée, les flèches y passent, Échap le referme ; le Surligneur
+garde son épaisseur à lui, le bouton montre celle de l'outil en main) :
+601 px en tout (711 avec les noms sous les outils), elle tient dans une
+fenêtre de 657 px de haut sans défiler. Sur un écran plus bas encore
+(moins de 625 px environ), ses boutons gardent leurs 44 px et elle défile,
+avec une fine barre de défilement ; les choix des Formes et du Segment, les
+menus de la Gomme et de l'épaisseur suivent leur bouton.
 **Sur un écran qu'on touche** (l'iPad, une tablette, le TNI, un portable à
 écran tactile : là où le doigt a son bouton), depuis le contrôle final du
-lot 5, les quatre pastilles de couleur et les trois tailles du trait font
-44 × 44 (au poste de la classe, 44 × 34 et 44 × 30, à la souris et à la
-tablette graphique) ; et quand la barre ne tient plus dans la hauteur de
-l'écran (le TNI de 1080 px avec ses noms, l'iPad couché, un portable de
-768 px), elles se **replient dans « Couleur »**, le bouton du téléphone (un
-rond de la couleur en main, « Couleur » dessous avec les noms), posé à leur
-place entre les deux filets : son menu, à droite de la barre, à la hauteur
-du bouton, a les quatre pastilles et les trois tailles en 44 × 44 (au
-clavier, Entrée l'ouvre sur la couleur cochée, Échap le referme). La barre
-ne défile plus : Annuler, Rétablir et la poubelle restent dans l'écran (avant,
-au TNI comme sur l'iPad couché, les derniers en sortaient, ou l'auraient fait
-avec des pastilles plus hautes). C'est mesuré, la barre dépliée : sur l'iPad
-debout, l'iPad Pro debout, le TNI sans les noms, elle tient, et les
-pastilles restent dans la barre, à un toucher ; tourner la tablette replie
-ou déplie (un menu « Couleur » ouvert se ferme alors). Au poste de la
-classe, rien ne change : la barre garde ses couleurs à un clic et défile
-sur un écran bas, comme depuis le lot 1 (voir les limites). Au
+lot 5, les pastilles de couleur font 44 × 44 (au poste de la classe,
+34 × 34, à la souris et à la tablette graphique) ; et quand la barre ne
+tient plus dans la hauteur de l'écran (depuis le lot 16, seulement sur un
+écran de moins de 700 px de haut environ : une fenêtre de Chrome de 657 px
+sur un portable tactile ; le TNI de 1080 px avec ses noms et l'iPad couché,
+où elle se repliait, la gardent dépliée, les couleurs à un toucher), la
+grille et le bouton de l'épaisseur se **replient dans « Couleur »**, le
+bouton du téléphone (un rond de la couleur en main, « Couleur » dessous
+avec les noms), posé à leur place après le filet : son menu, à droite de
+la barre, à la hauteur du bouton, a les quatre pastilles et les trois
+tailles en 44 × 44 (au clavier, Entrée l'ouvre sur la couleur cochée, Échap
+le referme). La barre ne défile pas. C'est mesuré, la barre dépliée :
+tourner la tablette ou agrandir la fenêtre replie ou déplie (un menu
+« Couleur » ouvert se ferme alors). Au poste de la classe, rien ne se
+replie : la barre garde ses couleurs à un clic (voir les limites). Au
 téléphone (lot 5), elle n'a que sept boutons, en bas ou à gauche : la
 poubelle de la sélection y est dans *Autres outils* (*Supprimer*, grisée de
 même), et dans la barre d'actions (voir « Le téléphone »).
@@ -5312,6 +5331,62 @@ restent où il les a laissées). Partout, un appui ne devient un glisser qu'à
 ne déplace rien, ne pose ni rectangle, ni cercle, ni segment le long d'un
 instrument, et n'ajoute rien à l'historique. L'encre (stylo, surligneur, l'arc
 du compas) part tout de suite.
+
+## Gains rapides (lot 16)
+
+De petites modifications, une par conversation, qui changent la classe sans
+rien changer aux fichiers ni aux classeurs.
+
+### Annuler et Rétablir en haut, une épaisseur
+
+Au poste de la classe, la barre de gauche (876 px) ne tenait pas dans un
+écran de 768 px de haut, ni surtout dans une fenêtre de Chrome sur un tel
+écran (1366 × 657, 633 px de place) : Annuler, Rétablir et la poubelle, en
+bas, ne se voyaient qu'en la faisant défiler (voir la feuille de route,
+point 9). La barre est raccourcie, sans replier les couleurs :
+
+- **Annuler et Rétablir** (↶, ↷) sont en **tête de la barre du haut**, à
+  gauche de ‹, séparés par un petit filet vertical : toujours dans l'écran,
+  grisés quand la page n'a rien à défaire ou à refaire, les mêmes raccourcis
+  (Ctrl + Z, Ctrl + Y). Au téléphone, ils restent dans la barre du bas, à
+  la même place (Stylo, Gomme, Sélection, Couleur, Annuler, Rétablir, Autres
+  outils) : ce sont les deux mêmes boutons, déplacés d'une barre à l'autre
+  quand la mise en page change (`UI.placerHistorique`).
+- Les **quatre couleurs** sont en **grille 2 × 2** (Noir, Bleu / Rouge,
+  Vert ; des cases de 34 × 34, le rond garde ses 20 px ; 44 × 44 sur un
+  écran qu'on touche), à la place de la colonne des pastilles : chacune
+  reste à un clic.
+- L'**épaisseur** tient sur **un bouton** (« Épaisseur du trait : Fin »,
+  « Épaisseur » avec les noms sous les outils), qui montre le trait de
+  l'outil en main (fin, moyen ou épais ; au Surligneur, le sien) et ouvre
+  un petit menu à droite de la barre, à la hauteur du bouton : Fin, Moyen,
+  Épais, en 44 × 44 ; un choix le referme. Au clavier, Entrée l'ouvre sur
+  l'épaisseur cochée, les flèches y passent, Échap le referme. (Changer
+  d'épaisseur demande donc deux clics au lieu d'un, voir les limites.)
+- La **poubelle de la sélection** quitte la barre de gauche : Suppr, le
+  bouton *Supprimer* de la barre d'actions et, au téléphone, *Autres
+  outils* suffisent.
+
+Mesuré : la barre de gauche fait 601 px (711 avec les noms) et ne défile
+plus à 1366 × 657, 1366 × 768, 1280 × 720 ni 1024 × 768 ; avec les noms,
+plus rien n'est caché à 1366 × 768. Sur un écran qu'on touche, elle tient
+dépliée sur le TNI avec ses noms et sur l'iPad couché (les couleurs à un
+toucher, là où elles se repliaient dans « Couleur ») et ne se replie plus
+que sous 700 px de haut environ (une fenêtre de 1366 × 657 sur un portable
+tactile). La barre du haut, plus longue de 105 px, reste sur une rangée à
+1366 et 1280 de large ; à 1024 × 768 elle passe sur deux rangées (ce que le
+code gérait déjà : le bouton du classeur en devient le premier bouton, les
+menus posés à droite de la barre de gauche passent sous elle) ; à
+1280 × 720 le bouton du classeur prend sa forme étroite (voir les limites).
+Les essais adaptés le disent en tête : `lot5/corrections-cf.mjs` (II),
+`lot5/K10-telephone.mjs` (G1, sa référence refaite), `lot5/K9-affichage.mjs`
+(les mots des barres), `lot1/passeB-b10.mjs` (la barre défile à 540 px),
+`lot2/M3-annulation.mjs`, `lot5/R-defauts.mjs`, `lot5/R-corrections.mjs`,
+`lot5/R-verif/lib.mjs`, `lot5/R-verif-c1-defauts-build.mjs`,
+`lot13/N1-nuit.mjs` (l'épaisseur se lit sur `data-taille` du bouton
+`.bouton-epaisseur`, « Trait épais » est dans son menu), `lot1/appareils/
+appareils.mjs`, `lot1/verif/divers.mjs`, `lot1/verif/partie.mjs` (« rien à
+supprimer » se lit à la barre d'actions, cachée), `lot1/verif/telephone.mjs`.
 
 ## Architecture
 
@@ -5422,7 +5497,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/seances.ts` | Les séances d'un classeur (lot 6) : le rangement des pages par séance (pur), la migration d'un classeur d'avant, les mots des dates (« Séance du mar 14 oct 14h », « de lundi ») ; dans `document.ts`, les deux cartes (`seances`, `seanceDesPages`), la séance neuve, la reprise d'une page (`reprendrePage`, `retirerReprise`) et la garde des séances passées (`garde`) ; dans `revoir/exporter.ts`, les séances lues dans le film (`seancesExplicitesDuFilm`, `pagesAPublier`) |
 | `src/seances-vue.ts` | Les séances à l'écran (lot 6) : la fenêtre « Bonjour ! », la question « Cette page est dans la séance de lundi… », « Renommer la séance… », les bandeaux (la lecture, « Reprendre ») et le tiroir de la séance précédente |
 | `src/figures.ts` | Les figures SVG des automatismes |
-| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le bouton du fond (lot 5 : la vignette du fond de la page, qui ouvre le menu des fonds, voir `src/menu-fonds.ts`), le menu complet (un objet, une formule, plusieurs objets, un groupe : « Groupe · 3 objets », *Grouper* ou *Dégrouper* ; sa rangée sur une ligne, son bouton ⋯ et son petit menu en sections : *Copier en image* et *Envoyer vers…*, puis *Ordre* (les aides d'`aidesOrdre`), puis *Protéger*, puis *Groupe* (*Sortir du groupe*, pour un membre pris seul : `sectionGroupe`), puis *Position* (*Tourner d'un quart de tour à gauche* et *… à droite*, pour ce qui a la pastille ↻, retouches après le lot 5 ; *Remettre droit*, pour une image ou une formule seule tournée) ; placé dans l'écran, sur un téléphone aussi), le menu court d'un objet verrouillé (lot 5 : Déverrouiller, Copier, ⋯), le menu de la Gomme (lot 5 : retoucher la Gomme en main, le clic droit, l'appui long, E ; ce qu'elle efface et sa taille ; le titre et la marque ◐ de son bouton), le menu de la page (et ce qu'il fait de l'image fixée en fond : la détacher, la copier, l'envoyer ; Déverrouiller tout), « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯ de la barre du haut, la trieuse), les messages (un ou deux boutons ; au-dessus des panneaux pendant un placement), éditeur de formules ; le bouton du classeur (sa place mesurée, à quatre formes), le bloc de l'état en tête du menu ⋯, le bandeau discret ; « Cet appareil » à la fin du menu ⋯ (lot 5 : « Contraste renforcé », body.contraste ; « Noms sous les outils », body.noms-outils, le nom court de chaque bouton dans son `span.libelle` (`nommer`, le mot dans data-libelle), `majNomsOutils` qui suit la mise en page du téléphone, `--droite-barre-outils` mesuré, les menus du doigt et de la Gomme qui passent sous la barre du haut sur deux rangées) ; la mise en page du téléphone (lot 5, K10 : `body.telephone`, `telephone`, `barreEnBas` ; ce qui ne s'y montre pas, `.seulement-large` ; « Couleur » et « Autres outils », au bout de la barre des outils, leurs menus `construireMenuCouleur` et `construireMenuAutres` (« Couleur » sert aussi, depuis le contrôle final du lot 5, à la barre d'un écran qu'on touche : body.tactile, ses pastilles et ses tailles en 44 × 44, repliées dans « Couleur » quand elle ne tient pas dans la hauteur, `majCouleursRepliees`), `placerPresDeLaBarre` qui les pose entre les deux barres ; les choix des Formes et du Segment au-dessus de la barre du bas, `placerChoixDuTelephone` ; ⋯ devenu « Plus », ses sections Page, Outils de cours et Vue, `sectionsDuTelephone`, et « Fond… », `ouvrirFondsDepuisPlus` ; le bouton du classeur en tête de la barre du haut ; `--haut-barre-bas` et `basUtile`, ce que prend la barre du bas ; `bordsFlottants`, les bords que la barre d'actions et le menu complet ne passent pas ; `placerToast`, le message qui ne couvre ni les barres ni ce qui est pris (depuis les retouches après le lot 5, au poste de la classe aussi : ni la barre d'actions ni la pastille ↻) ; la liste des instruments sous la barre du haut) |
+| `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le bouton du fond (lot 5 : la vignette du fond de la page, qui ouvre le menu des fonds, voir `src/menu-fonds.ts`), le menu complet (un objet, une formule, plusieurs objets, un groupe : « Groupe · 3 objets », *Grouper* ou *Dégrouper* ; sa rangée sur une ligne, son bouton ⋯ et son petit menu en sections : *Copier en image* et *Envoyer vers…*, puis *Ordre* (les aides d'`aidesOrdre`), puis *Protéger*, puis *Groupe* (*Sortir du groupe*, pour un membre pris seul : `sectionGroupe`), puis *Position* (*Tourner d'un quart de tour à gauche* et *… à droite*, pour ce qui a la pastille ↻, retouches après le lot 5 ; *Remettre droit*, pour une image ou une formule seule tournée) ; placé dans l'écran, sur un téléphone aussi), le menu court d'un objet verrouillé (lot 5 : Déverrouiller, Copier, ⋯), le menu de la Gomme (lot 5 : retoucher la Gomme en main, le clic droit, l'appui long, E ; ce qu'elle efface et sa taille ; le titre et la marque ◐ de son bouton), le menu de la page (et ce qu'il fait de l'image fixée en fond : la détacher, la copier, l'envoyer ; Déverrouiller tout), « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯ de la barre du haut, la trieuse), les messages (un ou deux boutons ; au-dessus des panneaux pendant un placement), éditeur de formules ; le bouton du classeur (sa place mesurée, à quatre formes), le bloc de l'état en tête du menu ⋯, le bandeau discret ; « Cet appareil » à la fin du menu ⋯ (lot 5 : « Contraste renforcé », body.contraste ; « Noms sous les outils », body.noms-outils, le nom court de chaque bouton dans son `span.libelle` (`nommer`, le mot dans data-libelle), `majNomsOutils` qui suit la mise en page du téléphone, `--droite-barre-outils` mesuré, les menus du doigt et de la Gomme qui passent sous la barre du haut sur deux rangées) ; la mise en page du téléphone (lot 5, K10 : `body.telephone`, `telephone`, `barreEnBas` ; ce qui ne s'y montre pas, `.seulement-large` ; « Couleur » et « Autres outils », au bout de la barre des outils, leurs menus `construireMenuCouleur` et `construireMenuAutres` (« Couleur » sert aussi, depuis le contrôle final du lot 5, à la barre d'un écran qu'on touche : body.tactile, ses pastilles et ses tailles en 44 × 44, repliées dans « Couleur » quand elle ne tient pas dans la hauteur, `majCouleursRepliees`), `placerPresDeLaBarre` qui les pose entre les deux barres ; les choix des Formes et du Segment au-dessus de la barre du bas, `placerChoixDuTelephone` ; ⋯ devenu « Plus », ses sections Page, Outils de cours et Vue, `sectionsDuTelephone`, et « Fond… », `ouvrirFondsDepuisPlus` ; le bouton du classeur en tête de la barre du haut ; `--haut-barre-bas` et `basUtile`, ce que prend la barre du bas ; `bordsFlottants`, les bords que la barre d'actions et le menu complet ne passent pas ; `placerToast`, le message qui ne couvre ni les barres ni ce qui est pris (depuis les retouches après le lot 5, au poste de la classe aussi : ni la barre d'actions ni la pastille ↻) ; la liste des instruments sous la barre du haut) ; les gains rapides du lot 16 : Annuler et Rétablir en tête de la barre du haut (`placerHistorique` les déplace dans la barre du bas au téléphone), la grille 2 × 2 des pastilles (`grillePastilles`), le bouton de l'épaisseur et son menu (`majBoutonEpaisseur`, `basculerMenuEpaisseur`, `construireMenuEpaisseur`, `placerMenuEpaisseur`) |
 | `src/pages/envoi.ts` | La fenêtre « Envoyer vers… » : déplacer ou copier, la liste des destinations (chaque page avec sa petite vignette, une nouvelle page juste après, à la fin), le clavier ; les textes des messages d'un envoi (pur, testé). L'envoi lui-même est `App.envoyerSelection`, son annulation `Tableau.envoyer` |
 | `src/barre-actions.ts` | La barre d'actions au-dessus de ce qui est pris : quand elle paraît (jamais avec un autre menu, jamais sur ce qui est verrouillé), ce qu'elle montre (selon ce qui est pris et le pointeur), où elle se pose (au-dessus du cadre de taille et de sa pastille ↻, jamais sur elle : `App.emprise`, `placeBarre` ; au téléphone, au-dessus de la barre du bas : son bord `bas`, lot 5, K10), ce que devient un appui sur elle |
 | `src/icones.ts` | Les icônes des barres, des menus et de la barre d'actions (le cadenas du menu court d'un verrouillé compris ; celles des lecteurs sont dans `src/revoir/icones.ts`) |
@@ -5676,26 +5751,30 @@ qu'au document sans séances (hors de l'application).
   chez eux (le lecteur, le film élève) et ce qu'on imprime (le PDF) gardent
   les tons ordinaires, voulus ainsi. Les noms sous les outils ne viennent
   pas dans la mise en page du téléphone (la place manque) ; au poste de la
-  classe (souris, tablette graphique), les pastilles de couleur et les
-  tailles du trait, dans la barre des outils, gardent leurs 34 et 30 px de
-  haut (44 de large), avec ou sans noms, comme avant (sur un écran qu'on
-  touche, depuis le contrôle final du lot 5, elles font 44 × 44, ou sont
-  dans le menu « Couleur » quand la barre ne tient pas ; au téléphone,
-  depuis K10, dans ce menu). Les
+  classe (souris, tablette graphique), les pastilles de couleur, en grille
+  2 × 2 dans la barre des outils, font 34 × 34, avec ou sans noms (sur un
+  écran qu'on touche, depuis le contrôle final du lot 5, 44 × 44, ou dans
+  le menu « Couleur » quand la barre ne tient pas ; au téléphone, depuis
+  K10, dans ce menu) ; l'épaisseur du trait se change dans le menu de son
+  bouton (deux clics, depuis les gains rapides du lot 16), au lieu d'un clic
+  sur l'un des trois boutons d'avant. Les
   deux réglages ne sont essayés qu'au navigateur Chromium, piloté (l'écran
   du TNI et de l'iPad simulés) : le vrai vidéoprojecteur de la salle, un
   vrai TNI et l'iPad restent à voir en classe.
-- Au poste de la classe, sur un écran de 768 px de haut (1366 × 768,
-  1024 × 768), la barre des outils (828 px) défile : Rétablir et la poubelle
-  ne se voient qu'en la faisant défiler (la molette sur la barre, ou sa
-  fine barre de défilement) ; dans une fenêtre de Chrome sur un tel écran
-  (1366 × 657), aussi Trait moyen, Trait épais et Annuler ; avec les noms
-  sous les outils (948 px), aussi Vert et Trait fin. C'est la règle du lot 1
-  (des boutons de 44 px qui défilent, plutôt que des boutons qui
-  rétrécissent), et les couleurs y restent à un clic ; replier les couleurs
-  dans « Couleur » là aussi, comme sur un écran qu'on touche, les ferait
-  passer à deux clics : c'est au professeur de choisir (voir la feuille de
-  route). Les raccourcis restent : Ctrl + Z, Ctrl + Y, Suppr.
+- Au poste de la classe, la barre des outils (601 px depuis les gains
+  rapides du lot 16 ; 874 avant) tient dans une fenêtre de 657 px de haut
+  sans défiler : plus rien n'en sort à 1366 × 768, 1280 × 720, 1024 × 768,
+  ni dans une fenêtre de Chrome de 1366 × 657, ni avec les noms sous les
+  outils à 1366 × 768 (711 px). Sur un écran plus bas encore (moins de
+  625 px environ ; avec les noms, moins de 735), elle défile : la règle du
+  lot 1 (des boutons de 44 px qui défilent, plutôt que des boutons qui
+  rétrécissent), et Annuler et Rétablir, en haut, restent dans l'écran. En
+  échange, la barre du haut est plus longue de deux boutons et d'un filet
+  (105 px) : à 1024 × 768 elle passe sur deux rangées (le bouton du classeur
+  en devient le premier bouton, son icône) ; à 1280 × 720, le bouton du
+  classeur n'a plus que son icône et son point (sa forme étroite) ; avec les
+  noms sous les outils, à 1366 × 768, il est caché (le point sur ⋯, et son
+  menu). Les raccourcis restent : Ctrl + Z, Ctrl + Y, Suppr.
 - La mise en page du téléphone (lot 5, K10) n'a été essayée qu'au navigateur
   Chromium, piloté (iPhone et Android simulés, de 320 × 568 à 932 × 430) :
   un vrai téléphone, Safari sur iPhone (la barre d'adresse qui grandit et
@@ -5705,10 +5784,11 @@ qu'au document sans séances (hors de l'application).
   menu couvrir la pastille ↻ plutôt que l'objet (la règle du lot 5, K6, voir
   « Le menu complet ») ; un long message, alors, n'a ni le bas ni le haut de
   libres et reste en bas, sur la pastille (on la touche à travers lui : il
-  laisse passer les appuis, sauf sur ses boutons). Dans le document, les
-  deux boutons du téléphone (« Couleur », « Autres outils ») sont au bout de
-  la barre des outils : au clavier (un téléphone avec un clavier), Tab passe
-  par Annuler et Rétablir avant « Couleur », que l'écran montre avant eux.
+  laisse passer les appuis, sauf sur ses boutons). Dans le document, la
+  barre des outils du téléphone a l'ordre de l'écran depuis les gains
+  rapides du lot 16 (Annuler et Rétablir y sont déplacés entre « Couleur »
+  et « Autres outils ») : au clavier (un téléphone avec un clavier), Tab les
+  suit dans cet ordre.
   La barre du zoom y est cachée : on zoome au pincement (« 100 % » et « Tout
   voir » dans « Plus ») ; « Voir la sélection » n'y est pas. Sur 568 × 320,
   l'éditeur de formule est plus haut que l'écran : il défile, et ses boutons
@@ -5744,8 +5824,9 @@ qu'au document sans séances (hors de l'application).
    explicites et la classe demandée au début de chaque séance sont faites
    au lot 6) : des classeurs « Préparation » copiés pour chaque classe ; des modèles de
    page ; la recherche ; le pointeur laser (l'import de PDF est au point 4).
-9. Au poste de la classe, sur un écran bas : replier les couleurs et les
-   tailles dans « Couleur » quand la barre des outils ne tient pas (comme
-   sur un écran qu'on touche depuis le contrôle final du lot 5), pour que
-   Annuler, Rétablir et la poubelle restent dans l'écran — au prix d'un
-   clic de plus pour changer de couleur : au choix du professeur.
+9. *(Fait aux gains rapides du lot 16, autrement qu'en repliant les
+   couleurs : Annuler et Rétablir en tête de la barre du haut, toujours
+   dans l'écran ; les couleurs en grille 2 × 2, toujours à un clic ;
+   l'épaisseur sur un bouton qui ouvre un menu ; la poubelle de la
+   sélection retirée de la barre de gauche, qui tient dans 657 px de haut.
+   Voir « Gains rapides (lot 16) ».)*
