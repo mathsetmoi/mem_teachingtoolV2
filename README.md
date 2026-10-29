@@ -6556,3 +6556,217 @@ qu'au document sans séances (hors de l'application).
    l'épaisseur sur un bouton qui ouvre un menu ; la poubelle de la
    sélection retirée de la barre de gauche, qui tient dans 657 px de haut.
    Voir « Gains rapides (lot 16) ».)*
+
+## Un seul endroit pour chaque classeur (lot 18)
+
+Le chantier « enregistrer », d'après la maquette validée par le professeur :
+**un classeur = un fichier `.memc` à un seul endroit, écrit tout seul**.
+L'endroit : le dossier de l'**établissement** (MEM, LFB, LyFEL : chacun un
+dossier de Google Drive pour ordinateur, choisi une fois) › le dossier du
+**niveau**, au nom que le professeur tape (« 2 ») › un dossier par
+**classeur** (le chapitre), au nom du classeur, qui contient
+`<classeur>.memc` et les `.mem` de ses séances :
+`LFB classeurs › 2 › 2_13_Probas › 2_13_Probas.memc`, `Séance du 5 oct.mem`
+(le fichier séance qu'il enregistre lui-même), `Séance du 5 oct [re34G].mem`
+(le replay publié). Le lot 7 reste en dessous : relier un niveau à un
+dossier, un `.memc` par classeur dans le dossier de son chapitre, tenu à
+jour par la clé ; ce lot dit *où* une fois pour toutes, et fait que chaque
+classeur qui arrive dans un niveau rangé reçoit son fichier sans qu'on y
+pense.
+
+### Le mode d'emploi
+
+- **La fenêtre « Où ranger les classeurs de « 2nde » ? »** paraît au premier
+  « Nouveau classeur » dans un niveau (le dossier le plus haut de la
+  bibliothèque) qui n'a pas encore de dossier sur l'ordinateur ; on
+  l'ouvre aussi depuis « Mes emplacements » (« Ranger… » dans le dossier
+  d'un niveau pas rangé, « Changer… » sur un niveau rangé chez un
+  établissement). Elle explique avec l'exemple du niveau (« LFB classeurs ›
+  2nde › Fractions › Fractions.memc »), puis demande :
+  - **Dans quel dossier ?** Les établissements déjà choisis (« LFB
+    classeurs », « MEM classeurs »…, par nom ; le premier sélectionné, ou
+    celui du niveau quand on change). **Choisir un dossier…** la première
+    fois : le dossier de l'établissement dans Google Drive pour ordinateur,
+    ou n'importe quel dossier ; il entre dans la liste sous son nom,
+    sélectionné (le même dossier choisi deux fois n'est pas doublé). **Un
+    autre dossier, pour ce niveau seul…** : une clé USB, un dossier précis,
+    comme au lot 7, sans établissement (le champ du niveau disparaît, le
+    bouton dit « Choisir le dossier et ranger… »).
+  - **Dossier du niveau dans « LFB classeurs » :** le nom du dossier de la
+    bibliothèque est proposé (« 2nde ») ; on tape celui qu'on veut (« 2 »).
+    Le bouton suit : **Ranger dans « LFB classeurs › 2 »**.
+  - **Ranger** crée le dossier du niveau, en fait l'emplacement du niveau,
+    et y écrit chaque classeur du niveau dans son dossier (« 2 ›
+    Fractions › Fractions.memc »). Le message dit le bilan : « Les classeurs
+    de « 2nde » se rangent dans « LFB classeurs › 2 » : 6 écrits, 1 déjà là,
+    1 à ouvrir d'abord (« Fonctions » : son fichier a des changements que la
+    bibliothèque n'a pas). », ou « … iront dans « … » (il n'y en a pas
+    encore). » pour un niveau vide ; quand on change de dossier : « Les
+    fichiers d'avant restent dans « … ». » Quand le navigateur vient de
+    demander l'accord d'écrire, le conseil « choisissez « Autoriser à chaque
+    visite » s'il le propose » suit le bilan.
+  - **Plus tard** (Échap, le fond aussi) : rien n'est écrit. Depuis
+    « Nouveau classeur », c'est noté : la fenêtre ne revient plus d'elle-même
+    pour ce niveau (« Mes emplacements » et, plus tard, le menu ⋯ la
+    rouvrent). La fenêtre « Nouveau classeur » vient ensuite, comme avant.
+- **Ensuite, chaque classeur qui arrive dans un niveau rangé reçoit son
+  fichier à sa place**, sans question, avant qu'on y arrive :
+  - **« Nouveau classeur »** dans ce niveau : plus de case ; la ligne « Son
+    fichier ira dans « LFB classeurs › 2 › Probabilités », écrit tout
+    seul. » suit le nom tapé ; « Créer et ouvrir » écrit le fichier avant
+    de partir, et le classeur arrive avec son enregistrement automatique
+    actif (« Il s'enregistre automatiquement dans « Probabilités.memc ». »).
+    Ailleurs (un niveau pas rangé, la racine), la case d'avant est là, sous
+    son nouveau nom : **« Enregistrer automatiquement dans un fichier »**.
+  - **« Séances isolées »** (le lien de « Bonjour ! », lot 17) : créé dans le
+    niveau, il reçoit « … › Séances isolées › Séances isolées.memc ».
+  - **Un `.memc` ajouté** (Ouvrir → « Ajouter à la bibliothèque », la case
+    « Enregistrer automatiquement les changements dans ce fichier »
+    décochée) : son fichier dans le dossier de son chapitre ; le fichier
+    ouvert reste où il était. Un `.memc` ouvert depuis son propre dossier
+    de chapitre est **adopté** tel quel (pas de « (2) ») : « Son fichier
+    « Probas.memc » était déjà dans « LFB classeurs › 2 › Probas » : il le
+    garde. » La case cochée garde le choix d'avant : le fichier ouvert est
+    celui du classeur.
+  - **Remis de la corbeille** : « « Angles » remis dans « 2nde » Son fichier
+    est écrit dans « LFB classeurs › 2 › Angles ». »
+  - Ce qui n'a pas pu se faire est dit, et rien n'est perdu : « « Fractions »
+    n'a pas encore son fichier dans « LFB classeurs › 2 » : le navigateur
+    attend votre accord (menu ⋯ → Mes emplacements, « Mettre à jour »). »,
+    « … : ce navigateur ne retrouve plus le dossier (menu ⋯ → Mes
+    emplacements). », « Le fichier « Fractions.memc » déjà dans « … » a des
+    changements que ce classeur n'a pas : il n'est pas remplacé. Ouvrez-le
+    d'abord (Ctrl + O). », « Le fichier de « Fractions » n'a pas pu être
+    écrit dans « … » : <raison>. Rien n'est perdu : il est dans ce
+    navigateur. »
+- **Le fichier séance au même endroit.** Publier → **Enregistrer le
+  fichier** : quand le classeur a son dossier (le niveau rangé ou relié : le
+  dossier du chapitre ; ou le dossier choisi ou retenu pour ce classeur), le
+  fichier séance « Titre.mem » (sans code) s'écrit là, à côté du replay
+  « Titre [code].mem » : « Fichier séance enregistré dans « LFB classeurs › 2
+  › Probas » : Séance du 5 oct.mem (12 Ko). » Le même titre remplace le même
+  fichier. Sans dossier, ou si le dossier n'a pas pu être écrit (dit avec la
+  raison), le téléchargement d'avant. « Ranger dans : » montre maintenant
+  l'établissement devant (« LFB classeurs › 2 › Probas »).
+- **Mes emplacements** (en haut de la bibliothèque) :
+  - la ligne **Établissements : LFB classeurs · MEM classeurs** (ou « aucun
+    dossier choisi »), avec **Retirer** pour chacun (« « LFB classeurs »
+    n'est plus proposé. Rien n'est effacé : les niveaux rangés chez lui le
+    restent. ») et **Ajouter un dossier…** ;
+  - un niveau rangé chez un établissement : **2nde → LFB classeurs › 2**
+    [Mettre à jour] [**Changer…**] ; « Changer… » rouvre la fenêtre avec
+    l'établissement actuel et le nom donné : les classeurs reçoivent un
+    fichier au nouvel endroit, les fichiers d'avant restent où ils sont ;
+  - un niveau relié sans établissement (le lot 7, « Un autre dossier… ») :
+    **4ème → Cet ordinateur › Clé 4ème** [Mettre à jour] [Retirer], comme
+    avant ;
+  - dans le dossier d'un niveau pas encore rangé : **3ème → pas encore rangé
+    dans un dossier** [**Ranger…**].
+- **Où elle ne paraît pas.** Jamais sur l'iPad, Firefox, Safari (pas de
+  `showDirectoryPicker`), ni quand l'écrivain tourne sur le fil principal :
+  rien ne change là. Un classeur à la racine de la bibliothèque n'a pas de
+  niveau : pas de fenêtre, la case d'avant.
+
+### Ce qui ne change pas
+
+Les bases IndexedDB et leurs clés ; les formats `.memc`, `.memb`, `.mem` ;
+les fichiers choisis à la main (la case, Ctrl + S, « Enregistrer dans un
+fichier… ») ; le lot 7 (« Enregistrer ce dossier… », « Mettre à jour »,
+« Retirer », le Drive, « Ouvrir » un dossier) et ses messages (« « 4B » est
+relié au dossier « Clé 4B ». 2 classeurs dans « Clé 4B ». »).
+
+### Les garde-fous
+
+- Jamais un fichier plus riche remplacé (`adopterSiLeMeme` compare les
+  vecteurs) ; jamais le fichier d'un autre classeur écrasé (un nom libre,
+  « Calcul (2).memc ») ; jamais un fichier effacé (« Changer… » laisse les
+  anciens, « Retirer » un établissement n'efface rien).
+- Jamais une permission demandée ni un dossier choisi hors d'un clic : le
+  choix du dossier et l'accord d'écrire se font dans le clic sur « Choisir
+  un dossier… », « Ranger », « Créer et ouvrir », « Ajouter », « Remettre »,
+  « Enregistrer le fichier » ; à l'arrivée dans un classeur, la clé vérifie
+  et redemande en un clic s'il le faut, comme avant.
+- Toute écriture passe par `ecrireLeNeuf`, `adopterSiLeMeme`,
+  `deposerLeReplay` ou le fichier séance (un bloc : `createWritable`,
+  `write`, `close`).
+- Les classeurs restent dans le navigateur : un échec est dit avec sa
+  raison, rien n'est perdu.
+
+### Les réglages nouveaux
+
+Tous facultatifs, aucune clé existante changée :
+
+- `etablissements` : la liste `{ id, nom, cree }` (16 caractères
+  hexadécimaux, par nom) ;
+- `etablissement-poignee:<id>` : la poignée du dossier de l'établissement ;
+- `ranger-plus-tard` : les ids des dossiers de niveau pour lesquels on a dit
+  « Plus tard » ;
+- `Emplacement.etablissement` : l'id de l'établissement d'un emplacement
+  `ordinateur` (absent : un dossier pour ce niveau seul, le lot 7) ;
+- `FicheClasseur.cle.chemin` (commit 45713ea) : les dossiers jusqu'à celui
+  du classeur, pour l'écran (`['LFB classeurs', '2', '2_13_Probas']`) ; un
+  fichier rangé avant ce chantier l'apprend à la prochaine mise à jour.
+
+### Comment c'est fait
+
+- `src/classeurs/etablissements.ts` (pur, testé, et le registre) :
+  `lireEtablissements`, `lirePlusTard`, `nouvelId`, `cheminLisible`
+  (« a › b »), `texteDuRangement` (la phrase du bilan), `etablissements`,
+  `garderEtablissement` (la poignée d'abord, la liste ensuite),
+  `retirerEtablissement`, `plusTard`, `noterPlusTard`.
+- `src/classeurs/ranger.ts` : `relierLeNiveau` (l'implémentation unique du
+  lien d'un niveau : l'accord vérifié, l'emplacement noté avec son
+  établissement, la poignée, puis `relierLesClasseurs` ; « Enregistrer ce
+  dossier… » et « Mettre à jour » du lot 7 passent par elle) ; la classe
+  `Ranger` : `peutRanger`, `niveauDe`, `aProposerPour`, `endroitDe`,
+  `cheminDuChapitre`, `donnerSonFichier(fiche, { geste, dire })` (rend ce
+  que l'arrivée dira de la clé), `proposer(classe, { origine })` (la
+  fenêtre, rend `'range'` une fois les fichiers écrits, `'plus-tard'`
+  sinon), `proposerPourLeClasseurOuvert` (pour le menu ⋯) ;
+  `CONSEIL_ACCORD_DOSSIER`.
+- `src/classeurs/ordinateur.ts` : `relierLesClasseurs` gagne `reprendre`
+  (« Changer… » : un classeur dont le fichier n'est pas dans le nouveau
+  dossier en reçoit un) ; `BilanRelier.raison` (la raison du dernier échec).
+- `src/classeurs/emplacements.ts` : `Emplacement.etablissement`.
+- `src/classeurs/bibliotheque.ts` : `brancherRanger` ; `fenetreNouveau`
+  (la fenêtre « Où ranger… » d'abord, puis la ligne « Son fichier ira
+  dans … » à la place de la case, et `donnerSonFichier` avant de partir) ;
+  `creerEtOuvrir` (« Séances isolées ») et `remettre` appellent
+  `donnerSonFichier`.
+- `src/classeurs/fichiers.ts` : `ajouterEtOuvrir` sans la case appelle
+  `donnerSonFichier` (le texte d'arrivée dit ce qui s'est passé).
+- `src/classeurs/ailleurs.ts` : « Mes emplacements » (la ligne des
+  établissements, `ajouterEtablissement`, `retirerEtablissement`,
+  « Changer… », « Ranger… ») ; `relierOrdinateur` passe par
+  `relierLeNiveau`, avec `texteDuRangement` quand l'établissement est connu.
+- `src/publication/replay-dossier.ts` : `nomDuFichierSeance`,
+  `deposerLeFichierSeance` ; `dossierDuChapitre` met l'établissement devant
+  le chemin. `src/publication/fenetre.ts` : `enregistrer()` écrit dans le
+  dossier cible (ouvert dans le clic) avant de retomber sur le
+  téléchargement.
+- `src/main.ts` : un `Ranger` par page (la bibliothèque seule et le
+  classeur), branché à la bibliothèque, aux fichiers et à « Mes
+  emplacements » ; `window.__ranger` en développement. `src/style.css` :
+  `.dialogue-ranger`, `.emplacements .etablissements`, `.pas-range`,
+  `.ou-fichier`.
+
+### Les essais
+
+`tests/etablissements.test.ts` (la lecture des réglages, `cheminLisible`,
+`texteDuRangement`, le registre), `tests/emplacements.test.ts`
+(`etablissement`), `tests/replay-dossier.test.ts` (`nomDuFichierSeance`,
+`deposerLeFichierSeance`) ; `essais/navigateur/lot18/E1-ranger.mjs`
+(sections A à K : la fenêtre au premier « Nouveau classeur », « Nouveau
+classeur » dans un niveau rangé, un deuxième établissement et « Mes
+emplacements », « Plus tard », « Séances isolées », un `.memc` ajouté puis
+adopté, un classeur remis, « Un autre dossier… », « Changer… », le fichier
+séance de Publier, la version hors ligne ; aucune permission demandée hors
+d'un clic ; `DEV=…` pour le port, `CAPTURES=…` pour la capture). Adaptés :
+`lot4/C5-bibliotheque.mjs` (la case renommée), `lot4/C6-ranger.mjs`
+(« Plus tard » au premier « Nouveau classeur » d'un niveau, en ligne et
+hors ligne) ; `DEV=…` accepté par `lot4/C2`, `C5`, `C6`, `C9`, `C10`,
+`lot7/E1`, `lot17/F1`.
+
+### Le bouton du classeur
+
+### Le menu ⋯
