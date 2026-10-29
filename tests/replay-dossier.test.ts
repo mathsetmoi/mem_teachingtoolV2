@@ -3,7 +3,7 @@
 // est retenu pour un classeur (faux registre) et les lignes du résumé (lot 16).
 import { describe, expect, it } from 'vitest'
 import { FORME_CODE, RELAIS_REPLAY, codeDuNom, lienEleveParCode, nouveauCode, relaisDe } from '../src/publication/comptes'
-import { deposerLeReplay, lireReglage, nomDuReplay, retenirReglage, texteDuResume } from '../src/publication/replay-dossier'
+import { deposerLeFichierSeance, deposerLeReplay, lireReglage, nomDuFichierSeance, nomDuReplay, retenirReglage, texteDuResume } from '../src/publication/replay-dossier'
 import type { PoigneeDossier } from '../src/classeurs/ordinateur'
 import type { Registre } from '../src/classeurs/registre'
 
@@ -49,6 +49,15 @@ describe('le code et le nom du fichier', () => {
     expect(nomDuReplay('   ', 'k7f3q9xa')).toBe('Séance [k7f3q9xa].mem')
   })
 
+  it('le fichier séance (lot 18) : le même crible, sans code, à côté du replay', () => {
+    expect(nomDuFichierSeance('Séance du 5 oct')).toBe('Séance du 5 oct.mem')
+    expect(nomDuFichierSeance('Limites : suites / exercices ?')).toBe('Limites - suites - exercices -.mem')
+    expect(nomDuFichierSeance('   ')).toBe('Séance.mem')
+    // Le replay du même titre porte le code, le fichier séance non : deux fichiers distincts, sans code lu par erreur
+    expect(nomDuReplay('Séance du 5 oct', 're34gk7f')).toBe('Séance du 5 oct [re34gk7f].mem')
+    expect(codeDuNom(nomDuFichierSeance('Séance du 5 oct'))).toBeNull()
+  })
+
   it('le code se relit dans le nom, même renommé tant qu’il y reste', () => {
     expect(codeDuNom('Mercredi 7 octobre 2026 [k7f3q9xa].mem')).toBe('k7f3q9xa')
     expect(codeDuNom('Autre nom [k7f3q9xa].mem')).toBe('k7f3q9xa')
@@ -85,6 +94,15 @@ describe('déposer le replay dans le dossier', () => {
     const f: Record<string, string> = { 'Ancien [k7f3q9xa].mem': 'vieux' }
     await deposerLeReplay(fauxDossier(f, { retraitImpossible: true }), 'Nouveau [k7f3q9xa].mem', 'neuf', 'k7f3q9xa')
     expect(f['Nouveau [k7f3q9xa].mem']).toBe('neuf')
+  })
+
+  it('le fichier séance (lot 18) : écrit à côté du replay, remplacé au même titre, rien d’autre touché', async () => {
+    const f: Record<string, string> = { 'Séance du 5 oct [k7f3q9xa].mem': 'replay', 'Probas.memc': 'classeur' }
+    expect(await deposerLeFichierSeance(fauxDossier(f), 'Séance du 5 oct', 'séance')).toBe('Séance du 5 oct.mem')
+    expect(f).toEqual({ 'Séance du 5 oct [k7f3q9xa].mem': 'replay', 'Probas.memc': 'classeur', 'Séance du 5 oct.mem': 'séance' })
+    await deposerLeFichierSeance(fauxDossier(f), 'Séance du 5 oct', 'séance, de nouveau')
+    expect(f['Séance du 5 oct.mem']).toBe('séance, de nouveau')
+    expect(Object.keys(f).length).toBe(3)
   })
 })
 

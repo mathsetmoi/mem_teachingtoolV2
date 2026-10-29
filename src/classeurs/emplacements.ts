@@ -17,6 +17,12 @@
 // part des fichiers de la clé (le magasin 'poignees' ne garde que ceux des
 // classeurs). Un niveau peut avoir un emplacement de chaque sorte ; ses
 // sous-dossiers suivent le niveau.
+// Lot 18 (etablissements.ts) : un emplacement 'ordinateur' créé par la fenêtre
+// « Où ranger… » porte en plus l'id de son ÉTABLISSEMENT (le dossier choisi
+// une fois, dans lequel le dossier du niveau a été créé) : `etablissement`,
+// facultatif, que lireEmplacements conserve (les autres champs inconnus sont
+// toujours laissés de côté). Un emplacement sans ce champ est celui du lot 7
+// (« Un autre dossier, pour ce niveau seul… ») : rien ne change pour lui.
 //
 // Le début de ce fichier est pur (sans IndexedDB) : il se teste sous Node.
 // =============================================================
@@ -39,6 +45,10 @@ export interface Emplacement {
   nom: string
   /** Le Drive (seulement pour le Drive) */
   compte?: CompteDrive
+  /** L'établissement (etablissements.ts) dans le dossier duquel le dossier
+   *  du niveau a été créé par la fenêtre « Où ranger… » (lot 18) ; absent :
+   *  un dossier choisi pour ce niveau seul (lot 7) */
+  etablissement?: string
   cree: number
 }
 
@@ -59,7 +69,11 @@ export function lireEmplacements(x: unknown): Emplacement[] {
     if (typeof e.dossier !== 'string' || !e.dossier || typeof e.nom !== 'string') continue
     if (e.genre === 'drive' && e.compte !== 'mem' && e.compte !== 'lfb') continue
     if (l.some(y => y.id === e.id)) continue
-    l.push({ id: e.id, genre: e.genre, dossier: e.dossier, nom: e.nom, cree: typeof e.cree === 'number' ? e.cree : 0, ...(e.genre === 'drive' ? { compte: e.compte } : {}) })
+    l.push({
+      id: e.id, genre: e.genre, dossier: e.dossier, nom: e.nom, cree: typeof e.cree === 'number' ? e.cree : 0,
+      ...(e.genre === 'drive' ? { compte: e.compte } : {}),
+      ...(typeof e.etablissement === 'string' && e.etablissement ? { etablissement: e.etablissement } : {}),
+    })
   }
   return l
 }

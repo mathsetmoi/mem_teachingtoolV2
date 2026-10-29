@@ -93,7 +93,12 @@ export interface BilanRelier {
   /** Ils gardent le fichier de leur clé, ailleurs */
   ailleurs: string[]
   echecs: string[]
+  /** Ce qui a empêché le dernier échec, pour le dire (sans point final) */
+  raison?: string
 }
+
+/** La raison d'une erreur, pour un message (sans point final) */
+const raisonDe = (e: unknown) => (e instanceof Error ? e.message.trim().replace(/\.$/, '') : '') || 'erreur inconnue'
 
 /** Les noms déjà pris dans un dossier */
 async function nomsDe(d: PoigneeDossier): Promise<string[]> {
@@ -113,6 +118,10 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
   prefixe?: string[]
   /** Seulement ces classeurs du niveau (par id) ; absent : tous */
   seulement?: readonly string[]
+  /** Le niveau change de dossier (« Changer… », lot 18) : un classeur dont
+   *  le fichier de la clé n'est pas dans `d` en reçoit un ici (son ancien
+   *  fichier reste où il est, intact) au lieu de le garder ailleurs */
+  reprendre?: boolean
 } = {}): Promise<BilanRelier> {
   const [fiches, dossiers] = await Promise.all([registre.classeurs(), registre.dossiers()])
   let classeurs = classeursDeLaClasse(classe, fiches, dossiers)
@@ -155,8 +164,9 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
             break
           }
         }
-        if (!lie) bilan.ailleurs.push(f.nom)
-        continue
+        if (lie) continue
+        if (!o.reprendre) { bilan.ailleurs.push(f.nom); continue }
+        // Le niveau change de dossier : il reçoit un fichier ici (le sien, ailleurs, reste)
       }
       const prevu = base + EXTENSION_TABLEAU
       // Un fichier de ce classeur déjà là (dans le dossier de son chapitre, ou à plat) est repris tel quel
@@ -177,8 +187,8 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
       ici.noms.push(nom)
       await o.avantDEcrire?.(f)
       const r = await ecrireLeNeuf(registre, h, { id: f.id, base: f.base, nom: f.nom, chemin: cheminNote([...sous, base]) })
-      if (r.date === null) bilan.echecs.push(f.nom); else bilan.ecrits.push(f.nom)
-    } catch { bilan.echecs.push(f.nom) }
+      if (r.date === null) { bilan.echecs.push(f.nom); bilan.raison = r.message.trim().replace(/\.$/, '') || 'erreur inconnue' } else bilan.ecrits.push(f.nom)
+    } catch (e) { bilan.echecs.push(f.nom); bilan.raison = raisonDe(e) }
   }
   return bilan
 }
