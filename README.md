@@ -2832,13 +2832,20 @@ synchronisé (`src/classeurs/cle.ts`). C'est surtout fait pour la version
 hors ligne, sur le poste de lycée remis à zéro chaque soir : la clé
 garde le classeur, le navigateur peut tout oublier. Ailleurs (Firefox,
 Safari, l'iPad), le navigateur ne sait pas écrire seul dans un fichier :
-pas d'entrée, la ligne de la clé le dit, et le rappel d'enregistrer (voir
-« L'état de la sauvegarde ») invite à Ctrl + S.
+pas d'entrée, la ligne du fichier le dit, et le rappel d'enregistrer (voir
+« L'état de la sauvegarde ») invite à Ctrl + S. « La clé » reste, dans ce
+README et dans le code, le nom du mécanisme ; à l'écran, depuis le lot 18,
+le mot n'apparaît plus : le bouton du classeur dit « Enregistré il y a
+8 s », le bloc d'état « Enregistré dans LFB classeurs › 2 › Fractions
+(Fractions.memc) : il y a 2 min » (le chemin, quand l'outil a rangé le
+fichier lui-même ; sinon « Enregistré dans « Fractions.memc » : … »), les
+bandeaux « L'enregistrement dans « LFB classeurs » attend votre accord. » :
+une seule chose, enregistré ou non, et depuis quand.
 
 - **L'activer.** Menu ⋯ → **Enregistrer automatiquement dans un fichier…**
-  (« Sur la clé USB ou dans un dossier : le classeur s'y enregistre tout
+  (« Un fichier .memc, choisi une fois : le classeur s'y enregistre tout
   seul, peu après chaque changement. ») ; le rappel d'enregistrer le propose
-  aussi (« Enregistrer automatiquement sur la clé… »). Le navigateur demande
+  aussi (« Enregistrer automatiquement dans un fichier… »). Le navigateur demande
   où écrire (le nom proposé : celui du classeur, `Symétrie centrale.memc`) ;
   une première écriture part aussitôt : « Le classeur s'enregistre
   maintenant tout seul dans « Symétrie centrale.memc ». ». Un fichier qui
@@ -2870,16 +2877,16 @@ pas d'entrée, la ligne de la clé le dit, et le rappel d'enregistrer (voir
   écriture automatique ne pose jamais le point qui attend (le double-clic au
   Stylo) ; Ctrl + S, lui, le pose, vide la piste des instruments, et écrit
   aussitôt. Tant que le dernier trait n'est pas sur la clé, le texte court
-  dit **« Clé : pas encore à jour »** (et la ligne : « Sur la clé
-  (Symétrie.memc) : pas encore à jour, les derniers changements partent
+  dit **« Enregistrement bientôt »** (et la ligne : « Enregistré dans
+  « Symétrie.memc » : pas encore à jour, les derniers changements partent
   bientôt (dernière écriture il y a 2 min) »), sans point ambre ni bandeau ;
-  « Clé : à l'instant » n'est dit qu'une fois tout écrit. Un fichier choisi
-  où rien ne s'est encore écrit (la première écriture refusée, puis un
-  rechargement) n'est jamais « à jour » : « Sur la clé (Symétrie.memc) : pas
-  encore écrit (la première écriture part bientôt) », et il ne compte pas
-  comme une sauvegarde (le rappel d'enregistrer peut venir). Le classeur
-  ouvert depuis le fichier de la clé, sans changement depuis, est « Clé : à
-  jour ».
+  « Enregistré à l'instant » n'est dit qu'une fois tout écrit. Un fichier
+  choisi où rien ne s'est encore écrit (la première écriture refusée, puis
+  un rechargement) n'est jamais « à jour » : « Fichier « Symétrie.memc » :
+  pas encore écrit (la première écriture part bientôt) », et il ne compte
+  pas comme une sauvegarde (le rappel d'enregistrer peut venir). Le classeur
+  ouvert depuis le fichier de la clé, sans changement depuis, est
+  « Enregistré, à jour ».
 - **Fermer l'onglet avant l'écriture** (les 20 secondes après le dernier
   trait : la fin du cours). Tant que des changements attendent d'être écrits
   sur la clé par cet onglet, et qu'ils s'y écriront d'eux-mêmes (la clé à
@@ -2893,8 +2900,8 @@ pas d'entrée, la ligne de la clé le dit, et le rappel d'enregistrer (voir
   Quitter quand même : pendant la question, la page ne fait plus rien
   (mesuré : ni le fil principal, ni un travailleur qu'on y lancerait), rien
   ne peut donc s'écrire ; rien n'est perdu dans ce navigateur, et la
-  prochaine ouverture du classeur l'écrit sur la clé (« Clé : pas encore à
-  jour », puis l'écriture). Une déconnexion de la session Windows, elle, ne
+  prochaine ouverture du classeur l'écrit sur la clé (« Enregistrement
+  bientôt », puis l'écriture). Une déconnexion de la session Windows, elle, ne
   laisse pas poser de question : le texte court est là pour le voir avant.
   La question n'est posée que pendant ce temps-là (elle empêcherait sinon
   certains navigateurs de garder la page en mémoire), jamais quand on part
@@ -2919,21 +2926,22 @@ pas d'entrée, la ligne de la clé le dit, et le rappel d'enregistrer (voir
   premiers octets, rien d'autre) doit être celui de ce classeur à la date
   écrite d'ici ; sinon il n'est pas remplacé, et l'état le dit : « Le
   fichier « Symétrie.memc » contient un autre classeur (« Fractions ») : il
-  n'est pas remplacé. », ou « Le fichier de la clé a été modifié ailleurs
-  (le mardi 7 octobre 2026 à 21 h 30) depuis le dernier enregistrement d'ici :
-  il n'est pas remplacé. » (le poste resté sur une version ancienne
+  n'est pas remplacé. », ou « Le fichier « Symétrie.memc » a été modifié
+  ailleurs (le mardi 7 octobre 2026 à 21 h 30) depuis le dernier
+  enregistrement d'ici : il n'est pas remplacé. » (le poste resté sur une
+  version ancienne
   n'écrase pas le travail du soir). Un fichier d'avant le lot 4, sans id, est
   accepté s'il a la bonne date. Puis le fichier fabriqué doit contenir tout
   ce qui a été écrit la dernière fois (son vecteur d'état contient le
   précédent) : sinon « Ce classeur a perdu une partie de son histoire depuis
-  le dernier enregistrement sur la clé (remplacé par une autre version de
-  MEM teachingtool, ou une écriture refusée par le navigateur) : le fichier
-  « Symétrie.memc » n'est pas remplacé. ». C'est ce qui protège la clé quand
+  le dernier enregistrement dans « Symétrie.memc » (remplacé par une autre
+  version de MEM teachingtool, ou une écriture refusée par le navigateur) :
+  le fichier n'est pas remplacé. ». C'est ce qui protège la clé quand
   la version d'avant (la clé du lot 3), ouverte sur la même machine,
   remplace le premier classeur par son « Ouvrir » (vérifié avec 94c518f :
   la nouvelle version, rechargée, le dit aussitôt et ne réécrit pas le
   fichier, même à Ctrl + S, qui enregistre alors une copie). Un conflit
-  propose **Ouvrir le fichier de la clé** (lot 4 C9 ; sauf pour un fichier
+  propose **Ouvrir le fichier** (lot 4 C9 ; sauf pour un fichier
   qui n'est plus un classeur : le même chemin qu'« Ouvrir un classeur »,
   le fichier comparé à ce classeur ; plus récent, « Mettre à jour le
   classeur » sans rien perdre, et la clé reprend sur lui, à sa date ; s'il
@@ -2944,14 +2952,16 @@ pas d'entrée, la ligne de la clé le dit, et le rappel d'enregistrer (voir
   une question : « … ce qu'il contient de plus sera perdu. Pour le garder,
   choisissez plutôt un autre fichier, ou ouvrez-le (Ctrl + O). »).
 - **Les échecs.** Rien n'est perdu : la base du navigateur garde tout. La
-  clé retirée ou le fichier déplacé (« la clé n'est plus là, ou le fichier a
-  été déplacé »), la clé pleine (« la clé est pleine »), un fichier en lecture
-  seule ou ouvert dans Word ou OneDrive (« le fichier est en lecture seule,
-  ou ouvert dans un autre logiciel ») : le bandeau le dit (« L'enregistrement
-  sur la clé a échoué (la clé est pleine). Rien n'est perdu. » [Choisir un
-  autre fichier…] ×), l'état aussi (« Clé : pas à jour »), et l'écriture se
-  réessaie seule après 30 s, 1 min, 2 min, puis toutes les 5 minutes ; à la
-  reprise : « Enregistrement sur la clé repris. ».
+  clé retirée ou le fichier déplacé (« le fichier a été déplacé, supprimé,
+  ou son disque retiré »), la clé pleine (« le disque est plein »), un
+  fichier en lecture seule ou ouvert dans Word ou OneDrive (« le fichier
+  est en lecture seule, ou ouvert dans un autre logiciel ») : le bandeau le
+  dit (« L'enregistrement dans « Symétrie.memc » a échoué (le disque est
+  plein). Rien n'est perdu. » [Choisir un autre fichier…] ×), l'état aussi
+  (« Pas à jour, rien de perdu » ; la ligne : « Fichier « Symétrie.memc » :
+  le disque est plein »), et l'écriture se réessaie seule après 30 s,
+  1 min, 2 min, puis toutes les 5 minutes ; à la reprise :
+  « L'enregistrement dans « Symétrie.memc » reprend. ».
 - **L'accord du navigateur.** Vérifié dans le vrai Chromium (sous Xvfb, en
   `file://` comme en http, `lot4/CF1-vrai-chrome.mjs`) : Chrome oublie
   l'accord d'écrire dans le fichier dès que la page change, et chaque
@@ -2967,9 +2977,11 @@ pas d'entrée, la ligne de la clé le dit, et le rappel d'enregistrer (voir
   « Enregistrer les modifications apportées à « … » ? »). Sur le poste remis
   à zéro chaque soir, le profil est neuf chaque matin : une fois par jour.
 - **Après un rechargement** (ou un changement de classeur) sans cet accord
-  gardé : l'enregistrement se met en pause (« Clé en pause ») et un bandeau
-  discret le dit : « L'enregistrement sur la clé attend votre accord. »
-  [Reprendre l'enregistrement sur la clé]. Le clic (ou Ctrl + S) demande
+  gardé : l'enregistrement se met en pause (« En pause : un clic ») et un
+  bandeau discret le dit : « L'enregistrement dans « Symétrie.memc » attend
+  votre accord. » (ou « dans « LFB classeurs » », le premier dossier du
+  chemin, quand l'outil a rangé le fichier lui-même) [Reprendre
+  l'enregistrement]. Le clic (ou Ctrl + S) demande
   l'accord, puis l'écriture due part. Rien n'est jamais demandé sans un
   clic ; un accord gardé par Chrome (« Autoriser à chaque visite ») : tout
   repart seul. Un classeur ajouté, ouvert, remplacé ou créé avec la case de
@@ -2978,13 +2990,14 @@ pas d'entrée, la ligne de la clé le dit, et le rappel d'enregistrer (voir
   vérifié avec des permissions simulées comme celles de Chrome :
   `lot4/CF1-accord.mjs`).
 - **Deux onglets** sur le même classeur : un seul écrit (Web Locks,
-  `mem-teachingtool-cle:<id>`) ; l'autre dit « Clé : par l'autre onglet »,
+  `mem-teachingtool-cle:<id>`) ; l'autre dit « Par l'autre onglet »,
   annonce ses changements à celui qui écrit (au plus toutes les 5 s), et
   prend la suite quand il se ferme : il compare alors la base (qui a tout ce
   que le premier a écrit) et sa mémoire, réunies, à ce qui est sur la clé.
   Si celui qui écrit est en pause, en conflit ou en échec, l'autre le dit
-  (« Clé : pas à jour », « l'autre onglet ouvert sur ce classeur attend
-  votre accord pour écrire sur la clé… ») au lieu de « par l'autre onglet ».
+  (« Pas à jour, rien de perdu », « l'autre onglet ouvert sur ce classeur
+  attend votre accord pour écrire dans « Symétrie.memc »… ») au lieu de
+  « Par l'autre onglet ».
   Ils se parlent sur le canal des classeurs (`mem-teachingtool-classeur` :
   `{ type: 'change', base }`, `{ type: 'etat-cle', base, etat, message }`, et
   `{ type: 'etat-cle?', base }` pour le demander). Deux classeurs ont deux
@@ -2996,13 +3009,16 @@ pas d'entrée, la ligne de la clé le dit, et le rappel d'enregistrer (voir
   il range la poignée d'un vrai fichier choisi en `file://`, et la retrouve
   après un rechargement ou un changement de classeur (l'accord, lui, comme
   plus haut). S'il ne la rangeait pas, le fichier serait à choisir de
-  nouveau après un rechargement, et la ligne de la clé le dirait.
+  nouveau après un rechargement, et la ligne du fichier le dirait
+  (« Fichier : « Symétrie.memc » est à choisir de nouveau (ce navigateur ne
+  le garde pas après un rechargement) », avec le bandeau « Choisissez de
+  nouveau le fichier de ce classeur : ce navigateur ne l'a pas gardé. »).
 
 À essayer en classe : Chrome, puis Edge, sur le poste ; la vraie clé
-(activer, écrire quelques traits, regarder l'heure de « Clé : … ») ; la
-retirer pendant le cours (le bandeau, « Rien n'est perdu »), la remettre
-(« Enregistrement sur la clé repris. » dans les 5 minutes) ; recharger la
-page, puis « Reprendre l'enregistrement sur la clé », et dans la demande de
+(activer, écrire quelques traits, regarder l'heure de « Enregistré … ») ;
+la retirer pendant le cours (le bandeau, « Rien n'est perdu »), la remettre
+(« L'enregistrement dans « … » reprend. » dans les 5 minutes) ; recharger
+la page, puis « Reprendre l'enregistrement », et dans la demande de
 Chrome « Autoriser à chaque visite » (puis changer de classeur : la clé ne
 se remet plus en pause) ; ouvrir le fichier de la clé sur le poste remis à
 zéro, avec la case : à l'arrivée, [Autoriser].
@@ -3633,14 +3649,23 @@ le tient à jour).
 
 - **Le bouton du classeur**, à gauche de la barre du haut : l'icône (deux
   classeurs), le nom du classeur en gras (coupé, entier dans son titre), et
-  dessous, en petit et en gris, l'état en quelques mots : « Clé : il y a 2
-  min », « Drive : il y a 10 min », « Fichier : il y a 25 min », « Seulement
-  dans ce navigateur », « Clé en pause », « Clé : pas à jour », « Drive en
-  attente », « Pas enregistré ! » (28 caractères au plus, le premier qui
-  s'applique, dans cet ordre de gravité) ; « Clé : pas encore à jour » tant
-  que le dernier trait n'est pas sur la clé (jamais l'heure de la dernière
-  écriture à sa place), « Clé : à jour » pour un classeur ouvert depuis le
-  fichier de la clé, sans changement depuis. Quand il faut y regarder, un
+  dessous, en petit et en gris, l'état en quelques mots : « Enregistré il y
+  a 2 min » (le classeur a son fichier ; aussi « Enregistré à l'instant »,
+  « Enregistré à 14 h 05 », « Enregistré hier à 9 h 30 », « Enregistré le
+  7 octobre », « Enregistré le 30/09/2025 »), « Drive : il y a 10 min »,
+  « Fichier : il y a 25 min », « Seulement dans ce navigateur », « En
+  pause : un clic », « Fichier changé ailleurs », « Pas à jour, rien de
+  perdu », « Drive en attente », « Pas enregistré ! » (28 caractères au
+  plus, le premier qui s'applique, dans l'ordre de gravité : le navigateur
+  en erreur, la pause, le conflit, l'échec, le Drive en attente, puis
+  l'heure) ; « Enregistrement bientôt » tant que le dernier trait n'est pas
+  dans le fichier (jamais l'heure de la dernière écriture à sa place),
+  « Enregistré, à jour » pour un classeur ouvert depuis son fichier, sans
+  changement depuis. Depuis le lot 18, le mot « clé » n'y paraît plus : le
+  bouton dit une seule chose, enregistré ou non, et depuis quand ; aucun de
+  ces textes n'est plus large que « Seulement dans ce navigateur » (mesuré
+  dans la police du bouton : le plus large des nouveaux, « Enregistré le
+  1er septembre », fait 148 px contre 159). Quand il faut y regarder, un
   **point ambre** de 8 px sur l'icône, immobile : ni animation, ni
   transition, au vidéoprojecteur toute l'heure. Le lecteur d'écran y lit
   « Classeur « Symétrie centrale » : ouvrir la bibliothèque », puis toutes
@@ -3704,16 +3729,33 @@ le tient à jour).
   programme de construction et sa consigne, et au téléphone le message
   passé sous la barre du haut, s'y règlent).
 - **Le menu ⋯** (au téléphone, *Plus* : ses sections Page, Outils de cours
-  et Vue viennent d'abord, voir « Le téléphone ») commence par le bloc du classeur : son nom, puis une ligne
-  par endroit, dans l'ordre : « Enregistré dans ce navigateur » (ou « Ce
-  navigateur n'enregistre plus ce classeur (plus de place ?) : enregistrez-le
-  dans un fichier (Ctrl + S). ») ; la clé (« Sur la clé (Symétrie.memc) : il
-  y a 2 min », « Sur la clé : en pause, le navigateur attend votre
-  accord », « Sur la clé : » et ce qui a échoué, suivi de « Rien n'est perdu :
-  le classeur est dans ce navigateur ; l'enregistrement reprendra dès que
-  possible. » quand c'est vrai, « Pas d'enregistrement automatique sur une
-  clé », « Ce navigateur ne sait pas enregistrer tout seul dans un fichier :
-  enregistrez le classeur (Ctrl + S) de temps en temps. ») ; le Drive (« Sur
+  et Vue viennent d'abord, voir « Le téléphone ») commence par le bloc du
+  classeur : son nom, puis une ligne par endroit. Quand le classeur a son
+  fichier (depuis le lot 18), sa ligne vient en premier : « Enregistré dans
+  LFB classeurs › 2 › Fractions (Fractions.memc) : il y a 2 min » quand
+  l'outil a rangé le fichier lui-même (la fiche connaît le chemin,
+  `cle.chemin`), « Enregistré dans « Symétrie.memc » : il y a 2 min » pour
+  un fichier choisi à la main ; « Enregistré dans … : à jour » ; « … : pas
+  encore à jour, les derniers changements partent bientôt (dernière
+  écriture il y a 2 min) » ; « Fichier « Symétrie.memc » : pas encore écrit
+  (la première écriture part bientôt) » ; « Fichier … : enregistrement… » ;
+  « Fichier … : en pause, le navigateur attend votre accord » ; « Fichier
+  … : » et ce qui a échoué, suivi de « Rien n'est perdu : le classeur est
+  dans ce navigateur ; l'enregistrement reprendra dès que possible. » quand
+  c'est vrai ; « Fichier … : c'est l'autre onglet ouvert sur ce classeur qui
+  l'enregistre » ; le conflit (« Le fichier « Symétrie.memc » a été modifié
+  ailleurs (…) : il n'est pas remplacé. ») ; puis « Enregistré dans ce
+  navigateur ». Sans fichier : « Seulement dans ce navigateur » (« Enregistré
+  dans ce navigateur » quand une copie du Drive protège le classeur ; ou
+  « Ce navigateur n'enregistre plus ce classeur (plus de place ?) :
+  enregistrez-le dans un fichier (Ctrl + S). »), et aucune ligne pour le
+  fichier qu'il n'a pas (le menu ⋯ propose de l'activer), sauf un fichier
+  que le navigateur n'a pas gardé (« Fichier : « Symétrie.memc » est à
+  choisir de nouveau (ce navigateur ne le garde pas après un
+  rechargement) ») et un navigateur qui ne sait pas (« Ce navigateur ne sait
+  pas enregistrer tout seul dans un fichier : enregistrez le classeur
+  (Ctrl + S) de temps en temps. ») ; le Drive, seulement quand le fichier ne
+  protège pas le classeur, ou quand sa ligne demande un clic (« Sur
   le Drive personnel (prof@gmail.com) : il y a 10 min », « Sur le Drive : en
   attente de la connexion Google », « … hors connexion, la copie partira au
   retour du réseau », « … seulement depuis la version en ligne (la connexion
@@ -3721,14 +3763,17 @@ le tient à jour).
   Drive », « Sur le Drive personnel (prof@gmail.com) : la première copie part
   bientôt », « … rien à copier pour l'instant » : jamais « à jour » sans
   copie faite ; ce qui a échoué ; les garde-fous, voir « La copie sur le
-  Drive ») ; le fichier (« Dernier enregistrement dans un fichier :
-  aujourd'hui à 14 h 05 », ou « Jamais enregistré dans un fichier »). Une
+  Drive ») ; le fichier enregistré à la main, seulement quand le fichier
+  automatique ne protège pas le classeur (« Dernier enregistrement dans un
+  fichier : aujourd'hui à 14 h 05 », ou « Jamais enregistré dans un
+  fichier »). Une
   pastille verte dit ce qui est à jour, une ambre ce qu'il faut regarder ;
   une ligne qui demande quelque chose porte son bouton (une entrée du menu,
   que les flèches atteignent) : « Enregistrer le classeur » pour le
-  navigateur en erreur ou le rappel ; pour la clé, « Reprendre
-  l'enregistrement sur la clé », « Choisir un autre fichier… », « Remplacer
-  quand même » (voir « L'enregistrement automatique sur la clé ») ; pour le
+  navigateur en erreur ou le rappel ; pour le fichier, « Reprendre
+  l'enregistrement », « Ouvrir le fichier », « Choisir un autre fichier… »,
+  « Remplacer quand même » (voir « L'enregistrement automatique sur la
+  clé ») ; pour le
   Drive, « Se connecter à Google », « Récupérer la copie du Drive »,
   « Remplacer quand même » (voir « La copie sur le Drive »). Les dates : « à l'instant », « il y a 7 min » pendant une heure,
   puis « aujourd'hui à 14 h 05 » ; jamais « il y a » après un échec (l'heure
@@ -3763,14 +3808,16 @@ le tient à jour).
   barre des outils est en bas, loin de lui), caché pendant la revue, une séance et la
   trieuse. Il ne paraît que pour ce qui demande un clic : « Ce navigateur
   n'enregistre plus ce classeur. » [Enregistrer le classeur], sans × ; le
-  rappel (plus bas) ; la clé en pause (« L'enregistrement sur la clé attend
-  votre accord. » [Reprendre l'enregistrement sur la clé]), un fichier de la
-  clé qui n'est pas remplacé (le conflit, ses deux boutons), une écriture sur
-  la clé qui a échoué (« … Rien n'est perdu. » [Choisir un autre
-  fichier…]), un fichier de la clé que le navigateur n'a pas gardé
-  (« Choisissez de nouveau le fichier de la clé : ce navigateur ne l'a pas
-  gardé. » [Enregistrer automatiquement sur la clé…], la ligne de la clé
-  passe alors en attention, avec le point) ; la copie du Drive qui n'est pas
+  rappel (plus bas) ; l'enregistrement en pause (« L'enregistrement dans
+  « Symétrie.memc » attend votre accord. », ou « dans « LFB classeurs » »
+  quand l'outil a rangé le fichier, [Reprendre l'enregistrement]), le
+  fichier qui n'est pas remplacé (le conflit, ses boutons), une écriture qui
+  a échoué (« L'enregistrement dans « Symétrie.memc » a échoué (le disque
+  est plein). Rien n'est perdu. » [Choisir un autre fichier…]), un fichier
+  que le navigateur n'a pas gardé (« Choisissez de nouveau le fichier de ce
+  classeur : ce navigateur ne l'a pas gardé. » [Enregistrer automatiquement
+  dans un fichier…], la ligne du fichier passe alors en attention, avec le
+  point) ; la copie du Drive qui n'est pas
   remplacée (un autre ordinateur, l'histoire perdue : [Récupérer la copie du
   Drive] [Remplacer quand même]) ; la copie qui attend la connexion Google
   (« La copie sur le Drive attend la connexion Google. » [Se connecter à
@@ -3791,10 +3838,10 @@ le tient à jour).
   [Enregistrer le classeur] ×. Le point ambre paraît avec lui. Une fois
   paru, il reste quand on se remet à écrire, jusqu'à ce qu'on enregistre ou
   qu'on le ferme ; au plus une fois par heure ; × le fait taire une heure.
-  Sur Chrome et Edge, il propose aussi [Enregistrer automatiquement sur la
-  clé…]. Le fichier d'un dossier relié (lot 7) est la clé du classeur : il
-  protège tant que l'accord du navigateur tient. Après un rechargement
-  (F5), la clé attend cet accord (« Clé en pause », un clic) et la copie du
+  Sur Chrome et Edge, il propose aussi [Enregistrer automatiquement dans un
+  fichier…]. Le fichier d'un dossier relié (lot 7) est la clé du classeur :
+  il protège tant que l'accord du navigateur tient. Après un rechargement
+  (F5), la clé attend cet accord (« En pause : un clic ») et la copie du
   Drive sa connexion Google : rien ne protège plus, et le rappel peut donc
   revenir ; au départ vers un autre classeur, il se lit à l'arrivée (voir
   « Gains rapides (lot 16) »).
