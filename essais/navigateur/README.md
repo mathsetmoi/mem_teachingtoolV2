@@ -26,6 +26,7 @@ dossiers d'essais vitest, le banc d'écriture), rangés par lot :
 | `lot13/` | le mode nuit d'une page : la touche N et le bouton lune, le papier noir et l'encre claire, les barres foncées, une autre page de jour, la case de la trieuse et sa vignette, le replay des élèves qui bascule au même moment (`N1-nuit.mjs`) |
 | `lot14/` | la calculatrice NumWorks : le menu Classe, l'installation (avec une page d'essai qui se fait passer pour l'émulateur), l'écran noté dans le film à chaque appui et jamais sans appui, la bande qui la déplace au Stylo, × et Ctrl+Z, le lecteur, la version hors ligne sans internet (`E1-calculatrice.mjs`) ; avec les vrais fichiers de NumWorks, s'ils sont donnés par `NUMWORKS_LYCEE` et `NUMWORKS_COLLEGE` (sinon il ne fait rien) : installer, calculer, l'écran noté (`E2-vrais-emulateurs.mjs`) |
 | `lot15/` | Publier dans un dossier de l'ordinateur, sans connexion Google : le fichier « Titre [code].mem », le lien avec le code, l'attente puis « en ligne », republier sous un autre nom (même code, un seul fichier), un relais pas à jour signalé avant d'écrire ; puis Publier en un clic (lot 16) : la fenêtre en résumé quand tout est retenu, « Modifier… », l'accord du dossier refusé qui déplie sans rien écrire (`P1-publier-dossier.mjs`) |
+| `lot17/` | le deuxième lot de l'audit : « Vérifier les classeurs », plus jamais d'image grise : l'image retrouvée à l'ouverture d'un classeur et ses pixels, l'image introuvable et son bouton, la fenêtre du menu ⋯ (la ligne d'état, Réparer, Tout réparer, l'introuvable, l'illisible), la corbeille qui recopie les images avant d'effacer (et le classeur retenu si la recopie échoue), l'autre onglet qui se recharge, le téléphone et le clavier, la version hors ligne, une mesure sur dix classeurs avec des photos (`V1-verifier-classeurs.mjs`) |
 | `ecriture/` | le banc d'écriture (le trait en direct et au replay) |
 | `commun/` | `racines.mjs` (les chemins, calculés depuis l'emplacement des fichiers) et `playwright.mjs` (où trouver Playwright) |
 | `tout.sh` | le lanceur |
@@ -46,7 +47,8 @@ npm run essais:navigateur     # les deux à la suite (environ 2 h 40)
 La partie 1 construit les deux versions (`npm run build`, `npm run
 build:pages`), puis passe les essais des lots 1 à 5 et le banc d'écriture.
 La partie 2 passe les sondes des vérifications des lots 3, 4 et 5, les essais
-vitest qui ne sont pas dans `npm test` et ceux du contrôle final du lot 5.
+vitest qui ne sont pas dans `npm test`, ceux du contrôle final du lot 5 et
+les essais du lot 17 (`lot17/*.mjs`).
 
 Chaque partie lance son propre serveur de développement, neuf, sur le port
 5173 (celui qui y tournait est arrêté, puis relancé à la fin), sans
