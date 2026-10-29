@@ -50,6 +50,7 @@ import { comparerVecteurs, reunir } from './vecteurs'
 import { adopterUneBase } from './adoption'
 import type { Surveillance } from './surveillance'
 import { ecritDansUnFichier } from './surveillance'
+import type { Verification } from './verification'
 import { enregistrerDepuisLaBase } from './enregistrer'
 import { nomDeClasseur } from './liste'
 import { descendants, dossierVisible, nomDEtiquette, nomLibre, cleDe, ETIQUETTES_MAX } from './arbre'
@@ -89,6 +90,12 @@ export interface HoteFichiers {
 /** Un fichier choisi ou lâché ; poignee : par showOpenFilePicker (on
  *  pourra y enregistrer automatiquement) */
 export interface Choisi { fichier: File; poignee?: PoigneeFichier }
+
+/** Lire ou réécrire un classeur de la bibliothèque (lireUnClasseur,
+ *  ecrireUnClasseur) depuis une fenêtre : fenetre, la fenêtre d'où l'on
+ *  agit, qui ne compte pas comme une fenêtre ouverte ; dire : à qui dire ce
+ *  qui a empêché (le message du bas sinon) */
+export interface OptionsLecture { fenetre?: Element | null; dire?: (texte: string) => void }
 
 /** Le choix des fichiers à ouvrir : des classeurs et des bibliothèques */
 export const TYPES_OUVRIR = [{ description: 'Classeur, bibliothèque ou ancien tableau (MEM teachingtool)', accept: { 'application/octet-stream': ['.memc', '.memb', EXTENSION_ANCIEN] } }]
@@ -240,6 +247,12 @@ export class Fichiers {
     return c && this.hote.app && !this.hote.sauvegarde?.estPerime ? c : null
   }
   private estIci(f: { id: string }) { return this.ici?.id === f.id }
+  /** Le classeur de cet onglet, si l'on peut encore écrire dans sa mémoire
+   *  (ni effacé, ni périmé, ni coupé de sa base) : « Vérifier les classeurs »
+   *  (lot 17) y range les images retrouvées sans passer par sa base */
+  classeurEnMemoire(): InfosClasseur | null { return this.coupe ? null : this.ici }
+  /** La vérification des images (lot 17, verification.ts), branchée par main.ts */
+  verification: Verification | null = null
 
   // ---------- Choisir ----------
   /** Pourquoi on ne peut pas ouvrir de fichier maintenant (null : on peut) */
@@ -247,10 +260,12 @@ export class Fichiers {
     if (this.enCours) return 'Un fichier est déjà en train de s\'ouvrir.'
     return this.refusMaintenant()
   }
-  private refusMaintenant(): string | null {
+  /** fenetre : celle d'où l'on agit (« Vérifier les classeurs », lot 17) :
+   *  elle ne compte pas comme une fenêtre ouverte qui empêcherait */
+  private refusMaintenant(fenetre?: Element | null): string | null {
     if (this.hote.classeur() && this.hote.sauvegarde?.estPerime && !this.coupe) return 'Rechargez d\'abord la page.'
     if (this.hote.app?.enLecture) return 'Fermez d\'abord la revue.'
-    if (document.querySelector('dialog[open]')) return 'Fermez d\'abord la fenêtre ouverte.'
+    if ([...document.querySelectorAll('dialog[open]')].some(d => d !== fenetre)) return 'Fermez d\'abord la fenêtre ouverte.'
     return null
   }
 
@@ -485,10 +500,13 @@ export class Fichiers {
   /** Un classeur de la bibliothèque, lu dans un document qui ne vit nulle
    *  part, pour y ranger ses séances (voir deplacer-seance.ts) : celui de
    *  cet onglet tel qu'il est en mémoire, un autre tel que sa base le garde.
-   *  null : il n'a pas pu être lu (on le dit). */
-  async lireUnClasseur(F: FicheClasseur): Promise<Tableau | null> {
-    const r = this.refusMaintenant() ?? (this.enCours ? 'Un fichier est en train de s\'ouvrir : attendez un instant.' : null)
-    if (r) { this.hote.message(r); return null }
+   *  null : il n'a pas pu être lu (on le dit). o.fenetre : la fenêtre d'où
+   *  l'on agit (elle n'empêche pas) ; o.dire : à qui le dire (le message du
+   *  bas sinon) — « Vérifier les classeurs » (lot 17). */
+  async lireUnClasseur(F: FicheClasseur, o: OptionsLecture = {}): Promise<Tableau | null> {
+    const dire = o.dire ?? ((t: string) => this.hote.message(t))
+    const r = this.refusMaintenant(o.fenetre) ?? (this.enCours ? 'Un fichier est en train de s\'ouvrir : attendez un instant.' : null)
+    if (r) { dire(r); return null }
     const tab = new Tableau(null)
     tab.seancesActives = true
     const app = this.hote.app
@@ -503,49 +521,25 @@ export class Fichiers {
         tab.lireEtat((await this.lire(f.fichier)).etat)
       }
     } catch (e) {
-      this.hote.message(`« ${F.nom} » n'a pas pu être lu : ${raisonDe(e)}. Rien n'a changé.`)
+      dire(`« ${F.nom} » n'a pas pu être lu : ${raisonDe(e)}. Rien n'a changé.`)
       return null
     }
     return tab
   }
 
-  /** Les images que le classeur de cet onglet montre sans leurs pixels,
-   *  cherchées dans les autres classeurs de la bibliothèque (ceux de la
-   *  corbeille compris) et rangées dans le sien. Avant le 28 octobre 2026,
-   *  une séance déplacée vers un autre classeur y arrivait sans ses images :
-   *  elles étaient restées, sous le même nom, dans le classeur d'où elle
-   *  venait. Vrai : il en a reçu (on le dit) ; null : pas maintenant. */
+  /** Les images que le classeur de cet onglet montre sans leurs pixels
+   *  (avant le 28 octobre 2026, une séance déplacée vers un autre classeur y
+   *  arrivait sans ses images : elles étaient restées, sous le même nom,
+   *  dans le classeur d'où elle venait), cherchées dans les autres classeurs
+   *  de la bibliothèque (ceux de la corbeille compris) et rangées dans le
+   *  sien : c'est la vérification des images qui s'en charge (lot 17,
+   *  verification.ts), qui dit aussi ce qui reste introuvable. Vrai : il en
+   *  a reçu (la page se redessine) ; null : pas maintenant (on réessaiera). */
   async retrouverImages(): Promise<boolean | null> {
     const ici = this.ici, app = this.hote.app
     if (!ici || !app || !this.hote.sauvegarde || this.refusMaintenant()) return null
-    const banque = app.tableau.doc.getMap('images') as Y.Map<string>
-    const manquantes = new Set<string>()
-    for (const id of app.tableau.pages.keys()) {
-      for (const f of app.tableau.formesDe(id)?.values() ?? []) if (f.type === 'image' && !banque.has(f.src)) manquantes.add(f.src)
-    }
-    if (!manquantes.size) return false
-    const trouvees = new Map<string, string>()
-    const sources = new Set<string>()
-    const fiches = await this.registre.classeurs().catch(() => [] as FicheClasseur[])
-    for (const F of fiches) {
-      if (F.id === ici.id || F.effacement != null || trouvees.size === manquantes.size) continue
-      try {
-        const f = await ecrivain.fabriquerFichier(F.base, { nom: F.nom, id: F.id })
-        const doc = new Y.Doc()
-        Y.applyUpdate(doc, (await this.lire(f.fichier)).etat)
-        const autre = doc.getMap('images') as Y.Map<string>
-        for (const src of manquantes) {
-          const d = autre.get(src)
-          if (typeof d === 'string' && !trouvees.has(src)) { trouvees.set(src, d); sources.add(F.nom) }
-        }
-        doc.destroy()
-      } catch { /* un classeur illisible : on cherche dans les autres */ }
-    }
-    if (!trouvees.size || this.ici?.id !== ici.id) return false
-    app.tableau.ecrireSansFilm(() => { for (const [src, d] of trouvees) if (!banque.has(src)) banque.set(src, d) })
-    const noms = [...sources].map(n => `« ${n} »`).join(', ')
-    this.hote.message(`${trouvees.size > 1 ? `${trouvees.size} images retrouvées` : '1 image retrouvée'} dans ${noms}.`)
-    return true
+    if (!this.verification) return false
+    return this.verification.retrouverIci()
   }
 
   /** Ce qu'on a changé dans un classeur lu par lireUnClasseur s'y écrit :
@@ -553,9 +547,11 @@ export class Fichiers {
    *  suivent comme pour tout changement) ; un autre, dans sa base, sans rien
    *  perdre (comme « Mettre à jour le classeur » : s'il a changé entre-temps,
    *  rien ne s'écrit), et les onglets qui l'ont ouvert sont prévenus. Sa
-   *  fiche suit (ses pages, ses séances). Faux : rien n'a changé (on le dit). */
-  async ecrireUnClasseur(F: FicheClasseur, tab: Tableau): Promise<boolean> {
+   *  fiche suit (ses pages, ses séances). Faux : rien n'a changé (on le dit ;
+   *  o.dire : à qui, voir lireUnClasseur). */
+  async ecrireUnClasseur(F: FicheClasseur, tab: Tableau, o: OptionsLecture = {}): Promise<boolean> {
     const app = this.hote.app
+    const dire = o.dire ?? ((t: string) => this.hote.message(t))
     let vecteur: Uint8Array
     try {
       if (this.estIci(F) && app && this.hote.sauvegarde && !this.coupe) {
@@ -566,13 +562,13 @@ export class Fichiers {
         this.prevenir(F, 'remplace')
         const r = await ecrivain.mettreAJour(F.base, lu.etat, lu.vecteur)
         if (!r.misAJour) {
-          this.hote.message(`« ${F.nom} » a changé pendant ce temps : rien n'a été modifié. Recommencez.`)
+          dire(`« ${F.nom} » a changé pendant ce temps : rien n'a été modifié. Recommencez.`)
           return false
         }
         vecteur = r.vecteur
       }
     } catch (e) {
-      this.hote.message(`« ${F.nom} » n'a pas pu être modifié : ${raisonDe(e)}. Rien n'a changé.`)
+      dire(`« ${F.nom} » n'a pas pu être modifié : ${raisonDe(e)}. Rien n'a changé.`)
       return false
     }
     const t = this.estIci(F) && app ? app.tableau : tab
