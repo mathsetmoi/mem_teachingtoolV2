@@ -11,7 +11,7 @@ import { SuiviDuClasseur } from './classeurs/suivi'
 import { Surveillance } from './classeurs/surveillance'
 import { TEXTE_INCOMPLET, lieuDuFichier } from './classeurs/etat'
 import { AutresSauvegardes } from './classeurs/autres-sauvegardes'
-// C2 : import { DeplacerClasseur } from './classeurs/deplacer-fichier'
+import { DeplacerClasseur } from './classeurs/deplacer-fichier'
 import type { CleALArrivee } from './classeurs/cle'
 import { EnregistrementCle, lireCleALArrivee } from './classeurs/cle'
 import { CopieDrive } from './classeurs/copie-drive'
@@ -477,9 +477,9 @@ async function demarrer() {
     ui.inscrireActionEtat('donner-fichier', 'Lui donner son fichier', () => void donnerSonFichierIci())
     // « Déplacer le classeur… » du menu ⋯ : le fichier suit (morceau C2,
     // deplacer-fichier.ts) ; à décommenter à la fusion du morceau C2
-    // C2 : const deplaceur = new DeplacerClasseur({ registre, bibliotheque: ui.bibliotheque, cle, message: (t, a) => ui.message(t, a), classeur: () => hote.classeur, avantDEcrire })
-    // C2 : ui.bibliotheque.brancherDeplaceur(deplaceur)
-    // C2 : ui.deplacerClasseur = () => void deplaceur.ouvrir()
+    const deplaceur = new DeplacerClasseur({ registre, bibliotheque: ui.bibliotheque, cle, message: (t, a) => ui.message(t, a), classeur: () => hote.classeur, avantDEcrire })
+    ui.bibliotheque.brancherDeplaceur(deplaceur)
+    ui.deplacerClasseur = () => void deplaceur.ouvrir()
     ui.brancherReplay(registre, infos.id)
     if (import.meta.env.DEV) Object.assign(window, { __ailleurs: ailleurs, __ranger: ranger, __autres: autres })
     if (import.meta.env.DEV) Object.assign(window, { __bibliotheque: ui.bibliotheque, __fichiers: fichiers })
