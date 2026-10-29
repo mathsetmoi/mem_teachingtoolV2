@@ -107,6 +107,17 @@ export async function retenirReglage(registre: Registre, idClasseur: string, r: 
   if (classe && r.compte) await registre.ecrireReglage(reglageCompte(classe), r.compte).catch(() => {})
 }
 
+/** Le dossier retenu pour ce classeur ne vaut plus : son fichier l'a quitté
+ *  (« Déplacer le classeur… », lot 18). Publier proposera de nouveau le
+ *  dossier du chapitre ; le Drive retenu reste. */
+export async function oublierLeDossierRetenu(registre: Registre, idClasseur: string): Promise<void> {
+  const x = await registre.reglage<ReglageReplay>(reglage(idClasseur)).catch(() => undefined)
+  if (!x || typeof x !== 'object' || !x.poignee) return
+  const reste: ReglageReplay = { ...x }
+  delete reste.poignee
+  await registre.ecrireReglage(reglage(idClasseur), reste).catch(() => {})
+}
+
 // ---------- Le résumé de la fenêtre (lot 16) ----------
 
 /** Les deux (ou trois) lignes du résumé : la séance et ses pages, où le replay

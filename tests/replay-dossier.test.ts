@@ -3,7 +3,7 @@
 // est retenu pour un classeur (faux registre) et les lignes du résumé (lot 16).
 import { describe, expect, it } from 'vitest'
 import { FORME_CODE, RELAIS_REPLAY, codeDuNom, lienEleveParCode, nouveauCode, relaisDe } from '../src/publication/comptes'
-import { deposerLeFichierSeance, deposerLeReplay, lireReglage, nomDuFichierSeance, nomDuReplay, retenirReglage, texteDuResume } from '../src/publication/replay-dossier'
+import { deposerLeFichierSeance, deposerLeReplay, lireReglage, nomDuFichierSeance, nomDuReplay, oublierLeDossierRetenu, retenirReglage, texteDuResume } from '../src/publication/replay-dossier'
 import type { PoigneeDossier } from '../src/classeurs/ordinateur'
 import type { Registre } from '../src/classeurs/registre'
 
@@ -149,6 +149,16 @@ describe('ce qui est retenu pour un classeur', () => {
     await retenirReglage(registre, 'c1', {})
     expect(etat.size).toBe(0)
     expect(await lireReglage(registre, 'c1')).toEqual({})
+  })
+
+  it('oublier le dossier retenu (le fichier l’a quitté, lot 18) : le Drive reste ; rien à oublier : rien d’écrit', async () => {
+    const { registre, etat } = fauxRegistre({ c1: null, c2: null })
+    await retenirReglage(registre, 'c1', { compte: 'mem', poignee: poignee('2_13_Proba') })
+    await oublierLeDossierRetenu(registre, 'c1')
+    expect(etat.get('replay-dossier:c1')).toEqual({ compte: 'mem' })
+    expect(await lireReglage(registre, 'c1')).toEqual({ poignee: undefined, compte: 'mem' })
+    await oublierLeDossierRetenu(registre, 'c2')
+    expect(etat.has('replay-dossier:c2')).toBe(false)
   })
 })
 

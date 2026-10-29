@@ -120,6 +120,7 @@ import { demanderNomDeSeance } from '../seances-vue'
 import type { Fichiers } from './fichiers'
 import { AIDE_ENREGISTRER_TOUT } from './fichiers'
 import type { Endroit, Ranger } from './ranger'
+import { DeplacerClasseur } from './deplacer-fichier'
 import { fermerSurLeFond } from '../dialogue'
 import { RechercheBiblio } from './recherche-biblio-vue'
 import { lireContenu } from '../recherche'
@@ -356,6 +357,11 @@ export class Bibliotheque {
   /** Où ranger les classeurs d'un niveau (lot 18) : posé par brancherRanger ;
    *  null : ce navigateur ne range pas, ou la bibliothèque est construite seule */
   ranger: Ranger | null = null
+  /** « Déplacer le classeur… » : le fichier qui suit (lot 18,
+   *  deplacer-fichier.ts), posé par brancherDeplaceur (main.ts, avec la clé
+   *  de l'onglet) ; sans lui, la bibliothèque en fabrique un sans clé (voir
+   *  leDeplaceur) */
+  private deplaceur: DeplacerClasseur | null = null
   /** La fenêtre « Ouvrir » (lot 7 : l'ordinateur ou le Drive, un dossier) :
    *  « Ouvrir… » du bandeau la montre ; sans elle, le choix des fichiers */
   ouvrirFenetre: (() => void) | null = null
@@ -709,6 +715,27 @@ export class Bibliotheque {
    *  « Où ranger… » au premier « Nouveau classeur » d'un niveau, et le
    *  fichier de chaque classeur qui arrive dans un niveau rangé */
   brancherRanger(r: Ranger) { this.ranger = r }
+
+  /** « Déplacer le classeur… » (lot 18, deplacer-fichier.ts) : le fichier du
+   *  classeur suit son déplacement (une carte, un glisser, le menu ⋯ du
+   *  classeur, « Annuler »). En développement, window.__deplaceur (les essais). */
+  brancherDeplaceur(d: DeplacerClasseur) {
+    this.deplaceur = d
+    if (import.meta.env.DEV) Object.assign(window, { __deplaceur: d })
+  }
+
+  /** Le déplaceur : celui qui est branché (main.ts, avec la clé de l'onglet) ;
+   *  sinon un déplaceur sans clé, fabriqué ici avec ce que la bibliothèque a
+   *  (la page de la bibliothèque seule : aucun classeur n'est ouvert dans cet
+   *  onglet, chaque fichier se déplace sous le verrou de son classeur) */
+  private get leDeplaceur(): DeplacerClasseur {
+    if (!this.deplaceur) {
+      this.brancherDeplaceur(new DeplacerClasseur({
+        registre: this.registre, bibliotheque: this, cle: null, message: (t, a) => this.hote.message(t, a), classeur: () => this.hote.classeur,
+      }))
+    }
+    return this.deplaceur!
+  }
 
   /** « Ouvrir… » : la fenêtre du lot 7, sinon le choix des fichiers */
   private choisirOuvrir() {
@@ -2744,8 +2771,10 @@ export class Bibliotheque {
   // ---------- Déplacer vers… (lot 4 C7) ----------
   /** « Déplacer vers… » (le menu d'un classeur ou d'un dossier) : la
    *  fenêtre de l'arbre des dossiers (voir vers.ts) ; le choix fait
-   *  deplacerVers. Échap ou « Annuler » : le focus revient à la carte. */
-  deplacer(cle: string) {
+   *  deplacerVers. Échap ou « Annuler » : le focus revient à la carte. Pour
+   *  un classeur, la ligne sous l'arbre dit ce qu'il advient de son fichier
+   *  (lot 18). */
+  async deplacer(cle: string): Promise<void> {
     if (document.querySelector('dialog[open]') || this.depart || !this.ouvert) return
     this.finirSaisie(true)
     this.annulerClicNom()
@@ -2754,10 +2783,13 @@ export class Bibliotheque {
     const d = dossier ? this.dossiers.get(cle.slice(DOSSIER.length)) : undefined
     if (!f && !d) return
     const objet = f ? objetClasseur(f) : objetDossier(d!)
+    const ligne = f ? await this.leDeplaceur.lignesPour(f) : undefined
+    if (document.querySelector('dialog[open]') || this.depart || !this.ouvert) return
     const l = this.listes.find(x => x.focusId === cle && x.cartes.has(cle)) ?? this.listes.find(x => x.cartes.has(cle))
     ouvrirDeplacerVers({
       titre: f ? `Déplacer « ${f.nom} » vers…` : `Déplacer le dossier « ${d!.nom} » vers…`,
       destinations: destinations(objet, this.dossiers),
+      ligne,
       fermee: () => { if (l && this.ouvert && l.cartes.has(cle)) this.focusCarte(l, cle, false) },
       choisir: id => void this.deplacerVers(cle, id),
     })
@@ -2774,7 +2806,12 @@ export class Bibliotheque {
    *  autre onglet a pu en déplacer un). Le message, avec « Aller à « X » »
    *  et « Annuler » (7 s). siEncore : « Annuler » ne remet en place que s'il
    *  est encore là où on l'avait mis. Le focus reste sur la carte, ou, si
-   *  elle quitte la grille, sur sa voisine. Vrai s'il a bougé. */
+   *  elle quitte la grille, sur sa voisine. Vrai s'il a bougé.
+   *  Lot 18 : le fichier d'un classeur suit son déplacement (le déplaceur,
+   *  deplacer-fichier.ts : il suit, reste, ou arrive, et la phrase s'ajoute
+   *  au message) ; « Annuler » le ramène de même. Depuis le menu ⋯ du
+   *  classeur de l'onglet, la bibliothèque n'a peut-être jamais été ouverte
+   *  ici : sa fiche est relue de l'index. */
   async deplacerVers(cle: string, cible: string | null, o: { siEncore?: string | null } = {}): Promise<boolean> {
     const dossier = cle.startsWith(DOSSIER), id = dossier ? cle.slice(DOSSIER.length) : cle
     const annulation = o.siEncore !== undefined
@@ -2793,9 +2830,16 @@ export class Bibliotheque {
     }
     const vers = arrivee ? arrivee.nom : null
     let nom: string, avant: string | null, etiquettesAvant: string[], etiquettesApres: string[]
+    /** Le dossier de la fiche avant le déplacement (le fichier suit depuis là) */
+    let dossierDAvant: string | null = null
     if (!dossier) {
-      const f0 = this.fiches.get(id)
+      let f0 = this.fiches.get(id)
+      if (!f0) {
+        const relu = await this.registre.classeur(id).catch(() => undefined)
+        if (relu && !relu.corbeille) { f0 = relu; this.fiches.set(id, relu) }
+      }
       if (!f0) { this.hote.message('Ce classeur n\'est plus dans la bibliothèque.'); return false }
+      dossierDAvant = f0.dossier
       avant = ouIlEst(objetClasseur(f0), this.dossiers)
       if (avant === cible) return false
       etiquettesAvant = etiquettesEffectives(f0, this.dossiers).map(e => e.nom)
@@ -2843,10 +2887,21 @@ export class Bibliotheque {
       if (suivante) this.focusCarte(l0, suivante, false)
       else if (!this.videDossier.hidden) this.videDossier.querySelector<HTMLElement>('button')?.focus()
     }
+    // Le fichier du classeur suit (lot 18), dans le clic : la phrase qui le
+    // dit s'ajoute au message
+    let fichier = ''
+    if (!dossier) {
+      const f = this.fiches.get(id)
+      if (f) {
+        fichier = await this.leDeplaceur.suivre(f, dossierDAvant, cible).catch(() => '')
+        if (fichier) this.ficheChange(id)
+      }
+    }
+    const apres = fichier ? `. ${fichier}` : ''
     const genre = dossier ? 'dossier' : 'classeur'
-    if (annulation) { this.hote.message(texteRetour({ genre, nom, vers })); return true }
+    if (annulation) { this.hote.message(texteRetour({ genre, nom, vers }) + apres); return true }
     const ancien = avant
-    this.hote.message(texteDeplacement({ genre, nom, vers, avant: etiquettesAvant, apres: etiquettesApres }), [
+    this.hote.message(texteDeplacement({ genre, nom, vers, avant: etiquettesAvant, apres: etiquettesApres }) + apres, [
       { libelle: texteAllerA(vers), faire: () => this.allerVers(cible, cle) },
       { libelle: ANNULER, faire: () => void this.deplacerVers(cle, ancien, { siEncore: cible }) },
     ])
@@ -2854,9 +2909,16 @@ export class Bibliotheque {
   }
 
   /** « Aller à « 5e B » » : le dossier où l'on vient de ranger la carte, le
-   *  focus sur elle */
+   *  focus sur elle. Depuis le menu ⋯ du classeur (la bibliothèque fermée,
+   *  lot 18) : elle s'ouvre d'abord. */
   private allerVers(dossierId: string | null, cle: string) {
-    if (!this.ouvert || this.depart) return
+    if (this.depart) return
+    if (!this.ouvert) {
+      this.hote.ui?.ouvrirBibliotheque()
+      if (!this.ouvert) return
+      void this.charger().then(() => { if (this.ouvert && !this.depart) this.allerVers(dossierId, cle) })
+      return
+    }
     if (dossierId !== null && !this.dossiers.has(dossierId)) { this.hote.message(DOSSIER_PARTI); return }
     this.allerA(dossierId)
     if (this.tous.cartes.has(cle)) this.focusCarte(this.tous, cle)
