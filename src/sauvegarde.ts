@@ -37,9 +37,10 @@
 //   « :<id> » pour les autres).
 // - Ctrl + S et Ctrl + O (⌘ sur Mac) ; un fichier glissé sur le tableau
 //   s'ouvre comme par « Ouvrir un classeur ». Quand le classeur s'enregistre
-//   tout seul sur la clé (classeurs/cle.ts), Ctrl + S y écrit aussitôt ;
-//   « Enregistrer une copie dans un fichier… » est alors l'Enregistrer
-//   d'avant.
+//   tout seul dans son fichier (classeurs/cle.ts), Ctrl + S y écrit
+//   aussitôt ; « Enregistrer une copie… » est alors l'Enregistrer d'avant,
+//   et la fenêtre du navigateur s'ouvre dans le dossier du chapitre quand
+//   l'outil le connaît (lot 18 : le niveau rangé sur l'ordinateur).
 // - Ouvrir passe par showOpenFilePicker quand il existe (Chrome, Edge) :
 //   la poignée du fichier permet de cocher, dans la fenêtre, « Enregistrer
 //   automatiquement les changements dans ce fichier » (le poste remis à
@@ -75,6 +76,9 @@ import { ID_CHOIX, TYPES_CLASSEUR, lireCleALArrivee } from './classeurs/cle'
 import type { Fichiers } from './classeurs/fichiers'
 import { TEXTE_PUBLIEES_COPIE } from './classeurs/reconnaitre'
 import { fermerSurLeFond } from './dialogue'
+import type { PoigneeDossier } from './classeurs/ordinateur'
+import { emplacementDe, emplacements, reglagePoignee } from './classeurs/emplacements'
+import { dossierDuChapitre } from './publication/replay-dossier'
 
 /** Le début du message d'un fichier écrit sans la partie du classeur qui ne
  *  se relit plus dans ce navigateur (voir Tableau.incomplet) */
@@ -137,6 +141,18 @@ interface FichierChoisi { name: string; createWritable(): Promise<{ write(b: Blo
 type ChoisirOuEnregistrer = (o: unknown) => Promise<FichierChoisi>
 /** Le choix d'un fichier à ouvrir, avec sa poignée (Chrome, Edge) */
 type ChoisirPourOuvrir = (o: unknown) => Promise<PoigneeFichier[]>
+
+/** Le dossier du niveau d'un classeur sur l'ordinateur (lot 7 / lot 18 :
+ *  l'emplacement 'ordinateur' de son niveau, sa poignée) ; null sinon */
+async function dossierDuNiveau(registre: Registre, id: string): Promise<PoigneeDossier | null> {
+  const f = await registre.classeur(id)
+  if (!f || f.dossier === null) return null
+  const [liste, dossiers] = await Promise.all([emplacements(registre), registre.dossiers()])
+  const e = emplacementDe(f.dossier, 'ordinateur', liste, dossiers)
+  if (!e) return null
+  const p = await registre.reglage<PoigneeDossier>(reglagePoignee(e.id))
+  return p && typeof p.getDirectoryHandle === 'function' ? p : null
+}
 
 /** Une image d'écran passe (le message « Enregistrement… » se voit), sans
  *  attendre plus de 120 ms si la page est cachée */
@@ -302,9 +318,13 @@ export class Sauvegarde {
     let choisi: FichierChoisi | null = null
     const choisir = (window as unknown as { showSaveFilePicker?: ChoisirOuEnregistrer }).showSaveFilePicker
     if (typeof choisir === 'function') {
+      // Le dossier du chapitre, quand l'outil le connaît (lot 18) : la
+      // fenêtre s'y ouvre (une proposition : on peut en choisir un autre)
+      const startIn = await this.dossierPropose()
       try {
         choisi = await choisir.call(window, {
           suggestedName: nom,
+          ...(startIn ? { startIn } : {}),
           types: [{ description: 'Classeur complet (MEM teachingtool)', accept: { 'application/octet-stream': [EXTENSION_TABLEAU] } }],
         })
       } catch (e) {
@@ -329,6 +349,24 @@ export class Sauvegarde {
       this.dire(`Le classeur n'a pas pu être enregistré : ${raison(e)}.`)
       return false
     }
+  }
+
+  /** Le dossier à proposer pour une copie (lot 18) : le dossier du chapitre
+   *  quand le niveau du classeur est rangé sur l'ordinateur (et que le
+   *  dossier existe déjà), sinon le dossier du niveau ; rien sinon. Rien non
+   *  plus si l'index met plus d'une seconde à répondre : le geste ne permet
+   *  d'ouvrir la fenêtre du navigateur que quelques secondes. Sans rien
+   *  demander au navigateur (une proposition n'a pas besoin de l'accord). */
+  private async dossierPropose(): Promise<PoigneeDossier | null> {
+    const registre = this.registre
+    if (!registre || !this.fiche) return null
+    const id = this.app.classeur.id
+    const chercher = async (): Promise<PoigneeDossier | null> => {
+      const chapitre = await dossierDuChapitre(registre, id)
+      if (!chapitre) return null
+      return (await chapitre.ouvrir(false)) ?? dossierDuNiveau(registre, id)
+    }
+    return Promise.race([chercher().catch(() => null), attendre(1000).then(() => null)])
   }
 
   /** Le fichier du classeur ouvert. Depuis sa base, par l'écrivain, hors du

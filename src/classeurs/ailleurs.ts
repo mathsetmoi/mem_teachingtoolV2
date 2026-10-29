@@ -732,8 +732,9 @@ export class Ailleurs {
   }
 
   /** « Mettre à jour » : chaque classeur du niveau dans son dossier relié
-   *  (l'accord du navigateur, ou la connexion Google, dans ce clic) */
-  private async mettreAJour(e: Emplacement, classe: FicheDossier) {
+   *  (l'accord du navigateur, ou la connexion Google, dans ce clic) ; aussi
+   *  depuis « Autres sauvegardes » (lot 18), pour un niveau sur le Drive */
+  async mettreAJour(e: Emplacement, classe: FicheDossier) {
     if (this.occupe) return
     if (e.genre === 'drive') {
       const c = e.compte ?? 'mem'
@@ -759,8 +760,9 @@ export class Ailleurs {
     await this.relierOrdinateur(classe, d, { etablissement: etab })
   }
 
-  /** « Retirer » : le dossier n'est plus tenu à jour ; rien n'y est effacé */
-  private async retirer(e: Emplacement, classe: FicheDossier) {
+  /** « Retirer » : le dossier n'est plus tenu à jour ; rien n'y est effacé
+   *  (aussi depuis « Autres sauvegardes », lot 18, pour un niveau sur le Drive) */
+  async retirer(e: Emplacement, classe: FicheDossier) {
     if (this.occupe) return
     await retirerEmplacement(this.registre, e.id)
     this.h.message(e.genre === 'drive'
