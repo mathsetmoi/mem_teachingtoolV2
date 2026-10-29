@@ -10,8 +10,9 @@
 // requestPermission rendent « granted » et chaque demande est notée avec
 // navigator.userActivation.isActive : aucune hors d'un geste. Sans accents
 // dans les noms que l'essai choisit (voir l'en-tête de E1).
-// Le déplaceur (deplacer-fichier.ts) est construit ici depuis la page et
-// branché à la bibliothèque (`window.__deplaceur`), comme le fait main.ts.
+// Le déplaceur (deplacer-fichier.ts) est celui que main.ts branche à la
+// bibliothèque (`window.__deplaceur`, en développement) ; s'il n'y est pas
+// encore, l'essai le construit depuis la page de la même façon.
 // `node lot18/E3-deplacer.mjs A` : la suite A à I seule ; `J` : la version hors
 // ligne seule.
 // A. Le classeur de l'onglet, « Fractions » dans « 5eme » (LFB classeurs › 5) :
@@ -157,8 +158,10 @@ const OUTILS = () => {
       return e ? { id: e.id, nom: e.nom, date: e.date, pages: e.pages, taille: f.size } : null
     } catch { return null }
   }
-  /** Le déplaceur, construit comme dans main.ts et branché à la bibliothèque */
+  /** Le déplaceur : celui que main.ts a branché (window.__deplaceur, en
+   *  développement) ; sinon construit ici de la même façon, et branché */
   window.__brancherDeplaceur = async () => {
+    if (window.__deplaceur) return true
     const m = await import('/src/classeurs/deplacer-fichier.ts')
     const d = new m.DeplacerClasseur({
       registre: window.__registre, bibliotheque: window.__bibliotheque, cle: window.__cle ?? null,
