@@ -25,7 +25,7 @@ import { ecrivain } from './classeurs/ecrivain'
 import { Fichiers } from './classeurs/fichiers'
 import type { ActionMessage } from './app'
 import type { SeanceDuClasseur } from './seances'
-import { deLaSeance, libelleSeance } from './seances'
+import { deLaSeance } from './seances'
 import type { ChapitreAccueil } from './seances-vue'
 import { ouvrirAccueil } from './seances-vue'
 import { installerCurseurs } from './curseurs'
@@ -364,10 +364,6 @@ async function demarrer() {
       const d = classe?.dossier ?? carte.get(ici.dossier)
       return d ? { id: d.id, nom: d.nom } : null
     }
-    // « Séance isolée » du menu ⋯ (lot 17) : la même chose que le lien de la
-    // fenêtre « Bonjour ! », pour les jours sans fenêtre (deux classes du même
-    // niveau qui se suivent) ; le classeur et les dossiers relus au clic
-    ui.onSeanceIsolee = () => void seanceIsolee(app, ui, registre, fiche, { dire: true })
     // La recherche : tous les classeurs de ce navigateur (lus en lecture
     // seule), et l'ouverture d'un autre classeur, comme depuis sa carte
     ui.idClasseur = infos.id
@@ -566,11 +562,12 @@ async function contexteDuNiveau(ui: UI, registre: Registre | null, fiche: FicheC
   return { dossiers, vivants, carte, fiches, ouvrables, ici, classe, dossierDuChapitre, dans, partir, nouveauChapitre }
 }
 
-/** « Séance isolée » (lot 17) : une séance hors chapitre (une remédiation,
- *  un devoir corrigé), dans le classeur « Séances isolées » du niveau du
- *  classeur ouvert (son dossier de niveau ; sinon son dossier ; sinon la
- *  racine), reconnu à son nom et relu à l'instant (le classeur a pu changer
- *  de dossier, un autre onglet a pu créer le classeur isolé) :
+/** « Séance isolée » (lot 17, le lien de la fenêtre « Bonjour ! ») : une
+ *  séance hors chapitre (une remédiation, un devoir corrigé), dans le
+ *  classeur « Séances isolées » du niveau du classeur ouvert (son dossier de
+ *  niveau ; sinon son dossier ; sinon la racine), reconnu à son nom et relu
+ *  à l'instant (le classeur a pu changer de dossier, un autre onglet a pu
+ *  créer le classeur isolé pendant que la fenêtre était ouverte) :
  *  - le classeur ouvert est lui-même « Séances isolées » : une nouvelle
  *    séance ici ;
  *  - il existe ailleurs : on y part, et la clé de l'onglet y fait commencer
@@ -578,24 +575,23 @@ async function contexteDuNiveau(ui: UI, registre: Registre | null, fiche: FicheC
  *  - il n'existe pas : créé sans fenêtre, page blanche, dans le dossier de
  *    niveau, puis ouvert (un classeur neuf commence sa séance sans question) ;
  *    le message d'arrivée le dit.
- *  auto : la case « Commencer par des automatismes » ; dire : annoncer la
- *  nouvelle séance quand elle commence ici (le menu ⋯). */
-async function seanceIsolee(app: App, ui: UI, registre: Registre, fiche: FicheClasseur, o: { auto?: boolean; dire?: boolean } = {}) {
+ *  auto : la case « Commencer par des automatismes » était cochée.
+ *  (Pas d'entrée dans le menu ⋯ : il ne tient déjà pas sans défiler au
+ *  poste de la classe, voir le README, lot 17.) */
+async function seanceIsolee(app: App, ui: UI, registre: Registre, fiche: FicheClasseur, auto: boolean) {
   const b = ui.bibliotheque
   if (!b) return
   const c = await contexteDuNiveau(ui, registre, fiche)
   const f = classeurSeancesIsolees(c.dossierDuChapitre, c.ouvrables, c.dossiers)
   if (f && f.id === fiche.id) {
     app.nouvelleSeance()
-    const s = app.seanceVue
-    if (o.dire && s) ui.message(`Nouvelle séance : ${libelleSeance(s)}`)
-    if (o.auto) ui.flash.ouvrir()
+    if (auto) ui.flash.ouvrir()
     return
   }
-  if (f) { c.partir(f, !!o.auto); return }
+  if (f) { c.partir(f, auto); return }
   await b.creerEtOuvrir({
     nom: NOM_SEANCES_ISOLEES, dossier: c.dossierDuChapitre,
-    avant: x => noterNouvelleSeance(x.id, !!o.auto),
+    avant: x => noterNouvelleSeance(x.id, auto),
     arrivee: texteClasseurIsoleesCree(c.classe ? c.classe.dossier.nom : null),
   })
 }
@@ -628,7 +624,7 @@ async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche
       app.nouvelleSeance()
       if (auto) ui.flash.ouvrir()
     },
-    seanceIsolee: avecBibliotheque ? { texte: texteSeanceIsolee(nomDuNiveau), faire: auto => void seanceIsolee(app, ui, registre!, fiche!, { auto }) } : null,
+    seanceIsolee: avecBibliotheque ? { texte: texteSeanceIsolee(nomDuNiveau), faire: auto => void seanceIsolee(app, ui, registre!, fiche!, auto) } : null,
     continuerSeance: auto => {
       ui.message(`Séance ${deLaSeance(seance, Date.now())} : vous la continuez`)
       if (auto) ui.flash.ouvrir()

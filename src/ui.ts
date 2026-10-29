@@ -1802,9 +1802,6 @@ export class UI implements Interface {
     if (seance) {
       filetMenu(m)
       this.entreeMenu(m, 'Nouvelle séance', () => this.nouvelleSeance(), { action: 'nouvelle-seance' })
-      // Une séance hors chapitre, dans le classeur « Séances isolées » du
-      // niveau (lot 17) : seulement avec la bibliothèque
-      if (this.onSeanceIsolee) this.entreeMenu(m, 'Séance isolée', () => this.seanceIsolee(), { action: 'seance-isolee' })
       this.entreeMenu(m, 'Renommer la séance…', () => void this.renommerSeance(), { action: 'renommer-seance' })
       const avant = this.app.tableau.seancesDuClasseur().filter(x => x.pages.length && x.debut < seance.debut).length > 0
       if (telephone || ecranTactile()) this.entreeMenu(m, 'Séance précédente…', () => this.bandeauxSeances.ouvrirSeancePrecedente(), { action: 'seance-precedente', inactif: !avant })
@@ -2306,16 +2303,6 @@ export class UI implements Interface {
     this.app.nouvelleSeance()
     const s = this.app.seanceVue
     if (s) this.message(`Nouvelle séance : ${libelleSeance(s)}`)
-  }
-
-  /** « Séance isolée » du menu ⋯ (lot 17) : une séance hors chapitre, dans
-   *  le classeur « Séances isolées » du niveau du classeur ouvert, créé au
-   *  besoin ; ce que fait aussi le lien de la fenêtre « Bonjour ! » (main.ts
-   *  le pose ; null : pas de bibliothèque, l'entrée n'est pas là) */
-  onSeanceIsolee: (() => void) | null = null
-  seanceIsolee() {
-    if (tableauCache(this.app) || document.querySelector('dialog[open]')) return
-    this.onSeanceIsolee?.()
   }
 
   // ----- Envoyer vers une autre page (voir pages/envoi.ts) -----
