@@ -4680,7 +4680,10 @@ adapté (A3 : l'ordre et la classe des boutons ; B : plus d'attente du
 rechargement ni de « Bonjour ! » ; C : le plus ancien s'ajoute en premier)
 et complété (F : doublon et chevauchement, Annuler ; G : trois d'un coup
 dont un doublon, le bouton « Séances » ; H : plus récent que tout ; I :
-téléphone 390 × 844 ; J : le fichier relié réécrit).
+téléphone 390 × 844 ; J : le fichier relié réécrit) ;
+`essais/navigateur/lot9/E1-ranger-seances.mjs` adapté (H : « Déplacer
+vers… » d'une séance du même début est refusé à part, « a déjà cette
+séance », et non plus comme un chevauchement).
 
 ## Ce que fait la v0.1
 
