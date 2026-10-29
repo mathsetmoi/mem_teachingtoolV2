@@ -36,6 +36,11 @@ import type { Proposition, ReglageReplay } from './replay-dossier'
 import { choisirLeDossier, deposerLeReplay, dossierDuChapitre, lireReglage, nomDuReplay, retenirReglage, texteDuResume } from './replay-dossier'
 import { marqueDeCopie } from '../fichier'
 import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier } from './drive'
+import type { FicheDeSeance } from '../resume/fiche'
+import { texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil, consigneGemini } from '../resume/fiche'
+import { ficheDeLaSeance, gestesDeLaSeance } from '../resume/collecte'
+import { ErreurGemini, PAGES_MAX, cleGemini, demanderAGemini, imagePourGemini, pronoteDe } from '../resume/gemini'
+import { ouvrirRedaction } from '../resume/reglage-vue'
 
 /** Ce qu'on retient d'une séance publiée, dans le document du professeur
  *  (jamais dans le film élève) : de quoi republier au même lien */
@@ -73,7 +78,16 @@ const kilo = (n: number) => n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024
 export class Publication {
   private d: HTMLDialogElement | null = null
   private seances: Seance[] = []
-  private textePronote = ''
+  /** Le lien publié et la ligne de ses pages : « Copier pour Pronote » y
+   *  ajoute le texte du cahier de textes tel qu'il est à ce moment-là */
+  private publie: { lien: string; pages: string; titre: string } | null = null
+  /** Le texte du cahier de textes a été touché par le professeur depuis
+   *  qu'on l'a rempli : Gemini ne l'écrase pas */
+  private texteTouche = false
+  /** Quelle rédaction par Gemini est en cours (la séance change : elle ne compte plus) */
+  private redaction = 0
+  /** L'image d'une page pour Gemini (ui.ts) ; absente : pas de rédaction automatique */
+  imageDePage: ((page: string) => Promise<Blob | null>) | null = null
   /** Publier quand même avec un autre compte que d'habitude : « compte:adresse » confirmé */
   private autreCompteAccepte = ''
   /** La bibliothèque et le classeur ouvert (main.ts) : de quoi retrouver le dossier du chapitre
@@ -138,6 +152,12 @@ export class Publication {
         <label class="champ"><span>Deux cours se suivent de près ? Séparer les séances aux pauses de plus de</span>
           <select class="p-decoupage">${DECOUPAGES.map(m => `<option value="${m}">${m} minutes</option>`).join('')}</select></label>
         <fieldset class="p-pages"><legend>Pages où l'on a écrit pendant la séance</legend><div class="cases"></div></fieldset>
+        <div class="p-cahier" hidden>
+          <label class="p-cahier-champ"><span>Texte pour le cahier de textes (vous pouvez le corriger)</span>
+            <textarea class="p-texte-cahier" rows="4" maxlength="2000" spellcheck="true"></textarea></label>
+          <p class="p-cahier-pied"><span class="p-cahier-qui" role="status" aria-live="polite"></span>
+            <button type="button" class="lien p-redaction">Rédaction automatique…</button></p>
+        </div>
         <label class="champ"><span>Titre (les élèves le voient)</span><input class="p-titre" maxlength="120" /></label>
         <fieldset class="p-lieu"><legend>Où ranger le replay</legend><div class="cases">
           <label class="case"><input type="radio" name="p-lieu" value="dossier"><span>Dans un dossier de l'ordinateur ou de Google Drive pour ordinateur (sans connexion Google)</span></label>
@@ -162,8 +182,10 @@ export class Publication {
           <div class="actions">
             <button type="button" class="secondaire p-copier">Copier le lien</button>
             <button type="button" class="principal p-pronote">Copier pour Pronote</button>
+            <a class="principal bouton-lien p-ouvrir-pronote" target="_blank" rel="noopener" hidden>Copier et ouvrir Pronote</a>
             <a class="secondaire bouton-lien p-ouvrir" target="_blank" rel="noopener">Tester le lien</a>
           </div>
+          <p class="p-copie-faite" hidden>Le texte pour Pronote est déjà copié : dans le cahier de textes, faites Ctrl+V.</p>
         </div>
         <div class="actions fin"><button type="button" class="secondaire p-fermer">Fermer</button></div>
       </div>`
@@ -203,11 +225,18 @@ export class Publication {
     q('.p-drive-changer').addEventListener('click', () => { q('.p-drive-retenu').hidden = true; q('.p-comptes').hidden = false })
     q('.p-copier').addEventListener('click', () => this.copier(q<HTMLInputElement>('.p-lien').value, 'Lien copié'))
     q('.p-pronote').addEventListener('click', () => this.copier(this.textePronote, 'Texte copié : collez-le dans le cahier de textes'))
+    // Le lien s'ouvre de lui-même (un onglet) ; dans le même clic, le texte part dans le presse-papiers
+    q('.p-ouvrir-pronote').addEventListener('click', () => void this.copier(this.textePronote, 'Texte copié : dans Pronote, cliquez dans le cahier de textes et faites Ctrl+V'))
+    q('.p-redaction').addEventListener('click', () => ouvrirRedaction(this.racine, () => { this.majPronote(); this.preparerTexte(true) }))
+    const champCahier = q<HTMLTextAreaElement>('.p-texte-cahier')
+    champCahier.addEventListener('input', () => { this.texteTouche = true })
+    // Corrigé par le professeur : il le garde, avec la séance (Gemini ne le réécrit plus)
+    champCahier.addEventListener('change', () => this.garderTexte(champCahier.value, 'professeur'))
     q('.p-fermer').addEventListener('click', () => d.close())
     d.addEventListener('close', () => { d.remove(); if (this.d === d) this.d = null })
     d.addEventListener('change', e => {
       if ((e.target as HTMLElement).closest('.p-lieu')) { this.remplirComptes(); this.majLieu(); this.majNouveauLien(); this.majGoogle() }
-      if ((e.target as HTMLElement).closest('.p-comptes')) { this.majNouveauLien(); this.majGoogle() }
+      if ((e.target as HTMLElement).closest('.p-comptes')) { this.majNouveauLien(); this.majGoogle(); this.majPronote() }
       if ((e.target as HTMLElement).closest('.p-lieu, .p-pages, .p-comptes, .p-nouveau-lien')) this.majVerifications()
       if ((e.target as HTMLElement).closest('.p-pages, .p-comptes')) this.majResume()
     })
@@ -361,9 +390,99 @@ export class Publication {
     // Le nom du fichier suit le titre de la séance choisie
     ;(d.querySelector('.p-nomfichier') as HTMLInputElement).value = (d.querySelector('.p-titre') as HTMLInputElement).value
     this.attente++
+    this.publie = null
+    ;(d.querySelector('.p-copie-faite') as HTMLElement).hidden = true
+    this.preparerTexte()
     this.majNouveauLien()
     this.majVerifications()
     this.majResume()
+  }
+
+  // ----- Le texte du cahier de textes (voir resume/) -----
+  /** La séance choisie, si elle est explicite (lot 6), et sa fiche */
+  private ficheChoisie(): { id: string; fiche: FicheDeSeance } | null {
+    const x = this.seance as Partial<SeanceExplicite>
+    if (!x.id) return null
+    const fiche = ficheDeLaSeance(this.app.tableau, x.id, this.app.classeur.nom)
+    return fiche ? { id: x.id, fiche } : null
+  }
+
+  /** Le texte du cahier de textes de la séance choisie : celui qui est gardé
+   *  (corrigé par le professeur, ou rédigé depuis le dernier geste), sinon
+   *  celui de l'outil ; puis, dans la version en ligne avec une clé, Gemini le
+   *  rédige. refaire : la clé vient de changer, Gemini rédige à nouveau (sauf
+   *  un texte du professeur). */
+  private preparerTexte(refaire = false) {
+    const d = this.d
+    if (!d) return
+    const bloc = d.querySelector('.p-cahier') as HTMLElement
+    const champ = d.querySelector('.p-texte-cahier') as HTMLTextAreaElement
+    const qui = d.querySelector('.p-cahier-qui') as HTMLElement
+    const moi = ++this.redaction
+    const c = this.ficheChoisie()
+    bloc.hidden = !c
+    if (!c) return
+    const t = this.app.tableau, gestes = gestesDeLaSeance(t, c.id), garde = t.texteCahierDe(c.id)
+    const aJour = !!garde && (garde.par === 'professeur' || garde.gestes === gestes)
+    champ.value = aJour ? garde!.texte : texteCahierDeLOutil(c.fiche)
+    this.texteTouche = false
+    const gemini = this.enLigne && !!cleGemini() && !!this.imageDePage
+    qui.classList.remove('erreur')
+    qui.textContent = aJour && garde!.par === 'professeur' ? 'Votre texte, gardé avec la séance.'
+      : aJour && garde!.par === 'gemini' ? 'Rédigé par Gemini : relisez-le.'
+      : gemini ? '' : this.enLigne ? 'Rédigé par l\'outil. Pour que Gemini lise aussi l\'écriture à la main :' : 'Rédigé par l\'outil (la version hors ligne ne fait pas appel à Gemini).'
+    ;(d.querySelector('.p-redaction') as HTMLElement).hidden = !this.enLigne
+    if (!gemini || garde?.par === 'professeur' || (aJour && garde!.par === 'gemini' && !refaire)) return
+    void this.redigerAvecGemini(moi, c.id, c.fiche, gestes)
+  }
+
+  private async redigerAvecGemini(moi: number, id: string, fiche: FicheDeSeance, gestes: number) {
+    const d = this.d!, qui = d.querySelector('.p-cahier-qui') as HTMLElement
+    const champ = d.querySelector('.p-texte-cahier') as HTMLTextAreaElement
+    const encore = () => this.d === d && this.redaction === moi
+    qui.textContent = 'Gemini lit les pages et rédige le texte…'
+    try {
+      const images: string[] = []
+      for (const p of fiche.pages.slice(0, PAGES_MAX)) {
+        const png = await this.imageDePage!(p.id).catch(() => null)
+        const b64 = png ? await imagePourGemini(png) : null
+        if (b64) images.push(b64)
+        if (!encore()) return
+      }
+      const brut = await demanderAGemini(cleGemini(), consigneGemini(fiche, null), images)
+      if (!encore()) return
+      const texte = texteCahierDeGemini(fiche, brut)
+      if (!texte) throw new ErreurGemini('Gemini n\'a rien rédigé pour cette séance : le texte de l\'outil reste.')
+      // Le professeur a commencé à corriger le texte de l'outil : on ne l'écrase pas
+      if (this.texteTouche) { qui.textContent = 'Gemini a rédigé un texte, mais vous avez déjà écrit le vôtre : il reste.'; return }
+      champ.value = texte
+      this.app.tableau.garderTexteCahier(id, { texte, par: 'gemini', quand: Date.now(), gestes })
+      qui.textContent = 'Rédigé par Gemini : relisez-le.'
+    } catch (e) {
+      if (!encore()) return
+      qui.textContent = e instanceof ErreurGemini ? e.message : 'Gemini n\'a pas pu rédiger le texte : le texte de l\'outil reste.'
+      qui.classList.add('erreur')
+    }
+  }
+
+  /** Garde le texte du cahier de textes avec la séance (dans le document) */
+  private garderTexte(texte: string, par: 'professeur') {
+    const c = this.ficheChoisie()
+    if (!c) return
+    this.app.tableau.garderTexteCahier(c.id, { texte: texte.trim(), par, quand: Date.now(), gestes: gestesDeLaSeance(this.app.tableau, c.id) })
+    const qui = this.d?.querySelector('.p-cahier-qui') as HTMLElement | null
+    if (qui) { qui.textContent = 'Votre texte, gardé avec la séance.'; qui.classList.remove('erreur') }
+  }
+
+  /** « Copier et ouvrir Pronote » : quand l'adresse du Pronote de ce Drive est connue */
+  private majPronote() {
+    const a = this.d?.querySelector('.p-ouvrir-pronote') as HTMLAnchorElement | null
+    if (!a) return
+    const adresse = pronoteDe(this.compte || this.retenu.compte || '')
+    a.hidden = !adresse
+    if (adresse) a.href = adresse
+    ;(this.d!.querySelector('.p-pronote') as HTMLElement).classList.toggle('principal', !adresse)
+    ;(this.d!.querySelector('.p-pronote') as HTMLElement).classList.toggle('secondaire', !!adresse)
   }
 
   /** Le titre proposé d'office : le nom de la séance, sinon sa date */
@@ -533,7 +652,7 @@ export class Publication {
       this.majLieu()
       ;(d.querySelector('.p-nouveau') as HTMLInputElement).checked = false
       if (!this.enLigne) {
-        this.textePronote = ''
+        this.publie = null
         this.etat(`Replay rangé dans « ${nom} ». Pour le lien des élèves, publiez ce replay avec MEM teachingtool en ligne : le lien sera celui-là.`)
         return
       }
@@ -541,7 +660,7 @@ export class Publication {
       ;(d.querySelector('.p-lien') as HTMLInputElement).value = lien
       ;(d.querySelector('.p-ouvrir') as HTMLAnchorElement).href = lien
       ;(d.querySelector('.p-resultat') as HTMLElement).hidden = false
-      this.textePronote = this.pourPronote(film, lien)
+      this.publie = this.lienEtPages(film, lien); this.majPronote(); void this.copierTout()
       this.majNouveauLien()
       this.majVerifications()
       void this.attendreLeRelais(this.compte, code, film, nom)
@@ -649,7 +768,7 @@ export class Publication {
       ;(d.querySelector('.p-ouvrir') as HTMLAnchorElement).href = lien
       ;(d.querySelector('.p-resultat') as HTMLElement).hidden = false
       ;(d.querySelector('.p-nouveau') as HTMLInputElement).checked = false
-      this.textePronote = this.pourPronote(film, lien)
+      this.publie = this.lienEtPages(film, lien); this.majPronote(); void this.copierTout()
       const ancienPerdu = !!deja && !r.miseAJour
       const fait = r.restauree ? 'Séance remise en ligne (elle était à la corbeille du Drive) : le lien déjà donné aux élèves remarche.'
         : r.miseAJour ? 'Séance mise à jour : le lien déjà donné aux élèves montre la nouvelle version.'
@@ -672,12 +791,33 @@ export class Publication {
     }
   }
 
-  private pourPronote(film: FilmEleve, lien: string) {
+  private lienEtPages(film: FilmEleve, lien: string) {
     const b = new Bobine(film)
-    const chapitres = b.chapitres.length > 1
+    const pages = b.chapitres.length > 1
       ? '\nPages : ' + b.chapitres.map(c => `${c.titre} (${mmss(b.temps[c.i])})`).join(' · ')
       : ''
-    return `Revoir la séance : ${film.titre}\n${lien}${chapitres}`
+    return { lien, pages, titre: film.titre }
+  }
+
+  /** Ce que « Copier pour Pronote » copie : le texte du cahier de textes (une
+   *  séance explicite), puis le lien et les pages ; sans lui, comme avant */
+  private get textePronote(): string {
+    const p = this.publie
+    if (!p) return ''
+    const bloc = this.d?.querySelector('.p-cahier') as HTMLElement | null
+    const texte = bloc && !bloc.hidden ? (this.d!.querySelector('.p-texte-cahier') as HTMLTextAreaElement).value : ''
+    return texte.trim() ? texteAvecLeLien(texte, p.lien, p.pages) : `Revoir la séance : ${p.titre}\n${p.lien}${p.pages}`
+  }
+
+  /** Juste après la publication : le texte pour Pronote part tout seul dans
+   *  le presse-papiers (quand le navigateur le permet hors d'un clic) */
+  private async copierTout() {
+    const texte = this.textePronote, d = this.d
+    if (!texte || !d) return
+    try {
+      await navigator.clipboard.writeText(texte)
+      ;(d.querySelector('.p-copie-faite') as HTMLElement).hidden = false
+    } catch { /* « Copier pour Pronote » reste là */ }
   }
 
   private async copier(texte: string, ok: string) {

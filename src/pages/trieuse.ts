@@ -32,6 +32,8 @@
 // grille (une page remise dans une séance passée : sa séance se déplie en
 // bas, le focus sur sa vignette).
 // =============================================================
+import { ficheDeLaSeance } from '../resume/collecte'
+import { contenuDeLaPage, dureeDite, ligneDeResume, nomPropose } from '../resume/fiche'
 import * as Y from 'yjs'
 import type { App } from '../app'
 import { JournalPages } from './journal'
@@ -490,6 +492,24 @@ export class Trieuse {
       const resume = document.createElement('summary')
       resume.textContent = `${s.nom ? s.nom + ' · ' + dateCourteMajuscule(s.debut) : dateCourteMajuscule(s.debut)} · ${pagesLisibles(s.pages.length)}`
       d.append(resume)
+      // La fiche de la séance (resume/fiche.ts) : ce qui a été fait, sa
+      // durée, et le texte du cahier de textes s'il a été écrit
+      const fiche = ficheDeLaSeance(t, s.id, this.app.classeur.nom)
+      const ligne = fiche ? ligneDeResume(fiche, 6) : null
+      if (fiche) {
+        const p = Object.assign(document.createElement('p'), { className: 'trieuse-seance-resume' })
+        p.textContent = `${dureeDite(fiche.fin - fiche.debut)}${ligne ? ' · ' + ligne : ''}`
+        const cahier = t.texteCahierDe(s.id)
+        if (cahier) {
+          const b = Object.assign(document.createElement('button'), { type: 'button', className: 'lien trieuse-copier-cahier', textContent: 'Copier le texte du cahier de textes' })
+          b.title = cahier.texte
+          b.addEventListener('click', () => {
+            navigator.clipboard.writeText(cahier.texte).then(() => this.app.ui.message('Texte copié : collez-le dans le cahier de textes'), () => this.app.ui.message('La copie a été refusée par le navigateur.'))
+          })
+          p.append(' ', b)
+        }
+        d.append(p)
+      }
       const rangee = Object.assign(document.createElement('div'), { className: 'trieuse-seance-pages' })
       d.append(rangee)
       const remplir = () => {
@@ -1043,7 +1063,14 @@ export class Trieuse {
     this.focusCarte(page)
     const input = document.createElement('input')
     input.type = 'text'; input.className = 'carte-saisie'; input.maxLength = 60
-    input.placeholder = 'Nom de la page (facultatif)'
+    // Un nom proposé (resume/fiche.ts) : ce qui y a été posé d'un coup, ou son
+    // premier texte tapé ; Tab le prend, sinon rien ne change
+    const propose = this.app.tableau.nomDe(page) ? null : nomPropose(
+      { id: page, textes: contenuDeLaPage([...(this.app.tableau.formesDe(page)?.values() ?? [])]).textes }, this.app.tableau.activitesDe([page]))
+    input.placeholder = propose ? `${propose} (Tab pour le prendre)` : 'Nom de la page (facultatif)'
+    if (propose) input.addEventListener('keydown', e => {
+      if (e.key === 'Tab' && !e.shiftKey && !input.value) { e.preventDefault(); input.value = propose; input.select() }
+    })
     input.setAttribute('aria-label', `Nom de la page ${this.ordre.indexOf(page) + 1}`)
     input.autocomplete = 'off'; input.enterKeyHint = 'done'
     input.value = this.app.tableau.nomDe(page) ?? ''

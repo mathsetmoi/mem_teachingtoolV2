@@ -12,6 +12,8 @@ import type { Fond, Forme, Trait } from './types'
 import type { Morceau } from './revoir/instruments-film'
 import { FOND_NEUF, uid } from './types'
 import type { FicheSeance, SeanceDuClasseur } from './seances'
+import type { Activite, TexteCahier } from './resume/fiche'
+import { activiteValable } from './resume/fiche'
 import { ficheValable, migration, nomDeSeance, rangerLesPages, rangsDeLOrdre } from './seances'
 import { seancesDuFilm } from './revoir/exporter'
 
@@ -216,6 +218,13 @@ export class Tableau {
    *  ni étape du film, ni annulation de page ; un fichier .memc les garde. */
   readonly seances: Y.Map<FicheSeance>
   readonly seanceDesPages: Y.Map<string>
+  /** Ce qui a été posé d'un coup pendant une séance (voir resume/fiche.ts) :
+   *  id → Activite (un flash, une démonstration du catalogue, des pages d'un
+   *  PDF) ; et le texte du cahier de textes de chaque séance : id de la
+   *  séance → TexteCahier. Hors des pages comme les noms : ni étape du film,
+   *  ni annulation de page ; une version d'avant les ignore. */
+  readonly activites: Y.Map<Activite>
+  readonly textesCahier: Y.Map<TexteCahier>
   /** Le rangement des pages par séance, gardé entre deux transactions */
   private rangement: SeanceDuClasseur[] | null = null
   /** Les séances sont en service (lot 6 : l'application les met en
@@ -324,6 +333,8 @@ export class Tableau {
     this.noms = this.doc.getMap('nomsPages')
     this.seances = this.doc.getMap('seances')
     this.seanceDesPages = this.doc.getMap('seanceDesPages')
+    this.activites = this.doc.getMap('activites')
+    this.textesCahier = this.doc.getMap('textesCahier')
     // Le rangement par séance se refait après chaque changement (avant les
     // observateurs, qui le lisent ; jamais gardé au milieu d'une transaction)
     const oublier = () => { this.rangement = null }
@@ -924,6 +935,31 @@ export class Tableau {
     if (propre ? this.noms.get(page) === propre : !this.noms.has(page)) return false
     this.doc.transact(() => { if (propre) this.noms.set(page, propre); else this.noms.delete(page) })
     return true
+  }
+
+  // ---------- Le résumé des séances (voir resume/fiche.ts) ----------
+  /** Note ce qu'on vient de poser d'un coup sur une page (un flash, une
+   *  démonstration, un PDF), pour que le résumé de la séance le nomme. Une
+   *  transaction sans origine, hors des pages, comme renommerPage. */
+  noterActivite(page: string, type: Activite['type'], titre: string) {
+    const a: Activite = { t: Date.now(), page, type, titre: titre.replace(/\s+/g, ' ').trim().slice(0, 120) }
+    this.doc.transact(() => this.activites.set(`${a.t}-${Math.random().toString(36).slice(2, 8)}`, a))
+  }
+
+  /** Ce qui a été posé sur ces pages, dans l'ordre du temps */
+  activitesDe(pages: Iterable<string>): Activite[] {
+    const ici = new Set(pages)
+    return [...this.activites.values()].filter(a => activiteValable(a) && ici.has(a.page)).sort((a, b) => a.t - b.t)
+  }
+
+  /** Le texte du cahier de textes d'une séance (null : pas encore écrit) */
+  texteCahierDe(seance: string): TexteCahier | null {
+    const v = this.textesCahier.get(seance)
+    return v && typeof v === 'object' && typeof v.texte === 'string' ? v : null
+  }
+
+  garderTexteCahier(seance: string, v: TexteCahier) {
+    this.doc.transact(() => this.textesCahier.set(seance, v))
   }
 
   // ---------- Les séances (lot 6, voir seances.ts) ----------

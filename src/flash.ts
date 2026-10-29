@@ -315,6 +315,8 @@ export class Flash {
       f.reste = r.parQuestion
     }
     this.montrerBandeau()
+    // Pour le résumé de la séance (resume/fiche.ts)
+    app.tableau.noterActivite(page, 'flash', `Automatismes (${questions.length} question${questions.length > 1 ? 's' : ''})`)
     window.addEventListener('keydown', this.clavier, true)
     clearInterval(this.minuterie)
     let avant = performance.now()

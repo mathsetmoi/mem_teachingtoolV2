@@ -5187,6 +5187,98 @@ tolère la vérification préalable, `attendreLaQuestion`) ;
 `tests/verifier.test.ts`, `tests/corbeille-biblio.test.ts` (les nouvelles
 phrases), `tests/ecrivain.test.ts` (la demande `images`).
 
+## Le résumé de la séance (lot 19)
+
+Le professeur demandait si l'outil peut résumer ce qui a été fait pendant une
+séance. Oui : il le fait tout seul, à partir de ce qu'il garde déjà, et le
+texte du cahier de textes est prêt quand on publie. Choix du professeur
+(29 octobre 2026) : **Gemini rédige le texte tout seul**, écriture à la main
+comprise (version en ligne, avec une clé) ; **l'outil rédige lui-même un
+texte plus court** quand Gemini n'est pas là (sans clé, hors ligne, sans
+internet, quota atteint).
+
+### Le mode d'emploi
+
+- **Publier** montre, sous les pages, le **texte pour le cahier de textes** :
+  « Lundi 26 octobre · Ensembles de nombres », puis « Fait en classe : … » (et
+  « À faire : … » quand Gemini voit un travail écrit au tableau). On peut le
+  corriger : le texte corrigé est gardé avec la séance, et Gemini ne le
+  réécrit plus. Il est là aussi quand la fenêtre s'ouvre en résumé.
+- **Rédaction automatique…** (le lien sous le texte, version en ligne) : la
+  clé de l'API Gemini (à créer une fois dans Google AI Studio, « Create API
+  key »), « Essayer la clé », et l'adresse du Pronote de chaque établissement
+  (MEM, LFB, LyFEL). Tout reste dans ce navigateur.
+- Avec une clé, à l'ouverture de Publier, Gemini lit les pages de la séance
+  et rédige le texte (« Gemini lit les pages et rédige le texte… », puis
+  « Rédigé par Gemini : relisez-le »). Rouvrir Publier ne redemande rien tant
+  que la séance n'a pas changé (un geste de plus : il rédige à nouveau).
+- **Après Publier**, le texte et le lien du replay sont déjà copiés (« faites
+  Ctrl+V ») ; **Copier et ouvrir Pronote** (quand l'adresse est donnée) copie à
+  nouveau et ouvre Pronote dans un onglet : on clique dans le cahier de
+  textes, Ctrl+V. L'outil ne se connecte jamais à Pronote : Pronote ne permet
+  à aucun autre outil d'y écrire sans le mot de passe de l'ENT.
+- **La trieuse** : sous chaque séance passée, sa durée et ce qui a été fait
+  (« 55 min · Automatismes (5 questions) · Démonstration : √2 n'est pas
+  rationnel · Exercice 12 p. 42 »), et « Copier le texte du cahier de
+  textes » quand il a été écrit.
+- **« Bonjour ! »** : « La dernière fois (lundi 8 h) : … ».
+- **Renommer une page** (F2, double-clic) : un nom est proposé, ce qui y a été
+  posé ou le premier texte tapé (« Manuel p. 42 (Tab pour le prendre) ») ;
+  Tab le prend, sinon rien ne change.
+
+### Ce que l'outil lit, et ce qu'il ne lit pas
+
+Il lit les pages de la séance, leur nom, la minute où l'on y a écrit pour la
+première fois, le texte tapé au clavier (les formules en clair : √2, x², ℝ),
+les figures, la calculatrice, les pages reprises, et ce qui a été posé d'un
+coup : un flash d'automatismes (« Automatismes (5 questions) »), une
+démonstration ou le dessin des ensembles du catalogue, les pages d'un PDF
+(« Manuel p. 42 », le nom du fichier). Ces trois-là sont notés au moment où
+on les pose : les séances d'avant ce lot n'en ont pas, leur résumé se fait
+sans. L'outil ne lit pas l'écriture à la main : c'est ce qu'ajoute Gemini.
+
+### Ce qui part chez Google, et ce qui n'y part pas
+
+Avec une clé, et seulement dans la version en ligne : les images des pages
+de la séance (16 au plus, réduites à 1600 pixels de large, en JPEG, sur fond
+blanc) et une consigne (la date, le chapitre, ce
+que l'outil sait de chaque page ; ne rien inventer, aucun nom d'élève, au
+plus 4 lignes). Avec une clé gratuite, Google peut s'en servir pour améliorer
+ses produits : la fenêtre le dit, et rappelle de n'écrire aucun prénom au
+tableau. Rien d'autre ne part : ni le document, ni ce qui a été effacé, ni le
+nom de l'appareil. La version hors ligne ne fait jamais appel à Gemini.
+
+### Comment c'est fait
+
+- `src/resume/fiche.ts` (pur, testé sous Node) : ce qu'on lit d'une page
+  (`contenuDeLaPage`), ce qui a été fait (`faitEnClasse`), la ligne de la
+  trieuse et de « Bonjour ! », le texte de l'outil, la consigne de Gemini et
+  la mise au propre de sa réponse (sans astérisques ni dièses, la date et le
+  chapitre en tête).
+- `src/resume/collecte.ts` : la fiche d'une séance lue dans le document (le
+  film pour les minutes et le dernier geste).
+- `src/resume/gemini.ts` : la clé, le modèle, la demande. Le modèle n'est pas
+  écrit en dur : le plus récent des « gemini-X-flash » de la liste des modèles
+  de Google que la clé peut utiliser, retenu une semaine ; un modèle retiré
+  (404) fait redemander la liste ; la liste muette, l'alias
+  `gemini-flash-latest`. L'API `generateContent` (v1beta), la clé dans
+  l'en-tête `x-goog-api-key`. Les erreurs sont dites en clair (clé refusée,
+  quota, pas d'internet) ; le texte de l'outil reste.
+- `src/resume/reglage-vue.ts` : la fenêtre « Rédaction automatique ».
+- Dans le document, deux cartes de premier niveau, hors des pages (ni étape
+  du film, ni annulation, comme les noms des pages) : `activites` (id →
+  { t, page, type, titre }) et `textesCahier` (id de la séance → { texte,
+  par : outil, gemini ou professeur, quand, gestes }). Un classeur `.memc`
+  les garde sans autre code ; une version d'avant les ignore. Aucune base ni
+  clé existante ne change.
+- Dans ce navigateur (nouvelles clés) : `mem-redaction-cle`,
+  `mem-redaction-modele`, `mem-pronote`. La clé n'est jamais dans le document,
+  un fichier, le replay ou le dépôt.
+- Le film élève (`.mem`) ne change pas.
+- Les essais : `tests/resume.test.ts`, et
+  `essais/navigateur/lot19/R1-resume-seance.mjs` (Gemini et le relais
+  simulés).
+
 ## Ce que fait la v0.1
 
 Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment
