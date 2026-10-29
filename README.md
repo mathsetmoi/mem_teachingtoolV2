@@ -3399,7 +3399,14 @@ séance, ou la touche Menu).
   gardés seulement si la page mère part aussi), puis glisse ses étapes à
   leur heure dans le film de l'autre classeur, avec des instantanés
   recalculés : le film reste rangé par heure, comme le veut l'export. Une
-  étape de dessin de l'autre classeur au milieu de la séance : refus.
+  étape de dessin de l'autre classeur au milieu de la séance : refus. La
+  vérification de la place est à part, en lecture seule (`placeDansLeFilm`,
+  depuis le deuxième lot de l'audit), et une séance que le classeur a déjà
+  (le même début, avec ses pages) est refusée à part (`'deja'` : « a déjà
+  cette séance ») ; les images sont dédoublées par contenu dans la banque
+  d'arrivée (les mêmes pixels sous un autre nom sont gardés une fois).
+  `copierSeance` sert aussi aux anciens tableaux (`.prof`), rangés à leur
+  date par la même règle.
 - `src/document.ts` : `rangerLesSeances`, `rendrePages`, `marquerDefinitives`,
   `pagesA`, `ecrireSansFilm`.
 - `src/classeurs/fichiers.ts` : `lireUnClasseur` et `ecrireUnClasseur`
@@ -3416,7 +3423,7 @@ séance, ou la touche Menu).
 Les séances d'avant ce classeur sont des **anciens tableaux** : un fichier
 `.prof` par séance. Ils s'ouvrent comme un classeur (`src/classeurs/ancien-tableau.ts`,
 la fenêtre dans `src/classeurs/fichiers.ts`), et chacun devient **une séance**
-d'un classeur, avec son film.
+d'un classeur, à sa date, avec son film.
 
 ### Le mode d'emploi
 
@@ -3428,13 +3435,28 @@ d'un classeur, avec son film.
   du plus ancien au plus récent. Deux choix :
   - **Nouveau classeur** : un classeur neuf, au nom du premier fichier, dans
     le dossier qu'on regarde ; il s'ouvre ;
-  - **Ajouter à « … »** : au bout du classeur ouvert, s'il n'a rien de plus
-    récent que la séance (le film se lit dans l'ordre des heures). Sinon le
-    bouton n'est pas là, et la fenêtre dit pourquoi : on ajoute les séances
-    dans l'ordre des dates, la plus ancienne d'abord.
-- Pour ranger les séances dans leurs chapitres : la première séance d'un
-  chapitre en **Nouveau classeur**, puis, ce classeur ouvert, les suivantes
-  en **Ajouter à « … »**.
+  - **Ajouter à « … »** : dans le classeur ouvert, **à sa date**, entre ses
+    séances (depuis le deuxième lot de l'audit, voir plus bas « À sa date,
+    entre les séances »). La fenêtre montre où il ira : « Dans « Fractions »,
+    il se rangera à sa date : », puis une liste, la plus récente en haut (la
+    séance d'après, la sienne surlignée « — ira ici », la séance d'avant, et
+    « … 3 séances plus récentes » / « … 2 séances plus anciennes » pour le
+    reste). Ce bouton est alors le bouton principal (Entrée). Le classeur
+    ouvert le reçoit aussitôt, **sans rechargement** ; sa base, sa clé et sa
+    copie sur le Drive suivent comme pour tout changement. Si le classeur a
+    déjà une séance écrite à ces heures-là, ou s'il a déjà ce tableau, le
+    bouton n'est pas là et la fenêtre dit pourquoi (« « Fractions » a déjà une
+    séance écrite à ces heures-là (Lun 28 sept 8h · 2 pages) : cet ancien
+    tableau ne peut pas s'y ajouter. », « « 2 - Lundi 28 septembre 2026 » est
+    déjà dans « Fractions » (séance du lun 28 sept 8h). ») ; « Nouveau
+    classeur » reste offert, et redevient le bouton principal.
+- Plusieurs `.prof` d'un coup : chacun à sa date. Un doublon (le même
+  tableau enregistré deux fois) ou un tableau aux heures d'une séance déjà
+  écrite n'est pas ajouté : il est barré dans la liste (« — déjà dans
+  « Fractions » : ne sera pas ajouté »), le survol du bouton le dit
+  (« Ajoute les 2 tableaux qui se rangent ; « 5A mardi (copie) » ne sera pas
+  ajouté. »), et le message de la fin le nomme ; les autres entrent. Rien
+  n'est jamais écrit à moitié.
 - Le message de la fin fait le bilan : « « 2 - Mardi 29 septembre 2026 » :
   1 page, 97 traits, 4 images, avec son film. » ; ce qui n'a pas été repris
   y est compté.
@@ -3493,17 +3515,77 @@ elles) : la séance prend la date écrite dans son nom (« Mardi 22 septembre
 qui peut venir bien plus tard ; ses gestes se suivent, 5 secondes l'un
 après l'autre. Les outils posés comme des images restent des images.
 
+### À sa date, entre les séances (audit du 28 octobre 2026)
+
+Jusqu'au deuxième lot de l'audit, « Ajouter à « … » » ne prenait un ancien
+tableau qu'au bout du classeur ouvert, s'il était plus récent que tout ce
+que le classeur avait (le film se lit dans l'ordre des heures) ; sinon il
+fallait passer par « Nouveau classeur » puis « Déplacer vers… », séance par
+séance. La décision : un ancien tableau se range **à sa date**, avec la règle
+de « Déplacer vers… » (lot 9), et la fenêtre montre où il ira.
+
+- **La fenêtre**, quatre états. Un seul `.prof`, un chapitre ouvert : les
+  deux paragraphes d'avant, « Dans « Fractions », il se rangera à sa date : »
+  et la liste (« … 3 séances plus récentes », « Lun 5 oct 8h · 3 pages »,
+  « ▸ Lun 28 sept 8h · « 2 - Lundi 28 septembre 2026 » · 6 pages — ira ici »
+  surligné, « Ven 25 sept 8h · Fractions (1) · 2 pages », « … 2 séances plus
+  anciennes »), puis [Annuler] [Nouveau classeur] [Ajouter à « Fractions »]
+  (principal). Un seul `.prof` refusé : à la place de la liste, pourquoi
+  (« a déjà une séance écrite à ces heures-là (…) », ou « est déjà dans
+  « Fractions » (séance du …) »), et [Annuler] [Nouveau classeur]
+  (principal). Plusieurs `.prof` dont un refusé : « ils se rangeront à leur
+  date : », la liste avec chaque « ira ici » et le refusé barré d'un ✕
+  (« — déjà une séance à cette heure : ne sera pas ajouté »), le survol du
+  bouton qui dit lesquels entrent. Sans chapitre ouvert : la fenêtre d'avant.
+- **Ce qui est refusé** : un tableau pendant une séance déjà écrite (ou dont
+  le classeur a un geste entre lui et la séance suivante : une séance d'avant
+  le lot 6 continuée sur plusieurs jours), et le même tableau déjà repris
+  (une séance du même début). La règle est exactement celle de « Déplacer
+  vers… » : la même séance supprimée du classeur (ses pages à la corbeille)
+  n'empêche pas de la reprendre, la nouvelle remplace sa trace.
+- **Un tableau plus récent que tout** devient la dernière séance (comme
+  avant) ; comme il n'y a pas de rechargement, la page qu'on regardait passe
+  « en séance passée » (le compteur ambre, le bandeau « vous la regardez sans
+  la modifier ») : c'est rare, un `.prof` vient du passé.
+- **L'ordre choisi à la main** (lot 9, `rang`) : la séance insérée, sans
+  rang, se range en bas de la liste des cartes jusqu'à « Remettre dans
+  l'ordre des dates », comme pour « Déplacer vers… ».
+- **Le temps** : la conversion se fait avant la fenêtre (« Lecture de
+  l'ancien tableau… », « Lecture de « X »… » pour chacun) ; « Annuler »
+  jette ce travail, rien n'est écrit. Mesuré sous Node, sans le canevas des
+  images : un `.prof` de 43 Mo (658 états, 562 traits, 10 images), lecture
+  0,5 s, brouillon 0,8 s, chaîne (copie à sa date) 0,12 s, différence
+  appliquée 0,03 s ; un `.prof` de 5 Mo (176 états), 33 + 37 + 18 + 25 ms.
+
 ### Comment c'est fait
 
 Le fichier est lu en entier (`lireAncienTableau`), son film rejoué page
-par page ; le classeur se fait **en mémoire** (un `Tableau` qui ne vit
-nulle part : un classeur neuf, ou l'état du classeur ouvert, `lireEtat`),
-chaque geste en une transaction, avec l'heure de son étape
-(`Tableau.horloge`) ; puis il entre dans la bibliothèque **comme un fichier
-`.memc`** : ajouté (Ajouter à la bibliothèque), ou le classeur ouvert mis à
-jour sans rien perdre (le chemin de « Mettre à jour le classeur »). Rien
-ne s'écrit si la reprise échoue. Essais : `tests/ancien-tableau.test.ts`,
-`essais/navigateur/lot7/E2-ancien-tableau.mjs`.
+par page dans un **classeur brouillon** en mémoire (`reprendre`, dans un
+`Tableau` qui ne vit nulle part : une séance neuve, chaque geste en une
+transaction, avec l'heure de son étape, `Tableau.horloge` ; le bilan dit
+l'id de la séance). Puis chaque brouillon est **copié à sa date** dans le
+classeur d'arrivée par `copierSeance` (`src/deplacer-seance.ts`, le moteur
+de « Déplacer vers… » du lot 9), en chaîne (`rangerDansLeClasseur`) : un
+document neuf à chaque copie (`copierSeance` le veut), qui devient le
+classeur d'arrivée du suivant ; un refus (`'chevauche'`, `'deja'`) ne change
+rien, et le suivant est essayé. Le classeur d'arrivée est le classeur
+ouvert lu dans un document neuf (`Fichiers.lireLeClasseurOuvert`, aussi
+pour le lot 9) ou un `Tableau` vide (« Nouveau classeur » : le même chemin,
+les essais A1 à A12 de E2 garantissent le même résultat). Tout cela se fait
+**avant la fenêtre** (convertir d'abord, demander ensuite, écrire enfin) :
+la fenêtre montre le vrai résultat (`apercuDuRangement`,
+`textesAvantAnciens`, `seanceGenante`, purs ; la liste est l'option `liste`
+de `fenetre`, `.apercu-seances`). Au clic sur « Ajouter à », le classeur
+ouvert reçoit la différence par `ecrireUnClasseur` (comme le lot 9 : sans
+rechargement ni coupure de la sauvegarde ; la fiche `listeSeances` suit),
+après une vérification du vecteur d'état (« « Fractions » a changé
+entre-temps : rien n'a été ajouté. Recommencez. » si un autre onglet a
+écrit pendant la fenêtre) ; le message vient de `texteApresAjout`.
+« Nouveau classeur » écrit le document en `.memc` en mémoire et l'ajoute à
+la bibliothèque comme avant (`ajouterEtOuvrir`). Rien ne s'écrit si la
+reprise échoue, et jamais à moitié. Essais : `tests/ancien-tableau.test.ts`,
+`tests/deplacer-seance.test.ts`, `essais/navigateur/lot7/E2-ancien-tableau.mjs`
+(sections A à J).
 
 ## L'état de la sauvegarde
 
@@ -4519,6 +4601,86 @@ dossiers sont « 5ème », « 4ème », « 3ème » ; « Nouvelle séance en 5è
 niveau »), `tests/arbre.test.ts`, `tests/bibliotheque.test.ts`. À noter : la
 liste du tirage au sort est celle du dossier (`mem-tirage-<id>`), donc du
 niveau : la même pour la 5A et la 5B.
+
+## Deuxième lot de l'audit (lot 17)
+
+Le deuxième lot de l'audit du 28 octobre 2026 : les séances isolées,
+l'ancien tableau à sa date, la corbeille du classeur rangée par séance,
+vérifier les classeurs.
+
+### L'ancien tableau (.prof) à sa date
+
+**Le mode d'emploi.** Un ancien tableau (`.prof`) ouvert quand un chapitre
+est ouvert se range **à sa date** entre ses séances, par « Ajouter à
+« Fractions » », qui devient le bouton principal (Entrée) dès qu'un tableau
+s'y range. La fenêtre « Reprendre cet ancien tableau ? » montre où il ira :
+« Dans « Fractions », il se rangera à sa date : », puis une liste, la plus
+récente en haut : une séance voisine de chaque côté de chaque ancien
+tableau, sa ligne surlignée « ▸ Lun 28 sept 8h · « 2 - Lundi 28 septembre
+2026 » · 6 pages — ira ici », et « … 3 séances plus récentes » / « … 2
+séances plus anciennes » pour le reste. Après le clic, pas de
+rechargement : le classeur ouvert a la séance tout de suite (la trieuse, le
+bouton « Séances » de la bibliothèque, Publier la montrent à sa date), le
+message dit « Séance ajoutée à « Fractions ». « 2 - Lundi 28 septembre
+2026 » : 6 pages, 97 traits, 4 images, avec son film. », et la base, la clé
+et la copie Drive suivent comme pour tout changement. Plusieurs `.prof` d'un
+coup : chacun à sa date ; un doublon (« — déjà dans « Fractions » : ne sera
+pas ajouté ») ou un tableau aux heures d'une séance déjà écrite (« — déjà
+une séance à cette heure : ne sera pas ajouté ») est barré dans la liste,
+les autres entrent, et le message le nomme (« « 5A mardi (copie) » n'a pas
+été ajouté : il est déjà dans « Fractions ». »). Un seul `.prof` refusé : la
+fenêtre dit pourquoi et n'offre que « Nouveau classeur ». Si le classeur a
+changé dans un autre onglet pendant la fenêtre : « « Fractions » a changé
+entre-temps : rien n'a été ajouté. Recommencez. ». Le détail est dans
+« Reprendre un ancien tableau (.prof) », sous-section « À sa date, entre
+les séances ».
+
+**Les décisions.** Convertir d'abord, demander ensuite, écrire enfin :
+chaque `.prof` est converti dans un classeur brouillon en mémoire
+(`reprendre`, inchangé), puis copié dans le classeur d'arrivée par
+`copierSeance` (la règle de « Déplacer vers… », lot 9), et écrit par
+`ecrireUnClasseur` sans rechargement. Une séance voisine de chaque côté
+dans l'aperçu. Plusieurs `.prof` dont un refusé : les autres entrent, et
+l'on dit lequel non (doublon et chevauchement distingués) ; rien n'est
+jamais écrit à moitié. « Ajouter à » est le bouton principal quand un
+tableau s'y range, sinon « Nouveau classeur ». « Nouveau classeur » passe
+par la même chaîne (un seul chemin) ; deux `.prof` qui se chevauchent y
+sont refusés et dits. Le vecteur d'état est vérifié avant d'écrire.
+
+**Comment c'est fait.** `src/deplacer-seance.ts` : la vérification de place
+de `copierSeance` est à part, en lecture seule (`placeDansLeFilm` : `idx`,
+`suite`, `apres`, ou `'chevauche'` / `'deja'`), et les images sont dédoublées
+par contenu dans la banque d'arrivée (les mêmes pixels sous un autre nom :
+gardés une fois ; B5 de E2 reste vrai). `src/classeurs/ancien-tableau.ts` :
+`reprendre` rend l'id de la séance (`BilanAncien.seance`) ; `finDuClasseur`
+et la règle « plus récent que tout » n'existent plus ;
+`rangerDansLeClasseur` (la chaîne de documents neufs), `seancesDApercu`,
+`seanceGenante`, `apercuDuRangement` (les lignes, `LigneApercu`),
+`textesAvantAnciens` (les paragraphes, la liste, `ajoutable`, l'aide du
+bouton), `texteDesRefus`, `texteApresAjout` : purs, testés.
+`src/classeurs/fichiers.ts` : `ouvrirAnciens` réécrit (brouillons, le
+classeur ouvert lu par `lireLeClasseurOuvert`, factorisé de
+`lireUnClasseur`, la chaîne, la fenêtre avec sa liste, l'écriture par
+`ecrireUnClasseur` ou `ajouterEtOuvrir`) ; `fenetre` gagne `liste` et un
+bouton son `aide` (title) ; plus de `mettreAJour` ni de rechargement pour
+un `.prof`. `src/style.css` : `.apercu-seances` (cinq lignes environ, puis
+elle défile ; `li.ici` surligné, `li.refuse` barré, `li.plus` en italique),
+la fenêtre des fichiers qui défile si l'écran est court et dont les boutons
+s'empilent au téléphone. `bibliotheque.ts` : « Déplacer vers… » dit « a déjà
+cette séance » pour `'deja'`. Aucune base, aucune clé de stockage, aucun
+format ne change.
+
+**Les essais.** `tests/ancien-tableau.test.ts` (le brouillon et son film,
+la chaîne : trois séances à leur date, un doublon et un chevauchement
+refusés, la même séance supprimée puis reprise, `apercuDuRangement` dans
+tous ses cas, les textes de la fenêtre et du message, `seanceGenante`),
+`tests/deplacer-seance.test.ts` (images par contenu, `placeDansLeFilm` en
+lecture seule, `'deja'`), `essais/navigateur/lot7/E2-ancien-tableau.mjs`
+adapté (A3 : l'ordre et la classe des boutons ; B : plus d'attente du
+rechargement ni de « Bonjour ! » ; C : le plus ancien s'ajoute en premier)
+et complété (F : doublon et chevauchement, Annuler ; G : trois d'un coup
+dont un doublon, le bouton « Séances » ; H : plus récent que tout ; I :
+téléphone 390 × 844 ; J : le fichier relié réécrit).
 
 ## Ce que fait la v0.1
 
@@ -5584,7 +5746,8 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/classeurs/enregistrer.ts` | Enregistrer un classeur depuis sa base, sans l'ouvrir (« Enregistrer d'abord », « Enregistrer dans un fichier… » du menu d'une carte) : le choix du fichier dans le clic, l'écrivain, la date notée |
 | `src/classeurs/apercu-classeur.ts` | L'aperçu d'un classeur : sa première page en PNG (320 × 200, en esquisse, par `sorties/apercu.ts`), quand le refaire (au démarrage s'il manque, 30 s après le dernier changement de la première page, au calme, au plus toutes les 2 min ; à l'ouverture de la bibliothèque ; avant de partir), rangé dans l'index |
 | `src/classeurs/fichiers.ts` | Ouvrir des fichiers (lot 4 C9) : le choix (showOpenFilePicker, plusieurs, `.memc` et `.memb` ; sinon le choix d'avant), les fichiers lâchés, la lecture dans le travailleur, la reconnaissance (une base de cet id sans fiche adoptée d'abord, les vecteurs comparés), la fenêtre d'un fichier et ses choix (Ajouter, Remplacer « … »…, Ouvrir celui de la bibliothèque, Mettre à jour sans rien perdre, Ajouter comme copie, Remplacer celui de la bibliothèque…, la case de la clé), plusieurs fichiers (la fenêtre qui dit tout, le bilan), Enregistrer et Ouvrir toute la bibliothèque (le `.memb` au fil de l'eau ; les dossiers réunis, la case des plus récents), le fichier de la clé en conflit |
-| `src/classeurs/ancien-tableau.ts` | Reprendre un ancien tableau (.prof) : le lire et rejouer son film, chaque geste à son heure, dans une séance neuve ; les traits, les images (rognées, tournées, fixées en fond), les textes en formules, les figures (points, segments, droites, arcs, rectangles, caches) ; le bilan, les textes de la fenêtre (pur, testé) |
+| `src/classeurs/ancien-tableau.ts` | Reprendre un ancien tableau (.prof) : le lire et rejouer son film, chaque geste à son heure, dans une séance d'un classeur brouillon, copiée à sa date dans le classeur (la chaîne `rangerDansLeClasseur`, voir deplacer-seance.ts) ; les traits, les images (rognées, tournées, fixées en fond), les textes en formules, les figures (points, segments, droites, arcs, rectangles, caches) ; le bilan, l'aperçu de la fenêtre (`apercuDuRangement`) et ses textes (pur, testé) |
+| `src/deplacer-seance.ts` | Ranger les séances depuis la bibliothèque (lot 9) : supprimer, copier une séance à sa date dans un autre classeur avec son film (`copierSeance` : la place dans le film, `placeDansLeFilm`, en lecture seule ; les instantanés recomposés, les images dédoublées par contenu), la retirer ; sert aussi aux anciens tableaux (pur, testé) |
 | `src/classeurs/reconnaitre.ts` | Reconnaître le classeur d'un fichier, pur (testé) : le même (son id), la corbeille, « ressemble » (un appareil Yjs en commun ; dans un lot, seulement sans id), nouveau ; la décision d'après la comparaison ; le nom d'après le nom du fichier ; les phrases des fenêtres et des bilans ; la réunion des dossiers d'une bibliothèque qu'on ouvre |
 | `src/classeurs/copie-drive.ts` | La copie à sens unique sur le Drive (lot 4 C10) : le compte du classeur, quand copier (2 min après le dernier changement, au plus tard 10 min, au plus une fois par max(10 min, 1 min par Mo, 20 fois la durée), au calme, en arrière-plan), depuis la base dans le travailleur, un onglet à la fois (Web Locks), une copie d'un autre onglet qui compte, les classeurs en retard (pas les vides), la connexion (jamais sans un clic ; arrivé connecté d'un autre classeur, les classeurs en retard se copient d'ici ; le jeton expiré, le bandeau ; le compte proposé à Google, retenu pour la copie), le compte Google où est vraiment la dernière copie, les échecs et leurs réessais, les garde-fous (récupérer, remplacer quand même), la question du navigateur en fermant l'onglet avant la copie quand rien d'autre ne protège le classeur (`beforeunload`, et la copie part aussitôt), la fenêtre « Copie sur le Drive… » |
 | `src/classeurs/drive-pur.ts` | La copie sur le Drive, pur (testé) : le compte voulu, le rythme (`prochaineCopie`, l'intervalle), le compte Google proposé à la reconnexion (`indiceGoogle`) et la copie sur un autre compte (`copieAilleurs`), la question du navigateur en fermant l'onglet (`questionDuDrive`), ce qu'on dit d'un échec, les phrases des garde-fous, les classeurs en retard |
