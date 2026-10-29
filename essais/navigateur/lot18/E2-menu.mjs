@@ -364,7 +364,7 @@ try {
   ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","deplacer-classeur","exporter-pdf","autres-sauvegardes","ouvrir"]' && sansAnciennes(m),
     'C6) Le menu (état 1) : enregistrer, deplacer-classeur, exporter-pdf, autres-sauvegardes, ouvrir', m.toutes)
   ok(m.libelles.enregistrer?.texte === 'Enregistrer une copie…' && m.libelles.enregistrer.touche === null && m.libelles.enregistrer.aide === AIDE_COPIE, '   … « Enregistrer une copie… », sans raccourci (Ctrl + S écrit dans le fichier), son aide', m.libelles.enregistrer)
-  const deplaceur = await p.evaluate(() => !!window.__deplaceur)
+  const deplaceur = await p.evaluate(() => !!window.__app.ui.deplacerClasseur)
   ok(m.libelles['deplacer-classeur']?.texte === 'Déplacer le classeur…' && m.libelles['deplacer-classeur'].aide === AIDE_DEPLACER && m.libelles['deplacer-classeur'].inactif === !deplaceur,
     `   … « Déplacer le classeur… » et son aide${deplaceur ? '' : ' (grisé : le morceau C2 n\'est pas branché)'}`, m.libelles['deplacer-classeur'])
   ok(m.lignes[0]?.quoi === 'cle' && /^Enregistré dans LFB classeurs › 5 › Fractions \(Fractions\.memc\) : /.test(m.lignes[0].texte), '   … le bloc : « Enregistré dans LFB classeurs › 5 › Fractions (Fractions.memc) : … » en premier', m.lignes)
