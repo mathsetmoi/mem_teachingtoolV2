@@ -50,6 +50,16 @@ describe('Mes emplacements', () => {
     expect(lireEmplacements([{ id: ID1, genre: 'ordinateur', dossier: 'd5a', nom: '5', etablissement: '' }])[0]).not.toHaveProperty('etablissement')
   })
 
+  it('lireEmplacements garde le nom de l\'établissement (lot 18), seulement avec son id', () => {
+    const l = lireEmplacements([
+      { id: ID1, genre: 'ordinateur', dossier: 'd5a', nom: '5', etablissement: 'aaaaaaaaaaaaaaaa', etablissementNom: 'LFB classeurs', cree: 3 },
+      { id: ID2, genre: 'ordinateur', dossier: 'd4b', nom: 'Cle 4B', etablissementNom: 'LFB classeurs', cree: 4 },
+    ])
+    expect(l[0]).toEqual({ id: ID1, genre: 'ordinateur', dossier: 'd5a', nom: '5', etablissement: 'aaaaaaaaaaaaaaaa', etablissementNom: 'LFB classeurs', cree: 3 })
+    expect(l[1]).toEqual({ id: ID2, genre: 'ordinateur', dossier: 'd4b', nom: 'Cle 4B', cree: 4 })
+    expect(lireEmplacements([{ id: ID1, genre: 'ordinateur', dossier: 'd5a', nom: '5', etablissement: 'aaaaaaaaaaaaaaaa', etablissementNom: 7 }])[0]).not.toHaveProperty('etablissementNom')
+  })
+
   it('emplacementDe : celui du dossier, sinon d\'un parent ; rien dans la corbeille', () => {
     const liste: Emplacement[] = [
       { id: ID1, genre: 'ordinateur', dossier: 'd5a', nom: 'Classe 5A', cree: 1 },

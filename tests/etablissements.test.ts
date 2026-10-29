@@ -4,13 +4,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   REGLAGE_ETABLISSEMENTS, REGLAGE_RANGER_PLUS_TARD, cheminLisible, etablissements, garderEtablissement, lireEtablissements, lirePlusTard, noterPlusTard,
-  nouvelId, plusTard, reglagePoigneeEtablissement, retirerEtablissement, texteDuRangement,
+  nomDEtablissement, nouvelId, plusTard, reglagePoigneeEtablissement, retirerEtablissement, texteDuRangement,
 } from '../src/classeurs/etablissements'
 import type { BilanRelier } from '../src/classeurs/ordinateur'
 import type { Registre } from '../src/classeurs/registre'
 
 const ID1 = '0123456789abcdef', ID2 = 'fedcba9876543210'
-const bilan = (b: Partial<BilanRelier> = {}): BilanRelier => ({ ecrits: [], adoptes: [], plusRiches: [], ailleurs: [], echecs: [], ...b })
+const bilan = (b: Partial<BilanRelier> = {}): BilanRelier => ({ ecrits: [], adoptes: [], plusRiches: [], ailleurs: [], relies: [], aRelire: [], echecs: [], ...b })
 
 describe('les établissements : la liste relue', () => {
   it('lireEtablissements : seulement ce qui est bien formé, sans doublon, par nom', () => {
@@ -82,6 +82,25 @@ describe('la phrase du rangement', () => {
       .toBe('Les classeurs de « 2nde » se rangent dans « LFB classeurs › 2nde » : 2 à ouvrir d\'abord (« A », « B » : leur fichier a des changements que la bibliothèque n\'a pas), 2 gardent leur fichier ailleurs (« C », « D »), 6 n\'ont pas pu être écrits (« E », « F », « G » et 3 autres).')
   })
 
+  it('tous déjà à leur place (« Mettre à jour ») : « Rien de nouveau : les 6 classeurs … sont dans … »', () => {
+    expect(texteDuRangement({ niveau: '2nde', chemin, bilan: bilan({ relies: ['A', 'B', 'C', 'D', 'E', 'F'] }) }))
+      .toBe('Rien de nouveau : les 6 classeurs de « 2nde » sont dans « LFB classeurs › 2nde ».')
+    expect(texteDuRangement({ niveau: '2nde', chemin, bilan: bilan({ relies: ['A'] }) }))
+      .toBe('Rien de nouveau : le classeur de « 2nde » est dans « LFB classeurs › 2nde ».')
+    // Avec un écrit : « 1 écrit, 5 déjà à leur place »
+    expect(texteDuRangement({ niveau: '2nde', chemin, bilan: bilan({ ecrits: ['G'], relies: ['A', 'B', 'C', 'D', 'E'] }) }))
+      .toBe('Les classeurs de « 2nde » se rangent dans « LFB classeurs › 2nde » : 1 écrit, 5 déjà à leur place.')
+    expect(texteDuRangement({ niveau: '2nde', chemin, bilan: bilan({ adoptes: ['G'], relies: ['A'] }) }))
+      .toBe('Les classeurs de « 2nde » se rangent dans « LFB classeurs › 2nde » : 1 déjà là, 1 déjà à sa place.')
+  })
+
+  it('le fichier d’avant qui n’a pas pu être relu : il reste celui du classeur, à ouvrir puis « Mettre à jour »', () => {
+    expect(texteDuRangement({ niveau: '2nde', chemin, bilan: bilan({ ecrits: ['A'], aRelire: ['Probas'] }), ancien: 'MEM classeurs › 2' }))
+      .toBe('Les classeurs de « 2nde » se rangent dans « LFB classeurs › 2nde » : 1 écrit, 1 garde son fichier d\'avant (« Probas » : ce navigateur n\'a pas pu le relire ; ouvrez-le, puis « Mettre à jour »). Les fichiers d\'avant restent dans « MEM classeurs › 2 ».')
+    expect(texteDuRangement({ niveau: '2nde', chemin, bilan: bilan({ aRelire: ['Probas', 'Stats'] }) }))
+      .toBe('Les classeurs de « 2nde » se rangent dans « LFB classeurs › 2nde » : 2 gardent leur fichier d\'avant (« Probas », « Stats » : ce navigateur n\'a pas pu le relire ; ouvrez-les, puis « Mettre à jour »).')
+  })
+
   it('après « Changer… » : les fichiers d’avant restent où ils sont', () => {
     expect(texteDuRangement({ niveau: '2nde', chemin, bilan: bilan({ ecrits: ['A'] }), ancien: 'MEM classeurs › 2nde' }))
       .toBe('Les classeurs de « 2nde » se rangent dans « LFB classeurs › 2nde » : 1 écrit. Les fichiers d\'avant restent dans « MEM classeurs › 2nde ».')
@@ -137,5 +156,16 @@ describe('l’index : garder, retirer, « Plus tard »', () => {
     await noterPlusTard(registre, 'd4a')
     await noterPlusTard(registre, 'd5a')
     expect(await plusTard(registre)).toEqual(['d5a', 'd4a'])
+  })
+})
+
+describe('le nom de l’établissement d’un emplacement', () => {
+  const liste = [{ id: '0123456789abcdef', nom: 'LFB classeurs', cree: 1 }]
+  it('celui de la liste ; sinon celui gardé par l’emplacement (l’établissement retiré) ; null pour un dossier seul', () => {
+    expect(nomDEtablissement({ etablissement: '0123456789abcdef', etablissementNom: 'Ancien nom' }, liste)).toBe('LFB classeurs')
+    expect(nomDEtablissement({ etablissement: 'fedcba9876543210', etablissementNom: 'MEM classeurs' }, liste)).toBe('MEM classeurs')
+    expect(nomDEtablissement({ etablissement: 'fedcba9876543210' }, liste)).toBeNull()
+    expect(nomDEtablissement({}, liste)).toBeNull()
+    expect(nomDEtablissement({ etablissementNom: 'MEM classeurs' }, liste)).toBeNull()
   })
 })

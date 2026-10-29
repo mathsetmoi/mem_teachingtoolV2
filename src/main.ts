@@ -418,20 +418,28 @@ async function demarrer() {
     // Le classeur de cet onglet : ce qui attend s'écrit dans sa base d'abord
     const avantDEcrire = async (f: FicheClasseur) => {
       if (f.id !== infos.id || !hote.classeur) return
+      // Sa clé se tient tranquille pendant que son fichier change de place (relâchée par apresRangement)
+      cle?.retenir()
       app.poserCeQuiAttend()
       app.piste.vider()
       await app.tableau.attendreEcritures()
+    }
+    // Après un rangement qui touche le classeur de cet onglet (son fichier
+    // écrit ou déplacé par la bibliothèque) : sa clé repart depuis sa fiche
+    const apresRangement = async (ids: readonly string[]) => {
+      if (!ids.includes(infos.id) || !hote.classeur) return
+      await cle?.relacher()
     }
     const ailleurs = new Ailleurs({
       registre, bibliotheque: ui.bibliotheque, fichiers, message: (t, a) => ui.message(t, a), classeur: () => hote.classeur,
       activerCle: cle?.disponible ? () => void cle.activer() : undefined,
       enregistrerClasseur: () => void ui.sauvegarde.enregistrer(),
-      avantDEcrire,
+      avantDEcrire, apresRangement,
     })
     // Où ranger les classeurs d'un niveau (lot 18) : la fenêtre « Où ranger… »
     // au premier classeur d'un niveau, le fichier de chaque classeur qui arrive
     // dans un niveau rangé, les établissements de « Mes emplacements »
-    const ranger = new Ranger({ registre, bibliotheque: ui.bibliotheque, message: (t, a) => ui.message(t, a), avantDEcrire, classeur: () => hote.classeur })
+    const ranger = new Ranger({ registre, bibliotheque: ui.bibliotheque, message: (t, a) => ui.message(t, a), avantDEcrire, apresRangement, classeur: () => hote.classeur })
     ui.bibliotheque.brancherRanger(ranger)
     fichiers.ranger = ranger
     ailleurs.ranger = ranger
@@ -459,15 +467,14 @@ async function demarrer() {
     // fichier écrit. « Lui donner son fichier » : le classeur reçoit son
     // fichier dans le dossier de son niveau (l'accord dans le clic), et la
     // clé de l'onglet démarre dessus.
+    // (la clé de l'onglet repart d'elle-même : apresRangement, plus haut)
     const rangerLeNiveauIci = async () => {
-      const r = await ranger.proposerPourLeClasseurOuvert()
-      if (r === 'range') await cle?.resynchroniser()
+      await ranger.proposerPourLeClasseurOuvert()
       await majRangement()
     }
     const donnerSonFichierIci = async () => {
       const r = await ranger.donnerSonFichierAuClasseurOuvert()
       if (r) {
-        await cle?.resynchroniser()
         const c = surveillance.etat.cle
         if (c.etat === 'ok' || c.etat === 'en-cours') ui.message(r.ok ?? `« ${infos.nom} » s'enregistre maintenant tout seul dans ${lieuDuFichier(c)}.`)
       }

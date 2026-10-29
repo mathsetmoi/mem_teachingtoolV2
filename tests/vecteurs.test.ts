@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
 import { Tableau } from '../src/document'
 import type { Trait } from '../src/types'
-import { comparerVecteurs, contient, reunir } from '../src/classeurs/vecteurs'
+import { comparerVecteurs, contient, reunir, verdictAncienFichier } from '../src/classeurs/vecteurs'
 
 let numero = 0
 function trait(x: number): Trait {
@@ -100,5 +100,37 @@ describe('comparerVecteurs', () => {
     }
     expect(comparerVecteurs(enc(new Map([[5, 3], [7, 0]])), enc(new Map([[5, 3]])))).toBe('egal')
     expect(comparerVecteurs(enc(new Map([[5, 3]])), enc(new Map([[5, 2], [9, 0]])))).toBe('contient')
+  })
+})
+
+describe('l’ancien fichier d’un classeur dont le niveau change de dossier (lot 18)', () => {
+  const vecteur = (d: Y.Doc) => Y.encodeStateVector(d)
+  it('la base a tout ce qu’a le fichier (égal, ou plus) : « pareil », il peut rester où il est', () => {
+    const a = new Y.Doc()
+    a.getMap('m').set('x', 1)
+    const fichier = vecteur(a)
+    expect(verdictAncienFichier({ id: 'c1', vecteur: fichier }, 'c1', vecteur(a))).toBe('pareil')
+    a.getMap('m').set('y', 2)
+    expect(verdictAncienFichier({ id: 'c1', vecteur: fichier }, 'c1', vecteur(a))).toBe('pareil')
+  })
+  it('le fichier a des changements que la base n’a pas (modifié ailleurs, ou une base qui a perdu) : « plus-riche »', () => {
+    const a = new Y.Doc()
+    a.getMap('m').set('x', 1)
+    const base = vecteur(a)
+    a.getMap('m').set('y', 2)
+    expect(verdictAncienFichier({ id: 'c1', vecteur: vecteur(a) }, 'c1', base)).toBe('plus-riche')
+    // Un autre poste a écrit de son côté : les deux divergent
+    const b = new Y.Doc()
+    Y.applyUpdate(b, Y.encodeStateAsUpdate(a))
+    b.getMap('m').set('z', 3)
+    a.getMap('m').set('w', 4)
+    expect(verdictAncienFichier({ id: 'c1', vecteur: vecteur(b) }, 'c1', vecteur(a))).toBe('plus-riche')
+  })
+  it('un fichier qui n’est pas à ce classeur (un autre id) : « pareil », il n’a rien à lui', () => {
+    const a = new Y.Doc()
+    a.getMap('m').set('x', 1)
+    expect(verdictAncienFichier({ id: 'autre', vecteur: vecteur(a) }, 'c1', vecteur(new Y.Doc()))).toBe('pareil')
+    // Sans id dans l'en-tête (un vieux fichier) : seul le vecteur compte
+    expect(verdictAncienFichier({ vecteur: vecteur(a) }, 'c1', vecteur(new Y.Doc()))).toBe('plus-riche')
   })
 })

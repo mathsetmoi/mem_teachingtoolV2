@@ -67,6 +67,15 @@ export function nouvelId(): string {
   return [...o].map(x => x.toString(16).padStart(2, '0')).join('')
 }
 
+/** Le nom de l'établissement d'un emplacement : celui de la liste, sinon
+ *  celui que l'emplacement a gardé (l'établissement a été retiré de la liste :
+ *  les niveaux rangés chez lui gardent son nom à l'écran et dans le chemin de
+ *  leurs fichiers) ; null : un dossier pour ce niveau seul (lot 7) */
+export function nomDEtablissement(e: { etablissement?: string; etablissementNom?: string }, liste: readonly Etablissement[]): string | null {
+  if (!e.etablissement) return null
+  return liste.find(x => x.id === e.etablissement)?.nom ?? e.etablissementNom ?? null
+}
+
 /** Un chemin pour l'écran : « LFB classeurs › 2 › 2_13_Probas » */
 export const cheminLisible = (segments: readonly string[]) => segments.join(' › ')
 
@@ -80,19 +89,26 @@ function noms(l: readonly string[]): string {
  *  « Les classeurs de « 2nde » se rangent dans « LFB classeurs › 2nde » :
  *  6 écrits, 1 déjà là, 1 à ouvrir d'abord (« Fonctions » : son fichier a
  *  des changements que la bibliothèque n'a pas). » ; sans classeur : « … iront
- *  dans « … » (il n'y en a pas encore). » ; ancien : le chemin d'avant, quand
- *  on vient de changer de dossier (les fichiers y restent). */
+ *  dans « … » (il n'y en a pas encore). » ; tous déjà à leur place : « Rien de
+ *  nouveau : les 6 classeurs de « 2nde » sont dans « … ». » ; ancien : le
+ *  chemin d'avant, quand on vient de changer de dossier (les fichiers y
+ *  restent). */
 export function texteDuRangement(o: { niveau: string; chemin: readonly string[]; bilan: BilanRelier; ancien?: string | null }): string {
   const b = o.bilan, ou = cheminLisible(o.chemin)
-  const n = b.ecrits.length + b.adoptes.length + b.plusRiches.length + b.ailleurs.length + b.echecs.length
+  const relies = b.relies.length
+  const n = b.ecrits.length + b.adoptes.length + b.plusRiches.length + b.ailleurs.length + b.aRelire.length + b.echecs.length
   const t: string[] = []
-  if (!n) t.push(`Les classeurs de « ${o.niveau} » iront dans « ${ou} » (il n'y en a pas encore).`)
+  if (!n && !relies) t.push(`Les classeurs de « ${o.niveau} » iront dans « ${ou} » (il n'y en a pas encore).`)
+  // Tous déjà à leur place (« Mettre à jour », le même dossier repris) : rien de nouveau
+  else if (!n) t.push(`Rien de nouveau : ${relies > 1 ? `les ${relies} classeurs` : 'le classeur'} de « ${o.niveau} » ${relies > 1 ? 'sont' : 'est'} dans « ${ou} ».`)
   else {
     const parts: string[] = []
     if (b.ecrits.length) parts.push(`${b.ecrits.length} écrit${b.ecrits.length > 1 ? 's' : ''}`)
     if (b.adoptes.length) parts.push(`${b.adoptes.length} déjà là`)
     if (b.plusRiches.length) parts.push(`${b.plusRiches.length} à ouvrir d'abord (${noms(b.plusRiches)} : ${b.plusRiches.length > 1 ? 'leur' : 'son'} fichier a des changements que la bibliothèque n'a pas)`)
     if (b.ailleurs.length) parts.push(`${b.ailleurs.length} garde${b.ailleurs.length > 1 ? 'nt leur' : ' son'} fichier ailleurs (${noms(b.ailleurs)})`)
+    if (relies) parts.push(`${relies} déjà à ${relies > 1 ? 'leur' : 'sa'} place`)
+    if (b.aRelire.length) parts.push(`${b.aRelire.length} garde${b.aRelire.length > 1 ? 'nt leur' : ' son'} fichier d'avant (${noms(b.aRelire)} : ce navigateur n'a pas pu le relire ; ${b.aRelire.length > 1 ? 'ouvrez-les' : 'ouvrez-le'}, puis « Mettre à jour »)`)
     if (b.echecs.length) parts.push(`${b.echecs.length} n'${b.echecs.length > 1 ? 'ont' : 'a'} pas pu être écrit${b.echecs.length > 1 ? 's' : ''} (${noms(b.echecs)}${b.raison ? ` : ${b.raison}` : ''})`)
     t.push(`Les classeurs de « ${o.niveau} » se rangent dans « ${ou} » : ${parts.join(', ')}.`)
   }

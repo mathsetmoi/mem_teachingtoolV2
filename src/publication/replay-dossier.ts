@@ -16,10 +16,11 @@
 import type { PoigneeDossier } from '../classeurs/ordinateur'
 import { accordDuDossier, choisirUnDossier } from '../classeurs/ordinateur'
 import { remontee } from '../classeurs/arbre'
-import { emplacementDe, emplacements, reglagePoignee, sousDossiers } from '../classeurs/emplacements'
-import { etablissements } from '../classeurs/etablissements'
+import { emplacementDe, emplacements, nomDeFichierLibre, reglagePoignee, sousDossiers } from '../classeurs/emplacements'
+import { etablissements, nomDEtablissement } from '../classeurs/etablissements'
 import type { Registre } from '../classeurs/registre'
 import { EXTENSION, codeDuNom } from './comptes'
+import { FORMAT } from '../revoir/format'
 import { nomSur } from '../fichier'
 
 /** « Titre [code].mem » : le nom choisi (passé au crible des noms de fichier),
@@ -46,12 +47,35 @@ async function ecrireDansLeDossier(d: PoigneeDossier, nom: string, texte: string
   try { await w.write(new Blob([texte], { type: 'application/json' })); await w.close() } catch (e) { await w.abort?.().catch(() => {}); throw e }
 }
 
-/** Dépose le fichier séance dans le dossier du chapitre : un fichier du même
- *  nom est remplacé (la même séance, enregistrée de nouveau). Rend son nom. */
-export async function deposerLeFichierSeance(d: PoigneeDossier, titre: string, texte: string): Promise<string> {
-  const nom = nomDuFichierSeance(titre)
+/** Dépose le fichier séance dans le dossier du chapitre, sous « Titre.mem ».
+ *  Un fichier de ce nom déjà là n'est remplacé que s'il est la même séance
+ *  (même premier geste : la séance enregistrée de nouveau) ; une autre séance
+ *  du même titre (deux heures de cours le même jour, un titre repris), ou un
+ *  fichier qu'on ne sait pas lire, n'est jamais écrasée : le nouveau prend un
+ *  nom libre (« Titre (2).mem »). Rend le nom écrit. */
+export async function deposerLeFichierSeance(d: PoigneeDossier, titre: string, texte: string, debut?: number): Promise<string> {
+  const voulu = nomDuFichierSeance(titre), base = voulu.slice(0, -EXTENSION.length)
+  const noms: string[] = []
+  for await (const x of d.values()) if (x.kind === 'file') noms.push(x.name)
+  // « Titre.mem » et « Titre (2).mem », « Titre (3).mem »… : celui qui est la même séance est repris
+  const pareils = new RegExp(`^${echapperRegExp(base)}( \\(\\d+\\))?${echapperRegExp(EXTENSION)}$`, 'i')
+  let nom: string | null = null
+  for (const n of noms.filter(n => pareils.test(n))) if (await memeSeance(d, n, debut)) { nom = n; break }
+  if (!nom) nom = noms.some(n => n.toLocaleLowerCase('fr') === voulu.toLocaleLowerCase('fr')) ? nomDeFichierLibre(base, EXTENSION, noms) : voulu
   await ecrireDansLeDossier(d, nom, texte)
   return nom
+}
+
+const echapperRegExp = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** Le fichier séance déjà là est-il la même séance (son enveloppe porte la
+ *  date du premier geste) ? Dans le doute (illisible, sans date) : non. */
+async function memeSeance(d: PoigneeDossier, nom: string, debut: number | undefined): Promise<boolean> {
+  if (debut === undefined) return false
+  try {
+    const e = JSON.parse(await (await (await d.getFileHandle(nom)).getFile()).text()) as { format?: string; date?: number } | null
+    return !!e && e.format === FORMAT && e.date === debut
+  } catch { return false }
 }
 
 /** Dépose le replay dans le dossier : un fichier du même code (d'avant, sous
@@ -148,9 +172,9 @@ export async function dossierDuChapitre(registre: Registre, idClasseur: string):
     // Le même chemin que relierLesClasseurs : sous-dossiers du niveau, puis le dossier du chapitre
     const segments = [...sousDossiers(f.dossier, e.dossier, dossiers), nomSur(f.nom)].map(n => nomSur(n, { repli: 'Dossier' }))
     // Rangé chez un établissement (lot 18) : son nom devant (« LFB classeurs › 2 › 2_13_Probas »)
-    const etab = e.etablissement ? (await etablissements(registre)).find(x => x.id === e.etablissement) : undefined
+    const etab = e.etablissement ? nomDEtablissement(e, await etablissements(registre)) : null
     return {
-      chemin: [...(etab ? [etab.nom] : []), racine.name, ...segments].join(' › '),
+      chemin: [...(etab ? [etab] : []), racine.name, ...segments].join(' › '),
       async ouvrir(creer) {
         // L'accord d'écrire (Chrome le redemande après un redémarrage) : dans le clic
         if (creer && !await accordDuDossier(racine, true).catch(() => false)) return null

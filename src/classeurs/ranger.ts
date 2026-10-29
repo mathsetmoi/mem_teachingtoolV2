@@ -36,9 +36,9 @@ import type { Rangement } from './etat'
 import type { Emplacement } from './emplacements'
 import { classeursDeLaClasse, emplacementDe, emplacements, garderEmplacement, reglagePoignee, sousDossiers } from './emplacements'
 import type { BilanRelier, PoigneeDossier } from './ordinateur'
-import { accordDuDossier, choisirUnDossier, choisitUnDossier, relierLesClasseurs } from './ordinateur'
+import { accordDeLire, accordDuDossier, choisirUnDossier, choisitUnDossier, relierLesClasseurs } from './ordinateur'
 import type { Etablissement } from './etablissements'
-import { cheminLisible, etablissements, garderEtablissement, noterPlusTard, nouvelId, plusTard, reglagePoigneeEtablissement, texteDuRangement } from './etablissements'
+import { cheminLisible, etablissements, nomDEtablissement, garderEtablissement, noterPlusTard, nouvelId, plusTard, reglagePoigneeEtablissement, texteDuRangement } from './etablissements'
 import { ecrivain } from './ecrivain'
 import { dossierVisible, remontee } from './arbre'
 import { EXTENSION_TABLEAU, nomSur } from '../fichier'
@@ -53,6 +53,10 @@ export interface HoteRanger {
   /** Avant de fabriquer le fichier d'un classeur depuis sa base : celui de
    *  cet onglet écrit d'abord ce qui attend */
   avantDEcrire?: (f: FicheClasseur) => Promise<void>
+  /** Après que des classeurs (ids) ont reçu ou changé de fichier par ici,
+   *  même si rien n'a marché : la clé du classeur de cet onglet, s'il en
+   *  est, repart depuis sa fiche (EnregistrementCle.relacher) */
+  apresRangement?: (ids: readonly string[]) => Promise<void>
   /** Le classeur ouvert dans cet onglet ; null : la bibliothèque seule */
   classeur(): InfosClasseur | null
 }
@@ -95,13 +99,16 @@ const poigneeValable = (x: unknown): PoigneeDossier | null =>
  *  etablissement : l'id de l'établissement du dossier. Rend le bilan ; null
  *  si rien n'a pu se faire (dit par message). */
 export async function relierLeNiveau(h: { registre: Registre; message(texte: string): void; avantDEcrire?: (f: FicheClasseur) => Promise<void> },
-  classe: FicheDossier, d: PoigneeDossier, o: { prefixe?: string[]; etablissement?: string; reprendre?: boolean } = {}): Promise<BilanRelier | null> {
+  classe: FicheDossier, d: PoigneeDossier, o: { prefixe?: string[]; etablissement?: string; etablissementNom?: string; reprendre?: boolean; ancien?: PoigneeDossier } = {}): Promise<BilanRelier | null> {
   if (!await accordDuDossier(d, false).catch(() => false)) {
     h.message(`Le navigateur n'a pas permis d'écrire dans « ${d.name} ». Recommencez et cliquez « Autoriser ».`)
     return null
   }
   const deja = (await emplacements(h.registre)).find(e => e.dossier === classe.id && e.genre === 'ordinateur')
-  const e: Emplacement = { id: deja?.id ?? nouvelId(), genre: 'ordinateur', dossier: classe.id, nom: d.name, cree: deja?.cree ?? Date.now(), ...(o.etablissement ? { etablissement: o.etablissement } : {}) }
+  // Rangé chez un établissement : son id et son nom (le nom reste à l'écran
+  // et dans le chemin des fichiers si l'établissement est retiré de la liste)
+  const etab = o.etablissement ? { etablissement: o.etablissement, ...(o.etablissementNom ? { etablissementNom: o.etablissementNom } : {}) } : {}
+  const e: Emplacement = { id: deja?.id ?? nouvelId(), genre: 'ordinateur', dossier: classe.id, nom: d.name, cree: deja?.cree ?? Date.now(), ...etab }
   try { await h.registre.ecrireReglage(reglagePoignee(e.id), d) } catch {
     h.message('Ce navigateur ne peut pas garder le dossier : enregistrez plutôt le niveau dans un fichier.')
     return null
@@ -111,6 +118,7 @@ export async function relierLeNiveau(h: { registre: Registre; message(texte: str
   return relierLesClasseurs(h.registre, d, classe.id, {
     prefixe,
     reprendre: o.reprendre,
+    ancien: o.ancien,
     avantDEcrire: h.avantDEcrire,
     progres: (n, total) => h.message(`« ${classe.nom} » : classeur ${n} sur ${total}…`),
   })
@@ -162,8 +170,10 @@ export class Ranger {
     const [liste, dossiers] = await Promise.all([emplacements(this.registre), this.registre.dossiers()])
     const e = emplacementDe(dossierId, 'ordinateur', liste, dossiers)
     if (!e) return null
-    const etab = e.etablissement ? (await etablissements(this.registre)).find(x => x.id === e.etablissement) ?? null : null
-    return { emplacement: e, etablissement: etab, prefixe: etab ? [etab.nom, e.nom] : [e.nom], sous: sousDossiers(dossierId, e.dossier, dossiers) }
+    const liste2 = e.etablissement ? await etablissements(this.registre) : []
+    const etab = liste2.find(x => x.id === e.etablissement) ?? null
+    const nomEtab = nomDEtablissement(e, liste2)
+    return { emplacement: e, etablissement: etab, prefixe: nomEtab ? [nomEtab, e.nom] : [e.nom], sous: sousDossiers(dossierId, e.dossier, dossiers) }
   }
 
   /** Le chemin, pour l'écran, du fichier d'un classeur nommé `nom` à cet
@@ -233,7 +243,7 @@ export class Ranger {
       dire(`« ${f.nom} » n'a pas encore son fichier dans « ${ou} » : le navigateur attend votre accord (menu ⋯ → Mes emplacements, « Mettre à jour »).`)
       return undefined
     }
-    const prefixe = endroit.etablissement ? [endroit.etablissement.nom, d.name] : [d.name]
+    const prefixe = [...endroit.prefixe.slice(0, -1), d.name]
     const fichier = nomSur(f.nom) + EXTENSION_TABLEAU
     const chapitre = cheminLisible([...prefixe, ...endroit.sous.map(n => nomSur(n, { repli: 'Dossier' })), nomSur(f.nom)])
     let b: BilanRelier
@@ -242,6 +252,8 @@ export class Ranger {
     } catch (x) {
       dire(`Le fichier de « ${f.nom} » n'a pas pu être écrit dans « ${ou} » : ${raisonDe(x)}. Rien n'est perdu : il est dans ce navigateur.`)
       return undefined
+    } finally {
+      await this.h.apresRangement?.([f.id]).catch(() => {})
     }
     const relu = await this.registre.classeur(f.id).catch(() => undefined)
     const nom = relu?.cle?.nom ?? fichier
@@ -282,7 +294,8 @@ export class Ranger {
    *  navigateur (choisir un dossier, l'accord d'y écrire) se fait dans le
    *  clic. */
   async proposer(classe: FicheDossier, o: { origine: OrigineRanger }): Promise<'range' | 'plus-tard'> {
-    if (document.querySelector('dialog[open]') || this.occupe) { this.h.message('Fermez d\'abord la fenêtre ouverte.'); return 'plus-tard' }
+    if (document.querySelector('dialog[open]')) { this.h.message('Fermez d\'abord la fenêtre ouverte.'); return 'plus-tard' }
+    if (this.occupe) { this.h.message('Un rangement est en cours : attendez qu\'il finisse.'); return 'plus-tard' }
     const [liste, fiches, dossiers, emplacementsDuNiveau] = await Promise.all([
       etablissements(this.registre), this.registre.classeurs().catch(() => [] as FicheClasseur[]), this.registre.dossiers().catch(() => [] as FicheDossier[]), emplacements(this.registre),
     ])
@@ -291,6 +304,9 @@ export class Ranger {
     // Le nom proposé : celui du dossier de la bibliothèque ; déjà rangé chez
     // un établissement (« Changer… ») : le nom qu'on lui avait donné
     const propose = actuel?.etablissement ? nomSur(actuel.nom, { repli: 'Niveau' }) : nomSur(classe.nom, { repli: 'Niveau' })
+    // « Changer… » : le chemin d'avant, pour l'explication et le bilan
+    const nomActuel = actuel ? nomDEtablissement(actuel, liste) : null
+    const cheminActuel = actuel ? cheminLisible(nomActuel ? [nomActuel, actuel.nom] : ['Cet ordinateur', actuel.nom]) : null
 
     const d = document.createElement('dialog')
     d.className = 'dialogue dialogue-ranger'
@@ -316,10 +332,12 @@ export class Ranger {
     const etabChoisi = () => liste.find(e => e.id === choix()) ?? null
     const choix = () => q<HTMLInputElement>('input[name="r-etab"]:checked')?.value ?? null
     const nomTape = () => champ.value.trim() ? nomSur(champ.value, { repli: 'Niveau' }) : ''
-    /** L'explication, avec l'exemple : le premier établissement, le nom proposé, le premier classeur du niveau */
+    /** L'explication, avec l'exemple : l'établissement coché (sinon le premier), le nom proposé, le premier classeur du niveau ; « Changer… » : les fichiers d'avant sont relus */
     const expliquer = () => {
-      const etab = liste[0]?.nom ?? 'LFB classeurs', nomNiveau = nomTape() || propose, chapitre = nomSur(premier?.nom ?? 'Fractions')
-      q('.r-explication').textContent = `« ${classe.nom} » est le dossier de la bibliothèque (le niveau). Dites-le une fois : chaque classeur qu'il contient aura son dossier, au nom du classeur, avec son fichier et ses replays (« ${etab} › ${nomNiveau} › ${chapitre} › ${chapitre}${EXTENSION_TABLEAU} »), écrit tout seul peu après chaque changement. Vos classeurs restent aussi dans ce navigateur.`
+      const etab = etabChoisi()?.nom ?? liste[0]?.nom ?? 'LFB classeurs', nomNiveau = nomTape() || propose, chapitre = nomSur(premier?.nom ?? 'Fractions')
+      const exemple = choix() === 'autre' ? `le dossier choisi › ${chapitre} › ${chapitre}${EXTENSION_TABLEAU}` : `${etab} › ${nomNiveau} › ${chapitre} › ${chapitre}${EXTENSION_TABLEAU}`
+      const relecture = actuel ? ` Les fichiers d'avant (« ${cheminActuel} ») sont relus avant d'être laissés où ils sont : le navigateur peut demander l'accord de les lire.` : ''
+      q('.r-explication').textContent = `« ${classe.nom} » est le dossier de la bibliothèque (le niveau). Dites-le une fois : chaque classeur qu'il contient aura son dossier, au nom du classeur, avec son fichier et ses replays (« ${exemple} »), écrit tout seul peu après chaque changement. Vos classeurs restent aussi dans ce navigateur.${relecture}`
     }
     /** La liste des établissements (des radios), par nom */
     const dessiner = () => {
@@ -412,9 +430,10 @@ export class Ranger {
           try { dossier = await choisirUnDossier('mem-classes') } catch (e) { dire(`Ce dossier n'a pas pu être choisi : ${raisonDe(e)}.`); return }
           if (!dossier) return
           if (!await accordDuDossier(dossier, true).catch(() => false)) { dire(`Le navigateur n'a pas permis d'écrire dans « ${dossier.name} ». Recommencez et cliquez « Autoriser ».`); return }
+          const quitte = await this.dossierQuitte(actuel, dossier)
           enCours = false
           fermer('range')
-          await this.ranger(classe, dossier, { prefixe: [dossier.name], actuel })
+          await this.ranger(classe, dossier, { prefixe: [dossier.name], ancien: quitte.change ? cheminActuel : null, quitte: quitte.d })
           resoudre('range')
           return
         }
@@ -428,9 +447,10 @@ export class Ranger {
         if (!await accordDuDossier(h, true).catch(() => false)) { dire(`Le navigateur n'a pas permis d'écrire dans « ${etab.nom} ». Recommencez et cliquez « Autoriser ».`); return }
         let dossier: PoigneeDossier
         try { dossier = await h.getDirectoryHandle(nom, { create: true }) } catch (e) { dire(`Le dossier « ${nom} » n'a pas pu être créé dans « ${etab.nom} » : ${raisonDe(e)}.`); return }
+        const quitte = await this.dossierQuitte(actuel, dossier)
         enCours = false
         fermer('range')
-        await this.ranger(classe, dossier, { prefixe: [etab.nom, dossier.name], etablissement: etab.id, actuel, conseil: avant !== 'granted' })
+        await this.ranger(classe, dossier, { prefixe: [etab.nom, dossier.name], etablissement: etab, ancien: quitte.change ? cheminActuel : null, quitte: quitte.d, conseil: avant !== 'granted' })
         resoudre('range')
       } finally {
         enCours = false
@@ -444,32 +464,44 @@ export class Ranger {
     return fini
   }
 
+  /** « Changer… » : le niveau quitte-t-il son dossier d'avant (actuel) pour
+   *  `d` ? Dans le clic : l'accord de LIRE le dossier quitté est demandé
+   *  (ses fichiers sont relus avant d'être laissés ; un refus ne bloque
+   *  rien : les classeurs concernés gardent leur fichier d'avant, le bilan le
+   *  dit). d : le dossier quitté, s'il est encore là (relierLesClasseurs y
+   *  reconnaît les fichiers rangés par le lot 7, sans chemin dans la fiche). */
+  private async dossierQuitte(actuel: Emplacement | null, d: PoigneeDossier): Promise<{ change: boolean; d: PoigneeDossier | null }> {
+    if (!actuel) return { change: false, d: null }
+    const p = poigneeValable(await this.registre.reglage(reglagePoignee(actuel.id)).catch(() => undefined))
+    if (await memeDossier(d, p)) return { change: false, d: null }
+    if (p) await accordDeLire(p, true).catch(() => false)
+    return { change: true, d: p }
+  }
+
   /** Le niveau rangé dans ce dossier (l'accord déjà demandé dans le clic) :
-   *  le lien (relierLeNiveau), puis la phrase du bilan. actuel : l'emplacement
-   *  que le niveau avait (« Changer… ») : s'il visait un autre dossier, le
-   *  bilan dit que les fichiers d'avant y restent. conseil : l'accord vient
-   *  d'être demandé, on dit « Autoriser à chaque visite ». */
-  private async ranger(classe: FicheDossier, d: PoigneeDossier, o: { prefixe: string[]; etablissement?: string; actuel: Emplacement | null; conseil?: boolean }): Promise<void> {
+   *  le lien (relierLeNiveau), puis la phrase du bilan. ancien : le chemin
+   *  d'avant quand le niveau change de dossier (« Changer… ») : chaque
+   *  classeur reçoit son fichier ici, une fois l'ancien relu, et le bilan dit
+   *  que les fichiers d'avant y restent ; quitte : ce dossier d'avant.
+   *  conseil : l'accord vient d'être demandé, on dit « Autoriser à chaque
+   *  visite ». Puis la clé du classeur de cet onglet repart (apresRangement). */
+  private async ranger(classe: FicheDossier, d: PoigneeDossier, o: { prefixe: string[]; etablissement?: Etablissement; ancien: string | null; quitte: PoigneeDossier | null; conseil?: boolean }): Promise<void> {
     if (this.occupe) return
     this.occupe = true
+    let ids: string[] = []
     try {
-      let ancien: string | null = null
-      if (o.actuel) {
-        const p = await this.registre.reglage(reglagePoignee(o.actuel.id)).catch(() => undefined)
-        if (!await memeDossier(d, p)) {
-          const etab = o.actuel.etablissement ? (await etablissements(this.registre)).find(x => x.id === o.actuel!.etablissement) : undefined
-          ancien = cheminLisible(etab ? [etab.nom, o.actuel.nom] : ['Cet ordinateur', o.actuel.nom])
-        }
-      }
+      const [fiches, dossiers] = await Promise.all([this.registre.classeurs().catch(() => [] as FicheClasseur[]), this.registre.dossiers().catch(() => [] as FicheDossier[])])
+      ids = classeursDeLaClasse(classe.id, fiches, dossiers).map(f => f.id)
       // Un autre dossier qu'avant : chaque classeur reçoit son fichier ici (les anciens restent)
       const b = await relierLeNiveau({ registre: this.registre, message: t => this.h.message(t), avantDEcrire: this.h.avantDEcrire }, classe, d,
-        { prefixe: o.prefixe, etablissement: o.etablissement, reprendre: ancien !== null })
+        { prefixe: o.prefixe, etablissement: o.etablissement?.id, etablissementNom: o.etablissement?.nom, reprendre: o.ancien !== null, ancien: o.quitte ?? undefined })
       if (!b) return
-      this.h.message(texteDuRangement({ niveau: classe.nom, chemin: o.prefixe, bilan: b, ancien }) + (o.conseil ? ' ' + CONSEIL_ACCORD_DOSSIER : ''))
+      this.h.message(texteDuRangement({ niveau: classe.nom, chemin: o.prefixe, bilan: b, ancien: o.ancien }) + (o.conseil ? ' ' + CONSEIL_ACCORD_DOSSIER : ''))
     } catch (e) {
       this.h.message(`« ${classe.nom} » n'a pas pu être rangé : ${raisonDe(e)}.`)
     } finally {
       this.occupe = false
+      await this.h.apresRangement?.(ids).catch(() => {})
       void this.h.bibliotheque.charger()
     }
   }

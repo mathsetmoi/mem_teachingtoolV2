@@ -324,6 +324,11 @@ export class EnregistrementCle {
   private prochainEssai = 0
   /** Une écriture refusée pendant le trou de la base : elle repart à sa réparation */
   private attendLaBase = false
+  /** Le fichier du classeur change de place par la bibliothèque de cet onglet
+   *  (le niveau rangé ailleurs, « Lui donner son fichier », lot 18) : rien ne
+   *  s'écrit d'ici en attendant (voir retenir) */
+  private retenu = false
+  private minuterieRetenue = 0
   private minuterie = 0
   private canal: BroadcastChannel | null = null
   private derniereAnnonce = 0
@@ -536,7 +541,7 @@ export class EnregistrementCle {
 
   /** Une écriture automatique est possible (sans un clic) */
   private peutEcrireSeul(): boolean {
-    if (!this.poignee || this.suspendu || this.verrou === 'autre') return false
+    if (!this.poignee || this.suspendu || this.verrou === 'autre' || this.retenu) return false
     const e = this.etat.etat
     return e !== 'permission' && e !== 'conflit' && !(e === 'erreur' && this.etat.message === MESSAGE_FIL)
   }
@@ -576,7 +581,7 @@ export class EnregistrementCle {
 
   private async uneEcriture(o: OptionsEcriture): Promise<Resultat> {
     const p = this.poignee
-    if (!p || this.suspendu) return 'rien'
+    if (!p || this.suspendu || this.retenu) return 'rien'
     if (!o.manuel && !this.peutEcrireSeul()) return 'rien'
     if (!o.manuel && this.premierNonEcrit === null) return 'rien'
     const avant = this.etat.etat
@@ -979,6 +984,29 @@ export class EnregistrementCle {
     this.derniere = null
     this.echecs = 0; this.prochainEssai = 0
     await this.demarrerActif(f.cle)
+  }
+
+  /** La bibliothèque de cet onglet va écrire ou déplacer le fichier de ce
+   *  classeur (relierLesClasseurs : le niveau rangé ailleurs, « Lui donner
+   *  son fichier ») : jusqu'à relacher(), rien ne s'écrit d'ici (une
+   *  écriture entre-temps examinerait l'ancien fichier avec la nouvelle
+   *  fiche : un faux « modifié ailleurs »). Garde-fou : si personne ne
+   *  relâche (une erreur en chemin), la clé repart seule au bout de deux
+   *  minutes. */
+  retenir() {
+    this.retenu = true
+    clearTimeout(this.minuterie); this.minuterie = 0
+    clearTimeout(this.minuterieRetenue)
+    this.minuterieRetenue = window.setTimeout(() => { if (this.retenu) void this.relacher() }, 120_000)
+  }
+
+  /** Le fichier a changé de place (ou pas) : la clé repart depuis la fiche,
+   *  sur la poignée qui y est, vérifiée comme au démarrage ; ce qui attend
+   *  s'écrira ensuite */
+  async relacher(): Promise<void> {
+    clearTimeout(this.minuterieRetenue); this.minuterieRetenue = 0
+    this.retenu = false
+    await this.resynchroniser()
   }
 
   /** « Choisir un autre fichier… » : comme activer, à la place de celui-ci */

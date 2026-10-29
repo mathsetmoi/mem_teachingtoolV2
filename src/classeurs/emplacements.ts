@@ -49,6 +49,9 @@ export interface Emplacement {
    *  du niveau a été créé par la fenêtre « Où ranger… » (lot 18) ; absent :
    *  un dossier choisi pour ce niveau seul (lot 7) */
   etablissement?: string
+  /** Son nom au moment du rangement : il reste à l'écran et dans le chemin
+   *  des fichiers même si l'établissement est retiré de la liste (lot 18) */
+  etablissementNom?: string
   cree: number
 }
 
@@ -73,6 +76,7 @@ export function lireEmplacements(x: unknown): Emplacement[] {
       id: e.id, genre: e.genre, dossier: e.dossier, nom: e.nom, cree: typeof e.cree === 'number' ? e.cree : 0,
       ...(e.genre === 'drive' ? { compte: e.compte } : {}),
       ...(typeof e.etablissement === 'string' && e.etablissement ? { etablissement: e.etablissement } : {}),
+      ...(typeof e.etablissement === 'string' && e.etablissement && typeof e.etablissementNom === 'string' && e.etablissementNom ? { etablissementNom: e.etablissementNom } : {}),
     })
   }
   return l

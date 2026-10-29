@@ -3162,7 +3162,7 @@ export class Bibliotheque {
             fichier += c.ok ? ` ${c.ok}` : ` Son fichier est écrit dans « ${relu?.cle?.chemin ? relu.cle.chemin.join(' › ') : c.nom} ».`
           }
         }
-        this.hote.message(texteRemis({ genre: 'classeur', nom: r.fiche.nom, vers, raison: r.ou.raison }) + fichier, { libelle: ANNULER, faire: () => void this.annulerRemise(cle, r.avant.t, r.avant.dossier), cle: CLE_MESSAGE + cle })
+        this.hote.message(texteRemis({ genre: 'classeur', nom: r.fiche.nom, vers, raison: r.ou.raison }) + (fichier ? '.' + fichier : ''), { libelle: ANNULER, faire: () => void this.annulerRemise(cle, r.avant.t, r.avant.dossier), cle: CLE_MESSAGE + cle })
       } else {
         const r = await this.suivre(this.registre.remettreDossier(id))
         if (!r) { this.hote.message('Ce dossier n\'est plus dans la corbeille.'); await this.charger(); return }
@@ -3585,6 +3585,9 @@ export class Bibliotheque {
   // ---------- Nouveau classeur ----------
   /** Le dossier où naîtra le classeur de la fenêtre « Nouveau classeur » */
   private dossierDuNouveau: string | null = null
+  /** La fenêtre « Nouveau classeur » se prépare (la fenêtre « Où ranger… »
+   *  d'abord, des lectures) : un deuxième clic n'en ouvre pas une autre */
+  private nouveauEnCours = false
 
   /** La fenêtre « Nouveau classeur » : le nom (« Nouveau classeur », tout
    *  choisi), le fond de la première page, et, quand le navigateur sait
@@ -3596,7 +3599,7 @@ export class Bibliotheque {
    *  (la fenêtre d'accueil) : le même, mais à la racine, hors de tout
    *  niveau, quel que soit le dossier affiché. */
   nouveauClasseur(o: { chapitre?: { dossier: string | null; dossiers: ReadonlyMap<string, FicheDossier> }; vierge?: boolean } = {}) {
-    if (document.querySelector('dialog[open]') || this.depart) return
+    if (document.querySelector('dialog[open]') || this.depart || this.nouveauEnCours) return
     this.finirSaisie(true)
     // Il naît dans le dossier affiché, et en prend l'étiquette de niveau
     // (calculée : pas de champ à remplir). « Nouveau chapitre… » (lot 6, la
@@ -3607,7 +3610,8 @@ export class Bibliotheque {
     const dossierVoulu = chapitre ? chapitre.dossier : o.vierge ? null : this.dossierAffiche
     const dans = dossierVoulu !== null && this.dossiers.has(dossierVoulu) ? dossierVoulu : null
     this.dossierDuNouveau = dans
-    void this.fenetreNouveau(o, dans)
+    this.nouveauEnCours = true
+    void this.fenetreNouveau(o, dans).finally(() => { this.nouveauEnCours = false })
   }
 
   /** La fenêtre « Nouveau classeur » elle-même (voir nouveauClasseur), après,
@@ -3754,7 +3758,7 @@ export class Bibliotheque {
    *  « Séances isolées » d'un niveau, à la première demande) : page blanche,
    *  dans ce dossier (s'il existe encore et n'est pas dans la corbeille ;
    *  sinon à la racine), sans fichier de clé (il viendra à la prochaine
-   *  liaison du niveau, ou par « Enregistrer automatiquement sur la clé ») ;
+   *  liaison du niveau, ou par « Enregistrer automatiquement dans un fichier… ») ;
    *  la copie sur le Drive suit comme pour tout classeur. avant(fiche) : juste
    *  avant de partir (la clé de l'onglet d'une nouvelle séance, main.ts) ;
    *  arrivee : le message dit en arrivant, à la place de « Classeur « X »

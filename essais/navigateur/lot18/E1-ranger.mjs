@@ -26,7 +26,8 @@
 //    active à l'arrivée, le chemin dans la fiche.
 // C. Un deuxième niveau : « LFB classeurs » proposé, « MEM classeurs » ajouté
 //    par « Choisir un dossier… » ; « Mes emplacements » : la ligne des
-//    établissements, « 5eme → LFB classeurs › 5 » avec « Changer… ».
+//    établissements, « 5eme → LFB classeurs › 5 » avec « Changer… » ;
+//    « Retirer » un établissement demande confirmation.
 // D. « Plus tard » sur un troisième niveau : rien, noté, plus de fenêtre au
 //    « Nouveau classeur » suivant ; dans ce dossier, « 3eme → pas encore
 //    rangé dans un dossier » [Ranger…] rouvre la fenêtre.
@@ -36,10 +37,17 @@
 // G. Un classeur remis de la corbeille reçoit son fichier.
 // H. « Un autre dossier, pour ce niveau seul… » : un emplacement sans
 //    établissement, « Cet ordinateur › Cle 3eme », chemin = [dossier, classeur].
-// I. « Changer… » vers un autre établissement : les nouveaux fichiers écrits,
-//    les anciens toujours là, le message le dit.
+// I. « Changer… » vers un autre établissement : l'explication (l'établissement
+//    coché, les fichiers d'avant relus), les nouveaux fichiers écrits, les
+//    anciens toujours là, le message le dit ; le classeur ouvert dans l'onglet
+//    suit (sa clé écrit dans le nouveau fichier, sans faux « modifié
+//    ailleurs ») ; un fichier d'avant plus riche que la bibliothèque reste
+//    celui du classeur (« à ouvrir d'abord »), une écriture qui échoue (disque
+//    plein) lui rend son fichier d'avant ; « Mettre à jour » finit le
+//    rangement (« déjà à leur place »).
 // J. Publier → « Enregistrer le fichier » dans un niveau rangé : le .mem sans
-//    code dans le dossier du chapitre, le message.
+//    code dans le dossier du chapitre, le message ; un autre fichier du même
+//    titre n'est jamais remplacé (« (2) »), la même séance reprend le sien.
 // E. « Séances isolées » (le lien de « Bonjour ! ») dans un niveau rangé
 //    reçoit son fichier (un contexte à part, avec l'horloge de Playwright ;
 //    après J pour ne pas mêler l'horloge au reste).
@@ -92,7 +100,8 @@ const INIT = () => {
   F.createWritable = async function (...a) {
     const w = await cw.apply(this, a)
     const nom = this.name
-    return { write: d => w.write(d), close: async () => { await w.close(); note('__ecritures', { nom, t: Date.now() }) }, abort: r => w.abort(r) }
+    // window.__panneEcriture (une RegExp sur le nom) : la fermeture échoue, comme un disque plein
+    return { write: d => w.write(d), close: async () => { if (window.__panneEcriture?.test(nom)) { await w.abort().catch(() => {}); throw new DOMException('simulé', 'QuotaExceededError') } await w.close(); note('__ecritures', { nom, t: Date.now() }) }, abort: r => w.abort(r) }
   }
   const racine = async chemin => { let d = await navigator.storage.getDirectory(); for (const n of chemin.split('/').filter(Boolean)) d = await d.getDirectoryHandle(n, { create: true }); return d }
   window.__racineOpfs = racine
@@ -457,6 +466,15 @@ try {
     'C5) « Mes emplacements » : « Établissements : LFB classeurs · MEM classeurs », « Retirer » pour chacun, « Ajouter un dossier… »', e)
   ok(e?.lignes.map(l => `${l.texte} [${l.boutons.join(', ')}]`).join(' ; ') === '4eme → MEM classeurs › 4 [Mettre à jour, Changer…] ; 5eme → LFB classeurs › 5 [Mettre à jour, Changer…]',
     'C6) « 4eme → MEM classeurs › 4 », « 5eme → LFB classeurs › 5 », chacun avec « Mettre à jour » et « Changer… »', e?.lignes)
+  // « Retirer » un établissement : une confirmation d'abord ; « Annuler » ne change rien
+  await p.click('.emplacements .etablissement:has(.nom:text-is("MEM classeurs")) .e-retirer-etab')
+  await p.waitForSelector('dialog.dialogue-ouvrir[open]', { timeout: 5000 }).catch(() => {})
+  const conf = await p.evaluate(() => { const d = document.querySelector('dialog.dialogue-ouvrir[open]'); return d ? { titre: d.querySelector('h2')?.textContent, texte: (d.querySelector('p')?.textContent ?? '').replace(/[  ]/g, ' '), oui: d.querySelector('[data-a="oui"]')?.textContent } : null })
+  ok(conf?.titre === 'Ne plus proposer « MEM classeurs » ?' && conf.texte === 'Il ne sera plus proposé pour ranger un niveau. Rien n\'est effacé. Le niveau rangé chez lui garde son dossier et continue de s\'enregistrer.' && conf.oui === 'Retirer',
+    'C7) « Retirer » : « Ne plus proposer « MEM classeurs » ? … Le niveau rangé chez lui garde son dossier et continue de s\'enregistrer. » [Retirer]', conf)
+  await p.click('dialog.dialogue-ouvrir[open] [data-a="annuler"]'); await p.waitForTimeout(300)
+  e = await emplacements(p)
+  ok(e?.etabs?.noms.join(' · ') === 'LFB classeurs · MEM classeurs', 'C8) « Annuler » : les deux établissements sont toujours là', e?.etabs)
 
   // =====================================================================
   console.log('\n— D. « Plus tard »')
@@ -543,7 +561,7 @@ try {
   await p.click(`.carte-corbeille-biblio[data-cle="${idAngles}"] [data-action="remettre"]`)
   ok(await attendreToast(p, /« Angles » remis dans « 5eme »/, 20000), 'G1) « Angles » remis dans « 5eme »')
   const tG = await toasts(p)
-  ok(tG.some(t => t.includes('« Angles » remis dans « 5eme » Son fichier est écrit dans « LFB classeurs › 5 › Angles ».')), '   … « Son fichier est écrit dans « LFB classeurs › 5 › Angles ». »', tG)
+  ok(tG.some(t => t.includes('« Angles » remis dans « 5eme ». Son fichier est écrit dans « LFB classeurs › 5 › Angles ».')), '   … « Son fichier est écrit dans « LFB classeurs › 5 › Angles ». »', tG)
   fs = await fiches(p)
   contenu = await lister(p, 'LFB classeurs/5/Angles')
   ok(JSON.stringify(fs.find(f => f.id === idAngles)?.cle) === JSON.stringify({ nom: 'Angles.memc', chemin: ['LFB classeurs', '5', 'Angles'] }) && contenu?.['Angles.memc'] > 0 && !fs.find(f => f.id === idAngles).corbeille,
@@ -585,9 +603,11 @@ try {
   await p.waitForSelector('dialog.dialogue-ranger[open]', { timeout: 10000 })
   r = await ranger(p)
   ok(r.titre === 'Où ranger les classeurs de « 5eme » ?' && r.etabs.map(e => `${e.nom}:${e.coche}`).join('|') === 'LFB classeurs:true|MEM classeurs:false' && r.champ === '5', 'I1) La fenêtre : « LFB classeurs » (l\'actuel) sélectionné, le champ « 5 » (le nom donné)', r)
+  ok(/Les fichiers d'avant \(« LFB classeurs › 5 »\) sont relus avant d'être laissés où ils sont : le navigateur peut demander l'accord de les lire\.$/.test(r.explication), 'I1b) L\'explication dit que les fichiers d\'avant (« LFB classeurs › 5 ») sont relus', r.explication)
   await p.check(`dialog[open] input[name="r-etab"][value="${idMEM}"]`)
   r = await ranger(p)
   ok(r.ok === 'Ranger dans « MEM classeurs › 5 »', 'I2) « MEM classeurs » choisi : « Ranger dans « MEM classeurs › 5 » »', r)
+  ok(/« MEM classeurs › 5 › (Angles|Fractions|Probabilites|Probas|Symetrie) › \1\.memc »/.test(r.explication), 'I2b) L\'exemple de l\'explication suit l\'établissement coché (« MEM classeurs › 5 › … »)', r.explication)
   await oublier(p, '__demandes')
   await toasts(p)
   await p.click('dialog[open] .r-ok')
@@ -609,29 +629,104 @@ try {
   ok(e?.lignes.some(l => l.texte === '5eme → MEM classeurs › 5'), 'I8) « Mes emplacements » : « 5eme → MEM classeurs › 5 »', e?.lignes)
   dem = await notes(p, '__demandes')
   ok(dem.length >= 1 && dem.every(x => x.actif), `I9) ${dem.length} demande(s) d'accord, toutes dans un geste`, dem)
+  // Le classeur ouvert dans l'onglet (« Probas ») a suivi : sa clé écrit dans le nouveau fichier, sans faux « modifié ailleurs »
+  await p.keyboard.press('Escape')
+  await p.evaluate(() => { if (window.__bibliotheque.ouvert) window.__bibliotheque.fermer?.() })
+  await p.waitForTimeout(400)
+  const memeFichier = (p, chemin, nom) => p.evaluate(async ({ chemin, nom }) => { const h = await (await window.__racineOpfs(chemin)).getFileHandle(nom); const f = window.__cle?.fichierDeLaCle; return !!f && await h.isSameEntry(f) }, { chemin, nom })
+  const suiviI = { meme: await memeFichier(p, 'MEM classeurs/5/Probas', 'Probas.memc'), etat: await p.evaluate(() => window.__surveillance.etat.cle.etat) }
+  ok(suiviI.meme && suiviI.etat === 'ok', 'I10) Le classeur ouvert (« Probas ») : sa clé est repartie sur « MEM classeurs › 5 › Probas › Probas.memc », état « ok »', suiviI)
+  const tailleMEM = (await lister(p, 'MEM classeurs/5/Probas'))?.['Probas.memc'], tailleLFB = (await lister(p, 'LFB classeurs/5/Probas'))?.['Probas.memc']
+  await oublier(p, '__ecritures'); await toasts(p)
+  await trait(p, 420, 300); await p.waitForTimeout(400)
+  await p.keyboard.press('Control+s')
+  await p.waitForFunction(() => JSON.parse(sessionStorage.getItem('__ecritures') || '[]').some(x => x.nom === 'Probas.memc'), null, { timeout: 15000 }).catch(() => {})
+  await p.waitForTimeout(400)
+  const apresI = { meme: await memeFichier(p, 'MEM classeurs/5/Probas', 'Probas.memc'), etat: await p.evaluate(() => window.__surveillance.etat.cle.etat), toasts: await toasts(p), MEM: (await lister(p, 'MEM classeurs/5/Probas'))?.['Probas.memc'], LFB: (await lister(p, 'LFB classeurs/5/Probas'))?.['Probas.memc'], tailleMEM, tailleLFB }
+  ok(apresI.meme && apresI.etat === 'ok' && apresI.MEM > tailleMEM && apresI.LFB === tailleLFB && !apresI.toasts.some(t => /ailleurs/.test(t)), 'I11) Un trait puis Ctrl + S : le nouveau fichier grossit, l\'ancien reste tel quel, aucun « modifié ailleurs »', apresI)
+
+  // « Changer… » encore, vers « LyFEL classeurs » : « Angles » a un fichier d'avant plus riche que sa base (comme modifié sur un autre poste),
+  // et le nouveau fichier de « Symetrie » ne peut pas s'écrire (disque plein)
+  const idProbas = (await fiches(p)).find(f => f.nom === 'Probas')?.id
+  await p.evaluate(async ({ idAngles, idProbas }) => {
+    const fA = await window.__registre.classeur(idAngles), fP = await window.__registre.classeur(idProbas)
+    const fab = await window.__ecrivain.fabriquerFichier(fP.base, { nom: fA.nom, id: fA.id }, Date.now())
+    const h = await (await window.__racineOpfs('MEM classeurs/5/Angles')).getFileHandle('Angles.memc')
+    const w = await h.createWritable(); await w.write(fab.fichier); await w.close()
+    window.__panneEcriture = /^Symetrie\.memc$/
+  }, { idAngles, idProbas })
+  await voirBibliotheque(p, null)
+  await p.click('.emplacements li.emplacement:has(strong:text-is("5eme")) .e-changer')
+  await p.waitForSelector('dialog.dialogue-ranger[open]', { timeout: 10000 })
+  await p.evaluate(() => { window.__dossierChoisi = 'LyFEL classeurs' })
+  await p.click('dialog[open] .r-choisir-dossier')
+  await p.waitForFunction(() => document.querySelectorAll('dialog.dialogue-ranger[open] label.r-etab').length === 3, null, { timeout: 10000 })
+  r = await ranger(p)
+  ok(r.etabs.map(e => `${e.nom}:${e.coche}`).join('|') === 'LFB classeurs:false|LyFEL classeurs:true|MEM classeurs:false' && r.champ === '5' && r.ok === 'Ranger dans « LyFEL classeurs › 5 »', 'I12) « LyFEL classeurs » ajouté et coché : « Ranger dans « LyFEL classeurs › 5 » »', r)
+  await oublier(p, '__demandes'); await toasts(p)
+  await p.click('dialog[open] .r-ok')
+  ok(await attendreToast(p, /Les classeurs de « 5eme » se rangent dans « LyFEL classeurs › 5 »/, 60000), 'I13) Le message du bilan arrive')
+  const tI2 = await toasts(p)
+  ok(tI2.some(t => /Les classeurs de « 5eme » se rangent dans « LyFEL classeurs › 5 » : 4 écrits, 1 à ouvrir d'abord \(« Angles » : son fichier a des changements que la bibliothèque n'a pas\), 1 n'a pas pu être écrit \(« Symetrie » : .*plein.*\)\. Les fichiers d'avant restent dans « MEM classeurs › 5 »\./.test(t)),
+    '   … « … : 4 écrits, 1 à ouvrir d\'abord (« Angles » : son fichier a des changements que la bibliothèque n\'a pas), 1 n\'a pas pu être écrit (« Symetrie » : … plein …). Les fichiers d\'avant restent dans « MEM classeurs › 5 ». »', tI2)
+  fs = await fiches(p)
+  contenu = await lister(p, '')
+  const cheminDe = nom => fs.find(f => f.nom === nom)?.cle?.chemin?.join('/')
+  ok(cheminDe('Angles') === 'MEM classeurs/5/Angles' && cheminDe('Symetrie') === 'MEM classeurs/5/Symetrie' && ['Fractions', 'Probabilites', 'Probas'].every(n => cheminDe(n) === `LyFEL classeurs/5/${n}`),
+    'I14) « Angles » (plus riche) et « Symetrie » (pas écrit) gardent leur fichier de « MEM classeurs › 5 » ; les trois autres sont dans « LyFEL classeurs › 5 »', fs.filter(f => f.dossier === d5).map(f => [f.nom, f.cle?.chemin]))
+  ok(!contenu?.['LyFEL classeurs']?.['5']?.Angles && !contenu?.['LyFEL classeurs']?.['5']?.Symetrie?.['Symetrie.memc'] && contenu?.['MEM classeurs']?.['5']?.Angles?.['Angles.memc'] > 0 && contenu?.['MEM classeurs']?.['5']?.Symetrie?.['Symetrie.memc'] > 0,
+    'I15) Dans LyFEL classeurs/5 : pas de fichier « Angles », le fichier vide de « Symetrie » est reparti ; les fichiers d\'avant sont intacts dans MEM classeurs/5', { LyFEL: contenu?.['LyFEL classeurs'], MEM: contenu?.['MEM classeurs'] })
+  dem = await notes(p, '__demandes')
+  ok(dem.length >= 2 && dem.every(x => x.actif) && dem.some(x => x.nom === '5'), `I16) ${dem.length} demandes d'accord (dont celle de relire « MEM classeurs › 5 »), toutes dans un geste`, dem)
+  await p.keyboard.press('Escape')
+  await p.evaluate(() => { if (window.__bibliotheque.ouvert) window.__bibliotheque.fermer?.() })
+  await p.waitForTimeout(400)
+  ok(await memeFichier(p, 'LyFEL classeurs/5/Probas', 'Probas.memc') && await p.evaluate(() => window.__surveillance.etat.cle.etat) === 'ok', 'I17) Le classeur ouvert (« Probas ») a suivi dans « LyFEL classeurs › 5 », état « ok »')
+  // « Mettre à jour » (le disque n'est plus plein) finit le rangement : « Symetrie » reçoit son fichier, les autres sont déjà à leur place, « Angles » reste à ouvrir d'abord
+  await p.evaluate(() => { window.__panneEcriture = null })
+  await voirBibliotheque(p, null)
+  await toasts(p)
+  await p.click('.emplacements li.emplacement:has(strong:text-is("5eme")) .e-maj')
+  ok(await attendreToast(p, /Les classeurs de « 5eme » se rangent dans « LyFEL classeurs › 5 » : 1 écrit, 1 à ouvrir d'abord \(« Angles » : son fichier a des changements que la bibliothèque n'a pas\), 4 déjà à leur place\./, 60000),
+    'I18) « Mettre à jour » : « … : 1 écrit, 1 à ouvrir d\'abord (« Angles » : …), 4 déjà à leur place. »', await toasts(p))
+  fs = await fiches(p)
+  ok(fs.find(f => f.nom === 'Symetrie')?.cle?.chemin?.join('/') === 'LyFEL classeurs/5/Symetrie' && (await lister(p, 'LyFEL classeurs/5/Symetrie'))?.['Symetrie.memc'] > 0, 'I19) « Symetrie » a maintenant son fichier dans « LyFEL classeurs › 5 › Symetrie »', fs.find(f => f.nom === 'Symetrie'))
+  await toasts(p)
+  await p.click('.emplacements li.emplacement:has(strong:text-is("5eme")) .e-maj')
+  ok(await attendreToast(p, /Les classeurs de « 5eme » se rangent dans « LyFEL classeurs › 5 » : 1 à ouvrir d'abord \(« Angles » : son fichier a des changements que la bibliothèque n'a pas\), 5 déjà à leur place\./, 60000),
+    'I20) « Mettre à jour » encore : « … : 1 à ouvrir d\'abord (« Angles » : …), 5 déjà à leur place. »', await toasts(p))
 
   // =====================================================================
   console.log('\n— J. Publier → « Enregistrer le fichier » : le .mem dans le dossier du chapitre')
-  // Le classeur de l'onglet est « Probas » (5eme, rangé chez « MEM classeurs › 5 » depuis I)
+  // Le classeur de l'onglet est « Probas » (5eme, rangé chez « LyFEL classeurs › 5 » depuis I) ; un fichier « Seance test.mem »
+  // qui n'est pas à cette séance est déjà dans le dossier du chapitre : il ne doit jamais être remplacé
   await p.keyboard.press('Escape')
   await p.evaluate(() => { if (window.__bibliotheque.ouvert) window.__bibliotheque.fermer?.() })
   await p.waitForTimeout(300)
+  await p.evaluate(async () => { const h = await (await window.__racineOpfs('LyFEL classeurs/5/Probas')).getFileHandle('Seance test.mem', { create: true }); const w = await h.createWritable(); await w.write('pas un film'); await w.close() })
   await trait(p, 500, 300)
   await p.waitForTimeout(500)
   await p.evaluate(() => window.__app.ui.publication.ouvrir({ complet: true }))
   await p.waitForSelector('.dialogue-publier[open]', { timeout: 10000 })
   const pub = await p.evaluate(() => ({ chemin: document.querySelector('.p-chemin')?.textContent, classeur: window.__app.classeur.nom, fichierGris: document.querySelector('.p-fichier')?.disabled }))
-  ok(pub.classeur === 'Probas' && pub.chemin === 'MEM classeurs › 5 › Probas' && pub.fichierGris === false, 'J1) Publier propose le dossier du chapitre « MEM classeurs › 5 › Probas »', pub)
+  ok(pub.classeur === 'Probas' && pub.chemin === 'LyFEL classeurs › 5 › Probas' && pub.fichierGris === false, 'J1) Publier propose le dossier du chapitre « LyFEL classeurs › 5 › Probas »', pub)
   await p.fill('.dialogue-publier[open] .p-titre', 'Seance test')
   await oublier(p, '__ecritures', '__demandes')
   await p.click('.dialogue-publier[open] .p-fichier')
   await p.waitForFunction(() => /enregistré|téléchargé|Fichier/.test(document.querySelector('.dialogue-publier[open] .p-etat')?.textContent ?? ''), null, { timeout: 20000 }).catch(() => {})
   const etatJ = await p.evaluate(() => (document.querySelector('.dialogue-publier[open] .p-etat')?.textContent ?? '').replace(/[  ]/g, ' '))
-  ok(/^Fichier séance enregistré dans « MEM classeurs › 5 › Probas » : Seance test\.mem \([\d,.]+ [kK]o\)\.$/.test(etatJ), 'J2) « Fichier séance enregistré dans « MEM classeurs › 5 › Probas » : Seance test.mem (… Ko). »', etatJ)
-  contenu = await lister(p, 'MEM classeurs/5/Probas')
-  ok(contenu?.['Seance test.mem'] > 0 && contenu['Probas.memc'] > 0, 'J3) Le .mem sans code, à côté du .memc, dans le dossier du chapitre', contenu)
+  ok(/^Fichier séance enregistré dans « LyFEL classeurs › 5 › Probas » : Seance test \(2\)\.mem \([\d,.]+ [kK]o\)\. Un autre fichier « Seance test\.mem » était là : il n'est pas remplacé\.$/.test(etatJ),
+    'J2) « Fichier séance enregistré dans « LyFEL classeurs › 5 › Probas » : Seance test (2).mem (… Ko). Un autre fichier « Seance test.mem » était là : il n\'est pas remplacé. »', etatJ)
+  contenu = await lister(p, 'LyFEL classeurs/5/Probas')
+  ok(contenu?.['Seance test (2).mem'] > 0 && contenu['Seance test.mem'] === 'pas un film'.length && contenu['Probas.memc'] > 0, 'J3) Le .mem sans code, en « (2) », à côté du .memc ; l\'autre fichier intact', contenu)
   dem = await notes(p, '__demandes')
   ok(dem.every(x => x.actif), `J4) ${dem.length} demande(s) d'accord, toutes dans un geste`, dem)
+  // La même séance enregistrée de nouveau reprend son fichier « (2) » : rien de plus dans le dossier
+  await p.click('.dialogue-publier[open] .p-fichier')
+  await p.waitForFunction(() => /\(2\)\.mem/.test(document.querySelector('.dialogue-publier[open] .p-etat')?.textContent ?? ''), null, { timeout: 20000 }).catch(() => {})
+  const etatJ2 = await p.evaluate(() => (document.querySelector('.dialogue-publier[open] .p-etat')?.textContent ?? '').replace(/[  ]/g, ' '))
+  contenu = await lister(p, 'LyFEL classeurs/5/Probas')
+  ok(/: Seance test \(2\)\.mem /.test(etatJ2) && Object.keys(contenu ?? {}).filter(n => n.endsWith('.mem')).length === 2, 'J5) Enregistré de nouveau : la même séance reprend « Seance test (2).mem », toujours deux .mem', { etatJ2, contenu })
   await p.keyboard.press('Escape'); await p.waitForTimeout(200)
   await ctx.close()
   }

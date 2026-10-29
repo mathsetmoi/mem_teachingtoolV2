@@ -33,7 +33,7 @@ import type { PoigneeDossier } from '../classeurs/ordinateur'
 import { accordDuDossier, choisitUnDossier } from '../classeurs/ordinateur'
 import type { Registre } from '../classeurs/registre'
 import type { Proposition, ReglageReplay } from './replay-dossier'
-import { choisirLeDossier, deposerLeFichierSeance, deposerLeReplay, dossierDuChapitre, lireReglage, nomDuReplay, retenirReglage, texteDuResume } from './replay-dossier'
+import { choisirLeDossier, deposerLeFichierSeance, deposerLeReplay, dossierDuChapitre, lireReglage, nomDuFichierSeance, nomDuReplay, retenirReglage, texteDuResume } from './replay-dossier'
 import { marqueDeCopie } from '../fichier'
 import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier } from './drive'
 
@@ -494,11 +494,16 @@ export class Publication {
     let repli = ''
     if (dossier && ou) {
       try {
-        const nom = await deposerLeFichierSeance(dossier, film.titre, texte)
-        return this.etat(`Fichier séance enregistré dans « ${ou} » : ${nom} (${kilo(texte.length)}).`)
+        const nom = await deposerLeFichierSeance(dossier, film.titre, texte, film.date)
+        // Un autre fichier du même titre était là (une autre séance) : il n'est pas remplacé, le nouveau porte « (2) »
+        const autre = nom !== nomDuFichierSeance(film.titre) ? ` Un autre fichier « ${nomDuFichierSeance(film.titre)} » était là : il n'est pas remplacé.` : ''
+        return this.etat(`Fichier séance enregistré dans « ${ou} » : ${nom} (${kilo(texte.length)}).${autre}`)
       } catch (e) {
         repli = `Le dossier « ${ou} » n'a pas pu être écrit (${e instanceof Error ? e.message.replace(/\.$/, '') : 'erreur inconnue'}) : le fichier est téléchargé (${kilo(texte.length)}).`
       }
+    } else if (this.lieu && ou) {
+      // Le dossier affiché n'a pas pu être ouvert (l'accord refusé, le dossier déplacé) : le dire, et télécharger
+      repli = `Le dossier « ${ou} » n'a pas pu être ouvert (le navigateur n'a pas donné son accord, ou le dossier a bougé) : le fichier est téléchargé (${kilo(texte.length)}).`
     }
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([texte], { type: 'application/json' }))
