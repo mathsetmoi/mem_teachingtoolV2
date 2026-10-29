@@ -73,7 +73,7 @@ LISTE="$LISTE lot2/verif/r4-fichier-seul.mjs lot2/verif/r8-options-apres-lasso.m
 for v in c2-doigt c3-wacom c4-menus c5-clavier c7-superpose c8-clavier-menus c9-mac c11-tel-menus; do
   LISTE="$LISTE lot2/verif/conformite/$v.mjs"
 done
-for f in $(ls lot2/*.mjs lot3/*.mjs lot4/*.mjs lot5/*.mjs lot7/*.mjs lot8/*.mjs lot9/*.mjs lot10/*.mjs lot11/*.mjs lot12/*.mjs lot13/*.mjs lot14/*.mjs lot15/*.mjs 2>/dev/null); do LISTE="$LISTE $f"; done
+for f in $(ls lot2/*.mjs lot3/*.mjs lot4/*.mjs lot5/*.mjs lot7/*.mjs lot8/*.mjs lot9/*.mjs lot10/*.mjs lot11/*.mjs lot12/*.mjs lot13/*.mjs lot14/*.mjs lot15/*.mjs lot17/*.mjs 2>/dev/null); do LISTE="$LISTE $f"; done
 mkdir -p "$B/t42m"
 passer() {  # passer <essai> <sortie>
   case $1 in

@@ -21,7 +21,11 @@
 // J. la séance arrivée s'ouvre (en lecture) ;
 // K. le classeur ouvert dans l'onglet : une séance en part, une autre est
 //    supprimée puis rendue, et le tableau ouvert suit aussitôt ; la séance
-//    qu'on regarde part, et le tableau montre une autre page.
+//    qu'on regarde part, et le tableau montre une autre page ;
+// L. (lot 17) une séance supprimée, puis le classeur ouvert, Maj + P,
+//    Corbeille : elle y fait un bloc (« Activité d'intro · Lun 19 oct 8h ·
+//    2 pages ») ; « Remettre la séance » la rend avec son nom et sa place ;
+//    « Annuler » la renvoie dans la corbeille.
 import { chromium } from '../commun/playwright.mjs'
 
 const DEV = 'http://localhost:5173/'
@@ -192,7 +196,7 @@ await attendreFin()
 l = await lignes('Fractions')
 lu = await p.evaluate(id => window.__lire(id), ids.Fractions)
 let t = await toasts()
-ok(l.length === 2 && !l.some(x => /Mer 14/.test(x)) && lu.seances.length === 2 && lu.corbeille === 2 && t.some(x => /supprimée : ses pages sont dans la corbeille du classeur/.test(x)), 'E1) La séance de mercredi est supprimée, ses pages dans la corbeille', { l, lu, t })
+ok(l.length === 2 && !l.some(x => /Mer 14/.test(x)) && lu.seances.length === 2 && lu.corbeille === 2 && t.some(x => /^La séance « Activité d'intro » est supprimée : ses pages sont dans la corbeille du classeur \(Maj \+ P, Corbeille\)\./.test(x)), 'E1) La séance de mercredi est supprimée, ses pages dans la corbeille du classeur (Maj + P, Corbeille)', { l, lu, t })
 await p.click('.toast button:has-text("Annuler")')
 await attendreFin()
 l = await lignes('Fractions')
@@ -312,6 +316,56 @@ await choisir('supprimer-seance')
 await attendreFin()
 const o5 = await ouvert()
 ok(kv >= 0 && o5.page !== pageVue && o5.dansOrdre && o5.seances.length === o4.seances.length - 1, 'K4) La séance qu\'on regarde part : le tableau montre une autre page', { kv, pageVue, o5 })
+
+// ---------- L. (lot 17) La séance supprimée dans la corbeille du classeur ----------
+// Un classeur neuf à deux séances ; la première est renommée puis supprimée
+// depuis la bibliothèque ; le classeur s'ouvre (sur l'autre séance), et la
+// corbeille montre la séance en un bloc, que « Remettre la séance » rend.
+const idsL = await p.evaluate(([L, J]) => window.__creer([{ nom: 'Corbeille', seances: [L + 7 * J, L + 9 * J] }]), [LUNDI, JOUR])
+ids.Corbeille = idsL.Corbeille
+await ouvrirBiblio()
+await deplier('Corbeille')
+// La ligne de « Lun 19 » (la bibliothèque liste la séance la plus récente d'abord)
+let kL = (await lignes('Corbeille')).findIndex(x => /Lun 19/.test(x))
+await menuSeance('Corbeille', kL)
+await choisir('renommer-seance')
+await p.fill('.dialogue-nom-seance input', 'Activité d\'intro')
+await p.click('.dialogue-nom-seance button[type="submit"]')
+await attendreFin()
+await viderToasts()
+await deplier('Corbeille')
+kL = (await lignes('Corbeille')).findIndex(x => /Lun 19/.test(x))
+await p.focus(`${carte('Corbeille')} .carte-seance-ligne >> nth=${kL} >> .carte-seance`)
+await p.keyboard.press('Delete')
+await attendreFin()
+let luL = await p.evaluate(id => window.__lire(id), ids.Corbeille)
+ok(luL.seances.length === 1 && luL.seances[0].debut === LUNDI + 9 * JOUR && luL.fiche.liste.length === 1 && luL.corbeille === 2 && !luL.fiche.corbeille,
+  'L1) « Activité d\'intro » (Lun 19 oct) supprimée : il reste Mer 21 dans le classeur et sa fiche, ses deux pages sont dans la corbeille du classeur', luL)
+await p.click(`${carte('Corbeille')} .carte-seance-ligne >> nth=0 >> .carte-seance`)
+await p.waitForFunction(() => window.__app?.page && !window.__bibliotheque?.ouvert, null, { timeout: 15000 })
+await attendre(800)
+await p.keyboard.press('Shift+P')
+await p.waitForFunction(() => { const t = document.querySelector('.trieuse'); return t && !t.hidden }, null, { timeout: 5000 })
+await attendre(300)
+await p.click('.trieuse-bouton-corbeille'); await attendre(500)
+const blocL = await p.evaluate(() => {
+  const n = s => (s ?? '').replace(/[\u00a0\u202f]/g, ' ')
+  const v = document.querySelector('.trieuse-corbeille'), lis = [...v.querySelectorAll('.corbeille-grille > li')]
+  return { ouverte: !v.hidden, titre: v.querySelector('h2').textContent, lignes: lis.map(li => li.className), bloc: lis[0] ? { titre: n(lis[0].querySelector('.bloc-corbeille-titre')?.textContent), date: n(lis[0].querySelector('.corbeille-date')?.textContent), vignettes: [...lis[0].querySelectorAll('.corbeille-vignette .numero')].map(x => x.textContent), boutons: [...lis[0].querySelectorAll('button')].map(b => b.textContent) } : null, focus: document.activeElement?.textContent }
+})
+ok(blocL.ouverte && blocL.titre === 'Corbeille du classeur' && blocL.lignes.join() === 'bloc-corbeille' && blocL.bloc?.titre === 'Activité d\'intro · Lun 19 oct 8h · 2 pages' && /^Supprimée aujourd'hui à /.test(blocL.bloc.date)
+  && blocL.bloc.vignettes.join() === '1,2' && blocL.bloc.boutons.join('|') === 'Remettre la séance|Supprimer définitivement' && blocL.focus === 'Remettre la séance',
+  'L2) Le classeur ouvert, Maj + P, Corbeille : un bloc « Activité d\'intro · Lun 19 oct 8h · 2 pages », ses deux vignettes, « Remettre la séance »', blocL)
+await viderToasts()
+await p.click('.bloc-corbeille .corbeille-remettre'); await attendre(500)
+let tL = await toasts()
+let apresL = await p.evaluate(() => { const t = window.__app.tableau; return t.seancesDuClasseur().map(s => ({ nom: s.nom ?? null, debut: s.debut, pages: s.pages.length, rang: s.rang ?? null })) })
+ok(tL.map(norm).some(x => x.startsWith('Séance remise : « Activité d\'intro » (2 pages)') && !/redevient/.test(x) && x.includes('Annuler')) && apresL.length === 2 && apresL[0].nom === 'Activité d\'intro' && apresL[0].debut === LUNDI + 7 * JOUR && apresL[0].pages === 2 && apresL[0].rang === null
+  && apresL[1].pages === 2 && await p.evaluate(() => document.activeElement?.classList.contains('trieuse-vignette-passee')),
+  'L3) « Remettre la séance » : elle revient à sa date, avec son nom et ses deux pages, dépliée dans la trieuse (le focus sur sa première vignette)', { tL, apresL })
+await p.click('.toast button:has-text("Annuler")'); await attendre(500)
+apresL = await p.evaluate(() => { const t = window.__app.tableau; return { seances: t.seancesDuClasseur().filter(s => s.pages.length).length, corbeille: t.pagesDeLaCorbeille().length } })
+ok(apresL.seances === 1 && apresL.corbeille === 2, 'L4) « Annuler » : ses pages retournent dans la corbeille', apresL)
 
 ok(!erreurs.length, 'Aucune erreur dans la page', erreurs)
 if (process.env.CAPTURE) await p.screenshot({ path: process.env.CAPTURE })
