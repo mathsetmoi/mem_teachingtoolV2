@@ -2105,7 +2105,14 @@ se dit) :
   nombre de séances, le chapitre ouvert en tête, et « + Nouveau chapitre… » :
   le nom seulement, rangé dans le dossier, page blanche, et la case de la clé
   comme pour un nouveau classeur ; la copie sur le Drive suit comme pour tout
-  classeur). « Continuer la séance de lundi 8 h ». « Un autre niveau : 4ème ·
+  classeur ; depuis le lot 17, le classeur « Séances isolées » du niveau y est
+  en dernier, « Séances isolées · 3 séances · hors chapitre »). Dessous, le
+  lien **« Séance isolée »** et son petit texte « Hors chapitre : rangée dans
+  « Séances isolées » de 5ème. » (lot 17, voir « Les séances isolées ») : une
+  séance hors chapitre, dans le classeur « Séances isolées » du niveau, créé
+  au besoin sans fenêtre ; quand le classeur ouvert est lui-même « Séances
+  isolées », le lien n'est pas là et le gros bouton dit « Nouvelle séance
+  isolée en 5ème ». « Continuer la séance de lundi 8 h ». « Un autre niveau : 4ème ·
   3ème · 2nde » (les autres dossiers de niveau) : un clic ouvre le chapitre en
   cours de ce niveau, le dernier classeur ouvert dans son dossier (ses
   sous-dossiers compris), et y commence une séance ; un niveau sans classeur
@@ -3325,6 +3332,10 @@ séances du chapitre au même endroit. Pas de distinction 5A / 5B (l'outil dit
 - **Les replays `.mem`** ne bougent pas : le lien des élèves passe toujours
   par « MEM - Replay séances » (les liens déjà envoyés restent bons). Les
   ranger aussi dans le dossier du chapitre n'est pas fait.
+- **Le classeur « Séances isolées » d'un niveau** (lot 17) est un chapitre
+  comme un autre pour l'ordinateur et le Drive :
+  `5ème/Séances isolées/Séances isolées.memc`, « MEM - Classeurs › 5ème ›
+  Séances isolées » ; ses replays sont proposés dans ce dossier.
 
 ### Comment c'est fait
 
@@ -3374,7 +3385,10 @@ séance, ou la touche Menu).
   séance à la même heure refuse, et rien ne bouge. Une séance qui est déjà
   passée par ce classeur puis a été supprimée (ses pages sont à la
   corbeille) y revient sans être refusée : la nouvelle copie remplace
-  l'ancienne, dont les pages de la corbeille ne sont plus à remettre.
+  l'ancienne, dont les pages de la corbeille ne sont plus à remettre. Une
+  séance isolée (lot 17) se range plus tard dans son chapitre par
+  « Déplacer vers… » ; si c'était la seule, le classeur « Séances isolées »
+  vide va à la corbeille et le prochain « Séance isolée » en recrée un.
 - **Images retrouvées** : jusqu'au 28 octobre 2026, une séance déplacée
   arrivait sans ses images (des cadres gris à leur place). En ouvrant le
   classeur, celles qui manquent sont cherchées dans les autres classeurs de
@@ -3788,7 +3802,10 @@ n'est jamais imposée, rien ne change au geste du professeur en classe.
   puces grises (celle qui vient de son dossier plus claire), et un bouton ⋯ de 44 px (« Options de
   « Symétrie centrale » »). Le lecteur d'écran y lit « Symétrie centrale, 12
   pages, modifié aujourd'hui à 14 h 05 » (et « niveau 5e B », « ouvert dans
-  cet onglet », la clé, le Drive). Chaque carte est un lien (`?classeur=<id>`) : **le clic du
+  cet onglet », la clé, le Drive). Le classeur « Séances isolées » d'un
+  niveau (lot 17) porte sous son nom la mention grise « Hors chapitre », et
+  le lecteur d'écran dit « Séances isolées, hors chapitre, … » ; la carte
+  est la même pour le reste. Chaque carte est un lien (`?classeur=<id>`) : **le clic du
   milieu et Ctrl + clic ouvrent le classeur dans un autre onglet**, comme
   partout ; le clic simple l'ouvre ici.
 - **Les pointeurs.** La souris et la plume de la tablette graphique : un
@@ -3912,6 +3929,8 @@ classeurs d'un niveau. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
   (« Modifiés récemment », « Nom (A → Z) ») ; le choix vaut pour les
   classeurs de la grille et du filtre (les dossiers vont toujours par nom,
   Récents par ouverture), retenu sur l'appareil (`mem-teachingtool-tri`).
+  Le classeur « Séances isolées » d'un dossier (lot 17) est toujours en
+  dernier, quel que soit le tri ; les chapitres gardent leur ordre.
 - **Un cycle de dossiers** (deux onglets qui rangent chacun un dossier dans
   l'autre ; le registre le refuse dans sa transaction, mais pas des deux
   côtés à la fois) : chaque dossier du cycle se montre à la racine, toute
@@ -4045,7 +4064,9 @@ testé : `tests/corbeille-biblio.test.ts` ; la vue, `src/classeurs/vue-corbeille
   plus) ; le Tableau garde sa base (« Annuler » le rend, et le ×) ; au
   rechargement, la bibliothèque seule dit qu'il est dans la corbeille.
   Supprimé dans un autre onglet pendant qu'il est ouvert ici : rien ne
-  change ici, on y écrit comme avant, jusqu'à ce qu'on le vide.
+  change ici, on y écrit comme avant, jusqu'à ce qu'on le vide. Le classeur
+  « Séances isolées » d'un niveau (lot 17) se supprime comme tout classeur ;
+  le prochain « Séance isolée » en recrée un neuf.
 - **La vue** (le bouton « Corbeille (3) », à la place des cartes) : les
   dossiers et les classeurs supprimés, le dernier d'abord (un classeur
   supprimé avant son dossier paraît aussi pour lui-même) ; chacun : son
@@ -4519,6 +4540,153 @@ dossiers sont « 5ème », « 4ème », « 3ème » ; « Nouvelle séance en 5è
 niveau »), `tests/arbre.test.ts`, `tests/bibliotheque.test.ts`. À noter : la
 liste du tirage au sort est celle du dossier (`mem-tirage-<id>`), donc du
 niveau : la même pour la 5A et la 5B.
+
+## Deuxième lot de l'audit (lot 17)
+
+Le deuxième lot de l'audit du 28 octobre 2026 : les séances isolées,
+l'ancien tableau à sa date, la corbeille du classeur rangée par séance,
+vérifier les classeurs.
+
+### Les séances isolées
+
+Proposition 5 de l'audit : une séance hors chapitre (une remédiation, un
+devoir corrigé, une séance de vacances) n'oblige plus à créer un faux
+chapitre ni à salir un vrai. Chaque niveau reçoit, à la première demande,
+un classeur **« Séances isolées »** où vont ces séances.
+
+**Le mode d'emploi.**
+
+- **Le lien « Séance isolée »** de la fenêtre « Bonjour ! », sous la ligne
+  « Fractions — changer de chapitre », avec son petit texte « Hors
+  chapitre : rangée dans « Séances isolées » de 5ème. » (« … de
+  « Soutien ». » pour un dossier qui n'est pas un niveau ; « Hors chapitre :
+  rangée dans « Séances isolées ». » pour un classeur sans dossier). Un clic
+  ouvre le classeur « Séances isolées » du niveau du classeur ouvert (son
+  plus proche dossier de niveau : un chapitre rangé dans « 5ème ›
+  Géométrie » a ses séances isolées dans « 5ème » ; sinon son dossier ;
+  sinon la racine) et y commence une séance, sans question ; la case
+  « Commencer par des automatismes » vaut aussi pour lui. S'il n'existe pas
+  encore, il est créé sans fenêtre (page blanche, dans le dossier de niveau)
+  et l'arrivée dit « Classeur « Séances isolées » créé en 5ème : vos séances
+  hors chapitre iront là. » (« … créé dans « Soutien » : … », « … créé :
+  … » à la racine). Un échec se dit comme pour « Nouveau classeur » et l'on
+  reste sur le chapitre.
+- **Quand le classeur ouvert est « Séances isolées »**, le lien n'est pas là
+  (il ferait la même chose que le gros bouton) : le gros bouton dit
+  « Nouvelle séance isolée en 5ème » et la ligne « Séances isolées — changer
+  de chapitre ».
+- **Pas d'entrée dans le menu ⋯** (voir les décisions). Deux classes du même
+  niveau qui se suivent à moins d'une heure (pas de « Bonjour ! ») passent
+  par la bibliothèque (la carte « Séances isolées ») ; dans ce classeur,
+  « Nouvelle séance » du menu ⋯ commence la séance suivante.
+- **La séance isolée est une séance comme les autres** : « Séance du mar 14
+  oct 14h » sous le compteur, renommable (menu ⋯ « Renommer la séance… », F2
+  dans la bibliothèque), lue sans s'écrire une fois passée. Publier la
+  propose avec ses pages, le titre « Séance du 14 octobre » (ou son nom), le
+  dossier « Clé 5ème › Séances isolées » quand le niveau est relié, et le
+  Drive déjà retenu pour le niveau ; le fichier « Séance du 14 octobre
+  [code].mem ».
+- **Dans la bibliothèque et dans « Chapitres de 5ème »**, le classeur isolé
+  est toujours en dernier dans son niveau, quel que soit le tri (les
+  chapitres gardent leur ordre), avec la mention grise « Hors chapitre » sous
+  son nom (« Séances isolées · 3 séances · hors chapitre » dans la liste de
+  « Bonjour ! », le bord en pointillé) ; le lecteur d'écran le dit aussi. La
+  carte reste la même : menu ⋯, « 3 séances ▸ », glisser, Récents inchangé.
+- **Vers un chapitre** : bibliothèque → carte « Séances isolées » → « 3
+  séances ▸ » → … de la séance → « Déplacer vers… » → le chapitre (lot 9) :
+  elle arrive à sa date avec son film, ses images et ses publications (le
+  lien déjà donné aux élèves reste bon). Si c'était la seule séance, le
+  classeur vide va à la corbeille, et le prochain « Séance isolée » en
+  recrée un.
+- **Supprimer** le classeur : la corbeille, comme tout classeur ; les
+  replays publiés ne bougent pas ; le prochain « Séance isolée » en recrée
+  un neuf (celui de la corbeille est ignoré).
+- **Deux classeurs « Séances isolées » dans un niveau** (un `.memc` ajouté,
+  un classeur remis de la corbeille, deux onglets au même instant) : les
+  deux cartes se montrent, les nouvelles séances isolées vont dans le plus
+  récemment ouvert ; on vide l'autre par « Déplacer vers… ». Aucun message.
+- **Le renommer** en fait un chapitre ordinaire (c'est voulu) ; le prochain
+  « Séance isolée » crée un classeur neuf. Inversement, un chapitre déjà
+  nommé « Séances isolées » dans le dossier du niveau est reconnu.
+- **Sur l'ordinateur et le Drive (lot 8)** : un chapitre comme un autre,
+  « 5ème/Séances isolées/Séances isolées.memc », « MEM - Classeurs › 5ème ›
+  Séances isolées ». Créé sans fenêtre, il n'a pas de fichier de clé tant
+  que le niveau n'est pas relié de nouveau (ou « Enregistrer automatiquement
+  sur la clé »), comme « + Nouveau chapitre… » sans la case ; la copie sur
+  le Drive suit le réglage du niveau.
+- **Version hors ligne et version en ligne** : identiques. **Au téléphone**
+  (390 px), la fenêtre « Bonjour ! » grandit d'une ligne et reste entière
+  sans défiler ; le lien fait 36 px de haut pour la plume et le doigt.
+- **Sans bibliothèque** (le repli) : pas de lien, comme pour les chapitres.
+
+**Les décisions.**
+
+- **Reconnu à son nom** « Séances isolées » (majuscules et blancs sans
+  importance, `cleDe`), rangé directement dans le dossier du niveau (ou à
+  la racine pour un classeur sans dossier) : rien de nouveau dans les fiches
+  ni les fichiers ; on peut le créer soi-même par « Nouveau classeur ».
+- **Aucun champ nouveau**, ni dans la fiche du classeur, ni dans celle de la
+  séance ; `.memc`, `.memb`, `.mem`, les bases et les clés de stockage ne
+  changent pas ; rien à migrer.
+- **Lancée depuis « Bonjour ! » seulement.** La décision ajoutait une entrée
+  « Séance isolée » au menu ⋯ (sous « Nouvelle séance », aussi dans « Plus »
+  au téléphone) à condition qu'il tienne encore sans défiler au poste de la
+  classe (1366 × 657). Mesuré pendant le lot : le menu ⋯ a déjà 865 px de
+  contenu pour 578 px de place à 1366 × 657 (le bloc de l'état et les sept
+  entrées avec leur aide), et défile même à 1366 × 768 (689 px de place) ;
+  l'entrée ajoutait 44 px. L'entrée n'est donc pas là, comme le prévoyait la
+  décision ; la fonction (`seanceIsolee`, `main.ts`) reste à part, prête à
+  être branchée si le menu est un jour raccourci.
+- **La date comme nom** : « Séance du mar 14 oct 14h », renommable après
+  coup ; pas de champ de nom au départ ; Publier inchangé.
+- **En dernier, avec « Hors chapitre »**, dans la bibliothèque et dans
+  « Chapitres de 5ème » ; la carte reste la même.
+- **Création silencieuse** (pas de fenêtre), le message d'arrivée la dit ;
+  quand la seule séance part vers un chapitre, le classeur vide va à la
+  corbeille comme aujourd'hui ; pas de message pour deux classeurs isolés.
+
+**Comment c'est fait.**
+
+- `src/classeurs/isolees.ts` (pur, testé) : `NOM_SEANCES_ISOLEES`,
+  `estSeancesIsolees` (`cleDe`), `classeurSeancesIsolees` (parmi les
+  classeurs visibles rangés directement dans le dossier, le plus récemment
+  ouvert, puis modifié, puis le plus petit id ; la corbeille et un dossier
+  dans la corbeille ignorés), `isoleesEnQueue`, `texteSeanceIsolee`,
+  `texteClasseurIsoleesCree`, `HORS_CHAPITRE`.
+- `src/classeurs/bibliotheque.ts` : `creerEtOuvrir({ nom, dossier, arrivee,
+  avant })` crée un classeur sans fenêtre (par `creer`, qui prend maintenant
+  le dossier en paramètre ; les dossiers sont relus, un dossier parti ou à
+  la corbeille vaut la racine) puis l'ouvre ; `rendre` passe la grille d'un
+  dossier et le filtre de niveau par `isoleesEnQueue` après `trier` ; la
+  carte reçoit la classe `isolees` et la mention `.carte-hors-chapitre` ;
+  `texteLecteur` (`liste.ts`) gagne `horsChapitre`.
+- `src/seances-vue.ts` : `HoteAccueil.seanceIsolee` (`{ texte, faire }`) et
+  `isolees` ; `texteNouvelleSeance` ; la ligne `.accueil-isolee` (le lien
+  `.accueil-seance-isolee`, 36 px, et son `small`) ; `ChapitreAccueil.isolees`
+  (la classe `isolees` et « · hors chapitre »).
+- `src/main.ts` : `contexteDuNiveau` (ce que « Bonjour ! » et « Séance
+  isolée » relisent de la bibliothèque : les dossiers, les classeurs
+  ouvrables, le niveau, le dossier du chapitre, partir vers un classeur) et
+  `seanceIsolee(app, ui, registre, fiche, auto)` : le classeur ouvert est
+  isolé → `app.nouvelleSeance()` ; il existe ailleurs → la clé d'onglet
+  `mem-teachingtool-nouvelle-seance` puis `ouvrirClasseur` (la séance commence
+  sans question à l'arrivée) ; sinon `creerEtOuvrir`. Tout est relu au clic :
+  un autre onglet a pu créer le classeur pendant que la fenêtre était ouverte.
+- Rien ne change dans `seances.ts`, `document.ts`, `deplacer-seance.ts`, le
+  lot 8, Publier ni la recherche : une séance isolée est une séance
+  ordinaire d'un classeur ordinaire.
+
+**Les essais.** `tests/isolees.test.ts` (la reconnaissance, le classeur d'un
+dossier, la queue, les textes), `tests/seances.test.ts`
+(`texteNouvelleSeance`), `tests/bibliotheque.test.ts` (« hors chapitre » pour
+le lecteur d'écran) ; `essais/navigateur/lot17/E1-seances-isolees.mjs`
+(sections A à L : le lien et son petit texte, le classeur créé sans fenêtre
+puis retrouvé le lendemain avec le flash d'automatismes, « Bonjour ! »
+depuis « Séances isolées », « Chapitres de 5ème », la bibliothèque par date
+et par nom, « Déplacer vers… » un chapitre et la corbeille, un classeur neuf
+puis l'ancien remis, la racine, le menu ⋯ mesuré, le téléphone, Publier avec
+le niveau relié, la version hors ligne) ; `lot5/S-seances-classes.mjs` adapté
+(le lien et son petit texte ; `DEV=…` pour le port du serveur).
 
 ## Ce que fait la v0.1
 
@@ -5536,7 +5704,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/automatismes.ts` | Les automatismes (générateurs, par niveau et par thème) et le tirage d'un flash (`tirerFlash`) |
 | `src/flash.ts` | Le flash d'automatismes : le réglage, les questions posées sur une page de la séance, le bandeau, la correction |
 | `src/seances.ts` | Les séances d'un classeur (lot 6) : le rangement des pages par séance (pur), la migration d'un classeur d'avant, les mots des dates (« Séance du mar 14 oct 14h », « de lundi ») ; dans `document.ts`, les deux cartes (`seances`, `seanceDesPages`), la séance neuve, la reprise d'une page (`reprendrePage`, `retirerReprise`) et la garde des séances passées (`garde`) ; dans `revoir/exporter.ts`, les séances lues dans le film (`seancesExplicitesDuFilm`, `pagesAPublier`) |
-| `src/seances-vue.ts` | Les séances à l'écran (lot 6) : la fenêtre « Bonjour ! », la question « Cette page est dans la séance de lundi… », « Renommer la séance… », les bandeaux (la lecture, « Reprendre ») et le tiroir de la séance précédente |
+| `src/seances-vue.ts` | Les séances à l'écran (lot 6) : la fenêtre « Bonjour ! » (avec le lien « Séance isolée » et le classeur isolé en dernier depuis le lot 17), la question « Cette page est dans la séance de lundi… », « Renommer la séance… », les bandeaux (la lecture, « Reprendre ») et le tiroir de la séance précédente |
 | `src/figures.ts` | Les figures SVG des automatismes |
 | `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le bouton du fond (lot 5 : la vignette du fond de la page, qui ouvre le menu des fonds, voir `src/menu-fonds.ts`), le menu complet (un objet, une formule, plusieurs objets, un groupe : « Groupe · 3 objets », *Grouper* ou *Dégrouper* ; sa rangée sur une ligne, son bouton ⋯ et son petit menu en sections : *Copier en image* et *Envoyer vers…*, puis *Ordre* (les aides d'`aidesOrdre`), puis *Protéger*, puis *Groupe* (*Sortir du groupe*, pour un membre pris seul : `sectionGroupe`), puis *Position* (*Tourner d'un quart de tour à gauche* et *… à droite*, pour ce qui a la pastille ↻, retouches après le lot 5 ; *Remettre droit*, pour une image ou une formule seule tournée) ; placé dans l'écran, sur un téléphone aussi), le menu court d'un objet verrouillé (lot 5 : Déverrouiller, Copier, ⋯), le menu de la Gomme (lot 5 : retoucher la Gomme en main, le clic droit, l'appui long, E ; ce qu'elle efface et sa taille ; le titre et la marque ◐ de son bouton), le menu de la page (et ce qu'il fait de l'image fixée en fond : la détacher, la copier, l'envoyer ; Déverrouiller tout), « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯ de la barre du haut, la trieuse), les messages (un ou deux boutons ; au-dessus des panneaux pendant un placement), éditeur de formules ; le bouton du classeur (sa place mesurée, à quatre formes), le bloc de l'état en tête du menu ⋯, le bandeau discret ; « Cet appareil » à la fin du menu ⋯ (lot 5 : « Contraste renforcé », body.contraste ; « Noms sous les outils », body.noms-outils, le nom court de chaque bouton dans son `span.libelle` (`nommer`, le mot dans data-libelle), `majNomsOutils` qui suit la mise en page du téléphone, `--droite-barre-outils` mesuré, les menus du doigt et de la Gomme qui passent sous la barre du haut sur deux rangées) ; la mise en page du téléphone (lot 5, K10 : `body.telephone`, `telephone`, `barreEnBas` ; ce qui ne s'y montre pas, `.seulement-large` ; « Couleur » et « Autres outils », au bout de la barre des outils, leurs menus `construireMenuCouleur` et `construireMenuAutres` (« Couleur » sert aussi, depuis le contrôle final du lot 5, à la barre d'un écran qu'on touche : body.tactile, ses pastilles et ses tailles en 44 × 44, repliées dans « Couleur » quand elle ne tient pas dans la hauteur, `majCouleursRepliees`), `placerPresDeLaBarre` qui les pose entre les deux barres ; les choix des Formes et du Segment au-dessus de la barre du bas, `placerChoixDuTelephone` ; ⋯ devenu « Plus », ses sections Page, Outils de cours et Vue, `sectionsDuTelephone`, et « Fond… », `ouvrirFondsDepuisPlus` ; le bouton du classeur en tête de la barre du haut ; `--haut-barre-bas` et `basUtile`, ce que prend la barre du bas ; `bordsFlottants`, les bords que la barre d'actions et le menu complet ne passent pas ; `placerToast`, le message qui ne couvre ni les barres ni ce qui est pris (depuis les retouches après le lot 5, au poste de la classe aussi : ni la barre d'actions ni la pastille ↻) ; la liste des instruments sous la barre du haut) ; les gains rapides du lot 16 : Annuler et Rétablir en tête de la barre du haut (`placerHistorique` les déplace dans la barre du bas au téléphone), la grille 2 × 2 des pastilles (`grillePastilles`), le bouton de l'épaisseur et son menu (`majBoutonEpaisseur`, `basculerMenuEpaisseur`, `construireMenuEpaisseur`, `placerMenuEpaisseur`) |
 | `src/pages/envoi.ts` | La fenêtre « Envoyer vers… » : déplacer ou copier, la liste des destinations (chaque page avec sa petite vignette, une nouvelle page juste après, à la fin), le clavier ; les textes des messages d'un envoi (pur, testé). L'envoi lui-même est `App.envoyerSelection`, son annulation `Tableau.envoyer` |
@@ -5573,7 +5741,8 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/classeurs/cle.ts` | L'enregistrement automatique dans un fichier de la clé (Chrome, Edge, aussi en `file://`) : l'activer (le fichier choisi, vérifié, gardé), quand écrire (20 s après le dernier changement, au plus tard 2 min, au calme), écrire d'un bloc depuis le travailleur, les garde-fous (un autre classeur, un fichier modifié ailleurs, l'histoire perdue), la permission (un clic après un rechargement), les échecs et leurs réessais, un seul onglet qui écrit (Web Locks), la question du navigateur en fermant l'onglet avant l'écriture (`beforeunload`, posée seulement pendant ce temps-là, et l'écriture part aussitôt), Arrêter, la case de la fenêtre « Ouvrir ce classeur ? » ; un conflit propose d'ouvrir le fichier de la clé (`fichierDeLaCle`), et la fiche changée dans l'onglet se relit (`resynchroniser`) |
 | `src/classeurs/bibliotheque.ts` | La bibliothèque des classeurs : l'écran (par-dessus le classeur, ou seule), le bandeau et la ligne du classeur ouvert, Récents et la grille du dossier affiché (seules les cartes changées se refont, le focus reste), les cartes des classeurs (des liens : le clic du milieu ouvre un onglet) et des dossiers, les pointeurs et le clavier, le menu d'une carte et celui d'un dossier, ouvrir un autre classeur sans rien perdre (le trou, ce qui attend, le rappel d'enregistrer noté pour l'arrivée, `CLE_RAPPEL_ARRIVEE` et `lireRappelArrivee`, sans question depuis le lot 16), Nouveau classeur (la case de la clé, la première écriture avant de partir) ; ranger : le conseil, Nouveau dossier, le fil d'Ariane, Retour arrière, la couleur et « Dossier d'une classe », les étiquettes de classe et leur filtre, renommer (F2, double-clic, au-dessus du clavier virtuel), trier ; déplacer (« Déplacer vers… », le glisser-déposer à la souris, à la tablette graphique et au doigt, deux doigts qui défilent), dupliquer, les aperçus en adresses objet ; la corbeille (Supprimer et Suppr, « Annuler », le bouton « Corbeille (3) », Remettre, les questions de Supprimer définitivement et de Vider, « Enregistrer d'abord », l'onglet qui passe sans classeur), l'adoption des bases sans fiche à la première ouverture, la place du navigateur ; `actionsDuBandeau`, `menuDuBandeau`, `blocsDuMenu`, `blocsDuMenuDossier` pour les morceaux suivants |
 | `src/classeurs/arbre.ts` | L'arbre de la bibliothèque, pur (testé) : les huit couleurs, les noms (d'un dossier, d'une étiquette, d'une copie), ce qui ressemble à un niveau (« 5ème », « 2nde ») et son rang, le cycle et la remontée bornée, le parent montré, le chemin et le fil d'Ariane, les enfants et les descendants, ce que contient un dossier, les étiquettes héritées et effectives (calculées), la rangée du filtre, le tri par nom |
-| `src/classeurs/liste.ts` | Ce que montre la bibliothèque, pur (testé) : Récents (les six derniers ouverts), le tri par date, un classeur à la racine, la date et les pages d'une carte, le texte du lecteur d'écran (avec ses étiquettes et son chemin), les titres des icônes de la clé et du Drive, le nombre de classeurs, le nom d'un classeur neuf |
+| `src/classeurs/liste.ts` | Ce que montre la bibliothèque, pur (testé) : Récents (les six derniers ouverts), le tri par date, un classeur à la racine, la date et les pages d'une carte, le texte du lecteur d'écran (avec ses étiquettes et son chemin, « hors chapitre » depuis le lot 17), les titres des icônes de la clé et du Drive, le nombre de classeurs, le nom d'un classeur neuf |
+| `src/classeurs/isolees.ts` | Le classeur « Séances isolées » de chaque niveau, pur (testé, lot 17) : reconnu à son nom (`estSeancesIsolees`), trouvé directement dans un dossier (`classeurSeancesIsolees`, le plus récemment ouvert s'il y en a deux), rejeté en queue (`isoleesEnQueue`), les textes du lien « Séance isolée » et du message d'arrivée ; voir « Les séances isolées » |
 | `src/classeurs/ecrivain-pur.ts` | Le fichier d'un classeur depuis les mises à jour de sa base, pur (testé) : la fusion, la vérification (une base trouée ou abîmée ne fait aucun fichier ; avec `lisible`, une base trouée relue donne ce qui s'en relit, et le dit), l'en-tête, le gzip, le vecteur d'état, la somme CRC-32 ; la copie d'un classeur (`preparerCopie` : toute l'histoire, le registre des publications vidé et la marque de copie en une transaction) ; l'examen d'une base (`examinerMisesAJour` : ses pages, les formes de toutes ses pages, son film, sa piste, ses publications, ses noms, sa corbeille de pages, ses dates) |
 | `src/classeurs/deplacer.ts` | Déplacer un classeur ou un dossier, pur (testé) : là où il est, les places interdites (ni dans soi-même ni dans un descendant, ni là où il est déjà), l'arbre de « Déplacer vers… » (borné), la cible sous le pointeur pendant un glisser (`cibleSous`), le message et ses étiquettes qui changent |
 | `src/classeurs/vers.ts` | La fenêtre « Déplacer vers… » : l'arbre des dossiers, en retrait et en couleur, « (ici) » et les grisés, le clavier (flèches, Début, Fin, Entrée, Échap, Tab vers « Annuler ») |

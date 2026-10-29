@@ -165,9 +165,11 @@ export function titreDrive(f: FicheClasseur, maintenant: number): string | null 
  *  étiquettes de niveau (« niveau 5e B »), son dossier quand un filtre les
  *  montre tous ensemble (« dans 5e B › Géométrie »), « ouvert dans cet
  *  onglet », la clé et le Drive (les icônes et les puces, elles, sont
- *  muettes) */
-export function texteLecteur(f: FicheClasseur, maintenant: number, o: { ouvertIci?: boolean; etiquettes?: readonly string[]; chemin?: string } = {}): string {
+ *  muettes). horsChapitre : le classeur « Séances isolées » d'un niveau
+ *  (lot 17) le dit juste après son nom. */
+export function texteLecteur(f: FicheClasseur, maintenant: number, o: { ouvertIci?: boolean; etiquettes?: readonly string[]; chemin?: string; horsChapitre?: boolean } = {}): string {
   const parts = [f.nom]
+  if (o.horsChapitre) parts.push('hors chapitre')
   if (f.pages !== null && f.pages > 0) parts.push(pagesLisibles(f.pages))
   if (f.modifie > 0) parts.push(`modifié ${quandCourt(f.modifie, maintenant)}`)
   else if (f.cree > 0) parts.push(`créé ${quandCourt(f.cree, maintenant)}`)
