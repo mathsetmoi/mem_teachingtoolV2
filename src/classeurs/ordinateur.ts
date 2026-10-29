@@ -107,9 +107,17 @@ async function nomsDe(d: PoigneeDossier): Promise<string[]> {
  *  attend dans sa base ; progres : « 3 sur 12 » */
 export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, classe: string, o: {
   avantDEcrire?: (f: FicheClasseur) => Promise<void>; progres?: (n: number, total: number) => void
+  /** Les dossiers au-dessus de `d`, pour le chemin noté dans la fiche
+   *  (fiche.cle.chemin) : « LFB classeurs › 2 » quand le dossier du niveau
+   *  est dans celui d'un établissement ; par défaut, le nom de `d` seul */
+  prefixe?: string[]
+  /** Seulement ces classeurs du niveau (par id) ; absent : tous */
+  seulement?: readonly string[]
 } = {}): Promise<BilanRelier> {
   const [fiches, dossiers] = await Promise.all([registre.classeurs(), registre.dossiers()])
-  const classeurs = classeursDeLaClasse(classe, fiches, dossiers)
+  let classeurs = classeursDeLaClasse(classe, fiches, dossiers)
+  if (o.seulement) classeurs = classeurs.filter(f => o.seulement!.includes(f.id))
+  const prefixe = o.prefixe ?? [d.name]
   const bilan: BilanRelier = { ecrits: [], adoptes: [], plusRiches: [], ailleurs: [], echecs: [] }
   const sous = new Map<string, { d: PoigneeDossier; noms: string[] }>() // les dossiers déjà ouverts, par chemin
   /** Le dossier de ce chemin sous le dossier relié ; `creer` faux : null s'il n'existe pas encore */
@@ -133,12 +141,19 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
       const deja = f.cle ? await registre.poignee<PoigneeFichier>(f.id).catch(() => undefined) : undefined
       const sous = sousDossiers(f.dossier, classe, dossiers)
       const base = nomSur(f.nom)
+      /** Le chemin noté dans la fiche pour un fichier rangé à `chemin` sous `d` */
+      const cheminNote = (chemin: string[]) => [...prefixe, ...chemin.map(n => nomSur(n, { repli: 'Dossier' }))]
       if (deja) {
         // Il peut être dans le dossier de son chapitre, ou à plat (le rangement d'avant)
         let lie = false
         for (const chemin of [[...sous, base], sous]) {
           const ici = await dossierPour(chemin, false)
-          if (ici && await ici.d.getFileHandle(deja.name).then(h => memeFichier(h, deja)).catch(() => false)) { lie = true; break }
+          if (ici && await ici.d.getFileHandle(deja.name).then(h => memeFichier(h, deja)).catch(() => false)) {
+            lie = true
+            // Un fichier rangé avant ce chantier : la fiche apprend son chemin
+            if (!f.cle?.chemin) await registre.modifierClasseur(f.id, x => { if (x.cle && !x.cle.chemin) x.cle = { ...x.cle, chemin: cheminNote(chemin) } }).catch(() => {})
+            break
+          }
         }
         if (!lie) bilan.ailleurs.push(f.nom)
         continue
@@ -150,7 +165,7 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
         const ici = await dossierPour(chemin, false)
         const nomLa = ici?.noms.find(n => n.toLocaleLowerCase('fr') === prevu.toLocaleLowerCase('fr'))
         if (!ici || !nomLa) continue
-        const r = await adopterSiLeMeme(registre, f, await ici.d.getFileHandle(nomLa))
+        const r = await adopterSiLeMeme(registre, f, await ici.d.getFileHandle(nomLa), cheminNote(chemin))
         if (r === 'adopte') { bilan.adoptes.push(f.nom); adopte = true; break }
         if (r === 'plus-riche') { bilan.plusRiches.push(f.nom); adopte = true; break }
       }
@@ -161,7 +176,7 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
       const h = await ici.d.getFileHandle(nom, { create: true })
       ici.noms.push(nom)
       await o.avantDEcrire?.(f)
-      const r = await ecrireLeNeuf(registre, h, { id: f.id, base: f.base, nom: f.nom })
+      const r = await ecrireLeNeuf(registre, h, { id: f.id, base: f.base, nom: f.nom, chemin: cheminNote([...sous, base]) })
       if (r.date === null) bilan.echecs.push(f.nom); else bilan.ecrits.push(f.nom)
     } catch { bilan.echecs.push(f.nom) }
   }
@@ -170,8 +185,8 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
 
 /** Le fichier du dossier est-il celui de ce classeur, sans rien de plus que
  *  sa base ? Alors il devient le fichier de sa clé tel quel (sa date et son
- *  vecteur notés, comme une écriture d'ici). */
-async function adopterSiLeMeme(registre: Registre, f: FicheClasseur, h: PoigneeFichier): Promise<'adopte' | 'plus-riche' | 'autre'> {
+ *  vecteur notés, comme une écriture d'ici ; chemin : où il est rangé). */
+export async function adopterSiLeMeme(registre: Registre, f: FicheClasseur, h: PoigneeFichier, chemin?: string[]): Promise<'adopte' | 'plus-riche' | 'autre'> {
   const fichier = await h.getFile()
   if (!fichier.size) return 'autre'
   let lu
@@ -181,6 +196,6 @@ async function adopterSiLeMeme(registre: Registre, f: FicheClasseur, h: PoigneeF
   const c = comparerVecteurs(vecteur, lu.vecteur)
   if (c !== 'egal' && c !== 'contient') return 'plus-riche'
   await registre.garderPoignee(f.id, h)
-  await registre.modifierClasseur(f.id, x => { x.cle = { nom: h.name, t: Date.now(), date: lu.entete.date, taille: fichier.size, vecteur: lu.vecteur } })
+  await registre.modifierClasseur(f.id, x => { x.cle = { nom: h.name, t: Date.now(), date: lu.entete.date, taille: fichier.size, vecteur: lu.vecteur, ...(chemin ? { chemin } : {}) } })
   return 'adopte'
 }

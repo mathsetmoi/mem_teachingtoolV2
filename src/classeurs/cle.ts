@@ -565,7 +565,7 @@ export class EnregistrementCle {
       // 6. L'écriture, d'un bloc
       await ecrireDans(p, fab.fichier)
       // 7. Ce qui est écrit : la fiche le garde, pour la prochaine fois
-      const nouvelle: CleFiche = { nom: p.name, t: Date.now(), date, taille: fab.fichier.size, vecteur: fab.vecteur }
+      const nouvelle: CleFiche = { nom: p.name, t: Date.now(), date, taille: fab.fichier.size, vecteur: fab.vecteur, ...(cle.chemin ? { chemin: cle.chemin } : {}) }
       this.derniere = nouvelle
       await this.registre.modifierClasseur(this.id, x => { if (x.cle) x.cle = nouvelle }).catch(() => { /* this.derniere s'en souvient */ })
       this.premierNonEcrit = this.premierPendant
@@ -1053,15 +1053,17 @@ export async function examinerPourUnNeuf(registre: Registre, h: PoigneeFichier):
  *  « Il s'enregistre automatiquement » d'avance). Une écriture qui échoue
  *  garde quand même la poignée : l'enregistrement automatique la refera à
  *  l'arrivée. */
-export async function ecrireLeNeuf(registre: Registre, h: PoigneeFichier, c: { id: string; base: string; nom: string }): Promise<{ date: number | null; garde: boolean; message: string; cle?: CleALArrivee }> {
+export async function ecrireLeNeuf(registre: Registre, h: PoigneeFichier, c: { id: string; base: string; nom: string; chemin?: string[] }): Promise<{ date: number | null; garde: boolean; message: string; cle?: CleALArrivee }> {
   const date = Date.now()
-  let cle: CleFiche = { nom: h.name }
+  // chemin : les dossiers où l'outil a rangé le fichier lui-même (la fiche le garde)
+  const chemin = c.chemin ? { chemin: c.chemin } : {}
+  let cle: CleFiche = { nom: h.name, ...chemin }
   let ecrite: number | null = null
   let echec: string | null = null
   try {
     const fab = await fabriquerFichier(c.base, { nom: c.nom, id: c.id }, date)
     await ecrireDans(h, fab.fichier)
-    cle = { nom: h.name, t: Date.now(), date, taille: fab.fichier.size, vecteur: fab.vecteur }
+    cle = { nom: h.name, t: Date.now(), date, taille: fab.fichier.size, vecteur: fab.vecteur, ...chemin }
     ecrite = date
   } catch (e) {
     const r = raisonCle(e)

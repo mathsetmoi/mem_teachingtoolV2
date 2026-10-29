@@ -83,7 +83,12 @@ export interface FicheClasseur {
     /** Le dossier du Drive où est cette copie, quand c'est celui d'un
      *  niveau relié (lot 7) ; absent : le dossier des sauvegardes */
     dossier?: string }
-  cle?: { nom: string; t?: number; date?: number; taille?: number; vecteur?: Uint8Array }
+  /** Le fichier de la clé (lot 4 C4) : son nom, et ce qu'on y a écrit la
+   *  dernière fois. chemin (facultatif, chantier « enregistrer ») : les
+   *  dossiers où l'outil l'a rangé lui-même, du dossier choisi au dossier
+   *  du chapitre (« LFB classeurs › 2 › 2_13_Probas ») ; absent pour un
+   *  fichier choisi à la main, ou rangé avant ce chantier. */
+  cle?: { nom: string; t?: number; date?: number; taille?: number; vecteur?: Uint8Array; chemin?: string[] }
   /** Le nombre de séances du chapitre (lot 6), à sa dernière écriture ;
    *  absent : on ne le sait pas (pas ouvert depuis le lot 6) */
   seances?: number
