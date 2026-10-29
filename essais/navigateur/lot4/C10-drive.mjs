@@ -11,7 +11,8 @@
 // A. La copie 2 min après le changement (page.clock) : le bon dossier, ses
 //    marques, le fichier et les siennes, la fiche ; la suivante remplace le
 //    même fichier, pas avant 10 min ; l'élagage des versions ; GIS chargé à
-//    l'avance ; le menu ⋯ (« Copie sur le Drive… ») et la fenêtre du choix.
+//    l'avance ; le menu ⋯ (« Autres sauvegardes… » → « Choisir le compte ou
+//    arrêter… », lot 18) et la fenêtre du choix.
 // B. Le jeton qui expire (expires_in 61 s) : « connexion » ; avec la clé à
 //    jour, ni bandeau ni point ; sans clé, le bandeau après 2 min sans geste ;
 //    requestAccessToken jamais appelé sans un clic ; le clic, la reprise.
@@ -329,10 +330,12 @@ const DIALOGUES = () => [...document.querySelectorAll('dialog[open]')].map(d => 
   boutons: [...d.querySelectorAll('.actions button')].map(b => ({ a: b.dataset.a ?? b.className, t: (b.textContent || '').replace(/[\u00a0\u202f]/g, ' ') })),
 }))
 const dialogue = async (p, timeout = 20000) => { await p.waitForSelector('dialog[open]', { timeout }); await p.waitForTimeout(150); return (await p.evaluate(DIALOGUES))[0] }
-/** Connecté dans un clic : menu ⋯ → « Copie sur le Drive… » → [Se connecter à Google] */
+/** Connecté dans un clic : menu ⋯ → « Autres sauvegardes… » → « Choisir le compte ou arrêter… » → [Se connecter à Google] (lot 18) */
 async function seConnecter(p) {
   await p.click('.barre-haut .bouton.points'); await p.waitForTimeout(150)
-  await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="copie-drive"]')
+  await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="autres-sauvegardes"]')
+  await p.waitForSelector('dialog.dialogue-autres[open] .as-compte')
+  await p.click('dialog.dialogue-autres[open] .as-compte')
   await p.waitForSelector('dialog.dialogue-drive[open] .d-connecter')
   await p.click('dialog.dialogue-drive[open] .d-connecter')
   await p.waitForFunction(() => /^Connecté/.test(document.querySelector('dialog.dialogue-drive[open] .d-qui')?.textContent ?? ''), null, { timeout: 10000 }).catch(() => {})
@@ -371,16 +374,16 @@ if (seul('A')) {
   const avantGis = await p.evaluate(() => !!document.getElementById('google-identite'))
   ok(await gisPret(p) && !avantGis, '   … la connexion Google se charge à l\'avance, 3 s après l\'ouverture (pas pendant)')
   ok(g.requetes.length === 0 && g.gis.length === 0, '   … aucune requête au Drive, aucune fenêtre Google')
-  // Le menu ⋯ : « Copie sur le Drive… », et la ligne du Drive avec son bouton
+  // Le menu ⋯ : « Autres sauvegardes… » (lot 18 : « Copie sur le Drive… » n'y est plus), et la ligne du Drive avec son bouton
   let m = await menu(p)
-  ok(m.entrees.includes('copie-drive') && m.libelles['copie-drive'].texte === 'Copie sur le Drive…' && !m.libelles['copie-drive'].inactif
-    && m.libelles['copie-drive'].aide === 'Une copie à sens unique, dans un dossier privé de votre Drive : choisir le compte, ou pas de copie.'
-    && m.entrees.indexOf('copie-drive') < m.entrees.indexOf('ouvrir'),
-    'A1) le menu ⋯ : « Copie sur le Drive… » (data-action copie-drive), avec son aide, avant « Ouvrir un classeur… »', m)
+  ok(m.entrees.includes('autres-sauvegardes') && !m.entrees.includes('copie-drive') && m.libelles['autres-sauvegardes'].texte === 'Autres sauvegardes…' && !m.libelles['autres-sauvegardes'].inactif
+    && m.libelles['autres-sauvegardes'].aide === 'La copie sur le Drive par connexion Google, toute la bibliothèque dans un fichier, récupérer une sauvegarde.'
+    && m.entrees.indexOf('autres-sauvegardes') < m.entrees.indexOf('ouvrir'),
+    'A1) le menu ⋯ : « Autres sauvegardes… » (data-action autres-sauvegardes), avec son aide, avant « Ouvrir un classeur… » ; plus de « Copie sur le Drive… » (lot 18)', m)
   ok(m.drive?.texte === 'Sur le Drive : en attente de la connexion Google' && m.drive.boutons.length === 0 && m.entrees[0] === 'bibliotheque', '   … la ligne du Drive sans bouton : le menu commence toujours par « Bibliothèque des classeurs… »', m)
   await fermerMenu(p)
 
-  // ---- A2. Se connecter : dans le clic (« Copie sur le Drive… ») ----
+  // ---- A2. Se connecter : dans le clic (« Autres sauvegardes… » → « Choisir le compte ou arrêter… ») ----
   await seConnecter(p)
   e = await etat(p)
   ok(g.gis.length === 1 && g.gis[0].actif && g.gis[0].prompt === 'select_account' && g.gis[0].hint === '',
@@ -456,8 +459,11 @@ if (seul('A')) {
     `A5) l'élagage : le Drive n'en garde que les 10 dernières (${fichierDrive.versions.length}), la dernière toujours`, fichierDrive.versions.map(v => v.id))
 
   // ---- A6. « Copie sur le Drive… » : la fenêtre du choix ----
+  // (Adapté au lot 18 : « Copie sur le Drive… » n'est plus dans le menu ⋯ ; sa fenêtre s'ouvre par « Autres sauvegardes… » → « Choisir le compte ou arrêter… »)
   m = await menu(p)
-  await p.click('.menu-item[data-action="copie-drive"]'); await p.waitForTimeout(200)
+  await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="autres-sauvegardes"]')
+  await p.waitForSelector('dialog.dialogue-autres[open] .as-compte')
+  await p.click('dialog.dialogue-autres[open] .as-compte'); await p.waitForTimeout(200)
   const fen = await p.evaluate(() => {
     const d = document.querySelector('dialog.dialogue-drive[open]'), n = t => (t || '').replace(/[  ]/g, ' ')
     return d && {
@@ -486,7 +492,9 @@ if (seul('A')) {
   ok(g.sauvegardes().length === 1, '   … la copie qui y est reste')
   // Le Drive du lycée
   m = await menu(p)
-  await p.click('.menu-item[data-action="copie-drive"]'); await p.waitForTimeout(200)
+  await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="autres-sauvegardes"]')
+  await p.waitForSelector('dialog.dialogue-autres[open] .as-compte')
+  await p.click('dialog.dialogue-autres[open] .as-compte'); await p.waitForTimeout(200)
   await p.check('dialog.dialogue-drive input[value=lfb]')
   await p.click('dialog.dialogue-drive .d-valider'); await p.waitForTimeout(400)
   e = await etat(p)
@@ -860,7 +868,10 @@ if (seul('F')) {
   await p.waitForFunction(t => window.__drive.etat.t > t, e.drive.t, { timeout: 15000 }).catch(() => {})
   await q.clock.fastForward(1000); await q.waitForTimeout(800)
   const eq2 = await etat(q)
-  ok(eq2.drive.etat === 'ok' && eq2.drive.t !== undefined && /^Sur le Drive personnel \(prof@example\.com\) : /.test(eq2.ligne.texte), `   … la copie faite dans le premier se lit dans le second : « ${eq2.ligne?.texte} »`, eq2)
+  // Lot 18 : la ligne du Drive n'est plus dans le bloc quand le fichier protège le classeur (ici, l'autre onglet l'écrit ; voir B5) ;
+  // l'état du Drive, lui, se lit dans le second onglet
+  ok(eq2.drive.etat === 'ok' && eq2.drive.t !== undefined && (eq2.ligne === null || /^Sur le Drive personnel \(prof@example\.com\) : /.test(eq2.ligne.texte)),
+    `   … la copie faite dans le premier se lit dans le second : « ${eq2.ligne?.texte ?? 'Drive à jour, sans ligne : le fichier protège'} »`, eq2)
   await q.close()
   // ---- F4. Les classeurs en retard : copiés depuis leur base, un à la fois ----
   // Trois classeurs avec un trait (un état fait sous Node), et un vide
@@ -953,10 +964,14 @@ if (seul('H')) {
   ok(/Sur le Drive : seulement depuis la version en ligne \(la connexion Google ne marche pas dans la version hors ligne\)\./.test(ef.description ?? '') && !ef.point,
     'H2) la version hors ligne : « Sur le Drive : seulement depuis la version en ligne (la connexion Google ne marche pas dans la version hors ligne) », sans point', ef)
   await ecrire(f, 300, 300); await f.waitForTimeout(500)
+  // (Adapté au lot 18 : « Copie sur le Drive… » n'est plus dans le menu ⋯ ; c'est le bloc du Drive de « Autres sauvegardes… » qui est grisé et le dit)
   await f.click('.barre-haut .bouton.points'); await f.waitForTimeout(200)
-  const mf = await f.evaluate(() => { const e = document.querySelector('.menu-flottant:not([hidden]) .menu-item[data-action="copie-drive"]'); return e && { inactif: e.getAttribute('aria-disabled'), aide: e.querySelector('small')?.textContent } })
-  ok(mf?.inactif === 'true' && mf.aide === 'Seulement depuis la version en ligne (mathsetmoi.github.io).', '   … « Copie sur le Drive… » grisé : « Seulement depuis la version en ligne (mathsetmoi.github.io). »', mf)
-  await f.keyboard.press('Escape')
+  await f.click('.menu-flottant:not([hidden]) .menu-item[data-action="autres-sauvegardes"]')
+  await f.waitForSelector('dialog.dialogue-autres[open] .as-compte', { timeout: 10000 })
+  const mf = await f.evaluate(() => { const e = document.querySelector('dialog.dialogue-autres[open] .as-compte'), h = document.querySelector('dialog.dialogue-autres[open] [data-bloc="drive"] .as-hors'); return e && { inactif: e.disabled, aide: e.title, hors: h && !h.hidden ? h.textContent : null } })
+  ok(mf?.inactif === true && mf.aide === 'Seulement depuis la version en ligne (mathsetmoi.github.io).' && mf.hors === 'Le Drive marche seulement depuis la version en ligne (mathsetmoi.github.io).',
+    '   … « Autres sauvegardes » : « Choisir le compte ou arrêter… » grisé (« Seulement depuis la version en ligne (mathsetmoi.github.io). »), le bloc le dit', mf)
+  await f.keyboard.press('Escape'); await f.waitForTimeout(200)
   ok(versGoogle.length === 0 && g2.requetes.length === 0, '   … aucune requête vers Google (ni la connexion, ni le Drive)', versGoogle)
   await ctx2.close()
 }

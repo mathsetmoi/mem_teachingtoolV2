@@ -494,10 +494,13 @@ class FauxGoogle {
     return json({ error: { message: 'inconnu ' + u.pathname } }, 404)
   }
 }
-/** « Copie sur le Drive… » : le Drive voulu, « Se connecter » (ou « Changer de compte Google »), puis Valider */
+/** « Autres sauvegardes… » → « Choisir le compte ou arrêter… » (lot 18) : le Drive voulu, « Se connecter » (ou « Changer de compte Google »), puis Valider */
 async function connecterParLeChoix(p, compte = 'mem') {
   await p.click('.barre-haut .bouton.points'); await p.waitForTimeout(150)
-  await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="copie-drive"]')
+  // (Adapté au lot 18 : « Copie sur le Drive… » n'est plus dans le menu ⋯ ; sa fenêtre s'ouvre par « Autres sauvegardes… » → « Choisir le compte ou arrêter… »)
+  await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="autres-sauvegardes"]')
+  await p.waitForSelector('dialog.dialogue-autres[open] .as-compte')
+  await p.click('dialog.dialogue-autres[open] .as-compte')
   await p.waitForSelector('dialog.dialogue-drive[open] .d-connecter')
   await p.check(`dialog.dialogue-drive[open] input[name=d-compte][value=${compte}]`)
   const avant = await p.textContent('dialog.dialogue-drive[open] .d-qui')

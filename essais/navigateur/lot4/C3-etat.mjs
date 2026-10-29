@@ -306,8 +306,8 @@ console.log('=== B. le bouton et le menu ⋯ ===')
   // Lot 4 (C4) : Chromium a showSaveFilePicker, l'entrée « Enregistrer
   // automatiquement dans un fichier… » (activer-cle) suit « Enregistrer le classeur… »
   // (Adapté au lot 4, morceau C5 : « Bibliothèque des classeurs… » en tête)
-  // (Adapté au lot 4, morceau C10 : « Copie sur le Drive… » (copie-drive) entre volontairement dans le menu ⋯, avant « Ouvrir un classeur… »)
-  ok(!m.note && JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","activer-cle","copie-drive","ouvrir","exporter-pdf"]', '… plus de note en bas ; la bibliothèque (C5), les trois entrées de toujours, et celle de la clé (C4)', m)
+  // (Adapté au lot 18 : le menu ⋯ réduit : Enregistrer, la clé, le PDF, « Autres sauvegardes… », Ouvrir ; plus de « Copie sur le Drive… »)
+  ok(!m.note && JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","activer-cle","exporter-pdf","autres-sauvegardes","ouvrir"]', '… plus de note en bas ; la bibliothèque (C5), les trois entrées de toujours, celle de la clé (C4) et « Autres sauvegardes… » (lot 18)', m)
   await p.keyboard.press('Escape')
   // (Adapté au lot 4, morceau C5 : le bouton du classeur n'ouvre plus le
   // menu ⋯, provisoire, mais la bibliothèque des classeurs)

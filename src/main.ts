@@ -9,7 +9,9 @@ import { BASE_PREMIER, CLASSEUR_SEUL, CLE_DERNIER_CLASSEUR, MESSAGE_VIDE, NOM_PR
 import { Registre } from './classeurs/registre'
 import { SuiviDuClasseur } from './classeurs/suivi'
 import { Surveillance } from './classeurs/surveillance'
-import { TEXTE_INCOMPLET } from './classeurs/etat'
+import { TEXTE_INCOMPLET, lieuDuFichier } from './classeurs/etat'
+import { AutresSauvegardes } from './classeurs/autres-sauvegardes'
+// C2 : import { DeplacerClasseur } from './classeurs/deplacer-fichier'
 import type { CleALArrivee } from './classeurs/cle'
 import { EnregistrementCle, lireCleALArrivee } from './classeurs/cle'
 import { CopieDrive } from './classeurs/copie-drive'
@@ -412,7 +414,7 @@ async function demarrer() {
     verification.voirLaVerification = () => { ui.ouvrirBibliotheque(); if (ui.bibliotheque?.ouvert) ouvrirVerification() }
     ui.brancherFichiers(fichiers)
     // Ouvrir et enregistrer sur l'ordinateur ou sur le Drive, Mes
-    // emplacements (lot 7) : « Enregistrer… » du menu ⋯ y mène
+    // emplacements (lot 7) : « Autres sauvegardes… » du menu ⋯ y mène
     // Le classeur de cet onglet : ce qui attend s'écrit dans sa base d'abord
     const avantDEcrire = async (f: FicheClasseur) => {
       if (f.id !== infos.id || !hote.classeur) return
@@ -426,7 +428,6 @@ async function demarrer() {
       enregistrerClasseur: () => void ui.sauvegarde.enregistrer(),
       avantDEcrire,
     })
-    ui.enregistrerAilleurs = () => void ailleurs.enregistrer()
     // Où ranger les classeurs d'un niveau (lot 18) : la fenêtre « Où ranger… »
     // au premier classeur d'un niveau, le fichier de chaque classeur qui arrive
     // dans un niveau rangé, les établissements de « Mes emplacements »
@@ -434,8 +435,53 @@ async function demarrer() {
     ui.bibliotheque.brancherRanger(ranger)
     fichiers.ranger = ranger
     ailleurs.ranger = ranger
+    // « Autres sauvegardes… » du menu ⋯ (lot 18) : la copie sur le Drive par
+    // connexion Google, toute la bibliothèque dans un fichier, récupérer une
+    // sauvegarde, les niveaux sur le Drive
+    const autres = new AutresSauvegardes({ registre, fichiers, ailleurs, drive, surveillance, message: (t, a) => ui.message(t, a) })
+    ui.autresSauvegardes = () => void autres.ouvrir()
+    // Le classeur sans fichier (lot 18) : ce que l'état sait de son rangement
+    // (son niveau est rangé, son fichier irait là ; ou le niveau reste à
+    // ranger), posé à l'arrivée (la clé vérifiée d'abord), quand sa fiche
+    // ou les dossiers changent, et après chaque rendu de la bibliothèque
+    // (« Mes emplacements » y change les emplacements, sans passer par le
+    // canal : il ne revient pas à qui parle)
+    const majRangement = async () => {
+      if (!hote.classeur) return
+      const f = await registre.classeur(infos.id).catch(() => undefined)
+      surveillance.majRangement(f && !f.corbeille ? await ranger.rangementPour(f) : null)
+    }
+    void (cle?.pret ?? Promise.resolve()).then(majRangement)
+    registre.onChange(c => { if (c.classeurs?.includes(infos.id) || c.dossiers?.length) void majRangement() })
+    ui.bibliotheque.apresRendu.push(() => void majRangement())
+    // « Ranger « 2nde » dans un dossier… » : la fenêtre « Où ranger… » pour
+    // le niveau de ce classeur ; rangé, la clé de l'onglet repart sur le
+    // fichier écrit. « Lui donner son fichier » : le classeur reçoit son
+    // fichier dans le dossier de son niveau (l'accord dans le clic), et la
+    // clé de l'onglet démarre dessus.
+    const rangerLeNiveauIci = async () => {
+      const r = await ranger.proposerPourLeClasseurOuvert()
+      if (r === 'range') await cle?.resynchroniser()
+      await majRangement()
+    }
+    const donnerSonFichierIci = async () => {
+      const r = await ranger.donnerSonFichierAuClasseurOuvert()
+      if (r) {
+        await cle?.resynchroniser()
+        const c = surveillance.etat.cle
+        if (c.etat === 'ok' || c.etat === 'en-cours') ui.message(r.ok ?? `« ${infos.nom} » s'enregistre maintenant tout seul dans ${lieuDuFichier(c)}.`)
+      }
+      await majRangement()
+    }
+    ui.inscrireActionEtat('ranger-niveau', () => { const n = surveillance.etat.cle.rangeable?.niveau; return n ? `Ranger « ${n} » dans un dossier…` : 'Ranger ce niveau dans un dossier…' }, () => void rangerLeNiveauIci())
+    ui.inscrireActionEtat('donner-fichier', 'Lui donner son fichier', () => void donnerSonFichierIci())
+    // « Déplacer le classeur… » du menu ⋯ : le fichier suit (morceau C2,
+    // deplacer-fichier.ts) ; à décommenter à la fusion du morceau C2
+    // C2 : const deplaceur = new DeplacerClasseur({ registre, bibliotheque: ui.bibliotheque, cle, message: (t, a) => ui.message(t, a), classeur: () => hote.classeur, avantDEcrire })
+    // C2 : ui.bibliotheque.brancherDeplaceur(deplaceur)
+    // C2 : ui.deplacerClasseur = () => void deplaceur.ouvrir()
     ui.brancherReplay(registre, infos.id)
-    if (import.meta.env.DEV) Object.assign(window, { __ailleurs: ailleurs, __ranger: ranger })
+    if (import.meta.env.DEV) Object.assign(window, { __ailleurs: ailleurs, __ranger: ranger, __autres: autres })
     if (import.meta.env.DEV) Object.assign(window, { __bibliotheque: ui.bibliotheque, __fichiers: fichiers })
   }
   // Un classeur vient d'être ouvert depuis un fichier, ou créé : on le dit

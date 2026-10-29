@@ -299,10 +299,13 @@ export const DIALOGUES = () => [...document.querySelectorAll('dialog[open]')].ma
   boutons: [...d.querySelectorAll('.actions button')].map(b => ({ a: b.dataset.a ?? b.className, t: (b.textContent || '').replace(/[\u00a0\u202f]/g, ' ') })),
 }))
 export const dialogue = async (p, timeout = 20000) => { await p.waitForSelector('dialog[open]', { timeout }); await p.waitForTimeout(150); return (await p.evaluate(DIALOGUES))[0] }
-/** Connecté dans un clic : menu ⋯ → « Copie sur le Drive… » → [Se connecter à Google] */
+/** Connecté dans un clic : menu ⋯ → « Autres sauvegardes… » → « Choisir le compte ou arrêter… » (lot 18) → [Se connecter à Google] */
 export async function seConnecter(p) {
   await p.click('.barre-haut .bouton.points'); await p.waitForTimeout(150)
-  await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="copie-drive"]')
+  // (Adapté au lot 18 : « Copie sur le Drive… » n'est plus dans le menu ⋯ ; sa fenêtre s'ouvre par « Autres sauvegardes… » → « Choisir le compte ou arrêter… »)
+  await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="autres-sauvegardes"]')
+  await p.waitForSelector('dialog.dialogue-autres[open] .as-compte')
+  await p.click('dialog.dialogue-autres[open] .as-compte')
   await p.waitForSelector('dialog.dialogue-drive[open] .d-connecter')
   await p.click('dialog.dialogue-drive[open] .d-connecter')
   await p.waitForFunction(() => /^Connecté/.test(document.querySelector('dialog.dialogue-drive[open] .d-qui')?.textContent ?? ''), null, { timeout: 10000 }).catch(() => {})

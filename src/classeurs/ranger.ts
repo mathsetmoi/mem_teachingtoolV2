@@ -16,12 +16,15 @@
 // une permission demandée hors d'un geste. « Plus tard » : la fenêtre ne
 // revient plus d'elle-même pour ce niveau (le réglage 'ranger-plus-tard').
 // Elle paraît au premier « Nouveau classeur » dans un niveau pas encore rangé,
-// depuis « Mes emplacements » (« Ranger… », « Changer… ») et, au morceau C, par
-// le menu ⋯. Jamais sur l'iPad, Firefox ou Safari (pas de showDirectoryPicker),
-// ni quand l'écrivain tourne sur le fil principal.
+// depuis « Mes emplacements » (« Ranger… », « Changer… ») et, par le menu ⋯
+// du classeur, « Ranger « 2nde » dans un dossier… » (morceau C). Jamais sur
+// l'iPad, Firefox ou Safari (pas de showDirectoryPicker), ni quand
+// l'écrivain tourne sur le fil principal.
 // Ensuite, chaque classeur qui arrive dans un niveau rangé reçoit son fichier
 // à sa place (donnerSonFichier) : créé, ajouté depuis un fichier, remis de
-// la corbeille, « Séances isolées ».
+// la corbeille, « Séances isolées » ; et celui qui n'en a pas encore (rangé
+// avant que son niveau le soit) le reçoit par « Lui donner son fichier »
+// (le menu ⋯, le bandeau ; rangementPour dit à l'état où il irait).
 // =============================================================
 import type { ActionMessage } from '../app'
 import type { Bibliotheque } from './bibliotheque'
@@ -29,6 +32,7 @@ import type { FicheClasseur, FicheDossier, InfosClasseur } from './demarrage'
 import type { Registre } from './registre'
 import type { CleALArrivee, PoigneeFichier } from './cle'
 import { permission } from './cle'
+import type { Rangement } from './etat'
 import type { Emplacement } from './emplacements'
 import { classeursDeLaClasse, emplacementDe, emplacements, garderEmplacement, reglagePoignee, sousDossiers } from './emplacements'
 import type { BilanRelier, PoigneeDossier } from './ordinateur'
@@ -168,6 +172,38 @@ export class Ranger {
     return cheminLisible([...endroit.prefixe, ...endroit.sous.map(n => nomSur(n, { repli: 'Dossier' })), nomSur(nom)])
   }
 
+  /** Ce que l'état du classeur ouvert dit de son rangement (morceau C, voir
+   *  EtatSauvegarde.cle.rangeDans et rangeable) : null quand il a son
+   *  fichier, qu'il est à la racine, ou que ce navigateur ne range pas ;
+   *  rangeDans quand son niveau est rangé (le dossier qui recevra le dossier
+   *  du chapitre : « LFB classeurs › 2 ») ; rangeable (le nom du niveau)
+   *  quand il reste à ranger, même après « Plus tard » (le menu ⋯ le
+   *  propose, sans fenêtre d'elle-même). */
+  async rangementPour(f: FicheClasseur): Promise<Rangement | null> {
+    if (f.cle || !this.peutRanger()) return null
+    const niveau = await this.niveauDe(f.dossier)
+    if (!niveau) return null
+    const endroit = await this.endroitDe(f.dossier).catch(() => null)
+    if (endroit) return { rangeDans: cheminLisible([...endroit.prefixe, ...endroit.sous.map(n => nomSur(n, { repli: 'Dossier' }))]) }
+    return { rangeable: { niveau: niveau.nom } }
+  }
+
+  /** « Lui donner son fichier » (le menu ⋯, le bandeau, morceau C) : le
+   *  classeur de cet onglet reçoit son fichier dans le dossier de son niveau,
+   *  déjà rangé (donnerSonFichier, dans le clic : l'accord du navigateur
+   *  peut être demandé). Rend ce que l'arrivée en dirait (le fichier écrit,
+   *  ou adopté), ou null (ce qui n'a pas marché est dit par message) ;
+   *  main.ts fait alors démarrer la clé de l'onglet sur ce fichier. */
+  async donnerSonFichierAuClasseurOuvert(): Promise<CleALArrivee | null> {
+    const ici = this.h.classeur()
+    if (!ici) return null
+    const f = await this.registre.classeur(ici.id).catch(() => undefined)
+    if (!f) { this.h.message('Ce classeur n\'est plus dans la bibliothèque.'); return null }
+    if (f.cle) { this.h.message(`« ${f.nom} » a déjà son fichier.`); return null }
+    if (!await this.endroitDe(f.dossier).catch(() => null)) { this.h.message(`Le niveau de « ${f.nom} » n'est pas rangé dans un dossier.`); return null }
+    return (await this.donnerSonFichier(f, { geste: true })) ?? null
+  }
+
   // =============================================================
   // CHAQUE CLASSEUR REÇOIT SON FICHIER À SA PLACE
   // =============================================================
@@ -226,15 +262,17 @@ export class Ranger {
   // LA FENÊTRE « OÙ RANGER LES CLASSEURS DE « 2nde » ? »
   // =============================================================
 
-  /** La fenêtre pour le niveau du classeur de cet onglet (le menu ⋯,
-   *  morceau C) ; rien s'il n'en a pas */
-  async proposerPourLeClasseurOuvert(): Promise<void> {
+  /** La fenêtre pour le niveau du classeur de cet onglet (« Ranger « 2nde »
+   *  dans un dossier… » au menu ⋯, morceau C) ; null s'il n'en a pas, sinon
+   *  ce que la fenêtre a donné ('range' : les fichiers sont écrits, la clé
+   *  de l'onglet peut repartir sur le sien) */
+  async proposerPourLeClasseurOuvert(): Promise<'range' | 'plus-tard' | null> {
     const ici = this.h.classeur()
-    if (!ici) return
+    if (!ici) return null
     const f = await this.registre.classeur(ici.id).catch(() => undefined)
     const niveau = await this.niveauDe(f?.dossier ?? null)
-    if (!niveau) { this.h.message('Ce classeur n\'est pas dans un dossier de niveau : rangez-le d\'abord dans un dossier, depuis la bibliothèque.'); return }
-    await this.proposer(niveau, { origine: 'menu' })
+    if (!niveau) { this.h.message('Ce classeur n\'est pas dans un dossier de niveau : rangez-le d\'abord dans un dossier, depuis la bibliothèque.'); return null }
+    return this.proposer(niveau, { origine: 'menu' })
   }
 
   /** La fenêtre « Où ranger les classeurs de « 2nde » ? » pour ce niveau.

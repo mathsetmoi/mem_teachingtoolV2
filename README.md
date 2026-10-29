@@ -2845,7 +2845,11 @@ une seule chose, enregistré ou non, et depuis quand.
 - **L'activer.** Menu ⋯ → **Enregistrer automatiquement dans un fichier…**
   (« Un fichier .memc, choisi une fois : le classeur s'y enregistre tout
   seul, peu après chaque changement. ») ; le rappel d'enregistrer le propose
-  aussi (« Enregistrer automatiquement dans un fichier… »). Le navigateur demande
+  aussi (« Enregistrer automatiquement dans un fichier… »). Depuis le lot 18,
+  cette entrée ne reste que pour un classeur hors d'un niveau que l'outil
+  sait ranger : dans un niveau, le menu dit « Ranger « 5eme » dans un
+  dossier… » ou « Lui donner son fichier » (voir « Le menu ⋯ » du lot 18),
+  et le fichier va à sa place sans fenêtre du navigateur. Sinon, le navigateur demande
   où écrire (le nom proposé : celui du classeur, `Symétrie centrale.memc`) ;
   une première écriture part aussitôt : « Le classeur s'enregistre
   maintenant tout seul dans « Symétrie centrale.memc ». ». Un fichier qui
@@ -2861,9 +2865,11 @@ une seule chose, enregistré ou non, et depuis quand.
   choisi (sa poignée) est gardé dans l'index de la bibliothèque (le magasin
   `poignees`) ; un navigateur qui ne sait pas l'y ranger le garde le temps de
   l'onglet (« Après un rechargement, il faudra choisir de nouveau le
-  fichier. »). Une fois actif, le menu propose **Enregistrer maintenant sur
-  la clé** (Ctrl + S), **Enregistrer une copie dans un fichier…** et
-  **Arrêter l'enregistrement automatique sur la clé** (le fichier garde le
+  fichier. »). Une fois actif, Ctrl + S écrit dans le fichier, et le menu
+  propose **Enregistrer une copie…** et **Déplacer le classeur…** (depuis le
+  lot 18 ; avant, « Enregistrer maintenant sur la clé », « Enregistrer une
+  copie dans un fichier… » et « Arrêter l'enregistrement automatique sur la
+  clé » ; l'arrêt passe par « Déplacer le classeur… », et le fichier garde le
   classeur tel qu'il était à sa dernière écriture). On l'active aussi en
   ouvrant le fichier de la clé (la case de la fenêtre « Ouvrir ce
   classeur ? », voir « Enregistrer et ouvrir un classeur »).
@@ -3048,11 +3054,14 @@ ligne (la connexion Google ne marche pas dans la version hors ligne) »).
   dossier (pas dans sa liste `DOSSIERS`), ni l'extension `.memc`, ni ce
   contenu (il commence par `{"format":"mem-tableau"`) ; un test le vérifie
   dans le bac à sable du relais, même pour un `.memc` renommé `x.mem` et
-  rangé dans « MEM - Replay séances ». La fenêtre « Copie sur le Drive… »
-  montre aussi le compte connecté, [Se connecter à Google], la taille de la
-  copie (« La copie fait 3,2 Mo (aujourd'hui à 14 h 05) ; le Drive en garde
-  les 10 dernières versions. ») ; dans la version hors ligne, elle est grisée
-  (« Seulement depuis la version en ligne (mathsetmoi.github.io). »).
+  rangé dans « MEM - Replay séances ». La fenêtre « Copie sur le Drive »
+  (depuis le lot 18 : menu ⋯ → Autres sauvegardes… → [Choisir le compte ou
+  arrêter…] ; avant, l'entrée « Copie sur le Drive… » du menu ⋯) montre
+  aussi le compte connecté, [Se connecter à Google], la taille de la copie
+  (« La copie fait 3,2 Mo (aujourd'hui à 14 h 05) ; le Drive en garde les
+  10 dernières versions. ») ; dans la version hors ligne, le bloc du Drive
+  d'« Autres sauvegardes » est grisé et le dit (« Le Drive marche seulement
+  depuis la version en ligne (mathsetmoi.github.io). »).
 - **Le même fichier.** Chaque copie remplace le même fichier
   (« Symétrie centrale.memc », `application/octet-stream`, sa description
   « Sauvegarde automatique de MEM teachingtool. Pour l'ouvrir : Bibliothèque
@@ -6284,7 +6293,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/pages/journal.ts` | Le journal de la trieuse des pages : chaque action sur les pages (déplacer, renommer, dupliquer, insérer, supprimer, changer un fond) entre avec l'état des pages d'avant et d'après ; annuler (ou rétablir) seulement si le tableau est exactement dans l'état laissé, sinon il le dit et se vide (jamais un changement invisible ni une page perdue) ; une page créée par une action défaite ne va pas dans la corbeille, et y reste hors quand on défait les actions d'avant ; aucune pile de page touchée |
 | `src/presse-papiers.ts` | Copier, coller : la copie écrite pour le presse-papiers du système et relue sans passer par la page, chaque forme vérifiée par une liste blanche (depuis le lot 5 : verrou, fixation d'une image et groupe gardés, jetés s'ils sont abîmés ; la rotation d'une formule bornée), le collage (noms gardés ou changés, points liés ; verrou et fixation remis, un groupe neuf par groupe copié d'au moins deux membres, une image fixée sous tout ce qui est sur la page d'arrivée) |
 | `src/fichier.ts` | Le classeur dans un fichier `.memc` : l'écrire (l'en-tête avec le nom et l'id du classeur, à la fin), le relire (et refuser ce qui n'en est pas un), vérifier un document entier (`verifierEtat`, ou `verifierDocument` sur un document déjà rejoué), ce qui se relit d'un document où des changements attendent une mise à jour qui manque (`etatLisible`, `ecrireLisible` : un fichier qui se rouvre toujours), lire l'en-tête seul (`lireEntete`) ; la marque d'une copie (`CARTE_COPIE`, `marqueDeCopie`, que Publier lit) ; le nom de tout fichier (`nomSur`, `nomClasseur`) |
-| `src/sauvegarde.ts` | Enregistrer et ouvrir un classeur : Ctrl + S (sur la clé quand elle enregistre le classeur ; sinon le fichier par l'écrivain, ou depuis la mémoire quand la base a un trou), Ctrl + O (avec la bibliothèque, il passe la main à `classeurs/fichiers.ts` ; dans le repli, par showOpenFilePicker quand il existe, le fichier lu dans le travailleur, et il remplace le classeur), la question avant de remplacer (`proposerRemplacement`, et sa case « Enregistrer automatiquement les changements dans ce fichier »), « Remplacer » qui donne au classeur l'identité du fichier (ou en fait une copie, registre des publications vidé et marquée, pour le fichier d'un classeur de la corbeille), les autres onglets (le canal des classeurs, et `mem-tableau` pour le premier), le classeur coupé de sa base pour une mise à jour depuis un fichier, la date du dernier enregistrement de chaque classeur ; le téléchargement d'un fichier (`telecharger`, que l'image copiée et le PDF empruntent) |
+| `src/sauvegarde.ts` | Enregistrer et ouvrir un classeur : Ctrl + S (dans le fichier du classeur quand il en a un ; sinon le fichier par l'écrivain, ou depuis la mémoire quand la base a un trou), Ctrl + O (avec la bibliothèque, il passe la main à `classeurs/fichiers.ts` ; dans le repli, par showOpenFilePicker quand il existe, le fichier lu dans le travailleur, et il remplace le classeur), la question avant de remplacer (`proposerRemplacement`, et sa case « Enregistrer automatiquement les changements dans ce fichier »), « Remplacer » qui donne au classeur l'identité du fichier (ou en fait une copie, registre des publications vidé et marquée, pour le fichier d'un classeur de la corbeille), les autres onglets (le canal des classeurs, et `mem-tableau` pour le premier), le classeur coupé de sa base pour une mise à jour depuis un fichier, la date du dernier enregistrement de chaque classeur ; le téléchargement d'un fichier (`telecharger`, que l'image copiée et le PDF empruntent) ; « Enregistrer une copie… » ouvre la fenêtre du navigateur dans le dossier du chapitre quand l'outil le connaît (`startIn`, lot 18) |
 | `src/main.ts` | Le démarrage : l'index de la bibliothèque et la reprise, le classeur à ouvrir (ou le repli, ou la bibliothèque seule), l'adresse, le titre de l'onglet, puis le classeur chargé et son ouverture notée, la bibliothèque par-dessus lui (ce qui s'écrit avant d'en partir), les fichiers (`classeurs/fichiers.ts`, branchés sur la sauvegarde, la bibliothèque et l'état ; aussi dans la bibliothèque seule), le message d'arrivée, le rappel d'enregistrer le classeur quitté (lot 16 : lu à l'arrivée, après le message d'arrivée et la fenêtre ouverte, son bouton enregistre depuis la base), l'annonce du premier lancement ; une page du cache du navigateur se recharge |
 | `src/classeurs/demarrage.ts` | Les classeurs, pur (testé) : les noms des bases et des clés (`mem-tableau-local`, seul endroit qui l'écrit), les fiches des classeurs et des dossiers, le premier reconnu à sa base, la clé de stockage d'un classeur, la chaîne bornée des dossiers, ce qui est visible, le classeur qui s'ouvre au démarrage et ses messages, le dernier classeur retenu, l'adresse d'un classeur |
 | `src/classeurs/bases.ts` | Les bases des classeurs en IndexedDB pure : ouvrir une base sans jamais la créer (`ouvrirBaseExistante`), lire ses mises à jour, créer la base d'un nouveau classeur (jamais sur une base existante ; une mise à jour ou plusieurs, dans l'ordre : une copie), remplacer son contenu d'un bloc, y ranger l'identité, compter ses entrées (sans `databases()` aussi), l'effacer (bloquée : la suite quand elle part enfin) ; les raisons d'un refus (`ErreurBase`) |
@@ -6320,6 +6329,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/classeurs/reconnaitre.ts` | Reconnaître le classeur d'un fichier, pur (testé) : le même (son id), la corbeille, « ressemble » (un appareil Yjs en commun ; dans un lot, seulement sans id), nouveau ; la décision d'après la comparaison ; le nom d'après le nom du fichier ; les phrases des fenêtres et des bilans ; la réunion des dossiers d'une bibliothèque qu'on ouvre |
 | `src/classeurs/copie-drive.ts` | La copie à sens unique sur le Drive (lot 4 C10) : le compte du classeur, quand copier (2 min après le dernier changement, au plus tard 10 min, au plus une fois par max(10 min, 1 min par Mo, 20 fois la durée), au calme, en arrière-plan), depuis la base dans le travailleur, un onglet à la fois (Web Locks), une copie d'un autre onglet qui compte, les classeurs en retard (pas les vides), la connexion (jamais sans un clic ; arrivé connecté d'un autre classeur, les classeurs en retard se copient d'ici ; le jeton expiré, le bandeau ; le compte proposé à Google, retenu pour la copie), le compte Google où est vraiment la dernière copie, les échecs et leurs réessais, les garde-fous (récupérer, remplacer quand même), la question du navigateur en fermant l'onglet avant la copie quand rien d'autre ne protège le classeur (`beforeunload`, et la copie part aussitôt), la fenêtre « Copie sur le Drive… » |
 | `src/classeurs/drive-pur.ts` | La copie sur le Drive, pur (testé) : le compte voulu, le rythme (`prochaineCopie`, l'intervalle), le compte Google proposé à la reconnexion (`indiceGoogle`) et la copie sur un autre compte (`copieAilleurs`), la question du navigateur en fermant l'onglet (`questionDuDrive`), ce qu'on dit d'un échec, les phrases des garde-fous, les classeurs en retard |
+| `src/classeurs/autres-sauvegardes.ts` | La fenêtre « Autres sauvegardes » (lot 18, menu ⋯) : la copie sur le Drive par connexion Google (sa ligne d'état, [Choisir le compte ou arrêter…]), toute la bibliothèque dans un fichier `.memb`, « Récupérer une sauvegarde du Drive… », les niveaux reliés au Drive par connexion (mettre à jour, retirer, relier) ; chaque bouton ferme la fenêtre avant d'agir ; hors ligne, ce qui passe par Google est grisé et le dit |
 | `src/classeurs/recuperer.ts` | « Récupérer une sauvegarde du Drive » (le menu ⋯ du bandeau de la bibliothèque) : le Drive, la connexion dans le clic, la liste, le téléchargement, puis le chemin d'Ouvrir |
 | `src/classeurs/archive.ts` | Toute la bibliothèque dans un fichier `.memb`, pur (testé) : le zip écrit à la main (entrées stockées, somme et taille dans chaque en-tête local, aucun descripteur ; 4 Go et 65 534 entrées au plus), relu par son répertoire central (`File.slice`), un fichier tronqué par ses en-têtes locaux ; l'index `bibliotheque.json` et son format ; le nom du fichier |
 
@@ -6817,3 +6827,97 @@ hors ligne) ; `DEV=…` accepté par `lot4/C2`, `C5`, `C6`, `C9`, `C10`,
 ### Le bouton du classeur
 
 ### Le menu ⋯
+
+Depuis ce lot, le menu ⋯ ne dit qu'une chose du fichier du classeur, et
+réunit le reste dans « Autres sauvegardes… ». Après le bloc de l'état et
+« Bibliothèque des classeurs… », trois états :
+
+- **Le classeur a son fichier** (la clé active, le fichier enregistré) :
+  **Enregistrer une copie…** (« Un autre fichier .memc, daté, avec toutes
+  les pages et tout l'historique. Ne le donnez pas aux élèves (pour eux :
+  Publier). » ; sans raccourci : Ctrl + S écrit dans le fichier du classeur
+  et le dit, « Enregistré dans LFB classeurs › 5 › Fractions (Fractions.memc)
+  (850 Ko). » ; la fenêtre du navigateur s'ouvre dans le dossier du chapitre
+  quand l'outil le connaît (`startIn`, dans le clic, au plus 1 s d'attente)
+  et propose « Fractions 2026-10-29 14h05.memc »), **Déplacer le
+  classeur…** (« Dans un autre niveau ou un autre dossier : son fichier
+  suit. », voir « Déplacer le classeur : le fichier suit »), **Exporter le
+  classeur en PDF…**, **Autres sauvegardes…**, **Ouvrir un classeur…**
+  (Ctrl + O). Les entrées « Enregistrer maintenant sur la clé », « Arrêter
+  l'enregistrement automatique sur la clé », « Copie sur le Drive… » et
+  « Enregistrer sur le Drive ou ailleurs… » n'existent plus.
+- **Pas de fichier, et le navigateur sait écrire un fichier tout seul**
+  (Chrome, Edge) : **Enregistrer le classeur…** (Ctrl + S ; son aide ne
+  parle plus de la clé : « … à garder ou à ouvrir ailleurs … »), puis, selon
+  le classeur : **Ranger « 5eme » dans un dossier…** quand son niveau n'est
+  pas encore rangé (la fenêtre « Où ranger les classeurs de « 5eme » ? » ;
+  rangé, les fichiers sont écrits, la clé de l'onglet repart sur le sien et
+  le menu passe au premier état) ; **Lui donner son fichier** quand le niveau
+  est rangé mais pas ce classeur (son aide : « Son fichier ira dans « LFB
+  classeurs › 5 › Thales », écrit tout seul. » ; le fichier est écrit dans
+  le clic, la clé démarre : « « Thales » s'enregistre maintenant tout seul
+  dans LFB classeurs › 5 › Thales (Thales.memc). ») ; sinon **Enregistrer
+  automatiquement dans un fichier…** (un classeur à la racine, ou la
+  version hors ligne) ; puis le PDF, « Autres sauvegardes… », Ouvrir.
+- **Le navigateur ne sait pas écrire un fichier tout seul** (iPad, Firefox,
+  Safari) : Enregistrer le classeur… (Ctrl + S), le PDF, « Autres
+  sauvegardes… », Ouvrir.
+
+Le classeur sans fichier dans un niveau rangé : l'état le sait
+(`EtatSauvegarde.cle.rangeDans`, posé par `Surveillance.majRangement` depuis
+`Ranger.rangementPour`, à l'ouverture, à chaque changement de la
+bibliothèque et après chacun de ses rendus), la ligne « Pas encore de
+fichier dans « LFB classeurs › 5 » » dans le bloc, et le bandeau « Ce
+classeur n'a pas encore son fichier dans « LFB classeurs › 5 ». » [Lui
+donner son fichier] (raison `cle-a-donner`, fermable, après ceux de la
+clé) ; le rappel d'enregistrer propose « Ranger « 5eme » dans un
+dossier… » (`cle.rangeable`) ou « Lui donner son fichier » à la place
+d'« Enregistrer automatiquement dans un fichier… » quand c'est le cas.
+
+**« Autres sauvegardes… »** (`dialog.dialogue-autres`, aide « La copie sur
+le Drive par connexion Google, toute la bibliothèque dans un fichier,
+récupérer une sauvegarde. ») : quatre blocs. *Copie sur le Drive (connexion
+Google)* : ce qu'elle est, la ligne d'état du Drive (toujours montrée ici,
+même quand le bloc du menu la cache parce que le fichier protège le
+classeur ; `ligneDrive`), [Choisir le compte ou arrêter…] (la fenêtre
+« Copie sur le Drive » du lot 4 C10) ; *Toute la bibliothèque dans un
+fichier* : [Enregistrer…] (le `.memb`) ; *Retrouver une copie* : [Récupérer
+une sauvegarde du Drive…] ; *Un niveau sur le Drive par connexion* : les
+niveaux reliés (« « 5ème » → Drive personnel › MEM - Classeurs › 5ème »
+[Mettre à jour] [Retirer] ; « Aucun niveau n'est relié au Drive par
+connexion. ») et [Relier un niveau…] (la fenêtre « Enregistrer » du lot 7,
+sur le dossier du niveau). Chaque bouton ferme la fenêtre avant d'agir (le
+choix d'un fichier et la connexion Google se font dans le clic ; « Retirer »
+la laisse ouverte et redessine la liste). Dans la version hors ligne, ce qui
+passe par Google est grisé et le dit (« Le Drive marche seulement depuis la
+version en ligne (mathsetmoi.github.io). », « Seulement depuis la version
+en ligne. ») ; le `.memb` reste possible. Au téléphone, « Plus » a les mêmes
+entrées, et la fenêtre tient dans l'écran.
+
+Le code : `src/ui.ts` (`construireMenuFichier` et `formeDuMenuFichier` : le
+menu ouvert se refait quand sa forme change, sauf si le focus y est ; les
+libellés des actions de l'état peuvent dépendre de l'état,
+`inscrireActionEtat` ; `ui.autresSauvegardes`, `ui.deplacerClasseur`),
+`src/classeurs/autres-sauvegardes.ts` (la fenêtre), `src/classeurs/etat.ts`
+(`rangeDans`, `rangeable`, `ligneDrive`, le bandeau `cle-a-donner`, les
+actions `ranger-niveau` et `donner-fichier`), `src/classeurs/surveillance.ts`
+(`majRangement`), `src/classeurs/ranger.ts` (`rangementPour`,
+`donnerSonFichierAuClasseurOuvert`), `src/sauvegarde.ts` (`startIn`),
+`src/main.ts` (les branchements ; `window.__autres` en développement),
+`src/style.css` (`.dialogue-autres`). Les essais : `tests/etat.test.ts` (la
+ligne, le bandeau, le rappel, `ligneDrive`) ;
+`essais/navigateur/lot18/E2-menu.mjs` (sections A à G : les trois états et
+leurs aides, « Ranger « 5eme » dans un dossier… » depuis le menu, Ctrl + S
+dans le fichier et « Enregistrer une copie… » dans le dossier du chapitre,
+« Lui donner son fichier » par le menu et par le bandeau, « Autres
+sauvegardes… » et ses quatre blocs, la version hors ligne, le téléphone ;
+`DEV=…` pour le port, `A`, `F` ou `G` en argument pour une partie). Adaptés
+aux nouvelles entrées : `lot4/C2`, `C3` (la liste des entrées seule), `C4`
+(l'arrêt de la clé se fait directement, l'entrée « Arrêter… » n'existant
+plus), `C10` (la fenêtre du Drive par « Autres sauvegardes… » ; sa
+vérification F3 admet la ligne du Drive absente quand le fichier protège),
+`lot7/E1` (« Relier un niveau… »), `lot3/P9`, `lot1/passeB-b12` (et l'aide
+d'« Ouvrir un classeur… », qui parle des .prof), `lot4/CF2`,
+`lot4/corrections-sauvegardes.mjs`, les sondes `lot4/verif/**` et
+`lot4/conformite-travail/outils.mjs` ; `DEV=…` accepté par `lot3/P9` et
+`lot1/passeB-b12`.

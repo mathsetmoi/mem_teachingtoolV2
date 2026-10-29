@@ -3,10 +3,12 @@
 // Elle tient l'état (EtatSauvegarde, voir etat.ts) à jour, en direct : la
 // base du navigateur (une écriture refusée fait un trou, voir Tableau.trou),
 // le dernier fichier enregistré (Ctrl + S, ici ou dans un autre onglet), le
-// travail fait depuis, et ce que la clé (C4, cle.ts) et le Drive (C10,
-// copie-drive.ts) lui disent par majCle et majDrive. Chaque changement, et toutes les 30 secondes (les
-// « il y a 2 min » vieillissent), prévient l'interface : le bouton du
-// classeur, le bloc du menu ⋯, le bandeau.
+// travail fait depuis, ce que la clé (C4, cle.ts) et le Drive (C10,
+// copie-drive.ts) lui disent par majCle et majDrive, et ce que main.ts sait
+// du rangement du classeur sans fichier (lot 18, majRangement : son niveau
+// est rangé dans un dossier, ou reste à ranger). Chaque changement, et
+// toutes les 30 secondes (les « il y a 2 min » vieillissent), prévient
+// l'interface : le bouton du classeur, le bloc du menu ⋯, le bandeau.
 //
 // Le trou se répare au calme : on rouvre la base (Tableau.reparer), qui
 // commence par y ajouter l'état complet du document, toutes les 30 secondes
@@ -31,7 +33,7 @@ import type { App } from '../app'
 import type { ErreurDeLaBase } from '../document'
 import type { FicheClasseur } from './demarrage'
 import type { Registre } from './registre'
-import type { Bandeau, EtatSauvegarde, MemoireBandeau, RaisonBandeau, TexteEtat } from './etat'
+import type { Bandeau, EtatSauvegarde, MemoireBandeau, RaisonBandeau, Rangement, TexteEtat } from './etat'
 import { RAPPEL_SILENCE, bandeauDu, nomDErreur, rappelDu, texteEtat } from './etat'
 import { cleDernierEnregistrement, lireDernierEnregistrement } from '../sauvegarde'
 import { ecrivain } from './ecrivain'
@@ -75,6 +77,9 @@ export class Surveillance {
   private parLaBibliotheque = false
   /** La clé de la date du dernier fichier de ce classeur */
   private cleFichier: string
+  /** Le rangement du classeur sans fichier (lot 18, voir majRangement) :
+   *  gardé ici, parce que la clé remplace tout son état à chaque maj */
+  private rangement: Rangement | null = null
 
   /** À créer APRÈS tableau.charger() : le chargement n'est pas un changement.
    *  registre et fiche : null dans le repli (l'index ne s'ouvre pas) ; la
@@ -133,7 +138,26 @@ export class Surveillance {
   quandChange(f: () => void) { this.ecouteurs.push(f) }
 
   // ---------- Ce que disent la clé et le Drive (C4, C10) ----------
-  majCle(c: EtatSauvegarde['cle']) { this.etat.cle = c; this.actualiser() }
+  majCle(c: EtatSauvegarde['cle']) { this.etat.cle = c; this.poserRangement(); this.actualiser() }
+  /** Ce que main.ts sait du rangement du classeur (lot 18) : là où irait son
+   *  fichier quand son niveau est rangé (rangeDans), ou le niveau à ranger
+   *  (rangeable) ; null : rien de tel (le classeur a son fichier, il est à
+   *  la racine, ce navigateur ne range pas). Posé à l'arrivée et quand la
+   *  fiche ou les emplacements changent. */
+  majRangement(r: Rangement | null) {
+    this.rangement = r && (r.rangeDans || r.rangeable) ? { ...r } : null
+    this.poserRangement()
+    this.actualiser()
+  }
+  /** Le rangement, dans l'état de la clé (seulement quand elle n'a pas de fichier) */
+  private poserRangement() {
+    const c = this.etat.cle
+    delete c.rangeDans; delete c.rangeable
+    const r = this.rangement
+    if (!r || c.etat !== 'absente') return
+    if (r.rangeDans) c.rangeDans = r.rangeDans
+    if (r.rangeable) c.rangeable = { ...r.rangeable }
+  }
   /** Des changements attendent d'être écrits sur la clé depuis ce moment
    *  (null : plus rien) : l'affichage suit un peu après, comme pour un
    *  changement (jamais à chaque trait) */
