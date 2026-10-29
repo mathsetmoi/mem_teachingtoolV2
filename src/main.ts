@@ -25,11 +25,12 @@ import { ecrivain } from './classeurs/ecrivain'
 import { Fichiers } from './classeurs/fichiers'
 import type { ActionMessage } from './app'
 import type { SeanceDuClasseur } from './seances'
-import { deLaSeance } from './seances'
+import { deLaSeance, libelleSeance } from './seances'
 import type { ChapitreAccueil } from './seances-vue'
 import { ouvrirAccueil } from './seances-vue'
 import { installerCurseurs } from './curseurs'
 import { comparerEtiquettes, etiquetteHeritee } from './classeurs/arbre'
+import { NOM_SEANCES_ISOLEES, classeurSeancesIsolees, estSeancesIsolees, isoleesEnQueue, texteClasseurIsoleesCree, texteSeanceIsolee } from './classeurs/isolees'
 import { classeursCherches, contenuDeLaBase } from './classeurs/recherche-bibliotheque'
 import type { FicheDossier } from './classeurs/demarrage'
 
@@ -363,6 +364,10 @@ async function demarrer() {
       const d = classe?.dossier ?? carte.get(ici.dossier)
       return d ? { id: d.id, nom: d.nom } : null
     }
+    // « Séance isolée » du menu ⋯ (lot 17) : la même chose que le lien de la
+    // fenêtre « Bonjour ! », pour les jours sans fenêtre (deux classes du même
+    // niveau qui se suivent) ; le classeur et les dossiers relus au clic
+    ui.onSeanceIsolee = () => void seanceIsolee(app, ui, registre, fiche, { dire: true })
     // La recherche : tous les classeurs de ce navigateur (lus en lecture
     // seule), et l'ouverture d'un autre classeur, comme depuis sa carte
     ui.idClasseur = infos.id
@@ -528,12 +533,15 @@ function sousDossiers(racine: string, dossiers: readonly FicheDossier[]): Set<st
   return r
 }
 
-/** La fenêtre d'accueil (lot 6, voir seances-vue.ts), remplie avec la
- *  bibliothèque : le niveau (le plus proche dossier de niveau du classeur),
- *  les autres niveaux (les dossiers de niveau), les chapitres du niveau
- *  (les classeurs de son dossier, avec leur nombre de séances). Sans
- *  bibliothèque (le repli), ni niveaux ni chapitres. */
-async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche: FicheClasseur | null, seance: SeanceDuClasseur): Promise<HTMLDialogElement | null> {
+/** Ce que la fenêtre d'accueil et « Séance isolée » savent du classeur
+ *  ouvert, relu dans la bibliothèque à l'instant : ses dossiers (tous, et
+ *  les vivants : hors corbeille), ses classeurs ouvrables, le niveau du
+ *  classeur (son plus proche dossier de niveau), le dossier du chapitre (ce
+ *  dossier de niveau, sinon son dossier, sinon la racine) ; et les gestes
+ *  communs : les classeurs d'un dossier (ses sous-dossiers compris), partir
+ *  vers un classeur pour y commencer une séance, « Nouveau chapitre ». Sans
+ *  bibliothèque (le repli), tout est vide. */
+async function contexteDuNiveau(ui: UI, registre: Registre | null, fiche: FicheClasseur | null) {
   let dossiers: FicheDossier[] = [], fiches: FicheClasseur[] = []
   if (registre && fiche) {
     try { [dossiers, fiches] = await Promise.all([registre.dossiers(), registre.classeurs()]) } catch { /* sans la bibliothèque */ }
@@ -555,23 +563,72 @@ async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche
     void ui.bibliotheque.ouvrirClasseur(f)
   }
   const nouveauChapitre = (d: string | null) => ui.bibliotheque?.nouveauClasseur({ chapitre: { dossier: d, dossiers: carte } })
+  return { dossiers, vivants, carte, fiches, ouvrables, ici, classe, dossierDuChapitre, dans, partir, nouveauChapitre }
+}
+
+/** « Séance isolée » (lot 17) : une séance hors chapitre (une remédiation,
+ *  un devoir corrigé), dans le classeur « Séances isolées » du niveau du
+ *  classeur ouvert (son dossier de niveau ; sinon son dossier ; sinon la
+ *  racine), reconnu à son nom et relu à l'instant (le classeur a pu changer
+ *  de dossier, un autre onglet a pu créer le classeur isolé) :
+ *  - le classeur ouvert est lui-même « Séances isolées » : une nouvelle
+ *    séance ici ;
+ *  - il existe ailleurs : on y part, et la clé de l'onglet y fait commencer
+ *    la séance sans question ;
+ *  - il n'existe pas : créé sans fenêtre, page blanche, dans le dossier de
+ *    niveau, puis ouvert (un classeur neuf commence sa séance sans question) ;
+ *    le message d'arrivée le dit.
+ *  auto : la case « Commencer par des automatismes » ; dire : annoncer la
+ *  nouvelle séance quand elle commence ici (le menu ⋯). */
+async function seanceIsolee(app: App, ui: UI, registre: Registre, fiche: FicheClasseur, o: { auto?: boolean; dire?: boolean } = {}) {
+  const b = ui.bibliotheque
+  if (!b) return
+  const c = await contexteDuNiveau(ui, registre, fiche)
+  const f = classeurSeancesIsolees(c.dossierDuChapitre, c.ouvrables, c.dossiers)
+  if (f && f.id === fiche.id) {
+    app.nouvelleSeance()
+    const s = app.seanceVue
+    if (o.dire && s) ui.message(`Nouvelle séance : ${libelleSeance(s)}`)
+    if (o.auto) ui.flash.ouvrir()
+    return
+  }
+  if (f) { c.partir(f, !!o.auto); return }
+  await b.creerEtOuvrir({
+    nom: NOM_SEANCES_ISOLEES, dossier: c.dossierDuChapitre,
+    avant: x => noterNouvelleSeance(x.id, !!o.auto),
+    arrivee: texteClasseurIsoleesCree(c.classe ? c.classe.dossier.nom : null),
+  })
+}
+
+/** La fenêtre d'accueil (lot 6, voir seances-vue.ts), remplie avec la
+ *  bibliothèque : le niveau (le plus proche dossier de niveau du classeur),
+ *  les autres niveaux (les dossiers de niveau), les chapitres du niveau
+ *  (les classeurs de son dossier, avec leur nombre de séances ; le classeur
+ *  « Séances isolées » en dernier, lot 17), le lien « Séance isolée ». Sans
+ *  bibliothèque (le repli), ni niveaux ni chapitres ni séance isolée. */
+async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche: FicheClasseur | null, seance: SeanceDuClasseur): Promise<HTMLDialogElement | null> {
+  const { vivants, fiches, ouvrables, ici, classe, dossierDuChapitre, dans, partir, nouveauChapitre } = await contexteDuNiveau(ui, registre, fiche)
+  const carte = new Map(vivants.map(d => [d.id, d]))
   const classes = vivants.filter(d => d.etiquette && d.id !== classe?.dossier.id)
     .sort((a, b) => comparerEtiquettes(a.nom, b.nom)).map(d => ({ id: d.id, nom: d.nom }))
   const avecBibliotheque = !!(registre && fiche && ui.bibliotheque)
+  const nomDuNiveau = classe ? classe.dossier.nom : null
   if (document.querySelector('dialog[open]')) return null
   return ouvrirAccueil(document.getElementById('app')!, {
-    classe: classe ? classe.dossier.nom : null,
+    classe: nomDuNiveau,
     chapitre: app.classeur.nom,
+    isolees: estSeancesIsolees(ici ?? app.classeur),
     continuer: deLaSeance(seance, Date.now(), true),
     classes: avecBibliotheque ? classes : [],
     chapitres: avecBibliotheque ? async () => {
-      const l: ChapitreAccueil[] = dans(dossierDuChapitre).map(f => ({ id: f.id, nom: f.nom, ici: f.id === ici?.id, seances: f.id === ici?.id ? app.tableau.seancesDuClasseur().length : f.seances ?? null }))
-      return l.sort((a, b) => Number(b.ici) - Number(a.ici) || (fiches.find(f => f.id === b.id)?.ouvert ?? 0) - (fiches.find(f => f.id === a.id)?.ouvert ?? 0))
+      const l: ChapitreAccueil[] = dans(dossierDuChapitre).map(f => ({ id: f.id, nom: f.nom, ici: f.id === ici?.id, seances: f.id === ici?.id ? app.tableau.seancesDuClasseur().length : f.seances ?? null, isolees: estSeancesIsolees(f) }))
+      return isoleesEnQueue(l.sort((a, b) => Number(b.ici) - Number(a.ici) || (fiches.find(f => f.id === b.id)?.ouvert ?? 0) - (fiches.find(f => f.id === a.id)?.ouvert ?? 0)))
     } : null,
     nouvelleSeance: auto => {
       app.nouvelleSeance()
       if (auto) ui.flash.ouvrir()
     },
+    seanceIsolee: avecBibliotheque ? { texte: texteSeanceIsolee(nomDuNiveau), faire: auto => void seanceIsolee(app, ui, registre!, fiche!, { auto }) } : null,
     continuerSeance: auto => {
       ui.message(`Séance ${deLaSeance(seance, Date.now())} : vous la continuez`)
       if (auto) ui.flash.ouvrir()

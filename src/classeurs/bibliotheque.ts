@@ -107,6 +107,7 @@ import {
   texteRemis, texteRetrouves, texteVidee, texteViderBibliotheque, titreDefinitifClasseur, titreDefinitifDossier,
 } from './corbeille'
 import { effacerLesClasseurs } from './effacer'
+import { HORS_CHAPITRE, estSeancesIsolees, isoleesEnQueue } from './isolees'
 import { adopterLesOrphelines } from './adoption'
 import { enregistrerDepuisLaBase } from './enregistrer'
 import { TEXTE_PUBLIEES_COPIE } from './reconnaitre'
@@ -962,12 +963,14 @@ export class Bibliotheque {
     const filtre = this.filtre, ici = this.dossierAffiche
     const aLaRacine = ici === null && filtre === null
     const rec = aLaRacine ? recents(tous).map(f => f.id) : []
+    // (le classeur « Séances isolées » d'un dossier, lot 17, toujours en
+    // dernier, quel que soit le tri ; Récents ne change pas)
     let cles: string[], sousDossiers = 0
-    if (filtre !== null) cles = trier(tous.filter(f => porte(f, filtre, d)), this.tri).map(f => f.id)
+    if (filtre !== null) cles = isoleesEnQueue(trier(tous.filter(f => porte(f, filtre, d)), this.tri)).map(f => f.id)
     else {
       const sous = enfants(ici, d)
       sousDossiers = sous.length
-      cles = [...sous.map(x => DOSSIER + x.id), ...trier(tous.filter(f => estDans(f, ici, d)), this.tri).map(f => f.id)]
+      cles = [...sous.map(x => DOSSIER + x.id), ...isoleesEnQueue(trier(tous.filter(f => estDans(f, ici, d)), this.tri)).map(f => f.id)]
     }
     // Le chemin sous le nom paraît ou s'en va : toutes les cartes
     if ((filtre !== null) !== this.plat) { this.plat = filtre !== null; changes = null }
@@ -1060,6 +1063,8 @@ export class Bibliotheque {
     apercu.append(image, Object.assign(document.createElement('span'), { className: 'sans-apercu', textContent: 'Pas encore d\'aperçu' }),
       Object.assign(document.createElement('span'), { className: 'pastille-ouvert', textContent: 'Ouvert', hidden: true }), this.poignee())
     const nom = Object.assign(document.createElement('span'), { className: 'carte-nom-classeur' })
+    // « Hors chapitre » sous le nom du classeur « Séances isolées » d'un niveau (lot 17)
+    const horsChapitre = Object.assign(document.createElement('span'), { className: 'carte-hors-chapitre', textContent: HORS_CHAPITRE, hidden: true })
     // Son dossier, quand un filtre montre les classeurs de tous les dossiers
     const chemin = Object.assign(document.createElement('span'), { className: 'carte-chemin', hidden: true })
     const infos = Object.assign(document.createElement('span'), { className: 'carte-infos' })
@@ -1071,8 +1076,8 @@ export class Bibliotheque {
     infos.append(date, sauvegardes)
     // Les étiquettes de niveau (propres, et celle héritée du dossier)
     const etiquettes = Object.assign(document.createElement('span'), { className: 'carte-etiquettes', hidden: true })
-    for (const x of [apercu, nom, chemin, infos, etiquettes]) x.setAttribute('aria-hidden', 'true')
-    a.append(apercu, nom, chemin, infos, etiquettes)
+    for (const x of [apercu, nom, horsChapitre, chemin, infos, etiquettes]) x.setAttribute('aria-hidden', 'true')
+    a.append(apercu, nom, horsChapitre, chemin, infos, etiquettes)
     li.append(a, this.boutonOptions(li), ...this.zoneSeances(li))
     return li
   }
@@ -1193,7 +1198,13 @@ export class Bibliotheque {
     const chemin = avecChemin ? cheminLisible(f.dossier, this.dossiers) : ''
     poser(ch, chemin)
     if (ch.hidden === avecChemin) ch.hidden = !avecChemin
-    const label = texteLecteur(f, maintenant, { ouvertIci: ici, etiquettes: effectives.map(e => e.nom), chemin: avecChemin ? chemin : undefined })
+    // Le classeur « Séances isolées » d'un niveau (lot 17) : « Hors chapitre »
+    // sous son nom, que le lecteur d'écran dit aussi ; la carte reste la même
+    const isolees = estSeancesIsolees(f)
+    const hc = c.querySelector<HTMLElement>('.carte-hors-chapitre')!
+    if (hc.hidden === isolees) hc.hidden = !isolees
+    c.classList.toggle('isolees', isolees)
+    const label = texteLecteur(f, maintenant, { ouvertIci: ici, etiquettes: effectives.map(e => e.nom), chemin: avecChemin ? chemin : undefined, horsChapitre: isolees })
     if (a.getAttribute('aria-label') !== label) a.setAttribute('aria-label', label)
     if (a.title !== f.nom) a.title = f.nom
     const p = c.querySelector<HTMLElement>('.pastille-ouvert')!
@@ -3538,8 +3549,7 @@ export class Bibliotheque {
       }
       let fiche: FicheClasseur
       try { fiche = await this.creer(nom, fond) } catch (x) {
-        const place = (x instanceof ErreurBase && x.raison === 'place') || nomErreur(x) === 'QuotaExceededError'
-        const t = place ? PLUS_DE_PLACE : `Le classeur n'a pas pu être créé : ${(x as Error | null)?.message?.replace(/\.$/, '') || 'erreur inconnue'}.`
+        const t = texteEchecCreation(x)
         reprendre(t)
         this.hote.message(t)
         return
@@ -3572,15 +3582,58 @@ export class Bibliotheque {
     champ.select()
   }
 
+  /** Crée un classeur SANS fenêtre et l'ouvre (lot 17 : le classeur
+   *  « Séances isolées » d'un niveau, à la première demande) : page blanche,
+   *  dans ce dossier (s'il existe encore et n'est pas dans la corbeille ;
+   *  sinon à la racine), sans fichier de clé (il viendra à la prochaine
+   *  liaison du niveau, ou par « Enregistrer automatiquement sur la clé ») ;
+   *  la copie sur le Drive suit comme pour tout classeur. avant(fiche) : juste
+   *  avant de partir (la clé de l'onglet d'une nouvelle séance, main.ts) ;
+   *  arrivee : le message dit en arrivant, à la place de « Classeur « X »
+   *  créé. ». Un échec se dit en message et l'on reste sur le classeur
+   *  ouvert. Vrai si le classeur a été créé. */
+  async creerEtOuvrir(o: { nom: string; dossier: string | null; arrivee: string; avant?: (f: FicheClasseur) => void }): Promise<boolean> {
+    if (this.depart) return false
+    this.finirSaisie(true)
+    // Les dossiers tels qu'ils sont à l'instant (la bibliothèque n'a peut-être
+    // jamais été ouverte dans cet onglet, et le dossier a pu partir)
+    try { this.dossiers = new Map((await this.registre.dossiers()).map(d => [d.id, d])) } catch { /* ceux qu'on a */ }
+    const d = o.dossier !== null ? this.dossiers.get(o.dossier) : undefined
+    const dans = d && dossierVisible(d, this.dossiers) ? d.id : null
+    let fiche: FicheClasseur
+    try { fiche = await this.creer(o.nom, 'blanc', dans) } catch (x) {
+      this.hote.message(texteEchecCreation(x))
+      return false
+    }
+    this.fiches.set(fiche.id, fiche)
+    o.avant?.(fiche)
+    await this.ouvrirClasseur(fiche, { arrivee: o.arrivee })
+    // On est resté (le trou : « Annuler ») : il attend dans la bibliothèque
+    if (!this.depart) {
+      this.hote.message(`Classeur « ${fiche.nom} » créé : il est dans la bibliothèque.`)
+      if (this.ouvert) void this.charger()
+    }
+    return true
+  }
+
   /** Crée le classeur : sa fiche (marquée en création), sa base avec une
    *  page au fond choisi et sa naissance dans le film, puis la marque s'en
-   *  va (voir Registre.creerClasseur : rien ne reste si cela échoue) */
-  private async creer(nom: string, fond: Fond): Promise<FicheClasseur> {
+   *  va (voir Registre.creerClasseur : rien ne reste si cela échoue). Dans
+   *  ce dossier s'il existe (sinon à la racine) : celui de la fenêtre
+   *  « Nouveau classeur » d'office. */
+  private async creer(nom: string, fond: Fond, dossierVoulu: string | null = this.dossierDuNouveau): Promise<FicheClasseur> {
     const id = idClasseur(), t = Date.now()
-    const dossier = this.dossierDuNouveau !== null && this.dossiers.has(this.dossierDuNouveau) ? this.dossierDuNouveau : null
+    const dossier = dossierVoulu !== null && this.dossiers.has(dossierVoulu) ? dossierVoulu : null
     const fiche: FicheClasseur = { id, base: baseDe(id), nom, dossier, etiquettes: [], cree: t, modifie: t, ouvert: t, pages: 1 }
     return this.registre.creerClasseur(fiche, async base => creerBase(base, await etatNeuf(fond), { id, nom }))
   }
+}
+
+/** Ce qu'on dit quand un classeur n'a pas pu être créé : plus de place dans
+ *  le navigateur, ou la raison de l'erreur */
+function texteEchecCreation(x: unknown): string {
+  const place = (x instanceof ErreurBase && x.raison === 'place') || nomErreur(x) === 'QuotaExceededError'
+  return place ? PLUS_DE_PLACE : `Le classeur n'a pas pu être créé : ${(x as Error | null)?.message?.replace(/\.$/, '') || 'erreur inconnue'}.`
 }
 
 /** Deux images ont-elles les mêmes octets ? */

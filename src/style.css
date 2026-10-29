@@ -1539,6 +1539,8 @@ body.en-bibliotheque .toast { z-index: 30; }
 .carte-contenu { flex: 1; min-width: 0; }
 /* Son dossier, sous le nom d'un classeur, quand un filtre les montre tous */
 .carte-chemin { font-size: 13px; line-height: 18px; color: var(--encre-douce); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* « Hors chapitre », sous le nom du classeur « Séances isolées » d'un niveau (lot 17) */
+.carte-hors-chapitre { font-size: 13px; line-height: 18px; color: var(--encre-douce); }
 .puce-etiquette {
   max-width: 100%; padding: 1px 8px; border-radius: 10px; background: #e6eaf0; color: var(--encre);
   font-size: 12px; line-height: 18px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -1997,6 +1999,10 @@ body.contraste .toast .action { background: rgba(255, 255, 255, 0.26); }
 .accueil-case-automatismes input { width: 20px; height: 20px; accent-color: var(--bleu); flex: none; }
 .accueil-chapitre { margin: -4px 0 0 !important; color: var(--encre-douce); }
 .dialogue-accueil .lien { border: 0; background: none; padding: 6px 0; min-height: 32px; color: var(--bleu); text-decoration: underline; cursor: pointer; font: inherit; text-align: left; }
+/* « Séance isolée » (lot 17) : un lien de 36 px pour la plume et le doigt, son petit texte dessous */
+.accueil-isolee { margin: -4px 0 0 !important; display: grid; gap: 2px; justify-items: start; }
+.accueil-isolee .lien { min-height: 36px; }
+.accueil-isolee small { color: var(--encre-douce); }
 .accueil-vierge { margin: 4px 0 0 !important; padding-top: 10px; border-top: 1px solid var(--filet); display: grid; gap: 2px; }
 .accueil-vierge small { color: var(--encre-douce); }
 .accueil-classes { margin: 4px 0 0 !important; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--encre); }
@@ -2007,6 +2013,9 @@ body.contraste .toast .action { background: rgba(255, 255, 255, 0.26); }
 .accueil-un-chapitre .nom { font-weight: 700; }
 .accueil-un-chapitre .nombre { color: var(--encre-douce); }
 .accueil-un-chapitre.ici { border-color: var(--bleu); box-shadow: inset 0 0 0 1px var(--bleu); }
+/* Le classeur « Séances isolées » du niveau (lot 17), en dernier : un bord en pointillé, « hors chapitre » en petit gris */
+.accueil-un-chapitre.isolees { border-style: dashed; }
+.accueil-un-chapitre .hors-chapitre { color: var(--encre-douce); font-size: 13px; }
 .dialogue-reprise .actions, .dialogue-nom-seance .actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .saisie-nom-seance { width: 100%; height: 44px; padding: 0 12px; margin-bottom: 14px; border: 1px solid var(--filet); border-radius: 10px; font: inherit; }
 /* Les bandeaux, sous la barre du haut, au milieu de ce qu'on voit */
