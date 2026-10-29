@@ -128,12 +128,14 @@ describe('l\'état du Drive', () => {
     expect(bandeauDu(attente, T, 0, memoire({ driveMontre: true }))?.raison).toBe('drive-connexion')
     // Rien à copier : rien
     expect(bandeauDu(etat({ drive: { etat: 'connexion', compte: 'mem', enAttente: false } }), T, 10 * MIN, memoire())).toBe(null)
-    // La clé à jour (le jeton expiré en plein cours) : ni bandeau, ni point, une ligne d'information
+    // Le fichier à jour (le jeton expiré en plein cours) : ni bandeau, ni point ; la ligne du
+    // Drive n'est plus montrée (lot 18 : elle ne paraît que si elle demande un clic, ou si c'est
+    // la seule sauvegarde automatique)
     const avecCle = { ...attente, cle: { etat: 'ok' as const, t: T - MIN, nom: 'Symétrie.memc' } }
     expect(bandeauDu(avecCle, T, 10 * MIN, memoire())).toBe(null)
-    expect(ligne(avecCle).niveau).toBe('info')
+    expect(texteEtat(avecCle, T).lignes.find(l => l.quoi === 'drive')).toBeUndefined()
     expect(texteEtat(avecCle, T).niveau).not.toBe('attention')
-    expect(sp(texteEtat(avecCle, T).court)).toBe('Clé : il y a 1 min')
+    expect(sp(texteEtat(avecCle, T).court)).toBe('Enregistré il y a 1 min')
     // × : plus de la session
     expect(bandeauDu(attente, T, 10 * MIN, memoire({ ecartes: new Set(['drive-connexion']) }))).toBe(null)
     // Le rappel d'enregistrer passe après

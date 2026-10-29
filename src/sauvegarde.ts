@@ -151,10 +151,10 @@ const attendre = (ms: number) => new Promise(ok => setTimeout(ok, ms))
 export function raison(e: unknown): string {
   const nom = (e as { name?: string } | null)?.name
   if (e instanceof ErreurFichier && e.raison === 'abimee') return 'il semble abîmé dans ce navigateur'
-  if (nom === 'QuotaExceededError') return 'il n\'y a plus de place sur le disque ou sur la clé'
+  if (nom === 'QuotaExceededError') return 'il n\'y a plus de place sur le disque'
   if (nom === 'NotAllowedError' || nom === 'SecurityError') return 'le navigateur n\'a pas permis d\'écrire ce fichier'
-  if (nom === 'NotFoundError') return 'le dossier choisi n\'existe plus (la clé a-t-elle été retirée ?)'
-  if (nom === 'NotReadableError') return 'le fichier ne peut plus être lu (la clé a-t-elle été retirée, le fichier déplacé ?)'
+  if (nom === 'NotFoundError') return 'le dossier choisi n\'existe plus (le disque a-t-il été retiré ?)'
+  if (nom === 'NotReadableError') return 'le fichier ne peut plus être lu (déplacé, ou son disque retiré ?)'
   if (nom === 'NoModificationAllowedError' || nom === 'InvalidStateError') return 'le fichier est en lecture seule, ou ouvert ailleurs'
   const m = e instanceof Error ? e.message.trim().replace(/\.$/, '') : ''
   return m || 'erreur inconnue'

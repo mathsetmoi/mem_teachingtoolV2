@@ -1933,14 +1933,15 @@ export class UI implements Interface {
     return this.actionsEtat.get(action)
   }
 
-  /** L'enregistrement automatique sur la clé (lot 4, C4) : ses entrées du
-   *  menu ⋯ et les boutons de l'état et du bandeau (activer, reprendre après
-   *  un rechargement, choisir un autre fichier, remplacer quand même) */
+  /** L'enregistrement automatique dans un fichier (la clé, lot 4 C4) : ses
+   *  entrées du menu ⋯ et les boutons de l'état et du bandeau (activer,
+   *  reprendre après un rechargement, choisir un autre fichier, remplacer
+   *  quand même). Le mot « clé » ne paraît pas à l'écran (lot 18). */
   brancherCle(cle: EnregistrementCle | null) {
     this.cle = cle
     if (!cle?.disponible) return
-    this.inscrireActionEtat('activer-cle', 'Enregistrer automatiquement sur la clé…', () => void cle.activer())
-    this.inscrireActionEtat('reprendre-cle', 'Reprendre l\'enregistrement sur la clé', () => void cle.reprendre())
+    this.inscrireActionEtat('activer-cle', 'Enregistrer automatiquement dans un fichier…', () => void cle.activer())
+    this.inscrireActionEtat('reprendre-cle', 'Reprendre l\'enregistrement', () => void cle.reprendre())
     this.inscrireActionEtat('choisir-cle', 'Choisir un autre fichier…', () => void cle.choisirUnAutre())
     this.inscrireActionEtat('forcer-cle', 'Remplacer quand même', () => void cle.remplacerQuandMeme())
   }
@@ -2198,7 +2199,7 @@ export class UI implements Interface {
 
   brancherFichiers(f: Fichiers | null) {
     this.fichiers = f
-    if (f) this.inscrireActionEtat('ouvrir-cle', 'Ouvrir le fichier de la clé', () => void f.ouvrirLeFichierDeLaCle())
+    if (f) this.inscrireActionEtat('ouvrir-cle', 'Ouvrir le fichier', () => void f.ouvrirLeFichierDeLaCle())
   }
 
   // ----- Copier en image (voir sorties/image.ts) -----
