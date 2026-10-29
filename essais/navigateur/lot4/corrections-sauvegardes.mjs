@@ -33,7 +33,7 @@ import * as Y from 'yjs'
 import { gunzipSync } from 'node:zlib'
 import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 
-const BASE = process.env.BASE || 'http://localhost:5173/'
+const BASE = process.env.BASE || process.env.DEV || 'http://localhost:5173/'
 const R = `${RACINE_DEPOT}`
 const S = `${RACINE_ESSAIS}/lot4/sauvegardes-travail/`
 const parties = process.argv.slice(2)
@@ -192,7 +192,7 @@ if (seul('A')) {
   const nom = await p.evaluate(() => window.__ecritures[0].nom)
   await p.waitForTimeout(500)
   let e = await etat(p)
-  ok(e.court === 'Clé : à l\'instant' && ligne(e, 'cle') === `cle:ok:Sur la clé (${nom}) : à l'instant`, `   … « ${e.court} »`, e)
+  ok(e.court === 'Enregistré à l\'instant' && ligne(e, 'cle') === `cle:ok:Enregistré dans « ${nom} » : à l'instant`, `   … « ${e.court} »`, e)
 
   // A2. Un trait : la clé ne l'a pas encore
   await ecrire(p, 300, 300)
@@ -200,9 +200,9 @@ if (seul('A')) {
   const idS1 = (await formesIds(p)).at(-1)
   await p.waitForTimeout(2600)
   e = await etat(p)
-  ok(e.court === 'Clé : pas encore à jour' && ligne(e, 'cle') === `cle:ok:Sur la clé (${nom}) : pas encore à jour, les derniers changements partent bientôt (dernière écriture à l'instant)`
+  ok(e.court === 'Enregistrement bientôt' && ligne(e, 'cle') === `cle:ok:Enregistré dans « ${nom} » : pas encore à jour, les derniers changements partent bientôt (dernière écriture à l'instant)`
     && !e.point && e.niveau !== 'attention' && !e.bandeau,
-  'A2) un trait, 2,6 s après : « Clé : pas encore à jour », la ligne le dit ; ni point ambre, ni bandeau (le défaut : « Clé : à l\'instant »)', e)
+  'A2) un trait, 2,6 s après : « Enregistrement bientôt », la ligne le dit ; ni point ambre, ni bandeau (le défaut : « Enregistré à l\'instant »)', e)
   ok(e.cle.depuis >= tTrait - 1000 && e.cle.depuis <= tTrait + 200, '   … depuis le trait (l\'état de la clé : depuis)', { depuis: e.cle.depuis, tTrait })
 
   // A3. Fermer l'onglet 3 s après le trait ; on reste
@@ -216,7 +216,7 @@ if (seul('A')) {
     `   … l'écriture part dès la question (${w ? w.debut - f.t : '?'} ms après, ${w ? w.debut - tTrait : '?'} ms après le trait, au lieu de 20 s) : le trait est sur la clé`, { w, f, ids: lu.ids, idS1 })
   await p.waitForTimeout(500)
   e = await etat(p)
-  ok(e.court === 'Clé : à l\'instant' && !e.cle.depuis, `   … « ${e.court} »`, e)
+  ok(e.court === 'Enregistré à l\'instant' && !e.cle.depuis, `   … « ${e.court} »`, e)
   // A4. Tout est écrit : plus de question
   f = await fermer(p, 'rester')
   ok(f.questions.length === 0 && f.ferme, 'A4) tout est sur la clé : fermer l\'onglet ne demande rien, il se ferme', f)
@@ -224,7 +224,7 @@ if (seul('A')) {
   // A5. On part quand même
   p = await ouvrir(ctx, '', 'A5')
   e = await etat(p)
-  ok(e.cle.etat === 'ok' && !e.cle.depuis && /^Clé : /.test(e.court) && e.court !== 'Clé : pas encore à jour', `A5) rouvert, rien à écrire : « ${e.court} »`, e)
+  ok(e.cle.etat === 'ok' && !e.cle.depuis && /^Enregistré /.test(e.court) && e.court !== 'Enregistrement bientôt', `A5) rouvert, rien à écrire : « ${e.court} »`, e)
   await ecrire(p, 360, 340)
   const idS2 = (await formesIds(p)).at(-1)
   await p.waitForTimeout(800)
@@ -235,7 +235,7 @@ if (seul('A')) {
   await p.waitForTimeout(2300)
   e = await etat(p)
   lu = lireMemc(await opfsLire(p, nom))
-  ok(!lu.ids.includes(idS2) && e.court === 'Clé : pas encore à jour', `   … la clé ne l'a pas encore, et le texte court le dit : « ${e.court} »`, { e, ids: lu.ids })
+  ok(!lu.ids.includes(idS2) && e.court === 'Enregistrement bientôt', `   … le fichier ne l'a pas encore, et le texte court le dit : « ${e.court} »`, { e, ids: lu.ids })
   ok(await attendreEcrites(p, 1, 30000) && lireMemc(await opfsLire(p, nom)).ids.includes(idS2), '   … puis il s\'écrit sur la clé, seul (20 s après l\'ouverture)')
   await p.waitForTimeout(400)
 
@@ -300,7 +300,7 @@ if (seul('A')) {
   await p.waitForFunction(() => window.__cle.etat.etat === 'erreur', null, { timeout: 30000 }).catch(() => {})
   e = await etat(p)
   f = await fermer(p, 'rester')
-  ok(e.cle.etat === 'erreur' && e.court === 'Clé : pas à jour' && f.questions.length === 0 && f.ferme, 'A10) la clé retirée (l\'écriture a échoué) : « Clé : pas à jour », fermer ne demande rien', { court: e.court, f })
+  ok(e.cle.etat === 'erreur' && e.court === 'Pas à jour, rien de perdu' && f.questions.length === 0 && f.ferme, 'A10) le disque retiré (l\'écriture a échoué) : « Pas à jour, rien de perdu », fermer ne demande rien', { court: e.court, f })
 
   // A11. Deux onglets : celui qui n'écrit pas la clé ne pose pas la question
   const a = await ouvrir(ctx, '?classeur=' + id1, 'A11a')
@@ -390,7 +390,7 @@ if (seul('F')) {
   for (let i = 0; i < 3; i++) await ecrire(p, 300 + i * 60, 300 + i * 40)
   await p.waitForTimeout(2600)
   const c = await court()
-  ok(c === 'Clé : pas encore à jour', `F2) trois traits, 2,6 s après : « ${c} »`, c)
+  ok(c === 'Enregistrement bientôt', `F2) trois traits, 2,6 s après : « ${c} »`, c)
   const n = ecritures.length
   let f = await fermer(p, 'rester', 100)
   for (let i = 0; i < 60 && ecritures.length === n; i++) await dort(100)
@@ -398,7 +398,7 @@ if (seul('F')) {
   ok(f.questions.length === 1 && f.questions[0] === 'beforeunload' && !f.ferme && ecritures.length === n + 1 && ecritures[n].t - f.t < 4000 && lu.ids.length === 3,
     `F3) fermer l'onglet 3 s après le dernier trait : la question ; on reste, et les trois traits sont dans le fichier du disque (${ecritures[n] ? ecritures[n].t - f.t : '?'} ms après)`, { f, ecritures, ids: lu.ids.length })
   await p.waitForTimeout(500)
-  ok(await court() === 'Clé : à l\'instant', '   … « Clé : à l\'instant »')
+  ok(await court() === 'Enregistré à l\'instant', '   … « Enregistré à l\'instant »')
   f = await fermer(p, 'rester')
   ok(f.questions.length === 0 && f.ferme, 'F4) puis fermer : plus de question, l\'onglet se ferme', f)
   ok(google.length === 0, '   … aucune requête vers Google', google)
@@ -624,14 +624,14 @@ if (seul('K')) {
     vu.push({ cle: ligne(e, 'cle'), court: e.court, niveau: e.niveau, taille: (await opfsLire(p, fiche.nom))?.length ?? null })
     await ecrire(p, 200 + i * 30, 400); await p.waitForTimeout(2500)
   }
-  ok(vu.every(v => v.taille === 0 && v.cle === `cle:info:Sur la clé (${fiche.nom}) : pas encore écrit (la première écriture part bientôt)` && v.court === 'Clé : pas encore à jour' && v.niveau !== 'ok'),
-    'K2) rechargé, le fichier encore vide : « pas encore écrit (la première écriture part bientôt) », « Clé : pas encore à jour » ; jamais « à jour », rien ne compte comme protégé (le défaut : « Sur la clé (…) : à jour »)', vu)
+  ok(vu.every(v => v.taille === 0 && v.cle === `cle:info:Fichier « ${fiche.nom} » : pas encore écrit (la première écriture part bientôt)` && v.court === 'Enregistrement bientôt' && v.niveau !== 'ok'),
+    'K2) rechargé, le fichier encore vide : « pas encore écrit (la première écriture part bientôt) », « Enregistrement bientôt » ; jamais « à jour », rien ne compte comme protégé (le défaut : « Enregistré dans « … » : à jour »)', vu)
   const protege = await p.evaluate(async () => (await import('/src/classeurs/etat.ts')).protege(window.__surveillance.etat, Date.now()))
   ok(protege === false, '   … protege() : non')
   ok(await attendreEcrites(p, 1, 30000), 'K3) puis la première écriture (20 s après le dernier trait)')
   await p.waitForTimeout(500)
   const e = await etat(p)
-  ok(ligne(e, 'cle') === `cle:ok:Sur la clé (${fiche.nom}) : à l'instant` && e.court === 'Clé : à l\'instant' && (await opfsLire(p, fiche.nom)).length > 0, `   … « ${e.court} », le fichier écrit`, e)
+  ok(ligne(e, 'cle') === `cle:ok:Enregistré dans « ${fiche.nom} » : à l'instant` && e.court === 'Enregistré à l\'instant' && (await opfsLire(p, fiche.nom)).length > 0, `   … « ${e.court} », le fichier écrit`, e)
   await ctx.close()
 }
 

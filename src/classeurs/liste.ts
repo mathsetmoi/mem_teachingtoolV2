@@ -4,8 +4,9 @@
 // dans quel ordre, et ce qu'on écrit sur leurs cartes : « Modifié
 // aujourd'hui à 14 h 05 · 12 pages », le texte du lecteur d'écran
 // (« Symétrie centrale, 12 pages, modifié aujourd'hui à 14 h 05 »), le
-// titre des petites icônes de la clé et du Drive (« Sur la clé il y a 3
-// jours »). L'écran lui-même est dans bibliotheque.ts.
+// titre des petites icônes du fichier du classeur et du Drive (« Enregistré
+// dans LFB classeurs › 2 › Fractions il y a 3 jours (Fractions.memc) »).
+// L'écran lui-même est dans bibliotheque.ts.
 //
 // Ce fichier est pur (sans DOM ni IndexedDB) : il se teste sous Node.
 // =============================================================
@@ -14,6 +15,7 @@ import { LONGUEUR_NOM_CLASSEUR } from './demarrage'
 import { pagesLisibles } from '../fichier'
 import { dateCourteMajuscule, seancesDansLOrdre } from '../seances'
 import { heureLisible } from '../revue/bande'
+import { lieuDuFichier } from './etat'
 
 /** Le nombre de classeurs dans « Récents » */
 export const RECENTS = 6
@@ -142,15 +144,20 @@ export function seancesParMois(fiches: readonly FicheClasseur[], chemin: (f: Fic
   return groupes
 }
 
-/** Le titre de la petite icône de la clé (null : pas d'enregistrement
- *  automatique sur une clé) : « Sur la clé il y a 3 jours (Symétrie.memc) ».
- *  C'est la date de la dernière écriture réussie, pas une promesse : l'état
- *  du classeur ouvert dit le reste. */
+/** Le titre de la petite icône du fichier du classeur (null : pas
+ *  d'enregistrement automatique) : « Enregistré dans LFB classeurs › 2 ›
+ *  Fractions il y a 3 jours (Fractions.memc) » quand l'outil a rangé le
+ *  fichier (fiche.cle.chemin), « Enregistré dans « Fractions.memc » il y a
+ *  3 jours » pour un fichier choisi à la main ; « Fichier « Fractions.memc »
+ *  : pas encore écrit » avant la première écriture. C'est la date de la
+ *  dernière écriture réussie, pas une promesse : l'état du classeur ouvert
+ *  dit le reste. */
 export function titreCle(f: FicheClasseur, maintenant: number): string | null {
   const c = f.cle
   if (!c) return null
-  const nom = c.nom ? ` (${c.nom})` : ''
-  return c.t ? `Sur la clé ${depuisQuand(c.t, maintenant)}${nom}` : `Enregistrement automatique sur la clé${nom} : pas encore écrit`
+  if (!c.t) return `Fichier ${lieuDuFichier(c)} : pas encore écrit`
+  const quand = depuisQuand(c.t, maintenant)
+  return c.chemin?.length ? `Enregistré dans ${c.chemin.join(' › ')} ${quand} (${c.nom})` : `Enregistré dans « ${c.nom} » ${quand}`
 }
 
 /** Le titre de la petite icône du Drive (null : pas de copie) */
@@ -164,7 +171,7 @@ export function titreDrive(f: FicheClasseur, maintenant: number): string | null 
  *  pages, modifié aujourd'hui à 14 h 05 », puis, s'il y a lieu, ses
  *  étiquettes de niveau (« niveau 5e B »), son dossier quand un filtre les
  *  montre tous ensemble (« dans 5e B › Géométrie »), « ouvert dans cet
- *  onglet », la clé et le Drive (les icônes et les puces, elles, sont
+ *  onglet », son fichier et le Drive (les icônes et les puces, elles, sont
  *  muettes). horsChapitre : le classeur « Séances isolées » d'un niveau
  *  (lot 17) le dit juste après son nom. */
 export function texteLecteur(f: FicheClasseur, maintenant: number, o: { ouvertIci?: boolean; etiquettes?: readonly string[]; chemin?: string; horsChapitre?: boolean } = {}): string {

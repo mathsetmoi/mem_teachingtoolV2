@@ -28,7 +28,7 @@ import { lancerPersistant } from '../commun/playwright.mjs'
 import * as Y from 'yjs'
 import { gunzipSync, gzipSync } from 'node:zlib'
 
-const DEV = process.argv[2] || 'http://localhost:5173/'
+const DEV = process.env.DEV || process.argv[2] || 'http://localhost:5173/'
 let echecs = 0
 const ok = (c, m, d) => { if (!c) echecs++; console.log(c ? '✓' : '✗ ÉCHEC', m, !c && d !== undefined ? '— ' + JSON.stringify(d).slice(0, 1800) : '') }
 const norm = t => (t || '').replace(/[  ]/g, ' ')
@@ -197,7 +197,7 @@ console.log('\n=== A. Ajouter un classeur avec la case : la vérité à l\'arriv
   ok(e1.cle === 'permission' && t1.some(t => t.startsWith(attendu + 'Autoriser')) && JSON.stringify(e1.action) === '["Autoriser"]',
     `A2) à l'arrivée, en pause, le message le dit : « ${attendu} » [Autoriser]`, { e1, t1 })
   ok(!t1.some(faux), '   … et jamais « Il s\'enregistre automatiquement » tant que le navigateur ne le permet pas', t1)
-  ok(e1.court === 'Clé en pause' && e1.bandeau === 'cle-permission', '   … le bouton du classeur : « Clé en pause » ; le bandeau « L\'enregistrement sur la clé attend votre accord. »', e1)
+  ok(e1.court === 'En pause : un clic' && e1.bandeau === 'cle-permission', '   … le bouton du classeur : « En pause : un clic » ; le bandeau « L\'enregistrement dans « … » attend votre accord. »', e1)
   // [Autoriser] : la demande dans ce clic, avec le conseil
   await reponse(p, 'cette-fois')
   await p.click('.toast.visible button.action:has-text("Autoriser")')
@@ -218,13 +218,13 @@ console.log('\n=== A. Ajouter un classeur avec la case : la vérité à l\'arriv
   await viderDemandes(p)
   await allerA(p, ID_S)
   const e3 = await etat(p)
-  ok(e3.cle === 'permission' && e3.court === 'Clé en pause' && e3.bandeau === 'cle-permission' && (await demandes(p)).length === 0,
-    'A5) un autre classeur, puis retour (accordé « cette fois ») : « Clé en pause », le bandeau, rien de demandé sans un clic', e3)
+  ok(e3.cle === 'permission' && e3.court === 'En pause : un clic' && e3.bandeau === 'cle-permission' && (await demandes(p)).length === 0,
+    'A5) un autre classeur, puis retour (accordé « cette fois ») : « En pause : un clic », le bandeau, rien de demandé sans un clic', e3)
   // « Reprendre » du bandeau, avec « à chaque visite »
   await reponse(p, 'chaque-visite')
   await p.click('.bandeau-sauvegarde button:has-text("Reprendre")')
   await p.waitForFunction(() => window.__cle?.etat?.etat === 'ok', null, { timeout: 15000 }).catch(() => {})
-  ok((await etat(p)).cle === 'ok', '   … « Reprendre l\'enregistrement sur la clé », « Autoriser à chaque visite » : la clé repart')
+  ok((await etat(p)).cle === 'ok', '   … « Reprendre l\'enregistrement », « Autoriser à chaque visite » : l\'enregistrement repart')
   await viderDemandes(p)
   await p.reload(); await pret(p)
   const e4 = await etat(p)
@@ -287,8 +287,8 @@ console.log('\n=== C. Remplacer avec la case, l\'accord refusé à l\'arrivée =
   await p.click('.toast.visible button.action:has-text("Autoriser")')
   await p.waitForTimeout(800)
   const t2 = await toasts(p), e2 = await etat(p)
-  ok(e2.cle === 'permission' && e2.court === 'Clé en pause' && t2.some(x => x.includes('Le navigateur n\'a pas permis d\'écrire dans « remplace.memc » : l\'enregistrement sur la clé reste en pause.')),
-    'C3) l\'accord refusé : « Le navigateur n\'a pas permis d\'écrire dans « remplace.memc » : l\'enregistrement sur la clé reste en pause. », « Clé en pause »', { e2, t2 })
+  ok(e2.cle === 'permission' && e2.court === 'En pause : un clic' && t2.some(x => x.includes('Le navigateur n\'a pas permis d\'écrire dans « remplace.memc » : l\'enregistrement reste en pause.')),
+    'C3) l\'accord refusé : « Le navigateur n\'a pas permis d\'écrire dans « remplace.memc » : l\'enregistrement reste en pause. », « En pause : un clic »', { e2, t2 })
   await ctx.close()
 }
 

@@ -25,7 +25,7 @@
 // Lancer : node CF2-drive-fermer.mjs [adresse du serveur de développement]
 import { chromium, INIT, ECOUTER_TOASTS, pret, ecrire, etat, entree, lireMemc, formesIds, attendreEcrites, nbEcrites } from './verif/sauvegardes/commun.mjs'
 import { FauxGoogle } from './verif/migration/faux-google.mjs'
-const DEV = process.argv[2] || 'http://localhost:5173/'
+const DEV = process.env.DEV || process.argv[2] || 'http://localhost:5173/'
 let echecs = 0
 const ok = (c, m, d) => { if (!c) echecs++; console.log(c ? '✓' : '✗ ÉCHEC', m, !c && d !== undefined ? '— ' + JSON.stringify(d).slice(0, 1500) : '') }
 const info = (m, d) => console.log('·', m, d === undefined ? '' : JSON.stringify(d).slice(0, 800))
