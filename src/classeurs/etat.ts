@@ -98,21 +98,36 @@ export const TEXTE_INCOMPLET = `Une partie de ce classeur ne se relit plus dans 
  *  - cle.chemin (lot 18) : les dossiers où l'outil a rangé lui-même le
  *    fichier, du dossier choisi au dossier du classeur (« LFB classeurs »,
  *    « 2 », « Fractions » : voir FicheClasseur.cle.chemin) ; absent pour un
- *    fichier choisi à la main. Les textes le disent à la place de « la clé ». */
+ *    fichier choisi à la main. Les textes le disent à la place de « la clé » ;
+ *  - cle.rangeDans (lot 18, avec 'absente' et sans message) : le classeur
+ *    n'a pas de fichier, mais son niveau est rangé dans un dossier : là où
+ *    irait son fichier (« LFB classeurs › 2nde », le dossier qui recevra le
+ *    dossier du chapitre) ; « Lui donner son fichier » le lui donne ;
+ *  - cle.rangeable (lot 18, avec 'absente') : le classeur est dans un niveau
+ *    que ce navigateur sait ranger, mais qui ne l'est pas encore : son nom,
+ *    pour « Ranger « 2nde » dans un dossier… ». La surveillance pose ces deux
+ *    champs (majRangement) ; ils ne viennent pas de la clé. */
 export interface EtatSauvegarde {
   navigateur: 'ok' | 'erreur' | 'incomplet'
   erreurBase?: 'place' | 'autre' | 'fermee' | 'indisponible'
   modifie: number | null
   fichier: number | null
   nonEnregistreDepuis: number | null
-  cle: { etat: EtatCle; t?: number; nom?: string; chemin?: string[]; message?: string; actions?: ActionEtat[]; depuis?: number; pasEncoreEcrit?: boolean }
+  cle: { etat: EtatCle; t?: number; nom?: string; chemin?: string[]; message?: string; actions?: ActionEtat[]; depuis?: number; pasEncoreEcrit?: boolean; rangeDans?: string; rangeable?: { niveau: string } }
   drive: { etat: EtatDrive; t?: number; compte?: CompteDrive; courriel?: string; message?: string; enAttente?: boolean; actions?: ActionEtat[]; ailleurs?: { courriel: string; t: number } }
 }
 
+/** Ce que l'interface sait du rangement du classeur sans fichier (voir
+ *  EtatSauvegarde.cle.rangeDans et rangeable) */
+export type Rangement = { rangeDans?: string; rangeable?: { niveau: string } }
+
 /** Ce qu'une ligne propose de faire (un bouton) : les morceaux qui savent
- *  le faire s'inscrivent (l'interface ne montre que ceux-là) */
+ *  le faire s'inscrivent (l'interface ne montre que ceux-là). Lot 18 :
+ *  'ranger-niveau' (la fenêtre « Où ranger les classeurs de « 2nde » ? »),
+ *  'donner-fichier' (le classeur reçoit son fichier dans le dossier de son
+ *  niveau, déjà rangé). */
 export type ActionEtat = 'enregistrer' | 'reprendre-cle' | 'activer-cle' | 'connecter-drive' | 'choisir-cle' | 'forcer-cle' | 'ouvrir-cle'
-  | 'recuperer-drive' | 'forcer-drive'
+  | 'recuperer-drive' | 'forcer-drive' | 'ranger-niveau' | 'donner-fichier'
 export type NiveauEtat = 'ok' | 'info' | 'attention'
 /** action : le bouton de la ligne ; plus : d'autres boutons après lui */
 export interface LigneEtat { texte: string; niveau: NiveauEtat; action?: ActionEtat; plus?: ActionEtat[]; quoi: 'navigateur' | 'cle' | 'drive' | 'fichier' }
@@ -264,9 +279,12 @@ export function texteEtat(e: EtatSauvegarde, maintenant: number, o: { rappel?: b
       // navigateur qui ne garde pas les fichiers choisis, ou un classeur créé
       // avec la case de l'enregistrement automatique dont la poignée ne
       // s'est pas rangée) : il n'enregistre plus, il faut y regarder (lot 4
-      // C5 : le bandeau le dit). Sans message : aucune ligne (le menu ⋯
-      // propose de ranger le classeur dans un fichier).
+      // C5 : le bandeau le dit). Son niveau est rangé dans un dossier (lot
+      // 18) : son fichier n'y est pas encore, « Lui donner son fichier » (le
+      // menu ⋯ a l'entrée). Sans rien : aucune ligne (le menu ⋯ propose de
+      // ranger le niveau, ou le classeur dans un fichier).
       if (c.message) fichier.push({ quoi: 'cle', niveau: 'attention', action: 'activer-cle', texte: `Fichier : ${sansPoint(c.message)}` })
+      else if (c.rangeDans) fichier.push({ quoi: 'cle', niveau: 'info', action: 'donner-fichier', texte: `Pas encore de fichier dans « ${c.rangeDans} »` })
       break
     case 'impossible':
       fichier.push({ quoi: 'cle', niveau: 'info', texte: `Ce navigateur ne sait pas enregistrer tout seul dans un fichier : enregistrez le classeur (${POUR_ENREGISTRER}) de temps en temps.` })
@@ -277,35 +295,7 @@ export function texteEtat(e: EtatSauvegarde, maintenant: number, o: { rappel?: b
   // Une copie qui attend ne compte que si rien d'autre ne protège et qu'il
   // y a quelque chose à copier
   const driveCompte = !laCleProtege && !!d.enAttente
-  let drive: LigneEtat | null = null
-  switch (d.etat) {
-    case 'ok':
-      // La dernière copie est sur un autre compte Google : on dit lequel, et
-      // où ira la prochaine (le compte connecté n'a encore rien)
-      if (d.ailleurs) {
-        drive = { quoi: 'drive', niveau: 'info', texte: `Sur le ${nomDrive(d.compte)} : dernière copie sur ${d.ailleurs.courriel} (${ilYA(d.ailleurs.t, maintenant)}) ; connecté avec ${d.courriel || 'un autre compte'} : la prochaine ira là` }
-        break
-      }
-      drive = { quoi: 'drive', niveau: 'ok', texte: `Sur le ${nomDrive(d.compte)}${d.courriel ? ` (${d.courriel})` : ''} : ${d.t !== undefined ? ilYA(d.t, maintenant) : d.enAttente ? 'la première copie part bientôt' : 'rien à copier pour l\'instant'}` }
-      break
-    case 'en-cours': drive = { quoi: 'drive', niveau: 'ok', texte: 'Sur le Drive : copie en cours…' }; break
-    case 'connexion':
-      // Le bouton seulement quand une copie attend (sinon « Copie sur le
-      // Drive… », au menu ⋯, s'y connecte : le menu reste celui d'avant)
-      drive = { quoi: 'drive', niveau: driveCompte ? 'attention' : 'info', ...(d.enAttente ? { action: 'connecter-drive' as const } : {}), texte: 'Sur le Drive : en attente de la connexion Google' }
-      break
-    case 'hors-ligne': drive = { quoi: 'drive', niveau: 'info', texte: 'Sur le Drive : hors connexion, la copie partira au retour du réseau' }; break
-    case 'impossible':
-      drive = { quoi: 'drive', niveau: 'info', texte: 'Sur le Drive : seulement depuis la version en ligne (la connexion Google ne marche pas dans la version hors ligne)' }
-      break
-    case 'absente': drive = { quoi: 'drive', niveau: 'info', texte: 'Pas de copie sur le Drive' }; break
-    case 'erreur':
-      drive = { quoi: 'drive', niveau: driveCompte ? 'attention' : 'info', ...actionsDe(d.actions), texte: `Sur le Drive : ${sansPoint(d.message || 'la copie a échoué')}` }
-      break
-    case 'conflit':
-      drive = { quoi: 'drive', niveau: 'attention', ...actionsDe(d.actions), texte: d.message || 'Sur le Drive : la sauvegarde a changé ailleurs, elle n\'est pas remplacée' }
-      break
-  }
+  const drive = ligneDrive(e, maintenant)
 
   // ----- Le fichier enregistré à la main -----
   const aLaMain: LigneEtat = {
@@ -352,6 +342,37 @@ export function texteEtat(e: EtatSauvegarde, maintenant: number, o: { rappel?: b
   const r: TexteEtat = { lignes, court, niveau }
   if (alerte?.action) r.action = alerte.action
   return r
+}
+
+/** La ligne du Drive seule (null : rien à dire), telle que texteEtat la
+ *  range quand elle a sa place ; la fenêtre « Autres sauvegardes » la
+ *  montre toujours, même quand le bloc d'état la cache parce que le fichier
+ *  du classeur le protège. En attente de la connexion ou en échec : attention
+ *  seulement si rien d'autre ne protège et qu'une copie attend. */
+export function ligneDrive(e: EtatSauvegarde, maintenant: number): LigneEtat | null {
+  const d = e.drive
+  const driveCompte = !cleProtege(e.cle) && !!d.enAttente
+  switch (d.etat) {
+    case 'ok':
+      // La dernière copie est sur un autre compte Google : on dit lequel, et
+      // où ira la prochaine (le compte connecté n'a encore rien)
+      if (d.ailleurs) return { quoi: 'drive', niveau: 'info', texte: `Sur le ${nomDrive(d.compte)} : dernière copie sur ${d.ailleurs.courriel} (${ilYA(d.ailleurs.t, maintenant)}) ; connecté avec ${d.courriel || 'un autre compte'} : la prochaine ira là` }
+      return { quoi: 'drive', niveau: 'ok', texte: `Sur le ${nomDrive(d.compte)}${d.courriel ? ` (${d.courriel})` : ''} : ${d.t !== undefined ? ilYA(d.t, maintenant) : d.enAttente ? 'la première copie part bientôt' : 'rien à copier pour l\'instant'}` }
+    case 'en-cours': return { quoi: 'drive', niveau: 'ok', texte: 'Sur le Drive : copie en cours…' }
+    case 'connexion':
+      // Le bouton seulement quand une copie attend (sinon « Choisir le
+      // compte ou arrêter… », dans « Autres sauvegardes », s'y connecte)
+      return { quoi: 'drive', niveau: driveCompte ? 'attention' : 'info', ...(d.enAttente ? { action: 'connecter-drive' as const } : {}), texte: 'Sur le Drive : en attente de la connexion Google' }
+    case 'hors-ligne': return { quoi: 'drive', niveau: 'info', texte: 'Sur le Drive : hors connexion, la copie partira au retour du réseau' }
+    case 'impossible':
+      return { quoi: 'drive', niveau: 'info', texte: 'Sur le Drive : seulement depuis la version en ligne (la connexion Google ne marche pas dans la version hors ligne)' }
+    case 'absente': return { quoi: 'drive', niveau: 'info', texte: 'Pas de copie sur le Drive' }
+    case 'erreur':
+      return { quoi: 'drive', niveau: driveCompte ? 'attention' : 'info', ...actionsDe(d.actions), texte: `Sur le Drive : ${sansPoint(d.message || 'la copie a échoué')}` }
+    case 'conflit':
+      return { quoi: 'drive', niveau: 'attention', ...actionsDe(d.actions), texte: d.message || 'Sur le Drive : la sauvegarde a changé ailleurs, elle n\'est pas remplacée' }
+  }
+  return null
 }
 
 /** Le rappel d'enregistrer est-il dû ? Rien ne protège le classeur (ni la
@@ -408,8 +429,10 @@ export function texteRappelDepart(nom: string, e: EtatSauvegarde, maintenant: nu
  *  gardé par le navigateur : il est à choisir de nouveau). Le Drive (lot 4
  *  C10) : 'drive-conflit' (sa copie n'est pas remplacée : la récupérer, ou
  *  la remplacer quand même), 'drive-connexion' (une copie attend la
- *  connexion Google, et rien d'autre ne protège le classeur). */
-export type RaisonBandeau = 'navigateur' | 'rappel' | 'cle-permission' | 'cle-conflit' | 'cle-erreur' | 'cle-a-choisir' | 'drive-conflit' | 'drive-connexion'
+ *  connexion Google, et rien d'autre ne protège le classeur). Lot 18 :
+ *  'cle-a-donner' (le niveau du classeur est rangé dans un dossier, mais ce
+ *  classeur n'y a pas encore son fichier : « Lui donner son fichier »). */
+export type RaisonBandeau = 'navigateur' | 'rappel' | 'cle-permission' | 'cle-conflit' | 'cle-erreur' | 'cle-a-choisir' | 'cle-a-donner' | 'drive-conflit' | 'drive-connexion'
 export interface Bandeau { raison: RaisonBandeau; texte: string; actions: ActionEtat[]; fermable: boolean }
 
 /** Ce que retient l'interface pour le bandeau : les raisons écartées par ×
@@ -436,7 +459,10 @@ export interface MemoireBandeau {
  *  une fois par heure, jamais pendant l'heure qui suit × ; une fois paru, il
  *  reste (même si l'on se remet à écrire) jusqu'à ce qu'on enregistre ou
  *  qu'on le ferme. Sur Chrome et Edge (la clé possible), il propose aussi
- *  d'enregistrer automatiquement dans un fichier (le morceau C4 en fait le bouton). */
+ *  de ranger le niveau dans un dossier (lot 18, si ce navigateur sait le
+ *  faire et que le niveau ne l'est pas), de donner son fichier au classeur
+ *  (le niveau est rangé), ou d'enregistrer automatiquement dans un fichier
+ *  (le morceau C4 en fait le bouton). */
 export function bandeauDu(e: EtatSauvegarde, maintenant: number, depuisGeste: number, m: MemoireBandeau): Bandeau | null {
   if (e.navigateur === 'erreur') {
     return { raison: 'navigateur', fermable: false, actions: ['enregistrer'], texte: 'Ce navigateur n\'enregistre plus ce classeur.' }
@@ -454,6 +480,11 @@ export function bandeauDu(e: EtatSauvegarde, maintenant: number, depuisGeste: nu
   }
   if (c.etat === 'absente' && c.message && !m.ecartes.has('cle-a-choisir')) {
     return { raison: 'cle-a-choisir', fermable: true, actions: ['activer-cle'], texte: 'Choisissez de nouveau le fichier de ce classeur : ce navigateur ne l\'a pas gardé.' }
+  }
+  // Le niveau est rangé dans un dossier, ce classeur n'y a pas encore son
+  // fichier (lot 18) : un clic le lui donne
+  if (c.etat === 'absente' && !c.message && c.rangeDans && !m.ecartes.has('cle-a-donner')) {
+    return { raison: 'cle-a-donner', fermable: true, actions: ['donner-fichier'], texte: `Ce classeur n'a pas encore son fichier dans « ${c.rangeDans} ».` }
   }
   // Le Drive : sa copie qui n'est pas remplacée (un choix à faire) ; la
   // connexion Google qui manque, seulement quand rien d'autre ne protège le
@@ -474,7 +505,9 @@ export function bandeauDu(e: EtatSauvegarde, maintenant: number, depuisGeste: nu
     const peutParaitre = maintenant >= m.rappelTaitJusqua && maintenant >= m.dernierRappel + RAPPEL_SILENCE
     if (m.rappelMontre ? encoreDu : rappelDu(e, maintenant, depuisGeste) && peutParaitre) {
       const actions: ActionEtat[] = ['enregistrer']
-      if (e.cle.etat === 'absente') actions.push('activer-cle')
+      // Sur Chrome et Edge : le second bouton range le niveau (lot 18), donne
+      // son fichier au classeur, ou choisit un fichier
+      if (c.etat === 'absente') actions.push(c.rangeable ? 'ranger-niveau' : c.rangeDans ? 'donner-fichier' : 'activer-cle')
       return { raison: 'rappel', fermable: true, actions, texte: texteRappel(e, maintenant) }
     }
   }

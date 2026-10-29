@@ -5,7 +5,7 @@
 // a dit une erreur, ce qui protège, le rappel et le bandeau.
 import { describe, expect, it } from 'vitest'
 import type { EtatCle, EtatDrive, EtatSauvegarde, MemoireBandeau } from '../src/classeurs/etat'
-import { COURT_MAX, TEXTE_INCOMPLET, aSonFichier, bandeauDu, dansQuoi, ilYA, ilYACourt, lieuDuFichier, nomDErreur, protege, rappelDu, resumeEtat, texteEtat, texteRappel, texteRappelDepart } from '../src/classeurs/etat'
+import { COURT_MAX, TEXTE_INCOMPLET, aSonFichier, bandeauDu, dansQuoi, ilYA, ilYACourt, lieuDuFichier, ligneDrive, nomDErreur, protege, rappelDu, resumeEtat, texteEtat, texteRappel, texteRappelDepart } from '../src/classeurs/etat'
 
 const MIN = 60_000
 /** Le samedi 10 octobre 2026 à 14 h 05, à l'heure de la machine */
@@ -343,6 +343,65 @@ describe('le bandeau', () => {
     expect(bandeauDu(travail(), T, 3 * MIN, memoire({ rappelTaitJusqua: T }))?.raison).toBe('rappel')
     // protégé (le fichier à jour) : rien
     expect(bandeauDu(travail({ cle: { etat: 'ok', t: T } }), T, 3 * MIN, memoire({ rappelMontre: true }))).toBe(null)
+  })
+})
+
+describe('le classeur sans fichier dans un niveau rangé, ou à ranger (lot 18, le menu ⋯)', () => {
+  const memoire = (o: Partial<MemoireBandeau> = {}): MemoireBandeau => ({ ecartes: new Set(), rappelMontre: false, dernierRappel: -Infinity, rappelTaitJusqua: -Infinity, ...o })
+  const travail = (o: Partial<EtatSauvegarde> = {}) => etat({ nonEnregistreDepuis: T - 25 * MIN, modifie: T - 3 * MIN, ...o })
+  const aDonner: EtatSauvegarde['cle'] = { etat: 'absente', rangeDans: 'LFB classeurs › 2' }
+  const aRanger: EtatSauvegarde['cle'] = { etat: 'absente', rangeable: { niveau: '2nde' } }
+
+  it('la ligne « Pas encore de fichier dans « LFB classeurs › 2 » », une information avec son bouton', () => {
+    const t = texteEtat(etat({ cle: aDonner }), T)
+    expect(t.lignes.map(l => l.quoi)).toEqual(['navigateur', 'cle', 'drive', 'fichier'])
+    expect(t.lignes[1]).toEqual({ quoi: 'cle', niveau: 'info', action: 'donner-fichier', texte: 'Pas encore de fichier dans « LFB classeurs › 2 »' })
+    expect(t.niveau).toBe('info')
+    expect(t.action).toBeUndefined()
+    expect(court(etat({ cle: aDonner }))).toBe('Seulement dans ce navigateur')
+    // Le niveau à ranger : aucune ligne (l'entrée du menu ⋯ le propose)
+    expect(texteEtat(etat({ cle: aRanger }), T).lignes.find(l => l.quoi === 'cle')).toBeUndefined()
+    // Le fichier à choisir de nouveau passe avant (le classeur a son fichier, le navigateur l'a perdu)
+    const perdu = texteEtat(etat({ cle: { ...aDonner, message: '« X.memc » est à choisir de nouveau' } }), T).lignes.find(l => l.quoi === 'cle')!
+    expect(perdu.action).toBe('activer-cle')
+    expect(perdu.texte).toMatch(/^Fichier : « X\.memc »/)
+    // Avec un fichier, le rangement ne change rien aux lignes
+    expect(lignes(etat({ cle: { etat: 'ok', t: T - MIN, nom: 'S.memc', rangeDans: 'LFB classeurs › 2' } }))).toEqual(['Enregistré dans « S.memc » : il y a 1 min', 'Enregistré dans ce navigateur'])
+  })
+
+  it('le bandeau « Ce classeur n\'a pas encore son fichier dans « … » » [Lui donner son fichier], après le fichier à choisir, avant le Drive et le rappel', () => {
+    expect(bandeauDu(etat({ cle: aDonner }), T, 0, memoire())).toEqual({ raison: 'cle-a-donner', fermable: true, actions: ['donner-fichier'], texte: 'Ce classeur n\'a pas encore son fichier dans « LFB classeurs › 2 ».' })
+    // × l'écarte pour la session
+    expect(bandeauDu(etat({ cle: aDonner }), T, 0, memoire({ ecartes: new Set(['cle-a-donner']) }))).toBe(null)
+    // Le fichier à choisir de nouveau d'abord
+    expect(bandeauDu(etat({ cle: { ...aDonner, message: '« X.memc » est à choisir de nouveau' } }), T, 0, memoire())?.raison).toBe('cle-a-choisir')
+    // Avant le conflit du Drive et le rappel
+    expect(bandeauDu(travail({ cle: aDonner, drive: { etat: 'conflit', message: 'x', actions: ['recuperer-drive'] } }), T, 3 * MIN, memoire())?.raison).toBe('cle-a-donner')
+    expect(bandeauDu(travail({ cle: aDonner }), T, 3 * MIN, memoire({ ecartes: new Set(['cle-a-donner']) }))?.raison).toBe('rappel')
+    // Le niveau à ranger : pas de bandeau à lui seul
+    expect(bandeauDu(etat({ cle: aRanger }), T, 0, memoire())).toBe(null)
+    // Le navigateur en erreur passe avant tout
+    expect(bandeauDu(etat({ cle: aDonner, navigateur: 'erreur' }), T, 0, memoire())?.raison).toBe('navigateur')
+  })
+
+  it('le rappel propose de ranger le niveau, ou de donner son fichier au classeur, sinon un fichier', () => {
+    expect(bandeauDu(travail({ cle: aRanger }), T, 3 * MIN, memoire())?.actions).toEqual(['enregistrer', 'ranger-niveau'])
+    expect(bandeauDu(travail({ cle: aDonner }), T, 3 * MIN, memoire({ ecartes: new Set(['cle-a-donner']) }))?.actions).toEqual(['enregistrer', 'donner-fichier'])
+    expect(bandeauDu(travail(), T, 3 * MIN, memoire())?.actions).toEqual(['enregistrer', 'activer-cle'])
+    expect(bandeauDu(travail({ cle: { etat: 'impossible' } }), T, 3 * MIN, memoire())?.actions).toEqual(['enregistrer'])
+  })
+
+  it('la ligne du Drive seule (« Autres sauvegardes ») : même quand le fichier protège le classeur', () => {
+    const protege: EtatSauvegarde['cle'] = { etat: 'ok', t: T - MIN, nom: 'S.memc' }
+    expect(texteEtat(etat({ cle: protege, drive: { etat: 'ok', t: T - 10 * MIN, compte: 'mem' } }), T).lignes.find(l => l.quoi === 'drive')).toBeUndefined()
+    expect(sp(ligneDrive(etat({ cle: protege, drive: { etat: 'ok', t: T - 10 * MIN, compte: 'mem' } }), T)!.texte)).toBe('Sur le Drive personnel : il y a 10 min')
+    expect(ligneDrive(etat(), T)).toEqual({ quoi: 'drive', niveau: 'info', texte: 'Pas de copie sur le Drive' })
+    expect(ligneDrive(etat({ drive: { etat: 'impossible' } }), T)!.texte).toMatch(/seulement depuis la version en ligne/)
+    // Le bouton de la connexion, seulement quand une copie attend ; attention seulement si rien d'autre ne protège
+    expect(ligneDrive(etat({ drive: { etat: 'connexion', enAttente: true } }), T)).toEqual({ quoi: 'drive', niveau: 'attention', action: 'connecter-drive', texte: 'Sur le Drive : en attente de la connexion Google' })
+    expect(ligneDrive(etat({ cle: protege, drive: { etat: 'connexion', enAttente: true } }), T)!.niveau).toBe('info')
+    // Jamais le mot « clé »
+    for (const d of DRIVES) expect(ligneDrive(etat({ drive: { etat: d, t: T, enAttente: true, message: 'x' } }), T)?.texte ?? '').not.toMatch(/clé/i)
   })
 })
 
