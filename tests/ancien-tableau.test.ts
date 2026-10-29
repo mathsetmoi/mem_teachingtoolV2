@@ -1,11 +1,17 @@
 // Reprendre un ancien tableau (.prof) : lire son film, en faire une séance
 // d'un classeur, avec chaque geste à son heure (classeurs/ancien-tableau.ts)
 import { describe, expect, it } from 'vitest'
+import * as Y from 'yjs'
 import { Tableau } from '../src/document'
-import type { AncienTableau, PreparerImage } from '../src/classeurs/ancien-tableau'
-import { ErreurAncien, dateDuNom, finDuClasseur, latexDuTexte, lireAncienTableau, reprendre, texteDuBilan, textesAvantAnciens } from '../src/classeurs/ancien-tableau'
-import { ecrireTableau, lireTableau } from '../src/fichier'
+import type { AncienTableau, LigneApercu, PreparerImage, SeanceDApercu } from '../src/classeurs/ancien-tableau'
+import {
+  ErreurAncien, apercuDuRangement, dateDuNom, latexDuTexte, lireAncienTableau, rangerDansLeClasseur, reprendre, seanceGenante, texteApresAjout, texteDesRefus, texteDuBilan,
+  textesAvantAnciens,
+} from '../src/classeurs/ancien-tableau'
+import { supprimerSeance } from '../src/deplacer-seance'
+import { ecrireTableau, lireTableau, pagesLisibles } from '../src/fichier'
 import { seancesDuTableau } from '../src/revoir/exporter'
+import { dateCourte, dateCourteMajuscule } from '../src/seances'
 import type { Cercle, Formule, ImageForme, Polygone, Trait } from '../src/types'
 
 const T0 = new Date(2026, 8, 29, 8, 0).getTime()
@@ -81,11 +87,13 @@ describe('reprendre un ancien tableau', () => {
     const tab = new Tableau(null)
     const a = lireAncienTableau(fichier(), 'Séance.prof')
     const b = await reprendre(tab, a, preparer)
-    expect(b).toEqual({ pages: 2, traits: 3, images: 1, textes: 1, figures: 0, calculatrices: 0, laisses: 1, imagesIllisibles: 0, imagesHorsFilm: 0 })
+    expect(b).toEqual({ seance: expect.any(String), pages: 2, traits: 3, images: 1, textes: 1, figures: 0, calculatrices: 0, laisses: 1, imagesIllisibles: 0, imagesHorsFilm: 0 })
     expect(texteDuBilan(a, b)).toBe('« Séance » : 2 pages, 3 traits, 1 image, 1 texte (devenu une formule), avec son film. 1 objet (cercles, polygones, courbes ou post-its) n\'a pas été repris.')
     const seances = tab.seancesDuClasseur()
     expect(seances).toHaveLength(1)
     expect(seances[0].debut).toBe(T0)
+    // Le bilan dit la séance créée
+    expect(b.seance).toBe(seances[0].id)
     const [p1, p2] = seances[0].pages
     expect(tab.ordre.toArray()).toEqual([p1, p2])
     // Le film : les deux naissances, puis les gestes (le post-it seul n'en fait pas)
@@ -272,37 +280,159 @@ describe('reprendre un ancien tableau', () => {
     expect(texteDuBilan(a, b)).toContain('1 image n\'a pas pu être lue.')
   })
 
-  it('plusieurs séances dans un classeur : chacune la sienne, dans le film comme dans le fichier', async () => {
-    const tab = new Tableau(null)
-    const lundi = lireAncienTableau(fichier(), 'Lundi.prof')
-    const mardi = lireAncienTableau(fichier({ debut: T0 + 24 * 60 * MIN }), 'Mardi.prof')
-    await reprendre(tab, lundi, preparer)
-    expect(finDuClasseur(tab)).toBe(T0 + 4 * MIN)
-    expect(textesAvantAnciens([mardi], { nom: 'Chapitre', fin: finDuClasseur(tab) }).ajoutable).toBe(true)
-    await reprendre(tab, mardi, preparer)
-    // La même image, reprise par les deux séances : gardée une fois
-    expect(tab.doc.getMap('images').size).toBe(1)
-    // Un plus ancien ne s'ajoute plus après
-    const t = textesAvantAnciens([lundi], { nom: 'Chapitre', fin: finDuClasseur(tab) })
-    expect(t.ajoutable).toBe(false)
-    expect(t.textes.at(-1)).toContain('« Chapitre » a déjà une séance plus récente')
-    // Relu depuis le fichier : deux séances, chacune avec ses deux pages et ses gestes
-    const relu = new Tableau(null)
-    relu.lireEtat(lireTableau(new Uint8Array(await ecrireTableau(tab.doc, Date.now(), { nom: 'Chapitre' }).arrayBuffer())).etat)
-    expect(relu.film.length).toBe(tab.film.length)
-    const s = seancesDuTableau(relu)!
-    expect(s.map(x => [x.debut, x.pagesDeSeance.length, x.gestes])).toEqual([[T0 + 24 * 60 * MIN, 2, 5], [T0, 2, 5]])
-  })
-
-  it('la fenêtre dit les séances, du plus ancien au plus récent', () => {
+  it('la fenêtre dit les séances, du plus ancien au plus récent ; sans classeur ouvert, aucune liste', () => {
     const a = lireAncienTableau(fichier(), '2 - Mardi 29 septembre 2026.prof') as AncienTableau
     expect(textesAvantAnciens([a], null)).toEqual({
       textes: [
         '« 2 - Mardi 29 septembre 2026 » : séance du mardi 29 septembre 2026, 2 pages.',
         'Il devient une séance d\'un classeur, avec ses traits, ses images, ses figures, ses textes et son film.',
       ],
+      lignes: [],
       ajoutable: false,
+      aide: null,
     })
     expect(textesAvantAnciens([a, a], null).textes[0]).toBe('2 anciens tableaux, du plus ancien au plus récent :')
   })
+
+  it('la fenêtre dit où il se rangera dans le classeur ouvert, ou pourquoi il n\'y entre pas', () => {
+    const a = lireAncienTableau(fichier(), '2 - Mardi 29 septembre 2026.prof')
+    const b = lireAncienTableau(fichier({ debut: T0 + JOUR }), 'Copie.prof')
+    const lignes: LigneApercu[] = [{ texte: 'x', sort: '— ira ici', genre: 'ici' }]
+    const r = textesAvantAnciens([a], { nom: 'Fractions', lignes, verdicts: [{ verdict: 'place' }] })
+    expect(r.textes.at(-1)).toBe('Dans « Fractions », il se rangera à sa date :')
+    expect([r.lignes, r.ajoutable, r.aide]).toEqual([lignes, true, null])
+    // Deux, dont un qui n'entre pas : « ils se rangeront », et le survol du bouton le dit
+    const r2 = textesAvantAnciens([a, b], { nom: 'Fractions', lignes, verdicts: [{ verdict: 'place' }, { verdict: 'deja', gene: null }] })
+    expect(r2.textes.at(-1)).toBe('Dans « Fractions », ils se rangeront à leur date :')
+    expect([r2.ajoutable, r2.aide]).toEqual([true, 'Ajoute le tableau qui se range ; « Copie » ne sera pas ajouté.'])
+    // Un seul, qui n'entre pas : la phrase dit la séance qui gêne, pas de liste, pas de bouton
+    const gene: SeanceDApercu = { debut: T0 - 10 * MIN, nom: null, pages: 2 }
+    const r3 = textesAvantAnciens([a], { nom: 'Fractions', lignes, verdicts: [{ verdict: 'chevauche', gene }] })
+    expect(r3.textes.at(-1)).toBe(`« Fractions » a déjà une séance écrite à ces heures-là (${dateCourteMajuscule(gene.debut)} · ${pagesLisibles(2)}) : cet ancien tableau ne peut pas s'y ajouter.`)
+    expect([r3.lignes, r3.ajoutable]).toEqual([[], false])
+    const r4 = textesAvantAnciens([a], { nom: 'Fractions', lignes, verdicts: [{ verdict: 'deja', gene: { debut: T0, nom: null, pages: 2 } }] })
+    expect(r4.textes.at(-1)).toBe(`« 2 - Mardi 29 septembre 2026 » est déjà dans « Fractions » (séance du ${dateCourte(T0)}).`)
+    // Plusieurs, aucun n'entre : la liste reste (elle dit lequel gêne), le bouton non
+    const r5 = textesAvantAnciens([a, b], { nom: 'Fractions', lignes, verdicts: [{ verdict: 'deja', gene: null }, { verdict: 'chevauche', gene: null }] })
+    expect(r5.textes.at(-1)).toBe('« Fractions » a déjà une séance aux heures de chacun de ces anciens tableaux : aucun ne peut s\'y ajouter.')
+    expect([r5.lignes, r5.ajoutable]).toEqual([lignes, false])
+  })
+
+  it('la séance qui gêne : celle du même début, sinon celle en cours à ses heures, sinon la première', () => {
+    const S: SeanceDApercu[] = [{ debut: T0, nom: null, pages: 2 }, { debut: T0 + JOUR, nom: 'B', pages: 1 }, { debut: T0 + 3 * JOUR, nom: null, pages: 1 }]
+    expect(seanceGenante(S, { debut: T0 + JOUR, fin: T0 + JOUR + MIN })).toBe(S[1])
+    expect(seanceGenante(S, { debut: T0 + 2 * JOUR, fin: T0 + 2 * JOUR + MIN })).toBe(S[1])
+    expect(seanceGenante(S, { debut: T0 - JOUR, fin: T0 - JOUR + MIN })).toBe(S[0])
+    expect(seanceGenante([], { debut: T0, fin: T0 })).toBeNull()
+  })
+})
+
+/** Un ancien tableau rejoué dans son classeur brouillon */
+async function brouillon(json: string, nom: string) {
+  const a = lireAncienTableau(json, nom)
+  const tab = new Tableau(null)
+  return { a, tab, bilan: await reprendre(tab, a, preparer) }
+}
+const JOUR = 24 * 60 * MIN
+const trie = (t: Tableau) => { const h = t.film.toArray().map(e => e.t); return [...h].sort((x, y) => x - y).join() === h.join() }
+
+describe('ranger les anciens tableaux à leur date', () => {
+  it('le brouillon : une séance, ses pages, son film trié de son début à sa fin ; le bilan dit la séance', async () => {
+    const { a, tab, bilan } = await brouillon(fichier(), 'Lundi.prof')
+    const s = tab.seancesDuClasseur()
+    expect(s).toHaveLength(1)
+    expect([s[0].id, s[0].debut, s[0].pages.length]).toEqual([bilan.seance, a.debut, 2])
+    const h = tab.film.toArray().map(e => e.t)
+    expect([h[0], h[h.length - 1], trie(tab)]).toEqual([a.debut, a.fin, true])
+  })
+
+  it('plusieurs séances dans un classeur, chacune à sa date : chacune la sienne, dans le film comme dans le fichier', async () => {
+    const lundi = await brouillon(fichier(), 'Lundi.prof')
+    const mardi = await brouillon(fichier({ debut: T0 + JOUR }), 'Mardi.prof')
+    const dimanche = await brouillon(fichier({ debut: T0 - JOUR }), 'Dimanche.prof')
+    // Lundi puis mardi, dans un classeur vide (« Nouveau classeur »)
+    const r1 = rangerDansLeClasseur(new Tableau(null), [lundi, mardi])
+    expect(r1.verdicts).toEqual([{ verdict: 'place' }, { verdict: 'place' }])
+    expect(r1.ajoutes.map(b => b.a.nom)).toEqual(['Lundi', 'Mardi'])
+    const tab = r1.cible
+    expect(tab.seancesDuClasseur().map(s => [s.debut, s.pages.length])).toEqual([[T0, 2], [T0 + JOUR, 2]])
+    // La même image, reprise par les deux séances : gardée une fois
+    expect(tab.doc.getMap('images').size).toBe(1)
+    // Un plus ancien ensuite, dans ce classeur lu dans un document neuf (comme celui de l'onglet) : il se range en premier
+    const lu = new Tableau(null); lu.seancesActives = true; lu.lireEtat(Y.encodeStateAsUpdate(tab.doc))
+    const r2 = rangerDansLeClasseur(lu, [dimanche])
+    expect(r2.verdicts).toEqual([{ verdict: 'place' }])
+    expect(r2.cible.doc.getMap('images').size).toBe(1)
+    // Le classeur de l'onglet reçoit la différence
+    tab.lireEtat(Y.encodeStateAsUpdate(r2.cible.doc, Y.encodeStateVector(tab.doc)))
+    expect(tab.seancesDuClasseur().map(s => s.debut)).toEqual([T0 - JOUR, T0, T0 + JOUR])
+    expect(trie(tab)).toBe(true)
+    // Ses pages avant celles des séances d'après
+    expect(tab.ordre.toArray().slice(0, 2)).toEqual(tab.seancesDuClasseur()[0].pages)
+    // Relu depuis le fichier : trois séances, chacune avec ses deux pages et ses gestes
+    const relu = new Tableau(null)
+    relu.lireEtat(lireTableau(new Uint8Array(await ecrireTableau(tab.doc, Date.now(), { nom: 'Chapitre' }).arrayBuffer())).etat)
+    expect(relu.film.length).toBe(tab.film.length)
+    const s = seancesDuTableau(relu)!
+    expect(s.map(x => [x.debut, x.pagesDeSeance.length, x.gestes])).toEqual([[T0 + JOUR, 2, 5], [T0, 2, 5], [T0 - JOUR, 2, 5]])
+  })
+
+  it('la chaîne refuse un doublon (déjà là) et un chevauchement, ajoute les autres, et le dit', async () => {
+    const lundi = await brouillon(fichier(), 'Lundi.prof')
+    const copie = await brouillon(fichier(), 'Lundi (copie).prof')
+    const pendant = await brouillon(fichier({ debut: T0 + 2 * MIN }), 'Pendant.prof')
+    const mardi = await brouillon(fichier({ debut: T0 + JOUR }), 'Mardi.prof')
+    const r = rangerDansLeClasseur(new Tableau(null), [lundi, copie, pendant, mardi])
+    expect(r.verdicts.map(v => v.verdict)).toEqual(['place', 'deja', 'chevauche', 'place'])
+    expect(r.refuses.map(x => x.a.nom)).toEqual(['Lundi (copie)', 'Pendant'])
+    // La séance qui gêne : celle de lundi, les deux fois
+    expect(r.refuses.map(x => (x.verdict as { gene: SeanceDApercu | null }).gene?.debut)).toEqual([T0, T0])
+    // Un refus ne change rien : les deux autres sont là, le film reste trié
+    expect(r.cible.seancesDuClasseur().map(s => s.debut)).toEqual([T0, T0 + JOUR])
+    expect(trie(r.cible)).toBe(true)
+    expect(texteDesRefus('Chapitre', r.refuses)).toBe('« Lundi (copie) » n\'a pas été ajouté : il est déjà dans « Chapitre ». « Pendant » n\'a pas été ajouté : « Chapitre » a déjà une séance à cette heure.')
+    expect(texteApresAjout('Chapitre', ['b1', 'b2'], r.refuses)).toBe('2 séances ajoutées à « Chapitre ». b1 b2 « Lundi (copie) » n\'a pas été ajouté : il est déjà dans « Chapitre ». « Pendant » n\'a pas été ajouté : « Chapitre » a déjà une séance à cette heure.')
+    expect(texteApresAjout('Chapitre', ['b1'], [])).toBe('Séance ajoutée à « Chapitre ». b1')
+    // La même séance supprimée du classeur (ses pages à la corbeille) : le même ancien tableau y revient, à la place de sa trace
+    const C = new Tableau(null); C.seancesActives = true; C.lireEtat(Y.encodeStateAsUpdate(r.cible.doc))
+    const s0 = C.seancesDuClasseur()[0]
+    expect(supprimerSeance(C, s0.id)).toEqual({ pages: s0.pages })
+    const r3 = rangerDansLeClasseur(C, [lundi])
+    expect(r3.verdicts).toEqual([{ verdict: 'place' }])
+    expect(r3.cible.seancesDuClasseur().filter(s => s.pages.length).map(s => s.debut)).toEqual([T0, T0 + JOUR])
+    expect(trie(r3.cible)).toBe(true)
+  })
+})
+
+describe('l\'aperçu du rangement', () => {
+  const S = (k: number, nom: string | null = null, pages = 3): SeanceDApercu => ({ debut: T0 + k * JOUR, nom, pages })
+  const A = (k: number, nom: string, verdict: 'place' | 'chevauche' | 'deja' = 'place') => ({ debut: T0 + k * JOUR, nom, pages: 6, verdict })
+  const D = (k: number) => dateCourteMajuscule(T0 + k * JOUR)
+
+  it('un ancien au milieu : une voisine de chaque côté, le reste compté, la plus récente en haut', () => {
+    const l = apercuDuRangement([S(0), S(2, 'Fractions (1)', 2), S(6), S(7), S(8), S(9)], [A(4, '2 - Lundi 28 septembre 2026')], 'Fractions')
+    expect(l.map(x => x.genre)).toEqual(['plus', 'seance', 'ici', 'seance', 'plus'])
+    expect(l.map(x => x.texte)).toEqual(['… 3 séances plus récentes', `${D(6)} · ${pagesLisibles(3)}`, `${D(4)} · « 2 - Lundi 28 septembre 2026 » · ${pagesLisibles(6)}`, `${D(2)} · Fractions (1) · ${pagesLisibles(2)}`, '… 1 séance plus ancienne'])
+    expect(l.map(x => x.sort)).toEqual([undefined, undefined, '— ira ici', undefined, undefined])
+  })
+
+  it('en tête, en queue, deux anciens voisins, un refusé, deux voisines, sans ancien', () => {
+    expect(apercuDuRangement([S(0), S(1)], [A(5, 'X')], 'C').map(x => x.genre)).toEqual(['ici', 'seance', 'plus'])
+    expect(apercuDuRangement([S(3), S(4)], [A(0, 'X')], 'C').map(x => x.genre)).toEqual(['plus', 'seance', 'ici'])
+    // Deux anciens : aucune ligne en double, la séance entre leurs voisines comptée
+    const l = apercuDuRangement([S(0), S(2), S(3), S(4), S(6)], [A(1, 'X'), A(5, 'Y')], 'C')
+    expect(l.map(x => x.genre)).toEqual(['seance', 'ici', 'seance', 'plus', 'seance', 'ici', 'seance'])
+    expect(l[3].texte).toBe('… 1 autre séance')
+    // Un refusé : à la même heure qu'une séance, juste avant elle, avec son sort
+    const r = apercuDuRangement([S(0), S(2)], [A(2, 'X', 'chevauche'), A(0, 'Y', 'deja')], 'Fractions')
+    expect(r.map(x => [x.genre, x.sort])).toEqual([
+      ['refuse', '— déjà une séance à cette heure : ne sera pas ajouté'], ['seance', undefined],
+      ['refuse', '— déjà dans « Fractions » : ne sera pas ajouté'], ['seance', undefined],
+    ])
+    expect(apercuDuRangement([S(0), S(1), S(2), S(4), S(5), S(6)], [A(3, 'X')], 'C', 2).map(x => x.genre)).toEqual(['plus', 'seance', 'seance', 'ici', 'seance', 'seance', 'plus'])
+    // Une séance sans page ne compte pas ; sans ancien tableau, rien
+    expect(apercuDuRangement([S(0), S(1, null, 0)], [A(5, 'X')], 'C').map(x => x.genre)).toEqual(['ici', 'seance'])
+    expect(apercuDuRangement([S(0)], [], 'C')).toEqual([])
+  })
+
 })

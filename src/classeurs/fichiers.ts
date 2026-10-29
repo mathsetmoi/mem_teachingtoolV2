@@ -66,8 +66,11 @@ import {
 import { fermerSurLeFond } from '../dialogue'
 import { Tableau } from '../document'
 import { resumeDesSeances } from '../seances'
-import type { AncienTableau, Rognure } from './ancien-tableau'
-import { EXTENSION_ANCIEN, ErreurAncien, finDuClasseur, lireAncienTableau, reprendre, texteDuBilan, textesAvantAnciens } from './ancien-tableau'
+import type { AncienTableau, Brouillon, IciPourLaFenetre, LigneApercu, Rangement, Rognure } from './ancien-tableau'
+import {
+  EXTENSION_ANCIEN, ErreurAncien, apercuDuRangement, lireAncienTableau, rangerDansLeClasseur, reprendre, seancesDApercu, texteApresAjout, texteDesRefus,
+  texteDuBilan, textesAvantAnciens,
+} from './ancien-tableau'
 import { imageDeCalculatrice } from '../calculatrice/dessin'
 
 /** Ce que demandent les fichiers à qui les ouvre (main.ts) */
@@ -115,6 +118,8 @@ const IOS = typeof navigator !== 'undefined'
   && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
 
 const attendre = (ms: number) => new Promise<void>(ok => setTimeout(ok, ms))
+/** Deux vecteurs d'état (Y.encodeStateVector) sont-ils les mêmes octets ? */
+const memesOctets = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((x, i) => x === b[i])
 /** Une image d'écran passe (le message se voit), sans attendre plus de 120 ms */
 const uneImage = () => new Promise<void>(ok => { requestAnimationFrame(() => setTimeout(ok, 0)); setTimeout(ok, 120) })
 const dateValable = (t: unknown): t is number => typeof t === 'number' && Number.isFinite(t) && t > 0
@@ -155,13 +160,15 @@ async function commenceCommeUneArchive(f: Blob): Promise<boolean> {
   try { return estUneArchive(new Uint8Array(await f.slice(0, 4).arrayBuffer())) } catch { return false }
 }
 
-/** Un bouton d'une fenêtre ; faire : il ne ferme pas la fenêtre (« Enregistrer d'abord ») */
-interface Bouton { cle: string; libelle: string; classe: string; faire?: (b: HTMLButtonElement) => Promise<void> }
+/** Un bouton d'une fenêtre ; faire : il ne ferme pas la fenêtre (« Enregistrer
+ *  d'abord ») ; aide : ce que dit son survol */
+interface Bouton { cle: string; libelle: string; classe: string; faire?: (b: HTMLButtonElement) => Promise<void>; aide?: string }
 
 /** Une fenêtre de l'outil (pas de confirm(), que le navigateur bloque dans
- *  une page intégrée) : ses paragraphes, une case, ses boutons ; rend le
- *  bouton choisi et l'état de la case. Échap, ou un clic à côté : 'annuler'. */
-function fenetre(o: { titre: string; textes: string[]; caseACocher?: { texte: string; coche: boolean; nom?: string } | null; boutons: Bouton[]; focus: string }): Promise<{ cle: string; coche: boolean }> {
+ *  une page intégrée) : ses paragraphes, une liste (l'aperçu des séances,
+ *  pour un ancien tableau), une case, ses boutons ; rend le bouton choisi et
+ *  l'état de la case. Échap, ou un clic à côté : 'annuler'. */
+function fenetre(o: { titre: string; textes: string[]; liste?: LigneApercu[]; caseACocher?: { texte: string; coche: boolean; nom?: string } | null; boutons: Bouton[]; focus: string }): Promise<{ cle: string; coche: boolean }> {
   return new Promise(fini => {
     const d = document.createElement('dialog')
     d.className = 'dialogue dialogue-ouvrir dialogue-fichiers'
@@ -169,6 +176,17 @@ function fenetre(o: { titre: string; textes: string[]; caseACocher?: { texte: st
     d.querySelector('h2')!.textContent = o.titre
     const corps = d.querySelector('.corps')!, actions = d.querySelector('.actions')!
     for (const t of o.textes) corps.insertBefore(Object.assign(document.createElement('p'), { textContent: t }), actions)
+    if (o.liste?.length) {
+      const ul = Object.assign(document.createElement('ul'), { className: 'apercu-seances' })
+      for (const l of o.liste) {
+        const li = Object.assign(document.createElement('li'), { className: l.genre })
+        li.append(Object.assign(document.createElement('span'), { className: 'quoi', textContent: l.texte }))
+        if (l.sort) li.append(' ', Object.assign(document.createElement('span'), { className: 'sort', textContent: l.sort }))
+        if (l.genre === 'ici') li.setAttribute('aria-current', 'true')
+        ul.appendChild(li)
+      }
+      corps.insertBefore(ul, actions)
+    }
     let caseEl: HTMLInputElement | null = null
     if (o.caseACocher) {
       const l = Object.assign(document.createElement('label'), { className: `case ${o.caseACocher.nom ?? 'case-cle'}` })
@@ -186,6 +204,7 @@ function fenetre(o: { titre: string; textes: string[]; caseACocher?: { texte: st
     for (const b of o.boutons) {
       const x = Object.assign(document.createElement('button'), { type: 'button', className: b.classe, textContent: b.libelle })
       x.dataset.a = b.cle
+      if (b.aide) x.title = b.aide
       x.addEventListener('click', () => {
         if (!b.faire) { fermer(b.cle); return }
         occupe = true
@@ -425,11 +444,17 @@ export class Fichiers {
 
   // ---------- D'anciens tableaux (.prof) ----------
   /** Un ou plusieurs anciens tableaux (voir ancien-tableau.ts) : chacun
-   *  devient une séance, avec son film, du plus ancien au plus récent, dans
-   *  un classeur neuf, ou au bout du classeur ouvert (s'il n'a rien de plus
-   *  récent). Le classeur se fait en mémoire, puis entre dans la
-   *  bibliothèque comme un fichier .memc : ajouté (un neuf), ou mis à jour
-   *  sans rien perdre (celui qui est ouvert). */
+   *  devient une séance, avec son film, À SA DATE, dans un classeur neuf ou
+   *  entre les séances du classeur ouvert. Convertir d'abord, demander
+   *  ensuite, écrire enfin : chaque ancien tableau est rejoué dans un
+   *  classeur brouillon en mémoire (reprendre), puis copié dans le classeur
+   *  d'arrivée comme une séance déplacée (rangerDansLeClasseur, par
+   *  copierSeance : le film reste dans l'ordre des heures, un chevauchement
+   *  ou un doublon est refusé) ; la fenêtre montre où chacun ira ; puis le
+   *  classeur ouvert reçoit la différence (ecrireUnClasseur, comme « Déplacer
+   *  vers… » : sans rechargement, sa base, sa clé et son Drive suivent), ou
+   *  le classeur neuf entre dans la bibliothèque comme un fichier .memc.
+   *  Rien n'est écrit avant le choix, et jamais à moitié. */
   private async ouvrirAnciens(choisis: Choisi[]): Promise<boolean> {
     this.hote.message(choisis.length > 1 ? 'Lecture des anciens tableaux…' : 'Lecture de l\'ancien tableau…')
     await uneImage()
@@ -441,44 +466,59 @@ export class Fichiers {
       }
     }
     anciens.sort((a, b) => a.debut - b.debut)
-    this.poserIci()
-    const r = this.refusMaintenant()
-    if (r) { this.hote.message(r); return false }
-    const ici = this.ici && this.hote.sauvegarde && !this.coupe ? this.ici : null
-    const app = this.hote.app
-    const { textes, ajoutable } = textesAvantAnciens(anciens, ici && app ? { nom: ici.nom, fin: finDuClasseur(app.tableau) } : null)
-    const boutons: Bouton[] = [ANNULER]
-    if (ici && ajoutable) boutons.push({ cle: 'ajouter-ici', libelle: `Ajouter à «\u00a0${ici.nom}\u00a0»`, classe: 'secondaire' })
-    boutons.push({ cle: 'nouveau', libelle: 'Nouveau classeur', classe: 'principal' })
-    const choix = await fenetre({ titre: anciens.length > 1 ? 'Reprendre ces anciens tableaux ?' : 'Reprendre cet ancien tableau ?', textes, boutons, focus: 'nouveau' })
-    if (choix.cle !== 'nouveau' && choix.cle !== 'ajouter-ici') return false
-    const tab = new Tableau(null)
-    let F: FicheClasseur | null = null
-    if (choix.cle === 'ajouter-ici' && ici && app) {
-      F = await this.registre.classeur(ici.id).catch(() => null) ?? null
-      if (!F) { this.hote.message(`« ${ici.nom} » n'est plus dans la bibliothèque.`); return false }
-      app.poserCeQuiAttend()
-      await app.tableau.attendreEcritures()
-      tab.lireEtat(Y.encodeStateAsUpdate(app.tableau.doc))
-      if (finDuClasseur(tab) > anciens[0].debut) { this.hote.message(`« ${ici.nom} » a changé entre-temps : il a maintenant une séance plus récente. Rien n'a été ajouté.`); return false }
-    }
-    const bilans: string[] = []
+    // Chacun dans son classeur brouillon (les images se lisent ici)
+    const brouillons: Brouillon[] = []
     try {
       for (const a of anciens) {
-        this.hote.message(`Reprise de « ${a.nom} »…`)
-        await uneImage()
-        bilans.push(texteDuBilan(a, await reprendre(tab, a, preparerImage, imageDeCalculatrice)))
+        if (anciens.length > 1) { this.hote.message(`Lecture de « ${a.nom} »…`); await uneImage() }
+        const tab = new Tableau(null)
+        brouillons.push({ a, tab, bilan: await reprendre(tab, a, preparerImage, imageDeCalculatrice) })
       }
     } catch (e) {
       this.hote.message(`L'ancien tableau n'a pas pu être repris : ${raisonDe(e)}. Rien n'a changé.`)
       return false
     }
-    const nom = nomDeClasseur(F?.nom ?? anciens[0].nom) ?? 'Ancien tableau'
-    const lu = await this.lire(ecrireTableau(tab.doc, Date.now(), F ? { nom: F.nom, id: F.id } : { nom }))
-    if (!F) { await this.ajouterEtOuvrir(`${nom}.memc`, lu, { apres: bilans.join(' ') }); return true }
-    const fait = await this.mettreAJour(F, lu, { texte: `${anciens.length > 1 ? 'Séances ajoutées' : 'Séance ajoutée'} à « ${F.nom} ». ${bilans.join(' ')}` })
-    if (fait === 'diverge') this.hote.message(`« ${F.nom} » a changé pendant la reprise : rien n'a été ajouté. Recommencez.`)
-    return fait === 'fait'
+    this.poserIci()
+    const r = this.refusMaintenant()
+    if (r) { this.hote.message(r); return false }
+    const ici = this.ici && this.hote.sauvegarde && !this.coupe ? this.ici : null
+    const app = this.hote.app
+    // Le classeur ouvert, dans un document neuf, et chaque ancien tableau copié à sa date
+    let dansIci: Rangement | null = null
+    let pourLaFenetre: IciPourLaFenetre | null = null
+    let vecteurAvant: Uint8Array | null = null
+    if (ici && app) {
+      const tab = await this.lireLeClasseurOuvert(app)
+      vecteurAvant = Y.encodeStateVector(app.tableau.doc)
+      dansIci = rangerDansLeClasseur(tab, brouillons)
+      const verdicts = dansIci.verdicts
+      const lignes = apercuDuRangement(seancesDApercu(tab), brouillons.map((b, k) => ({ debut: b.a.debut, nom: b.a.nom, pages: b.a.pages.length, verdict: verdicts[k].verdict })), ici.nom)
+      pourLaFenetre = { nom: ici.nom, lignes, verdicts }
+    }
+    const { textes, lignes, ajoutable, aide } = textesAvantAnciens(anciens, pourLaFenetre)
+    // Le bouton principal (Entrée) : « Ajouter à « … » » dès qu'un tableau s'y range, sinon « Nouveau classeur »
+    const principal = ici && ajoutable ? 'ajouter-ici' : 'nouveau'
+    const boutons: Bouton[] = [ANNULER, { cle: 'nouveau', libelle: 'Nouveau classeur', classe: principal === 'nouveau' ? 'principal' : 'secondaire' }]
+    if (ici && ajoutable) boutons.push({ cle: 'ajouter-ici', libelle: `Ajouter à « ${ici.nom} »`, classe: 'principal', ...(aide ? { aide } : {}) })
+    const choix = await fenetre({ titre: anciens.length > 1 ? 'Reprendre ces anciens tableaux ?' : 'Reprendre cet ancien tableau ?', textes, liste: lignes, boutons, focus: principal })
+    if (choix.cle === 'ajouter-ici') {
+      if (!ici || !app || !dansIci || !vecteurAvant) return false
+      const F = await this.registre.classeur(ici.id).catch(() => null) ?? null
+      if (!F) { this.hote.message(`« ${ici.nom} » n'est plus dans la bibliothèque.`); return false }
+      // Un autre onglet a écrit pendant la fenêtre : la différence ne s'appliquerait plus au même classeur
+      if (!memesOctets(Y.encodeStateVector(app.tableau.doc), vecteurAvant)) { this.hote.message(`« ${ici.nom} » a changé entre-temps : rien n'a été ajouté. Recommencez.`); return false }
+      if (!(await this.ecrireUnClasseur(F, dansIci.cible))) return false
+      this.hote.message(texteApresAjout(F.nom, dansIci.ajoutes.map(b => texteDuBilan(b.a, b.bilan)), dansIci.refuses))
+      return true
+    }
+    if (choix.cle !== 'nouveau') return false
+    // Un classeur neuf : la même chaîne, dans un classeur vide
+    const nom = nomDeClasseur(anciens[0].nom) ?? 'Ancien tableau'
+    const neuf = rangerDansLeClasseur(new Tableau(null), brouillons)
+    const lu = await this.lire(ecrireTableau(neuf.cible.doc, Date.now(), { nom }))
+    const apres = [neuf.ajoutes.map(b => texteDuBilan(b.a, b.bilan)).join(' '), texteDesRefus(nom, neuf.refuses)].filter(Boolean).join(' ')
+    await this.ajouterEtOuvrir(`${nom}.memc`, lu, { apres })
+    return true
   }
 
   // ---------- Les séances d'un classeur, depuis la bibliothèque ----------
@@ -489,23 +529,29 @@ export class Fichiers {
   async lireUnClasseur(F: FicheClasseur): Promise<Tableau | null> {
     const r = this.refusMaintenant() ?? (this.enCours ? 'Un fichier est en train de s\'ouvrir : attendez un instant.' : null)
     if (r) { this.hote.message(r); return null }
-    const tab = new Tableau(null)
-    tab.seancesActives = true
     const app = this.hote.app
     try {
-      if (this.estIci(F) && app && this.hote.sauvegarde) {
-        app.poserCeQuiAttend()
-        app.piste.vider()
-        await app.tableau.attendreEcritures()
-        tab.lireEtat(Y.encodeStateAsUpdate(app.tableau.doc))
-      } else {
-        const f = await ecrivain.fabriquerFichier(F.base, { nom: F.nom, id: F.id })
-        tab.lireEtat((await this.lire(f.fichier)).etat)
-      }
+      if (this.estIci(F) && app && this.hote.sauvegarde) return await this.lireLeClasseurOuvert(app)
+      const tab = new Tableau(null)
+      tab.seancesActives = true
+      const f = await ecrivain.fabriquerFichier(F.base, { nom: F.nom, id: F.id })
+      tab.lireEtat((await this.lire(f.fichier)).etat)
+      return tab
     } catch (e) {
       this.hote.message(`« ${F.nom} » n'a pas pu être lu : ${raisonDe(e)}. Rien n'a changé.`)
       return null
     }
+  }
+
+  /** Le classeur de cet onglet, tel qu'il est en mémoire (ce qui attend est
+   *  posé, les écritures finies), lu dans un document qui ne vit nulle part */
+  private async lireLeClasseurOuvert(app: App): Promise<Tableau> {
+    const tab = new Tableau(null)
+    tab.seancesActives = true
+    app.poserCeQuiAttend()
+    app.piste.vider()
+    await app.tableau.attendreEcritures()
+    tab.lireEtat(Y.encodeStateAsUpdate(app.tableau.doc))
     return tab
   }
 

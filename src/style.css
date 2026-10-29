@@ -1298,8 +1298,30 @@ body.en-trieuse .toast { z-index: 30; }
 /* Ouvrir des fichiers (lot 4 C9, classeurs/fichiers.ts) : la fenêtre d'un
    fichier dit en paragraphes ce qu'il est, ce qui est déjà là, la
    comparaison ; ses boutons passent à la ligne au téléphone */
+.dialogue-fichiers { max-height: calc(100vh - 32px); overflow: auto; }
 .dialogue-fichiers .corps p + p { margin-top: 8px; }
 .dialogue-fichiers .actions button { min-height: 44px; }
+/* Reprendre un ancien tableau (classeurs/ancien-tableau.ts) : la liste qui
+   dit où il se rangera parmi les séances du classeur ouvert, la plus récente
+   en haut ; sa ligne surlignée (« ira ici »), un tableau qui n'entre pas
+   barré, les séances passées sous silence en italique ; cinq lignes environ,
+   puis elle défile */
+.apercu-seances {
+  list-style: none; margin: -4px 0 14px; padding: 4px 0; max-height: 212px; overflow-y: auto; overscroll-behavior: contain;
+  border: 1px solid var(--filet); border-radius: 10px; font-size: 14px; line-height: 1.35;
+}
+.apercu-seances li { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; min-height: 40px; padding: 4px 12px 4px 28px; color: var(--encre); }
+.apercu-seances li::before { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 12px; text-align: center; }
+.apercu-seances li.ici { background: #eef3fa; box-shadow: inset 3px 0 0 var(--bleu); font-weight: 700; }
+.apercu-seances li.ici::before { content: '▸'; color: var(--bleu); }
+.apercu-seances li.refuse { color: var(--encre-douce); }
+.apercu-seances li.refuse::before { content: '✕'; }
+.apercu-seances li.refuse .quoi { text-decoration: line-through; }
+.apercu-seances li.plus { color: var(--encre-douce); font-style: italic; }
+@media (max-width: 480px) {
+  .dialogue-fichiers { width: calc(100vw - 16px); padding: 16px 14px; }
+  .dialogue-fichiers .actions { flex-direction: column; align-items: stretch; }
+}
 
 /* ---------- Envoyer vers une autre page (pages/envoi.ts) ----------
    La liste des destinations défile ; la fenêtre tient dans l'écran, pleine
