@@ -59,7 +59,7 @@ import { contient } from './vecteurs'
 import { EXTENSION_TABLEAU, nomSur } from '../fichier'
 import { EXTENSION } from '../publication/comptes'
 import type { ReglageReplay } from '../publication/replay-dossier'
-import { lireReglage, retenirReglage } from '../publication/replay-dossier'
+import { lireReglage, oublierLeDossierRetenu, retenirReglage } from '../publication/replay-dossier'
 import { POUR_OUVRIR } from '../navigateur'
 
 // ---------- Le plan d'un déplacement (pur) ----------
@@ -311,11 +311,18 @@ export class DeplacerClasseur {
     this.occupe = true
     try {
       this.h.message(`Déplacement du fichier de « ${f.nom} »…`)
+      // Le dossier du chapitre, créé s'il manque ; s'il vient d'être créé et
+      // que rien n'y est écrit (un refus), il repart : pas de dossier vide
+      let existait = true
+      try { await descendre(racine, n.sous, false) } catch { existait = false }
       let dossier: PoigneeDossier
       try { dossier = await descendre(racine, n.sous, true) } catch (e) { return `Son fichier n'a pas été déplacé : le dossier « ${cheminLisible(n.chemin)} » n'a pas pu être créé (${raisonDe(e)}).` }
       const ancien = await this.ancienDossier(f, a)
       const r = await this.deplacerLeFichier(f, { dossier, chemin: n.chemin }, ancien)
-      if (!r.ok) return r.texte
+      if (!r.ok) {
+        if (!existait) { try { await this.retirerSiVide(await descendre(racine, n.sous.slice(0, -1), false), dossier) } catch { /* il reste */ } }
+        return r.texte
+      }
       return `Son fichier aussi, dans « ${cheminLisible(n.chemin)} »${r.mem ? ` (avec ${desMem(r.mem)})` : ''}.${r.reste ? ' ' + r.reste : ''}`
     } finally {
       this.occupe = false
@@ -488,11 +495,13 @@ export class DeplacerClasseur {
     } catch { /* il reste */ }
   }
 
-  /** Publier rangeait les replays de ce classeur dans l'ancien dossier du
-   *  chapitre (retenu pour lui) : il les rangera dans le nouveau */
+  /** Publier rangeait les replays de ce classeur dans l'ancien dossier
+   *  (retenu pour lui : choisi à la main, ou par « Un autre dossier… ») : ce
+   *  dossier est oublié, et Publier propose de nouveau le dossier du chapitre,
+   *  là où le fichier est maintenant (le Drive retenu reste) */
   private async suivreLeDossierRetenu(id: string, ancien: PoigneeDossier, nouveau: PoigneeDossier): Promise<void> {
     const r = await lireReglage(this.registre, id).catch(() => ({} as ReglageReplay))
-    if (r.poignee && await memeDossier(nouveau, ancien) === false && await memeDossier(r.poignee, ancien)) await retenirReglage(this.registre, id, { poignee: nouveau }).catch(() => {})
+    if (r.poignee && await memeDossier(nouveau, ancien) === false && await memeDossier(r.poignee, ancien)) await oublierLeDossierRetenu(this.registre, id).catch(() => {})
   }
 
   // =============================================================

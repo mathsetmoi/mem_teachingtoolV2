@@ -34,7 +34,7 @@
 //    le départ ; « Ouvrir sans attendre » après 5 s ; 10 s au plus.
 // (Adapté au lot 4, morceau C8 : les menus d'un classeur et d'un dossier finissent par « Supprimer ».)
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
-import { chromium } from '../commun/playwright.mjs'
+import { lancerPersistant } from '../commun/playwright.mjs'
 import * as Y from 'yjs'
 import { existsSync, mkdirSync } from 'node:fs'
 import { gunzipSync, gzipSync } from 'node:zlib'
@@ -101,7 +101,9 @@ const INIT = () => {
     return dir.getFileHandle(window.__nomChoisi || o?.suggestedName || 'sans-nom.memc', { create: true })
   }
 }
-const nav = await chromium.launch({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
+// La section G relit une poignée de l'OPFS gardée dans IndexedDB : un profil
+// sur disque (voir lancerPersistant dans commun/playwright.mjs)
+const nav = await lancerPersistant({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
 async function contexte(o = {}) {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 }, ...o })
   await ctx.addInitScript(INIT)

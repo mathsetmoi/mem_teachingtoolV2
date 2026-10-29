@@ -40,7 +40,7 @@ const S = `${RACINE_ESSAIS}`
 const R = `${RACINE_DEPOT}`
 const ICI = S + '/lot4/C7/'
 const CAPTURES = ICI + 'captures/'
-const DEV = 'http://localhost:5173/'
+const DEV = process.env.DEV ?? 'http://localhost:5173/'
 mkdirSync(CAPTURES, { recursive: true })
 
 let echecs = 0
