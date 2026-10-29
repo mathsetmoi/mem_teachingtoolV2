@@ -644,7 +644,7 @@ if (faire('image')) {
   await page.locator('.trieuse .carte .carte-options').first().click(); await page.waitForTimeout(120)
   const ev = await page.evaluate(() => [...document.querySelector('.trieuse .menu-vignette').children].map(c => c.tagName === 'HR' ? '─' : c.classList.contains('menu-titre') ? '#' + c.textContent : (c.querySelector('.libelle')?.firstChild?.textContent ?? '').trim()))
   // (Adapté au morceau P9 : « Exporter en PDF… » entre « Copier en image » et « Supprimer »)
-  verifier('Le menu d\'une vignette : … Repère · ─ · Copier en image · Exporter en PDF… · Supprimer', JSON.stringify(ev.slice(-5)) === JSON.stringify(['Repère', '─', 'Copier en image', 'Exporter en PDF…', 'Supprimer']), ev)
+  verifier('Le menu d\'une vignette : … Repère · Mode nuit · ─ · Copier en image · Exporter en PDF… · Supprimer', JSON.stringify(ev.slice(-6)) === JSON.stringify(['Repère', 'Mode nuit', '─', 'Copier en image', 'Exporter en PDF…', 'Supprimer']), ev)
   await page.evaluate(VIDER_PRESSE)
   await page.evaluate(() => { window.__msgs = [] })
   await page.locator('.trieuse .menu-vignette .menu-item', { hasText: 'Copier en image' }).click()
