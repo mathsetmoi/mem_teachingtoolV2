@@ -1327,6 +1327,39 @@ body.en-trieuse .toast { z-index: 30; }
   .dialogue-drive, .dialogue-recuperer { width: calc(100vw - 16px); padding: 16px 14px; }
 }
 
+/* ---------- Vérifier les classeurs (lot 17, classeurs/vue-verification.ts) ----------
+   La ligne d'état, puis une carte par classeur auquel il manque des images :
+   son nom et son chemin, le détail, son bouton « Réparer » (44 px) à droite ;
+   au téléphone, tout s'empile et le bouton prend la largeur. Réparé : le
+   détail en vert ; une erreur en rouge sous la ligne, le bouton reste. */
+.dialogue-verification { width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto; }
+.dialogue-verification .corps { display: grid; gap: 12px; }
+.dialogue-verification .corps p { margin: 0; }
+.dialogue-verification .actions { flex-wrap: wrap; }
+.dialogue-verification .actions .v-tout { margin-right: auto; }
+.dialogue-verification button:disabled { opacity: 0.55; cursor: default; }
+.v-etat.erreur { color: var(--encre); background: #fff6d6; border-radius: 8px; padding: 6px 10px; }
+.v-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; max-height: min(420px, 55vh); overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--filet); }
+.v-liste[hidden] { display: none; }
+.v-ligne { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--filet); background: var(--papier); }
+.v-texte { display: grid; gap: 3px; min-width: 0; flex: 1 1 auto; }
+.v-nom { font-weight: 700; overflow-wrap: anywhere; }
+.v-chemin { font-weight: 400; color: var(--encre-douce); }
+.v-detail { color: var(--encre); line-height: 1.4; }
+.v-ligne.reparee .v-detail { color: #1f7a46; font-weight: 700; }
+.v-ligne.illisible .v-detail { color: var(--encre-douce); }
+.v-aide { font-size: 13px; color: var(--encre-douce); line-height: 1.4; }
+.v-erreur { color: var(--rouge); font-weight: 700; font-size: 14px; line-height: 1.4; }
+.v-erreur:empty { display: none; }
+.v-reparer { flex: none; min-height: 44px; min-width: 110px; }
+@media (max-width: 600px) {
+  .v-ligne { flex-direction: column; align-items: stretch; gap: 8px; }
+  .v-reparer { width: 100%; }
+}
+@media (max-width: 480px) {
+  .dialogue-verification { width: calc(100vw - 16px); padding: 16px 14px; }
+}
+
 /* Ouvrir des fichiers (lot 4 C9, classeurs/fichiers.ts) : la fenêtre d'un
    fichier dit en paragraphes ce qu'il est, ce qui est déjà là, la
    comparaison ; ses boutons passent à la ligne au téléphone */

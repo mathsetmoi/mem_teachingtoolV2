@@ -6,7 +6,8 @@
 #                                    des lots 1 à 5 et le banc d'écriture ;
 #   sh essais/navigateur/tout.sh 2   les sondes des vérifications des lots 3, 4
 #                                    et 5, les essais vitest hors de npm test,
-#                                    les essais du contrôle final du lot 5.
+#                                    les essais du contrôle final du lot 5,
+#                                    les essais du lot 17.
 # Sans argument, les deux à la suite. (npm run essais:navigateur:1, :2, ou
 # npm run essais:navigateur pour les deux.)
 # Sorties dans essais/navigateur/sorties/partie1 et partie2 (ignoré par git) ;
@@ -130,6 +131,14 @@ sh "$E/lot4/verif/batterie.sh" $A > $A/verif_batterie.log 2>&1
 # du lot 5 (lot5/cf) : environ 15 minutes ; ce qui en est laissé de côté, et
 # pourquoi, est dit en tête de lot5/cf/sondes-verif.sh
 sh "$E/lot5/cf/sondes-verif.sh" $A > $A/verif5_batterie.log 2>&1
+# Les essais du deuxième lot de l'audit (lot 17 : vérifier les classeurs, …),
+# depuis essais/navigateur comme ceux de la partie 1
+for t in $(ls lot17/*.mjs 2>/dev/null); do
+  nom=$(echo $t | tr '/' '_')
+  echo "=== $t" > $A/$nom.out
+  timeout 900 node $t >> $A/$nom.out 2>&1
+  echo "exit $?" >> $A/$nom.out
+done
 fi
 [ -n "$PAGES" ] && kill $PAGES
 kill $DEV

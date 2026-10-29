@@ -14,6 +14,8 @@ import type { CleALArrivee } from './classeurs/cle'
 import { EnregistrementCle, lireCleALArrivee } from './classeurs/cle'
 import { CopieDrive } from './classeurs/copie-drive'
 import { brancherRecuperer } from './classeurs/recuperer'
+import { Verification } from './classeurs/verification'
+import { brancherVerification } from './classeurs/vue-verification'
 import { Ailleurs } from './classeurs/ailleurs'
 import { ApercuDuClasseur } from './classeurs/apercu-classeur'
 import { ErreurBase, ouvrirBaseExistante } from './classeurs/bases'
@@ -146,6 +148,10 @@ function bibliothequeSeule(racine: HTMLElement, registre: Registre, message?: st
   b.brancherFichiers(fichiers)
   // Récupérer une sauvegarde du Drive (lot 4 C10) : la seule chose qui en revient, sur demande
   brancherRecuperer(b, fichiers, registre)
+  // Vérifier les classeurs (lot 17) : les images qui manquent, remises ; la corbeille recopie avant d'effacer
+  const verification = new Verification({ registre, fichiers, classeur: () => null, message: dire })
+  fichiers.verification = verification
+  brancherVerification(b, verification, dire)
   // Ouvrir et enregistrer sur l'ordinateur ou sur le Drive, Mes emplacements (lot 7)
   const ailleurs = new Ailleurs({ registre, bibliotheque: b, fichiers, message: dire, classeur: () => null })
   b.ouvrir()
@@ -387,6 +393,16 @@ async function demarrer() {
     if (drive) drive.fichiers = fichiers
     ui.bibliotheque.brancherFichiers(fichiers)
     brancherRecuperer(ui.bibliotheque, fichiers, registre)
+    // Vérifier les classeurs (lot 17) : les images qui manquent (un cadre
+    // gris), cherchées dans les autres classeurs et remises ; à l'ouverture
+    // de ce classeur (retrouverImages), au menu ⋯ de la bibliothèque, et
+    // avant d'effacer la corbeille
+    const verification = new Verification({
+      registre, fichiers, classeur: () => hote.classeur, app, sauvegarde: ui.sauvegarde, message: (t, a) => ui.message(t, a),
+    })
+    fichiers.verification = verification
+    const ouvrirVerification = brancherVerification(ui.bibliotheque, verification, t => ui.message(t))
+    verification.voirLaVerification = () => { ui.ouvrirBibliotheque(); if (ui.bibliotheque?.ouvert) ouvrirVerification() }
     ui.brancherFichiers(fichiers)
     // Ouvrir et enregistrer sur l'ordinateur ou sur le Drive, Mes
     // emplacements (lot 7) : « Enregistrer… » du menu ⋯ y mène
