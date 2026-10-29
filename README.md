@@ -6816,4 +6816,89 @@ hors ligne) ; `DEV=…` accepté par `lot4/C2`, `C5`, `C6`, `C9`, `C10`,
 
 ### Le bouton du classeur
 
+### Déplacer le classeur : le fichier suit
+
+Un classeur rangé a son fichier dans le dossier de son chapitre ; quand il
+change de place dans la bibliothèque, son fichier change de place avec lui.
+C'est vrai pour tous les chemins d'un déplacement : « Déplacer vers… »
+sur sa carte, un glisser-déposer sur un dossier, « Annuler » dans le
+message, et pour le classeur ouvert, l'entrée **« Déplacer le classeur… »**
+du menu ⋯ (la même fenêtre, pour lui).
+
+- **La fenêtre « Déplacer « Fractions » vers… »** dit, sous l'arbre, ce
+  qu'il advient du fichier à la destination qu'on parcourt (le focus, le
+  survol) : « Son fichier ira dans « MEM classeurs › 4 › Fractions ».
+  L'ancien sera retiré une fois le nouveau écrit. » ; « Le niveau « 3eme »
+  n'est pas rangé dans un dossier : le fichier reste où il est. » ; « Son
+  fichier est déjà dans … » ; « « Fractions.memc » a été choisi à la main :
+  il reste où il est. » ; et pour un classeur sans fichier : « Il recevra
+  son fichier dans « LFB classeurs › 5 › Angles », écrit tout seul. »
+- **La règle, dans l'ordre**, quand le fichier suit : 1. le nouveau
+  fichier est écrit en entier au nouvel endroit (le dossier du chapitre
+  créé s'il manque), relu, et la fiche le note ; 2. seulement alors
+  l'ancien est examiné (c'est bien lui : son en-tête porte l'id du
+  classeur et la date écrite d'ici) puis retiré ; 3. les `.mem` du
+  chapitre (les fichiers séance, les replays) suivent, un par un, écrits
+  puis retirés ; 4. l'ancien dossier du chapitre, vide, est retiré (jamais
+  le dossier du niveau, jamais un dossier choisi à la main). Le message le
+  dit : « « Fractions » déplacé dans « 4eme » : … Son fichier aussi, dans
+  « MEM classeurs › 4 › Fractions » (avec 2 fichiers .mem). »
+- **Ce qui ne bouge jamais** : un fichier choisi à la main (la case, Ctrl +
+  S : pas de chemin dans la fiche) ; le fichier d'un classeur déplacé
+  vers un niveau pas rangé ou à la racine (« Son fichier reste dans … ») ;
+  un fichier qui a des changements que ce classeur n'a pas (le garde-fou de
+  l'histoire : « il n'est pas déplacé. Ouvrez-le d'abord (Ctrl + O). ») ;
+  le fichier d'un classeur fermé ici mais ouvert dans un autre onglet (le
+  verrou Web Locks de la clé : « Fermez-le, puis recommencez. ») ; l'ancien
+  fichier s'il a changé ailleurs depuis le dernier enregistrement d'ici
+  (le nouveau est écrit, l'ancien reste, et le message le dit). Dans tous
+  ces cas le classeur, lui, est bien déplacé dans la bibliothèque.
+- **Un classeur sans fichier** qui arrive dans un niveau rangé reçoit son
+  fichier à sa place, écrit tout seul (comme un classeur remis de la
+  corbeille) : « Son fichier est écrit dans « LFB classeurs › 5 › Angles ». »
+- **« Un autre dossier de l'ordinateur… »**, en bas de l'arbre pour le
+  classeur ouvert : le professeur choisit lui-même le dossier (dans le
+  clic) ; le fichier y va directement, avec ses `.mem`, sans sous-dossier
+  (`chemin = ['2_13_Proba']`) ; le classeur ne bouge pas dans la
+  bibliothèque ; Publier y rangera aussi ses replays (le dossier retenu
+  pour ce classeur). Déplacé ensuite vers un niveau rangé, son fichier
+  rejoint le dossier du chapitre, et Publier propose de nouveau ce dossier
+  (le dossier choisi est oublié, le Drive retenu reste).
+- **« Ne plus l'enregistrer dans un fichier »**, à côté d'« Annuler », pour
+  un classeur ouvert dont le fichier a été choisi à la main : la clé
+  s'arrête, le fichier reste tel qu'il était à sa dernière écriture.
+
+Les garde-fous : le fichier de l'onglet est déplacé par sa propre clé
+(`EnregistrementCle.deplacerVers`, dans la file des écritures, avec les
+mêmes vérifications qu'une écriture : la base entière, l'histoire, jamais
+par-dessus un fichier plus riche, un nom libre si un autre classeur est
+là) ; celui d'un classeur fermé est fabriqué depuis sa base sous le verrou
+du classeur ; aucune permission demandée hors du clic sur la destination ;
+un dossier de chapitre créé pour rien (un refus) repart. Pour les
+navigateurs sans poignées de fichier (Firefox, Safari), rien ne change :
+le classeur se déplace, son fichier reste et le message le dit.
+
+Comment c'est fait : `src/classeurs/deplacer-fichier.ts` (`placeRangee`,
+`planDeDeplacement` et `texteEchec`, purs et testés ; `DeplacerClasseur` :
+`ouvrir()` pour le menu ⋯, `suivre()` appelé par
+`Bibliotheque.deplacerVers` après le déplacement dans le registre, l'ancien
+dossier retrouvé par le chemin de la fiche ou le dossier retenu de Publier,
+les `.mem`, « Un autre dossier… ») ; `src/classeurs/cle.ts`
+(`deplacerVers`, `fichierPourDeplacer`, `ResultatDeplacement` ; `enteteDe`
+et `ecrireDans` exportés) ; `src/classeurs/vers.ts` (la ligne `ligne`,
+l'entrée `autre`, le bouton `secondaire`) ; `src/classeurs/bibliotheque.ts`
+(`brancherDeplaceur`, le déplaceur de repli de la page bibliothèque seule,
+`deplacerVers` qui ajoute la phrase du fichier au message, `allerVers` qui
+ouvre la bibliothèque s'il le faut) ; `src/publication/replay-dossier.ts`
+(`oublierLeDossierRetenu`). Les essais : `tests/deplacer-fichier.test.ts`,
+`tests/replay-dossier.test.ts` (le dossier oublié) ;
+`essais/navigateur/lot18/E3-deplacer.mjs` (sections A à J : la fenêtre et
+sa ligne, le déplacement du classeur ouvert et de sa clé qui écrit ensuite
+dans le nouveau fichier, les `.mem` et « Annuler », un niveau pas rangé,
+un fichier choisi à la main et « Ne plus l'enregistrer », l'ancien fichier
+modifié ailleurs, un fichier plus riche, une carte, un glisser, un autre
+onglet, « Un autre dossier… » et Publier, un classeur sans fichier, la
+version hors ligne ; `DEV=…` pour le port, `A` ou `J` en argument pour une
+partie) ; `lot4/C7-deplacer.mjs` accepte `DEV=…`.
+
 ### Le menu ⋯
