@@ -9,11 +9,15 @@
 // clic ouvre le chapitre en cours du niveau et y commence une séance ; un
 // niveau sans classeur propose d'en créer un), et « Nouveau classeur
 // vierge… » (la fenêtre « Nouveau classeur », rangé hors de tout niveau).
+// Depuis le lot 17, elle a aussi le lien « Séance isolée » et son petit
+// texte sous la ligne du chapitre (le reste de la fenêtre ne change pas ;
+// lot17/E1-seances-isolees.mjs essaie le lien lui-même).
 // Une ligne « ✓ » ou « ✗ ÉCHEC » par vérification ; code de sortie 1 s'il y
-// a un échec ou une erreur JS.
+// a un échec ou une erreur JS. Le serveur de développement : le port 5173,
+// ou DEV=http://localhost:5305/.
 import { chromium } from '../commun/playwright.mjs'
 
-const DEV = 'http://localhost:5173/'
+const DEV = process.env.DEV ?? 'http://localhost:5173/'
 let echecs = 0
 const ok = (c, m, d) => { if (!c) echecs++; console.log(c ? '✓' : '✗ ÉCHEC', m, !c && d !== undefined ? '— ' + JSON.stringify(d).slice(0, 1200) : '') }
 const erreurs = []
@@ -52,9 +56,13 @@ const vue = await p.evaluate(() => ({
   gros: document.querySelector('.accueil-nouvelle')?.textContent,
   chapitre: document.querySelector('.accueil-chapitre')?.textContent,
   classes: [...document.querySelectorAll('.pastille-classe')].map(b => b.textContent),
+  isolee: document.querySelector('.accueil-seance-isolee')?.textContent ?? null,
+  petit: document.querySelector('.accueil-isolee small')?.textContent ?? null,
 }))
 ok(vue.dlg && vue.gros === 'Nouvelle séance en 5ème' && vue.chapitre === 'Fractions — changer de chapitre' && JSON.stringify(vue.classes) === '["4ème","3ème"]',
   'la fenêtre d\'accueil : « Nouvelle séance en 5ème », « Fractions — changer de chapitre », « Un autre niveau : 4ème · 3ème » (dans l\'ordre de l\'école)', vue)
+// (Adapté au lot 17 : le lien « Séance isolée » et son petit texte, sous la ligne du chapitre)
+ok(vue.isolee === 'Séance isolée' && vue.petit === 'Hors chapitre : rangée dans « Séances isolées » de 5ème.', 'le lien « Séance isolée » et « Hors chapitre : rangée dans « Séances isolées » de 5ème. » (lot 17)', vue)
 
 // changer de chapitre : la liste du niveau
 await p.click('.accueil-changer'); await p.waitForTimeout(200)
