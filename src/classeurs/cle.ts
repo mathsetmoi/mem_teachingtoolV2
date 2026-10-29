@@ -98,6 +98,8 @@ import { EXTENSION_TABLEAU, dateLisible, lireEntete, nomSur, tailleLisible } fro
 import { ErreurEcrivain, ecrivain, fabriquerFichier } from './ecrivain'
 import { comparerVecteurs, contient, reunir } from './vecteurs'
 import { ecritDansUnFichier } from './surveillance'
+import { nomDeFichierLibre } from './emplacements'
+import type { PoigneeDossier } from './ordinateur'
 import { fermerSurLeFond } from '../dialogue'
 import { POUR_ENREGISTRER, POUR_OUVRIR } from '../navigateur'
 
@@ -219,13 +221,13 @@ export async function memeFichier(a: PoigneeFichier, b: unknown): Promise<boolea
 }
 
 /** L'en-tête d'un fichier, lu dans ses premiers octets (rien d'autre n'est lu) */
-async function enteteDe(f: File): Promise<EnteteTableau | null> {
+export async function enteteDe(f: File): Promise<EnteteTableau | null> {
   return lireEntete(new Uint8Array(await f.slice(0, 4096).arrayBuffer()))
 }
 
 /** Écrit le fichier d'un bloc : createWritable écrit à côté, close remplace.
  *  Un échec avant close : abort, et le fichier d'avant reste entier. */
-async function ecrireDans(p: PoigneeFichier, fichier: Blob): Promise<void> {
+export async function ecrireDans(p: PoigneeFichier, fichier: Blob): Promise<void> {
   const w = await p.createWritable()
   try {
     await w.write(fichier)
@@ -245,6 +247,43 @@ const attendre = (ms: number) => new Promise<void>(ok => setTimeout(ok, ms))
  *  l'histoire) */
 interface OptionsEcriture { manuel?: boolean; geste?: boolean; forcer?: boolean }
 type Resultat = 'ecrit' | 'rien' | 'conflit' | 'permission' | 'erreur'
+
+/** Ce qu'a fait un déplacement du fichier (deplacerVers, et le même
+ *  déplacement sous le verrou pour un classeur fermé, deplacer-fichier.ts) :
+ *  deplace (garde : la nouvelle poignée est gardée dans l'index ; non, elle ne
+ *  vit que dans cet onglet) ; sinon pourquoi rien n'a bougé : conflit (ce
+ *  classeur a perdu une partie de l'histoire écrite dans son fichier, raison :
+ *  son nom), plus-riche (un fichier de ce classeur déjà là-bas a plus que lui,
+ *  raison : son nom), autre-onglet, permission, erreur (raison : ce qui s'est
+ *  passé, sans point final), rien (pas de fichier) */
+export type ResultatDeplacement =
+  | { r: 'deplace'; garde: boolean }
+  | { r: 'conflit' | 'plus-riche' | 'autre-onglet' | 'permission' | 'erreur' | 'rien'; raison: string }
+
+/** Le fichier du classeur dans le dossier du chapitre où il arrive (« Déplacer
+ *  le classeur… ») : « Fractions.memc » s'il est libre ; déjà pris par ce
+ *  même classeur (un fichier d'avant, resté là) et ce qu'on va écrire
+ *  (vecteur) a tout ce qu'il a : il est repris tel quel ; s'il a plus, rien
+ *  n'est écrit ('plus-riche') ; pris par autre chose : un autre nom
+ *  (« Fractions (2).memc »). Rend la poignée, créée s'il le faut. */
+export async function fichierPourDeplacer(d: PoigneeDossier, c: { id: string; nom: string }, vecteur: Uint8Array): Promise<PoigneeFichier | 'plus-riche'> {
+  const noms: string[] = []
+  for await (const x of d.values()) noms.push(x.name)
+  const base = nomSur(c.nom), prevu = base + EXTENSION_TABLEAU
+  const pris = noms.find(n => n.toLocaleLowerCase('fr') === prevu.toLocaleLowerCase('fr'))
+  if (pris) {
+    const h = await d.getFileHandle(pris)
+    const f = await h.getFile()
+    if (f.size === 0) return h
+    const e = await enteteDe(f)
+    if (e && e.id === c.id) {
+      let lu: { vecteur: Uint8Array } | null
+      try { lu = await ecrivain.lireFichier(f) } catch { lu = null }
+      return lu && contient(vecteur, lu.vecteur) ? h : 'plus-riche'
+    }
+  }
+  return d.getFileHandle(nomDeFichierLibre(base, EXTENSION_TABLEAU, noms), { create: true })
+}
 
 export class EnregistrementCle {
   /** Ce navigateur sait écrire seul dans un fichier (showSaveFilePicker) */
@@ -597,6 +636,82 @@ export class EnregistrementCle {
       return 'ecrit'
     } catch (e) {
       return this.echec(e)
+    } finally {
+      this.enEcriture = false
+      if (this.premierNonEcrit !== null) this.planifier()
+      this.majQuitter()
+    }
+  }
+
+  // ---------- Déplacer le fichier (lot 18, deplacer-fichier.ts) ----------
+  /** « Déplacer le classeur… » : le classeur de cet onglet change de fichier.
+   *  Le nouveau est écrit EN ENTIER dans `dossier` (le dossier du chapitre à
+   *  la nouvelle place, l'accord d'y écrire déjà donné dans le clic), avec
+   *  les garde-fous d'une écriture automatique (jamais depuis une base
+   *  trouée ou relue en partie, jamais si ce classeur a perdu une partie de
+   *  l'histoire écrite la dernière fois, jamais par-dessus un fichier plus
+   *  riche : fichierPourDeplacer), relu ; puis la clé passe à lui : sa
+   *  poignée (gardée dans l'index), la fiche (nom, chemin, date, taille,
+   *  vecteur), l'état à l'écran ; ses écritures suivantes vont dans le
+   *  nouveau fichier. L'ancien fichier reste tel quel : c'est à qui appelle
+   *  de le retirer, une fois examiné. chemin : les dossiers jusqu'à
+   *  `dossier` compris, pour la fiche. Une écriture à la fois : celle-ci
+   *  attend celle qui serait en cours. */
+  deplacerVers(dossier: PoigneeDossier, chemin: string[]): Promise<ResultatDeplacement> {
+    const suite = this.fileEcriture.then(() => this.unDeplacement(dossier, chemin))
+    this.fileEcriture = suite.catch(() => { /* rendu à qui appelle */ })
+    return suite
+  }
+
+  private async unDeplacement(dossier: PoigneeDossier, chemin: string[]): Promise<ResultatDeplacement> {
+    const p = this.poignee
+    if (!p || this.suspendu) return { r: 'rien', raison: 'pas de fichier' }
+    if (this.verrou === 'autre') return { r: 'autre-onglet', raison: 'un autre onglet est ouvert sur ce classeur' }
+    this.enEcriture = true
+    this.premierPendant = null
+    clearTimeout(this.minuterie); this.minuterie = 0
+    const debut = Date.now()
+    try {
+      // 1. La fiche, relue (un autre onglet a pu écrire, ou tout arrêter)
+      const fiche = await this.registre.classeur(this.id).catch(() => undefined)
+      if (fiche && !fiche.cle) { this.arreterIci(); return { r: 'rien', raison: 'pas de fichier' } }
+      const cle = this.laDerniere(fiche?.cle)
+      // 2. Le fichier du classeur : dans le travailleur seulement, depuis une base entière
+      if (this.app.tableau.trou || this.app.tableau.incomplet) return { r: 'erreur', raison: MESSAGE_TROU }
+      if (ecrivain.mode === 'fil') return { r: 'erreur', raison: MESSAGE_FIL }
+      await this.app.tableau.attendreEcritures()
+      const c = this.app.classeur
+      const date = Math.max(Date.now(), (cle.date ?? 0) + 1)
+      const fab = await fabriquerFichier(this.base, { nom: c.nom, id: this.id }, date, { travailleurSeul: true })
+      if (this.suspendu || this.poignee !== p) return { r: 'rien', raison: 'le fichier a changé entre-temps' }
+      // 3. L'histoire : tout ce qui a été écrit la dernière fois y est encore
+      if (cle.vecteur && !contient(fab.vecteur, cle.vecteur)) { this.conflit(conflitHistoire(p.name)); return { r: 'conflit', raison: p.name } }
+      // 4. Le nouveau fichier (au nom de la fiche, comme relierLesClasseurs),
+      // jamais par-dessus un plus riche ; écrit d'un bloc, relu
+      const neuf = await fichierPourDeplacer(dossier, { id: this.id, nom: fiche?.nom ?? c.nom }, fab.vecteur)
+      if (neuf === 'plus-riche') return { r: 'plus-riche', raison: nomSur(fiche?.nom ?? c.nom) + EXTENSION_TABLEAU }
+      await ecrireDans(neuf, fab.fichier)
+      if ((await neuf.getFile()).size !== fab.fichier.size) throw new Error('le fichier relu n\'a pas la taille écrite')
+      // 5. La clé passe au nouveau fichier : la poignée, la fiche, l'état
+      const nouvelle: CleFiche = { nom: neuf.name, t: Date.now(), date, taille: fab.fichier.size, vecteur: fab.vecteur, chemin: [...chemin] }
+      this.poignee = neuf
+      this.derniere = nouvelle
+      this.noterChemin(nouvelle)
+      let garde = true
+      try { await this.registre.garderPoignee(this.id, neuf); this.enMemoireSeulement = false } catch (e) {
+        if ((e as { name?: string } | null)?.name !== 'DataCloneError') throw e
+        garde = false; this.enMemoireSeulement = true
+      }
+      await this.registre.modifierClasseur(this.id, x => { if (x.cle) x.cle = nouvelle }).catch(() => { /* this.derniere s'en souvient */ })
+      this.premierNonEcrit = this.premierPendant
+      this.echecs = 0; this.prochainEssai = 0; this.attendLaBase = false
+      this.finDerniere = Date.now(); this.dureeDerniere = this.finDerniere - debut
+      this.maj({ etat: 'ok', nom: neuf.name, t: nouvelle.t })
+      this.sauvegarde.noterFichier(date)
+      return { r: 'deplace', garde }
+    } catch (e) {
+      const r = raisonCle(e)
+      return r.genre === 'permission' ? { r: 'permission', raison: 'le navigateur n\'a pas permis d\'écrire' } : { r: 'erreur', raison: r.message }
     } finally {
       this.enEcriture = false
       if (this.premierNonEcrit !== null) this.planifier()
