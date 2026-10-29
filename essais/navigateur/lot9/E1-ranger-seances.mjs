@@ -15,7 +15,9 @@
 //    date dans l'autre, avec son film (Publier la montre comme avant), et
 //    quitte le sien ;
 // G. glisser une séance sur un autre classeur : elle y part ;
-// H. un classeur qui a déjà une séance à la même heure : refusé, rien ne bouge ;
+// H. un classeur qui a déjà cette séance (le même début) : refusé, rien ne bouge
+//    (adapté au lot 17 : une séance du même début est la même séance, et le
+//    refus le dit à part de « a déjà quelque chose pendant cette séance ») ;
 // I. la seule séance d'un classeur : elle part, et le classeur, vide, va
 //    dans la corbeille ; « Annuler » remet tout ;
 // J. la séance arrivée s'ouvre (en lecture) ;
@@ -229,7 +231,7 @@ const fr2 = await p.evaluate(id => window.__lire(id), ids.Fractions)
 const sy2 = await p.evaluate(id => window.__lire(id), ids.Symetrie)
 ok(fr2.seances.length === 1 && sy2.seances.length === 4 && sy2.trie && sy2.seances[3].debut === LUNDI + 4 * JOUR, 'G) Vendredi glissé sur « Symetrie » : il y est, à sa date', { fr2, sy2 })
 
-// ---------- H. Une séance à la même heure : refusée ----------
+// ---------- H. Une séance du même début (la même séance) : refusée ----------
 await viderToasts()
 await ouvrirBiblio()
 await deplier('Doublon')
@@ -243,8 +245,8 @@ await attendreFin()
 t = await toasts()
 const sy3 = await p.evaluate(id => window.__lire(id), ids.Symetrie)
 const doublon = await p.evaluate(id => window.__lire(id), ids.Doublon)
-ok(t.some(x => /a déjà quelque chose pendant cette séance/.test(x)) && sy3.seances.length === 4 && doublon.seances.length === 1 && !doublon.fiche.corbeille && JSON.stringify(doublon.seances) === JSON.stringify(doublonAvant.seances),
-  'H) « Symetrie » a déjà une séance à cette heure : refusé, rien ne bouge', { t, sy3: sy3.seances.length, doublon })
+ok(t.some(x => /a déjà cette séance : elle n'a pas été déplacée/.test(x)) && sy3.seances.length === 4 && doublon.seances.length === 1 && !doublon.fiche.corbeille && JSON.stringify(doublon.seances) === JSON.stringify(doublonAvant.seances),
+  'H) « Symetrie » a déjà cette séance (le même début) : refusé, rien ne bouge', { t, sy3: sy3.seances.length, doublon })
 
 // ---------- I. La seule séance d'un classeur ----------
 await viderToasts()

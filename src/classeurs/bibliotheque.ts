@@ -2245,6 +2245,7 @@ export class Bibliotheque {
       if ('refus' in r) {
         this.hote.message(r.refus === 'chevauche'
           ? `« ${G.nom} » a déjà quelque chose pendant cette séance (une séance à la même heure) : elle n'a pas été déplacée.`
+          : r.refus === 'deja' ? `« ${G.nom} » a déjà cette séance : elle n'a pas été déplacée.`
           : 'Cette séance n\'est plus dans le classeur.')
         return
       }
