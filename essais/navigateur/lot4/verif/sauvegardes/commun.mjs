@@ -2,10 +2,10 @@
 // S/lot4/C4-cle.mjs (l'OPFS à la place du choix de fichier, les permissions
 // simulées, les écritures notées) et lisant les .memc sous Node.
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../../../commun/racines.mjs'
-import { chromium } from '../../../commun/playwright.mjs'
+import { chromium, lancerPersistant } from '../../../commun/playwright.mjs'
 import * as Y from 'yjs'
 import { gunzipSync, gzipSync } from 'node:zlib'
-export { chromium, Y, gunzipSync, gzipSync }
+export { chromium, lancerPersistant, Y, gunzipSync, gzipSync }
 export const V = `${RACINE_ESSAIS}/lot4/verif/sauvegardes/`
 export const DEV = 'http://localhost:5173/'
 export let echecs = 0

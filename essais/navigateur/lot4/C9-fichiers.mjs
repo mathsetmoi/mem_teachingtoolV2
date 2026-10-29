@@ -36,7 +36,7 @@
 // Il faut avoir construit les deux versions (npm run build, npm run
 // build:pages) ; tout.sh le fait.
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
-import { chromium } from '../commun/playwright.mjs'
+import { lancerPersistant } from '../commun/playwright.mjs'
 import * as Y from 'yjs'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import { execFileSync, spawn } from 'node:child_process'
@@ -252,7 +252,8 @@ const fiche = (p, id) => p.evaluate(id => window.__registre.classeur(id).then(f 
 const fiches = p => p.evaluate(() => window.__registre.classeurs().then(l => l.map(f => ({ id: f.id, nom: f.nom, base: f.base, dossier: f.dossier, etiquettes: f.etiquettes, pages: f.pages, recu: f.recu ?? null, corbeille: f.corbeille ?? null, cle: f.cle ? f.cle.nom : null }))))
 const baseDeNode = async (p, base) => lireMemc(Buffer.from(await p.evaluate(b => window.__baseB64(b), base), 'base64'))
 
-const nav = await chromium.launch({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+const nav = await lancerPersistant({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
 async function contexte(o = {}) {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 }, ...o })
   await ctx.addInitScript(INIT)
@@ -985,8 +986,9 @@ if (seul('L')) {
       ok(v.ouvrir.w === 0 && v.plus.w > 0 && v.plus.r <= v.largeur && v.plus.h >= 40 && v.lignesActions === 1 && !v.defile, `L1) ${l} × ${h} : « Ouvrir… » passe dans le menu ⋯ (qui est dans l'écran, 40 px de haut au moins), les actions sur une ligne, pas de défilement de côté`, v)
       await p.click('.biblio-tete [data-action="menu-bibliotheque"]'); await p.waitForTimeout(150)
       const m = await p.evaluate(() => [...document.querySelectorAll('.menu-flottant:not([hidden]) .menu-item')].map(e => e.dataset.action + '|' + e.textContent))
-      // (Adapté au lot 4, morceau C10 : « Récupérer une sauvegarde du Drive… » entre volontairement au menu du bandeau)
-      ok(m.length === 3 && m[0].startsWith('ouvrir-fichier|Ouvrir un classeur ou une bibliothèque…') && m[1].startsWith('enregistrer-bibliotheque|') && m[2].startsWith('recuperer-sauvegarde|'), '   … le menu ⋯ : « Ouvrir un classeur ou une bibliothèque… », puis « Enregistrer toute la bibliothèque… »', m)
+      // (Adapté au lot 4, morceau C10 : « Récupérer une sauvegarde du Drive… » entre volontairement au menu du bandeau ;
+      // et au lot 17 : « Vérifier les classeurs… » aussi, en dernier)
+      ok(m.length === 4 && m[0].startsWith('ouvrir-fichier|Ouvrir un classeur ou une bibliothèque…') && m[1].startsWith('enregistrer-bibliotheque|') && m[2].startsWith('recuperer-sauvegarde|') && m[3].startsWith('verifier-classeurs|'), '   … le menu ⋯ : « Ouvrir un classeur ou une bibliothèque… », puis « Enregistrer toute la bibliothèque… », « Récupérer une sauvegarde du Drive… », « Vérifier les classeurs… »', m)
       await opfsEcrire(p, 'l0.memc', faireMemc(Y.encodeStateAsUpdate(unClasseur(['L0'])), { date: Date.now(), pages: 1, nom: 'Par le menu', id: '5a5a5a5a5a5a5a5b' }))
       await p.evaluate(() => { window.__aOuvrir = 'l0.memc' })
       await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="ouvrir-fichier"]')

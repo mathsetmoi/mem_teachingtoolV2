@@ -1,11 +1,16 @@
 // Outils repris de lot4/verif/conformite/outils.mjs (le faux Google de C10-drive.mjs, l'OPFS simulé), pour lot4/corrections-conformite.mjs
-import { chromium } from '../../commun/playwright.mjs'
+import { chromium, lancerPersistant } from '../../commun/playwright.mjs'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import * as Y from 'yjs'
 import { mkdirSync } from 'node:fs'
 export const DEV = 'http://localhost:5173/'
 export let navigateur = null
-export const lancer = async (o = {}) => { navigateur = await chromium.launch({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' }, ...o }); return navigateur }
+/** `persistant: true` pour une sonde qui relit la poignée de la clé depuis IndexedDB (voir commun/playwright.mjs) */
+export const lancer = async ({ persistant = false, ...o } = {}) => {
+  const options = { env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' }, ...o }
+  navigateur = persistant ? await lancerPersistant(options) : await chromium.launch(options)
+  return navigateur
+}
 export let echecs = 0
 export const ok = (c, m, detail) => { if (!c) echecs++; console.log(c ? '✓' : '✗ ÉCHEC', m, !c && detail !== undefined ? '— ' + JSON.stringify(detail).slice(0, 1800) : '') }
 export const dort = ms => new Promise(r => setTimeout(r, ms))

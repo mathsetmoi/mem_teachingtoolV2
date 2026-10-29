@@ -23,7 +23,7 @@
 // E. « Retirer » : plus relié, rien d'effacé.
 // F. La version hors ligne : le Drive grisé, et dit ; rien vers Google.
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
-import { chromium } from '../commun/playwright.mjs'
+import { lancerPersistant } from '../commun/playwright.mjs'
 import { FauxGoogle } from '../lot4/verif/migration/faux-google.mjs'
 
 const DEV = 'http://localhost:5173/'
@@ -150,7 +150,8 @@ const OUTILS = () => {
 const toasts = p => p.evaluate(() => (window.__toasts || []).splice(0))
 const attendreToast = (p, re, timeout = 20000) => p.waitForFunction(s => (window.__toasts || []).some(t => new RegExp(s).test(t)), re.source, { timeout }).then(() => true, () => false)
 
-const navigateur = await chromium.launch()
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée du dossier relue depuis IndexedDB)
+const navigateur = await lancerPersistant()
 async function contexte(g) {
   const ctx = await navigateur.newContext({ viewport: { width: 1366, height: 768 } })
   if (g) await g.brancher(ctx)

@@ -31,7 +31,7 @@
 //    DataCloneError rattrapé, Web Locks.
 // N. Firefox, l'iPad (pas de showSaveFilePicker) : pas d'entrée, « impossible ».
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
-import { chromium } from '../commun/playwright.mjs'
+import { lancerPersistant } from '../commun/playwright.mjs'
 import * as Y from 'yjs'
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
 import { spawn } from 'node:child_process'
@@ -249,7 +249,8 @@ const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 's
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
 const dateLisible = t => { const d = new Date(t); return `le ${JOURS[d.getDay()]} ${d.getDate() === 1 ? '1er' : d.getDate()} ${MOIS[d.getMonth()]} ${d.getFullYear()} à ${d.getHours()} h ${String(d.getMinutes()).padStart(2, '0')}` }
 
-const nav = await chromium.launch({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+const nav = await lancerPersistant({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
 async function contexte(o = {}) {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 }, acceptDownloads: true, ...o })
   await ctx.addInitScript(INIT)
@@ -643,8 +644,8 @@ if (seul('R')) {
   let d = (await dialogues(p))[0]
   const ouv = await p.evaluate(() => window.__choix.filter(c => c.quoi === 'open'))
   // (C9 : plusieurs fichiers à la fois, des classeurs et des bibliothèques)
-  ok(ouv.length === 1 && ouv[0].o.id === 'mem-classeurs' && ouv[0].o.multiple === true && ouv[0].o.types?.[0]?.description === 'Classeur ou bibliothèque (MEM teachingtool)',
-    'R1) Ctrl + O : showOpenFilePicker({ id: mem-classeurs, plusieurs fichiers, types : « Classeur ou bibliothèque (MEM teachingtool) » })', ouv)
+  ok(ouv.length === 1 && ouv[0].o.id === 'mem-classeurs' && ouv[0].o.multiple === true && ouv[0].o.types?.[0]?.description === 'Classeur, bibliothèque ou ancien tableau (MEM teachingtool)',
+    'R1) Ctrl + O : showOpenFilePicker({ id: mem-classeurs, plusieurs fichiers, types : « Classeur, bibliothèque ou ancien tableau (MEM teachingtool) » })', ouv)
   ok(d.titre === 'Ouvrir ce classeur ?' && d.texte.endsWith('Pour garder celui-ci, enregistrez-le d\'abord. L\'enregistrement automatique dans « premier.memc » s\'arrête : ce fichier garde le classeur d\'avant.')
     && d.case?.coche === true && d.case.texte === 'Enregistrer automatiquement les changements dans ce fichier' && JSON.stringify(d.boutons) === '["Annuler","Enregistrer d\'abord","Remplacer"]',
     '   … la question : la clé du classeur d\'avant s\'arrête ; la case « Enregistrer automatiquement les changements dans ce fichier », cochée', d)

@@ -25,7 +25,7 @@
 //      nouveau lien.
 // Lancer : node lot4/corrections-migration.mjs [A B C] (BASE=http://… pour une
 // autre version, par exemple celle d'avant les corrections)
-import { chromium } from '../commun/playwright.mjs'
+import { lancerPersistant } from '../commun/playwright.mjs'
 import * as Y from 'yjs'
 import { gunzipSync, gzipSync } from 'node:zlib'
 
@@ -115,7 +115,8 @@ async function simulerGoogle(ctx, drive = new Map()) {
   return drive
 }
 
-const nav = await chromium.launch({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+const nav = await lancerPersistant({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
 async function contexte() {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 }, acceptDownloads: true })
   await ctx.addInitScript(INIT)

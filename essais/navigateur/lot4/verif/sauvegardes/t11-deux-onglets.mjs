@@ -1,8 +1,9 @@
 // T11. Deux onglets sur le même classeur : A écrit la clé, B annonce ses
 // changements (au plus toutes les 5 s). B écrit deux traits à 1 s d'écart,
 // puis on ferme B. Le second trait de B arrive-t-il sur la clé ?
-import { chromium, V, DEV, ok, info, dort, INIT, ECOUTER_TOASTS, suivre, pret, ecrire, entree, etat, opfsLire, lireMemc, attendreEcrites, nbEcrites, erreurs } from './commun.mjs'
-const nav = await chromium.launch()
+import { lancerPersistant, V, DEV, ok, info, dort, INIT, ECOUTER_TOASTS, suivre, pret, ecrire, entree, etat, opfsLire, lireMemc, attendreEcrites, nbEcrites, erreurs } from './commun.mjs'
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+const nav = await lancerPersistant()
 const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 } })
 await ctx.addInitScript(INIT); await ctx.addInitScript(ECOUTER_TOASTS)
 const a = await ctx.newPage(); suivre(a, 'A')

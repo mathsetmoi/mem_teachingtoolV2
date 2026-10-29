@@ -14,7 +14,7 @@ const INIT = () => {
   F.createWritable = async function (...a) { const w = await cw.apply(this, a); return { write: d => w.write(d), close: async () => { await w.close(); window.__ecritures++ }, abort: r => w.abort(r) } }
   window.showSaveFilePicker = async o => (await navigator.storage.getDirectory()).getFileHandle(o?.suggestedName || 'x.memc', { create: true })
 }
-const nav = await lancer()
+const nav = await lancer({ persistant: true })
 const ctx = await contexte(nav)
 await ctx.addInitScript(INIT)
 const p = await ctx.newPage(); suivre(p, 'bb')

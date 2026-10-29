@@ -28,7 +28,7 @@ dossiers d'essais vitest, le banc d'écriture), rangés par lot :
 | `lot15/` | Publier dans un dossier de l'ordinateur, sans connexion Google : le fichier « Titre [code].mem », le lien avec le code, l'attente puis « en ligne », republier sous un autre nom (même code, un seul fichier), un relais pas à jour signalé avant d'écrire ; puis Publier en un clic (lot 16) : la fenêtre en résumé quand tout est retenu, « Modifier… », l'accord du dossier refusé qui déplie sans rien écrire (`P1-publier-dossier.mjs`) |
 | `lot17/` | le deuxième lot de l'audit : les séances isolées (le lien de « Bonjour ! », le classeur « Séances isolées » créé sans fenêtre puis retrouvé, en queue du niveau avec « Hors chapitre », une séance déplacée vers son chapitre, Publier avec le niveau relié, la version hors ligne : `E1-seances-isolees.mjs` ; `DEV=…` pour le port, `CAPTURES=…` pour les captures) ; l'ancien tableau (`.prof`) à sa date dans le classeur ouvert, l'aperçu de la fenêtre, plusieurs d'un coup dont un doublon, plus récent que tout, le téléphone, le fichier relié réécrit (sections C et F à J de `lot7/E2-ancien-tableau.mjs`, qui reste dans son lot) ; la corbeille du classeur rangée par séance : une séance supprimée depuis la bibliothèque fait un bloc (ses vignettes numérotées, « Remettre la séance », « Supprimer définitivement »), les pages seules disent leur séance (« Page 3 · séance du jour »), la poubelle refusée sur une séance passée, le rechargement et le `.memc`, la version hors ligne, l'iPad et le téléphone, le clavier, la case « Vider tout seul ce qui est ici depuis plus de 30 jours », la séance remise qui redevient la séance du jour (`F1-corbeille-seances.mjs`) ; « Vérifier les classeurs », plus jamais d'image grise : l'image retrouvée à l'ouverture d'un classeur et ses pixels, l'image introuvable et son bouton, la fenêtre du menu ⋯ (la ligne d'état, Réparer, Tout réparer, l'introuvable, l'illisible), la corbeille qui recopie les images avant d'effacer (et le classeur retenu si la recopie échoue), l'autre onglet qui se recharge, le téléphone et le clavier, la version hors ligne, une mesure sur dix classeurs avec des photos (`V1-verifier-classeurs.mjs`) |
 | `ecriture/` | le banc d'écriture (le trait en direct et au replay) |
-| `commun/` | `racines.mjs` (les chemins, calculés depuis l'emplacement des fichiers) et `playwright.mjs` (où trouver Playwright) |
+| `commun/` | `racines.mjs` (les chemins, calculés depuis l'emplacement des fichiers), `playwright.mjs` (où trouver Playwright ; `lancerPersistant()` pour les essais de la clé) et `sonde-contexte-ephemere.mjs` (ce contournement est-il encore nécessaire ?) |
 | `tout.sh` | le lanceur |
 | `sorties/` | ce qu'écrit la batterie (ignoré par git) |
 
@@ -103,6 +103,19 @@ des vérifications se lancent depuis leur dossier (`cd lot3/verif/conformite
 
   La batterie ne lance jamais `playwright install` : le navigateur doit être
   là (dans les sessions en ligne, il l'est).
+
+  Le Chromium 153 livré avec Playwright 1.63 tombe (le navigateur entier,
+  « Target page, context or browser has been closed ») quand une poignée de
+  fichier rangée dans IndexedDB est relue dans un contexte éphémère, celui de
+  `browser.newContext()`. Les essais qui simulent la clé USB (C4, C9, C10,
+  CF1, corrections-*, lot7/E1, `lot4/verif/sauvegardes/t1 t2 t10 t11 t13`,
+  `bandeau`, `bandeau-biblio`, `drive-cle-retour`) lancent donc leur
+  navigateur par `lancerPersistant()` (`commun/playwright.mjs`) : un profil
+  temporaire par contexte, effacé à la fermeture ; les aides `lancer()` des
+  sondes prennent `{ persistant: true }`. L'outil n'est pas en cause : en
+  classe, Chrome travaille dans un profil, où la poignée se relit.
+  `node commun/sonde-contexte-ephemere.mjs` dit en quelques secondes si le
+  contournement est encore nécessaire (sortie 3) ou peut être retiré (0).
 
 ## Quand la lancer
 

@@ -30,7 +30,7 @@
 // H. Firefox, l'iPad (sans showSaveFilePicker, sans Web Locks) : la copie
 //    marche ; la version hors ligne (file://) : « impossible », rien vers Google.
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
-import { chromium } from '../commun/playwright.mjs'
+import { lancerPersistant } from '../commun/playwright.mjs'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import * as Y from 'yjs'
 import { mkdirSync } from 'node:fs'
@@ -350,7 +350,8 @@ async function premiereCopie(p, g) {
 /** Un geste dans la page : un clic sur ce sélecteur (navigator.userActivation) */
 const cliquer = (p, sel) => p.click(sel)
 
-let navigateur = await chromium.launch()
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+let navigateur = await lancerPersistant()
 
 // =====================================================================
 // A. LA COPIE, 2 MIN APRÈS LE CHANGEMENT

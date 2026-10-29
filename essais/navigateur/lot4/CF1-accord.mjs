@@ -24,7 +24,7 @@
 //    sur la page, l'accord est demandé dans le clic, puis la vérité.
 // Sans la correction, A, B et C échouent.
 // Lancer : node CF1-accord.mjs [adresse du serveur de développement]
-import { chromium } from '../commun/playwright.mjs'
+import { lancerPersistant } from '../commun/playwright.mjs'
 import * as Y from 'yjs'
 import { gunzipSync, gzipSync } from 'node:zlib'
 
@@ -166,7 +166,8 @@ async function allerA(p, id) {
 const ctrlO = async (p, nom) => { await p.evaluate(n => { window.__aOuvrir = n }, nom); await p.keyboard.press('Control+o'); await p.waitForSelector('dialog[open]', { timeout: 15000 }); await p.waitForTimeout(200) }
 const faux = t => /s'enregistre automatiquement|s'enregistre maintenant tout seul/.test(t)
 
-const nav = await chromium.launch()
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+const nav = await lancerPersistant()
 async function contexte() {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 } })
   await ctx.addInitScript(CHROME)

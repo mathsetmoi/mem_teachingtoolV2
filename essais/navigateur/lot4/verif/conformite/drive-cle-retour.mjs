@@ -6,7 +6,7 @@
 // Avec la clé à jour, rien n'est montré (ni point, ni bandeau).
 import * as O from './outils.mjs'
 const { ok, MIN } = O
-await O.lancer()
+await O.lancer({ persistant: true })
 const g = new O.FauxGoogle()
 const ctx = await O.contexte(g)
 const p = await O.ouvrir(ctx, '', 'A')

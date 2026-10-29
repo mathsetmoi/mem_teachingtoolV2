@@ -28,7 +28,7 @@
 // Lancer : node lot4/corrections-sauvegardes.mjs [A F D K] (BASE=http://…
 // pour une autre version ; F lit dist/index.html : npm run build d'abord)
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
-import { chromium } from '../commun/playwright.mjs'
+import { chromium, lancerPersistant } from '../commun/playwright.mjs'
 import * as Y from 'yjs'
 import { gunzipSync } from 'node:zlib'
 import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
@@ -164,7 +164,8 @@ function noterQuestions(p) {
   return q
 }
 
-const nav = await chromium.launch()
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+const nav = await lancerPersistant()
 async function contexte(o = {}) {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 }, ...o })
   await ctx.addInitScript(INIT)
