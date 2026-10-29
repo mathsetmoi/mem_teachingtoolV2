@@ -467,8 +467,11 @@ if (seul('B')) {
     ok(f6.boutons.includes('mettre-a-jour'), '   … Ctrl + O : « Mettre à jour le classeur » (le fichier contient tout ce qu\'a la base, et plus)', f6)
     if (f6.boutons.includes('mettre-a-jour')) {
       await cliquerEtRecharger(p, 'mettre-a-jour')
-      const repare = await p.evaluate(() => ({ formes: window.__app.formes.length, incomplet: window.__app.tableau.incomplet, l: window.__surveillance.texte.lignes[0].texte, court: (document.querySelector('.etat-classeur')?.textContent || '') }))
-      ok(!repare.incomplet && repare.formes === formesTout + 1 && repare.l === 'Enregistré dans ce navigateur', `   … le classeur est entier : ${repare.formes} formes, « Enregistré dans ce navigateur »`, repare)
+      // (Lot 18 : quand le classeur a son fichier, l'état le dit d'abord,
+      // « Enregistré dans « complet.memc » : à jour » ; la ligne du
+      // navigateur suit, « Enregistré dans ce navigateur ».)
+      const repare = await p.evaluate(() => ({ formes: window.__app.formes.length, incomplet: window.__app.tableau.incomplet, l: window.__surveillance.texte.lignes[0].texte, lignes: window.__surveillance.texte.lignes.map(x => x.texte), court: (document.querySelector('.etat-classeur')?.textContent || '') }))
+      ok(!repare.incomplet && repare.formes === formesTout + 1 && /^Enregistré/.test(repare.l) && repare.lignes.includes('Enregistré dans ce navigateur'), `   … le classeur est entier : ${repare.formes} formes, « Enregistré », et « Enregistré dans ce navigateur »`, repare)
     } else await p.keyboard.press('Escape')
     await p.evaluate(() => window.__surveillance?.laisserPartir?.())
   } finally {
