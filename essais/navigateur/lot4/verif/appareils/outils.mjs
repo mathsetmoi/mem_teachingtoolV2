@@ -6,7 +6,7 @@ import { mkdirSync } from 'node:fs'
 export const S = `${RACINE_ESSAIS}`
 export const ICI = S + '/lot4/verif/appareils/'
 export const CAPTURES = ICI + 'captures/'
-export const DEV = 'http://localhost:5173/'
+export const DEV = process.env.DEV || 'http://localhost:5173/'
 mkdirSync(CAPTURES, { recursive: true })
 
 export let echecs = 0

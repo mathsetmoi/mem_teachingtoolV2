@@ -3,7 +3,7 @@ import { chromium, lancerPersistant } from '../../commun/playwright.mjs'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import * as Y from 'yjs'
 import { mkdirSync } from 'node:fs'
-export const DEV = 'http://localhost:5173/'
+export const DEV = process.env.DEV || 'http://localhost:5173/'
 export let navigateur = null
 /** `persistant: true` pour une sonde qui relit la poignée de la clé depuis IndexedDB (voir commun/playwright.mjs) */
 export const lancer = async ({ persistant = false, ...o } = {}) => {

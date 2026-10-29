@@ -30,7 +30,7 @@ const lignes = await p.evaluate(() => document.querySelector('.biblio-ouvert')?.
 info('la ligne du classeur ouvert', lignes)
 await p.click('[data-action="nouveau-classeur"]'); await p.waitForSelector('dialog.dialogue-nouveau[open]')
 const caseCle = await p.evaluate(() => { const c = document.querySelector('dialog.dialogue-nouveau input[name=cle]'); return c && { coche: c.checked, texte: c.closest('label').textContent.replace(/[  ]/g, ' ') } })
-ok(caseCle?.coche, 'file:// : « Nouveau classeur » a la case « Enregistrer automatiquement sur la clé » cochée d\'office', caseCle)
+ok(caseCle?.coche, 'file:// : « Nouveau classeur » a la case « Enregistrer automatiquement dans un fichier » cochée d\'office', caseCle)
 await p.keyboard.press('Control+a'); await p.keyboard.type('Fractions')
 await Promise.all([p.waitForNavigation({ timeout: 20000 }).catch(() => null), p.click('dialog.dialogue-nouveau [data-a="creer"]')])
 await pret(); await dort(800)

@@ -33,7 +33,7 @@ const S = `${RACINE_ESSAIS}`
 const R = `${RACINE_DEPOT}`
 const ICI = S + '/lot4/C3/'
 const F = ICI + 'fichiers/'
-const DEV = 'http://localhost:5173/'
+const DEV = process.env.DEV || 'http://localhost:5173/'
 mkdirSync(F, { recursive: true })
 
 let echecs = 0
@@ -289,7 +289,7 @@ console.log('=== B. le bouton et le menu ⋯ ===')
   ok(b.court === 'Seulement dans ce navigateur', 'Un navigateur neuf, rien d\'autre : « Seulement dans ce navigateur »', b.court)
   // (Adapté au lot 4, morceau C10 : en ligne, la copie sur le Drive est voulue par défaut ; rien à
   // copier encore, pas connecté : « Sur le Drive : en attente de la connexion Google », sans bouton)
-  ok(b.cache && b.description === 'Enregistré dans ce navigateur. Pas d\'enregistrement automatique sur une clé. Sur le Drive : en attente de la connexion Google. Jamais enregistré dans un fichier.',
+  ok(b.cache && b.description === 'Seulement dans ce navigateur. Sur le Drive : en attente de la connexion Google. Jamais enregistré dans un fichier.',
     'aria-describedby : un texte caché qui donne toutes les lignes', b.description)
   ok(b.path === 'M4 7h12v14H4zM7 7v14M10 11h3M8 7V3h12v14h-4M11 3v4' && parseFloat(b.trait) === 1.8 && b.fond === 'none', 'L\'icône « classeurs » : grille 24, traits de 1,8, sans remplissage', b)
   ok(Number(b.poids) >= 700 && b.taille === '12px', 'Le nom en gras, l\'état en 12 px gris', b)
@@ -297,10 +297,12 @@ console.log('=== B. le bouton et le menu ⋯ ===')
   await ouvrirMenuFichier(p)
   let m = await p.evaluate(BLOC)
   ok(m.premier === 'bloc-classeur' && m.nom === 'Premier classeur', 'Le menu ⋯ commence par le bloc du classeur (son nom)', m)
-  ok(JSON.stringify(m.lignes.map(l => l.quoi)) === '["navigateur","cle","drive","fichier"]'
-    && m.lignes[0].texte === 'Enregistré dans ce navigateur' && m.lignes[1].texte === 'Pas d\'enregistrement automatique sur une clé'
-    && m.lignes[2].texte === 'Sur le Drive : en attente de la connexion Google' && m.lignes[3].texte === 'Jamais enregistré dans un fichier' && m.lignes.every(l => l.bouton === null),
-  '… ses lignes, dans l\'ordre (navigateur, clé, Drive, fichier), sans bouton quand rien ne presse', m.lignes)
+  // (Adapté au lot 18 : tant que le classeur n'a pas son fichier, aucune ligne « clé » ; la ligne du
+  // navigateur dit « Seulement dans ce navigateur » quand rien d'autre ne protège le classeur)
+  ok(JSON.stringify(m.lignes.map(l => l.quoi)) === '["navigateur","drive","fichier"]'
+    && m.lignes[0].texte === 'Seulement dans ce navigateur'
+    && m.lignes[1].texte === 'Sur le Drive : en attente de la connexion Google' && m.lignes[2].texte === 'Jamais enregistré dans un fichier' && m.lignes.every(l => l.bouton === null),
+  '… ses lignes, dans l\'ordre (navigateur, Drive, fichier), sans bouton quand rien ne presse', m.lignes)
   // Lot 4 (C4) : Chromium a showSaveFilePicker, l'entrée « Enregistrer
   // automatiquement dans un fichier… » (activer-cle) suit « Enregistrer le classeur… »
   // (Adapté au lot 4, morceau C5 : « Bibliothèque des classeurs… » en tête)
@@ -420,7 +422,9 @@ const REFUSER = () => {
   await p.waitForTimeout(400)
   e = await p.evaluate(ETAT)
   const t2 = await p.evaluate(() => window.__toasts)
-  ok(!e.trou && t2.includes('Ce classeur est de nouveau enregistré dans ce navigateur.') && e.court !== 'Pas enregistré !' && !e.bandeau && e.lignes[0].texte === 'Enregistré dans ce navigateur',
+  // (Adapté au lot 18 : rien d'autre ne protège le classeur ici, ni fichier automatique ni copie du
+  // Drive : la ligne du navigateur, redevenue verte, dit « Seulement dans ce navigateur »)
+  ok(!e.trou && t2.includes('Ce classeur est de nouveau enregistré dans ce navigateur.') && e.court !== 'Pas enregistré !' && !e.bandeau && e.lignes[0].texte === 'Seulement dans ce navigateur' && e.lignes[0].niveau === 'ok',
     'Au calme : la base est réparée, « Ce classeur est de nouveau enregistré dans ce navigateur. », le bandeau s\'en va', { e, t2: t2.slice(-3) })
   const ids2 = await p.evaluate(() => [...window.__app.tableau.formesDe(window.__app.page).keys()])
   // Au rechargement : tout est là
@@ -591,16 +595,17 @@ console.log('=== F. le rappel (Chrome, sans clé) ===')
   // côté, « Pas de copie pour ce classeur » : rien d'autre ne protège le classeur, comme avant)
   await p.evaluate(async () => { await window.__drive?.choisir('aucune'); window.__toasts = [] })
   let e = await p.evaluate(ETAT)
-  ok(e.lignes[1].texte === 'Pas d\'enregistrement automatique sur une clé', 'Chrome sans clé : « Pas d\'enregistrement automatique sur une clé »', e.lignes)
+  // (Adapté au lot 18 : plus de ligne « clé » tant que le classeur n'a pas son fichier)
+  ok(e.lignes[0].texte === 'Seulement dans ce navigateur' && !e.lignes.some(l => l.quoi === 'cle'), 'Chrome sans fichier : « Seulement dans ce navigateur », aucune ligne du fichier', e.lignes)
   await ecrire(p, 300, 200)
   await p.clock.fastForward(MIN(21))
   await ecrire(p, 300, 260)
   await p.clock.fastForward('02:31')
   e = await p.evaluate(ETAT)
   const actions = await p.evaluate(() => window.__surveillance.bandeau?.actions)
-  // Lot 4 (C4) : le bouton « Enregistrer automatiquement sur la clé… » est venu
-  ok(e.bandeau && /depuis 21 min de travail\.$/.test(e.bandeau.texte) && JSON.stringify(e.bandeau.boutons) === '["Enregistrer le classeur","Enregistrer automatiquement sur la clé…"]' && JSON.stringify(actions) === '["enregistrer","activer-cle"]',
-    'Le rappel aussi sous Chrome sans enregistrement automatique, avec « Enregistrer automatiquement sur la clé… » (C4)', { b: e.bandeau, actions })
+  // Lot 4 (C4) : le bouton « Enregistrer automatiquement dans un fichier… » est venu (son libellé : lot 18)
+  ok(e.bandeau && /depuis 21 min de travail\.$/.test(e.bandeau.texte) && JSON.stringify(e.bandeau.boutons) === '["Enregistrer le classeur","Enregistrer automatiquement dans un fichier…"]' && JSON.stringify(actions) === '["enregistrer","activer-cle"]',
+    'Le rappel aussi sous Chrome sans enregistrement automatique, avec « Enregistrer automatiquement dans un fichier… » (C4)', { b: e.bandeau, actions })
   // 1024 × 768 : le bouton étroit ; le bandeau sous lui
   const rc = await p.evaluate(() => { const r = document.querySelector('.barre-classeur').getBoundingClientRect(); return { l: Math.round(r.left), b: Math.round(r.bottom), forme: window.__app.ui.formeClasseur } })
   ok(rc.forme === 'etroit' && e.bandeau.r.l === rc.l && e.bandeau.r.t >= rc.b && e.point, '1024 × 768 : l\'icône et le point, le bandeau dessous', { rc, r: e.bandeau.r })
@@ -650,7 +655,7 @@ if (existsSync(R + '/dist/index.html')) {
   await p.goto('file://' + R + '/dist/index.html')
   await p.waitForFunction(() => document.querySelector('.etat-classeur')?.textContent, null, { timeout: 30000 }); await p.waitForTimeout(800)
   const h = await p.evaluate(() => ({ court: document.querySelector('.etat-classeur').textContent, nom: document.querySelector('.nom-classeur').textContent, description: document.getElementById('etat-classeur-description').textContent, picker: typeof window.showSaveFilePicker }))
-  ok(h.court === 'Seulement dans ce navigateur' && h.nom === 'Premier classeur' && /^Enregistré dans ce navigateur\. /.test(h.description), `file:// : le bouton et l'état (showSaveFilePicker : ${h.picker})`, h)
+  ok(h.court === 'Seulement dans ce navigateur' && h.nom === 'Premier classeur' && /^Seulement dans ce navigateur\. /.test(h.description), `file:// : le bouton et l'état (showSaveFilePicker : ${h.picker})`, h)
   await ctx.close()
 } else ok(false, 'dist/index.html manque (npm run build)')
 
