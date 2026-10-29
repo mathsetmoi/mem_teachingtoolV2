@@ -566,7 +566,7 @@ if (seul('G')) {
   ok(g.ecritures.length >= 1 && g.ecritures[0].nom === 'Fractions.memc' && g.parti && g.ecritures[0].t <= g.parti, `La case cochée : le fichier « Fractions.memc » est écrit AVANT de partir (${g.parti - (g.ecritures[0]?.t ?? 0)} ms avant)`, g)
   ok(lu && lu.entete.id === g.id && lu.entete.nom === 'Fractions' && lu.pages === 1 && lu.film.length === 1 && lu.film[0].naissance, '   … le fichier : ce classeur (son id, son nom), une page, sa naissance', lu?.entete)
   ok(g.fiche && g.fiche.nom === 'Fractions.memc' && g.fiche.t && g.fiche.date === lu?.entete.date && g.fiche.vecteur && g.poignee === 'Fractions.memc', '   … la fiche note l\'écriture (date de l\'en-tête, vecteur) ; la poignée est gardée', g)
-  ok(g.cle?.etat === 'ok' && /^Clé : /.test(g.court), `   … à l'arrivée, la clé est active : « ${g.court} »`, g.cle)
+  ok(g.cle?.etat === 'ok' && /^Enregistré/.test(g.court), `   … à l'arrivée, le fichier s'écrit tout seul (lot 18 : « Enregistré … ») : « ${g.court} »`, g.cle)
   const t = await toasts(p)
   ok(t.some(x => x.includes('Classeur « Fractions » créé. Il s\'enregistre automatiquement dans « Fractions.memc ».')), '   … « Classeur « Fractions » créé. Il s\'enregistre automatiquement dans « Fractions.memc ». »', t)
   ok(g.choix.length === 1 && g.choix[0].actif && g.choix[0].nom === 'Fractions.memc' && g.choix[0].id === 'mem-classeurs', '   … le choix du fichier s\'est ouvert dans le clic (le nom du classeur, le même dossier que la clé)', g.choix)
@@ -598,8 +598,8 @@ if (seul('G')) {
   await allerPar(p, () => p.click('dialog [data-a="creer"]'))
   await p.evaluate(() => window.__cle?.pret); await p.waitForTimeout(500)
   const b = await p.evaluate(() => { const x = document.querySelector('.bandeau-sauvegarde'); return { cache: x.hidden, raison: x.dataset.raison, texte: x.querySelector('.texte-bandeau')?.textContent, boutons: [...x.querySelectorAll('.bouton-bandeau')].map(y => y.textContent), etat: window.__cle?.etat, point: !document.querySelector('.bouton-classeur .point-etat').hidden } })
-  ok(!b.cache && b.raison === 'cle-a-choisir' && b.texte === 'Choisissez de nouveau le fichier de la clé : ce navigateur ne l\'a pas gardé.' && JSON.stringify(b.boutons) === '["Enregistrer automatiquement sur la clé…"]' && b.point,
-    'DataCloneError : à l\'arrivée, le bandeau « Choisissez de nouveau le fichier de la clé… » [Enregistrer automatiquement sur la clé…], le point ambre', b)
+  ok(!b.cache && b.raison === 'cle-a-choisir' && b.texte === 'Choisissez de nouveau le fichier de ce classeur : ce navigateur ne l\'a pas gardé.' && JSON.stringify(b.boutons) === '["Enregistrer automatiquement dans un fichier…"]' && b.point,
+    'DataCloneError : à l\'arrivée, le bandeau « Choisissez de nouveau le fichier de ce classeur… » [Enregistrer automatiquement dans un fichier…] (textes du lot 18), le point ambre', b)
   await p.screenshot({ path: CAPTURES + 'G-a-choisir.png' })
   // Le bouton : le choix, et la clé reprend (le même fichier : il est à ce classeur)
   await p.click('.bandeau-sauvegarde .bouton-bandeau'); await p.waitForTimeout(1200)

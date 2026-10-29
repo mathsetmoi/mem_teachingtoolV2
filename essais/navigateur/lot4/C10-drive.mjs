@@ -557,8 +557,9 @@ if (seul('B')) {
   await ecrire(q, 300, 250)
   await q.clock.fastForward(5 * MIN); await q.waitForTimeout(500)
   e = await etat(q)
-  ok(e.drive.etat === 'connexion' && e.drive.enAttente && e.ligne.niveau === 'info' && !e.point && !e.bandeau && /^Clé : /.test(e.court) && e.niveau !== 'attention',
-    `B5) la clé à jour, le jeton expiré en plein cours : ni bandeau, ni point, une ligne d'information ; « ${e.court} »`, e)
+  // Lot 18 : la ligne du Drive n'est plus dans le bloc quand le fichier protège et qu'elle ne demande pas de clic
+  ok(e.drive.etat === 'connexion' && e.drive.enAttente && e.ligne === null && !e.point && !e.bandeau && /^Enregistré/.test(e.court) && e.niveau !== 'attention',
+    `B5) le fichier à jour, le jeton expiré en plein cours : ni bandeau, ni point, ni ligne du Drive ; « ${e.court} »`, e)
   ok(g2.gis.length === 1, '   … aucune fenêtre Google', g2.gis)
   await ctx2.close()
 }
@@ -596,7 +597,8 @@ if (seul('C')) {
     && (await etat(p)).niveau === 'attention' && !/il y a|à l'instant/.test(e.ligne.texte),
     `C2) un réseau qui filtre Google : « ${e.ligne?.texte} » (jamais d'heure après un échec), pas de bandeau (rien à cliquer)`, e)
   const nav = await p.evaluate(() => window.__surveillance.texte.lignes[0].texte)
-  ok(nav === 'Enregistré dans ce navigateur' && avant.length === 2, '   … rien n\'est perdu : « Enregistré dans ce navigateur »', { nav, avant })
+  // Lot 18 : tant que rien d'autre ne protège le classeur, la ligne dit « Seulement dans ce navigateur »
+  ok(nav === 'Seulement dans ce navigateur' && avant.length === 2, '   … rien n\'est perdu, mais rien d\'autre ne protège : « Seulement dans ce navigateur »', { nav, avant })
   g.panne = null
   await p.clock.fastForward(MIN + 5000)
   await p.waitForFunction(() => window.__drive.etat.etat === 'ok', null, { timeout: 15000 }).catch(() => {})

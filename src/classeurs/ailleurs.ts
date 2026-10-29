@@ -417,7 +417,7 @@ export class Ailleurs {
         if (y === 'ordinateur') {
           garder = !!this.h.activerCle
           explication = garder
-            ? (garderEl.checked ? 'Vous choisissez le fichier (sur la clé, dans un dossier) : il se remplace peu après chaque changement.' : 'Un fichier .memc, enregistré une fois.')
+            ? (garderEl.checked ? 'Vous choisissez le fichier (une clé USB, un dossier) : il se remplace peu après chaque changement.' : 'Un fichier .memc, enregistré une fois.')
             : 'Un fichier .memc, enregistré une fois (ce navigateur ne sait pas le tenir à jour tout seul).'
         } else {
           explication = classe
@@ -429,7 +429,7 @@ export class Ailleurs {
         if (y === 'ordinateur') {
           garder = choisitUnDossier()
           explication = garder
-            ? (garderEl.checked ? `Choisissez un dossier (sur la clé, dans G:\\Mon Drive…) : chaque classeur de « ${classe.nom} » y aura son fichier, remplacé peu après chaque changement.${relie ? ` Il remplacera le dossier « ${relie.nom} ».` : ''}` : `Un seul fichier .memb avec toute la classe, enregistré une fois.`)
+            ? (garderEl.checked ? `Choisissez un dossier (une clé USB, G:\\Mon Drive…) : chaque classeur de « ${classe.nom} » y aura son fichier, remplacé peu après chaque changement.${relie ? ` Il remplacera le dossier « ${relie.nom} ».` : ''}` : `Un seul fichier .memb avec toute la classe, enregistré une fois.`)
             : 'Un seul fichier .memb avec tout le niveau, enregistré une fois (ce navigateur ne sait pas écrire dans un dossier).'
         } else {
           garder = true

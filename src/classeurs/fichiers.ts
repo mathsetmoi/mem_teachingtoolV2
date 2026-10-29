@@ -40,7 +40,7 @@ import type { Registre } from './registre'
 import type { Bibliotheque } from './bibliotheque'
 import { CLE_ARRIVEE } from './bibliotheque'
 import type { CleALArrivee, EnregistrementCle, PoigneeFichier } from './cle'
-import { ID_CHOIX, accordPour, memeFichier, permission, raisonCle } from './cle'
+import { ID_CHOIX, accordPour, memeFichier, permission, raisonCle, repris } from './cle'
 import type { FichierLu } from './ecrivain'
 import { ErreurEcrivain, ecrivain, fabriquerFichier } from './ecrivain'
 import { ABIME_ENTREE } from './ecrivain-taches'
@@ -114,8 +114,9 @@ const ANCIEN = /\.prof$/i
 export const AIDE_OUVRIR = 'Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace celui-ci. Reprend aussi un ancien tableau (.prof).'
 export const AIDE_ENREGISTRER_TOUT = 'Un seul fichier .memb avec tous les classeurs (sans la corbeille) et les dossiers : pour changer d\'ordinateur, ou garder une copie de tout.'
 const PAS_DE_PLACE = 'il n\'y a plus de place dans ce navigateur'
-/** Le fichier de la clé, rouvert (après un conflit) : la clé reprend sur lui */
-const REPREND = 'L\'enregistrement sur la clé reprend.'
+/** Le fichier de la clé, rouvert (après un conflit) : la clé reprend sur lui
+ *  (« L'enregistrement dans « X.memc » reprend. ») */
+const reprend = (nom: string) => repris({ nom })
 /** La clé activée pour un classeur qui n'est pas ouvert ici : elle écrira
  *  quand il le sera (le navigateur demandera peut-être alors son accord) */
 const activeePourLui = (fichier: string) => `Son enregistrement automatique dans « ${fichier} » est activé.`
@@ -839,7 +840,7 @@ export class Fichiers {
     let g: { texte: string; cle: CleALArrivee | null } = { texte: '', cle: null }
     if (F.cle && await this.estLaCle(F, poignee)) {
       await this.registre.modifierClasseur(F.id, x => { if (x.cle) x.cle = { ...x.cle, date: lu.entete.date, vecteur: lu.vecteur } }).catch(() => undefined)
-      g = { texte: '', cle: { nom: F.cle.nom, ok: REPREND } }
+      g = { texte: '', cle: { nom: F.cle.nom, ok: reprend(F.cle.nom) } }
     } else if (cle) g = await this.garderCommeCle(F, cle.poignee, cle.accord, lu)
     const k = this.hote.cle
     if (this.estIci(F)) {
@@ -947,7 +948,7 @@ export class Fichiers {
       if (laCle && x.cle) x.cle = { ...x.cle, date: lu.entete.date, vecteur: lu.vecteur }
     }).catch(() => undefined)
     const g: { texte: string; cle: CleALArrivee | null } = o.cle && !laCle ? await this.garderCommeCle(F, o.cle.poignee, o.cle.accord, lu)
-      : laCle && F.cle ? { texte: '', cle: { nom: F.cle.nom, ok: REPREND } } : { texte: '', cle: null }
+      : laCle && F.cle ? { texte: '', cle: { nom: F.cle.nom, ok: reprend(F.cle.nom) } } : { texte: '', cle: null }
     // Le classeur est maintenant celui du fichier, ni plus ni moins
     this.noterDepuis(F, date)
     const texte = o.texte ?? `« ${F.nom} » mis à jour depuis le fichier (${pagesLisibles(lu.pages)}).${g.texte}`
@@ -959,7 +960,7 @@ export class Fichiers {
     if (!o.silencieux) {
       void this.biblio.charger()
       // Il n'est pas ouvert : sa clé est activée, elle écrira quand il le sera
-      const suite = g.cle ? ` ${laCle ? 'Son enregistrement sur la clé reprendra à son ouverture.' : activeePourLui(g.cle.nom)}` : ''
+      const suite = g.cle ? ` ${laCle ? `Son enregistrement dans « ${g.cle.nom} » reprendra à son ouverture.` : activeePourLui(g.cle.nom)}` : ''
       this.hote.message(texte + suite, { libelle: 'Ouvrir', faire: () => { void this.registre.classeur(F.id).then(f => { if (f) void this.biblio.ouvrirClasseur(f) }) } })
     }
     return 'fait'
@@ -984,7 +985,7 @@ export class Fichiers {
     const laCle = await this.estLaCle(F, poignee)
     const pages = ici ? app!.pages.length : F.pages
     const textes = [`${texteDuFichier(nomFichier, lu.pages, lu.entete.date)} Il remplace le classeur « ${F.nom} » de ce navigateur${pages ? ` (${pagesLisibles(pages)})` : ''} et tout son historique. Pour garder celui-ci, enregistrez-le d'abord.`]
-    if (F.cle && !laCle) textes.push(`Le fichier « ${F.cle.nom} » de la clé sera remplacé lui aussi.`)
+    if (F.cle && !laCle) textes.push(`Son fichier « ${F.cle.nom} » sera remplacé lui aussi.`)
     if (F.drive) textes.push('Sa copie sur le Drive aussi (le Drive garde les versions précédentes).')
     const avant: Bouton = {
       cle: 'enregistrer', libelle: 'Enregistrer d\'abord', classe: 'secondaire',

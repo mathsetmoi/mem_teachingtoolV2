@@ -3662,7 +3662,7 @@ export class Bibliotheque {
       // du fichier ne survit pas au changement de page : l'arrivée dira ce
       // qu'il en est, et le redemandera en un clic s'il le faut)
       if (h) {
-        creer.textContent = 'Enregistrement sur la clé…'
+        creer.textContent = 'Enregistrement du fichier…'
         const r = await ecrireLeNeuf(this.registre, h, fiche)
         if (r.date !== null) ecrire(cleDernierEnregistrement(fiche), String(r.date))
         if (r.message) arrivee += ' ' + r.message
