@@ -153,6 +153,10 @@ describe('la carte d\'un classeur', () => {
     expect(sp(texteLecteur(f, T, { etiquettes: ['5e B'], chemin: '5e B › Géométrie', ouvertIci: true })))
       .toBe('Symétrie centrale, 12 pages, modifié aujourd\'hui à 13 h 55, niveau 5e B, dans 5e B › Géométrie, ouvert dans cet onglet')
     expect(sp(texteLecteur(f, T, { etiquettes: ['5e B', 'Soutien'] }))).toBe('Symétrie centrale, 12 pages, modifié aujourd\'hui à 13 h 55, niveaux 5e B, Soutien')
+    // (lot 17) Le classeur « Séances isolées » d'un niveau : « hors chapitre » juste après son nom
+    const isolees = fiche('x', { nom: 'Séances isolées', modifie: T - 10 * MIN, pages: 5 })
+    expect(sp(texteLecteur(isolees, T, { horsChapitre: true, etiquettes: ['5ème'] }))).toBe('Séances isolées, hors chapitre, 5 pages, modifié aujourd\'hui à 13 h 55, niveau 5ème')
+    expect(sp(texteLecteur(isolees, T))).toBe('Séances isolées, 5 pages, modifié aujourd\'hui à 13 h 55')
   })
 
   it('les icônes de la clé et du Drive : la date de la dernière écriture réussie', () => {

@@ -1,9 +1,10 @@
 // =============================================================
 // LES SÉANCES À L'ÉCRAN (lot 6)
 // - la fenêtre d'accueil (« Bonjour ! ») : une nouvelle séance dans le
-//   niveau du classeur, changer de chapitre, continuer la séance d'avant,
-//   un autre niveau, un nouveau classeur vierge (voir main.ts, qui la remplit avec
-//   la bibliothèque) ;
+//   niveau du classeur, changer de chapitre, une séance isolée (hors
+//   chapitre, dans le classeur « Séances isolées » du niveau, lot 17),
+//   continuer la séance d'avant, un autre niveau, un nouveau classeur vierge
+//   (voir main.ts, qui la remplit avec la bibliothèque) ;
 // - la fenêtre « Cette page est dans la séance de lundi… », au premier
 //   geste d'écriture sur une page d'une séance passée ;
 // - trois bandeaux posés sur le tableau, sous la barre du haut : la lecture
@@ -37,12 +38,21 @@ const bouton = (classe: string, texte: string, faire: () => void): HTMLButtonEle
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 
 // ---------- La fenêtre d'accueil ----------
-export interface ChapitreAccueil { id: string; nom: string; seances: number | null; ici: boolean }
+/** Une ligne de « Chapitres de 5ème » ; isolees : le classeur « Séances
+ *  isolées » du niveau (lot 17), en dernier, marqué « hors chapitre » */
+export interface ChapitreAccueil { id: string; nom: string; seances: number | null; ici: boolean; isolees?: boolean }
 export interface HoteAccueil {
   /** Le niveau (le nom de son dossier de niveau), sinon null */
   classe: string | null
   /** Le chapitre : le nom du classeur */
   chapitre: string
+  /** Le classeur ouvert est lui-même « Séances isolées » (lot 17) : le gros
+   *  bouton dit « Nouvelle séance isolée en 5ème », le lien n'est pas là */
+  isolees?: boolean
+  /** « Séance isolée » (lot 17) : une séance hors chapitre, dans le classeur
+   *  « Séances isolées » du niveau ; texte : le petit texte sous le lien
+   *  (null : pas de bibliothèque) */
+  seanceIsolee?: { texte: string; faire(automatismes: boolean): void } | null
   /** La séance qu'on peut continuer (la dernière), dite dans une phrase */
   continuer: string | null
   /** Les autres dossiers de niveau */
@@ -74,6 +84,14 @@ export function deNiveau(nom: string): string {
   return ressembleAUneClasse(n) ? `de ${n}` : `de « ${n} »`
 }
 
+/** Le gros bouton de « Bonjour ! » : « Nouvelle séance en 5ème » (« Nouvelle
+ *  séance » sans niveau) ; quand le classeur ouvert est « Séances isolées »
+ *  (lot 17) : « Nouvelle séance isolée en 5ème » */
+export function texteNouvelleSeance(classe: string | null, isolees = false): string {
+  const debut = isolees ? 'Nouvelle séance isolée' : 'Nouvelle séance'
+  return classe ? `${debut} ${enNiveau(classe)}` : debut
+}
+
 /** La fenêtre « Bonjour ! » : par-dessus la dernière page, grisée. Le gros
  *  bouton (une nouvelle séance) a le focus : Entrée suffit. Échap ferme, et
  *  laisse la dernière page telle quelle (on continue la séance). Sous le
@@ -95,7 +113,7 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
   const caseAuto = el('label', 'accueil-case-automatismes')
   caseAuto.append(auto, el('span', '', 'Commencer par des automatismes'))
   const avecAuto = () => auto.checked
-  const gros = bouton('principal accueil-nouvelle', h.classe ? `Nouvelle séance ${enNiveau(h.classe)}` : 'Nouvelle séance', faire(() => h.nouvelleSeance(avecAuto())))
+  const gros = bouton('principal accueil-nouvelle', texteNouvelleSeance(h.classe, !!h.isolees), faire(() => h.nouvelleSeance(avecAuto())))
   const chapitre = el('p', 'accueil-chapitre')
   chapitre.append(el('span', 'accueil-nom-chapitre', h.chapitre))
   if (h.chapitres) {
@@ -103,6 +121,16 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
     chapitre.append(bouton('lien accueil-changer', 'changer de chapitre', () => void montrerChapitres()))
   }
   principale.append(titre, gros, caseAuto, chapitre)
+  // « Séance isolée » (lot 17) : une séance hors chapitre, dans le classeur
+  // « Séances isolées » du niveau (créé au besoin, sans fenêtre). Pas quand
+  // le classeur ouvert est lui-même « Séances isolées » : le gros bouton
+  // fait la même chose.
+  const isolee = h.seanceIsolee
+  if (isolee && !h.isolees) {
+    const p = el('p', 'accueil-isolee')
+    p.append(bouton('lien accueil-seance-isolee', 'Séance isolée', faire(() => isolee.faire(avecAuto()))), el('small', '', isolee.texte))
+    principale.append(p)
+  }
   if (h.continuer) principale.append(bouton('lien accueil-continuer', `Continuer la séance ${h.continuer}`, faire(() => h.continuerSeance(avecAuto()))))
   if (h.classes.length) {
     const p = el('p', 'accueil-classes', 'Un autre niveau : ')
@@ -126,8 +154,11 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
     const neuf = el('li'); neuf.append(bouton('secondaire accueil-nouveau-chapitre', '+ Nouveau chapitre…', faire(() => h.nouveauChapitre()))); ul.append(neuf)
     for (const c of l) {
       const li = el('li')
-      const b = bouton('accueil-un-chapitre' + (c.ici ? ' ici' : ''), '', faire(() => h.ouvrirChapitre(c.id, avecAuto())))
+      const b = bouton('accueil-un-chapitre' + (c.ici ? ' ici' : '') + (c.isolees ? ' isolees' : ''), '', faire(() => h.ouvrirChapitre(c.id, avecAuto())))
       b.append(el('span', 'nom', c.nom), el('span', 'nombre', c.seances === null ? '' : ` · ${pluriel(c.seances, 'séance')}`))
+      // Le classeur « Séances isolées » du niveau (lot 17), en dernier : un
+      // petit « hors chapitre », que le lecteur d'écran lit aussi
+      if (c.isolees) b.append(el('span', 'hors-chapitre', ' · hors chapitre'))
       if (c.ici) b.setAttribute('aria-current', 'true')
       li.append(b); ul.append(li)
     }
