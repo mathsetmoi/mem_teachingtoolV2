@@ -2142,8 +2142,9 @@ export class Bibliotheque {
   }
 
   /** « Supprimer la séance » (Suppr) : ses pages vont dans la corbeille du
-   *  classeur ; « Annuler » les rend. La seule séance d'un classeur : c'est
-   *  le classeur qui va dans la corbeille de la bibliothèque. */
+   *  classeur (où elle fait un bloc, « Remettre la séance », lot 17) ;
+   *  « Annuler » les rend. La seule séance d'un classeur : c'est le classeur
+   *  qui va dans la corbeille de la bibliothèque. */
   private async supprimerSeanceDe(fid: string, sid: string) {
     const f = this.fiches.get(fid)
     if (!f) return
@@ -2157,7 +2158,7 @@ export class Bibliotheque {
       return
     }
     const pages = r.pages
-    this.hote.message(`${texte} est supprimée : ses pages sont dans la corbeille du classeur.`, {
+    this.hote.message(`${texte} est supprimée : ses pages sont dans la corbeille du classeur (Maj + P, Corbeille).`, {
       libelle: ANNULER, cle: CLE_MESSAGE + 'seance-' + sid,
       faire: () => void this.changerSeances(fid, t => t.rendrePages(pages), n => n > 0).then(n => { if (n) this.hote.message(`${texte} est de retour.`) }),
     })

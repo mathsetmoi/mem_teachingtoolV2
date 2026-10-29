@@ -107,6 +107,79 @@ describe('supprimer une séance', () => {
     expect(supprimerSeance(t, 'rien')).toEqual({ refus: 'absente' })
     expect(t.ordre.toArray()).toEqual(a.pages)
   })
+
+  // Lot 17 : « Remettre la séance » depuis la corbeille du classeur, c'est
+  // rendrePages des pages du bloc, triées par leur place d'alors (voir
+  // pages/corbeille.ts, pagesDuBloc)
+  it('« Remettre la séance » (rendrePages des pages triées par index) rend l\'ordre, le nom, le rang ; la séance du milieu ne redevient pas la séance du jour', async () => {
+    const t = new Tableau(null)
+    const a = await seance(t, horloge, 'A')
+    const b = await seance(t, horloge + JOUR, 'B')
+    const c = await seance(t, horloge + JOUR, 'C')
+    t.renommerSeance(b.id, 'Activité d\'intro')
+    t.rangerLesSeances([b.id, c.id, a.id])
+    const rangs = resumeDesSeances(t.seancesDuClasseur()).map(s => s.rang)
+    const avant = publie(t, b.id)
+    expect(supprimerSeance(t, b.id)).toEqual({ pages: b.pages })
+    expect(t.derniereSeance()!.id).toBe(c.id)
+    // Dans la corbeille : les pages de B, avec leur place d'alors ; la fiche est restée
+    const jetees = t.pagesDeLaCorbeille().filter(p => t.seanceNoteeDe(p.id) === b.id)
+    expect(jetees.map(p => p.index).sort()).toEqual([2, 3])
+    expect(t.seances.get(b.id)?.nom).toBe('Activité d\'intro')
+    // Remettre la séance : par place d'alors (le bloc les trie ainsi)
+    const ids = [...jetees].sort((x, y) => x.index! - y.index!).map(p => p.id)
+    expect(t.rendrePages(ids)).toBe(2)
+    expect(t.ordre.toArray()).toEqual([...a.pages, ...b.pages, ...c.pages])
+    const s = t.seancesDuClasseur().find(x => x.id === b.id)!
+    expect(s.nom).toBe('Activité d\'intro')
+    expect(s.pages).toEqual(b.pages)
+    expect(resumeDesSeances(t.seancesDuClasseur()).map(x => x.rang)).toEqual(rangs)
+    expect(t.derniereSeance()!.id).toBe(c.id)                   // elle ne redevient pas la séance du jour
+    expect(publie(t, b.id)).toEqual(avant)                      // son film est intact
+    expect(t.pagesDeLaCorbeille()).toEqual([])
+  })
+
+  it('la séance la plus récente supprimée puis remise redevient la séance du jour', async () => {
+    const t = new Tableau(null)
+    const a = await seance(t, horloge, 'A')
+    const b = await seance(t, horloge + JOUR, 'B')
+    expect(supprimerSeance(t, b.id)).toEqual({ pages: b.pages })
+    expect(t.derniereSeance()!.id).toBe(a.id)
+    expect(t.rendrePages(b.pages)).toBe(2)
+    expect(t.derniereSeance()!.id).toBe(b.id)
+    expect(t.ordre.toArray()).toEqual([...a.pages, ...b.pages])
+  })
+
+  it('avec ses voisines supprimées définitivement entre-temps, la séance revient quand même, dans l\'ordre', async () => {
+    const t = new Tableau(null)
+    const a = await seance(t, horloge, 'A')
+    const b = await seance(t, horloge + JOUR, 'B')
+    const c = await seance(t, horloge + 2 * JOUR, 'C')
+    expect(supprimerSeance(t, b.id)).toEqual({ pages: b.pages })
+    // La dernière page de A (la voisine d'avant de B) part à son tour, et pour de bon
+    t.pageVue = a.pages[0]
+    t.jeterPages([a.pages[1]])
+    expect(t.supprimerDefinitivement([a.pages[1]])).toBe(1)
+    expect(t.rendrePages(b.pages)).toBe(2)
+    // Après la voisine qui reste (a1 : la chaîne des voisines saute la définitive), avant C
+    expect(t.ordre.toArray()).toEqual([a.pages[0], ...b.pages, ...c.pages])
+    expect(t.pagesDeLaSeance(b.id)).toEqual(b.pages)
+  })
+
+  it('remise partielle (une page du bloc à la main) puis le reste : l\'ordre d\'origine', async () => {
+    const t = new Tableau(null)
+    const a = await seance(t, horloge, 'A')
+    const b = await seance(t, horloge + JOUR, 'B')
+    const c = await seance(t, horloge + 2 * JOUR, 'C')
+    expect(supprimerSeance(t, b.id)).toEqual({ pages: b.pages })
+    // La seconde page d'abord : elle suit sa voisine (b1, encore jetée) jusqu'à a2
+    expect(t.remettrePage(b.pages[1])).toBe(2)
+    expect(t.ordre.toArray()).toEqual([...a.pages, b.pages[1], ...c.pages])
+    // Le reste (le bloc n'a plus que b1 : une page seule à présent)
+    expect(t.rendrePages([b.pages[0]])).toBe(1)
+    expect(t.ordre.toArray()).toEqual([...a.pages, ...b.pages, ...c.pages])
+    expect(t.pagesDeLaSeance(b.id)).toEqual(b.pages)
+  })
 })
 
 describe('déplacer une séance vers un autre classeur', () => {

@@ -5,13 +5,17 @@
 // (après sa voisine d'avant, en suivant la chaîne des voisines supprimées
 // avec elle) ; supprimée définitivement, elle ne revient plus par aucun
 // chemin, mais son histoire reste lisible. Les noms des pages vivent dans une
-// seconde carte, à côté.
+// seconde carte, à côté. Depuis le lot 17, la corbeille se range par séance
+// (grouperLaCorbeille et les textes de la vue, purs) : voir les deux
+// derniers blocs.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
 import { LONGUEUR_NOM, Tableau, changementsDOrdre, deplacerDans, nomPropre } from '../src/document'
 import type { Trait } from '../src/types'
 import { VERSION_TABLEAU, ecrireTableau, lireTableau, quandLisible } from '../src/fichier'
-import { compterCorbeille, dateDeSuppression, libelleCorbeille, texteVider } from '../src/pages/corbeille'
+import { blocsDeLaCorbeille, compterCorbeille, dateDeSuppression, grouperLaCorbeille, libelleBloc, libelleCorbeille, numeroDansLaSeance, pagesAVider, pagesDuBloc, sousTitrePage, texteCaseCochee, texteRemise, texteSeanceRemise, texteSupprimerSeance, texteVidage, texteVider } from '../src/pages/corbeille'
+import type { BlocCorbeille, PageDeLaCorbeille } from '../src/pages/corbeille'
+import { supprimerSeance } from '../src/deplacer-seance'
 
 let horloge = new Date('2026-10-09T08:00:00').getTime()
 let numero = 0
@@ -280,21 +284,224 @@ describe('la vue de la corbeille (src/pages/corbeille.ts)', () => {
     expect(dateDeSuppression(l[0], maintenant + 86_400_000)).toMatch(/^Supprimée hier à /)
   })
 
-  it('le bouton du bandeau : « Corbeille (2) », « Corbeille : 2 pages » ; vide : « Corbeille », « Corbeille : vide » ; le compte sans relire le film', async () => {
+  it('le bouton du bandeau : « Corbeille (2) », « Corbeille du classeur : 2 pages » ; vide : « Corbeille », « Corbeille du classeur : vide » ; le compte sans relire le film', async () => {
+    // (Lot 17 : le nom du bouton dit « du classeur », pour le distinguer de la
+    // corbeille de la bibliothèque ; son libellé reste « Corbeille (2) »)
     const { t, pages: [a, b, c] } = await tableau(4)
     expect(compterCorbeille(t)).toBe(0)
-    expect(libelleCorbeille(0)).toEqual({ texte: 'Corbeille', nom: 'Corbeille : vide' })
+    expect(libelleCorbeille(0)).toEqual({ texte: 'Corbeille', nom: 'Corbeille du classeur : vide' })
     t.pageVue = a
     t.jeterPages([b, c]); await attendre(500)
     expect(compterCorbeille(t)).toBe(2)
     expect(compterCorbeille(t)).toBe(t.pagesDeLaCorbeille().length)
     // (« 2 pages » : une espace insécable, comme partout dans l'outil)
-    expect(libelleCorbeille(2)).toEqual({ texte: 'Corbeille (2)', nom: 'Corbeille : 2\u00a0pages' })
-    expect(libelleCorbeille(1)).toEqual({ texte: 'Corbeille (1)', nom: 'Corbeille : 1\u00a0page' })
+    expect(libelleCorbeille(2)).toEqual({ texte: 'Corbeille (2)', nom: 'Corbeille du classeur : 2\u00a0pages' })
+    expect(libelleCorbeille(1)).toEqual({ texte: 'Corbeille (1)', nom: 'Corbeille du classeur : 1\u00a0page' })
     t.supprimerDefinitivement([b])
     expect(compterCorbeille(t)).toBe(1)
     expect(texteVider(3)).toMatch(/^Les 3 pages de la corbeille seront supprimées définitivement : elles ne pourront plus être remises parmi les pages\. Leur histoire reste visible dans Revoir la construction/)
     expect(texteVider(1)).toMatch(/^La page de la corbeille sera supprimée définitivement/)
+  })
+})
+
+// ---------- Lot 17 : la corbeille rangée par séance ----------
+const LUNDI = new Date('2026-10-05T08:00:00').getTime()
+const JOUR = 86_400_000
+const INS = '\u00a0'
+
+/** Un classeur à séances (les séances en service, comme dans l'application) :
+ *  chacune à son heure, nommée ou non, avec n pages, un trait sur chaque page
+ *  sauf si `vide1` (la page 1 reste vide : elle ne va jamais dans la corbeille) */
+async function classeur(liste: { quand: number; nom?: string; pages: number; vide1?: boolean }[]) {
+  const t = new Tableau(null)
+  t.seancesActives = true
+  const seances: { id: string; pages: string[] }[] = []
+  for (const s of liste) {
+    horloge = s.quand; vi.setSystemTime(horloge); await Promise.resolve()
+    const { seance, page } = t.nouvelleSeance({ nom: s.nom ?? null })
+    const pages = [page]
+    t.pageVue = page; await attendre(100)
+    if (!s.vide1) await geste(t, page, 0, 0)
+    for (let k = 1; k < s.pages; k++) {
+      const p = t.ajouterPage('carreaux', t.ordre.length, { seance }); pages.push(p); t.pageVue = p; await attendre(100)
+      await geste(t, p, k * 10, 0)
+    }
+    seances.push({ id: seance, pages })
+  }
+  return { t, seances }
+}
+const resume = (b: BlocCorbeille) => b.genre === 'seance' ? { genre: 'seance', seance: b.seance.id, pages: b.pages.map(p => p.id), t: b.t } : { genre: 'page', page: b.page.id, seance: b.seance?.id ?? null, numero: b.numero, duJour: b.duJour }
+
+describe('la corbeille rangée par séance (lot 17) : grouperLaCorbeille', () => {
+  it('(a) une séance dont toutes les pages sont dans la corbeille fait un bloc : ses pages par place d\'alors, t le plus récent ; (b) une page jetée seule garde sa séance et son numéro ; tout par date, la dernière suppression d\'abord', async () => {
+    const { t, seances: [A, B, C] } = await classeur([{ quand: LUNDI, pages: 2 }, { quand: LUNDI + JOUR, nom: 'Activité d\'intro', pages: 3 }, { quand: LUNDI + 2 * JOUR, pages: 3 }])
+    // Mercredi, 10 h : une page de la séance du jour (C) à la poubelle
+    horloge = LUNDI + 2 * JOUR + 2 * 3600_000; vi.setSystemTime(horloge)
+    expect(await jeter(t, C.pages[1], C.pages[0])).toBe(true)
+    const tPage = horloge
+    // Puis la séance B supprimée depuis la bibliothèque (un seul t pour ses trois pages)
+    await attendre(60_000)
+    const r = supprimerSeance(t, B.id)
+    expect(r).toEqual({ pages: B.pages })
+    const tSeance = horloge
+    const blocs = blocsDeLaCorbeille(t)
+    expect(blocs.map(resume)).toEqual([
+      { genre: 'seance', seance: B.id, pages: B.pages, t: tSeance },
+      { genre: 'page', page: C.pages[1], seance: C.id, numero: 2, duJour: true },
+    ])
+    expect(blocs[0].cle).toBe('seance:' + B.id)
+    expect(blocs[1].cle).toBe(C.pages[1])
+    // Les pages du bloc, par place d'alors, même données dans un autre ordre
+    const melange = [...t.pagesDeLaCorbeille()].reverse()
+    expect(grouperLaCorbeille(melange, t.seancesDuClasseur(), { seanceDe: p => t.seanceNoteeDe(p), ordre: t.ordre.toArray(), placeDe: p => t.placeDeRemise(p), jour: C.id })
+      .find(b => b.genre === 'seance')!.pages.map(p => p.id)).toEqual(B.pages)
+    // Une page de la séance passée A jetée à son tour : page seule, de la séance de lundi, sa page 2
+    t.pageVue = C.pages[0]
+    await attendre(60_000)
+    t.jeterPages([A.pages[1]]); await attendre(500)
+    const b2 = blocsDeLaCorbeille(t)
+    expect(b2.map(resume)).toEqual([
+      { genre: 'page', page: A.pages[1], seance: A.id, numero: 2, duJour: false },
+      { genre: 'seance', seance: B.id, pages: B.pages, t: tSeance },
+      { genre: 'page', page: C.pages[1], seance: C.id, numero: 2, duJour: true },
+    ])
+    expect(b2[1].genre === 'seance' && b2[1].t! > tPage).toBe(true)
+    expect(compterCorbeille(t)).toBe(5)
+  })
+
+  it('(c) une page sans séance notée, ou dont la fiche manque : « séance inconnue » ; (d) un tableau sans séances : toutes seules, sans séance', async () => {
+    const { t, seances: [A, B] } = await classeur([{ quand: LUNDI, pages: 2 }, { quand: LUNDI + JOUR, pages: 2 }])
+    t.pageVue = B.pages[0]
+    t.jeterPages([A.pages[1], B.pages[1]]); await attendre(500)
+    t.doc.transact(() => t.seanceDesPages.delete(B.pages[1]))
+    let blocs = blocsDeLaCorbeille(t)
+    expect(blocs.map(resume)).toEqual([
+      { genre: 'page', page: A.pages[1], seance: A.id, numero: 2, duJour: false },
+      { genre: 'page', page: B.pages[1], seance: null, numero: null, duJour: false },
+    ])
+    expect(sousTitrePage(blocs[1] as BlocCorbeille & { genre: 'page' }, horloge)).toBe('Séance inconnue')
+    // La fiche de A disparaît (un document abîmé) : sa page de la corbeille ne sait plus d'où elle vient
+    t.doc.transact(() => t.seances.delete(A.id))
+    blocs = blocsDeLaCorbeille(t)
+    expect(blocs[0].genre === 'page' && blocs[0].seance).toBeNull()
+    // Un tableau sans séances (les essais, un tableau lu ailleurs)
+    const { t: u, pages: [x, y, z] } = await tableau(3)
+    u.pageVue = x
+    u.jeterPages([y, z]); await attendre(500)
+    expect(blocsDeLaCorbeille(u).map(resume)).toEqual([
+      { genre: 'page', page: y, seance: null, numero: null, duJour: false },
+      { genre: 'page', page: z, seance: null, numero: null, duJour: false },
+    ])
+  })
+
+  it('(e) une séance partiellement remise redevient des pages seules ; (f) les pages sans heure vont à la fin ; (g) une page vide n\'apparaît pas, mais « Remettre la séance » la rend avec les autres', async () => {
+    const { t, seances: [A, B] } = await classeur([{ quand: LUNDI, pages: 2 }, { quand: LUNDI + JOUR, pages: 3, vide1: true }, { quand: LUNDI + 2 * JOUR, pages: 2 }])
+    horloge = LUNDI + 2 * JOUR + 3600_000; vi.setSystemTime(horloge)
+    // Une page jetée « comme au lot 2 » (sans entrée) : à la fin, quoi qu'il arrive après
+    t.pageVue = t.ordre.get(t.ordre.length - 1)
+    t.doc.transact(() => t.ordre.delete(t.ordre.toArray().indexOf(A.pages[1]), 1)); await attendre(500)
+    await attendre(60_000)
+    expect(supprimerSeance(t, B.id)).toEqual({ pages: B.pages })
+    let blocs = blocsDeLaCorbeille(t)
+    // (g) la page 1 de B, vide, n'est pas dans la corbeille : le bloc n'a que deux pages
+    expect(blocs.map(resume)).toEqual([
+      { genre: 'seance', seance: B.id, pages: [B.pages[1], B.pages[2]], t: horloge },
+      { genre: 'page', page: A.pages[1], seance: A.id, numero: 2, duJour: false },
+    ])
+    expect(libelleBloc(blocs[0] as BlocCorbeille & { genre: 'seance' })).toBe(`Séance du mar 6 oct 8h · 2${INS}pages`)
+    // … mais ce que « Remettre la séance » rend comprend la page vide, à sa place (la première)
+    expect(pagesDuBloc(t, blocs[0] as BlocCorbeille & { genre: 'seance' })).toEqual(B.pages)
+    // (e) une page du bloc remise à la main : le reste devient des pages seules, numérotées dans la séance
+    expect(t.remettrePage(B.pages[1])).toBeGreaterThan(0); await attendre(500)
+    blocs = blocsDeLaCorbeille(t)
+    expect(blocs.map(resume)).toEqual([
+      { genre: 'page', page: B.pages[2], seance: B.id, numero: 2, duJour: false },
+      { genre: 'page', page: A.pages[1], seance: A.id, numero: 2, duJour: false },
+    ])
+    expect(sousTitrePage(blocs[0] as BlocCorbeille & { genre: 'page' }, horloge)).toBe('Page 2 · séance de mardi')
+    // Le reste remis : la séance est là (sa page 1 vide reste hors de l'ordre : rien à y reprendre)
+    expect(t.remettrePage(B.pages[2])).toBeGreaterThan(0); await attendre(500)
+    expect(t.pagesDeLaSeance(B.id)).toEqual([B.pages[1], B.pages[2]])
+    expect(blocsDeLaCorbeille(t).map(resume)).toEqual([{ genre: 'page', page: A.pages[1], seance: A.id, numero: 2, duJour: false }])
+  })
+
+  it('numeroDansLaSeance compte les pages de la séance qui précèdent la place de retour', () => {
+    expect(numeroDansLaSeance(['b', 'd'], ['a', 'b', 'c', 'd'], 1)).toBe(1)    // devant b
+    expect(numeroDansLaSeance(['b', 'd'], ['a', 'b', 'c', 'd'], 2)).toBe(2)    // entre b et c
+    expect(numeroDansLaSeance(['b', 'd'], ['a', 'b', 'c', 'd'], 4)).toBe(3)    // au bout
+    expect(numeroDansLaSeance([], ['a'], 0)).toBe(1)
+  })
+
+  it('un classeur d\'avant le lot 6, ouvert sans rien y changer (séances en attente) : la séance d\'une page de la corbeille se lit sans écrire', async () => {
+    // Un tableau sans séances, écrit à deux jours d'écart (deux séances pour la migration), une page jetée
+    const { t, pages: [a, b, c] } = await tableau(3)
+    await attendre(2 * JOUR)
+    await geste(t, c, 5, 5)
+    t.pageVue = a
+    await jeter(t, b, a)
+    const octets = new Uint8Array(await ecrireTableau(t.doc).arrayBuffer())
+    const u = new Tableau(null)
+    u.seancesActives = true
+    u.lireEtat(lireTableau(octets).etat)
+    expect(u.seances.size).toBe(0)
+    const blocs = blocsDeLaCorbeille(u)
+    expect(blocs).toHaveLength(1)
+    expect(blocs[0].genre === 'page' && blocs[0].seance?.id).toBe(u.seancesDuClasseur()[0].id)
+    expect(u.seances.size).toBe(0)                               // rien n'a été écrit
+  })
+})
+
+describe('la corbeille rangée par séance (lot 17) : les textes', () => {
+  const sans = { debut: LUNDI, nom: null }, avec = { debut: LUNDI, nom: 'Activité d\'intro' }
+  const vendredi = LUNDI + 4 * JOUR + 2 * 3600_000
+  it('libelleBloc : « Séance du lun 5 oct 8h · 4 pages », « Activité d\'intro · Lun 5 oct 8h · 4 pages »', () => {
+    const pages = [1, 2, 3, 4]
+    expect(libelleBloc({ seance: sans, pages })).toBe(`Séance du lun 5 oct 8h · 4${INS}pages`)
+    expect(libelleBloc({ seance: avec, pages })).toBe(`Activité d'intro · Lun 5 oct 8h · 4${INS}pages`)
+    expect(libelleBloc({ seance: sans, pages: [1] })).toBe(`Séance du lun 5 oct 8h · 1${INS}page`)
+  })
+  it('sousTitrePage : « Page 3 · séance de lundi », « … · séance du jour », « … · « Activité d\'intro » », « Séance inconnue »', () => {
+    expect(sousTitrePage({ seance: sans, numero: 3, duJour: false }, vendredi)).toBe('Page 3 · séance de lundi')
+    expect(sousTitrePage({ seance: sans, numero: 3, duJour: true }, vendredi)).toBe('Page 3 · séance du jour')
+    expect(sousTitrePage({ seance: avec, numero: 3, duJour: false }, vendredi)).toBe('Page 3 · « Activité d\'intro »')
+    expect(sousTitrePage({ seance: avec, numero: 2, duJour: true }, vendredi)).toBe('Page 2 · séance du jour')
+    expect(sousTitrePage({ seance: sans, numero: 1, duJour: false }, LUNDI + 30 * JOUR)).toBe('Page 1 · séance du 5 octobre')
+    expect(sousTitrePage({ seance: null, numero: null, duJour: false }, vendredi)).toBe('Séance inconnue')
+  })
+  it('texteRemise compte dans la séance : « Page remise : c\'est la page 3 » (séance du jour), « Page remise dans la séance de lundi : c\'est sa page 3 »', () => {
+    expect(texteRemise({ numero: 3, seance: sans, duJour: true }, vendredi)).toBe('Page remise : c\'est la page 3')
+    expect(texteRemise({ numero: 3, seance: null, duJour: true }, vendredi)).toBe('Page remise : c\'est la page 3')
+    expect(texteRemise({ numero: 3, seance: sans, duJour: false }, vendredi)).toBe('Page remise dans la séance de lundi : c\'est sa page 3')
+    expect(texteRemise({ numero: 1, seance: avec, duJour: false }, vendredi)).toBe('Page remise dans la séance « Activité d\'intro » : c\'est sa page 1')
+  })
+  it('texteSeanceRemise : « Séance remise : « … » (4 pages) », et « Elle redevient la séance du jour. »', () => {
+    expect(texteSeanceRemise(avec, 4, false)).toBe(`Séance remise : « Activité d'intro » (4${INS}pages)`)
+    expect(texteSeanceRemise(sans, 4, true)).toBe(`Séance remise : « Séance du lun 5 oct 8h » (4${INS}pages). Elle redevient la séance du jour.`)
+    expect(texteSeanceRemise(sans, 1, false)).toBe(`Séance remise : « Séance du lun 5 oct 8h » (1${INS}page)`)
+  })
+  it('texteSupprimerSeance(4), texteVidage, texteCaseCochee', () => {
+    expect(texteSupprimerSeance(4)).toBe('Ses 4 pages ne pourront plus être remises parmi les pages. Leur histoire reste visible dans Revoir la construction (le classeur garde tout ce qui a été écrit).')
+    expect(texteSupprimerSeance(1)).toMatch(/^Sa page ne pourra plus être remise parmi les pages\. Son histoire reste visible/)
+    expect(texteVidage(12)).toBe('12 pages de plus de 30 jours supprimées définitivement (elles restent dans Revoir la construction)')
+    expect(texteVidage(1)).toBe('1 page de plus de 30 jours supprimée définitivement (elle reste dans Revoir la construction)')
+    expect(texteCaseCochee(2)).toBe('2 pages de plus de 30 jours : elles seront supprimées définitivement à la prochaine ouverture de la corbeille.')
+    expect(texteCaseCochee(1)).toMatch(/^1 page de plus de 30 jours : elle sera supprimée/)
+  })
+  it('pagesAVider : plus de 30 jours (strictement), jamais une page sans heure ; les bornes', () => {
+    const maintenant = LUNDI + 40 * JOUR
+    const pages: Pick<PageDeLaCorbeille, 'id' | 't'>[] = [
+      { id: 'vieille', t: maintenant - 31 * JOUR }, { id: 'limite', t: maintenant - 30 * JOUR }, { id: 'juste', t: maintenant - 30 * JOUR - 1 },
+      { id: 'recente', t: maintenant - JOUR }, { id: 'sansHeure', t: null }, { id: 'future', t: maintenant + JOUR },
+    ]
+    expect(pagesAVider(pages, maintenant)).toEqual(['vieille', 'juste'])
+    expect(pagesAVider(pages, maintenant, 7)).toEqual(['vieille', 'limite', 'juste'])
+    expect(pagesAVider([{ id: 'sansHeure', t: null }], maintenant)).toEqual([])
+    expect(pagesAVider([], maintenant)).toEqual([])
+  })
+  it('dateDeSuppression sert aussi au bloc (son heure la plus récente) : « Supprimée hier à 16 h 20 »', () => {
+    const b = { t: LUNDI + 8 * 3600_000 + 20 * 60_000, derniere: null }
+    expect(dateDeSuppression(b, LUNDI + JOUR)).toBe(`Supprimée hier à 16${INS}h${INS}20`)
+    expect(dateDeSuppression({ t: null, derniere: LUNDI }, LUNDI + 3600_000)).toBe(`Supprimée avant cette version · dernière écriture aujourd'hui à 8${INS}h${INS}00`)
   })
 })
 
