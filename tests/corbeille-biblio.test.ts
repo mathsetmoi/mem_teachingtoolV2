@@ -9,9 +9,9 @@ import * as Y from 'yjs'
 import type { FicheClasseur, FicheDossier } from '../src/classeurs/demarrage'
 import { BASE_PREMIER, baseDe } from '../src/classeurs/demarrage'
 import {
-  BLOQUE, JAMAIS_ENREGISTRE, NOM_RETROUVE, NOM_RETROUVE_PREMIER, contenuDeLaCorbeille, contenuDuDossier, dateDeSuppression, elementsDeLaCorbeille, estVide,
-  etaitDans, ficheRetrouvee, jamaisEnregistre, libelleCorbeille, ouRemettre, pagesDe, sauvegardesDe, texteCeQuiReste, texteDefinitifClasseur,
-  texteDefinitifDossier, texteEfface, texteJamais, texteMisALaCorbeille, textePlace, texteRemis, texteRetrouves, texteVidee, texteViderBibliotheque,
+  BLOQUE, JAMAIS_ENREGISTRE, NOM_RETROUVE, NOM_RETROUVE_PREMIER, VERIFICATION_IMAGES, contenuDeLaCorbeille, contenuDuDossier, dateDeSuppression, elementsDeLaCorbeille, estVide,
+  etaitDans, ficheRetrouvee, jamaisEnregistre, libelleCorbeille, ouRemettre, pagesDe, sauvegardesDe, texteAvantVider, texteCeQuiReste, texteDefinitifClasseur,
+  texteDefinitifDossier, texteEfface, texteJamais, texteMisALaCorbeille, texteNonVerifie, textePasRecopiees, textePlace, texteRecopiees, texteRemis, texteRetrouves, texteVidee, texteViderBibliotheque,
   titreDefinitifClasseur, titreDefinitifDossier,
 } from '../src/classeurs/corbeille'
 import type { ExamenBase } from '../src/classeurs/ecrivain-pur'
@@ -139,6 +139,26 @@ describe('supprimer définitivement, vider : les questions et les messages', () 
     expect(texteVidee({ classeurs: 3, dossiers: 1 })).toBe('Corbeille vidée (3 classeurs, 1 dossier).')
     expect(texteVidee({ classeurs: 1, dossiers: 0 })).toBe('Corbeille vidée (1 classeur).')
     expect(BLOQUE).toBe('Le classeur sera effacé dès que l\'onglet où il est encore ouvert sera fermé.')
+  })
+
+  it('les images dont la corbeille tient la dernière copie (lot 17) : le paragraphe de la question, le classeur non vérifié, les messages de fin', () => {
+    expect(n(texteAvantVider(2, ['Fractions', 'Équations']))).toBe('2 images que « Fractions » et « Équations » montrent encore n\'existent que dans la corbeille : elles seront d\'abord recopiées dans ces classeurs.')
+    expect(n(texteAvantVider(1, ['Fractions']))).toBe('1 image que « Fractions » montre encore n\'existe que dans la corbeille : elle sera d\'abord recopiée dans ce classeur.')
+    expect(n(texteAvantVider(1, ['Fractions', 'Équations']))).toBe('1 image que « Fractions » et « Équations » montrent encore n\'existe que dans la corbeille : elle sera d\'abord recopiée dans ces classeurs.')
+    expect(n(texteAvantVider(3, ['Fractions']))).toBe('3 images que « Fractions » montre encore n\'existent que dans la corbeille : elles seront d\'abord recopiées dans ce classeur.')
+    // Aucune image concernée : la question ne change pas
+    expect(texteAvantVider(0, [])).toBe('')
+    expect(texteAvantVider(0, ['Fractions'])).toBe('')
+    expect(n(texteNonVerifie(['Vieux chapitre']))).toBe('« Vieux chapitre » n\'a pas pu être vérifié.')
+    expect(n(texteNonVerifie(['A', 'B']))).toBe('« A » et « B » n\'ont pas pu être vérifiés.')
+    expect(texteNonVerifie([])).toBe('')
+    expect(n(texteRecopiees([{ nom: 'Fractions', n: 2 }]))).toBe('2 images recopiées dans « Fractions ».')
+    expect(n(texteRecopiees([{ nom: 'Fractions', n: 1 }, { nom: 'Équations', n: 2 }]))).toBe('3 images recopiées dans « Fractions » et « Équations ».')
+    expect(n(texteRecopiees([{ nom: 'Fractions', n: 1 }, { nom: 'Rien', n: 0 }]))).toBe('1 image recopiée dans « Fractions ».')
+    expect(texteRecopiees([])).toBe('')
+    expect(n(textePasRecopiees('Symétrie', ['Fractions']))).toBe('« Symétrie » n\'a pas été effacé : ses images n\'ont pas pu être recopiées dans « Fractions ». Recommencez.')
+    expect(n(textePasRecopiees('Symétrie', ['Fractions', 'Équations']))).toBe('« Symétrie » n\'a pas été effacé : ses images n\'ont pas pu être recopiées dans « Fractions » et « Équations ». Recommencez.')
+    expect(n(VERIFICATION_IMAGES)).toBe('Vérification des images…')
   })
 })
 

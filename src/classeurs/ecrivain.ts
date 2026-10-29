@@ -21,7 +21,9 @@
 // ce qu'elles contiennent, pour savoir si on les adopte. Ouvrir un fichier
 // plus récent y met à jour un classeur sans rien perdre ('mettre-a-jour',
 // lot 4 C9), et les classeurs d'une bibliothèque (.memb) y sont lus avec
-// leur somme (lireFichier, crc).
+// leur somme (lireFichier, crc). « Vérifier les classeurs » (lot 17) y lit
+// les images d'un classeur sans l'ouvrir ('images' : des listes de clés, et
+// les données des seules images à recopier).
 // =============================================================
 import Travailleur from './ecrivain.worker.ts?worker&inline'
 import type { Demande, RaisonEcrivain, Reponse } from './ecrivain-taches'
@@ -193,6 +195,19 @@ class Ecrivain {
     if ('erreur' in r) throw new ErreurEcrivain(r.erreur.raison, r.erreur.message)
     if (!('examen' in r)) throw new ErreurEcrivain('autre', 'Réponse inattendue de l\'écrivain.')
     return r.infos ? { examen: r.examen, infos: r.infos } : { examen: r.examen }
+  }
+
+  /** Les images d'un classeur, lues dans sa base sans l'ouvrir (lot 17,
+   *  voir verifier.ts) : les clés que ses pages montrent, celles que sa
+   *  banque a, et les données des clés demandées (celles que la banque a).
+   *  Hors du fil principal ; sur le fil en repli. ErreurEcrivain 'absente' :
+   *  la base n'existe pas (elle n'est jamais créée) ; 'abimee' : elle ne
+   *  fait pas un document lisible. */
+  async imagesDeLaBase(base: string, donnees?: readonly string[], o: OptionsDemande = {}): Promise<{ utilisees: string[]; presentes: string[]; donnees: Record<string, string> }> {
+    const r = await this.demander(donnees?.length ? { genre: 'images', base, donnees: [...donnees] } : { genre: 'images', base }, o)
+    if ('erreur' in r) throw new ErreurEcrivain(r.erreur.raison, r.erreur.message)
+    if (!('utilisees' in r)) throw new ErreurEcrivain('autre', 'Réponse inattendue de l\'écrivain.')
+    return { utilisees: r.utilisees, presentes: r.presentes, donnees: r.donnees ?? {} }
   }
 
   private travailleur(): Worker | null {
