@@ -50,7 +50,10 @@ async function fermer(p, reponse, attente = 1500) {
   return { questions, ferme: p.isClosed(), t }
 }
 async function connecter(p) {
-  await entree(p, 'copie-drive')
+  // (Adapté au lot 18 : « Copie sur le Drive… » n'est plus dans le menu ⋯ ; sa fenêtre s'ouvre par « Autres sauvegardes… » → « Choisir le compte ou arrêter… »)
+  await entree(p, 'autres-sauvegardes')
+  await p.waitForSelector('dialog.dialogue-autres[open] .as-compte')
+  await p.click('dialog.dialogue-autres[open] .as-compte')
   await p.waitForSelector('dialog.dialogue-drive[open] .d-connecter')
   await p.click('dialog.dialogue-drive[open] .d-connecter')
   await p.waitForFunction(() => /^Connecté/.test(document.querySelector('dialog.dialogue-drive[open] .d-qui')?.textContent ?? ''), null, { timeout: 10000 }).catch(() => {})

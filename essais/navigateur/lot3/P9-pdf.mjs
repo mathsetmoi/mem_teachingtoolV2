@@ -36,7 +36,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } fr
 import { ECRIRE } from './P9/ecriture.mjs'
 import { construire } from './p4/scene.mjs'
 
-const URL0 = 'http://localhost:5173/'
+const URL0 = process.env.DEV ?? 'http://localhost:5173/'
 const S = `${RACINE_ESSAIS}`
 const R = `${RACINE_DEPOT}`
 const D = S + '/lot3/P9/navigateur'
@@ -465,10 +465,10 @@ if (faire('noms')) {
   // (Adapté au lot 4, morceau C4 : Chromium a showSaveFilePicker ; l'entrée
   // « Enregistrer automatiquement dans un fichier… » suit « Enregistrer le classeur… »)
   // (Adapté au lot 4, morceau C5 : « Bibliothèque des classeurs… » en tête)
-  // (Adapté au lot 4, morceau C10 : « Copie sur le Drive… » avant « Ouvrir un classeur… »)
-  // (Adapté au lot 7 : « Enregistrer sur le Drive ou ailleurs… » juste après)
-  verifier('Le menu ⋯ : Enregistrer le classeur… · (la clé, lot 4) · Ouvrir un classeur… · Exporter le classeur en PDF… (avec son aide)',
-    JSON.stringify(fichier.map(x => x.l)) === JSON.stringify(['Bibliothèque des classeurs…', 'Enregistrer le classeur…', 'Enregistrer automatiquement dans un fichier…', 'Copie sur le Drive…', 'Enregistrer sur le Drive ou ailleurs…', 'Ouvrir un classeur…', 'Exporter le classeur en PDF…']) && fichier[6].aide === 'Toutes les pages, cadrées sur leur contenu, en feuilles A4 à imprimer ou à déposer dans l\'ENT.', fichier)
+  // (Adapté au lot 18 : le menu ⋯ réduit : le PDF avant « Autres sauvegardes… » et « Ouvrir un classeur… » ;
+  // « Copie sur le Drive… » et « Enregistrer sur le Drive ou ailleurs… » sont dans « Autres sauvegardes… »)
+  verifier('Le menu ⋯ : Enregistrer le classeur… · (la clé, lot 4) · Exporter le classeur en PDF… (avec son aide) · Autres sauvegardes… · Ouvrir un classeur…',
+    JSON.stringify(fichier.map(x => x.l)) === JSON.stringify(['Bibliothèque des classeurs…', 'Enregistrer le classeur…', 'Enregistrer automatiquement dans un fichier…', 'Exporter le classeur en PDF…', 'Autres sauvegardes…', 'Ouvrir un classeur…']) && fichier[3].aide === 'Toutes les pages, cadrées sur leur contenu, en feuilles A4 à imprimer ou à déposer dans l\'ENT.', fichier)
   // La trieuse : les pages 2, 5 et 7 choisies (Ctrl + clic), « Exporter en PDF » du bandeau des pages choisies
   await page.keyboard.press('Shift+P'); await attendreOuverte(page); await page.waitForTimeout(250)
   const bandeau = await page.evaluate(() => [...document.querySelectorAll('.trieuse-actions .trieuse-bouton')].filter(b => b.offsetParent).map(b => b.getAttribute('aria-label')))

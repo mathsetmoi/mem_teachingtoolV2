@@ -285,9 +285,9 @@ if (seul('A')) {
   // ---- A1. L'entrée du menu ----
   let m = await menu(p)
   // (Adapté au lot 4, morceau C5 : « Bibliothèque des classeurs… » en tête du menu)
-  // (Adapté au lot 4, morceau C10 : « Copie sur le Drive… » (copie-drive) entre volontairement dans le menu ⋯, avant « Ouvrir un classeur… » ;
-// adapté au lot 7 : « Enregistrer sur le Drive ou ailleurs… » (enregistrer-ailleurs) aussi, juste après)
-  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","activer-cle","copie-drive","enregistrer-ailleurs","ouvrir","exporter-pdf"]'
+  // (Adapté au lot 18 : le menu ⋯ réduit : la clé, le PDF, « Autres sauvegardes… » (qui réunit la copie sur le
+  // Drive et « Enregistrer sur le Drive ou ailleurs… »), Ouvrir)
+  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","activer-cle","exporter-pdf","autres-sauvegardes","ouvrir"]'
     && m.libelles['activer-cle'].texte === 'Enregistrer automatiquement dans un fichier…'
     && m.libelles['activer-cle'].aide === 'Un fichier .memc, choisi une fois : le classeur s\'y enregistre tout seul, peu après chaque changement.',
     'A1) le menu ⋯ : « Enregistrer automatiquement dans un fichier… » (data-action activer-cle), avec son aide, après « Enregistrer le classeur… »', m)
@@ -318,11 +318,12 @@ if (seul('A')) {
   ok(t0.includes(`Le classeur s'enregistre maintenant tout seul dans « ${FICHIER} ».`), '   … le message', t0)
   ok(Number(await p.evaluate(() => localStorage.getItem('mem-dernier-enregistrement'))) === lu.entete.date, '   … le classeur est dans un fichier depuis cette date (mem-dernier-enregistrement)')
   m = await menu(p)
-  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer-cle","enregistrer","arreter-cle","copie-drive","enregistrer-ailleurs","ouvrir","exporter-pdf"]'
-    && m.libelles['enregistrer-cle'].texte === 'Enregistrer maintenant sur la clé' && m.libelles['enregistrer-cle'].touche === 'Ctrl + S'
-    && m.libelles['enregistrer'].texte === 'Enregistrer une copie dans un fichier…' && m.libelles['enregistrer'].touche === null
-    && m.libelles['arreter-cle'].texte === 'Arrêter l\'enregistrement automatique sur la clé',
-    '   … le menu : « Enregistrer maintenant sur la clé » (Ctrl + S), « Enregistrer une copie dans un fichier… », « Arrêter l\'enregistrement automatique sur la clé »', m)
+  // (Adapté au lot 18 : le classeur a son fichier, le menu ⋯ dit « Enregistrer une copie… » (sans raccourci : Ctrl + S écrit
+  // dans le fichier) et « Déplacer le classeur… » ; plus d'entrées « Enregistrer maintenant sur la clé » ni « Arrêter… »)
+  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","deplacer-classeur","exporter-pdf","autres-sauvegardes","ouvrir"]'
+    && m.libelles['enregistrer'].texte === 'Enregistrer une copie…' && m.libelles['enregistrer'].touche === null
+    && m.libelles['deplacer-classeur'].texte === 'Déplacer le classeur…' && !m.libelles['enregistrer-cle'] && !m.libelles['arreter-cle'],
+    '   … le menu : « Enregistrer une copie… » (sans raccourci : Ctrl + S écrit dans le fichier), « Déplacer le classeur… » ; plus de « Enregistrer maintenant sur la clé » ni d\'« Arrêter… » (lot 18)', m)
   await fermerMenu(p)
 
   // ---- A3. Quand : 20 s après le dernier changement ----
@@ -604,7 +605,9 @@ if (seul('A')) {
   await toasts(p)
 
   // ---- A8. Arrêter ----
-  await entree(p, 'arreter-cle')
+  // (Adapté au lot 18 : plus d'entrée « Arrêter… » dans le menu ⋯ ; on arrête la clé directement (l'arrêt passe
+  // désormais par la fenêtre « Déplacer le classeur… », que lot18/E3-deplacer.mjs vérifie))
+  await p.evaluate(() => window.__cle.arreter())
   await p.waitForTimeout(400)
   fiche = await ficheDe(p); e = await etat(p); msg = await toasts(p)
   ok(!fiche.cle && fiche.poignee === null && e.cle.etat === 'absente' && msg.includes('Le classeur ne s\'enregistre plus dans « moins.memc » : le fichier garde le classeur tel qu\'il était à sa dernière écriture.'),
@@ -612,7 +615,7 @@ if (seul('A')) {
   n = await nbEcrites(p)
   await ecrire(p, 300, 520); await p.clock.fastForward(130000); await p.waitForTimeout(500)
   m = await menu(p)
-  ok(await nbEcrites(p) === n && m.entrees.includes('activer-cle') && !m.entrees.includes('arreter-cle'), '   … plus rien ne s\'écrit ; le menu propose de nouveau de l\'activer', m.entrees)
+  ok(await nbEcrites(p) === n && m.entrees.includes('activer-cle') && !m.entrees.includes('deplacer-classeur') && m.libelles['enregistrer'].texte === 'Enregistrer le classeur…', '   … plus rien ne s\'écrit ; le menu propose de nouveau de l\'activer (et revient à « Enregistrer le classeur… »)', m.entrees)
   await fermerMenu(p)
   await ctx.close()
 }

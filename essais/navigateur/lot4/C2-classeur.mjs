@@ -158,14 +158,15 @@ await PB.keyboard.press('Escape')
 // retirée ici pour garder les rangs d'avant)
 ok(m[0]?.action === 'bibliotheque' && m[0].libelle === 'Bibliothèque des classeurs…', '1) le menu ⋯ commence par « Bibliothèque des classeurs… » (C5)', m[0])
 m.shift()
-// (Adapté au lot 4, morceau C10 : « Copie sur le Drive… » (copie-drive) entre volontairement dans le menu ⋯, avant « Ouvrir un classeur… » ;
-// adapté au lot 7 : « Enregistrer sur le Drive ou ailleurs… » (enregistrer-ailleurs) aussi, juste après)
-ok(JSON.stringify(m.map(x => x.action)) === '["enregistrer","activer-cle","copie-drive","enregistrer-ailleurs","ouvrir","exporter-pdf"]'
+// (Adapté au lot 18 : le menu ⋯ réduit : Enregistrer le classeur… · Enregistrer automatiquement dans un fichier… ·
+// Exporter le classeur en PDF… · Autres sauvegardes… · Ouvrir un classeur… ; « Copie sur le Drive… » et
+// « Enregistrer sur le Drive ou ailleurs… » sont dans « Autres sauvegardes… » ; l'aide ne parle plus de « la clé »)
+ok(JSON.stringify(m.map(x => x.action)) === '["enregistrer","activer-cle","exporter-pdf","autres-sauvegardes","ouvrir"]'
   && m[0].libelle === 'Enregistrer le classeur…' && m[0].touche === 'Ctrl + S'
-  && m[0].aide === 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder sur la clé ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).'
-  && m[4].libelle === 'Ouvrir un classeur…' && m[4].touche === 'Ctrl + O' && m[4].aide === 'Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace celui-ci.'
-  && m[5].libelle === 'Exporter le classeur en PDF…' && !m[5].touche,
-  '1) le menu ⋯ : Enregistrer le classeur… · Ouvrir un classeur… · Exporter le classeur en PDF… (data-action enregistrer, ouvrir, exporter-pdf)', m)
+  && m[0].aide === 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).'
+  && m[4].libelle === 'Ouvrir un classeur…' && m[4].touche === 'Ctrl + O' && m[4].aide === 'Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace celui-ci. Reprend aussi un ancien tableau (.prof).'
+  && m[2].libelle === 'Exporter le classeur en PDF…' && !m[2].touche && m[3].libelle === 'Autres sauvegardes…',
+  '1) le menu ⋯ : Enregistrer le classeur… · Exporter le classeur en PDF… · Autres sauvegardes… · Ouvrir un classeur… (data-action enregistrer, exporter-pdf, autres-sauvegardes, ouvrir)', m)
 ok(note0 === 'Jamais enregistré dans un fichier', `   … sa note, jamais enregistré : « ${note0} »`)
 
 // 2) Ctrl + S dans B : le fichier au nom du classeur, l'en-tête avec nom et id

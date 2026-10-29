@@ -7,7 +7,7 @@ import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 
-const URL0 = 'http://localhost:5173/'
+const URL0 = process.env.DEV ?? 'http://localhost:5173/'
 const D = `${RACINE_ESSAIS}/lot1/shotsB12`
 const F = D + '/fichiers'
 mkdirSync(F, { recursive: true })
@@ -112,19 +112,19 @@ const A = await ouvrir(ctxA, 'A')
   // (Adapté au lot 4, morceau C4 : Chromium a showSaveFilePicker ; l'entrée
   // « Enregistrer automatiquement dans un fichier… » suit « Enregistrer le classeur… »)
   // (Adapté au lot 4, morceau C5 : « Bibliothèque des classeurs… » en tête)
-  // (Adapté au lot 4, morceau C10 : « Copie sur le Drive… » entre volontairement après celle de la clé)
+  // (Adapté au lot 18 : le menu ⋯ réduit : Enregistrer le classeur… · la clé · Exporter le classeur en PDF… ·
+  // Autres sauvegardes… · Ouvrir un classeur… ; « Copie sur le Drive… » et « Enregistrer sur le Drive ou ailleurs… »
+  // sont dans « Autres sauvegardes… » ; l'aide d'Enregistrer ne parle plus de « la clé »)
   const biblio = m.entrees[0]
   m.entrees = m.entrees.slice(1)
-  const drive = m.entrees[2]
-  // (Adapté au lot 7 : « Enregistrer sur le Drive ou ailleurs… » suit volontairement la copie sur le Drive)
-  const ailleurs = m.entrees[3]
-  m.entrees = m.entrees.filter((_, i) => i !== 2 && i !== 3)
+  const autres = m.entrees[3]
+  m.entrees = m.entrees.filter((_, i) => i !== 3)
   const trois = m.entrees.filter((_, i) => i !== 1)
-  verifier('Ses trois entrées, leurs raccourcis et leurs aides (et celle de la clé, et la bibliothèque en tête, lot 4)', biblio?.libelle === 'Bibliothèque des classeurs…' && drive?.libelle === 'Copie sur le Drive…' && ailleurs?.libelle === 'Enregistrer sur le Drive ou ailleurs…' && m.entrees.length === 4 && m.entrees[1].libelle === 'Enregistrer automatiquement dans un fichier…'
+  verifier('Ses trois entrées, leurs raccourcis et leurs aides (et celle de la clé, la bibliothèque en tête, lot 4 ; « Autres sauvegardes… », lot 18)', biblio?.libelle === 'Bibliothèque des classeurs…' && autres?.libelle === 'Autres sauvegardes…' && m.entrees.length === 4 && m.entrees[1].libelle === 'Enregistrer automatiquement dans un fichier…'
     && trois[0].libelle === 'Enregistrer le classeur…' && trois[0].touche === 'Ctrl + S'
-    && trois[0].aide === 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder sur la clé ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).'
-    && trois[1].libelle === 'Ouvrir un classeur…' && trois[1].touche === 'Ctrl + O' && trois[1].aide === 'Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace celui-ci.'
-    && trois[2].libelle === 'Exporter le classeur en PDF…' && !trois[2].touche && trois[2].aide === 'Toutes les pages, cadrées sur leur contenu, en feuilles A4 à imprimer ou à déposer dans l\'ENT.', JSON.stringify(m.entrees))
+    && trois[0].aide === 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).'
+    && trois[2].libelle === 'Ouvrir un classeur…' && trois[2].touche === 'Ctrl + O' && trois[2].aide === 'Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace celui-ci. Reprend aussi un ancien tableau (.prof).'
+    && trois[1].libelle === 'Exporter le classeur en PDF…' && !trois[1].touche && trois[1].aide === 'Toutes les pages, cadrées sur leur contenu, en feuilles A4 à imprimer ou à déposer dans l\'ENT.', JSON.stringify(m.entrees))
   verifier('Jamais enregistré : le menu le dit', m.note === 'Jamais enregistré dans un fichier', m.note)
   await A.screenshot({ path: D + '/1-menu.png' })
   await A.keyboard.press('Escape')
