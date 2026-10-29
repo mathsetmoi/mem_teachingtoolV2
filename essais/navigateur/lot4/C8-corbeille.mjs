@@ -321,6 +321,10 @@ if (seul('B')) {
   ok(c?.cartes.every(x => x.hauteurs.length === 2 && x.hauteurs.every(h => h >= 44)), '   … deux boutons de 44 px au moins', c?.cartes.map(x => x.hauteurs))
   ok(cs['Thalès']?.label.startsWith('Thalès, classeur, supprimé aujourd\'hui à') && cs['Thalès'].label.endsWith('était dans : 5e B'), '   … le lecteur d\'écran : « Thalès, classeur, supprimé …, était dans : 5e B »', cs['Thalès']?.label)
   ok(c?.compte === '4 éléments' && !c.viderGris, '   … « 4 éléments », « Vider la corbeille »', c?.compte)
+  // Lot 17 : les deux corbeilles se nomment, et chacune renvoie à l'autre
+  const enTete = await p.evaluate(() => ({ titre: document.querySelector('.biblio-vue-corbeille h3')?.textContent, note: (document.querySelector('.biblio-corbeille-note')?.textContent ?? '').replace(/[\u00a0\u202f]/g, ' ') }))
+  ok(enTete.titre === 'Corbeille de la bibliothèque' && enTete.note.endsWith('Les pages et les séances supprimées d\'un classeur sont dans la corbeille de ce classeur (Maj + P, Corbeille).'),
+    '   … le titre « Corbeille de la bibliothèque », la note renvoie à la corbeille du classeur (Maj + P, Corbeille)', enTete)
   await p.keyboard.press('Escape'); await p.waitForTimeout(200)
   v = await vue(p)
   ok(!v.corbeille && v.ouvert && v.focus === 'corbeille' && v.bouton.presse === 'false', 'B3) Échap ramène aux cartes, le focus sur « Corbeille »', v)

@@ -821,16 +821,19 @@ export class Tableau {
 
   /** Les pages de la corbeille, de la plus récemment supprimée à la plus
    *  ancienne. t : l'heure de l'entrée ; une page jetée avant la corbeille
-   *  (lot 2) n'en a pas : t null, ancienne. derniere : l'heure de la dernière
-   *  étape du film notée sur elle (un seul passage sur le film pour toutes) ;
-   *  elle range les anciennes, et celles dont on ne sait rien vont à la fin. */
-  pagesDeLaCorbeille(): { id: string; t: number | null; derniere: number | null; ancienne: boolean }[] {
+   *  (lot 2) n'en a pas : t null, ancienne. index : sa place d'alors dans
+   *  l'ordre (l'entrée la garde ; null sans entrée) : la corbeille rangée par
+   *  séance (lot 17) y range les pages d'une séance supprimée. derniere :
+   *  l'heure de la dernière étape du film notée sur elle (un seul passage
+   *  sur le film pour toutes) ; elle range les anciennes, et celles dont on
+   *  ne sait rien vont à la fin. */
+  pagesDeLaCorbeille(): { id: string; t: number | null; index: number | null; derniere: number | null; ancienne: boolean }[] {
     const ordre = new Set(this.ordre.toArray())
-    const r: { id: string; t: number | null; derniere: number | null; ancienne: boolean }[] = []
+    const r: { id: string; t: number | null; index: number | null; derniere: number | null; ancienne: boolean }[] = []
     for (const id of this.pages.keys()) {
       if (!this.dansLaCorbeille(id, ordre)) continue
       const e = this.entree(id)
-      r.push({ id, t: e && typeof e.t === 'number' ? e.t : null, derniere: null, ancienne: !e })
+      r.push({ id, t: e && typeof e.t === 'number' ? e.t : null, index: e && typeof e.index === 'number' ? e.index : null, derniere: null, ancienne: !e })
     }
     if (!r.length) return r
     const parPage = new Map(r.map(x => [x.id, x]))
@@ -864,6 +867,13 @@ export class Tableau {
     // Une marque de jet qui l'attendait ne vaut plus : ↶ se remet à jour
     this.onPiles?.()
     return place
+  }
+
+  /** La place où une page de la corbeille reviendrait si on la remettait
+   *  maintenant (voir remettrePage) : la corbeille rangée par séance (lot 17)
+   *  en tire le numéro que la page aurait dans sa séance. Rien n'est écrit. */
+  placeDeRemise(id: string): number {
+    return this.placeDeRetour(id, this.ordre.toArray())
   }
 
   /** La place où remettre une page (voir remettrePage) */
@@ -945,8 +955,19 @@ export class Tableau {
     const l = this.seancesDuClasseur()
     if (!l.length) return null
     for (const s of l) if (s.pages.includes(page)) return s
-    const v = this.seanceDesPages.get(page)
+    const v = this.seanceNoteeDe(page)
     return l.find(s => s.id === v) ?? null
+  }
+
+  /** La séance qu'une page a notée (seanceDesPages), même hors de l'ordre
+   *  (la corbeille) ; sur un classeur dont les séances sont en attente (voir
+   *  seancesActives), celle que la migration lui donnerait, sans rien
+   *  écrire. null : on ne la connaît pas. */
+  seanceNoteeDe(page: string): string | null {
+    const v = this.seanceDesPages.get(page)
+    if (typeof v === 'string') return v
+    if (!this.seances.size && this.seancesActives && this.ordre.length) return this.seancesEnAttente().seanceDe.get(page) ?? null
+    return null
   }
 
   /** Les pages d'une séance (vide : elle n'existe pas) */

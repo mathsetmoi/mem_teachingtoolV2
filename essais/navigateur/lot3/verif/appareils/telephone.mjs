@@ -12,10 +12,16 @@ const HORS = () => {
   for (const el of document.querySelectorAll('.trieuse *, dialog[open] *, .menu-flottant:not([hidden]), .menu-flottant:not([hidden]) *, .toast.visible *, .annonce-page:not([hidden])')) {
     const menu = el.parentElement?.closest('.menu-flottant')
     if (menu && defile(menu)) continue
+    // La vue de la corbeille défile aussi (lot 17 : sa note et sa case
+    // « 30 jours » passent avant les lignes ; en paysage, toucher un bouton
+    // du bas la fait défiler) : ce qui y est défilé hors de l'écran en
+    // hauteur ne compte pas ; la largeur, si
+    const corbeille = el.parentElement?.closest('.trieuse-corbeille')
+    const seulementLargeur = !!corbeille && defile(corbeille)
     if (el.closest('[hidden]') || el.closest('.trieuse-grille') || el.closest('.corbeille-grille') || el.closest('.envoi-liste') || getComputedStyle(el).display === 'none' || el.closest('.trieuse')?.hidden) continue
     const r = el.getBoundingClientRect()
     if (!r.width || !r.height) continue
-    if (r.left < -0.5 || r.right > W + 0.5 || r.top < -0.5 || r.bottom > H + 0.5) hors.push(`${el.tagName}.${el.className?.baseVal ?? el.className} ${Math.round(r.left)},${Math.round(r.top)}→${Math.round(r.right)},${Math.round(r.bottom)}`)
+    if (r.left < -0.5 || r.right > W + 0.5 || (!seulementLargeur && (r.top < -0.5 || r.bottom > H + 0.5))) hors.push(`${el.tagName}.${el.className?.baseVal ?? el.className} ${Math.round(r.left)},${Math.round(r.top)}→${Math.round(r.right)},${Math.round(r.bottom)}`)
   }
   return { hors: hors.slice(0, 8), n: hors.length, sw: document.documentElement.scrollWidth, W }
 }

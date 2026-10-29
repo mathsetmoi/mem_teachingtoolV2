@@ -1078,10 +1078,13 @@ body.en-trieuse .toast { z-index: 30; }
   border: 2px solid var(--bleu); border-radius: 8px; background: var(--papier); color: var(--encre);
   font: inherit; font-size: 16px; user-select: text; -webkit-user-select: text; touch-action: manipulation;
 }
-/* La corbeille (pages/corbeille.ts) : une vue de la trieuse, qui prend la
-   place du bandeau, de la grille et de l'aide. Ses cartes ont le rapport
-   des vignettes (--rapport, posé sur la trieuse) ; leurs deux boutons, l'un
-   sous l'autre, de 44 px au moins, se touchent au doigt. */
+/* La corbeille du classeur (pages/corbeille.ts) : une vue de la trieuse,
+   qui prend la place du bandeau, de la grille et de l'aide. Ses cartes ont
+   le rapport des vignettes (--rapport, posé sur la trieuse) ; leurs deux
+   boutons, l'un sous l'autre, de 44 px au moins, se touchent au doigt. Un
+   bloc de séance (lot 17) prend toute la largeur de la grille : l'en-tête
+   et la rangée des vignettes à gauche, les deux boutons à droite (au
+   téléphone, dessous, pleine largeur). */
 .trieuse.en-corbeille > .trieuse-tete, .trieuse.en-corbeille > .trieuse-grille, .trieuse.en-corbeille > .trieuse-aide,
 .trieuse.en-corbeille > .trieuse-seance-du-jour, .trieuse.en-corbeille > .trieuse-seances { display: none; }
 /* Les séances (lot 6) : celle du jour au-dessus de la grille, les passées
@@ -1096,11 +1099,14 @@ body.en-trieuse .toast { z-index: 30; }
 .trieuse-une-seance summary::before { content: '▸'; width: 1em; color: var(--encre-douce); }
 .trieuse-une-seance[open] summary::before { content: '▾'; }
 .trieuse-seance-pages { display: flex; flex-wrap: wrap; gap: 10px; padding: 6px 0 10px; }
-.trieuse-vignette-passee { position: relative; display: grid; gap: 4px; padding: 4px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); cursor: pointer; font: inherit; }
-.trieuse-vignette-passee canvas { display: block; border-radius: 6px; }
-.trieuse-vignette-passee .numero { position: absolute; left: 8px; top: 8px; min-width: 24px; height: 24px; display: grid; place-items: center; padding: 0 6px; border-radius: 7px; background: var(--encre); color: #fff; font-size: 13px; font-weight: 700; }
-.trieuse-vignette-passee .nom { max-width: 144px; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Une vignette de séance passée (un bouton), et celle d'un bloc de la corbeille (sans bouton) : le même dessin */
+.trieuse-vignette-passee, .corbeille-vignette { position: relative; display: grid; gap: 4px; padding: 4px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); font: inherit; }
+.trieuse-vignette-passee { cursor: pointer; }
+.trieuse-vignette-passee canvas, .corbeille-vignette canvas { display: block; border-radius: 6px; }
+.trieuse-vignette-passee .numero, .corbeille-vignette .numero { position: absolute; left: 8px; top: 8px; min-width: 24px; height: 24px; display: grid; place-items: center; padding: 0 6px; border-radius: 7px; background: var(--encre); color: #fff; font-size: 13px; font-weight: 700; }
+.trieuse-vignette-passee .nom, .corbeille-vignette .nom { max-width: 144px; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trieuse-vignette-passee:hover { background: #e3ebf7; }
+.trieuse-vignette-passee:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
 .trieuse-vignette-passee.reprise, .carte.reprise .carte-image { border-color: var(--bleu); border-width: 2px; }
 .carte.reprise[data-reprise]::after { content: attr(data-reprise); position: absolute; left: 12px; bottom: 34px; padding: 1px 6px; border-radius: 6px; background: #e4ecf8; color: var(--bleu); font-size: 12px; pointer-events: none; }
 .trieuse-corbeille {
@@ -1122,6 +1128,14 @@ body.en-trieuse .toast { z-index: 30; }
   margin: 0; padding: 12px max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
   color: var(--encre-douce); font-size: 15px; line-height: 1.45;
 }
+/* La case « Vider tout seul ce qui est ici depuis plus de 30 jours » (lot 17) : une ligne de 44 px, qui se touche au doigt */
+.corbeille-option {
+  display: flex; align-items: center; gap: 10px; min-height: 44px;
+  margin: 4px 0 0; padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+  color: var(--encre); font-size: 15px; cursor: pointer; user-select: none; -webkit-user-select: none;
+}
+.corbeille-option input { width: 20px; height: 20px; margin: 0; accent-color: var(--bleu); cursor: pointer; }
+.corbeille-option input:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
 .corbeille-grille {
   list-style: none; margin: 0;
   display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); align-content: start;
@@ -1132,7 +1146,21 @@ body.en-trieuse .toast { z-index: 30; }
 .carte-corbeille .carte-image { box-shadow: none; opacity: 0.92; }
 .corbeille-nom { font-size: 15px; font-weight: 700; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .corbeille-nom.sans-nom { font-weight: 400; color: var(--encre-douce); }
+/* « Page 3 · séance de lundi » sous le nom (lot 17) ; « Séance inconnue » en italique */
+.corbeille-ou { font-size: 14px; line-height: 1.35; text-align: center; color: var(--encre-douce); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.corbeille-ou.inconnue { font-style: italic; }
 .corbeille-date { font-size: 14px; line-height: 1.35; text-align: center; color: var(--encre-douce); }
+/* Un bloc de séance (lot 17) : toute la largeur ; l'en-tête, la rangée des
+   vignettes (qui passe à la ligne), les boutons à droite, alignés en haut */
+.bloc-corbeille {
+  grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto 1fr;
+  gap: 6px 16px; padding: 12px; border: 1px solid var(--filet); border-radius: 12px; background: var(--papier);
+}
+.bloc-corbeille-tete { grid-column: 1; grid-row: 1; min-width: 0; }
+.bloc-corbeille-titre { font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.bloc-corbeille .corbeille-date { text-align: left; }
+.bloc-corbeille-pages { grid-column: 1; grid-row: 2; display: flex; flex-wrap: wrap; gap: 10px; padding: 2px 0 0; }
+.bloc-corbeille .corbeille-boutons { grid-column: 2; grid-row: 1 / 3; align-self: start; min-width: 200px; }
 .corbeille-boutons { display: flex; flex-direction: column; gap: 6px; }
 .corbeille-boutons button {
   min-height: 44px; padding: 4px 10px; border: 1px solid var(--filet); border-radius: 10px;
@@ -1166,11 +1194,15 @@ body.en-trieuse .toast { z-index: 30; }
   .trieuse-choix { gap: 4px; }
   .trieuse-deselectionner { order: -1; }
   .trieuse-nombre { padding: 0 4px; font-size: 15px; }
-  /* La corbeille : deux colonnes ; « Vider la corbeille » passe sous le titre */
+  /* La corbeille : deux colonnes ; « Vider la corbeille » passe sous le titre ;
+     un bloc de séance sur une colonne, ses deux boutons dessous, pleine largeur */
   .corbeille-grille { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding-top: 12px; }
   .corbeille-tete h2 { font-size: 20px; }
   .corbeille-vider { margin-left: 0; }
   .corbeille-boutons button { font-size: 15px; }
+  .bloc-corbeille { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; padding: 10px; }
+  .bloc-corbeille-pages { grid-row: 2; }
+  .bloc-corbeille .corbeille-boutons { grid-column: 1; grid-row: 3; min-width: 0; }
 }
 
 /* ---------- Petits menus flottants (menus.ts) ----------

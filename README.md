@@ -2045,9 +2045,11 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
   pages choisies, sinon tout le tableau. La trieuse reste ouverte pendant
   l'export (voir « Exporter en PDF »).
 - **La corbeille** : le bouton **Corbeille** du bandeau (« Corbeille (3) »,
-  le nombre de pages qui y attendent) remplace la grille par les pages
-  supprimées, qu'on y remet ou supprime définitivement (voir « Supprimer une
-  page ») ; Échap ou **Pages** ramènent à la grille.
+  le nombre de pages qui y attendent) remplace la grille par la corbeille du
+  classeur : les séances supprimées, chacune en un bloc, et les pages
+  supprimées seules, qu'on y remet ou supprime définitivement (voir
+  « Supprimer une page » et « La corbeille du classeur, rangée par séance »
+  dans le lot 17) ; Échap ou **Pages** ramènent à la grille.
 - **Annuler** : chaque action le dit (« Page déplacée : c'est maintenant la
   page 5 », « Page renommée », « Page vide insérée : c'est la page 4 », « Page
   ajoutée à la fin (page 8) », « Fond changé (page 3) », « Page 3 dupliquée :
@@ -2238,7 +2240,9 @@ quand le classeur n'a qu'une séance).
   corbeille, « Envoyer vers… » : vers les pages du jour seulement). Une page
   d'une séance passée ne passe dans la séance du jour que reprise (une
   copie) : la séance passée reste telle que la classe l'a vue. Une page
-  remise de la corbeille revient dans sa séance.
+  remise de la corbeille revient dans sa séance, même passée (depuis le
+  lot 17, la corbeille dit de quelle séance est chaque page, et rend une
+  séance supprimée d'un coup : « Remettre la séance »).
 - **Le PDF** : le classeur entier par le menu ⋯, la séance par la page et la
   trieuse (voir plus haut).
 - **L'ouverture par la bibliothèque** applique la même règle d'une heure,
@@ -3376,8 +3380,12 @@ séance, ou la touche Menu).
   l'ordre habituel. Une nouvelle séance arrive toujours en haut. Échap
   pendant le glisser : rien ne bouge.
 - **Supprimer** (Suppr) : les pages de la séance vont dans la corbeille du
-  classeur ; « Annuler » dans le message remet tout, avec le nom. La seule
-  séance d'un classeur : c'est le classeur entier qui va dans la corbeille.
+  classeur (« La séance « Activité d'intro » est supprimée : ses pages sont
+  dans la corbeille du classeur (Maj + P, Corbeille). ») ; « Annuler » dans
+  le message remet tout, avec le nom ; plus tard, la corbeille du classeur
+  montre la séance en un bloc, et **Remettre la séance** la rend de même
+  (lot 17). La seule séance d'un classeur : c'est le classeur entier qui va
+  dans la corbeille.
 - **Déplacer vers…**, ou glisser la séance sur la carte d'un autre
   classeur : la séance part avec ses pages, ses images, son nom, sa date et
   son film (Revoir et Publier marchent comme avant), et se range à sa date
@@ -3422,7 +3430,9 @@ séance, ou la touche Menu).
   `copierSeance` sert aussi aux anciens tableaux (`.prof`), rangés à leur
   date par la même règle.
 - `src/document.ts` : `rangerLesSeances`, `rendrePages`, `marquerDefinitives`,
-  `pagesA`, `ecrireSansFilm`.
+  `pagesA`, `ecrireSansFilm`. `rendrePages` (ce que fait « Annuler ») sert
+  aussi, depuis le lot 17, à « Remettre la séance » depuis la corbeille du
+  classeur.
 - `src/classeurs/fichiers.ts` : `lireUnClasseur` et `ecrireUnClasseur`
   (le classeur ouvert dans l'onglet reçoit la différence, les autres sont
   réécrits dans leur base) ; `bibliotheque.ts` : le menu, le clavier, le
@@ -4149,7 +4159,10 @@ testé : `tests/corbeille-biblio.test.ts` ; la vue, `src/classeurs/vue-corbeille
   change ici, on y écrit comme avant, jusqu'à ce qu'on le vide. Le classeur
   « Séances isolées » d'un niveau (lot 17) se supprime comme tout classeur ;
   le prochain « Séance isolée » en recrée un neuf.
-- **La vue** (le bouton « Corbeille (3) », à la place des cartes) : les
+- **La vue** (le bouton « Corbeille (3) », à la place des cartes), titrée
+  « Corbeille de la bibliothèque » depuis le lot 17 (sa note finit par
+  « Les pages et les séances supprimées d'un classeur sont dans la corbeille
+  de ce classeur (Maj + P, Corbeille). ») : les
   dossiers et les classeurs supprimés, le dernier d'abord (un classeur
   supprimé avant son dossier paraît aussi pour lui-même) ; chacun : son
   aperçu (ou les petits carreaux ; un dossier, son icône dans sa couleur),
@@ -4188,8 +4201,11 @@ testé : `tests/corbeille-biblio.test.ts` ; la vue, `src/classeurs/vue-corbeille
   bon » dans « Les classeurs : où ils vivent »). Le classeur de l'onglet
   vidé : l'onglet devient la bibliothèque seule (`?bibliotheque`, « Bibliothèque
   — MEM teachingtool », plus rien ne s'écrit, le navigateur ne demande rien
-  en partant). Rien ne s'efface jamais tout seul : pas de purge après
-  30 jours.
+  en partant). Rien ne s'efface jamais tout seul dans la corbeille de la
+  bibliothèque : pas de purge après 30 jours. (La corbeille du classeur,
+  elle, a depuis le lot 17 une case « Vider tout seul ce qui est ici depuis
+  plus de 30 jours », décochée au départ : voir « La corbeille du classeur,
+  rangée par séance ».)
 - **La place** : en bas du bandeau, « Ce navigateur garde 120 Mo pour ce
   site. » (`navigator.storage.estimate` : l'origine `mathsetmoi.github.io`
   est commune à tous les outils de l'organisation) ; au-delà de 80 % du
@@ -4847,6 +4863,145 @@ téléphone 390 × 844 ; J : le fichier relié réécrit) ;
 vers… » d'une séance du même début est refusé à part, « a déjà cette
 séance », et non plus comme un chevauchement).
 
+### La corbeille du classeur, rangée par séance
+
+Proposition 7 de l'audit. Depuis le lot 9, une séance supprimée depuis la
+bibliothèque envoie ses pages dans la corbeille du classeur, où elles se
+mêlaient aux pages jetées une à une : rien ne disait d'où venait chaque
+page, ni qu'elles faisaient une séance, et la rendre demandait un clic par
+page. La corbeille est maintenant rangée par séance, et les deux corbeilles
+de l'outil se nomment.
+
+**Le mode d'emploi.** Maj + P, puis **Corbeille** (« Corbeille (7) ») : la
+vue s'appelle « Corbeille du classeur », et sa note dit : « Les séances et
+les pages supprimées de ce classeur attendent ici : Remettre les rend à leur
+place, avec toute leur histoire. Les classeurs supprimés, eux, sont dans la
+corbeille de la bibliothèque. » Tout y est rangé par date de suppression, la
+dernière en haut, sans rubriques :
+
+- **Une séance supprimée** (Suppr dans la bibliothèque, lot 9) fait **un
+  bloc** : son titre, comme dans la trieuse (« Activité d'intro · Lun 5 oct
+  8h · 4 pages », ou « Séance du lun 5 oct 8h · 4 pages »), « Supprimée hier
+  à 16 h 20 », la rangée de ses vignettes numérotées de 1 à n (le nom de la
+  page dessous), et deux boutons : **Remettre la séance** et **Supprimer
+  définitivement**. Au téléphone, un bloc par ligne, les vignettes passent à
+  la ligne, les boutons prennent toute la largeur (44 px).
+- **Une page seule** garde sa carte : sa vignette, son nom (ou « Page sans
+  nom »), d'où elle vient (« Page 3 · séance du jour », « Page 3 · séance de
+  lundi », « Page 3 · « Activité d'intro » » ; le numéro est celui qu'elle
+  reprendrait en revenant maintenant ; « Séance inconnue » quand le classeur
+  ne le sait pas), « Supprimée aujourd'hui à 10 h 05 », **Remettre** et
+  **Supprimer définitivement**.
+- **Remettre la séance** rend ses pages d'un coup, dans l'ordre, dans leur
+  séance (son nom, sa date et sa place dans le classeur n'en sont jamais
+  partis) : « Séance remise : « Activité d'intro » (4 pages) », avec
+  **Annuler** (Ctrl+Z dans la trieuse aussi) ; quand c'est la séance la plus
+  récente du classeur qui revient : « … Elle redevient la séance du jour. ».
+  On revient aux pages : une séance passée est dépliée dans la trieuse, le
+  focus sur sa première vignette ; la séance du jour, dans la grille.
+- **Remettre** une page d'une séance passée la rend dans sa séance, à sa
+  place d'avant : « Page remise dans la séance de lundi : c'est sa page 3 »
+  (compté dans sa séance ; dans la séance du jour, « Page remise : c'est la
+  page 3 » comme avant), le focus sur sa vignette.
+- **Supprimer définitivement** un bloc pose la question « Supprimer
+  définitivement cette séance ? Ses 4 pages ne pourront plus être remises
+  parmi les pages. Leur histoire reste visible dans Revoir la construction
+  (le classeur garde tout ce qui a été écrit). » ; confirmé : « Séance
+  supprimée définitivement (4 pages) ». Comme pour une page, rien n'est
+  effacé : la revue garde ses « Pages jetées ».
+- **La case « Vider tout seul ce qui est ici depuis plus de 30 jours »**,
+  sous la note, décochée au départ, propre à l'appareil. Cochée : à chaque
+  ouverture de la corbeille, ce qui y attend depuis plus de 30 jours est
+  supprimé définitivement, et le message le dit (« 12 pages de plus de
+  30 jours supprimées définitivement (elles restent dans Revoir la
+  construction) »). Jamais à l'ouverture du classeur ; jamais une page dont
+  on ne connaît pas l'heure de suppression (jetée par une version d'avant).
+  La cocher ne supprime rien sur le clic : si des pages ont déjà plus de
+  30 jours, un message prévient (« 3 pages de plus de 30 jours : elles
+  seront supprimées définitivement à la prochaine ouverture de la
+  corbeille. »), et la décocher suffit à se rattraper.
+- La poubelle de la barre du haut, sur une page d'une séance passée, reste
+  refusée (« Séance de lundi : vous la regardez sans la modifier. ») : une
+  page d'une séance passée ne va dans la corbeille qu'avec sa séance.
+- Au clavier : Tab va de bouton en bouton (Remettre la séance, Supprimer
+  définitivement, puis la ligne suivante), Entrée les choisit, Échap ferme
+  la question puis la vue (depuis la case aussi) ; le focus suit la ligne
+  qui s'en va. Au doigt (iPad, téléphone) : des boutons de 44 px, rien ne
+  déborde.
+- Dans la bibliothèque, la vue s'appelle « Corbeille de la bibliothèque »,
+  et sa note renvoie ici (« Les pages et les séances supprimées d'un
+  classeur sont dans la corbeille de ce classeur (Maj + P, Corbeille). ») ;
+  supprimer une séance dit « La séance « Activité d'intro » est supprimée :
+  ses pages sont dans la corbeille du classeur (Maj + P, Corbeille). ». Les
+  boutons restent « Corbeille (3) » des deux côtés.
+- Version en ligne et version hors ligne : identiques (rien ne passe par le
+  réseau) ; un `.memc` emporte la corbeille, rangée de même après un
+  rechargement.
+
+**Les décisions.**
+
+- Rien de nouveau dans le document, aucun champ obligatoire : le
+  regroupement se lit dans ce qui est déjà là (`t`, la même heure pour
+  toutes les pages d'une séance supprimée ; `index` ; `seanceDesPages`,
+  jamais effacée pour une page jetée ; `seances`, la fiche conservée). Le
+  critère d'un bloc : une séance dont plus aucune page n'est dans l'ordre et
+  dont des pages sont dans la corbeille ; toute autre page de la corbeille
+  est une page seule. Un classeur d'avant le lot 6 (sans séances écrites) :
+  la séance d'une page est celle que la migration lui donnerait, lue sans
+  rien écrire. Les formats `.memc`, `.memb` et `.mem` ne changent pas.
+- Tout par date de suppression, la plus récente en haut ; pas de rubriques.
+- **Remettre la séance** = `Tableau.rendrePages`, le mécanisme même
+  d'« Annuler » du lot 9, par le journal de la trieuse (annulable) ; la
+  page 1 vide partie avec la séance revient aussi, comme avec « Annuler ».
+- Les titres « Corbeille du classeur » et « Corbeille de la
+  bibliothèque » ; les boutons gardent « Corbeille (3) ».
+- La case « 30 jours » : décochée au départ ; un réglage de l'appareil
+  (`mem-corbeille-30-jours` dans `src/reglages.ts`, une clé nouvelle :
+  aucune clé existante ne change), appliqué seulement quand la vue
+  s'ouvre : ouvrir un classeur n'écrit pas un octet. La cocher ne supprime
+  rien sur le clic (un clic de trop ne doit rien supprimer).
+
+**Comment c'est fait.**
+
+- `src/pages/corbeille.ts` : les fonctions pures du haut, `grouperLaCorbeille`
+  (les blocs et les pages seules, depuis `pagesDeLaCorbeille`, les séances
+  et un contexte : la séance de chaque page, l'ordre, la place de retour),
+  `numeroDansLaSeance`, `libelleBloc`, `sousTitrePage`, `texteRemise`,
+  `texteSeanceRemise`, `texteSupprimerSeance`, `pagesAVider`, `texteVidage`,
+  `texteCaseCochee`, `libelleCorbeille` ; `pagesDuBloc` (les pages à rendre :
+  celles de la corbeille et la page vide partie avec elles) ; la vue
+  `VueCorbeille` (les lignes gardées d'une mise à jour à l'autre, avec leurs
+  vignettes ; le focus qui suit ; la case ; `vider30` à l'ouverture).
+- `src/document.ts` : `pagesDeLaCorbeille` rend aussi `index` ;
+  `placeDeRemise` (où une page reviendrait, sans rien écrire) ;
+  `seanceNoteeDe` (la séance notée d'une page, ou celle de la migration,
+  sans rien écrire).
+- `src/pages/trieuse.ts` : le retour de la corbeille vers une séance passée
+  (dépliée, le focus sur la vignette) ; la carte `seances` observée ; Échap
+  depuis une case à cocher ramène aux pages.
+- `src/reglages.ts` : `corbeille30Jours`, `choisirCorbeille30Jours`,
+  `JOURS_CORBEILLE`.
+- `src/classeurs/vue-corbeille.ts`, `src/classeurs/bibliotheque.ts` : les
+  titres et les textes.
+- `src/style.css` : les blocs (`.bloc-corbeille`, les vignettes partagées
+  avec les séances passées de la trieuse), la case, le téléphone (un bloc
+  par ligne, les boutons sur toute la largeur).
+
+**Les essais.** `tests/corbeille.test.ts` (le regroupement, les textes,
+`pagesAVider`, un classeur d'avant le lot 6 sans écriture),
+`tests/deplacer-seance.test.ts` (« Remettre la séance » par `rendrePages` :
+l'ordre, le nom, le rang, la séance du jour, des voisines parties, une
+remise partielle), `tests/journal.test.ts` (« séance remise » annulable) ;
+`essais/navigateur/lot17/F1-corbeille-seances.mjs` (voir
+`essais/navigateur/README.md`). Adaptés : `lot3/P7-corbeille-image.mjs` (le
+titre, la note, le nom du bouton, « Page N · séance du jour »),
+`lot9/E1-ranger-seances.mjs` (le message exact, et une section L jusqu'à
+« Remettre la séance »), `lot4/C8-corbeille.mjs` (« Corbeille de la
+bibliothèque » et sa note), `lot3/verif/appareils/telephone.mjs` (la vue de
+la corbeille défile en paysage : ce qui y est défilé hors de l'écran en
+hauteur ne compte plus comme un débordement), `tests/corbeille.test.ts`
+(« Corbeille du classeur : vide »).
+
 ## Ce que fait la v0.1
 
 Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment
@@ -5462,19 +5617,26 @@ de verrouillé.
 **La corbeille.** Une page supprimée (par la poubelle, ou dans la trieuse)
 va dans la corbeille ; elle y reste après un rechargement, et un fichier
 `.memc` l'emporte. On l'ouvre par le bouton **Corbeille** du bandeau de la
-trieuse des pages (« Corbeille (3) » : il dit combien de pages y attendent).
+trieuse des pages (« Corbeille (3) » : il dit combien de pages y attendent ;
+la vue s'appelle « Corbeille du classeur », lot 17).
 Chaque page s'y montre en vignette (son état actuel), avec son nom (ou « Page
-sans nom ») et l'heure de sa suppression : « Supprimée aujourd'hui à 10 h 05 »
+sans nom »), sa séance (« Page 3 · séance du jour », « Page 3 · séance de
+lundi », lot 17) et l'heure de sa suppression : « Supprimée aujourd'hui à 10 h 05 »
 (pour une page supprimée par une version d'avant, qui ne notait pas l'heure :
 « Supprimée avant cette version · dernière écriture hier à 9 h 12 »), la
-dernière supprimée d'abord.
+dernière supprimée d'abord. Une séance supprimée entière (depuis la
+bibliothèque) y fait un bloc, « Remettre la séance » : voir « La corbeille du
+classeur, rangée par séance » dans le lot 17.
 - **Remettre** la rend à sa place d'avant : juste après la page qui la
   précédait si elle est encore là (deux pages voisines supprimées ensemble
   reviennent dans le bon ordre, quel que soit l'ordre des remises), sinon à
   la fin. On revient aux pages, sur sa vignette, et « Page remise : c'est la
-  page 4 » porte **Annuler** (Ctrl+Z dans la trieuse aussi). Elle reprend son
-  numéro, avec toute son histoire : la revue et le replay la voient comme si
-  elle n'était jamais partie (la remettre n'est un geste nulle part).
+  page 4 » porte **Annuler** (Ctrl+Z dans la trieuse aussi) ; une page d'une
+  séance passée revient dans sa séance : « Page remise dans la séance de
+  lundi : c'est sa page 3 », la séance dépliée dans la trieuse (lot 17). Elle
+  reprend son numéro, avec toute son histoire : la revue et le replay la
+  voient comme si elle n'était jamais partie (la remettre n'est un geste
+  nulle part).
 - **Supprimer définitivement** (une page) et **Vider la corbeille** (toutes)
   posent d'abord la question, dans une fenêtre (« Annuler » a le focus ;
   Échap ou un clic à côté la ferment sans rien faire, la corbeille reste
@@ -5486,6 +5648,9 @@ dernière supprimée d'abord.
 - Échap (ou le bouton **Pages**) ramène à la grille des pages ; au doigt, tout
   s'y touche (boutons de 44 px) ; au clavier, Tab passe d'un bouton à
   l'autre, Entrée les choisit.
+- Rien ne s'y efface tout seul, sauf si l'on coche la case « Vider tout
+  seul ce qui est ici depuis plus de 30 jours » (lot 17 ; décochée au
+  départ, propre à l'appareil, appliquée quand on ouvre la corbeille).
 
 **Où c'est noté.** Une page est dans la corbeille quand sa Y.Map est encore
 dans la carte `pages` du document, qu'elle n'est plus dans `ordre`, qu'elle a
@@ -5497,7 +5662,10 @@ film, ni une étape d'annulation, et elle voyage avec le document
 l'ordre, lui, est une étape « seulOrdre » du film, jamais un geste. Une page
 supprimée par la version d'avant (sans entrée) y figure aussi, et se remet à
 la fin ; une page effacée par la toute première suppression (sa Y.Map
-détruite, sur un tableau très ancien) n'y est pas.
+détruite, sur un tableau très ancien) n'y est pas. Le rangement par séance
+(lot 17) n'ajoute rien au document : il se lit dans `t` (la même heure pour
+toutes les pages d'une séance supprimée), `index`, `seanceDesPages` et
+`seances`.
 
 **Supprimée définitivement**, une page n'est pas effacée : elle garde sa
 Y.Map et son histoire, elle ne revient seulement plus parmi les pages. Dans
@@ -5874,11 +6042,11 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; Maj + L (`toucheVerrou`) ; Alt + ← / →, ⌘ + ← / → et Ctrl + G empêchés hors des champs dans tous les écrans, la revue, la trieuse et la bibliothèque comprises (`toucheQuitteLaPage`, dans `installerGardes`) ; les touches qui se taisent pendant un geste (Maj + L et Ctrl + G comprises) ; le tableau caché (la revue, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) ; la touche des raccourcis (⌘ sur Mac) et la façon de dire « enregistrer », « ouvrir » dans un texte (`POUR_ENREGISTRER`, `POUR_OUVRIR` : le raccourci, ou l'entrée du menu ⋯ sur un appareil qu'on ne fait que toucher) ; la requête de la mise en page du téléphone (lot 5 : `TELEPHONE`, écrite là une fois ; l'interface en tire `body.telephone`, et la feuille de style reprend ses bornes) |
 | `src/dialogue.ts` | Le fond d'une fenêtre : un appui commencé et fini hors de son cadre la ferme, jamais un appui dans sa marge intérieure (testé) |
 | `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) ; d'où vient le focus (le clavier ou un appui, retenu quand il arrive, et le focus rendu à la fermeture d'un écran) ; le balisage de leurs entrées, de leurs filets et de leurs titres (l'interface et la trieuse s'en servent) ; la place du menu complet près de ce qu'il règle, jamais dessus quand il a la place ailleurs, jamais sur la pastille ↻ du cadre de taille (`positionPanneau`, pur, testé ; au téléphone, jamais sur la barre du bas : son bord `bas`, lot 5, K10) ; les flèches dans une grille d'entrées (`naviguerDansLaGrille` : le menu des fonds, et au téléphone « Couleur » et « Autres outils ») |
-| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts, et depuis le lot 5 ce qu'efface la gomme et sa taille : `mem-gomme`, `mem-gomme-taille`, `RAYON_GOMME` ; le contraste renforcé, `mem-contraste` ; les noms sous les outils, `mem-noms-outils`, écrite seulement quand on choisit, et `nomsOutilsVisibles` qui décide en « auto » d'après l'écran), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) |
+| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts, et depuis le lot 5 ce qu'efface la gomme et sa taille : `mem-gomme`, `mem-gomme-taille`, `RAYON_GOMME` ; le contraste renforcé, `mem-contraste` ; les noms sous les outils, `mem-noms-outils`, écrite seulement quand on choisit, et `nomsOutilsVisibles` qui décide en « auto » d'après l'écran), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) ; la case « 30 jours » de la corbeille du classeur, `mem-corbeille-30-jours` (lot 17) |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages (comment déverrouiller, comment détacher une image du fond : `messageVerrou`, `messageDetacher` ; retouches après le lot 5 : ce que dit l'import d'une image, `messageImagePosee`, et « Fixer en fond », `messageFixe`) ; la taille des poignées du cadre de taille et de la pastille ↻ selon le pointeur (lot 5 : `POIGNEE`, à la prise 10 / 12 / 20 px, au dessin 8 / 10 / 14, la pastille à 24 / 28 / 36 px du cadre) ; le message de la première image prise (`messageCadre`) ; celui des noms sous les outils (lot 5 : `messageNomsOutils`, le survol à la souris et au stylet qui survole, pas au doigt ni au TNI) ; corrections des vérifications des retouches : comment reprendre l'outil d'avant, par sa touche (`messageReprise`), ce que dit « Détacher l'image du fond » (`messageDetache`), le pointeur d'un clic hors du tableau (`pointeurDuClic`) et celui d'avant tout appui (`pointeurDeDepart` : le doigt sur un écran tactile sans souris) |
 | `src/session.ts` | La page vue et la vue de chaque page (son centre, et son zoom, noté sans plus servir depuis les retouches d'après le lot 5 : on revient sur une page à 100 %), retrouvées au rechargement, hors du document ; une session par classeur (`mem-session` pour le premier, `mem-session:<id>` pour les autres) |
-| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), plusieurs pages à la fois (Maj ou Ctrl + clic, Espace, Ctrl + A, « Choisir plusieurs » au doigt), le menu d'une vignette (⋯, clic droit, bouton du stylet, touche Menu ; ses huit fonds sur deux colonnes ; « Insérer une page… » y choisit le fond en second temps, sur une colonne), le nom écrit dans la carte, les messages et leur « Annuler » ; « Exporter en PDF » (le bandeau, celui des pages choisies, le menu d'une vignette, Ctrl + P) ; le bouton « Corbeille (3) » du bandeau, qui ouvre la vue de la corbeille |
-| `src/pages/corbeille.ts` | La corbeille des pages, une vue de la trieuse : les pages supprimées en vignettes, quand (« Supprimée aujourd'hui à 10 h 05 »), Remettre (par le journal de la trieuse : « Annuler »), Supprimer définitivement et Vider (après une question, dans une fenêtre de l'outil) ; où c'est noté dans le document (la carte `corbeille`) |
+| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), plusieurs pages à la fois (Maj ou Ctrl + clic, Espace, Ctrl + A, « Choisir plusieurs » au doigt), le menu d'une vignette (⋯, clic droit, bouton du stylet, touche Menu ; ses huit fonds sur deux colonnes ; « Insérer une page… » y choisit le fond en second temps, sur une colonne), le nom écrit dans la carte, les messages et leur « Annuler » ; « Exporter en PDF » (le bandeau, celui des pages choisies, le menu d'une vignette, Ctrl + P)  ; le bouton « Corbeille (3) » du bandeau, qui ouvre la vue de la corbeille ; le retour de la corbeille vers une séance passée (dépliée, le focus sur la vignette de la page remise) ; la carte `seances` observée aussi (lot 17) |
+| `src/pages/corbeille.ts` | La corbeille du classeur, une vue de la trieuse, rangée par séance depuis le lot 17 : les séances supprimées en blocs (le titre, « Supprimée hier à 16 h 20 », les vignettes numérotées, « Remettre la séance », « Supprimer définitivement »), les pages seules en cartes (« Page 3 · séance de lundi »), tout par date de suppression ; Remettre et Remettre la séance (par le journal de la trieuse : « Annuler »), Supprimer définitivement et Vider (après une question, dans une fenêtre de l'outil), la case « 30 jours » (un réglage de l'appareil, appliqué quand la vue s'ouvre) ; les fonctions pures du haut (`grouperLaCorbeille`, les textes, `pagesAVider`), testées sous Node ; où c'est noté dans le document (la carte `corbeille`, rien de nouveau) |
 | `src/pages/actions.ts` | Ce que la trieuse fait aux pages, chaque action en une entrée de son journal : renommer, insérer une page vide avant ou après, en ajouter une à la fin (blanches par défaut : `FOND_NEUF`), dupliquer avec l'histoire, supprimer vers la corbeille (jamais toutes ; la page où aller quand on supprime celle qu'on regarde), changer un fond (l'origine du repère au centre du contenu), ranger d'une place (pur, testé) |
 | `src/pages/glisser.ts` | Où arrive une page lâchée dans la grille (la ligne sous le point, avant la première carte dont le milieu est à droite), où se pose la barre qui le montre, la vitesse du défilement près du bord (pur, testé) |
 | `src/pages/journal.ts` | Le journal de la trieuse des pages : chaque action sur les pages (déplacer, renommer, dupliquer, insérer, supprimer, changer un fond) entre avec l'état des pages d'avant et d'après ; annuler (ou rétablir) seulement si le tableau est exactement dans l'état laissé, sinon il le dit et se vide (jamais un changement invisible ni une page perdue) ; une page créée par une action défaite ne va pas dans la corbeille, et y reste hors quand on défait les actions d'avant ; aucune pile de page touchée |
@@ -5906,7 +6074,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/classeurs/deplacer.ts` | Déplacer un classeur ou un dossier, pur (testé) : là où il est, les places interdites (ni dans soi-même ni dans un descendant, ni là où il est déjà), l'arbre de « Déplacer vers… » (borné), la cible sous le pointeur pendant un glisser (`cibleSous`), le message et ses étiquettes qui changent |
 | `src/classeurs/vers.ts` | La fenêtre « Déplacer vers… » : l'arbre des dossiers, en retrait et en couleur, « (ici) » et les grisés, le clavier (flèches, Début, Fin, Entrée, Échap, Tab vers « Annuler ») |
 | `src/classeurs/corbeille.ts` | La corbeille de la bibliothèque et les classeurs retrouvés, pur (testé) : ce qu'elle montre (le dernier supprimé d'abord), ce qu'efface un dossier ou « Vider » (tous les classeurs, les sous-dossiers du plus profond au moins profond), où va ce qu'on remet, les textes (messages, questions, ce qui reste ailleurs, jamais enregistré), la place du navigateur, ce qu'est une base vide au sens strict, la fiche d'une base retrouvée |
-| `src/classeurs/vue-corbeille.ts` | La vue de la corbeille dans la bibliothèque : les cartes (aperçu ou icône, nom, date, « Était dans »), Remettre et Supprimer définitivement (44 px), « Bibliothèque » et « Vider la corbeille » ; le focus qui suit |
+| `src/classeurs/vue-corbeille.ts` | La vue de la corbeille dans la bibliothèque (« Corbeille de la bibliothèque » ; sa note renvoie à la corbeille du classeur) : les cartes (aperçu ou icône, nom, date, « Était dans »), Remettre et Supprimer définitivement (44 px), « Bibliothèque » et « Vider la corbeille » ; le focus qui suit |
 | `src/classeurs/effacer.ts` | Effacer un classeur pour de bon : la fiche marquée, les onglets prévenus (les deux canaux), celui-ci coupé, 300 ms, la base effacée (le vecteur du premier noté avant), puis la fiche, l'aperçu, la poignée et les clés de stockage ; une base bloquée par un onglet, plus tard |
 | `src/classeurs/adoption.ts` | Les bases de classeur sans fiche : les trouver (`databases()`), les examiner par l'écrivain, adopter celles qui ne sont pas vides, effacer seulement celles sans aucune entrée (jamais `mem-tableau-local`) ; une seule base (`adopterUneBase`, quand un fichier ouvert porte l'id d'une base d'ici sans fiche) |
 | `src/classeurs/enregistrer.ts` | Enregistrer un classeur depuis sa base, sans l'ouvrir (« Enregistrer d'abord », « Enregistrer dans un fichier… » du menu d'une carte) : le choix du fichier dans le clic, l'écrivain, la date notée |

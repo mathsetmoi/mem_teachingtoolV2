@@ -57,14 +57,14 @@ export class VueCorbeilleBiblio {
     this.retour = this.bouton('Bibliothèque', 'avant', () => this.hote.revenir(), 'Revenir aux classeurs (Échap)')
     this.retour.setAttribute('aria-label', 'Revenir à la bibliothèque')
     this.retour.dataset.action = 'corbeille-retour'
-    const titre = Object.assign(document.createElement('h3'), { id: 'biblio-titre-corbeille', textContent: 'Corbeille' })
+    const titre = Object.assign(document.createElement('h3'), { id: 'biblio-titre-corbeille', textContent: 'Corbeille de la bibliothèque' })
     this.compte = Object.assign(document.createElement('span'), { className: 'biblio-compte' })
     this.boutonVider = this.bouton('Vider la corbeille', 'poubelle', () => this.hote.vider(), 'Effacer de ce navigateur tout ce qui est dans la corbeille')
     this.boutonVider.classList.add('danger', 'biblio-vider')
     this.boutonVider.dataset.action = 'vider-corbeille'
     tete.append(this.retour, titre, this.compte, this.boutonVider)
     const note = Object.assign(document.createElement('p'), { className: 'biblio-corbeille-note',
-      textContent: 'Les classeurs et les dossiers supprimés attendent ici : Remettre les rend à leur place. Rien n\'est effacé de ce navigateur tant qu\'on ne vide pas la corbeille.' })
+      textContent: 'Les classeurs et les dossiers supprimés attendent ici : Remettre les rend à leur place. Rien n\'est effacé de ce navigateur tant qu\'on ne vide pas la corbeille. Les pages et les séances supprimées d\'un classeur sont dans la corbeille de ce classeur (Maj + P, Corbeille).' })
     this.grille = document.createElement('ul')
     this.grille.className = 'biblio-corbeille-grille'
     this.grille.setAttribute('aria-label', 'Les classeurs et les dossiers de la corbeille, le dernier supprimé d\'abord')
