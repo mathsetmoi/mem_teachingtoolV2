@@ -25,8 +25,11 @@
 // seancesExplicitesDuFilm). Les étapes de la séance déplacée s'insèrent donc
 // À LEUR HEURE parmi celles du classeur, et ne doivent en croiser aucune :
 // un classeur qui a déjà quelque chose pendant le temps de la séance (une
-// autre séance à la même heure, la même séance reprise deux fois d'un
-// ancien tableau) la refuse ('chevauche').
+// autre séance à la même heure) la refuse ('chevauche') ; un classeur qui
+// l'a déjà (une séance du même début, avec ses pages : le même ancien
+// tableau repris deux fois) la refuse aussi ('deja'). La vérification est
+// à part, en lecture seule (placeDansLeFilm) : les anciens tableaux
+// (classeurs/ancien-tableau.ts) passent par la même, séance après séance.
 // Chaque étape garde un instantané du document (Y.snapshot). Celui d'une
 // étape insérée au milieu du film doit montrer le classeur TEL QU'IL ÉTAIT à
 // cette heure-là, plus la séance déplacée telle qu'elle était à ce geste :
@@ -43,15 +46,17 @@
 // =============================================================
 import * as Y from 'yjs'
 import type { EtatDePage, Etape, Tableau } from './document'
-import type { FicheSeance } from './seances'
+import type { FicheSeance, SeanceDuClasseur } from './seances'
 import { ficheValable } from './seances'
 import type { Forme } from './types'
 import { uid } from './types'
 import type { Morceau } from './revoir/instruments-film'
 
 /** Pourquoi une séance ne se déplace pas : elle n'existe plus, elle n'a
- *  aucune page, ou le classeur d'arrivée a déjà quelque chose pendant elle */
-export type RefusDeplacement = 'absente' | 'vide' | 'chevauche'
+ *  aucune page, le classeur d'arrivée a déjà quelque chose pendant elle, ou
+ *  il l'a déjà (une séance du même début, avec ses pages : le même ancien
+ *  tableau repris deux fois, voir classeurs/ancien-tableau.ts) */
+export type RefusDeplacement = 'absente' | 'vide' | 'chevauche' | 'deja'
 
 /** Une séance arrivée dans un classeur : son id, ses pages (les nouveaux
  *  identifiants, dans l'ordre), ses étapes du film */
@@ -126,6 +131,40 @@ function oublierLesCopiesRetirees(cible: Tableau, debut: number) {
   cible.marquerDefinitives([...pages])
 }
 
+/** La place d'une séance dans le film du classeur d'arrivée : idx, l'index
+ *  où ses étapes s'insèrent ; suite, les étapes d'après jusqu'à la séance
+ *  suivante (réécrites après elle, voir copierSeance) ; apres, cette séance
+ *  suivante (null : elle sera la dernière) */
+export interface PlaceDansLeFilm { idx: number; suite: Etape[]; apres: SeanceDuClasseur | null }
+
+/** Où une séance qui va de `lo` à `hi` (ses heures) et commence à `debut` se
+ *  place dans le film de `cible`, ou pourquoi elle n'y entre pas (voir
+ *  l'en-tête). En lecture seule : rien n'est écrit. 'deja' : le classeur a
+ *  déjà une séance du même début avec ses pages (la même, reprise deux
+ *  fois) ; 'chevauche' : il a quelque chose pendant elle. */
+export function placeDansLeFilm(cible: Tableau, lo: number, hi: number, debut: number): PlaceDansLeFilm | { refus: 'chevauche' | 'deja' } {
+  const film = cible.film.toArray()
+  const autres = cible.seancesDuClasseur()
+  if (autres.some(x => x.debut === debut && x.pages.length > 0)) return { refus: 'deja' }
+  if (autres.some(x => (x.debut >= lo && x.debut <= hi) || (x.depuis >= lo && x.depuis <= hi))) return { refus: 'chevauche' }
+  if (film.some(e => e.t >= lo && e.t <= hi)) return { refus: 'chevauche' }
+  const apres = autres.filter(x => x.depuis > hi).sort((a, b) => a.depuis - b.depuis)[0] ?? null
+  // Les étapes entre elle et la séance suivante (ou le bout du film) seront
+  // de sa plage : aucun geste (une séance d'avant qui continuerait après elle
+  // serait coupée en deux), seulement ce qui n'en est pas un (une page jetée
+  // ou remise après coup, un rangement : voir Etape). Celles-là sont
+  // réécrites après elle, leur instantané complété de la séance (voir
+  // copierSeance) : sans quoi, à la fin de sa plage, ses pages sembleraient partir.
+  const geste = (e: Etape) => !(e.seulOrdre || e.naissance || e.rangement || e.reglage)
+  const suite = film.filter(e => e.t > hi && (!apres || e.t < apres.depuis))
+  if (suite.some(geste)) return { refus: 'chevauche' }
+  // La séance devient la première : rien ne la précède dans le film
+  if (!autres.some(x => x.debut < lo) && film.some(e => e.t < lo)) return { refus: 'chevauche' }
+  const idx = film.filter(e => e.t < lo).length
+  if (suite.some(e => film.indexOf(e) < idx || film.indexOf(e) >= idx + suite.length)) return { refus: 'chevauche' }
+  return { idx, suite, apres }
+}
+
 /** Copie la séance `id` de `source` dans `cible`, à sa date, avec son film
  *  (voir l'en-tête). `cible` est un document qui ne vit nulle part (un
  *  Tableau(null) où l'on a lu le classeur d'arrivée) : tout ce qu'il écrit
@@ -164,24 +203,11 @@ export function copierSeance(source: Tableau, id: string, cible: Tableau): Seanc
   if (cible.doc.store.clients.has(cible.doc.clientID)) throw new Error('Le classeur d\'arrivée doit être lu dans un document neuf.')
   cible.ecrireLesSeances()
   oublierLesCopiesRetirees(cible, s.debut)
+  const place = placeDansLeFilm(cible, lo, hi, s.debut)
+  if ('refus' in place) return place
+  const { idx, suite } = place
   const film = cible.film.toArray()
   const autres = cible.seancesDuClasseur()
-  if (autres.some(x => (x.debut >= lo && x.debut <= hi) || (x.depuis >= lo && x.depuis <= hi))) return { refus: 'chevauche' }
-  if (film.some(e => e.t >= lo && e.t <= hi)) return { refus: 'chevauche' }
-  const apres = autres.filter(x => x.depuis > hi).sort((a, b) => a.depuis - b.depuis)[0]
-  // Les étapes entre elle et la séance suivante (ou le bout du film) seront
-  // de sa plage : aucun geste (une séance d'avant qui continuerait après elle
-  // serait coupée en deux), seulement ce qui n'en est pas un (une page jetée
-  // ou remise après coup, un rangement : voir Etape). Celles-là sont
-  // réécrites après elle, leur instantané complété de la séance (voir plus
-  // bas) : sans quoi, à la fin de sa plage, ses pages sembleraient partir.
-  const geste = (e: Etape) => !(e.seulOrdre || e.naissance || e.rangement || e.reglage)
-  const suite = film.filter(e => e.t > hi && (!apres || e.t < apres.depuis))
-  if (suite.some(geste)) return { refus: 'chevauche' }
-  // La séance devient la première : rien ne la précède dans le film
-  if (!autres.some(x => x.debut < lo) && film.some(e => e.t < lo)) return { refus: 'chevauche' }
-  const idx = film.filter(e => e.t < lo).length
-  if (suite.some(e => film.indexOf(e) < idx || film.indexOf(e) >= idx + suite.length)) return { refus: 'chevauche' }
   const base = idx > 0 ? Y.decodeSnapshot(film[idx - 1].s) : Y.emptySnapshot
   const moi = cible.doc.clientID
 
@@ -192,13 +218,24 @@ export function copierSeance(source: Tableau, id: string, cible: Tableau): Seanc
   const deLaSuite = new Set(autres.filter(x => x.debut > hi).flatMap(x => x.pages))
   const origineDe = new Map([...neuf].map(([a, b]) => [b, a]))
 
-  // Les images : la banque du classeur d'arrivée les reçoit ; une autre
-  // image sous le même nom en prend un nouveau
+  // Les images : la banque du classeur d'arrivée les reçoit ; les mêmes
+  // pixels déjà là sous un autre nom (une image qu'une autre séance montre
+  // aussi, un ancien tableau repris avant celui-ci) sont gardés une fois ;
+  // une autre image sous le même nom en prend un nouveau
   const banqueS = source.doc.getMap('images') as Y.Map<string>
   const banqueC = cible.doc.getMap('images') as Y.Map<string>
   const nomsImages = new Map<string, string>()
   const aPoser = new Map<string, string>()
   const copies = new Map<Forme, Forme>()
+  let parContenu: Map<string, string> | null = null
+  const memesPixels = (d: string): string | undefined => {
+    if (!parContenu) {
+      const m = new Map<string, string>()
+      banqueC.forEach((v, k) => { if (typeof v === 'string' && !m.has(v)) m.set(v, k) })
+      parContenu = m
+    }
+    return parContenu.get(d)
+  }
   const forme = (f: Forme): Forme => {
     if (f.type !== 'image') return f
     let c = copies.get(f)
@@ -209,8 +246,15 @@ export function copierSeance(source: Tableau, id: string, cible: Tableau): Seanc
       n = f.src
       if (d !== undefined) {
         const deja = banqueC.get(f.src)
-        if (deja === undefined) aPoser.set(f.src, d)
-        else if (deja !== d) { n = uid(); aPoser.set(n, d) }
+        if (deja !== d) {
+          const meme = memesPixels(d)
+          if (meme !== undefined) n = meme
+          else {
+            if (deja !== undefined) n = uid()
+            aPoser.set(n, d)
+            parContenu!.set(d, n)
+          }
+        }
       }
       nomsImages.set(f.src, n)
     }

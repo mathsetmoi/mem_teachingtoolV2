@@ -23,7 +23,11 @@
 // pourtant ce stockage) ne les lisent.
 // Lue et écrite par ses fonctions depuis src/sorties/apercu.ts :
 // 'mem-sortie-fond', le fond imprimé ou non sur l'image copiée et dans le
-// PDF (nouvelle clé).
+// PDF (nouvelle clé). Depuis le lot 17, 'mem-corbeille-30-jours' : la
+// corbeille du classeur vide tout seul, quand on l'ouvre, ce qui y attend
+// depuis plus de 30 jours ('1' ; '0' au départ : rien ne s'efface tout seul
+// tant qu'on ne l'a pas demandé). Un réglage de l'appareil, pas du
+// classeur : rien n'est écrit dans le document pour lui.
 // =============================================================
 import { ecranTactile } from './pointeurs'
 import { TELEPHONE } from './navigateur'
@@ -86,6 +90,12 @@ const CLE_CONTRASTE = 'mem-contraste'
  *  nomsOutilsVisibles) */
 export type NomsOutils = 'auto' | '1' | '0'
 const CLE_NOMS_OUTILS = 'mem-noms-outils'
+/** La corbeille du classeur (lot 17) : vider tout seul, à l'ouverture de la
+ *  corbeille, ce qui y attend depuis plus de 30 jours ('1'), ou jamais ('0',
+ *  le défaut). Jamais à l'ouverture du classeur : voir pages/corbeille.ts. */
+const CLE_CORBEILLE_30 = 'mem-corbeille-30-jours'
+/** Au bout de combien de jours la case vide la corbeille du classeur */
+export const JOURS_CORBEILLE = 30
 
 export const reglages = {
   molette: lire<Molette>(CLE_MOLETTE, ['defile', 'zoome'], 'defile'),
@@ -96,6 +106,14 @@ export const reglages = {
   tailleGomme: lire<TailleGomme>(CLE_TAILLE_GOMME, ['petite', 'moyenne', 'grande'], 'moyenne'),
   contraste: lire(CLE_CONTRASTE, ['1', '0'], '0') === '1',
   nomsOutils: lire<NomsOutils>(CLE_NOMS_OUTILS, ['1', '0'], 'auto'),
+  corbeille30Jours: lire(CLE_CORBEILLE_30, ['1', '0'], '0') === '1',
+}
+
+/** La case « Vider tout seul ce qui est ici depuis plus de 30 jours » de la
+ *  corbeille du classeur, sur cet appareil */
+export function choisirCorbeille30Jours(oui: boolean) {
+  reglages.corbeille30Jours = oui
+  ecrire(CLE_CORBEILLE_30, oui ? '1' : '0')
 }
 
 /** Le contraste renforcé, sur cet appareil */

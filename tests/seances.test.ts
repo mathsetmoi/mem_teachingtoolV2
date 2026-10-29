@@ -8,7 +8,7 @@ import { Tableau } from '../src/document'
 import type { Trait } from '../src/types'
 import { dateCourte, deLaSeance, libelleSeance, migration, nomDeSeance, quandDit, rangerLesPages } from '../src/seances'
 import { exporter, pagesAPublier, seancesAPublier, seancesDuFilm, seancesDuTableau } from '../src/revoir/exporter'
-import { deNiveau, enNiveau } from '../src/seances-vue'
+import { deNiveau, enNiveau, texteNouvelleSeance } from '../src/seances-vue'
 
 let horloge = new Date('2026-10-13T08:00:00').getTime()
 let numero = 0
@@ -325,5 +325,14 @@ describe('le niveau dans la phrase (seances-vue)', () => {
     expect(deNiveau('5ème')).toBe('de 5ème')
     expect(deNiveau('Tle spé')).toBe('de Tle spé')
     expect(deNiveau('Soutien')).toBe('de « Soutien »')
+  })
+  // (lot 17) Le gros bouton quand le classeur ouvert est « Séances isolées »
+  it('le gros bouton : « Nouvelle séance en 5ème » ; dans « Séances isolées », « Nouvelle séance isolée en 5ème »', () => {
+    expect(texteNouvelleSeance('5ème')).toBe('Nouvelle séance en 5ème')
+    expect(texteNouvelleSeance('Soutien')).toBe('Nouvelle séance dans « Soutien »')
+    expect(texteNouvelleSeance(null)).toBe('Nouvelle séance')
+    expect(texteNouvelleSeance('5ème', true)).toBe('Nouvelle séance isolée en 5ème')
+    expect(texteNouvelleSeance('Soutien', true)).toBe('Nouvelle séance isolée dans « Soutien »')
+    expect(texteNouvelleSeance(null, true)).toBe('Nouvelle séance isolée')
   })
 })

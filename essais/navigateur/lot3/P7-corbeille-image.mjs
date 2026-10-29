@@ -26,6 +26,9 @@
 // 1 s'il y a un échec ou une erreur JS.
 // node P7-corbeille-image.mjs [section…] : seulement ces sections (corbeille,
 // doigt, clavier, memc, image, repli, fichier, pdf, telephone)
+// Adapté au lot 17 (la corbeille rangée par séance) : le titre « Corbeille
+// du classeur », sa note, le nom du bouton « Corbeille du classeur : … », et
+// sous chaque carte « Page N · séance du jour » (un classeur à une séance).
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
 import { execFileSync, execSync } from 'node:child_process'
@@ -113,7 +116,7 @@ const ETAT = () => {
     bouton: bc ? { texte: bc.textContent, nom: bc.getAttribute('aria-label') } : null,
     cartes: [...document.querySelectorAll('.trieuse-corbeille .carte-corbeille')].map(c => ({
       page: c.dataset.page, nom: c.querySelector('.corbeille-nom').textContent, date: c.querySelector('.corbeille-date').textContent,
-      canevas: !!c.querySelector('canvas'),
+      ou: c.querySelector('.corbeille-ou').textContent, canevas: !!c.querySelector('canvas'),
     })),
     vide: !document.querySelector('.corbeille-vide')?.hidden, vider: document.querySelector('.corbeille-vider')?.disabled ?? null,
     note: document.querySelector('.corbeille-note')?.textContent ?? '',
@@ -154,12 +157,12 @@ if (faire('corbeille') || faire('memc')) {
   // Dans la trieuse : la page 5 (« Problème »), par son menu
   await page.keyboard.press('Shift+P'); await attendreOuverte(page); await page.waitForTimeout(300)
   let e = await etat(page)
-  verifier('Le bandeau de la trieuse : « Corbeille (1) », son nom « Corbeille : 1 page »', net(e.bouton?.texte) === 'Corbeille (1)' && net(e.bouton?.nom) === 'Corbeille : 1 page', e.bouton)
+  verifier('Le bandeau de la trieuse : « Corbeille (1) », son nom « Corbeille du classeur : 1 page »', net(e.bouton?.texte) === 'Corbeille (1)' && net(e.bouton?.nom) === 'Corbeille du classeur : 1 page', e.bouton)
   const k5 = e.pages.indexOf(P[4])
   await page.locator('.trieuse .carte .carte-options').nth(k5).click(); await page.waitForTimeout(120)
   await page.locator('.trieuse .menu-vignette .menu-item', { hasText: 'Supprimer' }).click(); await page.waitForTimeout(200)
   e = await etat(page)
-  verifier('Supprimée dans la trieuse : le bouton dit « Corbeille (2) » aussitôt', net(e.bouton?.texte) === 'Corbeille (2)' && net(e.bouton?.nom) === 'Corbeille : 2 pages', e.bouton)
+  verifier('Supprimée dans la trieuse : le bouton dit « Corbeille (2) » aussitôt', net(e.bouton?.texte) === 'Corbeille (2)' && net(e.bouton?.nom) === 'Corbeille du classeur : 2 pages', e.bouton)
   await page.keyboard.press('Escape'); await page.waitForTimeout(150)
   // Rechargée : la corbeille les garde
   await page.reload(); await pret(page)
@@ -168,8 +171,10 @@ if (faire('corbeille') || faire('memc')) {
   verifier('Après un rechargement : la vue de la corbeille montre les deux pages, la dernière supprimée d\'abord, avec leur nom',
     e.corbeille && JSON.stringify(e.cartes.map(c => c.page)) === JSON.stringify([P[4], P[1]]) && e.cartes[0].nom === 'Problème' && e.cartes[1].nom === 'Exercice 12 p. 84' && e.cartes.every(c => c.canevas), e.cartes)
   verifier('… avec leur date : « Supprimée aujourd\'hui à … »', e.cartes.every(c => /^Supprimée aujourd'hui à \d+ h \d\d$/.test(net(c.date))), e.cartes.map(c => c.date))
-  verifier('… le titre « Corbeille », « Vider la corbeille » actif, la note, le focus sur le premier « Remettre »',
-    e.titre === 'Corbeille' && e.vider === false && e.note === 'Les pages supprimées attendent ici : Remettre les rend à leur place, avec toute leur histoire.' && /^Remettre « Problème »/.test(e.focus), e)
+  verifier('… le titre « Corbeille du classeur », « Vider la corbeille » actif, la note, le focus sur le premier « Remettre »',
+    e.titre === 'Corbeille du classeur' && e.vider === false && net(e.note) === 'Les séances et les pages supprimées de ce classeur attendent ici : Remettre les rend à leur place, avec toute leur histoire. Les classeurs supprimés, eux, sont dans la corbeille de la bibliothèque.' && /^Remettre « Problème »/.test(e.focus), e)
+  // Lot 17 : sous chaque carte, sa place dans sa séance (ici la seule, celle du jour)
+  verifier('… sous chaque carte, « Page N · séance du jour » (la page 2 d\'avant redevient la page 2)', net(e.cartes[1].ou) === 'Page 2 · séance du jour' && /^Page \d · séance du jour$/.test(net(e.cartes[0].ou)), e.cartes.map(c => c.ou))
   verifier('… la grille des pages est cachée, le bouton « Pages » dit « Revenir aux pages »', await page.evaluate(() => getComputedStyle(document.querySelector('.trieuse-grille')).display === 'none' && document.querySelector('.corbeille-retour').getAttribute('aria-label') === 'Revenir aux pages'))
   await page.waitForFunction(() => [...document.querySelectorAll('.trieuse-corbeille canvas')].every(c => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] < 120) return true; return false }), null, { timeout: 5000 }).catch(() => {})
   verifier('… leurs vignettes sont peintes (l\'état actuel de la page : son trait)', await page.evaluate(() => [...document.querySelectorAll('.trieuse-corbeille canvas')].every(c => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; for (let i = 0; i < d.length; i += 4) if (d[i] < 120 || d[i + 1] < 120) return true; return false })))
@@ -229,7 +234,7 @@ if (faire('corbeille') || faire('memc')) {
   verifier('… « La corbeille est vide. » ; le focus va à « Pages »', await page.evaluate(() => document.querySelector('.corbeille-vide').textContent === 'La corbeille est vide.') && e.focus === 'Revenir aux pages', e.focus)
   await page.keyboard.press('Escape'); await page.waitForTimeout(150)
   e = await etat(page)
-  verifier('Échap : la corbeille revient aux pages (la trieuse reste), le focus au bouton « Corbeille »', e.trieuse && !e.corbeille && e.focus === 'Corbeille : vide', e)
+  verifier('Échap : la corbeille revient aux pages (la trieuse reste), le focus au bouton « Corbeille »', e.trieuse && !e.corbeille && net(e.focus) === 'Corbeille du classeur : vide', e)
   await page.keyboard.press('Escape'); await page.waitForTimeout(150)
 
   // La poubelle, puis Supprimer définitivement : Ctrl+Z ne la rend plus
@@ -314,7 +319,7 @@ if (faire('corbeille') || faire('memc')) {
   verifier('… Ctrl+Z juste après : elle revient, et quitte la corbeille (plus d\'entrée)', e.page === lot2 && e.pages.includes(lot2) && !e.dans.includes(lot2) && !e.entrees[lot2], e)
   await B.page.keyboard.press('Shift+P'); await attendreOuverte(B.page); await B.page.waitForTimeout(150)
   e = await etat(B.page)
-  verifier('… et le bouton de la trieuse le dit : « Corbeille »', net(e.bouton.texte) === 'Corbeille' && e.bouton.nom === 'Corbeille : vide', e.bouton)
+  verifier('… et le bouton de la trieuse le dit : « Corbeille »', net(e.bouton.texte) === 'Corbeille' && net(e.bouton.nom) === 'Corbeille du classeur : vide', e.bouton)
   await B.page.keyboard.press('Escape'); await B.page.waitForTimeout(150)
 
   // Vider la corbeille (deux pages)
@@ -370,7 +375,7 @@ if (faire('clavier')) {
   // La grille a le focus (la page actuelle) ; Maj+Tab : ×, puis « Corbeille »
   await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Shift+Tab'); await page.waitForTimeout(60)
   let e = await etat(page)
-  const surBouton = /^Corbeille : 2/.test(net(e.focus))
+  const surBouton = /^Corbeille du classeur : 2/.test(net(e.focus))
   await page.keyboard.press('Enter'); await page.waitForTimeout(200)
   e = await etat(page)
   verifier('Au clavier : Maj+Tab mène au bouton « Corbeille », Entrée l\'ouvre, le focus sur le premier « Remettre »', surBouton && e.corbeille && /^Remettre/.test(e.focus) && e.focusPage === e.cartes[0].page, e)
@@ -639,7 +644,7 @@ if (faire('image')) {
   await page.locator('.trieuse .carte .carte-options').first().click(); await page.waitForTimeout(120)
   const ev = await page.evaluate(() => [...document.querySelector('.trieuse .menu-vignette').children].map(c => c.tagName === 'HR' ? '─' : c.classList.contains('menu-titre') ? '#' + c.textContent : (c.querySelector('.libelle')?.firstChild?.textContent ?? '').trim()))
   // (Adapté au morceau P9 : « Exporter en PDF… » entre « Copier en image » et « Supprimer »)
-  verifier('Le menu d\'une vignette : … Repère · ─ · Copier en image · Exporter en PDF… · Supprimer', JSON.stringify(ev.slice(-5)) === JSON.stringify(['Repère', '─', 'Copier en image', 'Exporter en PDF…', 'Supprimer']), ev)
+  verifier('Le menu d\'une vignette : … Repère · Mode nuit · ─ · Copier en image · Exporter en PDF… · Supprimer', JSON.stringify(ev.slice(-6)) === JSON.stringify(['Repère', 'Mode nuit', '─', 'Copier en image', 'Exporter en PDF…', 'Supprimer']), ev)
   await page.evaluate(VIDER_PRESSE)
   await page.evaluate(() => { window.__msgs = [] })
   await page.locator('.trieuse .menu-vignette .menu-item', { hasText: 'Copier en image' }).click()

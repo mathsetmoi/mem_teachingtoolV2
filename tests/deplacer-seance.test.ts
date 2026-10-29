@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
 import { Tableau } from '../src/document'
 import type { ImageForme, Trait } from '../src/types'
-import { copierSeance, retirerSeance, supprimerSeance } from '../src/deplacer-seance'
+import { copierSeance, placeDansLeFilm, retirerSeance, supprimerSeance } from '../src/deplacer-seance'
 import { ordreALaMain, ordreApres, resumeDesSeances, seancesDansLOrdre } from '../src/seances'
 import { exporter, pagesAPublier, seancesDuTableau } from '../src/revoir/exporter'
 
@@ -106,6 +106,79 @@ describe('supprimer une séance', () => {
     expect(supprimerSeance(t, a.id)).toEqual({ refus: 'seule' })
     expect(supprimerSeance(t, 'rien')).toEqual({ refus: 'absente' })
     expect(t.ordre.toArray()).toEqual(a.pages)
+  })
+
+  // Lot 17 : « Remettre la séance » depuis la corbeille du classeur, c'est
+  // rendrePages des pages du bloc, triées par leur place d'alors (voir
+  // pages/corbeille.ts, pagesDuBloc)
+  it('« Remettre la séance » (rendrePages des pages triées par index) rend l\'ordre, le nom, le rang ; la séance du milieu ne redevient pas la séance du jour', async () => {
+    const t = new Tableau(null)
+    const a = await seance(t, horloge, 'A')
+    const b = await seance(t, horloge + JOUR, 'B')
+    const c = await seance(t, horloge + JOUR, 'C')
+    t.renommerSeance(b.id, 'Activité d\'intro')
+    t.rangerLesSeances([b.id, c.id, a.id])
+    const rangs = resumeDesSeances(t.seancesDuClasseur()).map(s => s.rang)
+    const avant = publie(t, b.id)
+    expect(supprimerSeance(t, b.id)).toEqual({ pages: b.pages })
+    expect(t.derniereSeance()!.id).toBe(c.id)
+    // Dans la corbeille : les pages de B, avec leur place d'alors ; la fiche est restée
+    const jetees = t.pagesDeLaCorbeille().filter(p => t.seanceNoteeDe(p.id) === b.id)
+    expect(jetees.map(p => p.index).sort()).toEqual([2, 3])
+    expect(t.seances.get(b.id)?.nom).toBe('Activité d\'intro')
+    // Remettre la séance : par place d'alors (le bloc les trie ainsi)
+    const ids = [...jetees].sort((x, y) => x.index! - y.index!).map(p => p.id)
+    expect(t.rendrePages(ids)).toBe(2)
+    expect(t.ordre.toArray()).toEqual([...a.pages, ...b.pages, ...c.pages])
+    const s = t.seancesDuClasseur().find(x => x.id === b.id)!
+    expect(s.nom).toBe('Activité d\'intro')
+    expect(s.pages).toEqual(b.pages)
+    expect(resumeDesSeances(t.seancesDuClasseur()).map(x => x.rang)).toEqual(rangs)
+    expect(t.derniereSeance()!.id).toBe(c.id)                   // elle ne redevient pas la séance du jour
+    expect(publie(t, b.id)).toEqual(avant)                      // son film est intact
+    expect(t.pagesDeLaCorbeille()).toEqual([])
+  })
+
+  it('la séance la plus récente supprimée puis remise redevient la séance du jour', async () => {
+    const t = new Tableau(null)
+    const a = await seance(t, horloge, 'A')
+    const b = await seance(t, horloge + JOUR, 'B')
+    expect(supprimerSeance(t, b.id)).toEqual({ pages: b.pages })
+    expect(t.derniereSeance()!.id).toBe(a.id)
+    expect(t.rendrePages(b.pages)).toBe(2)
+    expect(t.derniereSeance()!.id).toBe(b.id)
+    expect(t.ordre.toArray()).toEqual([...a.pages, ...b.pages])
+  })
+
+  it('avec ses voisines supprimées définitivement entre-temps, la séance revient quand même, dans l\'ordre', async () => {
+    const t = new Tableau(null)
+    const a = await seance(t, horloge, 'A')
+    const b = await seance(t, horloge + JOUR, 'B')
+    const c = await seance(t, horloge + 2 * JOUR, 'C')
+    expect(supprimerSeance(t, b.id)).toEqual({ pages: b.pages })
+    // La dernière page de A (la voisine d'avant de B) part à son tour, et pour de bon
+    t.pageVue = a.pages[0]
+    t.jeterPages([a.pages[1]])
+    expect(t.supprimerDefinitivement([a.pages[1]])).toBe(1)
+    expect(t.rendrePages(b.pages)).toBe(2)
+    // Après la voisine qui reste (a1 : la chaîne des voisines saute la définitive), avant C
+    expect(t.ordre.toArray()).toEqual([a.pages[0], ...b.pages, ...c.pages])
+    expect(t.pagesDeLaSeance(b.id)).toEqual(b.pages)
+  })
+
+  it('remise partielle (une page du bloc à la main) puis le reste : l\'ordre d\'origine', async () => {
+    const t = new Tableau(null)
+    const a = await seance(t, horloge, 'A')
+    const b = await seance(t, horloge + JOUR, 'B')
+    const c = await seance(t, horloge + 2 * JOUR, 'C')
+    expect(supprimerSeance(t, b.id)).toEqual({ pages: b.pages })
+    // La seconde page d'abord : elle suit sa voisine (b1, encore jetée) jusqu'à a2
+    expect(t.remettrePage(b.pages[1])).toBe(2)
+    expect(t.ordre.toArray()).toEqual([...a.pages, b.pages[1], ...c.pages])
+    // Le reste (le bloc n'a plus que b1 : une page seule à présent)
+    expect(t.rendrePages([b.pages[0]])).toBe(1)
+    expect(t.ordre.toArray()).toEqual([...a.pages, ...b.pages, ...c.pages])
+    expect(t.pagesDeLaSeance(b.id)).toEqual(b.pages)
   })
 })
 
@@ -274,5 +347,73 @@ describe('déplacer une séance vers un autre classeur', () => {
     expect(copierSeance(A, a.id, C)).toEqual({ refus: 'chevauche' })
     expect(C.film.length).toBe(film)
     expect(copierSeance(A, 'rien', C)).toEqual({ refus: 'absente' })
+  })
+
+  it('les mêmes pixels déjà dans l\'autre classeur sous un autre nom : gardés une fois ; un nom pris par d\'autres pixels : un nom neuf', async () => {
+    const lundi = new Date('2026-10-12T08:00:00').getTime()
+    const A = new Tableau(null), B = new Tableau(null)
+    const a = await seance(A, lundi, 'A')
+    const memes = 'data:image/png;base64,iVBORw0KGgo=', autres = 'data:image/png;base64,AAAA'
+    const p = a.pages[0]
+    A.pageVue = p; A.nouveauGeste()
+    A.doc.getMap('images').set('photo', memes)
+    A.doc.getMap('images').set('schema', autres)
+    const image = (id: string, src: string): ImageForme => ({ id, type: 'image', src, l: 40, h: 20, m: [1, 0, 0, 1], x: 0, y: 0, z: numero++, auteur: 'moi' })
+    A.poser(p, image('I1', 'photo')); A.poser(p, image('I2', 'schema'))
+    await attendre(800)
+    await seance(B, lundi + JOUR, 'B')
+    // L'autre classeur a déjà les pixels de « photo », sous « ailleurs », et d'autres pixels sous « schema »
+    B.doc.getMap('images').set('ailleurs', memes)
+    B.doc.getMap('images').set('schema', 'data:image/png;base64,BBBB')
+    const C = new Tableau(null)
+    C.lireEtat(Y.encodeStateAsUpdate(B.doc))
+    const r = copierSeance(A, a.id, C)
+    if ('refus' in r) throw new Error(r.refus)
+    const formes = C.formesDe(r.pages[0])!
+    const i1 = formes.get('I1') as ImageForme, i2 = formes.get('I2') as ImageForme
+    const banque = C.doc.getMap('images') as Y.Map<string>
+    expect(i1.src).toBe('ailleurs')
+    expect(i2.src).not.toBe('schema')
+    expect(banque.get(i2.src)).toBe(autres)
+    expect(banque.size).toBe(3)
+  })
+
+  it('placeDansLeFilm, en lecture seule, répond comme copierSeance : en tête, au bout, refusée', async () => {
+    const lundi = new Date('2026-10-12T08:00:00').getTime()
+    const A = new Tableau(null), B = new Tableau(null)
+    const a1 = await seance(A, lundi, 'A')
+    const a2 = await seance(A, lundi + 4 * JOUR, 'Z')
+    const a3 = await seance(A, lundi + JOUR + 1000, 'X')
+    const b1 = await seance(B, lundi + JOUR, 'B')
+    const bornes = (s: { pages: string[] }) => { const t = A.film.toArray().filter(e => s.pages.includes(e.page)).map(e => e.t); return { lo: Math.min(...t), hi: Math.max(...t) } }
+    const C = new Tableau(null)
+    C.lireEtat(Y.encodeStateAsUpdate(B.doc))
+    const film = C.film.toArray()
+    const p1 = placeDansLeFilm(C, bornes(a1).lo, bornes(a1).hi, lundi)
+    expect(p1).toEqual({ idx: 0, suite: [], apres: expect.objectContaining({ id: b1.id }) })
+    const p2 = placeDansLeFilm(C, bornes(a2).lo, bornes(a2).hi, lundi + 4 * JOUR)
+    expect(p2).toEqual({ idx: film.length, suite: [], apres: null })
+    expect(placeDansLeFilm(C, bornes(a3).lo, bornes(a3).hi, lundi + JOUR + 1000)).toEqual({ refus: 'chevauche' })
+    // Rien n'a été écrit : le document est toujours neuf pour copierSeance
+    expect(C.film.length).toBe(film.length)
+    expect(C.doc.store.clients.has(C.doc.clientID)).toBe(false)
+    expect(copierSeance(A, a3.id, C)).toEqual({ refus: 'chevauche' })
+    const r = copierSeance(A, a1.id, C)
+    if ('refus' in r) throw new Error(r.refus)
+    expect(r.pages).toContain(C.film.get(0).page)
+  })
+
+  it('la même séance déjà là, avec ses pages : refusée à part (\'deja\')', async () => {
+    const lundi = new Date('2026-10-12T08:00:00').getTime()
+    const A = new Tableau(null), B = new Tableau(null)
+    const a = await seance(A, lundi, 'A')
+    await seance(B, lundi + 3 * JOUR, 'B')
+    const C = new Tableau(null); C.lireEtat(Y.encodeStateAsUpdate(B.doc))
+    const r1 = copierSeance(A, a.id, C)
+    if ('refus' in r1) throw new Error(r1.refus)
+    await attendre(10)
+    const D = new Tableau(null); D.lireEtat(Y.encodeStateAsUpdate(C.doc))
+    expect(copierSeance(A, a.id, D)).toEqual({ refus: 'deja' })
+    expect(placeDansLeFilm(D, lundi, lundi + 10_000, lundi)).toEqual({ refus: 'deja' })
   })
 })

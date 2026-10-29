@@ -2,8 +2,13 @@
 // REPRENDRE UN ANCIEN TABLEAU (.prof)
 // Un ancien tableau est UNE séance : ses pages, et, quand il a été rangé
 // dans un dossier, tout son film (chaque geste à son heure). On en fait une
-// séance d'un classeur : un classeur neuf, ou le classeur ouvert, au bout de
-// ses séances (voir classeurs/fichiers.ts, ouvrirAnciens).
+// séance d'un classeur, À SA DATE : un classeur neuf, ou le classeur ouvert,
+// entre ses séances (voir classeurs/fichiers.ts, ouvrirAnciens). Il est
+// d'abord rejoué dans un classeur brouillon en mémoire (reprendre), puis
+// copié dans le classeur d'arrivée comme une séance déplacée (copierSeance,
+// deplacer-seance.ts : le film reste dans l'ordre des heures ; un classeur
+// qui a déjà quelque chose pendant lui, ou qui l'a déjà, le refuse). La
+// fenêtre montre où chacun ira (apercuDuRangement, textesAvantAnciens).
 //
 // Le fichier : du JSON, { name, enregistreLe?, data: { pages, assets,
 // currentBgIndex… } }. Chaque page a ses objets rangés par familles
@@ -50,11 +55,14 @@
 // Pur (ni interface ni base) : se teste sous Node. Ce qui demande le
 // navigateur (lire une image, la rogner) est donné par l'appelant.
 // =============================================================
-import type { Tableau } from '../document'
-import { ORIGINE_LOCALE } from '../document'
+import * as Y from 'yjs'
+import { ORIGINE_LOCALE, Tableau } from '../document'
 import type { Cercle, Fond, Forme, Formule, ImageForme, MarquePoint, ModeleCalculatrice, Polygone, Trait } from '../types'
 import { uid } from '../types'
 import { HAUTEUR as HAUTEUR_CALCULATRICE, LARGEURS as LARGEURS_CALCULATRICE } from '../calculatrice/dessin'
+import { copierSeance } from '../deplacer-seance'
+import { dateCourte, dateCourteMajuscule } from '../seances'
+import { pagesLisibles } from '../fichier'
 
 export const EXTENSION_ANCIEN = '.prof'
 
@@ -104,6 +112,8 @@ export interface AncienTableau {
 
 /** Ce qui a été repris, et ce qui ne l'a pas été */
 export interface BilanAncien {
+  /** La séance créée : son identifiant dans le document */
+  seance: string
   pages: number
   traits: number
   images: number
@@ -360,21 +370,13 @@ function tailleDuTexte(o: Objet): number {
 }
 
 // ---------- Reprendre ----------
-/** La séance la plus récente du classeur, et son dernier geste : un ancien
- *  tableau ne s'y ajoute qu'après (le film se lit dans l'ordre des heures) */
-export function finDuClasseur(t: Tableau): number {
-  let fin = 0
-  const film = t.film
-  if (film.length) fin = film.get(film.length - 1).t
-  for (const s of t.seancesDuClasseur()) fin = Math.max(fin, s.debut)
-  return fin
-}
-
 /** Ajoute un ancien tableau au document, comme une séance neuve, en
- *  rejouant son film (voir en tête). Le document ne doit avoir rien d'écrit
- *  après son début (voir finDuClasseur). */
+ *  rejouant son film (voir en tête) : la séance se met AU BOUT du film, à
+ *  ses heures, sans égard pour ce que le document a déjà. Le document est
+ *  donc un classeur brouillon, vide (voir rangerDansLeClasseur, qui copie
+ *  ensuite la séance à sa date dans le classeur d'arrivée). */
 export async function reprendre(tab: Tableau, a: AncienTableau, preparer: PreparerImage, calculatrice?: DessinerCalculatrice): Promise<BilanAncien> {
-  const bilan: BilanAncien = { pages: a.pages.length, traits: 0, images: 0, textes: 0, figures: 0, calculatrices: 0, laisses: 0, imagesIllisibles: 0, imagesHorsFilm: 0 }
+  const bilan: BilanAncien = { seance: '', pages: a.pages.length, traits: 0, images: 0, textes: 0, figures: 0, calculatrices: 0, laisses: 0, imagesIllisibles: 0, imagesHorsFilm: 0 }
   const marque = uid()
   const idDe = (o: Objet) => `${marque}-${String(o.id)}`
 
@@ -608,6 +610,7 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
     tab.horloge = () => a.debut
     tab.ecrireLesSeances()
     const { seance, page } = tab.nouvelleSeance({ t: a.debut, fond: a.fond })
+    bilan.seance = seance
     const pages = [page]
     for (let k = 1; k < a.pages.length; k++) pages.push(tab.ajouterPage(a.fond, tab.ordre.length, { seance }))
     a.pages.forEach((p, k) => { if (p.nuit) tab.changerNuit(pages[k], true) })
@@ -706,17 +709,162 @@ function jourLisible(t: number): string {
   return `${JOURS[d.getDay()]} ${d.getDate() === 1 ? '1er' : d.getDate()} ${MOIS[d.getMonth()]} ${d.getFullYear()}`
 }
 
-/** Ce que dit la fenêtre avant de reprendre des anciens tableaux (rangés
- *  du plus ancien au plus récent). ici : le classeur ouvert et l'heure de
- *  ce qu'il a de plus récent (voir finDuClasseur), s'il y en a un. */
-export function textesAvantAnciens(anciens: readonly AncienTableau[], ici: { nom: string; fin: number } | null): { textes: string[]; ajoutable: boolean } {
+// ---------- Ranger à sa date ----------
+/** Un ancien tableau rejoué dans son classeur brouillon (voir reprendre) */
+export interface Brouillon { a: AncienTableau; tab: Tableau; bilan: BilanAncien }
+
+/** Une séance du classeur d'arrivée, telle que la fenêtre la dit */
+export interface SeanceDApercu { debut: number; nom: string | null; pages: number }
+
+/** Ce qu'il advient d'un ancien tableau dans le classeur d'arrivée : il s'y
+ *  range ('place') ; le classeur a déjà une séance pendant lui
+ *  ('chevauche') ; il l'a déjà ('deja' : une séance du même début). gene :
+ *  la séance du classeur qui l'empêche, quand on la connaît. */
+export type Verdict = { verdict: 'place' } | { verdict: 'chevauche' | 'deja'; gene: SeanceDApercu | null }
+
+/** Ce que donne la chaîne (voir rangerDansLeClasseur) : le classeur
+ *  d'arrivée tel qu'il sera (le dernier document de la chaîne), le sort de
+ *  chaque brouillon dans leur ordre, ceux qui entrent, ceux qui n'entrent pas */
+export interface Rangement { cible: Tableau; verdicts: Verdict[]; ajoutes: Brouillon[]; refuses: { a: AncienTableau; verdict: Verdict }[] }
+
+/** Les séances d'un classeur qui ont des pages, telles que la fenêtre les dit */
+export function seancesDApercu(t: Tableau): SeanceDApercu[] {
+  return t.seancesDuClasseur().filter(s => s.pages.length).map(s => ({ debut: s.debut, nom: s.nom, pages: s.pages.length }))
+}
+
+/** La séance du classeur qui empêche un ancien tableau d'entrer : celle du
+ *  même début (le même tableau, déjà repris), sinon celle qui était en
+ *  cours à ses heures (la dernière commencée avant sa fin), sinon la
+ *  première du classeur (il a quelque chose avant lui) */
+export function seanceGenante(seances: readonly SeanceDApercu[], a: { debut: number; fin: number }): SeanceDApercu | null {
+  const tri = [...seances].sort((x, y) => x.debut - y.debut)
+  const pendant = tri.filter(s => s.debut <= a.fin)
+  return tri.find(s => s.debut === a.debut) ?? pendant[pendant.length - 1] ?? tri[0] ?? null
+}
+
+/** Range chaque brouillon, à sa date, dans `depart` (un document qui ne vit
+ *  nulle part où l'on a lu le classeur d'arrivée, ou un Tableau vide pour un
+ *  classeur neuf), par copierSeance (deplacer-seance.ts) : un document neuf
+ *  à chaque copie (copierSeance le veut), qui devient le classeur d'arrivée
+ *  du suivant ; un brouillon refusé ne change rien, et le suivant est
+ *  essayé. Deux anciens tableaux aux mêmes heures : le second est refusé,
+ *  le premier étant déjà là. Tout se passe en mémoire. */
+export function rangerDansLeClasseur(depart: Tableau, brouillons: readonly Brouillon[]): Rangement {
+  let cible = depart
+  const verdicts: Verdict[] = [], ajoutes: Brouillon[] = [], refuses: Rangement['refuses'] = []
+  for (const b of brouillons) {
+    const essai = new Tableau(null)
+    essai.seancesActives = true
+    essai.lireEtat(Y.encodeStateAsUpdate(cible.doc))
+    const r = copierSeance(b.tab, b.bilan.seance, essai)
+    if ('refus' in r) {
+      const v: Verdict = { verdict: r.refus === 'deja' ? 'deja' : 'chevauche', gene: seanceGenante(seancesDApercu(cible), b.a) }
+      verdicts.push(v)
+      refuses.push({ a: b.a, verdict: v })
+    } else {
+      verdicts.push({ verdict: 'place' })
+      ajoutes.push(b)
+      cible = essai
+    }
+  }
+  return { cible, verdicts, ajoutes, refuses }
+}
+
+// ---------- L'aperçu de la fenêtre ----------
+/** Une ligne de la fenêtre qui dit où un ancien tableau se rangera : une
+ *  séance du classeur ('seance'), l'ancien tableau à sa place ('ici', avec
+ *  son sort « — ira ici »), un ancien tableau qui n'entre pas ('refuse'),
+ *  ou des séances passées sous silence (« … 3 séances plus récentes », 'plus') */
+export interface LigneApercu { texte: string; sort?: string; genre: 'seance' | 'ici' | 'refuse' | 'plus' }
+
+/** « Lun 5 oct 8h · Fractions (2) · 3 pages » */
+const ligneSeance = (s: SeanceDApercu) => `${dateCourteMajuscule(s.debut)}${s.nom ? ` · ${s.nom}` : ''} · ${pagesLisibles(s.pages)}`
+
+/** Les lignes de la fenêtre : les séances du classeur et les anciens tableaux
+ *  fondus par date, la plus récente en haut (comme la bibliothèque). Chaque
+ *  ancien tableau y est, avec `voisines` séances du classeur de chaque côté ;
+ *  les autres séances sont dites d'un mot (« … 3 séances plus récentes »,
+ *  « … 2 séances plus anciennes », « … 4 autres séances »). nom : le classeur
+ *  (« déjà dans « Fractions » »). Sans ancien tableau : aucune ligne. */
+export function apercuDuRangement(seances: readonly SeanceDApercu[], anciens: readonly { debut: number; nom: string; pages: number; verdict: Verdict['verdict'] }[], nom: string, voisines = 1): LigneApercu[] {
+  if (!anciens.length) return []
+  const sort = (v: Verdict['verdict']) => v === 'place' ? '— ira ici' : v === 'deja' ? `— déjà dans « ${nom} » : ne sera pas ajouté` : '— déjà une séance à cette heure : ne sera pas ajouté'
+  const items: { t: number; ancien: boolean; ligne: LigneApercu }[] = [
+    ...anciens.map(a => ({ t: a.debut, ancien: true, ligne: { texte: `${dateCourteMajuscule(a.debut)} · « ${a.nom} » · ${pagesLisibles(a.pages)}`, sort: sort(a.verdict), genre: a.verdict === 'place' ? 'ici' as const : 'refuse' as const } })),
+    ...seances.filter(s => s.pages > 0).map(s => ({ t: s.debut, ancien: false, ligne: { texte: ligneSeance(s), genre: 'seance' as const } })),
+  ].sort((x, y) => (y.t - x.t) || (x.ancien === y.ancien ? 0 : x.ancien ? -1 : 1))
+  // Ce qu'on garde : chaque ancien tableau, et ses voisines de chaque côté
+  const gardees = new Set<number>()
+  items.forEach((it, i) => {
+    if (!it.ancien) return
+    gardees.add(i)
+    for (let j = i - 1, n = 0; j >= 0 && n < voisines; j--) if (!items[j].ancien) { gardees.add(j); n++ }
+    for (let j = i + 1, n = 0; j < items.length && n < voisines; j++) if (!items[j].ancien) { gardees.add(j); n++ }
+  })
+  // Le reste, dit d'un mot
+  const lignes: LigneApercu[] = []
+  for (let i = 0; i < items.length;) {
+    if (gardees.has(i)) { lignes.push(items[i].ligne); i++; continue }
+    let j = i
+    while (j < items.length && !gardees.has(j)) j++
+    const n = j - i, s = n > 1 ? 's' : ''
+    lignes.push({ genre: 'plus', texte: i === 0 ? `… ${n} séance${s} plus récente${s}` : j === items.length ? `… ${n} séance${s} plus ancienne${s}` : `… ${n} autre${s} séance${s}` })
+    i = j
+  }
+  return lignes
+}
+
+/** Ce que la fenêtre sait du classeur ouvert : son nom, les lignes de
+ *  l'aperçu (apercuDuRangement), le sort de chaque ancien tableau (dans
+ *  l'ordre des anciens) */
+export interface IciPourLaFenetre { nom: string; lignes: LigneApercu[]; verdicts: Verdict[] }
+
+/** Ce que dit la fenêtre avant de reprendre des anciens tableaux (rangés du
+ *  plus ancien au plus récent) : chacun, puis ce qu'il devient ; avec un
+ *  classeur ouvert (ici), où il se rangera (la liste), ou pourquoi il n'y
+ *  entre pas. ajoutable : au moins un se range ; aide : ce que dit le
+ *  survol du bouton quand certains n'entrent pas. */
+export function textesAvantAnciens(anciens: readonly AncienTableau[], ici: IciPourLaFenetre | null): { textes: string[]; lignes: LigneApercu[]; ajoutable: boolean; aide: string | null } {
   const ligne = (a: AncienTableau) => `« ${a.nom} » : séance du ${jourLisible(a.debut)}, ${pluriel(a.pages.length, 'page')}.`
   const textes = anciens.length === 1 ? [ligne(anciens[0])]
     : [`${anciens.length} anciens tableaux, du plus ancien au plus récent :`, ...anciens.map(ligne)]
   textes.push(anciens.length === 1
     ? 'Il devient une séance d\'un classeur, avec ses traits, ses images, ses figures, ses textes et son film.'
     : 'Chacun devient une séance du même classeur, avec ses traits, ses images, ses figures, ses textes et son film.')
-  const ajoutable = !!ici && anciens.length > 0 && ici.fin <= anciens[0].debut
-  if (ici && !ajoutable) textes.push(`« ${ici.nom} » a déjà une séance plus récente : on ne peut y ajouter que des séances qui viennent après la sienne. Ajoutez les séances dans l'ordre des dates, la plus ancienne d'abord.`)
-  return { textes, ajoutable }
+  if (!ici || !anciens.length) return { textes, lignes: [], ajoutable: false, aide: null }
+  const places = ici.verdicts.filter(v => v.verdict === 'place').length
+  const refuses = anciens.filter((_, k) => ici.verdicts[k]?.verdict !== 'place')
+  if (places > 0) {
+    textes.push(anciens.length === 1 ? `Dans « ${ici.nom} », il se rangera à sa date :` : `Dans « ${ici.nom} », ils se rangeront à leur date :`)
+    const aide = refuses.length
+      ? `Ajoute ${places > 1 ? `les ${places} tableaux qui se rangent` : 'le tableau qui se range'} ; ${refuses.map(a => `« ${a.nom} »`).join(', ')} ne ${refuses.length > 1 ? 'seront' : 'sera'} pas ajouté${refuses.length > 1 ? 's' : ''}.`
+      : null
+    return { textes, lignes: ici.lignes, ajoutable: true, aide }
+  }
+  if (anciens.length === 1) {
+    const v = ici.verdicts[0]
+    textes.push(v?.verdict === 'deja'
+      ? `« ${anciens[0].nom} » est déjà dans « ${ici.nom} »${v.gene ? ` (séance du ${dateCourte(v.gene.debut)})` : ''}.`
+      : `« ${ici.nom} » a déjà une séance écrite à ces heures-là${v?.verdict === 'chevauche' && v.gene ? ` (${ligneSeance(v.gene)})` : ''} : cet ancien tableau ne peut pas s'y ajouter.`)
+    return { textes, lignes: [], ajoutable: false, aide: null }
+  }
+  textes.push(`« ${ici.nom} » a déjà une séance aux heures de chacun de ces anciens tableaux : aucun ne peut s'y ajouter.`)
+  return { textes, lignes: ici.lignes, ajoutable: false, aide: null }
+}
+
+/** Ce qu'on dit, après coup, de ceux qui n'ont pas été ajoutés à « nom » */
+export function texteDesRefus(nom: string, refuses: readonly { a: AncienTableau; verdict: Verdict }[]): string {
+  return refuses.map(({ a, verdict }) => verdict.verdict === 'deja'
+    ? `« ${a.nom} » n'a pas été ajouté : il est déjà dans « ${nom} ».`
+    : `« ${a.nom} » n'a pas été ajouté : « ${nom} » a déjà une séance à cette heure.`).join(' ')
+}
+
+/** Le message après « Ajouter à « nom » » : ce qui est entré (les bilans,
+ *  voir texteDuBilan), puis ce qui ne l'est pas */
+export function texteApresAjout(nom: string, bilans: readonly string[], refuses: readonly { a: AncienTableau; verdict: Verdict }[]): string {
+  const morceaux: string[] = []
+  if (bilans.length) morceaux.push(`${bilans.length > 1 ? `${bilans.length} séances ajoutées` : 'Séance ajoutée'} à « ${nom} ». ${bilans.join(' ')}`)
+  const r = texteDesRefus(nom, refuses)
+  if (r) morceaux.push(r)
+  return morceaux.join(' ')
 }

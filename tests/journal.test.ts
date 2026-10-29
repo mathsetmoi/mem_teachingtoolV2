@@ -288,6 +288,69 @@ describe('le journal des pages', () => {
     expect(piles(t, [a, b, c])).toEqual(p0)
   })
 
+  it('« séance remise » (lot 17, la corbeille rangée par séance) : rendrePages par le journal ; annulée, les pages retournent dans la corbeille avec leurs entrées ; rétablie, elles reviennent', async () => {
+    const t = new Tableau(null)
+    t.seancesActives = true
+    const { page: a1 } = t.nouvelleSeance(); t.pageVue = a1; await attendre()
+    t.nouveauGeste(); t.poser(a1, trait(0, 0)); await attendre(800)
+    await attendre(86_400_000)
+    const { seance: B, page: b1 } = t.nouvelleSeance(); t.pageVue = b1; await attendre()
+    t.nouveauGeste(); t.poser(b1, trait(0, 0)); await attendre(800)
+    const b2 = t.ajouterPage('carreaux', t.ordre.length, { seance: B }); t.pageVue = b2; await attendre()
+    t.nouveauGeste(); t.poser(b2, trait(5, 5)); await attendre(800)
+    await attendre(86_400_000)
+    const { seance: C, page: c1 } = t.nouvelleSeance(); t.pageVue = c1; await attendre()
+    t.nouveauGeste(); t.poser(c1, trait(0, 0)); await attendre(800)
+    // La séance B supprimée depuis la bibliothèque (ses pages jetées ensemble)
+    t.jeterPages([b1, b2]); await attendre()
+    const entrees = { [b1]: { ...t.corbeille.get(b1)! }, [b2]: { ...t.corbeille.get(b2)! } }
+    const p0 = piles(t, [a1, b1, b2, c1])
+    const j = new JournalPages(t)
+    const k = t.film.length
+    let n = 0
+    const e = j.faire('séance remise', () => { n = t.rendrePages([b1, b2]) })
+    expect(e?.libelle).toBe('séance remise')
+    expect(n).toBe(2)
+    expect(ordre(t)).toEqual([a1, b1, b2, c1])
+    expect(t.pagesDeLaSeance(B)).toEqual([b1, b2])
+    expect(t.corbeille.has(b1) || t.corbeille.has(b2)).toBe(false)
+    expect(j.annuler()).toBe('fait'); await attendre()
+    expect(ordre(t)).toEqual([a1, c1])
+    expect(t.corbeille.get(b1)).toEqual(entrees[b1])             // les mêmes entrées : place et heure
+    expect(t.corbeille.get(b2)).toEqual(entrees[b2])
+    expect(t.pagesDeLaCorbeille().map(x => x.id).sort()).toEqual([b1, b2].sort())
+    expect(t.pagesDeLaSeance(B)).toEqual([])
+    expect(j.retablir()).toBe('fait'); await attendre()
+    expect(ordre(t)).toEqual([a1, b1, b2, c1])
+    expect(t.pagesDeLaSeance(B)).toEqual([b1, b2])
+    expect(t.derniereSeance()!.id).toBe(C)
+    // Des étapes seulOrdre seulement ; aucune pile n'a bougé
+    expect(depuis(t, k).every(x => x.seulOrdre)).toBe(true)
+    expect(piles(t, [a1, b1, b2, c1])).toEqual(p0)
+  })
+
+  it('un bloc de séance supprimé définitivement après une action du journal : défaire n\'est plus exact (\'change\'), rien ne revient', async () => {
+    const t = new Tableau(null)
+    t.seancesActives = true
+    const { page: a1 } = t.nouvelleSeance(); t.pageVue = a1; await attendre()
+    t.nouveauGeste(); t.poser(a1, trait(0, 0)); await attendre(800)
+    await attendre(86_400_000)
+    const { seance: B, page: b1 } = t.nouvelleSeance(); t.pageVue = b1; await attendre()
+    t.nouveauGeste(); t.poser(b1, trait(0, 0)); await attendre(800)
+    await attendre(86_400_000)
+    const { page: c1 } = t.nouvelleSeance(); t.pageVue = c1; await attendre()
+    t.nouveauGeste(); t.poser(c1, trait(0, 0)); await attendre(800)
+    const j = new JournalPages(t)
+    j.faire('page renommée', () => { t.renommerPage(c1, 'Bilan') })
+    t.jeterPages([b1]); await attendre()                          // la séance B, supprimée
+    expect(t.pagesDeLaSeance(B)).toEqual([])
+    expect(t.supprimerDefinitivement([b1])).toBe(1)               // « Supprimer définitivement » le bloc
+    expect(j.annuler()).toBe('change')
+    expect(t.nomDe(c1)).toBe('Bilan')
+    expect(j.peutAnnuler).toBe(false)
+    expect(ordre(t)).toEqual([a1, c1])
+  })
+
   it('remettre une page jetée par le lot 2 (sans entrée) : à la fin ; annulée, elle retourne dans la corbeille sans entrée', async () => {
     const { t, pages: [a, b, c] } = await tableau(3)
     t.pageVue = a

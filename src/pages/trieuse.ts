@@ -25,10 +25,12 @@
 // (tout le classeur) et dans celui des pages choisies, « Copier en image »
 // et « Exporter en PDF… » dans le menu d'une vignette ; Ctrl + P exporte
 // les pages choisies, sinon tout le classeur (voir sorties/export-pdf.ts).
-// La corbeille (corbeille.ts) est une vue de la trieuse : son bouton dans
-// le bandeau (« Corbeille (3) ») remplace la grille par les pages
-// supprimées, qu'on y remet ou supprime définitivement ; Échap ou
-// « Pages » ramènent à la grille.
+// La corbeille du classeur (corbeille.ts) est une vue de la trieuse : son
+// bouton dans le bandeau (« Corbeille (3) ») remplace la grille par les
+// séances et les pages supprimées, rangées par séance (lot 17), qu'on y
+// remet ou supprime définitivement ; Échap ou « Pages » ramènent à la
+// grille (une page remise dans une séance passée : sa séance se déplie en
+// bas, le focus sur sa vignette).
 // =============================================================
 import * as Y from 'yjs'
 import type { App } from '../app'
@@ -342,6 +344,9 @@ export class Trieuse {
     this.app.tableau.ordre.observe(this.surChangement)
     this.app.tableau.noms.observe(this.surChangement)
     this.app.tableau.corbeille.observe(this.surCorbeille)
+    // Les fiches des séances (lot 17) : un nom changé depuis la bibliothèque
+    // (un autre onglet) se lit dans les séances passées et dans la corbeille
+    this.app.tableau.seances.observe(this.surChangement)
     // La page qu'on regarde, au milieu, avec le focus
     const c = this.focusId ? this.cartes.get(this.focusId) : null
     if (c) {
@@ -372,6 +377,7 @@ export class Trieuse {
     this.app.tableau.ordre.unobserve(this.surChangement)
     this.app.tableau.noms.unobserve(this.surChangement)
     this.app.tableau.corbeille.unobserve(this.surCorbeille)
+    this.app.tableau.seances.unobserve(this.surChangement)
     this.io?.disconnect(); this.io = null
     this.ro?.disconnect(); this.ro = null
     cancelAnimationFrame(this.remiseATaille)
@@ -631,7 +637,7 @@ export class Trieuse {
   }
 
   // ---------- La corbeille ----------
-  /** Le libellé du bouton du bandeau : « Corbeille (3) » ; son nom « Corbeille : 3 pages », « Corbeille : vide » */
+  /** Le libellé du bouton du bandeau : « Corbeille (3) » ; son nom « Corbeille du classeur : 3 pages », « Corbeille du classeur : vide » */
   private majBoutonCorbeille() {
     const { texte, nom } = libelleCorbeille(compterCorbeille(this.app.tableau))
     const l = this.boutonCorbeille.querySelector('.libelle')!
@@ -652,15 +658,26 @@ export class Trieuse {
   }
 
   /** La vue de la corbeille s'est fermée : la grille revient. page : une
-   *  page qu'on vient de remettre, montrée avec le focus ; sinon le focus
-   *  retourne au bouton « Corbeille » (s'il était dans la vue) */
+   *  page qu'on vient de remettre (ou la première d'une séance remise),
+   *  montrée avec le focus : sa carte si elle est du jour ; sinon (une
+   *  séance passée, lot 17) sa séance se déplie dans « Les séances passées »
+   *  et sa vignette prend le focus ; sinon le focus retourne au bouton
+   *  « Corbeille » (s'il était dans la vue) */
   private revenirDeLaCorbeille(page: string | null, rendreFocus: boolean) {
     this.el.classList.remove('en-corbeille')
     if (!this.ouvert) return
     this.majBoutonCorbeille()
     this.vignettes.prioriser(this.ordre.filter(id => this.visibles.has(id)))
-    if (page && this.cartes.has(page)) this.focusCarte(page)
-    else if (rendreFocus) this.boutonCorbeille.focus()
+    if (page && this.cartes.has(page)) { this.focusCarte(page); return }
+    const s = page ? this.app.tableau.seanceDe(page) : null
+    if (page && s && s.pages.includes(page)) {
+      this.deplies.add(s.id)
+      this.cleAnciennes = ''
+      this.majSeances()
+      const v = this.anciennes.querySelector<HTMLElement>(`.trieuse-vignette-passee[data-page="${page}"]`)
+      if (v) { v.scrollIntoView({ block: 'nearest' }); v.focus({ preventScroll: true }); return }
+    }
+    if (rendreFocus) this.boutonCorbeille.focus()
   }
 
   /** La ligne d'aide, selon le dernier pointeur : la souris et la tablette
@@ -807,8 +824,9 @@ export class Trieuse {
     if (menuOuvert() || cible.closest?.('.menu-flottant')) return
     // Un champ (le nom d'une page) garde ses touches, Échap et Entrée
     // compris (voir renommer) ; Ctrl + D n'y ouvre pas le marque-page du
-    // navigateur
-    if (cible.closest?.('input, textarea, select, [contenteditable]')) { if (toucheMarquePage(e)) e.preventDefault(); return }
+    // navigateur. Pas une case à cocher (celle de la corbeille, « 30
+    // jours ») : Échap y ramène aux pages comme ailleurs
+    if (cible.closest?.('input:not([type="checkbox"]), textarea, select, [contenteditable]')) { if (toucheMarquePage(e)) e.preventDefault(); return }
     const fait = () => { e.preventDefault(); e.stopPropagation() }
     const raccourci = (e.ctrlKey || e.metaKey) && !e.altKey
     const lettre = e.key.toLowerCase()

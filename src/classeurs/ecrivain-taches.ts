@@ -84,6 +84,7 @@ import type { EnteteDemandee, ExamenBase } from './ecrivain-pur'
 import { examinerMisesAJour, fabriquer, preparerCopie } from './ecrivain-pur'
 import type { ComparaisonVecteurs } from './vecteurs'
 import { comparerVecteurs } from './vecteurs'
+import { inventaireDesMisesAJour } from './verifier'
 
 export type RaisonEcrivain = 'absente' | 'abimee' | 'indisponible' | 'illisible' | 'fil' | 'place' | 'existante' | 'autre'
 
@@ -100,6 +101,10 @@ export type Demande =
   | { n: number; genre: 'copier'; source: string; cible: string; infos: InfosBase }
   | { n: number; genre: 'examiner'; base: string }
   | { n: number; genre: 'preparer-copie'; etat: Uint8Array; id: string }
+  /** Les images d'un classeur sans l'ouvrir (lot 17, voir verifier.ts) :
+   *  les clés que ses pages montrent, celles que sa banque a ; donnees : les
+   *  clés dont on veut aussi les données (celles qu'on va recopier) */
+  | { n: number; genre: 'images'; base: string; donnees?: string[] }
 
 export type Reponse =
   | { n: number; fichier: Blob; pages: number; vecteur: Uint8Array; crc: number; incomplet?: boolean }
@@ -110,6 +115,7 @@ export type Reponse =
   | { n: number; misAJour: boolean; comparaison: ComparaisonVecteurs; vecteur: Uint8Array }
   | { n: number; creee: true; publications?: number; vecteur?: Uint8Array }
   | { n: number; preparee: true; etat: Uint8Array; vidage: Uint8Array; publications: number; vecteur: Uint8Array }
+  | { n: number; utilisees: string[]; presentes: string[]; donnees?: Record<string, string> }
   | { n: number; erreur: ErreurRendue }
 
 /** Ce qu'une réponse peut transférer sans copie (l'état d'un fichier lu) */
@@ -256,6 +262,15 @@ export async function executer(d: Demande): Promise<Reponse> {
       // L'identité rangée à côté, telle qu'elle est (la bibliothèque la vérifie)
       const lue = infos && typeof infos === 'object' ? { ...(typeof infos.id === 'string' ? { id: infos.id } : {}), ...(typeof infos.nom === 'string' ? { nom: infos.nom } : {}) } : undefined
       return lue ? { n: d.n, examen, infos: lue } : { n: d.n, examen }
+    }
+    if (d.genre === 'images') {
+      // La base lue au calme (jamais créée : ouvrirBaseExistante), rejouée
+      // dans un document nu, et seulement des listes de clés en retour, plus
+      // les données demandées
+      const { mises } = await lire(d.base)
+      const r = inventaireDesMisesAJour(mises, d.donnees)
+      if (!r) throw new ErreurBase('abimee', `La base ${d.base} ne fait pas un document lisible.`)
+      return d.donnees ? { n: d.n, utilisees: r.utilisees, presentes: r.presentes, donnees: r.donnees } : { n: d.n, utilisees: r.utilisees, presentes: r.presentes }
     }
     throw new Error(`Demande inconnue : ${(d as { genre?: string }).genre}`)
   } catch (e) {

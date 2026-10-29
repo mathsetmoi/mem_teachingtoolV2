@@ -763,7 +763,10 @@ figure sans noms donne des lettres libres aux autres.
 Le bouton image de la barre du haut importe une photo ou une capture (on peut
 aussi la coller avec Ctrl+V, ou glisser le fichier sur le tableau) ; un PDF
 aussi (voir « Importer un PDF »). Réduite à
-1600 px, elle est rangée une seule fois dans le document. Comme une figure, elle
+1600 px, elle est rangée une seule fois dans le document : ses données vont
+dans la banque d'images du classeur, sous une clé, et le cadre posé sur la
+page ne porte que cette clé (quand la banque n'a plus les données, la page
+montre un cadre gris : voir « Vérifier les classeurs »). Comme une figure, elle
 se déplace, se duplique et se **transforme** : symétrie par rapport à une droite
 tracée sur la page, à une verticale ou à un axe du repère ; symétrie centrale,
 rotation ou homothétie autour d'un point de la page. L'image est vraiment
@@ -2045,9 +2048,11 @@ elle laisse la place de glisser loin, sert telle quelle sur un téléphone
   pages choisies, sinon tout le tableau. La trieuse reste ouverte pendant
   l'export (voir « Exporter en PDF »).
 - **La corbeille** : le bouton **Corbeille** du bandeau (« Corbeille (3) »,
-  le nombre de pages qui y attendent) remplace la grille par les pages
-  supprimées, qu'on y remet ou supprime définitivement (voir « Supprimer une
-  page ») ; Échap ou **Pages** ramènent à la grille.
+  le nombre de pages qui y attendent) remplace la grille par la corbeille du
+  classeur : les séances supprimées, chacune en un bloc, et les pages
+  supprimées seules, qu'on y remet ou supprime définitivement (voir
+  « Supprimer une page » et « La corbeille du classeur, rangée par séance »
+  dans le lot 17) ; Échap ou **Pages** ramènent à la grille.
 - **Annuler** : chaque action le dit (« Page déplacée : c'est maintenant la
   page 5 », « Page renommée », « Page vide insérée : c'est la page 4 », « Page
   ajoutée à la fin (page 8) », « Fond changé (page 3) », « Page 3 dupliquée :
@@ -2105,7 +2110,14 @@ se dit) :
   nombre de séances, le chapitre ouvert en tête, et « + Nouveau chapitre… » :
   le nom seulement, rangé dans le dossier, page blanche, et la case de la clé
   comme pour un nouveau classeur ; la copie sur le Drive suit comme pour tout
-  classeur). « Continuer la séance de lundi 8 h ». « Un autre niveau : 4ème ·
+  classeur ; depuis le lot 17, le classeur « Séances isolées » du niveau y est
+  en dernier, « Séances isolées · 3 séances · hors chapitre »). Dessous, le
+  lien **« Séance isolée »** et son petit texte « Hors chapitre : rangée dans
+  « Séances isolées » de 5ème. » (lot 17, voir « Les séances isolées ») : une
+  séance hors chapitre, dans le classeur « Séances isolées » du niveau, créé
+  au besoin sans fenêtre ; quand le classeur ouvert est lui-même « Séances
+  isolées », le lien n'est pas là et le gros bouton dit « Nouvelle séance
+  isolée en 5ème ». « Continuer la séance de lundi 8 h ». « Un autre niveau : 4ème ·
   3ème · 2nde » (les autres dossiers de niveau) : un clic ouvre le chapitre en
   cours de ce niveau, le dernier classeur ouvert dans son dossier (ses
   sous-dossiers compris), et y commence une séance ; un niveau sans classeur
@@ -2231,7 +2243,9 @@ quand le classeur n'a qu'une séance).
   corbeille, « Envoyer vers… » : vers les pages du jour seulement). Une page
   d'une séance passée ne passe dans la séance du jour que reprise (une
   copie) : la séance passée reste telle que la classe l'a vue. Une page
-  remise de la corbeille revient dans sa séance.
+  remise de la corbeille revient dans sa séance, même passée (depuis le
+  lot 17, la corbeille dit de quelle séance est chaque page, et rend une
+  séance supprimée d'un coup : « Remettre la séance »).
 - **Le PDF** : le classeur entier par le menu ⋯, la séance par la page et la
   trieuse (voir plus haut).
 - **L'ouverture par la bibliothèque** applique la même règle d'une heure,
@@ -2354,7 +2368,11 @@ bibliothèque des classeurs »).
   levait une erreur.)
 - **Effacer pour de bon** (vider la corbeille de la bibliothèque, voir « La
   bibliothèque des classeurs » ; `src/classeurs/effacer.ts`), jamais avec
-  une fiche menteuse : 1) la fiche reçoit `effacement` (le classeur
+  une fiche menteuse : 0) depuis le lot 17, les images dont la corbeille
+  tient la dernière copie sont recopiées dans les classeurs qui les
+  montrent encore (la question l'a annoncé ; un classeur dont la recopie
+  échoue n'est pas effacé ; voir « Vérifier les classeurs ») ; 1) la fiche
+  reçoit `effacement` (le classeur
   disparaît partout) ; 2) les onglets ouverts sur lui sont prévenus et
   cessent d'écrire (canal `mem-teachingtool-classeur`, `{ type: 'supprime',
   base }` ; pour le premier, aussi le canal d'avant, `{ type: 'remplace',
@@ -3325,6 +3343,10 @@ séances du chapitre au même endroit. Pas de distinction 5A / 5B (l'outil dit
 - **Les replays `.mem`** ne bougent pas : le lien des élèves passe toujours
   par « MEM - Replay séances » (les liens déjà envoyés restent bons). Les
   ranger aussi dans le dossier du chapitre n'est pas fait.
+- **Le classeur « Séances isolées » d'un niveau** (lot 17) est un chapitre
+  comme un autre pour l'ordinateur et le Drive :
+  `5ème/Séances isolées/Séances isolées.memc`, « MEM - Classeurs › 5ème ›
+  Séances isolées » ; ses replays sont proposés dans ce dossier.
 
 ### Comment c'est fait
 
@@ -3365,8 +3387,12 @@ séance, ou la touche Menu).
   l'ordre habituel. Une nouvelle séance arrive toujours en haut. Échap
   pendant le glisser : rien ne bouge.
 - **Supprimer** (Suppr) : les pages de la séance vont dans la corbeille du
-  classeur ; « Annuler » dans le message remet tout, avec le nom. La seule
-  séance d'un classeur : c'est le classeur entier qui va dans la corbeille.
+  classeur (« La séance « Activité d'intro » est supprimée : ses pages sont
+  dans la corbeille du classeur (Maj + P, Corbeille). ») ; « Annuler » dans
+  le message remet tout, avec le nom ; plus tard, la corbeille du classeur
+  montre la séance en un bloc, et **Remettre la séance** la rend de même
+  (lot 17). La seule séance d'un classeur : c'est le classeur entier qui va
+  dans la corbeille.
 - **Déplacer vers…**, ou glisser la séance sur la carte d'un autre
   classeur : la séance part avec ses pages, ses images, son nom, sa date et
   son film (Revoir et Publier marchent comme avant), et se range à sa date
@@ -3374,12 +3400,21 @@ séance, ou la touche Menu).
   séance à la même heure refuse, et rien ne bouge. Une séance qui est déjà
   passée par ce classeur puis a été supprimée (ses pages sont à la
   corbeille) y revient sans être refusée : la nouvelle copie remplace
-  l'ancienne, dont les pages de la corbeille ne sont plus à remettre.
+  l'ancienne, dont les pages de la corbeille ne sont plus à remettre. Une
+  séance isolée (lot 17) se range plus tard dans son chapitre par
+  « Déplacer vers… » ; si c'était la seule, le classeur « Séances isolées »
+  vide va à la corbeille et le prochain « Séance isolée » en recrée un.
 - **Images retrouvées** : jusqu'au 28 octobre 2026, une séance déplacée
   arrivait sans ses images (des cadres gris à leur place). En ouvrant le
   classeur, celles qui manquent sont cherchées dans les autres classeurs de
   la bibliothèque, ceux de la corbeille compris, et remises à leur place ;
-  un message dit combien et d'où (`Fichiers.retrouverImages`).
+  un message dit combien et d'où (`Fichiers.retrouverImages`, qui confie
+  la recherche au service de « Vérifier les classeurs » depuis le lot 17,
+  voir cette section). Depuis le lot 17 aussi, l'ouverture prévient quand
+  une image reste introuvable (« 1 image de ce classeur est introuvable
+  dans ce navigateur. » [Vérifier les classeurs…]), et la fenêtre
+  « Vérifier les classeurs… » du menu ⋯ de la bibliothèque fait la même
+  recherche pour tous les classeurs, sans les ouvrir.
 - **Les replays déjà publiés ne bougent pas** : le lien des élèves reste
   bon. Une séance déplacée garde ses publications : la republier depuis son
   nouveau classeur remplace le même replay (même lien).
@@ -3399,9 +3434,18 @@ séance, ou la touche Menu).
   gardés seulement si la page mère part aussi), puis glisse ses étapes à
   leur heure dans le film de l'autre classeur, avec des instantanés
   recalculés : le film reste rangé par heure, comme le veut l'export. Une
-  étape de dessin de l'autre classeur au milieu de la séance : refus.
+  étape de dessin de l'autre classeur au milieu de la séance : refus. La
+  vérification de la place est à part, en lecture seule (`placeDansLeFilm`,
+  depuis le deuxième lot de l'audit), et une séance que le classeur a déjà
+  (le même début, avec ses pages) est refusée à part (`'deja'` : « a déjà
+  cette séance ») ; les images sont dédoublées par contenu dans la banque
+  d'arrivée (les mêmes pixels sous un autre nom sont gardés une fois).
+  `copierSeance` sert aussi aux anciens tableaux (`.prof`), rangés à leur
+  date par la même règle.
 - `src/document.ts` : `rangerLesSeances`, `rendrePages`, `marquerDefinitives`,
-  `pagesA`, `ecrireSansFilm`.
+  `pagesA`, `ecrireSansFilm`. `rendrePages` (ce que fait « Annuler ») sert
+  aussi, depuis le lot 17, à « Remettre la séance » depuis la corbeille du
+  classeur.
 - `src/classeurs/fichiers.ts` : `lireUnClasseur` et `ecrireUnClasseur`
   (le classeur ouvert dans l'onglet reçoit la différence, les autres sont
   réécrits dans leur base) ; `bibliotheque.ts` : le menu, le clavier, le
@@ -3416,7 +3460,7 @@ séance, ou la touche Menu).
 Les séances d'avant ce classeur sont des **anciens tableaux** : un fichier
 `.prof` par séance. Ils s'ouvrent comme un classeur (`src/classeurs/ancien-tableau.ts`,
 la fenêtre dans `src/classeurs/fichiers.ts`), et chacun devient **une séance**
-d'un classeur, avec son film.
+d'un classeur, à sa date, avec son film.
 
 ### Le mode d'emploi
 
@@ -3428,13 +3472,28 @@ d'un classeur, avec son film.
   du plus ancien au plus récent. Deux choix :
   - **Nouveau classeur** : un classeur neuf, au nom du premier fichier, dans
     le dossier qu'on regarde ; il s'ouvre ;
-  - **Ajouter à « … »** : au bout du classeur ouvert, s'il n'a rien de plus
-    récent que la séance (le film se lit dans l'ordre des heures). Sinon le
-    bouton n'est pas là, et la fenêtre dit pourquoi : on ajoute les séances
-    dans l'ordre des dates, la plus ancienne d'abord.
-- Pour ranger les séances dans leurs chapitres : la première séance d'un
-  chapitre en **Nouveau classeur**, puis, ce classeur ouvert, les suivantes
-  en **Ajouter à « … »**.
+  - **Ajouter à « … »** : dans le classeur ouvert, **à sa date**, entre ses
+    séances (depuis le deuxième lot de l'audit, voir plus bas « À sa date,
+    entre les séances »). La fenêtre montre où il ira : « Dans « Fractions »,
+    il se rangera à sa date : », puis une liste, la plus récente en haut (la
+    séance d'après, la sienne surlignée « — ira ici », la séance d'avant, et
+    « … 3 séances plus récentes » / « … 2 séances plus anciennes » pour le
+    reste). Ce bouton est alors le bouton principal (Entrée). Le classeur
+    ouvert le reçoit aussitôt, **sans rechargement** ; sa base, sa clé et sa
+    copie sur le Drive suivent comme pour tout changement. Si le classeur a
+    déjà une séance écrite à ces heures-là, ou s'il a déjà ce tableau, le
+    bouton n'est pas là et la fenêtre dit pourquoi (« « Fractions » a déjà une
+    séance écrite à ces heures-là (Lun 28 sept 8h · 2 pages) : cet ancien
+    tableau ne peut pas s'y ajouter. », « « 2 - Lundi 28 septembre 2026 » est
+    déjà dans « Fractions » (séance du lun 28 sept 8h). ») ; « Nouveau
+    classeur » reste offert, et redevient le bouton principal.
+- Plusieurs `.prof` d'un coup : chacun à sa date. Un doublon (le même
+  tableau enregistré deux fois) ou un tableau aux heures d'une séance déjà
+  écrite n'est pas ajouté : il est barré dans la liste (« — déjà dans
+  « Fractions » : ne sera pas ajouté »), le survol du bouton le dit
+  (« Ajoute les 2 tableaux qui se rangent ; « 5A mardi (copie) » ne sera pas
+  ajouté. »), et le message de la fin le nomme ; les autres entrent. Rien
+  n'est jamais écrit à moitié.
 - Le message de la fin fait le bilan : « « 2 - Mardi 29 septembre 2026 » :
   1 page, 97 traits, 4 images, avec son film. » ; ce qui n'a pas été repris
   y est compté.
@@ -3493,17 +3552,77 @@ elles) : la séance prend la date écrite dans son nom (« Mardi 22 septembre
 qui peut venir bien plus tard ; ses gestes se suivent, 5 secondes l'un
 après l'autre. Les outils posés comme des images restent des images.
 
+### À sa date, entre les séances (audit du 28 octobre 2026)
+
+Jusqu'au deuxième lot de l'audit, « Ajouter à « … » » ne prenait un ancien
+tableau qu'au bout du classeur ouvert, s'il était plus récent que tout ce
+que le classeur avait (le film se lit dans l'ordre des heures) ; sinon il
+fallait passer par « Nouveau classeur » puis « Déplacer vers… », séance par
+séance. La décision : un ancien tableau se range **à sa date**, avec la règle
+de « Déplacer vers… » (lot 9), et la fenêtre montre où il ira.
+
+- **La fenêtre**, quatre états. Un seul `.prof`, un chapitre ouvert : les
+  deux paragraphes d'avant, « Dans « Fractions », il se rangera à sa date : »
+  et la liste (« … 3 séances plus récentes », « Lun 5 oct 8h · 3 pages »,
+  « ▸ Lun 28 sept 8h · « 2 - Lundi 28 septembre 2026 » · 6 pages — ira ici »
+  surligné, « Ven 25 sept 8h · Fractions (1) · 2 pages », « … 2 séances plus
+  anciennes »), puis [Annuler] [Nouveau classeur] [Ajouter à « Fractions »]
+  (principal). Un seul `.prof` refusé : à la place de la liste, pourquoi
+  (« a déjà une séance écrite à ces heures-là (…) », ou « est déjà dans
+  « Fractions » (séance du …) »), et [Annuler] [Nouveau classeur]
+  (principal). Plusieurs `.prof` dont un refusé : « ils se rangeront à leur
+  date : », la liste avec chaque « ira ici » et le refusé barré d'un ✕
+  (« — déjà une séance à cette heure : ne sera pas ajouté »), le survol du
+  bouton qui dit lesquels entrent. Sans chapitre ouvert : la fenêtre d'avant.
+- **Ce qui est refusé** : un tableau pendant une séance déjà écrite (ou dont
+  le classeur a un geste entre lui et la séance suivante : une séance d'avant
+  le lot 6 continuée sur plusieurs jours), et le même tableau déjà repris
+  (une séance du même début). La règle est exactement celle de « Déplacer
+  vers… » : la même séance supprimée du classeur (ses pages à la corbeille)
+  n'empêche pas de la reprendre, la nouvelle remplace sa trace.
+- **Un tableau plus récent que tout** devient la dernière séance (comme
+  avant) ; comme il n'y a pas de rechargement, la page qu'on regardait passe
+  « en séance passée » (le compteur ambre, le bandeau « vous la regardez sans
+  la modifier ») : c'est rare, un `.prof` vient du passé.
+- **L'ordre choisi à la main** (lot 9, `rang`) : la séance insérée, sans
+  rang, se range en bas de la liste des cartes jusqu'à « Remettre dans
+  l'ordre des dates », comme pour « Déplacer vers… ».
+- **Le temps** : la conversion se fait avant la fenêtre (« Lecture de
+  l'ancien tableau… », « Lecture de « X »… » pour chacun) ; « Annuler »
+  jette ce travail, rien n'est écrit. Mesuré sous Node, sans le canevas des
+  images : un `.prof` de 43 Mo (658 états, 562 traits, 10 images), lecture
+  0,5 s, brouillon 0,8 s, chaîne (copie à sa date) 0,12 s, différence
+  appliquée 0,03 s ; un `.prof` de 5 Mo (176 états), 33 + 37 + 18 + 25 ms.
+
 ### Comment c'est fait
 
 Le fichier est lu en entier (`lireAncienTableau`), son film rejoué page
-par page ; le classeur se fait **en mémoire** (un `Tableau` qui ne vit
-nulle part : un classeur neuf, ou l'état du classeur ouvert, `lireEtat`),
-chaque geste en une transaction, avec l'heure de son étape
-(`Tableau.horloge`) ; puis il entre dans la bibliothèque **comme un fichier
-`.memc`** : ajouté (Ajouter à la bibliothèque), ou le classeur ouvert mis à
-jour sans rien perdre (le chemin de « Mettre à jour le classeur »). Rien
-ne s'écrit si la reprise échoue. Essais : `tests/ancien-tableau.test.ts`,
-`essais/navigateur/lot7/E2-ancien-tableau.mjs`.
+par page dans un **classeur brouillon** en mémoire (`reprendre`, dans un
+`Tableau` qui ne vit nulle part : une séance neuve, chaque geste en une
+transaction, avec l'heure de son étape, `Tableau.horloge` ; le bilan dit
+l'id de la séance). Puis chaque brouillon est **copié à sa date** dans le
+classeur d'arrivée par `copierSeance` (`src/deplacer-seance.ts`, le moteur
+de « Déplacer vers… » du lot 9), en chaîne (`rangerDansLeClasseur`) : un
+document neuf à chaque copie (`copierSeance` le veut), qui devient le
+classeur d'arrivée du suivant ; un refus (`'chevauche'`, `'deja'`) ne change
+rien, et le suivant est essayé. Le classeur d'arrivée est le classeur
+ouvert lu dans un document neuf (`Fichiers.lireLeClasseurOuvert`, aussi
+pour le lot 9) ou un `Tableau` vide (« Nouveau classeur » : le même chemin,
+les essais A1 à A12 de E2 garantissent le même résultat). Tout cela se fait
+**avant la fenêtre** (convertir d'abord, demander ensuite, écrire enfin) :
+la fenêtre montre le vrai résultat (`apercuDuRangement`,
+`textesAvantAnciens`, `seanceGenante`, purs ; la liste est l'option `liste`
+de `fenetre`, `.apercu-seances`). Au clic sur « Ajouter à », le classeur
+ouvert reçoit la différence par `ecrireUnClasseur` (comme le lot 9 : sans
+rechargement ni coupure de la sauvegarde ; la fiche `listeSeances` suit),
+après une vérification du vecteur d'état (« « Fractions » a changé
+entre-temps : rien n'a été ajouté. Recommencez. » si un autre onglet a
+écrit pendant la fenêtre) ; le message vient de `texteApresAjout`.
+« Nouveau classeur » écrit le document en `.memc` en mémoire et l'ajoute à
+la bibliothèque comme avant (`ajouterEtOuvrir`). Rien ne s'écrit si la
+reprise échoue, et jamais à moitié. Essais : `tests/ancien-tableau.test.ts`,
+`tests/deplacer-seance.test.ts`, `essais/navigateur/lot7/E2-ancien-tableau.mjs`
+(sections A à J).
 
 ## L'état de la sauvegarde
 
@@ -3761,7 +3880,8 @@ n'est jamais imposée, rien ne change au geste du professeur en classe.
   voir « La corbeille de la bibliothèque » plus bas), le menu **⋯**
   (« Enregistrer toute la bibliothèque… », voir « Toute la bibliothèque
   dans un fichier » ; « Récupérer une sauvegarde du Drive… », voir « La
-  copie sur le Drive »), le ×,
+  copie sur le Drive » ; « Vérifier les classeurs… », voir « Vérifier les
+  classeurs » dans le deuxième lot de l'audit), le ×,
   et, en bas, la place que ce navigateur garde pour le site. Tout tient sur
   une ligne dès 1024 px (jusqu'à 1100 px, le nombre de classeurs passe sous
   le titre) ; plus étroit, sur deux : le titre, la corbeille, le ⋯ et le ×,
@@ -3788,7 +3908,10 @@ n'est jamais imposée, rien ne change au geste du professeur en classe.
   puces grises (celle qui vient de son dossier plus claire), et un bouton ⋯ de 44 px (« Options de
   « Symétrie centrale » »). Le lecteur d'écran y lit « Symétrie centrale, 12
   pages, modifié aujourd'hui à 14 h 05 » (et « niveau 5e B », « ouvert dans
-  cet onglet », la clé, le Drive). Chaque carte est un lien (`?classeur=<id>`) : **le clic du
+  cet onglet », la clé, le Drive). Le classeur « Séances isolées » d'un
+  niveau (lot 17) porte sous son nom la mention grise « Hors chapitre », et
+  le lecteur d'écran dit « Séances isolées, hors chapitre, … » ; la carte
+  est la même pour le reste. Chaque carte est un lien (`?classeur=<id>`) : **le clic du
   milieu et Ctrl + clic ouvrent le classeur dans un autre onglet**, comme
   partout ; le clic simple l'ouvre ici.
 - **Les pointeurs.** La souris et la plume de la tablette graphique : un
@@ -3912,6 +4035,8 @@ classeurs d'un niveau. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
   (« Modifiés récemment », « Nom (A → Z) ») ; le choix vaut pour les
   classeurs de la grille et du filtre (les dossiers vont toujours par nom,
   Récents par ouverture), retenu sur l'appareil (`mem-teachingtool-tri`).
+  Le classeur « Séances isolées » d'un dossier (lot 17) est toujours en
+  dernier, quel que soit le tri ; les chapitres gardent leur ordre.
 - **Un cycle de dossiers** (deux onglets qui rangent chacun un dossier dans
   l'autre ; le registre le refuse dans sa transaction, mais pas des deux
   côtés à la fois) : chaque dossier du cycle se montre à la racine, toute
@@ -4045,8 +4170,13 @@ testé : `tests/corbeille-biblio.test.ts` ; la vue, `src/classeurs/vue-corbeille
   plus) ; le Tableau garde sa base (« Annuler » le rend, et le ×) ; au
   rechargement, la bibliothèque seule dit qu'il est dans la corbeille.
   Supprimé dans un autre onglet pendant qu'il est ouvert ici : rien ne
-  change ici, on y écrit comme avant, jusqu'à ce qu'on le vide.
-- **La vue** (le bouton « Corbeille (3) », à la place des cartes) : les
+  change ici, on y écrit comme avant, jusqu'à ce qu'on le vide. Le classeur
+  « Séances isolées » d'un niveau (lot 17) se supprime comme tout classeur ;
+  le prochain « Séance isolée » en recrée un neuf.
+- **La vue** (le bouton « Corbeille (3) », à la place des cartes), titrée
+  « Corbeille de la bibliothèque » depuis le lot 17 (sa note finit par
+  « Les pages et les séances supprimées d'un classeur sont dans la corbeille
+  de ce classeur (Maj + P, Corbeille). ») : les
   dossiers et les classeurs supprimés, le dernier d'abord (un classeur
   supprimé avant son dossier paraît aussi pour lui-même) ; chacun : son
   aperçu (ou les petits carreaux ; un dossier, son icône dans sa couleur),
@@ -4064,6 +4194,17 @@ testé : `tests/corbeille-biblio.test.ts` ; la vue, `src/classeurs/vue-corbeille
   On reste dans la vue.
 - **Supprimer définitivement, Vider** : une question dans une fenêtre de
   l'outil, « Annuler » a le focus, Échap ou un clic à côté la ferment.
+  Depuis le lot 17, les images sont vérifiées avant la question (voir
+  « Vérifier les classeurs » ; au-delà de 0,4 s, « Vérification des
+  images… » en bas) : si un classeur qu'on va effacer tient la dernière
+  copie d'images que d'autres classeurs montrent encore, la question gagne
+  un paragraphe, « 2 images que « Fractions » et « Équations » montrent
+  encore n'existent que dans la corbeille : elles seront d'abord recopiées
+  dans ces classeurs. » (« 1 image que « Fractions » montre encore n'existe
+  que dans la corbeille : elle sera d'abord recopiée dans ce classeur. ») ;
+  un classeur de la corbeille dont la base ne se lit pas : « « Vieux
+  chapitre » n'a pas pu être vérifié. », et il s'efface quand même. Quand
+  aucune image n'est concernée, la question est celle d'avant.
   « Supprimer définitivement « Symétrie » ? Ses 12 pages et tout son
   historique (la revue, les séances à publier) seront effacés de ce
   navigateur. Ce n'est pas annulable. », puis ce qui en reste ailleurs
@@ -4082,11 +4223,22 @@ testé : `tests/corbeille-biblio.test.ts` ; la vue, `src/classeurs/vue-corbeille
   « Dont 1 qui n'a jamais été enregistré dans un fichier. » s'il le faut.
   Puis « « Symétrie » supprimé définitivement. », « Corbeille vidée (3
   classeurs, 1 dossier). » (l'effacement lui-même : voir « Effacer pour de
-  bon » dans « Les classeurs : où ils vivent »). Le classeur de l'onglet
+  bon » dans « Les classeurs : où ils vivent »). Les recopies annoncées se
+  font après la question et avant d'effacer (au-delà de 0,4 s, « Recopie
+  des images… ») ; le message de fin les dit : « Corbeille vidée (3
+  classeurs, 1 dossier). 2 images recopiées dans « Fractions ». ». Si une
+  recopie échoue (le classeur d'arrivée a changé pendant ce temps, ou sa
+  base ne répond pas), le classeur qui tenait ces images **n'est pas
+  effacé**, ni le dossier qui le garde ; les autres le sont, et le message
+  le dit : « « Symétrie » n'a pas été effacé : ses images n'ont pas pu être
+  recopiées dans « Fractions ». Recommencez. ». Le classeur de l'onglet
   vidé : l'onglet devient la bibliothèque seule (`?bibliotheque`, « Bibliothèque
   — MEM teachingtool », plus rien ne s'écrit, le navigateur ne demande rien
-  en partant). Rien ne s'efface jamais tout seul : pas de purge après
-  30 jours.
+  en partant). Rien ne s'efface jamais tout seul dans la corbeille de la
+  bibliothèque : pas de purge après 30 jours. (La corbeille du classeur,
+  elle, a depuis le lot 17 une case « Vider tout seul ce qui est ici depuis
+  plus de 30 jours », décochée au départ : voir « La corbeille du classeur,
+  rangée par séance ».)
 - **La place** : en bas du bandeau, « Ce navigateur garde 120 Mo pour ce
   site. » (`navigator.storage.estimate` : l'origine `mathsetmoi.github.io`
   est commune à tous les outils de l'organisation) ; au-delà de 80 % du
@@ -4519,6 +4671,521 @@ dossiers sont « 5ème », « 4ème », « 3ème » ; « Nouvelle séance en 5è
 niveau »), `tests/arbre.test.ts`, `tests/bibliotheque.test.ts`. À noter : la
 liste du tirage au sort est celle du dossier (`mem-tirage-<id>`), donc du
 niveau : la même pour la 5A et la 5B.
+
+## Deuxième lot de l'audit (lot 17)
+
+Le deuxième lot de l'audit du 28 octobre 2026 : les séances isolées,
+l'ancien tableau à sa date, la corbeille du classeur rangée par séance,
+vérifier les classeurs.
+
+### Les séances isolées
+
+Proposition 5 de l'audit : une séance hors chapitre (une remédiation, un
+devoir corrigé, une séance de vacances) n'oblige plus à créer un faux
+chapitre ni à salir un vrai. Chaque niveau reçoit, à la première demande,
+un classeur **« Séances isolées »** où vont ces séances.
+
+**Le mode d'emploi.**
+
+- **Le lien « Séance isolée »** de la fenêtre « Bonjour ! », sous la ligne
+  « Fractions — changer de chapitre », avec son petit texte « Hors
+  chapitre : rangée dans « Séances isolées » de 5ème. » (« … de
+  « Soutien ». » pour un dossier qui n'est pas un niveau ; « Hors chapitre :
+  rangée dans « Séances isolées ». » pour un classeur sans dossier). Un clic
+  ouvre le classeur « Séances isolées » du niveau du classeur ouvert (son
+  plus proche dossier de niveau : un chapitre rangé dans « 5ème ›
+  Géométrie » a ses séances isolées dans « 5ème » ; sinon son dossier ;
+  sinon la racine) et y commence une séance, sans question ; la case
+  « Commencer par des automatismes » vaut aussi pour lui. S'il n'existe pas
+  encore, il est créé sans fenêtre (page blanche, dans le dossier de niveau)
+  et l'arrivée dit « Classeur « Séances isolées » créé en 5ème : vos séances
+  hors chapitre iront là. » (« … créé dans « Soutien » : … », « … créé :
+  … » à la racine). Un échec se dit comme pour « Nouveau classeur » et l'on
+  reste sur le chapitre.
+- **Quand le classeur ouvert est « Séances isolées »**, le lien n'est pas là
+  (il ferait la même chose que le gros bouton) : le gros bouton dit
+  « Nouvelle séance isolée en 5ème » et la ligne « Séances isolées — changer
+  de chapitre ».
+- **Pas d'entrée dans le menu ⋯** (voir les décisions). Deux classes du même
+  niveau qui se suivent à moins d'une heure (pas de « Bonjour ! ») passent
+  par la bibliothèque (la carte « Séances isolées ») ; dans ce classeur,
+  « Nouvelle séance » du menu ⋯ commence la séance suivante.
+- **La séance isolée est une séance comme les autres** : « Séance du mar 14
+  oct 14h » sous le compteur, renommable (menu ⋯ « Renommer la séance… », F2
+  dans la bibliothèque), lue sans s'écrire une fois passée. Publier la
+  propose avec ses pages, le titre « Séance du 14 octobre » (ou son nom), le
+  dossier « Clé 5ème › Séances isolées » quand le niveau est relié, et le
+  Drive déjà retenu pour le niveau ; le fichier « Séance du 14 octobre
+  [code].mem ».
+- **Dans la bibliothèque et dans « Chapitres de 5ème »**, le classeur isolé
+  est toujours en dernier dans son niveau, quel que soit le tri (les
+  chapitres gardent leur ordre), avec la mention grise « Hors chapitre » sous
+  son nom (« Séances isolées · 3 séances · hors chapitre » dans la liste de
+  « Bonjour ! », le bord en pointillé) ; le lecteur d'écran le dit aussi. La
+  carte reste la même : menu ⋯, « 3 séances ▸ », glisser, Récents inchangé.
+- **Vers un chapitre** : bibliothèque → carte « Séances isolées » → « 3
+  séances ▸ » → … de la séance → « Déplacer vers… » → le chapitre (lot 9) :
+  elle arrive à sa date avec son film, ses images et ses publications (le
+  lien déjà donné aux élèves reste bon). Si c'était la seule séance, le
+  classeur vide va à la corbeille, et le prochain « Séance isolée » en
+  recrée un.
+- **Supprimer** le classeur : la corbeille, comme tout classeur ; les
+  replays publiés ne bougent pas ; le prochain « Séance isolée » en recrée
+  un neuf (celui de la corbeille est ignoré).
+- **Deux classeurs « Séances isolées » dans un niveau** (un `.memc` ajouté,
+  un classeur remis de la corbeille, deux onglets au même instant) : les
+  deux cartes se montrent, les nouvelles séances isolées vont dans le plus
+  récemment ouvert ; on vide l'autre par « Déplacer vers… ». Aucun message.
+- **Le renommer** en fait un chapitre ordinaire (c'est voulu) ; le prochain
+  « Séance isolée » crée un classeur neuf. Inversement, un chapitre déjà
+  nommé « Séances isolées » dans le dossier du niveau est reconnu.
+- **Sur l'ordinateur et le Drive (lot 8)** : un chapitre comme un autre,
+  « 5ème/Séances isolées/Séances isolées.memc », « MEM - Classeurs › 5ème ›
+  Séances isolées ». Créé sans fenêtre, il n'a pas de fichier de clé tant
+  que le niveau n'est pas relié de nouveau (ou « Enregistrer automatiquement
+  sur la clé »), comme « + Nouveau chapitre… » sans la case ; la copie sur
+  le Drive suit le réglage du niveau.
+- **Version hors ligne et version en ligne** : identiques. **Au téléphone**
+  (390 px), la fenêtre « Bonjour ! » grandit d'une ligne et reste entière
+  sans défiler ; le lien fait 36 px de haut pour la plume et le doigt.
+- **Sans bibliothèque** (le repli) : pas de lien, comme pour les chapitres.
+
+**Les décisions.**
+
+- **Reconnu à son nom** « Séances isolées » (majuscules et blancs sans
+  importance, `cleDe`), rangé directement dans le dossier du niveau (ou à
+  la racine pour un classeur sans dossier) : rien de nouveau dans les fiches
+  ni les fichiers ; on peut le créer soi-même par « Nouveau classeur ».
+- **Aucun champ nouveau**, ni dans la fiche du classeur, ni dans celle de la
+  séance ; `.memc`, `.memb`, `.mem`, les bases et les clés de stockage ne
+  changent pas ; rien à migrer.
+- **Lancée depuis « Bonjour ! » seulement.** La décision ajoutait une entrée
+  « Séance isolée » au menu ⋯ (sous « Nouvelle séance », aussi dans « Plus »
+  au téléphone) à condition qu'il tienne encore sans défiler au poste de la
+  classe (1366 × 657). Mesuré pendant le lot : le menu ⋯ a déjà 865 px de
+  contenu pour 578 px de place à 1366 × 657 (le bloc de l'état et les sept
+  entrées avec leur aide), et défile même à 1366 × 768 (689 px de place) ;
+  l'entrée ajoutait 44 px. L'entrée n'est donc pas là, comme le prévoyait la
+  décision ; la fonction (`seanceIsolee`, `main.ts`) reste à part, prête à
+  être branchée si le menu est un jour raccourci.
+- **La date comme nom** : « Séance du mar 14 oct 14h », renommable après
+  coup ; pas de champ de nom au départ ; Publier inchangé.
+- **En dernier, avec « Hors chapitre »**, dans la bibliothèque et dans
+  « Chapitres de 5ème » ; la carte reste la même.
+- **Création silencieuse** (pas de fenêtre), le message d'arrivée la dit ;
+  quand la seule séance part vers un chapitre, le classeur vide va à la
+  corbeille comme aujourd'hui ; pas de message pour deux classeurs isolés.
+
+**Comment c'est fait.**
+
+- `src/classeurs/isolees.ts` (pur, testé) : `NOM_SEANCES_ISOLEES`,
+  `estSeancesIsolees` (`cleDe`), `classeurSeancesIsolees` (parmi les
+  classeurs visibles rangés directement dans le dossier, le plus récemment
+  ouvert, puis modifié, puis le plus petit id ; la corbeille et un dossier
+  dans la corbeille ignorés), `isoleesEnQueue`, `texteSeanceIsolee`,
+  `texteClasseurIsoleesCree`, `HORS_CHAPITRE`.
+- `src/classeurs/bibliotheque.ts` : `creerEtOuvrir({ nom, dossier, arrivee,
+  avant })` crée un classeur sans fenêtre (par `creer`, qui prend maintenant
+  le dossier en paramètre ; les dossiers sont relus, un dossier parti ou à
+  la corbeille vaut la racine) puis l'ouvre ; `rendre` passe la grille d'un
+  dossier et le filtre de niveau par `isoleesEnQueue` après `trier` ; la
+  carte reçoit la classe `isolees` et la mention `.carte-hors-chapitre` ;
+  `texteLecteur` (`liste.ts`) gagne `horsChapitre`.
+- `src/seances-vue.ts` : `HoteAccueil.seanceIsolee` (`{ texte, faire }`) et
+  `isolees` ; `texteNouvelleSeance` ; la ligne `.accueil-isolee` (le lien
+  `.accueil-seance-isolee`, 36 px, et son `small`) ; `ChapitreAccueil.isolees`
+  (la classe `isolees` et « · hors chapitre »).
+- `src/main.ts` : `contexteDuNiveau` (ce que « Bonjour ! » et « Séance
+  isolée » relisent de la bibliothèque : les dossiers, les classeurs
+  ouvrables, le niveau, le dossier du chapitre, partir vers un classeur) et
+  `seanceIsolee(app, ui, registre, fiche, auto)` : le classeur ouvert est
+  isolé → `app.nouvelleSeance()` ; il existe ailleurs → la clé d'onglet
+  `mem-teachingtool-nouvelle-seance` puis `ouvrirClasseur` (la séance commence
+  sans question à l'arrivée) ; sinon `creerEtOuvrir`. Tout est relu au clic :
+  un autre onglet a pu créer le classeur pendant que la fenêtre était ouverte.
+- Rien ne change dans `seances.ts`, `document.ts`, `deplacer-seance.ts`, le
+  lot 8, Publier ni la recherche : une séance isolée est une séance
+  ordinaire d'un classeur ordinaire.
+
+**Les essais.** `tests/isolees.test.ts` (la reconnaissance, le classeur d'un
+dossier, la queue, les textes), `tests/seances.test.ts`
+(`texteNouvelleSeance`), `tests/bibliotheque.test.ts` (« hors chapitre » pour
+le lecteur d'écran) ; `essais/navigateur/lot17/E1-seances-isolees.mjs`
+(sections A à L : le lien et son petit texte, le classeur créé sans fenêtre
+puis retrouvé le lendemain avec le flash d'automatismes, « Bonjour ! »
+depuis « Séances isolées », « Chapitres de 5ème », la bibliothèque par date
+et par nom, « Déplacer vers… » un chapitre et la corbeille, un classeur neuf
+puis l'ancien remis, la racine, le menu ⋯ mesuré, le téléphone, Publier avec
+le niveau relié, la version hors ligne) ; `lot5/S-seances-classes.mjs` adapté
+(le lien et son petit texte ; `DEV=…` pour le port du serveur).
+
+### L'ancien tableau (.prof) à sa date
+
+**Le mode d'emploi.** Un ancien tableau (`.prof`) ouvert quand un chapitre
+est ouvert se range **à sa date** entre ses séances, par « Ajouter à
+« Fractions » », qui devient le bouton principal (Entrée) dès qu'un tableau
+s'y range. La fenêtre « Reprendre cet ancien tableau ? » montre où il ira :
+« Dans « Fractions », il se rangera à sa date : », puis une liste, la plus
+récente en haut : une séance voisine de chaque côté de chaque ancien
+tableau, sa ligne surlignée « ▸ Lun 28 sept 8h · « 2 - Lundi 28 septembre
+2026 » · 6 pages — ira ici », et « … 3 séances plus récentes » / « … 2
+séances plus anciennes » pour le reste. Après le clic, pas de
+rechargement : le classeur ouvert a la séance tout de suite (la trieuse, le
+bouton « Séances » de la bibliothèque, Publier la montrent à sa date), le
+message dit « Séance ajoutée à « Fractions ». « 2 - Lundi 28 septembre
+2026 » : 6 pages, 97 traits, 4 images, avec son film. », et la base, la clé
+et la copie Drive suivent comme pour tout changement. Plusieurs `.prof` d'un
+coup : chacun à sa date ; un doublon (« — déjà dans « Fractions » : ne sera
+pas ajouté ») ou un tableau aux heures d'une séance déjà écrite (« — déjà
+une séance à cette heure : ne sera pas ajouté ») est barré dans la liste,
+les autres entrent, et le message le nomme (« « 5A mardi (copie) » n'a pas
+été ajouté : il est déjà dans « Fractions ». »). Un seul `.prof` refusé : la
+fenêtre dit pourquoi et n'offre que « Nouveau classeur ». Si le classeur a
+changé dans un autre onglet pendant la fenêtre : « « Fractions » a changé
+entre-temps : rien n'a été ajouté. Recommencez. ». Le détail est dans
+« Reprendre un ancien tableau (.prof) », sous-section « À sa date, entre
+les séances ».
+
+**Les décisions.** Convertir d'abord, demander ensuite, écrire enfin :
+chaque `.prof` est converti dans un classeur brouillon en mémoire
+(`reprendre`, inchangé), puis copié dans le classeur d'arrivée par
+`copierSeance` (la règle de « Déplacer vers… », lot 9), et écrit par
+`ecrireUnClasseur` sans rechargement. Une séance voisine de chaque côté
+dans l'aperçu. Plusieurs `.prof` dont un refusé : les autres entrent, et
+l'on dit lequel non (doublon et chevauchement distingués) ; rien n'est
+jamais écrit à moitié. « Ajouter à » est le bouton principal quand un
+tableau s'y range, sinon « Nouveau classeur ». « Nouveau classeur » passe
+par la même chaîne (un seul chemin) ; deux `.prof` qui se chevauchent y
+sont refusés et dits. Le vecteur d'état est vérifié avant d'écrire.
+
+**Comment c'est fait.** `src/deplacer-seance.ts` : la vérification de place
+de `copierSeance` est à part, en lecture seule (`placeDansLeFilm` : `idx`,
+`suite`, `apres`, ou `'chevauche'` / `'deja'`), et les images sont dédoublées
+par contenu dans la banque d'arrivée (les mêmes pixels sous un autre nom :
+gardés une fois ; B5 de E2 reste vrai). `src/classeurs/ancien-tableau.ts` :
+`reprendre` rend l'id de la séance (`BilanAncien.seance`) ; `finDuClasseur`
+et la règle « plus récent que tout » n'existent plus ;
+`rangerDansLeClasseur` (la chaîne de documents neufs), `seancesDApercu`,
+`seanceGenante`, `apercuDuRangement` (les lignes, `LigneApercu`),
+`textesAvantAnciens` (les paragraphes, la liste, `ajoutable`, l'aide du
+bouton), `texteDesRefus`, `texteApresAjout` : purs, testés.
+`src/classeurs/fichiers.ts` : `ouvrirAnciens` réécrit (brouillons, le
+classeur ouvert lu par `lireLeClasseurOuvert`, factorisé de
+`lireUnClasseur`, la chaîne, la fenêtre avec sa liste, l'écriture par
+`ecrireUnClasseur` ou `ajouterEtOuvrir`) ; `fenetre` gagne `liste` et un
+bouton son `aide` (title) ; plus de `mettreAJour` ni de rechargement pour
+un `.prof`. `src/style.css` : `.apercu-seances` (cinq lignes environ, puis
+elle défile ; `li.ici` surligné, `li.refuse` barré, `li.plus` en italique),
+la fenêtre des fichiers qui défile si l'écran est court et dont les boutons
+s'empilent au téléphone. `bibliotheque.ts` : « Déplacer vers… » dit « a déjà
+cette séance » pour `'deja'`. Aucune base, aucune clé de stockage, aucun
+format ne change.
+
+**Les essais.** `tests/ancien-tableau.test.ts` (le brouillon et son film,
+la chaîne : trois séances à leur date, un doublon et un chevauchement
+refusés, la même séance supprimée puis reprise, `apercuDuRangement` dans
+tous ses cas, les textes de la fenêtre et du message, `seanceGenante`),
+`tests/deplacer-seance.test.ts` (images par contenu, `placeDansLeFilm` en
+lecture seule, `'deja'`), `essais/navigateur/lot7/E2-ancien-tableau.mjs`
+adapté (A3 : l'ordre et la classe des boutons ; B : plus d'attente du
+rechargement ni de « Bonjour ! » ; C : le plus ancien s'ajoute en premier)
+et complété (F : doublon et chevauchement, Annuler ; G : trois d'un coup
+dont un doublon, le bouton « Séances » ; H : plus récent que tout ; I :
+téléphone 390 × 844 ; J : le fichier relié réécrit) ;
+`essais/navigateur/lot9/E1-ranger-seances.mjs` adapté (H : « Déplacer
+vers… » d'une séance du même début est refusé à part, « a déjà cette
+séance », et non plus comme un chevauchement).
+
+### La corbeille du classeur, rangée par séance
+
+Proposition 7 de l'audit. Depuis le lot 9, une séance supprimée depuis la
+bibliothèque envoie ses pages dans la corbeille du classeur, où elles se
+mêlaient aux pages jetées une à une : rien ne disait d'où venait chaque
+page, ni qu'elles faisaient une séance, et la rendre demandait un clic par
+page. La corbeille est maintenant rangée par séance, et les deux corbeilles
+de l'outil se nomment.
+
+**Le mode d'emploi.** Maj + P, puis **Corbeille** (« Corbeille (7) ») : la
+vue s'appelle « Corbeille du classeur », et sa note dit : « Les séances et
+les pages supprimées de ce classeur attendent ici : Remettre les rend à leur
+place, avec toute leur histoire. Les classeurs supprimés, eux, sont dans la
+corbeille de la bibliothèque. » Tout y est rangé par date de suppression, la
+dernière en haut, sans rubriques :
+
+- **Une séance supprimée** (Suppr dans la bibliothèque, lot 9) fait **un
+  bloc** : son titre, comme dans la trieuse (« Activité d'intro · Lun 5 oct
+  8h · 4 pages », ou « Séance du lun 5 oct 8h · 4 pages »), « Supprimée hier
+  à 16 h 20 », la rangée de ses vignettes numérotées de 1 à n (le nom de la
+  page dessous), et deux boutons : **Remettre la séance** et **Supprimer
+  définitivement**. Au téléphone, un bloc par ligne, les vignettes passent à
+  la ligne, les boutons prennent toute la largeur (44 px).
+- **Une page seule** garde sa carte : sa vignette, son nom (ou « Page sans
+  nom »), d'où elle vient (« Page 3 · séance du jour », « Page 3 · séance de
+  lundi », « Page 3 · « Activité d'intro » » ; le numéro est celui qu'elle
+  reprendrait en revenant maintenant ; « Séance inconnue » quand le classeur
+  ne le sait pas), « Supprimée aujourd'hui à 10 h 05 », **Remettre** et
+  **Supprimer définitivement**.
+- **Remettre la séance** rend ses pages d'un coup, dans l'ordre, dans leur
+  séance (son nom, sa date et sa place dans le classeur n'en sont jamais
+  partis) : « Séance remise : « Activité d'intro » (4 pages) », avec
+  **Annuler** (Ctrl+Z dans la trieuse aussi) ; quand c'est la séance la plus
+  récente du classeur qui revient : « … Elle redevient la séance du jour. ».
+  On revient aux pages : une séance passée est dépliée dans la trieuse, le
+  focus sur sa première vignette ; la séance du jour, dans la grille.
+- **Remettre** une page d'une séance passée la rend dans sa séance, à sa
+  place d'avant : « Page remise dans la séance de lundi : c'est sa page 3 »
+  (compté dans sa séance ; dans la séance du jour, « Page remise : c'est la
+  page 3 » comme avant), le focus sur sa vignette.
+- **Supprimer définitivement** un bloc pose la question « Supprimer
+  définitivement cette séance ? Ses 4 pages ne pourront plus être remises
+  parmi les pages. Leur histoire reste visible dans Revoir la construction
+  (le classeur garde tout ce qui a été écrit). » ; confirmé : « Séance
+  supprimée définitivement (4 pages) ». Comme pour une page, rien n'est
+  effacé : la revue garde ses « Pages jetées ».
+- **La case « Vider tout seul ce qui est ici depuis plus de 30 jours »**,
+  sous la note, décochée au départ, propre à l'appareil. Cochée : à chaque
+  ouverture de la corbeille, ce qui y attend depuis plus de 30 jours est
+  supprimé définitivement, et le message le dit (« 12 pages de plus de
+  30 jours supprimées définitivement (elles restent dans Revoir la
+  construction) »). Jamais à l'ouverture du classeur ; jamais une page dont
+  on ne connaît pas l'heure de suppression (jetée par une version d'avant).
+  La cocher ne supprime rien sur le clic : si des pages ont déjà plus de
+  30 jours, un message prévient (« 3 pages de plus de 30 jours : elles
+  seront supprimées définitivement à la prochaine ouverture de la
+  corbeille. »), et la décocher suffit à se rattraper.
+- La poubelle de la barre du haut, sur une page d'une séance passée, reste
+  refusée (« Séance de lundi : vous la regardez sans la modifier. ») : une
+  page d'une séance passée ne va dans la corbeille qu'avec sa séance.
+- Au clavier : Tab va de bouton en bouton (Remettre la séance, Supprimer
+  définitivement, puis la ligne suivante), Entrée les choisit, Échap ferme
+  la question puis la vue (depuis la case aussi) ; le focus suit la ligne
+  qui s'en va. Au doigt (iPad, téléphone) : des boutons de 44 px, rien ne
+  déborde.
+- Dans la bibliothèque, la vue s'appelle « Corbeille de la bibliothèque »,
+  et sa note renvoie ici (« Les pages et les séances supprimées d'un
+  classeur sont dans la corbeille de ce classeur (Maj + P, Corbeille). ») ;
+  supprimer une séance dit « La séance « Activité d'intro » est supprimée :
+  ses pages sont dans la corbeille du classeur (Maj + P, Corbeille). ». Les
+  boutons restent « Corbeille (3) » des deux côtés.
+- Version en ligne et version hors ligne : identiques (rien ne passe par le
+  réseau) ; un `.memc` emporte la corbeille, rangée de même après un
+  rechargement.
+
+**Les décisions.**
+
+- Rien de nouveau dans le document, aucun champ obligatoire : le
+  regroupement se lit dans ce qui est déjà là (`t`, la même heure pour
+  toutes les pages d'une séance supprimée ; `index` ; `seanceDesPages`,
+  jamais effacée pour une page jetée ; `seances`, la fiche conservée). Le
+  critère d'un bloc : une séance dont plus aucune page n'est dans l'ordre et
+  dont des pages sont dans la corbeille ; toute autre page de la corbeille
+  est une page seule. Un classeur d'avant le lot 6 (sans séances écrites) :
+  la séance d'une page est celle que la migration lui donnerait, lue sans
+  rien écrire. Les formats `.memc`, `.memb` et `.mem` ne changent pas.
+- Tout par date de suppression, la plus récente en haut ; pas de rubriques.
+- **Remettre la séance** = `Tableau.rendrePages`, le mécanisme même
+  d'« Annuler » du lot 9, par le journal de la trieuse (annulable) ; la
+  page 1 vide partie avec la séance revient aussi, comme avec « Annuler ».
+- Les titres « Corbeille du classeur » et « Corbeille de la
+  bibliothèque » ; les boutons gardent « Corbeille (3) ».
+- La case « 30 jours » : décochée au départ ; un réglage de l'appareil
+  (`mem-corbeille-30-jours` dans `src/reglages.ts`, une clé nouvelle :
+  aucune clé existante ne change), appliqué seulement quand la vue
+  s'ouvre : ouvrir un classeur n'écrit pas un octet. La cocher ne supprime
+  rien sur le clic (un clic de trop ne doit rien supprimer).
+
+**Comment c'est fait.**
+
+- `src/pages/corbeille.ts` : les fonctions pures du haut, `grouperLaCorbeille`
+  (les blocs et les pages seules, depuis `pagesDeLaCorbeille`, les séances
+  et un contexte : la séance de chaque page, l'ordre, la place de retour),
+  `numeroDansLaSeance`, `libelleBloc`, `sousTitrePage`, `texteRemise`,
+  `texteSeanceRemise`, `texteSupprimerSeance`, `pagesAVider`, `texteVidage`,
+  `texteCaseCochee`, `libelleCorbeille` ; `pagesDuBloc` (les pages à rendre :
+  celles de la corbeille et la page vide partie avec elles) ; la vue
+  `VueCorbeille` (les lignes gardées d'une mise à jour à l'autre, avec leurs
+  vignettes ; le focus qui suit ; la case ; `vider30` à l'ouverture).
+- `src/document.ts` : `pagesDeLaCorbeille` rend aussi `index` ;
+  `placeDeRemise` (où une page reviendrait, sans rien écrire) ;
+  `seanceNoteeDe` (la séance notée d'une page, ou celle de la migration,
+  sans rien écrire).
+- `src/pages/trieuse.ts` : le retour de la corbeille vers une séance passée
+  (dépliée, le focus sur la vignette) ; la carte `seances` observée ; Échap
+  depuis une case à cocher ramène aux pages.
+- `src/reglages.ts` : `corbeille30Jours`, `choisirCorbeille30Jours`,
+  `JOURS_CORBEILLE`.
+- `src/classeurs/vue-corbeille.ts`, `src/classeurs/bibliotheque.ts` : les
+  titres et les textes.
+- `src/style.css` : les blocs (`.bloc-corbeille`, les vignettes partagées
+  avec les séances passées de la trieuse), la case, le téléphone (un bloc
+  par ligne, les boutons sur toute la largeur).
+
+**Les essais.** `tests/corbeille.test.ts` (le regroupement, les textes,
+`pagesAVider`, un classeur d'avant le lot 6 sans écriture),
+`tests/deplacer-seance.test.ts` (« Remettre la séance » par `rendrePages` :
+l'ordre, le nom, le rang, la séance du jour, des voisines parties, une
+remise partielle), `tests/journal.test.ts` (« séance remise » annulable) ;
+`essais/navigateur/lot17/F1-corbeille-seances.mjs` (voir
+`essais/navigateur/README.md`). Adaptés : `lot3/P7-corbeille-image.mjs` (le
+titre, la note, le nom du bouton, « Page N · séance du jour »),
+`lot9/E1-ranger-seances.mjs` (le message exact, et une section L jusqu'à
+« Remettre la séance »), `lot4/C8-corbeille.mjs` (« Corbeille de la
+bibliothèque » et sa note), `lot3/verif/appareils/telephone.mjs` (la vue de
+la corbeille défile en paysage : ce qui y est défilé hors de l'écran en
+hauteur ne compte plus comme un débordement), `tests/corbeille.test.ts`
+(« Corbeille du classeur : vide »).
+
+### Vérifier les classeurs : plus jamais d'image grise
+
+Jusqu'au 28 octobre 2026, une séance déplacée vers un autre classeur
+arrivait sans ses images : la page montrait un cadre gris à leur place, et
+le replay aussi. Le lot 9 les retrouve à l'ouverture du classeur ; ce lot
+va au bout : une fenêtre qui vérifie tous les classeurs d'un coup, sans les
+ouvrir, une corbeille qui ne peut plus emporter la dernière copie d'une
+image, et l'outil qui dit enfin quand une image est introuvable, et comment
+la retrouver.
+
+**Le mode d'emploi.** Dans la bibliothèque, le menu ⋯ du bandeau gagne
+**Vérifier les classeurs…** (aide : « Les images qui manquent (un cadre
+gris sur une page), retrouvées dans les autres classeurs et remises à leur
+place. »). La fenêtre « Vérifier les classeurs » s'ouvre et vérifie tout de
+suite : « Les images de chaque classeur sont rangées avec lui. Quand une
+image manque, la page montre un cadre gris. On la cherche dans les autres
+classeurs de ce navigateur, la corbeille comprise. », puis la ligne d'état
+avance (« Vérification… 12 classeurs sur 30 ») et conclut : « 30 classeurs
+vérifiés : 2 ont des images qui manquent. » (ou « … : aucune image ne
+manque. » ; « 1 n'a pas pu être lu. » s'ajoute pour une base abîmée).
+Dessous, une ligne par classeur auquel il manque des images (ceux de la
+corbeille ne sont pas listés : on les remet d'abord) : son nom et son
+chemin (« Fractions — 5ème »), le détail (« 2 images manquantes,
+retrouvées dans « Symétrie » (corbeille) » ; « 3 images manquantes :
+2 retrouvées dans « Symétrie », 1 introuvable dans ce navigateur » ;
+« 1 image introuvable dans ce navigateur ») et un bouton **Réparer**
+(44 px) dès que quelque chose se retrouve. Réparer lit les données chez le
+classeur qui les a (les classeurs visibles avant ceux de la corbeille, le
+plus récemment modifié d'abord) et les range dans la banque du classeur :
+« Réparé : 2 images remises. », « Réparé : 2 images remises, 1 reste
+introuvable. » ; un message en bas le dit aussi (« 2 images remises dans
+« Fractions » (depuis « Symétrie »). »). Le classeur réparé n'a pas besoin
+d'être ouvert ; s'il est ouvert dans un autre onglet, cet onglet dit « Le
+classeur a changé » [Recharger] et voit l'image ; le classeur de cet onglet
+est réparé en mémoire, la page se redessine, sa base, sa clé et sa copie
+Drive suivent. Rien n'entre dans le film : ni étape, ni annulation, et les
+séances passées retrouvent leurs images. **Tout réparer** (en bas, dès
+qu'une ligne se répare) répare chaque ligne l'une après l'autre. Une image
+**introuvable** (plus aucune copie dans ce navigateur) n'a pas de bouton :
+la ligne explique le chemin, « Pour la retrouver : ouvrez un fichier .memc
+plus ancien de ce classeur (Ouvrir…, ou Récupérer une sauvegarde du
+Drive…), puis vérifiez de nouveau. » L'outil ne cherche ni dans les
+fichiers du dossier relié ni sur le Drive, et ne retire pas les cadres
+gris : le cadre dit qu'une image manque, le retirer la ferait oublier. Un
+classeur dont la base ne se lit pas : « Ce classeur n'a pas pu être lu. ».
+Pendant une réparation, le bouton dit « Réparation… », Fermer et Tout
+réparer sont grisés, Échap attend la fin de la ligne. Au clavier, Tab va de
+Réparer en Réparer, puis Tout réparer, Fermer ; Échap, « Fermer » ou un
+appui sur le fond la ferment. Au téléphone (390 px), la fenêtre prend
+toute la largeur, chaque ligne s'empile et le bouton prend la largeur de la
+fenêtre ; sur l'iPad et le TNI, les boutons font 44 px. La version hors
+ligne fait exactement la même chose : tout se passe dans les bases du
+navigateur, sans réseau.
+
+**La corbeille recopie d'abord.** « Vider la corbeille » et « Supprimer
+définitivement » vérifient les images avant de poser leur question
+(« Vérification des images… » en bas au-delà de 0,4 s). Si un classeur
+qu'on va effacer tient la dernière copie d'images que d'autres classeurs
+montrent encore, la question le dit, en troisième paragraphe : « 2 images
+que « Fractions » et « Équations » montrent encore n'existent que dans la
+corbeille : elles seront d'abord recopiées dans ces classeurs. » Une fois
+la question confirmée, les recopies se font, puis l'effacement, et le
+message de fin les compte : « Corbeille vidée (3 classeurs, 1 dossier).
+2 images recopiées dans « Fractions ». » Si une recopie échoue, le classeur
+qui tenait ces images n'est pas effacé (ni le dossier qui le garde) :
+« « Symétrie » n'a pas été effacé : ses images n'ont pas pu être recopiées
+dans « Fractions ». Recommencez. » Un classeur de la corbeille dont la base
+ne se lit pas s'efface quand même, et la question l'a dit : « « Vieux
+chapitre » n'a pas pu être vérifié. » Quand aucune image n'est concernée,
+rien ne change : la question est celle d'avant (voir aussi « La corbeille
+de la bibliothèque » et « Effacer pour de bon »).
+
+**À l'ouverture d'un classeur.** La recherche du lot 9 passe par le même
+service : les images qui manquent sont cherchées dans tous les autres
+classeurs (la lecture s'arrête dès que tout est trouvé), remises, et le
+message dit « 1 image retrouvée dans « Symétrie ». ». Ce qui reste
+introuvable est enfin dit, une fois par chargement : « 1 image de ce
+classeur est introuvable dans ce navigateur. » [Vérifier les classeurs…] ;
+le bouton ouvre la bibliothèque puis la fenêtre. Les deux phrases peuvent
+se suivre dans le même message.
+
+**Les décisions.** La variante complète en un seul lot (la fenêtre, le
+garde-fou de la corbeille, le message à l'ouverture) plutôt que la seule
+fenêtre : ce sont les trois moments où une image grise naît, ou peut
+encore être sauvée. Un classeur de la corbeille n'est jamais réparé (on le
+remet d'abord), mais il est toujours une source. Jamais une entrée
+existante de la banque n'est remplacée : on n'écrit que les clés absentes,
+et une réparation n'a aucun effet sur un classeur qui n'en a pas besoin.
+Une image introuvable n'est pas « nettoyée » : l'outil explique le chemin
+pour la retrouver (un `.memc` plus ancien par Ouvrir…, ou Récupérer une
+sauvegarde du Drive…), et c'est tout. Ni les fichiers du dossier relié ni
+le Drive ne sont lus : la fenêtre ne va pas chercher sur le réseau ni dans
+les dossiers de l'ordinateur sans qu'on le lui demande. Un classeur de la
+corbeille qui ne se lit pas ne bloque pas « Vider la corbeille » : on
+efface quand même, en le disant. Les textes de la corbeille restent dans
+`corbeille.ts`, avec les autres textes de la corbeille.
+
+**Comment c'est fait.** `src/classeurs/verifier.ts`, pur (testé) : la
+banque d'un classeur (`doc.getMap('images')`, une clé → `data:image/…`) et
+son inventaire (`inventaireDuDoc` : les clés que les formes image des
+pages de l'ordre et de la corbeille des pages utilisent, les clés présentes
+avec des données d'image ; `inventaireDesMisesAJour` : le même depuis les
+mises à jour d'une base, dans le travailleur), le bilan (`bilan` : une
+ligne par classeur visible auquel il manque des images, ses sources par
+clé, les visibles d'abord puis la corbeille, le plus récemment modifié
+d'abord ; les illisibles en fin de liste), ce qu'il faut recopier avant
+d'effacer (`dernieresCopies` : les clés dont toute copie partirait, et les
+classeurs restants qui les montrent), et les textes. L'écrivain gagne la
+demande **`images`** (`ecrivain-taches.ts` : la base lue sans ouvrir le
+classeur, jamais créée, son inventaire et, si on les demande, les données
+de certaines clés ; `ecrivain.imagesDeLaBase`). `src/classeurs/verification.ts`,
+le service : les inventaires de tous les classeurs, lus en série, celui de
+cet onglet dans son tableau (après ce qui attend), les autres par le
+travailleur et gardés tant que la fiche ne change pas (sa date `modifie`
+et son vecteur d'état) : la seconde vérification ne relit rien ; réparer
+(`reparer`) lit chaque source une fois pour toutes les clés qu'elle a,
+puis range : le classeur de cet onglet en mémoire (`ecrireSansFilm`, le
+rendu refait), un autre par `Fichiers.lireUnClasseur` dans un document qui
+ne vit nulle part, puis `Fichiers.ecrireUnClasseur` (refus dit si le
+classeur a changé entre-temps ; les autres onglets prévenus, « Le classeur
+a changé ») ; `avantDEffacer` et `recopier` pour la corbeille
+(`Bibliotheque.verifierAvant`, `recopierPuisEffacer` : un classeur retenu
+garde aussi les dossiers qui le contiennent) ; `retrouverIci` pour
+l'ouverture (`Fichiers.retrouverImages` délègue). La fenêtre :
+`src/classeurs/vue-verification.ts` (`brancherVerification` ajoute l'entrée
+au menu ⋯ ; `ouvrirVerification`). `main.ts` branche le service dans les
+deux cas, la bibliothèque seule et le classeur ouvert. Mesuré sur ce
+poste : 10 classeurs de 3 photos chacun (15,5 Mo d'images), première
+vérification 127 ms (11 bases lues), la seconde 1 ms (rien relu) ; « Tout
+réparer » de deux classeurs fermés, 671 ms. Aucune base, aucune clé de
+stockage, aucun format de fichier ne change. **Ce qui n'est pas couvert** :
+les images que seul le passé du film montre (une forme effacée depuis, que
+Revoir et Publier d'une séance passée montrent encore) ne sont pas
+comptées, l'inventaire lit les formes actuelles ; les fichiers du dossier
+relié et du Drive ne sont pas lus ; les aperçus des cartes se refont à
+leur rythme ; les `.mem` déjà publiés ne changent pas (Publier de nouveau
+remplace le replay, même lien) ; le fichier de la clé et la copie Drive
+d'un classeur fermé puis réparé se mettent à jour à sa prochaine
+ouverture.
+
+**Les essais.** `essais/navigateur/lot17/V1-verifier-classeurs.mjs`
+(A : l'image retrouvée à l'ouverture et ses pixels ; B : l'image
+introuvable et son bouton ; C : la fenêtre, ses textes, Réparer, Tout
+réparer, l'introuvable, l'illisible, rien à réparer ; D : Vider et
+Supprimer définitivement, le paragraphe, la recopie, l'échec qui retient,
+la base illisible, rien de concerné ; E : l'autre onglet qui se recharge ;
+F : le téléphone et le clavier ; G : la version hors ligne ; M : la
+mesure) ; `lot4/C8-corbeille.mjs` (adapté : l'attente de la question
+tolère la vérification préalable, `attendreLaQuestion`) ;
+`tests/verifier.test.ts`, `tests/corbeille-biblio.test.ts` (les nouvelles
+phrases), `tests/ecrivain.test.ts` (la demande `images`).
 
 ## Ce que fait la v0.1
 
@@ -5135,19 +5802,26 @@ de verrouillé.
 **La corbeille.** Une page supprimée (par la poubelle, ou dans la trieuse)
 va dans la corbeille ; elle y reste après un rechargement, et un fichier
 `.memc` l'emporte. On l'ouvre par le bouton **Corbeille** du bandeau de la
-trieuse des pages (« Corbeille (3) » : il dit combien de pages y attendent).
+trieuse des pages (« Corbeille (3) » : il dit combien de pages y attendent ;
+la vue s'appelle « Corbeille du classeur », lot 17).
 Chaque page s'y montre en vignette (son état actuel), avec son nom (ou « Page
-sans nom ») et l'heure de sa suppression : « Supprimée aujourd'hui à 10 h 05 »
+sans nom »), sa séance (« Page 3 · séance du jour », « Page 3 · séance de
+lundi », lot 17) et l'heure de sa suppression : « Supprimée aujourd'hui à 10 h 05 »
 (pour une page supprimée par une version d'avant, qui ne notait pas l'heure :
 « Supprimée avant cette version · dernière écriture hier à 9 h 12 »), la
-dernière supprimée d'abord.
+dernière supprimée d'abord. Une séance supprimée entière (depuis la
+bibliothèque) y fait un bloc, « Remettre la séance » : voir « La corbeille du
+classeur, rangée par séance » dans le lot 17.
 - **Remettre** la rend à sa place d'avant : juste après la page qui la
   précédait si elle est encore là (deux pages voisines supprimées ensemble
   reviennent dans le bon ordre, quel que soit l'ordre des remises), sinon à
   la fin. On revient aux pages, sur sa vignette, et « Page remise : c'est la
-  page 4 » porte **Annuler** (Ctrl+Z dans la trieuse aussi). Elle reprend son
-  numéro, avec toute son histoire : la revue et le replay la voient comme si
-  elle n'était jamais partie (la remettre n'est un geste nulle part).
+  page 4 » porte **Annuler** (Ctrl+Z dans la trieuse aussi) ; une page d'une
+  séance passée revient dans sa séance : « Page remise dans la séance de
+  lundi : c'est sa page 3 », la séance dépliée dans la trieuse (lot 17). Elle
+  reprend son numéro, avec toute son histoire : la revue et le replay la
+  voient comme si elle n'était jamais partie (la remettre n'est un geste
+  nulle part).
 - **Supprimer définitivement** (une page) et **Vider la corbeille** (toutes)
   posent d'abord la question, dans une fenêtre (« Annuler » a le focus ;
   Échap ou un clic à côté la ferment sans rien faire, la corbeille reste
@@ -5159,6 +5833,9 @@ dernière supprimée d'abord.
 - Échap (ou le bouton **Pages**) ramène à la grille des pages ; au doigt, tout
   s'y touche (boutons de 44 px) ; au clavier, Tab passe d'un bouton à
   l'autre, Entrée les choisit.
+- Rien ne s'y efface tout seul, sauf si l'on coche la case « Vider tout
+  seul ce qui est ici depuis plus de 30 jours » (lot 17 ; décochée au
+  départ, propre à l'appareil, appliquée quand on ouvre la corbeille).
 
 **Où c'est noté.** Une page est dans la corbeille quand sa Y.Map est encore
 dans la carte `pages` du document, qu'elle n'est plus dans `ordre`, qu'elle a
@@ -5170,7 +5847,10 @@ film, ni une étape d'annulation, et elle voyage avec le document
 l'ordre, lui, est une étape « seulOrdre » du film, jamais un geste. Une page
 supprimée par la version d'avant (sans entrée) y figure aussi, et se remet à
 la fin ; une page effacée par la toute première suppression (sa Y.Map
-détruite, sur un tableau très ancien) n'y est pas.
+détruite, sur un tableau très ancien) n'y est pas. Le rangement par séance
+(lot 17) n'ajoute rien au document : il se lit dans `t` (la même heure pour
+toutes les pages d'une séance supprimée), `index`, `seanceDesPages` et
+`seances`.
 
 **Supprimée définitivement**, une page n'est pas effacée : elle garde sa
 Y.Map et son histoire, elle ne revient seulement plus parmi les pages. Dans
@@ -5536,7 +6216,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/automatismes.ts` | Les automatismes (générateurs, par niveau et par thème) et le tirage d'un flash (`tirerFlash`) |
 | `src/flash.ts` | Le flash d'automatismes : le réglage, les questions posées sur une page de la séance, le bandeau, la correction |
 | `src/seances.ts` | Les séances d'un classeur (lot 6) : le rangement des pages par séance (pur), la migration d'un classeur d'avant, les mots des dates (« Séance du mar 14 oct 14h », « de lundi ») ; dans `document.ts`, les deux cartes (`seances`, `seanceDesPages`), la séance neuve, la reprise d'une page (`reprendrePage`, `retirerReprise`) et la garde des séances passées (`garde`) ; dans `revoir/exporter.ts`, les séances lues dans le film (`seancesExplicitesDuFilm`, `pagesAPublier`) |
-| `src/seances-vue.ts` | Les séances à l'écran (lot 6) : la fenêtre « Bonjour ! », la question « Cette page est dans la séance de lundi… », « Renommer la séance… », les bandeaux (la lecture, « Reprendre ») et le tiroir de la séance précédente |
+| `src/seances-vue.ts` | Les séances à l'écran (lot 6) : la fenêtre « Bonjour ! » (avec le lien « Séance isolée » et le classeur isolé en dernier depuis le lot 17), la question « Cette page est dans la séance de lundi… », « Renommer la séance… », les bandeaux (la lecture, « Reprendre ») et le tiroir de la séance précédente |
 | `src/figures.ts` | Les figures SVG des automatismes |
 | `src/ui.ts` | Barres d'outils, le compteur des pages (il ouvre la trieuse), le bouton du fond (lot 5 : la vignette du fond de la page, qui ouvre le menu des fonds, voir `src/menu-fonds.ts`), le menu complet (un objet, une formule, plusieurs objets, un groupe : « Groupe · 3 objets », *Grouper* ou *Dégrouper* ; sa rangée sur une ligne, son bouton ⋯ et son petit menu en sections : *Copier en image* et *Envoyer vers…*, puis *Ordre* (les aides d'`aidesOrdre`), puis *Protéger*, puis *Groupe* (*Sortir du groupe*, pour un membre pris seul : `sectionGroupe`), puis *Position* (*Tourner d'un quart de tour à gauche* et *… à droite*, pour ce qui a la pastille ↻, retouches après le lot 5 ; *Remettre droit*, pour une image ou une formule seule tournée) ; placé dans l'écran, sur un téléphone aussi), le menu court d'un objet verrouillé (lot 5 : Déverrouiller, Copier, ⋯), le menu de la Gomme (lot 5 : retoucher la Gomme en main, le clic droit, l'appui long, E ; ce qu'elle efface et sa taille ; le titre et la marque ◐ de son bouton), le menu de la page (et ce qu'il fait de l'image fixée en fond : la détacher, la copier, l'envoyer ; Déverrouiller tout), « Copier la page en image » et « Copier en image », « Envoyer vers… », « Exporter en PDF » (ses entrées : le menu de la page, le menu ⋯ de la barre du haut, la trieuse), les messages (un ou deux boutons ; au-dessus des panneaux pendant un placement), éditeur de formules ; le bouton du classeur (sa place mesurée, à quatre formes), le bloc de l'état en tête du menu ⋯, le bandeau discret ; « Cet appareil » à la fin du menu ⋯ (lot 5 : « Contraste renforcé », body.contraste ; « Noms sous les outils », body.noms-outils, le nom court de chaque bouton dans son `span.libelle` (`nommer`, le mot dans data-libelle), `majNomsOutils` qui suit la mise en page du téléphone, `--droite-barre-outils` mesuré, les menus du doigt et de la Gomme qui passent sous la barre du haut sur deux rangées) ; la mise en page du téléphone (lot 5, K10 : `body.telephone`, `telephone`, `barreEnBas` ; ce qui ne s'y montre pas, `.seulement-large` ; « Couleur » et « Autres outils », au bout de la barre des outils, leurs menus `construireMenuCouleur` et `construireMenuAutres` (« Couleur » sert aussi, depuis le contrôle final du lot 5, à la barre d'un écran qu'on touche : body.tactile, ses pastilles et ses tailles en 44 × 44, repliées dans « Couleur » quand elle ne tient pas dans la hauteur, `majCouleursRepliees`), `placerPresDeLaBarre` qui les pose entre les deux barres ; les choix des Formes et du Segment au-dessus de la barre du bas, `placerChoixDuTelephone` ; ⋯ devenu « Plus », ses sections Page, Outils de cours et Vue, `sectionsDuTelephone`, et « Fond… », `ouvrirFondsDepuisPlus` ; le bouton du classeur en tête de la barre du haut ; `--haut-barre-bas` et `basUtile`, ce que prend la barre du bas ; `bordsFlottants`, les bords que la barre d'actions et le menu complet ne passent pas ; `placerToast`, le message qui ne couvre ni les barres ni ce qui est pris (depuis les retouches après le lot 5, au poste de la classe aussi : ni la barre d'actions ni la pastille ↻) ; la liste des instruments sous la barre du haut) ; les gains rapides du lot 16 : Annuler et Rétablir en tête de la barre du haut (`placerHistorique` les déplace dans la barre du bas au téléphone), la grille 2 × 2 des pastilles (`grillePastilles`), le bouton de l'épaisseur et son menu (`majBoutonEpaisseur`, `basculerMenuEpaisseur`, `construireMenuEpaisseur`, `placerMenuEpaisseur`) |
 | `src/pages/envoi.ts` | La fenêtre « Envoyer vers… » : déplacer ou copier, la liste des destinations (chaque page avec sa petite vignette, une nouvelle page juste après, à la fin), le clavier ; les textes des messages d'un envoi (pur, testé). L'envoi lui-même est `App.envoyerSelection`, son annulation `Tableau.envoyer` |
@@ -5547,11 +6227,11 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/navigateur.ts` | Ce que le navigateur ne prend plus : Ctrl + « + », F5, pincer la page, le marque-page de Ctrl + D ; la molette ; la touche Menu ; Maj + L (`toucheVerrou`) ; Alt + ← / →, ⌘ + ← / → et Ctrl + G empêchés hors des champs dans tous les écrans, la revue, la trieuse et la bibliothèque comprises (`toucheQuitteLaPage`, dans `installerGardes`) ; les touches qui se taisent pendant un geste (Maj + L et Ctrl + G comprises) ; le tableau caché (la revue, la trieuse des pages : `tableauCache`), sous lequel tout ce qui écrirait sur la page qu'on ne voit pas se tait (le collage, les menus du clic droit, la barre d'actions, le zoom, Ctrl + O, l'annonce du numéro de page) ; la touche des raccourcis (⌘ sur Mac) et la façon de dire « enregistrer », « ouvrir » dans un texte (`POUR_ENREGISTRER`, `POUR_OUVRIR` : le raccourci, ou l'entrée du menu ⋯ sur un appareil qu'on ne fait que toucher) ; la requête de la mise en page du téléphone (lot 5 : `TELEPHONE`, écrite là une fois ; l'interface en tire `body.telephone`, et la feuille de style reprend ses bornes) |
 | `src/dialogue.ts` | Le fond d'une fenêtre : un appui commencé et fini hors de son cadre la ferme, jamais un appui dans sa marge intérieure (testé) |
 | `src/menus.ts` | Les petits menus flottants, sous leur bouton ou au point d'un clic droit (un seul ouvert, Échap, un appui ailleurs ; la barre d'actions prévenue quand l'un s'ouvre ou se ferme) ; le clavier qui va au menu ouvert (aussi pour le menu complet) ; d'où vient le focus (le clavier ou un appui, retenu quand il arrive, et le focus rendu à la fermeture d'un écran) ; le balisage de leurs entrées, de leurs filets et de leurs titres (l'interface et la trieuse s'en servent) ; la place du menu complet près de ce qu'il règle, jamais dessus quand il a la place ailleurs, jamais sur la pastille ↻ du cadre de taille (`positionPanneau`, pur, testé ; au téléphone, jamais sur la barre du bas : son bord `bas`, lot 5, K10) ; les flèches dans une grille d'entrées (`naviguerDansLaGrille` : le menu des fonds, et au téléphone « Couleur » et « Autres outils ») |
-| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts, et depuis le lot 5 ce qu'efface la gomme et sa taille : `mem-gomme`, `mem-gomme-taille`, `RAYON_GOMME` ; le contraste renforcé, `mem-contraste` ; les noms sous les outils, `mem-noms-outils`, écrite seulement quand on choisit, et `nomsOutilsVisibles` qui décide en « auto » d'après l'écran), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) |
+| `src/reglages.ts` | Les réglages de cet appareil (la molette, le rôle du doigt, les gestes à deux et trois doigts, et depuis le lot 5 ce qu'efface la gomme et sa taille : `mem-gomme`, `mem-gomme-taille`, `RAYON_GOMME` ; le contraste renforcé, `mem-contraste` ; les noms sous les outils, `mem-noms-outils`, écrite seulement quand on choisit, et `nomsOutilsVisibles` qui décide en « auto » d'après l'écran), hors du document ; ses fonctions lisent et écrivent aussi le fond imprimé (`mem-sortie-fond`, voir `src/sorties/apercu.ts`) ; la case « 30 jours » de la corbeille du classeur, `mem-corbeille-30-jours` (lot 17) |
 | `src/pointeurs.ts` | Souris, stylet, doigt : le seuil du glisser, la portée de la prise, la paume, le stylet sur l'écran, le double appui, l'appui long, le toucher à deux ou trois doigts, les mots des messages (comment déverrouiller, comment détacher une image du fond : `messageVerrou`, `messageDetacher` ; retouches après le lot 5 : ce que dit l'import d'une image, `messageImagePosee`, et « Fixer en fond », `messageFixe`) ; la taille des poignées du cadre de taille et de la pastille ↻ selon le pointeur (lot 5 : `POIGNEE`, à la prise 10 / 12 / 20 px, au dessin 8 / 10 / 14, la pastille à 24 / 28 / 36 px du cadre) ; le message de la première image prise (`messageCadre`) ; celui des noms sous les outils (lot 5 : `messageNomsOutils`, le survol à la souris et au stylet qui survole, pas au doigt ni au TNI) ; corrections des vérifications des retouches : comment reprendre l'outil d'avant, par sa touche (`messageReprise`), ce que dit « Détacher l'image du fond » (`messageDetache`), le pointeur d'un clic hors du tableau (`pointeurDuClic`) et celui d'avant tout appui (`pointeurDeDepart` : le doigt sur un écran tactile sans souris) |
 | `src/session.ts` | La page vue et la vue de chaque page (son centre, et son zoom, noté sans plus servir depuis les retouches d'après le lot 5 : on revient sur une page à 100 %), retrouvées au rechargement, hors du document ; une session par classeur (`mem-session` pour le premier, `mem-session:<id>` pour les autres) |
-| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), plusieurs pages à la fois (Maj ou Ctrl + clic, Espace, Ctrl + A, « Choisir plusieurs » au doigt), le menu d'une vignette (⋯, clic droit, bouton du stylet, touche Menu ; ses huit fonds sur deux colonnes ; « Insérer une page… » y choisit le fond en second temps, sur une colonne), le nom écrit dans la carte, les messages et leur « Annuler » ; « Exporter en PDF » (le bandeau, celui des pages choisies, le menu d'une vignette, Ctrl + P) ; le bouton « Corbeille (3) » du bandeau, qui ouvre la vue de la corbeille |
-| `src/pages/corbeille.ts` | La corbeille des pages, une vue de la trieuse : les pages supprimées en vignettes, quand (« Supprimée aujourd'hui à 10 h 05 »), Remettre (par le journal de la trieuse : « Annuler »), Supprimer définitivement et Vider (après une question, dans une fenêtre de l'outil) ; où c'est noté dans le document (la carte `corbeille`) |
+| `src/pages/trieuse.ts` | La trieuse des pages : toutes les pages en vignettes, plein écran ; l'ouvrir et la fermer (le tableau caché, le reste de l'écran inerte, le focus rendu), aller à une page (clic, toucher, Entrée, numéro tapé), le clavier, le glisser-déposer (souris et tablette graphique tout de suite, doigt par la poignée ou un appui long, défilement au bord), plusieurs pages à la fois (Maj ou Ctrl + clic, Espace, Ctrl + A, « Choisir plusieurs » au doigt), le menu d'une vignette (⋯, clic droit, bouton du stylet, touche Menu ; ses huit fonds sur deux colonnes ; « Insérer une page… » y choisit le fond en second temps, sur une colonne), le nom écrit dans la carte, les messages et leur « Annuler » ; « Exporter en PDF » (le bandeau, celui des pages choisies, le menu d'une vignette, Ctrl + P)  ; le bouton « Corbeille (3) » du bandeau, qui ouvre la vue de la corbeille ; le retour de la corbeille vers une séance passée (dépliée, le focus sur la vignette de la page remise) ; la carte `seances` observée aussi (lot 17) |
+| `src/pages/corbeille.ts` | La corbeille du classeur, une vue de la trieuse, rangée par séance depuis le lot 17 : les séances supprimées en blocs (le titre, « Supprimée hier à 16 h 20 », les vignettes numérotées, « Remettre la séance », « Supprimer définitivement »), les pages seules en cartes (« Page 3 · séance de lundi »), tout par date de suppression ; Remettre et Remettre la séance (par le journal de la trieuse : « Annuler »), Supprimer définitivement et Vider (après une question, dans une fenêtre de l'outil), la case « 30 jours » (un réglage de l'appareil, appliqué quand la vue s'ouvre) ; les fonctions pures du haut (`grouperLaCorbeille`, les textes, `pagesAVider`), testées sous Node ; où c'est noté dans le document (la carte `corbeille`, rien de nouveau) |
 | `src/pages/actions.ts` | Ce que la trieuse fait aux pages, chaque action en une entrée de son journal : renommer, insérer une page vide avant ou après, en ajouter une à la fin (blanches par défaut : `FOND_NEUF`), dupliquer avec l'histoire, supprimer vers la corbeille (jamais toutes ; la page où aller quand on supprime celle qu'on regarde), changer un fond (l'origine du repère au centre du contenu), ranger d'une place (pur, testé) |
 | `src/pages/glisser.ts` | Où arrive une page lâchée dans la grille (la ligne sous le point, avant la première carte dont le milieu est à droite), où se pose la barre qui le montre, la vitesse du défilement près du bord (pur, testé) |
 | `src/pages/journal.ts` | Le journal de la trieuse des pages : chaque action sur les pages (déplacer, renommer, dupliquer, insérer, supprimer, changer un fond) entre avec l'état des pages d'avant et d'après ; annuler (ou rétablir) seulement si le tableau est exactement dans l'état laissé, sinon il le dit et se vide (jamais un changement invisible ni une page perdue) ; une page créée par une action défaite ne va pas dans la corbeille, et y reste hors quand on défait les actions d'avant ; aucune pile de page touchée |
@@ -5568,23 +6248,28 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/classeurs/surveillance.ts` | L'état de la sauvegarde en direct : la base (le trou, et sa réparation au calme), le dernier fichier (ici ou dans un autre onglet), le travail depuis ; `majCle` et `majDrive` pour la clé et le Drive (et `cleEnAttente` : le dernier trait pas encore sur la clé) ; `peutQuitter` et `beforeunload` ; `partirParLaBibliotheque` (la clé ne pose pas sa question quand on part par la bibliothèque) ; le bandeau (× : la session, ou une heure pour le rappel) |
 | `src/classeurs/ecrivain.ts` | L'écrivain : un seul travailleur pour la page, des demandes numérotées ; le fichier `.memc` d'un classeur depuis sa base (`fabriquerFichier`), le vecteur d'état d'une base (`vecteurDeLaBase`), un fichier lu et vérifié (`lireFichier`, pour Ouvrir ; avec la somme d'une entrée d'un `.memb`), la copie complète d'un classeur dans une base neuve (`copierClasseur`, pour Dupliquer), ce que contient une base sans fiche (`examinerBase`, pour l'adoption), un classeur mis à jour depuis un fichier sans rien perdre (`mettreAJour`), la base d'un classeur ajouté depuis un fichier (`creerBase`), la copie préparée depuis l'état d'un fichier, sans rien écrire (`preparerCopie`, pour « Remplacer » par le fichier d'un classeur de la corbeille) ; le repli sur le fil principal (`mode = 'fil'`) si le travailleur manque ou ne démarre pas, sauf pour les demandes du travailleur seul (`travailleurSeul` : les écritures automatiques, erreur `fil`) ; les erreurs typées (`ErreurEcrivain`) |
 | `src/classeurs/ecrivain.worker.ts` | Le travailleur de l'écrivain, intégré à la page (`?worker&inline` : il marche en `file://`) |
-| `src/classeurs/ecrivain-taches.ts` | Ce que fait l'écrivain, dans le travailleur ou sur le fil : les demandes (genres `fichier`, `vecteur`, `lire` (avec ou sans somme CRC-32), `copier`, `examiner`, `mettre-a-jour` : une transaction, la base relue et fusionnée dans le rappel de son getAll, l'état du fichier ajouté sans rien effacer seulement si elle y est encore contenue ; `creer` : la base d'un classeur ajouté, hors du fil principal, où ranger 18 Mo prenait près de 100 ms ; `preparer-copie` : l'état d'un fichier et la mise à jour qui vide son registre des publications et le marque, rendus sans rien écrire) et leurs réponses (l'état d'un fichier lu est transféré, sans copie) ; aucun calcul tant qu'une autre demande tient une base ouverte (un effacement n'attend jamais un calcul) ; les erreurs (`absente`, `abimee`, `indisponible`, `illisible`, `fil`, `place`, `existante`, `autre` ; `creee` : la base demandée a été créée, vide, avant l'échec) |
+| `src/classeurs/ecrivain-taches.ts` | Ce que fait l'écrivain, dans le travailleur ou sur le fil : les demandes (genres `fichier`, `vecteur`, `lire` (avec ou sans somme CRC-32), `copier`, `examiner`, `mettre-a-jour` : une transaction, la base relue et fusionnée dans le rappel de son getAll, l'état du fichier ajouté sans rien effacer seulement si elle y est encore contenue ; `creer` : la base d'un classeur ajouté, hors du fil principal, où ranger 18 Mo prenait près de 100 ms ; `preparer-copie` : l'état d'un fichier et la mise à jour qui vide son registre des publications et le marque, rendus sans rien écrire ; `images` (lot 17) : l'inventaire des images d'une base lue sans ouvrir le classeur, et les données des clés demandées) et leurs réponses (l'état d'un fichier lu est transféré, sans copie) ; aucun calcul tant qu'une autre demande tient une base ouverte (un effacement n'attend jamais un calcul) ; les erreurs (`absente`, `abimee`, `indisponible`, `illisible`, `fil`, `place`, `existante`, `autre` ; `creee` : la base demandée a été créée, vide, avant l'échec) |
 | `src/classeurs/vecteurs.ts` | Comparer deux vecteurs d'état Yjs, pur (testé) : `egal`, `contient`, `contenu`, `diverge` (la clé ne remplace jamais un fichier qui contient plus que le classeur, et voit qu'un classeur a perdu une partie de son histoire) |
 | `src/classeurs/cle.ts` | L'enregistrement automatique dans un fichier de la clé (Chrome, Edge, aussi en `file://`) : l'activer (le fichier choisi, vérifié, gardé), quand écrire (20 s après le dernier changement, au plus tard 2 min, au calme), écrire d'un bloc depuis le travailleur, les garde-fous (un autre classeur, un fichier modifié ailleurs, l'histoire perdue), la permission (un clic après un rechargement), les échecs et leurs réessais, un seul onglet qui écrit (Web Locks), la question du navigateur en fermant l'onglet avant l'écriture (`beforeunload`, posée seulement pendant ce temps-là, et l'écriture part aussitôt), Arrêter, la case de la fenêtre « Ouvrir ce classeur ? » ; un conflit propose d'ouvrir le fichier de la clé (`fichierDeLaCle`), et la fiche changée dans l'onglet se relit (`resynchroniser`) |
-| `src/classeurs/bibliotheque.ts` | La bibliothèque des classeurs : l'écran (par-dessus le classeur, ou seule), le bandeau et la ligne du classeur ouvert, Récents et la grille du dossier affiché (seules les cartes changées se refont, le focus reste), les cartes des classeurs (des liens : le clic du milieu ouvre un onglet) et des dossiers, les pointeurs et le clavier, le menu d'une carte et celui d'un dossier, ouvrir un autre classeur sans rien perdre (le trou, ce qui attend, le rappel d'enregistrer noté pour l'arrivée, `CLE_RAPPEL_ARRIVEE` et `lireRappelArrivee`, sans question depuis le lot 16), Nouveau classeur (la case de la clé, la première écriture avant de partir) ; ranger : le conseil, Nouveau dossier, le fil d'Ariane, Retour arrière, la couleur et « Dossier d'une classe », les étiquettes de classe et leur filtre, renommer (F2, double-clic, au-dessus du clavier virtuel), trier ; déplacer (« Déplacer vers… », le glisser-déposer à la souris, à la tablette graphique et au doigt, deux doigts qui défilent), dupliquer, les aperçus en adresses objet ; la corbeille (Supprimer et Suppr, « Annuler », le bouton « Corbeille (3) », Remettre, les questions de Supprimer définitivement et de Vider, « Enregistrer d'abord », l'onglet qui passe sans classeur), l'adoption des bases sans fiche à la première ouverture, la place du navigateur ; `actionsDuBandeau`, `menuDuBandeau`, `blocsDuMenu`, `blocsDuMenuDossier` pour les morceaux suivants |
+| `src/classeurs/bibliotheque.ts` | La bibliothèque des classeurs : l'écran (par-dessus le classeur, ou seule), le bandeau et la ligne du classeur ouvert, Récents et la grille du dossier affiché (seules les cartes changées se refont, le focus reste), les cartes des classeurs (des liens : le clic du milieu ouvre un onglet) et des dossiers, les pointeurs et le clavier, le menu d'une carte et celui d'un dossier, ouvrir un autre classeur sans rien perdre (le trou, ce qui attend, le rappel d'enregistrer noté pour l'arrivée, `CLE_RAPPEL_ARRIVEE` et `lireRappelArrivee`, sans question depuis le lot 16), Nouveau classeur (la case de la clé, la première écriture avant de partir) ; ranger : le conseil, Nouveau dossier, le fil d'Ariane, Retour arrière, la couleur et « Dossier d'une classe », les étiquettes de classe et leur filtre, renommer (F2, double-clic, au-dessus du clavier virtuel), trier ; déplacer (« Déplacer vers… », le glisser-déposer à la souris, à la tablette graphique et au doigt, deux doigts qui défilent), dupliquer, les aperçus en adresses objet ; la corbeille (Supprimer et Suppr, « Annuler », le bouton « Corbeille (3) », Remettre, les questions de Supprimer définitivement et de Vider, « Enregistrer d'abord », l'onglet qui passe sans classeur ; depuis le lot 17, les images vérifiées avant la question et recopiées avant d'effacer, `verifierAvant`, `recopierPuisEffacer` : un classeur dont la recopie échoue n'est pas effacé), l'adoption des bases sans fiche à la première ouverture, la place du navigateur ; `actionsDuBandeau`, `menuDuBandeau`, `blocsDuMenu`, `blocsDuMenuDossier` pour les morceaux suivants |
 | `src/classeurs/arbre.ts` | L'arbre de la bibliothèque, pur (testé) : les huit couleurs, les noms (d'un dossier, d'une étiquette, d'une copie), ce qui ressemble à un niveau (« 5ème », « 2nde ») et son rang, le cycle et la remontée bornée, le parent montré, le chemin et le fil d'Ariane, les enfants et les descendants, ce que contient un dossier, les étiquettes héritées et effectives (calculées), la rangée du filtre, le tri par nom |
-| `src/classeurs/liste.ts` | Ce que montre la bibliothèque, pur (testé) : Récents (les six derniers ouverts), le tri par date, un classeur à la racine, la date et les pages d'une carte, le texte du lecteur d'écran (avec ses étiquettes et son chemin), les titres des icônes de la clé et du Drive, le nombre de classeurs, le nom d'un classeur neuf |
+| `src/classeurs/liste.ts` | Ce que montre la bibliothèque, pur (testé) : Récents (les six derniers ouverts), le tri par date, un classeur à la racine, la date et les pages d'une carte, le texte du lecteur d'écran (avec ses étiquettes et son chemin, « hors chapitre » depuis le lot 17), les titres des icônes de la clé et du Drive, le nombre de classeurs, le nom d'un classeur neuf |
+| `src/classeurs/isolees.ts` | Le classeur « Séances isolées » de chaque niveau, pur (testé, lot 17) : reconnu à son nom (`estSeancesIsolees`), trouvé directement dans un dossier (`classeurSeancesIsolees`, le plus récemment ouvert s'il y en a deux), rejeté en queue (`isoleesEnQueue`), les textes du lien « Séance isolée » et du message d'arrivée ; voir « Les séances isolées » |
 | `src/classeurs/ecrivain-pur.ts` | Le fichier d'un classeur depuis les mises à jour de sa base, pur (testé) : la fusion, la vérification (une base trouée ou abîmée ne fait aucun fichier ; avec `lisible`, une base trouée relue donne ce qui s'en relit, et le dit), l'en-tête, le gzip, le vecteur d'état, la somme CRC-32 ; la copie d'un classeur (`preparerCopie` : toute l'histoire, le registre des publications vidé et la marque de copie en une transaction) ; l'examen d'une base (`examinerMisesAJour` : ses pages, les formes de toutes ses pages, son film, sa piste, ses publications, ses noms, sa corbeille de pages, ses dates) |
 | `src/classeurs/deplacer.ts` | Déplacer un classeur ou un dossier, pur (testé) : là où il est, les places interdites (ni dans soi-même ni dans un descendant, ni là où il est déjà), l'arbre de « Déplacer vers… » (borné), la cible sous le pointeur pendant un glisser (`cibleSous`), le message et ses étiquettes qui changent |
 | `src/classeurs/vers.ts` | La fenêtre « Déplacer vers… » : l'arbre des dossiers, en retrait et en couleur, « (ici) » et les grisés, le clavier (flèches, Début, Fin, Entrée, Échap, Tab vers « Annuler ») |
-| `src/classeurs/corbeille.ts` | La corbeille de la bibliothèque et les classeurs retrouvés, pur (testé) : ce qu'elle montre (le dernier supprimé d'abord), ce qu'efface un dossier ou « Vider » (tous les classeurs, les sous-dossiers du plus profond au moins profond), où va ce qu'on remet, les textes (messages, questions, ce qui reste ailleurs, jamais enregistré), la place du navigateur, ce qu'est une base vide au sens strict, la fiche d'une base retrouvée |
-| `src/classeurs/vue-corbeille.ts` | La vue de la corbeille dans la bibliothèque : les cartes (aperçu ou icône, nom, date, « Était dans »), Remettre et Supprimer définitivement (44 px), « Bibliothèque » et « Vider la corbeille » ; le focus qui suit |
+| `src/classeurs/corbeille.ts` | La corbeille de la bibliothèque et les classeurs retrouvés, pur (testé) : ce qu'elle montre (le dernier supprimé d'abord), ce qu'efface un dossier ou « Vider » (tous les classeurs, les sous-dossiers du plus profond au moins profond), où va ce qu'on remet, les textes (messages, questions, ce qui reste ailleurs, jamais enregistré ; lot 17 : les images à recopier avant d'effacer, le classeur qui n'a pas pu être vérifié, les images recopiées, le classeur pas effacé), la place du navigateur, ce qu'est une base vide au sens strict, la fiche d'une base retrouvée |
+| `src/classeurs/verifier.ts` | Vérifier les classeurs (lot 17), pur (testé) : l'inventaire des images d'un classeur (les clés utilisées par ses formes image, les clés présentes dans sa banque ; depuis un document, un tableau ou les mises à jour d'une base), le bilan (une ligne par classeur visible auquel il manque des images, ses sources, les visibles d'abord), ce qu'il faut recopier avant d'effacer (`dernieresCopies`), les textes de la fenêtre et des messages |
+| `src/classeurs/verification.ts` | Le service de la vérification : les inventaires de tous les classeurs (celui de cet onglet dans son tableau, les autres par le travailleur, gardés tant que la fiche ne change pas), réparer un classeur (ses images lues chez leurs sources, rangées dans sa banque sans rien remplacer : en mémoire pour le classeur de cet onglet, par `lireUnClasseur`/`ecrireUnClasseur` pour un autre), les recopies avant d'effacer (`avantDEffacer`, `recopier`), la recherche à l'ouverture (`retrouverIci` : retrouvées, puis « introuvable » avec le bouton) |
+| `src/classeurs/vue-verification.ts` | La fenêtre « Vérifier les classeurs » (le menu ⋯ du bandeau) : la ligne d'état, une ligne par classeur avec son détail et « Réparer » (44 px), « Tout réparer », « Fermer » ; une réparation en cours retient la fermeture ; au téléphone, les lignes s'empilent |
+| `src/classeurs/vue-corbeille.ts` | La vue de la corbeille dans la bibliothèque (« Corbeille de la bibliothèque » ; sa note renvoie à la corbeille du classeur) : les cartes (aperçu ou icône, nom, date, « Était dans »), Remettre et Supprimer définitivement (44 px), « Bibliothèque » et « Vider la corbeille » ; le focus qui suit |
 | `src/classeurs/effacer.ts` | Effacer un classeur pour de bon : la fiche marquée, les onglets prévenus (les deux canaux), celui-ci coupé, 300 ms, la base effacée (le vecteur du premier noté avant), puis la fiche, l'aperçu, la poignée et les clés de stockage ; une base bloquée par un onglet, plus tard |
 | `src/classeurs/adoption.ts` | Les bases de classeur sans fiche : les trouver (`databases()`), les examiner par l'écrivain, adopter celles qui ne sont pas vides, effacer seulement celles sans aucune entrée (jamais `mem-tableau-local`) ; une seule base (`adopterUneBase`, quand un fichier ouvert porte l'id d'une base d'ici sans fiche) |
 | `src/classeurs/enregistrer.ts` | Enregistrer un classeur depuis sa base, sans l'ouvrir (« Enregistrer d'abord », « Enregistrer dans un fichier… » du menu d'une carte) : le choix du fichier dans le clic, l'écrivain, la date notée |
 | `src/classeurs/apercu-classeur.ts` | L'aperçu d'un classeur : sa première page en PNG (320 × 200, en esquisse, par `sorties/apercu.ts`), quand le refaire (au démarrage s'il manque, 30 s après le dernier changement de la première page, au calme, au plus toutes les 2 min ; à l'ouverture de la bibliothèque ; avant de partir), rangé dans l'index |
-| `src/classeurs/fichiers.ts` | Ouvrir des fichiers (lot 4 C9) : le choix (showOpenFilePicker, plusieurs, `.memc` et `.memb` ; sinon le choix d'avant), les fichiers lâchés, la lecture dans le travailleur, la reconnaissance (une base de cet id sans fiche adoptée d'abord, les vecteurs comparés), la fenêtre d'un fichier et ses choix (Ajouter, Remplacer « … »…, Ouvrir celui de la bibliothèque, Mettre à jour sans rien perdre, Ajouter comme copie, Remplacer celui de la bibliothèque…, la case de la clé), plusieurs fichiers (la fenêtre qui dit tout, le bilan), Enregistrer et Ouvrir toute la bibliothèque (le `.memb` au fil de l'eau ; les dossiers réunis, la case des plus récents), le fichier de la clé en conflit |
-| `src/classeurs/ancien-tableau.ts` | Reprendre un ancien tableau (.prof) : le lire et rejouer son film, chaque geste à son heure, dans une séance neuve ; les traits, les images (rognées, tournées, fixées en fond), les textes en formules, les figures (points, segments, droites, arcs, rectangles, caches) ; le bilan, les textes de la fenêtre (pur, testé) |
+| `src/classeurs/fichiers.ts` | Ouvrir des fichiers (lot 4 C9) : le choix (showOpenFilePicker, plusieurs, `.memc` et `.memb` ; sinon le choix d'avant), les fichiers lâchés, la lecture dans le travailleur, la reconnaissance (une base de cet id sans fiche adoptée d'abord, les vecteurs comparés), la fenêtre d'un fichier et ses choix (Ajouter, Remplacer « … »…, Ouvrir celui de la bibliothèque, Mettre à jour sans rien perdre, Ajouter comme copie, Remplacer celui de la bibliothèque…, la case de la clé), plusieurs fichiers (la fenêtre qui dit tout, le bilan), Enregistrer et Ouvrir toute la bibliothèque (le `.memb` au fil de l'eau ; les dossiers réunis, la case des plus récents), le fichier de la clé en conflit ; un classeur fermé lu dans un document puis réécrit dans sa base sans rien perdre (`lireUnClasseur`, `ecrireUnClasseur`) ; les images qui manquent à l'ouverture (`retrouverImages`, qui délègue au service de « Vérifier les classeurs » depuis le lot 17) |
+| `src/classeurs/ancien-tableau.ts` | Reprendre un ancien tableau (.prof) : le lire et rejouer son film, chaque geste à son heure, dans une séance d'un classeur brouillon, copiée à sa date dans le classeur (la chaîne `rangerDansLeClasseur`, voir deplacer-seance.ts) ; les traits, les images (rognées, tournées, fixées en fond), les textes en formules, les figures (points, segments, droites, arcs, rectangles, caches) ; le bilan, l'aperçu de la fenêtre (`apercuDuRangement`) et ses textes (pur, testé) |
+| `src/deplacer-seance.ts` | Ranger les séances depuis la bibliothèque (lot 9) : supprimer, copier une séance à sa date dans un autre classeur avec son film (`copierSeance` : la place dans le film, `placeDansLeFilm`, en lecture seule ; les instantanés recomposés, les images dédoublées par contenu), la retirer ; sert aussi aux anciens tableaux (pur, testé) |
 | `src/classeurs/reconnaitre.ts` | Reconnaître le classeur d'un fichier, pur (testé) : le même (son id), la corbeille, « ressemble » (un appareil Yjs en commun ; dans un lot, seulement sans id), nouveau ; la décision d'après la comparaison ; le nom d'après le nom du fichier ; les phrases des fenêtres et des bilans ; la réunion des dossiers d'une bibliothèque qu'on ouvre |
 | `src/classeurs/copie-drive.ts` | La copie à sens unique sur le Drive (lot 4 C10) : le compte du classeur, quand copier (2 min après le dernier changement, au plus tard 10 min, au plus une fois par max(10 min, 1 min par Mo, 20 fois la durée), au calme, en arrière-plan), depuis la base dans le travailleur, un onglet à la fois (Web Locks), une copie d'un autre onglet qui compte, les classeurs en retard (pas les vides), la connexion (jamais sans un clic ; arrivé connecté d'un autre classeur, les classeurs en retard se copient d'ici ; le jeton expiré, le bandeau ; le compte proposé à Google, retenu pour la copie), le compte Google où est vraiment la dernière copie, les échecs et leurs réessais, les garde-fous (récupérer, remplacer quand même), la question du navigateur en fermant l'onglet avant la copie quand rien d'autre ne protège le classeur (`beforeunload`, et la copie part aussitôt), la fenêtre « Copie sur le Drive… » |
 | `src/classeurs/drive-pur.ts` | La copie sur le Drive, pur (testé) : le compte voulu, le rythme (`prochaineCopie`, l'intervalle), le compte Google proposé à la reconnexion (`indiceGoogle`) et la copie sur un autre compte (`copieAilleurs`), la question du navigateur en fermant l'onglet (`questionDuDrive`), ce qu'on dit d'un échec, les phrases des garde-fous, les classeurs en retard |

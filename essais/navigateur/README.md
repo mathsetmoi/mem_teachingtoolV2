@@ -17,7 +17,7 @@ dossiers d'essais vitest, le banc d'écriture), rangés par lot :
 | --- | --- |
 | `test42.mjs`, `test46-lecteur.mjs`, `test47-casse-lecteur.mjs`, `test50.mjs`, `instruments/`, `t47/` | les premiers essais (le lecteur des élèves, la revue, les instruments, Publier) |
 | `lot1/` … `lot5/` | les essais de chaque lot (`lotN/*.mjs`), ceux de ses vérifications (`lotN/verif/`), de ses corrections et de son contrôle final |
-| `lot7/` | ouvrir et enregistrer sur l'ordinateur ou sur le Drive, « Mes emplacements » (`E1-ailleurs.mjs`) ; reprendre un ancien tableau, `.prof` (`E2-ancien-tableau.mjs`) |
+| `lot7/` | ouvrir et enregistrer sur l'ordinateur ou sur le Drive, « Mes emplacements » (`E1-ailleurs.mjs`) ; reprendre un ancien tableau, `.prof`, à sa date dans le classeur ouvert (`E2-ancien-tableau.mjs`, adapté au lot 17) |
 | `lot8/` | les séances sous la carte d'un classeur (`E1-seances-carte.mjs`) et le bouton « Séances » de la bibliothèque (`E2-onglet-seances.mjs`) |
 | `lot9/` | ranger les séances depuis la bibliothèque : renommer, changer l'ordre, supprimer, déplacer vers un autre classeur (`E1-ranger-seances.mjs`) |
 | `lot10/` | le flash d'automatismes sur une page de la séance : le réglage (rien de montré), une question à la fois, la correction, la case de « Bonjour ! », toutes d'un coup, « Nouveaux exemples » (`E1-flash.mjs`) |
@@ -26,6 +26,7 @@ dossiers d'essais vitest, le banc d'écriture), rangés par lot :
 | `lot13/` | le mode nuit d'une page : la touche N et le bouton lune, le papier noir et l'encre claire, les barres foncées, une autre page de jour, la case de la trieuse et sa vignette, le replay des élèves qui bascule au même moment (`N1-nuit.mjs`) |
 | `lot14/` | la calculatrice NumWorks : le menu Classe, l'installation (avec une page d'essai qui se fait passer pour l'émulateur), l'écran noté dans le film à chaque appui et jamais sans appui, la bande qui la déplace au Stylo, × et Ctrl+Z, le lecteur, la version hors ligne sans internet (`E1-calculatrice.mjs`) ; avec les vrais fichiers de NumWorks, s'ils sont donnés par `NUMWORKS_LYCEE` et `NUMWORKS_COLLEGE` (sinon il ne fait rien) : installer, calculer, l'écran noté (`E2-vrais-emulateurs.mjs`) |
 | `lot15/` | Publier dans un dossier de l'ordinateur, sans connexion Google : le fichier « Titre [code].mem », le lien avec le code, l'attente puis « en ligne », republier sous un autre nom (même code, un seul fichier), un relais pas à jour signalé avant d'écrire ; puis Publier en un clic (lot 16) : la fenêtre en résumé quand tout est retenu, « Modifier… », l'accord du dossier refusé qui déplie sans rien écrire (`P1-publier-dossier.mjs`) |
+| `lot17/` | le deuxième lot de l'audit : les séances isolées (le lien de « Bonjour ! », le classeur « Séances isolées » créé sans fenêtre puis retrouvé, en queue du niveau avec « Hors chapitre », une séance déplacée vers son chapitre, Publier avec le niveau relié, la version hors ligne : `E1-seances-isolees.mjs` ; `DEV=…` pour le port, `CAPTURES=…` pour les captures) ; l'ancien tableau (`.prof`) à sa date dans le classeur ouvert, l'aperçu de la fenêtre, plusieurs d'un coup dont un doublon, plus récent que tout, le téléphone, le fichier relié réécrit (sections C et F à J de `lot7/E2-ancien-tableau.mjs`, qui reste dans son lot) ; la corbeille du classeur rangée par séance : une séance supprimée depuis la bibliothèque fait un bloc (ses vignettes numérotées, « Remettre la séance », « Supprimer définitivement »), les pages seules disent leur séance (« Page 3 · séance du jour »), la poubelle refusée sur une séance passée, le rechargement et le `.memc`, la version hors ligne, l'iPad et le téléphone, le clavier, la case « Vider tout seul ce qui est ici depuis plus de 30 jours », la séance remise qui redevient la séance du jour (`F1-corbeille-seances.mjs`) ; « Vérifier les classeurs », plus jamais d'image grise : l'image retrouvée à l'ouverture d'un classeur et ses pixels, l'image introuvable et son bouton, la fenêtre du menu ⋯ (la ligne d'état, Réparer, Tout réparer, l'introuvable, l'illisible), la corbeille qui recopie les images avant d'effacer (et le classeur retenu si la recopie échoue), l'autre onglet qui se recharge, le téléphone et le clavier, la version hors ligne, une mesure sur dix classeurs avec des photos (`V1-verifier-classeurs.mjs`) |
 | `ecriture/` | le banc d'écriture (le trait en direct et au replay) |
 | `commun/` | `racines.mjs` (les chemins, calculés depuis l'emplacement des fichiers) et `playwright.mjs` (où trouver Playwright) |
 | `tout.sh` | le lanceur |
@@ -46,7 +47,8 @@ npm run essais:navigateur     # les deux à la suite (environ 2 h 40)
 La partie 1 construit les deux versions (`npm run build`, `npm run
 build:pages`), puis passe les essais des lots 1 à 5 et le banc d'écriture.
 La partie 2 passe les sondes des vérifications des lots 3, 4 et 5, les essais
-vitest qui ne sont pas dans `npm test` et ceux du contrôle final du lot 5.
+vitest qui ne sont pas dans `npm test`, ceux du contrôle final du lot 5 et
+les essais du lot 17 (`lot17/*.mjs`).
 
 Chaque partie lance son propre serveur de développement, neuf, sur le port
 5173 (celui qui y tournait est arrêté, puis relancé à la fin), sans

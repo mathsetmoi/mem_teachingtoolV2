@@ -34,6 +34,11 @@
 // O. La version d'un seul fichier (file://).
 // Il faut avoir construit les deux versions (npm run build, npm run
 // build:pages) ; tout.sh le fait.
+// Adapté au lot 17 (« Vérifier les classeurs ») : la question de « Supprimer
+// définitivement » et de « Vider la corbeille » est précédée de la
+// vérification des images de la corbeille ; les sections C et D attendent la
+// fenêtre (attendreLaQuestion) au lieu d'un temps fixe. Aucune image n'est en
+// jeu ici : les textes des questions sont inchangés.
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
 import * as Y from 'yjs'
@@ -173,6 +178,9 @@ const DIALOGUE = () => {
     boutons: [...d.querySelectorAll('.actions button')].map(b => b.textContent + (b.disabled ? '(gris)' : '')), focus: document.activeElement?.dataset?.a ?? null, classe: d.className }
 }
 const dialogue = p => p.evaluate(DIALOGUE)
+/** La question d'effacement, attendue : depuis le lot 17, la vérification
+ *  des images (verification.ts) la précède, un instant de plus */
+const attendreLaQuestion = async (p, ms = 15000) => { await p.waitForSelector('dialog[open]', { timeout: ms }); await p.waitForTimeout(150) }
 const menuCarte = async (p, cle, l = 'tous') => { await p.click(`${sel(cle, l)} .options-classeur`); await p.waitForTimeout(150) }
 const entree = async (p, action) => { await p.click(`.menu-flottant:not([hidden]) [data-action="${action}"]`); await p.waitForTimeout(250) }
 const ENTREES = () => { const m = [...document.querySelectorAll('.menu-flottant')].find(x => !x.hidden); return m ? [...m.querySelectorAll('.menu-item')].map(e => ({ action: e.dataset.action, texte: e.querySelector('.libelle')?.firstChild?.textContent, touche: e.querySelector('.touche')?.textContent ?? null, aide: e.querySelector('small')?.textContent ?? null })) : null }
@@ -321,6 +329,10 @@ if (seul('B')) {
   ok(c?.cartes.every(x => x.hauteurs.length === 2 && x.hauteurs.every(h => h >= 44)), '   … deux boutons de 44 px au moins', c?.cartes.map(x => x.hauteurs))
   ok(cs['Thalès']?.label.startsWith('Thalès, classeur, supprimé aujourd\'hui à') && cs['Thalès'].label.endsWith('était dans : 5e B'), '   … le lecteur d\'écran : « Thalès, classeur, supprimé …, était dans : 5e B »', cs['Thalès']?.label)
   ok(c?.compte === '4 éléments' && !c.viderGris, '   … « 4 éléments », « Vider la corbeille »', c?.compte)
+  // Lot 17 : les deux corbeilles se nomment, et chacune renvoie à l'autre
+  const enTete = await p.evaluate(() => ({ titre: document.querySelector('.biblio-vue-corbeille h3')?.textContent, note: (document.querySelector('.biblio-corbeille-note')?.textContent ?? '').replace(/[\u00a0\u202f]/g, ' ') }))
+  ok(enTete.titre === 'Corbeille de la bibliothèque' && enTete.note.endsWith('Les pages et les séances supprimées d\'un classeur sont dans la corbeille de ce classeur (Maj + P, Corbeille).'),
+    '   … le titre « Corbeille de la bibliothèque », la note renvoie à la corbeille du classeur (Maj + P, Corbeille)', enTete)
   await p.keyboard.press('Escape'); await p.waitForTimeout(200)
   v = await vue(p)
   ok(!v.corbeille && v.ouvert && v.focus === 'corbeille' && v.bouton.presse === 'false', 'B3) Échap ramène aux cartes, le focus sur « Corbeille »', v)
@@ -388,7 +400,7 @@ if (seul('C')) {
   await ouvrirBiblio(p)
   await supprimerCarte(p, bro); await supprimerCarte(p, sauve)
   await ouvrirCorbeille(p)
-  await p.click(`${carteCorbeille(bro)} [data-action="supprimer-definitivement"]`); await p.waitForTimeout(250)
+  await p.click(`${carteCorbeille(bro)} [data-action="supprimer-definitivement"]`); await attendreLaQuestion(p)
   let d = await dialogue(p)
   ok(d?.titre === 'Supprimer définitivement « Brouillon » ?', 'C1) « Supprimer définitivement « Brouillon » ? »', d?.titre)
   ok(d?.textes[0] === 'Sa page et tout son historique (la revue, les séances à publier) seront effacés de ce navigateur. Ce n\'est pas annulable.'
@@ -396,11 +408,11 @@ if (seul('C')) {
   ok(d?.boutons.join('|') === 'Annuler|Enregistrer d\'abord|Supprimer définitivement' && d.focus === 'annuler' && d.classe.includes('dialogue-corbeille'), '   … [Annuler] [Enregistrer d\'abord] [Supprimer définitivement], « Annuler » a le focus', d)
   await p.keyboard.press('Escape'); await p.waitForTimeout(200)
   ok(!(await dialogue(p)) && (await bases(p)).includes(PREFIXE + bro) && (await vue(p)).corbeille, '   … Échap ferme sans rien faire, on reste dans la corbeille')
-  await p.click(`${carteCorbeille(bro)} [data-action="supprimer-definitivement"]`); await p.waitForTimeout(250)
+  await p.click(`${carteCorbeille(bro)} [data-action="supprimer-definitivement"]`); await attendreLaQuestion(p)
   await p.mouse.click(5, 5); await p.waitForTimeout(200)
   ok(!(await dialogue(p)) && (await bases(p)).includes(PREFIXE + bro), '   … un clic à côté aussi')
   // Enregistrer d'abord
-  await p.click(`${carteCorbeille(bro)} [data-action="supprimer-definitivement"]`); await p.waitForTimeout(250)
+  await p.click(`${carteCorbeille(bro)} [data-action="supprimer-definitivement"]`); await attendreLaQuestion(p)
   await p.click('dialog[open] [data-a="enregistrer"]')
   await attendreQue(p, () => document.querySelector('dialog[open] [data-a="enregistrer"]')?.textContent === 'Enregistré ✓')
   d = await dialogue(p)
@@ -426,7 +438,7 @@ if (seul('C')) {
   ok(t.some(x => x.includes('« Brouillon » supprimé définitivement.')) && !t.some(x => x.includes('« Brouillon » est dans la corbeille') && x.includes('supprimé définitivement')),
     '   … « « Brouillon » supprimé définitivement. » (et le vieil « Annuler » s\'en va)', t)
   // Déjà enregistré
-  await p.click(`${carteCorbeille(sauve)} [data-action="supprimer-definitivement"]`); await p.waitForTimeout(250)
+  await p.click(`${carteCorbeille(sauve)} [data-action="supprimer-definitivement"]`); await attendreLaQuestion(p)
   d = await dialogue(p)
   ok(d?.textes[1] === 'Ses fichiers enregistrés ne sont pas effacés.' && d.boutons.join('|') === 'Annuler|Supprimer définitivement', 'C4) Un classeur déjà enregistré : « Ses fichiers enregistrés ne sont pas effacés. », sans « Enregistrer d\'abord »', d)
   await p.click('dialog[open] [data-a="annuler"]'); await p.waitForTimeout(150)
@@ -440,7 +452,7 @@ if (seul('C')) {
   await p.click('[data-action="corbeille-retour"]'); await recharger(p)
   await supprimerCarte(p, 'd:' + d6)
   await ouvrirCorbeille(p)
-  await p.click(`${carteCorbeille('d:' + d6)} [data-action="supprimer-definitivement"]`); await p.waitForTimeout(250)
+  await p.click(`${carteCorbeille('d:' + d6)} [data-action="supprimer-definitivement"]`); await attendreLaQuestion(p)
   d = await dialogue(p)
   ok(d?.titre === 'Supprimer définitivement le dossier « 6e A » ?' && d.textes[0] === 'Ses 3 classeurs (3 pages en tout) et son dossier seront effacés de ce navigateur. Ce n\'est pas annulable.'
     && d.textes[1] === 'Dont 1 qui n\'a jamais été enregistré dans un fichier.', 'C5) Un dossier : « Ses 3 classeurs (3 pages en tout) et son dossier seront effacés… », « Dont 1… »', d)
@@ -470,7 +482,7 @@ if (seul('D')) {
   await ouvrirBiblio(p)
   for (const c of [a1, a2, 'd:' + dd]) await supprimerCarte(p, c)
   await ouvrirCorbeille(p)
-  await p.click('[data-action="vider-corbeille"]'); await p.waitForTimeout(250)
+  await p.click('[data-action="vider-corbeille"]'); await attendreLaQuestion(p)
   let d = await dialogue(p)
   ok(d?.titre === 'Vider la corbeille ?' && d.textes[0] === '3 classeurs (3 pages) et 1 dossier seront effacés de ce navigateur. Ce n\'est pas annulable.'
     && d.textes[1] === 'Dont 2 qui n\'ont jamais été enregistrés dans un fichier.' && d.boutons.join('|') === 'Annuler|Vider la corbeille' && d.focus === 'annuler',
@@ -503,7 +515,7 @@ if (seul('D')) {
   await p.click('[data-action="corbeille-retour"]'); await recharger(p)
   await supprimerCarte(p, premier)
   await ouvrirCorbeille(p)
-  await p.click(`${carteCorbeille(premier)} [data-action="supprimer-definitivement"]`); await p.waitForTimeout(200)
+  await p.click(`${carteCorbeille(premier)} [data-action="supprimer-definitivement"]`); await attendreLaQuestion(p)
   d = await dialogue(p)
   ok(d?.textes[1] === 'Ses fichiers enregistrés ne sont pas effacés.', 'D4) Le premier (clé « mem-dernier-enregistrement ») : déjà enregistré', d?.textes)
   await p.click('dialog[open] [data-a="oui"]')
@@ -698,7 +710,7 @@ if (seul('J')) {
   await ouvrirBiblio(p)
   await supprimerCarte(p, bloque)
   await ouvrirCorbeille(p)
-  await p.click(`${carteCorbeille(bloque)} [data-action="supprimer-definitivement"]`); await p.waitForTimeout(200)
+  await p.click(`${carteCorbeille(bloque)} [data-action="supprimer-definitivement"]`); await attendreLaQuestion(p)
   await p.click('dialog[open] [data-a="oui"]')
   await attendreQue(p, () => (window.__toasts || []).some(x => x.includes('sera effacé dès que')), null, 10000)
   let t = await toasts(p)

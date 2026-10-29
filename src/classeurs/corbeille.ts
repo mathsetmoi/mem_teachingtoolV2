@@ -28,6 +28,7 @@ import { cheminLisible, descendants, dossierVisible } from './arbre'
 import type { ExamenBase } from './ecrivain-pur'
 import { quandCourt, nomDeClasseur } from './liste'
 import { pagesLisibles, tailleLisible } from '../fichier'
+import { nomsLisibles } from './verifier'
 
 const enCarte = (d: Dossiers): ReadonlyMap<string, FicheDossier> =>
   d instanceof Map ? d : new Map((d as readonly FicheDossier[]).map(x => [x.id, x]))
@@ -223,6 +224,45 @@ export function texteVidee(c: { classeurs: number; dossiers: number }): string {
 }
 export const BLOQUE = 'Le classeur sera effacé dès que l\'onglet où il est encore ouvert sera fermé.'
 export const PAS_EFFACE = 'Le classeur n\'a pas pu être effacé de ce navigateur : il le sera au prochain démarrage.'
+
+// ---------- Les images dont la corbeille tient la dernière copie (lot 17) ----------
+/** Le message du bas quand la vérification des images dure (plus de 0,4 s) */
+export const VERIFICATION_IMAGES = 'Vérification des images…'
+
+/** Le paragraphe ajouté à la question quand des classeurs qui restent
+ *  montrent des images dont la seule copie est dans ce qu'on efface : « 2
+ *  images que « Fractions » et « Équations » montrent encore n'existent que
+ *  dans la corbeille : elles seront d'abord recopiées dans ces classeurs. »
+ *  ('' : aucune) */
+export function texteAvantVider(images: number, noms: readonly string[]): string {
+  if (!images || !noms.length) return ''
+  const liste = nomsLisibles(noms)
+  const montrent = noms.length > 1 ? 'montrent' : 'montre'
+  const ces = noms.length > 1 ? 'ces classeurs' : 'ce classeur'
+  return images > 1
+    ? `${images} images que ${liste} ${montrent} encore n'existent que dans la corbeille : elles seront d'abord recopiées dans ${ces}.`
+    : `1 image que ${liste} ${montrent} encore n'existe que dans la corbeille : elle sera d'abord recopiée dans ${ces}.`
+}
+
+/** « « Vieux chapitre » n'a pas pu être vérifié. » : sa base ne se lit pas ;
+ *  on l'efface quand même ('' : tous vérifiés) */
+export function texteNonVerifie(noms: readonly string[]): string {
+  if (!noms.length) return ''
+  return `${nomsLisibles(noms)} n'${noms.length > 1 ? 'ont' : 'a'} pas pu être vérifié${s(noms.length)}.`
+}
+
+/** Après l'effacement : « 2 images recopiées dans « Fractions ». » ('' : aucune) */
+export function texteRecopiees(faites: readonly { nom: string; n: number }[]): string {
+  const total = faites.reduce((a, x) => a + x.n, 0)
+  if (!total) return ''
+  return `${total} image${s(total)} recopiée${s(total)} dans ${nomsLisibles(faites.filter(x => x.n > 0).map(x => x.nom))}.`
+}
+
+/** Une recopie a échoué : ce classeur-là n'est pas effacé, et on le dit :
+ *  « « Symétrie » n'a pas été effacé : ses images n'ont pas pu être
+ *  recopiées dans « Fractions ». Recommencez. » */
+export const textePasRecopiees = (nom: string, vers: readonly string[]) =>
+  `« ${nom} » n'a pas été effacé : ses images n'ont pas pu être recopiées dans ${nomsLisibles(vers)}. Recommencez.`
 
 // ---------- La place ----------
 /** Au-delà de cette part du quota, on le dit en alerte */

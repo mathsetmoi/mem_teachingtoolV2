@@ -102,11 +102,13 @@ import { AIDE_ACTIVER, ID_CHOIX, TYPES_CLASSEUR, ecrireLeNeuf, examinerPourUnNeu
 import type { LigneSeance } from './liste'
 import { libelleCarte, libelleSeances, lignesDesSeances, nombreDeClasseurs, nomDeClasseur, recents, texteLecteur, titreCle, titreDrive } from './liste'
 import {
-  BLOQUE, PAS_EFFACE, TITRE_VIDER, contenuDeLaCorbeille, contenuDuDossier, elementsDeLaCorbeille, jamaisEnregistre, libelleCorbeille, pagesDe,
-  sauvegardesDe, texteCeQuiReste, texteDefinitifClasseur, texteDefinitifDossier, texteEfface, texteJamais, texteMisALaCorbeille, textePlace,
-  texteRemis, texteRetrouves, texteVidee, texteViderBibliotheque, titreDefinitifClasseur, titreDefinitifDossier,
+  BLOQUE, PAS_EFFACE, TITRE_VIDER, VERIFICATION_IMAGES, contenuDeLaCorbeille, contenuDuDossier, elementsDeLaCorbeille, jamaisEnregistre, libelleCorbeille, pagesDe,
+  sauvegardesDe, texteAvantVider, texteCeQuiReste, texteDefinitifClasseur, texteDefinitifDossier, texteEfface, texteJamais, texteMisALaCorbeille, texteNonVerifie,
+  textePasRecopiees, textePlace, texteRecopiees, texteRemis, texteRetrouves, texteVidee, texteViderBibliotheque, titreDefinitifClasseur, titreDefinitifDossier,
 } from './corbeille'
+import type { AvantEffacement, Verification } from './verification'
 import { effacerLesClasseurs } from './effacer'
+import { HORS_CHAPITRE, estSeancesIsolees, isoleesEnQueue } from './isolees'
 import { adopterLesOrphelines } from './adoption'
 import { enregistrerDepuisLaBase } from './enregistrer'
 import { TEXTE_PUBLIEES_COPIE } from './reconnaitre'
@@ -241,6 +243,11 @@ const DOUBLE_CLIC_NOM = 400
 const ANNULER = 'Annuler'
 /** « Effacement… », au-delà de ce temps */
 const PATIENCE_EFFACEMENT = 600
+/** Au-delà, « Vérification des images… » avant la question d'effacement (lot 17) */
+const PATIENCE_VERIFICATION = 400
+/** Ce qu'on efface, pour le message de fin ; suite : ce qu'on y ajoute (les
+ *  images recopiées avant, le classeur qu'une recopie ratée retient, lot 17) */
+type Quoi = ({ genre: 'classeur' | 'dossier'; nom: string } | { vider: true }) & { suite?: string }
 /** La clé des messages de la corbeille (« Annuler »), suivie de celle de la carte */
 const CLE_MESSAGE = 'corbeille:'
 
@@ -327,6 +334,13 @@ export class Bibliotheque {
    *  étiquettes de niveau ; C7 à C10 : déplacer, dupliquer, supprimer…),
    *  séparés par un filet */
   readonly blocsDuMenu: ((f: FicheClasseur, m: HTMLElement) => void)[] = []
+  /** La vérification des images (lot 17, verification.ts) : avant
+   *  « Supprimer définitivement » et « Vider la corbeille », les images dont
+   *  la corbeille tient la dernière copie sont recopiées dans les classeurs
+   *  qui les montrent encore ; branchée par vue-verification.ts */
+  verification: Verification | null = null
+  /** Une question d'effacement se prépare (la vérification des images) */
+  private gardeEnCours = false
   /** Les blocs du menu d'un dossier, après sa couleur et « Dossier d'un
    *  niveau » (C7 : déplacer ; C8 : supprimer) */
   readonly blocsDuMenuDossier: ((d: FicheDossier, m: HTMLElement) => void)[] = []
@@ -962,12 +976,14 @@ export class Bibliotheque {
     const filtre = this.filtre, ici = this.dossierAffiche
     const aLaRacine = ici === null && filtre === null
     const rec = aLaRacine ? recents(tous).map(f => f.id) : []
+    // (le classeur « Séances isolées » d'un dossier, lot 17, toujours en
+    // dernier, quel que soit le tri ; Récents ne change pas)
     let cles: string[], sousDossiers = 0
-    if (filtre !== null) cles = trier(tous.filter(f => porte(f, filtre, d)), this.tri).map(f => f.id)
+    if (filtre !== null) cles = isoleesEnQueue(trier(tous.filter(f => porte(f, filtre, d)), this.tri)).map(f => f.id)
     else {
       const sous = enfants(ici, d)
       sousDossiers = sous.length
-      cles = [...sous.map(x => DOSSIER + x.id), ...trier(tous.filter(f => estDans(f, ici, d)), this.tri).map(f => f.id)]
+      cles = [...sous.map(x => DOSSIER + x.id), ...isoleesEnQueue(trier(tous.filter(f => estDans(f, ici, d)), this.tri)).map(f => f.id)]
     }
     // Le chemin sous le nom paraît ou s'en va : toutes les cartes
     if ((filtre !== null) !== this.plat) { this.plat = filtre !== null; changes = null }
@@ -1060,6 +1076,8 @@ export class Bibliotheque {
     apercu.append(image, Object.assign(document.createElement('span'), { className: 'sans-apercu', textContent: 'Pas encore d\'aperçu' }),
       Object.assign(document.createElement('span'), { className: 'pastille-ouvert', textContent: 'Ouvert', hidden: true }), this.poignee())
     const nom = Object.assign(document.createElement('span'), { className: 'carte-nom-classeur' })
+    // « Hors chapitre » sous le nom du classeur « Séances isolées » d'un niveau (lot 17)
+    const horsChapitre = Object.assign(document.createElement('span'), { className: 'carte-hors-chapitre', textContent: HORS_CHAPITRE, hidden: true })
     // Son dossier, quand un filtre montre les classeurs de tous les dossiers
     const chemin = Object.assign(document.createElement('span'), { className: 'carte-chemin', hidden: true })
     const infos = Object.assign(document.createElement('span'), { className: 'carte-infos' })
@@ -1071,8 +1089,8 @@ export class Bibliotheque {
     infos.append(date, sauvegardes)
     // Les étiquettes de niveau (propres, et celle héritée du dossier)
     const etiquettes = Object.assign(document.createElement('span'), { className: 'carte-etiquettes', hidden: true })
-    for (const x of [apercu, nom, chemin, infos, etiquettes]) x.setAttribute('aria-hidden', 'true')
-    a.append(apercu, nom, chemin, infos, etiquettes)
+    for (const x of [apercu, nom, horsChapitre, chemin, infos, etiquettes]) x.setAttribute('aria-hidden', 'true')
+    a.append(apercu, nom, horsChapitre, chemin, infos, etiquettes)
     li.append(a, this.boutonOptions(li), ...this.zoneSeances(li))
     return li
   }
@@ -1193,7 +1211,13 @@ export class Bibliotheque {
     const chemin = avecChemin ? cheminLisible(f.dossier, this.dossiers) : ''
     poser(ch, chemin)
     if (ch.hidden === avecChemin) ch.hidden = !avecChemin
-    const label = texteLecteur(f, maintenant, { ouvertIci: ici, etiquettes: effectives.map(e => e.nom), chemin: avecChemin ? chemin : undefined })
+    // Le classeur « Séances isolées » d'un niveau (lot 17) : « Hors chapitre »
+    // sous son nom, que le lecteur d'écran dit aussi ; la carte reste la même
+    const isolees = estSeancesIsolees(f)
+    const hc = c.querySelector<HTMLElement>('.carte-hors-chapitre')!
+    if (hc.hidden === isolees) hc.hidden = !isolees
+    c.classList.toggle('isolees', isolees)
+    const label = texteLecteur(f, maintenant, { ouvertIci: ici, etiquettes: effectives.map(e => e.nom), chemin: avecChemin ? chemin : undefined, horsChapitre: isolees })
     if (a.getAttribute('aria-label') !== label) a.setAttribute('aria-label', label)
     if (a.title !== f.nom) a.title = f.nom
     const p = c.querySelector<HTMLElement>('.pastille-ouvert')!
@@ -2142,8 +2166,9 @@ export class Bibliotheque {
   }
 
   /** « Supprimer la séance » (Suppr) : ses pages vont dans la corbeille du
-   *  classeur ; « Annuler » les rend. La seule séance d'un classeur : c'est
-   *  le classeur qui va dans la corbeille de la bibliothèque. */
+   *  classeur (où elle fait un bloc, « Remettre la séance », lot 17) ;
+   *  « Annuler » les rend. La seule séance d'un classeur : c'est le classeur
+   *  qui va dans la corbeille de la bibliothèque. */
   private async supprimerSeanceDe(fid: string, sid: string) {
     const f = this.fiches.get(fid)
     if (!f) return
@@ -2157,7 +2182,7 @@ export class Bibliotheque {
       return
     }
     const pages = r.pages
-    this.hote.message(`${texte} est supprimée : ses pages sont dans la corbeille du classeur.`, {
+    this.hote.message(`${texte} est supprimée : ses pages sont dans la corbeille du classeur (Maj + P, Corbeille).`, {
       libelle: ANNULER, cle: CLE_MESSAGE + 'seance-' + sid,
       faire: () => void this.changerSeances(fid, t => t.rendrePages(pages), n => n > 0).then(n => { if (n) this.hote.message(`${texte} est de retour.`) }),
     })
@@ -2234,6 +2259,7 @@ export class Bibliotheque {
       if ('refus' in r) {
         this.hote.message(r.refus === 'chevauche'
           ? `« ${G.nom} » a déjà quelque chose pendant cette séance (une séance à la même heure) : elle n'a pas été déplacée.`
+          : r.refus === 'deja' ? `« ${G.nom} » a déjà cette séance : elle n'a pas été déplacée.`
           : 'Cette séance n\'est plus dans le classeur.')
         return
       }
@@ -3115,22 +3141,23 @@ export class Bibliotheque {
    *  « Enregistrer d'abord ». Un dossier : tous ses classeurs et tous ses
    *  sous-dossiers. */
   private async supprimerDefinitivement(cle: string) {
-    if (this.effacementEnCours || this.depart) return
+    if (this.effacementEnCours || this.gardeEnCours || this.depart) return
     const dossier = cle.startsWith(DOSSIER), id = dossier ? cle.slice(DOSSIER.length) : cle
     if (!dossier) {
       const f = this.fiches.get(id)
       if (!f) return
       const sauvegardes = sauvegardesDe(f, this.dernierEnregistrement(f))
       const jamais = !sauvegardes.fichier && !sauvegardes.drive
+      const garde = await this.verifierAvant([f])
       const oui = await this.demanderEffacement({
         titre: titreDefinitifClasseur(f.nom), bouton: 'Supprimer définitivement',
-        textes: [texteDefinitifClasseur(f.pages), texteCeQuiReste(sauvegardes)],
+        textes: [texteDefinitifClasseur(f.pages), texteCeQuiReste(sauvegardes), ...garde.textes],
         ...(jamais ? { enregistrer: () => this.enregistrerAvant(f), apres: texteCeQuiReste({ fichier: true, drive: false }) } : {}),
       })
       if (!oui) return
       const x = this.fiches.get(id)
       if (!x) return
-      await this.effacer([x], [], { genre: 'classeur', nom: x.nom })
+      await this.recopierPuisEffacer([x], [], garde, { genre: 'classeur', nom: x.nom })
       return
     }
     const d = this.dossiers.get(id)
@@ -3138,37 +3165,76 @@ export class Bibliotheque {
     const fiches = [...this.fiches.values()]
     const c = contenuDuDossier(id, fiches, this.dossiers)
     const jamais = c.classeurs.filter(f => jamaisEnregistre(f, this.dernierEnregistrement(f))).length
+    const garde = await this.verifierAvant(c.classeurs)
     const oui = await this.demanderEffacement({
       titre: titreDefinitifDossier(d.nom), bouton: 'Supprimer définitivement',
-      textes: [texteDefinitifDossier({ classeurs: c.classeurs.length, pages: pagesDe(c.classeurs), dossiers: c.dossiers.length }), texteJamais(jamais)],
+      textes: [texteDefinitifDossier({ classeurs: c.classeurs.length, pages: pagesDe(c.classeurs), dossiers: c.dossiers.length }), texteJamais(jamais), ...garde.textes],
     })
     if (!oui) return
     // Relu : un autre onglet a pu changer quelque chose pendant la question
     const c2 = contenuDuDossier(id, [...this.fiches.values()], this.dossiers)
-    await this.effacer(c2.classeurs, [...c2.dossiers, d], { genre: 'dossier', nom: d.nom })
+    await this.recopierPuisEffacer(c2.classeurs, [...c2.dossiers, d], garde, { genre: 'dossier', nom: d.nom })
   }
 
   /** « Vider la corbeille » : une question, puis tout ce qu'elle contient
    *  est effacé (les classeurs des dossiers aussi) */
   private async viderLaCorbeille() {
-    if (this.effacementEnCours || this.depart) return
+    if (this.effacementEnCours || this.gardeEnCours || this.depart) return
     const c = contenuDeLaCorbeille([...this.fiches.values()], this.dossiers)
     if (!c.classeurs.length && !c.dossiers.length) return
     const jamais = c.classeurs.filter(f => jamaisEnregistre(f, this.dernierEnregistrement(f))).length
+    const garde = await this.verifierAvant(c.classeurs)
     const oui = await this.demanderEffacement({
       titre: TITRE_VIDER, bouton: 'Vider la corbeille',
-      textes: [texteViderBibliotheque({ classeurs: c.classeurs.length, pages: pagesDe(c.classeurs), dossiers: c.dossiers.length }), texteJamais(jamais)],
+      textes: [texteViderBibliotheque({ classeurs: c.classeurs.length, pages: pagesDe(c.classeurs), dossiers: c.dossiers.length }), texteJamais(jamais), ...garde.textes],
     })
     if (!oui) return
     const c2 = contenuDeLaCorbeille([...this.fiches.values()], this.dossiers)
-    await this.effacer(c2.classeurs, c2.dossiers, { vider: true })
+    await this.recopierPuisEffacer(c2.classeurs, c2.dossiers, garde, { vider: true })
+  }
+
+  /** Avant la question : les images dont ces classeurs tiennent la dernière
+   *  copie, qu'un classeur qui reste montre encore (lot 17, voir
+   *  verification.ts) ; au-delà de 0,4 s, le message « Vérification des
+   *  images… ». Les paragraphes à ajouter à la question : les recopies à
+   *  faire, les classeurs qui n'ont pas pu être vérifiés (on les effacera
+   *  quand même). Sans vérification branchée, ou si elle échoue : rien. */
+  private async verifierAvant(classeurs: readonly FicheClasseur[]): Promise<AvantEffacement & { textes: string[] }> {
+    const rien = { copies: [], nonVerifies: [], textes: [] }
+    if (!this.verification || !classeurs.length) return rien
+    this.gardeEnCours = true
+    const patience = window.setTimeout(() => this.hote.message(VERIFICATION_IMAGES), PATIENCE_VERIFICATION)
+    try {
+      const r = await this.verification.avantDEffacer(classeurs)
+      const images = new Set(r.copies.flatMap(c => c.images.map(i => i.src))).size
+      return { ...r, textes: [texteAvantVider(images, r.copies.map(c => c.vers.nom)), texteNonVerifie(r.nonVerifies)] }
+    } catch { return rien } finally { clearTimeout(patience); this.gardeEnCours = false }
+  }
+
+  /** Après la question : les recopies d'abord, puis l'effacement. Un
+   *  classeur dont une recopie a échoué n'est pas effacé (ni les dossiers
+   *  qui le gardent), et le message de fin le dit ; les autres le sont. */
+  private async recopierPuisEffacer(classeurs: FicheClasseur[], dossiers: FicheDossier[], garde: AvantEffacement, quoi: Quoi) {
+    if (!garde.copies.length || !this.verification) { await this.effacer(classeurs, dossiers, quoi); return }
+    if (this.effacementEnCours) return
+    this.effacementEnCours = true
+    const patience = window.setTimeout(() => this.hote.message('Recopie des images…'), PATIENCE_EFFACEMENT)
+    let r: Awaited<ReturnType<Verification['recopier']>>
+    try { r = await this.verification.recopier(garde.copies) } finally { clearTimeout(patience); this.effacementEnCours = false }
+    const retenus = new Set(r.echecs.flatMap(e => e.depuis.map(x => x.id)))
+    // Un dossier qui garde encore un classeur retenu reste aussi
+    const dossiersGardes = new Set(classeurs.filter(f => retenus.has(f.id)).flatMap(f => parents(f.dossier, this.dossiers).map(d => d.id)))
+    const suite = [texteRecopiees(r.faites), ...r.echecs.flatMap(e => e.depuis.map(x => textePasRecopiees(x.nom, [e.vers])))].filter(Boolean).join(' ')
+    const restants = classeurs.filter(f => !retenus.has(f.id)), dossiersRestants = dossiers.filter(d => !dossiersGardes.has(d.id))
+    if (!restants.length && !dossiersRestants.length) { this.hote.message(suite); return }
+    await this.effacer(restants, dossiersRestants, { ...quoi, suite })
   }
 
   /** Efface pour de bon ces classeurs (voir effacer.ts : leurs fiches
    *  disparaissent, les onglets ouverts sur eux cessent d'écrire, leurs
    *  bases s'effacent), puis ces dossiers (le plus profond d'abord). Le
    *  classeur de cet onglet en fait partie : l'onglet passe sans classeur. */
-  private async effacer(classeurs: FicheClasseur[], dossiers: FicheDossier[], quoi: { genre: 'classeur' | 'dossier'; nom: string } | { vider: true }) {
+  private async effacer(classeurs: FicheClasseur[], dossiers: FicheDossier[], quoi: Quoi) {
     if (this.effacementEnCours) return
     this.effacementEnCours = true
     const patience = window.setTimeout(() => this.hote.message('Effacement…'), PATIENCE_EFFACEMENT)
@@ -3196,6 +3262,8 @@ export class Bibliotheque {
       if ('vider' in quoi) texte = [texteVidee({ classeurs: r.effaces.length + r.bloques.length, dossiers: dossiersPartis }), fin].filter(Boolean).join(' ')
       else if (quoi.genre === 'dossier') texte = [texteEfface(quoi), fin].filter(Boolean).join(' ')
       else texte = r.effaces.length || !fin ? texteEfface(quoi) : fin
+      // Les images recopiées avant d'effacer, et ce qui n'a pas été effacé (lot 17)
+      if (quoi.suite) texte = `${texte} ${quoi.suite}`
       this.hote.message(texte)
       void this.majPlace()
     } catch (e) {
@@ -3538,8 +3606,7 @@ export class Bibliotheque {
       }
       let fiche: FicheClasseur
       try { fiche = await this.creer(nom, fond) } catch (x) {
-        const place = (x instanceof ErreurBase && x.raison === 'place') || nomErreur(x) === 'QuotaExceededError'
-        const t = place ? PLUS_DE_PLACE : `Le classeur n'a pas pu être créé : ${(x as Error | null)?.message?.replace(/\.$/, '') || 'erreur inconnue'}.`
+        const t = texteEchecCreation(x)
         reprendre(t)
         this.hote.message(t)
         return
@@ -3572,15 +3639,58 @@ export class Bibliotheque {
     champ.select()
   }
 
+  /** Crée un classeur SANS fenêtre et l'ouvre (lot 17 : le classeur
+   *  « Séances isolées » d'un niveau, à la première demande) : page blanche,
+   *  dans ce dossier (s'il existe encore et n'est pas dans la corbeille ;
+   *  sinon à la racine), sans fichier de clé (il viendra à la prochaine
+   *  liaison du niveau, ou par « Enregistrer automatiquement sur la clé ») ;
+   *  la copie sur le Drive suit comme pour tout classeur. avant(fiche) : juste
+   *  avant de partir (la clé de l'onglet d'une nouvelle séance, main.ts) ;
+   *  arrivee : le message dit en arrivant, à la place de « Classeur « X »
+   *  créé. ». Un échec se dit en message et l'on reste sur le classeur
+   *  ouvert. Vrai si le classeur a été créé. */
+  async creerEtOuvrir(o: { nom: string; dossier: string | null; arrivee: string; avant?: (f: FicheClasseur) => void }): Promise<boolean> {
+    if (this.depart) return false
+    this.finirSaisie(true)
+    // Les dossiers tels qu'ils sont à l'instant (la bibliothèque n'a peut-être
+    // jamais été ouverte dans cet onglet, et le dossier a pu partir)
+    try { this.dossiers = new Map((await this.registre.dossiers()).map(d => [d.id, d])) } catch { /* ceux qu'on a */ }
+    const d = o.dossier !== null ? this.dossiers.get(o.dossier) : undefined
+    const dans = d && dossierVisible(d, this.dossiers) ? d.id : null
+    let fiche: FicheClasseur
+    try { fiche = await this.creer(o.nom, 'blanc', dans) } catch (x) {
+      this.hote.message(texteEchecCreation(x))
+      return false
+    }
+    this.fiches.set(fiche.id, fiche)
+    o.avant?.(fiche)
+    await this.ouvrirClasseur(fiche, { arrivee: o.arrivee })
+    // On est resté (le trou : « Annuler ») : il attend dans la bibliothèque
+    if (!this.depart) {
+      this.hote.message(`Classeur « ${fiche.nom} » créé : il est dans la bibliothèque.`)
+      if (this.ouvert) void this.charger()
+    }
+    return true
+  }
+
   /** Crée le classeur : sa fiche (marquée en création), sa base avec une
    *  page au fond choisi et sa naissance dans le film, puis la marque s'en
-   *  va (voir Registre.creerClasseur : rien ne reste si cela échoue) */
-  private async creer(nom: string, fond: Fond): Promise<FicheClasseur> {
+   *  va (voir Registre.creerClasseur : rien ne reste si cela échoue). Dans
+   *  ce dossier s'il existe (sinon à la racine) : celui de la fenêtre
+   *  « Nouveau classeur » d'office. */
+  private async creer(nom: string, fond: Fond, dossierVoulu: string | null = this.dossierDuNouveau): Promise<FicheClasseur> {
     const id = idClasseur(), t = Date.now()
-    const dossier = this.dossierDuNouveau !== null && this.dossiers.has(this.dossierDuNouveau) ? this.dossierDuNouveau : null
+    const dossier = dossierVoulu !== null && this.dossiers.has(dossierVoulu) ? dossierVoulu : null
     const fiche: FicheClasseur = { id, base: baseDe(id), nom, dossier, etiquettes: [], cree: t, modifie: t, ouvert: t, pages: 1 }
     return this.registre.creerClasseur(fiche, async base => creerBase(base, await etatNeuf(fond), { id, nom }))
   }
+}
+
+/** Ce qu'on dit quand un classeur n'a pas pu être créé : plus de place dans
+ *  le navigateur, ou la raison de l'erreur */
+function texteEchecCreation(x: unknown): string {
+  const place = (x instanceof ErreurBase && x.raison === 'place') || nomErreur(x) === 'QuotaExceededError'
+  return place ? PLUS_DE_PLACE : `Le classeur n'a pas pu être créé : ${(x as Error | null)?.message?.replace(/\.$/, '') || 'erreur inconnue'}.`
 }
 
 /** Deux images ont-elles les mêmes octets ? */

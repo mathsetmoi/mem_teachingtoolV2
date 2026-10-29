@@ -11,6 +11,7 @@ import { ABIME, CARTE_COPIE, ErreurFichier, crc32, ecrireLisible, ecrireTableau,
 import { TEXTE_ABIMEE, TEXTE_ABIMEE_COPIE, fabriquer, preparerCopie } from '../src/classeurs/ecrivain-pur'
 import { aTransferer, erreurDe, executer } from '../src/classeurs/ecrivain-taches'
 import { ErreurBase } from '../src/classeurs/bases'
+import { inventaireDesMisesAJour } from '../src/classeurs/verifier'
 
 let horloge = new Date('2026-10-10T14:05:00').getTime()
 let numero = 0
@@ -171,6 +172,31 @@ describe('les demandes de l\'écrivain : des erreurs typées', () => {
   it('« vecteur » sans IndexedDB (ici, sous Node) : « indisponible », sans lever', async () => {
     const r = await executer({ n: 9, genre: 'vecteur', base: 'mem-teachingtool-classeur-00112233aabbccdd' })
     expect('erreur' in r && r.erreur.raison).toBe('indisponible')
+  })
+
+  it('« images » (lot 17) : les clés montrées et présentes, les données des seules clés demandées ; sans IndexedDB, « indisponible », et jamais une base créée', async () => {
+    // Ce que calcule la demande, sur les mises à jour d'une base (le travail
+    // du travailleur sans la base : inventaireDesMisesAJour)
+    const { t, mises, p1 } = await uneBase()
+    const banque = t.doc.getMap('images') as Y.Map<string>
+    const donnees = 'data:image/png;base64,iVBORw0KGgo='
+    banque.set('photo', donnees)
+    banque.set('inutile', donnees)
+    t.nouveauGeste()
+    t.poser(p1, { id: 'I1', type: 'image', src: 'photo', l: 40, h: 20, m: [1, 0, 0, 1], x: 0, y: 0, z: 1, auteur: 'moi' })
+    t.poser(p1, { id: 'I2', type: 'image', src: 'grise', l: 40, h: 20, m: [1, 0, 0, 1], x: 0, y: 0, z: 2, auteur: 'moi' })
+    await attendre(10)
+    const inv = inventaireDesMisesAJour(mises, ['photo', 'grise'])!
+    expect([...inv.utilisees].sort()).toEqual(['grise', 'photo'])
+    expect([...inv.presentes].sort()).toEqual(['inutile', 'photo'])
+    expect(inv.donnees).toEqual({ photo: donnees })
+    expect(inventaireDesMisesAJour(mises)!.donnees).toEqual({})
+    // La demande elle-même, ici sans IndexedDB : la base n'est ni lue ni créée
+    const r = await executer({ n: 11, genre: 'images', base: 'mem-teachingtool-classeur-00112233aabbccdd' })
+    expect(r.n).toBe(11)
+    expect('erreur' in r && r.erreur.raison).toBe('indisponible')
+    const r2 = await executer({ n: 12, genre: 'images', base: 'mem-teachingtool-classeur-00112233aabbccdd', donnees: ['photo'] })
+    expect('erreur' in r2 && r2.erreur.raison).toBe('indisponible')
   })
 
   it('une demande inconnue : « autre », sans lever', async () => {
