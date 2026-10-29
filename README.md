@@ -763,7 +763,10 @@ figure sans noms donne des lettres libres aux autres.
 Le bouton image de la barre du haut importe une photo ou une capture (on peut
 aussi la coller avec Ctrl+V, ou glisser le fichier sur le tableau) ; un PDF
 aussi (voir « Importer un PDF »). Réduite à
-1600 px, elle est rangée une seule fois dans le document. Comme une figure, elle
+1600 px, elle est rangée une seule fois dans le document : ses données vont
+dans la banque d'images du classeur, sous une clé, et le cadre posé sur la
+page ne porte que cette clé (quand la banque n'a plus les données, la page
+montre un cadre gris : voir « Vérifier les classeurs »). Comme une figure, elle
 se déplace, se duplique et se **transforme** : symétrie par rapport à une droite
 tracée sur la page, à une verticale ou à un axe du repère ; symétrie centrale,
 rotation ou homothétie autour d'un point de la page. L'image est vraiment
@@ -2354,7 +2357,11 @@ bibliothèque des classeurs »).
   levait une erreur.)
 - **Effacer pour de bon** (vider la corbeille de la bibliothèque, voir « La
   bibliothèque des classeurs » ; `src/classeurs/effacer.ts`), jamais avec
-  une fiche menteuse : 1) la fiche reçoit `effacement` (le classeur
+  une fiche menteuse : 0) depuis le lot 17, les images dont la corbeille
+  tient la dernière copie sont recopiées dans les classeurs qui les
+  montrent encore (la question l'a annoncé ; un classeur dont la recopie
+  échoue n'est pas effacé ; voir « Vérifier les classeurs ») ; 1) la fiche
+  reçoit `effacement` (le classeur
   disparaît partout) ; 2) les onglets ouverts sur lui sont prévenus et
   cessent d'écrire (canal `mem-teachingtool-classeur`, `{ type: 'supprime',
   base }` ; pour le premier, aussi le canal d'avant, `{ type: 'remplace',
@@ -3379,7 +3386,13 @@ séance, ou la touche Menu).
   arrivait sans ses images (des cadres gris à leur place). En ouvrant le
   classeur, celles qui manquent sont cherchées dans les autres classeurs de
   la bibliothèque, ceux de la corbeille compris, et remises à leur place ;
-  un message dit combien et d'où (`Fichiers.retrouverImages`).
+  un message dit combien et d'où (`Fichiers.retrouverImages`, qui confie
+  la recherche au service de « Vérifier les classeurs » depuis le lot 17,
+  voir cette section). Depuis le lot 17 aussi, l'ouverture prévient quand
+  une image reste introuvable (« 1 image de ce classeur est introuvable
+  dans ce navigateur. » [Vérifier les classeurs…]), et la fenêtre
+  « Vérifier les classeurs… » du menu ⋯ de la bibliothèque fait la même
+  recherche pour tous les classeurs, sans les ouvrir.
 - **Les replays déjà publiés ne bougent pas** : le lien des élèves reste
   bon. Une séance déplacée garde ses publications : la republier depuis son
   nouveau classeur remplace le même replay (même lien).
@@ -3761,7 +3774,8 @@ n'est jamais imposée, rien ne change au geste du professeur en classe.
   voir « La corbeille de la bibliothèque » plus bas), le menu **⋯**
   (« Enregistrer toute la bibliothèque… », voir « Toute la bibliothèque
   dans un fichier » ; « Récupérer une sauvegarde du Drive… », voir « La
-  copie sur le Drive »), le ×,
+  copie sur le Drive » ; « Vérifier les classeurs… », voir « Vérifier les
+  classeurs » dans le deuxième lot de l'audit), le ×,
   et, en bas, la place que ce navigateur garde pour le site. Tout tient sur
   une ligne dès 1024 px (jusqu'à 1100 px, le nombre de classeurs passe sous
   le titre) ; plus étroit, sur deux : le titre, la corbeille, le ⋯ et le ×,
@@ -4064,6 +4078,17 @@ testé : `tests/corbeille-biblio.test.ts` ; la vue, `src/classeurs/vue-corbeille
   On reste dans la vue.
 - **Supprimer définitivement, Vider** : une question dans une fenêtre de
   l'outil, « Annuler » a le focus, Échap ou un clic à côté la ferment.
+  Depuis le lot 17, les images sont vérifiées avant la question (voir
+  « Vérifier les classeurs » ; au-delà de 0,4 s, « Vérification des
+  images… » en bas) : si un classeur qu'on va effacer tient la dernière
+  copie d'images que d'autres classeurs montrent encore, la question gagne
+  un paragraphe, « 2 images que « Fractions » et « Équations » montrent
+  encore n'existent que dans la corbeille : elles seront d'abord recopiées
+  dans ces classeurs. » (« 1 image que « Fractions » montre encore n'existe
+  que dans la corbeille : elle sera d'abord recopiée dans ce classeur. ») ;
+  un classeur de la corbeille dont la base ne se lit pas : « « Vieux
+  chapitre » n'a pas pu être vérifié. », et il s'efface quand même. Quand
+  aucune image n'est concernée, la question est celle d'avant.
   « Supprimer définitivement « Symétrie » ? Ses 12 pages et tout son
   historique (la revue, les séances à publier) seront effacés de ce
   navigateur. Ce n'est pas annulable. », puis ce qui en reste ailleurs
@@ -4082,7 +4107,15 @@ testé : `tests/corbeille-biblio.test.ts` ; la vue, `src/classeurs/vue-corbeille
   « Dont 1 qui n'a jamais été enregistré dans un fichier. » s'il le faut.
   Puis « « Symétrie » supprimé définitivement. », « Corbeille vidée (3
   classeurs, 1 dossier). » (l'effacement lui-même : voir « Effacer pour de
-  bon » dans « Les classeurs : où ils vivent »). Le classeur de l'onglet
+  bon » dans « Les classeurs : où ils vivent »). Les recopies annoncées se
+  font après la question et avant d'effacer (au-delà de 0,4 s, « Recopie
+  des images… ») ; le message de fin les dit : « Corbeille vidée (3
+  classeurs, 1 dossier). 2 images recopiées dans « Fractions ». ». Si une
+  recopie échoue (le classeur d'arrivée a changé pendant ce temps, ou sa
+  base ne répond pas), le classeur qui tenait ces images **n'est pas
+  effacé**, ni le dossier qui le garde ; les autres le sont, et le message
+  le dit : « « Symétrie » n'a pas été effacé : ses images n'ont pas pu être
+  recopiées dans « Fractions ». Recommencez. ». Le classeur de l'onglet
   vidé : l'onglet devient la bibliothèque seule (`?bibliotheque`, « Bibliothèque
   — MEM teachingtool », plus rien ne s'écrit, le navigateur ne demande rien
   en partant). Rien ne s'efface jamais tout seul : pas de purge après
@@ -4519,6 +4552,164 @@ dossiers sont « 5ème », « 4ème », « 3ème » ; « Nouvelle séance en 5è
 niveau »), `tests/arbre.test.ts`, `tests/bibliotheque.test.ts`. À noter : la
 liste du tirage au sort est celle du dossier (`mem-tirage-<id>`), donc du
 niveau : la même pour la 5A et la 5B.
+
+## Deuxième lot de l'audit (lot 17)
+
+Le deuxième lot de l'audit du 28 octobre 2026 : les séances isolées,
+l'ancien tableau à sa date, la corbeille du classeur rangée par séance,
+vérifier les classeurs.
+
+### Vérifier les classeurs : plus jamais d'image grise
+
+Jusqu'au 28 octobre 2026, une séance déplacée vers un autre classeur
+arrivait sans ses images : la page montrait un cadre gris à leur place, et
+le replay aussi. Le lot 9 les retrouve à l'ouverture du classeur ; ce lot
+va au bout : une fenêtre qui vérifie tous les classeurs d'un coup, sans les
+ouvrir, une corbeille qui ne peut plus emporter la dernière copie d'une
+image, et l'outil qui dit enfin quand une image est introuvable, et comment
+la retrouver.
+
+**Le mode d'emploi.** Dans la bibliothèque, le menu ⋯ du bandeau gagne
+**Vérifier les classeurs…** (aide : « Les images qui manquent (un cadre
+gris sur une page), retrouvées dans les autres classeurs et remises à leur
+place. »). La fenêtre « Vérifier les classeurs » s'ouvre et vérifie tout de
+suite : « Les images de chaque classeur sont rangées avec lui. Quand une
+image manque, la page montre un cadre gris. On la cherche dans les autres
+classeurs de ce navigateur, la corbeille comprise. », puis la ligne d'état
+avance (« Vérification… 12 classeurs sur 30 ») et conclut : « 30 classeurs
+vérifiés : 2 ont des images qui manquent. » (ou « … : aucune image ne
+manque. » ; « 1 n'a pas pu être lu. » s'ajoute pour une base abîmée).
+Dessous, une ligne par classeur auquel il manque des images (ceux de la
+corbeille ne sont pas listés : on les remet d'abord) : son nom et son
+chemin (« Fractions — 5ème »), le détail (« 2 images manquantes,
+retrouvées dans « Symétrie » (corbeille) » ; « 3 images manquantes :
+2 retrouvées dans « Symétrie », 1 introuvable dans ce navigateur » ;
+« 1 image introuvable dans ce navigateur ») et un bouton **Réparer**
+(44 px) dès que quelque chose se retrouve. Réparer lit les données chez le
+classeur qui les a (les classeurs visibles avant ceux de la corbeille, le
+plus récemment modifié d'abord) et les range dans la banque du classeur :
+« Réparé : 2 images remises. », « Réparé : 2 images remises, 1 reste
+introuvable. » ; un message en bas le dit aussi (« 2 images remises dans
+« Fractions » (depuis « Symétrie »). »). Le classeur réparé n'a pas besoin
+d'être ouvert ; s'il est ouvert dans un autre onglet, cet onglet dit « Le
+classeur a changé » [Recharger] et voit l'image ; le classeur de cet onglet
+est réparé en mémoire, la page se redessine, sa base, sa clé et sa copie
+Drive suivent. Rien n'entre dans le film : ni étape, ni annulation, et les
+séances passées retrouvent leurs images. **Tout réparer** (en bas, dès
+qu'une ligne se répare) répare chaque ligne l'une après l'autre. Une image
+**introuvable** (plus aucune copie dans ce navigateur) n'a pas de bouton :
+la ligne explique le chemin, « Pour la retrouver : ouvrez un fichier .memc
+plus ancien de ce classeur (Ouvrir…, ou Récupérer une sauvegarde du
+Drive…), puis vérifiez de nouveau. » L'outil ne cherche ni dans les
+fichiers du dossier relié ni sur le Drive, et ne retire pas les cadres
+gris : le cadre dit qu'une image manque, le retirer la ferait oublier. Un
+classeur dont la base ne se lit pas : « Ce classeur n'a pas pu être lu. ».
+Pendant une réparation, le bouton dit « Réparation… », Fermer et Tout
+réparer sont grisés, Échap attend la fin de la ligne. Au clavier, Tab va de
+Réparer en Réparer, puis Tout réparer, Fermer ; Échap, « Fermer » ou un
+appui sur le fond la ferment. Au téléphone (390 px), la fenêtre prend
+toute la largeur, chaque ligne s'empile et le bouton prend la largeur de la
+fenêtre ; sur l'iPad et le TNI, les boutons font 44 px. La version hors
+ligne fait exactement la même chose : tout se passe dans les bases du
+navigateur, sans réseau.
+
+**La corbeille recopie d'abord.** « Vider la corbeille » et « Supprimer
+définitivement » vérifient les images avant de poser leur question
+(« Vérification des images… » en bas au-delà de 0,4 s). Si un classeur
+qu'on va effacer tient la dernière copie d'images que d'autres classeurs
+montrent encore, la question le dit, en troisième paragraphe : « 2 images
+que « Fractions » et « Équations » montrent encore n'existent que dans la
+corbeille : elles seront d'abord recopiées dans ces classeurs. » Une fois
+la question confirmée, les recopies se font, puis l'effacement, et le
+message de fin les compte : « Corbeille vidée (3 classeurs, 1 dossier).
+2 images recopiées dans « Fractions ». » Si une recopie échoue, le classeur
+qui tenait ces images n'est pas effacé (ni le dossier qui le garde) :
+« « Symétrie » n'a pas été effacé : ses images n'ont pas pu être recopiées
+dans « Fractions ». Recommencez. » Un classeur de la corbeille dont la base
+ne se lit pas s'efface quand même, et la question l'a dit : « « Vieux
+chapitre » n'a pas pu être vérifié. » Quand aucune image n'est concernée,
+rien ne change : la question est celle d'avant (voir aussi « La corbeille
+de la bibliothèque » et « Effacer pour de bon »).
+
+**À l'ouverture d'un classeur.** La recherche du lot 9 passe par le même
+service : les images qui manquent sont cherchées dans tous les autres
+classeurs (la lecture s'arrête dès que tout est trouvé), remises, et le
+message dit « 1 image retrouvée dans « Symétrie ». ». Ce qui reste
+introuvable est enfin dit, une fois par chargement : « 1 image de ce
+classeur est introuvable dans ce navigateur. » [Vérifier les classeurs…] ;
+le bouton ouvre la bibliothèque puis la fenêtre. Les deux phrases peuvent
+se suivre dans le même message.
+
+**Les décisions.** La variante complète en un seul lot (la fenêtre, le
+garde-fou de la corbeille, le message à l'ouverture) plutôt que la seule
+fenêtre : ce sont les trois moments où une image grise naît, ou peut
+encore être sauvée. Un classeur de la corbeille n'est jamais réparé (on le
+remet d'abord), mais il est toujours une source. Jamais une entrée
+existante de la banque n'est remplacée : on n'écrit que les clés absentes,
+et une réparation n'a aucun effet sur un classeur qui n'en a pas besoin.
+Une image introuvable n'est pas « nettoyée » : l'outil explique le chemin
+pour la retrouver (un `.memc` plus ancien par Ouvrir…, ou Récupérer une
+sauvegarde du Drive…), et c'est tout. Ni les fichiers du dossier relié ni
+le Drive ne sont lus : la fenêtre ne va pas chercher sur le réseau ni dans
+les dossiers de l'ordinateur sans qu'on le lui demande. Un classeur de la
+corbeille qui ne se lit pas ne bloque pas « Vider la corbeille » : on
+efface quand même, en le disant. Les textes de la corbeille restent dans
+`corbeille.ts`, avec les autres textes de la corbeille.
+
+**Comment c'est fait.** `src/classeurs/verifier.ts`, pur (testé) : la
+banque d'un classeur (`doc.getMap('images')`, une clé → `data:image/…`) et
+son inventaire (`inventaireDuDoc` : les clés que les formes image des
+pages de l'ordre et de la corbeille des pages utilisent, les clés présentes
+avec des données d'image ; `inventaireDesMisesAJour` : le même depuis les
+mises à jour d'une base, dans le travailleur), le bilan (`bilan` : une
+ligne par classeur visible auquel il manque des images, ses sources par
+clé, les visibles d'abord puis la corbeille, le plus récemment modifié
+d'abord ; les illisibles en fin de liste), ce qu'il faut recopier avant
+d'effacer (`dernieresCopies` : les clés dont toute copie partirait, et les
+classeurs restants qui les montrent), et les textes. L'écrivain gagne la
+demande **`images`** (`ecrivain-taches.ts` : la base lue sans ouvrir le
+classeur, jamais créée, son inventaire et, si on les demande, les données
+de certaines clés ; `ecrivain.imagesDeLaBase`). `src/classeurs/verification.ts`,
+le service : les inventaires de tous les classeurs, lus en série, celui de
+cet onglet dans son tableau (après ce qui attend), les autres par le
+travailleur et gardés tant que la fiche ne change pas (sa date `modifie`
+et son vecteur d'état) : la seconde vérification ne relit rien ; réparer
+(`reparer`) lit chaque source une fois pour toutes les clés qu'elle a,
+puis range : le classeur de cet onglet en mémoire (`ecrireSansFilm`, le
+rendu refait), un autre par `Fichiers.lireUnClasseur` dans un document qui
+ne vit nulle part, puis `Fichiers.ecrireUnClasseur` (refus dit si le
+classeur a changé entre-temps ; les autres onglets prévenus, « Le classeur
+a changé ») ; `avantDEffacer` et `recopier` pour la corbeille
+(`Bibliotheque.verifierAvant`, `recopierPuisEffacer` : un classeur retenu
+garde aussi les dossiers qui le contiennent) ; `retrouverIci` pour
+l'ouverture (`Fichiers.retrouverImages` délègue). La fenêtre :
+`src/classeurs/vue-verification.ts` (`brancherVerification` ajoute l'entrée
+au menu ⋯ ; `ouvrirVerification`). `main.ts` branche le service dans les
+deux cas, la bibliothèque seule et le classeur ouvert. Mesuré sur ce
+poste : 10 classeurs de 3 photos chacun (15,5 Mo d'images), première
+vérification 127 ms (11 bases lues), la seconde 1 ms (rien relu) ; « Tout
+réparer » de deux classeurs fermés, 671 ms. Aucune base, aucune clé de
+stockage, aucun format de fichier ne change. **Ce qui n'est pas couvert** :
+les images que seul le passé du film montre (une forme effacée depuis, que
+Revoir et Publier d'une séance passée montrent encore) ne sont pas
+comptées, l'inventaire lit les formes actuelles ; les fichiers du dossier
+relié et du Drive ne sont pas lus ; les aperçus des cartes se refont à
+leur rythme ; les `.mem` déjà publiés ne changent pas (Publier de nouveau
+remplace le replay, même lien) ; le fichier de la clé et la copie Drive
+d'un classeur fermé puis réparé se mettent à jour à sa prochaine
+ouverture.
+
+**Les essais.** `essais/navigateur/lot17/V1-verifier-classeurs.mjs`
+(A : l'image retrouvée à l'ouverture et ses pixels ; B : l'image
+introuvable et son bouton ; C : la fenêtre, ses textes, Réparer, Tout
+réparer, l'introuvable, l'illisible, rien à réparer ; D : Vider et
+Supprimer définitivement, le paragraphe, la recopie, l'échec qui retient,
+la base illisible, rien de concerné ; E : l'autre onglet qui se recharge ;
+F : le téléphone et le clavier ; G : la version hors ligne ; M : la
+mesure) ; `lot4/C8-corbeille.mjs` (adapté : l'attente de la question
+tolère la vérification préalable, `attendreLaQuestion`) ;
+`tests/verifier.test.ts`, `tests/corbeille-biblio.test.ts` (les nouvelles
+phrases), `tests/ecrivain.test.ts` (la demande `images`).
 
 ## Ce que fait la v0.1
 
@@ -5568,22 +5759,25 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/classeurs/surveillance.ts` | L'état de la sauvegarde en direct : la base (le trou, et sa réparation au calme), le dernier fichier (ici ou dans un autre onglet), le travail depuis ; `majCle` et `majDrive` pour la clé et le Drive (et `cleEnAttente` : le dernier trait pas encore sur la clé) ; `peutQuitter` et `beforeunload` ; `partirParLaBibliotheque` (la clé ne pose pas sa question quand on part par la bibliothèque) ; le bandeau (× : la session, ou une heure pour le rappel) |
 | `src/classeurs/ecrivain.ts` | L'écrivain : un seul travailleur pour la page, des demandes numérotées ; le fichier `.memc` d'un classeur depuis sa base (`fabriquerFichier`), le vecteur d'état d'une base (`vecteurDeLaBase`), un fichier lu et vérifié (`lireFichier`, pour Ouvrir ; avec la somme d'une entrée d'un `.memb`), la copie complète d'un classeur dans une base neuve (`copierClasseur`, pour Dupliquer), ce que contient une base sans fiche (`examinerBase`, pour l'adoption), un classeur mis à jour depuis un fichier sans rien perdre (`mettreAJour`), la base d'un classeur ajouté depuis un fichier (`creerBase`), la copie préparée depuis l'état d'un fichier, sans rien écrire (`preparerCopie`, pour « Remplacer » par le fichier d'un classeur de la corbeille) ; le repli sur le fil principal (`mode = 'fil'`) si le travailleur manque ou ne démarre pas, sauf pour les demandes du travailleur seul (`travailleurSeul` : les écritures automatiques, erreur `fil`) ; les erreurs typées (`ErreurEcrivain`) |
 | `src/classeurs/ecrivain.worker.ts` | Le travailleur de l'écrivain, intégré à la page (`?worker&inline` : il marche en `file://`) |
-| `src/classeurs/ecrivain-taches.ts` | Ce que fait l'écrivain, dans le travailleur ou sur le fil : les demandes (genres `fichier`, `vecteur`, `lire` (avec ou sans somme CRC-32), `copier`, `examiner`, `mettre-a-jour` : une transaction, la base relue et fusionnée dans le rappel de son getAll, l'état du fichier ajouté sans rien effacer seulement si elle y est encore contenue ; `creer` : la base d'un classeur ajouté, hors du fil principal, où ranger 18 Mo prenait près de 100 ms ; `preparer-copie` : l'état d'un fichier et la mise à jour qui vide son registre des publications et le marque, rendus sans rien écrire) et leurs réponses (l'état d'un fichier lu est transféré, sans copie) ; aucun calcul tant qu'une autre demande tient une base ouverte (un effacement n'attend jamais un calcul) ; les erreurs (`absente`, `abimee`, `indisponible`, `illisible`, `fil`, `place`, `existante`, `autre` ; `creee` : la base demandée a été créée, vide, avant l'échec) |
+| `src/classeurs/ecrivain-taches.ts` | Ce que fait l'écrivain, dans le travailleur ou sur le fil : les demandes (genres `fichier`, `vecteur`, `lire` (avec ou sans somme CRC-32), `copier`, `examiner`, `mettre-a-jour` : une transaction, la base relue et fusionnée dans le rappel de son getAll, l'état du fichier ajouté sans rien effacer seulement si elle y est encore contenue ; `creer` : la base d'un classeur ajouté, hors du fil principal, où ranger 18 Mo prenait près de 100 ms ; `preparer-copie` : l'état d'un fichier et la mise à jour qui vide son registre des publications et le marque, rendus sans rien écrire ; `images` (lot 17) : l'inventaire des images d'une base lue sans ouvrir le classeur, et les données des clés demandées) et leurs réponses (l'état d'un fichier lu est transféré, sans copie) ; aucun calcul tant qu'une autre demande tient une base ouverte (un effacement n'attend jamais un calcul) ; les erreurs (`absente`, `abimee`, `indisponible`, `illisible`, `fil`, `place`, `existante`, `autre` ; `creee` : la base demandée a été créée, vide, avant l'échec) |
 | `src/classeurs/vecteurs.ts` | Comparer deux vecteurs d'état Yjs, pur (testé) : `egal`, `contient`, `contenu`, `diverge` (la clé ne remplace jamais un fichier qui contient plus que le classeur, et voit qu'un classeur a perdu une partie de son histoire) |
 | `src/classeurs/cle.ts` | L'enregistrement automatique dans un fichier de la clé (Chrome, Edge, aussi en `file://`) : l'activer (le fichier choisi, vérifié, gardé), quand écrire (20 s après le dernier changement, au plus tard 2 min, au calme), écrire d'un bloc depuis le travailleur, les garde-fous (un autre classeur, un fichier modifié ailleurs, l'histoire perdue), la permission (un clic après un rechargement), les échecs et leurs réessais, un seul onglet qui écrit (Web Locks), la question du navigateur en fermant l'onglet avant l'écriture (`beforeunload`, posée seulement pendant ce temps-là, et l'écriture part aussitôt), Arrêter, la case de la fenêtre « Ouvrir ce classeur ? » ; un conflit propose d'ouvrir le fichier de la clé (`fichierDeLaCle`), et la fiche changée dans l'onglet se relit (`resynchroniser`) |
-| `src/classeurs/bibliotheque.ts` | La bibliothèque des classeurs : l'écran (par-dessus le classeur, ou seule), le bandeau et la ligne du classeur ouvert, Récents et la grille du dossier affiché (seules les cartes changées se refont, le focus reste), les cartes des classeurs (des liens : le clic du milieu ouvre un onglet) et des dossiers, les pointeurs et le clavier, le menu d'une carte et celui d'un dossier, ouvrir un autre classeur sans rien perdre (le trou, ce qui attend, le rappel d'enregistrer noté pour l'arrivée, `CLE_RAPPEL_ARRIVEE` et `lireRappelArrivee`, sans question depuis le lot 16), Nouveau classeur (la case de la clé, la première écriture avant de partir) ; ranger : le conseil, Nouveau dossier, le fil d'Ariane, Retour arrière, la couleur et « Dossier d'une classe », les étiquettes de classe et leur filtre, renommer (F2, double-clic, au-dessus du clavier virtuel), trier ; déplacer (« Déplacer vers… », le glisser-déposer à la souris, à la tablette graphique et au doigt, deux doigts qui défilent), dupliquer, les aperçus en adresses objet ; la corbeille (Supprimer et Suppr, « Annuler », le bouton « Corbeille (3) », Remettre, les questions de Supprimer définitivement et de Vider, « Enregistrer d'abord », l'onglet qui passe sans classeur), l'adoption des bases sans fiche à la première ouverture, la place du navigateur ; `actionsDuBandeau`, `menuDuBandeau`, `blocsDuMenu`, `blocsDuMenuDossier` pour les morceaux suivants |
+| `src/classeurs/bibliotheque.ts` | La bibliothèque des classeurs : l'écran (par-dessus le classeur, ou seule), le bandeau et la ligne du classeur ouvert, Récents et la grille du dossier affiché (seules les cartes changées se refont, le focus reste), les cartes des classeurs (des liens : le clic du milieu ouvre un onglet) et des dossiers, les pointeurs et le clavier, le menu d'une carte et celui d'un dossier, ouvrir un autre classeur sans rien perdre (le trou, ce qui attend, le rappel d'enregistrer noté pour l'arrivée, `CLE_RAPPEL_ARRIVEE` et `lireRappelArrivee`, sans question depuis le lot 16), Nouveau classeur (la case de la clé, la première écriture avant de partir) ; ranger : le conseil, Nouveau dossier, le fil d'Ariane, Retour arrière, la couleur et « Dossier d'une classe », les étiquettes de classe et leur filtre, renommer (F2, double-clic, au-dessus du clavier virtuel), trier ; déplacer (« Déplacer vers… », le glisser-déposer à la souris, à la tablette graphique et au doigt, deux doigts qui défilent), dupliquer, les aperçus en adresses objet ; la corbeille (Supprimer et Suppr, « Annuler », le bouton « Corbeille (3) », Remettre, les questions de Supprimer définitivement et de Vider, « Enregistrer d'abord », l'onglet qui passe sans classeur ; depuis le lot 17, les images vérifiées avant la question et recopiées avant d'effacer, `verifierAvant`, `recopierPuisEffacer` : un classeur dont la recopie échoue n'est pas effacé), l'adoption des bases sans fiche à la première ouverture, la place du navigateur ; `actionsDuBandeau`, `menuDuBandeau`, `blocsDuMenu`, `blocsDuMenuDossier` pour les morceaux suivants |
 | `src/classeurs/arbre.ts` | L'arbre de la bibliothèque, pur (testé) : les huit couleurs, les noms (d'un dossier, d'une étiquette, d'une copie), ce qui ressemble à un niveau (« 5ème », « 2nde ») et son rang, le cycle et la remontée bornée, le parent montré, le chemin et le fil d'Ariane, les enfants et les descendants, ce que contient un dossier, les étiquettes héritées et effectives (calculées), la rangée du filtre, le tri par nom |
 | `src/classeurs/liste.ts` | Ce que montre la bibliothèque, pur (testé) : Récents (les six derniers ouverts), le tri par date, un classeur à la racine, la date et les pages d'une carte, le texte du lecteur d'écran (avec ses étiquettes et son chemin), les titres des icônes de la clé et du Drive, le nombre de classeurs, le nom d'un classeur neuf |
 | `src/classeurs/ecrivain-pur.ts` | Le fichier d'un classeur depuis les mises à jour de sa base, pur (testé) : la fusion, la vérification (une base trouée ou abîmée ne fait aucun fichier ; avec `lisible`, une base trouée relue donne ce qui s'en relit, et le dit), l'en-tête, le gzip, le vecteur d'état, la somme CRC-32 ; la copie d'un classeur (`preparerCopie` : toute l'histoire, le registre des publications vidé et la marque de copie en une transaction) ; l'examen d'une base (`examinerMisesAJour` : ses pages, les formes de toutes ses pages, son film, sa piste, ses publications, ses noms, sa corbeille de pages, ses dates) |
 | `src/classeurs/deplacer.ts` | Déplacer un classeur ou un dossier, pur (testé) : là où il est, les places interdites (ni dans soi-même ni dans un descendant, ni là où il est déjà), l'arbre de « Déplacer vers… » (borné), la cible sous le pointeur pendant un glisser (`cibleSous`), le message et ses étiquettes qui changent |
 | `src/classeurs/vers.ts` | La fenêtre « Déplacer vers… » : l'arbre des dossiers, en retrait et en couleur, « (ici) » et les grisés, le clavier (flèches, Début, Fin, Entrée, Échap, Tab vers « Annuler ») |
-| `src/classeurs/corbeille.ts` | La corbeille de la bibliothèque et les classeurs retrouvés, pur (testé) : ce qu'elle montre (le dernier supprimé d'abord), ce qu'efface un dossier ou « Vider » (tous les classeurs, les sous-dossiers du plus profond au moins profond), où va ce qu'on remet, les textes (messages, questions, ce qui reste ailleurs, jamais enregistré), la place du navigateur, ce qu'est une base vide au sens strict, la fiche d'une base retrouvée |
+| `src/classeurs/corbeille.ts` | La corbeille de la bibliothèque et les classeurs retrouvés, pur (testé) : ce qu'elle montre (le dernier supprimé d'abord), ce qu'efface un dossier ou « Vider » (tous les classeurs, les sous-dossiers du plus profond au moins profond), où va ce qu'on remet, les textes (messages, questions, ce qui reste ailleurs, jamais enregistré ; lot 17 : les images à recopier avant d'effacer, le classeur qui n'a pas pu être vérifié, les images recopiées, le classeur pas effacé), la place du navigateur, ce qu'est une base vide au sens strict, la fiche d'une base retrouvée |
+| `src/classeurs/verifier.ts` | Vérifier les classeurs (lot 17), pur (testé) : l'inventaire des images d'un classeur (les clés utilisées par ses formes image, les clés présentes dans sa banque ; depuis un document, un tableau ou les mises à jour d'une base), le bilan (une ligne par classeur visible auquel il manque des images, ses sources, les visibles d'abord), ce qu'il faut recopier avant d'effacer (`dernieresCopies`), les textes de la fenêtre et des messages |
+| `src/classeurs/verification.ts` | Le service de la vérification : les inventaires de tous les classeurs (celui de cet onglet dans son tableau, les autres par le travailleur, gardés tant que la fiche ne change pas), réparer un classeur (ses images lues chez leurs sources, rangées dans sa banque sans rien remplacer : en mémoire pour le classeur de cet onglet, par `lireUnClasseur`/`ecrireUnClasseur` pour un autre), les recopies avant d'effacer (`avantDEffacer`, `recopier`), la recherche à l'ouverture (`retrouverIci` : retrouvées, puis « introuvable » avec le bouton) |
+| `src/classeurs/vue-verification.ts` | La fenêtre « Vérifier les classeurs » (le menu ⋯ du bandeau) : la ligne d'état, une ligne par classeur avec son détail et « Réparer » (44 px), « Tout réparer », « Fermer » ; une réparation en cours retient la fermeture ; au téléphone, les lignes s'empilent |
 | `src/classeurs/vue-corbeille.ts` | La vue de la corbeille dans la bibliothèque : les cartes (aperçu ou icône, nom, date, « Était dans »), Remettre et Supprimer définitivement (44 px), « Bibliothèque » et « Vider la corbeille » ; le focus qui suit |
 | `src/classeurs/effacer.ts` | Effacer un classeur pour de bon : la fiche marquée, les onglets prévenus (les deux canaux), celui-ci coupé, 300 ms, la base effacée (le vecteur du premier noté avant), puis la fiche, l'aperçu, la poignée et les clés de stockage ; une base bloquée par un onglet, plus tard |
 | `src/classeurs/adoption.ts` | Les bases de classeur sans fiche : les trouver (`databases()`), les examiner par l'écrivain, adopter celles qui ne sont pas vides, effacer seulement celles sans aucune entrée (jamais `mem-tableau-local`) ; une seule base (`adopterUneBase`, quand un fichier ouvert porte l'id d'une base d'ici sans fiche) |
 | `src/classeurs/enregistrer.ts` | Enregistrer un classeur depuis sa base, sans l'ouvrir (« Enregistrer d'abord », « Enregistrer dans un fichier… » du menu d'une carte) : le choix du fichier dans le clic, l'écrivain, la date notée |
 | `src/classeurs/apercu-classeur.ts` | L'aperçu d'un classeur : sa première page en PNG (320 × 200, en esquisse, par `sorties/apercu.ts`), quand le refaire (au démarrage s'il manque, 30 s après le dernier changement de la première page, au calme, au plus toutes les 2 min ; à l'ouverture de la bibliothèque ; avant de partir), rangé dans l'index |
-| `src/classeurs/fichiers.ts` | Ouvrir des fichiers (lot 4 C9) : le choix (showOpenFilePicker, plusieurs, `.memc` et `.memb` ; sinon le choix d'avant), les fichiers lâchés, la lecture dans le travailleur, la reconnaissance (une base de cet id sans fiche adoptée d'abord, les vecteurs comparés), la fenêtre d'un fichier et ses choix (Ajouter, Remplacer « … »…, Ouvrir celui de la bibliothèque, Mettre à jour sans rien perdre, Ajouter comme copie, Remplacer celui de la bibliothèque…, la case de la clé), plusieurs fichiers (la fenêtre qui dit tout, le bilan), Enregistrer et Ouvrir toute la bibliothèque (le `.memb` au fil de l'eau ; les dossiers réunis, la case des plus récents), le fichier de la clé en conflit |
+| `src/classeurs/fichiers.ts` | Ouvrir des fichiers (lot 4 C9) : le choix (showOpenFilePicker, plusieurs, `.memc` et `.memb` ; sinon le choix d'avant), les fichiers lâchés, la lecture dans le travailleur, la reconnaissance (une base de cet id sans fiche adoptée d'abord, les vecteurs comparés), la fenêtre d'un fichier et ses choix (Ajouter, Remplacer « … »…, Ouvrir celui de la bibliothèque, Mettre à jour sans rien perdre, Ajouter comme copie, Remplacer celui de la bibliothèque…, la case de la clé), plusieurs fichiers (la fenêtre qui dit tout, le bilan), Enregistrer et Ouvrir toute la bibliothèque (le `.memb` au fil de l'eau ; les dossiers réunis, la case des plus récents), le fichier de la clé en conflit ; un classeur fermé lu dans un document puis réécrit dans sa base sans rien perdre (`lireUnClasseur`, `ecrireUnClasseur`) ; les images qui manquent à l'ouverture (`retrouverImages`, qui délègue au service de « Vérifier les classeurs » depuis le lot 17) |
 | `src/classeurs/ancien-tableau.ts` | Reprendre un ancien tableau (.prof) : le lire et rejouer son film, chaque geste à son heure, dans une séance neuve ; les traits, les images (rognées, tournées, fixées en fond), les textes en formules, les figures (points, segments, droites, arcs, rectangles, caches) ; le bilan, les textes de la fenêtre (pur, testé) |
 | `src/classeurs/reconnaitre.ts` | Reconnaître le classeur d'un fichier, pur (testé) : le même (son id), la corbeille, « ressemble » (un appareil Yjs en commun ; dans un lot, seulement sans id), nouveau ; la décision d'après la comparaison ; le nom d'après le nom du fichier ; les phrases des fenêtres et des bilans ; la réunion des dossiers d'une bibliothèque qu'on ouvre |
 | `src/classeurs/copie-drive.ts` | La copie à sens unique sur le Drive (lot 4 C10) : le compte du classeur, quand copier (2 min après le dernier changement, au plus tard 10 min, au plus une fois par max(10 min, 1 min par Mo, 20 fois la durée), au calme, en arrière-plan), depuis la base dans le travailleur, un onglet à la fois (Web Locks), une copie d'un autre onglet qui compte, les classeurs en retard (pas les vides), la connexion (jamais sans un clic ; arrivé connecté d'un autre classeur, les classeurs en retard se copient d'ici ; le jeton expiré, le bandeau ; le compte proposé à Google, retenu pour la copie), le compte Google où est vraiment la dernière copie, les échecs et leurs réessais, les garde-fous (récupérer, remplacer quand même), la question du navigateur en fermant l'onglet avant la copie quand rien d'autre ne protège le classeur (`beforeunload`, et la copie part aussitôt), la fenêtre « Copie sur le Drive… » |
