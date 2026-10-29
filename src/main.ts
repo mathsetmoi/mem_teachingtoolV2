@@ -17,6 +17,7 @@ import { brancherRecuperer } from './classeurs/recuperer'
 import { Verification } from './classeurs/verification'
 import { brancherVerification } from './classeurs/vue-verification'
 import { Ailleurs } from './classeurs/ailleurs'
+import { Ranger } from './classeurs/ranger'
 import { ApercuDuClasseur } from './classeurs/apercu-classeur'
 import { ErreurBase, ouvrirBaseExistante } from './classeurs/bases'
 import { passerLaConnexion } from './publication/drive'
@@ -154,6 +155,12 @@ function bibliothequeSeule(racine: HTMLElement, registre: Registre, message?: st
   brancherVerification(b, verification, dire)
   // Ouvrir et enregistrer sur l'ordinateur ou sur le Drive, Mes emplacements (lot 7)
   const ailleurs = new Ailleurs({ registre, bibliotheque: b, fichiers, message: dire, classeur: () => null })
+  // Où ranger les classeurs d'un niveau (lot 18) : la fenêtre « Où ranger… »,
+  // le fichier de chaque classeur qui arrive dans un niveau rangé
+  const ranger = new Ranger({ registre, bibliotheque: b, message: dire, classeur: () => null })
+  b.brancherRanger(ranger)
+  fichiers.ranger = ranger
+  ailleurs.ranger = ranger
   b.ouvrir()
   window.addEventListener('keydown', e => {
     if (!(e.ctrlKey || e.metaKey) || e.altKey) return
@@ -162,7 +169,7 @@ function bibliothequeSeule(racine: HTMLElement, registre: Registre, message?: st
   }, true)
   // Une bibliothèque vide le dit déjà sur l'écran
   if (message && message !== MESSAGE_VIDE) dire(message)
-  if (import.meta.env.DEV) Object.assign(window, { __registre: registre, __bibliotheque: b, __fichiers: fichiers, __ailleurs: ailleurs })
+  if (import.meta.env.DEV) Object.assign(window, { __registre: registre, __bibliotheque: b, __fichiers: fichiers, __ailleurs: ailleurs, __ranger: ranger })
 }
 
 /** Un message gardé le temps d'arriver sur ce classeur (« Classeur « X »
@@ -406,21 +413,29 @@ async function demarrer() {
     ui.brancherFichiers(fichiers)
     // Ouvrir et enregistrer sur l'ordinateur ou sur le Drive, Mes
     // emplacements (lot 7) : « Enregistrer… » du menu ⋯ y mène
+    // Le classeur de cet onglet : ce qui attend s'écrit dans sa base d'abord
+    const avantDEcrire = async (f: FicheClasseur) => {
+      if (f.id !== infos.id || !hote.classeur) return
+      app.poserCeQuiAttend()
+      app.piste.vider()
+      await app.tableau.attendreEcritures()
+    }
     const ailleurs = new Ailleurs({
       registre, bibliotheque: ui.bibliotheque, fichiers, message: (t, a) => ui.message(t, a), classeur: () => hote.classeur,
       activerCle: cle?.disponible ? () => void cle.activer() : undefined,
       enregistrerClasseur: () => void ui.sauvegarde.enregistrer(),
-      // Le classeur de cet onglet : ce qui attend s'écrit dans sa base d'abord
-      avantDEcrire: async f => {
-        if (f.id !== infos.id || !hote.classeur) return
-        app.poserCeQuiAttend()
-        app.piste.vider()
-        await app.tableau.attendreEcritures()
-      },
+      avantDEcrire,
     })
     ui.enregistrerAilleurs = () => void ailleurs.enregistrer()
+    // Où ranger les classeurs d'un niveau (lot 18) : la fenêtre « Où ranger… »
+    // au premier classeur d'un niveau, le fichier de chaque classeur qui arrive
+    // dans un niveau rangé, les établissements de « Mes emplacements »
+    const ranger = new Ranger({ registre, bibliotheque: ui.bibliotheque, message: (t, a) => ui.message(t, a), avantDEcrire, classeur: () => hote.classeur })
+    ui.bibliotheque.brancherRanger(ranger)
+    fichiers.ranger = ranger
+    ailleurs.ranger = ranger
     ui.brancherReplay(registre, infos.id)
-    if (import.meta.env.DEV) Object.assign(window, { __ailleurs: ailleurs })
+    if (import.meta.env.DEV) Object.assign(window, { __ailleurs: ailleurs, __ranger: ranger })
     if (import.meta.env.DEV) Object.assign(window, { __bibliotheque: ui.bibliotheque, __fichiers: fichiers })
   }
   // Un classeur vient d'être ouvert depuis un fichier, ou créé : on le dit

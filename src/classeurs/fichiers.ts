@@ -51,6 +51,7 @@ import { adopterUneBase } from './adoption'
 import type { Surveillance } from './surveillance'
 import { ecritDansUnFichier } from './surveillance'
 import type { Verification } from './verification'
+import type { Ranger } from './ranger'
 import { enregistrerDepuisLaBase } from './enregistrer'
 import { nomDeClasseur } from './liste'
 import { descendants, dossierVisible, nomDEtiquette, nomLibre, cleDe, ETIQUETTES_MAX } from './arbre'
@@ -272,6 +273,9 @@ export class Fichiers {
   classeurEnMemoire(): InfosClasseur | null { return this.coupe ? null : this.ici }
   /** La vérification des images (lot 17, verification.ts), branchée par main.ts */
   verification: Verification | null = null
+  /** Où ranger les classeurs d'un niveau (lot 18, ranger.ts), branché par
+   *  main.ts : un classeur ajouté dans un niveau rangé reçoit son fichier */
+  ranger: Ranger | null = null
 
   // ---------- Choisir ----------
   /** Pourquoi on ne peut pas ouvrir de fichier maintenant (null : on peut) */
@@ -785,7 +789,15 @@ export class Fichiers {
       if (this.coupe) this.recharger(this.hote.classeur()?.id ?? '', null)
       return
     }
-    const g = o.cle ? await this.garderCommeCle(fiche, o.cle.poignee, o.cle.accord, lu) : { texte: '', cle: null }
+    let g: { texte: string; cle: CleALArrivee | null } = o.cle ? await this.garderCommeCle(fiche, o.cle.poignee, o.cle.accord, lu) : { texte: '', cle: null }
+    // Sans la case, dans un niveau rangé (lot 18) : il reçoit son fichier à
+    // sa place (un .memc ouvert depuis son propre dossier de chapitre est
+    // adopté, pas copié) ; le clic sur « Ajouter » est le geste
+    if (!o.cle && this.ranger) {
+      let dit = ''
+      const c = await this.ranger.donnerSonFichier(fiche, { geste: true, dire: t => { dit += ' ' + t } })
+      g = { texte: dit, cle: c ?? null }
+    }
     const texte = `Classeur ajouté à la bibliothèque : « ${fiche.nom} » (${pagesLisibles(lu.pages)}).${g.texte}${publications ? ` ${TEXTE_PUBLIEES_COPIE}` : ''}${o.apres ? ` ${o.apres}` : ''}`
     // La clé : ce qu'il en est se dira à l'arrivée, une fois vérifiée là-bas
     if (this.coupe) { this.recharger(fiche.id, texte, g.cle); return }

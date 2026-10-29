@@ -119,6 +119,7 @@ import { dateCourteMajuscule, libelleSeance, ordreALaMain, ordreApres } from '..
 import { demanderNomDeSeance } from '../seances-vue'
 import type { Fichiers } from './fichiers'
 import { AIDE_ENREGISTRER_TOUT } from './fichiers'
+import type { Endroit, Ranger } from './ranger'
 import { fermerSurLeFond } from '../dialogue'
 import { RechercheBiblio } from './recherche-biblio-vue'
 import { lireContenu } from '../recherche'
@@ -352,6 +353,9 @@ export class Bibliotheque {
   tri: Tri = 'modifie'
   /** Ouvrir et enregistrer des fichiers (lot 4 C9) : posé par brancherFichiers */
   fichiers: Fichiers | null = null
+  /** Où ranger les classeurs d'un niveau (lot 18) : posé par brancherRanger ;
+   *  null : ce navigateur ne range pas, ou la bibliothèque est construite seule */
+  ranger: Ranger | null = null
   /** La fenêtre « Ouvrir » (lot 7 : l'ordinateur ou le Drive, un dossier) :
    *  « Ouvrir… » du bandeau la montre ; sans elle, le choix des fichiers */
   ouvrirFenetre: (() => void) | null = null
@@ -700,6 +704,11 @@ export class Bibliotheque {
     })
     if (this.ouvert) this.boutonBandeau.hidden = false
   }
+
+  /** Où ranger les classeurs d'un niveau (lot 18, ranger.ts) : la fenêtre
+   *  « Où ranger… » au premier « Nouveau classeur » d'un niveau, et le
+   *  fichier de chaque classeur qui arrive dans un niveau rangé */
+  brancherRanger(r: Ranger) { this.ranger = r }
 
   /** « Ouvrir… » : la fenêtre du lot 7, sinon le choix des fichiers */
   private choisirOuvrir() {
@@ -3080,7 +3089,18 @@ export class Bibliotheque {
         this.fiches.set(id, r.fiche)
         const vers = r.ou.dossier === null ? null : this.dossiers.get(r.ou.dossier)?.nom ?? null
         this.rendre(null)
-        this.hote.message(texteRemis({ genre: 'classeur', nom: r.fiche.nom, vers, raison: r.ou.raison }), { libelle: ANNULER, faire: () => void this.annulerRemise(cle, r.avant.t, r.avant.dossier), cle: CLE_MESSAGE + cle })
+        // Remis dans un niveau rangé (lot 18) : il reçoit son fichier à sa
+        // place, et le message le dit (le clic sur « Remettre » est le geste)
+        let fichier = ''
+        if (this.ranger && !r.fiche.cle && r.fiche.dossier !== null) {
+          const c = await this.ranger.donnerSonFichier(r.fiche, { geste: true, dire: t => { fichier += ' ' + t } })
+          if (c) {
+            const relu = await this.registre.classeur(id).catch(() => undefined)
+            if (relu) this.fiches.set(id, relu)
+            fichier += c.ok ? ` ${c.ok}` : ` Son fichier est écrit dans « ${relu?.cle?.chemin ? relu.cle.chemin.join(' › ') : c.nom} ».`
+          }
+        }
+        this.hote.message(texteRemis({ genre: 'classeur', nom: r.fiche.nom, vers, raison: r.ou.raison }) + fichier, { libelle: ANNULER, faire: () => void this.annulerRemise(cle, r.avant.t, r.avant.dossier), cle: CLE_MESSAGE + cle })
       } else {
         const r = await this.suivre(this.registre.remettreDossier(id))
         if (!r) { this.hote.message('Ce dossier n\'est plus dans la corbeille.'); await this.charger(); return }
@@ -3516,7 +3536,6 @@ export class Bibliotheque {
   nouveauClasseur(o: { chapitre?: { dossier: string | null; dossiers: ReadonlyMap<string, FicheDossier> }; vierge?: boolean } = {}) {
     if (document.querySelector('dialog[open]') || this.depart) return
     this.finirSaisie(true)
-    const offrirCle = ecritDansUnFichier() && ecrivain.mode !== 'fil'
     // Il naît dans le dossier affiché, et en prend l'étiquette de niveau
     // (calculée : pas de champ à remplir). « Nouveau chapitre… » (lot 6, la
     // fenêtre d'accueil) : dans le dossier du niveau, seulement le nom
@@ -3526,13 +3545,33 @@ export class Bibliotheque {
     const dossierVoulu = chapitre ? chapitre.dossier : o.vierge ? null : this.dossierAffiche
     const dans = dossierVoulu !== null && this.dossiers.has(dossierVoulu) ? dossierVoulu : null
     this.dossierDuNouveau = dans
+    void this.fenetreNouveau(o, dans)
+  }
+
+  /** La fenêtre « Nouveau classeur » elle-même (voir nouveauClasseur), après,
+   *  s'il y a lieu, « Où ranger les classeurs de « 2nde » ? » (lot 18,
+   *  ranger.ts) : au premier classeur d'un niveau pas encore rangé, quelle
+   *  que soit la réponse, la fenêtre « Nouveau classeur » suit. Dans un niveau
+   *  rangé, plus de case de la clé : la ligne « Son fichier ira dans « … »,
+   *  écrit tout seul. », et le fichier s'écrit à sa place avant de partir. */
+  private async fenetreNouveau(o: { chapitre?: { dossier: string | null; dossiers: ReadonlyMap<string, FicheDossier> } }, dans: string | null) {
+    const chapitre = o.chapitre
+    const offrirCle = ecritDansUnFichier() && ecrivain.mode !== 'fil'
+    let endroit: Endroit | null = null
+    if (dans !== null && this.ranger) {
+      const niveau = await this.ranger.aProposerPour(dans).catch(() => null)
+      if (niveau) await this.ranger.proposer(niveau, { origine: 'nouveau' })
+      // Entre-temps : on est parti, ou une autre fenêtre s'est ouverte
+      if (this.depart || document.querySelector('dialog[open]')) return
+      if (offrirCle) endroit = await this.ranger.endroitDe(dans).catch(() => null)
+    }
     const d = document.createElement('dialog')
     d.className = 'dialogue dialogue-nouveau' + (chapitre ? ' dialogue-chapitre' : '')
     d.innerHTML = `<form method="dialog"><h2>${chapitre ? 'Nouveau chapitre' : 'Nouveau classeur'}</h2><div class="corps">
       ${dans !== null ? '<p class="dans"></p>' : ''}
       <label class="champ"><span>Nom</span><input type="text" name="nom" maxlength="${LONGUEUR_NOM_CLASSEUR}" autocomplete="off" spellcheck="false"></label>
       <fieldset class="fonds"${chapitre ? ' hidden' : ''}><legend>Fond de la première page</legend></fieldset>
-      ${offrirCle ? '<label class="case case-cle"><input type="checkbox" name="cle"><span>Enregistrer automatiquement sur la clé<small></small></span></label>' : ''}
+      ${endroit ? '<p class="ou-fichier"></p>' : offrirCle ? '<label class="case case-cle"><input type="checkbox" name="cle"><span>Enregistrer automatiquement dans un fichier<small></small></span></label>' : ''}
       <p class="erreur" role="alert" hidden></p>
       <div class="actions">
         <button type="button" class="secondaire" data-a="annuler">Annuler</button>
@@ -3557,6 +3596,12 @@ export class Bibliotheque {
       caseCle.checked = location.protocol === 'file:'
       d.querySelector('.case-cle small')!.textContent = AIDE_ACTIVER
     }
+    // Le niveau est rangé : où ira le fichier, d'après le nom tapé
+    const ouFichier = d.querySelector<HTMLElement>('.ou-fichier')
+    const nomTape = () => nomDeClasseur(champ.value) ?? (chapitre ? 'Nouveau chapitre' : NOM_NOUVEAU)
+    const majOu = () => { if (ouFichier && endroit && this.ranger) ouFichier.textContent = `Son fichier ira dans « ${this.ranger.cheminDuChapitre(endroit, nomTape())} », écrit tout seul.` }
+    majOu()
+    champ.addEventListener('input', majOu)
     const erreur = d.querySelector<HTMLElement>('.erreur')!
     const annuler = d.querySelector<HTMLButtonElement>('[data-a="annuler"]')!
     const creer = d.querySelector<HTMLButtonElement>('[data-a="creer"]')!
@@ -3622,6 +3667,10 @@ export class Bibliotheque {
         if (r.date !== null) ecrire(cleDernierEnregistrement(fiche), String(r.date))
         if (r.message) arrivee += ' ' + r.message
         cle = r.cle
+      } else if (endroit && this.ranger) {
+        // Le niveau est rangé (lot 18) : son fichier, à sa place, avant de partir
+        creer.textContent = 'Enregistrement du fichier…'
+        cle = await this.ranger.donnerSonFichier(fiche, { geste: true, dire: t => { arrivee += ' ' + t } })
       }
       enCours = false
       fermer()
@@ -3664,7 +3713,11 @@ export class Bibliotheque {
     }
     this.fiches.set(fiche.id, fiche)
     o.avant?.(fiche)
-    await this.ouvrirClasseur(fiche, { arrivee: o.arrivee })
+    // Dans un niveau rangé (lot 18) : son fichier, à sa place, avant de partir
+    // (le clic qui nous amène est le geste)
+    let arrivee = o.arrivee
+    const cle = this.ranger ? await this.ranger.donnerSonFichier(fiche, { geste: true, dire: t => { arrivee += ' ' + t } }) : undefined
+    await this.ouvrirClasseur(fiche, { arrivee, ...(cle ? { cle } : {}) })
     // On est resté (le trou : « Annuler ») : il attend dans la bibliothèque
     if (!this.depart) {
       this.hote.message(`Classeur « ${fiche.nom} » créé : il est dans la bibliothèque.`)

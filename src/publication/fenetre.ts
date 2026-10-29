@@ -33,7 +33,7 @@ import type { PoigneeDossier } from '../classeurs/ordinateur'
 import { accordDuDossier, choisitUnDossier } from '../classeurs/ordinateur'
 import type { Registre } from '../classeurs/registre'
 import type { Proposition, ReglageReplay } from './replay-dossier'
-import { choisirLeDossier, deposerLeReplay, dossierDuChapitre, lireReglage, nomDuReplay, retenirReglage, texteDuResume } from './replay-dossier'
+import { choisirLeDossier, deposerLeFichierSeance, deposerLeReplay, dossierDuChapitre, lireReglage, nomDuReplay, retenirReglage, texteDuResume } from './replay-dossier'
 import { marqueDeCopie } from '../fichier'
 import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier } from './drive'
 
@@ -479,10 +479,27 @@ export class Publication {
     window.addEventListener('message', recevoir)
   }
 
-  /** Le fichier séance, à déposer dans l'ENT ou sur une clé USB : il s'ouvre dans le lecteur */
+  /** Le fichier séance, à déposer dans l'ENT ou sur une clé USB : il s'ouvre dans le lecteur.
+   *  Lot 18 : quand le classeur a son dossier (le niveau rangé ou relié : le dossier du
+   *  chapitre ; ou le dossier choisi ou retenu pour ce classeur), il s'écrit là, à côté du
+   *  replay, sous « Titre.mem » (sans code ; le même titre remplace le même fichier) ; sinon,
+   *  ou si le dossier n'a pas pu être écrit, le téléchargement d'avant. */
   private async enregistrer() {
+    // D'abord, dans le clic : le dossier et l'accord d'y écrire
+    let dossier: PoigneeDossier | null = null
+    const ou = this.choisi?.name ?? this.retenu.poignee?.name ?? this.propose?.chemin ?? null
+    if (this.lieu && ou) { try { dossier = await this.dossierCible() } catch { dossier = null } }
     const film = this.film()
     const texte = await ecrireFilm(film)
+    let repli = ''
+    if (dossier && ou) {
+      try {
+        const nom = await deposerLeFichierSeance(dossier, film.titre, texte)
+        return this.etat(`Fichier séance enregistré dans « ${ou} » : ${nom} (${kilo(texte.length)}).`)
+      } catch (e) {
+        repli = `Le dossier « ${ou} » n'a pas pu être écrit (${e instanceof Error ? e.message.replace(/\.$/, '') : 'erreur inconnue'}) : le fichier est téléchargé (${kilo(texte.length)}).`
+      }
+    }
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([texte], { type: 'application/json' }))
     // Sans accents ni signes : le nom passe partout (ENT, clés USB, messageries)
@@ -490,7 +507,7 @@ export class Publication {
     // Dans la fenêtre elle-même : hors d'elle, la page est inerte tant qu'elle est ouverte
     ;(this.d ?? document.body).appendChild(a); a.click(); a.remove()
     setTimeout(() => URL.revokeObjectURL(a.href), 10_000)
-    this.etat(`Fichier enregistré (${kilo(texte.length)}).`)
+    this.etat(repli || `Fichier enregistré (${kilo(texte.length)}).`)
   }
 
   private publier() { return this.mode === 'dossier' ? this.publierDansUnDossier() : this.publierSurLeDrive() }

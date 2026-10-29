@@ -2192,8 +2192,40 @@ body.en-revue .bandeau-seance, body.en-trieuse .bandeau-seance, body.en-trieuse 
 .emplacement .ou { color: var(--encre-douce); }
 .emplacement .manque { display: block; font-size: 12px; color: var(--encre); }
 .emplacement button { min-height: 36px; }
+/* Lot 18 : la ligne des établissements en tête de « Mes emplacements » */
+.emplacements .etablissements { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 36px; margin: 0 0 4px; font-size: 14px; }
+.emplacements .etablissements .etablissement { display: inline-flex; align-items: center; gap: 4px; }
+.emplacements .etablissements .e-retirer-etab { min-height: 28px; padding: 0 8px; font-size: 12px; }
+.emplacements .etablissements .e-ajouter { min-height: 36px; }
+.emplacement .ou.pas-range { font-style: italic; }
 @media (max-width: 480px) {
   .dialogue-ailleurs { width: calc(100vw - 16px); padding: 16px 14px; }
+}
+
+/* ===== « Où ranger les classeurs de « 2nde » ? » (lot 18,
+   classeurs/ranger.ts) : les établissements (des cases de 44 px), « Choisir
+   un dossier… », le champ du dossier du niveau, « Plus tard » et « Ranger
+   dans « … » » ; comme les fenêtres du lot 7. */
+.dialogue-ranger { width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto; }
+.dialogue-ranger .corps { display: grid; gap: 12px; }
+.dialogue-ranger .corps p { margin: 0; }
+.dialogue-ranger [hidden] { display: none !important; }
+.dialogue-ranger fieldset { border: 1px solid var(--filet); border-radius: 12px; padding: 6px 12px 8px; margin: 0; display: grid; gap: 2px; }
+.dialogue-ranger legend { font-weight: 700; font-size: 14px; padding: 0 4px; }
+.dialogue-ranger .case { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.dialogue-ranger .case input { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--bleu); }
+.dialogue-ranger .case small, .dialogue-ranger .r-choisir small, .dialogue-ranger .champ small { display: block; color: var(--encre-douce); font-size: 13px; line-height: 1.4; }
+.dialogue-ranger .r-choisir { display: grid; gap: 4px; justify-items: start; padding: 4px 0; }
+.dialogue-ranger .champ { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.dialogue-ranger .champ span { font-size: 14px; font-weight: 700; white-space: normal; }
+.dialogue-ranger .champ input { height: 44px; padding: 0 12px; border: 1px solid var(--filet); border-radius: 10px; background: #fbfcfe; font-size: 16px; font-family: var(--police); }
+.dialogue-ranger .champ input:focus { outline: 2px solid var(--bleu); outline-offset: 1px; }
+.dialogue-ranger .erreur { margin: 0; color: var(--rouge); }
+.dialogue-ranger button:disabled { opacity: 0.55; cursor: default; }
+.dialogue-ranger .actions { flex-wrap: wrap; }
+.dialogue-nouveau .ou-fichier { margin: 0; font-size: 14px; color: var(--encre); line-height: 1.4; }
+@media (max-width: 480px) {
+  .dialogue-ranger { width: calc(100vw - 16px); padding: 16px 14px; }
 }
 
 /* ---------- Les outils de classe (outils-classe.ts) ---------- */

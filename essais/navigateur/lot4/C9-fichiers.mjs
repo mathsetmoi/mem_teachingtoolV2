@@ -47,7 +47,7 @@ const R = `${RACINE_DEPOT}`
 const ICI = S + '/lot4/C9/'
 const TRAVAIL = ICI + 'travail/'
 const SITE = ICI + 'site/'
-const DEV = 'http://localhost:5173/'
+const DEV = process.env.DEV ?? 'http://localhost:5173/'
 const O = 'http://127.0.0.1:4306'
 const PREFIXE = 'mem-teachingtool-classeur-'
 mkdirSync(TRAVAIL, { recursive: true })

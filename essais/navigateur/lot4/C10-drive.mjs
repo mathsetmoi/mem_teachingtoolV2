@@ -38,7 +38,7 @@ import { mkdirSync } from 'node:fs'
 const S = `${RACINE_ESSAIS}`
 const R = `${RACINE_DEPOT}`
 const ICI = S + '/lot4/C10/'
-const DEV = 'http://localhost:5173/'
+const DEV = process.env.DEV ?? 'http://localhost:5173/'
 mkdirSync(ICI + 'travail', { recursive: true })
 
 let echecs = 0

@@ -26,7 +26,7 @@ import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
 import { lancerPersistant } from '../commun/playwright.mjs'
 import { FauxGoogle } from '../lot4/verif/migration/faux-google.mjs'
 
-const DEV = 'http://localhost:5173/'
+const DEV = process.env.DEV ?? 'http://localhost:5173/'
 let echecs = 0
 const ok = (c, m, detail) => { if (!c) echecs++; console.log(c ? '✓' : '✗ ÉCHEC', m, !c && detail !== undefined ? '— ' + JSON.stringify(detail).slice(0, 1500) : '') }
 const norm = t => (t || '').replace(/[  ]/g, ' ')

@@ -43,7 +43,7 @@ const S = `${RACINE_ESSAIS}`
 const R = `${RACINE_DEPOT}`
 const ICI = S + '/lot4/C5/'
 const CAPTURES = ICI + 'captures/'
-const DEV = 'http://localhost:5173/'
+const DEV = process.env.DEV ?? 'http://localhost:5173/'
 mkdirSync(CAPTURES, { recursive: true })
 
 let echecs = 0
@@ -502,7 +502,8 @@ if (seul('F')) {
   ok(d.titre === 'Nouveau classeur' && d.nom === 'Nouveau classeur' && d.choisi && d.max === 60, 'La fenêtre « Nouveau classeur » : le nom prérempli, tout choisi, 60 caractères', d)
   // (Adapté aux réglages par défaut, retouches après le lot 5 : la page blanche est cochée d'office, l'ordre ne change pas)
   ok(d.legende === 'Fond de la première page' && JSON.stringify(d.fonds) === JSON.stringify(['Petits carreaux', 'Page blanche ✓', 'Seyès', 'Repère', 'Grands carreaux (1 cm)', 'Papier millimétré', 'Papier pointé', 'Réseau isométrique']), '   … le fond : Petits carreaux, Page blanche (cochée), Seyès, Repère, puis les quatre du lot 5 (K8 : adapté volontairement)', d.fonds)
-  ok(d.cle && d.cle.texte === 'Enregistrer automatiquement sur la clé' && !d.cle.coche, '   … la case de la clé (Chrome), décochée en ligne', d.cle)
+  // (Lot 18 : la case dit « Enregistrer automatiquement dans un fichier » ; le mot « clé » quitte l'écran)
+  ok(d.cle && d.cle.texte === 'Enregistrer automatiquement dans un fichier' && !d.cle.coche, '   … la case du fichier (Chrome), décochée en ligne', d.cle)
   ok(JSON.stringify(d.boutons) === JSON.stringify(['Annuler', 'Créer et ouvrir (principal)']), '   … [Annuler] [Créer et ouvrir]', d.boutons)
   await p.screenshot({ path: CAPTURES + 'F-nouveau.png' })
   // Échap : rien n'est créé
@@ -544,7 +545,7 @@ if (seul('F')) {
 // G. AVEC LA CASE DE LA CLÉ (HTTP, OPFS) ; PLUS DE PLACE
 // =====================================================================
 if (seul('G')) {
-  console.log('\n=== G. la case « Enregistrer automatiquement sur la clé » (OPFS) ===')
+  console.log('\n=== G. la case « Enregistrer automatiquement dans un fichier » (OPFS) ===')
   const ctx = await contexte()
   const p = await ouvrir(ctx, '', 'G')
   await ouvrirBiblio(p)
