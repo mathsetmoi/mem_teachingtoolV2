@@ -49,32 +49,36 @@ async function ecrireDansLeDossier(d: PoigneeDossier, nom: string, texte: string
 
 /** Dépose le fichier séance dans le dossier du chapitre, sous « Titre.mem ».
  *  Un fichier de ce nom déjà là n'est remplacé que s'il est la même séance
- *  (même premier geste : la séance enregistrée de nouveau) ; une autre séance
- *  du même titre (deux heures de cours le même jour, un titre repris), ou un
- *  fichier qu'on ne sait pas lire, n'est jamais écrasée : le nouveau prend un
- *  nom libre (« Titre (2).mem »). Rend le nom écrit. */
-export async function deposerLeFichierSeance(d: PoigneeDossier, titre: string, texte: string, debut?: number): Promise<string> {
+ *  (son enveloppe porte le même début de séance, `seance` : la séance
+ *  enregistrée de nouveau, quelles que soient les pages choisies) ; une autre
+ *  séance du même titre (deux heures de cours le même jour, un titre repris),
+ *  ou un fichier qu'on ne sait pas lire, n'est jamais écrasée : le nouveau
+ *  prend un nom libre (« Titre (2).mem »). Rend le nom écrit ; remplace : la
+ *  même séance a été reprise ; evite : le nom du fichier laissé de côté. */
+export async function deposerLeFichierSeance(d: PoigneeDossier, titre: string, texte: string, seance?: number): Promise<{ nom: string; remplace: boolean; evite: string | null }> {
   const voulu = nomDuFichierSeance(titre), base = voulu.slice(0, -EXTENSION.length)
   const noms: string[] = []
   for await (const x of d.values()) if (x.kind === 'file') noms.push(x.name)
   // « Titre.mem » et « Titre (2).mem », « Titre (3).mem »… : celui qui est la même séance est repris
   const pareils = new RegExp(`^${echapperRegExp(base)}( \\(\\d+\\))?${echapperRegExp(EXTENSION)}$`, 'i')
   let nom: string | null = null
-  for (const n of noms.filter(n => pareils.test(n))) if (await memeSeance(d, n, debut)) { nom = n; break }
-  if (!nom) nom = noms.some(n => n.toLocaleLowerCase('fr') === voulu.toLocaleLowerCase('fr')) ? nomDeFichierLibre(base, EXTENSION, noms) : voulu
+  for (const n of noms.filter(n => pareils.test(n))) if (await memeSeance(d, n, seance)) { nom = n; break }
+  if (nom) { await ecrireDansLeDossier(d, nom, texte); return { nom, remplace: true, evite: null } }
+  const evite = noms.find(n => n.toLocaleLowerCase('fr') === voulu.toLocaleLowerCase('fr')) ?? null
+  nom = evite ? nomDeFichierLibre(base, EXTENSION, noms) : voulu
   await ecrireDansLeDossier(d, nom, texte)
-  return nom
+  return { nom, remplace: false, evite }
 }
 
 const echapperRegExp = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-/** Le fichier séance déjà là est-il la même séance (son enveloppe porte la
- *  date du premier geste) ? Dans le doute (illisible, sans date) : non. */
-async function memeSeance(d: PoigneeDossier, nom: string, debut: number | undefined): Promise<boolean> {
-  if (debut === undefined) return false
+/** Le fichier séance déjà là est-il la même séance (son enveloppe porte le
+ *  même début de séance) ? Dans le doute (illisible, sans début) : non. */
+async function memeSeance(d: PoigneeDossier, nom: string, seance: number | undefined): Promise<boolean> {
+  if (seance === undefined) return false
   try {
-    const e = JSON.parse(await (await (await d.getFileHandle(nom)).getFile()).text()) as { format?: string; date?: number } | null
-    return !!e && e.format === FORMAT && e.date === debut
+    const e = JSON.parse(await (await (await d.getFileHandle(nom)).getFile()).text()) as { format?: string; seance?: number } | null
+    return !!e && e.format === FORMAT && e.seance === seance
   } catch { return false }
 }
 

@@ -145,3 +145,17 @@ export async function retirerEmplacement(registre: Registre, id: string): Promis
   await registre.ecrireReglage(REGLAGE_EMPLACEMENTS, l)
   await registre.ecrireReglage(reglagePoignee(id), undefined).catch(() => {})
 }
+
+/** Où l'outil a rangé ce fichier, d'après le chemin noté dans la fiche
+ *  (fiche.cle.chemin) : 'ici', dans le dossier relié (prefixe : ses noms,
+ *  depuis l'établissement) ; 'ailleurs', dans le dossier d'un autre niveau
+ *  (au moins le niveau et le chapitre : « LFB classeurs › 5 › Probas ») ;
+ *  'main', un dossier que le professeur a choisi lui-même pour ce classeur
+ *  (« Un autre dossier de l'ordinateur… » : le dossier seul), qui reste le
+ *  sien ; 'inconnu' : pas de chemin (un fichier choisi à la main, ou rangé
+ *  avant le lot 18). */
+export function rangeParLOutil(chemin: readonly string[] | undefined, prefixe: readonly string[]): 'ici' | 'ailleurs' | 'main' | 'inconnu' {
+  if (!chemin?.length) return 'inconnu'
+  if (chemin.length > prefixe.length && prefixe.every((n, i) => chemin[i] === n)) return 'ici'
+  return chemin.length >= 2 ? 'ailleurs' : 'main'
+}

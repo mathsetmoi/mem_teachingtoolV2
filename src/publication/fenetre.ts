@@ -490,14 +490,16 @@ export class Publication {
     const ou = this.choisi?.name ?? this.retenu.poignee?.name ?? this.propose?.chemin ?? null
     if (this.lieu && ou) { try { dossier = await this.dossierCible() } catch { dossier = null } }
     const film = this.film()
-    const texte = await ecrireFilm(film)
+    // Le début de la séance (pas celui des pages choisies) : la même séance enregistrée de nouveau reprend son fichier
+    const seance = this.seance.debut
+    const texte = await ecrireFilm(film, { seance })
     let repli = ''
     if (dossier && ou) {
       try {
-        const nom = await deposerLeFichierSeance(dossier, film.titre, texte, film.date)
+        const r = await deposerLeFichierSeance(dossier, film.titre, texte, seance)
         // Un autre fichier du même titre était là (une autre séance) : il n'est pas remplacé, le nouveau porte « (2) »
-        const autre = nom !== nomDuFichierSeance(film.titre) ? ` Un autre fichier « ${nomDuFichierSeance(film.titre)} » était là : il n'est pas remplacé.` : ''
-        return this.etat(`Fichier séance enregistré dans « ${ou} » : ${nom} (${kilo(texte.length)}).${autre}`)
+        const autre = r.evite ? ` Un autre fichier « ${r.evite} » était là : il n'est pas remplacé.` : ''
+        return this.etat(`Fichier séance enregistré dans « ${ou} » : ${r.nom} (${kilo(texte.length)}).${autre}`)
       } catch (e) {
         repli = `Le dossier « ${ou} » n'a pas pu être écrit (${e instanceof Error ? e.message.replace(/\.$/, '') : 'erreur inconnue'}) : le fichier est téléchargé (${kilo(texte.length)}).`
       }

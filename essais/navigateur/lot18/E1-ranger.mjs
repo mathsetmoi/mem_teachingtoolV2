@@ -89,13 +89,16 @@ const INIT = () => {
   const H = window.FileSystemHandle?.prototype
   if (!H) return
   H.queryPermission = async function () { return 'granted' }
-  H.requestPermission = async function () { note('__demandes', { nom: this.name, actif: navigator.userActivation.isActive, t: Date.now() }); return 'granted' }
+  H.requestPermission = async function (o) { note('__demandes', { nom: this.name, mode: o?.mode, actif: navigator.userActivation.isActive, t: Date.now() }); return 'granted' }
   // L'OPFS refuse parfois un nom accentué (voir l'en-tête) : les noms que
   // l'outil demande perdent leurs accents (un vrai dossier les garde)
   const D = window.FileSystemDirectoryHandle?.prototype
   const sansAccents = n => String(n).normalize('NFD').replace(/[̀-ͯ]/g, '')
   for (const m of ['getDirectoryHandle', 'getFileHandle', 'removeEntry']) { const o = D[m]; D[m] = function (n, ...a) { return o.call(this, sansAccents(n), ...a) } }
   const F = window.FileSystemFileHandle?.prototype
+  // window.__panneLecture (une RegExp sur le nom) : le fichier ne se lit pas, comme un accord de lecture refusé
+  const gf = F.getFile
+  F.getFile = function (...a) { return window.__panneLecture?.test(this.name) ? Promise.reject(new DOMException('simulé', 'NotAllowedError')) : gf.apply(this, a) }
   const cw = F.createWritable
   F.createWritable = async function (...a) {
     const w = await cw.apply(this, a)
@@ -674,10 +677,13 @@ try {
   const cheminDe = nom => fs.find(f => f.nom === nom)?.cle?.chemin?.join('/')
   ok(cheminDe('Angles') === 'MEM classeurs/5/Angles' && cheminDe('Symetrie') === 'MEM classeurs/5/Symetrie' && ['Fractions', 'Probabilites', 'Probas'].every(n => cheminDe(n) === `LyFEL classeurs/5/${n}`),
     'I14) « Angles » (plus riche) et « Symetrie » (pas écrit) gardent leur fichier de « MEM classeurs › 5 » ; les trois autres sont dans « LyFEL classeurs › 5 »', fs.filter(f => f.dossier === d5).map(f => [f.nom, f.cle?.chemin]))
+  const idSym = fs.find(f => f.nom === 'Symetrie')?.id
+  ok(await p.evaluate(async id => { const h = await (await window.__racineOpfs('MEM classeurs/5/Symetrie')).getFileHandle('Symetrie.memc'); const x = await window.__registre.poignee(id); return !!x && await h.isSameEntry(x) }, idSym),
+    'I14b) « Symetrie » : sa poignée est rendue elle aussi (le fichier de « MEM classeurs › 5 »), pas le fichier vide de « LyFEL classeurs »')
   ok(!contenu?.['LyFEL classeurs']?.['5']?.Angles && !contenu?.['LyFEL classeurs']?.['5']?.Symetrie?.['Symetrie.memc'] && contenu?.['MEM classeurs']?.['5']?.Angles?.['Angles.memc'] > 0 && contenu?.['MEM classeurs']?.['5']?.Symetrie?.['Symetrie.memc'] > 0,
     'I15) Dans LyFEL classeurs/5 : pas de fichier « Angles », le fichier vide de « Symetrie » est reparti ; les fichiers d\'avant sont intacts dans MEM classeurs/5', { LyFEL: contenu?.['LyFEL classeurs'], MEM: contenu?.['MEM classeurs'] })
   dem = await notes(p, '__demandes')
-  ok(dem.length >= 2 && dem.every(x => x.actif) && dem.some(x => x.nom === '5'), `I16) ${dem.length} demandes d'accord (dont celle de relire « MEM classeurs › 5 »), toutes dans un geste`, dem)
+  ok(dem.length >= 2 && dem.every(x => x.actif) && dem[0]?.nom === '5' && dem[0]?.mode === 'read', `I16) ${dem.length} demandes d'accord, toutes dans un geste ; la première : relire « MEM classeurs › 5 », au début du clic`, dem)
   await p.keyboard.press('Escape')
   await p.evaluate(() => { if (window.__bibliotheque.ouvert) window.__bibliotheque.fermer?.() })
   await p.waitForTimeout(400)
@@ -695,6 +701,26 @@ try {
   await p.click('.emplacements li.emplacement:has(strong:text-is("5eme")) .e-maj')
   ok(await attendreToast(p, /Les classeurs de « 5eme » se rangent dans « LyFEL classeurs › 5 » : 1 à ouvrir d'abord \(« Angles » : son fichier a des changements que la bibliothèque n'a pas\), 5 déjà à leur place\./, 60000),
     'I20) « Mettre à jour » encore : « … : 1 à ouvrir d\'abord (« Angles » : …), 5 déjà à leur place. »', await toasts(p))
+  // « Changer… » de nouveau, vers « MEM classeurs » : la fiche de « Fractions » n'a plus de chemin (un fichier rangé avant le lot 18,
+  // reconnu parce qu'il est dans le dossier quitté), et le fichier de « Probabilites » ne se lit pas (l'accord de lecture refusé)
+  const idFrac = fs.find(f => f.nom === 'Fractions')?.id, idProbabilites = fs.find(f => f.nom === 'Probabilites')?.id
+  await p.evaluate(async id => { await window.__registre.modifierClasseur(id, x => { if (x.cle) delete x.cle.chemin }); window.__panneLecture = /^Probabilites\.memc$/ }, idFrac)
+  await voirBibliotheque(p, null)
+  await p.click('.emplacements li.emplacement:has(strong:text-is("5eme")) .e-changer')
+  await p.waitForSelector('dialog.dialogue-ranger[open]', { timeout: 10000 })
+  await p.check(`dialog[open] input[name="r-etab"][value="${idMEM}"]`)
+  await oublier(p, '__demandes'); await toasts(p)
+  await p.click('dialog[open] .r-ok')
+  ok(await attendreToast(p, /Les classeurs de « 5eme » se rangent dans « MEM classeurs › 5 »/, 60000), 'I21) Retour vers « MEM classeurs » : le message du bilan arrive')
+  const tI3 = (await toasts(p)).find(t => /se rangent dans « MEM classeurs › 5 »/.test(t)) ?? ''
+  ok(tI3.includes(" garde son fichier d'avant (« Probabilites » : ce navigateur n'a pas pu le relire ; ouvrez-le, puis « Mettre à jour »)") && tI3.includes('1 déjà à sa place') && tI3.endsWith("Les fichiers d'avant restent dans « LyFEL classeurs › 5 »."),
+    '   … « … 1 garde son fichier d\'avant (« Probabilites » : ce navigateur n\'a pas pu le relire ; ouvrez-le, puis « Mettre à jour »), 1 déjà à sa place (« Angles ») … »', tI3)
+  fs = await fiches(p)
+  ok(fs.find(f => f.id === idProbabilites)?.cle?.chemin?.join('/') === 'LyFEL classeurs/5/Probabilites', 'I22) « Probabilites » (illisible) garde son fichier de « LyFEL classeurs › 5 »', fs.find(f => f.id === idProbabilites)?.cle)
+  ok(fs.find(f => f.id === idFrac)?.cle?.chemin?.join('/') === 'MEM classeurs/5/Fractions', 'I23) « Fractions » (sans chemin dans sa fiche, mais dans le dossier quitté) a son fichier de « MEM classeurs › 5 »', fs.find(f => f.id === idFrac)?.cle)
+  dem = await notes(p, '__demandes')
+  ok(dem[0]?.nom === '5' && dem[0]?.mode === 'read' && dem.every(x => x.actif), 'I24) La première demande : relire « LyFEL classeurs › 5 », dans le geste', dem)
+  await p.evaluate(() => { window.__panneLecture = null })
 
   // =====================================================================
   console.log('\n— J. Publier → « Enregistrer le fichier » : le .mem dans le dossier du chapitre')
@@ -703,30 +729,35 @@ try {
   await p.keyboard.press('Escape')
   await p.evaluate(() => { if (window.__bibliotheque.ouvert) window.__bibliotheque.fermer?.() })
   await p.waitForTimeout(300)
-  await p.evaluate(async () => { const h = await (await window.__racineOpfs('LyFEL classeurs/5/Probas')).getFileHandle('Seance test.mem', { create: true }); const w = await h.createWritable(); await w.write('pas un film'); await w.close() })
+  await p.evaluate(async () => { const h = await (await window.__racineOpfs('MEM classeurs/5/Probas')).getFileHandle('Seance test.mem', { create: true }); const w = await h.createWritable(); await w.write('pas un film'); await w.close() })
   await trait(p, 500, 300)
   await p.waitForTimeout(500)
   await p.evaluate(() => window.__app.ui.publication.ouvrir({ complet: true }))
   await p.waitForSelector('.dialogue-publier[open]', { timeout: 10000 })
   const pub = await p.evaluate(() => ({ chemin: document.querySelector('.p-chemin')?.textContent, classeur: window.__app.classeur.nom, fichierGris: document.querySelector('.p-fichier')?.disabled }))
-  ok(pub.classeur === 'Probas' && pub.chemin === 'LyFEL classeurs › 5 › Probas' && pub.fichierGris === false, 'J1) Publier propose le dossier du chapitre « LyFEL classeurs › 5 › Probas »', pub)
+  ok(pub.classeur === 'Probas' && pub.chemin === 'MEM classeurs › 5 › Probas' && pub.fichierGris === false, 'J1) Publier propose le dossier du chapitre « MEM classeurs › 5 › Probas »', pub)
   await p.fill('.dialogue-publier[open] .p-titre', 'Seance test')
   await oublier(p, '__ecritures', '__demandes')
   await p.click('.dialogue-publier[open] .p-fichier')
   await p.waitForFunction(() => /enregistré|téléchargé|Fichier/.test(document.querySelector('.dialogue-publier[open] .p-etat')?.textContent ?? ''), null, { timeout: 20000 }).catch(() => {})
   const etatJ = await p.evaluate(() => (document.querySelector('.dialogue-publier[open] .p-etat')?.textContent ?? '').replace(/[  ]/g, ' '))
-  ok(/^Fichier séance enregistré dans « LyFEL classeurs › 5 › Probas » : Seance test \(2\)\.mem \([\d,.]+ [kK]o\)\. Un autre fichier « Seance test\.mem » était là : il n'est pas remplacé\.$/.test(etatJ),
-    'J2) « Fichier séance enregistré dans « LyFEL classeurs › 5 › Probas » : Seance test (2).mem (… Ko). Un autre fichier « Seance test.mem » était là : il n\'est pas remplacé. »', etatJ)
-  contenu = await lister(p, 'LyFEL classeurs/5/Probas')
+  ok(/^Fichier séance enregistré dans « MEM classeurs › 5 › Probas » : Seance test \(2\)\.mem \([\d,.]+ [kK]o\)\. Un autre fichier « Seance test\.mem » était là : il n'est pas remplacé\.$/.test(etatJ),
+    'J2) « Fichier séance enregistré dans « MEM classeurs › 5 › Probas » : Seance test (2).mem (… Ko). Un autre fichier « Seance test.mem » était là : il n\'est pas remplacé. »', etatJ)
+  contenu = await lister(p, 'MEM classeurs/5/Probas')
   ok(contenu?.['Seance test (2).mem'] > 0 && contenu['Seance test.mem'] === 'pas un film'.length && contenu['Probas.memc'] > 0, 'J3) Le .mem sans code, en « (2) », à côté du .memc ; l\'autre fichier intact', contenu)
   dem = await notes(p, '__demandes')
   ok(dem.every(x => x.actif), `J4) ${dem.length} demande(s) d'accord, toutes dans un geste`, dem)
-  // La même séance enregistrée de nouveau reprend son fichier « (2) » : rien de plus dans le dossier
+  // La même séance enregistrée de nouveau, avec d'autres pages choisies (une page de plus, vide : le premier geste peut changer),
+  // reprend son fichier « (2) » : rien de plus dans le dossier. L'état est vidé avant, et l'on attend la nouvelle écriture.
+  await p.evaluate(() => { const e = document.querySelector('.dialogue-publier[open] .p-etat'); if (e) e.textContent = '' })
+  await oublier(p, '__ecritures')
   await p.click('.dialogue-publier[open] .p-fichier')
-  await p.waitForFunction(() => /\(2\)\.mem/.test(document.querySelector('.dialogue-publier[open] .p-etat')?.textContent ?? ''), null, { timeout: 20000 }).catch(() => {})
+  await p.waitForFunction(() => JSON.parse(sessionStorage.getItem('__ecritures') || '[]').some(x => /\.mem$/.test(x.nom)) && /enregistré/.test(document.querySelector('.dialogue-publier[open] .p-etat')?.textContent ?? ''), null, { timeout: 20000 }).catch(() => {})
   const etatJ2 = await p.evaluate(() => (document.querySelector('.dialogue-publier[open] .p-etat')?.textContent ?? '').replace(/[  ]/g, ' '))
-  contenu = await lister(p, 'LyFEL classeurs/5/Probas')
-  ok(/: Seance test \(2\)\.mem /.test(etatJ2) && Object.keys(contenu ?? {}).filter(n => n.endsWith('.mem')).length === 2, 'J5) Enregistré de nouveau : la même séance reprend « Seance test (2).mem », toujours deux .mem', { etatJ2, contenu })
+  const ecritsJ2 = (await notes(p, '__ecritures')).map(x => x.nom)
+  contenu = await lister(p, 'MEM classeurs/5/Probas')
+  ok(/: Seance test \(2\)\.mem \([^)]*\)\.$/.test(etatJ2) && ecritsJ2.includes('Seance test (2).mem') && !contenu?.['Seance test (3).mem'] && Object.keys(contenu ?? {}).filter(n => n.endsWith('.mem')).length === 2,
+    'J5) Enregistré de nouveau : la même séance reprend « Seance test (2).mem » (récrit, sans « autre fichier »), pas de « (3) », toujours deux .mem', { etatJ2, ecritsJ2, contenu })
   await p.keyboard.press('Escape'); await p.waitForTimeout(200)
   await ctx.close()
   }

@@ -5341,8 +5341,9 @@ pense.
   fichier séance « Titre.mem » (sans code) s'écrit là, à côté du replay
   « Titre [code].mem » : « Fichier séance enregistré dans « LFB classeurs › 2
   › Probas » : Séance du 5 oct.mem (12 Ko). » Enregistrée de nouveau, la
-  même séance reprend son fichier (l'outil la reconnaît à sa date de début,
-  dans l'en-tête du fichier) ; un fichier du même titre qui est une autre
+  même séance reprend son fichier, même avec d'autres pages choisies
+  (l'outil la reconnaît au début de la séance, noté dans l'enveloppe du
+  fichier : le champ facultatif `seance`) ; un fichier du même titre qui est une autre
   séance, ou qui n'est pas un film, n'est **jamais remplacé** : le sien
   devient « Séance du 5 oct (2).mem », et le message le dit (« Un autre
   fichier « Séance du 5 oct.mem » était là : il n'est pas remplacé. »).
@@ -5360,27 +5361,37 @@ pense.
     [Retirer]), puis « « LFB classeurs » n'est plus proposé. Rien n'est
     effacé : les niveaux rangés chez lui le restent. » ; et **Ajouter un
     dossier…** (un dossier retiré puis choisi de nouveau retrouve ses
-    niveaux, par le nom que l'emplacement a gardé : « … Le niveau déjà
-    rangé chez lui le retrouve. ») ;
+    niveaux, par le nom que l'emplacement a gardé, et seulement si le
+    dossier du niveau est bien dedans : « … Le niveau déjà rangé chez lui
+    le retrouve. ») ;
   - un niveau rangé chez un établissement : **2nde → LFB classeurs › 2**
     [Mettre à jour] [**Changer…**] ; « Changer… » rouvre la fenêtre avec
     l'établissement actuel et le nom donné, et son explication le dit :
     « Les fichiers d'avant (« LFB classeurs › 2 ») sont relus avant d'être
     laissés où ils sont : le navigateur peut demander l'accord de les
-    lire. » Au clic sur « Ranger », chaque classeur du niveau reçoit un
+    lire. » L'accord de relire le dossier d'avant est demandé tout au début
+    du clic sur « Ranger », avant le choix d'un dossier ou l'accord
+    d'écrire. Puis chaque classeur du niveau reçoit un
     fichier au nouvel endroit **une fois son fichier d'avant relu** : un
     fichier d'avant qui a des changements que la bibliothèque n'a pas reste
     celui du classeur (« à ouvrir d'abord »), un fichier d'avant que ce
     navigateur n'a pas pu relire aussi (« 1 garde son fichier d'avant
     (« Angles » : ce navigateur n'a pas pu le relire ; ouvrez-le, puis
-    « Mettre à jour ») »), et une écriture qui échoue au nouvel endroit (le
+    « Mettre à jour ») »), de même qu'un fichier introuvable dont on ne sait
+    pas s'il a disparu (une clé USB débranchée), et une écriture qui échoue au nouvel endroit (le
     disque plein) rend au classeur son fichier d'avant. Les fichiers
     d'avant restent où ils sont, et le message le dit. Le classeur ouvert
     dans l'onglet suit : sa clé repart sur le nouveau fichier, sans faux
-    « modifié ailleurs » (elle est retenue le temps du rangement). « Mettre
-    à jour », ensuite, finit ce qui n'a pas pu se faire (« 1 écrit, 1 à
-    ouvrir d'abord (…), 4 déjà à leur place. »). Un fichier choisi à la
-    main (la case, Ctrl + S) ne bouge jamais, lui ;
+    « modifié ailleurs » (elle est retenue le temps que son fichier change :
+    Ctrl + S dit alors « Le fichier de ce classeur change de place :
+    réessayez dans un instant. »). « Mettre à jour », ensuite, finit ce qui
+    n'a pas pu se faire (« 1 écrit, 1 à ouvrir d'abord (…), 4 déjà à leur
+    place. »). Ne bougent jamais : un fichier choisi à la main (la case,
+    Ctrl + S), un fichier mis par le professeur dans « Un autre dossier de
+    l'ordinateur… » (« Déplacer le classeur… »), et un fichier déjà dans le
+    dossier du niveau sous un autre nom (le classeur renommé depuis : il est
+    « déjà à sa place ») ; un seul rangement à la fois (« Un rangement est
+    en cours : attendez qu'il finisse. ») ;
   - un niveau relié sans établissement (le lot 7, « Un autre dossier… ») :
     **4ème → Cet ordinateur › Clé 4ème** [Mettre à jour] [Retirer], comme
     avant ;
@@ -5408,10 +5419,13 @@ relié au dossier « Clé 4B ». 2 classeurs dans « Clé 4B ». »).
   autre séance (« Séance du 5 oct (2).mem ») ; jamais un fichier effacé
   (« Changer… » laisse les anciens, « Retirer » un établissement n'efface
   rien, et le demande d'abord).
-- Un rangement qui touche le classeur ouvert dans l'onglet retient sa clé
-  le temps d'écrire (`retenir`, `relacher` : deux minutes au plus), puis la
-  clé se resynchronise sur le nouveau fichier : pas de faux « modifié
-  ailleurs », pas d'écriture croisée.
+- Un rangement qui change le fichier du classeur ouvert dans l'onglet
+  retient sa clé (`avantDeDeplacer` → `retenir`, qui attend la fin de
+  l'écriture déjà partie ; `apresRangement` → `relacher`, toujours, deux
+  minutes au plus), puis la clé se resynchronise sur le nouveau fichier :
+  pas de faux « modifié ailleurs », pas d'écriture croisée. Les copies sur
+  le Drive ne la retiennent pas. Si l'écriture du nouveau fichier échoue,
+  la fiche relue juste avant revient.
 - Jamais une permission demandée ni un dossier choisi hors d'un clic : le
   choix du dossier et l'accord d'écrire se font dans le clic sur « Choisir
   un dossier… », « Ranger », « Créer et ouvrir », « Ajouter », « Remettre »,
@@ -5471,7 +5485,9 @@ Tous facultatifs, aucune clé existante changée :
   `vecteurs.ts`, dit « pareil » ou « plus riche » ; illisible, le classeur
   garde son fichier : `BilanRelier.aRelire`) et `ancien` (le dossier
   quitté, pour reconnaître par `resolve` un fichier rangé avant que la
-  fiche note son chemin) ; `BilanRelier.relies` (déjà à leur place) et
+  fiche note son chemin) ; `rangeParLOutil` (dans `emplacements.ts`, pur
+  et testé : « ici », « ailleurs », « main » ou « inconnu », d'après
+  `cle.chemin`) ; `avantDeDeplacer` ; `BilanRelier.relies` (déjà à leur place) et
   `raison` (la raison du dernier échec) ; une écriture qui échoue rend sa
   poignée d'avant à la fiche et retire le fichier vide ; `accordDeLire`.
 - `src/classeurs/cle.ts` : `retenir()` et `relacher()` (la clé de l'onglet

@@ -93,7 +93,10 @@ export interface FilmEleve {
 
 /** L'enveloppe écrite dans le fichier séance (« .mem ») ; elle commence
  *  toujours par {"format":"mem-revoir" — le relais s'en sert pour refuser le reste */
-export interface Enveloppe { format: typeof FORMAT; v: number; titre: string; date: number; gz: string }
+/** seance (facultatif, lot 18) : le début de la séance dans le classeur,
+ *  qui ne dépend pas des pages choisies ; le fichier séance enregistré dans
+ *  le dossier du chapitre le porte, pour être repris par la même séance */
+export interface Enveloppe { format: typeof FORMAT; v: number; titre: string; date: number; gz: string; seance?: number }
 
 // ---------- Écrire ----------
 async function compresser(texte: string): Promise<Uint8Array> {
@@ -122,8 +125,8 @@ function depuisBase64(b: string): Uint8Array {
 }
 
 /** Le texte du fichier à publier */
-export async function ecrireFilm(film: FilmEleve): Promise<string> {
-  const env: Enveloppe = { format: FORMAT, v: VERSION, titre: film.titre, date: film.date, gz: versBase64(await compresser(JSON.stringify(film))) }
+export async function ecrireFilm(film: FilmEleve, o: { seance?: number } = {}): Promise<string> {
+  const env: Enveloppe = { format: FORMAT, v: VERSION, titre: film.titre, date: film.date, gz: versBase64(await compresser(JSON.stringify(film))), ...(o.seance !== undefined ? { seance: o.seance } : {}) }
   return JSON.stringify(env)
 }
 

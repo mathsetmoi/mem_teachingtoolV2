@@ -418,11 +418,15 @@ async function demarrer() {
     // Le classeur de cet onglet : ce qui attend s'écrit dans sa base d'abord
     const avantDEcrire = async (f: FicheClasseur) => {
       if (f.id !== infos.id || !hote.classeur) return
-      // Sa clé se tient tranquille pendant que son fichier change de place (relâchée par apresRangement)
-      cle?.retenir()
       app.poserCeQuiAttend()
       app.piste.vider()
       await app.tableau.attendreEcritures()
+    }
+    // Un rangement va changer le fichier du classeur de cet onglet : sa clé se
+    // tient tranquille (l'écriture déjà partie finit d'abord), jusqu'à apresRangement
+    const avantDeDeplacer = async (f: FicheClasseur) => {
+      if (f.id !== infos.id || !hote.classeur) return
+      await cle?.retenir()
     }
     // Après un rangement qui touche le classeur de cet onglet (son fichier
     // écrit ou déplacé par la bibliothèque) : sa clé repart depuis sa fiche
@@ -434,12 +438,12 @@ async function demarrer() {
       registre, bibliotheque: ui.bibliotheque, fichiers, message: (t, a) => ui.message(t, a), classeur: () => hote.classeur,
       activerCle: cle?.disponible ? () => void cle.activer() : undefined,
       enregistrerClasseur: () => void ui.sauvegarde.enregistrer(),
-      avantDEcrire, apresRangement,
+      avantDEcrire, avantDeDeplacer, apresRangement,
     })
     // Où ranger les classeurs d'un niveau (lot 18) : la fenêtre « Où ranger… »
     // au premier classeur d'un niveau, le fichier de chaque classeur qui arrive
     // dans un niveau rangé, les établissements de « Mes emplacements »
-    const ranger = new Ranger({ registre, bibliotheque: ui.bibliotheque, message: (t, a) => ui.message(t, a), avantDEcrire, apresRangement, classeur: () => hote.classeur })
+    const ranger = new Ranger({ registre, bibliotheque: ui.bibliotheque, message: (t, a) => ui.message(t, a), avantDEcrire, avantDeDeplacer, apresRangement, classeur: () => hote.classeur })
     ui.bibliotheque.brancherRanger(ranger)
     fichiers.ranger = ranger
     ailleurs.ranger = ranger

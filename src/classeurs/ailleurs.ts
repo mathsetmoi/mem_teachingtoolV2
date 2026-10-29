@@ -27,7 +27,7 @@ import type { ActionMessage } from '../app'
 import type { Emplacement } from './emplacements'
 import { classeursDeLaClasse, emplacements, garderEmplacement, reglagePoignee, retirerEmplacement } from './emplacements'
 import type { PoigneeDossier } from './ordinateur'
-import { accordDuDossier, choisirUnDossier, choisitUnDossier, lireLeDossier } from './ordinateur'
+import { accordDuDossier, choisirUnDossier, choisitUnDossier, dansLeDossier, lireLeDossier } from './ordinateur'
 import type { BilanRelier } from './ordinateur'
 import type { Etablissement } from './etablissements'
 import { cheminLisible, etablissements, garderEtablissement, nomDEtablissement, nouvelId, reglagePoigneeEtablissement, retirerEtablissement, texteDuRangement } from './etablissements'
@@ -66,6 +66,10 @@ export interface HoteAilleurs {
   /** Avant de fabriquer le fichier d'un classeur depuis sa base : celui de
    *  cet onglet écrit d'abord ce qui attend */
   avantDEcrire?: (f: FicheClasseur) => Promise<void>
+  /** Le fichier de ce classeur va changer (écrit ou adopté par un
+   *  rangement) : celui de cet onglet retient sa clé (EnregistrementCle
+   *  .retenir) ; apresRangement la relâche, toujours */
+  avantDeDeplacer?: (f: FicheClasseur) => Promise<void>
   /** Après que des classeurs (ids) ont reçu ou changé de fichier par ici :
    *  la clé du classeur de cet onglet repart depuis sa fiche (voir ranger.ts) */
   apresRangement?: (ids: readonly string[]) => Promise<void>
@@ -532,7 +536,7 @@ export class Ailleurs {
    *  silencieux : ne dit le bilan que s'il y a un souci ; etablissement :
    *  celui du niveau déjà rangé par la fenêtre « Où ranger… » (lot 18), que
    *  « Mettre à jour » garde, avec sa phrase */
-  private async relierOrdinateur(classe: FicheDossier, d: PoigneeDossier, o: { silencieux?: boolean; etablissement?: Etablissement | null } = {}) {
+  private async relierOrdinateur(classe: FicheDossier, d: PoigneeDossier, o: { silencieux?: boolean; etablissement?: Etablissement | null; reprendre?: boolean } = {}) {
     if (this.occupe) return
     this.occupe = true
     let ids: string[] = []
@@ -540,11 +544,12 @@ export class Ailleurs {
       const etab = o.etablissement ?? null
       const [fiches, dossiers] = await Promise.all([this.registre.classeurs().catch(() => [] as FicheClasseur[]), this.registre.dossiers().catch(() => [] as FicheDossier[])])
       ids = classeursDeLaClasse(classe.id, fiches, dossiers).map(f => f.id)
-      // reprendre : un classeur dont l'outil avait rangé le fichier ailleurs
-      // (« Changer… » interrompu, un déplacement) le reçoit ici, une fois
-      // l'ancien relu ; un fichier choisi à la main reste le sien
-      const b = await relierLeNiveau({ registre: this.registre, message: t => this.h.message(t), avantDEcrire: this.h.avantDEcrire }, classe, d,
-        { reprendre: true, ...(etab ? { prefixe: [etab.nom, d.name], etablissement: etab.id, etablissementNom: etab.nom } : {}) })
+      // reprendre (« Mettre à jour » seulement) : un classeur dont l'outil
+      // avait rangé le fichier dans le dossier d'un autre niveau (« Changer… »
+      // interrompu) le reçoit ici, une fois l'ancien relu ; un fichier choisi
+      // à la main, ou mis dans « Un autre dossier de l'ordinateur… », reste le sien
+      const b = await relierLeNiveau({ registre: this.registre, message: t => this.h.message(t), avantDEcrire: this.h.avantDEcrire, avantDeDeplacer: this.h.avantDeDeplacer }, classe, d,
+        { reprendre: !!o.reprendre, ...(etab ? { prefixe: [etab.nom, d.name], etablissement: etab.id, etablissementNom: etab.nom } : {}) })
       if (!b) return
       const souci = b.plusRiches.length + b.echecs.length + b.ailleurs.length + b.aRelire.length > 0
       if (!o.silencieux || souci) {
@@ -731,11 +736,14 @@ export class Ailleurs {
       this.h.message((x as { name?: string } | null)?.name === 'DataCloneError' ? 'Ce navigateur ne peut pas garder le dossier.' : `Le dossier n'a pas pu être gardé : ${x instanceof Error ? x.message : 'erreur inconnue'}.`)
       return
     }
-    // Les niveaux rangés chez un établissement retiré du même nom (le même
-    // dossier, choisi de nouveau) se rattachent à celui-ci
+    // Les niveaux rangés chez un établissement retiré du même nom se
+    // rattachent à celui-ci, seulement si leur dossier est bien dedans (le
+    // même dossier, choisi de nouveau ; pas un autre dossier du même nom)
     let rattaches = 0
     for (const x of await emplacements(this.registre)) {
       if (x.genre !== 'ordinateur' || !x.etablissement || x.etablissementNom !== e.nom || liste.some(y => y.id === x.etablissement)) continue
+      const niveau = await this.registre.reglage<PoigneeDossier>(reglagePoignee(x.id)).catch(() => undefined)
+      if (!niveau || !await dansLeDossier(h, niveau)) continue
       await garderEmplacement(this.registre, { ...x, etablissement: e.id }).catch(() => {})
       rattaches++
     }
@@ -785,7 +793,7 @@ export class Ailleurs {
     // l'établissement a été retiré de la liste (son nom est dans l'emplacement)
     const nomEtab = e.etablissement ? nomDEtablissement(e, await etablissements(this.registre)) : null
     const etab = e.etablissement && nomEtab ? { id: e.etablissement, nom: nomEtab, cree: 0 } : null
-    await this.relierOrdinateur(classe, d, { etablissement: etab })
+    await this.relierOrdinateur(classe, d, { etablissement: etab, reprendre: true })
   }
 
   /** « Retirer » : le dossier n'est plus tenu à jour ; rien n'y est effacé

@@ -990,21 +990,25 @@ export class EnregistrementCle {
    *  classeur (relierLesClasseurs : le niveau rangé ailleurs, « Lui donner
    *  son fichier ») : jusqu'à relacher(), rien ne s'écrit d'ici (une
    *  écriture entre-temps examinerait l'ancien fichier avec la nouvelle
-   *  fiche : un faux « modifié ailleurs »). Garde-fou : si personne ne
-   *  relâche (une erreur en chemin), la clé repart seule au bout de deux
-   *  minutes. */
-  retenir() {
+   *  fiche : un faux « modifié ailleurs »). Rendu une fois finie l'écriture
+   *  déjà partie (la file des écritures) : sa fiche est notée avant que la
+   *  bibliothèque ne la relise. Garde-fou : si personne ne relâche (une
+   *  erreur en chemin), la clé repart seule au bout de deux minutes. */
+  async retenir(): Promise<void> {
     this.retenu = true
     clearTimeout(this.minuterie); this.minuterie = 0
     clearTimeout(this.minuterieRetenue)
     this.minuterieRetenue = window.setTimeout(() => { if (this.retenu) void this.relacher() }, 120_000)
+    await this.fileEcriture.catch(() => { /* déjà dit */ })
   }
 
   /** Le fichier a changé de place (ou pas) : la clé repart depuis la fiche,
    *  sur la poignée qui y est, vérifiée comme au démarrage ; ce qui attend
-   *  s'écrira ensuite */
+   *  s'écrira ensuite. Rien à faire si elle n'était pas retenue. */
   async relacher(): Promise<void> {
+    if (!this.retenu) return
     clearTimeout(this.minuterieRetenue); this.minuterieRetenue = 0
+    await this.fileEcriture.catch(() => { /* déjà dit */ })
     this.retenu = false
     await this.resynchroniser()
   }
@@ -1095,6 +1099,8 @@ export class EnregistrementCle {
   async enregistrerMaintenant(): Promise<boolean> {
     const p = this.poignee
     if (!p) return false
+    // Le fichier change de place en ce moment (un rangement) : le dire, plutôt que rien
+    if (this.retenu) { this.app.ui?.message(`Le fichier de ce classeur change de place : réessayez dans un instant.`); return false }
     this.app.ui?.message('Enregistrement…')
     const r = await this.ecrire({ manuel: true, geste: true })
     const taille = this.derniere?.taille

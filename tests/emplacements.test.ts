@@ -3,7 +3,7 @@
 // classeurs d'une classe, le rangement en sous-dossiers et les noms libres.
 import { describe, expect, it } from 'vitest'
 import type { FicheClasseur, FicheDossier } from '../src/classeurs/demarrage'
-import { classeursDeLaClasse, emplacementDe, lireEmplacements, nomDeFichierLibre, sousDossiers } from '../src/classeurs/emplacements'
+import { classeursDeLaClasse, emplacementDe, lireEmplacements, nomDeFichierLibre, rangeParLOutil, sousDossiers } from '../src/classeurs/emplacements'
 import type { Emplacement } from '../src/classeurs/emplacements'
 
 const dossier = (id: string, nom: string, parent: string | null, o: Partial<FicheDossier> = {}): FicheDossier =>
@@ -95,5 +95,25 @@ describe('Mes emplacements', () => {
     expect(nomDeFichierLibre('Fractions', '.memc', [])).toBe('Fractions.memc')
     expect(nomDeFichierLibre('Fractions', '.memc', ['fractions.MEMC'])).toBe('Fractions (2).memc')
     expect(nomDeFichierLibre('Fractions', '.memc', ['Fractions.memc', 'Fractions (2).memc'])).toBe('Fractions (3).memc')
+  })
+})
+
+describe('rangeParLOutil (lot 18) : où l’outil a rangé le fichier d’un classeur', () => {
+  it('dans le dossier relié, même sous un autre nom (le classeur renommé) : ici', () => {
+    expect(rangeParLOutil(['LFB classeurs', '5', 'Probas'], ['LFB classeurs', '5'])).toBe('ici')
+    expect(rangeParLOutil(['Cle 3eme', 'Thales3'], ['Cle 3eme'])).toBe('ici')
+  })
+  it('dans le dossier d’un autre niveau ou d’un autre établissement : ailleurs', () => {
+    expect(rangeParLOutil(['MEM classeurs', '5', 'Probas'], ['LyFEL classeurs', '5'])).toBe('ailleurs')
+    expect(rangeParLOutil(['Cle 3eme', 'Thales3'], ['LFB classeurs', '3'])).toBe('ailleurs')
+  })
+  it('un dossier choisi par le professeur (« Un autre dossier de l’ordinateur… ») : le sien', () => {
+    expect(rangeParLOutil(['2_13_Proba'], ['LFB classeurs', '2'])).toBe('main')
+    // Le dossier relié lui-même, sans dossier de chapitre : pas « ici » (le fichier serait à plat)
+    expect(rangeParLOutil(['LFB classeurs', '5'], ['LFB classeurs', '5'])).toBe('ailleurs')
+  })
+  it('sans chemin (un fichier choisi à la main, ou rangé avant le lot 18) : inconnu', () => {
+    expect(rangeParLOutil(undefined, ['LFB classeurs', '5'])).toBe('inconnu')
+    expect(rangeParLOutil([], ['LFB classeurs', '5'])).toBe('inconnu')
   })
 })

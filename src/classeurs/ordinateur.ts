@@ -23,7 +23,7 @@ import type { PoigneeFichier } from './cle'
 import { ecrireLeNeuf, memeFichier, permission } from './cle'
 import type { FicheClasseur } from './demarrage'
 import type { Registre } from './registre'
-import { classeursDeLaClasse, nomDeFichierLibre, sousDossiers } from './emplacements'
+import { classeursDeLaClasse, nomDeFichierLibre, rangeParLOutil, sousDossiers } from './emplacements'
 import { ecrivain } from './ecrivain'
 import { comparerVecteurs, verdictAncienFichier } from './vecteurs'
 import { EXTENSION_TABLEAU, nomSur } from '../fichier'
@@ -77,7 +77,7 @@ export async function accordDeLire(d: PoigneeDossier, demander: boolean): Promis
 }
 
 /** Le fichier (sa poignée) est-il dans ce dossier ? (resolve ; sans lui : non) */
-async function dansLeDossier(d: PoigneeDossier, h: unknown): Promise<boolean> {
+export async function dansLeDossier(d: PoigneeDossier, h: unknown): Promise<boolean> {
   try { return typeof d.resolve === 'function' && !!h && (await d.resolve(h)) !== null } catch { return false }
 }
 
@@ -135,9 +135,13 @@ async function nomsDe(d: PoigneeDossier): Promise<string[]> {
 
 /** Relie les classeurs du niveau `classe` au dossier `d` (voir plus
  *  haut). avantDEcrire : le classeur de cet onglet écrit d'abord ce qui
- *  attend dans sa base ; progres : « 3 sur 12 » */
+ *  attend dans sa base ; avantDeDeplacer : son fichier va changer (un
+ *  fichier écrit ou adopté ici) : sa clé se tient tranquille, et qui le
+ *  passe la relâche à la fin (HoteRanger.apresRangement) ; progres : « 3
+ *  sur 12 » */
 export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, classe: string, o: {
-  avantDEcrire?: (f: FicheClasseur) => Promise<void>; progres?: (n: number, total: number) => void
+  avantDEcrire?: (f: FicheClasseur) => Promise<void>; avantDeDeplacer?: (f: FicheClasseur) => Promise<void>
+  progres?: (n: number, total: number) => void
   /** Les dossiers au-dessus de `d`, pour le chemin noté dans la fiche
    *  (fiche.cle.chemin) : « LFB classeurs › 2 » quand le dossier du niveau
    *  est dans celui d'un établissement ; par défaut, le nom de `d` seul */
@@ -199,21 +203,33 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
         }
         if (lie) { bilan.relies.push(f.nom); continue }
         // Le fichier de sa clé est ailleurs : il y reste (lot 7), sauf quand le
-        // niveau change de dossier et que ce fichier est à l'outil (rangé par
-        // lui : la fiche en a le chemin ; ou dans le dossier quitté). Un fichier
-        // choisi à la main reste celui du classeur.
-        const aLOutil = !!f.cle?.chemin || (o.ancien ? await dansLeDossier(o.ancien, deja) : false)
-        if (!o.reprendre || !aLOutil) { bilan.ailleurs.push(f.nom); continue }
+        // niveau change de dossier et que ce fichier est à l'outil (voir
+        // rangeParLOutil : rangé par lui dans le dossier d'un niveau ; ou dans
+        // le dossier quitté). Un fichier choisi à la main, ou mis par le
+        // professeur dans « Un autre dossier de l'ordinateur… », reste celui du
+        // classeur.
+        const quitte = o.ancien ? await dansLeDossier(o.ancien, deja) : false
+        const r = rangeParLOutil(f.cle?.chemin, prefixe)
+        // Rangé ici, sous un autre nom (le classeur renommé depuis) : il est à
+        // sa place, et la clé le tient à jour
+        if (!quitte && r === 'ici') { bilan.relies.push(f.nom); continue }
+        if (!o.reprendre || !(quitte || r === 'ailleurs')) { bilan.ailleurs.push(f.nom); continue }
         // L'ancien fichier est relu d'abord : plus riche que la base, ou
-        // illisible, il reste le fichier du classeur ; sinon le classeur reçoit
-        // son fichier ici (l'ancien reste où il est, intact)
-        const v = await relireLAncien(deja, f)
+        // illisible (ou introuvable sans qu'on sache qu'il a disparu), il reste
+        // le fichier du classeur ; sinon le classeur reçoit son fichier ici
+        // (l'ancien reste où il est, intact)
+        const v = await relireLAncien(deja, f, quitte ? o.ancien : undefined)
         if (v === 'plus-riche') { bilan.plusRiches.push(f.nom); continue }
         if (v === 'illisible') { bilan.aRelire.push(f.nom); continue }
-        // Le classeur de cet onglet : ce qui attend s'écrit dans sa base, et sa
-        // clé se tient tranquille pendant que son fichier change de place
-        await o.avantDEcrire?.(f)
       }
+      // Le classeur de cet onglet : sa clé se tient tranquille pendant que son
+      // fichier change (écrit ou adopté ici), puis ce qui attend s'écrit dans
+      // sa base
+      await o.avantDeDeplacer?.(f)
+      await o.avantDEcrire?.(f)
+      // La fiche relue maintenant (sa clé a pu écrire depuis la lecture du
+      // début) : c'est elle qui revient si l'écriture d'ici échoue
+      const avant = deja ? (await registre.classeur(f.id).catch(() => undefined))?.cle : undefined
       const prevu = base + EXTENSION_TABLEAU
       // Un fichier de ce classeur déjà là (dans le dossier de son chapitre, ou à plat) est repris tel quel
       let adopte = false
@@ -231,17 +247,15 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
       const nom = nomDeFichierLibre(base, EXTENSION_TABLEAU, ici.noms)
       const h = await ici.d.getFileHandle(nom, { create: true })
       ici.noms.push(nom)
-      await o.avantDEcrire?.(f)
       const r = await ecrireLeNeuf(registre, h, { id: f.id, base: f.base, nom: f.nom, chemin: cheminNote([...sous, base]) })
       if (r.date === null) {
         bilan.echecs.push(f.nom); bilan.raison = r.message.trim().replace(/\.$/, '') || 'erreur inconnue'
         // Un classeur qui avait son fichier le garde : sa poignée et sa fiche
         // d'avant reviennent (ecrireLeNeuf les avait remplacées, comme pour
         // un classeur neuf), et le fichier vide créé ici repart
-        if (deja && f.cle) {
-          const ancienne = f.cle
+        if (deja && avant) {
           await registre.garderPoignee(f.id, deja).catch(() => {})
-          await registre.modifierClasseur(f.id, x => { x.cle = ancienne }).catch(() => {})
+          await registre.modifierClasseur(f.id, x => { x.cle = avant }).catch(() => {})
           await ici.d.removeEntry?.(nom).catch(() => {})
           ici.noms = ici.noms.filter(n => n !== nom)
         }
@@ -255,10 +269,16 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
  *  relu avant d'être laissé où il est (voir verdictAncienFichier) ; 'illisible' :
  *  ce navigateur n'a pas pu le lire (pas d'accord de lecture, un fichier
  *  abîmé, une poignée sans méthodes) : dans le doute, il reste le fichier du
- *  classeur. Un fichier disparu, ou vide, n'a rien à garder : 'pareil'. */
-async function relireLAncien(p: PoigneeFichier, f: FicheClasseur): Promise<'pareil' | 'plus-riche' | 'illisible'> {
+ *  classeur. Un fichier vide n'a rien à garder : 'pareil'. Un fichier
+ *  introuvable aussi, mais seulement quand on sait qu'il a disparu : il était
+ *  dans `ancien` (le dossier quitté), et ce dossier se lit encore ; sinon (une
+ *  clé USB débranchée, un dossier déplacé : peut-être plus riche) 'illisible'. */
+async function relireLAncien(p: PoigneeFichier, f: FicheClasseur, ancien?: PoigneeDossier): Promise<'pareil' | 'plus-riche' | 'illisible'> {
   let fichier: File
-  try { fichier = await p.getFile() } catch (e) { return (e as { name?: string } | null)?.name === 'NotFoundError' ? 'pareil' : 'illisible' }
+  try { fichier = await p.getFile() } catch (e) {
+    if ((e as { name?: string } | null)?.name !== 'NotFoundError' || !ancien) return 'illisible'
+    try { for await (const _ of ancien.values()) break; return 'pareil' } catch { return 'illisible' }
+  }
   if (!fichier.size) return 'pareil'
   let lu: { entete: { id?: string }; vecteur: Uint8Array }
   try { lu = await ecrivain.lireFichier(fichier) } catch { return 'illisible' }
