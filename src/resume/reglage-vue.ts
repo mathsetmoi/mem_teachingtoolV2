@@ -6,7 +6,7 @@
 // navigateur (voir gemini.ts).
 // =============================================================
 import { fermerSurLeFond } from '../dialogue'
-import { ETABLISSEMENTS, adresseValable, cleGemini, cleValable, demanderAGemini, pronoteDe, retenirCleGemini, retenirPronote, ErreurGemini } from './gemini'
+import { ETABLISSEMENTS, adresseValable, cleGemini, cleValable, demanderAGemini, nettoyerCle, pronoteDe, retenirCleGemini, retenirPronote, ErreurGemini } from './gemini'
 
 const echapper = (t: string) => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
@@ -24,11 +24,11 @@ export function ouvrirRedaction(racine: HTMLElement, fini: () => void): HTMLDial
       <details class="r-comment"${cle ? '' : ' open'}><summary>Obtenir une clé (une seule fois, 5 minutes)</summary>
         <ol>
           <li>Ouvrez <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> avec votre compte Google.</li>
-          <li>Cliquez « Create API key » (Créer une clé API), puis copiez la clé (elle commence par « AIza »).</li>
+          <li>Cliquez « Create API key » (Créer une clé API), puis copiez la clé (avec l'icône de copie de sa ligne).</li>
           <li>Collez-la ci-dessous, puis « Essayer la clé ».</li>
         </ol></details>
       <label class="champ"><span>Clé de l'API Gemini</span>
-        <input class="r-cle" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…" value="${echapper(cle)}" /></label>
+        <input class="r-cle" type="password" autocomplete="off" spellcheck="false" placeholder="Collez la clé ici" value="${echapper(cle)}" /></label>
       <p class="r-actions-cle"><button type="button" class="secondaire petit r-essayer">Essayer la clé</button>
         <button type="button" class="secondaire petit r-retirer"${cle ? '' : ' hidden'}>Retirer la clé</button></p>
       <fieldset class="r-pronote"><legend>Votre Pronote, pour le bouton « Ouvrir Pronote »</legend>
@@ -50,8 +50,8 @@ export function ouvrirRedaction(racine: HTMLElement, fini: () => void): HTMLDial
   const etat = (t: string, erreur = false) => { const p = q('.r-etat'); p.textContent = t; p.classList.toggle('erreur', erreur) }
   const champ = q<HTMLInputElement>('.r-cle')
   q('.r-essayer').addEventListener('click', async () => {
-    const c = champ.value.trim()
-    if (!cleValable(c)) return etat('Ce n\'est pas une clé de l\'API Gemini : elle commence par « AIza » et fait une quarantaine de signes.', true)
+    const c = nettoyerCle(champ.value)
+    if (!cleValable(c)) return etat('Ce n\'est pas une clé de l\'API Gemini : copiez-la avec l\'icône de copie de sa ligne dans Google AI Studio, puis collez-la ici.', true)
     const b = q<HTMLButtonElement>('.r-essayer')
     b.disabled = true; etat('Essai de la clé…')
     try {
@@ -62,8 +62,8 @@ export function ouvrirRedaction(racine: HTMLElement, fini: () => void): HTMLDial
   })
   q('.r-retirer').addEventListener('click', () => { champ.value = ''; etat('La clé sera retirée quand vous enregistrez.') })
   q('.r-garder').addEventListener('click', () => {
-    const c = champ.value.trim()
-    if (c && !cleValable(c)) return etat('Ce n\'est pas une clé de l\'API Gemini : elle commence par « AIza » et fait une quarantaine de signes.', true)
+    const c = nettoyerCle(champ.value)
+    if (c && !cleValable(c)) return etat('Ce n\'est pas une clé de l\'API Gemini : copiez-la avec l\'icône de copie de sa ligne dans Google AI Studio, puis collez-la ici.', true)
     for (const e of ETABLISSEMENTS) {
       const v = q<HTMLInputElement>(`.r-pronote-${e.cle}`).value
       if (v.trim() && !adresseValable(v)) return etat(`L'adresse du Pronote de ${e.nom} ne va pas : copiez-la depuis la barre d'adresse de Pronote (elle commence par https://).`, true)

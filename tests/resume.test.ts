@@ -8,7 +8,7 @@ import type { Formule, Forme, Trait } from '../src/types'
 import type { FicheDeSeance, PageResumee } from '../src/resume/fiche'
 import { consigneGemini, contenuDeLaPage, dureeDite, etiquettes, faitEnClasse, latexLisible, ligneDeResume, nomPropose, texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil } from '../src/resume/fiche'
 import { ficheDeLaSeance, gestesDeLaSeance } from '../src/resume/collecte'
-import { adresseValable, meilleurModele } from '../src/resume/gemini'
+import { adresseValable, cleValable, meilleurModele, nettoyerCle } from '../src/resume/gemini'
 
 let horloge = new Date('2026-10-26T08:05:00').getTime()
 let numero = 0
@@ -107,6 +107,13 @@ describe('Gemini', () => {
     expect(meilleurModele(l(['gemini-2.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash-lite', 'gemini-3.10-flash-image']))).toBe('gemini-3.6-flash')
     expect(meilleurModele(l(['gemini-3.8-flash-preview-10-2026', 'gemini-3.5-flash-lite']))).toBe('gemini-3.8-flash-preview-10-2026')
     expect(meilleurModele([{ name: 'models/gemini-4-flash', supportedGenerationMethods: ['embedContent'] }])).toBeNull()
+  })
+  it('la clé : toute forme de clé de Google, collée avec des espaces ou des guillemets', () => {
+    expect(cleValable('AIzaSyA1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q')).toBe(true)
+    expect(cleValable(' "AQ.Ab8RN6LmVq-xYz_0123456789abcdefghijklmnopqrstuvwxyz" ')).toBe(true)
+    expect(nettoyerCle(' « AIza Sy12\n34 » ')).toBe('AIzaSy1234')
+    expect(cleValable('pas une clé')).toBe(false)
+    expect(cleValable('')).toBe(false)
   })
   it('les adresses de Pronote : https seulement', () => {
     expect(adresseValable('0123456a.index-education.net/pronote/professeur.html')).toBe('https://0123456a.index-education.net/pronote/professeur.html')
