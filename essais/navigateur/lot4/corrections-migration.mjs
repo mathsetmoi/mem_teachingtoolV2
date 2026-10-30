@@ -25,7 +25,7 @@
 //      nouveau lien.
 // Lancer : node lot4/corrections-migration.mjs [A B C] (BASE=http://… pour une
 // autre version, par exemple celle d'avant les corrections)
-import { chromium } from '../commun/playwright.mjs'
+import { lancerPersistant } from '../commun/playwright.mjs'
 import * as Y from 'yjs'
 import { gunzipSync, gzipSync } from 'node:zlib'
 
@@ -115,7 +115,8 @@ async function simulerGoogle(ctx, drive = new Map()) {
   return drive
 }
 
-const nav = await chromium.launch({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+const nav = await lancerPersistant({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
 async function contexte() {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 }, acceptDownloads: true })
   await ctx.addInitScript(INIT)
@@ -466,8 +467,11 @@ if (seul('B')) {
     ok(f6.boutons.includes('mettre-a-jour'), '   … Ctrl + O : « Mettre à jour le classeur » (le fichier contient tout ce qu\'a la base, et plus)', f6)
     if (f6.boutons.includes('mettre-a-jour')) {
       await cliquerEtRecharger(p, 'mettre-a-jour')
-      const repare = await p.evaluate(() => ({ formes: window.__app.formes.length, incomplet: window.__app.tableau.incomplet, l: window.__surveillance.texte.lignes[0].texte, court: (document.querySelector('.etat-classeur')?.textContent || '') }))
-      ok(!repare.incomplet && repare.formes === formesTout + 1 && repare.l === 'Enregistré dans ce navigateur', `   … le classeur est entier : ${repare.formes} formes, « Enregistré dans ce navigateur »`, repare)
+      // (Lot 18 : quand le classeur a son fichier, l'état le dit d'abord,
+      // « Enregistré dans « complet.memc » : à jour » ; la ligne du
+      // navigateur suit, « Enregistré dans ce navigateur ».)
+      const repare = await p.evaluate(() => ({ formes: window.__app.formes.length, incomplet: window.__app.tableau.incomplet, l: window.__surveillance.texte.lignes[0].texte, lignes: window.__surveillance.texte.lignes.map(x => x.texte), court: (document.querySelector('.etat-classeur')?.textContent || '') }))
+      ok(!repare.incomplet && repare.formes === formesTout + 1 && /^Enregistré/.test(repare.l) && repare.lignes.includes('Enregistré dans ce navigateur'), `   … le classeur est entier : ${repare.formes} formes, « Enregistré », et « Enregistré dans ce navigateur »`, repare)
     } else await p.keyboard.press('Escape')
     await p.evaluate(() => window.__surveillance?.laisserPartir?.())
   } finally {

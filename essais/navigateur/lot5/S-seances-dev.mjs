@@ -35,6 +35,10 @@ await p.clock.install({ time: T0 })
 const pret = async () => { await p.waitForFunction(() => window.__app?.page); await p.clock.runFor(800) }
 const ouvrir = async () => { await p.goto(DEV); await pret() }
 const recharger = async () => { await p.reload(); await pret() }
+// La fenêtre d'accueil s'ouvre à la fin du démarrage, quelques dizaines de
+// millisecondes (en vrai temps) après la page : on l'attend quand on la
+// veut (depuis le lot 18, le démarrage fait un peu plus avant elle)
+const accueilOuvert = (q = p) => q.waitForSelector('dialog.dialogue-accueil[open]', { timeout: 5000 }).catch(() => {})
 const lire = () => p.evaluate(() => {
   const a = window.__app, t = a.tableau
   return {
@@ -78,6 +82,7 @@ ok(!e.dlg && e.page === lundi.p2 && /Séance de 8 h reprise/.test(e.toast), '« 
 // ---------- C. Plus d'une heure : la fenêtre d'accueil ; Échap ----------
 await p.clock.setSystemTime(T0 + 30 * H)                     // mardi 14 h
 await recharger()
+await accueilOuvert()
 e = await lire()
 const accueil = await p.evaluate(() => ({ titre: document.querySelector('.dialogue-accueil h2')?.textContent, gros: document.querySelector('.accueil-nouvelle')?.textContent, focus: document.activeElement?.className, continuer: document.querySelector('.accueil-continuer')?.textContent }))
 ok(e.dlg?.includes('dialogue-accueil') && accueil.titre === 'Bonjour !' && /Nouvelle séance/.test(accueil.gros) && /accueil-nouvelle/.test(accueil.focus) && /Continuer la séance de lundi 8 h/.test(accueil.continuer ?? ''),
@@ -89,6 +94,7 @@ ok(!e.dlg && e.seances.length === 1 && e.page === lundi.p2 && e.formes === 1, '�
 
 // ---------- D. Entrée : une nouvelle séance, page 1 blanche à 100 % ----------
 await recharger()
+await accueilOuvert()
 await p.evaluate(() => window.__app.cam.z = 1.7)
 await p.keyboard.press('Enter'); await p.clock.runFor(300)
 e = await lire()
@@ -218,6 +224,7 @@ await p2.evaluate(() => { const t = window.__app.tableau; t.doc.transact(() => {
 await p2.clock.runFor(2000)
 await p2.clock.setSystemTime(T0 + 60 * H)
 await p2.reload(); await p2.waitForFunction(() => window.__app?.page); await p2.clock.runFor(800)
+await accueilOuvert(p2)
 const mig = await p2.evaluate(() => { const t = window.__app.tableau; return { s: t.seancesDuClasseur().map(s => ({ debut: s.debut, pages: s.pages.length, ancienne: s.ancienne })), ordre: t.ordre.length, dlg: !!document.querySelector('dialog.dialogue-accueil[open]'), rang: [document.querySelector('.rang-seance .texte').textContent, document.querySelector('.rang').textContent].filter(Boolean).join(' · ') } })
 ok(mig.s.length === 2 && mig.s[0].pages === 1 && mig.s[1].pages === 1 && mig.s.every(s => s.ancienne) && mig.ordre === 2 && mig.dlg,
   'migration : les deux séances d\'avant (lundi, mercredi) deviennent des séances, chaque page dans celle où elle est née ; la fenêtre d\'accueil', mig)

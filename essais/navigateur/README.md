@@ -27,8 +27,9 @@ dossiers d'essais vitest, le banc d'écriture), rangés par lot :
 | `lot14/` | la calculatrice NumWorks : le menu Classe, l'installation (avec une page d'essai qui se fait passer pour l'émulateur), l'écran noté dans le film à chaque appui et jamais sans appui, la bande qui la déplace au Stylo, × et Ctrl+Z, le lecteur, la version hors ligne sans internet (`E1-calculatrice.mjs`) ; avec les vrais fichiers de NumWorks, s'ils sont donnés par `NUMWORKS_LYCEE` et `NUMWORKS_COLLEGE` (sinon il ne fait rien) : installer, calculer, l'écran noté (`E2-vrais-emulateurs.mjs`) |
 | `lot15/` | Publier dans un dossier de l'ordinateur, sans connexion Google : le fichier « Titre [code].mem », le lien avec le code, l'attente puis « en ligne », republier sous un autre nom (même code, un seul fichier), un relais pas à jour signalé avant d'écrire ; puis Publier en un clic (lot 16) : la fenêtre en résumé quand tout est retenu, « Modifier… », l'accord du dossier refusé qui déplie sans rien écrire (`P1-publier-dossier.mjs`) |
 | `lot17/` | le deuxième lot de l'audit : les séances isolées (le lien de « Bonjour ! », le classeur « Séances isolées » créé sans fenêtre puis retrouvé, en queue du niveau avec « Hors chapitre », une séance déplacée vers son chapitre, Publier avec le niveau relié, la version hors ligne : `E1-seances-isolees.mjs` ; `DEV=…` pour le port, `CAPTURES=…` pour les captures) ; l'ancien tableau (`.prof`) à sa date dans le classeur ouvert, l'aperçu de la fenêtre, plusieurs d'un coup dont un doublon, plus récent que tout, le téléphone, le fichier relié réécrit (sections C et F à J de `lot7/E2-ancien-tableau.mjs`, qui reste dans son lot) ; la corbeille du classeur rangée par séance : une séance supprimée depuis la bibliothèque fait un bloc (ses vignettes numérotées, « Remettre la séance », « Supprimer définitivement »), les pages seules disent leur séance (« Page 3 · séance du jour »), la poubelle refusée sur une séance passée, le rechargement et le `.memc`, la version hors ligne, l'iPad et le téléphone, le clavier, la case « Vider tout seul ce qui est ici depuis plus de 30 jours », la séance remise qui redevient la séance du jour (`F1-corbeille-seances.mjs`) ; « Vérifier les classeurs », plus jamais d'image grise : l'image retrouvée à l'ouverture d'un classeur et ses pixels, l'image introuvable et son bouton, la fenêtre du menu ⋯ (la ligne d'état, Réparer, Tout réparer, l'introuvable, l'illisible), la corbeille qui recopie les images avant d'effacer (et le classeur retenu si la recopie échoue), l'autre onglet qui se recharge, le téléphone et le clavier, la version hors ligne, une mesure sur dix classeurs avec des photos (`V1-verifier-classeurs.mjs`) |
+| `lot18/` | un seul endroit pour chaque classeur : la fenêtre « Où ranger les classeurs de « 5eme » ? » au premier « Nouveau classeur » d'un niveau (les établissements, « Choisir un dossier… », le dossier du niveau au nom tapé, un dossier par classeur avec son `.memc`, le chemin dans la fiche, le bilan, aucune permission demandée hors d'un clic), la fenêtre « Nouveau classeur » sans case (« Son fichier ira dans … », le fichier écrit avant de partir), un deuxième établissement, « Mes emplacements » (la ligne des établissements, « Changer… », « Ranger… »), « Plus tard », « Séances isolées » et un `.memc` ajouté (adopté s'il est déjà à sa place) et un classeur remis de la corbeille qui reçoivent leur fichier, « Un autre dossier, pour ce niveau seul… », « Changer… » d'établissement (les fichiers d'avant relus puis laissés, le classeur ouvert qui suit et Ctrl + S dans le nouveau fichier, un fichier d'avant plus riche gardé, une écriture qui échoue, « Mettre à jour » qui finit : « déjà à leur place » ; puis le retour vers le premier établissement, avec un fichier d'avant illisible gardé et une fiche sans chemin reconnue dans le dossier quitté ; l'accord de relire demandé en premier), « Retirer » un établissement confirmé, le fichier séance de Publier dans le dossier du chapitre (jamais une autre séance remplacée : « (2) »), la version hors ligne avec un faux système de fichiers (`E1-ranger.mjs` ; `DEV=…` pour le port, `CAPTURES=…` pour la capture de la fenêtre, `A`, `E` ou `K` en argument pour une partie) ; le menu ⋯ réduit (`E2-menu.mjs`) : ses trois états et leurs aides (sans fichier à la racine, dans un niveau à ranger, sans showSaveFilePicker), « Ranger « 5eme » dans un dossier… » depuis le menu puis le menu du classeur qui a son fichier, Ctrl + S qui écrit dans le fichier, « Enregistrer une copie… » dans le dossier du chapitre (`startIn`), « Lui donner son fichier » par le menu et par le bandeau, « Autres sauvegardes… » et ses quatre blocs (le compte du Drive, le `.memb`, les niveaux reliés, « Relier un niveau… »), la version hors ligne avec les blocs grisés, le téléphone (`A`, `F` ou `G` en argument pour une partie) ; « Déplacer le classeur… », le fichier suit : la fenêtre et sa ligne « Son fichier ira dans … », le classeur ouvert déplacé (le nouveau fichier écrit et relu, l'ancien retiré, l'ancien dossier aussi, la clé qui écrit ensuite dans le nouveau), les `.mem` du chapitre qui suivent et « Annuler », un niveau pas rangé, un fichier choisi à la main et « Ne plus l'enregistrer dans un fichier », l'ancien fichier modifié ailleurs (il reste), un fichier plus riche (rien ne bouge), une carte, un glisser-déposer, un classeur ouvert dans un autre onglet, « Un autre dossier de l'ordinateur… » et Publier, un classeur sans fichier qui reçoit le sien, la version hors ligne ; aucune permission hors d'un clic (`E3-deplacer.mjs` ; `DEV=…` pour le port, `A` ou `J` en argument pour une partie) |
 | `ecriture/` | le banc d'écriture (le trait en direct et au replay) |
-| `commun/` | `racines.mjs` (les chemins, calculés depuis l'emplacement des fichiers) et `playwright.mjs` (où trouver Playwright) |
+| `commun/` | `racines.mjs` (les chemins, calculés depuis l'emplacement des fichiers), `playwright.mjs` (où trouver Playwright ; `lancerPersistant()` pour les essais de la clé) et `sonde-contexte-ephemere.mjs` (ce contournement est-il encore nécessaire ?) |
 | `tout.sh` | le lanceur |
 | `sorties/` | ce qu'écrit la batterie (ignoré par git) |
 
@@ -48,7 +49,7 @@ La partie 1 construit les deux versions (`npm run build`, `npm run
 build:pages`), puis passe les essais des lots 1 à 5 et le banc d'écriture.
 La partie 2 passe les sondes des vérifications des lots 3, 4 et 5, les essais
 vitest qui ne sont pas dans `npm test`, ceux du contrôle final du lot 5 et
-les essais du lot 17 (`lot17/*.mjs`).
+les essais des lots 17 et 18 (`lot17/*.mjs`, `lot18/*.mjs`).
 
 Chaque partie lance son propre serveur de développement, neuf, sur le port
 5173 (celui qui y tournait est arrêté, puis relancé à la fin), sans
@@ -103,6 +104,19 @@ des vérifications se lancent depuis leur dossier (`cd lot3/verif/conformite
 
   La batterie ne lance jamais `playwright install` : le navigateur doit être
   là (dans les sessions en ligne, il l'est).
+
+  Le Chromium 153 livré avec Playwright 1.63 tombe (le navigateur entier,
+  « Target page, context or browser has been closed ») quand une poignée de
+  fichier rangée dans IndexedDB est relue dans un contexte éphémère, celui de
+  `browser.newContext()`. Les essais qui simulent la clé USB (C4, C9, C10,
+  CF1, corrections-*, lot7/E1, `lot4/verif/sauvegardes/t1 t2 t10 t11 t13`,
+  `bandeau`, `bandeau-biblio`, `drive-cle-retour`) lancent donc leur
+  navigateur par `lancerPersistant()` (`commun/playwright.mjs`) : un profil
+  temporaire par contexte, effacé à la fermeture ; les aides `lancer()` des
+  sondes prennent `{ persistant: true }`. L'outil n'est pas en cause : en
+  classe, Chrome travaille dans un profil, où la poignée se relit.
+  `node commun/sonde-contexte-ephemere.mjs` dit en quelques secondes si le
+  contournement est encore nécessaire (sortie 3) ou peut être retiré (0).
 
 ## Quand la lancer
 

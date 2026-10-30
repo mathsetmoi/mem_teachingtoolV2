@@ -12,7 +12,7 @@
 // B. « Choisir un dossier… » : ses classeurs dans le dossier du même nom de
 //    la bibliothèque, le dossier relié (chaque classeur y garde son fichier),
 //    « Mes emplacements ».
-// C. « Enregistrer sur le Drive ou ailleurs… » (menu ⋯) : le dossier du
+// C. « Enregistrer… » (lot 18 : « Autres sauvegardes… » → « Relier un niveau… », et le menu du dossier) : le dossier du
 //    niveau sur l'ordinateur, tenu à jour : un .memc par classeur, dans un
 //    dossier du chapitre rangé comme dans la bibliothèque ; un fichier déjà
 //    là qui n'est pas à lui n'est pas écrasé.
@@ -23,10 +23,10 @@
 // E. « Retirer » : plus relié, rien d'effacé.
 // F. La version hors ligne : le Drive grisé, et dit ; rien vers Google.
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
-import { chromium } from '../commun/playwright.mjs'
+import { lancerPersistant } from '../commun/playwright.mjs'
 import { FauxGoogle } from '../lot4/verif/migration/faux-google.mjs'
 
-const DEV = 'http://localhost:5173/'
+const DEV = process.env.DEV ?? 'http://localhost:5173/'
 let echecs = 0
 const ok = (c, m, detail) => { if (!c) echecs++; console.log(c ? '✓' : '✗ ÉCHEC', m, !c && detail !== undefined ? '— ' + JSON.stringify(detail).slice(0, 1500) : '') }
 const norm = t => (t || '').replace(/[  ]/g, ' ')
@@ -150,7 +150,8 @@ const OUTILS = () => {
 const toasts = p => p.evaluate(() => (window.__toasts || []).splice(0))
 const attendreToast = (p, re, timeout = 20000) => p.waitForFunction(s => (window.__toasts || []).some(t => new RegExp(s).test(t)), re.source, { timeout }).then(() => true, () => false)
 
-const navigateur = await chromium.launch()
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée du dossier relue depuis IndexedDB)
+const navigateur = await lancerPersistant()
 async function contexte(g) {
   const ctx = await navigateur.newContext({ viewport: { width: 1366, height: 768 } })
   if (g) await g.brancher(ctx)
@@ -249,15 +250,22 @@ try {
   await p.evaluate(() => window.__ecrireOpfs('Cle 4B/Calcul', 'Calcul.memc', 'un autre fichier'))
   await p.keyboard.press('Escape')
   await p.evaluate(() => { if (window.__bibliotheque.ouvert) window.__bibliotheque.fermer?.() })
-  await p.evaluate(() => window.__app.ui.enregistrerAilleurs?.())
+  // (Adapté au lot 18 : plus d'entrée « Enregistrer sur le Drive ou ailleurs… » dans le menu ⋯ ni de ui.enregistrerAilleurs)
+  await p.evaluate(() => window.__ailleurs.enregistrer())
   await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
   f = await fenetre(p)
   ok(/Quoi \?/.test(f.texte) && /Où \?/.test(f.texte) && /Toute la bibliothèque/.test(f.texte), 'C1) La fenêtre « Enregistrer » : Quoi ? Où ?', f.texte.slice(0, 300))
-  // Depuis le menu ⋯ aussi
+  // Depuis le menu ⋯ aussi : « Autres sauvegardes… » → « Relier un niveau… » (lot 18)
   await p.keyboard.press('Escape'); await p.waitForTimeout(200)
   await p.click('.barre-haut .bouton.points'); await p.waitForTimeout(200)
-  const entree = await p.evaluate(() => [...document.querySelectorAll('.menu-item[data-action="enregistrer-ailleurs"]')].map(x => x.textContent))
-  ok(entree.length === 1 && /Enregistrer sur le Drive ou ailleurs/.test(entree[0]), 'C2) Le menu ⋯ : « Enregistrer sur le Drive ou ailleurs… »', entree)
+  const entree = await p.evaluate(() => ({ ancienne: document.querySelectorAll('.menu-item[data-action="enregistrer-ailleurs"]').length, autres: [...document.querySelectorAll('.menu-flottant:not([hidden]) .menu-item[data-action="autres-sauvegardes"] .libelle')].map(x => x.firstChild.textContent) }))
+  ok(entree.ancienne === 0 && JSON.stringify(entree.autres) === '["Autres sauvegardes…"]', 'C2) Le menu ⋯ : « Autres sauvegardes… » (plus de « Enregistrer sur le Drive ou ailleurs… », lot 18)', entree)
+  await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="autres-sauvegardes"]')
+  await p.waitForSelector('dialog.dialogue-autres[open] .as-relier')
+  await p.click('dialog.dialogue-autres[open] .as-relier')
+  await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
+  const relie = await p.evaluate(() => ({ ouverte: !!document.querySelector('dialog.dialogue-enregistrer-ailleurs[open]'), autres: !!document.querySelector('dialog.dialogue-autres'), classe: document.querySelector('dialog[open] input[name=e-quoi][value=classe]')?.checked ?? null }))
+  ok(relie.ouverte && !relie.autres && relie.classe !== false, '   … « Relier un niveau… » ouvre la fenêtre « Enregistrer » (sur « Le dossier du niveau » quand le classeur ouvert en a un), « Autres sauvegardes » refermée', relie)
   await p.keyboard.press('Escape'); await p.waitForTimeout(150)
   // Le menu du dossier « 4B » : « Enregistrer ce dossier… »
   await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), d4)
@@ -386,12 +394,14 @@ try {
   ok(hl === 'Le Drive marche seulement depuis la version en ligne (mathsetmoi.github.io).', 'F1) « Ouvrir » › Google Drive : grisé, et dit', hl)
   await h.click('dialog[open] .a-fermer')
   await h.keyboard.press('Escape'); await h.waitForTimeout(300)
+  // (Adapté au lot 18 : le menu ⋯ mène à « Autres sauvegardes… » ; hors ligne, « Relier un niveau… » y est grisé et le bloc le dit)
   await h.click('.barre-haut .bouton.points')
-  await h.waitForSelector('.menu-item[data-action="enregistrer-ailleurs"]', { timeout: 10000 })
-  await h.click('.menu-item[data-action="enregistrer-ailleurs"]')
-  await h.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
-  const radio = await h.evaluate(() => ({ inactif: document.querySelector('dialog[open] input[name=e-ou][value=drive]').disabled, dit: document.querySelector('dialog[open] .e-hors-ligne')?.hidden === false }))
-  ok(radio.inactif && radio.dit, 'F2) « Enregistrer » : le Drive grisé, et dit', radio)
+  await h.waitForSelector('.menu-item[data-action="autres-sauvegardes"]', { timeout: 10000 })
+  await h.click('.menu-item[data-action="autres-sauvegardes"]')
+  await h.waitForSelector('dialog.dialogue-autres[open]')
+  const radio = await h.evaluate(() => ({ inactif: document.querySelector('dialog[open] .as-relier').disabled, dit: document.querySelector('dialog[open] [data-bloc="niveaux"] .as-hors')?.hidden === false && document.querySelector('dialog[open] [data-bloc="niveaux"] .as-hors').textContent === 'Seulement depuis la version en ligne.', compte: document.querySelector('dialog[open] .as-compte').disabled }))
+  ok(radio.inactif && radio.dit && radio.compte, 'F2) « Autres sauvegardes » : « Relier un niveau… » grisé, et dit ; le compte du Drive aussi (lot 18)', radio)
+  await h.keyboard.press('Escape'); await h.waitForTimeout(200)
   ok(g2.requetes.length === 0 && g2.gis.length === 0, 'F3) Rien vers Google', { requetes: g2.requetes.length, gis: g2.gis.length })
   await ctx2.close()
 } catch (e) {

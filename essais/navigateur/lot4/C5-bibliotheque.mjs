@@ -34,7 +34,7 @@
 //    le départ ; « Ouvrir sans attendre » après 5 s ; 10 s au plus.
 // (Adapté au lot 4, morceau C8 : les menus d'un classeur et d'un dossier finissent par « Supprimer ».)
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
-import { chromium } from '../commun/playwright.mjs'
+import { lancerPersistant } from '../commun/playwright.mjs'
 import * as Y from 'yjs'
 import { existsSync, mkdirSync } from 'node:fs'
 import { gunzipSync, gzipSync } from 'node:zlib'
@@ -43,7 +43,7 @@ const S = `${RACINE_ESSAIS}`
 const R = `${RACINE_DEPOT}`
 const ICI = S + '/lot4/C5/'
 const CAPTURES = ICI + 'captures/'
-const DEV = 'http://localhost:5173/'
+const DEV = process.env.DEV ?? 'http://localhost:5173/'
 mkdirSync(CAPTURES, { recursive: true })
 
 let echecs = 0
@@ -101,7 +101,9 @@ const INIT = () => {
     return dir.getFileHandle(window.__nomChoisi || o?.suggestedName || 'sans-nom.memc', { create: true })
   }
 }
-const nav = await chromium.launch({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
+// La section G relit une poignée de l'OPFS gardée dans IndexedDB : un profil
+// sur disque (voir lancerPersistant dans commun/playwright.mjs)
+const nav = await lancerPersistant({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
 async function contexte(o = {}) {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 }, ...o })
   await ctx.addInitScript(INIT)
@@ -269,10 +271,11 @@ if (seul('B')) {
   await p.click('.barre-haut .bouton.points'); await p.waitForTimeout(150)
   // (Adapté au lot 5, morceau K9 : « Cet appareil » et ses deux cases entrent volontairement au bout du menu ⋯ ; lot5/K9-affichage.mjs les vérifie)
   const entrees = await p.evaluate(() => [...[...document.querySelectorAll('.menu-flottant')].find(x => !x.hidden).querySelectorAll('.menu-item:not([data-action="contraste"]):not([data-action="noms-outils"]):not([data-action="nouvelle-seance"]):not([data-action="renommer-seance"]):not([data-action="seance-precedente"]):not([data-action="retour-aujourdhui"])')].map(e => e.dataset.action ?? 'etat'))
-  // (Adapté au lot 4, morceau C10 : « Copie sur le Drive… » (copie-drive) entre volontairement dans le menu ⋯, avant « Ouvrir un classeur… » ;
-// adapté au lot 7 : « Enregistrer sur le Drive ou ailleurs… » (enregistrer-ailleurs) aussi, juste après)
+  // (Adapté au lot 18 : le menu ⋯ réduit d'un classeur sans fichier à la racine : « Enregistrer le classeur… »,
+  // « Enregistrer automatiquement dans un fichier… », PDF, « Autres sauvegardes… » (qui a pris « Copie sur le Drive… »
+  // et « Enregistrer sur le Drive ou ailleurs… » des lots 4 et 7), « Ouvrir un classeur… »)
   // (et la ligne du Drive, en tête, porte son bouton « Se connecter à Google » : une copie attend)
-  ok(entrees.filter(x => x !== 'etat')[0] === 'bibliotheque' && JSON.stringify(entrees.filter(x => x !== 'etat')) === '["bibliotheque","enregistrer","activer-cle","copie-drive","enregistrer-ailleurs","ouvrir","exporter-pdf"]', 'Le menu ⋯ : « Bibliothèque des classeurs… » (data-action bibliotheque) en tête des entrées', entrees)
+  ok(entrees.filter(x => x !== 'etat')[0] === 'bibliotheque' && JSON.stringify(entrees.filter(x => x !== 'etat')) === '["bibliotheque","enregistrer","activer-cle","exporter-pdf","autres-sauvegardes","ouvrir"]', 'Le menu ⋯ : « Bibliothèque des classeurs… » (data-action bibliotheque) en tête des entrées (la liste du lot 18)', entrees)
   await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="bibliotheque"]'); await p.waitForTimeout(300)
   ok((await vue(p)).ouvert, '   … elle ouvre la bibliothèque')
   // Le menu ⋯ du bandeau : caché tant qu'aucun morceau n'y met d'entrée
@@ -502,7 +505,8 @@ if (seul('F')) {
   ok(d.titre === 'Nouveau classeur' && d.nom === 'Nouveau classeur' && d.choisi && d.max === 60, 'La fenêtre « Nouveau classeur » : le nom prérempli, tout choisi, 60 caractères', d)
   // (Adapté aux réglages par défaut, retouches après le lot 5 : la page blanche est cochée d'office, l'ordre ne change pas)
   ok(d.legende === 'Fond de la première page' && JSON.stringify(d.fonds) === JSON.stringify(['Petits carreaux', 'Page blanche ✓', 'Seyès', 'Repère', 'Grands carreaux (1 cm)', 'Papier millimétré', 'Papier pointé', 'Réseau isométrique']), '   … le fond : Petits carreaux, Page blanche (cochée), Seyès, Repère, puis les quatre du lot 5 (K8 : adapté volontairement)', d.fonds)
-  ok(d.cle && d.cle.texte === 'Enregistrer automatiquement sur la clé' && !d.cle.coche, '   … la case de la clé (Chrome), décochée en ligne', d.cle)
+  // (Lot 18 : la case dit « Enregistrer automatiquement dans un fichier » ; le mot « clé » quitte l'écran)
+  ok(d.cle && d.cle.texte === 'Enregistrer automatiquement dans un fichier' && !d.cle.coche, '   … la case du fichier (Chrome), décochée en ligne', d.cle)
   ok(JSON.stringify(d.boutons) === JSON.stringify(['Annuler', 'Créer et ouvrir (principal)']), '   … [Annuler] [Créer et ouvrir]', d.boutons)
   await p.screenshot({ path: CAPTURES + 'F-nouveau.png' })
   // Échap : rien n'est créé
@@ -544,7 +548,7 @@ if (seul('F')) {
 // G. AVEC LA CASE DE LA CLÉ (HTTP, OPFS) ; PLUS DE PLACE
 // =====================================================================
 if (seul('G')) {
-  console.log('\n=== G. la case « Enregistrer automatiquement sur la clé » (OPFS) ===')
+  console.log('\n=== G. la case « Enregistrer automatiquement dans un fichier » (OPFS) ===')
   const ctx = await contexte()
   const p = await ouvrir(ctx, '', 'G')
   await ouvrirBiblio(p)
@@ -565,7 +569,7 @@ if (seul('G')) {
   ok(g.ecritures.length >= 1 && g.ecritures[0].nom === 'Fractions.memc' && g.parti && g.ecritures[0].t <= g.parti, `La case cochée : le fichier « Fractions.memc » est écrit AVANT de partir (${g.parti - (g.ecritures[0]?.t ?? 0)} ms avant)`, g)
   ok(lu && lu.entete.id === g.id && lu.entete.nom === 'Fractions' && lu.pages === 1 && lu.film.length === 1 && lu.film[0].naissance, '   … le fichier : ce classeur (son id, son nom), une page, sa naissance', lu?.entete)
   ok(g.fiche && g.fiche.nom === 'Fractions.memc' && g.fiche.t && g.fiche.date === lu?.entete.date && g.fiche.vecteur && g.poignee === 'Fractions.memc', '   … la fiche note l\'écriture (date de l\'en-tête, vecteur) ; la poignée est gardée', g)
-  ok(g.cle?.etat === 'ok' && /^Clé : /.test(g.court), `   … à l'arrivée, la clé est active : « ${g.court} »`, g.cle)
+  ok(g.cle?.etat === 'ok' && /^Enregistré/.test(g.court), `   … à l'arrivée, le fichier s'écrit tout seul (lot 18 : « Enregistré … ») : « ${g.court} »`, g.cle)
   const t = await toasts(p)
   ok(t.some(x => x.includes('Classeur « Fractions » créé. Il s\'enregistre automatiquement dans « Fractions.memc ».')), '   … « Classeur « Fractions » créé. Il s\'enregistre automatiquement dans « Fractions.memc ». »', t)
   ok(g.choix.length === 1 && g.choix[0].actif && g.choix[0].nom === 'Fractions.memc' && g.choix[0].id === 'mem-classeurs', '   … le choix du fichier s\'est ouvert dans le clic (le nom du classeur, le même dossier que la clé)', g.choix)
@@ -597,8 +601,8 @@ if (seul('G')) {
   await allerPar(p, () => p.click('dialog [data-a="creer"]'))
   await p.evaluate(() => window.__cle?.pret); await p.waitForTimeout(500)
   const b = await p.evaluate(() => { const x = document.querySelector('.bandeau-sauvegarde'); return { cache: x.hidden, raison: x.dataset.raison, texte: x.querySelector('.texte-bandeau')?.textContent, boutons: [...x.querySelectorAll('.bouton-bandeau')].map(y => y.textContent), etat: window.__cle?.etat, point: !document.querySelector('.bouton-classeur .point-etat').hidden } })
-  ok(!b.cache && b.raison === 'cle-a-choisir' && b.texte === 'Choisissez de nouveau le fichier de la clé : ce navigateur ne l\'a pas gardé.' && JSON.stringify(b.boutons) === '["Enregistrer automatiquement sur la clé…"]' && b.point,
-    'DataCloneError : à l\'arrivée, le bandeau « Choisissez de nouveau le fichier de la clé… » [Enregistrer automatiquement sur la clé…], le point ambre', b)
+  ok(!b.cache && b.raison === 'cle-a-choisir' && b.texte === 'Choisissez de nouveau le fichier de ce classeur : ce navigateur ne l\'a pas gardé.' && JSON.stringify(b.boutons) === '["Enregistrer automatiquement dans un fichier…"]' && b.point,
+    'DataCloneError : à l\'arrivée, le bandeau « Choisissez de nouveau le fichier de ce classeur… » [Enregistrer automatiquement dans un fichier…] (textes du lot 18), le point ambre', b)
   await p.screenshot({ path: CAPTURES + 'G-a-choisir.png' })
   // Le bouton : le choix, et la clé reprend (le même fichier : il est à ce classeur)
   await p.click('.bandeau-sauvegarde .bouton-bandeau'); await p.waitForTimeout(1200)

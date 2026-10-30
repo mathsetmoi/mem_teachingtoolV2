@@ -3,7 +3,7 @@
 // est retenu pour un classeur (faux registre) et les lignes du résumé (lot 16).
 import { describe, expect, it } from 'vitest'
 import { FORME_CODE, RELAIS_REPLAY, codeDuNom, lienEleveParCode, nouveauCode, relaisDe } from '../src/publication/comptes'
-import { deposerLeReplay, lireReglage, nomDuReplay, retenirReglage, texteDuResume } from '../src/publication/replay-dossier'
+import { deposerLeFichierSeance, deposerLeReplay, lireReglage, nomDuFichierSeance, nomDuReplay, oublierLeDossierRetenu, retenirReglage, texteDuResume } from '../src/publication/replay-dossier'
 import type { PoigneeDossier } from '../src/classeurs/ordinateur'
 import type { Registre } from '../src/classeurs/registre'
 
@@ -49,6 +49,15 @@ describe('le code et le nom du fichier', () => {
     expect(nomDuReplay('   ', 'k7f3q9xa')).toBe('Séance [k7f3q9xa].mem')
   })
 
+  it('le fichier séance (lot 18) : le même crible, sans code, à côté du replay', () => {
+    expect(nomDuFichierSeance('Séance du 5 oct')).toBe('Séance du 5 oct.mem')
+    expect(nomDuFichierSeance('Limites : suites / exercices ?')).toBe('Limites - suites - exercices -.mem')
+    expect(nomDuFichierSeance('   ')).toBe('Séance.mem')
+    // Le replay du même titre porte le code, le fichier séance non : deux fichiers distincts, sans code lu par erreur
+    expect(nomDuReplay('Séance du 5 oct', 're34gk7f')).toBe('Séance du 5 oct [re34gk7f].mem')
+    expect(codeDuNom(nomDuFichierSeance('Séance du 5 oct'))).toBeNull()
+  })
+
   it('le code se relit dans le nom, même renommé tant qu’il y reste', () => {
     expect(codeDuNom('Mercredi 7 octobre 2026 [k7f3q9xa].mem')).toBe('k7f3q9xa')
     expect(codeDuNom('Autre nom [k7f3q9xa].mem')).toBe('k7f3q9xa')
@@ -85,6 +94,48 @@ describe('déposer le replay dans le dossier', () => {
     const f: Record<string, string> = { 'Ancien [k7f3q9xa].mem': 'vieux' }
     await deposerLeReplay(fauxDossier(f, { retraitImpossible: true }), 'Nouveau [k7f3q9xa].mem', 'neuf', 'k7f3q9xa')
     expect(f['Nouveau [k7f3q9xa].mem']).toBe('neuf')
+  })
+
+  /** L'enveloppe d'un fichier séance, comme ecrireFilm l'écrit (le format, le début de la séance ; date : le premier geste des pages choisies) */
+  const env = (seance: number, marque: string, date = seance) => JSON.stringify({ format: 'mem-revoir', v: 1, titre: 'Séance du 5 oct', date, gz: marque, seance })
+
+  it('le fichier séance (lot 18) : écrit à côté du replay, la même séance remplacée au même titre, rien d’autre touché', async () => {
+    const f: Record<string, string> = { 'Séance du 5 oct [k7f3q9xa].mem': 'replay', 'Probas.memc': 'classeur' }
+    expect((await deposerLeFichierSeance(fauxDossier(f), 'Séance du 5 oct', env(1000, 'a'), 1000)).nom).toBe('Séance du 5 oct.mem')
+    expect(f).toEqual({ 'Séance du 5 oct [k7f3q9xa].mem': 'replay', 'Probas.memc': 'classeur', 'Séance du 5 oct.mem': env(1000, 'a') })
+    expect((await deposerLeFichierSeance(fauxDossier(f), 'Séance du 5 oct', env(1000, 'b'), 1000)).nom).toBe('Séance du 5 oct.mem')
+    expect(f['Séance du 5 oct.mem']).toBe(env(1000, 'b'))
+    expect(Object.keys(f).length).toBe(3)
+  })
+
+  it('une autre séance du même titre (deux heures de cours le même jour) n’écrase jamais la première : « Titre (2).mem »', async () => {
+    const f: Record<string, string> = { 'Séance du 5 oct.mem': env(1000, 'matin') }
+    expect((await deposerLeFichierSeance(fauxDossier(f), 'Séance du 5 oct', env(2000, 'après-midi'), 2000)).nom).toBe('Séance du 5 oct (2).mem')
+    expect(f).toEqual({ 'Séance du 5 oct.mem': env(1000, 'matin'), 'Séance du 5 oct (2).mem': env(2000, 'après-midi') })
+    // La même séance de l'après-midi, de nouveau : son fichier « (2) » est repris ; une troisième séance : « (3) »
+    expect((await deposerLeFichierSeance(fauxDossier(f), 'Séance du 5 oct', env(2000, 'après-midi, de nouveau'), 2000)).nom).toBe('Séance du 5 oct (2).mem')
+    expect(f['Séance du 5 oct (2).mem']).toBe(env(2000, 'après-midi, de nouveau'))
+    expect((await deposerLeFichierSeance(fauxDossier(f), 'Séance du 5 oct', env(3000, 'soir'), 3000)).nom).toBe('Séance du 5 oct (3).mem')
+    expect(Object.keys(f).length).toBe(3)
+    // Un fichier qu'on ne sait pas lire sous ce nom, ou sans date connue : jamais remplacé
+    const g: Record<string, string> = { 'Séance du 5 oct.mem': 'pas du JSON' }
+    expect((await deposerLeFichierSeance(fauxDossier(g), 'Séance du 5 oct', env(1000, 'x'), 1000)).nom).toBe('Séance du 5 oct (2).mem')
+    expect(g['Séance du 5 oct.mem']).toBe('pas du JSON')
+    const h: Record<string, string> = { 'Séance du 5 oct.mem': env(1000, 'x') }
+    expect((await deposerLeFichierSeance(fauxDossier(h), 'Séance du 5 oct', env(1000, 'y'))).nom).toBe('Séance du 5 oct (2).mem')
+  })
+
+  it('la même séance, d’autres pages choisies (une autre date de premier geste) : son fichier est repris, rien n’est évité', async () => {
+    const f: Record<string, string> = { 'Séance du 5 oct.mem': env(1000, 'pages 1 et 2', 1000) }
+    expect(await deposerLeFichierSeance(fauxDossier(f), 'Séance du 5 oct', env(1000, 'page 2 seule', 1500), 1000)).toEqual({ nom: 'Séance du 5 oct.mem', remplace: true, evite: null })
+    expect(Object.keys(f)).toEqual(['Séance du 5 oct.mem'])
+  })
+
+  it('le titre corrigé (une majuscule) : la même séance garde son fichier, et l’on ne parle pas d’un autre fichier', async () => {
+    const f: Record<string, string> = { 'séance du 5 oct.mem': env(1000, 'a') }
+    expect(await deposerLeFichierSeance(fauxDossier(f), 'Séance du 5 oct', env(1000, 'b'), 1000)).toEqual({ nom: 'séance du 5 oct.mem', remplace: true, evite: null })
+    // Une autre séance : le fichier évité est nommé tel qu'il est sur le disque
+    expect(await deposerLeFichierSeance(fauxDossier(f), 'Séance du 5 oct', env(2000, 'c'), 2000)).toEqual({ nom: 'Séance du 5 oct (2).mem', remplace: false, evite: 'séance du 5 oct.mem' })
   })
 })
 
@@ -131,6 +182,16 @@ describe('ce qui est retenu pour un classeur', () => {
     await retenirReglage(registre, 'c1', {})
     expect(etat.size).toBe(0)
     expect(await lireReglage(registre, 'c1')).toEqual({})
+  })
+
+  it('oublier le dossier retenu (le fichier l’a quitté, lot 18) : le Drive reste ; rien à oublier : rien d’écrit', async () => {
+    const { registre, etat } = fauxRegistre({ c1: null, c2: null })
+    await retenirReglage(registre, 'c1', { compte: 'mem', poignee: poignee('2_13_Proba') })
+    await oublierLeDossierRetenu(registre, 'c1')
+    expect(etat.get('replay-dossier:c1')).toEqual({ compte: 'mem' })
+    expect(await lireReglage(registre, 'c1')).toEqual({ poignee: undefined, compte: 'mem' })
+    await oublierLeDossierRetenu(registre, 'c2')
+    expect(etat.has('replay-dossier:c2')).toBe(false)
   })
 })
 

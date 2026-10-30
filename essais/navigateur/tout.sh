@@ -139,6 +139,14 @@ for t in $(ls lot17/*.mjs 2>/dev/null); do
   timeout 900 node $t >> $A/$nom.out 2>&1
   echo "exit $?" >> $A/$nom.out
 done
+# Les essais du lot 18 (un seul endroit pour chaque classeur : la fenêtre
+# « Où ranger… », les établissements, le fichier de chaque classeur)
+for t in $(ls lot18/*.mjs 2>/dev/null); do
+  nom=$(echo $t | tr '/' '_')
+  echo "=== $t" > $A/$nom.out
+  timeout 900 node $t >> $A/$nom.out 2>&1
+  echo "exit $?" >> $A/$nom.out
+done
 fi
 [ -n "$PAGES" ] && kill $PAGES
 kill $DEV

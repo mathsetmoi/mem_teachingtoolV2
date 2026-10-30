@@ -36,7 +36,7 @@
 // Il faut avoir construit les deux versions (npm run build, npm run
 // build:pages) ; tout.sh le fait.
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
-import { chromium } from '../commun/playwright.mjs'
+import { lancerPersistant } from '../commun/playwright.mjs'
 import * as Y from 'yjs'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import { execFileSync, spawn } from 'node:child_process'
@@ -47,7 +47,7 @@ const R = `${RACINE_DEPOT}`
 const ICI = S + '/lot4/C9/'
 const TRAVAIL = ICI + 'travail/'
 const SITE = ICI + 'site/'
-const DEV = 'http://localhost:5173/'
+const DEV = process.env.DEV ?? 'http://localhost:5173/'
 const O = 'http://127.0.0.1:4306'
 const PREFIXE = 'mem-teachingtool-classeur-'
 mkdirSync(TRAVAIL, { recursive: true })
@@ -252,7 +252,8 @@ const fiche = (p, id) => p.evaluate(id => window.__registre.classeur(id).then(f 
 const fiches = p => p.evaluate(() => window.__registre.classeurs().then(l => l.map(f => ({ id: f.id, nom: f.nom, base: f.base, dossier: f.dossier, etiquettes: f.etiquettes, pages: f.pages, recu: f.recu ?? null, corbeille: f.corbeille ?? null, cle: f.cle ? f.cle.nom : null }))))
 const baseDeNode = async (p, base) => lireMemc(Buffer.from(await p.evaluate(b => window.__baseB64(b), base), 'base64'))
 
-const nav = await chromium.launch({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+const nav = await lancerPersistant({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
 async function contexte(o = {}) {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 }, ...o })
   await ctx.addInitScript(INIT)
@@ -770,8 +771,8 @@ if (seul('G')) {
   await p.waitForFunction(() => window.__cle?.etat.etat === 'conflit', null, { timeout: 30000 }).catch(() => {})
   await p.waitForTimeout(500)
   const band = await p.evaluate(() => { const b = document.querySelector('.bandeau-sauvegarde'); return b && !b.hidden ? { raison: b.dataset.raison, boutons: [...b.querySelectorAll('.bouton-bandeau')].map(x => x.textContent) } : null })
-  ok(band?.raison === 'cle-conflit' && JSON.stringify(band.boutons) === JSON.stringify(['Ouvrir le fichier de la clé', 'Choisir un autre fichier…', 'Remplacer quand même']),
-    'G1) Le fichier de la clé modifié ailleurs : le bandeau [Ouvrir le fichier de la clé] [Choisir un autre fichier…] [Remplacer quand même]', band)
+  ok(band?.raison === 'cle-conflit' && JSON.stringify(band.boutons) === JSON.stringify(['Ouvrir le fichier', 'Choisir un autre fichier…', 'Remplacer quand même']),
+    'G1) Le fichier de la clé modifié ailleurs : le bandeau [Ouvrir le fichier] [Choisir un autre fichier…] [Remplacer quand même] (lot 18 : sans le mot « clé »)', band)
   await p.click('.bandeau-sauvegarde .bouton-bandeau:first-of-type')
   const d = await dialogue(p)
   ok(d?.textes[2] === 'Le fichier est plus récent : il contient tout ce que la bibliothèque a de ce classeur, et plus.' && boutons(d) === 'Annuler | Ajouter comme copie | Mettre à jour le classeur' && !d.case,
@@ -780,12 +781,12 @@ if (seul('G')) {
   await pret(p); await p.waitForTimeout(1500)
   const ids = await p.evaluate(() => [...window.__app.formes].map(f => f.id).sort())
   const tg = await toasts(p)
-  ok(ids.join() === 'K1,K2' && tg.some(t => t.includes('« Clé » mis à jour depuis le fichier (1 page). L\'enregistrement sur la clé reprend.')), 'G3) Mis à jour sans perte (K1, K2) : « … L\'enregistrement sur la clé reprend. »', { ids, tg })
+  ok(ids.join() === 'K1,K2' && tg.some(t => t.includes('« Clé » mis à jour depuis le fichier (1 page). L\'enregistrement dans « cle.memc » reprend.')), 'G3) Mis à jour sans perte (K1, K2) : « … L\'enregistrement dans « cle.memc » reprend. »', { ids, tg })
   await p.waitForFunction(() => window.__cle?.etat.etat === 'ok', null, { timeout: 30000 }).catch(() => {})
   ok(await p.evaluate(() => window.__cle.etat.etat) === 'ok', '   … la clé n\'est plus en conflit', await p.evaluate(() => window.__cle.etat))
   await p.evaluate(async () => { const t = window.__app.tableau; t.pageVue = window.__app.page; t.nouveauGeste(); t.poser(window.__app.page, { id: 'K3', type: 'trait', x: 5, y: 5, z: 9, auteur: t.moi, pts: [0, 0, 0.5, 9, 9, 0.5], couleur: '#1b2230', taille: 3, opacite: 1, pression: false }); await t.attendreEcritures() })
   await p.keyboard.press('Control+s')
-  ok(await attendreToast(p, /Classeur enregistré sur la clé : cle\.memc/), '   … Ctrl + S écrit sur la clé', await toasts(p))
+  ok(await attendreToast(p, /Enregistré dans « cle\.memc »/), '   … Ctrl + S écrit dans le fichier (« Enregistré dans « cle.memc » … », lot 18)', await toasts(p))
   const lu = lireMemc(await opfsLire(p, 'cle.memc'))
   ok(lu.ids.sort().join() === 'K1,K2,K3' && lu.entete.id === K, '   … le fichier de la clé a tout : K1, K2, K3', lu.ids)
   // Un autre fichier de ce classeur, qui a divergé : « Remplacer celui de la
@@ -796,13 +797,13 @@ if (seul('G')) {
   let dv = await dialogue(p)
   await cliquer(p, 'remplacer-biblio'); await p.waitForTimeout(300)
   dv = await dialogue(p)
-  ok(dv?.textes[1] === 'Le fichier « cle.memc » de la clé sera remplacé lui aussi.', 'G4) Un fichier qui a divergé, Remplacer celui de la bibliothèque… : « Le fichier « cle.memc » de la clé sera remplacé lui aussi. »', dv)
+  ok(dv?.textes[1] === 'Son fichier « cle.memc » sera remplacé lui aussi.', 'G4) Un fichier qui a divergé, Remplacer celui de la bibliothèque… : « Son fichier « cle.memc » sera remplacé lui aussi. » (lot 18)', dv)
   await Promise.all([p.waitForEvent('load', { timeout: 30000 }), cliquer(p, 'remplacer')])
   await pret(p); await p.waitForTimeout(1500)
   await p.waitForFunction(() => window.__cle?.etat.etat === 'ok', null, { timeout: 30000 }).catch(() => {})
   ok(await p.evaluate(() => window.__cle.etat.etat) === 'ok' && (await p.evaluate(() => [...window.__app.formes].map(f => f.id).sort())).join() === 'K1,K2,K3,K9', '   … remplacé (K9, sans K8) ; la clé n\'est pas en conflit', await p.evaluate(() => window.__cle.etat))
   await p.keyboard.press('Control+s')
-  await attendreToast(p, /Classeur enregistré sur la clé : cle\.memc/)
+  await attendreToast(p, /Enregistré dans « cle\.memc »/)
   const lu2 = lireMemc(await opfsLire(p, 'cle.memc'))
   ok(lu2.ids.sort().join() === 'K1,K2,K3,K9', '   … et le fichier de la clé est remplacé lui aussi', lu2.ids)
   await ctx.close()
@@ -985,8 +986,9 @@ if (seul('L')) {
       ok(v.ouvrir.w === 0 && v.plus.w > 0 && v.plus.r <= v.largeur && v.plus.h >= 40 && v.lignesActions === 1 && !v.defile, `L1) ${l} × ${h} : « Ouvrir… » passe dans le menu ⋯ (qui est dans l'écran, 40 px de haut au moins), les actions sur une ligne, pas de défilement de côté`, v)
       await p.click('.biblio-tete [data-action="menu-bibliotheque"]'); await p.waitForTimeout(150)
       const m = await p.evaluate(() => [...document.querySelectorAll('.menu-flottant:not([hidden]) .menu-item')].map(e => e.dataset.action + '|' + e.textContent))
-      // (Adapté au lot 4, morceau C10 : « Récupérer une sauvegarde du Drive… » entre volontairement au menu du bandeau)
-      ok(m.length === 3 && m[0].startsWith('ouvrir-fichier|Ouvrir un classeur ou une bibliothèque…') && m[1].startsWith('enregistrer-bibliotheque|') && m[2].startsWith('recuperer-sauvegarde|'), '   … le menu ⋯ : « Ouvrir un classeur ou une bibliothèque… », puis « Enregistrer toute la bibliothèque… »', m)
+      // (Adapté au lot 4, morceau C10 : « Récupérer une sauvegarde du Drive… » entre volontairement au menu du bandeau ;
+      // et au lot 17 : « Vérifier les classeurs… » aussi, en dernier)
+      ok(m.length === 4 && m[0].startsWith('ouvrir-fichier|Ouvrir un classeur ou une bibliothèque…') && m[1].startsWith('enregistrer-bibliotheque|') && m[2].startsWith('recuperer-sauvegarde|') && m[3].startsWith('verifier-classeurs|'), '   … le menu ⋯ : « Ouvrir un classeur ou une bibliothèque… », puis « Enregistrer toute la bibliothèque… », « Récupérer une sauvegarde du Drive… », « Vérifier les classeurs… »', m)
       await opfsEcrire(p, 'l0.memc', faireMemc(Y.encodeStateAsUpdate(unClasseur(['L0'])), { date: Date.now(), pages: 1, nom: 'Par le menu', id: '5a5a5a5a5a5a5a5b' }))
       await p.evaluate(() => { window.__aOuvrir = 'l0.memc' })
       await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="ouvrir-fichier"]')

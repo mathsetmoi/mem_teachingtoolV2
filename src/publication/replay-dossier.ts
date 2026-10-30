@@ -16,9 +16,11 @@
 import type { PoigneeDossier } from '../classeurs/ordinateur'
 import { accordDuDossier, choisirUnDossier } from '../classeurs/ordinateur'
 import { remontee } from '../classeurs/arbre'
-import { emplacementDe, emplacements, reglagePoignee, sousDossiers } from '../classeurs/emplacements'
+import { emplacementDe, emplacements, nomDeFichierLibre, reglagePoignee, sousDossiers } from '../classeurs/emplacements'
+import { etablissements, nomDEtablissement } from '../classeurs/etablissements'
 import type { Registre } from '../classeurs/registre'
 import { EXTENSION, codeDuNom } from './comptes'
+import { FORMAT } from '../revoir/format'
 import { nomSur } from '../fichier'
 
 /** « Titre [code].mem » : le nom choisi (passé au crible des noms de fichier),
@@ -29,14 +31,63 @@ export function nomDuReplay(titre: string, code: string): string {
   return `${base} [${code}]${EXTENSION}`
 }
 
+/** « Titre.mem » : le fichier séance que le professeur enregistre lui-même
+ *  (« Enregistrer le fichier » de Publier), rangé à côté du replay dans le
+ *  dossier du chapitre (lot 18) : le même crible que nomDuReplay, sans code
+ *  (« Séance du 5 oct.mem » à côté de « Séance du 5 oct [re34G].mem ») */
+export function nomDuFichierSeance(titre: string): string {
+  return nomSur(titre, { repli: 'Séance' }) + EXTENSION
+}
+
+/** Écrit un fichier texte dans le dossier, d'un bloc (createWritable écrit à
+ *  côté, close remplace : un échec laisse le fichier d'avant entier) */
+async function ecrireDansLeDossier(d: PoigneeDossier, nom: string, texte: string): Promise<void> {
+  const h = await d.getFileHandle(nom, { create: true })
+  const w = await h.createWritable()
+  try { await w.write(new Blob([texte], { type: 'application/json' })); await w.close() } catch (e) { await w.abort?.().catch(() => {}); throw e }
+}
+
+/** Dépose le fichier séance dans le dossier du chapitre, sous « Titre.mem ».
+ *  Un fichier de ce nom déjà là n'est remplacé que s'il est la même séance
+ *  (son enveloppe porte le même début de séance, `seance` : la séance
+ *  enregistrée de nouveau, quelles que soient les pages choisies) ; une autre
+ *  séance du même titre (deux heures de cours le même jour, un titre repris),
+ *  ou un fichier qu'on ne sait pas lire, n'est jamais écrasée : le nouveau
+ *  prend un nom libre (« Titre (2).mem »). Rend le nom écrit ; remplace : la
+ *  même séance a été reprise ; evite : le nom du fichier laissé de côté. */
+export async function deposerLeFichierSeance(d: PoigneeDossier, titre: string, texte: string, seance?: number): Promise<{ nom: string; remplace: boolean; evite: string | null }> {
+  const voulu = nomDuFichierSeance(titre), base = voulu.slice(0, -EXTENSION.length)
+  const noms: string[] = []
+  for await (const x of d.values()) if (x.kind === 'file') noms.push(x.name)
+  // « Titre.mem » et « Titre (2).mem », « Titre (3).mem »… : celui qui est la même séance est repris
+  const pareils = new RegExp(`^${echapperRegExp(base)}( \\(\\d+\\))?${echapperRegExp(EXTENSION)}$`, 'i')
+  let nom: string | null = null
+  for (const n of noms.filter(n => pareils.test(n))) if (await memeSeance(d, n, seance)) { nom = n; break }
+  if (nom) { await ecrireDansLeDossier(d, nom, texte); return { nom, remplace: true, evite: null } }
+  const evite = noms.find(n => n.toLocaleLowerCase('fr') === voulu.toLocaleLowerCase('fr')) ?? null
+  nom = evite ? nomDeFichierLibre(base, EXTENSION, noms) : voulu
+  await ecrireDansLeDossier(d, nom, texte)
+  return { nom, remplace: false, evite }
+}
+
+const echapperRegExp = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** Le fichier séance déjà là est-il la même séance (son enveloppe porte le
+ *  même début de séance) ? Dans le doute (illisible, sans début) : non. */
+async function memeSeance(d: PoigneeDossier, nom: string, seance: number | undefined): Promise<boolean> {
+  if (seance === undefined) return false
+  try {
+    const e = JSON.parse(await (await (await d.getFileHandle(nom)).getFile()).text()) as { format?: string; seance?: number } | null
+    return !!e && e.format === FORMAT && e.seance === seance
+  } catch { return false }
+}
+
 /** Dépose le replay dans le dossier : un fichier du même code (d'avant, sous
  *  un autre titre) est remplacé, pas doublé. Rend le nom du fichier écrit. */
 export async function deposerLeReplay(d: PoigneeDossier, nom: string, texte: string, code: string): Promise<string> {
   const anciens: string[] = []
   for await (const x of d.values()) if (x.kind === 'file' && x.name !== nom && codeDuNom(x.name) === code) anciens.push(x.name)
-  const h = await d.getFileHandle(nom, { create: true })
-  const w = await h.createWritable()
-  try { await w.write(new Blob([texte], { type: 'application/json' })); await w.close() } catch (e) { await w.abort?.().catch(() => {}); throw e }
+  await ecrireDansLeDossier(d, nom, texte)
   // L'ancien nom n'est retiré qu'une fois le nouveau fichier bien écrit
   for (const n of anciens) { try { await d.removeEntry?.(n) } catch { /* verrouillé par Google Drive pour ordinateur : il reste, le relais prend le plus récent */ } }
   return nom
@@ -84,6 +135,17 @@ export async function retenirReglage(registre: Registre, idClasseur: string, r: 
   if (classe && r.compte) await registre.ecrireReglage(reglageCompte(classe), r.compte).catch(() => {})
 }
 
+/** Le dossier retenu pour ce classeur ne vaut plus : son fichier l'a quitté
+ *  (« Déplacer le classeur… », lot 18). Publier proposera de nouveau le
+ *  dossier du chapitre ; le Drive retenu reste. */
+export async function oublierLeDossierRetenu(registre: Registre, idClasseur: string): Promise<void> {
+  const x = await registre.reglage<ReglageReplay>(reglage(idClasseur)).catch(() => undefined)
+  if (!x || typeof x !== 'object' || !x.poignee) return
+  const reste: ReglageReplay = { ...x }
+  delete reste.poignee
+  await registre.ecrireReglage(reglage(idClasseur), reste).catch(() => {})
+}
+
 // ---------- Le résumé de la fenêtre (lot 16) ----------
 
 /** Les deux (ou trois) lignes du résumé : la séance et ses pages, où le replay
@@ -113,8 +175,10 @@ export async function dossierDuChapitre(registre: Registre, idClasseur: string):
     if (!racine) return null
     // Le même chemin que relierLesClasseurs : sous-dossiers du niveau, puis le dossier du chapitre
     const segments = [...sousDossiers(f.dossier, e.dossier, dossiers), nomSur(f.nom)].map(n => nomSur(n, { repli: 'Dossier' }))
+    // Rangé chez un établissement (lot 18) : son nom devant (« LFB classeurs › 2 › 2_13_Probas »)
+    const etab = e.etablissement ? nomDEtablissement(e, await etablissements(registre)) : null
     return {
-      chemin: [racine.name, ...segments].join(' › '),
+      chemin: [...(etab ? [etab] : []), racine.name, ...segments].join(' › '),
       async ouvrir(creer) {
         // L'accord d'écrire (Chrome le redemande après un redémarrage) : dans le clic
         if (creer && !await accordDuDossier(racine, true).catch(() => false)) return null

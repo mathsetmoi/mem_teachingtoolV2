@@ -1,11 +1,16 @@
 // Outils repris de lot4/C10-drive.mjs (le faux Google, l'OPFS simulé), pour la vérification de conformité
-import { chromium } from '../../../commun/playwright.mjs'
+import { chromium, lancerPersistant } from '../../../commun/playwright.mjs'
 import { gunzipSync, gzipSync } from 'node:zlib'
 import * as Y from 'yjs'
 import { mkdirSync } from 'node:fs'
-export const DEV = 'http://localhost:5173/'
+export const DEV = process.env.DEV || 'http://localhost:5173/'
 export let navigateur = null
-export const lancer = async (o = {}) => { navigateur = await chromium.launch({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' }, ...o }); return navigateur }
+/** `persistant: true` pour une sonde qui relit la poignée de la clé depuis IndexedDB (voir commun/playwright.mjs) */
+export const lancer = async ({ persistant = false, ...o } = {}) => {
+  const options = { env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' }, ...o }
+  navigateur = persistant ? await lancerPersistant(options) : await chromium.launch(options)
+  return navigateur
+}
 export let echecs = 0
 export const ok = (c, m, detail) => { if (!c) echecs++; console.log(c ? '✓' : '✗ ÉCHEC', m, !c && detail !== undefined ? '— ' + JSON.stringify(detail).slice(0, 1800) : '') }
 export const dort = ms => new Promise(r => setTimeout(r, ms))
@@ -294,10 +299,13 @@ export const DIALOGUES = () => [...document.querySelectorAll('dialog[open]')].ma
   boutons: [...d.querySelectorAll('.actions button')].map(b => ({ a: b.dataset.a ?? b.className, t: (b.textContent || '').replace(/[\u00a0\u202f]/g, ' ') })),
 }))
 export const dialogue = async (p, timeout = 20000) => { await p.waitForSelector('dialog[open]', { timeout }); await p.waitForTimeout(150); return (await p.evaluate(DIALOGUES))[0] }
-/** Connecté dans un clic : menu ⋯ → « Copie sur le Drive… » → [Se connecter à Google] */
+/** Connecté dans un clic : menu ⋯ → « Autres sauvegardes… » → « Choisir le compte ou arrêter… » (lot 18) → [Se connecter à Google] */
 export async function seConnecter(p) {
   await p.click('.barre-haut .bouton.points'); await p.waitForTimeout(150)
-  await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="copie-drive"]')
+  // (Adapté au lot 18 : « Copie sur le Drive… » n'est plus dans le menu ⋯ ; sa fenêtre s'ouvre par « Autres sauvegardes… » → « Choisir le compte ou arrêter… »)
+  await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="autres-sauvegardes"]')
+  await p.waitForSelector('dialog.dialogue-autres[open] .as-compte')
+  await p.click('dialog.dialogue-autres[open] .as-compte')
   await p.waitForSelector('dialog.dialogue-drive[open] .d-connecter')
   await p.click('dialog.dialogue-drive[open] .d-connecter')
   await p.waitForFunction(() => /^Connecté/.test(document.querySelector('dialog.dialogue-drive[open] .d-qui')?.textContent ?? ''), null, { timeout: 10000 }).catch(() => {})

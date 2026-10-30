@@ -25,7 +25,7 @@
 // Lancer : node CF2-drive-fermer.mjs [adresse du serveur de développement]
 import { chromium, INIT, ECOUTER_TOASTS, pret, ecrire, etat, entree, lireMemc, formesIds, attendreEcrites, nbEcrites } from './verif/sauvegardes/commun.mjs'
 import { FauxGoogle } from './verif/migration/faux-google.mjs'
-const DEV = process.argv[2] || 'http://localhost:5173/'
+const DEV = process.env.DEV || process.argv[2] || 'http://localhost:5173/'
 let echecs = 0
 const ok = (c, m, d) => { if (!c) echecs++; console.log(c ? '✓' : '✗ ÉCHEC', m, !c && d !== undefined ? '— ' + JSON.stringify(d).slice(0, 1500) : '') }
 const info = (m, d) => console.log('·', m, d === undefined ? '' : JSON.stringify(d).slice(0, 800))
@@ -50,7 +50,10 @@ async function fermer(p, reponse, attente = 1500) {
   return { questions, ferme: p.isClosed(), t }
 }
 async function connecter(p) {
-  await entree(p, 'copie-drive')
+  // (Adapté au lot 18 : « Copie sur le Drive… » n'est plus dans le menu ⋯ ; sa fenêtre s'ouvre par « Autres sauvegardes… » → « Choisir le compte ou arrêter… »)
+  await entree(p, 'autres-sauvegardes')
+  await p.waitForSelector('dialog.dialogue-autres[open] .as-compte')
+  await p.click('dialog.dialogue-autres[open] .as-compte')
   await p.waitForSelector('dialog.dialogue-drive[open] .d-connecter')
   await p.click('dialog.dialogue-drive[open] .d-connecter')
   await p.waitForFunction(() => /^Connecté/.test(document.querySelector('dialog.dialogue-drive[open] .d-qui')?.textContent ?? ''), null, { timeout: 10000 }).catch(() => {})

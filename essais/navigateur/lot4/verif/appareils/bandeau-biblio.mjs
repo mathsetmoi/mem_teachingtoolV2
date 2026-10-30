@@ -14,7 +14,7 @@ const INIT = () => {
   F.createWritable = async function (...a) { const w = await cw.apply(this, a); return { write: d => w.write(d), close: async () => { await w.close(); window.__ecritures++ }, abort: r => w.abort(r) } }
   window.showSaveFilePicker = async o => (await navigator.storage.getDirectory()).getFileHandle(o?.suggestedName || 'x.memc', { create: true })
 }
-const nav = await lancer()
+const nav = await lancer({ persistant: true })
 const ctx = await contexte(nav)
 await ctx.addInitScript(INIT)
 const p = await ctx.newPage(); suivre(p, 'bb')
@@ -30,7 +30,7 @@ await p.mouse.move(500, 400); await p.mouse.down(); for (let i = 0; i < 10; i++)
 await p.click('.bouton-classeur'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400)
 const ligne = await p.evaluate(() => { const l = document.querySelector('.biblio-ouvert'); return { texte: l.textContent.replace(/[  ]/g, ' '), boutons: [...l.querySelectorAll('button')].map(b => b.textContent) } })
 info('la ligne du classeur ouvert, clé en pause', ligne)
-ok(ligne.boutons.some(b => /Reprendre/.test(b)), 'Bibliothèque : la ligne porte [Reprendre l\'enregistrement sur la clé]', ligne)
+ok(ligne.boutons.some(b => /Reprendre/.test(b)), 'Bibliothèque : la ligne porte [Reprendre l\'enregistrement]', ligne)
 // Partir vers « Fractions » pendant la pause : aucun requestPermission sans clic, et la page part
 const n0 = await p.evaluate(() => window.__ecritures)
 const id = await p.evaluate(() => [...document.querySelectorAll('.grille-classeurs.tous > li')].find(l => l.querySelector('.carte-nom-classeur')?.textContent === 'Fractions').dataset.cle)
