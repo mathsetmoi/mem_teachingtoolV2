@@ -39,7 +39,7 @@ import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier }
 import type { FicheDeSeance } from '../resume/fiche'
 import { texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil, consigneGemini } from '../resume/fiche'
 import { ficheDeLaSeance, gestesDeLaSeance } from '../resume/collecte'
-import { ErreurGemini, PAGES_MAX, cleGemini, consignesDuProfesseur, demanderAGemini, dernierModele, imagePourGemini, pronoteDe } from '../resume/gemini'
+import { ErreurGemini, PAGES_MAX, cleGemini, consignesDuProfesseur, demanderAGemini, dernierModele, enTeteGemini, imagePourGemini, pronoteDe } from '../resume/gemini'
 import { ouvrirRedaction } from '../resume/reglage-vue'
 
 /** Ce qu'on retient d'une séance publiée, dans le document du professeur
@@ -415,6 +415,22 @@ export class Publication {
     return fiche ? { id: x.id, fiche } : null
   }
 
+  /** Le texte du cahier de textes de la séance d'avant, dans ce classeur
+   *  (celui qui est gardé, sinon celui de l'outil) : son « À faire » dit à
+   *  Gemini quels exercices sont des corrections. '' : pas de séance d'avant */
+  private texteDeLaSeancePrecedente(id: string): string {
+    const t = this.app.tableau, l = t.seancesDuClasseur()
+    const k = l.findIndex(s => s.id === id)
+    for (let j = k - 1; j >= 0; j--) {
+      if (!l[j].pages.length) continue
+      const garde = t.texteCahierDe(l[j].id)
+      if (garde) return garde.texte
+      const f = ficheDeLaSeance(t, l[j].id, this.app.classeur.nom)
+      return f ? texteCahierDeLOutil(f) : ''
+    }
+    return ''
+  }
+
   /** Le texte du cahier de textes de la séance choisie : celui qui est gardé
    *  (corrigé par le professeur, ou rédigé depuis le dernier geste), sinon
    *  celui de l'outil ; puis, dans la version en ligne avec une clé, Gemini le
@@ -458,10 +474,10 @@ export class Publication {
         if (b64) images.push(b64)
         if (!encore()) return
       }
-      const brut = await demanderAGemini(cleGemini(), consigneGemini(fiche, null, consignesDuProfesseur()), images,
+      const brut = await demanderAGemini(cleGemini(), consigneGemini(fiche, null, consignesDuProfesseur(), this.texteDeLaSeancePrecedente(id)), images,
         { nouvelEssai: () => { if (encore()) qui.textContent = 'Gemini est très demandé : nouvel essai…' } })
       if (!encore()) return
-      const texte = texteCahierDeGemini(fiche, brut)
+      const texte = texteCahierDeGemini(fiche, brut, enTeteGemini())
       if (!texte) throw new ErreurGemini('Gemini n\'a rien rédigé pour cette séance : le texte de l\'outil reste.')
       // Le professeur a commencé à corriger le texte de l'outil : on ne l'écrase pas
       if (this.texteTouche) { qui.textContent = 'Gemini a rédigé un texte, mais vous avez déjà écrit le vôtre : il reste.'; return }

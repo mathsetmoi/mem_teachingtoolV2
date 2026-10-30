@@ -7,7 +7,7 @@
 // navigateur (voir gemini.ts).
 // =============================================================
 import { fermerSurLeFond } from '../dialogue'
-import { ETABLISSEMENTS, adresseValable, cleGemini, cleValable, consignesDuProfesseur, CONSIGNES_MAX, demanderAGemini, dernierModele, nettoyerCle, retenirConsignes, pronoteDe, retenirCleGemini, retenirPronote, ErreurGemini } from './gemini'
+import { ETABLISSEMENTS, adresseValable, cleGemini, cleValable, consignesDuProfesseur, CONSIGNES_MAX, demanderAGemini, dernierModele, enTeteGemini, nettoyerCle, retenirConsignes, retenirEnTete, pronoteDe, retenirCleGemini, retenirPronote, ErreurGemini } from './gemini'
 
 const echapper = (t: string) => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
@@ -35,6 +35,7 @@ export function ouvrirRedaction(racine: HTMLElement, fini: () => void): HTMLDial
       <label class="champ r-champ-consignes"><span>Vos consignes pour le texte (facultatif)</span>
         <textarea class="r-consignes" rows="4" maxlength="${CONSIGNES_MAX}" spellcheck="true" placeholder="Par exemple : Commence par les notions, puis les exercices. Écris « Exercices » au pluriel. Termine « À faire » par « pour lundi » si c'est écrit au tableau.">${echapper(consignesDuProfesseur())}</textarea></label>
       <p class="r-aide-consignes">Gemini les suit à chaque rédaction, en plus des règles de l'outil (rien d'inventé, aucun nom d'élève).</p>
+      <label class="r-case"><input type="checkbox" class="r-entete"${enTeteGemini() ? ' checked' : ''} /> Mettre la date et le chapitre en tête du texte</label>
       <fieldset class="r-pronote"><legend>Votre Pronote, pour le bouton « Ouvrir Pronote »</legend>
         ${ETABLISSEMENTS.map(e => `<label class="champ"><span>${echapper(e.nom)}</span>
           <input class="r-pronote-${e.cle}" type="url" inputmode="url" autocomplete="off" placeholder="https://…/pronote/professeur.html" value="${echapper(pronoteDe(e.cle))}" /></label>`).join('')}
@@ -75,6 +76,7 @@ export function ouvrirRedaction(racine: HTMLElement, fini: () => void): HTMLDial
     if (c !== cleGemini()) retenirCleGemini(c)
     for (const e of ETABLISSEMENTS) retenirPronote(e.cle, q<HTMLInputElement>(`.r-pronote-${e.cle}`).value)
     retenirConsignes(q<HTMLTextAreaElement>('.r-consignes').value)
+    retenirEnTete(q<HTMLInputElement>('.r-entete').checked)
     d.close()
   })
   q('.r-fermer').addEventListener('click', () => d.close())

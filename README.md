@@ -5838,6 +5838,11 @@ nom de l'appareil. La version hors ligne ne fait jamais appel à Gemini.
   professeur peut y écrire ses consignes pour le texte (facultatif, au plus
   1 500 signes) : elles s'ajoutent à la consigne de l'outil et passent avant
   ses règles de forme, jamais avant « rien d'inventé, aucun nom d'élève ».
+  Une case « Mettre la date et le chapitre en tête du texte » (cochée au
+  départ ; décochée, clé `mem-redaction-entete` = `non`). Les puces que
+  Gemini écrit (- * •) restent, en « • » ; au plus 30 lignes. Le cahier de
+  textes de la séance d'avant du classeur part avec la consigne : un exercice
+  de son « À faire » traité pendant la séance est une correction.
 - Dans le document, deux cartes de premier niveau, hors des pages (ni étape
   du film, ni annulation, comme les noms des pages) : `activites` (id →
   { t, page, type, titre }) et `textesCahier` (id de la séance → { texte,
@@ -5845,7 +5850,8 @@ nom de l'appareil. La version hors ligne ne fait jamais appel à Gemini.
   les garde sans autre code ; une version d'avant les ignore. Aucune base ni
   clé existante ne change.
 - Dans ce navigateur (nouvelles clés) : `mem-redaction-cle`,
-  `mem-redaction-modele`, `mem-redaction-consignes`, `mem-pronote`. La clé n'est jamais dans le document,
+  `mem-redaction-modele`, `mem-redaction-consignes`, `mem-redaction-entete`,
+  `mem-pronote`. La clé n'est jamais dans le document,
   un fichier, le replay ou le dépôt.
 - Le film élève (`.mem`) ne change pas.
 - Les essais : `tests/resume.test.ts`, et

@@ -103,9 +103,16 @@ describe('Gemini', () => {
     expect(c).toContain('Les consignes du professeur, à suivre en priorité sur celles du dessus :\nÉcris « Exercices » au pluriel.')
     expect(c.indexOf('Écris « Exercices »')).toBeLessThan(c.indexOf('jamais un prénom'))
   })
+  it('le cahier de textes de la séance d\'avant part avec la consigne', () => {
+    expect(consigneGemini(f, null)).not.toContain('séance précédente')
+    const c = consigneGemini(f, null, '', 'Fait en classe : cours.\nÀ faire : exercice 12 p. 42.')
+    expect(c).toContain('séance précédente du chapitre (avec le travail donné à faire à la maison) :\nFait en classe : cours.\nÀ faire : exercice 12 p. 42.')
+    expect(c).toMatch(/est une correction/)
+  })
   it('le texte rendu est mis au propre, avec la date et le chapitre', () => {
     expect(texteCahierDeGemini(f, '**Fait en classe :** exercice 12 p. 42\n\n- À faire : exercice 14 p. 43\n')).toBe(
-      'Lundi 26 octobre · Ensembles de nombres\nFait en classe : exercice 12 p. 42\nÀ faire : exercice 14 p. 43')
+      'Lundi 26 octobre · Ensembles de nombres\nFait en classe : exercice 12 p. 42\n• À faire : exercice 14 p. 43')
+    expect(texteCahierDeGemini(f, 'Cours :\n* Propriété : S et P.\n•\n', false)).toBe('Cours :\n• Propriété : S et P.')
     expect(texteCahierDeGemini(f, '  \n ')).toBeNull()
   })
   it('le modèle : le gemini-X-flash le plus récent', () => {
