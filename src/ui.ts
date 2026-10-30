@@ -3051,7 +3051,7 @@ export class UI implements Interface {
 
   /** Le bouton ⋯ du menu complet, avant Supprimer : son petit menu a
    *  « Copier en image » (une image PNG pour l'ENT ou Pronote, à ne pas
-   *  confondre avec « Copier pour Pronote » de Publier, qui copie un lien)
+   *  confondre avec « Copier et ouvrir Pronote » de Publier, qui copie un lien)
    *  et « Envoyer vers… » (une autre page), puis l'ordre (lot 5 : voir
    *  construireMenuPlus). Ils étaient dans la rangée ; ils
    *  la faisaient passer sur deux lignes (le menu d'un rectangle de 728 à

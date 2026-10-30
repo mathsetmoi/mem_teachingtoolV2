@@ -19,7 +19,7 @@
 // ClipboardItem dont l'image est une promesse, sans rien attendre avant.
 // Repli « Enregistrer l'image (.png) » quand le navigateur ne sait pas
 // (Firefox avant la version 127) ou refuse (une autorisation refusée).
-// Le libellé ne se confond pas avec « Copier pour Pronote » de la fenêtre
+// Le libellé ne se confond pas avec « Copier et ouvrir Pronote » de la fenêtre
 // Publier, qui copie un lien.
 // =============================================================
 import type { Apercus, PageAPeindre } from './apercu'
