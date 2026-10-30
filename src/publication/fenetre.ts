@@ -39,7 +39,7 @@ import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier }
 import type { FicheDeSeance } from '../resume/fiche'
 import { texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil, consigneGemini } from '../resume/fiche'
 import { ficheDeLaSeance, gestesDeLaSeance } from '../resume/collecte'
-import { ErreurGemini, PAGES_MAX, cleGemini, demanderAGemini, imagePourGemini, pronoteDe } from '../resume/gemini'
+import { ErreurGemini, PAGES_MAX, cleGemini, consignesDuProfesseur, demanderAGemini, imagePourGemini, pronoteDe } from '../resume/gemini'
 import { ouvrirRedaction } from '../resume/reglage-vue'
 
 /** Ce qu'on retient d'une séance publiée, dans le document du professeur
@@ -455,7 +455,7 @@ export class Publication {
         if (b64) images.push(b64)
         if (!encore()) return
       }
-      const brut = await demanderAGemini(cleGemini(), consigneGemini(fiche, null), images)
+      const brut = await demanderAGemini(cleGemini(), consigneGemini(fiche, null, consignesDuProfesseur()), images)
       if (!encore()) return
       const texte = texteCahierDeGemini(fiche, brut)
       if (!texte) throw new ErreurGemini('Gemini n\'a rien rédigé pour cette séance : le texte de l\'outil reste.')

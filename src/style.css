@@ -865,6 +865,9 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .dialogue-redaction .champ { display: grid; gap: 6px; }
 .dialogue-redaction .champ span { font-size: 14px; font-weight: 700; }
 .dialogue-redaction .champ input { height: 42px; padding: 0 12px; border: 1px solid var(--filet); border-radius: 10px; background: #fbfcfe; font-size: 15px; min-width: 0; }
+.dialogue-redaction .champ textarea { padding: 10px 12px; border: 1px solid var(--filet); border-radius: 10px; background: #fbfcfe; font: inherit; font-size: 15px; line-height: 1.4; resize: vertical; min-width: 0; }
+.dialogue-redaction .champ.r-champ-consignes { grid-template-columns: 1fr; }
+.dialogue-redaction .r-aide-consignes { margin-top: -6px !important; font-size: 13px; color: var(--encre-douce); }
 .dialogue-redaction fieldset { border: 1px solid var(--filet); border-radius: 12px; padding: 8px 12px 12px; margin: 0; display: grid; gap: 8px; }
 .dialogue-redaction legend { font-weight: 700; font-size: 14px; padding: 0 4px; }
 .dialogue-redaction summary { cursor: pointer; font-weight: 700; color: var(--bleu); }
