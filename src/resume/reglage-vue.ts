@@ -7,7 +7,7 @@
 // navigateur (voir gemini.ts).
 // =============================================================
 import { fermerSurLeFond } from '../dialogue'
-import { ETABLISSEMENTS, adresseValable, cleGemini, cleValable, consignesDuProfesseur, CONSIGNES_MAX, demanderAGemini, nettoyerCle, retenirConsignes, pronoteDe, retenirCleGemini, retenirPronote, ErreurGemini } from './gemini'
+import { ETABLISSEMENTS, adresseValable, cleGemini, cleValable, consignesDuProfesseur, CONSIGNES_MAX, demanderAGemini, dernierModele, nettoyerCle, retenirConsignes, pronoteDe, retenirCleGemini, retenirPronote, ErreurGemini } from './gemini'
 
 const echapper = (t: string) => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
@@ -60,7 +60,7 @@ export function ouvrirRedaction(racine: HTMLElement, fini: () => void): HTMLDial
     b.disabled = true; etat('Essai de la clé…')
     try {
       await demanderAGemini(c, 'Réponds seulement : OK', [])
-      etat('✓ La clé marche.')
+      etat(`✓ La clé marche (modèle : ${dernierModele()}).`)
     } catch (e) { etat(e instanceof ErreurGemini ? e.message : 'Gemini ne répond pas.', true) }
     finally { b.disabled = false }
   })

@@ -145,13 +145,28 @@ export function messageSelonLaRaison(statut: number, detail: string): string {
   if (/SERVICE_DISABLED|has not been used in project|is disabled/i.test(detail)) return 'L\'API Gemini n\'est pas activée pour le projet de cette clé : activez « Generative Language API » dans Google Cloud, attendez quelques minutes, puis réessayez.'
   if (statut === 429) return 'Gemini a trop servi aujourd\'hui (le quota de la clé gratuite) : le texte de l\'outil reste, réessayez plus tard.'
   if (/location is not supported|User location/i.test(detail)) return 'Gemini n\'est pas ouvert dans ce pays : le texte de l\'outil reste.'
+  if (surcharge(statut)) return 'Gemini est très demandé en ce moment et n\'a pas pu rédiger le texte : cliquez « Réessayer » dans quelques minutes.'
   if (statut === 403) return 'Gemini refuse la clé (elle n\'a pas accès à l\'API Gemini).'
   return `Gemini n'a pas pu rédiger le texte (erreur ${statut}) : le texte de l'outil reste.`
 }
 
 /** Le texte rendu par Gemini pour cette consigne et ces images (JPEG, en
  *  base 64). Lève ErreurGemini avec un message à dire. */
-export async function demanderAGemini(cle: string, consigne: string, images: readonly string[], o: { signal?: AbortSignal } = {}): Promise<string> {
+/** Gemini surchargé (« high demand ») : on réessaie après ces attentes,
+ *  puis avec les alias que Google tient à jour (souvent moins demandés) */
+export const ATTENTES_SURCHARGE = [2000, 5000]
+const MODELES_DE_RELAIS = [MODELE_DE_SECOURS, 'gemini-flash-lite-latest']
+const surcharge = (statut: number) => statut === 500 || statut === 502 || statut === 503 || statut === 504
+const patienter = (ms: number, signal?: AbortSignal) => new Promise<void>((ok, non) => {
+  const h = setTimeout(ok, ms)
+  signal?.addEventListener('abort', () => { clearTimeout(h); non(new DOMException('Abandon', 'AbortError')) }, { once: true })
+})
+
+/** Le modèle qui a rédigé la dernière réponse (à dire au professeur) */
+let dernier = ''
+export const dernierModele = () => dernier
+
+export async function demanderAGemini(cle: string, consigne: string, images: readonly string[], o: { signal?: AbortSignal; nouvelEssai?: () => void } = {}): Promise<string> {
   const corps = JSON.stringify({
     contents: [{ role: 'user', parts: [{ text: consigne }, ...images.map(data => ({ inline_data: { mime_type: 'image/jpeg', data } }))] }],
     generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
@@ -165,6 +180,18 @@ export async function demanderAGemini(cle: string, consigne: string, images: rea
     r = await essayer(m)
     // Un modèle retiré entre-temps : on redemande la liste, une fois
     if (r.status === 404) { m = await modele(cle, true); r = await essayer(m) }
+    // Surchargé : le même modèle un peu plus tard, puis les alias
+    for (const ms of ATTENTES_SURCHARGE) {
+      if (!surcharge(r.status)) break
+      o.nouvelEssai?.()
+      await patienter(ms, o.signal)
+      r = await essayer(m)
+    }
+    for (const autre of MODELES_DE_RELAIS) {
+      if (!surcharge(r.status)) break
+      if (autre !== m) { o.nouvelEssai?.(); r = await essayer(autre); if (r.ok) m = autre }
+    }
+    if (r.ok) dernier = m
   } catch (e) {
     if (e instanceof ErreurGemini || (e as Error)?.name === 'AbortError') throw e
     throw new ErreurGemini('Gemini ne répond pas (pas d\'internet ?) : le texte de l\'outil reste.')
