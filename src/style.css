@@ -1293,6 +1293,8 @@ body.en-trieuse .toast { z-index: 30; }
 .menu-flottant.fonds-en-colonnes > .fond-de-carte { grid-column: auto; }
 /* Un menu aux aides longues (le bouton ⋯) : une largeur fixe, les aides vont à la ligne */
 .menu-large { width: min(400px, calc(100vw - 16px)); }
+/* Le menu du classeur : ses séances, puis la bibliothèque (le nom d'une séance va à la ligne) */
+.menu-seances { width: min(340px, calc(100vw - 16px)); }
 /* En tête du menu ⋯ : le classeur et l'état de sa sauvegarde, ligne par
    ligne (une pastille verte : à jour ; ambre : à regarder) ; le bouton d'une
    ligne qui demande quelque chose est une entrée du menu */

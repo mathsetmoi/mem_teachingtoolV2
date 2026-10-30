@@ -6,7 +6,7 @@ const ctx = await contexte(nav)
 const p = await ouvrir(ctx, '', 'dernier')
 const [x] = await creerPlusieurs(p, 1, { noms: ['Année dernière : Symétrie'] })
 const ici = await p.evaluate(() => window.__app.classeur.nom)
-await p.click('.bouton-classeur'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400)
+await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400)
 await p.click(`.grille-classeurs.tous li[data-cle="${x}"] .carte-apercu`, { modifiers: ['Control'] }); await dort(2500)
 const autre = ctx.pages()[1]
 info('l\'autre onglet', await autre.evaluate(() => document.querySelector('.nom-classeur')?.textContent))

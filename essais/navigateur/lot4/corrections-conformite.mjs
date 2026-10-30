@@ -41,7 +41,7 @@ const nouveauClasseur = (p, nom) => p.evaluate(async nom => {
 }, nom)
 /** Par la bibliothèque, comme le professeur : le bouton du classeur, puis la carte */
 async function aller(p, id) {
-  await p.click('.bouton-classeur')
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]')
   await p.waitForFunction(() => window.__bibliotheque?.ouvert, null, { timeout: 10000 })
   await p.waitForTimeout(300)
   await Promise.all([

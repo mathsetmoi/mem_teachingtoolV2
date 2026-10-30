@@ -6,7 +6,7 @@ for (const [nom, action, sel] of [['Nouveau classeur', 'nouveau-classeur', 'dial
   for (const geste of ['souris', 'doigt']) {
     const ctx = await contexte(nav, geste === 'doigt' ? { hasTouch: true, viewport: { width: 1180, height: 820 } } : {})
     const p = await ouvrir(ctx, '', 'marge')
-    await p.click('.bouton-classeur'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(300)
+    await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(300)
     await p.click(`[data-action="${action}"]`); await p.waitForSelector(sel + '[open]')
     await p.keyboard.press('Control+a'); await p.keyboard.type('Géométrie dans l\'espace')
     const r = await p.evaluate(s => { const d = document.querySelector(s + '[open]'); const b = d.getBoundingClientRect(); const x = b.left + 8, y = b.top + b.height / 2; return { x, y, sous: document.elementFromPoint(x, y)?.tagName, pad: getComputedStyle(d).padding } }, sel)

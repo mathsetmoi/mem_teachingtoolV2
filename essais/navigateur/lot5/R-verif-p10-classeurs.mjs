@@ -34,7 +34,7 @@ const s0 = await session(p), id1 = s0.page, v1 = s0.vues[id1]
 note('page 1 laissée à', { zoom: (await ecran(p)).zoom, v1 })
 
 // La bibliothèque : dupliquer ce classeur, ouvrir la copie
-await clicSur(p, wacom, '.bouton-classeur')
+await clicSur(p, wacom, '.bouton-classeur'); await p.waitForTimeout(200); await clicSur(p, wacom, '.menu-seances [data-action="bibliotheque"]')
 await p.waitForSelector('.grille-classeurs li', { timeout: 10000 }); await p.waitForTimeout(400)
 const opt = await boite(p, '.grille-classeurs li:has-text("Premier classeur") .options-classeur')
 await clic(p, wacom, opt.x + opt.width / 2, opt.y + opt.height / 2); await p.waitForTimeout(250)
@@ -61,7 +61,7 @@ ok(e.zoom === '100 %' && en && Math.abs((en.x1 + en.x2) / 2 - (zl.x + zl.l / 2))
 await p.screenshot({ path: `${D}/p10-${LIEU}-copie-p2.png` })
 
 // Rouvrir l'original : page 1, 100 %, même centre
-await clicSur(p, wacom, '.bouton-classeur')
+await clicSur(p, wacom, '.bouton-classeur'); await p.waitForTimeout(200); await clicSur(p, wacom, '.menu-seances [data-action="bibliotheque"]')
 await p.waitForSelector('.grille-classeurs li', { timeout: 10000 }); await p.waitForTimeout(400)
 const carte = await boite(p, '.grille-classeurs li:has-text("Premier classeur"):not(:has-text("copie")) .carte-classeur')
 note('carte de l\'original', carte)

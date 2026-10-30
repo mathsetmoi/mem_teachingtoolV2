@@ -141,10 +141,10 @@ try {
     await ecrire(p, 500, 300); await ecrire(p, 500, 360)
     ok(await attendreFichier(FICHIER, 4), 'M5) deux traits : ils arrivent seuls dans le vrai fichier de la clé', (() => { try { return lireMemc(fs.readFileSync(FICHIER)) } catch (e) { return e.message } })())
     // Un autre classeur, puis retour
-    await p.click('.bouton-classeur'); await p.waitForTimeout(800)
+    await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForTimeout(800)
     const idPremier = new URLSearchParams(premier).get('classeur')
     await Promise.all([p.waitForEvent('load', { timeout: 30000 }), p.click(`.case-classeur[data-id="${idPremier}"] .carte-classeur`)]); await pret(p)
-    await p.click('.bouton-classeur'); await p.waitForTimeout(800)
+    await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForTimeout(800)
     await viderPerm(p)
     await Promise.all([p.waitForEvent('load', { timeout: 30000 }), p.click('.case-classeur[data-id="d1d1d1d1d1d1d1d1"] .carte-classeur')]); await pret(p)
     const e3 = await etat(p)
@@ -160,7 +160,7 @@ try {
     const FICHIER = ICI + '/cle/Fractions.memc'
     const { ctx, p } = await lancer(X, ICI + '/profil-neuf')
     await p.goto(URL_); await pret(p)
-    await p.click('.bouton-classeur'); await p.waitForTimeout(800)
+    await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForTimeout(800)
     await p.click('.biblio-nouveau'); await p.waitForSelector('dialog[open] input[name="nom"]')
     await p.fill('dialog[open] input[name="nom"]', 'Fractions')
     const coche = await p.evaluate(() => document.querySelector('dialog[open] .case-cle input')?.checked)

@@ -252,7 +252,7 @@ if (seul('A')) {
   await p.waitForTimeout(1600)
   let q = noterQuestions(p)
   const ouvrirBiblio = async p => {
-    await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b.checkVisibility?.() !== false && b.getClientRects().length) b.click(); else window.__app.ui.ouvrirBibliotheque() })
+    await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b.checkVisibility?.() !== false && b.getClientRects().length) { b.click(); document.querySelector('.menu-seances [data-action="bibliotheque"]').click() } else window.__app.ui.ouvrirBibliotheque() })
     await p.waitForFunction(() => window.__bibliotheque.ouvert && document.querySelectorAll('.grille-classeurs .carte-classeur').length > 0, null, { timeout: 10000 })
     await p.waitForTimeout(200)
   }

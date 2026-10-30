@@ -827,7 +827,7 @@ try {
     await h.waitForSelector('button[title^="Importer une image ou un PDF"]', { state: 'attached', timeout: 30000 })
     await h.waitForTimeout(800)
     await fermerDialogues(h)
-    await h.evaluate(() => document.querySelector('.bouton-classeur')?.click())
+    await h.evaluate(() => (document.querySelector('.bouton-classeur')?.click(), document.querySelector('.menu-seances [data-action="bibliotheque"]')?.click()))
     await h.waitForSelector('.biblio-actions [data-action="nouveau-dossier"]', { timeout: 10000 })
     await h.click('.biblio-actions [data-action="nouveau-dossier"]')
     await h.waitForSelector('dialog.dialogue-dossier[open]')

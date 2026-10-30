@@ -94,7 +94,7 @@ const creerDossier = (p, nom, o = {}) => p.evaluate(async ({ nom, o }) => {
   return d.id
 }, { nom, o })
 const ouvrirBiblio = async p => {
-  await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b.getClientRects().length) b.click(); else window.__app.ui.ouvrirBibliotheque() })
+  await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b.getClientRects().length) { b.click(); document.querySelector('.menu-seances [data-action="bibliotheque"]').click() } else window.__app.ui.ouvrirBibliotheque() })
   await p.waitForFunction(() => window.__bibliotheque.ouvert && document.querySelectorAll('.grille-classeurs li, .biblio-vide-dossier:not([hidden])').length > 0, null, { timeout: 10000 })
   await p.waitForTimeout(250)
 }
@@ -920,7 +920,7 @@ if (seul('K')) {
     await p.goto('file://' + UN)
     await p.waitForFunction(() => document.querySelector('.rang')?.textContent?.includes('/'), null, { timeout: 30000 })
     await p.waitForTimeout(800)
-    await p.evaluate(() => document.querySelector('.bouton-classeur')?.click())
+    await p.evaluate(() => (document.querySelector('.bouton-classeur')?.click(), document.querySelector('.menu-seances [data-action="bibliotheque"]')?.click()))
     await p.waitForTimeout(500)
     const ouvert = await p.evaluate(() => !document.querySelector('.bibliotheque').hidden)
     const cle = await p.evaluate(() => document.querySelector('.grille-classeurs li.case-classeur')?.dataset.cle)

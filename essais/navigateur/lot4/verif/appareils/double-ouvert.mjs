@@ -4,7 +4,7 @@ const nav = await lancer()
 for (const mode of ['souris', 'plume-wacom', 'plume-ipad', 'doigt']) {
   const ctx = await contexte(nav, mode === 'plume-ipad' || mode === 'doigt' ? { hasTouch: true, viewport: { width: 1180, height: 820 } } : {})
   const p = await ouvrir(ctx, '', mode)
-  await p.click('.bouton-classeur').catch(() => p.evaluate(() => window.__app.ui.ouvrirBibliotheque()))
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]').catch(() => p.evaluate(() => window.__app.ui.ouvrirBibliotheque()))
   await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400)
   const id = await p.evaluate(() => window.__app.classeur.id)
   const r = await p.evaluate(id => { const e = document.querySelector(`.grille-classeurs.tous li[data-cle="${id}"] .carte-apercu`); const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 } }, id)

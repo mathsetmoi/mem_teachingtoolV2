@@ -9,7 +9,7 @@ const etatBouton = () => p.evaluate(() => { const b = document.querySelector('.b
 info('au départ', await etatBouton())
 
 // 1. Le bouton ouvre la bibliothèque (clic de souris réel)
-await p.click('.bouton-classeur')
+await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]')
 await p.waitForSelector('.bibliotheque:not([hidden])')
 await dort(300)
 info('ouverte, focus', await p.evaluate(() => document.activeElement?.className + ' ' + (document.activeElement?.getAttribute('aria-label') || '')))
@@ -46,7 +46,7 @@ info('formes', await p.evaluate(() => window.__app.formes.length))
 info('bouton après écriture', await etatBouton())
 
 // 4. Nouveau dossier « 5e B »
-await p.click('.bouton-classeur'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(300)
+await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(300)
 await p.click('[data-action="nouveau-dossier"]')
 await p.waitForSelector('dialog.dialogue-dossier[open]')
 await p.keyboard.type('5e B')

@@ -3679,11 +3679,12 @@ le tient à jour).
   1er septembre », fait 148 px contre 159). Quand il faut y regarder, un
   **point ambre** de 8 px sur l'icône, immobile : ni animation, ni
   transition, au vidéoprojecteur toute l'heure. Le lecteur d'écran y lit
-  « Classeur « Symétrie centrale » : ouvrir la bibliothèque », puis toutes
+  « Classeur « Symétrie centrale » : ses séances et la bibliothèque », puis toutes
   les lignes de l'état (un texte caché, `aria-describedby`). Il est inerte,
   comme les autres barres, pendant la revue, une séance et la trieuse. Un
-  clic (Entrée, Espace au clavier) ouvre la bibliothèque des classeurs (voir
-  « La bibliothèque des classeurs ») ; « Bibliothèque des classeurs… », en
+  clic (Entrée, Espace au clavier) ouvre le menu du classeur : ses séances,
+  puis « Bibliothèque des classeurs » (voir « Le menu du classeur (lot 20) »
+  et « La bibliothèque des classeurs ») ; « Bibliothèque des classeurs… », en
   tête du menu ⋯, aussi (c'est le seul chemin quand le bouton est caché).
   Espace ne l'ouvre que si le focus est venu au bouton par le clavier (Tab,
   ou la bibliothèque ouverte et fermée au clavier) et qu'aucun appui n'a
@@ -4391,7 +4392,8 @@ classeurs ne s'ouvre pas dans ce navigateur : seul « … » est disponible. »)
 **Le premier lancement après la mise à jour.** Si le premier classeur (le
 tableau d'avant) a du contenu, un message le dit une fois : « Votre tableau
 est maintenant le classeur « Mon tableau ». Son nom, en haut à gauche,
-ouvre la bibliothèque de vos classeurs. » [Voir la bibliothèque] (« Son
+ouvre ses séances et la bibliothèque de vos classeurs. » [Voir la
+bibliothèque] (« Son
 bouton… » quand il n'a que son icône ; « Le menu ⋯, en haut à droite,
 ouvre la bibliothèque de vos classeurs. » quand il est caché faute de
 place). Puis `mem-teachingtool-annonce` est posée ; un navigateur neuf la
@@ -5841,6 +5843,57 @@ nom de l'appareil. La version hors ligne ne fait jamais appel à Gemini.
 - Les essais : `tests/resume.test.ts`, et
   `essais/navigateur/lot19/R1-resume-seance.mjs` (Gemini et le relais
   simulés).
+
+## Le menu du classeur (lot 20)
+
+Demande du professeur, le 30 octobre 2026 (maquette validée, choix A
+parmi quatre : un menu sous la carte, un chemin cliquable, un panneau avec
+les vignettes, la carte coupée en deux) : en cliquant sur le classeur en
+haut à gauche, voir la liste des séances, et pouvoir aller dans la
+bibliothèque.
+
+### Le mode d'emploi
+
+- **Un clic sur la carte du classeur ouvre son menu**, juste dessous,
+  aligné sur elle. En tête, « Séances de ce chapitre » : les six premières
+  séances (la plus récente en haut, ou l'ordre choisi à la main), chacune
+  avec son nom (sinon « Séance du lun 12 oct 10h12 »), sa date si elle a un
+  nom, son nombre de pages, et « en lecture » pour une séance passée. Celle
+  qu'on regarde est cochée.
+- **Un clic sur une séance** va à sa première page (en lecture si elle est
+  passée, avec « Retour à aujourd'hui » comme d'habitude) ; sur la séance
+  du jour, on revient là où on en était.
+- **« Toutes les séances (9)… »** ouvre la bibliothèque sur sa vue
+  « Séances », « Chapitre en cours » choisi (« Tous les chapitres » reste
+  à un clic).
+- **« Nouvelle séance »**, comme dans le menu ⋯.
+- **« Bibliothèque des classeurs »**, en bas. **Ctrl + B** l'ouvre aussi
+  directement, sans le menu (sauf dans un champ ou le texte qu'on tape, où
+  Ctrl + B met en gras) ; il est dans l'aide « ? ».
+- Échap, un deuxième clic sur la carte ou un clic ailleurs ferme le menu.
+  Au clavier : Entrée ou Espace sur la carte l'ouvre, le focus sur la
+  première séance ; les flèches, Début et Fin s'y promènent ; Échap rend
+  le focus à la carte. La bibliothèque fermée, le focus revient à la carte.
+- **Au téléphone**, la carte est l'icône du classeur, dans la barre du
+  haut : elle ouvre le même menu. Quand elle est cachée faute de place,
+  « Séances du chapitre… » est en tête du menu ⋯ (« Plus »). Les lignes font
+  44 px au moins, au doigt comme à la tablette.
+
+### Comment c'est fait
+
+- `src/ui.ts` : `basculerMenuSeances`, `construireMenuSeances` (refait à
+  chaque ouverture), `voirSeance`, `toutesLesSeances` ; le menu est un
+  `menu-flottant` comme le menu ⋯ (`menus.ts` : Échap, clic ailleurs,
+  flèches). `.menu-seances` dans `src/style.css`.
+- Rien ne change dans le document, les bases, les clés de stockage ni les
+  formats de fichier.
+- Les essais : `essais/navigateur/lot20/E1-menu-classeur.mjs` (dans la
+  partie 2 de la batterie). Adaptés, parce que le clic sur la carte
+  n'ouvre plus directement la bibliothèque : les essais qui l'ouvraient par
+  la carte choisissent ensuite « Bibliothèque des classeurs » (lots 4, 5,
+  7, 17, 18 et les sondes de `lot4/verif`) ; le nom accessible de la carte
+  (« … : ses séances et la bibliothèque ») et le message du premier
+  lancement (C3, C5).
 ## Ce que fait la v0.1
 
 Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment

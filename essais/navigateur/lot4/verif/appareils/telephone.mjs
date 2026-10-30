@@ -27,7 +27,7 @@ const bout = await p.evaluate(() => { const b = document.querySelector('.bouton-
 info(`${T} le bouton du classeur`, bout)
 await deb('tableau')
 // Ouvrir la bibliothèque : par le bouton s'il est là, sinon par ⋯
-if (bout.vis) await tap('.bouton-classeur')
+if (bout.vis) { await tap('.bouton-classeur'); await tap('.menu-seances [data-action="bibliotheque"]') }
 else { await p.evaluate(() => window.__app.ui.boutonFichier.click()); await dort(300); await tap('.menu-flottant:not([hidden]) [data-action="bibliotheque"]') }
 await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(300)
 await deb('bibliotheque-vide')

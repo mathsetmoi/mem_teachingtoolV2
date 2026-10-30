@@ -27,7 +27,7 @@ const m = await p.evaluate(() => { const m = [...document.querySelectorAll('.men
 info('menu ⋯ en file://', m)
 await p.keyboard.press('Escape'); await dort(150)
 // La bibliothèque, Nouveau classeur
-await p.click('.bouton-classeur'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(300)
+await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(300)
 const lignes = await p.evaluate(() => document.querySelector('.biblio-ouvert')?.textContent.replace(/[  ]/g, ' '))
 info('la ligne du classeur ouvert', lignes)
 await p.click('[data-action="nouveau-classeur"]'); await p.waitForSelector('dialog.dialogue-nouveau[open]')
@@ -39,7 +39,7 @@ await pret(); await dort(800)
 info('après Créer (choix du fichier abandonné)', { b: await bouton(), choix: await p.evaluate(() => window.__choix), t: await toasts(p) })
 // Écrire un peu à la souris, revenir à la bibliothèque, ouvrir l'autre classeur
 await p.mouse.move(500, 300); await p.mouse.down(); for (let i = 0; i < 10; i++) await p.mouse.move(500 + i * 10, 300 + i * 5); await p.mouse.up(); await dort(400)
-await p.click('.bouton-classeur'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(300)
+await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(300)
 const cartes = await p.evaluate(() => [...document.querySelectorAll('.grille-classeurs.tous > li')].map(l => ({ cle: l.dataset.cle, nom: l.querySelector('.carte-nom-classeur')?.textContent, href: l.querySelector('a')?.getAttribute('href') })))
 info('cartes', cartes)
 const autre = cartes.find(c => c.nom === 'Premier classeur')

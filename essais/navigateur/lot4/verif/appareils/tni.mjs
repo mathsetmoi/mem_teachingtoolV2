@@ -14,7 +14,10 @@ const ids = await creerPlusieurs(p, 5, { prefixe: 'Leçon' })
 await p.evaluate(() => window.__registre.ecrireReglage('conseil', 'vu'))
 let c = await centre('.bouton-classeur')
 await toucher(c.x, c.y)
-ok(await p.evaluate(() => !document.querySelector('.bibliotheque').hidden), 'TNI : un toucher sur le bouton du classeur ouvre la bibliothèque')
+// (Le menu du classeur, 30 octobre 2026 : « Bibliothèque des classeurs » en bas)
+c = await centre('.menu-seances [data-action="bibliotheque"]')
+await toucher(c.x, c.y)
+ok(await p.evaluate(() => !document.querySelector('.bibliotheque').hidden), 'TNI : un toucher sur le bouton du classeur, puis sur « Bibliothèque des classeurs », ouvre la bibliothèque')
 const sel = cle => `.grille-classeurs.tous li[data-cle="${cle}"]`
 // Appui long puis glisser une carte sur « 5e B »
 const a = await centre(sel(ids[1]) + ' .carte-apercu'), b = await centre(sel('d:' + d5))

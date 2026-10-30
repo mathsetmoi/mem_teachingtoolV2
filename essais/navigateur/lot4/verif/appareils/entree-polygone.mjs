@@ -5,7 +5,7 @@ const nav = await lancer()
 for (const avant of [false, true]) {
   const ctx = await contexte(nav)
   const p = await ouvrir(ctx, '', 'poly')
-  if (avant) { await p.click('.bouton-classeur'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400); await p.click('.biblio-fermer'); await dort(500) }
+  if (avant) { await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400); await p.click('.biblio-fermer'); await dort(500) }
   await p.evaluate(() => { window.__app.typeForme = 'polygone'; window.__app.choisirOutil('forme') })
   for (const [x, y] of [[500, 300], [700, 320], [650, 500]]) { await p.mouse.click(x, y); await dort(250) }
   const f0 = await p.evaluate(() => ({ actif: document.activeElement?.className || '(page)', poly: !!window.__app.polyEnCours }))

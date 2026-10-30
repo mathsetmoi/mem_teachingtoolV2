@@ -130,7 +130,7 @@ const creerPlusieurs = (p, n, o = {}) => p.evaluate(async ({ n, o }) => {
   return ids
 }, { n, o })
 const ouvrirBiblio = async p => {
-  await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b.checkVisibility?.() !== false && b.getClientRects().length) b.click(); else window.__app.ui.ouvrirBibliotheque() })
+  await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b.checkVisibility?.() !== false && b.getClientRects().length) { b.click(); document.querySelector('.menu-seances [data-action="bibliotheque"]').click() } else window.__app.ui.ouvrirBibliotheque() })
   await p.waitForFunction(() => window.__bibliotheque.ouvert && document.querySelectorAll('.grille-classeurs .carte-classeur').length > 0, null, { timeout: 10000 })
   await p.waitForTimeout(150)
 }
@@ -245,7 +245,7 @@ if (seul('B')) {
   const ids = await creerPlusieurs(p, 3)
   await ecrire(p, 500, 400)
   // Le bouton du classeur : un clic ouvre la bibliothèque
-  await p.click('.bouton-classeur'); await p.waitForTimeout(400)
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForTimeout(400)
   let v = await vue(p)
   const inerte = await p.evaluate(() => ({ outils: document.querySelector('.barre-outils').inert, haut: document.querySelector('.barre-haut').inert, classeur: document.querySelector('.barre-classeur').inert, toast: document.querySelector('.toast').inert, zone: document.getElementById('zone').inert, cache: !!window.__app && (() => { const n = window.__app; return document.body.classList.contains('en-bibliotheque') })() }))
   ok(v.ouvert && v.corps && v.role === 'dialog' && v.modal === 'true' && v.label === 'Bibliothèque des classeurs' && v.fermer, 'Un clic sur le bouton du classeur : la bibliothèque (role dialog, aria-modal, « Bibliothèque des classeurs », ×), body.en-bibliotheque', v)
@@ -437,7 +437,9 @@ if (seul('E')) {
   for (const touche of ['Enter', ' ']) {
     await p.evaluate(() => document.querySelector('.bouton-classeur').blur())
     await p.focus('.bouton-classeur'); await p.keyboard.press('Shift+Tab'); await p.keyboard.press('Tab')
-    await p.keyboard.press(touche); await p.waitForTimeout(400)
+    // (Adapté le 30 octobre 2026 : la touche ouvre le menu du classeur ; Fin
+    // puis Entrée y choisissent la bibliothèque)
+    await p.keyboard.press(touche); await p.keyboard.press('End'); await p.keyboard.press('Enter'); await p.waitForTimeout(400)
     const v = await vue(p)
     ok(v.ouvert && v.focus === premier, `${touche === ' ' ? 'Espace' : 'Entrée'} sur le bouton du classeur : la bibliothèque, le focus sur le classeur ouvert`, v.focus)
     await p.keyboard.press('Escape'); await p.waitForTimeout(200)
@@ -792,7 +794,7 @@ if (seul('J')) {
   await q.evaluate(id => window.__registre.modifierClasseur(id, f => { f.nom = 'Ma 5e B' }), premier)
   await p.waitForTimeout(500)
   const b = await p.evaluate(() => ({ titre: document.title, nom: document.querySelector('.nom-classeur').textContent, label: document.querySelector('.bouton-classeur').getAttribute('aria-label') }))
-  ok(b.titre === 'Ma 5e B — MEM teachingtool' && b.nom === 'Ma 5e B' && b.label === 'Classeur « Ma 5e B » : ouvrir la bibliothèque', 'Le classeur ouvert renommé ailleurs : le nom du bouton et le titre de l\'onglet suivent', b)
+  ok(b.titre === 'Ma 5e B — MEM teachingtool' && b.nom === 'Ma 5e B' && b.label === 'Classeur « Ma 5e B » : ses séances et la bibliothèque', 'Le classeur ouvert renommé ailleurs : le nom du bouton et le titre de l\'onglet suivent', b)
   // Un menu ouvert : rien n'est refait avant sa fermeture
   await p.click(`.grille-classeurs.tous .case-classeur[data-id="${ids[1]}"] .options-classeur`); await p.waitForTimeout(150)
   await q.evaluate(id => window.__registre.modifierClasseur(id, f => { f.nom = 'Pendant le menu' }), ids[1])
@@ -831,7 +833,7 @@ if (seul('K')) {
   seance.inerte = seance.inerte || await p.evaluate(() => !!document.querySelector('dialog.dialogue-flash:modal'))
   await p.keyboard.press('Escape'); await p.waitForTimeout(400)
   ok(trieuse.inerte && !trieuse.ouverte && revue.inerte && !revue.ouverte && seance.inerte && !seance.ouverte, 'Pendant la trieuse, la revue et le réglage du flash : le bouton est inerte, la bibliothèque ne s\'ouvre pas', { trieuse, revue, seance })
-  await p.click('.bouton-classeur'); await p.waitForTimeout(300)
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForTimeout(300)
   ok(await p.evaluate(() => window.__bibliotheque.ouvert && !document.querySelector('.barre-actions:not([hidden])')), '   … ensuite, le bouton l\'ouvre ; la barre d\'actions ne paraît pas dessous')
   await ctx.close()
 }
@@ -851,7 +853,7 @@ if (seul('L')) {
   await p.reload(); await pret(p); await p.waitForTimeout(600)
   t = await toasts(p)
   const nom = await p.evaluate(() => window.__app.classeur.nom)
-  ok(t.some(x => x.includes(`Votre tableau est maintenant le classeur « ${nom} ». Son nom, en haut à gauche, ouvre la bibliothèque de vos classeurs.Voir la bibliothèque`)), `Le premier lancement : « Votre tableau est maintenant le classeur « ${nom} ». Son nom, en haut à gauche, ouvre la bibliothèque… » [Voir la bibliothèque]`, t)
+  ok(t.some(x => x.includes(`Votre tableau est maintenant le classeur « ${nom} ». Son nom, en haut à gauche, ouvre ses séances et la bibliothèque de vos classeurs.Voir la bibliothèque`)), `Le premier lancement : « Votre tableau est maintenant le classeur « ${nom} ». Son nom, en haut à gauche, ouvre ses séances et la bibliothèque… » [Voir la bibliothèque]`, t)
   await p.click('.toast .action'); await p.waitForTimeout(400)
   ok((await vue(p)).ouvert, '   … [Voir la bibliothèque] l\'ouvre')
   await p.keyboard.press('Escape')

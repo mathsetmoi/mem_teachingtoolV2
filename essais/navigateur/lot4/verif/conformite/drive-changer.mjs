@@ -34,7 +34,7 @@ const idB = await p.evaluate(async () => {
   return id
 })
 // Par la bibliothèque, comme le professeur
-await p.click('.bouton-classeur')
+await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]')
 await p.waitForFunction(() => window.__bibliotheque?.ouvert, null, { timeout: 10000 })
 await p.waitForTimeout(300)
 await Promise.all([

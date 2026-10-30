@@ -137,7 +137,7 @@ const creerDossier = (p, nom, o = {}) => p.evaluate(async ({ nom, o }) => {
   return d.id
 }, { nom, o })
 const ouvrirBiblio = async p => {
-  await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b && b.getClientRects().length) b.click(); else window.__app.ui.ouvrirBibliotheque() })
+  await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b && b.getClientRects().length) { b.click(); document.querySelector('.menu-seances [data-action="bibliotheque"]').click() } else window.__app.ui.ouvrirBibliotheque() })
   await p.waitForFunction(() => window.__bibliotheque.ouvert && document.querySelectorAll('.grille-classeurs li, .biblio-vide-dossier:not([hidden]), .biblio-vide:not([hidden])').length > 0, null, { timeout: 10000 })
   await p.waitForTimeout(250)
 }
@@ -548,7 +548,7 @@ async function trait(p, x0, y0) {
 }
 /** Dans la version construite : la bibliothèque, supprimer le seul classeur (le premier), le vider */
 async function viderLePremierConstruit(p) {
-  await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b && b.getClientRects().length) b.click() })
+  await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b && b.getClientRects().length) { b.click(); document.querySelector('.menu-seances [data-action="bibliotheque"]').click() } })
   await p.waitForFunction(() => !document.querySelector('.bibliotheque').hidden && document.querySelector('.grille-classeurs.tous li .options-classeur'), null, { timeout: 10000 })
   await p.waitForTimeout(300)
   await p.click('.grille-classeurs.tous li .options-classeur'); await p.waitForTimeout(150)

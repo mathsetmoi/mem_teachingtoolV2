@@ -42,7 +42,7 @@ const RACCOURCIS: Groupe[] = [
     ['Déplacer la vue (sans sélection)', ['← ↑ → ↓']],
   ] },
   { titre: 'Classeur', lignes: [
-    ['Enregistrer', [`${CTRL} S`]], ['Ouvrir', [`${CTRL} O`]], ['Exporter en PDF', [`${CTRL} P`]], ['Rechercher', [`${CTRL} F`]],
+    ['Enregistrer', [`${CTRL} S`]], ['Ouvrir', [`${CTRL} O`]], ['Exporter en PDF', [`${CTRL} P`]], ['Rechercher', [`${CTRL} F`]], ['Bibliothèque des classeurs', [`${CTRL} B`]],
   ] },
   { titre: 'Cette aide', lignes: [['Ouvrir, fermer', ['?', 'Échap']]] },
 ]

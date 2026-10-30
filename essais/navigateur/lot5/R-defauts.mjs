@@ -295,7 +295,7 @@ async function parcours(url, nom) {
   ok(e.zoom === '100 %' && e.rang.startsWith('7 / 7'), `${nom} — quitter la page 7 et y revenir : de nouveau 100 %`, e)
 
   // Un nouveau classeur : page blanche, trait fin, 100 %
-  await p.click('.bouton-classeur')
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]')
   await p.waitForSelector('.biblio-nouveau', { state: 'visible', timeout: 10000 }); await p.waitForTimeout(200)
   await p.click('.biblio-nouveau'); await p.waitForSelector('dialog.dialogue-nouveau[open]'); await p.waitForTimeout(150)
   const fonds = await p.evaluate(() => [...document.querySelectorAll('dialog.dialogue-nouveau[open] input[name="fond"]')].map(r => [r.value, r.checked]))
@@ -531,7 +531,7 @@ if (seul('dev')) {
   const c3 = await contexte()
   p = await ouvrirDev(c3, 'dev-classeur')
   await p.evaluate(() => window.__app.zoomer(1.7))
-  await p.click('.bouton-classeur'); await p.waitForSelector('.biblio-nouveau', { state: 'visible', timeout: 10000 }); await p.waitForTimeout(200)
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForSelector('.biblio-nouveau', { state: 'visible', timeout: 10000 }); await p.waitForTimeout(200)
   await p.click('.biblio-nouveau'); await p.waitForSelector('dialog.dialogue-nouveau[open]'); await p.waitForTimeout(150)
   d = await p.evaluate(() => (document.querySelector('dialog.dialogue-nouveau[open] input[name="fond"]:checked'))?.value)
   ok(d === 'blanc', '« Nouveau classeur » : Page blanche cochée', d)
