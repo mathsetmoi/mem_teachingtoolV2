@@ -2312,10 +2312,10 @@ export class UI implements Interface {
     if (page) app.voirPage(page)
   }
 
-  /** La fenêtre Publier sur une séance du classeur, le focus sur « Enregistrer
-   *  le fichier » (« Enregistrer la séance… », le menu d'une séance de la bibliothèque) */
-  enregistrerLaSeance(id: string) {
-    void this.publication.ouvrir({ seance: id, enregistrer: true })
+  /** La fenêtre Publier sur une séance du classeur (« Publier la séance… »,
+   *  le menu d'une séance de la bibliothèque) */
+  publierLaSeance(id: string) {
+    void this.publication.ouvrir({ seance: id })
   }
 
   /** « Toutes les séances… » : la bibliothèque, ouverte sur sa vue « Séances » (ce chapitre d'abord) */

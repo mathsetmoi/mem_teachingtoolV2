@@ -1,13 +1,12 @@
-// ESSAI DU LOT 20 : « Enregistrer la séance… », dans le menu … d'une séance
-// de la bibliothèque (30 octobre 2026). Le serveur de développement (:5173).
+// ESSAI DU LOT 20 : « Publier la séance… », dans le menu … d'une séance de
+// la bibliothèque (30 octobre 2026). Le serveur de développement (:5173).
 // Un classeur « Fractions » fait d'avance (lundi, mercredi, vendredi), à part
 // du classeur de l'onglet :
-// A. le menu … d'une séance a « Enregistrer la séance… », après « Renommer… » ;
+// A. le menu … d'une séance a « Publier la séance… », après « Renommer… » ;
 // B. pour un autre classeur que celui de l'onglet : il s'ouvre sur cette
-//    séance, et la fenêtre Publier aussi, cette séance choisie, le focus sur
-//    « Enregistrer le fichier » ;
+//    séance, et la fenêtre Publier aussi, cette séance choisie ;
 // C. pour le classeur de l'onglet : sans recharger, de même ;
-// D. « Enregistrer le fichier » donne le fichier séance (.mem) de cette séance.
+// D. « Enregistrer le fichier » y donne le replay (.mem) de cette séance.
 // Les captures vont dans SORTIE (par défaut essais/navigateur/sorties/lot20).
 import { mkdirSync } from 'node:fs'
 import { chromium } from '../commun/playwright.mjs'
@@ -86,24 +85,24 @@ await ouvrirBiblio()
 const s1 = await sid(1)
 await menuSeance(1)
 const entrees = await p.evaluate(() => [...document.querySelectorAll('.menu-flottant:not([hidden]) .menu-item')].map(b => b.dataset.action))
-ok(entrees[1] === 'renommer-seance' && entrees[2] === 'enregistrer-seance', 'A) « Enregistrer la séance… » est dans le menu …, après « Renommer… »', entrees)
+ok(entrees[1] === 'renommer-seance' && entrees[2] === 'publier-seance', 'A) « Publier la séance… » est dans le menu …, après « Renommer… »', entrees)
 
 await p.screenshot({ path: SORTIE + '5-menu-seance.png' })
 
 // B
-await Promise.all([p.waitForNavigation(), p.click('.menu-item[data-action="enregistrer-seance"]')])
+await Promise.all([p.waitForNavigation(), p.click('.menu-item[data-action="publier-seance"]')])
 await pret()
 await p.waitForSelector('dialog.dialogue-publier[open]', { timeout: 10000 }); await attendre(300)
 let f = await fenetre()
-ok(f.ouverte && f.classeur === ids.Fractions && f.vue === s1 && /^Mer 14 oct|14 oct/i.test(f.choisie ?? '') && !f.resume && /p-fichier/.test(f.focus ?? ''),
-  'B) Un autre classeur : il s\'ouvre sur la séance, la fenêtre Publier aussi, elle choisie, le focus sur « Enregistrer le fichier »', f)
-ok(!/enregistrer/.test(await p.evaluate(() => location.search)), 'B2) L\'adresse l\'oublie (un rechargement ne rouvre pas la fenêtre)', await p.evaluate(() => location.search))
+ok(f.ouverte && f.classeur === ids.Fractions && f.vue === s1 && /^Mer 14 oct|14 oct/i.test(f.choisie ?? '') ,
+  'B) Un autre classeur : il s\'ouvre sur la séance, la fenêtre Publier aussi, elle choisie', f)
+ok(!/publier/.test(await p.evaluate(() => location.search)), 'B2) L\'adresse l\'oublie (un rechargement ne rouvre pas la fenêtre)', await p.evaluate(() => location.search))
 
-await p.screenshot({ path: SORTIE + '6-fenetre-enregistrer.png' })
+await p.screenshot({ path: SORTIE + '6-fenetre-publier.png' })
 
 // D
 const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 10000 }).catch(() => null), p.click('dialog.dialogue-publier[open] .p-fichier')])
-ok(!!dl && /\.mem$/.test(dl.suggestedFilename()), 'D) « Enregistrer le fichier » : le fichier séance (.mem)', dl?.suggestedFilename())
+ok(!!dl && /\.mem$/.test(dl.suggestedFilename()), 'D) « Enregistrer le fichier » : le replay de la séance (.mem)', dl?.suggestedFilename())
 await p.click('dialog.dialogue-publier[open] .p-fermer'); await attendre(300)
 
 // C
@@ -111,12 +110,12 @@ await ouvrirBiblio()
 const s2 = await sid(2)
 await menuSeance(2)
 const avant = await p.evaluate(() => performance.timeOrigin)
-await p.click('.menu-item[data-action="enregistrer-seance"]')
+await p.click('.menu-item[data-action="publier-seance"]')
 await p.waitForSelector('dialog.dialogue-publier[open]', { timeout: 10000 }); await attendre(300)
 f = await fenetre()
 const meme = await p.evaluate(() => performance.timeOrigin)
-ok(meme === avant && f.ouverte && f.vue === s2 && !f.resume && /p-fichier/.test(f.focus ?? '') && !(await p.evaluate(() => window.__bibliotheque.ouvert)),
-  'C) Le classeur de l\'onglet : sans recharger, la séance, la fenêtre Publier sur elle, le focus sur « Enregistrer le fichier »', f)
+ok(meme === avant && f.ouverte && f.vue === s2 && /12 oct/i.test(f.choisie ?? '') && !(await p.evaluate(() => window.__bibliotheque.ouvert)),
+  'C) Le classeur de l\'onglet : sans recharger, la séance, la fenêtre Publier sur elle', f)
 
 ok(!erreurs.length, 'Aucune erreur dans la page', erreurs)
 await nav.close()

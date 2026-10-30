@@ -342,9 +342,9 @@ async function demarrer() {
       // Renommé dans la bibliothèque de cet onglet (le canal ne revient pas à qui parle)
       classeurChange: nommer,
       voirSeance: id => voirLaSeance(app, id),
-      enregistrerSeance: id => {
+      publierSeance: id => {
         if (!voirLaSeance(app, id)) return false
-        ui.enregistrerLaSeance(id)
+        ui.publierLaSeance(id)
         return true
       },
       voirPage: (page, forme) => voirLaPage(app, page, forme),
@@ -526,8 +526,8 @@ async function demarrer() {
   let accueil: Promise<HTMLDialogElement | null> | null = null
   if (depart.genre === 'reprise' && depart.seance && !autreMessage) ui.message(`Séance ${deLaSeance(depart.seance, Date.now())} reprise`)
   else if (depart.genre === 'accueil' && depart.seance && !ouvertDUnFichier && !arrivee) accueil = ouvrirLAccueil(app, ui, registre, fiche, depart.seance)
-  // Arrivé par « Enregistrer la séance… » : la fenêtre Publier, sur cette séance
-  if (seanceVue && ENREGISTRER_VOULU && SEANCE_VOULUE && !document.querySelector('dialog[open]')) ui.enregistrerLaSeance(SEANCE_VOULUE)
+  // Arrivé par « Publier la séance… » : la fenêtre Publier, sur cette séance
+  if (seanceVue && PUBLIER_VOULU && SEANCE_VOULUE && !document.querySelector('dialog[open]')) ui.publierLaSeance(SEANCE_VOULUE)
   // Parti d'un autre classeur avec « Commencer par des automatismes » cochée
   if (arrivage.automatismes && !document.querySelector('dialog[open]')) ui.flash.ouvrir()
   // Le rappel d'enregistrer le classeur qu'on vient de quitter (20 minutes
@@ -556,10 +556,10 @@ async function demarrer() {
  *  d'une carte), lue avant que le démarrage remette l'adresse au propre : un
  *  rechargement ne la rejoue pas */
 const SEANCE_VOULUE = new URLSearchParams(location.search).get('seance')
-/** « &enregistrer » avec la séance : la fenêtre Publier s'ouvre sur elle, pour
- *  enregistrer son fichier (« Enregistrer la séance… », le menu d'une séance
- *  de la bibliothèque, pour un autre classeur que celui de l'onglet) */
-const ENREGISTRER_VOULU = SEANCE_VOULUE !== null && new URLSearchParams(location.search).has('enregistrer')
+/** « &publier » avec la séance : la fenêtre Publier s'ouvre sur elle
+ *  (« Publier la séance… », le menu d'une séance de la bibliothèque, pour un
+ *  autre classeur que celui de l'onglet) */
+const PUBLIER_VOULU = SEANCE_VOULUE !== null && new URLSearchParams(location.search).has('publier')
 /** La page où l'on arrive, et la formule à y prendre (« &page=…&forme=… »,
  *  par la recherche), lues de même */
 const PAGE_VOULUE = new URLSearchParams(location.search).get('page')
