@@ -279,6 +279,7 @@ async function contexte(o = {}) {
   await ctx.addInitScript(INIT)
   await ctx.addInitScript(ECOUTER_TOASTS)
   await ctx.addInitScript(OUTILS)
+  await ctx.addInitScript(() => { try { sessionStorage.setItem('mem-emplacements-detail', '1') } catch {} })  // la liste complète de « Mes emplacements » (lot 15 : sinon une seule ligne)
   return ctx
 }
 const pret = p => p.waitForFunction(() => window.__surveillance && window.__bibliotheque && document.querySelector('.rang')?.textContent?.includes('/'), null, { timeout: 30000 })

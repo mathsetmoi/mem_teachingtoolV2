@@ -329,6 +329,7 @@ async function contexte() {
   await ctx.addInitScript(INIT)
   await ctx.addInitScript(ECOUTER_TOASTS)
   await ctx.addInitScript(OUTILS)
+  await ctx.addInitScript(() => { try { sessionStorage.setItem('mem-emplacements-detail', '1') } catch {} })  // la liste complète de « Mes emplacements » (lot 15 : sinon une seule ligne)
   return ctx
 }
 /** Prêt : un classeur chargé (son état, sa bibliothèque), ou la bibliothèque seule */
@@ -465,7 +466,7 @@ try {
   const idMEM = (await reglage(p, 'etablissements')).find(e => e.nom === 'MEM classeurs')?.id
   await voirBibliotheque(p, null)
   let e = await emplacements(p)
-  ok(e?.titre === 'Mes emplacements' && e.etabs?.entete === 'Établissements :' && e.etabs.noms.join(' · ') === 'LFB classeurs · MEM classeurs' && e.etabs.retirer === 2 && e.etabs.ajouter === 'Ajouter un dossier…',
+  ok(e?.titre === 'Où sont copiées mes classes ?' && e.etabs?.entete === 'Établissements :' && e.etabs.noms.join(' · ') === 'LFB classeurs · MEM classeurs' && e.etabs.retirer === 2 && e.etabs.ajouter === 'Ajouter un dossier…',
     'C5) « Mes emplacements » : « Établissements : LFB classeurs · MEM classeurs », « Retirer » pour chacun, « Ajouter un dossier… »', e)
   ok(e?.lignes.map(l => `${l.texte} [${l.boutons.join(', ')}]`).join(' ; ') === '4eme → MEM classeurs › 4 [Mettre à jour, Changer…] ; 5eme → LFB classeurs › 5 [Mettre à jour, Changer…]',
     'C6) « 4eme → MEM classeurs › 4 », « 5eme → LFB classeurs › 5 », chacun avec « Mettre à jour » et « Changer… »', e?.lignes)
