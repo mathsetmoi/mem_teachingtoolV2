@@ -8,7 +8,7 @@ import type { Formule, Forme, Trait } from '../src/types'
 import type { FicheDeSeance, PageResumee } from '../src/resume/fiche'
 import { consigneGemini, contenuDeLaPage, dureeDite, etiquettes, faitEnClasse, latexLisible, ligneDeResume, nomPropose, texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil } from '../src/resume/fiche'
 import { ficheDeLaSeance, gestesDeLaSeance } from '../src/resume/collecte'
-import { adresseValable, cleValable, meilleurModele, nettoyerCle } from '../src/resume/gemini'
+import { adresseValable, cleValable, meilleurModele, messageSelonLaRaison, nettoyerCle } from '../src/resume/gemini'
 
 let horloge = new Date('2026-10-26T08:05:00').getTime()
 let numero = 0
@@ -114,6 +114,13 @@ describe('Gemini', () => {
     expect(nettoyerCle(' « AIza Sy12\n34 » ')).toBe('AIzaSy1234')
     expect(cleValable('pas une clé')).toBe(false)
     expect(cleValable('')).toBe(false)
+  })
+  it('un refus de Google dit sa raison', () => {
+    expect(messageSelonLaRaison(403, '{"error":{"details":[{"reason":"API_KEY_HTTP_REFERRER_BLOCKED"}]}}')).toMatch(/limitée à certains sites/)
+    expect(messageSelonLaRaison(403, '{"error":{"details":[{"reason":"API_KEY_SERVICE_BLOCKED"}]}}')).toMatch(/d'autres services/)
+    expect(messageSelonLaRaison(403, '{"error":{"details":[{"reason":"SERVICE_DISABLED"}]}}')).toMatch(/pas activée/)
+    expect(messageSelonLaRaison(400, '{"error":{"message":"API key not valid."}}')).toMatch(/vérifiez-la/)
+    expect(messageSelonLaRaison(429, '')).toMatch(/quota/)
   })
   it('les adresses de Pronote : https seulement', () => {
     expect(adresseValable('0123456a.index-education.net/pronote/professeur.html')).toBe('https://0123456a.index-education.net/pronote/professeur.html')

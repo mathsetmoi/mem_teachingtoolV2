@@ -36,6 +36,7 @@ const demandes = []
 await ctx.route(/generativelanguage\.googleapis\.com/, async r => {
   const u = new URL(r.request().url()), cle = r.request().headers()['x-goog-api-key']
   const rep = (statut, o) => r.fulfill({ status: statut, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(o) })
+  if (cle === 'AIzaLimiteeLimiteeLimiteeLimiteeLimitee1') return rep(403, { error: { code: 403, message: 'Requests from referer https://mathsetmoi.github.io/ are blocked.', status: 'PERMISSION_DENIED', details: [{ reason: 'API_KEY_HTTP_REFERRER_BLOCKED' }] } })
   if (cle !== 'AIzaEssaiEssaiEssaiEssaiEssaiEssai12345') return rep(400, { error: { code: 400, message: 'API key not valid. Please pass a valid API key.', status: 'INVALID_ARGUMENT', details: [{ reason: 'API_KEY_INVALID' }] } })
   if (r.request().method() === 'GET' && u.pathname.endsWith('/models')) return rep(200, { models: [
     { name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] },
@@ -107,6 +108,9 @@ ok(/Ce n'est pas une clé/.test(await p.textContent('.r-etat')), 'B1) Une fausse
 await p.fill('.r-cle', ' "AQ.Ab8RN6Mauvaise-Mauvaise_Mauvaise.Mauvaise" ')
 await p.click('.r-essayer'); await p.waitForFunction(() => /refuse la clé/.test(document.querySelector('.r-etat').textContent), null, { timeout: 5000 }).catch(() => {})
 ok(/refuse la clé/.test(await p.textContent('.r-etat')), 'B2) « Essayer la clé » dit qu\'une clé est refusée par Gemini', await p.textContent('.r-etat'))
+await p.fill('.r-cle', 'AIzaLimiteeLimiteeLimiteeLimiteeLimitee1')
+await p.click('.r-essayer'); await p.waitForFunction(() => /certains sites/.test(document.querySelector('.r-etat').textContent), null, { timeout: 5000 }).catch(() => {})
+ok(/limitée à certains sites.*Google dit : « Requests from referer/.test(await p.textContent('.r-etat')), 'B2b) Une clé limitée à certains sites : la raison, et ce que Google en dit', await p.textContent('.r-etat'))
 await p.fill('.r-cle', '  AIzaEssaiEssaiEssai EssaiEssaiEssai12345\n')
 await p.click('.r-essayer'); await p.waitForFunction(() => /La clé marche/.test(document.querySelector('.r-etat').textContent), null, { timeout: 5000 }).catch(() => {})
 ok(/La clé marche/.test(await p.textContent('.r-etat')), 'B3) « Essayer la clé » : la clé marche')

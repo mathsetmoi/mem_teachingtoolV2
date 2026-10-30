@@ -117,12 +117,28 @@ export class ErreurGemini extends Error {}
 
 async function messageDErreur(r: Response): Promise<string> {
   let detail = ''
-  try { detail = JSON.stringify(await r.json()) } catch { /* sans détail */ }
+  let dit = ''
+  try {
+    const j = await r.json() as { error?: { message?: unknown } }
+    detail = JSON.stringify(j)
+    if (typeof j.error?.message === 'string') dit = j.error.message.trim().slice(0, 300)
+  } catch { /* sans détail */ }
+  // Ce que Google en dit, tel quel : c'est souvent la seule façon de savoir
+  // pourquoi une clé est refusée
+  const google = dit ? ` (Google dit : « ${dit} »)` : ''
+  return messageSelonLaRaison(r.status, detail) + google
+}
+
+/** La raison d'un refus, d'après le code et le détail rendus par Google */
+export function messageSelonLaRaison(statut: number, detail: string): string {
   if (/API_KEY_INVALID|API key not valid/i.test(detail)) return 'Gemini refuse la clé : vérifiez-la dans « Rédaction automatique… ».'
-  if (r.status === 429) return 'Gemini a trop servi aujourd\'hui (le quota de la clé gratuite) : le texte de l\'outil reste, réessayez plus tard.'
-  if (r.status === 403) return 'Gemini refuse la clé (elle n\'a pas accès à l\'API Gemini) : créez-en une dans Google AI Studio.'
+  if (/API_KEY_HTTP_REFERRER_BLOCKED|referer/i.test(detail)) return 'La clé est limitée à certains sites. Dans Google Cloud, page « Identifiants », ouvrez la clé et choisissez « Aucune » sous « Restrictions relatives aux applications » (ou ajoutez https://mathsetmoi.github.io/*).'
+  if (/API_KEY_SERVICE_BLOCKED|are blocked/i.test(detail)) return 'La clé est limitée à d\'autres services que Gemini. Dans Google Cloud, page « Identifiants », ouvrez la clé et choisissez « Ne pas restreindre la clé » (ou ajoutez « Generative Language API »).'
+  if (/SERVICE_DISABLED|has not been used in project|is disabled/i.test(detail)) return 'L\'API Gemini n\'est pas activée pour le projet de cette clé : activez « Generative Language API » dans Google Cloud, attendez quelques minutes, puis réessayez.'
+  if (statut === 429) return 'Gemini a trop servi aujourd\'hui (le quota de la clé gratuite) : le texte de l\'outil reste, réessayez plus tard.'
   if (/location is not supported|User location/i.test(detail)) return 'Gemini n\'est pas ouvert dans ce pays : le texte de l\'outil reste.'
-  return `Gemini n'a pas pu rédiger le texte (erreur ${r.status}) : le texte de l'outil reste.`
+  if (statut === 403) return 'Gemini refuse la clé (elle n\'a pas accès à l\'API Gemini).'
+  return `Gemini n'a pas pu rédiger le texte (erreur ${statut}) : le texte de l'outil reste.`
 }
 
 /** Le texte rendu par Gemini pour cette consigne et ces images (JPEG, en
