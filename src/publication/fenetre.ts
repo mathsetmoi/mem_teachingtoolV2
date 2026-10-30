@@ -39,7 +39,7 @@ import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier }
 import type { FicheDeSeance } from '../resume/fiche'
 import { texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil, consigneGemini } from '../resume/fiche'
 import { ficheDeLaSeance, gestesDeLaSeance } from '../resume/collecte'
-import { ErreurGemini, PAGES_MAX, cleGemini, consignesDuProfesseur, demanderAGemini, imagePourGemini, pronoteDe } from '../resume/gemini'
+import { ErreurGemini, PAGES_MAX, cleGemini, consignesDuProfesseur, demanderAGemini, dernierModele, imagePourGemini, pronoteDe } from '../resume/gemini'
 import { ouvrirRedaction } from '../resume/reglage-vue'
 
 /** Ce qu'on retient d'une séance publiée, dans le document du professeur
@@ -467,7 +467,7 @@ export class Publication {
       if (this.texteTouche) { qui.textContent = 'Gemini a rédigé un texte, mais vous avez déjà écrit le vôtre : il reste.'; return }
       champ.value = texte
       this.app.tableau.garderTexteCahier(id, { texte, par: 'gemini', quand: Date.now(), gestes })
-      qui.textContent = 'Rédigé par Gemini : relisez-le.'
+      qui.textContent = `Rédigé par Gemini (${dernierModele()}) : relisez-le.`
     } catch (e) {
       if (!encore()) return
       qui.textContent = e instanceof ErreurGemini ? e.message : 'Gemini n\'a pas pu rédiger le texte : le texte de l\'outil reste.'

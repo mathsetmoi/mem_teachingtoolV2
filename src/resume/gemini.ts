@@ -162,6 +162,10 @@ const patienter = (ms: number, signal?: AbortSignal) => new Promise<void>((ok, n
   signal?.addEventListener('abort', () => { clearTimeout(h); non(new DOMException('Abandon', 'AbortError')) }, { once: true })
 })
 
+/** Le modèle qui a rédigé la dernière réponse (à dire au professeur) */
+let dernier = ''
+export const dernierModele = () => dernier
+
 export async function demanderAGemini(cle: string, consigne: string, images: readonly string[], o: { signal?: AbortSignal; nouvelEssai?: () => void } = {}): Promise<string> {
   const corps = JSON.stringify({
     contents: [{ role: 'user', parts: [{ text: consigne }, ...images.map(data => ({ inline_data: { mime_type: 'image/jpeg', data } }))] }],
@@ -185,8 +189,9 @@ export async function demanderAGemini(cle: string, consigne: string, images: rea
     }
     for (const autre of MODELES_DE_RELAIS) {
       if (!surcharge(r.status)) break
-      if (autre !== m) { o.nouvelEssai?.(); r = await essayer(autre) }
+      if (autre !== m) { o.nouvelEssai?.(); r = await essayer(autre); if (r.ok) m = autre }
     }
+    if (r.ok) dernier = m
   } catch (e) {
     if (e instanceof ErreurGemini || (e as Error)?.name === 'AbortError') throw e
     throw new ErreurGemini('Gemini ne répond pas (pas d\'internet ?) : le texte de l\'outil reste.')

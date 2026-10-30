@@ -119,7 +119,7 @@ await p.click('.r-essayer'); await p.waitForFunction(() => /certains sites/.test
 ok(/limitée à certains sites.*Google dit : « Requests from referer/.test(await p.textContent('.r-etat')), 'B2b) Une clé limitée à certains sites : la raison, et ce que Google en dit', await p.textContent('.r-etat'))
 await p.fill('.r-cle', '  AIzaEssaiEssaiEssai EssaiEssaiEssai12345\n')
 await p.click('.r-essayer'); await p.waitForFunction(() => /La clé marche/.test(document.querySelector('.r-etat').textContent), null, { timeout: 5000 }).catch(() => {})
-ok(/La clé marche/.test(await p.textContent('.r-etat')), 'B3) « Essayer la clé » : la clé marche')
+ok(/La clé marche \(modèle : gemini-3\.6-flash\)/.test(await p.textContent('.r-etat')), 'B3) « Essayer la clé » : la clé marche, et le modèle', await p.textContent('.r-etat'))
 await p.fill('.r-pronote-mem', 'exemple.index-education.net/pronote/professeur.html')
 await p.fill('.r-consignes', 'Écris « Exercices » au pluriel.')
 await capture('2b-redaction-consignes')
@@ -132,7 +132,7 @@ ok(await p.evaluate(() => localStorage.getItem('mem-redaction-consignes')) === '
 // C. Gemini rédige
 await p.waitForFunction(() => /Rédigé par Gemini/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 10000 }).catch(() => {})
 const texteC = await p.inputValue('.p-texte-cahier')
-ok(/Rédigé par Gemini/.test(await p.textContent('.p-cahier-qui')), 'C1) « Rédigé par Gemini : relisez-le »', await p.textContent('.p-cahier-qui'))
+ok(/Rédigé par Gemini \(gemini-3\.6-flash\)/.test(await p.textContent('.p-cahier-qui')), 'C1) « Rédigé par Gemini (le modèle) : relisez-le »', await p.textContent('.p-cahier-qui'))
 ok(/· .+\nFait en classe : démonstration : √2 n'est pas rationnel ; correction de l'exercice 12 p\. 42\.\nÀ faire : exercices 14 et 15 p\. 43\.$/.test(texteC), 'C2) Le texte de Gemini, mis au propre, avec la date et le chapitre', texteC)
 const d = demandes[avantC]
 const parts = d?.corps?.contents?.[0]?.parts ?? []
