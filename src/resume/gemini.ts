@@ -18,7 +18,8 @@
 // Rangé dans ce navigateur (nouvelles clés, voir reglages.ts) :
 // 'mem-redaction-cle' (la clé), 'mem-redaction-modele' (le modèle retenu et
 // quand), 'mem-redaction-consignes' (les consignes du professeur pour le
-// texte, ajoutées à celle de l'outil), 'mem-pronote' (l'adresse du Pronote de chaque établissement, par
+// texte, ajoutées à celle de l'outil), 'mem-redaction-entete' ('non' : pas
+// de date ni de chapitre en tête du texte de Gemini), 'mem-pronote' (l'adresse du Pronote de chaque établissement, par
 // Drive des replays : mem, lfb, lyfel).
 // =============================================================
 
@@ -26,6 +27,7 @@ const CLE = 'mem-redaction-cle'
 const CLE_MODELE = 'mem-redaction-modele'
 const CLE_PRONOTE = 'mem-pronote'
 const CLE_CONSIGNES = 'mem-redaction-consignes'
+const CLE_ENTETE = 'mem-redaction-entete'
 /** Au plus tant de signes de consignes du professeur */
 export const CONSIGNES_MAX = 1500
 const API = 'https://generativelanguage.googleapis.com/v1beta'
@@ -45,6 +47,10 @@ export function retenirCleGemini(cle: string) {
   ecrire(CLE, nettoyerCle(cle))
   ecrire(CLE_MODELE, '')
 }
+
+/** La date et le chapitre en tête du texte de Gemini (oui, sauf refus) */
+export const enTeteGemini = () => lire(CLE_ENTETE) !== 'non'
+export const retenirEnTete = (oui: boolean) => ecrire(CLE_ENTETE, oui ? '' : 'non')
 
 /** Les consignes du professeur pour le texte ('' : aucune) */
 export const consignesDuProfesseur = () => lire(CLE_CONSIGNES).trim().slice(0, CONSIGNES_MAX)

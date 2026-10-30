@@ -204,7 +204,9 @@ export function texteAvecLeLien(texte: string, lien: string, pages: string): str
 /** La consigne envoyée à Gemini avec les images des pages : ce que l'outil
  *  sait déjà (le chapitre, la date, les pages et ce qui y a été posé), et la
  *  forme du texte attendu */
-export function consigneGemini(f: FicheDeSeance, niveau: string | null, consignes = ''): string {
+/** precedent : le texte du cahier de textes de la séance d'avant dans le
+ *  classeur (son « À faire » dit quels exercices sont des corrections) */
+export function consigneGemini(f: FicheDeSeance, niveau: string | null, consignes = '', precedent = ''): string {
   const pages = f.pages.map(p => {
     const bits = [libelleDeLaPage(p, f.activites), ...f.activites.filter(a => a.page === p.id && a.titre !== libelleDeLaPage(p, f.activites)).map(a => a.titre)]
       .filter(Boolean)
@@ -216,6 +218,12 @@ export function consigneGemini(f: FicheDeSeance, niveau: string | null, consigne
     'Ce que l\'outil sait déjà :',
     pages,
     '',
+    ...(precedent.trim() ? [
+      'Le cahier de textes de la séance précédente du chapitre (avec le travail donné à faire à la maison) :',
+      precedent.trim(),
+      'Un exercice de ce travail à faire qui est traité pendant cette séance est une correction (il a été fait à la maison) ; un autre exercice traité est fait en classe, pendant la séance.',
+      '',
+    ] : []),
     'Écris le texte du cahier de textes, en français, comme un professeur l\'écrit pour ses élèves et leurs parents :',
     '- une ligne qui commence par « Fait en classe : », qui dit les notions vues, les définitions, propriétés et démonstrations, et les exercices (avec leur numéro et leur page du manuel quand ils sont écrits au tableau) ;',
     '- s\'il est écrit au tableau un travail à faire pour la prochaine fois, une ligne qui commence par « À faire : » ; sinon, pas de ligne « À faire ».',
@@ -228,13 +236,17 @@ export function consigneGemini(f: FicheDeSeance, niveau: string | null, consigne
   ].join('\n')
 }
 
-/** Le texte rendu par Gemini, mis au propre : sans mise en forme, sans
- *  lignes vides, et la date et le chapitre en tête (comme le texte de
- *  l'outil) */
-export function texteCahierDeGemini(f: FicheDeSeance, brut: string): string | null {
+/** Le texte rendu par Gemini, mis au propre : sans mise en forme (les
+ *  puces gardées), sans lignes vides ; enTete : la date et le chapitre en
+ *  tête, comme le texte de l'outil (le professeur peut ne pas les vouloir) */
+export function texteCahierDeGemini(f: FicheDeSeance, brut: string, enTete = true): string | null {
   const lignes = brut.replace(/\r/g, '').split('\n')
-    .map(l => l.replace(/^\s*[-*•#>]+\s*/, '').replace(/\*\*|__|`/g, '').replace(/\s+/g, ' ').trim())
-    .filter(Boolean)
+    // Une puce (- * •) devient « • » : le professeur peut en demander
+    .map(l => l.replace(/^\s*[-*•]\s+(?=\S)/, '• ').replace(/^\s*[#>]+\s*/, '').replace(/\*\*|__|`/g, '').replace(/\s+/g, ' ').trim())
+    .filter(l => l && l !== '•')
   if (!lignes.length) return null
-  return `${jourDit(f.debut)} · ${f.chapitre}\n${lignes.slice(0, 6).join('\n')}`
+  const corps = lignes.slice(0, LIGNES_MAX).join('\n')
+  return enTete ? `${jourDit(f.debut)} · ${f.chapitre}\n${corps}` : corps
 }
+/** Au plus tant de lignes gardées du texte de Gemini */
+export const LIGNES_MAX = 30

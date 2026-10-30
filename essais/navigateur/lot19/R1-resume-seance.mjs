@@ -197,6 +197,15 @@ gemini.statut = 200
 await p.click('.p-reessayer')
 await p.waitForFunction(() => /Rédigé par Gemini/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 15000 }).catch(() => {})
 ok(/exercice 13 p\. 42/.test(await p.inputValue('.p-texte-cahier')) && !(await p.isVisible('.p-reessayer')), 'F4) « Réessayer » : Gemini rédige le texte')
+// Sans la date ni le chapitre en tête, et les puces gardées
+gemini.texte = 'Cours :\n- Propriété : somme et produit des racines.'
+await p.click('.p-redaction'); await p.waitForSelector('.dialogue-redaction[open]')
+ok(await p.isChecked('.r-entete'), 'F5) Au départ, la date et le chapitre en tête')
+await p.uncheck('.r-entete')
+await p.click('.r-garder'); await p.waitForSelector('.dialogue-redaction', { state: 'detached' })
+await p.waitForFunction(() => /^Cours :/.test(document.querySelector('.p-texte-cahier').value), null, { timeout: 15000 }).catch(() => {})
+ok(await p.inputValue('.p-texte-cahier') === 'Cours :\n• Propriété : somme et produit des racines.', 'F6) Case décochée : ni date ni chapitre en tête, la puce gardée', await p.inputValue('.p-texte-cahier'))
+ok(await p.evaluate(() => localStorage.getItem('mem-redaction-entete')) === 'non', 'F7) Le choix est gardé dans ce navigateur')
 await p.keyboard.press('Escape')
 
 // G. la trieuse
