@@ -5843,6 +5843,11 @@ nom de l'appareil. La version hors ligne ne fait jamais appel à Gemini.
   Gemini écrit (- * •) restent, en « • » ; au plus 30 lignes. Le cahier de
   textes de la séance d'avant du classeur part avec la consigne : un exercice
   de son « À faire » traité pendant la séance est une correction.
+  Le texte garde des marques simples, **gras**, __souligné__ et « • » en
+  début de ligne. La copie pour Pronote part mise en forme (HTML : gras,
+  souligné, listes, liens), que l'éditeur de Pronote garde au collage
+  (vérifié par le professeur), et en texte simple sans les marques
+  (`htmlDuTexte`, `texteSansMarques`, `copierMisEnForme` dans fiche.ts).
 - Dans le document, deux cartes de premier niveau, hors des pages (ni étape
   du film, ni annulation, comme les noms des pages) : `activites` (id →
   { t, page, type, titre }) et `textesCahier` (id de la séance → { texte,

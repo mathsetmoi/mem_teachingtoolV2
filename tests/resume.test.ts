@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Tableau } from '../src/document'
 import type { Formule, Forme, Trait } from '../src/types'
 import type { FicheDeSeance, PageResumee } from '../src/resume/fiche'
-import { consigneGemini, contenuDeLaPage, dureeDite, etiquettes, faitEnClasse, latexLisible, ligneDeResume, nomPropose, texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil } from '../src/resume/fiche'
+import { htmlDuTexte, texteSansMarques, consigneGemini, contenuDeLaPage, dureeDite, etiquettes, faitEnClasse, latexLisible, ligneDeResume, nomPropose, texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil } from '../src/resume/fiche'
 import { ficheDeLaSeance, gestesDeLaSeance } from '../src/resume/collecte'
 import { adresseValable, cleValable, meilleurModele, messageSelonLaRaison, nettoyerCle } from '../src/resume/gemini'
 
@@ -111,7 +111,7 @@ describe('Gemini', () => {
   })
   it('le texte rendu est mis au propre, avec la date et le chapitre', () => {
     expect(texteCahierDeGemini(f, '**Fait en classe :** exercice 12 p. 42\n\n- À faire : exercice 14 p. 43\n')).toBe(
-      'Lundi 26 octobre · Ensembles de nombres\nFait en classe : exercice 12 p. 42\n• À faire : exercice 14 p. 43')
+      'Lundi 26 octobre · Ensembles de nombres\n**Fait en classe :** exercice 12 p. 42\n• À faire : exercice 14 p. 43')
     expect(texteCahierDeGemini(f, 'Cours :\n* Propriété : S et P.\n•\n', false)).toBe('Cours :\n• Propriété : S et P.')
     expect(texteCahierDeGemini(f, '  \n ')).toBeNull()
   })
@@ -141,6 +141,18 @@ describe('Gemini', () => {
     expect(adresseValable('http://exemple.example.com/pronote/')).toBe('')
     expect(adresseValable('pas une adresse')).toBe('')
     expect(adresseValable('')).toBe('')
+  })
+})
+
+describe('le texte mis en forme pour Pronote', () => {
+  const t = 'Cours :\n• **Propriété** : S et P.\n• Exemple\nÀ faire : __exercice 82__ p. 93\nRevoir la séance : https://x/r?a=1&b=2'
+  it('en HTML : gras, souligné, puces, lien', () => {
+    expect(htmlDuTexte(t)).toBe('<div>Cours :</div><ul><li><b>Propriété</b> : S et P.</li><li>Exemple</li></ul>'
+      + '<div>À faire : <u>exercice 82</u> p. 93</div><div>Revoir la séance : <a href="https://x/r?a=1&amp;b=2">https://x/r?a=1&amp;b=2</a></div>')
+    expect(htmlDuTexte('a < b')).toBe('<div>a &lt; b</div>')
+  })
+  it('en texte simple : sans les marques', () => {
+    expect(texteSansMarques(t)).toBe('Cours :\n• Propriété : S et P.\n• Exemple\nÀ faire : exercice 82 p. 93\nRevoir la séance : https://x/r?a=1&b=2')
   })
 })
 

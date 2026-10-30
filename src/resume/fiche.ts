@@ -227,7 +227,8 @@ export function consigneGemini(f: FicheDeSeance, niveau: string | null, consigne
     'Écris le texte du cahier de textes, en français, comme un professeur l\'écrit pour ses élèves et leurs parents :',
     '- une ligne qui commence par « Fait en classe : », qui dit les notions vues, les définitions, propriétés et démonstrations, et les exercices (avec leur numéro et leur page du manuel quand ils sont écrits au tableau) ;',
     '- s\'il est écrit au tableau un travail à faire pour la prochaine fois, une ligne qui commence par « À faire : » ; sinon, pas de ligne « À faire ».',
-    'Au plus 4 lignes en tout. Pas de titre, pas de date, pas de formule de politesse, pas de mise en forme (ni astérisques, ni dièses).',
+    'Au plus 4 lignes en tout. Pas de titre, pas de date, pas de formule de politesse.',
+    'Mise en forme permise (Pronote la garde) : **gras**, __souligné__, et des puces « • » en début de ligne. Rien d\'autre (ni dièses, ni tableaux).',
     'Écris les mathématiques en caractères simples (√2, x², ≤, ℝ, 3/4), sans LaTeX.',
     // Les consignes du professeur (« Rédaction automatique… ») passent avant
     // la forme ci-dessus, jamais avant la dernière règle
@@ -242,11 +243,57 @@ export function consigneGemini(f: FicheDeSeance, niveau: string | null, consigne
 export function texteCahierDeGemini(f: FicheDeSeance, brut: string, enTete = true): string | null {
   const lignes = brut.replace(/\r/g, '').split('\n')
     // Une puce (- * •) devient « • » : le professeur peut en demander
-    .map(l => l.replace(/^\s*[-*•]\s+(?=\S)/, '• ').replace(/^\s*[#>]+\s*/, '').replace(/\*\*|__|`/g, '').replace(/\s+/g, ' ').trim())
+    .map(l => l.replace(/^\s*[-*•]\s+(?=\S)/, '• ').replace(/^\s*[#>]+\s*/, '').replace(/`/g, '').replace(/\s+/g, ' ').trim())
     .filter(l => l && l !== '•')
   if (!lignes.length) return null
   const corps = lignes.slice(0, LIGNES_MAX).join('\n')
   return enTete ? `${jourDit(f.debut)} · ${f.chapitre}\n${corps}` : corps
 }
+// ---------- Le texte mis en forme, pour Pronote ----------
+// Dans le champ, le texte garde des marques simples : **gras**, __souligné__,
+// « • » en début de ligne. La copie pour Pronote part en deux versions : mise
+// en forme (HTML, que l'éditeur de Pronote garde au collage) et texte simple
+// (sans les marques), pour tout autre endroit où l'on colle.
+const echapperHtml = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
+
+/** Le texte sans ses marques de mise en forme */
+export function texteSansMarques(t: string): string {
+  return t.replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1')
+}
+
+/** Le texte en HTML : gras, souligné, listes à puces, liens */
+export function htmlDuTexte(t: string): string {
+  const enLigne = (l: string) => echapperHtml(l)
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/__(.+?)__/g, '<u>$1</u>')
+    .replace(/https?:\/\/[^\s<]+/g, u => `<a href="${u}">${u}</a>`)
+  const morceaux: string[] = []
+  let liste: string[] = []
+  const fermer = () => { if (liste.length) morceaux.push(`<ul>${liste.map(x => `<li>${x}</li>`).join('')}</ul>`); liste = [] }
+  for (const l of t.replace(/\r/g, '').split('\n')) {
+    const puce = /^\s*•\s*(.*)$/.exec(l)
+    if (puce) { liste.push(enLigne(puce[1])); continue }
+    fermer()
+    morceaux.push(l.trim() ? `<div>${enLigne(l)}</div>` : '<div><br></div>')
+  }
+  fermer()
+  return morceaux.join('')
+}
+
+/** Copie le texte dans le presse-papiers, mis en forme et en texte simple
+ *  (le texte simple seul si le navigateur ne sait pas faire les deux) */
+export async function copierMisEnForme(t: string): Promise<void> {
+  const simple = texteSansMarques(t)
+  if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/plain': new Blob([simple], { type: 'text/plain' }),
+        'text/html': new Blob([htmlDuTexte(t)], { type: 'text/html' }),
+      })])
+      return
+    } catch { /* on essaie le texte simple */ }
+  }
+  await navigator.clipboard.writeText(simple)
+}
+
 /** Au plus tant de lignes gardées du texte de Gemini */
 export const LIGNES_MAX = 30
