@@ -262,7 +262,8 @@ async function demarrer() {
   let depart = app.seanceAuDemarrage({ nouvelle: arrivage.nouvelle })
   // Arrivé par la ligne « séances » d'une carte : on va à cette séance, sans
   // la fenêtre d'accueil (on l'a choisie)
-  if (SEANCE_VOULUE && voirLaSeance(app, SEANCE_VOULUE)) depart = { genre: 'rien' }
+  const seanceVue = !!SEANCE_VOULUE && voirLaSeance(app, SEANCE_VOULUE)
+  if (seanceVue) depart = { genre: 'rien' }
   // Arrivé par la recherche : la page, la formule prise
   if (PAGE_VOULUE && voirLaPage(app, PAGE_VOULUE, FORME_VOULUE)) depart = { genre: 'rien' }
   // L'état de la sauvegarde : le bouton du classeur, le menu ⋯, le bandeau
@@ -341,6 +342,11 @@ async function demarrer() {
       // Renommé dans la bibliothèque de cet onglet (le canal ne revient pas à qui parle)
       classeurChange: nommer,
       voirSeance: id => voirLaSeance(app, id),
+      enregistrerSeance: id => {
+        if (!voirLaSeance(app, id)) return false
+        ui.enregistrerLaSeance(id)
+        return true
+      },
       voirPage: (page, forme) => voirLaPage(app, page, forme),
       oublierMessage: cle => ui.oublierAction(cle),
       // Effacé depuis la corbeille de cet onglet (lot 4 C8) : les autres onglets
@@ -520,6 +526,8 @@ async function demarrer() {
   let accueil: Promise<HTMLDialogElement | null> | null = null
   if (depart.genre === 'reprise' && depart.seance && !autreMessage) ui.message(`Séance ${deLaSeance(depart.seance, Date.now())} reprise`)
   else if (depart.genre === 'accueil' && depart.seance && !ouvertDUnFichier && !arrivee) accueil = ouvrirLAccueil(app, ui, registre, fiche, depart.seance)
+  // Arrivé par « Enregistrer la séance… » : la fenêtre Publier, sur cette séance
+  if (seanceVue && ENREGISTRER_VOULU && SEANCE_VOULUE && !document.querySelector('dialog[open]')) ui.enregistrerLaSeance(SEANCE_VOULUE)
   // Parti d'un autre classeur avec « Commencer par des automatismes » cochée
   if (arrivage.automatismes && !document.querySelector('dialog[open]')) ui.flash.ouvrir()
   // Le rappel d'enregistrer le classeur qu'on vient de quitter (20 minutes
@@ -548,6 +556,10 @@ async function demarrer() {
  *  d'une carte), lue avant que le démarrage remette l'adresse au propre : un
  *  rechargement ne la rejoue pas */
 const SEANCE_VOULUE = new URLSearchParams(location.search).get('seance')
+/** « &enregistrer » avec la séance : la fenêtre Publier s'ouvre sur elle, pour
+ *  enregistrer son fichier (« Enregistrer la séance… », le menu d'une séance
+ *  de la bibliothèque, pour un autre classeur que celui de l'onglet) */
+const ENREGISTRER_VOULU = SEANCE_VOULUE !== null && new URLSearchParams(location.search).has('enregistrer')
 /** La page où l'on arrive, et la formule à y prendre (« &page=…&forme=… »,
  *  par la recherche), lues de même */
 const PAGE_VOULUE = new URLSearchParams(location.search).get('page')

@@ -173,6 +173,9 @@ export interface HoteBibliotheque {
   /** Aller à la première page d'une séance du classeur de cet onglet (la
    *  ligne « séances » de sa carte) ; faux : cette séance n'existe plus */
   voirSeance?(id: string): boolean
+  /** Va à une séance du classeur de cet onglet et ouvre la fenêtre Publier
+   *  sur elle, pour enregistrer son fichier ; faux : elle n'existe plus */
+  enregistrerSeance?(id: string): boolean
   /** Va à une page du classeur de cet onglet, une formule prise (la
    *  recherche) ; faux : elle n'existe plus */
   voirPage?(page: string, forme: string | null): boolean
@@ -2116,6 +2119,8 @@ export class Bibliotheque {
     m.setAttribute('aria-label', l.nom ?? `Séance du ${l.date}`)
     entreeMenu(m, 'Ouvrir la séance', () => void this.ouvrirClasseur(f, { seance: sid }), { touche: 'Entrée', action: 'ouvrir-seance' })
     entreeMenu(m, 'Renommer…', () => void this.renommerSeanceDe(fid, sid), { touche: 'F2', action: 'renommer-seance' })
+    // Son fichier séance (.mem) : la fenêtre Publier, sur elle, le focus sur « Enregistrer le fichier »
+    entreeMenu(m, 'Enregistrer la séance…', () => void this.ouvrirClasseur(f, { seance: sid, enregistrer: true }), { action: 'enregistrer-seance', aide: 'Son fichier séance (.mem), à garder ou à déposer dans l\'ENT' })
     filetMenu(m)
     if (i > 0) entreeMenu(m, 'Monter', () => void this.placerSeance(fid, sid, { pas: -1 }), { touche: 'Alt + ↑', action: 'monter-seance' })
     if (i < lignes.length - 1) entreeMenu(m, 'Descendre', () => void this.placerSeance(fid, sid, { pas: 1 }), { touche: 'Alt + ↓', action: 'descendre-seance' })
@@ -3502,11 +3507,12 @@ export class Bibliotheque {
    *  4) la page se recharge sur l'adresse du classeur.
    *  Celui de l'onglet : l'écran se ferme (le second clic d'un double-clic
    *  ne tombe pas sur le tableau). arrivee : ce qu'on dira en arrivant. */
-  async ouvrirClasseur(f: FicheClasseur, o: { x?: number; y?: number; arrivee?: string; cle?: CleALArrivee; seance?: string; page?: string; forme?: string } = {}) {
+  async ouvrirClasseur(f: FicheClasseur, o: { x?: number; y?: number; arrivee?: string; cle?: CleALArrivee; seance?: string; page?: string; forme?: string; enregistrer?: boolean } = {}) {
     const ici = this.hote.classeur
     if (ici && f.id === ici.id) {
       this.fermer()
-      if (o.seance && this.hote.voirSeance?.(o.seance) === false) this.hote.message('Cette séance n\'existe plus dans ce classeur.')
+      const voir = o.enregistrer ? this.hote.enregistrerSeance : this.hote.voirSeance
+      if (o.seance && voir?.(o.seance) === false) this.hote.message('Cette séance n\'existe plus dans ce classeur.')
       if (o.page && this.hote.voirPage?.(o.page, o.forme ?? null) === false) this.hote.message('Cette page n\'existe plus dans ce classeur.')
       if (o.x !== undefined && o.y !== undefined) avalerLeSecondAppui(o.x, o.y)
       return
@@ -3555,7 +3561,7 @@ export class Bibliotheque {
       // La connexion Google suit l'onglet d'un classeur à l'autre (la copie
       // sur le Drive continue sans un clic, voir publication/drive.ts)
       passerLaConnexion()
-      location.assign(urlDuClasseur(location.href, f.id, o.seance, { page: o.page, forme: o.forme }))
+      location.assign(urlDuClasseur(location.href, f.id, o.seance, { page: o.page, forme: o.forme, enregistrer: o.enregistrer }))
     } finally {
       if (!parti) this.depart = false
     }

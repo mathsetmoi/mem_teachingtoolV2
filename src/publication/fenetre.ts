@@ -119,7 +119,10 @@ export class Publication {
   private reperer(ecart: number) { return seancesAPublier(this.app.tableau, ecart) }
 
   /** La fenêtre. complet : tout montrer même quand le résumé suffirait (les essais) */
-  async ouvrir(o: { complet?: boolean } = {}) {
+  /** seance : la séance à choisir d'office (son id, lot 6) ; avec enregistrer,
+   *  la fenêtre s'ouvre complète, le focus sur « Enregistrer le fichier »
+   *  (« Enregistrer la séance… », le menu d'une séance de la bibliothèque) */
+  async ouvrir(o: { complet?: boolean; seance?: string; enregistrer?: boolean } = {}) {
     this.seances = this.reperer(DECOUPAGES[0] * MINUTE)
     if (!this.seances.length) return this.app.ui.message('Rien à publier pour l\'instant : le replay commence avec ce que vous écrivez pendant la séance.')
     if (this.enLigne) preparerGoogle()
@@ -248,10 +251,15 @@ export class Publication {
         : 'La version hors ligne de MEM teachingtool ne peut ni publier ni montrer l\'aperçu : enregistrez le fichier séance, ou utilisez MEM teachingtool en ligne pour publier.')
     }
     this.remplirSeances()
+    if (o.seance) {
+      const i = this.seances.findIndex(s => (s as Partial<SeanceExplicite>).id === o.seance)
+      if (i >= 0) { q<HTMLSelectElement>('.p-seance').value = String(i); this.choisirSeance() }
+    }
     this.majLieu()
     this.majGoogle()
     d.showModal()
-    this.afficherResume(this.resumePossible && !o.complet)
+    this.afficherResume(this.resumePossible && !o.complet && !o.enregistrer)
+    if (o.enregistrer) q('.p-fichier').focus()
   }
 
   /** Le résumé suffit : le replay va dans un dossier de l'ordinateur, tout est
