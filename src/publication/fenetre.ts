@@ -264,8 +264,12 @@ export class Publication {
         : 'La version hors ligne de MEM teachingtool ne peut ni publier ni montrer l\'aperçu : enregistrez le fichier séance, ou utilisez MEM teachingtool en ligne pour publier.')
     }
     this.remplirSeances()
-    if (o.seance) {
-      const i = this.seances.findIndex(s => (s as Partial<SeanceExplicite>).id === o.seance)
+    // La séance demandée, sinon celle de la page à l'écran (une séance passée
+    // rouverte depuis le menu du classeur), sinon la plus récente
+    const t = this.app.tableau
+    const voulue = o.seance ?? (t.pageVue ? t.seanceDe(t.pageVue)?.id : undefined)
+    if (voulue) {
+      const i = this.seances.findIndex(s => (s as Partial<SeanceExplicite>).id === voulue)
       if (i >= 0) { q<HTMLSelectElement>('.p-seance').value = String(i); this.choisirSeance() }
     }
     this.majLieu()
@@ -307,7 +311,7 @@ export class Publication {
     const titre = (d.querySelector('.p-titre') as HTMLInputElement).value
     const compte = this.compte || this.retenu.compte || ''
     const t = texteDuResume({
-      libelle, aujourdhui: !!x.id && x.id === this.app.tableau.derniereSeance()?.id, pages: this.pagesChoisies().length,
+      libelle, aujourdhui: !!x.id && x.id === this.app.tableau.derniereSeance()?.id && new Date(s.debut).toDateString() === new Date().toDateString(), pages: this.pagesChoisies().length,
       titre: titre === this.titreParDefaut(s) ? '' : titre,
       chemin: this.choisi?.name ?? this.retenu.poignee?.name ?? this.propose?.chemin ?? 'aucun dossier choisi',
       drive: relaisDe(compte)?.nom ?? 'aucun Drive',
@@ -370,11 +374,12 @@ export class Publication {
   private remplirSeances() {
     const choix = this.d!.querySelector('.p-seance') as HTMLSelectElement
     // Une séance explicite (lot 6) : son nom ou sa date, et sa plage de temps ;
-    // la séance du jour est choisie d'office (elle est la première)
+    // « aujourd'hui » seulement pour la plus récente, et si elle est d'aujourd'hui
+    const memeJour = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString()
     const jourId = this.app.tableau.derniereSeance()?.id
     choix.innerHTML = this.seances.map((s, i) => {
       const x = s as Partial<SeanceExplicite>
-      const qui = x.id ? `${echapper(x.nom ?? jour(s.debut))}${x.id === jourId ? ' (aujourd\'hui)' : ''}, ` : `${echapper(jour(s.debut))}, `
+      const qui = x.id ? `${echapper(x.nom ?? jour(s.debut))}${x.id === jourId && memeJour(s.debut, Date.now()) ? ' (aujourd\'hui)' : ''}, ` : `${echapper(jour(s.debut))}, `
       return `<option value="${i}">${qui}${heure(s.debut)} → ${heure(s.fin)} · ${s.gestes} geste${s.gestes > 1 ? 's' : ''}</option>`
     }).join('')
     this.choisirSeance()

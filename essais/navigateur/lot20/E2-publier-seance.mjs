@@ -117,6 +117,16 @@ const meme = await p.evaluate(() => performance.timeOrigin)
 ok(meme === avant && f.ouverte && f.vue === s2 && /12 oct/i.test(f.choisie ?? '') && !(await p.evaluate(() => window.__bibliotheque.ouvert)),
   'C) Le classeur de l\'onglet : sans recharger, la séance, la fenêtre Publier sur elle', f)
 
+// E. La séance du 12 à l'écran, le bouton Publier de la barre : elle est
+// choisie (pas la plus récente), et rien n'est dit « aujourd'hui »
+await p.click('dialog.dialogue-publier[open] .p-fermer'); await attendre(300)
+await p.click('button[title="Publier le replay pour les élèves"]')
+await p.waitForSelector('dialog.dialogue-publier[open]', { timeout: 10000 }); await attendre(300)
+f = await fenetre()
+const options = await p.$$eval('dialog.dialogue-publier[open] .p-seance option', o => o.map(x => x.textContent))
+ok(f.vue === s2 && /12 oct/i.test(f.choisie ?? '') && !options.some(x => /aujourd'hui/.test(x)),
+  'E) Publier depuis la barre : la séance à l\'écran, et pas « aujourd\'hui » pour une séance d\'un autre jour', { f, options })
+
 ok(!erreurs.length, 'Aucune erreur dans la page', erreurs)
 await nav.close()
 console.log(echecs ? `\n${echecs} échec(s)` : '\nTout est vert')
