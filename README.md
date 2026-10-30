@@ -1588,7 +1588,8 @@ lequel chaque Drive a été publié, le propose en premier la fois suivante, et
 prévient avant d'envoyer si l'on est connecté avec un autre. **Voir comme un élève** ouvre
 le lecteur dans un onglet, sans rien publier. **Publier** se connecte à Google,
 envoie la séance sur le Drive, la relit par le relais comme le fera l'élève, et
-donne le lien, avec **Copier pour Pronote** (le titre, le lien et les
+donne le lien, avec **Copier pour Pronote** (aujourd'hui **Copier et ouvrir
+Pronote**, lot 19 ; le titre, le lien et les
 pages avec leur minute). Republier la même séance met à jour le même
 fichier : le lien déjà collé montre la nouvelle version, même depuis un autre
 onglet ou un autre ordinateur, et même si le fichier était passé à la
@@ -1799,7 +1800,7 @@ fichier, et le relais (version 4) le retrouve par son code, n'importe où dans
 le Drive du compte, en plus de l'ancien dossier « Replay séances » (les anciens
 liens `?id=` marchent toujours). Il ne sert qu'un `.mem` qui est un replay,
 appartenant au compte, hors corbeille ; jamais un `.memc`. Après Publier, le
-lien s'affiche tout de suite (« Copier pour Pronote », « Tester le lien ») et
+lien s'affiche tout de suite (« Copier et ouvrir Pronote », « Tester le lien ») et
 l'outil interroge le relais toutes les 5 secondes, 10 minutes au plus :
 « En attente de Google Drive… » puis « ✓ Le replay est en ligne ». Un relais
 qui n'est pas à jour est signalé avant d'écrire. Trois Drive, donc trois
@@ -5848,6 +5849,12 @@ nom de l'appareil. La version hors ligne ne fait jamais appel à Gemini.
   souligné, listes, liens), que l'éditeur de Pronote garde au collage
   (vérifié par le professeur), et en texte simple sans les marques
   (`htmlDuTexte`, `texteSansMarques`, `copierMisEnForme` dans fiche.ts).
+  Un seul bouton, « Copier et ouvrir Pronote » (le bouton « Copier pour
+  Pronote » est retiré, à la demande du professeur) : il copie le texte du
+  cahier de textes, le lien et les pages, puis ouvre le Pronote retenu pour
+  l'établissement ; la copie d'abord, l'onglet ensuite (ouvert tout de suite,
+  il ôtait la page au navigateur avant la fin de la copie). Sans adresse de
+  Pronote retenue, il copie seulement et le dit.
 - Dans le document, deux cartes de premier niveau, hors des pages (ni étape
   du film, ni annulation, comme les noms des pages) : `activites` (id →
   { t, page, type, titre }) et `textesCahier` (id de la séance → { texte,
@@ -6668,7 +6675,7 @@ la version 127) ou refuse, le message le dit et propose **Enregistrer l'image
 sélection. La copie part dans le clic même (Safari l'exige). Grisé sur une
 page vide ; « Rien n'est sélectionné. » sans rien de pris. Pas de raccourci
 (Ctrl + Maj + C ouvre l'inspecteur du navigateur). À ne pas confondre avec
-*Copier pour Pronote* de la fenêtre Publier, qui copie le lien d'un replay.
+*Copier et ouvrir Pronote* de la fenêtre Publier, qui copie le lien d'un replay.
 
 **Envoyer vers une autre page.** *Envoyer vers…* (le menu complet d'un objet,
 d'une formule ou de plusieurs objets : le petit menu de son bouton ⋯, après

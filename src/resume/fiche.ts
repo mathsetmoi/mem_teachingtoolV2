@@ -12,7 +12,7 @@
 // Ce qu'on en tire :
 // - la fiche de la séance (la trieuse, « Bonjour ! ») : une ligne de ce qui
 //   a été fait ;
-// - le texte du cahier de textes (Publier, « Copier pour Pronote ») : rédigé
+// - le texte du cahier de textes (Publier, « Copier et ouvrir Pronote ») : rédigé
 //   par l'outil (le secours), ou par Gemini ; le professeur peut le corriger,
 //   il est gardé avec la séance (Tableau.textesCahier).
 //

@@ -78,7 +78,7 @@ const kilo = (n: number) => n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024
 export class Publication {
   private d: HTMLDialogElement | null = null
   private seances: Seance[] = []
-  /** Le lien publié et la ligne de ses pages : « Copier pour Pronote » y
+  /** Le lien publié et la ligne de ses pages : « Copier et ouvrir Pronote » y
    *  ajoute le texte du cahier de textes tel qu'il est à ce moment-là */
   private publie: { lien: string; pages: string; titre: string } | null = null
   /** Le texte du cahier de textes a été touché par le professeur depuis
@@ -185,8 +185,7 @@ export class Publication {
           <label class="champ"><span>Le lien de la séance</span><input class="p-lien" readonly /></label>
           <div class="actions">
             <button type="button" class="secondaire p-copier">Copier le lien</button>
-            <button type="button" class="principal p-pronote">Copier pour Pronote</button>
-            <a class="principal bouton-lien p-ouvrir-pronote" target="_blank" rel="noopener" hidden>Copier et ouvrir Pronote</a>
+            <a class="principal bouton-lien p-ouvrir-pronote" target="_blank" rel="noopener" role="button" tabindex="0">Copier et ouvrir Pronote</a>
             <a class="secondaire bouton-lien p-ouvrir" target="_blank" rel="noopener">Tester le lien</a>
           </div>
           <p class="p-copie-faite" hidden>Le texte pour Pronote est déjà copié : dans le cahier de textes, faites Ctrl+V.</p>
@@ -228,15 +227,20 @@ export class Publication {
     q('.p-modifier').addEventListener('click', () => this.afficherResume(false))
     q('.p-drive-changer').addEventListener('click', () => { q('.p-drive-retenu').hidden = true; q('.p-comptes').hidden = false })
     q('.p-copier').addEventListener('click', () => this.copier(q<HTMLInputElement>('.p-lien').value, 'Lien copié'))
-    q('.p-pronote').addEventListener('click', () => this.copier(this.textePronote, 'Texte copié : collez-le dans le cahier de textes', true))
     // Le lien s'ouvre de lui-même (un onglet) ; dans le même clic, le texte part dans le presse-papiers
     // D'abord la copie, puis Pronote : l'onglet ouvert tout de suite ôtait la
     // page au navigateur avant la fin de la copie (le texte mis en forme)
+    // Sans adresse, le lien n'a pas de href : Entrée et Espace le cliquent
+    q('.p-ouvrir-pronote').addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() }
+    })
     q('.p-ouvrir-pronote').addEventListener('click', e => {
       e.preventDefault()
-      const a = e.currentTarget as HTMLAnchorElement
+      const adresse = (e.currentTarget as HTMLAnchorElement).getAttribute('href')
+      // Sans adresse de Pronote retenue : la copie seule
+      if (!adresse) return void this.copier(this.textePronote, 'Texte copié. Pour que Pronote s\'ouvre aussi, donnez son adresse dans « Rédaction automatique… ».', true)
       void this.copier(this.textePronote, 'Texte copié : dans Pronote, cliquez dans le cahier de textes et faites Ctrl+V', true)
-        .finally(() => window.open(a.href, '_blank', 'noopener'))
+        .finally(() => window.open(adresse, '_blank', 'noopener'))
     })
     q('.p-reessayer').addEventListener('click', () => this.preparerTexte(true))
     q('.p-redaction').addEventListener('click', () => ouvrirRedaction(this.racine, () => { this.majPronote(); this.preparerTexte(true) }))
@@ -514,10 +518,8 @@ export class Publication {
     const a = this.d?.querySelector('.p-ouvrir-pronote') as HTMLAnchorElement | null
     if (!a) return
     const adresse = pronoteDe(this.compte || this.retenu.compte || '')
-    a.hidden = !adresse
     if (adresse) a.href = adresse
-    ;(this.d!.querySelector('.p-pronote') as HTMLElement).classList.toggle('principal', !adresse)
-    ;(this.d!.querySelector('.p-pronote') as HTMLElement).classList.toggle('secondaire', !!adresse)
+    else a.removeAttribute('href')
   }
 
   /** Le titre proposé d'office : le nom de la séance, sinon sa date */
@@ -858,7 +860,7 @@ export class Publication {
     return { lien, pages, titre: film.titre }
   }
 
-  /** Ce que « Copier pour Pronote » copie : le texte du cahier de textes (une
+  /** Ce que « Copier et ouvrir Pronote » copie : le texte du cahier de textes (une
    *  séance explicite), puis le lien et les pages ; sans lui, comme avant */
   private get textePronote(): string {
     const p = this.publie
@@ -876,7 +878,7 @@ export class Publication {
     try {
       await copierMisEnForme(texte)
       ;(d.querySelector('.p-copie-faite') as HTMLElement).hidden = false
-    } catch { /* « Copier pour Pronote » reste là */ }
+    } catch { /* « Copier et ouvrir Pronote » reste là */ }
   }
 
   /** misEnForme : le texte pour Pronote (gras, souligné, puces) */

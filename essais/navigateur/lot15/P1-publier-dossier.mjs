@@ -83,7 +83,7 @@ const m = fichiers[0]?.match(/^Equations Essai \[([a-z0-9]{8})\]\.mem$/)
 ok(fichiers.length === 1 && !!m, 'A3) Le fichier « Titre [code].mem » est écrit', fichiers)
 const lien = await p.inputValue('.p-lien')
 ok(m && lien.includes('code=' + m[1]) && /[?&]r=/.test(lien), 'A4) Le lien porte le code', lien)
-ok(await p.isVisible('.p-pronote') && /Tester le lien/.test(await p.textContent('.p-ouvrir')), 'A5) « Copier pour Pronote » et « Tester le lien »')
+ok(await p.isVisible('.p-ouvrir-pronote') && /Tester le lien/.test(await p.textContent('.p-ouvrir')), 'A5) « Copier et ouvrir Pronote » et « Tester le lien »')
 // B. le fichier arrive
 arrive = true
 await p.waitForFunction(() => /Le replay est en ligne/.test(document.querySelector('.p-etat').textContent), null, { timeout: 20000 })
