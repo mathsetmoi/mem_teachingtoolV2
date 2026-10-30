@@ -48,7 +48,7 @@ import { BarreActions } from './barre-actions'
 import { Apercus } from './sorties/apercu'
 import { VignetteEnonce } from './enonce'
 import type { PageAPeindre } from './sorties/apercu'
-import { copierEnImage, nomDeLImage } from './sorties/image'
+import { copierEnImage, imagePng, nomDeLImage } from './sorties/image'
 import { ouvrirFenetrePdf } from './sorties/export-pdf'
 import type { CibleExport, HoteFenetrePdf } from './sorties/export-pdf'
 import { Vignettes } from './pages/vignettes'
@@ -1109,6 +1109,8 @@ export class UI implements Interface {
     this.bandeauxSeances = new BandeauxSeances(app, this.racine, this.vignettes)
     this.trieuse = new Trieuse(app, this.racine, this, this.vignettes)
     this.publication = new Publication(app, this.racine)
+    // Les pages de la séance en images, pour la rédaction par Gemini (le papier blanc)
+    this.publication.imageDePage = page => imagePng(this.apercus, this.pageAPeindre(page), { fond: false })
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
     this.catalogue = new Catalogue(app, this.racine, t => this.message(t, undefined, true))
     this.flash = new Flash(app, this.racine, t => this.message(t, undefined, true))

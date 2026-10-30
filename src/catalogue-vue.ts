@@ -342,6 +342,7 @@ export class Catalogue {
       const groupe = uid()
       this.app.tableau.nouveauGeste()
       const ovales = this.ovalesFigures(o)
+      this.app.tableau.noterActivite(this.app.page, 'dessin', 'Les ensembles de nombres ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ')
       ovales.forEach(f => { f.groupe = groupe; this.poser(f) })
       const { noms } = dessinEnsembles(o)
       const occupe: Boite[] = []
@@ -449,6 +450,8 @@ export class Catalogue {
       this.app.tableau.nouveauGeste()
       this.poser(this.formule(m.titre.latex, o.x, o.y, TAILLE_TITRE, this.app.couleur, groupe))
       this.demo = { d, page: this.app.page, groupe, x: o.x, hauts: [o.y + m.titre.h + ECART_LIGNES * 2], posees: [] }
+      // Pour le résumé de la séance (resume/fiche.ts)
+      this.app.tableau.noterActivite(this.app.page, 'demonstration', `Démonstration : ${d.nom}`)
       this.afficher()
       this.message('Démonstration posée : → ou Espace pour la ligne suivante, ← pour revenir.')
     })

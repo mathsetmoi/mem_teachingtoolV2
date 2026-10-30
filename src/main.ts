@@ -1,4 +1,6 @@
 import 'katex/dist/katex.min.css'
+import { ficheDeLaSeance } from './resume/collecte'
+import { ligneDeResume } from './resume/fiche'
 import './style.css'
 import { Tableau } from './document'
 import { App } from './app'
@@ -703,6 +705,7 @@ async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche
     chapitre: app.classeur.nom,
     isolees: estSeancesIsolees(ici ?? app.classeur),
     continuer: deLaSeance(seance, Date.now(), true),
+    derniereFois: (() => { const f = ficheDeLaSeance(app.tableau, seance.id, app.classeur.nom); return f ? ligneDeResume(f) : null })(),
     classes: avecBibliotheque ? classes : [],
     chapitres: avecBibliotheque ? async () => {
       const l: ChapitreAccueil[] = dans(dossierDuChapitre).map(f => ({ id: f.id, nom: f.nom, ici: f.id === ici?.id, seances: f.id === ici?.id ? app.tableau.seancesDuClasseur().length : f.seances ?? null, isolees: estSeancesIsolees(f) }))

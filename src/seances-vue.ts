@@ -55,6 +55,10 @@ export interface HoteAccueil {
   seanceIsolee?: { texte: string; faire(automatismes: boolean): void } | null
   /** La séance qu'on peut continuer (la dernière), dite dans une phrase */
   continuer: string | null
+  /** Ce qui a été fait pendant la dernière séance (resume/fiche.ts), en une
+   *  ligne : « Automatismes (5 questions) · Exercice 12 p. 42 » ; absent ou
+   *  null : rien à dire */
+  derniereFois?: string | null
   /** Les autres dossiers de niveau */
   classes: { id: string; nom: string }[]
   /** Les chapitres du niveau (null : pas de bibliothèque) */
@@ -121,6 +125,11 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
     chapitre.append(bouton('lien accueil-changer', 'changer de chapitre', () => void montrerChapitres()))
   }
   principale.append(titre, gros, caseAuto, chapitre)
+  if (h.derniereFois) {
+    const p = el('p', 'accueil-derniere-fois')
+    p.append(el('span', 'quand', `La dernière fois${h.continuer ? ` (${h.continuer.replace(/^(de|du) /, '')})` : ''} : `), el('span', 'quoi', h.derniereFois))
+    principale.append(p)
+  }
   // « Séance isolée » (lot 17) : une séance hors chapitre, dans le classeur
   // « Séances isolées » du niveau (créé au besoin, sans fenêtre). Pas quand
   // le classeur ouvert est lui-même « Séances isolées » : le gros bouton

@@ -3952,7 +3952,7 @@ export class App {
       numeroPage: Math.max(1, this.pages.indexOf(this.page) + 1),
       lecture: this.enSeancePassee,
       maj: () => this.ui.maj(),
-      importer: c => { void this.poserPdf(pdf, c).finally(() => pdf.fermer()) },
+      importer: c => { void this.poserPdf(pdf, c, nom).finally(() => pdf.fermer()) },
     }, pdf, nom)
   }
 
@@ -3965,7 +3965,9 @@ export class App {
    *  la première. Sinon, toutes sur la page qu'on regarde, l'une sous
    *  l'autre, en haut de ce qu'on voit. Fixées en fond, elles passent sous
    *  tout ; sinon elles arrivent sélectionnées, comme une image importée. */
-  private async poserPdf(pdf: PdfOuvert, c: ChoixPdf) {
+  private async poserPdf(pdf: PdfOuvert, c: ChoixPdf, nom = 'PDF') {
+    // Pour le résumé de la séance (resume/fiche.ts) : le nom du fichier, sans son extension
+    const fichier = nom.replace(/\.pdf$/i, '').replace(/[_]+/g, ' ').trim() || 'PDF'
     const images: { src: string; donnees: string; l: number; h: number }[] = []
     for (const [k, n] of c.pages.entries()) {
       if (c.pages.length > 1) this.ui.message(`Import du PDF : page ${k + 1} sur ${c.pages.length}…`)
@@ -3990,6 +3992,7 @@ export class App {
         const f: Forme = { id: uid(), type: 'image', src: im.src, l: im.l, h: im.h, m: [e, 0, 0, e], x: 0, y: 0, z: Date.now(), auteur: moi }
         if (c.fond) f.fixe = true
         this.tableau.poserSurLaPage(page, [f])
+        this.tableau.noterActivite(page, 'pdf', `${fichier} p. ${c.pages[k]}`)
         pages.push(page)
       }
       this.allerPage(pages[0])
@@ -4015,6 +4018,7 @@ export class App {
     const avant = c.fond ? null : this.preterSelection(formes.map(f => f.id))
     this.tableau.nouveauGeste()
     this.tableau.poserPlusieurs(this.page, formes)
+    this.tableau.noterActivite(this.page, 'pdf', `${fichier} ${c.pages.length > 1 ? 'pp.' : 'p.'} ${c.pages.join(', ')}`)
     this.selection.clear()
     if (avant !== null) for (const f of formes) this.selection.add(f.id)
     this.rendu.redessinerDirect(); this.ui.maj()
