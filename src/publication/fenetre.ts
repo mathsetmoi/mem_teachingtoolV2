@@ -37,7 +37,7 @@ import { choisirLeDossier, deposerLeFichierSeance, deposerLeReplay, dossierDuCha
 import { marqueDeCopie } from '../fichier'
 import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier } from './drive'
 import type { FicheDeSeance } from '../resume/fiche'
-import { texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil, consigneGemini } from '../resume/fiche'
+import { texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil, consigneGemini, copierMisEnForme } from '../resume/fiche'
 import { ficheDeLaSeance, gestesDeLaSeance } from '../resume/collecte'
 import { ErreurGemini, PAGES_MAX, cleGemini, consignesDuProfesseur, demanderAGemini, dernierModele, enTeteGemini, imagePourGemini, pronoteDe } from '../resume/gemini'
 import { ouvrirRedaction } from '../resume/reglage-vue'
@@ -157,6 +157,7 @@ export class Publication {
         <div class="p-cahier" hidden>
           <label class="p-cahier-champ"><span>Texte pour le cahier de textes (vous pouvez le corriger)</span>
             <textarea class="p-texte-cahier" rows="4" maxlength="2000" spellcheck="true"></textarea></label>
+          <p class="p-cahier-marques">Dans Pronote : **gras**, __souligné__, « • » en début de ligne pour une puce.</p>
           <p class="p-cahier-pied"><span class="p-cahier-qui" role="status" aria-live="polite"></span>
             <button type="button" class="lien p-reessayer" hidden>Réessayer</button>
             <button type="button" class="lien p-redaction">Rédaction automatique…</button></p>
@@ -227,9 +228,9 @@ export class Publication {
     q('.p-modifier').addEventListener('click', () => this.afficherResume(false))
     q('.p-drive-changer').addEventListener('click', () => { q('.p-drive-retenu').hidden = true; q('.p-comptes').hidden = false })
     q('.p-copier').addEventListener('click', () => this.copier(q<HTMLInputElement>('.p-lien').value, 'Lien copié'))
-    q('.p-pronote').addEventListener('click', () => this.copier(this.textePronote, 'Texte copié : collez-le dans le cahier de textes'))
+    q('.p-pronote').addEventListener('click', () => this.copier(this.textePronote, 'Texte copié : collez-le dans le cahier de textes', true))
     // Le lien s'ouvre de lui-même (un onglet) ; dans le même clic, le texte part dans le presse-papiers
-    q('.p-ouvrir-pronote').addEventListener('click', () => void this.copier(this.textePronote, 'Texte copié : dans Pronote, cliquez dans le cahier de textes et faites Ctrl+V'))
+    q('.p-ouvrir-pronote').addEventListener('click', () => void this.copier(this.textePronote, 'Texte copié : dans Pronote, cliquez dans le cahier de textes et faites Ctrl+V', true))
     q('.p-reessayer').addEventListener('click', () => this.preparerTexte(true))
     q('.p-redaction').addEventListener('click', () => ouvrirRedaction(this.racine, () => { this.majPronote(); this.preparerTexte(true) }))
     const champCahier = q<HTMLTextAreaElement>('.p-texte-cahier')
@@ -866,13 +867,14 @@ export class Publication {
     const texte = this.textePronote, d = this.d
     if (!texte || !d) return
     try {
-      await navigator.clipboard.writeText(texte)
+      await copierMisEnForme(texte)
       ;(d.querySelector('.p-copie-faite') as HTMLElement).hidden = false
     } catch { /* « Copier pour Pronote » reste là */ }
   }
 
-  private async copier(texte: string, ok: string) {
-    try { await navigator.clipboard.writeText(texte); this.etat(ok) }
+  /** misEnForme : le texte pour Pronote (gras, souligné, puces) */
+  private async copier(texte: string, ok: string, misEnForme = false) {
+    try { await (misEnForme ? copierMisEnForme(texte) : navigator.clipboard.writeText(texte)); this.etat(ok) }
     catch {
       const champ = this.d?.querySelector('.p-lien') as HTMLInputElement
       champ.value = texte; champ.select()

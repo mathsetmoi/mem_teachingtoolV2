@@ -33,7 +33,7 @@
 // bas, le focus sur sa vignette).
 // =============================================================
 import { ficheDeLaSeance } from '../resume/collecte'
-import { contenuDeLaPage, dureeDite, ligneDeResume, nomPropose } from '../resume/fiche'
+import { contenuDeLaPage, copierMisEnForme, dureeDite, ligneDeResume, nomPropose } from '../resume/fiche'
 import * as Y from 'yjs'
 import type { App } from '../app'
 import { JournalPages } from './journal'
@@ -504,7 +504,7 @@ export class Trieuse {
           const b = Object.assign(document.createElement('button'), { type: 'button', className: 'lien trieuse-copier-cahier', textContent: 'Copier le texte du cahier de textes' })
           b.title = cahier.texte
           b.addEventListener('click', () => {
-            navigator.clipboard.writeText(cahier.texte).then(() => this.app.ui.message('Texte copié : collez-le dans le cahier de textes'), () => this.app.ui.message('La copie a été refusée par le navigateur.'))
+            copierMisEnForme(cahier.texte).then(() => this.app.ui.message('Texte copié : collez-le dans le cahier de textes'), () => this.app.ui.message('La copie a été refusée par le navigateur.'))
           })
           p.append(' ', b)
         }

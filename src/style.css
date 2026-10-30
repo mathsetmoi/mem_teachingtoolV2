@@ -857,6 +857,7 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .p-cahier-pied { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; color: var(--encre-douce); min-height: 1.4em; }
 .p-cahier-pied .erreur { color: var(--rouge); }
 .dialogue-publier .lien, .dialogue-redaction .lien, .trieuse-seance-resume .lien { border: 0; background: none; padding: 2px 0; color: var(--bleu); text-decoration: underline; cursor: pointer; font: inherit; }
+.p-cahier-marques { margin: 2px 0 0; font-size: 12.5px; color: var(--encre-douce); }
 .p-copie-faite { margin: 0; font-size: 14px; font-weight: 700; color: var(--encre); }
 .dialogue-publier.resume .p-texte-cahier { min-height: 66px; }
 .dialogue-redaction { width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto; }
