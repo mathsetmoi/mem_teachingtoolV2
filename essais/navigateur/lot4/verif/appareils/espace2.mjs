@@ -9,7 +9,7 @@ for (const c of cas) {
   await ecrireTraits(p, 3)
   if (c.includes('zoom')) { await p.click('.zoom-texte'); await p.keyboard.press('Escape') }
   if (c.includes('bibliothèque')) {
-    await p.click('.bouton-classeur'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400)
+    await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400)
     if (c.includes('×')) await p.click('.biblio-fermer')
     else if (c.includes('Échap')) await p.keyboard.press('Escape')
     else { const id = await p.evaluate(() => window.__app.classeur.id); await p.click(`.grille-classeurs.tous li[data-cle="${id}"] .carte-apercu`) }

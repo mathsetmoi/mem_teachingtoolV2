@@ -91,7 +91,7 @@ const creerDossier = (p, nom, o = {}) => p.evaluate(async ({ nom, o }) => {
   return d.id
 }, { nom, o })
 const ouvrirBiblio = async p => {
-  await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b.getClientRects().length) b.click(); else window.__app.ui.ouvrirBibliotheque() })
+  await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b.getClientRects().length) { b.click(); document.querySelector('.menu-seances [data-action="bibliotheque"]').click() } else window.__app.ui.ouvrirBibliotheque() })
   await p.waitForFunction(() => window.__bibliotheque.ouvert && document.querySelectorAll('.grille-classeurs li, .biblio-vide-dossier:not([hidden])').length > 0, null, { timeout: 10000 })
   await p.waitForTimeout(200)
 }
@@ -822,7 +822,7 @@ if (seul('M')) {
     await Promise.all([p.waitForNavigation({ timeout: 20000 }), p.click('dialog [data-a="creer"]')])
     await p.waitForFunction(() => document.querySelector('.rang')?.textContent?.includes('/'), null, { timeout: 30000 }); await p.waitForTimeout(800)
     ok(dans === 'Dans : 4e A · étiquette de niveau « 4e A »' && await p.evaluate(() => document.title) === 'Angles — MEM teachingtool', '   … « Nouveau classeur » dans « 4e A » : « Angles » s\'ouvre', dans)
-    await p.evaluate(() => document.querySelector('.bouton-classeur').click()); await p.waitForTimeout(600)
+    await p.evaluate(() => (document.querySelector('.bouton-classeur').click(), document.querySelector('.menu-seances [data-action="bibliotheque"]').click())); await p.waitForTimeout(600)
     const v = await vue(p)
     ok(JSON.stringify(v.fil) === '["Bibliothèque","4e A*"]' && v.grille[0]?.nom === 'Angles' && v.grille[0].puces.join() === '~4e A', '   … revenu dans la bibliothèque : toujours dans « 4e A », « Angles » porte « 4e A »', v)
     await p.focus('.grille-classeurs.tous .carte-classeur'); await p.keyboard.press('F2'); await p.waitForTimeout(150)

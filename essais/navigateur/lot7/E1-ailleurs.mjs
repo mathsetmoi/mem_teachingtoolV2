@@ -385,7 +385,7 @@ try {
   const h = await ctx2.newPage(); suivre(h, 'F')
   await h.goto('file://' + RACINE_DEPOT + '/dist/index.html')
   await h.waitForFunction(() => document.querySelector('.rang')?.textContent?.includes('/'), null, { timeout: 30000 })
-  await h.evaluate(() => document.querySelector('.bouton-classeur')?.click())
+  await h.evaluate(() => (document.querySelector('.bouton-classeur')?.click(), document.querySelector('.menu-seances [data-action="bibliotheque"]')?.click()))
   await h.waitForSelector('.biblio-bouton[data-action="ouvrir-fichier"]', { timeout: 10000 })
   await h.click('.biblio-bouton[data-action="ouvrir-fichier"]')
   await h.waitForSelector('dialog.dialogue-ouvrir-ailleurs[open]')

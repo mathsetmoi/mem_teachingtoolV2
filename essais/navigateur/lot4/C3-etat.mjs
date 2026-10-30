@@ -285,7 +285,7 @@ console.log('=== B. le bouton et le menu ⋯ ===')
       description: d?.textContent, cache: d?.hidden, path, trait: svg.strokeWidth, fond: svg.fill, poids: getComputedStyle(b.querySelector('.nom-classeur')).fontWeight,
       taille: getComputedStyle(b.querySelector('.etat-classeur')).fontSize, gris: getComputedStyle(b.querySelector('.etat-classeur')).color }
   })
-  ok(b.aria === 'Classeur « Premier classeur » : ouvrir la bibliothèque' && b.titre === 'Premier classeur' && b.nom === 'Premier classeur', 'Le bouton : son nom accessible, son titre (le nom entier)', b)
+  ok(b.aria === 'Classeur « Premier classeur » : ses séances et la bibliothèque' && b.titre === 'Premier classeur' && b.nom === 'Premier classeur', 'Le bouton : son nom accessible, son titre (le nom entier)', b)
   ok(b.court === 'Seulement dans ce navigateur', 'Un navigateur neuf, rien d\'autre : « Seulement dans ce navigateur »', b.court)
   // (Adapté au lot 4, morceau C10 : en ligne, la copie sur le Drive est voulue par défaut ; rien à
   // copier encore, pas connecté : « Sur le Drive : en attente de la connexion Google », sans bouton)
@@ -311,18 +311,20 @@ console.log('=== B. le bouton et le menu ⋯ ===')
   await p.keyboard.press('Escape')
   // (Adapté au lot 4, morceau C5 : le bouton du classeur n'ouvre plus le
   // menu ⋯, provisoire, mais la bibliothèque des classeurs)
-  await p.click('.bouton-classeur'); await p.waitForTimeout(300)
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForTimeout(300)
   const biblio = await p.evaluate(() => ({ ouvert: !!window.__bibliotheque?.ouvert, menu: !![...document.querySelectorAll('.menu-flottant')].find(x => !x.hidden) }))
-  ok(biblio.ouvert && !biblio.menu, 'Un clic sur le bouton du classeur : la bibliothèque des classeurs (lot 4 C5)', biblio)
+  ok(biblio.ouvert && !biblio.menu, 'Un clic sur le bouton du classeur, puis « Bibliothèque des classeurs » : la bibliothèque (lot 4 C5, menu du classeur)', biblio)
   await p.keyboard.press('Escape'); await p.waitForTimeout(150)
   ok(!(await p.evaluate(() => window.__bibliotheque.ouvert)), '… Échap la referme')
   // Au clavier : Entrée et Espace ; Échap rend le focus au bouton
   for (const touche of ['Enter', ' ']) {
-    await p.focus('.bouton-classeur'); await p.keyboard.press(touche); await p.waitForTimeout(300)
+    // (Adapté le 30 octobre 2026 : la touche ouvre le menu du classeur, ses
+    // séances ; Fin puis Entrée y choisissent la bibliothèque)
+    await p.focus('.bouton-classeur'); await p.keyboard.press(touche); await p.keyboard.press('End'); await p.keyboard.press('Enter'); await p.waitForTimeout(300)
     const f = await p.evaluate(() => ({ biblio: window.__bibliotheque.ouvert, focus: !!document.activeElement?.closest('.bibliotheque') }))
     await p.keyboard.press('Escape'); await p.waitForTimeout(150)
     const retour = await p.evaluate(() => document.activeElement?.classList.contains('bouton-classeur'))
-    ok(f.biblio && f.focus && retour, `Au clavier (${touche === ' ' ? 'Espace' : 'Entrée'}) : la bibliothèque s'ouvre, le focus dedans ; Échap le rend au bouton`, { ...f, retour })
+    ok(f.biblio && f.focus && retour, `Au clavier (${touche === ' ' ? 'Espace' : 'Entrée'}, puis le menu) : la bibliothèque s'ouvre, le focus dedans ; Échap le rend au bouton`, { ...f, retour })
   }
   // Ctrl + S : le fichier ; l'état le dit aussitôt
   await p.evaluate(PICKER)

@@ -39,9 +39,10 @@ await p.evaluate(() => document.activeElement?.blur())
 let n = 0, trouve = false, parcours = []
 for (; n < 40; n++) { await p.keyboard.press('Tab'); const a = await actif(); parcours.push(a.label?.slice(0, 25)); if (a.cls === 'bouton-classeur') { trouve = true; break } }
 ok(trouve, `1) Tab mène au bouton du classeur (${n + 1} Tab)`, parcours.slice(0, 6))
-await p.keyboard.press('Enter'); await dort(500)
+// (Entrée ouvre le menu du classeur, 30 octobre 2026 : Fin puis Entrée y choisissent la bibliothèque)
+await p.keyboard.press('Enter'); await p.keyboard.press('End'); await p.keyboard.press('Enter'); await dort(500)
 let e = await etat(); let a = await actif()
-ok(e.biblio && a.tag === 'A', '   … Entrée : la bibliothèque, le focus sur une carte', { e, a })
+ok(e.biblio && a.tag === 'A', '   … Entrée, puis « Bibliothèque des classeurs » : la bibliothèque, le focus sur une carte', { e, a })
 // 2. Les flèches, Entrée sur un dossier, Retour arrière
 await p.keyboard.press('Tab'); a = await actif()
 info('Tab après Récents', a)

@@ -37,7 +37,7 @@ const as = await p.evaluate(() => { const b = document.querySelector('dialog.dia
 ok(as?.inactif, 'file:// : dans « Autres sauvegardes », « Choisir le compte ou arrêter… » est grisé', as)
 await p.keyboard.press('Escape'); await p.waitForTimeout(200)
 // La bibliothèque : Nouveau classeur (la case cochée d'office), le menu du bandeau
-await p.evaluate(() => window.__app?.ui?.ouvrirBibliotheque?.() ?? document.querySelector('.bouton-classeur').click())
+await p.evaluate(() => window.__app?.ui?.ouvrirBibliotheque?.() ?? (document.querySelector('.bouton-classeur').click(), document.querySelector('.menu-seances [data-action="bibliotheque"]').click()))
 await p.waitForFunction(() => !document.querySelector('.bibliotheque')?.hidden, null, { timeout: 10000 })
 await p.waitForTimeout(300)
 const ligneBiblio = await p.evaluate(() => (document.querySelector('.bibliotheque')?.innerText || '').split('\n').find(l => l.startsWith('«')))

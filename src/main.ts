@@ -582,8 +582,8 @@ function annoncerLaBibliotheque(ui: UI, infos: InfosClasseur, vide: boolean, ave
   try { localStorage.setItem(CLE_ANNONCE, String(Date.now())) } catch { /* on le redira */ }
   if (vide) return
   const ou = ui.formeClasseur === 'cache' ? 'Le menu ⋯, en haut à droite, ouvre la bibliothèque de vos classeurs.'
-    : ui.formeClasseur === 'large' ? 'Son nom, en haut à gauche, ouvre la bibliothèque de vos classeurs.'
-      : 'Son bouton, en haut à gauche, ouvre la bibliothèque de vos classeurs.'
+    : ui.formeClasseur === 'large' ? 'Son nom, en haut à gauche, ouvre ses séances et la bibliothèque de vos classeurs.'
+      : 'Son bouton, en haut à gauche, ouvre ses séances et la bibliothèque de vos classeurs.'
   ui.message(`Votre tableau est maintenant le classeur « ${infos.nom} ». ${ou}`, { libelle: 'Voir la bibliothèque', faire: () => ui.ouvrirBibliotheque() })
 }
 

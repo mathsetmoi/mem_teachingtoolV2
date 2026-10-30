@@ -498,7 +498,7 @@ await ctxF.close()
 
 // =====================================================================
 console.log('=== H. « Nouveau classeur » au papier pointé ===')
-await P.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b.getClientRects().length) b.click(); else window.__app.ui.ouvrirBibliotheque() })
+await P.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b.getClientRects().length) { b.click(); document.querySelector('.menu-seances [data-action="bibliotheque"]').click() } else window.__app.ui.ouvrirBibliotheque() })
 await P.waitForFunction(() => window.__bibliotheque?.ouvert, null, { timeout: 10000 }); await P.waitForTimeout(300)
 await P.click('.biblio-nouveau'); await P.waitForTimeout(250)
 const dlg = await P.evaluate(() => {

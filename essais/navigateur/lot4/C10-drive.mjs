@@ -763,7 +763,7 @@ if (seul('E')) {
   g.drive('prof@example.com').set('autresauvexxxxxxxx', { id: 'autresauvexxxxxxxx', name: 'Fractions.memc', mimeType: 'application/octet-stream', parents: s.parents, appProperties: { memSauvegarde: 'v1', memClasseur: 'dddddddddddddddd', memOrigine: 'ailleurs', memT: '1' }, octets: memcAutre, modifie: Date.now() - 3600e3, versions: [] })
   // Rien ne revient du Drive sans le demander
   ok(!g.requetes.some(r => /alt=media/.test(r.recherche)), 'E1) jusqu\'ici, rien n\'est venu du Drive (aucun alt=media)')
-  await p.click('.bouton-classeur'); await p.waitForTimeout(500)
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForTimeout(500)
   await p.click('.bibliotheque .biblio-bouton[aria-label="Plus"], .bibliotheque .biblio-plus').catch(async () => { await p.click('.bibliotheque [aria-haspopup="menu"]') })
   await p.waitForTimeout(200)
   const entree = await p.evaluate(() => { const e = document.querySelector('.menu-flottant:not([hidden]) .menu-item[data-action="recuperer-sauvegarde"]'); return e && { texte: e.querySelector('.libelle').firstChild.textContent, aide: e.querySelector('small')?.textContent, inactif: e.getAttribute('aria-disabled') } })
@@ -787,7 +787,7 @@ if (seul('E')) {
   // suivi l'onglet d'un classeur à l'autre (corrections de conformité) ; la
   // liste se montre aussitôt, sans fenêtre Google
   const gisArrivee = g.gis.length
-  await p.click('.bouton-classeur'); await p.waitForTimeout(400)
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForTimeout(400)
   await p.click('.bibliotheque .biblio-bouton[aria-label="Plus"], .bibliotheque .biblio-plus').catch(async () => { await p.click('.bibliotheque [aria-haspopup="menu"]') })
   await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="recuperer-sauvegarde"]')
   await p.waitForSelector('dialog.dialogue-recuperer[open] .sauvegarde-drive', { timeout: 10000 }).catch(() => {})
@@ -799,7 +799,7 @@ if (seul('E')) {
   // classeur) ; la connexion se fait dans le clic
   await p.reload(); await pret(p)
   await gisPret(p)
-  await p.click('.bouton-classeur'); await p.waitForTimeout(400)
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForTimeout(400)
   await p.click('.bibliotheque .biblio-bouton[aria-label="Plus"], .bibliotheque .biblio-plus').catch(async () => { await p.click('.bibliotheque [aria-haspopup="menu"]') })
   await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="recuperer-sauvegarde"]')
   await p.waitForSelector('dialog.dialogue-recuperer[open]', { timeout: 10000 })

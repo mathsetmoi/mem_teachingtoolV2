@@ -56,7 +56,7 @@ const creerClasseur = (p, nom) => p.evaluate(async nom => {
   await window.__registre.creerClasseur({ id, base: dem.baseDe(id), nom, dossier: null, etiquettes: [], cree: T - 3600e3, modifie: T - 600e3, ouvert: T - 60e3, pages: 1 }, b => bases.creerBase(b, etat, { id, nom }))
   return id
 }, nom)
-const ouvrirBiblio = async p => { await p.click('.bouton-classeur'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400) }
+const ouvrirBiblio = async p => { await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400) }
 const cam = p => p.evaluate(() => [window.__app.cam.x, window.__app.cam.y])
 const formes = p => p.evaluate(() => window.__app.formes.length)
 const biblioOuverte = p => p.evaluate(() => !document.querySelector('.bibliotheque').hidden)
@@ -108,17 +108,19 @@ if (seul('A')) {
     ok(!(await biblioOuverte(p)), 'Après × à la souris, Espace seul ne rouvre pas la bibliothèque')
     // Au clavier : Tab jusqu'au bouton, Espace l'ouvre ; Échap ; Espace la rouvre (tout au clavier)
     await p.evaluate(() => document.querySelector('.bouton-classeur').blur())
+    // (Adapté le 30 octobre 2026 : Espace ouvre le menu du classeur ; Fin
+    // puis Entrée y choisissent la bibliothèque)
     await p.focus('.bouton-classeur'); await p.keyboard.press('Shift+Tab'); await p.keyboard.press('Tab')
-    await p.keyboard.press(' '); await dort(500)
+    await p.keyboard.press(' '); await p.keyboard.press('End'); await p.keyboard.press('Enter'); await dort(500)
     const a = await biblioOuverte(p)
     await p.keyboard.press('Escape'); await dort(300)
     const f = await focusSur(p)
-    await p.keyboard.press(' '); await dort(500)
+    await p.keyboard.press(' '); await p.keyboard.press('End'); await p.keyboard.press('Enter'); await dort(500)
     const b = await biblioOuverte(p)
-    ok(a && f.includes('bouton-classeur') && b, 'Au clavier : Espace sur le bouton du classeur ouvre la bibliothèque ; Échap rend le focus au bouton ; Espace la rouvre', { a, f, b })
+    ok(a && f.includes('bouton-classeur') && b, 'Au clavier : Espace sur le bouton du classeur, puis le menu, ouvre la bibliothèque ; Échap rend le focus au bouton ; Espace la rouvre', { a, f, b })
     await p.keyboard.press('Escape'); await dort(300)
     // Ouverte au clavier, fermée d'un clic sur × : Espace + glisser revient à l'application
-    await p.keyboard.press(' '); await dort(500)
+    await p.keyboard.press(' '); await p.keyboard.press('End'); await p.keyboard.press('Enter'); await dort(500)
     await p.click('.biblio-fermer'); await dort(400)
     const r = await espaceGlisser(p, false)
     ok(r.deplace && r.ecrit === 0 && !r.biblio, 'Ouverte au clavier, fermée d\'un clic sur × : Espace + glisser déplace la vue', r)

@@ -154,7 +154,7 @@ async function attendreSurLaCle(p, nom, n, max = 45000) {
   return false
 }
 const ouvrirBiblio = async p => {
-  await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b && b.getClientRects().length) b.click(); else window.__app.ui.ouvrirBibliotheque() })
+  await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); if (b && b.getClientRects().length) { b.click(); document.querySelector('.menu-seances [data-action="bibliotheque"]').click() } else window.__app.ui.ouvrirBibliotheque() })
   await p.waitForFunction(() => window.__bibliotheque?.ouvert && document.querySelectorAll('.grille-classeurs li').length > 0, null, { timeout: 10000 })
   await p.waitForTimeout(300)
 }

@@ -27,8 +27,12 @@ const ici = await p.evaluate(() => window.__app.classeur.id)
 // A. Le bouton du classeur au stylet
 let c = await centre('.bouton-classeur')
 await toucher(c.x, c.y, { tremble: 2 })
+await dort(300)
+// (Le menu du classeur, 30 octobre 2026 : « Bibliothèque des classeurs » en bas)
+c = await centre('.menu-seances [data-action="bibliotheque"]')
+await toucher(c.x, c.y, { tremble: 2 })
 await dort(400)
-ok(await p.evaluate(() => !document.querySelector('.bibliotheque').hidden), 'A) Un toucher de la plume sur le bouton du classeur ouvre la bibliothèque')
+ok(await p.evaluate(() => !document.querySelector('.bibliotheque').hidden), 'A) Un toucher de la plume sur le bouton du classeur, puis sur « Bibliothèque des classeurs », ouvre la bibliothèque')
 const sel = cle => `.grille-classeurs.tous li[data-cle="${cle}"]`
 // B. Bouton latéral sur une carte : le menu, qui reste ouvert après le lever et le contextmenu
 c = await centre(sel(c2) + ' .carte-apercu')

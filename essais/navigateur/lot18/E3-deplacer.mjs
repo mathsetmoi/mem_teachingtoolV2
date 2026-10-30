@@ -718,7 +718,7 @@ try {
     await pretJ()
     /** Un niveau créé puis rangé chez « LyFEL classeurs › <nom> », et un classeur créé dedans (la page change) */
     const nouveauNiveauEtClasseur = async (niveau, nomDossier, classeur) => {
-      await h.evaluate(() => { if (document.querySelector('.bibliotheque').hidden) document.querySelector('.bouton-classeur')?.click() })
+      await h.evaluate(() => { if (document.querySelector('.bibliotheque').hidden) (document.querySelector('.bouton-classeur')?.click(), document.querySelector('.menu-seances [data-action="bibliotheque"]')?.click()) })
       await h.waitForSelector('.biblio-actions [data-action="nouveau-dossier"]', { timeout: 10000 })
       await h.evaluate(() => { const b = document.querySelector('.biblio-fil li button'); b?.click() })
       await h.waitForTimeout(300)
@@ -752,7 +752,7 @@ try {
     ok(arbre.includes('LyFEL classeurs/2/Suites/Suites.memc') && arbre.includes('LyFEL classeurs/1/Fonctions/Fonctions.memc') && /^Fonctions — /.test(await h.title()),
       'J1) Deux niveaux rangés (LyFEL classeurs › 2, › 1), « Suites » dans le premier (fermé), « Fonctions » dans le second (ouvert)', arbre)
     // Depuis la bibliothèque de « Fonctions » : la carte de « Suites » → « Déplacer vers… » → « Premiere »
-    await h.evaluate(() => document.querySelector('.bouton-classeur')?.click())
+    await h.evaluate(() => (document.querySelector('.bouton-classeur')?.click(), document.querySelector('.menu-seances [data-action="bibliotheque"]')?.click()))
     await h.waitForSelector('.biblio-actions [data-action="nouveau-dossier"]', { timeout: 10000 })
     await h.evaluate(() => { document.querySelector('.biblio-fil li button')?.click() })
     await h.waitForTimeout(300)

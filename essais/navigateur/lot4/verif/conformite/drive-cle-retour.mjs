@@ -35,7 +35,7 @@ const idB = await p.evaluate(async () => {
   return id
 })
 const aller = async id => {
-  await p.click('.bouton-classeur')
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]')
   await p.waitForFunction(() => window.__bibliotheque?.ouvert, null, { timeout: 10000 })
   await p.waitForTimeout(300)
   await Promise.all([p.waitForURL(u => u.searchParams.get('classeur') === id, { timeout: 20000 }), p.click(`.grille-classeurs .case-classeur[data-id="${id}"] .carte-classeur`)])

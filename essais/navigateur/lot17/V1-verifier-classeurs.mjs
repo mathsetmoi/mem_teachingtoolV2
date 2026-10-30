@@ -568,7 +568,7 @@ if (seul('G')) {
     await p.reload()
     await p.waitForFunction(() => document.querySelector('.rang')?.textContent?.includes('/'), null, { timeout: 30000 })
     await p.waitForTimeout(800)
-    await p.click('.bouton-classeur')
+    await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]')
     await p.waitForFunction(() => !document.querySelector('.bibliotheque').hidden && document.querySelectorAll('.grille-classeurs li').length > 0, null, { timeout: 10000 })
     await p.waitForTimeout(400)
     await menuBandeau(p)

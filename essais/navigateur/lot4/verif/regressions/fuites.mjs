@@ -24,7 +24,7 @@ const compter = async () => {
 }
 console.log('départ', JSON.stringify(await compter()))
 for (let i = 0; i < 40; i++) {
-  await p.evaluate(() => document.querySelector('.bouton-classeur').click())
+  await p.evaluate(() => (document.querySelector('.bouton-classeur').click(), document.querySelector('.menu-seances [data-action="bibliotheque"]').click()))
   await p.waitForFunction(() => window.__bibliotheque.ouvert && document.querySelectorAll('.grille-classeurs.tous > li').length > 0)
   await p.waitForTimeout(80)
   await p.keyboard.press('Escape'); await p.waitForTimeout(80)

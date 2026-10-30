@@ -19,7 +19,7 @@ for (const [nom, url] of Object.entries(URLS)) {
   let e = await ecran(p)
   note(`${nom} classeur 1 zoomé`, { zoom: e.zoom, v0 })
   // Nouveau classeur
-  await p.click('.bouton-classeur'); await p.waitForSelector('.biblio-nouveau', { state: 'visible', timeout: 10000 }); await p.waitForTimeout(300)
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForSelector('.biblio-nouveau', { state: 'visible', timeout: 10000 }); await p.waitForTimeout(300)
   await p.click('.biblio-nouveau'); await p.waitForSelector('dialog.dialogue-nouveau[open]'); await p.waitForTimeout(200)
   const coche = await p.evaluate(() => { const r = document.querySelector('dialog.dialogue-nouveau[open] input[name="fond"]:checked'); return r?.closest('label')?.textContent })
   ok(coche === 'Page blanche', `${nom} A2 : Nouveau classeur, « Page blanche » cochée`, coche)
@@ -28,7 +28,7 @@ for (const [nom, url] of Object.entries(URLS)) {
   e = await ecran(p)
   ok(e.fond === 'Page blanche' && e.zoom === '100 %' && e.taille === 'Fin' && e.rang.startsWith('1 / 1'), `${nom} A2 : le nouveau classeur s'ouvre sur une page blanche, trait Fin, 100 %`, e)
   // Revenir au premier classeur
-  await p.click('.bouton-classeur'); await p.waitForSelector('.carte-classeur', { state: 'visible', timeout: 10000 }); await p.waitForTimeout(400)
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForSelector('.carte-classeur', { state: 'visible', timeout: 10000 }); await p.waitForTimeout(400)
   const carte = p.locator('.carte-classeur', { hasText: 'Premier classeur' }).first()
   await Promise.all([p.waitForNavigation({ timeout: 20000 }).catch(() => null), carte.click()])
   await pret(p); await p.waitForTimeout(1000)

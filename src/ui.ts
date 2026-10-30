@@ -74,7 +74,7 @@ import { nomSur, pagesLisibles } from './fichier'
 import { BandeauxSeances, demanderNomDeSeance, demanderReprise } from './seances-vue'
 import { ecranTactile } from './pointeurs'
 import type { SeanceDuClasseur } from './seances'
-import { dateCourte, dateCourteMajuscule, deLaSeance, libelleSeance } from './seances'
+import { dateCourte, dateCourteMajuscule, deLaSeance, libelleSeance, seancesDansLOrdre } from './seances'
 
 /** Le rôle du doigt : la marque de son bouton, son titre, ce qu'on en dit */
 const DOIGTS: { id: Doigt; nom: string; aide: string; marque: string; titre: string; dit: string }[] = [
@@ -107,6 +107,8 @@ const TITRE_PLUS_VERROUILLE = 'Plus : copier en image (ENT, Pronote), envoyer ve
  *  texte, que l'on cherche les réglages. */
 const MENU_FICHIER = 'Enregistrer, ouvrir ou exporter en PDF ; réglages de cet appareil'
 /** Le bouton ⋯ de la barre du haut */
+/** Les séances au menu du classeur ; les autres : « Toutes les séances… » */
+const SEANCES_AU_MENU = 6
 const TITRE_FICHIER = `${MENU_FICHIER} (${CTRL} + S, ${CTRL} + O, ${CTRL} + P)`
 /** Le même bouton ⋯, au téléphone (lot 5, K10) : « Plus », qui a aussi tout
  *  ce que la barre du haut n'y montre pas */
@@ -395,6 +397,8 @@ export class UI implements Interface {
   /** Enregistrer le classeur dans un fichier, en ouvrir un : le bouton ⋯ et son menu */
   sauvegarde!: Sauvegarde
   private menuFichier!: Menu
+  /** Le menu du classeur : ses séances, puis la bibliothèque (voir construireMenuSeances) */
+  private menuSeances!: Menu
   /** Le menu de la page (un clic droit dans le vide) : il n'a pas de bouton */
   private menuPage!: Menu
   /** Le menu du bouton ⋯ du menu complet : « Copier en image », « Envoyer
@@ -889,6 +893,17 @@ export class UI implements Interface {
       if (e.repeat || this.recherche.ouverte || document.querySelector('dialog[open]')) return
       this.ouvrirRecherche()
     })
+    // Ctrl + B : la bibliothèque, sans passer par le menu du classeur ; pas
+    // dans un champ ni dans le texte qu'on tape (Ctrl + B y met en gras)
+    window.addEventListener('keydown', e => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'b') return
+      if (document.body.classList.contains('en-bibliotheque')) return
+      const cible = e.target instanceof Element ? e.target : null
+      if (cible?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return
+      e.preventDefault()
+      if (e.repeat) return
+      this.ouvrirBibliotheque(this.formeClasseur === 'cache' ? this.boutonFichier : this.boutonClasseur)
+    })
     const revoir = bouton('revue', 'Revoir la construction : une page, une séance, pas à pas', () => this.ouvrirRevue(revoir), 'seulement-large')
     const publier = bouton('publier', 'Publier le replay pour les élèves', () => this.publication.ouvrir(), 'seulement-large')
     // Enregistrer le classeur dans un fichier, en ouvrir un, l'exporter en
@@ -955,7 +970,14 @@ export class UI implements Interface {
     this.etatClasseur = Object.assign(document.createElement('span'), { className: 'etat-classeur' })
     textes.append(this.nomClasseur, this.etatClasseur)
     bc.append(iconeClasseur, textes)
-    bc.addEventListener('click', () => this.ouvrirBibliotheque(bc))
+    // Un clic ouvre le menu du classeur (30 octobre 2026) : ses séances,
+    // puis la bibliothèque des classeurs (voir construireMenuSeances)
+    const menuSeances = document.createElement('div')
+    menuSeances.className = 'menu-flottant menu-seances'; menuSeances.setAttribute('role', 'menu'); menuSeances.setAttribute('aria-label', 'Séances du chapitre')
+    menuSeances.hidden = true
+    this.menuSeances = { el: menuSeances, bouton: bc }
+    bc.setAttribute('aria-haspopup', 'menu'); bc.setAttribute('aria-expanded', 'false')
+    bc.addEventListener('click', e => this.basculerMenuSeances(bc, e.detail === 0))
     // Espace l'ouvre aussi, au relâcher, quand le focus y est venu du
     // clavier : l'application ne la voit pas (elle y armerait « Espace +
     // glisser ») ; après un clic à la souris, ou au retour d'une bibliothèque
@@ -1085,7 +1107,7 @@ export class UI implements Interface {
     this.menuPlus = { el: menuPlus }
 
     // (les deux menus du téléphone, au bout : l'ordre des autres ne change pas)
-    this.racine.append(outils, barreClasseur, haut, this.bandeau, this.descriptionEtat, zoom, this.retour, menu, menuDoigt, this.menuGomme.el, menuFichier, menuFonds, this.menuOutilsClasse.el, menuPage, menuPlus, this.annonce, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments,
+    this.racine.append(outils, barreClasseur, haut, this.bandeau, this.descriptionEtat, zoom, this.retour, menu, menuDoigt, this.menuGomme.el, menuFichier, this.menuSeances.el, menuFonds, this.menuOutilsClasse.el, menuPage, menuPlus, this.annonce, this.toast, this.choixFormes, this.choixTraits, this.panneau, this.choixInstruments,
       this.menuCouleur.el, this.menuAutres.el, this.menuEpaisseur.el)
     // Annuler et Rétablir dans la barre qui leur revient (les deux barres existent)
     this.placerHistorique()
@@ -1588,7 +1610,7 @@ export class UI implements Interface {
 
   /** Une entrée d'un petit menu (voir menus.ts, entreeMenu) */
   private entreeMenu(m: HTMLElement, texte: string, faire: (e: MouseEvent) => void, o: OptionsEntree = {}) {
-    entreeMenu(m, texte, faire, o)
+    return entreeMenu(m, texte, faire, o)
   }
 
   /** Le menu des outils de classe : chaque outil avec son icône, coché quand
@@ -1767,8 +1789,9 @@ export class UI implements Interface {
     this.remplirBlocEtat()
     m.appendChild(bloc)
     m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
-    // La bibliothèque d'abord : les autres classeurs (le bouton du classeur
-    // y mène aussi ; caché faute de place, c'est le seul chemin)
+    // Les séances et la bibliothèque d'abord : le bouton du classeur y mène
+    // aussi ; caché faute de place (le téléphone), c'est le seul chemin
+    if (this.formeClasseur === 'cache') this.entreeMenu(m, 'Séances du chapitre…', e => this.basculerMenuSeances(this.boutonFichier, e.detail === 0), { action: 'seances-du-chapitre' })
     this.entreeMenu(m, 'Bibliothèque des classeurs…', () => this.ouvrirBibliotheque(this.formeClasseur === 'cache' ? this.boutonFichier : this.boutonClasseur), { action: 'bibliotheque',
       aide: 'Tous vos classeurs : en ouvrir un autre, en créer un.' })
     m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
@@ -2016,7 +2039,7 @@ export class UI implements Interface {
     const nom = this.app.classeur.nom, b = this.boutonClasseur
     if (this.nomClasseur.textContent !== nom) this.nomClasseur.textContent = nom
     if (b.title !== nom) b.title = nom
-    const nomAccessible = `Classeur « ${nom} » : ouvrir la bibliothèque`
+    const nomAccessible = `Classeur « ${nom} » : ses séances et la bibliothèque`
     if (b.getAttribute('aria-label') !== nomAccessible) b.setAttribute('aria-label', nomAccessible)
     this.majBoutonFichier()
   }
@@ -2230,6 +2253,69 @@ export class UI implements Interface {
     b.ouvrir({ retour, auRetour: ranger })
     // La barre d'actions ne paraît pas sous la bibliothèque
     this.maj()
+  }
+
+  /** Ouvre ou ferme le menu du classeur sous ancre (le bouton du classeur,
+   *  ou ⋯ quand il est caché). Pas pendant la revue, la trieuse, une fenêtre
+   *  ouverte, ni en plein geste. auClavier : le focus va à sa première entrée. */
+  private basculerMenuSeances(ancre: HTMLElement, auClavier: boolean) {
+    const m = this.menuSeances, app = this.app
+    if (!m.el.hidden && m.bouton === ancre) { fermerMenu(); return }
+    if (this.bibliotheque?.ouvert || tableauCache(app) || this.revue.ouvert || this.trieuse.ouvert || document.querySelector('dialog[open]') || app.enGeste) return
+    m.bouton = ancre
+    this.construireMenuSeances()
+    ouvrirMenu(m)
+    // Sous son bouton ; plus long que la place, il défile
+    const r = ancre.getBoundingClientRect()
+    const visible = Math.min(window.innerHeight, window.visualViewport?.height ?? Infinity)
+    m.el.style.maxHeight = Math.max(160, Math.floor(visible - r.bottom - 6 - 8)) + 'px'
+    m.el.scrollTop = 0
+    placerMenu(m.el, r, 'dessous')
+    // Aligné à gauche sur la carte du classeur (elle est au bord gauche)
+    if (ancre === this.boutonClasseur) m.el.style.left = Math.max(8, Math.min(r.left, window.innerWidth - m.el.offsetWidth - 8)) + 'px'
+    if (auClavier) m.el.querySelector<HTMLElement>(ENTREES)?.focus()
+  }
+
+  /** Le menu du classeur (30 octobre 2026), refait à chaque ouverture : ses
+   *  séances qui ont des pages, la première en haut (la plus récente, ou
+   *  celle que le professeur y a mise), six au plus, celle qu'on regarde
+   *  cochée, les passées « en lecture » ; « Toutes les séances… » (la vue
+   *  « Séances » de la bibliothèque, sur ce chapitre) ; « Nouvelle séance » ;
+   *  puis la bibliothèque des classeurs. */
+  private construireMenuSeances() {
+    const m = this.menuSeances.el, app = this.app
+    m.replaceChildren()
+    const seances = seancesDansLOrdre(app.tableau.seancesDuClasseur().filter(s => s.pages.length))
+    const vue = app.seanceVue, derniere = app.tableau.derniereSeance()
+    if (seances.length) {
+      titreMenu(m, 'Séances de ce chapitre')
+      for (const s of seances.slice(0, SEANCES_AU_MENU)) {
+        const n = s.pages.length
+        const aide = [s.nom ? dateCourteMajuscule(s.debut) : null, `${n} page${n > 1 ? 's' : ''}`, s.id === derniere?.id ? null : 'en lecture'].filter(x => x).join(' · ')
+        const b = this.entreeMenu(m, libelleSeance(s), () => this.voirSeance(s.id), { action: 'voir-seance', coche: s.id === vue?.id, aide })
+        b.dataset.seance = s.id
+      }
+      if (this.bibliotheque) this.entreeMenu(m, `Toutes les séances (${seances.length})…`, () => this.toutesLesSeances(), { action: 'toutes-les-seances' })
+    }
+    if (vue) this.entreeMenu(m, 'Nouvelle séance', () => this.nouvelleSeance(), { action: 'nouvelle-seance' })
+    if (m.childElementCount) filetMenu(m)
+    this.entreeMenu(m, 'Bibliothèque des classeurs', () => this.ouvrirBibliotheque(this.menuSeances.bouton ?? this.boutonClasseur), { action: 'bibliotheque', touche: this.telephone ? undefined : `${CTRL} + B` })
+  }
+
+  /** Va à une séance du classeur : la séance du jour, là où on en était ;
+   *  une autre, à sa première page (en lecture si elle est passée) */
+  private voirSeance(id: string) {
+    const app = this.app
+    if (app.seanceVue?.id === id) return
+    if (app.tableau.derniereSeance()?.id === id && app.enSeancePassee) { app.retourAujourdhui(); return }
+    const page = app.tableau.pagesDeLaSeance(id)[0]
+    if (page) app.voirPage(page)
+  }
+
+  /** « Toutes les séances… » : la bibliothèque, ouverte sur sa vue « Séances » (ce chapitre d'abord) */
+  private toutesLesSeances() {
+    this.ouvrirBibliotheque(this.menuSeances.bouton ?? this.boutonClasseur)
+    this.bibliotheque?.ouvrirVueSeances()
   }
 
   /** Des fichiers glissés sur le tableau (.memc, .memb, ou .mem) : comme

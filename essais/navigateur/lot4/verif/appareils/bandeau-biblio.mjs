@@ -27,7 +27,7 @@ await p.waitForFunction(() => window.__ecritures > 0, null, { timeout: 15000 });
 await p.evaluate(() => sessionStorage.setItem('__permissionDepart', 'prompt'))
 await p.reload(); await pret(); await dort(800)
 await p.mouse.move(500, 400); await p.mouse.down(); for (let i = 0; i < 10; i++) await p.mouse.move(500 + i * 10, 400 + i * 4); await p.mouse.up(); await dort(300)
-await p.click('.bouton-classeur'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400)
+await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400)
 const ligne = await p.evaluate(() => { const l = document.querySelector('.biblio-ouvert'); return { texte: l.textContent.replace(/[  ]/g, ' '), boutons: [...l.querySelectorAll('button')].map(b => b.textContent) } })
 info('la ligne du classeur ouvert, clé en pause', ligne)
 ok(ligne.boutons.some(b => /Reprendre/.test(b)), 'Bibliothèque : la ligne porte [Reprendre l\'enregistrement]', ligne)

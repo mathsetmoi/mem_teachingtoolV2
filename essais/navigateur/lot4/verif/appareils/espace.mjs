@@ -8,7 +8,7 @@ for (const fermeture of ['echap', 'croix', 'carte']) {
   const ctx = await contexte(nav)
   const p = await ouvrir(ctx, '', 'espace')
   await ecrireTraits(p, 3)
-  await p.click('.bouton-classeur'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400)
+  await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]'); await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(400)
   if (fermeture === 'echap') await p.keyboard.press('Escape')
   else if (fermeture === 'croix') await p.click('.biblio-fermer')
   else { const id = await p.evaluate(() => window.__app.classeur.id); await p.click(`.grille-classeurs.tous li[data-cle="${id}"] .carte-apercu`) }

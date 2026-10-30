@@ -161,7 +161,7 @@ try {
     })
     await ecrire(p, 300, 300); await p.waitForTimeout(3000)
     const attend = (await etat(p)).drive?.enAttente
-    await p.click('.bouton-classeur')
+    await p.click('.bouton-classeur'); await p.click('.menu-seances [data-action="bibliotheque"]')
     await p.waitForFunction(() => window.__bibliotheque?.ouvert, null, { timeout: 10000 })
     await p.waitForTimeout(300)
     const arrive = await Promise.all([p.waitForURL(u => u.searchParams.get('classeur') === idB, { timeout: 20000 }).then(() => true, () => false), p.click(`.grille-classeurs .case-classeur[data-id="${idB}"] .carte-classeur`)]).then(([a]) => a)

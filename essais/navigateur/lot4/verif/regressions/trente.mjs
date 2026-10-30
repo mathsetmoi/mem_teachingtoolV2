@@ -20,7 +20,7 @@ const mesure = async nom => {
     await p.waitForTimeout(6000)
     const l1 = await p.evaluate(() => window.__longues.splice(0))
     const t1 = Date.now()
-    await p.evaluate(() => document.querySelector('.bouton-classeur').click())
+    await p.evaluate(() => (document.querySelector('.bouton-classeur').click(), document.querySelector('.menu-seances [data-action="bibliotheque"]').click()))
     await p.waitForFunction(() => window.__bibliotheque.ouvert && document.querySelectorAll('.grille-classeurs.tous > li').length > 0, null, { timeout: 20000 })
     const biblioMs = Date.now() - t1
     await p.waitForTimeout(3000)
