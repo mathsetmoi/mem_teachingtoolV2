@@ -37,7 +37,7 @@ import { existsSync, mkdirSync } from 'node:fs'
 const S = `${RACINE_ESSAIS}`
 const ICI = S + '/lot4/C6/'
 const CAPTURES = ICI + 'captures/'
-const DEV = 'http://localhost:5173/'
+const DEV = process.env.DEV ?? 'http://localhost:5173/'
 mkdirSync(CAPTURES, { recursive: true })
 
 let echecs = 0
@@ -231,8 +231,14 @@ if (etat.p && (seul('B') || seul('C') || seul('D') || seul('E') || seul('F'))) {
   ok(JSON.stringify(v.fil) === '["Bibliothèque","5e B*"]' && !v.recents.length && v.videDossier === 'Ce dossier est vide. Glissez-y un classeur, ou créez-en un.' && v.session.dossier === etat.d5,
     'Un clic sur « 5e B » : le fil « Bibliothèque › 5e B », Récents caché, « Ce dossier est vide… », retenu pour l\'onglet', v)
   ok(v.focus === 'biblio-bouton', '   … le focus sur « Nouveau classeur » du dossier vide', v.focus)
-  // Nouveau classeur dans « 5e B »
-  await p.click('.biblio-nouveau'); await p.waitForTimeout(250)
+  // Nouveau classeur dans « 5e B ». Depuis le lot 18, le premier dans un
+  // niveau pas encore rangé ouvre d'abord « Où ranger les classeurs de
+  // « 5e B » ? » (lot18/E1-ranger.mjs la vérifie) : « Plus tard », noté pour
+  // ce niveau, puis la fenêtre d'avant
+  await p.click('.biblio-nouveau')
+  await p.waitForSelector('dialog.dialogue-ranger[open]', { timeout: 5000 })
+  await p.click('dialog.dialogue-ranger[open] .r-plus-tard')
+  await p.waitForSelector('dialog.dialogue-nouveau[open]', { timeout: 5000 }); await p.waitForTimeout(250)
   const dans = await p.evaluate(() => document.querySelector('dialog.dialogue-nouveau[open] .dans')?.textContent.replace(/[  ]/g, ' '))
   ok(dans === 'Dans : 5e B · étiquette de niveau « 5e B »', `« Nouveau classeur » dans « 5e B » : « ${dans} » (pas de champ d'étiquette)`, dans)
   await p.fill('dialog input[name="nom"]', 'Symétrie centrale')
@@ -804,7 +810,11 @@ if (seul('M')) {
     const d = await p.evaluate(() => document.querySelector('.grille-classeurs.tous .case-dossier')?.dataset.dossier)
     ok(!!d, '   … « Créer un dossier de niveau » : « 4e A »', d)
     await p.click('.grille-classeurs.tous .case-dossier .dossier-icone'); await p.waitForTimeout(300)
-    await p.click('.biblio-vide-dossier .biblio-bouton'); await p.waitForTimeout(250)
+    // (lot 18 : « Où ranger les classeurs de « 4e A » ? » d'abord, ici aussi : « Plus tard »)
+    await p.click('.biblio-vide-dossier .biblio-bouton')
+    await p.waitForSelector('dialog.dialogue-ranger[open]', { timeout: 5000 })
+    await p.click('dialog.dialogue-ranger[open] .r-plus-tard')
+    await p.waitForSelector('dialog.dialogue-nouveau[open]', { timeout: 5000 }); await p.waitForTimeout(250)
     const dans = await p.evaluate(() => document.querySelector('dialog .dans')?.textContent.replace(/[  ]/g, ' '))
     // (la case de la clé, cochée d'office ici, ouvrirait le vrai choix d'un fichier : on la décoche)
     await p.evaluate(() => { const c = document.querySelector('dialog .case-cle input'); if (c) c.checked = false })

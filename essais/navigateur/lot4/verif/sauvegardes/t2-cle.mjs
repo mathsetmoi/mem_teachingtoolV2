@@ -1,8 +1,9 @@
 // T2. La clé (OPFS, permissions simulées) : atomicité (un fichier lu pendant
 // l'écriture est l'ancien, entier), le fichier écrit se rouvre exactement,
 // le fichier supprimé ou déplacé, la clé pleine, l'état toujours vrai.
-import { chromium, V, DEV, ok, info, dort, INIT, ECOUTER_TOASTS, toasts, suivre, pret, ecrire, entree, etat, opfsLire, lireMemc, formesIds, attendreEcrites, nbEcrites, etatDeLaPage, memeContenu, erreurs } from './commun.mjs'
-const nav = await chromium.launch()
+import { lancerPersistant, V, DEV, ok, info, dort, INIT, ECOUTER_TOASTS, toasts, suivre, pret, ecrire, entree, etat, opfsLire, lireMemc, formesIds, attendreEcrites, nbEcrites, etatDeLaPage, memeContenu, erreurs } from './commun.mjs'
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+const nav = await lancerPersistant()
 const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 } })
 await ctx.addInitScript(INIT); await ctx.addInitScript(ECOUTER_TOASTS)
 const p = await ctx.newPage(); suivre(p, 'p')
@@ -45,7 +46,7 @@ const nTent = await p.evaluate(() => window.__tentatives)
 // l'attendait que 40 s, échouait toujours, sur la version d'avant la correction comme ici)
 await p.waitForFunction(() => window.__cle.etat.etat === 'erreur', null, { timeout: 100000 }).catch(() => {})
 let e = await etat(p)
-ok(e.cle.etat === 'erreur' && e.court === 'Clé : pas à jour' && !e.lignes.some(l => /^cle:.*il y a|à l'instant/.test(l)), `fichier supprimé : « ${e.cle.message} », « ${e.court} »`, e)
+ok(e.cle.etat === 'erreur' && e.court === 'Pas à jour, rien de perdu' && !e.lignes.some(l => /^cle:.*il y a|à l'instant/.test(l)), `fichier supprimé : « ${e.cle.message} », « ${e.court} »`, e)
 ok(!!e.bandeau && e.bandeau.boutons.includes('Choisir un autre fichier…'), `   … le bandeau : « ${e.bandeau?.texte} » ${JSON.stringify(e.bandeau?.boutons)}`, e.bandeau)
 info('toasts', await toasts(p))
 // Ctrl + S : que se passe-t-il quand le fichier de la clé a disparu ?
@@ -72,12 +73,12 @@ await ecrire(p, 600, 300)
 // l'attendait que 40 s, échouait toujours, sur la version d'avant la correction comme ici)
 await p.waitForFunction(() => window.__cle.etat.etat === 'erreur', null, { timeout: 100000 }).catch(() => {})
 e = await etat(p)
-ok(e.cle.etat === 'erreur' && /pleine/.test(e.cle.message) && e.court === 'Clé : pas à jour', `clé pleine : « ${e.cle.message} »`, e)
+ok(e.cle.etat === 'erreur' && /plein/.test(e.cle.message) && e.court === 'Pas à jour, rien de perdu', `disque plein : « ${e.cle.message} »`, e)
 const apres = lireMemc(await opfsLire(p, 'autre.memc'))
 ok(apres.entier, '   … le fichier d\'avant reste entier')
 await p.evaluate(() => { window.__panne = null })
 await p.waitForFunction(() => window.__cle.etat.etat === 'ok', null, { timeout: 45000 }).catch(() => {})
 e = await etat(p)
-ok(e.cle.etat === 'ok' && (await toasts(p)).includes('Enregistrement sur la clé repris.'), `   … la place revenue : « ${e.court} »`, e)
+ok(e.cle.etat === 'ok' && (await toasts(p)).some(t => /^L'enregistrement dans « .* » reprend\.$/.test(t)), `   … la place revenue : « ${e.court} »`, e)
 console.log('erreurs JS :', erreurs)
 await nav.close()

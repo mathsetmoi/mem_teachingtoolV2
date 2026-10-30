@@ -134,7 +134,7 @@ await ecrire(p, 700, 500)
 await p.waitForTimeout(5000)
 const e5 = await etat()
 info('5 s après le dernier trait, juste avant de fermer', { court: e5.court, bandeau: e5.bandeau })
-ok(e5.court === 'Clé : pas encore à jour', `   … le texte court le dit avant : « ${e5.court} »`, e5)
+ok(e5.court === 'Enregistrement bientôt', `   … le texte court le dit avant : « ${e5.court} »`, e5)
 let n2 = ecritures.length
 let f = await fermer(p, 'rester', 2500)
 lu = lireMemc(readFileSync(DISQUE + 'cle.memc'))

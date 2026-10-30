@@ -29,7 +29,7 @@ const seul = x => !parties.length || parties.includes(x)
 const info = (m, d) => console.log('·', m, d === undefined ? '' : JSON.stringify(d).slice(0, 900))
 const RELAIS = 'mem-teachingtool-connexion-google'
 
-await O.lancer()
+await O.lancer({ persistant: true })
 
 /** Un second classeur, créé comme le fait la bibliothèque */
 const nouveauClasseur = (p, nom) => p.evaluate(async nom => {

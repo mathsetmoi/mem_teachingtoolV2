@@ -94,6 +94,11 @@ await trait(500, 300)
 await p.clock.setSystemTime(T0 + 90 * H)
 await p.reload(); await pret()
 await p.click('.pastille-classe >> text=3ème'); await p.waitForTimeout(300)
+// (Lot 18 : au premier classeur d'un niveau, la fenêtre « Où ranger les
+// classeurs de « 3ème » ? » vient d'abord ; « Plus tard », puis le nom.)
+const ranger = await p.evaluate(() => document.querySelector('dialog.dialogue-ranger[open] h2')?.textContent ?? '')
+ok(/Où ranger les classeurs de « 3ème »/.test(ranger), '   … d\'abord « Où ranger les classeurs de « 3ème » ? » (lot 18) ; « Plus tard »', ranger)
+if (ranger) { await p.click('dialog[open] .r-plus-tard'); await p.waitForTimeout(300) }
 const neuf = await p.evaluate(() => ({ titre: document.querySelector('dialog.dialogue-chapitre h2')?.textContent, dans: document.querySelector('dialog.dialogue-chapitre .dans')?.textContent, fonds: document.querySelector('dialog.dialogue-chapitre .fonds')?.hidden }))
 ok(neuf.titre === 'Nouveau chapitre' && /3ème/.test(neuf.dans ?? '') && neuf.fonds === true, 'un niveau sans classeur : « Nouveau chapitre » (le nom seulement), dans le dossier 3ème', neuf)
 await p.fill('dialog.dialogue-chapitre input[name="nom"]', 'Proportionnalité')

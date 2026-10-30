@@ -92,11 +92,14 @@ import type { FicheClasseur } from './demarrage'
 import { CANAL_CLASSEUR } from './demarrage'
 import type { Surveillance } from './surveillance'
 import type { EtatSauvegarde } from './etat'
+import { dansQuoi, lieuDuFichier } from './etat'
 import type { EnteteTableau } from '../fichier'
 import { EXTENSION_TABLEAU, dateLisible, lireEntete, nomSur, tailleLisible } from '../fichier'
 import { ErreurEcrivain, ecrivain, fabriquerFichier } from './ecrivain'
 import { comparerVecteurs, contient, reunir } from './vecteurs'
 import { ecritDansUnFichier } from './surveillance'
+import { nomDeFichierLibre } from './emplacements'
+import type { PoigneeDossier } from './ordinateur'
 import { fermerSurLeFond } from '../dialogue'
 import { POUR_ENREGISTRER, POUR_OUVRIR } from '../navigateur'
 
@@ -154,11 +157,15 @@ export const ID_CHOIX = 'mem-classeurs'
 export const TYPES_CLASSEUR = [{ description: 'Classeur (MEM teachingtool)', accept: { 'application/octet-stream': [EXTENSION_TABLEAU] } }]
 
 // ---------- Les mots ----------
-export const AIDE_ACTIVER = 'Sur la clé USB ou dans un dossier : le classeur s\'y enregistre tout seul, peu après chaque changement.'
+// (Le mot « clé » ne paraît jamais à l'écran, lot 18 : on dit le fichier,
+// ou le dossier où l'outil l'a rangé, voir etat.lieuDuFichier et dansQuoi.)
+export const AIDE_ACTIVER = 'Un fichier .memc, choisi une fois : le classeur s\'y enregistre tout seul, peu après chaque changement.'
 export const PAS_UN_CLASSEUR = 'Ce fichier n\'est pas un classeur : choisissez un fichier .memc, ou un autre nom.'
 export const PLUS_RICHE = `Ce fichier contient des changements que ce classeur n'a pas : il n'est pas remplacé. Pour les retrouver, ouvrez-le (${POUR_OUVRIR}).`
 export const EN_MEMOIRE = 'Après un rechargement, il faudra choisir de nouveau le fichier.'
-export const REPRIS = 'Enregistrement sur la clé repris.'
+/** L'enregistrement reprend après une pause, un échec, un conflit : dans le
+ *  dossier choisi (« LFB classeurs ») ou dans le fichier */
+export const repris = (c: { nom?: string; chemin?: string[] }) => `L'enregistrement dans ${dansQuoi(c)} reprend.`
 /** Dit pendant que le navigateur pose sa question (seulement s'il va la
  *  poser) : sa demande d'après un changement de page propose « Autoriser à
  *  chaque visite » (Chrome, Edge en français), qui le dispense de
@@ -176,17 +183,17 @@ export const autreClasseur = (nom?: string) => `Ce fichier contient un autre cla
 export const dejaPris = (nom: string) => `Ce fichier sert déjà à l'enregistrement automatique de « ${nom} » : choisissez un autre nom.`
 export const conflitAutre = (fichier: string, nom?: string) => `Le fichier « ${fichier} » contient un autre classeur (« ${nom || 'sans nom'} ») : il n'est pas remplacé.`
 export const conflitPasUnClasseur = (fichier: string) => `Le fichier « ${fichier} » ne contient plus un classeur : il n'est pas remplacé.`
-export const conflitModifie = (date: number) => `Le fichier de la clé a été modifié ailleurs (${Number.isFinite(date) && date > 0 ? dateLisible(date) : 'à une date inconnue'}) depuis le dernier enregistrement d'ici : il n'est pas remplacé.`
-export const conflitHistoire = (fichier: string) => `Ce classeur a perdu une partie de son histoire depuis le dernier enregistrement sur la clé (remplacé par une autre version de MEM teachingtool, ou une écriture refusée par le navigateur) : le fichier « ${fichier} » n'est pas remplacé.`
+export const conflitModifie = (fichier: string, date: number) => `Le fichier « ${fichier} » a été modifié ailleurs (${Number.isFinite(date) && date > 0 ? dateLisible(date) : 'à une date inconnue'}) depuis le dernier enregistrement d'ici : il n'est pas remplacé.`
+export const conflitHistoire = (fichier: string) => `Ce classeur a perdu une partie de son histoire depuis le dernier enregistrement dans « ${fichier} » (remplacé par une autre version de MEM teachingtool, ou une écriture refusée par le navigateur) : le fichier n'est pas remplacé.`
 
-/** Ce qu'on dit d'une écriture sur la clé qui a échoué : la permission
+/** Ce qu'on dit d'une écriture dans le fichier qui a échoué : la permission
  *  perdue (un clic la redonne), ou ce qui s'est passé (et si choisir un
  *  autre fichier peut aider) */
 export function raisonCle(e: unknown): { genre: 'permission' } | { genre: 'erreur'; message: string; choisir: boolean } {
   const nom = (e as { name?: string } | null)?.name
   if (nom === 'NotAllowedError' || nom === 'SecurityError') return { genre: 'permission' }
-  if (nom === 'NotFoundError' || nom === 'NotReadableError') return { genre: 'erreur', choisir: true, message: 'la clé n\'est plus là, ou le fichier a été déplacé' }
-  if (nom === 'QuotaExceededError') return { genre: 'erreur', choisir: true, message: 'la clé est pleine' }
+  if (nom === 'NotFoundError' || nom === 'NotReadableError') return { genre: 'erreur', choisir: true, message: 'le fichier a été déplacé, supprimé, ou son disque retiré' }
+  if (nom === 'QuotaExceededError') return { genre: 'erreur', choisir: true, message: 'le disque est plein' }
   if (nom === 'NoModificationAllowedError' || nom === 'InvalidStateError') return { genre: 'erreur', choisir: true, message: 'le fichier est en lecture seule, ou ouvert dans un autre logiciel' }
   if (e instanceof ErreurEcrivain) {
     if (e.raison === 'fil') return { genre: 'erreur', choisir: false, message: MESSAGE_FIL }
@@ -214,13 +221,13 @@ export async function memeFichier(a: PoigneeFichier, b: unknown): Promise<boolea
 }
 
 /** L'en-tête d'un fichier, lu dans ses premiers octets (rien d'autre n'est lu) */
-async function enteteDe(f: File): Promise<EnteteTableau | null> {
+export async function enteteDe(f: File): Promise<EnteteTableau | null> {
   return lireEntete(new Uint8Array(await f.slice(0, 4096).arrayBuffer()))
 }
 
 /** Écrit le fichier d'un bloc : createWritable écrit à côté, close remplace.
  *  Un échec avant close : abort, et le fichier d'avant reste entier. */
-async function ecrireDans(p: PoigneeFichier, fichier: Blob): Promise<void> {
+export async function ecrireDans(p: PoigneeFichier, fichier: Blob): Promise<void> {
   const w = await p.createWritable()
   try {
     await w.write(fichier)
@@ -241,6 +248,43 @@ const attendre = (ms: number) => new Promise<void>(ok => setTimeout(ok, ms))
 interface OptionsEcriture { manuel?: boolean; geste?: boolean; forcer?: boolean }
 type Resultat = 'ecrit' | 'rien' | 'conflit' | 'permission' | 'erreur'
 
+/** Ce qu'a fait un déplacement du fichier (deplacerVers, et le même
+ *  déplacement sous le verrou pour un classeur fermé, deplacer-fichier.ts) :
+ *  deplace (garde : la nouvelle poignée est gardée dans l'index ; non, elle ne
+ *  vit que dans cet onglet) ; sinon pourquoi rien n'a bougé : conflit (ce
+ *  classeur a perdu une partie de l'histoire écrite dans son fichier, raison :
+ *  son nom), plus-riche (un fichier de ce classeur déjà là-bas a plus que lui,
+ *  raison : son nom), autre-onglet, permission, erreur (raison : ce qui s'est
+ *  passé, sans point final), rien (pas de fichier) */
+export type ResultatDeplacement =
+  | { r: 'deplace'; garde: boolean }
+  | { r: 'conflit' | 'plus-riche' | 'autre-onglet' | 'permission' | 'erreur' | 'rien'; raison: string }
+
+/** Le fichier du classeur dans le dossier du chapitre où il arrive (« Déplacer
+ *  le classeur… ») : « Fractions.memc » s'il est libre ; déjà pris par ce
+ *  même classeur (un fichier d'avant, resté là) et ce qu'on va écrire
+ *  (vecteur) a tout ce qu'il a : il est repris tel quel ; s'il a plus, rien
+ *  n'est écrit ('plus-riche') ; pris par autre chose : un autre nom
+ *  (« Fractions (2).memc »). Rend la poignée, créée s'il le faut. */
+export async function fichierPourDeplacer(d: PoigneeDossier, c: { id: string; nom: string }, vecteur: Uint8Array): Promise<PoigneeFichier | 'plus-riche'> {
+  const noms: string[] = []
+  for await (const x of d.values()) noms.push(x.name)
+  const base = nomSur(c.nom), prevu = base + EXTENSION_TABLEAU
+  const pris = noms.find(n => n.toLocaleLowerCase('fr') === prevu.toLocaleLowerCase('fr'))
+  if (pris) {
+    const h = await d.getFileHandle(pris)
+    const f = await h.getFile()
+    if (f.size === 0) return h
+    const e = await enteteDe(f)
+    if (e && e.id === c.id) {
+      let lu: { vecteur: Uint8Array } | null
+      try { lu = await ecrivain.lireFichier(f) } catch { lu = null }
+      return lu && contient(vecteur, lu.vecteur) ? h : 'plus-riche'
+    }
+  }
+  return d.getFileHandle(nomDeFichierLibre(base, EXTENSION_TABLEAU, noms), { create: true })
+}
+
 export class EnregistrementCle {
   /** Ce navigateur sait écrire seul dans un fichier (showSaveFilePicker) */
   readonly disponible: boolean
@@ -255,6 +299,10 @@ export class EnregistrementCle {
   etat: EtatCle = { etat: 'absente' }
   /** La dernière écriture faite d'ici (au cas où l'index refuserait de la noter) */
   private derniere: CleFiche | null = null
+  /** Les dossiers où l'outil a rangé lui-même le fichier (fiche.cle.chemin,
+   *  lot 18), pour le dire à l'écran (« Enregistré dans LFB classeurs › 2 ›
+   *  Fractions ») ; null : un fichier choisi à la main */
+  private chemin: string[] | null = null
   /** Le verrou des onglets : 'moi' (cet onglet écrit), 'autre' (un autre
    *  onglet écrit), 'sans' (pas de Web Locks : on écrit) */
   private verrou: 'moi' | 'autre' | 'sans' | null = null
@@ -276,6 +324,11 @@ export class EnregistrementCle {
   private prochainEssai = 0
   /** Une écriture refusée pendant le trou de la base : elle repart à sa réparation */
   private attendLaBase = false
+  /** Le fichier du classeur change de place par la bibliothèque de cet onglet
+   *  (le niveau rangé ailleurs, « Lui donner son fichier », lot 18) : rien ne
+   *  s'écrit d'ici en attendant (voir retenir) */
+  private retenu = false
+  private minuterieRetenue = 0
   private minuterie = 0
   private canal: BroadcastChannel | null = null
   private derniereAnnonce = 0
@@ -330,6 +383,13 @@ export class EnregistrementCle {
   private get ecritIci(): boolean { return !this.suspendu && (this.verrou === 'moi' || this.verrou === 'sans') }
   /** Le nom du fichier de la clé */
   get nomFichier(): string | null { return this.poignee?.name ?? null }
+  /** Où est le fichier, pour le dire : « LFB classeurs › 2 › Fractions
+   *  (Fractions.memc) », ou « « Fractions.memc » » */
+  private get lieu(): string { return lieuDuFichier({ nom: this.poignee?.name, ...(this.chemin ? { chemin: this.chemin } : {}) }) }
+  /** Dans quoi il s'enregistre, en deux mots : « LFB classeurs », ou le nom du fichier */
+  private get dansQuoi(): string { return dansQuoi({ nom: this.poignee?.name, ...(this.chemin ? { chemin: this.chemin } : {}) }) }
+  /** La fiche dit (ou non) où l'outil a rangé le fichier : on le retient */
+  private noterChemin(c?: CleFiche | null) { this.chemin = c?.chemin?.length ? [...c.chemin] : null }
 
   // ---------- Le démarrage ----------
   private async demarrer() {
@@ -339,7 +399,7 @@ export class EnregistrementCle {
     if (!p) {
       // Le fichier choisi n'a pas pu être gardé (un navigateur qui ne garde
       // pas les poignées) : il est à choisir de nouveau
-      this.maj({ etat: 'absente', message: `le fichier « ${fiche.cle.nom} » est à choisir de nouveau (ce navigateur ne le garde pas après un rechargement)` })
+      this.maj({ etat: 'absente', message: `« ${fiche.cle.nom} » est à choisir de nouveau (ce navigateur ne le garde pas après un rechargement)` })
       return
     }
     this.poignee = p
@@ -348,6 +408,7 @@ export class EnregistrementCle {
 
   /** Le verrou, puis la vérification : l'histoire, la permission, le fichier */
   private async demarrerActif(cle: CleFiche) {
+    this.noterChemin(cle)
     await this.demanderLeVerrou()
     if (this.verrou === 'autre') {
       this.maj({ etat: 'autre-onglet', nom: this.poignee?.name })
@@ -368,6 +429,7 @@ export class EnregistrementCle {
   private async verifier(cle: CleFiche) {
     const p = this.poignee
     if (!p || this.suspendu) return
+    this.noterChemin(cle)
     if (cle.vecteur) {
       let c: ReturnType<typeof comparerVecteurs> | null = null
       try { c = comparerVecteurs(await this.vecteurIci(), cle.vecteur) } catch { c = null }
@@ -479,7 +541,7 @@ export class EnregistrementCle {
 
   /** Une écriture automatique est possible (sans un clic) */
   private peutEcrireSeul(): boolean {
-    if (!this.poignee || this.suspendu || this.verrou === 'autre') return false
+    if (!this.poignee || this.suspendu || this.verrou === 'autre' || this.retenu) return false
     const e = this.etat.etat
     return e !== 'permission' && e !== 'conflit' && !(e === 'erreur' && this.etat.message === MESSAGE_FIL)
   }
@@ -519,7 +581,7 @@ export class EnregistrementCle {
 
   private async uneEcriture(o: OptionsEcriture): Promise<Resultat> {
     const p = this.poignee
-    if (!p || this.suspendu) return 'rien'
+    if (!p || this.suspendu || this.retenu) return 'rien'
     if (!o.manuel && !this.peutEcrireSeul()) return 'rien'
     if (!o.manuel && this.premierNonEcrit === null) return 'rien'
     const avant = this.etat.etat
@@ -536,6 +598,7 @@ export class EnregistrementCle {
       const fiche = await this.registre.classeur(this.id).catch(() => undefined)
       if (fiche && !fiche.cle) { this.arreterIci(); return 'rien' }
       const cle = this.laDerniere(fiche?.cle)
+      this.noterChemin(cle)
       // 3. Le fichier : est-il celui écrit d'ici ?
       if (!o.forcer) {
         const c = await this.examinerLeFichier(p, cle)
@@ -565,7 +628,7 @@ export class EnregistrementCle {
       // 6. L'écriture, d'un bloc
       await ecrireDans(p, fab.fichier)
       // 7. Ce qui est écrit : la fiche le garde, pour la prochaine fois
-      const nouvelle: CleFiche = { nom: p.name, t: Date.now(), date, taille: fab.fichier.size, vecteur: fab.vecteur }
+      const nouvelle: CleFiche = { nom: p.name, t: Date.now(), date, taille: fab.fichier.size, vecteur: fab.vecteur, ...(cle.chemin ? { chemin: cle.chemin } : {}) }
       this.derniere = nouvelle
       await this.registre.modifierClasseur(this.id, x => { if (x.cle) x.cle = nouvelle }).catch(() => { /* this.derniere s'en souvient */ })
       this.premierNonEcrit = this.premierPendant
@@ -574,10 +637,86 @@ export class EnregistrementCle {
       this.maj({ etat: 'ok', nom: p.name, t: nouvelle.t })
       // Le classeur est dans un fichier depuis cette date (l'état et le rappel le savent)
       this.sauvegarde.noterFichier(date)
-      if (!o.manuel && (avant === 'erreur' || avant === 'conflit' || avant === 'permission')) this.app.ui?.message(REPRIS)
+      if (!o.manuel && (avant === 'erreur' || avant === 'conflit' || avant === 'permission')) this.app.ui?.message(repris(nouvelle))
       return 'ecrit'
     } catch (e) {
       return this.echec(e)
+    } finally {
+      this.enEcriture = false
+      if (this.premierNonEcrit !== null) this.planifier()
+      this.majQuitter()
+    }
+  }
+
+  // ---------- Déplacer le fichier (lot 18, deplacer-fichier.ts) ----------
+  /** « Déplacer le classeur… » : le classeur de cet onglet change de fichier.
+   *  Le nouveau est écrit EN ENTIER dans `dossier` (le dossier du chapitre à
+   *  la nouvelle place, l'accord d'y écrire déjà donné dans le clic), avec
+   *  les garde-fous d'une écriture automatique (jamais depuis une base
+   *  trouée ou relue en partie, jamais si ce classeur a perdu une partie de
+   *  l'histoire écrite la dernière fois, jamais par-dessus un fichier plus
+   *  riche : fichierPourDeplacer), relu ; puis la clé passe à lui : sa
+   *  poignée (gardée dans l'index), la fiche (nom, chemin, date, taille,
+   *  vecteur), l'état à l'écran ; ses écritures suivantes vont dans le
+   *  nouveau fichier. L'ancien fichier reste tel quel : c'est à qui appelle
+   *  de le retirer, une fois examiné. chemin : les dossiers jusqu'à
+   *  `dossier` compris, pour la fiche. Une écriture à la fois : celle-ci
+   *  attend celle qui serait en cours. */
+  deplacerVers(dossier: PoigneeDossier, chemin: string[]): Promise<ResultatDeplacement> {
+    const suite = this.fileEcriture.then(() => this.unDeplacement(dossier, chemin))
+    this.fileEcriture = suite.catch(() => { /* rendu à qui appelle */ })
+    return suite
+  }
+
+  private async unDeplacement(dossier: PoigneeDossier, chemin: string[]): Promise<ResultatDeplacement> {
+    const p = this.poignee
+    if (!p || this.suspendu) return { r: 'rien', raison: 'pas de fichier' }
+    if (this.verrou === 'autre') return { r: 'autre-onglet', raison: 'un autre onglet est ouvert sur ce classeur' }
+    this.enEcriture = true
+    this.premierPendant = null
+    clearTimeout(this.minuterie); this.minuterie = 0
+    const debut = Date.now()
+    try {
+      // 1. La fiche, relue (un autre onglet a pu écrire, ou tout arrêter)
+      const fiche = await this.registre.classeur(this.id).catch(() => undefined)
+      if (fiche && !fiche.cle) { this.arreterIci(); return { r: 'rien', raison: 'pas de fichier' } }
+      const cle = this.laDerniere(fiche?.cle)
+      // 2. Le fichier du classeur : dans le travailleur seulement, depuis une base entière
+      if (this.app.tableau.trou || this.app.tableau.incomplet) return { r: 'erreur', raison: MESSAGE_TROU }
+      if (ecrivain.mode === 'fil') return { r: 'erreur', raison: MESSAGE_FIL }
+      await this.app.tableau.attendreEcritures()
+      const c = this.app.classeur
+      const date = Math.max(Date.now(), (cle.date ?? 0) + 1)
+      const fab = await fabriquerFichier(this.base, { nom: c.nom, id: this.id }, date, { travailleurSeul: true })
+      if (this.suspendu || this.poignee !== p) return { r: 'rien', raison: 'le fichier a changé entre-temps' }
+      // 3. L'histoire : tout ce qui a été écrit la dernière fois y est encore
+      if (cle.vecteur && !contient(fab.vecteur, cle.vecteur)) { this.conflit(conflitHistoire(p.name)); return { r: 'conflit', raison: p.name } }
+      // 4. Le nouveau fichier (au nom de la fiche, comme relierLesClasseurs),
+      // jamais par-dessus un plus riche ; écrit d'un bloc, relu
+      const neuf = await fichierPourDeplacer(dossier, { id: this.id, nom: fiche?.nom ?? c.nom }, fab.vecteur)
+      if (neuf === 'plus-riche') return { r: 'plus-riche', raison: nomSur(fiche?.nom ?? c.nom) + EXTENSION_TABLEAU }
+      await ecrireDans(neuf, fab.fichier)
+      if ((await neuf.getFile()).size !== fab.fichier.size) throw new Error('le fichier relu n\'a pas la taille écrite')
+      // 5. La clé passe au nouveau fichier : la poignée, la fiche, l'état
+      const nouvelle: CleFiche = { nom: neuf.name, t: Date.now(), date, taille: fab.fichier.size, vecteur: fab.vecteur, chemin: [...chemin] }
+      this.poignee = neuf
+      this.derniere = nouvelle
+      this.noterChemin(nouvelle)
+      let garde = true
+      try { await this.registre.garderPoignee(this.id, neuf); this.enMemoireSeulement = false } catch (e) {
+        if ((e as { name?: string } | null)?.name !== 'DataCloneError') throw e
+        garde = false; this.enMemoireSeulement = true
+      }
+      await this.registre.modifierClasseur(this.id, x => { if (x.cle) x.cle = nouvelle }).catch(() => { /* this.derniere s'en souvient */ })
+      this.premierNonEcrit = this.premierPendant
+      this.echecs = 0; this.prochainEssai = 0; this.attendLaBase = false
+      this.finDerniere = Date.now(); this.dureeDerniere = this.finDerniere - debut
+      this.maj({ etat: 'ok', nom: neuf.name, t: nouvelle.t })
+      this.sauvegarde.noterFichier(date)
+      return { r: 'deplace', garde }
+    } catch (e) {
+      const r = raisonCle(e)
+      return r.genre === 'permission' ? { r: 'permission', raison: 'le navigateur n\'a pas permis d\'écrire' } : { r: 'erreur', raison: r.message }
     } finally {
       this.enEcriture = false
       if (this.premierNonEcrit !== null) this.planifier()
@@ -602,17 +741,20 @@ export class EnregistrementCle {
     const e = await enteteDe(f)
     if (!e) return conflitPasUnClasseur(p.name)
     if (e.id && e.id !== this.id) return conflitAutre(p.name, e.nom)
-    if (e.date !== cle.date) return conflitModifie(e.date)
+    if (e.date !== cle.date) return conflitModifie(p.name, e.date)
     return null
   }
 
   // ---------- Les états ----------
   /** depuis : des changements attendent d'être écrits (seulement quand la
-   *  clé écrit d'elle-même, voir etat.ts) */
+   *  clé écrit d'elle-même, voir etat.ts) ; chemin : où l'outil a rangé le
+   *  fichier, s'il le sait (les textes le disent) */
   private maj(e: EtatCle) {
     const x: EtatCle = { ...e }
     delete x.depuis
     if ((x.etat === 'ok' || x.etat === 'en-cours') && this.premierNonEcrit !== null && !this.suspendu) x.depuis = this.premierNonEcrit
+    delete x.chemin
+    if (this.chemin && x.nom) x.chemin = [...this.chemin]
     this.etat = x
     this.surveillance.majCle({ ...x })
     if (this.ecritIci && this.poignee) this.direEtat()
@@ -673,17 +815,18 @@ export class EnregistrementCle {
   }
 
   /** Un onglet qui n'écrit pas montre honnêtement ce que fait celui qui
-   *  écrit : à jour, « Clé : par l'autre onglet » ; en pause, en conflit, en
-   *  échec, la clé n'est pas à jour (et rien ne dit qu'elle protège le
+   *  écrit : à jour, « Par l'autre onglet » ; en pause, en conflit, en
+   *  échec, le fichier n'est pas à jour (et rien ne dit qu'il protège le
    *  classeur : le rappel peut venir), sans bouton ici (c'est l'autre onglet
    *  qui peut le faire) */
   private etatDeLAutre(d: { etat?: string; message?: string }) {
     const nom = this.poignee?.name
     const raison = d.message ? ` (${d.message.trim().replace(/[.\s]+$/, '')})` : ''
+    const dans = this.dansQuoi
     if (d.etat === 'ok' || d.etat === 'en-cours') this.maj({ etat: 'autre-onglet', nom })
-    else if (d.etat === 'permission') this.maj({ etat: 'erreur', nom, actions: [], message: 'l\'autre onglet ouvert sur ce classeur attend votre accord pour écrire sur la clé (son bandeau : « Reprendre l\'enregistrement sur la clé »)' })
-    else if (d.etat === 'conflit') this.maj({ etat: 'erreur', nom, actions: [], message: 'l\'autre onglet ouvert sur ce classeur ne remplace pas le fichier de la clé, qui a changé ailleurs : voyez son bandeau' })
-    else if (d.etat === 'erreur') this.maj({ etat: 'erreur', nom, actions: [], message: `l'autre onglet ouvert sur ce classeur n'arrive pas à écrire sur la clé${raison}` })
+    else if (d.etat === 'permission') this.maj({ etat: 'erreur', nom, actions: [], message: `l'autre onglet ouvert sur ce classeur attend votre accord pour écrire dans ${dans} (son bandeau : « Reprendre l'enregistrement »)` })
+    else if (d.etat === 'conflit') this.maj({ etat: 'erreur', nom, actions: [], message: `l'autre onglet ouvert sur ce classeur ne remplace pas le fichier${nom ? ` « ${nom} »` : ''}, qui a changé ailleurs : voyez son bandeau` })
+    else if (d.etat === 'erreur') this.maj({ etat: 'erreur', nom, actions: [], message: `l'autre onglet ouvert sur ce classeur n'arrive pas à écrire dans ${dans}${raison}` })
   }
 
   private enPause() {
@@ -801,6 +944,7 @@ export class EnregistrementCle {
     if (connu.date !== undefined) cle.date = connu.date
     if (connu.vecteur) cle.vecteur = connu.vecteur
     this.derniere = null
+    this.noterChemin(cle)        // un fichier choisi à la main : pas de chemin
     try { await this.registre.modifierClasseur(this.id, x => { x.cle = cle }) } catch {
       this.app.ui?.message('L\'enregistrement automatique n\'a pas pu être activé : la bibliothèque des classeurs refuse d\'écrire.')
       return false
@@ -842,33 +986,63 @@ export class EnregistrementCle {
     await this.demarrerActif(f.cle)
   }
 
+  /** La bibliothèque de cet onglet va écrire ou déplacer le fichier de ce
+   *  classeur (relierLesClasseurs : le niveau rangé ailleurs, « Lui donner
+   *  son fichier ») : jusqu'à relacher(), rien ne s'écrit d'ici (une
+   *  écriture entre-temps examinerait l'ancien fichier avec la nouvelle
+   *  fiche : un faux « modifié ailleurs »). Rendu une fois finie l'écriture
+   *  déjà partie (la file des écritures) : sa fiche est notée avant que la
+   *  bibliothèque ne la relise. Garde-fou : si personne ne relâche (une
+   *  erreur en chemin), la clé repart seule au bout de deux minutes. */
+  async retenir(): Promise<void> {
+    this.retenu = true
+    clearTimeout(this.minuterie); this.minuterie = 0
+    clearTimeout(this.minuterieRetenue)
+    this.minuterieRetenue = window.setTimeout(() => { if (this.retenu) void this.relacher() }, 120_000)
+    await this.fileEcriture.catch(() => { /* déjà dit */ })
+  }
+
+  /** Le fichier a changé de place (ou pas) : la clé repart depuis la fiche,
+   *  sur la poignée qui y est, vérifiée comme au démarrage ; ce qui attend
+   *  s'écrira ensuite. Rien à faire si elle n'était pas retenue. */
+  async relacher(): Promise<void> {
+    if (!this.retenu) return
+    clearTimeout(this.minuterieRetenue); this.minuterieRetenue = 0
+    await this.fileEcriture.catch(() => { /* déjà dit */ })
+    this.retenu = false
+    await this.resynchroniser()
+  }
+
   /** « Choisir un autre fichier… » : comme activer, à la place de celui-ci */
   choisirUnAutre(): Promise<boolean> { return this.activer() }
 
   /** « Remplacer quand même » (un conflit) : après confirmation, le fichier
-   *  de la clé est remplacé par ce classeur, sans les garde-fous */
+   *  du classeur est remplacé par ce classeur, sans les garde-fous */
   async remplacerQuandMeme(): Promise<boolean> {
     const p = this.poignee
     if (!p) return false
-    const oui = await confirmer('Remplacer le fichier de la clé ?',
+    const oui = await confirmer('Remplacer le fichier ?',
       `« ${p.name} » sera remplacé par ce classeur : ce qu'il contient de plus sera perdu. Pour le garder, choisissez plutôt un autre fichier, ou ouvrez-le (${POUR_OUVRIR}).`, 'Remplacer')
     if (!oui) return false
     const r = await this.ecrire({ manuel: true, geste: true, forcer: true })
-    if (r === 'ecrit') this.app.ui?.message(`Classeur enregistré sur la clé : ${p.name}.`)
-    else this.app.ui?.message(`Le fichier de la clé n'a pas pu être remplacé : ${this.etat.message ?? 'erreur inconnue'}.`)
+    if (r === 'ecrit') this.app.ui?.message(`Enregistré dans ${this.lieu}.`)
+    else this.app.ui?.message(`Le fichier « ${p.name} » n'a pas pu être remplacé : ${this.etat.message ?? 'erreur inconnue'}.`)
     return r === 'ecrit'
   }
 
-  /** « Reprendre l'enregistrement sur la clé » (un clic, après un
-   *  rechargement) ou « Autoriser » (le message d'arrivée, arrivee) :
-   *  l'accord demandé dans le geste, avec le conseil « Autoriser à chaque
-   *  visite » s'il va être demandé, puis l'écriture due */
+  /** Le navigateur a refusé l'accord d'écrire dans le fichier : l'enregistrement reste en pause */
+  private get resteEnPause(): string { return `Le navigateur n'a pas permis d'écrire dans « ${this.poignee?.name ?? ''} » : l'enregistrement reste en pause.` }
+
+  /** « Reprendre l'enregistrement » (un clic, après un rechargement) ou
+   *  « Autoriser » (le message d'arrivée, arrivee) : l'accord demandé dans
+   *  le geste, avec le conseil « Autoriser à chaque visite » s'il va être
+   *  demandé, puis l'écriture due */
   async reprendre(o: { arrivee?: boolean } = {}): Promise<boolean> {
     const p = this.poignee
     if (!p) return false
     if (await permission(p, false) !== 'granted') this.app.ui?.message(CONSEIL_ACCORD)
     if (await permission(p, true) !== 'granted') {
-      this.app.ui?.message(`Le navigateur n'a pas permis d'écrire dans « ${p.name} » : l'enregistrement sur la clé reste en pause.`)
+      this.app.ui?.message(this.resteEnPause)
       return false
     }
     const fiche = await this.registre.classeur(this.id).catch(() => undefined)
@@ -877,7 +1051,7 @@ export class EnregistrementCle {
     await this.verifier(this.laDerniere(fiche?.cle))
     if (this.etat.etat !== 'ok') return false
     if (this.premierNonEcrit !== null && await this.ecrire({}) !== 'ecrit') return false
-    this.app.ui?.message(o.arrivee ? `Le classeur s'enregistre maintenant tout seul dans « ${p.name} ».` : REPRIS)
+    this.app.ui?.message(o.arrivee ? `Le classeur s'enregistre maintenant tout seul dans « ${p.name} ».` : repris(this.etat))
     return true
   }
 
@@ -919,18 +1093,22 @@ export class EnregistrementCle {
     }
   }
 
-  /** Ctrl + S, « Enregistrer maintenant sur la clé » : tout de suite, après
-   *  avoir posé ce qui attend. Faux s'il n'a pas pu écrire. */
+  /** Ctrl + S, « Enregistrer maintenant » : tout de suite, après avoir posé
+   *  ce qui attend. Faux s'il n'a pas pu écrire. « Enregistré dans LFB
+   *  classeurs › 2 › Fractions (Fractions.memc) (850 Ko). » */
   async enregistrerMaintenant(): Promise<boolean> {
     const p = this.poignee
     if (!p) return false
-    this.app.ui?.message('Enregistrement sur la clé…')
+    // Le fichier change de place en ce moment (un rangement) : le dire, plutôt que rien
+    if (this.retenu) { this.app.ui?.message(`Le fichier de ce classeur change de place : réessayez dans un instant.`); return false }
+    this.app.ui?.message('Enregistrement…')
     const r = await this.ecrire({ manuel: true, geste: true })
     const taille = this.derniere?.taille
-    if (r === 'ecrit') this.app.ui?.message(`${this.app.tableau.incomplet ? 'Classeur enregistré sur la clé, sans la partie qui ne se relit plus dans ce navigateur' : 'Classeur enregistré sur la clé'} : ${p.name}${taille ? ` (${tailleLisible(taille)})` : ''}.`)
-    else if (r === 'permission') this.app.ui?.message(`Le navigateur n'a pas permis d'écrire dans « ${p.name} » : l'enregistrement sur la clé reste en pause.`)
+    const ko = taille ? ` (${tailleLisible(taille)})` : ''
+    if (r === 'ecrit') this.app.ui?.message(this.app.tableau.incomplet ? `Enregistré dans ${this.lieu}, sans la partie qui ne se relit plus dans ce navigateur${ko}.` : `Enregistré dans ${this.lieu}${ko}.`)
+    else if (r === 'permission') this.app.ui?.message(this.resteEnPause)
     else if (r === 'conflit') this.app.ui?.message(this.etat.message ?? '')
-    else if (r === 'erreur') this.app.ui?.message(`Le classeur n'a pas pu être enregistré sur la clé : ${this.etat.message ?? 'erreur inconnue'}. Rien n'est perdu : il est dans ce navigateur.`)
+    else if (r === 'erreur') this.app.ui?.message(`Le classeur n'a pas pu être enregistré dans « ${p.name} » : ${this.etat.message ?? 'erreur inconnue'}. Rien n'est perdu : il est dans ce navigateur.`)
     return r === 'ecrit'
   }
 
@@ -941,7 +1119,8 @@ export class EnregistrementCle {
     return this.actif && this.verrou !== 'autre' && this.etat.etat !== 'conflit'
   }
 
-  /** « Arrêter l'enregistrement automatique sur la clé » */
+  /** « Arrêter l'enregistrement automatique » : le fichier reste, tel qu'il
+   *  était à sa dernière écriture */
   async arreter(): Promise<void> {
     const nom = this.poignee?.name
     try {
@@ -952,13 +1131,14 @@ export class EnregistrementCle {
       return
     }
     this.arreterIci()
-    this.app.ui?.message(`L'enregistrement automatique sur la clé est arrêté.${nom ? ` « ${nom} » garde le classeur tel qu'il était à sa dernière écriture.` : ''}`)
+    this.app.ui?.message(nom ? `Le classeur ne s'enregistre plus dans « ${nom} » : le fichier garde le classeur tel qu'il était à sa dernière écriture.` : 'L\'enregistrement automatique est arrêté.')
   }
 
   /** Plus d'enregistrement automatique ici (arrêté ici ou dans un autre onglet) */
   private arreterIci() {
     this.poignee = null
     this.derniere = null
+    this.chemin = null
     this.enMemoireSeulement = false
     clearTimeout(this.minuterie); this.minuterie = 0
     this.lacherLeVerrou()
@@ -1053,15 +1233,17 @@ export async function examinerPourUnNeuf(registre: Registre, h: PoigneeFichier):
  *  « Il s'enregistre automatiquement » d'avance). Une écriture qui échoue
  *  garde quand même la poignée : l'enregistrement automatique la refera à
  *  l'arrivée. */
-export async function ecrireLeNeuf(registre: Registre, h: PoigneeFichier, c: { id: string; base: string; nom: string }): Promise<{ date: number | null; garde: boolean; message: string; cle?: CleALArrivee }> {
+export async function ecrireLeNeuf(registre: Registre, h: PoigneeFichier, c: { id: string; base: string; nom: string; chemin?: string[] }): Promise<{ date: number | null; garde: boolean; message: string; cle?: CleALArrivee }> {
   const date = Date.now()
-  let cle: CleFiche = { nom: h.name }
+  // chemin : les dossiers où l'outil a rangé le fichier lui-même (la fiche le garde)
+  const chemin = c.chemin ? { chemin: c.chemin } : {}
+  let cle: CleFiche = { nom: h.name, ...chemin }
   let ecrite: number | null = null
   let echec: string | null = null
   try {
     const fab = await fabriquerFichier(c.base, { nom: c.nom, id: c.id }, date)
     await ecrireDans(h, fab.fichier)
-    cle = { nom: h.name, t: Date.now(), date, taille: fab.fichier.size, vecteur: fab.vecteur }
+    cle = { nom: h.name, t: Date.now(), date, taille: fab.fichier.size, vecteur: fab.vecteur, ...chemin }
     ecrite = date
   } catch (e) {
     const r = raisonCle(e)
@@ -1071,7 +1253,7 @@ export async function ecrireLeNeuf(registre: Registre, h: PoigneeFichier, c: { i
   try { await registre.garderPoignee(c.id, h) } catch (e) {
     garde = false
     if ((e as { name?: string } | null)?.name !== 'DataCloneError') {
-      return { date: ecrite, garde, message: `L'enregistrement automatique sur la clé n'a pas pu être activé : ${raisonCle(e).genre === 'permission' ? 'le navigateur ne l\'a pas permis' : (raisonCle(e) as { message: string }).message}.` }
+      return { date: ecrite, garde, message: `L'enregistrement automatique n'a pas pu être activé : ${raisonCle(e).genre === 'permission' ? 'le navigateur ne l\'a pas permis' : (raisonCle(e) as { message: string }).message}.` }
     }
   }
   await registre.modifierClasseur(c.id, x => { x.cle = cle }).catch(() => { /* l'activation se refera de la bibliothèque */ })

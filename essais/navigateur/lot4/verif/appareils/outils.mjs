@@ -1,12 +1,12 @@
 // Outils communs des essais « appareils » du lot 4 (vérification).
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../../../commun/racines.mjs'
-import { chromium } from '../../../commun/playwright.mjs'
+import { chromium, lancerPersistant } from '../../../commun/playwright.mjs'
 import { mkdirSync } from 'node:fs'
 
 export const S = `${RACINE_ESSAIS}`
 export const ICI = S + '/lot4/verif/appareils/'
 export const CAPTURES = ICI + 'captures/'
-export const DEV = 'http://localhost:5173/'
+export const DEV = process.env.DEV || 'http://localhost:5173/'
 mkdirSync(CAPTURES, { recursive: true })
 
 export let echecs = 0
@@ -29,8 +29,10 @@ export const ECOUTER_TOASTS = () => {
 }
 export const toasts = p => p.evaluate(() => window.__toasts.splice(0))
 
-export async function lancer(o = {}) {
-  return chromium.launch({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' }, ...o })
+/** `persistant: true` pour une sonde qui relit la poignée de la clé depuis IndexedDB (voir commun/playwright.mjs) */
+export async function lancer({ persistant = false, ...o } = {}) {
+  const options = { env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' }, ...o }
+  return persistant ? lancerPersistant(options) : chromium.launch(options)
 }
 export async function contexte(nav, o = {}) {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 }, ...o })

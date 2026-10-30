@@ -59,3 +59,17 @@ export function contient(a: Uint8Array, b: Uint8Array): boolean {
   const c = comparerVecteurs(a, b)
   return c === 'egal' || c === 'contient'
 }
+
+/** L'ancien fichier de la clé d'un classeur dont le niveau change de dossier
+ *  (ordinateur.ts, lot 18), relu avant d'être laissé où il est : lu, son
+ *  en-tête (l'id) et son vecteur ; id, celui du classeur ; base, le vecteur
+ *  de sa base. 'pareil' : la base a tout ce qu'il a (ou il n'est pas à lui) :
+ *  il peut rester où il est, intact, le classeur reçoit son fichier ailleurs ;
+ *  'plus-riche' : il a des changements que la base n'a pas (modifié sur un
+ *  autre poste, ou une base qui a perdu une partie) : il reste le fichier du
+ *  classeur, à ouvrir d'abord. */
+export function verdictAncienFichier(lu: { id?: string; vecteur: Uint8Array }, id: string, base: Uint8Array): 'pareil' | 'plus-riche' {
+  if (lu.id && lu.id !== id) return 'pareil'
+  const c = comparerVecteurs(base, lu.vecteur)
+  return c === 'egal' || c === 'contient' ? 'pareil' : 'plus-riche'
+}

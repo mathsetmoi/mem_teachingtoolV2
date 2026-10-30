@@ -51,7 +51,7 @@ import { RACINE_DEPOT, SORTIES } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
 import { existsSync, mkdirSync } from 'node:fs'
 
-const DEV = 'http://localhost:5173/'
+const DEV = process.env.DEV ?? 'http://localhost:5173/'
 const D = SORTIES + '/lot17'
 mkdirSync(D, { recursive: true })
 const SECTIONS = process.argv.slice(2)

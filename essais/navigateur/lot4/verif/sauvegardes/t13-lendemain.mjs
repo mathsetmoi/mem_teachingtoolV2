@@ -3,8 +3,9 @@
 // « Enregistrer automatiquement les changements dans ce fichier » cochée
 // d'office) : le classeur revient exactement, avec son identité, et la clé
 // reprend sur le même fichier.
-import { chromium, V, DEV, ok, info, dort, INIT, ECOUTER_TOASTS, toasts, suivre, pret, ecrire, entree, etat, opfsLire, lireMemc, formesIds, attendreEcrites, etatDeLaPage, memeContenu, erreurs } from './commun.mjs'
-const nav = await chromium.launch()
+import { lancerPersistant, V, DEV, ok, info, dort, INIT, ECOUTER_TOASTS, toasts, suivre, pret, ecrire, entree, etat, opfsLire, lireMemc, formesIds, attendreEcrites, etatDeLaPage, memeContenu, erreurs } from './commun.mjs'
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+const nav = await lancerPersistant()
 // ---- Le soir ----
 const ctxA = await nav.newContext({ viewport: { width: 1366, height: 768 } })
 await ctxA.addInitScript(INIT); await ctxA.addInitScript(ECOUTER_TOASTS)

@@ -12,6 +12,13 @@
 // d'un dossier à l'autre (les grisés sont sautés), Entrée choisit, Échap
 // ferme sans rien faire, Tab mène à « Annuler ». Des lignes de 44 px ; au
 // téléphone, toute la largeur, la liste défile.
+// Lot 18 (deplacer-fichier.ts) : pour un classeur, une ligne sous l'arbre dit
+// ce qu'il advient de son fichier à la destination qu'on parcourt (le focus,
+// le survol) ; pour le classeur de l'onglet, une entrée de plus en bas de
+// l'arbre (« Un autre dossier de l'ordinateur… ») et, pour un fichier choisi
+// à la main, un bouton « Ne plus l'enregistrer dans un fichier » à côté
+// d'« Annuler ». Ces trois choses sont facultatives : la fenêtre d'une carte
+// ne les a pas toutes.
 // =============================================================
 import type { Destination } from './deplacer'
 import { icone } from '../icones'
@@ -28,17 +35,35 @@ const RETRAIT_MAX = 8
 /** Ouvre la fenêtre. titre : « Déplacer « Symétrie » vers… ». choisir :
  *  l'id du dossier choisi (null : la racine), après la fermeture ; rien si
  *  l'on ferme sans choisir. Le focus va à la première destination
- *  possible. */
-export function ouvrirDeplacerVers(o: { titre: string; destinations: Destination[]; choisir: (id: string | null) => void; fermee?: () => void }): HTMLDialogElement {
+ *  possible. ligne : sous l'arbre, ce qu'il advient du fichier du classeur
+ *  pour la destination qu'on parcourt (vide : rien). autre : une entrée de
+ *  plus en bas de l'arbre (son libellé, son explication, ce qu'elle fait :
+ *  dans le clic, la fenêtre fermée d'abord). secondaire : un bouton à côté
+ *  d'« Annuler ». */
+export function ouvrirDeplacerVers(o: {
+  titre: string; destinations: Destination[]; choisir: (id: string | null) => void; fermee?: () => void
+  ligne?: (id: string | null) => string
+  autre?: { libelle: string; aide: string; faire: () => void }
+  secondaire?: { libelle: string; faire: () => void }
+}): HTMLDialogElement {
   const d = document.createElement('dialog')
   d.className = 'dialogue dialogue-deplacer'
   d.setAttribute('aria-labelledby', 'deplacer-titre')
   d.innerHTML = `<h2 id="deplacer-titre"></h2><div class="corps">
     <div class="deplacer-liste" role="group" aria-label="Vers quel dossier"></div>
-    <div class="actions"><button type="button" class="secondaire" data-a="annuler">Annuler</button></div></div>`
+    <p class="vers-fichier" aria-live="polite" hidden></p>
+    <p class="vers-autre" hidden><button type="button" class="secondaire vers-autre-dossier"></button> <small class="vers-autre-aide"></small></p>
+    <div class="actions"><button type="button" class="secondaire" data-a="arreter" hidden></button><button type="button" class="secondaire" data-a="annuler">Annuler</button></div></div>`
   d.querySelector('h2')!.textContent = o.titre
   const liste = d.querySelector<HTMLElement>('.deplacer-liste')!
   let choix: { id: string | null } | null = null
+  // La ligne du fichier suit la destination qu'on parcourt (le focus, le survol)
+  const ligneEl = d.querySelector<HTMLElement>('.vers-fichier')!
+  const majLigne = (id: string | null) => {
+    const t = o.ligne?.(id) ?? ''
+    ligneEl.textContent = t
+    ligneEl.hidden = !t
+  }
   for (const x of o.destinations) {
     const b = document.createElement('button')
     b.type = 'button'; b.className = 'vers-dossier'; b.tabIndex = -1
@@ -55,6 +80,7 @@ export function ouvrirDeplacerVers(o: { titre: string; destinations: Destination
     b.setAttribute('aria-label', x.id === null ? `${x.nom}${x.ici ? ' (ici)' : ''}` : `${x.chemin}${x.ici ? ' (ici)' : ''}`)
     if (x.ici || x.interdit) { b.disabled = true; b.setAttribute('aria-disabled', 'true') }
     b.addEventListener('click', () => { if (b.disabled) return; choix = { id: x.id }; d.close() })
+    b.addEventListener('pointerenter', () => majLigne(x.id))
     liste.appendChild(b)
   }
   // Un seul arrêt de Tab ; les flèches, Début, Fin (les grisés sont sautés)
@@ -62,7 +88,23 @@ export function ouvrirDeplacerVers(o: { titre: string; destinations: Destination
   const prendre = (b: HTMLButtonElement | undefined, focus = true) => {
     if (!b) return
     for (const x of liste.querySelectorAll<HTMLButtonElement>('.vers-dossier')) x.tabIndex = x === b ? 0 : -1
+    majLigne(b.dataset.dossier || null)
     if (focus) { b.focus({ preventScroll: true }); b.scrollIntoView({ block: 'nearest' }) }
+  }
+  // « Un autre dossier de l'ordinateur… » : la fenêtre se ferme, puis ce
+  // qu'elle fait, dans le clic (un dossier à choisir)
+  if (o.autre) {
+    const pa = d.querySelector<HTMLElement>('.vers-autre')!, ba = pa.querySelector<HTMLButtonElement>('button')!
+    ba.textContent = o.autre.libelle
+    pa.querySelector('small')!.textContent = o.autre.aide
+    pa.hidden = false
+    ba.addEventListener('click', () => { d.close(); o.autre!.faire() })
+  }
+  if (o.secondaire) {
+    const bs = d.querySelector<HTMLButtonElement>('[data-a="arreter"]')!
+    bs.textContent = o.secondaire.libelle
+    bs.hidden = false
+    bs.addEventListener('click', () => { d.close(); o.secondaire!.faire() })
   }
   liste.addEventListener('keydown', e => {
     if (e.altKey || e.ctrlKey || e.metaKey) return

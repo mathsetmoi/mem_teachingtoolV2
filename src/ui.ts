@@ -60,16 +60,17 @@ import { estTexte } from './texte'
 import { accorder, compterObjets, minuscule } from './verrou'
 import type { Surveillance } from './classeurs/surveillance'
 import type { ActionEtat, Bandeau, LigneEtat } from './classeurs/etat'
+import { aSonFichier } from './classeurs/etat'
+import { AIDE_AUTRES } from './classeurs/autres-sauvegardes'
 import type { EnregistrementCle } from './classeurs/cle'
 import type { Registre } from './classeurs/registre'
 import { AIDE_ACTIVER } from './classeurs/cle'
 import type { CopieDrive } from './classeurs/copie-drive'
-import { HORS_LIGNE_FICHIER } from './classeurs/copie-drive'
 import type { Bibliotheque } from './classeurs/bibliotheque'
 import type { Fichiers } from './classeurs/fichiers'
 import { AIDE_OUVRIR } from './classeurs/fichiers'
 import { fermerSurLeFond } from './dialogue'
-import { pagesLisibles } from './fichier'
+import { nomSur, pagesLisibles } from './fichier'
 import { BandeauxSeances, demanderNomDeSeance, demanderReprise } from './seances-vue'
 import { ecranTactile } from './pointeurs'
 import type { SeanceDuClasseur } from './seances'
@@ -440,8 +441,12 @@ export class UI implements Interface {
   private surveillance: Surveillance | null = null
   /** Ce que propose chaque action de l'état (un bouton) : les morceaux qui
    *  savent la faire l'inscrivent ; une action sans inscription n'a pas de
-   *  bouton */
-  private actionsEtat = new Map<ActionEtat, { libelle: string; faire: () => void }>()
+   *  bouton. Le libellé peut se recalculer (« Ranger « 2nde » dans un
+   *  dossier… » suit le niveau du classeur, lot 18). */
+  private actionsEtat = new Map<ActionEtat, { libelle: string | (() => string); faire: () => void }>()
+  /** La forme du menu ⋯ ouvert (ses entrées dépendent de l'état) : quand
+   *  elle change pendant qu'il est ouvert, il se refait */
+  private formeMenuFichier = ''
   /** L'enregistrement automatique sur la clé (null : impossible ici) */
   private cle: EnregistrementCle | null = null
   /** La copie à sens unique sur le Drive (lot 4 C10 ; null : le repli, sans bibliothèque) */
@@ -1767,34 +1772,52 @@ export class UI implements Interface {
     this.entreeMenu(m, 'Bibliothèque des classeurs…', () => this.ouvrirBibliotheque(this.formeClasseur === 'cache' ? this.boutonFichier : this.boutonClasseur), { action: 'bibliotheque',
       aide: 'Tous vos classeurs : en ouvrir un autre, en créer un.' })
     m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
-    // La clé active (cet onglet écrit, rien en conflit) : Ctrl + S y écrit
-    // aussitôt ; l'Enregistrer d'avant devient « une copie »
+    // Le menu réduit du lot 18 : trois états, selon le fichier du classeur.
+    // (1) Le classeur a son fichier (la clé active : à jour, en pause, en
+    // conflit, par l'autre onglet…) : Ctrl + S y écrit aussitôt quand cet
+    // onglet écrit (sauvegarde.ctrlS), sinon il fait « Enregistrer une
+    // copie… » ; « Déplacer le classeur… » (le fichier suit, C2) ; plus
+    // d'entrée pour arrêter (déplacer le propose, pour un fichier choisi à
+    // la main). (2) Pas de fichier, sur Chrome ou Edge : « Enregistrer le
+    // classeur… », puis ranger le niveau (« Ranger « 2nde » dans un
+    // dossier… »), ou lui donner son fichier (le niveau est rangé), ou
+    // choisir un fichier à la main (un classeur à la racine, un navigateur
+    // qui ne choisit pas de dossier). (3) Le navigateur ne sait pas écrire
+    // un fichier tout seul (iPad, Firefox, Safari) : Enregistrer, et c'est
+    // tout. Puis, toujours : le PDF, « Autres sauvegardes… » (le Drive, le
+    // .memb, récupérer), Ouvrir.
     const cle = this.cle
-    if (cle?.actif) {
-      if (cle.peutEnregistrer()) this.entreeMenu(m, 'Enregistrer maintenant sur la clé', () => void cle.enregistrerMaintenant(), { touche: `${CTRL} + S`, action: 'enregistrer-cle',
-        aide: `Dans « ${cle.nomFichier} », tout de suite (sinon, il s'y enregistre tout seul peu après chaque changement).` })
-      this.entreeMenu(m, 'Enregistrer une copie dans un fichier…', () => void s.enregistrer(), { touche: cle.peutEnregistrer() ? undefined : `${CTRL} + S`, action: 'enregistrer',
-        aide: 'Un autre fichier .memc, avec toutes les pages et tout l\'historique. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).' })
-      this.entreeMenu(m, 'Arrêter l\'enregistrement automatique sur la clé', () => void cle.arreter(), { action: 'arreter-cle',
-        aide: `« ${cle.nomFichier} » garde le classeur tel qu'il était à sa dernière écriture.` })
+    const { aUnFichier, rangeable, rangeDans, forme } = this.formeDuMenuFichier()
+    this.formeMenuFichier = forme
+    if (aUnFichier && cle) {
+      this.entreeMenu(m, 'Enregistrer une copie…', () => void s.enregistrer(), { touche: cle.peutEnregistrer() ? undefined : `${CTRL} + S`, action: 'enregistrer',
+        aide: 'Un autre fichier .memc, daté, avec toutes les pages et tout l\'historique. Ne le donnez pas aux élèves (pour eux : Publier).' })
+      // (gris tant que main.ts ne l'a pas branché : le morceau C2)
+      const deplacer = this.deplacerClasseur
+      this.entreeMenu(m, 'Déplacer le classeur…', () => deplacer?.(), { action: 'deplacer-classeur', inactif: !deplacer,
+        aide: 'Dans un autre niveau ou un autre dossier : son fichier suit.' })
     } else {
       this.entreeMenu(m, 'Enregistrer le classeur…', () => void s.enregistrer(), { touche: `${CTRL} + S`, action: 'enregistrer',
-        aide: 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder sur la clé ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).' })
-      if (cle?.disponible) this.entreeMenu(m, 'Enregistrer automatiquement dans un fichier…', () => void cle.activer(), { action: 'activer-cle', aide: AIDE_ACTIVER })
+        aide: 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).' })
+      const ranger = this.actionsEtat.get('ranger-niveau'), donner = this.actionsEtat.get('donner-fichier')
+      if (cle?.disponible && rangeable !== null && ranger) {
+        this.entreeMenu(m, this.libelleDe(ranger), () => ranger.faire(), { action: 'ranger-niveau',
+          aide: 'Dites une fois où vont les classeurs de ce niveau (le Drive du MEM, du LFB, du LyFEL, ou un dossier à part) : chacun y a son fichier, écrit tout seul.' })
+      } else if (cle?.disponible && rangeDans !== null && donner) {
+        this.entreeMenu(m, this.libelleDe(donner), () => donner.faire(), { action: 'donner-fichier',
+          aide: `Son fichier ira dans « ${rangeDans} › ${nomSur(this.app.classeur.nom)} », écrit tout seul.` })
+      } else if (cle?.disponible) this.entreeMenu(m, 'Enregistrer automatiquement dans un fichier…', () => void cle.activer(), { action: 'activer-cle', aide: AIDE_ACTIVER })
     }
-    // La copie sur le Drive (lot 4 C10) : le compte, ou pas de copie ;
-    // grisée dans la version hors ligne (Google ne s'y connecte pas)
-    const drive = this.drive
-    if (drive) this.entreeMenu(m, 'Copie sur le Drive…', () => void drive.ouvrirLeChoix(), { action: 'copie-drive', inactif: !drive.enLigne,
-      aide: drive.enLigne ? 'Une copie à sens unique, dans un dossier privé de votre Drive : choisir le compte, ou pas de copie.' : HORS_LIGNE_FICHIER })
-    // Le lot 7 : l'ordinateur ou le Drive, ce classeur ou tout son niveau
-    const ailleurs = this.enregistrerAilleurs
-    if (ailleurs) this.entreeMenu(m, 'Enregistrer sur le Drive ou ailleurs…', () => ailleurs(), { action: 'enregistrer-ailleurs' })
-    this.entreeMenu(m, 'Ouvrir un classeur…', () => s.ouvrir(), { touche: `${CTRL} + O`, action: 'ouvrir',
-      aide: this.fichiers ? AIDE_OUVRIR : 'Remplace ce classeur par celui d\'un fichier .memc.' })
     // Tout le classeur, séance après séance (lot 6 : la trieuse et le menu de la page exportent la séance)
     this.entreeMenu(m, 'Exporter le classeur en PDF…', () => this.exporterPdf('classeur'), { action: 'exporter-pdf',
       aide: 'Toutes les pages, cadrées sur leur contenu, en feuilles A4 à imprimer ou à déposer dans l\'ENT.' })
+    // Le reste de ce qui sauvegarde (lot 18) : la copie sur le Drive par
+    // connexion Google (lot 4 C10), le .memb, récupérer une sauvegarde, les
+    // niveaux sur le Drive (lot 7) ; pas dans le repli (rien à y mettre)
+    const autres = this.autresSauvegardes
+    if (autres) this.entreeMenu(m, 'Autres sauvegardes…', () => autres(), { action: 'autres-sauvegardes', aide: AIDE_AUTRES })
+    this.entreeMenu(m, 'Ouvrir un classeur…', () => s.ouvrir(), { touche: `${CTRL} + O`, action: 'ouvrir',
+      aide: this.fichiers ? AIDE_OUVRIR : 'Remplace ce classeur par celui d\'un fichier .memc.' })
     // Les séances du chapitre (lot 6), après ce qui touche au classeur
     const seance = this.app.seanceVue
     // (courtes, sans aide : le menu tient sans défiler au poste de la classe ;
@@ -1821,6 +1844,19 @@ export class UI implements Interface {
     this.entreeMenu(m, 'Noms sous les outils', e => this.choisirNomsOutils(!nomsOutilsVisibles(), e), { action: 'noms-outils',
       coche: nomsOutilsVisibles(), caseACocher: true, inactif: telephone,
       aide: telephone ? 'Un mot sous chaque bouton des barres (pas sur un téléphone : la place manque)' : 'Un mot sous chaque bouton des barres' })
+  }
+
+  /** Ce dont dépendent les entrées du menu ⋯ (lot 18) : le classeur a son
+   *  fichier (la clé active, son état), Ctrl + S y écrit directement, le
+   *  niveau à ranger, le dossier où irait le fichier ; et le tout en une
+   *  chaîne, pour savoir si le menu ouvert est à refaire */
+  private formeDuMenuFichier(): { aUnFichier: boolean; rangeable: string | null; rangeDans: string | null; forme: string } {
+    const cle = this.cle, c = this.surveillance?.etat.cle
+    const aUnFichier = !!cle?.actif && !!c && aSonFichier(c)
+    const rangeable = !aUnFichier && c?.etat === 'absente' ? c.rangeable?.niveau ?? null : null
+    const rangeDans = !aUnFichier && c?.etat === 'absente' && !c.message ? c.rangeDans ?? null : null
+    const forme = `${aUnFichier ? 'fichier' : cle?.disponible ? 'sans' : 'impossible'}|${cle?.peutEnregistrer() ? 'direct' : ''}|${rangeable ?? ''}|${rangeDans ?? ''}|${this.deplacerClasseur ? 'deplacer' : ''}|${this.autresSauvegardes ? 'autres' : ''}`
+    return { aUnFichier, rangeable, rangeDans, forme }
   }
 
   /** Les premières sections de « Plus », au téléphone (lot 5, K10) : ce que
@@ -1902,17 +1938,18 @@ export class UI implements Interface {
       li.dataset.ligne = l.quoi
       const texte = Object.assign(document.createElement('span'), { className: 'texte-ligne', id: `ligne-etat-${i}`, textContent: l.texte })
       li.appendChild(texte)
-      // Le bouton de la ligne, et les suivants ; pas « Enregistrer
-      // automatiquement sur la clé… » : l'entrée du menu, juste dessous, le fait
+      // Le bouton de la ligne, et les suivants ; ni « Enregistrer
+      // automatiquement dans un fichier… » ni « Lui donner son fichier » :
+      // l'entrée du menu, juste dessous, le fait
       for (const action of [l.action, ...(l.plus ?? [])]) {
-        const a = action && action !== 'activer-cle' ? this.actionsEtat.get(action) : undefined
+        const a = action && action !== 'activer-cle' && action !== 'donner-fichier' ? this.actionsEtat.get(action) : undefined
         if (!a || !action) continue
         const b = document.createElement('button')
         b.type = 'button'; b.className = 'menu-item action-etat'
         b.setAttribute('role', 'menuitem')
         b.dataset.etatAction = action
         b.setAttribute('aria-describedby', texte.id)
-        b.textContent = a.libelle
+        b.textContent = this.libelleDe(a)
         b.addEventListener('click', () => { fermerMenu(); a.faire() })
         li.appendChild(b)
       }
@@ -1923,33 +1960,40 @@ export class UI implements Interface {
 
   // ----- Le bouton du classeur, l'état de la sauvegarde, le bandeau (lot 4) -----
   /** Une action de l'état (le bouton d'une ligne du menu ⋯ ou du bandeau) :
-   *  la clé (C4) et le Drive (C10) inscrivent les leurs */
-  inscrireActionEtat(action: ActionEtat, libelle: string, faire: () => void) {
+   *  la clé (C4), le Drive (C10) et le rangement (lot 18, main.ts)
+   *  inscrivent les leurs ; le libellé peut être une fonction (recalculé à
+   *  chaque affichage) */
+  inscrireActionEtat(action: ActionEtat, libelle: string | (() => string), faire: () => void) {
     this.actionsEtat.set(action, { libelle, faire })
     this.majEtat()
   }
 
+  /** Le libellé d'une action, maintenant */
+  private libelleDe(a: { libelle: string | (() => string) }): string { return typeof a.libelle === 'function' ? a.libelle() : a.libelle }
+
   /** Ce que fait une action de l'état, si un morceau l'a inscrite (la
    *  bibliothèque en fait les boutons de la ligne du classeur ouvert) */
   actionEtat(action: ActionEtat): { libelle: string; faire: () => void } | undefined {
-    return this.actionsEtat.get(action)
+    const a = this.actionsEtat.get(action)
+    return a && { libelle: this.libelleDe(a), faire: a.faire }
   }
 
-  /** L'enregistrement automatique sur la clé (lot 4, C4) : ses entrées du
-   *  menu ⋯ et les boutons de l'état et du bandeau (activer, reprendre après
-   *  un rechargement, choisir un autre fichier, remplacer quand même) */
+  /** L'enregistrement automatique dans un fichier (la clé, lot 4 C4) : ses
+   *  entrées du menu ⋯ et les boutons de l'état et du bandeau (activer,
+   *  reprendre après un rechargement, choisir un autre fichier, remplacer
+   *  quand même). Le mot « clé » ne paraît pas à l'écran (lot 18). */
   brancherCle(cle: EnregistrementCle | null) {
     this.cle = cle
     if (!cle?.disponible) return
-    this.inscrireActionEtat('activer-cle', 'Enregistrer automatiquement sur la clé…', () => void cle.activer())
-    this.inscrireActionEtat('reprendre-cle', 'Reprendre l\'enregistrement sur la clé', () => void cle.reprendre())
+    this.inscrireActionEtat('activer-cle', 'Enregistrer automatiquement dans un fichier…', () => void cle.activer())
+    this.inscrireActionEtat('reprendre-cle', 'Reprendre l\'enregistrement', () => void cle.reprendre())
     this.inscrireActionEtat('choisir-cle', 'Choisir un autre fichier…', () => void cle.choisirUnAutre())
     this.inscrireActionEtat('forcer-cle', 'Remplacer quand même', () => void cle.remplacerQuandMeme())
   }
 
   /** La copie sur le Drive (lot 4 C10) : les boutons de sa ligne et de ses
-   *  bandeaux (se connecter, récupérer la copie, la remplacer quand même),
-   *  et « Copie sur le Drive… » du menu ⋯ */
+   *  bandeaux (se connecter, récupérer la copie, la remplacer quand même) ;
+   *  son compte se choisit dans « Autres sauvegardes… » du menu ⋯ (lot 18) */
   brancherDrive(drive: CopieDrive | null) {
     this.drive = drive
     if (!drive?.enLigne) return
@@ -2006,9 +2050,14 @@ export class UI implements Interface {
     // Pour le lecteur d'écran : toutes les lignes, chacune finie par un point
     const description = t.lignes.map(l => /[.…!]$/.test(l.texte) ? l.texte : l.texte + '.').join(' ')
     if (this.descriptionEtat.textContent !== description) this.descriptionEtat.textContent = description
-    // Le bloc du menu ⋯ ouvert se refait, sauf si le focus y est (son bouton)
-    const bloc = this.blocEtat
-    if (bloc?.isConnected && !this.menuFichier.el.hidden && !bloc.contains(document.activeElement)) this.remplirBlocEtat()
+    // Le bloc du menu ⋯ ouvert se refait, sauf si le focus y est (son bouton) ;
+    // tout le menu, si ses entrées ne sont plus les bonnes (le classeur
+    // vient de recevoir son fichier, lot 18) et que le focus n'y est pas
+    const bloc = this.blocEtat, menu = this.menuFichier.el
+    if (bloc?.isConnected && !menu.hidden) {
+      if (this.formeDuMenuFichier().forme !== this.formeMenuFichier && !menu.contains(document.activeElement)) this.construireMenuFichier()
+      else if (!bloc.contains(document.activeElement)) this.remplirBlocEtat()
+    }
     this.majBandeau(s.bandeau)
   }
 
@@ -2018,7 +2067,8 @@ export class UI implements Interface {
   private majBandeau(b: Bandeau | null) {
     const el = this.bandeau
     const actions = b ? b.actions.filter(a => this.actionsEtat.has(a)) : []
-    const forme = b ? `${b.raison}|${actions.join()}|${b.fermable}` : ''
+    // (les libellés aussi : « Ranger « 2nde » dans un dossier… » suit le niveau)
+    const forme = b ? `${b.raison}|${actions.map(a => this.libelleDe(this.actionsEtat.get(a)!)).join()}|${b.fermable}` : ''
     if (el.dataset.forme !== forme) {
       el.dataset.forme = forme
       el.dataset.raison = b?.raison ?? ''
@@ -2028,7 +2078,7 @@ export class UI implements Interface {
         const boutons = Object.assign(document.createElement('span'), { className: 'actions-bandeau' })
         for (const a of actions) {
           const x = this.actionsEtat.get(a)!
-          const bt = Object.assign(document.createElement('button'), { type: 'button', className: 'bouton-bandeau', textContent: x.libelle })
+          const bt = Object.assign(document.createElement('button'), { type: 'button', className: 'bouton-bandeau', textContent: this.libelleDe(x) })
           bt.dataset.etatAction = a
           bt.addEventListener('click', () => x.faire())
           boutons.appendChild(bt)
@@ -2190,17 +2240,23 @@ export class UI implements Interface {
     else if (f[0]) void this.sauvegarde.ouvrirFichier(f[0])
   }
 
-  /** Les fichiers (lot 4 C9) : Ouvrir ajoute à la bibliothèque, et le
-   *  conflit de la clé propose d'ouvrir son fichier */
-  /** La fenêtre « Enregistrer » du lot 7 (l'ordinateur ou le Drive, ce
-   *  classeur, son niveau, toute la bibliothèque) ; posée par main.ts */
-  enregistrerAilleurs: (() => void) | null = null
+  /** La fenêtre « Autres sauvegardes » (lot 18 : la copie sur le Drive par
+   *  connexion Google, toute la bibliothèque dans un fichier, récupérer une
+   *  sauvegarde, les niveaux sur le Drive) ; posée par main.ts. Sans elle
+   *  (le repli), le menu ⋯ n'a pas l'entrée. */
+  autresSauvegardes: (() => void) | null = null
+  /** « Déplacer le classeur… » du menu ⋯ (lot 18, morceau C2 : la fenêtre
+   *  « Déplacer « Fractions » vers… », et son fichier suit) ; posée par
+   *  main.ts ; l'entrée est grise tant qu'elle manque */
+  deplacerClasseur: (() => void) | null = null
   /** La bibliothèque et ce classeur : Publier retrouve le dossier du chapitre et retient le dossier et le Drive choisis */
   brancherReplay(registre: Registre, idClasseur: string) { this.publication.lieu = { registre, idClasseur } }
 
+  /** Les fichiers (lot 4 C9) : Ouvrir ajoute à la bibliothèque, et le
+   *  conflit de la clé propose d'ouvrir son fichier */
   brancherFichiers(f: Fichiers | null) {
     this.fichiers = f
-    if (f) this.inscrireActionEtat('ouvrir-cle', 'Ouvrir le fichier de la clé', () => void f.ouvrirLeFichierDeLaCle())
+    if (f) this.inscrireActionEtat('ouvrir-cle', 'Ouvrir le fichier', () => void f.ouvrirLeFichierDeLaCle())
   }
 
   // ----- Copier en image (voir sorties/image.ts) -----

@@ -10,7 +10,7 @@
 // la page ne peut plus rien écrire, rien n'est perdu dans ce navigateur, et
 // la prochaine ouverture du classeur l'écrit sur la clé. On ferme comme le
 // professeur (CDP Page.close, qui passe par beforeunload).
-import { chromium, DEV, ok, info, dort, INIT, ECOUTER_TOASTS, suivre, pret, ecrire, entree, etat, opfsLire, lireMemc, formesIds, attendreEcrites, nbEcrites, erreurs } from './commun.mjs'
+import { lancerPersistant, DEV, ok, info, dort, INIT, ECOUTER_TOASTS, suivre, pret, ecrire, entree, etat, opfsLire, lireMemc, formesIds, attendreEcrites, nbEcrites, erreurs } from './commun.mjs'
 /** Ferme l'onglet ; la question du navigateur, s'il la pose, reçoit `reponse` ('rester' ou 'partir') */
 async function fermer(p, reponse, attente = 1200) {
   const questions = []
@@ -23,7 +23,8 @@ async function fermer(p, reponse, attente = 1200) {
   if (!p.isClosed()) { p.off('dialog', surQuestion); await cdp.detach().catch(() => {}) }
   return { questions, ferme: p.isClosed(), t }
 }
-const nav = await chromium.launch()
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+const nav = await lancerPersistant()
 for (const attente of [1500, 3000, 6000]) {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 } })
   await ctx.addInitScript(INIT); await ctx.addInitScript(ECOUTER_TOASTS)

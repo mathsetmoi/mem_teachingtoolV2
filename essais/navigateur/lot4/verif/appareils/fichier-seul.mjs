@@ -4,7 +4,9 @@
 // du fichier), aller d'un classeur à l'autre, Ctrl + clic, le menu ⋯ (le
 // Drive), aucune requête vers Google.
 import { lancer, dort, info, ok, erreurs, suivre, ECOUTER_TOASTS, toasts, CAPTURES } from './outils.mjs'
-const URL0 = 'file://' + new URL('./dist/index.html', import.meta.url).pathname
+import { RACINE_DEPOT } from '../../../commun/racines.mjs'
+// (le dist/ du dépôt, `npm run build` d'abord)
+const URL0 = 'file://' + RACINE_DEPOT + '/dist/index.html'
 const nav = await lancer()
 const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 } })
 await ctx.addInitScript(ECOUTER_TOASTS)
@@ -19,9 +21,9 @@ const pret = () => p.waitForFunction(() => document.querySelector('.rang')?.text
 await p.goto(URL0); await pret(); await dort(800)
 const bouton = () => p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); return { nom: b.querySelector('.nom-classeur')?.textContent, etat: b.querySelector('.etat-classeur')?.textContent, point: !b.querySelector('.point-etat').hidden, url: location.search, titre: document.title } })
 info('au départ', await bouton())
-// Le menu ⋯ : les lignes de l'état, « Copie sur le Drive… » grisé
+// Le menu ⋯ : les lignes de l'état, « Autres sauvegardes… » (lot 18 : la copie sur le Drive est dedans, grisée en file://)
 await p.click('.barre-haut .bouton.points'); await dort(250)
-const m = await p.evaluate(() => { const m = [...document.querySelectorAll('.menu-flottant')].find(x => !x.hidden); return { lignes: [...m.querySelectorAll('[data-ligne]')].map(l => l.dataset.ligne + ': ' + l.textContent.replace(/[  ]/g, ' ').trim()), drive: (e => e && { dis: e.getAttribute('aria-disabled'), t: e.textContent.replace(/[  ]/g, ' ').trim() })(m.querySelector('[data-action="copie-drive"]')) } })
+const m = await p.evaluate(() => { const m = [...document.querySelectorAll('.menu-flottant')].find(x => !x.hidden); return { lignes: [...m.querySelectorAll('[data-ligne]')].map(l => l.dataset.ligne + ': ' + l.textContent.replace(/[  ]/g, ' ').trim()), drive: (e => e && { dis: e.getAttribute('aria-disabled'), t: e.textContent.replace(/[  ]/g, ' ').trim() })(m.querySelector('[data-action="autres-sauvegardes"]')) } })
 info('menu ⋯ en file://', m)
 await p.keyboard.press('Escape'); await dort(150)
 // La bibliothèque, Nouveau classeur
@@ -30,7 +32,7 @@ const lignes = await p.evaluate(() => document.querySelector('.biblio-ouvert')?.
 info('la ligne du classeur ouvert', lignes)
 await p.click('[data-action="nouveau-classeur"]'); await p.waitForSelector('dialog.dialogue-nouveau[open]')
 const caseCle = await p.evaluate(() => { const c = document.querySelector('dialog.dialogue-nouveau input[name=cle]'); return c && { coche: c.checked, texte: c.closest('label').textContent.replace(/[  ]/g, ' ') } })
-ok(caseCle?.coche, 'file:// : « Nouveau classeur » a la case « Enregistrer automatiquement sur la clé » cochée d\'office', caseCle)
+ok(caseCle?.coche, 'file:// : « Nouveau classeur » a la case « Enregistrer automatiquement dans un fichier » cochée d\'office', caseCle)
 await p.keyboard.press('Control+a'); await p.keyboard.type('Fractions')
 await Promise.all([p.waitForNavigation({ timeout: 20000 }).catch(() => null), p.click('dialog.dialogue-nouveau [data-a="creer"]')])
 await pret(); await dort(800)

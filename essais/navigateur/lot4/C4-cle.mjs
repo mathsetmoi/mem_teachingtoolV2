@@ -31,7 +31,7 @@
 //    DataCloneError rattrapé, Web Locks.
 // N. Firefox, l'iPad (pas de showSaveFilePicker) : pas d'entrée, « impossible ».
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
-import { chromium } from '../commun/playwright.mjs'
+import { lancerPersistant } from '../commun/playwright.mjs'
 import * as Y from 'yjs'
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
 import { spawn } from 'node:child_process'
@@ -41,7 +41,7 @@ const S = `${RACINE_ESSAIS}`
 const R = `${RACINE_DEPOT}`
 const ICI = S + '/lot4/C4/'
 const SITE = ICI + 'site/'
-const DEV = 'http://localhost:5173/'
+const DEV = process.env.DEV || 'http://localhost:5173/'
 mkdirSync(ICI, { recursive: true })
 
 let echecs = 0
@@ -249,7 +249,8 @@ const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 's
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
 const dateLisible = t => { const d = new Date(t); return `le ${JOURS[d.getDay()]} ${d.getDate() === 1 ? '1er' : d.getDate()} ${MOIS[d.getMonth()]} ${d.getFullYear()} à ${d.getHours()} h ${String(d.getMinutes()).padStart(2, '0')}` }
 
-const nav = await chromium.launch({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+const nav = await lancerPersistant({ env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } })
 async function contexte(o = {}) {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 }, acceptDownloads: true, ...o })
   await ctx.addInitScript(INIT)
@@ -284,14 +285,15 @@ if (seul('A')) {
   // ---- A1. L'entrée du menu ----
   let m = await menu(p)
   // (Adapté au lot 4, morceau C5 : « Bibliothèque des classeurs… » en tête du menu)
-  // (Adapté au lot 4, morceau C10 : « Copie sur le Drive… » (copie-drive) entre volontairement dans le menu ⋯, avant « Ouvrir un classeur… » ;
-// adapté au lot 7 : « Enregistrer sur le Drive ou ailleurs… » (enregistrer-ailleurs) aussi, juste après)
-  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","activer-cle","copie-drive","enregistrer-ailleurs","ouvrir","exporter-pdf"]'
+  // (Adapté au lot 18 : le menu ⋯ réduit : la clé, le PDF, « Autres sauvegardes… » (qui réunit la copie sur le
+  // Drive et « Enregistrer sur le Drive ou ailleurs… »), Ouvrir)
+  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","activer-cle","exporter-pdf","autres-sauvegardes","ouvrir"]'
     && m.libelles['activer-cle'].texte === 'Enregistrer automatiquement dans un fichier…'
-    && m.libelles['activer-cle'].aide === 'Sur la clé USB ou dans un dossier : le classeur s\'y enregistre tout seul, peu après chaque changement.',
+    && m.libelles['activer-cle'].aide === 'Un fichier .memc, choisi une fois : le classeur s\'y enregistre tout seul, peu après chaque changement.',
     'A1) le menu ⋯ : « Enregistrer automatiquement dans un fichier… » (data-action activer-cle), avec son aide, après « Enregistrer le classeur… »', m)
-  ok(m.cle.length === 1 && m.cle[0].texte === 'Pas d\'enregistrement automatique sur une clé' && m.cle[0].boutons.length === 0,
-    '   … la ligne de la clé, sans bouton (l\'entrée juste dessous le fait)', m.cle)
+  // (Adapté au lot 18 : tant que le classeur n'a pas son fichier, le bloc n'a pas de ligne pour lui)
+  ok(m.cle.length === 0,
+    '   … aucune ligne du fichier tant qu\'il n\'y en a pas (l\'entrée juste dessous le propose)', m.cle)
   await fermerMenu(p)
 
   // ---- A2. L'activation, et la première écriture ----
@@ -310,17 +312,18 @@ if (seul('A')) {
   ok(fiche.cle?.nom === FICHIER && fiche.cle.date === lu.entete.date && fiche.cle.taille === octets.length && JSON.stringify(fiche.cle.vecteur) === JSON.stringify(lu.vecteur) && fiche.cle.t > 0 && fiche.poignee === FICHIER,
     '   … la fiche garde { nom, t, date de l\'en-tête, taille, vecteur } ; la poignée est dans « poignees »', fiche.cle)
   let e = await etat(p)
-  ok(e.cle.etat === 'ok' && e.court === 'Clé : à l\'instant' && e.lignes[0] === `Sur la clé (${FICHIER}) : à l'instant` && !e.bandeau,
+  ok(e.cle.etat === 'ok' && e.court === 'Enregistré à l\'instant' && e.lignes[0] === `Enregistré dans « ${FICHIER} » : à l'instant` && !e.bandeau,
     `   … l'état : « ${e.court} », « ${e.lignes[0]} »`, e)
   const t0 = await toasts(p)
   ok(t0.includes(`Le classeur s'enregistre maintenant tout seul dans « ${FICHIER} ».`), '   … le message', t0)
   ok(Number(await p.evaluate(() => localStorage.getItem('mem-dernier-enregistrement'))) === lu.entete.date, '   … le classeur est dans un fichier depuis cette date (mem-dernier-enregistrement)')
   m = await menu(p)
-  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer-cle","enregistrer","arreter-cle","copie-drive","enregistrer-ailleurs","ouvrir","exporter-pdf"]'
-    && m.libelles['enregistrer-cle'].texte === 'Enregistrer maintenant sur la clé' && m.libelles['enregistrer-cle'].touche === 'Ctrl + S'
-    && m.libelles['enregistrer'].texte === 'Enregistrer une copie dans un fichier…' && m.libelles['enregistrer'].touche === null
-    && m.libelles['arreter-cle'].texte === 'Arrêter l\'enregistrement automatique sur la clé',
-    '   … le menu : « Enregistrer maintenant sur la clé » (Ctrl + S), « Enregistrer une copie dans un fichier… », « Arrêter l\'enregistrement automatique sur la clé »', m)
+  // (Adapté au lot 18 : le classeur a son fichier, le menu ⋯ dit « Enregistrer une copie… » (sans raccourci : Ctrl + S écrit
+  // dans le fichier) et « Déplacer le classeur… » ; plus d'entrées « Enregistrer maintenant sur la clé » ni « Arrêter… »)
+  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","deplacer-classeur","exporter-pdf","autres-sauvegardes","ouvrir"]'
+    && m.libelles['enregistrer'].texte === 'Enregistrer une copie…' && m.libelles['enregistrer'].touche === null
+    && m.libelles['deplacer-classeur'].texte === 'Déplacer le classeur…' && !m.libelles['enregistrer-cle'] && !m.libelles['arreter-cle'],
+    '   … le menu : « Enregistrer une copie… » (sans raccourci : Ctrl + S écrit dans le fichier), « Déplacer le classeur… » ; plus de « Enregistrer maintenant sur la clé » ni d\'« Arrêter… » (lot 18)', m)
   await fermerMenu(p)
 
   // ---- A3. Quand : 20 s après le dernier changement ----
@@ -401,8 +404,8 @@ if (seul('A')) {
   await p.waitForTimeout(300)
   octets = await opfsLire(p, FICHIER); lu = lireMemc(octets)
   let msg = await toasts(p)
-  ok(lu.ids.includes(idS) && (await p.evaluate(() => window.__choix.length)) === choixAvant && msg.some(t => new RegExp(`^Classeur enregistré sur la clé : ${FICHIER.replace('.', '\\.')} \\(\\d+ Ko\\)\\.$`).test(t)),
-    '   … avec le dernier trait, sans demander de fichier, « Classeur enregistré sur la clé : … (N Ko). »', { msg, ids: lu.ids, idS, choix: await p.evaluate(() => window.__choix), choixAvant })
+  ok(lu.ids.includes(idS) && (await p.evaluate(() => window.__choix.length)) === choixAvant && msg.some(t => new RegExp(`^Enregistré dans « ${FICHIER.replace('.', '\\.')} » \\(\\d+ Ko\\)\\.$`).test(t)),
+    '   … avec le dernier trait, sans demander de fichier, « Enregistré dans « … » (N Ko). »', { msg, ids: lu.ids, idS, choix: await p.evaluate(() => window.__choix), choixAvant })
   await p.evaluate(() => { window.__nomChoisi = 'copie.memc' })
   await entree(p, 'enregistrer')
   await p.waitForFunction(() => window.__ecritures.some(e => e.nom === 'copie.memc' && e.fin), null, { timeout: 15000 }).catch(() => {})
@@ -422,11 +425,11 @@ if (seul('A')) {
   await p.clock.fastForward(21000)
   await p.waitForFunction(() => window.__cle.etat.etat === 'erreur', null, { timeout: 15000 }).catch(() => {})
   e = await etat(p)
-  ok(e.cle.etat === 'erreur' && e.cle.message === 'la clé n\'est plus là, ou le fichier a été déplacé' && e.court === 'Clé : pas à jour'
-    && e.lignes[0] === 'Sur la clé : la clé n\'est plus là, ou le fichier a été déplacé'
+  ok(e.cle.etat === 'erreur' && e.cle.message === 'le fichier a été déplacé, supprimé, ou son disque retiré' && e.court === 'Pas à jour, rien de perdu'
+    && e.lignes[0] === `Fichier « ${FICHIER} » : le fichier a été déplacé, supprimé, ou son disque retiré`
     && e.lignes[1] === 'Rien n\'est perdu : le classeur est dans ce navigateur ; l\'enregistrement reprendra dès que possible.',
-    `A5) la clé retirée : « ${e.court} », « ${e.lignes[0]} », « ${e.lignes[1]} »`, e)
-  ok(e.bandeau?.raison === 'cle-erreur' && e.bandeau.texte === 'L\'enregistrement sur la clé a échoué (la clé n\'est plus là, ou le fichier a été déplacé). Rien n\'est perdu.'
+    `A5) le disque retiré : « ${e.court} », « ${e.lignes[0]} », « ${e.lignes[1]} »`, e)
+  ok(e.bandeau?.raison === 'cle-erreur' && e.bandeau.texte === `L'enregistrement dans « ${FICHIER} » a échoué (le fichier a été déplacé, supprimé, ou son disque retiré). Rien n'est perdu.`
     && JSON.stringify(e.bandeau.boutons) === '["Choisir un autre fichier…"]' && e.bandeau.fermer,
     `   … le bandeau : « ${e.bandeau?.texte} » [Choisir un autre fichier…] ×`, e.bandeau)
   ok(Buffer.compare(await opfsLire(p, FICHIER), avant) === 0, '   … le fichier de la clé est intact')
@@ -451,7 +454,7 @@ if (seul('A')) {
   ok(await attendreEcrites(p, n + 1, 15000), '   … la clé revient : le réessai suivant écrit')
   await p.waitForTimeout(400)
   e = await etat(p); msg = await toasts(p)
-  ok(e.cle.etat === 'ok' && !e.bandeau && msg.includes('Enregistrement sur la clé repris.'), '   … « Enregistrement sur la clé repris. », l\'état revient, le bandeau s\'en va', { e, msg })
+  ok(e.cle.etat === 'ok' && !e.bandeau && msg.includes(`L'enregistrement dans « ${FICHIER} » reprend.`), '   … « L\'enregistrement dans « … » reprend. », l\'état revient, le bandeau s\'en va', { e, msg })
   // b) la clé pleine pendant l'écriture : abort, le fichier d'avant reste entier
   avant = await opfsLire(p, FICHIER)
   await p.evaluate(() => { window.__panne = 'QuotaExceededError' })
@@ -462,7 +465,7 @@ if (seul('A')) {
   e = await etat(p)
   const wq = await p.evaluate(() => window.__ecritures.at(-1))
   const apres = await opfsLire(p, FICHIER)
-  ok(e.cle.message === 'la clé est pleine' && wq.echec === 'QuotaExceededError' && wq.abandon && Buffer.compare(apres, avant) === 0 && lireMemc(apres).entier,
+  ok(e.cle.message === 'le disque est plein' && wq.echec === 'QuotaExceededError' && wq.abandon && Buffer.compare(apres, avant) === 0 && lireMemc(apres).entier,
     `   … la clé pleine au milieu de l'écriture : « ${e.cle.message} », l'écriture abandonnée (abort), le fichier d'avant intact et entier`, { e, wq })
   await p.evaluate(() => { window.__panne = null })
   await p.clock.fastForward(31000)
@@ -490,19 +493,19 @@ if (seul('A')) {
   await p.waitForFunction(() => window.__cle.etat.etat === 'conflit', null, { timeout: 15000 }).catch(() => {})
   e = await etat(p)
   ok(e.cle.etat === 'conflit' && e.cle.message === `Le fichier « ${FICHIER} » contient un autre classeur (« Autre classeur ») : il n'est pas remplacé.`
-    && e.court === 'Clé : pas à jour' && e.bandeau?.raison === 'cle-conflit' && JSON.stringify(e.bandeau.boutons) === '["Ouvrir le fichier de la clé","Choisir un autre fichier…","Remplacer quand même"]',
-    `A6a) un autre classeur dans le fichier : « ${e.cle.message} », [Ouvrir le fichier de la clé] (C9) [Choisir un autre fichier…] [Remplacer quand même]`, e)
+    && e.court === 'Fichier changé ailleurs' && e.bandeau?.raison === 'cle-conflit' && JSON.stringify(e.bandeau.boutons) === '["Ouvrir le fichier","Choisir un autre fichier…","Remplacer quand même"]',
+    `A6a) un autre classeur dans le fichier : « ${e.cle.message} », [Ouvrir le fichier] (C9) [Choisir un autre fichier…] [Remplacer quand même]`, e)
   ok(Buffer.compare(await opfsLire(p, FICHIER), autre) === 0 && (await p.evaluate(() => window.__tentatives)) === n, '   … le fichier n\'est pas touché (aucune écriture commencée)')
   await ecrire(p, 330, 320); await p.clock.fastForward(25000); await p.waitForTimeout(400)
   ok(Buffer.compare(await opfsLire(p, FICHIER), autre) === 0, '   … un autre changement : toujours rien (le conflit attend un clic)')
   m = await menu(p)
-  ok(m.cle[0]?.texte === e.cle.message && JSON.stringify(m.cle[0]?.boutons) === '["Ouvrir le fichier de la clé","Choisir un autre fichier…","Remplacer quand même"]', '   … la ligne du menu ⋯ porte les boutons (et, depuis C9, « Ouvrir le fichier de la clé »)', m.cle)
+  ok(m.cle[0]?.texte === e.cle.message && JSON.stringify(m.cle[0]?.boutons) === '["Ouvrir le fichier","Choisir un autre fichier…","Remplacer quand même"]', '   … la ligne du menu ⋯ porte les boutons (et, depuis C9, « Ouvrir le fichier »)', m.cle)
   await fermerMenu(p)
   // « Remplacer quand même » : une confirmation, puis l'écriture
   await p.click('.bouton-bandeau[data-etat-action="forcer-cle"]')
   await p.waitForTimeout(200)
   const dq = await dialogues(p)
-  ok(dq.length === 1 && dq[0].titre === 'Remplacer le fichier de la clé ?' && dq[0].texte === `« ${FICHIER} » sera remplacé par ce classeur : ce qu'il contient de plus sera perdu. Pour le garder, choisissez plutôt un autre fichier, ou ouvrez-le (Ctrl + O).`
+  ok(dq.length === 1 && dq[0].titre === 'Remplacer le fichier ?' && dq[0].texte === `« ${FICHIER} » sera remplacé par ce classeur : ce qu'il contient de plus sera perdu. Pour le garder, choisissez plutôt un autre fichier, ou ouvrez-le (Ctrl + O).`
     && JSON.stringify(dq[0].boutons) === '["Annuler","Remplacer"]', '   … [Remplacer quand même] : une question d\'abord', dq)
   n = await nbEcrites(p)
   await p.click('dialog[open] [data-a="oui"]')
@@ -518,7 +521,7 @@ if (seul('A')) {
   await p.clock.fastForward(21000)
   await p.waitForFunction(() => window.__cle.etat.etat === 'conflit', null, { timeout: 15000 }).catch(() => {})
   e = await etat(p)
-  ok(e.cle.message === `Le fichier de la clé a été modifié ailleurs (${dateLisible(fiche.cle.date + 3_600_000)}) depuis le dernier enregistrement d'ici : il n'est pas remplacé.` && Buffer.compare(await opfsLire(p, FICHIER), ailleurs) === 0,
+  ok(e.cle.message === `Le fichier « ${FICHIER} » a été modifié ailleurs (${dateLisible(fiche.cle.date + 3_600_000)}) depuis le dernier enregistrement d'ici : il n'est pas remplacé.` && Buffer.compare(await opfsLire(p, FICHIER), ailleurs) === 0,
     `A6b) modifié ailleurs : « ${e.cle.message} », le fichier n'est pas touché`, { cle: e.cle, attendu: dateLisible(fiche.cle.date + 3_600_000), meme: Buffer.compare(await opfsLire(p, FICHIER), ailleurs) })
   // [Choisir un autre fichier…] : un nouveau fichier, celui en conflit reste tel quel
   await p.evaluate(() => { window.__nomChoisi = 'autre-cle.memc' })
@@ -573,9 +576,9 @@ if (seul('A')) {
   await p.evaluate(() => sessionStorage.setItem('__permissionDepart', 'prompt'))
   await p.reload(); await pret(p); await p.waitForTimeout(500)
   e = await etat(p)
-  ok(e.cle.etat === 'permission' && e.court === 'Clé en pause' && e.bandeau?.raison === 'cle-permission' && e.bandeau.texte === 'L\'enregistrement sur la clé attend votre accord.'
-    && JSON.stringify(e.bandeau.boutons) === '["Reprendre l\'enregistrement sur la clé"]' && e.bandeau.fermer && e.lignes[0] === 'Sur la clé : en pause, le navigateur attend votre accord',
-    `   … rechargé, le navigateur redemande : « ${e.court} », le bandeau « ${e.bandeau?.texte} » [Reprendre l'enregistrement sur la clé]`, e)
+  ok(e.cle.etat === 'permission' && e.court === 'En pause : un clic' && e.bandeau?.raison === 'cle-permission' && e.bandeau.texte === 'L\'enregistrement dans « moins.memc » attend votre accord.'
+    && JSON.stringify(e.bandeau.boutons) === '["Reprendre l\'enregistrement"]' && e.bandeau.fermer && e.lignes[0] === 'Fichier « moins.memc » : en pause, le navigateur attend votre accord',
+    `   … rechargé, le navigateur redemande : « ${e.court} », le bandeau « ${e.bandeau?.texte} » [Reprendre l'enregistrement]`, e)
   n = await nbEcrites(p)
   await ecrire(p, 300, 500)
   const idR = (await formesIds(p)).at(-1)
@@ -583,13 +586,13 @@ if (seul('A')) {
   appels = await p.evaluate(() => window.__appels)
   ok(await nbEcrites(p) === n && !appels.some(a => a.quoi === 'request'), '   … un trait, 25 s : rien n\'est écrit, et rien n\'est demandé sans un clic', appels)
   await p.click('.bouton-bandeau[data-etat-action="reprendre-cle"]')
-  ok(await attendreEcrites(p, n + 1, 10000), '   … [Reprendre l\'enregistrement sur la clé] : l\'écriture due part')
+  ok(await attendreEcrites(p, n + 1, 10000), '   … [Reprendre l\'enregistrement] : l\'écriture due part')
   await p.waitForTimeout(300)
   appels = await p.evaluate(() => window.__appels.filter(a => a.quoi === 'request'))
   e = await etat(p); msg = await toasts(p)
-  ok(appels.length === 1 && appels[0].actif && appels[0].rendu === 'granted' && e.cle.etat === 'ok' && !e.bandeau && msg.includes('Enregistrement sur la clé repris.')
+  ok(appels.length === 1 && appels[0].actif && appels[0].rendu === 'granted' && e.cle.etat === 'ok' && !e.bandeau && msg.includes('L\'enregistrement dans « moins.memc » reprend.')
     && lireMemc(await opfsLire(p, 'moins.memc')).ids.includes(idR),
-    '   … un seul requestPermission, dans le geste ; « Enregistrement sur la clé repris. » ; le trait est sur la clé', { appels, e, msg })
+    '   … un seul requestPermission, dans le geste ; « L\'enregistrement dans « moins.memc » reprend. » ; le trait est dans le fichier', { appels, e, msg })
   // Ctrl + S compte comme un geste
   await p.reload(); await pret(p); await p.waitForTimeout(500)
   ok((await etat(p)).cle.etat === 'permission', '   … rechargé de nouveau : en pause')
@@ -602,15 +605,17 @@ if (seul('A')) {
   await toasts(p)
 
   // ---- A8. Arrêter ----
-  await entree(p, 'arreter-cle')
+  // (Adapté au lot 18 : plus d'entrée « Arrêter… » dans le menu ⋯ ; on arrête la clé directement (l'arrêt passe
+  // désormais par la fenêtre « Déplacer le classeur… », que lot18/E3-deplacer.mjs vérifie))
+  await p.evaluate(() => window.__cle.arreter())
   await p.waitForTimeout(400)
   fiche = await ficheDe(p); e = await etat(p); msg = await toasts(p)
-  ok(!fiche.cle && fiche.poignee === null && e.cle.etat === 'absente' && msg.includes('L\'enregistrement automatique sur la clé est arrêté. « moins.memc » garde le classeur tel qu\'il était à sa dernière écriture.'),
+  ok(!fiche.cle && fiche.poignee === null && e.cle.etat === 'absente' && msg.includes('Le classeur ne s\'enregistre plus dans « moins.memc » : le fichier garde le classeur tel qu\'il était à sa dernière écriture.'),
     'A8) « Arrêter l\'enregistrement automatique sur la clé » : la fiche et la poignée l\'oublient ; le message', { fiche, e, msg })
   n = await nbEcrites(p)
   await ecrire(p, 300, 520); await p.clock.fastForward(130000); await p.waitForTimeout(500)
   m = await menu(p)
-  ok(await nbEcrites(p) === n && m.entrees.includes('activer-cle') && !m.entrees.includes('arreter-cle'), '   … plus rien ne s\'écrit ; le menu propose de nouveau de l\'activer', m.entrees)
+  ok(await nbEcrites(p) === n && m.entrees.includes('activer-cle') && !m.entrees.includes('deplacer-classeur') && m.libelles['enregistrer'].texte === 'Enregistrer le classeur…', '   … plus rien ne s\'écrit ; le menu propose de nouveau de l\'activer (et revient à « Enregistrer le classeur… »)', m.entrees)
   await fermerMenu(p)
   await ctx.close()
 }
@@ -643,8 +648,8 @@ if (seul('R')) {
   let d = (await dialogues(p))[0]
   const ouv = await p.evaluate(() => window.__choix.filter(c => c.quoi === 'open'))
   // (C9 : plusieurs fichiers à la fois, des classeurs et des bibliothèques)
-  ok(ouv.length === 1 && ouv[0].o.id === 'mem-classeurs' && ouv[0].o.multiple === true && ouv[0].o.types?.[0]?.description === 'Classeur ou bibliothèque (MEM teachingtool)',
-    'R1) Ctrl + O : showOpenFilePicker({ id: mem-classeurs, plusieurs fichiers, types : « Classeur ou bibliothèque (MEM teachingtool) » })', ouv)
+  ok(ouv.length === 1 && ouv[0].o.id === 'mem-classeurs' && ouv[0].o.multiple === true && ouv[0].o.types?.[0]?.description === 'Classeur, bibliothèque ou ancien tableau (MEM teachingtool)',
+    'R1) Ctrl + O : showOpenFilePicker({ id: mem-classeurs, plusieurs fichiers, types : « Classeur, bibliothèque ou ancien tableau (MEM teachingtool) » })', ouv)
   ok(d.titre === 'Ouvrir ce classeur ?' && d.texte.endsWith('Pour garder celui-ci, enregistrez-le d\'abord. L\'enregistrement automatique dans « premier.memc » s\'arrête : ce fichier garde le classeur d\'avant.')
     && d.case?.coche === true && d.case.texte === 'Enregistrer automatiquement les changements dans ce fichier' && JSON.stringify(d.boutons) === '["Annuler","Enregistrer d\'abord","Remplacer"]',
     '   … la question : la clé du classeur d\'avant s\'arrête ; la case « Enregistrer automatiquement les changements dans ce fichier », cochée', d)
@@ -751,8 +756,8 @@ if (seul('R')) {
   f = await ficheDe(p)
   m = await toasts(p)
   e = await etat(p)
-  ok(f.id === ID_S && f.cle?.nom === 'symetrie.memc' && f.poignee === 'symetrie.memc' && e.cle.etat === 'permission' && m.some(t => t.includes('Le navigateur n\'a pas permis d\'écrire dans « symetrie.memc » : l\'enregistrement sur la clé reste en pause.')),
-    '   … l\'accord refusé : « Le navigateur n\'a pas permis d\'écrire dans « symetrie.memc » : l\'enregistrement sur la clé reste en pause. » (l\'identité du fichier ; la clé gardée, en pause)', { f: { id: f.id, cle: f.cle?.nom, poignee: f.poignee }, e: e.cle, m })
+  ok(f.id === ID_S && f.cle?.nom === 'symetrie.memc' && f.poignee === 'symetrie.memc' && e.cle.etat === 'permission' && m.some(t => t.includes('Le navigateur n\'a pas permis d\'écrire dans « symetrie.memc » : l\'enregistrement reste en pause.')),
+    '   … l\'accord refusé : « Le navigateur n\'a pas permis d\'écrire dans « symetrie.memc » : l\'enregistrement reste en pause. » (l\'identité du fichier ; la clé gardée, en pause)', { f: { id: f.id, cle: f.cle?.nom, poignee: f.poignee }, e: e.cle, m })
   await p.evaluate(() => { window.__aOuvrir = 'ancien.memc' })
   await p.keyboard.press('Control+o')
   await p.waitForSelector('dialog[open] [data-a="remplacer"]', { timeout: 10000 })
@@ -825,7 +830,7 @@ if (seul('D')) {
   const b = await ouvrir(ctx, '', 'D-b')
   await b.waitForFunction(() => window.__cle.etat.etat === 'autre-onglet', null, { timeout: 5000 }).catch(() => {})
   let eb = await etat(b)
-  ok(eb.cle.etat === 'autre-onglet' && eb.court === 'Clé : par l\'autre onglet' && eb.lignes[0] === 'Sur la clé : c\'est l\'autre onglet ouvert sur ce classeur qui enregistre' && !eb.bandeau,
+  ok(eb.cle.etat === 'autre-onglet' && eb.court === 'Par l\'autre onglet' && eb.lignes[0] === 'Fichier « cours.memc » : c\'est l\'autre onglet ouvert sur ce classeur qui l\'enregistre' && !eb.bandeau,
     `D1) le second onglet sur le même classeur n'écrit pas : « ${eb.court} », « ${eb.lignes[0]} »`, eb)
   const verrous = await b.evaluate(async () => (await navigator.locks.query()).held.map(l => l.name).concat((await navigator.locks.query()).pending.map(l => 'attente:' + l.name)))
   const idA = await a.evaluate(() => window.__app.classeur.id)
@@ -849,15 +854,15 @@ if (seul('D')) {
   await b.waitForFunction(() => window.__cle.etat.etat === 'erreur', null, { timeout: 5000 }).catch(() => {})
   eb = await etat(b)
   const protegeB = await b.evaluate(() => window.__surveillance.texte.niveau)
-  ok(eb.court === 'Clé : pas à jour' && eb.lignes[0] === 'Sur la clé : l\'autre onglet ouvert sur ce classeur attend votre accord pour écrire sur la clé (son bandeau : « Reprendre l\'enregistrement sur la clé »)' && !eb.bandeau && protegeB === 'attention',
+  ok(eb.court === 'Pas à jour, rien de perdu' && eb.lignes[0] === 'Fichier « cours.memc » : l\'autre onglet ouvert sur ce classeur attend votre accord pour écrire dans « cours.memc » (son bandeau : « Reprendre l\'enregistrement »)' && !eb.bandeau && protegeB === 'attention',
     `D1b) le premier onglet en pause : le second le dit (« ${eb.court} », « ${eb.lignes[0]} »), sans bouton ici`, { eb, protegeB })
   const na2 = await nbEcrites(a)
   await a.bringToFront()
   await a.click('.bouton-bandeau[data-etat-action="reprendre-cle"]')
-  ok(await attendreEcrites(a, na2 + 1, 15000), '   … [Reprendre l\'enregistrement sur la clé] dans le premier : il écrit (avec son dernier trait)')
+  ok(await attendreEcrites(a, na2 + 1, 15000), '   … [Reprendre l\'enregistrement] dans le premier : il écrit (avec son dernier trait)')
   await b.waitForFunction(() => window.__cle.etat.etat === 'autre-onglet', null, { timeout: 5000 }).catch(() => {})
   eb = await etat(b)
-  ok(eb.cle.etat === 'autre-onglet' && eb.court === 'Clé : par l\'autre onglet', '   … et le second revient à « Clé : par l\'autre onglet »', eb)
+  ok(eb.cle.etat === 'autre-onglet' && eb.court === 'Par l\'autre onglet', '   … et le second revient à « Par l\'autre onglet »', eb)
   await b.bringToFront()
   // Le premier se ferme : le second prend la suite (sa mémoire n'a pas le
   // dernier trait du premier, la base l'a : pas de faux conflit)
@@ -866,7 +871,7 @@ if (seul('D')) {
   eb = await etat(b)
   await b.waitForTimeout(1500)
   const repriseEcrit = await nbEcrites(b)
-  ok(eb.cle.etat === 'ok' && eb.court.startsWith('Clé : ') && repriseEcrit === 0, `D2) le premier onglet se ferme : le second prend la suite (« ${eb.court} ») ; tout ce qu'il avait est déjà sur la clé, il n'écrit rien de plus`, { eb, repriseEcrit })
+  ok(eb.cle.etat === 'ok' && /^Enregistré/.test(eb.court) && repriseEcrit === 0, `D2) le premier onglet se ferme : le second prend la suite (« ${eb.court} ») ; tout ce qu'il avait est déjà sur la clé, il n'écrit rien de plus`, { eb, repriseEcrit })
   const nb = await nbEcrites(b)
   await ecrire(b, 500, 400)
   const idB2 = (await formesIds(b)).at(-1)
@@ -1041,11 +1046,11 @@ if (seul('F')) {
   await p.waitForFunction(() => window.__memoire.ecritures >= 2, null, { timeout: 40000 }).catch(() => {})
   ok(await p.evaluate(() => window.__memoire.ecritures) >= 2, '   … un trait : l\'écriture automatique, 20 s après')
   const court = await p.evaluate(() => (document.querySelector('.etat-classeur')?.textContent || '').replace(/[  ]/g, ' '))
-  ok(court === 'Clé : à l\'instant' || /^Clé : il y a/.test(court), `   … l'état : « ${court} »`)
+  ok(court === 'Enregistré à l\'instant' || /^Enregistré il y a/.test(court), `   … l'état : « ${court} »`)
   await p.reload()
   await p.waitForFunction(() => document.querySelector('.rang')?.textContent?.includes('/'), null, { timeout: 30000 }); await p.waitForTimeout(1500)
   const m2 = await menu(p)
-  ok(m2.cle[0]?.texte === 'Sur la clé : le fichier « Premier classeur.memc » est à choisir de nouveau (ce navigateur ne le garde pas après un rechargement)' && m2.entrees.includes('activer-cle'),
+  ok(m2.cle[0]?.texte === 'Fichier : « Premier classeur.memc » est à choisir de nouveau (ce navigateur ne le garde pas après un rechargement)' && m2.entrees.includes('activer-cle'),
     '   … rechargé : « le fichier … est à choisir de nouveau », et l\'entrée pour le choisir', m2.cle)
   await fermerMenu(p)
   await ctx.close()

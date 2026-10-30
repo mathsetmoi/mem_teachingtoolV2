@@ -25,7 +25,7 @@ const INIT = () => {
   F.createWritable = async function (...a) { const w = await cw.apply(this, a); return { write: d => w.write(d), close: async () => { await w.close(); window.__ecritures++ }, abort: r => w.abort(r) } }
   window.showSaveFilePicker = async o => (await navigator.storage.getDirectory()).getFileHandle(o?.suggestedName || 'x.memc', { create: true })
 }
-const nav = await lancer()
+const nav = await lancer({ persistant: true })
 const ctx = await contexte(nav, { viewport: { width: W, height: H }, ...(TACTILE ? { hasTouch: true, isMobile: W < 900, deviceScaleFactor: 2 } : {}) })
 await ctx.addInitScript(INIT)
 const p = await ctx.newPage(); suivre(p, 'bandeau')
@@ -79,7 +79,7 @@ else {
 const fini = await p.waitForFunction(n => window.__ecritures > n, n0, { timeout: 15000 }).then(() => true).catch(() => false)
 await dort(300)
 const app = await p.evaluate(() => window.__appels.filter(a => a.quoi === 'request'))
-ok(fini && app.length === 1 && app[0].actif && (await p.evaluate(() => document.querySelector('.bandeau-sauvegarde').hidden)), `${T} ${TACTILE ? 'le doigt' : 'la plume'} sur [Reprendre l'enregistrement sur la clé] : l'accord dans le geste, l'écriture, le bandeau s'en va`, { fini, app, t: await toasts(p) })
+ok(fini && app.length === 1 && app[0].actif && (await p.evaluate(() => document.querySelector('.bandeau-sauvegarde').hidden)), `${T} ${TACTILE ? 'le doigt' : 'la plume'} sur [Reprendre l'enregistrement] : l'accord dans le geste, l'écriture, le bandeau s'en va`, { fini, app, t: await toasts(p) })
 info(`${T} le bouton du classeur`, await p.evaluate(() => { const b = document.querySelector('.bouton-classeur'); return { etat: b.querySelector('.etat-classeur')?.textContent, point: !b.querySelector('.point-etat').hidden, ptFichier: !document.querySelector('.barre-haut .bouton.points .point-etat')?.hidden } }))
 console.log('erreurs JS', erreurs)
 await nav.close()

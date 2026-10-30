@@ -148,7 +148,7 @@ describe('la carte d\'un classeur', () => {
     expect(sp(texteLecteur(f, T, { ouvertIci: true }))).toBe('Symétrie centrale, 12 pages, modifié aujourd\'hui à 13 h 55, ouvert dans cet onglet')
     expect(texteLecteur(fiche('x', { nom: 'Mon tableau', modifie: 0, cree: 0, pages: null }), T)).toBe('Mon tableau, pas encore ouvert depuis la mise à jour')
     const avec = { ...f, cle: { nom: 'Symétrie.memc', t: T - 3 * J }, drive: { compte: 'mem' as const, id: 'f', t: T - 10 * MIN, taille: 1 } }
-    expect(sp(texteLecteur(avec, T))).toBe('Symétrie centrale, 12 pages, modifié aujourd\'hui à 13 h 55, sur la clé il y a 3 jours (Symétrie.memc), sur le Drive il y a 10 min')
+    expect(sp(texteLecteur(avec, T))).toBe('Symétrie centrale, 12 pages, modifié aujourd\'hui à 13 h 55, enregistré dans « Symétrie.memc » il y a 3 jours, sur le Drive il y a 10 min')
     // (C6) Ses étiquettes de niveau, et son dossier quand un filtre les montre tous ensemble
     expect(sp(texteLecteur(f, T, { etiquettes: ['5e B'], chemin: '5e B › Géométrie', ouvertIci: true })))
       .toBe('Symétrie centrale, 12 pages, modifié aujourd\'hui à 13 h 55, niveau 5e B, dans 5e B › Géométrie, ouvert dans cet onglet')
@@ -159,11 +159,13 @@ describe('la carte d\'un classeur', () => {
     expect(sp(texteLecteur(isolees, T))).toBe('Séances isolées, 5 pages, modifié aujourd\'hui à 13 h 55')
   })
 
-  it('les icônes de la clé et du Drive : la date de la dernière écriture réussie', () => {
+  it('les icônes du fichier du classeur et du Drive : la date de la dernière écriture réussie ; le chemin quand l\'outil a rangé le fichier (lot 18)', () => {
     expect(titreCle(f, T)).toBe(null)
     expect(titreDrive(f, T)).toBe(null)
-    expect(sp(titreCle({ ...f, cle: { nom: 'Symétrie.memc', t: T - 3 * J } }, T)!)).toBe('Sur la clé il y a 3 jours (Symétrie.memc)')
-    expect(titreCle({ ...f, cle: { nom: 'Symétrie.memc' } }, T)).toBe('Enregistrement automatique sur la clé (Symétrie.memc) : pas encore écrit')
+    expect(sp(titreCle({ ...f, cle: { nom: 'Symétrie.memc', t: T - 3 * J } }, T)!)).toBe('Enregistré dans « Symétrie.memc » il y a 3 jours')
+    expect(sp(titreCle({ ...f, cle: { nom: 'Fractions.memc', t: T - 2 * MIN, chemin: ['LFB classeurs', '2', 'Fractions'] } }, T)!)).toBe('Enregistré dans LFB classeurs › 2 › Fractions il y a 2 min (Fractions.memc)')
+    expect(titreCle({ ...f, cle: { nom: 'Symétrie.memc' } }, T)).toBe('Fichier « Symétrie.memc » : pas encore écrit')
+    expect(titreCle({ ...f, cle: { nom: 'Fractions.memc', chemin: ['LFB classeurs', '2', 'Fractions'] } }, T)).toBe('Fichier LFB classeurs › 2 › Fractions (Fractions.memc) : pas encore écrit')
     expect(sp(titreDrive({ ...f, drive: { compte: 'mem', id: 'x', t: T - 2 * H, taille: 10 } }, T)!)).toBe('Sur le Drive il y a 2 h')
   })
 
@@ -183,21 +185,21 @@ describe('la carte d\'un classeur', () => {
 })
 
 describe('la ligne du classeur ouvert (la bibliothèque)', () => {
-  it('« Enregistré dans ce navigateur · sur la clé il y a 2 min · sur le Drive il y a 10 min »', () => {
+  it('« Enregistré dans ce navigateur · dans « S.memc » il y a 2 min · sur le Drive il y a 10 min »', () => {
     const e = etat({ cle: { etat: 'ok', t: T - 2 * MIN, nom: 'S.memc' }, drive: { etat: 'ok', t: T - 10 * MIN }, fichier: T - 2 * MIN })
-    expect(sp(resumeEtat(e, T))).toBe('Enregistré dans ce navigateur · sur la clé il y a 2 min · sur le Drive il y a 10 min')
+    expect(sp(resumeEtat(e, T))).toBe('Enregistré dans ce navigateur · dans « S.memc » il y a 2 min · sur le Drive il y a 10 min')
   })
 
   it('ce qui manque, ce qui est en pause, ce qui a échoué ; jamais « il y a » après un échec', () => {
     expect(resumeEtat(etat(), T)).toBe('Enregistré dans ce navigateur · jamais enregistré dans un fichier')
     expect(sp(resumeEtat(etat({ fichier: T - 25 * MIN }), T))).toBe('Enregistré dans ce navigateur · dans un fichier il y a 25 min')
-    expect(resumeEtat(etat({ cle: { etat: 'permission' } }), T)).toBe('Enregistré dans ce navigateur · clé en pause · jamais enregistré dans un fichier')
-    const echec = resumeEtat(etat({ cle: { etat: 'erreur', t: T - MIN, message: 'la clé est pleine' }, fichier: T - MIN }), T)
-    expect(sp(echec)).toBe('Enregistré dans ce navigateur · clé : pas à jour · dans un fichier il y a 1 min')
-    expect(echec).not.toMatch(/sur la clé il y a/)
-    expect(resumeEtat(etat({ cle: { etat: 'conflit' } }), T)).toMatch(/clé : pas à jour/)
-    expect(resumeEtat(etat({ cle: { etat: 'autre-onglet' } }), T)).toBe('Enregistré dans ce navigateur · sur la clé (par l\'autre onglet)')
-    expect(resumeEtat(etat({ cle: { etat: 'absente', message: 'le fichier « X.memc » est à choisir de nouveau' } }), T)).toBe('Enregistré dans ce navigateur · clé : fichier à choisir de nouveau · jamais enregistré dans un fichier')
+    expect(resumeEtat(etat({ cle: { etat: 'permission' } }), T)).toBe('Enregistré dans ce navigateur · fichier en pause · jamais enregistré dans un fichier')
+    const echec = resumeEtat(etat({ cle: { etat: 'erreur', t: T - MIN, nom: 'S.memc', message: 'le disque est plein' }, fichier: T - MIN }), T)
+    expect(sp(echec)).toBe('Enregistré dans ce navigateur · fichier : pas à jour · dans un fichier il y a 1 min')
+    expect(echec).not.toMatch(/S\.memc » il y a/)
+    expect(resumeEtat(etat({ cle: { etat: 'conflit' } }), T)).toMatch(/fichier : pas à jour/)
+    expect(resumeEtat(etat({ cle: { etat: 'autre-onglet' } }), T)).toBe('Enregistré dans ce navigateur · fichier (par l\'autre onglet)')
+    expect(resumeEtat(etat({ cle: { etat: 'absente', message: '« X.memc » est à choisir de nouveau' } }), T)).toBe('Enregistré dans ce navigateur · fichier à choisir de nouveau · jamais enregistré dans un fichier')
     expect(resumeEtat(etat({ drive: { etat: 'connexion' } }), T)).toBe('Enregistré dans ce navigateur · Drive en attente de la connexion Google · jamais enregistré dans un fichier')
     expect(resumeEtat(etat({ cle: { etat: 'impossible' }, drive: { etat: 'impossible' } }), T)).toBe('Enregistré dans ce navigateur · jamais enregistré dans un fichier')
   })

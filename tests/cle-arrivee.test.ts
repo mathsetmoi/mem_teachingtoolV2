@@ -52,8 +52,8 @@ describe('direALArrivee : la vérité sur la clé, une fois vérifiée', () => {
   })
   it('un texte à lui quand la clé reprend (le fichier de la clé rouvert) ; la première écriture pas encore faite', async () => {
     const a = cleDans({ etat: 'ok', nom: 'Symétrie.memc' })
-    await a.k.direALArrivee('« Clé » mis à jour depuis le fichier (1 page).', { nom: 'Symétrie.memc', ok: 'L\'enregistrement sur la clé reprend.' })
-    expect(a.dits[0].texte).toBe('« Clé » mis à jour depuis le fichier (1 page). L\'enregistrement sur la clé reprend.')
+    await a.k.direALArrivee('« Clé » mis à jour depuis le fichier (1 page).', { nom: 'Symétrie.memc', ok: 'L\'enregistrement dans « Symétrie.memc » reprend.' })
+    expect(a.dits[0].texte).toBe('« Clé » mis à jour depuis le fichier (1 page). L\'enregistrement dans « Symétrie.memc » reprend.')
     const b = cleDans({ etat: 'ok', nom: 'Symétrie.memc', pasEncoreEcrit: true })
     await b.k.direALArrivee('Classeur « F » créé.', C)
     expect(b.dits[0].texte).toBe('Classeur « F » créé. La première écriture dans « Symétrie.memc » part bientôt.')
@@ -62,8 +62,9 @@ describe('direALArrivee : la vérité sur la clé, une fois vérifiée', () => {
     for (const [etat, attendu] of [
       [{ etat: 'autre-onglet' }, 'C\'est l\'autre onglet ouvert sur ce classeur qui l\'enregistre dans « Symétrie.memc ».'],
       [{ etat: 'conflit', message: 'Le fichier « Symétrie.memc » contient un autre classeur (« F ») : il n\'est pas remplacé.' }, 'Le fichier « Symétrie.memc » contient un autre classeur (« F ») : il n\'est pas remplacé.'],
-      [{ etat: 'erreur', message: 'la clé est pleine' }, 'L\'enregistrement dans « Symétrie.memc » ne se fait pas pour l\'instant (la clé est pleine). Rien n\'est perdu : il est dans ce navigateur.'],
+      [{ etat: 'erreur', message: 'le disque est plein' }, 'L\'enregistrement dans « Symétrie.memc » ne se fait pas pour l\'instant (le disque est plein). Rien n\'est perdu : il est dans ce navigateur.'],
       [{ etat: 'absente' }, 'L\'enregistrement automatique n\'est pas activé.'],
+      [{ etat: 'absente', message: '« Symétrie.memc » est à choisir de nouveau (ce navigateur ne le garde pas après un rechargement)' }, 'L\'enregistrement automatique n\'est pas activé : « Symétrie.memc » est à choisir de nouveau (ce navigateur ne le garde pas après un rechargement).'],
     ] as [EtatCle, string][]) {
       const { k, dits } = cleDans(etat)
       await k.direALArrivee(DEBUT, C)

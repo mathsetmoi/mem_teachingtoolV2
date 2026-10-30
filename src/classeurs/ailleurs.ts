@@ -27,11 +27,16 @@ import type { ActionMessage } from '../app'
 import type { Emplacement } from './emplacements'
 import { classeursDeLaClasse, emplacements, garderEmplacement, reglagePoignee, retirerEmplacement } from './emplacements'
 import type { PoigneeDossier } from './ordinateur'
-import { accordDuDossier, choisirUnDossier, choisitUnDossier, lireLeDossier, relierLesClasseurs } from './ordinateur'
+import { accordDuDossier, choisirUnDossier, choisitUnDossier, dansLeDossier, lireLeDossier } from './ordinateur'
 import type { BilanRelier } from './ordinateur'
+import type { Etablissement } from './etablissements'
+import { cheminLisible, etablissements, garderEtablissement, nomDEtablissement, nouvelId, reglagePoigneeEtablissement, retirerEtablissement, texteDuRangement } from './etablissements'
+import type { Ranger } from './ranger'
+import { relierLeNiveau } from './ranger'
 import { copierDepuisLaBase, origineDe } from './copie-drive'
 import { remontee, dossierVisible, etiquetteDuNom, COULEUR_DEFAUT } from './arbre'
 import { fabriquerFichier } from './ecrivain'
+import { confirmer } from './cle'
 import { entreeMenu } from '../menus'
 import { CLIENT_GOOGLE, COMPTES, compteDe } from '../publication/comptes'
 import type { ClasseDuDrive } from '../publication/drive'
@@ -61,6 +66,13 @@ export interface HoteAilleurs {
   /** Avant de fabriquer le fichier d'un classeur depuis sa base : celui de
    *  cet onglet écrit d'abord ce qui attend */
   avantDEcrire?: (f: FicheClasseur) => Promise<void>
+  /** Le fichier de ce classeur va changer (écrit ou adopté par un
+   *  rangement) : celui de cet onglet retient sa clé (EnregistrementCle
+   *  .retenir) ; apresRangement la relâche, toujours */
+  avantDeDeplacer?: (f: FicheClasseur) => Promise<void>
+  /** Après que des classeurs (ids) ont reçu ou changé de fichier par ici :
+   *  la clé du classeur de cet onglet repart depuis sa fiche (voir ranger.ts) */
+  apresRangement?: (ids: readonly string[]) => Promise<void>
 }
 
 type Quoi = 'classeur' | 'classe' | 'bibliotheque'
@@ -88,6 +100,7 @@ export function texteDuBilan(b: BilanRelier, dossier: string): string {
   const n = b.ecrits.length + b.adoptes.length
   t.push(n ? `${pluriel(n, 'classeur')} dans « ${dossier} », tenu${n > 1 ? 's' : ''} à jour tout seul${n > 1 ? 's' : ''}.` : `Rien de nouveau dans « ${dossier} ».`)
   if (b.ailleurs.length) t.push(`${noms(b.ailleurs)} ${b.ailleurs.length > 1 ? 'gardent leur fichier' : 'garde son fichier'} ailleurs.`)
+  if (b.aRelire.length) t.push(`${noms(b.aRelire)} ${b.aRelire.length > 1 ? 'gardent leur fichier d\'avant : ce navigateur n\'a pas pu le relire ; ouvrez-les' : 'garde son fichier d\'avant : ce navigateur n\'a pas pu le relire ; ouvrez-le'}, puis « Mettre à jour ».`)
   if (b.plusRiches.length) t.push(`${noms(b.plusRiches)} : le fichier du dossier a des changements que la bibliothèque n'a pas ; ouvrez-le d'abord (il n'a pas été touché).`)
   if (b.echecs.length) t.push(`${noms(b.echecs)} : pas pu être écrit${b.echecs.length > 1 ? 's' : ''}.`)
   return t.join(' ')
@@ -101,6 +114,10 @@ export class Ailleurs {
   private occupe = false
   /** Ce que montre « Mes emplacements » (pour ne la refaire que si cela change) */
   private signature = ''
+  /** Où ranger les classeurs d'un niveau (lot 18, ranger.ts), posé par
+   *  main.ts : les établissements, « Ranger… » et « Changer… » dans « Mes
+   *  emplacements » ; null : ce navigateur ne range pas */
+  ranger: Ranger | null = null
 
   constructor(private h: HoteAilleurs) {
     const b = h.bibliotheque
@@ -409,7 +426,7 @@ export class Ailleurs {
         if (y === 'ordinateur') {
           garder = !!this.h.activerCle
           explication = garder
-            ? (garderEl.checked ? 'Vous choisissez le fichier (sur la clé, dans un dossier) : il se remplace peu après chaque changement.' : 'Un fichier .memc, enregistré une fois.')
+            ? (garderEl.checked ? 'Vous choisissez le fichier (une clé USB, un dossier) : il se remplace peu après chaque changement.' : 'Un fichier .memc, enregistré une fois.')
             : 'Un fichier .memc, enregistré une fois (ce navigateur ne sait pas le tenir à jour tout seul).'
         } else {
           explication = classe
@@ -421,7 +438,7 @@ export class Ailleurs {
         if (y === 'ordinateur') {
           garder = choisitUnDossier()
           explication = garder
-            ? (garderEl.checked ? `Choisissez un dossier (sur la clé, dans G:\\Mon Drive…) : chaque classeur de « ${classe.nom} » y aura son fichier, remplacé peu après chaque changement.${relie ? ` Il remplacera le dossier « ${relie.nom} ».` : ''}` : `Un seul fichier .memb avec toute la classe, enregistré une fois.`)
+            ? (garderEl.checked ? `Choisissez un dossier (une clé USB, G:\\Mon Drive…) : chaque classeur de « ${classe.nom} » y aura son fichier, remplacé peu après chaque changement.${relie ? ` Il remplacera le dossier « ${relie.nom} ».` : ''}` : `Un seul fichier .memb avec toute la classe, enregistré une fois.`)
             : 'Un seul fichier .memb avec tout le niveau, enregistré une fois (ce navigateur ne sait pas écrire dans un dossier).'
         } else {
           garder = true
@@ -515,32 +532,36 @@ export class Ailleurs {
   // =============================================================
 
   /** Le niveau relié à un dossier de l'ordinateur (accord déjà demandé
-   *  dans le clic) ; silencieux : ne dit le bilan que s'il y a un souci */
-  private async relierOrdinateur(classe: FicheDossier, d: PoigneeDossier, o: { silencieux?: boolean } = {}) {
+   *  dans le clic) : relierLeNiveau (ranger.ts), l'implémentation unique ;
+   *  silencieux : ne dit le bilan que s'il y a un souci ; etablissement :
+   *  celui du niveau déjà rangé par la fenêtre « Où ranger… » (lot 18), que
+   *  « Mettre à jour » garde, avec sa phrase */
+  private async relierOrdinateur(classe: FicheDossier, d: PoigneeDossier, o: { silencieux?: boolean; etablissement?: Etablissement | null; reprendre?: boolean } = {}) {
     if (this.occupe) return
     this.occupe = true
+    let ids: string[] = []
     try {
-      if (!await accordDuDossier(d, false).catch(() => false)) {
-        this.h.message(`Le navigateur n'a pas permis d'écrire dans « ${d.name} ». Recommencez et cliquez « Autoriser ».`)
-        return
+      const etab = o.etablissement ?? null
+      const [fiches, dossiers] = await Promise.all([this.registre.classeurs().catch(() => [] as FicheClasseur[]), this.registre.dossiers().catch(() => [] as FicheDossier[])])
+      ids = classeursDeLaClasse(classe.id, fiches, dossiers).map(f => f.id)
+      // reprendre (« Mettre à jour » seulement) : un classeur dont l'outil
+      // avait rangé le fichier dans le dossier d'un autre niveau (« Changer… »
+      // interrompu) le reçoit ici, une fois l'ancien relu ; un fichier choisi
+      // à la main, ou mis dans « Un autre dossier de l'ordinateur… », reste le sien
+      const b = await relierLeNiveau({ registre: this.registre, message: t => this.h.message(t), avantDEcrire: this.h.avantDEcrire, avantDeDeplacer: this.h.avantDeDeplacer }, classe, d,
+        { reprendre: !!o.reprendre, ...(etab ? { prefixe: [etab.nom, d.name], etablissement: etab.id, etablissementNom: etab.nom } : {}) })
+      if (!b) return
+      const souci = b.plusRiches.length + b.echecs.length + b.ailleurs.length + b.aRelire.length > 0
+      if (!o.silencieux || souci) {
+        this.h.message(etab
+          ? texteDuRangement({ niveau: classe.nom, chemin: [etab.nom, d.name], bilan: b })
+          : `« ${classe.nom} » est relié au dossier « ${d.name} ». ${texteDuBilan(b, d.name)}`)
       }
-      const deja = (await emplacements(this.registre)).find(e => e.dossier === classe.id && e.genre === 'ordinateur')
-      const e: Emplacement = { id: deja?.id ?? nouvelId(), genre: 'ordinateur', dossier: classe.id, nom: d.name, cree: deja?.cree ?? Date.now() }
-      try { await this.registre.ecrireReglage(reglagePoignee(e.id), d) } catch {
-        this.h.message('Ce navigateur ne peut pas garder le dossier : enregistrez plutôt le niveau dans un fichier.')
-        return
-      }
-      await garderEmplacement(this.registre, e)
-      const b = await relierLesClasseurs(this.registre, d, classe.id, {
-        avantDEcrire: this.h.avantDEcrire,
-        progres: (n, total) => this.h.message(`« ${classe.nom} » : classeur ${n} sur ${total}…`),
-      })
-      const souci = b.plusRiches.length + b.echecs.length + b.ailleurs.length > 0
-      if (!o.silencieux || souci) this.h.message(`« ${classe.nom} » est relié au dossier « ${d.name} ». ${texteDuBilan(b, d.name)}`)
     } catch (e) {
       this.h.message(`« ${classe.nom} » n'a pas pu être relié : ${e instanceof Error ? e.message : 'erreur inconnue'}.`)
     } finally {
       this.occupe = false
+      await this.h.apresRangement?.(ids).catch(() => {})
       void this.h.bibliotheque.charger()
     }
   }
@@ -605,26 +626,57 @@ export class Ailleurs {
   // =============================================================
 
   /** La liste en haut de la bibliothèque : à la racine, tous les dossiers
-   *  reliés ; dans un dossier, ceux de son niveau */
+   *  reliés ; dans un dossier, ceux de son niveau. Lot 18 : en tête, les
+   *  établissements (quand ce navigateur sait ranger) ; un niveau rangé chez
+   *  un établissement a « Changer… » ; le niveau affiché pas encore rangé a
+   *  sa ligne et « Ranger… » (jamais à la racine) */
   private async majEmplacements() {
     const b = this.h.bibliotheque
-    const [liste, fiches, dossiers] = await Promise.all([emplacements(this.registre), this.registre.classeurs().catch(() => []), this.registre.dossiers().catch(() => [])])
+    const peut = !!this.ranger?.peutRanger()
+    const [liste, fiches, dossiers, etabs] = await Promise.all([
+      emplacements(this.registre), this.registre.classeurs().catch(() => []), this.registre.dossiers().catch(() => []), etablissements(this.registre),
+    ])
     const ici = b.dossierAffiche
     const classe = ici ? remontee(ici, dossiers).slice(-1)[0]?.id ?? null : null
     const montres = liste.filter(e => {
       const d = dossiers.find(x => x.id === e.dossier)
       return d && dossierVisible(d, dossiers) && (classe === null || e.dossier === classe)
     }).sort((a, b) => (dossiers.find(x => x.id === a.dossier)?.nom ?? '').localeCompare(dossiers.find(x => x.id === b.dossier)?.nom ?? '', 'fr', { numeric: true }) || (a.genre < b.genre ? -1 : 1))
+    // Le niveau affiché, pas encore rangé sur l'ordinateur (lot 18)
+    const niveauIci = classe ? dossiers.find(x => x.id === classe) : undefined
+    const pasRange = peut && niveauIci && dossierVisible(niveauIci, dossiers) && !liste.some(e => e.genre === 'ordinateur' && e.dossier === classe) ? niveauIci : null
     const s = this.section
-    if (!montres.length) { s.hidden = true; s.replaceChildren(); this.signature = ''; return }
+    if (!montres.length && !pasRange && !(peut && etabs.length)) { s.hidden = true; s.replaceChildren(); this.signature = ''; return }
     // Rien de changé : la liste reste (le focus d'un bouton aussi)
-    const signature = JSON.stringify([this.enLigne, montres, montres.map(e => {
+    const signature = JSON.stringify([this.enLigne, peut, etabs, classe, pasRange?.nom ?? null, montres, montres.map(e => {
       const l = classeursDeLaClasse(e.dossier, fiches, dossiers)
       return [dossiers.find(x => x.id === e.dossier)?.nom, l.map(f => [f.cle?.nom, f.drive?.compte, f.drive?.dossier, f.copieDrive])]
     })])
     if (signature === this.signature && !s.hidden) return
     this.signature = signature
+    const bouton = (classe: string, texte: string, faire: () => void, title?: string) => {
+      const x = Object.assign(document.createElement('button'), { type: 'button', className: classe, textContent: texte })
+      if (title) x.title = title
+      x.addEventListener('click', faire)
+      return x
+    }
     const titre = Object.assign(document.createElement('h3'), { textContent: 'Mes emplacements' })
+    const haut: Node[] = [titre]
+    if (peut) {
+      const ligne = Object.assign(document.createElement('div'), { className: 'etablissements' })
+      ligne.append(Object.assign(document.createElement('strong'), { textContent: 'Établissements :' }))
+      if (!etabs.length) ligne.append(Object.assign(document.createElement('span'), { className: 'aucun', textContent: 'aucun dossier choisi' }))
+      etabs.forEach((e, i) => {
+        if (i) ligne.append(' · ')
+        const x = Object.assign(document.createElement('span'), { className: 'etablissement' })
+        x.dataset.id = e.id
+        x.append(Object.assign(document.createElement('span'), { className: 'nom', textContent: e.nom }),
+          bouton('secondaire e-retirer-etab', 'Retirer', () => void this.retirerEtablissement(e), 'Ne plus le proposer (rien n\'est effacé, les niveaux rangés le restent)'))
+        ligne.append(x)
+      })
+      ligne.append(bouton('secondaire e-ajouter', 'Ajouter un dossier…', () => void this.ajouterEtablissement(), 'Le dossier d\'un établissement, proposé pour ranger les niveaux'))
+      haut.push(ligne)
+    }
     const ul = document.createElement('ul')
     for (const e of montres) {
       const d = dossiers.find(x => x.id === e.dossier)!
@@ -632,31 +684,91 @@ export class Ailleurs {
       const manquent = e.genre === 'ordinateur'
         ? l.filter(f => !f.cle).length
         : l.filter(f => f.drive?.compte !== e.compte || !f.drive?.dossier || f.copieDrive !== e.compte).length
+      // Le nom de l'établissement (gardé par l'emplacement si l'établissement a été retiré de la liste)
+      const etab = e.genre === 'ordinateur' ? nomDEtablissement(e, etabs) : null
       const li = Object.assign(document.createElement('li'), { className: 'emplacement' })
       li.dataset.genre = e.genre
       li.dataset.id = e.id
-      const ou = e.genre === 'drive' ? `${compteDe(e.compte ?? '')?.nom ?? 'Drive'} › ${compteDe(e.compte ?? '')?.classeurs ?? ''} › ${e.nom}` : `Cet ordinateur › ${e.nom}`
+      const ou = e.genre === 'drive' ? `${compteDe(e.compte ?? '')?.nom ?? 'Drive'} › ${compteDe(e.compte ?? '')?.classeurs ?? ''} › ${e.nom}`
+        : etab ? cheminLisible([etab, e.nom]) : `Cet ordinateur › ${e.nom}`
       const texte = Object.assign(document.createElement('span'), { className: 'texte' })
       texte.append(Object.assign(document.createElement('strong'), { textContent: d.nom }), ' → ', Object.assign(document.createElement('span'), { className: 'ou', textContent: ou }))
       if (manquent) texte.append(Object.assign(document.createElement('small'), { className: 'manque', textContent: `${pluriel(manquent, 'classeur')} pas encore dedans` }))
-      const maj = Object.assign(document.createElement('button'), { type: 'button', className: 'secondaire e-maj', textContent: 'Mettre à jour' })
+      const maj = bouton('secondaire e-maj', 'Mettre à jour', () => void this.mettreAJour(e, d))
       const inactif = e.genre === 'drive' && !this.enLigne
       maj.disabled = inactif
       if (inactif) maj.title = HORS_LIGNE_DRIVE
-      maj.addEventListener('click', () => void this.mettreAJour(e, d))
-      const retirer = Object.assign(document.createElement('button'), { type: 'button', className: 'secondaire e-retirer', textContent: 'Retirer' })
-      retirer.title = 'Ne plus tenir ce dossier à jour (rien n\'y est effacé)'
-      retirer.addEventListener('click', () => void this.retirer(e, d))
-      li.append(texte, maj, retirer)
+      li.append(texte, maj)
+      // Rangé chez un établissement : « Changer… » (la fenêtre « Où ranger… »,
+      // qui remplace l'emplacement ; les fichiers d'avant restent) ; sinon
+      // « Retirer », comme au lot 7
+      if (etab && this.ranger) li.append(bouton('secondaire e-changer', 'Changer…', () => void this.ranger?.proposer(d, { origine: 'emplacements' }), 'Ranger ce niveau dans un autre dossier (les fichiers d\'avant restent où ils sont)'))
+      else li.append(bouton('secondaire e-retirer', 'Retirer', () => void this.retirer(e, d), 'Ne plus tenir ce dossier à jour (rien n\'y est effacé)'))
       ul.appendChild(li)
     }
-    s.replaceChildren(titre, ul)
+    if (pasRange && this.ranger) {
+      const li = Object.assign(document.createElement('li'), { className: 'emplacement pas-range' })
+      li.dataset.genre = 'aucun'
+      li.dataset.dossier = pasRange.id
+      const texte = Object.assign(document.createElement('span'), { className: 'texte' })
+      texte.append(Object.assign(document.createElement('strong'), { textContent: pasRange.nom }), ' → ', Object.assign(document.createElement('span'), { className: 'ou pas-range', textContent: 'pas encore rangé dans un dossier' }))
+      li.append(texte, bouton('secondaire e-ranger', 'Ranger…', () => void this.ranger?.proposer(pasRange, { origine: 'emplacements' }), 'Chaque classeur du niveau aura son fichier, écrit tout seul'))
+      ul.appendChild(li)
+    }
+    s.replaceChildren(...haut, ul)
     s.hidden = false
   }
 
+  /** « Ajouter un dossier… » (lot 18) : un établissement de plus, choisi
+   *  dans ce clic ; le même dossier qu'un établissement déjà là : rien */
+  private async ajouterEtablissement() {
+    if (this.occupe) return
+    let h: PoigneeDossier | null
+    try { h = await choisirUnDossier('mem-etablissements') } catch (e) { this.h.message(`Ce dossier n'a pas pu être choisi : ${e instanceof Error ? e.message : 'erreur inconnue'}.`); return }
+    if (!h) return
+    const liste = await etablissements(this.registre)
+    for (const e of liste) {
+      const p = await this.registre.reglage(reglagePoigneeEtablissement(e.id)).catch(() => undefined)
+      if (await memeDossier(h, p)) { this.h.message(`« ${e.nom} » est déjà dans la liste des établissements.`); return }
+    }
+    const e: Etablissement = { id: nouvelId(), nom: h.name, cree: Date.now() }
+    try { await garderEtablissement(this.registre, e, h) } catch (x) {
+      this.h.message((x as { name?: string } | null)?.name === 'DataCloneError' ? 'Ce navigateur ne peut pas garder le dossier.' : `Le dossier n'a pas pu être gardé : ${x instanceof Error ? x.message : 'erreur inconnue'}.`)
+      return
+    }
+    // Les niveaux rangés chez un établissement retiré du même nom se
+    // rattachent à celui-ci, seulement si leur dossier est bien dedans (le
+    // même dossier, choisi de nouveau ; pas un autre dossier du même nom)
+    let rattaches = 0
+    for (const x of await emplacements(this.registre)) {
+      if (x.genre !== 'ordinateur' || !x.etablissement || x.etablissementNom !== e.nom || liste.some(y => y.id === x.etablissement)) continue
+      const niveau = await this.registre.reglage<PoigneeDossier>(reglagePoignee(x.id)).catch(() => undefined)
+      if (!niveau || !await dansLeDossier(h, niveau)) continue
+      await garderEmplacement(this.registre, { ...x, etablissement: e.id }).catch(() => {})
+      rattaches++
+    }
+    this.h.message(`« ${e.nom} » est ajouté aux établissements : il sera proposé pour ranger les niveaux.${rattaches ? ` ${rattaches > 1 ? `Les ${rattaches} niveaux déjà rangés chez lui le retrouvent.` : 'Le niveau déjà rangé chez lui le retrouve.'}` : ''}`)
+    void this.majEmplacements()
+  }
+
+  /** « Retirer » un établissement (lot 18), après confirmation : plus
+   *  proposé ; rien n'est effacé, les niveaux rangés chez lui gardent leur
+   *  dossier, son nom à l'écran et le chemin de leurs fichiers */
+  private async retirerEtablissement(e: Etablissement) {
+    if (this.occupe) return
+    const n = (await emplacements(this.registre)).filter(x => x.genre === 'ordinateur' && x.etablissement === e.id).length
+    const niveaux = n ? ` ${n > 1 ? `Les ${n} niveaux rangés chez lui gardent leur dossier et continuent` : 'Le niveau rangé chez lui garde son dossier et continue'} de s'enregistrer.` : ''
+    const oui = await confirmer(`Ne plus proposer « ${e.nom} » ?`, `Il ne sera plus proposé pour ranger un niveau. Rien n'est effacé.${niveaux}`, 'Retirer')
+    if (!oui) return
+    await retirerEtablissement(this.registre, e.id)
+    this.h.message(`« ${e.nom} » n'est plus proposé. Rien n'est effacé : les niveaux rangés chez lui le restent.`)
+    void this.majEmplacements()
+  }
+
   /** « Mettre à jour » : chaque classeur du niveau dans son dossier relié
-   *  (l'accord du navigateur, ou la connexion Google, dans ce clic) */
-  private async mettreAJour(e: Emplacement, classe: FicheDossier) {
+   *  (l'accord du navigateur, ou la connexion Google, dans ce clic) ; aussi
+   *  depuis « Autres sauvegardes » (lot 18), pour un niveau sur le Drive */
+  async mettreAJour(e: Emplacement, classe: FicheDossier) {
     if (this.occupe) return
     if (e.genre === 'drive') {
       const c = e.compte ?? 'mem'
@@ -677,11 +789,16 @@ export class Ailleurs {
       this.h.message(`Le navigateur n'a pas permis d'écrire dans « ${e.nom} ». Cliquez « Autoriser ».`)
       return
     }
-    await this.relierOrdinateur(classe, d)
+    // Un niveau rangé chez un établissement (lot 18) le reste, même si
+    // l'établissement a été retiré de la liste (son nom est dans l'emplacement)
+    const nomEtab = e.etablissement ? nomDEtablissement(e, await etablissements(this.registre)) : null
+    const etab = e.etablissement && nomEtab ? { id: e.etablissement, nom: nomEtab, cree: 0 } : null
+    await this.relierOrdinateur(classe, d, { etablissement: etab, reprendre: true })
   }
 
-  /** « Retirer » : le dossier n'est plus tenu à jour ; rien n'y est effacé */
-  private async retirer(e: Emplacement, classe: FicheDossier) {
+  /** « Retirer » : le dossier n'est plus tenu à jour ; rien n'y est effacé
+   *  (aussi depuis « Autres sauvegardes », lot 18, pour un niveau sur le Drive) */
+  async retirer(e: Emplacement, classe: FicheDossier) {
     if (this.occupe) return
     await retirerEmplacement(this.registre, e.id)
     this.h.message(e.genre === 'drive'
@@ -691,9 +808,7 @@ export class Ailleurs {
   }
 }
 
-/** Un id d'emplacement (16 chiffres hexadécimaux) */
-function nouvelId(): string {
-  const o = new Uint8Array(8)
-  crypto.getRandomValues(o)
-  return [...o].map(x => x.toString(16).padStart(2, '0')).join('')
+/** Le même dossier ? (isSameEntry ; sans lui, on ne sait pas : non) */
+async function memeDossier(a: PoigneeDossier, b: unknown): Promise<boolean> {
+  try { return typeof a.isSameEntry === 'function' && !!b && await a.isSameEntry(b) } catch { return false }
 }

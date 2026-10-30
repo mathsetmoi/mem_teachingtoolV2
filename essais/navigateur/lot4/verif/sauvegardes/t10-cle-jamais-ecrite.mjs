@@ -1,7 +1,8 @@
 // T10. La clé activée, mais sa première écriture a échoué (le fichier est
 // vide) ; on recharge : que dit l'état avant la prochaine écriture ?
-import { chromium, V, DEV, ok, info, dort, INIT, ECOUTER_TOASTS, toasts, suivre, pret, ecrire, entree, etat, opfsLire, erreurs } from './commun.mjs'
-const nav = await chromium.launch()
+import { lancerPersistant, V, DEV, ok, info, dort, INIT, ECOUTER_TOASTS, toasts, suivre, pret, ecrire, entree, etat, opfsLire, erreurs } from './commun.mjs'
+// lancerPersistant, et non chromium.launch : voir commun/playwright.mjs (la poignée de la clé relue depuis IndexedDB)
+const nav = await lancerPersistant()
 const ctx = await nav.newContext({ viewport: { width: 1366, height: 768 } })
 await ctx.addInitScript(INIT); await ctx.addInitScript(ECOUTER_TOASTS)
 const p = await ctx.newPage(); suivre(p, 'p')

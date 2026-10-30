@@ -15,8 +15,8 @@
 //    fichier écrit avant de partir ; à l'arrivée, la vérité et [Autoriser] ;
 //    « Allow this time » ; un trait arrive dans le fichier.
 // K. Menu ⋯ → « Enregistrer automatiquement dans un fichier… » (la vraie
-//    fenêtre « Enregistrer ») : un trait arrive seul ; rechargé, « Clé en
-//    pause » et le bandeau (rien de demandé sans un clic) ; « Reprendre
+//    fenêtre « Enregistrer ») : un trait arrive seul ; rechargé, « En pause :
+//    un clic » et le bandeau (rien de demandé sans un clic) ; « Reprendre
 //    l'enregistrement sur la clé », « Allow this time » : le trait en attente
 //    arrive ; le lendemain (le navigateur relancé, le même profil) : de même.
 //    (Repris de lot4/controle-final/sonde-cle-file.mjs.)
@@ -124,8 +124,8 @@ try {
     ok(!e1.perm.some(x => x.quoi === 'request'), 'M1) aucune demande à Chrome avant de partir vers le classeur', e1.perm)
     ok(e1.perm.some(x => x.quoi === 'query' && x.mode === 'readwrite' && x.r === 'prompt'), '   … à l\'arrivée, Chrome n\'a pas l\'accord (query → prompt), comme dans le vrai', e1.perm)
     const attendu = 'Classeur ajouté à la bibliothèque : « Symétrie » (1 page). Pour qu\'il s\'enregistre tout seul dans « Symetrie.memc », le navigateur demande votre accord.'
-    ok(e1.toasts.some(t => t.startsWith(attendu)) && !e1.toasts.some(faux) && JSON.stringify(e1.actions) === '["Autoriser"]' && e1.court === 'Clé en pause' && e1.bandeau === 'cle-permission',
-      `M2) l'arrivée dit la vérité : « ${attendu} » [Autoriser] ; « Clé en pause », le bandeau`, e1)
+    ok(e1.toasts.some(t => t.startsWith(attendu)) && !e1.toasts.some(faux) && JSON.stringify(e1.actions) === '["Autoriser"]' && e1.court === 'En pause : un clic' && e1.bandeau === 'cle-permission',
+      `M2) l'arrivée dit la vérité : « ${attendu} » [Autoriser] ; « En pause : un clic », le bandeau`, e1)
     // [Autoriser] : la demande de Chrome (après un changement de page : « Allow on every visit » proposé)
     await viderPerm(p)
     await p.click('.toast.visible button.action:has-text("Autoriser")')
@@ -136,7 +136,7 @@ try {
     ok(vues[0] === 'trois', '   … la demande de Chrome propose « Allow on every visit » (trois boutons), choisi ; puis « Save changes » ; vues : ' + vues.join(', '), vues)
     await dort(1500)
     const e2 = await etat(p)
-    ok(e2.perm.some(x => x.quoi === 'request' && x.r === 'granted') && e2.court !== 'Clé en pause' && !e2.bandeau && e2.toasts.some(t => t.includes('Le classeur s\'enregistre maintenant tout seul dans « Symetrie.memc ».')),
+    ok(e2.perm.some(x => x.quoi === 'request' && x.r === 'granted') && e2.court !== 'En pause : un clic' && !e2.bandeau && e2.toasts.some(t => t.includes('Le classeur s\'enregistre maintenant tout seul dans « Symetrie.memc ».')),
       'M4) « Allow on every visit » : la clé repart, « Le classeur s\'enregistre maintenant tout seul dans « Symetrie.memc ». »', e2)
     await ecrire(p, 500, 300); await ecrire(p, 500, 360)
     ok(await attendreFichier(FICHIER, 4), 'M5) deux traits : ils arrivent seuls dans le vrai fichier de la clé', (() => { try { return lireMemc(fs.readFileSync(FICHIER)) } catch (e) { return e.message } })())
@@ -148,7 +148,7 @@ try {
     await viderPerm(p)
     await Promise.all([p.waitForEvent('load', { timeout: 30000 }), p.click('.case-classeur[data-id="d1d1d1d1d1d1d1d1"] .carte-classeur')]); await pret(p)
     const e3 = await etat(p)
-    ok(e3.court !== 'Clé en pause' && !e3.bandeau && !e3.perm.some(x => x.quoi === 'request'), 'M6) un autre classeur, puis retour : « à chaque visite », la clé repart seule (aucune demande)', e3)
+    ok(e3.court !== 'En pause : un clic' && !e3.bandeau && !e3.perm.some(x => x.quoi === 'request'), 'M6) un autre classeur, puis retour : « à chaque visite », la clé repart seule (aucune demande)', e3)
     await ecrire(p, 500, 420)
     ok(await attendreFichier(FICHIER, 5), '   … et le trait suivant arrive seul sur la clé')
     await ctx.close()
@@ -174,14 +174,14 @@ try {
     let f = null; try { f = lireMemc(fs.readFileSync(FICHIER)) } catch { /* pas écrit */ }
     ok(f?.entete?.nom === 'Fractions' && e1.url === '?classeur=' + f.entete.id, 'N1) le vrai fichier est écrit avant de partir, avec le classeur', { f: f?.entete, url: e1.url })
     const attendu = 'Classeur « Fractions » créé. Pour qu\'il s\'enregistre tout seul dans « Fractions.memc », le navigateur demande votre accord.'
-    ok(e1.toasts.some(t => t.startsWith(attendu)) && !e1.toasts.some(faux) && e1.court === 'Clé en pause', `N2) à l'arrivée : « ${attendu} » [Autoriser] ; jamais « Il s'enregistre automatiquement »`, e1)
+    ok(e1.toasts.some(t => t.startsWith(attendu)) && !e1.toasts.some(faux) && e1.court === 'En pause : un clic', `N2) à l'arrivée : « ${attendu} » [Autoriser] ; jamais « Il s'enregistre automatiquement »`, e1)
     await p.click('.toast.visible button.action:has-text("Autoriser")')
     // « Allow this time » : le premier des trois, ou le bouton principal d'une demande à deux
     const vues = await repondre(X, 'n-demande', 0)
     ok(vues.length >= 1, 'N3) [Autoriser] : la demande de Chrome ; vues : ' + vues.join(', '), vues)
     await dort(1500)
     const e2 = await etat(p)
-    ok(e2.court !== 'Clé en pause' && !e2.bandeau, '   … accordé : la clé repart', e2)
+    ok(e2.court !== 'En pause : un clic' && !e2.bandeau, '   … accordé : la clé repart', e2)
     await ecrire(p, 500, 300)
     ok(await attendreFichier(FICHIER, 1), 'N4) un trait : il arrive seul dans le vrai fichier')
     await ctx.close()
@@ -204,16 +204,16 @@ try {
     await viderPerm(p)
     await p.reload(); await pret(p)
     const e1 = await etat(p)
-    ok(e1.court === 'Clé en pause' && e1.bandeau === 'cle-permission' && !e1.perm.some(x => x.quoi === 'request'), 'K2) rechargé : « Clé en pause », le bandeau, rien de demandé sans un clic', e1)
+    ok(e1.court === 'En pause : un clic' && e1.bandeau === 'cle-permission' && !e1.perm.some(x => x.quoi === 'request'), 'K2) rechargé : « En pause : un clic », le bandeau, rien de demandé sans un clic', e1)
     await ecrire(p, 400, 420); await dort(1500)
     await p.click('.bandeau-sauvegarde button:has-text("Reprendre")')
     const vues = await repondre(X, 'k-demande', 0)
-    ok(await attendreFichier(FICHIER, 3, 20000), `K3) « Reprendre l'enregistrement sur la clé », « Allow this time » (vues : ${vues.join(', ')}) : le trait en attente arrive sur la clé`, await etat(p))
+    ok(await attendreFichier(FICHIER, 3, 20000), `K3) « Reprendre l'enregistrement », « Allow this time » (vues : ${vues.join(', ')}) : le trait en attente arrive sur la clé`, await etat(p))
     await ctx.close()
     ;({ ctx, p } = await lancer(X, ICI + '/profil-menu'))
     await p.goto(URL_); await pret(p)
     const e2 = await etat(p)
-    ok((e2.court === 'Clé en pause' && e2.bandeau === 'cle-permission') || (!e2.bandeau && /^Clé/.test(e2.court) && e2.court !== 'Clé en pause'), `K4) le lendemain (navigateur relancé) : « ${e2.court} »${e2.bandeau ? ', le bandeau' : ''} (en pause et dit, ou en marche)`, e2)
+    ok((e2.court === 'En pause : un clic' && e2.bandeau === 'cle-permission') || (!e2.bandeau && /^Enregistr/.test(e2.court) && e2.court !== 'En pause : un clic'), `K4) le lendemain (navigateur relancé) : « ${e2.court} »${e2.bandeau ? ', le bandeau' : ''} (en pause et dit, ou en marche)`, e2)
     await ecrire(p, 400, 480); await dort(1500)
     if (e2.bandeau) { await p.click('.bandeau-sauvegarde button:has-text("Reprendre")'); await repondre(X, 'k-lendemain', 0) }
     ok(await attendreFichier(FICHIER, 4, 30000), '   … le trait du jour arrive sur la clé')
