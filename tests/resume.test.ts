@@ -127,6 +127,7 @@ describe('Gemini', () => {
     expect(messageSelonLaRaison(403, '{"error":{"details":[{"reason":"SERVICE_DISABLED"}]}}')).toMatch(/pas activée/)
     expect(messageSelonLaRaison(400, '{"error":{"message":"API key not valid."}}')).toMatch(/vérifiez-la/)
     expect(messageSelonLaRaison(429, '')).toMatch(/quota/)
+    expect(messageSelonLaRaison(503, '{"error":{"message":"high demand"}}')).toMatch(/très demandé.*Réessayer/)
   })
   it('les adresses de Pronote : https seulement', () => {
     expect(adresseValable('0123456a.index-education.net/pronote/professeur.html')).toBe('https://0123456a.index-education.net/pronote/professeur.html')

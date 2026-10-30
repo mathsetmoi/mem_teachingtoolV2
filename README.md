@@ -5829,7 +5829,10 @@ nom de l'appareil. La version hors ligne ne fait jamais appel à Gemini.
   `gemini-flash-latest`. L'API `generateContent` (v1beta), la clé dans
   l'en-tête `x-goog-api-key`. Les erreurs sont dites en clair (clé refusée,
   quota, pas d'internet, clé limitée à certains sites ou à d'autres services,
-  API pas activée), avec ce que Google en dit ; le texte de l'outil reste.
+  API pas activée, Gemini très demandé), avec ce que Google en dit ; le
+  texte de l'outil reste. Gemini très demandé (500, 502, 503, 504) : le même
+  modèle après 2 s puis 5 s, puis les alias `gemini-flash-latest` et
+  `gemini-flash-lite-latest` ; ensuite « Réessayer » dans Publier.
   Toute forme de clé est acceptée : c'est « Essayer la clé » qui juge.
 - `src/resume/reglage-vue.ts` : la fenêtre « Rédaction automatique ». Le
   professeur peut y écrire ses consignes pour le texte (facultatif, au plus

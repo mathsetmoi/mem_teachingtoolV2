@@ -158,6 +158,7 @@ export class Publication {
           <label class="p-cahier-champ"><span>Texte pour le cahier de textes (vous pouvez le corriger)</span>
             <textarea class="p-texte-cahier" rows="4" maxlength="2000" spellcheck="true"></textarea></label>
           <p class="p-cahier-pied"><span class="p-cahier-qui" role="status" aria-live="polite"></span>
+            <button type="button" class="lien p-reessayer" hidden>Réessayer</button>
             <button type="button" class="lien p-redaction">Rédaction automatique…</button></p>
         </div>
         <label class="champ"><span>Titre (les élèves le voient)</span><input class="p-titre" maxlength="120" /></label>
@@ -229,6 +230,7 @@ export class Publication {
     q('.p-pronote').addEventListener('click', () => this.copier(this.textePronote, 'Texte copié : collez-le dans le cahier de textes'))
     // Le lien s'ouvre de lui-même (un onglet) ; dans le même clic, le texte part dans le presse-papiers
     q('.p-ouvrir-pronote').addEventListener('click', () => void this.copier(this.textePronote, 'Texte copié : dans Pronote, cliquez dans le cahier de textes et faites Ctrl+V'))
+    q('.p-reessayer').addEventListener('click', () => this.preparerTexte(true))
     q('.p-redaction').addEventListener('click', () => ouvrirRedaction(this.racine, () => { this.majPronote(); this.preparerTexte(true) }))
     const champCahier = q<HTMLTextAreaElement>('.p-texte-cahier')
     champCahier.addEventListener('input', () => { this.texteTouche = true })
@@ -434,6 +436,7 @@ export class Publication {
     this.texteTouche = false
     const gemini = this.enLigne && !!cleGemini() && !!this.imageDePage
     qui.classList.remove('erreur')
+    ;(d.querySelector('.p-reessayer') as HTMLElement).hidden = true
     qui.textContent = aJour && garde!.par === 'professeur' ? 'Votre texte, gardé avec la séance.'
       : aJour && garde!.par === 'gemini' ? 'Rédigé par Gemini : relisez-le.'
       : gemini ? '' : this.enLigne ? 'Rédigé par l\'outil. Pour que Gemini lise aussi l\'écriture à la main :' : 'Rédigé par l\'outil (la version hors ligne ne fait pas appel à Gemini).'
@@ -455,7 +458,8 @@ export class Publication {
         if (b64) images.push(b64)
         if (!encore()) return
       }
-      const brut = await demanderAGemini(cleGemini(), consigneGemini(fiche, null, consignesDuProfesseur()), images)
+      const brut = await demanderAGemini(cleGemini(), consigneGemini(fiche, null, consignesDuProfesseur()), images,
+        { nouvelEssai: () => { if (encore()) qui.textContent = 'Gemini est très demandé : nouvel essai…' } })
       if (!encore()) return
       const texte = texteCahierDeGemini(fiche, brut)
       if (!texte) throw new ErreurGemini('Gemini n\'a rien rédigé pour cette séance : le texte de l\'outil reste.')
@@ -468,6 +472,7 @@ export class Publication {
       if (!encore()) return
       qui.textContent = e instanceof ErreurGemini ? e.message : 'Gemini n\'a pas pu rédiger le texte : le texte de l\'outil reste.'
       qui.classList.add('erreur')
+      ;(d.querySelector('.p-reessayer') as HTMLElement).hidden = false
     }
   }
 

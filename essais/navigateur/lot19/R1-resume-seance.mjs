@@ -45,7 +45,13 @@ await ctx.route(/generativelanguage\.googleapis\.com/, async r => {
   ] })
   const corps = JSON.parse(r.request().postData() ?? '{}')
   demandes.push({ chemin: u.pathname, corps })
-  if (gemini.statut !== 200) return rep(gemini.statut, { error: { code: gemini.statut, message: 'Resource has been exhausted', status: 'RESOURCE_EXHAUSTED' } })
+  // restants : tant de refus, puis Gemini répond (un pic de demande passager)
+  if (gemini.statut !== 200 && (gemini.restants ?? Infinity) > 0) {
+    if (gemini.restants) gemini.restants--
+    return gemini.statut === 503
+      ? rep(503, { error: { code: 503, message: 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', status: 'UNAVAILABLE' } })
+      : rep(gemini.statut, { error: { code: gemini.statut, message: 'Resource has been exhausted', status: 'RESOURCE_EXHAUSTED' } })
+  }
   return rep(200, { candidates: [{ content: { parts: [{ text: gemini.texte }] } }] })
 })
 // Le relais du Drive simulé (voir lot15/P1-publier-dossier.mjs)
@@ -173,6 +179,24 @@ gemini = { statut: 429 }
 await ouvrir()
 await p.waitForFunction(() => /quota/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 10000 }).catch(() => {})
 ok(/quota/.test(await p.textContent('.p-cahier-qui')) && /Fait en classe : Manuel p\. 42/.test(await p.inputValue('.p-texte-cahier')), 'F1) Quota atteint : le message le dit, le texte de l\'outil reste', await p.textContent('.p-cahier-qui'))
+await p.keyboard.press('Escape')
+// Gemini très demandé une fois : l'outil réessaie tout seul
+await p.evaluate(() => window.__app.tableau.textesCahier.clear())
+gemini = { statut: 503, restants: 1, texte: '**Fait en classe :** exercice 12 p. 42.' }
+await ouvrir()
+await p.waitForFunction(() => /Rédigé par Gemini/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 15000 }).catch(() => {})
+ok(/Rédigé par Gemini/.test(await p.textContent('.p-cahier-qui')) && /exercice 12 p\. 42/.test(await p.inputValue('.p-texte-cahier')), 'F2) Gemini très demandé une fois : l\'outil réessaie tout seul', await p.textContent('.p-cahier-qui'))
+await p.keyboard.press('Escape')
+// Toujours très demandé : le message le dit, « Réessayer » relance
+await p.evaluate(() => window.__app.tableau.textesCahier.clear())
+gemini = { statut: 503, texte: '**Fait en classe :** exercice 13 p. 42.' }
+await ouvrir()
+await p.waitForFunction(() => /très demandé en ce moment/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 20000 }).catch(() => {})
+ok(/très demandé en ce moment.*Réessayer/.test(await p.textContent('.p-cahier-qui')) && await p.isVisible('.p-reessayer'), 'F3) Toujours très demandé : le message en français, et « Réessayer »', await p.textContent('.p-cahier-qui'))
+gemini.statut = 200
+await p.click('.p-reessayer')
+await p.waitForFunction(() => /Rédigé par Gemini/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 15000 }).catch(() => {})
+ok(/exercice 13 p\. 42/.test(await p.inputValue('.p-texte-cahier')) && !(await p.isVisible('.p-reessayer')), 'F4) « Réessayer » : Gemini rédige le texte')
 await p.keyboard.press('Escape')
 
 // G. la trieuse
