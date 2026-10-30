@@ -38,12 +38,17 @@ const ecrire = (k: string, v: string) => { try { if (v) localStorage.setItem(k, 
 /** La clé de l'API Gemini de ce navigateur ('' : pas de rédaction automatique) */
 export const cleGemini = () => lire(CLE).trim()
 export function retenirCleGemini(cle: string) {
-  ecrire(CLE, cle.trim())
+  ecrire(CLE, nettoyerCle(cle))
   ecrire(CLE_MODELE, '')
 }
 
-/** Une clé de l'API Gemini ressemble à « AIza… » (39 signes) */
-export const cleValable = (cle: string) => /^[A-Za-z0-9_-]{30,60}$/.test(cle.trim())
+/** La clé telle qu'on l'a collée, sans espaces, retours à la ligne ni
+ *  guillemets autour (une copie depuis un courriel ou un document en ajoute) */
+export const nettoyerCle = (cle: string) => cle.replace(/\s+/g, '').replace(/^["'«»“”]+|["'«»“”]+$/g, '')
+/** Google change parfois la forme de ses clés (« AIza… », puis d'autres) :
+ *  on accepte tout ce qui peut partir dans l'en-tête de la demande, et c'est
+ *  « Essayer la clé » qui dit si elle marche */
+export const cleValable = (cle: string) => /^[\x21-\x7e]{20,300}$/.test(nettoyerCle(cle))
 
 /** Les établissements, par Drive des replays (voir publication/comptes.ts) */
 export const ETABLISSEMENTS: { cle: string; nom: string }[] = [
