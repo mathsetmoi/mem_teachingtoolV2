@@ -106,12 +106,20 @@ export function texteDuBilan(b: BilanRelier, dossier: string): string {
   return t.join(' ')
 }
 
+/** La liste complète de « Mes emplacements » reste ouverte pendant l'onglet (stockage de session, pas de réglage durable) */
+const CLE_DETAIL = 'mem-emplacements-detail'
+
 export class Ailleurs {
   /** La version en ligne, avec la connexion Google : le Drive y est possible */
   readonly enLigne = versionEnLigne() && !!CLIENT_GOOGLE
   /** La liste « Mes emplacements », en haut de la bibliothèque */
   private section: HTMLElement
   private occupe = false
+  /** La liste complète est ouverte (menu d'un dossier → « Copies sur l'ordinateur… ») ;
+   *  sinon une seule ligne, et seulement quand il manque des copies */
+  private detail = (() => { try { return sessionStorage.getItem(CLE_DETAIL) === '1' } catch { return false } })()
+  /** Les dossiers qui ont une pastille « PC ✓ » (pour l'entrée de leur menu) */
+  private avecEmplacement = new Set<string>()
   /** Ce que montre « Mes emplacements » (pour ne la refaire que si cela change) */
   private signature = ''
   /** Où ranger les classeurs d'un niveau (lot 18, ranger.ts), posé par
@@ -126,6 +134,10 @@ export class Ailleurs {
     b.blocsDuMenuDossier.splice(Math.max(0, b.blocsDuMenuDossier.length - 1), 0, (d, m) => {
       entreeMenu(m, 'Enregistrer ce dossier…', () => void this.enregistrer({ quoi: 'classe', classe: d.id }), { action: 'enregistrer-dossier',
         aide: 'Sur l\'ordinateur ou sur le Drive, tenu à jour tout seul' })
+      if (this.avecEmplacement.has(d.id)) {
+        entreeMenu(m, 'Copies sur l\'ordinateur…', () => this.afficherDetail(true), { action: 'emplacements',
+          aide: 'Où sont copiés les classeurs, mettre à jour, changer de dossier, ne plus copier' })
+      }
     })
     this.section = Object.assign(document.createElement('section'), { className: 'emplacements', hidden: true })
     this.section.setAttribute('aria-label', 'Mes emplacements')
@@ -645,10 +657,28 @@ export class Ailleurs {
     // Le niveau affiché, pas encore rangé sur l'ordinateur (lot 18)
     const niveauIci = classe ? dossiers.find(x => x.id === classe) : undefined
     const pasRange = peut && niveauIci && dossierVisible(niveauIci, dossiers) && !liste.some(e => e.genre === 'ordinateur' && e.dossier === classe) ? niveauIci : null
+    const manquentDe = (e: Emplacement) => {
+      const l = classeursDeLaClasse(e.dossier, fiches, dossiers)
+      return e.genre === 'ordinateur'
+        ? l.filter(f => !f.cle).length
+        : l.filter(f => f.drive?.compte !== e.compte || !f.drive?.dossier || f.copieDrive !== e.compte).length
+    }
+    // « PC ✓ » (ou « PC : 2 à copier ») sur la carte de chaque dossier relié
+    const pastilles = new Map<string, { texte: string; attention: boolean }>()
+    for (const e of liste) {
+      const d = dossiers.find(x => x.id === e.dossier)
+      if (!d || !dossierVisible(d, dossiers)) continue
+      const n = manquentDe(e)
+      if (pastilles.get(d.id)?.attention && !n) continue
+      const lieu = e.genre === 'ordinateur' ? 'PC' : 'Drive'
+      pastilles.set(d.id, n ? { texte: `${lieu} : ${n} à copier`, attention: true } : { texte: `${lieu} ✓`, attention: false })
+    }
+    this.avecEmplacement = new Set(pastilles.keys())
+    b.poserPastilles(pastilles)
     const s = this.section
     if (!montres.length && !pasRange && !(peut && etabs.length)) { s.hidden = true; s.replaceChildren(); this.signature = ''; return }
     // Rien de changé : la liste reste (le focus d'un bouton aussi)
-    const signature = JSON.stringify([this.enLigne, peut, etabs, classe, pasRange?.nom ?? null, montres, montres.map(e => {
+    const signature = JSON.stringify([this.enLigne, this.detail, peut, etabs, classe, pasRange?.nom ?? null, montres, montres.map(e => {
       const l = classeursDeLaClasse(e.dossier, fiches, dossiers)
       return [dossiers.find(x => x.id === e.dossier)?.nom, l.map(f => [f.cle?.nom, f.drive?.compte, f.drive?.dossier, f.copieDrive])]
     })])
@@ -660,8 +690,36 @@ export class Ailleurs {
       x.addEventListener('click', faire)
       return x
     }
-    const titre = Object.assign(document.createElement('h3'), { textContent: 'Mes emplacements' })
-    const haut: Node[] = [titre]
+    // Une seule ligne, et seulement quand il manque des copies : le reste, dans « Copies sur l'ordinateur… »
+    if (!this.detail) {
+      const retard = montres.filter(e => manquentDe(e) > 0)
+      if (!retard.length && !pasRange) { s.hidden = true; s.classList.remove('resume'); s.replaceChildren(); return }
+      const ligne = Object.assign(document.createElement('div'), { className: 'ligne-resume' })
+      const texte = Object.assign(document.createElement('span'), { className: 'texte' })
+      if (retard.length === 1 && !pasRange) {
+        const e = retard[0], d = dossiers.find(x => x.id === e.dossier)!, n = manquentDe(e)
+        texte.textContent = `⚠ ${pluriel(n, 'classeur')} de « ${d.nom} » ${n > 1 ? 'ne sont' : 'n\'est'} pas encore copié${n > 1 ? 's' : ''} sur ${e.genre === 'ordinateur' ? 'l\'ordinateur' : 'le Drive'}`
+        const maj = bouton('principal e-maj', 'Mettre à jour', () => void this.mettreAJour(e, d))
+        if (e.genre === 'drive' && !this.enLigne) { maj.disabled = true; maj.title = HORS_LIGNE_DRIVE }
+        ligne.append(texte, maj)
+      } else if (!retard.length && pasRange) {
+        texte.textContent = `« ${pasRange.nom} » n'est pas encore rangé dans un dossier de l'ordinateur`
+        ligne.append(texte, bouton('principal e-ranger', 'Ranger…', () => void this.ranger?.proposer(pasRange, { origine: 'emplacements' }), 'Chaque classeur du niveau aura son fichier, écrit tout seul'))
+      } else {
+        const total = retard.reduce((a, e) => a + manquentDe(e), 0)
+        texte.textContent = `⚠ ${pluriel(total, 'classeur')} pas encore copié${total > 1 ? 's' : ''}${pasRange ? ` · « ${pasRange.nom} » pas encore rangé` : ''}`
+        ligne.append(texte, bouton('secondaire e-detail', 'Détails', () => this.afficherDetail(true)))
+      }
+      s.classList.add('resume')
+      s.replaceChildren(ligne)
+      s.hidden = false
+      return
+    }
+    s.classList.remove('resume')
+    const titre = Object.assign(document.createElement('h3'), { textContent: 'Où sont copiées mes classes ?' })
+    const entete = Object.assign(document.createElement('div'), { className: 'entete' })
+    entete.append(titre, bouton('secondaire e-masquer', 'Masquer', () => this.afficherDetail(false), 'Ne montrer cette zone que lorsqu\'il manque des copies'))
+    const haut: Node[] = [entete]
     if (peut) {
       const ligne = Object.assign(document.createElement('div'), { className: 'etablissements' })
       ligne.append(Object.assign(document.createElement('strong'), { textContent: 'Établissements :' }))
@@ -680,10 +738,7 @@ export class Ailleurs {
     const ul = document.createElement('ul')
     for (const e of montres) {
       const d = dossiers.find(x => x.id === e.dossier)!
-      const l = classeursDeLaClasse(d.id, fiches, dossiers)
-      const manquent = e.genre === 'ordinateur'
-        ? l.filter(f => !f.cle).length
-        : l.filter(f => f.drive?.compte !== e.compte || !f.drive?.dossier || f.copieDrive !== e.compte).length
+      const manquent = manquentDe(e)
       // Le nom de l'établissement (gardé par l'emplacement si l'établissement a été retiré de la liste)
       const etab = e.genre === 'ordinateur' ? nomDEtablissement(e, etabs) : null
       const li = Object.assign(document.createElement('li'), { className: 'emplacement' })
@@ -717,6 +772,14 @@ export class Ailleurs {
     }
     s.replaceChildren(...haut, ul)
     s.hidden = false
+  }
+
+  /** La liste complète (menu d'un dossier → « Copies sur l'ordinateur… »), ou la ligne seule */
+  afficherDetail(oui: boolean) {
+    this.detail = oui
+    try { sessionStorage.setItem(CLE_DETAIL, oui ? '1' : '0') } catch { /* la liste se referme au prochain chargement */ }
+    this.signature = ''
+    void this.majEmplacements().then(() => { if (oui) this.section.scrollIntoView?.({ block: 'nearest' }) })
   }
 
   /** « Ajouter un dossier… » (lot 18) : un établissement de plus, choisi

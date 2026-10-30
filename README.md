@@ -3277,6 +3277,20 @@ emplacements »** en haut de la bibliothèque (3A).
   navigateur ou la connexion Google dans ce clic) et **Retirer** (ne plus
   tenir ce dossier à jour : rien n'y est effacé). À la racine : tous les
   niveaux reliés ; dans un dossier : celui de son niveau.
+  **Raccourci (lot 15, choix du professeur) :** cette liste n'est plus
+  toujours ouverte. Sur la carte de chaque dossier relié : une pastille
+  « PC ✓ » (ou « Drive ✓ »), ou « PC : 2 à copier » en orange quand des
+  classeurs manquent. En haut, **une seule ligne** et seulement quand il
+  manque des copies (« 1 classeur de « Auguste » n'est pas encore copié sur
+  l'ordinateur » avec **Mettre à jour** ; « Ranger… » pour un niveau pas
+  encore rangé ; « Détails » quand plusieurs dossiers sont concernés) ; rien
+  quand tout est copié. La liste complète (« Où sont copiées mes classes ? »,
+  avec les établissements, **Changer…**, **Retirer** et **Masquer**) s'ouvre
+  par le menu ⋯ du dossier → « Copies sur l'ordinateur… » et reste ouverte
+  pendant l'onglet (stockage de session `mem-emplacements-detail`, aucun
+  réglage durable). Essai : `essais/navigateur/lot15/P2-emplacements-raccourcis.mjs` ;
+  les essais qui lisaient la liste (lot 7 E1, lot 18 E1 à E3, lot 5
+  S-seances-classes) l'ouvrent d'abord.
 - **Dans la version hors ligne**, le Drive est grisé dans les deux
   fenêtres, et elles le disent : « Le Drive marche seulement depuis la
   version en ligne (mathsetmoi.github.io). » Rien ne part vers Google.

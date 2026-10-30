@@ -25,6 +25,7 @@ const nav = await chromium.launch()
 const H = 3600_000
 const T0 = new Date('2026-10-12T08:00:00').getTime()
 const c = await nav.newContext({ viewport: { width: 1366, height: 768 } })
+await c.addInitScript(() => { try { sessionStorage.setItem('mem-emplacements-detail', '1') } catch {} })  // la liste complète de « Mes emplacements » (lot 15 : sinon une seule ligne)
 const p = await c.newPage()
 p.on('pageerror', e => erreurs.push(e.message))
 p.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|ERR_CERT|net::|accounts\.google|fonts\.g/.test(m.text())) erreurs.push(m.text()) })

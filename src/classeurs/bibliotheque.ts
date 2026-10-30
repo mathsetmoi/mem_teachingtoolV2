@@ -349,6 +349,9 @@ export class Bibliotheque {
   /** Les blocs du menu d'un dossier, après sa couleur et « Dossier d'un
    *  niveau » (C7 : déplacer ; C8 : supprimer) */
   readonly blocsDuMenuDossier: ((d: FicheDossier, m: HTMLElement) => void)[] = []
+  /** Les pastilles « PC ✓ » des cartes de dossiers (posées par ailleurs.ts) :
+   *  dossier → ce qui s'y lit ; attention : il manque des copies */
+  private pastilles = new Map<string, { texte: string; attention: boolean }>()
   /** Le dossier qu'on regarde (null : la racine), retenu pour l'onglet */
   dossierAffiche: string | null = null
   /** Le filtre de niveau (une étiquette ; null : tous), retenu pour l'onglet */
@@ -1326,6 +1329,24 @@ export class Bibliotheque {
     return li
   }
 
+  /** Les pastilles « PC ✓ » (ou « PC : 2 à copier ») des dossiers reliés à l'ordinateur ou au Drive */
+  poserPastilles(m: Map<string, { texte: string; attention: boolean }>) {
+    this.pastilles = m
+    for (const c of this.hautDuCorps.parentElement?.querySelectorAll<HTMLElement>('li.case-dossier') ?? []) this.majPastille(c, c.dataset.dossier ?? '')
+  }
+
+  private majPastille(c: HTMLElement, id: string) {
+    const p = this.pastilles.get(id)
+    let x = c.querySelector<HTMLElement>('.puce-emplacement')
+    if (!p) { x?.remove(); return }
+    if (!x) {
+      x = Object.assign(document.createElement('span'), { className: 'puce-emplacement' })
+      c.querySelector('.carte-infos')?.appendChild(x)
+    }
+    if (x.textContent !== p.texte) x.textContent = p.texte
+    x.classList.toggle('attention', p.attention)
+  }
+
   private majCarteDossier(c: HTMLElement, d: FicheDossier, fiches: readonly FicheClasseur[]) {
     const poser = (x: Element, t: string) => { if (x.textContent !== t) x.textContent = t }
     const n = compter(d.id, fiches, this.dossiers)
@@ -1341,6 +1362,7 @@ export class Bibliotheque {
     if (b.title !== d.nom) b.title = d.nom
     const o = c.querySelector<HTMLElement>('.options-classeur')!, titre = `Options du dossier « ${d.nom} »`
     if (o.title !== titre) { o.title = titre; o.setAttribute('aria-label', titre) }
+    this.majPastille(c, d.id)
   }
 
   /** La rangée du filtre : « Niveaux : [Tous] [5ème · 4] [2nde · 2] »

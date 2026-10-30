@@ -158,6 +158,7 @@ async function contexte(g) {
   await ctx.addInitScript(INIT)
   await ctx.addInitScript(ECOUTER_TOASTS)
   await ctx.addInitScript(OUTILS)
+  await ctx.addInitScript(() => { try { sessionStorage.setItem('mem-emplacements-detail', '1') } catch {} })  // la liste complète de « Mes emplacements » (lot 15 : sinon une seule ligne)
   return ctx
 }
 const pret = p => p.waitForFunction(() => window.__surveillance && window.__drive !== undefined && window.__bibliotheque && document.querySelector('.rang')?.textContent?.includes('/'), null, { timeout: 30000 })
@@ -236,7 +237,7 @@ try {
   let em = await lesEmplacements(p)
   ok(em.length === 1 && em[0].genre === 'ordinateur' && em[0].nom === 'Classe 5A' && em[0].dossier === d5?.id, 'B6) L\'emplacement est noté (cet ordinateur, « Classe 5A »)', em)
   let liste = await p.evaluate(() => { const s = document.querySelector('.emplacements'); return s && !s.hidden ? norm(s.textContent) : null; function norm(t) { return (t || '').replace(/[  ]/g, ' ') } })
-  ok(/Mes emplacements/.test(liste ?? '') && /Classe 5A → Cet ordinateur › Classe 5A/.test(liste ?? ''), 'B7) « Mes emplacements » en haut de la bibliothèque', liste)
+  ok(/Où sont copiées mes classes/.test(liste ?? '') && /Classe 5A → Cet ordinateur › Classe 5A/.test(liste ?? ''), 'B7) La liste des copies (« Où sont copiées mes classes ? ») en haut de la bibliothèque', liste)
   let contenu = await p.evaluate(() => window.__lister('Classe 5A'))
   ok(Object.keys(contenu).sort().join('|') === 'Fractions.memc|Symetrie.memc|notes.txt', 'B8) Rien de plus, rien d\'écrasé dans le dossier', contenu)
   await toasts(p)
