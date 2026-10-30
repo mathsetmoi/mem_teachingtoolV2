@@ -230,7 +230,14 @@ export class Publication {
     q('.p-copier').addEventListener('click', () => this.copier(q<HTMLInputElement>('.p-lien').value, 'Lien copié'))
     q('.p-pronote').addEventListener('click', () => this.copier(this.textePronote, 'Texte copié : collez-le dans le cahier de textes', true))
     // Le lien s'ouvre de lui-même (un onglet) ; dans le même clic, le texte part dans le presse-papiers
-    q('.p-ouvrir-pronote').addEventListener('click', () => void this.copier(this.textePronote, 'Texte copié : dans Pronote, cliquez dans le cahier de textes et faites Ctrl+V', true))
+    // D'abord la copie, puis Pronote : l'onglet ouvert tout de suite ôtait la
+    // page au navigateur avant la fin de la copie (le texte mis en forme)
+    q('.p-ouvrir-pronote').addEventListener('click', e => {
+      e.preventDefault()
+      const a = e.currentTarget as HTMLAnchorElement
+      void this.copier(this.textePronote, 'Texte copié : dans Pronote, cliquez dans le cahier de textes et faites Ctrl+V', true)
+        .finally(() => window.open(a.href, '_blank', 'noopener'))
+    })
     q('.p-reessayer').addEventListener('click', () => this.preparerTexte(true))
     q('.p-redaction').addEventListener('click', () => ouvrirRedaction(this.racine, () => { this.majPronote(); this.preparerTexte(true) }))
     const champCahier = q<HTMLTextAreaElement>('.p-texte-cahier')
