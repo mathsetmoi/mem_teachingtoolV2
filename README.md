@@ -5879,8 +5879,22 @@ bibliothèque.
   « Séances du chapitre… » est en tête du menu ⋯ (« Plus »). Les lignes font
   44 px au moins, au doigt comme à la tablette.
 
+- **« Publier la séance… »** (ajouté le même jour, choix du professeur),
+  dans le menu … d'une séance, sous la carte d'un classeur de la
+  bibliothèque : le classeur s'ouvre sur cette séance (sans recharger si
+  c'est celui de l'onglet), et la fenêtre Publier aussi, cette séance
+  choisie. Pas de fichier à part pour une séance : le classeur garde chaque
+  séance, minute par minute, et son replay se crée quand on veut, même des
+  semaines après (« Enregistrer le fichier » y donne aussi le `.mem`).
+
 ### Comment c'est fait
 
+- « Publier la séance… » : `bibliotheque.ts` (`ouvrirMenuSeance`,
+  `ouvrirClasseur(f, { seance, publier })`) ; l'adresse
+  `?classeur=…&seance=…&publier` (`demarrage.ts`, `urlDuClasseur`), lue par
+  `main.ts` avant que le démarrage ne la nettoie ; `UI.publierLaSeance` ;
+  `publication/fenetre.ts` : `ouvrir({ seance })`. Essai :
+  `essais/navigateur/lot20/E2-publier-seance.mjs`.
 - `src/ui.ts` : `basculerMenuSeances`, `construireMenuSeances` (refait à
   chaque ouverture), `voirSeance`, `toutesLesSeances` ; le menu est un
   `menu-flottant` comme le menu ⋯ (`menus.ts` : Échap, clic ailleurs,
