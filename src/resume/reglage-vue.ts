@@ -1,12 +1,13 @@
 // =============================================================
 // LA FENÊTRE « RÉDACTION AUTOMATIQUE »
 // Ouverte depuis Publier (le lien sous le texte du cahier de textes) : la
-// clé de l'API Gemini de ce navigateur, et l'adresse du Pronote de chaque
+// clé de l'API Gemini de ce navigateur, les consignes du professeur pour le
+// texte, et l'adresse du Pronote de chaque
 // établissement (pour le bouton « Ouvrir Pronote »). Tout reste dans ce
 // navigateur (voir gemini.ts).
 // =============================================================
 import { fermerSurLeFond } from '../dialogue'
-import { ETABLISSEMENTS, adresseValable, cleGemini, cleValable, demanderAGemini, nettoyerCle, pronoteDe, retenirCleGemini, retenirPronote, ErreurGemini } from './gemini'
+import { ETABLISSEMENTS, adresseValable, cleGemini, cleValable, consignesDuProfesseur, CONSIGNES_MAX, demanderAGemini, nettoyerCle, retenirConsignes, pronoteDe, retenirCleGemini, retenirPronote, ErreurGemini } from './gemini'
 
 const echapper = (t: string) => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
@@ -31,6 +32,9 @@ export function ouvrirRedaction(racine: HTMLElement, fini: () => void): HTMLDial
         <input class="r-cle" type="password" autocomplete="off" spellcheck="false" placeholder="Collez la clé ici" value="${echapper(cle)}" /></label>
       <p class="r-actions-cle"><button type="button" class="secondaire petit r-essayer">Essayer la clé</button>
         <button type="button" class="secondaire petit r-retirer"${cle ? '' : ' hidden'}>Retirer la clé</button></p>
+      <label class="champ r-champ-consignes"><span>Vos consignes pour le texte (facultatif)</span>
+        <textarea class="r-consignes" rows="4" maxlength="${CONSIGNES_MAX}" spellcheck="true" placeholder="Par exemple : Commence par les notions, puis les exercices. Écris « Exercices » au pluriel. Termine « À faire » par « pour lundi » si c'est écrit au tableau.">${echapper(consignesDuProfesseur())}</textarea></label>
+      <p class="r-aide-consignes">Gemini les suit à chaque rédaction, en plus des règles de l'outil (rien d'inventé, aucun nom d'élève).</p>
       <fieldset class="r-pronote"><legend>Votre Pronote, pour le bouton « Ouvrir Pronote »</legend>
         ${ETABLISSEMENTS.map(e => `<label class="champ"><span>${echapper(e.nom)}</span>
           <input class="r-pronote-${e.cle}" type="url" inputmode="url" autocomplete="off" placeholder="https://…/pronote/professeur.html" value="${echapper(pronoteDe(e.cle))}" /></label>`).join('')}
@@ -70,6 +74,7 @@ export function ouvrirRedaction(racine: HTMLElement, fini: () => void): HTMLDial
     }
     if (c !== cleGemini()) retenirCleGemini(c)
     for (const e of ETABLISSEMENTS) retenirPronote(e.cle, q<HTMLInputElement>(`.r-pronote-${e.cle}`).value)
+    retenirConsignes(q<HTMLTextAreaElement>('.r-consignes').value)
     d.close()
   })
   q('.r-fermer').addEventListener('click', () => d.close())

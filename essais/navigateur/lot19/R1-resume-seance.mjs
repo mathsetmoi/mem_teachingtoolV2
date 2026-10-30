@@ -115,10 +115,13 @@ await p.fill('.r-cle', '  AIzaEssaiEssaiEssai EssaiEssaiEssai12345\n')
 await p.click('.r-essayer'); await p.waitForFunction(() => /La clé marche/.test(document.querySelector('.r-etat').textContent), null, { timeout: 5000 }).catch(() => {})
 ok(/La clé marche/.test(await p.textContent('.r-etat')), 'B3) « Essayer la clé » : la clé marche')
 await p.fill('.r-pronote-mem', 'exemple.index-education.net/pronote/professeur.html')
+await p.fill('.r-consignes', 'Écris « Exercices » au pluriel.')
+await capture('2b-redaction-consignes')
 const avantC = demandes.length
 await p.click('.r-garder'); await p.waitForSelector('.dialogue-redaction', { state: 'detached' })
 ok(await p.evaluate(() => localStorage.getItem('mem-redaction-cle')) === 'AIzaEssaiEssaiEssaiEssaiEssaiEssai12345', 'B4) La clé est gardée dans ce navigateur')
 ok(/"mem":"https:\/\/exemple\.index-education\.net\/pronote\/professeur\.html"/.test(await p.evaluate(() => localStorage.getItem('mem-pronote'))), 'B5) L\'adresse de Pronote est gardée (https ajouté)')
+ok(await p.evaluate(() => localStorage.getItem('mem-redaction-consignes')) === 'Écris « Exercices » au pluriel.', 'B6) Les consignes du professeur sont gardées dans ce navigateur')
 
 // C. Gemini rédige
 await p.waitForFunction(() => /Rédigé par Gemini/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 10000 }).catch(() => {})
@@ -129,7 +132,8 @@ const d = demandes[avantC]
 const parts = d?.corps?.contents?.[0]?.parts ?? []
 ok(/gemini-3\.6-flash:generateContent$/.test(d?.chemin ?? ''), 'C3) Le modèle choisi : le gemini-X-flash le plus récent', d?.chemin)
 ok(parts.filter(x => x.inline_data?.mime_type === 'image/jpeg' && x.inline_data.data.length > 1000).length === 1, 'C4) L\'image de la page part avec la consigne (une page : une image)', parts.map(x => Object.keys(x)))
-ok(/Manuel p\. 42/.test(parts[0]?.text ?? '') && /N'invente rien/.test(parts[0]?.text ?? ''), 'C5) La consigne dit ce que l\'outil sait déjà')
+ok(/Manuel p\. 42/.test(parts[0]?.text ?? '') && /n'invente rien/i.test(parts[0]?.text ?? ''), 'C5) La consigne dit ce que l\'outil sait déjà')
+ok(/consignes du professeur[^\n]*\nÉcris « Exercices » au pluriel\./.test(parts[0]?.text ?? ''), 'C5b) Les consignes du professeur partent avec la consigne')
 const avantC6 = demandes.length
 await ouvrir(); await p.waitForTimeout(600)
 ok(demandes.length === avantC6 && await p.inputValue('.p-texte-cahier') === texteC, 'C6) Rouvrir Publier ne redemande rien : le texte est gardé avec la séance', demandes.length - avantC6)

@@ -17,13 +17,17 @@
 //
 // Rangé dans ce navigateur (nouvelles clés, voir reglages.ts) :
 // 'mem-redaction-cle' (la clé), 'mem-redaction-modele' (le modèle retenu et
-// quand), 'mem-pronote' (l'adresse du Pronote de chaque établissement, par
+// quand), 'mem-redaction-consignes' (les consignes du professeur pour le
+// texte, ajoutées à celle de l'outil), 'mem-pronote' (l'adresse du Pronote de chaque établissement, par
 // Drive des replays : mem, lfb, lyfel).
 // =============================================================
 
 const CLE = 'mem-redaction-cle'
 const CLE_MODELE = 'mem-redaction-modele'
 const CLE_PRONOTE = 'mem-pronote'
+const CLE_CONSIGNES = 'mem-redaction-consignes'
+/** Au plus tant de signes de consignes du professeur */
+export const CONSIGNES_MAX = 1500
 const API = 'https://generativelanguage.googleapis.com/v1beta'
 const UNE_SEMAINE = 7 * 24 * 3600 * 1000
 /** Au plus tant de pages envoyées (les premières) ; chacune au plus si large */
@@ -41,6 +45,10 @@ export function retenirCleGemini(cle: string) {
   ecrire(CLE, nettoyerCle(cle))
   ecrire(CLE_MODELE, '')
 }
+
+/** Les consignes du professeur pour le texte ('' : aucune) */
+export const consignesDuProfesseur = () => lire(CLE_CONSIGNES).trim().slice(0, CONSIGNES_MAX)
+export const retenirConsignes = (t: string) => ecrire(CLE_CONSIGNES, t.replace(/\r/g, '').trim().slice(0, CONSIGNES_MAX))
 
 /** La clé telle qu'on l'a collée, sans espaces, retours à la ligne ni
  *  guillemets autour (une copie depuis un courriel ou un document en ajoute) */

@@ -97,6 +97,12 @@ describe('Gemini', () => {
     expect(c).toContain('Fait en classe :')
     expect(c).toMatch(/jamais un prénom/)
   })
+  it('les consignes du professeur s\'ajoutent, avant la règle sur les noms d\'élèves', () => {
+    expect(consigneGemini(f, null)).not.toContain('consignes du professeur')
+    const c = consigneGemini(f, null, '  Écris « Exercices » au pluriel.\n')
+    expect(c).toContain('Les consignes du professeur, à suivre en priorité sur celles du dessus :\nÉcris « Exercices » au pluriel.')
+    expect(c.indexOf('Écris « Exercices »')).toBeLessThan(c.indexOf('jamais un prénom'))
+  })
   it('le texte rendu est mis au propre, avec la date et le chapitre', () => {
     expect(texteCahierDeGemini(f, '**Fait en classe :** exercice 12 p. 42\n\n- À faire : exercice 14 p. 43\n')).toBe(
       'Lundi 26 octobre · Ensembles de nombres\nFait en classe : exercice 12 p. 42\nÀ faire : exercice 14 p. 43')

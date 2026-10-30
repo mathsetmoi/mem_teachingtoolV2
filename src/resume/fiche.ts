@@ -204,7 +204,7 @@ export function texteAvecLeLien(texte: string, lien: string, pages: string): str
 /** La consigne envoyée à Gemini avec les images des pages : ce que l'outil
  *  sait déjà (le chapitre, la date, les pages et ce qui y a été posé), et la
  *  forme du texte attendu */
-export function consigneGemini(f: FicheDeSeance, niveau: string | null): string {
+export function consigneGemini(f: FicheDeSeance, niveau: string | null, consignes = ''): string {
   const pages = f.pages.map(p => {
     const bits = [libelleDeLaPage(p, f.activites), ...f.activites.filter(a => a.page === p.id && a.titre !== libelleDeLaPage(p, f.activites)).map(a => a.titre)]
       .filter(Boolean)
@@ -221,7 +221,10 @@ export function consigneGemini(f: FicheDeSeance, niveau: string | null): string 
     '- s\'il est écrit au tableau un travail à faire pour la prochaine fois, une ligne qui commence par « À faire : » ; sinon, pas de ligne « À faire ».',
     'Au plus 4 lignes en tout. Pas de titre, pas de date, pas de formule de politesse, pas de mise en forme (ni astérisques, ni dièses).',
     'Écris les mathématiques en caractères simples (√2, x², ≤, ℝ, 3/4), sans LaTeX.',
-    'N\'invente rien : seulement ce qui se voit sur les pages. N\'écris jamais un prénom ou un nom d\'élève.',
+    // Les consignes du professeur (« Rédaction automatique… ») passent avant
+    // la forme ci-dessus, jamais avant la dernière règle
+    ...(consignes.trim() ? ['', 'Les consignes du professeur, à suivre en priorité sur celles du dessus :', consignes.trim(), ''] : []),
+    'Dans tous les cas, n\'invente rien : seulement ce qui se voit sur les pages. N\'écris jamais un prénom ou un nom d\'élève.',
   ].join('\n')
 }
 

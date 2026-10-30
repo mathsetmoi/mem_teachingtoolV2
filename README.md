@@ -5828,8 +5828,13 @@ nom de l'appareil. La version hors ligne ne fait jamais appel à Gemini.
   (404) fait redemander la liste ; la liste muette, l'alias
   `gemini-flash-latest`. L'API `generateContent` (v1beta), la clé dans
   l'en-tête `x-goog-api-key`. Les erreurs sont dites en clair (clé refusée,
-  quota, pas d'internet) ; le texte de l'outil reste.
-- `src/resume/reglage-vue.ts` : la fenêtre « Rédaction automatique ».
+  quota, pas d'internet, clé limitée à certains sites ou à d'autres services,
+  API pas activée), avec ce que Google en dit ; le texte de l'outil reste.
+  Toute forme de clé est acceptée : c'est « Essayer la clé » qui juge.
+- `src/resume/reglage-vue.ts` : la fenêtre « Rédaction automatique ». Le
+  professeur peut y écrire ses consignes pour le texte (facultatif, au plus
+  1 500 signes) : elles s'ajoutent à la consigne de l'outil et passent avant
+  ses règles de forme, jamais avant « rien d'inventé, aucun nom d'élève ».
 - Dans le document, deux cartes de premier niveau, hors des pages (ni étape
   du film, ni annulation, comme les noms des pages) : `activites` (id →
   { t, page, type, titre }) et `textesCahier` (id de la séance → { texte,
@@ -5837,7 +5842,7 @@ nom de l'appareil. La version hors ligne ne fait jamais appel à Gemini.
   les garde sans autre code ; une version d'avant les ignore. Aucune base ni
   clé existante ne change.
 - Dans ce navigateur (nouvelles clés) : `mem-redaction-cle`,
-  `mem-redaction-modele`, `mem-pronote`. La clé n'est jamais dans le document,
+  `mem-redaction-modele`, `mem-redaction-consignes`, `mem-pronote`. La clé n'est jamais dans le document,
   un fichier, le replay ou le dépôt.
 - Le film élève (`.mem`) ne change pas.
 - Les essais : `tests/resume.test.ts`, et
