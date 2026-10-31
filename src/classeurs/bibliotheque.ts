@@ -121,6 +121,7 @@ import type { Fichiers } from './fichiers'
 import { AIDE_ENREGISTRER_TOUT } from './fichiers'
 import type { Endroit, Ranger } from './ranger'
 import { DeplacerClasseur } from './deplacer-fichier'
+import { classeursDeLaClasse } from './emplacements'
 import { fermerSurLeFond } from '../dialogue'
 import { RechercheBiblio } from './recherche-biblio-vue'
 import { lireContenu } from '../recherche'
@@ -2070,7 +2071,10 @@ export class Bibliotheque {
         if (!d) { this.hote.message('Ce dossier n\'existe plus.'); return }
         this.dossiers.set(id, d)
         this.rendre(null)
-        if (d.nom === nom) this.hote.message(siEncore === undefined ? 'Dossier renommé' : `Le dossier s'appelle de nouveau « ${nom} ».`, annuler)
+        if (d.nom === nom) {
+          this.hote.message(siEncore === undefined ? 'Dossier renommé' : `Le dossier s'appelle de nouveau « ${nom} ».`, annuler)
+          void this.suivreLeNom(id)
+        }
         return
       }
       const f = await this.suivre(this.registre.modifierClasseur(cle, x => {
@@ -2084,9 +2088,28 @@ export class Bibliotheque {
       void this.suivre(ecrireInfos(f.base, { id: f.id, nom: f.nom })).catch(() => { /* l'index le garde : c'est lui qui compte */ })
       if (this.hote.classeur?.id === f.id) { this.hote.classeurChange?.(f); this.majLigneOuvert() }
       this.hote.message(siEncore === undefined ? 'Classeur renommé' : `Le classeur s'appelle de nouveau « ${nom} ».`, annuler)
+      void this.suivreLeNom(undefined, f.id)
     } catch (e) {
       this.hote.message(`${cle.startsWith(DOSSIER) ? 'Le dossier' : 'Le classeur'} n'a pas pu être renommé : ${messageDe(e)}.`)
     }
+  }
+
+  /** Après un nom changé : le fichier de chaque classeur concerné (celui du
+   *  dossier renommé et de ses sous-dossiers, ou le classeur renommé) suit
+   *  son nouveau chemin sur l'ordinateur, sans doublon (deplacer-fichier.ts,
+   *  suivreLeNom) ; ne dit que ce qui bouge ou ce qui n'a pas pu bouger */
+  async suivreLeNom(dossier?: string, classeur?: string): Promise<void> {
+    try {
+      let ids: string[]
+      if (classeur) ids = [classeur]
+      else {
+        const [fiches, dossiers] = await Promise.all([this.registre.classeurs(), this.registre.dossiers()])
+        ids = classeursDeLaClasse(dossier!, fiches, dossiers).map(f => f.id)
+      }
+      if (!ids.length) return
+      const t = await this.leDeplaceur.suivreLeNom(ids)
+      if (t) this.hote.message(t)
+    } catch { /* le nom est changé ; les fichiers restent où ils sont */ }
   }
 
   // ---------- Les séances d'un classeur ----------

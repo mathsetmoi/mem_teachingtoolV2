@@ -28,6 +28,7 @@
 // =============================================================
 import type { CompteDrive, FicheClasseur, FicheDossier } from './demarrage'
 import { visible } from './demarrage'
+import { nomSur } from '../fichier'
 import { descendants, remontee } from './arbre'
 import type { Registre } from './registre'
 
@@ -104,13 +105,20 @@ export function classeursDeLaClasse(dossierId: string, fiches: readonly FicheCla
     .sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { numeric: true }) || (a.id < b.id ? -1 : 1))
 }
 
-/** Les noms des sous-dossiers entre le niveau et le dossier d'un classeur
- *  (vide : il est dans le niveau lui-même) : le même rangement sur
- *  l'ordinateur */
+/** Les noms, sur l'ordinateur, des sous-dossiers entre le niveau et le dossier
+ *  d'un classeur (vide : il est dans le niveau lui-même). Un dossier prend le
+ *  même nom que dans la bibliothèque, sauf s'il a son propre chemin (pc : un
+ *  autre nom, plusieurs noms, ou aucun) : les deux arbres sont indépendants. */
 export function sousDossiers(dossierId: string | null, classe: string, dossiers: readonly FicheDossier[]): string[] {
   const chaine = remontee(dossierId, dossiers)
   const i = chaine.findIndex(d => d.id === classe)
-  return i < 0 ? [] : chaine.slice(0, i).reverse().map(d => d.nom)
+  return i < 0 ? [] : chaine.slice(0, i).reverse().flatMap(d => d.pc ?? [d.nom])
+}
+
+/** Le chemin que le professeur tape pour un dossier (« Auguste », ou
+ *  « Axiom/Auguste », ou rien) en noms de dossiers sains */
+export function cheminPcSaisi(texte: string): string[] {
+  return texte.split(/[\\/›]/).map(x => nomSur(x, { repli: '' })).filter(x => x)
 }
 
 /** Un nom de fichier libre parmi ceux d'un dossier : « Fractions.memc »,

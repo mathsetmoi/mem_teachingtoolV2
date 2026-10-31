@@ -3,7 +3,7 @@
 // classeurs d'une classe, le rangement en sous-dossiers et les noms libres.
 import { describe, expect, it } from 'vitest'
 import type { FicheClasseur, FicheDossier } from '../src/classeurs/demarrage'
-import { classeursDeLaClasse, emplacementDe, lireEmplacements, nomDeFichierLibre, rangeParLOutil, sousDossiers } from '../src/classeurs/emplacements'
+import { cheminPcSaisi, classeursDeLaClasse, emplacementDe, lireEmplacements, nomDeFichierLibre, rangeParLOutil, sousDossiers } from '../src/classeurs/emplacements'
 import type { Emplacement } from '../src/classeurs/emplacements'
 
 const dossier = (id: string, nom: string, parent: string | null, o: Partial<FicheDossier> = {}): FicheDossier =>
@@ -89,6 +89,21 @@ describe('Mes emplacements', () => {
     expect(sousDossiers('dgeo', 'd5a', DOSSIERS)).toEqual(['Géométrie'])
     expect(sousDossiers('d5a', 'd5a', DOSSIERS)).toEqual([])
     expect(sousDossiers('d4b', 'd5a', DOSSIERS)).toEqual([])
+  })
+
+  it('sousDossiers : un dossier à son propre chemin sur l\'ordinateur (un autre nom, plusieurs, aucun)', () => {
+    const avec = (pc: string[]) => DOSSIERS.map(d => d.id === 'dgeo' ? { ...d, pc } : d)
+    expect(sousDossiers('dgeo', 'd5a', avec(['Geo']))).toEqual(['Geo'])
+    expect(sousDossiers('dgeo', 'd5a', avec(['Maths', 'Geo']))).toEqual(['Maths', 'Geo'])
+    expect(sousDossiers('dgeo', 'd5a', avec([]))).toEqual([])
+  })
+
+  it('cheminPcSaisi : les noms tapés, sains, sans segment vide', () => {
+    expect(cheminPcSaisi('Auguste')).toEqual(['Auguste'])
+    expect(cheminPcSaisi(' Axiom / Auguste ')).toEqual(['Axiom', 'Auguste'])
+    expect(cheminPcSaisi('Axiom › 1s: Auguste')).toEqual(['Axiom', '1s- Auguste'])
+    expect(cheminPcSaisi('')).toEqual([])
+    expect(cheminPcSaisi(' / ')).toEqual([])
   })
 
   it('nomDeFichierLibre : « Fractions (2).memc » quand le nom est pris (sans tenir compte des majuscules)', () => {

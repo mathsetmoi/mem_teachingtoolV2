@@ -25,7 +25,7 @@ import type { Choisi, Fichiers } from './fichiers'
 import type { Registre } from './registre'
 import type { ActionMessage } from '../app'
 import type { Emplacement } from './emplacements'
-import { classeursDeLaClasse, emplacements, garderEmplacement, reglagePoignee, retirerEmplacement, sousDossiers } from './emplacements'
+import { cheminPcSaisi, classeursDeLaClasse, emplacementDe, emplacements, garderEmplacement, reglagePoignee, retirerEmplacement, sousDossiers } from './emplacements'
 import type { PoigneeDossier } from './ordinateur'
 import { accordDuDossier, choisirUnDossier, choisitUnDossier, dansLeDossier, lireLeDossier } from './ordinateur'
 import type { BilanRelier } from './ordinateur'
@@ -136,6 +136,11 @@ export class Ailleurs {
     b.blocsDuMenuDossier.splice(Math.max(0, b.blocsDuMenuDossier.length - 1), 0, (d, m) => {
       entreeMenu(m, 'Enregistrer ce dossier…', () => void this.enregistrer({ quoi: 'classe', classe: d.id }), { action: 'enregistrer-dossier',
         aide: 'Sur l\'ordinateur ou sur le Drive, tenu à jour tout seul' })
+      // Un sous-dossier : son nom (ou son chemin) sur l'ordinateur, à lui
+      if (d.parent !== null) {
+        entreeMenu(m, 'Emplacement sur l\'ordinateur…', () => void this.emplacementDuDossier(d.id), { action: 'emplacement-dossier',
+          aide: 'Le nom de ce dossier sur l\'ordinateur : le même, un autre, ou aucun' })
+      }
       if (this.avecEmplacement.has(d.id)) {
         entreeMenu(m, 'Copies sur l\'ordinateur…', () => this.afficherDetail(true), { action: 'emplacements',
           aide: 'Où sont copiés les classeurs, mettre à jour, changer de dossier, ne plus copier' })
@@ -606,6 +611,94 @@ export class Ailleurs {
     document.body.appendChild(d)
     d.showModal()
     q<HTMLButtonElement>('.e-ok').focus()
+  }
+
+  /** « Emplacement sur l'ordinateur… » : le nom (ou le chemin) d'un sous-dossier
+   *  sur l'ordinateur, indépendant de celui de la bibliothèque. Case cochée :
+   *  le même nom, qui suit quand on le renomme ; décochée : le nom tapé (« Auguste »,
+   *  « Axiom/Auguste », ou rien : pas de dossier à lui). Les fichiers déjà
+   *  écrits suivent (aucun doublon : écrits à la nouvelle place, relus, puis
+   *  l'ancien est retiré). Le dossier d'un niveau se règle par « Où
+   *  ranger… » / « Changer… » : ici, seulement les dossiers sous un niveau rangé. */
+  async emplacementDuDossier(id: string): Promise<void> {
+    if (document.querySelector('dialog[open]')) { this.h.message('Fermez d\'abord la fenêtre ouverte.'); return }
+    const [dossiers, liste, etabs] = await Promise.all([this.registre.dossiers(), emplacements(this.registre), etablissements(this.registre).catch(() => [] as Etablissement[])])
+    const d = dossiers.find(x => x.id === id && dossierVisible(x, dossiers))
+    if (!d) { this.h.message('Ce dossier n\'est plus dans la bibliothèque.'); return }
+    const e = emplacementDe(d.id, 'ordinateur', liste, dossiers)
+    const niveau = e ? dossiers.find(x => x.id === e.dossier) ?? null : null
+    const etab = e ? nomDEtablissement(e, etabs) : null
+    const chemin = remontee(d.id, dossiers).reverse().map(x => x.nom)
+    const fiches = await this.registre.classeurs().catch(() => [] as FicheClasseur[])
+    const nClasseurs = classeursDeLaClasse(d.id, fiches, dossiers).length
+
+    const f = document.createElement('dialog')
+    f.className = 'dialogue dialogue-ailleurs dialogue-emplacement'
+    f.setAttribute('aria-labelledby', 'titre-emplacement')
+    f.innerHTML = `<h2 id="titre-emplacement"></h2><div class="corps">
+      <div class="e-contenu"><span class="em-nav"></span><small class="aide em-n"></small></div>
+      <fieldset class="e-ou"><legend>Sur l'ordinateur</legend>
+        <p class="em-lieu"></p>
+        <label class="case em-meme"><input type="checkbox"><span>Garder le même nom que dans le navigateur</span></label>
+        <label class="em-saisie"><span class="aide">Son nom sur l'ordinateur (plusieurs niveaux : Axiom/Auguste ; vide : pas de dossier à lui)</span><input type="text" class="em-champ" autocomplete="off" spellcheck="false"></label>
+      </fieldset>
+      <p class="aide em-explication"></p>
+      <div class="actions"><button type="button" class="secondaire em-annuler">Annuler</button><button type="button" class="principal em-ok">Enregistrer</button></div></div>`
+    const q = <T extends HTMLElement>(sel: string) => f.querySelector(sel) as T
+    q('#titre-emplacement').textContent = `Emplacement de « ${d.nom} »`
+    q('.em-nav').append(Object.assign(document.createElement('strong'), { textContent: 'Dans le navigateur : ' }), chemin.join(' › '))
+    q('.em-n').textContent = nClasseurs ? `${pluriel(nClasseurs, 'classeur')}, avec toutes leurs séances` : 'Aucun classeur pour le moment'
+    const meme = q<HTMLInputElement>('.em-meme input'), champ = q<HTMLInputElement>('.em-champ')
+    const lieu = q('.em-lieu'), explication = q('.em-explication'), ok = q<HTMLButtonElement>('.em-ok')
+    const dejaDuNiveau = !!e && e.dossier === d.id
+    meme.checked = d.pc === undefined
+    champ.value = (d.pc ?? [d.nom]).join('/')
+    /** Le chemin saisi (undefined : le même nom) */
+    const saisi = (): string[] | undefined => meme.checked ? undefined : cheminPcSaisi(champ.value)
+    const afficher = () => {
+      const pc = saisi()
+      q('.em-saisie').hidden = meme.checked
+      if (!niveau || !e) {
+        lieu.textContent = 'Ce dossier n\'est dans aucun niveau rangé sur l\'ordinateur.'
+        explication.textContent = 'Rangez d\'abord le niveau (le dossier du haut) : « Où ranger… » ou « Enregistrer ce dossier… ».'
+        ok.disabled = true; meme.disabled = true; champ.disabled = true
+        return
+      }
+      if (dejaDuNiveau) {
+        lieu.textContent = `Ce dossier a son propre dossier sur l'ordinateur : ${cheminLisible([...(etab ? [etab] : ['Cet ordinateur']), e.nom])}.`
+        explication.textContent = 'Pour le changer : menu du dossier › Enregistrer ce dossier…'
+        ok.disabled = true; meme.disabled = true; champ.disabled = true
+        return
+      }
+      const sous = sousDossiers(d.id, niveau.id, dossiers.map(x => x.id === d.id ? { ...x, ...(pc ? { pc } : { pc: undefined }) } : x))
+      lieu.replaceChildren(Object.assign(document.createElement('strong'), { className: 'e-chemin', textContent: cheminLisible([...(etab ? [etab] : ['Cet ordinateur']), e.nom, ...sous.map(n => nomSur(n, { repli: 'Dossier' }))]) }))
+      explication.textContent = pc === undefined
+        ? 'Même nom que dans le navigateur : si vous le renommez, le dossier de l\'ordinateur est renommé aussi, sans doublon.'
+        : pc.length ? 'Ce nom reste le vôtre : renommer le dossier dans le navigateur ne change rien sur l\'ordinateur.' : 'Pas de dossier à lui : ses classeurs vont directement dans le dossier du dessus.'
+      ok.disabled = JSON.stringify(pc ?? null) === JSON.stringify(d.pc ?? null)
+    }
+    meme.addEventListener('change', afficher)
+    champ.addEventListener('input', afficher)
+    let fini = false
+    const fermer = () => { if (!fini) { fini = true; f.close() } }
+    q('.em-annuler').addEventListener('click', fermer)
+    f.addEventListener('close', () => f.remove())
+    fermerSurLeFond(f, fermer)
+    ok.addEventListener('click', async () => {
+      const pc = saisi()
+      try {
+        await this.registre.modifierDossier(d.id, x => { if (pc === undefined) delete x.pc; else x.pc = pc })
+      } catch (x) { this.h.message(`Le dossier n'a pas pu être réglé : ${x instanceof Error ? x.message : 'erreur inconnue'}.`); return }
+      fermer()
+      void this.h.bibliotheque.charger()
+      // Les fichiers déjà écrits suivent, dans ce clic (l'accord d'écrire)
+      this.h.message(`« ${d.nom} » : ${pc === undefined ? 'même nom que dans le navigateur' : pc.length ? `« ${pc.join(' › ')} » sur l'ordinateur` : 'pas de dossier à lui sur l\'ordinateur'}.`)
+      await this.h.bibliotheque.suivreLeNom(d.id)
+    })
+    afficher()
+    document.body.appendChild(f)
+    f.showModal()
+    ;(meme.disabled ? q<HTMLButtonElement>('.em-annuler') : meme).focus()
   }
 
   /** Un classeur, une fois, à la racine de « MEM - Classeurs » */
