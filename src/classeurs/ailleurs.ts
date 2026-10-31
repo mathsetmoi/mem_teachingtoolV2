@@ -25,7 +25,7 @@ import type { Choisi, Fichiers } from './fichiers'
 import type { Registre } from './registre'
 import type { ActionMessage } from '../app'
 import type { Emplacement } from './emplacements'
-import { classeursDeLaClasse, emplacements, garderEmplacement, reglagePoignee, retirerEmplacement } from './emplacements'
+import { classeursDeLaClasse, emplacements, garderEmplacement, reglagePoignee, retirerEmplacement, sousDossiers } from './emplacements'
 import type { PoigneeDossier } from './ordinateur'
 import { accordDuDossier, choisirUnDossier, choisitUnDossier, dansLeDossier, lireLeDossier } from './ordinateur'
 import type { BilanRelier } from './ordinateur'
@@ -417,27 +417,40 @@ export class Ailleurs {
     q<HTMLInputElement>('input[name=e-quoi]').value = mode
     const titre = q('#titre-enregistrer-ailleurs'), resume = q('.e-resume'), nomsEl = q('.e-noms'), lieu = q('.e-lieu')
     const gras = (t: string) => Object.assign(document.createElement('strong'), { textContent: t })
+    /** Un sous-dossier d'un dossier déjà rangé sur l'ordinateur : celui-ci et son emplacement */
+    let dansUnRange: { e: Emplacement; haut: FicheDossier } | null = null
     if (mode === 'classe' && classe) {
       titre.textContent = `Enregistrer le dossier « ${classe.nom} »`
       const sous = descendants(classe.id, visibles).filter(x => x.parent === classe.id)
       const nSous = descendants(classe.id, visibles).length
       resume.append(...(nSous ? [gras(pluriel(nSous, 'sous-dossier')), ' et '] : []), gras(pluriel(nClasse, 'classeur')), nClasse ? `, avec toutes leurs séances` : '')
       nomsEl.textContent = sous.map(x => x.nom).sort((a, b) => a.localeCompare(b, 'fr', { numeric: true })).join(', ')
-      // Où ce dossier est rangé sur l'ordinateur : le sien, sinon celui de
-      // son niveau (établissement › niveau, lot 18)
-      const niveau = await this.classeDe(classe.id)
-      const e = liste.find(x => x.genre === 'ordinateur' && x.dossier === classe.id)
-        ?? (niveau ? liste.find(x => x.genre === 'ordinateur' && x.dossier === niveau.id) : undefined)
-      if (e) {
-        const etab = nomDEtablissement(e, etabs)
-        lieu.append('Rangé aujourd\'hui dans ', Object.assign(document.createElement('span'), { className: 'e-chemin', textContent: etab ? cheminLisible([etab, e.nom]) : `Cet ordinateur › ${e.nom}` }))
-        const n = dossiers.find(x => x.id === e.dossier)
-        if (etab && this.ranger && n) {
+      // Où ce dossier est sur l'ordinateur. Le sien (son propre dossier
+      // choisi, ou le niveau rangé chez un établissement, avec « Changer… ») ;
+      // sinon un sous-dossier d'un dossier déjà rangé y est déjà, à sa place
+      // (« 3e_Axiom › Axiom › Fractions ») : rien à choisir, « Mettre à jour »
+      // écrit ce qui manque
+      const propre = liste.find(x => x.genre === 'ordinateur' && x.dossier === classe.id)
+      if (propre) {
+        const etab = nomDEtablissement(propre, etabs)
+        lieu.append('Rangé aujourd\'hui dans ', Object.assign(document.createElement('span'), { className: 'e-chemin', textContent: etab ? cheminLisible([etab, propre.nom]) : `Cet ordinateur › ${propre.nom}` }))
+        if (etab && this.ranger) {
           const b = Object.assign(document.createElement('button'), { type: 'button', className: 'lien e-changer', textContent: 'Changer…', title: 'Ranger ce niveau dans un autre dossier (les fichiers d\'avant restent où ils sont)' })
-          b.addEventListener('click', () => { fermer(); void this.ranger?.proposer(n, { origine: 'emplacements' }) })
+          b.addEventListener('click', () => { fermer(); void this.ranger?.proposer(classe, { origine: 'emplacements' }) })
           lieu.append(' ', b)
         }
         lieu.hidden = false
+      } else {
+        for (const haut of remontee(classe.id, dossiers).slice(1)) {
+          const e = liste.find(x => x.genre === 'ordinateur' && x.dossier === haut.id)
+          if (!e) continue
+          const etab = nomDEtablissement(e, etabs)
+          dansUnRange = { e, haut }
+          lieu.append('Déjà sur l\'ordinateur, dans ', Object.assign(document.createElement('span'), { className: 'e-chemin',
+            textContent: cheminLisible([...(etab ? [etab] : ['Cet ordinateur']), e.nom, ...sousDossiers(classe.id, haut.id, dossiers)]) }))
+          lieu.hidden = false
+          break
+        }
       }
     } else if (mode === 'classeur' && fiche) {
       titre.textContent = `Enregistrer le classeur « ${fiche.nom} »`
@@ -486,10 +499,16 @@ export class Ailleurs {
         }
       } else if (x === 'classe' && classe) {
         const relie = liste.find(e => e.dossier === classe.id && e.genre === y)
-        if (y === 'ordinateur') {
+        if (y === 'ordinateur' && dansUnRange) {
+          explication = `Chaque classeur de « ${classe.nom} » y a son fichier, remplacé peu après chaque changement. « Mettre à jour » écrit ceux qui manquent.`
+        } else if (y === 'ordinateur') {
           garder = choisitUnDossier()
           explication = garder
-            ? (garderEl.checked ? `Choisissez un dossier (une clé USB, G:\\Mon Drive…) : chaque classeur de « ${classe.nom} » y aura son fichier, remplacé peu après chaque changement.${relie ? ` Il remplacera le dossier « ${relie.nom} ».` : ''}` : `Un seul fichier .memb avec tout le dossier, enregistré une fois.`)
+            ? (garderEl.checked
+              ? (classe.parent !== null
+                ? `Choisissez où le mettre (une clé USB, G:\\Mon Drive…) : le dossier « ${classe.nom} » y sera créé avec ses classeurs, chacun dans son fichier, remplacé peu après chaque changement.${relie ? ` Il remplacera le dossier « ${relie.nom} ».` : ''}`
+                : `Choisissez un dossier (une clé USB, G:\\Mon Drive…) : chaque classeur de « ${classe.nom} » y aura son fichier, remplacé peu après chaque changement.${relie ? ` Il remplacera le dossier « ${relie.nom} ».` : ''}`)
+              : `Un seul fichier .memb avec tout le dossier, enregistré une fois.`)
             : 'Un seul fichier .memb avec tout le dossier, enregistré une fois (ce navigateur ne sait pas écrire dans un dossier).'
         } else {
           garder = true
@@ -502,7 +521,7 @@ export class Ailleurs {
       }
       q('.e-garder').hidden = !garder
       q('.e-explication').textContent = explication
-      q('.e-ok').textContent = y === 'drive' ? (connecte(c) ? 'Enregistrer sur le Drive' : 'Se connecter et enregistrer') : 'Enregistrer…'
+      q('.e-ok').textContent = y === 'drive' ? (connecte(c) ? 'Enregistrer sur le Drive' : 'Se connecter et enregistrer') : x === 'classe' && dansUnRange ? 'Mettre à jour' : 'Enregistrer…'
     }
     d.addEventListener('change', () => { etat(''); regler() })
     let fini = false
@@ -525,11 +544,24 @@ export class Ailleurs {
           else if (fiche) void this.h.bibliotheque.enregistrerUnClasseur(fiche.id)
           return
         }
+        if (x === 'classe' && dansUnRange) {
+          fermer()
+          await this.mettreAJour(dansUnRange.e, dansUnRange.haut)
+          return
+        }
         if (x === 'classe' && classe && garder) {
           let dossier: PoigneeDossier | null
           try { dossier = await choisirUnDossier() } catch (e) { etat(`Ce dossier n'a pas pu être choisi : ${e instanceof Error ? e.message : 'erreur inconnue'}.`, true); return }
           if (!dossier) return
           await accordDuDossier(dossier, true).catch(() => false)
+          // Un sous-dossier : son dossier, à son nom, dans celui choisi (sauf
+          // si l'on a choisi un dossier qui porte déjà ce nom)
+          const nom = nomSur(classe.nom, { repli: 'Dossier' })
+          if (classe.parent !== null && dossier.name !== nom) {
+            try { dossier = await dossier.getDirectoryHandle(nom, { create: true }) } catch (e) {
+              etat(`Le dossier « ${nom} » n'a pas pu être créé : ${e instanceof Error ? e.message : 'erreur inconnue'}.`, true); return
+            }
+          }
           fermer()
           await this.relierOrdinateur(classe, dossier)
           return

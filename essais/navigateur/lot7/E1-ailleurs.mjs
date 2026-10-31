@@ -300,6 +300,36 @@ try {
   contenu = await p.evaluate(() => window.__lister('Cle 4B'))
   ok(Object.keys(contenu).sort().join('|') === 'Calcul|Geometrie' && Object.keys(contenu['Calcul']).sort().join('|') === 'Calcul (2).memc|Calcul.memc', '   … « Mettre à jour » : rien en double', contenu)
   await toasts(p)
+  // Un sous-dossier d'un dossier déjà sur l'ordinateur (« Geometrie » dans « 4B ») : il y est déjà, rien à choisir
+  await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), dGeo)
+  await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
+  const sd = await p.evaluate(() => { const d = document.querySelector('dialog[open]'); return { lieu: d.querySelector('.e-lieu:not([hidden])')?.textContent, ok: d.querySelector('.e-ok').textContent, garder: !d.querySelector('.e-garder').hidden, changer: !!d.querySelector('.e-changer') } })
+  ok(sd.lieu === 'Déjà sur l\'ordinateur, dans Cet ordinateur › Cle 4B › Geometrie' && sd.ok === 'Mettre à jour' && !sd.garder && !sd.changer,
+    'C10) Le sous-dossier « Geometrie » : « Déjà sur l\'ordinateur, dans Cet ordinateur › Cle 4B › Geometrie », « Mettre à jour », ni dossier à choisir ni « Changer… »', sd)
+  await p.click('dialog[open] .e-ok')
+  await attendreToast(p, /4B/, 20000)
+  contenu = await p.evaluate(() => window.__lister('Cle 4B'))
+  ok(Object.keys(contenu).sort().join('|') === 'Calcul|Geometrie' && contenu['Geometrie']?.['Triangles']?.['Triangles.memc'] > 0, '   … « Mettre à jour » : le même dossier, rien en double', contenu)
+  await toasts(p)
+  // Un sous-dossier d'un dossier pas rangé : son dossier, à son nom, est créé dans celui qu'on choisit
+  const dDivers = await p.evaluate(() => window.__dossier('Divers'))
+  const dExos = await p.evaluate(d => window.__dossier('Exos', d), dDivers)
+  await p.evaluate(d => window.__creer([{ nom: 'Revisions', dossier: d }]), dExos)
+  await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), dExos)
+  await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
+  f = await fenetre(p)
+  ok(/le dossier « Exos » y sera créé avec ses classeurs/.test(f.texte), 'C11) Le sous-dossier « Exos » : « le dossier « Exos » y sera créé avec ses classeurs »', f.texte)
+  await p.evaluate(() => { window.__dossierChoisi = 'Ma cle' })
+  await p.click('dialog[open] .e-ok')
+  await attendreToast(p, /» est relié au dossier « Exos »/, 20000)
+  contenu = await p.evaluate(() => window.__lister('Ma cle'))
+  ok(contenu['Exos']?.['Revisions']?.['Revisions.memc'] > 0, '   … « Ma cle › Exos › Revisions › Revisions.memc »', contenu)
+  // (Pour la suite : ce dossier ne reste pas relié, ni dans la bibliothèque)
+  await p.evaluate(async d => {
+    const em = await import('/src/classeurs/emplacements.ts')
+    for (const e of await em.emplacements(window.__registre)) if (e.dossier === d) await em.retirerEmplacement(window.__registre, e.id)
+  }, dExos)
+  await toasts(p)
 
   // =====================================================================
   console.log('\n— D. Le niveau sur le Drive')

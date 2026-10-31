@@ -3262,6 +3262,11 @@ emplacements »** en haut de la bibliothèque (3A).
     (sous-dossiers, classeurs, séances ; « Sans la corbeille » pour la
     bibliothèque). Un dossier déjà rangé le dit (« Rangé aujourd'hui dans
     LFB › 5ème », avec « Changer… »), un classeur qui a son fichier aussi.
+    Un sous-dossier d'un dossier déjà sur l'ordinateur y est déjà, à sa
+    place (« Déjà sur l'ordinateur, dans 3e_Axiom › Axiom › Fractions ») :
+    rien à choisir, « Mettre à jour » écrit les classeurs qui manquent. Un
+    sous-dossier d'un dossier pas rangé : on choisit où le mettre, et son
+    dossier, à son nom, y est créé avec ses classeurs.
     Le menu ⋯ de la bibliothèque → **Enregistrer toute la bibliothèque…**
     ouvre cette fenêtre (l'ordinateur ou le Drive).
   - **Où ?** Cet ordinateur (une clé, un dossier, G:\Mon Drive…) ou Google
