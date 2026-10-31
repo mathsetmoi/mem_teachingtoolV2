@@ -370,6 +370,10 @@ export class Bibliotheque {
   private deplaceur: DeplacerClasseur | null = null
   /** La fenêtre « Ouvrir » (lot 7 : l'ordinateur ou le Drive, un dossier) :
    *  « Ouvrir… » du bandeau la montre ; sans elle, le choix des fichiers */
+  /** « Enregistrer toute la bibliothèque… » (menu ⋯) : la fenêtre
+   *  « Enregistrer » d'ailleurs.ts (ce qui part, l'ordinateur ou le Drive) ;
+   *  null : le fichier .memb tout de suite, comme avant */
+  enregistrerTout: (() => void) | null = null
   ouvrirFenetre: (() => void) | null = null
   /** En haut des cartes : « Mes emplacements » (lot 7) */
   readonly hautDuCorps: HTMLElement
@@ -712,7 +716,7 @@ export class Bibliotheque {
       if (this.boutonOuvrir.hidden) {
         entreeMenu(m, 'Ouvrir un classeur ou une bibliothèque…', () => { this.finirSaisie(true); this.choisirOuvrir() }, { action: 'ouvrir-fichier', aide: AIDE_OUVRIR_FENETRE })
       }
-      entreeMenu(m, 'Enregistrer toute la bibliothèque…', () => void f.enregistrerLaBibliotheque(), { action: 'enregistrer-bibliotheque', aide: AIDE_ENREGISTRER_TOUT })
+      entreeMenu(m, 'Enregistrer toute la bibliothèque…', () => { if (this.enregistrerTout) this.enregistrerTout(); else void f.enregistrerLaBibliotheque() }, { action: 'enregistrer-bibliotheque', aide: AIDE_ENREGISTRER_TOUT })
     })
     if (this.ouvert) this.boutonBandeau.hidden = false
   }

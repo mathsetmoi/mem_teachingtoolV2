@@ -599,6 +599,8 @@ async function enregistrerBiblio(p, nom) {
   await p.evaluate(n => { window.__nomChoisi = n }, nom ?? null)
   await p.click('.biblio-tete [data-action="menu-bibliotheque"]'); await p.waitForTimeout(150)
   await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="enregistrer-bibliotheque"]')
+  // (Adapté : le menu ouvre la fenêtre « Enregistrer toute la bibliothèque », « Cet ordinateur » choisi)
+  await p.click('dialog.dialogue-enregistrer-ailleurs[open] .e-ok')
   return attendreToast(p, /^Bibliothèque enregistrée : /, 120000)
 }
 async function ouvrirBiblioFichier(p, nom) {
@@ -904,6 +906,7 @@ if (seul('I')) {
   const tel = p.waitForEvent('download', { timeout: 60000 })
   await p.click('.biblio-tete [data-action="menu-bibliotheque"]'); await p.waitForTimeout(150)
   await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="enregistrer-bibliotheque"]')
+  await p.click('dialog.dialogue-enregistrer-ailleurs[open] .e-ok')
   const dl = await tel
   const chemin = TRAVAIL + 'I-telecharge.memb'
   await dl.saveAs(chemin)
