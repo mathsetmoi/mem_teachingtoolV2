@@ -2200,6 +2200,10 @@ body.en-revue .bandeau-seance, body.en-trieuse .bandeau-seance, body.en-trieuse 
 .dialogue-enregistrer-ailleurs .e-fichiers-titre { font-weight: 700; }
 .dialogue-enregistrer-ailleurs .e-lieu .lien { border: 0; background: none; padding: 2px 0; color: var(--bleu); text-decoration: underline; cursor: pointer; font: inherit; }
 .dialogue-enregistrer-ailleurs .case span { min-width: 0; overflow-wrap: anywhere; }
+.dialogue-emplacement h2, .dialogue-emplacement .em-nav, .dialogue-emplacement .em-lieu { overflow-wrap: anywhere; }
+.dialogue-emplacement .e-contenu { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--bleu) 10%, var(--papier)); }
+.dialogue-emplacement .em-saisie { display: grid; gap: 4px; padding: 4px 0 6px; }
+.dialogue-emplacement .em-champ { font: inherit; padding: 8px 10px; border: 1px solid var(--filet); border-radius: 8px; background: var(--papier); color: var(--encre); width: 100%; min-width: 0; box-sizing: border-box; }
 .dialogue-ailleurs .case { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
 .dialogue-ailleurs .case input { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--bleu); }
 .dialogue-ailleurs .case small { color: var(--encre-douce); font-size: 13px; }

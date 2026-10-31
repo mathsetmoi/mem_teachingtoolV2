@@ -3286,6 +3286,23 @@ emplacements »** en haut de la bibliothèque (3A).
     sur le Drive : une fois, à la racine de « MEM - Classeurs » (la fenêtre
     dit d'enregistrer plutôt le dossier de son niveau pour qu'il se tienne à
     jour).
+- **Emplacement sur l'ordinateur (arbres indépendants).** Menu d'un
+  sous-dossier → **Emplacement sur l'ordinateur…** : le nom de ce dossier sur
+  l'ordinateur est indépendant de celui de la bibliothèque. Case « Garder le
+  même nom que dans le navigateur » cochée (par défaut) : le dossier de
+  l'ordinateur porte le même nom, et le suit quand on renomme le dossier ou le
+  classeur dans le navigateur ; décochée : le nom tapé (« Auguste »,
+  « Axiom/Auguste » pour deux niveaux, ou rien : pas de dossier à lui, les
+  classeurs vont dans celui du dessus). Le chemin se lit en direct dans la
+  fenêtre. Les fichiers déjà écrits suivent à chaque changement (écrits à la
+  nouvelle place, relus, puis l'ancien retiré, ainsi que les dossiers qui
+  restent vides : aucun doublon ; un fichier plus riche ou choisi à la main
+  reste). Le champ est facultatif (`pc` de la fiche du dossier). Ni l'année
+  (« 26-27 ») ni l'établissement n'ont besoin d'être dans la bibliothèque : ils
+  sont dans le dossier d'établissement choisi une fois. Déplacer un dossier
+  dans le navigateur ne déplace aucun fichier. Un dossier renommé ou déplacé
+  dans l'Explorateur n'est pas toujours retrouvé par le navigateur : l'outil le
+  dit (« ne retrouve plus le dossier ») et on le choisit de nouveau.
 - **Mes emplacements.** En haut de la bibliothèque : chaque niveau relié
   (« 5ème → Drive personnel › MEM - Classeurs › 5ème », « 4ème → Cet ordinateur ›
   Cle 4ème »), ce qui n'y est pas encore (« 2 classeurs pas encore dedans »),

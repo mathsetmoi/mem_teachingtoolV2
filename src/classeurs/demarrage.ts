@@ -107,6 +107,11 @@ export interface FicheDossier {
   etiquette?: string
   cree: number
   corbeille?: { t: number }
+  /** Le chemin de ce dossier sur l'ordinateur, sous le dossier du dessus
+   *  (chantier « emplacements indépendants ») : ses noms, [] s'il n'a pas de
+   *  dossier à lui (ses classeurs vont dans celui du dessus). Absent : le même
+   *  nom que dans la bibliothèque, qui suit quand on le renomme. Facultatif. */
+  pc?: string[]
 }
 
 /** Ce que l'application sait du classeur ouvert (premier : estPremier) */

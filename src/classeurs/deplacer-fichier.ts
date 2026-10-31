@@ -179,7 +179,12 @@ export interface HoteDeplacer {
 interface Cible { dossier: PoigneeDossier; chemin: string[] }
 /** D'où il vient : l'ancien dossier du chapitre, son parent (null : un dossier
  *  choisi à la main, qu'on ne retire jamais) et son chemin lisible */
-interface Ancien { dossier: PoigneeDossier; parent: PoigneeDossier | null; chemin: string[] }
+interface Ancien {
+  dossier: PoigneeDossier; parent: PoigneeDossier | null; chemin: string[]
+  /** Les dossiers entre le niveau et celui du chapitre (du plus profond au plus haut), chacun avec son parent :
+   *  retirés eux aussi s'ils restent vides (« Auguste » quand son dernier chapitre est parti) */
+  meres?: { parent: PoigneeDossier; dossier: PoigneeDossier }[]
+}
 
 const raisonDe = (e: unknown) => (e instanceof Error ? e.message.trim().replace(/\.$/, '') : '') || 'erreur inconnue'
 const nomErreur = (e: unknown) => (e as { name?: string } | null)?.name
@@ -284,6 +289,33 @@ export class DeplacerClasseur {
     }
   }
 
+  /** Un nom a changé (un dossier ou un classeur renommé, ou le chemin d'un
+   *  dossier sur l'ordinateur réglé) : le fichier de chacun de ces classeurs
+   *  (ids) suit son nouveau chemin, comme s'il restait dans le même dossier
+   *  de la bibliothèque ; seuls ceux dont le plan dit « suit » bougent (un
+   *  fichier choisi à la main, un niveau pas rangé, ou une place qui ne change
+   *  pas : rien). Aucun doublon : le fichier est écrit à la nouvelle place,
+   *  relu, puis l'ancien est retiré (voir suit). Rend la phrase (vide : rien à
+   *  dire). Appelée dans le geste : l'accord d'écrire peut être demandé. */
+  async suivreLeNom(ids: readonly string[]): Promise<string> {
+    const o = await this.donnees().catch(() => null)
+    if (!o) return ''
+    let suivis = 0
+    const autres: string[] = []
+    for (const id of ids) {
+      const f = await this.registre.classeur(id).catch(() => undefined)
+      if (!f || f.corbeille) continue
+      const plan = planDeDeplacement({ fiche: f, cible: f.dossier, ...o })
+      if (plan.genre !== 'suit') continue
+      const t = await this.suit(f, plan)
+      if (t.startsWith('Son fichier aussi')) suivis++
+      else autres.push(`« ${f.nom} » : ${t}`)
+    }
+    const dit: string[] = []
+    if (suivis) dit.push(suivis > 1 ? `Les fichiers de ${suivis} classeurs suivent sur l'ordinateur.` : 'Son fichier suit sur l\'ordinateur.')
+    return [...dit, ...autres].join(' ')
+  }
+
   /** Un classeur sans fichier qui arrive dans un niveau rangé : il reçoit son
    *  fichier à sa nouvelle place (ranger.donnerSonFichier) ; celui de cet
    *  onglet : sa clé démarre dessus */
@@ -340,7 +372,11 @@ export class DeplacerClasseur {
         try {
           const parent = await descendre(racine, a.sous.slice(0, -1), false)
           const dossier = await parent.getDirectoryHandle(a.sous[a.sous.length - 1])
-          return { dossier, parent, chemin: a.chemin }
+          const meres: { parent: PoigneeDossier; dossier: PoigneeDossier }[] = []
+          for (let k = a.sous.length - 2; k >= 0; k--) {
+            try { meres.push({ parent: k === 0 ? racine : await descendre(racine, a.sous.slice(0, k), false), dossier: await descendre(racine, a.sous.slice(0, k + 1), false) }) } catch { break }
+          }
+          return { dossier, parent, chemin: a.chemin, meres }
         } catch { return null }
       }
       return null
@@ -383,6 +419,7 @@ export class DeplacerClasseur {
       mem = m.deplaces
       if (m.restes) reste.push(`${desMem(m.restes)} reste${m.restes > 1 ? 'nt' : ''} dans l'ancien dossier.`)
       if (ancien.parent) await this.retirerSiVide(ancien.parent, ancien.dossier)
+      for (const m of ancien.meres ?? []) await this.retirerSiVide(m.parent, m.dossier)
       await this.suivreLeDossierRetenu(f.id, ancien.dossier, cible.dossier)
     }
     return { ok: true, mem, reste: reste.join(' ') }
