@@ -408,6 +408,7 @@ export class Ailleurs {
         <label class="case"><input type="radio" name="e-ou" value="drive"${this.enLigne ? '' : ' disabled'}><span>Google Drive</span></label>
       </div><p class="aide e-hors-ligne"${this.enLigne ? ' hidden' : ''}>${HORS_LIGNE_DRIVE}</p>
       <p class="e-lieu" hidden></p>
+      <ul class="e-fichiers aide" hidden></ul>
       <div class="e-comptes" hidden><div class="cases"></div><p class="e-qui aide"></p></div></fieldset>
       <label class="case e-garder"><input type="checkbox" checked><span>Le garder à jour tout seul</span></label>
       <p class="aide e-explication"></p>
@@ -415,7 +416,7 @@ export class Ailleurs {
       <div class="actions"><button type="button" class="secondaire e-annuler">Annuler</button><button type="button" class="principal e-ok">Enregistrer</button></div></div>`
     const q = <T extends HTMLElement>(s: string) => d.querySelector(s) as T
     q<HTMLInputElement>('input[name=e-quoi]').value = mode
-    const titre = q('#titre-enregistrer-ailleurs'), resume = q('.e-resume'), nomsEl = q('.e-noms'), lieu = q('.e-lieu')
+    const titre = q('#titre-enregistrer-ailleurs'), resume = q('.e-resume'), nomsEl = q('.e-noms'), lieu = q('.e-lieu'), fichiersEl = q('.e-fichiers')
     const gras = (t: string) => Object.assign(document.createElement('strong'), { textContent: t })
     /** Un sous-dossier d'un dossier déjà rangé sur l'ordinateur : celui-ci et son emplacement */
     let dansUnRange: { e: Emplacement; haut: FicheDossier } | null = null
@@ -439,6 +440,7 @@ export class Ailleurs {
           b.addEventListener('click', () => { fermer(); void this.ranger?.proposer(classe, { origine: 'emplacements' }) })
           lieu.append(' ', b)
         }
+        lieu.append(Object.assign(document.createElement('small'), { className: 'e-note', textContent: `« ${propre.nom} » est le dossier que vous avez choisi : le navigateur ne donne pas son adresse complète sur le disque.` }))
         lieu.hidden = false
       } else {
         for (const haut of remontee(classe.id, dossiers).slice(1)) {
@@ -451,6 +453,14 @@ export class Ailleurs {
           lieu.hidden = false
           break
         }
+      }
+      // Les fichiers déjà écrits : le chemin exact, depuis le dossier choisi
+      const ecrits = classeursDeLaClasse(classe.id, fiches, dossiers).filter(f => f.cle?.nom).map(f => [...(f.cle?.chemin ?? []), f.cle!.nom].join(' › '))
+      if (ecrits.length) {
+        fichiersEl.append(...ecrits.slice(0, 4).map(t => Object.assign(document.createElement('li'), { textContent: t })),
+          ...(ecrits.length > 4 ? [Object.assign(document.createElement('li'), { textContent: `et ${ecrits.length - 4} autre${ecrits.length > 5 ? 's' : ''}` })] : []))
+        fichiersEl.prepend(Object.assign(document.createElement('li'), { className: 'e-fichiers-titre', textContent: ecrits.length > 1 ? 'Leurs fichiers :' : 'Son fichier :' }))
+        fichiersEl.hidden = false
       }
     } else if (mode === 'classeur' && fiche) {
       titre.textContent = `Enregistrer le classeur « ${fiche.nom} »`
@@ -505,7 +515,9 @@ export class Ailleurs {
           garder = choisitUnDossier()
           explication = garder
             ? (garderEl.checked
-              ? (classe.parent !== null
+              ? (relie && !relie.etablissement
+                ? `Ce dossier est déjà tenu à jour dans « ${relie.nom} ». « Enregistrer… » permet d'en choisir un autre : les fichiers d'avant restent où ils sont.`
+                : classe.parent !== null
                 ? `Choisissez où le mettre (une clé USB, G:\\Mon Drive…) : le dossier « ${classe.nom} » y sera créé avec ses classeurs, chacun dans son fichier, remplacé peu après chaque changement.${relie ? ` Il remplacera le dossier « ${relie.nom} ».` : ''}`
                 : `Choisissez un dossier (une clé USB, G:\\Mon Drive…) : chaque classeur de « ${classe.nom} » y aura son fichier, remplacé peu après chaque changement.${relie ? ` Il remplacera le dossier « ${relie.nom} ».` : ''}`)
               : `Un seul fichier .memb avec tout le dossier, enregistré une fois.`)

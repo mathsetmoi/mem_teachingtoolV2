@@ -2195,6 +2195,9 @@ body.en-revue .bandeau-seance, body.en-trieuse .bandeau-seance, body.en-trieuse 
 .dialogue-enregistrer-ailleurs .e-contenu { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--bleu) 10%, var(--papier)); overflow-wrap: anywhere; }
 .dialogue-enregistrer-ailleurs .e-lieu { font-size: 14px; overflow-wrap: anywhere; padding-bottom: 4px; }
 .dialogue-enregistrer-ailleurs .e-chemin { font-weight: 700; }
+.dialogue-enregistrer-ailleurs .e-note { display: block; color: var(--encre-douce); }
+.dialogue-enregistrer-ailleurs .e-fichiers { margin: 0; padding: 0 0 4px; list-style: none; display: grid; gap: 2px; overflow-wrap: anywhere; }
+.dialogue-enregistrer-ailleurs .e-fichiers-titre { font-weight: 700; }
 .dialogue-enregistrer-ailleurs .e-lieu .lien { border: 0; background: none; padding: 2px 0; color: var(--bleu); text-decoration: underline; cursor: pointer; font: inherit; }
 .dialogue-enregistrer-ailleurs .case span { min-width: 0; overflow-wrap: anywhere; }
 .dialogue-ailleurs .case { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }

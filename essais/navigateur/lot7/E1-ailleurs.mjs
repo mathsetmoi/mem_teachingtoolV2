@@ -300,6 +300,13 @@ try {
   contenu = await p.evaluate(() => window.__lister('Cle 4B'))
   ok(Object.keys(contenu).sort().join('|') === 'Calcul|Geometrie' && Object.keys(contenu['Calcul']).sort().join('|') === 'Calcul (2).memc|Calcul.memc', '   … « Mettre à jour » : rien en double', contenu)
   await toasts(p)
+  // Un dossier déjà tenu à jour : la fenêtre dit où sont ses fichiers (le chemin depuis le dossier choisi)
+  await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), d4)
+  await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
+  const fi = await p.evaluate(() => { const d = document.querySelector('dialog[open]'); return { lieu: d.querySelector('.e-lieu:not([hidden])')?.textContent, fichiers: [...d.querySelectorAll('.e-fichiers:not([hidden]) li')].map(x => x.textContent), large: d.scrollWidth > d.clientWidth } })
+  ok(/Rangé aujourd'hui dans Cet ordinateur › Cle 4B/.test(fi.lieu ?? '') && fi.fichiers.includes('Cle 4B › Calcul › Calcul (2).memc') && fi.fichiers.includes('Cle 4B › Geometrie › Triangles › Triangles.memc') && !fi.large,
+    'C9b) Le dossier « 4B » dit où sont ses fichiers : « Cle 4B › Calcul › Calcul (2).memc », « Cle 4B › Geometrie › Triangles › Triangles.memc »', fi)
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200)
   // Un sous-dossier d'un dossier déjà sur l'ordinateur (« Geometrie » dans « 4B ») : il y est déjà, rien à choisir
   await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), dGeo)
   await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
