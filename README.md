@@ -3265,6 +3265,10 @@ emplacements »** en haut de la bibliothèque (3A).
     Un sous-dossier d'un dossier déjà sur l'ordinateur y est déjà, à sa
     place (« Déjà sur l'ordinateur, dans 3e_Axiom › Axiom › Fractions ») :
     rien à choisir, « Mettre à jour » écrit les classeurs qui manquent. Un
+    dossier déjà tenu à jour liste ses fichiers, chemin depuis le dossier
+    choisi (« Marie-Lucie (Montreal) › Retour DS › Retour DS.memc ») : le
+    navigateur ne donne pas l'adresse complète du disque, et la fenêtre le
+    dit. Un
     sous-dossier d'un dossier pas rangé : on choisit où le mettre, et son
     dossier, à son nom, y est créé avec ses classeurs.
     Le menu ⋯ de la bibliothèque → **Enregistrer toute la bibliothèque…**
