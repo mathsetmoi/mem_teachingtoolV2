@@ -255,7 +255,8 @@ try {
   await p.evaluate(() => window.__ailleurs.enregistrer())
   await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
   f = await fenetre(p)
-  ok(/Quoi \?/.test(f.texte) && /Où \?/.test(f.texte) && /Toute la bibliothèque/.test(f.texte), 'C1) La fenêtre « Enregistrer » : Quoi ? Où ?', f.texte.slice(0, 300))
+  // (Adapté : plus de « Quoi ? » ; la fenêtre nomme ce qui part, ici le classeur ouvert, et ne demande que « Où ? »)
+  ok(!/Quoi \?/.test(f.texte) && /Où \?/.test(f.texte) && /Enregistrer le classeur « /.test(f.titre ?? f.texte) && !/Toute la bibliothèque/.test(f.texte), 'C1) La fenêtre « Enregistrer » : le classeur ouvert en titre, seulement « Où ? »', { titre: f.titre, texte: f.texte.slice(0, 300) })
   // Depuis le menu ⋯ aussi : « Autres sauvegardes… » → « Relier un niveau… » (lot 18)
   await p.keyboard.press('Escape'); await p.waitForTimeout(200)
   await p.click('.barre-haut .bouton.points'); await p.waitForTimeout(200)
@@ -271,9 +272,11 @@ try {
   // Le menu du dossier « 4B » : « Enregistrer ce dossier… »
   await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), d4)
   await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
-  ok(await p.isChecked('dialog[open] input[name=e-quoi][value=classe]'), 'C3) « Le dossier du niveau » choisi (« 4B »)')
+  const t3 = await p.evaluate(() => ({ titre: document.querySelector('dialog[open] h2')?.textContent, texte: document.querySelector('dialog[open]')?.textContent ?? '', large: document.querySelector('dialog[open]').scrollWidth > document.querySelector('dialog[open]').clientWidth }))
+  ok(await p.isChecked('dialog[open] input[name=e-quoi][value=classe]') && t3.titre === 'Enregistrer le dossier « 4B »' && /1 sous-dossier et 2 classeurs/.test(t3.texte) && !/Ce classeur|Toute la bibliothèque/.test(t3.texte) && !t3.large,
+    'C3) Le menu du dossier « 4B » : « Enregistrer le dossier « 4B » », 1 sous-dossier et 2 classeurs, ni « Ce classeur » ni la bibliothèque, rien ne déborde', t3)
   f = await fenetre(p)
-  ok(/« 4B » · 2 classeurs/.test(f.texte) && /chaque classeur de « 4B » y aura son fichier/.test(f.texte), 'C4) « 4B » · 2 classeurs, et ce que fera « Le garder à jour tout seul »', f.texte)
+  ok(/2 classeurs, avec toutes leurs séances/.test(f.texte) && /chaque classeur de « 4B » y aura son fichier/.test(f.texte), 'C4) « 4B » : 2 classeurs (adapté : sous le titre), et ce que fera « Le garder à jour tout seul »', f.texte)
   await p.evaluate(() => { window.__dossierChoisi = 'Cle 4B' })
   await p.click('dialog[open] .e-ok')
   await attendreToast(p, /» est relié au dossier « Cle 4B »/, 20000)

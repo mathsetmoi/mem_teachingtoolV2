@@ -2180,8 +2180,9 @@ body.en-revue .bandeau-seance, body.en-trieuse .bandeau-seance, body.en-trieuse 
 .tiroir-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* ===== Ouvrir et enregistrer, sur l'ordinateur ou sur le Drive (lot 7,
-   classeurs/ailleurs.ts) : deux onglets dans « Ouvrir », « Quoi ? » et
-   « Où ? » dans « Enregistrer », des cases de 44 px ; et « Mes
+   classeurs/ailleurs.ts) : deux onglets dans « Ouvrir », dans
+   « Enregistrer » ce qui part (en titre, avec ce qu'il contient) et « Où ? »,
+   des cases de 44 px ; et « Mes
    emplacements » en haut de la bibliothèque. */
 .dialogue-ailleurs { width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto; }
 .dialogue-ailleurs .corps { display: grid; gap: 12px; }
@@ -2190,7 +2191,12 @@ body.en-revue .bandeau-seance, body.en-trieuse .bandeau-seance, body.en-trieuse 
 .dialogue-ailleurs fieldset { border: 1px solid var(--filet); border-radius: 12px; padding: 6px 12px 8px; margin: 0; }
 .dialogue-ailleurs legend { font-weight: 700; font-size: 14px; padding: 0 4px; }
 .dialogue-ailleurs .choix, .dialogue-ailleurs .cases { display: flex; flex-wrap: wrap; gap: 0 18px; }
-.dialogue-enregistrer-ailleurs .e-quoi .choix { flex-direction: column; }
+.dialogue-enregistrer-ailleurs h2 { overflow-wrap: anywhere; }
+.dialogue-enregistrer-ailleurs .e-contenu { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--bleu) 10%, var(--papier)); overflow-wrap: anywhere; }
+.dialogue-enregistrer-ailleurs .e-lieu { font-size: 14px; overflow-wrap: anywhere; padding-bottom: 4px; }
+.dialogue-enregistrer-ailleurs .e-chemin { font-weight: 700; }
+.dialogue-enregistrer-ailleurs .e-lieu .lien { border: 0; background: none; padding: 2px 0; color: var(--bleu); text-decoration: underline; cursor: pointer; font: inherit; }
+.dialogue-enregistrer-ailleurs .case span { min-width: 0; overflow-wrap: anywhere; }
 .dialogue-ailleurs .case { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
 .dialogue-ailleurs .case input { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--bleu); }
 .dialogue-ailleurs .case small { color: var(--encre-douce); font-size: 13px; }

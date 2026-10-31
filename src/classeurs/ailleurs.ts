@@ -7,9 +7,9 @@
 //   de Google pour le reste du Drive). Les classeurs d'un dossier arrivent
 //   dans le dossier du même nom de la bibliothèque (créé s'il n'existe pas),
 //   et ce dossier peut rester RELIÉ : tenu à jour tout seul (choix 1B).
-// - « Enregistrer » (le menu ⋯ du classeur, le menu d'un dossier) : quoi
-//   (ce classeur, le dossier du niveau, toute la bibliothèque), où (cet
-//   ordinateur, le Drive), et « Le garder à jour tout seul ».
+// - « Enregistrer » (le menu d'un dossier, le menu ⋯ de la bibliothèque) :
+//   ce que le menu désigne, nommé en titre avec ce qu'il contient, puis où
+//   (cet ordinateur, le Drive), et « Le garder à jour tout seul ».
 // Et « Mes emplacements », en haut de la bibliothèque (choix 3A) : les
 // dossiers reliés, avec « Mettre à jour » et « Retirer ».
 //
@@ -34,7 +34,8 @@ import { cheminLisible, etablissements, garderEtablissement, nomDEtablissement, 
 import type { Ranger } from './ranger'
 import { relierLeNiveau } from './ranger'
 import { copierDepuisLaBase, origineDe } from './copie-drive'
-import { remontee, dossierVisible, etiquetteDuNom, COULEUR_DEFAUT } from './arbre'
+import { remontee, descendants, dossierVisible, etiquetteDuNom, COULEUR_DEFAUT } from './arbre'
+import { lieuDuFichier } from './etat'
 import { fabriquerFichier } from './ecrivain'
 import { confirmer } from './cle'
 import { entreeMenu } from '../menus'
@@ -130,6 +131,7 @@ export class Ailleurs {
   constructor(private h: HoteAilleurs) {
     const b = h.bibliotheque
     b.ouvrirFenetre = () => void this.ouvrir()
+    b.enregistrerTout = () => void this.enregistrer({ quoi: 'bibliotheque' })
     // Avant « Supprimer », qui finit le menu d'un dossier (le dernier bloc)
     b.blocsDuMenuDossier.splice(Math.max(0, b.blocsDuMenuDossier.length - 1), 0, (d, m) => {
       entreeMenu(m, 'Enregistrer ce dossier…', () => void this.enregistrer({ quoi: 'classe', classe: d.id }), { action: 'enregistrer-dossier',
@@ -370,13 +372,16 @@ export class Ailleurs {
     return haut && dossierVisible(haut, dossiers) ? haut : null
   }
 
-  /** La fenêtre « Enregistrer » ; quoi : ce qui est choisi d'abord ;
-   *  classe : le dossier (son menu) */
+  /** La fenêtre « Enregistrer » : une seule chose, celle du menu d'où l'on
+   *  part (quoi), nommée en titre avec ce qu'elle contient ; la fenêtre ne
+   *  demande plus que « Où ? ». classe : le dossier (son menu) ; sans lui,
+   *  « classe » prend le niveau du classeur ouvert. */
   async enregistrer(o: { quoi?: Quoi; classe?: string } = {}): Promise<void> {
     if (document.querySelector('dialog[open]')) { this.h.message('Fermez d\'abord la fenêtre ouverte.'); return }
     if (this.enLigne) preparerGoogle()
     const ici = this.h.classeur()
-    const [fiches, dossiers, defaut] = await Promise.all([this.registre.classeurs(), this.registre.dossiers(), this.registre.reglage('copieDrive').catch(() => undefined)])
+    const [fiches, dossiers, defaut, etabs] = await Promise.all([this.registre.classeurs(), this.registre.dossiers(), this.registre.reglage('copieDrive').catch(() => undefined),
+      etablissements(this.registre).catch(() => [] as Etablissement[])])
     const fiche = ici ? fiches.find(f => f.id === ici.id) ?? null : null
     const classe = o.classe ? dossiers.find(x => x.id === o.classe && dossierVisible(x, dossiers)) ?? null
       : await this.classeDe(fiche?.dossier ?? this.h.bibliotheque.dossierPourAjouter())
@@ -384,36 +389,70 @@ export class Ailleurs {
     const nTous = fiches.filter(f => visible(f, dossiers)).length
     const liste = await emplacements(this.registre)
     const connu = COMPTES.find(c => connecte(c.cle))?.cle ?? (choixValable(defaut) && defaut !== 'aucune' ? defaut : 'mem')
+    // Ce qu'on enregistre : celui demandé s'il existe, sinon le classeur
+    // ouvert, sinon toute la bibliothèque
+    const mode: Quoi = o.quoi === 'classe' && classe ? 'classe'
+      : o.quoi === 'bibliotheque' ? 'bibliotheque'
+        : fiche ? 'classeur' : 'bibliotheque'
+    const visibles = dossiers.filter(x => dossierVisible(x, dossiers))
 
     const d = document.createElement('dialog')
     d.className = 'dialogue dialogue-ailleurs dialogue-enregistrer-ailleurs'
+    d.dataset.quoi = mode
     d.setAttribute('aria-labelledby', 'titre-enregistrer-ailleurs')
-    d.innerHTML = `<h2 id="titre-enregistrer-ailleurs">Enregistrer</h2><div class="corps">
-      <fieldset class="e-quoi"><legend>Quoi ?</legend><div class="choix"></div></fieldset>
+    d.innerHTML = `<h2 id="titre-enregistrer-ailleurs"></h2><div class="corps">
+      <div class="e-contenu"><span class="e-resume"></span><small class="aide e-noms"></small></div>
+      <input type="radio" name="e-quoi" hidden checked>
       <fieldset class="e-ou"><legend>Où ?</legend><div class="choix">
         <label class="case"><input type="radio" name="e-ou" value="ordinateur" checked><span>Cet ordinateur</span></label>
         <label class="case"><input type="radio" name="e-ou" value="drive"${this.enLigne ? '' : ' disabled'}><span>Google Drive</span></label>
       </div><p class="aide e-hors-ligne"${this.enLigne ? ' hidden' : ''}>${HORS_LIGNE_DRIVE}</p>
+      <p class="e-lieu" hidden></p>
       <div class="e-comptes" hidden><div class="cases"></div><p class="e-qui aide"></p></div></fieldset>
       <label class="case e-garder"><input type="checkbox" checked><span>Le garder à jour tout seul</span></label>
       <p class="aide e-explication"></p>
       <p class="e-etat" role="status" aria-live="polite"></p>
       <div class="actions"><button type="button" class="secondaire e-annuler">Annuler</button><button type="button" class="principal e-ok">Enregistrer</button></div></div>`
     const q = <T extends HTMLElement>(s: string) => d.querySelector(s) as T
-    const quoiEl = q('.e-quoi .choix')
-    const options: { v: Quoi; titre: string; detail: string }[] = []
-    if (fiche) options.push({ v: 'classeur', titre: 'Ce classeur', detail: `« ${fiche.nom} » · .memc` })
-    if (classe) options.push({ v: 'classe', titre: 'Le dossier du niveau', detail: `« ${classe.nom} » · ${pluriel(nClasse, 'classeur')}` })
-    options.push({ v: 'bibliotheque', titre: 'Toute la bibliothèque', detail: `${pluriel(nTous, 'classeur')} · .memb` })
-    const premier = options.find(x => x.v === o.quoi)?.v ?? options[0].v
-    for (const x of options) {
-      const l = Object.assign(document.createElement('label'), { className: 'case' })
-      l.append(Object.assign(document.createElement('input'), { type: 'radio', name: 'e-quoi', value: x.v, checked: x.v === premier }))
-      const s = document.createElement('span')
-      s.append(Object.assign(document.createElement('strong'), { textContent: x.titre }), ' ', Object.assign(document.createElement('small'), { textContent: x.detail }))
-      l.appendChild(s)
-      quoiEl.appendChild(l)
+    q<HTMLInputElement>('input[name=e-quoi]').value = mode
+    const titre = q('#titre-enregistrer-ailleurs'), resume = q('.e-resume'), nomsEl = q('.e-noms'), lieu = q('.e-lieu')
+    const gras = (t: string) => Object.assign(document.createElement('strong'), { textContent: t })
+    if (mode === 'classe' && classe) {
+      titre.textContent = `Enregistrer le dossier « ${classe.nom} »`
+      const sous = descendants(classe.id, visibles).filter(x => x.parent === classe.id)
+      const nSous = descendants(classe.id, visibles).length
+      resume.append(...(nSous ? [gras(pluriel(nSous, 'sous-dossier')), ' et '] : []), gras(pluriel(nClasse, 'classeur')), nClasse ? `, avec toutes leurs séances` : '')
+      nomsEl.textContent = sous.map(x => x.nom).sort((a, b) => a.localeCompare(b, 'fr', { numeric: true })).join(', ')
+      // Où ce dossier est rangé sur l'ordinateur : le sien, sinon celui de
+      // son niveau (établissement › niveau, lot 18)
+      const niveau = await this.classeDe(classe.id)
+      const e = liste.find(x => x.genre === 'ordinateur' && x.dossier === classe.id)
+        ?? (niveau ? liste.find(x => x.genre === 'ordinateur' && x.dossier === niveau.id) : undefined)
+      if (e) {
+        const etab = nomDEtablissement(e, etabs)
+        lieu.append('Rangé aujourd\'hui dans ', Object.assign(document.createElement('span'), { className: 'e-chemin', textContent: etab ? cheminLisible([etab, e.nom]) : `Cet ordinateur › ${e.nom}` }))
+        const n = dossiers.find(x => x.id === e.dossier)
+        if (etab && this.ranger && n) {
+          const b = Object.assign(document.createElement('button'), { type: 'button', className: 'lien e-changer', textContent: 'Changer…', title: 'Ranger ce niveau dans un autre dossier (les fichiers d\'avant restent où ils sont)' })
+          b.addEventListener('click', () => { fermer(); void this.ranger?.proposer(n, { origine: 'emplacements' }) })
+          lieu.append(' ', b)
+        }
+        lieu.hidden = false
+      }
+    } else if (mode === 'classeur' && fiche) {
+      titre.textContent = `Enregistrer le classeur « ${fiche.nom} »`
+      const n = fiche.seances ?? fiche.listeSeances?.length
+      resume.append(...(n ? [gras(pluriel(n, 'séance')), ', '] : []), fiche.pages ? pluriel(fiche.pages, 'page') : '', ' · .memc')
+      if (fiche.cle?.nom || fiche.cle?.chemin?.length) {
+        lieu.append('Son fichier : ', Object.assign(document.createElement('span'), { className: 'e-chemin', textContent: lieuDuFichier(fiche.cle) }))
+        lieu.hidden = false
+      }
+    } else {
+      titre.textContent = 'Enregistrer toute la bibliothèque'
+      resume.append(gras(pluriel(visibles.length, 'dossier')), ' et ', gras(pluriel(nTous, 'classeur')), nTous ? ', avec toutes leurs séances' : '')
+      nomsEl.textContent = 'Sans la corbeille. Les dossiers gardent leur place.'
     }
+    nomsEl.hidden = !nomsEl.textContent
     const cases = q('.e-comptes .cases')
     for (const c of COMPTES) {
       const l = Object.assign(document.createElement('label'), { className: 'case' })
@@ -450,8 +489,8 @@ export class Ailleurs {
         if (y === 'ordinateur') {
           garder = choisitUnDossier()
           explication = garder
-            ? (garderEl.checked ? `Choisissez un dossier (une clé USB, G:\\Mon Drive…) : chaque classeur de « ${classe.nom} » y aura son fichier, remplacé peu après chaque changement.${relie ? ` Il remplacera le dossier « ${relie.nom} ».` : ''}` : `Un seul fichier .memb avec toute la classe, enregistré une fois.`)
-            : 'Un seul fichier .memb avec tout le niveau, enregistré une fois (ce navigateur ne sait pas écrire dans un dossier).'
+            ? (garderEl.checked ? `Choisissez un dossier (une clé USB, G:\\Mon Drive…) : chaque classeur de « ${classe.nom} » y aura son fichier, remplacé peu après chaque changement.${relie ? ` Il remplacera le dossier « ${relie.nom} ».` : ''}` : `Un seul fichier .memb avec tout le dossier, enregistré une fois.`)
+            : 'Un seul fichier .memb avec tout le dossier, enregistré une fois (ce navigateur ne sait pas écrire dans un dossier).'
         } else {
           garder = true
           explication = garderEl.checked

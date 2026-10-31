@@ -3255,8 +3255,15 @@ emplacements »** en haut de la bibliothèque (3A).
   (voir plus bas) : le télécharger, puis « Cet ordinateur ».
 - **Enregistrer.** Menu ⋯ du classeur → **Enregistrer sur le Drive ou
   ailleurs…**, ou le menu d'un dossier → **Enregistrer ce dossier…** :
-  - **Quoi ?** Ce classeur, le dossier du niveau (son dossier le plus
-    haut), ou toute la bibliothèque.
+  - **Ce qui part** : celui du menu d'où l'on vient, sans autre choix
+    (depuis octobre 2026). Le titre le nomme (« Enregistrer le dossier
+    « Axiom » », « Enregistrer toute la bibliothèque », « Enregistrer le
+    classeur « Fractions » ») et, juste dessous, ce qu'il contient
+    (sous-dossiers, classeurs, séances ; « Sans la corbeille » pour la
+    bibliothèque). Un dossier déjà rangé le dit (« Rangé aujourd'hui dans
+    LFB › 5ème », avec « Changer… »), un classeur qui a son fichier aussi.
+    Le menu ⋯ de la bibliothèque → **Enregistrer toute la bibliothèque…**
+    ouvre cette fenêtre (l'ordinateur ou le Drive).
   - **Où ?** Cet ordinateur (une clé, un dossier, G:\Mon Drive…) ou Google
     Drive.
   - **Le garder à jour tout seul** (coché) : ce classeur sur l'ordinateur,
