@@ -13,6 +13,8 @@
 // D. toutes d'un coup : la minuterie attend sur une autre page ;
 //    « Nouveaux exemples » pose un autre flash sur la page d'après ;
 // E. le réglage est retenu ;
+// G. un flash de 4e (thèmes de géométrie, avec figures) : 5 questions,
+//    corrigées en vert ;
 // F. aucune erreur.
 import { chromium } from '../commun/playwright.mjs'
 
@@ -46,8 +48,8 @@ const reglage = await p.evaluate(() => ({
 ok(reglage.lancer, 'A) Sans thème coché, « Lancer » est grisé', reglage)
 ok(/5/.test(reglage.total), 'A) Par défaut, 5 questions', reglage)
 ok(reglage.katex === 0, 'A) Le réglage ne montre aucune question', reglage)
-await p.click('.themes-niveau label:has-text("Nombres relatifs")')
-await p.click('.themes-niveau label:has-text("Nombres rationnels")')
+await p.click('.themes-niveau[data-niveau="5e"] label:has-text("Nombres relatifs")')
+await p.click('.themes-niveau[data-niveau="5e"] label:has-text("Nombres rationnels")')
 ok(await nObjets() === 0, 'A) Rien n\'est posé sur la page pendant le réglage', await nObjets())
 
 // ---------- B. Une question à la fois ----------
@@ -109,6 +111,22 @@ await p.waitForSelector('dialog.dialogue-flash[open]')
 const retenu = await p.evaluate(() => ({ themes: [...document.querySelectorAll('.themes-niveau input:checked')].length, toutes: document.querySelector('input[value=toutes]').checked }))
 ok(retenu.themes === 2 && retenu.toutes, 'E) Le réglage est retenu (2 thèmes, toutes d\'un coup)', retenu)
 await p.keyboard.press('Escape')
+
+// ---------- G. Un flash de 4e ----------
+await p.click('button[title^="Automatismes"]')
+await p.waitForSelector('dialog.dialogue-flash[open]')
+const quatre = await p.evaluate(() => !document.querySelector('.niveau-flash[data-niveau="4e"]').disabled)
+ok(quatre, 'G) Le niveau 4e n\'est plus grisé')
+await p.click('.niveau-flash[data-niveau="4e"]')
+for (const c of await p.$$('.themes-niveau[data-niveau="5e"] input:checked')) await c.click()
+for (const t of ['Triangles', 'Parallélogrammes et translations', 'Représentation de l’espace', 'Repérage']) await p.click(`.themes-niveau[data-niveau="4e"] label:has-text("${t}")`)
+await p.click('.dialogue-flash .lancer')
+await p.waitForTimeout(1500)
+const pageG = await p.evaluate(() => window.__app.page)
+await p.keyboard.press('c'); await p.waitForTimeout(800)
+const vertsG = await p.evaluate(([v, pg]) => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === v).length, [VERT, pageG])
+ok(vertsG >= 5, 'G) Un flash de 4e : 5 questions, corrigées en vert', vertsG)
+await p.click('.bandeau-flash .fermer').catch(() => {})
 
 // ---------- F. ----------
 ok(!erreurs.length, 'F) Aucune erreur', erreurs)
