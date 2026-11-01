@@ -4,7 +4,8 @@
 // ne se réussit avec une chance sur deux ; les questions à trou ont bien
 // un trou ; un thème sans question de cours donne un exercice à la place.
 import { describe, expect, it } from 'vitest'
-import { AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_5E, NIVEAUX, themesDe, tirerFlash } from '../src/automatismes'
+import katex from 'katex'
+import { AUTOMATISMES_4E, AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_4E, COURS_5E, NIVEAUX, themesDe, tirerFlash } from '../src/automatismes'
 import { automatismesChoisis, coursChoisis, lireReglages, REGLAGES_PAR_DEFAUT } from '../src/flash'
 import { caseOpposee, estPatronDeCube, hexomino } from '../src/figures'
 
@@ -183,5 +184,53 @@ describe('les thèmes chacun leur tour', () => {
       const { questions } = tirerFlash(autos, [], { cours: 0, application: 4 })
       expect(questions.filter(q => q.theme === 'Triangles').length).toBe(2)
     }
+  })
+})
+
+describe('les automatismes de 4e', () => {
+  const quatre = NIVEAUX.find(n => n.id === '4e')!
+  it('le niveau 4e a ses automatismes et ses questions de cours, thème par thème', () => {
+    expect(AUTOMATISMES_4E.length).toBeGreaterThanOrEqual(40)
+    for (const t of themesDe(quatre)) expect(COURS_4E.filter(c => c.theme === t).length, t).toBeGreaterThanOrEqual(1)
+    const ids = [...AUTOMATISMES_5E, ...AUTOMATISMES_4E, ...COURS_5E, ...COURS_4E].map(x => x.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('par défaut : 2 questions de cours de 4e, puis 3 exercices', () => {
+    for (let k = 0; k < 50; k++) {
+      const { questions } = tirerFlash(AUTOMATISMES_4E, COURS_4E, COMPOSITION_PAR_DEFAUT)
+      expect(questions.map(q => q.forme)).toEqual(['cours', 'cours', 'application', 'application', 'application'])
+    }
+  })
+
+  it('réponse courte, jamais une chance sur deux, et les trous ont un trou', () => {
+    for (const a of AUTOMATISMES_4E) for (let k = 0; k < 40; k++) {
+      for (const q of [a.generer(), ...(a.trou ? [a.trou()] : [])]) {
+        expect(q.reponse, a.id).not.toBe('')
+        expect(q.reponse, a.id).not.toMatch(/^§(Oui|Non)\b/)
+        expect(q.reponse, a.id).not.toMatch(/^[<>=]$/)
+        expect(q.enonce, a.id).not.toMatch(/…$|:$|^Est-ce /)
+      }
+      if (a.trou) expect(a.trou().enonce, a.id).toMatch(/\\ldots|…/)
+    }
+  })
+
+  it('rien de fixe dans les questions de cours de 4e', () => {
+    for (const c of COURS_4E) c.facons.forEach((f, i) => {
+      const vus = new Set<string>()
+      for (let k = 0; k < 60; k++) vus.add(f()[0])
+      expect(vus.size, `${c.id}, façon ${i + 1} : « ${f()[0]} »`).toBeGreaterThan(1)
+    })
+  })
+
+  it('toutes les formules (5e et 4e) s\'écrivent sans erreur', () => {
+    const verifier = (t: string, id: string) => {
+      const morceaux = t.startsWith('§') || /\$/.test(t) ? t.replace(/^§/, '').split('$').filter((_, i) => i % 2) : [t]
+      for (const m of morceaux) expect(() => katex.renderToString(m, { throwOnError: true }), `${id} : ${m}`).not.toThrow()
+    }
+    for (const a of [...AUTOMATISMES_5E, ...AUTOMATISMES_4E]) for (let k = 0; k < 20; k++) {
+      for (const q of [a.generer(), ...(a.trou ? [a.trou()] : [])]) { verifier(q.enonce, a.id); if (!q.reponse.startsWith('<svg')) verifier(q.reponse, a.id) }
+    }
+    for (const c of [...COURS_5E, ...COURS_4E]) for (let k = 0; k < 20; k++) { const q = c.poser(); verifier(q.enonce, c.id); verifier(q.reponse, c.id) }
   })
 })

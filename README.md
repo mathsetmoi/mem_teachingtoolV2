@@ -960,7 +960,7 @@ dès que la séance commence, sur sa première page, vide.
 **Le réglage** est une fenêtre. Pendant qu'on règle, les élèves ne voient
 **aucune question** : rien n'est tiré, rien n'est montré, pas d'exemple, la
 page derrière reste vide. On y choisit :
-- un ou plusieurs **niveaux** (5e aujourd'hui ; 4e, 3e, 2nde et 1re sont
+- un ou plusieurs **niveaux** (5e et 4e aujourd'hui ; 3e, 2nde et 1re sont
   marqués « bientôt ») ;
 - un ou plusieurs **thèmes** de chaque niveau (« tout cocher » prend tout le
   niveau). Les automatismes de 5e suivent la **liste officielle**, rangés par
@@ -968,7 +968,16 @@ page derrière reste vide. On y choisit :
   pourcentages), puissances et calcul littéral, repérage, représentation de
   l'espace, transformations, angles, triangles, parallélogrammes et
   polygones, probabilités, proportionnalité — 42 automatismes, plus 10
-  « hors liste officielle » (priorités, conversions, moyenne…) ;
+  « hors liste officielle » (priorités, conversions, moyenne…). Ceux de
+  **4e** suivent la liste « Automatismes » de 4e du programme 2026 :
+  opérations sur les nombres relatifs, nombres rationnels, puissances,
+  racine carrée, calcul littéral et algébrique, transformations (demi-tour),
+  repérage, représentation de l'espace (solides, volumes, aires),
+  parallélogrammes et translations, triangles (droites remarquables),
+  statistiques, proportionnalité — 36 automatismes, plus 7 « hors liste
+  officielle » pris dans les objectifs de l'année (relatifs × et ÷,
+  inverse, produit de fractions, développer, Pythagore, médiane et
+  étendue, programme de calcul), et 67 notions de cours ;
 - combien de questions de chaque sorte, avec − et + : par défaut **5
   questions, 2 questions de cours** (une définition, une propriété, le
   vocabulaire : « La médiatrice d'un segment est la droite… ») **puis 3
