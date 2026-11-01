@@ -226,6 +226,18 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
       const base = nomSur(f.nom)
       /** Le chemin noté dans la fiche pour un fichier rangé à `chemin` sous `d` */
       const cheminNote = (chemin: string[]) => [...prefixe, ...chemin.map(n => nomSur(n, { repli: 'Dossier' }))]
+      if (deja && o.nouveauLieu) {
+        // Le dossier choisi à l'instant : son fichier y est-il déjà, à
+        // n'importe quelle profondeur, sous n'importe quel nom (le classeur
+        // renommé depuis) ? La fiche apprend alors son chemin exact, pour
+        // qu'il suive ensuite à sa place (bibliotheque.suivreLeNom)
+        const ou = typeof d.resolve === 'function' ? await d.resolve(deja).catch(() => null) : null
+        if (ou?.length) {
+          const chemin = cheminNote(ou.slice(0, -1))
+          if (JSON.stringify(f.cle?.chemin) !== JSON.stringify(chemin)) await registre.modifierClasseur(f.id, x => { if (x.cle) x.cle = { ...x.cle, chemin } }).catch(() => {})
+          bilan.relies.push(f.nom); continue
+        }
+      }
       if (deja) {
         // Il peut être dans le dossier de son chapitre, ou à plat (le rangement d'avant)
         let lie = false
@@ -246,12 +258,9 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
         // professeur dans « Un autre dossier de l'ordinateur… », reste celui du
         // classeur.
         const quitte = o.ancien ? await dansLeDossier(o.ancien, deja) : false
-        if (o.nouveauLieu) {
-          // Le dossier choisi à l'instant : le fichier y est-il vraiment (sous
-          // un autre nom, le classeur renommé depuis) ? Le nom d'un chemin ne
-          // suffit pas : un autre dossier peut porter le même nom
-          if (await dansLeDossier(d, deja)) { bilan.relies.push(f.nom); continue }
-        } else {
+        // (Le dossier choisi à l'instant : le fichier n'y est pas, vu plus
+        // haut ; le nom d'un chemin ne suffit pas, un autre dossier peut porter le même)
+        if (!o.nouveauLieu) {
           const r = rangeParLOutil(f.cle?.chemin, prefixe)
           // Rangé ici, sous un autre nom (le classeur renommé depuis) : il est à
           // sa place, et la clé le tient à jour

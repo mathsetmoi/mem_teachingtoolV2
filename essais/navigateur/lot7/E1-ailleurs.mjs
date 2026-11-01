@@ -424,6 +424,43 @@ try {
   ok(Object.keys(contenu['Aug'] ?? {}).join('|') === 'Proba.memc' && /Son classeur y est déjà/.test(t13 ?? ''),
     'C13h) Au même endroit : rien en double, « Son classeur y est déjà, tenu à jour tout seul »', { contenu, t13 })
   await toasts(p)
+  // (Ajouté 2026-11-01) « Mettre à jour » d'un dossier dont un classeur a son
+  // fichier ailleurs (« Bea » relié maintenant à « PC4 », « Suites.memc » resté
+  // dans « PC2 › Bea (2) ») : le classeur est écrit dans le dossier, l'ancien intact
+  const avantPC2 = await p.evaluate(() => window.__lister('PC2'))
+  await p.evaluate(async d => {
+    const em = await import('/src/classeurs/emplacements.ts')
+    const e = (await em.emplacements(window.__registre)).find(x => x.dossier === d && x.genre === 'ordinateur')
+    await window.__registre.ecrireReglage(em.reglagePoignee(e.id), await window.__racineOpfs('PC4'))
+    await window.__ailleurs.mettreAJour(e, (await window.__registre.dossiers()).find(x => x.id === d))
+  }, dBea)
+  await attendreToast(p, /» est relié au dossier « PC4 »/, 20000)
+  contenu = await p.evaluate(() => window.__lister('PC4'))
+  const apresPC2 = await p.evaluate(() => window.__lister('PC2'))
+  const t13i = await p.evaluate(() => (window.__toasts || []).filter(t => /relié au dossier « PC4 »/.test(t)).pop())
+  ok(contenu['Suites.memc'] > 0 && JSON.stringify(apresPC2) === JSON.stringify(avantPC2) && !/ailleurs/.test(t13i ?? ''),
+    'C13i) « Mettre à jour » : « Suites », dont le fichier était ailleurs, est écrit dans « PC4 » ; « PC2 › Bea (2) » intact', { contenu, apresPC2, t13i })
+  await toasts(p)
+  // (Ajouté 2026-11-01) Un classeur renommé avant (son fichier garde l'ancien
+  // nom, dans le dossier) : « Mettre à jour » le renomme, sans doublon
+  const majAug = () => p.evaluate(async d => {
+    const em = await import('/src/classeurs/emplacements.ts')
+    const e = (await em.emplacements(window.__registre)).find(x => x.dossier === d && x.genre === 'ordinateur')
+    await window.__ailleurs.mettreAJour(e, (await window.__registre.dossiers()).find(x => x.id === d))
+  }, dAug)
+  const [idDix] = await p.evaluate(d => window.__creer([{ nom: 'Dixsept', dossier: d }]), dAug)
+  await majAug()
+  await p.waitForFunction(() => window.__lister('PC3').then(c => c['Aug']?.['Dixsept.memc'] > 0), null, { timeout: 20000 }).catch(() => {})
+  await p.evaluate(id => window.__registre.modifierClasseur(id, x => { x.nom = 'Trigonometrie' }), idDix)
+  await toasts(p)
+  await majAug()
+  await p.waitForFunction(() => window.__lister('PC3').then(c => c['Aug']?.['Trigonometrie.memc'] > 0), null, { timeout: 20000 }).catch(() => {})
+  await p.waitForTimeout(500)
+  contenu = await p.evaluate(() => window.__lister('PC3'))
+  const entT = await p.evaluate(() => window.__entete('PC3/Aug', 'Trigonometrie.memc').catch(() => ({})))
+  ok(Object.keys(contenu['Aug'] ?? {}).sort().join('|') === 'Proba.memc|Trigonometrie.memc' && entT.id === idDix,
+    'C13j) « Dixsept » renommé « Trigonometrie » avant : « Mettre à jour » renomme son fichier « Trigonometrie.memc », sans doublon', { contenu, entT })
+  await toasts(p)
 
   // =====================================================================
   console.log('\n— C12. Emplacements indépendants : le nom d\'un sous-dossier sur l\'ordinateur, et les noms qui suivent')
