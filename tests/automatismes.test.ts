@@ -56,13 +56,46 @@ describe('le tirage d\'un flash', () => {
         expect(q.enonce, a.id).not.toMatch(/…$|:$|^Est-ce |^(Ce tableau|La droite|La figure|La demi-droite)\b.*est-(il|elle) /)
       }
     }
-    for (const c of COURS_5E) expect(c.reponse, c.id).not.toMatch(/^§(Oui|Non|positif|négatif)\b/)
+    for (const c of COURS_5E) for (let k = 0; k < 40; k++) {
+      const q = c.poser()
+      expect(q.reponse, c.id).toMatch(/^§./)
+      expect(q.reponse, c.id).not.toMatch(/^§(Oui|Non|positif|négatif|vrai|faux)\b/i)
+      expect(q.enonce, c.id).not.toMatch(/^(Est-ce|Peut-on) /)
+    }
   })
 
   it('chaque thème de 5e a ses questions de cours', () => {
     const cinq = NIVEAUX.find(n => n.id === '5e')!
     for (const t of themesDe(cinq)) expect(coursDu(t).length, t).toBeGreaterThanOrEqual(2)
     expect(new Set(COURS_5E.map(c => c.id)).size).toBe(COURS_5E.length)
+  })
+
+  it('les questions de cours : 4 notions au moins par thème, et des façons variées de les poser', () => {
+    const cinq = NIVEAUX.find(n => n.id === '5e')!
+    for (const t of themesDe(cinq)) if (t !== 'Hors liste officielle') expect(coursDu(t).length, t).toBeGreaterThanOrEqual(4)
+    let variees = 0
+    for (const c of COURS_5E) {
+      const vus = new Set<string>()
+      for (let k = 0; k < 40; k++) vus.add(c.poser().enonce)
+      if (vus.size > 1) variees++
+    }
+    expect(variees).toBeGreaterThanOrEqual(COURS_5E.length * 0.6)
+  })
+
+  it('la divisibilité : trois diviseurs qui changent, et la bonne liste', () => {
+    const a = AUTOMATISMES_5E.find(x => x.id === 'divisibilite-2-5-10')!
+    const listes = new Set<string>()
+    for (let k = 0; k < 200; k++) {
+      const q = a.generer()
+      const m = /nombres (.*) le nombre \$(\d+)\$/.exec(q.enonce)!
+      const d = [...m[1].matchAll(/\$(\d+)\$/g)].map(x => Number(x[1]))
+      expect(d.length).toBe(3)
+      listes.add(d.join(','))
+      const oui = d.filter(k => Number(m[2]) % k === 0)
+      const dits = [...q.reponse.matchAll(/\$(\d+)\$/g)].map(x => Number(x[1]))
+      expect(dits).toEqual(oui)
+    }
+    expect(listes.size).toBeGreaterThan(3)
   })
 
   it('un thème sans question de cours : un exercice d\'application à la place', () => {

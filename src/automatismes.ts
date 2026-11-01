@@ -67,6 +67,21 @@ const deg = (x: number) => `${nb(x)}°`
 /** Une réponse en mots (avec, au besoin, des $…$) */
 export const mot = (t: string) => '§' + t
 
+/** « Par lesquels des nombres … le nombre N est-il divisible ? » : trois
+ *  diviseurs tirés au hasard dans la liste, et un nombre de 3 ou 4
+ *  chiffres, souvent multiple de l'un d'eux pour que la réponse ne soit
+ *  pas toujours « par aucun ». */
+function divisiblePar(liste: number[]): Question {
+  const d = melange(liste).slice(0, 3).sort((x, y) => x - y)
+  const N = Math.random() < 0.75 ? choix(d) * ent(Math.ceil(101 / 2), 999) : ent(101, 9999)
+  const oui = d.filter(k => N % k === 0)
+  const et = (t: string[]) => t.length < 2 ? t.join('') : `${t.slice(0, -1).join(', ')} et ${t[t.length - 1]}`
+  return {
+    enonce: `Par lesquels des nombres ${et(d.map(k => `$${k}$`))} le nombre $${N}$ est-il divisible ?`,
+    reponse: mot(oui.length ? et(oui.map(k => `par $${k}$`)) : 'par aucun des trois'),
+  }
+}
+
 /** Des réponses fausses, toutes différentes de la bonne et entre elles (trois au plus) */
 function fausses(bonne: string, candidates: string[], secours?: () => string): string[] {
   const r: string[] = []
@@ -97,14 +112,8 @@ function empilementAuHasard(): number[][] {
 export const AUTOMATISMES_5E: Automatisme[] = [
   // ================= OPÉRATIONS =================
   {
-    id: 'divisibilite-2-5-10', theme: 'Opérations', titre: 'Divisibilité par 2, 5 et 10',
-    generer() {
-      const LOT = ['par $2$ seulement', 'par $5$ seulement', 'par $2$, par $5$ et par $10$', 'par aucun des trois']
-      const fin = choix([0, 5, 2, 4, 6, 8, 1, 3, 7, 9])
-      const N = ent(10, 999) * 10 + fin
-      const bonne = fin === 0 ? LOT[2] : fin === 5 ? LOT[1] : fin % 2 === 0 ? LOT[0] : LOT[3]
-      return { enonce: `Par lesquels des nombres $2$, $5$ et $10$ le nombre $${N}$ est-il divisible ?`, reponse: mot(bonne), faux: LOT.filter(x => x !== bonne).map(mot) }
-    },
+    id: 'divisibilite-2-5-10', theme: 'Opérations', titre: 'Divisibilité par 2, 3, 5, 9 et 10',
+    generer() { return divisiblePar([2, 3, 5, 9, 10]) },
   },
   {
     id: 'division-euclidienne', theme: 'Opérations', titre: 'Quotient et reste d’une division euclidienne',
@@ -679,19 +688,8 @@ export const AUTOMATISMES_5E: Automatisme[] = [
     },
   },
   {
-    id: 'divisibilite', theme: 'Hors liste officielle', titre: 'Divisibilité par 2, 3, 5 et 9',
-    generer() {
-      // Un nombre divisible par exactement un de 2, 3, 5, 9
-      const cibles = [2, 3, 5, 9]
-      for (;;) {
-        const N = ent(101, 999)
-        const ok = cibles.filter(k => N % k === 0 && !(k === 3 && N % 9 === 0))
-        const vrais = cibles.filter(k => N % k === 0)
-        if (vrais.length === 1 && ok.length === 1) {
-          return { enonce: `Par lequel des nombres $2$, $3$, $5$ et $9$ le nombre $${N}$ est-il divisible ?`, reponse: nb(ok[0]), faux: cibles.filter(k => k !== ok[0]).map(nb) }
-        }
-      }
-    },
+    id: 'divisibilite', theme: 'Hors liste officielle', titre: 'Divisibilité par 2, 3, 4, 5, 9 et 10',
+    generer() { return divisiblePar([2, 3, 4, 5, 9, 10]) },
   },
   // ---------- Calcul littéral ----------,
   {
@@ -776,102 +774,148 @@ export const AUTOMATISMES_5E: Automatisme[] = [
 // =============================================================
 // LES QUESTIONS À TROU
 // Une égalité ou une phrase à compléter : l'élève écrit le nombre qui
-// manque. Les automatismes dont la question est déjà « Compléter… »
-// la reprennent telle quelle.
+// manque. Les pointillés changent de place d'un tirage à l'autre
+// (24 = 3 × …, 24 = … × 8, … = 3 × 8). Les automatismes dont la
+// question est déjà « Compléter… » la reprennent telle quelle.
 // =============================================================
 const aTrou = (enonce: string, reponse: string): Question => ({ enonce, reponse, faux: [] })
 const mille = (k: number) => k === 1000 ? '1\\,000' : String(k)
 const terme = (k: number) => k === 1 ? 'x' : `${k}x`
 const memeQuestion = (id: string) => () => AUTOMATISMES_5E.find(a => a.id === id)!.generer()
+/** Une question à trou dont les pointillés changent de place : l'une
+ *  des écritures, tirée au hasard, après la consigne (« Compléter : »
+ *  par défaut) */
+const unTrou = (consigne: string, ecritures: [string, string][]): Question => {
+  const [e, r] = choix(ecritures)
+  return aTrou(`${consigne || 'Compléter :'} ${e}`, r)
+}
 
 const TROUS: Record<string, () => Question> = {
   'division-euclidienne': () => {
-    const b = ent(3, 9), q = ent(3, 15), r = ent(1, b - 1)
-    return aTrou(`Compléter : $${b * q + r} = ${b} \\times \\ldots + ${r}$`, nb(q))
+    const b = ent(3, 9), q = ent(3, 15), r = ent(1, b - 1), a = b * q + r
+    return unTrou('', [
+      [`$${a} = ${b} \\times \\ldots + ${r}$`, nb(q)],
+      [`$${a} = \\ldots \\times ${q} + ${r}$`, nb(b)],
+      [`$${a} = ${b} \\times ${q} + \\ldots$`, nb(r)],
+      [`$\\ldots = ${b} \\times ${q} + ${r}$`, nb(a)],
+    ])
   },
-  'factoriser-tables': () => { const a = ent(2, 9), b = ent(2, 9); return aTrou(`Compléter : $${a * b} = ${a} \\times \\ldots$`, nb(b)) },
+  'factoriser-tables': () => {
+    const a = ent(2, 9), b = ent(2, 9)
+    return unTrou('', [[`$${a * b} = ${a} \\times \\ldots$`, nb(b)], [`$${a * b} = \\ldots \\times ${b}$`, nb(a)], [`$\\ldots = ${a} \\times ${b}$`, nb(a * b)]])
+  },
   'produit-derive': () => {
     const a = ent(2, 9), b = ent(2, 9), e1 = choix([-1, 0, 1, 2]), e2 = choix([-2, -1, 1])
-    return aTrou(`Compléter : $${nb(a * 10 ** e1)} \\times \\ldots = ${nb(a * b * 10 ** (e1 + e2))}$`, nb(b * 10 ** e2))
+    const x = nb(a * 10 ** e1), y = nb(b * 10 ** e2), v = nb(a * b * 10 ** (e1 + e2))
+    return unTrou('', [[`$${x} \\times \\ldots = ${v}$`, y], [`$\\ldots \\times ${y} = ${v}$`, x], [`$${x} \\times ${y} = \\ldots$`, v]])
   },
   'decimal-fois-10': () => {
     const x = ent(11, 999) / choix([10, 100]), k = choix([10, 100, 1000])
-    return aTrou(`Compléter : $${nb(x)} \\times \\ldots = ${nb(x * k)}$`, mille(k))
+    return unTrou('', [[`$${nb(x)} \\times \\ldots = ${nb(x * k)}$`, mille(k)], [`$\\ldots \\times ${mille(k)} = ${nb(x * k)}$`, nb(x)]])
   },
   'decimal-divise-10': () => {
     const x = choix([ent(11, 999) / 10, ent(2, 9999)]), k = choix([10, 100, 1000])
-    return aTrou(`Compléter : $${nb(x)} \\div \\ldots = ${nb(x / k)}$`, mille(k))
+    return unTrou('', [[`$${nb(x)} \\div \\ldots = ${nb(x / k)}$`, mille(k)], [`$\\ldots \\div ${mille(k)} = ${nb(x / k)}$`, nb(x)]])
   },
   'decimaux-addition': () => {
-    const a = ent(11, 99) / 10, b = ent(101, 999) / 100
-    return aTrou(`Compléter : $${nb(a)} + \\ldots = ${nb(arrondi(a + b))}$`, nb(b))
+    const a = ent(11, 99) / 10, b = ent(101, 999) / 100, s = nb(arrondi(a + b))
+    return unTrou('', [[`$${nb(a)} + \\ldots = ${s}$`, nb(b)], [`$\\ldots + ${nb(b)} = ${s}$`, nb(a)]])
   },
   'decimaux-soustraction': () => {
     let a: number, b: number
     do { a = ent(21, 199) / 10; b = ent(101, 999) / 100 } while (b >= a)
-    return aTrou(`Compléter : $${nb(a)} - \\ldots = ${nb(arrondi(a - b))}$`, nb(b))
+    const d = nb(arrondi(a - b))
+    return unTrou('', [[`$${nb(a)} - \\ldots = ${d}$`, nb(b)], [`$\\ldots - ${nb(b)} = ${d}$`, nb(a)]])
   },
-  'tables': () => { const a = ent(2, 10), b = ent(2, 10); return aTrou(`Compléter : $${a} \\times \\ldots = ${a * b}$`, nb(b)) },
+  'tables': () => {
+    const a = ent(2, 10), b = ent(2, 10)
+    return unTrou('', [[`$${a} \\times \\ldots = ${a * b}$`, nb(b)], [`$\\ldots \\times ${b} = ${a * b}$`, nb(a)], [`$${a * b} = ${a} \\times \\ldots$`, nb(b)]])
+  },
   'relatifs-addsub': () => {
     const a = ent(1, 15) * choix([-1, 1]), b = ent(1, 15) * choix([-1, 1])
-    return aTrou(`Compléter : $${rel(a)} + \\ldots = ${nb(a + b)}$`, nb(b))
+    return unTrou('', [[`$${rel(a)} + \\ldots = ${nb(a + b)}$`, nb(b)], [`$\\ldots + ${rel(b)} = ${nb(a + b)}$`, nb(a)], [`$${rel(a)} - \\ldots = ${nb(a - b)}$`, nb(b)]])
   },
   'relatifs-produit': () => {
     const a = ent(2, 10) * choix([-1, 1]), b = ent(2, 10) * choix([-1, 1])
-    return aTrou(`Compléter : $${rel(a)} \\times \\ldots = ${nb(a * b)}$`, nb(b))
+    return unTrou('', [[`$${rel(a)} \\times \\ldots = ${nb(a * b)}$`, nb(b)], [`$\\ldots \\times ${rel(b)} = ${nb(a * b)}$`, nb(a)]])
   },
   'relatifs-trou': memeQuestion('relatifs-trou'),
   'fraction-decimal': () => {
     const [n, d] = choix([[1, 2], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5], [7, 10], [3, 2], [5, 4], [7, 2], [9, 10], [3, 10]])
-    return aTrou(`Compléter : $\\dfrac{\\ldots}{${d}} = ${nb(n / d)}$`, nb(n))
+    return unTrou('', [[`$\\dfrac{\\ldots}{${d}} = ${nb(n / d)}$`, nb(n)], [`$\\dfrac{${n}}{\\ldots} = ${nb(n / d)}$`, nb(d)]])
   },
-  'quotient-trou': memeQuestion('quotient-trou'),
+  'quotient-trou': () => {
+    let a: number, b: number
+    do { a = ent(3, 9); b = ent(2, 11) } while (b === a || pgcd(a, b) !== 1)
+    return unTrou('', [[`$${a} \\times \\ldots = ${b}$`, frac(b, a)], [`$\\ldots \\times ${a} = ${b}$`, frac(b, a)], [`$${a} \\times ${frac(b, a)} = \\ldots$`, nb(b)]])
+  },
   'fraction-egales': () => {
     let n: number, d: number
     do { n = ent(1, 9); d = ent(2, 10) } while (pgcd(n, d) !== 1)
     const k = ent(2, 8)
-    return aTrou(`Compléter : $${frac(n, d)} = \\dfrac{\\ldots}{${d * k}}$`, nb(n * k))
+    return unTrou('', [[`$${frac(n, d)} = \\dfrac{\\ldots}{${d * k}}$`, nb(n * k)], [`$${frac(n, d)} = \\dfrac{${n * k}}{\\ldots}$`, nb(d * k)], [`$\\dfrac{\\ldots}{${d}} = ${frac(n * k, d * k)}$`, nb(n)]])
   },
   'entier-plus-fraction': () => {
     const d = ent(2, 9), q = ent(1, 6), r = ent(1, d - 1)
-    return aTrou(`Compléter : $${frac(q * d + r, d)} = ${q} + \\dfrac{\\ldots}{${d}}$`, nb(r))
+    return unTrou('', [[`$${frac(q * d + r, d)} = ${q} + \\dfrac{\\ldots}{${d}}$`, nb(r)], [`$${frac(q * d + r, d)} = \\ldots + ${frac(r, d)}$`, nb(q)], [`$\\dfrac{\\ldots}{${d}} = ${q} + ${frac(r, d)}$`, nb(q * d + r)]])
   },
   'fraction-quantite': () => {
     let n: number, d: number
     do { n = ent(1, 7); d = ent(2, 10) } while (n >= d || pgcd(n, d) !== 1)
-    const N = d * ent(2, 12)
-    return aTrou(`Compléter : $\\dfrac{\\ldots}{${d}}$ de $${N}$, c'est $${nb(N / d * n)}$.`, nb(n))
+    const N = d * ent(2, 12), v = nb(N / d * n)
+    return unTrou('', [
+      [`$\\dfrac{\\ldots}{${d}}$ de $${N}$, c'est $${v}$.`, nb(n)],
+      [`$${frac(n, d)}$ de $\\ldots$, c'est $${v}$.`, nb(N)],
+      [`$${frac(n, d)}$ de $${N}$, c'est $\\ldots$`, v],
+    ])
   },
   'pourcentages-1-10-50': () => {
-    const p = choix([1, 10, 50]), N = choix([200, 300, 400, 500, 600, 800, 1000, 1200])
-    return aTrou(`Compléter : $\\ldots\\,\\%$ de $${N}$, c'est $${nb(N * p / 100)}$.`, nb(p))
+    const p = choix([1, 10, 50]), N = choix([200, 300, 400, 500, 600, 800, 1000, 1200]), v = nb(N * p / 100)
+    return unTrou('', [[`$\\ldots\\,\\%$ de $${N}$, c'est $${v}$.`, nb(p)], [`$${p}\\,\\%$ de $\\ldots$, c'est $${v}$.`, nb(N)], [`$${p}\\,\\%$ de $${N}$, c'est $\\ldots$`, v]])
   },
   'ecritures-nombre': () => {
     const [n, d] = choix([[1, 2], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5], [1, 10], [3, 10], [7, 10], [9, 10], [3, 20]])
-    return aTrou(`Compléter : $${nb(n / d)} = \\ldots\\,\\%$`, nb(arrondi(n / d * 100)))
+    const pc = nb(arrondi(n / d * 100))
+    return unTrou('', [[`$${nb(n / d)} = \\ldots\\,\\%$`, pc], [`$\\ldots = ${pc}\\,\\%$ (écriture décimale)`, nb(n / d)], [`$${frac(n, d)} = \\ldots\\,\\%$`, pc]])
   },
-  'carres': () => { const n = ent(2, 15); return aTrou(`Compléter avec un nombre positif : $\\ldots^2 = ${n * n}$`, nb(n)) },
+  'carres': () => {
+    const n = ent(2, 15)
+    return unTrou('', [[`$\\ldots^2 = ${n * n}$ (avec un nombre positif)`, nb(n)], [`$${n}^2 = \\ldots$`, nb(n * n)], [`$${n} \\times \\ldots = ${n * n}$`, nb(n)]])
+  },
   'angles-triangle': () => {
-    const a = ent(25, 95), b = ent(20, 150 - a)
-    return aTrou(`Dans un triangle, compléter : $${a}° + ${b}° + \\ldots = 180°$`, deg(180 - a - b))
+    const a = ent(25, 95), b = ent(20, 150 - a), c = 180 - a - b
+    return unTrou('Dans un triangle, compléter :', [[`$${a}° + ${b}° + \\ldots = 180°$`, deg(c)], [`$${a}° + \\ldots + ${c}° = 180°$`, deg(b)], [`$\\ldots + ${b}° + ${c}° = 180°$`, deg(a)]])
   },
   'proportionnalite-procedure': () => {
     const k = choix([1.5, 2, 2.5, 3, 4, 5]), a = ent(2, 5)
     let b = ent(2, 9); while (b === a) b = ent(2, 9)
-    return aTrou(`Compléter ce tableau de proportionnalité : $${tableau([nb(a), nb(b)], [nb(a * k), '\\ldots'])}$`, nb(b * k))
+    // Le trou dans l'une des quatre cases
+    const cases = [nb(a), nb(b), nb(a * k), nb(b * k)], i = ent(0, 3), rep = cases[i]
+    cases[i] = '\\ldots'
+    return aTrou(`Compléter ce tableau de proportionnalité : $${tableau(cases.slice(0, 2), cases.slice(2))}$`, rep)
   },
   'priorites': () => {
     const a = ent(2, 12), b = ent(2, 9), c = ent(2, 9)
-    return aTrou(`Compléter : $${a} + ${b} \\times \\ldots = ${a + b * c}$`, nb(c))
+    return unTrou('', [[`$${a} + ${b} \\times \\ldots = ${a + b * c}$`, nb(c)], [`$${a} + \\ldots \\times ${c} = ${a + b * c}$`, nb(b)], [`$\\ldots + ${b} \\times ${c} = ${a + b * c}$`, nb(a)]])
   },
   'litteral-reduire': () => {
     const a = ent(2, 9), b = ent(2, 9)
-    return aTrou(`Compléter : $${terme(a)} + ${terme(b)} = \\ldots x$`, nb(a + b))
+    return unTrou('', [[`$${terme(a)} + ${terme(b)} = \\ldots x$`, nb(a + b)], [`$${terme(a)} + \\ldots x = ${terme(a + b)}$`, nb(b)], [`$\\ldots x + ${terme(b)} = ${terme(a + b)}$`, nb(a)]])
   },
-  'conversions': memeQuestion('conversions'),
+  'conversions': () => {
+    const [de, vers, k] = choix<[string, string, number]>([
+      ['m', 'cm', 100], ['cm', 'm', 0.01], ['km', 'm', 1000], ['m', 'km', 0.001], ['mm', 'cm', 0.1], ['cm', 'mm', 10],
+      ['kg', 'g', 1000], ['g', 'kg', 0.001], ['dm', 'cm', 10], ['m', 'mm', 1000]])
+    const x = choix([ent(2, 95) / 10, ent(1, 99), ent(101, 999) / 100]), v = x * k
+    return unTrou('Convertir :', [[`$${unite(nb(x), de)} = \\ldots\\text{ ${vers}}$`, unite(nb(v), vers)], [`$\\ldots\\text{ ${de}} = ${unite(nb(v), vers)}$`, unite(nb(x), de)]])
+  },
   'aires-perimetres': () => {
     const a = ent(3, 12), b = ent(2, 12)
-    return aTrou(`Un rectangle de longueur $${a}$ cm et de largeur $\\ldots$ cm a une aire de $${a * b}\\text{ cm}^2$.`, unite(nb(b), 'cm'))
+    return unTrou('', [
+      [`Un rectangle de longueur $${a}$ cm et de largeur $\\ldots$ cm a une aire de $${a * b}\\text{ cm}^2$.`, unite(nb(b), 'cm')],
+      [`Un rectangle de largeur $${b}$ cm et de longueur $\\ldots$ cm a un périmètre de $${2 * (a + b)}$ cm.`, unite(nb(a), 'cm')],
+      [`Un carré de côté $\\ldots$ cm a un périmètre de $${4 * a}$ cm.`, unite(nb(a), 'cm')],
+    ])
   },
 }
 for (const a of AUTOMATISMES_5E) if (TROUS[a.id]) a.trou = TROUS[a.id]
@@ -879,78 +923,320 @@ for (const a of AUTOMATISMES_5E) if (TROUS[a.id]) a.trou = TROUS[a.id]
 // =============================================================
 // LES QUESTIONS DE COURS (5e)
 // Une définition, une propriété, le vocabulaire : on les apprend, on
-// ne les calcule pas. La réponse attendue est courte ; la correction
-// l'écrit telle quelle. Aucune ne se réussit avec une chance sur deux.
-// Les utiliser sur un exemple, c'est un exercice d'application.
+// ne les calcule pas. Chaque NOTION se pose de plusieurs façons (une
+// question, une phrase à compléter…), tirées au hasard, et beaucoup
+// prennent des nombres au hasard. La réponse attendue est courte ; la
+// correction l'écrit telle quelle. Aucune ne se réussit avec une
+// chance sur deux. Les utiliser sur un exemple, c'est un exercice
+// d'application.
 // =============================================================
-export interface QuestionCours { id: string; theme: string; enonce: string; reponse: string }
-const cours = (theme: string, liste: [string, string][]): QuestionCours[] =>
-  liste.map(([enonce, reponse], i) => ({ id: `cours-${theme}-${i + 1}`, theme, enonce, reponse: mot(reponse) }))
+export interface QuestionCours { id: string; theme: string; titre: string; poser: () => Question }
+/** Une façon de poser la notion : son énoncé et la réponse attendue (en mots, avec $…$) */
+type Facon = () => [string, string]
+const fixe = (enonce: string, reponse: string): Facon => () => [enonce, reponse]
+const notions = (theme: string, liste: [string, ...Facon[]][]): QuestionCours[] =>
+  liste.map(([titre, ...facons], i) => ({
+    id: `cours-${theme}-${i + 1}`, theme, titre,
+    poser: () => { const [enonce, reponse] = choix(facons)(); return { enonce, reponse: mot(reponse) } },
+  }))
+const CHIFFRES_PAIRS = '$0$, $2$, $4$, $6$ ou $8$'
 
 export const COURS_5E: QuestionCours[] = [
-  ...cours('Opérations', [
-    ['Un nombre entier est divisible par $2$ quand…', 'son chiffre des unités est $0$, $2$, $4$, $6$ ou $8$'],
-    ['Un nombre entier est divisible par $5$ quand…', 'son chiffre des unités est $0$ ou $5$'],
-    ['Dans la division euclidienne de $a$ par $b$, le reste est toujours…', 'plus petit que $b$'],
+  ...notions('Opérations', [
+    ['Divisibilité par 2',
+      fixe('Un nombre entier est divisible par $2$ quand…', `son chiffre des unités est ${CHIFFRES_PAIRS}`),
+      fixe('Quel est le critère de divisibilité par $2$ ?', `son chiffre des unités est ${CHIFFRES_PAIRS}`),
+      fixe('Compléter : un nombre entier est divisible par $2$ si son chiffre des unités est…', CHIFFRES_PAIRS)],
+    ['Divisibilité par 5',
+      fixe('Un nombre entier est divisible par $5$ quand…', 'son chiffre des unités est $0$ ou $5$'),
+      fixe('Quel est le critère de divisibilité par $5$ ?', 'son chiffre des unités est $0$ ou $5$'),
+      fixe('Compléter : un nombre entier est divisible par $5$ si son chiffre des unités est…', '$0$ ou $5$')],
+    ['Divisibilité par 10',
+      fixe('Un nombre entier est divisible par $10$ quand…', 'son chiffre des unités est $0$'),
+      fixe('Quel est le critère de divisibilité par $10$ ?', 'son chiffre des unités est $0$')],
+    ['Divisibilité par 3 et par 9', () => {
+      const k = choix([3, 9])
+      return choix<[string, string]>([[`Un nombre entier est divisible par $${k}$ quand…`, `la somme de ses chiffres est divisible par $${k}$`],
+        [`Quel est le critère de divisibilité par $${k}$ ?`, `la somme de ses chiffres est divisible par $${k}$`]])
+    }],
+    ['Le vocabulaire de la division euclidienne', () => {
+      const b = ent(3, 9), q = ent(4, 15), r = ent(1, b - 1), a = b * q + r
+      const [x, nom] = choix<[number, string]>([[a, 'le dividende'], [b, 'le diviseur'], [q, 'le quotient'], [r, 'le reste']])
+      return [`Dans la division euclidienne de $${a}$ par $${b}$, on a $${a} = ${b} \\times ${q} + ${r}$. Comment s'appelle le nombre $${x}$ ?`, nom]
+    }],
+    ['Le reste d\'une division euclidienne',
+      fixe('Dans la division euclidienne de $a$ par $b$, le reste est toujours…', 'plus petit que $b$'),
+      () => { const b = ent(3, 12); return [`Dans une division euclidienne par $${b}$, quel est le plus grand reste possible ?`, `$${b - 1}$`] }],
+    ['Multiple et diviseur', () => {
+      const a = ent(2, 9), b = ent(2, 9), n = a * b
+      return choix<[string, string]>([[`On a $${n} = ${a} \\times ${b}$. Compléter : $${n}$ est un … de $${a}$.`, 'multiple'],
+        [`On a $${n} = ${a} \\times ${b}$. Compléter : $${a}$ est un … de $${n}$.`, 'diviseur']])
+    }],
+    ['Multiplier par 0,1 ; 0,5 ; 0,01', () => {
+      const [k, r] = choix<[string, string]>([['0{,}1', 'diviser par $10$'], ['0{,}01', 'diviser par $100$'], ['0{,}5', 'diviser par $2$ (prendre la moitié)'], ['0{,}25', 'diviser par $4$ (prendre le quart)']])
+      return [`Multiplier un nombre par $${k}$ revient à…`, r]
+    }],
+    ['Diviser par 10, 100, 1 000', () => {
+      const [k, n] = choix<[string, string]>([['10', 'un rang'], ['100', 'deux rangs'], ['1\\,000', 'trois rangs']])
+      return [`Quand on divise un nombre par $${k}$, de combien de rangs chaque chiffre se décale-t-il, et dans quel sens ?`, `de ${n} vers la droite`]
+    }],
   ]),
-  ...cours('Nombres relatifs', [
-    ['Quelle est la somme de deux nombres opposés ?', '$0$'],
-    ['Soustraire un nombre revient à…', 'ajouter son opposé'],
-    ['Quelle est la règle des signes pour le produit de deux nombres relatifs ?', 'même signe : positif ; signes contraires : négatif'],
+  ...notions('Nombres relatifs', [
+    ['Deux nombres opposés',
+      fixe('Quelle est la somme de deux nombres opposés ?', '$0$'),
+      fixe('Comment appelle-t-on deux nombres dont la somme est égale à $0$ ?', 'des nombres opposés'),
+      () => { const a = ent(2, 15); return [`Quel est l'opposé de $-${a}$ ?`, `$${a}$`] }],
+    ['Soustraire un relatif',
+      fixe('Soustraire un nombre revient à…', 'ajouter son opposé'),
+      () => { const a = ent(2, 12); return choix<[string, string]>([[`Soustraire $(-${a})$ revient à…`, `ajouter $${a}$`], [`Soustraire $${a}$ revient à…`, `ajouter $-${a}$`]]) }],
+    ['La règle des signes d\'un produit',
+      fixe('Quelle est la règle des signes pour le produit de deux nombres relatifs ?', 'même signe : positif ; signes contraires : négatif'),
+      () => { const n = choix([3, 4, 5]); return [`Comment trouve-t-on le signe d'un produit de ${n} nombres relatifs ?`, 'on compte les facteurs négatifs : en nombre pair, positif ; en nombre impair, négatif'] }],
+    ['La distance à zéro',
+      () => { const a = ent(2, 99) / choix([1, 10]); return [`Quelle est la distance à zéro de $${nb(-a)}$ ?`, `$${nb(a)}$`] },
+      fixe('Un nombre relatif est formé d\'un signe et…', 'd\'une distance à zéro')],
+    ['Comparer deux nombres négatifs',
+      fixe('Comment compare-t-on deux nombres négatifs ?', 'le plus petit est celui qui a la plus grande distance à zéro'),
+      fixe('Compléter : de deux nombres négatifs, le plus petit est celui qui a…', 'la plus grande distance à zéro')],
+    ['Additionner deux relatifs de signes contraires',
+      fixe('Comment additionne-t-on deux nombres de signes contraires ?', 'on soustrait les distances à zéro ; le signe est celui du nombre le plus loin de zéro'),
+      fixe('Comment additionne-t-on deux nombres de même signe ?', 'on ajoute les distances à zéro et on garde le signe')],
   ]),
-  ...cours('Nombres rationnels', [
-    ['Le quotient de $a$ par $b$ est le nombre qui, multiplié par $b$, donne…', '$a$'],
-    ['On obtient une fraction égale en multipliant le numérateur et le dénominateur…', 'par un même nombre non nul'],
-    ['Prendre $10\\,\\%$ d\'un nombre revient à…', 'le diviser par $10$'],
-    ['Pour additionner deux fractions de même dénominateur…', 'on additionne les numérateurs et on garde le dénominateur'],
+  ...notions('Nombres rationnels', [
+    ['Le quotient', () => {
+      let a: number, b: number
+      do { a = ent(1, 9); b = ent(2, 11) } while (a === b)
+      return choix<[string, string]>([[`Le quotient de $${a}$ par $${b}$ est le nombre qui, multiplié par $${b}$, donne…`, `$${a}$`],
+        [`Comment s'écrit le quotient de $${a}$ par $${b}$ sous forme de fraction ?`, `$${frac(a, b)}$`],
+        [`Quel nombre, multiplié par $${b}$, donne $${a}$ ? (réponse en fraction)`, `$${frac(a, b)}$`]])
+    }],
+    ['Les fractions égales',
+      fixe('On obtient une fraction égale en multipliant le numérateur et le dénominateur…', 'par un même nombre non nul'),
+      () => { const n = ent(1, 6), d = n + ent(1, 6); return [`Pour obtenir une fraction égale à $${frac(n, d)}$, que peut-on faire à son numérateur et à son dénominateur ?`, 'les multiplier (ou les diviser) par un même nombre non nul'] }],
+    ['Simplifier une fraction',
+      fixe('Simplifier une fraction, c\'est…', 'diviser son numérateur et son dénominateur par un même nombre'),
+      fixe('Quand dit-on qu\'une fraction est irréductible ?', 'quand on ne peut plus la simplifier')],
+    ['Additionner des fractions',
+      fixe('Pour additionner deux fractions de même dénominateur…', 'on additionne les numérateurs et on garde le dénominateur'),
+      fixe('Pour additionner deux fractions de dénominateurs différents, que faut-il faire d\'abord ?', 'les écrire avec le même dénominateur')],
+    ['Ce que signifie un pourcentage', () => {
+      const p = choix([5, 12, 25, 30, 40, 75, 85])
+      return [`Que signifie « $${p}\\,\\%$ » ?`, `$${p}$ sur $100$ (soit $${frac(p, 100)}$)`]
+    }],
+    ['Les pourcentages simples', () => {
+      const [p, r] = choix<[string, string]>([['10', 'diviser par $10$'], ['50', 'prendre la moitié'], ['25', 'prendre le quart'], ['1', 'diviser par $100$'], ['100', 'prendre le tout']])
+      return [`Prendre $${p}\\,\\%$ d'un nombre revient à…`, r]
+    }],
+    ['Prendre une fraction d\'un nombre', () => {
+      const d = ent(2, 8), n = ent(1, d - 1), N = d * ent(2, 9)
+      return [`Prendre $${frac(n, d)}$ de $${N}$, c'est calculer…`, `$${frac(n, d)} \\times ${N}$ (ou $${N} \\div ${d} \\times ${n}$)`]
+    }],
+    ['Les écritures décimales à connaître', () => {
+      const [n, d, v] = choix<[number, number, string]>([[1, 2, '0{,}5'], [1, 4, '0{,}25'], [3, 4, '0{,}75'], [1, 5, '0{,}2'], [1, 10, '0{,}1'], [1, 100, '0{,}01'], [3, 2, '1{,}5']])
+      return choix<[string, string]>([[`Quelle est l'écriture décimale de $${frac(n, d)}$ ?`, `$${v}$`], [`Quelle fraction est égale à $${v}$ ?`, `$${frac(n, d)}$`]])
+    }],
+    ['Numérateur et dénominateur',
+      () => { const d = ent(3, 12), n = ent(1, d - 1); return [`On mange $${frac(n, d)}$ d'une tarte. Que représente le nombre $${d}$ ?`, `le nombre de parts égales de la tarte`] }],
   ]),
-  ...cours('Puissances et calcul littéral', [
-    ['Que signifie $7^2$ ?', '$7 \\times 7$'],
-    ['Dans l\'expression $3x$, quelle opération est sous-entendue ?', 'une multiplication ($3 \\times x$)'],
+  ...notions('Puissances et calcul littéral', [
+    ['Le carré d\'un nombre', () => { const n = ent(2, 12); return choix<[string, string]>([[`Que signifie $${n}^2$ ?`, `$${n} \\times ${n}$`], [`Comment écrit-on $${n} \\times ${n}$ plus simplement ?`, `$${n}^2$`]]) }],
+    ['Le cube d\'un nombre', () => { const n = ent(2, 9); return choix<[string, string]>([[`Que signifie $${n}^3$ ?`, `$${n} \\times ${n} \\times ${n}$`], [`Comment écrit-on $${n} \\times ${n} \\times ${n}$ plus simplement ?`, `$${n}^3$`]]) }],
+    ['Le signe × sous-entendu', () => {
+      const k = ent(2, 9), x = choix(['x', 'a', 'y', 'n'])
+      return choix<[string, string]>([[`Dans l'expression $${k}${x}$, quelle opération est sous-entendue ?`, `une multiplication ($${k} \\times ${x}$)`],
+        [`Comment écrit-on $${k} \\times ${x}$ plus simplement ?`, `$${k}${x}$`],
+        [`Comment écrit-on $${x} \\times ${x}$ plus simplement ?`, `$${x}^2$`]])
+    }],
+    ['Calculer une expression pour une valeur', () => {
+      const k = ent(2, 9), v = ent(2, 9)
+      return [`Que faut-il faire pour calculer $${k}x + 1$ pour $x = ${v}$ ?`, `remplacer $x$ par $${v}$, soit $${k} \\times ${v} + 1$`]
+    }],
+    ['Réduire une expression',
+      fixe('Que veut dire « réduire une expression » ?', 'l\'écrire avec le moins de termes possible'),
+      () => { const a = ent(2, 9), b = ent(2, 9); return [`Pourquoi ne peut-on pas réduire $${a}x + ${b}$ ?`, `$${a}x$ et $${b}$ ne sont pas de la même sorte (l'un a un $x$, l'autre non)`] }],
+    ['Les priorités opératoires',
+      fixe('Dans un calcul sans parenthèses, que fait-on en premier ?', 'les multiplications et les divisions'),
+      fixe('Dans un calcul avec des parenthèses, que fait-on en premier ?', 'les calculs entre parenthèses'),
+      fixe('Dans un calcul avec seulement des additions et des soustractions, dans quel ordre calcule-t-on ?', 'de gauche à droite')],
   ]),
-  ...cours('Repérage', [
-    ['Dans $A(3\\,;\\,5)$, comment s\'appelle le nombre $3$ ?', 'l\'abscisse du point $A$'],
-    ['Comment s\'appelle le point de coordonnées $(0\\,;\\,0)$ ?', 'l\'origine du repère'],
+  ...notions('Repérage', [
+    ['L\'ordre des coordonnées', () => {
+      const x = ent(-6, 6), y = ent(-6, 6)
+      return choix<[string, string]>([['Dans les coordonnées d\'un point, quel nombre écrit-on en premier ?', 'l\'abscisse (puis l\'ordonnée)'],
+        [`Le point $A$ a pour abscisse $${x}$ et pour ordonnée $${y}$. Comment écrit-on ses coordonnées ?`, `$A(${x}\\,;\\,${y})$`]])
+    }],
+    ['L\'origine du repère',
+      fixe('Comment s\'appelle le point de coordonnées $(0\\,;\\,0)$ ?', 'l\'origine du repère'),
+      fixe('Quelles sont les coordonnées de l\'origine d\'un repère ?', '$(0\\,;\\,0)$')],
+    ['Les axes du repère',
+      fixe('Comment s\'appellent les deux axes d\'un repère ?', 'l\'axe des abscisses et l\'axe des ordonnées'),
+      fixe('Quelle est l\'ordonnée d\'un point situé sur l\'axe des abscisses ?', '$0$'),
+      fixe('Quelle est l\'abscisse d\'un point situé sur l\'axe des ordonnées ?', '$0$')],
+    ['L\'abscisse sur une droite graduée',
+      fixe('Sur une droite graduée, comment s\'appelle le nombre qui repère un point ?', 'son abscisse'),
+      fixe('Sur une droite graduée, quelle est l\'abscisse de l\'origine ?', '$0$')],
   ]),
-  ...cours('Représentation de l’espace', [
-    ['Combien un cube a-t-il de faces, d\'arêtes et de sommets ?', '$6$ faces, $12$ arêtes, $8$ sommets'],
-    ['En perspective cavalière, comment dessine-t-on les arêtes cachées ?', 'en pointillés'],
-    ['En perspective cavalière, comment la face avant est-elle dessinée ?', 'en vraie grandeur'],
+  ...notions('Représentation de l’espace', [
+    ['Le cube', () => {
+      const [quoi, v] = choix<[string, string]>([['de faces', '$6$'], ['d\'arêtes', '$12$'], ['de sommets', '$8$']])
+      return choix<[string, string]>([[`Combien un cube a-t-il ${quoi} ?`, v], ['Combien un cube a-t-il de faces, d\'arêtes et de sommets ?', '$6$ faces, $12$ arêtes, $8$ sommets']])
+    }],
+    ['Le pavé droit',
+      () => { const [quoi, v] = choix<[string, string]>([['de faces', '$6$'], ['d\'arêtes', '$12$'], ['de sommets', '$8$']]); return [`Combien un pavé droit a-t-il ${quoi} ?`, v] },
+      fixe('Quelle est la forme des faces d\'un pavé droit ?', 'des rectangles')],
+    ['Les arêtes cachées',
+      fixe('En perspective cavalière, comment dessine-t-on les arêtes cachées ?', 'en pointillés'),
+      fixe('Compléter : en perspective cavalière, les arêtes cachées sont dessinées…', 'en pointillés')],
+    ['La face avant',
+      fixe('En perspective cavalière, comment la face avant est-elle dessinée ?', 'en vraie grandeur'),
+      fixe('En perspective cavalière, quelles faces sont dessinées en vraie grandeur ?', 'la face avant et la face arrière')],
+    ['Les arêtes parallèles',
+      fixe('En perspective cavalière, comment sont dessinées des arêtes parallèles dans la réalité ?', 'parallèles'),
+      fixe('En perspective cavalière, comment appelle-t-on les arêtes dessinées en biais, plus courtes ?', 'les fuyantes')],
+    ['Le patron',
+      fixe('Combien de carrés compte un patron de cube ?', '$6$'),
+      fixe('Qu\'est-ce que le patron d\'un solide ?', 'une figure plane qu\'on plie pour fabriquer le solide')],
   ]),
-  ...cours('Transformations', [
-    ['Que conserve la symétrie axiale ?', 'les longueurs, les angles et les aires'],
-    ['Quel est le symétrique d\'un point de l\'axe ?', 'le point lui-même'],
+  ...notions('Transformations', [
+    ['Ce que conserve la symétrie',
+      fixe('Que conserve la symétrie axiale ?', 'les longueurs, les angles et les aires'),
+      () => { const l = ent(2, 12); return [`Un segment mesure $${l}$ cm. Combien mesure son symétrique par rapport à une droite ?`, `$${l}$ cm`] },
+      () => { const a = ent(20, 160); return [`Un angle mesure $${a}°$. Combien mesure son symétrique par rapport à une droite ?`, `$${a}°$`] }],
+    ['Les points de l\'axe',
+      fixe('Quel est le symétrique d\'un point de l\'axe ?', 'le point lui-même'),
+      fixe('Quels points sont leur propre symétrique ?', 'les points de l\'axe de symétrie')],
+    ['L\'axe et la médiatrice',
+      fixe('$M\'$ est le symétrique de $M$ par rapport à la droite $(d)$. Que représente $(d)$ pour le segment $[MM\']$ ?', 'sa médiatrice')],
+    ['Les images des figures',
+      fixe('Quel est le symétrique d\'une droite par une symétrie axiale ?', 'une droite'),
+      () => { const r = ent(2, 9); return [`Quel est le symétrique d'un cercle de rayon $${r}$ cm ?`, `un cercle de rayon $${r}$ cm`] }],
+    ['Les axes de symétrie', () => {
+      const [f, n] = choix<[string, string]>([['un carré', '$4$'], ['un rectangle (pas carré)', '$2$'], ['un losange (pas carré)', '$2$'], ['un triangle équilatéral', '$3$'], ['un cercle', 'une infinité'], ['un triangle isocèle (pas équilatéral)', '$1$']])
+      return [`Combien d'axes de symétrie a ${f} ?`, n]
+    }],
   ]),
-  ...cours('Angles', [
-    ['Entre quelles mesures un angle obtus est-il compris ?', 'entre $90°$ et $180°$'],
-    ['Que peut-on dire de deux angles opposés par le sommet ?', 'ils ont la même mesure'],
-    ['La bissectrice d\'un angle est la demi-droite qui…', 'le partage en deux angles de même mesure'],
+  ...notions('Angles', [
+    ['Les sortes d\'angles', () => {
+      const [m, nom] = choix<[string, string]>([['90°', 'un angle droit'], ['180°', 'un angle plat'], ['0°', 'un angle nul'], ['360°', 'un angle plein']])
+      return [`Comment appelle-t-on un angle de $${m}$ ?`, nom]
+    }],
+    ['Angle aigu, angle obtus', () => {
+      const [nom, r] = choix<[string, string]>([['aigu', 'entre $0°$ et $90°$'], ['obtus', 'entre $90°$ et $180°$']])
+      return [`Entre quelles mesures un angle ${nom} est-il compris ?`, r]
+    }],
+    ['Les angles opposés par le sommet',
+      fixe('Que peut-on dire de deux angles opposés par le sommet ?', 'ils ont la même mesure'),
+      () => { const a = ent(20, 160); return [`Deux angles sont opposés par le sommet. L'un mesure $${a}°$. Combien mesure l'autre ?`, `$${a}°$`] }],
+    ['Les angles complémentaires',
+      fixe('Deux angles sont complémentaires quand…', 'la somme de leurs mesures vaut $90°$'),
+      fixe('Comment appelle-t-on deux angles dont la somme vaut $90°$ ?', 'des angles complémentaires')],
+    ['Les angles supplémentaires',
+      fixe('Deux angles sont supplémentaires quand…', 'la somme de leurs mesures vaut $180°$'),
+      fixe('Comment appelle-t-on deux angles dont la somme vaut $180°$ ?', 'des angles supplémentaires')],
+    ['Les angles adjacents',
+      fixe('Deux angles sont adjacents quand…', 'ils ont le même sommet, un côté commun, et sont de part et d\'autre de ce côté')],
+    ['La bissectrice',
+      fixe('La bissectrice d\'un angle est la demi-droite qui…', 'le partage en deux angles de même mesure'),
+      fixe('Comment s\'appelle la demi-droite qui partage un angle en deux angles de même mesure ?', 'la bissectrice')],
   ]),
-  ...cours('Triangles', [
-    ['Combien vaut la somme des angles d\'un triangle ?', '$180°$'],
-    ['La médiatrice d\'un segment est la droite…', 'perpendiculaire au segment en son milieu'],
-    ['Que peut-on dire d\'un point de la médiatrice de $[AB]$ ?', 'il est à égale distance de $A$ et de $B$'],
-    ['Le centre du cercle circonscrit à un triangle est le point de concours de ses…', 'médiatrices'],
-    ['Combien mesure chaque angle d\'un triangle équilatéral ?', '$60°$'],
+  ...notions('Triangles', [
+    ['La somme des angles',
+      fixe('Combien vaut la somme des angles d\'un triangle ?', '$180°$'),
+      fixe('Compléter : dans un triangle, la somme des mesures des trois angles vaut…', '$180°$')],
+    ['Le triangle équilatéral',
+      fixe('Combien mesure chaque angle d\'un triangle équilatéral ?', '$60°$'),
+      fixe('Qu\'est-ce qu\'un triangle équilatéral ?', 'un triangle qui a ses trois côtés de même longueur')],
+    ['Le triangle isocèle',
+      fixe('Que peut-on dire des angles à la base d\'un triangle isocèle ?', 'ils ont la même mesure'),
+      () => { const [A, B, C] = choix(['ABC', 'EFG', 'RST']); return [`$${A}${B}${C}$ est isocèle en $${A}$. Quels côtés ont la même longueur ?`, `$[${A}${B}]$ et $[${A}${C}]$`] }],
+    ['Le triangle rectangle',
+      fixe('Dans un triangle rectangle, combien vaut la somme des deux angles aigus ?', '$90°$'),
+      fixe('Combien mesurent les angles aigus d\'un triangle rectangle isocèle ?', '$45°$ chacun')],
+    ['La médiatrice',
+      fixe('La médiatrice d\'un segment est la droite…', 'perpendiculaire au segment en son milieu'),
+      fixe('Comment s\'appelle la droite perpendiculaire à un segment en son milieu ?', 'la médiatrice du segment')],
+    ['La propriété de la médiatrice',
+      () => { const [P, Q] = choix(['AB', 'EF', 'IJ', 'RS']); return [`Que peut-on dire d'un point de la médiatrice de $[${P}${Q}]$ ?`, `il est à égale distance de $${P}$ et de $${Q}$`] },
+      fixe('Un point à égale distance de $A$ et de $B$ est forcément sur…', 'la médiatrice de $[AB]$')],
+    ['Le cercle circonscrit',
+      fixe('Le centre du cercle circonscrit à un triangle est le point de concours de ses…', 'médiatrices'),
+      fixe('Comment s\'appelle le cercle qui passe par les trois sommets d\'un triangle ?', 'le cercle circonscrit au triangle')],
+    ['L\'inégalité triangulaire',
+      fixe('Énoncer l\'inégalité triangulaire.', 'dans un triangle, chaque côté est plus petit que la somme des deux autres'),
+      () => { const a = ent(3, 8), b = ent(3, 8); return [`Deux côtés d'un triangle mesurent $${a}$ cm et $${b}$ cm. Le troisième doit être plus petit que…`, `$${a + b}$ cm`] }],
   ]),
-  ...cours('Parallélogrammes et polygones', [
-    ['Que peut-on dire des diagonales d\'un parallélogramme ?', 'elles se coupent en leur milieu'],
-    ['Un parallélogramme qui a un angle droit est un…', 'rectangle'],
-    ['Un parallélogramme qui a deux côtés consécutifs de même longueur est un…', 'losange'],
-    ['Que peut-on dire des diagonales d\'un losange ?', 'elles sont perpendiculaires'],
+  ...notions('Parallélogrammes et polygones', [
+    ['Les diagonales du parallélogramme',
+      fixe('Que peut-on dire des diagonales d\'un parallélogramme ?', 'elles se coupent en leur milieu'),
+      fixe('Un quadrilatère dont les diagonales se coupent en leur milieu est un…', 'parallélogramme')],
+    ['Les côtés du parallélogramme',
+      fixe('Que peut-on dire des côtés opposés d\'un parallélogramme ?', 'ils sont parallèles et de même longueur'),
+      () => { const a = ent(3, 12); return [`$ABCD$ est un parallélogramme et $AB = ${a}$ cm. Combien mesure $CD$ ?`, `$${a}$ cm`] }],
+    ['Les angles du parallélogramme',
+      fixe('Que peut-on dire des angles opposés d\'un parallélogramme ?', 'ils ont la même mesure'),
+      fixe('Que peut-on dire de deux angles consécutifs d\'un parallélogramme ?', 'leur somme vaut $180°$')],
+    ['Le rectangle',
+      fixe('Un parallélogramme qui a un angle droit est un…', 'rectangle'),
+      fixe('Que peut-on dire des diagonales d\'un rectangle ?', 'elles se coupent en leur milieu et ont la même longueur')],
+    ['Le losange',
+      fixe('Un parallélogramme qui a deux côtés consécutifs de même longueur est un…', 'losange'),
+      fixe('Que peut-on dire des diagonales d\'un losange ?', 'elles se coupent en leur milieu et sont perpendiculaires')],
+    ['Le carré',
+      fixe('Un parallélogramme qui a un angle droit et deux côtés consécutifs de même longueur est un…', 'carré'),
+      fixe('Un carré est à la fois…', 'un rectangle et un losange')],
+    ['Le nom des polygones', () => {
+      const [n, nom] = choix<[number, string]>([[5, 'un pentagone'], [6, 'un hexagone'], [8, 'un octogone'], [3, 'un triangle'], [4, 'un quadrilatère']])
+      return choix<[string, string]>([[`Comment appelle-t-on un polygone à $${n}$ côtés ?`, nom], [`Combien de côtés a ${nom} ?`, `$${n}$`]])
+    }],
   ]),
-  ...cours('Probabilités', [
-    ['Une probabilité est un nombre compris entre…', '$0$ et $1$'],
-    ['Quelle est la probabilité d\'un évènement impossible ? d\'un évènement certain ?', '$0$ ; $1$'],
+  ...notions('Probabilités', [
+    ['Les valeurs d\'une probabilité',
+      fixe('Une probabilité est un nombre compris entre…', '$0$ et $1$'),
+      fixe('Entre quelles valeurs une probabilité est-elle toujours comprise ?', '$0$ et $1$')],
+    ['Impossible et certain', () => {
+      const [ev, p] = choix<[string, string]>([['impossible', '$0$'], ['certain', '$1$']])
+      return choix<[string, string]>([[`Quelle est la probabilité d'un évènement ${ev} ?`, p], [`Comment appelle-t-on un évènement de probabilité ${p} ?`, `un évènement ${ev}`]])
+    }],
+    ['Une chance sur deux',
+      fixe('Quelle est la probabilité d\'un évènement qui a une chance sur deux de se produire ?', '$\\frac{1}{2}$ (ou $0{,}5$)')],
+    ['Les issues équiprobables',
+      fixe('Quand toutes les issues ont la même chance, comment calcule-t-on la probabilité d\'un évènement ?', 'nombre d\'issues favorables ÷ nombre total d\'issues'),
+      () => { const n = choix([6, 8, 10, 12, 20]); return [`Un dé équilibré a $${n}$ faces. Quelle est la probabilité d'obtenir une face donnée ?`, `$${frac(1, n)}$`] }],
   ]),
-  ...cours('Proportionnalité', [
-    ['Dans un tableau de proportionnalité, on passe d\'une ligne à l\'autre en…', 'multipliant par un même nombre'],
-    ['Comment s\'appelle le nombre par lequel on multiplie une ligne d\'un tableau de proportionnalité pour obtenir l\'autre ?', 'le coefficient de proportionnalité'],
+  ...notions('Proportionnalité', [
+    ['Le coefficient de proportionnalité',
+      fixe('Dans un tableau de proportionnalité, on passe d\'une ligne à l\'autre en…', 'multipliant par un même nombre'),
+      fixe('Comment s\'appelle le nombre par lequel on multiplie une ligne d\'un tableau de proportionnalité pour obtenir l\'autre ?', 'le coefficient de proportionnalité')],
+    ['Le graphique',
+      fixe('Comment est la représentation graphique d\'une situation de proportionnalité ?', 'des points alignés avec l\'origine du repère')],
+    ['Le retour à l\'unité',
+      fixe('Qu\'est-ce que le « retour à l\'unité » ?', 'chercher la valeur pour $1$, puis multiplier'),
+      () => { const n = ent(3, 9); return [`On connaît le prix de $${n}$ cahiers. Que calcule-t-on d'abord pour faire un « retour à l'unité » ?`, 'le prix d\'un seul cahier'] }],
+    ['La linéarité', () => {
+      const a = ent(2, 6), k = ent(2, 4)
+      return [`Dans une situation de proportionnalité, si on connaît le prix de $${a}$ objets, comment obtient-on le prix de $${a * k}$ objets ?`, `on multiplie par $${k}$`]
+    }],
+    ['Appliquer un pourcentage', () => {
+      const p = choix([5, 12, 15, 20, 30, 35, 60, 75])
+      return [`Calculer $${p}\\,\\%$ d'un nombre, c'est le multiplier par…`, `$${frac(p, 100)}$ (ou $${nb(p / 100)}$)`]
+    }],
   ]),
-  ...cours('Hors liste officielle', [
-    ['Quelle est la formule de l\'aire d\'un rectangle ?', 'longueur $\\times$ largeur'],
-    ['Dans un calcul sans parenthèses, que fait-on en premier ?', 'les multiplications et les divisions'],
-    ['Combien y a-t-il de mètres dans $1$ km ?', '$1\\,000$ m'],
+  ...notions('Hors liste officielle', [
+    ['Aire et périmètre du rectangle', () => choix<[string, string]>([
+      ['Quelle est la formule de l\'aire d\'un rectangle ?', 'longueur $\\times$ largeur'],
+      ['Quelle est la formule du périmètre d\'un rectangle ?', '$2 \\times$ (longueur $+$ largeur)']])],
+    ['Aire du triangle',
+      fixe('Quelle est la formule de l\'aire d\'un triangle ?', 'base $\\times$ hauteur $\\div 2$')],
+    ['Le cercle',
+      fixe('Quelle est la formule du périmètre d\'un cercle de rayon $r$ ?', '$2 \\times \\pi \\times r$'),
+      fixe('Quelle est la formule de l\'aire d\'un disque de rayon $r$ ?', '$\\pi \\times r \\times r$'),
+      () => { const r = ent(2, 9); return [`Un cercle a un rayon de $${r}$ cm. Combien mesure son diamètre ?`, `$${2 * r}$ cm`] }],
+    ['Les conversions à connaître', () => {
+      const [de, vers, k] = choix<[string, string, string]>([['km', 'm', '1\\,000'], ['m', 'cm', '100'], ['m', 'mm', '1\\,000'], ['kg', 'g', '1\\,000'], ['L', 'cL', '100'], ['h', 'min', '60'], ['min', 's', '60']])
+      return [`Combien y a-t-il de ${vers} dans $1$ ${de} ?`, `$${k}$`]
+    }],
+    ['La moyenne',
+      fixe('Comment calcule-t-on la moyenne d\'une série de valeurs ?', 'somme des valeurs $\\div$ nombre de valeurs')],
   ]),
 ]
 
@@ -1020,7 +1306,7 @@ export function tirerFlash(autos: Automatisme[], lecons: QuestionCours[], c: Com
   const nCours = Math.max(0, c.cours), nAppli = Math.max(0, c.application)
   for (let k = 0; k < nCours; k++) {
     if (!lecons.length) { coursRemplaces = nCours - k; break }
-    const { x, q } = tirerDans(lecons, pris, vus, l => ({ enonce: l.enonce, reponse: l.reponse }))
+    const { x, q } = tirerDans(lecons, pris, vus, l => l.poser())
     questions.push({ id: x.id, theme: x.theme, q, forme: 'cours' })
   }
   if (!autos.length) return { questions, coursRemplaces: questions.length ? coursRemplaces : 0 }
