@@ -333,6 +333,46 @@ export class DeplacerClasseur {
     return [...dit, ...autres].join(' ')
   }
 
+  /** Un dossier au nom de chaque classeur (choix du professeur, 2026-11) :
+   *  les classeurs d'un lien « à plat » (`e`) dont le fichier, posé
+   *  directement dans le dossier par l'outil, ira dans un dossier à son nom.
+   *  Le plan de chacun : l'ancienne place vue avec le lien à plat, la
+   *  nouvelle sans. Un fichier choisi à la main, ou rangé ailleurs, n'y est
+   *  pas (il reste où il est). */
+  async plansVersLeurDossier(e: Emplacement): Promise<{ fiche: FicheClasseur; plan: PlanDeDeplacement }[]> {
+    if (!e.aPlat || e.genre !== 'ordinateur') return []
+    const avant = await this.donnees()
+    const { aPlat: _plat, ...sans } = e
+    const apres: DonneesPlan = { ...avant, emplacements: avant.emplacements.map(x => x.id === e.id ? sans : x) }
+    const fiches = await this.registre.classeurs()
+    const r: { fiche: FicheClasseur; plan: PlanDeDeplacement }[] = []
+    for (const f of fiches) {
+      if (!f.cle?.chemin?.length || f.corbeille || f.dossier === null) continue
+      if (emplacementDe(f.dossier, 'ordinateur', avant.emplacements, avant.dossiers)?.id !== e.id) continue
+      const pa = planDeDeplacement({ fiche: f, cible: f.dossier, ...avant })
+      const pb = planDeDeplacement({ fiche: f, cible: f.dossier, ...apres })
+      if (pb.genre !== 'suit' || pa.ancien?.emplacement?.id !== e.id || !pa.ancien.sous) continue
+      r.push({ fiche: f, plan: { ...pb, ancien: pa.ancien } })
+    }
+    return r.sort((a, b) => a.fiche.nom.localeCompare(b.fiche.nom, 'fr', { numeric: true }))
+  }
+
+  /** Les fichiers de ces plans (plansVersLeurDossier) vont chacun dans le
+   *  dossier à son nom : écrits, relus, puis l'ancien retiré, comme pour un
+   *  déplacement (voir suit). Rend la phrase du bilan. Dans le geste. */
+  async rangerVersLeurDossier(plans: readonly { fiche: FicheClasseur; plan: PlanDeDeplacement }[]): Promise<string> {
+    let ranges = 0
+    const autres: string[] = []
+    for (const { fiche, plan } of plans) {
+      const t = await this.suit(fiche, plan)
+      if (t.startsWith('Son fichier aussi')) ranges++
+      else autres.push(`« ${fiche.nom} » : ${t}`)
+    }
+    const dit: string[] = []
+    if (ranges) dit.push(ranges > 1 ? `${ranges} classeurs sont maintenant chacun dans un dossier à son nom.` : '1 classeur est maintenant dans un dossier à son nom.')
+    return [...dit, ...autres].join(' ')
+  }
+
   /** Un classeur sans fichier qui arrive dans un niveau rangé : il reçoit son
    *  fichier à sa nouvelle place (ranger.donnerSonFichier) ; celui de cet
    *  onglet : sa clé démarre dessus */

@@ -121,6 +121,7 @@ import type { Fichiers } from './fichiers'
 import { AIDE_ENREGISTRER_TOUT } from './fichiers'
 import type { Endroit, Ranger } from './ranger'
 import { DeplacerClasseur } from './deplacer-fichier'
+import type { Emplacement } from './emplacements'
 import { classeursDeLaClasse } from './emplacements'
 import { fermerSurLeFond } from '../dialogue'
 import { RechercheBiblio } from './recherche-biblio-vue'
@@ -352,7 +353,10 @@ export class Bibliotheque {
   readonly blocsDuMenuDossier: ((d: FicheDossier, m: HTMLElement) => void)[] = []
   /** Les pastilles « PC ✓ » des cartes de dossiers (posées par ailleurs.ts) :
    *  dossier → ce qui s'y lit ; attention : il manque des copies */
-  private pastilles = new Map<string, { texte: string; attention: boolean }>()
+  private pastilles = new Map<string, { texte: string; attention: boolean; pc?: boolean }>()
+  /** Un clic sur la pastille « PC ✓ » d'un dossier enregistré sur le PC
+   *  (posé par ailleurs.ts : la petite fenêtre « Enregistré sur le PC ») */
+  surPastille: ((dossier: string, ou: HTMLElement) => void) | null = null
   /** Le dossier qu'on regarde (null : la racine), retenu pour l'onglet */
   dossierAffiche: string | null = null
   /** Le filtre de niveau (une étiquette ; null : tous), retenu pour l'onglet */
@@ -740,6 +744,11 @@ export class Bibliotheque {
     this.deplaceur = d
     if (import.meta.env.DEV) Object.assign(window, { __deplaceur: d })
   }
+
+  /** Un dossier au nom de chaque classeur (2026-11) : les classeurs d'un
+   *  lien « à plat » à ranger, puis leur rangement (deplacer-fichier.ts) */
+  plansVersLeurDossier(e: Emplacement) { return this.leDeplaceur.plansVersLeurDossier(e) }
+  rangerVersLeurDossier(plans: Parameters<DeplacerClasseur['rangerVersLeurDossier']>[0]) { return this.leDeplaceur.rangerVersLeurDossier(plans) }
 
   /** Le déplaceur : celui qui est branché (main.ts, avec la clé de l'onglet) ;
    *  sinon un déplaceur sans clé, fabriqué ici avec ce que la bibliothèque a
@@ -1341,7 +1350,7 @@ export class Bibliotheque {
   }
 
   /** Les pastilles « PC ✓ » (ou « PC : 2 à copier ») des dossiers reliés à l'ordinateur ou au Drive */
-  poserPastilles(m: Map<string, { texte: string; attention: boolean }>) {
+  poserPastilles(m: Map<string, { texte: string; attention: boolean; pc?: boolean }>) {
     this.pastilles = m
     for (const c of this.hautDuCorps.parentElement?.querySelectorAll<HTMLElement>('li.case-dossier') ?? []) this.majPastille(c, c.dataset.dossier ?? '')
   }
@@ -1352,8 +1361,19 @@ export class Bibliotheque {
     if (!p) { x?.remove(); return }
     if (!x) {
       x = Object.assign(document.createElement('span'), { className: 'puce-emplacement' })
+      // Un clic sur la pastille d'un dossier enregistré sur le PC : ses choix
+      // (Mettre à jour, Ne plus enregistrer), sans entrer dans le dossier ;
+      // au clavier, les mêmes choix sont dans le menu du dossier
+      const p0 = x
+      x.addEventListener('click', ev => {
+        if (!p0.classList.contains('cliquable') || !this.surPastille) return
+        ev.stopPropagation(); ev.preventDefault()
+        this.surPastille(c.dataset.dossier ?? id, p0)
+      })
       c.querySelector('.carte-infos')?.appendChild(x)
     }
+    x.classList.toggle('cliquable', !!p.pc)
+    x.title = p.pc ? 'Enregistré sur le PC : cliquez pour mettre à jour ou ne plus enregistrer' : ''
     if (x.textContent !== p.texte) x.textContent = p.texte
     x.classList.toggle('attention', p.attention)
   }

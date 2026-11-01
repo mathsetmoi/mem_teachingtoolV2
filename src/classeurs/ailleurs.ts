@@ -127,6 +127,8 @@ export class Ailleurs {
   private detail = (() => { try { return sessionStorage.getItem(CLE_DETAIL) === '1' } catch { return false } })()
   /** Les dossiers qui ont une pastille « PC ✓ » (pour l'entrée de leur menu) */
   private avecEmplacement = new Set<string>()
+  /** Ceux qui ont leur propre dossier sur le PC (leur coche « PC ✓ ») */
+  private avecPc = new Set<string>()
   /** Ce que montre « Mes emplacements » (pour ne la refaire que si cela change) */
   private signature = ''
   /** Où ranger les classeurs d'un niveau (lot 18, ranger.ts), posé par
@@ -138,10 +140,17 @@ export class Ailleurs {
     const b = h.bibliotheque
     b.ouvrirFenetre = () => void this.ouvrir()
     b.enregistrerTout = () => void this.enregistrer({ quoi: 'bibliotheque' })
+    b.surPastille = (id, ou) => void this.bulleDuPc(id, ou)
     // Avant « Supprimer », qui finit le menu d'un dossier (le dernier bloc)
     b.blocsDuMenuDossier.splice(Math.max(0, b.blocsDuMenuDossier.length - 1), 0, (d, m) => {
       entreeMenu(m, 'Enregistrer ce dossier…', () => void this.enregistrer({ quoi: 'classe', classe: d.id }), { action: 'enregistrer-dossier',
         aide: 'Sur l\'ordinateur ou sur le Drive, tenu à jour tout seul' })
+      // Sa coche « PC ✓ » s'enlève aussi d'ici (2026-11) : plus rien de ce
+      // dossier ne s'écrit sur le PC, rien n'y est effacé
+      if (this.avecPc.has(d.id)) {
+        entreeMenu(m, 'Ne plus enregistrer sur le PC…', () => void this.nePlusEnregistrer(d.id), { action: 'ne-plus-enregistrer',
+          aide: 'Enlever la coche : ses classeurs ne s\'écrivent plus sur le PC (rien n\'y est effacé)' })
+      }
       // Le même menu pour tous les dossiers, en haut ou dessous : son nom (ou
       // son chemin) sur l'ordinateur, à lui
       entreeMenu(m, 'Emplacement sur l\'ordinateur…', () => void this.emplacementDuDossier(d.id), { action: 'emplacement-dossier',
@@ -605,9 +614,18 @@ export class Ailleurs {
             }
           }
           fermer()
-          // Les classeurs directement dans ce dossier (pas de dossier au nom
-          // du classeur) ; un fichier du même nom : la question
-          await this.relierOrdinateur(classe, dossier, { aPlat: true, nouveauLieu: true, conflit: this.questionFichier() })
+          // Chaque classeur dans un dossier à son nom, avec ses replays (choix
+          // du professeur, 2026-11 ; avant : directement dans le dossier). Le
+          // même dossier qu'avant, enregistré « à plat » : ses classeurs y vont,
+          // après son accord ; un fichier du même nom : la question
+          const deja = liste.find(e => e.dossier === classe.id && e.genre === 'ordinateur' && !e.etablissement)
+          let avant: string | undefined
+          if (deja?.aPlat && await memeDossier(dossier, await this.registre.reglage(reglagePoignee(deja.id)).catch(() => undefined))) {
+            const r = await this.versLeurDossier(deja)
+            if (r === null) { this.h.message(`Rien n'a changé : « ${classe.nom} » reste enregistré comme avant.`); return }
+            avant = r
+          }
+          await this.relierOrdinateur(classe, dossier, { aPlat: false, nouveauLieu: true, conflit: this.questionFichier(), avant })
           return
         }
         fermer()
@@ -738,7 +756,21 @@ export class Ailleurs {
       try {
         for await (const x of parent.values()) noms.push(x.name)
         const la = await parent.getDirectoryHandle(nom)
-        for await (const x of la.values()) { if (x.kind === 'file' && x.name.toLowerCase().endsWith(EXTENSION_TABLEAU)) classeurs++; else autres++ }
+        // Les classeurs, aussi dans leur dossier à leur nom (et leurs sous-dossiers) ;
+        // les autres éléments : ce qui n'est ni un classeur, ni un dossier qui en contient
+        const compter = async (d: PoigneeDossier, prof: number): Promise<number> => {
+          let n = 0
+          for await (const x of d.values()) {
+            if (x.kind === 'file') { if (x.name.toLowerCase().endsWith(EXTENSION_TABLEAU)) n++ }
+            else if (prof < 3) n += await compter(x as PoigneeDossier, prof + 1).catch(() => 0)
+          }
+          return n
+        }
+        for await (const x of la.values()) {
+          if (x.kind === 'file' && x.name.toLowerCase().endsWith(EXTENSION_TABLEAU)) classeurs++
+          else if (x.kind === 'directory') { const n = await compter(x as PoigneeDossier, 1).catch(() => 0); if (n) classeurs += n; else autres++ }
+          else autres++
+        }
       } catch { /* on dit ce qu'on sait */ }
       const f = document.createElement('dialog')
       f.className = 'dialogue dialogue-ailleurs dialogue-conflit'
@@ -754,7 +786,7 @@ export class Ailleurs {
       const q = <T extends HTMLElement>(sel: string) => f.querySelector(sel) as T
       q('#titre-conflit-dossier').textContent = `Le dossier « ${nom} » existe déjà dans « ${parent.name} »`
       q('.c-contenu').textContent = classeurs || autres
-        ? `Sur le PC, il contient ${pluriel(classeurs, 'classeur')}${autres ? ` et ${pluriel(autres, 'autre élément')}` : ''}.`
+        ? `Sur le PC, il contient ${pluriel(classeurs, 'classeur')}${autres ? ` et ${autres} autre${autres > 1 ? 's' : ''} élément${autres > 1 ? 's' : ''}` : ''}.`
         : 'Sur le PC, il est vide.'
       const champ = q<HTMLInputElement>('.c-nom')
       champ.value = nomDeFichierLibre(nom, '', noms)
@@ -870,7 +902,7 @@ export class Ailleurs {
    *  silencieux : ne dit le bilan que s'il y a un souci ; etablissement :
    *  celui du niveau déjà rangé par la fenêtre « Où ranger… » (lot 18), que
    *  « Mettre à jour » garde, avec sa phrase */
-  private async relierOrdinateur(classe: FicheDossier, d: PoigneeDossier, o: { silencieux?: boolean; etablissement?: Etablissement | null; reprendre?: boolean; aPlat?: boolean; nouveauLieu?: boolean; conflit?: (c: ConflitFichier) => Promise<ChoixConflit> } = {}) {
+  private async relierOrdinateur(classe: FicheDossier, d: PoigneeDossier, o: { silencieux?: boolean; etablissement?: Etablissement | null; reprendre?: boolean; aPlat?: boolean; nouveauLieu?: boolean; conflit?: (c: ConflitFichier) => Promise<ChoixConflit>; avant?: string } = {}) {
     if (this.occupe) return
     this.occupe = true
     let ids: string[] = []
@@ -883,13 +915,13 @@ export class Ailleurs {
       // interrompu) le reçoit ici, une fois l'ancien relu ; un fichier choisi
       // à la main, ou mis dans « Un autre dossier de l'ordinateur… », reste le sien
       const b = await relierLeNiveau({ registre: this.registre, message: t => this.h.message(t), avantDEcrire: this.h.avantDEcrire, avantDeDeplacer: this.h.avantDeDeplacer }, classe, d,
-        { reprendre: !!o.reprendre, ...(etab ? { prefixe: [etab.nom, d.name], etablissement: etab.id, etablissementNom: etab.nom } : {}), ...(o.aPlat ? { aPlat: true } : {}), ...(o.nouveauLieu ? { nouveauLieu: true } : {}), ...(o.conflit ? { conflit: o.conflit } : {}) })
+        { reprendre: !!o.reprendre, ...(etab ? { prefixe: [etab.nom, d.name], etablissement: etab.id, etablissementNom: etab.nom } : {}), ...(o.aPlat !== undefined ? { aPlat: o.aPlat } : {}), ...(o.nouveauLieu ? { nouveauLieu: true } : {}), ...(o.conflit ? { conflit: o.conflit } : {}) })
       if (!b) return
       const souci = b.plusRiches.length + b.echecs.length + b.ailleurs.length + b.aRelire.length > 0
       if (!o.silencieux || souci) {
         this.h.message(etab
           ? texteDuRangement({ niveau: classe.nom, chemin: [etab.nom, d.name], bilan: b })
-          : `« ${classe.nom} » est relié au dossier « ${d.name} ». ${texteDuBilan(b, d.name)}`)
+          : `${o.avant ? o.avant + ' ' : ''}« ${classe.nom} » est relié au dossier « ${d.name} ». ${texteDuBilan(b, d.name)}`)
       }
       // (Enregistrer n'enlève jamais rien du PC : aucun fichier n'est déplacé ici,
       // un classeur qui n'est pas à sa place y reçoit un fichier neuf, 2026-11)
@@ -988,16 +1020,18 @@ export class Ailleurs {
         : l.filter(f => f.drive?.compte !== e.compte || !f.drive?.dossier || f.copieDrive !== e.compte).length
     }
     // « PC ✓ » (ou « PC : 2 à copier ») sur la carte de chaque dossier relié
-    const pastilles = new Map<string, { texte: string; attention: boolean }>()
+    const pastilles = new Map<string, { texte: string; attention: boolean; pc?: boolean }>()
     for (const e of liste) {
       const d = dossiers.find(x => x.id === e.dossier)
       if (!d || !dossierVisible(d, dossiers)) continue
       const n = manquentDe(e)
       if (pastilles.get(d.id)?.attention && !n) continue
       const lieu = e.genre === 'ordinateur' ? 'PC' : 'Drive'
-      pastilles.set(d.id, n ? { texte: `${lieu} : ${n} à copier`, attention: true } : { texte: `${lieu} ✓`, attention: false })
+      const pc = pastilles.get(d.id)?.pc || e.genre === 'ordinateur'
+      pastilles.set(d.id, n ? { texte: `${lieu} : ${n} à copier`, attention: true, pc } : { texte: `${lieu} ✓`, attention: false, pc })
     }
     this.avecEmplacement = new Set(pastilles.keys())
+    this.avecPc = new Set(liste.filter(e => e.genre === 'ordinateur').map(e => e.dossier))
     b.poserPastilles(pastilles)
     const s = this.section
     if (!montres.length && !pasRange && !(peut && etabs.length)) { s.hidden = true; s.replaceChildren(); this.signature = ''; return }
@@ -1082,7 +1116,8 @@ export class Ailleurs {
       // qui remplace l'emplacement ; les fichiers d'avant restent) ; sinon
       // « Retirer », comme au lot 7
       if (etab) li.append(bouton('secondaire e-changer', 'Choisir un autre dossier…', () => void this.enregistrer({ quoi: 'classe', classe: d.id }), 'Enregistrer ce dossier ailleurs (les fichiers d\'avant restent où ils sont)'))
-      else li.append(bouton('secondaire e-retirer', 'Retirer', () => void this.retirer(e, d), 'Ne plus tenir ce dossier à jour (rien n\'y est effacé)'))
+      // Sur le PC : comme la pastille et le menu, plus rien ne s'y écrit (2026-11)
+      else li.append(bouton('secondaire e-retirer', 'Retirer', () => void (e.genre === 'ordinateur' ? this.nePlusEnregistrer(d.id) : this.retirer(e, d)), 'Ne plus tenir ce dossier à jour (rien n\'y est effacé)'))
       ul.appendChild(li)
     }
     if (pasRange) {
@@ -1183,7 +1218,109 @@ export class Ailleurs {
     // Un dossier de l'organisation personnelle (pas chez un établissement) :
     // « Mettre à jour » écrit dans son dossier chaque classeur qui n'y est pas,
     // même si son fichier d'avant est ailleurs (celui-ci reste intact)
-    await this.relierOrdinateur(classe, d, { etablissement: etab, reprendre: true, ...(etab ? {} : { nouveauLieu: true }) })
+    // Enregistré « à plat » (avant 2026-11) : chaque classeur va d'abord dans
+    // un dossier à son nom, après l'accord du professeur
+    let avant: string | undefined
+    if (!etab && e.aPlat) {
+      const r = await this.versLeurDossier(e)
+      if (r === null) { this.h.message(`Rien n'a changé : « ${classe.nom} » reste enregistré comme avant.`); return }
+      avant = r
+    }
+    await this.relierOrdinateur(classe, d, { etablissement: etab, reprendre: true, ...(etab ? {} : { nouveauLieu: true, aPlat: false, avant }) })
+  }
+
+  /** Un dossier au nom de chaque classeur (choix du professeur, 2026-11) :
+   *  les classeurs d'un lien « à plat » posés directement dans le dossier
+   *  vont chacun dans un dossier à son nom, après son accord (la liste
+   *  d'abord) ; écrits, relus, puis l'ancien retiré. Rend la phrase du bilan
+   *  ('' : rien à ranger) ; null : il a dit non */
+  private async versLeurDossier(e: Emplacement): Promise<string | null> {
+    const plans = await this.h.bibliotheque.plansVersLeurDossier(e).catch(() => [])
+    if (!plans.length) return ''
+    const n = plans.length
+    const liste = noms(plans.map(p => p.fiche.nom))
+    const oui = await confirmer(`Ranger ${pluriel(n, 'classeur')} dans un dossier à son nom ?`,
+      `Sur le PC, ${liste} ${n > 1 ? 'sont' : 'est'} directement dans « ${e.nom} ». Chacun va dans un dossier à son nom : son fichier y est écrit, relu, puis l'ancien est retiré. Les replays déjà publiés restent où ils sont.`,
+      'Ranger')
+    if (!oui) return null
+    return this.h.bibliotheque.rangerVersLeurDossier(plans)
+  }
+
+  /** La petite fenêtre de la pastille « PC ✓ » (un clic dessus) : où le
+   *  dossier est enregistré, « Mettre à jour », « Ne plus enregistrer sur le
+   *  PC… » */
+  private async bulleDuPc(dossierId: string, ou: HTMLElement) {
+    if (this.occupe || document.querySelector('dialog[open]')) return
+    const [liste, dossiers, fiches] = await Promise.all([emplacements(this.registre), this.registre.dossiers().catch(() => [] as FicheDossier[]), this.registre.classeurs().catch(() => [] as FicheClasseur[])])
+    const e = liste.find(x => x.genre === 'ordinateur' && x.dossier === dossierId)
+    const dossier = dossiers.find(x => x.id === dossierId)
+    if (!e || !dossier) return
+    const n = classeursDeLaClasse(dossierId, fiches, dossiers).filter(f => emplacementDe(f.dossier, 'ordinateur', liste, dossiers)?.id === e.id).length
+    const nomEtab = e.etablissement ? nomDEtablissement(e, await etablissements(this.registre).catch(() => [] as Etablissement[])) : null
+    const d = document.createElement('dialog')
+    d.className = 'dialogue bulle-pc'
+    d.setAttribute('aria-labelledby', 'titre-bulle-pc')
+    d.innerHTML = `<h2 id="titre-bulle-pc">Enregistré sur le PC</h2><div class="corps"><p class="aide b-ou"></p><div class="actions">
+      <button type="button" class="secondaire" data-a="fermer">Fermer</button>
+      <button type="button" class="secondaire" data-a="maj">Mettre à jour</button>
+      <button type="button" class="principal" data-a="plus">Ne plus enregistrer sur le PC…</button></div></div>`
+    d.querySelector('.b-ou')!.textContent = `Dans « ${cheminLisible([...(nomEtab ? [nomEtab] : []), e.nom])} ». ${n ? `${n > 1 ? `Ses ${n} classeurs s'y enregistrent` : 'Son classeur s\'y enregistre'} tout seul${n > 1 ? 's' : ''}.` : 'Il n\'a pas encore de classeur.'}`
+    const fermer = () => { if (d.open) d.close() }
+    d.addEventListener('close', () => d.remove())
+    fermerSurLeFond(d, fermer)
+    d.querySelector('[data-a="fermer"]')!.addEventListener('click', fermer)
+    d.querySelector('[data-a="maj"]')!.addEventListener('click', () => { fermer(); void this.mettreAJour(e, dossier) })
+    d.querySelector('[data-a="plus"]')!.addEventListener('click', () => { fermer(); void this.nePlusEnregistrer(dossierId) })
+    document.body.appendChild(d)
+    d.showModal()
+    // Près de la pastille, sans sortir de l'écran
+    const r = ou.getBoundingClientRect(), l = d.offsetWidth, h = d.offsetHeight
+    const haut = r.bottom + 8 + h > innerHeight - 8 ? Math.max(8, r.top - 8 - h) : r.bottom + 8
+    d.style.top = `${Math.round(haut)}px`
+    d.style.left = `${Math.round(Math.min(Math.max(8, r.left - 24), innerWidth - l - 8))}px`
+    d.querySelector<HTMLButtonElement>('[data-a="maj"]')!.focus()
+  }
+
+  /** « Ne plus enregistrer sur le PC… » (la pastille, le menu du dossier) :
+   *  la coche s'enlève, et chacun de ses classeurs cesse de s'écrire sur le
+   *  PC (choix A du professeur, 2026-11). Rien n'est effacé, ni sur le PC ni
+   *  dans le navigateur. Un sous-dossier qui a sa propre coche la garde ; un
+   *  sous-dossier dont on enlève la coche revient sous le dossier du dessus
+   *  enregistré, s'il y en a un (« PC : n à copier ») */
+  async nePlusEnregistrer(dossierId: string): Promise<void> {
+    if (this.occupe) { this.h.message('Un enregistrement est en cours : attendez qu\'il finisse.'); return }
+    const [liste, fiches, dossiers] = await Promise.all([emplacements(this.registre), this.registre.classeurs().catch(() => [] as FicheClasseur[]), this.registre.dossiers().catch(() => [] as FicheDossier[])])
+    const e = liste.find(x => x.genre === 'ordinateur' && x.dossier === dossierId)
+    const dossier = dossiers.find(x => x.id === dossierId)
+    if (!e || !dossier) { this.h.message(dossier ? `« ${dossier.nom} » n'est pas enregistré sur le PC.` : 'Ce dossier n\'existe plus.'); return }
+    const siens = classeursDeLaClasse(dossierId, fiches, dossiers).filter(f => emplacementDe(f.dossier, 'ordinateur', liste, dossiers)?.id === e.id)
+    const aPart = dossiers.filter(x => x.id !== dossierId && liste.some(y => y.genre === 'ordinateur' && y.dossier === x.id) && remontee(x.id, dossiers).some(y => y.id === dossierId)).map(x => x.nom)
+    const n = siens.length
+    const oui = await confirmer(`Ne plus enregistrer « ${dossier.nom} » sur le PC ?`,
+      `${n ? `${n > 1 ? `Ses ${n} classeurs restent` : 'Son classeur reste'} dans le navigateur. ` : ''}Sur le PC, les dossiers et les fichiers restent aussi, intacts : l'outil n'efface rien. Simplement, il ne les met plus à jour.${aPart.length ? ` ${noms(aPart)} ${aPart.length > 1 ? 'gardent leur propre coche' : 'garde sa propre coche'}.` : ''}`,
+      'Ne plus enregistrer')
+    if (!oui) return
+    this.occupe = true
+    const avecFichier = siens.filter(f => f.cle)
+    let rate = 0
+    try {
+      for (const f of avecFichier) await this.h.avantDeDeplacer?.(f).catch(() => {})
+      await retirerEmplacement(this.registre, e.id).catch(() => { rate++ })
+      for (const f of avecFichier) {
+        try {
+          await this.registre.oublierPoignee(f.id)
+          await this.registre.modifierClasseur(f.id, x => { delete x.cle })
+        } catch { rate++ }
+      }
+    } finally {
+      this.occupe = false
+      await this.h.apresRangement?.(avecFichier.map(f => f.id)).catch(() => {})
+      void this.h.bibliotheque.charger()
+      void this.majEmplacements()
+    }
+    this.h.message(rate
+      ? `C'est presque fait : ${rate > 1 ? `${rate} classeurs n'ont` : '1 classeur n\'a'} pas pu être détaché (la bibliothèque des classeurs refuse d'écrire). Réessayez.`
+      : `« ${dossier.nom} » n'est plus enregistré sur le PC. Les fichiers y restent, intacts ; ils ne sont plus mis à jour.`)
   }
 
   /** « Repartir à zéro sur l'ordinateur… » (menu ⋯ de la bibliothèque) :
