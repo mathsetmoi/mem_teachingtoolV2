@@ -455,6 +455,15 @@ export class Ailleurs {
           dansUnRange = { e, haut }
           lieu.append('Déjà sur l\'ordinateur, dans ', Object.assign(document.createElement('span'), { className: 'e-chemin',
             textContent: cheminLisible([...(etab ? [etab] : ['Cet ordinateur']), e.nom, ...sousDossiers(classe.id, haut.id, dossiers)]) }))
+          // Toujours libre d'en choisir un autre : le dossier prend alors son
+          // propre emplacement (les fichiers d'avant restent où ils sont)
+          const autre = Object.assign(document.createElement('button'), { type: 'button', className: 'lien e-changer', textContent: 'Choisir un autre dossier…', title: 'Enregistrer ce dossier ailleurs sur l\'ordinateur (les fichiers d\'avant restent où ils sont)' })
+          autre.addEventListener('click', () => {
+            dansUnRange = null
+            lieu.replaceChildren(`Il ira dans le dossier que vous allez choisir (« ${classe.nom} » y sera créé). Les fichiers d'avant restent où ils sont.`)
+            regler()
+          })
+          lieu.append(' ', autre)
           lieu.hidden = false
           break
         }

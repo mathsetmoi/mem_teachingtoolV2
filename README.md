@@ -3264,7 +3264,10 @@ emplacements »** en haut de la bibliothèque (3A).
     LFB › 5ème », avec « Changer… »), un classeur qui a son fichier aussi.
     Un sous-dossier d'un dossier déjà sur l'ordinateur y est déjà, à sa
     place (« Déjà sur l'ordinateur, dans 3e_Axiom › Axiom › Fractions ») :
-    rien à choisir, « Mettre à jour » écrit les classeurs qui manquent. Un
+    rien à choisir d'office, « Mettre à jour » écrit les classeurs qui
+    manquent, et « Choisir un autre dossier… » permet d'enregistrer ce
+    sous-dossier ailleurs (il prend alors son propre emplacement ; les
+    fichiers d'avant restent où ils sont). Un
     dossier déjà tenu à jour liste ses fichiers, chemin depuis le dossier
     choisi (« Marie-Lucie (Montreal) › Retour DS › Retour DS.memc ») : le
     navigateur ne donne pas l'adresse complète du disque, et la fenêtre le
