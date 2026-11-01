@@ -3332,6 +3332,14 @@ emplacements »** en haut de la bibliothèque (3A).
   professeur, 2026-11) : un classeur dont le fichier est ailleurs, même dans
   le dossier choisi (une autre année, l'ancien nom du classeur), reçoit un
   fichier neuf à sa place, et l'ancien reste où il est, intact.
+- **Un sous-dossier qui a sa propre coche (2026-11, choix du professeur).**
+  Un sous-dossier enregistré à part, dans un autre dossier du PC (sa propre
+  pastille « PC ✓ », par exemple un élève dans « Axiom »), garde ses
+  classeurs là-bas : enregistrer ou mettre à jour le dossier du haut le laisse
+  de côté, et le message le dit (« … a son propre dossier sur l'ordinateur :
+  il est laissé tel quel »). Sans cela, ses fichiers étaient réécrits dans
+  l'arbre du dossier du haut, et celui tenu à jour changeait à chaque
+  enregistrement.
 - **Un seul menu pour tous les dossiers (2026-11, choix du professeur).**
   Chaque dossier, en haut ou dessous, a « Enregistrer ce dossier… » et
   « Emplacement sur l'ordinateur… », et la même fenêtre (« Nom du dossier sur

@@ -486,6 +486,26 @@ try {
   ok(contenu['Aug']?.['Trigonometrie.memc'] > 0 && contenu['Aug']?.['Ancien']?.['Trigonometrie.memc'] > 0 && contenu['Aug']?.['Dixsept.memc'] > 0,
     'C13k) Rangé ailleurs dans le dossier (« Aug › Ancien ») : « Aug › Trigonometrie.memc » écrit, « Aug › Ancien » et son fichier restent', contenu)
   await toasts(p)
+  // (Ajouté 2026-11) Le dossier du haut (« Axe ») enregistré alors que ses
+  // sous-dossiers « Aug » et « Bea » ont leur propre dossier sur le PC : il
+  // les laisse de côté (leurs fichiers restent tenus à jour là-bas), et le dit
+  await p.evaluate(d => window.__creer([{ nom: 'Direct', dossier: d }]), dAxe)
+  const avant3 = await p.evaluate(() => window.__lister('PC3')), avant4 = await p.evaluate(() => window.__lister('PC4'))
+  await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), dAxe)
+  await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
+  await p.evaluate(() => { window.__dossierChoisi = 'PC5' })
+  await p.click('dialog.dialogue-enregistrer-ailleurs[open] .e-ok')
+  await attendreToast(p, /» est relié au dossier « Axe »/, 20000)
+  const t13l = await p.evaluate(() => (window.__toasts || []).filter(t => /relié au dossier « Axe »/.test(t)).pop())
+  contenu = await p.evaluate(() => window.__lister('PC5'))
+  const apres3 = await p.evaluate(() => window.__lister('PC3')), apres4 = await p.evaluate(() => window.__lister('PC4'))
+  ok(Object.keys(contenu['Axe'] ?? {}).join('|') === 'Direct.memc' && JSON.stringify(apres3) === JSON.stringify(avant3) && JSON.stringify(apres4) === JSON.stringify(avant4)
+    && /« Aug », « Bea » ont leur propre dossier sur l'ordinateur : ils sont laissés tel quel/.test(t13l ?? ''),
+    'C13l) « Axe » enregistré : seul « Direct.memc » est écrit ; « Aug » et « Bea », qui ont leur propre dossier, sont laissés tels quels (et le message le dit)', { contenu, t13l })
+  // Leurs classeurs gardent leur fichier là-bas
+  const entAug = await p.evaluate(id => window.__registre.classeurs().then(l => l.find(f => f.id === id)?.cle?.chemin), idProba)
+  ok(JSON.stringify(entAug) === JSON.stringify(['Aug']), '   … « Proba » garde son fichier dans « PC3 › Aug » (pas « Axe › Aug »)', entAug)
+  await toasts(p)
 
   // =====================================================================
   console.log('\n— C12. Emplacements indépendants : le nom d\'un sous-dossier sur l\'ordinateur, et les noms qui suivent')

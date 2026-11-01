@@ -109,6 +109,7 @@ export function texteDuBilan(b: BilanRelier, dossier: string): string {
   if (b.plusRiches.length) t.push(`${noms(b.plusRiches)} : le fichier du dossier a des changements que la bibliothèque n'a pas ; ouvrez-le d'abord (il n'a pas été touché).`)
   if (b.echecs.length) t.push(`${noms(b.echecs)} : pas pu être écrit${b.echecs.length > 1 ? 's' : ''}.`)
   if (b.gardes?.length) t.push(`${noms(b.gardes)} : le fichier du même nom déjà là est gardé ; ${b.gardes.length > 1 ? 'ils n\'y ont' : 'il n\'y a'} pas encore de fichier.`)
+  if (b.aPart?.length) t.push(`${noms(b.aPart)} ${b.aPart.length > 1 ? 'ont leur propre dossier sur l\'ordinateur : ils sont laissés' : 'a son propre dossier sur l\'ordinateur : il est laissé'} tel quel.`)
   return t.join(' ')
 }
 
