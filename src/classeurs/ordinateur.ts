@@ -227,13 +227,17 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
       /** Le chemin noté dans la fiche pour un fichier rangé à `chemin` sous `d` */
       const cheminNote = (chemin: string[]) => [...prefixe, ...chemin.map(n => nomSur(n, { repli: 'Dossier' }))]
       if (deja && o.nouveauLieu) {
-        // Le dossier choisi à l'instant : son fichier y est-il déjà, à
-        // n'importe quelle profondeur, sous n'importe quel nom (le classeur
-        // renommé depuis) ? La fiche apprend alors son chemin exact, pour
-        // qu'il suive ensuite à sa place (bibliotheque.suivreLeNom)
+        // Le dossier choisi à l'instant : son fichier y est-il déjà, à sa
+        // place (le dossier du chapitre, ou directement le dossier à plat) et
+        // à son nom ? Alors rien à faire. Ailleurs dans ce dossier (une autre
+        // année, l'ancien nom du classeur) : le classeur reçoit un fichier
+        // neuf à sa place, et l'ancien reste où il est, intact. Enregistrer
+        // n'enlève jamais rien du PC (le professeur, 2026-11).
         const ou = typeof d.resolve === 'function' ? await d.resolve(deja).catch(() => null) : null
-        if (ou?.length) {
-          const chemin = cheminNote(ou.slice(0, -1))
+        const attendu = (o.aPlat ? sous : [...sous, base]).map(n => nomSur(n, { repli: 'Dossier' }))
+        const prevuIci = (base + EXTENSION_TABLEAU).toLocaleLowerCase('fr')
+        if (ou?.length && ou.length === attendu.length + 1 && attendu.every((n, i) => ou[i] === n) && ou[ou.length - 1].toLocaleLowerCase('fr') === prevuIci) {
+          const chemin = cheminNote(attendu)
           if (JSON.stringify(f.cle?.chemin) !== JSON.stringify(chemin)) await registre.modifierClasseur(f.id, x => { if (x.cle) x.cle = { ...x.cle, chemin } }).catch(() => {})
           bilan.relies.push(f.nom); continue
         }
@@ -241,7 +245,8 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
       if (deja) {
         // Il peut être dans le dossier de son chapitre, ou à plat (le rangement d'avant)
         let lie = false
-        for (const chemin of [[...sous, base], sous]) {
+        // (le dossier choisi à l'instant : vu plus haut, seule sa place compte)
+        for (const chemin of o.nouveauLieu ? [] : [[...sous, base], sous]) {
           const ici = await dossierPour(chemin, false)
           if (ici && await ici.d.getFileHandle(deja.name).then(h => memeFichier(h, deja)).catch(() => false)) {
             lie = true
@@ -286,7 +291,8 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
       const prevu = base + EXTENSION_TABLEAU
       // Un fichier de ce classeur déjà là (dans le dossier de son chapitre, ou à plat) est repris tel quel
       let adopte = false
-      for (const chemin of [[...sous, base], sous]) {
+      // (le dossier choisi à l'instant : seulement à sa place)
+      for (const chemin of o.nouveauLieu ? [o.aPlat ? sous : [...sous, base]] : [[...sous, base], sous]) {
         const ici = await dossierPour(chemin, false)
         const nomLa = ici?.noms.find(n => n.toLocaleLowerCase('fr') === prevu.toLocaleLowerCase('fr'))
         if (!ici || !nomLa) continue
