@@ -36,7 +36,7 @@ import { deLaSeance } from './seances'
 import type { ChapitreAccueil } from './seances-vue'
 import { ouvrirAccueil } from './seances-vue'
 import { installerCurseurs } from './curseurs'
-import { comparerEtiquettes, etiquetteHeritee } from './classeurs/arbre'
+import { comparerEtiquettes, etiquetteHeritee, remontee } from './classeurs/arbre'
 import { NOM_SEANCES_ISOLEES, classeurSeancesIsolees, estSeancesIsolees, isoleesEnQueue, texteClasseurIsoleesCree, texteSeanceIsolee } from './classeurs/isolees'
 import { classeursCherches, contenuDeLaBase } from './classeurs/recherche-bibliotheque'
 import type { FicheDossier } from './classeurs/demarrage'
@@ -480,8 +480,14 @@ async function demarrer() {
     // fichier dans le dossier de son niveau (l'accord dans le clic), et la
     // clé de l'onglet démarre dessus.
     // (la clé de l'onglet repart d'elle-même : apresRangement, plus haut)
+    // Plus de fenêtre « Où ranger… » (2026-11) : la fenêtre « Enregistrer le
+    // dossier » du niveau, la même que dans le menu de chaque dossier
     const rangerLeNiveauIci = async () => {
-      await ranger.proposerPourLeClasseurOuvert()
+      const f = await registre.classeur(infos.id).catch(() => undefined)
+      const dossiers = f?.dossier ? await registre.dossiers().catch(() => []) : []
+      const niveau = f?.dossier ? remontee(f.dossier, dossiers).pop() : undefined
+      if (!niveau) { ui.message('Ce classeur n\'est pas dans un dossier : rangez-le d\'abord dans un dossier, depuis la bibliothèque.'); return }
+      await ailleurs.enregistrer({ quoi: 'classe', classe: niveau.id })
       await majRangement()
     }
     const donnerSonFichierIci = async () => {
@@ -492,7 +498,7 @@ async function demarrer() {
       }
       await majRangement()
     }
-    ui.inscrireActionEtat('ranger-niveau', () => { const n = surveillance.etat.cle.rangeable?.niveau; return n ? `Ranger « ${n} » dans un dossier…` : 'Ranger ce niveau dans un dossier…' }, () => void rangerLeNiveauIci())
+    ui.inscrireActionEtat('ranger-niveau', () => { const n = surveillance.etat.cle.rangeable?.niveau; return n ? `Enregistrer « ${n} » sur l'ordinateur…` : 'Enregistrer ce dossier sur l\'ordinateur…' }, () => void rangerLeNiveauIci())
     ui.inscrireActionEtat('donner-fichier', 'Lui donner son fichier', () => void donnerSonFichierIci())
     // « Déplacer le classeur… » du menu ⋯ : le fichier suit (morceau C2,
     // deplacer-fichier.ts) ; à décommenter à la fusion du morceau C2

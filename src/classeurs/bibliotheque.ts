@@ -361,6 +361,12 @@ export class Bibliotheque {
   tri: Tri = 'modifie'
   /** Ouvrir et enregistrer des fichiers (lot 4 C9) : posé par brancherFichiers */
   fichiers: Fichiers | null = null
+  /** La fenêtre « Où ranger… » au premier « Nouveau classeur » d'un niveau :
+   *  plus d'elle-même depuis 2026-11 (le professeur : un seul menu,
+   *  « Enregistrer ce dossier… », pour tous les dossiers). Les essais du lot
+   *  18 la rallument pour vérifier le rangement chez un établissement, qui
+   *  reste pour les niveaux déjà rangés ainsi (window.__essaiOuRanger). */
+  proposerOuRanger = (globalThis as { __essaiOuRanger?: boolean }).__essaiOuRanger === true
   /** Où ranger les classeurs d'un niveau (lot 18) : posé par brancherRanger ;
    *  null : ce navigateur ne range pas, ou la bibliothèque est construite seule */
   ranger: Ranger | null = null
@@ -3680,10 +3686,14 @@ export class Bibliotheque {
     const offrirCle = ecritDansUnFichier() && ecrivain.mode !== 'fil'
     let endroit: Endroit | null = null
     if (dans !== null && this.ranger) {
-      const niveau = await this.ranger.aProposerPour(dans).catch(() => null)
-      if (niveau) await this.ranger.proposer(niveau, { origine: 'nouveau' })
-      // Entre-temps : on est parti, ou une autre fenêtre s'est ouverte
-      if (this.depart || document.querySelector('dialog[open]')) return
+      // Plus de fenêtre « Où ranger… » d'elle-même (2026-11) : chaque dossier
+      // s'enregistre par son menu, « Enregistrer ce dossier… » ; voir proposerOuRanger
+      if (this.proposerOuRanger) {
+        const niveau = await this.ranger.aProposerPour(dans).catch(() => null)
+        if (niveau) await this.ranger.proposer(niveau, { origine: 'nouveau' })
+        // Entre-temps : on est parti, ou une autre fenêtre s'est ouverte
+        if (this.depart || document.querySelector('dialog[open]')) return
+      }
       if (offrirCle) endroit = await this.ranger.endroitDe(dans).catch(() => null)
     }
     const d = document.createElement('dialog')

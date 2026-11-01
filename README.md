@@ -3327,6 +3327,28 @@ emplacements »** en haut de la bibliothèque (3A).
   a plus de pages n'est jamais remplacé d'office (« Garder les deux » est alors
   proposé, avec un avertissement). Un classeur mis à la corbeille garde son
   fichier sur le PC.
+  Enregistré de nouveau ailleurs, un dossier écrit chacun de ses classeurs
+  dans le dossier choisi (l'ancien fichier reste intact) ; un classeur
+  renommé avant voit son fichier suivre (« 17 octobre.memc » devient
+  « Trigonométrie.memc », l'ancien retiré une fois le nouveau vérifié).
+- **Un seul menu pour tous les dossiers (2026-11, choix du professeur).**
+  Chaque dossier, en haut ou dessous, a « Enregistrer ce dossier… » et
+  « Emplacement sur l'ordinateur… », et la même fenêtre (« Nom du dossier sur
+  le PC », le dossier à son nom créé dans celui choisi, sauf si l'on choisit
+  un dossier qui porte déjà ce nom). La fenêtre « Où ranger les classeurs
+  de… » ne vient plus d'elle-même au premier « Nouveau classeur » ; « Ranger… »
+  et « Changer… » de « Mes emplacements » et l'entrée du menu ⋯ du classeur
+  ouvrent la fenêtre « Enregistrer le dossier ». Les niveaux déjà rangés chez
+  un établissement le restent (« Mettre à jour », « Choisir un autre
+  dossier… »). Les essais rallument l'ancienne fenêtre par
+  `window.__essaiOuRanger`.
+- **Repartir à zéro sur l'ordinateur… (2026-11).** Au menu ⋯ de la
+  bibliothèque : après une question, l'outil oublie tous les liens avec le PC
+  (les dossiers reliés, les établissements proposés, le fichier de chaque
+  classeur, les noms sur l'ordinateur des sous-dossiers). **Rien n'est
+  effacé** : ni sur le PC ou le Drive, ni dans le navigateur ; les liens avec
+  le Drive (copies privées) restent. Ensuite chaque dossier se réenregistre
+  par « Enregistrer ce dossier… ».
 - **Mes emplacements.** En haut de la bibliothèque : chaque niveau relié
   (« 5ème → Drive personnel › MEM - Classeurs › 5ème », « 4ème → Cet ordinateur ›
   Cle 4ème »), ce qui n'y est pas encore (« 2 classeurs pas encore dedans »),

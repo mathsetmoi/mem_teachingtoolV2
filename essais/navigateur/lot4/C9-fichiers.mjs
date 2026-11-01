@@ -991,7 +991,8 @@ if (seul('L')) {
       const m = await p.evaluate(() => [...document.querySelectorAll('.menu-flottant:not([hidden]) .menu-item')].map(e => e.dataset.action + '|' + e.textContent))
       // (Adapté au lot 4, morceau C10 : « Récupérer une sauvegarde du Drive… » entre volontairement au menu du bandeau ;
       // et au lot 17 : « Vérifier les classeurs… » aussi, en dernier)
-      ok(m.length === 4 && m[0].startsWith('ouvrir-fichier|Ouvrir un classeur ou une bibliothèque…') && m[1].startsWith('enregistrer-bibliotheque|') && m[2].startsWith('recuperer-sauvegarde|') && m[3].startsWith('verifier-classeurs|'), '   … le menu ⋯ : « Ouvrir un classeur ou une bibliothèque… », puis « Enregistrer toute la bibliothèque… », « Récupérer une sauvegarde du Drive… », « Vérifier les classeurs… »', m)
+      // (et en 2026-11 : « Repartir à zéro sur l'ordinateur… », en dernier)
+      ok(m.length === 5 && m[0].startsWith('ouvrir-fichier|Ouvrir un classeur ou une bibliothèque…') && m[1].startsWith('enregistrer-bibliotheque|') && m[2].startsWith('recuperer-sauvegarde|') && m[3].startsWith('verifier-classeurs|') && m[4].startsWith('repartir-a-zero|'), '   … le menu ⋯ : « Ouvrir un classeur ou une bibliothèque… », puis « Enregistrer toute la bibliothèque… », « Récupérer une sauvegarde du Drive… », « Vérifier les classeurs… », « Repartir à zéro sur l\'ordinateur… »', m)
       await opfsEcrire(p, 'l0.memc', faireMemc(Y.encodeStateAsUpdate(unClasseur(['L0'])), { date: Date.now(), pages: 1, nom: 'Par le menu', id: '5a5a5a5a5a5a5a5b' }))
       await p.evaluate(() => { window.__aOuvrir = 'l0.memc' })
       await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="ouvrir-fichier"]')

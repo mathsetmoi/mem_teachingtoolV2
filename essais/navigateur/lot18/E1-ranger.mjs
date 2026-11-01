@@ -335,8 +335,17 @@ async function contexte() {
 /** Prêt : un classeur chargé (son état, sa bibliothèque), ou la bibliothèque seule */
 const pret = p => p.waitForFunction(() => (window.__surveillance && window.__bibliotheque && document.querySelector('.rang')?.textContent?.includes('/'))
   || (window.__bibliotheque && !window.__app && !document.querySelector('.bibliotheque').hidden), null, { timeout: 30000 })
+/** (Adapté 2026-11) La fenêtre « Où ranger… » d'un niveau, ouverte directement :
+ *  « Ranger… » et « Changer… » de « Mes emplacements » ouvrent maintenant la
+ *  fenêtre « Enregistrer le dossier » ; le rangement chez un établissement
+ *  reste pour les niveaux déjà rangés ainsi */
+const ouvrirOuRanger = (p, nom) => p.evaluate(async n => { const d = (await window.__registre.dossiers()).find(x => x.nom === n && !x.parent); void window.__ranger.proposer(d, { origine: 'emplacements' }) }, nom)
 async function ouvrirPage(ctx, nom = 'p') {
   const p = await ctx.newPage(); suivre(p, nom)
+  // (Adapté 2026-11 : la fenêtre « Où ranger… » ne vient plus d'elle-même au
+  // premier « Nouveau classeur » ; l'essai la rallume pour vérifier le
+  // rangement chez un établissement, qui reste pour les niveaux déjà rangés)
+  await p.addInitScript(() => { window.__essaiOuRanger = true })
   await p.goto(DEV); await pret(p)
   await p.evaluate(() => Promise.all([window.__cle?.pret, window.__drive?.pret]))
   return p
@@ -468,8 +477,8 @@ try {
   let e = await emplacements(p)
   ok(e?.titre === 'Où sont copiées mes classes ?' && e.etabs?.entete === 'Établissements :' && e.etabs.noms.join(' · ') === 'LFB classeurs · MEM classeurs' && e.etabs.retirer === 2 && e.etabs.ajouter === 'Ajouter un dossier…',
     'C5) « Mes emplacements » : « Établissements : LFB classeurs · MEM classeurs », « Retirer » pour chacun, « Ajouter un dossier… »', e)
-  ok(e?.lignes.map(l => `${l.texte} [${l.boutons.join(', ')}]`).join(' ; ') === '4eme → MEM classeurs › 4 [Mettre à jour, Changer…] ; 5eme → LFB classeurs › 5 [Mettre à jour, Changer…]',
-    'C6) « 4eme → MEM classeurs › 4 », « 5eme → LFB classeurs › 5 », chacun avec « Mettre à jour » et « Changer… »', e?.lignes)
+  ok(e?.lignes.map(l => `${l.texte} [${l.boutons.join(', ')}]`).join(' ; ') === '4eme → MEM classeurs › 4 [Mettre à jour, Choisir un autre dossier…] ; 5eme → LFB classeurs › 5 [Mettre à jour, Choisir un autre dossier…]',
+    'C6) « 4eme → MEM classeurs › 4 », « 5eme → LFB classeurs › 5 », chacun avec « Mettre à jour » et « Choisir un autre dossier… » (adapté 2026-11 : plus de « Changer… »)', e?.lignes)
   // « Retirer » un établissement : une confirmation d'abord ; « Annuler » ne change rien
   await p.click('.emplacements .etablissement:has(.nom:text-is("MEM classeurs")) .e-retirer-etab')
   await p.waitForSelector('dialog.dialogue-ouvrir[open]', { timeout: 5000 }).catch(() => {})
@@ -501,13 +510,13 @@ try {
   await p.keyboard.press('Escape'); await p.waitForTimeout(300)
   e = await emplacements(p)
   const ligne3 = e?.lignes.find(l => l.dossier === d3)
-  ok(ligne3 && ligne3.genre === 'aucun' && ligne3.texte === '3eme → pas encore rangé dans un dossier' && ligne3.boutons.join() === 'Ranger…', 'D4) Dans « 3eme », « Mes emplacements » : « 3eme → pas encore rangé dans un dossier » [Ranger…]', e)
+  ok(ligne3 && ligne3.genre === 'aucun' && ligne3.texte === '3eme → pas encore rangé dans un dossier' && ligne3.boutons.join() === 'Enregistrer…', 'D4) Dans « 3eme », « Mes emplacements » : « 3eme → pas encore rangé dans un dossier » [Enregistrer…] (adapté 2026-11)', e)
   await p.click('.emplacements li.pas-range .e-ranger')
-  await p.waitForSelector('dialog.dialogue-ranger[open]', { timeout: 10000 })
-  r = await ranger(p)
-  ok(r.titre === 'Où ranger les classeurs de « 3eme » ?', 'D5) « Ranger… » rouvre la fenêtre', r)
-  await p.click('dialog[open] .r-plus-tard'); await p.waitForTimeout(300)
-  ok(!(await dialogue(p)), '   … « Plus tard » la ferme, sans autre fenêtre')
+  await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]', { timeout: 10000 })
+  const t5 = await p.evaluate(() => document.querySelector('dialog.dialogue-enregistrer-ailleurs[open] h2')?.textContent)
+  ok(t5 === 'Enregistrer le dossier « 3eme »', 'D5) « Enregistrer… » ouvre la fenêtre « Enregistrer le dossier « 3eme » » (adapté 2026-11 : plus de « Où ranger… »)', t5)
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300)
+  ok(!(await dialogue(p)), '   … Échap la ferme, sans autre fenêtre')
 
   // =====================================================================
   console.log('\n— F. Un .memc ajouté (Ouvrir → Ajouter) dans un niveau rangé')
@@ -575,7 +584,7 @@ try {
   // =====================================================================
   console.log('\n— H. « Un autre dossier, pour ce niveau seul… »')
   await voirBibliotheque(p, d3)
-  await p.click('.emplacements li.pas-range .e-ranger')
+  await ouvrirOuRanger(p, '3eme')
   await p.waitForSelector('dialog.dialogue-ranger[open]', { timeout: 10000 })
   await p.check('dialog[open] input[name="r-etab"][value="autre"]')
   r = await ranger(p)
@@ -603,7 +612,7 @@ try {
   console.log('\n— I. « Changer… » : « 5eme » de « LFB classeurs » à « MEM classeurs »')
   await voirBibliotheque(p, null)
   const dans5 = (await fiches(p)).filter(f => f.dossier === d5 && !f.corbeille)
-  await p.click('.emplacements li.emplacement:has(strong:text-is("5eme")) .e-changer')
+  await ouvrirOuRanger(p, '5eme')
   await p.waitForSelector('dialog.dialogue-ranger[open]', { timeout: 10000 })
   r = await ranger(p)
   ok(r.titre === 'Où ranger les classeurs de « 5eme » ?' && r.etabs.map(e => `${e.nom}:${e.coche}`).join('|') === 'LFB classeurs:true|MEM classeurs:false' && r.champ === '5', 'I1) La fenêtre : « LFB classeurs » (l\'actuel) sélectionné, le champ « 5 » (le nom donné)', r)
@@ -660,7 +669,7 @@ try {
     window.__panneEcriture = /^Symetrie\.memc$/
   }, { idAngles, idProbas })
   await voirBibliotheque(p, null)
-  await p.click('.emplacements li.emplacement:has(strong:text-is("5eme")) .e-changer')
+  await ouvrirOuRanger(p, '5eme')
   await p.waitForSelector('dialog.dialogue-ranger[open]', { timeout: 10000 })
   await p.evaluate(() => { window.__dossierChoisi = 'LyFEL classeurs' })
   await p.click('dialog[open] .r-choisir-dossier')
@@ -707,7 +716,7 @@ try {
   const idFrac = fs.find(f => f.nom === 'Fractions')?.id, idProbabilites = fs.find(f => f.nom === 'Probabilites')?.id
   await p.evaluate(async id => { await window.__registre.modifierClasseur(id, x => { if (x.cle) delete x.cle.chemin }); window.__panneLecture = /^Probabilites\.memc$/ }, idFrac)
   await voirBibliotheque(p, null)
-  await p.click('.emplacements li.emplacement:has(strong:text-is("5eme")) .e-changer')
+  await ouvrirOuRanger(p, '5eme')
   await p.waitForSelector('dialog.dialogue-ranger[open]', { timeout: 10000 })
   await p.check(`dialog[open] input[name="r-etab"][value="${idMEM}"]`)
   await oublier(p, '__demandes'); await toasts(p)
@@ -822,6 +831,7 @@ try {
   else {
     const ctxK = await contexte()
     await ctxK.addInitScript(FAUX_FS)
+    await ctxK.addInitScript(() => { window.__essaiOuRanger = true }) // (adapté 2026-11, voir ouvrirPage)
     await ctxK.route(/^https?:/, r => r.abort())
     const h = await ctxK.newPage(); suivre(h, 'K')
     await h.goto(pathToFileURL(DIST).href)
