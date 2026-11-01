@@ -189,6 +189,13 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
   /** Un autre fichier porte déjà le nom prévu : demander au professeur
    *  (absent : le nouveau prend un autre nom, sans rien demander) */
   conflit?: (c: ConflitFichier) => Promise<ChoixConflit>
+  /** Le professeur vient de choisir ce dossier pour tout le dossier du
+   *  navigateur (« Enregistrer… ») : chaque classeur dont le fichier n'est
+   *  pas dans `d` en reçoit un ici, même si l'ancien porte un chemin au même
+   *  nom ou a été choisi à la main ; l'ancien est relu d'abord (plus riche ou
+   *  illisible : il reste le fichier du classeur) et reste où il est, intact.
+   *  Un ancien fichier disparu n'empêche rien : la base a tout. */
+  nouveauLieu?: boolean
 } = {}): Promise<BilanRelier> {
   const [fiches, dossiers] = await Promise.all([registre.classeurs(), registre.dossiers()])
   let classeurs = classeursDeLaClasse(classe, fiches, dossiers)
@@ -239,16 +246,23 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
         // professeur dans « Un autre dossier de l'ordinateur… », reste celui du
         // classeur.
         const quitte = o.ancien ? await dansLeDossier(o.ancien, deja) : false
-        const r = rangeParLOutil(f.cle?.chemin, prefixe)
-        // Rangé ici, sous un autre nom (le classeur renommé depuis) : il est à
-        // sa place, et la clé le tient à jour
-        if (!quitte && r === 'ici') { bilan.relies.push(f.nom); continue }
-        if (!o.reprendre || !(quitte || r === 'ailleurs')) { bilan.ailleurs.push(f.nom); continue }
+        if (o.nouveauLieu) {
+          // Le dossier choisi à l'instant : le fichier y est-il vraiment (sous
+          // un autre nom, le classeur renommé depuis) ? Le nom d'un chemin ne
+          // suffit pas : un autre dossier peut porter le même nom
+          if (await dansLeDossier(d, deja)) { bilan.relies.push(f.nom); continue }
+        } else {
+          const r = rangeParLOutil(f.cle?.chemin, prefixe)
+          // Rangé ici, sous un autre nom (le classeur renommé depuis) : il est à
+          // sa place, et la clé le tient à jour
+          if (!quitte && r === 'ici') { bilan.relies.push(f.nom); continue }
+          if (!o.reprendre || !(quitte || r === 'ailleurs')) { bilan.ailleurs.push(f.nom); continue }
+        }
         // L'ancien fichier est relu d'abord : plus riche que la base, ou
         // illisible (ou introuvable sans qu'on sache qu'il a disparu), il reste
         // le fichier du classeur ; sinon le classeur reçoit son fichier ici
         // (l'ancien reste où il est, intact)
-        const v = await relireLAncien(deja, f, quitte ? o.ancien : undefined)
+        const v = await relireLAncien(deja, f, quitte ? o.ancien : undefined, !!o.nouveauLieu)
         if (v === 'plus-riche') { bilan.plusRiches.push(f.nom); continue }
         if (v === 'illisible') { bilan.aRelire.push(f.nom); continue }
       }
@@ -328,9 +342,12 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
  *  introuvable aussi, mais seulement quand on sait qu'il a disparu : il était
  *  dans `ancien` (le dossier quitté), et ce dossier se lit encore ; sinon (une
  *  clé USB débranchée, un dossier déplacé : peut-être plus riche) 'illisible'. */
-async function relireLAncien(p: PoigneeFichier, f: FicheClasseur, ancien?: PoigneeDossier): Promise<'pareil' | 'plus-riche' | 'illisible'> {
+async function relireLAncien(p: PoigneeFichier, f: FicheClasseur, ancien?: PoigneeDossier, disparuPareil = false): Promise<'pareil' | 'plus-riche' | 'illisible'> {
   let fichier: File
   try { fichier = await p.getFile() } catch (e) {
+    // Disparu (effacé ou déplacé dans l'Explorateur) : la base a tout, quand
+    // le professeur vient de choisir le nouveau dossier lui-même
+    if ((e as { name?: string } | null)?.name === 'NotFoundError' && disparuPareil) return 'pareil'
     if ((e as { name?: string } | null)?.name !== 'NotFoundError' || !ancien) return 'illisible'
     try { for await (const _ of ancien.values()) break; return 'pareil' } catch { return 'illisible' }
   }

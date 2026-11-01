@@ -396,6 +396,34 @@ try {
   ok(Object.keys(contenu).sort().join('|') === 'Bea|Bea (2)' && Object.keys(contenu['Bea']).join('|') === 'garde.txt' && contenu['Bea (2)']?.['Suites.memc'] > 0,
     'C13f) « Enregistrer sous un autre nom » : « PC2 › Bea (2) › Suites.memc », « Bea » intact', contenu)
   await toasts(p)
+  // (Ajouté 2026-11-01) Un dossier déjà enregistré (« Aug », relié à « PC1 › Aug »)
+  // enregistré de nouveau ailleurs : ses classeurs y reçoivent leur fichier,
+  // même si l'ancien dossier porte le même nom ; l'ancien reste intact
+  const avantPC1 = await p.evaluate(() => window.__lister('PC1'))
+  await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), dAug)
+  await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
+  await p.evaluate(() => { window.__dossierChoisi = 'PC3' })
+  await p.click('dialog.dialogue-enregistrer-ailleurs[open] .e-ok')
+  await attendreToast(p, /» est relié au dossier « Aug »/, 20000)
+  contenu = await p.evaluate(() => window.__lister('PC3'))
+  const apresPC1 = await p.evaluate(() => window.__lister('PC1'))
+  const entP3 = await p.evaluate(() => window.__entete('PC3/Aug', 'Proba.memc'))
+  ok(contenu['Aug']?.['Proba.memc'] > 0 && entP3.id === idProba && JSON.stringify(apresPC1) === JSON.stringify(avantPC1),
+    'C13g) « Aug » déjà enregistré, enregistré de nouveau dans « PC3 » : « PC3 › Aug › Proba.memc » écrit, « PC1 › Aug » intact', { contenu, apresPC1 })
+  await toasts(p)
+  // De nouveau au même endroit (« Fusionner ») : rien en double, et le message dit qu'il y est déjà
+  await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), dAug)
+  await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
+  await p.evaluate(() => { window.__dossierChoisi = 'PC3' })
+  await p.click('dialog.dialogue-enregistrer-ailleurs[open] .e-ok')
+  await p.waitForSelector('dialog.dialogue-conflit[open]')
+  await p.click('dialog.dialogue-conflit[open] .c-ok')
+  await attendreToast(p, /» est relié au dossier « Aug »/, 20000)
+  const t13 = await p.evaluate(() => (window.__toasts || []).filter(t => /relié au dossier « Aug »/.test(t)).pop())
+  contenu = await p.evaluate(() => window.__lister('PC3'))
+  ok(Object.keys(contenu['Aug'] ?? {}).join('|') === 'Proba.memc' && /Son classeur y est déjà/.test(t13 ?? ''),
+    'C13h) Au même endroit : rien en double, « Son classeur y est déjà, tenu à jour tout seul »', { contenu, t13 })
+  await toasts(p)
 
   // =====================================================================
   console.log('\n— C12. Emplacements indépendants : le nom d\'un sous-dossier sur l\'ordinateur, et les noms qui suivent')
