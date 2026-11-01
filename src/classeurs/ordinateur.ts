@@ -23,7 +23,8 @@ import type { PoigneeFichier } from './cle'
 import { ecrireDans, ecrireLeNeuf, memeFichier, permission } from './cle'
 import type { FicheClasseur } from './demarrage'
 import type { Registre } from './registre'
-import { classeursDeLaClasse, nomDeFichierLibre, rangeParLOutil, sousDossiers } from './emplacements'
+import { classeursDeLaClasse, emplacements, nomDeFichierLibre, rangeParLOutil, sousDossiers } from './emplacements'
+import { remontee } from './arbre'
 import { ecrivain } from './ecrivain'
 import { comparerVecteurs, verdictAncienFichier } from './vecteurs'
 import { EXTENSION_TABLEAU, lireEntete, nomSur } from '../fichier'
@@ -121,6 +122,9 @@ export interface BilanRelier {
   /** Un autre fichier du même nom était déjà dans le dossier, et le
    *  professeur a choisi de le garder : ils n'y ont pas encore de fichier */
   gardes?: string[]
+  /** Les sous-dossiers qui ont leur propre dossier sur l'ordinateur (leur
+   *  coche « PC ✓ ») : leurs classeurs y restent, laissés de côté ici */
+  aPart?: string[]
   echecs: string[]
   /** Ce qui a empêché le dernier échec, pour le dire (sans point final) */
   raison?: string
@@ -202,6 +206,24 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
   if (o.seulement) classeurs = classeurs.filter(f => o.seulement!.includes(f.id))
   const prefixe = o.prefixe ?? [d.name]
   const bilan: BilanRelier = { ecrits: [], adoptes: [], plusRiches: [], ailleurs: [], relies: [], aRelire: [], echecs: [] }
+  // Un sous-dossier qui a son propre dossier sur l'ordinateur (sa coche
+  // « PC ✓ », choisie à part) garde ses classeurs là-bas : enregistrer le
+  // dossier du haut le laisse de côté, sinon ses fichiers seraient réécrits
+  // ici et celui tenu à jour changerait à chaque enregistrement. Pas pour
+  // un classeur seul (`seulement`) : qui l'appelle a déjà pris son dossier le
+  // plus proche, et ce fichier s'écrit avant de quitter la page
+  const lies = new Set(o.seulement ? [] : (await emplacements(registre).catch(() => [])).filter(e => e.genre === 'ordinateur' && e.dossier !== classe).map(e => e.dossier))
+  if (lies.size) {
+    const aPart = new Set<string>()
+    classeurs = classeurs.filter(f => {
+      for (const x of remontee(f.dossier, dossiers)) {
+        if (x.id === classe) return true
+        if (lies.has(x.id)) { aPart.add(x.nom); return false }
+      }
+      return true
+    })
+    if (aPart.size) bilan.aPart = [...aPart]
+  }
   const sous = new Map<string, { d: PoigneeDossier; noms: string[] }>() // les dossiers déjà ouverts, par chemin
   /** Le dossier de ce chemin sous le dossier relié ; `creer` faux : null s'il n'existe pas encore */
   const dossierPour = async (chemin: string[], creer = true): Promise<{ d: PoigneeDossier; noms: string[] } | null> => {
