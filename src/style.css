@@ -2266,6 +2266,11 @@ body.en-revue .bandeau-seance, body.en-trieuse .bandeau-seance, body.en-trieuse 
 /* Lot 15 : « PC ✓ » sur la carte d'un dossier relié ; une seule ligne quand il manque des copies */
 .puce-emplacement { flex: none; font-size: 12px; font-weight: 700; line-height: 18px; padding: 0 8px; border-radius: 999px; background: #e0f3ea; color: #1f7a52; white-space: nowrap; }
 .puce-emplacement.attention { background: #fff0d2; color: #9a5b00; }
+/* 2026-11 : la pastille d'un dossier enregistré sur le PC se clique (sa petite fenêtre, près d'elle) */
+.puce-emplacement.cliquable { cursor: pointer; }
+.puce-emplacement.cliquable:hover { box-shadow: 0 0 0 2px #1f7a52; }
+.dialogue.bulle-pc { position: fixed; margin: 0; inset: auto; width: min(380px, calc(100vw - 24px)); }
+.dialogue.bulle-pc .actions { flex-wrap: wrap; }
 .emplacements.resume { padding: 6px 12px; background: #fff0d2; border-color: #e8c98a; }
 .emplacements .ligne-resume { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 36px; font-size: 14px; font-weight: 600; color: #9a5b00; }
 .emplacements .ligne-resume .texte { flex: 1; min-width: 200px; overflow-wrap: anywhere; }

@@ -248,7 +248,7 @@ try {
   const dGeo = await p.evaluate(d => window.__dossier('Geometrie', d), d4)
   const ids4 = await p.evaluate(([a, b]) => window.__creer([{ nom: 'Calcul', dossier: a }, { nom: 'Triangles', dossier: b }]), [d4, dGeo])
   // Un fichier « Calcul.memc » qui n'est pas à lui, déjà dans le dossier du chapitre « Calcul »
-  await p.evaluate(() => window.__ecrireOpfs('Cle 4B/Calcul', 'Calcul.memc', 'un autre fichier'))
+  await p.evaluate(() => window.__ecrireOpfs('Cle 4B', 'Calcul.memc', 'un autre fichier'))
   await p.keyboard.press('Escape')
   await p.evaluate(() => { if (window.__bibliotheque.ouvert) window.__bibliotheque.fermer?.() })
   // (Adapté au lot 18 : plus d'entrée « Enregistrer sur le Drive ou ailleurs… » dans le menu ⋯ ni de ui.enregistrerAilleurs)
@@ -287,13 +287,13 @@ try {
   await attendreToast(p, /» est relié au dossier « Cle 4B »/, 20000)
   const t4 = (await toasts(p)).join(' / ')
   contenu = await p.evaluate(() => window.__lister('Cle 4B'))
-  // (Adapté 2026-11 : « Enregistrer sur l'ordinateur » d'un dossier range les classeurs à plat, sans dossier au nom du classeur)
-  ok(contenu['Calcul.memc'] > 0 && contenu['Calcul']?.['Calcul.memc'] === 'un autre fichier'.length && contenu['Geometrie']?.['Triangles.memc'] > 0 && !contenu['Geometrie']?.['Triangles'],
-    'C5) À plat : chaque .memc directement dans le dossier (ou son sous-dossier « Geometrie »), sans dossier au nom du classeur ; l\'autre fichier n\'est pas touché', contenu)
+  // (Adapté 2026-11, choix du professeur : chaque classeur dans un dossier à son nom, avec ses replays)
+  ok(contenu['Calcul.memc'] === 'un autre fichier'.length && contenu['Calcul']?.['Calcul.memc'] > 0 && contenu['Geometrie']?.['Triangles']?.['Triangles.memc'] > 0,
+    'C5) Chaque .memc dans un dossier à son nom (« Calcul › Calcul.memc », « Geometrie › Triangles › Triangles.memc ») ; l\'autre fichier n\'est pas touché', contenu)
   ok(/2 classeurs dans « Cle 4B »/.test(t4), 'C6) Le message le dit', t4)
   fs = await fiches(p)
   ok(fs.find(x => x.id === ids4[0])?.cle === 'Calcul.memc' && fs.find(x => x.id === ids4[1])?.cle === 'Triangles.memc', 'C7) Chacun l\'a pour fichier de sa clé', fs)
-  const ent = await p.evaluate(() => window.__entete('Cle 4B/Geometrie', 'Triangles.memc'))
+  const ent = await p.evaluate(() => window.__entete('Cle 4B/Geometrie/Triangles', 'Triangles.memc'))
   ok(ent.nom === 'Triangles' && ent.id === ids4[1], 'C8) Le fichier est bien celui du classeur (son en-tête)', ent)
   // Mettre à jour : rien en double
   await voirBibliotheque(p)
@@ -304,14 +304,14 @@ try {
   await p.click('.emplacement:has-text("4B") .e-maj')
   await attendreToast(p, /4B/, 20000)
   contenu = await p.evaluate(() => window.__lister('Cle 4B'))
-  ok(Object.keys(contenu).sort().join('|') === 'Calcul|Calcul.memc|Geometrie' && Object.keys(contenu['Calcul']).join('|') === 'Calcul.memc' && Object.keys(contenu['Geometrie']).join('|') === 'Triangles.memc', '   … « Mettre à jour » : rien en double (à plat)', contenu)
+  ok(Object.keys(contenu).sort().join('|') === 'Calcul|Calcul.memc|Geometrie' && Object.keys(contenu['Calcul']).join('|') === 'Calcul.memc' && Object.keys(contenu['Geometrie']).join('|') === 'Triangles' && Object.keys(contenu['Geometrie']['Triangles']).join('|') === 'Triangles.memc', '   … « Mettre à jour » : rien en double', contenu)
   await toasts(p)
   // Un dossier déjà tenu à jour : la fenêtre dit où sont ses fichiers (le chemin depuis le dossier choisi)
   await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), d4)
   await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
   const fi = await p.evaluate(() => { const d = document.querySelector('dialog[open]'); return { lieu: d.querySelector('.e-lieu:not([hidden])')?.textContent, fichiers: [...d.querySelectorAll('.e-fichiers:not([hidden]) li')].map(x => x.textContent), large: d.scrollWidth > d.clientWidth } })
-  ok(/Rangé aujourd'hui dans Cet ordinateur › Cle 4B/.test(fi.lieu ?? '') && fi.fichiers.includes('Cle 4B › Calcul.memc') && fi.fichiers.includes('Cle 4B › Geometrie › Triangles.memc') && !fi.large,
-    'C9b) Le dossier « 4B » dit où sont ses fichiers : « Cle 4B › Calcul.memc », « Cle 4B › Geometrie › Triangles.memc » (à plat)', fi)
+  ok(/Rangé aujourd'hui dans Cet ordinateur › Cle 4B/.test(fi.lieu ?? '') && fi.fichiers.includes('Cle 4B › Calcul › Calcul.memc') && fi.fichiers.includes('Cle 4B › Geometrie › Triangles › Triangles.memc') && !fi.large,
+    'C9b) Le dossier « 4B » dit où sont ses fichiers : « Cle 4B › Calcul › Calcul.memc », « Cle 4B › Geometrie › Triangles › Triangles.memc »', fi)
   await p.keyboard.press('Escape'); await p.waitForTimeout(200)
   // Un sous-dossier d'un dossier déjà sur l'ordinateur (« Geometrie » dans « 4B ») : il y est déjà, rien à choisir
   await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), dGeo)
@@ -330,7 +330,7 @@ try {
   await p.click('dialog[open] .e-ok')
   await attendreToast(p, /4B/, 20000)
   contenu = await p.evaluate(() => window.__lister('Cle 4B'))
-  ok(Object.keys(contenu).sort().join('|') === 'Calcul|Calcul.memc|Geometrie' && Object.keys(contenu['Geometrie']).join('|') === 'Triangles.memc', '   … « Mettre à jour » : le même dossier, rien en double', contenu)
+  ok(Object.keys(contenu).sort().join('|') === 'Calcul|Calcul.memc|Geometrie' && Object.keys(contenu['Geometrie']).join('|') === 'Triangles', '   … « Mettre à jour » : le même dossier, rien en double', contenu)
   await toasts(p)
   // Un sous-dossier d'un dossier pas rangé : son dossier, à son nom, est créé dans celui qu'on choisit
   const dDivers = await p.evaluate(() => window.__dossier('Divers'))
@@ -344,7 +344,7 @@ try {
   await p.click('dialog[open] .e-ok')
   await attendreToast(p, /» est relié au dossier « Exos »/, 20000)
   contenu = await p.evaluate(() => window.__lister('Ma cle'))
-  ok(contenu['Exos']?.['Revisions.memc'] > 0 && !contenu['Exos']?.['Revisions'], '   … « Ma cle › Exos › Revisions.memc » (à plat)', contenu)
+  ok(contenu['Exos']?.['Revisions']?.['Revisions.memc'] > 0, '   … « Ma cle › Exos › Revisions › Revisions.memc »', contenu)
   // (Pour la suite : ce dossier ne reste pas relié, ni dans la bibliothèque)
   await p.evaluate(async d => {
     const em = await import('/src/classeurs/emplacements.ts')
@@ -357,9 +357,9 @@ try {
   const dAxe = await p.evaluate(() => window.__dossier('Axe'))
   const dAug = await p.evaluate(d => window.__dossier('Aug', d), dAxe)
   const [idProba] = await p.evaluate(d => window.__creer([{ nom: 'Proba', dossier: d }]), dAug)
-  await p.evaluate(() => window.__memcNeuf('PC1/Aug', 'Proba.memc', 'Proba de l\'an dernier'))
+  await p.evaluate(() => window.__memcNeuf('PC1/Aug/Proba', 'Proba.memc', 'Proba de l\'an dernier'))
   await p.evaluate(() => window.__ecrireOpfs('PC1/Aug', 'notes.txt', 'mes notes'))
-  const tailleAvant = (await p.evaluate(() => window.__lister('PC1/Aug')))['Proba.memc']
+  const tailleAvant = (await p.evaluate(() => window.__lister('PC1/Aug/Proba')))['Proba.memc']
   await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), dAug)
   await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
   const np = await p.evaluate(() => { const c = document.querySelector('dialog[open] .e-nom-pc'); return { visible: !!c && !c.hidden, valeur: c?.querySelector('input')?.value } })
@@ -368,22 +368,22 @@ try {
   await p.click('dialog.dialogue-enregistrer-ailleurs[open] .e-ok')
   await p.waitForSelector('dialog.dialogue-conflit[open]')
   let cf = await p.evaluate(() => { const d = document.querySelector('dialog.dialogue-conflit[open]'); return { titre: d.querySelector('h2').textContent, contenu: d.querySelector('.c-contenu').textContent, choix: d.querySelector('input[name=c-dossier]:checked')?.value, autre: d.querySelector('.c-nom').value, large: d.scrollWidth > d.clientWidth } })
-  ok(cf.titre === 'Le dossier « Aug » existe déjà dans « PC1 »' && /1 classeur et 1 autre élément/.test(cf.contenu) && cf.choix === 'fusionner' && cf.autre === 'Aug (2)' && !cf.large,
+  ok(cf.titre === 'Le dossier « Aug » existe déjà dans « PC1 »' && /1 classeur et 1 autre élément/.test(cf.contenu) /* (2026-11 : le classeur compté aussi dans son dossier « Proba ») */ && cf.choix === 'fusionner' && cf.autre === 'Aug (2)' && !cf.large,
     'C13b) « Le dossier « Aug » existe déjà dans « PC1 » » : son contenu, « Fusionner » proposé, « Aug (2) » pour un autre nom', cf)
   await p.click('dialog.dialogue-conflit[open] .c-ok')
   await p.waitForSelector('dialog.dialogue-conflit[open] .c-compare')
   cf = await p.evaluate(() => { const d = document.querySelector('dialog.dialogue-conflit[open]'); return { titre: d.querySelector('h2').textContent, nav: d.querySelector('.c-nav').textContent, pc: d.querySelector('.c-pc').textContent, choix: d.querySelector('input[name=c-fichier]:checked')?.value, r: d.querySelector('.c-r').textContent, alerte: !d.querySelector('.c-alerte').hidden } })
-  ok(cf.titre === '« Proba.memc » existe déjà dans « Aug »' && /1 page/.test(cf.nav) && /Proba de l'an dernier/.test(cf.pc) && cf.choix === 'remplacer' && /\(ancien \d\d-\d\d\)\.memc/.test(cf.r) && !cf.alerte,
-    'C13c) « « Proba.memc » existe déjà dans « Aug » » : les deux côte à côte, « Remplacer » proposé (l\'ancien gardé à côté)', cf)
+  ok(cf.titre === '« Proba.memc » existe déjà dans « Proba »' && /1 page/.test(cf.nav) && /Proba de l'an dernier/.test(cf.pc) && cf.choix === 'remplacer' && /\(ancien \d\d-\d\d\)\.memc/.test(cf.r) && !cf.alerte,
+    'C13c) « « Proba.memc » existe déjà dans « Proba » » (le dossier du classeur) : les deux côte à côte, « Remplacer » proposé (l\'ancien gardé à côté)', cf)
   await p.click('dialog.dialogue-conflit[open] .c-ok')
   await attendreToast(p, /» est relié au dossier « Aug »/, 20000)
   contenu = await p.evaluate(() => window.__lister('PC1'))
-  const ancienNom = Object.keys(contenu['Aug'] ?? {}).find(n => /^Proba \(ancien \d\d-\d\d\)\.memc$/.test(n))
-  ok(Object.keys(contenu).join('|') === 'Aug' && contenu['Aug']['Proba.memc'] > 0 && !!ancienNom && contenu['Aug'][ancienNom] === tailleAvant && contenu['Aug']['notes.txt'] > 0 && Object.keys(contenu['Aug']).length === 3,
-    'C13d) Fusionné dans « PC1 › Aug » : « Proba.memc » remplacé, l\'ancien gardé à côté, « notes.txt » intact, rien d\'autre', contenu)
-  const entP = await p.evaluate(() => window.__entete('PC1/Aug', 'Proba.memc'))
+  const ancienNom = Object.keys(contenu['Aug']?.['Proba'] ?? {}).find(n => /^Proba \(ancien \d\d-\d\d\)\.memc$/.test(n))
+  ok(Object.keys(contenu).join('|') === 'Aug' && contenu['Aug']['Proba']?.['Proba.memc'] > 0 && !!ancienNom && contenu['Aug']['Proba'][ancienNom] === tailleAvant && contenu['Aug']['notes.txt'] > 0 && Object.keys(contenu['Aug']).length === 2 && Object.keys(contenu['Aug']['Proba']).length === 2,
+    'C13d) Fusionné dans « PC1 › Aug » : « Proba › Proba.memc » remplacé, l\'ancien gardé à côté, « notes.txt » intact, rien d\'autre', contenu)
+  const entP = await p.evaluate(() => window.__entete('PC1/Aug/Proba', 'Proba.memc'))
   const emAug = (await lesEmplacements(p)).find(e => e.dossier === dAug)
-  ok(entP.id === idProba && emAug?.aPlat === true, 'C13e) « Proba.memc » est bien celui du classeur, et le lien est « à plat »', { entP, emAug })
+  ok(entP.id === idProba && !emAug?.aPlat, 'C13e) « Proba.memc » est bien celui du classeur, et le lien n\'est pas « à plat » (un dossier par classeur, 2026-11)', { entP, emAug })
   await toasts(p)
   // Un autre nom : « Bea (2) » à côté de « Bea »
   const dBea = await p.evaluate(d => window.__dossier('Bea', d), dAxe)
@@ -398,8 +398,8 @@ try {
   await p.click('dialog.dialogue-conflit[open] .c-ok')
   await attendreToast(p, /» est relié au dossier « Bea \(2\) »/, 20000)
   contenu = await p.evaluate(() => window.__lister('PC2'))
-  ok(Object.keys(contenu).sort().join('|') === 'Bea|Bea (2)' && Object.keys(contenu['Bea']).join('|') === 'garde.txt' && contenu['Bea (2)']?.['Suites.memc'] > 0,
-    'C13f) « Enregistrer sous un autre nom » : « PC2 › Bea (2) › Suites.memc », « Bea » intact', contenu)
+  ok(Object.keys(contenu).sort().join('|') === 'Bea|Bea (2)' && Object.keys(contenu['Bea']).join('|') === 'garde.txt' && contenu['Bea (2)']?.['Suites']?.['Suites.memc'] > 0,
+    'C13f) « Enregistrer sous un autre nom » : « PC2 › Bea (2) › Suites › Suites.memc », « Bea » intact', contenu)
   await toasts(p)
   // (Ajouté 2026-11-01) Un dossier déjà enregistré (« Aug », relié à « PC1 › Aug »)
   // enregistré de nouveau ailleurs : ses classeurs y reçoivent leur fichier,
@@ -412,8 +412,8 @@ try {
   await attendreToast(p, /» est relié au dossier « Aug »/, 20000)
   contenu = await p.evaluate(() => window.__lister('PC3'))
   const apresPC1 = await p.evaluate(() => window.__lister('PC1'))
-  const entP3 = await p.evaluate(() => window.__entete('PC3/Aug', 'Proba.memc'))
-  ok(contenu['Aug']?.['Proba.memc'] > 0 && entP3.id === idProba && JSON.stringify(apresPC1) === JSON.stringify(avantPC1),
+  const entP3 = await p.evaluate(() => window.__entete('PC3/Aug/Proba', 'Proba.memc'))
+  ok(contenu['Aug']?.['Proba']?.['Proba.memc'] > 0 && entP3.id === idProba && JSON.stringify(apresPC1) === JSON.stringify(avantPC1),
     'C13g) « Aug » déjà enregistré, enregistré de nouveau dans « PC3 » : « PC3 › Aug › Proba.memc » écrit, « PC1 › Aug » intact', { contenu, apresPC1 })
   await toasts(p)
   // De nouveau au même endroit (« Fusionner ») : rien en double, et le message dit qu'il y est déjà
@@ -426,7 +426,7 @@ try {
   await attendreToast(p, /» est relié au dossier « Aug »/, 20000)
   const t13 = await p.evaluate(() => (window.__toasts || []).filter(t => /relié au dossier « Aug »/.test(t)).pop())
   contenu = await p.evaluate(() => window.__lister('PC3'))
-  ok(Object.keys(contenu['Aug'] ?? {}).join('|') === 'Proba.memc' && /Son classeur y est déjà/.test(t13 ?? ''),
+  ok(Object.keys(contenu['Aug'] ?? {}).join('|') === 'Proba' && Object.keys(contenu['Aug']['Proba'] ?? {}).join('|') === 'Proba.memc' && /Son classeur y est déjà/.test(t13 ?? ''),
     'C13h) Au même endroit : rien en double, « Son classeur y est déjà, tenu à jour tout seul »', { contenu, t13 })
   await toasts(p)
   // (Ajouté 2026-11-01) « Mettre à jour » d'un dossier dont un classeur a son
@@ -443,7 +443,7 @@ try {
   contenu = await p.evaluate(() => window.__lister('PC4'))
   const apresPC2 = await p.evaluate(() => window.__lister('PC2'))
   const t13i = await p.evaluate(() => (window.__toasts || []).filter(t => /relié au dossier « PC4 »/.test(t)).pop())
-  ok(contenu['Suites.memc'] > 0 && JSON.stringify(apresPC2) === JSON.stringify(avantPC2) && !/ailleurs/.test(t13i ?? ''),
+  ok(contenu['Suites']?.['Suites.memc'] > 0 && JSON.stringify(apresPC2) === JSON.stringify(avantPC2) && !/ailleurs/.test(t13i ?? ''),
     'C13i) « Mettre à jour » : « Suites », dont le fichier était ailleurs, est écrit dans « PC4 » ; « PC2 › Bea (2) » intact', { contenu, apresPC2, t13i })
   await toasts(p)
   // (Ajouté 2026-11-01) Un classeur renommé avant (son fichier garde l'ancien
@@ -455,23 +455,23 @@ try {
   }, dAug)
   const [idDix] = await p.evaluate(d => window.__creer([{ nom: 'Dixsept', dossier: d }]), dAug)
   await majAug()
-  await p.waitForFunction(() => window.__lister('PC3').then(c => c['Aug']?.['Dixsept.memc'] > 0), null, { timeout: 20000 }).catch(() => {})
+  await p.waitForFunction(() => window.__lister('PC3').then(c => c['Aug']?.['Dixsept']?.['Dixsept.memc'] > 0), null, { timeout: 20000 }).catch(() => {})
   await p.evaluate(id => window.__registre.modifierClasseur(id, x => { x.nom = 'Trigonometrie' }), idDix)
   await toasts(p)
   await majAug()
-  await p.waitForFunction(() => window.__lister('PC3').then(c => c['Aug']?.['Trigonometrie.memc'] > 0), null, { timeout: 20000 }).catch(() => {})
+  await p.waitForFunction(() => window.__lister('PC3').then(c => c['Aug']?.['Trigonometrie']?.['Trigonometrie.memc'] > 0), null, { timeout: 20000 }).catch(() => {})
   await p.waitForTimeout(500)
   contenu = await p.evaluate(() => window.__lister('PC3'))
-  const entT = await p.evaluate(() => window.__entete('PC3/Aug', 'Trigonometrie.memc').catch(() => ({})))
+  const entT = await p.evaluate(() => window.__entete('PC3/Aug/Trigonometrie', 'Trigonometrie.memc').catch(() => ({})))
   // (Adapté 2026-11 : enregistrer n'enlève jamais rien du PC : l'ancien « Dixsept.memc » reste)
-  ok(Object.keys(contenu['Aug'] ?? {}).sort().join('|') === 'Dixsept.memc|Proba.memc|Trigonometrie.memc' && entT.id === idDix,
+  ok(Object.keys(contenu['Aug'] ?? {}).sort().join('|') === 'Dixsept|Proba|Trigonometrie' && entT.id === idDix,
     'C13j) « Dixsept » renommé « Trigonometrie » avant : « Mettre à jour » écrit « Trigonometrie.memc » ; l\'ancien « Dixsept.memc » reste (rien n\'est enlevé)', { contenu, entT })
   await toasts(p)
   // (Ajouté 2026-11) Le fichier d'un classeur rangé ailleurs dans le dossier
   // choisi (« PC3 › Aug › Ancien › Trigonometrie.memc », une autre année) :
   // enregistrer écrit le fichier à sa place, et n'enlève rien d'autre
   await p.evaluate(async id => {
-    const aug = await window.__racineOpfs('PC3/Aug'), anc = await window.__racineOpfs('PC3/Aug/Ancien')
+    const aug = await window.__racineOpfs('PC3/Aug/Trigonometrie'), anc = await window.__racineOpfs('PC3/Aug/Ancien')
     const src = await (await aug.getFileHandle('Trigonometrie.memc')).getFile()
     const h = await anc.getFileHandle('Trigonometrie.memc', { create: true }); const w = await h.createWritable(); await w.write(src); await w.close()
     await aug.removeEntry('Trigonometrie.memc')
@@ -480,11 +480,11 @@ try {
   }, idDix)
   await toasts(p)
   await majAug()
-  await p.waitForFunction(() => window.__lister('PC3').then(c => c['Aug']?.['Trigonometrie.memc'] > 0), null, { timeout: 20000 }).catch(() => {})
+  await p.waitForFunction(() => window.__lister('PC3').then(c => c['Aug']?.['Trigonometrie']?.['Trigonometrie.memc'] > 0), null, { timeout: 20000 }).catch(() => {})
   await p.waitForTimeout(500)
   contenu = await p.evaluate(() => window.__lister('PC3'))
-  ok(contenu['Aug']?.['Trigonometrie.memc'] > 0 && contenu['Aug']?.['Ancien']?.['Trigonometrie.memc'] > 0 && contenu['Aug']?.['Dixsept.memc'] > 0,
-    'C13k) Rangé ailleurs dans le dossier (« Aug › Ancien ») : « Aug › Trigonometrie.memc » écrit, « Aug › Ancien » et son fichier restent', contenu)
+  ok(contenu['Aug']?.['Trigonometrie']?.['Trigonometrie.memc'] > 0 && contenu['Aug']?.['Ancien']?.['Trigonometrie.memc'] > 0 && contenu['Aug']?.['Dixsept']?.['Dixsept.memc'] > 0,
+    'C13k) Rangé ailleurs dans le dossier (« Aug › Ancien ») : « Aug › Trigonometrie › Trigonometrie.memc » écrit, « Aug › Ancien » et son fichier restent', contenu)
   await toasts(p)
   // (Ajouté 2026-11) Le dossier du haut (« Axe ») enregistré alors que ses
   // sous-dossiers « Aug » et « Bea » ont leur propre dossier sur le PC : il
@@ -499,12 +499,12 @@ try {
   const t13l = await p.evaluate(() => (window.__toasts || []).filter(t => /relié au dossier « Axe »/.test(t)).pop())
   contenu = await p.evaluate(() => window.__lister('PC5'))
   const apres3 = await p.evaluate(() => window.__lister('PC3')), apres4 = await p.evaluate(() => window.__lister('PC4'))
-  ok(Object.keys(contenu['Axe'] ?? {}).join('|') === 'Direct.memc' && JSON.stringify(apres3) === JSON.stringify(avant3) && JSON.stringify(apres4) === JSON.stringify(avant4)
+  ok(Object.keys(contenu['Axe'] ?? {}).join('|') === 'Direct' && JSON.stringify(apres3) === JSON.stringify(avant3) && JSON.stringify(apres4) === JSON.stringify(avant4)
     && /« Aug », « Bea » ont leur propre dossier sur l'ordinateur : ils sont laissés tel quel/.test(t13l ?? ''),
     'C13l) « Axe » enregistré : seul « Direct.memc » est écrit ; « Aug » et « Bea », qui ont leur propre dossier, sont laissés tels quels (et le message le dit)', { contenu, t13l })
   // Leurs classeurs gardent leur fichier là-bas
   const entAug = await p.evaluate(id => window.__registre.classeurs().then(l => l.find(f => f.id === id)?.cle?.chemin), idProba)
-  ok(JSON.stringify(entAug) === JSON.stringify(['Aug']), '   … « Proba » garde son fichier dans « PC3 › Aug » (pas « Axe › Aug »)', entAug)
+  ok(JSON.stringify(entAug) === JSON.stringify(['Aug', 'Proba']), '   … « Proba » garde son fichier dans « PC3 › Aug › Proba » (pas « Axe › Aug »)', entAug)
   await toasts(p)
 
   // =====================================================================
@@ -520,7 +520,7 @@ try {
   await attendreToast(p, /» est relié au dossier « Cle 6 »/, 20000)
   await toasts(p)
   contenu = await p.evaluate(() => window.__lister('Cle 6'))
-  ok(contenu['Eleve Un']?.['Chap.memc'] > 0, 'C12a) Au départ : « Cle 6 › Eleve Un › Chap.memc » (même nom que le navigateur, à plat)', contenu)
+  ok(contenu['Eleve Un']?.['Chap']?.['Chap.memc'] > 0, 'C12a) Au départ : « Cle 6 › Eleve Un › Chap › Chap.memc » (même nom que le navigateur)', contenu)
   // La fenêtre « Emplacement sur l'ordinateur… » du sous-dossier
   await p.evaluate(d => window.__ailleurs.emplacementDuDossier(d), dElev)
   await p.waitForSelector('dialog.dialogue-emplacement[open]')
@@ -534,7 +534,7 @@ try {
   await p.click('dialog[open] .em-ok')
   await attendreToast(p, /suit sur l'ordinateur/, 30000)
   contenu = await p.evaluate(() => window.__lister('Cle 6'))
-  ok(Object.keys(contenu).join('|') === 'Autre' && contenu['Autre']?.['Chap.memc'] > 0, 'C12d) Le fichier est dans « Cle 6 › Autre », l\'ancien dossier a disparu : aucun doublon', contenu)
+  ok(Object.keys(contenu).join('|') === 'Autre' && contenu['Autre']?.['Chap']?.['Chap.memc'] > 0, 'C12d) Le fichier est dans « Cle 6 › Autre », l\'ancien dossier a disparu : aucun doublon', contenu)
   await toasts(p)
   // Renommé dans le navigateur, le nom de l'ordinateur ne change pas (il est à lui)
   await p.evaluate(d => window.__bibliotheque.donnerUnNom('d:' + d, 'Eleve Deux', 'Eleve Un'), dElev)
@@ -548,18 +548,18 @@ try {
   await p.click('dialog[open] .em-ok')
   await attendreToast(p, /suit sur l'ordinateur/, 30000)
   contenu = await p.evaluate(() => window.__lister('Cle 6'))
-  ok(Object.keys(contenu).join('|') === 'Eleve Deux' && contenu['Eleve Deux']?.['Chap.memc'] > 0, 'C12f) « Même nom » coché : « Cle 6 › Eleve Deux », un seul dossier', contenu)
+  ok(Object.keys(contenu).join('|') === 'Eleve Deux' && contenu['Eleve Deux']?.['Chap']?.['Chap.memc'] > 0, 'C12f) « Même nom » coché : « Cle 6 › Eleve Deux », un seul dossier', contenu)
   await toasts(p)
   await p.evaluate(d => window.__bibliotheque.donnerUnNom('d:' + d, 'Eleve Trois', 'Eleve Deux'), dElev)
   await attendreToast(p, /suit sur l'ordinateur/, 30000)
   contenu = await p.evaluate(() => window.__lister('Cle 6'))
-  ok(Object.keys(contenu).join('|') === 'Eleve Trois' && contenu['Eleve Trois']?.['Chap.memc'] > 0, 'C12g) Renommé « Eleve Trois » : le dossier de l\'ordinateur est renommé aussi, sans doublon', contenu)
+  ok(Object.keys(contenu).join('|') === 'Eleve Trois' && contenu['Eleve Trois']?.['Chap']?.['Chap.memc'] > 0, 'C12g) Renommé « Eleve Trois » : le dossier de l\'ordinateur est renommé aussi, sans doublon', contenu)
   await toasts(p)
   // Le classeur renommé : son dossier et son fichier suivent
   await p.evaluate(id => window.__bibliotheque.donnerUnNom(id, 'Chap bis', 'Chap'), idChap)
   await attendreToast(p, /suit sur l'ordinateur/, 30000)
   contenu = await p.evaluate(() => window.__lister('Cle 6'))
-  ok(Object.keys(contenu['Eleve Trois'] ?? {}).join('|') === 'Chap bis.memc', 'C12h) Classeur renommé « Chap bis » : « Chap bis.memc » au même endroit, l\'ancien est retiré (à plat)', contenu)
+  ok(Object.keys(contenu['Eleve Trois'] ?? {}).join('|') === 'Chap bis' && Object.keys(contenu['Eleve Trois']['Chap bis'] ?? {}).join('|') === 'Chap bis.memc', 'C12h) Classeur renommé « Chap bis » : son dossier et son fichier suivent (« Chap bis › Chap bis.memc »), l\'ancien est retiré', contenu)
   await toasts(p)
   // Un dossier sans lien de niveau : la fenêtre le dit, rien à enregistrer
   const dSeul = await p.evaluate(() => window.__dossier('Seul'))
@@ -648,11 +648,82 @@ try {
   await p.evaluate(() => window.__bibliotheque.allerA(null))
   await p.waitForTimeout(300)
   const avantRetirer = await p.evaluate(() => window.__lister('Classe 5A'))
+  // (Adapté 2026-11, choix A du professeur : « Retirer » sur le PC, c'est
+  // « Ne plus enregistrer sur le PC… » : la question, puis plus rien ne s'écrit)
   await p.click('.emplacement:has-text("Classe 5A") .e-retirer')
-  await attendreToast(p, /n'est plus relié à/, 10000)
+  await p.waitForSelector('dialog.dialogue-ouvrir[open] [data-a="oui"]')
+  await p.click('dialog.dialogue-ouvrir[open] [data-a="oui"]')
+  await attendreToast(p, /n'est plus enregistré sur le PC/, 10000)
   em = await lesEmplacements(p)
   ok(!em.some(e => e.nom === 'Classe 5A'), 'E1) Plus dans la liste', em)
   ok(JSON.stringify(await p.evaluate(() => window.__lister('Classe 5A'))) === JSON.stringify(avantRetirer), 'E2) Rien d\'effacé dans le dossier')
+  fs = await fiches(p)
+  ok(fs.filter(x => x.dossier === d5?.id).every(x => !x.cle), 'E2b) Ses classeurs ne s\'écrivent plus sur le PC (plus de fichier relié)', fs.filter(x => x.dossier === d5?.id))
+
+  // (Ajouté 2026-11) La pastille « PC ✓ » se clique : sa petite fenêtre, puis
+  // « Ne plus enregistrer sur le PC… » ; la même entrée dans le menu du dossier
+  console.log('\n— E4. La pastille « PC ✓ » et « Ne plus enregistrer sur le PC… »')
+  await p.evaluate(() => window.__bibliotheque.allerA(null))
+  await p.waitForTimeout(400)
+  const pastille4 = `li.case-dossier[data-dossier="${d4}"] .puce-emplacement.cliquable`
+  await p.waitForSelector(pastille4, { timeout: 10000 })
+  await p.click(pastille4)
+  await p.waitForSelector('dialog.bulle-pc[open]')
+  const bulle = await p.evaluate(() => { const d = document.querySelector('dialog.bulle-pc[open]'); return { titre: d.querySelector('h2').textContent, texte: d.querySelector('.b-ou').textContent, boutons: [...d.querySelectorAll('button')].map(b => b.textContent), dansLeDossier: window.__bibliotheque.dossierAffiche ?? null } })
+  ok(bulle.titre === 'Enregistré sur le PC' && /Dans « Cle 4B »/.test(bulle.texte) && /Ses 2 classeurs s'y enregistrent/.test(bulle.texte) && bulle.boutons.join('|') === 'Fermer|Mettre à jour|Ne plus enregistrer sur le PC…' && bulle.dansLeDossier === null,
+    'E4a) Un clic sur « PC ✓ » de « 4B » : « Enregistré sur le PC », dans « Cle 4B », ses 2 classeurs ; Fermer, Mettre à jour, Ne plus enregistrer ; on n\'entre pas dans le dossier', bulle)
+  await p.click('dialog.bulle-pc[open] [data-a="fermer"]')
+  await p.waitForTimeout(150)
+  const menu4 = await p.evaluate(d => { const li = document.querySelector(`li.case-dossier[data-dossier="${d}"]`); li.querySelector('.bouton-options, [data-a="options"], button[aria-haspopup]')?.click(); return [...document.querySelectorAll('[data-action]')].map(x => x.dataset.action) }, d4)
+  ok(menu4.includes('ne-plus-enregistrer'), 'E4b) Le menu du dossier « 4B » a « Ne plus enregistrer sur le PC… »', menu4)
+  await p.keyboard.press('Escape'); await p.waitForTimeout(150)
+  const avant4B = await p.evaluate(() => window.__lister('Cle 4B'))
+  await p.click(pastille4)
+  await p.waitForSelector('dialog.bulle-pc[open]')
+  await p.click('dialog.bulle-pc[open] [data-a="plus"]')
+  await p.waitForSelector('dialog.dialogue-ouvrir[open] [data-a="oui"]')
+  const q4 = await p.evaluate(() => ({ titre: document.querySelector('dialog.dialogue-ouvrir[open] h2').textContent, texte: document.querySelector('dialog.dialogue-ouvrir[open] p').textContent }))
+  ok(q4.titre === 'Ne plus enregistrer « 4B » sur le PC ?' && /l'outil n'efface rien/.test(q4.texte), 'E4c) La question : « Ne plus enregistrer « 4B » sur le PC ? », rien n\'est effacé', q4)
+  await p.click('dialog.dialogue-ouvrir[open] [data-a="oui"]')
+  await attendreToast(p, /« 4B » n'est plus enregistré sur le PC/, 10000)
+  await p.waitForTimeout(300)
+  fs = await fiches(p)
+  const e4 = await p.evaluate(d => ({ ordi: !!document.querySelector(`li.case-dossier[data-dossier="${d}"] .puce-emplacement.cliquable`) }), d4)
+  em = await lesEmplacements(p)
+  ok(!em.some(e => e.genre === 'ordinateur' && e.dossier === d4) && ids4.every(id => !fs.find(x => x.id === id)?.cle) && !e4.ordi && JSON.stringify(await p.evaluate(() => window.__lister('Cle 4B'))) === JSON.stringify(avant4B),
+    'E4d) Plus de coche PC, ses classeurs ne s\'écrivent plus sur le PC, et rien n\'est effacé dans « Cle 4B »', { em, e4 })
+  await toasts(p)
+
+  // (Ajouté 2026-11, choix S1 et M1) Un dossier enregistré « à plat » (avant) :
+  // « Mettre à jour » demande, puis range chaque classeur dans un dossier à son nom
+  console.log('\n— E5. Les classeurs posés « à plat » vont dans un dossier à leur nom')
+  const dPlat = await p.evaluate(() => window.__dossier('Plat'))
+  const idsPlat = await p.evaluate(d => window.__creer([{ nom: 'Un', dossier: d }, { nom: 'Deux', dossier: d }]), dPlat)
+  await p.evaluate(async d => {
+    const r = await import('/src/classeurs/ranger.ts')
+    const fiche = (await window.__registre.dossiers()).find(x => x.id === d)
+    await r.relierLeNiveau({ registre: window.__registre, message: () => {} }, fiche, await window.__racineOpfs('PCP'), { aPlat: true })
+  }, dPlat)
+  await p.evaluate(() => window.__ecrireOpfs('PCP', 'garde.txt', 'x'))
+  contenu = await p.evaluate(() => window.__lister('PCP'))
+  ok(contenu['Un.memc'] > 0 && contenu['Deux.memc'] > 0, 'E5a) Au départ, à plat : « PCP › Un.memc », « PCP › Deux.memc »', contenu)
+  await p.evaluate(async d => {
+    const em = await import('/src/classeurs/emplacements.ts')
+    const e = (await em.emplacements(window.__registre)).find(x => x.dossier === d && x.genre === 'ordinateur')
+    void window.__ailleurs.mettreAJour(e, (await window.__registre.dossiers()).find(x => x.id === d))
+  }, dPlat)
+  await p.waitForSelector('dialog.dialogue-ouvrir[open] [data-a="oui"]')
+  const q5 = await p.evaluate(() => ({ titre: document.querySelector('dialog.dialogue-ouvrir[open] h2').textContent, texte: document.querySelector('dialog.dialogue-ouvrir[open] p').textContent }))
+  ok(q5.titre === 'Ranger 2 classeurs dans un dossier à son nom ?' && /« Deux », « Un » sont directement dans « PCP »/.test(q5.texte), 'E5b) La question d\'abord, avec la liste : « Ranger 2 classeurs dans un dossier à son nom ? »', q5)
+  await p.click('dialog.dialogue-ouvrir[open] [data-a="oui"]')
+  await attendreToast(p, /» est relié au dossier « PCP »/, 30000)
+  const t5 = await p.evaluate(() => (window.__toasts || []).filter(t => /relié au dossier « PCP »/.test(t)).pop())
+  contenu = await p.evaluate(() => window.__lister('PCP'))
+  const chemins5 = await p.evaluate(ids => window.__registre.classeurs().then(l => ids.map(id => l.find(f => f.id === id)?.cle?.chemin)), idsPlat)
+  em = await lesEmplacements(p)
+  ok(Object.keys(contenu).sort().join('|') === 'Deux|Un|garde.txt' && contenu['Un']?.['Un.memc'] > 0 && contenu['Deux']?.['Deux.memc'] > 0 && JSON.stringify(chemins5) === JSON.stringify([['PCP', 'Un'], ['PCP', 'Deux']]) && !em.find(e => e.dossier === dPlat)?.aPlat && /2 classeurs sont maintenant chacun dans un dossier à son nom/.test(t5 ?? ''),
+    'E5c) « PCP › Un › Un.memc », « PCP › Deux › Deux.memc », les anciens retirés, « garde.txt » intact ; le lien n\'est plus à plat, et le message le dit', { contenu, chemins5, t5 })
+  await toasts(p)
 
   // (Ajouté 2026-11) « Repartir à zéro sur l'ordinateur… » : tout est oublié, rien n'est effacé
   console.log('\n— E3. « Repartir à zéro sur l\'ordinateur… »')

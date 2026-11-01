@@ -3309,13 +3309,28 @@ emplacements »** en haut de la bibliothèque (3A).
 - **Enregistrer un dossier sur le PC (2026-11).** Menu d'un dossier →
   Enregistrer… → Cet ordinateur : on choisit le dossier du PC (pour un
   sous-dossier, aussi son nom sur le PC, « Nom du dossier sur le PC »), une
-  fois ; ensuite tout ce qu'il contient s'enregistre tout seul. Les classeurs
-  vont **directement dans le dossier choisi** (« Auguste/Probabilités.memc »),
-  sans dossier au nom du classeur, et les sous-dossiers de la bibliothèque
-  deviennent des sous-dossiers du PC ; les replays publiés vont au même
-  endroit que le .memc (champ facultatif `aPlat` de l'emplacement ; les
-  niveaux rangés chez un établissement gardent le dossier du chapitre). Un
-  classeur renommé : son fichier est renommé au même endroit, sans doublon.
+  fois ; ensuite tout ce qu'il contient s'enregistre tout seul. Chaque
+  classeur va **dans un dossier à son nom** (« Auguste/Probabilités/
+  Probabilités.memc »), avec les replays publiés de ses séances (choix du
+  professeur, 2026-11 ; du 1er novembre jusque-là, les classeurs allaient
+  directement dans le dossier : champ facultatif `aPlat` de l'emplacement,
+  gardé pour ces liens-là). Les sous-dossiers de la bibliothèque deviennent
+  des sous-dossiers du PC. Un classeur renommé : son dossier et son fichier
+  suivent, sans doublon. Un dossier enregistré « à plat » : au prochain
+  « Mettre à jour » (ou « Enregistrer… » au même endroit), une fenêtre liste
+  ses classeurs posés directement dans le dossier et demande « Ranger N
+  classeurs dans un dossier à son nom ? » ; oui : chaque fichier est écrit
+  dans son dossier, relu, puis l'ancien est retiré (les replays déjà publiés
+  restent où ils sont) ; non : rien ne change.
+- **Enlever la coche « PC ✓ » (2026-11, choix du professeur).** Un clic sur
+  la pastille « PC ✓ » d'un dossier ouvre une petite fenêtre (où il est
+  enregistré, « Mettre à jour », « Ne plus enregistrer sur le PC… ») ; la
+  même entrée est dans le menu du dossier, et « Retirer » de « Mes
+  emplacements » fait de même. Après la question, la coche disparaît et
+  chacun de ses classeurs cesse de s'écrire sur le PC ; rien n'est effacé, ni
+  sur le PC ni dans le navigateur. Un sous-dossier qui a sa propre coche la
+  garde ; un sous-dossier dont on enlève la coche revient sous le dossier
+  enregistré du dessus (« PC : n à copier », puis « Mettre à jour »).
   Si un dossier du même nom existe déjà à cet endroit, une fenêtre le dit,
   comme dans Windows : **Fusionner les deux dossiers** (proposé), **Enregistrer
   sous un autre nom** (« Auguste (2) »), ou **Choisir un autre dossier du PC**.
