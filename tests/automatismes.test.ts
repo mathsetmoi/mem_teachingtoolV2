@@ -70,7 +70,7 @@ describe('le tirage d\'un flash', () => {
     expect(new Set(COURS_5E.map(c => c.id)).size).toBe(COURS_5E.length)
   })
 
-  it('les questions de cours : 4 notions au moins par thème, et des façons variées de les poser', () => {
+  it('les questions de cours : 4 notions au moins par thème, et plusieurs façons de les poser', () => {
     const cinq = NIVEAUX.find(n => n.id === '5e')!
     for (const t of themesDe(cinq)) if (t !== 'Hors liste officielle') expect(coursDu(t).length, t).toBeGreaterThanOrEqual(4)
     let variees = 0
@@ -80,6 +80,14 @@ describe('le tirage d\'un flash', () => {
       if (vus.size > 1) variees++
     }
     expect(variees).toBeGreaterThanOrEqual(COURS_5E.length * 0.6)
+  })
+
+  it('rien de fixe : chaque façon de poser une notion tire quelque chose au hasard', () => {
+    for (const c of COURS_5E) c.facons.forEach((f, i) => {
+      const vus = new Set<string>()
+      for (let k = 0; k < 60; k++) vus.add(f()[0])
+      expect(vus.size, `${c.id}, façon ${i + 1} : « ${f()[0]} »`).toBeGreaterThan(1)
+    })
   })
 
   it('la divisibilité : trois diviseurs qui changent, et la bonne liste', () => {
