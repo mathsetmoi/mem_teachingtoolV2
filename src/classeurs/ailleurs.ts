@@ -337,7 +337,9 @@ export class Ailleurs {
       const ok = await this.h.fichiers.ouvrir(choisis, { dossier: classe.id, lot: true })
       if (!ok) { void this.h.bibliotheque.charger(); return }
     } else if (!relier) { this.h.message(`Il n'y a aucun classeur (.memc) dans « ${d.name} ».`); void this.h.bibliotheque.charger(); return }
-    if (relier) await this.relierOrdinateur(classe, d, { silencieux: trouves.length > 0 })
+    // Le dossier choisi à l'instant devient celui de ce dossier : chaque
+    // classeur qui n'y a pas encore son fichier en reçoit un (l'ancien intact)
+    if (relier) await this.relierOrdinateur(classe, d, { silencieux: trouves.length > 0, nouveauLieu: true })
     void this.h.bibliotheque.charger()
   }
 
@@ -893,6 +895,13 @@ export class Ailleurs {
           ? texteDuRangement({ niveau: classe.nom, chemin: [etab.nom, d.name], bilan: b })
           : `« ${classe.nom} » est relié au dossier « ${d.name} ». ${texteDuBilan(b, d.name)}`)
       }
+      // Le dossier choisi à l'instant : un classeur dont le fichier y est déjà,
+      // mais pas à sa place ou sous son ancien nom (« 17 octobre › 17
+      // octobre.memc » pour « Trigonométrie »), le voit suivre : écrit à sa
+      // place, vérifié, puis l'ancien retiré (deplacer-fichier.ts)
+      // (seulement à plat : le rangement « un dossier par classeur » d'avant
+      // garde ses fichiers où « Ouvrir un dossier… » les a trouvés)
+      if (o.nouveauLieu && !etab && (await emplacements(this.registre)).some(e => e.dossier === classe.id && e.genre === 'ordinateur' && e.aPlat)) await this.h.bibliotheque.suivreLeNom(classe.id)
     } catch (e) {
       this.h.message(`« ${classe.nom} » n'a pas pu être relié : ${e instanceof Error ? e.message : 'erreur inconnue'}.`)
     } finally {
@@ -1180,7 +1189,10 @@ export class Ailleurs {
     // l'établissement a été retiré de la liste (son nom est dans l'emplacement)
     const nomEtab = e.etablissement ? nomDEtablissement(e, await etablissements(this.registre)) : null
     const etab = e.etablissement && nomEtab ? { id: e.etablissement, nom: nomEtab, cree: 0 } : null
-    await this.relierOrdinateur(classe, d, { etablissement: etab, reprendre: true })
+    // Un dossier de l'organisation personnelle (pas chez un établissement) :
+    // « Mettre à jour » écrit dans son dossier chaque classeur qui n'y est pas,
+    // même si son fichier d'avant est ailleurs (celui-ci reste intact)
+    await this.relierOrdinateur(classe, d, { etablissement: etab, reprendre: true, ...(etab ? {} : { nouveauLieu: true }) })
   }
 
   /** « Retirer » : le dossier n'est plus tenu à jour ; rien n'y est effacé
