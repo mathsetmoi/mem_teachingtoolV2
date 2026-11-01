@@ -46,7 +46,7 @@ import type { Registre } from './registre'
 import type { EnregistrementCle, PoigneeFichier, ResultatDeplacement } from './cle'
 import { VERROU_CLE, ecrireDans, enteteDe, fichierPourDeplacer, memeFichier, raisonCle } from './cle'
 import type { Emplacement } from './emplacements'
-import { emplacementDe, emplacements, nomDeFichierLibre, reglagePoignee, sousDossiers } from './emplacements'
+import { cheminDuFichier, emplacementDe, emplacements, nomDeFichierLibre, reglagePoignee, sousDossiers } from './emplacements'
 import type { Etablissement } from './etablissements'
 import { cheminLisible, etablissements } from './etablissements'
 import type { PoigneeDossier } from './ordinateur'
@@ -106,11 +106,19 @@ export function placeRangee(dossierId: string | null, nom: string, o: DonneesPla
   const e = emplacementDe(dossierId, 'ordinateur', o.emplacements, o.dossiers)
   if (!e) return null
   const etab = e.etablissement ? o.etablissements?.find(x => x.id === e.etablissement) ?? null : null
-  const sous = [...sousDossiers(dossierId, e.dossier, o.dossiers).map(n => nomSur(n, { repli: 'Dossier' })), nomSur(nom)]
+  const sous = cheminDuFichier(dossierId, nom, e, o.dossiers)
   return { emplacement: e, etablissement: etab, chemin: [...(etab ? [etab.nom] : []), e.nom, ...sous], sous }
 }
 
 const memeChemin = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((s, i) => s === b[i])
+
+/** Le fichier porte-t-il le nom du classeur ? « Probabilités.memc » ou
+ *  « Probabilités (2).memc » pour « Probabilités » (sans tenir compte des
+ *  majuscules) */
+export function porteLeNom(fichier: string, nom: string): boolean {
+  const b = fichier.replace(/\.memc$/i, '').replace(/ \(\d+\)$/, '').toLocaleLowerCase('fr')
+  return b === nomSur(nom).toLocaleLowerCase('fr')
+}
 
 /** Le plan : ce qu'il advient du fichier de `fiche` (rangée là où elle est)
  *  si elle va dans `cible` (null : la racine), et la ligne qui le dit. Voir
@@ -129,7 +137,8 @@ export function planDeDeplacement(o: { fiche: FicheClasseur; cible: string | nul
   const avant = placeRangee(f.dossier, f.nom, o)
   if (avant) {
     const n = avant.chemin.length - avant.sous.length
-    if (chemin.length > n && avant.chemin.slice(0, n).every((s, i) => chemin[i] === s)) { ancien.emplacement = avant.emplacement; ancien.sous = chemin.slice(n) }
+    // (à plat, le fichier peut être directement dans le dossier relié : sous vide)
+    if ((chemin.length > n || (avant.emplacement.aPlat && chemin.length === n)) && avant.chemin.slice(0, n).every((s, i) => chemin[i] === s)) { ancien.emplacement = avant.emplacement; ancien.sous = chemin.slice(n) }
   }
   if (!nouveau) {
     if (o.cible === null) return { genre: 'reste-pas-range', ancien, texte: 'La racine de la bibliothèque n\'a pas de dossier : le fichier reste où il est.' }
@@ -137,7 +146,12 @@ export function planDeDeplacement(o: { fiche: FicheClasseur; cible: string | nul
     const niveau = chaine.length ? chaine[chaine.length - 1].nom : ''
     return { genre: 'reste-pas-range', ancien, texte: `Le niveau « ${niveau} » n'est pas rangé dans un dossier : le fichier reste où il est.` }
   }
-  if (memeChemin(nouveau.chemin, chemin)) return { genre: 'reste-meme-place', ancien, nouveau, texte: `Son fichier est déjà dans « ${cheminLisible(chemin)} ».` }
+  if (memeChemin(nouveau.chemin, chemin)) {
+    // À plat (le fichier directement dans le dossier) : le classeur renommé,
+    // son fichier prend le nouveau nom, au même endroit, sans doublon
+    if (nouveau.emplacement.aPlat && !porteLeNom(f.cle.nom, f.nom)) return { genre: 'suit', ancien, nouveau, texte: `Son fichier sera renommé « ${nomSur(f.nom)}${EXTENSION_TABLEAU} » dans « ${cheminLisible(chemin)} ».` }
+    return { genre: 'reste-meme-place', ancien, nouveau, texte: `Son fichier est déjà dans « ${cheminLisible(chemin)} ».` }
+  }
   return { genre: 'suit', ancien, nouveau, texte: `Son fichier ira dans « ${cheminLisible(nouveau.chemin)} ». L'ancien sera retiré une fois le nouveau écrit.` }
 }
 
@@ -184,6 +198,9 @@ interface Ancien {
   /** Les dossiers entre le niveau et celui du chapitre (du plus profond au plus haut), chacun avec son parent :
    *  retirés eux aussi s'ils restent vides (« Auguste » quand son dernier chapitre est parti) */
   meres?: { parent: PoigneeDossier; dossier: PoigneeDossier }[]
+  /** Un dossier « à plat » : d'autres classeurs y ont leur fichier et leurs
+   *  .mem ; seul l'ancien fichier de celui-ci en est retiré */
+  aPlat?: boolean
 }
 
 const raisonDe = (e: unknown) => (e instanceof Error ? e.message.trim().replace(/\.$/, '') : '') || 'erreur inconnue'
@@ -352,7 +369,7 @@ export class DeplacerClasseur {
       const ancien = await this.ancienDossier(f, a)
       const r = await this.deplacerLeFichier(f, { dossier, chemin: n.chemin }, ancien)
       if (!r.ok) {
-        if (!existait) { try { await this.retirerSiVide(await descendre(racine, n.sous.slice(0, -1), false), dossier) } catch { /* il reste */ } }
+        if (!existait && n.sous.length) { try { await this.retirerSiVide(await descendre(racine, n.sous.slice(0, -1), false), dossier) } catch { /* il reste */ } }
         return r.texte
       }
       return `Son fichier aussi, dans « ${cheminLisible(n.chemin)} »${r.mem ? ` (avec ${desMem(r.mem)})` : ''}.${r.reste ? ' ' + r.reste : ''}`
@@ -366,6 +383,25 @@ export class DeplacerClasseur {
    *  « Un autre dossier de l'ordinateur… » (celui des replays, retenu pour ce
    *  classeur) ; null si on ne le retrouve pas (l'ancien fichier restera) */
   private async ancienDossier(f: FicheClasseur, a: AnciennePlace): Promise<Ancien | null> {
+    // À plat : le fichier est directement dans le dossier relié (jamais
+    // retiré) ou dans un de ses sous-dossiers (retiré seulement s'il reste
+    // vide, avec ceux du dessus : d'autres classeurs peuvent y être)
+    if (a.emplacement?.aPlat && a.sous) {
+      const racine = poigneeValable(await this.registre.reglage(reglagePoignee(a.emplacement.id)).catch(() => undefined))
+      if (racine && (await accordDuDossier(racine, false).catch(() => false) || await accordDuDossier(racine, true).catch(() => false))) {
+        try {
+          const dossier = await descendre(racine, a.sous, false)
+          if (!a.sous.length) return { dossier, parent: null, chemin: a.chemin, aPlat: true }
+          const parent = await descendre(racine, a.sous.slice(0, -1), false)
+          const meres: { parent: PoigneeDossier; dossier: PoigneeDossier }[] = []
+          for (let k = a.sous.length - 2; k >= 0; k--) {
+            try { meres.push({ parent: k === 0 ? racine : await descendre(racine, a.sous.slice(0, k), false), dossier: await descendre(racine, a.sous.slice(0, k + 1), false) }) } catch { break }
+          }
+          return { dossier, parent, chemin: a.chemin, meres, aPlat: true }
+        } catch { return null }
+      }
+      return null
+    }
     if (a.emplacement && a.sous?.length) {
       const racine = poigneeValable(await this.registre.reglage(reglagePoignee(a.emplacement.id)).catch(() => undefined))
       if (racine && (await accordDuDossier(racine, false).catch(() => false) || await accordDuDossier(racine, true).catch(() => false))) {
@@ -406,8 +442,12 @@ export class DeplacerClasseur {
       r = await this.h.cle.deplacerVers(cible.dossier, cible.chemin)
     } else r = await this.deplacerFerme(relu, cible)
     if (r.r !== 'deplace') return { ok: false, texte: texteEchec(r, relu, { nom: cible.dossier.name, chemin: cible.chemin }) }
-    // Le même dossier qu'avant (réécrit en place) : rien à retirer, rien à déplacer
-    if (memePlace) return { ok: true, mem: 0, reste: '' }
+    // Le même dossier qu'avant (réécrit en place) : rien à retirer, rien à
+    // déplacer ; à plat, le classeur renommé : l'ancien fichier repart
+    if (memePlace) {
+      if (!ancien?.aPlat || !r.garde) return { ok: true, mem: 0, reste: '' }
+      return { ok: true, mem: 0, reste: (await this.retirerLAncien(f.id, anciennePoignee, ancienneCle, ancien)).join(' ') }
+    }
     const reste: string[] = []
     // 3. L'ancien fichier, examiné puis retiré
     if (!r.garde) reste.push('L\'ancien fichier reste : ce navigateur ne garde pas le nouveau après un rechargement.')
@@ -415,12 +455,15 @@ export class DeplacerClasseur {
     // 4. Les .mem du chapitre ; 5. l'ancien dossier, s'il est vide
     let mem = 0
     if (ancien) {
-      const m = await this.deplacerLesMem(ancien.dossier, cible.dossier)
-      mem = m.deplaces
-      if (m.restes) reste.push(`${desMem(m.restes)} reste${m.restes > 1 ? 'nt' : ''} dans l'ancien dossier.`)
+      // (À plat : les .mem du dossier sont aussi ceux des autres classeurs : ils restent)
+      if (!ancien.aPlat) {
+        const m = await this.deplacerLesMem(ancien.dossier, cible.dossier)
+        mem = m.deplaces
+        if (m.restes) reste.push(`${desMem(m.restes)} reste${m.restes > 1 ? 'nt' : ''} dans l'ancien dossier.`)
+      }
       if (ancien.parent) await this.retirerSiVide(ancien.parent, ancien.dossier)
       for (const m of ancien.meres ?? []) await this.retirerSiVide(m.parent, m.dossier)
-      await this.suivreLeDossierRetenu(f.id, ancien.dossier, cible.dossier)
+      if (!ancien.aPlat) await this.suivreLeDossierRetenu(f.id, ancien.dossier, cible.dossier)
     }
     return { ok: true, mem, reste: reste.join(' ') }
   }

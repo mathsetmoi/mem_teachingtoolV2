@@ -3,7 +3,7 @@
 // classeurs d'une classe, le rangement en sous-dossiers et les noms libres.
 import { describe, expect, it } from 'vitest'
 import type { FicheClasseur, FicheDossier } from '../src/classeurs/demarrage'
-import { cheminPcSaisi, classeursDeLaClasse, emplacementDe, lireEmplacements, nomDeFichierLibre, rangeParLOutil, sousDossiers } from '../src/classeurs/emplacements'
+import { cheminDuFichier, cheminPcSaisi, classeursDeLaClasse, emplacementDe, lireEmplacements, nomDeFichierLibre, rangeParLOutil, sousDossiers } from '../src/classeurs/emplacements'
 import type { Emplacement } from '../src/classeurs/emplacements'
 
 const dossier = (id: string, nom: string, parent: string | null, o: Partial<FicheDossier> = {}): FicheDossier =>
@@ -96,6 +96,18 @@ describe('Mes emplacements', () => {
     expect(sousDossiers('dgeo', 'd5a', avec(['Geo']))).toEqual(['Geo'])
     expect(sousDossiers('dgeo', 'd5a', avec(['Maths', 'Geo']))).toEqual(['Maths', 'Geo'])
     expect(sousDossiers('dgeo', 'd5a', avec([]))).toEqual([])
+  })
+
+  it('lireEmplacements garde « à plat » (2026-11), seulement s\'il vaut true', () => {
+    const l = lireEmplacements([{ id: ID1, genre: 'ordinateur', dossier: 'd5a', nom: 'A', aPlat: true, cree: 1 }, { id: ID2, genre: 'ordinateur', dossier: 'd4b', nom: 'B', aPlat: 'oui', cree: 1 }])
+    expect(l[0].aPlat).toBe(true)
+    expect(l[1]).not.toHaveProperty('aPlat')
+  })
+
+  it('cheminDuFichier : le dossier du chapitre, sauf à plat', () => {
+    expect(cheminDuFichier('dgeo', 'Symétrie', { dossier: 'd5a' }, DOSSIERS)).toEqual(['Géométrie', 'Symétrie'])
+    expect(cheminDuFichier('dgeo', 'Symétrie', { dossier: 'd5a', aPlat: true }, DOSSIERS)).toEqual(['Géométrie'])
+    expect(cheminDuFichier('d5a', 'Symétrie', { dossier: 'd5a', aPlat: true }, DOSSIERS)).toEqual([])
   })
 
   it('cheminPcSaisi : les noms tapés, sains, sans segment vide', () => {

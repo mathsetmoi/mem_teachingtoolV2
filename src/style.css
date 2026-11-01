@@ -2201,6 +2201,23 @@ body.en-revue .bandeau-seance, body.en-trieuse .bandeau-seance, body.en-trieuse 
 .dialogue-enregistrer-ailleurs .e-lieu .lien { border: 0; background: none; padding: 2px 0; color: var(--bleu); text-decoration: underline; cursor: pointer; font: inherit; }
 .dialogue-enregistrer-ailleurs .case span { min-width: 0; overflow-wrap: anywhere; }
 .dialogue-emplacement h2, .dialogue-emplacement .em-nav, .dialogue-emplacement .em-lieu { overflow-wrap: anywhere; }
+.dialogue-enregistrer-ailleurs .e-nom-pc { display: grid; gap: 4px; font-size: 14px; }
+.dialogue-enregistrer-ailleurs .e-nom-pc input, .dialogue-conflit .c-nom { font: inherit; padding: 6px 10px; border: 1px solid var(--filet); border-radius: 8px; background: var(--papier); color: var(--encre); min-width: 0; box-sizing: border-box; }
+.dialogue-enregistrer-ailleurs .e-nom-pc input { width: 100%; }
+.dialogue-conflit { max-width: min(560px, calc(100vw - 32px)); }
+.dialogue-conflit h2 { overflow-wrap: anywhere; }
+.dialogue-conflit .c-contenu { padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--bleu) 10%, var(--papier)); overflow-wrap: anywhere; }
+.dialogue-conflit .c-choix { display: grid; gap: 8px; }
+.dialogue-conflit .c-option { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 4px 10px; align-items: start; padding: 10px 12px; border: 1px solid var(--filet); border-radius: 12px; cursor: pointer; }
+.dialogue-conflit .c-option:has(input:checked) { border-color: var(--bleu); background: color-mix(in srgb, var(--bleu) 8%, var(--papier)); }
+.dialogue-conflit .c-option input[type=radio] { width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--bleu); }
+.dialogue-conflit .c-option span { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.dialogue-conflit .c-option small { color: var(--encre-douce); font-size: 13px; }
+.dialogue-conflit .c-nom { width: 12em; max-width: 100%; margin-top: 4px; }
+.dialogue-conflit .c-compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.dialogue-conflit .c-fichier { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--filet); border-radius: 12px; min-width: 0; overflow-wrap: anywhere; }
+.dialogue-conflit .c-fichier.c-mieux { border-color: var(--bleu); border-width: 2px; }
+.dialogue-conflit .c-alerte { margin: 0; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, #c27a12 16%, var(--papier)); }
 .dialogue-emplacement .e-contenu { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--bleu) 10%, var(--papier)); }
 .dialogue-emplacement .em-saisie { display: grid; gap: 4px; padding: 4px 0 6px; }
 .dialogue-emplacement .em-champ { font: inherit; padding: 8px 10px; border: 1px solid var(--filet); border-radius: 8px; background: var(--papier); color: var(--encre); width: 100%; min-width: 0; box-sizing: border-box; }

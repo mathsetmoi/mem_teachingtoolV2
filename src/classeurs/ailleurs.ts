@@ -25,10 +25,10 @@ import type { Choisi, Fichiers } from './fichiers'
 import type { Registre } from './registre'
 import type { ActionMessage } from '../app'
 import type { Emplacement } from './emplacements'
-import { cheminPcSaisi, classeursDeLaClasse, emplacementDe, emplacements, garderEmplacement, reglagePoignee, retirerEmplacement, sousDossiers } from './emplacements'
+import { cheminPcSaisi, classeursDeLaClasse, nomDeFichierLibre, emplacementDe, emplacements, garderEmplacement, reglagePoignee, retirerEmplacement, sousDossiers } from './emplacements'
 import type { PoigneeDossier } from './ordinateur'
-import { accordDuDossier, choisirUnDossier, choisitUnDossier, dansLeDossier, lireLeDossier } from './ordinateur'
-import type { BilanRelier } from './ordinateur'
+import { accordDuDossier, choisirUnDossier, choisitUnDossier, dansLeDossier, lireLeDossier, nomDeLAncien } from './ordinateur'
+import type { BilanRelier, ChoixConflit, ConflitFichier } from './ordinateur'
 import type { Etablissement } from './etablissements'
 import { cheminLisible, etablissements, garderEtablissement, nomDEtablissement, nouvelId, reglagePoigneeEtablissement, retirerEtablissement, texteDuRangement } from './etablissements'
 import type { Ranger } from './ranger'
@@ -104,6 +104,7 @@ export function texteDuBilan(b: BilanRelier, dossier: string): string {
   if (b.aRelire.length) t.push(`${noms(b.aRelire)} ${b.aRelire.length > 1 ? 'gardent leur fichier d\'avant : ce navigateur n\'a pas pu le relire ; ouvrez-les' : 'garde son fichier d\'avant : ce navigateur n\'a pas pu le relire ; ouvrez-le'}, puis « Mettre à jour ».`)
   if (b.plusRiches.length) t.push(`${noms(b.plusRiches)} : le fichier du dossier a des changements que la bibliothèque n'a pas ; ouvrez-le d'abord (il n'a pas été touché).`)
   if (b.echecs.length) t.push(`${noms(b.echecs)} : pas pu être écrit${b.echecs.length > 1 ? 's' : ''}.`)
+  if (b.gardes?.length) t.push(`${noms(b.gardes)} : le fichier du même nom déjà là est gardé ; ${b.gardes.length > 1 ? 'ils n\'y ont' : 'il n\'y a'} pas encore de fichier.`)
   return t.join(' ')
 }
 
@@ -415,6 +416,7 @@ export class Ailleurs {
       <p class="e-lieu" hidden></p>
       <ul class="e-fichiers aide" hidden></ul>
       <div class="e-comptes" hidden><div class="cases"></div><p class="e-qui aide"></p></div></fieldset>
+      <label class="e-nom-pc" hidden><span>Nom du dossier sur le PC</span><input type="text" class="e-nom-pc-champ" autocomplete="off" spellcheck="false"></label>
       <label class="case e-garder"><input type="checkbox" checked><span>Le garder à jour tout seul</span></label>
       <p class="aide e-explication"></p>
       <p class="e-etat" role="status" aria-live="polite"></p>
@@ -501,6 +503,8 @@ export class Ailleurs {
     const ou = () => (q<HTMLInputElement>('input[name=e-ou]:checked')?.value ?? 'ordinateur') as Ou
     const compte = () => (q<HTMLInputElement>('input[name=e-compte]:checked')?.value ?? 'mem') as CompteDrive
     const garderEl = q<HTMLInputElement>('.e-garder input')
+    const nomPcEl = q<HTMLInputElement>('.e-nom-pc-champ')
+    if (classe) nomPcEl.value = nomSur(classe.nom, { repli: 'Dossier' })
     const etat = (t: string, erreur = false) => { const p = q('.e-etat'); p.textContent = t; p.classList.toggle('erreur', erreur) }
 
     /** Le garder à jour : possible ici ? et ce que fera le bouton */
@@ -546,6 +550,8 @@ export class Ailleurs {
         explication = y === 'ordinateur' ? 'Un seul fichier .memb avec tous les classeurs et les dossiers, enregistré une fois.' : `Un seul fichier .memb, une fois, dans « ${dossierDrive} ».`
       }
       q('.e-garder').hidden = !garder
+      // Un sous-dossier enregistré dans un dossier qu'on va choisir : son nom sur le PC
+      q('.e-nom-pc').hidden = !(x === 'classe' && classe && classe.parent !== null && y === 'ordinateur' && !dansUnRange && garder && garderEl.checked)
       q('.e-explication').textContent = explication
       q('.e-ok').textContent = y === 'drive' ? (connecte(c) ? 'Enregistrer sur le Drive' : 'Se connecter et enregistrer') : x === 'classe' && dansUnRange ? 'Mettre à jour' : 'Enregistrer…'
     }
@@ -580,16 +586,26 @@ export class Ailleurs {
           try { dossier = await choisirUnDossier() } catch (e) { etat(`Ce dossier n'a pas pu être choisi : ${e instanceof Error ? e.message : 'erreur inconnue'}.`, true); return }
           if (!dossier) return
           await accordDuDossier(dossier, true).catch(() => false)
-          // Un sous-dossier : son dossier, à son nom, dans celui choisi (sauf
-          // si l'on a choisi un dossier qui porte déjà ce nom)
-          const nom = nomSur(classe.nom, { repli: 'Dossier' })
+          // Un sous-dossier : son dossier, au nom voulu, dans celui choisi (sauf
+          // si l'on a choisi un dossier qui porte déjà ce nom). Un dossier de
+          // ce nom y est déjà : la question, comme dans Windows (fusionner,
+          // un autre nom, un autre dossier)
+          let nom = nomSur(nomPcEl.value.trim() || classe.nom, { repli: 'Dossier' })
           if (classe.parent !== null && dossier.name !== nom) {
+            if (await dossier.getDirectoryHandle(nom).then(() => true, () => false)) {
+              const r = await this.dossierExistant(dossier, nom)
+              if (!r) { etat(''); return }
+              if (r.choix === 'autre-dossier') { etat('Choisissez un autre dossier : cliquez de nouveau « Enregistrer… ».'); return }
+              if (r.choix === 'autre-nom') nom = r.nom
+            }
             try { dossier = await dossier.getDirectoryHandle(nom, { create: true }) } catch (e) {
               etat(`Le dossier « ${nom} » n'a pas pu être créé : ${e instanceof Error ? e.message : 'erreur inconnue'}.`, true); return
             }
           }
           fermer()
-          await this.relierOrdinateur(classe, dossier)
+          // Les classeurs directement dans ce dossier (pas de dossier au nom
+          // du classeur) ; un fichier du même nom : la question
+          await this.relierOrdinateur(classe, dossier, { aPlat: true, conflit: this.questionFichier() })
           return
         }
         fermer()
@@ -710,6 +726,125 @@ export class Ailleurs {
     ;(meme.disabled ? q<HTMLButtonElement>('.em-annuler') : meme).focus()
   }
 
+  /** « Le dossier « Auguste » existe déjà dans « 1s Axiom » » : fusionner
+   *  (proposé), l'enregistrer sous un autre nom (« Auguste (2) »), ou choisir
+   *  un autre dossier ; null : Annuler. Comme dans Windows. */
+  dossierExistant(parent: PoigneeDossier, nom: string): Promise<{ choix: 'fusionner' } | { choix: 'autre-nom'; nom: string } | { choix: 'autre-dossier' } | null> {
+    return new Promise(async rendre => {
+      const noms: string[] = []
+      let classeurs = 0, autres = 0
+      try {
+        for await (const x of parent.values()) noms.push(x.name)
+        const la = await parent.getDirectoryHandle(nom)
+        for await (const x of la.values()) { if (x.kind === 'file' && x.name.toLowerCase().endsWith(EXTENSION_TABLEAU)) classeurs++; else autres++ }
+      } catch { /* on dit ce qu'on sait */ }
+      const f = document.createElement('dialog')
+      f.className = 'dialogue dialogue-ailleurs dialogue-conflit'
+      f.setAttribute('aria-labelledby', 'titre-conflit-dossier')
+      f.innerHTML = `<h2 id="titre-conflit-dossier"></h2><div class="corps">
+        <div class="c-contenu"></div>
+        <div class="c-choix">
+          <label class="c-option"><input type="radio" name="c-dossier" value="fusionner" checked><span><b>Fusionner les deux dossiers</b><small>Les classeurs du navigateur vont dedans. Ce qui y est déjà reste. Pour un fichier qui porte le même nom, l'outil vous demande.</small></span></label>
+          <label class="c-option"><input type="radio" name="c-dossier" value="autre-nom"><span><b>Enregistrer sous un autre nom</b><small>Un nouveau dossier à côté : <input type="text" class="c-nom" autocomplete="off" spellcheck="false"></small></span></label>
+          <label class="c-option"><input type="radio" name="c-dossier" value="autre-dossier"><span><b>Choisir un autre dossier du PC</b><small>Retour à la fenêtre d'avant.</small></span></label>
+        </div>
+        <div class="actions"><button type="button" class="secondaire c-annuler">Annuler</button><button type="button" class="principal c-ok">Continuer</button></div></div>`
+      const q = <T extends HTMLElement>(sel: string) => f.querySelector(sel) as T
+      q('#titre-conflit-dossier').textContent = `Le dossier « ${nom} » existe déjà dans « ${parent.name} »`
+      q('.c-contenu').textContent = classeurs || autres
+        ? `Sur le PC, il contient ${pluriel(classeurs, 'classeur')}${autres ? ` et ${pluriel(autres, 'autre élément')}` : ''}.`
+        : 'Sur le PC, il est vide.'
+      const champ = q<HTMLInputElement>('.c-nom')
+      champ.value = nomDeFichierLibre(nom, '', noms)
+      champ.addEventListener('focus', () => { q<HTMLInputElement>('input[value=autre-nom]').checked = true })
+      let fini = false
+      const finir = (r: Parameters<typeof rendre>[0]) => { if (fini) return; fini = true; f.close(); rendre(r) }
+      q('.c-annuler').addEventListener('click', () => finir(null))
+      f.addEventListener('cancel', e => { e.preventDefault(); finir(null) })
+      f.addEventListener('close', () => { f.remove(); if (!fini) { fini = true; rendre(null) } })
+      q('.c-ok').addEventListener('click', () => {
+        const v = q<HTMLInputElement>('input[name=c-dossier]:checked').value
+        if (v === 'autre-nom') {
+          const n = nomSur(champ.value.trim(), { repli: '' })
+          if (!n || noms.some(x => x.toLocaleLowerCase('fr') === n.toLocaleLowerCase('fr'))) { champ.focus(); champ.setCustomValidity(n ? 'Ce nom est déjà pris.' : 'Tapez un nom.'); champ.reportValidity(); return }
+          finir({ choix: 'autre-nom', nom: n })
+        } else finir(v === 'autre-dossier' ? { choix: 'autre-dossier' } : { choix: 'fusionner' })
+      })
+      champ.addEventListener('input', () => champ.setCustomValidity(''))
+      document.body.appendChild(f)
+      f.showModal()
+      q<HTMLButtonElement>('.c-ok').focus()
+    })
+  }
+
+  /** La question devant un fichier du même nom, pour un enregistrement (un
+   *  lien) : « Faire de même pour les suivants » vaut jusqu'à la fin de ce lien */
+  questionFichier(): (c: ConflitFichier) => Promise<ChoixConflit> {
+    let toujours: ChoixConflit | null = null
+    return async c => {
+      if (toujours) return toujours
+      const r = await this.fichierExistant(c)
+      if (r.toujours) toujours = r.choix
+      return r.choix
+    }
+  }
+
+  /** « « Probabilités.memc » existe déjà dans « Auguste » » : les deux côte à
+   *  côte (pages, date) ; remplacer (l'ancien gardé à côté), garder les deux,
+   *  ou garder celui du PC. Un fichier du PC qui a plus de pages n'est jamais
+   *  remplacé d'office : « Garder les deux » est alors proposé. */
+  fichierExistant(c: ConflitFichier): Promise<{ choix: ChoixConflit; toujours: boolean }> {
+    return new Promise(rendre => {
+      const f = document.createElement('dialog')
+      f.className = 'dialogue dialogue-ailleurs dialogue-conflit'
+      f.setAttribute('aria-labelledby', 'titre-conflit-fichier')
+      const base = nomSur(c.classeur.nom)
+      const pagesNav = c.classeur.pages ?? 0
+      const plusRicheSurLePC = (c.pc.pages ?? 0) > pagesNav
+      f.innerHTML = `<h2 id="titre-conflit-fichier"></h2><div class="corps">
+        <div class="c-compare">
+          <div class="c-fichier c-nav"><b>Dans le navigateur</b><span class="c-l1"></span><small class="aide c-l2"></small></div>
+          <div class="c-fichier c-pc"><b>Sur le PC</b><span class="c-l1"></span><small class="aide c-l2"></small></div>
+        </div>
+        <p class="c-alerte" hidden>Le fichier du PC a plus de pages que celui du navigateur : il vaut mieux garder les deux.</p>
+        <div class="c-choix">
+          <label class="c-option"><input type="radio" name="c-fichier" value="remplacer"><span><b>Remplacer le fichier du PC</b><small class="c-r"></small></span></label>
+          <label class="c-option"><input type="radio" name="c-fichier" value="deux"><span><b>Garder les deux</b><small class="c-d"></small></span></label>
+          <label class="c-option"><input type="radio" name="c-fichier" value="garder"><span><b>Garder celui du PC</b><small>Ce classeur n'est pas enregistré ici pour l'instant.</small></span></label>
+        </div>
+        <label class="case c-toujours"><input type="checkbox"><span>Faire de même pour les fichiers suivants en double</span></label>
+        <div class="actions"><button type="button" class="principal c-ok">Continuer</button></div></div>`
+      const q = <T extends HTMLElement>(sel: string) => f.querySelector(sel) as T
+      q('#titre-conflit-fichier').textContent = `« ${c.nom} » existe déjà dans « ${c.chemin[c.chemin.length - 1] ?? ''} »`
+      const n = c.classeur.seances ?? c.classeur.listeSeances?.length
+      q('.c-nav .c-l1').textContent = [n ? pluriel(n, 'séance') : '', pagesNav ? pluriel(pagesNav, 'page') : ''].filter(Boolean).join(', ') || '« ' + c.classeur.nom + ' »'
+      q('.c-nav .c-l2').textContent = `Modifié ${quandLisible(c.classeur.modifie)}`
+      q('.c-pc .c-l1').textContent = c.pc.pages != null ? `${c.pc.nomClasseur && c.pc.nomClasseur !== c.classeur.nom ? `« ${c.pc.nomClasseur} », ` : ''}${pluriel(c.pc.pages, 'page')}` : tailleLisible(c.pc.taille)
+      q('.c-pc .c-l2').textContent = `Modifié ${quandLisible(c.pc.modifie)}`
+      q('.c-r').textContent = `L'outil garde l'ancien à côté, renommé « ${nomDeLAncien(base, c.pc.modifie)}${EXTENSION_TABLEAU} » : il n'est pas perdu.`
+      q('.c-d').textContent = `Celui du navigateur prend un autre nom (« ${base} (2)${EXTENSION_TABLEAU} »).`
+      q('.c-alerte').hidden = !plusRicheSurLePC
+      q<HTMLInputElement>(`input[value=${plusRicheSurLePC ? 'deux' : 'remplacer'}]`).checked = true
+      q(plusRicheSurLePC ? '.c-pc' : '.c-nav').classList.add('c-mieux')
+      let fini = false
+      const finir = () => {
+        if (fini) return
+        fini = true
+        const choix = (q<HTMLInputElement>('input[name=c-fichier]:checked')?.value ?? 'deux') as ChoixConflit
+        const toujours = q<HTMLInputElement>('.c-toujours input').checked
+        f.close()
+        rendre({ choix, toujours })
+      }
+      q('.c-ok').addEventListener('click', finir)
+      // Échap : rien n'est remplacé (garder les deux)
+      f.addEventListener('cancel', e => { e.preventDefault(); q<HTMLInputElement>('input[value=deux]').checked = true; finir() })
+      f.addEventListener('close', () => f.remove())
+      document.body.appendChild(f)
+      f.showModal()
+      q<HTMLButtonElement>('.c-ok').focus()
+    })
+  }
+
   /** Un classeur, une fois, à la racine de « MEM - Classeurs » */
   private async deposerUnClasseur(f: FicheClasseur, compte: CompteDrive) {
     if (this.occupe) return
@@ -733,7 +868,7 @@ export class Ailleurs {
    *  silencieux : ne dit le bilan que s'il y a un souci ; etablissement :
    *  celui du niveau déjà rangé par la fenêtre « Où ranger… » (lot 18), que
    *  « Mettre à jour » garde, avec sa phrase */
-  private async relierOrdinateur(classe: FicheDossier, d: PoigneeDossier, o: { silencieux?: boolean; etablissement?: Etablissement | null; reprendre?: boolean } = {}) {
+  private async relierOrdinateur(classe: FicheDossier, d: PoigneeDossier, o: { silencieux?: boolean; etablissement?: Etablissement | null; reprendre?: boolean; aPlat?: boolean; conflit?: (c: ConflitFichier) => Promise<ChoixConflit> } = {}) {
     if (this.occupe) return
     this.occupe = true
     let ids: string[] = []
@@ -746,7 +881,7 @@ export class Ailleurs {
       // interrompu) le reçoit ici, une fois l'ancien relu ; un fichier choisi
       // à la main, ou mis dans « Un autre dossier de l'ordinateur… », reste le sien
       const b = await relierLeNiveau({ registre: this.registre, message: t => this.h.message(t), avantDEcrire: this.h.avantDEcrire, avantDeDeplacer: this.h.avantDeDeplacer }, classe, d,
-        { reprendre: !!o.reprendre, ...(etab ? { prefixe: [etab.nom, d.name], etablissement: etab.id, etablissementNom: etab.nom } : {}) })
+        { reprendre: !!o.reprendre, ...(etab ? { prefixe: [etab.nom, d.name], etablissement: etab.id, etablissementNom: etab.nom } : {}), ...(o.aPlat ? { aPlat: true } : {}), ...(o.conflit ? { conflit: o.conflit } : {}) })
       if (!b) return
       const souci = b.plusRiches.length + b.echecs.length + b.ailleurs.length + b.aRelire.length > 0
       if (!o.silencieux || souci) {
