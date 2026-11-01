@@ -3328,9 +3328,10 @@ emplacements »** en haut de la bibliothèque (3A).
   proposé, avec un avertissement). Un classeur mis à la corbeille garde son
   fichier sur le PC.
   Enregistré de nouveau ailleurs, un dossier écrit chacun de ses classeurs
-  dans le dossier choisi (l'ancien fichier reste intact) ; un classeur
-  renommé avant voit son fichier suivre (« 17 octobre.memc » devient
-  « Trigonométrie.memc », l'ancien retiré une fois le nouveau vérifié).
+  dans le dossier choisi. **Enregistrer n'enlève jamais rien du PC** (le
+  professeur, 2026-11) : un classeur dont le fichier est ailleurs, même dans
+  le dossier choisi (une autre année, l'ancien nom du classeur), reçoit un
+  fichier neuf à sa place, et l'ancien reste où il est, intact.
 - **Un seul menu pour tous les dossiers (2026-11, choix du professeur).**
   Chaque dossier, en haut ou dessous, a « Enregistrer ce dossier… » et
   « Emplacement sur l'ordinateur… », et la même fenêtre (« Nom du dossier sur

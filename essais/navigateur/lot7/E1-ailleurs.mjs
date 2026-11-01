@@ -463,8 +463,28 @@ try {
   await p.waitForTimeout(500)
   contenu = await p.evaluate(() => window.__lister('PC3'))
   const entT = await p.evaluate(() => window.__entete('PC3/Aug', 'Trigonometrie.memc').catch(() => ({})))
-  ok(Object.keys(contenu['Aug'] ?? {}).sort().join('|') === 'Proba.memc|Trigonometrie.memc' && entT.id === idDix,
-    'C13j) « Dixsept » renommé « Trigonometrie » avant : « Mettre à jour » renomme son fichier « Trigonometrie.memc », sans doublon', { contenu, entT })
+  // (Adapté 2026-11 : enregistrer n'enlève jamais rien du PC : l'ancien « Dixsept.memc » reste)
+  ok(Object.keys(contenu['Aug'] ?? {}).sort().join('|') === 'Dixsept.memc|Proba.memc|Trigonometrie.memc' && entT.id === idDix,
+    'C13j) « Dixsept » renommé « Trigonometrie » avant : « Mettre à jour » écrit « Trigonometrie.memc » ; l\'ancien « Dixsept.memc » reste (rien n\'est enlevé)', { contenu, entT })
+  await toasts(p)
+  // (Ajouté 2026-11) Le fichier d'un classeur rangé ailleurs dans le dossier
+  // choisi (« PC3 › Aug › Ancien › Trigonometrie.memc », une autre année) :
+  // enregistrer écrit le fichier à sa place, et n'enlève rien d'autre
+  await p.evaluate(async id => {
+    const aug = await window.__racineOpfs('PC3/Aug'), anc = await window.__racineOpfs('PC3/Aug/Ancien')
+    const src = await (await aug.getFileHandle('Trigonometrie.memc')).getFile()
+    const h = await anc.getFileHandle('Trigonometrie.memc', { create: true }); const w = await h.createWritable(); await w.write(src); await w.close()
+    await aug.removeEntry('Trigonometrie.memc')
+    await window.__registre.garderPoignee(id, h)
+    await window.__registre.modifierClasseur(id, x => { x.cle = { ...x.cle, chemin: ['Aug', 'Ancien'] } })
+  }, idDix)
+  await toasts(p)
+  await majAug()
+  await p.waitForFunction(() => window.__lister('PC3').then(c => c['Aug']?.['Trigonometrie.memc'] > 0), null, { timeout: 20000 }).catch(() => {})
+  await p.waitForTimeout(500)
+  contenu = await p.evaluate(() => window.__lister('PC3'))
+  ok(contenu['Aug']?.['Trigonometrie.memc'] > 0 && contenu['Aug']?.['Ancien']?.['Trigonometrie.memc'] > 0 && contenu['Aug']?.['Dixsept.memc'] > 0,
+    'C13k) Rangé ailleurs dans le dossier (« Aug › Ancien ») : « Aug › Trigonometrie.memc » écrit, « Aug › Ancien » et son fichier restent', contenu)
   await toasts(p)
 
   // =====================================================================

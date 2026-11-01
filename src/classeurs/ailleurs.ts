@@ -339,9 +339,8 @@ export class Ailleurs {
       const ok = await this.h.fichiers.ouvrir(choisis, { dossier: classe.id, lot: true })
       if (!ok) { void this.h.bibliotheque.charger(); return }
     } else if (!relier) { this.h.message(`Il n'y a aucun classeur (.memc) dans « ${d.name} ».`); void this.h.bibliotheque.charger(); return }
-    // Le dossier choisi à l'instant devient celui de ce dossier : chaque
-    // classeur qui n'y a pas encore son fichier en reçoit un (l'ancien intact)
-    if (relier) await this.relierOrdinateur(classe, d, { silencieux: trouves.length > 0, nouveauLieu: true })
+    // (les classeurs viennent d'être ouverts depuis ce dossier : leurs fichiers y restent tels quels)
+    if (relier) await this.relierOrdinateur(classe, d, { silencieux: trouves.length > 0 })
     void this.h.bibliotheque.charger()
   }
 
@@ -891,13 +890,8 @@ export class Ailleurs {
           ? texteDuRangement({ niveau: classe.nom, chemin: [etab.nom, d.name], bilan: b })
           : `« ${classe.nom} » est relié au dossier « ${d.name} ». ${texteDuBilan(b, d.name)}`)
       }
-      // Le dossier choisi à l'instant : un classeur dont le fichier y est déjà,
-      // mais pas à sa place ou sous son ancien nom (« 17 octobre › 17
-      // octobre.memc » pour « Trigonométrie »), le voit suivre : écrit à sa
-      // place, vérifié, puis l'ancien retiré (deplacer-fichier.ts)
-      // (seulement à plat : le rangement « un dossier par classeur » d'avant
-      // garde ses fichiers où « Ouvrir un dossier… » les a trouvés)
-      if (o.nouveauLieu && !etab && (await emplacements(this.registre)).some(e => e.dossier === classe.id && e.genre === 'ordinateur' && e.aPlat)) await this.h.bibliotheque.suivreLeNom(classe.id)
+      // (Enregistrer n'enlève jamais rien du PC : aucun fichier n'est déplacé ici,
+      // un classeur qui n'est pas à sa place y reçoit un fichier neuf, 2026-11)
     } catch (e) {
       this.h.message(`« ${classe.nom} » n'a pas pu être relié : ${e instanceof Error ? e.message : 'erreur inconnue'}.`)
     } finally {
