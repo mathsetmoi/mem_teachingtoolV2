@@ -310,9 +310,17 @@ try {
   // Un sous-dossier d'un dossier déjà sur l'ordinateur (« Geometrie » dans « 4B ») : il y est déjà, rien à choisir
   await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), dGeo)
   await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
-  const sd = await p.evaluate(() => { const d = document.querySelector('dialog[open]'); return { lieu: d.querySelector('.e-lieu:not([hidden])')?.textContent, ok: d.querySelector('.e-ok').textContent, garder: !d.querySelector('.e-garder').hidden, changer: !!d.querySelector('.e-changer') } })
-  ok(sd.lieu === 'Déjà sur l\'ordinateur, dans Cet ordinateur › Cle 4B › Geometrie' && sd.ok === 'Mettre à jour' && !sd.garder && !sd.changer,
-    'C10) Le sous-dossier « Geometrie » : « Déjà sur l\'ordinateur, dans Cet ordinateur › Cle 4B › Geometrie », « Mettre à jour », ni dossier à choisir ni « Changer… »', sd)
+  const sd = await p.evaluate(() => { const d = document.querySelector('dialog[open]'); return { lieu: d.querySelector('.e-lieu:not([hidden])')?.firstChild?.textContent + d.querySelector('.e-lieu .e-chemin')?.textContent, ok: d.querySelector('.e-ok').textContent, garder: !d.querySelector('.e-garder').hidden, changer: d.querySelector('.e-changer')?.textContent } })
+  ok(sd.lieu === 'Déjà sur l\'ordinateur, dans Cet ordinateur › Cle 4B › Geometrie' && sd.ok === 'Mettre à jour' && !sd.garder && sd.changer === 'Choisir un autre dossier…',
+    'C10) Le sous-dossier « Geometrie » : « Déjà sur l\'ordinateur, dans Cet ordinateur › Cle 4B › Geometrie », « Mettre à jour », et « Choisir un autre dossier… » pour en choisir un autre', sd)
+  // Le choix d'un autre dossier reste toujours possible : la fenêtre propose alors d'en choisir un
+  await p.click('dialog[open] .e-changer')
+  const ch = await p.evaluate(() => { const d = document.querySelector('dialog[open]'); return { ok: d.querySelector('.e-ok').textContent, garder: !d.querySelector('.e-garder').hidden, lieu: d.querySelector('.e-lieu')?.textContent, changer: !!d.querySelector('.e-changer') } })
+  ok(ch.ok === 'Enregistrer…' && ch.garder && /Il ira dans le dossier que vous allez choisir/.test(ch.lieu ?? '') && !ch.changer,
+    'C10c) « Choisir un autre dossier… » : le bouton devient « Enregistrer… » (choix d\'un dossier), le dossier prendra son propre emplacement', ch)
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200)
+  await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), dGeo)
+  await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
   await p.click('dialog[open] .e-ok')
   await attendreToast(p, /4B/, 20000)
   contenu = await p.evaluate(() => window.__lister('Cle 4B'))
