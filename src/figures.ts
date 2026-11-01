@@ -366,3 +366,141 @@ export function echelleProba(lettres: string[]) {
   r += texte({ x: X(0), y: 122 }, 'impossible', 'font-size="19" font-style="italic"') + texte({ x: X(1), y: 122 }, 'certain', 'font-size="19" font-style="italic"')
   return svg(540, 136, r)
 }
+
+// =============================================================
+// LES FIGURES DE 4e
+// =============================================================
+
+// ---------- Repère à plusieurs points ----------
+/** Un repère quadrillé (de −5 à 5) et des points nommés ; un point
+ *  `centre: true` est marqué d'une croix (le centre d'un demi-tour) */
+export function reperePoints(pts: { x: number; y: number; nom: string; centre?: boolean }[]) {
+  const n = 5, c = 24, O = { x: 20 + n * c, y: 20 + n * c }, T = 40 + 2 * n * c
+  let r = ''
+  for (let i = -n; i <= n; i++) {
+    r += ligne({ x: O.x + i * c, y: 20 }, { x: O.x + i * c, y: T - 20 }, 'stroke="#9bb6dc" stroke-width="1"')
+    r += ligne({ x: 20, y: O.y + i * c }, { x: T - 20, y: O.y + i * c }, 'stroke="#9bb6dc" stroke-width="1"')
+  }
+  r += ligne({ x: 14, y: O.y }, { x: T - 10, y: O.y }) + ligne({ x: O.x, y: T - 14 }, { x: O.x, y: 10 })
+  r += `<path d="M${T - 18} ${O.y - 6}L${T - 10} ${O.y}L${T - 18} ${O.y + 6}M${O.x - 6} 18L${O.x} 10L${O.x + 6} 18"/>`
+  r += texte({ x: O.x - 10, y: O.y + 14 }, '0', 'font-size="14"') + texte({ x: O.x + c, y: O.y + 14 }, '1', 'font-size="14"') + texte({ x: O.x - 12, y: O.y - c }, '1', 'font-size="14"')
+  for (const q of pts) {
+    const A = { x: O.x + q.x * c, y: O.y - q.y * c }
+    r += q.centre ? `<path d="M${A.x - 6} ${A.y - 6}L${A.x + 6} ${A.y + 6}M${A.x + 6} ${A.y - 6}L${A.x - 6} ${A.y + 6}" stroke="#1f5fbf" stroke-width="2.6"/>`
+      : `<circle cx="${A.x}" cy="${A.y}" r="5" fill="#d0342c" stroke="none"/>`
+    r += nom({ x: A.x + 12, y: A.y - 12 }, q.nom, 19)
+  }
+  return svg(T, T, r)
+}
+
+// ---------- Quadrilatère et ses diagonales codées ----------
+/** Un quadrilatère dessiné par ses diagonales, qui se coupent en leur
+ *  milieu : codées de même longueur (`egales`) et/ou perpendiculaires
+ *  (`perp`) ; les côtés ne sont pas codés */
+export function diagonalesCodees(egales: boolean, perp: boolean, noms: string, tourne = 0) {
+  const c = { x: 0, y: 0 }, a = 110, b = egales ? 110 : 62, t = perp ? 90 : 58
+  const u = { x: 1, y: 0 }, v = { x: Math.cos(t * Math.PI / 180), y: -Math.sin(t * Math.PI / 180) }
+  let p = [{ x: a * u.x, y: a * u.y }, { x: b * v.x, y: b * v.y }, { x: -a * u.x, y: -a * u.y }, { x: -b * v.x, y: -b * v.y }]
+  p = tourner(p, c, tourne)
+  const [A, B, C, D] = p
+  let r = poly(p) + ligne(A, C, 'stroke="#1f5fbf"') + ligne(B, D, 'stroke="#1f5fbf"')
+  const n2 = egales ? 1 : 2
+  r += traits(A, c, 1) + traits(c, C, 1) + traits(B, c, n2) + traits(c, D, n2)
+  if (perp) r += angleDroit(A, c, B, 11)
+  r += p.map((q, i) => nomDehors(q, c, noms[i])).join('') + nom({ x: c.x + 4, y: c.y + 22 }, 'O', 17)
+  return cadre(p, r, 34)
+}
+
+// ---------- Droites remarquables d'un triangle ----------
+export type Remarquable = 'mediatrice' | 'mediane' | 'hauteur' | 'bissectrice'
+/** Un triangle ABC (quelconque) et une droite (d) codée : la médiatrice
+ *  de [BC], ou la médiane, la hauteur, la bissectrice issues de A */
+export function droiteRemarquable(sorte: Remarquable, noms: string, tourne = 0) {
+  let A = { x: 95, y: 30 }, B = { x: 30, y: 200 }, C = { x: 290, y: 200 }
+  ;[A, B, C] = tourner([A, B, C], { x: 140, y: 140 }, tourne)
+  const M = milieu(B, C), bc = { x: (C.x - B.x) / dist(B, C), y: (C.y - B.y) / dist(B, C) }
+  let p1: P, p2: P, code = ''
+  const prolonger = (a: P, b: P, avant: number, apres: number): [P, P] => {
+    const l = dist(a, b), w = { x: (b.x - a.x) / l, y: (b.y - a.y) / l }
+    return [{ x: a.x - w.x * avant, y: a.y - w.y * avant }, { x: b.x + w.x * apres, y: b.y + w.y * apres }]
+  }
+  if (sorte === 'mediatrice') {
+    let n = { x: -bc.y, y: bc.x }
+    if (n.x * (A.x - M.x) + n.y * (A.y - M.y) < 0) n = { x: -n.x, y: -n.y }
+    ;[p1, p2] = [{ x: M.x + n.x * 120, y: M.y + n.y * 120 }, { x: M.x - n.x * 50, y: M.y - n.y * 50 }]
+    code = traits(B, M, 1) + traits(M, C, 1) + angleDroit(C, M, p1, 11)
+  } else if (sorte === 'mediane') {
+    ;[p1, p2] = prolonger(A, M, 30, 40)
+    code = traits(B, M, 1) + traits(M, C, 1)
+  } else if (sorte === 'hauteur') {
+    const k = (A.x - B.x) * bc.x + (A.y - B.y) * bc.y, H = { x: B.x + bc.x * k, y: B.y + bc.y * k }
+    ;[p1, p2] = prolonger(A, H, 30, 40)
+    code = angleDroit(C, H, A, 11)
+  } else {
+    const ab = { x: (B.x - A.x) / dist(A, B), y: (B.y - A.y) / dist(A, B) }, ac = { x: (C.x - A.x) / dist(A, C), y: (C.y - A.y) / dist(A, C) }
+    const w = { x: ab.x + ac.x, y: ab.y + ac.y }, l = Math.hypot(w.x, w.y), Q = { x: A.x + w.x / l * 200, y: A.y + w.y / l * 200 }
+    ;[p1, p2] = prolonger(A, Q, 30, 0)
+    // Deux arcs de même rayon, chacun barré d'un petit trait en son milieu
+    const bis = { x: w.x / l, y: w.y / l }
+    const tic = (v: P) => { const m = { x: (v.x + bis.x) / 2, y: (v.y + bis.y) / 2 }, k = Math.hypot(m.x, m.y); return ligne({ x: A.x + m.x / k * 33, y: A.y + m.y / k * 33 }, { x: A.x + m.x / k * 47, y: A.y + m.y / k * 47 }, 'stroke-width="1.8"') }
+    code = arcAngle(A, B, Q, 40) + arcAngle(A, Q, C, 40) + tic(ab) + tic(ac)
+  }
+  const c = centre([A, B, C])
+  let r = poly([A, B, C]) + ligne(p1, p2, 'stroke="#1f5fbf" stroke-width="2.4"') + code
+  r += nomDehors(A, c, noms[0]) + nomDehors(B, c, noms[1]) + nomDehors(C, c, noms[2])
+  const e = { x: p1.x + (p2.x - p1.x) * 0.93, y: p1.y + (p2.y - p1.y) * 0.93 }
+  r += nom({ x: e.x + 20, y: e.y }, '(d)', 17)
+  return cadre([A, B, C, p1, p2], r, 30)
+}
+
+// ---------- Solides en perspective cavalière ----------
+/** Un prisme droit : sa face avant `avant` (en vraie grandeur), reculée
+ *  de `d` ; les arêtes cachées en pointillés. Un cube et un pavé droit
+ *  sont des prismes dont la face avant est un carré ou un rectangle. */
+function prismeCavalier(avant: P[], d: P) {
+  const n = avant.length, arriere = avant.map(q => ({ x: q.x + d.x, y: q.y + d.y }))
+  // Le sens des sommets : la normale extérieure d'un côté, et les faces
+  // latérales qui regardent vers le fond (du côté de d) sont vues
+  const aire = avant.reduce((s, q, i) => { const r2 = avant[(i + 1) % n]; return s + q.x * r2.y - r2.x * q.y }, 0)
+  const vue = avant.map((q, i) => {
+    const r2 = avant[(i + 1) % n], e = { x: r2.x - q.x, y: r2.y - q.y }
+    const nrm = aire > 0 ? { x: e.y, y: -e.x } : { x: -e.y, y: e.x }
+    return nrm.x * d.x + nrm.y * d.y > 0
+  })
+  const cache = 'stroke-dasharray="6 5"'
+  let r = poly(avant)
+  for (let i = 0; i < n; i++) {
+    r += ligne(arriere[i], arriere[(i + 1) % n], vue[i] ? '' : cache)
+    r += ligne(avant[i], arriere[i], vue[i] || vue[(i + n - 1) % n] ? '' : cache)
+  }
+  return { r, pts: [...avant, ...arriere] }
+}
+export type Solide = 'cube' | 'pave' | 'cylindre' | 'prisme3' | 'prisme4' | 'prisme5' | 'prisme6' | 'pyramide'
+/** Un solide usuel en perspective cavalière, sans nom de sommet */
+export function solide(sorte: Solide) {
+  const d = { x: 46, y: -40 }
+  if (sorte === 'cylindre') {
+    const rx = 60, ry = 18, h = 150, c1 = { x: 0, y: 0 }, c2 = { x: 0, y: -h }
+    const r = `<ellipse cx="${c2.x}" cy="${c2.y}" rx="${rx}" ry="${ry}"/>` + ligne({ x: -rx, y: 0 }, { x: -rx, y: -h }) + ligne({ x: rx, y: 0 }, { x: rx, y: -h })
+      + `<path d="M${-rx} 0A${rx} ${ry} 0 0 0 ${rx} 0"/><path d="M${-rx} 0A${rx} ${ry} 0 0 1 ${rx} 0" stroke-dasharray="6 5"/>`
+    return cadre([{ x: -rx, y: ry }, { x: rx, y: -h - ry }, c1], r, 24)
+  }
+  if (sorte === 'pyramide') {
+    const base = [{ x: 0, y: 0 }, { x: 150, y: 0 }, { x: 150 + d.x, y: d.y }, { x: d.x, y: d.y }], S = { x: 75 + d.x / 2, y: -170 }
+    const cache = 'stroke-dasharray="6 5"'
+    const r = ligne(base[0], base[1]) + ligne(base[1], base[2]) + ligne(base[2], base[3], cache) + ligne(base[3], base[0], cache)
+      + ligne(S, base[0]) + ligne(S, base[1]) + ligne(S, base[2]) + ligne(S, base[3], cache)
+    return cadre([...base, S], r, 24)
+  }
+  let avant: P[]
+  if (sorte === 'cube') avant = [{ x: 0, y: 0 }, { x: 130, y: 0 }, { x: 130, y: -130 }, { x: 0, y: -130 }]
+  else if (sorte === 'pave') avant = [{ x: 0, y: 0 }, { x: 190, y: 0 }, { x: 190, y: -100 }, { x: 0, y: -100 }]
+  else if (sorte === 'prisme4') avant = [{ x: 0, y: 0 }, { x: 170, y: 0 }, { x: 120, y: -90 }, { x: 30, y: -90 }]
+  else {
+    // Un triangle, un pentagone ou un hexagone réguliers, pointe en haut
+    const n = Number(sorte.slice(-1)), R = 75
+    avant = Array.from({ length: n }, (_, i) => ({ x: R * Math.cos((90 + 360 * i / n) * Math.PI / 180), y: -R * Math.sin((90 + 360 * i / n) * Math.PI / 180) }))
+  }
+  const { r, pts } = prismeCavalier(avant, sorte === 'pave' ? { x: 60, y: -52 } : d)
+  return cadre(pts, r, 24)
+}

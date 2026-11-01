@@ -27,7 +27,7 @@ import type { ContenuClasseur } from './recherche'
 import { lireContenu } from './recherche'
 import { EXEMPLES } from './construction'
 import { DEMONSTRATIONS } from './catalogue'
-import { AUTOMATISMES_5E } from './automatismes'
+import { NIVEAUX, themesDe } from './automatismes'
 import { FONDS } from './types'
 import type { Menu, OptionsEntree } from './menus'
 import type { Sens } from './ordre'
@@ -1714,10 +1714,11 @@ export class UI implements Interface {
     for (const e of EXEMPLES) l.push({ titre: e.nom, genre: 'Construction', icone: 'construction', detail: 'Programme de construction', mots: e.texte, faire: () => this.constructeur.ouvrirAvec(e.texte) })
     l.push({ titre: 'Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ', genre: 'Catalogue', icone: 'catalogue', detail: 'Le dessin à poser', mots: 'ensembles de nombres entiers naturels relatifs decimaux rationnels reels', faire: () => this.catalogue.poserElement() })
     for (const d of DEMONSTRATIONS) l.push({ titre: d.nom, genre: 'Catalogue', icone: 'catalogue', detail: 'Démonstration à poser', mots: `demonstration ${d.titre} ${d.nom.replace('√', ' racine ')}`, faire: () => this.catalogue.poserElement(d.nom) })
-    const themes = new Set<string>()
-    for (const a of AUTOMATISMES_5E) themes.add(a.theme)
-    for (const theme of themes.keys()) l.push({ titre: theme, genre: 'Automatismes', icone: 'automatismes', detail: 'Le thème coché', mots: AUTOMATISMES_5E.filter(a => a.theme === theme).map(a => a.titre).join(' '), faire: () => this.flash.ouvrir([`5e/${theme}`]) })
-    for (const a of AUTOMATISMES_5E) l.push({ titre: a.titre, genre: 'Automatismes', icone: 'automatismes', detail: a.theme, faire: () => this.flash.ouvrir([`5e/${a.theme}`]) })
+    // Les automatismes de chaque niveau qui en a (5e, 4e…) : le thème, et chaque automatisme
+    for (const n of NIVEAUX.filter(x => x.automatismes.length)) {
+      for (const theme of themesDe(n)) l.push({ titre: `${theme} (${n.nom})`, genre: 'Automatismes', icone: 'automatismes', detail: 'Le thème coché', mots: n.automatismes.filter(a => a.theme === theme).map(a => a.titre).join(' '), faire: () => this.flash.ouvrir([`${n.id}/${theme}`]) })
+      for (const a of n.automatismes) l.push({ titre: a.titre, genre: 'Automatismes', icone: 'automatismes', detail: `${a.theme} (${n.nom})`, faire: () => this.flash.ouvrir([`${n.id}/${a.theme}`]) })
+    }
     return l
   }
 
