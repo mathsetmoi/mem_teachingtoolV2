@@ -1825,7 +1825,7 @@ export class UI implements Interface {
       const ranger = this.actionsEtat.get('ranger-niveau'), donner = this.actionsEtat.get('donner-fichier')
       if (cle?.disponible && rangeable !== null && ranger) {
         this.entreeMenu(m, this.libelleDe(ranger), () => ranger.faire(), { action: 'ranger-niveau',
-          aide: 'Dites une fois où vont les classeurs de ce niveau (le Drive du MEM, du LFB, du LyFEL, ou un dossier à part) : chacun y a son fichier, écrit tout seul.' })
+          aide: 'Choisissez une fois le dossier de l\'ordinateur où va ce dossier : chacun de ses classeurs y a son fichier, écrit tout seul.' })
       } else if (cle?.disponible && rangeDans !== null && donner) {
         this.entreeMenu(m, this.libelleDe(donner), () => donner.faire(), { action: 'donner-fichier',
           aide: `Son fichier ira dans « ${rangeDans} › ${nomSur(this.app.classeur.nom)} », écrit tout seul.` })

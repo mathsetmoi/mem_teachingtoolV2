@@ -231,13 +231,9 @@ if (etat.p && (seul('B') || seul('C') || seul('D') || seul('E') || seul('F'))) {
   ok(JSON.stringify(v.fil) === '["Bibliothèque","5e B*"]' && !v.recents.length && v.videDossier === 'Ce dossier est vide. Glissez-y un classeur, ou créez-en un.' && v.session.dossier === etat.d5,
     'Un clic sur « 5e B » : le fil « Bibliothèque › 5e B », Récents caché, « Ce dossier est vide… », retenu pour l\'onglet', v)
   ok(v.focus === 'biblio-bouton', '   … le focus sur « Nouveau classeur » du dossier vide', v.focus)
-  // Nouveau classeur dans « 5e B ». Depuis le lot 18, le premier dans un
-  // niveau pas encore rangé ouvre d'abord « Où ranger les classeurs de
-  // « 5e B » ? » (lot18/E1-ranger.mjs la vérifie) : « Plus tard », noté pour
-  // ce niveau, puis la fenêtre d'avant
+  // Nouveau classeur dans « 5e B ». (Adapté 2026-11 : la fenêtre « Où ranger… »
+  // ne vient plus d'abord ; « Nouveau classeur » directement)
   await p.click('.biblio-nouveau')
-  await p.waitForSelector('dialog.dialogue-ranger[open]', { timeout: 5000 })
-  await p.click('dialog.dialogue-ranger[open] .r-plus-tard')
   await p.waitForSelector('dialog.dialogue-nouveau[open]', { timeout: 5000 }); await p.waitForTimeout(250)
   const dans = await p.evaluate(() => document.querySelector('dialog.dialogue-nouveau[open] .dans')?.textContent.replace(/[  ]/g, ' '))
   ok(dans === 'Dans : 5e B · étiquette de niveau « 5e B »', `« Nouveau classeur » dans « 5e B » : « ${dans} » (pas de champ d'étiquette)`, dans)
@@ -402,7 +398,8 @@ if (etat.p && (seul('D') || seul('E') || seul('F'))) {
   await ouvrirMenu(p, 'd:' + etat.d5)
   let v = await vue(p)
   // (Adapté au lot 4, morceau C7 : le menu d'un dossier gagne « Déplacer vers… » à la fin)
-  ok(v.menu?.label === 'Dossier « 5e B »' && v.menu.entrees.join() === 'ouvrir-dossier,renommer-dossier,couleur,couleur*,couleur,couleur,couleur,couleur,couleur,couleur,classe-dossier*,deplacer-dossier,enregistrer-dossier,supprimer-dossier',
+  // (et en 2026-11 : « Emplacement sur l'ordinateur… » pour tous les dossiers, aussi ceux du haut)
+  ok(v.menu?.label === 'Dossier « 5e B »' && v.menu.entrees.join() === 'ouvrir-dossier,renommer-dossier,couleur,couleur*,couleur,couleur,couleur,couleur,couleur,couleur,classe-dossier*,deplacer-dossier,enregistrer-dossier,emplacement-dossier,supprimer-dossier',
     'Le menu d\'un dossier : « Ouvrir », « Renommer… », les 8 couleurs (Bleu cochée), « Dossier d\'un niveau » (cochée)', v.menu)
   ok(v.menu.libelles.slice(2, 10).join() === 'Gris,Bleu,Vert,Jaune,Orange,Rouge,Violet,Rose' && v.menu.libelles[10] === 'Dossier d\'un niveauSes classeurs portent l\'étiquette « 5e B »', '   … les couleurs nommées pour le lecteur d\'écran ; l\'aide de la case', v.menu.libelles)
   await p.screenshot({ path: CAPTURES + 'D-menu-dossier.png' })
@@ -810,10 +807,8 @@ if (seul('M')) {
     const d = await p.evaluate(() => document.querySelector('.grille-classeurs.tous .case-dossier')?.dataset.dossier)
     ok(!!d, '   … « Créer un dossier de niveau » : « 4e A »', d)
     await p.click('.grille-classeurs.tous .case-dossier .dossier-icone'); await p.waitForTimeout(300)
-    // (lot 18 : « Où ranger les classeurs de « 4e A » ? » d'abord, ici aussi : « Plus tard »)
+    // (Adapté 2026-11 : plus de « Où ranger… » d'abord)
     await p.click('.biblio-vide-dossier .biblio-bouton')
-    await p.waitForSelector('dialog.dialogue-ranger[open]', { timeout: 5000 })
-    await p.click('dialog.dialogue-ranger[open] .r-plus-tard')
     await p.waitForSelector('dialog.dialogue-nouveau[open]', { timeout: 5000 }); await p.waitForTimeout(250)
     const dans = await p.evaluate(() => document.querySelector('dialog .dans')?.textContent.replace(/[  ]/g, ' '))
     // (la case de la clé, cochée d'office ici, ouvrirait le vrai choix d'un fichier : on la décoche)

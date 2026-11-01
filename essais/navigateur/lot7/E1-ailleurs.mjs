@@ -276,7 +276,12 @@ try {
   ok(await p.isChecked('dialog[open] input[name=e-quoi][value=classe]') && t3.titre === 'Enregistrer le dossier « 4B »' && /1 sous-dossier et 2 classeurs/.test(t3.texte) && !/Ce classeur|Toute la bibliothèque/.test(t3.texte) && !t3.large,
     'C3) Le menu du dossier « 4B » : « Enregistrer le dossier « 4B » », 1 sous-dossier et 2 classeurs, ni « Ce classeur » ni la bibliothèque, rien ne déborde', t3)
   f = await fenetre(p)
-  ok(/2 classeurs, avec toutes leurs séances/.test(f.texte) && /chaque classeur de « 4B » y aura son fichier/.test(f.texte), 'C4) « 4B » : 2 classeurs (adapté : sous le titre), et ce que fera « Le garder à jour tout seul »', f.texte)
+  // (Adapté 2026-11 : un dossier du haut a la même fenêtre qu'un sous-dossier :
+  // « le dossier « 4B » y sera créé », et « Nom du dossier sur le PC » ; ici
+  // le nom tapé est celui du dossier choisi, « Cle 4B » : il sert tel quel)
+  const np4 = await p.evaluate(() => { const c = document.querySelector('dialog[open] .e-nom-pc'); return { visible: !!c && !c.hidden, valeur: c?.querySelector('input')?.value } })
+  ok(/2 classeurs, avec toutes leurs séances/.test(f.texte) && /le dossier « 4B » y sera créé avec ses classeurs/.test(f.texte) && np4.visible && np4.valeur === '4B', 'C4) « 4B » : 2 classeurs, « le dossier « 4B » y sera créé », et « Nom du dossier sur le PC » = « 4B » (comme un sous-dossier)', { texte: f.texte, np4 })
+  await p.fill('dialog[open] .e-nom-pc-champ', 'Cle 4B')
   await p.evaluate(() => { window.__dossierChoisi = 'Cle 4B' })
   await p.click('dialog[open] .e-ok')
   await attendreToast(p, /» est relié au dossier « Cle 4B »/, 20000)
@@ -469,6 +474,7 @@ try {
   const [idChap] = await p.evaluate(d => window.__creer([{ nom: 'Chap', dossier: d }]), dElev)
   await p.evaluate(d => window.__ailleurs.enregistrer({ quoi: 'classe', classe: d }), dNiv)
   await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]')
+  await p.fill('dialog[open] .e-nom-pc-champ', 'Cle 6') // (adapté 2026-11 : le nom du dossier choisi, qui sert tel quel)
   await p.evaluate(() => { window.__dossierChoisi = 'Cle 6' })
   await p.click('dialog[open] .e-ok')
   await attendreToast(p, /» est relié au dossier « Cle 6 »/, 20000)
@@ -521,7 +527,7 @@ try {
   await p.evaluate(d => window.__ailleurs.emplacementDuDossier(d), dSeul2)
   await p.waitForSelector('dialog.dialogue-emplacement[open]')
   vue = await p.evaluate(() => ({ lieu: document.querySelector('dialog[open] .em-lieu').textContent, ok: document.querySelector('dialog[open] .em-ok').disabled }))
-  ok(/aucun niveau rangé/.test(vue.lieu) && vue.ok, 'C12i) Sous un niveau pas rangé : « aucun niveau rangé », rien à enregistrer', vue)
+  ok(/pas encore sur l'ordinateur/.test(vue.lieu) && vue.ok, 'C12i) Sous un niveau pas rangé : « pas encore sur l\'ordinateur », rien à enregistrer (texte adapté 2026-11)', vue)
   await p.keyboard.press('Escape'); await p.waitForTimeout(200)
   await p.evaluate(async d => {
     const em = await import('/src/classeurs/emplacements.ts')
@@ -607,6 +613,33 @@ try {
   em = await lesEmplacements(p)
   ok(!em.some(e => e.nom === 'Classe 5A'), 'E1) Plus dans la liste', em)
   ok(JSON.stringify(await p.evaluate(() => window.__lister('Classe 5A'))) === JSON.stringify(avantRetirer), 'E2) Rien d\'effacé dans le dossier')
+
+  // (Ajouté 2026-11) « Repartir à zéro sur l'ordinateur… » : tout est oublié, rien n'est effacé
+  console.log('\n— E3. « Repartir à zéro sur l\'ordinateur… »')
+  const avantZero = await p.evaluate(async () => {
+    const racine = await navigator.storage.getDirectory(); const noms = []
+    for await (const x of racine.values()) noms.push(x.name)
+    const tout = {}; for (const n of noms.filter(n => !n.startsWith('.'))) tout[n] = await window.__lister(n).catch(() => null)
+    return { tout, fiches: (await window.__registre.classeurs()).length, dossiers: (await window.__registre.dossiers()).length }
+  })
+  ok((await lesEmplacements(p)).some(e => e.genre === 'ordinateur'), '   … au départ, des dossiers sont reliés')
+  await p.evaluate(() => { void window.__ailleurs.repartirAZero() })
+  await p.waitForSelector('dialog.dialogue-ouvrir[open]')
+  const cz = await p.evaluate(() => { const d = document.querySelector('dialog.dialogue-ouvrir[open]'); return { titre: d.querySelector('h2')?.textContent, texte: d.querySelector('p')?.textContent ?? '', oui: d.querySelector('[data-a="oui"]')?.textContent } })
+  ok(cz.titre === 'Repartir à zéro sur l\'ordinateur ?' && /Rien n'est effacé/.test(cz.texte) && cz.oui === 'Repartir à zéro', 'E3a) La question : « Repartir à zéro sur l\'ordinateur ? », « Rien n\'est effacé »', cz)
+  await p.click('dialog.dialogue-ouvrir[open] [data-a="oui"]')
+  await attendreToast(p, /plus rien n'est relié à l'ordinateur/, 20000)
+  const apresZero = await p.evaluate(async () => {
+    const racine = await navigator.storage.getDirectory(); const noms = []
+    for await (const x of racine.values()) noms.push(x.name)
+    const tout = {}; for (const n of noms.filter(n => !n.startsWith('.'))) tout[n] = await window.__lister(n).catch(() => null)
+    const em = (await window.__registre.reglage('emplacements')) ?? []
+    const fs = await window.__registre.classeurs(), ds = await window.__registre.dossiers()
+    return { tout, fiches: fs.length, avecCle: fs.filter(f => f.cle).length, avecPc: ds.filter(d => d.pc !== undefined).length, dossiers: ds.length, ordi: em.filter(e => e.genre === 'ordinateur').length, drive: em.filter(e => e.genre === 'drive').length, etabs: ((await window.__registre.reglage('etablissements')) ?? []).length }
+  })
+  ok(apresZero.ordi === 0 && apresZero.avecCle === 0 && apresZero.avecPc === 0 && apresZero.etabs === 0, 'E3b) Plus aucun dossier relié au PC, aucun fichier de classeur, aucun nom sur le PC, aucun établissement', apresZero)
+  ok(JSON.stringify(apresZero.tout) === JSON.stringify(avantZero.tout) && apresZero.fiches === avantZero.fiches && apresZero.dossiers === avantZero.dossiers,
+    'E3c) Rien d\'effacé : les mêmes fichiers sur le « PC », les mêmes classeurs et dossiers dans le navigateur', { avant: avantZero, apres: apresZero })
   await ctx.close()
 
   // =====================================================================

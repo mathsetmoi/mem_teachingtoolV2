@@ -58,7 +58,8 @@ const suivre = (p, nom) => {
 const AIDE_ENREGISTRER = 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).'
 const AIDE_COPIE = 'Un autre fichier .memc, daté, avec toutes les pages et tout l\'historique. Ne le donnez pas aux élèves (pour eux : Publier).'
 const AIDE_ACTIVER = 'Un fichier .memc, choisi une fois : le classeur s\'y enregistre tout seul, peu après chaque changement.'
-const AIDE_RANGER = 'Dites une fois où vont les classeurs de ce niveau (le Drive du MEM, du LFB, du LyFEL, ou un dossier à part) : chacun y a son fichier, écrit tout seul.'
+// (Adapté 2026-11 : plus de fenêtre « Où ranger… » ; l'entrée ouvre « Enregistrer le dossier »)
+const AIDE_RANGER = 'Choisissez une fois le dossier de l\'ordinateur où va ce dossier : chacun de ses classeurs y a son fichier, écrit tout seul.'
 const AIDE_AUTRES = 'La copie sur le Drive par connexion Google, toute la bibliothèque dans un fichier, récupérer une sauvegarde.'
 const AIDE_DEPLACER = 'Dans un autre niveau ou un autre dossier : son fichier suit.'
 const ANCIENNES = ['copie-drive', 'enregistrer-ailleurs', 'enregistrer-cle', 'arreter-cle']
@@ -322,7 +323,7 @@ try {
   m = await menu(p)
   ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","ranger-niveau","exporter-pdf","autres-sauvegardes","ouvrir"]' && sansAnciennes(m),
     'A3) Le menu (état 2, niveau à ranger) : enregistrer, ranger-niveau, exporter-pdf, autres-sauvegardes, ouvrir', m.toutes)
-  ok(m.libelles['ranger-niveau']?.texte === 'Ranger « 5eme » dans un dossier…' && m.libelles['ranger-niveau'].aide === AIDE_RANGER && !m.libelles['ranger-niveau'].inactif, '   … « Ranger « 5eme » dans un dossier… » et son aide', m.libelles['ranger-niveau'])
+  ok(m.libelles['ranger-niveau']?.texte === 'Enregistrer « 5eme » sur l\'ordinateur…' && m.libelles['ranger-niveau'].aide === AIDE_RANGER && !m.libelles['ranger-niveau'].inactif, '   … « Enregistrer « 5eme » sur l\'ordinateur… » et son aide', m.libelles['ranger-niveau'])
   ok(!m.lignes.some(l => l.quoi === 'cle') && m.lignes[0]?.texte === 'Seulement dans ce navigateur', '   … le bloc de l\'état : aucune ligne du fichier, « Seulement dans ce navigateur »', m.lignes)
   await fermerMenu(p)
   // Le navigateur qui ne sait pas écrire un fichier tout seul
@@ -342,9 +343,14 @@ try {
   console.log('\n— C. « Ranger « 5eme » dans un dossier… » depuis le menu ⋯')
   await oublier(p, '__demandes', '__ecritures', '__choixDossier')
   await entree(p, 'ranger-niveau')
+  await p.waitForSelector('dialog.dialogue-enregistrer-ailleurs[open]', { timeout: 10000 })
+  const titre = await p.evaluate(() => document.querySelector('dialog.dialogue-enregistrer-ailleurs[open] h2')?.textContent)
+  ok(titre === 'Enregistrer le dossier « 5eme »', 'C1) La fenêtre « Enregistrer le dossier « 5eme » » s\'ouvre (adapté 2026-11 : plus de « Où ranger… »)', titre)
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200)
+  // La suite vérifie un niveau rangé chez un établissement (cela reste pour
+  // ceux déjà rangés ainsi) : la fenêtre « Où ranger… » ouverte directement
+  await p.evaluate(async d => { const n = (await window.__registre.dossiers()).find(x => x.id === d); void window.__ranger.proposer(n, { origine: 'menu' }) }, d5)
   await p.waitForSelector('dialog.dialogue-ranger[open]', { timeout: 10000 })
-  const titre = await p.evaluate(() => document.querySelector('dialog.dialogue-ranger[open] h2')?.textContent)
-  ok(titre === 'Où ranger les classeurs de « 5eme » ?', 'C1) La fenêtre « Où ranger les classeurs de « 5eme » ? » s\'ouvre', titre)
   await p.evaluate(() => { window.__dossierChoisi = 'LFB classeurs' })
   await p.click('dialog[open] .r-choisir-dossier')
   await p.waitForFunction(() => document.querySelector('dialog.dialogue-ranger[open] label.r-etab input:checked'), null, { timeout: 10000 })

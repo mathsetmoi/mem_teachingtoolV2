@@ -712,6 +712,9 @@ try {
   else {
     const ctxJ = await contexte()
     await ctxJ.addInitScript(FAUX_FS)
+    // (Adapté 2026-11 : « Où ranger… » ne vient plus d'elle-même ; rallumée ici
+    // pour ranger un niveau chez un établissement, ce qui reste pour les niveaux déjà rangés ainsi)
+    await ctxJ.addInitScript(() => { window.__essaiOuRanger = true })
     await ctxJ.route(/^https?:/, r => r.abort())
     const h = await ctxJ.newPage(); suivre(h, 'J')
     const pretJ = async () => { await h.waitForSelector('button[title^="Importer une image ou un PDF"]', { state: 'attached', timeout: 30000 }); await h.waitForTimeout(800); await fermerDialogues(h) }
