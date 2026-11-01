@@ -20,13 +20,13 @@
 //   (« Fractions (2).memc »).
 // =============================================================
 import type { PoigneeFichier } from './cle'
-import { ecrireLeNeuf, memeFichier, permission } from './cle'
+import { ecrireDans, ecrireLeNeuf, memeFichier, permission } from './cle'
 import type { FicheClasseur } from './demarrage'
 import type { Registre } from './registre'
 import { classeursDeLaClasse, nomDeFichierLibre, rangeParLOutil, sousDossiers } from './emplacements'
 import { ecrivain } from './ecrivain'
 import { comparerVecteurs, verdictAncienFichier } from './vecteurs'
-import { EXTENSION_TABLEAU, nomSur } from '../fichier'
+import { EXTENSION_TABLEAU, lireEntete, nomSur } from '../fichier'
 
 /** Ce qu'on utilise d'un FileSystemDirectoryHandle (Chrome, Edge) */
 export interface PoigneeDossier {
@@ -118,6 +118,9 @@ export interface BilanRelier {
    *  relu (pas d'accord pour le lire, un fichier abîmé) : dans le doute, ils
    *  le gardent ; à ouvrir, puis « Mettre à jour » */
   aRelire: string[]
+  /** Un autre fichier du même nom était déjà dans le dossier, et le
+   *  professeur a choisi de le garder : ils n'y ont pas encore de fichier */
+  gardes?: string[]
   echecs: string[]
   /** Ce qui a empêché le dernier échec, pour le dire (sans point final) */
   raison?: string
@@ -131,6 +134,27 @@ async function nomsDe(d: PoigneeDossier): Promise<string[]> {
   const n: string[] = []
   for await (const x of d.values()) n.push(x.name)
   return n
+}
+
+/** Le choix du professeur devant un fichier du même nom (« Probabilités.memc »
+ *  existe déjà, et ce n'est pas celui de ce classeur) : remplacer (l'ancien
+ *  est gardé à côté, renommé « (ancien JJ-MM) »), garder les deux (le nouveau
+ *  prend un autre nom, « (2) ») ou garder celui du PC (rien n'est écrit) */
+export type ChoixConflit = 'remplacer' | 'deux' | 'garder'
+export interface ConflitFichier {
+  classeur: FicheClasseur
+  /** Le nom du fichier déjà là, et le chemin de son dossier (pour l'écran) */
+  nom: string
+  chemin: string[]
+  /** Ce qu'on sait de lui : sa taille, sa date, et son en-tête s'il est un classeur de l'outil */
+  pc: { taille: number; modifie: number; pages?: number; nomClasseur?: string }
+}
+
+/** « Probabilités (ancien 12-10) » : le nom de l'ancien fichier gardé à côté */
+export function nomDeLAncien(base: string, modifie: number): string {
+  const d = new Date(modifie)
+  const deux = (n: number) => String(n).padStart(2, '0')
+  return `${base} (ancien ${deux(d.getDate())}-${deux(d.getMonth() + 1)})`
 }
 
 /** Relie les classeurs du niveau `classe` au dossier `d` (voir plus
@@ -159,6 +183,12 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
   /** Le dossier que le niveau quitte (« Changer… ») : un fichier qu'il
    *  contient est à l'outil, même sans chemin dans la fiche (le lot 7) */
   ancien?: PoigneeDossier
+  /** Les fichiers vont directement dans le dossier (et ses sous-dossiers),
+   *  sans dossier au nom du classeur (Emplacement.aPlat) */
+  aPlat?: boolean
+  /** Un autre fichier porte déjà le nom prévu : demander au professeur
+   *  (absent : le nouveau prend un autre nom, sans rien demander) */
+  conflit?: (c: ConflitFichier) => Promise<ChoixConflit>
 } = {}): Promise<BilanRelier> {
   const [fiches, dossiers] = await Promise.all([registre.classeurs(), registre.dossiers()])
   let classeurs = classeursDeLaClasse(classe, fiches, dossiers)
@@ -242,12 +272,34 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
         if (r === 'plus-riche') { bilan.plusRiches.push(f.nom); adopte = true; break }
       }
       if (adopte) continue
-      // Un fichier neuf, dans le dossier de son chapitre, à un nom libre
-      const ici = (await dossierPour([...sous, base]))!
-      const nom = nomDeFichierLibre(base, EXTENSION_TABLEAU, ici.noms)
-      const h = await ici.d.getFileHandle(nom, { create: true })
-      ici.noms.push(nom)
-      const r = await ecrireLeNeuf(registre, h, { id: f.id, base: f.base, nom: f.nom, chemin: cheminNote([...sous, base]) })
+      // Un fichier neuf, dans le dossier de son chapitre (ou directement dans
+      // le dossier, à plat), à un nom libre ; un autre fichier du même nom :
+      // le professeur choisit (remplacer, garder les deux, garder le sien)
+      const cible = o.aPlat ? sous : [...sous, base]
+      const ici = (await dossierPour(cible))!
+      let nom = nomDeFichierLibre(base, EXTENSION_TABLEAU, ici.noms)
+      let h: PoigneeFichier | null = null
+      const pris = ici.noms.find(n => n.toLocaleLowerCase('fr') === prevu.toLocaleLowerCase('fr'))
+      if (pris && o.conflit) {
+        const deLa = await ici.d.getFileHandle(pris)
+        const fichier = await deLa.getFile()
+        let ent: { pages: number; nom?: string } | null = null
+        try { if (fichier.size) ent = await lireEntete(new Uint8Array(await fichier.slice(0, 4096).arrayBuffer())) } catch { /* pas un classeur de l'outil */ }
+        const choix = await o.conflit({ classeur: f, nom: pris, chemin: cheminNote(cible), pc: { taille: fichier.size, modifie: fichier.lastModified, ...(ent ? { pages: ent.pages, ...(ent.nom ? { nomClasseur: ent.nom } : {}) } : {}) } })
+        if (choix === 'garder') { (bilan.gardes ??= []).push(f.nom); continue }
+        if (choix === 'remplacer') {
+          // L'ancien d'abord gardé à côté (copié, relu), puis remplacé
+          const nomAncien = nomDeFichierLibre(nomDeLAncien(base, fichier.lastModified), EXTENSION_TABLEAU, ici.noms)
+          const copie = await ici.d.getFileHandle(nomAncien, { create: true })
+          await ecrireDans(copie, fichier)
+          if ((await copie.getFile()).size !== fichier.size) throw new Error(`l'ancien « ${pris} » n'a pas pu être gardé à côté`)
+          ici.noms.push(nomAncien)
+          nom = pris
+          h = deLa
+        }
+      }
+      if (!h) { h = await ici.d.getFileHandle(nom, { create: true }); ici.noms.push(nom) }
+      const r = await ecrireLeNeuf(registre, h, { id: f.id, base: f.base, nom: f.nom, chemin: cheminNote(cible) })
       if (r.date === null) {
         bilan.echecs.push(f.nom); bilan.raison = r.message.trim().replace(/\.$/, '') || 'erreur inconnue'
         // Un classeur qui avait son fichier le garde : sa poignée et sa fiche
@@ -256,8 +308,11 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
         if (deja && avant) {
           await registre.garderPoignee(f.id, deja).catch(() => {})
           await registre.modifierClasseur(f.id, x => { x.cle = avant }).catch(() => {})
-          await ici.d.removeEntry?.(nom).catch(() => {})
-          ici.noms = ici.noms.filter(n => n !== nom)
+          // (jamais le fichier du PC que l'on remplaçait : il n'est pas vide)
+          if (nom !== pris) {
+            await ici.d.removeEntry?.(nom).catch(() => {})
+            ici.noms = ici.noms.filter(n => n !== nom)
+          }
         }
       } else bilan.ecrits.push(f.nom)
     } catch (e) { bilan.echecs.push(f.nom); bilan.raison = raisonDe(e) }

@@ -53,6 +53,11 @@ export interface Emplacement {
   /** Son nom au moment du rangement : il reste à l'écran et dans le chemin
    *  des fichiers même si l'établissement est retiré de la liste (lot 18) */
   etablissementNom?: string
+  /** Les classeurs vont directement dans le dossier choisi (et ses
+   *  sous-dossiers), sans dossier au nom du classeur : les liens faits par
+   *  « Enregistrer sur l'ordinateur… » d'un dossier (2026-11). Absent : le
+   *  dossier du chapitre, comme avant (lots 8 et 18). */
+  aPlat?: true
   cree: number
 }
 
@@ -78,6 +83,7 @@ export function lireEmplacements(x: unknown): Emplacement[] {
       ...(e.genre === 'drive' ? { compte: e.compte } : {}),
       ...(typeof e.etablissement === 'string' && e.etablissement ? { etablissement: e.etablissement } : {}),
       ...(typeof e.etablissement === 'string' && e.etablissement && typeof e.etablissementNom === 'string' && e.etablissementNom ? { etablissementNom: e.etablissementNom } : {}),
+      ...(e.aPlat === true ? { aPlat: true as const } : {}),
     })
   }
   return l
@@ -113,6 +119,14 @@ export function sousDossiers(dossierId: string | null, classe: string, dossiers:
   const chaine = remontee(dossierId, dossiers)
   const i = chaine.findIndex(d => d.id === classe)
   return i < 0 ? [] : chaine.slice(0, i).reverse().flatMap(d => d.pc ?? [d.nom])
+}
+
+/** Le chemin, sous le dossier relié, du dossier où va le fichier d'un
+ *  classeur nommé `nom` rangé dans `dossierId` : les sous-dossiers, puis le
+ *  dossier du chapitre (sauf pour un lien « à plat », où le fichier est
+ *  directement dans le dossier). Des noms de dossiers sains. */
+export function cheminDuFichier(dossierId: string | null, nom: string, e: Pick<Emplacement, 'dossier' | 'aPlat'>, dossiers: readonly FicheDossier[]): string[] {
+  return [...sousDossiers(dossierId, e.dossier, dossiers).map(n => nomSur(n, { repli: 'Dossier' })), ...(e.aPlat ? [] : [nomSur(nom)])]
 }
 
 /** Le chemin que le professeur tape pour un dossier (« Auguste », ou

@@ -16,7 +16,7 @@
 import type { PoigneeDossier } from '../classeurs/ordinateur'
 import { accordDuDossier, choisirUnDossier } from '../classeurs/ordinateur'
 import { remontee } from '../classeurs/arbre'
-import { emplacementDe, emplacements, nomDeFichierLibre, reglagePoignee, sousDossiers } from '../classeurs/emplacements'
+import { cheminDuFichier, emplacementDe, emplacements, nomDeFichierLibre, reglagePoignee, sousDossiers } from '../classeurs/emplacements'
 import { etablissements, nomDEtablissement } from '../classeurs/etablissements'
 import type { Registre } from '../classeurs/registre'
 import { EXTENSION, codeDuNom } from './comptes'
@@ -173,8 +173,9 @@ export async function dossierDuChapitre(registre: Registre, idClasseur: string):
     if (!e) return null
     const racine = await registre.reglage<PoigneeDossier>(reglagePoignee(e.id))
     if (!racine) return null
-    // Le même chemin que relierLesClasseurs : sous-dossiers du niveau, puis le dossier du chapitre
-    const segments = [...sousDossiers(f.dossier, e.dossier, dossiers), nomSur(f.nom)].map(n => nomSur(n, { repli: 'Dossier' }))
+    // Le même chemin que relierLesClasseurs : sous-dossiers du niveau, puis
+    // le dossier du chapitre (sauf un lien « à plat » : là où est le .memc)
+    const segments = cheminDuFichier(f.dossier, f.nom, e, dossiers).map(n => nomSur(n, { repli: 'Dossier' }))
     // Rangé chez un établissement (lot 18) : son nom devant (« LFB classeurs › 2 › 2_13_Probas »)
     const etab = e.etablissement ? nomDEtablissement(e, await etablissements(registre)) : null
     return {

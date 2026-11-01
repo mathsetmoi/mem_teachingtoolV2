@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import type { FicheClasseur, FicheDossier } from '../src/classeurs/demarrage'
 import type { Emplacement } from '../src/classeurs/emplacements'
 import type { Etablissement } from '../src/classeurs/etablissements'
-import { placeRangee, planDeDeplacement, texteEchec } from '../src/classeurs/deplacer-fichier'
+import { placeRangee, planDeDeplacement, porteLeNom, texteEchec } from '../src/classeurs/deplacer-fichier'
 import { nomSur } from '../src/fichier'
 
 const dossier = (id: string, nom: string, parent: string | null, o: Partial<FicheDossier> = {}): FicheDossier =>
@@ -115,6 +115,36 @@ describe('planDeDeplacement : ce qu\'il advient du fichier', () => {
     // Et depuis un niveau pas rangé vers sa place d'aujourd'hui : rien à faire
     const g = classeur('c6', 'Fractions', 'd3', { cle: { nom: 'Fractions.memc', chemin: ['LFB classeurs', '5', 'Fractions'] } })
     expect(planDeDeplacement({ fiche: g, cible: 'd5', ...O }).genre).toBe('reste-meme-place')
+  })
+})
+
+describe('À plat (« Enregistrer sur l\'ordinateur… » d\'un dossier, 2026-11) : le fichier directement dans le dossier', () => {
+  const EP: Emplacement = { id: 'cccccccccccccccc', genre: 'ordinateur', dossier: 'd3', nom: 'Auguste', cree: 1, aPlat: true }
+  const OP = { emplacements: [E5, E4, EP], dossiers: DOSSIERS, etablissements: [LFB] }
+  it('placeRangee : sans dossier au nom du classeur (et les sous-dossiers gardés)', () => {
+    expect(placeRangee('d3', 'Suites', OP)).toEqual({ emplacement: EP, etablissement: null, chemin: ['Auguste'], sous: [] })
+    expect(placeRangee('dsous3', 'Suites', OP)).toEqual({ emplacement: EP, etablissement: null, chemin: ['Auguste', 'Fonctions'], sous: ['Fonctions'] })
+  })
+  it('le classeur renommé : son fichier suit sous le nouveau nom, au même endroit', () => {
+    const f = classeur('c9', 'Suites bis', 'd3', { cle: { nom: 'Suites.memc', chemin: ['Auguste'], date: 1, vecteur: new Uint8Array([0]) } })
+    const p = planDeDeplacement({ fiche: f, cible: 'd3', ...OP })
+    expect(p.genre).toBe('suit')
+    expect(p.ancien).toEqual({ chemin: ['Auguste'], emplacement: EP, sous: [] })
+    expect(p.texte).toBe('Son fichier sera renommé « Suites bis.memc » dans « Auguste ».')
+    // Déjà au bon nom (ou « (2) ») : il reste
+    expect(planDeDeplacement({ fiche: { ...f, nom: 'Suites' }, cible: 'd3', ...OP }).genre).toBe('reste-meme-place')
+    expect(planDeDeplacement({ fiche: { ...f, nom: 'Suites', cle: { ...f.cle!, nom: 'Suites (2).memc' } }, cible: 'd3', ...OP }).genre).toBe('reste-meme-place')
+  })
+  it('vers un sous-dossier : le fichier suit, depuis le dossier lui-même', () => {
+    const f = classeur('c9', 'Suites', 'd3', { cle: { nom: 'Suites.memc', chemin: ['Auguste'], date: 1, vecteur: new Uint8Array([0]) } })
+    const p = planDeDeplacement({ fiche: f, cible: 'dsous3', ...OP })
+    expect(p.genre).toBe('suit')
+    expect(p.nouveau?.chemin).toEqual(['Auguste', 'Fonctions'])
+  })
+  it('porteLeNom : le nom du classeur, avec ou sans « (2) », sans tenir compte des majuscules', () => {
+    expect(porteLeNom('Suites.memc', 'Suites')).toBe(true)
+    expect(porteLeNom('suites (3).memc', 'Suites')).toBe(true)
+    expect(porteLeNom('Suites.memc', 'Suites bis')).toBe(false)
   })
 })
 

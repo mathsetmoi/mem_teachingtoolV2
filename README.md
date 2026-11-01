@@ -3306,6 +3306,27 @@ emplacements »** en haut de la bibliothèque (3A).
   dans le navigateur ne déplace aucun fichier. Un dossier renommé ou déplacé
   dans l'Explorateur n'est pas toujours retrouvé par le navigateur : l'outil le
   dit (« ne retrouve plus le dossier ») et on le choisit de nouveau.
+- **Enregistrer un dossier sur le PC (2026-11).** Menu d'un dossier →
+  Enregistrer… → Cet ordinateur : on choisit le dossier du PC (pour un
+  sous-dossier, aussi son nom sur le PC, « Nom du dossier sur le PC »), une
+  fois ; ensuite tout ce qu'il contient s'enregistre tout seul. Les classeurs
+  vont **directement dans le dossier choisi** (« Auguste/Probabilités.memc »),
+  sans dossier au nom du classeur, et les sous-dossiers de la bibliothèque
+  deviennent des sous-dossiers du PC ; les replays publiés vont au même
+  endroit que le .memc (champ facultatif `aPlat` de l'emplacement ; les
+  niveaux rangés chez un établissement gardent le dossier du chapitre). Un
+  classeur renommé : son fichier est renommé au même endroit, sans doublon.
+  Si un dossier du même nom existe déjà à cet endroit, une fenêtre le dit,
+  comme dans Windows : **Fusionner les deux dossiers** (proposé), **Enregistrer
+  sous un autre nom** (« Auguste (2) »), ou **Choisir un autre dossier du PC**.
+  Pendant la fusion, un fichier .memc du même nom qui n'est pas celui du
+  classeur : les deux côte à côte (pages, date) et **Remplacer le fichier du
+  PC** (l'ancien est gardé à côté, « Probabilités (ancien 12-10).memc »),
+  **Garder les deux** (« Probabilités (2).memc ») ou **Garder celui du PC** ;
+  « Faire de même pour les fichiers suivants en double ». Un fichier du PC qui
+  a plus de pages n'est jamais remplacé d'office (« Garder les deux » est alors
+  proposé, avec un avertissement). Un classeur mis à la corbeille garde son
+  fichier sur le PC.
 - **Mes emplacements.** En haut de la bibliothèque : chaque niveau relié
   (« 5ème → Drive personnel › MEM - Classeurs › 5ème », « 4ème → Cet ordinateur ›
   Cle 4ème »), ce qui n'y est pas encore (« 2 classeurs pas encore dedans »),

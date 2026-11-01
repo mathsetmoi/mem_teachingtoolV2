@@ -35,7 +35,7 @@ import { permission } from './cle'
 import type { Rangement } from './etat'
 import type { Emplacement } from './emplacements'
 import { classeursDeLaClasse, emplacementDe, emplacements, garderEmplacement, reglagePoignee, sousDossiers } from './emplacements'
-import type { BilanRelier, PoigneeDossier } from './ordinateur'
+import type { BilanRelier, ChoixConflit, ConflitFichier, PoigneeDossier } from './ordinateur'
 import { accordDeLire, accordDuDossier, choisirUnDossier, choisitUnDossier, relierLesClasseurs } from './ordinateur'
 import type { Etablissement } from './etablissements'
 import { cheminLisible, etablissements, nomDEtablissement, garderEtablissement, noterPlusTard, nouvelId, plusTard, reglagePoigneeEtablissement, texteDuRangement } from './etablissements'
@@ -102,8 +102,14 @@ const poigneeValable = (x: unknown): PoigneeDossier | null =>
  *  au-dessus de `d` (« LFB classeurs », pour le chemin noté dans la fiche) ;
  *  etablissement : l'id de l'établissement du dossier. Rend le bilan ; null
  *  si rien n'a pu se faire (dit par message). */
+/** Les options d'un lien : l'établissement, le chemin noté devant, les
+ *  fichiers repris (« Changer… »), et pour « Enregistrer sur l'ordinateur… »
+ *  d'un dossier : à plat (les classeurs directement dans le dossier ; un lien
+ *  qui l'était le reste) et la question devant un fichier du même nom */
+export interface OptionsRelier { prefixe?: string[]; etablissement?: string; etablissementNom?: string; reprendre?: boolean; ancien?: PoigneeDossier; aPlat?: boolean; conflit?: (c: ConflitFichier) => Promise<ChoixConflit> }
+
 export async function relierLeNiveau(h: { registre: Registre; message(texte: string): void; avantDEcrire?: (f: FicheClasseur) => Promise<void>; avantDeDeplacer?: (f: FicheClasseur) => Promise<void> },
-  classe: FicheDossier, d: PoigneeDossier, o: { prefixe?: string[]; etablissement?: string; etablissementNom?: string; reprendre?: boolean; ancien?: PoigneeDossier } = {}): Promise<BilanRelier | null> {
+  classe: FicheDossier, d: PoigneeDossier, o: OptionsRelier = {}): Promise<BilanRelier | null> {
   // Un seul rangement à la fois, d'où qu'il vienne (la fenêtre « Où
   // ranger… », « Mettre à jour », « Lui donner son fichier ») : deux en même
   // temps écriraient deux fichiers pour le même classeur
@@ -119,7 +125,7 @@ export function prendreLeRangement(): boolean { if (rangementEnCours) return fal
 export function rendreLeRangement(): void { rangementEnCours = false }
 
 async function relierLeNiveauSeul(h: { registre: Registre; message(texte: string): void; avantDEcrire?: (f: FicheClasseur) => Promise<void>; avantDeDeplacer?: (f: FicheClasseur) => Promise<void> },
-  classe: FicheDossier, d: PoigneeDossier, o: { prefixe?: string[]; etablissement?: string; etablissementNom?: string; reprendre?: boolean; ancien?: PoigneeDossier }): Promise<BilanRelier | null> {
+  classe: FicheDossier, d: PoigneeDossier, o: OptionsRelier): Promise<BilanRelier | null> {
   if (!await accordDuDossier(d, false).catch(() => false)) {
     h.message(`Le navigateur n'a pas permis d'écrire dans « ${d.name} ». Recommencez et cliquez « Autoriser ».`)
     return null
@@ -128,7 +134,8 @@ async function relierLeNiveauSeul(h: { registre: Registre; message(texte: string
   // Rangé chez un établissement : son id et son nom (le nom reste à l'écran
   // et dans le chemin des fichiers si l'établissement est retiré de la liste)
   const etab = o.etablissement ? { etablissement: o.etablissement, ...(o.etablissementNom ? { etablissementNom: o.etablissementNom } : {}) } : {}
-  const e: Emplacement = { id: deja?.id ?? nouvelId(), genre: 'ordinateur', dossier: classe.id, nom: d.name, cree: deja?.cree ?? Date.now(), ...etab }
+  const aPlat = o.aPlat ?? (!o.etablissement && deja?.aPlat === true)
+  const e: Emplacement = { id: deja?.id ?? nouvelId(), genre: 'ordinateur', dossier: classe.id, nom: d.name, cree: deja?.cree ?? Date.now(), ...etab, ...(aPlat ? { aPlat: true as const } : {}) }
   try { await h.registre.ecrireReglage(reglagePoignee(e.id), d) } catch {
     h.message('Ce navigateur ne peut pas garder le dossier : enregistrez plutôt le niveau dans un fichier.')
     return null
@@ -139,6 +146,8 @@ async function relierLeNiveauSeul(h: { registre: Registre; message(texte: string
     prefixe,
     reprendre: o.reprendre,
     ancien: o.ancien,
+    aPlat,
+    ...(o.conflit ? { conflit: o.conflit } : {}),
     avantDEcrire: h.avantDEcrire,
     avantDeDeplacer: h.avantDeDeplacer,
     progres: (n, total) => h.message(`« ${classe.nom} » : classeur ${n} sur ${total}…`),
@@ -200,7 +209,7 @@ export class Ranger {
   /** Le chemin, pour l'écran, du fichier d'un classeur nommé `nom` à cet
    *  endroit : « LFB classeurs › 2nde › Fractions » (le dossier du chapitre) */
   cheminDuChapitre(endroit: Endroit, nom: string): string {
-    return cheminLisible([...endroit.prefixe, ...endroit.sous.map(n => nomSur(n, { repli: 'Dossier' })), nomSur(nom)])
+    return cheminLisible([...endroit.prefixe, ...endroit.sous.map(n => nomSur(n, { repli: 'Dossier' })), ...(endroit.emplacement.aPlat ? [] : [nomSur(nom)])])
   }
 
   /** Ce que l'état du classeur ouvert dit de son rangement (morceau C, voir
@@ -266,11 +275,11 @@ export class Ranger {
     }
     const prefixe = [...endroit.prefixe.slice(0, -1), d.name]
     const fichier = nomSur(f.nom) + EXTENSION_TABLEAU
-    const chapitre = cheminLisible([...prefixe, ...endroit.sous.map(n => nomSur(n, { repli: 'Dossier' })), nomSur(f.nom)])
+    const chapitre = cheminLisible([...prefixe, ...endroit.sous.map(n => nomSur(n, { repli: 'Dossier' })), ...(e.aPlat ? [] : [nomSur(f.nom)])])
     let b: BilanRelier
     if (!prendreLeRangement()) { dire(RANGEMENT_EN_COURS); return undefined }
     try {
-      b = await relierLesClasseurs(this.registre, d, e.dossier, { seulement: [f.id], prefixe, avantDEcrire: this.h.avantDEcrire, avantDeDeplacer: this.h.avantDeDeplacer })
+      b = await relierLesClasseurs(this.registre, d, e.dossier, { seulement: [f.id], prefixe, aPlat: e.aPlat === true, avantDEcrire: this.h.avantDEcrire, avantDeDeplacer: this.h.avantDeDeplacer })
     } catch (x) {
       dire(`Le fichier de « ${f.nom} » n'a pas pu être écrit dans « ${ou} » : ${raisonDe(x)}. Rien n'est perdu : il est dans ce navigateur.`)
       return undefined
