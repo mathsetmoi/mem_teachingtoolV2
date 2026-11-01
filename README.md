@@ -974,7 +974,8 @@ page derrière reste vide. On y choisit :
   vocabulaire : « La médiatrice d'un segment est la droite… ») **puis 3
   exercices d'application** (un calcul, une figure à lire). Parmi les
   exercices se glisse parfois une question à trou (« Compléter : 42 = 6 ×
-  … »). Si aucun des thèmes choisis n'a de question de cours, un exercice
+  … ») ; ses pointillés changent de place d'un tirage à l'autre (42 = … × 7,
+  … = 6 × 7). Si aucun des thèmes choisis n'a de question de cours, un exercice
   la remplace, et un message le dit ;
 - l'**affichage** : une question à la fois (30 s chacune par défaut), ou
   toutes d'un coup avec une minuterie (5 min par défaut).
@@ -1001,8 +1002,13 @@ longue passe à la ligne). « Nouveaux exemples » pose un autre flash sur une n
 juste après. Il n'y a ni bilan, ni suivi de la classe.
 
 Chaque automatisme est un générateur (`src/automatismes.ts`) : les valeurs sont
-tirées au hasard. Les questions de cours (`COURS_5E`, deux à cinq par thème)
-sont écrites telles quelles. Écrits pour ce projet, ils ne reprennent le
+tirées au hasard (pour la divisibilité, le nombre et aussi les trois
+diviseurs proposés). Les questions de cours (`COURS_5E`, 79 notions, quatre à
+neuf par thème) se posent chacune de plusieurs façons — une question, une
+phrase à compléter, la notion dans l'autre sens — et **rien n'y est fixe** :
+chaque façon tire au hasard ses nombres, les noms des points (triangle MNP,
+parallélogramme RSTU…) ou l'objet dont on parle. Un essai vérifie chaque
+façon une par une. Écrits pour ce projet, ils ne reprennent le
 contenu d'aucun autre site.
 
 Les questions de géométrie et d'espace portent une **figure** tirée elle aussi
