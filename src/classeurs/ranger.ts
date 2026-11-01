@@ -106,7 +106,7 @@ const poigneeValable = (x: unknown): PoigneeDossier | null =>
  *  fichiers repris (« Changer… »), et pour « Enregistrer sur l'ordinateur… »
  *  d'un dossier : à plat (les classeurs directement dans le dossier ; un lien
  *  qui l'était le reste) et la question devant un fichier du même nom */
-export interface OptionsRelier { prefixe?: string[]; etablissement?: string; etablissementNom?: string; reprendre?: boolean; ancien?: PoigneeDossier; aPlat?: boolean; conflit?: (c: ConflitFichier) => Promise<ChoixConflit> }
+export interface OptionsRelier { prefixe?: string[]; etablissement?: string; etablissementNom?: string; reprendre?: boolean; ancien?: PoigneeDossier; aPlat?: boolean; conflit?: (c: ConflitFichier) => Promise<ChoixConflit>; nouveauLieu?: boolean }
 
 export async function relierLeNiveau(h: { registre: Registre; message(texte: string): void; avantDEcrire?: (f: FicheClasseur) => Promise<void>; avantDeDeplacer?: (f: FicheClasseur) => Promise<void> },
   classe: FicheDossier, d: PoigneeDossier, o: OptionsRelier = {}): Promise<BilanRelier | null> {
@@ -148,6 +148,7 @@ async function relierLeNiveauSeul(h: { registre: Registre; message(texte: string
     ancien: o.ancien,
     aPlat,
     ...(o.conflit ? { conflit: o.conflit } : {}),
+    ...(o.nouveauLieu ? { nouveauLieu: true } : {}),
     avantDEcrire: h.avantDEcrire,
     avantDeDeplacer: h.avantDeDeplacer,
     progres: (n, total) => h.message(`« ${classe.nom} » : classeur ${n} sur ${total}…`),

@@ -99,7 +99,11 @@ function noms(l: string[]): string {
 export function texteDuBilan(b: BilanRelier, dossier: string): string {
   const t: string[] = []
   const n = b.ecrits.length + b.adoptes.length
-  t.push(n ? `${pluriel(n, 'classeur')} dans « ${dossier} », tenu${n > 1 ? 's' : ''} à jour tout seul${n > 1 ? 's' : ''}.` : `Rien de nouveau dans « ${dossier} ».`)
+  const r = b.relies.length
+  if (n) t.push(`${pluriel(n, 'classeur')} dans « ${dossier} », tenu${n > 1 ? 's' : ''} à jour tout seul${n > 1 ? 's' : ''}.`)
+  // Ceux qui y avaient déjà leur fichier : le dire, sinon « rien » laisse croire qu'ils n'y sont pas
+  if (r) t.push(n ? `${r > 1 ? `${r} autres y étaient déjà` : '1 autre y était déjà'}, tenu${r > 1 ? 's' : ''} à jour aussi.` : `${r > 1 ? `Ses ${r} classeurs y sont déjà` : 'Son classeur y est déjà'}, tenu${r > 1 ? 's' : ''} à jour tout seul${r > 1 ? 's' : ''}.`)
+  if (!n && !r) t.push(`Rien de nouveau dans « ${dossier} ».`)
   if (b.ailleurs.length) t.push(`${noms(b.ailleurs)} ${b.ailleurs.length > 1 ? 'gardent leur fichier' : 'garde son fichier'} ailleurs.`)
   if (b.aRelire.length) t.push(`${noms(b.aRelire)} ${b.aRelire.length > 1 ? 'gardent leur fichier d\'avant : ce navigateur n\'a pas pu le relire ; ouvrez-les' : 'garde son fichier d\'avant : ce navigateur n\'a pas pu le relire ; ouvrez-le'}, puis « Mettre à jour ».`)
   if (b.plusRiches.length) t.push(`${noms(b.plusRiches)} : le fichier du dossier a des changements que la bibliothèque n'a pas ; ouvrez-le d'abord (il n'a pas été touché).`)
@@ -605,7 +609,7 @@ export class Ailleurs {
           fermer()
           // Les classeurs directement dans ce dossier (pas de dossier au nom
           // du classeur) ; un fichier du même nom : la question
-          await this.relierOrdinateur(classe, dossier, { aPlat: true, conflit: this.questionFichier() })
+          await this.relierOrdinateur(classe, dossier, { aPlat: true, nouveauLieu: true, conflit: this.questionFichier() })
           return
         }
         fermer()
@@ -868,7 +872,7 @@ export class Ailleurs {
    *  silencieux : ne dit le bilan que s'il y a un souci ; etablissement :
    *  celui du niveau déjà rangé par la fenêtre « Où ranger… » (lot 18), que
    *  « Mettre à jour » garde, avec sa phrase */
-  private async relierOrdinateur(classe: FicheDossier, d: PoigneeDossier, o: { silencieux?: boolean; etablissement?: Etablissement | null; reprendre?: boolean; aPlat?: boolean; conflit?: (c: ConflitFichier) => Promise<ChoixConflit> } = {}) {
+  private async relierOrdinateur(classe: FicheDossier, d: PoigneeDossier, o: { silencieux?: boolean; etablissement?: Etablissement | null; reprendre?: boolean; aPlat?: boolean; nouveauLieu?: boolean; conflit?: (c: ConflitFichier) => Promise<ChoixConflit> } = {}) {
     if (this.occupe) return
     this.occupe = true
     let ids: string[] = []
@@ -881,7 +885,7 @@ export class Ailleurs {
       // interrompu) le reçoit ici, une fois l'ancien relu ; un fichier choisi
       // à la main, ou mis dans « Un autre dossier de l'ordinateur… », reste le sien
       const b = await relierLeNiveau({ registre: this.registre, message: t => this.h.message(t), avantDEcrire: this.h.avantDEcrire, avantDeDeplacer: this.h.avantDeDeplacer }, classe, d,
-        { reprendre: !!o.reprendre, ...(etab ? { prefixe: [etab.nom, d.name], etablissement: etab.id, etablissementNom: etab.nom } : {}), ...(o.aPlat ? { aPlat: true } : {}), ...(o.conflit ? { conflit: o.conflit } : {}) })
+        { reprendre: !!o.reprendre, ...(etab ? { prefixe: [etab.nom, d.name], etablissement: etab.id, etablissementNom: etab.nom } : {}), ...(o.aPlat ? { aPlat: true } : {}), ...(o.nouveauLieu ? { nouveauLieu: true } : {}), ...(o.conflit ? { conflit: o.conflit } : {}) })
       if (!b) return
       const souci = b.plusRiches.length + b.echecs.length + b.ailleurs.length + b.aRelire.length > 0
       if (!o.silencieux || souci) {
