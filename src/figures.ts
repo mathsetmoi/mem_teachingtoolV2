@@ -547,3 +547,33 @@ export function solide(sorte: Solide) {
   const { r, pts } = prismeCavalier(avant, sorte === 'pave' ? { x: 60, y: -52 } : d)
   return cadre(pts, r, 24)
 }
+
+// ---------- Deux parallèles et une sécante ----------
+/** Deux droites parallèles (d) et (d') coupées par une sécante qui fait
+ *  l'angle m (en degrés) avec elles. Autour de chaque point
+ *  d'intersection, les secteurs 0 à 3 tournent dans le sens direct à
+ *  partir de la droite, vers la droite : 0 et 2 mesurent m, 1 et 3
+ *  mesurent 180 − m. L'angle connu (sa mesure écrite) est dans le
+ *  secteur `haut` de (d) ou `bas` de (d'), selon `connuEnHaut` ; l'autre
+ *  porte un point d'interrogation. */
+export function parallelesSecante(m: number, haut: number, bas: number, connuEnHaut: boolean, valeur: number) {
+  const y1 = 70, y2 = 170, I1 = { x: 190, y: y1 }, dx = (y2 - y1) / Math.tan(m * Math.PI / 180), I2 = { x: I1.x - dx, y: y2 }
+  const L = 380
+  let r = ligne({ x: 15, y: y1 }, { x: L - 15, y: y1 }) + ligne({ x: 15, y: y2 }, { x: L - 15, y: y2 })
+  const u = { x: dx / Math.hypot(dx, y2 - y1), y: (y2 - y1) / Math.hypot(dx, y2 - y1) }
+  r += ligne({ x: I1.x + u.x * 60, y: I1.y - u.y * 60 }, { x: I2.x - u.x * 60, y: I2.y + u.y * 60 })
+  r += nom({ x: L - 22, y: y1 - 14 }, '(d)', 16) + nom({ x: L - 22, y: y2 - 14 }, "(d')", 16)
+  // Les directions des bords d'un secteur, en degrés (sens direct)
+  const bords = [[0, m], [m, 180], [180, 180 + m], [180 + m, 360]]
+  const marque = (s: P, k: number, t: string, couleur: string) => {
+    const [a1, a2] = bords[k], rr = 24
+    const A = dir(s, a1, 1), C = dir(s, a2, 1), mi = (a1 + a2) / 2
+    return arcAngle(s, A, C, rr).replace('stroke-width="1.6"', `stroke-width="2" stroke="${couleur}"`) + texte(dir(s, mi, rr + 22), t, `font-size="15" fill="${couleur}"`).replace('fill="currentColor" ', '')
+  }
+  const connu = `${valeur}°`
+  r += marque(I1, haut, connuEnHaut ? connu : '?', connuEnHaut ? 'currentColor' : '#d0342c')
+  r += marque(I2, bas, connuEnHaut ? '?' : connu, connuEnHaut ? '#d0342c' : 'currentColor')
+  const xs = [15, L - 15, I1.x + u.x * 60, I2.x - u.x * 60]
+  const g = Math.min(...xs) - 10, d = Math.max(...xs) + 10
+  return svg(d - g, 240, `<g transform="translate(${f2(-g)} 0)">${r}</g>`)
+}
