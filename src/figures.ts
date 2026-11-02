@@ -547,3 +547,193 @@ export function solide(sorte: Solide) {
   const { r, pts } = prismeCavalier(avant, sorte === 'pave' ? { x: 60, y: -52 } : d)
   return cadre(pts, r, 24)
 }
+
+// =============================================================
+// LES FIGURES DE 2nde ET DE 1re
+// Une courbe ou une droite dans un repère quadrillé, un diagramme en
+// barres, un diagramme circulaire (ou semi-circulaire), des boîtes à
+// moustaches, un arbre pondéré.
+// =============================================================
+
+/** Un texte, ses réglages donnés une seule fois (une couleur, un
+ *  alignement à droite, une taille) */
+const ecrit = (p: P, t: string, o: { taille?: number; couleur?: string; ancre?: 'start' | 'middle' | 'end'; italique?: boolean; gras?: boolean } = {}) =>
+  `<text x="${f2(p.x)}" y="${f2(p.y)}" fill="${o.couleur ?? 'currentColor'}" stroke="none" text-anchor="${o.ancre ?? 'middle'}" dominant-baseline="middle" font-size="${o.taille ?? 14}"${o.italique ? ' font-style="italic"' : ''}${o.gras ? ' font-weight="bold"' : ''}>${t}</text>`
+const ROUGE = '#d0342c'
+
+/** Un repère quadrillé de xmin à xmax et de ymin à ymax (en carreaux),
+ *  un carreau valant pasX et pasY ; X et Y placent un point */
+function grilleRepere(xmin: number, xmax: number, ymin: number, ymax: number, c: number, pasX = 1, pasY = 1, toutGraduer = false) {
+  const m = 26, X = (x: number) => m + (x / pasX - xmin) * c, Y = (y: number) => m + (ymax - y / pasY) * c
+  const L = 2 * m + (xmax - xmin) * c, H = 2 * m + (ymax - ymin) * c
+  let r = ''
+  for (let i = xmin; i <= xmax; i++) r += ligne({ x: m + (i - xmin) * c, y: m }, { x: m + (i - xmin) * c, y: H - m }, 'stroke="#9bb6dc" stroke-width="1"')
+  for (let j = ymin; j <= ymax; j++) r += ligne({ x: m, y: m + (ymax - j) * c }, { x: L - m, y: m + (ymax - j) * c }, 'stroke="#9bb6dc" stroke-width="1"')
+  const O = { x: m - xmin * c, y: m + ymax * c }
+  // Les axes (au bord quand 0 n'est pas dans la fenêtre)
+  const ax = Math.min(Math.max(O.y, m), H - m), ay = Math.min(Math.max(O.x, m), L - m)
+  r += ligne({ x: m - 8, y: ax }, { x: L - m + 14, y: ax }) + ligne({ x: ay, y: H - m + 8 }, { x: ay, y: m - 14 })
+  r += `<path d="M${f2(L - m + 6)} ${f2(ax - 6)}L${f2(L - m + 14)} ${f2(ax)}L${f2(L - m + 6)} ${f2(ax + 6)}M${f2(ay - 6)} ${f2(m - 6)}L${f2(ay)} ${f2(m - 14)}L${f2(ay + 6)} ${f2(m - 6)}"/>`
+  const ecrire = (v: number) => String(Math.round(v * 1000) / 1000).replace('-', '−').replace('.', ',')
+  if (toutGraduer) {
+    for (let i = xmin; i <= xmax; i++) if (i !== 0 || ay !== O.x) r += ecrit({ x: m + (i - xmin) * c, y: ax + 13 }, ecrire(i * pasX), { taille: 12 })
+    for (let j = ymin; j <= ymax; j++) if (j !== 0 || ax !== O.y) r += ecrit({ x: ay - 6, y: m + (ymax - j) * c }, ecrire(j * pasY), { taille: 12, ancre: 'end' })
+  } else {
+    r += ecrit({ x: O.x - 9, y: O.y + 13 }, '0', { taille: 13 }) + ecrit({ x: O.x + c, y: O.y + 13 }, ecrire(pasX), { taille: 13 }) + ecrit({ x: O.x - 10, y: O.y - c }, ecrire(pasY), { taille: 13 })
+  }
+  return { r, X, Y, L, H, m }
+}
+
+/** Les pentes d'une interpolation qui ne dépasse jamais entre deux nœuds
+ *  (Fritsch et Carlson) : la courbe monte ou descend d'un nœud à l'autre,
+ *  sans bosse cachée, et ne prend les valeurs entières qu'aux nœuds ou
+ *  entre deux nœuds qui les encadrent. */
+function pentesMonotones(p: P[]): number[] {
+  const n = p.length, d = p.slice(1).map((q, i) => (q.y - p[i].y) / (q.x - p[i].x))
+  const t = p.map((_, i) => i === 0 ? d[0] : i === n - 1 ? d[n - 2] : d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2)
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { t[i] = 0; t[i + 1] = 0; continue }
+    const a = t[i] / d[i], b = t[i + 1] / d[i], s = a * a + b * b
+    if (s > 9) { const k = 3 / Math.sqrt(s); t[i] = k * a * d[i]; t[i + 1] = k * b * d[i] }
+  }
+  return t
+}
+
+/** La courbe d'une fonction qui passe par les nœuds (abscisses entières,
+ *  ordonnées entières), dans un repère quadrillé ; son nom à côté */
+export function courbeFonction(noeuds: P[], nomCourbe = 'f', fenetre?: { ymin: number; ymax: number }) {
+  const xmin = Math.min(...noeuds.map(q => q.x)) - 1, xmax = Math.max(...noeuds.map(q => q.x)) + 1
+  const ymin = fenetre?.ymin ?? Math.min(-1, ...noeuds.map(q => q.y)) - 1, ymax = fenetre?.ymax ?? Math.max(1, ...noeuds.map(q => q.y)) + 1
+  const g = grilleRepere(xmin, xmax, ymin, ymax, 22)
+  const t = pentesMonotones(noeuds)
+  let d = `M${f2(g.X(noeuds[0].x))} ${f2(g.Y(noeuds[0].y))}`
+  for (let i = 0; i < noeuds.length - 1; i++) {
+    const a = noeuds[i], b = noeuds[i + 1], h = b.x - a.x
+    d += `C${f2(g.X(a.x + h / 3))} ${f2(g.Y(a.y + t[i] * h / 3))} ${f2(g.X(b.x - h / 3))} ${f2(g.Y(b.y - t[i + 1] * h / 3))} ${f2(g.X(b.x))} ${f2(g.Y(b.y))}`
+  }
+  let r = g.r + `<path d="${d}" stroke="${ROUGE}" stroke-width="2.6"/>`
+  for (const q of [noeuds[0], noeuds[noeuds.length - 1]]) r += `<circle cx="${f2(g.X(q.x))}" cy="${f2(g.Y(q.y))}" r="3.5" fill="${ROUGE}" stroke="none"/>`
+  const fin = noeuds[noeuds.length - 1]
+  const dy = fin.y > (ymin + ymax) / 2 ? 16 : -16
+  r += ecrit({ x: g.X(fin.x) + 12, y: g.Y(fin.y) + dy }, 'C', { taille: 18, couleur: ROUGE, italique: true }) + ecrit({ x: g.X(fin.x) + 21, y: g.Y(fin.y) + dy + 6 }, nomCourbe, { taille: 12, couleur: ROUGE, italique: true })
+  return svg(g.L, g.H, r)
+}
+
+/** La droite y = m x + p dans un repère quadrillé (de −5 à 5), son nom à côté */
+export function droiteRepere(m: number, p: number, nomDroite = '(d)') {
+  const g = grilleRepere(-5, 5, -5, 5, 22)
+  // Les deux bouts : là où la droite sort du carré [−5,5]²
+  const pts: P[] = []
+  for (const x of [-5, 5]) { const y = m * x + p; if (y >= -5 && y <= 5) pts.push({ x, y }) }
+  for (const y of [-5, 5]) { if (m !== 0) { const x = (y - p) / m; if (x > -5 && x < 5) pts.push({ x, y }) } }
+  pts.sort((a, b) => a.x - b.x)
+  const [a, b] = [pts[0], pts[pts.length - 1]]
+  let r = g.r + ligne({ x: g.X(a.x), y: g.Y(a.y) }, { x: g.X(b.x), y: g.Y(b.y) }, `stroke="${ROUGE}" stroke-width="2.6"`)
+  const e = { x: a.x + (b.x - a.x) * 0.82, y: a.y + (b.y - a.y) * 0.82 }
+  r += ecrit({ x: g.X(e.x) + 22, y: g.Y(e.y) + 4 }, nomDroite, { taille: 16, couleur: ROUGE, italique: true })
+  return svg(g.L, g.H, r)
+}
+
+/** Une courbe de données : une valeur par graduation de l'axe des
+ *  abscisses (debutX, debutX + pasX…), l'axe des ordonnées gradué de pasY
+ *  en pasY ; les élèves lisent les échelles. `nuage` : les points seuls. */
+export function courbeDonnees(valeurs: number[], pasY: number, debutX: number, pasX: number, nuage = false) {
+  const n = valeurs.length, ymax = Math.ceil(Math.max(...valeurs) / pasY) + 1, c = 26, cx = 40
+  const g = grilleRepere(0, n, 0, ymax, c, pasX, pasY, true)
+  // Les abscisses sont plus espacées que les ordonnées (des années tiennent sous l'axe) : on étire le dessin
+  const etire = (t: string) => t.replace(/ (x1|x2|x|cx)="([-\d.]+)"/g, (_, k, v) => ` ${k}="${f2(g.m + (Number(v) - g.m) * cx / c)}"`)
+  // L'axe des abscisses gradué à partir de debutX : on réécrit ses étiquettes
+  let r = g.r.replace(/<text[^>]*text-anchor="middle"[^>]*font-size="12"[^>]*>[^<]*<\/text>/g, '')
+  // La flèche de l'axe des abscisses se dessine à la main, après l'étirement
+  r = etire(r.replace(/<path d="M[^"]*"\/>/, ''))
+  const Lx = g.m * 2 + n * cx
+  r += `<path d="M${f2(Lx - g.m + 6)} ${f2(g.H - g.m - 6)}L${f2(Lx - g.m + 14)} ${f2(g.H - g.m)}L${f2(Lx - g.m + 6)} ${f2(g.H - g.m + 6)}M${f2(g.m - 6)} ${f2(g.m - 6)}L${f2(g.m)} ${f2(g.m - 14)}L${f2(g.m + 6)} ${f2(g.m - 6)}"/>`
+  for (let i = 1; i <= n; i++) r += ecrit({ x: g.m + i * cx, y: g.H - g.m + 14 }, String(Math.round((debutX + (i - 1) * pasX) * 1000) / 1000).replace('.', ','), { taille: 13 })
+  r += ecrit({ x: g.m - 6, y: g.H - g.m }, '0', { taille: 12, ancre: 'end' })
+  const pts = valeurs.map((v, i) => ({ x: g.m + (i + 1) * cx, y: g.Y(v) }))
+  if (!nuage) r += `<polyline points="${pts.map(q => `${f2(q.x)},${f2(q.y)}`).join(' ')}" stroke="${ROUGE}" stroke-width="2.4"/>`
+  for (const q of pts) r += `<circle cx="${f2(q.x)}" cy="${f2(q.y)}" r="3.8" fill="${ROUGE}" stroke="none"/>`
+  return svg(Lx + 6, g.H, r)
+}
+
+/** Un diagramme en barres : une barre par étiquette, l'axe gradué de pas en pas */
+export function diagrammeBarres(etiquettes: string[], valeurs: number[], pas: number) {
+  const n = etiquettes.length, haut = Math.ceil(Math.max(...valeurs) / pas) + 1, c = 26, m = 34, lb = 40
+  const L = m + 20 + n * (lb + 14) + 10, H = 2 * m + haut * c
+  const Y = (v: number) => m + (haut - v / pas) * c
+  let r = ''
+  for (let j = 0; j <= haut; j++) {
+    r += ligne({ x: m, y: m + (haut - j) * c }, { x: L - 10, y: m + (haut - j) * c }, 'stroke="#9bb6dc" stroke-width="1"')
+    r += ecrit({ x: m - 6, y: m + (haut - j) * c }, String(j * pas).replace('.', ','), { taille: 12, ancre: 'end' })
+  }
+  r += ligne({ x: m, y: H - m }, { x: L - 10, y: H - m }) + ligne({ x: m, y: H - m }, { x: m, y: m - 12 })
+  etiquettes.forEach((e, i) => {
+    const x = m + 20 + i * (lb + 14)
+    r += `<rect x="${f2(x)}" y="${f2(Y(valeurs[i]))}" width="${lb}" height="${f2(H - m - Y(valeurs[i]))}" fill="#9bb6dc" fill-opacity="0.55" stroke="#1f5fbf"/>`
+    r += ecrit({ x: x + lb / 2, y: H - m + 15 }, e, { taille: 13 })
+  })
+  return svg(L, H, r)
+}
+
+/** Un diagramme circulaire (ou semi-circulaire) : des secteurs, chacun
+ *  avec son nom et son angle */
+export function diagrammeCirculaire(parts: { nom: string; angle: number }[], demi = false) {
+  const R = 100, C = { x: 150, y: demi ? 130 : 135 }
+  const couleurs = ['#9bb6dc', '#f2c27b', '#a8d5b5', '#e8a3a0', '#c9b6e4', '#f0e08a']
+  let r = '', a0 = 180
+  parts.forEach((p, i) => {
+    // Les angles tournent dans le sens des aiguilles d'une montre, à partir de la gauche
+    const a1 = a0 - p.angle, rad = (a: number) => a * Math.PI / 180
+    const A = { x: C.x + R * Math.cos(rad(a0)), y: C.y - R * Math.sin(rad(a0)) }, B = { x: C.x + R * Math.cos(rad(a1)), y: C.y - R * Math.sin(rad(a1)) }
+    r += `<path d="M${C.x} ${C.y}L${f2(A.x)} ${f2(A.y)}A${R} ${R} 0 ${p.angle > 180 ? 1 : 0} 1 ${f2(B.x)} ${f2(B.y)}Z" fill="${couleurs[i % couleurs.length]}" stroke="#1b2433" stroke-width="1.4"/>`
+    const am = rad((a0 + a1) / 2)
+    r += ecrit({ x: C.x + R * 0.62 * Math.cos(am), y: C.y - R * 0.62 * Math.sin(am) - 7 }, p.nom, { taille: 13, couleur: '#1b2433' })
+    r += ecrit({ x: C.x + R * 0.62 * Math.cos(am), y: C.y - R * 0.62 * Math.sin(am) + 9 }, `${String(p.angle).replace('.', ',')}°`, { taille: 12, couleur: '#1b2433' })
+    a0 = a1
+  })
+  return svg(300, demi ? 150 : 270, r)
+}
+
+/** Des boîtes à moustaches au-dessus d'un axe gradué de debut à fin, de pas en pas */
+export function boitesMoustaches(series: { nom: string; v: [number, number, number, number, number] }[], debut: number, fin: number, pas: number) {
+  const n = Math.round((fin - debut) / pas), c = Math.min(34, 380 / n), m = 40, L = 2 * m + n * c + 20
+  const X = (v: number) => m + 20 + (v - debut) / pas * c, H = 30 + series.length * 54 + 40
+  let r = ''
+  for (let i = 0; i <= n; i++) {
+    const x = m + 20 + i * c
+    r += ligne({ x, y: 20 }, { x, y: H - 34 }, 'stroke="#9bb6dc" stroke-width="1"') + ligne({ x, y: H - 38 }, { x, y: H - 30 })
+    r += ecrit({ x, y: H - 16 }, String(Math.round((debut + i * pas) * 1000) / 1000).replace('.', ','), { taille: 14 })
+  }
+  r += ligne({ x: m + 10, y: H - 34 }, { x: L - 10, y: H - 34 })
+  series.forEach((s, k) => {
+    const y = 34 + k * 54, [a, q1, me, q3, b] = s.v
+    r += ligne({ x: X(a), y: y + 16 }, { x: X(q1), y: y + 16 }) + ligne({ x: X(q3), y: y + 16 }, { x: X(b), y: y + 16 })
+    r += ligne({ x: X(a), y: y + 8 }, { x: X(a), y: y + 24 }) + ligne({ x: X(b), y: y + 8 }, { x: X(b), y: y + 24 })
+    r += `<rect x="${f2(X(q1))}" y="${y}" width="${f2(X(q3) - X(q1))}" height="32" fill="#9bb6dc" fill-opacity="0.45" stroke="#1f5fbf"/>`
+    r += ligne({ x: X(me), y }, { x: X(me), y: y + 32 }, `stroke="${ROUGE}" stroke-width="2.6"`)
+    r += ecrit({ x: m - 4, y: y + 16 }, s.nom, { taille: 14, gras: true })
+  })
+  return svg(L, H, r)
+}
+
+/** Un arbre pondéré à deux niveaux : A et son contraire, puis B et son
+ *  contraire ; une probabilité vide (null) s'écrit « ? » */
+export function arbrePondere(n1: [string, string], n2: [string, string], p: { a: string | null; ab: string | null; aBarreB: string | null; aB2?: string | null; aBarreB2?: string | null; aBarre?: string | null }) {
+  const R = { x: 20, y: 130 }, A = { x: 150, y: 60 }, Ab = { x: 150, y: 200 }
+  const f = [{ x: 290, y: 25 }, { x: 290, y: 95 }, { x: 290, y: 165 }, { x: 290, y: 235 }]
+  // Les probabilités arrivent écrites pour KaTeX (0{,}3) : on les remet en texte
+  const proba = (a: P, b: P, t: string | null | undefined, haut: boolean) => ecrit({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + (haut ? -12 : 14) }, (t ?? '').replace('{,}', ','), { taille: 15 })
+  // Un nom précédé de ¬ est l'évènement contraire : une barre au-dessus
+  const evt = (q: P, t: string) => ecrit(q, t.replace(/^¬/, ''), { taille: 18, italique: true }) + (t.startsWith('¬') ? ligne({ x: q.x - 6, y: q.y - 13 }, { x: q.x + 8, y: q.y - 13 }, 'stroke-width="1.5"') : '')
+  let r = ligne(R, { x: A.x - 16, y: A.y }) + ligne(R, { x: Ab.x - 16, y: Ab.y })
+  r += proba(R, A, p.a, true) + proba(R, Ab, p.aBarre, false)
+  r += evt(A, n1[0]) + evt(Ab, n1[1])
+  const feuilles: [P, P, string | null | undefined, boolean, string][] = [
+    [A, f[0], p.ab, true, n2[0]], [A, f[1], p.aB2, false, n2[1]], [Ab, f[2], p.aBarreB, true, n2[0]], [Ab, f[3], p.aBarreB2, false, n2[1]],
+  ]
+  for (const [d, e, t, haut, nm] of feuilles) {
+    r += ligne({ x: d.x + 16, y: d.y }, { x: e.x - 16, y: e.y }) + proba({ x: d.x + 16, y: d.y }, { x: e.x - 16, y: e.y }, t, haut)
+    r += evt(e, nm)
+  }
+  return svg(320, 260, r)
+}
