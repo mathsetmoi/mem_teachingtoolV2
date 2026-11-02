@@ -1097,6 +1097,35 @@ recherche. Le dessin des ensembles, trouvé ainsi, ouvre son chapitre.
   « Suivante »), ← la retire, ⏩ montre tout. Le bas du panneau montre la
   démonstration en cours, étape par étape ; son texte passe à la ligne pour
   tenir dans sa largeur.
+- **Trigonométrie** (1re spé › Analyse › Trigonométrie, novembre 2026),
+  à côté de la démonstration :
+  - **Cercle trigonométrique**, rayon 5 cm à 100 %, en trois versions :
+    *Vide* (axes, O, I, J, le sens direct) ; *Angles remarquables* (les seize
+    points, repérés dans ]−π ; π]) ; *Avec cos et sin* (en plus, les
+    projections des angles du premier quart et ½, √2/2, √3/2 sur les axes).
+    « Angles aussi en degrés » écrit 30°, 45°… près de chaque point.
+  - **Courbes de cos et sin** sur [−2π ; 2π] : cos, sin, ou les deux.
+  - **Enroulement de la droite des réels** : la droite, tangente en I,
+    s'enroule autour du cercle (un tour). Repères au choix : aucun, les
+    valeurs remarquables (π/2, π, 3π/2, 2π), les entiers, ou les deux ;
+    les deux sens ou le sens direct seul ; et des « réels à placer »
+    (π/3 ; 3π/4 ; −π/2 ; 2,5…), en vert, qui deviennent M(x) avec leurs
+    projections une fois arrivés. Le pilotage paraît dans le panneau :
+    lecture et pause (Espace), pas à pas de π/12 (← →), curseur, vitesse,
+    « Terminer ». Pendant que l'animation tourne, elle n'est peinte qu'à
+    l'écran ; à chaque arrêt, ce qu'on voit est posé sur la page en objets
+    ordinaires : le replay des élèves montre ces arrêts (le choix du
+    professeur). Une lecture entière ne fait qu'un Ctrl + Z. Si l'on
+    déplace ou agrandit la figure posée, l'animation suit.
+  - **Formules**, posées ligne par ligne comme une démonstration (« Formules
+    en cours »), en entier ou **à trous** (un blanc souligné à compléter) :
+    radians et degrés ; mesure principale ; relations entre cos et sin
+    (cos² + sin² = 1, angles associés) ; valeurs remarquables ; fonctions
+    cosinus et sinus (parité, période 2π, variations).
+
+  Les réglages sont retenus sur l'appareil (`mem-catalogue-trigo`). Les
+  calculs sont dans `src/trigonometrie.ts`, le panneau et l'animation dans
+  `src/catalogue-trigo.ts` ; essai : `essais/navigateur/lot21/T1-trigonometrie.mjs`.
 
 Le calcul (lire un nombre, le classer, trouver sa place dans sa zone) est
 dans `src/catalogue.ts`, sans rien toucher à l'écran ; le panneau dans

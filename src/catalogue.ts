@@ -445,6 +445,8 @@ export interface Demonstration {
   titre: string
   /** Les étapes, montrées une à une ; chacune a une ou deux lignes */
   etapes: string[][]
+  /** Une fiche de formules (trigonometrie.ts), posée de la même façon */
+  formules?: true
 }
 
 export const DEMONSTRATIONS: readonly Demonstration[] = [

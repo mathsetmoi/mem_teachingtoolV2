@@ -11,7 +11,9 @@
 //  - le dessin des ensembles emboîtés (2nde, Nombres réels), vide ou avec
 //    des nombres ; « Compléter » range les nombres tapés dans un dessin
 //    déjà posé (le dernier, ou celui qui est pris), même déplacé ou agrandi ;
-//  - les démonstrations du programme, posées ligne par ligne (→, Espace, ←).
+//  - les démonstrations du programme, posées ligne par ligne (→, Espace, ←) ;
+//  - en 1re spé, Trigonométrie : le cercle, les courbes, l'enroulement de
+//    la droite des réels et les fiches de formules (catalogue-trigo.ts).
 // =============================================================
 import katex from 'katex'
 import type { App } from './app'
@@ -23,6 +25,8 @@ import {
 import type { P } from './construction'
 import type { Figure, Forme, Formule } from './types'
 import { uid } from './types'
+import { Trigo } from './catalogue-trigo'
+import { FORMULES } from './trigonometrie'
 
 const html = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
 const CLE_NOMBRES = 'mem-catalogue-nombres'
@@ -43,6 +47,9 @@ interface DessinPose {
   deja: Set<string>
   echelle: number
 }
+
+/** Où se range la trigonométrie (catalogue-trigo.ts) */
+const PLACE_TRIGO = { niveau: '1re' as Niveau, chapitre: 'Trigonométrie' }
 
 /** La démonstration en cours : où elle est, ce que chaque étape a posé */
 interface DemoEnCours {
@@ -67,6 +74,9 @@ export class Catalogue {
   private recherche!: HTMLInputElement
   private mesureur: HTMLDivElement
   private clavier = (e: KeyboardEvent) => this.touche(e)
+  private trigo: Trigo
+  /** Ce que les touches pilotent, quand les deux sont sur la page */
+  private dernier: 'demo' | 'enroulement' = 'demo'
 
   constructor(private app: App, racine: HTMLElement, private message: (t: string) => void) {
     this.panneau = document.createElement('div')
@@ -79,6 +89,14 @@ export class Catalogue {
     this.mesureur.className = 'mesure-catalogue'
     this.mesureur.setAttribute('aria-hidden', 'true')
     racine.append(this.panneau, this.mesureur)
+    this.trigo = new Trigo(app, {
+      mesurer: (l, t) => this.mesurer(l, t),
+      placer: (f, p) => this.placer(f, p),
+      peutPoser: () => this.peutPoser(),
+      poserDemo: d => this.poserDemo(d),
+      message: t => this.message(t),
+      enroulementPose: () => { this.dernier = 'enroulement' },
+    })
     this.construire()
   }
 
@@ -92,9 +110,11 @@ export class Catalogue {
 
   /** Pose un élément du catalogue (depuis la recherche) : le panneau
    *  s'ouvre, et l'élément suit le pointeur jusqu'au clic, comme depuis son
-   *  bouton. demo : le nom d'une démonstration ; sans lui, les ensembles. */
+   *  bouton. demo : le nom d'une démonstration ou d'une fiche de formules,
+   *  ou « cercle », « courbes », « enroulement » ; sans lui, les ensembles. */
   poserElement(demo?: string) {
     if (!this.ouvert) this.ouvrir()
+    if (demo && this.trigo.poserElement(demo)) return
     const d = demo ? DEMONSTRATIONS.find(x => x.nom === demo) : undefined
     if (d) this.poserDemo(d); else this.poserDessin()
   }
@@ -104,6 +124,7 @@ export class Catalogue {
     this.panneau.hidden = true
     window.removeEventListener('keydown', this.clavier, true)
     this.demo = null
+    this.trigo.terminer()
     this.afficher()
   }
 
@@ -136,9 +157,10 @@ export class Catalogue {
         <h3>${html(t.nom)}</h3>${t.chapitres.length ? t.chapitres.map(c => {
           const demos = DEMONSTRATIONS.map((d, i) => d.niveau === n.niveau && d.chapitre === c ? i : -1).filter(i => i >= 0)
           const dessin = PLACE_ENSEMBLES.niveau === n.niveau && PLACE_ENSEMBLES.chapitre === c
+          const trigo = PLACE_TRIGO.niveau === n.niveau && PLACE_TRIGO.chapitre === c
           return `<details class="chapitre" data-cle="${html(n.niveau + '|' + c)}"${this.ouverts.has(n.niveau + '|' + c) ? ' open' : ''}>
-            <summary>${html(c)}<span class="nombre">${demos.length + (dessin ? 1 : 0)}</span></summary>
-            <div class="demos">${dessin ? ensembles : ''}${demos.map(boutonDemo).join('')}</div>
+            <summary>${html(c)}<span class="nombre">${demos.length + (dessin ? 1 : 0) + (trigo ? Trigo.NOMBRE : 0)}</span></summary>
+            <div class="demos">${dessin ? ensembles : ''}${trigo ? this.trigo.html() : ''}${demos.map(boutonDemo).join('')}</div>
           </details>`
         }).join('') : '<p class="note">Le programme ne demande pas de démonstration dans ce thème.</p>'}`).join('')}
       </div>`).join('')
@@ -148,8 +170,9 @@ export class Catalogue {
       <div class="onglets" role="group" aria-label="Niveau">${PROGRAMME.map(n => `<button type="button" class="onglet" data-niveau="${n.niveau}">${html(n.nom)}</button>`).join('')}</div>
       <div class="rangement">${niveaux}</div>
       <div class="resultats" hidden></div>
+      ${this.trigo.htmlPilote()}
       <section class="element en-cours" hidden>
-        <h3>Démonstration en cours</h3>
+        <h3 class="titre-en-cours">Démonstration en cours</h3>
         <ol class="etapes"></ol>
         <div class="commandes">
           <button type="button" class="secondaire precedente" title="Ligne précédente (←)">◀</button>
@@ -179,14 +202,16 @@ export class Catalogue {
     q('.poser-dessin').addEventListener('click', () => this.poserDessin())
     q('.completer').addEventListener('click', () => this.completer())
     p.addEventListener('click', e => {
-      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('.demo, .aller-ensembles')
-      if (!b) return
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('.demo, .aller-ensembles, .aller-trigo')
+      if (!b || b.classList.contains('fiche')) return
+      if (b.classList.contains('aller-trigo')) { this.poserElement(b.dataset.trigo); return }
       if (b.classList.contains('aller-ensembles')) this.allerAuxEnsembles()
       else this.poserDemo(DEMONSTRATIONS[Number(b.dataset.demo)])
     })
     q('.suivante').addEventListener('click', () => this.suivante())
     q('.precedente').addEventListener('click', () => this.precedente())
     q('.tout').addEventListener('click', () => { while (this.suivante()) { /* jusqu'au bout */ } })
+    this.trigo.brancher(p)
   }
 
   /** Ne montre que le niveau choisi */
@@ -208,6 +233,8 @@ export class Catalogue {
     const themeDe = (n: Niveau, c: string) => PROGRAMME.find(x => x.niveau === n)!.themes.find(t => t.chapitres.includes(c))!.nom
     const elements = [
       { cle: 'ens', niveau: PLACE_ENSEMBLES.niveau, chapitre: PLACE_ENSEMBLES.chapitre, nom: 'Dessin des ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ', mots: 'ensembles de nombres entiers decimaux rationnels reels completer' },
+      ...Trigo.ELEMENTS.map(t => ({ cle: 'trigo:' + t.cle, niveau: PLACE_TRIGO.niveau, chapitre: PLACE_TRIGO.chapitre, nom: t.nom, mots: t.mots })),
+      ...FORMULES.map(d => ({ cle: 'trigo:' + d.nom, niveau: d.niveau, chapitre: d.chapitre, nom: 'Formules : ' + d.nom, mots: 'formules trigonometrie cos sin ' + d.titre.replace(/\\[a-zA-Z]+/g, ' ') })),
       ...DEMONSTRATIONS.map((d, i) => ({ cle: String(i), niveau: d.niveau, chapitre: d.chapitre, nom: d.nom, mots: d.titre.replace(/\\[a-zA-Z]+/g, ' ') })),
     ]
     const trouves = elements.filter(e => {
@@ -221,6 +248,7 @@ export class Catalogue {
       lieu = ici
       return tete + (e.cle === 'ens'
         ? `<button type="button" class="secondaire aller-ensembles">${html(e.nom)}</button>`
+        : e.cle.startsWith('trigo:') ? `<button type="button" class="secondaire aller-trigo" data-trigo="${html(e.cle.slice(6))}">${html(e.nom)}</button>`
         : `<button type="button" class="secondaire demo" data-demo="${e.cle}">${html(e.nom)}</button>`)
     }).join('') : '<p class="note">Rien ne correspond. Essayez un autre mot.</p>'
   }
@@ -248,10 +276,11 @@ export class Catalogue {
     this.liste.innerHTML = d ? d.d.etapes.map((e, i) =>
       `<li class="${i < faites ? 'faite' : i === faites ? 'courante' : ''}">${e.map(l => this.ligneHtml(l)).join(' ')}</li>`).join('') : ''
     ;(this.panneau.querySelector('.en-cours') as HTMLElement).hidden = !d
+    if (d) this.panneau.querySelector('.titre-en-cours')!.textContent = d.d.formules ? 'Formules en cours' : 'Démonstration en cours'
     const fini = !!d && faites >= d.d.etapes.length
     const suiv = this.panneau.querySelector('.suivante') as HTMLButtonElement
     suiv.disabled = fini
-    suiv.textContent = fini ? 'Démonstration terminée ✓' : 'Suivante ▶'
+    suiv.textContent = fini ? (d!.d.formules ? 'Tout est posé ✓' : 'Démonstration terminée ✓') : 'Suivante ▶'
     ;(this.panneau.querySelector('.precedente') as HTMLButtonElement).disabled = !d || faites === 0
     ;(this.panneau.querySelector('.tout') as HTMLButtonElement).disabled = fini
   }
@@ -265,9 +294,23 @@ export class Catalogue {
       if (this.app.placement) this.app.echap(); else this.fermer()
       return
     }
-    if ((e.target as HTMLElement).closest?.('textarea, input, select, dialog')) return
+    if ((e.target as HTMLElement).closest?.('textarea, input:not([type="range"]), select, dialog')) return
+    // L'enroulement posé en dernier sur cette page prend les touches :
+    // Espace lance ou arrête, les flèches avancent ou reculent d'un pas
+    const demoIci = !!this.demo && this.demo.page === this.app.page
+    if (this.trigo.actif && (this.dernier === 'enroulement' || !demoIci)) {
+      const t: Record<string, () => void> = {
+        ' ': () => this.trigo.lectureOuPause(), ArrowRight: () => this.trigo.pas(1), PageDown: () => this.trigo.pas(1),
+        ArrowLeft: () => this.trigo.pas(-1), PageUp: () => this.trigo.pas(-1),
+      }
+      const f = t[e.key]
+      if (!f || e.ctrlKey || e.metaKey || e.altKey) return
+      e.preventDefault(); e.stopPropagation()
+      f()
+      return
+    }
     // Les flèches ne déroulent la démonstration que si elle est sur cette page
-    if (!this.demo || this.demo.page !== this.app.page) return
+    if (!demoIci) return
     const actions: Record<string, () => void> = {
       ArrowRight: () => this.suivante(), PageDown: () => this.suivante(), ' ': () => this.suivante(),
       ArrowLeft: () => this.precedente(), PageUp: () => this.precedente(),
@@ -279,7 +322,7 @@ export class Catalogue {
   }
 
   // ---------- Poser ----------
-  private peutPoser(): boolean {
+  peutPoser(): boolean {
     if (this.app.enLecture) { this.message('Cette séance est passée : elle est en lecture seule.'); return false }
     return true
   }
@@ -291,7 +334,7 @@ export class Catalogue {
   }
 
   /** Suit le pointeur en transparence ; un clic pose, Échap annule */
-  private placer(fantomes: (w: P) => Figure[], poser: (w: P) => void) {
+  placer(fantomes: (w: P) => Figure[], poser: (w: P) => void) {
     const r = this.app.rendu
     const fin = () => { r.fantomes = []; r.redessinerDirect() }
     this.app.placement = {
@@ -304,7 +347,7 @@ export class Catalogue {
   }
 
   /** La taille d'une formule à l'écran, en unités du tableau */
-  private mesurer(latex: string, taille: number): { l: number; h: number } {
+  mesurer(latex: string, taille: number): { l: number; h: number } {
     const el = document.createElement('div')
     el.className = 'formule'
     el.style.fontSize = taille + 'px'
@@ -432,7 +475,7 @@ export class Catalogue {
     }
   }
 
-  private poserDemo(d: Demonstration) {
+  poserDemo(d: Demonstration) {
     if (!this.peutPoser()) return
     const m = this.lignes(d)
     const toutes = [m.titre, ...m.etapes.flat()]
@@ -450,10 +493,11 @@ export class Catalogue {
       this.app.tableau.nouveauGeste()
       this.poser(this.formule(m.titre.latex, o.x, o.y, TAILLE_TITRE, this.app.couleur, groupe))
       this.demo = { d, page: this.app.page, groupe, x: o.x, hauts: [o.y + m.titre.h + ECART_LIGNES * 2], posees: [] }
+      this.dernier = 'demo'
       // Pour le résumé de la séance (resume/fiche.ts)
-      this.app.tableau.noterActivite(this.app.page, 'demonstration', `Démonstration : ${d.nom}`)
+      this.app.tableau.noterActivite(this.app.page, 'demonstration', `${d.formules ? 'Formules' : 'Démonstration'} : ${d.nom}`)
       this.afficher()
-      this.message('Démonstration posée : → ou Espace pour la ligne suivante, ← pour revenir.')
+      this.message(`${d.formules ? 'Formules posées' : 'Démonstration posée'} : → ou Espace pour la ligne suivante, ← pour revenir.`)
     })
   }
 

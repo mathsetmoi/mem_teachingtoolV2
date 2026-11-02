@@ -117,6 +117,10 @@ export class Rendu {
   cible: { a: { x: number; y: number }; b?: { x: number; y: number } } | null = null
   /** Une construction qu'on va poser : on la voit, en transparence, sous le pointeur */
   fantomes: Figure[] = []
+  /** Ce qu'une animation du catalogue (l'enroulement de la droite des réels)
+   *  peint à chaque image, en unités du tableau, à l'écran du professeur
+   *  seulement : le replay n'en voit que ce qui est posé à l'arrêt */
+  dessinAnime: ((c: CanvasRenderingContext2D) => void) | null = null
   /** Le cadre qu'on glisse à l'outil Texte (monde) */
   cadreTexte: { x: number; y: number; l: number; h: number } | null = null
   /** Ceux que manie le constructeur, en plus de ceux de l'utilisateur */
@@ -942,6 +946,7 @@ export class Rendu {
       for (const f of this.fantomes) this.dessinerFigure(c, f, null)
       c.restore()
     }
+    if (this.dessinAnime) { c.save(); this.dessinAnime(c); c.restore() }
     if (this.cible) {
       const { a, b } = this.cible
       c.save(); c.strokeStyle = 'rgba(31, 95, 191, 0.35)'; c.fillStyle = 'rgba(31, 95, 191, 0.18)'; c.lineCap = 'round'

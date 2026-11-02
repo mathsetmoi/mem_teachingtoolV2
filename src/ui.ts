@@ -27,6 +27,8 @@ import type { ContenuClasseur } from './recherche'
 import { lireContenu } from './recherche'
 import { EXEMPLES } from './construction'
 import { DEMONSTRATIONS } from './catalogue'
+import { Trigo } from './catalogue-trigo'
+import { FORMULES } from './trigonometrie'
 import { NIVEAUX, themesDe } from './automatismes'
 import { FONDS } from './types'
 import type { Menu, OptionsEntree } from './menus'
@@ -1713,6 +1715,8 @@ export class UI implements Interface {
     )
     for (const e of EXEMPLES) l.push({ titre: e.nom, genre: 'Construction', icone: 'construction', detail: 'Programme de construction', mots: e.texte, faire: () => this.constructeur.ouvrirAvec(e.texte) })
     l.push({ titre: 'Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ', genre: 'Catalogue', icone: 'catalogue', detail: 'Le dessin à poser', mots: 'ensembles de nombres entiers naturels relatifs decimaux rationnels reels', faire: () => this.catalogue.poserElement() })
+    for (const t of Trigo.ELEMENTS) l.push({ titre: t.nom, genre: 'Catalogue', icone: 'catalogue', detail: 'Trigonométrie (1re spé)', mots: t.mots, faire: () => this.catalogue.poserElement(t.cle) })
+    for (const d of FORMULES) l.push({ titre: `Formules : ${d.nom}`, genre: 'Catalogue', icone: 'catalogue', detail: 'Trigonométrie (1re spé)', mots: `formules trigonometrie ${d.titre}`, faire: () => this.catalogue.poserElement(d.nom) })
     for (const d of DEMONSTRATIONS) l.push({ titre: d.nom, genre: 'Catalogue', icone: 'catalogue', detail: 'Démonstration à poser', mots: `demonstration ${d.titre} ${d.nom.replace('√', ' racine ')}`, faire: () => this.catalogue.poserElement(d.nom) })
     // Les automatismes de chaque niveau qui en a (5e, 4e…) : le thème, et chaque automatisme
     for (const n of NIVEAUX.filter(x => x.automatismes.length)) {

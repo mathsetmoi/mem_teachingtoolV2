@@ -766,6 +766,18 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .panneau-catalogue .etapes li.faite { color: var(--encre); }
 .panneau-catalogue .etapes li.faite::marker { content: '✓  '; color: #1e8a4c; }
 .panneau-catalogue .etapes li.courante { color: var(--encre); font-weight: 700; }
+.panneau-catalogue .choix-trigo { display: flex; flex-wrap: wrap; gap: 4px; }
+.panneau-catalogue .trigo > *, .panneau-catalogue .pilote-enroulement > * { flex-shrink: 0; }
+.panneau-catalogue .choix-trigo button { height: auto; min-height: 34px; padding: 4px 10px; }
+.panneau-catalogue .choix-trigo button[aria-pressed="true"] { background: var(--bleu); border-color: var(--bleu); color: #fff; font-weight: 700; }
+.panneau-catalogue .coche { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.panneau-catalogue .trigo select, .panneau-catalogue .trigo input[type="text"], .panneau-catalogue .vitesse select {
+  height: 36px; border: 1px solid var(--filet); border-radius: 10px; background: #fbfcfe; padding: 0 8px; color: var(--encre); font: inherit; font-size: 14px; min-width: 0;
+}
+.panneau-catalogue .trigo .champ { align-items: stretch; text-align: left; min-width: 0; overflow-wrap: anywhere; }
+.panneau-catalogue .pilote-enroulement .avancement { width: 100%; accent-color: var(--bleu); }
+.panneau-catalogue .pilote-enroulement .commandes { display: flex; flex-wrap: wrap; align-items: end; gap: 6px; }
+.panneau-catalogue .pilote-enroulement .vitesse { flex: 1; }
 .mesure-catalogue { position: fixed; left: -10000px; top: 0; visibility: hidden; pointer-events: none; }
 .mesure-catalogue .formule { position: absolute; }
 
