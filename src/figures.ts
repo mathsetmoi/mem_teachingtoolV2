@@ -453,6 +453,49 @@ export function droiteRemarquable(sorte: Remarquable, noms: string, tourne = 0) 
   return cadre([A, B, C, p1, p2], r, 30)
 }
 
+// ---------- Le losange de seize triangles ----------
+/** Les neuf points du losange de seize triangles rectangles isocèles,
+ *  en unités : le centre, les quatre milieux (un carré) et les quatre
+ *  sommets du losange. L'ordre est celui des noms passés à la figure. */
+export const POINTS_LOSANGE: [number, number][] = [[0, 2], [-2, 0], [0, -2], [2, 0], [-1, 1], [-1, -1], [1, -1], [1, 1], [0, 0]]
+/** Le losange découpé en seize triangles : ses diagonales, le carré des
+ *  milieux de ses côtés et les diagonales de ce carré. `noms` donne les
+ *  neuf lettres, dans l'ordre de POINTS_LOSANGE. */
+export function losangeTriangles(noms: string[]) {
+  const u = 52, P0 = POINTS_LOSANGE.map(([x, y]) => ({ x: x * u, y: -y * u }))
+  const [A, B, C, D, E, F, G, H] = P0
+  let r = poly([A, D, C, B]) + poly([E, H, G, F]) + ligne(A, C) + ligne(B, D) + ligne(E, G) + ligne(H, F)
+  const c = { x: 0, y: 0 }
+  r += P0.slice(0, 8).map((q, i) => nomDehors(q, c, noms[i])).join('')
+  r += nom({ x: 17, y: -11 }, noms[8], 17)
+  return cadre(P0, r, 26)
+}
+
+// ---------- La droite des milieux ----------
+/** Un triangle, les milieux de deux côtés codés et reliés ; une longueur
+ *  écrite sur un segment (`ecrite`), et un « ? » sur un autre (`cherchee`).
+ *  Les segments : 'base' (le troisième côté), 'milieux' (le segment qui
+ *  joint les milieux). */
+export function droiteMilieux(noms: string, ecrite: { ou: 'base' | 'milieux'; t: string }, cherchee: 'base' | 'milieux', tourne = 0) {
+  let A = { x: 110, y: 20 }, B = { x: 20, y: 190 }, C = { x: 300, y: 190 }
+  ;[A, B, C] = tourner([A, B, C], { x: 140, y: 130 }, tourne)
+  const I = milieu(A, B), J = milieu(A, C), c = centre([A, B, C])
+  let r = poly([A, B, C]) + ligne(I, J, 'stroke="#1f5fbf" stroke-width="2.4"')
+  r += traits(A, I, 1) + traits(I, B, 1) + traits(A, J, 2) + traits(J, C, 2)
+  r += nomDehors(A, c, noms[0]) + nomDehors(B, c, noms[1]) + nomDehors(C, c, noms[2])
+  r += nomDehors(I, c, noms[3]) + nomDehors(J, c, noms[4])
+  // Une étiquette posée sous le segment (du côté opposé au sommet A pour la base)
+  const etiquette = (ou: 'base' | 'milieux', t: string) => {
+    const [p, q] = ou === 'base' ? [B, C] : [I, J], m = milieu(p, q), l = dist(p, q)
+    let n = { x: -(q.y - p.y) / l, y: (q.x - p.x) / l }
+    if (n.x * (A.x - m.x) + n.y * (A.y - m.y) > 0) n = { x: -n.x, y: -n.y }
+    const d = ou === 'base' ? 18 : 16
+    return texte({ x: m.x + n.x * d, y: m.y + n.y * d }, t, 'font-size="16"')
+  }
+  r += etiquette(ecrite.ou, ecrite.t) + etiquette(cherchee, '?')
+  return cadre([A, B, C], r, 32)
+}
+
 // ---------- Solides en perspective cavalière ----------
 /** Un prisme droit : sa face avant `avant` (en vraie grandeur), reculée
  *  de `d` ; les arêtes cachées en pointillés. Un cube et un pavé droit

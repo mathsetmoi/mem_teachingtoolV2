@@ -969,15 +969,20 @@ page derrière reste vide. On y choisit :
   l'espace, transformations, angles, triangles, parallélogrammes et
   polygones, probabilités, proportionnalité — 42 automatismes, plus 10
   « hors liste officielle » (priorités, conversions, moyenne…). Ceux de
-  **4e** suivent la liste « Automatismes » de 4e du programme 2026 :
-  opérations sur les nombres relatifs, nombres rationnels, puissances,
-  racine carrée, calcul littéral et algébrique, transformations (demi-tour),
-  repérage, représentation de l'espace (solides, volumes, aires),
-  parallélogrammes et translations, triangles (droites remarquables),
-  statistiques, proportionnalité — 36 automatismes, plus 7 « hors liste
-  officielle » pris dans les objectifs de l'année (relatifs × et ÷,
-  inverse, produit de fractions, développer, Pythagore, médiane et
-  étendue, programme de calcul), et 67 notions de cours ;
+  **4e** sont pensés comme la partie « Automatismes » du brevet : des
+  questions à réponse courte qui mobilisent un **automatisme** de la liste
+  de 4e du programme 2026, ou une **application directe** d'un objectif
+  d'apprentissage de 4e (une propriété, une formule, un théorème), rien de
+  3e. Ils sont rangés dans les thèmes du programme : opérations sur les
+  nombres relatifs, nombres rationnels, puissances, racine carrée, calcul
+  littéral et algébrique, transformations, repérage, représentation de
+  l'espace, parallélogrammes et translations, triangles, statistiques,
+  probabilités, proportionnalité, fonctions — 38 automatismes et 27
+  applications directes (ax + b = c, développer et réduire, image d'un
+  triangle dans la figure des 16 triangles, Pythagore et sa réciproque,
+  droite des milieux, volume du cône, moyenne pondérée, probabilités,
+  pourcentage d'évolution…), et 79 notions de cours. Chacun porte la phrase
+  du programme qu'il travaille (champ `programme`), comme au brevet ;
 - combien de questions de chaque sorte, avec − et + : par défaut **5
   questions, 2 questions de cours** (une définition, une propriété, le
   vocabulaire : « La médiatrice d'un segment est la droite… ») **puis 3
