@@ -14,7 +14,8 @@
 //    « Nouveaux exemples » pose un autre flash sur la page d'après ;
 // E. le réglage est retenu ;
 // G. un flash de 4e (thèmes de géométrie, avec figures) : 5 questions,
-//    corrigées en vert ;
+//    corrigées en vert, avec la phrase du programme en bleu sous les
+//    réponses des 3 exercices ;
 // F. aucune erreur.
 import { chromium } from '../commun/playwright.mjs'
 
@@ -126,6 +127,8 @@ const pageG = await p.evaluate(() => window.__app.page)
 await p.keyboard.press('c'); await p.waitForTimeout(800)
 const vertsG = await p.evaluate(([v, pg]) => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === v).length, [VERT, pageG])
 ok(vertsG >= 5, 'G) Un flash de 4e : 5 questions, corrigées en vert', vertsG)
+const bleusG = await p.evaluate(pg => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === '#1f5fbf').length, pageG)
+ok(bleusG >= 3, 'G) À la correction, la phrase du programme sous chaque exercice (en bleu)', bleusG)
 await p.click('.bandeau-flash .fermer').catch(() => {})
 
 // ---------- F. ----------
