@@ -196,6 +196,13 @@ describe('les automatismes de 4e', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
+  it('façon brevet : chaque exercice dit ce qu\'il travaille, et rien n\'est « hors liste »', () => {
+    for (const a of AUTOMATISMES_4E) expect(a.programme, a.id).toBeTruthy()
+    expect(themesDe(quatre)).not.toContain('Hors liste officielle')
+    expect(AUTOMATISMES_4E.filter(a => a.application).length).toBeGreaterThanOrEqual(20)
+    expect(themesDe(quatre)).toEqual(expect.arrayContaining(['Probabilités', 'Fonctions']))
+  })
+
   it('par défaut : 2 questions de cours de 4e, puis 3 exercices', () => {
     for (let k = 0; k < 50; k++) {
       const { questions } = tirerFlash(AUTOMATISMES_4E, COURS_4E, COMPOSITION_PAR_DEFAUT)
