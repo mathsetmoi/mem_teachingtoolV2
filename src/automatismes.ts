@@ -3510,6 +3510,8 @@ export interface QuestionFlash {
   theme: string
   q: Question
   forme: FormeQuestion
+  /** La phrase du programme que l'exercice travaille, s'il en a une */
+  programme?: string
 }
 
 /** Une question tirée dans un lot, en faisant passer les thèmes chacun
@@ -3552,7 +3554,7 @@ export function tirerFlash(autos: Automatisme[], lecons: QuestionCours[], c: Com
   if (!autos.length) return { questions, coursRemplaces: questions.length ? coursRemplaces : 0 }
   for (let k = 0; k < nAppli + coursRemplaces; k++) {
     const { x, q } = tirerDans(autos, pris, vus, a => a.trou && Math.random() < PART_DES_TROUS ? a.trou() : a.generer())
-    questions.push({ id: x.id, theme: x.theme, q, forme: 'application' })
+    questions.push({ id: x.id, theme: x.theme, q, forme: 'application', ...(x.programme ? { programme: x.programme } : {}) })
   }
   return { questions, coursRemplaces }
 }

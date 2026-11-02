@@ -15,7 +15,8 @@
 //    avec →) ; ou toutes d'un coup. La minuterie et le numéro de la
 //    question sont dans un bandeau, hors de la page.
 // 3. La correction (à la fin du temps, ou C) : chaque réponse s'écrit en
-//    vert sous sa question. « Nouveaux exemples » rejoue le même réglage
+//    vert sous sa question, et sous elle, en petit et en bleu, la phrase
+//    du programme que l'exercice travaille (comme au brevet). « Nouveaux exemples » rejoue le même réglage
 //    sur une nouvelle page, juste après.
 // =============================================================
 import katex from 'katex'
@@ -29,6 +30,8 @@ import { toucheQuitteLaPage } from './navigateur'
 
 const html = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
 const mmss = (s: number) => { const t = Math.max(0, Math.ceil(s - 1e-6)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}` }
+/** Le bleu de la phrase du programme, écrite sous la réponse à la correction */
+const BLEU_PHRASE = '#1f5fbf'
 /** Le vert de la correction : celui du stylo */
 const VERT = '#1e8a4c'
 const MAX_PAR_FORME = 10
@@ -442,6 +445,15 @@ export class Flash {
   }
   private hauteurReponse(it: QuestionFlash, numero: number, l: number, T: number): number {
     return this.lignesReponse(it, numero, l, T).reduce((s, t) => s + Math.max(this.mesurer(t, T).h, T * 1.2), 0)
+      + this.lignesPhrase(it, numero, l, T).reduce((s, t) => s + Math.max(this.mesurer(t, T * 0.62).h, T * 0.62 * 1.2), 0)
+  }
+  /** À la correction, sous la réponse : la phrase du programme que
+   *  l'exercice travaille, en petit et en bleu, comme au brevet (les
+   *  questions de cours n'en ont pas) */
+  private lignesPhrase(it: QuestionFlash, numero: number, l: number, T: number): string[] {
+    if (!it.programme) return []
+    const W = Math.max(T * 6, l - this.retrait(it, numero, T))
+    return this.couper(it.programme, W, T * 0.62).map(x => `\\textit{${texteEnLatex(x)}}`)
   }
 
   /** L'énoncé coupé en lignes qui tiennent dans la largeur W (les maths,
@@ -567,6 +579,10 @@ export class Flash {
       for (const t of this.lignesReponse(it, k + 1, c.l, T)) {
         this.poserFormule(f.page, t, c.x + retrait, y, T, VERT, c.groupe)
         y += Math.max(this.mesurer(t, T).h, T * 1.2)
+      }
+      for (const t of this.lignesPhrase(it, k + 1, c.l, T)) {
+        this.poserFormule(f.page, t, c.x + retrait, y, T * 0.62, BLEU_PHRASE, c.groupe)
+        y += Math.max(this.mesurer(t, T * 0.62).h, T * 0.62 * 1.2)
       }
     })
     f.corrige = true
