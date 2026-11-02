@@ -3004,11 +3004,11 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
         const p = Array.from({ length: 6 }, () => ent(5, 30) / 100), s = p.slice(0, 5).reduce((a, b) => a + b, 0)
         p[5] = arrondi(1 - s)
         if (p[5] < 0.05) continue
-        const t = tableau(['\\text{Issue}', '1', '2', '3', '4', '5', '6'], ['\\text{Probabilité}', ...p.map(nb)])
+        const t = tableau(['\\text{Issue}', '1', '2', '3', '4', '5', '6'], ['P', ...p.map(nb)])
         return choix<() => Question>([
           () => ({ enonce: `Un dé est truqué : $${t}$. Quelle est la probabilité d'obtenir un nombre pair ?`, reponse: nb(arrondi(p[1] + p[3] + p[5])) }),
           () => { const k = ent(3, 5); return { enonce: `Un dé est truqué : $${t}$. Quelle est la probabilité d'obtenir au moins $${k}$ ?`, reponse: nb(arrondi(p.slice(k - 1).reduce((a, b) => a + b, 0))) } },
-          () => ({ enonce: `Un dé est truqué : $${tableau(['\\text{Issue}', '1', '2', '3', '4', '5', '6'], ['\\text{Probabilité}', ...p.slice(0, 5).map(nb), '\\ldots'])}$. Quelle est la probabilité d'obtenir $6$ ?`, reponse: nb(p[5]) }),
+          () => ({ enonce: `Un dé est truqué : $${tableau(['\\text{Issue}', '1', '2', '3', '4', '5', '6'], ['P', ...p.slice(0, 5).map(nb), '\\ldots'])}$. Quelle est la probabilité d'obtenir $6$ ?`, reponse: nb(p[5]) }),
         ])()
       }
     },
@@ -3265,7 +3265,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
       const [[A, nA], [Ab, nAb], [B, nB], [Bb, nBb]] = choix<[string, string][]>([
         [['F', 'Filles'], ['G', 'Garçons'], ['I', 'Internes'], ['E', 'Externes']],
         [['V', 'Vaccinés'], ['N', 'Non vaccinés'], ['M', 'Malades'], ['S', 'Sains']],
-        [['L', 'Lycéens'], ['C', 'Collégiens'], ['T', 'Téléphone'], ['P', 'Pas de téléphone']],
+        [['L', 'Lycéens'], ['C', 'Collégiens'], ['T', 'Téléphone'], ['S', 'Sans téléphone']],
       ])
       const a = ent(5, 40), b = ent(5, 40), c = ent(5, 40), d = ent(5, 40), N = a + b + c + d
       // lignes : B et non B ; colonnes : A et non A
