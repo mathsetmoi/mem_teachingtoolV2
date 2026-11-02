@@ -2523,6 +2523,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   // ================= CALCUL NUMÉRIQUE ET ALGÉBRIQUE =================
   {
     id: '2nde-comparer-difference', theme: T_CALCUL, titre: 'Comparer deux nombres par leur différence',
+    programme: 'Comparer deux nombres par le calcul de leur différence.',
     generer() {
       for (;;) {
         const b = ent(3, 12), d = autreQue([3, 4, 5, 6, 7, 8, 9, 10, 11, 12], b), a = ent(1, b - 1), c = ent(1, d - 1)
@@ -2536,6 +2537,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-comparer-quotient', theme: T_CALCUL, titre: 'Comparer deux nombres positifs par leur quotient',
+    programme: 'Comparer deux nombres strictement positifs par le calcul de leur quotient.',
     generer() {
       for (;;) {
         const a = choix([2, 3, 5]), n = ent(6, 12), k = ent(1, 3), c = ent(2, 9)
@@ -2548,6 +2550,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-fractions', theme: T_CALCUL, titre: 'Opérations sur les fractions simples',
+    programme: 'Effectuer des opérations et des comparaisons entre des fractions simples.',
     generer() {
       let a: number, b: number, c: number, d: number
       do { b = ent(2, 7); d = autreQue([2, 3, 4, 5, 6, 7, 8, 9, 10], b); a = ent(1, 9); c = ent(1, 9) } while (pgcd(a, b) !== 1 || pgcd(c, d) !== 1)
@@ -2562,6 +2565,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-puissances', theme: T_CALCUL, titre: 'Opérations sur les puissances',
+    programme: 'Effectuer des opérations sur les puissances.',
     generer() {
       const a = choix(['2', '3', '5', '7', '10', 'x', 'a']), n = ent(2, 9), m = ent(2, 9)
       return choix([
@@ -2578,6 +2582,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-ecritures', theme: T_CALCUL, titre: 'Écriture décimale, fractionnaire, pourcentage',
+    programme: 'Passer d’une écriture d’un nombre à une autre (décimale, fractionnaire, pourcentage).',
     generer() {
       const [n, d] = choix<[number, number]>([[1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5], [1, 8], [3, 8], [5, 8], [7, 8], [1, 20], [3, 20], [7, 20], [9, 25], [3, 50], [1, 2], [7, 10], [9, 10]])
       const v = n / d
@@ -2596,6 +2601,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-ordre-grandeur', theme: T_CALCUL, titre: 'Estimer un ordre de grandeur',
+    programme: 'Estimer un ordre de grandeur.',
     generer() {
       const A = choix([20, 30, 40, 50, 60, 200, 300, 400, 500]), B = choix([0.2, 0.3, 0.5, 2, 3, 4, 20, 30])
       const a = arrondi(A * (1 + choix([-1, 1]) * ent(1, 4) / 100) * 10) / 10, b = arrondi(B * (1 + choix([-1, 1]) * ent(1, 4) / 100) * 100) / 100
@@ -2606,6 +2612,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-vraisemblance', theme: T_CALCUL, titre: 'S’assurer de la vraisemblance d’un résultat',
+    programme: 'S’assurer de la vraisemblance, de la cohérence d’un résultat.',
     generer() {
       const qui = choix(PRENOMS)
       return choix([
@@ -2617,6 +2624,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-conversions', theme: T_CALCUL, titre: 'Conversions d’unités',
+    programme: 'Effectuer des conversions d’unités : longueurs, aires, volumes, contenances, durées, vitesses, masses.',
     generer() {
       const sortes: (() => Question)[] = [
         () => { const v = ent(11, 99) / 10; return { enonce: `Convertir $${unite(nb(v), 'km')}$ en mètres.`, reponse: unite(nb(v * 1000), 'm') } },
@@ -2643,6 +2651,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-litteral-additif', theme: T_CALCUL, titre: 'Supprimer des parenthèses précédées d’un signe moins',
+    programme: 'Effectuer un calcul littéral élémentaire : −(a + b) = −a − b, −(a − b) = b − a.',
     generer() {
       const a = relNonNul(1, 9), b = relNonNul(1, 9), v = lettre()
       return { enonce: `Supprimer les parenthèses : $-(${polynome([a, b], v)})$`, reponse: polynome([-a, -b], v) }
@@ -2654,6 +2663,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-litteral-multiplicatif', theme: T_CALCUL, titre: 'Expressions multiplicatives et quotients',
+    programme: 'Effectuer un calcul littéral élémentaire : expressions multiplicatives et quotients.',
     generer() {
       const a = ent(2, 9), b = autreQue([2, 3, 4, 5, 7, 8, 9, 11], a), c = ent(2, 9), d = autreQue([2, 3, 5, 7, 9, 11], c), v = lettre()
       return choix([
@@ -2673,6 +2683,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-identites', theme: T_CALCUL, titre: 'Identités remarquables',
+    programme: 'Développer, factoriser : identités (a + b)², (a − b)², (a + b)(a − b).',
     generer() {
       let a: number, b: number
       do { a = ent(1, 3); b = ent(1, 9) } while (pgcd(a, b) !== 1)
@@ -2693,6 +2704,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-factoriser', theme: T_CALCUL, titre: 'Factoriser par un facteur commun',
+    programme: 'Factoriser ax² + bx, ax + bx.',
     generer() {
       for (;;) {
         const k = ent(1, 6), a = ent(1, 7), b = relNonNul(1, 7), v = choix(['x', 'x', 'a', 't'])
@@ -2708,6 +2720,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-equations', theme: T_CALCUL, titre: 'Résoudre une équation ou une inéquation',
+    programme: 'Résoudre une équation du type x² = a, ax + b = cx + d ou a/x = b, ou une inéquation du premier degré.',
     generer() {
       const sortes: (() => Question)[] = [
         () => { const r = ent(1, 12); return { enonce: `Résoudre : $x^2 = ${r * r}$`, reponse: ensemble([`-${r}`, `${r}`]) } },
@@ -2732,6 +2745,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-isoler', theme: T_CALCUL, titre: 'Isoler une variable dans une formule',
+    programme: 'Isoler une variable dans une égalité qui en comporte plusieurs.',
     generer() {
       const formules: [string, string, string][] = [
         ['U = R \\times I', 'I', 'I = \\frac{U}{R}'], ['U = R \\times I', 'R', 'R = \\frac{U}{I}'],
@@ -2750,6 +2764,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-application-numerique', theme: T_CALCUL, titre: 'Application numérique d’une formule',
+    programme: 'Effectuer une application numérique d’une formule.',
     generer() {
       return choix<() => Question>([
         () => { const v = ent(2, 12) * 10, t = choix([0.5, 1.5, 2, 2.5, 3]); return { enonce: `Avec $v = \\frac{d}{t}$, calculer $v$ pour $d = ${unite(nb(v * t), 'km')}$ et $t = ${unite(nb(t), 'h')}$.`, reponse: `${nb(v)}\\text{ km/h}` } },
@@ -2764,6 +2779,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   // ================= PROPORTIONS ET POURCENTAGES =================
   {
     id: '2nde-proportion', theme: T_PROPORTIONS, titre: 'Calculer et écrire une proportion',
+    programme: 'Calculer, appliquer, exprimer une proportion sous différentes formes (décimale, fractionnaire, pourcentage).',
     generer() {
       const { lieu, gens, N, p, n } = populationEtPart([5, 10, 15, 20, 25, 30, 35, 40, 45, 60, 75])
       const debut = `Dans ${lieu} de $${grandNb(N)}$ ${gens}, $${grandNb(n)}$ ${choix(CARACTERES)}.`
@@ -2776,6 +2792,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-partie-tout', theme: T_PROPORTIONS, titre: 'Une partie connaissant le tout, le tout connaissant une partie',
+    programme: 'Utiliser une proportion pour calculer une partie connaissant le tout, ou le tout connaissant une partie.',
     generer() {
       const { lieu, gens, N, p, n } = populationEtPart([5, 10, 15, 20, 25, 30, 40, 60, 75]), car = choix(CARACTERES)
       return Math.random() < 0.5
@@ -2790,6 +2807,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   // ================= ÉVOLUTIONS ET VARIATIONS =================
   {
     id: '2nde-coefficient-multiplicateur', theme: T_EVOLUTIONS, titre: 'Formulation additive et multiplicative',
+    programme: 'Passer d’une formulation additive (« augmenter de 5 % ») à une formulation multiplicative (« multiplier par 1,05 »).',
     generer() {
       const t = choix([1, 2, 3, 4, 5, 7, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 100, 150])
       const [quoi, le, il] = choix([['un prix', 'le', 'il'], ['une population', 'la', 'elle'], ['un salaire', 'le', 'il'], ['une quantité', 'la', 'elle']])
@@ -2806,6 +2824,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   // ================= FONCTIONS ET REPRÉSENTATIONS =================
   {
     id: '2nde-image-antecedent', theme: T_FONCTIONS, titre: 'Lire graphiquement images et antécédents',
+    programme: 'Déterminer graphiquement des images et des antécédents.',
     generer() {
       for (;;) {
         const p = noeudsAuHasard(), f = choix(NOMS_FONCTIONS), figure = F.courbeFonction(p, f)
@@ -2822,6 +2841,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-equation-courbe', theme: T_FONCTIONS, titre: 'Exploiter l’équation d’une courbe',
+    programme: 'Exploiter une équation de courbe (appartenance d’un point, calcul de coordonnées).',
     generer() {
       const P = pt(), a = relNonNul(1, 4), b = relNonNul(1, 9), x = relNonNul(1, 4)
       return choix<() => Question>([
@@ -2834,6 +2854,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-lineaire-affine', theme: T_FONCTIONS, titre: 'Reconnaître une fonction linéaire, affine',
+    programme: 'Reconnaître l’expression d’une fonction linéaire, d’une fonction affine.',
     generer() {
       const sortes: [string, () => string][] = [
         ['lineaire', () => polynome([relNonNul(1, 9), 0])], ['lineaire', () => `\\frac{x}{${ent(2, 9)}}`],
@@ -2855,6 +2876,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   // ================= STATISTIQUES =================
   {
     id: '2nde-diagramme-barres', theme: T_STATS, titre: 'Lire un diagramme en barres',
+    programme: 'Lire et commenter des graphiques usuels : diagramme en barres.',
     generer() {
       const [etiquettes, question] = choix<[string[], (e: string) => string]>([
         [['8', '10', '12', '14', '16'], e => `combien d'élèves ont eu la note $${e}$`],
@@ -2870,6 +2892,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-diagramme-circulaire', theme: T_STATS, titre: 'Lire un diagramme circulaire ou semi-circulaire',
+    programme: 'Lire et commenter des graphiques usuels : diagramme circulaire, semi-circulaire.',
     generer() {
       for (;;) {
         const noms = melange(['Bus', 'Vélo', 'À pied', 'Voiture', 'Train']).slice(0, ent(3, 4)), demi = Math.random() < 0.4
@@ -2887,6 +2910,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-courbe-nuage', theme: T_STATS, titre: 'Lire une courbe ou un nuage de points',
+    programme: 'Lire et commenter des graphiques usuels : courbe, nuage de points.',
     generer() {
       const [quoi, debut, pasY] = choix<[string, number, number]>([['la température (en °C) relevée chaque heure à partir de $8$ h', 8, 2], ['la taille (en cm) d\'une plante, jour après jour à partir du jour $1$', 1, 1], ['le nombre de visiteurs (en centaines) d\'un musée chaque mois à partir du mois $1$', 1, 1]])
       const n = ent(6, 8), v: number[] = []
@@ -2900,6 +2924,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-indicateurs', theme: T_STATS, titre: 'Moyenne, médiane, quartiles',
+    programme: 'Calculer et interpréter des indicateurs statistiques (moyenne, médiane, quartiles).',
     generer() {
       return choix<() => Question>([
         () => { for (;;) { const m = ent(8, 15), v = Array.from({ length: 4 }, () => ent(4, 19)), d = 5 * m - v.reduce((s, x) => s + x, 0); if (d < 0 || d > 20) continue; const t = melange([...v, d]); return { enonce: `Calculer la moyenne de la série : $${t.join('\\,;\\,')}$`, reponse: nb(m) } } },
@@ -2923,6 +2948,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-boites', theme: T_STATS, titre: 'Lire et comparer des boîtes à moustaches',
+    programme: 'Comparer des distributions à l’aide de boîtes à moustaches.',
     generer() {
       const pas = choix([1, 2, 5]), boite = (): [number, number, number, number, number] => {
         const v = melange(Array.from({ length: 14 }, (_, i) => i + 1)).slice(0, 5).sort((a, b) => a - b)
@@ -2943,6 +2969,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   // ================= PROBABILITÉS =================
   {
     id: '2nde-proba-0-1', theme: T_PROBAS, titre: 'Une probabilité est un nombre entre 0 et 1',
+    programme: 'Savoir qu’une probabilité est un nombre entre 0 et 1.',
     generer() {
       for (;;) {
         const candidats: [string, boolean][] = melange<[string, boolean]>([
@@ -2957,6 +2984,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-proba-contraire', theme: T_PROBAS, titre: 'La probabilité de l’évènement contraire',
+    programme: 'Savoir calculer la probabilité de l’événement contraire.',
     generer() {
       const E = choix(['A', 'B', 'E', 'R', 'G'])
       return Math.random() < 0.6
@@ -2970,6 +2998,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-proba-somme', theme: T_PROBAS, titre: 'Probabilité d’un évènement : somme des issues',
+    programme: 'Calculer la probabilité d’un événement comme somme des probabilités des issues qui le composent.',
     generer() {
       for (;;) {
         const p = Array.from({ length: 6 }, () => ent(5, 30) / 100), s = p.slice(0, 5).reduce((a, b) => a + b, 0)
@@ -2986,6 +3015,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   {
     id: '2nde-equiprobabilite', theme: T_PROBAS, titre: 'Équiprobabilité : favorables sur possibles',
+    programme: 'Utiliser la relation P(A) = Card(A)/Card(Ω) dans le cas de l’équiprobabilité.',
     generer() {
       return choix<() => Question>([
         () => { const r = ent(1, 9), b = ent(1, 9), v = ent(1, 9), [c, nc] = choix<[string, number]>([['rouge', r], ['bleue', b], ['verte', v]]); return { enonce: `Une urne contient $${r}$ boules rouges, $${b}$ bleues et $${v}$ vertes, indiscernables au toucher. On en tire une au hasard. Quelle est la probabilité qu'elle soit ${c} ?`, reponse: fracDec(nc, r + b + v) } },
@@ -3003,6 +3033,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   // ================= CALCUL NUMÉRIQUE ET ALGÉBRIQUE =================
   {
     id: '1re-produit-nul', theme: T_CALCUL, titre: 'Résoudre une équation produit nul',
+    programme: 'Déterminer les solutions d’une équation produit nul.',
     generer() {
       for (;;) {
         const a = ent(1, 5), b = relNonNul(1, 9), c = ent(1, 5), d = relNonNul(1, 9)
@@ -3016,6 +3047,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-signe-affine', theme: T_CALCUL, titre: 'Signe d’une expression du premier degré',
+    programme: 'Déterminer le signe d’une expression du premier degré.',
     generer() {
       const a = relNonNul(1, 6), r = ent(-6, 6), b = -a * r, s = choix(['>', '<', '\\geqslant', '\\leqslant'])
       // ax + b > 0 : x > r si a > 0
@@ -3029,6 +3061,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-signe-produit', theme: T_CALCUL, titre: 'Signe d’une expression factorisée du second degré',
+    programme: 'Déterminer le signe d’une expression factorisée du second degré.',
     generer() {
       for (;;) {
         const a = ent(-6, 6), b = ent(-6, 6)
@@ -3044,6 +3077,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-developper-reduire', theme: T_CALCUL, titre: 'Développer, factoriser, réduire',
+    programme: 'Développer, factoriser, réduire une expression algébrique simple.',
     generer() {
       const a = ent(1, 5), b = relNonNul(1, 9), c = ent(1, 5), d = relNonNul(1, 9)
       return choix<() => Question>([
@@ -3066,6 +3100,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   // ================= ÉVOLUTIONS ET VARIATIONS =================
   {
     id: '1re-appliquer-taux', theme: T_EVOLUTIONS, titre: 'Appliquer un taux : valeur finale ou initiale',
+    programme: 'Appliquer un taux d’évolution pour calculer une valeur finale ou initiale.',
     generer() {
       const t = choix([5, 10, 15, 20, 25, 30, 40, 50]), baisse = Math.random() < 0.5, V0 = 20 * ent(2, 20), c = baisse ? 1 - t / 100 : 1 + t / 100, V1 = arrondi(V0 * c)
       const [quoi, u] = choix<[string, string]>([['Un prix', '€'], ['Un loyer', '€'], ['Une population', 'habitants']])
@@ -3076,6 +3111,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-calculer-taux', theme: T_EVOLUTIONS, titre: 'Calculer un taux d’évolution',
+    programme: 'Calculer un taux d’évolution, l’exprimer en pourcentage.',
     generer() {
       const t = choix([-50, -40, -25, -20, -10, -5, 5, 10, 15, 20, 25, 30, 50, 75, 100, 150]), V0 = 20 * ent(1, 25), V1 = arrondi(V0 * (1 + t / 100))
       const quoi = choix(['Un prix passe', 'Le nombre d\'abonnés passe', 'Une production passe'])
@@ -3084,6 +3120,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-taux-successifs', theme: T_EVOLUTIONS, titre: 'Évolutions successives',
+    programme: 'Calculer le taux d’évolution équivalent à plusieurs évolutions successives.',
     generer() {
       const t1 = choix([-50, -20, -10, 10, 20, 25, 50, 100]), t2 = choix([-50, -20, -10, 10, 20, 30, 50])
       const g = arrondi(((1 + t1 / 100) * (1 + t2 / 100) - 1) * 100)
@@ -3093,6 +3130,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-taux-reciproque', theme: T_EVOLUTIONS, titre: 'Taux d’évolution réciproque',
+    programme: 'Calculer un taux d’évolution réciproque.',
     generer() {
       const [t, r] = choix<[number, number]>([[25, -20], [100, -50], [60, -37.5], [150, -60], [300, -75], [-20, 25], [-50, 100], [-60, 150], [-75, 300], [-37.5, 60], [-80, 400], [400, -80]])
       const quoi = choix(['un prix', 'une population', 'un tarif'])
@@ -3103,6 +3141,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   // ================= FONCTIONS ET REPRÉSENTATIONS =================
   {
     id: '1re-resoudre-graphique', theme: T_FONCTIONS, titre: 'Résoudre graphiquement f(x) = k, f(x) < k…',
+    programme: 'Résoudre graphiquement une équation, une inéquation du type f(x) = k, f(x) < k.',
     generer() {
       for (;;) {
         const p = noeudsAuHasard(), f = choix(NOMS_FONCTIONS)
@@ -3116,6 +3155,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-signe-variations', theme: T_FONCTIONS, titre: 'Signe et variations lus sur une courbe',
+    programme: 'Déterminer graphiquement le signe d’une fonction ou son tableau de variations.',
     generer() {
       for (;;) {
         const p = noeudsAuHasard(), f = choix(NOMS_FONCTIONS), figure = F.courbeFonction(p, f)
@@ -3138,6 +3178,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-tracer-droite', theme: T_FONCTIONS, titre: 'Tracer une droite : deux de ses points',
+    programme: 'Tracer une droite donnée par son équation réduite ou par un point et son coefficient directeur.',
     generer() {
       const m = relNonNul(1, 4), p = ent(-5, 5)
       if (Math.random() < 0.5) {
@@ -3150,6 +3191,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-lire-equation', theme: T_FONCTIONS, titre: 'Lire l’équation réduite d’une droite',
+    programme: 'Lire graphiquement l’équation réduite d’une droite.',
     generer() {
       for (;;) {
         const [n, d] = choix<[number, number]>([[1, 1], [2, 1], [3, 1], [-1, 1], [-2, 1], [-3, 1], [1, 2], [-1, 2], [3, 2], [-3, 2], [2, 3], [-2, 3], [1, 3], [-1, 3], [0, 1]])
@@ -3164,6 +3206,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-coefficient-directeur', theme: T_FONCTIONS, titre: 'Coefficient directeur à partir de deux points',
+    programme: 'Déterminer le coefficient directeur d’une droite à partir des coordonnées de deux de ses points.',
     generer() {
       for (;;) {
         const [A, B] = pts(2), xa = ent(-6, 6), xb = ent(-6, 6), ya = ent(-8, 8), yb = ent(-8, 8)
@@ -3175,6 +3218,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   // ================= STATISTIQUES =================
   {
     id: '1re-lire-echelle', theme: T_STATS, titre: 'Lire un graphique : origine, unités, échelles',
+    programme: 'Lire un graphique (repérer l’origine du repère, les unités de graduations ou les échelles).',
     generer() {
       const [quoi, pasY] = choix<[string, number]>([
         ['le chiffre d\'affaires (en milliers d\'euros) d\'une entreprise', choix([0.5, 5, 10, 20])],
@@ -3192,6 +3236,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-graphique-donnees', theme: T_STATS, titre: 'Passer du graphique aux données et inversement',
+    programme: 'Passer du graphique aux données et vice-versa.',
     generer() {
       return choix<() => Question>([
         () => { const p = 5 * ent(1, 18); return { enonce: `Dans un diagramme circulaire, quel angle représente une part de $${pct(p)}$ ?`, reponse: deg(arrondi(p * 3.6)) } },
@@ -3203,6 +3248,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-indicateurs', theme: T_STATS, titre: 'Calculer et interpréter des indicateurs',
+    programme: 'Calculer et interpréter des indicateurs statistiques pour une série statistique.',
     generer() {
       return choix<() => Question>([
         () => { const m = ent(8, 15) + choix([0, 0.5]), k = ent(1, 4); return Math.random() < 0.5 ? { enonce: `La moyenne d'une série est $${nb(m)}$. On ajoute $${k}$ à chaque valeur. Quelle est la nouvelle moyenne ?`, reponse: nb(m + k) } : { enonce: `La moyenne d'une série est $${nb(m)}$. On multiplie chaque valeur par $${k + 1}$. Quelle est la nouvelle moyenne ?`, reponse: nb(m * (k + 1)) } },
@@ -3214,6 +3260,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   // ================= PROBABILITÉS =================
   {
     id: '1re-tableau-croise', theme: T_PROBAS, titre: 'Probabilités conditionnelles : tableau croisé',
+    programme: 'Calculer des probabilités conditionnelles (tableau croisé d’effectifs).',
     generer() {
       const [[A, nA], [Ab, nAb], [B, nB], [Bb, nBb]] = choix<[string, string][]>([
         [['F', 'Filles'], ['G', 'Garçons'], ['I', 'Internes'], ['E', 'Externes']],
@@ -3229,6 +3276,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-arbre', theme: T_PROBAS, titre: 'Probabilités conditionnelles : arbre pondéré',
+    programme: 'Calculer des probabilités conditionnelles (arbre pondéré).',
     generer() {
       const [A, B] = choix([['A', 'B'], ['M', 'T'], ['F', 'R'], ['C', 'D']])
       const p = ent(1, 9) / 10, q = ent(1, 9) / 10, r = ent(1, 9) / 10
@@ -3239,6 +3287,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   {
     id: '1re-distinguer', theme: T_PROBAS, titre: 'Distinguer P(A ∩ B), P_A(B) et P_B(A)',
+    programme: 'Distinguer P(A ∩ B), P_A(B), P_B(A).',
     generer() {
       const [A, nA, B, nB] = choix([['F', 'filles', 'I', 'internes'], ['M', 'malades', 'T', 'testés positifs'], ['S', 'sportifs', 'L', 'lecteurs'], ['C', 'clients fidèles', 'R', 'clients ayant une réduction']])
       const t = 5 * ent(2, 18), x = nb(t / 100)

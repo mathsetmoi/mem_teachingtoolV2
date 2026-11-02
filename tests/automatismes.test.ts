@@ -258,6 +258,10 @@ describe('les automatismes de 2nde et de 1re (épreuve anticipée)', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
+  it('chaque exercice porte la phrase de la liste officielle qu\'il travaille', () => {
+    for (const [, autos] of lycee) for (const a of autos) expect(a.programme, a.id).toMatch(/^[A-ZÉ].*\.$/)
+  })
+
   it('les thèmes suivent la liste officielle, dans son ordre', () => {
     const ordre = ['Calcul numérique et algébrique', 'Proportions et pourcentages', 'Évolutions et variations', 'Fonctions et représentations', 'Statistiques', 'Probabilités']
     expect(themesDe(NIVEAUX.find(x => x.id === '2nde')!)).toEqual(ordre)
