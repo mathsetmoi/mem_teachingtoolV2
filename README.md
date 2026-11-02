@@ -963,12 +963,19 @@ page derrière reste vide. On y choisit :
 - un ou plusieurs **niveaux** (5e, 4e, 2nde et 1re aujourd'hui ; 3e est
   marqué « bientôt ») ;
 - un ou plusieurs **thèmes** de chaque niveau (« tout cocher » prend tout le
-  niveau). Les automatismes de 5e suivent la **liste officielle**, rangés par
-  thème : opérations, nombres relatifs, nombres rationnels (fractions,
-  pourcentages), puissances et calcul littéral, repérage, représentation de
-  l'espace, transformations, angles, triangles, parallélogrammes et
-  polygones, probabilités, proportionnalité — 42 automatismes, plus 10
-  « hors liste officielle » (priorités, conversions, moyenne…). Ceux de
+  niveau). Ceux de **5e** sont pensés comme la partie « Automatismes » du
+  brevet : des questions à réponse courte qui mobilisent un **automatisme**
+  de la liste de 5e du programme 2026, ou une **application directe** d'un
+  objectif d'apprentissage de 5e, rien de 4e. Ils sont rangés dans les
+  thèmes du programme : opérations, nombres relatifs, nombres rationnels,
+  puissances, calcul littéral et algébrique, repérage, représentation de
+  l'espace, transformations, angles, triangles, parallélogrammes,
+  statistiques, probabilités, proportionnalité — 42 automatismes et 42
+  applications directes (distributivité, diviser par un décimal, programme
+  de calcul, fractions de dénominateurs quelconques, carré et cube,
+  équations, volumes et capacités, aire du disque, demi-tour, angles et
+  parallèles, aire du triangle et du parallélogramme, fréquences, échelle,
+  vitesse…), et 86 notions de cours. Ceux de
   **4e** sont pensés comme la partie « Automatismes » du brevet : des
   questions à réponse courte qui mobilisent un **automatisme** de la liste
   de 4e du programme 2026, ou une **application directe** d'un objectif
@@ -1032,7 +1039,7 @@ juste après. Il n'y a ni bilan, ni suivi de la classe.
 
 Chaque automatisme est un générateur (`src/automatismes.ts`) : les valeurs sont
 tirées au hasard (pour la divisibilité, le nombre et aussi les trois
-diviseurs proposés). Les questions de cours (`COURS_5E`, 79 notions, quatre à
+diviseurs proposés). Les questions de cours (`COURS_5E`, 86 notions, quatre à
 neuf par thème) se posent chacune de plusieurs façons — une question, une
 phrase à compléter, la notion dans l'autre sens — et **rien n'y est fixe** :
 chaque façon tire au hasard ses nombres, les noms des points (triangle MNP,
