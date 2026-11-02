@@ -127,10 +127,12 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   // ================= OPÉRATIONS =================
   {
     id: 'divisibilite-2-5-10', theme: 'Opérations', titre: 'Divisibilité par 2, 3, 5, 9 et 10',
+    programme: 'Mobiliser les critères de divisibilité par 2, 5 et 10 ; connaître ceux par 3 et par 9.',
     generer() { return divisiblePar([2, 3, 5, 9, 10]) },
   },
   {
     id: 'division-euclidienne', theme: 'Opérations', titre: 'Quotient et reste d’une division euclidienne',
+    programme: 'Déterminer le quotient et le reste dans une division euclidienne : 17 = 3 × 5 + 2.',
     generer() {
       const b = ent(3, 9), q = ent(3, 15), r = ent(1, b - 1), a = b * q + r
       const qr = (x: number, y: number) => `q = ${x} \\text{ et } r = ${y}`
@@ -140,6 +142,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'factoriser-tables', theme: 'Opérations', titre: 'Factoriser un entier avec les tables',
+    programme: 'Utiliser les tables pour factoriser des entiers : 21 = 3 × 7.',
     generer() {
       const a = ent(2, 9), b = ent(2, 9), N = a * b
       return { enonce: `Compléter : $${N} = ${a} \\times \\ldots$`, reponse: nb(b), faux: fausses(nb(b), [nb(b + 1), nb(b - 1), nb(N - a)], autour(b)) }
@@ -147,6 +150,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'produit-derive', theme: 'Opérations', titre: 'Produits dérivés des tables',
+    programme: 'Calculer des produits en lien avec les tables : 0,6 × 7 ; 40 × 0,03.',
     generer() {
       const a = ent(2, 9), b = ent(2, 9)
       let e1: number, e2: number
@@ -157,6 +161,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'decimal-fois-10', theme: 'Opérations', titre: 'Multiplier un décimal par 10, 100 ou 1 000',
+    programme: 'Multiplier et diviser par 10, 100, 1 000.',
     generer() {
       const x = ent(11, 999) / choix([10, 100]), k = choix([10, 100, 1000]), v = x * k
       // L'erreur classique : « on ajoute des zéros » derrière la virgule
@@ -166,6 +171,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'decimal-divise-10', theme: 'Opérations', titre: 'Diviser un décimal par 10, 100 ou 1 000',
+    programme: 'Multiplier et diviser par 10, 100, 1 000.',
     generer() {
       const x = choix([ent(11, 999) / 10, ent(2, 9999)]), k = choix([10, 100, 1000]), v = x / k
       return { enonce: `Calculer : $${nb(x)} \\div ${k === 1000 ? '1\\,000' : k}$`, reponse: nb(v), faux: fausses(nb(v), [nb(v * 10), nb(v / 10), nb(x * k), nb(v * 100)]) }
@@ -173,6 +179,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'decimaux-addition', theme: 'Opérations', titre: 'Additionner des décimaux',
+    programme: 'Additionner et soustraire des décimaux : 2,7 + 1,4 ; 3,4 – 0,8.',
     generer() {
       let a: number, b: number
       do { a = ent(11, 99) / 10; b = ent(101, 999) / 100 } while (Number.isInteger(a) || Number.isInteger(b * 10))
@@ -186,6 +193,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'decimaux-soustraction', theme: 'Opérations', titre: 'Soustraire des décimaux',
+    programme: 'Additionner et soustraire des décimaux : 2,7 + 1,4 ; 3,4 – 0,8.',
     generer() {
       let a: number, b: number
       do { a = ent(21, 199) / 10; b = ent(101, 999) / 100 } while (b >= a)
@@ -195,16 +203,139 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'tables', theme: 'Opérations', titre: 'Tables de multiplication',
+    programme: 'Entretenir la connaissance et l’utilisation des tables de multiplication.',
     generer() {
       const a = ent(2, 10), b = ent(2, 10), v = a * b
       if (Math.random() < 0.3) return { enonce: `Compléter : $${a} \\times \\ldots = ${v}$`, reponse: nb(b), faux: fausses(nb(b), [nb(b + 1), nb(b - 1), nb(v - a)], autour(b)) }
       return { enonce: `Calculer : $${a} \\times ${b}$`, reponse: nb(v), faux: fausses(nb(v), [nb(a * (b + 1)), nb(a * (b - 1)), nb((a + 1) * b), nb(v + 2)], autour(v)) }
     },
   },
+  {
+    id: 'priorites', theme: 'Opérations', titre: 'Priorités opératoires',
+    programme: 'Connaître et utiliser les priorités opératoires.', application: true,
+    generer() {
+      const a = ent(2, 12), b = ent(2, 9), c = ent(2, 9)
+      const forme = ent(0, 3)
+      let e: string, v: number, gauche: number
+      if (forme === 0) { e = `${a} + ${b} \\times ${c}`; v = a + b * c; gauche = (a + b) * c }
+      else if (forme === 1) { const a2 = b * c + ent(1, 20); e = `${a2} - ${b} \\times ${c}`; v = a2 - b * c; gauche = (a2 - b) * c }
+      else if (forme === 2) { e = `(${a} + ${b}) \\times ${c}`; v = (a + b) * c; gauche = a + b * c }
+      else {
+        const q = ent(2, 9); const d = q * c; e = `${a} + ${d} \\div ${c}`; v = a + q
+        // De gauche à droite, (a + d) ÷ c — sinon l'oubli de la division
+        gauche = (a + d) % c === 0 ? (a + d) / c : a + d
+      }
+      return { enonce: `Calculer : $${e}$`, reponse: nb(v), faux: fausses(nb(v), [nb(gauche), nb(v + c), nb(v - 1)], autour(v)) }
+    },
+  },
+  {
+    id: 'distributivite-numerique', theme: 'Opérations', titre: 'La distributivité pour calculer',
+    programme: 'Connaître et utiliser la distributivité simple sur des exemples numériques.', application: true,
+    generer() {
+      const k = ent(3, 9), sorte = ent(0, 2)
+      if (sorte === 0) {
+        // k × 99, k × 101, k × 19… : (100 − 1), (100 + 1), (20 − 1)
+        const n = choix([99, 101, 19, 21, 49, 51, 98, 102, 999])
+        return { enonce: `Calculer astucieusement : $${k} \\times ${n}$`, reponse: nb(k * n) }
+      }
+      if (sorte === 1) {
+        const a = ent(11, 49), b = 100 - a
+        return { enonce: `Calculer astucieusement : $${k} \\times ${a} + ${k} \\times ${b}$`, reponse: nb(k * 100) }
+      }
+      const a = choix([10, 20, 100]), b = ent(2, 9)
+      return { enonce: `Calculer astucieusement : $${k} \\times ${a + b}$`, reponse: nb(k * (a + b)) }
+    },
+    trou() {
+      const k = ent(3, 9), a = choix([10, 20, 100]), b = ent(2, 9)
+      return unTrou('', [
+        [`$${k} \\times (${a} + ${b}) = ${k} \\times ${a} + ${k} \\times \\ldots$`, nb(b)],
+        [`$${k} \\times (${a} + ${b}) = \\ldots \\times ${a} + ${k} \\times ${b}$`, nb(k)],
+        [`$${k} \\times ${a} + ${k} \\times ${b} = ${k} \\times (\\ldots + ${b})$`, nb(a)],
+      ])
+    },
+  },
+  {
+    id: 'diviser-decimal', theme: 'Opérations', titre: 'Diviser par un nombre décimal',
+    programme: 'Diviser par un nombre décimal.', application: true,
+    generer() {
+      // a ÷ 0,b avec un quotient entier : on multiplie les deux par 10 (ou 100)
+      const d = choix([0.2, 0.4, 0.5, 0.6, 0.8, 0.3, 0.7, 1.2, 2.5, 0.25, 0.05]), q = ent(2, 12), a = arrondi(d * q)
+      return { enonce: `Calculer : $${nb(a)} \\div ${nb(d)}$`, reponse: nb(q) }
+    },
+    trou() {
+      const d = choix([0.2, 0.4, 0.5, 0.6, 0.8, 0.3, 0.7, 1.2, 2.5]), q = ent(2, 12), a = arrondi(d * q)
+      const k = Number.isInteger(arrondi(d * 10)) ? 10 : 100
+      return unTrou('', [[`$${nb(a)} \\div ${nb(d)} = ${nb(arrondi(a * k))} \\div \\ldots$`, nb(arrondi(d * k))], [`$${nb(a)} \\div ${nb(d)} = \\ldots$`, nb(q)]])
+    },
+  },
+  {
+    id: 'programme-calcul', theme: 'Opérations', titre: 'Un programme de calcul en une seule expression',
+    programme: 'Traduire un programme de calcul en une seule expression, avec ou sans parenthèses.', application: true,
+    generer() {
+      const x = ent(2, 12), a = ent(2, 9), b = ent(2, 9)
+      const [etapes, expr, v] = choix<[string, string, number]>([
+        [`ajouter $${a}$, puis multiplier par $${b}$`, `(${x} + ${a}) \\times ${b}`, (x + a) * b],
+        [`multiplier par $${b}$, puis ajouter $${a}$`, `${x} \\times ${b} + ${a}`, x * b + a],
+        [`retrancher $${Math.min(a, x - 1)}$, puis multiplier par $${b}$`, `(${x} - ${Math.min(a, x - 1)}) \\times ${b}`, (x - Math.min(a, x - 1)) * b],
+        [`multiplier par $${b}$, puis retrancher $${a}$`, `${x} \\times ${b} - ${a}`, x * b - a],
+      ])
+      return Math.random() < 0.5
+        ? { enonce: `Programme : choisir un nombre, ${etapes}. Écrire en une seule expression le calcul fait avec $${x}$.`, reponse: expr }
+        : { enonce: `Programme : choisir un nombre, ${etapes}. Quel résultat obtient-on avec $${x}$ ?`, reponse: nb(v) }
+    },
+  },
+  {
+    id: 'multiples-diviseurs', theme: 'Opérations', titre: 'Multiples et diviseurs',
+    programme: 'Utiliser les notions de multiples et diviseurs.', application: true,
+    generer() {
+      const sorte = ent(0, 2)
+      if (sorte === 0) {
+        const k = ent(3, 12), n = ent(20, 90), v = (Math.floor(n / k) + 1) * k
+        return { enonce: `Quel est le plus petit multiple de $${k}$ strictement supérieur à $${n}$ ?`, reponse: nb(v) }
+      }
+      if (sorte === 1) {
+        const k = ent(3, 12), n = ent(30, 99), v = Math.floor(n / k) * k
+        return { enonce: `Quel est le plus grand multiple de $${k}$ inférieur ou égal à $${n}$ ?`, reponse: nb(v) }
+      }
+      // Tous les diviseurs d'un petit nombre
+      const N = choix([12, 15, 16, 18, 20, 21, 24, 28, 30, 36]), d = Array.from({ length: N }, (_, i) => i + 1).filter(i => N % i === 0)
+      return { enonce: `Combien le nombre $${N}$ a-t-il de diviseurs ?`, reponse: mot(`$${d.length}$ : ${d.map(x => `$${x}$`).join(', ')}`) }
+    },
+  },
 
   // ================= NOMBRES RELATIFS =================
   {
+    id: 'addition-trou', theme: 'Nombres relatifs', titre: 'Une addition à trou, par une soustraction',
+    programme: 'Pour compléter une addition à trou, on utilise une soustraction : 2 + … = 7 se complète en calculant 7 – 2.',
+    generer() {
+      const a = ent(11, 99) / choix([1, 10]), b = arrondi(a + ent(11, 199) / choix([1, 10]))
+      return Math.random() < 0.5
+        ? { enonce: `Compléter : $${nb(a)} + \\ldots = ${nb(b)}$`, reponse: nb(arrondi(b - a)) }
+        : { enonce: `Quelle soustraction donne le nombre manquant dans $${nb(a)} + \\ldots = ${nb(b)}$ ?`, reponse: `${nb(b)} - ${nb(a)}` }
+    },
+    trou() {
+      const a = ent(11, 99) / choix([1, 10]), b = arrondi(a + ent(11, 199) / choix([1, 10]))
+      return unTrou('', [[`$${nb(a)} + \\ldots = ${nb(b)}$`, nb(arrondi(b - a))], [`$\\ldots + ${nb(a)} = ${nb(b)}$`, nb(arrondi(b - a))]])
+    },
+  },
+  {
+    id: 'decimaux-produit', theme: 'Nombres relatifs', titre: 'Multiplier des décimaux',
+    programme: 'Additionner, soustraire, multiplier des nombres décimaux à une ou deux décimales.',
+    generer() {
+      // Deux facteurs de 1 ou 2 chiffres significatifs, avec 1 ou 2 décimales en tout
+      const a = ent(2, 9) / 10 + choix([0, 0, ent(1, 4)]), b = choix([ent(2, 9), ent(2, 9) / 10, ent(11, 15) / 10])
+      const v = arrondi(a * b)
+      return { enonce: `Calculer : $${nb(arrondi(a))} \\times ${nb(b)}$`, reponse: nb(v) }
+    },
+    trou() {
+      const a = ent(2, 9), b = ent(2, 9)
+      const x = nb(a / 10), y = nb(b / 10), v = nb(arrondi(a * b / 100))
+      return unTrou('', [[`$${x} \\times \\ldots = ${v}$`, y], [`$${x} \\times ${y} = \\ldots$`, v]])
+    },
+  },
+  {
     id: 'relatifs-addsub', theme: 'Nombres relatifs', titre: 'Additionner et soustraire des relatifs',
+    programme: 'Additionner et soustraire deux nombres décimaux relatifs.', application: true,
     generer() {
       const tirer = () => (Math.random() < 0.3 ? ent(1, 99) / 10 : ent(1, 15)) * choix([-1, 1])
       const a = tirer(), b = tirer(), plus = Math.random() < 0.5
@@ -214,25 +345,65 @@ export const AUTOMATISMES_5E: Automatisme[] = [
     },
   },
   {
-    id: 'relatifs-produit', theme: 'Nombres relatifs', titre: 'Multiplier des relatifs',
+    id: 'relatifs-comparer', theme: 'Nombres relatifs', titre: 'Comparer des relatifs',
+    programme: 'Comparer et ranger des nombres décimaux relatifs.', application: true,
     generer() {
-      const a = ent(1, 10) * choix([-1, 1]), b = (Math.random() < 0.25 ? choix([0.5, 0.2, 1.5]) : ent(1, 10)) * choix([-1, 1])
-      const v = arrondi(a * b)
-      return { enonce: `Calculer : $${rel(a)} \\times ${rel(b)}$`, reponse: nb(v), faux: fausses(nb(v), [nb(-v), nb(arrondi(a + b)), nb(arrondi(-(Math.abs(a) + Math.abs(b))))], autour(v)) }
+      const t = new Set<number>()
+      while (t.size < 4) t.add(ent(-12, 12) + choix([0, 0, 0.5]))
+      const l = [...t], plusPetit = Math.min(...l)
+      return { enonce: `Quel est le plus petit de ces nombres : $${l.map(nb).join(' \\; ; \\; ')}$ ?`, reponse: nb(plusPetit),
+        faux: l.filter(x => x !== plusPetit).map(nb) }
     },
   },
   {
-    id: 'relatifs-trou', theme: 'Nombres relatifs', titre: 'Addition à trou',
+    id: 'relatifs-abscisse', theme: 'Nombres relatifs', titre: 'L’abscisse d’un relatif sur une droite graduée',
+    programme: 'Lire l’abscisse d’un nombre relatif sur une droite graduée.', application: true,
     generer() {
-      const a = ent(1, 12) * choix([-1, 1]), b = ent(-12, 12), v = b - a
-      const e = Math.random() < 0.5 ? `${rel(a)} + \\ldots = ${nb(b)}` : `\\ldots + ${rel(a)} = ${nb(b)}`
-      return { enonce: `Compléter : $${e}$`, reponse: nb(v), faux: fausses(nb(v), [nb(a - b), nb(a + b), nb(-(a + b))], autour(v)) }
+      const debut = ent(-6, -1), parts = choix([1, 2, 4, 5, 10])
+      let k: number
+      do { k = ent(1, 4 * parts - 1) } while (debut + k / parts >= 0 && Math.random() < 0.7)
+      const x = debut + k / parts, L = choix(['A', 'B', 'M', 'R', 'E'])
+      return { enonce: `Quelle est l'abscisse du point $${L}$ ?`, figure: F.droiteGraduee(debut, debut + 4, parts, x, L), reponse: nb(x) }
+    },
+  },
+  {
+    id: 'relatifs-enchainer', theme: 'Nombres relatifs', titre: 'Enchaîner additions et soustractions de relatifs',
+    programme: 'Simplifier l’écriture de sommes avec parenthèses ; enchaîner additions et soustractions de relatifs.', application: true,
+    generer() {
+      const t = [relNonNul(1, 12), relNonNul(1, 12), relNonNul(1, 12)], ops = [choix(['+', '-']), choix(['+', '-'])]
+      const v = t[0] + (ops[0] === '+' ? t[1] : -t[1]) + (ops[1] === '+' ? t[2] : -t[2])
+      if (Math.random() < 0.6) return { enonce: `Calculer : $${seul(t[0])} ${ops[0]} ${rel(t[1])} ${ops[1]} ${rel(t[2])}$`, reponse: nb(v) }
+      // Écrire sans parenthèses : on garde le signe de chaque terme
+      const terme = (x: number, op: string) => { const s = op === '+' ? x : -x; return `${s < 0 ? '-' : '+'} ${Math.abs(s)}` }
+      return { enonce: `Écrire sans parenthèses, puis calculer : $${seul(t[0])} ${ops[0]} ${rel(t[1])} ${ops[1]} ${rel(t[2])}$`, reponse: `${seul(t[0])} ${terme(t[1], ops[0])} ${terme(t[2], ops[1])} = ${nb(v)}` }
+    },
+  },
+  {
+    id: 'relatifs-probleme', theme: 'Nombres relatifs', titre: 'Températures, altitudes : un problème avec des relatifs',
+    programme: 'Résoudre des problèmes avec des relatifs (température, altitude…).', application: true,
+    generer() {
+      const sorte = ent(0, 3)
+      if (sorte === 0) {
+        const t = ent(-9, -1), h = ent(3, 15)
+        return { enonce: `Le matin, il fait $${t}\\,°\\text{C}$. L'après-midi, la température a monté de $${h}\\,°\\text{C}$. Quelle température fait-il l'après-midi ?`, reponse: `${nb(t + h)}\\,°\\text{C}` }
+      }
+      if (sorte === 1) {
+        const t = ent(-8, 6), b = ent(3, 12)
+        return { enonce: `À midi, il fait $${t}\\,°\\text{C}$. La nuit, la température baisse de $${b}\\,°\\text{C}$. Quelle température fait-il la nuit ?`, reponse: `${nb(t - b)}\\,°\\text{C}` }
+      }
+      if (sorte === 2) {
+        const t1 = ent(-12, -1), t2 = ent(1, 15)
+        return { enonce: `Il fait $${t1}\\,°\\text{C}$ à Oslo et $${t2}\\,°\\text{C}$ à Paris. Quel est l'écart de température entre les deux villes ?`, reponse: `${nb(t2 - t1)}\\,°\\text{C}` }
+      }
+      const p = 10 * ent(5, 30), r = 10 * ent(1, Math.floor(p / 10) - 1)
+      return { enonce: `Un plongeur est à $${-p}$ m (sous la surface). Il remonte de $${r}$ m. À quelle altitude est-il ?`, reponse: `${nb(r - p)}\\text{ m}` }
     },
   },
 
   // ================= NOMBRES RATIONNELS =================
   {
     id: 'fraction-decimal', theme: 'Nombres rationnels', titre: 'Écriture décimale de fractions simples',
+    programme: 'Entretenir l’écriture décimale des fractions simples : 1/2 ; 3/4 ; 7/100…',
     generer() {
       const [n, d] = choix([[1, 2], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5], [1, 10], [7, 10], [3, 2], [5, 4], [7, 2], [9, 10], [1, 20], [5, 2], [3, 10]])
       const v = n / d
@@ -243,6 +414,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'quotient-trou', theme: 'Nombres rationnels', titre: 'Le nombre quotient dans une multiplication à trou',
+    programme: 'Faire vivre le nombre quotient en complétant des multiplications à trou : 3 × … = 7.',
     generer() {
       let a: number, b: number
       do { a = ent(3, 9); b = ent(2, 11) } while (b === a || pgcd(a, b) !== 1)
@@ -251,8 +423,9 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'abscisse-fraction', theme: 'Nombres rationnels', titre: 'Abscisse d’un point (demis, tiers, quarts)',
+    programme: 'Lire l’abscisse d’un point sur une droite graduée en moitiés, tiers, quarts, dixièmes.',
     generer() {
-      const d = choix([2, 3, 4])
+      const d = choix([2, 3, 4, 10])
       let k: number
       do { k = ent(1, 3 * d - 1) } while (pgcd(k, d) !== 1)
       return { enonce: `Quelle est l'abscisse du point $A$ ?`, figure: F.droiteGraduee(0, 3, d, k / d),
@@ -262,6 +435,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'fraction-egales', theme: 'Nombres rationnels', titre: 'Reconnaître des fractions égales',
+    programme: 'Reconnaître des fractions égales : 2/3 = …/15.',
     generer() {
       let n: number, d: number
       do { n = ent(1, 9); d = ent(2, 10) } while (pgcd(n, d) !== 1)
@@ -277,6 +451,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'comparer-fractions', theme: 'Nombres rationnels', titre: 'Comparer des fractions',
+    programme: 'Comparer deux fractions.',
     generer() {
       // Trois fractions de valeurs différentes : même dénominateur, même
       // numérateur, ou un dénominateur multiple de l'autre. Les ranger
@@ -298,6 +473,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'entier-plus-fraction', theme: 'Nombres rationnels', titre: 'Écrire une fraction comme entier + fraction < 1',
+    programme: 'Écrire une fraction comme la somme d’un entier et d’une fraction inférieure à 1 : 17/5 = 3 + 2/5.',
     generer() {
       const d = ent(2, 9), q = ent(1, 6), r = ent(1, d - 1), N = q * d + r
       const e = (x: number, f: string) => `${x} + ${f}`
@@ -307,6 +483,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'fractions-addsub', theme: 'Nombres rationnels', titre: 'Additionner et soustraire des fractions simples',
+    programme: 'Additionner et soustraire des fractions simples : 3/5 + 4/5 ; 1 – 2/3 ; 4/7 – 2/21.',
     generer() {
       const d = ent(2, 7), k = choix([1, 2, 3]), D = d * k, moins = Math.random() < 0.4
       let a = ent(1, 9), c = ent(1, 9)
@@ -319,6 +496,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'fraction-quantite', theme: 'Nombres rationnels', titre: 'Prendre une fraction d’un nombre',
+    programme: 'Prendre une fraction simple d’un nombre : le tiers de 18, le quart de 12.',
     generer() {
       let n: number, d: number
       do { n = ent(1, 7); d = ent(2, 10) } while (n >= d || pgcd(n, d) !== 1)
@@ -329,6 +507,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'pourcentages-1-10-50', theme: 'Nombres rationnels', titre: 'Calculer 1 %, 10 % ou 50 % d’un nombre',
+    programme: 'Prendre 1 %, 10 % ou 50 % d’un nombre.',
     generer() {
       const p = choix([1, 10, 50])
       const N = p === 1 ? ent(2, 90) * 10 : p === 10 ? ent(11, 99) * choix([1, 10]) : ent(3, 99) * 2 + choix([0, 1])
@@ -338,6 +517,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'ecritures-nombre', theme: 'Nombres rationnels', titre: 'Décimale, fraction, pourcentage',
+    programme: 'Écrire un même nombre sous de multiples formes : 1,2 = 12/10 = 120 %.',
     generer() {
       const [n, d] = choix([[1, 2], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5], [1, 10], [3, 10], [7, 10], [9, 10], [1, 100], [3, 100], [3, 20], [1, 20]])
       const v = n / d, pc = arrondi(v * 100)
@@ -350,18 +530,100 @@ export const AUTOMATISMES_5E: Automatisme[] = [
       return { enonce: `Écrire $${frac(n, d)}$ sous la forme d'un pourcentage.`, reponse: pcs(pc), faux: fausses(pcs(pc), [pcs(n * 10 + d), pcs(n + d), pcs(d), pcs(pc / 10)]) }
     },
   },
-
-  // ================= PUISSANCES ET CALCUL LITTÉRAL =================
   {
-    id: 'carres', theme: 'Puissances et calcul littéral', titre: 'Carrés des nombres entiers',
+    id: 'fractions-quelconques', theme: 'Nombres rationnels', titre: 'Fractions de dénominateurs quelconques',
+    programme: 'Additionner et soustraire des fractions de dénominateurs quelconques.', application: true,
     generer() {
-      const n = ent(2, 15), v = n * n
+      // Deux dénominateurs premiers entre eux, petits : 1/2 + 1/3, 2/3 − 1/4…
+      let d1: number, d2: number
+      do { d1 = ent(2, 6); d2 = ent(2, 7) } while (pgcd(d1, d2) !== 1)
+      let n1: number, n2: number
+      do { n1 = ent(1, d1 - 1); n2 = ent(1, d2 - 1) } while (pgcd(n1, d1) !== 1 || pgcd(n2, d2) !== 1)
+      const moins = Math.random() < 0.4 && n1 * d2 > n2 * d1
+      const num = moins ? n1 * d2 - n2 * d1 : n1 * d2 + n2 * d1
+      return { enonce: `Calculer : $${frac(n1, d1)} ${moins ? '-' : '+'} ${frac(n2, d2)}$`, reponse: irreductible(num, d1 * d2) }
+    },
+  },
+  {
+    id: 'fractions-probleme', theme: 'Nombres rationnels', titre: 'Un problème avec des fractions',
+    programme: 'Résoudre des problèmes avec des additions et soustractions de fractions.', application: true,
+    generer() {
+      let d1: number, d2: number
+      do { d1 = choix([2, 3, 4, 5, 6, 8]); d2 = choix([3, 4, 5, 6, 8, 10, 12]) } while (d1 === d2 || 1 / d1 + 1 / d2 >= 1)
+      const D = d1 * d2 / pgcd(d1, d2), lu = D / d1 + D / d2
+      const [qui, quoi, j1, j2] = choix<[string, string, string, string]>([['Léa', 'de son livre', 'lundi', 'mardi'], ['Tom', 'de la pizza', 'à midi', 'le soir'], ['Inès', 'du trajet', 'le matin', 'l\'après-midi'], ['Noah', 'de son argent de poche', 'en janvier', 'en février']])
+      const verbe = quoi.includes('livre') ? 'a lu' : quoi.includes('pizza') ? 'a mangé' : quoi.includes('trajet') ? 'a parcouru' : 'a dépensé'
+      const debut = `${qui} ${verbe} $${frac(1, d1)}$ ${quoi} ${j1} et $${frac(1, d2)}$ ${j2}.`
+      return Math.random() < 0.5
+        ? { enonce: `${debut} Quelle fraction ${quoi} cela représente-t-il en tout ?`, reponse: irreductible(lu, D) }
+        : { enonce: `${debut} Quelle fraction ${quoi} reste-t-il ?`, reponse: irreductible(D - lu, D) }
+    },
+  },
+
+  // ================= PUISSANCES =================
+  {
+    id: 'carres', theme: 'Puissances', titre: 'Carrés des nombres entiers',
+    programme: 'Connaître les carrés des entiers de 0 à 12.', application: true,
+    generer() {
+      const n = ent(2, 12), v = n * n
       if (Math.random() < 0.3) return { enonce: `Quel nombre positif a pour carré $${v}$ ?`, reponse: nb(n), faux: fausses(nb(n), [nb(v / 2), nb(n + 1), nb(n - 1), nb(2 * n)]) }
       return { enonce: `Calculer : $${n}^2$`, reponse: nb(v), faux: fausses(nb(v), [nb(2 * n), nb(n + 2), nb(v + n), nb(Number(`${n}${n}`))], autour(v)) }
     },
   },
   {
-    id: 'motifs', theme: 'Puissances et calcul littéral', titre: 'Poursuivre une suite de motifs',
+    id: 'cubes', theme: 'Puissances', titre: 'Le carré et le cube d’un nombre',
+    programme: 'Découvrir la notion de puissance : le carré et le cube ; connaître le cube de 10.', application: true,
+    generer() {
+      const sorte = ent(0, 2)
+      if (sorte === 0) { const n = choix([2, 3, 4, 5, 10, 1, 0]); return { enonce: `Calculer : $${n}^3$`, reponse: grandNb(n ** 3) } }
+      if (sorte === 1) {
+        const n = ent(2, 12), e = choix([2, 3]), f = Array(e).fill(n).join(' \\times ')
+        return { enonce: `Écrire sous la forme d'une puissance : $${f}$`, reponse: `${n}^${e}` }
+      }
+      const n = ent(2, 9) / 10
+      return { enonce: `Calculer : $${nb(n)}^2$`, reponse: nb(arrondi(n * n)) }
+    },
+  },
+  {
+    id: 'ecrire-puissance', theme: 'Puissances', titre: 'Écrire un nombre comme un carré ou un cube',
+    programme: 'Savoir écrire un nombre sous la forme d’une puissance 2 ou 3.', application: true,
+    generer() {
+      if (Math.random() < 0.6) { const n = ent(2, 12); return { enonce: `Écrire $${n * n}$ sous la forme du carré d'un nombre entier.`, reponse: `${n}^2` } }
+      const n = choix([2, 3, 4, 5, 10]); return { enonce: `Écrire $${grandNb(n ** 3)}$ sous la forme du cube d'un nombre entier.`, reponse: `${n}^3` }
+    },
+    trou() {
+      const [n, e] = choix<[number, number]>([[2, 3], [3, 3], [10, 3], [5, 3], [4, 3], [7, 2], [9, 2], [11, 2], [12, 2], [6, 2], [8, 2]])
+      return unTrou('', [[`$${grandNb(n ** e)} = ${n}^{\\ldots}$`, nb(e)], [`$${grandNb(n ** e)} = \\ldots^${e}$`, nb(n)], [`$${n}^${e} = \\ldots$`, grandNb(n ** e)]])
+    },
+  },
+  {
+    id: 'expression-puissances', theme: 'Puissances', titre: 'Une expression avec des puissances',
+    programme: 'Calculer des expressions contenant des puissances simples, additions, soustractions et produits.', application: true,
+    generer() {
+      const a = ent(2, 9), b = ent(2, 6), c = ent(2, 5), sorte = ent(0, 3)
+      if (sorte === 0) return { enonce: `Calculer : $${a}^2 + ${b} \\times ${c}$`, reponse: nb(a * a + b * c) }
+      if (sorte === 1) return { enonce: `Calculer : $${c} \\times ${a}^2$`, reponse: nb(c * a * a) }
+      if (sorte === 2) { const [p, q] = a > b ? [a, b] : [b + 3, b]; return { enonce: `Calculer : $${p}^2 - ${q}^2$`, reponse: nb(p * p - q * q) } }
+      const m = choix([2, 3]); return { enonce: `Calculer : $${m}^3 + ${a}$`, reponse: nb(m ** 3 + a) }
+    },
+  },
+  {
+    id: 'unites-aires-volumes', theme: 'Puissances', titre: 'Les unités d’aire et de volume',
+    programme: 'Connaître les unités d’aires et de volume.',
+    generer() {
+      const [de, vers, k] = choix<[string, string, number]>([
+        ['m^2', 'dm^2', 100], ['dm^2', 'cm^2', 100], ['m^2', 'cm^2', 10000], ['cm^2', 'mm^2', 100], ['km^2', 'm^2', 1000000],
+        ['m^3', 'dm^3', 1000], ['dm^3', 'cm^3', 1000], ['cm^3', 'mm^3', 1000], ['cm^2', 'dm^2', 0.01], ['cm^3', 'dm^3', 0.001]])
+      const x = choix([1, 1, ent(2, 9), ent(11, 95) / 10])
+      const u = (t: string) => `\\text{ ${t.slice(0, -2)}}^${t.slice(-1)}`
+      return { enonce: `Convertir : $${nb(x)}${u(de)} = \\ldots${u(vers)}$`, reponse: `${grandNb(arrondi(x * k))}${u(vers)}` }
+    },
+  },
+
+  // ================= CALCUL LITTÉRAL ET ALGÉBRIQUE =================
+  {
+    id: 'motifs', theme: 'Calcul littéral et algébrique', titre: 'Poursuivre une suite de motifs',
+    programme: 'Poursuivre une suite de motifs ; trouver le nombre d’éléments à une étape donnée.',
     generer() {
       type M = { pts: (n: number) => [number, number][]; f: (n: number) => number }
       const rect = (l: number, h: number) => Array.from({ length: l * h }, (_, i) => [i % l, Math.floor(i / l)] as [number, number])
@@ -380,10 +642,92 @@ export const AUTOMATISMES_5E: Automatisme[] = [
         faux: fausses(nb(v), [nb(lin), nb(s.f(k - 1)), nb(s.f(k + 1)), nb(k * s.f(1)), nb(v + 1)], autour(v)) }
     },
   },
+  {
+    id: 'produire-formule', theme: 'Calcul littéral et algébrique', titre: 'Écrire une formule avec une lettre',
+    programme: 'Produire des formules : double, triple, carré, successeur, prédécesseur, aire, périmètre.', application: true,
+    generer() {
+      const x = choix(['n', 'x', 'a', 'y', 't'])
+      const [quoi, f] = choix<[string, string]>([
+        [`le double de $${x}$`, `2${x}`], [`le triple de $${x}$`, `3${x}`], [`le carré de $${x}$`, `${x}^2`], [`le successeur de l'entier $${x}$`, `${x} + 1`],
+        [`le prédécesseur de l'entier $${x}$`, `${x} - 1`], [`la moitié de $${x}$`, `${x} \\div 2`], [`le périmètre d'un carré de côté $${x}$`, `4${x}`],
+        [`l'aire d'un carré de côté $${x}$`, `${x}^2`], [`le périmètre d'un triangle équilatéral de côté $${x}$`, `3${x}`], [`le double de $${x}$, augmenté de $5$`, `2${x} + 5`],
+      ])
+      return { enonce: `Écrire en fonction de $${x}$ : ${quoi}.`, reponse: f }
+    },
+  },
+  {
+    id: 'litteral-substituer', theme: 'Calcul littéral et algébrique', titre: 'Calculer une expression pour une valeur',
+    programme: 'Calculer la valeur d’une expression littérale par substitution.', application: true,
+    generer() {
+      const a = ent(2, 9), b = ent(1, 12), x = ent(2, 9)
+      const forme = ent(0, 2)
+      let e: string, v: number, faux: string[]
+      if (forme === 0) { e = `${a}x + ${b}`; v = a * x + b; faux = [`${a}${x}`.length < 4 ? nb(Number(`${a}${x}`) + b) : nb(a + x + b), nb(a * (x + b)), nb(a + x + b)] }
+      else if (forme === 1) { e = `${a}(x + ${b})`; v = a * (x + b); faux = [nb(a * x + b), nb(a + x + b), nb(a * x * b)] }
+      else { e = `x^2 + ${b}`; v = x * x + b; faux = [nb(2 * x + b), nb(x + b), nb((x + b) * (x + b))] }
+      return { enonce: `Calculer $${e}$ pour $x = ${x}$.`, reponse: nb(v), faux: fausses(nb(v), faux, autour(v)) }
+    },
+  },
+  {
+    id: 'tester-egalite', theme: 'Calcul littéral et algébrique', titre: 'Pour quelle valeur l’égalité est-elle vraie ?',
+    programme: 'Tester si une égalité comportant une variable est vraie ou fausse.', application: true,
+    generer() {
+      // Quatre valeurs à essayer : une seule vérifie l'égalité (jamais une chance sur deux)
+      const x = choix(['x', 'a', 'n']), s = ent(1, 8), a = ent(2, 6), b = ent(1, 9), c = a * s + b
+      const valeurs = melange([s, ...melange([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(v => v !== s)).slice(0, 3)]).sort((p, q) => p - q)
+      return { enonce: `Pour laquelle de ces valeurs de $${x}$ l'égalité $${a}${x} + ${b} = ${c}$ est-elle vraie : ${valeurs.map(v => `$${v}$`).join(', ')} ?`, reponse: `${x} = ${s}` }
+    },
+  },
+  {
+    id: 'developper-factoriser', theme: 'Calcul littéral et algébrique', titre: 'Développer ou factoriser k(x + a)',
+    programme: 'Exploiter k(a + b) = ka + kb pour développer ou factoriser une expression littérale.', application: true,
+    generer() {
+      const k = ent(2, 9), a = ent(1, 9), x = choix(['x', 'a', 'y']), moins = Math.random() < 0.3
+      const s = moins ? '-' : '+'
+      return Math.random() < 0.6
+        ? { enonce: `Développer : $${k}(${x} ${s} ${a})$`, reponse: `${k}${x} ${s} ${k * a}` }
+        : { enonce: `Factoriser : $${k}${x} ${s} ${k * a}$`, reponse: `${k}(${x} ${s} ${a})` }
+    },
+    trou() {
+      const k = ent(2, 9), a = ent(1, 9), x = choix(['x', 'a', 'y'])
+      return unTrou('', [[`$${k}(${x} + ${a}) = ${k}${x} + \\ldots$`, nb(k * a)], [`$${k}${x} + ${k * a} = ${k}(${x} + \\ldots)$`, nb(a)], [`$${k}${x} + ${k * a} = \\ldots(${x} + ${a})$`, nb(k)]])
+    },
+  },
+  {
+    id: 'litteral-reduire', theme: 'Calcul littéral et algébrique', titre: 'Réduire une expression',
+    programme: 'Réduire une expression littérale de la forme ax + b.', application: true,
+    generer() {
+      const a = ent(2, 9), b = ent(2, 9), c = ent(1, 9)
+      const terme = (k: number) => k === 1 ? 'x' : `${k}x`
+      if (Math.random() < 0.5) {
+        const v = terme(a + b)
+        return { enonce: `Réduire : $${terme(a)} + ${terme(b)}$`, reponse: v, faux: fausses(v, [`${a + b}x^2`, `${a * b}x`, `${a}${b}x`], () => terme(a + b + ent(1, 3))) }
+      }
+      const v = `${terme(a + b)} + ${c}`
+      return { enonce: `Réduire : $${terme(a)} + ${c} + ${terme(b)}$`, reponse: v,
+        faux: fausses(v, [`${a + b + c}x`, `${terme(a + b)}x + ${c}`, `${terme(a * b)} + ${c}`], () => `${terme(a + b)} + ${c + ent(1, 3)}`) }
+    },
+  },
+  {
+    id: 'equations', theme: 'Calcul littéral et algébrique', titre: 'Résoudre x + b = c ou ax = c',
+    programme: 'Résoudre des équations du type ax = c ou x + b = c par les opérations inverses.', application: true,
+    generer() {
+      const x = choix(['x', 'y', 'n', 't'])
+      if (Math.random() < 0.5) { const b = ent(2, 30), s = ent(1, 40); return { enonce: `Résoudre : $${x} + ${b} = ${s + b}$`, reponse: `${x} = ${s}` } }
+      const a = ent(2, 9), s = ent(2, 12)
+      return { enonce: `Résoudre : $${a}${x} = ${a * s}$`, reponse: `${x} = ${s}` }
+    },
+    trou() {
+      const a = ent(2, 9), s = ent(2, 12), b = ent(2, 30)
+      const x = choix(['x', 'y', 'n'])
+      return unTrou('', [[`$${a}${x} = ${a * s}$ a pour solution $${x} = \\ldots$`, nb(s)], [`$${x} + ${b} = ${s + b}$ a pour solution $${x} = \\ldots$`, nb(s)]])
+    },
+  },
 
   // ================= REPÉRAGE =================
   {
     id: 'reperer-decimal', theme: 'Repérage', titre: 'Repérer un décimal sur une demi-droite graduée',
+    programme: 'Repérer un nombre décimal sur une demi-droite graduée.',
     generer() {
       const debut = ent(0, 6), parts = choix([2, 4, 5, 10, 10])
       let k: number
@@ -395,6 +739,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'coordonnees', theme: 'Repérage', titre: 'Lire les coordonnées d’un point',
+    programme: 'Dans un repère, lire les coordonnées d’un point.', application: true,
     generer() {
       let x: number, y: number
       do { x = ent(-4, 4); y = ent(-4, 4) } while (x === 0 && y === 0 || x === y)
@@ -403,10 +748,25 @@ export const AUTOMATISMES_5E: Automatisme[] = [
         faux: fausses(c(x, y), [c(y, x), c(-x, y), c(x, -y), c(-y, -x)]) }
     },
   },
+  {
+    id: 'placer-point', theme: 'Repérage', titre: 'Le point de coordonnées données',
+    programme: 'Dans un repère, placer un point de coordonnées données.', application: true,
+    generer() {
+      // Le point cherché, et des pièges : coordonnées échangées, signes changés
+      let x: number, y: number
+      do { x = relNonNul(1, 5); y = relNonNul(1, 5) } while (Math.abs(x) === Math.abs(y))
+      const lieux = [[x, y], [y, x], [-x, y], [x, -y], [-x, -y], [-y, -x]].filter((q, i, t) => t.findIndex(r => r[0] === q[0] && r[1] === q[1]) === i).slice(0, 4)
+      const noms = melange(['E', 'F', 'G', 'H'])
+      const pts = melange(lieux).map((q, i) => ({ x: q[0], y: q[1], nom: noms[i] }))
+      const bon = pts.find(p => p.x === x && p.y === y)!
+      return { enonce: `Quel point a pour coordonnées $${coord(x, y)}$ ?`, figure: F.reperePoints(pts), reponse: mot(`$${bon.nom}$`) }
+    },
+  },
 
   // ================= REPRÉSENTATION DE L'ESPACE =================
   {
     id: 'vues-cubes', theme: 'Représentation de l’espace', titre: 'Vues d’un empilement de cubes',
+    programme: 'Reconnaître des vues (de dessus, de face…) d’empilements de cubes.',
     generer() {
       const h = empilementAuHasard()
       const X = h.length, Y = h[0].length, H = Math.max(...h.flat())
@@ -425,6 +785,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'denombrer-cubes', theme: 'Représentation de l’espace', titre: 'Dénombrer les cubes d’un empilement',
+    programme: 'Dénombrer des cubes dans des empilements.',
     generer() {
       const h = empilementAuHasard()
       const total = h.flat().reduce((s, v) => s + v, 0)
@@ -436,6 +797,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'cavaliere', theme: 'Représentation de l’espace', titre: 'Pavé droit en perspective cavalière',
+    programme: 'Reconnaître un cube, un pavé représenté en perspective cavalière.',
     generer() {
       // Trois longueurs différentes ; on demande une arête parallèle à
       // l'une d'elles, souvent une fuyante (dessinée plus courte) ou une
@@ -449,6 +811,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'patron-cube', theme: 'Représentation de l’espace', titre: 'Patron de cube : les faces opposées',
+    programme: 'Reconnaître un patron d’un cube.',
     generer() {
       let c: F.Cases
       do c = F.hexomino(); while (!F.estPatronDeCube(c))
@@ -460,10 +823,47 @@ export const AUTOMATISMES_5E: Automatisme[] = [
         reponse: nb(numeros[o]), faux: numeros.filter((n, j) => j !== o && j !== i).slice(0, 3).map(nb) }
     },
   },
+  {
+    id: 'volumes', theme: 'Représentation de l’espace', titre: 'Volume d’un cube, d’un pavé, d’un prisme droit',
+    programme: 'Calculer le volume du cube, du pavé droit, du prisme droit.', application: true,
+    generer() {
+      const sorte = ent(0, 2)
+      if (sorte === 0) { const a = ent(2, 10); return { enonce: `Quel est le volume d'un cube de $${a}$ cm d'arête ?`, reponse: cm3(grandNb(a ** 3)) } }
+      if (sorte === 1) { const l = ent(2, 10), w = ent(2, 6), h = ent(2, 10); return { enonce: `Quel est le volume d'un pavé droit de $${l}$ cm sur $${w}$ cm sur $${h}$ cm ?`, reponse: cm3(grandNb(l * w * h)) } }
+      const B = ent(3, 40), h = ent(2, 12)
+      return { enonce: `Un prisme droit a une base d'aire $${B}\\text{ cm}^2$ et une hauteur de $${h}$ cm. Quel est son volume ?`, reponse: cm3(grandNb(B * h)) }
+    },
+  },
+  {
+    id: 'volume-capacite', theme: 'Représentation de l’espace', titre: 'Volumes et capacités',
+    programme: 'Connaître et convertir des unités usuelles de volume et de capacité.', application: true,
+    generer() {
+      const [de, vers, k] = choix<[string, string, number]>([
+        ['L', 'dm^3', 1], ['dm^3', 'L', 1], ['L', 'cL', 100], ['L', 'mL', 1000], ['cL', 'L', 0.01], ['mL', 'L', 0.001], ['cm^3', 'mL', 1], ['m^3', 'L', 1000], ['L', 'cm^3', 1000], ['dL', 'L', 0.1]])
+      const x = k < 1 ? choix([10 * ent(2, 9), ent(11, 99), 250, 500, 750]) : choix([ent(2, 9), ent(11, 95) / 10, 10 * ent(2, 50)])
+      const u = (t: string) => t.endsWith('^3') ? `\\text{ ${t.slice(0, -2)}}^3` : `\\text{ ${t}}`
+      return { enonce: `Convertir : $${nb(x)}${u(de)} = \\ldots${u(vers)}$`, reponse: `${grandNb(arrondi(x * k))}${u(vers)}` }
+    },
+  },
+  {
+    id: 'disque-cylindre', theme: 'Représentation de l’espace', titre: 'Aire du disque, volume du cylindre',
+    programme: 'Calculer l’aire du disque, le volume du cylindre de révolution.', application: true,
+    generer() {
+      const r = ent(1, 9)
+      if (Math.random() < 0.5) {
+        return Math.random() < 0.7
+          ? { enonce: `Quelle est l'aire d'un disque de rayon $${r}$ cm ? (valeur exacte)`, reponse: cm2(piFois(r * r)) }
+          : { enonce: `Quelle est l'aire d'un disque de diamètre $${2 * r}$ cm ? (valeur exacte)`, reponse: cm2(piFois(r * r)) }
+      }
+      const h = ent(2, 10), rr = ent(1, 5)
+      return { enonce: `Quel est le volume d'un cylindre de rayon $${rr}$ cm et de hauteur $${h}$ cm ? (valeur exacte)`, reponse: cm3(piFois(rr * rr * h)) }
+    },
+  },
 
   // ================= TRANSFORMATIONS =================
   {
     id: 'symetrie-axiale', theme: 'Transformations', titre: 'Construire le symétrique d’un point',
+    programme: 'Construire le symétrique d’un point par symétrie axiale, sur quadrillage.',
     generer() {
       // Un axe parallèle à un axe du repère (sans être l'un d'eux), A à 1 à
       // 4 carreaux de lui, et son symétrique A' encore dans le repère (de −5 à 5)
@@ -476,10 +876,35 @@ export const AUTOMATISMES_5E: Automatisme[] = [
         reponse: c(xs, ys), faux: fausses(c(xs, ys), [c(-x, y), c(x, -y), axe === 'vertical' ? c(xs, -ys) : c(-xs, ys)]) }
     },
   },
+  {
+    id: 'demi-tour', theme: 'Transformations', titre: 'Le symétrique d’un point par demi-tour',
+    programme: 'Définir le demi-tour, ou symétrie centrale : le symétrique d’un point.', application: true,
+    generer() {
+      let ax: number, ay: number, ix: number, iy: number, bx: number, by: number
+      do { ix = ent(-2, 2); iy = ent(-2, 2); ax = ent(-4, 4); ay = ent(-4, 4); bx = 2 * ix - ax; by = 2 * iy - ay } while ((ax === ix && ay === iy) || Math.abs(bx) > 5 || Math.abs(by) > 5)
+      const [A, I] = choix([['A', 'I'], ['B', 'O'], ['M', 'K'], ['E', 'C']])
+      return { enonce: `Quelles sont les coordonnées du point $${A}'$, symétrique du point $${A}$ par le demi-tour de centre $${I}$ ?`, figure: F.reperePoints([{ x: ax, y: ay, nom: A }, { x: ix, y: iy, nom: I, centre: true }]), reponse: coord(bx, by) }
+    },
+  },
+  {
+    id: 'demi-tour-proprietes', theme: 'Transformations', titre: 'Les propriétés du demi-tour',
+    programme: 'Connaître les propriétés du demi-tour (longueurs, angles, milieu).', application: true,
+    generer() {
+      const [A, B] = deuxPts(), sorte = ent(0, 2), l = nb(ent(2, 18) / 2)
+      if (sorte === 0) return { enonce: `Le segment $[${A}${B}]$ mesure $${l}$ cm. Combien mesure son symétrique par un demi-tour ?`, reponse: unite(l, 'cm') }
+      if (sorte === 1) {
+        const d = ent(2, 9)
+        return { enonce: `$${A}'$ est le symétrique de $${A}$ par le demi-tour de centre $O$, et $O${A} = ${d}$ cm. Combien mesure $${A}${A}'$ ?`, reponse: unite(nb(2 * d), 'cm') }
+      }
+      const m = ent(20, 160)
+      return { enonce: `Un angle mesure $${m}°$. Combien mesure son symétrique par un demi-tour ?`, reponse: deg(m) }
+    },
+  },
 
   // ================= ANGLES =================
   {
     id: 'angles-nommer', theme: 'Angles', titre: 'Reconnaître et nommer les angles',
+    programme: 'Reconnaître et citer des angles : nul, aigu, droit, obtus, plat, plein ; adjacents, opposés par le sommet, supplémentaires.',
     generer() {
       if (Math.random() < 0.6) {
         const sorte = choix(['aigu', 'aigu', 'obtus', 'obtus', 'droit', 'plat', 'nul', 'plein'])
@@ -499,7 +924,25 @@ export const AUTOMATISMES_5E: Automatisme[] = [
     },
   },
   {
+    id: 'angle-manquant', theme: 'Angles', titre: 'Angle droit, angle plat : l’angle qui manque',
+    programme: 'Savoir qu’un angle droit mesure 90°, un angle plat 180° ; connaître les angles de l’équerre.',
+    generer() {
+      const sorte = ent(0, 2)
+      if (sorte === 0) {
+        const m = ent(20, 160)
+        return { enonce: `Les points $x$, $O$ et $y$ sont alignés dans cet ordre : $\\widehat{xOy}$ est un angle plat. Si $\\widehat{xOz} = ${m}°$, combien mesure $\\widehat{zOy}$ ?`, reponse: deg(180 - m) }
+      }
+      if (sorte === 1) {
+        const m = ent(10, 80)
+        return { enonce: `L'angle $\\widehat{xOy}$ est droit et $[Oz)$ est entre ses côtés. Si $\\widehat{xOz} = ${m}°$, combien mesure $\\widehat{zOy}$ ?`, reponse: deg(90 - m) }
+      }
+      const [a, b] = choix<[number, number]>([[30, 60], [60, 30], [45, 45], [90, 30], [90, 45], [30, 90], [45, 90], [90, 60], [60, 90]])
+      return { enonce: `Une équerre a deux angles de $${a}°$ et $${b}°$. Combien mesure son troisième angle ?`, reponse: deg(180 - a - b) }
+    },
+  },
+  {
     id: 'bissectrice', theme: 'Angles', titre: 'Reconnaître une bissectrice',
+    programme: 'Reconnaître une bissectrice.',
     generer() {
       if (Math.random() < 0.5) {
         const m = ent(15, 80)
@@ -511,10 +954,24 @@ export const AUTOMATISMES_5E: Automatisme[] = [
         faux: fausses(deg(t / 2), [deg(t), deg(2 * t), deg(180 - t), deg(90 - t / 2)].filter(x => !x.startsWith('-') && x !== '0°')) }
     },
   },
+  {
+    id: 'paralleles-angles', theme: 'Angles', titre: 'Droites parallèles : angles alternes-internes, correspondants',
+    programme: 'Caractériser le parallélisme par les angles : angles alternes-internes, angles correspondants.', application: true,
+    generer() {
+      let m: number
+      do m = ent(35, 145); while (Math.abs(m - 90) < 8)
+      const [i, j, nomRel] = choix<[number, number, string]>([[0, 0, 'correspondants'], [1, 1, 'correspondants'], [2, 2, 'correspondants'], [3, 3, 'correspondants'], [2, 0, 'alternes-internes'], [3, 1, 'alternes-internes']])
+      const haut = Math.random() < 0.5
+      // L'angle connu est dans le secteur i d'une intersection, l'angle cherché dans le secteur j de l'autre
+      const valeur = (s: number) => s % 2 === 0 ? m : 180 - m
+      return { enonce: `Les droites $(d)$ et $(d')$ sont parallèles. Combien mesure l'angle marqué d'un point d'interrogation ?`, figure: F.parallelesSecante(m, i, j, haut, valeur(i)), reponse: mot(`$${valeur(j)}°$ (angles ${nomRel})`) }
+    },
+  },
 
   // ================= TRIANGLES =================
   {
     id: 'triangle-nature', theme: 'Triangles', titre: 'Triangle isocèle, équilatéral ou rectangle',
+    programme: 'Reconnaître un triangle isocèle, équilatéral ou rectangle à partir d’un schéma codé.',
     generer() {
       const sorte = choix(['isocele', 'equilateral', 'rectangle', 'rectangle-isocele', 'quelconque'] as F.Triangle[])
       const NOMS: Record<F.Triangle, string> = { isocele: 'isocèle', equilateral: 'équilatéral', rectangle: 'rectangle', 'rectangle-isocele': 'rectangle isocèle', quelconque: 'quelconque' }
@@ -523,6 +980,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'angles-triangle', theme: 'Triangles', titre: 'Somme des angles : le troisième angle',
+    programme: 'Connaître la somme des angles d’un triangle ; calculer le troisième angle.',
     generer() {
       if (Math.random() < 0.3) {
         const s = 2 * ent(10, 70)
@@ -536,6 +994,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'mediatrice', theme: 'Triangles', titre: 'Médiatrice et cercle circonscrit',
+    programme: 'Connaître la notion de médiatrice, de cercle circonscrit.',
     generer() {
       const [P, Q] = choix(['AB', 'EF', 'IJ', 'RS', 'CD'])
       const l = ent(2, 12) + choix([0, 0, 0.5])
@@ -548,10 +1007,31 @@ export const AUTOMATISMES_5E: Automatisme[] = [
         faux: fausses(unite(nb(l), 'cm'), [unite(nb(2 * l), 'cm'), unite(nb(l / 2), 'cm')]) }
     },
   },
-
-  // ================= PARALLÉLOGRAMMES ET POLYGONES =================
   {
-    id: 'polygones', theme: 'Parallélogrammes et polygones', titre: 'Nommer un quadrilatère ou un polygone',
+    id: 'aire-triangle', theme: 'Triangles', titre: 'L’aire d’un triangle',
+    programme: 'Calculer l’aire d’un triangle.', application: true,
+    generer() {
+      const [A, B, C] = tri(), b = ent(3, 14), h = 2 * ent(1, 7)
+      return Math.random() < 0.6
+        ? { enonce: `Dans le triangle $${A}${B}${C}$, la hauteur issue de $${A}$ mesure $${h}$ cm et $${B}${C} = ${b}$ cm. Quelle est son aire ?`, reponse: cm2(nb(b * h / 2)) }
+        : { enonce: `Un triangle rectangle a des côtés de l'angle droit de $${b}$ cm et $${h}$ cm. Quelle est son aire ?`, reponse: cm2(nb(b * h / 2)) }
+    },
+  },
+  {
+    id: 'hauteur-mediane', theme: 'Triangles', titre: 'Hauteur, médiane ou médiatrice ?',
+    programme: 'Définir et tracer les hauteurs et les médianes d’un triangle ; la médiatrice d’un côté.', application: true,
+    generer() {
+      const sorte = choix<F.Remarquable>(['mediatrice', 'mediane', 'hauteur'])
+      const [A, B, C] = tri()
+      const nom = { mediatrice: `la médiatrice de $[${B}${C}]$`, mediane: `la médiane issue de $${A}$`, hauteur: `la hauteur issue de $${A}$`, bissectrice: '' }[sorte]
+      return { enonce: `Dans le triangle $${A}${B}${C}$, comment s'appelle la droite $(d)$ ?`, figure: F.droiteRemarquable(sorte, A + B + C, ent(-3, 3) * 15), reponse: mot(nom) }
+    },
+  },
+
+  // ================= PARALLÉLOGRAMMES =================
+  {
+    id: 'polygones', theme: 'Parallélogrammes', titre: 'Nommer un quadrilatère ou un polygone',
+    programme: 'Reconnaître un quadrilatère, un parallélogramme, un rectangle, un losange, un carré, un trapèze, un pentagone, un hexagone.',
     generer() {
       const sorte = choix(['carre', 'rectangle', 'losange', 'parallelogramme', 'trapeze', 'pentagone', 'hexagone', 'quadrilatere'] as F.Polygone[])
       const NOMS: Record<F.Polygone, string> = { carre: 'un carré', rectangle: 'un rectangle', losange: 'un losange', parallelogramme: 'un parallélogramme', trapeze: 'un trapèze', pentagone: 'un pentagone', hexagone: 'un hexagone', quadrilatere: 'un quadrilatère quelconque' }
@@ -560,7 +1040,8 @@ export const AUTOMATISMES_5E: Automatisme[] = [
     },
   },
   {
-    id: 'parallelogramme-code', theme: 'Parallélogrammes et polygones', titre: 'Le codage d’un parallélogramme particulier',
+    id: 'parallelogramme-code', theme: 'Parallélogrammes', titre: 'Le codage d’un parallélogramme particulier',
+    programme: 'Exploiter le codage d’une figure pour identifier des parallélogrammes particuliers.',
     generer() {
       const lg = Math.random() < 0.5, dr = Math.random() < 0.5
       const noms = choix(['ABCD', 'EFGH', 'IJKL', 'MNOP', 'RSTU'])
@@ -569,10 +1050,97 @@ export const AUTOMATISMES_5E: Automatisme[] = [
       return { enonce: `$${noms}$ est un parallélogramme. D'après le codage, quelle est sa nature ?`, figure: F.parallelogrammeCode(lg, dr, noms, ent(-4, 4) * 10, ent(0, 3)), reponse: mot(bonne), faux: LOT.filter(x => x !== bonne).map(mot) }
     },
   },
+  {
+    id: 'proprietes-parallelogramme', theme: 'Parallélogrammes', titre: 'Côtés et diagonales d’un parallélogramme',
+    programme: 'Connaître les propriétés des côtés opposés et des diagonales d’un parallélogramme.', application: true,
+    generer() {
+      const [A, B, C, D] = quad(), O = 'O', sorte = ent(0, 2)
+      if (sorte === 0) { const a = nb(ent(4, 24) / 2); return { enonce: `$${A}${B}${C}${D}$ est un parallélogramme et $${A}${B} = ${a}$ cm. Combien mesure $${C}${D}$ ?`, reponse: unite(a, 'cm') } }
+      if (sorte === 1) { const d = ent(3, 12); return { enonce: `$${A}${B}${C}${D}$ est un parallélogramme de centre $${O}$ et $${A}${C} = ${2 * d}$ cm. Combien mesure $${O}${A}$ ?`, reponse: unite(nb(d), 'cm') } }
+      const d = ent(4, 20) / 2
+      return { enonce: `$${A}${B}${C}${D}$ est un parallélogramme de centre $${O}$ et $${O}${B} = ${nb(d)}$ cm. Combien mesure $${B}${D}$ ?`, reponse: unite(nb(2 * d), 'cm') }
+    },
+  },
+  {
+    id: 'diagonales-nature', theme: 'Parallélogrammes', titre: 'La nature d’un quadrilatère par ses diagonales',
+    programme: 'Utiliser une propriété caractéristique des diagonales pour donner la nature d’un quadrilatère.', application: true,
+    generer() {
+      const eg = Math.random() < 0.5, pe = Math.random() < 0.5
+      const noms = quad().join('')
+      const nature = eg && pe ? 'un carré' : eg ? 'un rectangle' : pe ? 'un losange' : 'un parallélogramme'
+      return { enonce: `D'après le codage de ses diagonales, quelle est la nature du quadrilatère $${noms}$ ?`, figure: F.diagonalesCodees(eg, pe, noms, ent(-6, 6) * 10), reponse: mot(nature) }
+    },
+  },
+  {
+    id: 'aire-parallelogramme', theme: 'Parallélogrammes', titre: 'L’aire d’un parallélogramme',
+    programme: 'Savoir calculer l’aire d’un parallélogramme.', application: true,
+    generer() {
+      const [A, B, C, D] = quad(), b = ent(3, 12), h = ent(2, 9)
+      const sorte = ent(0, 2)
+      if (sorte === 0) return { enonce: `Le parallélogramme $${A}${B}${C}${D}$ a un côté $[${A}${B}]$ de $${b}$ cm, et la hauteur relative à ce côté mesure $${h}$ cm. Quelle est son aire ?`, reponse: cm2(nb(b * h)) }
+      if (sorte === 1) return { enonce: `Quelle est l'aire d'un rectangle de $${b}$ cm sur $${h}$ cm ?`, reponse: cm2(nb(b * h)) }
+      return { enonce: `Le parallélogramme $${A}${B}${C}${D}$ a une aire de $${b * h}\\text{ cm}^2$ et $${A}${B} = ${b}$ cm. Combien mesure la hauteur relative à $[${A}${B}]$ ?`, reponse: unite(nb(h), 'cm') }
+    },
+  },
+  {
+    id: 'conversions-aires', theme: 'Parallélogrammes', titre: 'Convertir des longueurs et des aires',
+    programme: 'Résoudre des problèmes faisant appel à des conversions d’unités de longueur et d’aire.', application: true,
+    generer() {
+      const L: [string, string, number][] = [['m', 'cm', 100], ['cm', 'm', 0.01], ['km', 'm', 1000], ['mm', 'cm', 0.1], ['cm', 'mm', 10], ['dm', 'cm', 10], ['m', 'mm', 1000]]
+      const A: [string, string, number][] = [['m^2', 'dm^2', 100], ['m^2', 'cm^2', 10000], ['dm^2', 'cm^2', 100], ['cm^2', 'dm^2', 0.01], ['dm^2', 'm^2', 0.01], ['ha', 'm^2', 10000], ['km^2', 'ha', 100]]
+      const [de, vers, k] = choix(Math.random() < 0.5 ? L : A)
+      const x = choix([ent(2, 95) / 10, ent(2, 99), ent(101, 999) / 100])
+      const u = (t: string) => t.endsWith('^2') ? `\\text{ ${t.slice(0, -2)}}^2` : `\\text{ ${t}}`
+      return { enonce: `Convertir : $${nb(x)}${u(de)} = \\ldots${u(vers)}$`, reponse: `${grandNb(arrondi(x * k))}${u(vers)}` }
+    },
+  },
+
+  // ================= STATISTIQUES =================
+  {
+    id: 'moyenne', theme: 'Statistiques', titre: 'Calculer une moyenne',
+    programme: 'Calculer la moyenne simple d’une série de données.', application: true,
+    generer() {
+      const n = choix([3, 4, 5])
+      let l: number[]
+      do { l = Array.from({ length: n }, () => ent(4, 20)) } while ((l.reduce((s, x) => s + x, 0) * 10) % n !== 0)
+      const somme = l.reduce((s, x) => s + x, 0), v = somme / n
+      const tri = [...l].sort((x, y) => x - y)
+      return { enonce: `Quelle est la moyenne de : $${l.join(' \\; ; \\; ')}$ ?`, reponse: nb(v),
+        faux: fausses(nb(v), [nb(somme), nb(tri[Math.floor(n / 2)]), nb((Math.max(...l) + Math.min(...l)) / 2)], autour(v)) }
+    },
+  },
+  {
+    id: 'frequence', theme: 'Statistiques', titre: 'Effectifs et fréquences',
+    programme: 'Calculer des effectifs et des fréquences (fraction, écriture décimale, pourcentage).', application: true,
+    generer() {
+      const N = choix([10, 20, 25, 40, 50]), e = ent(2, N - 2)
+      const [qui, quoi] = choix<[string, string]>([['élèves', 'viennent à vélo'], ['élèves', 'ont un chat'], ['personnes', 'ont répondu « oui »'], ['lancers de dé', 'ont donné $6$'], ['élèves', 'mangent à la cantine']])
+      const sorte = ent(0, 2)
+      if (sorte === 0) return { enonce: `Sur $${N}$ ${qui}, $${e}$ ${quoi}. Quelle est la fréquence de cette réponse, en pourcentage ?`, reponse: `${nb(e / N * 100)}\\,\\%` }
+      if (sorte === 1) return { enonce: `Sur $${N}$ ${qui}, $${e}$ ${quoi}. Quelle est la fréquence de cette réponse, sous forme de fraction irréductible ?`, reponse: irreductible(e, N) }
+      const p = choix([10, 20, 25, 50, 40, 30]), M = choix([20, 40, 60, 80, 100, 200])
+      return { enonce: `Dans un groupe de $${M}$ ${qui}, la fréquence de ceux qui ${quoi} est $${p}\\,\\%$. Quel est leur effectif ?`, reponse: nb(M * p / 100) }
+    },
+  },
+  {
+    id: 'lire-tableau', theme: 'Statistiques', titre: 'Lire un tableau d’effectifs',
+    programme: 'Lire et interpréter des informations présentées sous forme de tableaux.', application: true,
+    generer() {
+      const [titre, cats] = choix<[string, string[]]>([['Sport préféré', ['Foot', 'Basket', 'Danse', 'Judo']], ['Moyen de transport', ['Bus', 'Vélo', 'À pied', 'Voiture']], ['Fruit préféré', ['Pomme', 'Fraise', 'Kiwi', 'Mangue']]])
+      const eff = cats.map(() => ent(2, 12)), total = eff.reduce((s, x) => s + x, 0)
+      const t = tableau([`\\text{${titre}}`, ...cats.map(c => `\\text{${c}}`)], ['\\text{Effectif}', ...eff.map(nb)])
+      const sorte = ent(0, 2)
+      if (sorte === 0) return { enonce: `Quel est l'effectif total ? $${t}$`, reponse: nb(total) }
+      const [a, b] = melange([0, 1, 2, 3]).slice(0, 2)
+      if (sorte === 1 && eff[a] !== eff[b]) return { enonce: `Combien d'élèves de plus ont choisi « ${eff[a] > eff[b] ? cats[a] : cats[b]} » que « ${eff[a] > eff[b] ? cats[b] : cats[a]} » ? $${t}$`, reponse: nb(Math.abs(eff[a] - eff[b])) }
+      return { enonce: `Combien d'élèves n'ont pas choisi « ${cats[a]} » ? $${t}$`, reponse: nb(total - eff[a]) }
+    },
+  },
 
   // ================= PROBABILITÉS =================
   {
     id: 'probabilite-echelle', theme: 'Probabilités', titre: 'Échelle de probabilité et fraction',
+    programme: 'Positionner un évènement sur une échelle de probabilité ; donner sa probabilité.',
     generer() {
       const sorte = ent(0, 2)
       if (sorte === 0) {
@@ -594,10 +1162,40 @@ export const AUTOMATISMES_5E: Automatisme[] = [
         figure: F.echelleProba(L), reponse: mot(L[p]), faux: fausses(mot(L[p]), [L[4 - p], L[Math.min(4, p + 1)], L[Math.max(0, p - 1)], L[p === 2 ? 0 : 2]].map(mot)) }
     },
   },
+  {
+    id: 'chances-sur', theme: 'Probabilités', titre: '« Une chance sur quatre » et sa probabilité',
+    programme: 'Lier l’expression « une chance sur quatre » et la probabilité 1/4 ; la donner sous diverses formes.',
+    generer() {
+      const n = choix([2, 4, 5, 10, 20, 100, 3, 6, 8]), k = n >= 4 && Math.random() < 0.4 ? ent(2, Math.min(n - 1, 4)) : 1
+      const chances = k === 1 ? 'une chance' : `$${k}$ chances`
+      const sorte = ent(0, 1)
+      if (sorte === 0 || ![2, 4, 5, 10, 20, 100].includes(n)) return { enonce: `Un évènement a ${chances} sur $${n}$ de se produire. Quelle est sa probabilité (en fraction) ?`, reponse: frac(k, n) === irreductible(k, n) ? frac(k, n) : `${frac(k, n)} = ${irreductible(k, n)}` }
+      return { enonce: `Un évènement a ${chances} sur $${n}$ de se produire. Quelle est sa probabilité, en pourcentage ?`, reponse: `${nb(k / n * 100)}\\,\\%` }
+    },
+  },
+  {
+    id: 'equiprobabilite', theme: 'Probabilités', titre: 'Des issues équiprobables',
+    programme: 'Attribuer des probabilités dans des cas simples (équiprobabilité).', application: true,
+    generer() {
+      const sorte = ent(0, 2)
+      if (sorte === 0) {
+        const n = choix([8, 10, 12]), [ev, f] = choix<[string, (k: number) => boolean]>([['un nombre pair', k => k % 2 === 0], ['un multiple de 3', k => k % 3 === 0], ['un nombre supérieur à 6', k => k > 6], ['un multiple de 4', k => k % 4 === 0], ['un nombre inférieur ou égal à 3', k => k <= 3]])
+        const fav = Array.from({ length: n }, (_, i) => i + 1).filter(f).length
+        return { enonce: `Une roue de loterie a $${n}$ secteurs identiques, numérotés de $1$ à $${n}$. Quelle est la probabilité d'obtenir ${ev} ?`, reponse: irreductible(fav, n) }
+      }
+      if (sorte === 1) {
+        const m = choix(['MATHS', 'COLLEGE', 'CINQUIEME', 'TABLEAU', 'FRACTION', 'GEOMETRIE']), v = [...m].filter(c => 'AEIOUY'.includes(c)).length
+        return { enonce: `On tire au hasard une des lettres du mot ${m}. Quelle est la probabilité de tirer une voyelle ?`, reponse: irreductible(v, m.length) }
+      }
+      const N = ent(20, 30), g = ent(8, N - 8)
+      return { enonce: `Une classe compte $${N}$ élèves, dont $${g}$ garçons. On tire un élève au hasard. Quelle est la probabilité que ce soit une fille ?`, reponse: irreductible(N - g, N) }
+    },
+  },
 
   // ================= PROPORTIONNALITÉ =================
   {
     id: 'situation-proportionnelle', theme: 'Proportionnalité', titre: 'Le coefficient de proportionnalité',
+    programme: 'Reconnaître une situation de proportionnalité ; son coefficient.',
     generer() {
       const k = choix([2, 3, 4, 5, 6, 1.5, 2.5, 0.5]), xs = melange([1, 2, 3, 4, 5, 6, 8, 10]).slice(0, 3).sort((a, b) => a - b)
       const ys = xs.map(x => arrondi(x * k))
@@ -614,10 +1212,18 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'proportionnalite-procedure', theme: 'Proportionnalité', titre: 'Linéarité ou retour à l’unité',
+    programme: 'Mobiliser une procédure adaptée : linéarité (addition, multiplication), retour à l’unité.',
     generer() {
       const [chose, une] = choix([['cahiers', 'cahier'], ['stylos', 'stylo'], ['baguettes', 'baguette'], ['croissants', 'croissant'], ['places de cinéma', 'place']])
       const pu = choix([0.5, 1.2, 1.5, 2, 2.5, 3, 0.8, 1.1, 4])
-      const n1 = ent(2, 5), sorte = ent(0, 2)
+      const n1 = ent(2, 5), sorte = ent(0, 3)
+      if (sorte === 3) {
+        // Une recette pour 4 personnes, pour 2, 6 ou 8 (l'exemple du programme)
+        const [ingr, q, u] = choix<[string, number, string]>([['de farine', 200, 'g'], ['de lait', 50, 'cL'], ['de sucre', 120, 'g'], ['de beurre', 80, 'g'], ['de chocolat', 160, 'g']])
+        const p = choix([2, 6, 8, 10, 12].filter(x => x !== 4)), base = choix([4, 4, 6])
+        const qq = q / 4 * base
+        return { enonce: `Une recette pour $${base}$ personnes demande $${qq}$ ${u} ${ingr}. Combien en faut-il pour $${p}$ personnes ?`, reponse: unite(nb(arrondi(qq / base * p)), u) }
+      }
       const prix = (n: number) => unite(nb(arrondi(n * pu)), '€')
       void une
       if (sorte === 0) {
@@ -642,6 +1248,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
   },
   {
     id: 'pourcentage-situation', theme: 'Proportionnalité', titre: 'Un pourcentage en situation',
+    programme: 'Calculer un pourcentage dans une situation simple (élection, soldes…).',
     generer() {
       const sorte = ent(0, 2)
       if (sorte === 0) {
@@ -661,128 +1268,30 @@ export const AUTOMATISMES_5E: Automatisme[] = [
         faux: fausses(`${nb(v)}\\,\\%`, [`${nb(k)}\\,\\%`, `${nb(N - k)}\\,\\%`, `${nb(100 - v)}\\,\\%`, `${nb(k * 10)}\\,\\%`], () => `${nb(v + choix([-5, 5, 10]))}\\,\\%`) }
     },
   },
+  {
+    id: 'echelle', theme: 'Proportionnalité', titre: 'L’échelle d’un plan ou d’une carte',
+    programme: 'Utiliser un coefficient de proportionnalité : l’échelle d’un plan, d’une carte.', application: true,
+    generer() {
+      const sorte = ent(0, 2)
+      if (sorte === 0) { const d = ent(2, 15); return { enonce: `Sur un plan à l'échelle $\\frac{1}{100}$, une pièce mesure $${d}$ cm de long. Quelle est sa longueur réelle ?`, reponse: unite(nb(d), 'm') } }
+      if (sorte === 1) { const d = ent(2, 12), [e, k] = choix<[string, number]>([['1\\,000', 10], ['10\\,000', 100], ['100\\,000', 1000], ['50\\,000', 500]]); return { enonce: `Sur une carte à l'échelle $\\frac{1}{${e}}$, deux villages sont à $${d}$ cm. Quelle est la distance réelle, en mètres ?`, reponse: unite(grandNb(d * k), 'm') } }
+      const r = ent(2, 30), [e, k] = choix<[string, number]>([['\\frac{1}{100}', 1], ['\\frac{1}{50}', 2], ['\\frac{1}{200}', 0.5]])
+      return { enonce: `À l'échelle $${e}$, comment représente-t-on un mur de $${r}$ m de long ? (en cm)`, reponse: unite(nb(r * k), 'cm') }
+    },
+  },
+  {
+    id: 'vitesse-moyenne', theme: 'Proportionnalité', titre: 'Une vitesse moyenne',
+    programme: 'Utiliser un coefficient de proportionnalité : la vitesse moyenne.', application: true,
+    generer() {
+      const v = choix([4, 5, 12, 15, 20, 30, 40, 50, 60, 80, 90, 100, 120]), sorte = ent(0, 2)
+      const [qui, va, il] = v <= 5 ? ['Un marcheur', 'marche', 'il'] : v <= 20 ? ['Une cycliste', 'roule', 'elle'] : ['Une voiture', 'roule', 'elle']
+      if (sorte === 0) { const h = ent(2, 5); return { enonce: `${qui} ${va} à $${v}$ km/h de moyenne. Quelle distance parcourt-${il} en $${h}$ heures ?`, reponse: unite(nb(v * h), 'km') } }
+      if (sorte === 1) { const [m, f] = choix<[number, number]>([[30, 0.5], [15, 0.25], [45, 0.75], [90, 1.5], [20, 1 / 3]]); return { enonce: `${qui} ${va} à $${v}$ km/h de moyenne. Quelle distance parcourt-${il} en $${m}$ minutes ?`, reponse: unite(nb(arrondi(v * f)), 'km') } }
+      const h = ent(2, 4)
+      return { enonce: `${qui} parcourt $${v * h}$ km en $${h}$ heures. Quelle est sa vitesse moyenne ?`, reponse: `${nb(v)}\\text{ km/h}` }
+    },
+  },
 
-  // ================= HORS LISTE OFFICIELLE =================
-  {
-    id: 'priorites', theme: 'Hors liste officielle', titre: 'Priorités opératoires',
-    generer() {
-      const a = ent(2, 12), b = ent(2, 9), c = ent(2, 9)
-      const forme = ent(0, 3)
-      let e: string, v: number, gauche: number
-      if (forme === 0) { e = `${a} + ${b} \\times ${c}`; v = a + b * c; gauche = (a + b) * c }
-      else if (forme === 1) { const a2 = b * c + ent(1, 20); e = `${a2} - ${b} \\times ${c}`; v = a2 - b * c; gauche = (a2 - b) * c }
-      else if (forme === 2) { e = `(${a} + ${b}) \\times ${c}`; v = (a + b) * c; gauche = a + b * c }
-      else {
-        const q = ent(2, 9); const d = q * c; e = `${a} + ${d} \\div ${c}`; v = a + q
-        // De gauche à droite, (a + d) ÷ c — sinon l'oubli de la division
-        gauche = (a + d) % c === 0 ? (a + d) / c : a + d
-      }
-      return { enonce: `Calculer : $${e}$`, reponse: nb(v), faux: fausses(nb(v), [nb(gauche), nb(v + c), nb(v - 1)], autour(v)) }
-    },
-  },
-  {
-    id: 'relatifs-comparer', theme: 'Hors liste officielle', titre: 'Comparer des relatifs',
-    generer() {
-      const t = new Set<number>()
-      while (t.size < 4) t.add(ent(-12, 12) + choix([0, 0, 0.5]))
-      const l = [...t], plusPetit = Math.min(...l)
-      return { enonce: `Quel est le plus petit de ces nombres : $${l.map(nb).join(' \\; ; \\; ')}$ ?`, reponse: nb(plusPetit),
-        faux: l.filter(x => x !== plusPetit).map(nb) }
-    },
-  },
-  {
-    id: 'fraction-simplifier', theme: 'Hors liste officielle', titre: 'Simplifier une fraction',
-    generer() {
-      let n: number, d: number
-      do { n = ent(1, 9); d = ent(2, 12) } while (pgcd(n, d) !== 1 || n === d)
-      const k = ent(2, 9), N = n * k, D = d * k
-      const partiel = k % 2 === 0 && k > 2 ? frac(N / 2, D / 2) : frac(N - 1, D - 1)
-      return { enonce: `Écrire sous forme irréductible : $${frac(N, D)}$`, reponse: frac(n, d),
-        faux: fausses(frac(n, d), [partiel, frac(d, n), frac(n + 1, d)], () => frac(n + ent(1, 3), d)) }
-    },
-  },
-  {
-    id: 'divisibilite', theme: 'Hors liste officielle', titre: 'Divisibilité par 2, 3, 4, 5, 9 et 10',
-    generer() { return divisiblePar([2, 3, 4, 5, 9, 10]) },
-  },
-  // ---------- Calcul littéral ----------,
-  {
-    id: 'litteral-substituer', theme: 'Hors liste officielle', titre: 'Calculer une expression pour une valeur',
-    generer() {
-      const a = ent(2, 9), b = ent(1, 12), x = ent(2, 9)
-      const forme = ent(0, 2)
-      let e: string, v: number, faux: string[]
-      if (forme === 0) { e = `${a}x + ${b}`; v = a * x + b; faux = [`${a}${x}`.length < 4 ? nb(Number(`${a}${x}`) + b) : nb(a + x + b), nb(a * (x + b)), nb(a + x + b)] }
-      else if (forme === 1) { e = `${a}(x + ${b})`; v = a * (x + b); faux = [nb(a * x + b), nb(a + x + b), nb(a * x * b)] }
-      else { e = `x^2 + ${b}`; v = x * x + b; faux = [nb(2 * x + b), nb(x + b), nb((x + b) * (x + b))] }
-      return { enonce: `Calculer $${e}$ pour $x = ${x}$.`, reponse: nb(v), faux: fausses(nb(v), faux, autour(v)) }
-    },
-  },
-  {
-    id: 'litteral-reduire', theme: 'Hors liste officielle', titre: 'Réduire une expression',
-    generer() {
-      const a = ent(2, 9), b = ent(2, 9), c = ent(1, 9)
-      const terme = (k: number) => k === 1 ? 'x' : `${k}x`
-      if (Math.random() < 0.5) {
-        const v = terme(a + b)
-        return { enonce: `Réduire : $${terme(a)} + ${terme(b)}$`, reponse: v, faux: fausses(v, [`${a + b}x^2`, `${a * b}x`, `${a}${b}x`], () => terme(a + b + ent(1, 3))) }
-      }
-      const v = `${terme(a + b)} + ${c}`
-      return { enonce: `Réduire : $${terme(a)} + ${c} + ${terme(b)}$`, reponse: v,
-        faux: fausses(v, [`${a + b + c}x`, `${terme(a + b)}x + ${c}`, `${terme(a * b)} + ${c}`], () => `${terme(a + b)} + ${c + ent(1, 3)}`) }
-    },
-  },
-  // ---------- Proportionnalité ----------,
-  {
-    id: 'conversions', theme: 'Hors liste officielle', titre: 'Conversions de longueurs et de masses',
-    generer() {
-      const [de, vers, k] = choix<[string, string, number]>([
-        ['m', 'cm', 100], ['cm', 'm', 0.01], ['km', 'm', 1000], ['m', 'km', 0.001], ['mm', 'cm', 0.1], ['cm', 'mm', 10],
-        ['kg', 'g', 1000], ['g', 'kg', 0.001], ['dm', 'cm', 10], ['m', 'mm', 1000]])
-      const x = choix([ent(2, 95) / 10, ent(1, 99), ent(101, 999) / 100])
-      const v = x * k
-      return { enonce: `Convertir : $${unite(nb(x), de)} = \\ldots\\text{ ${vers}}$`, reponse: unite(nb(v), vers),
-        faux: fausses(unite(nb(v), vers), [unite(nb(v * 10), vers), unite(nb(v / 10), vers), unite(nb(x / k), vers)], () => unite(nb(v * choix([100, 0.01])), vers)) }
-    },
-  },
-  {
-    id: 'aires-perimetres', theme: 'Hors liste officielle', titre: 'Périmètres et aires',
-    generer() {
-      const a = ent(2, 12), b = ent(2, 12)
-      const cas = ent(0, 3)
-      if (cas === 0) { const v = 2 * (a + b); return { enonce: `Périmètre d'un rectangle de longueur $${a}$ cm et de largeur $${b}$ cm ?`, reponse: unite(nb(v), 'cm'), faux: fausses(unite(nb(v), 'cm'), [unite(nb(a * b), 'cm'), unite(nb(a + b), 'cm'), unite(nb(a * b), 'cm}^2\\text{')], () => unite(nb(v + choix([-2, 2, 4])), 'cm')) } }
-      if (cas === 1) { const v = a * b; return { enonce: `Aire d'un rectangle de longueur $${a}$ cm et de largeur $${b}$ cm ?`, reponse: `${nb(v)}\\text{ cm}^2`, faux: fausses(`${nb(v)}\\text{ cm}^2`, [`${nb(2 * (a + b))}\\text{ cm}^2`, `${nb(a + b)}\\text{ cm}^2`, `${nb(v)}\\text{ cm}`], () => `${nb(v + choix([-2, 2, 4]))}\\text{ cm}^2`) } }
-      if (cas === 2) { const v = 4 * a; return { enonce: `Périmètre d'un carré de côté $${a}$ cm ?`, reponse: unite(nb(v), 'cm'), faux: fausses(unite(nb(v), 'cm'), [unite(nb(a * a), 'cm'), unite(nb(2 * a), 'cm'), unite(nb(a + 4), 'cm')], () => unite(nb(v + choix([-4, 4])), 'cm')) } }
-      const p = 2 * ent(1, 6); const v = p * b / 2
-      return { enonce: `Aire d'un triangle rectangle dont les côtés de l'angle droit mesurent $${p}$ cm et $${b}$ cm ?`, reponse: `${nb(v)}\\text{ cm}^2`,
-        faux: fausses(`${nb(v)}\\text{ cm}^2`, [`${nb(p * b)}\\text{ cm}^2`, `${nb(p + b)}\\text{ cm}^2`, `${nb(2 * (p + b))}\\text{ cm}^2`], () => `${nb(v + choix([-2, 2]))}\\text{ cm}^2`) }
-    },
-  },
-  {
-    id: 'angles-symetrie', theme: 'Hors liste officielle', titre: 'Angles et parallélogramme',
-    generer() {
-      const a = ent(35, 145)
-      if (Math.random() < 0.5) {
-        return { enonce: `Dans un parallélogramme, un angle mesure $${a}°$. Combien mesure l'angle consécutif ?`, reponse: `${180 - a}°`,
-          faux: fausses(`${180 - a}°`, [`${a}°`, `${360 - a}°`, `${90 - a > 0 ? 90 - a : a - 90}°`], () => `${180 - a + choix([-10, 10])}°`) }
-      }
-      return { enonce: `Dans un parallélogramme, un angle mesure $${a}°$. Combien mesure l'angle opposé ?`, reponse: `${a}°`,
-        faux: fausses(`${a}°`, [`${180 - a}°`, `${360 - a}°`, `${2 * a <= 360 ? 2 * a : a / 2}°`], () => `${a + choix([-10, 10])}°`) }
-    },
-  },
-  // ---------- Statistiques ----------,
-  {
-    id: 'moyenne', theme: 'Hors liste officielle', titre: 'Calculer une moyenne',
-    generer() {
-      const n = choix([3, 4, 5])
-      let l: number[]
-      do { l = Array.from({ length: n }, () => ent(4, 20)) } while ((l.reduce((s, x) => s + x, 0) * 10) % n !== 0)
-      const somme = l.reduce((s, x) => s + x, 0), v = somme / n
-      const tri = [...l].sort((x, y) => x - y)
-      return { enonce: `Quelle est la moyenne de : $${l.join(' \\; ; \\; ')}$ ?`, reponse: nb(v),
-        faux: fausses(nb(v), [nb(somme), nb(tri[Math.floor(n / 2)]), nb((Math.max(...l) + Math.min(...l)) / 2)], autour(v)) }
-    },
-  },
 ]
 
 // =============================================================
@@ -849,11 +1358,6 @@ const TROUS: Record<string, () => Question> = {
     const a = ent(1, 15) * choix([-1, 1]), b = ent(1, 15) * choix([-1, 1])
     return unTrou('', [[`$${rel(a)} + \\ldots = ${nb(a + b)}$`, nb(b)], [`$\\ldots + ${rel(b)} = ${nb(a + b)}$`, nb(a)], [`$${rel(a)} - \\ldots = ${nb(a - b)}$`, nb(b)]])
   },
-  'relatifs-produit': () => {
-    const a = ent(2, 10) * choix([-1, 1]), b = ent(2, 10) * choix([-1, 1])
-    return unTrou('', [[`$${rel(a)} \\times \\ldots = ${nb(a * b)}$`, nb(b)], [`$\\ldots \\times ${rel(b)} = ${nb(a * b)}$`, nb(a)]])
-  },
-  'relatifs-trou': memeQuestion('relatifs-trou'),
   'fraction-decimal': () => {
     const [n, d] = choix([[1, 2], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5], [7, 10], [3, 2], [5, 4], [7, 2], [9, 10], [3, 10]])
     return unTrou('', [[`$\\dfrac{\\ldots}{${d}} = ${nb(n / d)}$`, nb(n)], [`$\\dfrac{${n}}{\\ldots} = ${nb(n / d)}$`, nb(d)]])
@@ -893,7 +1397,7 @@ const TROUS: Record<string, () => Question> = {
     return unTrou('', [[`$${nb(n / d)} = \\ldots\\,\\%$`, pc], [`$\\ldots = ${pc}\\,\\%$ (écriture décimale)`, nb(n / d)], [`$${frac(n, d)} = \\ldots\\,\\%$`, pc]])
   },
   'carres': () => {
-    const n = ent(2, 15)
+    const n = ent(2, 12)
     return unTrou('', [[`$\\ldots^2 = ${n * n}$ (avec un nombre positif)`, nb(n)], [`$${n}^2 = \\ldots$`, nb(n * n)], [`$${n} \\times \\ldots = ${n * n}$`, nb(n)]])
   },
   'angles-triangle': () => {
@@ -915,21 +1419,6 @@ const TROUS: Record<string, () => Question> = {
   'litteral-reduire': () => {
     const a = ent(2, 9), b = ent(2, 9)
     return unTrou('', [[`$${terme(a)} + ${terme(b)} = \\ldots x$`, nb(a + b)], [`$${terme(a)} + \\ldots x = ${terme(a + b)}$`, nb(b)], [`$\\ldots x + ${terme(b)} = ${terme(a + b)}$`, nb(a)]])
-  },
-  'conversions': () => {
-    const [de, vers, k] = choix<[string, string, number]>([
-      ['m', 'cm', 100], ['cm', 'm', 0.01], ['km', 'm', 1000], ['m', 'km', 0.001], ['mm', 'cm', 0.1], ['cm', 'mm', 10],
-      ['kg', 'g', 1000], ['g', 'kg', 0.001], ['dm', 'cm', 10], ['m', 'mm', 1000]])
-    const x = choix([ent(2, 95) / 10, ent(1, 99), ent(101, 999) / 100]), v = x * k
-    return unTrou('Convertir :', [[`$${unite(nb(x), de)} = \\ldots\\text{ ${vers}}$`, unite(nb(v), vers)], [`$\\ldots\\text{ ${de}} = ${unite(nb(v), vers)}$`, unite(nb(x), de)]])
-  },
-  'aires-perimetres': () => {
-    const a = ent(3, 12), b = ent(2, 12)
-    return unTrou('', [
-      [`Un rectangle de longueur $${a}$ cm et de largeur $\\ldots$ cm a une aire de $${a * b}\\text{ cm}^2$.`, unite(nb(b), 'cm')],
-      [`Un rectangle de largeur $${b}$ cm et de longueur $\\ldots$ cm a un périmètre de $${2 * (a + b)}$ cm.`, unite(nb(a), 'cm')],
-      [`Un carré de côté $\\ldots$ cm a un périmètre de $${4 * a}$ cm.`, unite(nb(a), 'cm')],
-    ])
   },
 }
 for (const a of AUTOMATISMES_5E) if (TROUS[a.id]) a.trou = TROUS[a.id]
@@ -1016,6 +1505,10 @@ export const COURS_5E: QuestionCours[] = [
         return une([`Quand on calcule $${x} \\div ${k}$, de combien de rangs chaque chiffre se décale-t-il, et dans quel sens ?`, `de ${n} vers la droite`],
           [`Quand on calcule $${x} \\times ${k}$, de combien de rangs chaque chiffre se décale-t-il, et dans quel sens ?`, `de ${n} vers la gauche`])
       }],
+    ['Les priorités opératoires',
+      () => { const a = ent(2, 20), b = ent(2, 9), c = ent(2, 9); return [`Dans $${a} + ${b} \\times ${c}$, quel calcul fait-on en premier ?`, `$${b} \\times ${c}$ : la multiplication passe avant l'addition`] },
+      () => { const a = ent(2, 20), b = ent(2, 9), c = ent(2, 9); return [`Dans $(${a} + ${b}) \\times ${c}$, quel calcul fait-on en premier ?`, `$${a} + ${b}$ : les parenthèses d'abord`] },
+      () => { const b = ent(2, 9), a = b + ent(2, 20), c = ent(2, 9); return [`Dans $${a} - ${b} + ${c}$, quel calcul fait-on en premier ?`, `$${a} - ${b}$ : on calcule de gauche à droite`] }],
   ]),
   ...notions('Nombres relatifs', [
     ['Deux nombres opposés',
@@ -1025,12 +1518,6 @@ export const COURS_5E: QuestionCours[] = [
     ['Soustraire un relatif',
       () => { const a = ent(2, 12); return une([`Soustraire $(-${a})$ revient à…`, `ajouter $${a}$ (son opposé)`], [`Soustraire $${a}$ revient à…`, `ajouter $-${a}$ (son opposé)`]) },
       () => { const a = ent(2, 12), b = ent(2, 12); return [`Pour calculer $${a} - (-${b})$, par quelle addition la remplace-t-on ?`, `$${a} + ${b}$`] }],
-    ['La règle des signes d\'un produit',
-      () => {
-        const a = ent(2, 9), b = ent(2, 9), [x, y] = choix<[string, string]>([[`(-${a})`, `(-${b})`], [`(-${a})`, `(+${b})`], [`(+${a})`, `(-${b})`]])
-        return [`Quelle règle des signes utilise-t-on pour calculer $${x} \\times ${y}$ ?`, 'deux nombres de même signe : produit positif ; de signes contraires : produit négatif']
-      },
-      () => { const n = choix([3, 4, 5, 6]); return [`Comment trouve-t-on le signe d'un produit de $${n}$ nombres relatifs ?`, 'on compte les facteurs négatifs : en nombre pair, positif ; en nombre impair, négatif'] }],
     ['La distance à zéro',
       () => { const a = ent(2, 99) / choix([1, 10]); return [`Quelle est la distance à zéro de $${nb(-a)}$ ?`, `$${nb(a)}$`] },
       () => { const a = nb(ent(2, 99) / choix([1, 10])); return [`Le nombre $-${a}$ est formé d'un signe et d'une distance à zéro. Lesquels ?`, `le signe $-$ et la distance à zéro $${a}$`] }],
@@ -1082,9 +1569,16 @@ export const COURS_5E: QuestionCours[] = [
           [`On prend $${frac(n, d)}$ de ${quoi}. Que représente le nombre $${n}$ ?`, `le nombre de ${part} prises`])
       }],
   ]),
-  ...notions('Puissances et calcul littéral', [
-    ['Le carré d\'un nombre', () => { const n = ent(2, 15); return une([`Que signifie $${n}^2$ ?`, `$${n} \\times ${n}$`], [`Comment écrit-on $${n} \\times ${n}$ plus simplement ?`, `$${n}^2$`]) }],
+  ...notions('Puissances', [
+    ['Le carré d\'un nombre', () => { const n = ent(2, 12); return une([`Que signifie $${n}^2$ ?`, `$${n} \\times ${n}$`], [`Comment écrit-on $${n} \\times ${n}$ plus simplement ?`, `$${n}^2$`]) }],
     ['Le cube d\'un nombre', () => { const n = ent(2, 9); return une([`Que signifie $${n}^3$ ?`, `$${n} \\times ${n} \\times ${n}$`], [`Comment écrit-on $${n} \\times ${n} \\times ${n}$ plus simplement ?`, `$${n}^3$`]) }],
+    ['Le cube de 10',
+      () => une(['Que vaut $10^3$ ?', '$1\\,000$'], ['Comment écrit-on $1\\,000$ sous la forme d\'une puissance de $10$ ?', '$10^3$'], ['Que vaut $10^2$ ?', '$100$'])],
+    ['Les unités d\'aire et de volume',
+      () => une(['Combien y a-t-il de $\\text{dm}^2$ dans $1\\text{ m}^2$ ?', '$100$'], ['Combien y a-t-il de $\\text{cm}^2$ dans $1\\text{ dm}^2$ ?', '$100$'],
+        ['Combien y a-t-il de $\\text{dm}^3$ dans $1\\text{ m}^3$ ?', '$1\\,000$'], ['Combien y a-t-il de $\\text{cm}^3$ dans $1\\text{ dm}^3$ ?', '$1\\,000$'], ['À quel volume correspond $1$ litre ?', '$1\\text{ dm}^3$'], ['À quelle capacité correspond $1\\text{ cm}^3$ ?', '$1$ mL'])],
+  ]),
+  ...notions('Calcul littéral et algébrique', [
     ['Le signe × sous-entendu',
       () => {
         const k = ent(2, 9), x = choix(['x', 'a', 'y', 'n', 't'])
@@ -1097,10 +1591,10 @@ export const COURS_5E: QuestionCours[] = [
     ['Réduire une expression',
       () => { const a = ent(2, 9), b = ent(2, 9), x = choix(['x', 'a', 'y']); return [`Que veut dire « réduire » l'expression $${a}${x} + ${b}${x}$ ?`, `l'écrire avec le moins de termes possible : $${a + b}${x}$`] },
       () => { const a = ent(2, 9), b = ent(2, 9), x = choix(['x', 'a', 'y']); return [`Pourquoi ne peut-on pas réduire $${a}${x} + ${b}$ ?`, `$${a}${x}$ et $${b}$ ne sont pas de la même sorte (l'un a un $${x}$, l'autre non)`] }],
-    ['Les priorités opératoires',
-      () => { const a = ent(2, 20), b = ent(2, 9), c = ent(2, 9); return [`Dans $${a} + ${b} \\times ${c}$, quel calcul fait-on en premier ?`, `$${b} \\times ${c}$ : la multiplication passe avant l'addition`] },
-      () => { const a = ent(2, 20), b = ent(2, 9), c = ent(2, 9); return [`Dans $(${a} + ${b}) \\times ${c}$, quel calcul fait-on en premier ?`, `$${a} + ${b}$ : les parenthèses d'abord`] },
-      () => { const b = ent(2, 9), a = b + ent(2, 20), c = ent(2, 9); return [`Dans $${a} - ${b} + ${c}$, quel calcul fait-on en premier ?`, `$${a} - ${b}$ : on calcule de gauche à droite`] }],
+    ['La distributivité',
+      () => { const k = ent(2, 9), x = choix(['x', 'a', 'y']), a = ent(1, 9); return une([`Développer $${k}(${x} + ${a})$, c'est l'écrire sous la forme…`, `d'une somme : $${k}${x} + ${k * a}$`], [`Quelle égalité permet de développer $k(a + b)$ ?`, '$k(a + b) = ka + kb$']) }],
+    ['La solution d\'une équation',
+      () => { const a = ent(2, 9), s = ent(2, 9), x = choix(['x', 'y', 'n']); return une([`Que veut dire « $${s}$ est solution de l'équation $${a}${x} = ${a * s}$ » ?`, `qu'en remplaçant $${x}$ par $${s}$, l'égalité est vraie : $${a} \\times ${s} = ${a * s}$`], [`Pour résoudre $${x} + ${a} = ${a + s}$, quelle opération fait-on ?`, `une soustraction : $${a + s} - ${a}$`], [`Pour résoudre $${a}${x} = ${a * s}$, quelle opération fait-on ?`, `une division : $${a * s} \\div ${a}$`]) }],
   ]),
   ...notions('Repérage', [
     ['Les coordonnées d\'un point',
@@ -1135,6 +1629,12 @@ export const COURS_5E: QuestionCours[] = [
     ['Le patron',
       () => { const a = ent(2, 9); return [`De quoi est formé un patron d'un cube de $${a}$ cm d'arête ?`, `de $6$ carrés de $${a}$ cm de côté`] },
       () => { const l = ent(4, 9), w = ent(2, 3), h = ent(5, 8); return [`Combien de rectangles compte un patron d'un pavé droit de $${l}$ cm sur $${w}$ cm sur $${h}$ cm ?`, '$6$'] }],
+    ['Le cercle',
+      () => { const r = ent(2, 9); return une([`Quel calcul donne le périmètre d'un cercle de rayon $${r}$ cm ?`, `$2 \\times \\pi \\times ${r}$`],
+        [`Quel calcul donne l'aire d'un disque de rayon $${r}$ cm ?`, `$\\pi \\times ${r} \\times ${r}$`],
+        [`Un cercle a un rayon de $${r}$ cm. Combien mesure son diamètre ?`, `$${2 * r}$ cm`]) }],
+    ['Le volume du pavé',
+      () => { const l = ent(2, 9), w = ent(2, 9), h = ent(2, 9); return [`Quel calcul donne le volume d'un pavé droit de $${l}$ cm sur $${w}$ cm sur $${h}$ cm ?`, `$${l} \\times ${w} \\times ${h}$`] }],
   ]),
   ...notions('Transformations', [
     ['Ce que conserve la symétrie',
@@ -1202,8 +1702,10 @@ export const COURS_5E: QuestionCours[] = [
     ['L\'inégalité triangulaire',
       () => { const [A, B, C] = tri(); return [`Dans le triangle $${A}${B}${C}$, compléter : $${A}${B} < \\ldots$`, `$${A}${C} + ${C}${B}$`] },
       () => { const a = ent(3, 8), b = ent(3, 8); return [`Deux côtés d'un triangle mesurent $${a}$ cm et $${b}$ cm. Le troisième doit être plus petit que…`, `$${a + b}$ cm`] }],
+    ['Aire du triangle',
+      () => { const b = ent(3, 15), h = ent(2, 12); return [`Un triangle a une base de $${b}$ cm et une hauteur de $${h}$ cm. Quel calcul donne son aire ?`, `$${b} \\times ${h} \\div 2$ (base $\\times$ hauteur $\\div 2$)`] }],
   ]),
-  ...notions('Parallélogrammes et polygones', [
+  ...notions('Parallélogrammes', [
     ['Les diagonales du parallélogramme',
       () => { const [A, B, C, D] = quad(); return [`$${A}${B}${C}${D}$ est un parallélogramme de centre $O$. Que peut-on dire du point $O$ ?`, `c'est le milieu de $[${A}${C}]$ et de $[${B}${D}]$`] },
       () => { const [A, B, C, D] = quad(); return [`Les diagonales $[${A}${C}]$ et $[${B}${D}]$ du quadrilatère $${A}${B}${C}${D}$ se coupent en leur milieu. Quelle est sa nature ?`, 'un parallélogramme'] }],
@@ -1227,6 +1729,11 @@ export const COURS_5E: QuestionCours[] = [
         const [n, nom] = choix<[number, string]>([[5, 'un pentagone'], [6, 'un hexagone'], [8, 'un octogone'], [3, 'un triangle'], [4, 'un quadrilatère'], [10, 'un décagone']])
         return une([`Comment appelle-t-on un polygone à $${n}$ côtés ?`, nom], [`Combien de côtés a ${nom} ?`, `$${n}$`])
       }],
+    ['Aire et périmètre du rectangle',
+      () => { const L = ent(5, 15), l = ent(2, L - 1); return une([`Un rectangle mesure $${L}$ cm sur $${l}$ cm. Quel calcul donne son aire ?`, `$${L} \\times ${l}$ (longueur $\\times$ largeur)`],
+        [`Un rectangle mesure $${L}$ cm sur $${l}$ cm. Quel calcul donne son périmètre ?`, `$2 \\times (${L} + ${l})$`]) }],
+    ['L\'aire du parallélogramme',
+      () => { const b = ent(3, 12), h = ent(2, 9); return [`Un parallélogramme a un côté de $${b}$ cm et une hauteur relative à ce côté de $${h}$ cm. Quel calcul donne son aire ?`, `$${b} \\times ${h}$ (côté $\\times$ hauteur)`] }],
   ]),
   ...notions('Probabilités', [
     ['Les valeurs d\'une probabilité',
@@ -1259,24 +1766,16 @@ export const COURS_5E: QuestionCours[] = [
     ['Appliquer un pourcentage',
       () => { const p = choix([5, 12, 15, 20, 30, 35, 60, 75]); return [`Calculer $${p}\\,\\%$ d'un nombre, c'est le multiplier par…`, `$${frac(p, 100)}$ (ou $${nb(p / 100)}$)`] }],
   ]),
-  ...notions('Hors liste officielle', [
-    ['Aire et périmètre du rectangle',
-      () => { const L = ent(5, 15), l = ent(2, L - 1); return une([`Un rectangle mesure $${L}$ cm sur $${l}$ cm. Quel calcul donne son aire ?`, `$${L} \\times ${l}$ (longueur $\\times$ largeur)`],
-        [`Un rectangle mesure $${L}$ cm sur $${l}$ cm. Quel calcul donne son périmètre ?`, `$2 \\times (${L} + ${l})$`]) }],
-    ['Aire du triangle',
-      () => { const b = ent(3, 15), h = ent(2, 12); return [`Un triangle a une base de $${b}$ cm et une hauteur de $${h}$ cm. Quel calcul donne son aire ?`, `$${b} \\times ${h} \\div 2$ (base $\\times$ hauteur $\\div 2$)`] }],
-    ['Le cercle',
-      () => { const r = ent(2, 9); return une([`Quel calcul donne le périmètre d'un cercle de rayon $${r}$ cm ?`, `$2 \\times \\pi \\times ${r}$`],
-        [`Quel calcul donne l'aire d'un disque de rayon $${r}$ cm ?`, `$\\pi \\times ${r} \\times ${r}$`],
-        [`Un cercle a un rayon de $${r}$ cm. Combien mesure son diamètre ?`, `$${2 * r}$ cm`]) }],
-    ['Les conversions à connaître',
-      () => {
-        const [de, vers, k] = choix<[string, string, string]>([['km', 'm', '1\\,000'], ['m', 'cm', '100'], ['m', 'mm', '1\\,000'], ['kg', 'g', '1\\,000'], ['L', 'cL', '100'], ['h', 'min', '60'], ['min', 's', '60'], ['cm', 'mm', '10']])
-        return [`Combien y a-t-il de ${vers} dans $1$ ${de} ?`, `$${k}$`]
-      }],
+  ...notions('Statistiques', [
     ['La moyenne',
       () => { const t = Array.from({ length: ent(3, 5) }, () => ent(4, 20)); return [`Quel calcul donne la moyenne de ${t.map(x => `$${x}$`).join(', ')} ?`, `$(${t.join(' + ')}) \\div ${t.length}$`] },
       () => { const n = ent(3, 12); return [`On a relevé $${n}$ températures. Comment calcule-t-on leur moyenne ?`, `on ajoute les $${n}$ températures, puis on divise par $${n}$`] }],
+    ['L\'effectif total',
+      () => { const e = Array.from({ length: ent(3, 4) }, () => ent(2, 15)); return [`Dans un tableau, les effectifs sont ${e.map(x => `$${x}$`).join(', ')}. Comment obtient-on l'effectif total ?`, `on les ajoute : $${e.reduce((p, x) => p + x, 0)}$`] }],
+    ['Le diagramme circulaire',
+      () => { const [f, a] = choix<[string, number]>([['la moitié', 180], ['le quart', 90], ['le tiers', 120], ['le sixième', 60], ['les trois quarts', 270]]); return une([`Dans un diagramme circulaire, quel angle représente ${f} de l'effectif total ?`, `$${a}°$`], [`Dans un diagramme circulaire, un secteur a un angle de $${a}°$. Quelle part de l'effectif total représente-t-il ?`, f]) }],
+    ['La fréquence',
+      () => { const N = choix([20, 25, 30, 40]), e = ent(2, N - 2); return une([`Sur $${N}$ élèves, $${e}$ ont répondu « oui ». Quel calcul donne la fréquence de « oui » ?`, `$${e} \\div ${N}$ (effectif ÷ effectif total)`], [`Entre quelles valeurs une fréquence est-elle toujours comprise ?`, '$0$ et $1$ (ou $0\\,\\%$ et $100\\,\\%$)']) }],
   ]),
 ]
 
