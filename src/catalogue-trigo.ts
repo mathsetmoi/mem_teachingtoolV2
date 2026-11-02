@@ -124,7 +124,7 @@ export class Trigo {
           <select class="reperes">${option('aucun', 'Aucun', this.reg.reperes)}${option('remarquables', 'Valeurs remarquables (π/2, π…)', this.reg.reperes)}${option('entiers', 'Entiers (1, 2, 3…)', this.reg.reperes)}${option('les-deux', 'Les deux', this.reg.reperes)}</select></label>
         <label class="champ"><span>Sens</span>
           <select class="sens">${option('deux', 'Les deux sens', this.reg.deuxSens ? 'deux' : 'direct')}${option('direct', 'Sens direct seulement', this.reg.deuxSens ? 'deux' : 'direct')}</select></label>
-        <label class="champ"><span>Réels à placer (facultatif), séparés par des points-virgules</span>
+        <label class="champ"><span>Réels à placer (facultatif), séparés par « ; »</span>
           <input type="text" class="reels" spellcheck="false" placeholder="π/3 ; 3π/4 ; −π/2 ; 2,5"></label>
         <div class="erreurs erreurs-reels" role="status"></div>
         <button type="button" class="principal poser-enroulement">Poser l'animation</button>

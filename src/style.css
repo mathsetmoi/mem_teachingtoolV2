@@ -774,6 +774,7 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .panneau-catalogue .trigo select, .panneau-catalogue .trigo input[type="text"], .panneau-catalogue .vitesse select {
   height: 36px; border: 1px solid var(--filet); border-radius: 10px; background: #fbfcfe; padding: 0 8px; color: var(--encre); font: inherit; font-size: 14px; min-width: 0;
 }
+.panneau-catalogue .trigo .champ { align-items: stretch; text-align: left; min-width: 0; overflow-wrap: anywhere; }
 .panneau-catalogue .pilote-enroulement .avancement { width: 100%; accent-color: var(--bleu); }
 .panneau-catalogue .pilote-enroulement .commandes { display: flex; flex-wrap: wrap; align-items: end; gap: 6px; }
 .panneau-catalogue .pilote-enroulement .vitesse { flex: 1; }
