@@ -46,6 +46,15 @@ const ent = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1)
 const choix = <T,>(t: T[]): T => t[Math.floor(Math.random() * t.length)]
 const pgcd = (a: number, b: number): number => b ? pgcd(b, a % b) : Math.abs(a)
 const arrondi = (x: number) => Math.round(x * 1e6) / 1e6
+/** Trois points (en unités) alignés */
+const aligne = ([a, b, c]: [number, number][]) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) === 0
+/** Deux points du losange de seize triangles reliés par un trait de la
+ *  figure : les côtés du losange et du carré, et leurs diagonales */
+const surUnTrait = (p: [number, number], q: [number, number]) => {
+  const traits: [number, number][][] = [[[0, 2], [2, 0]], [[2, 0], [0, -2]], [[0, -2], [-2, 0]], [[-2, 0], [0, 2]], [[-1, 1], [1, 1]], [[1, 1], [1, -1]], [[1, -1], [-1, -1]], [[-1, -1], [-1, 1]], [[0, 2], [0, -2]], [[-2, 0], [2, 0]], [[-1, 1], [1, -1]], [[1, 1], [-1, -1]]]
+  const dessus = (r: [number, number], [a, b]: [number, number][]) => aligne([a, b, r]) && Math.min(a[0], b[0]) <= r[0] && r[0] <= Math.max(a[0], b[0]) && Math.min(a[1], b[1]) <= r[1] && r[1] <= Math.max(a[1], b[1])
+  return traits.some(t => dessus(p, t) && dessus(q, t))
+}
 const melange = <T,>(t: T[]) => { const r = [...t]; for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]] } return r }
 
 /** Un nombre décimal à la française : 3{,}5 (et −4) */
@@ -1369,13 +1378,39 @@ export const AUTOMATISMES_4E: Automatisme[] = [
     id: '4e-fractions-addsub', theme: 'Nombres rationnels', titre: 'Additionner et soustraire des fractions',
     generer() {
       // Des dénominateurs simples : l'un multiple de l'autre, ou 2 et 3, 3 et 4…
-      const [d1, d2] = choix<[number, number]>([[2, 4], [3, 6], [4, 8], [5, 10], [2, 6], [3, 9], [4, 12], [2, 3], [3, 4], [2, 5], [4, 6], [6, 9]])
+      // … et, comme au brevet (3/5 − 1/4), deux dénominateurs sans diviseur commun : 4 et 5, 3 et 7…
+      const [d1, d2] = choix<[number, number]>([[2, 4], [3, 6], [4, 8], [5, 10], [2, 6], [3, 9], [4, 12], [2, 3], [3, 4], [2, 5], [4, 6], [6, 9], [4, 5], [3, 5], [5, 6], [2, 7], [3, 7], [3, 8], [5, 4], [5, 3]])
       let a: number, b: number, moins: boolean, num: number
       const D = d1 * d2 / pgcd(d1, d2)
-      do { a = ent(1, d1 + 3); b = ent(1, d2 + 3); moins = Math.random() < 0.4; num = moins ? a * D / d1 - b * D / d2 : a * D / d1 + b * D / d2 } while (num <= 0)
+      do { a = ent(1, d1 + 3); b = ent(1, d2 + 3); moins = Math.random() < 0.4; num = moins ? a * D / d1 - b * D / d2 : a * D / d1 + b * D / d2 } while (num <= 0 || pgcd(a, d1) !== 1 || pgcd(b, d2) !== 1)
       const [f1, f2] = melange([frac(a, d1), frac(b, d2)])
       const ecrit = moins ? `${frac(a, d1)} - ${frac(b, d2)}` : `${f1} + ${f2}`
-      return { enonce: `Calculer et simplifier si possible : $${ecrit}$`, reponse: irreductible(num, D) }
+      const enonce = choix([`Calculer et simplifier si possible : $${ecrit}$`, `Calculer et donner le résultat sous forme de fraction irréductible : $${ecrit}$`, `Calculer $A = ${ecrit}$. Donner le résultat sous forme de fraction irréductible.`])
+      return { enonce, reponse: irreductible(num, D) }
+    },
+  },
+  {
+    id: '4e-ranger-ecritures', theme: 'Nombres rationnels', titre: 'Ranger des nombres écrits de façons différentes',
+    generer() {
+      // Quatre nombres proches, écrits en décimal, en fraction, ou en
+      // « 1 + 3/100 » : comme au brevet (1,25 ; 1 + 3/100 ; 1,3 ; 7/4)
+      const i = ent(0, 2), K = [3, 4, 5, 7, 20, 25, 30, 40, 50, 60, 70, 75, 80]
+      let ks: number[]
+      const enFraction = (v: number) => { for (const q of [2, 4, 5]) if ((v * q) % 100 === 0) return frac(v * q / 100, q); return '' }
+      do { ks = melange(K).slice(0, 4) } while (!ks.some(k => k % 5 === 0 && enFraction(i * 100 + k) !== '') || !ks.some(k => k < 10))
+      // La fraction va à un nombre qui en a une ; la somme, de préférence aux centièmes « pièges »
+      const v = ks.map(k => i * 100 + k)
+      const iF = v.findIndex(x => enFraction(x) !== '')
+      const iS = ks.findIndex((k, j) => j !== iF && k < 10)
+      const ecrits = v.map((x, j) => {
+        if (j === iF) return enFraction(x)
+        if (j === iS) return i === 0 ? frac(ks[j], 100) : `${i} + ${frac(ks[j], 100)}`
+        return nb(x / 100)
+      })
+      const l = v.map((x, j) => ({ x, t: ecrits[j] }))
+      const croissant = Math.random() < 0.7
+      const tries = [...l].sort((a, b) => croissant ? a.x - b.x : b.x - a.x).map(a => a.t)
+      return { enonce: `Ranger dans l'ordre ${croissant ? 'croissant' : 'décroissant'} : $${melange(l).map(a => a.t).join(' \\;;\\; ')}$`, reponse: tries.join(croissant ? ' < ' : ' > ') }
     },
   },
   {
@@ -1449,6 +1484,26 @@ export const AUTOMATISMES_4E: Automatisme[] = [
     trou() {
       const [a, n] = choix<[number, number]>([[2, 3], [2, 4], [3, 3], [5, 3], [10, 3], [10, 4], [10, 5], [2, 5], [4, 3]])
       return unTrou('', [[`$${a}^{\\ldots} = ${grandNb(a ** n)}$`, nb(n)], [`$\\ldots^{${n}} = ${grandNb(a ** n)}$`, nb(a)]])
+    },
+  },
+
+  {
+    id: '4e-calcul-puissances-10', theme: 'Puissances', titre: 'Calculer avec 10², 10³…',
+    generer() {
+      // Comme au brevet (3,1 × 10² − 5 × 10 + …), avec des exposants positifs en 4e
+      let termes: { a: number; n: number; signe: number }[], total: number
+      do {
+        const k = ent(2, 3)
+        termes = Array.from({ length: k }, (_, j) => ({ a: choix([ent(2, 9), ent(11, 99) / 10]), n: j === 0 ? ent(2, 3) : ent(0, 2), signe: j === 0 ? 1 : choix([1, -1]) }))
+        total = arrondi(termes.reduce((t, x) => t + x.signe * x.a * 10 ** x.n, 0))
+      } while (total <= 0 || new Set(termes.map(x => x.n)).size < termes.length)
+      const ecrire = (x: { a: number; n: number }) => x.n === 0 ? nb(x.a) : `${nb(x.a)} \\times ${x.n === 1 ? '10' : `10^{${x.n}}`}`
+      const calcul = termes.map((x, j) => (j === 0 ? '' : x.signe < 0 ? ' - ' : ' + ') + ecrire(x)).join('')
+      return { enonce: choix([`Calculer : $${calcul}$`, `Calculer $B = ${calcul}$`]), reponse: grandNb(total) }
+    },
+    trou() {
+      const a = ent(11, 99) / 10, n = ent(2, 4), v = arrondi(a * 10 ** n)
+      return unTrou('', [[`$${nb(a)} \\times 10^{\\ldots} = ${grandNb(v)}$`, nb(n)], [`$\\ldots \\times 10^{${n}} = ${grandNb(v)}$`, nb(a)], [`$${nb(a)} \\times 10^{${n}} = \\ldots$`, grandNb(v)]])
     },
   },
 
@@ -1633,6 +1688,41 @@ export const AUTOMATISMES_4E: Automatisme[] = [
     },
   },
   {
+    id: '4e-image-triangle', theme: 'Parallélogrammes et translations', titre: 'L’image d’un triangle dans une figure (symétrie, demi-tour, translation)',
+    generer() {
+      // Le losange de seize triangles du sujet de brevet, aux lettres tirées au hasard
+      const L = pts(9), P = F.POINTS_LOSANGE
+      const ou = (x: number, y: number) => P.findIndex(([a, b]) => a === x && b === y)
+      const nomPt = (i: number) => L[i]
+      // Les transformations : axes (droites qui portent trois points), demi-tour de centre le point du milieu, translations
+      const axes: [number, number, (x: number, y: number) => [number, number]][] = [[0, 2, (x, y) => [-x, y]], [1, 3, (x, y) => [x, -y]], [4, 6, (x, y) => [-y, -x]], [7, 5, (x, y) => [y, x]]]
+      let triangle: number[], image: number[], texte: string
+      do {
+        // Un triangle dont les trois côtés suivent des traits de la figure
+        do { triangle = melange([0, 1, 2, 3, 4, 5, 6, 7, 8]).slice(0, 3) } while (aligne(triangle.map(i => P[i])) || ![[0, 1], [1, 2], [0, 2]].every(([u, w]) => surUnTrait(P[triangle[u]], P[triangle[w]])))
+        const sorte = choix(['translation', 'translation', 'axe', 'centre'])
+        let f: (x: number, y: number) => [number, number]
+        if (sorte === 'translation') {
+          let a: number, b: number
+          do { a = ent(0, 8); b = ent(0, 8) } while (a === b)
+          const [dx, dy] = [P[b][0] - P[a][0], P[b][1] - P[a][1]]
+          f = (x, y) => [x + dx, y + dy]
+          texte = `la translation qui transforme $${nomPt(a)}$ en $${nomPt(b)}$`
+        } else if (sorte === 'axe') {
+          const [u, w, g] = choix(axes)
+          f = g
+          texte = `la symétrie d'axe $(${nomPt(u)}${nomPt(w)})$`
+        } else {
+          f = (x, y) => [-x, -y]
+          texte = choix([`la symétrie de centre $${nomPt(8)}$`, `le demi-tour de centre $${nomPt(8)}$`])
+        }
+        image = triangle.map(i => ou(...f(...P[i])))
+      } while (image.includes(-1) || [...image].sort().join() === [...triangle].sort().join())
+      const t = triangle.map(nomPt).join(''), im = image.map(nomPt).join('')
+      return { enonce: `La figure est formée de $16$ triangles rectangles isocèles superposables. Quelle est l'image du triangle $${t}$ par ${texte} ?`, figure: F.losangeTriangles(L), reponse: mot(`le triangle $${im}$`) }
+    },
+  },
+  {
     id: '4e-diagonales', theme: 'Parallélogrammes et translations', titre: 'Un parallélogramme particulier par ses diagonales',
     generer() {
       const eg = Math.random() < 0.5, pe = Math.random() < 0.5
@@ -1751,6 +1841,50 @@ export const AUTOMATISMES_4E: Automatisme[] = [
     },
   },
   {
+    id: '4e-equation-affine', theme: 'Hors liste officielle', titre: 'Résoudre ax + b = c',
+    generer() {
+      const x = choix(['x', 'y', 't']), a = ent(2, 9), s = ent(-6, 12), b = relNonNul(1, 15), c = a * s + b
+      const gauche = `${a}${x} ${b < 0 ? '-' : '+'} ${Math.abs(b)}`
+      return { enonce: choix([`Résoudre : $${gauche} = ${c}$`, `Déterminer la solution de l'équation : $${gauche} = ${c}$`, `Résoudre : $${c} = ${gauche}$`]), reponse: `${x} = ${nb(s)}` }
+    },
+  },
+  {
+    id: '4e-reduire-parentheses', theme: 'Hors liste officielle', titre: 'Développer et réduire : 3a − 1 − 4(2a + 3)',
+    generer() {
+      const x = choix(['a', 'x', 'y']), lin = (p: number, q: number) => {
+        const t = p === 0 ? '' : p === 1 ? x : p === -1 ? `-${x}` : `${p}${x}`
+        if (q === 0) return t || '0'
+        return t === '' ? nb(q) : `${t} ${q < 0 ? '-' : '+'} ${Math.abs(q)}`
+      }
+      let a: number, b: number, k: number, c: number, d: number, signe: number
+      do { a = relNonNul(1, 9); b = relNonNul(1, 9); k = ent(2, 6); c = ent(1, 5); d = relNonNul(1, 9); signe = choix([1, -1]) } while (a + signe * k * c === 0 || b + signe * k * d === 0)
+      const calcul = `${lin(a, b)} ${signe < 0 ? '-' : '+'} ${k}(${lin(c, d)})`
+      return { enonce: choix([`Réduire l'expression : $${calcul}$`, `Développer et réduire : $${calcul}$`]), reponse: lin(a + signe * k * c, b + signe * k * d) }
+    },
+  },
+  {
+    id: '4e-droite-milieux', theme: 'Hors liste officielle', titre: 'La droite des milieux : une longueur',
+    generer() {
+      const [A, B, C, I, J] = pts(5), base = choix([ent(4, 24), ent(21, 89) / 5])
+      const enonce0 = `$${I}$ et $${J}$ sont les milieux de $[${A}${B}]$ et de $[${A}${C}]$.`
+      if (Math.random() < 0.6) return { enonce: `${enonce0} Combien mesure $${I}${J}$ ?`, figure: F.droiteMilieux(A + B + C + I + J, { ou: 'base', t: `${nb(base).replace('{,}', ',')} cm` }, 'milieux', ent(-3, 3) * 12), reponse: unite(nb(base / 2), 'cm') }
+      return { enonce: `${enonce0} Combien mesure $${B}${C}$ ?`, figure: F.droiteMilieux(A + B + C + I + J, { ou: 'milieux', t: `${nb(base / 2).replace('{,}', ',')} cm` }, 'base', ent(-3, 3) * 12), reponse: unite(nb(base), 'cm') }
+    },
+  },
+  {
+    id: '4e-augmentation', theme: 'Hors liste officielle', titre: 'Augmenter ou diminuer un prix d’un pourcentage',
+    generer() {
+      const t = choix([10, 20, 25, 50, 5, 30, 40]), objet = choix(['Un livre', 'Un jeu', 'Un pull', 'Un casque', 'Un ballon', 'Une lampe', 'Un sac'])
+      // Un prix qui donne un résultat simple : t % du prix est un nombre entier d'euros
+      let p: number
+      do { p = choix([ent(2, 30) * 5, ent(4, 60) * 2, ent(1, 12) * 10]) } while (!Number.isInteger(p * t / 100))
+      const plus = Math.random() < 0.55
+      const v = arrondi(p * (1 + (plus ? t : -t) / 100))
+      if (Math.random() < 0.25) return { enonce: `Par quel nombre multiplie-t-on un prix pour ${plus ? 'l\'augmenter' : 'le diminuer'} de $${t}\\,\\%$ ?`, reponse: nb(1 + (plus ? t : -t) / 100) }
+      return { enonce: plus ? `${objet} coûte $${p}$ euros. Quel sera son prix après une augmentation de $${t}\\,\\%$ ?` : `${objet} coûte $${p}$ euros. Quel sera son prix après une baisse de $${t}\\,\\%$ ?`, reponse: unite(nb(v), '€') }
+    },
+  },
+  {
     id: '4e-mediane-etendue', theme: 'Hors liste officielle', titre: 'Médiane et étendue',
     generer() {
       const n = choix([5, 7]), l = Array.from({ length: n }, () => ent(2, 20))
@@ -1823,6 +1957,9 @@ export const COURS_4E: QuestionCours[] = [
       () => { const n = ent(2, 12); return [`Comment note-t-on l'inverse de $${n}$ ?`, `$${frac(1, n)}$ (ou $${n}^{-1}$)`] }],
     ['Diviser par une fraction',
       () => { let a: number, b: number; do { a = ent(1, 9); b = ent(2, 9) } while (a === b || pgcd(a, b) !== 1); return [`Diviser par $${frac(a, b)}$, c'est…`, `multiplier par son inverse, $${frac(b, a)}$`] }],
+    ['Comparer des nombres écrits de façons différentes',
+      () => { const q = choix([2, 4, 5]); let n: number; do { n = q * ent(1, 2) + ent(1, q - 1) } while (pgcd(n, q) !== 1); const d = ent(1, 9); return [`Comment comparer $${frac(n, q)}$ et $1 + ${frac(d, 100)}$ ?`, `écrire les deux en décimal : $${nb(n / q)}$ et $${nb(1 + d / 100)}$`] },
+      () => { const a = ent(1, 3), b = ent(1, 9); let c: number; do { c = ent(11, 99) } while (c % 10 === 0); return [`Lequel est le plus grand : $${a}{,}${b}$ ou $${a}{,}${c}$ ?`, `$${nb(b / 10 > c / 100 ? a + b / 10 : a + c / 100)}$ : on compare les dixièmes, puis les centièmes`] }],
   ]),
   ...n4('Puissances', [
     ['La définition d\'une puissance',
@@ -1977,6 +2114,11 @@ export const COURS_4E: QuestionCours[] = [
       () => { const a = ent(2, 9), b = ent(1, 9), r = a * ent(2, 9) + b; return [`Programme : multiplier par $${a}$, puis ajouter $${b}$. On obtient $${r}$. Comment retrouve-t-on le nombre de départ ?`, `on soustrait $${b}$, puis on divise par $${a}$ : $${(r - b) / a}$`] }],
     ['Un facteur nul',
       () => { const n = ent(3, 8); return [`Un produit de $${n}$ facteurs relatifs contient un facteur égal à $0$. Que vaut ce produit ?`, '$0$'] }],
+    ['Un signe moins devant des parenthèses',
+      () => { const k = ent(2, 9), x = lettre(), b = ent(1, 9); return [`Comment supprimer les parenthèses dans $-(${k}${x} + ${b})$ ?`, `on change tous les signes : $-${k}${x} - ${b}$`] },
+      () => { const k = ent(2, 6), x = lettre(), b = ent(1, 9); return [`Que vaut $-${k}(${x} - ${b})$ une fois développé ?`, `$-${k}${x} + ${k * b}$ (moins par moins donne plus)`] }],
+    ['Résoudre ax + b = c',
+      () => { const a = ent(2, 9), s = ent(1, 9), b = ent(1, 9), x = lettre(); return [`Par quelles étapes résout-on $${a}${x} + ${b} = ${a * s + b}$ ?`, `on soustrait $${b}$ aux deux membres, puis on divise par $${a}$ : $${x} = ${s}$`] }],
   ]),
 ]
 
