@@ -960,8 +960,8 @@ dès que la séance commence, sur sa première page, vide.
 **Le réglage** est une fenêtre. Pendant qu'on règle, les élèves ne voient
 **aucune question** : rien n'est tiré, rien n'est montré, pas d'exemple, la
 page derrière reste vide. On y choisit :
-- un ou plusieurs **niveaux** (5e et 4e aujourd'hui ; 3e, 2nde et 1re sont
-  marqués « bientôt ») ;
+- un ou plusieurs **niveaux** (5e, 4e, 2nde et 1re aujourd'hui ; 3e est
+  marqué « bientôt ») ;
 - un ou plusieurs **thèmes** de chaque niveau (« tout cocher » prend tout le
   niveau). Les automatismes de 5e suivent la **liste officielle**, rangés par
   thème : opérations, nombres relatifs, nombres rationnels (fractions,
@@ -969,15 +969,35 @@ page derrière reste vide. On y choisit :
   l'espace, transformations, angles, triangles, parallélogrammes et
   polygones, probabilités, proportionnalité — 42 automatismes, plus 10
   « hors liste officielle » (priorités, conversions, moyenne…). Ceux de
-  **4e** suivent la liste « Automatismes » de 4e du programme 2026 :
-  opérations sur les nombres relatifs, nombres rationnels, puissances,
-  racine carrée, calcul littéral et algébrique, transformations (demi-tour),
-  repérage, représentation de l'espace (solides, volumes, aires),
-  parallélogrammes et translations, triangles (droites remarquables),
-  statistiques, proportionnalité — 36 automatismes, plus 7 « hors liste
-  officielle » pris dans les objectifs de l'année (relatifs × et ÷,
-  inverse, produit de fractions, développer, Pythagore, médiane et
-  étendue, programme de calcul), et 67 notions de cours ;
+  **4e** sont pensés comme la partie « Automatismes » du brevet : des
+  questions à réponse courte qui mobilisent un **automatisme** de la liste
+  de 4e du programme 2026, ou une **application directe** d'un objectif
+  d'apprentissage de 4e (une propriété, une formule, un théorème), rien de
+  3e. Ils sont rangés dans les thèmes du programme : opérations sur les
+  nombres relatifs, nombres rationnels, puissances, racine carrée, calcul
+  littéral et algébrique, transformations, repérage, représentation de
+  l'espace, parallélogrammes et translations, triangles, statistiques,
+  probabilités, proportionnalité, fonctions — 38 automatismes et 27
+  applications directes (ax + b = c, développer et réduire, image d'un
+  triangle dans la figure des 16 triangles, Pythagore et sa réciproque,
+  droite des milieux, volume du cône, moyenne pondérée, probabilités,
+  pourcentage d'évolution…), et 79 notions de cours. Chacun porte la phrase
+  du programme qu'il travaille (champ `programme`), comme au brevet : elle
+  s'écrit à la correction, en petit et en bleu, sous la réponse. Ceux de
+  **2nde** et de **1re** suivent la liste des automatismes de l'**épreuve
+  anticipée** de mathématiques (annexe du BO n° 24 du 12 juin 2025,
+  session 2027) : ce qui y est en italique (« relevant du programme de
+  seconde ») est en 2nde, le reste en 1re ; pour réviser toute l'épreuve,
+  on coche les deux niveaux. Six thèmes, ceux de la liste : calcul
+  numérique et algébrique, proportions et pourcentages (2nde seulement),
+  évolutions et variations, fonctions et représentations, statistiques,
+  probabilités — 30 exercices en 2nde, 19 en 1re, 46 et 25 notions de
+  cours. Les figures sont tirées au hasard : courbe d'une fonction dans un
+  repère quadrillé (les questions ne portent que sur des valeurs qu'on lit
+  exactement), droite, courbe ou nuage de points gradués, diagramme en
+  barres, circulaire ou semi-circulaire, boîtes à moustaches, arbre
+  pondéré ; les tableaux (croisé, effectifs, dé truqué) s'écrivent en
+  formule. Chaque exercice porte sa phrase de la liste officielle ;
 - combien de questions de chaque sorte, avec − et + : par défaut **5
   questions, 2 questions de cours** (une définition, une propriété, le
   vocabulaire : « La médiatrice d'un segment est la droite… ») **puis 3

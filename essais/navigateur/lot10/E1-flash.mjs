@@ -14,7 +14,11 @@
 //    « Nouveaux exemples » pose un autre flash sur la page d'après ;
 // E. le réglage est retenu ;
 // G. un flash de 4e (thèmes de géométrie, avec figures) : 5 questions,
-//    corrigées en vert ;
+//    corrigées en vert, avec la phrase du programme en bleu sous les
+//    réponses des 3 exercices ;
+// H. un flash de 2nde et de 1re cochées ensemble (fonctions, statistiques,
+//    probabilités : courbes, diagrammes, arbres) : 5 questions corrigées
+//    en vert, la phrase du programme sous chaque exercice ;
 // F. aucune erreur.
 import { chromium } from '../commun/playwright.mjs'
 
@@ -126,6 +130,28 @@ const pageG = await p.evaluate(() => window.__app.page)
 await p.keyboard.press('c'); await p.waitForTimeout(800)
 const vertsG = await p.evaluate(([v, pg]) => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === v).length, [VERT, pageG])
 ok(vertsG >= 5, 'G) Un flash de 4e : 5 questions, corrigées en vert', vertsG)
+const bleusG = await p.evaluate(pg => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === '#1f5fbf').length, pageG)
+ok(bleusG >= 3, 'G) À la correction, la phrase du programme sous chaque exercice (en bleu)', bleusG)
+await p.click('.bandeau-flash .fermer').catch(() => {})
+
+// ---------- H. Un flash de 2nde et de 1re ----------
+await p.click('button[title^="Automatismes"]')
+await p.waitForSelector('dialog.dialogue-flash[open]')
+const lycee = await p.evaluate(() => ['2nde', '1re'].every(n => !document.querySelector(`.niveau-flash[data-niveau="${n}"]`).disabled))
+ok(lycee, 'H) Les niveaux 2nde et 1re ne sont plus grisés')
+for (const b of await p.$$('.niveau-flash[aria-pressed=true]')) await b.click()
+await p.click('.niveau-flash[data-niveau="2nde"]'); await p.click('.niveau-flash[data-niveau="1re"]')
+for (const c of await p.$$('.themes-niveau:not([hidden]) input:checked')) await c.click()
+for (const n of ['2nde', '1re']) for (const t of ['Fonctions et représentations', 'Statistiques', 'Probabilités']) await p.click(`.themes-niveau[data-niveau="${n}"] label:has-text("${t}")`)
+await p.click('.dialogue-flash .lancer')
+await p.waitForTimeout(1500)
+const pageH = await p.evaluate(() => window.__app.page)
+await p.keyboard.press('c'); await p.waitForTimeout(800)
+const vertsH = await p.evaluate(([v, pg]) => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === v).length, [VERT, pageH])
+ok(vertsH >= 5, 'H) Un flash de 2nde et 1re : 5 questions, corrigées en vert', vertsH)
+const bleusH = await p.evaluate(pg => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === '#1f5fbf').length, pageH)
+ok(bleusH >= 3, 'H) À la correction, la phrase de la liste officielle sous chaque exercice', bleusH)
+if (process.env.CAPTURE) await p.screenshot({ path: process.env.CAPTURE })
 await p.click('.bandeau-flash .fermer').catch(() => {})
 
 // ---------- F. ----------
