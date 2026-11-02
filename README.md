@@ -982,7 +982,8 @@ page derrière reste vide. On y choisit :
   triangle dans la figure des 16 triangles, Pythagore et sa réciproque,
   droite des milieux, volume du cône, moyenne pondérée, probabilités,
   pourcentage d'évolution…), et 79 notions de cours. Chacun porte la phrase
-  du programme qu'il travaille (champ `programme`), comme au brevet ;
+  du programme qu'il travaille (champ `programme`), comme au brevet : elle
+  s'écrit à la correction, en petit et en bleu, sous la réponse ;
 - combien de questions de chaque sorte, avec − et + : par défaut **5
   questions, 2 questions de cours** (une définition, une propriété, le
   vocabulaire : « La médiatrice d'un segment est la droite… ») **puis 3
