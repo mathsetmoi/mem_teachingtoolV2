@@ -5,7 +5,7 @@
 // un trou ; un thème sans question de cours donne un exercice à la place.
 import { describe, expect, it } from 'vitest'
 import katex from 'katex'
-import { AUTOMATISMES_4E, AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_4E, COURS_5E, NIVEAUX, themesDe, tirerFlash } from '../src/automatismes'
+import { AUTOMATISMES_1RE, AUTOMATISMES_2NDE, AUTOMATISMES_4E, AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_1RE, COURS_2NDE, COURS_4E, COURS_5E, NIVEAUX, themesDe, tirerFlash } from '../src/automatismes'
 import { automatismesChoisis, coursChoisis, lireReglages, REGLAGES_PAR_DEFAUT } from '../src/flash'
 import { caseOpposee, estPatronDeCube, hexomino } from '../src/figures'
 
@@ -162,8 +162,10 @@ describe('le réglage du flash', () => {
   })
 
   it('un niveau sans automatismes (bientôt) ne se garde pas', () => {
-    expect(lireReglages(JSON.stringify({ niveaux: ['2nde', '5e', 'x'] })).niveaux).toEqual(['5e'])
-    expect(lireReglages(JSON.stringify({ niveaux: ['1re'] })).niveaux).toEqual(['5e'])
+    // Le 3e n'a pas encore d'automatismes ; la 2nde et la 1re en ont depuis le lot de la 2nde et de la 1re
+    expect(lireReglages(JSON.stringify({ niveaux: ['3e', '5e', 'x'] })).niveaux).toEqual(['5e'])
+    expect(lireReglages(JSON.stringify({ niveaux: ['3e'] })).niveaux).toEqual(['5e'])
+    expect(lireReglages(JSON.stringify({ niveaux: ['2nde', '1re'] })).niveaux).toEqual(['2nde', '1re'])
   })
 
   it('les questions choisies : celles des thèmes cochés, dans les niveaux cochés', () => {
@@ -232,5 +234,91 @@ describe('les automatismes de 4e', () => {
       for (const q of [a.generer(), ...(a.trou ? [a.trou()] : [])]) { verifier(q.enonce, a.id); if (!q.reponse.startsWith('<svg')) verifier(q.reponse, a.id) }
     }
     for (const c of [...COURS_5E, ...COURS_4E]) for (let k = 0; k < 20; k++) { const q = c.poser(); verifier(q.enonce, c.id); verifier(q.reponse, c.id) }
+  })
+})
+
+describe('les automatismes de 2nde et de 1re (épreuve anticipée)', () => {
+  const lycee: [string, typeof AUTOMATISMES_2NDE, typeof COURS_2NDE][] = [['2nde', AUTOMATISMES_2NDE, COURS_2NDE], ['1re', AUTOMATISMES_1RE, COURS_1RE]]
+  it('les deux niveaux ont leurs automatismes et leurs questions de cours, thème par thème', () => {
+    expect(AUTOMATISMES_2NDE.length).toBeGreaterThanOrEqual(28)
+    expect(AUTOMATISMES_1RE.length).toBeGreaterThanOrEqual(18)
+    for (const [id, autos, cours] of lycee) {
+      const n = NIVEAUX.find(x => x.id === id)!
+      expect(n.automatismes).toBe(autos)
+      for (const t of themesDe(n)) expect(cours.filter(c => c.theme === t).length, `${id} ${t}`).toBeGreaterThanOrEqual(3)
+    }
+    const ids = [...AUTOMATISMES_5E, ...AUTOMATISMES_4E, ...AUTOMATISMES_2NDE, ...AUTOMATISMES_1RE, ...COURS_5E, ...COURS_4E, ...COURS_2NDE, ...COURS_1RE].map(x => x.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('les thèmes suivent la liste officielle, dans son ordre', () => {
+    const ordre = ['Calcul numérique et algébrique', 'Proportions et pourcentages', 'Évolutions et variations', 'Fonctions et représentations', 'Statistiques', 'Probabilités']
+    expect(themesDe(NIVEAUX.find(x => x.id === '2nde')!)).toEqual(ordre)
+    expect(themesDe(NIVEAUX.find(x => x.id === '1re')!)).toEqual(ordre.filter(t => t !== 'Proportions et pourcentages'))
+  })
+
+  it('réponse courte, jamais une chance sur deux, et les trous ont un trou', () => {
+    for (const [, autos] of lycee) for (const a of autos) for (let k = 0; k < 60; k++) {
+      for (const q of [a.generer(), ...(a.trou ? [a.trou()] : [])]) {
+        expect(q.reponse, a.id).not.toBe('')
+        expect(q.reponse, a.id).not.toMatch(/^§(Oui|Non)\b/)
+        expect(q.reponse, a.id).not.toMatch(/^[<>=]$/)
+        expect(q.reponse, a.id).not.toMatch(/NaN|undefined|Infinity/)
+        expect(q.enonce, a.id).not.toMatch(/NaN|undefined|Infinity/)
+        expect(q.enonce, a.id).not.toMatch(/…$|:$|^Est-ce /)
+      }
+      if (a.trou) expect(a.trou().enonce, a.id).toMatch(/\\ldots|…/)
+    }
+  })
+
+  it('rien de fixe : chaque exercice et chaque façon de poser une notion tire quelque chose au hasard', () => {
+    for (const [, autos, cours] of lycee) {
+      for (const a of autos) {
+        const vus = new Set<string>()
+        for (let k = 0; k < 60; k++) { const q = a.generer(); vus.add(q.enonce + (q.figure ?? '')) }
+        expect(vus.size, a.id).toBeGreaterThan(5)
+      }
+      for (const c of cours) c.facons.forEach((f, i) => {
+        const vus = new Set<string>()
+        for (let k = 0; k < 60; k++) vus.add(f()[0])
+        expect(vus.size, `${c.id}, façon ${i + 1} : « ${f()[0]} »`).toBeGreaterThan(1)
+      })
+    }
+  })
+
+  it('toutes les formules s\'écrivent sans erreur', () => {
+    const verifier = (t: string, id: string) => {
+      const morceaux = t.startsWith('§') || /\$/.test(t) ? t.replace(/^§/, '').split('$').filter((_, i) => i % 2) : [t]
+      for (const m of morceaux) expect(() => katex.renderToString(m, { throwOnError: true }), `${id} : ${m}`).not.toThrow()
+    }
+    for (const [, autos, cours] of lycee) {
+      for (const a of autos) for (let k = 0; k < 30; k++) for (const q of [a.generer(), ...(a.trou ? [a.trou()] : [])]) { verifier(q.enonce, a.id); verifier(q.reponse, a.id) }
+      for (const c of cours) for (let k = 0; k < 20; k++) { const q = c.poser(); verifier(q.enonce, c.id); verifier(q.reponse, c.id) }
+    }
+  })
+
+  it('les figures sont des dessins SVG bien formés', () => {
+    for (const [, autos] of lycee) for (const a of autos) for (let k = 0; k < 20; k++) {
+      const f = a.generer().figure
+      if (!f) continue
+      expect(f, a.id).toMatch(/^<svg [^>]*viewBox="[-\d. ]+"/)
+      expect(f, a.id).not.toMatch(/NaN|undefined/)
+      // Aucun attribut écrit deux fois dans une balise (le dessin ne s'afficherait pas)
+      for (const balise of f.match(/<[a-z]+ [^>]*>/g) ?? []) {
+        const noms = [...balise.matchAll(/ ([a-z-]+)="/g)].map(m => m[1])
+        expect(new Set(noms).size, `${a.id} : ${balise}`).toBe(noms.length)
+      }
+    }
+  })
+})
+
+describe('la lecture graphique des courbes de 2nde et de 1re', () => {
+  const lire = (id: string) => AUTOMATISMES_1RE.find(a => a.id === id) ?? AUTOMATISMES_2NDE.find(a => a.id === id)!
+  it('les solutions lues sur une courbe sont des ensembles ou des intervalles', () => {
+    for (let k = 0; k < 200; k++) {
+      const q = lire('1re-resoudre-graphique').generer()
+      expect(q.reponse).toMatch(/^S = /)
+      expect(q.figure).toBeTruthy()
+    }
   })
 })
