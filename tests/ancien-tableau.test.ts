@@ -88,7 +88,7 @@ describe('reprendre un ancien tableau', () => {
     const a = lireAncienTableau(fichier(), 'Séance.prof')
     const b = await reprendre(tab, a, preparer)
     expect(b).toEqual({ seance: expect.any(String), pages: 2, traits: 3, images: 1, textes: 1, figures: 0, calculatrices: 0, laisses: 1, imagesIllisibles: 0, imagesHorsFilm: 0 })
-    expect(texteDuBilan(a, b)).toBe('« Séance » : 2 pages, 3 traits, 1 image, 1 texte (devenu une formule), avec son film. 1 objet (cercles, polygones, courbes ou post-its) n\'a pas été repris.')
+    expect(texteDuBilan(a, b)).toBe('« Séance » : 2 pages, 3 traits, 1 image, 1 texte (devenu une formule), avec son film. 1 objet (courbes ou post-its) n\'a pas été repris.')
     const seances = tab.seancesDuClasseur()
     expect(seances).toHaveLength(1)
     expect(seances[0].debut).toBe(T0)
@@ -192,6 +192,26 @@ describe('reprendre un ancien tableau', () => {
     const png = atob((tab.doc.getMap('images').get(ap.src) as string).split(',')[1])
     expect(png.slice(1, 4)).toBe('PNG')
     expect(png.length).toBe(72)
+  })
+
+  it('un polygone par ses sommets, un cercle de son centre à son bord (centre et bord cachés)', async () => {
+    const tab = new Tableau(null)
+    const pt = (id: number, x: number, y: number) => ({ id, x, y, color: '#16a085', shape: 'cross', z: id })
+    const cache = (id: number, x: number, y: number) => ({ id, x, y, z: id, shape: 'pixel', color: 'rgba(0,0,0,0)' })
+    const triangle = { id: 5, points: [2, 3, 4], color: '#16a085', width: 3, dash: 'solid', isFilled: false, fillColor: '#e74c3c', fillOpacity: 0.2, isClosed: true, z: 5 }
+    const cercle = { id: 8, center_id: 6, edge_id: 7, color: '#16a085', width: 3, dash: 'dashed', isFilled: false, fillColor: '#e74c3c', fillOpacity: 0.2, z: 8 }
+    const a = lireAncienTableau(JSON.stringify({ name: 'x', data: { assets: {}, pages: [{
+      ...vide, points: [pt(2, 0, 0), pt(3, 100, 0), pt(4, 40, 80), cache(6, 300, 100), cache(7, 350, 100)], polygons: [triangle], circles: [cercle],
+    }] } }))
+    const b = await reprendre(tab, a, preparer)
+    // 3 sommets visibles, le triangle et le cercle ; rien de laissé
+    expect([b.figures, b.laisses]).toEqual([5, 0])
+    const formes = [...tab.formesDe(tab.ordre.get(0))!.values()]
+    const tri = formes.find((f): f is Polygone => f.type === 'polygone' && f.ferme)!
+    expect([tri.pts, tri.couleur, tri.taille, tri.fond]).toEqual([[0, 0, 100, 0, 40, 80], '#16a085', 3, undefined])
+    const ce = formes.find((f): f is Cercle => f.type === 'cercle')!
+    expect([ce.x - tri.x, ce.y - tri.y, ce.r, ce.tirets, ce.arc]).toEqual([300, 100, 50, true, undefined])
+    expect(formes.filter(f => f.type === 'polygone' && !f.ferme)).toHaveLength(3)
   })
 
   it('un film sans heures : la date de son nom, à 8 h, ses gestes à la suite', () => {

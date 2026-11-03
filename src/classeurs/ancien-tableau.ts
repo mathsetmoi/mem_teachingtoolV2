@@ -30,7 +30,9 @@
 //   ses deux points (prolongée pour une droite), qui suit ses points s'ils
 //   bougent ; un arc tracé au compas, un arc de cercle. Les pointillés
 //   restent en tirets ; une figure posée sur une image lui reste liée ;
-//   un rectangle, un rectangle (rempli comme ici s'il l'était) ; un cache
+//   un rectangle, un rectangle (rempli comme ici s'il l'était) ; un
+//   polygone, un polygone (fermé ou non) par ses sommets ; un cercle, un
+//   cercle de son centre au point qui donne son rayon ; un cache
 //   (un rectangle plein posé pour masquer une partie d'une image) devient
 //   un aplat opaque de sa couleur, une petite image étirée, qu'on efface
 //   pour découvrir ce qu'il cachait ; les coins d'un cache ne se voient pas ;
@@ -47,7 +49,7 @@
 // - le film : chaque geste devient une étape du film, à son heure, sur sa
 //   page. « Revoir la construction » et Publier le rejouent comme une
 //   séance écrite ici.
-// Le reste (cercles, polygones, courbes, les autres post-its) n'est pas repris : le bilan le
+// Le reste (courbes, les autres post-its) n'est pas repris : le bilan le
 // compte, rien ne disparaît sans qu'on le dise.
 // Le tableau est décalé pour que ce qui est écrit commence en haut à
 // gauche de la page (on écrivait autour du centre de l'écran).
@@ -70,9 +72,9 @@ export const EXTENSION_ANCIEN = '.prof'
 const FAMILLES = ['points', 'segments', 'circles', 'rectangles', 'texts', 'freehands', 'curves', 'polygons', 'images', 'arcs', 'htmlPostits'] as const
 type Famille = typeof FAMILLES[number]
 /** Celles qui se reprennent */
-const REPRISES: readonly Famille[] = ['freehands', 'images', 'texts', 'points', 'segments', 'arcs', 'rectangles', 'htmlPostits']
+const REPRISES: readonly Famille[] = ['freehands', 'images', 'texts', 'points', 'segments', 'arcs', 'rectangles', 'circles', 'polygons', 'htmlPostits']
 /** Celles qui vont d'un point à l'autre : elles suivent leurs points */
-const SUR_POINTS: readonly Famille[] = ['segments', 'rectangles']
+const SUR_POINTS: readonly Famille[] = ['segments', 'rectangles', 'circles', 'polygons']
 
 /** Les fonds d'un ancien tableau, dans son ordre, et ce qu'ils deviennent :
  *  le Seyès avec marge et la copie double perdent leur marge */
@@ -323,6 +325,21 @@ function boutsDe(o: Objet, etat: Etat): [Objet, Objet] | null {
   return p1 && p2 && Number.isFinite(p1.x) && Number.isFinite(p1.y) && Number.isFinite(p2.x) && Number.isFinite(p2.y) ? [p1, p2] : null
 }
 
+/** Les ids des points sur lesquels une figure est construite : les deux
+ *  bouts d'un segment ou d'un rectangle, le centre et le point du bord d'un
+ *  cercle, les sommets d'un polygone */
+function idsDesPoints(o: Objet): unknown[] {
+  if (Array.isArray(o.points)) return o.points
+  if ('center_id' in o) return [o.center_id, o.edge_id]
+  return [o.p1_id, o.p2_id]
+}
+
+/** Ces points, dans l'état où ils sont (null : l'un d'eux manque) */
+function pointsDeLaFigure(o: Objet, etat: Etat): Objet[] | null {
+  const l = idsDesPoints(o).map(k => etat.points.find(q => q.id === k))
+  return l.every(q => q && Number.isFinite(q.x) && Number.isFinite(q.y)) ? l as Objet[] : null
+}
+
 /** L'image sur laquelle une figure a été posée (son id ici), si elle est là */
 function imageSous(o: Objet, etat: Etat, idDe: (o: Objet) => string): string | undefined {
   const s = o.surObjet && typeof o.surObjet === 'object' ? o.surObjet as Record<string, unknown> : null
@@ -412,7 +429,7 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
   // s'ils servent aussi à un segment)
   const pointsSurImage = a.pages.map(p => {
     const l = new Map<unknown, Objet>()
-    for (const { etat } of p.etats) for (const f of SUR_POINTS) for (const s of etat[f]) if (s.surObjet) { l.set(s.p1_id, s); l.set(s.p2_id, s) }
+    for (const { etat } of p.etats) for (const f of SUR_POINTS) for (const s of etat[f]) if (s.surObjet) for (const k of idsDesPoints(s)) l.set(k, s)
     return l
   })
   const coinsCaches = a.pages.map(p => {
@@ -488,6 +505,8 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
     const taille = Math.min(nombre(o.width, 3) || 3, TAILLE_FIGURE_MAX)
     if (f === 'points') {
       if (!Number.isFinite(o.x) || !Number.isFinite(o.y) || coinsCaches[page].has(o.id)) return null
+      // (le centre et le point du bord d'un cercle tracé ne se voyaient pas)
+      if (o.shape === 'pixel' || /^rgba\(.*,\s*0\)$/.test(String(o.color ?? ''))) return null
       const po: Polygone = {
         id, type: 'polygone', ferme: false, pts: [0, 0], z, auteur, couleur, taille: 3,
         x: (o.x as number) + d.x, y: (o.y as number) + d.y,
@@ -535,6 +554,33 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
       if (lie) re.lie = lie
       return re
     }
+    if (f === 'polygons') {
+      const l = pointsDeLaFigure(o, etat)
+      if (!l || l.length < 2) return null
+      const x0 = l[0].x as number, y0 = l[0].y as number
+      const po: Polygone = {
+        id, type: 'polygone', ferme: o.isClosed !== false && l.length > 2, z, auteur, couleur, taille,
+        x: x0 + d.x, y: y0 + d.y, pts: l.flatMap(q => [(q.x as number) - x0, (q.y as number) - y0]),
+      }
+      if (o.isFilled === true) po.fond = encre(typeof o.fillColor === 'string' ? o.fillColor : couleur, page)
+      if (o.dash && o.dash !== 'solid') po.tirets = true
+      const lie = imageSous(o, etat, idDe)
+      if (lie) po.lie = lie
+      return po
+    }
+    if (f === 'circles') {
+      const l = pointsDeLaFigure(o, etat)
+      if (!l) return null
+      const [c, b] = l
+      const r = Math.hypot((b.x as number) - (c.x as number), (b.y as number) - (c.y as number))
+      if (!r) return null
+      const ce: Cercle = { id, type: 'cercle', x: (c.x as number) + d.x, y: (c.y as number) + d.y, r, z, auteur, couleur, taille }
+      if (o.isFilled === true) ce.fond = encre(typeof o.fillColor === 'string' ? o.fillColor : couleur, page)
+      if (o.dash && o.dash !== 'solid') ce.tirets = true
+      const lie = imageSous(o, etat, idDe)
+      if (lie) ce.lie = lie
+      return ce
+    }
     if (f === 'htmlPostits') {
       const modele = modeleDe(o), b = boiteImage(o)
       if (!modele || !b || !calculatrice) return null
@@ -563,8 +609,8 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
   // rectangle, ses points
   const empreinte = (f: Famille, o: Objet, etat: Etat) => {
     if (!SUR_POINTS.includes(f)) return JSON.stringify(o)
-    const b = boutsDe(o, etat)
-    return JSON.stringify([o, b && [b[0].x, b[0].y, b[1].x, b[1].y]])
+    const l = pointsDeLaFigure(o, etat)
+    return JSON.stringify([o, l && l.map(q => [q.x, q.y])])
   }
 
   // Les gestes de toutes les pages, dans l'ordre des heures
@@ -641,7 +687,7 @@ export async function reprendre(tab: Tableau, a: AncienTableau, preparer: Prepar
     bilan.images += fin.images.filter(o => reprises.get('images')!.has(String(o.id))).length
     bilan.textes += fin.texts.filter(o => reprises.get('texts')!.has(String(o.id))).length
     bilan.calculatrices += fin.htmlPostits.filter(o => reprises.get('htmlPostits')!.has(String(o.id))).length
-    for (const f of ['points', 'segments', 'arcs', 'rectangles'] as const) bilan.figures += fin[f].filter(o => reprises.get(f)!.has(String(o.id))).length
+    for (const f of ['points', 'segments', 'arcs', 'rectangles', 'circles', 'polygons'] as const) bilan.figures += fin[f].filter(o => reprises.get(f)!.has(String(o.id))).length
   }
   bilan.laisses = laisses.size
   // Une image illisible encore sur une page manque à la page ; effacée en
@@ -695,7 +741,7 @@ export function texteDuBilan(a: AncienTableau, b: BilanAncien): string {
   if (b.calculatrices) morceaux.push(pluriel(b.calculatrices, 'calculatrice'))
   if (b.textes) morceaux.push(`${pluriel(b.textes, 'texte')} (${b.textes > 1 ? 'devenus des formules' : 'devenu une formule'})`)
   let t = `« ${a.nom} » : ${morceaux.join(', ')}${a.film ? ', avec son film' : ''}.`
-  if (b.laisses) t += ` ${pluriel(b.laisses, 'objet')} (cercles, polygones, courbes ou post-its) ${b.laisses > 1 ? 'n\'ont' : 'n\'a'} pas été repris.`
+  if (b.laisses) t += ` ${pluriel(b.laisses, 'objet')} (courbes ou post-its) ${b.laisses > 1 ? 'n\'ont' : 'n\'a'} pas été repris.`
   if (b.imagesIllisibles) t += ` ${pluriel(b.imagesIllisibles, 'image')} n'${b.imagesIllisibles > 1 ? 'ont' : 'a'} pas pu être ${b.imagesIllisibles > 1 ? 'lues' : 'lue'}.`
   if (b.imagesHorsFilm) t += ` ${b.imagesHorsFilm > 1 ? `${b.imagesHorsFilm} images effacées` : '1 image effacée'} pendant la séance ${b.imagesHorsFilm > 1 ? 'manquent' : 'manque'} au film.`
   return t
