@@ -3754,11 +3754,15 @@ d'un classeur, à sa date, avec son film.
   (l'ancien film ne dit pas quand il a basculé). Son encre blanche y devient
   le Noir, que le mode nuit montre presque blanc ; les autres couleurs ne
   changent pas.
+- **Les cercles et polygones** tracés comme figures : un cercle, de son
+  centre au point qui donne son rayon (ces deux points ne se voyaient pas
+  et restent cachés) ; un polygone par ses sommets, fermé ou non, rempli
+  s'il l'était, en tirets s'il était en pointillés. Ils suivent leurs
+  points dans le film.
 - Le fond (le Seyès avec marge et la copie double perdent leur marge).
 - Ce qui est écrit est décalé pour commencer en haut à gauche de la page.
 
-Ne sont pas repris (et le bilan le compte) : les cercles et polygones
-tracés comme figures, les courbes, les post-its (sauf les calculatrices). Une image effacée pendant
+Ne sont pas repris (et le bilan le compte) : les courbes, les post-its (sauf les calculatrices). Une image effacée pendant
 la séance dont le fichier n'a pas gardé les données manque au film (le
 bilan le dit).
 

@@ -165,7 +165,7 @@ try {
     'A3) Annuler, Nouveau classeur, puis « Ajouter à « … » », principal et au clavier', f)
   ok(f?.lignes.some(l => l.genre === 'ici' && /« Lundi » · 2 pages — ira ici$/.test(l.texte) && l.courant === 'true') && /il se rangera à sa date :/.test(f?.texte), 'A3b) La liste montre où il irait (« ira ici »)', f?.lignes)
   await p.click('dialog[open] button[data-a="nouveau"]')
-  ok(await attendreToast(p, /Classeur ajouté à la bibliothèque : « Lundi » \(2 pages\)\. « Lundi » : 2 pages, 3 traits, 1 image, 1 texte \(devenu une formule\), avec son film\. 1 objet \(cercles, polygones, courbes ou post-its\) n'a pas été repris\./), 'A4) Ajouté, et le bilan', await p.evaluate(() => window.__toasts))
+  ok(await attendreToast(p, /Classeur ajouté à la bibliothèque : « Lundi » \(2 pages\)\. « Lundi » : 2 pages, 3 traits, 1 image, 1 texte \(devenu une formule\), avec son film\. 1 objet \(courbes ou post-its\) n'a pas été repris\./), 'A4) Ajouté, et le bilan', await p.evaluate(() => window.__toasts))
   await attendreSeances(p, 1)
   await fermerBonjour(p)
   const fiches = await p.evaluate(async () => (await window.__registre.classeurs()).map(f => f.nom))
