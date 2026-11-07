@@ -1926,6 +1926,12 @@ const PERSO_PYTHAGORE = 'PERSO · Pythagore : connaître le cours.'
 const TRIPLETS_PYTHAGORE = [[3, 4, 5], [6, 8, 10], [5, 12, 13], [8, 15, 17], [9, 12, 15], [7, 24, 25], [12, 16, 20]]
 /** Trois longueurs qui ne font pas un triangle rectangle (a² + b² ≠ c²) */
 const PAS_RECTANGLES = [[4, 5, 7], [5, 6, 8], [6, 7, 9], [4, 6, 7], [5, 7, 9], [6, 8, 11], [3, 5, 6]]
+/** Les étapes de chaque rédaction, en général, avec les mots du professeur */
+const ETAPES_PYTHAGORE: [string, string[]][] = [
+  ['du théorème de Pythagore', ['Triangle rectangle', 'Théorème', 'Égalité', 'Calcul']],
+  ['de la réciproque du théorème de Pythagore', ['Séparer les calculs', 'Égalité', 'Réciproque', 'Triangle rectangle']],
+  ['de la contraposée du théorème de Pythagore', ['Séparer les calculs', 'Égalité', 'Contraposée', 'Triangle pas rectangle']],
+]
 /** Un triangle rectangle tiré au hasard : son nom, le sommet de l'angle
  *  droit, les côtés de l'angle droit et l'hypoténuse (lettres rangées) */
 function triangleRectangle() {
@@ -2915,6 +2921,25 @@ export const AUTOMATISMES_4E: Automatisme[] = [
       const cachee = choix(cachables)
       const lignes = etapes.map((e, i) => i === cachee ? '$\\ldots\\ldots\\ldots$' : e)
       return { enonce: `Compléter l’étape manquante de la rédaction.\n${lignes.join('\n')}`, reponse: mot(etapes[cachee]) }
+    },
+  },
+  {
+    // Les étapes en général, en dehors d'un exercice (les mots du professeur)
+    id: 'perso-pythagore-etapes', theme: 'Pythagore', titre: 'Les étapes d’une rédaction', programme: PERSO_PYTHAGORE, competence: 0,
+    generer() {
+      const [nom, etapes] = choix(ETAPES_PYTHAGORE)
+      const k = ent(0, 2)
+      if (k === 0) {
+        const cachee = ent(0, etapes.length - 1)
+        const lignes = etapes.map((e, i) => `${i + 1}) ${i === cachee ? '$\\ldots\\ldots\\ldots$' : e}`)
+        return { enonce: `Quelle est l’étape manquante dans la rédaction ${nom} ?\n${lignes.join('\n')}`, reponse: mot(etapes[cachee]) }
+      }
+      if (k === 1) {
+        const i = ent(0, etapes.length - 2)
+        return { enonce: `Dans la rédaction ${nom}, quelle étape vient juste après « ${etapes[i]} » ?`, reponse: mot(etapes[i + 1]) }
+      }
+      const i = ent(0, etapes.length - 1)
+      return { enonce: `Dans la rédaction ${nom}, quelle est l’étape ${i + 1} sur ${etapes.length} ?`, reponse: mot(etapes[i]) }
     },
   },
   {

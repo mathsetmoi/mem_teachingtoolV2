@@ -993,7 +993,12 @@ page derrière reste vide. On y choisit :
   rectangle ou ne l'est pas), l'étape manquante d'une rédaction (théorème :
   les trois premières étapes ; réciproque : le triangle, le constat, « d'après
   la réciproque », la conclusion ; contraposée : le triangle, le constat,
-  « d'après la contraposée »), l'égalité de Pythagore et l'hypoténuse, plus
+  « d'après la contraposée »), les étapes en général, avec les mots du
+  professeur (théorème : triangle rectangle, théorème, égalité, calcul ;
+  réciproque : séparer les calculs, égalité, réciproque, triangle
+  rectangle ; contraposée : séparer les calculs, égalité, contraposée,
+  triangle pas rectangle ; l'étape qui manque, celle qui suit, l'étape n),
+  l'égalité de Pythagore et l'hypoténuse, plus
   quatre notions de cours (à quoi sert le théorème, la réciproque, la
   contraposée ; l'hypoténuse). Dans un énoncé, un retour à la ligne (`\n`)
   commence une nouvelle ligne à l'écran (les étapes d'une rédaction).
