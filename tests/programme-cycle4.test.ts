@@ -54,10 +54,11 @@ describe('Le programme du cycle 4', () => {
 
   it('le bouton « Flash sur ce domaine » trouve le thème du flash', () => {
     const sans: string[] = []
-    for (const n of ['5e', '4e'] as const) for (const t of PROGRAMME_CYCLE4[n]) for (const d of t.domaines)
+    for (const n of ['5e', '4e', '3e'] as const) for (const t of PROGRAMME_CYCLE4[n]) for (const d of t.domaines)
       if (d.automatismes.length && !themeDuFlash(n, d)) sans.push(`${n} ${d.nom}`)
     expect(sans).toEqual([])
     expect(themeDuFlash('5e', PROGRAMME_CYCLE4['5e'][1].domaines[0])).toBe('Repérage')
-    expect(themeDuFlash('3e', PROGRAMME_CYCLE4['3e'][0].domaines[0])).toBeNull()
+    // La 3e a ses automatismes depuis le 7 novembre 2026 : son bouton trouve aussi le thème du flash
+    expect(themeDuFlash('3e', PROGRAMME_CYCLE4['3e'][0].domaines[0])).toBe('Nombres rationnels')
   })
 })

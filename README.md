@@ -1012,6 +1012,21 @@ page derrière reste vide. On y choisit :
   pourcentage d'évolution…), et 79 notions de cours. Chacun porte la phrase
   du programme qu'il travaille (champ `programme`), comme au brevet : elle
   s'écrit à la correction, en petit et en bleu, sous la réponse. Ceux de
+  **3e** (7 novembre 2026) ne sont que des **automatismes** de la liste de
+  3e du programme 2026 : 40 exercices, chacun rangé sous sa compétence, et
+  chacune des 37 compétences a au moins le sien (fractions, puissances,
+  carrés, décomposition en facteurs premiers, dénominateur commun,
+  divisibilité par 2, 3, 5, 9, équations, réduire, valeur d'une expression,
+  somme ou produit, développer et factoriser, pair et impair, opposé d'une
+  expression, repérage, solides dont le cône, volume de la pyramide et du
+  cône, faces et patron d'une pyramide, cercle circonscrit, égalité de
+  Pythagore, droite des milieux, symétrie, demi-tour et translation,
+  moyenne, médiane, étendue, partages selon un ratio ou des âges,
+  pourcentage, échelle, augmentation et diminution), et 32 notions de cours.
+  Quand la liste de 3e redonne un automatisme de 4e (le repérage, le
+  cercle circonscrit, la figure des 16 triangles…), l'exercice de 4e est
+  repris sous un autre nom (`3e-…`). Pour réviser tout le brevet, on coche
+  5e, 4e et 3e. Ceux de
   **2nde** et de **1re** suivent la liste des automatismes de l'**épreuve
   anticipée** de mathématiques (annexe du BO n° 24 du 12 juin 2025,
   session 2027) : ce qui y est en italique (« relevant du programme de
