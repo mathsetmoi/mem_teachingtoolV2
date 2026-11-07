@@ -68,6 +68,19 @@ const surUnTrait = (p: [number, number], q: [number, number]) => {
 }
 const melange = <T,>(t: T[]) => { const r = [...t]; for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]] } return r }
 
+/** Les suites de motifs (un motif de points, et son nombre de points) */
+type SuiteMotifs = { pts: (n: number) => [number, number][]; f: (n: number) => number }
+const rectPoints = (l: number, h: number) => Array.from({ length: l * h }, (_, i) => [i % l, Math.floor(i / l)] as [number, number])
+const SUITES: SuiteMotifs[] = [
+  { pts: n => rectPoints(n + 1, 2), f: n => 2 * n + 2 },
+  { pts: n => [...Array.from({ length: n + 1 }, (_, i) => [0, i] as [number, number]), ...Array.from({ length: n }, (_, i) => [i + 1, 0] as [number, number])], f: n => 2 * n + 1 },
+  { pts: n => rectPoints(n, n), f: n => n * n },
+  { pts: n => Array.from({ length: n }, (_, x) => Array.from({ length: x + 1 }, (_, y) => [x, y] as [number, number])).flat(), f: n => n * (n + 1) / 2 },
+  { pts: n => [[n, n] as [number, number], ...Array.from({ length: n }, (_, i) => [[i, n], [2 * n - i, n], [n, i], [n, 2 * n - i]] as [number, number][]).flat()], f: n => 4 * n + 1 },
+  { pts: n => rectPoints(n + 1, n), f: n => n * (n + 1) },
+  { pts: n => rectPoints(3 * n, 1), f: n => 3 * n },
+]
+
 /** Un nombre décimal à la française : 3{,}5 (et −4) */
 export const nb = (x: number) => {
   const s = String(arrondi(x)).replace('.', '{,}')
@@ -208,7 +221,7 @@ export const AUTOMATISMES_5E: Automatisme[] = [
     },
   },
   {
-    id: 'tables', theme: 'Opérations', titre: 'Tables de multiplication',
+    id: 'tables', theme: 'Nombres rationnels', titre: 'Tables de multiplication',
     programme: 'Entretenir la connaissance et l’utilisation des tables de multiplication.',
     generer() {
       const a = ent(2, 10), b = ent(2, 10), v = a * b
@@ -631,17 +644,6 @@ export const AUTOMATISMES_5E: Automatisme[] = [
     id: 'motifs', theme: 'Calcul littéral et algébrique', titre: 'Poursuivre une suite de motifs',
     programme: 'Poursuivre une suite de motifs ; trouver le nombre d’éléments à une étape donnée.',
     generer() {
-      type M = { pts: (n: number) => [number, number][]; f: (n: number) => number }
-      const rect = (l: number, h: number) => Array.from({ length: l * h }, (_, i) => [i % l, Math.floor(i / l)] as [number, number])
-      const SUITES: M[] = [
-        { pts: n => rect(n + 1, 2), f: n => 2 * n + 2 },
-        { pts: n => [...Array.from({ length: n + 1 }, (_, i) => [0, i] as [number, number]), ...Array.from({ length: n }, (_, i) => [i + 1, 0] as [number, number])], f: n => 2 * n + 1 },
-        { pts: n => rect(n, n), f: n => n * n },
-        { pts: n => Array.from({ length: n }, (_, x) => Array.from({ length: x + 1 }, (_, y) => [x, y] as [number, number])).flat(), f: n => n * (n + 1) / 2 },
-        { pts: n => [[n, n] as [number, number], ...Array.from({ length: n }, (_, i) => [[i, n], [2 * n - i, n], [n, i], [n, 2 * n - i]] as [number, number][]).flat()], f: n => 4 * n + 1 },
-        { pts: n => rect(n + 1, n), f: n => n * (n + 1) },
-        { pts: n => rect(3 * n, 1), f: n => 3 * n },
-      ]
       const s = choix(SUITES), k = choix([4, 5, 6, 10])
       const v = s.f(k), lin = s.f(3) + (k - 3) * (s.f(3) - s.f(2))
       return { enonce: `Combien de points comportera le motif $${k}$ ?`, figure: F.motifs(s.pts), reponse: nb(v),
@@ -1145,10 +1147,10 @@ export const AUTOMATISMES_5E: Automatisme[] = [
 
   // ================= PROBABILITÉS =================
   {
-    id: 'probabilite-echelle', theme: 'Probabilités', titre: 'Échelle de probabilité et fraction',
-    programme: 'Positionner un évènement sur une échelle de probabilité ; donner sa probabilité.',
+    id: 'probabilite-echelle', theme: 'Probabilités', titre: 'La probabilité sous forme de fraction',
+    programme: 'Donner la probabilité sous diverses formes (fraction, décimale, pourcentage).',
     generer() {
-      const sorte = ent(0, 2)
+      const sorte = ent(0, 1)
       if (sorte === 0) {
         const [ev, n] = choix<[string, number]>([['obtenir 6', 1], ['obtenir un nombre pair', 3], ['obtenir un multiple de 3', 2], ['obtenir un nombre inférieur à 5', 4], ['obtenir 1 ou 2', 2], ['obtenir un nombre impair', 3], ['obtenir un nombre supérieur à 1', 5]])
         const v = irreductible(n, 6)
@@ -1298,6 +1300,100 @@ export const AUTOMATISMES_5E: Automatisme[] = [
     },
   },
 
+  // ---- Les exercices ajoutés pour que chaque compétence ait les siens ----
+  {
+    id: 'tables-carres', theme: 'Puissances', titre: 'Les tables, jusqu’aux carrés',
+    programme: 'Entretenir les tables de multiplication.',
+    generer() {
+      const a = ent(2, 10), b = Math.random() < 0.4 ? a : ent(2, 10), v = a * b
+      const sorte = ent(0, 2)
+      if (sorte === 0) return { enonce: `Calculer : $${a} \\times ${b}$`, reponse: nb(v) }
+      if (sorte === 1) return { enonce: `Compléter : $${a} \\times \\ldots = ${v}$`, reponse: nb(b) }
+      return { enonce: `Compléter : $\\ldots \\times ${b} = ${v}$`, reponse: nb(a) }
+    },
+  },
+  {
+    id: 'motif-suivant', theme: 'Calcul littéral et algébrique', titre: 'Poursuivre une suite de motifs',
+    programme: 'Identifier des régularités et poursuivre une suite de motifs évolutive.',
+    generer() {
+      const s = choix(SUITES)
+      return { enonce: 'Voici les motifs $1$, $2$ et $3$. Combien de points comportera le motif $4$ ?', figure: F.motifs(s.pts), reponse: nb(s.f(4)) }
+    },
+  },
+  {
+    id: 'motif-regularite', theme: 'Calcul littéral et algébrique', titre: 'Ce qu’on ajoute d’un motif au suivant',
+    programme: 'Identifier la structure d’un motif évolutif en repérant une régularité.',
+    generer() {
+      // Seulement les suites où l'on ajoute toujours autant de points
+      const reguliers = SUITES.filter(s => s.f(2) - s.f(1) === s.f(3) - s.f(2))
+      const s = choix(reguliers)
+      return { enonce: 'Voici les motifs $1$, $2$ et $3$. Combien de points ajoute-t-on pour passer d’un motif au suivant ?', figure: F.motifs(s.pts), reponse: nb(s.f(2) - s.f(1)) }
+    },
+  },
+  {
+    id: 'nombre-quotient', theme: 'Calcul littéral et algébrique', titre: 'Le nombre quotient',
+    programme: 'Nombre quotient.',
+    generer() {
+      const a = choix([2, 3, 4, 5, 6, 7, 8, 9]); let b = ent(1, 11); while (b % a === 0) b = ent(1, 11)
+      if (Math.random() < 0.5) return { enonce: `Quel nombre, multiplié par $${a}$, donne $${b}$ ?`, reponse: frac(b, a) }
+      return { enonce: `Écrire sous la forme d'une fraction le quotient de $${b}$ par $${a}$.`, reponse: frac(b, a) }
+    },
+  },
+  {
+    id: 'placer-decimal', theme: 'Repérage', titre: 'Placer un décimal sur une demi-droite graduée',
+    programme: 'Placer sur une demi-droite graduée un point dont l’abscisse est un nombre décimal.',
+    generer() {
+      const debut = ent(0, 6), parts = choix([2, 4, 5, 10])
+      // Quatre points sur des graduations différentes ; on demande celui d'abscisse donnée
+      const ks = melange(Array.from({ length: 3 * parts - 1 }, (_, i) => i + 1).filter(k => k % parts !== 0)).slice(0, 4)
+      const lettres = ['A', 'B', 'C', 'D']
+      const xs = ks.map(k => debut + k / parts), i = ent(0, 3)
+      return { enonce: `Sur cette demi-droite graduée, quel point a pour abscisse $${nb(xs[i])}$ ?`, figure: F.droiteGradueePoints(debut, debut + 3, parts, xs.map((x, j) => ({ x, lettre: lettres[j] }))), reponse: mot(lettres[i]) }
+    },
+  },
+  {
+    id: 'symetrie-feuille-blanche', theme: 'Transformations', titre: 'Le symétrique d’un point, sans quadrillage',
+    programme: 'Construire le symétrique, par rapport à un axe, d’un point, d’une figure, sur feuille blanche.',
+    generer() {
+      const d = choix([1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6])
+      const sorte = ent(0, 2)
+      if (sorte === 0) return { enonce: `Le point $A$ est à $${nb(d)}$ cm de la droite $(d)$. Le point $A'$ est son symétrique par rapport à $(d)$. À quelle distance de $(d)$ se trouve $A'$ ?`, reponse: unite(nb(d), 'cm') }
+      if (sorte === 1) return { enonce: `Le point $A$ est à $${nb(d)}$ cm de la droite $(d)$. Le point $A'$ est son symétrique par rapport à $(d)$. Combien mesure $AA'$ ?`, reponse: unite(nb(2 * d), 'cm') }
+      return { enonce: `Le point $A'$ est le symétrique du point $A$ par rapport à la droite $(d)$, et $AA' = ${nb(2 * d)}$ cm. À quelle distance de $(d)$ se trouve $A$ ?`, reponse: unite(nb(d), 'cm') }
+    },
+  },
+  {
+    id: 'angle-droit-plat', theme: 'Angles', titre: 'Un angle droit, un angle plat : leur mesure',
+    programme: 'Savoir qu’un angle droit mesure 90°, qu’un angle plat mesure 180°.',
+    generer() {
+      const plat = Math.random() < 0.5, m = plat ? 180 : 90, nom1 = plat ? 'plat' : 'droit'
+      const sorte = ent(0, 3)
+      if (sorte === 0) return { enonce: `Combien mesure, en degrés, un angle ${nom1} ?`, reponse: deg(m) }
+      if (sorte === 1) return { enonce: `Quelle est la mesure, en degrés, d'un angle ${nom1} ?`, reponse: deg(m) }
+      if (sorte === 2) return { enonce: 'Comment s\'appelle cet angle ?', figure: F.unAngle(m, ent(0, 11) * 30), reponse: mot('un angle ' + nom1) }
+      return { enonce: 'Combien mesure cet angle, en degrés ?', figure: F.unAngle(m, ent(0, 11) * 30), reponse: deg(m) }
+    },
+  },
+  {
+    id: 'probabilite-mot', theme: 'Probabilités', titre: 'Placer un évènement sur l’échelle, avec des mots',
+    programme: 'Positionner sur une échelle de probabilité des évènements : impossible ; certain ; peu probable ; probable ; une chance sur deux.',
+    generer() {
+      const EV: [string, string][] = [
+        ['impossible', 'obtenir $7$ avec un dé équilibré à six faces'], ['impossible', 'tirer une boule verte dans une urne qui ne contient que des boules rouges et bleues'],
+        ['impossible', 'obtenir un nombre négatif en lançant un dé à six faces'],
+        ['certain', 'obtenir un nombre inférieur à $7$ avec un dé équilibré à six faces'], ['certain', 'tirer une boule rouge dans une urne qui ne contient que des boules rouges'],
+        ['certain', 'obtenir pile ou face en lançant une pièce'],
+        ['une chance sur deux', 'obtenir pile avec une pièce équilibrée'], ['une chance sur deux', 'obtenir un nombre pair avec un dé équilibré à six faces'],
+        ['une chance sur deux', 'tirer une boule rouge dans une urne de $5$ boules rouges et $5$ boules bleues'],
+        ['peu probable', 'obtenir $6$ avec un dé équilibré à six faces'], ['peu probable', 'tirer une boule bleue dans une urne de $9$ boules rouges et $1$ boule bleue'],
+        ['peu probable', 'obtenir $10$ fois de suite la valeur $1$ avec un dé à six faces'],
+        ['probable', 'ne pas obtenir $6$ avec un dé équilibré à six faces'], ['probable', 'tirer une boule rouge dans une urne de $9$ boules rouges et $1$ boule bleue'],
+        ['probable', 'obtenir un nombre inférieur à $6$ avec un dé équilibré à six faces'],
+      ]
+      const [reponse, ev] = choix(EV)
+      return { enonce: `Parmi « impossible », « peu probable », « une chance sur deux », « probable » et « certain », lequel convient à l'évènement : ${ev} ?`, reponse: mot(reponse) }
+    },
+  },
 ]
 
 // =============================================================
@@ -1428,6 +1524,27 @@ const TROUS: Record<string, () => Question> = {
   },
 }
 for (const a of AUTOMATISMES_5E) if (TROUS[a.id]) a.trou = TROUS[a.id]
+
+// Le rang de la compétence que chaque exercice de 5e travaille : la place de
+// sa phrase dans la liste « Automatismes » de son domaine (programme-automatismes.ts)
+const COMPETENCE_5E: Record<string, number> = {
+  'divisibilite-2-5-10': 0, 'division-euclidienne': 1, 'factoriser-tables': 2, 'produit-derive': 3, 'decimal-fois-10': 4, 'decimal-divise-10': 4,
+  'decimaux-addition': 5, 'decimaux-soustraction': 5,
+  'decimaux-produit': 0, 'addition-trou': 1,
+  'tables': 0, 'fraction-decimal': 1, 'quotient-trou': 2, 'abscisse-fraction': 3, 'fraction-egales': 4, 'comparer-fractions': 5, 'entier-plus-fraction': 6,
+  'fractions-addsub': 7, 'fraction-quantite': 8, 'pourcentages-1-10-50': 9, 'ecritures-nombre': 10,
+  'tables-carres': 0, 'unites-aires-volumes': 1,
+  'motif-suivant': 0, 'motifs': 1, 'motif-regularite': 2, 'nombre-quotient': 3,
+  'placer-decimal': 0, 'reperer-decimal': 1,
+  'vues-cubes': 0, 'denombrer-cubes': 1, 'cavaliere': 2, 'patron-cube': 3,
+  'symetrie-axiale': 0, 'symetrie-feuille-blanche': 1,
+  'angles-nommer': 0, 'angle-droit-plat': 1, 'bissectrice': 2, 'angle-manquant': 3,
+  'triangle-nature': 0, 'angles-triangle': 1, 'mediatrice': 2,
+  'polygones': 0, 'parallelogramme-code': 1,
+  'probabilite-mot': 0, 'probabilite-echelle': 1, 'chances-sur': 2,
+  'situation-proportionnelle': 0, 'proportionnalite-procedure': 1, 'pourcentage-situation': 1,
+}
+for (const a of AUTOMATISMES_5E) if (COMPETENCE_5E[a.id] !== undefined) a.competence = COMPETENCE_5E[a.id]
 
 // =============================================================
 // LES QUESTIONS DE COURS (5e)
