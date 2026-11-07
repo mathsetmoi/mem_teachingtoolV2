@@ -814,6 +814,24 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .niveau-flash small { font-weight: 400; font-size: 11px; }
 .themes-niveau h3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0 2px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--encre-douce); }
 .themes-niveau .lien { border: 0; background: none; color: var(--bleu); font: inherit; font-size: 12px; text-transform: none; letter-spacing: 0; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+/* L'arbre du collège : Thème › Domaine › Compétences, chacun se déplie */
+.dialogue-flash .ligne-arbre { display: flex; align-items: center; gap: 4px; }
+.dialogue-flash .ligne-arbre > label { flex: 1; min-width: 0; }
+.dialogue-flash .deplier { flex: none; width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--encre-douce); cursor: pointer; display: grid; place-items: center; }
+.dialogue-flash button.deplier::before { content: ''; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .15s; }
+.dialogue-flash button.deplier[aria-expanded=true]::before { transform: rotate(45deg); }
+.dialogue-flash button.deplier:hover { background: #e9eef5; }
+.arbre-theme > .ligne-arbre label span, .arbre-theme .nom-theme { font-weight: 700; }
+.arbre-theme.vide .ligne-arbre { color: var(--encre-douce); min-height: 34px; }
+.arbre-theme.vide .nom-theme { flex: 1; font-weight: 400; }
+.arbre-theme.vide small { font-size: 12px; }
+.arbre-theme > .enfants { padding-left: 22px; }
+.arbre-domaine > .enfants { padding-left: 34px; }
+.arbre-domaine ul { list-style: none; margin: 0 0 6px; padding: 0; }
+.dialogue-flash .arbre-domaine li label { align-items: flex-start; min-height: 30px; padding: 4px 0; font-size: 14px; line-height: 1.35; }
+.dialogue-flash .arbre-domaine li label input { margin-top: 1px; }
+.dialogue-flash .arbre-domaine li label.sans-exercice { color: var(--encre-douce); cursor: default; }
+.note-arbre { margin: 2px 0 4px; font-size: 13px; color: var(--encre-douce); }
 .forme-flash { display: grid; grid-template-columns: 1fr 36px 2.4em 36px; align-items: center; gap: 6px; min-height: 42px; }
 .forme-flash button { width: 36px; height: 36px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); color: var(--bleu); font: inherit; font-size: 20px; font-weight: 700; cursor: pointer; }
 .forme-flash button:disabled { opacity: .35; cursor: default; }

@@ -19,6 +19,13 @@
 // H. un flash de 2nde et de 1re cochées ensemble (fonctions, statistiques,
 //    probabilités : courbes, diagrammes, arbres) : 5 questions corrigées
 //    en vert, la phrase du programme sous chaque exercice ;
+// I. au collège, l'arbre du programme (7 novembre 2026) : cinq thèmes,
+//    la pensée informatique grisée (« rien au programme »), une case de
+//    thème coche tous ses domaines, la flèche d'un domaine montre ses
+//    compétences (les phrases de la liste « Automatismes ») ;
+// J. en 5e, chaque compétence a ses exercices : aucune case grisée, et une
+//    seule compétence cochée (Angles, « angle droit 90°, plat 180° ») ne
+//    pose que des questions sur la mesure d'un angle droit ou plat ;
 // F. aucune erreur.
 import { chromium } from '../commun/playwright.mjs'
 
@@ -35,6 +42,12 @@ p.on('pageerror', e => erreurs.push(e.message))
 p.on('console', m => { if (m.type() === 'error') erreurs.push(m.text()) })
 const nObjets = () => p.evaluate(() => window.__app.tableau.formesDe(window.__app.page)?.size ?? 0)
 const etat = () => p.evaluate(() => document.querySelector('.etat-flash')?.textContent ?? '')
+/** Coche un domaine du collège : son thème se déplie d'abord s'il est fermé */
+const cocher = async (niveau, domaine) => {
+  const c = `.case-domaine[value="${niveau}/${domaine}"]`
+  if (!await p.isVisible(c)) await p.click(`.themes-niveau[data-niveau="${niveau}"] .arbre-theme:has(${c}) > .ligne-arbre > .deplier`)
+  await p.click(c)
+}
 
 await p.goto(DEV)
 await p.waitForFunction(() => window.__app, null, { timeout: 30000 })
@@ -47,13 +60,14 @@ const reglage = await p.evaluate(() => ({
   lancer: document.querySelector('.dialogue-flash .lancer').disabled,
   total: document.querySelector('.total-flash').textContent,
   formes: [...document.querySelectorAll('.forme-flash')].map(f => f.dataset.forme + '=' + f.querySelector('output, .valeur, span:not(:empty)')?.textContent),
-  katex: document.querySelectorAll('.dialogue-flash .katex, .dialogue-flash img').length,
+  // Les phrases du programme (compétences, avec des maths) ne sont pas des questions
+  katex: [...document.querySelectorAll('.dialogue-flash .katex, .dialogue-flash img')].filter(e => !e.closest('.liste-themes')).length,
 }))
 ok(reglage.lancer, 'A) Sans thème coché, « Lancer » est grisé', reglage)
 ok(/5/.test(reglage.total), 'A) Par défaut, 5 questions', reglage)
 ok(reglage.katex === 0, 'A) Le réglage ne montre aucune question', reglage)
-await p.click('.themes-niveau[data-niveau="5e"] label:has-text("Nombres relatifs")')
-await p.click('.themes-niveau[data-niveau="5e"] label:has-text("Nombres rationnels")')
+await cocher('5e', 'Nombres relatifs')
+await cocher('5e', 'Nombres rationnels')
 ok(await nObjets() === 0, 'A) Rien n\'est posé sur la page pendant le réglage', await nObjets())
 
 // ---------- B. Une question à la fois ----------
@@ -112,7 +126,7 @@ ok(await p.evaluate(() => document.querySelector('.bandeau-flash').hidden), 'D) 
 // ---------- E. Le réglage retenu ----------
 await p.click('button[title^="Automatismes"]')
 await p.waitForSelector('dialog.dialogue-flash[open]')
-const retenu = await p.evaluate(() => ({ themes: [...document.querySelectorAll('.themes-niveau input:checked')].length, toutes: document.querySelector('input[value=toutes]').checked }))
+const retenu = await p.evaluate(() => ({ themes: [...document.querySelectorAll('.themes-niveau .case-domaine:checked')].length, toutes: document.querySelector('input[value=toutes]').checked }))
 ok(retenu.themes === 2 && retenu.toutes, 'E) Le réglage est retenu (2 thèmes, toutes d\'un coup)', retenu)
 await p.keyboard.press('Escape')
 
@@ -122,8 +136,8 @@ await p.waitForSelector('dialog.dialogue-flash[open]')
 const quatre = await p.evaluate(() => !document.querySelector('.niveau-flash[data-niveau="4e"]').disabled)
 ok(quatre, 'G) Le niveau 4e n\'est plus grisé')
 await p.click('.niveau-flash[data-niveau="4e"]')
-for (const c of await p.$$('.themes-niveau[data-niveau="5e"] input:checked')) await c.click()
-for (const t of ['Triangles', 'Parallélogrammes et translations', 'Représentation de l’espace', 'Repérage']) await p.click(`.themes-niveau[data-niveau="4e"] label:has-text("${t}")`)
+for (const c of await p.$$('.themes-niveau[data-niveau="5e"] .case-domaine:checked')) await c.click()
+for (const t of ['Triangles', 'Parallélogrammes et translations', 'Représentation de l’espace', 'Repérage']) await cocher('4e', t)
 await p.click('.dialogue-flash .lancer')
 await p.waitForTimeout(1500)
 const pageG = await p.evaluate(() => window.__app.page)
@@ -152,6 +166,40 @@ ok(vertsH >= 5, 'H) Un flash de 2nde et 1re : 5 questions, corrigées en vert', 
 const bleusH = await p.evaluate(pg => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === '#1f5fbf').length, pageH)
 ok(bleusH >= 3, 'H) À la correction, la phrase de la liste officielle sous chaque exercice', bleusH)
 if (process.env.CAPTURE) await p.screenshot({ path: process.env.CAPTURE })
+await p.click('.bandeau-flash .fermer').catch(() => {})
+
+// ---------- I. L'arbre du collège ----------
+await p.keyboard.press('Escape').catch(() => {})
+await p.click('.bandeau-flash .fermer').catch(() => {})
+await p.click('button[title^="Automatismes"]')
+await p.waitForSelector('dialog.dialogue-flash[open]')
+for (const b of await p.$$('.niveau-flash[aria-pressed=true]')) await b.click()
+await p.click('.niveau-flash[data-niveau="5e"]')
+const arbre = await p.evaluate(() => {
+  const n = document.querySelector('.themes-niveau[data-niveau="5e"]')
+  return {
+    themes: [...n.querySelectorAll('.arbre-theme')].map(t => t.querySelector('.ligne-arbre').textContent.trim().replace(/\s+/g, ' ')),
+    informatique: n.querySelector('.arbre-theme.vide')?.textContent.replace(/\s+/g, ' ').trim(),
+  }
+})
+ok(arbre.themes.length === 5 && /^Nombres et calculs/.test(arbre.themes[0]), 'I) 5e : cinq thèmes, Nombres et calculs d\'abord', arbre)
+ok(/La pensée informatique.*rien au programme/.test(arbre.informatique ?? ''), 'I) La pensée informatique est grisée : rien au programme', arbre)
+for (const c of await p.$$('.themes-niveau[data-niveau="5e"] .case-domaine:checked')) await c.click()
+await p.click('.themes-niveau[data-niveau="5e"] .arbre-theme:has(.case-domaine[value="5e/Angles"]) .case-theme')
+const geo = await p.evaluate(() => {
+  const t = document.querySelector('.themes-niveau[data-niveau="5e"] .arbre-theme:has(.case-domaine[value="5e/Angles"])')
+  return { domaines: [...t.querySelectorAll('.case-domaine')].map(c => c.checked), visibles: !t.querySelector(':scope > .enfants').hidden }
+})
+ok(geo.domaines.length >= 5 && geo.domaines.every(Boolean), 'I) La case « Espace et géométrie » coche tous ses domaines', geo)
+if (!geo.visibles) await p.click('.themes-niveau[data-niveau="5e"] .arbre-theme:has(.case-domaine[value="5e/Angles"]) > .ligne-arbre > .deplier')
+await p.click('.themes-niveau[data-niveau="5e"] .arbre-domaine:has(.case-domaine[value="5e/Angles"]) .deplier')
+const comp = await p.evaluate(() => [...document.querySelectorAll('.arbre-domaine:has(.case-domaine[value="5e/Angles"]) .case-competence')].filter(c => c.offsetParent).length)
+ok(comp === 4, 'I) La flèche d\'Angles montre ses 4 compétences', comp)
+const grisees = await p.evaluate(() => [...document.querySelectorAll('.themes-niveau[data-niveau="5e"] .case-competence')].filter(c => c.disabled).length)
+ok(grisees === 0, 'J) En 5e, aucune compétence n\'est grisée (chacune a ses exercices)', grisees)
+await p.click('.dialogue-flash .lancer')
+await p.waitForTimeout(1200)
+ok(await nObjets() > 0, 'I) Le flash se lance avec le thème entier')
 await p.click('.bandeau-flash .fermer').catch(() => {})
 
 // ---------- F. ----------

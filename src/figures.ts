@@ -52,6 +52,10 @@ const dir = (s: P, deg: number, l: number): P => ({ x: s.x + l * Math.cos(-deg *
 // ---------- Droite graduée ----------
 /** Unités de `debut` à `fin`, chaque unité coupée en `parts` ; un point nommé à l'abscisse `x` */
 export function droiteGraduee(debut: number, fin: number, parts: number, x: number, lettre = 'A', etiquettes?: (k: number) => string) {
+  return droiteGradueePoints(debut, fin, parts, [{ x, lettre }], etiquettes)
+}
+/** La même droite graduée, avec plusieurs points nommés */
+export function droiteGradueePoints(debut: number, fin: number, parts: number, points: { x: number; lettre: string }[], etiquettes?: (k: number) => string) {
   const L = 520, g = 30, u = (L - 2 * g) / (fin - debut)
   const X = (v: number) => g + (v - debut) * u
   let r = ligne({ x: 10, y: 60 }, { x: L - 10, y: 60 }) + `<path d="M${L - 18} 54L${L - 8} 60L${L - 18} 66"/>`
@@ -60,7 +64,7 @@ export function droiteGraduee(debut: number, fin: number, parts: number, x: numb
     r += ligne({ x: X(v), y: unite ? 50 : 54 }, { x: X(v), y: unite ? 70 : 66 }, `stroke-width="${unite ? 2 : 1.3}"`)
     if (unite) r += texte({ x: X(v), y: 92 }, etiquettes ? etiquettes(k / parts) : String(Math.round(v)).replace('-', '−'), 'font-size="22"')
   }
-  r += `<circle cx="${f2(X(x))}" cy="60" r="6" fill="#d0342c" stroke="none"/>` + nom({ x: X(x), y: 30 }, lettre, 24)
+  for (const { x, lettre } of points) r += `<circle cx="${f2(X(x))}" cy="60" r="6" fill="#d0342c" stroke="none"/>` + nom({ x: X(x), y: 30 }, lettre, 24)
   return svg(L, 108, r)
 }
 

@@ -5,7 +5,9 @@
 // groupés par question. Elles passent donc dans le replay, dans l'ordre
 // où elles sont venues, avec ce que le professeur écrit par-dessus.
 //
-// 1. Le réglage (une fenêtre) : les niveaux, les thèmes, le nombre de
+// 1. Le réglage (une fenêtre) : les niveaux, ce qu'on interroge (au
+//    collège, un arbre Thème › Domaine › Compétences, comme le programme ;
+//    au lycée, la liste des thèmes), le nombre de
 //    questions de cours et d'exercices d'application (par défaut 2 et 3,
 //    toutes à réponse courte), l'affichage. Rien n'est tiré pendant le réglage,
 //    et rien n'en est montré : les élèves voient la fenêtre.
@@ -22,7 +24,9 @@
 import katex from 'katex'
 import type { App } from './app'
 import type { Automatisme, Composition, QuestionCours, QuestionFlash } from './automatismes'
-import { COMPOSITION_PAR_DEFAUT, NIVEAUX, themesDe, tirerFlash } from './automatismes'
+import type { Niveau } from './automatismes'
+import { automatismesDuFlash, COMPOSITION_PAR_DEFAUT, NIVEAUX, tirerFlash } from './automatismes'
+import { PROGRAMME_AUTOMATISMES } from './programme-automatismes'
 import type { Formule, ImageForme } from './types'
 import { uid } from './types'
 import { fermerSurLeFond } from './dialogue'
@@ -43,8 +47,13 @@ const cleDuClasseur = (id: string) => `mem-flash-${id}`
 
 export interface ReglagesFlash extends Composition {
   niveaux: string[]
-  /** « 5e/Nombres relatifs » : le niveau et le thème */
+  /** « 5e/Nombres relatifs » : le niveau et le thème (le domaine du
+   *  programme, au collège), coché en entier ou en partie */
   themes: string[]
+  /** « 5e/Opérations/2 » : les compétences cochées d'un domaine coché en
+   *  partie (le rang de la phrase dans sa liste). Aucune pour un domaine :
+   *  il est coché en entier (c'est le cas des réglages d'avant) */
+  competences: string[]
   affichage: 'une' | 'toutes'
   /** Une question à la fois : le temps de chacune, en secondes */
   parQuestion: number
@@ -52,12 +61,12 @@ export interface ReglagesFlash extends Composition {
   minutes: number
 }
 export const REGLAGES_PAR_DEFAUT: ReglagesFlash = {
-  niveaux: ['5e'], themes: [], ...COMPOSITION_PAR_DEFAUT, affichage: 'une', parQuestion: 30, minutes: 5,
+  niveaux: ['5e'], themes: [], competences: [], ...COMPOSITION_PAR_DEFAUT, affichage: 'une', parQuestion: 30, minutes: 5,
 }
 
 /** Un réglage relu : ce qui manque ou n'a pas de sens reprend la valeur par défaut */
 export function lireReglages(t: string | null): ReglagesFlash {
-  const r: ReglagesFlash = { ...REGLAGES_PAR_DEFAUT, niveaux: [...REGLAGES_PAR_DEFAUT.niveaux], themes: [] }
+  const r: ReglagesFlash = { ...REGLAGES_PAR_DEFAUT, niveaux: [...REGLAGES_PAR_DEFAUT.niveaux], themes: [], competences: [] }
   let o: Partial<ReglagesFlash> = {}
   try { o = t ? JSON.parse(t) : {} } catch { /* illisible : par défaut */ }
   if (!o || typeof o !== 'object') return r
@@ -65,6 +74,7 @@ export function lireReglages(t: string | null): ReglagesFlash {
   if (Array.isArray(o.niveaux)) r.niveaux = o.niveaux.filter(n => typeof n === 'string' && NIVEAUX.some(x => x.id === n && x.automatismes.length))
   if (!r.niveaux.length) r.niveaux = [...REGLAGES_PAR_DEFAUT.niveaux]
   if (Array.isArray(o.themes)) r.themes = o.themes.filter(x => typeof x === 'string')
+  if (Array.isArray(o.competences)) r.competences = o.competences.filter(x => typeof x === 'string')
   // Un réglage d'avant les réponses courtes (QCM, directes, à trou) :
   // ses nombres ne valent plus, on reprend 2 + 3
   r.cours = entier(o.cours, 0, MAX_PAR_FORME, r.cours)
@@ -76,16 +86,109 @@ export function lireReglages(t: string | null): ReglagesFlash {
   return r
 }
 
-/** Les automatismes (exercices d'application) des thèmes cochés, dans les niveaux cochés */
+/** Les automatismes (exercices d'application) des thèmes cochés, dans
+ *  les niveaux cochés. Dans un domaine coché en partie, seulement ceux des
+ *  compétences cochées (un exercice qui ne dit pas sa compétence suit son
+ *  domaine). Jamais d'application directe : le flash ne pose que des
+ *  automatismes. */
 export function automatismesChoisis(r: ReglagesFlash): Automatisme[] {
   return NIVEAUX.filter(n => r.niveaux.includes(n.id))
-    .flatMap(n => n.automatismes.filter(a => r.themes.includes(`${n.id}/${a.theme}`)))
+    .flatMap(n => automatismesDuFlash(n).filter(a => {
+      const domaine = `${n.id}/${a.theme}`
+      if (!r.themes.includes(domaine)) return false
+      const visees = r.competences.filter(c => c.startsWith(domaine + '/'))
+      return !visees.length || a.competence === undefined || visees.includes(`${domaine}/${a.competence}`)
+    }))
 }
 /** Les questions de cours des thèmes cochés, dans les niveaux cochés */
 export function coursChoisis(r: ReglagesFlash): QuestionCours[] {
   return NIVEAUX.filter(n => r.niveaux.includes(n.id))
     .flatMap(n => n.cours.filter(c => r.themes.includes(`${n.id}/${c.theme}`)))
 }
+
+/** Un texte avec des $…$, pour la fenêtre : le texte tel quel, les maths par KaTeX */
+function texteEtMaths(t: string): string {
+  return t.split('$').map((m, i) => i % 2 ? katex.renderToString(m, { throwOnError: false }) : html(m)).join('')
+}
+
+/** Ce qu'on peut cocher dans un niveau. Au collège, l'arbre du programme :
+ *  chaque thème, ses domaines qui ont des exercices, et la liste des
+ *  compétences de chaque domaine (cochables une par une quand tous les
+ *  exercices du domaine disent leur compétence). Au lycée, la liste des
+ *  thèmes, comme avant. Une case de domaine a toujours la classe
+ *  case-domaine et pour valeur « niveau/domaine ». */
+function casesDuNiveau(n: Niveau, R: ReglagesFlash): string {
+  const autos = automatismesDuFlash(n)
+  const nombre = (t: string) => autos.filter(a => a.theme === t).length
+  const coche = (cle: string) => R.themes.includes(cle)
+  const domaine = (cle: string, nom: string, competences: string[]) => {
+    const valeur = `${n.id}/${cle}`, siens = autos.filter(a => a.theme === cle)
+    const rangees = siens.every(a => a.competence !== undefined)
+    const visees = R.competences.filter(c => c.startsWith(valeur + '/'))
+    const liste = competences.map((c, k) => {
+      const nb = siens.filter(a => a.competence === k).length
+      const ok = rangees && nb > 0
+      const cochee = ok && coche(valeur) && (!visees.length || visees.includes(`${valeur}/${k}`))
+      return `<li><label${ok ? '' : ' class="sans-exercice"'}><input type="checkbox" class="case-competence" value="${html(valeur)}/${k}"${cochee ? ' checked' : ''}${ok ? '' : ' disabled'}><span>${texteEtMaths(c)}</span>${rangees ? `<small>${nb}</small>` : ''}</label></li>`
+    }).join('')
+    return `<div class="arbre-domaine">
+      <div class="ligne-arbre"><button type="button" class="deplier" aria-expanded="false" aria-label="Voir les compétences de ${html(nom)}" title="Voir les compétences"></button>
+        <label><input type="checkbox" class="case-domaine" value="${html(valeur)}"${coche(valeur) ? ' checked' : ''}><span>${html(nom)}</span><small>${siens.length}</small></label></div>
+      <div class="enfants" hidden>${rangees ? '' : '<p class="note-arbre">Les exercices de ce domaine ne sont pas encore rangés par compétence : on le coche en entier.</p>'}<ul>${liste}</ul></div>
+    </div>`
+  }
+  const programme = PROGRAMME_AUTOMATISMES[n.id]
+  if (!programme) {
+    return [...new Set(autos.map(a => a.theme))].map(t => `<label><input type="checkbox" class="case-domaine" value="${html(`${n.id}/${t}`)}"${coche(`${n.id}/${t}`) ? ' checked' : ''}><span>${html(t)}</span><small>${nombre(t)}</small></label>`).join('')
+  }
+  const ranges = new Set<string>()
+  const theme = (nom: string, domaines: string, note?: string) => note
+    ? `<div class="arbre-theme vide"><div class="ligne-arbre"><span class="deplier"></span><span class="nom-theme">${html(nom)}</span><small>${note}</small></div></div>`
+    : `<div class="arbre-theme"><div class="ligne-arbre"><button type="button" class="deplier" aria-expanded="false" aria-label="Voir les domaines de ${html(nom)}" title="Voir les domaines"></button>
+        <label><input type="checkbox" class="case-theme"><span>${html(nom)}</span></label></div>
+      <div class="enfants" hidden>${domaines}</div></div>`
+  const html1 = programme.map(t => {
+    const avec = t.domaines.filter(d => nombre(d.cle) > 0)
+    avec.forEach(d => ranges.add(d.cle))
+    if (!avec.length) return theme(t.nom, '', t.domaines.length ? 'bientôt' : 'rien au programme')
+    return theme(t.nom, avec.map(d => domaine(d.cle, d.nom ?? d.cle, d.competences)).join(''))
+  }).join('')
+  // Un exercice dont le domaine n'est pas dans le programme ne se perd pas
+  const autres = [...new Set(autos.map(a => a.theme))].filter(t => !ranges.has(t))
+  return html1 + (autres.length ? theme('Autres', autres.map(t => domaine(t, t, [])).join('')) : '')
+}
+
+/** Accorde les cases de l'arbre après un changement : un domaine est coché
+ *  si toutes ses compétences cochables le sont, à moitié si quelques-unes ;
+ *  un thème de même avec ses domaines. Un thème qui a quelque chose de
+ *  coché reste ouvert (deplier : à la première ouverture). */
+function accorderArbre(racine: HTMLElement, deplier = false) {
+  racine.querySelectorAll<HTMLElement>('.arbre-domaine').forEach(d => {
+    const comp = [...d.querySelectorAll<HTMLInputElement>('.case-competence:not(:disabled)')]
+    const dom = d.querySelector<HTMLInputElement>('.case-domaine')!
+    if (!comp.length) { dom.indeterminate = false; return }
+    const n = comp.filter(c => c.checked).length
+    dom.checked = n === comp.length
+    dom.indeterminate = n > 0 && n < comp.length
+  })
+  racine.querySelectorAll<HTMLElement>('.arbre-theme:not(.vide)').forEach(t => {
+    const doms = [...t.querySelectorAll<HTMLInputElement>('.case-domaine')]
+    const pleins = doms.filter(c => c.checked && !c.indeterminate).length, entames = doms.filter(c => c.checked || c.indeterminate).length
+    const caseTheme = t.querySelector<HTMLInputElement>('.case-theme')!
+    caseTheme.checked = pleins === doms.length
+    caseTheme.indeterminate = entames > 0 && pleins < doms.length
+    if (deplier && entames) ouvrirBranche(t, true)
+  })
+}
+function ouvrirBranche(branche: HTMLElement, ouvert: boolean) {
+  const b = branche.querySelector<HTMLElement>(':scope > .ligne-arbre > .deplier')
+  const e = branche.querySelector<HTMLElement>(':scope > .enfants')
+  if (!b || !e) return
+  b.setAttribute('aria-expanded', String(ouvert))
+  e.hidden = !ouvert
+}
+/** Les domaines cochés (en entier ou en partie) d'une partie de la fenêtre */
+const domainesCoches = (racine: ParentNode) => [...racine.querySelectorAll<HTMLInputElement>('.case-domaine')].filter(c => c.checked || c.indeterminate)
 
 /** Un texte avec des $…$ en LaTeX : le texte dans \text{}, les maths telles quelles */
 function texteEnLatex(t: string): string {
@@ -180,7 +283,7 @@ export class Flash {
     if (this.dialogue?.open) return
     if (this.flash) this.arreter()
     const R = this.lireLeReglage()
-    if (cocher?.length) { R.themes = cocher; R.niveaux = [...new Set(cocher.map(t => t.split('/')[0]))] }
+    if (cocher?.length) { R.themes = cocher; R.competences = []; R.niveaux = [...new Set(cocher.map(t => t.split('/')[0]))] }
     const d = this.dialogue = document.createElement('dialog')
     d.className = 'dialogue dialogue-flash'
     d.setAttribute('aria-labelledby', 'flash-titre')
@@ -191,10 +294,7 @@ export class Flash {
     const themes = NIVEAUX.filter(n => n.automatismes.length).map(n => `
       <div class="themes-niveau" data-niveau="${n.id}">
         <h3>${html(n.nom)}<button type="button" class="lien tout-cocher" data-niveau="${n.id}">tout cocher</button></h3>
-        ${themesDe(n).map(t => {
-          const cle = `${n.id}/${t}`, nb = n.automatismes.filter(a => a.theme === t).length
-          return `<label><input type="checkbox" value="${html(cle)}"${R.themes.includes(cle) ? ' checked' : ''}><span>${html(t)}</span><small>${nb}</small></label>`
-        }).join('')}
+        ${casesDuNiveau(n, R)}
       </div>`).join('')
     const forme = (cle: keyof Composition, nom: string) => `
       <div class="forme-flash" data-forme="${cle}"><span>${nom}</span>
@@ -230,7 +330,7 @@ export class Flash {
     const maj = () => {
       const choisis = new Set([...d.querySelectorAll<HTMLButtonElement>('.niveau-flash[aria-pressed=true]')].map(b => b.dataset.niveau!))
       d.querySelectorAll<HTMLElement>('.themes-niveau').forEach(e => { e.hidden = !choisis.has(e.dataset.niveau!) })
-      const themes = [...d.querySelectorAll<HTMLInputElement>('.themes-niveau:not([hidden]) input:checked')].length
+      const themes = [...d.querySelectorAll<HTMLElement>('.themes-niveau:not([hidden])')].flatMap(domainesCoches).length
       d.querySelectorAll<HTMLElement>('.forme-flash').forEach(e => {
         const k = e.dataset.forme as keyof Composition
         e.querySelector('output')!.textContent = String(compo[k])
@@ -247,9 +347,11 @@ export class Flash {
       b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')); maj()
     }))
     d.querySelectorAll<HTMLButtonElement>('.tout-cocher').forEach(b => b.addEventListener('click', () => {
-      const cases = [...d.querySelectorAll<HTMLInputElement>(`.themes-niveau[data-niveau="${b.dataset.niveau}"] input`)]
-      const tout = cases.every(c => c.checked)
-      cases.forEach(c => { c.checked = !tout })
+      const niveau = d.querySelector<HTMLElement>(`.themes-niveau[data-niveau="${b.dataset.niveau}"]`)!
+      const cases = [...niveau.querySelectorAll<HTMLInputElement>('input:not(:disabled)')]
+      const tout = cases.every(c => c.checked && !c.indeterminate)
+      cases.forEach(c => { c.checked = !tout; c.indeterminate = false })
+      accorderArbre(niveau)
       maj()
     }))
     d.querySelectorAll<HTMLElement>('.forme-flash').forEach(e => {
@@ -257,13 +359,29 @@ export class Flash {
       e.querySelector('.moins')!.addEventListener('click', () => { compo[k] = Math.max(0, compo[k] - 1); maj() })
       e.querySelector('.plus')!.addEventListener('click', () => { compo[k] = Math.min(MAX_PAR_FORME, compo[k] + 1); maj() })
     })
-    d.addEventListener('change', maj)
+    // L'arbre : une case de thème coche ses domaines, une case de domaine
+    // ses compétences ; une compétence décide de son domaine et de son thème
+    d.addEventListener('change', e => {
+      const c = e.target as HTMLInputElement
+      const descendre = (branche: Element | null) => branche?.querySelectorAll<HTMLInputElement>('.case-domaine, .case-competence:not(:disabled)').forEach(x => { x.checked = c.checked; x.indeterminate = false })
+      if (c.classList.contains('case-theme')) descendre(c.closest('.arbre-theme'))
+      else if (c.classList.contains('case-domaine')) descendre(c.closest('.arbre-domaine'))
+      accorderArbre(d)
+      maj()
+    })
+    d.querySelectorAll<HTMLButtonElement>('button.deplier').forEach(b => b.addEventListener('click', () => {
+      ouvrirBranche(b.closest('.arbre-theme, .arbre-domaine') as HTMLElement, b.getAttribute('aria-expanded') !== 'true')
+    }))
+    accorderArbre(d, true)
     const fermer = () => { if (d.open) d.close() }
     q('.annuler').addEventListener('click', fermer)
     q('.lancer').addEventListener('click', () => {
       const r: ReglagesFlash = {
         niveaux: [...d.querySelectorAll<HTMLButtonElement>('.niveau-flash[aria-pressed=true]')].map(b => b.dataset.niveau!),
-        themes: [...d.querySelectorAll<HTMLInputElement>('.themes-niveau:not([hidden]) input:checked')].map(c => c.value),
+        themes: [...d.querySelectorAll<HTMLElement>('.themes-niveau:not([hidden])')].flatMap(domainesCoches).map(c => c.value),
+        competences: [...d.querySelectorAll<HTMLElement>('.themes-niveau:not([hidden]) .arbre-domaine')]
+          .filter(x => x.querySelector<HTMLInputElement>('.case-domaine')!.indeterminate)
+          .flatMap(x => [...x.querySelectorAll<HTMLInputElement>('.case-competence:checked')].map(c => c.value)),
         ...compo,
         affichage: (d.querySelector('input[name=affichage-flash]:checked') as HTMLInputElement).value === 'toutes' ? 'toutes' : 'une',
         parQuestion: Math.max(5, Math.min(300, Math.round(Number(q<HTMLInputElement>('.par-question').value) || 30))),

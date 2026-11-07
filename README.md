@@ -962,8 +962,29 @@ dès que la séance commence, sur sa première page, vide.
 page derrière reste vide. On y choisit :
 - un ou plusieurs **niveaux** (5e, 4e, 2nde et 1re aujourd'hui ; 3e est
   marqué « bientôt ») ;
-- un ou plusieurs **thèmes** de chaque niveau (« tout cocher » prend tout le
-  niveau). Ceux de **5e** sont pensés comme la partie « Automatismes » du
+- ce qu'on interroge dans chaque niveau (« tout cocher » prend tout le
+  niveau). **Au collège** (depuis le 7 novembre 2026), c'est un **arbre
+  rangé comme le programme du cycle 4** : les cinq **thèmes** (nombres et
+  calculs ; espace et géométrie ; organisation et gestion de données,
+  probabilités ; proportionnalité, fonctions ; la pensée informatique),
+  puis les **domaines** du niveau (les titres du programme : opérations,
+  nombres relatifs…), puis les **compétences** de chaque domaine (les
+  phrases de sa liste « Automatismes »). La flèche à gauche déplie un
+  thème, puis un domaine ; une case de thème coche tous ses domaines, une
+  case de domaine toutes ses compétences ; une case à moitié cochée dit
+  qu'une partie seulement l'est. Un thème qui a quelque chose de coché
+  s'ouvre tout seul. La pensée informatique n'a aucun automatisme au
+  programme : elle est grisée, « rien au programme ». Le petit nombre est
+  celui des exercices. Les compétences se cochent une par une quand chaque
+  exercice du domaine dit la sienne (champ `competence`, le rang de la
+  phrase dans la liste) ; sinon la fenêtre le dit et l'on coche le domaine
+  en entier. **En 5e, chaque exercice dit sa compétence et chaque compétence a au moins un exercice**
+  (8 exercices ajoutés le 7 novembre 2026 : les tables jusqu'aux carrés, le motif suivant, ce qu'on ajoute d'un motif au suivant, le nombre quotient, placer un décimal sur une demi-droite graduée, le symétrique sans quadrillage, la mesure d'un angle droit ou plat, l'échelle de probabilité avec des mots ; « Tables de multiplication » passe dans Nombres rationnels) ; un essai le vérifie. Le rangement est dans `src/programme-automatismes.ts` ; la clé
+  d'un domaine est le nom du thème de ses exercices, pour que les réglages
+  déjà gardés restent bons. **Le flash ne pose que des automatismes** : les
+  applications directes d'objectifs d'apprentissage (champ `application`)
+  restent dans le code mais ne sont plus tirées, ni proposées par la
+  recherche. **Au lycée**, la liste des thèmes, comme avant. Ceux de **5e** sont pensés comme la partie « Automatismes » du
   brevet : des questions à réponse courte qui mobilisent un **automatisme**
   de la liste de 5e du programme 2026, ou une **application directe** d'un
   objectif d'apprentissage de 5e, rien de 4e. Ils sont rangés dans les
@@ -1017,7 +1038,9 @@ page derrière reste vide. On y choisit :
   toutes d'un coup avec une minuterie (5 min par défaut).
 
 Le dernier réglage est retenu sur l'appareil, et pour chaque classeur
-(`mem-flash`, `mem-flash-<classeur>`). Un réglage d'avant les réponses
+(`mem-flash`, `mem-flash-<classeur>`), avec les compétences cochées d'un
+domaine coché en partie (champ facultatif `competences`, « 5e/Opérations/2 » ;
+un réglage d'avant n'en a pas : ses domaines sont cochés en entier). Un réglage d'avant les réponses
 courtes garde ses niveaux, ses thèmes et son affichage ; ses nombres de
 questions repassent à 2 + 3. Les thèmes sont répartis le plus
 également possible, et deux questions ne se répètent pas.
@@ -7182,6 +7205,7 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/construction.ts` | Programme de construction → étapes et gestes |
 | `src/constructeur.ts` | Joue les étapes, avec ou sans instruments |
 | `src/automatismes.ts` | Les automatismes (générateurs, par niveau et par thème) et le tirage d'un flash (`tirerFlash`) |
+| `src/programme-automatismes.ts` | Le rangement des automatismes du collège comme le programme : thèmes, domaines, compétences |
 | `src/flash.ts` | Le flash d'automatismes : le réglage, les questions posées sur une page de la séance, le bandeau, la correction |
 | `src/seances.ts` | Les séances d'un classeur (lot 6) : le rangement des pages par séance (pur), la migration d'un classeur d'avant, les mots des dates (« Séance du mar 14 oct 14h », « de lundi ») ; dans `document.ts`, les deux cartes (`seances`, `seanceDesPages`), la séance neuve, la reprise d'une page (`reprendrePage`, `retirerReprise`) et la garde des séances passées (`garde`) ; dans `revoir/exporter.ts`, les séances lues dans le film (`seancesExplicitesDuFilm`, `pagesAPublier`) |
 | `src/seances-vue.ts` | Les séances à l'écran (lot 6) : la fenêtre « Bonjour ! » (avec le lien « Séance isolée » et le classeur isolé en dernier depuis le lot 17), la question « Cette page est dans la séance de lundi… », « Renommer la séance… », les bandeaux (la lecture, « Reprendre ») et le tiroir de la séance précédente |

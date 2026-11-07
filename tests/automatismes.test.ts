@@ -5,7 +5,8 @@
 // un trou ; un thème sans question de cours donne un exercice à la place.
 import { describe, expect, it } from 'vitest'
 import katex from 'katex'
-import { AUTOMATISMES_1RE, AUTOMATISMES_2NDE, AUTOMATISMES_4E, AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_1RE, COURS_2NDE, COURS_4E, COURS_5E, NIVEAUX, themesDe, tirerFlash } from '../src/automatismes'
+import { AUTOMATISMES_1RE, AUTOMATISMES_2NDE, AUTOMATISMES_4E, AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_1RE, COURS_2NDE, COURS_4E, COURS_5E, NIVEAUX, automatismesDuFlash, themesDe, tirerFlash } from '../src/automatismes'
+import { PROGRAMME_AUTOMATISMES, THEMES_COLLEGE } from '../src/programme-automatismes'
 import { automatismesChoisis, coursChoisis, lireReglages, REGLAGES_PAR_DEFAUT } from '../src/flash'
 import { caseOpposee, estPatronDeCube, hexomino } from '../src/figures'
 
@@ -172,10 +173,103 @@ describe('le réglage du flash', () => {
     const cinq = NIVEAUX.find(n => n.id === '5e')!
     expect(themesDe(cinq)).toContain('Nombres relatifs')
     const r = { ...REGLAGES_PAR_DEFAUT, themes: ['5e/Nombres relatifs', '5e/Angles'] }
-    expect(automatismesChoisis(r).map(a => a.id).sort()).toEqual([...duTheme('Nombres relatifs'), ...duTheme('Angles')].map(a => a.id).sort())
+    // Seulement les automatismes : les applications directes ne sont plus posées (7 novembre 2026)
+    expect(automatismesChoisis(r).map(a => a.id).sort()).toEqual([...duTheme('Nombres relatifs'), ...duTheme('Angles')].filter(a => !a.application).map(a => a.id).sort())
     expect(coursChoisis(r).map(c => c.id).sort()).toEqual([...coursDu('Nombres relatifs'), ...coursDu('Angles')].map(c => c.id).sort())
     expect(automatismesChoisis({ ...r, niveaux: [] })).toEqual([])
     expect(coursChoisis({ ...r, niveaux: [] })).toEqual([])
+  })
+
+  it('le flash ne pose que des automatismes : aucune application directe, même tout coché', () => {
+    for (const n of NIVEAUX) {
+      const r = { ...REGLAGES_PAR_DEFAUT, niveaux: [n.id], themes: themesDe(n).map(t => `${n.id}/${t}`) }
+      const choisis = automatismesChoisis(r)
+      expect(choisis.some(a => a.application), n.id).toBe(false)
+      expect(choisis.length, n.id).toBe(n.automatismes.filter(a => !a.application).length)
+    }
+  })
+
+  it('un domaine coché en partie : seulement les exercices des compétences cochées', () => {
+    // Deux exercices de Nombres relatifs rangés pour l'essai, l'un en 0, l'autre en 1
+    const [a, b] = automatismesDuFlash(NIVEAUX.find(n => n.id === '5e')!).filter(x => x.theme === 'Nombres relatifs')
+    const avant = [a.competence, b.competence]
+    a.competence = 0; b.competence = 1
+    try {
+      const r = { ...REGLAGES_PAR_DEFAUT, themes: ['5e/Nombres relatifs'], competences: ['5e/Nombres relatifs/1'] }
+      expect(automatismesChoisis(r).map(x => x.id)).toEqual([b.id])
+      // Aucune compétence nommée : le domaine entier (un réglage d'avant)
+      expect(automatismesChoisis({ ...r, competences: [] }).map(x => x.id)).toEqual(expect.arrayContaining([a.id, b.id]))
+    } finally { a.competence = avant[0]; b.competence = avant[1] }
+  })
+
+  it('les compétences cochées se gardent, et un réglage d\'avant n\'en a aucune', () => {
+    expect(lireReglages(JSON.stringify({ themes: ['5e/Opérations'] })).competences).toEqual([])
+    expect(lireReglages(JSON.stringify({ themes: ['5e/Opérations'], competences: ['5e/Opérations/2', 3] })).competences).toEqual(['5e/Opérations/2'])
+  })
+})
+
+describe('le rangement Thème › Domaine › Compétences du collège', () => {
+  it('cinq thèmes à chaque niveau, dans l\'ordre du programme ; la pensée informatique n\'a aucun automatisme', () => {
+    for (const id of ['5e', '4e', '3e']) {
+      expect(PROGRAMME_AUTOMATISMES[id].map(t => t.nom), id).toEqual(Object.values(THEMES_COLLEGE))
+      expect(PROGRAMME_AUTOMATISMES[id][4].domaines, id).toEqual([])
+    }
+  })
+
+  it('chaque exercice du flash de 5e et de 4e a son domaine dans le programme, et sa compétence existe', () => {
+    for (const id of ['5e', '4e']) {
+      const domaines = PROGRAMME_AUTOMATISMES[id].flatMap(t => t.domaines)
+      for (const a of automatismesDuFlash(NIVEAUX.find(n => n.id === id)!)) {
+        const d = domaines.find(x => x.cle === a.theme)
+        expect(d, `${id} ${a.id} (${a.theme})`).toBeTruthy()
+        if (a.competence !== undefined) expect(d!.competences[a.competence], `${id} ${a.id}`).toBeTruthy()
+      }
+    }
+  })
+
+  it('en 5e, chaque exercice a sa compétence, et chaque compétence a au moins un exercice', () => {
+    const autos = automatismesDuFlash(NIVEAUX.find(n => n.id === '5e')!)
+    for (const a of autos) expect(a.competence, a.id).toBeDefined()
+    for (const d of PROGRAMME_AUTOMATISMES['5e'].flatMap(t => t.domaines)) {
+      d.competences.forEach((c, k) => {
+        expect(autos.some(a => a.theme === d.cle && a.competence === k), `${d.cle} : ${c}`).toBe(true)
+      })
+    }
+  })
+
+  it('les exercices ajoutés pour les compétences de 5e donnent une question et une réponse', () => {
+    for (const id of ['tables-carres', 'motif-suivant', 'motif-regularite', 'nombre-quotient', 'placer-decimal', 'symetrie-feuille-blanche', 'angle-droit-plat', 'probabilite-mot']) {
+      const a = AUTOMATISMES_5E.find(x => x.id === id)!
+      for (let k = 0; k < 60; k++) {
+        const q = a.generer()
+        expect(q.enonce, id).not.toBe('')
+        expect(q.reponse, id).not.toBe('')
+        if (id === 'placer-decimal') expect(q.figure, id).toContain('<svg')
+      }
+    }
+  })
+
+  it('en 4e, chaque exercice a sa compétence, et chaque compétence a un exercice qui se tire sans erreur', () => {
+    const autos = automatismesDuFlash(NIVEAUX.find(n => n.id === '4e')!)
+    for (const a of autos) expect(a.competence, a.id).toBeDefined()
+    for (const d of PROGRAMME_AUTOMATISMES['4e'].flatMap(t => t.domaines)) {
+      d.competences.forEach((c, k) => {
+        const siens = autos.filter(a => a.theme === d.cle && a.competence === k)
+        expect(siens.length, `${d.cle} : ${c}`).toBeGreaterThan(0)
+        for (const a of siens) for (let i = 0; i < 60; i++) {
+          const q = a.generer()
+          expect(q.enonce.length, a.id).toBeGreaterThan(0)
+          expect(String(q.reponse).length, a.id).toBeGreaterThan(0)
+        }
+      })
+    }
+  })
+
+  it('les phrases des compétences s\'écrivent sans erreur', () => {
+    for (const t of Object.values(PROGRAMME_AUTOMATISMES).flat()) for (const d of t.domaines) for (const c of d.competences) {
+      expect(c.split('$').length % 2, c).toBe(1)
+      for (const m of c.split('$').filter((_, i) => i % 2)) expect(() => katex.renderToString(m, { throwOnError: true }), m).not.toThrow()
+    }
   })
 })
 
