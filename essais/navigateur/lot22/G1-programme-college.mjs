@@ -84,7 +84,7 @@ await p.screenshot({ path: SORTIE + 'A-onglet-5e.png' })
 // D
 await p.click(`${ops} .flash-prog`); await p.waitForTimeout(400)
 const coches = await p.evaluate(() => [...document.querySelectorAll('.dialogue-flash input[type="checkbox"]:checked')].map(i => i.value))
-ok(coches.join('|') === '5e/Opérations', 'D. le flash s’ouvre, Opérations de 5e coché', coches)
+ok(coches.includes('5e/Opérations') && coches.every(v => v.startsWith('5e/Opérations')), 'D. le flash s’ouvre, Opérations de 5e coché (et ses compétences), rien d’autre', coches)
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 
 // E
