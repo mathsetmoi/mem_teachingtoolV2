@@ -522,7 +522,7 @@ function prismeCavalier(avant: P[], d: P) {
   }
   return { r, pts: [...avant, ...arriere] }
 }
-export type Solide = 'cube' | 'pave' | 'cylindre' | 'prisme3' | 'prisme4' | 'prisme5' | 'prisme6' | 'pyramide'
+export type Solide = 'cube' | 'pave' | 'cylindre' | 'prisme3' | 'prisme4' | 'prisme5' | 'prisme6' | 'pyramide' | 'cone'
 /** Un solide usuel en perspective cavalière, sans nom de sommet */
 export function solide(sorte: Solide) {
   const d = { x: 46, y: -40 }
@@ -531,6 +531,13 @@ export function solide(sorte: Solide) {
     const r = `<ellipse cx="${c2.x}" cy="${c2.y}" rx="${rx}" ry="${ry}"/>` + ligne({ x: -rx, y: 0 }, { x: -rx, y: -h }) + ligne({ x: rx, y: 0 }, { x: rx, y: -h })
       + `<path d="M${-rx} 0A${rx} ${ry} 0 0 0 ${rx} 0"/><path d="M${-rx} 0A${rx} ${ry} 0 0 1 ${rx} 0" stroke-dasharray="6 5"/>`
     return cadre([{ x: -rx, y: ry }, { x: rx, y: -h - ry }, c1], r, 24)
+  }
+  if (sorte === 'cone') {
+    // Un cône de révolution : la base en ellipse (moitié arrière en pointillés), le sommet au-dessus du centre
+    const rx = 70, ry = 20, h = 160, S = { x: 0, y: -h }
+    const r = ligne({ x: -rx, y: 0 }, S) + ligne({ x: rx, y: 0 }, S)
+      + `<path d="M${-rx} 0A${rx} ${ry} 0 0 0 ${rx} 0"/><path d="M${-rx} 0A${rx} ${ry} 0 0 1 ${rx} 0" stroke-dasharray="6 5"/>`
+    return cadre([{ x: -rx, y: ry }, { x: rx, y: -ry }, S], r, 24)
   }
   if (sorte === 'pyramide') {
     const base = [{ x: 0, y: 0 }, { x: 150, y: 0 }, { x: 150 + d.x, y: d.y }, { x: d.x, y: d.y }], S = { x: 75 + d.x / 2, y: -170 }

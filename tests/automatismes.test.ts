@@ -5,7 +5,7 @@
 // un trou ; un thème sans question de cours donne un exercice à la place.
 import { describe, expect, it } from 'vitest'
 import katex from 'katex'
-import { AUTOMATISMES_1RE, AUTOMATISMES_2NDE, AUTOMATISMES_4E, AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_1RE, COURS_2NDE, COURS_4E, COURS_5E, NIVEAUX, automatismesDuFlash, themesDe, tirerFlash } from '../src/automatismes'
+import { AUTOMATISMES_1RE, AUTOMATISMES_2NDE, AUTOMATISMES_3E, AUTOMATISMES_4E, AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_1RE, COURS_2NDE, COURS_3E, COURS_4E, COURS_5E, NIVEAUX, automatismesDuFlash, themesDe, tirerFlash } from '../src/automatismes'
 import { PROGRAMME_AUTOMATISMES, THEMES_COLLEGE } from '../src/programme-automatismes'
 import { automatismesChoisis, coursChoisis, lireReglages, REGLAGES_PAR_DEFAUT } from '../src/flash'
 import { caseOpposee, estPatronDeCube, hexomino } from '../src/figures'
@@ -162,10 +162,11 @@ describe('le réglage du flash', () => {
     expect(lireReglages(JSON.stringify({ cours: 0, application: 0 }))).toMatchObject(COMPOSITION_PAR_DEFAUT)
   })
 
-  it('un niveau sans automatismes (bientôt) ne se garde pas', () => {
-    // Le 3e n'a pas encore d'automatismes ; la 2nde et la 1re en ont depuis le lot de la 2nde et de la 1re
-    expect(lireReglages(JSON.stringify({ niveaux: ['3e', '5e', 'x'] })).niveaux).toEqual(['5e'])
-    expect(lireReglages(JSON.stringify({ niveaux: ['3e'] })).niveaux).toEqual(['5e'])
+  it('un niveau inconnu ne se garde pas ; tous les niveaux ont maintenant leurs automatismes', () => {
+    // La 3e a ses automatismes depuis le 7 novembre 2026 : elle se garde comme les autres
+    expect(lireReglages(JSON.stringify({ niveaux: ['3e', '5e', 'x'] })).niveaux).toEqual(['3e', '5e'])
+    expect(lireReglages(JSON.stringify({ niveaux: ['x'] })).niveaux).toEqual(['5e'])
+    expect(NIVEAUX.every(n => n.automatismes.length > 0)).toBe(true)
     expect(lireReglages(JSON.stringify({ niveaux: ['2nde', '1re'] })).niveaux).toEqual(['2nde', '1re'])
   })
 
@@ -216,8 +217,8 @@ describe('le rangement Thème › Domaine › Compétences du collège', () => {
     }
   })
 
-  it('chaque exercice du flash de 5e et de 4e a son domaine dans le programme, et sa compétence existe', () => {
-    for (const id of ['5e', '4e']) {
+  it('chaque exercice du flash de 5e, de 4e et de 3e a son domaine dans le programme, et sa compétence existe', () => {
+    for (const id of ['5e', '4e', '3e']) {
       const domaines = PROGRAMME_AUTOMATISMES[id].flatMap(t => t.domaines)
       for (const a of automatismesDuFlash(NIVEAUX.find(n => n.id === id)!)) {
         const d = domaines.find(x => x.cle === a.theme)
@@ -338,6 +339,89 @@ describe('les automatismes de 4e', () => {
       for (const q of [a.generer(), ...(a.trou ? [a.trou()] : [])]) { verifier(q.enonce, a.id); if (!q.reponse.startsWith('<svg')) verifier(q.reponse, a.id) }
     }
     for (const c of [...COURS_5E, ...COURS_4E]) for (let k = 0; k < 20; k++) { const q = c.poser(); verifier(q.enonce, c.id); verifier(q.reponse, c.id) }
+  })
+})
+
+describe('les automatismes de 3e', () => {
+  const trois = NIVEAUX.find(n => n.id === '3e')!
+  const verifier = (t: string, id: string) => {
+    const morceaux = t.startsWith('§') || /\$/.test(t) ? t.replace(/^§/, '').split('$').filter((_, i) => i % 2) : [t]
+    for (const m of morceaux) expect(() => katex.renderToString(m, { throwOnError: true }), `${id} : ${m}`).not.toThrow()
+  }
+
+  it('le niveau 3e a ses automatismes et ses questions de cours ; aucun identifiant en double', () => {
+    expect(trois.automatismes).toBe(AUTOMATISMES_3E)
+    expect(trois.cours).toBe(COURS_3E)
+    expect(AUTOMATISMES_3E.length).toBeGreaterThanOrEqual(40)
+    for (const t of themesDe(trois)) expect(COURS_3E.filter(c => c.theme === t).length, t).toBeGreaterThanOrEqual(1)
+    const ids = [...AUTOMATISMES_5E, ...AUTOMATISMES_4E, ...AUTOMATISMES_3E, ...AUTOMATISMES_2NDE, ...AUTOMATISMES_1RE, ...COURS_5E, ...COURS_4E, ...COURS_3E, ...COURS_2NDE, ...COURS_1RE].map(x => x.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('seulement des automatismes : chaque exercice a sa compétence et sa phrase, chaque compétence a ses exercices', () => {
+    expect(AUTOMATISMES_3E.filter(a => a.application)).toEqual([])
+    expect(automatismesDuFlash(trois)).toEqual(AUTOMATISMES_3E)
+    for (const a of AUTOMATISMES_3E) { expect(a.competence, a.id).toBeDefined(); expect(a.programme, a.id).toMatch(/^[A-ZÉ].*\.$/) }
+    for (const d of PROGRAMME_AUTOMATISMES['3e'].flatMap(t => t.domaines)) {
+      d.competences.forEach((c, k) => expect(AUTOMATISMES_3E.some(a => a.theme === d.cle && a.competence === k), `${d.cle} : ${c}`).toBe(true))
+    }
+  })
+
+  it('réponse courte, jamais une chance sur deux, rien de cassé, et les trous ont un trou', () => {
+    for (const a of AUTOMATISMES_3E) for (let k = 0; k < 60; k++) {
+      for (const q of [a.generer(), ...(a.trou ? [a.trou()] : [])]) {
+        expect(q.reponse, a.id).not.toBe('')
+        expect(q.reponse, a.id).not.toMatch(/^§(Oui|Non)\b/)
+        expect(q.reponse, a.id).not.toMatch(/^[<>=]$/)
+        expect(q.reponse + q.enonce, a.id).not.toMatch(/NaN|undefined|Infinity/)
+        expect(q.enonce, a.id).not.toMatch(/…$|:$|^Est-ce /)
+      }
+      if (a.trou) expect(a.trou().enonce, a.id).toMatch(/\\ldots|…/)
+    }
+  })
+
+  it('rien de fixe : chaque exercice et chaque façon de poser une notion tire quelque chose au hasard', () => {
+    for (const a of AUTOMATISMES_3E) {
+      const vus = new Set<string>()
+      for (let k = 0; k < 60; k++) { const q = a.generer(); vus.add(q.enonce + (q.figure ?? '')) }
+      expect(vus.size, a.id).toBeGreaterThan(2)
+    }
+    for (const c of COURS_3E) c.facons.forEach((f, i) => {
+      const vus = new Set<string>()
+      for (let k = 0; k < 60; k++) vus.add(f()[0])
+      expect(vus.size, `${c.id}, façon ${i + 1} : « ${f()[0]} »`).toBeGreaterThan(1)
+    })
+  })
+
+  it('les réponses justes, sur quelques exercices de calcul', () => {
+    const a = (id: string) => AUTOMATISMES_3E.find(x => x.id === id)!
+    for (let k = 0; k < 100; k++) {
+      const q = a('3e-decomposer').generer()
+      const n = Number(/\$(\d+)\$/.exec(q.enonce)![1])
+      const produit = q.reponse.split(' \\times ').reduce((p, f) => { const m = /^(\d+)(?:\^\{(\d+)\})?$/.exec(f)!; return p * Number(m[1]) ** Number(m[2] ?? 1) }, 1)
+      expect(produit, q.enonce).toBe(n)
+      const d = a('3e-divisibilite').generer()
+      const chiffre = /\$(\d)\\ldots(\d)\$/.exec(d.enonce)
+      if (chiffre) expect(Number(chiffre[1] + d.reponse + chiffre[2]) % 9, d.enonce).toBe(0)
+    }
+  })
+
+  it('toutes les formules s\'écrivent sans erreur, et les dessins sont bien formés', () => {
+    for (const a of AUTOMATISMES_3E) for (let k = 0; k < 30; k++) {
+      for (const q of [a.generer(), ...(a.trou ? [a.trou()] : [])]) {
+        verifier(q.enonce, a.id); verifier(q.reponse, a.id)
+        if (q.figure) { expect(q.figure, a.id).toMatch(/^<svg [^>]*viewBox="[-\d. ]+"/); expect(q.figure, a.id).not.toMatch(/NaN|undefined/) }
+      }
+    }
+    for (const c of COURS_3E) for (let k = 0; k < 20; k++) { const q = c.poser(); verifier(q.enonce, c.id); verifier(q.reponse, c.id) }
+  })
+
+  it('par défaut : 2 questions de cours de 3e, puis 3 exercices, avec la phrase du programme pour la correction', () => {
+    for (let k = 0; k < 50; k++) {
+      const { questions } = tirerFlash(AUTOMATISMES_3E, COURS_3E, COMPOSITION_PAR_DEFAUT)
+      expect(questions.map(q => q.forme)).toEqual(['cours', 'cours', 'application', 'application', 'application'])
+      for (const q of questions) expect(!!q.programme, q.id).toBe(q.forme === 'application')
+    }
   })
 })
 

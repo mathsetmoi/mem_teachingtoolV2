@@ -26,6 +26,10 @@
 // J. en 5e, chaque compétence a ses exercices : aucune case grisée, et une
 //    seule compétence cochée (Angles, « angle droit 90°, plat 180° ») ne
 //    pose que des questions sur la mesure d'un angle droit ou plat ;
+// K. la 3e (7 novembre 2026) : le niveau n'est plus grisé, aucune
+//    compétence grisée ; un flash de 3e (Triangles et Statistiques) pose
+//    5 questions, corrigées en vert, la phrase du programme sous chaque
+//    exercice ;
 // F. aucune erreur.
 import { chromium } from '../commun/playwright.mjs'
 
@@ -200,6 +204,33 @@ ok(grisees === 0, 'J) En 5e, aucune compétence n\'est grisée (chacune a ses ex
 await p.click('.dialogue-flash .lancer')
 await p.waitForTimeout(1200)
 ok(await nObjets() > 0, 'I) Le flash se lance avec le thème entier')
+await p.click('.bandeau-flash .fermer').catch(() => {})
+
+// ---------- K. La 3e ----------
+await p.keyboard.press('Escape').catch(() => {})
+await p.click('.bandeau-flash .fermer').catch(() => {})
+await p.click('button[title^="Automatismes"]')
+await p.waitForSelector('dialog.dialogue-flash[open]')
+ok(await p.evaluate(() => !document.querySelector('.niveau-flash[data-niveau="3e"]').disabled), 'K) Le niveau 3e n\'est plus grisé')
+for (const b of await p.$$('.niveau-flash[aria-pressed=true]')) await b.click()
+await p.click('.niveau-flash[data-niveau="3e"]')
+const grisees3 = await p.evaluate(() => [...document.querySelectorAll('.themes-niveau[data-niveau="3e"] .case-competence')].filter(c => c.disabled).length)
+const comps3 = await p.evaluate(() => document.querySelectorAll('.themes-niveau[data-niveau="3e"] .case-competence').length)
+ok(comps3 === 37 && grisees3 === 0, 'K) En 3e, 37 compétences, aucune grisée', { comps3, grisees3 })
+// Les cases de domaine sont repliées sous leur thème : on les coche comme un clic
+await p.evaluate(() => {
+  for (const c of document.querySelectorAll('.themes-niveau[data-niveau="3e"] .case-domaine:checked')) c.click()
+  for (const d of ['3e/Triangles', '3e/Statistiques']) document.querySelector(`.themes-niveau[data-niveau="3e"] .case-domaine[value="${d}"]`).click()
+})
+await p.click('.dialogue-flash .lancer')
+await p.waitForTimeout(1500)
+const pageK = await p.evaluate(() => window.__app.page)
+await p.keyboard.press('c'); await p.waitForTimeout(800)
+const vertsK = await p.evaluate(([v, pg]) => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === v).length, [VERT, pageK])
+ok(vertsK >= 5, 'K) Un flash de 3e : 5 questions, corrigées en vert', vertsK)
+const bleusK = await p.evaluate(pg => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === '#1f5fbf').length, pageK)
+ok(bleusK >= 3, 'K) À la correction, la phrase du programme sous chaque exercice', bleusK)
+if (process.env.CAPTURE3) await p.screenshot({ path: process.env.CAPTURE3 })
 await p.click('.bandeau-flash .fermer').catch(() => {})
 
 // ---------- F. ----------
