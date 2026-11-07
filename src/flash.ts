@@ -669,7 +669,7 @@ export class Flash {
 
 /** Un dessin SVG en image PNG (2,5 pixels par unité, pour rester net en
  *  grand), du trait de la couleur du stylo */
-function rasteriser(svg: string, couleur: string): Promise<{ donnees: string; l: number; h: number }> {
+export function rasteriser(svg: string, couleur: string): Promise<{ donnees: string; l: number; h: number }> {
   const s = tailleSvg(svg), k = 2.5
   const l = Math.max(1, Math.round(s.l * k)), h = Math.max(1, Math.round(s.h * k))
   const texte = svg.replace('<svg ', `<svg width="${l}" height="${h}" style="color:${couleur}" `)

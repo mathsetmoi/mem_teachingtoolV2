@@ -1070,7 +1070,7 @@ séance comme le reste, et marche dans la version hors ligne. Le panneau prend
 la place du programme de construction (l'un ferme l'autre).
 
 Le panneau est rangé comme les programmes (BO 2026) : un onglet par niveau
-(**2nde**, **1re spé**), puis les thèmes du niveau, et dans chaque thème ses
+(**5e**, **4e**, **3e**, **2nde**, **1re spé**), puis les thèmes du niveau, et dans chaque thème ses
 chapitres, qu'on déplie d'un clic (le nombre d'éléments est à droite). Un
 thème où le programme ne demande pas de démonstration le dit. Le niveau
 choisi et les chapitres dépliés sont retenus sur l'appareil
@@ -1080,7 +1080,36 @@ La **recherche**, en haut, cherche dans tous les niveaux à la fois, sans se
 soucier des majuscules ni des accents (« tangente », « derivee », « suite »,
 « produit scalaire ») : tant qu'on tape, les onglets laissent la place à la
 liste de ce qui correspond, avec son niveau et son chapitre ; Échap efface la
-recherche. Le dessin des ensembles, trouvé ainsi, ouvre son chapitre.
+recherche. Le dessin des ensembles, trouvé ainsi, ouvre son chapitre. Elle
+trouve aussi les lignes du programme du collège (« Thalès », « médiane »),
+avec leurs boutons (40 lignes au plus : on précise la recherche).
+
+- **Le programme du collège** (onglets 5e, 4e et 3e, novembre 2026) : tout
+  le programme 2026 du cycle 4, recopié du programme officiel et rangé comme
+  lui, **thème › domaine › compétences**. Les cinq thèmes (Nombres et
+  calculs ; Espace et géométrie ; Organisation et gestion de données,
+  probabilités ; Proportionnalité, fonctions ; La pensée informatique) ont
+  chacun leurs domaines (Opérations, Nombres relatifs…), qu'on déplie. Un
+  domaine montre ses **automatismes** (AUTO, ceux du flash), ses **objectifs
+  d'apprentissage** (OBJ) et ses **prolongements possibles** (PLUS).
+  - **Poser** met la ligne sur la page dans un **encadré bleu** « PROGRAMME ·
+    5e · Nombres et calculs · Opérations » ; **Poser tout le domaine** y met
+    tous ses automatismes et objectifs, en liste. Comme le reste du
+    catalogue : il suit le pointeur, un clic le pose, c'est un groupe
+    (cadre et formules) qu'on déplace, il passe dans le replay.
+  - **Exemple**, sous un objectif qui a des exercices d'application
+    directe (ceux qui ne sont pas des automatismes de la liste officielle :
+    69 en 5e et 4e) : un exercice tiré au hasard, posé là où l'on clique.
+    **C** (ou « Correction » en bas du panneau) écrit la réponse en vert
+    dessous, puis la phrase du programme en petit et en bleu, comme au
+    flash ; **Un autre exemple** en pose un nouveau juste en dessous.
+  - **Flash sur ce domaine** (domaines qui ont des automatismes dans le
+    flash) ouvre le réglage du flash avec ce domaine seul coché.
+
+  Les données sont dans `src/programme-cycle4.ts` (sous un objectif,
+  `exemples` nomme ses exercices par leur id dans `src/automatismes.ts`), le
+  panneau dans `src/catalogue-college.ts` ; essais :
+  `tests/programme-cycle4.test.ts`, `essais/navigateur/lot22/G1-programme-college.mjs`.
 
 - **Les ensembles ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ** (2nde, Nombres réels) : cinq ovales emboîtés, chacun de sa
   couleur, avec son nom (22,5 cm sur 13 à 100 %). Il suit le pointeur en

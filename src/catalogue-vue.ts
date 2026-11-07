@@ -5,9 +5,11 @@
 // tableau (des figures, des formules), groupés : on le déplace, on
 // l'agrandit, on écrit dessus, on le dégroupe ; un Ctrl + Z le retire.
 //
-// Rangé comme le programme : un onglet par niveau (2nde, 1re spé), ses
-// thèmes, et dans chaque thème des chapitres qu'on déplie. Une recherche,
-// en haut, cherche dans tous les niveaux à la fois.
+// Rangé comme le programme : un onglet par niveau (5e, 4e, 3e, 2nde,
+// 1re spé), ses thèmes, et dans chaque thème des chapitres qu'on déplie.
+// Une recherche, en haut, cherche dans tous les niveaux à la fois.
+//  - en 5e, 4e et 3e, tout le programme du cycle 4, domaine par domaine,
+//    avec « Poser », « Exemple » et « Flash » (catalogue-college.ts) ;
 //  - le dessin des ensembles emboîtés (2nde, Nombres réels), vide ou avec
 //    des nombres ; « Compléter » range les nombres tapés dans un dessin
 //    déjà posé (le dernier, ou celui qui est pris), même déplacé ou agrandi ;
@@ -26,6 +28,9 @@ import type { P } from './construction'
 import type { Figure, Forme, Formule } from './types'
 import { uid } from './types'
 import { Trigo } from './catalogue-trigo'
+import { Programme } from './catalogue-college'
+import type { NiveauCollege } from './programme-cycle4'
+import { NIVEAUX_COLLEGE } from './programme-cycle4'
 import { FORMULES } from './trigonometrie'
 
 const html = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
@@ -68,17 +73,19 @@ export class Catalogue {
   private erreurs!: HTMLDivElement
   private liste!: HTMLOListElement
   private demo: DemoEnCours | null = null
-  private niveau: Niveau = '2nde'
+  private niveau: Niveau | NiveauCollege = '2nde'
   /** Les chapitres dépliés, « niveau|chapitre » */
   private ouverts = new Set<string>()
   private recherche!: HTMLInputElement
   private mesureur: HTMLDivElement
   private clavier = (e: KeyboardEvent) => this.touche(e)
   private trigo: Trigo
+  /** Le programme du collège (5e, 4e, 3e) */
+  private programme: Programme
   /** Ce que les touches pilotent, quand les deux sont sur la page */
   private dernier: 'demo' | 'enroulement' = 'demo'
 
-  constructor(private app: App, racine: HTMLElement, private message: (t: string) => void) {
+  constructor(private app: App, racine: HTMLElement, private message: (t: string) => void, ouvrirFlash: (cocher: string[]) => void = () => {}) {
     this.panneau = document.createElement('div')
     this.panneau.className = 'panneau-catalogue'
     this.panneau.setAttribute('role', 'dialog')
@@ -96,6 +103,13 @@ export class Catalogue {
       poserDemo: d => this.poserDemo(d),
       message: t => this.message(t),
       enroulementPose: () => { this.dernier = 'enroulement' },
+    })
+    this.programme = new Programme(app, {
+      mesurer: (l, t) => this.mesurer(l, t),
+      placer: (f, p) => this.placer(f, p),
+      peutPoser: () => this.peutPoser(),
+      message: t => this.message(t),
+      ouvrirFlash,
     })
     this.construire()
   }
@@ -125,6 +139,7 @@ export class Catalogue {
     window.removeEventListener('keydown', this.clavier, true)
     this.demo = null
     this.trigo.terminer()
+    this.programme.terminer()
     this.afficher()
   }
 
@@ -135,7 +150,7 @@ export class Catalogue {
     try {
       nombres = localStorage.getItem(CLE_NOMBRES) ?? ''
       const n = localStorage.getItem(CLE_NIVEAU)
-      if (PROGRAMME.some(x => x.niveau === n)) this.niveau = n as Niveau
+      if (PROGRAMME.some(x => x.niveau === n) || NIVEAUX_COLLEGE.some(x => x === n)) this.niveau = n as Niveau | NiveauCollege
       const o = JSON.parse(localStorage.getItem(CLE_OUVERTS) ?? 'null')
       if (Array.isArray(o)) this.ouverts = new Set(o.filter((x): x is string => typeof x === 'string'))
     } catch { /* navigateur sans mémoire */ }
@@ -152,7 +167,8 @@ export class Catalogue {
         <p class="note">Chaque nombre va dans le plus petit ensemble qui le contient. On peut écrire 1/3, √2, π, 2,5, 0,333…, 10^-2.</p>
       </div>`
     const boutonDemo = (i: number) => `<button type="button" class="secondaire demo" data-demo="${i}">${html(DEMONSTRATIONS[i].nom)}</button>`
-    const niveaux = PROGRAMME.map(n => `
+    const college = NIVEAUX_COLLEGE.map(n => `<div class="niveau" data-niveau="${n}">${this.programme.html(n, this.ouverts)}</div>`).join('')
+    const niveaux = college + PROGRAMME.map(n => `
       <div class="niveau" data-niveau="${n.niveau}">${n.themes.map(t => `
         <h3>${html(t.nom)}</h3>${t.chapitres.length ? t.chapitres.map(c => {
           const demos = DEMONSTRATIONS.map((d, i) => d.niveau === n.niveau && d.chapitre === c ? i : -1).filter(i => i >= 0)
@@ -167,10 +183,11 @@ export class Catalogue {
     p.innerHTML = `
       <div class="tete"><h2>Catalogue</h2><button type="button" class="fermer" aria-label="Fermer" title="Fermer">×</button></div>
       <input type="search" class="recherche" placeholder="Chercher : tangente, suite, √2…" aria-label="Chercher dans le catalogue" spellcheck="false">
-      <div class="onglets" role="group" aria-label="Niveau">${PROGRAMME.map(n => `<button type="button" class="onglet" data-niveau="${n.niveau}">${html(n.nom)}</button>`).join('')}</div>
+      <div class="onglets" role="group" aria-label="Niveau">${[...NIVEAUX_COLLEGE.map(n => ({ niveau: n, nom: n })), ...PROGRAMME].map(n => `<button type="button" class="onglet" data-niveau="${n.niveau}">${html(n.nom)}</button>`).join('')}</div>
       <div class="rangement">${niveaux}</div>
       <div class="resultats" hidden></div>
       ${this.trigo.htmlPilote()}
+      ${this.programme.htmlPilote()}
       <section class="element en-cours" hidden>
         <h3 class="titre-en-cours">Démonstration en cours</h3>
         <ol class="etapes"></ol>
@@ -188,7 +205,7 @@ export class Catalogue {
       try { localStorage.setItem(CLE_NOMBRES, this.nombres.value) } catch { /* navigateur sans mémoire */ }
     })
     p.querySelectorAll<HTMLButtonElement>('.onglet').forEach(b => b.addEventListener('click', () => {
-      this.niveau = b.dataset.niveau as Niveau
+      this.niveau = b.dataset.niveau as Niveau | NiveauCollege
       try { localStorage.setItem(CLE_NIVEAU, this.niveau) } catch { /* navigateur sans mémoire */ }
       this.montrerNiveau()
     }))
@@ -212,6 +229,7 @@ export class Catalogue {
     q('.precedente').addEventListener('click', () => this.precedente())
     q('.tout').addEventListener('click', () => { while (this.suivante()) { /* jusqu'au bout */ } })
     this.trigo.brancher(p)
+    this.programme.brancher(p)
   }
 
   /** Ne montre que le niveau choisi */
@@ -242,7 +260,8 @@ export class Catalogue {
       return mots.every(m => texte.includes(m))
     })
     let lieu = ''
-    res.innerHTML = trouves.length ? trouves.map(e => {
+    const programme = this.programme.resultats(mots)
+    res.innerHTML = (trouves.length || programme) ? trouves.map(e => {
       const ici = `${nomNiveau(e.niveau)} · ${e.chapitre}`
       const tete = ici !== lieu ? `<p class="lieu">${html(ici)}</p>` : ''
       lieu = ici
@@ -250,7 +269,7 @@ export class Catalogue {
         ? `<button type="button" class="secondaire aller-ensembles">${html(e.nom)}</button>`
         : e.cle.startsWith('trigo:') ? `<button type="button" class="secondaire aller-trigo" data-trigo="${html(e.cle.slice(6))}">${html(e.nom)}</button>`
         : `<button type="button" class="secondaire demo" data-demo="${e.cle}">${html(e.nom)}</button>`)
-    }).join('') : '<p class="note">Rien ne correspond. Essayez un autre mot.</p>'
+    }).join('') + programme : '<p class="note">Rien ne correspond. Essayez un autre mot.</p>'
   }
 
   /** Le dessin des ensembles trouvé par la recherche : on ouvre son chapitre */
@@ -295,6 +314,8 @@ export class Catalogue {
       return
     }
     if ((e.target as HTMLElement).closest?.('textarea, input:not([type="range"]), select, dialog')) return
+    // C : la correction de l'exemple du programme (catalogue-college.ts)
+    if (this.programme.touche(e)) return
     // L'enroulement posé en dernier sur cette page prend les touches :
     // Espace lance ou arrête, les flèches avancent ou reculent d'un pas
     const demoIci = !!this.demo && this.demo.page === this.app.page
