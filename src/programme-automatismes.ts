@@ -21,6 +21,9 @@ export interface DomaineProgramme {
   nom?: string
   /** La liste « Automatismes » du domaine ($…$ pour les maths) */
   competences: string[]
+  /** Un domaine du professeur, hors programme officiel : il porte
+   *  l'étiquette PERSO dans la fenêtre, comme ses compétences */
+  perso?: boolean
 }
 export interface ThemeProgramme {
   nom: string
@@ -187,6 +190,8 @@ export const PROGRAMME_AUTOMATISMES: Record<string, ThemeProgramme[]> = {
       { cle: 'Triangles', competences: [
         'Reconnaitre des droites remarquables, y compris dans les triangles particuliers (médiatrices, médianes, hauteurs, bissectrices).',
       ] },
+      // Un domaine du professeur, hors programme officiel (étiquette PERSO)
+      { cle: 'Pythagore', perso: true, competences: ['Connaître le cours'] },
     ] },
     { nom: T.donnees, domaines: [
       { cle: 'Statistiques', competences: [
