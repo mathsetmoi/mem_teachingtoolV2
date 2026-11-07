@@ -1921,6 +1921,20 @@ const coord = (x: number, y: number) => `(${nb(x)}\\,;\\,${nb(y)})`
 /** Un nombre avec l'espace des milliers : 12\,000 */
 const grandNb = (x: number) => { const [e, d] = nb(x).split('{,}'); return e.replace(/\B(?=(\d{3})+(?!\d))/g, '\\,') + (d !== undefined ? '{,}' + d : '') }
 
+// ---------- PERSO : Pythagore (outils) ----------
+const PERSO_PYTHAGORE = 'PERSO · Pythagore : connaître le cours.'
+const TRIPLETS_PYTHAGORE = [[3, 4, 5], [6, 8, 10], [5, 12, 13], [8, 15, 17], [9, 12, 15], [7, 24, 25], [12, 16, 20]]
+/** Trois longueurs qui ne font pas un triangle rectangle (a² + b² ≠ c²) */
+const PAS_RECTANGLES = [[4, 5, 7], [5, 6, 8], [6, 7, 9], [4, 6, 7], [5, 7, 9], [6, 8, 11], [3, 5, 6]]
+/** Un triangle rectangle tiré au hasard : son nom, le sommet de l'angle
+ *  droit, les côtés de l'angle droit et l'hypoténuse (lettres rangées) */
+function triangleRectangle() {
+  const s = [...choix(TRIANGLES)], d = ent(0, 2)
+  const [u, w] = s.filter((_, i) => i !== d)
+  const seg = (x: string, y: string) => [x, y].sort().join('')
+  return { nom: s.join(''), a: s[d], c1: seg(s[d], u), c2: seg(s[d], w), h: seg(u, w) }
+}
+
 export const AUTOMATISMES_4E: Automatisme[] = [
   // ================= OPÉRATIONS SUR LES NOMBRES RELATIFS =================
   {
@@ -2862,6 +2876,57 @@ export const AUTOMATISMES_4E: Automatisme[] = [
       ])()
     },
   },
+  // ---------- PERSO : Pythagore ----------
+  // Un domaine du professeur, hors programme officiel (étiquette PERSO
+  // dans la fenêtre) : une seule compétence, « Connaître le cours ».
+  {
+    id: 'perso-pythagore-choisir', theme: 'Pythagore', titre: 'Quel théorème utiliser ?', programme: PERSO_PYTHAGORE, competence: 0,
+    generer() {
+      const t = triangleRectangle(), k = ent(0, 2)
+      const question = 'Quel est le théorème ou la propriété à utiliser ici ?'
+      if (k === 0) {
+        const [p, q] = choix(TRIPLETS_PYTHAGORE)
+        return { enonce: `Le triangle $${t.nom}$ est rectangle en $${t.a}$, $${t.c1} = ${p}$ cm et $${t.c2} = ${q}$ cm. On demande de calculer $${t.h}$. ${question}`, reponse: mot('le théorème de Pythagore') }
+      }
+      const [p, q, r] = k === 1 ? choix(TRIPLETS_PYTHAGORE) : choix(PAS_RECTANGLES)
+      return { enonce: `Dans le triangle $${t.nom}$, $${t.c1} = ${p}$ cm, $${t.c2} = ${q}$ cm et $${t.h} = ${r}$ cm. On demande de montrer que le triangle $${t.nom}$ ${k === 1 ? 'est' : 'n’est pas'} rectangle. ${question}`, reponse: mot(`la ${k === 1 ? 'réciproque' : 'contraposée'} du théorème de Pythagore`) }
+    },
+  },
+  {
+    id: 'perso-pythagore-redaction', theme: 'Pythagore', titre: 'L’étape manquante d’une rédaction', programme: PERSO_PYTHAGORE, competence: 0,
+    generer() {
+      const t = triangleRectangle(), k = ent(0, 2)
+      // Les étapes de la rédaction, et celles qui peuvent manquer (choisies par le professeur)
+      let etapes: string[], cachables: number[]
+      if (k === 0) {
+        const [p, q, r] = choix(TRIPLETS_PYTHAGORE)
+        etapes = [`Dans le triangle $${t.nom}$ rectangle en $${t.a}$,`, 'd’après le théorème de Pythagore,', `$${t.h}^2 = ${t.c1}^2 + ${t.c2}^2$`,
+          `$${t.h}^2 = ${p}^2 + ${q}^2$`, `$${t.h}^2 = ${p * p} + ${q * q} = ${r * r}$`, `$${t.h} = \\sqrt{${r * r}} = ${r}$ cm`]
+        cachables = [0, 1, 2]
+      } else {
+        const [p, q, r] = k === 1 ? choix(TRIPLETS_PYTHAGORE) : choix(PAS_RECTANGLES)
+        etapes = [`Dans le triangle $${t.nom}$, le plus grand côté est $[${t.h}]$.`, `D’une part, $${t.h}^2 = ${r}^2 = ${r * r}$.`,
+          `D’autre part, $${t.c1}^2 + ${t.c2}^2 = ${p}^2 + ${q}^2 = ${p * p} + ${q * q} = ${p * p + q * q}$.`,
+          `On constate que $${t.h}^2 ${k === 1 ? '=' : '\\neq'} ${t.c1}^2 + ${t.c2}^2$.`,
+          `Donc, d’après la ${k === 1 ? 'réciproque' : 'contraposée'} du théorème de Pythagore,`,
+          k === 1 ? `le triangle $${t.nom}$ est rectangle en $${t.a}$.` : `le triangle $${t.nom}$ n’est pas rectangle.`]
+        cachables = k === 1 ? [0, 3, 4, 5] : [0, 3, 4]
+      }
+      const cachee = choix(cachables)
+      const lignes = etapes.map((e, i) => i === cachee ? '$\\ldots\\ldots\\ldots$' : e)
+      return { enonce: `Compléter l’étape manquante de la rédaction.\n${lignes.join('\n')}`, reponse: mot(etapes[cachee]) }
+    },
+  },
+  {
+    id: 'perso-pythagore-egalite', theme: 'Pythagore', titre: 'L’égalité de Pythagore, l’hypoténuse', programme: PERSO_PYTHAGORE, competence: 0,
+    generer() {
+      const t = triangleRectangle()
+      if (Math.random() < 0.5) return { enonce: `Le triangle $${t.nom}$ est rectangle en $${t.a}$. Écrire l’égalité de Pythagore.`, reponse: `${t.h}^2 = ${t.c1}^2 + ${t.c2}^2` }
+      if (Math.random() < 0.5) return { enonce: `Le triangle $${t.nom}$ est rectangle en $${t.a}$. Quelle est son hypoténuse ?`, reponse: mot(`$[${t.h}]$`) }
+      const [p, q, r] = choix([...TRIPLETS_PYTHAGORE, ...PAS_RECTANGLES])
+      return { enonce: `Dans le triangle $${t.nom}$, $${t.c1} = ${p}$ cm, $${t.c2} = ${q}$ cm et $${t.h} = ${r}$ cm. Pour la réciproque ou la contraposée, quel côté met-on seul d’un côté de l’égalité ?`, reponse: mot(`$[${t.h}]$, le plus grand côté`) }
+    },
+  },
 ]
 
 // =============================================================
@@ -3103,6 +3168,21 @@ export const COURS_4E: QuestionCours[] = [
     ['Un programme de calcul',
       () => { const a = ent(2, 9), b = ent(1, 9), x = ent(2, 9); return [`Programme : multiplier par $${a}$, puis ajouter $${b}$. Quel calcul fait-on en partant de $${x}$ ?`, `$${a} \\times ${x} + ${b} = ${a * x + b}$`] },
       () => { const a = ent(2, 9), b = ent(1, 9), y = lettre(); return [`Programme : multiplier par $${a}$, puis ajouter $${b}$. Quelle expression obtient-on en partant de $${y}$ ?`, `$${a}${y} + ${b}$`] }],
+  ]),
+  // PERSO : Pythagore (un domaine du professeur)
+  ...n4('Pythagore', [
+    ['À quoi sert le théorème de Pythagore',
+      () => { const t = triangleRectangle(); return [`Le triangle $${t.nom}$ est rectangle en $${t.a}$. À quoi sert le théorème de Pythagore ?`, `à calculer la longueur d’un côté de $${t.nom}$ quand on connaît les deux autres`] },
+      () => { const t = triangleRectangle(); return [`Le triangle $${t.nom}$ est rectangle en $${t.a}$. On connaît $${t.c1}$ et $${t.c2}$. Quelle longueur le théorème de Pythagore permet-il de calculer ?`, `$${t.h}$`] }],
+    ['À quoi sert la réciproque du théorème de Pythagore',
+      () => { const t = triangleRectangle(); return [`On connaît les trois longueurs du triangle $${t.nom}$. À quoi sert la réciproque du théorème de Pythagore ?`, `à montrer que $${t.nom}$ est rectangle`] },
+      () => { const t = triangleRectangle(); return [`On veut montrer que le triangle $${t.nom}$ est rectangle. Quel théorème utilise-t-on ?`, 'la réciproque du théorème de Pythagore'] }],
+    ['À quoi sert la contraposée du théorème de Pythagore',
+      () => { const t = triangleRectangle(); return [`On connaît les trois longueurs du triangle $${t.nom}$. À quoi sert la contraposée du théorème de Pythagore ?`, `à montrer que $${t.nom}$ n’est pas rectangle`] },
+      () => { const t = triangleRectangle(); return [`On veut montrer que le triangle $${t.nom}$ n’est pas rectangle. Quel théorème utilise-t-on ?`, 'la contraposée du théorème de Pythagore'] }],
+    ['L’hypoténuse',
+      () => { const t = triangleRectangle(); return [`Le triangle $${t.nom}$ est rectangle en $${t.a}$. Comment s’appelle le côté $[${t.h}]$ ?`, 'l’hypoténuse'] },
+      () => { const t = triangleRectangle(); return [`Le triangle $${t.nom}$ est rectangle en $${t.a}$. Quel est son plus grand côté ?`, `$[${t.h}]$, l’hypoténuse`] }],
   ]),
 ]
 
