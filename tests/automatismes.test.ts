@@ -233,6 +233,21 @@ describe('le rangement Thème › Domaine › Compétences du collège', () => {
     }
   })
 
+  it('chaque compétence de 4e a au moins un exercice, qui se tire sans erreur', () => {
+    const autos = automatismesDuFlash(NIVEAUX.find(n => n.id === '4e')!)
+    for (const d of PROGRAMME_AUTOMATISMES['4e'].flatMap(t => t.domaines)) {
+      d.competences.forEach((c, k) => {
+        const siens = autos.filter(a => a.theme === d.cle && a.competence === k)
+        expect(siens.length, `${d.cle} : ${c}`).toBeGreaterThan(0)
+        for (const a of siens) for (let i = 0; i < 60; i++) {
+          const q = a.generer()
+          expect(q.enonce.length, a.id).toBeGreaterThan(0)
+          expect(String(q.reponse).length, a.id).toBeGreaterThan(0)
+        }
+      })
+    }
+  })
+
   it('les phrases des compétences s\'écrivent sans erreur', () => {
     for (const t of Object.values(PROGRAMME_AUTOMATISMES).flat()) for (const d of t.domaines) for (const c of d.competences) {
       expect(c.split('$').length % 2, c).toBe(1)

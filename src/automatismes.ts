@@ -2295,6 +2295,24 @@ export const AUTOMATISMES_4E: Automatisme[] = [
     },
   },
   {
+    id: '4e-placer-droite', theme: 'Repérage', titre: 'Placer un relatif sur une droite graduée',
+    programme: 'Placer et repérer un nombre relatif sur une droite graduée.',
+    competence: 0,
+    generer() {
+      const parts = choix([2, 4, 5]), debut = -ent(3, 5), fin = ent(3, 5), n = (fin - debut) * parts
+      // Le nombre à placer, son opposé et ses voisins : les erreurs qu'on fait en lisant la graduation
+      let k: number
+      do { k = ent(1, n - 1) } while (debut + k / parts === 0)
+      const x = debut + k / parts
+      const pris = [x]
+      for (const a of [-x, x + 1 / parts, x - 1 / parts]) if (a >= debut && a <= fin && !pris.some(b => Math.abs(a - b) < 1e-9)) pris.push(a)
+      while (pris.length < 4) { const a = debut + ent(0, n) / parts; if (!pris.some(b => Math.abs(a - b) < 1e-9)) pris.push(a) }
+      const noms = pts(4)
+      const lettres = pris.slice(0, 4).map((a, i) => ({ x: a, nom: noms[i] }))
+      return { enonce: `Sur la droite graduée, quel point a pour abscisse $${nb(x)}$ ?`, figure: F.droiteGradueePoints(debut, fin, parts, lettres), reponse: mot(`$${noms[0]}$`) }
+    },
+  },
+  {
     id: '4e-coordonnees', theme: 'Repérage', titre: 'Lire les coordonnées d’un point',
     programme: 'Dans un repère orthogonal, lire les coordonnées d’un point.',
     competence: 2,
@@ -2400,6 +2418,33 @@ export const AUTOMATISMES_4E: Automatisme[] = [
       const i = ent(0, 2), [t] = images[i]
       if (Math.random() < 0.6) return { enonce: `Quel point est l'image du point $A$ par ${t} ?`, figure: F.reperePoints(pts), reponse: mot(`$${noms[i]}$`) }
       return { enonce: `Par quelle symétrie le point $${noms[i]}$ est-il l'image du point $A$ ? (préciser l'axe ou le centre)`, figure: F.reperePoints(pts), reponse: mot(t) }
+    },
+  },
+  {
+    id: '4e-symetrie-reconnue', theme: 'Parallélogrammes et translations', titre: 'Reconnaître la symétrie qui transforme un point en un autre',
+    programme: 'Dire si des figures planes sont images l’une de l’autre par une symétrie axiale (dont on identifie l’axe) ou par un demi-tour (dont on identifie le centre).',
+    competence: 0,
+    generer() {
+      const [A, B] = pts(2)
+      let x: number, y: number
+      do { x = relNonNul(1, 4); y = relNonNul(1, 4) } while (Math.abs(x) === Math.abs(y))
+      const cas = ent(0, 3)
+      let bx = 0, by = 0, rep = ''
+      if (cas === 0) { bx = x; by = -y; rep = 'une symétrie d\'axe l\'axe des abscisses' }
+      else if (cas === 1) { bx = -x; by = y; rep = 'une symétrie d\'axe l\'axe des ordonnées' }
+      else if (cas === 2) { bx = -x; by = -y; rep = 'un demi-tour de centre $O$, l\'origine du repère' }
+      else {
+        // Un demi-tour dont le centre est le milieu de [AB]
+        let a: number, b: number
+        do { a = ent(-2, 2); b = ent(-2, 2); bx = 2 * a - x; by = 2 * b - y } while ((a === 0 && b === 0) || Math.abs(bx) > 5 || Math.abs(by) > 5 || (bx === x && by === y))
+        rep = `un demi-tour de centre le milieu de $[${A}${B}]$, le point de coordonnées $(${nb(a)}\\,;\\,${nb(b)})$`
+      }
+      const c = (u: number, v: number) => `(${nb(u)}\\,;\\,${nb(v)})`
+      return {
+        enonce: `Dans un repère, $${A}${c(x, y)}$ et $${B}${c(bx, by)}$. Le point $${B}$ est l'image du point $${A}$ par une symétrie axiale ou par un demi-tour : laquelle ? (préciser l'axe ou le centre)`,
+        figure: F.reperePoints([{ x, y, nom: A }, { x: bx, y: by, nom: B }]),
+        reponse: mot(rep),
+      }
     },
   },
   {
@@ -2608,7 +2653,12 @@ export const AUTOMATISMES_4E: Automatisme[] = [
       const a = choix([100, 50, 25, 10, 1]), c = a === 25 ? 4 * ent(3, 60) : a === 1 ? 100 * ent(1, 30) + choix([0, 50]) : 10 * ent(2, 90)
       return { enonce: `Calculer $${a}\\,\\%$ de $${grandNb(c)}$.`, reponse: nb(a * c / 100) }
     },
-    trou() {
+  },
+  {
+    id: '4e-pourcentages-trou', theme: 'Proportionnalité', titre: 'Compléter : 20 % de 120 = …',
+    programme: 'Déterminer a % de c quand a vaut 100, 50, 25, 10, 1 ; compléter 20 % de 120 = …',
+    competence: 1,
+    generer() {
       const p = choix([10, 20, 25, 30, 40, 50, 75]), c = 20 * ent(1, 30), v = p * c / 100
       const k = choix([100, 1000]), m = ent(1, 9) * (k / 100), w = m * k / 100
       return unTrou('', [[`$${p}\\,\\% \\text{ de } ${c} = \\ldots$`, nb(v)], [`$${p}\\,\\% \\text{ de } \\ldots = ${nb(v)}$`, nb(c)], [`$${nb(w)} = \\frac{\\ldots}{100} \\times ${mille(k)}$`, nb(m)]])
