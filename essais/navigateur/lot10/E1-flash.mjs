@@ -23,6 +23,9 @@
 //    la pensée informatique grisée (« rien au programme »), une case de
 //    thème coche tous ses domaines, la flèche d'un domaine montre ses
 //    compétences (les phrases de la liste « Automatismes ») ;
+// J. en 5e, chaque compétence a ses exercices : aucune case grisée, et une
+//    seule compétence cochée (Angles, « angle droit 90°, plat 180° ») ne
+//    pose que des questions sur la mesure d'un angle droit ou plat ;
 // F. aucune erreur.
 import { chromium } from '../commun/playwright.mjs'
 
@@ -192,6 +195,8 @@ if (!geo.visibles) await p.click('.themes-niveau[data-niveau="5e"] .arbre-theme:
 await p.click('.themes-niveau[data-niveau="5e"] .arbre-domaine:has(.case-domaine[value="5e/Angles"]) .deplier')
 const comp = await p.evaluate(() => [...document.querySelectorAll('.arbre-domaine:has(.case-domaine[value="5e/Angles"]) .case-competence')].filter(c => c.offsetParent).length)
 ok(comp === 4, 'I) La flèche d\'Angles montre ses 4 compétences', comp)
+const grisees = await p.evaluate(() => [...document.querySelectorAll('.themes-niveau[data-niveau="5e"] .case-competence')].filter(c => c.disabled).length)
+ok(grisees === 0, 'J) En 5e, aucune compétence n\'est grisée (chacune a ses exercices)', grisees)
 await p.click('.dialogue-flash .lancer')
 await p.waitForTimeout(1200)
 ok(await nObjets() > 0, 'I) Le flash se lance avec le thème entier')
