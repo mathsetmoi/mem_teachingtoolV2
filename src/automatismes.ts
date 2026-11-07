@@ -1926,6 +1926,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-relatifs-sommes', theme: 'Opérations sur les nombres relatifs', titre: 'Sommes et différences de relatifs',
     programme: 'Manipuler des sommes et des différences de nombres relatifs.',
+    competence: 0,
     generer() {
       const a = relNonNul(1, 15), b = relNonNul(1, 15), moins = Math.random() < 0.5
       const v = moins ? a - b : a + b
@@ -1942,6 +1943,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-opposes', theme: 'Opérations sur les nombres relatifs', titre: 'Opposés et somme d’opposés',
     programme: 'Opposé d’un nombre, somme des opposés.',
+    competence: 1,
     generer() {
       const a = relNonNul(2, 15), b = relNonNul(2, 15), c = relNonNul(1, 15)
       const termes = melange([`${a}`, `${-a}`, `${b}`, `${-b}`, `${c}`])
@@ -1958,6 +1960,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-tables', theme: 'Opérations sur les nombres relatifs', titre: 'Tables de multiplication',
     programme: 'Entretenir les tables de multiplication.',
+    competence: 2,
     generer() { const a = ent(3, 9), b = ent(3, 9); return Math.random() < 0.6 ? { enonce: `Calculer : $${a} \\times ${b}$`, reponse: nb(a * b) } : { enonce: `Calculer : $${a * b} \\div ${a}$`, reponse: nb(b) } },
     trou() {
       const a = ent(3, 9), b = ent(3, 9), p = a * b
@@ -1967,6 +1970,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-fois-10', theme: 'Opérations sur les nombres relatifs', titre: 'Multiplier et diviser par 10, 100, 1 000',
     programme: 'Multiplier et diviser par 10, 100, 1 000.',
+    competence: 3,
     generer() {
       const x = ent(11, 9999) / choix([10, 100, 1000]), k = choix([10, 100, 1000]), fois = Math.random() < 0.5
       return { enonce: `Calculer : $${nb(x)} ${fois ? '\\times' : '\\div'} ${mille(k)}$`, reponse: nb(fois ? x * k : x / k) }
@@ -1979,6 +1983,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-multiplication-trou', theme: 'Opérations sur les nombres relatifs', titre: 'Multiplication à trou et division',
     programme: 'Compléter des multiplications à trou ; faire le lien entre multiplication et division.',
+    competence: 4,
     generer() {
       const a = ent(2, 12), b = ent(1, 30)
       return choix([
@@ -1995,6 +2000,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-addition-iteree', theme: 'Opérations sur les nombres relatifs', titre: 'Une addition répétée est une multiplication',
     programme: 'La multiplication comme addition itérée : 3 + 3 + 3 + 3 = 4 × 3.',
+    competence: 5,
     generer() {
       const b = choix([ent(2, 15), -ent(2, 9), ent(11, 49) / 10]), n = ent(3, 7)
       const somme = Array.from({ length: n }, (_, i) => i === 0 ? nb(b) : (b < 0 ? `+ (${nb(b)})` : `+ ${nb(b)}`)).join(' ')
@@ -2030,6 +2036,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-fractions-addsub', theme: 'Nombres rationnels', titre: 'Additionner et soustraire des fractions',
     programme: 'Additionner et soustraire des fractions de dénominateurs quelconques mais simples.',
+    competence: 0,
     generer() {
       // Des dénominateurs simples : l'un multiple de l'autre, ou 2 et 3, 3 et 4…
       // … et, comme au brevet (3/5 − 1/4), deux dénominateurs sans diviseur commun : 4 et 5, 3 et 7…
@@ -2046,6 +2053,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-comparer-fractions', theme: 'Nombres rationnels', titre: 'Comparer des fractions',
     programme: 'Comparer des fractions.',
+    competence: 1,
     generer() {
       const D = choix([6, 8, 10, 12])
       const divs = [1, 2, 3, 4, 5, 6].filter(k => D % k === 0 && k < D)
@@ -2060,6 +2068,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-ranger-ecritures', theme: 'Nombres rationnels', titre: 'Ranger des nombres écrits de façons différentes',
     programme: 'Comparer des fractions, des décimaux.',
+    competence: 1,
     generer() {
       // Quatre nombres proches, écrits en décimal, en fraction, ou en
       // « 1 + 3/100 » : comme au brevet (1,25 ; 1 + 3/100 ; 1,3 ; 7/4)
@@ -2085,6 +2094,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-quotient', theme: 'Nombres rationnels', titre: 'La fraction est un quotient',
     programme: 'Savoir qu’une fraction est aussi un quotient : 7 × 3/7 = 3.',
+    competence: 2,
     generer() {
       let a: number, b: number
       do { a = ent(1, 12); b = ent(2, 13) } while (a % b === 0 || pgcd(a, b) !== 1)
@@ -2102,6 +2112,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-fraction-nombre', theme: 'Nombres rationnels', titre: 'Prendre une fraction d’un nombre',
     programme: 'Prendre la fraction d’un nombre revient à multiplier la fraction par ce nombre.',
+    competence: 3,
     generer() {
       let n: number, d: number
       do { n = ent(1, 7); d = ent(2, 10) } while (n >= d || pgcd(n, d) !== 1)
@@ -2165,12 +2176,14 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-carres', theme: 'Puissances', titre: 'Les carrés parfaits de 0 à 144',
     programme: 'Connaître les carrés parfaits des entiers de 0 à 12.',
+    competence: 0,
     generer() { const n = ent(0, 12); return { enonce: `Calculer : $${n}^2$`, reponse: nb(n * n) } },
     trou() { const n = ent(2, 12); return unTrou('', [[`$${n}^2 = \\ldots$`, nb(n * n)], [`$\\ldots^2 = ${n * n}$ (nombre positif)`, nb(n)], [`$${n * n} = ${n} \\times \\ldots$`, nb(n)]]) },
   },
   {
     id: '4e-fois-puissance-10', theme: 'Puissances', titre: 'Compléter 1 200 = 1,2 × …',
     programme: 'Multiplier et diviser par 10, 100, 1 000 ; compléter 1 200 = 1,2 × …',
+    competence: 1,
     generer() {
       const x = ent(11, 99) / 10, k = choix([10, 100, 1000]), N = x * k
       return { enonce: `Par quel nombre faut-il multiplier $${nb(x)}$ pour obtenir $${grandNb(N)}$ ?`, reponse: mille(k) }
@@ -2183,6 +2196,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-puissances', theme: 'Puissances', titre: 'Puissances simples',
     programme: 'Puissances simples : 2² = 4 ; 2³ = 8 ; 3³ = 27 ; 10² = 100 ; 10³ = 1 000.',
+    competence: 2,
     generer() {
       const [a, n] = choix<[number, number]>([[2, 2], [2, 3], [2, 4], [2, 5], [3, 2], [3, 3], [4, 2], [4, 3], [5, 2], [5, 3], [10, 2], [10, 3], [10, 4], [10, 6], [1, 7], [0, 5]])
       return { enonce: `Calculer : $${a}^{${n}}$`, reponse: grandNb(a ** n) }
@@ -2195,6 +2209,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-calcul-puissances-10', theme: 'Puissances', titre: 'Calculer avec 10², 10³…',
     programme: '10² = 100 ; 10³ = 1 000 ; multiplier par 10, 100, 1 000.',
+    competence: 3,
     generer() {
       // Comme au brevet (3,1 × 10² − 5 × 10 + …), avec des exposants positifs en 4e
       let termes: { a: number; n: number; signe: number }[], total: number
@@ -2233,6 +2248,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-racines', theme: 'Racine carrée', titre: 'Les carrés des entiers de 0 à 12, à l’envers',
     programme: 'Donner les carrés des nombres entiers de 0 à 12.',
+    competence: 0,
     generer() {
       const n = ent(0, 12)
       if (Math.random() < 0.6) return { enonce: `Quel nombre positif a pour carré $${n * n}$ ?`, reponse: nb(n) }
@@ -2258,6 +2274,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-valeur-expression', theme: 'Calcul littéral et algébrique', titre: 'La valeur d’une expression numérique',
     programme: 'Donner la valeur d’expressions numériques simples.',
+    competence: 0,
     generer() {
       const a = ent(2, 12), b = ent(2, 9), c = ent(2, 9)
       const [e, v] = choix<[string, number]>([[`${a} + ${b} \\times ${c}`, a + b * c], [`${a} \\times ${b} - ${c}`, a * b - c], [`(${a} + ${b}) \\times ${c}`, (a + b) * c], [`${a} - ${b} \\times ${c}`, a - b * c], [`${b} \\times ${c} - ${a} \\times 2`, b * c - 2 * a], [`${a * b} \\div ${b} + ${c}`, a + c]])
@@ -2267,6 +2284,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-equations', theme: 'Calcul littéral et algébrique', titre: 'Résoudre x + b = c et ax = c',
     programme: 'Résoudre des équations du type ax = c et x + b = c.',
+    competence: 1,
     generer() {
       const x = choix(['x', 'y', 't'])
       const sorte = ent(0, 2)
@@ -2280,6 +2298,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-ecriture-3x', theme: 'Calcul littéral et algébrique', titre: 'Écrire 3 × x sous la forme 3x',
     programme: 'Écrire 3 × x sous la forme 3x, et savoir que 3x c’est 3 × x.',
+    competence: 2,
     generer() {
       const k = ent(2, 12), x = choix(['x', 'a', 'y', 'n'])
       const [e, r] = choix<[string, string]>([[`${k} \\times ${x}`, `${k}${x}`], [`${x} \\times ${k}`, `${k}${x}`], [`${k} \\times ${x} \\times ${x}`, `${k}${x}^2`], [`1 \\times ${x}`, x], [`${x} \\times ${x} \\times ${x}`, `${x}^3`]])
@@ -2289,6 +2308,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-reduire', theme: 'Calcul littéral et algébrique', titre: 'x + x = 2x, x × x = x², 3x × 2x = 6x²',
     programme: '1 × x = x ; x + x = 2x ; x × x = x² ; 3x + 2x = 5x ; 3x × 2x = 6x².',
+    competence: 3,
     generer() {
       const a = ent(2, 9), b = ent(2, 9), x = choix(['x', 'a', 'y'])
       const [e, r] = choix<[string, string]>([[`${x} + ${x}`, `2${x}`], [`${x} + ${x} + ${x}`, `3${x}`], [`${x} \\times ${x}`, `${x}^2`], [`${a}${x} + ${b}${x}`, `${a + b}${x}`], [`${a}${x} \\times ${b}${x}`, `${a * b}${x}^2`], [`${a + b}${x} - ${b}${x}`, `${a}${x}`], [`${a}${x} \\times ${b}`, `${a * b}${x}`]])
@@ -2302,6 +2322,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-double-triple', theme: 'Calcul littéral et algébrique', titre: 'Double, triple, moitié, prédécesseur, successeur, carré',
     programme: 'Donner le double, le triple, la moitié, le prédécesseur, le successeur, le carré d’un nombre.',
+    competence: 4,
     generer() {
       if (Math.random() < 0.3) {
         const x = choix(['x', 'n', 'a'])
@@ -2316,6 +2337,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-tester-egalite', theme: 'Calcul littéral et algébrique', titre: 'Tester si un nombre vérifie une égalité',
     programme: 'Tester si un nombre vérifie une égalité.',
+    competence: 5,
     generer() {
       // Une égalité px + q = rx + s, dont la solution est l'un des quatre nombres proposés
       let p: number, q: number, r: number, s: number, x0: number
@@ -2366,6 +2388,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-demi-tour', theme: 'Transformations', titre: 'Le symétrique d’un point par demi-tour',
     programme: 'Construire le symétrique d’un point par demi-tour.',
+    competence: 0,
     generer() {
       let ax: number, ay: number, ix: number, iy: number, bx: number, by: number
       do { ix = ent(-2, 2); iy = ent(-2, 2); ax = ent(-4, 4); ay = ent(-4, 4); bx = 2 * ix - ax; by = 2 * iy - ay } while ((ax === ix && ay === iy) || Math.abs(bx) > 5 || Math.abs(by) > 5 || (ix === 0 && iy === 0 && Math.random() < 0.5))
@@ -2378,6 +2401,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-abscisse-relatif', theme: 'Repérage', titre: 'Repérer un relatif sur une droite graduée',
     programme: 'Placer et repérer un nombre relatif sur une droite graduée.',
+    competence: 1,
     generer() {
       const debut = ent(-6, -1), parts = choix([1, 2, 4, 5, 10])
       let k: number
@@ -2388,8 +2412,27 @@ export const AUTOMATISMES_4E: Automatisme[] = [
     },
   },
   {
+    id: '4e-placer-droite', theme: 'Repérage', titre: 'Placer un relatif sur une droite graduée',
+    programme: 'Placer et repérer un nombre relatif sur une droite graduée.',
+    competence: 0,
+    generer() {
+      const parts = choix([2, 4, 5]), debut = -ent(3, 5), fin = ent(3, 5), n = (fin - debut) * parts
+      // Le nombre à placer, son opposé et ses voisins : les erreurs qu'on fait en lisant la graduation
+      let k: number
+      do { k = ent(1, n - 1) } while (debut + k / parts === 0)
+      const x = debut + k / parts
+      const pris = [x]
+      for (const a of [-x, x + 1 / parts, x - 1 / parts]) if (a >= debut && a <= fin && !pris.some(b => Math.abs(a - b) < 1e-9)) pris.push(a)
+      while (pris.length < 4) { const a = debut + ent(0, n) / parts; if (!pris.some(b => Math.abs(a - b) < 1e-9)) pris.push(a) }
+      const noms = pts(4)
+      const lettres = pris.slice(0, 4).map((a, i) => ({ x: a, lettre: noms[i] }))
+      return { enonce: `Sur la droite graduée, quel point a pour abscisse $${nb(x)}$ ?`, figure: F.droiteGradueePoints(debut, fin, parts, lettres), reponse: mot(`$${noms[0]}$`) }
+    },
+  },
+  {
     id: '4e-coordonnees', theme: 'Repérage', titre: 'Lire les coordonnées d’un point',
     programme: 'Dans un repère orthogonal, lire les coordonnées d’un point.',
+    competence: 2,
     generer() {
       const noms = melange(['A', 'B', 'C', 'D', 'E', 'F']).slice(0, 3)
       const pts: { x: number; y: number; nom: string }[] = []
@@ -2401,6 +2444,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-placer-point', theme: 'Repérage', titre: 'Trouver le point de coordonnées données',
     programme: 'Dans un repère orthogonal, placer un point de coordonnées données.',
+    competence: 3,
     generer() {
       // Le point cherché, et des pièges : coordonnées échangées, signes changés
       let x: number, y: number
@@ -2417,6 +2461,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-reconnaitre-solide', theme: 'Représentation de l’espace', titre: 'Reconnaître un solide',
     programme: 'Reconnaître les solides : cube, pavé, cylindre, prisme droit.',
+    competence: 0,
     generer() {
       const [s, nom] = choix<[F.Solide, string]>([['cube', 'un cube'], ['pave', 'un pavé droit'], ['cylindre', 'un cylindre'], ['prisme3', 'un prisme droit'], ['prisme5', 'un prisme droit'], ['prisme4', 'un prisme droit'], ['pyramide', 'une pyramide']])
       return { enonce: 'Comment s\'appelle ce solide ?', figure: F.solide(s), reponse: mot(nom) }
@@ -2425,6 +2470,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-base-prisme', theme: 'Représentation de l’espace', titre: 'La base d’un prisme droit',
     programme: 'Reconnaître la base d’un prisme en perspective cavalière.',
+    competence: 2,
     generer() {
       const [s, base, n] = choix<[F.Solide, string, number]>([['prisme3', 'un triangle', 3], ['prisme4', 'un quadrilatère (un trapèze)', 4], ['prisme5', 'un pentagone', 5], ['prisme6', 'un hexagone', 6]])
       return Math.random() < 0.6 ? { enonce: 'Ce solide est un prisme droit. Quelle est la forme de ses bases ?', figure: F.solide(s), reponse: mot(base) }
@@ -2434,6 +2480,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-volumes', theme: 'Représentation de l’espace', titre: 'Volume d’un cube, d’un pavé, d’un prisme, d’un cylindre',
     programme: 'Utiliser les formules du volume d’un cube, d’un pavé, d’un prisme, d’un cylindre.',
+    competence: 1,
     generer() {
       const sorte = ent(0, 3)
       if (sorte === 0) { const a = ent(2, 10); return { enonce: `Quel est le volume d'un cube de $${a}$ cm d'arête ?`, reponse: cm3(grandNb(a ** 3)) } }
@@ -2446,6 +2493,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-aires', theme: 'Représentation de l’espace', titre: 'Aire d’un triangle, d’un rectangle, d’un disque',
     programme: 'Calculer l’aire d’un triangle, d’un rectangle, d’un disque.',
+    competence: 3,
     generer() {
       const sorte = ent(0, 2)
       if (sorte === 0) { const b = ent(2, 14), h = 2 * ent(1, 7); return { enonce: `Quelle est l'aire d'un triangle de base $${b}$ cm et de hauteur $${h}$ cm ?`, reponse: cm2(nb(b * h / 2)) } }
@@ -2477,6 +2525,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-images-symetries', theme: 'Parallélogrammes et translations', titre: 'Images par une symétrie axiale ou un demi-tour',
     programme: 'Déterminer l’image d’un point par une symétrie axiale ou un demi-tour.',
+    competence: 1,
     generer() {
       let x: number, y: number
       do { x = relNonNul(1, 4); y = relNonNul(1, 4) } while (Math.abs(x) === Math.abs(y))
@@ -2486,6 +2535,33 @@ export const AUTOMATISMES_4E: Automatisme[] = [
       const i = ent(0, 2), [t] = images[i]
       if (Math.random() < 0.6) return { enonce: `Quel point est l'image du point $A$ par ${t} ?`, figure: F.reperePoints(pts), reponse: mot(`$${noms[i]}$`) }
       return { enonce: `Par quelle symétrie le point $${noms[i]}$ est-il l'image du point $A$ ? (préciser l'axe ou le centre)`, figure: F.reperePoints(pts), reponse: mot(t) }
+    },
+  },
+  {
+    id: '4e-symetrie-reconnue', theme: 'Parallélogrammes et translations', titre: 'Reconnaître la symétrie qui transforme un point en un autre',
+    programme: 'Dire si des figures planes sont images l’une de l’autre par une symétrie axiale (dont on identifie l’axe) ou par un demi-tour (dont on identifie le centre).',
+    competence: 0,
+    generer() {
+      const [A, B] = pts(2)
+      let x: number, y: number
+      do { x = relNonNul(1, 4); y = relNonNul(1, 4) } while (Math.abs(x) === Math.abs(y))
+      const cas = ent(0, 3)
+      let bx = 0, by = 0, rep = ''
+      if (cas === 0) { bx = x; by = -y; rep = 'une symétrie d\'axe l\'axe des abscisses' }
+      else if (cas === 1) { bx = -x; by = y; rep = 'une symétrie d\'axe l\'axe des ordonnées' }
+      else if (cas === 2) { bx = -x; by = -y; rep = 'un demi-tour de centre $O$, l\'origine du repère' }
+      else {
+        // Un demi-tour dont le centre est le milieu de [AB]
+        let a: number, b: number
+        do { a = ent(-2, 2); b = ent(-2, 2); bx = 2 * a - x; by = 2 * b - y } while ((a === 0 && b === 0) || Math.abs(bx) > 5 || Math.abs(by) > 5 || (bx === x && by === y))
+        rep = `un demi-tour de centre le milieu de $[${A}${B}]$, le point de coordonnées $(${nb(a)}\\,;\\,${nb(b)})$`
+      }
+      const c = (u: number, v: number) => `(${nb(u)}\\,;\\,${nb(v)})`
+      return {
+        enonce: `Dans un repère, $${A}${c(x, y)}$ et $${B}${c(bx, by)}$. Le point $${B}$ est l'image du point $${A}$ par une symétrie axiale ou par un demi-tour : laquelle ? (préciser l'axe ou le centre)`,
+        figure: F.reperePoints([{ x, y, nom: A }, { x: bx, y: by, nom: B }]),
+        reponse: mot(rep),
+      }
     },
   },
   {
@@ -2527,6 +2603,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-diagonales', theme: 'Parallélogrammes et translations', titre: 'Un parallélogramme particulier par ses diagonales',
     programme: 'Reconnaître un parallélogramme particulier par les propriétés de ses diagonales.',
+    competence: 3,
     generer() {
       const eg = Math.random() < 0.5, pe = Math.random() < 0.5
       const noms = choix(['ABCD', 'EFGH', 'IJKL', 'MNPQ', 'RSTU'])
@@ -2537,6 +2614,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-parallelogramme-code', theme: 'Parallélogrammes et translations', titre: 'Un parallélogramme particulier par ses côtés et ses angles',
     programme: 'Reconnaître un parallélogramme et sa nature grâce aux codages.',
+    competence: 2,
     generer() {
       const lg = Math.random() < 0.5, dr = Math.random() < 0.5
       const noms = choix(['ABCD', 'EFGH', 'IJKL', 'MNPQ', 'RSTU'])
@@ -2549,6 +2627,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-droites-remarquables', theme: 'Triangles', titre: 'Reconnaître une droite remarquable',
     programme: 'Reconnaître les droites remarquables : médiatrices, médianes, hauteurs, bissectrices.',
+    competence: 0,
     generer() {
       const sorte = choix<F.Remarquable>(['mediatrice', 'mediane', 'hauteur', 'bissectrice'])
       const [A, B, C] = [...choix(['ABC', 'EFG', 'IJK', 'MNP', 'RST'])]
@@ -2606,6 +2685,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-moyenne', theme: 'Statistiques', titre: 'Une moyenne de quelques valeurs',
     programme: 'Calculer une moyenne pour un très petit nombre de valeurs.',
+    competence: 0,
     generer() {
       const n = choix([2, 3, 4])
       let l: number[]
@@ -2616,6 +2696,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-effectif-manquant', theme: 'Statistiques', titre: 'Un effectif manquant',
     programme: 'Calculer un effectif manquant dans un tableau.',
+    competence: 1,
     generer() {
       const [quoi, valeurs] = choix<[string, string[]]>([['Note', ['8', '10', '12', '15']], ['Frères et sœurs', ['0', '1', '2', '3']], ['Pointure', ['36', '37', '38', '39']], ['Couleur', ['\\text{bleu}', '\\text{rouge}', '\\text{vert}']]])
       const eff = valeurs.map(() => ent(1, 9)), k = ent(0, valeurs.length - 1), N = eff.reduce((s, x) => s + x, 0)
@@ -2626,6 +2707,7 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-frequence', theme: 'Statistiques', titre: 'Calculer une fréquence',
     programme: 'Calculer une fréquence simple.',
+    competence: 2,
     generer() {
       const N = choix([10, 20, 25, 40, 50]), e = ent(1, N - 1)
       const [qui, quoi] = choix<[string, string]>([['élèves', 'ont un animal'], ['élèves', 'viennent à vélo'], ['personnes', 'ont répondu « oui »'], ['lancers', 'ont donné 6']])
@@ -2683,11 +2765,17 @@ export const AUTOMATISMES_4E: Automatisme[] = [
   {
     id: '4e-pourcentages', theme: 'Proportionnalité', titre: 'a % de c, pour a = 100, 50, 25, 10, 1',
     programme: 'Déterminer a % de c quand a vaut 100, 50, 25, 10, 1 ; compléter 20 % de 120 = …',
+    competence: 0,
     generer() {
       const a = choix([100, 50, 25, 10, 1]), c = a === 25 ? 4 * ent(3, 60) : a === 1 ? 100 * ent(1, 30) + choix([0, 50]) : 10 * ent(2, 90)
       return { enonce: `Calculer $${a}\\,\\%$ de $${grandNb(c)}$.`, reponse: nb(a * c / 100) }
     },
-    trou() {
+  },
+  {
+    id: '4e-pourcentages-trou', theme: 'Proportionnalité', titre: 'Compléter : 20 % de 120 = …',
+    programme: 'Déterminer a % de c quand a vaut 100, 50, 25, 10, 1 ; compléter 20 % de 120 = …',
+    competence: 1,
+    generer() {
       const p = choix([10, 20, 25, 30, 40, 50, 75]), c = 20 * ent(1, 30), v = p * c / 100
       const k = choix([100, 1000]), m = ent(1, 9) * (k / 100), w = m * k / 100
       return unTrou('', [[`$${p}\\,\\% \\text{ de } ${c} = \\ldots$`, nb(v)], [`$${p}\\,\\% \\text{ de } \\ldots = ${nb(v)}$`, nb(c)], [`$${nb(w)} = \\frac{\\ldots}{100} \\times ${mille(k)}$`, nb(m)]])
