@@ -29,7 +29,7 @@ import { EXEMPLES } from './construction'
 import { DEMONSTRATIONS } from './catalogue'
 import { Trigo } from './catalogue-trigo'
 import { FORMULES } from './trigonometrie'
-import { NIVEAUX, themesDe } from './automatismes'
+import { automatismesDuFlash, NIVEAUX } from './automatismes'
 import { FONDS } from './types'
 import type { Menu, OptionsEntree } from './menus'
 import type { Sens } from './ordre'
@@ -1720,8 +1720,10 @@ export class UI implements Interface {
     for (const d of DEMONSTRATIONS) l.push({ titre: d.nom, genre: 'Catalogue', icone: 'catalogue', detail: 'Démonstration à poser', mots: `demonstration ${d.titre} ${d.nom.replace('√', ' racine ')}`, faire: () => this.catalogue.poserElement(d.nom) })
     // Les automatismes de chaque niveau qui en a (5e, 4e…) : le thème, et chaque automatisme
     for (const n of NIVEAUX.filter(x => x.automatismes.length)) {
-      for (const theme of themesDe(n)) l.push({ titre: `${theme} (${n.nom})`, genre: 'Automatismes', icone: 'automatismes', detail: 'Le thème coché', mots: n.automatismes.filter(a => a.theme === theme).map(a => a.titre).join(' '), faire: () => this.flash.ouvrir([`${n.id}/${theme}`]) })
-      for (const a of n.automatismes) l.push({ titre: a.titre, genre: 'Automatismes', icone: 'automatismes', detail: `${a.theme} (${n.nom})`, faire: () => this.flash.ouvrir([`${n.id}/${a.theme}`]) })
+      // Seulement ce que le flash pose : pas les applications directes
+      const autos = automatismesDuFlash(n)
+      for (const theme of new Set(autos.map(a => a.theme))) l.push({ titre: `${theme} (${n.nom})`, genre: 'Automatismes', icone: 'automatismes', detail: 'Le thème coché', mots: autos.filter(a => a.theme === theme).map(a => a.titre).join(' '), faire: () => this.flash.ouvrir([`${n.id}/${theme}`]) })
+      for (const a of autos) l.push({ titre: a.titre, genre: 'Automatismes', icone: 'automatismes', detail: `${a.theme} (${n.nom})`, faire: () => this.flash.ouvrir([`${n.id}/${a.theme}`]) })
     }
     return l
   }

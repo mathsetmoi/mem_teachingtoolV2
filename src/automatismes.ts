@@ -42,8 +42,14 @@ export interface Automatisme {
   /** La phrase du programme que la question travaille, comme au brevet */
   programme?: string
   /** Une application directe d'un objectif d'apprentissage (et non un
-   *  automatisme de la liste officielle) */
+   *  automatisme de la liste officielle). Depuis le 7 novembre 2026, le
+   *  flash ne les pose plus (voir automatismesDuFlash) ; elles restent ici,
+   *  pour servir plus tard avec le programme entier. */
   application?: boolean
+  /** La compétence travaillée : le rang de sa phrase dans la liste
+   *  « Automatismes » de son domaine (programme-automatismes.ts).
+   *  Absente : l'exercice suit son domaine entier. */
+  competence?: number
 }
 
 // ---------- Outils ----------
@@ -3994,6 +4000,10 @@ export const NIVEAUX: Niveau[] = [
 ]
 /** Les thèmes d'un niveau, dans l'ordre de la liste */
 export const themesDe = (n: Niveau) => [...new Set(n.automatismes.map(a => a.theme))]
+/** Les exercices que le flash peut poser dans un niveau : seulement des
+ *  automatismes, sans les applications directes (choix du professeur, le
+ *  7 novembre 2026) */
+export const automatismesDuFlash = (n: Niveau) => n.automatismes.filter(a => !a.application)
 
 // =============================================================
 // LE TIRAGE D'UN FLASH
