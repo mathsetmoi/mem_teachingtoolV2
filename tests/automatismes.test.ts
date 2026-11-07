@@ -227,6 +227,28 @@ describe('le rangement Thème › Domaine › Compétences du collège', () => {
     }
   })
 
+  it('en 5e, chaque exercice a sa compétence, et chaque compétence a au moins un exercice', () => {
+    const autos = automatismesDuFlash(NIVEAUX.find(n => n.id === '5e')!)
+    for (const a of autos) expect(a.competence, a.id).toBeDefined()
+    for (const d of PROGRAMME_AUTOMATISMES['5e'].flatMap(t => t.domaines)) {
+      d.competences.forEach((c, k) => {
+        expect(autos.some(a => a.theme === d.cle && a.competence === k), `${d.cle} : ${c}`).toBe(true)
+      })
+    }
+  })
+
+  it('les exercices ajoutés pour les compétences de 5e donnent une question et une réponse', () => {
+    for (const id of ['tables-carres', 'motif-suivant', 'motif-regularite', 'nombre-quotient', 'placer-decimal', 'symetrie-feuille-blanche', 'angle-droit-plat', 'probabilite-mot']) {
+      const a = AUTOMATISMES_5E.find(x => x.id === id)!
+      for (let k = 0; k < 60; k++) {
+        const q = a.generer()
+        expect(q.enonce, id).not.toBe('')
+        expect(q.reponse, id).not.toBe('')
+        if (id === 'placer-decimal') expect(q.figure, id).toContain('<svg')
+      }
+    }
+  })
+
   it('les phrases des compétences s\'écrivent sans erreur', () => {
     for (const t of Object.values(PROGRAMME_AUTOMATISMES).flat()) for (const d of t.domaines) for (const c of d.competences) {
       expect(c.split('$').length % 2, c).toBe(1)

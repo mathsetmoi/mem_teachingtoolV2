@@ -978,7 +978,8 @@ page derrière reste vide. On y choisit :
   celui des exercices. Les compétences se cochent une par une quand chaque
   exercice du domaine dit la sienne (champ `competence`, le rang de la
   phrase dans la liste) ; sinon la fenêtre le dit et l'on coche le domaine
-  en entier. Le rangement est dans `src/programme-automatismes.ts` ; la clé
+  en entier. **En 5e, chaque exercice dit sa compétence et chaque compétence a au moins un exercice**
+  (8 exercices ajoutés le 7 novembre 2026 : les tables jusqu'aux carrés, le motif suivant, ce qu'on ajoute d'un motif au suivant, le nombre quotient, placer un décimal sur une demi-droite graduée, le symétrique sans quadrillage, la mesure d'un angle droit ou plat, l'échelle de probabilité avec des mots ; « Tables de multiplication » passe dans Nombres rationnels) ; un essai le vérifie. Le rangement est dans `src/programme-automatismes.ts` ; la clé
   d'un domaine est le nom du thème de ses exercices, pour que les réglages
   déjà gardés restent bons. **Le flash ne pose que des automatismes** : les
   applications directes d'objectifs d'apprentissage (champ `application`)
