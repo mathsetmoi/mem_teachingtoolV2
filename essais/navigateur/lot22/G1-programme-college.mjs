@@ -32,7 +32,8 @@ await p.waitForFunction(() => window.__app?.page)
 await p.waitForTimeout(600)
 const nb = () => p.evaluate(() => window.__app.formes.length)
 const pan = '.panneau-catalogue'
-const poserA = async (sel, x = 420, y = 390) => { await p.click(sel); await p.mouse.move(x, y); await p.mouse.click(x, y); await p.waitForTimeout(300) }
+// L'élément suit le pointeur dès que les polices sont chargées : on l'attend avant de cliquer
+const poserA = async (sel, x = 420, y = 390) => { await p.click(sel); await p.waitForFunction(() => !!window.__app.placement); await p.mouse.move(x, y); await p.mouse.click(x, y); await p.waitForTimeout(300) }
 
 // A
 await p.click('button[aria-label^="Catalogue"]')
