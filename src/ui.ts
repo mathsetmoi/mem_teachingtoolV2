@@ -1136,7 +1136,7 @@ export class UI implements Interface {
     // Les pages de la séance en images, pour la rédaction par Gemini (le papier blanc)
     this.publication.imageDePage = page => imagePng(this.apercus, this.pageAPeindre(page), { fond: false })
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
-    this.catalogue = new Catalogue(app, this.racine, t => this.message(t, undefined, true))
+    this.catalogue = new Catalogue(app, this.racine, t => this.message(t, undefined, true), c => this.flash.ouvrir(c))
     this.flash = new Flash(app, this.racine, t => this.message(t, undefined, true))
 
     // ----- Menu d'un morceau de figure (point, extrémité, nom, rayon) -----

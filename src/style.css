@@ -778,6 +778,17 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .panneau-catalogue .pilote-enroulement .avancement { width: 100%; accent-color: var(--bleu); }
 .panneau-catalogue .pilote-enroulement .commandes { display: flex; flex-wrap: wrap; align-items: end; gap: 6px; }
 .panneau-catalogue .pilote-enroulement .vitesse { flex: 1; }
+/* Le programme du collège (catalogue-college.ts) */
+.panneau-catalogue .domaine-prog .demos { gap: 4px; }
+.panneau-catalogue .tete-domaine { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 2px; }
+.panneau-catalogue .sous-titre-prog { margin: 6px 0 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--encre-douce); }
+.panneau-catalogue .ligne-prog { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; align-items: baseline; padding: 5px 6px; border-radius: 8px; background: var(--papier); font-size: 13.5px; line-height: 1.4; }
+.panneau-catalogue .texte-prog { min-width: 0; overflow-wrap: anywhere; }
+.panneau-catalogue .actions-prog { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; }
+.panneau-catalogue .actions-prog .petit, .panneau-catalogue .tete-domaine .petit { height: 30px; padding: 0 10px; font-size: 13px; }
+.panneau-catalogue .sorte-prog { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 4px; padding: 1px 5px; background: var(--chrome); color: var(--encre-douce); }
+.panneau-catalogue .sorte-prog.sorte-a { background: #e3ecfa; color: #1f5fbf; }
+.panneau-catalogue .exemple-en-cours .objectif-exemple { font-style: italic; }
 .mesure-catalogue { position: fixed; left: -10000px; top: 0; visibility: hidden; pointer-events: none; }
 .mesure-catalogue .formule { position: absolute; }
 
