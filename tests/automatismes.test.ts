@@ -227,6 +227,12 @@ describe('le rangement Thème › Domaine › Compétences du collège', () => {
     }
   })
 
+  it('chaque exercice du flash de 4e est rangé sous sa compétence', () => {
+    for (const a of automatismesDuFlash(NIVEAUX.find(n => n.id === '4e')!)) {
+      expect(a.competence, a.id).toBeDefined()
+    }
+  })
+
   it('les phrases des compétences s\'écrivent sans erreur', () => {
     for (const t of Object.values(PROGRAMME_AUTOMATISMES).flat()) for (const d of t.domaines) for (const c of d.competences) {
       expect(c.split('$').length % 2, c).toBe(1)
