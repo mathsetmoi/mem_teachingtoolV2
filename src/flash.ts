@@ -121,7 +121,8 @@ function casesDuNiveau(n: Niveau, R: ReglagesFlash): string {
   const autos = automatismesDuFlash(n)
   const nombre = (t: string) => autos.filter(a => a.theme === t).length
   const coche = (cle: string) => R.themes.includes(cle)
-  const domaine = (cle: string, nom: string, competences: string[]) => {
+  const PERSO = '<b class="etiquette-perso" title="Un domaine à vous, hors programme officiel">PERSO</b>'
+  const domaine = (cle: string, nom: string, competences: string[], perso = false) => {
     const valeur = `${n.id}/${cle}`, siens = autos.filter(a => a.theme === cle)
     const rangees = siens.every(a => a.competence !== undefined)
     const visees = R.competences.filter(c => c.startsWith(valeur + '/'))
@@ -129,11 +130,11 @@ function casesDuNiveau(n: Niveau, R: ReglagesFlash): string {
       const nb = siens.filter(a => a.competence === k).length
       const ok = rangees && nb > 0
       const cochee = ok && coche(valeur) && (!visees.length || visees.includes(`${valeur}/${k}`))
-      return `<li><label${ok ? '' : ' class="sans-exercice"'}><input type="checkbox" class="case-competence" value="${html(valeur)}/${k}"${cochee ? ' checked' : ''}${ok ? '' : ' disabled'}><span>${texteEtMaths(c)}</span>${rangees ? `<small>${nb}</small>` : ''}</label></li>`
+      return `<li><label${ok ? '' : ' class="sans-exercice"'}><input type="checkbox" class="case-competence" value="${html(valeur)}/${k}"${cochee ? ' checked' : ''}${ok ? '' : ' disabled'}><span>${texteEtMaths(c)}${perso ? ' ' + PERSO : ''}</span>${rangees ? `<small>${nb}</small>` : ''}</label></li>`
     }).join('')
     return `<div class="arbre-domaine">
       <div class="ligne-arbre"><button type="button" class="deplier" aria-expanded="false" aria-label="Voir les compétences de ${html(nom)}" title="Voir les compétences"></button>
-        <label><input type="checkbox" class="case-domaine" value="${html(valeur)}"${coche(valeur) ? ' checked' : ''}><span>${html(nom)}</span><small>${siens.length}</small></label></div>
+        <label><input type="checkbox" class="case-domaine" value="${html(valeur)}"${coche(valeur) ? ' checked' : ''}><span>${html(nom)}${perso ? ' ' + PERSO : ''}</span><small>${siens.length}</small></label></div>
       <div class="enfants" hidden>${rangees ? '' : '<p class="note-arbre">Les exercices de ce domaine ne sont pas encore rangés par compétence : on le coche en entier.</p>'}<ul>${liste}</ul></div>
     </div>`
   }
@@ -151,7 +152,7 @@ function casesDuNiveau(n: Niveau, R: ReglagesFlash): string {
     const avec = t.domaines.filter(d => nombre(d.cle) > 0)
     avec.forEach(d => ranges.add(d.cle))
     if (!avec.length) return theme(t.nom, '', t.domaines.length ? 'bientôt' : 'rien au programme')
-    return theme(t.nom, avec.map(d => domaine(d.cle, d.nom ?? d.cle, d.competences)).join(''))
+    return theme(t.nom, avec.map(d => domaine(d.cle, d.nom ?? d.cle, d.competences, d.perso)).join(''))
   }).join('')
   // Un exercice dont le domaine n'est pas dans le programme ne se perd pas
   const autres = [...new Set(autos.map(a => a.theme))].filter(t => !ranges.has(t))
@@ -575,8 +576,10 @@ export class Flash {
   }
 
   /** L'énoncé coupé en lignes qui tiennent dans la largeur W (les maths,
-   *  entre $, ne se coupent pas) */
+   *  entre $, ne se coupent pas). Un retour à la ligne (\n) dans l'énoncé
+   *  commence toujours une nouvelle ligne (les étapes d'une rédaction). */
   private couper(enonce: string, W: number, T: number): string[] {
+    if (enonce.includes('\n')) return enonce.split('\n').flatMap(partie => this.couper(partie, W, T))
     // Les mots : ce qui se touche reste ensemble (« $178$. »), et une
     // ponctuation seule ne commence jamais une ligne (« $A$ ? »)
     const colles: string[] = []

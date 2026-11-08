@@ -514,3 +514,43 @@ describe('la lecture graphique des courbes de 2nde et de 1re', () => {
     }
   })
 })
+
+describe('un domaine PERSO : Pythagore (4e)', () => {
+  const quatre = NIVEAUX.find(n => n.id === '4e')!
+  it('il est dans l\'arbre de 4e, en Espace et géométrie, avec une seule compétence « Connaître le cours »', () => {
+    const d = PROGRAMME_AUTOMATISMES['4e'][1].domaines.find(x => x.cle === 'Pythagore')!
+    expect(d).toMatchObject({ perso: true, competences: ['Connaître le cours'] })
+    expect(automatismesDuFlash(quatre).filter(a => a.theme === 'Pythagore').length).toBe(4)
+    expect(COURS_4E.filter(c => c.theme === 'Pythagore').length).toBe(4)
+  })
+  it('la rédaction : une seule étape manque, et c\'est une de celles que le professeur a choisies', () => {
+    const a = AUTOMATISMES_4E.find(x => x.id === 'perso-pythagore-redaction')!
+    const cachables = /^§(Dans le triangle|d’après le théorème|\$\w+\^2 = \w+\^2 \+ \w+\^2\$$|On constate|Donc, d’après|le triangle)/
+    for (let k = 0; k < 200; k++) {
+      const q = a.generer()
+      const lignes = q.enonce.split('\n')
+      expect(lignes.filter(l => l.includes('\\ldots')).length).toBe(1)
+      expect(q.reponse, q.reponse).toMatch(cachables)
+      expect(q.reponse).not.toMatch(/D’une part|D’autre part|sqrt|= \d/)
+    }
+  })
+  it('choisir le bon théorème : les trois réponses possibles', () => {
+    const a = AUTOMATISMES_4E.find(x => x.id === 'perso-pythagore-choisir')!
+    const vus = new Set<string>()
+    for (let k = 0; k < 200; k++) vus.add(a.generer().reponse)
+    expect([...vus].sort()).toEqual(['§la contraposée du théorème de Pythagore', '§la réciproque du théorème de Pythagore', '§le théorème de Pythagore'])
+  })
+  it('les étapes en général : les mots du professeur, une seule étape manque', () => {
+    const a = AUTOMATISMES_4E.find(x => x.id === 'perso-pythagore-etapes')!
+    const mots = ['Triangle rectangle', 'Théorème', 'Égalité', 'Calcul', 'Séparer les calculs', 'Réciproque', 'Contraposée', 'Triangle pas rectangle']
+    const vus = new Set<string>()
+    for (let k = 0; k < 300; k++) {
+      const q = a.generer()
+      expect(q.enonce).not.toMatch(/\$\w+ = /)
+      if (q.enonce.includes('\n')) expect(q.enonce.split('\n').filter(l => l.includes('\\ldots')).length).toBe(1)
+      expect(mots).toContain(q.reponse.replace(/^§/, ''))
+      vus.add(q.reponse)
+    }
+    expect(vus.size).toBe(mots.length)
+  })
+})

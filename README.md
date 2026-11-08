@@ -984,7 +984,25 @@ page derrière reste vide. On y choisit :
   déjà gardés restent bons. **Le flash ne pose que des automatismes** : les
   applications directes d'objectifs d'apprentissage (champ `application`)
   restent dans le code mais ne sont plus tirées, ni proposées par la
-  recherche. **Au lycée**, la liste des thèmes, comme avant. Ceux de **5e** sont pensés comme la partie « Automatismes » du
+  recherche. **Domaines PERSO** : un domaine du professeur, hors
+  programme officiel, porte `perso: true` dans `src/programme-automatismes.ts`
+  et l'étiquette PERSO dans la fenêtre, à côté du domaine et de ses
+  compétences. Le premier (7 novembre 2026) est **Pythagore**, en 4e
+  (Espace et géométrie), avec une seule compétence, « Connaître le cours » :
+  quel théorème utiliser (calculer une longueur, montrer qu'un triangle est
+  rectangle ou ne l'est pas), l'étape manquante d'une rédaction (théorème :
+  les trois premières étapes ; réciproque : le triangle, le constat, « d'après
+  la réciproque », la conclusion ; contraposée : le triangle, le constat,
+  « d'après la contraposée »), les étapes en général, avec les mots du
+  professeur (théorème : triangle rectangle, théorème, égalité, calcul ;
+  réciproque : séparer les calculs, égalité, réciproque, triangle
+  rectangle ; contraposée : séparer les calculs, égalité, contraposée,
+  triangle pas rectangle ; l'étape qui manque, celle qui suit, l'étape n),
+  l'égalité de Pythagore et l'hypoténuse, plus
+  quatre notions de cours (à quoi sert le théorème, la réciproque, la
+  contraposée ; l'hypoténuse). Dans un énoncé, un retour à la ligne (`\n`)
+  commence une nouvelle ligne à l'écran (les étapes d'une rédaction).
+  **Au lycée**, la liste des thèmes, comme avant. Ceux de **5e** sont pensés comme la partie « Automatismes » du
   brevet : des questions à réponse courte qui mobilisent un **automatisme**
   de la liste de 5e du programme 2026, ou une **application directe** d'un
   objectif d'apprentissage de 5e, rien de 4e. Ils sont rangés dans les

@@ -831,6 +831,7 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .dialogue-flash .arbre-domaine li label { align-items: flex-start; min-height: 30px; padding: 4px 0; font-size: 14px; line-height: 1.35; }
 .dialogue-flash .arbre-domaine li label input { margin-top: 1px; }
 .dialogue-flash .arbre-domaine li label.sans-exercice { color: var(--encre-douce); cursor: default; }
+.etiquette-perso { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 5px; background: #fbe9dd; color: #a4481a; font-size: 11px; font-weight: 700; letter-spacing: .05em; vertical-align: 1px; }
 .note-arbre { margin: 2px 0 4px; font-size: 13px; color: var(--encre-douce); }
 .forme-flash { display: grid; grid-template-columns: 1fr 36px 2.4em 36px; align-items: center; gap: 6px; min-height: 42px; }
 .forme-flash button { width: 36px; height: 36px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); color: var(--bleu); font: inherit; font-size: 20px; font-weight: 700; cursor: pointer; }
