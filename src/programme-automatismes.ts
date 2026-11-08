@@ -120,6 +120,7 @@ export const PROGRAMME_AUTOMATISMES: Record<string, ThemeProgramme[]> = {
         'Reconnaitre en justifiant un quadrilatère, un parallélogramme, un rectangle, un losange, un carré, un trapèze, un pentagone, un hexagone dans des figures complexes.',
         'Exploiter le codage d’une figure pour identifier des parallélogrammes particuliers.',
       ] },
+      { cle: 'Symétries', perso: true, competences: ['Connaître le cours'] },
     ] },
     { nom: T.donnees, domaines: [
       { cle: 'Probabilités', competences: [
