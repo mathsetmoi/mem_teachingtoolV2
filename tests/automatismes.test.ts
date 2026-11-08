@@ -542,12 +542,15 @@ describe('un domaine PERSO : Pythagore (4e)', () => {
   })
   it('les étapes en général : les mots du professeur, une seule étape manque', () => {
     const a = AUTOMATISMES_4E.find(x => x.id === 'perso-pythagore-etapes')!
-    const mots = ['Triangle rectangle', 'Théorème', 'Égalité', 'Calcul', 'Séparer les calculs', 'Réciproque', 'Contraposée', 'Triangle pas rectangle']
+    const mots = ['Donner le triangle rectangle', 'Citer le théorème de Pythagore', 'Donner l’égalité de Pythagore', 'Calculer la longueur', 'Séparer les calculs', 'Confirmer l’égalité de Pythagore', 'Citer la réciproque du théorème de Pythagore', 'Conclure que le triangle est rectangle', 'Confirmer la non égalité de Pythagore', 'Citer la contraposée du théorème de Pythagore', 'Conclure que le triangle n’est pas rectangle']
     const vus = new Set<string>()
-    for (let k = 0; k < 300; k++) {
+    for (let k = 0; k < 600; k++) {
       const q = a.generer()
       expect(q.enonce).not.toMatch(/\$\w+ = /)
-      if (q.enonce.includes('\n')) expect(q.enonce.split('\n').filter(l => l.includes('\\ldots')).length).toBe(1)
+      // Toujours « Compléter l'étape manquante », quatre lignes numérotées dont une seule à trou
+      expect(q.enonce).toMatch(/^Compléter l’étape manquante de la rédaction (du|de la) /)
+      expect(q.enonce.split('\n').filter(l => /^\d\) /.test(l)).length).toBe(4)
+      expect(q.enonce.split('\n').filter(l => l.includes('\\ldots')).length).toBe(1)
       expect(mots).toContain(q.reponse.replace(/^§/, ''))
       vus.add(q.reponse)
     }

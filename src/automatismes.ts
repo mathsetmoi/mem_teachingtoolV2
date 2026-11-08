@@ -1978,9 +1978,9 @@ const TRIPLETS_PYTHAGORE = [[3, 4, 5], [6, 8, 10], [5, 12, 13], [8, 15, 17], [9,
 const PAS_RECTANGLES = [[4, 5, 7], [5, 6, 8], [6, 7, 9], [4, 6, 7], [5, 7, 9], [6, 8, 11], [3, 5, 6]]
 /** Les étapes de chaque rédaction, en général, avec les mots du professeur */
 const ETAPES_PYTHAGORE: [string, string[]][] = [
-  ['du théorème de Pythagore', ['Triangle rectangle', 'Théorème', 'Égalité', 'Calcul']],
-  ['de la réciproque du théorème de Pythagore', ['Séparer les calculs', 'Égalité', 'Réciproque', 'Triangle rectangle']],
-  ['de la contraposée du théorème de Pythagore', ['Séparer les calculs', 'Égalité', 'Contraposée', 'Triangle pas rectangle']],
+  ['du théorème de Pythagore', ['Donner le triangle rectangle', 'Citer le théorème de Pythagore', 'Donner l’égalité de Pythagore', 'Calculer la longueur']],
+  ['de la réciproque du théorème de Pythagore', ['Séparer les calculs', 'Confirmer l’égalité de Pythagore', 'Citer la réciproque du théorème de Pythagore', 'Conclure que le triangle est rectangle']],
+  ['de la contraposée du théorème de Pythagore', ['Séparer les calculs', 'Confirmer la non égalité de Pythagore', 'Citer la contraposée du théorème de Pythagore', 'Conclure que le triangle n’est pas rectangle']],
 ]
 /** Un triangle rectangle tiré au hasard : son nom, le sommet de l'angle
  *  droit, les côtés de l'angle droit et l'hypoténuse (lettres rangées) */
@@ -2978,18 +2978,10 @@ export const AUTOMATISMES_4E: Automatisme[] = [
     id: 'perso-pythagore-etapes', theme: 'Pythagore', titre: 'Les étapes d’une rédaction', programme: PERSO_PYTHAGORE, competence: 0,
     generer() {
       const [nom, etapes] = choix(ETAPES_PYTHAGORE)
-      const k = ent(0, 2)
-      if (k === 0) {
-        const cachee = ent(0, etapes.length - 1)
-        const lignes = etapes.map((e, i) => `${i + 1}) ${i === cachee ? '$\\ldots\\ldots\\ldots$' : e}`)
-        return { enonce: `Quelle est l’étape manquante dans la rédaction ${nom} ?\n${lignes.join('\n')}`, reponse: mot(etapes[cachee]) }
-      }
-      if (k === 1) {
-        const i = ent(0, etapes.length - 2)
-        return { enonce: `Dans la rédaction ${nom}, quelle étape vient juste après « ${etapes[i]} » ?`, reponse: mot(etapes[i + 1]) }
-      }
-      const i = ent(0, etapes.length - 1)
-      return { enonce: `Dans la rédaction ${nom}, quelle est l’étape ${i + 1} sur ${etapes.length} ?`, reponse: mot(etapes[i]) }
+      // Une seule forme : on complète l'étape qui manque, les trois autres sont données
+      const cachee = ent(0, etapes.length - 1)
+      const lignes = etapes.map((e, i) => `${i + 1}) ${i === cachee ? '$\\ldots\\ldots\\ldots$' : e}`)
+      return { enonce: `Compléter l’étape manquante de la rédaction ${nom} :\n${lignes.join('\n')}`, reponse: mot(etapes[cachee]) }
     },
   },
   {
