@@ -371,6 +371,36 @@ export function echelleProba(lettres: string[]) {
   return svg(540, 136, r)
 }
 
+// ---------- Deux figures symétriques (ou non) ----------
+/** Un triangle ABC et son image A'B'C' par une symétrie axiale (axe
+ *  vertical ou horizontal) ou centrale. Ni l'axe ni le centre ne sont
+ *  tracés. Le triangle est quelconque (aucun côté égal), pour que le miroir
+ *  ne puisse pas se confondre avec le demi-tour. */
+export function deuxFiguresSymetriques(sorte: 'axiale' | 'centrale') {
+  const L = 540, H = 240
+  const alea = (a: number, b: number) => a + Math.random() * (b - a)
+  const vertical = sorte === 'centrale' || Math.random() < 0.65
+  let A: P, B: P, C: P
+  for (;;) {
+    const zone = sorte === 'axiale' && !vertical ? { x: [60, 480], y: [20, 100] } : { x: [40, 230], y: [30, 210] }
+    ;[A, B, C] = [0, 1, 2].map(() => ({ x: Math.round(alea(zone.x[0], zone.x[1])), y: Math.round(alea(zone.y[0], zone.y[1])) }))
+    const c = [dist(A, B), dist(B, C), dist(C, A)]
+    const aire = Math.abs((B.x - A.x) * (C.y - A.y) - (C.x - A.x) * (B.y - A.y)) / 2
+    const etendue = Math.max(A.x, B.x, C.x) - Math.min(A.x, B.x, C.x)
+    const ok = aire >= 3200 && Math.min(...c) >= 60 && Math.abs(c[0] - c[1]) > 18 && Math.abs(c[1] - c[2]) > 18 && Math.abs(c[2] - c[0]) > 18 && (vertical || etendue <= 250)
+    if (ok) break
+  }
+  const image = (q: P): P => sorte === 'centrale' ? { x: L - q.x, y: H - q.y } : (vertical ? { x: L - q.x, y: q.y } : { x: q.x, y: H - q.y })
+  const dessin = (t: P[], suffixe: string, couleur: string) => {
+    const g = { x: (t[0].x + t[1].x + t[2].x) / 3, y: (t[0].y + t[1].y + t[2].y) / 3 }
+    return poly(t, `stroke="${couleur}" stroke-width="2.4"`) + t.map((q, i) => {
+      const d = dist(q, g) || 1
+      return nom({ x: q.x + (q.x - g.x) / d * 17, y: q.y + (q.y - g.y) / d * 17 }, 'ABC'[i] + suffixe, 22)
+    }).join('')
+  }
+  return svg(L, H, dessin([A, B, C], '', 'currentColor') + dessin([A, B, C].map(image), '′', '#1f5fbf'))
+}
+
 // =============================================================
 // LES FIGURES DE 4e
 // =============================================================

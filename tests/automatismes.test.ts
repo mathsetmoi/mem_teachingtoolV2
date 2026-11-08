@@ -554,3 +554,34 @@ describe('un domaine PERSO : Pythagore (4e)', () => {
     expect(vus.size).toBe(mots.length)
   })
 })
+
+describe('un domaine PERSO : Symétries (5e)', () => {
+  it('il est dans l\'arbre de 5e, en Espace et géométrie, avec une seule compétence « Connaître le cours »', () => {
+    const d = PROGRAMME_AUTOMATISMES['5e'][1].domaines.find(x => x.cle === 'Symétries')!
+    expect(d).toMatchObject({ perso: true, competences: ['Connaître le cours'] })
+    expect(PROGRAMME_AUTOMATISMES['4e'].flatMap(t => t.domaines).some(x => x.cle === 'Symétries')).toBe(false)
+    expect(COURS_5E.filter(c => c.theme === 'Symétries').length).toBe(4)
+    for (const a of automatismesDuFlash(NIVEAUX.find(n => n.id === '5e')!).filter(x => x.theme === 'Symétries')) expect(a.competence, a.id).toBe(0)
+  })
+  it('quel type de symétrie : axiale ou centrale, les réponses ne sont pas dans l\'énoncé, et une figure', () => {
+    const a = AUTOMATISMES_5E.find(x => x.id === 'perso-symetries-type')!
+    const vus = new Set<string>()
+    for (let k = 0; k < 100; k++) {
+      const q = a.generer()
+      vus.add(q.reponse)
+      expect(q.enonce).toBe('Voici un triangle $ABC$ et son image $A\'B\'C\'$. Quel type de symétrie a été appliqué ?')
+      expect(q.figure).toContain('<svg')
+    }
+    expect([...vus].sort()).toEqual(['§une symétrie axiale', '§une symétrie centrale'])
+  })
+  it('compléter la phrase du cours : un trou, et les mots du professeur', () => {
+    const a = AUTOMATISMES_5E.find(x => x.id === 'perso-symetries-cours')!
+    const vus = new Set<string>()
+    for (let k = 0; k < 300; k++) {
+      const q = a.generer()
+      expect(q.enonce.match(/\\ldots/g)?.length, q.enonce).toBe(1)
+      vus.add(q.reponse)
+    }
+    expect([...vus].sort()).toEqual(['§axe', '§centre', '§demi-tour', '§droite', '§pliage', '§plier', '§point'])
+  })
+})

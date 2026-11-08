@@ -1002,6 +1002,14 @@ page derrière reste vide. On y choisit :
   quatre notions de cours (à quoi sert le théorème, la réciproque, la
   contraposée ; l'hypoténuse). Dans un énoncé, un retour à la ligne (`\n`)
   commence une nouvelle ligne à l'écran (les étapes d'une rédaction).
+  Le deuxième (8 novembre 2026) est **Symétries**, en **5e** seulement
+  (Espace et géométrie), avec une seule compétence, « Connaître le cours » :
+  un triangle et son image, sans axe ni centre tracés, et la question « Quel
+  type de symétrie a été appliqué ? » (sans les réponses dans l'énoncé :
+  symétrie axiale ou centrale ; le triangle est quelconque, l'axe vertical ou
+  horizontal), huit phrases du cours à compléter (pliage, axe, droite,
+  plier ; demi-tour, point, centre), plus quatre notions de cours (la symétrie
+  axiale, l'axe de symétrie, la symétrie centrale, le centre de symétrie).
   **Au lycée**, la liste des thèmes, comme avant. Ceux de **5e** sont pensés comme la partie « Automatismes » du
   brevet : des questions à réponse courte qui mobilisent un **automatisme**
   de la liste de 5e du programme 2026, ou une **application directe** d'un

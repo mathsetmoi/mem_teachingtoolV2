@@ -142,6 +142,20 @@ function empilementAuHasard(): number[][] {
 }
 
 // =============================================================
+// ---------- PERSO : Symétries (outils) ----------
+const PERSO_SYMETRIES = 'PERSO · Symétries : connaître le cours.'
+/** Les phrases du cours sur les symétries, à compléter : le mot qui manque */
+const PHRASES_SYMETRIES: [string, string][] = [
+  ['Une symétrie axiale est un $\\ldots$ par rapport à un axe.', 'pliage'],
+  ['Une symétrie axiale est un pliage par rapport à un $\\ldots$.', 'axe'],
+  ['Une symétrie axiale est un pliage par rapport à une $\\ldots$, appelée axe de symétrie.', 'droite'],
+  ['Pour construire le symétrique d’une figure par symétrie axiale, on peut $\\ldots$ la feuille le long de l’axe.', 'plier'],
+  ['Une symétrie centrale est un $\\ldots$ par rapport à un point.', 'demi-tour'],
+  ['Une symétrie centrale est un demi-tour par rapport à un $\\ldots$.', 'point'],
+  ['Une symétrie centrale est un demi-tour autour d’un point appelé $\\ldots$ de symétrie.', 'centre'],
+  ['Pour construire le symétrique d’une figure par symétrie centrale, on lui fait faire un $\\ldots$ autour du centre.', 'demi-tour'],
+]
+
 export const AUTOMATISMES_5E: Automatisme[] = [
   // ================= OPÉRATIONS =================
   {
@@ -1394,6 +1408,27 @@ export const AUTOMATISMES_5E: Automatisme[] = [
       return { enonce: `Parmi « impossible », « peu probable », « une chance sur deux », « probable » et « certain », lequel convient à l'évènement : ${ev} ?`, reponse: mot(reponse) }
     },
   },
+  // ---------- PERSO : Symétries ----------
+  // Un domaine du professeur, hors programme officiel (étiquette PERSO
+  // dans la fenêtre) : une seule compétence, « Connaître le cours ».
+  {
+    id: 'perso-symetries-type', theme: 'Symétries', titre: 'Quel type de symétrie ?', programme: PERSO_SYMETRIES, competence: 0,
+    generer() {
+      const sorte = choix(['axiale', 'centrale'] as const)
+      return {
+        enonce: 'Voici un triangle $ABC$ et son image $A\'B\'C\'$. Quel type de symétrie a été appliqué ?',
+        figure: F.deuxFiguresSymetriques(sorte),
+        reponse: mot(`une symétrie ${sorte}`),
+      }
+    },
+  },
+  {
+    id: 'perso-symetries-cours', theme: 'Symétries', titre: 'Compléter la phrase du cours', programme: PERSO_SYMETRIES, competence: 0,
+    generer() {
+      const [phrase, manquant] = choix(PHRASES_SYMETRIES)
+      return { enonce: `Compléter : « ${phrase} »`, reponse: mot(manquant) }
+    },
+  },
 ]
 
 // =============================================================
@@ -1899,6 +1934,21 @@ export const COURS_5E: QuestionCours[] = [
       () => { const [f, a] = choix<[string, number]>([['la moitié', 180], ['le quart', 90], ['le tiers', 120], ['le sixième', 60], ['les trois quarts', 270]]); return une([`Dans un diagramme circulaire, quel angle représente ${f} de l'effectif total ?`, `$${a}°$`], [`Dans un diagramme circulaire, un secteur a un angle de $${a}°$. Quelle part de l'effectif total représente-t-il ?`, f]) }],
     ['La fréquence',
       () => { const N = choix([20, 25, 30, 40]), e = ent(2, N - 2); return une([`Sur $${N}$ élèves, $${e}$ ont répondu « oui ». Quel calcul donne la fréquence de « oui » ?`, `$${e} \\div ${N}$ (effectif ÷ effectif total)`], [`Entre quelles valeurs une fréquence est-elle toujours comprise ?`, '$0$ et $1$ (ou $0\\,\\%$ et $100\\,\\%$)']) }],
+  ]),
+  // PERSO : Symétries (un domaine du professeur)
+  ...notions('Symétries', [
+    ['Une symétrie axiale',
+      () => { const d = choix(AXES); return [`Qu’est-ce qu’une symétrie axiale par rapport à la droite $${d}$ ?`, `un pliage de la feuille le long de la droite $${d}$`] },
+      () => { const d = choix(AXES); return [`Pour obtenir le symétrique d’une figure par rapport à la droite $${d}$, que fait-on de la feuille ?`, `on la plie le long de $${d}$`] }],
+    ['L’axe de symétrie',
+      () => { const d = choix(AXES); return [`Dans une symétrie axiale, comment s’appelle la droite $${d}$ ?`, 'l’axe de symétrie'] },
+      () => { const d = choix(AXES); return [`La droite $${d}$ est la droite le long de laquelle on plie la feuille. Comment s’appelle-t-elle ?`, 'l’axe de symétrie'] }],
+    ['Une symétrie centrale',
+      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Qu’est-ce qu’une symétrie centrale de centre $${c}$ ?`, `un demi-tour autour du point $${c}$`] },
+      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Pour obtenir le symétrique d’une figure par la symétrie centrale de centre $${c}$, quel mouvement fait-on faire à la figure ?`, `un demi-tour autour du point $${c}$`] }],
+    ['Le centre de symétrie',
+      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Dans une symétrie centrale, comment s’appelle le point $${c}$ autour duquel on fait le demi-tour ?`, 'le centre de symétrie'] },
+      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Une figure fait un demi-tour autour du point $${c}$. Comment s’appelle $${c}$ ?`, 'le centre de symétrie'] }],
   ]),
 ]
 
