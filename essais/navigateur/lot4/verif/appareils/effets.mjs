@@ -21,10 +21,17 @@ for (const mode of ['souris', 'plume', 'doigt']) {
   }
   const avant = await p.evaluate(ETAT)
   const cdp = await ctx.newCDPSession(p)
-  const r = await p.evaluate(() => { const b = document.querySelector('.bouton-classeur').getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 } })
-  if (mode === 'souris') await p.mouse.click(r.x, r.y)
-  else if (mode === 'plume') { for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await cdp.send('Input.dispatchMouseEvent', { type, x: r.x, y: r.y, pointerType: 'pen', button: type === 'mouseMoved' ? 'none' : 'left', buttons: type === 'mousePressed' ? 1 : 0, clickCount: 1 }) }
-  else await p.touchscreen.tap(r.x, r.y)
+  const appuyer = async sel => {
+    const r = await p.evaluate(s => { const b = document.querySelector(s).getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 } }, sel)
+    if (mode === 'souris') await p.mouse.click(r.x, r.y)
+    else if (mode === 'plume') { for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await cdp.send('Input.dispatchMouseEvent', { type, x: r.x, y: r.y, pointerType: 'pen', button: type === 'mouseMoved' ? 'none' : 'left', buttons: type === 'mousePressed' ? 1 : 0, clickCount: 1 }) }
+    else await p.touchscreen.tap(r.x, r.y)
+  }
+  // (Adapté : le bouton du classeur ouvre son menu des séances depuis le
+  // 30 octobre 2026 ; la bibliothèque est une de ses entrées)
+  await appuyer('.bouton-classeur')
+  await p.waitForSelector('.menu-seances [data-action="bibliotheque"]', { state: 'visible' }); await dort(300)
+  await appuyer('.menu-seances [data-action="bibliotheque"]')
   await p.waitForSelector('.bibliotheque:not([hidden])'); await dort(3500)
   // Fermer : Échap (souris), × (plume, doigt)
   const x = await p.evaluate(() => { const b = document.querySelector('.biblio-fermer').getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 } })

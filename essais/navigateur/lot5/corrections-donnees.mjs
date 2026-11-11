@@ -159,8 +159,10 @@ const m3 = await ecrire(p, 200, 480, 260)
 let b = await bilan(p)
 ok(b.seances.length === 1 && b.seances[0].gestes === 4, 'A5) Une séance de quatre gestes (les quatre traits), pas un de plus', b.seances)
 ok(b.gestesPage === 4, 'A6) La revue de la page compte quatre gestes', b.gestesPage)
-// (la page neuve paraît d'abord, son fond : la naissance d'une page, lot 3)
-ok(b.etapes === 5 && b.genres[0] === 'f' && JSON.stringify(b.neufs) === JSON.stringify([[], [m0], [m1], [m2], [m3]]), 'A7) Le film élève : la page neuve (son fond), puis quatre étapes, chacune pose son trait', { etapes: b.etapes, genres: b.genres, neufs: b.neufs, attendus: [m0, m1, m2, m3] })
+// (la page neuve paraît avec son premier geste, son fond d'abord : la
+// naissance d'une page part avec lui, voir naissances dans
+// src/revoir/exporter.ts ; adapté, l'essai attendait une étape à part)
+ok(b.etapes === 4 && b.genres[0].startsWith('f') && JSON.stringify(b.neufs) === JSON.stringify([[m0], [m1], [m2], [m3]]), 'A7) Le film élève : la page neuve (son fond) avec le premier trait, puis trois étapes, chacune pose son trait', { etapes: b.etapes, genres: b.genres, neufs: b.neufs, attendus: [m0, m1, m2, m3] })
 ok(b.muettes.length === 0, 'A8) Aucune étape du film élève qui ne montre rien', b.muettes)
 const cours = b
 

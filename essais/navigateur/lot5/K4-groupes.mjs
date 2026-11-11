@@ -174,7 +174,10 @@ const CADRE = ids => {
   const d = c.getContext('2d').getImageData(Math.round(s.x * k) - 2, Math.round(s.y * k) - 20, 5, 40).data
   let max = 0, bleu = false
   for (let i = 0; i < d.length; i += 4) if (d[i + 3] > max) { max = d[i + 3]; bleu = d[i + 2] > d[i] + 40 }
-  return max > 160 && bleu ? 'plein' : max > 20 && max < 140 && bleu ? 'clair' : max ? `alpha ${max}` : null
+  // (Adapté : un groupe pris seul a, à la place de son cadre plein, le bord du
+  // cadre de taille, un trait plein de 1,2 px dont l'anticrénelage donne 150
+  // à 255 selon où il tombe ; le pointillé clair reste sous 100)
+  return max > 140 && bleu ? 'plein' : max > 20 && max <= 140 && bleu ? 'clair' : max ? `alpha ${max}` : null
 }
 const cadre = async (p, ids) => { await p.waitForTimeout(80); return p.evaluate(CADRE, ids) }
 async function clicDroit(p, x, y) { const s = await ecran(p, x, y); await p.mouse.click(s.x, s.y, { button: 'right' }); await p.waitForTimeout(150) }

@@ -78,6 +78,10 @@ async function lancer(X, profil) {
   return { ctx, p }
 }
 const erreurs = []
+/** Le bouton qui valide la vraie fenêtre GTK (« Open » ou « Save »), en bas
+ *  à droite, toujours à la même place sur l'écran X de 1280 × 900 : Entrée
+ *  dans la zone du chemin la ferme désormais comme « Cancel » (AbortError) */
+const VALIDER = 'clic:1075,798'
 /** Répond aux demandes de Chrome, l'une après l'autre (après un changement de
  *  page, la première, à trois boutons, rend l'accord d'avant : « Allow this
  *  time », « Allow on every visit », « Don't allow » ; si l'on n'avait que lu
@@ -113,8 +117,9 @@ try {
     await p.goto(URL_); await pret(p)
     const premier = await p.evaluate(() => location.search)
     await p.keyboard.press('Control+o'); await dort(2500)
-    touches(X.display, 'ctrl+l'); await dort(300)
-    touches(X.display, 'texte:' + FICHIER, 'Return'); await dort(2500)
+    touches(X.display, 'ctrl+l'); await dort(800)
+    touches(X.display, 'texte:' + FICHIER); await dort(800)
+    touches(X.display, VALIDER); await dort(2500)
     const d = await p.evaluate(() => { const x = document.querySelector('dialog[open]'); return x ? { titre: x.querySelector('h2')?.textContent, coche: x.querySelector('.case input')?.checked } : null })
     ok(d?.titre === 'Ouvrir ce classeur ?' && d.coche === true, 'M0) la vraie fenêtre GTK, puis « Ouvrir ce classeur ? », la case cochée', d)
     await viderPerm(p)
@@ -168,7 +173,7 @@ try {
     await viderPerm(p)
     const charge = p.waitForEvent('load', { timeout: 60000 })
     await p.click('dialog[open] [data-a="creer"]'); await dort(2500)
-    touches(X.display, 'ctrl+a', 'texte:' + FICHIER, 'Return')
+    touches(X.display, 'ctrl+a', 'texte:' + FICHIER); await dort(800); touches(X.display, VALIDER)
     await charge; await pret(p)
     const e1 = await etat(p)
     let f = null; try { f = lireMemc(fs.readFileSync(FICHIER)) } catch { /* pas écrit */ }
@@ -196,7 +201,7 @@ try {
     await ecrire(p, 400, 300)
     await p.click('.barre-haut .bouton.points'); await p.waitForTimeout(300)
     await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="activer-cle"]'); await dort(2500)
-    touches(X.display, 'ctrl+a', 'texte:' + FICHIER, 'Return'); await dort(3000)
+    touches(X.display, 'ctrl+a', 'texte:' + FICHIER); await dort(800); touches(X.display, VALIDER); await dort(3000)
     let f = null; try { f = lireMemc(fs.readFileSync(FICHIER)) } catch { /* pas écrit */ }
     ok(f?.n === 1, 'K1) la vraie fenêtre « Enregistrer » : le fichier est écrit, avec le trait', f)
     await ecrire(p, 400, 360)

@@ -752,6 +752,9 @@ try {
     }
     await nouveauNiveauEtClasseur('Seconde', '2', 'Suites')
     await nouveauNiveauEtClasseur('Premiere', '1', 'Fonctions')
+    // (Le fichier du classeur s'écrit un moment après l'arrivée sur sa page :
+    // on l'attend, jusqu'à 10 s, au lieu de lire l'arbre tout de suite)
+    await h.waitForFunction(() => { const a = Object.keys(window.__fauxArbre?.() ?? {}); return a.includes('LyFEL classeurs/2/Suites/Suites.memc') && a.includes('LyFEL classeurs/1/Fonctions/Fonctions.memc') }, null, { timeout: 10000 }).catch(() => {})
     let arbre = await h.evaluate(() => Object.keys(window.__fauxArbre()).sort())
     ok(arbre.includes('LyFEL classeurs/2/Suites/Suites.memc') && arbre.includes('LyFEL classeurs/1/Fonctions/Fonctions.memc') && /^Fonctions — /.test(await h.title()),
       'J1) Deux niveaux rangés (LyFEL classeurs › 2, › 1), « Suites » dans le premier (fermé), « Fonctions » dans le second (ouvert)', arbre)

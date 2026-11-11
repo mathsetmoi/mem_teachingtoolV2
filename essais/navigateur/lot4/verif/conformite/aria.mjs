@@ -19,7 +19,12 @@ await p.evaluate(async () => {
   }
 })
 // Au clavier : le bouton du classeur, Entrée
+// (Adapté : le bouton du classeur ouvre son menu des séances depuis le
+// 30 octobre 2026 ; au clavier, on y va à l'entrée « bibliothèque », Entrée)
 await p.focus('.bouton-classeur')
+await p.keyboard.press('Enter')
+await p.waitForSelector('.menu-seances [data-action="bibliotheque"]', { state: 'visible' })
+await p.focus('.menu-seances [data-action="bibliotheque"]')
 await p.keyboard.press('Enter')
 await p.waitForFunction(() => window.__bibliotheque?.ouvert, null, { timeout: 10000 })
 await p.waitForTimeout(500)
