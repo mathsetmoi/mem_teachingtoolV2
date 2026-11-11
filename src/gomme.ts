@@ -11,7 +11,7 @@
 // qu'elle efface est la capsule autour du segment [ab] (le disque de la
 // gomme promené de a à b), élargie de la demi-épaisseur du trait, puisque
 // c'est son encre qu'on efface et non sa ligne médiane. Une gomme rapide ne
-// saute donc rien entre deux mouvements (la leçon de tldraw).
+// saute donc rien entre deux mouvements.
 //
 // Ce qui reste garde ses points d'origine, tels quels : seul un côté du
 // trait qui entre dans la capsule ou en sort reçoit un point nouveau, à

@@ -50,7 +50,7 @@ import { cheminDuFichier, emplacementDe, emplacements, nomDeFichierLibre, reglag
 import type { Etablissement } from './etablissements'
 import { cheminLisible, etablissements } from './etablissements'
 import type { PoigneeDossier } from './ordinateur'
-import { accordDuDossier, choisirUnDossier, choisitUnDossier } from './ordinateur'
+import { accordDuDossier, choisirUnDossier, choisitUnDossier, memeDossier } from './ordinateur'
 import { remontee } from './arbre'
 import { destinations, objetClasseur } from './deplacer'
 import { ouvrirDeplacerVers } from './vers'
@@ -209,11 +209,6 @@ const nomErreur = (e: unknown) => (e as { name?: string } | null)?.name
 /** Une poignée de dossier relue de l'index, ou rien */
 const poigneeValable = (x: unknown): PoigneeDossier | null =>
   x && typeof (x as PoigneeDossier).getDirectoryHandle === 'function' ? x as PoigneeDossier : null
-
-/** Le même dossier ? (isSameEntry ; sans lui, on ne sait pas : non) */
-async function memeDossier(a: PoigneeDossier, b: unknown): Promise<boolean> {
-  try { return typeof a.isSameEntry === 'function' && !!b && await a.isSameEntry(b) } catch { return false }
-}
 
 /** Le dossier au bout de ces segments sous `racine` ; creer : fait ceux qui
  *  manquent ; sinon une erreur (NotFoundError) */

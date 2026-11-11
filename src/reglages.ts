@@ -45,7 +45,7 @@ export function ecrire(cle: string, v: string) {
 }
 
 /** Ce que fait la molette d'une souris : défiler (comme partout), ou zoomer
- *  (comme dans GeoGebra). Ctrl + molette et le pincement zooment toujours. */
+ *  (comme dans les logiciels de géométrie). Ctrl + molette et le pincement zooment toujours. */
 export type Molette = 'defile' | 'zoome'
 const CLE_MOLETTE = 'mem-molette'
 

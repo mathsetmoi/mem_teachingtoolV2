@@ -171,7 +171,7 @@ describe('les messages selon le pointeur', () => {
 })
 
 describe('l\'appui long', () => {
-  it('500 ms, comme Excalidraw et tldraw ; plus long que le double appui', () => {
+  it('500 ms, la durée habituelle ; plus long que le double appui', () => {
     expect(APPUI_LONG).toBe(500)
     expect(APPUI_LONG).toBeGreaterThan(DOUBLE_TOUCHER.ms)
   })

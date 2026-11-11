@@ -191,13 +191,14 @@ function ouvrirBranche(branche: HTMLElement, ouvert: boolean) {
 /** Les domaines cochés (en entier ou en partie) d'une partie de la fenêtre */
 const domainesCoches = (racine: ParentNode) => [...racine.querySelectorAll<HTMLInputElement>('.case-domaine')].filter(c => c.checked || c.indeterminate)
 
-/** Un texte avec des $…$ en LaTeX : le texte dans \text{}, les maths telles quelles */
-function texteEnLatex(t: string): string {
+/** Un texte avec des $…$ en LaTeX : le texte dans \text{}, les maths telles
+ *  quelles (servi aussi au catalogue du collège) */
+export function texteEnLatex(t: string): string {
   return t.split('$').map((m, i) => i % 2 ? m : m ? `\\text{${m.replace(/[\\{}%&#_^~$]/g, c => c === '\\' ? '\\textbackslash{}' : c === '~' ? '\\textasciitilde{}' : c === '^' ? '\\textasciicircum{}' : '\\' + c)}}` : '').join('')
 }
 /** Une réponse en LaTeX : un texte (§…), ou déjà du LaTeX (entre
  *  accolades : « −3 » après une lettre garde le signe d'un nombre) */
-const reponseEnLatex = (r: string) => r.startsWith('§') ? texteEnLatex(r.slice(1)) : `{${r}}`
+export const reponseEnLatex = (r: string) => r.startsWith('§') ? texteEnLatex(r.slice(1)) : `{${r}}`
 /** Le numéro d'une question dans sa case ; « Cours » à côté pour une question de cours */
 const numeroEnLatex = (it: QuestionFlash, k: number) => `\\textbf{${k}.}` + (it.forme === 'cours' ? '\\;\\;{\\small\\textsf{Cours}}' : '')
 

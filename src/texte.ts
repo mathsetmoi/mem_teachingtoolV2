@@ -17,11 +17,11 @@
 // =============================================================
 import type { Forme, Formule, LigneTexte, MorceauTexte } from './types'
 
-/** La police d'un texte : celle qu'on trouve partout (Windows, Mac, l'iPad,
- *  et ses jumelles métriques ailleurs), pour qu'un texte à largeur choisie
- *  passe à la ligne au même mot sur le poste de la classe, dans la version
- *  hors ligne et dans le replay des élèves */
-export const POLICE_TEXTE = "Arial, 'Helvetica Neue', Helvetica, 'Liberation Sans', Arimo, sans-serif"
+// La police d'un texte (Arial et ses jumelles métriques) est écrite dans
+// style.css et revoir/revoir.css (.formule.texte) : celle qu'on trouve
+// partout (Windows, Mac, l'iPad), pour qu'un texte à largeur choisie passe à
+// la ligne au même mot sur le poste de la classe, dans la version hors ligne
+// et dans le replay des élèves.
 /** La taille d'un texte neuf (unités monde) : « Normale », comme une formule */
 export const TAILLE_TEXTE = 28
 /** La plus petite largeur choisie (unités monde) : un cadre glissé plus

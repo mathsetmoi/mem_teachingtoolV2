@@ -36,7 +36,7 @@ import type { Rangement } from './etat'
 import type { Emplacement } from './emplacements'
 import { classeursDeLaClasse, emplacementDe, emplacements, garderEmplacement, reglagePoignee, sousDossiers } from './emplacements'
 import type { BilanRelier, ChoixConflit, ConflitFichier, PoigneeDossier } from './ordinateur'
-import { accordDeLire, accordDuDossier, choisirUnDossier, choisitUnDossier, relierLesClasseurs } from './ordinateur'
+import { accordDeLire, accordDuDossier, choisirUnDossier, choisitUnDossier, memeDossier, relierLesClasseurs } from './ordinateur'
 import type { Etablissement } from './etablissements'
 import { cheminLisible, etablissements, nomDEtablissement, garderEtablissement, noterPlusTard, nouvelId, plusTard, reglagePoigneeEtablissement, texteDuRangement } from './etablissements'
 import { ecrivain } from './ecrivain'
@@ -81,11 +81,6 @@ export const CONSEIL_ACCORD_DOSSIER = 'Dans la demande du navigateur, choisissez
 
 const raisonDe = (e: unknown) => (e instanceof Error ? e.message.trim().replace(/\.$/, '') : '') || 'erreur inconnue'
 const nomErreur = (e: unknown) => (e as { name?: string } | null)?.name
-
-/** Le même dossier ? (isSameEntry ; sans lui, on ne sait pas : non) */
-async function memeDossier(a: PoigneeDossier, b: unknown): Promise<boolean> {
-  try { return typeof a.isSameEntry === 'function' && !!b && await a.isSameEntry(b) } catch { return false }
-}
 
 /** Une poignée de dossier relue de l'index, ou rien (un navigateur qui ne
  *  l'a pas gardée, un réglage d'une autre forme) */

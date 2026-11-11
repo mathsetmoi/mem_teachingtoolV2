@@ -328,7 +328,7 @@ export const AIMANT_ECHELLE = 0.03
 
 /**
  * L'angle dont on a tourné (radians), aimanté (D8 du lot 5) : avec Maj, le
- * multiple de 15° le plus proche (comme tldraw, Excalidraw, Figma) ; sans
+ * multiple de 15° le plus proche (l'usage courant) ; sans
  * Maj, un multiple de 45° l'attire à ±3°, SAUF 0 (et les tours entiers) ;
  * sinon l'arrondi au degré. Un choix propre à MEM, qui s'écarte de l'étude
  * (un aimant à 0) et des instruments (aimantés tous les 15° à ±2,5°) : un
@@ -495,8 +495,7 @@ export const MARGE_CADRE = 6
  * La pastille est AU-DESSUS du cadre, au milieu de son bord du haut (le haut
  * de l'objet, pour un cadre orienté), à POIGNEE.ecart du bord, au bout d'un
  * filet ; dessous si son centre sortait de la zone libre. C'est ce que
- * recommande l'étude et ce que font SMART, ActivInspire, Excalidraw et
- * PowerPoint.
+ * recommande l'étude, et l'usage courant.
  */
 export function cadreDe(formes: readonly Forme[], o: {
   boite: (f: Forme) => Boite | null

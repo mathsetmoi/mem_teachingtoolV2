@@ -106,8 +106,6 @@ interface PagePrise { id: string; numero: number; nom: string | null; page: Page
 interface PagePlanifiee extends PagePrise { mp: MiseEnPage }
 
 let enCours = false
-/** Un export est-il en cours ? (un seul à la fois) */
-export function exportEnCours(): boolean { return enCours }
 /** Quand « Un export en PDF est déjà en cours. » a été dit (performance.now()) */
 let refusDit = -Infinity
 /** Ce message reste lisible ce temps (ms) : la progression ne le remplace pas

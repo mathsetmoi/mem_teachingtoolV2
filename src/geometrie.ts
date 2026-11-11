@@ -358,7 +358,7 @@ export function cibleParmi(formes: readonly Forme[], x: number, y: number, o: {
   }
   // Vu de près, l'intérieur d'une figure qui déborde tout l'écran (un grand
   // cercle à 800 %) ne prend rien : on regarde ce qui est dedans, et un
-  // toucher dans le vide doit pouvoir désélectionner (règle de tldraw)
+  // toucher dans le vide doit pouvoir désélectionner
   if (nus.length && o.deborde) for (let k = nus.length - 1; k >= 0; k--) if (o.deborde(nus[k].f)) nus.splice(k, 1)
   // Un plein cache ce qui est sous lui : un trait sous une figure coloriée
   // ne se prend pas à travers elle, une formule posée sur une image se prend

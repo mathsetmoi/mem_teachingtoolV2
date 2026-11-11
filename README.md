@@ -46,6 +46,11 @@ lots, pas pour une petite retouche ; ce qu'elle demande (Playwright et son
 Chromium déjà installés) et comment la lire : voir
 [`essais/navigateur/README.md`](essais/navigateur/README.md).
 
+Chaque demande de fusion est vérifiée toute seule sur GitHub
+(`.github/workflows/verifier.yml`) : les types, `npm test`, puis les deux
+constructions (`npm run build` et `npm run build:pages`). La batterie du
+navigateur, trop longue, n'y tourne pas.
+
 ## Figures géométriques
 
 **Au stylo.** Une figure fermée tracée à main levée se redresse au lever du
@@ -120,7 +125,7 @@ l'emporte. Plus loin, mais dans la portée, un clic le prend, et un glisser
 **entoure** : on entoure un mot écrit à la main en partant à 15 px de lui,
 sans en emporter une lettre. Dans le vide d'une grande figure fermée sans fond
 qui n'est pas sélectionnée, de même : un clic prend la figure, un glisser
-entoure ce qu'on a écrit dedans (comme tldraw et Excalidraw ; la figure n'est
+entoure ce qu'on a écrit dedans (la figure n'est
 prise que si elle est elle-même à plus de moitié dans la zone). Sélectionnée,
 elle se glisse depuis son milieu. Une image, une formule, une figure coloriée
 se glissent toujours : pour entourer ce qu'on a écrit sur un énoncé importé,
@@ -303,7 +308,7 @@ sélection ; Maj + clic sur l'un d'eux l'en retire, et le menu se ferme quand
 il ne reste qu'un objet.
 
 **Grouper** (lot 5). Plusieurs objets sélectionnés se groupent par
-**Ctrl + G** (⌘ + G sur Mac, comme tldraw, Excalidraw, Figma et PowerPoint)
+**Ctrl + G** (⌘ + G sur Mac, le raccourci habituel)
 ou par *Grouper*, dans leur menu commun, juste après *Couleur, épaisseur*.
 On ne groupe qu'**à la main** (au lasso ou au cadre, puis *Grouper*) : les
 groupes d'écriture automatiques — les traits écrits d'affilée qui forment
@@ -333,7 +338,7 @@ lecteur d'écran) et a *Dégrouper* (Ctrl + Maj + G) à la place de *Grouper* :
 « Dégroupé », et les mêmes objets restent pris, un par un.
 
 **Un objet du groupe** se prend seul par un second clic **simple** sur lui
-quand le groupe est pris (comme tldraw ; au doigt, un second toucher après
+quand le groupe est pris (au doigt, un second toucher après
 un tiers de seconde : plus tôt, c'est un double appui) ; la boîte du groupe
 reste alors en pointillé très clair, et la première fois un message le dit :
 « Un seul objet du groupe : ce que vous faites ne touche que lui. » (il
@@ -384,9 +389,8 @@ dans le même ordre : les images fixées en fond, les images, l'écriture et
 les figures, les formules (`src/ordre.ts`). Une image et son papier ne
 recouvrent jamais un trait de construction, quel que soit le moment où on
 l'a importée, et les formules restent en HTML au-dessus de tout, nettes à
-tout zoom (c'est le modèle des carnets, GoodNotes ou Notability, plutôt
-que l'ordre unique de tldraw ou d'Excalidraw, qui obligerait à peindre les
-formules dans le canevas). Dans un calque, le plus récent est dessus. Le
+tout zoom (c'est le modèle des carnets numériques, plutôt qu'un ordre
+unique pour tout, qui obligerait à peindre les formules dans le canevas). Dans un calque, le plus récent est dessus. Le
 menu ⋯ du menu complet (d'un objet ou de plusieurs) a une section *Ordre* :
 *Mettre au premier plan* (Ctrl + Maj + ↑), *Avancer* (Ctrl + ↑), *Reculer*
 (Ctrl + ↓), *Mettre à l'arrière-plan* (Ctrl + Maj + ↓) ; ⌘ sur Mac, où
@@ -404,7 +408,7 @@ l'écriture et les figures ; les images restent dessous » ; pour une
 sélection mêlée, « Chacun dans son calque : images, puis écriture et
 figures, puis formules ». Une image et un trait choisis ensemble montent
 chacun dans le sien. *Avancer* et *Reculer* passent l'objet devant
-(derrière) le plus proche qui le **chevauche** (comme tldraw : sinon
+(derrière) le plus proche qui le **chevauche** (sinon
 « Avancer » ne ferait souvent rien de visible) ; sans voisin qui chevauche,
 rien, et un message : « Rien à passer devant à cet endroit », « Rien à
 passer derrière à cet endroit » ; déjà en haut ou en bas de son calque,
@@ -432,12 +436,11 @@ ses quatre coins, tournés avec elle ; un **trait** à main levée, un
 lieu de son cadre plein : un seul dessin). Les coins sont des carrés
 blancs cernés du bleu de la sélection, les côtés des barrettes ; le cadre
 en tirets de chaque objet reste. Un **coin** tiré agrandit ou réduit en
-gardant les proportions, autour du coin opposé, qui ne bouge pas (comme
-Excalidraw et tldraw) ; un **côté** d'une image la déforme dans un seul
+gardant les proportions, autour du coin opposé, qui ne bouge pas ; un **côté** d'une image la déforme dans un seul
 de ses axes (sans clavier : au TNI, sur l'iPad, à la tablette graphique
 posée loin du clavier), et **Maj + coin** la déforme dans les deux à la
-fois (Excalidraw et tldraw gardent aussi les proportions d'une image par
-défaut, Maj les libère). La taille s'affiche près du pointeur (« 150 % »,
+fois (l'usage courant : les proportions gardées par défaut, Maj les
+libère). La taille s'affiche près du pointeur (« 150 % »,
 « 150 % × 100 % » pour une image déformée) ; × 1 attire à ±3 % (on revient
 à la taille d'origine sans viser), sinon le facteur va au centième ; il ne
 passe jamais de l'autre côté du coin opposé (pas de retournement : passé
@@ -447,14 +450,13 @@ dessin que celle des instruments : tirée en rond, elle tourne ce qui est
 pris autour du milieu du cadre ; l'angle **tourné** s'affiche (« ↺ 30° »
 dans le sens direct, « ↻ 30° » dans l'autre), plus d'un tour se compte.
 Elle est à 24 px du cadre à la souris, 28 au stylet, 36 au doigt
-(l'étude : « détachée au-dessus du cadre », comme SMART, ActivInspire,
-Excalidraw et PowerPoint ; une poignée qu'on voit, plutôt qu'une zone
-invisible hors du coin comme tldraw ou Figma, introuvable au doigt et au
-TNI) ; pour une image ou une formule tournée, au-dessus de SON bord du
+(l'étude : « détachée au-dessus du cadre », l'usage courant ; une poignée
+qu'on voit, plutôt qu'une zone invisible hors du coin, introuvable au doigt
+et au TNI) ; pour une image ou une formule tournée, au-dessus de SON bord du
 haut ; dessous quand elle sortirait de ce qu'on voit entre les barres ; et
 pour un objet plus grand que l'écran (à 2000 %), en bas de ce qu'on voit.
 Les poignées sont plus grandes au doigt : elles se prennent à 10 px de leur
-centre à la souris, 12 au stylet, 20 au doigt (tldraw a 12 et 20 ; les
+centre à la souris, 12 au stylet, 20 au doigt (l'usage courant ; les
 8 px de l'étude étaient trop petits), et se dessinent en 8, 10 et 14 px,
 d'après le dernier pointeur vu (le survol de la tablette graphique
 compte) ; sur un objet trop petit à l'écran (vu de loin), les coins
@@ -516,8 +518,8 @@ coup, comme un déplacement (la forme garde son identifiant). Tout est
 « cuit » dans ses coordonnées (les points d'un trait, les sommets d'une
 figure, la matrice d'une image) : la version d'avant le voit tel quel. Un
 **trait** agrandi s'épaissit avec lui, comme l'image d'une écriture
-(agrandir un mot, c'est en faire une image plus grande, comme dans
-GoodNotes ou OneNote ; l'étude proposait de garder l'épaisseur, avec une
+(agrandir un mot, c'est en faire une image plus grande, comme dans les
+carnets numériques ; l'étude proposait de garder l'épaisseur, avec une
 case pour choisir : un choix propre à MEM, sans case, Ctrl + Z si l'on
 voulait autre chose) ; réduit, il garde au moins 1 d'épaisseur, lisible au
 vidéoprojecteur (un trait déjà plus fin garde la sienne). Une **figure**
@@ -542,7 +544,7 @@ côté, et rien ne sort des bornes de la liste blanche du presse-papiers
 portent sur l'angle tourné : les multiples de 45° attirent à ±3°, **sauf
 0°** (un énoncé photographié de travers doit pouvoir tourner de 2°, et
 90° pile se trouve sans Maj, même au TNI) ; avec Maj, des pas de 15°
-(comme tldraw, Excalidraw, Figma) ; sinon le degré entier. C'est un écart
+(l'usage courant) ; sinon le degré entier. C'est un écart
 voulu avec l'étude (un aimant à 0°) et avec les instruments, dont la même
 pastille aimante l'**orientation** tous les 15° à ±2,5° et affiche
 « 30° » : un instrument a une orientation qui compte en elle-même (la
@@ -607,7 +609,7 @@ Ctrl + Z rend l'image entière. Le calcul est dans `src/rognage.ts`.
 
 **Verrouiller et fixer en fond** (lot 5). Deux façons de protéger ce qui est
 sur une page. **Verrouiller** (tout objet : le menu ⋯ du menu complet,
-section *Protéger*, ou **Maj + L**, comme tldraw) : l'objet ne bouge plus et
+section *Protéger*, ou **Maj + L**) : l'objet ne bouge plus et
 ne se prend plus, ni au clic, ni au cadre, ni au lasso, ni au double-clic, ni
 à Ctrl + A ; la gomme, les flèches et Suppr le laissent ; les sommets, les
 noms, le centre et le rayon d'une figure verrouillée ne se tirent plus ; au
@@ -2078,14 +2080,13 @@ cachée : ni les lettres des outils, ni Ctrl+V, ni le programme de
 construction ; Ctrl+Z, Suppr, Ctrl + D et Ctrl + A y agissent sur les pages
 (voir plus bas), jamais sur ce qui est écrit.
 
-Pourquoi plein écran plutôt qu'un panneau sur le côté (comme SMART ou
-Xournal++) : la page est infinie et le vidéoprojecteur montre tout à la
+Pourquoi plein écran plutôt qu'un panneau sur le côté : la page est infinie et le vidéoprojecteur montre tout à la
 classe ; un panneau prendrait en permanence un cinquième du tableau pour
 quatre vignettes. La grille en montre une vingtaine d'un coup sur un
 portable, une quarantaine sur un TNI en 1920 × 1080, toutes en défilant ;
 elle laisse la place de glisser loin, sert telle quelle sur un téléphone
 (deux colonnes), et fait un moment d'organisation clair pour la classe
-(comme la grille de GoodNotes ou Notability).
+(comme la grille des carnets numériques).
 
 - **Aller à une page** : un clic ou un toucher sur sa vignette, ou Entrée sur
   celle qui a le focus ; la trieuse se ferme et le numéro de la page
@@ -6532,7 +6533,7 @@ poste de la classe ne change pas, la feuille de style les range.
 à l'horizontale) ; au pavé tactile, deux doigts qui glissent déplacent le
 tableau. Ctrl (⌘ sur Mac) + molette, ou pincer le pavé, zoome autour du
 pointeur, d'un cran à la fois (×1,1 par cran au plus : une molette libre ne
-s'emballe pas). Qui préfère la molette qui zoome, comme dans GeoGebra, le règle
+s'emballe pas). Qui préfère la molette qui zoome, comme dans les logiciels de géométrie, le règle
 dans le menu du pourcentage (en bas à droite) : « Molette de la souris : fait
 défiler / zoome », gardé sur cet ordinateur. Ce menu donne aussi **100 %**
 (Ctrl + 0), **Tout voir** (Maj + 1, ou le bouton cadre à côté de « + » : toute
@@ -6672,8 +6673,8 @@ Ctrl + G groupe la sélection, Ctrl + Maj + G la dégroupe (⌘ sur Mac ; voir
 plus ; Maj, tenue en tirant un coin du cadre de taille d'une image, la
 déforme, et tenue en tournant la pastille ↻, tourne par pas de 15° (voir
 « Changer de taille, tourner ») ; Échap abandonne le geste en cours du
-cadre (tout revient) ; pas [ et ]
-comme tldraw : en AZERTY, ils demandent AltGr, que Windows envoie comme
+cadre (tout revient) ; pas [ et ] :
+en AZERTY, ils demandent AltGr, que Windows envoie comme
 Ctrl + Alt. ⌘ + ← (Mac) et Alt + ← (Windows) reviennent à la page
 précédente du navigateur, Alt + → à la suivante : hors d'un champ de saisie
 et d'une fenêtre, avec ou sans sélection, elles ne font plus rien, comme
@@ -6701,8 +6702,8 @@ de même quel que soit l'outil en main, qu'on retrouve en reprenant la pointe.
 Gomme s'ouvre en retouchant la Gomme quand elle est déjà en main (d'un clic
 ou d'un toucher), par un clic droit sur son bouton (le bouton du stylet en
 est un), par un appui long du doigt dessus, et par E quand elle est déjà en
-main (le focus va alors sur l'entrée cochée), comme dans Apple Notes,
-GoodNotes et OneNote ; à droite de la barre des outils, à la hauteur de la
+main (le focus va alors sur l'entrée cochée), comme dans les carnets
+numériques ; à droite de la barre des outils, à la hauteur de la
 Gomme (au téléphone, au-dessus d'elle en portrait, entre les deux barres).
 Il propose **Effacer le trait entier** (« Ce qu'elle
 touche part en entier : un trait, une figure, une formule (jamais une
@@ -6791,7 +6792,7 @@ avant (le replay, lui, a tout gardé).
 
 **Deux doigts : annuler ; trois doigts : rétablir.** Sur une tablette ou un
 TNI, un **toucher bref à deux doigts** défait le dernier geste de la page
-qu'on regarde, comme Ctrl+Z (comme Procreate, FigJam, Notability, Freeform) ;
+qu'on regarde, comme Ctrl+Z (le geste habituel des tablettes) ;
 à **trois doigts**, il le refait. Un message bref le dit : « Annulé »,
 « Rétabli », ou « Rien à annuler sur cette page » ; juste après « Supprimer
 la page », c'est « Page 2 rétablie ». Il faut que les doigts se posent presque
@@ -7461,7 +7462,7 @@ qu'au document sans séances (hors de l'application).
   sous une épaisseur de 1 paraît plus fin qu'il ne le sera au lâcher (il
   garde au moins 1) ; le cadre d'un groupe ou de plusieurs objets reste
   droit : après une rotation, il est la boîte de ce qui a tourné (il ne
-  garde pas l'angle, comme tldraw garde celui d'une sélection). Dans la
+  garde pas l'angle d'une sélection). Dans la
   version d'avant (6aee150) et dans un lecteur
   d'avant resté en cache chez un élève, une formule tournée paraît droite
   (et se prend dans sa boîte droite) ; tout le reste d'une transformation
