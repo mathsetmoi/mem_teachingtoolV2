@@ -1105,7 +1105,7 @@ grille et écrit chaque réponse en vert dessous (une réponse de cours un peu
 longue passe à la ligne). « Nouveaux exemples » pose un autre flash sur une nouvelle page
 juste après. Il n'y a ni bilan, ni suivi de la classe.
 
-Chaque automatisme est un générateur (`src/automatismes.ts`) : les valeurs sont
+Chaque automatisme est un générateur (`src/automatismes/`, un fichier par niveau) : les valeurs sont
 tirées au hasard (pour la divisibilité, le nombre et aussi les trois
 diviseurs proposés). Les questions de cours (`COURS_5E`, 86 notions, quatre à
 neuf par thème) se posent chacune de plusieurs façons — une question, une
@@ -1175,7 +1175,7 @@ avec leurs boutons (40 lignes au plus : on précise la recherche).
     flash) ouvre le réglage du flash avec ce domaine seul coché.
 
   Les données sont dans `src/programme-cycle4.ts` (sous un objectif,
-  `exemples` nomme ses exercices par leur id dans `src/automatismes.ts`), le
+  `exemples` nomme ses exercices par leur id dans `src/automatismes/`), le
   panneau dans `src/catalogue-college.ts` ; essais :
   `tests/programme-cycle4.test.ts`, `essais/navigateur/lot22/G1-programme-college.mjs`.
 
@@ -7248,7 +7248,8 @@ morceaux de 512 Ko, en attendant pendant un geste sur le tableau.
 | `src/instruments.ts` | Règle, équerre, rapporteur, compas ; leur pastille ↻ (`dessinerPastille`), la même que celle du cadre de taille (lot 5 ; son filet, `filetPx`, de 2,5 px au cadre en contraste renforcé, de 1,6 toujours aux instruments) |
 | `src/construction.ts` | Programme de construction → étapes et gestes |
 | `src/constructeur.ts` | Joue les étapes, avec ou sans instruments |
-| `src/automatismes.ts` | Les automatismes (générateurs, par niveau et par thème) et le tirage d'un flash (`tirerFlash`) |
+| `src/automatismes.ts` | Les automatismes : les niveaux (`NIVEAUX`) et le tirage d'un flash (`tirerFlash`) ; il redonne tout ce qui est rangé dans `src/automatismes/` |
+| `src/automatismes/` | Les générateurs, un fichier par niveau (`cinquieme.ts`, `quatrieme.ts`, `troisieme.ts`, `lycee.ts` pour la 2nde et la 1re) et les outils qu'ils partagent (`outils.ts` : la forme d'une question, le hasard, l'écriture des nombres, les noms de points, les questions à trou) |
 | `src/programme-automatismes.ts` | Le rangement des automatismes du collège comme le programme : thèmes, domaines, compétences |
 | `src/flash.ts` | Le flash d'automatismes : le réglage, les questions posées sur une page de la séance, le bandeau, la correction |
 | `src/seances.ts` | Les séances d'un classeur (lot 6) : le rangement des pages par séance (pur), la migration d'un classeur d'avant, les mots des dates (« Séance du mar 14 oct 14h », « de lundi ») ; dans `document.ts`, les deux cartes (`seances`, `seanceDesPages`), la séance neuve, la reprise d'une page (`reprendrePage`, `retirerReprise`) et la garde des séances passées (`garde`) ; dans `revoir/exporter.ts`, les séances lues dans le film (`seancesExplicitesDuFilm`, `pagesAPublier`) |
