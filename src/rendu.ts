@@ -665,8 +665,32 @@ export class Rendu {
     return [{ x: p.x + d.x * t0, y: p.y + d.y * t0 }, { x: p.x + d.x * t1, y: p.y + d.y * t1 }]
   }
 
+  /** Prépare d'avance le contour des traits de ces formes, dans le cache des
+   *  tracés, par morceaux de 8 ms au plus : l'image copiée d'une page très
+   *  chargée (1 250 traits) ne gèle plus l'écran une demi-seconde au moment
+   *  de peindre (lot3/verif/sorties/gel-image.mjs) */
+  async preparerTraits(formes: Iterable<Forme>): Promise<void> {
+    let t0 = performance.now()
+    for (const f of formes) {
+      if (f.type !== 'trait') continue
+      this.cheminDe(f)
+      if (performance.now() - t0 > 8) { await new Promise(r => setTimeout(r, 0)); t0 = performance.now() }
+    }
+  }
+
   private dessinerTrait(c: CanvasRenderingContext2D, t: Trait, dec: { dx: number; dy: number } | null) {
     if (this.esquisse) { this.esquisserTrait(c, t); return }
+    const chemin = this.cheminDe(t)
+    c.save()
+    c.translate(t.x + (dec?.dx ?? 0), t.y + (dec?.dy ?? 0))
+    c.globalAlpha = t.opacite
+    c.fillStyle = this.encre(t.couleur)
+    c.fill(chemin)
+    c.restore()
+  }
+
+  /** Le contour d'un trait, pris dans le cache des tracés (ou calculé) */
+  private cheminDe(t: Trait): Path2D {
     // Le dernier point compte aussi : un trait qui se dessine garde parfois
     // le même nombre de points d'une image à l'autre, mais pas le même bout.
     // Et le deuxième point et celui du milieu (lot 5) : un trait FERMÉ (son
@@ -686,12 +710,7 @@ export class Rendu {
       entree = { cle: { n, taille: t.taille, pression: t.pression, fx: p[n - 3], fy: p[n - 2], dx: p[3], dy: p[4], mx: p[m], my: p[m + 1] }, chemin: cheminDuTrait(t, true) }
       this.chemins.set(t.id, entree)
     }
-    c.save()
-    c.translate(t.x + (dec?.dx ?? 0), t.y + (dec?.dy ?? 0))
-    c.globalAlpha = t.opacite
-    c.fillStyle = this.encre(t.couleur)
-    c.fill(entree.chemin)
-    c.restore()
+    return entree.chemin
   }
 
   /** Un trait en esquisse : la ligne brisée de ses points, à peu près de

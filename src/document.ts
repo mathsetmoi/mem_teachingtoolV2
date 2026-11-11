@@ -253,8 +253,10 @@ export class Tableau {
   /** L'heure de chaque étape du film qui n'en reçoit pas d'autre (celle d'un
    *  trait qui a attendu, voir poserTrace) : maintenant. Seule la reprise
    *  d'un ancien tableau la change, le temps de rejouer ses gestes à leur
-   *  heure (voir classeurs/ancien-tableau.ts). */
-  horloge: () => number = Date.now
+   *  heure (voir classeurs/ancien-tableau.ts). Elle relit Date.now à chaque
+   *  fois (et non la fonction prise à la création du tableau) : un essai qui
+   *  avance l'heure fait avancer le film avec elle. */
+  horloge: () => number = () => Date.now()
   readonly moi = uid()
   /** Une pile d'annulation par page (voir annulationDe) : en mémoire
    *  seulement, jamais dans le document ni dans un fichier */

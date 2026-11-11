@@ -85,6 +85,16 @@ button, select, input { font: inherit; color: inherit; }
 .filet { width: 70%; height: 0; border: 0; border-top: 1px solid var(--filet); margin: 6px 0; }
 /* Le petit filet vertical de la barre du haut, entre Rétablir et ‹ (gains rapides, lot 16) */
 .filet-vertical { flex: none; width: 1px; height: 24px; border: 0; margin: 0 4px; background: var(--filet); }
+/* Entre 641 et 1100 px de large (un vidéoprojecteur de 1024 × 768), la
+   barre du haut tient sur une rangée : ses boutons passent à 38 px, serrés
+   (depuis Annuler et Rétablir en haut, lot 16, ses vingt boutons de 44 px
+   n'y tenaient plus). Ni au téléphone (44 px au doigt), ni au poste de la
+   classe ou sur l'iPad en paysage (plus de 1100 px) : rien n'y change. */
+@media (min-width: 641px) and (max-width: 1100px) and (min-height: 501px), (min-width: 641px) and (max-width: 1100px) and (pointer: fine) {
+  .barre-haut { gap: 0; }
+  .barre-haut > .bouton { width: 38px; }
+  .barre-haut > .filet-vertical { margin: 0 2px; }
+}
 
 .bouton {
   position: relative; isolation: isolate;
@@ -992,7 +1002,7 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .revue-texte svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .revue-texte[aria-expanded='true'] { background: #fff6c2; }
 .revue-allures { display: inline-flex; flex: none; border: 1px solid var(--filet); border-radius: 12px; overflow: hidden; }
-.revue-allures button { height: 48px; padding: 0 8px; border: 0; border-right: 1px solid var(--filet); background: var(--papier); font-size: 14px; cursor: pointer; white-space: nowrap; }
+.revue-allures button { height: 48px; min-width: 48px; padding: 0 8px; border: 0; border-right: 1px solid var(--filet); background: var(--papier); font-size: 14px; cursor: pointer; white-space: nowrap; }
 .revue-allures button:last-child { border-right: 0; }
 .revue-allures button:hover { background: #e9eef5; }
 .revue-allures button[aria-pressed='true'] { background: var(--surligneur); font-weight: 700; }
@@ -2114,6 +2124,9 @@ body.en-bibliotheque .toast { z-index: 30; }
      d'Ariane et les étiquettes de la bibliothèque, les couleurs d'un dossier */
   .principal, .secondaire, .raccourci, .biblio-tri, .fil-bouton, .filtre-etiquette { min-height: 44px; }
   .dialogue label.case { min-height: 44px; }
+  /* Le lien « Rédaction automatique… » de Publier (ajouté après la
+     vérification du lot 5) se touche lui aussi */
+  .dialogue-publier .lien.p-redaction { min-height: 44px; }
   .pastille-couleur { width: 44px; height: 44px; }
   .panneau-forme { width: calc(100vw - 16px); overflow-y: auto; overscroll-behavior: contain; }
   /* La consigne du programme de construction, posée en bas sur un écran
