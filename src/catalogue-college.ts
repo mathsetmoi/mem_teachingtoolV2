@@ -23,7 +23,7 @@ import { NIVEAUX, themesDe } from './automatismes'
 import type { P } from './construction'
 import type { Figure, Formule, ImageForme } from './types'
 import { uid } from './types'
-import { rasteriser } from './flash'
+import { rasteriser, reponseEnLatex, texteEnLatex } from './flash'
 import type { Domaine, NiveauCollege } from './programme-cycle4'
 import { NIVEAUX_COLLEGE, PROGRAMME_CYCLE4 } from './programme-cycle4'
 
@@ -50,12 +50,8 @@ export interface OutilsProgramme {
   ouvrirFlash: (cocher: string[]) => void
 }
 
-/** Un texte avec des $…$ en LaTeX : le texte dans \text{}, les maths telles quelles */
-export function texteEnLatex(t: string): string {
-  return t.split('$').map((m, i) => i % 2 ? m : m ? `\\text{${m.replace(/[\\{}%&#_^~$]/g, c => c === '\\' ? '\\textbackslash{}' : c === '~' ? '\\textasciitilde{}' : c === '^' ? '\\textasciicircum{}' : '\\' + c)}}` : '').join('')
-}
-/** Une réponse d'exercice en LaTeX : un texte (§…), ou déjà du LaTeX */
-const reponseEnLatex = (r: string) => r.startsWith('§') ? texteEnLatex(r.slice(1)) : `{${r}}`
+// Le LaTeX d'un texte et d'une réponse : les mêmes que le flash (flash.ts)
+export { texteEnLatex }
 
 /** Une compétence : le niveau, le thème, le domaine, et « a3 » (automatisme), « o3 » (objectif) ou « p3 » (prolongement) */
 interface Cle { niveau: NiveauCollege; t: number; d: number; sorte: 'a' | 'o' | 'p'; k: number }

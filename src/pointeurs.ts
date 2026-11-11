@@ -46,7 +46,7 @@ export const SEUIL_GLISSER: Record<TypePointeur, number> = { mouse: 4, pen: 6, t
 /** À quelle distance du tracé d'un objet (en pixels d'écran) on le prend
  *  encore. Le doigt vise moins juste que le stylet, le stylet que la souris :
  *  20 px au doigt font une cible de 40 px, la taille d'un bouton qu'on touche
- *  sans regarder. C'est plus large que tldraw, qui ne prend qu'à 3 ou 4 px :
+ *  sans regarder. C'est plus large que l'usage courant (3 ou 4 px) :
  *  un choix propre à MEM, pour le doigt sur une tablette ou un TNI. Mais on
  *  écrit petit et serré : c'est pourquoi, entre deux objets à portée, le
  *  tracé le plus proche l'emporte (voir cibleSous, dans app.ts), et qu'un
@@ -55,8 +55,8 @@ export const TOLERANCE_PRISE: Record<TypePointeur, number> = { mouse: 6, pen: 10
 
 /** Les poignées du cadre de taille et la pastille ↻ (lot 5 ; voir cadre.ts),
  *  en pixels d'écran, selon le dernier pointeur vu (le survol compte) :
- *  - prise : à quelle distance de son centre une poignée se prend (tldraw a
- *    12 et 20 au pointeur grossier ; les 8 px que proposait l'étude étaient
+ *  - prise : à quelle distance de son centre une poignée se prend (l'usage
+ *    courant est 12 et 20 au pointeur grossier ; les 8 px que proposait l'étude étaient
  *    trop petits au stylet et introuvables au doigt) ;
  *  - dessin : le côté du carré blanc qu'on dessine ;
  *  - pastille : le rayon de la pastille ↻, le même dessin que celle des
@@ -153,7 +153,7 @@ export function procheDuPremier(premier: { x: number; y: number }, x: number, y:
 /** Un appui tenu ce temps-là (ms) sans glisser (voir SEUIL_GLISSER) ouvre le
  *  menu complet de ce qui est dessous, ou le menu de la page dans le vide :
  *  le clic droit de qui n'a ni souris ni bouton (le doigt, l'Apple Pencil).
- *  500 ms, comme Excalidraw et tldraw : assez pour qu'un toucher qui hésite
+ *  500 ms, la durée habituelle : assez pour qu'un toucher qui hésite
  *  ne l'ouvre pas, assez peu pour qu'on n'attende pas. Seulement à l'outil
  *  Sélection et au doigt qui « déplace » (jamais pendant qu'on écrit : un
  *  point qu'on tient, une lettre qu'on commence) ; le stylet, seulement sur
@@ -162,7 +162,7 @@ export function procheDuPremier(premier: { x: number; y: number }, x: number, y:
 export const APPUI_LONG = 500
 
 /** Un toucher bref à deux doigts annule, à trois rétablit (sur la page qu'on
- *  regarde) : comme Procreate, FigJam, Notability, Freeform. Pour en être
+ *  regarde), le geste habituel des tablettes. Pour en être
  *  un, tous les doigts se posent à moins de `arrivee` ms du premier, chacun
  *  se lève moins de `duree` ms après s'être posé, le tout dure moins de
  *  `total` ms (ce que les deux premières règles assurent déjà), et aucun ne

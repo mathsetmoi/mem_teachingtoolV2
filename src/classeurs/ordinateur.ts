@@ -45,6 +45,11 @@ export interface PoigneeDossier {
   resolve?(h: unknown): Promise<string[] | null>
 }
 
+/** Le même dossier ? (isSameEntry ; sans lui, on ne sait pas : non) */
+export async function memeDossier(a: PoigneeDossier, b: unknown): Promise<boolean> {
+  try { return typeof a.isSameEntry === 'function' && !!b && await a.isSameEntry(b) } catch { return false }
+}
+
 /** Ce navigateur sait choisir un dossier et y écrire (Chrome, Edge) */
 export const choisitUnDossier = () => typeof (window as unknown as { showDirectoryPicker?: unknown }).showDirectoryPicker === 'function'
 

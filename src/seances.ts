@@ -148,12 +148,6 @@ export function ordreApres(ids: readonly string[], id: string, o: { pas?: -1 | 1
   return r
 }
 
-/** La séance d'une page selon ce rangement (null : aucune séance) */
-export function seanceDeLaPage(rangees: readonly SeanceDuClasseur[], page: string): SeanceDuClasseur | null {
-  for (const s of rangees) if (s.pages.includes(page)) return s
-  return null
-}
-
 /** Un nom de séance mis au propre (comme celui d'une page : les blancs
  *  réunis, 60 caractères au plus) ; null : pas de nom */
 export function nomDeSeance(nom: string | null | undefined): string | null {

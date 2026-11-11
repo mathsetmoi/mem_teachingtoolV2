@@ -220,7 +220,7 @@ const DANS_ZONE_LIBRE = () => {
   await page.screenshot({ path: D + '/10-menu-zoom.png' })
   await page.getByRole('menuitemradio', { name: 'Zoome', exact: true }).click()
   const choix = await page.evaluate(() => ({ cle: localStorage.getItem('mem-molette'), ferme: document.querySelector('.menu-flottant').hidden, exp: document.querySelector('.zoom-texte').getAttribute('aria-expanded'), toast: document.querySelector('.toast').textContent }))
-  verifier('« Zoome » : mémorisé (mem-molette), menu fermé, message', choix.cle === 'zoome' && choix.ferme && choix.exp === 'false' && /La molette zoome \(comme dans GeoGebra\) ; Maj \+ molette fait défiler\./.test(choix.toast), JSON.stringify(choix))
+  verifier('« Zoome » : mémorisé (mem-molette), menu fermé, message', choix.cle === 'zoome' && choix.ferme && choix.exp === 'false' && /La molette zoome ; Maj \+ molette fait défiler\./.test(choix.toast), JSON.stringify(choix))
   c0 = await page.evaluate(CAM)
   await page.mouse.wheel(0, 100); await page.waitForTimeout(80)
   c = await page.evaluate(CAM)

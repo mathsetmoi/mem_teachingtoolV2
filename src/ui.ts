@@ -1769,7 +1769,7 @@ export class UI implements Interface {
     const molette = (choix: Molette, texte: string, aide?: string) => entree(texte, () => {
       choisirMolette(choix)
       this.message(choix === 'defile' ? `La molette fait défiler la page ; ${CTRL} + molette zoome.`
-        : 'La molette zoome (comme dans GeoGebra) ; Maj + molette fait défiler.')
+        : 'La molette zoome ; Maj + molette fait défiler.')
     }, { coche: reglages.molette === choix, aide })
     molette('defile', 'Fait défiler', `${CTRL} + molette : zoomer`)
     molette('zoome', 'Zoome')

@@ -1,0 +1,31 @@
+# Vérifie chaque demande de fusion avant qu'elle n'arrive sur « main » :
+# les types, les tests, et les deux constructions (la version hors ligne en
+# un seul fichier, et la version en ligne). La mise en ligne, elle, reste
+# dans pages.yml, à chaque envoi sur « main ».
+name: Vérifier
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verifier-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit -p .
+      - run: npm test
+      - run: npm run build
+      - run: npm run build:pages

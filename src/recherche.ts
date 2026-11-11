@@ -174,6 +174,16 @@ export function lireContenu(doc: Y.Doc, seances?: readonly SeanceDuClasseur[]): 
   return r
 }
 
+/** « 20 oct » : le jour et le mois, sans l'heure */
+export function jourEtMois(t: number): string {
+  return new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).replace('.', '')
+}
+/** « Mardi 20 octobre 2026 » : un titre de séance trouvée */
+export function dateLongue(t: number): string {
+  const s = new Date(t).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 /** La date d'une séance, en mots : « mardi 20 octobre 2026 » (et aussi
  *  « 20/10 », pour la retrouver tapée en chiffres) */
 export function dateEnMots(t: number): string {

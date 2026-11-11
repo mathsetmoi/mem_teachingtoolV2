@@ -171,12 +171,6 @@ export function dureeDite(ms: number): string {
   return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ' ' + String(m % 60).padStart(2, '0') : ''}`
 }
 
-/** « 9:40 » : la minute d'une page dans la séance */
-export function minuteDite(ms: number): string {
-  const s = Math.max(0, Math.round(ms / 1000))
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-}
-
 const majuscule = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
 const minusculeSaufSigle = (t: string) => /^[A-ZÀ-Ý]{2}/.test(t) ? t : t.charAt(0).toLowerCase() + t.slice(1)
 

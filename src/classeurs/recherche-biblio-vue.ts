@@ -14,7 +14,7 @@ import type { FicheClasseur, FicheDossier } from './demarrage'
 import { cheminLisible, etiquetteHeritee } from './arbre'
 import { contenuDeLaBase } from './recherche-bibliotheque'
 import type { ContenuClasseur } from '../recherche'
-import { dateEnMots, morceaux, motsDeFormule, score } from '../recherche'
+import { dateEnMots, dateLongue, jourEtMois, morceaux, motsDeFormule, score } from '../recherche'
 import { icone } from '../icones'
 import { TOUCHE_RECHERCHE } from '../recherche-vue'
 
@@ -42,13 +42,6 @@ function surligne(texte: string, q: string): DocumentFragment {
   const f = document.createDocumentFragment()
   for (const m of morceaux(texte, q)) f.appendChild(m.trouve ? el('mark', '', m.t) : document.createTextNode(m.t))
   return f
-}
-function dateLongue(t: number): string {
-  const s = new Date(t).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  return s.charAt(0).toUpperCase() + s.slice(1)
-}
-function dateCourte(t: number): string {
-  return new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).replace('.', '')
 }
 
 export class RechercheBiblio {
@@ -132,7 +125,7 @@ export class RechercheBiblio {
         const t = el('span', 'rb-titre'); t.appendChild(surligne(f.nom, q))
         const n = el('small', 'rb-note')
         if (page) { n.append('Une page s\'appelle « '); n.appendChild(surligne(page.nom!, q)); n.append(' »') }
-        else n.append(`${chemin} · modifié le ${dateCourte(f.modifie)}`)
+        else n.append(`${chemin} · modifié le ${jourEtMois(f.modifie)}`)
         b.append(t, n)
         if (classe) b.appendChild(el('span', 'rb-etiquette', classe))
         return b
@@ -164,7 +157,7 @@ export class RechercheBiblio {
           else try { m.innerHTML = katex.renderToString(fo.latex, { throwOnError: false, output: 'html' }) } catch { m.textContent = fo.latex }
           b.prepend(m)
           b.append(el('span', 'rb-titre', `${f.nom} · page ${p?.numero ?? '?'}`),
-            el('small', 'rb-note', p?.seance ? 'Séance du ' + dateCourte(p.seance.debut) : ''))
+            el('small', 'rb-note', p?.seance ? 'Séance du ' + jourEtMois(p.seance.debut) : ''))
           if (classe) b.appendChild(el('span', 'rb-etiquette', classe))
           return b
         } })

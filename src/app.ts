@@ -2235,7 +2235,7 @@ export class App {
         // si l'appui touche quelque chose (l'intérieur d'une figure fermée sans
         // fond, un tracé un peu plus loin), glisser entoure : on prend ce qu'on
         // a écrit dans un grand cadre, ou un mot dont on part à 15 px, comme
-        // chez tldraw et Excalidraw ; levé sans glisser, l'appui prend l'objet.
+        // on s'y attend ; levé sans glisser, l'appui prend l'objet.
         // Un membre d'un groupe prend tout son groupe (lot 5, voir prendre) ;
         // Maj + clic l'ajoute ou le retire en entier. Un clic simple sur un
         // membre du groupe qui est exactement la sélection ne prendra que lui
@@ -2672,7 +2672,7 @@ export class App {
    *  double-clic (il venait de ne prendre que ce membre) ; sinon, avec
    *  menu (l'outil Sélection, la Main, le Segment, le Stylo), le menu
    *  complet de l'objet. Pour prendre un objet dans un groupe, c'est un
-   *  second clic SIMPLE (voir bas), comme tldraw. */
+   *  second clic SIMPLE (voir bas). */
   private ouvrirAuDouble(f: Forme, menu: boolean) {
     clearTimeout(this.minuterieMembre)
     const m = this.membres(f)
@@ -3271,7 +3271,7 @@ export class App {
    *  longueur d'un tracé, la surface d'une image ou d'une formule, les deux
    *  points d'une droite : voir partDedans). Sans ajout, il remplace la
    *  sélection ; avec (Maj, Ctrl, le mode « Ajouter »), il s'y ajoute sans
-   *  rien en retirer, comme Maj + cadre chez tldraw. Le lasso est d'abord
+   *  rien en retirer. Le lasso est d'abord
    *  simplifié (à 2 px d'écran près) et rangé par bandes (dansLasso), et les
    *  formes dont la boîte ne touche pas celle de la zone sont écartées sans
    *  calcul : le lâcher reste immédiat sur une page de milliers de traits. */
@@ -5592,7 +5592,7 @@ export class App {
       return
     }
     // Ctrl + G : grouper ; Ctrl + Maj + G : dégrouper (⌘ sur Mac ; lot 5,
-    // comme tldraw, Excalidraw, Figma, PowerPoint). La lettre par e.key, en
+    // les raccourcis habituels). La lettre par e.key, en
     // AZERTY comme en QWERTY ; toujours empêché, même quand il n'y a rien à
     // grouper (sinon la recherche du navigateur s'ouvre, ou « suivant »
     // dans la page) ; une fois par appui ; ni dans une fenêtre ouverte (les
@@ -5636,7 +5636,7 @@ export class App {
     // L'ordre au clavier, comme Google Slides et les dessins de Docs :
     // Ctrl + ↑ / ↓ avance, recule ce qui est sélectionné ; avec Maj, premier
     // plan, arrière-plan (⌘ sur Mac, où Ctrl + ↑ est Mission Control et
-    // n'arrive pas). Pas [ et ] (tldraw) : en AZERTY ils demandent AltGr, que
+    // n'arrive pas). Pas [ et ] : en AZERTY ils demandent AltGr, que
     // Windows envoie comme Ctrl + Alt. Jamais avec Alt ; une fois par appui
     // (une touche tenue ne fait rien de plus). Le menu complet ouvert ne les
     // prend pas (voir Interface.clavierMenu) : elles marchent menu ouvert.
@@ -5690,7 +5690,7 @@ export class App {
       if (!e.repeat) this.ui.ouvrirTrieuse(true)
       return
     }
-    // Maj + L (lot 5, comme tldraw) : verrouiller ce qui est sélectionné, ou
+    // Maj + L (lot 5) : verrouiller ce qui est sélectionné, ou
     // le déverrouiller (une sélection verrouillée : son menu est ouvert). Une
     // fois par appui ; sans rien de sélectionné, la lettre reste le Segment,
     // comme avant (on ne retire rien à qui la tapait). En plein geste, elle ne

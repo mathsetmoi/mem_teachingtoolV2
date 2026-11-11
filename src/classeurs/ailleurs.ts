@@ -27,7 +27,7 @@ import type { ActionMessage } from '../app'
 import type { Emplacement } from './emplacements'
 import { cheminPcSaisi, classeursDeLaClasse, nomDeFichierLibre, emplacementDe, emplacements, garderEmplacement, reglagePoignee, retirerEmplacement, sousDossiers } from './emplacements'
 import type { PoigneeDossier } from './ordinateur'
-import { accordDuDossier, choisirUnDossier, choisitUnDossier, dansLeDossier, lireLeDossier, nomDeLAncien } from './ordinateur'
+import { accordDuDossier, memeDossier, choisirUnDossier, choisitUnDossier, dansLeDossier, lireLeDossier, nomDeLAncien } from './ordinateur'
 import type { BilanRelier, ChoixConflit, ConflitFichier } from './ordinateur'
 import type { Etablissement } from './etablissements'
 import { cheminLisible, etablissements, garderEtablissement, nomDEtablissement, nouvelId, reglagePoigneeEtablissement, retirerEtablissement, texteDuRangement } from './etablissements'
@@ -1383,9 +1383,4 @@ export class Ailleurs {
       : `« ${classe.nom} » n'est plus relié à « ${e.nom} » : les fichiers y restent. Chaque classeur garde son enregistrement automatique (menu ⋯ du classeur pour l'arrêter).`)
     void this.majEmplacements()
   }
-}
-
-/** Le même dossier ? (isSameEntry ; sans lui, on ne sait pas : non) */
-async function memeDossier(a: PoigneeDossier, b: unknown): Promise<boolean> {
-  try { return typeof a.isSameEntry === 'function' && !!b && await a.isSameEntry(b) } catch { return false }
 }

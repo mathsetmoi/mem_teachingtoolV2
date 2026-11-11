@@ -3,13 +3,12 @@
 // Ce qui est sur une page se peint en quatre calques, toujours dans le
 // même ordre : les images fixées en fond, les images, les tracés et les
 // figures, les formules. Dans un calque, le rang z décide (le plus grand
-// dessus). Pourquoi des calques plutôt qu'un seul ordre pour tout, comme
-// tldraw ou Excalidraw :
+// dessus). Pourquoi des calques plutôt qu'un seul ordre pour tout :
 // - c'est déjà ce que peignait MEM : une image (et son papier) ne recouvre
 //   jamais un trait de construction, et les formules KaTeX restent en HTML
 //   au-dessus du canevas, pour rester nettes à tout zoom (un ordre total
 //   obligerait à les peindre dans le canevas) ;
-// - c'est le modèle des carnets (GoodNotes, Notability) : l'encre est
+// - c'est le modèle des carnets numériques : l'encre est
 //   toujours au-dessus des images, et un énoncé importé ne cache jamais ce
 //   qu'on écrit dessus.
 // La prise suit cet ordre (on prend ce qu'on voit : voir cibleParmi dans
@@ -110,7 +109,7 @@ export function aidesOrdre(pris: readonly Forme[]): { premier?: string; arriere?
  *   repassé par la version d'avant), comme une autre forme.
  * - avancer : la plus basse des A plus haute que la plus haute des S et dont
  *   la boîte chevauche celle des S (B) ; aucune : rien (« Avancer » qui ne
- *   change rien de visible ne fait rien : tldraw fait de même). Sinon les S
+ *   change rien de visible ne fait rien, comme on s'y attend). Sinon les S
  *   prennent des z entre celui de B et le z suivant au-dessus de B dans la
  *   page (hors des S), par parts égales, ou B + 1, + 2… s'il n'y a rien
  *   au-dessus.

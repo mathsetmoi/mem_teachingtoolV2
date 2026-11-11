@@ -130,7 +130,7 @@ export function toucheTenueEnGeste(e: Pick<KeyboardEvent, 'key' | 'shiftKey' | '
   return selection && e.key.startsWith('Arrow')
 }
 
-/** Maj + L (lot 5, comme tldraw) : verrouiller ce qui est sélectionné, ou
+/** Maj + L (lot 5) : verrouiller ce qui est sélectionné, ou
  *  le déverrouiller (son menu ouvert). La lettre par e.key, en AZERTY comme
  *  en QWERTY ; ni avec Ctrl, ⌘ ou Alt. L seul reste le Segment (et Maj + L
  *  sans rien de sélectionné aussi, comme avant). */

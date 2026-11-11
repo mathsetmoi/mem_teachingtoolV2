@@ -21,7 +21,7 @@
 // =============================================================
 import katex from 'katex'
 import type { ContenuClasseur } from './recherche'
-import { dateEnMots, morceaux, motsDeFormule, score } from './recherche'
+import { dateEnMots, dateLongue, jourEtMois, morceaux, motsDeFormule, score } from './recherche'
 import { fermerSurLeFond } from './dialogue'
 import { icone } from './icones'
 
@@ -86,13 +86,6 @@ const GROUPES: { id: Resultat['groupe']; titre: string; max: number }[] = [
   { id: 'classeurs', titre: 'Classeurs, pages et séances', max: 8 },
 ]
 
-function dateCourte(t: number): string {
-  return new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).replace('.', '')
-}
-function dateLongue(t: number): string {
-  const s = new Date(t).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  return s.charAt(0).toUpperCase() + s.slice(1)
-}
 
 /** Ce que trouve une requête : les actions, puis, pour chaque classeur, son
  *  nom, ses pages, ses séances et ses formules. Trié par score dans chaque
@@ -113,7 +106,7 @@ export function chercher(requete: string, actions: readonly Action[], classeurs:
     const sChemin = sc === null ? score(requete, `${c.nom} ${c.chemin}`) : null
     if (sc !== null || sChemin !== null) {
       r.push({ groupe: 'classeurs', score: (sc ?? (sChemin! - 0.5)) + bonus, titre: c.nom, genre: 'Classeur', icone: 'classeurs',
-        note: `${c.classe ? c.classe + ' · ' : ''}modifié le ${dateCourte(c.modifie)}`, faire: () => aller({ classeur: c.id }) })
+        note: `${c.classe ? c.classe + ' · ' : ''}modifié le ${jourEtMois(c.modifie)}`, faire: () => aller({ classeur: c.id }) })
     }
     const k = c.contenu
     if (!k) return
@@ -122,7 +115,7 @@ export function chercher(requete: string, actions: readonly Action[], classeurs:
       const s = score(requete, p.nom)
       if (s === null) continue
       r.push({ groupe: 'classeurs', score: s - 0.2 + bonus, titre: p.nom, genre: 'Page', icone: 'feuille',
-        note: `${c.nom} · page ${p.numero}${p.seance ? ' · séance du ' + dateCourte(p.seance.debut) : ''}`, faire: () => aller({ classeur: c.id, page: p.id }) })
+        note: `${c.nom} · page ${p.numero}${p.seance ? ' · séance du ' + jourEtMois(p.seance.debut) : ''}`, faire: () => aller({ classeur: c.id, page: p.id }) })
     }
     for (const s of k.seances) {
       const v = score(requete, `${s.nom ?? ''} ${dateEnMots(s.debut)} seance`)
@@ -136,7 +129,7 @@ export function chercher(requete: string, actions: readonly Action[], classeurs:
       if (s === null) continue
       const p = pages.get(f.page)
       r.push({ groupe: 'formules', score: s + bonus, titre: `${c.nom} · page ${p?.numero ?? '?'}`, latex: f.latex, texte: f.texte,
-        note: [p?.seance ? 'Séance du ' + dateCourte(p.seance.debut) : '', c.classe ?? ''].filter(Boolean).join(' · '),
+        note: [p?.seance ? 'Séance du ' + jourEtMois(p.seance.debut) : '', c.classe ?? ''].filter(Boolean).join(' · '),
         faire: () => aller({ classeur: c.id, page: f.page, forme: f.id }) })
     }
   })
