@@ -132,11 +132,11 @@ console.log('=== A. la place du bouton du classeur ===')
 // 1180 × 820 il passe à l'icône et au point, à 1024 × 768 sans nom aussi.
 // Les places d'avant : 450, 364, 809, 264, 108 / 10, 9, 44.)
 // (Adapté aux gains rapides, lot 16 : Annuler, Rétablir et leur filet dans
-// la barre du haut, 98 px ; et, entre 641 et 1100 px de large, les boutons
-// de la barre du haut à 38 px, serrés, pour qu'elle tienne sur une rangée à
-// 1024 px. À 1280 × 720, le bouton du classeur passe à l'icône et au point ;
-// ailleurs il garde sa forme. Les places d'avant : 404, 318, 755, 218, 62 /
-// −5, 1, −2 ; la barre du haut à deux rangées, 104 px.)
+// la barre du haut, 98 px ; et, entre 900 et 1100 px de large, « Mode
+// nuit », « Aimanter » et « Le stylo redresse » dans le menu ⋯, pour qu'elle
+// tienne sur une rangée à 1024 px. À 1280 × 720, le bouton du classeur passe
+// à l'icône et au point ; ailleurs il garde sa forme. Les places d'avant :
+// 404, 318, 755, 218, 62 / −5, 1, −2.)
 const ECRANS = [
   { l: 1366, h: 768, sans: ['large', 277] },
   { l: 1280, h: 720, sans: ['etroit', 191] },
@@ -150,17 +150,19 @@ const ECRANS = [
   // « Seulement dans ce navigateur » y était coupé : l'icône et le point —
   // depuis le lot 5, K8, il y tient : 353 px)
   { l: 1180, h: 820, t: true, sans: ['etroit', 71] },
-  { l: 1024, h: 768, sans: ['etroit', 93], avec: ['cache', -5] },
-  { l: 1100, h: 768, avec: ['cache', -6] },
-  { l: 960, h: 600, sans: ['cache', 29] },
-  { l: 768, h: 1024, t: true, sans: ['dans-la-barre', -6, 102] },
-  { l: 820, h: 1180, t: true, sans: ['dans-la-barre', -6, 102] },
+  { l: 1024, h: 768, sans: ['etroit', 73], avec: ['cache', -5] },
+  { l: 1100, h: 768, avec: ['cache', 12] },
+  { l: 960, h: 600, sans: ['cache', 9] },
+  { l: 768, h: 1024, t: true, sans: ['dans-la-barre', -6, 104] },
+  { l: 820, h: 1180, t: true, sans: ['dans-la-barre', -6, 104] },
   // (Adapté au lot 5, K10, la mise en page du téléphone, voulue : la barre
   // du haut y tient sur une rangée de 58 px, et le bouton du classeur en est
   // le premier bouton, quelle que soit la place à gauche ; avant : 844 × 390
   // caché, place 17 ; 390 × 844 dans la barre, trois rangées, 150 px)
   { l: 844, h: 390, t: true, sans: ['dans-la-barre', null, 58] },
-  { l: 641, h: 900, sans: ['dans-la-barre', -6, 102] },
+  // (Adapté au lot 16 : à 641 × 900, la barre du haut est déjà pleine sur
+  // ses deux rangées : le bouton du classeur se cache, le point sur ⋯)
+  { l: 641, h: 900, sans: ['cache', -6, 104] },
   { l: 390, h: 844, t: true, sans: ['dans-la-barre', null, 58] },
 ]
 /** La géométrie : la place mesurée comme le code (le bouton sorti de la

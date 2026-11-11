@@ -831,10 +831,10 @@ export class UI implements Interface {
     })
     // Le mode nuit de la page (voir nuit.ts) : allumé tant que la page qu'on
     // regarde est de nuit ; la touche N fait de même
-    this.boutonNuit = bouton('lune', 'Mode nuit de cette page : fond noir, écriture claire (N)', () => app.basculerNuit(), 'outil seulement-large')
+    this.boutonNuit = bouton('lune', 'Mode nuit de cette page : fond noir, écriture claire (N)', () => app.basculerNuit(), 'outil seulement-large replie-etroit')
     this.boutonNuit.setAttribute('aria-pressed', 'false')
-    this.boutonAimant = bouton('aimant', 'Aimanter au quadrillage', () => this.basculerAimant(), 'outil seulement-large')
-    this.boutonReconnaissance = bouton('reconnaissance', 'Le stylo redresse les figures (carré, cercle…)', () => this.basculerReconnaissance(), 'outil seulement-large')
+    this.boutonAimant = bouton('aimant', 'Aimanter au quadrillage', () => this.basculerAimant(), 'outil seulement-large replie-etroit')
+    this.boutonReconnaissance = bouton('reconnaissance', 'Le stylo redresse les figures (carré, cercle…)', () => this.basculerReconnaissance(), 'outil seulement-large replie-etroit')
     this.boutonInstruments = bouton('instruments', 'Instruments : règle, équerre, rapporteur, compas', () => {
       this.choixInstruments.hidden = !this.choixInstruments.hidden; this.maj()
     }, 'outil seulement-large')
@@ -1789,6 +1789,12 @@ export class UI implements Interface {
     if (telephone) {
       this.sectionsDuTelephone(m)
       filetMenu(m)
+    } else if (!this.boutonNuit.getClientRects().length) {
+      // Entre 900 et 1100 px de large (un vidéoprojecteur de 1024 × 768), la
+      // barre du haut n'a pas la place de ces trois boutons (.replie-etroit) :
+      // ils sont ici, en cases, en tête du menu
+      this.casesDeLaPage(m)
+      filetMenu(m)
     }
     const bloc = this.blocEtat = document.createElement('div')
     bloc.className = 'bloc-classeur'
@@ -1901,6 +1907,17 @@ export class UI implements Interface {
    *    « Automatismes », « Revoir la construction », « Publier le replay » ;
    *  - « Vue » : « 100 % », « Tout voir » (la barre du zoom est cachée : le
    *    pincement zoome). */
+  /** Les cases de la page : « Mode nuit », « Aimanter au quadrillage », « Le
+   *  stylo redresse les figures » (au téléphone, et entre 900 et 1100 px de
+   *  large, où leurs boutons n'ont pas la place) */
+  private casesDeLaPage(m: HTMLElement) {
+    const app = this.app
+    this.entreeMenu(m, 'Mode nuit', () => app.basculerNuit(), { action: 'nuit', coche: app.nuit, caseACocher: true, aide: 'Fond noir, écriture claire' })
+    this.entreeMenu(m, 'Aimanter au quadrillage', () => this.basculerAimant(), { action: 'aimant', coche: app.aimant, caseACocher: true })
+    this.entreeMenu(m, 'Le stylo redresse les figures', () => this.basculerReconnaissance(), { action: 'reconnaissance', coche: app.reconnaissance, caseACocher: true,
+      aide: 'Carré, cercle, triangle…' })
+  }
+
   private sectionsDuTelephone(m: HTMLElement) {
     const app = this.app, plus = this.boutonFichier
     titreMenu(m, 'Page')
@@ -1908,10 +1925,7 @@ export class UI implements Interface {
     const seule = app.pages.length <= 1
     this.entreeMenu(m, seule ? 'Effacer la page' : 'Supprimer la page', () => app.supprimerPage(), { action: 'supprimer-page' })
     this.entreeMenu(m, 'Fond…', e => this.ouvrirFondsDepuisPlus(e.detail === 0), { action: 'fond', aide: nomDuFond(app.fond) })
-    this.entreeMenu(m, 'Mode nuit', () => app.basculerNuit(), { action: 'nuit', coche: app.nuit, caseACocher: true, aide: 'Fond noir, écriture claire' })
-    this.entreeMenu(m, 'Aimanter au quadrillage', () => this.basculerAimant(), { action: 'aimant', coche: app.aimant, caseACocher: true })
-    this.entreeMenu(m, 'Le stylo redresse les figures', () => this.basculerReconnaissance(), { action: 'reconnaissance', coche: app.reconnaissance, caseACocher: true,
-      aide: 'Carré, cercle, triangle…' })
+    this.casesDeLaPage(m)
     filetMenu(m)
     titreMenu(m, 'Outils de cours')
     this.entreeMenu(m, 'Importer une image ou un PDF…', e => this.choisirImage(e), { action: 'importer' })

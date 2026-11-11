@@ -187,7 +187,12 @@ if (faire('nom')) {
   // (Adapté aux outils de classe : un bouton de plus, « Classe », 46 px ;
   // le compteur se resserre dès 1 016 px environ : le cas resserré passe à
   // 990 × 768.)
-  for (const [l, h, serre] of [[1024, 768, false], [990, 768, true], [1366, 768, false]]) {
+  // (Adapté au 11 novembre 2026 : depuis Annuler et Rétablir en haut (lot 16),
+  // la barre passait sur deux rangées sous 1 100 px ; elle y tient de
+  // nouveau sur une rangée, trois boutons dans le menu ⋯. À 1024 × 768 le nom
+  // se lit resserré ; à 990 × 768 il n'a plus la place et ne se montre pas,
+  // la barre garde sa rangée.)
+  for (const [l, h, serre] of [[1024, 768, true], [990, 768, 'cache'], [1366, 768, false]]) {
     const { ctx, page } = await ouvrir({ viewport: { width: l, height: h } }, `nom ${l}`)
     const h0 = (await compteur(page)).hauteur
     await page.evaluate(() => { const a = window.__app; a.nouvellePage(); a.nouvellePage(); a.tableau.renommerPage(a.pages[1], 'Exercice 12 p. 84'); a.allerPage(a.pages[0]) })
@@ -195,7 +200,8 @@ if (faire('nom')) {
     const p1 = await positions(page)
     await page.evaluate(() => window.__app.allerPage(window.__app.pages[1])); await pause(1500)
     const c = await compteur(page), p2 = await positions(page)
-    verifier(`${l} × ${h} : « 2 / 3 · Exercice 12 p. 84 » se lit dans le compteur${serre ? ' (plus petit)' : ''}, la barre garde une rangée`, c.visible && c.texte === '2 / 3 · Exercice 12 p. 84' && c.serre === serre && c.hauteur === h0, c)
+    if (serre === 'cache') verifier(`${l} × ${h} : le nom n'a pas la place, il ne se montre pas (il est dans le titre du compteur) ; la barre garde une rangée`, !c.visible && c.texte === '2 / 3 · Exercice 12 p. 84' && c.hauteur === h0, c)
+    else verifier(`${l} × ${h} : « 2 / 3 · Exercice 12 p. 84 » se lit dans le compteur${serre ? ' (plus petit)' : ''}, la barre garde une rangée`, c.visible && c.texte === '2 / 3 · Exercice 12 p. 84' && c.serre === serre && c.hauteur === h0, c)
     verifier(`${l} × ${h} : de la page 1 (sans nom) à la page 2 (nommée), aucun bouton de la barre ne bouge`, JSON.stringify(p1) === JSON.stringify(p2), { p1, p2 })
     await ctx.close()
   }

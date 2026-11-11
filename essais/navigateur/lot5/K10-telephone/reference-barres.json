@@ -576,21 +576,12 @@
   },
   ".barre-haut": {
    "b": [
-    112,
+    191,
     12,
-    900,
-    104
+    821,
+    58
    ],
    "enfants": [
-    {
-     "q": "Premier classeur",
-     "b": [
-      152,
-      19,
-      44,
-      44
-     ]
-    },
     {
      "q": "Annuler sur cette page (Ctrl+Z)",
      "b": [
@@ -673,7 +664,7 @@
      ]
     },
     {
-     "q": "Mode nuit de cette page : fond noir, écr",
+     "q": "Importer une image ou un PDF (ou coller ",
      "b": [
       593,
       19,
@@ -682,7 +673,7 @@
      ]
     },
     {
-     "q": "Aimanter au quadrillage",
+     "q": "Instruments : règle, équerre, rapporteur",
      "b": [
       639,
       19,
@@ -691,7 +682,7 @@
      ]
     },
     {
-     "q": "Le stylo redresse les figures (carré, ce",
+     "q": "Programme de construction, étape par éta",
      "b": [
       685,
       19,
@@ -700,7 +691,7 @@
      ]
     },
     {
-     "q": "Importer une image ou un PDF (ou coller ",
+     "q": "Catalogue : des éléments de cours tout p",
      "b": [
       731,
       19,
@@ -709,7 +700,7 @@
      ]
     },
     {
-     "q": "Instruments : règle, équerre, rapporteur",
+     "q": "Automatismes : un flash de questions sur",
      "b": [
       777,
       19,
@@ -718,36 +709,9 @@
      ]
     },
     {
-     "q": "Programme de construction, étape par éta",
-     "b": [
-      823,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Catalogue : des éléments de cours tout p",
-     "b": [
-      869,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Automatismes : un flash de questions sur",
-     "b": [
-      915,
-      19,
-      44,
-      44
-     ]
-    },
-    {
      "q": "Outils de classe : rideau, pointeur lase",
      "b": [
-      961,
+      823,
       19,
       44,
       44
@@ -757,7 +721,7 @@
      "q": "Revoir la construction : une page, une s",
      "b": [
       869,
-      65,
+      19,
       44,
       44
      ]
@@ -766,7 +730,7 @@
      "q": "Publier le replay pour les élèves",
      "b": [
       915,
-      65,
+      19,
       44,
       44
      ]
@@ -775,7 +739,7 @@
      "q": "Enregistrer, ouvrir ou exporter en PDF ;",
      "b": [
       961,
-      65,
+      19,
       44,
       44
      ]
@@ -828,7 +792,25 @@
     }
    ]
   },
-  ".barre-classeur": null
+  ".barre-classeur": {
+   "b": [
+    106,
+    12,
+    58,
+    58
+   ],
+   "enfants": [
+    {
+     "q": "Premier classeur",
+     "b": [
+      113,
+      19,
+      44,
+      44
+     ]
+    }
+   ]
+  }
  },
  "PC 1280 × 720 (souris)": {
   ".barre-outils": {

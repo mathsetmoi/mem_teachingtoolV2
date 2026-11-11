@@ -85,15 +85,15 @@ button, select, input { font: inherit; color: inherit; }
 .filet { width: 70%; height: 0; border: 0; border-top: 1px solid var(--filet); margin: 6px 0; }
 /* Le petit filet vertical de la barre du haut, entre Rétablir et ‹ (gains rapides, lot 16) */
 .filet-vertical { flex: none; width: 1px; height: 24px; border: 0; margin: 0 4px; background: var(--filet); }
-/* Entre 641 et 1100 px de large (un vidéoprojecteur de 1024 × 768), la
-   barre du haut tient sur une rangée : ses boutons passent à 38 px, serrés
-   (depuis Annuler et Rétablir en haut, lot 16, ses vingt boutons de 44 px
-   n'y tenaient plus). Ni au téléphone (44 px au doigt), ni au poste de la
-   classe ou sur l'iPad en paysage (plus de 1100 px) : rien n'y change. */
-@media (min-width: 641px) and (max-width: 1100px) and (min-height: 501px), (min-width: 641px) and (max-width: 1100px) and (pointer: fine) {
-  .barre-haut { gap: 0; }
-  .barre-haut > .bouton { width: 38px; }
-  .barre-haut > .filet-vertical { margin: 0 2px; }
+/* Entre 900 et 1100 px de large (un vidéoprojecteur de 1024 × 768), la
+   barre du haut tient sur une rangée : « Mode nuit », « Aimanter » et « Le
+   stylo redresse » passent dans le menu ⋯ (UI.casesDeLaPage) ; les autres
+   boutons gardent leurs 44 px. (Depuis Annuler et Rétablir en haut, lot 16,
+   ses vingt boutons n'y tenaient plus.) Plus étroit (l'iPad en portrait),
+   elle a de toute façon deux rangées : rien n'y change. Le téléphone cache
+   déjà tout .seulement-large. */
+@media (min-width: 900px) and (max-width: 1100px) {
+  .barre-haut > .replie-etroit { display: none; }
 }
 
 .bouton {
