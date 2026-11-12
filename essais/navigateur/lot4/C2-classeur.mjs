@@ -336,6 +336,9 @@ const abimee = await PE.evaluate(async () => { try { await window.__ecrivain.fab
 ok(abimee === 'abimee', `   … l'écrivain refuse la base trouée : « ${abimee} »`)
 await PE.evaluate(() => { window.__toasts = [] })
 const fE = await enregistrer(PE)
+// (Le message « Classeur enregistré » suit le téléchargement de peu ; sous la
+// charge de la batterie, on l'attend jusqu'à 5 s, comme plus bas)
+await PE.waitForFunction(() => (window.__toasts || []).some(t => /^Classeur enregistré : /.test(t)), null, { timeout: 5000 }).catch(() => {})
 const msgE = await toasts(PE)
 const luE = await PE.evaluate(async b64 => {
   const fichier = await import('/src/fichier.ts')
