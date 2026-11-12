@@ -284,7 +284,7 @@ async function cliquerAnnulerDuMessage(page) { await page.click('.toast.visible 
   }
   const tiroirA = await lireTiroir()
   const publierA = await lirePublier()
-  verifier('Avant : le tiroir et Publier se lisent (3 pages, une séance de 6 gestes)', tiroirA.length >= 2 && publierA.options.length === 1 && /· 6 gestes$/.test(tiroirA.find(x => x.h === 'Séances')?.lignes[0]) && publierA.film.etapes.length > 6, JSON.stringify({ tiroirA, o: publierA.options, n: publierA.film.etapes.length }))
+  verifier('Avant : le tiroir et Publier se lisent (3 pages, une séance de 6 gestes)', tiroirA.length >= 2 && publierA.options.length === 1 && /· 6 gestes$/.test(tiroirA.find(x => x.h === 'Séances')?.lignes[0]) && publierA.film.etapes.length >= 6, JSON.stringify({ tiroirA, o: publierA.options, n: publierA.film.etapes.length }))
 
   // Cinq minutes plus tard, on jette la page 2 ; une minute après, « Annuler »
   await page.evaluate(() => { window.__dec = 5 * 60_000 })
@@ -305,7 +305,10 @@ async function cliquerAnnulerDuMessage(page) { await page.click('.toast.visible 
   const publierC = await lirePublier()
   const f = publierC.film
   verifier('Un trait sur la page rendue : le film élève a un geste de plus, sur elle, qui ne pose que ce trait', f.etapes.length === publierA.film.etapes.length + 1 && f.etapes.at(-1).p === p2 && JSON.stringify(f.etapes.at(-1).o) === '["=b9"]', JSON.stringify(f.etapes.at(-1)))
-  verifier('… le reste du film élève est inchangé : aucun pas vide, aucune page redessinée', JSON.stringify(f.etapes.slice(0, -1)) === JSON.stringify(publierA.film.etapes) && f.etapes.every(x => x.o.length === 1), JSON.stringify(f.etapes.map(x => x.o)))
+  // (Adapté : la naissance d'une page, son fond « f », part avec son premier
+  // geste au lieu d'être un pas à elle, qui faisait un chapitre vide au début
+  // du replay ; voir naissances dans src/revoir/exporter.ts)
+  verifier('… le reste du film élève est inchangé : aucun pas vide, aucune page redessinée', JSON.stringify(f.etapes.slice(0, -1)) === JSON.stringify(publierA.film.etapes) && f.etapes.every(x => x.o.filter(o => o !== 'f').length === 1), JSON.stringify(f.etapes.map(x => x.o)))
   const gestes = s => Number((s.match(/· (\d+) geste/) || [])[1])
   verifier('… « · N gestes » de la séance : un de plus', gestes(publierC.options[0]) === gestes(publierA.options[0]) + 1, JSON.stringify(publierC.options))
   // « Voir comme un élève »

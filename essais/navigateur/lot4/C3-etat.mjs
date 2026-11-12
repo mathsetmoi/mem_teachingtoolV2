@@ -131,22 +131,28 @@ console.log('=== A. la place du bouton du classeur ===')
 // TNI). Le bouton du classeur garde sa forme au poste de la classe ; à
 // 1180 × 820 il passe à l'icône et au point, à 1024 × 768 sans nom aussi.
 // Les places d'avant : 450, 364, 809, 264, 108 / 10, 9, 44.)
+// (Adapté aux gains rapides, lot 16 : Annuler, Rétablir et leur filet dans
+// la barre du haut, 98 px ; et, entre 900 et 1100 px de large, « Mode
+// nuit », « Aimanter » et « Le stylo redresse » dans le menu ⋯, pour qu'elle
+// tienne sur une rangée à 1024 px. À 1280 × 720, le bouton du classeur passe
+// à l'icône et au point ; ailleurs il garde sa forme. Les places d'avant :
+// 404, 318, 755, 218, 62 / −5, 1, −2.)
 const ECRANS = [
-  { l: 1366, h: 768, sans: ['large', 404] },
-  { l: 1280, h: 720, sans: ['large', 318] },
+  { l: 1366, h: 768, sans: ['large', 277] },
+  { l: 1280, h: 720, sans: ['etroit', 191] },
   // (Adapté au lot 5, morceau K9 : un TNI, tactile, de 1920 × 1080, a d'office
   // les noms sous les outils, voulus ainsi : la barre des outils fait 80 px,
   // la barre du haut 68 px de haut et 196 px de plus ; la place, 1093 px sans
   // eux, est de 875 ; lot5/K9-affichage.mjs vérifie le reste)
-  { l: 1920, h: 1080, t: true, sans: ['large', 755, 68] },
+  { l: 1920, h: 1080, t: true, sans: ['large', 607, 68] },
   // (Adapté aux corrections « appareils » du lot 4 : la forme large demande
   // la place du plus long des textes courts, 252 px ; à 1180 × 820, l'état
   // « Seulement dans ce navigateur » y était coupé : l'icône et le point —
   // depuis le lot 5, K8, il y tient : 353 px)
-  { l: 1180, h: 820, t: true, sans: ['etroit', 218] },
-  { l: 1024, h: 768, sans: ['etroit', 62], avec: ['cache', -5] },
-  { l: 1100, h: 768, avec: ['cache', 1] },
-  { l: 960, h: 600, sans: ['cache', -2] },
+  { l: 1180, h: 820, t: true, sans: ['etroit', 71] },
+  { l: 1024, h: 768, sans: ['etroit', 73], avec: ['cache', -5] },
+  { l: 1100, h: 768, avec: ['cache', 12] },
+  { l: 960, h: 600, sans: ['cache', 9] },
   { l: 768, h: 1024, t: true, sans: ['dans-la-barre', -6, 104] },
   { l: 820, h: 1180, t: true, sans: ['dans-la-barre', -6, 104] },
   // (Adapté au lot 5, K10, la mise en page du téléphone, voulue : la barre
@@ -154,7 +160,9 @@ const ECRANS = [
   // le premier bouton, quelle que soit la place à gauche ; avant : 844 × 390
   // caché, place 17 ; 390 × 844 dans la barre, trois rangées, 150 px)
   { l: 844, h: 390, t: true, sans: ['dans-la-barre', null, 58] },
-  { l: 641, h: 900, sans: ['dans-la-barre', -6, 104] },
+  // (Adapté au lot 16 : à 641 × 900, la barre du haut est déjà pleine sur
+  // ses deux rangées : le bouton du classeur se cache, le point sur ⋯)
+  { l: 641, h: 900, sans: ['cache', -6, 104] },
   { l: 390, h: 844, t: true, sans: ['dans-la-barre', null, 58] },
 ]
 /** La géométrie : la place mesurée comme le code (le bouton sorti de la
@@ -265,7 +273,9 @@ for (const e of ECRANS) {
       '1024 × 768 : « 2 / 3 · Exercice 12 p. 84 » se lit dans le compteur, la barre garde une rangée', g2.nom)
     await p.screenshot({ path: ICI + 'A-1024-nommee.png' })
   }
-  if (e.l === 1280) ok(g1.forme === 'etroit', '1280 × 720 nommée : l\'icône et le point (la place se réduit à ' + g1.place + ' px)', g1)
+  // (Adapté au lot 16 : le nom de la page prend la place qui restait ; le
+  // bouton du classeur se cache, son point passe sur ⋯)
+  if (e.l === 1280) ok(g1.forme === 'cache', '1280 × 720 nommée : caché, le point sur ⋯ (la place se réduit à ' + g1.place + ' px)', g1)
   await ctx.close()
 }
 
@@ -507,7 +517,9 @@ const MIN = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60
   await ctx.addInitScript(() => { try { delete window.showSaveFilePicker } catch { /* */ } window.showSaveFilePicker = undefined })
   await ctx.addInitScript(ECOUTER_TOASTS)
   const p = await ctx.newPage(); suivre(p, 'E')
-  await p.clock.install()
+  // (à 10 h du jour : lancé vers minuit, les minutes de travail passaient la
+  // veille, et le rappel disait « depuis hier à 23 h 52 »)
+  await p.clock.install({ time: new Date(new Date().setHours(10, 0, 0, 0)) })
   await p.goto(DEV); await pret(p); await p.waitForTimeout(500)
   // (Adapté au lot 4, morceau C10 : la copie sur le Drive, voulue par défaut en ligne, a sa ligne, son
   // point et son bandeau quand elle attend la connexion Google ; ces essais du rappel la mettent de
@@ -548,11 +560,11 @@ const MIN = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60
   await p.click('.barre-haut [aria-label^="Revoir la construction"]'); await p.waitForTimeout(600)
   const revue = await cache()
   await p.keyboard.press('Escape'); await p.waitForTimeout(400)
-  await p.click('.barre-haut [aria-label^="Automatismes"]'); await p.waitForTimeout(500)
-  const seance = await cache()
-  await p.keyboard.press('Escape'); await p.waitForTimeout(400)
+  // (Adapté : la séance d'automatismes en plein écran n'existe plus depuis le
+  // 21 octobre 2026 ; « Automatismes » ouvre une fenêtre, le flash, qui
+  // couvre tout et se ferme avant qu'on revienne au tableau)
   const revenu = await p.evaluate(ETAT)
-  ok(trieuse.bandeau && trieuse.barre && revue.bandeau && revue.barre && seance.bandeau && seance.barre && !!revenu.bandeau, 'Pendant la trieuse, la revue et une séance : le bandeau est caché, le bouton inerte ; il revient après', { trieuse, revue, seance, revenu: !!revenu.bandeau })
+  ok(trieuse.bandeau && trieuse.barre && revue.bandeau && revue.barre && !!revenu.bandeau, 'Pendant la trieuse et la revue : le bandeau est caché, le bouton inerte ; il revient après', { trieuse, revue, revenu: !!revenu.bandeau })
   // × : une heure de silence
   await p.click('.fermer-bandeau'); await p.waitForTimeout(100)
   e = await p.evaluate(ETAT)
@@ -590,7 +602,9 @@ console.log('=== F. le rappel (Chrome, sans clé) ===')
   const ctx = await nav.newContext({ viewport: { width: 1024, height: 768 } })
   await ctx.addInitScript(PICKER)
   const p = await ctx.newPage(); suivre(p, 'F')
-  await p.clock.install()
+  // (à 10 h du jour : lancé vers minuit, les minutes de travail passaient la
+  // veille, et le rappel disait « depuis hier à 23 h 52 »)
+  await p.clock.install({ time: new Date(new Date().setHours(10, 0, 0, 0)) })
   await p.goto(DEV); await pret(p); await p.waitForTimeout(500)
   // (Adapté au lot 4, morceau C10 : la copie sur le Drive, voulue par défaut en ligne, a sa ligne, son
   // point et son bandeau quand elle attend la connexion Google ; ces essais du rappel la mettent de

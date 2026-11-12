@@ -127,7 +127,9 @@ console.log('=== A. Ctrl + Z et Ctrl + Y d\'un réglage, le lendemain d\'un cour
   ok(JSON.stringify(gy.seances) === JSON.stringify(cours.seances), 'A6) Aucune séance fantôme : le découpage en séances est celui du cours', { cours: cours.seances, apres: gy.seances })
   ok(gy.gestesPage === cours.gestesPage, `A7) La revue de la page : toujours ${cours.gestesPage} gestes`, { avant: cours.gestesPage, apres: gy.gestesPage })
   const filmApres = await filmEleve()
-  ok(JSON.stringify(filmApres) === JSON.stringify(filmCours) && ['=:m0', '=:m1', '=:m2'].every(x => filmCours.includes(x)), 'A8) Le film élève de la séance proposée ne change pas : le cours, ses trois mots', { filmCours, filmApres })
+  // (Adapté : la naissance de la page part avec le premier mot, « f =:m0 »,
+  // voir naissances dans src/revoir/exporter.ts)
+  ok(JSON.stringify(filmApres) === JSON.stringify(filmCours) && ['=:m0', '=:m1', '=:m2'].every(x => filmCours.some(e => e.split(' ').includes(x))), 'A8) Le film élève de la séance proposée ne change pas : le cours, ses trois mots', { filmCours, filmApres })
   // La fenêtre Publier : la séance proposée d'office
   await p.evaluate(() => window.__app.ui.publication.ouvrir()); await p.waitForTimeout(800)
   const pub = await p.evaluate(() => { const s = document.querySelector('dialog[open] .p-seance'); return s ? { choisie: s.options[s.selectedIndex]?.textContent, toutes: [...s.options].map(o => o.textContent) } : null })

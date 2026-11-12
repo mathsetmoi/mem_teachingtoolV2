@@ -293,7 +293,7 @@ if (seul('B')) {
   const lesEntrees = await p.evaluate(() => [...document.querySelectorAll('.menu-flottant:not([hidden]) .menu-item')].map(e => e.dataset.action))
   await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="essai"]'); await p.waitForTimeout(100)
   // (Adapté au lot 4, morceau C10 : « Récupérer une sauvegarde du Drive… » entre volontairement au menu du bandeau)
-  ok(sansEntree && lesEntrees.join() === 'enregistrer-bibliotheque,recuperer-sauvegarde,verifier-classeurs,essai' && await p.evaluate(() => window.__essai === 1 && window.__bibliotheque.ouvert), 'Le menu ⋯ du bandeau : visible (« Enregistrer toute la bibliothèque… », « Récupérer… », « Vérifier les classeurs… » depuis le lot 17) ; une entrée ajoutée (menuDuBandeau) y paraît et marche', { sansEntree, lesEntrees })
+  ok(sansEntree && lesEntrees.join() === 'enregistrer-bibliotheque,recuperer-sauvegarde,verifier-classeurs,repartir-a-zero,essai' && await p.evaluate(() => window.__essai === 1 && window.__bibliotheque.ouvert), 'Le menu ⋯ du bandeau : visible (« Enregistrer toute la bibliothèque… », « Récupérer… », « Vérifier les classeurs… » depuis le lot 17, « Repartir à zéro sur l\'ordinateur… » depuis le 1er novembre 2026) ; une entrée ajoutée (menuDuBandeau) y paraît et marche', { sansEntree, lesEntrees })
   // Le clic droit sur une carte : son menu, là où l'on a appuyé
   const r = await p.locator(carte('tous', ids[1])).boundingBox()
   await p.mouse.click(r.x + 60, r.y + 40, { button: 'right' }); await p.waitForTimeout(200)

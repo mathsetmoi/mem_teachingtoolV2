@@ -35,7 +35,10 @@ await mesure('1 classeur ')
 // 29 classeurs de plus, 5 pages de 100 traits chacun, avec un aperçu
 await p.evaluate(async () => {
   const dem = await import('/src/classeurs/demarrage.ts'), bases = await import('/src/classeurs/bases.ts')
-  const Y = await import('/node_modules/.vite/deps/yjs.js').catch(() => null)
+  // (Adapté : Yjs pris là où l'outil le prend ; le serveur de la batterie
+  // range ses dépendances ailleurs que dans node_modules/.vite)
+  const ouYjs = (await (await fetch('/src/document.ts')).text()).match(/from "([^"]*\/deps\/yjs\.js[^"]*)"/)?.[1] ?? '/node_modules/.vite/deps/yjs.js'
+  const Y = await import(ouYjs).catch(() => null)
   const T = Date.now()
   // l'état d'un classeur : celui de l'onglet, rempli puis copié
   const t = window.__app.tableau
@@ -43,7 +46,7 @@ await p.evaluate(async () => {
   let page = t.ordre.get(0)
   for (let k = 0; k < 5; k++) { if (k) page = t.ajouterPage('carreaux', k); t.nouveauGeste(); t.doc.transact(() => { for (let i = 0; i < 100; i++) t.poser(page, trait((i % 10) * 60, Math.floor(i / 10) * 50)) }) }
   await t.attendreEcritures()
-  const etat = window.__app.tableau.doc && (await import('/node_modules/.vite/deps/yjs.js')).encodeStateAsUpdate(window.__app.tableau.doc)
+  const etat = window.__app.tableau.doc && (await import(ouYjs)).encodeStateAsUpdate(window.__app.tableau.doc)
   const c = document.createElement('canvas'); c.width = 320; c.height = 200; const x = c.getContext('2d'); x.fillStyle = '#eef'; x.fillRect(0, 0, 320, 200); x.fillStyle = '#123'; x.fillRect(40, 40, 100, 60)
   const png = await new Promise(r => c.toBlob(r, 'image/png'))
   for (let i = 0; i < 29; i++) {

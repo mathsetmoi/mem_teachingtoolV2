@@ -542,6 +542,10 @@ const maintenant = await releverBarres(DEV, erreurs)
 // départ est blanche ; le titre du bouton du fond dit donc « Fond de la page :
 // Page blanche » au lieu de « … : Petits carreaux ». Sa place et sa taille ne
 // changent pas : on compare le bouton sans le nom du fond.)
+// (Adapté au 11 novembre 2026 : à 1024 × 768, la barre du haut tient de
+// nouveau sur une rangée, « Mode nuit », « Aimanter » et « Le stylo
+// redresse » dans le menu ⋯ (le choix du professeur) ; le relevé du PC à
+// 1024 × 768 est refait, les autres ne bougent pas.)
 const VOULU = /^Enregistrer, ouvrir ou exporter en PDF/, FOND = /^Fond de la page : /
 const sansLeVoulu = (g, sansZoom, sansOutils) => {
   const c = JSON.parse(JSON.stringify(g))

@@ -65,7 +65,9 @@ const s1 = await p.evaluate(() => ({ s: document.querySelector('.biblio-corps').
 ok(s1.s > s0 + 50 && s1.ouvert, `${T} un glisser du doigt fait défiler la grille, n'ouvre rien`, s1)
 // Le ⋯ d'une carte : le menu dans l'écran
 await p.evaluate(() => { document.querySelector('.biblio-corps').scrollTop = 0 }); await dort(100)
-const premiere = await p.evaluate(() => [...document.querySelectorAll('.grille-classeurs.tous > li')].find(l => !l.dataset.cle.startsWith('d:')).dataset.cle)
+// (Adapté : une carte qui n'est pas le classeur ouvert ; mis à la corbeille
+// plus bas, il laisserait la bibliothèque seule, qui ne se ferme plus)
+const premiere = await p.evaluate(() => { const ici = new URLSearchParams(location.search).get('classeur'); return [...document.querySelectorAll('.grille-classeurs.tous > li')].find(l => !l.dataset.cle.startsWith('d:') && l.dataset.cle !== ici).dataset.cle })
 await tap(sel(premiere) + ' .options-classeur')
 await deb('menu-carte', '.menu-flottant:not([hidden])')
 await tap('.menu-flottant:not([hidden]) [data-action="etiquettes"]')

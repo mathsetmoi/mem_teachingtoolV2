@@ -290,7 +290,9 @@ for (const [w, h, mobile] of [[844, 390, true], [667, 375, true], [1366, 768, fa
     return { zl: a.ui.zoneLibre(), contenu: c, sousHaut: couvre(h), sousZoom: couvre(zo), sousOutils: couvre(o), z: a.cam.z }
   })
   noter(`${w}×${h}, Tout voir : rien du contenu sous une barre`, !r.sousHaut && !r.sousZoom && !r.sousOutils, JSON.stringify(r))
-  if (w === 1366) noter('… sur un ordinateur, la zone libre est celle d\'avant', JSON.stringify(r.zl) === JSON.stringify({ x: 86, y: 82, l: 1264, h: 604 }), JSON.stringify(r.zl))
+  // (Adapté au lot 16 : les couleurs en grille 2 × 2 élargissent la barre des
+  // outils de 24 px, la zone libre commence d'autant plus à droite)
+  if (w === 1366) noter('… sur un ordinateur, la zone libre est celle d\'avant', JSON.stringify(r.zl) === JSON.stringify({ x: 110, y: 82, l: 1240, h: 604 }), JSON.stringify(r.zl))
   await ctx.close()
 }
 })

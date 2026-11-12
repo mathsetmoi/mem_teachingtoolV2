@@ -134,7 +134,8 @@ const placeDesSorties = e => {
 // d'une page en Seyès — ; on arrive sur une page toujours à 100 %, à son
 // centre gardé : la copie d'une page zoomée à 160 % s'ouvre à 100 % au même
 // centre. Le reste est inchangé.)
-const MENU_PAGE = ['Aller à cette page', '─', 'Renommer…', 'Dupliquer', 'Insérer une page avant…', 'Insérer une page après…', '─', '#Fond', 'Page blanche', 'Petits carreaux', 'Grands carreaux (1 cm)', 'Seyès', 'Papier millimétré', 'Papier pointé', 'Réseau isométrique', 'Repère', '─', 'Supprimer']
+const MENU_PAGE = ['Aller à cette page', '─', 'Renommer…', 'Dupliquer', 'Insérer une page avant…', 'Insérer une page après…', '─', '#Fond', 'Page blanche', 'Petits carreaux', 'Grands carreaux (1 cm)', 'Seyès', 'Papier millimétré', 'Papier pointé', 'Réseau isométrique', 'Repère', 'Mode nuit', '─', 'Supprimer']
+// (Adapté au lot 13 : « Mode nuit », une case à cocher, suit les fonds)
 async function glisserSouris(page, de, vers, pas = 12) {
   await page.mouse.move(de.x, de.y); await page.mouse.down()
   for (let k = 1; k <= pas; k++) await page.mouse.move(de.x + (vers.x - de.x) * k / pas, de.y + (vers.y - de.y) * k / pas)
@@ -162,7 +163,7 @@ if (faire('souris')) {
   // Le bouton ⋯ de la carte 3
   await page.click('.trieuse .carte:nth-child(3) .carte-options'); await page.waitForTimeout(150)
   let e = await etat(page)
-  const dansTrieuse = await page.evaluate(() => { const m = document.querySelector('.menu-vignette'); return m.parentElement === document.querySelector('.trieuse') && m.getAttribute('role') === 'menu' && m.classList.contains('menu-flottant') && [...m.querySelectorAll('.menu-item')].every(b => b.getAttribute('role') === 'menuitem' || b.getAttribute('role') === 'menuitemradio') })
+  const dansTrieuse = await page.evaluate(() => { const m = document.querySelector('.menu-vignette'); return m.parentElement === document.querySelector('.trieuse') && m.getAttribute('role') === 'menu' && m.classList.contains('menu-flottant') && [...m.querySelectorAll('.menu-item')].every(b => ['menuitem', 'menuitemradio', 'menuitemcheckbox'].includes(b.getAttribute('role'))) })
   verifier('⋯ ouvre le menu de la page 3, un enfant de la trieuse (.menu-flottant, role menu), « Page 3 »', e.menu && dansTrieuse && e.menuLabel === 'Page 3' && e.ouverte, e)
   verifier('Ses entrées : Aller à cette page · ─ · Renommer… · Dupliquer · Insérer avant / après · ─ · Fond (8 choix) · ─ · Supprimer', JSON.stringify(e.entrees) === JSON.stringify(MENU_PAGE), e.entrees)
   verifier('… (P7) « Copier en image » après le filet, juste avant Supprimer', placeDesSorties(e), e.entreesToutes)
@@ -219,8 +220,11 @@ if (faire('souris')) {
   const ctxEmpeche = await page.evaluate(() => { const c = document.querySelectorAll('.trieuse .carte canvas')[3]; const ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true }); c.dispatchEvent(ev); return ev.defaultPrevented })
   verifier('Clic droit sur la carte 4 : le menu s\'ouvre à l\'appui du bouton, là où l\'on a appuyé, et reste ouvert au relâcher ; le menu du navigateur empêché',
     alAppui.menu && alAppui.menuLabel === 'Page 4' && e.menu && ctxEmpeche && e.focusPage === P[3], { alAppui: alAppui.menu, menu: e.menu, ctxEmpeche, f: e.focus })
-  const pos = await page.evaluate(() => { const r = document.querySelector('.menu-vignette').getBoundingClientRect(); return { x: r.left, y: r.top } })
-  verifier('… posé au point de l\'appui (à sa droite)', Math.abs(pos.x - (c4.x + 6)) < 3 && Math.abs(pos.y - c4.y) < 3, { pos, c4 })
+  // (Adapté au lot 13 : le menu, plus haut d'une entrée, ne tient plus sous
+  // l'appui à 768 px ; il remonte alors juste ce qu'il faut pour rester dans
+  // l'écran, à la même place en largeur)
+  const pos = await page.evaluate(() => { const r = document.querySelector('.menu-vignette').getBoundingClientRect(); return { x: r.left, y: r.top, bas: r.bottom, H: innerHeight } })
+  verifier('… posé au point de l\'appui (à sa droite), remonté s\'il ne tient pas dessous', Math.abs(pos.x - (c4.x + 6)) < 3 && (Math.abs(pos.y - c4.y) < 3 || (pos.y < c4.y && pos.bas <= pos.H && pos.bas > pos.H - 24)), { pos, c4 })
   // Insérer une page après la 4
   // (corrections conformite) « Insérer… » propose d'abord le fond : celui de la voisine, coché, pris au clic
   await entree(page, 'Insérer une page après').click(); await page.waitForTimeout(150)

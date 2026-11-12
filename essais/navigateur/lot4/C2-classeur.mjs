@@ -433,6 +433,9 @@ for (const [quoi, init] of [
   const f = await enregistrer(q)
   const l = lireMemc(f.octets)
   const mode = await q.evaluate(() => window.__ecrivain.mode)
+  // (le message de fin suit le téléchargement de quelques instants ; sous la
+  // charge de la batterie, on l'attend jusqu'à 5 s)
+  await q.waitForFunction(() => (window.__toasts || []).some(t => /^Classeur enregistré : /.test(t)), null, { timeout: 5000 }).catch(() => {})
   const msg = await toasts(q)
   ok(mode === 'fil' && JSON.stringify(l.formes) === '[1]' && l.entier && !msg.some(t => /mémoire/.test(t)) && msg.some(t => /^Classeur enregistré : /.test(t)),
     `10 bis) ${quoi} : l'écrivain passe sur le fil principal (mode « ${mode} »), Ctrl + S écrit le fichier depuis la base (${JSON.stringify(l.formes)} forme)`, { mode, msg })

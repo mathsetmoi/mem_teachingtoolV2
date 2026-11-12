@@ -92,7 +92,9 @@ console.log('conseil :', conseil)
 // ---- 4. Les mots interdits ----
 const interdits = tout.filter(x => /\bundefined\b|\bNaN\b|\[object Object\]/.test(x.t))
 ok(!interdits.length, 'aucun « undefined », « NaN » ni « [object Object] »', interdits)
-const tableau = tout.filter(x => /\btableau\b/i.test(x.t) && !/Mon tableau/.test(x.t))
-ok(!tableau.length, 'aucun « tableau » pour dire le classeur (hors du nom « Mon tableau »)', tableau)
+// (Adapté au 20 octobre 2026 : « un ancien tableau (.prof) » nomme le fichier
+// de l'ancienne version que « Ouvrir » reprend, pas le classeur)
+const tableau = tout.filter(x => /\btableau\b/i.test(x.t.replace(/anciens? tableaux? \(\.prof\)/gi, '')) && !/Mon tableau/.test(x.t))
+ok(!tableau.length, 'aucun « tableau » pour dire le classeur (hors du nom « Mon tableau » et d\'« ancien tableau (.prof) »)', tableau)
 console.log('erreurs :', JSON.stringify(O.erreurs))
 await O.navigateur.close()

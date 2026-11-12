@@ -3,6 +3,7 @@
 // Serveur de développement sur :5173.
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
+import { toucherPuisAttendre } from '../commun/trame.mjs'
 import { mkdirSync } from 'node:fs'
 
 const URL0 = 'http://localhost:5173/'
@@ -64,7 +65,8 @@ function outilsCdp(cdp) {
     async trace(pts) { await this.bas(...pts[0]); for (const p of pts.slice(1)) await this.va(...p); await this.haut(...pts[pts.length - 1]) },
   }
   /** Les doigts : [x, y, id] ; r : rayon du contact (largeur 2r en px CSS) */
-  const touche = (type, pts, r = 8) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y, id = 0]) => ({ x, y, id, radiusX: r, radiusY: r, force: 0.5 })) })
+  // Chaque contact attend deux trames (commun/trame.mjs)
+  const touche = (type, pts, r = 8) => toucherPuisAttendre(cdp, type, pts, r)
   const doigt = async (pts, r = 8) => {
     await touche('touchStart', [pts[0]], r)
     for (const p of pts.slice(1)) await touche('touchMove', [p], r)

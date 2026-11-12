@@ -119,12 +119,14 @@ export class Apercus {
 
   /** Tout ce qu'il faut pour peindre ces formes à cette échelle (pixels du
    *  canevas par unité du monde) : les polices des noms, les formules, les
-   *  images décodées (une image qui ne se décode pas est ignorée) */
+   *  images décodées (une image qui ne se décode pas est ignorée), les
+   *  contours des traits */
   async preparer(formes: Iterable<Forme>, echelle: number): Promise<void> {
     const liste = [...formes]
     await this.attendrePolices()
     await this.formules.preparer(formulesDe(liste), echelle)
     await this.decoder(liste)
+    await this.rendu.preparerTraits(liste)
   }
 
   /** Les images de ces formes, décodées */

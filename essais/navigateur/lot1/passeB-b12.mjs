@@ -212,7 +212,8 @@ async function choisir(page, chemin, parClavier = false) {
   if (parClavier) await page.keyboard.press('Control+o')
   else { await page.click(BOUTON_FICHIER); await page.waitForTimeout(50); await page.locator('.menu-item[data-action="ouvrir"]').click() }
   const fc = await attente
-  verifier(`Le choix du fichier ne montre que les .memc (accept), ${parClavier ? 'Ctrl + O' : 'menu'}`, (await fc.element().getAttribute('accept')) === '.memc,.memb')
+  // (Adapté : « Ouvrir » prend aussi un ancien tableau .prof depuis le 20 octobre 2026)
+  verifier(`Le choix du fichier ne montre que les .memc (accept), ${parClavier ? 'Ctrl + O' : 'menu'}`, (await fc.element().getAttribute('accept')) === '.memc,.memb,.prof')
   await fc.setFiles(chemin)
   await page.waitForTimeout(250)
 }

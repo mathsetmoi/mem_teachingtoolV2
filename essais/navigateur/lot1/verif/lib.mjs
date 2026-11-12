@@ -1,4 +1,5 @@
 // Outils communs aux sondes de vérification du lot 1 (aucun fichier du dépôt n'est touché)
+import { toucherPuisAttendre } from '../../commun/trame.mjs'
 import { chromium } from '../../commun/playwright.mjs'
 
 export const URL0 = 'http://localhost:5173/'
@@ -58,7 +59,8 @@ export function outils(cdp) {
     haut: (x, y, o = {}) => cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, pointerType: 'pen', button: 'left', buttons: 0, clickCount: 1, ...o }),
     async trace(pts) { await this.bas(...pts[0]); for (const p of pts.slice(1)) await this.va(...p); await this.haut(...pts[pts.length - 1]) },
   }
-  const touche = (type, pts, r = 8) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y, id = 0]) => ({ x, y, id, radiusX: r, radiusY: r, force: 0.5 })) })
+  // Chaque contact attend deux trames (commun/trame.mjs)
+  const touche = (type, pts, r = 8) => toucherPuisAttendre(cdp, type, pts, r)
   const doigt = async (pts, r = 8) => {
     await touche('touchStart', [pts[0]], r)
     for (const p of pts.slice(1)) await touche('touchMove', [p], r)
