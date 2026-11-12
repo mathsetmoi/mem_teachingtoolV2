@@ -467,8 +467,9 @@ if (faire('noms')) {
   // (Adapté au lot 4, morceau C5 : « Bibliothèque des classeurs… » en tête)
   // (Adapté au lot 18 : le menu ⋯ réduit : le PDF avant « Autres sauvegardes… » et « Ouvrir un classeur… » ;
   // « Copie sur le Drive… » et « Enregistrer sur le Drive ou ailleurs… » sont dans « Autres sauvegardes… »)
+  // (Adapté au lot 23 : « Emploi du temps… » suit « Bibliothèque des classeurs… »)
   verifier('Le menu ⋯ : Enregistrer le classeur… · (la clé, lot 4) · Exporter le classeur en PDF… (avec son aide) · Autres sauvegardes… · Ouvrir un classeur…',
-    JSON.stringify(fichier.map(x => x.l)) === JSON.stringify(['Bibliothèque des classeurs…', 'Enregistrer le classeur…', 'Enregistrer automatiquement dans un fichier…', 'Exporter le classeur en PDF…', 'Autres sauvegardes…', 'Ouvrir un classeur…']) && fichier[3].aide === 'Toutes les pages, cadrées sur leur contenu, en feuilles A4 à imprimer ou à déposer dans l\'ENT.', fichier)
+    JSON.stringify(fichier.map(x => x.l)) === JSON.stringify(['Bibliothèque des classeurs…', 'Emploi du temps…', 'Enregistrer le classeur…', 'Enregistrer automatiquement dans un fichier…', 'Exporter le classeur en PDF…', 'Autres sauvegardes…', 'Ouvrir un classeur…']) && fichier[4].aide === 'Toutes les pages, cadrées sur leur contenu, en feuilles A4 à imprimer ou à déposer dans l\'ENT.', fichier)
   // La trieuse : les pages 2, 5 et 7 choisies (Ctrl + clic), « Exporter en PDF » du bandeau des pages choisies
   await page.keyboard.press('Shift+P'); await attendreOuverte(page); await page.waitForTimeout(250)
   const bandeau = await page.evaluate(() => [...document.querySelectorAll('.trieuse-actions .trieuse-bouton')].filter(b => b.offsetParent).map(b => b.getAttribute('aria-label')))
