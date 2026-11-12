@@ -21,7 +21,10 @@ for (const largeur of [1366, 1024]) {
   console.log(largeur, 'aussitôt :', JSON.stringify(a))
   console.log(largeur, '5 s après :', JSON.stringify(b))
   await p.click('.barre-haut .bouton.points'); await p.waitForTimeout(200)
-  const nomMenu = await p.evaluate(() => [...document.querySelectorAll('.menu-flottant')].find(x => !x.hidden)?.innerText.split('\n')[0])
+  // (Adapté au lot 4 « solidité » : entre 900 et 1100 px, le menu ⋯ commence
+  // volontairement par les cases Mode nuit, Aimanter et Le stylo redresse ;
+  // le nom du classeur est celui de son bloc, juste après)
+  const nomMenu = await p.evaluate(() => [...document.querySelectorAll('.menu-flottant')].find(x => !x.hidden)?.querySelector('.bloc-nom')?.textContent)
   await O.fermerMenu(p)
   ok(b.fiche === 'Premier classeur' && nomMenu === 'Premier classeur', `${largeur} : la fiche et le menu ⋯ disent « ${b.fiche} », « ${nomMenu} »`)
   ok(b.titre === 'Premier classeur — MEM teachingtool', `${largeur} : le titre de l'onglet dit « ${b.titre} »`, b)
