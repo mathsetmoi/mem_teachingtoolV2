@@ -993,7 +993,8 @@ if (seul('L')) {
       // (Adapté au lot 4, morceau C10 : « Récupérer une sauvegarde du Drive… » entre volontairement au menu du bandeau ;
       // et au lot 17 : « Vérifier les classeurs… » aussi, en dernier)
       // (et en 2026-11 : « Repartir à zéro sur l'ordinateur… », en dernier)
-      ok(m.length === 5 && m[0].startsWith('ouvrir-fichier|Ouvrir un classeur ou une bibliothèque…') && m[1].startsWith('enregistrer-bibliotheque|') && m[2].startsWith('recuperer-sauvegarde|') && m[3].startsWith('verifier-classeurs|') && m[4].startsWith('repartir-a-zero|'), '   … le menu ⋯ : « Ouvrir un classeur ou une bibliothèque… », puis « Enregistrer toute la bibliothèque… », « Récupérer une sauvegarde du Drive… », « Vérifier les classeurs… », « Repartir à zéro sur l\'ordinateur… »', m)
+      // (Adapté au lot 23 : « Emploi du temps… » avant « Repartir à zéro sur l'ordinateur… »)
+      ok(m.length === 6 && m[0].startsWith('ouvrir-fichier|Ouvrir un classeur ou une bibliothèque…') && m[1].startsWith('enregistrer-bibliotheque|') && m[2].startsWith('recuperer-sauvegarde|') && m[3].startsWith('verifier-classeurs|') && m[4].startsWith('emploi-du-temps|') && m[5].startsWith('repartir-a-zero|'), '   … le menu ⋯ : « Ouvrir un classeur ou une bibliothèque… », puis « Enregistrer toute la bibliothèque… », « Récupérer une sauvegarde du Drive… », « Vérifier les classeurs… », « Repartir à zéro sur l\'ordinateur… »', m)
       await opfsEcrire(p, 'l0.memc', faireMemc(Y.encodeStateAsUpdate(unClasseur(['L0'])), { date: Date.now(), pages: 1, nom: 'Par le menu', id: '5a5a5a5a5a5a5a5b' }))
       await p.evaluate(() => { window.__aOuvrir = 'l0.memc' })
       await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="ouvrir-fichier"]')

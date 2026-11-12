@@ -287,7 +287,8 @@ if (seul('A')) {
   // (Adapté au lot 4, morceau C5 : « Bibliothèque des classeurs… » en tête du menu)
   // (Adapté au lot 18 : le menu ⋯ réduit : la clé, le PDF, « Autres sauvegardes… » (qui réunit la copie sur le
   // Drive et « Enregistrer sur le Drive ou ailleurs… »), Ouvrir)
-  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","activer-cle","exporter-pdf","autres-sauvegardes","ouvrir"]'
+  // (Adapté au lot 23 : « Emploi du temps… » suit « Bibliothèque des classeurs… »)
+  ok(JSON.stringify(m.entrees) === '["bibliotheque","emploi-du-temps","enregistrer","activer-cle","exporter-pdf","autres-sauvegardes","ouvrir"]'
     && m.libelles['activer-cle'].texte === 'Enregistrer automatiquement dans un fichier…'
     && m.libelles['activer-cle'].aide === 'Un fichier .memc, choisi une fois : le classeur s\'y enregistre tout seul, peu après chaque changement.',
     'A1) le menu ⋯ : « Enregistrer automatiquement dans un fichier… » (data-action activer-cle), avec son aide, après « Enregistrer le classeur… »', m)
@@ -320,7 +321,7 @@ if (seul('A')) {
   m = await menu(p)
   // (Adapté au lot 18 : le classeur a son fichier, le menu ⋯ dit « Enregistrer une copie… » (sans raccourci : Ctrl + S écrit
   // dans le fichier) et « Déplacer le classeur… » ; plus d'entrées « Enregistrer maintenant sur la clé » ni « Arrêter… »)
-  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","deplacer-classeur","exporter-pdf","autres-sauvegardes","ouvrir"]'
+  ok(JSON.stringify(m.entrees) === '["bibliotheque","emploi-du-temps","enregistrer","deplacer-classeur","exporter-pdf","autres-sauvegardes","ouvrir"]'
     && m.libelles['enregistrer'].texte === 'Enregistrer une copie…' && m.libelles['enregistrer'].touche === null
     && m.libelles['deplacer-classeur'].texte === 'Déplacer le classeur…' && !m.libelles['enregistrer-cle'] && !m.libelles['arreter-cle'],
     '   … le menu : « Enregistrer une copie… » (sans raccourci : Ctrl + S écrit dans le fichier), « Déplacer le classeur… » ; plus de « Enregistrer maintenant sur la clé » ni d\'« Arrêter… » (lot 18)', m)

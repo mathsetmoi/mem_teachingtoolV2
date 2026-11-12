@@ -115,12 +115,14 @@ const A = await ouvrir(ctxA, 'A')
   // (Adapté au lot 18 : le menu ⋯ réduit : Enregistrer le classeur… · la clé · Exporter le classeur en PDF… ·
   // Autres sauvegardes… · Ouvrir un classeur… ; « Copie sur le Drive… » et « Enregistrer sur le Drive ou ailleurs… »
   // sont dans « Autres sauvegardes… » ; l'aide d'Enregistrer ne parle plus de « la clé »)
+  // (Adapté au lot 23 : « Emploi du temps… » suit « Bibliothèque des classeurs… »)
   const biblio = m.entrees[0]
-  m.entrees = m.entrees.slice(1)
+  const edt = m.entrees[1]
+  m.entrees = m.entrees.slice(2)
   const autres = m.entrees[3]
   m.entrees = m.entrees.filter((_, i) => i !== 3)
   const trois = m.entrees.filter((_, i) => i !== 1)
-  verifier('Ses trois entrées, leurs raccourcis et leurs aides (et celle de la clé, la bibliothèque en tête, lot 4 ; « Autres sauvegardes… », lot 18)', biblio?.libelle === 'Bibliothèque des classeurs…' && autres?.libelle === 'Autres sauvegardes…' && m.entrees.length === 4 && m.entrees[1].libelle === 'Enregistrer automatiquement dans un fichier…'
+  verifier('Ses trois entrées, leurs raccourcis et leurs aides (et celle de la clé, la bibliothèque en tête, lot 4 ; « Autres sauvegardes… », lot 18)', biblio?.libelle === 'Bibliothèque des classeurs…' && edt?.libelle === 'Emploi du temps…' && autres?.libelle === 'Autres sauvegardes…' && m.entrees.length === 4 && m.entrees[1].libelle === 'Enregistrer automatiquement dans un fichier…'
     && trois[0].libelle === 'Enregistrer le classeur…' && trois[0].touche === 'Ctrl + S'
     && trois[0].aide === 'Un fichier .memc avec toutes les pages et tout l\'historique, à garder ou à ouvrir ailleurs. Il garde aussi ce qui a été effacé : ne le donnez pas aux élèves (pour eux : Publier).'
     && trois[2].libelle === 'Ouvrir un classeur…' && trois[2].touche === 'Ctrl + O' && trois[2].aide === 'Ajoute un classeur enregistré (.memc) à la bibliothèque, ou remplace celui-ci. Reprend aussi un ancien tableau (.prof).'

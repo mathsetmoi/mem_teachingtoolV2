@@ -274,8 +274,10 @@ if (seul('B')) {
   // (Adapté au lot 18 : le menu ⋯ réduit d'un classeur sans fichier à la racine : « Enregistrer le classeur… »,
   // « Enregistrer automatiquement dans un fichier… », PDF, « Autres sauvegardes… » (qui a pris « Copie sur le Drive… »
   // et « Enregistrer sur le Drive ou ailleurs… » des lots 4 et 7), « Ouvrir un classeur… »)
+  // (Adapté au lot 23 : « Emploi du temps… » suit « Bibliothèque des classeurs… », et dans le menu du bandeau,
+  // avant « Repartir à zéro sur l'ordinateur… »)
   // (et la ligne du Drive, en tête, porte son bouton « Se connecter à Google » : une copie attend)
-  ok(entrees.filter(x => x !== 'etat')[0] === 'bibliotheque' && JSON.stringify(entrees.filter(x => x !== 'etat')) === '["bibliotheque","enregistrer","activer-cle","exporter-pdf","autres-sauvegardes","ouvrir"]', 'Le menu ⋯ : « Bibliothèque des classeurs… » (data-action bibliotheque) en tête des entrées (la liste du lot 18)', entrees)
+  ok(entrees.filter(x => x !== 'etat')[0] === 'bibliotheque' && JSON.stringify(entrees.filter(x => x !== 'etat')) === '["bibliotheque","emploi-du-temps","enregistrer","activer-cle","exporter-pdf","autres-sauvegardes","ouvrir"]', 'Le menu ⋯ : « Bibliothèque des classeurs… » (data-action bibliotheque) en tête des entrées (la liste du lot 18)', entrees)
   await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="bibliotheque"]'); await p.waitForTimeout(300)
   ok((await vue(p)).ouvert, '   … elle ouvre la bibliothèque')
   // Le menu ⋯ du bandeau : caché tant qu'aucun morceau n'y met d'entrée
@@ -293,7 +295,7 @@ if (seul('B')) {
   const lesEntrees = await p.evaluate(() => [...document.querySelectorAll('.menu-flottant:not([hidden]) .menu-item')].map(e => e.dataset.action))
   await p.click('.menu-flottant:not([hidden]) .menu-item[data-action="essai"]'); await p.waitForTimeout(100)
   // (Adapté au lot 4, morceau C10 : « Récupérer une sauvegarde du Drive… » entre volontairement au menu du bandeau)
-  ok(sansEntree && lesEntrees.join() === 'enregistrer-bibliotheque,recuperer-sauvegarde,verifier-classeurs,repartir-a-zero,essai' && await p.evaluate(() => window.__essai === 1 && window.__bibliotheque.ouvert), 'Le menu ⋯ du bandeau : visible (« Enregistrer toute la bibliothèque… », « Récupérer… », « Vérifier les classeurs… » depuis le lot 17, « Repartir à zéro sur l\'ordinateur… » depuis le 1er novembre 2026) ; une entrée ajoutée (menuDuBandeau) y paraît et marche', { sansEntree, lesEntrees })
+  ok(sansEntree && lesEntrees.join() === 'enregistrer-bibliotheque,recuperer-sauvegarde,verifier-classeurs,emploi-du-temps,repartir-a-zero,essai' && await p.evaluate(() => window.__essai === 1 && window.__bibliotheque.ouvert), 'Le menu ⋯ du bandeau : visible (« Enregistrer toute la bibliothèque… », « Récupérer… », « Vérifier les classeurs… » depuis le lot 17, « Repartir à zéro sur l\'ordinateur… » depuis le 1er novembre 2026) ; une entrée ajoutée (menuDuBandeau) y paraît et marche', { sansEntree, lesEntrees })
   // Le clic droit sur une carte : son menu, là où l'on a appuyé
   const r = await p.locator(carte('tous', ids[1])).boundingBox()
   await p.mouse.click(r.x + 60, r.y + 40, { button: 'right' }); await p.waitForTimeout(200)
