@@ -61,10 +61,11 @@ export const methodesMenus = {
     const libre = Math.floor(h.left - 12 - (r.right + 12))
     if (libre < 44 || r.width === 0) { c.hidden = true; return }
     c.hidden = false
-    c.classList.toggle('compact', libre < 150)
+    // (assez large pour « Rechercher » et Ctrl F, sinon la loupe seule)
+    c.classList.toggle('compact', libre < 200)
     c.style.left = Math.round(r.right + 12) + 'px'
     c.style.top = Math.round(r.top + (r.height - 40) / 2) + 'px'
-    c.style.width = (libre < 150 ? 44 : Math.min(240, libre)) + 'px'
+    c.style.width = (libre < 200 ? 44 : Math.min(240, libre)) + 'px'
   },
 
   /** La fenêtre de la recherche (Ctrl F, le champ) */
@@ -205,12 +206,6 @@ export const methodesMenus = {
     if (telephone) {
       this.sectionsDuTelephone(m)
       filetMenu(m)
-    } else if (!this.boutonNuit.getClientRects().length) {
-      // Entre 900 et 1100 px de large (un vidéoprojecteur de 1024 × 768), la
-      // barre du haut n'a pas la place de ces trois boutons (.replie-etroit) :
-      // ils sont ici, en cases, en tête du menu
-      this.casesDeLaPage(m)
-      filetMenu(m)
     }
     const bloc = this.blocEtat = document.createElement('div')
     bloc.className = 'bloc-classeur'
@@ -314,9 +309,31 @@ export const methodesMenus = {
     return { aUnFichier, rangeable, rangeDans, forme }
   },
 
+  /** Le menu « Cette page », sous le bouton du fond (lot 3 de l'audit) : les
+   *  fonds en vignettes (menu-fonds.ts), puis les cases de la page, et tout
+   *  en bas, après un filet, seule et en rouge, « Supprimer la page »
+   *  (« Effacer la page » quand elle est seule) : loin de « Nouvelle page »,
+   *  on ne la touche plus par erreur. La suite est refaite à chaque
+   *  ouverture (les cases, le nombre de pages ont pu changer). */
+  construireMenuPage(this: UI): void {
+    const app = this.app, el = this.menuFonds.el
+    construireMenuFonds(el, app.fond, f => app.changerFond(f))
+    el.setAttribute('aria-label', 'Cette page')
+    el.querySelector(':scope > .suite-page')?.remove()
+    const suite = Object.assign(document.createElement('div'), { className: 'suite-page' })
+    filetMenu(suite)
+    this.casesDeLaPage(suite)
+    filetMenu(suite)
+    const seule = app.pages.length <= 1
+    const jeter = this.entreeMenu(suite, seule ? 'Effacer la page' : 'Supprimer la page', () => app.supprimerPage(), { action: 'supprimer-page',
+      aide: seule ? 'Ce qui est verrouillé ou fixé en fond reste' : 'Elle part dans la corbeille ; Ctrl + Z la remet' })
+    jeter.classList.add('danger')
+    el.appendChild(suite)
+  },
+
   /** Les cases de la page : « Mode nuit », « Aimanter au quadrillage », « Le
-   *  stylo redresse les figures » (au téléphone, et entre 900 et 1100 px de
-   *  large, où leurs boutons n'ont pas la place) */
+   *  stylo redresse les figures » (dans le menu « Cette page », et au
+   *  téléphone dans « Plus ») */
   casesDeLaPage(this: UI, m: HTMLElement): void {
     const app = this.app
     this.entreeMenu(m, 'Mode nuit', () => app.basculerNuit(), { action: 'nuit', coche: app.nuit, caseACocher: true, aide: 'Fond noir, écriture claire' })
@@ -328,33 +345,41 @@ export const methodesMenus = {
   /** Les premières sections de « Plus », au téléphone (lot 5, K10) : ce que
    *  la barre du haut et la barre des outils n'y montrent pas, chaque entrée
    *  de 44 px au moins (le menu défile s'il dépasse l'écran : voir le bouton) :
-   *  - « Page » : « Nouvelle page » quand son bouton n'a pas la place (sous
-   *    360 px de large), « Supprimer la page » (« Effacer la page » si elle
-   *    est seule), « Fond… » (le menu des fonds en vignettes), « Aimanter au
-   *    quadrillage » et « Le stylo redresse les figures » (des cases) ;
-   *  - « Outils de cours » : « Importer une image… », « Instruments… » (leur
-   *    liste, sous la barre du haut), « Programme de construction »,
-   *    « Automatismes », « Revoir la construction », « Publier le replay » ;
+   *  - « Cette page » : « Nouvelle page » quand son bouton n'a pas la place
+   *    (sous 360 px de large), « Fond… » (le menu des fonds en vignettes),
+   *    les cases de la page, puis en rouge « Supprimer la page » (« Effacer
+   *    la page » si elle est seule) ;
+   *  - « Insérer » : « Importer une image… », « Instruments… » (leur liste,
+   *    sous la barre du haut), « Programme de construction », « Catalogue »,
+   *    « Automatismes » ;
+   *  - « En classe » : « Outils de classe… », « Revoir la construction » ;
+   *  - « Élèves » : « Publier le replay » ;
    *  - « Vue » : « 100 % », « Tout voir » (la barre du zoom est cachée : le
    *    pincement zoome). */
   sectionsDuTelephone(this: UI, m: HTMLElement): void {
     const app = this.app, plus = this.boutonFichier
-    titreMenu(m, 'Page')
+    // Les familles de la barre du haut (lot 3 de l'audit), « Supprimer la
+    // page » en bas de « Cette page », en rouge
+    titreMenu(m, 'Cette page')
     if (!this.boutonNouvelle.getClientRects().length) this.entreeMenu(m, 'Nouvelle page', () => app.nouvellePage(), { action: 'nouvelle-page' })
-    const seule = app.pages.length <= 1
-    this.entreeMenu(m, seule ? 'Effacer la page' : 'Supprimer la page', () => app.supprimerPage(), { action: 'supprimer-page' })
     this.entreeMenu(m, 'Fond…', e => this.ouvrirFondsDepuisPlus(e.detail === 0), { action: 'fond', aide: nomDuFond(app.fond) })
     this.casesDeLaPage(m)
+    const seule = app.pages.length <= 1
+    this.entreeMenu(m, seule ? 'Effacer la page' : 'Supprimer la page', () => app.supprimerPage(), { action: 'supprimer-page' }).classList.add('danger')
     filetMenu(m)
-    titreMenu(m, 'Outils de cours')
+    titreMenu(m, 'Insérer')
     this.entreeMenu(m, 'Importer une image ou un PDF…', e => this.choisirImage(e), { action: 'importer' })
     this.entreeMenu(m, 'Instruments…', () => { this.choixInstruments.hidden = false; this.maj() }, { action: 'instruments',
       aide: 'Règle, équerre, rapporteur, compas' })
     this.entreeMenu(m, 'Programme de construction', () => this.basculerConstructeur(), { action: 'construction', aide: 'Étape par étape' })
     this.entreeMenu(m, 'Catalogue', () => this.basculerCatalogue(), { action: 'catalogue', aide: 'Ensembles de nombres…' })
     this.entreeMenu(m, 'Automatismes', () => this.flash.ouvrir(), { action: 'automatismes', aide: 'Un flash de questions' })
+    filetMenu(m)
+    titreMenu(m, 'En classe')
     this.entreeMenu(m, 'Outils de classe…', () => this.ouvrirOutilsClasseDepuisPlus(), { action: 'outils-classe', aide: 'Rideau, laser, minuteur, tirage au sort' })
     this.entreeMenu(m, 'Revoir la construction', () => this.ouvrirRevue(plus), { action: 'revue', aide: 'Une page, une séance, pas à pas' })
+    filetMenu(m)
+    titreMenu(m, 'Élèves')
     this.entreeMenu(m, 'Publier le replay', () => this.publication.ouvrir(), { action: 'publier', aide: 'Pour les élèves' })
     filetMenu(m)
     titreMenu(m, 'Vue')
@@ -377,6 +402,9 @@ export const methodesMenus = {
   ouvrirFondsDepuisPlus(this: UI, auClavier: boolean): void {
     const app = this.app, el = this.menuFonds.el
     construireMenuFonds(el, app.fond, f => app.changerFond(f))
+    // (seulement les fonds : la suite du menu « Cette page » n'y est pas)
+    el.querySelector(':scope > .suite-page')?.remove()
+    el.setAttribute('aria-label', 'Fond de la page')
     el.classList.toggle('deux-colonnes', this.barreEnBas())
     ouvrirMenu(this.menuFondsPlus)
     placerMenu(el, this.boutonFichier.getBoundingClientRect(), 'dessous')

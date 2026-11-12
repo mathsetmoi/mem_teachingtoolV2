@@ -322,7 +322,7 @@ export const methodesBarres = {
     if (fond === this.fondMontre && nuit === this.fondMontreDeNuit) return
     this.fondMontre = fond; this.fondMontreDeNuit = nuit
     peindreVignette(this.vignetteFond, fond, VIGNETTE_BOUTON.l, VIGNETTE_BOUTON.h, densite(), nuit)
-    const t = `Fond de la page : ${nomDuFond(fond)}`
+    const t = `Cette page : fond « ${nomDuFond(fond)} », mode nuit, aimanter, supprimer`
     this.boutonFond.title = t; this.boutonFond.setAttribute('aria-label', t)
   },
 
