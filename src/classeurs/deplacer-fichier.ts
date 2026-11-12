@@ -46,7 +46,8 @@ import type { Registre } from './registre'
 import type { EnregistrementCle, PoigneeFichier, ResultatDeplacement } from './cle'
 import { VERROU_CLE, ecrireDans, enteteDe, fichierPourDeplacer, memeFichier, raisonCle } from './cle'
 import type { Emplacement } from './emplacements'
-import { cheminDuFichier, emplacementDe, emplacements, nomDeFichierLibre, reglagePoignee, sousDossiers } from './emplacements'
+import { emplacements, nomDeFichierLibre, reglagePoignee } from './emplacements'
+import { lieuSurLOrdinateur, niveauSurLOrdinateur } from './lieu'
 import type { Etablissement } from './etablissements'
 import { cheminLisible, etablissements } from './etablissements'
 import type { PoigneeDossier } from './ordinateur'
@@ -102,12 +103,11 @@ export interface DonneesPlan { emplacements: readonly Emplacement[]; dossiers: r
  *  (l'établissement, le dossier du niveau, les sous-dossiers, le dossier du
  *  chapitre) ; null si le niveau n'est pas rangé (ou la racine) */
 export function placeRangee(dossierId: string | null, nom: string, o: DonneesPlan): PlaceRangee | null {
-  if (dossierId === null) return null
-  const e = emplacementDe(dossierId, 'ordinateur', o.emplacements, o.dossiers)
-  if (!e) return null
-  const etab = e.etablissement ? o.etablissements?.find(x => x.id === e.etablissement) ?? null : null
-  const sous = cheminDuFichier(dossierId, nom, e, o.dossiers)
-  return { emplacement: e, etablissement: etab, chemin: [...(etab ? [etab.nom] : []), e.nom, ...sous], sous }
+  // Le lieu (lieu.ts) : l'établissement (son nom, ou celui gardé au
+  // rangement s'il a été retiré de la liste, comme le chemin noté dans la
+  // fiche), le dossier du niveau, les sous-dossiers, le dossier du chapitre
+  const l = lieuSurLOrdinateur(dossierId, nom, o)
+  return l ? { emplacement: l.emplacement, etablissement: l.etablissement, chemin: l.chemin, sous: l.dossiers } : null
 }
 
 const memeChemin = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((s, i) => s === b[i])
@@ -343,7 +343,7 @@ export class DeplacerClasseur {
     const r: { fiche: FicheClasseur; plan: PlanDeDeplacement }[] = []
     for (const f of fiches) {
       if (!f.cle?.chemin?.length || f.corbeille || f.dossier === null) continue
-      if (emplacementDe(f.dossier, 'ordinateur', avant.emplacements, avant.dossiers)?.id !== e.id) continue
+      if (niveauSurLOrdinateur(f.dossier, avant)?.emplacement.id !== e.id) continue
       const pa = planDeDeplacement({ fiche: f, cible: f.dossier, ...avant })
       const pb = planDeDeplacement({ fiche: f, cible: f.dossier, ...apres })
       if (pb.genre !== 'suit' || pa.ancien?.emplacement?.id !== e.id || !pa.ancien.sous) continue

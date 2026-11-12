@@ -16,8 +16,9 @@
 import type { PoigneeDossier } from '../classeurs/ordinateur'
 import { accordDuDossier, choisirUnDossier } from '../classeurs/ordinateur'
 import { remontee } from '../classeurs/arbre'
-import { cheminDuFichier, emplacementDe, emplacements, nomDeFichierLibre, reglagePoignee, sousDossiers } from '../classeurs/emplacements'
-import { etablissements, nomDEtablissement } from '../classeurs/etablissements'
+import { emplacements, nomDeFichierLibre, reglagePoignee } from '../classeurs/emplacements'
+import { etablissements } from '../classeurs/etablissements'
+import { avecLeChapitre, cheminALEcran, niveauSurLOrdinateur } from '../classeurs/lieu'
 import type { Registre } from '../classeurs/registre'
 import { EXTENSION, codeDuNom } from './comptes'
 import { FORMAT } from '../revoir/format'
@@ -169,17 +170,17 @@ export async function dossierDuChapitre(registre: Registre, idClasseur: string):
     const f = await registre.classeur(idClasseur)
     if (!f || f.dossier === null) return null
     const [liste, dossiers] = await Promise.all([emplacements(registre), registre.dossiers()])
-    const e = emplacementDe(f.dossier, 'ordinateur', liste, dossiers)
-    if (!e) return null
-    const racine = await registre.reglage<PoigneeDossier>(reglagePoignee(e.id))
+    // Le lieu (lieu.ts) : le même chemin que relierLesClasseurs (sous-dossiers
+    // du niveau, puis le dossier du chapitre, sauf un lien « à plat » : là où
+    // est le .memc), l'établissement devant (« LFB classeurs › 2 › 2_13_Probas »)
+    const niveau = niveauSurLOrdinateur(f.dossier, { emplacements: liste, dossiers, etablissements: await etablissements(registre).catch(() => []) })
+    if (!niveau) return null
+    const racine = await registre.reglage<PoigneeDossier>(reglagePoignee(niveau.emplacement.id))
     if (!racine) return null
-    // Le même chemin que relierLesClasseurs : sous-dossiers du niveau, puis
-    // le dossier du chapitre (sauf un lien « à plat » : là où est le .memc)
-    const segments = cheminDuFichier(f.dossier, f.nom, e, dossiers).map(n => nomSur(n, { repli: 'Dossier' }))
-    // Rangé chez un établissement (lot 18) : son nom devant (« LFB classeurs › 2 › 2_13_Probas »)
-    const etab = e.etablissement ? nomDEtablissement(e, await etablissements(registre)) : null
+    const lieu = avecLeChapitre({ ...niveau, prefixe: [...niveau.prefixe.slice(0, -1), racine.name] }, f.nom)
+    const segments = lieu.dossiers
     return {
-      chemin: [...(etab ? [etab] : []), racine.name, ...segments].join(' › '),
+      chemin: cheminALEcran(lieu),
       async ouvrir(creer) {
         // L'accord d'écrire (Chrome le redemande après un redémarrage) : dans le clic
         if (creer && !await accordDuDossier(racine, true).catch(() => false)) return null

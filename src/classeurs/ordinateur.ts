@@ -24,6 +24,7 @@ import { ecrireDans, ecrireLeNeuf, memeFichier, permission } from './cle'
 import type { FicheClasseur } from './demarrage'
 import type { Registre } from './registre'
 import { classeursDeLaClasse, emplacements, nomDeFichierLibre, rangeParLOutil, sousDossiers } from './emplacements'
+import { dossiersDuChapitre } from './lieu'
 import { remontee } from './arbre'
 import { ecrivain } from './ecrivain'
 import { comparerVecteurs, verdictAncienFichier } from './vecteurs'
@@ -261,7 +262,8 @@ export async function relierLesClasseurs(registre: Registre, d: PoigneeDossier, 
         // neuf à sa place, et l'ancien reste où il est, intact. Enregistrer
         // n'enlève jamais rien du PC (le professeur, 2026-11).
         const ou = typeof d.resolve === 'function' ? await d.resolve(deja).catch(() => null) : null
-        const attendu = (o.aPlat ? sous : [...sous, base]).map(n => nomSur(n, { repli: 'Dossier' }))
+        // (sa place : le lieu, lieu.ts)
+        const attendu = dossiersDuChapitre({ sous, emplacement: o.aPlat ? { aPlat: true } : {} }, f.nom)
         const prevuIci = (base + EXTENSION_TABLEAU).toLocaleLowerCase('fr')
         if (ou?.length && ou.length === attendu.length + 1 && attendu.every((n, i) => ou[i] === n) && ou[ou.length - 1].toLocaleLowerCase('fr') === prevuIci) {
           const chemin = cheminNote(attendu)
