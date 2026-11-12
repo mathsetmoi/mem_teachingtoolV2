@@ -104,7 +104,8 @@ import {
   questionDuDrive, raisonDrive, reessai,
 } from './drive-pur'
 import { fermerSurLeFond } from '../dialogue'
-import { emplacementDe, emplacements } from './emplacements'
+import { emplacements } from './emplacements'
+import { lieuSurLeDrive } from './lieu'
 
 type EtatDrive = EtatSauvegarde['drive']
 type DriveFiche = NonNullable<FicheClasseur['drive']>
@@ -164,8 +165,8 @@ type Resultat = 'copie' | 'deja' | 'rien' | 'connexion' | 'conflit' | 'erreur'
  *  undefined : le dossier des sauvegardes */
 async function dossierDeLaCopie(registre: Registre, f: FicheClasseur, compte: CompteDrive): Promise<string | undefined> {
   const [liste, dossiers] = await Promise.all([emplacements(registre), registre.dossiers()])
-  const e = emplacementDe(f.dossier, 'drive', liste, dossiers)
-  const d = e && e.compte === compte ? dossiers.find(x => x.id === e.dossier) : undefined
+  // Le lieu (lieu.ts) : le niveau relié à ce Drive
+  const d = lieuSurLeDrive(f.dossier, compte, { emplacements: liste, dossiers })?.niveau
   return d ? (await dossierDuChapitre(compte, { id: d.id, nom: d.nom }, { id: f.id, nom: f.nom })).id : undefined
 }
 

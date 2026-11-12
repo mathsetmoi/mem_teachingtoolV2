@@ -34,13 +34,15 @@ import type { CleALArrivee, PoigneeFichier } from './cle'
 import { permission } from './cle'
 import type { Rangement } from './etat'
 import type { Emplacement } from './emplacements'
-import { classeursDeLaClasse, emplacementDe, emplacements, garderEmplacement, reglagePoignee, sousDossiers } from './emplacements'
+import { classeursDeLaClasse, emplacementDe, emplacements, garderEmplacement, reglagePoignee } from './emplacements'
 import type { BilanRelier, ChoixConflit, ConflitFichier, PoigneeDossier } from './ordinateur'
 import { accordDeLire, accordDuDossier, choisirUnDossier, choisitUnDossier, memeDossier, relierLesClasseurs } from './ordinateur'
 import type { Etablissement } from './etablissements'
 import { cheminLisible, etablissements, nomDEtablissement, garderEtablissement, noterPlusTard, nouvelId, plusTard, reglagePoigneeEtablissement, texteDuRangement } from './etablissements'
 import { ecrivain } from './ecrivain'
 import { dossierVisible, remontee } from './arbre'
+import type { NiveauSurLOrdinateur } from './lieu'
+import { avecLeChapitre, cheminALEcran, dossierDuNiveau, niveauSurLOrdinateur } from './lieu'
 import { EXTENSION_TABLEAU, nomSur } from '../fichier'
 import { fermerSurLeFond } from '../dialogue'
 import { POUR_OUVRIR } from '../navigateur'
@@ -73,7 +75,8 @@ export type OrigineRanger = 'nouveau' | 'emplacements' | 'menu'
  *  existe encore), les dossiers jusqu'au dossier du niveau compris
  *  (« LFB classeurs », « 2 », ou « Clé 4ème » seul) et les sous-dossiers
  *  entre le niveau et le dossier du classeur */
-export interface Endroit { emplacement: Emplacement; etablissement: Etablissement | null; prefixe: string[]; sous: string[] }
+/** Le dossier du niveau d'un classeur sur l'ordinateur (voir lieu.ts) */
+export type Endroit = NiveauSurLOrdinateur
 
 /** Le conseil quand le navigateur vient de demander l'accord d'écrire dans
  *  le dossier de l'établissement (Chrome le propose) */
@@ -196,16 +199,14 @@ export class Ranger {
     const [liste, dossiers] = await Promise.all([emplacements(this.registre), this.registre.dossiers()])
     const e = emplacementDe(dossierId, 'ordinateur', liste, dossiers)
     if (!e) return null
-    const liste2 = e.etablissement ? await etablissements(this.registre) : []
-    const etab = liste2.find(x => x.id === e.etablissement) ?? null
-    const nomEtab = nomDEtablissement(e, liste2)
-    return { emplacement: e, etablissement: etab, prefixe: nomEtab ? [nomEtab, e.nom] : [e.nom], sous: sousDossiers(dossierId, e.dossier, dossiers) }
+    // Le lieu (lieu.ts) : le même calcul que partout ailleurs
+    return niveauSurLOrdinateur(dossierId, { emplacements: liste, dossiers, etablissements: e.etablissement ? await etablissements(this.registre) : [] })
   }
 
   /** Le chemin, pour l'écran, du fichier d'un classeur nommé `nom` à cet
    *  endroit : « LFB classeurs › 2nde › Fractions » (le dossier du chapitre) */
   cheminDuChapitre(endroit: Endroit, nom: string): string {
-    return cheminLisible([...endroit.prefixe, ...endroit.sous.map(n => nomSur(n, { repli: 'Dossier' })), ...(endroit.emplacement.aPlat ? [] : [nomSur(nom)])])
+    return cheminALEcran(avecLeChapitre(endroit, nom))
   }
 
   /** Ce que l'état du classeur ouvert dit de son rangement (morceau C, voir
@@ -220,7 +221,7 @@ export class Ranger {
     const niveau = await this.niveauDe(f.dossier)
     if (!niveau) return null
     const endroit = await this.endroitDe(f.dossier).catch(() => null)
-    if (endroit) return { rangeDans: cheminLisible([...endroit.prefixe, ...endroit.sous.map(n => nomSur(n, { repli: 'Dossier' }))]) }
+    if (endroit) return { rangeDans: cheminLisible(dossierDuNiveau(endroit)) }
     return { rangeable: { niveau: niveau.nom } }
   }
 
