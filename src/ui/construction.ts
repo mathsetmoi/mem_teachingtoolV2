@@ -295,21 +295,11 @@ export const methodesConstruction = {
     // Avec l'étiquette de la séance, sous la barre (rien ne bouge dans la barre)
     precedente.insertAdjacentHTML('beforeend', '<span class="libelle-precedente">Séance précédente</span>')
     this.rangSeance.appendChild(precedente)
-    // Pas de question : la page part tout de suite, et s'annule (le message
-    // « Page N supprimée · Annuler », ou Ctrl+Z). Le second clic d'un
-    // double-clic, et tout clic trop tôt après une suppression, ne font rien :
-    // un double-clic jetterait deux pages, et le second message chasserait
-    // le premier « Annuler ».
-    let jeteeA = -Infinity
-    const jeter = this.boutonJeter = bouton('poubelle', 'Supprimer cette page', e => {
-      const maintenant = performance.now()
-      if ((e as MouseEvent).detail > 1 || maintenant - jeteeA < 600) return
-      jeteeA = maintenant
-      app.supprimerPage()
-    }, 'danger seulement-large')
-    // (Depuis le lot 3 de l'audit, ce bouton n'est plus dans la barre : la
-    // page se supprime par le menu « Cette page », tout en bas, en rouge. Il
-    // reste pour son titre, que les placements tiennent à jour.)
+    // Supprimer la page : plus de poubelle dans la barre (lot 3 de l'audit),
+    // une entrée en rouge, tout en bas du menu « Cette page » (voir
+    // construireMenuPage). Pas de question : la page part tout de suite, et
+    // s'annule (le message « Page N supprimée · Annuler », ou Ctrl+Z) ; le
+    // menu se ferme au clic, un double-clic n'en jette pas deux.
     // Le fond de la page : un bouton qui le montre en petit, et ouvre sous
     // lui le menu des huit fonds en vignettes (voir menu-fonds.ts). Ouvert au
     // clavier, le focus va sur le fond de la page. Un choix le donne à la
@@ -338,12 +328,8 @@ export const methodesConstruction = {
       placerMenu(menuFonds, boutonFond.getBoundingClientRect(), 'dessous')
       if (e.detail === 0) entreeCochee(menuFonds)?.focus()
     })
-    // Le mode nuit de la page (voir nuit.ts) : allumé tant que la page qu'on
-    // regarde est de nuit ; la touche N fait de même
-    this.boutonNuit = bouton('lune', 'Mode nuit de cette page : fond noir, écriture claire (N)', () => app.basculerNuit(), 'outil seulement-large')
-    this.boutonNuit.setAttribute('aria-pressed', 'false')
-    this.boutonAimant = bouton('aimant', 'Aimanter au quadrillage', () => this.basculerAimant(), 'outil seulement-large')
-    this.boutonReconnaissance = bouton('reconnaissance', 'Le stylo redresse les figures (carré, cercle…)', () => this.basculerReconnaissance(), 'outil seulement-large')
+    // Le mode nuit (touche N), Aimanter et Le stylo redresse : des cases du
+    // menu « Cette page » (lot 3 de l'audit ; voir casesDeLaPage)
     this.boutonInstruments = bouton('instruments', 'Instruments : règle, équerre, rapporteur, compas', () => {
       this.choixInstruments.hidden = !this.choixInstruments.hidden; this.maj()
     }, 'outil seulement-large')
@@ -469,8 +455,7 @@ export const methodesConstruction = {
     nommer(nouvelle, 'Nouvelle')
     // (pas de nom sous « Séance précédente » : il n'est là qu'avec une séance d'avant)
     this.racine.appendChild(this.rangSeance)
-    this.libelleJeter = nommer(jeter, 'Supprimer')
-    nommer(boutonFond, 'Page'); nommer(this.boutonNuit, 'Nuit'); nommer(this.boutonAimant, 'Aimant'); nommer(this.boutonReconnaissance, 'Formes auto')
+    nommer(boutonFond, 'Page')
     nommer(importer, 'Image'); nommer(this.boutonInstruments, 'Instruments'); nommer(construire, 'Construire'); nommer(catalogue, 'Catalogue')
     nommer(automatismes, 'Automatismes'); nommer(outilsClasse, 'Classe'); nommer(revoir, 'Revoir'); nommer(publier, 'Publier'); nommer(fichier, 'Fichier')
 

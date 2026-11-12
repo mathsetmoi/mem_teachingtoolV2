@@ -1,11 +1,12 @@
 // La corbeille : poubelle, rechargement, vue, Remettre, Supprimer définitivement, Vider
 import { ouvrir, preparer, etat, verifier, fin, pause, D } from './lib.mjs'
+import { supprimerLaPage, libelleSupprimer } from '../../../commun/page.mjs'
 
 const { page } = await ouvrir()
 const ids = await preparer(page, 5, { noms: { 1: 'Exercice 12 p. 84' }, ici: 1 })
 await pause(300)
 // Poubelle sur la page 2 (nommée), puis sur la page 4
-const poubelle = () => page.locator('.barre-haut button[aria-label="Supprimer cette page"]').click()
+const poubelle = () => supprimerLaPage(page)
 await poubelle(); await pause(300)
 let e = await etat(page)
 console.log('après poubelle', e.msgs.at(-1), e.toast, e.pages.indexOf(e.page) + 1)

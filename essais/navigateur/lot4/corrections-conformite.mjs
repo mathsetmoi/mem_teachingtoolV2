@@ -23,6 +23,7 @@
 //      l'entrée du menu ⋯ ; sur le PC, Ctrl + S comme avant.
 // Lancer : node lot4/corrections-conformite.mjs [D K P T]
 import * as O from './conformite-travail/outils.mjs'
+import { supprimerLaPage, libelleSupprimer } from '../commun/page.mjs'
 const { ok, MIN } = O
 const parties = process.argv.slice(2)
 const seul = x => !parties.length || parties.includes(x)
@@ -195,7 +196,7 @@ if (seul('P')) {
   // Trois pages de plus, une jetée, puis la bibliothèque 2 s après
   await p.evaluate(() => { const a = window.__app; a.nouvellePage(); a.nouvellePage(); a.nouvellePage() })
   await p.waitForTimeout(500)
-  await p.click('.barre-haut button[aria-label="Supprimer cette page"]')
+  await supprimerLaPage(p)
   const dernier = await p.evaluate(() => Date.now())
   await p.waitForTimeout(2000)
   await p.evaluate(() => window.__app.ui.ouvrirBibliotheque())
@@ -237,8 +238,8 @@ if (seul('T')) {
       }
     })
     await p.waitForTimeout(700)
-    await p.click('.barre-haut button[aria-label="Supprimer cette page"]'); await p.waitForTimeout(900)
-    await p.click('.barre-haut button[aria-label="Supprimer cette page"]'); await p.waitForTimeout(900)
+    await supprimerLaPage(p); await p.waitForTimeout(900)
+    await supprimerLaPage(p); await p.waitForTimeout(900)
     ok(await p.evaluate(() => window.__app.pages.length) === 1, '   (deux pages jetées)', await p.evaluate(() => window.__app.pages.length))
     await p.keyboard.press('Shift+P'); await p.waitForTimeout(400)
     await p.click('.trieuse-bouton-corbeille'); await p.waitForTimeout(300)

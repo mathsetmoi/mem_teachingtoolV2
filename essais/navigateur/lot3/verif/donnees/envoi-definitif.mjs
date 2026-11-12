@@ -3,6 +3,7 @@
 // Ctrl+Z sur la page 1 (l'objet revient), puis Ctrl+Y (la touche) : où est
 // l'objet ? Et après un rechargement ?
 import { chromium } from '../../../commun/playwright.mjs'
+import { supprimerLaPage, libelleSupprimer } from '../../../commun/page.mjs'
 
 const nav = await chromium.launch()
 const net = t => (t ?? '').replace(/[  ]/g, ' ')
@@ -41,7 +42,7 @@ await page.waitForTimeout(500)
 console.log('envoyé          ', JSON.stringify(await page.evaluate(ETAT)))
 // La page 2 à la poubelle (on y va d'abord)
 await page.evaluate(() => window.__app.allerPage(window.__app.pages[1])); await page.waitForTimeout(700)
-await page.click('.barre-haut button[aria-label="Supprimer cette page"]'); await page.waitForTimeout(400)
+await supprimerLaPage(page); await page.waitForTimeout(400)
 console.log('page 2 jetée    ', JSON.stringify(await page.evaluate(ETAT)))
 // La trieuse, la corbeille, Vider
 await page.keyboard.press('Shift+P'); await page.waitForTimeout(500)

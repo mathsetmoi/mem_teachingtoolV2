@@ -89,17 +89,7 @@ export const methodesPlacements = {
     const ici = seance ?? app.tableau.derniereSeance()
     const sansAvant = !ici || !app.tableau.seancesDuClasseur().some(x => x.pages.length && x.id !== ici.id && x.debut < ici.debut)
     if (this.boutonPrecedente.hidden !== sansAvant) { this.boutonPrecedente.hidden = sansAvant; this.compteurARegler = true }
-    const titreJeter = pages.length <= 1 ? 'Effacer la page' : 'Supprimer cette page'
-    if (this.boutonJeter.title !== titreJeter) { this.boutonJeter.title = titreJeter; this.boutonJeter.setAttribute('aria-label', titreJeter) }
-    const motJeter = pages.length <= 1 ? 'Effacer' : 'Supprimer'
-    if (this.libelleJeter.dataset.libelle !== motJeter) this.libelleJeter.dataset.libelle = motJeter
     this.majBoutonFond()
-    this.boutonAimant.classList.toggle('actif', app.aimant)
-    if (this.boutonNuit.classList.contains('actif') !== app.nuit) {
-      this.boutonNuit.classList.toggle('actif', app.nuit)
-      this.boutonNuit.setAttribute('aria-pressed', String(app.nuit))
-    }
-    this.boutonReconnaissance.classList.toggle('actif', app.reconnaissance)
     for (const [id, b] of this.boutonsFormes) b.classList.toggle('actif', app.typeForme === id)
     for (const [id, b] of this.boutonsTraits) b.classList.toggle('actif', app.typeTrait === id)
     // Le petit panneau à côté de l'outil choisi (Formes ou Segment) ; au

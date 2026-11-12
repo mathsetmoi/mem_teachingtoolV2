@@ -1,6 +1,7 @@
 // Conformité lot 2 : réglage du flash d'automatismes et Ctrl+Z/Ctrl+V, collage d'une page à l'autre,
 // Ctrl+X et collage multiple en une étape, la vue d'une page rendue
 import { contexte, charger, etat, barre, boiteEcran, outil, poser, vider, verifier, note, fin, msgsDepuis, attendre } from './lib.mjs'
+import { supprimerLaPage, libelleSupprimer } from '../../../commun/page.mjs'
 
 const ctx = await contexte()
 const { page } = await charger(ctx, 'clavier')
@@ -79,11 +80,14 @@ await page.evaluate(() => window.__app.nouvellePage())
 await page.evaluate(() => window.__app.nouvellePage())
 await page.waitForTimeout(100)
 const n0 = (await etat(page)).pages
-const jeter = await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(b => b.title === 'Supprimer cette page'); const r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 } })
+// (lot 3 de l'audit : « Supprimer la page » est dans le menu « Cette page » ;
+// le premier clic ferme le menu, le second ne trouve plus l'entrée)
+await page.click('.barre-haut .choix-fond')
+const jeter = await page.evaluate(() => { const r = document.querySelector('.menu-fonds [data-action="supprimer-page"]').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 } })
 await page.mouse.dblclick(jeter.x, jeter.y)
 await page.waitForTimeout(200)
 e = await etat(page)
-verifier('double-clic sur la poubelle : une seule page supprimée', e.pages === n0 - 1, { avant: n0, apres: e.pages })
+verifier('double-clic sur « Supprimer la page » : une seule page supprimée', e.pages === n0 - 1, { avant: n0, apres: e.pages })
 
 // ---- Ctrl+Y ne supprime pas de nouveau ----
 await page.keyboard.press('Control+z')
@@ -98,8 +102,8 @@ verifier('Ctrl+Y après le retour d\'une page ne la supprime pas', e.pages === p
 const ctx2 = await contexte()
 const { page: p } = await charger(ctx2, 'seule')
 await poser(p, { type: 'trait', x: 300, y: 300 })
-const tj = await p.evaluate(() => { const b = [...document.querySelectorAll('button')].find(b => /Effacer la page|Supprimer cette page/.test(b.title)); return b.title })
-verifier('page seule : la poubelle s\'appelle « Effacer la page »', tj === 'Effacer la page', tj)
+const tj = await libelleSupprimer(p)
+verifier('page seule : l\'entrée du menu « Cette page » s\'appelle « Effacer la page »', tj === 'Effacer la page', tj)
 await p.evaluate(() => window.__app.supprimerPage())
 await p.waitForTimeout(100)
 const t1 = await p.evaluate(() => document.querySelector('.toast')?.textContent)

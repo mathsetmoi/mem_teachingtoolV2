@@ -33,6 +33,7 @@ import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
 import { execFileSync, execSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { supprimerLaPage, libelleSupprimer } from '../commun/page.mjs'
 
 const URL0 = 'http://localhost:5173/'
 const S = `${RACINE_ESSAIS}`
@@ -133,7 +134,6 @@ const etat = page => page.evaluate(ETAT)
 const dernier = e => net(e.msgs.at(-1))
 const attendreOuverte = page => page.waitForFunction(() => { const t = document.querySelector('.trieuse'); return t && !t.hidden }, null, { timeout: 3000 }).then(() => true, () => false)
 const carteCorbeille = (page, id, quoi) => page.locator(`.trieuse-corbeille .carte-corbeille[data-page="${id}"] ${quoi}`)
-const JETER = '.barre-haut button[aria-label="Supprimer cette page"]'
 async function ouvrirCorbeille(page) {
   if (!await page.evaluate(() => !document.querySelector('.trieuse')?.hidden)) { await page.keyboard.press('Shift+P'); await attendreOuverte(page); await page.waitForTimeout(200) }
   await page.click('.trieuse-bouton-corbeille'); await page.waitForTimeout(250)
@@ -153,7 +153,7 @@ if (faire('corbeille') || faire('memc')) {
   const { ctx, page } = await ouvrir({}, 'corbeille')
   const P = await preparer(page, 7, { noms: { 1: 'Exercice 12 p. 84', 4: 'Problème', 5: 'Fin de cours' }, ici: 1 })
   // La poubelle de la barre du haut : la page 2 (on arrive sur la 1)
-  await page.waitForTimeout(650); await page.click(JETER); await page.waitForTimeout(300)
+  await page.waitForTimeout(650); await supprimerLaPage(page); await page.waitForTimeout(300)
   // Dans la trieuse : la page 5 (« Problème »), par son menu
   await page.keyboard.press('Shift+P'); await attendreOuverte(page); await page.waitForTimeout(300)
   let e = await etat(page)
@@ -239,7 +239,7 @@ if (faire('corbeille') || faire('memc')) {
 
   // La poubelle, puis Supprimer définitivement : Ctrl+Z ne la rend plus
   await page.evaluate(p => window.__app.allerPage(p), P[6]); await page.waitForTimeout(100)
-  await page.waitForTimeout(650); await page.click(JETER); await page.waitForTimeout(300)
+  await page.waitForTimeout(650); await supprimerLaPage(page); await page.waitForTimeout(300)
   e = await etat(page)
   const arrivee = e.page
   await ouvrirCorbeille(page)
@@ -259,7 +259,7 @@ if (faire('corbeille') || faire('memc')) {
 
   // Le fichier .memc : une page dans la corbeille (« Fin de cours »), les noms
   await page.evaluate(p => window.__app.allerPage(p), P[5]); await page.waitForTimeout(100)
-  await page.waitForTimeout(650); await page.click(JETER); await page.waitForTimeout(300)
+  await page.waitForTimeout(650); await supprimerLaPage(page); await page.waitForTimeout(300)
   await page.evaluate(() => { delete window.showSaveFilePicker; window.showSaveFilePicker = undefined })
   const attente = page.waitForEvent('download')
   await page.keyboard.press('Control+s')
@@ -310,7 +310,7 @@ if (faire('corbeille') || faire('memc')) {
 
   // La poubelle de la barre du haut, puis Ctrl+Z : la page revient et sort de la corbeille
   await B.page.evaluate(p => window.__app.allerPage(p), lot2); await B.page.waitForTimeout(100)
-  await B.page.waitForTimeout(650); await B.page.click(JETER); await B.page.waitForTimeout(250)
+  await B.page.waitForTimeout(650); await supprimerLaPage(B.page); await B.page.waitForTimeout(250)
   e = await etat(B.page)
   const dedans = e.dans.includes(lot2) && !!e.entrees[lot2]
   verifier('La poubelle : « Page N supprimée » avec Annuler, la page dans la corbeille', dedans && /^Page \d supprimée$/.test(dernier(e)) && e.action.includes('Annuler'), e)

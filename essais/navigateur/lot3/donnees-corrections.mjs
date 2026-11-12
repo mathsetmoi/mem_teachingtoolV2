@@ -20,6 +20,7 @@
 // node donnees-corrections.mjs [section…] (envoi, seance, definitif, noms)
 import { chromium } from '../commun/playwright.mjs'
 import { readFileSync } from 'node:fs'
+import { supprimerLaPage, libelleSupprimer } from '../commun/page.mjs'
 
 const URL0 = 'http://localhost:5173/'
 const SECTIONS = process.argv.slice(2)
@@ -237,7 +238,7 @@ if (faire('definitif')) {
   await preparer(page, 2); await page.waitForTimeout(400)
   await envoyer(page, 2); await page.waitForTimeout(400)
   await aller(page, 2)
-  await page.click('.barre-haut button[aria-label="Supprimer cette page"]'); await page.waitForTimeout(400)
+  await supprimerLaPage(page); await page.waitForTimeout(400)
   await page.keyboard.press('Shift+P'); await page.waitForTimeout(500)
   await page.click('.trieuse-bouton-corbeille'); await page.waitForTimeout(400)
   await page.click('.corbeille-vider'); await page.waitForTimeout(200)

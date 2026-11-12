@@ -1,11 +1,11 @@
 // ESSAI DU LOT 13 : le mode nuit d'une page.
 // Le serveur de développement (port 5173).
-// A. N passe la page en nuit : le papier presque noir, le bouton lune
-//    allumé, les barres foncées (body.page-nuit), la pastille Noir devient
+// A. N passe la page en nuit : le papier presque noir, la vignette du
+//    bouton « Cette page » de nuit, les barres foncées (body.page-nuit), la pastille Noir devient
 //    « Blanc » ; l'écriture noire se peint claire ;
 // B. une autre page reste de jour (les barres redeviennent claires), et l'on
 //    retrouve la page de nuit en y revenant ;
-// C. le bouton lune remet de jour ; N de nouveau en nuit ;
+// C. la case « Mode nuit » du menu « Cette page » remet de jour ; N de nouveau en nuit ;
 // D. la trieuse : « Mode nuit » dans le menu d'une page, et sa vignette noire ;
 // E. le replay des élèves : la page est blanche avant la bascule, noire après ;
 // F. aucune erreur.
@@ -31,7 +31,9 @@ const pixel = (page, sel, x, y) => page.evaluate(([sel, x, y]) => {
 const SCENE = '.couche-scene'
 const etat = () => p.evaluate(() => ({
   nuit: window.__app.nuit, corps: document.body.classList.contains('page-nuit'),
-  lune: document.querySelector('.barre-haut .bouton[aria-pressed]')?.getAttribute('aria-pressed'),
+  // (Adapté au lot 3 de l'audit : plus de bouton lune ; la vignette du
+  // bouton « Cette page » se peint de nuit)
+  lune: (c => { if (!c) return null; const d = c.getContext('2d').getImageData(c.width >> 1, c.height >> 1, 1, 1).data; return String(d[0] + d[1] + d[2] < 3 * 80) })(document.querySelector('.barre-haut .choix-fond canvas')),
   noir: document.querySelector('.barre-outils .pastille')?.title,
 }))
 
@@ -75,9 +77,10 @@ e = await etat()
 ok(e.nuit && e.corps && await p.evaluate(() => window.__app.page) === page1, 'B) De retour sur la page de nuit, elle l\'est toujours', e)
 
 // ---------- C ----------
-await p.click('.barre-haut .bouton[aria-pressed]'); await p.waitForTimeout(300)
+await p.click('.barre-haut .choix-fond'); await p.waitForTimeout(200)
+await p.click('.menu-fonds [data-action="nuit"]'); await p.waitForTimeout(300)
 e = await etat()
-ok(!e.nuit && !e.corps && e.lune === 'false', 'C) Le bouton lune remet la page de jour', e)
+ok(!e.nuit && !e.corps && e.lune === 'false', 'C) La case « Mode nuit » du menu « Cette page » remet la page de jour', e)
 ok(await pixel(p, SCENE, 550, 400) < 80, 'C) Le trait est de nouveau sombre')
 await p.keyboard.press('n'); await p.waitForTimeout(300)
 ok((await etat()).nuit, 'C) N la repasse en nuit')

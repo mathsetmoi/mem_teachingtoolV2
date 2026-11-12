@@ -2,6 +2,7 @@
 // pages et sa date de modification justes, quand on ouvre la bibliothèque
 // juste après un changement ?
 import * as O from './outils.mjs'
+import { supprimerLaPage, libelleSupprimer } from '../../../commun/page.mjs'
 const { ok, norm } = O
 const ICI = new URL('.', import.meta.url).pathname
 await O.lancer()
@@ -31,7 +32,7 @@ ok(new RegExp(`· ${c.pages} pages?$`).test(c.infos), `une page ajoutée, la bib
 // Deux de plus, puis une supprimée
 await p.evaluate(() => { window.__app.nouvellePage(); window.__app.nouvellePage() })
 await p.waitForTimeout(700)
-await p.click('.barre-haut button[aria-label="Supprimer cette page"]')
+await supprimerLaPage(p)
 await p.waitForTimeout(2000)
 c = await carte()
 console.log('trois de plus, une jetée :', JSON.stringify(c))
