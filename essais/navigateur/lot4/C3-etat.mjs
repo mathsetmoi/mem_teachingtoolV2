@@ -517,7 +517,9 @@ const MIN = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60
   await ctx.addInitScript(() => { try { delete window.showSaveFilePicker } catch { /* */ } window.showSaveFilePicker = undefined })
   await ctx.addInitScript(ECOUTER_TOASTS)
   const p = await ctx.newPage(); suivre(p, 'E')
-  await p.clock.install()
+  // (à 10 h du jour : lancé vers minuit, les minutes de travail passaient la
+  // veille, et le rappel disait « depuis hier à 23 h 52 »)
+  await p.clock.install({ time: new Date(new Date().setHours(10, 0, 0, 0)) })
   await p.goto(DEV); await pret(p); await p.waitForTimeout(500)
   // (Adapté au lot 4, morceau C10 : la copie sur le Drive, voulue par défaut en ligne, a sa ligne, son
   // point et son bandeau quand elle attend la connexion Google ; ces essais du rappel la mettent de
@@ -600,7 +602,9 @@ console.log('=== F. le rappel (Chrome, sans clé) ===')
   const ctx = await nav.newContext({ viewport: { width: 1024, height: 768 } })
   await ctx.addInitScript(PICKER)
   const p = await ctx.newPage(); suivre(p, 'F')
-  await p.clock.install()
+  // (à 10 h du jour : lancé vers minuit, les minutes de travail passaient la
+  // veille, et le rappel disait « depuis hier à 23 h 52 »)
+  await p.clock.install({ time: new Date(new Date().setHours(10, 0, 0, 0)) })
   await p.goto(DEV); await pret(p); await p.waitForTimeout(500)
   // (Adapté au lot 4, morceau C10 : la copie sur le Drive, voulue par défaut en ligne, a sa ligne, son
   // point et son bandeau quand elle attend la connexion Google ; ces essais du rappel la mettent de

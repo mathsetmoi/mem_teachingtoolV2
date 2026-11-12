@@ -387,10 +387,11 @@ if (seul('B')) {
   const p = await ouvrir(ctx, '', 'B')
   const [X, Z] = await p.evaluate(() => window.__creer([{ nom: 'Symétrie', traits: ['X1', 'X2'] }, { nom: 'Pythagore', traits: ['Z1'] }]))
   await p.evaluate(id => window.__memcDe(id, 'symetrie.memc'), X)
-  // Égal (il n'est pas ouvert ici)
+  // Égal (il n'est pas ouvert ici). (« hier » aussi : lancé vers minuit, le
+  // classeur a pu être modifié la veille)
   await ctrlO(p, 'symetrie.memc')
   let d = await dialogue(p)
-  ok(d?.textes[1] && /^Ce classeur est déjà dans la bibliothèque : « Symétrie » \(modifié aujourd'hui à \d+ h \d\d\)\.$/.test(d.textes[1]) && d.textes[2] === 'Celui de la bibliothèque contient déjà tout ce fichier.',
+  ok(d?.textes[1] && /^Ce classeur est déjà dans la bibliothèque : « Symétrie » \(modifié (aujourd'hui|hier) à \d+ h \d\d\)\.$/.test(d.textes[1]) && d.textes[2] === 'Celui de la bibliothèque contient déjà tout ce fichier.',
     `B1) Le même (son id) : « ${d?.textes[1]} » « ${d?.textes[2]} »`, d)
   ok(boutons(d) === 'Annuler | Ajouter quand même comme copie | Ouvrir celui de la bibliothèque' && d.focus === 'ouvrir-biblio' && d.case?.coche === true,
     '   … [Annuler] [Ajouter quand même comme copie] [Ouvrir celui de la bibliothèque] (principal, le focus) ; la case (il n\'a pas de clé)', d)
