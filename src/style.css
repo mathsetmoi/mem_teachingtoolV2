@@ -2752,7 +2752,7 @@ body.page-nuit.contraste :is(.bouton, button.rang, .bouton-classeur, .zoom-texte
 .accueil-saisir-edt { display: grid; gap: 2px; justify-items: start; }
 
 /* La bulle « 1re spé 2 arrive » */
-.bulle-edt { position: fixed; top: calc(84px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 30;
+.bulle-edt { position: fixed; top: calc(100px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 30;
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; max-width: calc(100vw - 24px);
   background: var(--papier); border: 1px solid var(--filet); border-left: 4px solid; border-radius: 14px; padding: 6px 6px 6px 12px;
   box-shadow: 0 8px 22px rgba(27, 34, 48, 0.16); font-size: 15px; }

@@ -158,6 +158,8 @@ await PB.keyboard.press('Escape')
 // retirée ici pour garder les rangs d'avant)
 ok(m[0]?.action === 'bibliotheque' && m[0].libelle === 'Bibliothèque des classeurs…', '1) le menu ⋯ commence par « Bibliothèque des classeurs… » (C5)', m[0])
 m.shift()
+// (Adapté au lot 23 : « Emploi du temps… » vient sous « Bibliothèque des classeurs… »)
+if (m[0]?.action === 'emploi-du-temps') m.shift()
 // (Adapté au lot 18 : le menu ⋯ réduit : Enregistrer le classeur… · Enregistrer automatiquement dans un fichier… ·
 // Exporter le classeur en PDF… · Autres sauvegardes… · Ouvrir un classeur… ; « Copie sur le Drive… » et
 // « Enregistrer sur le Drive ou ailleurs… » sont dans « Autres sauvegardes… » ; l'aide ne parle plus de « la clé »)
