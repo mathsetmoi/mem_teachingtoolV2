@@ -52,6 +52,11 @@
  *     {"relais":"MEM Replay" — et non une page de connexion Google.
  *     « pret » passe à true après la première séance publiée.
  *
+ * VERSION 5 : le relais lit aussi l'emploi du temps de Pronote (son lien
+ * synchronisé) pour l'outil. Il faut redonner l'autorisation une fois :
+ * après avoir collé cette version, relancer « verifierLInstallation »
+ * (Google demande d'autoriser « la connexion à un service externe »).
+ *
  * METTRE À JOUR un relais déjà déployé : coller la nouvelle version dans
  * « Code.gs », enregistrer, puis « Déployer » → « Gérer les déploiements » →
  * crayon → « Version : Nouvelle version » → « Déployer ». L'adresse ne change
@@ -73,7 +78,7 @@ var EXTENSION = '.mem';
 var DEBUT = '{"format":"mem-revoir"';
 
 /** La version de ce relais (le site la vérifie). */
-var VERSION = 4;
+var VERSION = 5;
 
 /** Le code d'un replay posé dans un dossier du Drive : 8 signes tirés au hasard. */
 var FORME_CODE = /^[a-z0-9]{8}$/;
@@ -90,6 +95,7 @@ function doGet(e) {
   var p = (e && e.parameter) || {};
   try {
     if (p.ping) return enJson(etatDuRelais());
+    if (p.pronote !== undefined) return enJson(emploiDuTempsPronote(String(p.pronote)));
     var texte;
     if (p.code !== undefined) {
       var code = String(p.code);
@@ -165,6 +171,32 @@ function seanceParSonCode(code) {
   return texte.slice(0, DEBUT.length) === DEBUT ? texte : null;
 }
 
+/**
+ * « ?pronote=… » (version 5) : l'emploi du temps du professeur, par le lien
+ * synchronisé que Pronote lui donne (format iCal). Le navigateur ne peut pas
+ * le lire lui-même (Pronote ne répond pas aux autres sites) : le relais le
+ * lit à sa place et le lui rend, sans le garder. Il ne lit QUE ce genre de
+ * lien : en https, chez index-education.net, un chemin « /ical/ », et une
+ * réponse qui est un calendrier (« BEGIN:VCALENDAR »), d'au plus 2 Mo.
+ * Toute autre adresse est refusée : le relais n'ouvre pas n'importe quel site.
+ */
+var PRONOTE_HOTE = /^[a-z0-9.-]+\.index-education\.net$/;
+var PRONOTE_TAILLE = 2 * 1024 * 1024;
+function emploiDuTempsPronote(adresse) {
+  var m = /^https:\/\/([^\/?#:@]+)(\/[^?#]*)(\?[^#]*)?$/.exec(adresse);
+  if (!m || !PRONOTE_HOTE.test(m[1].toLowerCase()) || m[2].indexOf('/ical/') < 0) {
+    return { erreur: 'Ce n’est pas un lien d’emploi du temps de Pronote.' };
+  }
+  var r;
+  try { r = UrlFetchApp.fetch(adresse, { muteHttpExceptions: true, followRedirects: true }); } catch (err) {
+    return { erreur: 'Pronote ne répond pas. Réessayez plus tard.' };
+  }
+  if (r.getResponseCode() !== 200) return { erreur: 'Pronote refuse ce lien : il a peut-être changé. Copiez le nouveau lien dans Pronote.' };
+  var texte = r.getContentText('UTF-8');
+  if (texte.length > PRONOTE_TAILLE || !/^\s*BEGIN:VCALENDAR/i.test(texte)) return { erreur: 'Ce lien ne donne pas un emploi du temps.' };
+  return { ics: texte };
+}
+
 /** Le fichier est-il rangé dans un dossier des replays dont ce compte est le propriétaire ? */
 function dansUnDossierDesReplays(fichier) {
   var moi = Session.getEffectiveUser().getEmail();
@@ -212,5 +244,7 @@ function enJson(objet) {
  */
 function verifierLInstallation() {
   console.log('Compte : ' + Session.getEffectiveUser().getEmail());
+  // Demande l'autorisation de lire un lien de Pronote (version 5)
+  try { UrlFetchApp.fetch('https://www.index-education.com/', { muteHttpExceptions: true }); } catch (err) { console.log('Lien externe : ' + err); }
   console.log(JSON.stringify(etatDuRelais(), null, 2));
 }

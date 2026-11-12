@@ -33,9 +33,15 @@ import { Fichiers } from './classeurs/fichiers'
 import type { ActionMessage } from './app'
 import type { SeanceDuClasseur } from './seances'
 import { deLaSeance } from './seances'
-import type { ChapitreAccueil } from './seances-vue'
+import type { ChapitreAccueil, HoteAccueil } from './seances-vue'
 import { ouvrirAccueil } from './seances-vue'
 import { installerCurseurs } from './curseurs'
+import { entreeMenu } from './menus'
+import { ENTREE_EMPLOI_DU_TEMPS, ouvrirEmploiDuTemps } from './emploi-du-temps/vue'
+import { BulleEmploiDuTemps } from './emploi-du-temps/bulle'
+import { ecrireEDT, lireEDT, momentPresent, quandDit, type Moment } from './emploi-du-temps/moment'
+import { AVANCE_ACCUEIL, direLaSemaine, heureDite, horaireDit, jourEtMinute } from './emploi-du-temps/donnees'
+import { relireLesLiens } from './emploi-du-temps/pronote'
 import { comparerEtiquettes, etiquetteHeritee, remontee } from './classeurs/arbre'
 import { NOM_SEANCES_ISOLEES, classeurSeancesIsolees, estSeancesIsolees, isoleesEnQueue, texteClasseurIsoleesCree, texteSeanceIsolee } from './classeurs/isolees'
 import { classeursCherches, contenuDeLaBase } from './classeurs/recherche-bibliotheque'
@@ -157,6 +163,8 @@ function bibliothequeSeule(racine: HTMLElement, registre: Registre, message?: st
   const verification = new Verification({ registre, fichiers, classeur: () => null, message: dire })
   fichiers.verification = verification
   brancherVerification(b, verification, dire)
+  // L'emploi du temps (lot 2 de l'audit) : au menu ⋯ du bandeau
+  b.menuDuBandeau.push(m => { entreeMenu(m, ENTREE_EMPLOI_DU_TEMPS, () => void ouvrirEmploiDuTemps(racine, { registre, message: dire }), { action: 'emploi-du-temps' }) })
   // Ouvrir et enregistrer sur l'ordinateur ou sur le Drive, Mes emplacements (lot 7)
   const ailleurs = new Ailleurs({ registre, bibliotheque: b, fichiers, message: dire, classeur: () => null })
   // Où ranger les classeurs d'un niveau (lot 18) : la fenêtre « Où ranger… »,
@@ -291,6 +299,8 @@ async function demarrer() {
   // les 30 s). Rattrapé, sans retenir la suite : un index qui refuse
   // d'écrire ne doit pas empêcher d'écrire dans le classeur.
   let suivi: SuiviDuClasseur | null = null
+  /** L'emploi du temps branché (avec une bibliothèque) : la bulle, la fenêtre */
+  let edtBranche: { bulle: BulleEmploiDuTemps; ouvrir: () => void } | null = null
   /** Le nom du classeur a changé (sa première ouverture, un renommage dans
    *  un autre onglet) : le bouton, le titre de l'onglet le suivent */
   const nommer = (f: FicheClasseur | undefined) => {
@@ -419,6 +429,17 @@ async function demarrer() {
     })
     fichiers.verification = verification
     const ouvrirVerification = brancherVerification(ui.bibliotheque, verification, t => ui.message(t))
+    // L'emploi du temps (lot 2 de l'audit) : « Emploi du temps… » aux menus ⋯
+    // du tableau et de la bibliothèque, et la bulle « … arrive »
+    const bulle = new BulleEmploiDuTemps(document.getElementById('app')!, registre, () => infos.id, f => {
+      if (!ui.bibliotheque) return
+      noterNouvelleSeance(f.id, false)
+      void ui.bibliotheque.ouvrirClasseur(f)
+    })
+    const ouvrirEDT = () => void ouvrirEmploiDuTemps(document.getElementById('app')!, { registre, message: t => ui.message(t), change: () => void bulle.recalculer() })
+    ui.emploiDuTemps = ouvrirEDT
+    ui.bibliotheque.menuDuBandeau.push(m => { entreeMenu(m, ENTREE_EMPLOI_DU_TEMPS, ouvrirEDT, { action: 'emploi-du-temps' }) })
+    edtBranche = { bulle, ouvrir: ouvrirEDT }
     verification.voirLaVerification = () => { ui.ouvrirBibliotheque(); if (ui.bibliotheque?.ouvert) ouvrirVerification() }
     ui.brancherFichiers(fichiers)
     // Ouvrir et enregistrer sur l'ordinateur ou sur le Drive, Mes
@@ -529,9 +550,23 @@ async function demarrer() {
   // fichier, ou d'ajouter, de créer (l'arrivée a son message) : on l'a
   // choisi, on le regarde (sa dernière séance continue)
   const autreMessage = ouvertDUnFichier || !!arrivee || !!message || tableau.incomplet
+  // L'emploi du temps (lot 2 de l'audit) : une classe arrive (10 minutes
+  // avant son créneau) ou est là : « Bonjour ! » la propose, même si la
+  // dernière séance date de moins d'une heure, sauf quand cette séance a
+  // commencé pendant ce créneau, dans le classeur du créneau (on recharge
+  // la page, on revient d'un autre classeur : on continue)
+  const moment = registre && fiche && edtBranche && depart.seance && (depart.genre === 'reprise' || depart.genre === 'accueil') && !ouvertDUnFichier && !arrivee
+    ? await momentPresent(registre).catch(() => null) : null
+  if (moment?.maintenant && depart.seance) {
+    const c = moment.maintenant.creneau
+    const { minute } = jourEtMinute(Date.now())
+    const debutDuCreneau = Date.now() - (minute - c.debut) * 60_000
+    const continue_ = moment.maintenant.classeur?.id === infos.id && depart.seance.debut >= debutDuCreneau - AVANCE_ACCUEIL * 60_000
+    if (!continue_) depart = { genre: 'accueil', seance: depart.seance }
+  }
   let accueil: Promise<HTMLDialogElement | null> | null = null
   if (depart.genre === 'reprise' && depart.seance && !autreMessage) ui.message(`Séance ${deLaSeance(depart.seance, Date.now())} reprise`)
-  else if (depart.genre === 'accueil' && depart.seance && !ouvertDUnFichier && !arrivee) accueil = ouvrirLAccueil(app, ui, registre, fiche, depart.seance)
+  else if (depart.genre === 'accueil' && depart.seance && !ouvertDUnFichier && !arrivee) accueil = ouvrirLAccueil(app, ui, registre, fiche, depart.seance, moment, edtBranche?.ouvrir ?? null)
   // Arrivé par « Publier la séance… » : la fenêtre Publier, sur cette séance
   if (seanceVue && PUBLIER_VOULU && SEANCE_VOULUE && !document.querySelector('dialog[open]')) ui.publierLaSeance(SEANCE_VOULUE)
   // Parti d'un autre classeur avec « Commencer par des automatismes » cochée
@@ -551,6 +586,13 @@ async function demarrer() {
       else window.setTimeout(() => direLeRappel(ui, registre, rappel), ui.finDuMessage())
     }
     void (accueil ?? ditALArrivee).then(dire)
+  }
+  // La bulle « … arrive », une fois la fenêtre d'arrivée fermée ; le lien de
+  // Pronote se relit en arrière-plan (la version en ligne), puis la bulle
+  if (edtBranche) {
+    const b = edtBranche.bulle
+    b.demarrer()
+    void relireLesLiens().then(change => { if (change) void b.recalculer() }).catch(() => {})
   }
   // Que le navigateur ne vide pas la base pour faire de la place. Chrome, Edge
   // et Safari décident seuls, sans rien demander ; Firefox pose sa question.
@@ -710,15 +752,34 @@ async function seanceIsolee(app: App, ui: UI, registre: Registre, fiche: FicheCl
  *  (les classeurs de son dossier, avec leur nombre de séances ; le classeur
  *  « Séances isolées » en dernier, lot 17), le lien « Séance isolée ». Sans
  *  bibliothèque (le repli), ni niveaux ni chapitres ni séance isolée. */
-async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche: FicheClasseur | null, seance: SeanceDuClasseur): Promise<HTMLDialogElement | null> {
+async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche: FicheClasseur | null, seance: SeanceDuClasseur, moment: Moment | null = null, saisirEDT: (() => void) | null = null): Promise<HTMLDialogElement | null> {
   const { vivants, fiches, ouvrables, ici, classe, dossierDuChapitre, dans, partir, nouveauChapitre } = await contexteDuNiveau(ui, registre, fiche)
+  // L'emploi du temps vide : le lien « Saisir mon emploi du temps… »
+  const edtVide = !!registre && !!saisirEDT && !moment && !(await lireEDT(registre).catch(() => null))?.creneaux.length
   const carte = new Map(vivants.map(d => [d.id, d]))
   const classes = vivants.filter(d => d.etiquette && d.id !== classe?.dossier.id)
     .sort((a, b) => comparerEtiquettes(a.nom, b.nom)).map(d => ({ id: d.id, nom: d.nom }))
   const avecBibliotheque = !!(registre && fiche && ui.bibliotheque)
   const nomDuNiveau = classe ? classe.dossier.nom : null
   if (document.querySelector('dialog[open]')) return null
-  return ouvrirAccueil(document.getElementById('app')!, {
+  // L'emploi du temps (lot 2 de l'audit) : le créneau du moment ; son
+  // classeur ailleurs : le gros bouton y part, « changer de chapitre » montre
+  // les chapitres de sa classe, « Rester sur… » remplace « Continuer »
+  const m = moment?.maintenant ?? null
+  const cible = m?.classeur ?? null
+  const ailleurs = !!m && cible?.id !== ici?.id
+  const t = Date.now()
+  const edt = moment?.edt
+  const semaine = moment?.semaine ?? null
+  const changerSemaine = edt && semaine && registre ? {
+    texte: `On est en semaine ${semaine === 'A' ? 'B' : 'A'}`,
+    faire: () => {
+      void ecrireEDT(registre, direLaSemaine(edt, t, semaine === 'A' ? 'B' : 'A')).then(() => ui.message(`C'est noté : semaine ${semaine === 'A' ? 'B' : 'A'}. L'alternance repart de cette semaine.`)).catch(() => {})
+    },
+  } : null
+  const pro = moment?.prochain ?? null
+  const dossierCible = m && ailleurs ? (cible?.dossier ?? m.creneau.dossier) : null
+  const base: HoteAccueil = {
     classe: nomDuNiveau,
     chapitre: app.classeur.nom,
     isolees: estSeancesIsolees(ici ?? app.classeur),
@@ -751,5 +812,40 @@ async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche
     },
     nouveauChapitre: () => nouveauChapitre(dossierDuChapitre),
     nouveauClasseurVierge: avecBibliotheque ? () => ui.bibliotheque?.nouveauClasseur({ vierge: true }) : null,
-  })
+  }
+  // Ce que dit l'emploi du temps
+  const parLEmploiDuTemps: Partial<HoteAccueil> = {
+    creneau: m ? { quand: quandDit(m.creneau, t), horaire: horaireDit(m.creneau), nom: m.nom, etablissement: m.etablissement, couleur: m.couleur, salle: m.creneau.salle, semaine } : null,
+    semaine: m ? changerSemaine : null,
+    prochain: pro ? {
+      texte: `${heureDite(pro.creneau.debut)}, ${pro.nom}`, etablissement: pro.etablissement, couleur: pro.couleur.fort,
+      libelle: pro.classeur && pro.classeur.id !== ici?.id ? `ouvrir ${pro.classeur.nom}` : null,
+      ouvrir: auto => { if (pro.classeur) partir(pro.classeur, auto) },
+    } : null,
+    saisirEmploiDuTemps: edtVide ? saisirEDT : null,
+  }
+  // Le classeur du créneau est ailleurs : le gros bouton y part
+  const versLeCreneau: Partial<HoteAccueil> = ailleurs && m ? {
+    classe: m.nom,
+    chapitre: cible ? cible.nom : 'Pas encore de chapitre',
+    isolees: cible ? estSeancesIsolees(cible) : false,
+    continuer: null,
+    derniereFois: null,
+    rester: { texte: `Rester sur « ${app.classeur.nom} »`, faire: () => ui.message(`Séance ${deLaSeance(seance, Date.now())} : vous la continuez`) },
+    nouvelleSeance: auto => {
+      if (cible) partir(cible, auto)
+      else { ui.message(`« ${m.nom} » n'a pas encore de chapitre : créez-le.`); nouveauChapitre(m.creneau.dossier) }
+    },
+    chapitres: avecBibliotheque ? async () => {
+      const l: ChapitreAccueil[] = dans(dossierCible).map(f => ({ id: f.id, nom: f.nom, ici: f.id === cible?.id, seances: f.seances ?? null, isolees: estSeancesIsolees(f) }))
+      return isoleesEnQueue(l.sort((a, b) => Number(b.ici) - Number(a.ici) || (fiches.find(f => f.id === b.id)?.ouvert ?? 0) - (fiches.find(f => f.id === a.id)?.ouvert ?? 0)))
+    } : null,
+    ouvrirChapitre: (id, auto) => {
+      if (id === ici?.id) { app.nouvelleSeance(); if (auto) ui.flash.ouvrir(); return }
+      const f = ouvrables.find(x => x.id === id)
+      if (f) partir(f, auto)
+    },
+    nouveauChapitre: () => nouveauChapitre(dossierCible),
+  } : {}
+  return ouvrirAccueil(document.getElementById('app')!, { ...base, ...parLEmploiDuTemps, ...versLeCreneau })
 }

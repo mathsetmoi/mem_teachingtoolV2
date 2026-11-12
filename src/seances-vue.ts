@@ -71,7 +71,23 @@ export interface HoteAccueil {
   nouveauChapitre(): void
   /** Un classeur vierge, hors de tout niveau (null : pas de bibliothèque) */
   nouveauClasseurVierge: (() => void) | null
+  /** L'emploi du temps (lot 2 de l'audit) : le créneau du moment, en tête
+   *  (« LFB · dans 7 minutes · salle B12 · semaine A », « 10 h 05 – 11 h 00 ·
+   *  2nde 3 ») ; le gros bouton ouvre alors son classeur */
+  creneau?: CreneauAccueil | null
+  /** Le classeur du créneau n'est pas celui qui est ouvert : « Rester sur
+   *  « 1s_04_Trigo » » remplace « Continuer la séance » */
+  rester?: { texte: string; faire(): void } | null
+  /** Sans créneau maintenant : « Prochain cours : 14 h 05, 4e B · ouvrir 4_05_Pythagore » */
+  prochain?: { texte: string; etablissement: string | null; couleur: string; libelle: string | null; ouvrir(automatismes: boolean): void } | null
+  /** « Pas la bonne semaine ? On est en semaine A » (des créneaux d'une seule semaine) */
+  semaine?: { texte: string; faire(): void } | null
+  /** « Saisir mon emploi du temps… » : tant que la semaine est vide */
+  saisirEmploiDuTemps?: (() => void) | null
 }
+
+/** Le créneau du moment dans « Bonjour ! » */
+export interface CreneauAccueil { quand: string; horaire: string; nom: string; etablissement: string | null; couleur: { fort: string; doux: string }; salle?: string; semaine: 'A' | 'B' | null }
 
 /** Le nom du dossier de niveau dans la phrase : « en 5ème », « en 2nde »,
  *  « en 1re spé », « en Tle spé ». Un nom qui n'est pas un niveau (la même
@@ -124,7 +140,18 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
     chapitre.append(' — ')
     chapitre.append(bouton('lien accueil-changer', 'changer de chapitre', () => void montrerChapitres()))
   }
-  principale.append(titre, gros, caseAuto, chapitre)
+  principale.append(titre)
+  const cr = h.creneau
+  if (cr) {
+    const b = el('div', 'accueil-creneau')
+    b.style.background = cr.couleur.doux; b.style.borderLeftColor = cr.couleur.fort
+    const quand = el('span', 'quand-creneau')
+    if (cr.etablissement) quand.append(el('span', 'etab', cr.etablissement))
+    quand.append([cr.quand, cr.salle ? `salle ${cr.salle}` : '', cr.semaine ? `semaine ${cr.semaine}` : ''].filter(Boolean).join(' · '))
+    b.append(quand, el('span', 'quel-creneau', `${cr.horaire} · ${cr.nom}`))
+    principale.append(b)
+  }
+  principale.append(gros, caseAuto, chapitre)
   if (h.derniereFois) {
     const p = el('p', 'accueil-derniere-fois')
     p.append(el('span', 'quand', `La dernière fois${h.continuer ? ` (${h.continuer.replace(/^(de|du) /, '')})` : ''} : `), el('span', 'quoi', h.derniereFois))
@@ -141,9 +168,35 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
     principale.append(p)
   }
   if (h.continuer) principale.append(bouton('lien accueil-continuer', `Continuer la séance ${h.continuer}`, faire(() => h.continuerSeance(avecAuto()))))
+  const rester = h.rester
+  if (rester) principale.append(bouton('lien accueil-rester', rester.texte, faire(() => rester.faire())))
+  const sem = h.semaine
+  if (sem) {
+    const p = el('p', 'accueil-semaine', 'Pas la bonne semaine ? ')
+    p.append(bouton('lien accueil-changer-semaine', sem.texte, faire(() => sem.faire())))
+    principale.append(p)
+  }
   if (h.classes.length) {
     const p = el('p', 'accueil-classes', 'Un autre niveau : ')
     for (const c of h.classes) p.append(bouton('pastille-classe', c.nom, faire(() => h.autreClasse(c.id, avecAuto()))))
+    principale.append(p)
+  }
+  const pro = h.prochain
+  if (pro) {
+    const p = el('p', 'accueil-prochain', 'Prochain cours : ')
+    p.append(el('b', '', pro.texte))
+    if (pro.etablissement) {
+      const e = el('span', 'edt-etab'); const i = el('i'); i.style.background = pro.couleur
+      e.append(' ', i, pro.etablissement)
+      p.append(e)
+    }
+    if (pro.libelle) p.append(' · ', bouton('lien accueil-prochain-ouvrir', pro.libelle, faire(() => pro.ouvrir(avecAuto()))))
+    principale.append(p)
+  }
+  const saisir = h.saisirEmploiDuTemps
+  if (saisir) {
+    const p = el('p', 'accueil-saisir-edt')
+    p.append(bouton('lien accueil-saisir', 'Saisir mon emploi du temps…', faire(saisir)), el('small', '', '« Bonjour ! » proposera alors la classe qui arrive.'))
     principale.append(p)
   }
   if (h.nouveauClasseurVierge) {

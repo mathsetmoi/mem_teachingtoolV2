@@ -1,3 +1,5 @@
+// (Lot 23 : « Emploi du temps… » s'ajoute sous « Bibliothèque des classeurs… » ;
+// les listes attendues l'ont.)
 // ESSAI DU LOT 18 (le menu ⋯ réduit) : le menu ⋯ dit une seule chose du
 // fichier du classeur, « Autres sauvegardes… » réunit le reste.
 // Le serveur de développement (port 5173, ou DEV=…) et la version hors ligne
@@ -305,7 +307,7 @@ try {
   const ctx = await contexte()
   const p = await ouvrirPage(ctx, 'A')
   let m = await menu(p)
-  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","activer-cle","exporter-pdf","autres-sauvegardes","ouvrir"]' && sansAnciennes(m),
+  ok(JSON.stringify(m.entrees) === '["bibliotheque","emploi-du-temps","enregistrer","activer-cle","exporter-pdf","autres-sauvegardes","ouvrir"]' && sansAnciennes(m),
     'A1) Sans fichier, à la racine (état 2) : bibliotheque, enregistrer, activer-cle, exporter-pdf, autres-sauvegardes, ouvrir ; plus d\'anciennes entrées', m.toutes)
   ok(m.libelles.enregistrer?.texte === 'Enregistrer le classeur…' && m.libelles.enregistrer.touche === 'Ctrl + S' && m.libelles.enregistrer.aide === AIDE_ENREGISTRER,
     '   … « Enregistrer le classeur… » Ctrl + S, son aide sans le mot « clé »', m.libelles.enregistrer)
@@ -321,7 +323,7 @@ try {
   let e = await etat(p)
   ok(e.cle?.etat === 'absente' && e.cle.rangeable?.niveau === '5eme' && !e.cle.rangeDans && !e.bandeau && e.lignes[0] === 'navigateur:ok:Seulement dans ce navigateur', 'A2) « Fractions » dans « 5eme », pas rangé : l\'état sait le niveau à ranger, sans bandeau', e)
   m = await menu(p)
-  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","ranger-niveau","exporter-pdf","autres-sauvegardes","ouvrir"]' && sansAnciennes(m),
+  ok(JSON.stringify(m.entrees) === '["bibliotheque","emploi-du-temps","enregistrer","ranger-niveau","exporter-pdf","autres-sauvegardes","ouvrir"]' && sansAnciennes(m),
     'A3) Le menu (état 2, niveau à ranger) : enregistrer, ranger-niveau, exporter-pdf, autres-sauvegardes, ouvrir', m.toutes)
   ok(m.libelles['ranger-niveau']?.texte === 'Enregistrer « 5eme » sur l\'ordinateur…' && m.libelles['ranger-niveau'].aide === AIDE_RANGER && !m.libelles['ranger-niveau'].inactif, '   … « Enregistrer « 5eme » sur l\'ordinateur… » et son aide', m.libelles['ranger-niveau'])
   ok(!m.lignes.some(l => l.quoi === 'cle') && m.lignes[0]?.texte === 'Seulement dans ce navigateur', '   … le bloc de l\'état : aucune ligne du fichier, « Seulement dans ce navigateur »', m.lignes)
@@ -332,7 +334,7 @@ try {
   const p3 = await ctx3.newPage(); suivre(p3, 'A3')
   await p3.goto(DEV); await pret(p3); await p3.waitForTimeout(500)
   const m3 = await menu(p3)
-  ok(JSON.stringify(m3.entrees) === '["bibliotheque","enregistrer","exporter-pdf","autres-sauvegardes","ouvrir"]' && sansAnciennes(m3) && m3.libelles.enregistrer.touche === 'Ctrl + S',
+  ok(JSON.stringify(m3.entrees) === '["bibliotheque","emploi-du-temps","enregistrer","exporter-pdf","autres-sauvegardes","ouvrir"]' && sansAnciennes(m3) && m3.libelles.enregistrer.touche === 'Ctrl + S',
     'A4) Sans showSaveFilePicker (état 3) : enregistrer (Ctrl + S), exporter-pdf, autres-sauvegardes, ouvrir, rien d\'autre', m3.toutes)
   const e3 = await etat(p3)
   ok(e3.cle?.etat === 'impossible' && m3.lignes.some(l => l.quoi === 'cle' && /ne sait pas enregistrer tout seul/.test(l.texte)), '   … la ligne « Ce navigateur ne sait pas enregistrer tout seul dans un fichier… »', m3.lignes)
@@ -368,7 +370,7 @@ try {
   let dem = await notes(p, '__demandes')
   ok(dem.every(x => x.actif), `C5) ${dem.length} demande(s) d'accord, toutes dans un geste`, dem)
   m = await menu(p)
-  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","deplacer-classeur","exporter-pdf","autres-sauvegardes","ouvrir"]' && sansAnciennes(m),
+  ok(JSON.stringify(m.entrees) === '["bibliotheque","emploi-du-temps","enregistrer","deplacer-classeur","exporter-pdf","autres-sauvegardes","ouvrir"]' && sansAnciennes(m),
     'C6) Le menu (état 1) : enregistrer, deplacer-classeur, exporter-pdf, autres-sauvegardes, ouvrir', m.toutes)
   ok(m.libelles.enregistrer?.texte === 'Enregistrer une copie…' && m.libelles.enregistrer.touche === null && m.libelles.enregistrer.aide === AIDE_COPIE, '   … « Enregistrer une copie… », sans raccourci (Ctrl + S écrit dans le fichier), son aide', m.libelles.enregistrer)
   const deplaceur = await p.evaluate(() => !!window.__app.ui.deplacerClasseur)
@@ -406,7 +408,7 @@ try {
     'D2) Le bandeau « Ce classeur n\'a pas encore son fichier dans « LFB classeurs › 5 ». » [Lui donner son fichier], avec ×', e.bandeau)
   ok(e.lignes.includes('cle:info:Pas encore de fichier dans « LFB classeurs › 5 »:donner-fichier'), '   … la ligne « Pas encore de fichier dans « LFB classeurs › 5 » » dans l\'état', e.lignes)
   m = await menu(p)
-  ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","donner-fichier","exporter-pdf","autres-sauvegardes","ouvrir"]', 'D3) Le menu (état 2, niveau rangé) : enregistrer, donner-fichier, exporter-pdf, autres-sauvegardes, ouvrir', m.toutes)
+  ok(JSON.stringify(m.entrees) === '["bibliotheque","emploi-du-temps","enregistrer","donner-fichier","exporter-pdf","autres-sauvegardes","ouvrir"]', 'D3) Le menu (état 2, niveau rangé) : enregistrer, donner-fichier, exporter-pdf, autres-sauvegardes, ouvrir', m.toutes)
   ok(m.libelles['donner-fichier']?.texte === 'Lui donner son fichier' && m.libelles['donner-fichier'].aide === 'Son fichier ira dans « LFB classeurs › 5 › Thales », écrit tout seul.', '   … « Lui donner son fichier » : « Son fichier ira dans « LFB classeurs › 5 › Thales », écrit tout seul. »', m.libelles['donner-fichier'])
   ok(m.lignes.some(l => l.quoi === 'cle' && l.texte === 'Pas encore de fichier dans « LFB classeurs › 5 »' && l.boutons.length === 0), '   … dans le bloc, la ligne sans bouton (l\'entrée est juste dessous)', m.lignes)
   await fermerMenu(p)
@@ -427,7 +429,7 @@ try {
   dem = await notes(p, '__demandes')
   ok(dem.every(x => x.actif), `   … ${dem.length} demande(s) d'accord, toutes dans un geste`, dem)
   m = await menu(p)
-  ok(m.entrees[1] === 'enregistrer' && m.entrees[2] === 'deplacer-classeur' && m.libelles.enregistrer.texte === 'Enregistrer une copie…', 'D7) Le menu passe à l\'état 1', m.toutes)
+  ok(m.entrees[2] === 'enregistrer' && m.entrees[3] === 'deplacer-classeur' && m.libelles.enregistrer.texte === 'Enregistrer une copie…', 'D7) Le menu passe à l\'état 1', m.toutes)
   await fermerMenu(p)
   // Par le bouton du bandeau
   await allerA(p, idPythagore)
@@ -512,7 +514,7 @@ try {
     await f.waitForTimeout(800)
     await fermerDialogues(f)
     const m = await menu(f)
-    ok(JSON.stringify(m.entrees) === '["bibliotheque","enregistrer","activer-cle","exporter-pdf","autres-sauvegardes","ouvrir"]' && sansAnciennes(m) && !m.libelles['autres-sauvegardes'].inactif,
+    ok(JSON.stringify(m.entrees) === '["bibliotheque","emploi-du-temps","enregistrer","activer-cle","exporter-pdf","autres-sauvegardes","ouvrir"]' && sansAnciennes(m) && !m.libelles['autres-sauvegardes'].inactif,
       'F1) file:// : le menu (état 2) : enregistrer, activer-cle, exporter-pdf, autres-sauvegardes, ouvrir', m.toutes)
     await fermerMenu(f)
     await entree(f, 'autres-sauvegardes')

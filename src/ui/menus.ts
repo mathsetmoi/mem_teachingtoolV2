@@ -223,6 +223,9 @@ export const methodesMenus = {
     if (this.formeClasseur === 'cache') this.entreeMenu(m, 'Séances du chapitre…', e => this.basculerMenuSeances(this.boutonFichier, e.detail === 0), { action: 'seances-du-chapitre' })
     this.entreeMenu(m, 'Bibliothèque des classeurs…', () => this.ouvrirBibliotheque(this.formeClasseur === 'cache' ? this.boutonFichier : this.boutonClasseur), { action: 'bibliotheque',
       aide: 'Tous vos classeurs : en ouvrir un autre, en créer un.' })
+    // L'emploi du temps (lot 2 de l'audit) : une ligne courte, sans aide
+    const edt = this.emploiDuTemps
+    if (edt) this.entreeMenu(m, 'Emploi du temps…', () => edt(), { action: 'emploi-du-temps' })
     m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
     // Le menu réduit du lot 18 : trois états, selon le fichier du classeur.
     // (1) Le classeur a son fichier (la clé active : à jour, en pause, en
