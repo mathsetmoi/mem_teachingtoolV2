@@ -11,7 +11,7 @@ import type { FicheClasseur, FicheDossier } from '../src/classeurs/demarrage'
 import type { Emplacement } from '../src/classeurs/emplacements'
 import { cheminDuFichier, sousDossiers } from '../src/classeurs/emplacements'
 import type { Etablissement } from '../src/classeurs/etablissements'
-import { placeRangee } from '../src/classeurs/deplacer-fichier'
+import { placeRangee, planDeDeplacement } from '../src/classeurs/deplacer-fichier'
 import { cheminALEcran, dossierDuNiveau, fichierDuClasseur, lieuDe, lieuSurLeDrive, lieuSurLOrdinateur } from '../src/classeurs/lieu'
 import { nomSur } from '../src/fichier'
 
@@ -133,5 +133,16 @@ describe('lieuSurLeDrive : où va la copie sur le Drive', () => {
     expect(lieuSurLeDrive('dgeo', 'lfb', O)).toBeNull()
     expect(lieuSurLeDrive('d2', 'mem', O)).toBeNull()
     expect(lieuSurLeDrive(null, 'mem', O)).toBeNull()
+  })
+})
+
+describe('un seul modèle : le plan d\'un déplacement et le chemin noté tombent d\'accord', () => {
+  it('l\'établissement retiré de la liste : un classeur déjà à sa place n\'est pas déplacé', () => {
+    // Le chemin noté dans la fiche porte le nom gardé au rangement ; avant le
+    // modèle unique, le plan l'oubliait et voulait déplacer le fichier
+    const f = classeur('c1', 'Fractions', 'd2a', { cle: { nom: 'Fractions.memc', chemin: ['LFB classeurs', '2', '2A', 'Fractions'], date: 1, vecteur: new Uint8Array([0]) } })
+    const sansLFB = { ...O, etablissements: [MEM] }
+    expect(planDeDeplacement({ fiche: f, cible: 'd2a', ...sansLFB }).genre).toBe('reste-meme-place')
+    expect(planDeDeplacement({ fiche: f, cible: 'd2a', ...O }).genre).toBe('reste-meme-place')
   })
 })
