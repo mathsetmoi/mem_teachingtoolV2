@@ -537,6 +537,9 @@ export class UI implements Interface {
    *  « Déplacer « Fractions » vers… », et son fichier suit) ; posée par
    *  main.ts ; l'entrée est grise tant qu'elle manque */
   deplacerClasseur: (() => void) | null = null
+  /** « Emploi du temps… » du menu ⋯ (lot 2 de l'audit) : la fenêtre « Mon
+   *  emploi du temps » ; posée par main.ts (sans bibliothèque, pas d'entrée) */
+  emploiDuTemps: (() => void) | null = null
 
   /** Le bouton ⋯ du menu complet, avant Supprimer : son petit menu a
    *  « Copier en image » (une image PNG pour l'ENT ou Pronote, à ne pas

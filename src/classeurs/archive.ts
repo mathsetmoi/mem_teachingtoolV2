@@ -268,13 +268,17 @@ export interface IndexBibliotheque {
   format: typeof FORMAT_BIBLIOTHEQUE; v: number; app: string; date: number
   dossiers: DossierArchive[]
   classeurs: ClasseurArchive[]
+  /** L'emploi du temps (lot 2 de l'audit, facultatif) : seulement dans la
+   *  bibliothèque entière, relu par emploi-du-temps/donnees.ts */
+  emploiDuTemps?: unknown
 }
 
 /** L'index d'une bibliothèque : ses dossiers, ses classeurs (leurs étiquettes
  *  propres : l'héritée se recalcule, elle vient du dossier), où sont leurs
  *  fichiers ; aApercu : ceux qui ont une image */
-export function indexDe(classeurs: readonly FicheClasseur[], dossiers: readonly FicheDossier[], date: number, aApercu: (id: string) => boolean): IndexBibliotheque {
+export function indexDe(classeurs: readonly FicheClasseur[], dossiers: readonly FicheDossier[], date: number, aApercu: (id: string) => boolean, emploiDuTemps?: unknown): IndexBibliotheque {
   return {
+    ...(emploiDuTemps ? { emploiDuTemps } : {}),
     format: FORMAT_BIBLIOTHEQUE, v: VERSION_BIBLIOTHEQUE, app: APP, date,
     dossiers: dossiers.map(d => ({ id: d.id, nom: d.nom, parent: d.parent, couleur: d.couleur, ...(d.etiquette ? { etiquette: d.etiquette } : {}), cree: d.cree })),
     classeurs: classeurs.map(f => ({
@@ -311,7 +315,7 @@ export function lireIndex(octets: Uint8Array): IndexBibliotheque {
       cree: nombre(c.cree), modifie: nombre(c.modifie), pages: nombre(c.pages), fichier: c.fichier, ...(chaine(c.apercu) ? { apercu: c.apercu } : {}),
     })
   }
-  return { format: FORMAT_BIBLIOTHEQUE, v: x.v, app: typeof x.app === 'string' ? x.app : '', date: nombre(x.date), dossiers, classeurs }
+  return { format: FORMAT_BIBLIOTHEQUE, v: x.v, app: typeof x.app === 'string' ? x.app : '', date: nombre(x.date), dossiers, classeurs, ...(x.emploiDuTemps && typeof x.emploiDuTemps === 'object' ? { emploiDuTemps: x.emploiDuTemps } : {}) }
 }
 
 const deux = (n: number) => String(n).padStart(2, '0')

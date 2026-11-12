@@ -26,6 +26,7 @@
 // et sa somme). Rien n'est jamais créé ni effacé par-dessus une base qui
 // existe : un id dont la base est là sans fiche, on l'adopte d'abord (C8).
 // =============================================================
+import { REGLAGE_EMPLOI_DU_TEMPS, adopter, lireEmploiDuTemps } from '../emploi-du-temps/donnees'
 import * as Y from 'yjs'
 import type { ActionMessage, App } from '../app'
 import type { Sauvegarde } from '../sauvegarde'
@@ -1187,7 +1188,9 @@ export class Fichiers {
         total += m instanceof Blob ? m.size : m.length
         if (sortie) await sortie.write(m); else morceaux.push(m)
       }
-      const json = new TextEncoder().encode(JSON.stringify(indexDe(classeurs, gardes, date, id => apercus.has(id))))
+      // L'emploi du temps (lot 2 de l'audit) : seulement avec toute la bibliothèque
+      const edt = laClasse ? null : lireEmploiDuTemps(await reg.reglage(REGLAGE_EMPLOI_DU_TEMPS).catch(() => null))
+      const json = new TextEncoder().encode(JSON.stringify(indexDe(classeurs, gardes, date, id => apercus.has(id), edt?.creneaux.length ? edt : undefined)))
       await ecrire(z.entree(NOM_INDEX, crc32(json), json.length))
       await ecrire(json)
       const manques: string[] = []
@@ -1375,6 +1378,18 @@ export class Fichiers {
         if (estPlace(x)) { bilan.manques.push(...faire.slice(k).map(y => y.nom)); break }
         bilan.illisibles.push({ nom: l.nom, raison: raisonDe(x) })
       }
+    }
+    // L'emploi du temps du fichier (lot 2 de l'audit) : seulement quand ce
+    // navigateur n'en a pas encore (celui d'ici ne se remplace jamais)
+    if (index.emploiDuTemps) {
+      try {
+        const ici = lireEmploiDuTemps(await reg.reglage(REGLAGE_EMPLOI_DU_TEMPS))
+        const venu = lireEmploiDuTemps(index.emploiDuTemps)
+        if (!ici.creneaux.length && venu.creneaux.length) {
+          const classeursIci = new Set((await reg.classeurs()).map(f => f.id))
+          await reg.ecrireReglage(REGLAGE_EMPLOI_DU_TEMPS, adopter(venu, plan.correspondance, classeursIci))
+        }
+      } catch { /* l'emploi du temps se saisira ici */ }
     }
     const fin = texteApresBibliotheque(bilan)
     if (recharger || this.coupe) { this.recharger(this.hote.classeur()?.id ?? '', fin); return }

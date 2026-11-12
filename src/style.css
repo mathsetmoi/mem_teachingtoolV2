@@ -2681,3 +2681,82 @@ body.page-nuit.contraste :is(.bouton, button.rang, .bouton-classeur, .zoom-texte
 .calculatrice-case.installee .etat { color: #1f6b43; }
 .calculatrice-case .etat.erreur { color: var(--rouge); }
 .calculatrice-case .boutons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+
+/* ---------- L'emploi du temps (lot 2 de l'audit) ---------- */
+.dialogue-edt { width: min(980px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto; }
+.edt-vue { display: grid; gap: 12px; min-width: 0; }
+.edt-vue h2 { margin: 0; }
+.edt-haut { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.edt-semaines { display: inline-flex; border: 1px solid var(--filet); border-radius: 10px; overflow: hidden; margin-right: auto; }
+.edt-seg { border: 0; background: var(--papier); min-height: 38px; padding: 0 14px; font: inherit; cursor: pointer; }
+.edt-seg + .edt-seg { border-left: 1px solid var(--filet); }
+.edt-seg[aria-pressed=true] { background: #e6edf8; color: var(--bleu); font-weight: 700; }
+.dialogue .edt-etat, .dialogue .edt-aide, .dialogue .edt-etat-import { margin: 0; font-size: 14px; }
+.dialogue-edt .lien { border: 0; background: none; padding: 4px 0; min-height: 32px; color: var(--bleu); text-decoration: underline; cursor: pointer; font: inherit; text-align: left; }
+.edt-legende { display: flex; flex-wrap: wrap; gap: 12px; font-size: 14px; }
+.edt-legende:empty { display: none; }
+.edt-etab { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+.edt-etab i, .edt-etab-choix i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+.edt-grille-boite { overflow-x: auto; border: 1px solid var(--filet); border-radius: 12px; }
+.edt-grille { display: grid; min-width: 620px; }
+.edt-coin, .edt-jour { position: sticky; top: 0; background: var(--chrome); border-bottom: 1px solid var(--filet); padding: 6px 8px; font-weight: 700; font-size: 14px; z-index: 1; }
+.edt-heures { position: relative; }
+.edt-heures span { position: absolute; left: 6px; font-size: 12px; color: var(--encre-douce); font-variant-numeric: tabular-nums; transform: translateY(2px); }
+.edt-colonne { position: relative; border-left: 1px solid var(--filet); cursor: copy;
+  background-image: linear-gradient(to bottom, var(--filet) 1px, transparent 1px); }
+.edt-case { position: absolute; left: 3px; right: 3px; border: 0; border-left: 4px solid; border-radius: 6px; padding: 3px 8px; text-align: left;
+  font: inherit; font-size: 12px; line-height: 1.25; color: var(--encre); cursor: pointer; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+.edt-case b { font-size: 13px; }
+.edt-case span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.edt-case[aria-pressed=true] { outline: 2px solid var(--encre); outline-offset: 1px; z-index: 2; }
+.edt-creneau { border: 1px solid var(--filet); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; }
+.edt-creneau-tete { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.edt-creneau-tete h3 { margin: 0; font-size: 16px; }
+.edt-creneau-boutons { display: flex; flex-wrap: wrap; gap: 6px; }
+.edt-champs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 16px; }
+.edt-champ { display: grid; gap: 4px; font-size: 13px; color: var(--encre-douce); min-width: 0; }
+.edt-champ.large { grid-column: 1 / -1; }
+.edt-champ select, .edt-champ input, .edt-classeur select, .edt-mode input[type=url], .edt-table select {
+  font: inherit; font-size: 15px; color: var(--encre); min-height: 40px; padding: 0 8px; border: 1px solid var(--filet); border-radius: 8px; background: #fbfcfe; min-width: 0; max-width: 100%; }
+.edt-horaire { display: flex; align-items: center; gap: 6px; color: var(--encre); }
+.edt-horaire input { width: 0; flex: 1; min-width: 4.5em; }
+.edt-erreur { grid-column: 1 / -1; color: var(--rouge); }
+.edt-erreur:empty { display: none; }
+.dialogue .edt-etab-ligne, .dialogue .edt-pronote-ligne { margin: 0; font-size: 14px; color: var(--encre); }
+.dialogue .edt-pronote-ligne { color: var(--encre-douce); }
+.edt-classeur { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
+.edt-classeur legend { font-size: 13px; color: var(--encre-douce); padding: 0; margin-bottom: 4px; }
+.edt-classeur label, .edt-mode { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 14px; }
+.edt-classeur label > span, .edt-mode > span { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.edt-classeur small, .edt-mode small { color: var(--encre-douce); }
+.edt-classeur input[type=radio], .edt-mode input[type=radio] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--bleu); flex: none; }
+.edt-etabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.edt-etab-choix { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 12px; border: 1px solid var(--filet); border-radius: 999px; background: var(--papier); font: inherit; font-weight: 700; color: var(--encre); cursor: pointer; }
+.edt-etab-choix[aria-pressed=true] { border-color: var(--encre); box-shadow: inset 0 0 0 1px var(--encre); }
+.edt-mode input[type=url] { width: 100%; }
+.edt-table-boite { overflow-x: auto; }
+.edt-table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.edt-table th, .edt-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--filet); vertical-align: middle; }
+.edt-table th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--encre-douce); }
+.edt-table td:first-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.edt-table select { width: 100%; min-width: 180px; }
+.dialogue-edt .actions { flex-wrap: wrap; }
+
+/* « Bonjour ! » avec l'emploi du temps */
+.accueil-creneau { display: grid; gap: 2px; border-radius: 10px; padding: 8px 12px; border-left: 4px solid; }
+.accueil-creneau .quand-creneau { font-size: 13px; color: var(--encre-douce); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.accueil-creneau .quel-creneau { font-size: 18px; font-weight: 700; }
+.accueil-creneau .etab { font-weight: 700; color: var(--encre); }
+.accueil-prochain, .accueil-semaine, .accueil-saisir-edt { margin: 0 !important; font-size: 14px; color: var(--encre-douce); }
+.accueil-prochain { padding-top: 8px; border-top: 1px solid var(--filet); }
+.accueil-saisir-edt { display: grid; gap: 2px; justify-items: start; }
+
+/* La bulle « 1re spé 2 arrive » */
+.bulle-edt { position: fixed; top: calc(84px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 30;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; max-width: calc(100vw - 24px);
+  background: var(--papier); border: 1px solid var(--filet); border-left: 4px solid; border-radius: 14px; padding: 6px 6px 6px 12px;
+  box-shadow: 0 8px 22px rgba(27, 34, 48, 0.16); font-size: 15px; }
+.bulle-edt .principal { height: 38px; padding: 0 12px; }
+.bulle-edt .fermer-bulle { width: 38px; height: 38px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; font-size: 20px; color: var(--encre-douce); }
+.bulle-edt .fermer-bulle:hover { background: #e9eef5; }
+@media (prefers-reduced-motion: no-preference) { .bulle-edt { animation: bulle-edt .25s ease-out; } @keyframes bulle-edt { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translate(-50%, 0); } } }

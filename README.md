@@ -6222,6 +6222,96 @@ bibliothèque.
   7, 17, 18 et les sondes de `lot4/verif`) ; le nom accessible de la carte
   (« … : ses séances et la bibliothèque ») et le message du premier
   lancement (C3, C5).
+## L'emploi du temps (lot 23)
+
+Lot 2 de l'audit complet du 11 novembre 2026 (option A de la maquette,
+détails validés par le professeur le 12 novembre, avec ses recommandations) :
+saisir sa semaine une fois, ou la lire dans Pronote, et « Bonjour ! »
+propose la classe qui arrive à l'heure qu'il est.
+
+### Le mode d'emploi
+
+- **« Emploi du temps… »**, au menu ⋯ du tableau (sous « Bibliothèque des
+  classeurs… ») et au menu ⋯ de la bibliothèque, ouvre « Mon emploi du
+  temps » : la semaine en grille (Semaine A / Semaine B), une couleur par
+  établissement. Tant que la semaine est vide, « Bonjour ! » a aussi le
+  lien « Saisir mon emploi du temps… ».
+- **Un clic sur une case vide** ajoute un créneau à cette heure ; un clic
+  sur un créneau le montre dessous. Un créneau : le jour, l'horaire, les
+  semaines (A et B, A seulement, B seulement), la **classe** (un dossier de
+  la bibliothèque), un nom affiché, une salle (facultative). L'établissement
+  est le dossier du haut de la classe (« LFB › 2 › 2nde 3 » : LFB), avec sa
+  couleur. Tout s'enregistre à chaque changement.
+- **Le classeur d'un créneau** : par défaut **le chapitre en cours**, le
+  dernier classeur de la classe où une séance a eu lieu (hors « Séances
+  isolées ») : il suit tout seul quand on change de chapitre. On peut aussi
+  choisir « Toujours le même classeur ».
+- **Les semaines A et B** alternent chaque semaine à partir de « Cette
+  semaine est une semaine A » ; un lien corrige (« C'est une semaine B »
+  dans la fenêtre, « Pas la bonne semaine ? On est en semaine B » dans
+  « Bonjour ! »), et l'alternance repart de là.
+- **« Importer de Pronote… »** : un établissement, puis le **lien
+  synchronisé** (bouton « iCal » de la page de l'emploi du temps de
+  Pronote) ou un **fichier .ics**. L'outil range les cours en créneaux (un
+  cours vu une seule fois, ou annulé, est laissé de côté ; présent une
+  semaine sur deux : semaine A ou B), devine la classe d'après le nom, et
+  montre « Vérifier les créneaux » : une classe par cours, ou « Ne pas
+  importer ». Il s'en souvient pour le prochain import. Les créneaux venus
+  de Pronote pour cet établissement sont remplacés ; ceux saisis à la main
+  restent.
+- **Le lien synchronisé** est relu au lancement de la version en ligne (au
+  plus toutes les 30 minutes) : un cours annulé ou des vacances retirent le
+  créneau de « Bonjour ! » ce jour-là, une salle changée s'y voit. Le lien
+  est personnel : il reste dans ce navigateur, jamais dans la bibliothèque
+  ni le `.memb`. La version hors ligne ne le lit pas (pas d'internet) : elle
+  s'en tient à la semaine type, et accepte le fichier `.ics`.
+- **« Bonjour ! »**, de 10 minutes avant un créneau jusqu'à sa fin : en tête
+  le créneau (« LFB · en cours depuis 7 minutes · salle B12 · semaine A »,
+  « 10 h 05 – 11 h 00 · 2nde 3 ») ; le gros bouton « Nouvelle séance en
+  2nde 3 » ouvre le classeur du créneau ; « changer de chapitre » montre les
+  chapitres de cette classe ; « Rester sur « 1s_04_Trigo » » remplace
+  « Continuer la séance » quand l'onglet est sur un autre classeur. Elle
+  s'ouvre même si la dernière séance date de moins d'une heure, sauf si
+  cette séance a commencé pendant ce créneau, dans son classeur (on
+  recharge la page : on continue). Sans créneau : la fenêtre d'avant, avec
+  « Prochain cours : 14 h 05, 4e B · ouvrir 4_05_Pythagore ». Sans cours
+  (soir, week-end) : la fenêtre d'avant, sans rien de plus.
+- **La bulle « 11 h 05 · 1re spé 2 arrive »** : l'outil resté ouvert sur la
+  classe d'avant, une petite bulle en haut, 5 minutes avant le créneau
+  suivant jusqu'à 10 minutes après son début ; « Ouvrir 1s_04_Trigo » ouvre
+  ce classeur sur une nouvelle séance, × la ferme pour ce créneau. Rien ne
+  s'ouvre tout seul.
+
+### Comment c'est fait
+
+- `src/emploi-du-temps/donnees.ts` (pur) : les créneaux, les semaines A et
+  B, le créneau du moment, le chapitre en cours, les couleurs, le `.memb` ;
+  `ics.ts` (pur) : lire un fichier iCal (fuseaux, lignes repliées, cours
+  annulés), les créneaux de la semaine type, l'import, les cours d'un jour
+  par le lien ; `pronote.ts` : le lien, gardé dans `localStorage`
+  (`mem-teachingtool-pronote`, une clé nouvelle), lu par un relais ;
+  `moment.ts` : ce que « Bonjour ! » et la bulle demandent ; `vue.ts` : la
+  fenêtre ; `bulle.ts` : la bulle. Branché dans `main.ts`
+  (`ouvrirLAccueil`), `seances-vue.ts` (le créneau en tête), `ui/menus.ts`.
+- L'emploi du temps vit dans l'index de la bibliothèque sous une clé
+  nouvelle (`reglage:emploi-du-temps`) : aucune base, aucune clé existante
+  ne change. Il part dans le `.memb` (toute la bibliothèque) comme champ
+  facultatif `emploiDuTemps` ; à l'ouverture d'un `.memb`, il n'est repris
+  que si ce navigateur n'en a pas (les dossiers suivent leur nouvel id).
+- **Le relais, version 5** (`relais/relais-seances.gs`) : `?pronote=<lien>`
+  lit l'emploi du temps à la place du navigateur (Pronote ne répond pas aux
+  autres sites) et le rend sans le garder ; seulement en https, chez
+  `index-education.net`, un chemin `/ical/`, une réponse qui commence par
+  `BEGIN:VCALENDAR`, 2 Mo au plus. L'outil essaie les relais l'un après
+  l'autre : il suffit d'en mettre un à jour (coller la version 5, relancer
+  `verifierLInstallation` pour l'autorisation « service externe », puis
+  Nouvelle version du déploiement). Publier n'en dépend pas.
+- Les essais : `tests/emploi-du-temps.test.ts` (sous Node, juste à trois
+  fuseaux) ; `tests/publication.test.ts` (le relais refuse tout autre
+  lien) ; `essais/navigateur/lot23/E1-emploi-du-temps.mjs` (« Bonjour ! »
+  à plusieurs heures, la bulle, la fenêtre, l'import d'un fichier, le lien
+  simulé, un cours annulé).
+
 ## Ce que fait la v0.1
 
 Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment

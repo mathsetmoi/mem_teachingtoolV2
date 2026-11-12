@@ -19,15 +19,17 @@ interface FauxDossier { nom: string; proprietaire: string; corbeille?: boolean }
 interface FauxFichier { nom: string; contenu: string; parents: FauxDossier[]; corbeille?: boolean; proprietaire?: string; modifie?: number }
 
 /** Le relais, chargé avec un faux Drive dont `moi` est le compte */
-function relais(fichiers: Record<string, FauxFichier>, moi = 'prof@exemple.fr') {
+function relais(fichiers: Record<string, FauxFichier>, moi = 'prof@exemple.fr', web: Record<string, { code: number; texte: string }> = {}) {
   const reponse = (texte: string) => ({ texte, setMimeType() { return this } })
   const iterer = <T>(l: T[]) => { let i = 0; return { hasNext: () => i < l.length, next: () => l[i++] } }
   const dossier = (d: FauxDossier) => ({ getName: () => d.nom, isTrashed: () => !!d.corbeille, getOwner: () => ({ getEmail: () => d.proprietaire }) })
+  const lus: string[] = []
   const bac: Record<string, unknown> = {
     console: { log() {}, error() {} },
     Session: { getEffectiveUser: () => ({ getEmail: () => moi }) },
     CacheService: { getScriptCache: () => ({ get: () => null, put() {} }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: reponse },
+    UrlFetchApp: { fetch(u: string) { lus.push(u); const r = web[u] ?? { code: 404, texte: '' }; return { getResponseCode: () => r.code, getContentText: () => r.texte } } },
     DriveApp: {
       getFileById(id: string) {
         const f = fichiers[id]
@@ -157,7 +159,7 @@ describe('le relais ne sert que les replays rangés au bon endroit', () => {
     const r = relais({ [ID]: { nom: 'Séance.mem', contenu: '', parents: [mem] } }, MOI)
     expect(JSON.parse(r({ id: '../x' })).erreur).toMatch(/incomplet/)
     const ping = r({ ping: '1' })
-    expect(JSON.parse(ping)).toMatchObject({ relais: 'MEM Replay', version: 4, pret: true, dossier: 'MEM - Replay séances' })
+    expect(JSON.parse(ping)).toMatchObject({ relais: 'MEM Replay', version: 5, pret: true, dossier: 'MEM - Replay séances' })
     expect(ping).not.toContain(MOI)
   })
 })
@@ -234,5 +236,31 @@ describe('l’outil lui-même', () => {
     expect(trouves).toEqual([])
     expect(existsSync(join(RACINE, 'serveur'))).toBe(false)
     expect(existsSync(join(RACINE, '.env.exemple'))).toBe(false)
+  })
+})
+
+describe('le relais lit l\'emploi du temps de Pronote, et rien d\'autre (version 5)', () => {
+  const LIEN = 'https://0123456a.index-education.net/pronote/ical/mesinformations.ics?icalsecurise=ABC&version=2026.2.8&param=66'
+  const ICS = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR'
+  it('rend le calendrier du lien', () => {
+    const r = relais({}, 'prof@exemple.fr', { [LIEN]: { code: 200, texte: ICS } })
+    expect(JSON.parse(r({ pronote: LIEN }))).toEqual({ ics: ICS })
+  })
+  const refus: [string, string][] = [
+    ['un autre site', 'https://exemple.fr/pronote/ical/x.ics'],
+    ['un site qui se fait passer pour Pronote', 'https://index-education.net.exemple.fr/pronote/ical/x.ics'],
+    ['un chemin qui n\'est pas un calendrier', 'https://0123456a.index-education.net/pronote/eleve.html'],
+    ['du http', 'http://0123456a.index-education.net/pronote/ical/x.ics'],
+    ['un nom d\'utilisateur dans l\'adresse', 'https://moi@0123456a.index-education.net/pronote/ical/x.ics'],
+  ]
+  for (const [cas, u] of refus) {
+    it(`refuse ${cas}, sans l'ouvrir`, () => {
+      const r = relais({}, 'prof@exemple.fr', { [u]: { code: 200, texte: ICS } })
+      expect(JSON.parse(r({ pronote: u })).erreur).toMatch(/pas un lien/)
+    })
+  }
+  it('refuse une réponse qui n\'est pas un calendrier, et dit quand Pronote refuse', () => {
+    expect(JSON.parse(relais({}, 'p', { [LIEN]: { code: 200, texte: '<html>Connexion</html>' } })({ pronote: LIEN })).erreur).toMatch(/ne donne pas/)
+    expect(JSON.parse(relais({}, 'p', { [LIEN]: { code: 403, texte: '' } })({ pronote: LIEN })).erreur).toMatch(/refuse/)
   })
 })
