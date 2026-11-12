@@ -233,7 +233,8 @@ for (const [nom, vp, nomVu] of [['iPad portrait 820', { width: 820, height: 1180
   const h1024 = await compteur(page)
   await page.setViewportSize({ width: 1366, height: 768 }); await pause(300)
   const h1366 = await compteur(page)
-  verifier('… la fenêtre passe à 1024 px : la barre reste sur une rangée, le nom s\'y lit encore (plus petit) ; revenue à 1366 px, il reprend sa taille', h1024.hauteur === 58 && h1024.nomVisible && h1366.nomVisible, { h1024, h1366 })
+  // (Adapté à la barre du haut en familles : une rangée fait 73 px, le nom des familles au-dessus des boutons)
+  verifier('… la fenêtre passe à 1024 px : la barre reste sur une rangée, le nom s\'y lit encore (plus petit) ; revenue à 1366 px, il reprend sa taille', h1024.hauteur === 73 && h1024.nomVisible && h1366.nomVisible, { h1024, h1366 })
   await ctx.close()
 }
 

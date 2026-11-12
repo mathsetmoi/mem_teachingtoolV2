@@ -50,6 +50,7 @@
 // laissent de côté (K10-telephone.mjs mesure le téléphone).
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
+import { libelleSupprimer } from '../commun/page.mjs'
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { createHash } from 'node:crypto'
@@ -433,7 +434,9 @@ console.log('=== D. les noms sous les outils ===')
 const OUTILS_MOTS = ['Stylo', 'Surligneur', 'Gomme', 'Point', 'Segment', 'Formes', 'Formule', 'Texte', 'Sélection', 'Vue', 'Doigt', 'Épaisseur']
 // (Adapté aux outils de classe : « Classe », entre Automatismes et Revoir)
 // (Adapté au mode nuit, lot 13 : « Nuit », la lune, juste après Fond)
-const HAUT_MOTS = ['Annuler', 'Rétablir', 'Nouvelle', 'Effacer', 'Fond', 'Nuit', 'Aimant', 'Formes auto', 'Image', 'Instruments', 'Construire', 'Catalogue', 'Automatismes', 'Classe', 'Revoir', 'Publier', 'Fichier']
+// (Adapté à la barre du haut en familles, lot 3 de l'audit : « Page » réunit
+// le fond, Nuit, Aimant, Formes auto et la poubelle, qui sont dans son menu)
+const HAUT_MOTS = ['Annuler', 'Rétablir', 'Nouvelle', 'Page', 'Image', 'Instruments', 'Construire', 'Catalogue', 'Automatismes', 'Classe', 'Revoir', 'Publier', 'Fichier']
 const NOMS = () => {
   const lire = sel => [...document.querySelectorAll(sel)].map(b => ({ mot: b.querySelector(':scope > .libelle')?.dataset.libelle ?? null, texte: b.textContent,
     vu: (() => { const s = b.querySelector(':scope > .libelle'); return s ? getComputedStyle(s).display !== 'none' && getComputedStyle(s, '::before').content : null })(),
@@ -451,8 +454,9 @@ ok(!n.corps && n.cle === null, 'D1) Le poste de la classe (1366 × 768, souris) 
 ok(JSON.stringify(n.outils.map(b => b.mot)) === JSON.stringify(OUTILS_MOTS) && JSON.stringify(n.haut.filter(b => b.mot !== null).map(b => b.mot)) === JSON.stringify(HAUT_MOTS),
   'D1) Les mots exacts, dans l\'ordre des barres (le Doigt compris, caché ici ; « Effacer » sur une page seule)', { outils: n.outils.map(b => b.mot), haut: n.haut.map(b => b.mot) })
 ok(n.haut.filter(b => b.mot === null).length === 2 && !n.rang && !n.classeur, 'D1) Ni ‹, ni ›, ni le compteur, ni le bouton du classeur n\'en ont', { sans: n.haut.filter(b => b.mot === null).length })
-ok([...n.outils, ...n.haut].every(b => b.texte === '' && (b.vu === false || b.vu === null)) && [...n.outils, ...n.haut].filter(b => !b.cache).every(b => b.l === 44 && b.h === 44),
-  'D1) Cachés : le texte des boutons reste vide (le mot est dans data-libelle), et ils gardent leurs 44 × 44', n.outils.slice(0, 3))
+// (Le bouton « Page » montre la vignette du fond et une flèche : 66 px de large)
+ok([...n.outils, ...n.haut].every(b => b.texte === '' && (b.vu === false || b.vu === null)) && [...n.outils, ...n.haut].filter(b => !b.cache).every(b => (b.l === 44 || (b.mot === 'Page' && b.l === 66)) && b.h === 44),
+  'D1) Cachés : le texte des boutons reste vide (le mot est dans data-libelle), et ils gardent leurs 44 × 44', [...n.outils, ...n.haut].filter(b => !b.cache && !((b.l === 44 || (b.mot === 'Page' && b.l === 66)) && b.h === 44)))
 // Choisis à la souris : allumés, retenus
 await ouvrirMenuFichier(PC)
 await PC.click('.menu-item[data-action="noms-outils"]'); await PC.waitForTimeout(500)
@@ -468,10 +472,11 @@ n = await PC.evaluate(NOMS)
 ok(n.corps, 'D2) Retenus au rechargement', { corps: n.corps, cle: n.cle })
 // Une deuxième page : « Supprimer » ; revenue à une seule : « Effacer »
 await PC.evaluate(() => window.__app.nouvellePage()); await PC.waitForTimeout(300)
-const motJeter2 = await PC.evaluate(() => document.querySelector('.barre-haut > .bouton.danger .libelle')?.dataset.libelle)
+// (Adapté à la barre en familles : la poubelle est la dernière entrée du menu « Cette page »)
+const motJeter2 = await libelleSupprimer(PC)
 await PC.evaluate(() => window.__app.supprimerPage()); await PC.waitForTimeout(300)
-const motJeter1 = await PC.evaluate(() => document.querySelector('.barre-haut > .bouton.danger .libelle')?.dataset.libelle)
-ok(motJeter2 === 'Supprimer' && motJeter1 === 'Effacer', 'D3) La poubelle de la page : « Supprimer » (deux pages), « Effacer » (une seule), comme son titre', { motJeter2, motJeter1 })
+const motJeter1 = await libelleSupprimer(PC)
+ok(motJeter2 === 'Supprimer la page' && motJeter1 === 'Effacer la page', 'D3) La poubelle de la page, dans le menu « Cette page » : « Supprimer la page » (deux pages), « Effacer la page » (une seule)', { motJeter2, motJeter1 })
 // Décochés : à la souris, au stylet d'une tablette graphique, au clavier
 await ouvrirMenuFichier(PC)
 await PC.click('.menu-item[data-action="noms-outils"]'); await PC.waitForTimeout(400)

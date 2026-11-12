@@ -4,7 +4,7 @@
 // bouton de la barre du haut dans src/ui.ts) ; la trieuse et « Nouveau
 // classeur » qui proposent les huit.
 // A. Le menu à la souris (1366 × 768) : le bouton (la vignette du fond, son
-//    titre « Fond de la page : … », aria-haspopup) ; le menu (8 vignettes en
+//    titre « Cette page : fond « … », mode nuit, aimanter, supprimer », aria-haspopup) ; le menu (8 vignettes en
 //    4 × 2, menuitemradio, la coche, les noms, chaque vignette peinte une
 //    seule fois) ; un choix (le fond change, le menu se ferme, la vignette du
 //    bouton suit) ; un seul menu à la fois ; un appui sur le tableau le ferme
@@ -131,7 +131,9 @@ const mesurerCanevas = async (p, selecteur) => {
   return b64 ? mesurer(Buffer.from(b64, 'base64')) : null
 }
 /** Le tableau, entre les barres (rien d'écrit : seulement le fond) */
-const ZONE = { x: 100, y: 100, width: 1000, height: 560 }
+// (Adapté à la barre du haut en familles, plus haute de 15 px : l'étiquette
+// de la séance, dessous, descend jusqu'à 110 px ; la zone mesurée part de 120)
+const ZONE = { x: 100, y: 120, width: 1000, height: 560 }
 const scene = async p => { await p.mouse.move(1300, 740); await p.waitForTimeout(250); return mesurer(await p.screenshot({ clip: ZONE })) }
 const vue = (p, z) => p.evaluate(z => { const a = window.__app; a.allerVers({ x: 0, y: 0, z }, 0); a.rendu.toutRedessiner?.() }, z)
 const menuOuvert = p => p.evaluate(s => { const m = document.querySelector(s); return !!m && !m.hidden }, MENU)
@@ -158,7 +160,9 @@ const bouton = await P.evaluate(s => {
 }, BOUTON)
 ok(bouton && /\bbouton\b/.test(bouton.classe) && bouton.haspopup === 'menu' && bouton.expanded === 'false' && bouton.canevas && bouton.l >= 44 && bouton.h >= 44 && !bouton.select,
   'A1) La liste déroulante est devenue un bouton (classe bouton, aria-haspopup=menu, 44 px) qui montre la vignette du fond (un canevas de 30 × 22 px)', bouton)
-ok(bouton.titre === `Fond de la page : ${NOM[bouton.fond]}` && bouton.nom === bouton.titre, `A1) Son titre et son nom lu : « ${bouton.titre} »`, bouton)
+// (Adapté à la barre en familles : le bouton « Cette page » ouvre le menu des
+// fonds, suivi des cases de la page et de « Supprimer la page »)
+ok(bouton.titre === `Cette page : fond « ${NOM[bouton.fond]} », mode nuit, aimanter, supprimer` && bouton.nom === bouton.titre, `A1) Son titre et son nom lu : « ${bouton.titre} »`, bouton)
 const fond0 = bouton.fond
 const pixelsBouton0 = await mesurerCanevas(P, `${BOUTON} canvas`)
 await P.click(BOUTON); await P.waitForTimeout(150)
@@ -173,7 +177,7 @@ const menu = await P.evaluate(s => {
     rangees: hauts.length, colonnes: e.filter(x => x.offsetTop === hauts[0]).length,
     dessous: r.top >= b.bottom, dedans: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight, focus: document.activeElement?.dataset?.fond ?? null }
 }, MENU)
-ok(menu.ouvert && menu.role === 'menu' && menu.label === 'Fond de la page' && menu.expanded === 'true' && menu.dessous && menu.dedans,
+ok(menu.ouvert && menu.role === 'menu' && menu.label === 'Cette page' && menu.expanded === 'true' && menu.dessous && menu.dedans,
   'A2) Un clic ouvre le menu des fonds sous le bouton (role menu, aria-expanded), dans l\'écran', menu)
 ok(JSON.stringify(menu.entrees.map(e => [e.id, e.nom])) === JSON.stringify(FONDS) && menu.entrees.every(e => e.role === 'menuitemradio' && e.classe === 'menu-item fond-choix' && e.taille === '13px'),
   'A2) Les huit fonds, dans l\'ordre, avec leurs noms exacts (13 px) ; chacun un menuitemradio .menu-item.fond-choix', menu.entrees.map(e => [e.id, e.nom, e.role, e.taille]))
@@ -195,8 +199,8 @@ await P.evaluate(s => { for (const c of document.querySelectorAll(s + ' canvas')
 await P.click(`${MENU} .fond-choix[data-fond="pointe"]`); await P.waitForTimeout(150)
 const apres = await P.evaluate(s => ({ fond: window.__app.fond, ouvert: !document.querySelector(s).hidden, titre: document.querySelector('button.choix-fond').title, expanded: document.querySelector('button.choix-fond').getAttribute('aria-expanded') }), MENU)
 const pixelsBouton1 = await mesurerCanevas(P, `${BOUTON} canvas`)
-ok(apres.fond === 'pointe' && !apres.ouvert && apres.expanded === 'false' && apres.titre === 'Fond de la page : Papier pointé',
-  'A4) Un clic sur « Papier pointé » : la page y passe, le menu se ferme, le bouton dit « Fond de la page : Papier pointé »', apres)
+ok(apres.fond === 'pointe' && !apres.ouvert && apres.expanded === 'false' && apres.titre === 'Cette page : fond « Papier pointé », mode nuit, aimanter, supprimer',
+  'A4) Un clic sur « Papier pointé » : la page y passe, le menu se ferme, le bouton dit « fond « Papier pointé » »', apres)
 // (Adapté aux réglages par défaut, retouches après le lot 5 : la page du départ est blanche, et non plus aux petits carreaux)
 ok(fond0 === 'blanc' && pixelsBouton1.points > 0 && pixelsBouton0.points === 0 && pixelsBouton0.bleus === 0 && pixelsBouton1.bleus === 0, 'A4) La vignette du bouton suit : de la page blanche du départ (ni points, ni lignes) aux points', { avant: pixelsBouton0, apres: pixelsBouton1 })
 await P.click(BOUTON); await P.waitForTimeout(150)
@@ -260,7 +264,7 @@ for (const [id, nom] of FONDS) {
   const s = await scene(P)
   signatures[id] = s
   const titre = await P.getAttribute(BOUTON, 'title')
-  ok(titre === `Fond de la page : ${nom}`, `B) ${nom} : choisi par le menu, le bouton le dit`, titre)
+  ok(titre === `Cette page : fond « ${nom} », mode nuit, aimanter, supprimer`, `B) ${nom} : choisi par le menu, le bouton le dit`, titre)
   const lums = {}
   for (const z of [0.1, 0.3, 20]) { await vue(P, z); lums[z] = (await scene(P)).lum }
   lums[1] = s.lum
@@ -513,7 +517,7 @@ await P.check('dialog input[value="pointe"]')
 await Promise.all([P.waitForNavigation({ timeout: 20000 }), P.click('dialog [data-a="creer"]')])
 await pret(P); await P.waitForTimeout(500)
 const neuf = await P.evaluate(() => ({ fond: window.__app.fond, pages: window.__app.pages.length, titre: document.querySelector('button.choix-fond').title }))
-ok(neuf.fond === 'pointe' && neuf.pages === 1 && neuf.titre === 'Fond de la page : Papier pointé', 'H) Créé au papier pointé : sa page est au papier pointé, le bouton le dit', neuf)
+ok(neuf.fond === 'pointe' && neuf.pages === 1 && neuf.titre === 'Cette page : fond « Papier pointé », mode nuit, aimanter, supprimer', 'H) Créé au papier pointé : sa page est au papier pointé, le bouton le dit', neuf)
 
 // =====================================================================
 console.log('=== I. 60 pages au millimétré et au pointé ===')

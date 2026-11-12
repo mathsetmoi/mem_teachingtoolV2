@@ -241,10 +241,6 @@ export class UI implements Interface {
   menuEpaisseur!: Menu
   /** L'épaisseur que montre le bouton (le nom de TAILLES), pour ne le refaire que si elle change */
   epaisseurMontree = ''
-  /** La poubelle de la barre du haut : supprimer la page (l'effacer, seule) */
-  boutonJeter!: HTMLButtonElement
-  /** Son nom court (lot 5) : « Supprimer », ou « Effacer » sur une page seule, comme son titre */
-  libelleJeter!: HTMLSpanElement
   /** Les noms sous les outils se montrent-ils (body.noms-outils) ? Voir majNomsOutils */
   nomsMontres = false
   /** Annuler et Rétablir (gains rapides, lot 16) : en tête de la barre du
@@ -289,8 +285,6 @@ export class UI implements Interface {
   /** …et sa vignette est-elle de nuit ? */
   fondMontreDeNuit = false
   menuFonds!: Menu
-  boutonAimant!: HTMLButtonElement
-  boutonNuit!: HTMLButtonElement
   zoomTexte!: HTMLButtonElement
   barreHaut!: HTMLElement
   barreZoom!: HTMLElement
@@ -307,7 +301,6 @@ export class UI implements Interface {
   toastAction: { el: HTMLElement; fin: number; cle?: string } | null = null
   minuterieToast = 0
   dialogue: HTMLDialogElement | null = null
-  boutonReconnaissance!: HTMLButtonElement
   choixFormes!: HTMLDivElement
   choixTraits!: HTMLDivElement
   boutonsTraits = new Map<string, HTMLButtonElement>()

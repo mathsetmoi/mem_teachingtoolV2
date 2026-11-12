@@ -85,16 +85,42 @@ button, select, input { font: inherit; color: inherit; }
 .filet { width: 70%; height: 0; border: 0; border-top: 1px solid var(--filet); margin: 6px 0; }
 /* Le petit filet vertical de la barre du haut, entre Rétablir et ‹ (gains rapides, lot 16) */
 .filet-vertical { flex: none; width: 1px; height: 24px; border: 0; margin: 0 4px; background: var(--filet); }
-/* Entre 900 et 1100 px de large (un vidéoprojecteur de 1024 × 768), la
-   barre du haut tient sur une rangée : « Mode nuit », « Aimanter » et « Le
-   stylo redresse » passent dans le menu ⋯ (UI.casesDeLaPage) ; les autres
-   boutons gardent leurs 44 px. (Depuis Annuler et Rétablir en haut, lot 16,
-   ses vingt boutons n'y tenaient plus.) Plus étroit (l'iPad en portrait),
-   elle a de toute façon deux rangées : rien n'y change. Le téléphone cache
-   déjà tout .seulement-large. */
-@media (min-width: 900px) and (max-width: 1100px) {
-  .barre-haut > .replie-etroit { display: none; }
+/* La barre du haut en familles (lot 3 de l'audit) : Annuler, Pages, Cette
+   page, Insérer, En classe, Élèves. Dès 900 px de large, le nom de chaque
+   famille, en petites capitales, au-dessus de son premier bouton
+   (data-famille) ; la barre s'ouvre en haut pour lui. Le premier bouton
+   porte le nom (::after) sans que rien ne bouge : un clic sur le nom n'est
+   pas un clic sur le bouton. Plus étroit (l'iPad en portrait), et sur le
+   téléphone même couché (932 px), seulement les filets. */
+@media (min-width: 900px) {
+  body:not(.telephone) .barre-haut.en-familles { padding-top: 21px; }
+  /* Tous de la hauteur de la barre : les noms des familles sur une ligne,
+     avec ou sans les noms sous les outils */
+  body:not(.telephone) .barre-haut.en-familles > :not(.filet-vertical) { align-self: stretch; }
+  /* Annuler et Rétablir grisés sans griser le nom de leur famille */
+  body:not(.telephone) .barre-haut.en-familles > .bouton:disabled { opacity: 1; color: rgba(27, 34, 48, 0.3); }
+  body:not(.telephone) .barre-haut.en-familles > .bouton:disabled > .libelle { opacity: 0.3; }
+  body:not(.telephone) .barre-haut.en-familles > [data-famille]::after {
+    content: attr(data-famille); position: absolute; left: 3px; bottom: calc(100% + 1px);
+    font-size: 10px; font-weight: 700; line-height: 1; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--encre-douce); white-space: nowrap; pointer-events: none;
+  }
 }
+/* Entre 900 et 1100 px (un petit portable, la tablette à 1024 px) : les
+   filets plus serrés, pour que la barre tienne sur une rangée et laisse sa
+   place au bouton du classeur */
+@media (min-width: 900px) and (max-width: 1100px) {
+  body:not(.telephone) .barre-haut.en-familles > .filet-vertical { margin: 0 1px; }
+}
+/* Le bouton « Cette page » : la vignette du fond et une petite flèche (il
+   ouvre un menu) ; assez large pour le nom de sa famille */
+.bouton.choix-fond { width: auto; min-width: 66px; grid-auto-flow: column; gap: 3px; padding: 0 6px; }
+.bouton.choix-fond .fleche-menu { display: grid; }
+.bouton.choix-fond .fleche-menu svg { width: 12px; height: 12px; stroke-width: 2.2; }
+body.noms-outils .bouton.choix-fond.nomme { min-width: 70px; }
+body.noms-outils .bouton.choix-fond .fleche-menu { position: absolute; right: 6px; top: 12px; }
+/* « Supprimer la page », en bas du menu « Cette page » (et de « Plus ») : en rouge */
+.menu-item.danger, .menu-item.danger .libelle { color: var(--rouge); }
 
 .bouton {
   position: relative; isolation: isolate;

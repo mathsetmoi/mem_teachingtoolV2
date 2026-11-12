@@ -2,6 +2,7 @@
 // file://, sans window.__app). On n'y lit que l'interface : le rang des pages,
 // les messages, ↶ grisé, les menus.
 import { verifier, contexte, surveiller, erreurs, attendre, fin } from './commun.mjs'
+import { supprimerLaPage, libelleSupprimer } from '../../commun/page.mjs'
 
 const fichier = process.argv[2]
 const ctx = await contexte()
@@ -36,7 +37,7 @@ await page.keyboard.press('Escape'); await page.keyboard.press('Escape'); await 
 // Nouvelle page, puis la supprimer, puis Annuler
 await page.click('button[title="Nouvelle page"]'); await attendre(300)
 verifier('file:// : une nouvelle page (2 / 2)', (await rang()) === '2 / 2', await rang())
-await page.click('button[title="Supprimer cette page"]'); await attendre(300)
+await supprimerLaPage(page); await attendre(300)
 t = await toast()
 verifier('file:// : la poubelle supprime la page sans question (1 / 1, « Page 2 supprimée »)', (await rang()) === '1 / 1' && /Page 2 supprimée/.test(t) && !(await page.$('dialog[open]')), { rang: await rang(), t })
 const annuler = await page.$('.toast button')

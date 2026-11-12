@@ -291,8 +291,11 @@ for (const [w, h, mobile] of [[844, 390, true], [667, 375, true], [1366, 768, fa
   })
   noter(`${w}×${h}, Tout voir : rien du contenu sous une barre`, !r.sousHaut && !r.sousZoom && !r.sousOutils, JSON.stringify(r))
   // (Adapté au lot 16 : les couleurs en grille 2 × 2 élargissent la barre des
-  // outils de 24 px, la zone libre commence d'autant plus à droite)
-  if (w === 1366) noter('… sur un ordinateur, la zone libre est celle d\'avant', JSON.stringify(r.zl) === JSON.stringify({ x: 110, y: 82, l: 1240, h: 604 }), JSON.stringify(r.zl))
+  // outils de 24 px, la zone libre commence d'autant plus à droite.
+  // Adapté à la barre du haut en familles : les petits titres des familles
+  // rendent la barre 15 px plus haute sur un ordinateur, la zone libre
+  // commence donc 15 px plus bas.)
+  if (w === 1366) noter('… sur un ordinateur, la zone libre est celle d\'avant', JSON.stringify(r.zl) === JSON.stringify({ x: 110, y: 97, l: 1240, h: 589 }), JSON.stringify(r.zl))
   await ctx.close()
 }
 })

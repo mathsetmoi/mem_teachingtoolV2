@@ -7,6 +7,7 @@
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../../../commun/racines.mjs'
 import { chromium } from '../../../commun/playwright.mjs'
 import { readFileSync } from 'node:fs'
+import { supprimerLaPage, libelleSupprimer } from '../../../commun/page.mjs'
 
 const nav = await chromium.launch()
 const erreurs = []
@@ -52,7 +53,7 @@ verifier('trois pages : P, Q (copie de P), R (copie de Q)', JSON.stringify(e.pag
 await page.evaluate(p => window.__app.allerPage(p), P); await page.waitForTimeout(700)
 await geste('p3', 100, 400)
 await avancer(3000)
-await page.click('.barre-haut button[aria-label="Supprimer cette page"]'); await page.waitForTimeout(400)
+await supprimerLaPage(page); await page.waitForTimeout(400)
 e = await page.evaluate(() => ({ pages: window.__app.pages, dans: window.__app.tableau.pagesDeLaCorbeille().map(x => x.id) }))
 verifier('P à la poubelle : dans la corbeille', JSON.stringify(e.pages) === JSON.stringify([Q, R]) && JSON.stringify(e.dans) === JSON.stringify([P]), e)
 await page.reload(); await pret()

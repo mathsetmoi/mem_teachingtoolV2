@@ -10,6 +10,7 @@
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
 import { mkdirSync, readFileSync } from 'node:fs'
+import { supprimerLaPage, libelleSupprimer } from '../commun/page.mjs'
 
 const URL0 = 'http://localhost:5173/'
 const D = `${RACINE_ESSAIS}/lot2/m4`
@@ -47,17 +48,15 @@ async function ouvrir(o = {}, nom = 'page') {
 }
 
 // ---------- Ce qu'on lit dans la page ----------
-const JETER = '.barre-haut button[aria-label="Supprimer cette page"], .barre-haut button[aria-label="Effacer la page"]'
 const ETAT = () => {
   const a = window.__app, t = a.tableau
   const b = s => document.querySelector(`button[aria-label^="${s}"]`)
-  const j = document.querySelector('.barre-haut button[aria-label="Supprimer cette page"], .barre-haut button[aria-label="Effacer la page"]')
   return {
     page: a.page, pages: a.pages, n: a.formes.length, ids: a.formes.map(f => f.id).sort(), fond: a.fond, z: Math.round(a.cam.z * 1000) / 1000,
     centre: (c => ({ x: Math.round(c.x * 100) / 100, y: Math.round(c.y * 100) / 100 }))(a.cam.versMonde(a.rendu.l / 2, a.rendu.h / 2)),
     annuler: !b('Annuler sur cette page').disabled, retablir: !b('Rétablir sur cette page').disabled,
     rang: document.querySelector('.rang').textContent, dialogues: document.querySelectorAll('dialog[open]').length,
-    titreJeter: j?.title, film: t.film.length,
+    film: t.film.length,
     action: [...document.querySelectorAll('.toast button.action')].filter(x => x.closest('.toast').classList.contains('visible')).map(x => x.textContent),
   }
 }
@@ -79,7 +78,7 @@ async function ecrireSouris(page, x, y) {
   await page.mouse.up(); await page.waitForTimeout(80)
 }
 /** Un clic sur la poubelle de la barre du haut, assez loin du précédent */
-async function jeter(page) { await page.waitForTimeout(650); await page.click(JETER); await page.waitForTimeout(150) }
+async function jeter(page) { await page.waitForTimeout(650); await supprimerLaPage(page); await page.waitForTimeout(150) }
 async function cliquerAnnulerDuMessage(page) { await page.click('.toast.visible button.action'); await page.waitForTimeout(150) }
 
 // =============== 1. Souris : jeter, « Annuler », Ctrl+Z, double-clic ===============
@@ -105,7 +104,7 @@ async function cliquerAnnulerDuMessage(page) { await page.click('.toast.visible 
   })
   let e = await etat(page)
   const centreDepart = e.centre
-  verifier('Départ : sur la page 2 de 3, Seyès, 200 %', e.page === p2 && e.pages.length === 3 && e.fond === 'seyes' && e.z === 2 && e.titreJeter === 'Supprimer cette page', JSON.stringify(e))
+  verifier('Départ : sur la page 2 de 3, Seyès, 200 %', e.page === p2 && e.pages.length === 3 && e.fond === 'seyes' && e.z === 2, JSON.stringify(e))
 
   await jeter(page)
   e = await etat(page)
@@ -168,17 +167,20 @@ async function cliquerAnnulerDuMessage(page) { await page.click('.toast.visible 
   e = await etat(page)
   verifier('↶ (le bouton) la rend en tête, affichée', e.page === p1 && JSON.stringify(e.pages) === JSON.stringify([p1, p2, p3]), JSON.stringify(e))
 
-  // Double-clic sur la poubelle : une seule page jetée
+  // Lot 3 de l'audit : plus de poubelle dans la barre, « Supprimer la page »
+  // est la dernière entrée, en rouge, du menu « Cette page » ; un double-clic
+  // dessus n'en jette qu'une (le premier clic ferme le menu)
   await page.keyboard.press('PageDown'); await page.waitForTimeout(700)
-  await page.dblclick(JETER); await page.waitForTimeout(200)
+  const barre = await page.evaluate(() => ({ poubelle: !!document.querySelector('.barre-haut [aria-label*="Supprimer"], .barre-haut [aria-label="Effacer la page"]') }))
+  await page.click('.barre-haut .choix-fond')
+  const menu = await page.evaluate(() => { const l = [...document.querySelectorAll('.menu-fonds .menu-item')]; const d = l[l.length - 1]; return { derniere: d?.dataset.action, rouge: getComputedStyle(d).color, classe: d?.classList.contains('danger') } })
+  verifier('La barre n\'a plus de poubelle ; « Supprimer la page » est la dernière entrée du menu « Cette page », en rouge', !barre.poubelle && menu.derniere === 'supprimer-page' && menu.classe && menu.rouge === 'rgb(214, 69, 69)', JSON.stringify({ barre, menu }))
+  const ent = await page.evaluate(() => { const r = document.querySelector('.menu-fonds [data-action="supprimer-page"]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } })
+  await page.mouse.dblclick(ent.x, ent.y); await page.waitForTimeout(200)
   e = await etat(page)
-  verifier('Double-clic sur la poubelle avec 3 pages : une seule page jetée', e.pages.length === 2 && !e.pages.includes(p2) && e.page === p1, JSON.stringify(e))
-  await page.keyboard.press('Control+z'); await page.waitForTimeout(150)
-  await page.waitForTimeout(700)
-  await page.click(JETER); await page.waitForTimeout(300); await page.click(JETER); await page.waitForTimeout(200)
-  e = await etat(page)
-  verifier('Deux clics à 300 ms : une seule page jetée', e.pages.length === 2 && e.page === p1, JSON.stringify(e))
-  await page.keyboard.press('Control+z'); await page.waitForTimeout(150)
+  verifier('Double-clic sur « Supprimer la page » avec 3 pages : une seule page jetée', e.pages.length === 2 && !e.pages.includes(p2) && e.page === p1, JSON.stringify(e))
+  // (le second clic, le menu fermé, a pu tomber sur la page : Ctrl+Z jusqu'à la page rendue)
+  for (let k = 0; k < 3 && (await etat(page)).pages.length < 3; k++) { await page.keyboard.press('Control+z'); await page.waitForTimeout(150) }
 
   // Deux pages jetées de suite : deux Ctrl+Z, dans l'ordre inverse, chacune à sa place
   e = await etat(page)
@@ -186,13 +188,13 @@ async function cliquerAnnulerDuMessage(page) { await page.click('.toast.visible 
   await jeter(page)                 // la 2 → on arrive sur la 1
   await jeter(page)                 // la 1 → on arrive sur la 3
   e = await etat(page)
-  verifier('Deux pages jetées de suite : il reste la 3, affichée', JSON.stringify(e.pages) === JSON.stringify([p3]) && e.page === p3 && e.titreJeter === 'Effacer la page', JSON.stringify(e))
+  verifier('Deux pages jetées de suite : il reste la 3, affichée', JSON.stringify(e.pages) === JSON.stringify([p3]) && e.page === p3 && (await libelleSupprimer(page)) === 'Effacer la page', JSON.stringify(e))
   await page.keyboard.press('Control+z'); await page.waitForTimeout(150)
   e = await etat(page)
   verifier('Premier Ctrl+Z : la page 1 revient en tête, affichée', JSON.stringify(e.pages) === JSON.stringify([p1, p3]) && e.page === p1, JSON.stringify(e))
   await page.keyboard.press('Control+z'); await page.waitForTimeout(150)
   e = await etat(page)
-  verifier('Second Ctrl+Z : la page 2 revient après la 1', JSON.stringify(e.pages) === JSON.stringify([p1, p2, p3]) && e.page === p2 && e.titreJeter === 'Supprimer cette page', JSON.stringify(e))
+  verifier('Second Ctrl+Z : la page 2 revient après la 1', JSON.stringify(e.pages) === JSON.stringify([p1, p2, p3]) && e.page === p2 && (await libelleSupprimer(page)) === 'Supprimer la page', JSON.stringify(e))
 
   // Rendre après avoir ajouté une page : après sa voisine d'avant
   await jeter(page)
@@ -209,7 +211,7 @@ async function cliquerAnnulerDuMessage(page) { await page.click('.toast.visible 
   const { ctx, page } = await ouvrir({}, 'seule')
   await page.evaluate(() => { window.__app.reconnaissance = false; window.__app.choisirOutil('stylo') })
   let e = await etat(page)
-  verifier('Une seule page : la poubelle dit « Effacer la page »', e.titreJeter === 'Effacer la page' && e.pages.length === 1, JSON.stringify(e))
+  verifier('Une seule page : le menu « Cette page » dit « Effacer la page »', (await libelleSupprimer(page)) === 'Effacer la page' && e.pages.length === 1, JSON.stringify(e))
   await jeter(page)
   e = await etat(page)
   verifier('Page vide : « La page est déjà vide. », rien d\'autre', (await toast(page)).includes('La page est déjà vide.') && e.pages.length === 1 && e.dialogues === 0 && e.action.length === 0, JSON.stringify(e))
@@ -226,7 +228,7 @@ async function cliquerAnnulerDuMessage(page) { await page.click('.toast.visible 
   e = await etat(page)
   verifier('Effacée puis réécrite : « Annuler » ne défait rien d\'invisible, et le dit', e.n === 1 && (await toast(page)).includes('La page a changé depuis'), JSON.stringify({ e, t: await toast(page) }))
   await page.evaluate(() => window.__app.nouvellePage()); await page.waitForTimeout(150)
-  verifier('Deux pages : la poubelle redit « Supprimer cette page »', (await etat(page)).titreJeter === 'Supprimer cette page')
+  verifier('Deux pages : le menu redit « Supprimer la page »', (await libelleSupprimer(page)) === 'Supprimer la page')
   await ctx.close()
 }
 
@@ -237,11 +239,15 @@ async function cliquerAnnulerDuMessage(page) { await page.click('.toast.visible 
   await page.waitForTimeout(150)
   let e = await etat(page)
   const p3 = e.page
-  const b = await page.evaluate(s => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } }, JETER)
+  // Au doigt : toucher « Cette page », puis « Supprimer la page »
+  const centre = sel => page.evaluate(s => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 } }, sel)
   await page.waitForTimeout(650)
-  await page.touchscreen.tap(b.x, b.y); await page.waitForTimeout(80); await page.touchscreen.tap(b.x, b.y); await page.waitForTimeout(200)
+  const b = await centre('.barre-haut .choix-fond')
+  await page.touchscreen.tap(b.x, b.y); await page.waitForTimeout(200)
+  const d = await centre('.menu-fonds [data-action="supprimer-page"]')
+  await page.touchscreen.tap(d.x, d.y); await page.waitForTimeout(80); await page.touchscreen.tap(d.x, d.y); await page.waitForTimeout(200)
   e = await etat(page)
-  verifier('Doigt : deux touchers rapides sur la poubelle jettent une seule page', e.pages.length === 2 && !e.pages.includes(p3) && e.dialogues === 0, JSON.stringify(e))
+  verifier('Doigt : « Cette page » puis deux touchers rapides sur « Supprimer la page » jettent une seule page', e.pages.length === 2 && !e.pages.includes(p3) && e.dialogues === 0, JSON.stringify(e))
   const a = await page.evaluate(() => { const r = document.querySelector('.toast.visible button.action').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, h: r.height } })
   await page.touchscreen.tap(a.x, a.y); await page.waitForTimeout(200)
   e = await etat(page)

@@ -50,6 +50,7 @@
 import { RACINE_DEPOT, SORTIES } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
 import { existsSync, mkdirSync } from 'node:fs'
+import { supprimerLaPage, libelleSupprimer } from '../commun/page.mjs'
 
 const DEV = process.env.DEV ?? 'http://localhost:5173/'
 const D = SORTIES + '/lot17'
@@ -282,12 +283,12 @@ if (faire('classeur') || faire('horsligne')) {
 
   // ---------- C. Les pages seules ----------
   await p.evaluate(id => window.__app.allerPage(id), S2.pages[2]); await p.waitForTimeout(700)
-  await p.click('.barre-haut button[aria-label="Supprimer cette page"]'); await p.waitForTimeout(300)
+  await supprimerLaPage(p); await p.waitForTimeout(300)
   e = await etat(p)
   verifier('C) La poubelle sur la page 3 du jour : « Page 3 supprimée » avec Annuler', dernier(e) === 'Page 3 supprimée' && e.action.includes('Annuler') && e.dans.includes(S2.pages[2]) && e.pages.length === 2, { m: dernier(e), pages: e.pages })
   await p.evaluate(id => window.__app.allerPage(id), S0.pages[0]); await p.waitForTimeout(700)
   const avant = await etat(p)
-  await p.click('.barre-haut button[aria-label="Supprimer cette page"]'); await p.waitForTimeout(300)
+  await supprimerLaPage(p); await p.waitForTimeout(300)
   e = await etat(p)
   const tx0 = await textes(p, S0)
   verifier('… la poubelle sur une page d\'une séance passée : refusée (« Séance de … : vous la regardez sans la modifier. »), rien ne bouge',
@@ -511,7 +512,7 @@ if (faire('jours')) {
   // (hier, elle restera), la page 2 jetée comme au lot 2 (sans heure) ; puis
   // les entrées de la page 3 et de la séance reculées de 31 jours
   await p.evaluate(id => window.__app.allerPage(id), S1.pages[2]); await p.waitForTimeout(700)
-  await p.click('.barre-haut button[aria-label="Supprimer cette page"]'); await p.waitForTimeout(300)
+  await supprimerLaPage(p); await p.waitForTimeout(300)
   await p.evaluate(id => window.__app.allerPage(id), S1.pages[0]); await p.waitForTimeout(300)
   await p.evaluate(async ([s, p4, p2, vieilles, J]) => {
     const t = window.__app.tableau

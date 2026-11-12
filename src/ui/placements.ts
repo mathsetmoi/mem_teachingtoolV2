@@ -89,17 +89,7 @@ export const methodesPlacements = {
     const ici = seance ?? app.tableau.derniereSeance()
     const sansAvant = !ici || !app.tableau.seancesDuClasseur().some(x => x.pages.length && x.id !== ici.id && x.debut < ici.debut)
     if (this.boutonPrecedente.hidden !== sansAvant) { this.boutonPrecedente.hidden = sansAvant; this.compteurARegler = true }
-    const titreJeter = pages.length <= 1 ? 'Effacer la page' : 'Supprimer cette page'
-    if (this.boutonJeter.title !== titreJeter) { this.boutonJeter.title = titreJeter; this.boutonJeter.setAttribute('aria-label', titreJeter) }
-    const motJeter = pages.length <= 1 ? 'Effacer' : 'Supprimer'
-    if (this.libelleJeter.dataset.libelle !== motJeter) this.libelleJeter.dataset.libelle = motJeter
     this.majBoutonFond()
-    this.boutonAimant.classList.toggle('actif', app.aimant)
-    if (this.boutonNuit.classList.contains('actif') !== app.nuit) {
-      this.boutonNuit.classList.toggle('actif', app.nuit)
-      this.boutonNuit.setAttribute('aria-pressed', String(app.nuit))
-    }
-    this.boutonReconnaissance.classList.toggle('actif', app.reconnaissance)
     for (const [id, b] of this.boutonsFormes) b.classList.toggle('actif', app.typeForme === id)
     for (const [id, b] of this.boutonsTraits) b.classList.toggle('actif', app.typeTrait === id)
     // Le petit panneau à côté de l'outil choisi (Formes ou Segment) ; au
@@ -383,6 +373,20 @@ export const methodesPlacements = {
       return r.width && r.height ? { left: r.left - z.left, top: r.top - z.top, right: r.right - z.left, bottom: r.bottom - z.top } : null
     }
     return zoneEntreBarres(z.width, z.height, { outils: bords(this.barreOutils), haut: bords(this.barreHaut), zoom: bords(this.barreZoom) })
+  },
+
+  /** La zone libre où se placent la pastille ↻ et la barre d'actions d'un
+   *  objet pris : celle de zoneLibre, commencée sous l'étiquette de la
+   *  séance quand elle pend sous la barre du haut (sans quoi la pastille
+   *  d'une image posée en haut tomberait sous l'étiquette, qui prendrait
+   *  l'appui) */
+  zoneDuCadre(this: UI): { x: number; y: number; l: number; h: number; } {
+    const zl = this.zoneLibre(), s = this.rangSeance
+    if (s.hidden) return zl
+    const r = s.getBoundingClientRect(), z = this.app.rendu.scene.getBoundingClientRect()
+    const bas = r.bottom - z.top + 4
+    if (!r.height || r.top - z.top > zl.y || bas <= zl.y || zl.h - (bas - zl.y) < 200) return zl
+    return { ...zl, y: bas, h: zl.h - (bas - zl.y) }
   },
 
   /** La pastille « Revenir au contenu » : elle paraît une seconde après qu'on

@@ -10,6 +10,7 @@
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
 import { mkdirSync, readFileSync } from 'node:fs'
+import { supprimerLaPage, libelleSupprimer } from '../commun/page.mjs'
 
 const URL0 = 'http://localhost:5173/'
 const D = `${RACINE_ESSAIS}/lot3/p1/navigateur`
@@ -49,7 +50,6 @@ async function ouvrir(nom) {
   return { ctx, page }
 }
 
-const JETER = '.barre-haut button[aria-label="Supprimer cette page"]'
 const ETAT = () => {
   const a = window.__app, t = a.tableau
   const f = t.film.get(t.film.length - 1)
@@ -63,7 +63,7 @@ const ETAT = () => {
 }
 const etat = page => page.evaluate(ETAT)
 const toast = page => page.evaluate(() => [...document.querySelector('.toast').children].map(l => l.textContent).join(' | '))
-async function jeter(page) { await page.waitForTimeout(650); await page.click(JETER); await page.waitForTimeout(200) }
+async function jeter(page) { await page.waitForTimeout(650); await supprimerLaPage(page); await page.waitForTimeout(200) }
 
 // =============== 1. La poubelle, « Annuler », Ctrl+Z : l'entrée de la corbeille ===============
 const { ctx, page } = await ouvrir('tableau')

@@ -29,6 +29,8 @@ export const ICONES: Record<string, string> = {
   // juste à côté (deux + pareils, au vidéoprojecteur, sembleraient un doublon)
   'page-suivante-plus': 'M5 6l6 6-6 6M18 9v6M15 12h6',
   // Le mode nuit de la page : un croissant de lune
+  // La petite flèche d'un bouton qui ouvre un menu (« Cette page »)
+  'fleche-bas': 'M7 10l5 5 5-5',
   lune: 'M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z',
   aimant: 'M6 4v8a6 6 0 0012 0V4h-4v8a2 2 0 01-4 0V4zM6 8h4M14 8h4',
   forme: 'M3 11h8v8H3zM17 13a4 4 0 100-8 4 4 0 100 8z',

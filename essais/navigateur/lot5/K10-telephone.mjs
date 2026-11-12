@@ -45,7 +45,8 @@
 //    aux gains rapides du lot 16, où les barres changent voulument : Annuler
 //    et Rétablir en tête de la barre du haut, les couleurs en grille 2 × 2,
 //    l'épaisseur sur un bouton, plus de poubelle dans la barre des outils ;
-//    elle était déjà périmée depuis le bouton Texte du lot 12) ; les deux
+//    elle était déjà périmée depuis le bouton Texte du lot 12 ; refaite à
+//    la barre du haut en familles, lot 3 de l'audit) ; les deux
 //    boutons du téléphone cachés.
 //    (A5 ne change pas : au téléphone, Annuler et Rétablir, les boutons de
 //    la barre du haut, sont déplacés dans la barre du bas, à la même place.)
@@ -433,8 +434,12 @@ for (const [L, H, dpr] of APPAREILS) {
   const tete = entrees.slice(0, entrees.indexOf('[classeur]'))
   // (Adapté aux outils de classe : « Outils de classe… » entre Automatismes et Revoir)
   // (Adapté au mode nuit, lot 13 : « Mode nuit » juste après « Fond… »)
-  const attendu = ['# Page', ...(L < 360 ? ['Nouvelle page'] : []), 'Effacer la page', 'Fond…', 'Mode nuit', 'Aimanter au quadrillage', 'Le stylo redresse les figures',
-    '# Outils de cours', 'Importer une image ou un PDF…', 'Instruments…', 'Programme de construction', 'Catalogue', 'Automatismes', 'Outils de classe…', 'Revoir la construction', 'Publier le replay', '# Vue', '100 %', 'Tout voir']
+  // (Adapté à la barre du haut en familles, lot 3 de l'audit : « Plus » est
+  // rangé par les mêmes familles ; « Effacer la page », en rouge, au bout de
+  // « Cette page »)
+  const attendu = ['# Cette page', ...(L < 360 ? ['Nouvelle page'] : []), 'Fond…', 'Mode nuit', 'Aimanter au quadrillage', 'Le stylo redresse les figures', 'Effacer la page',
+    '# Insérer', 'Importer une image ou un PDF…', 'Instruments…', 'Programme de construction', 'Catalogue', 'Automatismes', '# En classe', 'Outils de classe…', 'Revoir la construction',
+    '# Élèves', 'Publier le replay', '# Vue', '100 %', 'Tout voir']
   ok(mPlus && JSON.stringify(tete) === JSON.stringify(attendu) && entrees.includes('# Cet appareil') && entrees.indexOf('# Cet appareil') > entrees.indexOf('[classeur]'),
     `E1) ${T} : « Plus » : Page, Outils de cours, Vue, puis le classeur, puis Cet appareil`, { tete, entrees })
   const hauteurs = await p.evaluate(() => [...document.querySelectorAll('.menu-flottant[aria-label="Plus"] .menu-item')].filter(b => b.getClientRects().length).map(b => [b.textContent.slice(0, 24), Math.round(b.getBoundingClientRect().height)]))
@@ -546,12 +551,17 @@ const maintenant = await releverBarres(DEV, erreurs)
 // nouveau sur une rangée, « Mode nuit », « Aimanter » et « Le stylo
 // redresse » dans le menu ⋯ (le choix du professeur) ; le relevé du PC à
 // 1024 × 768 est refait, les autres ne bougent pas.)
-const VOULU = /^Enregistrer, ouvrir ou exporter en PDF/, FOND = /^Fond de la page : /
+// (Adapté à la barre du haut en familles, lot 3 de l'audit : toutes les
+// barres du haut changent voulument (15 boutons en six familles, leur nom
+// au-dessus, « Cette page » à la place du fond, du mode nuit, de l'aimant,
+// du stylo qui redresse et de la poubelle) ; le relevé est refait partout ;
+// la barre des outils et celle du zoom ne bougent pas.)
+const VOULU = /^Enregistrer, ouvrir ou exporter en PDF/, FOND = /^Cette page : fond /
 const sansLeVoulu = (g, sansZoom, sansOutils) => {
   const c = JSON.parse(JSON.stringify(g))
   for (const b of Object.values(c)) for (const e of b?.enfants ?? []) {
     if (VOULU.test(e.q)) e.q = 'Enregistrer, ouvrir ou exporter en PDF…'
-    if (FOND.test(e.q)) e.q = 'Fond de la page : …'
+    if (FOND.test(e.q)) e.q = 'Cette page : fond …'
   }
   if (sansZoom) delete c['.barre-zoom']
   if (sansOutils) delete c['.barre-outils']

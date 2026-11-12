@@ -2,6 +2,7 @@
 // jamais « undefined », « NaN » ni « [object Object] », aucune promesse fausse), le
 // bouton du classeur, le menu ⋯, la bibliothèque et ses fenêtres.
 import * as O from './outils.mjs'
+import { supprimerLaPage, libelleSupprimer } from '../../../commun/page.mjs'
 const { ok, norm } = O
 const ICI = new URL('.', import.meta.url).pathname
 
@@ -37,7 +38,7 @@ await p.evaluate(() => {
   }
 })
 await p.waitForTimeout(700)
-await p.click('.barre-haut button[aria-label="Supprimer cette page"]'); await p.waitForTimeout(300)
+await supprimerLaPage(p); await p.waitForTimeout(300)
 await p.keyboard.press('Shift+P'); await p.waitForTimeout(400)
 await p.click('.trieuse-bouton-corbeille'); await p.waitForTimeout(300)
 await p.click('.trieuse-corbeille .carte-corbeille .corbeille-supprimer'); await p.waitForTimeout(250)

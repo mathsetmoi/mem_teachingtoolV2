@@ -101,7 +101,7 @@ export const ECRAN = () => {
   return {
     outil: z.dataset.outil, curseur: z.style.cursor || getComputedStyle(z).cursor,
     taille: document.querySelector('.barre-outils .bouton-epaisseur')?.dataset.taille ?? null,
-    fond: (document.querySelector('button.choix-fond')?.title ?? '').replace('Fond de la page : ', ''),
+    fond: (document.querySelector('button.choix-fond')?.title ?? '').match(/fond « (.+?) »/)?.[1] ?? '',
     zoom: (document.querySelector('.zoom-texte')?.textContent ?? '').replace(/\s/g, ' '),
     rang: (document.querySelector('.rang-numero')?.textContent ?? '').replace(/\s/g, ' '),
     toast: [...document.querySelectorAll('.toast.visible')].map(t => t.textContent.trim()).join(' | '),

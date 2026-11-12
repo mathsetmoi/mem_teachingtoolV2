@@ -13,6 +13,7 @@
 //  F. Ctrl+D ou Ctrl+V puis une flèche 300 ms après : deux étapes (déjà
 //     corrigé aux « corrections appareils » ; gardé ici contre une régression).
 import { chromium } from '../commun/playwright.mjs'
+import { supprimerLaPage, libelleSupprimer } from '../commun/page.mjs'
 
 const URL0 = process.argv[2] || 'http://localhost:5173/'
 const resultats = [], erreurs = []
@@ -156,7 +157,7 @@ const PIEGE = { v: 1, formes: [{ id: 'q', type: 'trait', x: 1e300, y: 1e300, z: 
   await page.click('button[title="Nouvelle page"]'); await attendre(100)
   await ecrire(300, 300); await ecrire(300, 400)
   await attendre(700)
-  await page.click('.barre-haut button[aria-label="Supprimer cette page"]'); await attendre(200)
+  await supprimerLaPage(page); await attendre(200)
   const avant = await page.evaluate(() => ({ film: window.__app.tableau.film.length, pages: window.__app.pages.length }))
   await page.click('button[title^="Revoir la construction"]'); await attendre(400)
   const enRevue = await page.evaluate(() => window.__app.enLecture)
@@ -191,7 +192,6 @@ const PIEGE = { v: 1, formes: [{ id: 'q', type: 'trait', x: 1e300, y: 1e300, z: 
     for (let i = 1; i <= 10; i++) await page.mouse.move(x + i * 8, y + (i % 2 ? 14 : 0))
     await page.mouse.up(); await attendre(450)
   }
-  const JETER = '.barre-haut button[aria-label="Supprimer cette page"]'
   await page.evaluate(() => window.__app.choisirOutil('stylo'))
   await ecrire(300, 300)
   await page.click('button[title="Nouvelle page"]'); await attendre(100)
@@ -201,8 +201,8 @@ const PIEGE = { v: 1, formes: [{ id: 'q', type: 'trait', x: 1e300, y: 1e300, z: 
   const P = await page.evaluate(() => window.__app.pages)
   await page.evaluate(p => window.__app.allerPage(p), P[1]); await attendre(100)
   await ecrire(300, 400)
-  await attendre(700); await page.click(JETER); await attendre(200)
-  await attendre(700); await page.click(JETER); await attendre(200)
+  await attendre(700); await supprimerLaPage(page); await attendre(200)
+  await attendre(700); await supprimerLaPage(page); await attendre(200)
   await page.keyboard.press('Control+z'); await attendre(200)
   await page.keyboard.press('Control+z'); await attendre(200)
   const vue = await page.evaluate(() => ({ page: window.__app.page, pages: window.__app.pages }))

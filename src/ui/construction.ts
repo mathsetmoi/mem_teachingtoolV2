@@ -12,7 +12,7 @@ import { VignetteEnonce } from '../enonce'
 import { Flash } from '../flash'
 import { icone } from '../icones'
 import { INSTRUMENTS } from '../instruments'
-import { VIGNETTE_BOUTON, construireMenuFonds, densite, entreeCochee, vignetteDuFond } from '../menu-fonds'
+import { VIGNETTE_BOUTON, densite, entreeCochee, vignetteDuFond } from '../menu-fonds'
 import { basculerMenu, fermerMenu, focusVenuDuClavier, placerMenu } from '../menus'
 import { CTRL, TELEPHONE } from '../navigateur'
 import { OutilsDeClasse } from '../outils-classe'
@@ -295,18 +295,11 @@ export const methodesConstruction = {
     // Avec l'étiquette de la séance, sous la barre (rien ne bouge dans la barre)
     precedente.insertAdjacentHTML('beforeend', '<span class="libelle-precedente">Séance précédente</span>')
     this.rangSeance.appendChild(precedente)
-    // Pas de question : la page part tout de suite, et s'annule (le message
-    // « Page N supprimée · Annuler », ou Ctrl+Z). Le second clic d'un
-    // double-clic, et tout clic trop tôt après une suppression, ne font rien :
-    // un double-clic jetterait deux pages, et le second message chasserait
-    // le premier « Annuler ».
-    let jeteeA = -Infinity
-    const jeter = this.boutonJeter = bouton('poubelle', 'Supprimer cette page', e => {
-      const maintenant = performance.now()
-      if ((e as MouseEvent).detail > 1 || maintenant - jeteeA < 600) return
-      jeteeA = maintenant
-      app.supprimerPage()
-    }, 'danger seulement-large')
+    // Supprimer la page : plus de poubelle dans la barre (lot 3 de l'audit),
+    // une entrée en rouge, tout en bas du menu « Cette page » (voir
+    // construireMenuPage). Pas de question : la page part tout de suite, et
+    // s'annule (le message « Page N supprimée · Annuler », ou Ctrl+Z) ; le
+    // menu se ferme au clic, un double-clic n'en jette pas deux.
     // Le fond de la page : un bouton qui le montre en petit, et ouvre sous
     // lui le menu des huit fonds en vignettes (voir menu-fonds.ts). Ouvert au
     // clavier, le focus va sur le fond de la page. Un choix le donne à la
@@ -314,27 +307,29 @@ export const methodesConstruction = {
     // App.changerFond) ; maj remet la vignette du bouton à jour.
     const boutonFond = this.boutonFond = document.createElement('button')
     boutonFond.type = 'button'; boutonFond.className = 'bouton choix-fond seulement-large'
+    boutonFond.dataset.famille = 'Cette page'
     boutonFond.setAttribute('aria-haspopup', 'menu'); boutonFond.setAttribute('aria-expanded', 'false')
     this.vignetteFond = vignetteDuFond('blanc', VIGNETTE_BOUTON.l, VIGNETTE_BOUTON.h, densite())
     boutonFond.appendChild(this.vignetteFond)
+    // Une petite flèche : le bouton ouvre un menu (lot 3 de l'audit)
+    boutonFond.insertAdjacentHTML('beforeend', `<span class="fleche-menu" aria-hidden="true">${icone('fleche-bas')}</span>`)
     const menuFonds = document.createElement('div')
     menuFonds.className = 'menu-flottant menu-fonds'; menuFonds.setAttribute('role', 'menu'); menuFonds.setAttribute('aria-label', 'Fond de la page')
     menuFonds.hidden = true
     this.menuFonds = { el: menuFonds, bouton: boutonFond }
+    // Le menu « Cette page » (lot 3 de l'audit) : les fonds en vignettes,
+    // puis Mode nuit, Aimanter, Le stylo redresse, et tout en bas, seul et en
+    // rouge, « Supprimer la page » (voir construireMenuPage)
     boutonFond.addEventListener('click', e => {
-      if (menuFonds.hidden) construireMenuFonds(menuFonds, app.fond, f => app.changerFond(f))
+      if (menuFonds.hidden) this.construireMenuPage()
       menuFonds.classList.remove('deux-colonnes')
       basculerMenu(this.menuFonds)
       if (menuFonds.hidden) return
       placerMenu(menuFonds, boutonFond.getBoundingClientRect(), 'dessous')
       if (e.detail === 0) entreeCochee(menuFonds)?.focus()
     })
-    // Le mode nuit de la page (voir nuit.ts) : allumé tant que la page qu'on
-    // regarde est de nuit ; la touche N fait de même
-    this.boutonNuit = bouton('lune', 'Mode nuit de cette page : fond noir, écriture claire (N)', () => app.basculerNuit(), 'outil seulement-large replie-etroit')
-    this.boutonNuit.setAttribute('aria-pressed', 'false')
-    this.boutonAimant = bouton('aimant', 'Aimanter au quadrillage', () => this.basculerAimant(), 'outil seulement-large replie-etroit')
-    this.boutonReconnaissance = bouton('reconnaissance', 'Le stylo redresse les figures (carré, cercle…)', () => this.basculerReconnaissance(), 'outil seulement-large replie-etroit')
+    // Le mode nuit (touche N), Aimanter et Le stylo redresse : des cases du
+    // menu « Cette page » (lot 3 de l'audit ; voir casesDeLaPage)
     this.boutonInstruments = bouton('instruments', 'Instruments : règle, équerre, rapporteur, compas', () => {
       this.choixInstruments.hidden = !this.choixInstruments.hidden; this.maj()
     }, 'outil seulement-large')
@@ -440,15 +435,27 @@ export const methodesConstruction = {
     this.pointFichier = Object.assign(document.createElement('span'), { className: 'point-etat', hidden: true })
     this.pointFichier.setAttribute('aria-hidden', 'true')
     fichier.appendChild(this.pointFichier)
-    haut.append(this.boutonAnnuler, this.boutonRetablir, this.filetHistorique, avant, this.rang, apres, nouvelle, jeter, boutonFond, this.boutonNuit, this.boutonAimant, this.boutonReconnaissance, importer, this.boutonInstruments, construire, catalogue, automatismes, outilsClasse, revoir, publier, fichier)
+    // La barre du haut, en familles (lot 3 de l'audit) : Annuler, Pages,
+    // Cette page, Insérer, En classe, Élèves, puis ⋯. Un filet entre deux
+    // familles ; leur nom au-dessus, en petit, sur le premier bouton de
+    // chacune (data-famille, écrit par la feuille de style, dès 900 px de
+    // large). Mode nuit, Aimanter, Le stylo redresse et « Supprimer la
+    // page » sont dans le menu « Cette page ».
+    const filet = () => Object.assign(document.createElement('hr'), { className: 'filet-vertical seulement-large' })
+    this.boutonAnnuler.dataset.famille = 'Annuler'
+    avant.dataset.famille = 'Pages'
+    importer.dataset.famille = 'Insérer'
+    outilsClasse.dataset.famille = 'En classe'
+    publier.dataset.famille = 'Élèves'
+    haut.classList.add('en-familles')
+    haut.append(this.boutonAnnuler, this.boutonRetablir, this.filetHistorique, avant, this.rang, apres, nouvelle, filet(), boutonFond, filet(), importer, this.boutonInstruments, construire, catalogue, automatismes, filet(), outilsClasse, revoir, filet(), publier, fichier)
     // Les noms sous les outils (lot 5) : ni ‹, ni ›, ni le compteur, ni le
     // bouton du classeur
     nommer(this.boutonAnnuler, 'Annuler'); nommer(this.boutonRetablir, 'Rétablir')
     nommer(nouvelle, 'Nouvelle')
     // (pas de nom sous « Séance précédente » : il n'est là qu'avec une séance d'avant)
     this.racine.appendChild(this.rangSeance)
-    this.libelleJeter = nommer(jeter, 'Supprimer')
-    nommer(boutonFond, 'Fond'); nommer(this.boutonNuit, 'Nuit'); nommer(this.boutonAimant, 'Aimant'); nommer(this.boutonReconnaissance, 'Formes auto')
+    nommer(boutonFond, 'Page')
     nommer(importer, 'Image'); nommer(this.boutonInstruments, 'Instruments'); nommer(construire, 'Construire'); nommer(catalogue, 'Catalogue')
     nommer(automatismes, 'Automatismes'); nommer(outilsClasse, 'Classe'); nommer(revoir, 'Revoir'); nommer(publier, 'Publier'); nommer(fichier, 'Fichier')
 

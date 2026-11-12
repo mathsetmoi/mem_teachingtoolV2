@@ -138,6 +138,9 @@ export interface Interface {
   entrerDansMenu(): void
   /** Ce qu'on voit du tableau entre les barres (coordonnées de la zone) */
   zoneLibre(): { x: number; y: number; l: number; h: number }
+  /** Celle où se placent la pastille ↻ et la barre d'actions (sous
+   *  l'étiquette de la séance, voir UI.zoneDuCadre) */
+  zoneDuCadre(): { x: number; y: number; l: number; h: number }
   /** Des fichiers glissés sur le tableau (.memc, .memb, ou .mem, refusé) :
    *  comme « Ouvrir un classeur » */
   ouvrirFichiers(f: File[]): void
@@ -859,7 +862,7 @@ export class App {
    *  centre) : null si quelque chose n'y est pas libre, ou s'il n'y en a
    *  pas (un point seul, un cercle entier). Les points repérés sur une
    *  image prise la suivent sans changer son cadre. */
-  calculerCadre(pris: Forme[], zl = this.ui?.zoneLibre() ?? { x: 0, y: 0, l: this.rendu.l, h: this.rendu.h }): Cadre | null {
+  calculerCadre(pris: Forme[], zl = this.ui?.zoneDuCadre() ?? { x: 0, y: 0, l: this.rendu.l, h: this.rendu.h }): Cadre | null {
     if (!pris.length || !pris.every(libre)) return null
     const cam = this.cam, sel = this.selection
     const formes = pris.filter(f => !((f.type === 'polygone' || f.type === 'cercle') && f.lie && sel.has(f.lie)))

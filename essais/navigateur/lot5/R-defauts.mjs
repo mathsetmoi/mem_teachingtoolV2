@@ -105,7 +105,7 @@ const ECRAN = () => {
   const nom = document.querySelector('.barre-outils .bouton-epaisseur')?.dataset.taille ?? null
   return {
     taille: ['Fin', 'Moyen', 'Épais'].indexOf(nom), tailleNom: nom,
-    fond: (document.querySelector('button.choix-fond')?.title ?? '').replace('Fond de la page : ', ''),
+    fond: (document.querySelector('button.choix-fond')?.title ?? '').match(/fond « (.+?) »/)?.[1] ?? '',
     zoom: (document.querySelector('.zoom-texte')?.textContent ?? '').replace(/\s/g, ' '),
     rang: (document.querySelector('.rang-numero')?.textContent ?? '').replace(/\s/g, ' '),
   }
@@ -126,7 +126,8 @@ const ZONE = () => {
   return { x, y, l: z.width - 16 - x, h: Math.min(b.top - z.top, z.height) - 12 - y }
 }
 /** La boîte de l'encre sombre (le noir du Stylo) sur les canevas du tableau, en px du tableau */
-const ENCRE = () => {
+// (pale : un trait fin vu de loin, que l'anticrénelage éclaircit ; voir « Tout voir »)
+const ENCRE = (pale = false) => {
   const z = document.getElementById('zone'), zr = z.getBoundingClientRect()
   let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
   for (const c of z.querySelectorAll('canvas')) {
@@ -135,7 +136,7 @@ const ENCRE = () => {
     const k = c.width / r.width, d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
     for (let j = 0; j < c.height; j++) for (let i = 0; i < c.width; i++) {
       const n = (j * c.width + i) * 4
-      if (d[n + 3] > 200 && d[n] < 90 && d[n + 1] < 90 && d[n + 2] < 110) {
+      if (pale ? (d[n + 3] > 40 && d[n] < 200 && d[n + 1] < 200 && d[n + 2] < 210) : (d[n + 3] > 200 && d[n] < 90 && d[n + 1] < 90 && d[n + 2] < 110)) {
         const x = r.left - zr.left + i / k, y = r.top - zr.top + j / k
         if (x < x1) x1 = x; if (y < y1) y1 = y; if (x > x2) x2 = x; if (y > y2) y2 = y
       }
@@ -285,7 +286,10 @@ async function parcours(url, nom) {
   // Tout voir (Maj + 1) et le zoom à la main restent
   await p.mouse.move(700, 420)
   await p.keyboard.down('Shift'); await p.keyboard.press('Digit1'); await p.keyboard.up('Shift'); await p.waitForTimeout(700)
-  e = await ecran(p); encre = await p.evaluate(ENCRE)
+  // (Adapté à la barre du haut en familles, plus haute de 15 px : la page se
+  // voit à 26 %, où le trait fin, écrit à 24 %, n'a plus un seul pixel
+  // franchement noir ; on le cherche pâle)
+  e = await ecran(p); encre = await p.evaluate(ENCRE, true)
   ok(parseInt(e.zoom) < 100 && encre && encre.x >= zone.x - 2 && encre.x + encre.l <= zone.x + zone.l + 2, `${nom} — « Tout voir » (Maj + 1) : toute la page, à ${e.zoom}`, { e, encre })
   await molette(p, 700, 420, -2, true)
   const zMain = (await ecran(p)).zoom

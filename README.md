@@ -6339,6 +6339,43 @@ recommandations.
   `src/automatismes/lycee.ts`. Essai : `lot10/E1-flash.mjs` (partie H,
   adaptée : on déplie la liste officielle avant de cocher ses domaines).
 
+## La barre du haut en familles (lot 24)
+
+Lot 3 de l'audit complet du 11 novembre 2026 (variante B de la maquette,
+choisie par le professeur le 12 novembre) : la barre du haut se lit d'un
+coup d'œil, chaque bouton est rangé dans une famille qui porte un petit
+titre.
+
+### Le mode d'emploi
+
+- **Les familles**, de gauche à droite : *Annuler* (↶ ↷), *Pages*
+  (Nouvelle page, ‹ Page ›), *Cette page*, *Insérer* (Image, Instruments,
+  Construire, Catalogue), *En classe* (Automatismes, Classe), *Élèves*
+  (Revoir, Publier), puis le classeur, Fichier et ⋯. Quinze boutons, sur
+  une seule rangée dès 960 px de large (un ordinateur portable, un TNI).
+- **Le bouton « Cette page »** montre en petit le fond de la page et ouvre
+  un menu : les fonds (page blanche, quadrillage, seyès…), « Mode nuit »,
+  « Aimanter au quadrillage », « Le stylo redresse les figures », un filet,
+  puis en rouge « Supprimer la page » (« Effacer la page » quand la page
+  est seule). Ces trois réglages ne sont plus dans le menu ⋯.
+- **Sur un téléphone** (debout ou couché), la barre reste compacte, sans
+  titres ; le menu ⋯ « Plus » est rangé par les mêmes familles.
+- Rien ne change dans les classeurs ni dans les fichiers.
+
+### Comment c'est fait
+
+- `src/ui/construction.ts` bâtit la barre (`.barre-haut.en-familles`) ;
+  chaque famille est un groupe avec son titre en petites capitales. Le
+  style des titres ne s'applique qu'à partir de 900 px et jamais avec
+  `body.telephone`.
+- La zone où l'on recadre et pose les poignées (`zoneDuCadre`, dans
+  `src/ui/placements.ts`) commence sous l'étiquette de la séance quand
+  celle-ci dépasse de la barre : la pastille ↻ ne tombe plus dessous.
+- Essais adaptés (chacun le dit en commentaire) : la barre fait 15 px de
+  plus, le fond se lit dans le titre « Cette page : fond « … » », le menu
+  du téléphone est rangé par familles, et la référence des barres
+  (`lot5/K10-telephone/reference-barres.json`) a été relevée à nouveau.
+
 ## Ce que fait la v0.1
 
 Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment
