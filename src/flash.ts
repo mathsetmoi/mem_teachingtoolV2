@@ -122,7 +122,8 @@ function casesDuNiveau(n: Niveau, R: ReglagesFlash): string {
   const nombre = (t: string) => autos.filter(a => a.theme === t).length
   const coche = (cle: string) => R.themes.includes(cle)
   const PERSO = '<b class="etiquette-perso" title="Un domaine à vous, hors programme officiel">PERSO</b>'
-  const domaine = (cle: string, nom: string, competences: string[], perso = false) => {
+  const OFFI = '<b class="etiquette-offi" title="La liste officielle des automatismes">OFFI</b>'
+  const domaine = (cle: string, nom: string, competences: string[], perso = false, competencesPerso = perso) => {
     const valeur = `${n.id}/${cle}`, siens = autos.filter(a => a.theme === cle)
     const rangees = siens.every(a => a.competence !== undefined)
     const visees = R.competences.filter(c => c.startsWith(valeur + '/'))
@@ -130,7 +131,7 @@ function casesDuNiveau(n: Niveau, R: ReglagesFlash): string {
       const nb = siens.filter(a => a.competence === k).length
       const ok = rangees && nb > 0
       const cochee = ok && coche(valeur) && (!visees.length || visees.includes(`${valeur}/${k}`))
-      return `<li><label${ok ? '' : ' class="sans-exercice"'}><input type="checkbox" class="case-competence" value="${html(valeur)}/${k}"${cochee ? ' checked' : ''}${ok ? '' : ' disabled'}><span>${texteEtMaths(c)}${perso ? ' ' + PERSO : ''}</span>${rangees ? `<small>${nb}</small>` : ''}</label></li>`
+      return `<li><label${ok ? '' : ' class="sans-exercice"'}><input type="checkbox" class="case-competence" value="${html(valeur)}/${k}"${cochee ? ' checked' : ''}${ok ? '' : ' disabled'}><span>${texteEtMaths(c)}${competencesPerso ? ' ' + PERSO : ''}</span>${rangees ? `<small>${nb}</small>` : ''}</label></li>`
     }).join('')
     return `<div class="arbre-domaine">
       <div class="ligne-arbre"><button type="button" class="deplier" aria-expanded="false" aria-label="Voir les compétences de ${html(nom)}" title="Voir les compétences"></button>
@@ -143,16 +144,20 @@ function casesDuNiveau(n: Niveau, R: ReglagesFlash): string {
     return [...new Set(autos.map(a => a.theme))].map(t => `<label><input type="checkbox" class="case-domaine" value="${html(`${n.id}/${t}`)}"${coche(`${n.id}/${t}`) ? ' checked' : ''}><span>${html(t)}</span><small>${nombre(t)}</small></label>`).join('')
   }
   const ranges = new Set<string>()
-  const theme = (nom: string, domaines: string, note?: string) => note
-    ? `<div class="arbre-theme vide"><div class="ligne-arbre"><span class="deplier"></span><span class="nom-theme">${html(nom)}</span><small>${note}</small></div></div>`
+  const theme = (nom: string, domaines: string, note?: string, offi = false) => note
+    ? `<div class="arbre-theme vide"><div class="ligne-arbre"><span class="deplier"></span><span class="nom-theme">${html(nom)}</span><small>${note}</small></div>${domaines ? `<div class="enfants">${domaines}</div>` : ''}</div>`
     : `<div class="arbre-theme"><div class="ligne-arbre"><button type="button" class="deplier" aria-expanded="false" aria-label="Voir les domaines de ${html(nom)}" title="Voir les domaines"></button>
-        <label><input type="checkbox" class="case-theme"><span>${html(nom)}</span></label></div>
+        <label><input type="checkbox" class="case-theme"><span>${html(nom)}${offi ? ' ' + OFFI : ''}</span></label></div>
       <div class="enfants" hidden>${domaines}</div></div>`
+  /** Un domaine encore sans exercice, montré en gris (thème « à remplir ») */
+  const domaineVide = (nom: string) => `<div class="arbre-domaine vide"><div class="ligne-arbre"><span class="deplier"></span><span class="nom-domaine">${html(nom)}</span><small>à remplir</small></div></div>`
   const html1 = programme.map(t => {
     const avec = t.domaines.filter(d => nombre(d.cle) > 0)
     avec.forEach(d => ranges.add(d.cle))
-    if (!avec.length) return theme(t.nom, '', t.domaines.length ? 'bientôt' : 'rien au programme')
-    return theme(t.nom, avec.map(d => domaine(d.cle, d.nom ?? d.cle, d.competences, d.perso)).join(''))
+    if (!avec.length) return theme(t.nom, t.aRemplir ? t.domaines.map(d => domaineVide(d.nom ?? d.cle)).join('') : '', t.aRemplir ? 'à remplir' : t.domaines.length ? 'bientôt' : 'rien au programme', t.offi)
+    const domaines = t.domaines.filter(d => t.aRemplir || nombre(d.cle) > 0)
+      .map(d => nombre(d.cle) > 0 ? domaine(d.cle, d.nom ?? d.cle, d.competences, d.perso, d.perso || d.competencesPerso) : domaineVide(d.nom ?? d.cle))
+    return theme(t.nom, domaines.join(''), undefined, t.offi)
   }).join('')
   // Un exercice dont le domaine n'est pas dans le programme ne se perd pas
   const autres = [...new Set(autos.map(a => a.theme))].filter(t => !ranges.has(t))
@@ -164,7 +169,7 @@ function casesDuNiveau(n: Niveau, R: ReglagesFlash): string {
  *  un thème de même avec ses domaines. Un thème qui a quelque chose de
  *  coché reste ouvert (deplier : à la première ouverture). */
 function accorderArbre(racine: HTMLElement, deplier = false) {
-  racine.querySelectorAll<HTMLElement>('.arbre-domaine').forEach(d => {
+  racine.querySelectorAll<HTMLElement>('.arbre-domaine:not(.vide)').forEach(d => {
     const comp = [...d.querySelectorAll<HTMLInputElement>('.case-competence:not(:disabled)')]
     const dom = d.querySelector<HTMLInputElement>('.case-domaine')!
     if (!comp.length) { dom.indeterminate = false; return }
@@ -381,7 +386,7 @@ export class Flash {
       const r: ReglagesFlash = {
         niveaux: [...d.querySelectorAll<HTMLButtonElement>('.niveau-flash[aria-pressed=true]')].map(b => b.dataset.niveau!),
         themes: [...d.querySelectorAll<HTMLElement>('.themes-niveau:not([hidden])')].flatMap(domainesCoches).map(c => c.value),
-        competences: [...d.querySelectorAll<HTMLElement>('.themes-niveau:not([hidden]) .arbre-domaine')]
+        competences: [...d.querySelectorAll<HTMLElement>('.themes-niveau:not([hidden]) .arbre-domaine:not(.vide)')]
           .filter(x => x.querySelector<HTMLInputElement>('.case-domaine')!.indeterminate)
           .flatMap(x => [...x.querySelectorAll<HTMLInputElement>('.case-competence:checked')].map(c => c.value)),
         ...compo,

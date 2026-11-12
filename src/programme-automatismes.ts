@@ -1,5 +1,6 @@
 // =============================================================
-// LE RANGEMENT DES AUTOMATISMES DU COLLÈGE (programme 2026 du cycle 4)
+// LE RANGEMENT DES AUTOMATISMES (collège : programme 2026 du cycle 4 ;
+// 2nde : thèmes du programme de seconde, puis la liste de l’épreuve)
 // Thème › Domaine › Compétences, comme dans le programme : les cinq
 // thèmes du collège, puis les domaines du niveau (les titres du
 // programme), puis la liste « Automatismes » de chaque domaine. Les
@@ -24,11 +25,19 @@ export interface DomaineProgramme {
   /** Un domaine du professeur, hors programme officiel : il porte
    *  l'étiquette PERSO dans la fenêtre, comme ses compétences */
   perso?: boolean
+  /** Un domaine du programme dont les compétences sont celles du
+   *  professeur : l'étiquette PERSO va seulement sur ses compétences */
+  competencesPerso?: boolean
 }
 export interface ThemeProgramme {
   nom: string
   /** Vide : le programme n'a aucun automatisme dans ce thème */
   domaines: DomaineProgramme[]
+  /** Le bloc de la liste officielle des automatismes : étiquette OFFI */
+  offi?: boolean
+  /** Ses domaines sans exercice restent visibles, en gris, « à remplir »
+   *  (en 2nde : le professeur les remplit peu à peu) */
+  aRemplir?: boolean
 }
 
 export const THEMES_COLLEGE = {
@@ -273,5 +282,76 @@ export const PROGRAMME_AUTOMATISMES: Record<string, ThemeProgramme[]> = {
       ] },
     ] },
     INFORMATIQUE,
+  ],
+  // La 2nde : les quatre thèmes du programme de seconde et leurs domaines,
+  // que le professeur remplit de ses questions (PERSO) ; puis, à part comme
+  // dans le programme, la liste officielle des automatismes de l'épreuve
+  // anticipée (OFFI), une compétence par phrase de la liste. Les clés de
+  // ces domaines-là sont les thèmes des exercices de lycee.ts, pour que les
+  // réglages déjà gardés (« 2nde/Statistiques ») restent bons.
+  '2nde': [
+    { nom: 'Nombres et calculs, algèbre', aRemplir: true, domaines: [
+      { cle: 'Arithmétique', competencesPerso: true, competences: ['Connaître le cours'] },
+      { cle: 'Nombres réels', competences: [] },
+      { cle: 'Algèbre', competences: [] },
+    ] },
+    { nom: 'Géométrie', aRemplir: true, domaines: [
+      { cle: 'Vecteurs et problèmes de géométrie', competences: [] },
+      { cle: 'Droites du plan', competences: [] },
+    ] },
+    { nom: 'Fonctions', aRemplir: true, domaines: [
+      { cle: 'Représentation algébrique et graphique des fonctions', competences: [] },
+      { cle: 'Variations et extrémums d’une fonction', competences: [] },
+    ] },
+    { nom: 'Statistiques et probabilités', aRemplir: true, domaines: [
+      { cle: 'Information chiffrée et statistique descriptive', competences: [] },
+      { cle: 'Croisement de deux variables qualitatives', competences: [] },
+      // « Probabilités » est déjà la clé d'un domaine de la liste officielle
+      { cle: 'Probabilités du programme', nom: 'Probabilités', competences: [] },
+    ] },
+    { nom: 'Automatismes de l’épreuve', offi: true, domaines: [
+      { cle: 'Calcul numérique et algébrique', competences: [
+        'Comparer deux nombres par le calcul de leur différence.',
+        'Comparer deux nombres strictement positifs par le calcul de leur quotient.',
+        'Effectuer des opérations et des comparaisons entre des fractions simples.',
+        'Effectuer des opérations sur les puissances.',
+        'Passer d’une écriture d’un nombre à une autre (décimale, fractionnaire, pourcentage).',
+        'Estimer un ordre de grandeur.',
+        'S’assurer de la vraisemblance, de la cohérence d’un résultat.',
+        'Effectuer des conversions d’unités : longueurs, aires, volumes, contenances, durées, vitesses, masses.',
+        'Effectuer un calcul littéral élémentaire : $-(a + b) = -a - b$, $-(a - b) = b - a$.',
+        'Effectuer un calcul littéral élémentaire : expressions multiplicatives et quotients.',
+        'Développer, factoriser : identités $(a + b)^2$, $(a - b)^2$, $(a + b)(a - b)$.',
+        'Factoriser $ax^2 + bx$, $ax + bx$.',
+        'Résoudre une équation du type $x^2 = a$, $ax + b = cx + d$ ou $\\frac{a}{x} = b$, ou une inéquation du premier degré.',
+        'Isoler une variable dans une égalité qui en comporte plusieurs.',
+        'Effectuer une application numérique d’une formule.',
+      ] },
+      { cle: 'Proportions et pourcentages', competences: [
+        'Calculer, appliquer, exprimer une proportion sous différentes formes (décimale, fractionnaire, pourcentage).',
+        'Utiliser une proportion pour calculer une partie connaissant le tout, ou le tout connaissant une partie.',
+      ] },
+      { cle: 'Évolutions et variations', competences: [
+        'Passer d’une formulation additive (« augmenter de 5 % ») à une formulation multiplicative (« multiplier par 1,05 »).',
+      ] },
+      { cle: 'Fonctions et représentations', competences: [
+        'Déterminer graphiquement des images et des antécédents.',
+        'Exploiter une équation de courbe (appartenance d’un point, calcul de coordonnées).',
+        'Reconnaître l’expression d’une fonction linéaire, d’une fonction affine.',
+      ] },
+      { cle: 'Statistiques', competences: [
+        'Lire et commenter des graphiques usuels : diagramme en barres.',
+        'Lire et commenter des graphiques usuels : diagramme circulaire, semi-circulaire.',
+        'Lire et commenter des graphiques usuels : courbe, nuage de points.',
+        'Calculer et interpréter des indicateurs statistiques (moyenne, médiane, quartiles).',
+        'Comparer des distributions à l’aide de boîtes à moustaches.',
+      ] },
+      { cle: 'Probabilités', competences: [
+        'Savoir qu’une probabilité est un nombre entre 0 et 1.',
+        'Savoir calculer la probabilité de l’évènement contraire.',
+        'Calculer la probabilité d’un évènement comme somme des probabilités des issues qui le composent.',
+        'Utiliser la relation $P(A) = \\frac{\\text{Card}(A)}{\\text{Card}(\\Omega)}$ dans le cas de l’équiprobabilité.',
+      ] },
+    ] },
   ],
 }
