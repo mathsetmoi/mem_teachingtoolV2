@@ -445,8 +445,31 @@ describe('les automatismes de 2nde et de 1re (épreuve anticipée)', () => {
 
   it('les thèmes suivent la liste officielle, dans son ordre', () => {
     const ordre = ['Calcul numérique et algébrique', 'Proportions et pourcentages', 'Évolutions et variations', 'Fonctions et représentations', 'Statistiques', 'Probabilités']
-    expect(themesDe(NIVEAUX.find(x => x.id === '2nde')!)).toEqual(ordre)
+    // En 2nde, après la liste officielle, le domaine PERSO Arithmétique (lot 24)
+    expect(themesDe(NIVEAUX.find(x => x.id === '2nde')!)).toEqual([...ordre, 'Arithmétique'])
     expect(themesDe(NIVEAUX.find(x => x.id === '1re')!)).toEqual(ordre.filter(t => t !== 'Proportions et pourcentages'))
+  })
+
+  it('en 2nde, l\'arbre du programme : quatre thèmes à remplir, puis la liste officielle (OFFI) ; chaque exercice a sa compétence, chaque compétence ses exercices', () => {
+    const prog = PROGRAMME_AUTOMATISMES['2nde']
+    expect(prog.map(t => t.nom)).toEqual(['Nombres et calculs, algèbre', 'Géométrie', 'Fonctions', 'Statistiques et probabilités', 'Automatismes de l’épreuve'])
+    expect(prog.slice(0, 4).every(t => t.aRemplir && !t.offi)).toBe(true)
+    expect(prog[4].offi).toBe(true)
+    const domaines = prog.flatMap(t => t.domaines)
+    expect(new Set(domaines.map(d => d.cle)).size).toBe(domaines.length)
+    for (const a of AUTOMATISMES_2NDE) {
+      const d = domaines.find(x => x.cle === a.theme)
+      expect(d, a.id).toBeTruthy()
+      expect(a.competence, a.id).toBeDefined()
+      expect(d!.competences[a.competence!], a.id).toBeTruthy()
+      // La compétence d'un exercice officiel est la phrase qu'il travaille
+      if (prog[4].domaines.includes(d!)) expect(d!.competences[a.competence!].slice(0, 10), a.id).toBe(a.programme!.slice(0, 10))
+    }
+    for (const d of domaines) d.competences.forEach((c, k) => expect(AUTOMATISMES_2NDE.some(a => a.theme === d.cle && a.competence === k), `${d.cle} : ${c}`).toBe(true))
+    const arith = domaines.find(d => d.cle === 'Arithmétique')!
+    expect(arith).toMatchObject({ competencesPerso: true, competences: ['Connaître le cours'] })
+    expect(arith.perso).toBeFalsy()
+    expect(AUTOMATISMES_2NDE.filter(a => a.theme === 'Arithmétique').length).toBeGreaterThanOrEqual(5)
   })
 
   it('réponse courte, jamais une chance sur deux, et les trous ont un trou', () => {

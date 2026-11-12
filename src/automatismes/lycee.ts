@@ -127,12 +127,21 @@ export function populationEtPart(pourcents: number[]): { lieu: string; gens: str
     if (N * p % 100 === 0) return { lieu, gens, N, p, n: N * p / 100 }
   }
 }
+// ---------- PERSO : Arithmétique (outils) ----------
+export const T_ARITHMETIQUE = 'Arithmétique'
+export const PERSO_ARITHMETIQUE = 'PERSO · Arithmétique : connaître le cours.'
+const ENSEMBLES_ENTIERS: [string, string][] = [['entiers naturels', '\\mathbb{N}'], ['entiers relatifs', '\\mathbb{Z}']]
+const PREMIERS = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+const diviseurs = (n: number) => Array.from({ length: n }, (_, i) => i + 1).filter(d => n % d === 0)
+/** Les nombres de 12 à 48 qui ont entre 4 et 8 diviseurs */
+const AVEC_DIVISEURS = Array.from({ length: 37 }, (_, i) => i + 12).filter(n => { const k = diviseurs(n).length; return k >= 4 && k <= 8 })
+
 export const CARACTERES = ['sont externes', 'portent des lunettes', 'viennent à vélo', 'pratiquent la natation', 'ont plus de 40 ans', 'jouent d\'un instrument']
 
 export const AUTOMATISMES_2NDE: Automatisme[] = [
   // ================= CALCUL NUMÉRIQUE ET ALGÉBRIQUE =================
   {
-    id: '2nde-comparer-difference', theme: T_CALCUL, titre: 'Comparer deux nombres par leur différence',
+    id: '2nde-comparer-difference', theme: T_CALCUL, titre: 'Comparer deux nombres par leur différence', competence: 0,
     programme: 'Comparer deux nombres par le calcul de leur différence.',
     generer() {
       for (;;) {
@@ -146,7 +155,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-comparer-quotient', theme: T_CALCUL, titre: 'Comparer deux nombres positifs par leur quotient',
+    id: '2nde-comparer-quotient', theme: T_CALCUL, titre: 'Comparer deux nombres positifs par leur quotient', competence: 1,
     programme: 'Comparer deux nombres strictement positifs par le calcul de leur quotient.',
     generer() {
       for (;;) {
@@ -159,7 +168,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-fractions', theme: T_CALCUL, titre: 'Opérations sur les fractions simples',
+    id: '2nde-fractions', theme: T_CALCUL, titre: 'Opérations sur les fractions simples', competence: 2,
     programme: 'Effectuer des opérations et des comparaisons entre des fractions simples.',
     generer() {
       let a: number, b: number, c: number, d: number
@@ -174,7 +183,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-puissances', theme: T_CALCUL, titre: 'Opérations sur les puissances',
+    id: '2nde-puissances', theme: T_CALCUL, titre: 'Opérations sur les puissances', competence: 3,
     programme: 'Effectuer des opérations sur les puissances.',
     generer() {
       const a = choix(['2', '3', '5', '7', '10', 'x', 'a']), n = ent(2, 9), m = ent(2, 9)
@@ -191,7 +200,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-ecritures', theme: T_CALCUL, titre: 'Écriture décimale, fractionnaire, pourcentage',
+    id: '2nde-ecritures', theme: T_CALCUL, titre: 'Écriture décimale, fractionnaire, pourcentage', competence: 4,
     programme: 'Passer d’une écriture d’un nombre à une autre (décimale, fractionnaire, pourcentage).',
     generer() {
       const [n, d] = choix<[number, number]>([[1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5], [1, 8], [3, 8], [5, 8], [7, 8], [1, 20], [3, 20], [7, 20], [9, 25], [3, 50], [1, 2], [7, 10], [9, 10]])
@@ -210,7 +219,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-ordre-grandeur', theme: T_CALCUL, titre: 'Estimer un ordre de grandeur',
+    id: '2nde-ordre-grandeur', theme: T_CALCUL, titre: 'Estimer un ordre de grandeur', competence: 5,
     programme: 'Estimer un ordre de grandeur.',
     generer() {
       const A = choix([20, 30, 40, 50, 60, 200, 300, 400, 500]), B = choix([0.2, 0.3, 0.5, 2, 3, 4, 20, 30])
@@ -221,7 +230,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-vraisemblance', theme: T_CALCUL, titre: 'S’assurer de la vraisemblance d’un résultat',
+    id: '2nde-vraisemblance', theme: T_CALCUL, titre: 'S’assurer de la vraisemblance d’un résultat', competence: 6,
     programme: 'S’assurer de la vraisemblance, de la cohérence d’un résultat.',
     generer() {
       const qui = choix(PRENOMS)
@@ -233,7 +242,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-conversions', theme: T_CALCUL, titre: 'Conversions d’unités',
+    id: '2nde-conversions', theme: T_CALCUL, titre: 'Conversions d’unités', competence: 7,
     programme: 'Effectuer des conversions d’unités : longueurs, aires, volumes, contenances, durées, vitesses, masses.',
     generer() {
       const sortes: (() => Question)[] = [
@@ -260,7 +269,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-litteral-additif', theme: T_CALCUL, titre: 'Supprimer des parenthèses précédées d’un signe moins',
+    id: '2nde-litteral-additif', theme: T_CALCUL, titre: 'Supprimer des parenthèses précédées d’un signe moins', competence: 8,
     programme: 'Effectuer un calcul littéral élémentaire : −(a + b) = −a − b, −(a − b) = b − a.',
     generer() {
       const a = relNonNul(1, 9), b = relNonNul(1, 9), v = lettre()
@@ -272,7 +281,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-litteral-multiplicatif', theme: T_CALCUL, titre: 'Expressions multiplicatives et quotients',
+    id: '2nde-litteral-multiplicatif', theme: T_CALCUL, titre: 'Expressions multiplicatives et quotients', competence: 9,
     programme: 'Effectuer un calcul littéral élémentaire : expressions multiplicatives et quotients.',
     generer() {
       const a = ent(2, 9), b = autreQue([2, 3, 4, 5, 7, 8, 9, 11], a), c = ent(2, 9), d = autreQue([2, 3, 5, 7, 9, 11], c), v = lettre()
@@ -292,7 +301,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-identites', theme: T_CALCUL, titre: 'Identités remarquables',
+    id: '2nde-identites', theme: T_CALCUL, titre: 'Identités remarquables', competence: 10,
     programme: 'Développer, factoriser : identités (a + b)², (a − b)², (a + b)(a − b).',
     generer() {
       let a: number, b: number
@@ -313,7 +322,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-factoriser', theme: T_CALCUL, titre: 'Factoriser par un facteur commun',
+    id: '2nde-factoriser', theme: T_CALCUL, titre: 'Factoriser par un facteur commun', competence: 11,
     programme: 'Factoriser ax² + bx, ax + bx.',
     generer() {
       for (;;) {
@@ -329,7 +338,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-equations', theme: T_CALCUL, titre: 'Résoudre une équation ou une inéquation',
+    id: '2nde-equations', theme: T_CALCUL, titre: 'Résoudre une équation ou une inéquation', competence: 12,
     programme: 'Résoudre une équation du type x² = a, ax + b = cx + d ou a/x = b, ou une inéquation du premier degré.',
     generer() {
       const sortes: (() => Question)[] = [
@@ -354,7 +363,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-isoler', theme: T_CALCUL, titre: 'Isoler une variable dans une formule',
+    id: '2nde-isoler', theme: T_CALCUL, titre: 'Isoler une variable dans une formule', competence: 13,
     programme: 'Isoler une variable dans une égalité qui en comporte plusieurs.',
     generer() {
       const formules: [string, string, string][] = [
@@ -373,7 +382,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-application-numerique', theme: T_CALCUL, titre: 'Application numérique d’une formule',
+    id: '2nde-application-numerique', theme: T_CALCUL, titre: 'Application numérique d’une formule', competence: 14,
     programme: 'Effectuer une application numérique d’une formule.',
     generer() {
       return choix<() => Question>([
@@ -388,7 +397,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   // ================= PROPORTIONS ET POURCENTAGES =================
   {
-    id: '2nde-proportion', theme: T_PROPORTIONS, titre: 'Calculer et écrire une proportion',
+    id: '2nde-proportion', theme: T_PROPORTIONS, titre: 'Calculer et écrire une proportion', competence: 0,
     programme: 'Calculer, appliquer, exprimer une proportion sous différentes formes (décimale, fractionnaire, pourcentage).',
     generer() {
       const { lieu, gens, N, p, n } = populationEtPart([5, 10, 15, 20, 25, 30, 35, 40, 45, 60, 75])
@@ -401,7 +410,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-partie-tout', theme: T_PROPORTIONS, titre: 'Une partie connaissant le tout, le tout connaissant une partie',
+    id: '2nde-partie-tout', theme: T_PROPORTIONS, titre: 'Une partie connaissant le tout, le tout connaissant une partie', competence: 1,
     programme: 'Utiliser une proportion pour calculer une partie connaissant le tout, ou le tout connaissant une partie.',
     generer() {
       const { lieu, gens, N, p, n } = populationEtPart([5, 10, 15, 20, 25, 30, 40, 60, 75]), car = choix(CARACTERES)
@@ -416,7 +425,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   // ================= ÉVOLUTIONS ET VARIATIONS =================
   {
-    id: '2nde-coefficient-multiplicateur', theme: T_EVOLUTIONS, titre: 'Formulation additive et multiplicative',
+    id: '2nde-coefficient-multiplicateur', theme: T_EVOLUTIONS, titre: 'Formulation additive et multiplicative', competence: 0,
     programme: 'Passer d’une formulation additive (« augmenter de 5 % ») à une formulation multiplicative (« multiplier par 1,05 »).',
     generer() {
       const t = choix([1, 2, 3, 4, 5, 7, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 100, 150])
@@ -433,7 +442,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   // ================= FONCTIONS ET REPRÉSENTATIONS =================
   {
-    id: '2nde-image-antecedent', theme: T_FONCTIONS, titre: 'Lire graphiquement images et antécédents',
+    id: '2nde-image-antecedent', theme: T_FONCTIONS, titre: 'Lire graphiquement images et antécédents', competence: 0,
     programme: 'Déterminer graphiquement des images et des antécédents.',
     generer() {
       for (;;) {
@@ -450,7 +459,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-equation-courbe', theme: T_FONCTIONS, titre: 'Exploiter l’équation d’une courbe',
+    id: '2nde-equation-courbe', theme: T_FONCTIONS, titre: 'Exploiter l’équation d’une courbe', competence: 1,
     programme: 'Exploiter une équation de courbe (appartenance d’un point, calcul de coordonnées).',
     generer() {
       const P = pt(), a = relNonNul(1, 4), b = relNonNul(1, 9), x = relNonNul(1, 4)
@@ -463,7 +472,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-lineaire-affine', theme: T_FONCTIONS, titre: 'Reconnaître une fonction linéaire, affine',
+    id: '2nde-lineaire-affine', theme: T_FONCTIONS, titre: 'Reconnaître une fonction linéaire, affine', competence: 2,
     programme: 'Reconnaître l’expression d’une fonction linéaire, d’une fonction affine.',
     generer() {
       const sortes: [string, () => string][] = [
@@ -485,7 +494,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   // ================= STATISTIQUES =================
   {
-    id: '2nde-diagramme-barres', theme: T_STATS, titre: 'Lire un diagramme en barres',
+    id: '2nde-diagramme-barres', theme: T_STATS, titre: 'Lire un diagramme en barres', competence: 0,
     programme: 'Lire et commenter des graphiques usuels : diagramme en barres.',
     generer() {
       const [etiquettes, question] = choix<[string[], (e: string) => string]>([
@@ -501,7 +510,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-diagramme-circulaire', theme: T_STATS, titre: 'Lire un diagramme circulaire ou semi-circulaire',
+    id: '2nde-diagramme-circulaire', theme: T_STATS, titre: 'Lire un diagramme circulaire ou semi-circulaire', competence: 1,
     programme: 'Lire et commenter des graphiques usuels : diagramme circulaire, semi-circulaire.',
     generer() {
       for (;;) {
@@ -519,7 +528,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-courbe-nuage', theme: T_STATS, titre: 'Lire une courbe ou un nuage de points',
+    id: '2nde-courbe-nuage', theme: T_STATS, titre: 'Lire une courbe ou un nuage de points', competence: 2,
     programme: 'Lire et commenter des graphiques usuels : courbe, nuage de points.',
     generer() {
       const [quoi, debut, pasY] = choix<[string, number, number]>([['la température (en °C) relevée chaque heure à partir de $8$ h', 8, 2], ['la taille (en cm) d\'une plante, jour après jour à partir du jour $1$', 1, 1], ['le nombre de visiteurs (en centaines) d\'un musée chaque mois à partir du mois $1$', 1, 1]])
@@ -533,7 +542,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-indicateurs', theme: T_STATS, titre: 'Moyenne, médiane, quartiles',
+    id: '2nde-indicateurs', theme: T_STATS, titre: 'Moyenne, médiane, quartiles', competence: 3,
     programme: 'Calculer et interpréter des indicateurs statistiques (moyenne, médiane, quartiles).',
     generer() {
       return choix<() => Question>([
@@ -557,7 +566,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-boites', theme: T_STATS, titre: 'Lire et comparer des boîtes à moustaches',
+    id: '2nde-boites', theme: T_STATS, titre: 'Lire et comparer des boîtes à moustaches', competence: 4,
     programme: 'Comparer des distributions à l’aide de boîtes à moustaches.',
     generer() {
       const pas = choix([1, 2, 5]), boite = (): [number, number, number, number, number] => {
@@ -578,7 +587,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   // ================= PROBABILITÉS =================
   {
-    id: '2nde-proba-0-1', theme: T_PROBAS, titre: 'Une probabilité est un nombre entre 0 et 1',
+    id: '2nde-proba-0-1', theme: T_PROBAS, titre: 'Une probabilité est un nombre entre 0 et 1', competence: 0,
     programme: 'Savoir qu’une probabilité est un nombre entre 0 et 1.',
     generer() {
       for (;;) {
@@ -593,7 +602,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-proba-contraire', theme: T_PROBAS, titre: 'La probabilité de l’évènement contraire',
+    id: '2nde-proba-contraire', theme: T_PROBAS, titre: 'La probabilité de l’évènement contraire', competence: 1,
     programme: 'Savoir calculer la probabilité de l’événement contraire.',
     generer() {
       const E = choix(['A', 'B', 'E', 'R', 'G'])
@@ -607,7 +616,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-proba-somme', theme: T_PROBAS, titre: 'Probabilité d’un évènement : somme des issues',
+    id: '2nde-proba-somme', theme: T_PROBAS, titre: 'Probabilité d’un évènement : somme des issues', competence: 2,
     programme: 'Calculer la probabilité d’un événement comme somme des probabilités des issues qui le composent.',
     generer() {
       for (;;) {
@@ -624,7 +633,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-equiprobabilite', theme: T_PROBAS, titre: 'Équiprobabilité : favorables sur possibles',
+    id: '2nde-equiprobabilite', theme: T_PROBAS, titre: 'Équiprobabilité : favorables sur possibles', competence: 3,
     programme: 'Utiliser la relation P(A) = Card(A)/Card(Ω) dans le cas de l’équiprobabilité.',
     generer() {
       return choix<() => Question>([
@@ -632,6 +641,92 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
         () => { const [quoi, k] = choix<[string, number]>([['un cœur', 8], ['un roi', 4], ['une figure (valet, dame ou roi)', 12], ['une carte rouge', 16], ['l\'as de pique', 1], ['un as ou un roi', 8]]); return { enonce: `On tire une carte au hasard dans un jeu de $32$ cartes. Quelle est la probabilité d'obtenir ${quoi} ?`, reponse: fracDec(k, 32) } },
         () => { const n = choix([6, 8, 10, 12, 20]), d = choix([2, 3, 4, 5]); const k = Math.floor(n / d); return { enonce: `On lance un dé équilibré à $${n}$ faces numérotées de $1$ à $${n}$. Quelle est la probabilité d'obtenir un multiple de $${d}$ ?`, reponse: fracDec(k, n) } },
       ])()
+    },
+  },
+  // ---------- PERSO : Arithmétique ----------
+  // Un domaine du programme de seconde rempli par le professeur (étiquette
+  // PERSO sur sa compétence dans la fenêtre) : une seule compétence,
+  // « Connaître le cours ». Le nombre premier n'est pas au programme de
+  // seconde : ces questions sont les siennes.
+  {
+    id: 'perso-arithmetique-ensembles', theme: T_ARITHMETIQUE, titre: 'Les ensembles ℕ et ℤ', programme: PERSO_ARITHMETIQUE, competence: 0,
+    generer() {
+      const [nom, s] = choix(ENSEMBLES_ENTIERS)
+      return choix<() => Question>([
+        () => ({ enonce: `Comment est noté l'ensemble des ${nom} ?`, reponse: s }),
+        () => ({ enonce: `Quel ensemble de nombres est noté $${s}$ ?`, reponse: mot(`l'ensemble des ${nom}`) }),
+        () => { const v = choix(['n', 'm', 'p', 'k']); return { enonce: `Avec un symbole, comment écrit-on que $${v}$ est un ${nom.replace(/s\b/g, '')} ?`, reponse: `${v} \\in ${s}` } },
+        () => { const k = ent(3, 20); return { enonce: `Donner un entier relatif strictement plus grand que $-${k}$ qui n'est pas un entier naturel.`, reponse: mot(`un entier négatif plus grand que $-${k}$, par exemple $-${ent(1, k - 1)}$`) } },
+        () => ({ enonce: 'Quel symbole écrit-on entre $\\mathbb{N}$ et $\\mathbb{Z}$, dans cet ordre ?', reponse: '\\mathbb{N} \\subset \\mathbb{Z}' }),
+      ])()
+    },
+  },
+  {
+    id: 'perso-arithmetique-multiples', theme: T_ARITHMETIQUE, titre: 'Multiple, diviseur, divisible', programme: PERSO_ARITHMETIQUE, competence: 0,
+    generer() {
+      const d = ent(2, 12), q = ent(2, 12), n = d * q
+      const [a, b] = melange(['a', 'b', 'n', 'm']).slice(0, 2)
+      return choix<() => Question>([
+        () => ({ enonce: `Comment s'écrit l'ensemble des multiples de l'entier $${a}$ ?`, reponse: `\\{k${a},\\ k \\in \\mathbb{Z}\\}` }),
+        () => ({ enonce: `Comment s'écrit l'ensemble des multiples de $${d}$ ?`, reponse: `\\{${d}k,\\ k \\in \\mathbb{Z}\\}` }),
+        () => choix<Question>([
+          { enonce: `Compléter : $${n}$ est un $\\ldots$ de $${d}$.`, reponse: mot('multiple') },
+          { enonce: `Compléter : $${d}$ est un $\\ldots$ de $${n}$.`, reponse: mot('diviseur') },
+          { enonce: `Compléter : $${n}$ est $\\ldots$ par $${d}$.`, reponse: mot('divisible') },
+        ]),
+        () => choix<Question>([
+          { enonce: `On a $${a} = k${b}$, avec $k$ un entier. Comment appelle-t-on $${b}$ par rapport à $${a}$ ?`, reponse: mot(`un diviseur de $${a}$`) },
+          { enonce: `On a $${a} = k${b}$, avec $k$ un entier. Comment appelle-t-on $${a}$ par rapport à $${b}$ ?`, reponse: mot(`un multiple de $${b}$`) },
+        ]),
+        () => ({ enonce: `Compléter la définition : $${a}$ est un multiple de $${b}$ s'il existe un entier $k$ tel que $\\ldots$.`, reponse: `${a} = k${b}` }),
+        () => choix<Question>([
+          { enonce: `Compléter : la somme de deux multiples de $${d}$ est un $\\ldots$ de $${d}$.`, reponse: mot('multiple') },
+          { enonce: `On a $a = ${d}k$ et $b = ${d}k'$, avec $k$ et $k'$ entiers. Comment écrit-on $a + b$ pour montrer que c'est un multiple de $${d}$ ?`, reponse: `a + b = ${d}(k + k')` },
+        ]),
+        () => ({ enonce: `Que signifie « $${n}$ est divisible par $${d}$ » ?`, reponse: mot(`la division de $${n}$ par $${d}$ tombe juste : $${n} = ${d} \\times ${q}$`) }),
+        () => { const m = choix(AVEC_DIVISEURS); return { enonce: `Donner tous les diviseurs de $${m}$.`, reponse: diviseurs(m).join('\\,;\\,') } },
+      ])()
+    },
+  },
+  {
+    id: 'perso-arithmetique-pairs', theme: T_ARITHMETIQUE, titre: 'Nombres pairs, nombres impairs', programme: PERSO_ARITHMETIQUE, competence: 0,
+    generer() {
+      const k = choix(['k', 'p', 'q']), n = choix(['n', 'm', 'a'])
+      return choix<() => Question>([
+        () => choix<Question>([
+          { enonce: `Avec la lettre $${k}$, comment s'écrit l'ensemble des nombres pairs ?`, reponse: `\\{2${k},\\ ${k} \\in \\mathbb{Z}\\}` },
+          { enonce: `Avec la lettre $${k}$, comment s'écrit l'ensemble des nombres impairs ?`, reponse: `\\{2${k} + 1,\\ ${k} \\in \\mathbb{Z}\\}` },
+        ]),
+        () => choix<Question>([
+          { enonce: `De quelle définition s'agit-il : « il existe un entier $${k}$ tel que $${n} = 2${k} + 1$ » ?`, reponse: mot(`$${n}$ est impair`) },
+          { enonce: `De quelle définition s'agit-il : « il existe un entier $${k}$ tel que $${n} = 2${k}$ » ?`, reponse: mot(`$${n}$ est pair`) },
+        ]),
+        () => { const p = 2 * ent(6, 60); return { enonce: `Le nombre $${p}$ est pair. De quel nombre est-il un multiple à coup sûr ?`, reponse: '2' } },
+        () => ({ enonce: `Si $${n} = 2${k} + 1$, comment s'écrit $${n}^2$ ?`, reponse: `${n}^2 = 2(2${k}^2 + 2${k}) + 1` }),
+      ])()
+    },
+  },
+  {
+    id: 'perso-arithmetique-premiers', theme: T_ARITHMETIQUE, titre: 'Les nombres premiers', programme: PERSO_ARITHMETIQUE, competence: 0,
+    generer() {
+      return choix<() => Question>([
+        () => ({ enonce: 'Quelle est la particularité du nombre $2$ ?', reponse: mot('c\'est le seul nombre premier pair') }),
+        () => ({ enonce: 'Pourquoi $1$ n\'est-il pas un nombre premier ?', reponse: mot('il n\'a qu\'un seul diviseur, lui-même ; un nombre premier en a exactement deux') }),
+        () => ({ enonce: 'De quelle définition s\'agit-il : « un nombre qui possède uniquement deux diviseurs : $1$ et lui-même » ?', reponse: mot('un nombre premier') }),
+        () => { const b = choix([10, 20, 30]); return { enonce: `Citer les nombres premiers inférieurs à $${b}$.`, reponse: PREMIERS.filter(p => p < b).join('\\,;\\,') } },
+        () => ({ enonce: 'Quel est le plus petit nombre premier ?', reponse: '2' }),
+        () => { const [p, q] = melange([3, 5, 7, 11, 13]).slice(0, 2).sort((x, y) => x - y); return { enonce: `Pourquoi $${p * q}$ n'est-il pas un nombre premier ?`, reponse: mot(`$${p * q} = ${p} \\times ${q}$ : il a d'autres diviseurs que $1$ et lui-même`) } },
+      ])()
+    },
+  },
+  {
+    id: 'perso-arithmetique-irreductible', theme: T_ARITHMETIQUE, titre: 'La fraction irréductible', programme: PERSO_ARITHMETIQUE, competence: 0,
+    generer() {
+      if (Math.random() < 0.3) return { enonce: 'Comment appelle-t-on une fraction dont le numérateur et le dénominateur n\'ont pas d\'autre diviseur commun que $1$ ?', reponse: mot('une fraction irréductible') }
+      let a = 1, b = 1
+      while (a === b || pgcd(a, b) !== 1) { a = ent(1, 9); b = ent(2, 9) }
+      const k = ent(2, 9)
+      return { enonce: `Rendre irréductible la fraction $\\frac{${a * k}}{${b * k}}$.`, reponse: irreductible(a, b) }
     },
   },
 ]
@@ -1020,6 +1115,17 @@ export const COURS_2NDE: QuestionCours[] = [
       () => { const [A] = choix(EVENEMENTS); return [`En situation d'équiprobabilité, quelle formule donne $P(${A})$ ?`, `$\\frac{\\text{nombre d'issues favorables à } ${A}}{\\text{nombre d'issues possibles}}$`] }],
     ['Évènement certain, évènement impossible',
       () => { const k = ent(7, 12); return une([`On lance un dé à six faces. Quelle est la probabilité d'obtenir $${k}$, et comment appelle-t-on cet évènement ?`, '$0$ : c\'est un évènement impossible'], [`On lance un dé à six faces. Quelle est la probabilité d'obtenir un nombre inférieur à $${k}$, et comment appelle-t-on cet évènement ?`, '$1$ : c\'est un évènement certain']) }],
+  ]),
+  // PERSO : Arithmétique (un domaine du programme rempli par le professeur)
+  ...n2(T_ARITHMETIQUE, [
+    ['Multiple et diviseur',
+      () => { const d = ent(2, 12), q = ent(2, 12); return [`On a $${d * q} = ${d} \\times ${q}$. Que peut-on dire de $${d * q}$ et de $${d}$ ?`, `$${d * q}$ est un multiple de $${d}$, et $${d}$ est un diviseur de $${d * q}$`] },
+      () => { const [a, b] = melange(['a', 'b', 'n', 'm']).slice(0, 2); return [`Que veut dire « $${a}$ est un multiple de $${b}$ » ?`, `il existe un entier $k$ tel que $${a} = k${b}$`] }],
+    ['Nombre pair, nombre impair',
+      () => { const n = choix(['n', 'm', 'a']), k = choix(['k', 'p', 'q']); return une([`Avec la lettre $${k}$, comment écrit-on qu'un entier $${n}$ est pair ?`, `$${n} = 2${k}$, avec $${k}$ un entier`], [`Avec la lettre $${k}$, comment écrit-on qu'un entier $${n}$ est impair ?`, `$${n} = 2${k} + 1$, avec $${k}$ un entier`]) }],
+    ['Nombre premier',
+      () => { const p = choix(PREMIERS.slice(1)); return [`Quels sont les diviseurs de $${p}$, et comment appelle-t-on un tel nombre ?`, `$1$ et $${p}$ : c'est un nombre premier`] },
+      () => { const p = choix(PREMIERS); return [`Combien de diviseurs a le nombre premier $${p}$, et lesquels ?`, `deux : $1$ et $${p}$`] }],
   ]),
 ]
 

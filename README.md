@@ -6312,6 +6312,33 @@ propose la classe qui arrive à l'heure qu'il est.
   à plusieurs heures, la bulle, la fenêtre, l'import d'un fichier, le lien
   simulé, un cours annulé).
 
+## Les automatismes de 2nde rangés comme le programme (lot 24)
+
+Demandé par le professeur le 12 novembre 2026, maquette validée avec ses
+recommandations.
+
+- **En 2nde, la fenêtre du flash** montre les quatre thèmes du programme de
+  seconde et leurs domaines : Nombres et calculs, algèbre (Arithmétique,
+  Nombres réels, Algèbre) ; Géométrie (Vecteurs et problèmes de géométrie,
+  Droites du plan) ; Fonctions (Représentation algébrique et graphique des
+  fonctions, Variations et extrémums d’une fonction) ; Statistiques et
+  probabilités (Information chiffrée et statistique descriptive, Croisement
+  de deux variables qualitatives, Probabilités). Un domaine qui n’a pas
+  encore de question reste visible, en gris, « à remplir ».
+- **À part, « Automatismes de l’épreuve »** (étiquette **OFFI**) : les 30
+  automatismes de la liste officielle de l’épreuve anticipée, dans leurs six
+  domaines, avec une compétence par phrase de la liste (on peut n’en cocher
+  qu’une). Les réglages déjà gardés (« 2nde/Statistiques ») restent bons.
+- **Arithmétique › Connaître le cours** (étiquette **PERSO**, questions du
+  professeur) : 5 exercices (les ensembles ℕ et ℤ ; multiple, diviseur,
+  divisible ; nombres pairs et impairs ; les nombres premiers, qui ne sont
+  pas au programme de seconde ; la fraction irréductible) et 3 notions de
+  cours. Rien de fixe : lettres et nombres changent à chaque tirage.
+- Les étiquettes OFFI et PERSO ne sont que dans la fenêtre de réglage.
+  Données : `src/programme-automatismes.ts` (clé « 2nde ») et
+  `src/automatismes/lycee.ts`. Essai : `lot10/E1-flash.mjs` (partie H,
+  adaptée : on déplie la liste officielle avant de cocher ses domaines).
+
 ## Ce que fait la v0.1
 
 Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment

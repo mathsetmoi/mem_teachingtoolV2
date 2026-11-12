@@ -162,6 +162,20 @@ ok(lycee, 'H) Les niveaux 2nde et 1re ne sont plus grisés')
 for (const b of await p.$$('.niveau-flash[aria-pressed=true]')) await b.click()
 await p.click('.niveau-flash[data-niveau="2nde"]'); await p.click('.niveau-flash[data-niveau="1re"]')
 for (const c of await p.$$('.themes-niveau:not([hidden]) input:checked')) await c.click()
+// En 2nde, l'arbre du programme (lot 24) : les thèmes du programme, que le
+// professeur remplit (Arithmétique, PERSO), les domaines vides en gris, et
+// la liste officielle de l'épreuve à part (OFFI), qu'on déplie
+const arbre2 = await p.evaluate(() => {
+  const r = document.querySelector('.themes-niveau[data-niveau="2nde"]')
+  return {
+    themes: [...r.querySelectorAll('.arbre-theme')].length,
+    offi: !!r.querySelector('.arbre-theme .etiquette-offi'),
+    perso: [...r.querySelectorAll('.case-competence')].some(c => c.value === '2nde/Arithmétique/0' && c.closest('label').querySelector('.etiquette-perso')),
+    vides: r.querySelectorAll('.arbre-domaine.vide').length,
+  }
+})
+ok(arbre2.themes === 5 && arbre2.offi && arbre2.perso && arbre2.vides >= 8, 'H) 2nde : 4 thèmes du programme + la liste officielle (OFFI), Arithmétique PERSO, domaines vides « à remplir »', JSON.stringify(arbre2))
+await p.click('.themes-niveau[data-niveau="2nde"] .arbre-theme:has(.etiquette-offi) > .ligne-arbre > button.deplier')
 for (const n of ['2nde', '1re']) for (const t of ['Fonctions et représentations', 'Statistiques', 'Probabilités']) await p.click(`.themes-niveau[data-niveau="${n}"] label:has-text("${t}")`)
 await p.click('.dialogue-flash .lancer')
 await p.waitForTimeout(1500)
