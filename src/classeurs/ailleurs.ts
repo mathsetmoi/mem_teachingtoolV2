@@ -25,7 +25,8 @@ import type { Choisi, Fichiers } from './fichiers'
 import type { Registre } from './registre'
 import type { ActionMessage } from '../app'
 import type { Emplacement } from './emplacements'
-import { cheminPcSaisi, classeursDeLaClasse, nomDeFichierLibre, emplacementDe, emplacements, garderEmplacement, reglagePoignee, retirerEmplacement, sousDossiers } from './emplacements'
+import { dossierDuNiveau, niveauSurLOrdinateur } from './lieu'
+import { cheminPcSaisi, classeursDeLaClasse, nomDeFichierLibre, emplacements, garderEmplacement, reglagePoignee, retirerEmplacement } from './emplacements'
 import type { PoigneeDossier } from './ordinateur'
 import { accordDuDossier, memeDossier, choisirUnDossier, choisitUnDossier, dansLeDossier, lireLeDossier, nomDeLAncien } from './ordinateur'
 import type { BilanRelier, ChoixConflit, ConflitFichier } from './ordinateur'
@@ -466,10 +467,11 @@ export class Ailleurs {
         for (const haut of remontee(classe.id, dossiers).slice(1)) {
           const e = liste.find(x => x.genre === 'ordinateur' && x.dossier === haut.id)
           if (!e) continue
-          const etab = nomDEtablissement(e, etabs)
           dansUnRange = { e, haut }
+          // Le lieu (lieu.ts) de ce dossier sous le dossier rangé « haut »
+          const n = niveauSurLOrdinateur(classe.id, { emplacements: [e], dossiers, etablissements: etabs })
           lieu.append('Déjà sur l\'ordinateur, dans ', Object.assign(document.createElement('span'), { className: 'e-chemin',
-            textContent: cheminLisible([...(etab ? [etab] : ['Cet ordinateur']), e.nom, ...sousDossiers(classe.id, haut.id, dossiers)]) }))
+            textContent: cheminLisible([...(nomDEtablissement(e, etabs) ? [] : ['Cet ordinateur']), ...(n ? dossierDuNiveau(n) : [e.nom])]) }))
           // Toujours libre d'en choisir un autre : le dossier prend alors son
           // propre emplacement (les fichiers d'avant restent où ils sont)
           const autre = Object.assign(document.createElement('button'), { type: 'button', className: 'lien e-changer', textContent: 'Choisir un autre dossier…', title: 'Enregistrer ce dossier ailleurs sur l\'ordinateur (les fichiers d\'avant restent où ils sont)' })
@@ -670,7 +672,7 @@ export class Ailleurs {
     const [dossiers, liste, etabs] = await Promise.all([this.registre.dossiers(), emplacements(this.registre), etablissements(this.registre).catch(() => [] as Etablissement[])])
     const d = dossiers.find(x => x.id === id && dossierVisible(x, dossiers))
     if (!d) { this.h.message('Ce dossier n\'est plus dans la bibliothèque.'); return }
-    const e = emplacementDe(d.id, 'ordinateur', liste, dossiers)
+    const e = niveauSurLOrdinateur(d.id, { emplacements: liste, dossiers })?.emplacement ?? null
     const niveau = e ? dossiers.find(x => x.id === e.dossier) ?? null : null
     const etab = e ? nomDEtablissement(e, etabs) : null
     const chemin = remontee(d.id, dossiers).reverse().map(x => x.nom)
@@ -715,8 +717,9 @@ export class Ailleurs {
         ok.disabled = true; meme.disabled = true; champ.disabled = true
         return
       }
-      const sous = sousDossiers(d.id, niveau.id, dossiers.map(x => x.id === d.id ? { ...x, ...(pc ? { pc } : { pc: undefined }) } : x))
-      lieu.replaceChildren(Object.assign(document.createElement('strong'), { className: 'e-chemin', textContent: cheminLisible([...(etab ? [etab] : ['Cet ordinateur']), e.nom, ...sous.map(n => nomSur(n, { repli: 'Dossier' }))]) }))
+      // Le lieu (lieu.ts), avec le nom tapé pour ce dossier
+      const n = niveauSurLOrdinateur(d.id, { emplacements: liste, dossiers: dossiers.map(x => x.id === d.id ? { ...x, ...(pc ? { pc } : { pc: undefined }) } : x), etablissements: etabs })
+      lieu.replaceChildren(Object.assign(document.createElement('strong'), { className: 'e-chemin', textContent: cheminLisible([...(etab ? [] : ['Cet ordinateur']), ...(n ? dossierDuNiveau(n) : [e.nom])]) }))
       explication.textContent = pc === undefined
         ? 'Même nom que dans le navigateur : si vous le renommez, le dossier de l\'ordinateur est renommé aussi, sans doublon.'
         : pc.length ? 'Ce nom reste le vôtre : renommer le dossier dans le navigateur ne change rien sur l\'ordinateur.' : 'Pas de dossier à lui : ses classeurs vont directement dans le dossier du dessus.'
@@ -1255,7 +1258,7 @@ export class Ailleurs {
     const e = liste.find(x => x.genre === 'ordinateur' && x.dossier === dossierId)
     const dossier = dossiers.find(x => x.id === dossierId)
     if (!e || !dossier) return
-    const n = classeursDeLaClasse(dossierId, fiches, dossiers).filter(f => emplacementDe(f.dossier, 'ordinateur', liste, dossiers)?.id === e.id).length
+    const n = classeursDeLaClasse(dossierId, fiches, dossiers).filter(f => niveauSurLOrdinateur(f.dossier, { emplacements: liste, dossiers })?.emplacement.id === e.id).length
     const nomEtab = e.etablissement ? nomDEtablissement(e, await etablissements(this.registre).catch(() => [] as Etablissement[])) : null
     const d = document.createElement('dialog')
     d.className = 'dialogue bulle-pc'
@@ -1293,7 +1296,7 @@ export class Ailleurs {
     const e = liste.find(x => x.genre === 'ordinateur' && x.dossier === dossierId)
     const dossier = dossiers.find(x => x.id === dossierId)
     if (!e || !dossier) { this.h.message(dossier ? `« ${dossier.nom} » n'est pas enregistré sur le PC.` : 'Ce dossier n\'existe plus.'); return }
-    const siens = classeursDeLaClasse(dossierId, fiches, dossiers).filter(f => emplacementDe(f.dossier, 'ordinateur', liste, dossiers)?.id === e.id)
+    const siens = classeursDeLaClasse(dossierId, fiches, dossiers).filter(f => niveauSurLOrdinateur(f.dossier, { emplacements: liste, dossiers })?.emplacement.id === e.id)
     const aPart = dossiers.filter(x => x.id !== dossierId && liste.some(y => y.genre === 'ordinateur' && y.dossier === x.id) && remontee(x.id, dossiers).some(y => y.id === dossierId)).map(x => x.nom)
     const n = siens.length
     const oui = await confirmer(`Ne plus enregistrer « ${dossier.nom} » sur le PC ?`,

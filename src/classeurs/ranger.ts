@@ -34,7 +34,7 @@ import type { CleALArrivee, PoigneeFichier } from './cle'
 import { permission } from './cle'
 import type { Rangement } from './etat'
 import type { Emplacement } from './emplacements'
-import { classeursDeLaClasse, emplacementDe, emplacements, garderEmplacement, reglagePoignee } from './emplacements'
+import { classeursDeLaClasse, emplacements, garderEmplacement, reglagePoignee } from './emplacements'
 import type { BilanRelier, ChoixConflit, ConflitFichier, PoigneeDossier } from './ordinateur'
 import { accordDeLire, accordDuDossier, choisirUnDossier, choisitUnDossier, memeDossier, relierLesClasseurs } from './ordinateur'
 import type { Etablissement } from './etablissements'
@@ -196,11 +196,9 @@ export class Ranger {
    *  que l'index en sait suffit pour l'écran. */
   async endroitDe(dossierId: string | null): Promise<Endroit | null> {
     if (dossierId === null) return null
-    const [liste, dossiers] = await Promise.all([emplacements(this.registre), this.registre.dossiers()])
-    const e = emplacementDe(dossierId, 'ordinateur', liste, dossiers)
-    if (!e) return null
+    const [liste, dossiers, etabs] = await Promise.all([emplacements(this.registre), this.registre.dossiers(), etablissements(this.registre)])
     // Le lieu (lieu.ts) : le même calcul que partout ailleurs
-    return niveauSurLOrdinateur(dossierId, { emplacements: liste, dossiers, etablissements: e.etablissement ? await etablissements(this.registre) : [] })
+    return niveauSurLOrdinateur(dossierId, { emplacements: liste, dossiers, etablissements: etabs })
   }
 
   /** Le chemin, pour l'écran, du fichier d'un classeur nommé `nom` à cet
@@ -270,9 +268,11 @@ export class Ranger {
       dire(`« ${f.nom} » n'a pas encore son fichier dans « ${ou} » : le navigateur attend votre accord (menu ⋯ → Mes emplacements, « Mettre à jour »).`)
       return undefined
     }
-    const prefixe = [...endroit.prefixe.slice(0, -1), d.name]
+    // Le lieu, avec le nom du dossier que donne sa poignée (lieu.ts)
+    const lieu = avecLeChapitre({ ...endroit, prefixe: [...endroit.prefixe.slice(0, -1), d.name] }, f.nom)
+    const prefixe = lieu.prefixe
     const fichier = nomSur(f.nom) + EXTENSION_TABLEAU
-    const chapitre = cheminLisible([...prefixe, ...endroit.sous.map(n => nomSur(n, { repli: 'Dossier' })), ...(e.aPlat ? [] : [nomSur(f.nom)])])
+    const chapitre = cheminALEcran(lieu)
     let b: BilanRelier
     if (!prendreLeRangement()) { dire(RANGEMENT_EN_COURS); return undefined }
     try {

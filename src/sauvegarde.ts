@@ -77,7 +77,8 @@ import type { Fichiers } from './classeurs/fichiers'
 import { TEXTE_PUBLIEES_COPIE } from './classeurs/reconnaitre'
 import { fermerSurLeFond } from './dialogue'
 import type { PoigneeDossier } from './classeurs/ordinateur'
-import { emplacementDe, emplacements, reglagePoignee } from './classeurs/emplacements'
+import { emplacements, reglagePoignee } from './classeurs/emplacements'
+import { niveauSurLOrdinateur } from './classeurs/lieu'
 import { dossierDuChapitre } from './publication/replay-dossier'
 
 /** Le début du message d'un fichier écrit sans la partie du classeur qui ne
@@ -148,7 +149,8 @@ async function dossierDuNiveau(registre: Registre, id: string): Promise<PoigneeD
   const f = await registre.classeur(id)
   if (!f || f.dossier === null) return null
   const [liste, dossiers] = await Promise.all([emplacements(registre), registre.dossiers()])
-  const e = emplacementDe(f.dossier, 'ordinateur', liste, dossiers)
+  // Le lieu (lieu.ts) : l'emplacement du niveau
+  const e = niveauSurLOrdinateur(f.dossier, { emplacements: liste, dossiers })?.emplacement
   if (!e) return null
   const p = await registre.reglage<PoigneeDossier>(reglagePoignee(e.id))
   return p && typeof p.getDirectoryHandle === 'function' ? p : null

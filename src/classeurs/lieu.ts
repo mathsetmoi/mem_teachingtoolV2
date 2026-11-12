@@ -79,7 +79,7 @@ export function niveauSurLOrdinateur(dossierId: string | null, d: DonneesLieu, o
 /** Les dossiers à ouvrir sous celui du niveau pour un classeur nommé `nom` :
  *  les sous-dossiers en noms sains, puis le dossier du chapitre (sauf à
  *  plat, où le fichier est directement dans le dossier) */
-export const dossiersDuChapitre = (n: NiveauSurLOrdinateur, nom: string): string[] =>
+export const dossiersDuChapitre = (n: { sous: readonly string[]; emplacement: Pick<Emplacement, 'aPlat'> }, nom: string): string[] =>
   [...n.sous.map(x => nomSur(x, { repli: 'Dossier' })), ...(n.emplacement.aPlat ? [] : [nomSur(nom)])]
 
 /** Le lieu sur l'ordinateur d'un classeur nommé `nom` rangé dans
