@@ -90,21 +90,27 @@ button, select, input { font: inherit; color: inherit; }
    famille, en petites capitales, au-dessus de son premier bouton
    (data-famille) ; la barre s'ouvre en haut pour lui. Le premier bouton
    porte le nom (::after) sans que rien ne bouge : un clic sur le nom n'est
-   pas un clic sur le bouton. Plus étroit (l'iPad en portrait, le
-   téléphone), seulement les filets. */
+   pas un clic sur le bouton. Plus étroit (l'iPad en portrait), et sur le
+   téléphone même couché (932 px), seulement les filets. */
 @media (min-width: 900px) {
-  .barre-haut.en-familles { padding-top: 21px; }
+  body:not(.telephone) .barre-haut.en-familles { padding-top: 21px; }
   /* Tous de la hauteur de la barre : les noms des familles sur une ligne,
      avec ou sans les noms sous les outils */
-  .barre-haut.en-familles > :not(.filet-vertical) { align-self: stretch; }
+  body:not(.telephone) .barre-haut.en-familles > :not(.filet-vertical) { align-self: stretch; }
   /* Annuler et Rétablir grisés sans griser le nom de leur famille */
-  .barre-haut.en-familles > .bouton:disabled { opacity: 1; color: rgba(27, 34, 48, 0.3); }
-  .barre-haut.en-familles > .bouton:disabled > .libelle { opacity: 0.3; }
-  .barre-haut.en-familles > [data-famille]::after {
+  body:not(.telephone) .barre-haut.en-familles > .bouton:disabled { opacity: 1; color: rgba(27, 34, 48, 0.3); }
+  body:not(.telephone) .barre-haut.en-familles > .bouton:disabled > .libelle { opacity: 0.3; }
+  body:not(.telephone) .barre-haut.en-familles > [data-famille]::after {
     content: attr(data-famille); position: absolute; left: 3px; bottom: calc(100% + 1px);
     font-size: 10px; font-weight: 700; line-height: 1; letter-spacing: .04em; text-transform: uppercase;
     color: var(--encre-douce); white-space: nowrap; pointer-events: none;
   }
+}
+/* Entre 900 et 1100 px (un petit portable, la tablette à 1024 px) : les
+   filets plus serrés, pour que la barre tienne sur une rangée et laisse sa
+   place au bouton du classeur */
+@media (min-width: 900px) and (max-width: 1100px) {
+  body:not(.telephone) .barre-haut.en-familles > .filet-vertical { margin: 0 1px; }
 }
 /* Le bouton « Cette page » : la vignette du fond et une petite flèche (il
    ouvre un menu) ; assez large pour le nom de sa famille */

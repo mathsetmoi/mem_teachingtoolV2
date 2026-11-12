@@ -190,7 +190,9 @@ if (seul('C')) {
   // 98 px ; l'état entier ne tient plus qu'au poste de la classe (1366 px) ;
   // 1180, 1194 et 1280 px : l'icône et le point ; 1000 et 1112 px : le bouton
   // se cache, le point sur ⋯.)
-  for (const [w, h, forme] of [[1060, 800, 'etroit'], [1000, 800, 'cache'], [1180, 820, 'etroit'], [1112, 834, 'cache'], [1194, 834, 'etroit'], [1366, 768, 'large'], [1280, 720, 'etroit']]) {
+  // (Adapté à la barre du haut en familles, lot 3 de l'audit : 15 boutons ;
+  // l'état entier tient aussi à 1280 px ; à 1112 px, l'icône et le point.)
+  for (const [w, h, forme] of [[1060, 800, 'etroit'], [1000, 800, 'cache'], [1180, 820, 'etroit'], [1112, 834, 'etroit'], [1194, 834, 'etroit'], [1366, 768, 'large'], [1280, 720, 'large']]) {
     const { ctx, p } = await ouvrir({ viewport: { width: w, height: h }, hasTouch: w < 1300 }, 'C')
     await p.evaluate(() => document.fonts.ready); await dort(300)
     const g = await p.evaluate(() => {

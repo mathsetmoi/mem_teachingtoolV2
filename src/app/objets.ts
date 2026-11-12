@@ -252,7 +252,7 @@ export const methodesObjets = {
     if (!this.selection.size || this.enLecture || this.placement || tableauCache(this) || !this.poigneesDuCadre()) return null
     const g = this.geste
     if (g && g.type !== 'pan' && g.type !== 'pinch' && g.type !== 'retenu' && (this.depart.parti || g.type === 'taille' || g.type === 'tourner')) return null
-    const cam = this.cam, zl = this.ui?.zoneLibre() ?? { x: 0, y: 0, l: this.rendu.l, h: this.rendu.h }
+    const cam = this.cam, zl = this.ui?.zoneDuCadre() ?? { x: 0, y: 0, l: this.rendu.l, h: this.rendu.h }
     // Le cadre gardé (voir SelectionSuivie) : la même sélection, la même page (ses
     // formes : un tableau neuf à chaque changement, voir rafraichir), la même
     // vue, la même zone libre, le même pointeur, et les formules prises à la

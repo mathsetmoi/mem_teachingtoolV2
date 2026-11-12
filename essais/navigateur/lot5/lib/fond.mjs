@@ -26,7 +26,7 @@ export async function choisirFond(page, fond) {
   return id
 }
 
-/** Le fond que montre le bouton (son titre : « Fond de la page : … ») */
+/** Le fond que montre le bouton (son titre : « Cette page : fond « … », mode nuit, aimanter, supprimer ») */
 export function titreDuBoutonFond(page) {
   return page.getAttribute('button.choix-fond', 'title')
 }

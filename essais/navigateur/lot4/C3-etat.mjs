@@ -137,22 +137,30 @@ console.log('=== A. la place du bouton du classeur ===')
 // tienne sur une rangée à 1024 px. À 1280 × 720, le bouton du classeur passe
 // à l'icône et au point ; ailleurs il garde sa forme. Les places d'avant :
 // 404, 318, 755, 218, 62 / −5, 1, −2.)
+// (Adapté à la barre du haut en familles, lot 3 de l'audit : « Cette page »
+// réunit le fond, le mode nuit, l'aimant, le stylo qui redresse et la
+// poubelle ; la barre a 15 boutons et le nom de chaque famille au-dessus,
+// elle fait 73 px de haut (83 au TNI) ; entre 900 et 1100 px ses filets se
+// serrent. Le bouton du classeur y gagne : forme large à 1280 × 720,
+// l'icône et le point à 1280 × 720 nommée ; à 641 × 900, il entre dans la
+// barre (deux rangées, comme avant). Les places d'avant : 277, 191, 607,
+// 71, 73 / 12, 9.)
 const ECRANS = [
-  { l: 1366, h: 768, sans: ['large', 277] },
-  { l: 1280, h: 720, sans: ['etroit', 191] },
+  { l: 1366, h: 768, sans: ['large', 395] },
+  { l: 1280, h: 720, sans: ['large', 309] },
   // (Adapté au lot 5, morceau K9 : un TNI, tactile, de 1920 × 1080, a d'office
   // les noms sous les outils, voulus ainsi : la barre des outils fait 80 px,
   // la barre du haut 68 px de haut et 196 px de plus ; la place, 1093 px sans
   // eux, est de 875 ; lot5/K9-affichage.mjs vérifie le reste)
-  { l: 1920, h: 1080, t: true, sans: ['large', 607, 68] },
+  { l: 1920, h: 1080, t: true, sans: ['large', 777, 83] },
   // (Adapté aux corrections « appareils » du lot 4 : la forme large demande
   // la place du plus long des textes courts, 252 px ; à 1180 × 820, l'état
   // « Seulement dans ce navigateur » y était coupé : l'icône et le point —
   // depuis le lot 5, K8, il y tient : 353 px)
-  { l: 1180, h: 820, t: true, sans: ['etroit', 71] },
-  { l: 1024, h: 768, sans: ['etroit', 73], avec: ['cache', -5] },
-  { l: 1100, h: 768, avec: ['cache', 12] },
-  { l: 960, h: 600, sans: ['cache', 9] },
+  { l: 1180, h: 820, t: true, sans: ['etroit', 189] },
+  { l: 1024, h: 768, sans: ['etroit', 83], avec: ['cache', -5] },
+  { l: 1100, h: 768, avec: ['cache', 22] },
+  { l: 960, h: 600, sans: ['cache', 19] },
   { l: 768, h: 1024, t: true, sans: ['dans-la-barre', -6, 104] },
   { l: 820, h: 1180, t: true, sans: ['dans-la-barre', -6, 104] },
   // (Adapté au lot 5, K10, la mise en page du téléphone, voulue : la barre
@@ -162,7 +170,7 @@ const ECRANS = [
   { l: 844, h: 390, t: true, sans: ['dans-la-barre', null, 58] },
   // (Adapté au lot 16 : à 641 × 900, la barre du haut est déjà pleine sur
   // ses deux rangées : le bouton du classeur se cache, le point sur ⋯)
-  { l: 641, h: 900, sans: ['cache', -6, 104] },
+  { l: 641, h: 900, sans: ['dans-la-barre', -6, 104] },
   { l: 390, h: 844, t: true, sans: ['dans-la-barre', null, 58] },
 ]
 /** La géométrie : la place mesurée comme le code (le bouton sorti de la
@@ -268,14 +276,16 @@ for (const e of ECRANS) {
     // taille, sans se resserrer ; lot3/controle-final.mjs essaie le
     // resserrement à 900 × 768. Adapté volontairement.)
     const g2 = await p.evaluate(GEOMETRIE)
-    // (Adapté au mode nuit, lot 13 : la lune prend 46 px, le nom s'y resserre)
-    ok(g2.nom.visible && g2.nom.texte === '2 / 3 · Exercice 12 p. 84' && g2.hauteurAvec === g0.hauteurSans && g2.hauteurAvec === 58,
+    // (Adapté au mode nuit, lot 13 : la lune prend 46 px, le nom s'y resserre ;
+    // à la barre en familles : une rangée de 73 px, avec le nom des familles)
+    ok(g2.nom.visible && g2.nom.texte === '2 / 3 · Exercice 12 p. 84' && g2.hauteurAvec === g0.hauteurSans && g2.hauteurAvec === 73,
       '1024 × 768 : « 2 / 3 · Exercice 12 p. 84 » se lit dans le compteur, la barre garde une rangée', g2.nom)
     await p.screenshot({ path: ICI + 'A-1024-nommee.png' })
   }
   // (Adapté au lot 16 : le nom de la page prend la place qui restait ; le
-  // bouton du classeur se cache, son point passe sur ⋯)
-  if (e.l === 1280) ok(g1.forme === 'cache', '1280 × 720 nommée : caché, le point sur ⋯ (la place se réduit à ' + g1.place + ' px)', g1)
+  // bouton du classeur se cache, son point passe sur ⋯. Adapté à la barre
+  // en familles : elle est plus courte, le bouton garde l'icône et le point)
+  if (e.l === 1280) ok(g1.forme === 'etroit', '1280 × 720 nommée : l\'icône et le point (la place se réduit à ' + g1.place + ' px)', g1)
   await ctx.close()
 }
 

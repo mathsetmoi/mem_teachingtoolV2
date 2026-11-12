@@ -156,17 +156,17 @@
   },
   ".barre-haut": {
    "b": [
-    395,
+    513,
     12,
-    959,
-    58
+    841,
+    73
    ],
    "enfants": [
     {
      "q": "Annuler sur cette page (Ctrl+Z)",
      "b": [
-      402,
-      19,
+      520,
+      34,
       44,
       44
      ]
@@ -174,8 +174,8 @@
     {
      "q": "Rétablir sur cette page (Ctrl+Y)",
      "b": [
-      448,
-      19,
+      566,
+      34,
       44,
       44
      ]
@@ -183,8 +183,8 @@
     {
      "q": "filet-vertical",
      "b": [
-      498,
-      29,
+      616,
+      44,
       1,
       24
      ]
@@ -192,8 +192,8 @@
     {
      "q": "Page précédente (Page ↑)",
      "b": [
-      505,
-      19,
+      623,
+      34,
       44,
       44
      ]
@@ -201,8 +201,8 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      551,
-      19,
+      669,
+      34,
       60,
       44
      ]
@@ -210,8 +210,8 @@
     {
      "q": "Page suivante : en ajouter une (c'est la",
      "b": [
-      613,
-      19,
+      731,
+      34,
       44,
       44
      ]
@@ -219,62 +219,44 @@
     {
      "q": "Nouvelle page",
      "b": [
-      659,
-      19,
+      777,
+      34,
       44,
       44
      ]
     },
     {
-     "q": "Effacer la page",
+     "q": "filet-vertical",
      "b": [
-      705,
-      19,
+      827,
       44,
+      1,
+      24
+     ]
+    },
+    {
+     "q": "Cette page : fond « Page blanche », mode",
+     "b": [
+      834,
+      34,
+      66,
       44
      ]
     },
     {
-     "q": "Fond de la page : Page blanche",
+     "q": "filet-vertical",
      "b": [
-      751,
-      19,
+      906,
       44,
-      44
-     ]
-    },
-    {
-     "q": "Mode nuit de cette page : fond noir, écr",
-     "b": [
-      797,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Aimanter au quadrillage",
-     "b": [
-      843,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Le stylo redresse les figures (carré, ce",
-     "b": [
-      889,
-      19,
-      44,
-      44
+      1,
+      24
      ]
     },
     {
      "q": "Importer une image ou un PDF (ou coller ",
      "b": [
-      935,
-      19,
+      913,
+      34,
       44,
       44
      ]
@@ -282,8 +264,8 @@
     {
      "q": "Instruments : règle, équerre, rapporteur",
      "b": [
-      981,
-      19,
+      959,
+      34,
       44,
       44
      ]
@@ -291,8 +273,8 @@
     {
      "q": "Programme de construction, étape par éta",
      "b": [
-      1027,
-      19,
+      1005,
+      34,
       44,
       44
      ]
@@ -300,8 +282,8 @@
     {
      "q": "Catalogue : des éléments de cours tout p",
      "b": [
-      1073,
-      19,
+      1051,
+      34,
       44,
       44
      ]
@@ -309,17 +291,26 @@
     {
      "q": "Automatismes : un flash de questions sur",
      "b": [
-      1119,
-      19,
+      1097,
+      34,
       44,
       44
      ]
     },
     {
+     "q": "filet-vertical",
+     "b": [
+      1147,
+      44,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Outils de classe : rideau, pointeur lase",
      "b": [
-      1165,
-      19,
+      1154,
+      34,
       44,
       44
      ]
@@ -327,17 +318,26 @@
     {
      "q": "Revoir la construction : une page, une s",
      "b": [
-      1211,
-      19,
+      1200,
+      34,
       44,
       44
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      1250,
+      44,
+      1,
+      24
      ]
     },
     {
      "q": "Publier le replay pour les élèves",
      "b": [
       1257,
-      19,
+      34,
       44,
       44
      ]
@@ -346,7 +346,7 @@
      "q": "Enregistrer, ouvrir ou exporter en PDF ;",
      "b": [
       1303,
-      19,
+      34,
       44,
       44
      ]
@@ -576,17 +576,17 @@
   },
   ".barre-haut": {
    "b": [
-    191,
+    201,
     12,
-    821,
-    58
+    811,
+    73
    ],
    "enfants": [
     {
      "q": "Annuler sur cette page (Ctrl+Z)",
      "b": [
-      198,
-      19,
+      208,
+      34,
       44,
       44
      ]
@@ -594,8 +594,8 @@
     {
      "q": "Rétablir sur cette page (Ctrl+Y)",
      "b": [
-      244,
-      19,
+      254,
+      34,
       44,
       44
      ]
@@ -603,8 +603,8 @@
     {
      "q": "filet-vertical",
      "b": [
-      294,
-      29,
+      301,
+      44,
       1,
       24
      ]
@@ -612,8 +612,8 @@
     {
      "q": "Page précédente (Page ↑)",
      "b": [
-      301,
-      19,
+      305,
+      34,
       44,
       44
      ]
@@ -621,8 +621,8 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      347,
-      19,
+      351,
+      34,
       60,
       44
      ]
@@ -630,8 +630,8 @@
     {
      "q": "Page suivante : en ajouter une (c'est la",
      "b": [
-      409,
-      19,
+      413,
+      34,
       44,
       44
      ]
@@ -639,35 +639,44 @@
     {
      "q": "Nouvelle page",
      "b": [
-      455,
-      19,
+      459,
+      34,
       44,
       44
      ]
     },
     {
-     "q": "Effacer la page",
+     "q": "filet-vertical",
      "b": [
-      501,
-      19,
+      506,
       44,
+      1,
+      24
+     ]
+    },
+    {
+     "q": "Cette page : fond « Page blanche », mode",
+     "b": [
+      510,
+      34,
+      66,
       44
      ]
     },
     {
-     "q": "Fond de la page : Page blanche",
+     "q": "filet-vertical",
      "b": [
-      547,
-      19,
+      579,
       44,
-      44
+      1,
+      24
      ]
     },
     {
      "q": "Importer une image ou un PDF (ou coller ",
      "b": [
-      593,
-      19,
+      583,
+      34,
       44,
       44
      ]
@@ -675,8 +684,8 @@
     {
      "q": "Instruments : règle, équerre, rapporteur",
      "b": [
-      639,
-      19,
+      629,
+      34,
       44,
       44
      ]
@@ -684,8 +693,8 @@
     {
      "q": "Programme de construction, étape par éta",
      "b": [
-      685,
-      19,
+      675,
+      34,
       44,
       44
      ]
@@ -693,8 +702,8 @@
     {
      "q": "Catalogue : des éléments de cours tout p",
      "b": [
-      731,
-      19,
+      721,
+      34,
       44,
       44
      ]
@@ -702,17 +711,26 @@
     {
      "q": "Automatismes : un flash de questions sur",
      "b": [
-      777,
-      19,
+      767,
+      34,
       44,
       44
      ]
     },
     {
+     "q": "filet-vertical",
+     "b": [
+      814,
+      44,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Outils de classe : rideau, pointeur lase",
      "b": [
-      823,
-      19,
+      818,
+      34,
       44,
       44
      ]
@@ -720,17 +738,26 @@
     {
      "q": "Revoir la construction : une page, une s",
      "b": [
-      869,
-      19,
+      864,
+      34,
       44,
       44
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      911,
+      44,
+      1,
+      24
      ]
     },
     {
      "q": "Publier le replay pour les élèves",
      "b": [
       915,
-      19,
+      34,
       44,
       44
      ]
@@ -739,7 +766,7 @@
      "q": "Enregistrer, ouvrir ou exporter en PDF ;",
      "b": [
       961,
-      19,
+      34,
       44,
       44
      ]
@@ -969,17 +996,17 @@
   },
   ".barre-haut": {
    "b": [
-    309,
+    427,
     12,
-    959,
-    58
+    841,
+    73
    ],
    "enfants": [
     {
      "q": "Annuler sur cette page (Ctrl+Z)",
      "b": [
-      316,
-      19,
+      434,
+      34,
       44,
       44
      ]
@@ -987,8 +1014,8 @@
     {
      "q": "Rétablir sur cette page (Ctrl+Y)",
      "b": [
-      362,
-      19,
+      480,
+      34,
       44,
       44
      ]
@@ -996,8 +1023,8 @@
     {
      "q": "filet-vertical",
      "b": [
-      412,
-      29,
+      530,
+      44,
       1,
       24
      ]
@@ -1005,8 +1032,8 @@
     {
      "q": "Page précédente (Page ↑)",
      "b": [
-      419,
-      19,
+      537,
+      34,
       44,
       44
      ]
@@ -1014,8 +1041,8 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      465,
-      19,
+      583,
+      34,
       60,
       44
      ]
@@ -1023,8 +1050,8 @@
     {
      "q": "Page suivante : en ajouter une (c'est la",
      "b": [
-      527,
-      19,
+      645,
+      34,
       44,
       44
      ]
@@ -1032,62 +1059,44 @@
     {
      "q": "Nouvelle page",
      "b": [
-      573,
-      19,
+      691,
+      34,
       44,
       44
      ]
     },
     {
-     "q": "Effacer la page",
+     "q": "filet-vertical",
      "b": [
-      619,
-      19,
+      741,
       44,
+      1,
+      24
+     ]
+    },
+    {
+     "q": "Cette page : fond « Page blanche », mode",
+     "b": [
+      748,
+      34,
+      66,
       44
      ]
     },
     {
-     "q": "Fond de la page : Page blanche",
+     "q": "filet-vertical",
      "b": [
-      665,
-      19,
+      820,
       44,
-      44
-     ]
-    },
-    {
-     "q": "Mode nuit de cette page : fond noir, écr",
-     "b": [
-      711,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Aimanter au quadrillage",
-     "b": [
-      757,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Le stylo redresse les figures (carré, ce",
-     "b": [
-      803,
-      19,
-      44,
-      44
+      1,
+      24
      ]
     },
     {
      "q": "Importer une image ou un PDF (ou coller ",
      "b": [
-      849,
-      19,
+      827,
+      34,
       44,
       44
      ]
@@ -1095,8 +1104,8 @@
     {
      "q": "Instruments : règle, équerre, rapporteur",
      "b": [
-      895,
-      19,
+      873,
+      34,
       44,
       44
      ]
@@ -1104,8 +1113,8 @@
     {
      "q": "Programme de construction, étape par éta",
      "b": [
-      941,
-      19,
+      919,
+      34,
       44,
       44
      ]
@@ -1113,8 +1122,8 @@
     {
      "q": "Catalogue : des éléments de cours tout p",
      "b": [
-      987,
-      19,
+      965,
+      34,
       44,
       44
      ]
@@ -1122,17 +1131,26 @@
     {
      "q": "Automatismes : un flash de questions sur",
      "b": [
-      1033,
-      19,
+      1011,
+      34,
       44,
       44
      ]
     },
     {
+     "q": "filet-vertical",
+     "b": [
+      1061,
+      44,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Outils de classe : rideau, pointeur lase",
      "b": [
-      1079,
-      19,
+      1068,
+      34,
       44,
       44
      ]
@@ -1140,17 +1158,26 @@
     {
      "q": "Revoir la construction : une page, une s",
      "b": [
-      1125,
-      19,
+      1114,
+      34,
       44,
       44
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      1164,
+      44,
+      1,
+      24
      ]
     },
     {
      "q": "Publier le replay pour les élèves",
      "b": [
       1171,
-      19,
+      34,
       44,
       44
      ]
@@ -1159,7 +1186,7 @@
      "q": "Enregistrer, ouvrir ou exporter en PDF ;",
      "b": [
       1217,
-      19,
+      34,
       44,
       44
      ]
@@ -1216,7 +1243,7 @@
    "b": [
     106,
     12,
-    58,
+    227.5,
     58
    ],
    "enfants": [
@@ -1225,7 +1252,7 @@
      "b": [
       113,
       19,
-      44,
+      213.5,
       44
      ]
     }
@@ -1398,17 +1425,17 @@
   },
   ".barre-haut": {
    "b": [
-    745,
+    915.5,
     12,
-    1163,
-    68
+    992.5,
+    83
    ],
    "enfants": [
     {
      "q": "Annuler sur cette page (Ctrl+Z)",
      "b": [
-      752,
-      19,
+      922.5,
+      34,
       52,
       54
      ]
@@ -1416,8 +1443,8 @@
     {
      "q": "Rétablir sur cette page (Ctrl+Y)",
      "b": [
-      806,
-      19,
+      976.5,
+      34,
       52,
       54
      ]
@@ -1425,8 +1452,8 @@
     {
      "q": "filet-vertical",
      "b": [
-      864,
-      34,
+      1034.5,
+      49,
       1,
       24
      ]
@@ -1434,8 +1461,8 @@
     {
      "q": "Page précédente (Page ↑)",
      "b": [
-      871,
-      24,
+      1041.5,
+      34,
       44,
       44
      ]
@@ -1443,8 +1470,8 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      917,
-      24,
+      1087.5,
+      34,
       60,
       44
      ]
@@ -1452,8 +1479,8 @@
     {
      "q": "Page suivante : en ajouter une (c'est la",
      "b": [
-      979,
-      24,
+      1149.5,
+      34,
       44,
       44
      ]
@@ -1461,62 +1488,44 @@
     {
      "q": "Nouvelle page",
      "b": [
-      1025,
-      19,
+      1195.5,
+      34,
       52,
       54
      ]
     },
     {
-     "q": "Effacer la page",
+     "q": "filet-vertical",
      "b": [
-      1079,
-      19,
-      52,
+      1253.5,
+      49,
+      1,
+      24
+     ]
+    },
+    {
+     "q": "Cette page : fond « Page blanche », mode",
+     "b": [
+      1260.5,
+      34,
+      70,
       54
      ]
     },
     {
-     "q": "Fond de la page : Page blanche",
+     "q": "filet-vertical",
      "b": [
-      1133,
-      19,
-      52,
-      54
-     ]
-    },
-    {
-     "q": "Mode nuit de cette page : fond noir, écr",
-     "b": [
-      1187,
-      19,
-      52,
-      54
-     ]
-    },
-    {
-     "q": "Aimanter au quadrillage",
-     "b": [
-      1241,
-      19,
-      52,
-      54
-     ]
-    },
-    {
-     "q": "Le stylo redresse les figures (carré, ce",
-     "b": [
-      1295,
-      19,
-      68.5,
-      54
+      1336.5,
+      49,
+      1,
+      24
      ]
     },
     {
      "q": "Importer une image ou un PDF (ou coller ",
      "b": [
-      1365.5,
-      19,
+      1343.5,
+      34,
       52,
       54
      ]
@@ -1524,8 +1533,8 @@
     {
      "q": "Instruments : règle, équerre, rapporteur",
      "b": [
-      1419.5,
-      19,
+      1397.5,
+      34,
       66.5,
       54
      ]
@@ -1533,8 +1542,8 @@
     {
      "q": "Programme de construction, étape par éta",
      "b": [
-      1488.5,
-      19,
+      1466.5,
+      34,
       58.5,
       54
      ]
@@ -1542,8 +1551,8 @@
     {
      "q": "Catalogue : des éléments de cours tout p",
      "b": [
-      1548.5,
-      19,
+      1526.5,
+      34,
       57,
       54
      ]
@@ -1551,17 +1560,26 @@
     {
      "q": "Automatismes : un flash de questions sur",
      "b": [
-      1608,
-      19,
+      1586,
+      34,
       77,
       54
      ]
     },
     {
+     "q": "filet-vertical",
+     "b": [
+      1669,
+      49,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Outils de classe : rideau, pointeur lase",
      "b": [
-      1687,
-      19,
+      1676,
+      34,
       52,
       54
      ]
@@ -1569,17 +1587,26 @@
     {
      "q": "Revoir la construction : une page, une s",
      "b": [
-      1741,
-      19,
+      1730,
+      34,
       52,
       54
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      1788,
+      49,
+      1,
+      24
      ]
     },
     {
      "q": "Publier le replay pour les élèves",
      "b": [
       1795,
-      19,
+      34,
       52,
       54
      ]
@@ -1588,7 +1615,7 @@
      "q": "Enregistrer, ouvrir ou exporter en PDF ;",
      "b": [
       1849,
-      19,
+      34,
       52,
       54
      ]
@@ -1827,17 +1854,17 @@
   },
   ".barre-haut": {
    "b": [
-    209,
+    327,
     12,
-    959,
-    58
+    841,
+    73
    ],
    "enfants": [
     {
      "q": "Annuler sur cette page (Ctrl+Z)",
      "b": [
-      216,
-      19,
+      334,
+      34,
       44,
       44
      ]
@@ -1845,8 +1872,8 @@
     {
      "q": "Rétablir sur cette page (Ctrl+Y)",
      "b": [
-      262,
-      19,
+      380,
+      34,
       44,
       44
      ]
@@ -1854,8 +1881,8 @@
     {
      "q": "filet-vertical",
      "b": [
-      312,
-      29,
+      430,
+      44,
       1,
       24
      ]
@@ -1863,8 +1890,8 @@
     {
      "q": "Page précédente (Page ↑)",
      "b": [
-      319,
-      19,
+      437,
+      34,
       44,
       44
      ]
@@ -1872,8 +1899,8 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      365,
-      19,
+      483,
+      34,
       60,
       44
      ]
@@ -1881,8 +1908,8 @@
     {
      "q": "Page suivante : en ajouter une (c'est la",
      "b": [
-      427,
-      19,
+      545,
+      34,
       44,
       44
      ]
@@ -1890,62 +1917,44 @@
     {
      "q": "Nouvelle page",
      "b": [
-      473,
-      19,
+      591,
+      34,
       44,
       44
      ]
     },
     {
-     "q": "Effacer la page",
+     "q": "filet-vertical",
      "b": [
-      519,
-      19,
+      641,
       44,
+      1,
+      24
+     ]
+    },
+    {
+     "q": "Cette page : fond « Page blanche », mode",
+     "b": [
+      648,
+      34,
+      66,
       44
      ]
     },
     {
-     "q": "Fond de la page : Page blanche",
+     "q": "filet-vertical",
      "b": [
-      565,
-      19,
+      720,
       44,
-      44
-     ]
-    },
-    {
-     "q": "Mode nuit de cette page : fond noir, écr",
-     "b": [
-      611,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Aimanter au quadrillage",
-     "b": [
-      657,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Le stylo redresse les figures (carré, ce",
-     "b": [
-      703,
-      19,
-      44,
-      44
+      1,
+      24
      ]
     },
     {
      "q": "Importer une image ou un PDF (ou coller ",
      "b": [
-      749,
-      19,
+      727,
+      34,
       44,
       44
      ]
@@ -1953,8 +1962,8 @@
     {
      "q": "Instruments : règle, équerre, rapporteur",
      "b": [
-      795,
-      19,
+      773,
+      34,
       44,
       44
      ]
@@ -1962,8 +1971,8 @@
     {
      "q": "Programme de construction, étape par éta",
      "b": [
-      841,
-      19,
+      819,
+      34,
       44,
       44
      ]
@@ -1971,8 +1980,8 @@
     {
      "q": "Catalogue : des éléments de cours tout p",
      "b": [
-      887,
-      19,
+      865,
+      34,
       44,
       44
      ]
@@ -1980,17 +1989,26 @@
     {
      "q": "Automatismes : un flash de questions sur",
      "b": [
-      933,
-      19,
+      911,
+      34,
       44,
       44
      ]
     },
     {
+     "q": "filet-vertical",
+     "b": [
+      961,
+      44,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Outils de classe : rideau, pointeur lase",
      "b": [
-      979,
-      19,
+      968,
+      34,
       44,
       44
      ]
@@ -1998,17 +2016,26 @@
     {
      "q": "Revoir la construction : une page, une s",
      "b": [
-      1025,
-      19,
+      1014,
+      34,
       44,
       44
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      1064,
+      44,
+      1,
+      24
      ]
     },
     {
      "q": "Publier le replay pour les élèves",
      "b": [
       1071,
-      19,
+      34,
       44,
       44
      ]
@@ -2017,7 +2044,7 @@
      "q": "Enregistrer, ouvrir ou exporter en PDF ;",
      "b": [
       1117,
-      19,
+      34,
       44,
       44
      ]
@@ -2265,7 +2292,7 @@
     {
      "q": "Premier classeur",
      "b": [
-      178,
+      180,
       19,
       44,
       44
@@ -2274,7 +2301,7 @@
     {
      "q": "Annuler sur cette page (Ctrl+Z)",
      "b": [
-      224,
+      226,
       19,
       44,
       44
@@ -2283,7 +2310,7 @@
     {
      "q": "Rétablir sur cette page (Ctrl+Y)",
      "b": [
-      270,
+      272,
       19,
       44,
       44
@@ -2292,7 +2319,7 @@
     {
      "q": "filet-vertical",
      "b": [
-      320,
+      322,
       29,
       1,
       24
@@ -2301,7 +2328,7 @@
     {
      "q": "Page précédente (Page ↑)",
      "b": [
-      327,
+      329,
       19,
       44,
       44
@@ -2310,7 +2337,7 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      373,
+      375,
       19,
       60,
       44
@@ -2319,7 +2346,7 @@
     {
      "q": "Page suivante : en ajouter une (c'est la",
      "b": [
-      435,
+      437,
       19,
       44,
       44
@@ -2328,61 +2355,43 @@
     {
      "q": "Nouvelle page",
      "b": [
-      481,
+      483,
       19,
       44,
       44
      ]
     },
     {
-     "q": "Effacer la page",
+     "q": "filet-vertical",
      "b": [
-      527,
+      533,
+      29,
+      1,
+      24
+     ]
+    },
+    {
+     "q": "Cette page : fond « Page blanche », mode",
+     "b": [
+      540,
       19,
-      44,
+      66,
       44
      ]
     },
     {
-     "q": "Fond de la page : Page blanche",
+     "q": "filet-vertical",
      "b": [
-      573,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Mode nuit de cette page : fond noir, écr",
-     "b": [
-      619,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Aimanter au quadrillage",
-     "b": [
-      665,
-      19,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Le stylo redresse les figures (carré, ce",
-     "b": [
-      711,
-      19,
-      44,
-      44
+      612,
+      29,
+      1,
+      24
      ]
     },
     {
      "q": "Importer une image ou un PDF (ou coller ",
      "b": [
-      757,
+      619,
       19,
       44,
       44
@@ -2391,8 +2400,8 @@
     {
      "q": "Instruments : règle, équerre, rapporteur",
      "b": [
-      435,
-      65,
+      665,
+      19,
       44,
       44
      ]
@@ -2400,8 +2409,8 @@
     {
      "q": "Programme de construction, étape par éta",
      "b": [
-      481,
-      65,
+      711,
+      19,
       44,
       44
      ]
@@ -2409,8 +2418,8 @@
     {
      "q": "Catalogue : des éléments de cours tout p",
      "b": [
-      527,
-      65,
+      757,
+      19,
       44,
       44
      ]
@@ -2418,16 +2427,25 @@
     {
      "q": "Automatismes : un flash de questions sur",
      "b": [
-      573,
+      551,
       65,
       44,
       44
      ]
     },
     {
+     "q": "filet-vertical",
+     "b": [
+      601,
+      75,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Outils de classe : rideau, pointeur lase",
      "b": [
-      619,
+      608,
       65,
       44,
       44
@@ -2436,10 +2454,19 @@
     {
      "q": "Revoir la construction : une page, une s",
      "b": [
-      665,
+      654,
       65,
       44,
       44
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      704,
+      75,
+      1,
+      24
      ]
     },
     {
@@ -2685,7 +2712,7 @@
     {
      "q": "Premier classeur",
      "b": [
-      172,
+      174,
       19,
       44,
       44
@@ -2694,7 +2721,7 @@
     {
      "q": "Annuler sur cette page (Ctrl+Z)",
      "b": [
-      218,
+      220,
       19,
       44,
       44
@@ -2703,7 +2730,7 @@
     {
      "q": "Rétablir sur cette page (Ctrl+Y)",
      "b": [
-      264,
+      266,
       19,
       44,
       44
@@ -2712,7 +2739,7 @@
     {
      "q": "filet-vertical",
      "b": [
-      314,
+      316,
       29,
       1,
       24
@@ -2721,7 +2748,7 @@
     {
      "q": "Page précédente (Page ↑)",
      "b": [
-      321,
+      323,
       19,
       44,
       44
@@ -2730,7 +2757,7 @@
     {
      "q": "Toutes les pages (Maj + P)",
      "b": [
-      367,
+      369,
       19,
       60,
       44
@@ -2739,7 +2766,7 @@
     {
      "q": "Page suivante : en ajouter une (c'est la",
      "b": [
-      429,
+      431,
       19,
       44,
       44
@@ -2748,32 +2775,41 @@
     {
      "q": "Nouvelle page",
      "b": [
-      475,
+      477,
       19,
       44,
       44
      ]
     },
     {
-     "q": "Effacer la page",
+     "q": "filet-vertical",
      "b": [
-      521,
-      19,
-      44,
-      44
+      527,
+      29,
+      1,
+      24
      ]
     },
     {
-     "q": "Fond de la page : Page blanche",
+     "q": "Cette page : fond « Page blanche », mode",
      "b": [
-      567,
+      534,
       19,
-      44,
+      66,
       44
      ]
     },
     {
-     "q": "Mode nuit de cette page : fond noir, écr",
+     "q": "filet-vertical",
+     "b": [
+      606,
+      29,
+      1,
+      24
+     ]
+    },
+    {
+     "q": "Importer une image ou un PDF (ou coller ",
      "b": [
       613,
       19,
@@ -2782,7 +2818,7 @@
      ]
     },
     {
-     "q": "Aimanter au quadrillage",
+     "q": "Instruments : règle, équerre, rapporteur",
      "b": [
       659,
       19,
@@ -2791,7 +2827,7 @@
      ]
     },
     {
-     "q": "Le stylo redresse les figures (carré, ce",
+     "q": "Programme de construction, étape par éta",
      "b": [
       705,
       19,
@@ -2800,36 +2836,9 @@
      ]
     },
     {
-     "q": "Importer une image ou un PDF (ou coller ",
-     "b": [
-      337,
-      65,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Instruments : règle, équerre, rapporteur",
-     "b": [
-      383,
-      65,
-      44,
-      44
-     ]
-    },
-    {
-     "q": "Programme de construction, étape par éta",
-     "b": [
-      429,
-      65,
-      44,
-      44
-     ]
-    },
-    {
      "q": "Catalogue : des éléments de cours tout p",
      "b": [
-      475,
+      453,
       65,
       44,
       44
@@ -2838,16 +2847,25 @@
     {
      "q": "Automatismes : un flash de questions sur",
      "b": [
-      521,
+      499,
       65,
       44,
       44
      ]
     },
     {
+     "q": "filet-vertical",
+     "b": [
+      549,
+      75,
+      1,
+      24
+     ]
+    },
+    {
      "q": "Outils de classe : rideau, pointeur lase",
      "b": [
-      567,
+      556,
       65,
       44,
       44
@@ -2856,10 +2874,19 @@
     {
      "q": "Revoir la construction : une page, une s",
      "b": [
-      613,
+      602,
       65,
       44,
       44
+     ]
+    },
+    {
+     "q": "filet-vertical",
+     "b": [
+      652,
+      75,
+      1,
+      24
      ]
     },
     {

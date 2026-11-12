@@ -375,6 +375,20 @@ export const methodesPlacements = {
     return zoneEntreBarres(z.width, z.height, { outils: bords(this.barreOutils), haut: bords(this.barreHaut), zoom: bords(this.barreZoom) })
   },
 
+  /** La zone libre où se placent la pastille ↻ et la barre d'actions d'un
+   *  objet pris : celle de zoneLibre, commencée sous l'étiquette de la
+   *  séance quand elle pend sous la barre du haut (sans quoi la pastille
+   *  d'une image posée en haut tomberait sous l'étiquette, qui prendrait
+   *  l'appui) */
+  zoneDuCadre(this: UI): { x: number; y: number; l: number; h: number; } {
+    const zl = this.zoneLibre(), s = this.rangSeance
+    if (s.hidden) return zl
+    const r = s.getBoundingClientRect(), z = this.app.rendu.scene.getBoundingClientRect()
+    const bas = r.bottom - z.top + 4
+    if (!r.height || r.top - z.top > zl.y || bas <= zl.y || zl.h - (bas - zl.y) < 200) return zl
+    return { ...zl, y: bas, h: zl.h - (bas - zl.y) }
+  },
+
   /** La pastille « Revenir au contenu » : elle paraît une seconde après qu'on
    *  a perdu de vue tout ce qui est écrit, et part dès qu'on le retrouve */
   majRetour(this: UI): void {

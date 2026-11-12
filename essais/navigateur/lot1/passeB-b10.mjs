@@ -68,7 +68,7 @@ const BARRE = () => {
     // boutons de la mise en page du téléphone, cachés ici par la feuille de style)
     hauteurs: [...new Set([...b.querySelectorAll('.bouton:not(.seulement-telephone)')].filter(x => !x.hidden).map(x => Math.round(x.getBoundingClientRect().height * 100) / 100))],
     poubelle: { dom: !!p && b.contains(p) },
-    annuler: a && { disabled: a.disabled, aria: a.getAttribute('aria-disabled'), opacite: getComputedStyle(a).opacity, curseur: getComputedStyle(a).cursor } }
+    annuler: a && { disabled: a.disabled, aria: a.getAttribute('aria-disabled'), opacite: getComputedStyle(a).opacity, couleur: getComputedStyle(a).color, curseur: getComputedStyle(a).cursor } }
 }
 function outilsCdp(cdp) {
   const stylet = {
@@ -92,8 +92,10 @@ for (const h of [768, 540]) {
     verifier(`${h} px de haut : chaque bouton de la barre garde 44 px, la barre défile (barre fine), sans entraîner la page`,
       b0.hauteurs.length === 1 && b0.hauteurs[0] === 44 && b0.sh > b0.ch && b0.sw === 'thin' && b0.os === 'contain', JSON.stringify(b0))
   }
+  // (Adapté à la barre du haut en familles : Annuler grisé par sa couleur,
+  // plus par l'opacité, pour que le nom de sa famille reste lisible)
   verifier(`${h} px : plus de poubelle dans la barre de gauche ; Annuler, dans la barre du haut, grisé et désactivé sans rien à défaire`,
-    !b0.poubelle.dom && b0.annuler && b0.annuler.disabled && b0.annuler.aria === 'true' && b0.annuler.opacite === '0.3' && b0.annuler.curseur === 'default', JSON.stringify(b0))
+    !b0.poubelle.dom && b0.annuler && b0.annuler.disabled && b0.annuler.aria === 'true' && b0.annuler.opacite === '1' && b0.annuler.couleur === 'rgba(27, 34, 48, 0.3)' && b0.annuler.curseur === 'default', JSON.stringify(b0))
   if (h === 540) {
     // La barre défile : le choix des formes suit le bouton des Formes
     await page.keyboard.press('r')
@@ -384,7 +386,8 @@ for (const h of [768, 540]) {
 // hauteur de son bouton (resté en haut de la barre), qui suit le
 // défilement, comme celui du doigt sur un écran qu'on touche : de 36 px,
 // pas plus, car plus haut il passerait sous la barre du haut, et la règle
-// du lot 5 le pose alors juste sous elle.)
+// du lot 5 le pose alors juste sous elle. Adapté à la barre du haut en
+// familles, plus haute de 15 px : de 16 px.)
 {
   const ctx = await nav.newContext({ viewport: { width: 1366, height: 540 } })
   const page = await ouvrir(ctx, 'menu-gomme')
@@ -396,7 +399,7 @@ for (const h of [768, 540]) {
     return { bouton: b.top, menu: m ? m.getBoundingClientRect().top : null }
   }, bouton)
   const p0 = await pos()
-  await page.evaluate(() => document.querySelector('.barre-outils').scrollTop = 36)
+  await page.evaluate(() => document.querySelector('.barre-outils').scrollTop = 16)
   await page.waitForTimeout(80)
   const p1 = await pos()
   verifier('Barre qui défile, menu de la Gomme ouvert : il reste à la hauteur de son bouton', p0.menu !== null && p1.menu !== null && Math.abs(p0.menu - p0.bouton) < 1 && Math.abs(p1.menu - p1.bouton) < 1 && p1.bouton < p0.bouton - 5, JSON.stringify({ p0, p1 }))
