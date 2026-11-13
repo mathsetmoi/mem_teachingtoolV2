@@ -20,7 +20,7 @@ import {
 } from './donnees'
 import { devinerDossier, enCreneaux, importer, lireCalendrier, type CreneauLu, type Cours } from './ics'
 import { ErreurPronote, enLigne, garderLien, garderLu, lienPronoteValable, liensPronote, lireLeLien } from './pronote'
-import { colorie, couleurDe, dossiersRanges, ecrireEDT, lireEDT } from './moment'
+import { colorie, couleurDe, ecrireEDT, lireEDT } from './moment'
 
 export const TITRE_EMPLOI_DU_TEMPS = 'Mon emploi du temps'
 export const ENTREE_EMPLOI_DU_TEMPS = 'Emploi du temps…'
@@ -76,9 +76,6 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
   try { [dossiers, classeurs] = await Promise.all([h.registre.dossiers(), h.registre.classeurs()]) } catch { /* une bibliothèque vide */ }
   dossiers = dossiers.filter(d => !d.corbeille)
   classeurs = classeurs.filter(f => !f.corbeille && !f.effacement && !f.creation)
-  // Chaque dossier avec l'établissement où il est rangé sur l'ordinateur (lot 18)
-  const ranges = await dossiersRanges(h.registre, dossiers)
-  dossiers = ranges.dossiers
   if (document.querySelector('dialog[open]')) return null
 
   const d = el('dialog', 'dialogue dialogue-edt')
@@ -97,9 +94,9 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
 
   const chemins = new Map(dossiers.map(x => [x.id, cheminDuDossier(x.id, dossiers).map(y => y.nom).join(' › ')]))
   const dossiersTries = [...dossiers].sort((a, b) => chemins.get(a.id)!.localeCompare(chemins.get(b.id)!, 'fr', { numeric: true }))
-  // Les établissements : ceux des dossiers (lot 18, sinon le dossier du haut),
-  // ceux du lot 18 sans dossier, ceux déjà choisis à un import
-  const etablissements = () => etablissementsConnus(dossiers, [...ranges.noms, ...edt.creneaux.map(c => c.etablissement ?? '')])
+  // Les établissements : les dossiers du haut, ceux déjà choisis ou tapés à un
+  // import, ceux qui ont un lien de Pronote
+  const etablissements = () => etablissementsConnus(dossiers, [...edt.creneaux.map(c => c.etablissement ?? ''), ...Object.keys(liensPronote())])
 
   // ---------- La vue de la semaine ----------
   const vue = el('div', 'edt-vue')
@@ -302,21 +299,25 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
     vueImport.replaceChildren()
     const t = el('h2', '', 'Importer l\'emploi du temps de Pronote')
     const noms = etablissements()
-    if (!noms.length) {
+    if (!dossiers.length) {
       vueImport.append(t, el('p', '', 'La bibliothèque n\'a pas encore de dossier : créez d\'abord le dossier de votre établissement et ceux de vos classes.'))
       const ac = el('div', 'actions'); ac.append(bouton('principal', 'Retour', retour)); vueImport.append(ac)
       return
     }
-    let etab = noms[0]
+    let etab = noms[0] ?? ''
     // Une couleur différente pour chacun, même avant le premier import
     const apercu = colorier(edt, noms)
     const liens = liensPronote()
     const choixEtab = el('div', 'edt-etabs'); choixEtab.setAttribute('role', 'group'); choixEtab.setAttribute('aria-label', 'Établissement')
     const lien = el('input', 'edt-lien') as HTMLInputElement; lien.type = 'url'; lien.placeholder = 'https://…index-education.net/pronote/ical/…'
     lien.setAttribute('aria-label', 'Le lien de Pronote')
-    const poserEtab = (n: string) => {
+    // « Autre… » : un nom tapé (« LFB »), quand l'établissement n'est pas un dossier du haut
+    const autre = el('input', 'edt-etab-autre') as HTMLInputElement; autre.type = 'text'; autre.maxLength = 60
+    autre.placeholder = 'Nom de l\'établissement'; autre.setAttribute('aria-label', 'Nom de l\'établissement'); autre.hidden = true
+    const poserEtab = (n: string, tape = false) => {
       etab = n
-      for (const b of choixEtab.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.nom === n))
+      for (const b of choixEtab.querySelectorAll<HTMLButtonElement>('button')) b.setAttribute('aria-pressed', String(tape ? b.classList.contains('edt-etab-plus') : b.dataset.nom === n))
+      autre.hidden = !tape
       lien.value = liens[n] ?? ''
     }
     for (const x of noms) {
@@ -326,6 +327,8 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
       b.append(i, x)
       choixEtab.append(b)
     }
+    choixEtab.append(bouton('edt-etab-choix edt-etab-plus', 'Autre…', () => { poserEtab(autre.value.trim(), true); autre.focus() }), autre)
+    autre.addEventListener('input', () => poserEtab(autre.value.trim(), true))
     const modeLien = el('input') as HTMLInputElement; modeLien.type = 'radio'; modeLien.name = 'edt-mode'; modeLien.className = 'edt-mode-lien'
     const modeFichier = el('input') as HTMLInputElement; modeFichier.type = 'radio'; modeFichier.name = 'edt-mode'; modeFichier.className = 'edt-mode-fichier'
     modeLien.checked = enLigne(); modeFichier.checked = !enLigne()
@@ -350,9 +353,10 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
     const lire = bouton('principal edt-lire', 'Lire l\'emploi du temps', () => void lireEtVerifier())
     ac.append(bouton('secondaire', 'Retour', retour), lire)
     vueImport.append(t, champ('Ces cours sont à :', choixEtab, 'large'), ligne1, ligne2, ou, etatImport, ac)
-    poserEtab(etab)
+    if (etab) poserEtab(etab); else poserEtab('', true)
     const lireEtVerifier = async () => {
       etatImport.textContent = ''
+      if (!etab) { etatImport.textContent = 'Tapez le nom de l\'établissement.'; autre.hidden = false; autre.focus(); return }
       let texte: string
       const garderLeLien = modeLien.checked ? lien.value.trim() : ''
       try {

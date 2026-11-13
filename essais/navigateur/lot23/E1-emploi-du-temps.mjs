@@ -263,36 +263,43 @@ v = await vueAccueil()
 ok(v.dlg && /2nde 3/.test(v.creneau ?? ''), 'I5) Le témoin : sans le lien, la semaine type propose la 2nde 3 à cette heure', v)
 await p.keyboard.press('Escape')
 
-// ---------- K. Un niveau rangé dans le dossier d'un établissement (lot 18) ----------
-// Comme chez le professeur : le niveau « 3 » est en haut de la bibliothèque,
-// mais rangé sur l'ordinateur dans le dossier de LFB ; MEM est un
-// établissement du lot 18 sans aucun dossier rangé chez lui.
+// ---------- K. Un établissement qui n'est pas un dossier du haut : « Autre… » ----------
+// Comme chez le professeur : les niveaux de LFB (« 3 ») sont en haut de la
+// bibliothèque, sans dossier « LFB » ; on tape son nom.
 await p.evaluate(async () => {
   const r = window.__registre, t = Date.now()
   await r.ajouterDossier({ id: 'n3', nom: '3', parent: null, couleur: '#3b6fb6', cree: t })
   await r.ajouterDossier({ id: 'd3c', nom: '3C', parent: 'n3', couleur: '#3b6fb6', cree: t })
-  await r.ecrireReglage('etablissements', [{ id: 'aaaaaaaaaaaaaaaa', nom: 'LFB', cree: t }, { id: 'bbbbbbbbbbbbbbbb', nom: 'MEM', cree: t }])
-  await r.ecrireReglage('emplacements', [{ id: 'cccccccccccccccc', genre: 'ordinateur', dossier: 'n3', nom: '3', cree: t, etablissement: 'aaaaaaaaaaaaaaaa', etablissementNom: 'LFB' }])
+  localStorage.removeItem('mem-teachingtool-pronote')
 })
 await poserEDT(EDT([]))
-await p.evaluate(() => window.__app.ui.boutonFichier.click()); await p.waitForTimeout(400)
-await p.click('.menu-flottant:not([hidden]) [data-action="emploi-du-temps"]'); await p.waitForTimeout(400)
-await p.click('.edt-pronote'); await p.waitForTimeout(200)
-const etabs = await p.evaluate(() => [...document.querySelectorAll('.edt-etab-choix')].map(b => ({ nom: b.dataset.nom, couleur: b.querySelector('i').style.background })))
-ok(JSON.stringify(etabs.map(x => x.nom)) === '["LFB","LyFEL","MEM"]' && new Set(etabs.map(x => x.couleur)).size === 3,
-  'K1) « Ces cours sont à : » LFB (le niveau « 3 » rangé chez lui, en haut de la bibliothèque), LyFEL, MEM (sans dossier) ; pas « 3 » ; trois couleurs différentes', etabs)
-await p.click('.edt-etab-choix[data-nom="LFB"]')
+const ouvrirImport = async () => {
+  await p.evaluate(() => window.__app.ui.boutonFichier.click()); await p.waitForTimeout(400)
+  await p.click('.menu-flottant:not([hidden]) [data-action="emploi-du-temps"]'); await p.waitForTimeout(400)
+  await p.click('.edt-pronote'); await p.waitForTimeout(200)
+}
+const puces = () => p.evaluate(() => [...document.querySelectorAll('.edt-etab-choix')].map(b => ({ nom: b.dataset.nom ?? b.textContent, couleur: b.querySelector('i')?.style.background ?? null })))
+await ouvrirImport()
+let etabs = await puces()
+ok(JSON.stringify(etabs.map(x => x.nom)) === '["3","LFB","LyFEL","Autre…"]' && new Set(etabs.filter(x => x.couleur).map(x => x.couleur)).size === 3 && await p.isHidden('.edt-etab-autre'),
+  'K1) « Ces cours sont à : » les dossiers du haut, chacun sa couleur, puis « Autre… » (le champ caché)', etabs)
+await p.click('.edt-etab-plus'); await p.waitForTimeout(100)
+await p.fill('.edt-etab-autre', 'Lycée F')
+ok(await p.isVisible('.edt-etab-autre') && await p.getAttribute('.edt-etab-plus', 'aria-pressed') === 'true', 'K2) « Autre… » montre le champ du nom')
 await p.check('.edt-mode-fichier')
 const ics3 = ['BEGIN:VCALENDAR', 'VERSION:2.0', ...[0, 1, 2].flatMap(k => ev(d(k, 0, 15, 5), d(k, 0, 16, 0), 'MATHEMATIQUES - 3C', 'C2')), 'END:VCALENDAR'].join('\r\n')
-await p.setInputFiles('.edt-fichier', { name: 'Edt_LFB.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics3) })
+await p.setInputFiles('.edt-fichier', { name: 'Edt.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics3) })
 await p.click('.edt-lire'); await p.waitForTimeout(400)
 lignes = await p.evaluate(() => [...document.querySelectorAll('.edt-table tbody tr')].map(tr => tr.querySelector('select').selectedOptions[0].textContent))
-ok(lignes.length === 1 && lignes[0] === '3 › 3C', 'K2) La classe 3C devinée parmi les dossiers de LFB', lignes)
+ok(lignes.length === 1 && lignes[0] === '3 › 3C', 'K3) Aucun dossier à ce nom : la classe 3C devinée parmi tous les dossiers', lignes)
 await p.click('.edt-importer'); await p.waitForTimeout(400)
 tout = await p.evaluate(async () => (await window.__registre.reglage('emploi-du-temps')))
-ok(tout.creneaux.length === 1 && tout.creneaux[0].dossier === 'd3c' && tout.creneaux[0].etablissement === 'LFB', 'K3) Le créneau importé : la 3C, à LFB', tout.creneaux)
+ok(tout.creneaux.length === 1 && tout.creneaux[0].dossier === 'd3c' && tout.creneaux[0].etablissement === 'Lycée F', 'K4) Le créneau importé : la 3C, à « Lycée F »', tout.creneaux)
 const legendeK = await p.evaluate(() => document.querySelector('.edt-legende')?.textContent)
-ok(/LFB/.test(legendeK ?? '') && !/^3$|\b3\b/.test(legendeK ?? ''), 'K4) La légende de la semaine dit LFB', legendeK)
+ok(legendeK === 'Lycée F', 'K5) La légende de la semaine dit « Lycée F » (pas « 3 »)', legendeK)
+await p.click('.edt-pronote'); await p.waitForTimeout(200)
+etabs = await puces()
+ok(etabs.some(x => x.nom === 'Lycée F'), 'K6) Ensuite « Lycée F » est proposé comme les autres', etabs)
 await p.keyboard.press('Escape'); await p.waitForTimeout(200)
 
 // ---------- G6. Au menu ⋯ de la bibliothèque ----------

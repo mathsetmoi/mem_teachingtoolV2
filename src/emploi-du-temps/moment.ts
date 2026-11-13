@@ -14,26 +14,6 @@ import {
 } from './donnees'
 import { coursDuJour } from './ics'
 import { lusDesLiens } from './pronote'
-import { emplacements } from '../classeurs/emplacements'
-import { etablissements, nomDEtablissement } from '../classeurs/etablissements'
-
-/** Les dossiers, chacun avec l'établissement (lot 18) où il est rangé sur
- *  l'ordinateur, et les noms des établissements du lot 18 : un niveau
- *  « 2 » rangé dans le dossier de LFB est à LFB, même s'il est en haut de
- *  la bibliothèque */
-export async function dossiersRanges<D extends FicheDossier>(registre: Registre, dossiers: readonly D[]): Promise<{ dossiers: (D & { etablissement?: string })[]; noms: string[] }> {
-  let liste: Awaited<ReturnType<typeof etablissements>> = [], lies: Awaited<ReturnType<typeof emplacements>> = []
-  try { [liste, lies] = await Promise.all([etablissements(registre), emplacements(registre)]) } catch { /* rien de rangé */ }
-  const chez = new Map<string, string>()
-  for (const e of lies) {
-    if (e.genre !== 'ordinateur') continue
-    const n = nomDEtablissement(e, liste)
-    if (n) chez.set(e.dossier, n)
-  }
-  const noms = [...liste.map(e => e.nom), ...chez.values()]
-  return { dossiers: dossiers.map(d => chez.has(d.id) ? { ...d, etablissement: chez.get(d.id)! } : d), noms: [...new Set(noms)] }
-}
-
 /** L'emploi du temps de la bibliothèque (vide : rien de saisi) */
 export async function lireEDT(registre: Registre): Promise<EmploiDuTemps> {
   try { return lireEmploiDuTemps(await registre.reglage(REGLAGE_EMPLOI_DU_TEMPS)) } catch { return lireEmploiDuTemps(null) }
@@ -103,7 +83,7 @@ export async function momentPresent(registre: Registre, t = Date.now()): Promise
   let edt: EmploiDuTemps, dossiers: FicheDossier[], classeurs: FicheClasseur[]
   try { [edt, dossiers, classeurs] = await Promise.all([lireEDT(registre), registre.dossiers(), registre.classeurs()]) } catch { return null }
   if (!edt.creneaux.length) return null
-  const vivants = (await dossiersRanges(registre, dossiers.filter(d => !d.corbeille))).dossiers
+  const vivants = dossiers.filter(d => !d.corbeille)
   const jour = creneauxDuJour(edt, t, vivants, jourDesLiens(edt, t))
   const vu = (c: Creneau | null): CreneauVu | null => {
     if (!c) return null
