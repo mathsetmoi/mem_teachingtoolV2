@@ -9,11 +9,30 @@ import type { Registre } from '../classeurs/registre'
 import type { FicheClasseur, FicheDossier } from '../classeurs/demarrage'
 import { estSeancesIsolees } from '../classeurs/isolees'
 import {
-  COULEURS, REGLAGE_EMPLOI_DU_TEMPS, classeurDuCreneau, colorier, creneauDuMoment, creneauxDuJour, etablissementDe, heureDite, jourEtMinute,
+  COULEURS, REGLAGE_EMPLOI_DU_TEMPS, classeurDuCreneau, colorier, creneauDuMoment, creneauxDuJour, etablissementDuCreneau, heureDite, jourEtMinute,
   lireEmploiDuTemps, nomDuCreneau, prochainCreneau, semaineDe, avecSemainesAB, type Creneau, type EmploiDuTemps, type JourDuLien,
 } from './donnees'
 import { coursDuJour } from './ics'
 import { lusDesLiens } from './pronote'
+import { emplacements } from '../classeurs/emplacements'
+import { etablissements, nomDEtablissement } from '../classeurs/etablissements'
+
+/** Les dossiers, chacun avec l'établissement (lot 18) où il est rangé sur
+ *  l'ordinateur, et les noms des établissements du lot 18 : un niveau
+ *  « 2 » rangé dans le dossier de LFB est à LFB, même s'il est en haut de
+ *  la bibliothèque */
+export async function dossiersRanges<D extends FicheDossier>(registre: Registre, dossiers: readonly D[]): Promise<{ dossiers: (D & { etablissement?: string })[]; noms: string[] }> {
+  let liste: Awaited<ReturnType<typeof etablissements>> = [], lies: Awaited<ReturnType<typeof emplacements>> = []
+  try { [liste, lies] = await Promise.all([etablissements(registre), emplacements(registre)]) } catch { /* rien de rangé */ }
+  const chez = new Map<string, string>()
+  for (const e of lies) {
+    if (e.genre !== 'ordinateur') continue
+    const n = nomDEtablissement(e, liste)
+    if (n) chez.set(e.dossier, n)
+  }
+  const noms = [...liste.map(e => e.nom), ...chez.values()]
+  return { dossiers: dossiers.map(d => chez.has(d.id) ? { ...d, etablissement: chez.get(d.id)! } : d), noms: [...new Set(noms)] }
+}
 
 /** L'emploi du temps de la bibliothèque (vide : rien de saisi) */
 export async function lireEDT(registre: Registre): Promise<EmploiDuTemps> {
@@ -29,7 +48,7 @@ export function jourDesLiens(e: EmploiDuTemps, t: number): JourDuLien | null {
   const etablissements = new Set<string>()
   const creneaux: Creneau[] = []
   for (const [nom, lu] of Object.entries(lusDesLiens())) {
-    const l = coursDuJour(lu.cours, lu.couvre, t, e)
+    const l = coursDuJour(lu.cours, lu.couvre, t, e, nom)
     if (!l) continue
     etablissements.add(nom)
     creneaux.push(...l)
@@ -84,11 +103,11 @@ export async function momentPresent(registre: Registre, t = Date.now()): Promise
   let edt: EmploiDuTemps, dossiers: FicheDossier[], classeurs: FicheClasseur[]
   try { [edt, dossiers, classeurs] = await Promise.all([lireEDT(registre), registre.dossiers(), registre.classeurs()]) } catch { return null }
   if (!edt.creneaux.length) return null
-  const vivants = dossiers.filter(d => !d.corbeille)
+  const vivants = (await dossiersRanges(registre, dossiers.filter(d => !d.corbeille))).dossiers
   const jour = creneauxDuJour(edt, t, vivants, jourDesLiens(edt, t))
   const vu = (c: Creneau | null): CreneauVu | null => {
     if (!c) return null
-    const etablissement = etablissementDe(c.dossier, vivants)
+    const etablissement = etablissementDuCreneau(c, vivants)
     return { creneau: c, nom: nomDuCreneau(c, vivants), etablissement, couleur: couleurDe(edt, etablissement), classeur: classeurDuCreneau(c, classeurs, vivants, estSeancesIsolees) }
   }
   const maintenant = vu(creneauDuMoment(jour, t))
@@ -101,11 +120,11 @@ export async function momentPresent(registre: Registre, t = Date.now()): Promise
 
 /** Le même, pour un créneau donné (la bulle) */
 export function creneauVu(m: Moment, c: Creneau): CreneauVu {
-  const etablissement = etablissementDe(c.dossier, m.dossiers)
+  const etablissement = etablissementDuCreneau(c, m.dossiers)
   return { creneau: c, nom: nomDuCreneau(c, m.dossiers), etablissement, couleur: couleurDe(m.edt, etablissement), classeur: classeurDuCreneau(c, m.classeurs, m.dossiers, estSeancesIsolees) }
 }
 
 /** Les couleurs des établissements de l'emploi du temps, à jour */
 export function colorie(e: EmploiDuTemps, dossiers: readonly FicheDossier[]): EmploiDuTemps {
-  return colorier(e, e.creneaux.map(c => etablissementDe(c.dossier, dossiers)).filter((x): x is string => !!x))
+  return colorier(e, e.creneaux.map(c => etablissementDuCreneau(c, dossiers)).filter((x): x is string => !!x))
 }

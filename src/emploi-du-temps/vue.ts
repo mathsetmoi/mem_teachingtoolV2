@@ -15,12 +15,12 @@ import type { FicheClasseur, FicheDossier } from '../classeurs/demarrage'
 import { fermerSurLeFond } from '../dialogue'
 import { estSeancesIsolees } from '../classeurs/isolees'
 import {
-  JOURS, classeurDuCreneau, cheminDuDossier, direLaSemaine, etablissementDe, heureDite, horaireDit, idCreneau, lireHeure, lundiDe, nomDuCreneau,
-  semaineDe, sousDossiers, trier, type Creneau, type EmploiDuTemps, type Semaines,
+  JOURS, classeurDuCreneau, cheminDuDossier, colorier, direLaSemaine, dossiersDe, etablissementDuCreneau, etablissementsConnus, heureDite, horaireDit,
+  idCreneau, lireHeure, lundiDe, nomDuCreneau, semaineDe, sousDossiers, trier, type Creneau, type EmploiDuTemps, type Semaines,
 } from './donnees'
 import { devinerDossier, enCreneaux, importer, lireCalendrier, type CreneauLu, type Cours } from './ics'
 import { ErreurPronote, enLigne, garderLien, garderLu, lienPronoteValable, liensPronote, lireLeLien } from './pronote'
-import { colorie, couleurDe, ecrireEDT, lireEDT } from './moment'
+import { colorie, couleurDe, dossiersRanges, ecrireEDT, lireEDT } from './moment'
 
 export const TITRE_EMPLOI_DU_TEMPS = 'Mon emploi du temps'
 export const ENTREE_EMPLOI_DU_TEMPS = 'Emploi du temps…'
@@ -76,6 +76,9 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
   try { [dossiers, classeurs] = await Promise.all([h.registre.dossiers(), h.registre.classeurs()]) } catch { /* une bibliothèque vide */ }
   dossiers = dossiers.filter(d => !d.corbeille)
   classeurs = classeurs.filter(f => !f.corbeille && !f.effacement && !f.creation)
+  // Chaque dossier avec l'établissement où il est rangé sur l'ordinateur (lot 18)
+  const ranges = await dossiersRanges(h.registre, dossiers)
+  dossiers = ranges.dossiers
   if (document.querySelector('dialog[open]')) return null
 
   const d = el('dialog', 'dialogue dialogue-edt')
@@ -94,8 +97,9 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
 
   const chemins = new Map(dossiers.map(x => [x.id, cheminDuDossier(x.id, dossiers).map(y => y.nom).join(' › ')]))
   const dossiersTries = [...dossiers].sort((a, b) => chemins.get(a.id)!.localeCompare(chemins.get(b.id)!, 'fr', { numeric: true }))
-  const etablissements = dossiers.filter(x => x.parent === null || !dossiers.some(y => y.id === x.parent))
-    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { numeric: true }))
+  // Les établissements : ceux des dossiers (lot 18, sinon le dossier du haut),
+  // ceux du lot 18 sans dossier, ceux déjà choisis à un import
+  const etablissements = () => etablissementsConnus(dossiers, [...ranges.noms, ...edt.creneaux.map(c => c.etablissement ?? '')])
 
   // ---------- La vue de la semaine ----------
   const vue = el('div', 'edt-vue')
@@ -133,7 +137,7 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
     }))
     // La légende : les établissements de la semaine
     legende.replaceChildren()
-    const noms = [...new Set(edt.creneaux.map(c => etablissementDe(c.dossier, dossiers)).filter((x): x is string => !!x))].sort((a, b) => a.localeCompare(b, 'fr'))
+    const noms = [...new Set(edt.creneaux.map(c => etablissementDuCreneau(c, dossiers)).filter((x): x is string => !!x))].sort((a, b) => a.localeCompare(b, 'fr'))
     for (const n of noms) {
       const s = el('span', 'edt-etab')
       const i = el('i'); i.style.background = couleurDe(edt, n).fort
@@ -165,7 +169,7 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
         nouveau(j, (de + Math.floor(y / 60)) * 60 + 5)
       })
       for (const c of visibles.filter(x => x.jour === j)) {
-        const n = etablissementDe(c.dossier, dossiers)
+        const n = etablissementDuCreneau(c, dossiers)
         const coul = couleurDe(edt, n)
         const b = bouton('edt-case', '', () => { choisi = c.id; dessiner() })
         b.style.top = `${(c.debut - de * 60) * PX_MINUTE}px`
@@ -251,14 +255,14 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
     salle.addEventListener('change', () => { changer(c.id, x => { const n: Creneau = { ...x, salle: salle.value.trim() }; if (!n.salle) delete n.salle; return n }); dessiner() })
     champs.append(champ('Jour', jour), champ('Horaire', horaire), champ('Semaines', sem), champ('Classe (un dossier de la bibliothèque)', classe, 'large'), champ('Nom affiché', nom), champ('Salle (facultatif)', salle))
     champs.append(erreur)
-    // L'établissement : le dossier du haut
-    const etab = etablissementDe(c.dossier, dossiers)
+    // L'établissement : celui de l'import, sinon celui du dossier
+    const etab = etablissementDuCreneau(c, dossiers)
     const ligneEtab = el('p', 'edt-etab-ligne')
     if (etab) {
       const s = el('span', 'edt-etab'); const i = el('i'); i.style.background = couleurDe(edt, etab).fort
       s.append(i, etab)
       ligneEtab.append('Établissement : ', s)
-    } else ligneEtab.append('L\'établissement vient du dossier choisi (son dossier du haut).')
+    } else ligneEtab.append('L\'établissement vient du dossier choisi.')
     // Le classeur
     const choixClasseur = el('fieldset', 'edt-classeur')
     choixClasseur.append(el('legend', '', 'Classeur ouvert à ce créneau'))
@@ -297,12 +301,15 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
     vue.hidden = true; vueImport.hidden = false
     vueImport.replaceChildren()
     const t = el('h2', '', 'Importer l\'emploi du temps de Pronote')
-    if (!etablissements.length) {
+    const noms = etablissements()
+    if (!noms.length) {
       vueImport.append(t, el('p', '', 'La bibliothèque n\'a pas encore de dossier : créez d\'abord le dossier de votre établissement et ceux de vos classes.'))
       const ac = el('div', 'actions'); ac.append(bouton('principal', 'Retour', retour)); vueImport.append(ac)
       return
     }
-    let etab = etablissements[0].nom
+    let etab = noms[0]
+    // Une couleur différente pour chacun, même avant le premier import
+    const apercu = colorier(edt, noms)
     const liens = liensPronote()
     const choixEtab = el('div', 'edt-etabs'); choixEtab.setAttribute('role', 'group'); choixEtab.setAttribute('aria-label', 'Établissement')
     const lien = el('input', 'edt-lien') as HTMLInputElement; lien.type = 'url'; lien.placeholder = 'https://…index-education.net/pronote/ical/…'
@@ -312,11 +319,11 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
       for (const b of choixEtab.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.nom === n))
       lien.value = liens[n] ?? ''
     }
-    for (const x of etablissements) {
-      const b = bouton('edt-etab-choix', '', () => poserEtab(x.nom))
-      b.dataset.nom = x.nom
-      const i = el('i'); i.style.background = couleurDe(edt, x.nom).fort
-      b.append(i, x.nom)
+    for (const x of noms) {
+      const b = bouton('edt-etab-choix', '', () => poserEtab(x))
+      b.dataset.nom = x
+      const i = el('i'); i.style.background = couleurDe(apercu, x).fort
+      b.append(i, x)
       choixEtab.append(b)
     }
     const modeLien = el('input') as HTMLInputElement; modeLien.type = 'radio'; modeLien.name = 'edt-mode'; modeLien.className = 'edt-mode-lien'
@@ -377,13 +384,16 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
     const ab = lus.some(x => x.semaines !== 'AB')
     const p = el('p', '', `${cours.length} cours lus, rangés en ${n} créneau${n > 1 ? 'x' : ''}${ab ? ' ; les deux semaines ne sont pas pareilles : une semaine A et une semaine B' : ''}. Choisissez la classe de chaque cours ; l'outil s'en souviendra.`)
     // Les dossiers de cet établissement d'abord
-    const racine = etablissements.find(x => x.nom === etab)
-    const dedans = racine ? sousDossiers(racine.id, dossiers) : new Set<string>()
+    const dedans = new Set(dossiersDe(etab, dossiers).map(x => x.id))
     const proposes = [...dossiersTries.filter(x => dedans.has(x.id)), ...dossiersTries.filter(x => !dedans.has(x.id))]
     const choix: Record<string, string | null> = {}
     for (const k of coursUniques) {
       if (k in edt.correspondances) choix[k] = edt.correspondances[k]
-      else choix[k] = devinerDossier(k, proposes.filter(x => dedans.has(x.id)).filter(x => x.id !== racine?.id))?.id ?? null
+      else {
+        // Parmi les classes de l'établissement (sans le dossier à son nom) ; s'il n'en a aucune, parmi toutes
+        const ici = proposes.filter(x => dedans.has(x.id) && x.nom !== etab)
+        choix[k] = devinerDossier(k, ici.length ? ici : proposes.filter(x => x.nom !== etab))?.id ?? null
+      }
     }
     const boite = el('div', 'edt-table-boite')
     const table = el('table', 'edt-table')
@@ -423,11 +433,11 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
     compter()
     const faire = () => {
       const dansEtab = (c: Creneau) => {
-        const e = etablissementDe(c.dossier, dossiers)
+        const e = etablissementDuCreneau(c, dossiers)
         return e === etab || (c.dossier === null && !!c.pronote)
       }
       const avant = edt.creneaux.length
-      enregistrer(importer(edt, lus, choix, dansEtab))
+      enregistrer(importer(edt, lus, choix, dansEtab, etab))
       if (lien) { garderLien(etab, lien); garderLu(etab, cours) }
       const k = edt.creneaux.length - avant
       h.message(lien ? `Emploi du temps de ${etab} relié à Pronote : il se relira tout seul.` : `Emploi du temps de ${etab} importé${k > 0 ? ` (${k} créneau${k > 1 ? 'x' : ''} de plus)` : ''}.`)

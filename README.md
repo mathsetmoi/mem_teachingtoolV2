@@ -6240,8 +6240,11 @@ propose la classe qui arrive à l'heure qu'il est.
   sur un créneau le montre dessous. Un créneau : le jour, l'horaire, les
   semaines (A et B, A seulement, B seulement), la **classe** (un dossier de
   la bibliothèque), un nom affiché, une salle (facultative). L'établissement
-  est le dossier du haut de la classe (« LFB › 2 › 2nde 3 » : LFB), avec sa
-  couleur. Tout s'enregistre à chaque changement.
+  est celui où la classe est rangée sur l'ordinateur (un niveau « 2 » rangé
+  dans le dossier de LFB, même en haut de la bibliothèque), sinon le dossier
+  du haut de la classe (« LFB › 2 › 2nde 3 » : LFB) ; un créneau importé de
+  Pronote garde l'établissement choisi à l'import. Chacun a sa couleur. Tout
+  s'enregistre à chaque changement.
 - **Le classeur d'un créneau** : par défaut **le chapitre en cours**, le
   dernier classeur de la classe où une séance a eu lieu (hors « Séances
   isolées ») : il suit tout seul quand on change de chapitre. On peut aussi
