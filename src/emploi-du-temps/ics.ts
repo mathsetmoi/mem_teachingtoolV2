@@ -165,7 +165,7 @@ export function devinerDossier<D extends { id: string; nom: string }>(cours: str
  *  établissement qui venaient de Pronote sont remplacés (un créneau saisi
  *  à la main reste) ; ceux qu'on garde gardent leur classeur choisi.
  *  choix : le dossier de chaque cours (null : ne pas importer). */
-export function importer(e: EmploiDuTemps, lus: readonly CreneauLu[], choix: Readonly<Record<string, string | null>>, dansLEtablissement: (c: Creneau) => boolean): EmploiDuTemps {
+export function importer(e: EmploiDuTemps, lus: readonly CreneauLu[], choix: Readonly<Record<string, string | null>>, dansLEtablissement: (c: Creneau) => boolean, etablissement?: string): EmploiDuTemps {
   const anciens = e.creneaux.filter(c => c.pronote && dansLEtablissement(c))
   const gardes = e.creneaux.filter(c => !(c.pronote && dansLEtablissement(c)))
   const neufs: Creneau[] = []
@@ -176,6 +176,7 @@ export function importer(e: EmploiDuTemps, lus: readonly CreneauLu[], choix: Rea
     const c: Creneau = { id: avant?.id ?? idCreneau(), jour: x.jour, debut: x.debut, fin: x.fin, semaines: x.semaines, dossier, nom: avant?.dossier === dossier ? avant.nom : '', pronote: x.cours }
     if (x.salle) c.salle = x.salle
     if (avant?.classeur && avant.dossier === dossier) c.classeur = avant.classeur
+    if (etablissement) c.etablissement = etablissement
     neufs.push(c)
   }
   return { ...e, creneaux: trier([...gardes, ...neufs]), correspondances: { ...e.correspondances, ...choix } }
@@ -185,7 +186,7 @@ export function importer(e: EmploiDuTemps, lus: readonly CreneauLu[], choix: Rea
  *  cours annulés et ceux qu'on n'importe pas n'y sont pas. Un créneau de la
  *  semaine type qui leur ressemble (même cours, même jour) prête son id,
  *  son nom et son classeur choisi. null : le lien ne couvre pas ce jour. */
-export function coursDuJour(cours: readonly Cours[], couvre: { de: number; a: number }, t: number, e: EmploiDuTemps): Creneau[] | null {
+export function coursDuJour(cours: readonly Cours[], couvre: { de: number; a: number }, t: number, e: EmploiDuTemps, etablissement?: string): Creneau[] | null {
   const d = new Date(t); d.setHours(0, 0, 0, 0)
   const debut = d.getTime(), fin = debut + JOUR_MS
   if (fin <= couvre.de || debut >= couvre.a) return null
@@ -201,6 +202,7 @@ export function coursDuJour(cours: readonly Cours[], couvre: { de: number; a: nu
     const n: Creneau = { id: type?.id ?? `lien-${c.debut}`, jour, debut: m, fin: Math.min(24 * 60, m + Math.round((c.fin - c.debut) / 60_000)), semaines: 'AB', dossier, nom: type?.nom ?? '', pronote: c.cours }
     if (c.salle) n.salle = c.salle
     if (type?.classeur) n.classeur = type.classeur
+    if (etablissement) n.etablissement = etablissement
     r.push(n)
   }
   return r

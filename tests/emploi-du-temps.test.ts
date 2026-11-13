@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   adopter, avecSemainesAB, classeurDuCreneau, colorier, creneauDeLaBulle, creneauDuMoment, creneauxDuJour, direLaSemaine, etablissementDe,
+  dossiersDe, etablissementDuCreneau, etablissementsConnus,
   heureDite, horaireDit, lireEmploiDuTemps, lireHeure, lundiDe, prochainCreneau, semaineDe, VIDE, type Creneau, type EmploiDuTemps,
 } from '../src/emploi-du-temps/donnees'
 import { coursDuJour, devinerDossier, enCreneaux, importer, lireCalendrier, lireDate, nettoyer } from '../src/emploi-du-temps/ics'
@@ -114,6 +115,25 @@ describe('la classe d\'un créneau', () => {
     expect(etablissementDe('lfb', DOSSIERS)).toBe('LFB')
     expect(etablissementDe(null, DOSSIERS)).toBeNull()
   })
+  it('un niveau rangé sur l\'ordinateur dans le dossier d\'un établissement (lot 18) est à cet établissement, même en haut de la bibliothèque', () => {
+    // Axiom et LyFEL en haut ; les niveaux de LFB aussi, rangés dans le dossier de LFB
+    const D = [
+      { id: 'ax', nom: 'Axiom', parent: null }, { id: 'ly', nom: 'LyFEL', parent: null }, { id: 'd4b', nom: '4e B', parent: 'ly' },
+      { id: 'n2', nom: '2', parent: null, etablissement: 'LFB' }, { id: 'd2nde3', nom: '2nde 3', parent: 'n2' },
+      { id: 'n1', nom: '1re', parent: null, etablissement: 'LFB' },
+    ]
+    expect(etablissementDe('d2nde3', D)).toBe('LFB')
+    expect(etablissementDe('n1', D)).toBe('LFB')
+    expect(etablissementDe('d4b', D)).toBe('LyFEL')
+    expect(etablissementsConnus(D)).toEqual(['Axiom', 'LFB', 'LyFEL'])
+    // Un établissement du lot 18 sans dossier rangé chez lui est proposé aussi
+    expect(etablissementsConnus(D, ['MEM', 'LFB', ''])).toEqual(['Axiom', 'LFB', 'LyFEL', 'MEM'])
+    expect(dossiersDe('LFB', D).map(d => d.id)).toEqual(['n2', 'd2nde3', 'n1'])
+    // Le créneau importé garde l'établissement choisi
+    expect(etablissementDuCreneau({ dossier: 'd4b', etablissement: 'LFB' }, D)).toBe('LFB')
+    expect(etablissementDuCreneau({ dossier: 'd4b' }, D)).toBe('LyFEL')
+    expect(lireEmploiDuTemps({ creneaux: [cr(1, { etablissement: ' LFB ' })] }).creneaux[0].etablissement).toBe('LFB')
+  })
   it('chaque établissement a sa couleur, la première libre', () => {
     const e = colorier({ ...VIDE, couleurs: { LFB: 1 } }, ['LFB', 'LyFEL', 'MEM'])
     expect(e.couleurs).toEqual({ LFB: 1, LyFEL: 0, MEM: 2 })
@@ -216,6 +236,9 @@ describe('un fichier de Pronote', () => {
     // Le créneau qui existait garde son id, son nom et son classeur choisi
     expect(f.creneaux[0]).toMatchObject({ id: ID(1), nom: '2nde 3 (B12)', classeur: 'probas', salle: 'B12' })
     expect(f.correspondances).toEqual({ 'MATHEMATIQUES - 2NDE3': 'd2nde3', 'MATHEMATIQUES - 2NDE3 GR1': null })
+    // L'établissement choisi à l'import est posé sur les créneaux venus de Pronote
+    const g = importer(e, lus, { 'MATHEMATIQUES - 2NDE3': 'd2nde3' }, c => etablissementDe(c.dossier, DOSSIERS) === 'LFB', 'LFB')
+    expect(g.creneaux.filter(c => c.pronote).every(c => c.etablissement === 'LFB')).toBe(true)
   })
   it('le lien, pour un jour : la salle changée, le cours annulé absent, hors de ce qu\'il couvre : rien', () => {
     const e = importer({ ...VIDE, lundiA: LUNDI_A }, lus, { 'MATHEMATIQUES - 2NDE3': 'd2nde3' }, () => true)

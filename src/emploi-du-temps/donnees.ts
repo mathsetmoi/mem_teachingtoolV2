@@ -5,8 +5,10 @@
 // CLASSE (un dossier de la bibliothèque). Le classeur ouvert à ce créneau
 // est, sauf choix contraire, le CHAPITRE EN COURS de ce dossier : le
 // dernier classeur où une séance a eu lieu (il suit tout seul quand on
-// change de chapitre). L'établissement est le dossier du haut de la classe
-// (« LFB › 2 › 2nde 3 » : LFB), avec une couleur à lui.
+// change de chapitre). L'établissement est celui où la classe est rangée
+// sur l'ordinateur (lot 18 : un niveau « 2 » rangé dans le dossier de LFB),
+// sinon le dossier du haut de la classe (« LFB › 2 › 2nde 3 » : LFB) ; un
+// créneau importé de Pronote garde celui choisi à l'import. Chacun a sa couleur.
 //
 // Tout vit dans l'index de la bibliothèque, sous une clé nouvelle
 // (REGLAGE_EMPLOI_DU_TEMPS : aucune base ni clé existante ne change) et part
@@ -41,6 +43,9 @@ export interface Creneau {
   /** Le cours de Pronote d'où il vient (« MATHS - 2NDE3 »), et son
    *  établissement ; absent : saisi à la main */
   pronote?: string
+  /** L'établissement choisi à l'import de Pronote (« LFB ») ; absent :
+   *  celui du dossier de la classe (etablissementDe) */
+  etablissement?: string
 }
 
 export interface EmploiDuTemps {
@@ -79,7 +84,10 @@ export const RETARD_BULLE = 10
 const ID = /^[0-9a-f]{16}$/
 
 /** Ce qu'il faut savoir d'un dossier de la bibliothèque */
-export interface DossierMin { id: string; nom: string; parent: string | null; corbeille?: unknown }
+/** Un dossier de la bibliothèque, tel que l'emploi du temps le lit.
+ *  etablissement : l'établissement (lot 18) dans le dossier duquel ce
+ *  dossier est rangé sur l'ordinateur, posé à la lecture (moment.ts) */
+export interface DossierMin { id: string; nom: string; parent: string | null; corbeille?: unknown; etablissement?: string }
 
 /** Un id (16 chiffres hexadécimaux), comme ceux de la bibliothèque */
 export function idCreneau(): string {
@@ -103,6 +111,7 @@ export function lireCreneau(x: unknown): Creneau | null {
   const salle = texte(o.salle, 30); if (salle) c.salle = salle
   if (typeof o.classeur === 'string' && o.classeur) c.classeur = o.classeur
   const pronote = texte(o.pronote, 200); if (pronote) c.pronote = pronote
+  const etablissement = texte(o.etablissement, 60); if (etablissement) c.etablissement = etablissement
   return c
 }
 
@@ -211,7 +220,7 @@ export function creneauxDuJour(e: EmploiDuTemps, t: number, dossiers: readonly D
   const s = semaineDe(e, t)
   const type = e.creneaux.filter(c => c.jour === jour && c.semaines.includes(s))
   if (!lien || !lien.etablissements.size) return trier(type)
-  const gardes = type.filter(c => { const n = etablissementDe(c.dossier, dossiers); return !n || !lien.etablissements.has(n) })
+  const gardes = type.filter(c => { const n = etablissementDuCreneau(c, dossiers); return !n || !lien.etablissements.has(n) })
   return trier([...gardes, ...lien.creneaux])
 }
 
@@ -251,11 +260,34 @@ export function cheminDuDossier(id: string | null, dossiers: readonly DossierMin
   return l
 }
 
-/** L'établissement d'un dossier : le nom du dossier du haut de son chemin
+/** L'établissement d'un dossier : celui où lui, ou le plus proche de ses
+ *  parents, est rangé sur l'ordinateur (lot 18 : « 2 », rangé dans le
+ *  dossier de LFB : LFB) ; sinon le nom du dossier du haut de son chemin
  *  (« LFB › 2 › 2nde 3 » : LFB) ; null : pas de dossier */
 export function etablissementDe(id: string | null, dossiers: readonly DossierMin[]): string | null {
-  return cheminDuDossier(id, dossiers)[0]?.nom ?? null
+  const chemin = cheminDuDossier(id, dossiers)
+  for (let i = chemin.length - 1; i >= 0; i--) if (chemin[i].etablissement) return chemin[i].etablissement!
+  return chemin[0]?.nom ?? null
 }
+
+/** L'établissement d'un créneau : celui choisi à l'import, sinon celui de sa classe */
+export function etablissementDuCreneau(c: Pick<Creneau, 'dossier' | 'etablissement'>, dossiers: readonly DossierMin[]): string | null {
+  return c.etablissement || etablissementDe(c.dossier, dossiers)
+}
+
+/** Les établissements à proposer : ceux des dossiers de la bibliothèque,
+ *  ceux du lot 18 (même sans dossier rangé chez eux), ceux déjà dans
+ *  l'emploi du temps ; par nom */
+export function etablissementsConnus(dossiers: readonly DossierMin[], autres: Iterable<string> = []): string[] {
+  const noms = new Set<string>()
+  for (const d of dossiers) { const n = etablissementDe(d.id, dossiers); if (n) noms.add(n) }
+  for (const n of autres) if (n) noms.add(n)
+  return [...noms].sort((a, b) => a.localeCompare(b, 'fr', { numeric: true }))
+}
+
+/** Les dossiers d'un établissement */
+export const dossiersDe = <D extends DossierMin>(nom: string, dossiers: readonly D[]): D[] =>
+  dossiers.filter(d => etablissementDe(d.id, dossiers) === nom)
 
 /** Donne une couleur aux établissements qui n'en ont pas : la première libre */
 export function colorier(e: EmploiDuTemps, noms: Iterable<string>): EmploiDuTemps {
