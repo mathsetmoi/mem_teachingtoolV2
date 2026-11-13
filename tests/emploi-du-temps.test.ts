@@ -115,21 +115,15 @@ describe('la classe d\'un créneau', () => {
     expect(etablissementDe('lfb', DOSSIERS)).toBe('LFB')
     expect(etablissementDe(null, DOSSIERS)).toBeNull()
   })
-  it('un niveau rangé sur l\'ordinateur dans le dossier d\'un établissement (lot 18) est à cet établissement, même en haut de la bibliothèque', () => {
-    // Axiom et LyFEL en haut ; les niveaux de LFB aussi, rangés dans le dossier de LFB
+  it('les établissements proposés : les dossiers du haut, et les noms tapés (« LFB », dont les niveaux sont en haut)', () => {
     const D = [
       { id: 'ax', nom: 'Axiom', parent: null }, { id: 'ly', nom: 'LyFEL', parent: null }, { id: 'd4b', nom: '4e B', parent: 'ly' },
-      { id: 'n2', nom: '2', parent: null, etablissement: 'LFB' }, { id: 'd2nde3', nom: '2nde 3', parent: 'n2' },
-      { id: 'n1', nom: '1re', parent: null, etablissement: 'LFB' },
     ]
-    expect(etablissementDe('d2nde3', D)).toBe('LFB')
-    expect(etablissementDe('n1', D)).toBe('LFB')
-    expect(etablissementDe('d4b', D)).toBe('LyFEL')
-    expect(etablissementsConnus(D)).toEqual(['Axiom', 'LFB', 'LyFEL'])
-    // Un établissement du lot 18 sans dossier rangé chez lui est proposé aussi
-    expect(etablissementsConnus(D, ['MEM', 'LFB', ''])).toEqual(['Axiom', 'LFB', 'LyFEL', 'MEM'])
-    expect(dossiersDe('LFB', D).map(d => d.id)).toEqual(['n2', 'd2nde3', 'n1'])
-    // Le créneau importé garde l'établissement choisi
+    expect(etablissementsConnus(D)).toEqual(['Axiom', 'LyFEL'])
+    expect(etablissementsConnus(D, ['LFB', 'Axiom', ''])).toEqual(['Axiom', 'LFB', 'LyFEL'])
+    expect(dossiersDe('LyFEL', D).map(d => d.id)).toEqual(['ly', 'd4b'])
+    expect(dossiersDe('LFB', D)).toEqual([])
+    // Le créneau importé garde l'établissement choisi ou tapé
     expect(etablissementDuCreneau({ dossier: 'd4b', etablissement: 'LFB' }, D)).toBe('LFB')
     expect(etablissementDuCreneau({ dossier: 'd4b' }, D)).toBe('LyFEL')
     expect(lireEmploiDuTemps({ creneaux: [cr(1, { etablissement: ' LFB ' })] }).creneaux[0].etablissement).toBe('LFB')
