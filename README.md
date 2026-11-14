@@ -6478,6 +6478,52 @@ pendant le cours est filmée, son choix A).
   (préparer, le violet, le menu ⋯, « Bonjour ! », le film). Adapté :
   `lot23/E1` (la ligne « Prochain cours » a le lien « préparer »).
 
+## Trois petits outils de classe (lot 26)
+
+Le QR du replay, la fiche pour un élève absent, et des touches pour
+l'épaisseur du trait.
+
+### Le mode d'emploi
+
+- **Le QR du replay.** À la fin de Publier, un petit QR s'affiche à côté du
+  lien. « Afficher le QR en grand » le met par-dessus le tableau : les élèves
+  le photographient avec leur téléphone. Échap, un clic ou un appui le
+  ferment. C'est un simple lien vers le replay : personne ne se connecte, et
+  le QR n'entre pas dans le replay. Une séance déjà publiée : en rouvrant
+  Publier (fenêtre complète, « Modifier… »), la ligne « Cette séance a déjà
+  un lien » redonne le QR et la fiche sans republier.
+- **La fiche pour un élève absent.** Le bouton « Fiche pour un élève
+  absent… » télécharge un PDF : une page de garde (la date, le chapitre,
+  « Ce qu'on a fait » d'après le texte du cahier de textes, le lien et son QR),
+  puis les pages de la séance cochées, comme « Exporter en PDF ». Le message
+  pour l'ENT est copié en même temps : on le colle (Ctrl+V) et on joint le
+  PDF. Rien n'est envoyé par l'outil.
+- **Les touches 1, 2, 3.** Le trait fin, moyen ou épais de l'outil en main,
+  comme le bouton d'épaisseur (le Surligneur garde le sien). En AZERTY, sans
+  Maj : la touche marquée 1 suffit. Le pavé numérique aussi. Maj + 1 et
+  Maj + 2 restent « tout voir » et « voir la sélection ». On peut les régler
+  sur les boutons de la tablette.
+- **La version hors ligne** montre maintenant le lien et le QR après avoir
+  rangé le replay dans un dossier : ils pointent sur la version en ligne et
+  marchent dès que Google Drive pour ordinateur a envoyé le fichier.
+
+### Comment c'est fait
+
+- `src/publication/qr.ts` : le QR est fabriqué sur place (la bibliothèque
+  `qrcode-generator`, groupée dans le fichier de la version hors ligne),
+  correction M, le lien en UTF-8 ; en SVG (Publier, le grand QR) ou sur un
+  canevas (la page de garde).
+- `src/publication/fiche-absent.ts` : le message pour l'ENT, le nom du PDF, la
+  peinture de la page de garde. `exporterPdf` (`src/sorties/export-pdf.ts`)
+  accepte une option facultative `garde` : une feuille portrait peinte avant
+  les pages.
+- `toucheEpaisseur` (`src/navigateur.ts`) lit la touche par `e.code`, et le
+  pavé seulement quand il donne des chiffres ; `App.clavier` appelle
+  `choisirTaille`.
+- `LECTEUR_EN_LIGNE` (`src/publication/comptes.ts`) : le lecteur des élèves
+  de la version en ligne, pour les liens donnés depuis la version hors ligne.
+- Essais : `tests/petits-outils.test.ts`, `essais/navigateur/lot26/Q1-petits-outils.mjs`.
+
 ## Ce que fait la v0.1
 
 Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment

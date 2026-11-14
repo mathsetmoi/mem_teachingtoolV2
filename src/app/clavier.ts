@@ -4,9 +4,9 @@
 // elles s'ajoutent à la classe à la fin de app.ts (ajouterMethodes).
 // =============================================================
 import type { App } from '../app'
-import { COULEURS } from '../app'
+import { COULEURS, TAILLES } from '../app'
 import { rotationDe } from '../geometrie'
-import { fenetreModaleOuverte, lireMolette, tableauCache, toucheMarquePage, toucheMenu, toucheTenueEnGeste, toucheVerrou } from '../navigateur'
+import { fenetreModaleOuverte, lireMolette, tableauCache, toucheMarquePage, toucheEpaisseur, toucheMenu, toucheTenueEnGeste, toucheVerrou } from '../navigateur'
 import { reglages } from '../reglages'
 import { TAILLE_TEXTE, champsDuTexte, estTexte } from '../texte'
 import { EditeurTexte } from '../texte-editeur'
@@ -321,6 +321,22 @@ export const methodesClavier = {
       return
     }
     if (ctrl) return
+    // 1, 2, 3 : le trait fin, moyen ou épais de l'outil en main, comme le
+    // bouton d'épaisseur. Par la touche (e.code) : en AZERTY, la touche
+    // marquée 1 donne « & » sans Maj, et elle doit suffire ; Maj + 1 et
+    // Maj + 2 restent tout voir et voir la sélection (plus haut). Le pavé
+    // numérique aussi, quand il donne des chiffres (verrouillé, il donne Fin,
+    // les flèches…). Une bulle le dit.
+    const cran = toucheEpaisseur(e)
+    if (cran !== null) {
+      e.preventDefault()
+      if (!e.repeat) {
+        this.choisirTaille(TAILLES[cran].valeur)
+        this.ui.maj()
+        this.ui.message(`Trait ${TAILLES[cran].nom.toLowerCase()}`)
+      }
+      return
+    }
     const raccourcis: Record<string, Outil> = { p: 'stylo', h: 'surligneur', e: 'gomme', x: 'point', l: 'segment', f: 'formule', t: 'texte', v: 'selection' }
     const formes: Record<string, TypeForme> = { r: 'rectangle', c: 'cercle', g: 'polygone' }
     const k = e.key.toLowerCase()
