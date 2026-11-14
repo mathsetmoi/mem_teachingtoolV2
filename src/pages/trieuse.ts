@@ -475,7 +475,8 @@ export class Trieuse {
     const t = this.app.tableau, l = t.seancesDuClasseur(), jour = t.derniereSeance()
     this.titreSeance.hidden = !jour
     if (jour) {
-      const titre = `Aujourd'hui · ${jour.nom ?? dateCourteMajuscule(jour.debut).replace(/^./, c => c.toLowerCase())}`
+      // Une séance à venir qu'on prépare (lot 25) : « À venir · lun 16 nov 8h05 »
+      const titre = `${jour.aVenir ? 'À venir' : 'Aujourd\'hui'} · ${jour.nom ?? dateCourteMajuscule(jour.debut).replace(/^./, c => c.toLowerCase())}`
       if (this.titreSeance.textContent !== titre) this.titreSeance.textContent = titre
     }
     // Dans l'ordre de la bibliothèque : la plus récente d'abord, ou l'ordre choisi à la main
@@ -490,7 +491,7 @@ export class Trieuse {
       d.className = 'trieuse-une-seance'; d.dataset.seance = s.id
       d.open = this.deplies.has(s.id)
       const resume = document.createElement('summary')
-      resume.textContent = `${s.nom ? s.nom + ' · ' + dateCourteMajuscule(s.debut) : dateCourteMajuscule(s.debut)} · ${pagesLisibles(s.pages.length)}`
+      resume.textContent = `${s.aVenir ? 'À venir · ' : ''}${s.nom ? s.nom + ' · ' + dateCourteMajuscule(s.debut) : dateCourteMajuscule(s.debut)} · ${pagesLisibles(s.pages.length)}`
       d.append(resume)
       // La fiche de la séance (resume/fiche.ts) : ce qui a été fait, sa
       // durée, et le texte du cahier de textes s'il a été écrit
@@ -519,7 +520,7 @@ export class Trieuse {
           b.type = 'button'; b.className = 'trieuse-vignette-passee'; b.dataset.page = p
           const nom = t.nomDe(p), reprise = this.reprise(p)
           if (reprise) b.classList.add('reprise')
-          b.title = `Voir la page ${i + 1}${nom ? ` · ${nom}` : ''} (${libelleSeance(s)}), sans la modifier${reprise ? ` · reprise ${reprise}` : ''}`
+          b.title = s.aVenir ? `Préparer la page ${i + 1}${nom ? ` · ${nom}` : ''} (séance à venir, ${libelleSeance(s)})` : `Voir la page ${i + 1}${nom ? ` · ${nom}` : ''} (${libelleSeance(s)}), sans la modifier${reprise ? ` · reprise ${reprise}` : ''}`
           b.setAttribute('aria-label', b.title)
           const n = Object.assign(document.createElement('span'), { className: 'numero', textContent: String(i + 1) })
           b.append(this.vignettes.vignette(p, 144, 90), n)

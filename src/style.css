@@ -228,6 +228,9 @@ button.rang:hover { background: #e9eef5; }
 .rang-seance .bouton.seance-precedente svg { width: 16px; height: 16px; }
 
 button.rang.en-lecture { background: #fff3d6; box-shadow: inset 0 0 0 1px #e6c36a; }
+/* Une séance à venir qu'on prépare (lot 25) : le compteur et l'étiquette en violet */
+.rang-seance.a-venir { background: #ece9fb; border-color: #8f80e0; color: #3f2fa6; }
+button.rang.a-venir { background: #ece9fb; box-shadow: inset 0 0 0 1px #8f80e0; }
 
 /* ---------- Le bouton du classeur (lot 4) ----------
    À gauche de la barre du haut, dans sa propre barre, à 12 px de la barre
@@ -2225,11 +2228,31 @@ body.contraste .toast .action { background: rgba(255, 255, 255, 0.26); }
 .accueil-un-chapitre { width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--filet); border-radius: 10px; background: var(--papier); font: inherit; text-align: left; cursor: pointer; }
 .accueil-un-chapitre .nom { font-weight: 700; }
 .accueil-un-chapitre .nombre { color: var(--encre-douce); }
+/* « Commencer la séance préparée » (lot 25) : en violet, avec son nom et ses pages en petit */
+.accueil-nouvelle.accueil-preparee { display: grid; gap: 2px; justify-items: start; text-align: left; background: #5a46c8; border-color: #5a46c8; }
+.accueil-nouvelle.accueil-preparee:hover { background: #4a37b3; }
+.accueil-preparee .detail { font-size: 13px; font-weight: 400; opacity: 0.9; }
+.accueil-vide { margin: 6px 0 0; color: var(--encre-douce); }
 .accueil-un-chapitre.ici { border-color: var(--bleu); box-shadow: inset 0 0 0 1px var(--bleu); }
 /* Le classeur « Séances isolées » du niveau (lot 17), en dernier : un bord en pointillé, « hors chapitre » en petit gris */
 .accueil-un-chapitre.isolees { border-style: dashed; }
 .accueil-un-chapitre .hors-chapitre { color: var(--encre-douce); font-size: 13px; }
-.dialogue-reprise .actions, .dialogue-nom-seance .actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.dialogue-reprise .actions, .dialogue-nom-seance .actions, .dialogue-preparer .actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+/* « Préparer une séance » (lot 25) : les prochains cours, une autre date, le nom */
+.dialogue-preparer { width: min(520px, calc(100vw - 32px)); }
+.dialogue-preparer .aide-preparer { margin: 0 0 12px; color: var(--encre-douce); }
+.preparer-cours { display: grid; gap: 8px; margin-bottom: 10px; }
+.preparer-un-cours { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--filet); border-radius: 10px; cursor: pointer; }
+.preparer-un-cours:has(input:checked) { border-color: #8f80e0; background: #ece9fb; }
+.preparer-un-cours input { margin-top: 3px; accent-color: #5a46c8; }
+.preparer-un-cours .texte { display: grid; }
+.preparer-un-cours .quand { font-weight: 700; }
+.preparer-un-cours .detail { color: var(--encre-douce); font-size: 13px; }
+.preparer-date { width: 100%; height: 44px; padding: 0 12px; margin-bottom: 12px; border: 1px solid var(--filet); border-radius: 10px; font: inherit; }
+.preparer-date[hidden] { display: none; }
+.preparer-nom { display: grid; gap: 4px; font-weight: 700; }
+.preparer-nom .saisie-nom-seance { font-weight: 400; }
+.erreur-preparer { margin: 0 0 10px; color: #b3261e; font-weight: 700; }
 .saisie-nom-seance { width: 100%; height: 44px; padding: 0 12px; margin-bottom: 14px; border: 1px solid var(--filet); border-radius: 10px; font: inherit; }
 /* Les bandeaux, sous la barre du haut, au milieu de ce qu'on voit */
 .bandeau-seance {
@@ -2242,6 +2265,9 @@ body.contraste .toast .action { background: rgba(255, 255, 255, 0.26); }
 }
 .bandeau-seance .texte { font-weight: 700; }
 .bandeau-reprise { background: #e4ecf8; border-color: var(--bleu); }
+.bandeau-preparation { background: #ece9fb; border-color: #8f80e0; }
+.bandeau-preparation .texte { color: #3f2fa6; }
+.bandeau-preparation .suite { font-weight: 400; }
 .bandeau-seance .petit, .tiroir-seance .petit { height: 36px; padding: 0 12px; }
 .fermer-seance { width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; cursor: pointer; color: var(--encre-douce); }
 .fermer-seance svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
@@ -2678,6 +2704,7 @@ body.page-nuit :is(.barre, .barre-actions, .rang-seance, .champ-recherche) {
 body.page-nuit :is(.bouton, button.rang, .bouton-classeur, .zoom-texte):hover { background: #2a3342; }
 body.page-nuit .bouton.actif::before { background: #8a7400; }
 body.page-nuit .rang-seance.en-lecture, body.page-nuit button.rang.en-lecture { background: #4a3d12; border-color: #8a6f1e; box-shadow: none; }
+body.page-nuit .rang-seance.a-venir, body.page-nuit button.rang.a-venir { background: #2f2858; border-color: #6c5fc4; color: #d9d2ff; box-shadow: none; }
 body.page-nuit.contraste :is(.barre, .barre-actions, .rang-seance, .champ-recherche) { --filet: #6b7890; --encre-douce: #d0d6e0; }
 body.page-nuit.contraste :is(.bouton, button.rang, .bouton-classeur, .zoom-texte, .option, .choix):hover { background: #34405a; }
 

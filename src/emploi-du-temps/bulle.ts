@@ -5,13 +5,15 @@
 // début : « LFB · 11 h 05 · 1re spé 2 arrive · Ouvrir 1s_04_Trigo · × ».
 // Elle ne cache pas la page, n'ouvre rien toute seule ; × la ferme pour ce
 // créneau (aujourd'hui). Un clic ouvre le classeur de la classe qui arrive,
-// sur une nouvelle séance. Rien quand ce classeur est déjà celui qui est
+// sur une nouvelle séance (sur la séance préparée pour ce cours, s'il y en
+// a une : « Ouvrir la séance préparée », lot 25). Rien quand ce classeur est déjà celui qui est
 // ouvert, ni quand une fenêtre est ouverte (elle attend qu'elle se ferme).
 // =============================================================
 import type { Registre } from '../classeurs/registre'
 import type { FicheClasseur } from '../classeurs/demarrage'
 import { creneauDeLaBulle, heureDite } from './donnees'
 import { creneauVu, momentPresent } from './moment'
+import { seanceAVenirDuMoment } from '../seances'
 
 const CLE_FERMEES = 'mem-teachingtool-bulle-fermee'
 
@@ -24,7 +26,7 @@ export class BulleEmploiDuTemps {
   private minuterie = 0
   private enCours = false
 
-  constructor(private racine: HTMLElement, private registre: Registre, private ici: () => string, private partir: (f: FicheClasseur) => void) {}
+  constructor(private racine: HTMLElement, private registre: Registre, private ici: () => string, private partir: (f: FicheClasseur, seance?: string) => void) {}
 
   demarrer() {
     window.clearInterval(this.minuterie)
@@ -65,8 +67,11 @@ export class BulleEmploiDuTemps {
       texte.append(quoi, ' arrive')
       const ouvrir = document.createElement('button')
       ouvrir.type = 'button'; ouvrir.className = 'principal bulle-ouvrir'
-      ouvrir.textContent = `Ouvrir ${f.nom}`
-      ouvrir.addEventListener('click', () => { fermer(cle); this.retirer(); this.partir(f) })
+      // Une séance préparée pour ce cours (lot 25) : on l'ouvre, et elle commence
+      const preparee = seanceAVenirDuMoment(f.listeSeances ?? [], t)
+      ouvrir.textContent = preparee ? 'Ouvrir la séance préparée' : `Ouvrir ${f.nom}`
+      if (preparee) ouvrir.title = `${f.nom} · ${preparee.nom ?? 'séance préparée'}`
+      ouvrir.addEventListener('click', () => { fermer(cle); this.retirer(); this.partir(f, preparee?.id) })
       const x = document.createElement('button')
       x.type = 'button'; x.className = 'fermer-bulle'; x.textContent = '×'
       x.setAttribute('aria-label', 'Fermer')

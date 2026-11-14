@@ -159,7 +159,7 @@ await p.clock.setSystemTime(lundi(12, 40))
 await allerA(ids.probas)
 v = await vueAccueil()
 // La séance de Probas date de 10 h 05 : plus d'une heure
-ok(v.dlg && !v.creneau && v.chapitre === '2_13_Probas' && norm(v.prochain) === 'Prochain cours : 14 h 05, 4e B LyFEL · ouvrir 4_05_Pythagore', 'E1) 12 h 40 : la fenêtre d\'avant, avec « Prochain cours : 14 h 05, 4e B · LyFEL · ouvrir 4_05_Pythagore »', v)
+ok(v.dlg && !v.creneau && v.chapitre === '2_13_Probas' && norm(v.prochain) === 'Prochain cours : 14 h 05, 4e B LyFEL · ouvrir 4_05_Pythagore · préparer', 'E1) 12 h 40 : la fenêtre d\'avant, avec « Prochain cours : 14 h 05, 4e B · LyFEL · ouvrir 4_05_Pythagore · préparer » (« préparer » : lot 25)', v)
 await capture('2-bonjour-prochain.png')
 await p.keyboard.press('Escape'); await p.waitForTimeout(200)
 

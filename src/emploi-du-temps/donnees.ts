@@ -330,6 +330,28 @@ export function classeurDuCreneau<F extends ClasseurMin>(c: Creneau, classeurs: 
   return l.find(f => !estIsolees(f)) ?? l[0] ?? null
 }
 
+/** Les prochains cours d'un classeur (« Préparer une séance… », lot 25) :
+ *  les créneaux de la semaine type dont la classe contient le classeur (son
+ *  dossier, ou un dossier au-dessus), ou qui l'ont choisi, à partir de t,
+ *  sur trois semaines au plus ; n au plus, du plus proche au plus loin.
+ *  debut : l'heure du cours (ms) ; creneau : le créneau. */
+export function prochainsCours(e: EmploiDuTemps, classeur: { id: string; dossier: string | null }, dossiers: readonly DossierMin[], t: number, n = 3): { debut: number; creneau: Creneau }[] {
+  const chemin = new Set(cheminDuDossier(classeur.dossier, dossiers).map(d => d.id))
+  const siens = (c: Creneau) => c.classeur === classeur.id || (!c.classeur && c.dossier !== null && chemin.has(c.dossier))
+  if (!e.creneaux.some(siens)) return []
+  const r: { debut: number; creneau: Creneau }[] = []
+  const d0 = new Date(t)
+  for (let k = 0; k < 21 && r.length < n; k++) {
+    const jour = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + k, 12)
+    for (const c of creneauxDuJour(e, jour.getTime(), dossiers)) {
+      if (!siens(c)) continue
+      const debut = new Date(jour.getFullYear(), jour.getMonth(), jour.getDate(), Math.floor(c.debut / 60), c.debut % 60).getTime()
+      if (debut > t && r.length < n) r.push({ debut, creneau: c })
+    }
+  }
+  return r
+}
+
 /** Le nom à l'écran : le nom tapé, sinon celui du dossier */
 export function nomDuCreneau(c: Creneau, dossiers: readonly DossierMin[]): string {
   return c.nom || dossiers.find(d => d.id === c.dossier)?.nom || 'Classe à choisir'

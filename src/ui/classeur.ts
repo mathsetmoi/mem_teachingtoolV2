@@ -17,7 +17,8 @@ import { ENTREES, allerAuxEntrees, fermerMenu, filetMenu, ouvrirMenu, placerMenu
 import { CTRL, tableauCache } from '../navigateur'
 import { ouvrirEnvoi } from '../pages/envoi'
 import { pointeurDuClic } from '../pointeurs'
-import { dateCourteMajuscule, libelleSeance, seancesDansLOrdre } from '../seances'
+import { dateCourteMajuscule, dateLongue, libelleSeance, seancesDansLOrdre } from '../seances'
+import { demanderSeancePreparee } from '../seance-preparee-vue'
 import type { SeanceDuClasseur } from '../seances'
 import { demanderNomDeSeance, demanderReprise } from '../seances-vue'
 import type { PageAPeindre } from '../sorties/apercu'
@@ -311,13 +312,15 @@ export const methodesClasseur = {
       titreMenu(m, 'Séances de ce chapitre')
       for (const s of seances.slice(0, SEANCES_AU_MENU)) {
         const n = s.pages.length
-        const aide = [s.nom ? dateCourteMajuscule(s.debut) : null, `${n} page${n > 1 ? 's' : ''}`, s.id === derniere?.id ? null : 'en lecture'].filter(x => x).join(' · ')
+        const aide = [s.aVenir ? 'à venir' : null, s.nom ? dateCourteMajuscule(s.debut) : null, `${n} page${n > 1 ? 's' : ''}`, s.id === derniere?.id || s.aVenir ? null : 'en lecture'].filter(x => x).join(' · ')
         const b = this.entreeMenu(m, libelleSeance(s), () => this.voirSeance(s.id), { action: 'voir-seance', coche: s.id === vue?.id, aide })
         b.dataset.seance = s.id
       }
       if (this.bibliotheque) this.entreeMenu(m, `Toutes les séances (${seances.length})…`, () => this.toutesLesSeances(), { action: 'toutes-les-seances' })
     }
     if (vue) this.entreeMenu(m, 'Nouvelle séance', () => this.nouvelleSeance(), { action: 'nouvelle-seance' })
+    // (lot 25) Une séance pour un cours qui vient, préparée à l'avance
+    if (vue) this.entreeMenu(m, 'Préparer une séance…', () => void this.preparerUneSeance(), { action: 'preparer-seance' })
     if (m.childElementCount) filetMenu(m)
     this.entreeMenu(m, 'Bibliothèque des classeurs', () => this.ouvrirBibliotheque(this.menuSeances.bouton ?? this.boutonClasseur), { action: 'bibliotheque', touche: this.telephone ? undefined : `${CTRL} + B` })
   },
@@ -455,6 +458,49 @@ export const methodesClasseur = {
     if (nom === null) return
     if (this.app.tableau.renommerSeance(s.id, nom || null)) this.message(nom ? `Séance renommée : « ${nom} »` : `Nom de la séance retiré : « ${libelleSeance({ debut: s.debut, nom: null })} »`)
     this.maj()
+  },
+
+  // ----- Les séances préparées à l'avance (lot 25, voir seances.ts) -----
+  /** « Préparer une séance… » (le menu du classeur) : la fenêtre, puis la
+   *  séance à venir, qu'on prépare */
+  async preparerUneSeance(this: UI, o: { debut?: number } = {}): Promise<void> {
+    const app = this.app
+    if (tableauCache(app) || app.enLecture || document.querySelector('dialog[open]')) return
+    this.fermerMenus()
+    const cours = await (this.coursAPreparer?.() ?? Promise.resolve([])).catch(() => [])
+    if (document.querySelector('dialog[open]')) return
+    const r = await demanderSeancePreparee(this.racine, {
+      titre: `Préparer une séance · ${app.classeur.nom}`,
+      aide: cours.length ? 'Pour quel cours ? (d\'après votre emploi du temps)' : 'Pour quel cours ?',
+      cours: o.debut !== undefined && !cours.some(c => c.debut === o.debut) ? [{ debut: o.debut, detail: '' }, ...cours] : cours,
+      nom: '', bouton: 'Préparer', ...(o.debut !== undefined ? { actuelle: o.debut } : {}),
+    })
+    if (!r || !app.preparerSeance(r.debut, r.nom)) return
+    this.message(`Séance à venir : ${dateLongue(r.debut)}. Ce que vous y posez sera déjà là au début du cours.`)
+  },
+
+  /** « Changer la date… » (le menu ⋯, pendant qu'on prépare) */
+  async changerDateDeLaSeance(this: UI): Promise<void> {
+    const app = this.app, s = app.seancePreparee()
+    if (!s || document.querySelector('dialog[open]')) return
+    this.fermerMenus()
+    const cours = await (this.coursAPreparer?.() ?? Promise.resolve([])).catch(() => [])
+    if (document.querySelector('dialog[open]')) return
+    const r = await demanderSeancePreparee(this.racine, {
+      titre: 'Changer la date de la séance', aide: `Elle est prévue pour le ${dateLongue(s.debut)}.`,
+      cours, nom: null, actuelle: s.debut, bouton: 'Changer la date',
+    })
+    if (!r) return
+    if (app.tableau.changerDateSeance(s.id, r.debut)) this.message(`Séance à venir : ${dateLongue(r.debut)}`)
+    this.maj()
+  },
+
+  /** « Commencer la séance maintenant » (le menu ⋯, pendant qu'on prépare) :
+   *  elle devient la séance du jour, son film commence */
+  commencerLaSeance(this: UI): void {
+    const app = this.app, s = app.seancePreparee()
+    if (!s || tableauCache(app) || document.querySelector('dialog[open]')) return
+    if (app.commencerSeancePreparee(s.id)) this.message(`Séance commencée : ${libelleSeance(app.seanceVue ?? s)}. Le film du cours commence maintenant.`)
   },
 
   /** « Nouvelle séance » (le menu ⋯) */

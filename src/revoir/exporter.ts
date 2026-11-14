@@ -118,8 +118,19 @@ export interface SeanceExplicite extends Seance {
  *  Une séance sans étape a de > a. gestes, fin et pages comptent comme
  *  seancesDuFilm (ni l'ordre changé, ni une naissance, ni un rangement, ni
  *  un réglage) ; debut reste celui de la séance. */
-export function seancesExplicitesDuFilm(film: readonly Etape[], seances: readonly { id: string; debut: number; depuis: number; nom: string | null; ancienne?: boolean; pages: string[] }[]): SeanceExplicite[] {
+export function seancesExplicitesDuFilm(film: readonly Etape[], seances: readonly { id: string; debut: number; depuis: number; nom: string | null; ancienne?: boolean; aVenir?: boolean; pages: string[] }[]): SeanceExplicite[] {
   const asc = [...seances].sort((x, y) => x.debut - y.debut)
+  // Le décor d'une séance préparée (lot 25, voir seances.ts) : ce qu'on a
+  // écrit sur ses pages avant que son cours commence (avant son début, ou
+  // tant qu'elle est à venir). Il tombe dans la plage d'une autre séance
+  // (on prépare lundi pendant le week-end qui suit vendredi), mais n'en est
+  // ni un geste, ni une page, ni la fin.
+  const decor = new Map<string, { debut: number; aVenir: boolean }>()
+  for (const s of asc) for (const p of s.pages) decor.set(p, { debut: s.debut, aVenir: !!s.aVenir })
+  const deDecor = (e: Etape, ici: { pages: string[] }) => {
+    const d = e.page ? decor.get(e.page) : undefined
+    return !!d && !ici.pages.includes(e.page) && (d.aVenir || e.t < d.debut)
+  }
   const departs: number[] = []
   let i = 0
   asc.forEach((s, k) => {
@@ -149,7 +160,7 @@ export function seancesExplicitesDuFilm(film: readonly Etape[], seances: readonl
     const x: SeanceExplicite = { id: s.id, nom: s.nom, ancienne: !!s.ancienne, pagesDeSeance: [...s.pages], de, a, debut: s.debut, fin: s.debut, gestes: 0, pages: [] }
     for (let j = de; j <= a; j++) {
       const e = film[j]
-      if (e.seulOrdre || e.naissance || e.rangement || e.reglage) continue
+      if (e.seulOrdre || e.naissance || e.rangement || e.reglage || deDecor(e, s)) continue
       x.gestes++; x.fin = Math.max(x.fin, e.t)
       if (e.page && !x.pages.includes(e.page)) x.pages.push(e.page)
     }
@@ -170,7 +181,9 @@ export function aMontrer(f: FilmEleve): boolean {
  *  qu'elle propose, a quelque chose à montrer. */
 export function seancesAPublier(tableau: Tableau, ecart = ENTRE_DEUX_SEANCES): Seance[] {
   const explicites = seancesDuTableau(tableau)
-  if (explicites) return explicites.filter(s => s.de <= s.a && aMontrer(exporter(tableau, { de: s.de, a: s.a, pages: pagesAPublier(tableau, s), titre: '' }, { instruments: false })))
+  // Une séance à venir (lot 25) n'a encore rien à revoir : son cours n'a pas commencé
+  const aVenir = new Set(tableau.seancesDuClasseur().filter(s => s.aVenir).map(s => s.id))
+  if (explicites) return explicites.filter(s => !aVenir.has(s.id) && s.de <= s.a && aMontrer(exporter(tableau, { de: s.de, a: s.a, pages: pagesAPublier(tableau, s), titre: '' }, { instruments: false })))
   return seancesDuFilm(tableau.film.toArray(), ecart)
     .filter(s => aMontrer(exporter(tableau, { de: s.de, a: s.a, pages: pagesDeLaSeance(tableau, s), titre: '' }, { instruments: false })))
 }

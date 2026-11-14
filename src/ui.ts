@@ -3,6 +3,7 @@
 // Elle ne décide de rien : elle montre l'état de l'application et
 // lui transmet les clics. Tout est reconstruit par « maj() ».
 // =============================================================
+import type { CoursPropose } from './seance-preparee-vue'
 import type { App, Interface, Prise } from './app'
 import { COULEURS } from './app'
 import type { Bout, Forme, MarquePoint, Outil, TypeForme } from './types'
@@ -530,6 +531,10 @@ export class UI implements Interface {
    *  « Déplacer « Fractions » vers… », et son fichier suit) ; posée par
    *  main.ts ; l'entrée est grise tant qu'elle manque */
   deplacerClasseur: (() => void) | null = null
+  /** Les prochains cours de la classe du classeur ouvert, d'après
+   *  l'emploi du temps (« Préparer une séance… », lot 25) ; posée par
+   *  main.ts (sans bibliothèque : aucune proposition, une date à choisir) */
+  coursAPreparer: (() => Promise<CoursPropose[]>) | null = null
   /** « Emploi du temps… » du menu ⋯ (lot 2 de l'audit) : la fenêtre « Mon
    *  emploi du temps » ; posée par main.ts (sans bibliothèque, pas d'entrée) */
   emploiDuTemps: (() => void) | null = null

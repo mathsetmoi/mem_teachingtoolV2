@@ -32,7 +32,8 @@ import { ecrivain } from './classeurs/ecrivain'
 import { Fichiers } from './classeurs/fichiers'
 import type { ActionMessage } from './app'
 import type { SeanceDuClasseur } from './seances'
-import { deLaSeance } from './seances'
+import { dateCourte, deLaSeance, seanceAVenirDuMoment } from './seances'
+import { pagesLisibles } from './fichier'
 import type { ChapitreAccueil, HoteAccueil } from './seances-vue'
 import { ouvrirAccueil } from './seances-vue'
 import { installerCurseurs } from './curseurs'
@@ -40,7 +41,7 @@ import { entreeMenu } from './menus'
 import { ENTREE_EMPLOI_DU_TEMPS, ouvrirEmploiDuTemps } from './emploi-du-temps/vue'
 import { BulleEmploiDuTemps } from './emploi-du-temps/bulle'
 import { ecrireEDT, lireEDT, momentPresent, quandDit, type Moment } from './emploi-du-temps/moment'
-import { AVANCE_ACCUEIL, direLaSemaine, heureDite, horaireDit, jourEtMinute } from './emploi-du-temps/donnees'
+import { AVANCE_ACCUEIL, avecSemainesAB, direLaSemaine, heureDite, horaireDit, jourEtMinute, nomDuCreneau, prochainsCours, semaineDe } from './emploi-du-temps/donnees'
 import { relireLesLiens } from './emploi-du-temps/pronote'
 import { comparerEtiquettes, etiquetteHeritee, remontee } from './classeurs/arbre'
 import { NOM_SEANCES_ISOLEES, classeurSeancesIsolees, estSeancesIsolees, isoleesEnQueue, texteClasseurIsoleesCree, texteSeanceIsolee } from './classeurs/isolees'
@@ -267,7 +268,11 @@ async function demarrer() {
   // La séance (lot 6) : on reste dans celle du jour si elle a servi depuis
   // moins d'une heure ; sinon, la fenêtre d'accueil (à la fin du démarrage)
   const arrivage = lireNouvelleSeance(infos.id)
-  let depart = app.seanceAuDemarrage({ nouvelle: arrivage.nouvelle })
+  // Arrivé pour commencer une séance préparée (lot 25, « Bonjour ! » ou la
+  // bulle d'un autre classeur) : elle commence, sans la fenêtre
+  let depart = arrivage.preparee && app.commencerSeancePreparee(arrivage.preparee)
+    ? { genre: 'rien' as const }
+    : app.seanceAuDemarrage({ nouvelle: arrivage.nouvelle })
   // Arrivé par la ligne « séances » d'une carte : on va à cette séance, sans
   // la fenêtre d'accueil (on l'a choisie)
   const seanceVue = !!SEANCE_VOULUE && voirLaSeance(app, SEANCE_VOULUE)
@@ -431,12 +436,31 @@ async function demarrer() {
     const ouvrirVerification = brancherVerification(ui.bibliotheque, verification, t => ui.message(t))
     // L'emploi du temps (lot 2 de l'audit) : « Emploi du temps… » aux menus ⋯
     // du tableau et de la bibliothèque, et la bulle « … arrive »
-    const bulle = new BulleEmploiDuTemps(document.getElementById('app')!, registre, () => infos.id, f => {
+    const bulle = new BulleEmploiDuTemps(document.getElementById('app')!, registre, () => infos.id, (f, seance) => {
       if (!ui.bibliotheque) return
-      noterNouvelleSeance(f.id, false)
+      noterNouvelleSeance(f.id, false, seance)
       void ui.bibliotheque.ouvrirClasseur(f)
     })
-    const ouvrirEDT = () => void ouvrirEmploiDuTemps(document.getElementById('app')!, { registre, message: t => ui.message(t), change: () => void bulle.recalculer() })
+    // « Préparer une séance… » (lot 25) : les prochains cours de la classe
+    // du classeur, d'après l'emploi du temps (relu à l'instant)
+    ui.coursAPreparer = async () => {
+      const [edt, dossiers, f] = await Promise.all([lireEDT(registre), registre.dossiers(), registre.classeur(infos.id)])
+      const vivants = dossiers.filter(d => !d.corbeille)
+      const ab = avecSemainesAB(edt)
+      return prochainsCours(edt, { id: infos.id, dossier: f?.dossier ?? fiche.dossier }, vivants, Date.now()).map(c => ({
+        debut: c.debut,
+        detail: [nomDuCreneau(c.creneau, vivants), ab ? `semaine ${semaineDe(edt, c.debut)}` : '', c.creneau.salle ? `salle ${c.creneau.salle}` : ''].filter(Boolean).join(' · '),
+      }))
+    }
+    // « Préparer le prochain cours » (lot 25) : ici, la fenêtre « Préparer
+    // une séance » ; dans un autre classeur, on y part, et elle s'y ouvre
+    const preparer = (debut: number, f: FicheClasseur) => {
+      if (f.id === infos.id) { void ui.preparerUneSeance({ debut }); return }
+      if (!ui.bibliotheque) return
+      noterNouvelleSeance(f.id, false, undefined, debut)
+      void ui.bibliotheque.ouvrirClasseur(f)
+    }
+    const ouvrirEDT = () => void ouvrirEmploiDuTemps(document.getElementById('app')!, { registre, message: t => ui.message(t), change: () => void bulle.recalculer(), preparer })
     ui.emploiDuTemps = ouvrirEDT
     ui.bibliotheque.menuDuBandeau.push(m => { entreeMenu(m, ENTREE_EMPLOI_DU_TEMPS, ouvrirEDT, { action: 'emploi-du-temps' }) })
     edtBranche = { bulle, ouvrir: ouvrirEDT }
@@ -564,6 +588,11 @@ async function demarrer() {
     const continue_ = moment.maintenant.classeur?.id === infos.id && depart.seance.debut >= debutDuCreneau - AVANCE_ACCUEIL * 60_000
     if (!continue_) depart = { genre: 'accueil', seance: depart.seance }
   }
+  // Une séance préparée dont le cours arrive (lot 25 : dans moins d'une
+  // demi-heure, ou déjà passé aujourd'hui) : « Bonjour ! » la propose, même
+  // si la séance du jour a servi il y a moins d'une heure
+  const prevue = seanceAVenirDuMoment(tableau.seancesDuClasseur(), Date.now())
+  if (depart.genre === 'reprise' && depart.seance && prevue && prevue.debut - Date.now() <= 30 * 60_000 && !ouvertDUnFichier && !arrivee) depart = { genre: 'accueil', seance: depart.seance }
   let accueil: Promise<HTMLDialogElement | null> | null = null
   if (depart.genre === 'reprise' && depart.seance && !autreMessage) ui.message(`Séance ${deLaSeance(depart.seance, Date.now())} reprise`)
   else if (depart.genre === 'accueil' && depart.seance && !ouvertDUnFichier && !arrivee) accueil = ouvrirLAccueil(app, ui, registre, fiche, depart.seance, moment, edtBranche?.ouvrir ?? null)
@@ -571,6 +600,8 @@ async function demarrer() {
   if (seanceVue && PUBLIER_VOULU && SEANCE_VOULUE && !document.querySelector('dialog[open]')) ui.publierLaSeance(SEANCE_VOULUE)
   // Parti d'un autre classeur avec « Commencer par des automatismes » cochée
   if (arrivage.automatismes && !document.querySelector('dialog[open]')) ui.flash.ouvrir()
+  // Parti de l'emploi du temps d'un autre classeur pour préparer un cours (lot 25)
+  if (arrivage.preparer !== null && !document.querySelector('dialog[open]')) void ui.preparerUneSeance({ debut: arrivage.preparer })
   // Le rappel d'enregistrer le classeur qu'on vient de quitter (20 minutes
   // de travail que rien ne protège, voir Bibliotheque.ouvrirClasseur) : un
   // message avec un bouton, 30 s, une fois dit ce que l'arrivée avait à
@@ -655,18 +686,23 @@ demarrer()
  *  « Commencer par des automatismes » était cochée */
 const CLE_NOUVELLE_SEANCE = 'mem-teachingtool-nouvelle-seance'
 
-function lireNouvelleSeance(id: string): { nouvelle: boolean; automatismes: boolean } {
+function lireNouvelleSeance(id: string): { nouvelle: boolean; automatismes: boolean; preparee: string | null; preparer: number | null } {
   try {
     const t = sessionStorage.getItem(CLE_NOUVELLE_SEANCE)
     sessionStorage.removeItem(CLE_NOUVELLE_SEANCE)
     const o = t ? JSON.parse(t) : null
-    const nouvelle = !!o && o.id === id && typeof o.t === 'number' && Date.now() - o.t < 60_000
-    return { nouvelle, automatismes: nouvelle && o.automatismes === true }
-  } catch { return { nouvelle: false, automatismes: false } }
+    const valable = !!o && o.id === id && typeof o.t === 'number' && Date.now() - o.t < 60_000
+    const preparer = valable && typeof o.preparer === 'number' && Number.isFinite(o.preparer) ? o.preparer : null
+    const nouvelle = valable && preparer === null
+    return { nouvelle, automatismes: nouvelle && o.automatismes === true, preparee: nouvelle && typeof o.seance === 'string' ? o.seance : null, preparer }
+  } catch { return { nouvelle: false, automatismes: false, preparee: null, preparer: null } }
 }
 
-function noterNouvelleSeance(id: string, automatismes: boolean) {
-  try { sessionStorage.setItem(CLE_NOUVELLE_SEANCE, JSON.stringify(automatismes ? { id, t: Date.now(), automatismes } : { id, t: Date.now() })) } catch { /* on arrivera sans nouvelle séance */ }
+/** Deux champs de plus dans la même clé (lot 25) : seance, on y arrive
+ *  pour commencer cette séance préparée plutôt qu'une nouvelle ; preparer,
+ *  pour préparer la séance du cours de cette heure (rien ne commence) */
+function noterNouvelleSeance(id: string, automatismes: boolean, seance?: string, preparer?: number) {
+  try { sessionStorage.setItem(CLE_NOUVELLE_SEANCE, JSON.stringify({ id, t: Date.now(), ...(automatismes ? { automatismes } : {}), ...(seance ? { seance } : {}), ...(preparer ? { preparer } : {}) })) } catch { /* on arrivera sans nouvelle séance */ }
 }
 
 /** Les dossiers et tout ce qui est dedans (les sous-dossiers compris) */
@@ -703,9 +739,9 @@ async function contexteDuNiveau(ui: UI, registre: Registre | null, fiche: FicheC
     const tous = sousDossiers(d, vivants)
     return ouvrables.filter(f => f.dossier !== null && tous.has(f.dossier))
   }
-  const partir = (f: FicheClasseur, automatismes = false) => {
+  const partir = (f: FicheClasseur, automatismes = false, seance?: string) => {
     if (!ui.bibliotheque) return
-    noterNouvelleSeance(f.id, automatismes)
+    noterNouvelleSeance(f.id, automatismes, seance)
     void ui.bibliotheque.ouvrirClasseur(f)
   }
   const nouveauChapitre = (d: string | null) => ui.bibliotheque?.nouveauClasseur({ chapitre: { dossier: d, dossiers: carte } })
@@ -821,6 +857,13 @@ async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche
       texte: `${heureDite(pro.creneau.debut)}, ${pro.nom}`, etablissement: pro.etablissement, couleur: pro.couleur.fort,
       libelle: pro.classeur && pro.classeur.id !== ici?.id ? `ouvrir ${pro.classeur.nom}` : null,
       ouvrir: auto => { if (pro.classeur) partir(pro.classeur, auto) },
+      // (lot 25) La séance de ce cours, préparée à l'avance
+      preparer: pro.classeur ? () => {
+        const f = pro.classeur!, d = new Date(t)
+        const debut = new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(pro.creneau.debut / 60), pro.creneau.debut % 60).getTime()
+        if (f.id === ici?.id) void ui.preparerUneSeance({ debut })
+        else if (ui.bibliotheque) { noterNouvelleSeance(f.id, false, undefined, debut); void ui.bibliotheque.ouvrirClasseur(f) }
+      } : null,
     } : null,
     saisirEmploiDuTemps: edtVide ? saisirEDT : null,
   }
@@ -847,5 +890,18 @@ async function ouvrirLAccueil(app: App, ui: UI, registre: Registre | null, fiche
     },
     nouveauChapitre: () => nouveauChapitre(dossierCible),
   } : {}
-  return ouvrirAccueil(document.getElementById('app')!, { ...base, ...parLEmploiDuTemps, ...versLeCreneau })
+  // Une séance préparée pour ce cours (lot 25) : celle du classeur ouvert
+  // (prévue aujourd'hui, ou dont le cours n'a pas eu lieu), ou celle du
+  // classeur du créneau, quand il est ailleurs (sa fiche la sait à venir)
+  const lePreparee = (s: { id: string; nom?: string | null; debut: number; pages: number }, classeur: string, faire: (auto: boolean) => void) =>
+    ({ texte: [s.nom || `Prévue ${dateCourte(s.debut)}`, pagesLisibles(s.pages), classeur].join(' · '), faire })
+  let preparee: HoteAccueil['preparee'] = null
+  if (ailleurs && cible) {
+    const s = seanceAVenirDuMoment(cible.listeSeances ?? [], t)
+    if (s) preparee = lePreparee(s, cible.nom, auto => partir(cible, auto, s.id))
+  } else {
+    const s = seanceAVenirDuMoment(app.tableau.seancesDuClasseur(), t)
+    if (s) preparee = lePreparee({ ...s, pages: s.pages.length }, app.classeur.nom, auto => { if (app.commencerSeancePreparee(s.id) && auto) ui.flash.ouvrir() })
+  }
+  return ouvrirAccueil(document.getElementById('app')!, { ...base, ...parLEmploiDuTemps, ...versLeCreneau, preparee })
 }

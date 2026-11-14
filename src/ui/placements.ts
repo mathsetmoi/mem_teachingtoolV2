@@ -13,7 +13,7 @@ import type { OptionsEntree } from '../menus'
 import { tableauCache } from '../navigateur'
 import { nocturne } from '../nuit'
 import { reglages } from '../reglages'
-import { dateCourteMajuscule, libelleSeance } from '../seances'
+import { dateCourteMajuscule, dateLongue, libelleAVenir, libelleSeance } from '../seances'
 import { DOIGTS, TITRE_AJOUT, TITRE_SUIVANTE, griser } from '../ui'
 
 export const methodesPlacements = {
@@ -57,15 +57,19 @@ export const methodesPlacements = {
     const seance = app.seanceVue, passee = app.enSeancePassee
     const numero = !pages.length ? '…' : passee ? `page ${i + 1}` : `${i + 1} / ${pages.length}`
     const nom = i >= 0 ? app.tableau.nomDe(pages[i]) : null
-    const texteSeance = !seance ? '' : passee ? `${seance.nom ?? dateCourteMajuscule(seance.debut)} · en lecture` : libelleSeance(seance)
+    // Une séance à venir qu'on prépare (lot 25) : « À venir · lun 16 nov 8h05 », en violet
+    const prepare = !!seance && !passee && seance.aVenir
+    const texteSeance = !seance ? '' : passee ? `${seance.nom ?? dateCourteMajuscule(seance.debut)} · en lecture` : prepare ? libelleAVenir(seance) : libelleSeance(seance)
     if (this.rangSeanceTexte.textContent !== texteSeance) this.rangSeanceTexte.textContent = texteSeance
     this.rangSeance.hidden = !texteSeance
     this.rang.classList.toggle('en-lecture', passee)
     this.rangSeance.classList.toggle('en-lecture', passee)
+    this.rang.classList.toggle('a-venir', prepare)
+    this.rangSeance.classList.toggle('a-venir', prepare)
     if (this.rangNumero.textContent !== numero) this.rangNumero.textContent = numero
     const suite = nom ? ` · ${nom}` : ''
     if (this.rangNom.textContent !== suite) this.rangNom.textContent = suite
-    const titreSeance = seance ? `${passee ? `Séance passée, en lecture : ${libelleSeance(seance)}` : libelleSeance(seance)} · Toutes les pages (Maj + P)` : ''
+    const titreSeance = seance ? `${passee ? `Séance passée, en lecture : ${libelleSeance(seance)}` : prepare ? `Séance à venir, préparée pour le ${dateLongue(seance.debut)}` : libelleSeance(seance)} · Toutes les pages (Maj + P)` : ''
     if (this.rangSeanceTexte.title !== titreSeance) this.rangSeanceTexte.title = titreSeance
     const titreRang = nom ? `Page ${numero} · ${nom} · Toutes les pages (Maj + P)` : 'Toutes les pages (Maj + P)'
     if (this.rang.title !== titreRang) this.rang.title = titreRang
