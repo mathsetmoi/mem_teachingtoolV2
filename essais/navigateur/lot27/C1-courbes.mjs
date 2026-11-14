@@ -176,15 +176,28 @@ await p.screenshot({ path: SORTIE + 'B-pose.png' })
 
 // H
 {
+  const voir = () => p.evaluate(() => {
+    const b = document.querySelector('button[aria-label^="Courbe"]'), r = b?.getBoundingClientRect()
+    return { visible: !!r && r.width > 0, droite: Math.max(...[...document.querySelectorAll('.barre-haut > *')].map(e => e.getBoundingClientRect().right)) }
+  })
+  const h1366 = await voir()
+  ok(h1366.visible && h1366.droite <= 1366, 'H. 1366 px : « Courbe » est dans la barre', h1366)
   await p.setViewportSize({ width: 1024, height: 768 })
   await p.waitForTimeout(400)
-  const h = await p.evaluate(() => {
-    const b = document.querySelector('button[aria-label^="Courbe"]'), r = b?.getBoundingClientRect()
-    const haut = document.querySelector('.barre-haut')
-    return { visible: !!r && r.width > 0, deborde: haut ? haut.scrollWidth > haut.clientWidth + 1 : null, droite: Math.max(...[...document.querySelectorAll('.barre-haut > *')].map(e => e.getBoundingClientRect().right)) }
-  })
-  ok(h.visible && !h.deborde && h.droite <= 1024, 'H. 1024 px : la barre tient, « Courbe » est là', h)
+  const h = await voir()
+  ok(!h.visible && h.droite <= 1024, 'H. 1024 px : « Courbe » laisse sa place (la barre tient)', h)
+  await p.click('button[aria-label^="Enregistrer, ouvrir"]')
+  await p.waitForTimeout(300)
+  const entree = p.locator('.menu-item[data-action="courbe"]')
+  ok(await entree.count() === 1, 'H. 1024 px : « Courbe » est dans le menu ⋯')
   await p.screenshot({ path: SORTIE + 'H-1024.png' })
+  if (await entree.count()) {
+    await p.keyboard.press('Escape'); await p.waitForTimeout(150)
+    if (await p.isVisible(pan)) { await p.evaluate(() => document.activeElement?.blur?.()); await p.keyboard.press('y'); await p.waitForTimeout(150) }
+    await p.click('button[aria-label^="Enregistrer, ouvrir"]'); await p.waitForTimeout(250)
+    await entree.click(); await p.waitForTimeout(200)
+    ok(await p.isVisible(pan), 'H. l\'entrée du menu ouvre le panneau')
+  }
 }
 
 ok(!erreurs.length, 'aucune erreur dans la page', erreurs)
