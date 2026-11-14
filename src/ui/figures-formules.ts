@@ -73,6 +73,7 @@ export const methodesFiguresFormules = {
     const construisait = this.constructeur.ouvert
     if (construisait) this.constructeur.fermer()
     if (this.catalogue.ouvert) this.catalogue.fermer()
+    if (this.courbes.ouvert) this.basculerCourbes()
     this.fermerMenuPartie()
     if (!construisait) return null
     return () => {

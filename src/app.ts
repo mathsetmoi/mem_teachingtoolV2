@@ -152,6 +152,8 @@ export interface Interface {
   ouvrirTrieuse(auClavier?: boolean): void
   /** L'aide et les raccourcis (outils de classe, touche « ? ») */
   ouvrirAide(): void
+  /** Le panneau « Courbes » s'ouvre ou se ferme (touche Y, lot 27) */
+  basculerCourbes(): void
   /** La fenêtre « Envoyer vers… » de ce qui est pris (voir pages/envoi.ts) ;
    *  ids : d'autres objets que ce qui est pris (les images fixées en fond,
    *  que le menu de la page envoie : elles ne se prennent pas) */

@@ -23,6 +23,8 @@ export const methodesPlacements = {
     // (lot 5) : le menu fermé, il ne l'est plus (avant tout le reste, qui lit
     // la sélection : la barre d'actions, « Supprimer » d'« Autres outils »)
     app.oublierProteges()
+    // Un repère pris à la Sélection : le panneau « Courbes » le modifie
+    this.courbes?.suivreSelection()
     for (const [id, b] of this.outils) b.classList.toggle('actif', app.outil === id)
     const doigt = DOIGTS.find(d => d.id === reglages.doigt)!
     if (this.boutonDoigt.dataset.badge !== doigt.marque) this.boutonDoigt.dataset.badge = doigt.marque

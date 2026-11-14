@@ -6527,6 +6527,62 @@ l'épaisseur du trait.
   de la version en ligne, pour les liens donnés depuis la version hors ligne.
 - Essais : `tests/petits-outils.test.ts`, `essais/navigateur/lot26/Q1-petits-outils.mjs`.
 
+## Tracer une fonction : l'outil « Courbe » (lot 27)
+
+Un repère posé sur la page, où l'on tape f(x) au clavier : la courbe
+apparaît. Maquette validée par le professeur le 14 novembre 2026 (« ok pour
+tout » : le bouton dans Insérer, les arrêts dans le replay, la saisie au
+clavier, et dans ce premier lot les courbes, les curseurs, la fenêtre, le
+point et la tangente).
+
+### Le mode d'emploi
+
+- **Ouvrir.** Le bouton « Courbe » de la famille Insérer, ou la touche **Y**
+  (aussi dans le menu ⋯ et la recherche). Le panneau s'ouvre à droite, à la
+  place du catalogue.
+- **Les modèles.** Lycée : x², 1/x, √x, x³, |x|, « Comparer x, x², x³ »,
+  a(x − α)² + β, ax² + bx + c, a(x − p)(x − q). 3e : ax + b, la fonction
+  linéaire ax, deux droites, « Affine ou pas ? ». Un clic sur un modèle : le
+  repère suit le pointeur, un clic le pose (15 cm sur 11,25 cm à 100 %).
+- **Taper f(x).** Jusqu'à quatre courbes (f, g, h, k, chacune sa couleur).
+  On écrit `2x+1`, `x^2` ou `x²`, `a(x-α)^2+β`, `1/x`, `racine(x)` ou `√x`,
+  `|x|`, `exp(x)`, `ln(x)`, avec la virgule ou le point. La formule bien
+  écrite s'affiche dessous ; une faute de frappe met la case en rouge et dit
+  ce qui ne va pas, sans rien casser.
+- **Les curseurs.** Chaque lettre autre que x (et e) devient un curseur, de
+  −5 à 5 par pas de 0,1 ; on tape une valeur pour aller plus loin.
+- **La fenêtre** (x de… à…, y de… à…) et « Ajuster aux courbes ». Les
+  graduations se choisissent seules (1, 2 ou 5 fois une puissance de 10).
+- **Le point M** sur la première courbe, ses pointillés vers les axes et ses
+  coordonnées ; **la tangente** en M avec son équation (y = 3x − 6,5) ; les
+  noms des courbes (𝒞f, 𝒞g) ; le quadrillage.
+- **Modifier un repère posé.** Tant que le panneau est ouvert, ce qu'on
+  change modifie le repère qu'on vient de poser. Un repère pris à la
+  Sélection (même déplacé, agrandi, ou dans une autre séance) se modifie de
+  la même façon ; « Poser un nouveau repère » en pose un autre.
+- **Le replay.** Pendant qu'on tape ou qu'on tient un curseur, le repère
+  n'est peint qu'à l'écran ; à chaque arrêt (le curseur lâché, la frappe
+  arrêtée un instant, Entrée), il est posé sur la page. Les élèves voient ces
+  arrêts, pas le mouvement. Chaque arrêt fait un Ctrl + Z.
+
+### Comment c'est fait
+
+- `src/courbes/calcul.ts` : lire une écriture (un petit analyseur, sans
+  bibliothèque : la version hors ligne trace aussi), sa formule en LaTeX, les
+  curseurs ; la recette ; le dessin du repère (lignes, points, étiquettes,
+  comme les dessins de la trigonométrie) ; les morceaux de courbe coupés aux
+  bords et aux asymptotes ; la dérivée approchée (pas de tangente en un
+  coin) ; « Ajuster aux courbes ».
+- `src/courbes/panneau.ts` : le panneau, la pose, la modification. Le repère
+  posé est fait d'objets ordinaires groupés (le quadrillage et les
+  graduations en un seul trait chacun, pour peu d'objets). L'axe des
+  abscisses porte la recette dans un champ facultatif `courbes`
+  (`types.ts`) : une version d'avant, et le lecteur des élèves, montrent le
+  repère tel quel. La copie (Ctrl + C, Ctrl + V) garde la recette
+  (`presse-papiers.ts`).
+- Essais : `tests/courbes.test.ts`, `essais/navigateur/lot27/C1-courbes.mjs`
+  (dans `tout.sh`, partie 2).
+
 ## Ce que fait la v0.1
 
 Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment

@@ -33,6 +33,7 @@ import type { P } from './formes'
 import { image, nomsLibres, sommetsDe } from './formes'
 import { uid } from './types'
 import { estTexte, latexDuTexte, lireTexte, texteBrut } from './texte'
+import { lireRecette } from './courbes/calcul'
 
 /** Ce qu'on a copié. Les formes ont leurs coordonnées absolues (celles de la
  *  page d'où elles viennent) ; images : les données (data:image/…) des
@@ -210,6 +211,9 @@ function refaireForme(v: Record<string, unknown>, prendreImage: (src: string) =>
       if (!h) return null
       const p: Polygone = { ...base, type: 'polygone', pts, ferme: v.ferme, ...h }
       if (v.prolonge === 'droite' || v.prolonge === 'demi') p.prolonge = v.prolonge
+      // L'axe d'un repère de l'outil « Courbe » garde sa recette (lot 27)
+      const recette = absent(v.courbes) ? null : lireRecette(v.courbes)
+      if (recette) p.courbes = recette
       return p
     }
     case 'cercle': {

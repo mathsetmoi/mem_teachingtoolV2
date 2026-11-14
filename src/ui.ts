@@ -11,6 +11,7 @@ import type { Fond } from './types'
 import { RevueEnClasse } from './revue/revue'
 import { Publication } from './publication/fenetre'
 import { Catalogue } from './catalogue-vue'
+import { Courbes } from './courbes/panneau'
 import { Constructeur } from './constructeur'
 import { Flash } from './flash'
 import type { NomInstrument } from './instruments'
@@ -318,6 +319,9 @@ export class UI implements Interface {
   publication!: Publication
   constructeur!: Constructeur
   catalogue!: Catalogue
+  /** Le panneau « Courbes » : tracer une fonction (voir courbes/panneau.ts) */
+  courbes!: Courbes
+  boutonCourbes?: HTMLButtonElement
   /** Le flash d'automatismes (voir flash.ts) */
   flash!: Flash
   choixInstruments!: HTMLDivElement

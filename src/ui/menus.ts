@@ -120,6 +120,7 @@ export const methodesMenus = {
       { titre: '100 %', icone: 'loupe', touche: `${CTRL} 0`, mots: 'zoom cent pour cent', faire: () => app.zoom100() },
       { titre: 'Tout voir', icone: 'loupe', touche: 'Maj 1', mots: 'zoom toute la page', faire: () => app.toutVoir() },
       { titre: 'Importer une image ou un PDF', icone: 'image', mots: 'image photo fichier pdf fiche énoncé', faire: () => this.choisirImage() },
+      { titre: 'Courbe : tracer une fonction', icone: 'courbe', touche: 'Y', mots: 'fonction courbe repere graphique tracer affine carre second degre parabole hyperbole curseur tangente', faire: () => { if (!this.courbes.ouvert) this.basculerCourbes() } },
       { titre: 'Programme de construction', icone: 'construction', mots: 'construire etape par etape', faire: () => this.basculerConstructeur() },
       { titre: 'Catalogue', icone: 'catalogue', mots: 'elements de cours tout prets', faire: () => this.basculerCatalogue() },
       { titre: 'Automatismes', icone: 'automatismes', mots: 'flash questions calcul mental', faire: () => this.flash.ouvrir() },
@@ -377,6 +378,7 @@ export const methodesMenus = {
     this.entreeMenu(m, 'Importer une image ou un PDF…', e => this.choisirImage(e), { action: 'importer' })
     this.entreeMenu(m, 'Instruments…', () => { this.choixInstruments.hidden = false; this.maj() }, { action: 'instruments',
       aide: 'Règle, équerre, rapporteur, compas' })
+    this.entreeMenu(m, 'Courbe', () => this.basculerCourbes(), { action: 'courbe', aide: 'Tracer une fonction', touche: 'Y' })
     this.entreeMenu(m, 'Programme de construction', () => this.basculerConstructeur(), { action: 'construction', aide: 'Étape par étape' })
     this.entreeMenu(m, 'Catalogue', () => this.basculerCatalogue(), { action: 'catalogue', aide: 'Ensembles de nombres…' })
     this.entreeMenu(m, 'Automatismes', () => this.flash.ouvrir(), { action: 'automatismes', aide: 'Un flash de questions' })

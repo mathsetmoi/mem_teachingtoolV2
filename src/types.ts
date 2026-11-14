@@ -6,6 +6,8 @@
 // Coordonnées en « unités monde » : 40 unités = 1 cm.
 // =============================================================
 
+import type { RecetteCourbes } from './courbes/calcul'
+
 export const CM = 40
 
 /** Le fond d'une page. Les quatre derniers sont du lot 5 : des valeurs
@@ -122,6 +124,11 @@ export interface Polygone extends Base, Habillage {
   ferme: boolean
   /** Deux points seulement : la droite (AB), ou la demi-droite [AB) */
   prolonge?: 'droite' | 'demi'
+  /** L'axe des abscisses d'un repère posé par l'outil « Courbe » (lot 27) :
+   *  la recette du repère (ses fonctions, ses curseurs, sa fenêtre), pour le
+   *  rouvrir et le modifier. Facultatif : sans lui, un trait ; une version
+   *  d'avant, le lecteur d'avant, montrent le repère tel quel. */
+  courbes?: RecetteCourbes
 }
 
 /** Cercle de centre (x, y) — ou arc, tracé au compas, de l'angle a0 à a1 */
