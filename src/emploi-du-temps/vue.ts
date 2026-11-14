@@ -145,13 +145,13 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
       s.append(i, n)
       legende.append(s)
     }
-    // La grille : une colonne par jour, du lundi au vendredi (le samedi s'il sert)
-    const jours = edt.creneaux.some(c => c.jour === 6) ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5]
+    // La grille : une colonne par jour, du lundi au dimanche
+    const jours = [1, 2, 3, 4, 5, 6, 7]
     const visibles = edt.creneaux.filter(c => c.semaines.includes(montree))
     const { de, a } = heuresDeLaGrille(edt.creneaux)
     const hauteur = (a - de) * 60 * PX_MINUTE
     grille.replaceChildren()
-    grille.style.gridTemplateColumns = `44px repeat(${jours.length}, minmax(112px, 1fr))`
+    grille.style.gridTemplateColumns = `44px repeat(${jours.length}, minmax(96px, 1fr))`
     grille.append(el('div', 'edt-coin'))
     for (const j of jours) grille.append(el('div', 'edt-jour', JOURS[j]))
     const heures = el('div', 'edt-heures'); heures.style.height = `${hauteur}px`
@@ -237,7 +237,7 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
     const champs = el('div', 'edt-champs')
     // Le jour
     const jour = el('select', 'edt-jour-choix') as HTMLSelectElement
-    for (let j = 1; j <= 6; j++) jour.append(option(String(j), JOURS[j], j === c.jour))
+    for (let j = 1; j <= 7; j++) jour.append(option(String(j), JOURS[j], j === c.jour))
     jour.addEventListener('change', () => { changer(c.id, x => ({ ...x, jour: Number(jour.value) })); dessiner() })
     // L'horaire
     const horaire = el('div', 'edt-horaire')

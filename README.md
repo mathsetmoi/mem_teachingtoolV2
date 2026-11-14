@@ -6233,8 +6233,8 @@ propose la classe qui arrive à l'heure qu'il est.
 
 - **« Emploi du temps… »**, au menu ⋯ du tableau (sous « Bibliothèque des
   classeurs… ») et au menu ⋯ de la bibliothèque, ouvre « Mon emploi du
-  temps » : la semaine en grille (Semaine A / Semaine B), une couleur par
-  établissement. Tant que la semaine est vide, « Bonjour ! » a aussi le
+  temps » : la semaine en grille, du lundi au dimanche (Semaine A /
+  Semaine B), une couleur par établissement. Tant que la semaine est vide, « Bonjour ! » a aussi le
   lien « Saisir mon emploi du temps… ».
 - **Un clic sur une case vide** ajoute un créneau à cette heure ; un clic
   sur un créneau le montre dessous. Un créneau : le jour, l'horaire, les
@@ -6261,7 +6261,10 @@ propose la classe qui arrive à l'heure qu'il est.
   montre « Vérifier les créneaux » : une classe par cours, ou « Ne pas
   importer ». Il s'en souvient pour le prochain import. Les créneaux venus
   de Pronote pour cet établissement sont remplacés ; ceux saisis à la main
-  restent.
+  restent. Les cours sont posés à l'**heure officielle** de l'établissement,
+  le jour et l'heure tels que Pronote les écrit, sans conversion vers le
+  fuseau de l'ordinateur (une heure UTC est ramenée au fuseau du
+  calendrier).
 - **Le lien synchronisé** est relu au lancement de la version en ligne (au
   plus toutes les 30 minutes) : un cours annulé ou des vacances retirent le
   créneau de « Bonjour ! » ce jour-là, une salle changée s'y voit. Le lien

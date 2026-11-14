@@ -24,7 +24,7 @@ const DOSSIERS = [
 describe('l\'emploi du temps relu', () => {
   it('garde ce qui est bien formé, sans doublon, par jour et par heure', () => {
     const e = lireEmploiDuTemps({
-      creneaux: [cr(2, { jour: 2 }), cr(1), cr(1), { ...cr(3), fin: 600 }, { ...cr(4), jour: 7 }, { id: 'court', jour: 1, debut: 1, fin: 2 }, null, 'x',
+      creneaux: [cr(2, { jour: 2 }), cr(1), cr(1), { ...cr(3), fin: 600 }, { ...cr(4), jour: 8 }, { id: 'court', jour: 1, debut: 1, fin: 2 }, null, 'x',
         { ...cr(5), semaines: 'Z', salle: '  B12 ', classeur: 'c1', pronote: 'MATHS - 2NDE3' }],
       couleurs: { LFB: 0, LyFEL: 9, MEM: 2 }, correspondances: { a: 'd1', b: null, c: 3 }, lundiA: LUNDI_A,
     })
@@ -172,12 +172,24 @@ const date = (k: number, j: number, h: number, m: number) => {
 }
 
 describe('un fichier de Pronote', () => {
-  it('les dates : UTC, avec un fuseau, ou à l\'heure de l\'ordinateur', () => {
-    expect(lireDate('20261109T090500Z')).toBe(Date.UTC(2026, 10, 9, 9, 5))
-    expect(lireDate('20261109T100500', 'Europe/Paris')).toBe(Date.UTC(2026, 10, 9, 9, 5))
-    expect(lireDate('20260709T100500', 'Europe/Paris')).toBe(Date.UTC(2026, 6, 9, 8, 5))
-    expect(lireDate('20261109T100500')).toBe(new Date(2026, 10, 9, 10, 5).getTime())
+  it('les dates : à l\'heure officielle de l\'établissement, quel que soit le fuseau de l\'ordinateur', () => {
+    // Le jour et l'heure écrits par Pronote, sans conversion
+    expect(lireDate('20261118T100500')).toBe(new Date(2026, 10, 18, 10, 5).getTime())
+    // Une heure UTC : ramenée au fuseau du calendrier (Paris : +1 h en hiver, +2 h en été)
+    expect(lireDate('20261118T090500Z', 'Europe/Paris')).toBe(new Date(2026, 10, 18, 10, 5).getTime())
+    expect(lireDate('20260708T080500Z', 'Europe/Paris')).toBe(new Date(2026, 6, 8, 10, 5).getTime())
+    expect(lireDate('20261118T090500Z')).toBe(Date.UTC(2026, 10, 18, 9, 5))
     expect(lireDate('pas une date')).toBeNaN()
+  })
+  it('le mercredi de Pronote reste le mercredi, à la même heure (TZID d\'un autre fuseau, ou UTC avec le fuseau du calendrier)', () => {
+    const avecTzid = lireCalendrier(['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'DTSTART;TZID=Europe/Paris:20261118T170000', 'DTEND;TZID=Europe/Paris:20261118T175500', 'SUMMARY:MATHEMATIQUES - 4e', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n'))
+    const d = new Date(avecTzid[0].debut)
+    expect([d.getDay(), d.getHours(), d.getMinutes()]).toEqual([3, 17, 0])
+    const enUtc = lireCalendrier(['BEGIN:VCALENDAR', 'X-WR-TIMEZONE:Europe/Paris', 'BEGIN:VEVENT', 'DTSTART:20261118T160000Z', 'DTEND:20261118T165500Z', 'SUMMARY:MATHEMATIQUES - 4e', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n'))
+    const u = new Date(enUtc[0].debut)
+    expect([u.getDay(), u.getHours(), u.getMinutes()]).toEqual([3, 17, 0])
+    // Un cours du dimanche est gardé
+    expect(lireEmploiDuTemps({ creneaux: [cr(1, { jour: 7 })] }).creneaux[0].jour).toBe(7)
   })
   it('les cours : lignes repliées, échappements, cours annulés', () => {
     const l = lireCalendrier(cal(

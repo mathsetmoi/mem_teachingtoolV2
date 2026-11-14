@@ -46,19 +46,23 @@ function decalage(fuseau: string, t: number): number {
   } catch { return 0 }
 }
 
-/** Une date du format : « 20261109T090500Z » (UTC), avec un fuseau
- *  (TZID=Europe/Paris), ou sans rien (l'heure de l'ordinateur) ; NaN : illisible */
-export function lireDate(v: string, fuseau?: string): number {
+/** Une date du format, à l'HEURE OFFICIELLE de l'établissement : le jour et
+ *  l'heure tels que Pronote les écrit (« 20261118T080500 », avec ou sans
+ *  TZID), posés à l'heure de l'ordinateur sans conversion — le mercredi
+ *  8 h 05 de Pronote reste le mercredi 8 h 05, même si l'ordinateur est
+ *  réglé sur un autre fuseau. Une heure UTC (« …Z ») est ramenée au fuseau
+ *  du calendrier (X-WR-TIMEZONE ou VTIMEZONE), sinon à celui de
+ *  l'ordinateur. NaN : illisible */
+export function lireDate(v: string, fuseauDuCalendrier?: string): number {
   const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec(v.trim())
   if (!m) return NaN
   const [a, mo, j, h = '0', mi = '0', s = '0'] = m.slice(1)
-  if (m[7]) return Date.UTC(+a, +mo - 1, +j, +h, +mi, +s)
-  if (fuseau) {
-    const naif = Date.UTC(+a, +mo - 1, +j, +h, +mi, +s)
-    // Deux passes : le décalage à l'instant visé (les changements d'heure)
-    let t = naif - decalage(fuseau, naif) * 60_000
-    t = naif - decalage(fuseau, t) * 60_000
-    return t
+  if (m[7]) {
+    const t = Date.UTC(+a, +mo - 1, +j, +h, +mi, +s)
+    if (!fuseauDuCalendrier) return t
+    // L'heure qu'il est alors dans l'établissement, posée à l'heure de l'ordinateur
+    const l = new Date(t + decalage(fuseauDuCalendrier, t) * 60_000)
+    return new Date(l.getUTCFullYear(), l.getUTCMonth(), l.getUTCDate(), l.getUTCHours(), l.getUTCMinutes(), l.getUTCSeconds()).getTime()
   }
   return new Date(+a, +mo - 1, +j, +h, +mi, +s).getTime()
 }
@@ -70,13 +74,16 @@ export function lireCalendrier(t: string): Cours[] {
   const l = lignes(t)
   if (!l.some(x => /^BEGIN:VCALENDAR/i.test(x))) return []
   const cours: Cours[] = []
-  let ev: Record<string, { v: string; tz?: string }> | null = null
+  // Le fuseau du calendrier (celui de l'établissement), pour les heures UTC
+  const fuseau = (l.find(x => /^X-WR-TIMEZONE:/i.test(x))?.slice(14)
+    ?? l.find((x, i) => /^TZID:/i.test(x) && l.slice(0, i).some(y => /^BEGIN:VTIMEZONE/i.test(y)))?.slice(5))?.trim() || undefined
+  let ev: Record<string, { v: string }> | null = null
   for (const x of l) {
     if (/^BEGIN:VEVENT/i.test(x)) { ev = {}; continue }
     if (/^END:VEVENT/i.test(x)) {
       if (ev) {
-        const debut = ev.DTSTART ? lireDate(ev.DTSTART.v, ev.DTSTART.tz) : NaN
-        const fin = ev.DTEND ? lireDate(ev.DTEND.v, ev.DTEND.tz) : NaN
+        const debut = ev.DTSTART ? lireDate(ev.DTSTART.v, fuseau) : NaN
+        const fin = ev.DTEND ? lireDate(ev.DTEND.v, fuseau) : NaN
         const resume = valeur(ev.SUMMARY?.v ?? '')
         const description = valeur(ev.DESCRIPTION?.v ?? '')
         if (Number.isFinite(debut) && Number.isFinite(fin) && fin > debut && resume) {
@@ -89,9 +96,8 @@ export function lireCalendrier(t: string): Cours[] {
     if (!ev) continue
     const k = x.indexOf(':')
     if (k < 0) continue
-    const [nom, ...params] = x.slice(0, k).split(';')
-    const tz = params.find(p => /^TZID=/i.test(p))?.slice(5).replace(/^"|"$/g, '')
-    ev[nom.toUpperCase()] = { v: x.slice(k + 1), tz }
+    const nom = x.slice(0, k).split(';')[0]
+    ev[nom.toUpperCase()] = { v: x.slice(k + 1) }
   }
   return cours.sort((a, b) => a.debut - b.debut)
 }

@@ -25,7 +25,7 @@ export type Semaines = 'AB' | 'A' | 'B'
 
 export interface Creneau {
   id: string
-  /** 1 = lundi … 6 = samedi */
+  /** 1 = lundi … 6 = samedi, 7 = dimanche */
   jour: number
   /** En minutes depuis minuit : 605 = 10 h 05 */
   debut: number
@@ -72,7 +72,7 @@ export const COULEURS: readonly { nom: string; fort: string; doux: string; nuitF
   { nom: 'Gris', fort: '#55607a', doux: '#e8eaf0', nuitFort: '#a7b0c4', nuitDoux: '#2a303d' },
 ]
 
-export const JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'] as const
+export const JOURS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'] as const
 
 /** Ce qu'on voit d'un créneau avant l'heure : 10 minutes (« Bonjour ! ») */
 export const AVANCE_ACCUEIL = 10
@@ -100,7 +100,7 @@ const texte = (x: unknown, max: number): string => typeof x === 'string' ? x.tri
 export function lireCreneau(x: unknown): Creneau | null {
   if (!x || typeof x !== 'object') return null
   const o = x as Record<string, unknown>
-  const jour = entier(o.jour, 1, 6), debut = entier(o.debut, 0, 24 * 60 - 1), fin = entier(o.fin, 1, 24 * 60)
+  const jour = entier(o.jour, 1, 7), debut = entier(o.debut, 0, 24 * 60 - 1), fin = entier(o.fin, 1, 24 * 60)
   if (typeof o.id !== 'string' || !ID.test(o.id) || jour === null || debut === null || fin === null || fin <= debut) return null
   const semaines: Semaines = o.semaines === 'A' || o.semaines === 'B' ? o.semaines : 'AB'
   const c: Creneau = { id: o.id, jour, debut, fin, semaines, dossier: typeof o.dossier === 'string' && o.dossier ? o.dossier : null, nom: texte(o.nom, 60) }
