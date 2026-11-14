@@ -28,7 +28,7 @@ import type { FilmEleve } from '../revoir/format'
 import { ErreurFilm, ecrireFilm, lireFilm } from '../revoir/format'
 import { Bobine } from '../revoir/bobine'
 import { essayerRelais, lireParLeRelais, lireParSonCode } from '../revoir/relais'
-import { CLIENT_GOOGLE, COMPTES, EXTENSION, RELAIS_REPLAY, compteDe, lienEleve, lienEleveParCode, nouveauCode, relaisDe } from './comptes'
+import { CLIENT_GOOGLE, COMPTES, EXTENSION, LECTEUR_EN_LIGNE, RELAIS_REPLAY, compteDe, lienEleve, lienEleveParCode, nouveauCode, relaisDe } from './comptes'
 import type { PoigneeDossier } from '../classeurs/ordinateur'
 import { accordDuDossier, choisitUnDossier } from '../classeurs/ordinateur'
 import type { Registre } from '../classeurs/registre'
@@ -41,6 +41,10 @@ import { texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil, consigneGemi
 import { ficheDeLaSeance, gestesDeLaSeance } from '../resume/collecte'
 import { ErreurGemini, PAGES_MAX, cleGemini, consignesDuProfesseur, demanderAGemini, dernierModele, enTeteGemini, imagePourGemini, pronoteDe } from '../resume/gemini'
 import { ouvrirRedaction } from '../resume/reglage-vue'
+import { ouvrirQrEnGrand, svgQr } from './qr'
+import { messageEleveAbsent, nomDeLaFiche, peindrePageDeGarde } from './fiche-absent'
+import type { FicheAbsent } from './fiche-absent'
+import { exporterPdf } from '../sorties/export-pdf'
 
 /** Ce qu'on retient d'une séance publiée, dans le document du professeur
  *  (jamais dans le film élève) : de quoi republier au même lien */
@@ -107,6 +111,9 @@ export class Publication {
 
   private get registre() { return this.app.tableau.doc.getMap('publications') as Y.Map<Publiee> }
   private get lecteur() { return new URL('revoir.html', location.href).toString() }
+  /** Le lecteur des liens donnés aux élèves : celui d'à côté (la version en
+   *  ligne), sinon celui de la version en ligne (la version hors ligne) */
+  private get lecteurEleves() { return this.enLigne ? this.lecteur : LECTEUR_EN_LIGNE }
   /** La version en ligne (ou celle de développement) a le lecteur à côté d'elle et peut se connecter à
    *  Google ; la version hors ligne ne peut qu'enregistrer le fichier séance */
   private get enLigne() {
@@ -174,6 +181,9 @@ export class Publication {
         <fieldset class="p-comptes"><legend>Publier dans</legend><div class="cases"></div>
           <p class="p-google"><span class="p-qui"></span> <button type="button" class="secondaire petit p-changer">Choisir le compte Google</button></p></fieldset>
         <label class="case p-nouveau-lien" hidden><input type="checkbox" class="p-nouveau"><span>Publier comme une nouvelle séance (nouveau lien, l'ancien reste tel quel)</span></label>
+        <p class="p-deja" hidden>Cette séance a déjà un lien :
+          <button type="button" class="secondaire petit p-deja-qr">Afficher le QR en grand</button>
+          <button type="button" class="secondaire petit p-deja-fiche">Fiche pour un élève absent…</button></p>
         <ul class="p-verifier" aria-label="À vérifier avant de publier"></ul>
         <div class="actions">
           <button type="button" class="secondaire p-apercu">Voir comme un élève</button>
@@ -187,6 +197,13 @@ export class Publication {
             <button type="button" class="secondaire p-copier">Copier le lien</button>
             <a class="principal bouton-lien p-ouvrir-pronote" target="_blank" rel="noopener" role="button" tabindex="0">Copier et ouvrir Pronote</a>
             <a class="secondaire bouton-lien p-ouvrir" target="_blank" rel="noopener">Tester le lien</a>
+          </div>
+          <div class="p-qr-ligne">
+            <div class="p-qr"></div>
+            <div class="actions">
+              <button type="button" class="secondaire p-qr-grand">Afficher le QR en grand</button>
+              <button type="button" class="secondaire p-fiche">Fiche pour un élève absent…</button>
+            </div>
           </div>
           <p class="p-copie-faite" hidden>Le texte pour Pronote est déjà copié : dans le cahier de textes, faites Ctrl+V.</p>
         </div>
@@ -226,6 +243,10 @@ export class Publication {
     q('.p-choisir').addEventListener('click', () => void this.choisirLeDossier())
     q('.p-modifier').addEventListener('click', () => this.afficherResume(false))
     q('.p-drive-changer').addEventListener('click', () => { q('.p-drive-retenu').hidden = true; q('.p-comptes').hidden = false })
+    q('.p-qr-grand').addEventListener('click', () => this.qrEnGrand(q<HTMLInputElement>('.p-lien').value))
+    q('.p-deja-qr').addEventListener('click', () => { const l = this.lienDeja(); if (l) this.qrEnGrand(l) })
+    q('.p-fiche').addEventListener('click', () => void this.ficheAbsent(q<HTMLInputElement>('.p-lien').value || null))
+    q('.p-deja-fiche').addEventListener('click', () => void this.ficheAbsent(this.lienDeja()))
     q('.p-copier').addEventListener('click', () => this.copier(q<HTMLInputElement>('.p-lien').value, 'Lien copié'))
     // Le lien s'ouvre de lui-même (un onglet) ; dans le même clic, le texte part dans le presse-papiers
     // D'abord la copie, puis Pronote : l'onglet ouvert tout de suite ôtait la
@@ -537,6 +558,63 @@ export class Publication {
     const d = this.d!, deja = this.registre.get(this.cleRegistre())
     ;(d.querySelector('.p-nouveau-lien') as HTMLElement).hidden = !deja
     if (!deja) (d.querySelector('.p-nouveau') as HTMLInputElement).checked = false
+    // Une séance déjà publiée : son QR et sa fiche, sans republier (tant que
+    // le résultat d'une publication n'est pas affiché : il les a déjà)
+    const resultat = !(d.querySelector('.p-resultat') as HTMLElement).hidden
+    ;(d.querySelector('.p-deja') as HTMLElement).hidden = resultat || !this.lienDeja()
+  }
+
+  /** Le lien déjà donné aux élèves pour la séance choisie (null : pas encore publiée) */
+  private lienDeja(): string | null {
+    const deja = this.registre.get(this.cleRegistre())
+    if (!deja) return null
+    if (deja.code) return lienEleveParCode(this.lecteurEleves, deja.compte, deja.code)
+    return deja.id ? lienEleve(this.lecteurEleves, deja.compte, deja.id) : null
+  }
+
+  /** Le lien publié : le champ, « Tester le lien », le petit QR */
+  private montrerLien(lien: string) {
+    const d = this.d!
+    ;(d.querySelector('.p-lien') as HTMLInputElement).value = lien
+    ;(d.querySelector('.p-ouvrir') as HTMLAnchorElement).href = lien
+    ;(d.querySelector('.p-qr') as HTMLElement).innerHTML = svgQr(lien, 104)
+    ;(d.querySelector('.p-resultat') as HTMLElement).hidden = false
+    ;(d.querySelector('.p-deja') as HTMLElement).hidden = true
+  }
+
+  private qrEnGrand(lien: string) {
+    if (!lien) return
+    const s = this.seance
+    ouvrirQrEnGrand(lien, s ? `Revoir la séance du ${jour(s.debut)}` : 'Revoir la séance')
+  }
+
+  /** La fiche pour un élève absent : le message pour l'ENT copié (dans le
+   *  clic, que le navigateur l'accepte), puis le PDF (page de garde, puis
+   *  les pages de la séance choisies) téléchargé */
+  private async ficheAbsent(lien: string | null) {
+    const d = this.d, s = this.seance
+    if (!d || !s) return
+    const bloc = d.querySelector('.p-cahier') as HTMLElement
+    const texte = bloc.hidden ? '' : (d.querySelector('.p-texte-cahier') as HTMLTextAreaElement).value
+    const chapitre = this.app.classeur.nom
+    const f: FicheAbsent = { jour: jour(s.debut), chapitre, titre: (d.querySelector('.p-titre') as HTMLInputElement).value, texte, lien }
+    const message = messageEleveAbsent(f)
+    let copie = true
+    try { await navigator.clipboard.writeText(message) } catch { copie = false }
+    const pages = this.pagesChoisies()
+    const ui = this.app.ui
+    const hote = { ...ui.hotePdf(), pages: () => pages }
+    const jourCourt = new Date(s.debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+    const fait = await exporterPdf(hote, pages, {
+      titre: `Séance du ${f.jour}${chapitre ? ' · ' + chapitre : ''}`, nom: nomDeLaFiche(jourCourt, chapitre),
+      fond: hote.apercus.fondImprime(), quoi: 'pages',
+      garde: (x, pap, police) => peindrePageDeGarde(x, pap, f, police),
+    })
+    if (!this.d || this.d !== d) return
+    if (!fait) return this.etat('La fiche n\'a pas pu être faite : voir le message en bas de l\'écran.', true)
+    this.etat(copie
+      ? `Fiche téléchargée${lien ? '' : ' (sans lien : la séance n\'est pas encore publiée)'}. Le message pour l'ENT est copié : collez-le (Ctrl+V), puis joignez le PDF.`
+      : `Fiche téléchargée. La copie du message a été refusée par le navigateur.`)
   }
 
   private pagesChoisies() {
@@ -717,15 +795,16 @@ export class Publication {
       }
       this.majLieu()
       ;(d.querySelector('.p-nouveau') as HTMLInputElement).checked = false
+      const lien = lienEleveParCode(this.lecteurEleves, this.compte, code)
+      this.montrerLien(lien)
       if (!this.enLigne) {
-        this.publie = null
-        this.etat(`Replay rangé dans « ${nom} ». Pour le lien des élèves, publiez ce replay avec MEM teachingtool en ligne : le lien sera celui-là.`)
+        // La version hors ligne ne peut pas demander au relais si le fichier
+        // est arrivé : le lien (vers la version en ligne) est donné tel quel
+        this.publie = this.lienEtPages(film, lien); this.majPronote(); void this.copierTout()
+        this.majNouveauLien()
+        this.etat(`Replay rangé dans « ${nom} ». Le lien et le QR marchent dès que Google Drive pour ordinateur a envoyé le fichier.`)
         return
       }
-      const lien = lienEleveParCode(this.lecteur, this.compte, code)
-      ;(d.querySelector('.p-lien') as HTMLInputElement).value = lien
-      ;(d.querySelector('.p-ouvrir') as HTMLAnchorElement).href = lien
-      ;(d.querySelector('.p-resultat') as HTMLElement).hidden = false
       this.publie = this.lienEtPages(film, lien); this.majPronote(); void this.copierTout()
       this.majNouveauLien()
       this.majVerifications()
@@ -830,9 +909,7 @@ export class Publication {
       retenirCompte(compte.cle, courrielDe(compte.cle))
       this.majGoogle()
       const lien = lienEleve(this.lecteur, compte.cle, r.id)
-      ;(d.querySelector('.p-lien') as HTMLInputElement).value = lien
-      ;(d.querySelector('.p-ouvrir') as HTMLAnchorElement).href = lien
-      ;(d.querySelector('.p-resultat') as HTMLElement).hidden = false
+      this.montrerLien(lien)
       ;(d.querySelector('.p-nouveau') as HTMLInputElement).checked = false
       this.publie = this.lienEtPages(film, lien); this.majPronote(); void this.copierTout()
       const ancienPerdu = !!deja && !r.miseAJour

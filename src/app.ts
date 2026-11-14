@@ -159,6 +159,8 @@ export interface Interface {
   /** La fenêtre « Exporter en PDF » (voir sorties/export-pdf.ts) : la page
    *  (elle propose aussi tout le classeur), des pages, ou tout le classeur */
   exporterPdf(cible: { page: string } | { pages: string[] } | 'tout'): void
+  /** Ce que l'export en PDF lit du classeur (la fiche pour un élève absent, dans Publier) */
+  hotePdf(): import('./sorties/export-pdf').HoteExport
   /** Les séances (lot 6) : une écriture refusée sur une page d'une séance
    *  passée (la fenêtre « Cette page est dans la séance de lundi… ») ; une
    *  séance qui commence (le bandeau « Reprendre ») */

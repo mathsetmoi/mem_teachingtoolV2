@@ -138,6 +138,20 @@ export function toucheVerrou(e: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'ctrlKe
   return e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'l'
 }
 
+/** 1, 2, 3 (la rangée du haut ou le pavé numérique) : le cran d'épaisseur
+ *  (0 fin, 1 moyen, 2 épais), sinon null. La rangée par la touche (e.code) :
+ *  en AZERTY elle donne « & », « é », « " » sans Maj ; le pavé seulement
+ *  quand il donne des chiffres. Ni avec Maj (Maj + 1 : tout voir), ni avec
+ *  Ctrl, ⌘ ou Alt (AltGr compris). */
+export function toucheEpaisseur(e: Pick<KeyboardEvent, 'key' | 'code' | 'shiftKey' | 'ctrlKey' | 'metaKey' | 'altKey'>): number | null {
+  if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return null
+  const rangee = /^Digit([1-3])$/.exec(e.code)
+  if (rangee) return Number(rangee[1]) - 1
+  const pave = /^Numpad([1-3])$/.exec(e.code)
+  if (pave && e.key === pave[1]) return Number(pave[1]) - 1
+  return null
+}
+
 /** Un cran au plus ×1,1 par événement : exp(−0,01 · d) avec d borné */
 export const PLAFOND_MOLETTE = Math.log(1.1) / 0.01
 

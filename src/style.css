@@ -944,6 +944,22 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .dialogue-publier .lien, .dialogue-redaction .lien, .trieuse-seance-resume .lien { border: 0; background: none; padding: 2px 0; color: var(--bleu); text-decoration: underline; cursor: pointer; font: inherit; }
 .p-cahier-marques { margin: 2px 0 0; font-size: 12.5px; color: var(--encre-douce); }
 .p-copie-faite { margin: 0; font-size: 14px; font-weight: 700; color: var(--encre); }
+/* Le petit QR du lien, et ses deux boutons (le QR en grand, la fiche pour un élève absent) */
+.p-qr-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.p-qr-ligne .actions { flex: 1 1 200px; justify-content: flex-start; }
+.p-qr { flex: none; line-height: 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--filet); background: #ffffff; }
+.p-deja { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+/* En résumé (Publier en un clic), la fenêtre reste courte : Publier redonne le lien, le QR et la fiche */
+.dialogue-publier.resume .p-deja { display: none; }
+/* Le QR en grand, par-dessus tout : toujours noir sur blanc (même en mode nuit) */
+.qr-en-grand { border: none; padding: 0; background: transparent; max-width: none; max-height: none; width: 100vw; height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; cursor: pointer; }
+.qr-en-grand::backdrop { background: rgba(14, 18, 26, 0.72); }
+.qr-en-grand .qr-carte { background: #ffffff; color: #1b2230; border-radius: 18px; padding: 22px 26px 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.qr-en-grand .qr-carte svg { display: block; }
+.qr-en-grand .qr-titre { margin: 0; font-size: clamp(18px, 2.6vw, 28px); font-weight: 700; text-align: center; }
+.qr-en-grand .qr-aide { margin: 0; font-size: clamp(14px, 1.6vw, 18px); color: #5a6577; text-align: center; }
+.qr-en-grand .qr-fermer { margin: 0; color: #ffffff; font-size: 14px; opacity: 0.85; }
 .dialogue-publier.resume .p-texte-cahier { min-height: 66px; }
 .dialogue-redaction { width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow: auto; }
 .dialogue-redaction .corps { display: grid; gap: 12px; }

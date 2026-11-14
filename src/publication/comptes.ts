@@ -105,6 +105,12 @@ export function relaisValable(adresse: string) {
 
 /** Le lien d'un replay rangé dans un dossier du Drive : la page du lecteur,
  *  le relais et le code (le relais retrouve le fichier par son code) */
+/** Le lecteur des élèves de la version en ligne : la version hors ligne (un
+ *  fichier ouvert sur l'ordinateur) y fait pointer le lien et le QR d'un
+ *  replay rangé dans un dossier ; il marche dès que Google Drive pour
+ *  ordinateur a envoyé le fichier */
+export const LECTEUR_EN_LIGNE = 'https://mathsetmoi.github.io/mem_teachingtoolV2/revoir.html'
+
 export function lienEleveParCode(lecteur: string, cle: string, code: string, chapitre?: number) {
   const u = new URL(lecteur)
   u.search = ''; u.hash = ''

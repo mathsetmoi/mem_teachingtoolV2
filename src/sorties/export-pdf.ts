@@ -33,7 +33,7 @@ import type { Fond, Forme } from '../types'
 import type { Boite } from '../revoir/bobine'
 import { couleurHex, ecrirePdf, lignesPredites, palettiserLignes } from './pdf'
 import type { Feuille, ImageIndexee, ImageJpeg, ImageRvb } from './pdf'
-import { DPR_PDF, PX_PAR_MM, TRES_REDUITE, listeNumeros, mettreEnPage, nomDuPdf, piedDePage, texteCaseFond, texteFini, texteProgression, texteRien, titreDuPdf } from './mise-en-page'
+import { DPR_PDF, PX_PAR_MM, TRES_REDUITE, listeNumeros, mettreEnPage, nomDuPdf, papier, piedDePage, texteCaseFond, texteFini, texteProgression, texteRien, titreDuPdf } from './mise-en-page'
 import type { FeuilleDePage, MiseEnPage, Papier, QuoiExporter } from './mise-en-page'
 import { telecharger } from '../sauvegarde'
 import { pagesLisibles } from '../fichier'
@@ -98,6 +98,10 @@ export interface OptionsExport {
   fond: boolean
   /** Ce qu'on exporte, pour dire « Rien à exporter : … » */
   quoi?: 'page' | 'pages' | 'tout'
+  /** Une page de garde avant les pages (la fiche pour un élève absent) :
+   *  peinte sur une feuille portrait blanche, elle compte dans les numéros
+   *  de feuille ; avec elle, des pages toutes vides donnent quand même le PDF */
+  garde?: (x: CanvasRenderingContext2D, pap: Papier, police: string) => void
 }
 
 /** Une page prise au lancement */
@@ -198,14 +202,27 @@ export async function exporterPdf(hote: HoteExport, pages: readonly string[], o:
       plans.push({ ...p, mp })
       await pause()
     }
-    if (!plans.length) {
+    if (!plans.length && !o.garde) {
       hote.message(texteRien(o.quoi ?? (pages.length > 1 ? 'pages' : 'page')))
       return false
     }
     // 3. Peindre chaque feuille
-    const total = plans.reduce((n, p) => n + p.mp.feuilles.length, 0)
+    const total = plans.reduce((n, p) => n + p.mp.feuilles.length, 0) + (o.garde ? 1 : 0)
     const police = await policeDuPied()
     const feuilles: Feuille[] = []
+    if (o.garde) {
+      const pap = papier('portrait')
+      const c = document.createElement('canvas')
+      c.width = pap.px.l; c.height = pap.px.h
+      canevas.set('garde', c)
+      const x = c.getContext('2d')
+      if (!x) throw new Error('le navigateur n\'a pas pu préparer une feuille (mémoire ?)')
+      x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height)
+      o.garde(x, pap, police)
+      const rgba = new Uint8ClampedArray(c.width * c.height * 4)
+      feuilles.push({ l: pap.pt.l, h: pap.pt.h, image: await imageDeLaFeuille(c, x, rgba, pause, { images: 0, forcees: [] }) })
+      await pause()
+    }
     for (const p of plans) {
       // Les formules un peu plus fines que la feuille (l'échelle arrondie au
       // 1/20 au-dessus) : réduites en les posant, elles restent nettes ;

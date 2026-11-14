@@ -26,7 +26,7 @@ const RACCOURCIS: Groupe[] = [
   { titre: 'Outils', lignes: [
     ['Stylo', ['P']], ['Surligneur', ['H']], ['Gomme (et ses options)', ['E']], ['Point', ['X']],
     ['Segment, droite, demi-droite', ['L']], ['Rectangle, cercle, polygone', ['R', 'C', 'G']], ['Formule', ['F']], ['Texte (taper au clavier)', ['T']],
-    ['Sélection', ['V']], ['Déplacer la vue (en glissant)', ['Espace']], ['Revenir à la Sélection, puis à l\'outil d\'avant', ['Échap']],
+    ['Trait fin, moyen, épais', ['1', '2', '3']], ['Sélection', ['V']], ['Déplacer la vue (en glissant)', ['Espace']], ['Revenir à la Sélection, puis à l\'outil d\'avant', ['Échap']],
   ] },
   { titre: 'Modifier', lignes: [
     ['Annuler, rétablir (sur la page)', [`${CTRL} Z`, `${CTRL} Y`]], ['Copier, coller', [`${CTRL} C`, `${CTRL} V`]],
