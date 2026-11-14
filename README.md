@@ -6379,6 +6379,105 @@ titre.
   du téléphone est rangé par familles, et la référence des barres
   (`lot5/K10-telephone/reference-barres.json`) a été relevée à nouveau.
 
+## La séance préparée à l'avance (lot 25)
+
+Une idée de l'audit complet du 11 novembre 2026, maquette validée par le
+professeur le 14 novembre (avec ses recommandations ; une retouche du décor
+pendant le cours est filmée, son choix A).
+
+### Le mode d'emploi
+
+- **« Préparer une séance… »**, dans le menu du classeur (un clic sur sa
+  carte, en haut à gauche), sous « Nouvelle séance ». La fenêtre « Préparer
+  une séance » demande pour quel cours : les trois prochains cours de la
+  classe d'après l'emploi du temps (« Lundi 16 novembre · 8 h 05 », en petit
+  « 5A · semaine A · salle B12 » ; une classe dont le dossier contient le
+  classeur, ou un créneau qui l'a choisi), ou « Une autre date… » (un jour et
+  une heure à venir ; sans emploi du temps, seulement elle, demain 8 h
+  proposé) ; un nom facultatif. Aussi : « Préparer le prochain cours » sous un
+  créneau de « Mon emploi du temps » (ici, ou dans le classeur du créneau,
+  où l'on part), et le lien « préparer » de la ligne « Prochain cours » de
+  « Bonjour ! ».
+- **On la prépare** : sa page 1, blanche, à 100 %. Le compteur et
+  l'étiquette passent en violet : « À venir · lun 16 nov 8h05 » (ou son
+  nom ; « À venir, date passée » quand le cours n'a pas eu lieu). Un bandeau
+  (fermable) dit « Séance à venir, lundi 16 novembre à 8 h 05. Ce que vous
+  posez ici sera déjà là au début du cours. » avec « Retour à aujourd'hui ».
+  Tout s'y fait comme dans la séance du jour (écrire, taper, un PDF, une
+  image, le catalogue, « Reprendre la page » d'une séance passée, la
+  trieuse, qui dit « À venir · … »). On peut fermer l'outil et revenir : elle
+  reste à venir et modifiable jusqu'au cours.
+- **Le menu ⋯**, pendant qu'on prépare : « Commencer la séance
+  maintenant », « Changer la date… », « Retour à aujourd'hui » (rien de
+  plus dans le menu ⋯ en temps normal : il tient sans défiler au poste de la
+  classe).
+- **Dans le classeur** : elle se range à la date du cours. Le menu du
+  classeur la montre « à venir » ; un clic y ramène, modifiable. La
+  bibliothèque l'écrit « À venir · Lun 16 nov 8h05 » sous la carte et dans
+  « Séances » ; son menu dit « Préparer la séance », sans « Publier la
+  séance… ».
+- **Le jour du cours**, « Bonjour ! » (au lancement, ou parce que la classe
+  arrive) a pour gros bouton, choisi d'office, « Commencer la séance
+  préparée » (en petit : son nom, ses pages, le classeur), et en lien
+  « ou Nouvelle séance vide en 5ème ». La séance proposée : celle prévue
+  aujourd'hui, sinon celle dont la date est passée ; celle du classeur
+  ouvert, ou celle du classeur du créneau quand il est ailleurs (on y part,
+  et elle commence). Elle s'ouvre aussi quand la séance du jour a servi il y
+  a moins d'une heure, si le cours préparé commence dans moins d'une
+  demi-heure. La bulle « 8 h 05 · 5A arrive » dit « Ouvrir la séance
+  préparée ».
+- **Un clic** : elle devient la séance du jour, à cet instant. Le violet
+  part, on arrive sur sa page 1. Elle porte la date du cours ; après, elle
+  passe en lecture seule comme les autres.
+- **Le replay et la revue en classe** : ce qui a été posé avant le début du
+  cours est le **décor**, déjà là à la première image, sans animation ;
+  seul ce qui se fait en classe se rejoue, retouches du décor comprises
+  (déplacer un énoncé se voit). **Publier** envoie la séance avec toutes ses
+  pages, décor compris ; une séance à venir n'est pas proposée (rien à
+  revoir).
+- **Les cas particuliers** : le cours n'a pas lieu, la séance reste à venir
+  (« date passée ») et « Bonjour ! » la propose au cours suivant ; deux
+  séances préparées d'avance, chacune à sa date ; commencée un autre jour,
+  elle prend la date de ce jour-là. Rien ne disparaît jamais.
+
+### Comment c'est fait
+
+- **Le document** : la fiche d'une séance (`seances` du document Yjs) a un
+  champ facultatif `aVenir: true` ; son `debut` est l'heure prévue du cours
+  (`Tableau.preparerSeance`, `changerDateSeance`). `seances.seanceDuJourDe`
+  ne compte pas les séances à venir ; `Tableau.seanceEnPreparation` (rien
+  d'écrit : l'app la pose quand on va sur une page d'une séance à venir, et
+  l'ôte ailleurs, voir `App.allerPage`) en fait la séance où l'on écrit
+  (`derniereSeance`), ce qui donne à la préparation tout ce que la séance du
+  jour sait faire (les pages qu'on feuillette, la nouvelle page, la garde
+  des séances passées, la trieuse). `Tableau.commencerSeance` retire la
+  marque et met son début à l'instant du cours.
+- **Le décor sans rien changer au film** : la plage d'une séance dans le
+  film commence à son début ; ce qui a été écrit sur ses pages avant est
+  donc dans l'état de départ du film élève (`exporter`, l'état juste avant
+  la première étape de la plage), comme une page reprise. Le format `.mem`
+  ne change pas : les lecteurs des élèves déjà en cache le lisent. Les
+  gestes de préparation tombent dans la plage d'une autre séance (on prépare
+  lundi pendant le week-end qui suit vendredi) : `seancesExplicitesDuFilm`
+  ne les compte ni comme gestes, ni comme pages, ni comme fin de celle-ci.
+- **Les fichiers** : `.memc`, `.memb`, la clé et le Drive gardent la fiche
+  telle quelle ; la fiche du classeur dans la bibliothèque
+  (`listeSeances`) a le même champ facultatif. Aucune base ni clé ne change
+  de nom ; la clé d'onglet `mem-teachingtool-nouvelle-seance` a deux
+  champs facultatifs de plus (`seance` : commencer cette séance préparée en
+  arrivant ; `preparer` : ouvrir « Préparer une séance » sur ce cours). Une
+  version plus ancienne de l'outil (une version hors ligne pas reconstruite)
+  ignore la marque : elle voit une séance datée du cours, et son replay
+  rejouerait la préparation. Reconstruire la version hors ligne
+  (`npm run build`) avant de préparer.
+- `src/seance-preparee-vue.ts` : la fenêtre ; `emploi-du-temps/donnees.ts`
+  `prochainsCours` (pur) : les prochains cours d'un classeur.
+- Les essais : `tests/seance-preparee.test.ts` (la séance à venir, le
+  début du cours, le décor au départ du film, la retouche filmée, les
+  prochains cours) ; `essais/navigateur/lot25/E1-seance-preparee.mjs`
+  (préparer, le violet, le menu ⋯, « Bonjour ! », le film). Adapté :
+  `lot23/E1` (la ligne « Prochain cours » a le lien « préparer »).
+
 ## Ce que fait la v0.1
 
 Outil **Segment** (L) : un petit panneau à côté de l'outil choisit **segment
