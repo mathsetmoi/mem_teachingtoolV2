@@ -55,7 +55,7 @@
 // erreur JS.
 import { RACINE_ESSAIS, RACINE_DEPOT } from '../commun/racines.mjs'
 import { chromium } from '../commun/playwright.mjs'
-import { mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { releverBarres } from './lib/geometrie-barres.mjs'
 
 const S = `${RACINE_ESSAIS}`
@@ -437,8 +437,9 @@ for (const [L, H, dpr] of APPAREILS) {
   // (Adapté à la barre du haut en familles, lot 3 de l'audit : « Plus » est
   // rangé par les mêmes familles ; « Effacer la page », en rouge, au bout de
   // « Cette page »)
+  // (Adapté au lot 27 : « Courbe », tracer une fonction, après Instruments)
   const attendu = ['# Cette page', ...(L < 360 ? ['Nouvelle page'] : []), 'Fond…', 'Mode nuit', 'Aimanter au quadrillage', 'Le stylo redresse les figures', 'Effacer la page',
-    '# Insérer', 'Importer une image ou un PDF…', 'Instruments…', 'Programme de construction', 'Catalogue', 'Automatismes', '# En classe', 'Outils de classe…', 'Revoir la construction',
+    '# Insérer', 'Importer une image ou un PDF…', 'Instruments…', 'Courbe', 'Programme de construction', 'Catalogue', 'Automatismes', '# En classe', 'Outils de classe…', 'Revoir la construction',
     '# Élèves', 'Publier le replay', '# Vue', '100 %', 'Tout voir']
   ok(mPlus && JSON.stringify(tete) === JSON.stringify(attendu) && entrees.includes('# Cet appareil') && entrees.indexOf('# Cet appareil') > entrees.indexOf('[classeur]'),
     `E1) ${T} : « Plus » : Page, Outils de cours, Vue, puis le classeur, puis Cet appareil`, { tete, entrees })
@@ -528,6 +529,12 @@ for (const [L, H, dpr] of APPAREILS) {
 console.log('=== G. le poste de la classe, le TNI, l\'iPad ===')
 const reference = JSON.parse(readFileSync(S + '/lot5/K10-telephone/reference-barres.json', 'utf8'))
 const maintenant = await releverBarres(DEV, erreurs)
+// REFAIRE_REFERENCE="PC 1366 × 768 (souris);…" : réécrit ces relevés de la
+// référence (quand les barres changent voulument), puis compare
+if (process.env.REFAIRE_REFERENCE) {
+  for (const nom of process.env.REFAIRE_REFERENCE.split(';')) if (maintenant[nom]) reference[nom] = maintenant[nom]
+  writeFileSync(S + '/lot5/K10-telephone/reference-barres.json', JSON.stringify(reference, null, 1) + '\n')
+}
 // (Adapté aux corrections « conformité » du lot 5, deux changements voulus,
 // qui ne touchent pas à la mise en page du téléphone : le titre du bouton ⋯
 // dit aussi « réglages de cet appareil » (le relevé n'en garde que les 40
@@ -556,6 +563,9 @@ const maintenant = await releverBarres(DEV, erreurs)
 // au-dessus, « Cette page » à la place du fond, du mode nuit, de l'aimant,
 // du stylo qui redresse et de la poubelle) ; le relevé est refait partout ;
 // la barre des outils et celle du zoom ne bougent pas.)
+// (Adapté au lot 27 : le bouton « Courbe » entre dans la barre du haut,
+// au-dessus de 1300 px et sous 900 px (l'iPad en portrait) ; les relevés du
+// PC à 1366 × 768, du TNI et des deux iPad en portrait sont refaits.)
 const VOULU = /^Enregistrer, ouvrir ou exporter en PDF/, FOND = /^Cette page : fond /
 const sansLeVoulu = (g, sansZoom, sansOutils) => {
   const c = JSON.parse(JSON.stringify(g))

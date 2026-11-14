@@ -390,7 +390,9 @@ export const methodesPlacements = {
     const zl = this.zoneLibre(), s = this.rangSeance
     if (s.hidden) return zl
     const r = s.getBoundingClientRect(), z = this.app.rendu.scene.getBoundingClientRect()
-    const bas = r.bottom - z.top + 4
+    // 4 px d'air, plus les 12 px dont un crayon sans survol (la tablette
+    // graphique) peut viser trop haut : il touche la pastille, pas l'étiquette
+    const bas = r.bottom - z.top + 16
     if (!r.height || r.top - z.top > zl.y || bas <= zl.y || zl.h - (bas - zl.y) < 200) return zl
     return { ...zl, y: bas, h: zl.h - (bas - zl.y) }
   },
