@@ -342,6 +342,8 @@ export const methodesClavier = {
     const k = e.key.toLowerCase()
     // N : la page en mode nuit, ou de nouveau de jour (une fois par appui)
     if (k === 'n' && !e.shiftKey && !e.altKey) { if (!e.repeat) this.basculerNuit(); return }
+    // Y : le panneau « Courbes », tracer une fonction (lot 27)
+    if (k === 'y' && !e.shiftKey && !e.altKey) { if (!e.repeat) this.ui.basculerCourbes(); return }
     if (formes[k]) { this.typeForme = formes[k]; this.choisirOutil('forme'); return }
     const o = raccourcis[k]
     // E quand la Gomme est déjà en main (lot 5) : ses options, au clavier

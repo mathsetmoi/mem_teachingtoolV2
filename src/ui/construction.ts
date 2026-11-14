@@ -7,6 +7,7 @@ import type { UI } from '../ui'
 import { COULEURS } from '../app'
 import { BarreActions } from '../barre-actions'
 import { Catalogue } from '../catalogue-vue'
+import { Courbes } from '../courbes/panneau'
 import { Constructeur } from '../constructeur'
 import { VignetteEnonce } from '../enonce'
 import { Flash } from '../flash'
@@ -335,6 +336,8 @@ export const methodesConstruction = {
     }, 'outil seulement-large')
     const construire = bouton('construction', 'Programme de construction, étape par étape', () => this.basculerConstructeur(), 'seulement-large')
     const catalogue = bouton('catalogue', 'Catalogue : des éléments de cours tout prêts', () => this.basculerCatalogue(), 'seulement-large')
+    // Tracer une fonction (lot 27) : un repère sur la page, f(x) au clavier
+    const courbe = this.boutonCourbes = bouton('courbe', 'Courbe : tracer une fonction sur un repère (Y)', () => this.basculerCourbes(), 'seulement-large')
     // Importer une image ou un PDF : bouton, ou coller (Ctrl+V), ou glisser le fichier sur le tableau
     const choixFichier = this.choixFichier = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*,application/pdf,.pdf', hidden: true })
     choixFichier.addEventListener('change', () => { const f = choixFichier.files?.[0]; if (f) app.importerImage(f, { pointeur: this.pointeurImport }); choixFichier.value = '' })
@@ -448,7 +451,7 @@ export const methodesConstruction = {
     outilsClasse.dataset.famille = 'En classe'
     publier.dataset.famille = 'Élèves'
     haut.classList.add('en-familles')
-    haut.append(this.boutonAnnuler, this.boutonRetablir, this.filetHistorique, avant, this.rang, apres, nouvelle, filet(), boutonFond, filet(), importer, this.boutonInstruments, construire, catalogue, automatismes, filet(), outilsClasse, revoir, filet(), publier, fichier)
+    haut.append(this.boutonAnnuler, this.boutonRetablir, this.filetHistorique, avant, this.rang, apres, nouvelle, filet(), boutonFond, filet(), importer, this.boutonInstruments, courbe, construire, catalogue, automatismes, filet(), outilsClasse, revoir, filet(), publier, fichier)
     // Les noms sous les outils (lot 5) : ni ‹, ni ›, ni le compteur, ni le
     // bouton du classeur
     nommer(this.boutonAnnuler, 'Annuler'); nommer(this.boutonRetablir, 'Rétablir')
@@ -456,7 +459,7 @@ export const methodesConstruction = {
     // (pas de nom sous « Séance précédente » : il n'est là qu'avec une séance d'avant)
     this.racine.appendChild(this.rangSeance)
     nommer(boutonFond, 'Page')
-    nommer(importer, 'Image'); nommer(this.boutonInstruments, 'Instruments'); nommer(construire, 'Construire'); nommer(catalogue, 'Catalogue')
+    nommer(importer, 'Image'); nommer(this.boutonInstruments, 'Instruments'); nommer(courbe, 'Courbe'); nommer(construire, 'Construire'); nommer(catalogue, 'Catalogue')
     nommer(automatismes, 'Automatismes'); nommer(outilsClasse, 'Classe'); nommer(revoir, 'Revoir'); nommer(publier, 'Publier'); nommer(fichier, 'Fichier')
 
     // ----- Le bouton du classeur, à gauche de la barre du haut -----
@@ -644,6 +647,12 @@ export const methodesConstruction = {
     this.publication.imageDePage = page => imagePng(this.apercus, this.pageAPeindre(page), { fond: false })
     this.constructeur = new Constructeur(app, this.racine, t => this.message(t, undefined, true))
     this.catalogue = new Catalogue(app, this.racine, t => this.message(t, undefined, true), c => this.flash.ouvrir(c))
+    this.courbes = new Courbes(app, this.racine, {
+      mesurer: (l, t) => this.catalogue.mesurer(l, t),
+      placer: (f, p) => this.catalogue.placer(f, p),
+      peutPoser: () => this.catalogue.peutPoser(),
+      message: t => this.message(t, undefined, true),
+    })
     this.flash = new Flash(app, this.racine, t => this.message(t, undefined, true))
 
     // ----- Menu d'un morceau de figure (point, extrémité, nom, rayon) -----

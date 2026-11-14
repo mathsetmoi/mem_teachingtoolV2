@@ -817,6 +817,34 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .panneau-catalogue .pilote-enroulement .avancement { width: 100%; accent-color: var(--bleu); }
 .panneau-catalogue .pilote-enroulement .commandes { display: flex; flex-wrap: wrap; align-items: end; gap: 6px; }
 .panneau-catalogue .pilote-enroulement .vitesse { flex: 1; }
+/* Le panneau « Courbes » : tracer une fonction (courbes/panneau.ts, lot 27) */
+.panneau-courbes > * { flex-shrink: 0; }
+.panneau-courbes .modeles { display: flex; flex-wrap: wrap; gap: 6px; }
+.panneau-courbes .modele { height: auto; min-height: 32px; padding: 4px 10px; font-size: 13.5px; border-radius: 999px; }
+.panneau-courbes .element[hidden] { display: none; }
+.panneau-courbes .courbe { display: flex; flex-direction: column; gap: 2px; }
+.panneau-courbes .ligne-courbe { display: flex; align-items: center; gap: 6px; }
+.panneau-courbes .pastille-courbe { flex: none; width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 0 2px var(--papier), 0 0 0 3px var(--filet); }
+.panneau-courbes .nom-courbe { font-weight: 700; white-space: nowrap; }
+.panneau-courbes .ecriture { flex: 1; min-width: 0; height: 36px; border: 1px solid var(--filet); border-radius: 10px; background: #fbfcfe; padding: 0 8px; color: var(--encre); font: inherit; font-size: 16px; }
+.panneau-courbes .ecriture:focus { outline: 2px solid var(--bleu); outline-offset: 1px; }
+.panneau-courbes .ecriture.faux { border-color: var(--rouge); background: #fdecea; }
+.panneau-courbes .retirer { width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--encre-douce); font-size: 20px; cursor: pointer; }
+.panneau-courbes .retirer:hover { background: #e9eef5; }
+.panneau-courbes .lu-courbe { min-height: 1.6em; padding-left: 20px; font-size: 15px; overflow-x: auto; }
+.panneau-courbes .lu-courbe.erreur { font-size: 13px; color: #9b2620; }
+.panneau-courbes .lien { align-self: flex-start; border: 0; background: none; padding: 2px 0; color: var(--bleu); font: inherit; font-weight: 700; cursor: pointer; }
+.panneau-courbes .ligne-titre { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.panneau-courbes .ligne-titre .lien { font-size: 13px; }
+.panneau-courbes .curseur-courbes { display: grid; grid-template-columns: 22px minmax(0, 1fr) 64px; gap: 8px; align-items: center; }
+.panneau-courbes .curseur-courbes[hidden] { display: none; }
+.panneau-courbes .curseur-courbes b { font-family: "KaTeX_Main", "Times New Roman", serif; font-style: italic; font-size: 19px; }
+.panneau-courbes .curseur-courbes input[type="range"] { width: 100%; accent-color: var(--bleu); }
+.panneau-courbes input[type="number"] { width: 100%; min-width: 0; height: 32px; border: 1px solid var(--filet); border-radius: 8px; background: #fbfcfe; padding: 0 6px; color: var(--encre); font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; }
+.panneau-courbes .fenetre-courbes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; font-size: 14px; }
+.panneau-courbes .fenetre-courbes label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.panneau-courbes .options-courbes .coche { align-items: flex-start; }
+.panneau-courbes .options-courbes .coche input { margin-top: 3px; }
 /* Le programme du collège (catalogue-college.ts) */
 .panneau-catalogue .domaine-prog .demos { gap: 4px; }
 .panneau-catalogue .tete-domaine { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 2px; }

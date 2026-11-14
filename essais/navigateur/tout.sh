@@ -134,9 +134,10 @@ sh "$E/lot5/cf/sondes-verif.sh" $A > $A/verif5_batterie.log 2>&1
 # Les essais du deuxième lot de l'audit (lot 17 : vérifier les classeurs, …),
 # du résumé de la séance (lot 19), du menu du classeur (lot 20) et de la
 # trigonométrie du catalogue (lot 21) et du programme du collège dans le
-# catalogue (lot 22) et de l'emploi du temps (lot 23), depuis
+# catalogue (lot 22), de l'emploi du temps (lot 23) et de l'outil Courbe
+# (lot 27), depuis
 # essais/navigateur comme ceux de la partie 1
-for t in $(ls lot17/*.mjs lot19/*.mjs lot20/*.mjs lot21/*.mjs lot22/*.mjs lot23/*.mjs lot25/*.mjs lot26/*.mjs 2>/dev/null); do
+for t in $(ls lot17/*.mjs lot19/*.mjs lot20/*.mjs lot21/*.mjs lot22/*.mjs lot23/*.mjs lot25/*.mjs lot26/*.mjs lot27/*.mjs 2>/dev/null); do
   nom=$(echo $t | tr '/' '_')
   echo "=== $t" > $A/$nom.out
   timeout 900 node $t >> $A/$nom.out 2>&1

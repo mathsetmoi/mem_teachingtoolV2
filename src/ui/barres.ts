@@ -266,11 +266,19 @@ export const methodesBarres = {
 
   /** Le programme de construction s'ouvre ou se ferme (son bouton, ou « Plus ») */
   basculerConstructeur(this: UI): void {
-    if (this.constructeur.ouvert) this.constructeur.fermer(); else { if (this.catalogue.ouvert) this.catalogue.fermer(); this.constructeur.ouvrir() }
+    if (this.constructeur.ouvert) this.constructeur.fermer(); else { if (this.catalogue.ouvert) this.catalogue.fermer(); if (this.courbes.ouvert) this.courbes.fermer(); this.constructeur.ouvrir() }
   },
   /** Le catalogue prend la place du programme de construction, à droite */
   basculerCatalogue(this: UI): void {
-    if (this.catalogue.ouvert) this.catalogue.fermer(); else { if (this.constructeur.ouvert) this.constructeur.fermer(); this.catalogue.ouvrir() }
+    if (this.catalogue.ouvert) this.catalogue.fermer(); else { if (this.constructeur.ouvert) this.constructeur.fermer(); if (this.courbes.ouvert) this.courbes.fermer(); this.catalogue.ouvrir() }
+  },
+  /** Le panneau « Courbes » (tracer une fonction, lot 27), à la même place */
+  basculerCourbes(this: UI): void {
+    if (this.courbes.ouvert) { this.courbes.fermer(); this.boutonCourbes?.classList.remove('actif'); return }
+    if (this.constructeur.ouvert) this.constructeur.fermer()
+    if (this.catalogue.ouvert) this.catalogue.fermer()
+    this.courbes.ouvrir()
+    this.boutonCourbes?.classList.add('actif')
   },
 
 
