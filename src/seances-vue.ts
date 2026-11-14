@@ -17,7 +17,7 @@
 // =============================================================
 import type { App } from './app'
 import type { SeanceDuClasseur } from './seances'
-import { dateCourteMajuscule, deLaSeance, libelleSeance, nomDeSeance, quandMajuscule, LONGUEUR_NOM_SEANCE } from './seances'
+import { dateCourteMajuscule, dateLongue, deLaSeance, libelleSeance, nomDeSeance, quandMajuscule, LONGUEUR_NOM_SEANCE } from './seances'
 import type { Vignettes } from './pages/vignettes'
 import { fermerSurLeFond } from './dialogue'
 import { ressembleAUneClasse } from './classeurs/arbre'
@@ -79,11 +79,16 @@ export interface HoteAccueil {
    *  « 1s_04_Trigo » » remplace « Continuer la séance » */
   rester?: { texte: string; faire(): void } | null
   /** Sans créneau maintenant : « Prochain cours : 14 h 05, 4e B · ouvrir 4_05_Pythagore » */
-  prochain?: { texte: string; etablissement: string | null; couleur: string; libelle: string | null; ouvrir(automatismes: boolean): void } | null
+  prochain?: { texte: string; etablissement: string | null; couleur: string; libelle: string | null; ouvrir(automatismes: boolean): void; preparer?: (() => void) | null } | null
   /** « Pas la bonne semaine ? On est en semaine A » (des créneaux d'une seule semaine) */
   semaine?: { texte: string; faire(): void } | null
   /** « Saisir mon emploi du temps… » : tant que la semaine est vide */
   saisirEmploiDuTemps?: (() => void) | null
+  /** Une séance préparée pour ce cours (lot 25) : le gros bouton
+   *  « Commencer la séance préparée », avec en petit « Fractions :
+   *  additionner · 2 pages » ; « Nouvelle séance vide en 5ème » passe en
+   *  lien dessous */
+  preparee?: { texte: string; faire(automatismes: boolean): void } | null
 }
 
 /** Le créneau du moment dans « Bonjour ! » */
@@ -133,7 +138,11 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
   const caseAuto = el('label', 'accueil-case-automatismes')
   caseAuto.append(auto, el('span', '', 'Commencer par des automatismes'))
   const avecAuto = () => auto.checked
-  const gros = bouton('principal accueil-nouvelle', texteNouvelleSeance(h.classe, !!h.isolees), faire(() => h.nouvelleSeance(avecAuto())))
+  const prep = h.preparee ?? null
+  const gros = prep
+    ? bouton('principal accueil-nouvelle accueil-preparee', '', faire(() => prep.faire(avecAuto())))
+    : bouton('principal accueil-nouvelle', texteNouvelleSeance(h.classe, !!h.isolees), faire(() => h.nouvelleSeance(avecAuto())))
+  if (prep) gros.append(el('span', 'titre', 'Commencer la séance préparée'), el('span', 'detail', prep.texte))
   const chapitre = el('p', 'accueil-chapitre')
   chapitre.append(el('span', 'accueil-nom-chapitre', h.chapitre))
   if (h.chapitres) {
@@ -151,7 +160,14 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
     b.append(quand, el('span', 'quel-creneau', `${cr.horaire} · ${cr.nom}`))
     principale.append(b)
   }
-  principale.append(gros, caseAuto, chapitre)
+  principale.append(gros)
+  // Une séance préparée (lot 25) : la nouvelle séance vide reste à portée
+  if (prep) {
+    const p = el('p', 'accueil-vide')
+    p.append('ou ', bouton('lien accueil-nouvelle-vide', texteNouvelleSeance(h.classe, !!h.isolees).replace(/^Nouvelle séance/, 'Nouvelle séance vide'), faire(() => h.nouvelleSeance(avecAuto()))))
+    principale.append(p)
+  }
+  principale.append(caseAuto, chapitre)
   if (h.derniereFois) {
     const p = el('p', 'accueil-derniere-fois')
     p.append(el('span', 'quand', `La dernière fois${h.continuer ? ` (${h.continuer.replace(/^(de|du) /, '')})` : ''} : `), el('span', 'quoi', h.derniereFois))
@@ -191,6 +207,9 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
       p.append(e)
     }
     if (pro.libelle) p.append(' · ', bouton('lien accueil-prochain-ouvrir', pro.libelle, faire(() => pro.ouvrir(avecAuto()))))
+    // (lot 25) Préparer la séance de ce cours à l'avance
+    const prep = pro.preparer
+    if (prep) p.append(' · ', bouton('lien accueil-prochain-preparer', 'préparer', faire(prep)))
     principale.append(p)
   }
   const saisir = h.saisirEmploiDuTemps
@@ -293,6 +312,13 @@ export class BandeauxSeances {
   /** La lecture d'une séance passée, en haut de la page */
   readonly lecture: HTMLElement
   private texteLecture: HTMLElement
+  /** Une séance à venir qu'on prépare (lot 25) : « Séance à venir, lundi 16
+   *  novembre à 8 h 05. Ce que vous posez ici sera déjà là au début du
+   *  cours. Retour à aujourd'hui · × » ; fermé, il ne revient pas pour
+   *  cette séance tant qu'on ne recharge pas */
+  readonly preparation: HTMLElement
+  private textePreparation: HTMLElement
+  private preparationFermee = new Set<string>()
   /** « Lundi 8 h s'est arrêté page 3 · « Exercice 3 ». Reprendre la page · Voir la séance · × » */
   readonly reprise: HTMLElement
   private texteReprise: HTMLElement
@@ -317,6 +343,14 @@ export class BandeauxSeances {
     this.lecture.append(this.texteLecture,
       bouton('principal petit', 'Reprendre la page', () => { this.app.reprendrePage(this.app.page) }),
       bouton('secondaire petit retour-aujourdhui', 'Retour à aujourd\'hui', () => this.app.retourAujourdhui()))
+    this.preparation = el('div', 'bandeau-seance bandeau-preparation')
+    this.preparation.setAttribute('role', 'status')
+    this.preparation.hidden = true
+    this.textePreparation = el('span', 'texte')
+    const fermerPrep = bouton('fermer-seance', '', () => { const s = this.app.seancePreparee(); if (s) this.preparationFermee.add(s.id); this.preparation.hidden = true })
+    fermerPrep.innerHTML = icone('fermer'); fermerPrep.title = 'Fermer'; fermerPrep.setAttribute('aria-label', 'Fermer')
+    this.preparation.append(this.textePreparation,
+      bouton('secondaire petit retour-aujourdhui', 'Retour à aujourd\'hui', () => this.app.retourAujourdhui()), fermerPrep)
     this.reprise = el('div', 'bandeau-seance bandeau-reprise')
     this.reprise.setAttribute('role', 'status')
     this.reprise.hidden = true
@@ -344,7 +378,7 @@ export class BandeauxSeances {
     this.boutonApres = bouton('secondaire petit', 'Séance d\'après ›', () => this.voisine(1))
     actions.append(this.boutonReprendre, this.boutonVoir, this.boutonAvant, this.boutonApres)
     this.tiroir.append(tete, this.rangee, actions)
-    racine.append(this.lecture, this.reprise, this.tiroir)
+    racine.append(this.lecture, this.preparation, this.reprise, this.tiroir)
     window.addEventListener('keydown', e => {
       if (e.key === 'Escape' && !this.tiroir.hidden && !document.querySelector('dialog[open]')) { e.preventDefault(); e.stopPropagation(); this.fermerTiroir() }
     }, true)
@@ -360,6 +394,17 @@ export class BandeauxSeances {
     }
     if (this.lecture.hidden === lecture) this.lecture.hidden = !lecture
     document.body.classList.toggle('en-lecture-seance', lecture)
+    const prep = app.seancePreparee()
+    const montrer = !!prep && !this.preparationFermee.has(prep.id)
+    if (montrer) {
+      const t = `Séance à venir, ${dateLongue(prep!.debut)}.`
+      if (this.textePreparation.dataset.texte !== t) {
+        this.textePreparation.dataset.texte = t
+        this.textePreparation.replaceChildren(t + ' ', el('span', 'suite', 'Ce que vous posez ici sera déjà là au début du cours.'))
+      }
+    }
+    if (this.preparation.hidden === montrer) this.preparation.hidden = !montrer
+    document.body.classList.toggle('en-preparation-seance', !!prep)
     // Le bandeau « Reprendre » s'en va dès qu'on change de séance ou qu'on écrit sur la page
     const p = this.proposee
     if (p && !this.reprise.hidden) {

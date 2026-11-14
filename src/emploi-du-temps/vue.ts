@@ -17,6 +17,7 @@ import { estSeancesIsolees } from '../classeurs/isolees'
 import {
   JOURS, classeurDuCreneau, cheminDuDossier, colorier, direLaSemaine, dossiersDe, etablissementDuCreneau, etablissementsConnus, heureDite, horaireDit,
   idCreneau, lireHeure, lundiDe, nomDuCreneau, semaineDe, sousDossiers, trier, type Creneau, type EmploiDuTemps, type Semaines,
+  prochainsCours,
 } from './donnees'
 import { devinerDossier, enCreneaux, importer, lireCalendrier, type CreneauLu, type Cours } from './ics'
 import { ErreurPronote, enLigne, garderLien, garderLu, lienPronoteValable, liensPronote, lireLeLien } from './pronote'
@@ -66,6 +67,9 @@ export interface HoteEmploiDuTemps {
   message(texte: string): void
   /** L'emploi du temps vient de changer (la bulle se recalcule) */
   change?(): void
+  /** « Préparer le prochain cours » (lot 25) : la séance de ce cours, dans
+   *  ce classeur (la fenêtre se ferme d'abord) ; absent : pas de bouton */
+  preparer?(debut: number, classeur: FicheClasseur): void
 }
 
 /** Ouvre la fenêtre ; rien si une autre fenêtre est ouverte */
@@ -194,6 +198,18 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
     enregistrer({ ...edt, creneaux: trier(edt.creneaux.map(c => c.id === id ? f({ ...c }) : c)) })
   }
 
+  // « Préparer le prochain cours » (lot 25) : le prochain cours de ce
+  // créneau, dans le classeur qu'il ouvre (le chapitre en cours)
+  const preparerLe = (c: Creneau): HTMLButtonElement[] => {
+    const prep = h.preparer
+    const f = classeurDuCreneau(c, classeurs, dossiers, estSeancesIsolees)
+    const cours = f ? prochainsCours({ ...edt, creneaux: [c] }, { id: f.id, dossier: f.dossier }, dossiers, Date.now(), 1)[0] : undefined
+    if (!prep || !f || !cours) return []
+    const b = bouton('secondaire petit edt-preparer', 'Préparer le prochain cours', () => { d.close(); prep(cours.debut, f) })
+    b.title = `Une séance préparée à l'avance, dans « ${f.nom} »`
+    return [b]
+  }
+
   // ---------- Le créneau choisi ----------
   const remplirFormulaire = () => {
     formulaire.replaceChildren()
@@ -211,6 +227,7 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
         choisi = copie.id; dessiner()
         formulaire.querySelector<HTMLSelectElement>('.edt-jour-choix')?.focus()
       }),
+      ...(preparerLe(c)),
       bouton('secondaire petit danger edt-supprimer', 'Supprimer', () => {
         enregistrer({ ...edt, creneaux: edt.creneaux.filter(x => x.id !== c.id) })
         choisi = null; dessiner()

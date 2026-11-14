@@ -277,10 +277,16 @@ export const methodesMenus = {
     if (seance) {
       filetMenu(m)
       this.entreeMenu(m, 'Nouvelle séance', () => this.nouvelleSeance(), { action: 'nouvelle-seance' })
+      // Une séance à venir qu'on prépare (lot 25) : la commencer, changer sa date
+      const prep = this.app.seancePreparee()
+      if (prep) {
+        this.entreeMenu(m, 'Commencer la séance maintenant', () => this.commencerLaSeance(), { action: 'commencer-seance' })
+        this.entreeMenu(m, 'Changer la date…', () => void this.changerDateDeLaSeance(), { action: 'changer-date-seance' })
+      }
       this.entreeMenu(m, 'Renommer la séance…', () => void this.renommerSeance(), { action: 'renommer-seance' })
       const avant = this.app.tableau.seancesDuClasseur().filter(x => x.pages.length && x.debut < seance.debut).length > 0
       if (telephone || ecranTactile()) this.entreeMenu(m, 'Séance précédente…', () => this.bandeauxSeances.ouvrirSeancePrecedente(), { action: 'seance-precedente', inactif: !avant })
-      if (this.app.enSeancePassee) this.entreeMenu(m, 'Retour à aujourd\'hui', () => this.app.retourAujourdhui(), { action: 'retour-aujourdhui' })
+      if (this.app.enSeancePassee || prep) this.entreeMenu(m, 'Retour à aujourd\'hui', () => this.app.retourAujourdhui(), { action: 'retour-aujourdhui' })
     }
     // Cet appareil (lot 5) : l'affichage de CET écran, gardé dans ce
     // navigateur ; rien ne change dans le classeur, ni pour les élèves. Les

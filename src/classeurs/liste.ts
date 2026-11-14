@@ -110,13 +110,14 @@ export function libelleSeances(f: FicheClasseur): string | null {
 
 /** Une ligne de la liste dépliée : « Lun 19 oct 8h », son nom s'il en a un,
  *  « 3 pages » */
-export interface LigneSeance { id: string; date: string; nom: string | null; pages: string }
+export interface LigneSeance { id: string; date: string; nom: string | null; pages: string; aVenir?: boolean }
 
 /** Les séances d'un classeur, la plus récente d'abord (ou dans l'ordre
  *  choisi à la main, voir seances.seancesDansLOrdre) */
 export function lignesDesSeances(f: FicheClasseur): LigneSeance[] {
   return seancesDansLOrdre(f.listeSeances ?? [])
-    .map(s => ({ id: s.id, date: dateCourteMajuscule(s.debut), nom: s.nom ?? null, pages: pagesLisibles(s.pages) }))
+    // Une séance préparée (lot 25) : « À venir · Lun 16 nov 8h05 »
+    .map(s => ({ id: s.id, date: `${s.aVenir ? 'À venir · ' : ''}${dateCourteMajuscule(s.debut)}`, nom: s.nom ?? null, pages: pagesLisibles(s.pages), ...(s.aVenir ? { aVenir: true } : {}) }))
 }
 
 /** Une séance dans la liste « Séances » de la bibliothèque : d'où elle vient
@@ -129,7 +130,7 @@ export function seancesParMois(fiches: readonly FicheClasseur[], chemin: (f: Fic
   const toutes: RangeeSeance[] = []
   for (const f of fiches) {
     for (const s of f.listeSeances ?? []) {
-      toutes.push({ classeur: f.id, seance: s.id, nomClasseur: f.nom, chemin: chemin(f), debut: s.debut, date: dateCourteMajuscule(s.debut), nom: s.nom ?? null, pages: pagesLisibles(s.pages) })
+      toutes.push({ classeur: f.id, seance: s.id, nomClasseur: f.nom, chemin: chemin(f), debut: s.debut, date: `${s.aVenir ? 'À venir · ' : ''}${dateCourteMajuscule(s.debut)}`, nom: s.nom ?? null, pages: pagesLisibles(s.pages) })
     }
   }
   toutes.sort((a, b) => b.debut - a.debut || (a.seance < b.seance ? -1 : a.seance > b.seance ? 1 : a.classeur < b.classeur ? -1 : 1))

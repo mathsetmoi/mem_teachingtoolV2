@@ -28,7 +28,11 @@ export const methodesPages = {
     if (this.page && this.rendu.l > 0) this.vues.set(this.page, this.vueActuelle())
     this.page = id
     this.tableau.pageVue = id
-    if (!this.enSeancePassee) this.pageDuJour = id
+    // Une page d'une séance à venir (lot 25) : on la prépare, c'est elle où
+    // l'on écrit ; toute autre page : on ne prépare plus
+    const ici = this.tableau.seancesDuClasseur().find(s => s.pages.includes(id))
+    this.tableau.seanceEnPreparation = ici?.aVenir ? ici.id : null
+    if (!this.enSeancePassee && !this.tableau.seanceEnPreparation) this.pageDuJour = id
     this.appliquerVue(id)
     // Rien ne reste choisi d'une page à l'autre : ni la sélection, ni un
     // morceau de figure (Suppr, au retour, l'ôterait sans qu'on le voie choisi)
@@ -301,6 +305,8 @@ export const methodesPages = {
   nouvelleSeance(this: App): void {
     if (this.enLecture) return
     this.viderPointEnAttente()
+    // Pas depuis une séance à venir qu'on préparait : la séance neuve est celle du jour
+    this.tableau.seanceEnPreparation = null
     const d = this.tableau.derniereSeance()
     let page: string
     if (d && d.pages.length && this.tableau.seanceVierge(d.id)) {
@@ -313,6 +319,41 @@ export const methodesPages = {
     this.allerPage(page)
     this.ui?.seanceCommencee?.(precedente)
     this.ui?.maj()
+  },
+
+  // ---------- Les séances préparées à l'avance (lot 25, voir seances.ts) ----------
+  /** « Préparer une séance… » : une séance à venir pour le cours de `debut`,
+   *  avec sa page 1, blanche, où l'on arrive à 100 % : on la prépare (voir
+   *  allerPage). Rend son id (null : rien). */
+  preparerSeance(this: App, debut: number, nom: string | null = null): string | null {
+    if (this.enLecture) return null
+    this.viderPointEnAttente()
+    const { seance, page } = this.tableau.preparerSeance(debut, { nom })
+    this.vues.delete(page)
+    this.allerPage(page)
+    this.ui?.maj()
+    return seance
+  },
+
+  /** Le cours commence (« Bonjour ! », « Commencer la séance maintenant ») :
+   *  la séance préparée devient la séance du jour, à cet instant (son décor
+   *  est déjà là ; le film commence maintenant). On arrive sur sa page 1, à
+   *  100 %. Faux si ce n'est pas une séance à venir. */
+  commencerSeancePreparee(this: App, id: string): boolean {
+    if (this.enLecture) return false
+    this.viderPointEnAttente()
+    const pages = this.tableau.pagesDeLaSeance(id)
+    if (!pages.length || !this.tableau.commencerSeance(id)) return false
+    if (pages.includes(this.page)) this.pageDuJour = this.page
+    this.allerPage(pages[0])
+    this.ui?.maj()
+    return true
+  },
+
+  /** On prépare une séance à venir (lot 25) : celle qu'on prépare, sinon null */
+  seancePreparee(this: App): SeanceDuClasseur | null {
+    const s = this.seanceVue
+    return s?.aVenir && this.tableau.seanceEnPreparation === s.id ? s : null
   },
 
   /** Reprendre une page d'une séance passée dans la séance du jour (lot 6,
@@ -365,6 +406,8 @@ export const methodesPages = {
 
   /** « Retour à aujourd'hui » : la page de la séance du jour où l'on était */
   retourAujourdhui(this: App): void {
+    // On préparait une séance à venir (lot 25) : on revient à celle du jour
+    this.tableau.seanceEnPreparation = null
     const j = this.pagesDuJour
     const id = j.includes(this.pageDuJour) ? this.pageDuJour : j[j.length - 1]
     if (!id || id === this.page) return

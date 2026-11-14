@@ -210,10 +210,11 @@ export const methodesSeances = {
     const m = this.menuEl
     m.replaceChildren()
     m.setAttribute('aria-label', l.nom ?? `Séance du ${l.date}`)
-    entreeMenu(m, 'Ouvrir la séance', () => void this.ouvrirClasseur(f, { seance: sid }), { touche: 'Entrée', action: 'ouvrir-seance' })
+    // Une séance préparée (lot 25) : on l'ouvre pour la préparer ; rien à publier avant le cours
+    entreeMenu(m, l.aVenir ? 'Préparer la séance' : 'Ouvrir la séance', () => void this.ouvrirClasseur(f, { seance: sid }), { touche: 'Entrée', action: 'ouvrir-seance' })
     entreeMenu(m, 'Renommer…', () => void this.renommerSeanceDe(fid, sid), { touche: 'F2', action: 'renommer-seance' })
     // Son replay : la fenêtre Publier, sur elle (le classeur garde chaque séance : on la publie quand on veut)
-    entreeMenu(m, 'Publier la séance…', () => void this.ouvrirClasseur(f, { seance: sid, publier: true }), { action: 'publier-seance', aide: 'Son replay, pour les élèves' })
+    if (!l.aVenir) entreeMenu(m, 'Publier la séance…', () => void this.ouvrirClasseur(f, { seance: sid, publier: true }), { action: 'publier-seance', aide: 'Son replay, pour les élèves' })
     filetMenu(m)
     if (i > 0) entreeMenu(m, 'Monter', () => void this.placerSeance(fid, sid, { pas: -1 }), { touche: 'Alt + ↑', action: 'monter-seance' })
     if (i < lignes.length - 1) entreeMenu(m, 'Descendre', () => void this.placerSeance(fid, sid, { pas: 1 }), { touche: 'Alt + ↓', action: 'descendre-seance' })

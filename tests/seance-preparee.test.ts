@@ -132,3 +132,20 @@ describe('le début du cours', () => {
     expect(f.etapes[0].o.map(o => o[0] === '=' ? [o[1].id, o[1].x] : null)).toEqual([['ENONCE', 300]])
   })
 })
+
+describe('les prochains cours d\'un classeur (l\'emploi du temps)', () => {
+  it('les créneaux de sa classe, à partir de maintenant, du plus proche au plus loin', async () => {
+    const { prochainsCours, VIDE } = await import('../src/emploi-du-temps/donnees')
+    const dossiers = [{ id: 'lfb', nom: 'LFB', parent: null }, { id: '5a', nom: '5A', parent: 'lfb' }, { id: '4b', nom: '4B', parent: 'lfb' }]
+    const edt = { ...VIDE, creneaux: [
+      { id: 'c1', jour: 1, debut: 485, fin: 540, semaines: 'AB' as const, dossier: '5a', nom: '' },
+      { id: 'c2', jour: 4, debut: 485, fin: 540, semaines: 'AB' as const, dossier: '5a', nom: '', salle: 'B12' },
+      { id: 'c3', jour: 2, debut: 600, fin: 655, semaines: 'AB' as const, dossier: '4b', nom: '' },
+    ] }
+    // Vendredi 13 novembre 2026, 10 h
+    const r = prochainsCours(edt, { id: 'f', dossier: '5a' }, dossiers, new Date('2026-11-13T10:00:00').getTime())
+    expect(r.map(x => new Date(x.debut).toString().slice(0, 21))).toEqual(['Mon Nov 16 2026 08:05', 'Thu Nov 19 2026 08:05', 'Mon Nov 23 2026 08:05'])
+    expect(r[1].creneau.salle).toBe('B12')
+    expect(prochainsCours(edt, { id: 'f', dossier: null }, dossiers, Date.now())).toEqual([])
+  })
+})
