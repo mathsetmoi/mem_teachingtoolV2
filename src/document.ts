@@ -14,7 +14,7 @@ import { FOND_NEUF, uid } from './types'
 import type { FicheSeance, SeanceDuClasseur } from './seances'
 import type { Activite, TexteCahier } from './resume/fiche'
 import { activiteValable } from './resume/fiche'
-import { ficheValable, migration, nomDeSeance, rangerLesPages, rangsDeLOrdre } from './seances'
+import { ficheValable, migration, nomDeSeance, rangerLesPages, rangsDeLOrdre, seanceDuJourDe } from './seances'
 import { seancesDuFilm } from './revoir/exporter'
 
 export const ORIGINE_LOCALE = 'locale'
@@ -978,13 +978,27 @@ export class Tableau {
     return r
   }
 
-  /** La séance du jour : la plus récente qui a des pages (une séance sans
-   *  page, que rien ne devrait laisser, ne l'est pas) ; null : aucune séance */
+  /** La séance où l'on écrit : la séance du jour (voir seanceDuJour), ou la
+   *  séance à venir qu'on prépare (seanceEnPreparation) ; null : aucune
+   *  séance */
   derniereSeance(): SeanceDuClasseur | null {
     const l = this.seancesDuClasseur()
-    for (let k = l.length - 1; k >= 0; k--) if (l[k].pages.length) return l[k]
-    return l.length ? l[l.length - 1] : null
+    if (this.seanceEnPreparation) {
+      const p = l.find(s => s.id === this.seanceEnPreparation && s.aVenir && s.pages.length)
+      if (p) return p
+    }
+    return seanceDuJourDe(l)
   }
+
+  /** La séance du jour, même pendant qu'on en prépare une (voir
+   *  seances.seanceDuJourDe) */
+  seanceDuJour(): SeanceDuClasseur | null { return seanceDuJourDe(this.seancesDuClasseur()) }
+
+  /** La séance à venir qu'on prépare (lot 25) : tant qu'elle est là, c'est
+   *  elle la séance où l'on écrit (derniereSeance), et non la séance du
+   *  jour. Rien ne s'écrit : l'app la pose quand on va sur une de ses pages,
+   *  et l'ôte quand on en sort (voir App.allerPage). */
+  seanceEnPreparation: string | null = null
 
   /** La séance d'une page : celle du rangement pour une page de l'ordre,
    *  celle qu'elle a notée pour une page hors de l'ordre (la corbeille) ;
@@ -1069,6 +1083,49 @@ export class Tableau {
     this.doc.transact(() => this.seances.set(id, fiche))
     const page = this.ajouterPage(o.fond ?? FOND_NEUF, this.ordre.length, { seance: id })
     return { seance: id, page }
+  }
+
+  // ---------- Les séances préparées à l'avance (lot 25) ----------
+  /** Une séance préparée pour le cours de `debut` (l'heure prévue), avec sa
+   *  page 1, au bout de l'ordre : comme nouvelleSeance, marquée aVenir. Ce
+   *  qu'on y pose avant que le cours commence est son décor (voir
+   *  commencerSeance). */
+  preparerSeance(debut: number, o: { fond?: Fond; nom?: string | null } = {}): { seance: string; page: string } {
+    this.ecrireLesSeances()
+    const id = uid()
+    const fiche: FicheSeance = { debut, aVenir: true }
+    const nom = nomDeSeance(o.nom)
+    if (nom) fiche.nom = nom
+    this.doc.transact(() => this.seances.set(id, fiche))
+    const page = this.ajouterPage(o.fond ?? FOND_NEUF, this.ordre.length, { seance: id })
+    return { seance: id, page }
+  }
+
+  /** Le cours commence : la séance préparée devient une séance comme les
+   *  autres, qui commence à t (la séance du jour). Tout ce qui a été écrit
+   *  sur ses pages avant t est son décor : le film élève et la revue le
+   *  montrent dans l'état de départ (exporter : l'état juste avant la
+   *  première étape de sa plage, qui commence à t). Faux si ce n'est pas une
+   *  séance à venir. */
+  commencerSeance(id: string, t = Date.now()): boolean {
+    const f = this.seances.get(id)
+    if (!ficheValable(f) || !f.aVenir) return false
+    const g: FicheSeance = { ...f, debut: t }
+    delete g.aVenir; delete g.depuis; delete g.rang
+    this.doc.transact(() => this.seances.set(id, g))
+    if (this.seanceEnPreparation === id) this.seanceEnPreparation = null
+    return true
+  }
+
+  /** Une séance à venir change de date (l'heure prévue du cours). Faux si
+   *  ce n'est pas une séance à venir, ou si rien ne change. */
+  changerDateSeance(id: string, debut: number): boolean {
+    const f = this.seances.get(id)
+    if (!ficheValable(f) || !f.aVenir || f.debut === debut || !Number.isFinite(debut)) return false
+    const g: FicheSeance = { ...f, debut }
+    delete g.rang
+    this.doc.transact(() => this.seances.set(id, g))
+    return true
   }
 
   /** La séance recommence maintenant (son début change) : une séance où

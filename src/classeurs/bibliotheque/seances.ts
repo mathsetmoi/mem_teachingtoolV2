@@ -277,7 +277,7 @@ export const methodesSeances = {
     const f = this.fiches.get(fid)
     const s = f?.listeSeances?.find(x => x.id === sid)
     if (!s) return
-    const nom = await demanderNomDeSeance(this.racine, { id: sid, debut: s.debut, depuis: s.debut, nom: s.nom ?? null, ancienne: false, rang: null, pages: [] })
+    const nom = await demanderNomDeSeance(this.racine, { id: sid, debut: s.debut, depuis: s.debut, nom: s.nom ?? null, ancienne: false, rang: null, aVenir: !!s.aVenir, pages: [] })
     if (nom === null) return
     const r = await this.changerSeances(fid, t => t.renommerSeance(sid, nom || null), x => x)
     if (r) this.hote.message(nom ? `Séance renommée : « ${nom} »` : `Nom de la séance retiré : « ${libelleSeance({ debut: s.debut, nom: null })} »`)

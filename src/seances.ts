@@ -8,7 +8,7 @@
 // Ce qui est écrit dans le document (deux cartes de premier niveau, hors des
 // pages : ni étape du film, ni pile d'annulation, comme les noms des pages
 // et la corbeille ; un fichier .memc les garde sans autre code) :
-// - 'seances' : id → { debut, nom?, depuis?, ancienne? } ;
+// - 'seances' : id → { debut, nom?, depuis?, ancienne?, rang?, aVenir? } ;
 // - 'seanceDesPages' : page → id de sa séance (une page n'est que d'une
 //   séance).
 // L'ordre des pages reste UN seul, l'ordre global du document : les pages
@@ -30,8 +30,10 @@
  *  née juste avant le premier geste) ; sans lui, debut. ancienne : née de
  *  la migration (son nom par défaut est sa date). rang : sa place quand le
  *  professeur a choisi l'ordre à la main (voir seancesDansLOrdre) ; une
- *  version d'avant l'ignore et range par dates. */
-export interface FicheSeance { debut: number; nom?: string; depuis?: number; ancienne?: true; rang?: number }
+ *  version d'avant l'ignore et range par dates. aVenir : une séance
+ *  préparée à l'avance (voir « Les séances préparées » plus bas) ; son début
+ *  est alors l'heure prévue du cours. */
+export interface FicheSeance { debut: number; nom?: string; depuis?: number; ancienne?: true; rang?: number; aVenir?: true }
 
 /** Une séance, avec ses pages (dans l'ordre du document) */
 export interface SeanceDuClasseur {
@@ -42,6 +44,8 @@ export interface SeanceDuClasseur {
   ancienne: boolean
   /** Sa place choisie à la main (null : celle de sa date) */
   rang: number | null
+  /** Préparée à l'avance, le cours n'a pas commencé (voir plus bas) */
+  aVenir: boolean
   pages: string[]
 }
 
@@ -73,7 +77,7 @@ export function rangerLesPages(ordre: readonly string[], seances: Iterable<[stri
   const r = triees.map(({ id, fiche }) => ({
     id, debut: fiche.debut, depuis: typeof fiche.depuis === 'number' && Number.isFinite(fiche.depuis) ? fiche.depuis : fiche.debut,
     nom: typeof fiche.nom === 'string' && fiche.nom.trim() ? fiche.nom.trim() : null, ancienne: !!fiche.ancienne,
-    rang: typeof fiche.rang === 'number' && Number.isFinite(fiche.rang) ? fiche.rang : null, pages: [] as string[],
+    rang: typeof fiche.rang === 'number' && Number.isFinite(fiche.rang) ? fiche.rang : null, aVenir: fiche.aVenir === true, pages: [] as string[],
   }))
   const parId = new Map(r.map(s => [s.id, s]))
   const attente: string[] = []
@@ -96,8 +100,62 @@ export function rangerLesPages(ordre: readonly string[], seances: Iterable<[stri
 /** Les séances où l'on a écrit (une page au moins), telles que la fiche du
  *  classeur les garde pour la bibliothèque : de la plus ancienne à la plus
  *  récente */
-export function resumeDesSeances(l: readonly SeanceDuClasseur[]): { id: string; debut: number; nom?: string; rang?: number; pages: number }[] {
-  return l.filter(s => s.pages.length > 0).map(s => ({ id: s.id, debut: s.debut, ...(s.nom ? { nom: s.nom } : {}), ...(s.rang !== null ? { rang: s.rang } : {}), pages: s.pages.length }))
+export function resumeDesSeances(l: readonly SeanceDuClasseur[]): ResumeSeance[] {
+  return l.filter(s => s.pages.length > 0).map(s => ({ id: s.id, debut: s.debut, ...(s.nom ? { nom: s.nom } : {}), ...(s.rang !== null ? { rang: s.rang } : {}), ...(s.aVenir ? { aVenir: true as const } : {}), pages: s.pages.length }))
+}
+
+/** Une séance telle que la fiche du classeur la garde (la bibliothèque) ;
+ *  aVenir : préparée, le cours n'a pas commencé (facultatif) */
+export interface ResumeSeance { id: string; debut: number; nom?: string; rang?: number; aVenir?: true; pages: number }
+
+/** La séance du jour : la plus récente qui a des pages, sans compter les
+ *  séances à venir (préparées, le cours n'a pas commencé) ; à défaut, la
+ *  plus récente qui n'est pas à venir, puis la plus récente tout court (un
+ *  classeur où il n'y a que des séances à venir) ; null : aucune séance */
+export function seanceDuJourDe(l: readonly SeanceDuClasseur[]): SeanceDuClasseur | null {
+  for (let k = l.length - 1; k >= 0; k--) if (l[k].pages.length && !l[k].aVenir) return l[k]
+  for (let k = l.length - 1; k >= 0; k--) if (!l[k].aVenir) return l[k]
+  return l.length ? l[l.length - 1] : null
+}
+
+// ---------- Les séances préparées à l'avance (lot 25) ----------
+// On prépare chez soi la séance d'un cours qui vient (« Préparer une
+// séance… ») : elle porte l'heure prévue du cours (son début) et la marque
+// aVenir. Elle se range à sa date parmi les autres ; elle n'est pas la
+// séance du jour (seanceDuJourDe) tant qu'on ne la prépare pas (voir
+// Tableau.seanceEnPreparation). Au début du cours (« Bonjour ! »,
+// « Commencer la séance maintenant »), elle devient une séance comme les
+// autres, qui commence à cet instant : ce qu'on avait posé sur ses pages
+// avant est son DÉCOR, déjà là au départ du film élève et de la revue (le
+// film commence au début du cours), sans rien changer au format du film.
+// Une version d'avant ignore la marque : elle voit une séance datée du
+// cours, rejouée préparation comprise.
+
+/** Les séances à venir, la plus proche d'abord */
+export function seancesAVenir<T extends { debut: number; aVenir?: boolean }>(l: readonly T[]): T[] {
+  return l.filter(s => s.aVenir).sort((a, b) => a.debut - b.debut)
+}
+
+/** La séance à venir que « Bonjour ! » propose à l'heure `maintenant` : la
+ *  plus proche prévue aujourd'hui (même plus tard dans la journée), sinon
+ *  la plus ancienne dont la date est passée (le cours n'a pas eu lieu) ;
+ *  null : aucune */
+export function seanceAVenirDuMoment<T extends { debut: number; aVenir?: boolean; pages: readonly unknown[] | number }>(l: readonly T[], maintenant: number): T | null {
+  const a = seancesAVenir(l).filter(s => (typeof s.pages === 'number' ? s.pages : s.pages.length) > 0)
+  const jour = a.find(s => memeJour(s.debut, maintenant))
+  if (jour) return jour
+  return a.find(s => s.debut < maintenant) ?? null
+}
+
+/** « À venir · lun 16 nov 8h05 » : l'étiquette d'une séance à venir */
+export function libelleAVenir(s: { debut: number; nom: string | null }, maintenant = Date.now()): string {
+  return `${s.debut < maintenant && !memeJour(s.debut, maintenant) ? 'À venir, date passée' : 'À venir'} · ${s.nom ?? dateCourte(s.debut)}`
+}
+
+/** « lundi 16 novembre à 8 h 05 » */
+export function dateLongue(t: number): string {
+  const d = new Date(t)
+  return `${JOURS[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]} à ${heureDite(t)}`
 }
 
 // ---------- L'ordre choisi à la main ----------
