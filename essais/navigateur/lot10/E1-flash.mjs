@@ -216,22 +216,55 @@ const geo = await p.evaluate(() => {
 ok(geo.domaines.length >= 5 && geo.domaines.every(Boolean), 'I) La case « Espace et géométrie » coche tous ses domaines', geo)
 if (!geo.visibles) await p.click('.themes-niveau[data-niveau="5e"] .arbre-theme:has(.case-domaine[value="5e/Angles"]) > .ligne-arbre > .deplier')
 await p.click('.themes-niveau[data-niveau="5e"] .arbre-domaine:has(.case-domaine[value="5e/Angles"]) .deplier')
-const comp = await p.evaluate(() => [...document.querySelectorAll('.arbre-domaine:has(.case-domaine[value="5e/Angles"]) .case-competence')].filter(c => c.offsetParent).length)
-ok(comp === 4, 'I) La flèche d\'Angles montre ses 4 compétences', comp)
+const comp = await p.evaluate(() => {
+  const l = [...document.querySelectorAll('.arbre-domaine:has(.case-domaine[value="5e/Angles"]) .case-competence')].filter(c => c.offsetParent)
+  return { offi: l.filter(c => !c.value.startsWith('5e/obj:')).length, obj: l.filter(c => c.value.startsWith('5e/obj:')).length }
+})
+ok(comp.offi === 4 && comp.obj === 1, 'I) La flèche d\'Angles montre ses 4 lignes OFFI et son objectif OBJ, ensemble', comp)
 const sym = await p.evaluate(() => !!document.querySelector('.themes-niveau[data-niveau="5e"] .case-domaine[value="5e/Symétries"]'))
 ok(sym === false, 'L) Plus de domaine PERSO « Symétries » en 5e (rangé dans Transformations)', sym)
 const grisees = await p.evaluate(() => [...document.querySelectorAll('.themes-niveau[data-niveau="5e"] .case-competence:not([value^="5e/obj:"])')].filter(c => c.disabled).length)
 ok(grisees === 0, 'J) En 5e, aucune compétence de la liste officielle n\'est grisée (chacune a ses exercices)', grisees)
-// M. Les objectifs d'apprentissage : une seconde liste, sous son titre
-const titres = await p.evaluate(() => [...document.querySelectorAll('.themes-niveau[data-niveau="5e"] .section-arbre')].map(t => t.textContent))
-ok(titres.length === 2 && /Automatismes du programme/.test(titres[0]) && /OFFI/.test(titres[0]) && /Objectifs d/.test(titres[1]), 'M) Deux listes en 5e, chacune sous son titre', titres)
-const obj = await p.evaluate(() => {
-  const d = document.querySelector('.themes-niveau[data-niveau="5e"] .arbre-domaine:has(.case-domaine[value="5e/obj:Opérations"])')
-  const cs = d ? [...d.querySelectorAll('.case-competence')] : []
-  return { n: cs.length, actives: cs.filter(c => !c.disabled).length }
-})
-ok(obj.n === 11 && obj.actives === 6, 'M) Objectifs d\'Opérations : 11 objectifs, 6 avec exercices ou questions de cours', obj)
-await p.evaluate(() => { for (const c of document.querySelectorAll('.themes-niveau[data-niveau="5e"] .case-domaine:checked')) c.click(); document.querySelector('.themes-niveau[data-niveau="5e"] .case-domaine[value="5e/obj:Opérations"]').click() })
+// M. Un seul arbre en 5e : les lignes OFFI et OBJ rangées ensemble, chacune
+//    avec son étiquette ; un filtre, une recherche, « Cochés », un bilan
+const N5 = '.themes-niveau[data-niveau="5e"]'
+const titres = await p.evaluate(n => document.querySelectorAll(n + ' .section-arbre').length, N5)
+const pastilles = await p.evaluate(n => [...document.querySelectorAll(n + ' .pastille-filtre')].map(b => b.textContent.replace(/\s+/g, ' ').trim()), N5)
+ok(titres === 0 && pastilles.length >= 4 && /^Tout/.test(pastilles[0]) && pastilles.some(t => /^OFFI/.test(t)) && pastilles.some(t => /^OBJ/.test(t)) && pastilles.some(t => /^Cochés/.test(t)), 'M) Un seul arbre en 5e, avec ses pastilles Tout, OFFI, OBJ, Cochés', pastilles)
+const obj = await p.evaluate(n => {
+  const d = document.querySelector(n + ' .arbre-domaine:has(.case-domaine[value="5e/Opérations"])')
+  const cs = d ? [...d.querySelectorAll('.case-competence[value^="5e/obj:Opérations/"]')] : []
+  const of = d ? [...d.querySelectorAll('.case-competence:not([value^="5e/obj:"])')] : []
+  return { n: cs.length, actives: cs.filter(c => !c.disabled).length, offi: of.length, etiquettes: d ? [...d.querySelectorAll('li > label > b')].map(b => b.textContent).filter((t, i, l) => l.indexOf(t) === i) : [] }
+}, N5)
+ok(obj.n === 11 && obj.actives === 6 && obj.offi === 6 && obj.etiquettes.includes('OFFI') && obj.etiquettes.includes('OBJ'), 'M) Opérations : 6 lignes OFFI et 11 objectifs OBJ (6 avec exercices ou questions de cours), chacun avec son étiquette', obj)
+// Le filtre OFFI : une case de thème ne coche que les lignes OFFI visibles
+for (const c of await p.$$(N5 + ' .case-domaine:checked')) await c.click()
+await p.click(N5 + ' .pastille-filtre[data-type="OFFI"]')
+await p.click(N5 + ' .arbre-theme:has(.case-domaine[value="5e/Opérations"]) .case-theme')
+const filtre = await p.evaluate(n => ({
+  offi: document.querySelectorAll(n + ' .case-competence:checked:not([value^="5e/obj:"])').length,
+  obj: document.querySelectorAll(n + ' .case-competence:checked[value^="5e/obj:"]').length,
+  bilan: document.querySelector(n + ' .bilan-texte').textContent,
+}), N5)
+ok(filtre.offi === 25 && filtre.obj === 0 && /^25 lignes cochées, \d+ questions possibles$/.test(filtre.bilan), 'M) Avec le filtre OFFI, la case du thème ne coche que les lignes OFFI (25) ; le bilan du bas les compte', filtre)
+await p.click(N5 + ' .pastille-filtre[data-type="OBJ"]')
+const garde = await p.evaluate(n => document.querySelectorAll(n + ' .case-competence:checked').length, N5)
+ok(garde === 25, 'M) Passer au filtre OBJ ne décoche rien', garde)
+await p.click(N5 + ' .pastille-filtre[data-type="tout"]')
+await p.fill(N5 + ' .recherche-lignes', 'divis')
+const cherche = await p.evaluate(n => ({ domaines: [...document.querySelectorAll(n + ' .arbre-domaine[data-fusion]')].filter(d => d.offsetParent).length, lignes: [...document.querySelectorAll(n + ' li[data-type]')].filter(l => l.offsetParent).length }), N5)
+ok(cherche.domaines === 1 && cherche.lignes >= 3, 'M) La recherche « divis » ne garde que les lignes qui contiennent le mot, et ouvre leur domaine', cherche)
+await p.fill(N5 + ' .recherche-lignes', '')
+await p.click(N5 + ' .tout-decocher')
+ok(await p.evaluate(n => document.querySelectorAll(n + ' .case-competence:checked').length === 0, N5), 'M) « Tout décocher » vide la sélection')
+// Un flash sur les objectifs d'Opérations : on coche ses lignes OBJ
+await p.evaluate(n => {
+  const d = document.querySelector(n + ' .arbre-domaine:has(.case-domaine[value="5e/Opérations"])')
+  for (const c of d.querySelectorAll('.case-competence[value^="5e/obj:Opérations/"]:not(:disabled)')) c.click()
+}, N5)
+const reglageObj = await p.evaluate(n => document.querySelector(n + ' .bilan-texte').textContent, N5)
+ok(/^6 lignes cochées/.test(reglageObj), 'M) Les 6 objectifs d\'Opérations cochables sont cochés', reglageObj)
 await p.click('.dialogue-flash .lancer')
 await p.waitForTimeout(1200)
 const pageM = await p.evaluate(() => window.__app.page)
