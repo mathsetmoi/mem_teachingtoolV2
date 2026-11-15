@@ -57,7 +57,8 @@ describe('le tirage d\'un flash', () => {
         expect(q.reponse, a.id).not.toMatch(/^§(Oui|Non)\b/)
         expect(q.reponse, a.id).not.toMatch(/^<svg/)
         expect(q.reponse, a.id).not.toMatch(/^[<>=]$/)
-        expect(q.enonce, a.id).not.toMatch(/…$|:$|^Est-ce |^(Ce tableau|La droite|La figure|La demi-droite)\b.*est-(il|elle) /)
+        // Une ancienne formulation de cours (« Compléter : … le… ») finit par un trou
+        if (!a.id.startsWith('ancien-')) expect(q.enonce, a.id).not.toMatch(/…$|:$|^Est-ce |^(Ce tableau|La droite|La figure|La demi-droite)\b.*est-(il|elle) /)
       }
     }
     for (const c of COURS_5E) for (let k = 0; k < 40; k++) {
@@ -89,7 +90,8 @@ describe('le tirage d\'un flash', () => {
   it('rien de fixe : chaque façon de poser une notion tire quelque chose au hasard', () => {
     for (const c of COURS_5E) c.facons.forEach((f, i) => {
       const vus = new Set<string>()
-      for (let k = 0; k < 60; k++) vus.add(f()[0])
+      // L'énoncé ou, à énoncé égal, le dessin qui change
+      for (let k = 0; k < 60; k++) vus.add(f()[0] + '|' + (f()[2] ?? ''))
       expect(vus.size, `${c.id}, façon ${i + 1} : « ${f()[0]} »`).toBeGreaterThan(1)
     })
   })
@@ -178,7 +180,8 @@ describe('le réglage du flash', () => {
     const r = { ...REGLAGES_PAR_DEFAUT, themes: ['5e/Nombres relatifs', '5e/Angles'] }
     // Seulement les automatismes : les applications directes ne sont plus posées (7 novembre 2026)
     expect(automatismesChoisis(r).map(a => a.id).sort()).toEqual([...duTheme('Nombres relatifs'), ...duTheme('Angles')].filter(a => !a.application).map(a => a.id).sort())
-    expect(coursChoisis(r).map(c => c.id).sort()).toEqual([...coursDu('Nombres relatifs'), ...coursDu('Angles')].map(c => c.id).sort())
+    // En 5e, une question de cours se pose sous sa compétence : celles qui n'en ont pas ne sont plus posées
+    expect(coursChoisis(r).map(c => c.id).sort()).toEqual([...coursDu('Nombres relatifs'), ...coursDu('Angles')].filter(c => c.competence !== undefined).map(c => c.id).sort())
     expect(automatismesChoisis({ ...r, niveaux: [] })).toEqual([])
     expect(coursChoisis({ ...r, niveaux: [] })).toEqual([])
   })
@@ -629,7 +632,7 @@ describe('la liste des objectifs d\'apprentissage en 5e', () => {
   })
 
   it('chaque exercice d\'application de 5e est rangé sous un objectif qui existe', () => {
-    const appli = cinq.automatismes.filter(a => a.application)
+    const appli = cinq.automatismes.filter(a => a.application && !a.id.startsWith('ancien-'))
     expect(appli.length).toBe(42)
     for (const a of appli) {
       const o = objectifsDeExercice('5e', a.id)
@@ -641,7 +644,7 @@ describe('la liste des objectifs d\'apprentissage en 5e', () => {
   })
 
   it('un domaine d\'objectifs coché pose ses exercices d\'application, et eux seuls', () => {
-    const ids = automatismesChoisis(reglage(['5e/obj:Opérations'])).map(a => a.id).sort()
+    const ids = automatismesChoisis(reglage(['5e/obj:Opérations'])).map(a => a.id).filter(id => !id.startsWith('ancien-')).sort()
     expect(ids).toEqual(['distributivite-numerique', 'diviser-decimal', 'multiples-diviseurs', 'priorites', 'programme-calcul'])
     expect(automatismesChoisis(reglage(['5e/Opérations'])).some(a => a.application)).toBe(false)
   })
@@ -649,6 +652,69 @@ describe('la liste des objectifs d\'apprentissage en 5e', () => {
   it('cocher un seul objectif ne pose que ses exercices', () => {
     const k = PROGRAMME_CYCLE4['5e'][0].domaines[0].objectifs.findIndex(o => o.exemples?.includes('priorites'))
     const ids = automatismesChoisis(reglage(['5e/obj:Opérations'], [`5e/obj:Opérations/${k}`])).map(a => a.id)
-    expect(ids).toEqual(['priorites'])
+    expect(ids).toContain('priorites')
+    expect(ids.every(id => id === 'priorites' || id.startsWith('ancien-cours-Opérations-8-'))).toBe(true)
+  })
+})
+
+describe('les questions de cours de 5e, rangées par compétence', () => {
+  const reglage = (themes: string[], competences: string[] = []) => ({ ...REGLAGES_PAR_DEFAUT, themes, competences })
+  const cinq = NIVEAUX.find(n => n.id === '5e')!
+
+  it('chaque question de cours a au plus une compétence ou un objectif qui existe', () => {
+    const domaines = PROGRAMME_AUTOMATISMES['5e'].slice(0, 5).flatMap(t => t.domaines)
+    for (const c of cinq.cours) {
+      expect(c.competence !== undefined && c.objectif !== undefined, c.id).toBe(false)
+      if (c.competence !== undefined) expect(domaines.find(d => d.cle === c.theme)?.competences[c.competence], c.id).toBeTruthy()
+      if (c.objectif !== undefined) expect(PROGRAMME_CYCLE4['5e'].flatMap(t => t.domaines).find(d => d.nom.startsWith(c.theme))?.objectifs[c.objectif], c.id).toBeTruthy()
+    }
+  })
+
+  it('cocher une compétence ne pose que ses questions de cours', () => {
+    const ids = coursChoisis(reglage(['5e/Angles'], ['5e/Angles/1'])).map(c => c.id)
+    expect(ids.length).toBeGreaterThan(0)
+    for (const c of cinq.cours.filter(x => ids.includes(x.id))) expect(c.competence).toBe(1)
+    // Le domaine entier pose celles de toutes ses compétences, jamais une sans compétence
+    const tout = coursChoisis(reglage(['5e/Angles']))
+    expect(tout.every(c => c.competence !== undefined)).toBe(true)
+    expect(tout.length).toBeGreaterThan(ids.length)
+  })
+
+  it('un objectif d\'apprentissage pose ses questions de cours : critères de divisibilité par 3 et par 9, priorités opératoires', () => {
+    const ids = coursChoisis(reglage(['5e/obj:Opérations'])).map(c => c.id).sort()
+    expect(ids).toEqual(['cours-Opérations-2', 'cours-Opérations-8'])
+    for (const c of coursChoisis(reglage(['5e/obj:Opérations']))) for (let k = 0; k < 30; k++) expect(c.poser().reponse).toMatch(/^§./)
+    expect(coursChoisis(reglage(['5e/obj:Opérations'], ['5e/obj:Opérations/9'])).map(c => c.id)).toEqual(['cours-Opérations-2'])
+  })
+
+  it('les anciennes formulations deviennent des exercices de la même compétence', () => {
+    const ancien = cinq.automatismes.filter(a => a.id.startsWith('ancien-'))
+    expect(ancien.length).toBeGreaterThan(10)
+    for (const a of ancien) {
+      const q = a.generer()
+      expect(q.enonce.length, a.id).toBeGreaterThan(5)
+      expect(q.reponse, a.id).toMatch(/^§./)
+    }
+    // Opérations-7 : la formulation d'avant se pose parmi les exercices de la compétence « Multiplier et diviser par 10, 100, 1 000 »
+    const un = ancien.find(a => a.id === 'ancien-cours-Opérations-7-1')!
+    expect(un.competence).toBe(4)
+    expect(automatismesChoisis(reglage(['5e/Opérations'], ['5e/Opérations/4'])).some(a => a.id === un.id)).toBe(true)
+  })
+
+  it('une compétence sans question de cours reste cochable quand elle a des exercices : le flash pose alors un exercice', () => {
+    const { questions, coursRemplaces } = tirerFlash(automatismesChoisis(reglage(['5e/Opérations'], ['5e/Opérations/3'])), coursChoisis(reglage(['5e/Opérations'], ['5e/Opérations/3'])), { cours: 2, application: 1 })
+    expect(coursRemplaces).toBe(2)
+    expect(questions.every(q => q.forme === 'application')).toBe(true)
+  })
+
+  it('les nouvelles questions de Mathieu : un cube ou un pavé, la nature d\'un parallélogramme codé, l\'empilement', () => {
+    const q = (id: string) => cinq.cours.find(c => c.id === id)!
+    const solide = cinq.cours.find(c => c.titre === 'Reconnaître le solide')!
+    const vus = new Set<string>()
+    for (let k = 0; k < 40; k++) { const x = solide.poser(); expect(x.figure).toMatch(/^<svg/); vus.add(x.reponse) }
+    expect(vus).toEqual(new Set(['§un cube', '§un pavé droit']))
+    const para = cinq.cours.find(c => c.titre === 'La nature d’un parallélogramme codé')!
+    for (let k = 0; k < 40; k++) expect(para.poser().reponse).toMatch(/^§un (carré|losange|rectangle)$/)
+    void q
   })
 })

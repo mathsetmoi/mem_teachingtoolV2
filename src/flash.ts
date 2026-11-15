@@ -28,7 +28,7 @@ import type { Niveau } from './automatismes'
 import { automatismesDuFlash, COMPOSITION_PAR_DEFAUT, NIVEAUX, tirerFlash } from './automatismes'
 import type { ThemeProgramme } from './programme-automatismes'
 import { PROGRAMME_AUTOMATISMES } from './programme-automatismes'
-import { estDomaineObjectifs, objectifsDeExercice } from './objectifs-flash'
+import { cleObjectifsDe, estDomaineObjectifs, objectifsDeExercice } from './objectifs-flash'
 import type { Formule, ImageForme } from './types'
 import { uid } from './types'
 import { fermerSurLeFond } from './dialogue'
@@ -108,10 +108,26 @@ export function automatismesChoisis(r: ReglagesFlash): Automatisme[] {
       return a.competence === undefined || visees.includes(`${domaine}/${a.competence}`)
     }))
 }
-/** Les questions de cours des thèmes cochés, dans les niveaux cochés */
+/** Les questions de cours des thèmes cochés, dans les niveaux cochés. Dans
+ *  un niveau dont les questions de cours sont rangées par compétence (la 5e),
+ *  une question ne se pose que sous sa compétence (liste officielle) ou son
+ *  objectif d'apprentissage, cochés en entier ou un par un ; celles qui n'ont
+ *  ni l'une ni l'autre ne sont plus posées. */
 export function coursChoisis(r: ReglagesFlash): QuestionCours[] {
-  return NIVEAUX.filter(n => r.niveaux.includes(n.id))
-    .flatMap(n => n.cours.filter(c => r.themes.includes(`${n.id}/${c.theme}`)))
+  return NIVEAUX.filter(n => r.niveaux.includes(n.id)).flatMap(n => {
+    const rangees = n.cours.some(c => c.competence !== undefined || c.objectif !== undefined)
+    return n.cours.filter(c => {
+      if (!rangees) return r.themes.includes(`${n.id}/${c.theme}`)
+      const sous = (domaine: string, k: number) => {
+        if (!r.themes.includes(domaine)) return false
+        const visees = r.competences.filter(x => x.startsWith(domaine + '/'))
+        return !visees.length || visees.includes(`${domaine}/${k}`)
+      }
+      if (c.competence !== undefined) return sous(`${n.id}/${c.theme}`, c.competence)
+      const cle = c.objectif !== undefined ? cleObjectifsDe(n.id, c.theme) : undefined
+      return cle !== undefined && sous(`${n.id}/${cle}`, c.objectif!)
+    })
+  })
 }
 
 /** Un texte avec des $…$, pour la fenêtre : le texte tel quel, les maths par KaTeX */
@@ -135,23 +151,28 @@ function casesDuNiveau(n: Niveau, R: ReglagesFlash): string {
   /** Les rangs des compétences que travaille un exercice dans ce domaine */
   const rangsDe = (a: Automatisme, cle: string): number[] => estDomaineObjectifs(cle)
     ? objectifsDeExercice(n.id, a.id)?.ks ?? [] : a.competence === undefined ? [] : [a.competence]
-  const nombre = (t: string) => exercicesDe(t).length
+  /** Les questions de cours rangées sous une compétence ou un objectif de ce domaine */
+  const coursDe = (cle: string) => n.cours.filter(c => estDomaineObjectifs(cle)
+    ? c.objectif !== undefined && cleObjectifsDe(n.id, c.theme) === cle
+    : c.competence !== undefined && c.theme === cle)
+  const rangCours = (c: QuestionCours) => c.objectif ?? c.competence
+  const nombre = (t: string) => exercicesDe(t).length + coursDe(t).length
   const coche = (cle: string) => R.themes.includes(cle)
   const PERSO = '<b class="etiquette-perso" title="Un domaine à vous, hors programme officiel">PERSO</b>'
   const OFFI = '<b class="etiquette-offi" title="La liste officielle des automatismes">OFFI</b>'
   const domaine = (cle: string, nom: string, competences: string[], perso = false, competencesPerso = perso) => {
-    const valeur = `${n.id}/${cle}`, siens = exercicesDe(cle)
+    const valeur = `${n.id}/${cle}`, siens = exercicesDe(cle), lecons = coursDe(cle)
     const rangees = siens.every(a => rangsDe(a, cle).length > 0)
     const visees = R.competences.filter(c => c.startsWith(valeur + '/'))
     const liste = competences.map((c, k) => {
-      const nb = siens.filter(a => rangsDe(a, cle).includes(k)).length
+      const nb = siens.filter(a => rangsDe(a, cle).includes(k)).length + lecons.filter(c => rangCours(c) === k).length
       const ok = rangees && nb > 0
       const cochee = ok && coche(valeur) && (!visees.length || visees.includes(`${valeur}/${k}`))
       return `<li><label${ok ? '' : ' class="sans-exercice"'}><input type="checkbox" class="case-competence" value="${html(valeur)}/${k}"${cochee ? ' checked' : ''}${ok ? '' : ' disabled'}><span>${texteEtMaths(c)}${competencesPerso ? ' ' + PERSO : ''}</span>${rangees ? `<small>${nb}</small>` : ''}</label></li>`
     }).join('')
     return `<div class="arbre-domaine">
       <div class="ligne-arbre"><button type="button" class="deplier" aria-expanded="false" aria-label="Voir les compétences de ${html(nom)}" title="Voir les compétences"></button>
-        <label><input type="checkbox" class="case-domaine" value="${html(valeur)}"${coche(valeur) ? ' checked' : ''}><span>${html(nom)}${perso ? ' ' + PERSO : ''}</span><small>${siens.length}</small></label></div>
+        <label><input type="checkbox" class="case-domaine" value="${html(valeur)}"${coche(valeur) ? ' checked' : ''}><span>${html(nom)}${perso ? ' ' + PERSO : ''}</span><small>${siens.length + lecons.length}</small></label></div>
       <div class="enfants" hidden>${rangees ? '' : '<p class="note-arbre">Les exercices de ce domaine ne sont pas encore rangés par compétence : on le coche en entier.</p>'}<ul>${liste}</ul></div>
     </div>`
   }

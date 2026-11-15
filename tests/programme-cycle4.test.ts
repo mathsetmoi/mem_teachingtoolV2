@@ -47,7 +47,7 @@ describe('Le programme du cycle 4', () => {
       for (const id of o.exemples ?? []) { expect(ids.has(id), id).toBe(true); ranges.add(id) }
       expect(exemplesDe({ niveau: n, t: i, d: j, sorte: 'o', k }).length).toBe(o.exemples?.length ?? 0)
     })))
-    const applications = NIVEAUX.filter(n => n.id === '5e' || n.id === '4e').flatMap(n => n.automatismes).filter(a => a.application).map(a => a.id)
+    const applications = NIVEAUX.filter(n => n.id === '5e' || n.id === '4e').flatMap(n => n.automatismes).filter(a => a.application && !a.id.startsWith('ancien-')).map(a => a.id)
     expect(applications.filter(id => !ranges.has(id))).toEqual([])
     expect(ranges.size).toBe(69)
   })

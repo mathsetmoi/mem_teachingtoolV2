@@ -1023,8 +1023,28 @@ page derrière reste vide. On y choisit :
   `programme-cycle4.ts`) : ils ne sont posés que là, jamais dans la liste
   officielle. Un objectif ou un domaine sans exercice reste en gris, « à
   remplir ». Les clés des domaines d'objectifs commencent par `obj:`
-  (« 5e/obj:Opérations »). Les questions de cours restent, pour l'instant,
-  dans la liste officielle.
+  (« 5e/obj:Opérations »).
+  **Les questions de cours de 5e sont rangées par compétence** (15 novembre
+  2026, `src/automatismes/cinquieme-cours.ts`) : chacune porte une
+  `competence` (le rang de la phrase de la liste officielle) ou un
+  `objectif` (le rang dans la liste des objectifs), et cocher une
+  compétence ou un objectif ne pose que ses questions de cours. Une question
+  sans compétence ni objectif n'est plus posée (elle reste dans le code).
+  Quand une compétence cochée n'a aucune question de cours, le flash pose un
+  exercice à la place. Les reformulations du professeur remplacent les
+  anciennes façons de poser une notion, et **l'ancienne formulation n'est
+  jamais perdue : elle devient un exercice (`ancien-cours-…`) de la même
+  compétence**, ou de l'objectif (application directe). Treize questions
+  nouvelles ont été ajoutées (divisibilité par 2, 5 et 10, chiffres après la
+  virgule d'un produit, addition à trou, graduations d'une droite, fractions
+  de même dénominateur, fraction plus grande que 1, abscisse, empilement de
+  cubes, cube ou pavé en perspective cavalière, angles de l'équerre, nature
+  d'un parallélogramme codé, probabilité en pourcentage). Trois compétences
+  du professeur, d'abord PERSO, sont maintenant des objectifs du programme :
+  critères de divisibilité par 3 et par 9, priorités opératoires, calcul par
+  substitution. Une façon de poser peut donner un dessin (3e élément du
+  tableau renvoyé). « Dessine un angle aigu » n'affiche pas encore de dessin
+  à la correction : la réponse est écrite.
   **Au lycée**, la liste des thèmes, comme avant. Ceux de **5e** sont pensés comme la partie « Automatismes » du
   brevet : des questions à réponse courte qui mobilisent un **automatisme**
   de la liste de 5e du programme 2026, ou une **application directe** d'un
