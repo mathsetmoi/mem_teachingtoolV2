@@ -1103,6 +1103,25 @@ page derrière reste vide. On y choisit :
   barres, circulaire ou semi-circulaire, boîtes à moustaches, arbre
   pondéré ; les tableaux (croisé, effectifs, dé truqué) s'écrivent en
   formule. Chaque exercice porte sa phrase de la liste officielle ;
+  **Un seul arbre en 5e** (15 novembre 2026, `src/flash-arbre.ts`) : la
+  fenêtre range les deux listes ensemble, Thème › Domaine › lignes, puisque
+  leurs thèmes et leurs domaines sont les mêmes. Chaque ligne porte son
+  étiquette : **OFFI** (la liste officielle des automatismes), **OBJ** (un
+  objectif d'apprentissage) ou **PERSO** (une ligne du professeur). Un
+  domaine fermé montre ses compteurs par étiquette (« 6/6 OFFI 3 OBJ »), les
+  lignes sans exercice restent en gris (« à remplir »), sans case. Au-dessus,
+  des pastilles Tout / OFFI / OBJ / PERSO, « Cochés » (relire son choix) et
+  une recherche sans accent ; un filtre ouvre les domaines qui ont des lignes
+  à montrer et les referme à la fin. Une case de thème ou de domaine ne
+  coche que les lignes que le filtre laisse voir. Chaque thème et chaque
+  domaine se replie (« Tout replier »). Sous l'arbre : « N lignes cochées,
+  M questions possibles » et « Tout décocher ». Le filtre n'est pas gardé.
+  **Les réglages gardés ne changent pas** : le domaine officiel reste
+  « 5e/Opérations », le domaine d'objectifs « 5e/obj:Opérations », une
+  compétence « 5e/Opérations/2 » ou « 5e/obj:Opérations/6 » ; au lancement,
+  `choixDeLArbre` retrouve ces domaines d'origine à partir des lignes
+  cochées. Les autres niveaux gardent l'arbre à compétences d'avant.
+
 - combien de questions de chaque sorte, avec − et + : par défaut **5
   questions, 2 questions de cours** (une définition, une propriété, le
   vocabulaire : « La médiatrice d'un segment est la droite… ») **puis 3

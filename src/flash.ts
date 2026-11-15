@@ -28,7 +28,8 @@ import type { Niveau } from './automatismes'
 import { automatismesDuFlash, COMPOSITION_PAR_DEFAUT, NIVEAUX, tirerFlash } from './automatismes'
 import type { ThemeProgramme } from './programme-automatismes'
 import { PROGRAMME_AUTOMATISMES } from './programme-automatismes'
-import { cleObjectifsDe, estDomaineObjectifs, objectifsDeExercice } from './objectifs-flash'
+import { cleObjectifsDe, estDomaineObjectifs, NIVEAUX_AVEC_OBJECTIFS, objectifsDeExercice } from './objectifs-flash'
+import { arbreUnifie, brancherArbre, choixDeLArbre } from './flash-arbre'
 import type { Formule, ImageForme } from './types'
 import { uid } from './types'
 import { fermerSurLeFond } from './dialogue'
@@ -180,6 +181,7 @@ function casesDuNiveau(n: Niveau, R: ReglagesFlash): string {
   if (!programme) {
     return [...new Set(autos.map(a => a.theme))].map(t => `<label><input type="checkbox" class="case-domaine" value="${html(`${n.id}/${t}`)}"${coche(`${n.id}/${t}`) ? ' checked' : ''}><span>${html(t)}</span><small>${nombre(t)}</small></label>`).join('')
   }
+  if (NIVEAUX_AVEC_OBJECTIFS.includes(n.id)) return arbreUnifie({ n, R, programme, texte: texteEtMaths, html, exercicesDe, rangsDe, coursDe, rangCours })
   const ranges = new Set<string>()
   const theme = (nom: string, domaines: string, note?: string, offi = false) => note
     ? `<div class="arbre-theme vide"><div class="ligne-arbre"><span class="deplier"></span><span class="nom-theme">${html(nom)}</span><small>${note}</small></div>${domaines ? `<div class="enfants">${domaines}</div>` : ''}</div>`
@@ -196,13 +198,7 @@ function casesDuNiveau(n: Niveau, R: ReglagesFlash): string {
       .map(d => nombre(d.cle) > 0 ? domaine(d.cle, d.nom ?? d.cle, d.competences, d.perso, d.perso || d.competencesPerso) : domaineVide(d.nom ?? d.cle))
     return theme(t.nom, domaines.join(''), undefined, t.offi)
   }
-  let sectionVue = ''
-  const html1 = programme.map(t => {
-    const titre = t.section && t.section.nom !== sectionVue
-      ? `<p class="section-arbre">${html(t.section.nom)}${t.section.offi ? ' ' + OFFI : ''}</p>` : ''
-    sectionVue = t.section?.nom ?? sectionVue
-    return titre + themeDe(t)
-  }).join('')
+  const html1 = programme.map(themeDe).join('')
   // Un exercice dont le domaine n'est pas dans le programme ne se perd pas
   const autres = [...new Set(autos.map(a => a.theme))].filter(t => !ranges.has(t))
   return html1 + (autres.length ? theme('Autres', autres.map(t => domaine(t, t, [])).join('')) : '')
@@ -378,7 +374,9 @@ export class Flash {
       </div>`
     const q = <T extends HTMLElement>(s: string) => d.querySelector(s) as T
     const compo: Composition = { cours: R.cours, application: R.application }
+    const arbres = [...d.querySelectorAll<HTMLElement>('.themes-niveau')].filter(e => e.querySelector('.arbre-unifie')).map(brancherArbre)
     const maj = () => {
+      arbres.forEach(m => m())
       const choisis = new Set([...d.querySelectorAll<HTMLButtonElement>('.niveau-flash[aria-pressed=true]')].map(b => b.dataset.niveau!))
       d.querySelectorAll<HTMLElement>('.themes-niveau').forEach(e => { e.hidden = !choisis.has(e.dataset.niveau!) })
       const themes = [...d.querySelectorAll<HTMLElement>('.themes-niveau:not([hidden])')].flatMap(domainesCoches).length
@@ -399,7 +397,7 @@ export class Flash {
     }))
     d.querySelectorAll<HTMLButtonElement>('.tout-cocher').forEach(b => b.addEventListener('click', () => {
       const niveau = d.querySelector<HTMLElement>(`.themes-niveau[data-niveau="${b.dataset.niveau}"]`)!
-      const cases = [...niveau.querySelectorAll<HTMLInputElement>('input:not(:disabled)')]
+      const cases = [...niveau.querySelectorAll<HTMLInputElement>('input[type=checkbox]:not(:disabled)')].filter(c => !c.closest('.filtre-masque'))
       const tout = cases.every(c => c.checked && !c.indeterminate)
       cases.forEach(c => { c.checked = !tout; c.indeterminate = false })
       accorderArbre(niveau)
@@ -414,12 +412,14 @@ export class Flash {
     // ses compétences ; une compétence décide de son domaine et de son thème
     d.addEventListener('change', e => {
       const c = e.target as HTMLInputElement
-      const descendre = (branche: Element | null) => branche?.querySelectorAll<HTMLInputElement>('.case-domaine, .case-competence:not(:disabled)').forEach(x => { x.checked = c.checked; x.indeterminate = false })
+      const descendre = (branche: Element | null) => branche?.querySelectorAll<HTMLInputElement>('.case-domaine, .case-competence:not(:disabled)').forEach(x => { if (x.closest('.filtre-masque')) return; x.checked = c.checked; x.indeterminate = false })
       if (c.classList.contains('case-theme')) descendre(c.closest('.arbre-theme'))
       else if (c.classList.contains('case-domaine')) descendre(c.closest('.arbre-domaine'))
       accorderArbre(d)
       maj()
     })
+    // Le filtre de l'arbre (pastilles, recherche, « Cochés », tout décocher)
+    d.addEventListener('filtre', () => { accorderArbre(d); maj() })
     d.querySelectorAll<HTMLButtonElement>('button.deplier').forEach(b => b.addEventListener('click', () => {
       ouvrirBranche(b.closest('.arbre-theme, .arbre-domaine') as HTMLElement, b.getAttribute('aria-expanded') !== 'true')
     }))
@@ -427,12 +427,13 @@ export class Flash {
     const fermer = () => { if (d.open) d.close() }
     q('.annuler').addEventListener('click', fermer)
     q('.lancer').addEventListener('click', () => {
+      const fusion = [...d.querySelectorAll<HTMLElement>('.themes-niveau:not([hidden])')].map(choixDeLArbre)
       const r: ReglagesFlash = {
         niveaux: [...d.querySelectorAll<HTMLButtonElement>('.niveau-flash[aria-pressed=true]')].map(b => b.dataset.niveau!),
-        themes: [...d.querySelectorAll<HTMLElement>('.themes-niveau:not([hidden])')].flatMap(domainesCoches).map(c => c.value),
-        competences: [...d.querySelectorAll<HTMLElement>('.themes-niveau:not([hidden]) .arbre-domaine:not(.vide)')]
+        themes: [...[...d.querySelectorAll<HTMLElement>('.themes-niveau:not([hidden])')].flatMap(domainesCoches).filter(c => !c.closest('[data-fusion]')).map(c => c.value), ...fusion.flatMap(x => x.themes)],
+        competences: [...[...d.querySelectorAll<HTMLElement>('.themes-niveau:not([hidden]) .arbre-domaine:not(.vide):not([data-fusion])')]
           .filter(x => x.querySelector<HTMLInputElement>('.case-domaine')!.indeterminate)
-          .flatMap(x => [...x.querySelectorAll<HTMLInputElement>('.case-competence:checked')].map(c => c.value)),
+          .flatMap(x => [...x.querySelectorAll<HTMLInputElement>('.case-competence:checked')].map(c => c.value)), ...fusion.flatMap(x => x.competences)],
         ...compo,
         affichage: (d.querySelector('input[name=affichage-flash]:checked') as HTMLInputElement).value === 'toutes' ? 'toutes' : 'une',
         parQuestion: Math.max(5, Math.min(300, Math.round(Number(q<HTMLInputElement>('.par-question').value) || 30))),

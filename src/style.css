@@ -2869,5 +2869,20 @@ body.page-nuit.contraste :is(.bouton, button.rang, .bouton-classeur, .zoom-texte
 .bulle-edt .fermer-bulle:hover { background: #e9eef5; }
 @media (prefers-reduced-motion: no-preference) { .bulle-edt { animation: bulle-edt .25s ease-out; } @keyframes bulle-edt { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translate(-50%, 0); } } }
 /* Les deux listes d'un niveau (5e) : un titre avant chacune */
-.section-arbre { margin: 14px 0 4px; padding-top: 10px; border-top: 1px dashed var(--filet, currentColor); font-weight: 700; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--encre-douce); }
-.section-arbre:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* La fenêtre des automatismes de 5e en un seul arbre : étiquettes, filtre, compteurs */
+.etiquette-obj { display: inline-block; margin-right: 4px; padding: 0 6px; border-radius: 5px; background: #e3ebfb; color: #2457a6; font-size: 11px; font-weight: 700; letter-spacing: .05em; vertical-align: 1px; flex: none; }
+.arbre-unifie li .etiquette-offi, .arbre-unifie li .etiquette-perso { margin-left: 0; margin-right: 4px; flex: none; }
+.arbre-unifie li label { gap: 4px; }
+.arbre-unifie li label small { margin-left: auto; padding-left: 8px; color: var(--encre-douce); font-variant-numeric: tabular-nums; flex: none; }
+.barre-filtre { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 6px 0 8px; }
+.pastille-filtre { font: inherit; font-size: 13px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--filet, #dbe1e8); background: transparent; color: inherit; cursor: pointer; }
+.pastille-filtre small { opacity: .75; }
+.pastille-filtre[aria-pressed=true] { background: var(--bleu, #2457a6); border-color: var(--bleu, #2457a6); color: #fff; }
+.recherche-lignes { flex: 1 1 140px; min-width: 0; font: inherit; font-size: 14px; padding: 4px 10px; border: 1px solid var(--filet, #dbe1e8); border-radius: 8px; background: transparent; color: inherit; }
+.compteurs { display: inline-flex; gap: 4px; margin-left: auto; flex: none; }
+.compteur-type { padding: 0 6px; border-radius: 5px; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.compteur-type.OFFI { background: #e2f1e6; color: #23683a; } .compteur-type.OBJ { background: #e3ebfb; color: #2457a6; } .compteur-type.PERSO { background: #fbe9dd; color: #a4481a; }
+.compteur-type.rien { opacity: .45; }
+.bilan-cases { margin: 8px 0 0; font-size: 14px; color: var(--encre-douce); }
+.filtre-masque { display: none !important; }

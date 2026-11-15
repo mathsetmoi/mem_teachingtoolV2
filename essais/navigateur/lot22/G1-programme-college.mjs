@@ -85,7 +85,8 @@ await p.screenshot({ path: SORTIE + 'A-onglet-5e.png' })
 // D
 await p.click(`${ops} .flash-prog`); await p.waitForTimeout(400)
 const coches = await p.evaluate(() => [...document.querySelectorAll('.dialogue-flash input[type="checkbox"]:checked')].map(i => i.value))
-ok(coches.includes('5e/Opérations') && coches.every(v => v.startsWith('5e/Opérations')), 'D. le flash s’ouvre, Opérations de 5e coché (et ses compétences), rien d’autre', coches)
+// Depuis le Catalogue : les automatismes d'Opérations (lignes OFFI) ; ses objectifs OBJ ne sont pas cochés, la case du domaine est donc à moitié cochée
+ok(coches.some(v => v.startsWith('5e/Opérations/')) && coches.every(v => v.startsWith('5e/Opérations')), 'D. le flash s’ouvre, les lignes OFFI d’Opérations de 5e cochées, rien d’autre', coches)
 await p.keyboard.press('Escape'); await p.waitForTimeout(300)
 
 // E
