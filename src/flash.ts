@@ -26,7 +26,9 @@ import type { App } from './app'
 import type { Automatisme, Composition, QuestionCours, QuestionFlash } from './automatismes'
 import type { Niveau } from './automatismes'
 import { automatismesDuFlash, COMPOSITION_PAR_DEFAUT, NIVEAUX, tirerFlash } from './automatismes'
+import type { ThemeProgramme } from './programme-automatismes'
 import { PROGRAMME_AUTOMATISMES } from './programme-automatismes'
+import { estDomaineObjectifs, objectifsDeExercice } from './objectifs-flash'
 import type { Formule, ImageForme } from './types'
 import { uid } from './types'
 import { fermerSurLeFond } from './dialogue'
@@ -93,11 +95,17 @@ export function lireReglages(t: string | null): ReglagesFlash {
  *  automatismes. */
 export function automatismesChoisis(r: ReglagesFlash): Automatisme[] {
   return NIVEAUX.filter(n => r.niveaux.includes(n.id))
-    .flatMap(n => automatismesDuFlash(n).filter(a => {
-      const domaine = `${n.id}/${a.theme}`
+    .flatMap(n => n.automatismes.filter(a => {
+      // Un exercice d'application directe ne se pose que sous un objectif
+      // d'apprentissage ; un automatisme, sous son domaine de la liste officielle
+      const obj = a.application ? objectifsDeExercice(n.id, a.id) : undefined
+      if (a.application && !obj) return false
+      const domaine = `${n.id}/${obj ? obj.cle : a.theme}`
       if (!r.themes.includes(domaine)) return false
       const visees = r.competences.filter(c => c.startsWith(domaine + '/'))
-      return !visees.length || a.competence === undefined || visees.includes(`${domaine}/${a.competence}`)
+      if (!visees.length) return true
+      if (obj) return obj.ks.some(k => visees.includes(`${domaine}/${k}`))
+      return a.competence === undefined || visees.includes(`${domaine}/${a.competence}`)
     }))
 }
 /** Les questions de cours des thèmes cochés, dans les niveaux cochés */
@@ -119,16 +127,24 @@ function texteEtMaths(t: string): string {
  *  case-domaine et pour valeur « niveau/domaine ». */
 function casesDuNiveau(n: Niveau, R: ReglagesFlash): string {
   const autos = automatismesDuFlash(n)
-  const nombre = (t: string) => autos.filter(a => a.theme === t).length
+  /** Les exercices d'un domaine : ceux de la liste officielle, ou, pour un
+   *  domaine d'objectifs, les exercices d'application rangés sous ses objectifs */
+  const exercicesDe = (cle: string) => estDomaineObjectifs(cle)
+    ? n.automatismes.filter(a => a.application && objectifsDeExercice(n.id, a.id)?.cle === cle)
+    : autos.filter(a => a.theme === cle)
+  /** Les rangs des compétences que travaille un exercice dans ce domaine */
+  const rangsDe = (a: Automatisme, cle: string): number[] => estDomaineObjectifs(cle)
+    ? objectifsDeExercice(n.id, a.id)?.ks ?? [] : a.competence === undefined ? [] : [a.competence]
+  const nombre = (t: string) => exercicesDe(t).length
   const coche = (cle: string) => R.themes.includes(cle)
   const PERSO = '<b class="etiquette-perso" title="Un domaine à vous, hors programme officiel">PERSO</b>'
   const OFFI = '<b class="etiquette-offi" title="La liste officielle des automatismes">OFFI</b>'
   const domaine = (cle: string, nom: string, competences: string[], perso = false, competencesPerso = perso) => {
-    const valeur = `${n.id}/${cle}`, siens = autos.filter(a => a.theme === cle)
-    const rangees = siens.every(a => a.competence !== undefined)
+    const valeur = `${n.id}/${cle}`, siens = exercicesDe(cle)
+    const rangees = siens.every(a => rangsDe(a, cle).length > 0)
     const visees = R.competences.filter(c => c.startsWith(valeur + '/'))
     const liste = competences.map((c, k) => {
-      const nb = siens.filter(a => a.competence === k).length
+      const nb = siens.filter(a => rangsDe(a, cle).includes(k)).length
       const ok = rangees && nb > 0
       const cochee = ok && coche(valeur) && (!visees.length || visees.includes(`${valeur}/${k}`))
       return `<li><label${ok ? '' : ' class="sans-exercice"'}><input type="checkbox" class="case-competence" value="${html(valeur)}/${k}"${cochee ? ' checked' : ''}${ok ? '' : ' disabled'}><span>${texteEtMaths(c)}${competencesPerso ? ' ' + PERSO : ''}</span>${rangees ? `<small>${nb}</small>` : ''}</label></li>`
@@ -151,13 +167,20 @@ function casesDuNiveau(n: Niveau, R: ReglagesFlash): string {
       <div class="enfants" hidden>${domaines}</div></div>`
   /** Un domaine encore sans exercice, montré en gris (thème « à remplir ») */
   const domaineVide = (nom: string) => `<div class="arbre-domaine vide"><div class="ligne-arbre"><span class="deplier"></span><span class="nom-domaine">${html(nom)}</span><small>à remplir</small></div></div>`
-  const html1 = programme.map(t => {
+  const themeDe = (t: ThemeProgramme): string => {
     const avec = t.domaines.filter(d => nombre(d.cle) > 0)
     avec.forEach(d => ranges.add(d.cle))
     if (!avec.length) return theme(t.nom, t.aRemplir ? t.domaines.map(d => domaineVide(d.nom ?? d.cle)).join('') : '', t.aRemplir ? 'à remplir' : t.domaines.length ? 'bientôt' : 'rien au programme', t.offi)
     const domaines = t.domaines.filter(d => t.aRemplir || nombre(d.cle) > 0)
       .map(d => nombre(d.cle) > 0 ? domaine(d.cle, d.nom ?? d.cle, d.competences, d.perso, d.perso || d.competencesPerso) : domaineVide(d.nom ?? d.cle))
     return theme(t.nom, domaines.join(''), undefined, t.offi)
+  }
+  let sectionVue = ''
+  const html1 = programme.map(t => {
+    const titre = t.section && t.section.nom !== sectionVue
+      ? `<p class="section-arbre">${html(t.section.nom)}${t.section.offi ? ' ' + OFFI : ''}</p>` : ''
+    sectionVue = t.section?.nom ?? sectionVue
+    return titre + themeDe(t)
   }).join('')
   // Un exercice dont le domaine n'est pas dans le programme ne se perd pas
   const autres = [...new Set(autos.map(a => a.theme))].filter(t => !ranges.has(t))
