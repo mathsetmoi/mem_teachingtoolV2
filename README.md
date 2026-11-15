@@ -1006,14 +1006,15 @@ page derrière reste vide. On y choisit :
   quatre notions de cours (à quoi sert le théorème, la réciproque, la
   contraposée ; l'hypoténuse). Dans un énoncé, un retour à la ligne (`\n`)
   commence une nouvelle ligne à l'écran (les étapes d'une rédaction).
-  Le deuxième (8 novembre 2026) est **Symétries**, en **5e** seulement
-  (Espace et géométrie), avec une seule compétence, « Connaître le cours » :
-  un triangle et son image, sans axe ni centre tracés, et la question « Quel
-  type de symétrie a été appliqué ? » (sans les réponses dans l'énoncé :
-  symétrie axiale ou centrale ; le triangle est quelconque, l'axe vertical ou
-  horizontal), huit phrases du cours à compléter (pliage, axe, droite,
-  plier ; demi-tour, point, centre), plus quatre notions de cours (la symétrie
-  axiale, l'axe de symétrie, la symétrie centrale, le centre de symétrie).
+  Le deuxième (8 novembre 2026) était **Symétries**, en **5e** : le
+  15 novembre 2026, à la demande du professeur, ce domaine PERSO a disparu et
+  ses 17 questions sont rangées dans « Transformations » : « Quel type de
+  symétrie a été appliqué ? » (deux exercices selon la symétrie dessinée :
+  l'axiale sous la compétence « symétrie axiale », la centrale en application
+  directe de l'objectif « Définir le demi-tour »), et les phrases à compléter
+  et les quatre notions (symétrie axiale, axe de symétrie, symétrie centrale,
+  centre de symétrie) comme questions de cours, la symétrie axiale et son axe
+  sous la compétence, la symétrie centrale et son centre sous l'objectif.
   **Deux listes en 5e** (15 novembre 2026), comme en 2nde : dans la
   fenêtre, d'abord « Automatismes du programme » (OFFI : la liste officielle,
   une compétence par phrase), puis « Objectifs d'apprentissage du programme »
