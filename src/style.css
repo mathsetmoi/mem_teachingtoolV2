@@ -112,6 +112,12 @@ button, select, input { font: inherit; color: inherit; }
 @media (min-width: 900px) and (max-width: 1100px) {
   body:not(.telephone) .barre-haut.en-familles > .filet-vertical { margin: 0 1px; }
 }
+/* Jusqu'à 1300 px (la tablette à 1024 px, un portable ou un TNI à 1280 px),
+   le bouton « Courbe » (lot 27) passe dans le menu ⋯ : la barre garde la
+   place du nom de la page et du bouton du classeur */
+@media (min-width: 900px) and (max-width: 1300px) {
+  body:not(.telephone) .barre-haut.en-familles > .bouton-courbe { display: none; }
+}
 /* Le bouton « Cette page » : la vignette du fond et une petite flèche (il
    ouvre un menu) ; assez large pour le nom de sa famille */
 .bouton.choix-fond { width: auto; min-width: 66px; grid-auto-flow: column; gap: 3px; padding: 0 6px; }

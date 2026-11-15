@@ -222,6 +222,10 @@ export const methodesMenus = {
     // L'emploi du temps (lot 2 de l'audit) : une ligne courte, sans aide
     const edt = this.emploiDuTemps
     if (edt) this.entreeMenu(m, 'Emploi du temps…', () => edt(), { action: 'emploi-du-temps' })
+    // Le bouton « Courbe » n'est pas dans la barre entre 900 et 1300 px
+    // (lot 27 : la barre y garde sa place pour le nom de la page) : il est ici
+    if (!telephone && this.boutonCourbes && !this.boutonCourbes.getClientRects().length)
+      this.entreeMenu(m, 'Courbe : tracer une fonction', () => this.basculerCourbes(), { action: 'courbe', touche: 'Y' })
     m.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
     // Le menu réduit du lot 18 : trois états, selon le fichier du classeur.
     // (1) Le classeur a son fichier (la clé active : à jour, en pause, en

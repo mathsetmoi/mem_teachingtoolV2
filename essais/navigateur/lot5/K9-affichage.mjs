@@ -436,7 +436,8 @@ const OUTILS_MOTS = ['Stylo', 'Surligneur', 'Gomme', 'Point', 'Segment', 'Formes
 // (Adapté au mode nuit, lot 13 : « Nuit », la lune, juste après Fond)
 // (Adapté à la barre du haut en familles, lot 3 de l'audit : « Page » réunit
 // le fond, Nuit, Aimant, Formes auto et la poubelle, qui sont dans son menu)
-const HAUT_MOTS = ['Annuler', 'Rétablir', 'Nouvelle', 'Page', 'Image', 'Instruments', 'Construire', 'Catalogue', 'Automatismes', 'Classe', 'Revoir', 'Publier', 'Fichier']
+// (Adapté au lot 27 : « Courbe », tracer une fonction, après Instruments)
+const HAUT_MOTS = ['Annuler', 'Rétablir', 'Nouvelle', 'Page', 'Image', 'Instruments', 'Courbe', 'Construire', 'Catalogue', 'Automatismes', 'Classe', 'Revoir', 'Publier', 'Fichier']
 const NOMS = () => {
   const lire = sel => [...document.querySelectorAll(sel)].map(b => ({ mot: b.querySelector(':scope > .libelle')?.dataset.libelle ?? null, texte: b.textContent,
     vu: (() => { const s = b.querySelector(':scope > .libelle'); return s ? getComputedStyle(s).display !== 'none' && getComputedStyle(s, '::before').content : null })(),

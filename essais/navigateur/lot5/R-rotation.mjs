@@ -387,7 +387,10 @@ for (const lieu of TACTILE ? LIEUX : []) {
   // Un doigt reprend l'image (la pastille du doigt, 36 px au-dessus), puis le crayon, sans survol, 12 px au-dessus de son centre
   await doigt.bas(v0.cx, v0.cy + 60); await p.waitForTimeout(40); await doigt.haut(); await p.waitForTimeout(450)
   const qd = await pastille(p)
-  ok(qd && Math.abs(qd.y - (v0.y1 - 36)) < 4, `${nom} — un doigt reprend l'image : la pastille du doigt (36 px au-dessus)`, { qd, v0 })
+  // (Adapté au lot 27 : quand le haut de l'image touche presque l'étiquette
+  // de la séance, la pastille du doigt passe sous l'image, 36 px sous le bord
+  // du bas, pour qu'un crayon qui vise un peu haut ne tombe pas sur l'étiquette)
+  ok(qd && (Math.abs(qd.y - (v0.y1 - 36)) < 4 || Math.abs(qd.y - (v0.y2 + 36)) < 4), `${nom} — un doigt reprend l'image : la pastille du doigt (36 px au-dessus, ou dessous s'il n'y a pas la place)`, { qd, v0 })
   const qc = qd ?? { x: v0.cx, y: v0.y1 - 36 }
   await tourner(p, crayon, { x: qc.x, y: qc.y - 12 }, { x: v0.cx, y: v0.cy }, 40)
   v1 = await lire(p)
