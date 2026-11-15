@@ -587,34 +587,51 @@ describe('un domaine PERSO : Pythagore (4e)', () => {
   })
 })
 
-describe('un domaine PERSO : Symétries (5e)', () => {
-  it('il est dans l\'arbre de 5e, en Espace et géométrie, avec une seule compétence « Connaître le cours »', () => {
-    const d = PROGRAMME_AUTOMATISMES['5e'][1].domaines.find(x => x.cle === 'Symétries')!
-    expect(d).toMatchObject({ perso: true, competences: ['Connaître le cours'] })
-    expect(PROGRAMME_AUTOMATISMES['4e'].flatMap(t => t.domaines).some(x => x.cle === 'Symétries')).toBe(false)
-    expect(COURS_5E.filter(c => c.theme === 'Symétries').length).toBe(4)
-    for (const a of automatismesDuFlash(NIVEAUX.find(n => n.id === '5e')!).filter(x => x.theme === 'Symétries')) expect(a.competence, a.id).toBe(0)
+describe('les symétries de 5e, rangées dans « Transformations » (plus de domaine PERSO)', () => {
+  const cinq = NIVEAUX.find(n => n.id === '5e')!
+  const reglage = (themes: string[], competences: string[] = []) => ({ ...REGLAGES_PAR_DEFAUT, themes, competences })
+
+  it('le domaine PERSO « Symétries » n\'existe plus', () => {
+    expect(PROGRAMME_AUTOMATISMES['5e'].flatMap(t => t.domaines).some(x => x.cle === 'Symétries')).toBe(false)
+    expect(COURS_5E.some(c => c.theme === 'Symétries')).toBe(false)
+    expect(AUTOMATISMES_5E.some(x => x.theme === 'Symétries')).toBe(false)
   })
-  it('quel type de symétrie : axiale ou centrale, les réponses ne sont pas dans l\'énoncé, et une figure', () => {
-    const a = AUTOMATISMES_5E.find(x => x.id === 'perso-symetries-type')!
-    const vus = new Set<string>()
-    for (let k = 0; k < 100; k++) {
-      const q = a.generer()
-      vus.add(q.reponse)
-      expect(q.enonce).toBe('Voici un triangle $ABC$ et son image $A\'B\'C\'$. Quel type de symétrie a été appliqué ?')
-      expect(q.figure).toContain('<svg')
+  it('quel type de symétrie : une figure, la symétrie axiale sous la compétence, la centrale sous l\'objectif « Définir le demi-tour »', () => {
+    const axiale = AUTOMATISMES_5E.find(x => x.id === 'symetrie-type-axiale')!
+    const centrale = AUTOMATISMES_5E.find(x => x.id === 'symetrie-type-centrale')!
+    expect(axiale.competence).toBe(0)
+    expect(centrale.application).toBe(true)
+    for (let k = 0; k < 20; k++) {
+      for (const [a, rep] of [[axiale, '§une symétrie axiale'], [centrale, '§une symétrie centrale']] as const) {
+        const q = a.generer()
+        expect(q.enonce).toBe('Voici un triangle $ABC$ et son image $A\'B\'C\'$. Quel type de symétrie a été appliqué ?')
+        expect(q.figure).toContain('<svg')
+        expect(q.reponse).toBe(rep)
+      }
     }
-    expect([...vus].sort()).toEqual(['§une symétrie axiale', '§une symétrie centrale'])
+    expect(automatismesChoisis(reglage(['5e/Transformations'], ['5e/Transformations/0'])).some(a => a.id === 'symetrie-type-axiale')).toBe(true)
+    expect(automatismesChoisis(reglage(['5e/obj:Transformations'], ['5e/obj:Transformations/0'])).map(a => a.id)).toContain('symetrie-type-centrale')
+    expect(automatismesChoisis(reglage(['5e/obj:Transformations'], ['5e/obj:Transformations/0'])).map(a => a.id)).not.toContain('symetrie-type-axiale')
   })
-  it('compléter la phrase du cours : un trou, et les mots du professeur', () => {
-    const a = AUTOMATISMES_5E.find(x => x.id === 'perso-symetries-cours')!
-    const vus = new Set<string>()
-    for (let k = 0; k < 300; k++) {
-      const q = a.generer()
-      expect(q.enonce.match(/\\ldots/g)?.length, q.enonce).toBe(1)
-      vus.add(q.reponse)
+  it('les questions de cours : la symétrie axiale et son axe sous la compétence, la symétrie centrale et son centre sous l\'objectif', () => {
+    const titres = (ids: string[]) => cinq.cours.filter(c => ids.includes(c.id)).map(c => c.titre)
+    const axiale = coursChoisis(reglage(['5e/Transformations'], ['5e/Transformations/0']))
+    expect(titres(axiale.map(c => c.id))).toEqual(expect.arrayContaining(['Une symétrie axiale', 'L’axe de symétrie']))
+    const centrale = coursChoisis(reglage(['5e/obj:Transformations'], ['5e/obj:Transformations/0']))
+    expect(titres(centrale.map(c => c.id)).sort()).toEqual(['Le centre de symétrie', 'Une symétrie centrale'])
+  })
+  it('les phrases à compléter : un seul trou, une réponse d\'un mot, et la lettre change', () => {
+    const mots = new Set<string>()
+    for (const t of ['Une symétrie axiale', 'L’axe de symétrie', 'Une symétrie centrale', 'Le centre de symétrie']) {
+      const c = cinq.cours.find(x => x.titre === t)!
+      for (let k = 0; k < 120; k++) {
+        const q = c.poser()
+        if (!q.enonce.startsWith('Compléter')) continue
+        expect(q.enonce.match(/…/g)?.length, q.enonce).toBe(1)
+        mots.add(q.reponse)
+      }
     }
-    expect([...vus].sort()).toEqual(['§axe', '§centre', '§demi-tour', '§droite', '§pliage', '§plier', '§point'])
+    expect([...mots].sort()).toEqual(['§axe', '§centre', '§demi-tour', '§droite', '§pliage', '§plier', '§point'])
   })
 })
 
@@ -632,7 +649,8 @@ describe('la liste des objectifs d\'apprentissage en 5e', () => {
   })
 
   it('chaque exercice d\'application de 5e est rangé sous un objectif qui existe', () => {
-    const appli = cinq.automatismes.filter(a => a.application && !a.id.startsWith('ancien-'))
+    // « Quel type de symétrie ? » (centrale) est rangé sous son objectif à part, hors du Catalogue
+    const appli = cinq.automatismes.filter(a => a.application && !a.id.startsWith('ancien-') && a.id !== 'symetrie-type-centrale')
     expect(appli.length).toBe(42)
     for (const a of appli) {
       const o = objectifsDeExercice('5e', a.id)

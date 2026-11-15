@@ -30,8 +30,8 @@
 //    compétence grisée ; un flash de 3e (Triangles et Statistiques) pose
 //    5 questions, corrigées en vert, la phrase du programme sous chaque
 //    exercice ;
-// L. le domaine PERSO « Symétries » de 5e : dans Espace et géométrie, avec
-//    son étiquette et sa seule compétence « Connaître le cours », cochable ;
+// L. plus de domaine PERSO « Symétries » en 5e : ses questions sont rangées
+//    dans « Transformations » ;
 // M. en 5e, deux listes sous leur titre : les automatismes du programme
 //    (OFFI), puis les objectifs d'apprentissage ; un domaine d'objectifs
 //    coché pose ses exercices d'application, avec la phrase du programme ;
@@ -218,11 +218,8 @@ if (!geo.visibles) await p.click('.themes-niveau[data-niveau="5e"] .arbre-theme:
 await p.click('.themes-niveau[data-niveau="5e"] .arbre-domaine:has(.case-domaine[value="5e/Angles"]) .deplier')
 const comp = await p.evaluate(() => [...document.querySelectorAll('.arbre-domaine:has(.case-domaine[value="5e/Angles"]) .case-competence')].filter(c => c.offsetParent).length)
 ok(comp === 4, 'I) La flèche d\'Angles montre ses 4 compétences', comp)
-const sym = await p.evaluate(() => {
-  const d = document.querySelector('.themes-niveau[data-niveau="5e"] .arbre-domaine:has(.case-domaine[value="5e/Symétries"])')
-  return d ? { perso: !!d.querySelector('.etiquette-perso'), competences: [...d.querySelectorAll('.case-competence')].map(c => ({ texte: c.closest('label').textContent, grisee: c.disabled })) } : null
-})
-ok(sym && sym.perso && sym.competences.length === 1 && /Connaître le cours/.test(sym.competences[0].texte) && !sym.competences[0].grisee, 'L) Symétries (PERSO) : une compétence « Connaître le cours », cochable', sym)
+const sym = await p.evaluate(() => !!document.querySelector('.themes-niveau[data-niveau="5e"] .case-domaine[value="5e/Symétries"]'))
+ok(sym === false, 'L) Plus de domaine PERSO « Symétries » en 5e (rangé dans Transformations)', sym)
 const grisees = await p.evaluate(() => [...document.querySelectorAll('.themes-niveau[data-niveau="5e"] .case-competence:not([value^="5e/obj:"])')].filter(c => c.disabled).length)
 ok(grisees === 0, 'J) En 5e, aucune compétence de la liste officielle n\'est grisée (chacune a ses exercices)', grisees)
 // M. Les objectifs d'apprentissage : une seconde liste, sous son titre

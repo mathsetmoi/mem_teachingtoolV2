@@ -7,6 +7,7 @@
 // =============================================================
 import * as F from '../figures'
 import { rangerLesCours } from './cinquieme-cours'
+import { rangerSousObjectif } from '../objectifs-flash'
 import type { Automatisme, Question, QuestionCours } from './outils'
 import { OBJETS, aTrou, ang, arrondi, choix, cm2, cm3, coord, deg, deuxPts, ent, frac, empilementAuHasard, grandNb, irreductible, melange, mille, mot, nb, notions, pgcd, piFois, pt, pts, quad, rel, relNonNul, seul, tableau, terme, tri, unTrou, une, unite } from './outils'
 
@@ -56,20 +57,6 @@ export const parmi = (bonne: string, lot: string[]) => ({ reponse: mot(bonne), f
 export { empilementAuHasard } from './outils'
 
 // =============================================================
-// ---------- PERSO : Symétries (outils) ----------
-export const PERSO_SYMETRIES = 'PERSO · Symétries : connaître le cours.'
-/** Les phrases du cours sur les symétries, à compléter : le mot qui manque */
-export const PHRASES_SYMETRIES: [string, string][] = [
-  ['Une symétrie axiale est un $\\ldots$ par rapport à un axe.', 'pliage'],
-  ['Une symétrie axiale est un pliage par rapport à un $\\ldots$.', 'axe'],
-  ['Une symétrie axiale est un pliage par rapport à une $\\ldots$, appelée axe de symétrie.', 'droite'],
-  ['Pour construire le symétrique d’une figure par symétrie axiale, on peut $\\ldots$ la feuille le long de l’axe.', 'plier'],
-  ['Une symétrie centrale est un $\\ldots$ par rapport à un point.', 'demi-tour'],
-  ['Une symétrie centrale est un demi-tour par rapport à un $\\ldots$.', 'point'],
-  ['Une symétrie centrale est un demi-tour autour d’un point appelé $\\ldots$ de symétrie.', 'centre'],
-  ['Pour construire le symétrique d’une figure par symétrie centrale, on lui fait faire un $\\ldots$ autour du centre.', 'demi-tour'],
-]
-
 export const AUTOMATISMES_5E: Automatisme[] = [
   // ================= OPÉRATIONS =================
   {
@@ -1322,25 +1309,28 @@ export const AUTOMATISMES_5E: Automatisme[] = [
       return { enonce: `Parmi « impossible », « peu probable », « une chance sur deux », « probable » et « certain », lequel convient à l'évènement : ${ev} ?`, reponse: mot(reponse) }
     },
   },
-  // ---------- PERSO : Symétries ----------
-  // Un domaine du professeur, hors programme officiel (étiquette PERSO
-  // dans la fenêtre) : une seule compétence, « Connaître le cours ».
+  // ---------- Symétries : quel type de symétrie ? ----------
+  // Le professeur range cette question selon la symétrie dessinée : l'axiale
+  // travaille la compétence « symétrie axiale », la centrale l'objectif
+  // « définir le demi-tour » (application directe).
   {
-    id: 'perso-symetries-type', theme: 'Symétries', titre: 'Quel type de symétrie ?', programme: PERSO_SYMETRIES, competence: 0,
+    id: 'symetrie-type-axiale', theme: 'Transformations', titre: 'Quel type de symétrie ? (axiale)', competence: 0,
     generer() {
-      const sorte = choix(['axiale', 'centrale'] as const)
       return {
         enonce: 'Voici un triangle $ABC$ et son image $A\'B\'C\'$. Quel type de symétrie a été appliqué ?',
-        figure: F.deuxFiguresSymetriques(sorte),
-        reponse: mot(`une symétrie ${sorte}`),
+        figure: F.deuxFiguresSymetriques('axiale'),
+        reponse: mot('une symétrie axiale'),
       }
     },
   },
   {
-    id: 'perso-symetries-cours', theme: 'Symétries', titre: 'Compléter la phrase du cours', programme: PERSO_SYMETRIES, competence: 0,
+    id: 'symetrie-type-centrale', theme: 'Transformations', titre: 'Quel type de symétrie ? (centrale)', application: true,
     generer() {
-      const [phrase, manquant] = choix(PHRASES_SYMETRIES)
-      return { enonce: `Compléter : « ${phrase} »`, reponse: mot(manquant) }
+      return {
+        enonce: 'Voici un triangle $ABC$ et son image $A\'B\'C\'$. Quel type de symétrie a été appliqué ?',
+        figure: F.deuxFiguresSymetriques('centrale'),
+        reponse: mot('une symétrie centrale'),
+      }
     },
   },
 ]
@@ -1673,6 +1663,27 @@ const COURS_5E_BRUT: QuestionCours[] = [
         const [f, n] = choix<[string, string]>([['un carré', '$4$'], ['un rectangle (pas carré)', '$2$'], ['un losange (pas carré)', '$2$'], ['un triangle équilatéral', '$3$'], ['un cercle', 'une infinité'], ['un triangle isocèle (pas équilatéral)', '$1$'], ['un hexagone régulier', '$6$'], ['un segment', '$2$']])
         return [`Combien d'axes de symétrie a ${f} ?`, n]
       }],
+    // Les symétries axiale et centrale (anciennement le domaine PERSO « Symétries »)
+    ['Une symétrie axiale',
+      () => { const d = choix(AXES); return [`Qu’est-ce qu’une symétrie axiale par rapport à la droite $${d}$ ?`, `un pliage de la feuille le long de la droite $${d}$`] },
+      () => { const d = choix(AXES); return [`Pour obtenir le symétrique d’une figure par rapport à la droite $${d}$, que fait-on de la feuille ?`, `on la plie le long de $${d}$`] },
+      () => { const d = choix(AXES); return [`Compléter : « Une symétrie axiale d’axe $${d}$ est un … par rapport à $${d}$. »`, 'pliage'] },
+      () => { const d = choix(AXES); return [`Compléter : « Pour construire le symétrique d’une figure par la symétrie axiale d’axe $${d}$, on peut … la feuille le long de $${d}$. »`, 'plier'] }],
+    ['L’axe de symétrie',
+      () => { const d = choix(AXES); return [`Dans une symétrie axiale, comment s’appelle la droite $${d}$ ?`, 'l’axe de symétrie'] },
+      () => { const d = choix(AXES); return [`La droite $${d}$ est la droite le long de laquelle on plie la feuille. Comment s’appelle-t-elle ?`, 'l’axe de symétrie'] },
+      () => { const d = choix(AXES); return [`Compléter : « Une symétrie axiale est un pliage par rapport à un …, par exemple la droite $${d}$. »`, 'axe'] },
+      () => { const d = choix(AXES); return [`Compléter : « Dans la symétrie axiale d’axe $${d}$, le pliage se fait par rapport à une …, appelée axe de symétrie. »`, 'droite'] }],
+    ['Une symétrie centrale',
+      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Qu’est-ce qu’une symétrie centrale de centre $${c}$ ?`, `un demi-tour autour du point $${c}$`] },
+      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Pour obtenir le symétrique d’une figure par la symétrie centrale de centre $${c}$, quel mouvement fait-on faire à la figure ?`, `un demi-tour autour du point $${c}$`] },
+      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Compléter : « Une symétrie centrale de centre $${c}$ est un … par rapport au point $${c}$. »`, 'demi-tour'] },
+      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Compléter : « Une symétrie centrale est un demi-tour par rapport à un …, par exemple le point $${c}$. »`, 'point'] },
+      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Compléter : « Pour construire le symétrique d’une figure par la symétrie centrale de centre $${c}$, on lui fait faire un … autour de $${c}$. »`, 'demi-tour'] }],
+    ['Le centre de symétrie',
+      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Dans une symétrie centrale, comment s’appelle le point $${c}$ autour duquel on fait le demi-tour ?`, 'le centre de symétrie'] },
+      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Une figure fait un demi-tour autour du point $${c}$. Comment s’appelle $${c}$ ?`, 'le centre de symétrie'] },
+      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Compléter : « Une symétrie centrale est un demi-tour autour d’un point appelé … de symétrie. Ici, ce point est $${c}$. »`, 'centre'] }],
   ]),
   ...notions('Angles', [
     ['Les sortes d\'angles',
@@ -1795,21 +1806,6 @@ const COURS_5E_BRUT: QuestionCours[] = [
     ['La fréquence',
       () => { const N = choix([20, 25, 30, 40]), e = ent(2, N - 2); return une([`Sur $${N}$ élèves, $${e}$ ont répondu « oui ». Quel calcul donne la fréquence de « oui » ?`, `$${e} \\div ${N}$ (effectif ÷ effectif total)`], [`Entre quelles valeurs une fréquence est-elle toujours comprise ?`, '$0$ et $1$ (ou $0\\,\\%$ et $100\\,\\%$)']) }],
   ]),
-  // PERSO : Symétries (un domaine du professeur)
-  ...notions('Symétries', [
-    ['Une symétrie axiale',
-      () => { const d = choix(AXES); return [`Qu’est-ce qu’une symétrie axiale par rapport à la droite $${d}$ ?`, `un pliage de la feuille le long de la droite $${d}$`] },
-      () => { const d = choix(AXES); return [`Pour obtenir le symétrique d’une figure par rapport à la droite $${d}$, que fait-on de la feuille ?`, `on la plie le long de $${d}$`] }],
-    ['L’axe de symétrie',
-      () => { const d = choix(AXES); return [`Dans une symétrie axiale, comment s’appelle la droite $${d}$ ?`, 'l’axe de symétrie'] },
-      () => { const d = choix(AXES); return [`La droite $${d}$ est la droite le long de laquelle on plie la feuille. Comment s’appelle-t-elle ?`, 'l’axe de symétrie'] }],
-    ['Une symétrie centrale',
-      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Qu’est-ce qu’une symétrie centrale de centre $${c}$ ?`, `un demi-tour autour du point $${c}$`] },
-      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Pour obtenir le symétrique d’une figure par la symétrie centrale de centre $${c}$, quel mouvement fait-on faire à la figure ?`, `un demi-tour autour du point $${c}$`] }],
-    ['Le centre de symétrie',
-      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Dans une symétrie centrale, comment s’appelle le point $${c}$ autour duquel on fait le demi-tour ?`, 'le centre de symétrie'] },
-      () => { const c = choix(['O', 'I', 'J', 'K']); return [`Une figure fait un demi-tour autour du point $${c}$. Comment s’appelle $${c}$ ?`, 'le centre de symétrie'] }],
-  ]),
 ]
 
 // Chaque question de cours travaille une compétence (cinquieme-cours.ts) ;
@@ -1818,3 +1814,5 @@ const COURS_5E_BRUT: QuestionCours[] = [
 const RANGEMENT = rangerLesCours(COURS_5E_BRUT)
 export const COURS_5E: QuestionCours[] = RANGEMENT.cours
 AUTOMATISMES_5E.push(...RANGEMENT.exercices)
+// « Quel type de symétrie ? » avec une symétrie centrale : application directe de « Définir le demi-tour »
+rangerSousObjectif('5e', 'symetrie-type-centrale', 'Transformations', 0)

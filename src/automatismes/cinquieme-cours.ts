@@ -28,13 +28,12 @@ const COMPETENCES: Record<string, Record<number, number[]>> = {
   'Calcul littéral et algébrique': { 3: [5] },
   'Repérage': { 1: [4] },
   'Représentation de l’espace': { 2: [1, 2, 3, 4, 5], 3: [6] },
-  'Transformations': { 0: [5], 1: [1, 2, 3, 4] },
+  'Transformations': { 0: [5, 6, 7], 1: [1, 2, 3, 4] },
   'Angles': { 0: [2, 3, 4, 5, 6], 1: [1], 2: [7] },
   'Triangles': { 0: [2, 3], 1: [1, 4], 2: [5, 6, 7] },
   'Parallélogrammes': { 0: [1, 2, 3, 7], 1: [4, 5, 6] },
   'Probabilités': { 0: [1, 2], 2: [3, 4] },
   'Proportionnalité': { 0: [1, 2], 1: [3, 4, 5] },
-  'Symétries': { 0: [1, 2, 3, 4] },
 }
 /** Les notions qui travaillent un objectif d'apprentissage (rang dans la
  *  liste des objectifs du domaine) : les critères de divisibilité par 3 et
@@ -42,6 +41,7 @@ const COMPETENCES: Record<string, Record<number, number[]>> = {
 const OBJECTIFS: Record<string, Record<number, number[]>> = {
   'Opérations': { 6: [8], 9: [2] },
   'Calcul littéral et algébrique': { 1: [2] },
+  'Transformations': { 0: [8, 9] },
 }
 
 // ---------- Les nouvelles façons de poser ----------
