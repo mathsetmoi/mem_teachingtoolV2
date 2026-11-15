@@ -324,7 +324,8 @@ export function patron(cases: Cases, numeros?: number[]) {
 /** Un pavé droit ABCDEFGH en perspective cavalière (face avant ABCD, A en
  *  bas à gauche ; EFGH derrière), avec la longueur de [AB], [BC] et [BF]
  *  écrite à côté (en cm) */
-export function paveCote(l: number, h: number, p: number) {
+/** `cotes` : écrire les longueurs des trois arêtes (sinon on ne les donne pas) */
+export function paveCote(l: number, h: number, p: number, cotes = true) {
   const k = 0.5, s = 30
   const d = { x: p * k * s * Math.SQRT1_2, y: -p * k * s * Math.SQRT1_2 }
   const A = { x: 0, y: 0 }, B = { x: l * s, y: 0 }, C = { x: l * s, y: -h * s }, D = { x: 0, y: -h * s }
@@ -337,9 +338,11 @@ export function paveCote(l: number, h: number, p: number) {
   const c = centre(sommets.map(([q]) => q))
   r += sommets.map(([q, t]) => nomDehors(q, c, t)).join('')
   const cm = (v: number) => `${v} cm`
-  r += texte({ x: l * s / 2, y: 22 }, cm(l), 'font-size="16"')
-  r += texte({ x: -30, y: -h * s / 2 }, cm(h), 'font-size="16"')
-  r += `<text x="${f2(B.x + d.x / 2 + 14)}" y="${f2(B.y + d.y / 2 + 8)}" fill="currentColor" stroke="none" dominant-baseline="middle" font-size="16">${cm(p)}</text>`
+  if (cotes) {
+    r += texte({ x: l * s / 2, y: 22 }, cm(l), 'font-size="16"')
+    r += texte({ x: -30, y: -h * s / 2 }, cm(h), 'font-size="16"')
+    r += `<text x="${f2(B.x + d.x / 2 + 14)}" y="${f2(B.y + d.y / 2 + 8)}" fill="currentColor" stroke="none" dominant-baseline="middle" font-size="16">${cm(p)}</text>`
+  }
   return cadre([A, B, C, D, E, F, G, H, { x: B.x + d.x / 2 + 70, y: 0 }, { x: -62, y: 0 }], r, 30)
 }
 

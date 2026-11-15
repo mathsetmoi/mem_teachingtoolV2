@@ -6,8 +6,9 @@
 // l'ensemble.
 // =============================================================
 import * as F from '../figures'
+import { rangerLesCours } from './cinquieme-cours'
 import type { Automatisme, Question, QuestionCours } from './outils'
-import { OBJETS, aTrou, ang, arrondi, choix, cm2, cm3, coord, deg, deuxPts, ent, frac, grandNb, irreductible, melange, mille, mot, nb, notions, pgcd, piFois, pt, pts, quad, rel, relNonNul, seul, tableau, terme, tri, unTrou, une, unite } from './outils'
+import { OBJETS, aTrou, ang, arrondi, choix, cm2, cm3, coord, deg, deuxPts, ent, frac, empilementAuHasard, grandNb, irreductible, melange, mille, mot, nb, notions, pgcd, piFois, pt, pts, quad, rel, relNonNul, seul, tableau, terme, tri, unTrou, une, unite } from './outils'
 
 /** Les suites de motifs (un motif de points, et son nombre de points) */
 export type SuiteMotifs = { pts: (n: number) => [number, number][]; f: (n: number) => number }
@@ -52,15 +53,7 @@ export const autour = (v: number, pas = 1) => () => nb(v + choix([-3, -2, -1, 1,
 /** Une réponse parmi des mots : la bonne et trois autres du même lot */
 export const parmi = (bonne: string, lot: string[]) => ({ reponse: mot(bonne), faux: melange(lot.filter(x => x !== bonne)).slice(0, 3).map(mot) })
 
-/** Un empilement : h[x][y] cubes, plus hauts vers le fond pour qu'aucun ne soit caché par devant */
-export function empilementAuHasard(): number[][] {
-  for (;;) {
-    const X = ent(2, 3), Y = ent(2, 3)
-    const h = Array.from({ length: X }, () => Array.from({ length: Y }, () => ent(0, 3)).sort((a, b) => a - b))
-    const total = h.flat().reduce((s, v) => s + v, 0)
-    if (total >= 4 && total <= 14 && h.every(c => c[Y - 1] > 0) && Math.max(...h.flat()) >= 2) return h
-  }
-}
+export { empilementAuHasard } from './outils'
 
 // =============================================================
 // ---------- PERSO : Symétries (outils) ----------
@@ -1487,7 +1480,7 @@ export const AXES = ['(d)', '(d_1)', '(d_2)', '(\\Delta)']
 export const multipleDe = (k: number) => k * ent(Math.ceil(101 / k), Math.floor(9999 / k))
 export const chiffres = (n: number) => [...String(n)].map(Number)
 
-export const COURS_5E: QuestionCours[] = [
+const COURS_5E_BRUT: QuestionCours[] = [
   ...notions('Opérations', [
     ['Divisibilité par 2, 5 et 10',
       () => {
@@ -1818,3 +1811,10 @@ export const COURS_5E: QuestionCours[] = [
       () => { const c = choix(['O', 'I', 'J', 'K']); return [`Une figure fait un demi-tour autour du point $${c}$. Comment s’appelle $${c}$ ?`, 'le centre de symétrie'] }],
   ]),
 ]
+
+// Chaque question de cours travaille une compétence (cinquieme-cours.ts) ;
+// les anciennes formulations reformulées par le professeur deviennent des
+// exercices de la même compétence
+const RANGEMENT = rangerLesCours(COURS_5E_BRUT)
+export const COURS_5E: QuestionCours[] = RANGEMENT.cours
+AUTOMATISMES_5E.push(...RANGEMENT.exercices)

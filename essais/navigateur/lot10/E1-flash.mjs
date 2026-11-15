@@ -233,7 +233,7 @@ const obj = await p.evaluate(() => {
   const cs = d ? [...d.querySelectorAll('.case-competence')] : []
   return { n: cs.length, actives: cs.filter(c => !c.disabled).length }
 })
-ok(obj.n === 11 && obj.actives === 5, 'M) Objectifs d\'Opérations : 11 objectifs, 5 avec exercices', obj)
+ok(obj.n === 11 && obj.actives === 6, 'M) Objectifs d\'Opérations : 11 objectifs, 6 avec exercices ou questions de cours', obj)
 await p.evaluate(() => { for (const c of document.querySelectorAll('.themes-niveau[data-niveau="5e"] .case-domaine:checked')) c.click(); document.querySelector('.themes-niveau[data-niveau="5e"] .case-domaine[value="5e/obj:Opérations"]').click() })
 await p.click('.dialogue-flash .lancer')
 await p.waitForTimeout(1200)

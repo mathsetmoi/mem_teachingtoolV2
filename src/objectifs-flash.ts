@@ -39,7 +39,22 @@ export const SECTION_OBJECTIFS = { nom: 'Objectifs d’apprentissage du programm
 /** Pour un exercice d'application : le domaine d'objectifs où il est
  *  rangé et le rang de chaque objectif qu'il travaille */
 export function objectifsDeExercice(niveau: string, id: string): { cle: string; ks: number[] } | undefined {
-  return rangs(niveau).get(id)
+  return rangs(niveau).get(id) ?? SUPPLEMENTS.get(`${niveau}/${id}`)
+}
+/** Les exercices que le professeur a rangés sous un objectif en plus de
+ *  ceux du Catalogue (les anciennes formulations d'une question de cours) */
+const SUPPLEMENTS = new Map<string, { cle: string; ks: number[] }>()
+export function rangerSousObjectif(niveau: string, id: string, theme: string, k: number) {
+  const cle = cleObjectifsDe(niveau, theme)
+  if (cle) SUPPLEMENTS.set(`${niveau}/${id}`, { cle, ks: [k] })
+}
+/** La clé du domaine d'objectifs qui correspond à un thème du flash
+ *  (« Repérage » pour « Repérage sur une droite et dans le plan ») */
+export function cleObjectifsDe(niveau: string, theme: string): string | undefined {
+  for (const t of PROGRAMME_CYCLE4[niveau as NiveauCollege] ?? []) for (const d of t.domaines) {
+    if (d.nom === theme || d.nom.startsWith(theme)) return PREFIXE_OBJECTIFS + d.nom
+  }
+  return undefined
 }
 const MEMOIRE = new Map<string, Map<string, { cle: string; ks: number[] }>>()
 function rangs(niveau: string) {

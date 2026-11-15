@@ -94,13 +94,23 @@ export const unTrou = (consigne: string, ecritures: [string, string][]): Questio
 // chance sur deux.
 // =============================================================
 /** Une façon de poser la notion : son énoncé et la réponse attendue (en mots, avec $…$) */
-export type Facon = () => [string, string]
-export interface QuestionCours { id: string; theme: string; titre: string; facons: Facon[]; poser: () => Question }
+export type Facon = () => [string, string] | [string, string, string]
+export interface QuestionCours {
+  id: string; theme: string; titre: string; facons: Facon[]; poser: () => Question
+  /** La compétence de la liste officielle des automatismes que la question
+   *  travaille (le rang de sa phrase dans son domaine) : cocher cette
+   *  compétence pose ses questions de cours. En 5e, une question sans
+   *  compétence ni objectif n'est plus posée par le flash. */
+  competence?: number
+  /** Ou l'objectif d'apprentissage qu'elle travaille (le rang dans la liste
+   *  des objectifs de son domaine) */
+  objectif?: number
+}
 /** Les notions d'un thème ; `niveau` (« 4e-… ») distingue leurs id de celles de 5e */
 export const notions = (theme: string, liste: [string, ...Facon[]][], niveau = ''): QuestionCours[] =>
   liste.map(([titre, ...facons], i) => ({
     id: `cours-${niveau}${theme}-${i + 1}`, theme, titre, facons,
-    poser: () => { const [enonce, reponse] = choix(facons)(); return { enonce, reponse: mot(reponse) } },
+    poser: () => { const [enonce, reponse, figure] = choix(facons)(); return { enonce, reponse: mot(reponse), ...(figure ? { figure } : {}) } },
   }))
 /** Une des phrases, tirée au hasard */
 export const une = (...t: [string, string][]): [string, string] => choix(t)
@@ -139,3 +149,13 @@ export const grandNb = (x: number) => { const [e, d] = nb(x).split('{,}'); retur
 export const lettre = () => choix(['x', 'a', 'y', 'n', 't'])
 export const PRENOMS = ['Léa', 'Tom', 'Inès', 'Hugo', 'Jade', 'Noah', 'Lina', 'Sami', 'Chloé', 'Yanis']
 export const etL = (t: string[]) => t.length < 2 ? t.join('') : `${t.slice(0, -1).join(', ')} et ${t[t.length - 1]}`
+
+/** Un empilement : h[x][y] cubes, plus hauts vers le fond pour qu'aucun ne soit caché par devant */
+export function empilementAuHasard(): number[][] {
+  for (;;) {
+    const X = ent(2, 3), Y = ent(2, 3)
+    const h = Array.from({ length: X }, () => Array.from({ length: Y }, () => ent(0, 3)).sort((a, b) => a - b))
+    const total = h.flat().reduce((s, v) => s + v, 0)
+    if (total >= 4 && total <= 14 && h.every(c => c[Y - 1] > 0) && Math.max(...h.flat()) >= 2) return h
+  }
+}
