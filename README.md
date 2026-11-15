@@ -1014,6 +1014,17 @@ page derrière reste vide. On y choisit :
   horizontal), huit phrases du cours à compléter (pliage, axe, droite,
   plier ; demi-tour, point, centre), plus quatre notions de cours (la symétrie
   axiale, l'axe de symétrie, la symétrie centrale, le centre de symétrie).
+  **Deux listes en 5e** (15 novembre 2026), comme en 2nde : dans la
+  fenêtre, d'abord « Automatismes du programme » (OFFI : la liste officielle,
+  une compétence par phrase), puis « Objectifs d'apprentissage du programme »
+  (104 objectifs de cycle 4, `src/objectifs-flash.ts`). Dans la seconde,
+  une compétence est un objectif, et ses exercices sont les 42 exercices
+  d'application directe que le Catalogue range sous lui (champ `exemples` de
+  `programme-cycle4.ts`) : ils ne sont posés que là, jamais dans la liste
+  officielle. Un objectif ou un domaine sans exercice reste en gris, « à
+  remplir ». Les clés des domaines d'objectifs commencent par `obj:`
+  (« 5e/obj:Opérations »). Les questions de cours restent, pour l'instant,
+  dans la liste officielle.
   **Au lycée**, la liste des thèmes, comme avant. Ceux de **5e** sont pensés comme la partie « Automatismes » du
   brevet : des questions à réponse courte qui mobilisent un **automatisme**
   de la liste de 5e du programme 2026, ou une **application directe** d'un

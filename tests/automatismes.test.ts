@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest'
 import katex from 'katex'
 import { AUTOMATISMES_1RE, AUTOMATISMES_2NDE, AUTOMATISMES_3E, AUTOMATISMES_4E, AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_1RE, COURS_2NDE, COURS_3E, COURS_4E, COURS_5E, NIVEAUX, automatismesDuFlash, themesDe, tirerFlash } from '../src/automatismes'
 import { PROGRAMME_AUTOMATISMES, THEMES_COLLEGE } from '../src/programme-automatismes'
+import { objectifsDeExercice, SECTION_AUTOMATISMES, SECTION_OBJECTIFS } from '../src/objectifs-flash'
+import { PROGRAMME_CYCLE4 } from '../src/programme-cycle4'
 import { automatismesChoisis, coursChoisis, lireReglages, REGLAGES_PAR_DEFAUT } from '../src/flash'
 import { caseOpposee, estPatronDeCube, hexomino } from '../src/figures'
 
@@ -212,14 +214,15 @@ describe('le réglage du flash', () => {
 describe('le rangement Thème › Domaine › Compétences du collège', () => {
   it('cinq thèmes à chaque niveau, dans l\'ordre du programme ; la pensée informatique n\'a aucun automatisme', () => {
     for (const id of ['5e', '4e', '3e']) {
-      expect(PROGRAMME_AUTOMATISMES[id].map(t => t.nom), id).toEqual(Object.values(THEMES_COLLEGE))
-      expect(PROGRAMME_AUTOMATISMES[id][4].domaines, id).toEqual([])
+      const officiel = PROGRAMME_AUTOMATISMES[id].slice(0, 5)
+      expect(officiel.map(t => t.nom), id).toEqual(Object.values(THEMES_COLLEGE))
+      expect(officiel[4].domaines, id).toEqual([])
     }
   })
 
   it('chaque exercice du flash de 5e, de 4e et de 3e a son domaine dans le programme, et sa compétence existe', () => {
     for (const id of ['5e', '4e', '3e']) {
-      const domaines = PROGRAMME_AUTOMATISMES[id].flatMap(t => t.domaines)
+      const domaines = PROGRAMME_AUTOMATISMES[id].slice(0, 5).flatMap(t => t.domaines)
       for (const a of automatismesDuFlash(NIVEAUX.find(n => n.id === id)!)) {
         const d = domaines.find(x => x.cle === a.theme)
         expect(d, `${id} ${a.id} (${a.theme})`).toBeTruthy()
@@ -231,7 +234,7 @@ describe('le rangement Thème › Domaine › Compétences du collège', () => {
   it('en 5e, chaque exercice a sa compétence, et chaque compétence a au moins un exercice', () => {
     const autos = automatismesDuFlash(NIVEAUX.find(n => n.id === '5e')!)
     for (const a of autos) expect(a.competence, a.id).toBeDefined()
-    for (const d of PROGRAMME_AUTOMATISMES['5e'].flatMap(t => t.domaines)) {
+    for (const d of PROGRAMME_AUTOMATISMES['5e'].slice(0, 5).flatMap(t => t.domaines)) {
       d.competences.forEach((c, k) => {
         expect(autos.some(a => a.theme === d.cle && a.competence === k), `${d.cle} : ${c}`).toBe(true)
       })
@@ -609,5 +612,43 @@ describe('un domaine PERSO : Symétries (5e)', () => {
       vus.add(q.reponse)
     }
     expect([...vus].sort()).toEqual(['§axe', '§centre', '§demi-tour', '§droite', '§pliage', '§plier', '§point'])
+  })
+})
+
+describe('la liste des objectifs d\'apprentissage en 5e', () => {
+  const cinq = NIVEAUX.find(n => n.id === '5e')!
+  const objectifs = PROGRAMME_AUTOMATISMES['5e'].filter(t => t.section?.nom === SECTION_OBJECTIFS.nom)
+  const reglage = (themes: string[], competences: string[] = []) => ({ ...REGLAGES_PAR_DEFAUT, themes, competences })
+
+  it('le niveau a deux listes : les automatismes du programme, puis les objectifs d\'apprentissage', () => {
+    const p = PROGRAMME_AUTOMATISMES['5e']
+    expect(p.slice(0, 5).every(t => t.section?.nom === SECTION_AUTOMATISMES.nom)).toBe(true)
+    expect(objectifs.map(t => t.nom)).toEqual(PROGRAMME_CYCLE4['5e'].map(t => t.nom))
+    expect(objectifs.flatMap(t => t.domaines).reduce((n, d) => n + d.competences.length, 0)).toBe(104)
+    expect(PROGRAMME_AUTOMATISMES['4e'].every(t => !t.section)).toBe(true)
+  })
+
+  it('chaque exercice d\'application de 5e est rangé sous un objectif qui existe', () => {
+    const appli = cinq.automatismes.filter(a => a.application)
+    expect(appli.length).toBe(42)
+    for (const a of appli) {
+      const o = objectifsDeExercice('5e', a.id)
+      expect(o, a.id).toBeTruthy()
+      const d = objectifs.flatMap(t => t.domaines).find(x => x.cle === o!.cle)
+      expect(d, a.id).toBeTruthy()
+      for (const k of o!.ks) expect(d!.competences[k], a.id).toBeTruthy()
+    }
+  })
+
+  it('un domaine d\'objectifs coché pose ses exercices d\'application, et eux seuls', () => {
+    const ids = automatismesChoisis(reglage(['5e/obj:Opérations'])).map(a => a.id).sort()
+    expect(ids).toEqual(['distributivite-numerique', 'diviser-decimal', 'multiples-diviseurs', 'priorites', 'programme-calcul'])
+    expect(automatismesChoisis(reglage(['5e/Opérations'])).some(a => a.application)).toBe(false)
+  })
+
+  it('cocher un seul objectif ne pose que ses exercices', () => {
+    const k = PROGRAMME_CYCLE4['5e'][0].domaines[0].objectifs.findIndex(o => o.exemples?.includes('priorites'))
+    const ids = automatismesChoisis(reglage(['5e/obj:Opérations'], [`5e/obj:Opérations/${k}`])).map(a => a.id)
+    expect(ids).toEqual(['priorites'])
   })
 })

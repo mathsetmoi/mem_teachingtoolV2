@@ -15,6 +15,9 @@
 // competence : le rang de la phrase dans la liste de son domaine.
 // =============================================================
 
+import { NIVEAUX_AVEC_OBJECTIFS, SECTION_AUTOMATISMES, themesObjectifs } from './objectifs-flash'
+import type { NiveauCollege } from './programme-cycle4'
+
 export interface DomaineProgramme {
   /** Le nom du thème des exercices (automatismes.ts) */
   cle: string
@@ -38,6 +41,10 @@ export interface ThemeProgramme {
   /** Ses domaines sans exercice restent visibles, en gris, « à remplir »
    *  (en 2nde : le professeur les remplit peu à peu) */
   aRemplir?: boolean
+  /** Le titre de la liste où il se range dans la fenêtre (en 5e : « Automatismes
+   *  du programme » puis « Objectifs d’apprentissage ») ; il s'affiche
+   *  quand il change d'un thème au suivant */
+  section?: { nom: string; offi: boolean }
 }
 
 export const THEMES_COLLEGE = {
@@ -354,4 +361,10 @@ export const PROGRAMME_AUTOMATISMES: Record<string, ThemeProgramme[]> = {
       ] },
     ] },
   ],
+}
+
+// Les niveaux qui ont les deux listes : la liste officielle, puis les objectifs
+for (const n of NIVEAUX_AVEC_OBJECTIFS) {
+  // Des copies : la pensée informatique est la même pour tous les niveaux
+  PROGRAMME_AUTOMATISMES[n] = [...PROGRAMME_AUTOMATISMES[n].map(t => ({ ...t, section: SECTION_AUTOMATISMES })), ...themesObjectifs(n as NiveauCollege)]
 }

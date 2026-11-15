@@ -32,6 +32,9 @@
 //    exercice ;
 // L. le domaine PERSO « Symétries » de 5e : dans Espace et géométrie, avec
 //    son étiquette et sa seule compétence « Connaître le cours », cochable ;
+// M. en 5e, deux listes sous leur titre : les automatismes du programme
+//    (OFFI), puis les objectifs d'apprentissage ; un domaine d'objectifs
+//    coché pose ses exercices d'application, avec la phrase du programme ;
 // F. aucune erreur.
 import { chromium } from '../commun/playwright.mjs'
 
@@ -198,11 +201,11 @@ await p.click('.niveau-flash[data-niveau="5e"]')
 const arbre = await p.evaluate(() => {
   const n = document.querySelector('.themes-niveau[data-niveau="5e"]')
   return {
-    themes: [...n.querySelectorAll('.arbre-theme')].map(t => t.querySelector('.ligne-arbre').textContent.trim().replace(/\s+/g, ' ')),
-    informatique: n.querySelector('.arbre-theme.vide')?.textContent.replace(/\s+/g, ' ').trim(),
+    themes: [...n.querySelectorAll('.arbre-theme')].slice(0, 5).map(t => t.querySelector('.ligne-arbre').textContent.trim().replace(/\s+/g, ' ')),
+    informatique: [...n.querySelectorAll('.arbre-theme.vide')][0]?.textContent.replace(/\s+/g, ' ').trim(),
   }
 })
-ok(arbre.themes.length === 5 && /^Nombres et calculs/.test(arbre.themes[0]), 'I) 5e : cinq thèmes, Nombres et calculs d\'abord', arbre)
+ok(arbre.themes.length === 5 && arbre.themes[4].startsWith('La pensée informatique') && /^Nombres et calculs/.test(arbre.themes[0]), 'I) 5e : cinq thèmes, Nombres et calculs d\'abord', arbre)
 ok(/La pensée informatique.*rien au programme/.test(arbre.informatique ?? ''), 'I) La pensée informatique est grisée : rien au programme', arbre)
 for (const c of await p.$$('.themes-niveau[data-niveau="5e"] .case-domaine:checked')) await c.click()
 await p.click('.themes-niveau[data-niveau="5e"] .arbre-theme:has(.case-domaine[value="5e/Angles"]) .case-theme')
@@ -220,8 +223,27 @@ const sym = await p.evaluate(() => {
   return d ? { perso: !!d.querySelector('.etiquette-perso'), competences: [...d.querySelectorAll('.case-competence')].map(c => ({ texte: c.closest('label').textContent, grisee: c.disabled })) } : null
 })
 ok(sym && sym.perso && sym.competences.length === 1 && /Connaître le cours/.test(sym.competences[0].texte) && !sym.competences[0].grisee, 'L) Symétries (PERSO) : une compétence « Connaître le cours », cochable', sym)
-const grisees = await p.evaluate(() => [...document.querySelectorAll('.themes-niveau[data-niveau="5e"] .case-competence')].filter(c => c.disabled).length)
-ok(grisees === 0, 'J) En 5e, aucune compétence n\'est grisée (chacune a ses exercices)', grisees)
+const grisees = await p.evaluate(() => [...document.querySelectorAll('.themes-niveau[data-niveau="5e"] .case-competence:not([value^="5e/obj:"])')].filter(c => c.disabled).length)
+ok(grisees === 0, 'J) En 5e, aucune compétence de la liste officielle n\'est grisée (chacune a ses exercices)', grisees)
+// M. Les objectifs d'apprentissage : une seconde liste, sous son titre
+const titres = await p.evaluate(() => [...document.querySelectorAll('.themes-niveau[data-niveau="5e"] .section-arbre')].map(t => t.textContent))
+ok(titres.length === 2 && /Automatismes du programme/.test(titres[0]) && /OFFI/.test(titres[0]) && /Objectifs d/.test(titres[1]), 'M) Deux listes en 5e, chacune sous son titre', titres)
+const obj = await p.evaluate(() => {
+  const d = document.querySelector('.themes-niveau[data-niveau="5e"] .arbre-domaine:has(.case-domaine[value="5e/obj:Opérations"])')
+  const cs = d ? [...d.querySelectorAll('.case-competence')] : []
+  return { n: cs.length, actives: cs.filter(c => !c.disabled).length }
+})
+ok(obj.n === 11 && obj.actives === 5, 'M) Objectifs d\'Opérations : 11 objectifs, 5 avec exercices', obj)
+await p.evaluate(() => { for (const c of document.querySelectorAll('.themes-niveau[data-niveau="5e"] .case-domaine:checked')) c.click(); document.querySelector('.themes-niveau[data-niveau="5e"] .case-domaine[value="5e/obj:Opérations"]').click() })
+await p.click('.dialogue-flash .lancer')
+await p.waitForTimeout(1200)
+const pageM = await p.evaluate(() => window.__app.page)
+await p.keyboard.press('c'); await p.waitForTimeout(800)
+const bleusM = await p.evaluate(pg => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === '#1f5fbf').length, pageM)
+ok(bleusM >= 3, 'M) Un flash sur les objectifs d\'Opérations : la phrase du programme sous chaque exercice', bleusM)
+await p.click('.bandeau-flash .fermer').catch(() => {})
+await p.click('button[title^="Automatismes"]')
+await p.waitForSelector('dialog.dialogue-flash[open]')
 await p.click('.dialogue-flash .lancer')
 await p.waitForTimeout(1200)
 ok(await nObjets() > 0, 'I) Le flash se lance avec le thème entier')
