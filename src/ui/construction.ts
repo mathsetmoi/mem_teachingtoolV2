@@ -337,7 +337,7 @@ export const methodesConstruction = {
     const construire = bouton('construction', 'Programme de construction, étape par étape', () => this.basculerConstructeur(), 'seulement-large')
     const catalogue = bouton('catalogue', 'Catalogue : des éléments de cours tout prêts', () => this.basculerCatalogue(), 'seulement-large')
     // Tracer une fonction (lot 27) : un repère sur la page, f(x) au clavier
-    const courbe = this.boutonCourbes = bouton('courbe', 'Courbe : tracer une fonction sur un repère (Y)', () => this.basculerCourbes(), 'seulement-large')
+    const courbe = this.boutonCourbes = bouton('courbe', 'Courbe : tracer une fonction sur un repère (Y)', () => this.basculerCourbes(), 'seulement-large bouton-courbe')
     // Importer une image ou un PDF : bouton, ou coller (Ctrl+V), ou glisser le fichier sur le tableau
     const choixFichier = this.choixFichier = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*,application/pdf,.pdf', hidden: true })
     choixFichier.addEventListener('change', () => { const f = choixFichier.files?.[0]; if (f) app.importerImage(f, { pointeur: this.pointeurImport }); choixFichier.value = '' })

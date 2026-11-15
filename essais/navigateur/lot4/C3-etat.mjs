@@ -145,14 +145,17 @@ console.log('=== A. la place du bouton du classeur ===')
 // l'icône et le point à 1280 × 720 nommée ; à 641 × 900, il entre dans la
 // barre (deux rangées, comme avant). Les places d'avant : 277, 191, 607,
 // 71, 73 / 12, 9.)
+// (Adapté au lot 27 : le bouton « Courbe » entre dans la famille Insérer
+// au-dessus de 1300 px ; jusque-là il est dans le menu ⋯. La place d'avant,
+// 395 à 1366 × 768 et 777 au TNI, perd ses 46 px.)
 const ECRANS = [
-  { l: 1366, h: 768, sans: ['large', 395] },
+  { l: 1366, h: 768, sans: ['large', 349] },
   { l: 1280, h: 720, sans: ['large', 309] },
   // (Adapté au lot 5, morceau K9 : un TNI, tactile, de 1920 × 1080, a d'office
   // les noms sous les outils, voulus ainsi : la barre des outils fait 80 px,
   // la barre du haut 68 px de haut et 196 px de plus ; la place, 1093 px sans
   // eux, est de 875 ; lot5/K9-affichage.mjs vérifie le reste)
-  { l: 1920, h: 1080, t: true, sans: ['large', 777, 83] },
+  { l: 1920, h: 1080, t: true, sans: ['large', 723, 83] },
   // (Adapté aux corrections « appareils » du lot 4 : la forme large demande
   // la place du plus long des textes courts, 252 px ; à 1180 × 820, l'état
   // « Seulement dans ce navigateur » y était coupé : l'icône et le point —
