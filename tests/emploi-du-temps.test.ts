@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   adopter, avecSemainesAB, classeurDuCreneau, colorier, creneauDeLaBulle, creneauDuMoment, creneauxDuJour, direLaSemaine, etablissementDe,
+  echangerAB,
   dossiersDe, etablissementDuCreneau, etablissementsConnus,
   heureDite, horaireDit, lireEmploiDuTemps, lireHeure, lundiDe, prochainCreneau, semaineDe, VIDE, type Creneau, type EmploiDuTemps,
 } from '../src/emploi-du-temps/donnees'
@@ -65,6 +66,34 @@ describe('les semaines A et B', () => {
     expect(semaineDe(f, new Date(2026, 11, 2).getTime())).toBe('A')
     const g = direLaSemaine(f, new Date(2026, 11, 2).getTime(), 'B')
     expect(semaineDe(g, new Date(2026, 11, 2).getTime())).toBe('B')
+  })
+  it('« C\'est une semaine B » : les créneaux venus de Pronote restent aux mêmes dates (leurs lettres s\'échangent), ceux saisis à la main gardent la leur', () => {
+    const e: EmploiDuTemps = { ...VIDE, lundiA: LUNDI_A, creneaux: [
+      cr(1, { semaines: 'A', pronote: 'MATHEMATIQUES - 5e A' }), cr(2, { semaines: 'B', pronote: 'MATHEMATIQUES - 5e B' }),
+      cr(3, { semaines: 'AB', pronote: 'MATHEMATIQUES - 4e' }), cr(4, { semaines: 'A' }),
+    ] }
+    const t = new Date(2026, 10, 16).getTime()
+    // Le 16 novembre, avant : semaine B (le 9 est A) ; on dit que c'est une semaine A
+    expect(semaineDe(e, t)).toBe('B')
+    const f = direLaSemaine(e, t, 'A')
+    expect(semaineDe(f, t)).toBe('A')
+    expect(f.creneaux.map(c => c.semaines)).toEqual(['B', 'A', 'AB', 'A'])
+    // Les cours de Pronote de ce jour-là sont les mêmes qu'avant
+    const ceJour = (x: EmploiDuTemps) => creneauxDuJour(x, new Date(2026, 10, 16, 10).getTime()).filter(c => c.pronote).map(c => c.id)
+    expect(ceJour(f)).toEqual(ceJour(e))
+    // Dire la même lettre ne change rien
+    expect(direLaSemaine(f, t, 'A').creneaux).toEqual(f.creneaux)
+  })
+  it('« Échanger A et B » : les créneaux changent de semaine, la lettre de chaque date reste ; deux fois : comme avant', () => {
+    const e: EmploiDuTemps = { ...VIDE, lundiA: LUNDI_A, creneaux: [cr(1, { semaines: 'A', pronote: 'X' }), cr(2, { semaines: 'B' }), cr(3)] }
+    const f = echangerAB(e)
+    expect(f.creneaux.map(c => c.semaines)).toEqual(['B', 'A', 'AB'])
+    expect(f.lundiA).toBe(LUNDI_A)
+    expect(f.echange).toBe(true)
+    expect(lireEmploiDuTemps(JSON.parse(JSON.stringify(f))).echange).toBe(true)
+    const g = echangerAB(f)
+    expect(g.creneaux).toEqual(e.creneaux)
+    expect(g.echange).toBeUndefined()
   })
   it('A et B n\'ont de sens qu\'avec un créneau d\'une seule semaine', () => {
     expect(avecSemainesAB({ ...VIDE, creneaux: [cr(1)] })).toBe(false)

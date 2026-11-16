@@ -6303,7 +6303,12 @@ propose la classe qui arrive à l'heure qu'il est.
 - **Les semaines A et B** alternent chaque semaine à partir de « Cette
   semaine est une semaine A » ; un lien corrige (« C'est une semaine B »
   dans la fenêtre, « Pas la bonne semaine ? On est en semaine B » dans
-  « Bonjour ! »), et l'alternance repart de là.
+  « Bonjour ! »), et l'alternance repart de là. Les créneaux venus de
+  Pronote restent aux mêmes dates (leurs lettres A et B s'échangent) ;
+  ceux saisis à la main gardent la lettre choisie. **« Échanger A et B »**
+  (à côté) fait passer les créneaux de la semaine A en semaine B et
+  inversement, sans changer la lettre de cette semaine ; les imports de
+  Pronote suivants s'en souviennent (champ facultatif `echange`).
 - **« Importer de Pronote… »** : un établissement, puis le **lien
   synchronisé** (bouton « iCal » de la page de l'emploi du temps de
   Pronote) ou un **fichier .ics**. L'outil range les cours en créneaux (un

@@ -130,7 +130,6 @@ export function enCreneaux(cours: readonly Cours[], o: { lundiA?: number; depuis
   const semainesVues = new Set<number>()
   for (const c of l) {
     const jour = jourDe(c.debut)
-    if (jour > 6) continue
     const debut = minuteDe(c.debut), fin = Math.max(debut + 1, Math.min(24 * 60, debut + Math.round((c.fin - c.debut) / 60_000)))
     const semaine = Math.round((lundiDe(c.debut) - ref) / (7 * JOUR_MS))
     semainesVues.add(semaine)
