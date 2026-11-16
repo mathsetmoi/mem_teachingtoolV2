@@ -58,6 +58,9 @@ export interface EmploiDuTemps {
   /** Ce que le professeur a dit d'un cours de Pronote : le dossier de sa
    *  classe, ou null (« Ne pas importer ») */
   correspondances: Record<string, string | null>
+  /** « Échanger A et B » : les cours de Pronote prennent la lettre
+   *  contraire de celle de leurs dates (gardé pour les imports suivants) */
+  echange?: true
 }
 
 export const VIDE: EmploiDuTemps = { v: 1, creneaux: [], couleurs: {}, correspondances: {} }
@@ -136,6 +139,7 @@ export function lireEmploiDuTemps(x: unknown): EmploiDuTemps {
   }
   const e: EmploiDuTemps = { v: 1, creneaux: trier(creneaux), couleurs, correspondances }
   if (typeof o.lundiA === 'number' && Number.isFinite(o.lundiA)) e.lundiA = o.lundiA
+  if (o.echange === true) e.echange = true
   return e
 }
 
@@ -198,9 +202,21 @@ export function direLaSemaine(e: EmploiDuTemps, t: number, voulue: 'A' | 'B'): E
   const ici = lundiDe(t)
   const change = semaineDe(e, t) !== voulue
   const creneaux = change
-    ? e.creneaux.map(c => c.pronote && c.semaines !== 'AB' ? { ...c, semaines: (c.semaines === 'A' ? 'B' : 'A') as Semaines } : c)
+    ? e.creneaux.map(c => c.pronote && c.semaines !== 'AB' ? { ...c, semaines: autreLettre(c.semaines) } : c)
     : e.creneaux
   return { ...e, creneaux, lundiA: voulue === 'A' ? ici : lundiDe(ici + 7 * JOUR_MS + JOUR_MS / 2) }
+}
+
+/** La lettre contraire */
+export const autreLettre = <S extends Semaines>(s: S): S => (s === 'A' ? 'B' : s === 'B' ? 'A' : s) as S
+
+/** « Échanger A et B » : les créneaux de la semaine A passent en semaine B
+ *  et inversement ; la semaine de chaque date ne change pas. Les imports
+ *  de Pronote suivants s'en souviennent. */
+export function echangerAB(e: EmploiDuTemps): EmploiDuTemps {
+  const n: EmploiDuTemps = { ...e, creneaux: e.creneaux.map(c => c.semaines === 'AB' ? c : { ...c, semaines: autreLettre(c.semaines) }) }
+  if (e.echange) delete n.echange; else n.echange = true
+  return n
 }
 
 /** Il y a des créneaux d'une seule semaine : A et B ont un sens */

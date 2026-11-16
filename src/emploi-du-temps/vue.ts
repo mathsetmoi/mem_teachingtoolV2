@@ -15,7 +15,7 @@ import type { FicheClasseur, FicheDossier } from '../classeurs/demarrage'
 import { fermerSurLeFond } from '../dialogue'
 import { estSeancesIsolees } from '../classeurs/isolees'
 import {
-  JOURS, classeurDuCreneau, cheminDuDossier, colorier, direLaSemaine, dossiersDe, etablissementDuCreneau, etablissementsConnus, heureDite, horaireDit,
+  JOURS, autreLettre, avecSemainesAB, classeurDuCreneau, cheminDuDossier, colorier, direLaSemaine, echangerAB, dossiersDe, etablissementDuCreneau, etablissementsConnus, heureDite, horaireDit,
   idCreneau, lireHeure, lundiDe, nomDuCreneau, semaineDe, sousDossiers, trier, type Creneau, type EmploiDuTemps, type Semaines,
   prochainsCours,
 } from './donnees'
@@ -136,6 +136,14 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
       montree = semaineDe(edt, maintenant)
       dessiner()
     }))
+    // Les deux grilles sont à l'envers : on échange leurs créneaux
+    if (avecSemainesAB(edt)) {
+      etat.append(' · ', bouton('lien edt-echanger', 'Échanger A et B', () => {
+        enregistrer(echangerAB(edt))
+        h.message('Les semaines A et B sont échangées.')
+        dessiner()
+      }))
+    }
     // La légende : les établissements de la semaine
     legende.replaceChildren()
     const noms = [...new Set(edt.creneaux.map(c => etablissementDuCreneau(c, dossiers)).filter((x): x is string => !!x))].sort((a, b) => a.localeCompare(b, 'fr'))
@@ -397,7 +405,7 @@ export async function ouvrirEmploiDuTemps(racine: HTMLElement, h: HoteEmploiDuTe
   }
 
   const verifier = (etab: string, cours: Cours[], lien: string) => {
-    const lus = enCreneaux(cours, { lundiA: edt.lundiA, depuis: Date.now() })
+    const lus = enCreneaux(cours, { lundiA: edt.lundiA, depuis: Date.now() }).map(x => edt.echange ? { ...x, semaines: autreLettre(x.semaines) } : x)
     vueImport.replaceChildren()
     const t = el('h2', '', 'Vérifier les créneaux')
     const coursUniques = [...new Set(lus.map(x => x.cours))]
