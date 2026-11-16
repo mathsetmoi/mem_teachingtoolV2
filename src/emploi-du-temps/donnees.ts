@@ -189,10 +189,18 @@ export function semaineDe(e: Pick<EmploiDuTemps, 'lundiA'>, t: number): 'A' | 'B
 }
 
 /** « On est en semaine B » : la semaine de cette date devient celle-là, et
- *  l'alternance repart de là */
+ *  l'alternance repart de là. Les créneaux venus de Pronote ont reçu leur
+ *  lettre d'après l'ancienne alternance (ce sont les dates qui font foi) :
+ *  quand la lettre de cette semaine change, leurs lettres A et B
+ *  s'échangent, pour qu'ils restent aux mêmes dates. Ceux saisis à la main
+ *  gardent la lettre choisie. */
 export function direLaSemaine(e: EmploiDuTemps, t: number, voulue: 'A' | 'B'): EmploiDuTemps {
   const ici = lundiDe(t)
-  return { ...e, lundiA: voulue === 'A' ? ici : lundiDe(ici + 7 * JOUR_MS + JOUR_MS / 2) }
+  const change = semaineDe(e, t) !== voulue
+  const creneaux = change
+    ? e.creneaux.map(c => c.pronote && c.semaines !== 'AB' ? { ...c, semaines: (c.semaines === 'A' ? 'B' : 'A') as Semaines } : c)
+    : e.creneaux
+  return { ...e, creneaux, lundiA: voulue === 'A' ? ici : lundiDe(ici + 7 * JOUR_MS + JOUR_MS / 2) }
 }
 
 /** Il y a des créneaux d'une seule semaine : A et B ont un sens */
