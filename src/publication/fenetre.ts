@@ -167,6 +167,7 @@ export class Publication {
           <p class="p-cahier-marques">Dans Pronote : **gras**, __souligné__, « • » en début de ligne pour une puce.</p>
           <p class="p-cahier-pied"><span class="p-cahier-qui" role="status" aria-live="polite"></span>
             <button type="button" class="lien p-reessayer" hidden>Réessayer</button>
+            <button type="button" class="lien p-autre-texte" hidden>Rédiger un autre texte</button>
             <button type="button" class="lien p-redaction">Rédaction automatique…</button></p>
         </div>
         <label class="champ"><span>Titre (les élèves le voient)</span><input class="p-titre" maxlength="120" /></label>
@@ -264,6 +265,9 @@ export class Publication {
         .finally(() => window.open(adresse, '_blank', 'noopener'))
     })
     q('.p-reessayer').addEventListener('click', () => this.preparerTexte(true))
+    // Le texte ne convient pas : Claude en rédige un autre (même à la place
+    // d'un texte corrigé par le professeur, puisqu'il le demande)
+    q('.p-autre-texte').addEventListener('click', () => this.preparerTexte(true, q<HTMLTextAreaElement>('.p-texte-cahier').value))
     q('.p-redaction').addEventListener('click', () => ouvrirRedaction(this.racine, () => { this.majPronote(); this.preparerTexte(true) }))
     const champCahier = q<HTMLTextAreaElement>('.p-texte-cahier')
     champCahier.addEventListener('input', () => { this.texteTouche = true })
@@ -473,8 +477,10 @@ export class Publication {
    *  (corrigé par le professeur, ou rédigé depuis le dernier geste), sinon
    *  celui de l'outil ; puis, dans la version en ligne avec une clé, Claude le
    *  rédige. refaire : la clé vient de changer, Claude rédige à nouveau (sauf
-   *  un texte du professeur). */
-  private preparerTexte(refaire = false) {
+   *  un texte du professeur). autre : le texte que le professeur n'a pas
+   *  retenu (« Rédiger un autre texte ») : Claude en rédige un autre, même à
+   *  la place d'un texte du professeur. */
+  private preparerTexte(refaire = false, autre?: string) {
     const d = this.d
     if (!d) return
     const bloc = d.querySelector('.p-cahier') as HTMLElement
@@ -486,25 +492,29 @@ export class Publication {
     if (!c) return
     const t = this.app.tableau, gestes = gestesDeLaSeance(t, c.id), garde = t.texteCahierDe(c.id)
     const aJour = !!garde && (garde.par === 'professeur' || garde.gestes === gestes)
-    champ.value = aJour ? garde!.texte : texteCahierDeLOutil(c.fiche)
+    champ.value = autre ?? (aJour ? garde!.texte : texteCahierDeLOutil(c.fiche))
     this.texteTouche = false
     const auto = this.enLigne && !!cleRedaction() && !!this.imageDePage
     qui.classList.remove('erreur')
     ;(d.querySelector('.p-reessayer') as HTMLElement).hidden = true
+    ;(d.querySelector('.p-autre-texte') as HTMLElement).hidden = !auto
     qui.textContent = aJour && garde!.par === 'professeur' ? 'Votre texte, gardé avec la séance.'
       : aJour && garde!.par === 'claude' ? 'Rédigé par Claude : relisez-le.'
       : aJour && garde!.par === 'gemini' ? 'Rédigé automatiquement : relisez-le.'
       : auto ? '' : this.enLigne ? 'Rédigé par l\'outil. Pour que Claude lise aussi l\'écriture à la main :' : 'Rédigé par l\'outil (la version hors ligne ne fait pas appel à Claude).'
     ;(d.querySelector('.p-redaction') as HTMLElement).hidden = !this.enLigne
+    if (autre !== undefined && auto) return void this.redigerAvecClaude(moi, c.id, c.fiche, gestes, autre)
     if (!auto || garde?.par === 'professeur' || (aJour && (garde!.par === 'claude' || garde!.par === 'gemini') && !refaire)) return
     void this.redigerAvecClaude(moi, c.id, c.fiche, gestes)
   }
 
-  private async redigerAvecClaude(moi: number, id: string, fiche: FicheDeSeance, gestes: number) {
+  private async redigerAvecClaude(moi: number, id: string, fiche: FicheDeSeance, gestes: number, autre = '') {
     const d = this.d!, qui = d.querySelector('.p-cahier-qui') as HTMLElement
     const champ = d.querySelector('.p-texte-cahier') as HTMLTextAreaElement
+    const bouton = d.querySelector('.p-autre-texte') as HTMLElement
     const encore = () => this.d === d && this.redaction === moi
-    qui.textContent = 'Claude lit les pages et rédige le texte…'
+    qui.textContent = autre ? 'Claude rédige un autre texte…' : 'Claude lit les pages et rédige le texte…'
+    bouton.hidden = true
     const modele = modeleChoisi()
     try {
       const images: string[] = []
@@ -514,7 +524,7 @@ export class Publication {
         if (b64) images.push(b64)
         if (!encore()) return
       }
-      const brut = await demanderAClaude(cleRedaction(), consigneRedaction(fiche, null, consignesDuProfesseur(), this.texteDeLaSeancePrecedente(id)), images, { modele })
+      const brut = await demanderAClaude(cleRedaction(), consigneRedaction(fiche, null, consignesDuProfesseur(), this.texteDeLaSeancePrecedente(id), autre), images, { modele })
       if (!encore()) return
       const texte = texteCahierRedige(fiche, brut, enTeteRedaction())
       if (!texte) throw new ErreurRedaction('Claude n\'a rien rédigé pour cette séance : le texte de l\'outil reste.')
@@ -525,9 +535,12 @@ export class Publication {
       qui.textContent = `Rédigé par Claude (${nomDuModele(modele)}) : relisez-le.`
     } catch (e) {
       if (!encore()) return
+      if (autre) champ.value = autre
       qui.textContent = e instanceof ErreurRedaction ? e.message : 'Claude n\'a pas pu rédiger le texte : le texte de l\'outil reste.'
       qui.classList.add('erreur')
       ;(d.querySelector('.p-reessayer') as HTMLElement).hidden = false
+    } finally {
+      if (encore()) bouton.hidden = false
     }
   }
 

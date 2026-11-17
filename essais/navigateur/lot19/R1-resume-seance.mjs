@@ -11,7 +11,7 @@
 // D. Le professeur corrige le texte : il est gardé, Claude ne le réécrit plus.
 // E. Publier : le texte part dans le presse-papiers avec le lien,
 //    « Copier et ouvrir Pronote » mène à l'adresse retenue.
-// F. Claude refuse (trop de demandes, surcharge) : le texte de l'outil reste, le message le dit.
+// F. Claude refuse (trop de demandes, surcharge), « Rédiger un autre texte » : le texte de l'outil reste, le message le dit.
 // G. La trieuse : la fiche d'une séance passée (sa durée, ce qui a été fait) ;
 //    F2 propose un nom de page, Tab le prend.
 // H. Aucune clé, aucun texte ne va dans le document hors de ses cartes.
@@ -201,6 +201,15 @@ claude.statut = 200
 await p.click('.p-reessayer')
 await p.waitForFunction(() => /Rédigé par Claude/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 15000 }).catch(() => {})
 ok(/exercice 13 p\. 42/.test(await p.inputValue('.p-texte-cahier')) && !(await p.isVisible('.p-reessayer')), 'F4) « Réessayer » : Claude rédige le texte')
+// Le texte ne convient pas : « Rédiger un autre texte »
+ok(await p.isVisible('.p-autre-texte'), 'F4b) « Rédiger un autre texte » est proposé')
+const avantF4 = demandes.length, ecarte = await p.inputValue('.p-texte-cahier')
+claude.texte = '**Fait en classe :** correction de l\'exercice 13 p. 42.'
+await p.click('.p-autre-texte')
+await p.waitForFunction(() => /correction de l'exercice 13/.test(document.querySelector('.p-texte-cahier').value), null, { timeout: 15000 }).catch(() => {})
+const consigneF4 = demandes[avantF4]?.corps?.messages?.[0]?.content?.find(x => x.type === 'text')?.text ?? ''
+ok(/correction de l'exercice 13/.test(await p.inputValue('.p-texte-cahier')) && consigneF4.includes('Le professeur n\'a pas retenu ce texte :\n' + ecarte) && await p.isVisible('.p-autre-texte'),
+  'F4c) Claude rédige un autre texte, en sachant lequel n\'a pas été retenu', consigneF4.slice(-400))
 // Sans la date ni le chapitre en tête, et les puces gardées
 claude.texte = 'Cours :\n- Propriété : somme et produit des racines.'
 await p.click('.p-redaction'); await p.waitForSelector('.dialogue-redaction[open]')

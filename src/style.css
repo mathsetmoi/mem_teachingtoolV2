@@ -2209,7 +2209,7 @@ body.en-bibliotheque .toast { z-index: 30; }
   .dialogue label.case { min-height: 44px; }
   /* Le lien « Rédaction automatique… » de Publier (ajouté après la
      vérification du lot 5) se touche lui aussi */
-  .dialogue-publier .lien.p-redaction { min-height: 44px; }
+  .dialogue-publier .lien.p-redaction, .dialogue-publier .lien.p-autre-texte { min-height: 44px; }
   .pastille-couleur { width: 44px; height: 44px; }
   .panneau-forme { width: calc(100vw - 16px); overflow-y: auto; overscroll-behavior: contain; }
   /* La consigne du programme de construction, posée en bas sur un écran
