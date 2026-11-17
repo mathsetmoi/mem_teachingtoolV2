@@ -423,6 +423,42 @@ export const methodesPages = {
     this.ui.maj()
   },
 
+  // ---------- Envoyer la page vers une autre séance (lot 28) ----------
+  /** « Envoyer la page vers… » une autre séance de ce classeur : une copie
+   *  de la page, dans la séance `cible`, après la page `apres` (sinon à sa
+   *  fin). Vers la séance du jour ou une séance à venir, la copie hérite son
+   *  passé (comme « Reprendre la page ») ; vers une séance passée, c'est un
+   *  complément de celle-ci (sa fiche le note), et la copie y paraît d'un
+   *  coup. deplacer : la page quitte sa séance (elle va dans la corbeille du
+   *  classeur, d'où « Annuler » la rend). Rend la copie (null : rien). */
+  envoyerPageIci(this: App, source: string, cible: string, o: { apres?: string | null; deplacer?: boolean } = {}): string | null {
+    if (this.enLecture) return null
+    this.viderPointEnAttente()
+    this.finirTexte()
+    const t = this.tableau
+    const de = t.seanceDe(source)
+    if (!t.seancesDuClasseur().some(s => s.id === cible) || de?.id === cible || !t.ordre.toArray().includes(source)) return null
+    const passee = t.estPassee(cible)
+    if (passee) t.noterComplement(cible)
+    const q = t.dupliquerPage(source, { position: t.placeDansLaSeance(cible, o.apres ?? null), seance: cible, memeNom: true, sansHistoire: passee })
+    if (!q) return null
+    if (o.deplacer) t.jeterPage(source, q)
+    return q
+  },
+
+  /** « Annuler » d'un envoi de page : la copie va dans la corbeille, la
+   *  page déplacée revient à sa place */
+  annulerEnvoiPage(this: App, source: string, q: string, deplacer: boolean): void {
+    if (tableauCache(this)) return
+    this.viderPointEnAttente()
+    const t = this.tableau
+    if (deplacer && !t.ordre.toArray().includes(source)) t.rendrePage(source)
+    const ordre = t.ordre.toArray()
+    if (ordre.includes(q) && ordre.includes(source)) t.jeterPage(q, source)
+    if (ordre.includes(source) || t.ordre.toArray().includes(source)) this.allerPage(source)
+    this.ui.message('Envoi de la page annulé')
+  },
+
   /** Reprendre une page d'une séance passée dans la séance du jour (lot 6,
    *  voir Tableau.reprendrePage) : une copie qui hérite son passé, sous le
    *  même nom ; si la page 1 du jour est encore vide, la copie la remplace,

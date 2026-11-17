@@ -115,3 +115,45 @@ describe('compléter une séance passée', () => {
     expect(f.etapes[f.etapes.length - 1].dt).toBeLessThanOrEqual(PAUSE_COMPLEMENT)
   })
 })
+
+describe('envoyer une page vers une autre séance, ou un autre classeur', () => {
+  it('vers une séance passée : une copie sans histoire, qui paraît dans le complément', async () => {
+    const { t, lundi, vendredi, v1 } = await lundiVendrediPuisComplement()
+    t.seanceEnComplement = null
+    await attendre(60_000)
+    expect(t.estPassee(lundi)).toBe(true)
+    expect(t.estPassee(vendredi)).toBe(false)
+    t.noterComplement(lundi)
+    const q = t.dupliquerPage(v1, { position: t.placeDansLaSeance(lundi), seance: lundi, memeNom: true, sansHistoire: true })!
+    await attendre(800)
+    expect(t.herite(q)).toBeNull()
+    expect(t.pagesDeLaSeance(lundi)[2]).toBe(q)
+    const lu = seancesDuTableau(t)!.find(s => s.id === lundi)!
+    expect(pagesAPublier(t, lu)).toContain(q)
+    const f = exporter(t, { de: lu.de, a: lu.a, pages: pagesAPublier(t, lu), titre: 'Lundi' }, { instruments: false })
+    expect(f.etapes[f.etapes.length - 1].p).toBe(q)
+    // Vendredi garde sa page et son replay
+    const ve = seancesDuTableau(t)!.find(s => s.id === vendredi)!
+    expect(pagesAPublier(t, ve)).toEqual([v1])
+  })
+  it('vers un autre classeur : la page, son nom et ses images arrivent, une image homonyme est renommée', async () => {
+    const { t, l1 } = await lundiVendrediPuisComplement()
+    t.doc.getMap('images').set('IMG', 'data:image/png;base64,AAA')
+    t.poser(l1, { id: 'I1', type: 'image', x: 0, y: 0, z: 99, l: 10, h: 10, src: 'IMG' } as never)
+    t.renommerPage(l1, 'Démonstration')
+    const d = t.donneesDePage(l1)!
+    expect(d.images).toEqual({ IMG: 'data:image/png;base64,AAA' })
+    const autre = new Tableau(null)
+    const a1 = autre.ajouterPage('blanc', 0)
+    autre.migrerSeances()
+    autre.doc.getMap('images').set('IMG', 'data:image/png;base64,BBB')
+    const s = autre.derniereSeance()!.id
+    const q = autre.importerPage(d, { position: autre.placeDansLaSeance(s), seance: s })
+    expect(autre.pagesDeLaSeance(s)).toEqual([a1, q])
+    const image = [...autre.formesDe(q)!.values()].find(f => f.type === 'image') as { src: string }
+    expect(image.src).not.toBe('IMG')
+    expect(autre.doc.getMap('images').get(image.src)).toBe('data:image/png;base64,AAA')
+    expect(autre.doc.getMap('images').get('IMG')).toBe('data:image/png;base64,BBB')
+    expect(autre.formesDe(q)!.size).toBe(t.formesDe(l1)!.size)
+  })
+})

@@ -1010,12 +1010,96 @@ export class Tableau {
     const jour = this.seanceDuJour()
     const s = this.seancesDuClasseur().find(x => x.id === id)
     if (!ficheValable(f) || f.aVenir || !s || !s.pages.length || jour?.id === id) return false
-    const c = complementsDe(f)
-    const g: FicheSeance = { ...f, complements: [...c, Math.max(t, c[c.length - 1] ?? -Infinity)] }
-    this.doc.transact(() => this.seances.set(id, g))
+    this.noterComplement(id, t)
     this.seanceEnPreparation = null
     this.seanceEnComplement = id
     return true
+  }
+
+  /** La fiche d'une séance note un complément commencé à t (hors film,
+   *  hors annulation) : completerSeance, et une page envoyée vers une séance
+   *  passée (« Envoyer la page vers… »). Faux : pas de fiche. */
+  noterComplement(id: string, t = Date.now()): boolean {
+    const f = this.seances.get(id)
+    if (!ficheValable(f)) return false
+    const c = complementsDe(f)
+    const g: FicheSeance = { ...f, complements: [...c, Math.max(t, c[c.length - 1] ?? -Infinity)] }
+    this.doc.transact(() => this.seances.set(id, g))
+    return true
+  }
+
+  /** Une séance passée : ni celle du jour, ni une séance à venir */
+  estPassee(id: string): boolean {
+    const s = this.seancesDuClasseur().find(x => x.id === id)
+    return !!s && !s.aVenir && this.seanceDuJour()?.id !== id
+  }
+
+  /** La place, dans l'ordre, d'une page qu'on ajoute à une séance : juste
+   *  après la page `apres` (si elle est de cette séance), sinon après sa
+   *  dernière page ; une séance sans page : la fin */
+  placeDansLaSeance(id: string, apres: string | null = null): number {
+    const pages = this.pagesDeLaSeance(id), ordre = this.ordre.toArray()
+    const ref = apres && pages.includes(apres) ? apres : pages[pages.length - 1]
+    return ref ? ordre.indexOf(ref) + 1 : ordre.length
+  }
+
+  /** Une page, telle qu'elle part vers un autre classeur (« Envoyer la page
+   *  vers… », lot 28) : son fond, sa nuit, son origine, son nom, ses formes
+   *  (copiées) et les images qu'elles montrent. null : pas de page. */
+  donneesDePage(p: string): PageEnvoyee | null {
+    const source = this.pages.get(p)
+    const formes = this.formesDe(p)
+    if (!(source instanceof Y.Map) || !formes) return null
+    const banque = this.doc.getMap('images')
+    const images: Record<string, string> = {}
+    for (const f of formes.values()) {
+      if (f.type !== 'image') continue
+      const d = banque.get(f.src)
+      if (typeof d === 'string') images[f.src] = d
+    }
+    const origine = source.get('origine')
+    return {
+      fond: this.fondDe(p), nuit: this.nuitDe(p), nom: this.nomDe(p),
+      origine: origine && typeof origine === 'object' ? JSON.parse(JSON.stringify(origine)) : null,
+      formes: [...formes.values()].map(f => JSON.parse(JSON.stringify(f)) as Forme), images,
+    }
+  }
+
+  /** Une page venue d'un autre classeur (voir donneesDePage) : UNE
+   *  transaction, notée sur elle (sa naissance, comme ajouterPage), à
+   *  `position`, dans la séance `seance` ; ses images entrent dans la banque
+   *  (sans remplacer celles qui y sont). Rend son id. */
+  importerPage(d: PageEnvoyee, o: { position: number; seance: string | null }): string {
+    this.ecrireLesSeances()
+    const id = uid()
+    const vue = this.pageVue
+    this.pageVue = id
+    this.noteDeLEtape = 'naissance'
+    try {
+      this.doc.transact(() => {
+        // Une autre image sous le même nom dans ce classeur : la nôtre en prend un nouveau
+        const banque = this.doc.getMap('images')
+        const noms = new Map<string, string>()
+        for (const [src, data] of Object.entries(d.images)) {
+          const deja = banque.get(src)
+          const n = deja === undefined || deja === data ? src : uid()
+          if (deja !== data) banque.set(n, data)
+          noms.set(src, n)
+        }
+        const m = new Y.Map<unknown>()
+        m.set('fond', d.fond)
+        if (d.nuit) m.set('nuit', true)
+        if (d.origine) m.set('origine', d.origine)
+        const f = new Y.Map<Forme>()
+        for (const forme of d.formes) f.set(forme.id, forme.type === 'image' && noms.has(forme.src) ? { ...forme, src: noms.get(forme.src)! } : forme)
+        m.set('formes', f)
+        this.pages.set(id, m)
+        this.ordre.insert(Math.max(0, Math.min(o.position, this.ordre.length)), [id])
+        if (d.nom) this.noms.set(id, d.nom)
+        if (o.seance) this.seanceDesPages.set(id, o.seance)
+      })
+    } finally { this.noteDeLEtape = null; if (vue) this.pageVue = vue }
+    return id
   }
 
   /** La séance du jour, même pendant qu'on en prépare une (voir
@@ -1389,7 +1473,7 @@ export class Tableau {
    *  tant qu'elle est vierge, la retire (« Dupliquer la page » à l’écran ;
    *  la trieuse duplique sans marque, son journal l'annule). Rend la copie,
    *  ou null si la page n'a pas de Y.Map avec ses formes. */
-  dupliquerPage(p: string, o: { position?: number; marque?: boolean; seance?: string; memeNom?: boolean } = {}): string | null {
+  dupliquerPage(p: string, o: { position?: number; marque?: boolean; seance?: string; memeNom?: boolean; sansHistoire?: boolean } = {}): string | null {
     const source = this.pages.get(p)
     const formes = this.formesDe(p)
     if (!(source instanceof Y.Map) || !formes) return null
@@ -1410,7 +1494,9 @@ export class Tableau {
         m.set('fond', this.fondDe(p))
         if (this.nuitDe(p)) m.set('nuit', true)
         if (origine && typeof origine === 'object') m.set('origine', JSON.parse(JSON.stringify(origine)))
-        m.set('herite', { de: p })
+        // Sans histoire (« Envoyer la page vers… » une séance passée, lot 28) :
+        // la copie paraît d'un coup à sa naissance, dans le complément
+        if (!o.sansHistoire) m.set('herite', { de: p })
         const f = new Y.Map<Forme>()
         for (const [fid, forme] of formes) f.set(fid, JSON.parse(JSON.stringify(forme)) as Forme)
         m.set('formes', f)
@@ -2336,4 +2422,16 @@ function plagesDe(ordre: readonly string[], tirees: ReadonlySet<string>): [numbe
 function memeEntree(a: unknown, b: unknown): boolean {
   const texte = (x: unknown) => x && typeof x === 'object' ? JSON.stringify(x, Object.keys(x).sort()) : String(x)
   return texte(a) === texte(b)
+}
+
+/** Une page qui part vers un autre classeur (« Envoyer la page vers… »,
+ *  lot 28 ; voir Tableau.donneesDePage) */
+export interface PageEnvoyee {
+  fond: Fond
+  nuit: boolean
+  nom: string | null
+  origine: unknown
+  formes: Forme[]
+  /** Les images que ses formes montrent : identifiant → data: URL */
+  images: Record<string, string>
 }

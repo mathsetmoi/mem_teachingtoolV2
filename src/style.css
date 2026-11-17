@@ -1592,6 +1592,37 @@ body.en-trieuse .toast { z-index: 30; }
   .dialogue-envoi { width: calc(100vw - 16px); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); padding: 16px 14px 12px; }
 }
 
+/* ---------- Envoyer la page vers… (pages/envoi-page.ts, lot 28) ----------
+   Deux colonnes, le classeur puis la séance ; une seule sur un téléphone. */
+.dialogue-envoi-page { width: min(720px, calc(100vw - 24px)); max-height: min(720px, calc(100vh - 32px)); padding-bottom: 16px; }
+.dialogue-envoi-page[open] { display: flex; flex-direction: column; }
+.dialogue-envoi-page .corps { display: flex; flex-direction: column; gap: 12px; min-height: 0; flex: 1 1 auto; }
+.envoi-colonnes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; min-height: 0; flex: 1 1 auto; }
+.envoi-colonne { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.envoi-titre { font-size: 13px; font-weight: 700; color: var(--encre-douce); text-transform: uppercase; letter-spacing: 0.02em; }
+.envoi-liste-choix { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; max-height: 340px; overscroll-behavior: contain; padding: 2px; }
+.envoi-choix {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 6px 12px; flex: none;
+  border: 1px solid var(--filet); border-radius: 10px; background: transparent; text-align: left; cursor: pointer; font: inherit;
+}
+.envoi-choix:hover:not(:disabled) { background: #eef3fa; }
+.envoi-choix[aria-selected="true"] { background: #e4ecf8; border: 2px solid var(--bleu); font-weight: 700; }
+.envoi-choix:disabled { opacity: 0.5; cursor: default; }
+.envoi-choix .libelle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.envoi-choix .aide { flex: none; font-size: 12px; font-weight: 400; color: var(--encre-douce); }
+.envoi-vide { margin: 4px 0; color: var(--encre-douce); }
+.envoi-avis { margin: 0; padding: 8px 12px; border-radius: 8px; background: #fff3d6; color: #5c3a00; }
+.envoi-avis[hidden] { display: none; }
+.envoi-place { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.envoi-place .case { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; }
+.envoi-place .case[hidden], .envoi-page-apres[hidden] { display: none; }
+.envoi-page-apres { height: 40px; max-width: 260px; border: 1px solid var(--filet); border-radius: 8px; font: inherit; padding: 0 8px; }
+@media (max-width: 640px) {
+  .dialogue-envoi-page { width: calc(100vw - 16px); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); padding: 16px 14px 12px; }
+  .envoi-colonnes { grid-template-columns: minmax(0, 1fr); }
+  .envoi-liste-choix { max-height: 180px; }
+}
+
 /* ---------- La bibliothèque des classeurs (classeurs/bibliotheque.ts) ----------
    Plein écran, comme la trieuse, au-dessus des barres et des panneaux (10 à
    21), sous les petits menus (23) ; ses messages passent au-dessus d'elle.

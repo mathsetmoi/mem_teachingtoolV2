@@ -214,10 +214,10 @@ export const methodesSeances = {
     entreeMenu(m, l.aVenir ? 'Préparer la séance' : 'Ouvrir la séance', () => void this.ouvrirClasseur(f, { seance: sid }), { touche: 'Entrée', action: 'ouvrir-seance' })
     entreeMenu(m, 'Renommer…', () => void this.renommerSeanceDe(fid, sid), { touche: 'F2', action: 'renommer-seance' })
     // Son replay : la fenêtre Publier, sur elle (le classeur garde chaque séance : on la publie quand on veut)
+    if (!l.aVenir) entreeMenu(m, 'Publier la séance…', () => void this.ouvrirClasseur(f, { seance: sid, publier: true }), { action: 'publier-seance', aide: 'Son replay, pour les élèves' })
     // Une séance passée (lot 28) : la rouvrir en écriture (pas celle du jour, la plus récente)
     const jour = [...(f.listeSeances ?? [])].filter(x => !x.aVenir && x.pages > 0).sort((x, y) => y.debut - x.debut)[0]
     if (!l.aVenir && jour && jour.id !== sid) entreeMenu(m, 'Compléter la séance', () => void this.ouvrirClasseur(f, { seance: sid, completer: true }), { action: 'completer-seance', aide: 'Ajouter ou corriger dans cette séance' })
-    if (!l.aVenir) entreeMenu(m, 'Publier la séance…', () => void this.ouvrirClasseur(f, { seance: sid, publier: true }), { action: 'publier-seance', aide: 'Son replay, pour les élèves' })
     filetMenu(m)
     if (i > 0) entreeMenu(m, 'Monter', () => void this.placerSeance(fid, sid, { pas: -1 }), { touche: 'Alt + ↑', action: 'monter-seance' })
     if (i < lignes.length - 1) entreeMenu(m, 'Descendre', () => void this.placerSeance(fid, sid, { pas: 1 }), { touche: 'Alt + ↓', action: 'descendre-seance' })
