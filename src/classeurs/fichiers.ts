@@ -549,6 +549,14 @@ export class Fichiers {
    *  null : il n'a pas pu être lu (on le dit). o.fenetre : la fenêtre d'où
    *  l'on agit (elle n'empêche pas) ; o.dire : à qui le dire (le message du
    *  bas sinon) — « Vérifier les classeurs » (lot 17). */
+  /** Les autres classeurs de la bibliothèque, qu'on peut ouvrir (ni dans la
+   *  corbeille, ni en train de partir ou de naître), par nom : « Envoyer la
+   *  page vers… » (lot 28) */
+  async autresClasseurs(): Promise<FicheClasseur[]> {
+    const [l, dossiers] = await Promise.all([this.registre.classeurs(), this.registre.dossiers()])
+    return l.filter(f => !this.estIci(f) && visible(f, dossiers)).sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+  }
+
   async lireUnClasseur(F: FicheClasseur, o: OptionsLecture = {}): Promise<Tableau | null> {
     const dire = o.dire ?? ((t: string) => this.hote.message(t))
     const r = this.refusMaintenant(o.fenetre) ?? (this.enCours ? 'Un fichier est en train de s\'ouvrir : attendez un instant.' : null)

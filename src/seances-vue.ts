@@ -258,19 +258,21 @@ export function ouvrirAccueil(racine: HTMLElement, h: HoteAccueil): HTMLDialogEl
 
 // ---------- « Cette page est dans la séance de lundi » ----------
 /** La question posée au premier geste d'écriture sur une page d'une séance
- *  passée : vrai pour « Reprendre et écrire », faux pour « Juste regarder »
- *  (Échap, le fond) */
-export function demanderReprise(racine: HTMLElement, seance: SeanceDuClasseur): Promise<boolean> {
+ *  passée : vrai pour « Reprendre et écrire », 'completer' pour « Compléter
+ *  la séance » (lot 28 : on écrit dans la séance passée elle-même), faux
+ *  pour « Juste regarder » (Échap, le fond) */
+export function demanderReprise(racine: HTMLElement, seance: SeanceDuClasseur): Promise<boolean | 'completer'> {
   return new Promise(ok => {
     const d = el('dialog', 'dialogue dialogue-reprise')
     const de = deLaSeance(seance, Date.now())
     const titre = el('h2', '', `Cette page est dans la séance ${de}`)
-    const texte = el('p', '', `Pour écrire dessus aujourd'hui, MEM la reprend dans la séance du jour. La séance ${de} reste telle que la classe l'a vue.`)
-    let reponse = false
+    const texte = el('p', '', `Pour écrire dessus aujourd'hui, reprenez-la dans la séance du jour : la séance ${de} reste telle que la classe l'a vue. Pour corriger ou ajouter quelque chose à la séance ${de} elle-même, complétez-la.`)
+    let reponse: boolean | 'completer' = false
     const actions = el('div', 'actions')
     const regarder = bouton('secondaire', 'Juste regarder', () => { reponse = false; d.close() })
+    const completer = bouton('secondaire completer-seance', 'Compléter la séance', () => { reponse = 'completer'; d.close() })
     const reprendre = bouton('principal', 'Reprendre et écrire', () => { reponse = true; d.close() })
-    actions.append(regarder, reprendre)
+    actions.append(regarder, completer, reprendre)
     d.append(titre, texte, actions)
     d.addEventListener('close', () => { d.remove(); ok(reponse) })
     fermerSurLeFond(d, () => d.close())
@@ -318,6 +320,11 @@ export class BandeauxSeances {
    *  cette séance tant qu'on ne recharge pas */
   readonly preparation: HTMLElement
   private textePreparation: HTMLElement
+  /** Une séance passée qu'on complète (lot 28) : « Vous complétez la séance
+   *  de lundi 9 novembre. Ce que vous ajoutez ou corrigez reste dans cette
+   *  séance. Terminer » */
+  readonly complement: HTMLElement
+  private texteComplement: HTMLElement
   private preparationFermee = new Set<string>()
   /** « Lundi 8 h s'est arrêté page 3 · « Exercice 3 ». Reprendre la page · Voir la séance · × » */
   readonly reprise: HTMLElement
@@ -342,7 +349,14 @@ export class BandeauxSeances {
     this.texteLecture = el('span', 'texte')
     this.lecture.append(this.texteLecture,
       bouton('principal petit', 'Reprendre la page', () => { this.app.reprendrePage(this.app.page) }),
+      bouton('secondaire petit completer-seance', 'Compléter la séance', () => { this.app.completerSeance() }),
       bouton('secondaire petit retour-aujourdhui', 'Retour à aujourd\'hui', () => this.app.retourAujourdhui()))
+    this.complement = el('div', 'bandeau-seance bandeau-complement')
+    this.complement.setAttribute('role', 'status')
+    this.complement.hidden = true
+    this.texteComplement = el('span', 'texte')
+    this.complement.append(this.texteComplement,
+      bouton('principal petit terminer-complement', 'Terminer', () => this.app.terminerComplement()))
     this.preparation = el('div', 'bandeau-seance bandeau-preparation')
     this.preparation.setAttribute('role', 'status')
     this.preparation.hidden = true
@@ -378,7 +392,7 @@ export class BandeauxSeances {
     this.boutonApres = bouton('secondaire petit', 'Séance d\'après ›', () => this.voisine(1))
     actions.append(this.boutonReprendre, this.boutonVoir, this.boutonAvant, this.boutonApres)
     this.tiroir.append(tete, this.rangee, actions)
-    racine.append(this.lecture, this.preparation, this.reprise, this.tiroir)
+    racine.append(this.lecture, this.complement, this.preparation, this.reprise, this.tiroir)
     window.addEventListener('keydown', e => {
       if (e.key === 'Escape' && !this.tiroir.hidden && !document.querySelector('dialog[open]')) { e.preventDefault(); e.stopPropagation(); this.fermerTiroir() }
     }, true)
@@ -405,6 +419,16 @@ export class BandeauxSeances {
     }
     if (this.preparation.hidden === montrer) this.preparation.hidden = !montrer
     document.body.classList.toggle('en-preparation-seance', !!prep)
+    const comp = app.seanceCompletee()
+    if (comp) {
+      const t = `Vous complétez la séance ${deLaSeance(comp, Date.now())}.`
+      if (this.texteComplement.dataset.texte !== t) {
+        this.texteComplement.dataset.texte = t
+        this.texteComplement.replaceChildren(t + ' ', el('span', 'suite', 'Ce que vous ajoutez ou corrigez reste dans cette séance.'))
+      }
+    }
+    if (this.complement.hidden === !!comp) this.complement.hidden = !comp
+    document.body.classList.toggle('en-complement-seance', !!comp)
     // Le bandeau « Reprendre » s'en va dès qu'on change de séance ou qu'on écrit sur la page
     const p = this.proposee
     if (p && !this.reprise.hidden) {

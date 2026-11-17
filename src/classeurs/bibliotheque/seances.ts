@@ -215,6 +215,9 @@ export const methodesSeances = {
     entreeMenu(m, 'Renommer…', () => void this.renommerSeanceDe(fid, sid), { touche: 'F2', action: 'renommer-seance' })
     // Son replay : la fenêtre Publier, sur elle (le classeur garde chaque séance : on la publie quand on veut)
     if (!l.aVenir) entreeMenu(m, 'Publier la séance…', () => void this.ouvrirClasseur(f, { seance: sid, publier: true }), { action: 'publier-seance', aide: 'Son replay, pour les élèves' })
+    // Une séance passée (lot 28) : la rouvrir en écriture (pas celle du jour, la plus récente)
+    const jour = [...(f.listeSeances ?? [])].filter(x => !x.aVenir && x.pages > 0).sort((x, y) => y.debut - x.debut)[0]
+    if (!l.aVenir && jour && jour.id !== sid) entreeMenu(m, 'Compléter la séance', () => void this.ouvrirClasseur(f, { seance: sid, completer: true }), { action: 'completer-seance', aide: 'Ajouter ou corriger dans cette séance' })
     filetMenu(m)
     if (i > 0) entreeMenu(m, 'Monter', () => void this.placerSeance(fid, sid, { pas: -1 }), { touche: 'Alt + ↑', action: 'monter-seance' })
     if (i < lignes.length - 1) entreeMenu(m, 'Descendre', () => void this.placerSeance(fid, sid, { pas: 1 }), { touche: 'Alt + ↓', action: 'descendre-seance' })
@@ -278,7 +281,7 @@ export const methodesSeances = {
     const f = this.fiches.get(fid)
     const s = f?.listeSeances?.find(x => x.id === sid)
     if (!s) return
-    const nom = await demanderNomDeSeance(this.racine, { id: sid, debut: s.debut, depuis: s.debut, nom: s.nom ?? null, ancienne: false, rang: null, aVenir: !!s.aVenir, pages: [] })
+    const nom = await demanderNomDeSeance(this.racine, { id: sid, debut: s.debut, depuis: s.debut, nom: s.nom ?? null, ancienne: false, rang: null, aVenir: !!s.aVenir, complements: [], pages: [] })
     if (nom === null) return
     const r = await this.changerSeances(fid, t => t.renommerSeance(sid, nom || null), x => x)
     if (r) this.hote.message(nom ? `Séance renommée : « ${nom} »` : `Nom de la séance retiré : « ${libelleSeance({ debut: s.debut, nom: null })} »`)

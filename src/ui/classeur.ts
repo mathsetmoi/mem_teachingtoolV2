@@ -16,11 +16,15 @@ import { icone } from '../icones'
 import { ENTREES, allerAuxEntrees, fermerMenu, filetMenu, ouvrirMenu, placerMenu, titreMenu } from '../menus'
 import { CTRL, tableauCache } from '../navigateur'
 import { ouvrirEnvoi } from '../pages/envoi'
+import { ouvrirEnvoiPage } from '../pages/envoi-page'
+import type { ClasseurDEnvoi, SeanceDEnvoi } from '../pages/envoi-page'
+import type { FicheClasseur } from '../classeurs/demarrage'
 import { pointeurDuClic } from '../pointeurs'
 import { dateCourteMajuscule, dateLongue, libelleSeance, seancesDansLOrdre } from '../seances'
 import { demanderSeancePreparee } from '../seance-preparee-vue'
 import type { SeanceDuClasseur } from '../seances'
 import { demanderNomDeSeance, demanderReprise } from '../seances-vue'
+import { deLaSeance } from '../seances'
 import type { PageAPeindre } from '../sorties/apercu'
 import { ouvrirFenetrePdf } from '../sorties/export-pdf'
 import type { CibleExport, HoteFenetrePdf } from '../sorties/export-pdf'
@@ -568,6 +572,9 @@ export const methodesClasseur = {
     el.appendChild(Object.assign(document.createElement('hr'), { className: 'menu-filet' }))
     this.entreeMenu(el, 'Dupliquer la page', () => app.dupliquerLaPage(), { touche: `${CTRL} + Maj + D`,
       aide: 'Une copie juste après, avec toute son histoire (Revoir la montre se construire)' })
+    // (lot 28) Vers une autre séance de ce classeur, ou vers un autre classeur
+    if (app.seanceVue) this.entreeMenu(el, 'Envoyer la page vers…', () => void this.ouvrirEnvoiPage(), { action: 'envoyer-page',
+      aide: 'La copier ou la déplacer dans une autre séance, ou dans un autre classeur' })
     // Ouverte au clavier (Entrée sur l'entrée), la trieuse rend le focus au compteur
     this.entreeMenu(el, 'Toutes les pages…', e => this.ouvrirTrieuse(e.detail === 0), { touche: 'Maj + P',
       aide: 'Les pages en vignettes : aller à une page, les ranger' })
@@ -583,6 +590,86 @@ export const methodesClasseur = {
     ouvrirMenu(this.menuPage)
     placerMenu(el, new DOMRect(x, y, 0, 0), 'droite')
     if (auClavier) allerAuxEntrees(el, 1, ENTREES)
+  },
+
+  /** « Envoyer la page vers… » (lot 28, voir pages/envoi-page.ts) : la
+   *  fenêtre, puis l'envoi, ici (App.envoyerPageIci) ou dans un autre
+   *  classeur (lu, changé et réécrit comme par la bibliothèque) */
+  async ouvrirEnvoiPage(this: UI, choisie?: string): Promise<void> {
+    const app = this.app, t = app.tableau
+    const source = choisie ?? app.page
+    const ici = t.seanceDe(source)
+    if (!ici || tableauCache(app)) return
+    const maintenant = Date.now()
+    const jour = t.seanceDuJour()
+    const pagesLibelle = (pages: string[]) => pages.map((p, i) => { const n = t.nomDe(p); return { id: p, libelle: `Page ${i + 1}${n ? ' · ' + n : ''}` } })
+    const seancesIci: SeanceDEnvoi[] = seancesDansLOrdre(t.seancesDuClasseur().filter(s => s.pages.length)).map(s => ({
+      id: s.id, libelle: libelleSeance(s), ici: s.id === ici.id, pages: pagesLibelle(s.pages),
+      aide: s.id === jour?.id ? 'aujourd\'hui' : s.aVenir ? 'à venir' : 'complément',
+    }))
+    const autres: FicheClasseur[] = this.fichiers ? await this.fichiers.autresClasseurs().catch(() => []) : []
+    const classeurs: ClasseurDEnvoi[] = [{ id: 'ici', nom: app.classeur.nom, seances: seancesIci }]
+    for (const F of autres) {
+      const l = (F.listeSeances ?? []).filter(s => s.pages > 0)
+      const leJour = [...l].filter(s => !s.aVenir).sort((a, b) => b.debut - a.debut)[0]
+      classeurs.push({ id: F.id, nom: F.nom, seances: seancesDansLOrdre(l).map(s => ({
+        id: s.id, libelle: libelleSeance({ debut: s.debut, nom: s.nom ?? null }),
+        aide: s.id === leJour?.id ? 'la plus récente' : s.aVenir ? 'à venir' : 'complément',
+      })) })
+    }
+    const numero = ici.pages.indexOf(source) + 1, nom = t.nomDe(source)
+    ouvrirEnvoiPage({
+      titrePage: `Page ${numero}${nom ? ` « ${nom} »` : ''}`,
+      classeurs,
+      seanceProposee: jour && jour.id !== ici.id ? jour.id : null,
+      depuisPassee: t.estPassee(ici.id) ? deLaSeance(ici, maintenant) : null,
+      maj: () => this.maj(),
+      envoyer: c => {
+        if (c.classeur === 'ici') {
+          const q = app.envoyerPageIci(source, c.seance, { apres: c.apres, deplacer: c.deplacer })
+          const s = t.seanceDe(q ?? '')
+          if (!q || !s) { this.message('La page n\'a pas pu être envoyée.'); return }
+          if (c.deplacer) app.voirPage(q)
+          const k = s.pages.indexOf(q) + 1
+          this.message(`Page ${c.deplacer ? 'déplacée' : 'copiée'} dans la séance ${deLaSeance(s, Date.now())} (page ${k})`, [
+            ...(c.deplacer ? [] : [{ libelle: 'Aller voir', faire: () => app.voirPage(q) }]),
+            { libelle: 'Annuler', faire: () => app.annulerEnvoiPage(source, q, c.deplacer), cle: 'envoi-page:' + q },
+          ])
+          return
+        }
+        const F = autres.find(x => x.id === c.classeur)
+        if (F) void this.envoyerPageAilleurs(source, F, c.seance, c.deplacer)
+      },
+    })
+  },
+
+  /** La page part dans un autre classeur, à la fin de la séance choisie (une
+   *  séance passée : un complément). Déplacée, elle quitte ensuite celui-ci
+   *  (la corbeille du classeur, « Annuler » la rend). */
+  async envoyerPageAilleurs(this: UI, source: string, F: FicheClasseur, seance: string, deplacer: boolean): Promise<void> {
+    const app = this.app, f = this.fichiers
+    const d = app.tableau.donneesDePage(source)
+    if (!f || !d) return
+    app.poserCeQuiAttend()
+    const tab = await f.lireUnClasseur(F)
+    if (!tab) return
+    if (!tab.seancesDuClasseur().some(s => s.id === seance)) { this.message(`Cette séance n'est plus dans « ${F.nom} ».`); return }
+    if (tab.estPassee(seance)) tab.noterComplement(seance)
+    const q = tab.importerPage(d, { position: tab.placeDansLaSeance(seance), seance })
+    if (!(await f.ecrireUnClasseur(F, tab))) return
+    const s = tab.seancesDuClasseur().find(x => x.id === seance)
+    const k = s ? s.pages.indexOf(q) + 1 : 0
+    let retour: string | null = null
+    if (deplacer) {
+      const ordre = app.tableau.ordre.toArray(), i = ordre.indexOf(source)
+      const voisine = app.pages.filter(p => p !== source)[Math.max(0, app.pages.indexOf(source) - 1)] ?? ordre[i > 0 ? i - 1 : 1]
+      if (voisine) { app.allerPage(voisine); if (app.tableau.jeterPage(source, voisine)) retour = source }
+    }
+    const aller: { libelle: string; faire: () => void } | null = this.bibliotheque ? { libelle: 'Aller voir', faire: () => void this.bibliotheque?.ouvrirClasseur(F, { page: q }) } : null
+    this.message(`Page ${deplacer ? 'déplacée' : 'copiée'} dans « ${F.nom} »${s ? `, séance ${deLaSeance(s, Date.now())}${k ? ` (page ${k})` : ''}` : ''}`, [
+      ...(aller ? [aller] : []),
+      ...(retour ? [{ libelle: 'Annuler', faire: () => { if (app.rendrePage(retour!)) this.message('Page remise ici (la copie reste dans l\'autre classeur).') }, cle: 'envoi-page:' + q }] : []),
+    ])
   },
 
   /** Ce que le menu de la page fait de ce qui ne se prend pas (lot 5), après

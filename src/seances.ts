@@ -32,8 +32,11 @@
  *  professeur a choisi l'ordre à la main (voir seancesDansLOrdre) ; une
  *  version d'avant l'ignore et range par dates. aVenir : une séance
  *  préparée à l'avance (voir « Les séances préparées » plus bas) ; son début
- *  est alors l'heure prévue du cours. */
-export interface FicheSeance { debut: number; nom?: string; depuis?: number; ancienne?: true; rang?: number; aVenir?: true }
+ *  est alors l'heure prévue du cours. complements : les heures où l'on a
+ *  commencé à compléter cette séance passée (voir « Compléter une séance
+ *  passée » plus bas), de la plus ancienne à la plus récente ; une version
+ *  d'avant l'ignore. */
+export interface FicheSeance { debut: number; nom?: string; depuis?: number; ancienne?: true; rang?: number; aVenir?: true; complements?: number[] }
 
 /** Une séance, avec ses pages (dans l'ordre du document) */
 export interface SeanceDuClasseur {
@@ -46,6 +49,8 @@ export interface SeanceDuClasseur {
   rang: number | null
   /** Préparée à l'avance, le cours n'a pas commencé (voir plus bas) */
   aVenir: boolean
+  /** Les heures où l'on a commencé à la compléter (vide : jamais) */
+  complements: number[]
   pages: string[]
 }
 
@@ -77,7 +82,8 @@ export function rangerLesPages(ordre: readonly string[], seances: Iterable<[stri
   const r = triees.map(({ id, fiche }) => ({
     id, debut: fiche.debut, depuis: typeof fiche.depuis === 'number' && Number.isFinite(fiche.depuis) ? fiche.depuis : fiche.debut,
     nom: typeof fiche.nom === 'string' && fiche.nom.trim() ? fiche.nom.trim() : null, ancienne: !!fiche.ancienne,
-    rang: typeof fiche.rang === 'number' && Number.isFinite(fiche.rang) ? fiche.rang : null, aVenir: fiche.aVenir === true, pages: [] as string[],
+    rang: typeof fiche.rang === 'number' && Number.isFinite(fiche.rang) ? fiche.rang : null, aVenir: fiche.aVenir === true,
+    complements: complementsDe(fiche), pages: [] as string[],
   }))
   const parId = new Map(r.map(s => [s.id, s]))
   const attente: string[] = []
@@ -95,6 +101,13 @@ export function rangerLesPages(ordre: readonly string[], seances: Iterable<[stri
   }
   if (attente.length) r[r.length - 1].pages.push(...attente)
   return r
+}
+
+/** Les heures des compléments d'une fiche (voir « Compléter une séance
+ *  passée ») : les nombres valables, triés ; vide sans compléments */
+export function complementsDe(f: FicheSeance): number[] {
+  const c = Array.isArray(f.complements) ? f.complements.filter(t => typeof t === 'number' && Number.isFinite(t)) : []
+  return c.sort((a, b) => a - b)
 }
 
 /** Les séances où l'on a écrit (une page au moins), telles que la fiche du
@@ -156,6 +169,23 @@ export function libelleAVenir(s: { debut: number; nom: string | null }, maintena
 export function dateLongue(t: number): string {
   const d = new Date(t)
   return `${JOURS[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]} à ${heureDite(t)}`
+}
+
+// ---------- Compléter une séance passée (lot 28) ----------
+// Une séance passée se regarde sans s'écrire. « Compléter la séance » la
+// rouvre en écriture, le temps d'y ajouter une page oubliée ou d'y rectifier
+// une démonstration : tant qu'on la complète, c'est elle la séance où l'on
+// écrit (voir Tableau.seanceEnComplement), comme une séance qu'on prépare.
+// La fiche note l'heure de chaque complément (complements). Le film reste
+// rangé par heures : ce qui s'écrit ce jour-là sur SES pages lui revient
+// (voir revoir/exporter.ts) ; dans son replay, il vient après le cours,
+// derrière un chapitre « Complément du 17 novembre ». Republier la séance
+// remplace son replay, au même lien (sa clé reste son début).
+
+/** « Complément du 17 novembre » : le chapitre d'un complément dans le replay */
+export function titreComplement(t: number): string {
+  const d = new Date(t)
+  return `Complément du ${d.getDate()} ${MOIS[d.getMonth()]}`
 }
 
 // ---------- L'ordre choisi à la main ----------
