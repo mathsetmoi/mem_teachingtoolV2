@@ -97,10 +97,18 @@ describe('la rédaction par Claude', () => {
     expect(c).toContain('Fait en classe :')
     expect(c).toMatch(/jamais un prénom/)
   })
+  it('avec des consignes du professeur, sa forme seule : plus de « Fait en classe : » imposé', () => {
+    const c = consigneRedaction(f, null, '■ Si la page commence par du cours, écris « • Cours : ».')
+    expect(c).not.toMatch(/une ligne qui commence par « Fait en classe : »/)
+    expect(c).not.toMatch(/Au plus 4 lignes/)
+    expect(c).toMatch(/seule forme à suivre/)
+    expect(consigneRedaction(f, null)).toMatch(/Au plus 4 lignes/)
+    expect(texteCahierRedige(f, '• Cours :\n- Propriété : S et P.\n* Exercice 3 p. 12', false)).toBe('• Cours :\n- Propriété : S et P.\n• Exercice 3 p. 12')
+  })
   it('les consignes du professeur s\'ajoutent, avant la règle sur les noms d\'élèves', () => {
     expect(consigneRedaction(f, null)).not.toContain('consignes du professeur')
     const c = consigneRedaction(f, null, '  Écris « Exercices » au pluriel.\n')
-    expect(c).toContain('Les consignes du professeur, à suivre en priorité sur celles du dessus :\nÉcris « Exercices » au pluriel.')
+    expect(c).toContain('Les consignes du professeur :\nÉcris « Exercices » au pluriel.')
     expect(c.indexOf('Écris « Exercices »')).toBeLessThan(c.indexOf('jamais un prénom'))
   })
   it('le cahier de textes de la séance d\'avant part avec la consigne', () => {
@@ -113,11 +121,11 @@ describe('la rédaction par Claude', () => {
     expect(consigneRedaction(f, null)).not.toContain('pas retenu')
     const c = consigneRedaction(f, null, 'Une puce par exercice.', '', 'Fait en classe : exercice 12.')
     expect(c).toContain('Le professeur n\'a pas retenu ce texte :\nFait en classe : exercice 12.\nRédige-en un autre')
-    expect(c.indexOf('pas retenu')).toBeLessThan(c.indexOf('Une puce par exercice.'))
+    expect(c.indexOf('pas retenu')).toBeLessThan(c.indexOf('jamais un prénom'))
   })
   it('le texte rendu est mis au propre, avec la date et le chapitre', () => {
     expect(texteCahierRedige(f, '**Fait en classe :** exercice 12 p. 42\n\n- À faire : exercice 14 p. 43\n')).toBe(
-      'Lundi 26 octobre · Ensembles de nombres\n**Fait en classe :** exercice 12 p. 42\n• À faire : exercice 14 p. 43')
+      'Lundi 26 octobre · Ensembles de nombres\n**Fait en classe :** exercice 12 p. 42\n- À faire : exercice 14 p. 43')
     expect(texteCahierRedige(f, 'Cours :\n* Propriété : S et P.\n•\n', false)).toBe('Cours :\n• Propriété : S et P.')
     expect(texteCahierRedige(f, '  \n ')).toBeNull()
   })

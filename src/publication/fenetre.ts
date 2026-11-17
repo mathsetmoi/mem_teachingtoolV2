@@ -524,7 +524,7 @@ export class Publication {
         if (b64) images.push(b64)
         if (!encore()) return
       }
-      const brut = await demanderAClaude(cleRedaction(), consigneRedaction(fiche, null, consignesDuProfesseur(), this.texteDeLaSeancePrecedente(id), autre), images, { modele })
+      const brut = await demanderAClaude(cleRedaction(), consigneRedaction(fiche, null, consignesDuProfesseur(), this.texteDeLaSeancePrecedente(id), autre), images, { modele, effort: consignesDuProfesseur() ? 'medium' : 'low' })
       if (!encore()) return
       const texte = texteCahierRedige(fiche, brut, enTeteRedaction())
       if (!texte) throw new ErreurRedaction('Claude n\'a rien rédigé pour cette séance : le texte de l\'outil reste.')
