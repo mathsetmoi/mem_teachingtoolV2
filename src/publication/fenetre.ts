@@ -37,7 +37,7 @@ import { choisirLeDossier, deposerLeFichierSeance, deposerLeReplay, dossierDuCha
 import { marqueDeCopie } from '../fichier'
 import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier } from './drive'
 import type { FicheDeSeance } from '../resume/fiche'
-import { texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil, consigneGemini, copierMisEnForme } from '../resume/fiche'
+import { dureeDeRedaction, texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil, consigneGemini, copierMisEnForme } from '../resume/fiche'
 import { ficheDeLaSeance, gestesDeLaSeance } from '../resume/collecte'
 import { ErreurGemini, PAGES_MAX, cleGemini, consignesDuProfesseur, demanderAGemini, dernierModele, enTeteGemini, imagePourGemini, pronoteDe } from '../resume/gemini'
 import { ouvrirRedaction } from '../resume/reglage-vue'
@@ -503,27 +503,42 @@ export class Publication {
     const d = this.d!, qui = d.querySelector('.p-cahier-qui') as HTMLElement
     const champ = d.querySelector('.p-texte-cahier') as HTMLTextAreaElement
     const encore = () => this.d === d && this.redaction === moi
+    const debut = performance.now(), avant = champ.value
     qui.textContent = 'Gemini lit les pages et rédige le texte…'
     try {
-      const images: string[] = []
+      // Les pages peintes une à une (les aperçus sont partagés), mais chacune
+      // réduite en JPEG pendant que la suivante se peint
+      const enCours: Promise<string | null>[] = []
       for (const p of fiche.pages.slice(0, PAGES_MAX)) {
         const png = await this.imageDePage!(p.id).catch(() => null)
-        const b64 = png ? await imagePourGemini(png) : null
-        if (b64) images.push(b64)
+        if (png) enCours.push(imagePourGemini(png))
         if (!encore()) return
       }
-      const brut = await demanderAGemini(cleGemini(), consigneGemini(fiche, null, consignesDuProfesseur(), this.texteDeLaSeancePrecedente(id)), images,
-        { nouvelEssai: () => { if (encore()) qui.textContent = 'Gemini est très demandé : nouvel essai…' } })
+      const images = (await Promise.all(enCours)).filter((x): x is string => !!x)
+      if (!encore()) return
+      const pret = performance.now()
+      // Le texte s'écrit sous les yeux du professeur, au fil de la réponse
+      // (sauf s'il a commencé à corriger le texte de l'outil)
+      const brut = await demanderAGemini(cleGemini(), consigneGemini(fiche, null, consignesDuProfesseur(), this.texteDeLaSeancePrecedente(id)), images, {
+        nouvelEssai: () => { if (encore()) qui.textContent = 'Gemini est très demandé : nouvel essai…' },
+        enCours: t => {
+          if (!encore() || this.texteTouche) return
+          const provisoire = texteCahierDeGemini(fiche, t, enTeteGemini())
+          if (provisoire) { champ.value = provisoire; qui.textContent = 'Gemini écrit…' }
+        },
+      })
       if (!encore()) return
       const texte = texteCahierDeGemini(fiche, brut, enTeteGemini())
-      if (!texte) throw new ErreurGemini('Gemini n\'a rien rédigé pour cette séance : le texte de l\'outil reste.')
+      if (!texte) { champ.value = avant; throw new ErreurGemini('Gemini n\'a rien rédigé pour cette séance : le texte de l\'outil reste.') }
       // Le professeur a commencé à corriger le texte de l'outil : on ne l'écrase pas
       if (this.texteTouche) { qui.textContent = 'Gemini a rédigé un texte, mais vous avez déjà écrit le vôtre : il reste.'; return }
       champ.value = texte
       this.app.tableau.garderTexteCahier(id, { texte, par: 'gemini', quand: Date.now(), gestes })
-      qui.textContent = `Rédigé par Gemini (${dernierModele()}) : relisez-le.`
+      qui.textContent = `Rédigé par Gemini (${dernierModele()}) en ${dureeDeRedaction(performance.now() - debut)} (pages ${dureeDeRedaction(pret - debut)}, Gemini ${dureeDeRedaction(performance.now() - pret)}) : relisez-le.`
     } catch (e) {
       if (!encore()) return
+      // Une réponse coupée en route : le texte d'avant revient
+      if (!this.texteTouche) champ.value = avant
       qui.textContent = e instanceof ErreurGemini ? e.message : 'Gemini n\'a pas pu rédiger le texte : le texte de l\'outil reste.'
       qui.classList.add('erreur')
       ;(d.querySelector('.p-reessayer') as HTMLElement).hidden = false

@@ -45,12 +45,23 @@ await ctx.route(/generativelanguage\.googleapis\.com/, async r => {
   ] })
   const corps = JSON.parse(r.request().postData() ?? '{}')
   demandes.push({ chemin: u.pathname, corps })
+  // Un modèle qui ne connaît pas les réglages de vitesse
+  if (gemini.sansVitesse && corps.generationConfig?.thinkingConfig) return rep(400, { error: { code: 400, message: 'Invalid JSON payload received. Unknown name "thinkingLevel" at \'generation_config.thinking_config\': Cannot find field.', status: 'INVALID_ARGUMENT' } })
   // restants : tant de refus, puis Gemini répond (un pic de demande passager)
   if (gemini.statut !== 200 && (gemini.restants ?? Infinity) > 0) {
     if (gemini.restants) gemini.restants--
     return gemini.statut === 503
       ? rep(503, { error: { code: 503, message: 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', status: 'UNAVAILABLE' } })
       : rep(gemini.statut, { error: { code: gemini.statut, message: 'Resource has been exhausted', status: 'RESOURCE_EXHAUSTED' } })
+  }
+  // En flux (SSE) : le texte en deux morceaux, une « pensée » d'abord
+  if (/:streamGenerateContent$/.test(u.pathname) && u.searchParams.get('alt') === 'sse') {
+    const t = gemini.texte, m = Math.floor(t.length / 2)
+    const morceau = o => `data: ${JSON.stringify(o)}\r\n\r\n`
+    return r.fulfill({ status: 200, contentType: 'text/event-stream', headers: { 'access-control-allow-origin': '*' },
+      body: morceau({ candidates: [{ content: { parts: [{ text: 'Je regarde les pages.', thought: true }] } }] })
+        + morceau({ candidates: [{ content: { parts: [{ text: t.slice(0, m) }] } }] })
+        + morceau({ candidates: [{ content: { parts: [{ text: t.slice(m) }] } }] }) })
   }
   return rep(200, { candidates: [{ content: { parts: [{ text: gemini.texte }] } }] })
 })
@@ -136,7 +147,10 @@ ok(/Rédigé par Gemini \(gemini-3\.6-flash\)/.test(await p.textContent('.p-cahi
 ok(/· .+\n\*\*Fait en classe :\*\* démonstration : √2 n'est pas rationnel ; correction de l'exercice 12 p\. 42\.\nÀ faire : exercices 14 et 15 p\. 43\.$/.test(texteC), 'C2) Le texte de Gemini, mis au propre, avec la date et le chapitre', texteC)
 const d = demandes[avantC]
 const parts = d?.corps?.contents?.[0]?.parts ?? []
-ok(/gemini-3\.6-flash:generateContent$/.test(d?.chemin ?? ''), 'C3) Le modèle choisi : le gemini-X-flash le plus récent', d?.chemin)
+ok(/gemini-3\.6-flash:streamGenerateContent$/.test(d?.chemin ?? ''), 'C3) Le modèle choisi : le gemini-X-flash le plus récent, en flux', d?.chemin)
+const g = d?.corps?.generationConfig ?? {}
+ok(g.thinkingConfig?.thinkingLevel === 'low' && g.mediaResolution === 'MEDIA_RESOLUTION_MEDIUM', 'C3b) Les réglages de vitesse : réflexion basse, images en résolution moyenne', g)
+ok(/en \d+ s \(pages \d+ s, Gemini \d+ s\)/.test(await p.textContent('.p-cahier-qui')), 'C3c) Le temps de la rédaction est affiché', await p.textContent('.p-cahier-qui'))
 ok(parts.filter(x => x.inline_data?.mime_type === 'image/jpeg' && x.inline_data.data.length > 1000).length === 1, 'C4) L\'image de la page part avec la consigne (une page : une image)', parts.map(x => Object.keys(x)))
 ok(/Manuel p\. 42/.test(parts[0]?.text ?? '') && /n'invente rien/i.test(parts[0]?.text ?? ''), 'C5) La consigne dit ce que l\'outil sait déjà')
 ok(/consignes du professeur[^\n]*\nÉcris « Exercices » au pluriel\./.test(parts[0]?.text ?? ''), 'C5b) Les consignes du professeur partent avec la consigne')
@@ -208,6 +222,13 @@ await p.click('.r-garder'); await p.waitForSelector('.dialogue-redaction', { sta
 await p.waitForFunction(() => /^Cours :/.test(document.querySelector('.p-texte-cahier').value), null, { timeout: 15000 }).catch(() => {})
 ok(await p.inputValue('.p-texte-cahier') === 'Cours :\n• Propriété : somme et produit des racines.', 'F6) Case décochée : ni date ni chapitre en tête, la puce gardée', await p.inputValue('.p-texte-cahier'))
 ok(await p.evaluate(() => localStorage.getItem('mem-redaction-entete')) === 'non', 'F7) Le choix est gardé dans ce navigateur')
+await p.keyboard.press('Escape')
+// Un modèle qui refuse les réglages de vitesse : l'outil redemande sans
+await p.evaluate(() => window.__app.tableau.textesCahier.clear())
+gemini = { statut: 200, sansVitesse: true, texte: 'Exercice 20 p. 50.' }
+await ouvrir()
+await p.waitForFunction(() => /Rédigé par Gemini/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 15000 }).catch(() => {})
+ok(/Exercice 20 p\. 50/.test(await p.inputValue('.p-texte-cahier')) && !demandes.at(-1)?.corps?.generationConfig?.thinkingConfig, 'F8) Un modèle sans réglages de vitesse : l\'outil redemande sans eux', await p.textContent('.p-cahier-qui'))
 await p.keyboard.press('Escape')
 
 // G. la trieuse

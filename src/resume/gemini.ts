@@ -34,7 +34,7 @@ const API = 'https://generativelanguage.googleapis.com/v1beta'
 const UNE_SEMAINE = 7 * 24 * 3600 * 1000
 /** Au plus tant de pages envoyées (les premières) ; chacune au plus si large */
 export const PAGES_MAX = 16
-export const LARGEUR_MAX = 1600
+export const LARGEUR_MAX = 1280
 /** Le modèle quand la liste ne répond pas : l'alias que Google tient à jour */
 export const MODELE_DE_SECOURS = 'gemini-flash-latest'
 
@@ -156,8 +156,6 @@ export function messageSelonLaRaison(statut: number, detail: string): string {
   return `Gemini n'a pas pu rédiger le texte (erreur ${statut}) : le texte de l'outil reste.`
 }
 
-/** Le texte rendu par Gemini pour cette consigne et ces images (JPEG, en
- *  base 64). Lève ErreurGemini avec un message à dire. */
 /** Gemini surchargé (« high demand ») : on réessaie après ces attentes,
  *  puis avec les alias que Google tient à jour (souvent moins demandés) */
 export const ATTENTES_SURCHARGE = [2000, 5000]
@@ -172,14 +170,62 @@ const patienter = (ms: number, signal?: AbortSignal) => new Promise<void>((ok, n
 let dernier = ''
 export const dernierModele = () => dernier
 
-export async function demanderAGemini(cle: string, consigne: string, images: readonly string[], o: { signal?: AbortSignal; nouvelEssai?: () => void } = {}): Promise<string> {
-  const corps = JSON.stringify({
-    contents: [{ role: 'user', parts: [{ text: consigne }, ...images.map(data => ({ inline_data: { mime_type: 'image/jpeg', data } }))] }],
-    generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
+/** Les réglages de vitesse (demande du professeur, novembre 2026) : Gemini
+ *  réfléchit peu avant d'écrire (c'est surtout ce qui prenait du temps), et
+ *  lit les pages en résolution moyenne (assez pour l'écriture à la main).
+ *  Les modèles 3 et suivants prennent un niveau de réflexion ; les 2.x, un
+ *  budget (0 : pas de réflexion). */
+export function reglagesDeVitesse(modele: string): Record<string, unknown> {
+  const v = /^gemini-(\d+)/.exec(modele)
+  const reflexion = v && Number(v[1]) < 3 ? { thinkingBudget: 0 } : { thinkingLevel: 'low' }
+  return { thinkingConfig: reflexion, mediaResolution: 'MEDIA_RESOLUTION_MEDIUM' }
+}
+
+/** Le texte d'une réponse de Gemini (sans ses « pensées ») */
+type Reponse = { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] }
+const texteDe = (j: Reponse) => (j.candidates?.[0]?.content?.parts ?? []).filter(p => !p.thought).map(p => p.text ?? '').join('')
+
+/** Lit la réponse en flux (SSE) : le texte arrive morceau par morceau,
+ *  enCours le reçoit à chaque fois en entier ; une réponse JSON d'un coup
+ *  (sans flux) est lue aussi */
+async function lireLaReponse(r: Response, enCours?: (texte: string) => void): Promise<string> {
+  if (!r.body || !/event-stream/.test(r.headers.get('content-type') ?? '')) {
+    const j = await r.json() as Reponse | Reponse[]
+    return (Array.isArray(j) ? j : [j]).map(texteDe).join('')
+  }
+  const lecteur = r.body.getReader(), dec = new TextDecoder()
+  let reste = '', texte = ''
+  for (;;) {
+    const { value, done } = await lecteur.read()
+    reste += dec.decode(value, { stream: !done })
+    const lignes = reste.split(/\r?\n/)
+    reste = done ? '' : lignes.pop() ?? ''
+    for (const l of lignes) {
+      if (!l.startsWith('data:')) continue
+      try { texte += texteDe(JSON.parse(l.slice(5)) as Reponse) } catch { /* morceau illisible : ignoré */ }
+    }
+    if (texte) enCours?.(texte)
+    if (done) return texte
+  }
+}
+
+/** Le texte rendu par Gemini pour cette consigne et ces images (JPEG, en
+ *  base 64), en flux. Lève ErreurGemini avec un message à dire. */
+export async function demanderAGemini(cle: string, consigne: string, images: readonly string[], o: { signal?: AbortSignal; nouvelEssai?: () => void; enCours?: (texte: string) => void } = {}): Promise<string> {
+  const contents = [{ role: 'user', parts: [{ text: consigne }, ...images.map(data => ({ inline_data: { mime_type: 'image/jpeg', data } }))] }]
+  const corps = (m: string, vite: boolean) => JSON.stringify({
+    contents, generationConfig: { temperature: 0.2, maxOutputTokens: 4096, ...(vite ? reglagesDeVitesse(m) : {}) },
   })
-  const essayer = async (m: string) => fetch(`${API}/models/${encodeURIComponent(m)}:generateContent`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': cle }, body: corps, signal: o.signal,
-  })
+  // Un modèle qui refuse les réglages de vitesse (400) : on redemande sans
+  const essayer = async (m: string) => {
+    const envoyer = (vite: boolean) => fetch(`${API}/models/${encodeURIComponent(m)}:streamGenerateContent?alt=sse`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': cle }, body: corps(m, vite), signal: o.signal,
+    })
+    const r = await envoyer(true)
+    if (r.status !== 400) return r
+    const detail = await r.clone().text().catch(() => '')
+    return /thinking|media_?resolution|mediaResolution/i.test(detail) && !/API_KEY/.test(detail) ? envoyer(false) : r
+  }
   let r: Response
   try {
     let m = await modele(cle)
@@ -203,8 +249,11 @@ export async function demanderAGemini(cle: string, consigne: string, images: rea
     throw new ErreurGemini('Gemini ne répond pas (pas d\'internet ?) : le texte de l\'outil reste.')
   }
   if (!r.ok) throw new ErreurGemini(await messageDErreur(r))
-  const j = await r.json() as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] }
-  const texte = (j.candidates?.[0]?.content?.parts ?? []).filter(p => !p.thought).map(p => p.text ?? '').join('').trim()
+  let texte: string
+  try { texte = (await lireLaReponse(r, o.enCours)).trim() } catch (e) {
+    if ((e as Error)?.name === 'AbortError') throw e
+    throw new ErreurGemini('La réponse de Gemini a été coupée (internet ?) : le texte de l\'outil reste.')
+  }
   if (!texte) throw new ErreurGemini('Gemini n\'a rien rédigé pour cette séance : le texte de l\'outil reste.')
   return texte
 }
