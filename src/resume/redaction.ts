@@ -124,7 +124,7 @@ export function messageSelonLaRaison(statut: number, detail: string): string {
 /** Le texte rendu par Claude pour cette consigne et ces images (JPEG, en
  *  base 64). Lève ErreurRedaction avec un message à dire. Le SDK réessaie
  *  tout seul deux fois quand Claude est surchargé ou trop demandé. */
-export async function demanderAClaude(cle: string, consigne: string, images: readonly string[], o: { signal?: AbortSignal; modele?: string; maxTokens?: number } = {}): Promise<string> {
+export async function demanderAClaude(cle: string, consigne: string, images: readonly string[], o: { signal?: AbortSignal; modele?: string; maxTokens?: number; effort?: 'low' | 'medium' } = {}): Promise<string> {
   const client = new Anthropic({ apiKey: cle, dangerouslyAllowBrowser: true, maxRetries: 2, timeout: 120_000 })
   let r: Anthropic.Message
   try {
@@ -132,8 +132,9 @@ export async function demanderAClaude(cle: string, consigne: string, images: rea
       model: o.modele ?? modeleChoisi(),
       max_tokens: o.maxTokens ?? 8000,
       // Peu de réflexion : il s'agit de lire des pages et d'en faire une
-      // liste, et le professeur veut le texte vite
-      output_config: { effort: 'low' },
+      // liste, et le professeur veut le texte vite ; un peu plus quand il a
+      // donné ses consignes de forme, pour qu'elles soient suivies à la lettre
+      output_config: { effort: o.effort ?? 'low' },
       messages: [{
         role: 'user',
         content: [

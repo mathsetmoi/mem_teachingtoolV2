@@ -6125,6 +6125,15 @@ Pronote, le texte de l'outil en secours. Partout plus bas où il est écrit
   avec la consigne (« Le professeur n'a pas retenu ce texte… rédige-en un
   autre, autrement »). Il remplace aussi un texte corrigé à la main, puisque
   le professeur le demande. Si Claude ne répond pas, le texte d'avant reste.
+- **Vos consignes passent seules** (17 novembre, le professeur voyait
+  encore « Fait en classe : » malgré les siennes) : quand il a écrit des
+  consignes, la forme de l'outil (« Fait en classe : », « au plus 4
+  lignes ») n'est plus demandée du tout ; restent seulement les règles
+  fixes (rien d'inventé, aucun nom d'élève, maths en caractères simples,
+  « À faire » si ses consignes n'en disent rien). Les tirets « - » en début
+  de ligne restent des tirets (« • Cours : » puis « - Propriété : … ») ;
+  seuls « * » et « • » deviennent « • ». Avec des consignes, Claude
+  réfléchit un peu plus (`effort` à `medium`) pour les suivre à la lettre.
 - Les erreurs en clair : clé refusée (401), crédit épuisé, limite de dépense
   du mois atteinte, modèle refusé ou disparu, trop de demandes (429), Claude
   très demandé (529, 5xx), pas d'internet ; le texte de l'outil reste, et

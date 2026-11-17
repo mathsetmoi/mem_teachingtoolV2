@@ -220,16 +220,26 @@ export function consigneRedaction(f: FicheDeSeance, niveau: string | null, consi
       'Un exercice de ce travail à faire qui est traité pendant cette séance est une correction (il a été fait à la maison) ; un autre exercice traité est fait en classe, pendant la séance.',
       '',
     ] : []),
-    'Écris le texte du cahier de textes, en français, comme un professeur l\'écrit pour ses élèves et leurs parents :',
-    '- une ligne qui commence par « Fait en classe : », qui dit les notions vues, les définitions, propriétés et démonstrations, et les exercices (avec leur numéro et leur page du manuel quand ils sont écrits au tableau) ;',
-    '- s\'il est écrit au tableau un travail à faire pour la prochaine fois, une ligne qui commence par « À faire : » ; sinon, pas de ligne « À faire ».',
-    'Au plus 4 lignes en tout. Pas de titre, pas de date, pas de formule de politesse.',
-    'Mise en forme permise (Pronote la garde) : **gras**, __souligné__, et des puces « • » en début de ligne. Rien d\'autre (ni dièses, ni tableaux).',
+    // Avec des consignes du professeur (« Rédaction automatique… »), c'est
+    // SA forme qui compte, seule : la forme de l'outil (« Fait en classe : »,
+    // 4 lignes) n'est plus demandée, sinon Claude mélange les deux
+    ...(consignes.trim() ? [
+      'Écris le texte du cahier de textes, en français, pour les élèves et leurs parents, en suivant exactement la forme que le professeur demande ci-dessous, point par point. Ses consignes sont la seule forme à suivre : rien d\'autre n\'est imposé (ni ligne « Fait en classe : », ni nombre de lignes).',
+      '',
+      'Les consignes du professeur :',
+      consignes.trim(),
+      '',
+      'Si ses consignes n\'en disent rien : s\'il est écrit au tableau un travail à faire pour la prochaine fois, termine par une ligne « À faire : … ».',
+    ] : [
+      'Écris le texte du cahier de textes, en français, comme un professeur l\'écrit pour ses élèves et leurs parents :',
+      '- une ligne qui commence par « Fait en classe : », qui dit les notions vues, les définitions, propriétés et démonstrations, et les exercices (avec leur numéro et leur page du manuel quand ils sont écrits au tableau) ;',
+      '- s\'il est écrit au tableau un travail à faire pour la prochaine fois, une ligne qui commence par « À faire : » ; sinon, pas de ligne « À faire ».',
+      'Au plus 4 lignes en tout. Pas de titre, pas de date, pas de formule de politesse.',
+    ]),
+    'Mise en forme permise (Pronote la garde) : **gras**, __souligné__, des puces « • » et des tirets « - » en début de ligne. Rien d\'autre (ni dièses, ni tableaux).',
     'Écris les mathématiques en caractères simples (√2, x², ≤, ℝ, 3/4), sans LaTeX.',
-    ...(rejete.trim() ? ['', 'Le professeur n\'a pas retenu ce texte :', rejete.trim(), 'Rédige-en un autre, autrement (ordre, mots, regroupements), toujours fidèle aux pages.', ''] : []),
-    // Les consignes du professeur (« Rédaction automatique… ») passent avant
-    // la forme ci-dessus, jamais avant la dernière règle
-    ...(consignes.trim() ? ['', 'Les consignes du professeur, à suivre en priorité sur celles du dessus :', consignes.trim(), ''] : []),
+    'Réponds seulement par le texte du cahier de textes, sans phrase avant ni après.',
+    ...(rejete.trim() ? ['', 'Le professeur n\'a pas retenu ce texte :', rejete.trim(), 'Rédige-en un autre, autrement (ordre, mots, regroupements), toujours fidèle aux pages et à ses consignes.', ''] : []),
     'Dans tous les cas, n\'invente rien : seulement ce qui se voit sur les pages. N\'écris jamais un prénom ou un nom d\'élève.',
   ].join('\n')
 }
@@ -239,8 +249,9 @@ export function consigneRedaction(f: FicheDeSeance, niveau: string | null, consi
  *  tête, comme le texte de l'outil (le professeur peut ne pas les vouloir) */
 export function texteCahierRedige(f: FicheDeSeance, brut: string, enTete = true): string | null {
   const lignes = brut.replace(/\r/g, '').split('\n')
-    // Une puce (- * •) devient « • » : le professeur peut en demander
-    .map(l => l.replace(/^\s*[-*•]\s+(?=\S)/, '• ').replace(/^\s*[#>]+\s*/, '').replace(/`/g, '').replace(/\s+/g, ' ').trim())
+    // Une puce (* •) devient « • », un tiret reste un tiret (le professeur
+    // peut demander les deux : « • Cours : » puis « - Propriété : … »)
+    .map(l => l.replace(/^\s*[*•]\s+(?=\S)/, '• ').replace(/^\s*[-–]\s+(?=\S)/, '- ').replace(/^\s*[#>]+\s*/, '').replace(/`/g, '').replace(/\s+/g, ' ').trim())
     .filter(l => l && l !== '•')
   if (!lignes.length) return null
   const corps = lignes.slice(0, LIGNES_MAX).join('\n')
