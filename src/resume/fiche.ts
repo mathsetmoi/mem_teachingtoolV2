@@ -194,6 +194,12 @@ export function texteAvecLeLien(texte: string, lien: string, pages: string): str
   return `${t ? t + '\n' : ''}Revoir la séance : ${lien}${pages}`
 }
 
+/** Le temps d'une rédaction, dit au professeur : « 9 s », « 1 min 05 » */
+export function dureeDeRedaction(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000))
+  return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')}`
+}
+
 // ---------- Ce qu'on demande à Gemini ----------
 /** La consigne envoyée à Gemini avec les images des pages : ce que l'outil
  *  sait déjà (le chapitre, la date, les pages et ce qui y a été posé), et la
