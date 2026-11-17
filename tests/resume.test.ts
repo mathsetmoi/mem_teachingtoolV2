@@ -109,6 +109,12 @@ describe('la rédaction par Claude', () => {
     expect(c).toContain('séance précédente du chapitre (avec le travail donné à faire à la maison) :\nFait en classe : cours.\nÀ faire : exercice 12 p. 42.')
     expect(c).toMatch(/est une correction/)
   })
+  it('un texte non retenu part avec la consigne, pour en avoir un autre', () => {
+    expect(consigneRedaction(f, null)).not.toContain('pas retenu')
+    const c = consigneRedaction(f, null, 'Une puce par exercice.', '', 'Fait en classe : exercice 12.')
+    expect(c).toContain('Le professeur n\'a pas retenu ce texte :\nFait en classe : exercice 12.\nRédige-en un autre')
+    expect(c.indexOf('pas retenu')).toBeLessThan(c.indexOf('Une puce par exercice.'))
+  })
   it('le texte rendu est mis au propre, avec la date et le chapitre', () => {
     expect(texteCahierRedige(f, '**Fait en classe :** exercice 12 p. 42\n\n- À faire : exercice 14 p. 43\n')).toBe(
       'Lundi 26 octobre · Ensembles de nombres\n**Fait en classe :** exercice 12 p. 42\n• À faire : exercice 14 p. 43')

@@ -6120,6 +6120,11 @@ Pronote, le texte de l'outil en secours. Partout plus bas où il est écrit
 - Publier : « Claude lit les pages et rédige le texte… », puis « Rédigé par
   Claude (Haiku 5.5) : relisez-le ». Un texte rédigé par Gemini avant reste
   (« Rédigé automatiquement »).
+- **Rédiger un autre texte** (sous le texte, dès qu'il y a une clé) : le
+  texte ne convient pas, Claude en rédige un autre ; le texte écarté part
+  avec la consigne (« Le professeur n'a pas retenu ce texte… rédige-en un
+  autre, autrement »). Il remplace aussi un texte corrigé à la main, puisque
+  le professeur le demande. Si Claude ne répond pas, le texte d'avant reste.
 - Les erreurs en clair : clé refusée (401), crédit épuisé, limite de dépense
   du mois atteinte, modèle refusé ou disparu, trop de demandes (429), Claude
   très demandé (529, 5xx), pas d'internet ; le texte de l'outil reste, et

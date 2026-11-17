@@ -200,7 +200,9 @@ export function texteAvecLeLien(texte: string, lien: string, pages: string): str
  *  forme du texte attendu */
 /** precedent : le texte du cahier de textes de la séance d'avant dans le
  *  classeur (son « À faire » dit quels exercices sont des corrections) */
-export function consigneRedaction(f: FicheDeSeance, niveau: string | null, consignes = '', precedent = ''): string {
+/** rejete : un texte que le professeur n'a pas retenu (« Rédiger un autre
+ *  texte ») : on en demande un autre, rédigé autrement */
+export function consigneRedaction(f: FicheDeSeance, niveau: string | null, consignes = '', precedent = '', rejete = ''): string {
   const pages = f.pages.map(p => {
     const bits = [libelleDeLaPage(p, f.activites), ...f.activites.filter(a => a.page === p.id && a.titre !== libelleDeLaPage(p, f.activites)).map(a => a.titre)]
       .filter(Boolean)
@@ -224,6 +226,7 @@ export function consigneRedaction(f: FicheDeSeance, niveau: string | null, consi
     'Au plus 4 lignes en tout. Pas de titre, pas de date, pas de formule de politesse.',
     'Mise en forme permise (Pronote la garde) : **gras**, __souligné__, et des puces « • » en début de ligne. Rien d\'autre (ni dièses, ni tableaux).',
     'Écris les mathématiques en caractères simples (√2, x², ≤, ℝ, 3/4), sans LaTeX.',
+    ...(rejete.trim() ? ['', 'Le professeur n\'a pas retenu ce texte :', rejete.trim(), 'Rédige-en un autre, autrement (ordre, mots, regroupements), toujours fidèle aux pages.', ''] : []),
     // Les consignes du professeur (« Rédaction automatique… ») passent avant
     // la forme ci-dessus, jamais avant la dernière règle
     ...(consignes.trim() ? ['', 'Les consignes du professeur, à suivre en priorité sur celles du dessus :', consignes.trim(), ''] : []),
