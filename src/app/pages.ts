@@ -32,7 +32,10 @@ export const methodesPages = {
     // l'on écrit ; toute autre page : on ne prépare plus
     const ici = this.tableau.seancesDuClasseur().find(s => s.pages.includes(id))
     this.tableau.seanceEnPreparation = ici?.aVenir ? ici.id : null
-    if (!this.enSeancePassee && !this.tableau.seanceEnPreparation) this.pageDuJour = id
+    // Une séance passée qu'on complétait (lot 28) : on en sort, elle se referme
+    const comp = this.tableau.seanceEnComplement
+    if (comp && ici?.id !== comp) { this.tableau.seanceEnComplement = null; this.complementFini(comp) }
+    if (!this.enSeancePassee && !this.tableau.seanceEnPreparation && !this.tableau.seanceEnComplement) this.pageDuJour = id
     this.appliquerVue(id)
     // Rien ne reste choisi d'une page à l'autre : ni la sélection, ni un
     // morceau de figure (Suppr, au retour, l'ôterait sans qu'on le voie choisi)
@@ -257,11 +260,21 @@ export const methodesPages = {
    *  « Juste regarder » oublie ce qu'on voulait écrire ; « Reprendre et
    *  écrire » reprend la page dans la séance du jour, y refait ce qui a été
    *  refusé, et l'on arrive dessus */
-  repondreSeancePassee(this: App, reprendre: boolean): void {
+  repondreSeancePassee(this: App, reprendre: boolean | 'completer'): void {
     const r = this.retenues
     this.retenues = null
     this.rafraichir()
     if (!reprendre || !r) return
+    // « Compléter la séance » (lot 28) : on écrit sur la page elle-même
+    if (reprendre === 'completer') {
+      const s = this.tableau.seanceDe(r.page)
+      if (!s || !this.completerSeance(s.id)) return
+      if (this.page !== r.page) this.allerPage(r.page)
+      this.tableau.nouveauGeste()
+      for (const f of r.refaire) f(r.page)
+      this.tableau.nouveauGeste()
+      return
+    }
     const q = this.reprendrePage(r.page)
     if (!q) return
     this.tableau.nouveauGeste()
@@ -305,8 +318,10 @@ export const methodesPages = {
   nouvelleSeance(this: App): void {
     if (this.enLecture) return
     this.viderPointEnAttente()
-    // Pas depuis une séance à venir qu'on préparait : la séance neuve est celle du jour
+    // Pas depuis une séance à venir qu'on préparait, ni depuis une séance
+    // passée qu'on complétait : la séance neuve est celle du jour
     this.tableau.seanceEnPreparation = null
+    this.tableau.seanceEnComplement = null
     const d = this.tableau.derniereSeance()
     let page: string
     if (d && d.pages.length && this.tableau.seanceVierge(d.id)) {
@@ -354,6 +369,58 @@ export const methodesPages = {
   seancePreparee(this: App): SeanceDuClasseur | null {
     const s = this.seanceVue
     return s?.aVenir && this.tableau.seanceEnPreparation === s.id ? s : null
+  },
+
+  // ---------- Compléter une séance passée (lot 28, voir seances.ts) ----------
+  /** « Compléter la séance » (le bandeau d'une séance passée, le menu ⋯, la
+   *  question du premier trait, le menu d'une séance de la bibliothèque) :
+   *  la séance passée s'ouvre en écriture ; ce qu'on y ajoute ou corrige
+   *  reste en elle. On reste sur sa page si on y est, sinon on arrive sur sa
+   *  dernière page. Faux : ce n'est pas une séance passée. */
+  completerSeance(this: App, choisie?: string | null): boolean {
+    const id = choisie ?? this.seanceVue?.id ?? null
+    if (this.enLecture || !id) return false
+    this.viderPointEnAttente()
+    if (this.tableau.seanceEnComplement === id) return true
+    // Une autre séance qu'on complétait se referme d'abord
+    const avant = this.tableau.seanceEnComplement
+    if (avant) { this.tableau.seanceEnComplement = null; this.complementFini(avant) }
+    if (!this.tableau.completerSeance(id)) return false
+    const pages = this.tableau.pagesDeLaSeance(id)
+    if (!pages.includes(this.page)) this.allerPage(pages[pages.length - 1])
+    this.rafraichir()
+    this.ui?.maj()
+    return true
+  },
+
+  /** La séance passée qu'on complète (celle de la page qu'on regarde), sinon null */
+  seanceCompletee(this: App): SeanceDuClasseur | null {
+    const s = this.seanceVue
+    return s && this.tableau.seanceEnComplement === s.id ? s : null
+  },
+
+  /** « Terminer » (le bandeau vert, le menu ⋯) : la séance se referme, on
+   *  revient à la séance du jour */
+  terminerComplement(this: App): void {
+    const id = this.tableau.seanceEnComplement
+    if (!id) return
+    this.viderPointEnAttente()
+    this.finirTexte()
+    // retourAujourdhui referme la séance et le dit (complementFini)
+    this.retourAujourdhui()
+  },
+
+  /** La séance qu'on complétait s'est refermée : un message le dit, avec
+   *  « Republier la séance » si elle est déjà publiée (le même lien), et
+   *  « Publier la séance » sinon */
+  complementFini(this: App, id: string): void {
+    const s = this.tableau.seancesDuClasseur().find(x => x.id === id)
+    if (!s || !this.ui) return
+    const registre = this.tableau.doc.getMap('publications')
+    const publiee = [...registre.keys()].some(k => k.endsWith(':' + s.debut))
+    this.ui.message(`Séance ${deLaSeance(s, Date.now())} complétée.`,
+      { libelle: publiee ? 'Republier la séance' : 'Publier la séance', faire: () => this.ui.publierLaSeance?.(id), cle: 'complement:' + id })
+    this.ui.maj()
   },
 
   /** Reprendre une page d'une séance passée dans la séance du jour (lot 6,
@@ -406,11 +473,15 @@ export const methodesPages = {
 
   /** « Retour à aujourd'hui » : la page de la séance du jour où l'on était */
   retourAujourdhui(this: App): void {
-    // On préparait une séance à venir (lot 25) : on revient à celle du jour
+    // On préparait une séance à venir (lot 25), ou l'on complétait une
+    // séance passée (lot 28) : on revient à celle du jour
     this.tableau.seanceEnPreparation = null
+    const comp = this.tableau.seanceEnComplement
+    this.tableau.seanceEnComplement = null
     const j = this.pagesDuJour
     const id = j.includes(this.pageDuJour) ? this.pageDuJour : j[j.length - 1]
-    if (!id || id === this.page) return
+    if (comp) this.complementFini(comp)
+    if (!id || id === this.page) { if (comp) { this.rafraichir(); this.ui?.maj() } return }
     this.allerPage(id)
   },
 

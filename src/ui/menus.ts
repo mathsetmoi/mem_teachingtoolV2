@@ -291,7 +291,11 @@ export const methodesMenus = {
       this.entreeMenu(m, 'Renommer la séance…', () => void this.renommerSeance(), { action: 'renommer-seance' })
       const avant = this.app.tableau.seancesDuClasseur().filter(x => x.pages.length && x.debut < seance.debut).length > 0
       if (telephone || ecranTactile()) this.entreeMenu(m, 'Séance précédente…', () => this.bandeauxSeances.ouvrirSeancePrecedente(), { action: 'seance-precedente', inactif: !avant })
-      if (this.app.enSeancePassee || prep) this.entreeMenu(m, 'Retour à aujourd\'hui', () => this.app.retourAujourdhui(), { action: 'retour-aujourdhui' })
+      // Une séance passée (lot 28) : la compléter ; qu'on complète : terminer
+      const comp = this.app.seanceCompletee()
+      if (this.app.enSeancePassee) this.entreeMenu(m, 'Compléter la séance', () => { this.app.completerSeance() }, { action: 'completer-seance' })
+      if (comp) this.entreeMenu(m, 'Terminer le complément', () => this.app.terminerComplement(), { action: 'terminer-complement' })
+      if (this.app.enSeancePassee || prep || comp) this.entreeMenu(m, 'Retour à aujourd\'hui', () => this.app.retourAujourdhui(), { action: 'retour-aujourdhui' })
     }
     // Cet appareil (lot 5) : l'affichage de CET écran, gardé dans ce
     // navigateur ; rien ne change dans le classeur, ni pour les élèves. Les

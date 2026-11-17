@@ -237,6 +237,8 @@ button.rang.en-lecture { background: #fff3d6; box-shadow: inset 0 0 0 1px #e6c36
 /* Une séance à venir qu'on prépare (lot 25) : le compteur et l'étiquette en violet */
 .rang-seance.a-venir { background: #ece9fb; border-color: #8f80e0; color: #3f2fa6; }
 button.rang.a-venir { background: #ece9fb; box-shadow: inset 0 0 0 1px #8f80e0; }
+.rang-seance.en-complement { background: #ddf3ef; border-color: #2f9e8f; color: #0b4f4a; }
+button.rang.en-complement { background: #ddf3ef; box-shadow: inset 0 0 0 1px #2f9e8f; }
 
 /* ---------- Le bouton du classeur (lot 4) ----------
    À gauche de la barre du haut, dans sa propre barre, à 12 px de la barre
@@ -2318,6 +2320,11 @@ body.contraste .toast .action { background: rgba(255, 255, 255, 0.26); }
 .bandeau-preparation { background: #ece9fb; border-color: #8f80e0; }
 .bandeau-preparation .texte { color: #3f2fa6; }
 .bandeau-preparation .suite { font-weight: 400; }
+/* Une séance passée qu'on complète (lot 28) : en vert */
+.bandeau-complement { background: #ddf3ef; border-color: #2f9e8f; }
+.bandeau-complement .texte { color: #0b4f4a; }
+.bandeau-complement .suite { font-weight: 400; }
+.bandeau-complement .principal { background: #0f766e; border-color: #0f766e; }
 .bandeau-seance .petit, .tiroir-seance .petit { height: 36px; padding: 0 12px; }
 .fermer-seance { width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; cursor: pointer; color: var(--encre-douce); }
 .fermer-seance svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
@@ -2755,6 +2762,7 @@ body.page-nuit :is(.bouton, button.rang, .bouton-classeur, .zoom-texte):hover { 
 body.page-nuit .bouton.actif::before { background: #8a7400; }
 body.page-nuit .rang-seance.en-lecture, body.page-nuit button.rang.en-lecture { background: #4a3d12; border-color: #8a6f1e; box-shadow: none; }
 body.page-nuit .rang-seance.a-venir, body.page-nuit button.rang.a-venir { background: #2f2858; border-color: #6c5fc4; color: #d9d2ff; box-shadow: none; }
+body.page-nuit .rang-seance.en-complement, body.page-nuit button.rang.en-complement { background: #12403b; border-color: #2f9e8f; color: #c9f2ea; box-shadow: none; }
 body.page-nuit.contraste :is(.barre, .barre-actions, .rang-seance, .champ-recherche) { --filet: #6b7890; --encre-douce: #d0d6e0; }
 body.page-nuit.contraste :is(.bouton, button.rang, .bouton-classeur, .zoom-texte, .option, .choix):hover { background: #34405a; }
 

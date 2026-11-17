@@ -168,6 +168,9 @@ export interface Interface {
    *  séance qui commence (le bandeau « Reprendre ») */
   ecritureSurSeancePassee?(page: string): void
   seanceCommencee?(precedente: SeanceDuClasseur | null): void
+  /** La fenêtre Publier sur une séance du classeur (« Republier la séance »
+   *  du message d'une séance complétée, lot 28) */
+  publierLaSeance?(id: string): void
 }
 
 export type Geste =

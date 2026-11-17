@@ -259,7 +259,7 @@ export function ecrireDernier(f: { id: string; base: string; nom: string }) {
  *  ligne comme en file://, depuis la clé). Recharger la page rouvre ce
  *  classeur. revoir.html et les liens publiés n'en dépendent pas : new
  *  URL('revoir.html', …) laisse tomber la requête, lienEleve la vide. */
-export function urlDuClasseur(href: string, id: string, seance?: string, o: { page?: string; forme?: string; publier?: boolean } = {}): string {
+export function urlDuClasseur(href: string, id: string, seance?: string, o: { page?: string; forme?: string; publier?: boolean; completer?: boolean } = {}): string {
   const u = new URL(href)
   u.search = ''; u.hash = ''
   u.searchParams.set('classeur', id)
@@ -267,6 +267,8 @@ export function urlDuClasseur(href: string, id: string, seance?: string, o: { pa
   if (seance) u.searchParams.set('seance', seance)
   // …et la publier (« Publier la séance… »)
   if (seance && o.publier) u.searchParams.set('publier', '')
+  // …ou la compléter (« Compléter la séance », lot 28)
+  if (seance && o.completer) u.searchParams.set('completer', '')
   // Arriver sur une page, une formule prise (la recherche)
   if (o.page) u.searchParams.set('page', o.page)
   if (o.page && o.forme) u.searchParams.set('forme', o.forme)

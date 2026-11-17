@@ -14,7 +14,7 @@ import { FOND_NEUF, uid } from './types'
 import type { FicheSeance, SeanceDuClasseur } from './seances'
 import type { Activite, TexteCahier } from './resume/fiche'
 import { activiteValable } from './resume/fiche'
-import { ficheValable, migration, nomDeSeance, rangerLesPages, rangsDeLOrdre, seanceDuJourDe } from './seances'
+import { complementsDe, ficheValable, migration, nomDeSeance, rangerLesPages, rangsDeLOrdre, seanceDuJourDe } from './seances'
 import { seancesDuFilm } from './revoir/exporter'
 
 export const ORIGINE_LOCALE = 'locale'
@@ -987,7 +987,35 @@ export class Tableau {
       const p = l.find(s => s.id === this.seanceEnPreparation && s.aVenir && s.pages.length)
       if (p) return p
     }
+    if (this.seanceEnComplement) {
+      const c = l.find(s => s.id === this.seanceEnComplement && !s.aVenir && s.pages.length)
+      if (c) return c
+    }
     return seanceDuJourDe(l)
+  }
+
+  /** La séance passée qu'on complète (lot 28, voir seances.ts) : tant
+   *  qu'elle est là, c'est elle la séance où l'on écrit (derniereSeance).
+   *  Rien ne s'écrit pour elle : completerSeance la pose, l'app l'ôte quand
+   *  on quitte ses pages (voir App.allerPage). */
+  seanceEnComplement: string | null = null
+
+  /** On commence à compléter une séance passée à l'heure t : la fiche note
+   *  l'heure (hors film, hors annulation), et c'est elle où l'on écrit.
+   *  Faux si ce n'est pas une séance passée (la séance du jour, une séance à
+   *  venir, une séance sans pages). */
+  completerSeance(id: string, t = Date.now()): boolean {
+    this.ecrireLesSeances()
+    const f = this.seances.get(id)
+    const jour = this.seanceDuJour()
+    const s = this.seancesDuClasseur().find(x => x.id === id)
+    if (!ficheValable(f) || f.aVenir || !s || !s.pages.length || jour?.id === id) return false
+    const c = complementsDe(f)
+    const g: FicheSeance = { ...f, complements: [...c, Math.max(t, c[c.length - 1] ?? -Infinity)] }
+    this.doc.transact(() => this.seances.set(id, g))
+    this.seanceEnPreparation = null
+    this.seanceEnComplement = id
+    return true
   }
 
   /** La séance du jour, même pendant qu'on en prépare une (voir
