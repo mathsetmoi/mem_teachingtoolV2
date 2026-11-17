@@ -6,9 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Tableau } from '../src/document'
 import type { Formule, Forme, Trait } from '../src/types'
 import type { FicheDeSeance, PageResumee } from '../src/resume/fiche'
-import { dureeDeRedaction, htmlDuTexte, texteSansMarques, consigneGemini, contenuDeLaPage, dureeDite, etiquettes, faitEnClasse, latexLisible, ligneDeResume, nomPropose, texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil } from '../src/resume/fiche'
+import { htmlDuTexte, texteSansMarques, consigneGemini, contenuDeLaPage, dureeDite, etiquettes, faitEnClasse, latexLisible, ligneDeResume, nomPropose, texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil } from '../src/resume/fiche'
 import { ficheDeLaSeance, gestesDeLaSeance } from '../src/resume/collecte'
-import { adresseValable, cleValable, meilleurModele, messageSelonLaRaison, nettoyerCle, reglagesDeVitesse } from '../src/resume/gemini'
+import { adresseValable, cleValable, meilleurModele, messageSelonLaRaison, nettoyerCle } from '../src/resume/gemini'
 
 let horloge = new Date('2026-10-26T08:05:00').getTime()
 let numero = 0
@@ -135,15 +135,6 @@ describe('Gemini', () => {
     expect(messageSelonLaRaison(400, '{"error":{"message":"API key not valid."}}')).toMatch(/vérifiez-la/)
     expect(messageSelonLaRaison(429, '')).toMatch(/quota/)
     expect(messageSelonLaRaison(503, '{"error":{"message":"high demand"}}')).toMatch(/très demandé.*Réessayer/)
-  })
-  it('les réglages de vitesse : réflexion basse (budget 0 pour les 2.x), images moyennes', () => {
-    expect(reglagesDeVitesse('gemini-3.6-flash')).toEqual({ thinkingConfig: { thinkingLevel: 'low' }, mediaResolution: 'MEDIA_RESOLUTION_MEDIUM' })
-    expect(reglagesDeVitesse('gemini-flash-latest').thinkingConfig).toEqual({ thinkingLevel: 'low' })
-    expect(reglagesDeVitesse('gemini-2.5-flash').thinkingConfig).toEqual({ thinkingBudget: 0 })
-  })
-  it('le temps d\'une rédaction', () => {
-    expect(dureeDeRedaction(8_600)).toBe('9 s')
-    expect(dureeDeRedaction(65_000)).toBe('1 min 05')
   })
   it('les adresses de Pronote : https seulement', () => {
     expect(adresseValable('0123456a.index-education.net/pronote/professeur.html')).toBe('https://0123456a.index-education.net/pronote/professeur.html')
