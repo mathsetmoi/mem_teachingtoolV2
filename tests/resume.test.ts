@@ -1,14 +1,14 @@
 // Le résumé d'une séance (resume/) : ce que l'outil lit sur les pages, ce qui
 // a été posé d'un coup (noté sans étape du film), le texte du cahier de
-// textes de l'outil, la consigne et le texte de Gemini, le choix du modèle,
+// textes de l'outil, la consigne et le texte rédigé par Claude, le choix du modèle,
 // les adresses de Pronote.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Tableau } from '../src/document'
 import type { Formule, Forme, Trait } from '../src/types'
 import type { FicheDeSeance, PageResumee } from '../src/resume/fiche'
-import { htmlDuTexte, texteSansMarques, consigneGemini, contenuDeLaPage, dureeDite, etiquettes, faitEnClasse, latexLisible, ligneDeResume, nomPropose, texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil } from '../src/resume/fiche'
+import { htmlDuTexte, texteSansMarques, consigneRedaction, contenuDeLaPage, dureeDite, etiquettes, faitEnClasse, latexLisible, ligneDeResume, nomPropose, texteAvecLeLien, texteCahierRedige, texteCahierDeLOutil } from '../src/resume/fiche'
 import { ficheDeLaSeance, gestesDeLaSeance } from '../src/resume/collecte'
-import { adresseValable, cleValable, meilleurModele, messageSelonLaRaison, nettoyerCle } from '../src/resume/gemini'
+import { MODELES, adresseValable, cleValable, messageSelonLaRaison, modeleChoisi, nettoyerCle, nomDuModele } from '../src/resume/redaction'
 
 let horloge = new Date('2026-10-26T08:05:00').getTime()
 let numero = 0
@@ -86,10 +86,10 @@ describe('le texte du cahier de textes de l\'outil', () => {
   })
 })
 
-describe('Gemini', () => {
+describe('la rédaction par Claude', () => {
   const f = fiche([page({ id: 'a', textes: ['Exercice 12 p. 42'] }), page({ id: 'b', numero: 2, reprise: 'de jeudi', calculatrice: true })])
   it('la consigne dit ce que l\'outil sait, et demande de ne rien inventer ni de nom d\'élève', () => {
-    const c = consigneGemini(f, '2nde')
+    const c = consigneRedaction(f, '2nde')
     expect(c).toContain('chapitre « Ensembles de nombres »')
     expect(c).toContain('en 2nde')
     expect(c).toContain('- page 1 : Exercice 12 p. 42')
@@ -98,43 +98,43 @@ describe('Gemini', () => {
     expect(c).toMatch(/jamais un prénom/)
   })
   it('les consignes du professeur s\'ajoutent, avant la règle sur les noms d\'élèves', () => {
-    expect(consigneGemini(f, null)).not.toContain('consignes du professeur')
-    const c = consigneGemini(f, null, '  Écris « Exercices » au pluriel.\n')
+    expect(consigneRedaction(f, null)).not.toContain('consignes du professeur')
+    const c = consigneRedaction(f, null, '  Écris « Exercices » au pluriel.\n')
     expect(c).toContain('Les consignes du professeur, à suivre en priorité sur celles du dessus :\nÉcris « Exercices » au pluriel.')
     expect(c.indexOf('Écris « Exercices »')).toBeLessThan(c.indexOf('jamais un prénom'))
   })
   it('le cahier de textes de la séance d\'avant part avec la consigne', () => {
-    expect(consigneGemini(f, null)).not.toContain('séance précédente')
-    const c = consigneGemini(f, null, '', 'Fait en classe : cours.\nÀ faire : exercice 12 p. 42.')
+    expect(consigneRedaction(f, null)).not.toContain('séance précédente')
+    const c = consigneRedaction(f, null, '', 'Fait en classe : cours.\nÀ faire : exercice 12 p. 42.')
     expect(c).toContain('séance précédente du chapitre (avec le travail donné à faire à la maison) :\nFait en classe : cours.\nÀ faire : exercice 12 p. 42.')
     expect(c).toMatch(/est une correction/)
   })
   it('le texte rendu est mis au propre, avec la date et le chapitre', () => {
-    expect(texteCahierDeGemini(f, '**Fait en classe :** exercice 12 p. 42\n\n- À faire : exercice 14 p. 43\n')).toBe(
+    expect(texteCahierRedige(f, '**Fait en classe :** exercice 12 p. 42\n\n- À faire : exercice 14 p. 43\n')).toBe(
       'Lundi 26 octobre · Ensembles de nombres\n**Fait en classe :** exercice 12 p. 42\n• À faire : exercice 14 p. 43')
-    expect(texteCahierDeGemini(f, 'Cours :\n* Propriété : S et P.\n•\n', false)).toBe('Cours :\n• Propriété : S et P.')
-    expect(texteCahierDeGemini(f, '  \n ')).toBeNull()
+    expect(texteCahierRedige(f, 'Cours :\n* Propriété : S et P.\n•\n', false)).toBe('Cours :\n• Propriété : S et P.')
+    expect(texteCahierRedige(f, '  \n ')).toBeNull()
   })
-  it('le modèle : le gemini-X-flash le plus récent', () => {
-    const l = (n: string[]) => n.map(name => ({ name: 'models/' + name, supportedGenerationMethods: ['generateContent'] }))
-    expect(meilleurModele(l(['gemini-2.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash-lite', 'gemini-3.10-flash-image']))).toBe('gemini-3.6-flash')
-    expect(meilleurModele(l(['gemini-3.8-flash-preview-10-2026', 'gemini-3.5-flash-lite']))).toBe('gemini-3.8-flash-preview-10-2026')
-    expect(meilleurModele([{ name: 'models/gemini-4-flash', supportedGenerationMethods: ['embedContent'] }])).toBeNull()
+  it('le modèle : Haiku 5.5 par défaut', () => {
+    expect(MODELES[0].id).toBe('claude-haiku-5-5')
+    expect(modeleChoisi()).toBe('claude-haiku-5-5')
+    expect(nomDuModele('claude-sonnet-5-5')).toBe('Sonnet 5.5')
   })
-  it('la clé : toute forme de clé de Google, collée avec des espaces ou des guillemets', () => {
-    expect(cleValable('AIzaSyA1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q')).toBe(true)
-    expect(cleValable(' "AQ.Ab8RN6LmVq-xYz_0123456789abcdefghijklmnopqrstuvwxyz" ')).toBe(true)
-    expect(nettoyerCle(' « AIza Sy12\n34 » ')).toBe('AIzaSy1234')
+  it('la clé : une clé d\'Anthropic, collée avec des espaces ou des guillemets', () => {
+    expect(cleValable('sk-ant-api03-AbCdEf0123456789_abcdefghijklmnop')).toBe(true)
+    expect(cleValable(' "sk-ant-api03-AbCdEf0123456789_abcdefghijklmnop" ')).toBe(true)
+    expect(nettoyerCle(' « sk-ant- api03\n34 » ')).toBe('sk-ant-api0334')
+    expect(cleValable('AIzaSyA1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q')).toBe(false)
     expect(cleValable('pas une clé')).toBe(false)
     expect(cleValable('')).toBe(false)
   })
-  it('un refus de Google dit sa raison', () => {
-    expect(messageSelonLaRaison(403, '{"error":{"details":[{"reason":"API_KEY_HTTP_REFERRER_BLOCKED"}]}}')).toMatch(/limitée à certains sites/)
-    expect(messageSelonLaRaison(403, '{"error":{"details":[{"reason":"API_KEY_SERVICE_BLOCKED"}]}}')).toMatch(/d'autres services/)
-    expect(messageSelonLaRaison(403, '{"error":{"details":[{"reason":"SERVICE_DISABLED"}]}}')).toMatch(/pas activée/)
-    expect(messageSelonLaRaison(400, '{"error":{"message":"API key not valid."}}')).toMatch(/vérifiez-la/)
-    expect(messageSelonLaRaison(429, '')).toMatch(/quota/)
-    expect(messageSelonLaRaison(503, '{"error":{"message":"high demand"}}')).toMatch(/très demandé.*Réessayer/)
+  it('un refus d\'Anthropic dit sa raison', () => {
+    expect(messageSelonLaRaison(400, 'Your credit balance is too low to access the Anthropic API.')).toMatch(/crédit est épuisé/)
+    expect(messageSelonLaRaison(400, 'You have reached your specified API usage limits.')).toMatch(/limite de dépense/)
+    expect(messageSelonLaRaison(401, 'invalid x-api-key')).toMatch(/refuse la clé/)
+    expect(messageSelonLaRaison(404, 'model: claude-x')).toMatch(/n'existe plus/)
+    expect(messageSelonLaRaison(429, '')).toMatch(/Réessayer/)
+    expect(messageSelonLaRaison(529, 'Overloaded')).toMatch(/très demandé.*Réessayer/)
   })
   it('les adresses de Pronote : https seulement', () => {
     expect(adresseValable('0123456a.index-education.net/pronote/professeur.html')).toBe('https://0123456a.index-education.net/pronote/professeur.html')

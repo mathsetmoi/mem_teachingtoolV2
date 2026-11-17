@@ -6102,6 +6102,47 @@ comprise (version en ligne, avec une clé) ; **l'outil rédige lui-même un
 texte plus court** quand Gemini n'est pas là (sans clé, hors ligne, sans
 internet, quota atteint).
 
+### Depuis le 17 novembre 2026 : Claude à la place de Gemini
+
+Gemini était trop lent, et la limite de la clé gratuite était souvent
+atteinte : le professeur a choisi une **clé de l'API Anthropic** à la place
+(maquette validée, modèle **Haiku 5.5** par défaut, son choix). Tout le
+reste ne change pas : ses consignes, la case de la date, les adresses de
+Pronote, le texte de l'outil en secours. Partout plus bas où il est écrit
+« Gemini », c'est maintenant Claude, sauf ce qui est dit ici.
+
+- **Rédaction automatique…** : « Clé de l'API Anthropic » (elle commence par
+  `sk-ant-`, à créer une fois sur console.anthropic.com : un compte, du
+  crédit, une limite de dépense par mois, puis « API keys », « Create
+  key » ; le pas à pas est dans la fenêtre), « Essayer la clé », et un
+  **Modèle** : Haiku 5.5 (rapide, moins d'un centime par séance), Sonnet 5.5
+  (environ 8 centimes) ou Opus 5.5 (environ 16 centimes).
+- Publier : « Claude lit les pages et rédige le texte… », puis « Rédigé par
+  Claude (Haiku 5.5) : relisez-le ». Un texte rédigé par Gemini avant reste
+  (« Rédigé automatiquement »).
+- Les erreurs en clair : clé refusée (401), crédit épuisé, limite de dépense
+  du mois atteinte, modèle refusé ou disparu, trop de demandes (429), Claude
+  très demandé (529, 5xx), pas d'internet ; le texte de l'outil reste, et
+  « Réessayer ».
+- Comment c'est fait : `src/resume/redaction.ts` remplace `gemini.ts`. Le SDK
+  officiel `@anthropic-ai/sdk` (version fixée), appelé depuis le navigateur
+  (`dangerouslyAllowBrowser` : c'est la clé du professeur, dans son
+  navigateur, comme avant), l'API Messages, `output_config.effort` à `low`
+  (lire des pages et en faire une liste ne demande pas de longue
+  réflexion), sans température (refusée par ces modèles), les pages en
+  images JPEG d'au plus 1568 points de large (au-delà, Claude réduit
+  lui-même). Le SDK réessaie tout seul deux fois quand Claude est surchargé
+  ou trop demandé. Seuls les blocs de texte de la réponse comptent.
+- Dans ce navigateur, deux nouvelles clés : `mem-redaction-cle-anthropic` (la
+  clé) et `mem-redaction-modele-claude` (le modèle, vide : Haiku). Les clés
+  `mem-redaction-cle` et `mem-redaction-modele` (Gemini) restent comme elles
+  sont : l'outil ne s'en sert plus. Dans le document, `textesCahier` peut
+  dire `par : claude` (champ déjà là, une valeur de plus).
+- Ce qui part chez Anthropic : les mêmes images et la même consigne que pour
+  Gemini, rien d'autre. La version hors ligne ne fait jamais appel à Claude.
+- L'essai `lot19/R1-resume-seance.mjs` simule maintenant l'API d'Anthropic
+  (clé refusée, crédit épuisé, trop de demandes, surcharge, autre modèle).
+
 ### Le mode d'emploi
 
 - **Publier** montre, sous les pages, le **texte pour le cahier de textes** :

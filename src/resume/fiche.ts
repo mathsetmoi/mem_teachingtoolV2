@@ -6,14 +6,14 @@
 // coup (un flash d'automatismes, une démonstration du catalogue, des pages
 // d'un PDF), que le tableau note au moment où on le pose (Tableau.noterActivite :
 // les séances d'avant n'en ont pas, leur résumé se fait sans). L'écriture à
-// la main ne se lit pas : c'est ce que la rédaction par Gemini ajoute
-// (voir gemini.ts), dans la version en ligne.
+// la main ne se lit pas : c'est ce que la rédaction automatique ajoute
+// (voir redaction.ts), dans la version en ligne.
 //
 // Ce qu'on en tire :
 // - la fiche de la séance (la trieuse, « Bonjour ! ») : une ligne de ce qui
 //   a été fait ;
 // - le texte du cahier de textes (Publier, « Copier et ouvrir Pronote ») : rédigé
-//   par l'outil (le secours), ou par Gemini ; le professeur peut le corriger,
+//   par l'outil (le secours), ou par Claude ; le professeur peut le corriger,
 //   il est gardé avec la séance (Tableau.textesCahier).
 //
 // Ce fichier est pur (ni interface ni base) : il se teste sous Node.
@@ -24,11 +24,11 @@ import type { Forme, LigneTexte } from '../types'
 export interface Activite { t: number; page: string; type: 'flash' | 'demonstration' | 'dessin' | 'pdf'; titre: string }
 
 /** Le texte du cahier de textes d'une séance, gardé dans le document. par :
- *  qui l'a écrit en dernier (l'outil, Gemini, ou le professeur qui l'a
- *  corrigé) ; gestes : le nombre d'étapes du film de la séance quand il a été
+ *  qui l'a écrit en dernier (l'outil, Claude, Gemini avant novembre 2026,
+ *  ou le professeur qui l'a corrigé) ; gestes : le nombre d'étapes du film de la séance quand il a été
  *  rédigé (la séance a continué depuis : on le rédige à nouveau, sauf s'il
  *  est du professeur) */
-export interface TexteCahier { texte: string; par: 'outil' | 'gemini' | 'professeur'; quand: number; gestes?: number }
+export interface TexteCahier { texte: string; par: 'outil' | 'claude' | 'gemini' | 'professeur'; quand: number; gestes?: number }
 
 /** Une activité qui se lit (un document abîmé, une autre version) */
 export function activiteValable(v: unknown): v is Activite {
@@ -176,7 +176,7 @@ const minusculeSaufSigle = (t: string) => /^[A-ZÀ-Ý]{2}/.test(t) ? t : t.charA
 
 /** Le texte du cahier de textes, rédigé par l'outil (sans internet) :
  *  « Lundi 26 octobre · Ensembles de nombres », puis « Fait en classe : … ».
- *  C'est aussi le secours quand Gemini ne répond pas. */
+ *  C'est aussi le secours quand Claude ne répond pas. */
 export function texteCahierDeLOutil(f: FicheDeSeance): string {
   const tete = `${jourDit(f.debut)} · ${f.chapitre}`
   const l = faitEnClasse(f)
@@ -194,13 +194,13 @@ export function texteAvecLeLien(texte: string, lien: string, pages: string): str
   return `${t ? t + '\n' : ''}Revoir la séance : ${lien}${pages}`
 }
 
-// ---------- Ce qu'on demande à Gemini ----------
-/** La consigne envoyée à Gemini avec les images des pages : ce que l'outil
+// ---------- Ce qu'on demande à Claude ----------
+/** La consigne envoyée à Claude avec les images des pages : ce que l'outil
  *  sait déjà (le chapitre, la date, les pages et ce qui y a été posé), et la
  *  forme du texte attendu */
 /** precedent : le texte du cahier de textes de la séance d'avant dans le
  *  classeur (son « À faire » dit quels exercices sont des corrections) */
-export function consigneGemini(f: FicheDeSeance, niveau: string | null, consignes = '', precedent = ''): string {
+export function consigneRedaction(f: FicheDeSeance, niveau: string | null, consignes = '', precedent = ''): string {
   const pages = f.pages.map(p => {
     const bits = [libelleDeLaPage(p, f.activites), ...f.activites.filter(a => a.page === p.id && a.titre !== libelleDeLaPage(p, f.activites)).map(a => a.titre)]
       .filter(Boolean)
@@ -231,10 +231,10 @@ export function consigneGemini(f: FicheDeSeance, niveau: string | null, consigne
   ].join('\n')
 }
 
-/** Le texte rendu par Gemini, mis au propre : sans mise en forme (les
+/** Le texte rendu par Claude, mis au propre : sans mise en forme (les
  *  puces gardées), sans lignes vides ; enTete : la date et le chapitre en
  *  tête, comme le texte de l'outil (le professeur peut ne pas les vouloir) */
-export function texteCahierDeGemini(f: FicheDeSeance, brut: string, enTete = true): string | null {
+export function texteCahierRedige(f: FicheDeSeance, brut: string, enTete = true): string | null {
   const lignes = brut.replace(/\r/g, '').split('\n')
     // Une puce (- * •) devient « • » : le professeur peut en demander
     .map(l => l.replace(/^\s*[-*•]\s+(?=\S)/, '• ').replace(/^\s*[#>]+\s*/, '').replace(/`/g, '').replace(/\s+/g, ' ').trim())
@@ -289,5 +289,5 @@ export async function copierMisEnForme(t: string): Promise<void> {
   await navigator.clipboard.writeText(simple)
 }
 
-/** Au plus tant de lignes gardées du texte de Gemini */
+/** Au plus tant de lignes gardées du texte rédigé */
 export const LIGNES_MAX = 30
