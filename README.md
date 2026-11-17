@@ -6174,14 +6174,6 @@ nom de l'appareil. La version hors ligne ne fait jamais appel à Gemini.
   modèle après 2 s puis 5 s, puis les alias `gemini-flash-latest` et
   `gemini-flash-lite-latest` ; ensuite « Réessayer » dans Publier.
   Toute forme de clé est acceptée : c'est « Essayer la clé » qui juge.
-  Vitesse (demande du professeur, novembre 2026, choix « Rapide, même
-  modèle ») : réflexion basse (`thinkingLevel: low`, budget 0 pour un
-  modèle 2.x ; un modèle qui refuse ces réglages est redemandé sans),
-  images en résolution moyenne (`MEDIA_RESOLUTION_MEDIUM`, pages réduites à
-  1 280 px), chaque page réduite en JPEG pendant que la suivante se peint,
-  réponse en flux (`streamGenerateContent?alt=sse`) : le texte s'écrit dans
-  le champ au fil de la réponse. Publier dit le temps : « Rédigé par Gemini
-  (modèle) en 9 s (pages 2 s, Gemini 7 s) ».
 - `src/resume/reglage-vue.ts` : la fenêtre « Rédaction automatique ». Le
   professeur peut y écrire ses consignes pour le texte (facultatif, au plus
   1 500 signes) : elles s'ajoutent à la consigne de l'outil et passent avant
