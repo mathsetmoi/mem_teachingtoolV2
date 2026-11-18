@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import katex from 'katex'
 import { AUTOMATISMES_1RE, AUTOMATISMES_2NDE, AUTOMATISMES_3E, AUTOMATISMES_4E, AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_1RE, COURS_2NDE, COURS_3E, COURS_4E, COURS_5E, NIVEAUX, automatismesDuFlash, themesDe, tirerFlash } from '../src/automatismes'
 import { PROGRAMME_AUTOMATISMES, THEMES_COLLEGE } from '../src/programme-automatismes'
-import { objectifsDeExercice, SECTION_AUTOMATISMES, SECTION_OBJECTIFS } from '../src/objectifs-flash'
+import { cleObjectifsDe, objectifsDeExercice, SECTION_AUTOMATISMES, SECTION_OBJECTIFS } from '../src/objectifs-flash'
 import { PROGRAMME_CYCLE4 } from '../src/programme-cycle4'
 import { automatismesChoisis, coursChoisis, lireReglages, REGLAGES_PAR_DEFAUT } from '../src/flash'
 import { caseOpposee, estPatronDeCube, hexomino } from '../src/figures'
@@ -368,7 +368,8 @@ describe('les automatismes de 3e', () => {
     expect(AUTOMATISMES_3E.filter(a => a.application)).toEqual([])
     expect(automatismesDuFlash(trois)).toEqual(AUTOMATISMES_3E)
     for (const a of AUTOMATISMES_3E) { expect(a.competence, a.id).toBeDefined(); expect(a.programme, a.id).toMatch(/^[A-ZÉ].*\.$/) }
-    for (const d of PROGRAMME_AUTOMATISMES['3e'].flatMap(t => t.domaines)) {
+    // La liste officielle seulement : les objectifs d'apprentissage de 3e n'ont pas encore d'exercice
+    for (const d of PROGRAMME_AUTOMATISMES['3e'].filter(t => t.section?.nom !== SECTION_OBJECTIFS.nom).flatMap(t => t.domaines)) {
       d.competences.forEach((c, k) => expect(AUTOMATISMES_3E.some(a => a.theme === d.cle && a.competence === k), `${d.cle} : ${c}`).toBe(true))
     }
   })
@@ -672,6 +673,33 @@ describe('la liste des objectifs d\'apprentissage en 5e', () => {
     const ids = automatismesChoisis(reglage(['5e/obj:Opérations'], [`5e/obj:Opérations/${k}`])).map(a => a.id)
     expect(ids).toContain('priorites')
     expect(ids.every(id => id === 'priorites' || id.startsWith('ancien-cours-Opérations-8-'))).toBe(true)
+  })
+})
+
+describe('la liste des objectifs d\'apprentissage en 3e', () => {
+  const objectifs = PROGRAMME_AUTOMATISMES['3e'].filter(t => t.section?.nom === SECTION_OBJECTIFS.nom)
+  const reglage = (themes: string[], competences: string[] = []) => ({ ...REGLAGES_PAR_DEFAUT, niveaux: ['3e'], themes, competences })
+
+  it('la 3e a aussi les deux listes, avec ses 49 objectifs encore sans exercice', () => {
+    const p = PROGRAMME_AUTOMATISMES['3e']
+    expect(p.slice(0, 5).every(t => t.section?.nom === SECTION_AUTOMATISMES.nom)).toBe(true)
+    expect(objectifs.map(t => t.nom)).toEqual(PROGRAMME_CYCLE4['3e'].map(t => t.nom))
+    expect(objectifs.flatMap(t => t.domaines).reduce((n, d) => n + d.competences.length, 0)).toBe(49)
+    expect(NIVEAUX.find(n => n.id === '3e')!.automatismes.some(a => objectifsDeExercice('3e', a.id))).toBe(false)
+  })
+
+  it('chaque domaine officiel de 3e trouve son domaine d\'objectifs', () => {
+    const cles = objectifs.flatMap(t => t.domaines).map(d => d.cle)
+    for (const d of PROGRAMME_AUTOMATISMES['3e'].slice(0, 5).flatMap(t => t.domaines)) {
+      expect(cles, d.cle).toContain(cleObjectifsDe('3e', d.cle))
+    }
+    expect(cleObjectifsDe('3e', 'Repérage')).toBe('obj:Repérage sur une droite et dans le plan')
+  })
+
+  it('les réglages gardés de 3e posent les mêmes exercices qu\'avant', () => {
+    const ids = automatismesChoisis(reglage(['3e/Puissances'], ['3e/Puissances/1'])).map(a => a.id)
+    expect(ids).toEqual(['3e-produit-meme-nombre'])
+    expect(automatismesChoisis(reglage(['3e/obj:Puissances']))).toEqual([])
   })
 })
 

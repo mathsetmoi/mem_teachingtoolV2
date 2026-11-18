@@ -1120,7 +1120,17 @@ page derrière reste vide. On y choisit :
   « 5e/Opérations », le domaine d'objectifs « 5e/obj:Opérations », une
   compétence « 5e/Opérations/2 » ou « 5e/obj:Opérations/6 » ; au lancement,
   `choixDeLArbre` retrouve ces domaines d'origine à partir des lignes
-  cochées. Les autres niveaux gardent l'arbre à compétences d'avant.
+  cochées.
+  **Un seul arbre en 3e aussi** (15 novembre 2026) : la 3e a les deux
+  listes, rangées dans le même arbre qu'en 5e (OFFI 37, OBJ 49). Ses 11
+  domaines officiels retrouvent chacun leur domaine d'objectifs
+  (« Repérage » est « Repérage sur une droite et dans le plan »). La 3e n'a
+  encore aucun exercice d'application directe : ses 49 objectifs restent en
+  gris, « à remplir », et Probabilités, Fonctions et Pensée informatique,
+  qui n'ont que des objectifs, sont « à remplir » en entier. « Multiples et
+  diviseurs » et « Repérage » n'ont aucun objectif au programme de 3e. Les
+  réglages gardés de 3e (« 3e/Puissances », « 3e/Puissances/1 ») posent les
+  mêmes exercices qu'avant. La 4e garde l'arbre à compétences d'avant.
 
 - combien de questions de chaque sorte, avec − et + : par défaut **5
   questions, 2 questions de cours** (une définition, une propriété, le
