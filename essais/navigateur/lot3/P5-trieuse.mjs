@@ -187,7 +187,7 @@ if (faire('souris')) {
   verifier('… et Échap rend le focus au compteur', (await etat(page)).focusRang)
   await page.evaluate(() => document.activeElement.blur())
 
-  // Le menu de la page : « Toutes les pages… » après « Dupliquer la page »
+  // Le menu de la page : « Toutes les pages… » après « Dupliquer la page » et « Envoyer la page vers… » (lot 28)
   const r = await page.evaluate(() => document.getElementById('zone').getBoundingClientRect())
   await page.mouse.click(r.left + 700, r.top + 560, { button: 'right' }); await page.waitForTimeout(150)
   const menu = await page.evaluate(() => {
@@ -195,7 +195,7 @@ if (faire('souris')) {
     return { vu: !m.hidden, enfants: [...m.children].map(c => c.tagName === 'HR' ? '─' : (c.querySelector('.libelle')?.firstChild?.textContent ?? '').trim()),
       touche: [...m.querySelectorAll('.menu-item')].find(b => b.textContent.includes('Toutes les pages'))?.querySelector('.touche')?.textContent }
   })
-  verifier('Menu de la page : … · Dupliquer la page · Toutes les pages… (Maj + P)', menu.vu && JSON.stringify(menu.enfants.slice(0, 6)) === JSON.stringify(['Coller ici', 'Tout sélectionner', 'Tout voir', '─', 'Dupliquer la page', 'Toutes les pages…']) && menu.touche === 'Maj + P', menu)
+  verifier('Menu de la page : … · Dupliquer la page · Envoyer la page vers… · Toutes les pages… (Maj + P)', menu.vu && JSON.stringify(menu.enfants.slice(0, 7)) === JSON.stringify(['Coller ici', 'Tout sélectionner', 'Tout voir', '─', 'Dupliquer la page', 'Envoyer la page vers…', 'Toutes les pages…']) && menu.touche === 'Maj + P', menu)
   await page.locator('.menu-flottant[aria-label="Page"] .menu-item', { hasText: 'Toutes les pages' }).click(); await attendreOuverte(page); await page.waitForTimeout(200)
   e = await etat(page)
   verifier('« Toutes les pages… » ouvre la trieuse', e.ouverte && e.focusPage === P[4], e)
