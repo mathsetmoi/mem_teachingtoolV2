@@ -993,3 +993,28 @@ export function intervalleGradue(borne: number, versDroite: boolean, compris: bo
   r += `<path d="M${f2(x0 + 10 * s)} 40L${f2(x0)} 40L${f2(x0)} 80L${f2(x0 + 10 * s)} 80" stroke="${ROUGE}" stroke-width="3.5"/>`
   return svg(L, 110, r)
 }
+
+/** La configuration de Thalès : (MN) parallèle à (BC), M sur la droite
+ *  (AB), N sur la droite (AC). En triangles emboîtés (M sur [AB], N sur
+ *  [AC]) ou en papillon (A entre M et B, et entre N et C).
+ *  noms = A, M, B, N, C (dans cet ordre). */
+export function thales(noms: string, papillon: boolean) {
+  const A: P = { x: 0, y: 0 }, t = (Math.random() * 24 - 12) * Math.PI / 180
+  const tourne = (q: P): P => ({ x: q.x * Math.cos(t) - q.y * Math.sin(t), y: q.x * Math.sin(t) + q.y * Math.cos(t) })
+  const B = tourne({ x: -60 - Math.random() * 40, y: 170 }), C = tourne({ x: 80 + Math.random() * 50, y: 170 })
+  const k = (0.42 + Math.random() * 0.2) * (papillon ? -1 : 1)
+  const M = { x: k * B.x, y: k * B.y }, N = { x: k * C.x, y: k * C.y }
+  let r = papillon ? ligne(M, B) + ligne(N, C) : ligne(A, B) + ligne(A, C)
+  r += ligne(M, N) + ligne(B, C)
+  // Les noms : écartés de A le long des droites, un peu sur le côté
+  const loin = (p: P, cote: P) => {
+    const d = dist(p, A) || 1, u = { x: (p.x - A.x) / d, y: (p.y - A.y) / d }
+    let n = { x: -u.y, y: u.x }
+    if (n.x * (cote.x - A.x) + n.y * (cote.y - A.y) > 0) n = { x: -n.x, y: -n.y }
+    return { x: p.x + u.x * 12 + n.x * 16, y: p.y + u.y * 12 + n.y * 16 }
+  }
+  r += nom(loin(B, C), noms[2], 24) + nom(loin(C, B), noms[4], 24)
+  r += nom(papillon ? loin(M, N) : loin(M, C), noms[1], 24) + nom(papillon ? loin(N, M) : loin(N, B), noms[3], 24)
+  r += nom(papillon ? { x: A.x - 24, y: A.y + 2 } : { x: A.x, y: A.y - 20 }, noms[0], 24)
+  return cadre([A, B, C, M, N], r, 36)
+}

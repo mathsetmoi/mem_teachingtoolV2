@@ -26,18 +26,18 @@ const NR = 'Nombres rationnels', PU = 'Puissances', RC = 'Racine carrée', CL = 
 /** La phrase d'un objectif d'apprentissage de 3e, pour la correction */
 const phraseObjectif = (theme: string, k: number) => PROGRAMME_CYCLE4['3e'].flatMap(t => t.domaines).find(d => d.nom === theme || d.nom.startsWith(theme))!.objectifs[k].texte
 /** Un exercice rangé sous un objectif d'apprentissage */
-function exoObjectif(theme: string, k: number, id: string, titre: string, generer: Automatisme['generer']): Automatisme {
+export function exoObjectif(theme: string, k: number, id: string, titre: string, generer: Automatisme['generer']): Automatisme {
   rangerSousObjectif('3e', id, theme, k)
   return { id, theme, titre, application: true, programme: phraseObjectif(theme, k), generer }
 }
 /** Une question de cours rangée sous un objectif (numéros à partir de 200,
  *  pour ne pas croiser ceux des compétences) */
-function notion(theme: string, i: number, objectif: number, titre: string, ...facons: Facon[]): QuestionCours {
+export function notion(theme: string, i: number, objectif: number, titre: string, ...facons: Facon[]): QuestionCours {
   const [q] = notions(theme, [[titre, ...facons]], '3e-')
   return { ...q, id: `cours-3e-${theme}-${i}`, objectif }
 }
 /** Une phrase à compléter dont le trou change de place (mots entre crochets) */
-function phraseATrou(phrase: string): [string, string] {
+export function phraseATrou(phrase: string): [string, string] {
   const mots = [...phrase.matchAll(/\[([^\]]+)\]/g)].map(m => m[1])
   const k = ent(0, mots.length - 1)
   let i = -1
@@ -47,7 +47,7 @@ function phraseATrou(phrase: string): [string, string] {
 /** Les questions de cours dont la phrase est celle du professeur, sans
  *  rien à tirer au hasard (son choix) */
 export const PHRASES_DU_PROFESSEUR_3E_OBJECTIFS = new Set<string>()
-const sienne = (q: QuestionCours) => { PHRASES_DU_PROFESSEUR_3E_OBJECTIFS.add(q.id); return q }
+export const sienne = (q: QuestionCours) => { PHRASES_DU_PROFESSEUR_3E_OBJECTIFS.add(q.id); return q }
 
 // ---------- Petits outils d'écriture ----------
 const signe = (x: number) => x < 0 ? '-' : '+'

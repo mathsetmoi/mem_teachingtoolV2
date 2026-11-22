@@ -26,6 +26,7 @@ import { PRENOMS, aTrou, choix, cm3, ent, etL, frac, grandNb, irreductible, mela
 import { AUTOMATISMES_3E_AVANT, COURS_3E_AVANT, NOM_POLYGONE, VILLES, affine, facteursPremiers, fr, ppcm } from './troisieme'
 import { AUTOMATISMES_4E, aligne, surUnTrait } from './quatrieme'
 import { AUTOMATISMES_3E_OBJECTIFS, COURS_3E_OBJECTIFS, PHRASES_DU_PROFESSEUR_3E_OBJECTIFS } from './troisieme-objectifs'
+import { AUTOMATISMES_3E_OBJECTIFS_GEOMETRIE, COURS_3E_OBJECTIFS_GEOMETRIE } from './troisieme-objectifs-geometrie'
 import { rangerSousObjectif } from '../objectifs-flash'
 import { PROGRAMME_CYCLE4 } from '../programme-cycle4'
 
@@ -575,6 +576,7 @@ export const AUTOMATISMES_3E: Automatisme[] = [
   }),
   // Les objectifs d'apprentissage revus le 22 novembre 2026 (troisieme-objectifs.ts)
   ...AUTOMATISMES_3E_OBJECTIFS,
+  ...AUTOMATISMES_3E_OBJECTIFS_GEOMETRIE,
 ]
 
 // =============================================================
@@ -793,6 +795,7 @@ for (const id of PHRASES_DU_PROFESSEUR_3E_OBJECTIFS) PHRASES_DU_PROFESSEUR_3E.ad
 export const COURS_3E: QuestionCours[] = [
   ...RANGEES,
   ...COURS_3E_OBJECTIFS,
+  ...COURS_3E_OBJECTIFS_GEOMETRIE,
   // Les notions d'avant que le professeur ne garde pas : sans compétence,
   // le flash ne les pose plus (elles restent ici, telles quelles)
   ...COURS_3E_AVANT.filter(c => !RANGEES_IDS.has(c.id)),

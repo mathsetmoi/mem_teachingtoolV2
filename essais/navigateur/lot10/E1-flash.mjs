@@ -301,7 +301,8 @@ ok(comps3 === 37 && grisees3 === 0, 'K) En 3e, 37 compétences, aucune grisée',
 // N. Un seul arbre en 3e : pastilles, les lignes OBJ de Nombres et calculs
 // actives (sauf la 6e du calcul littéral), les autres en gris, trois
 // domaines « à remplir »
-const OBJ_ACTIFS_3E = [['Nombres rationnels', [0, 1, 2]], ['Puissances', [0, 1, 2, 3]], ['Racine carrée', [0, 1]], ['Calcul littéral et algébrique', [0, 1, 2, 3, 4]]]
+const OBJ_ACTIFS_3E = [['Nombres rationnels', [0, 1, 2]], ['Puissances', [0, 1, 2, 3]], ['Racine carrée', [0, 1]], ['Calcul littéral et algébrique', [0, 1, 2, 3, 4]],
+  ['Représentation de l’espace', [0, 1, 2, 3]], ['Triangles', [0, 1]], ['Translations et vecteurs', [0, 1, 2, 3]]]
   .flatMap(([d, ks]) => ks.map(k => `3e/obj:${d}/${k}`)).sort().join()
 const arbre3 = await p.evaluate(() => {
   const n = document.querySelector('.themes-niveau[data-niveau="3e"]')
@@ -316,7 +317,7 @@ const arbre3 = await p.evaluate(() => {
 })
 ok(arbre3.pastilles.some(t => /^OFFI\s*37/.test(t)) && arbre3.pastilles.some(t => /^OBJ\s*49/.test(t)) && arbre3.obj > 0
   && [...arbre3.objActives].sort().join() === OBJ_ACTIFS_3E && arbre3.vides === 3,
-  'N) Un seul arbre en 3e : OFFI 37, OBJ 49, les OBJ de Nombres et calculs actives (sauf l\'analyse-synthèse), trois domaines « à remplir »', arbre3)
+  'N) Un seul arbre en 3e : OFFI 37, OBJ 49, les OBJ de Nombres et calculs et d\'Espace et géométrie actives (sauf l\'analyse-synthèse), trois domaines « à remplir »', arbre3)
 ok(Number(arbre3.pair) >= 1, 'N) Le pair et l\'impair (C6) se coche : ses questions de cours, sans exercice', arbre3.pair)
 // Les cases de domaine sont repliées sous leur thème : on les coche comme un clic
 await p.evaluate(() => {

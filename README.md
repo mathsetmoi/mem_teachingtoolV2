@@ -1176,6 +1176,23 @@ page derrière reste vide. On y choisit :
   coloriée). À la correction, une phrase du programme qui contient une
   formule (« $x^2 = a$ ») s'écrit maintenant sans erreur.
 
+  **Le thème Espace et géométrie** (même jour,
+  `src/automatismes/troisieme-objectifs-geometrie.ts`, mêmes outils) : 51
+  exercices et 26 questions de cours. La boule et la sphère (où est un
+  point, l'ensemble des points à une distance, les objets qui en sont des
+  modèles), les grands cercles et le diamètre (l'équateur, la longueur
+  2πr), le volume de la boule en valeur exacte (rayon, diamètre,
+  demi-boule, rayon doublé ou triplé, π ≈ 3) ; Thalès en triangles
+  emboîtés et en papillon (écrire l'égalité, calculer une longueur, avec
+  la figure `thales`), et quel théorème utiliser (jamais « sont-elles
+  parallèles ? ») ; cosinus, sinus, tangente (écrire, calculer avec un
+  triangle 3-4-5, 6-8-10 ou 5-12-13, un côté avec un cosinus simple, quel
+  rapport choisir) ; translations (parallélogramme, dans un repère),
+  vecteurs (égaux, milieu, opposé, nul), somme par enchaînement de deux
+  translations, relation de Chasles. Les sections (3e objectif de la
+  représentation de l'espace) n'ont que leurs questions de cours : les
+  exercices sont en suspens. Le repérage n'a pas d'objectif en 3e.
+
 - combien de questions de chaque sorte, avec − et + : par défaut **5
   questions, 2 questions de cours** (une définition, une propriété, le
   vocabulaire : « La médiatrice d'un segment est la droite… ») **puis 3
