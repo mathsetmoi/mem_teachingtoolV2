@@ -7,10 +7,11 @@ import { describe, expect, it } from 'vitest'
 import katex from 'katex'
 import { AUTOMATISMES_1RE, AUTOMATISMES_2NDE, AUTOMATISMES_3E, AUTOMATISMES_4E, AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_1RE, COURS_2NDE, COURS_3E, COURS_4E, COURS_5E, NIVEAUX, automatismesDuFlash, themesDe, tirerFlash } from '../src/automatismes'
 import { PROGRAMME_AUTOMATISMES, THEMES_COLLEGE } from '../src/programme-automatismes'
-import { objectifsDeExercice, SECTION_AUTOMATISMES, SECTION_OBJECTIFS } from '../src/objectifs-flash'
+import { cleObjectifsDe, objectifsDeExercice, SECTION_AUTOMATISMES, SECTION_OBJECTIFS } from '../src/objectifs-flash'
 import { PROGRAMME_CYCLE4 } from '../src/programme-cycle4'
 import { automatismesChoisis, coursChoisis, lireReglages, REGLAGES_PAR_DEFAUT } from '../src/flash'
 import { caseOpposee, estPatronDeCube, hexomino } from '../src/figures'
+import { PHRASES_DU_PROFESSEUR_3E } from '../src/automatismes/troisieme-competences'
 
 const duTheme = (t: string) => AUTOMATISMES_5E.filter(a => a.theme === t)
 const coursDu = (t: string) => COURS_5E.filter(c => c.theme === t)
@@ -364,13 +365,31 @@ describe('les automatismes de 3e', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('seulement des automatismes : chaque exercice a sa compétence et sa phrase, chaque compétence a ses exercices', () => {
-    expect(AUTOMATISMES_3E.filter(a => a.application)).toEqual([])
-    expect(automatismesDuFlash(trois)).toEqual(AUTOMATISMES_3E)
-    for (const a of AUTOMATISMES_3E) { expect(a.competence, a.id).toBeDefined(); expect(a.programme, a.id).toMatch(/^[A-ZÉ].*\.$/) }
-    for (const d of PROGRAMME_AUTOMATISMES['3e'].flatMap(t => t.domaines)) {
-      d.competences.forEach((c, k) => expect(AUTOMATISMES_3E.some(a => a.theme === d.cle && a.competence === k), `${d.cle} : ${c}`).toBe(true))
+  it('chaque exercice a sa compétence (ou son objectif) et sa phrase ; chaque compétence a un exercice ou une question de cours', () => {
+    // Le flash pose les automatismes de la liste officielle ; les applications
+    // directes (fraction irréductible) se posent sous leurs objectifs
+    const offi = AUTOMATISMES_3E.filter(a => !a.application)
+    expect(automatismesDuFlash(trois)).toEqual(offi)
+    for (const a of offi) { expect(a.competence, a.id).toBeDefined(); expect(a.programme, a.id).toMatch(/^[A-ZÉ].*\.$/) }
+    for (const a of AUTOMATISMES_3E.filter(x => x.application)) { expect(objectifsDeExercice('3e', a.id), a.id).toBeDefined(); expect(a.programme, a.id).toMatch(/^[A-ZÉ].*\.$/) }
+    // Une compétence sans exercice (le pair et l'impair) a ses questions de cours
+    for (const d of PROGRAMME_AUTOMATISMES['3e'].filter(t => t.section?.nom !== SECTION_OBJECTIFS.nom).flatMap(t => t.domaines)) {
+      d.competences.forEach((c, k) => expect(offi.some(a => a.theme === d.cle && a.competence === k) || COURS_3E.some(q => q.theme === d.cle && q.competence === k), `${d.cle} : ${c}`).toBe(true))
     }
+    expect(offi.some(a => a.theme === 'Calcul littéral et algébrique' && a.competence === 5)).toBe(false)
+  })
+
+  it('ce que le professeur ne garde pas n\'est plus posé, mais reste dans le code', () => {
+    const ids = AUTOMATISMES_3E.map(a => a.id)
+    for (const id of ['3e-reconnaitre-solide', '3e-ranger-ecritures', '3e-pair-impair', '3e-moyenne', '3e-cercle-circonscrit']) expect(ids, id).not.toContain(id)
+    const posees = COURS_3E.filter(c => c.competence !== undefined || c.objectif !== undefined).map(c => c.id)
+    for (const id of ['cours-3e-Puissances-2', 'cours-3e-Racine carrée-2', 'cours-3e-Multiples et diviseurs-4', 'cours-3e-Calcul littéral et algébrique-1', 'cours-3e-Translations et vecteurs-1', 'cours-3e-Proportionnalité-1']) {
+      expect(posees, id).not.toContain(id)
+      expect(COURS_3E.map(c => c.id), id).toContain(id)
+    }
+    // Les anciennes formulations reformulées sont devenues des exercices de la même compétence
+    expect(AUTOMATISMES_3E.find(a => a.id === 'ancien-cours-3e-Nombres rationnels-1-1')!.competence).toBe(0)
+    expect(AUTOMATISMES_3E.find(a => a.id === 'ancien-cours-3e-Statistiques-1-1')!.competence).toBe(1)
   })
 
   it('réponse courte, jamais une chance sur deux, rien de cassé, et les trous ont un trou', () => {
@@ -380,7 +399,8 @@ describe('les automatismes de 3e', () => {
         expect(q.reponse, a.id).not.toMatch(/^§(Oui|Non)\b/)
         expect(q.reponse, a.id).not.toMatch(/^[<>=]$/)
         expect(q.reponse + q.enonce, a.id).not.toMatch(/NaN|undefined|Infinity/)
-        expect(q.enonce, a.id).not.toMatch(/…$|:$|^Est-ce /)
+        // Une ancienne question de cours garde sa phrase (« … revient à… »)
+        if (!a.id.startsWith('ancien-')) expect(q.enonce, a.id).not.toMatch(/…$|:$|^Est-ce /)
       }
       if (a.trou) expect(a.trou().enonce, a.id).toMatch(/\\ldots|…/)
     }
@@ -392,11 +412,14 @@ describe('les automatismes de 3e', () => {
       for (let k = 0; k < 60; k++) { const q = a.generer(); vus.add(q.enonce + (q.figure ?? '')) }
       expect(vus.size, a.id).toBeGreaterThan(2)
     }
-    for (const c of COURS_3E) c.facons.forEach((f, i) => {
+    // Sauf les phrases que le professeur a écrites lui-même, sans rien à tirer
+    for (const c of COURS_3E) if (!PHRASES_DU_PROFESSEUR_3E.has(c.id)) c.facons.forEach((f, i) => {
       const vus = new Set<string>()
-      for (let k = 0; k < 60; k++) vus.add(f()[0])
+      // L'énoncé ou, à énoncé égal, le dessin qui change
+      for (let k = 0; k < 60; k++) { const [e, , fig] = f(); vus.add(e + '|' + (fig ?? '')) }
       expect(vus.size, `${c.id}, façon ${i + 1} : « ${f()[0]} »`).toBeGreaterThan(1)
     })
+    expect(PHRASES_DU_PROFESSEUR_3E.size).toBeLessThanOrEqual(8)
   })
 
   it('les réponses justes, sur quelques exercices de calcul', () => {
@@ -406,9 +429,17 @@ describe('les automatismes de 3e', () => {
       const n = Number(/\$(\d+)\$/.exec(q.enonce)![1])
       const produit = q.reponse.split(' \\times ').reduce((p, f) => { const m = /^(\d+)(?:\^\{(\d+)\})?$/.exec(f)!; return p * Number(m[1]) ** Number(m[2] ?? 1) }, 1)
       expect(produit, q.enonce).toBe(n)
+      // Le chiffre qui manque : chaque chiffre donné convient, et aucun n'est oublié
       const d = a('3e-divisibilite').generer()
-      const chiffre = /\$(\d)\\ldots(\d)\$/.exec(d.enonce)
-      if (chiffre) expect(Number(chiffre[1] + d.reponse + chiffre[2]) % 9, d.enonce).toBe(0)
+      const [, g, dr, par] = /\$(\d+)\\ldots(\d*)\$ soit divisible par \$(\d)\$/.exec(d.enonce)!
+      const donnes = [...new Set([...d.reponse.matchAll(/(?:^|\$)(\d)(?:\$|$)/g)].map(m => Number(m[1])))]
+      const bons = Array.from({ length: 10 }, (_, c) => c).filter(c => Number(`${g}${c}${dr}`) % Number(par) === 0)
+      expect(donnes.sort(), d.enonce).toEqual(bons)
+      // Un seul nombre premier entre les deux nombres
+      const p = a('3e-premier-entre').generer()
+      const [, x, y] = /\$(\d+)\$ et \$(\d+)\$/.exec(p.enonce)!.map(Number)
+      const premiers = Array.from({ length: y - x - 1 }, (_, i) => x + 1 + i).filter(n => n > 1 && Array.from({ length: n - 2 }, (_, j) => j + 2).every(j => n % j))
+      expect(premiers.map(String), p.enonce).toEqual([p.reponse])
     }
   })
 
@@ -419,7 +450,10 @@ describe('les automatismes de 3e', () => {
         if (q.figure) { expect(q.figure, a.id).toMatch(/^<svg [^>]*viewBox="[-\d. ]+"/); expect(q.figure, a.id).not.toMatch(/NaN|undefined/) }
       }
     }
-    for (const c of COURS_3E) for (let k = 0; k < 20; k++) { const q = c.poser(); verifier(q.enonce, c.id); verifier(q.reponse, c.id) }
+    for (const c of COURS_3E) for (let k = 0; k < 20; k++) {
+      const q = c.poser(); verifier(q.enonce, c.id); verifier(q.reponse, c.id)
+      if (q.figure) expect(q.figure, c.id).not.toMatch(/NaN|undefined/)
+    }
   })
 
   it('par défaut : 2 questions de cours de 3e, puis 3 exercices, avec la phrase du programme pour la correction', () => {
@@ -672,6 +706,50 @@ describe('la liste des objectifs d\'apprentissage en 5e', () => {
     const ids = automatismesChoisis(reglage(['5e/obj:Opérations'], [`5e/obj:Opérations/${k}`])).map(a => a.id)
     expect(ids).toContain('priorites')
     expect(ids.every(id => id === 'priorites' || id.startsWith('ancien-cours-Opérations-8-'))).toBe(true)
+  })
+})
+
+describe('la liste des objectifs d\'apprentissage en 3e', () => {
+  const objectifs = PROGRAMME_AUTOMATISMES['3e'].filter(t => t.section?.nom === SECTION_OBJECTIFS.nom)
+  const reglage = (themes: string[], competences: string[] = []) => ({ ...REGLAGES_PAR_DEFAUT, niveaux: ['3e'], themes, competences })
+
+  it('la 3e a aussi les deux listes, avec ses 49 objectifs ; seuls les deux premiers des nombres rationnels ont des exercices', () => {
+    const p = PROGRAMME_AUTOMATISMES['3e']
+    expect(p.slice(0, 5).every(t => t.section?.nom === SECTION_AUTOMATISMES.nom)).toBe(true)
+    expect(objectifs.map(t => t.nom)).toEqual(PROGRAMME_CYCLE4['3e'].map(t => t.nom))
+    expect(objectifs.flatMap(t => t.domaines).reduce((n, d) => n + d.competences.length, 0)).toBe(49)
+    const sous = NIVEAUX.find(n => n.id === '3e')!.automatismes.filter(a => objectifsDeExercice('3e', a.id))
+    expect(sous.map(a => a.id).sort()).toEqual(['3e-forme-irreductible', 'ancien-cours-3e-Nombres rationnels-4-1', 'ancien-cours-3e-Nombres rationnels-4-2'])
+    expect(objectifsDeExercice('3e', '3e-forme-irreductible')).toEqual({ cle: 'obj:Nombres rationnels', ks: [0, 1] })
+  })
+
+  it('chaque domaine officiel de 3e trouve son domaine d\'objectifs', () => {
+    const cles = objectifs.flatMap(t => t.domaines).map(d => d.cle)
+    for (const d of PROGRAMME_AUTOMATISMES['3e'].slice(0, 5).flatMap(t => t.domaines)) {
+      expect(cles, d.cle).toContain(cleObjectifsDe('3e', d.cle))
+    }
+    expect(cleObjectifsDe('3e', 'Repérage')).toBe('obj:Repérage sur une droite et dans le plan')
+  })
+
+  it('les réglages gardés de 3e gardent leur sens : la même compétence, avec ses exercices d\'aujourd\'hui', () => {
+    const ids = automatismesChoisis(reglage(['3e/Puissances'], ['3e/Puissances/1'])).map(a => a.id)
+    expect(ids).toEqual(['3e-produit-meme-nombre', '3e-calculer-meme-nombre'])
+    expect(automatismesChoisis(reglage(['3e/obj:Puissances']))).toEqual([])
+  })
+
+  it('cocher un objectif ou une compétence pose ses questions de cours et ses exercices', () => {
+    // OBJ2 des nombres rationnels : l'exercice rangé sous OBJ1 et OBJ2
+    expect(automatismesChoisis(reglage(['3e/obj:Nombres rationnels'], ['3e/obj:Nombres rationnels/1'])).map(a => a.id)).toEqual(['3e-forme-irreductible'])
+    expect(coursChoisis(reglage(['3e/obj:Nombres rationnels'], ['3e/obj:Nombres rationnels/0'])).map(c => c.id)).toEqual(['cours-3e-Nombres rationnels-4'])
+    // Le pair et l'impair : que des questions de cours
+    const r = reglage(['3e/Calcul littéral et algébrique'], ['3e/Calcul littéral et algébrique/5'])
+    expect(automatismesChoisis(r)).toEqual([])
+    expect(coursChoisis(r).map(c => c.id)).toEqual(['cours-3e-Calcul littéral et algébrique-3'])
+    // Une compétence sans question de cours : un exercice à la place
+    const puissances = reglage(['3e/Puissances'], ['3e/Puissances/2'])
+    expect(coursChoisis(puissances)).toEqual([])
+    const { questions } = tirerFlash(automatismesChoisis(puissances), coursChoisis(puissances), COMPOSITION_PAR_DEFAUT)
+    expect(questions.map(q => q.forme)).toEqual(Array(5).fill('application'))
   })
 })
 

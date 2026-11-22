@@ -19,7 +19,8 @@
 // figure (droite graduée, repère, cubes, angles codés…).
 //
 // Chaque niveau a son fichier, dans le dossier automatismes/ :
-// cinquieme.ts, quatrieme.ts, troisieme.ts et lycee.ts (2nde et 1re) ;
+// cinquieme.ts, quatrieme.ts, troisieme.ts (avec troisieme-competences.ts)
+// et lycee.ts (2nde et 1re) ;
 // les outils qu'ils partagent (le hasard, l'écriture des nombres, les
 // noms de points…) sont dans automatismes/outils.ts. Ce fichier-ci range
 // les niveaux et tire les questions d'un flash ; il redonne aussi tout ce
@@ -30,13 +31,13 @@ import { choix } from './automatismes/outils'
 import { AUTOMATISMES_5E, COURS_5E } from './automatismes/cinquieme'
 import { AUTOMATISMES_4E, COURS_4E } from './automatismes/quatrieme'
 import { AUTOMATISMES_1RE, AUTOMATISMES_2NDE, COURS_1RE, COURS_2NDE } from './automatismes/lycee'
-import { AUTOMATISMES_3E, COURS_3E } from './automatismes/troisieme'
+import { AUTOMATISMES_3E, COURS_3E } from './automatismes/troisieme-competences'
 export type { Question, Automatisme, Facon, QuestionCours } from './automatismes/outils'
 export { nb, mot } from './automatismes/outils'
 export { AUTOMATISMES_5E, COURS_5E } from './automatismes/cinquieme'
 export { AUTOMATISMES_4E, COURS_4E } from './automatismes/quatrieme'
 export { AUTOMATISMES_2NDE, AUTOMATISMES_1RE, COURS_2NDE, COURS_1RE } from './automatismes/lycee'
-export { AUTOMATISMES_3E, COURS_3E } from './automatismes/troisieme'
+export { AUTOMATISMES_3E, COURS_3E } from './automatismes/troisieme-competences'
 
 // =============================================================
 // LES NIVEAUX

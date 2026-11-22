@@ -153,7 +153,7 @@ function cadre(pts: P[], contenu: string, marge = 30, classe = 'fig') {
   return svg(l, h, contenu, classe).replace(/viewBox="0 0 /, `viewBox="${f2(x1)} ${f2(y1)} `)
 }
 /** Le nom d'un sommet, écarté du centre de la figure */
-const nomDehors = (p: P, c: P, t: string) => { const d = dist(p, c) || 1; return nom({ x: p.x + (p.x - c.x) / d * 16, y: p.y + (p.y - c.y) / d * 16 }, t) }
+const nomDehors = (p: P, c: P, t: string, taille = 18) => { const d = dist(p, c) || 1, e = taille * 0.9; return nom({ x: p.x + (p.x - c.x) / d * e, y: p.y + (p.y - c.y) / d * e }, t, taille) }
 const centre = (p: P[]) => ({ x: p.reduce((s, q) => s + q.x, 0) / p.length, y: p.reduce((s, q) => s + q.y, 0) / p.length })
 
 // ---------- Triangles codés ----------
@@ -513,12 +513,14 @@ export function losangeTriangles(noms: string[]) {
  *  écrite sur un segment (`ecrite`), et un « ? » sur un autre (`cherchee`).
  *  Les segments : 'base' (le troisième côté), 'milieux' (le segment qui
  *  joint les milieux). */
-export function droiteMilieux(noms: string, ecrite: { ou: 'base' | 'milieux'; t: string }, cherchee: 'base' | 'milieux', tourne = 0) {
+export function droiteMilieux(noms: string, ecrite: { ou: 'base' | 'milieux'; t: string } | null, cherchee: 'base' | 'milieux' | null, tourne = 0, reciproque = false) {
+  // Sans longueur (ecrite et cherchee à null) : le dessin seul. Avec
+  // `reciproque`, seul le milieu de [AB] est codé : on cherche celui de [AC].
   let A = { x: 110, y: 20 }, B = { x: 20, y: 190 }, C = { x: 300, y: 190 }
   ;[A, B, C] = tourner([A, B, C], { x: 140, y: 130 }, tourne)
   const I = milieu(A, B), J = milieu(A, C), c = centre([A, B, C])
   let r = poly([A, B, C]) + ligne(I, J, 'stroke="#1f5fbf" stroke-width="2.4"')
-  r += traits(A, I, 1) + traits(I, B, 1) + traits(A, J, 2) + traits(J, C, 2)
+  r += traits(A, I, 1) + traits(I, B, 1) + (reciproque ? '' : traits(A, J, 2) + traits(J, C, 2))
   r += nomDehors(A, c, noms[0]) + nomDehors(B, c, noms[1]) + nomDehors(C, c, noms[2])
   r += nomDehors(I, c, noms[3]) + nomDehors(J, c, noms[4])
   // Une étiquette posée sous le segment (du côté opposé au sommet A pour la base)
@@ -529,8 +531,49 @@ export function droiteMilieux(noms: string, ecrite: { ou: 'base' | 'milieux'; t:
     const d = ou === 'base' ? 18 : 16
     return texte({ x: m.x + n.x * d, y: m.y + n.y * d }, t, 'font-size="16"')
   }
-  r += etiquette(ecrite.ou, ecrite.t) + etiquette(cherchee, '?')
+  if (ecrite) r += etiquette(ecrite.ou, ecrite.t)
+  if (cherchee) r += etiquette(cherchee, '?')
   return cadre([A, B, C], r, 32)
+}
+
+// ---------- Le triangle rectangle et son cercle (3e) ----------
+/** Un triangle rectangle codé, nommé : noms[0] est le sommet de l'angle
+ *  droit. `cotes` écrit une étiquette sur des côtés (« hyp » : le côté
+ *  opposé à l'angle droit). */
+export function triangleRectangleNomme(noms: string, tourne = 0, cotes: { hyp?: string } = {}) {
+  let p: P[] = [{ x: 70, y: 190 }, { x: 70, y: 40 }, { x: 250, y: 190 }]
+  if (Math.random() < 0.5) p = [p[0], p[2], p[1]]
+  p = tourner(p, centre(p), tourne)
+  const c = centre(p)
+  let r = poly(p) + angleDroit(p[1], p[0], p[2]) + p.map((q, i) => nomDehors(q, c, noms[i], 26)).join('')
+  if (cotes.hyp) { const m = milieu(p[1], p[2]), d = dist(m, c) || 1; r += texte({ x: m.x + (m.x - c.x) / d * 18, y: m.y + (m.y - c.y) / d * 18 }, cotes.hyp, 'font-size="22"') }
+  return cadre(p, r, 30)
+}
+/** Un triangle inscrit dans un cercle dont un côté, [BC] (noms[1] noms[2]),
+ *  est un diamètre. `droit` code l'angle droit en A ; `centre` nomme le
+ *  centre du cercle ; `diametre` écrit une étiquette sur [BC]. */
+export function triangleDansCercle(noms: string, o: { droit?: boolean; centre?: string; diametre?: string } = {}) {
+  const R = 95, a = (Math.random() * 60 - 30) * Math.PI / 180
+  const B = { x: -R * Math.cos(a), y: -R * Math.sin(a) }, C = { x: R * Math.cos(a), y: R * Math.sin(a) }
+  // A sur le cercle, loin de B et de C
+  const t = a + (Math.random() < 0.5 ? -1 : 1) * (55 + Math.random() * 70) * Math.PI / 180
+  const A = { x: R * Math.cos(t), y: R * Math.sin(t) }, O = { x: 0, y: 0 }
+  let r = `<circle cx="0" cy="0" r="${R}" stroke-width="1.6"/>` + poly([A, B, C])
+  if (o.droit) r += angleDroit(B, A, C)
+  r += nomDehors(A, O, noms[0], 26) + nomDehors(B, O, noms[1], 26) + nomDehors(C, O, noms[2], 26)
+  if (o.centre) {
+    r += point(O)
+    // Le nom du centre, du côté opposé à A
+    const d = dist(A, O) || 1
+    r += nom({ x: -A.x / d * 20, y: -A.y / d * 20 }, o.centre, 24)
+  }
+  if (o.diametre) {
+    // Sur [BC], du côté opposé à A, un peu à côté du centre
+    let n = { x: -Math.sin(a), y: Math.cos(a) }
+    if (n.x * A.x + n.y * A.y > 0) n = { x: -n.x, y: -n.y }
+    r += texte({ x: n.x * 18 + Math.cos(a) * 45, y: n.y * 18 + Math.sin(a) * 45 }, o.diametre, 'font-size="22"')
+  }
+  return cadre([{ x: -R, y: -R }, { x: R, y: R }], r, 28)
 }
 
 // ---------- Solides en perspective cavalière ----------
@@ -590,6 +633,92 @@ export function solide(sorte: Solide) {
   }
   const { r, pts } = prismeCavalier(avant, sorte === 'pave' ? { x: 60, y: -52 } : d)
   return cadre(pts, r, 24)
+}
+
+// ---------- Pyramides et cônes de 3e : lettres, mesures, patrons ----------
+type P3d = [number, number, number]
+/** La perspective cavalière d'un point de l'espace : la profondeur y fuit
+ *  vers le haut à droite, réduite de moitié */
+const cavaliere = ([x, y, z]: P3d): P => ({ x: x + 0.354 * y, y: -z - 0.354 * y })
+/** Vers l'œil de celui qui regarde (la direction de la projection) */
+const OEIL: P3d = [0.354, -1, 0.354]
+const moins3 = (a: P3d, b: P3d): P3d => [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+const vect3 = (a: P3d, b: P3d): P3d => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+const scal3 = (a: P3d, b: P3d) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+/** Une pyramide à base régulière de n côtés : les sommets de la base,
+ *  dans l'ordre, et son sommet ; la face avant est celle des deux premiers */
+function pyramide3d(n: number, R = 90, H = 160): { base: P3d[]; S: P3d } {
+  // Le côté avant parallèle au bord de la feuille, comme on dessine en classe
+  const t0 = -Math.PI / 2 - Math.PI / n
+  return { base: Array.from({ length: n }, (_, i) => [R * Math.cos(t0 + 2 * Math.PI * i / n), R * Math.sin(t0 + 2 * Math.PI * i / n), 0] as P3d), S: [0, 0, H] }
+}
+/** Les arêtes d'une pyramide, cachées en pointillés : une arête est vue
+ *  quand l'une de ses faces regarde vers l'œil */
+function aretesPyramide(base: P3d[], S: P3d): string {
+  const n = base.length, g: P3d = [0, 0, S[2] / 4]
+  const vue = base.map((p, i) => {
+    const q = base[(i + 1) % n]
+    let nrm = vect3(moins3(q, p), moins3(S, p))
+    const m: P3d = [(p[0] + q[0] + S[0]) / 3, (p[1] + q[1] + S[1]) / 3, (p[2] + q[2] + S[2]) / 3]
+    if (scal3(nrm, moins3(m, g)) < 0) nrm = [-nrm[0], -nrm[1], -nrm[2]]
+    return scal3(nrm, OEIL) > 0
+  })
+  const cache = 'stroke-dasharray="6 5"', s = cavaliere(S)
+  let r = ''
+  for (let i = 0; i < n; i++) {
+    r += ligne(cavaliere(base[i]), cavaliere(base[(i + 1) % n]), vue[i] ? '' : cache)
+    r += ligne(s, cavaliere(base[i]), vue[i] || vue[(i + n - 1) % n] ? '' : cache)
+  }
+  return r
+}
+/** Une pyramide à base de n côtés (3 à 6) en perspective cavalière, ses
+ *  sommets nommés : noms[0] est le sommet, les suivants ceux de la base
+ *  (la face avant est noms[0] noms[1] noms[2]) */
+export function pyramideNommee(n: number, noms: string) {
+  const { base, S } = pyramide3d(n)
+  const pts = [S, ...base].map(cavaliere), c = centre(pts.slice(1))
+  let r = aretesPyramide(base, S)
+  r += nom({ x: pts[0].x, y: pts[0].y - 20 }, noms[0], 26)
+  pts.slice(1).forEach((q, i) => { r += nomDehors(q, c, noms[i + 1], 26) })
+  return cadre(pts, r, 30)
+}
+/** Une pyramide à base carrée ou un cône, avec la hauteur (en pointillés ;
+ *  pour le cône, l'angle droit au pied) et une mesure de la base : le côté du carré ou le
+ *  rayon du disque. Les étiquettes sont écrites telles quelles. */
+export function solideMesure(sorte: 'pyramide' | 'cone', base: string, hauteur: string) {
+  const H = 160, bleu = 'stroke="#1f5fbf"', cache = 'stroke-dasharray="6 5"'
+  if (sorte === 'cone') {
+    const rx = 80, ry = 22, S = { x: 0, y: -H }, O = { x: 0, y: 0 }, M = { x: rx, y: 0 }
+    let r = ligne({ x: -rx, y: 0 }, S) + ligne(M, S)
+      + `<path d="M${-rx} 0A${rx} ${ry} 0 0 0 ${rx} 0"/><path d="M${-rx} 0A${rx} ${ry} 0 0 1 ${rx} 0" ${cache}/>`
+    r += ligne(O, S, `${cache} ${bleu}`) + ligne(O, M, bleu) + angleDroit(S, O, M, 10)
+    r += texte({ x: rx / 2, y: 18 }, base, 'font-size="22"') + texte({ x: -10, y: -H / 2 }, hauteur, 'font-size="22" text-anchor="end"')
+    return cadre([{ x: -rx, y: ry }, { x: rx, y: -ry }, S], r, 30)
+  }
+  // Une base carrée, un côté devant
+  const S: P3d = [0, 0, H], carre: P3d[] = [[-60, -60, 0], [60, -60, 0], [60, 60, 0], [-60, 60, 0]]
+  const s = cavaliere(S), o = cavaliere([0, 0, 0])
+  let r = aretesPyramide(carre, S)
+  r += ligne(o, s, `${cache} ${bleu}`)
+  const avant = milieu(cavaliere(carre[0]), cavaliere(carre[1]))
+  r += texte({ x: avant.x, y: avant.y + 20 }, base, 'font-size="22"')
+  r += texte({ x: (o.x + s.x) / 2 + 8, y: (o.y + s.y) / 2 + 20 }, hauteur, 'font-size="22" text-anchor="start"')
+  return cadre([...carre.map(cavaliere), s], r, 30)
+}
+/** Le patron d'une pyramide à base régulière de n côtés : la base au
+ *  milieu, un triangle isocèle sur chacun de ses côtés */
+export function patronPyramide(n: number) {
+  const s = 74, R = s / (2 * Math.sin(Math.PI / n)), h = 82, t0 = -Math.PI / 2 - Math.PI / n + (Math.random() - 0.5) * 0.6
+  const base: P[] = Array.from({ length: n }, (_, i) => ({ x: R * Math.cos(t0 + 2 * Math.PI * i / n), y: R * Math.sin(t0 + 2 * Math.PI * i / n) }))
+  let r = poly(base)
+  const tous: P[] = [...base]
+  base.forEach((p, i) => {
+    const q = base[(i + 1) % n], m = milieu(p, q), d = dist(m, { x: 0, y: 0 }) || 1
+    const sommet = { x: m.x + m.x / d * h, y: m.y + m.y / d * h }
+    tous.push(sommet)
+    r += ligne(p, sommet) + ligne(q, sommet)
+  })
+  return cadre(tous, r, 16)
 }
 
 // ---------- Deux parallèles et une sécante ----------

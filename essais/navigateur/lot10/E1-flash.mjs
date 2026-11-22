@@ -35,6 +35,11 @@
 // M. en 5e, deux listes sous leur titre : les automatismes du programme
 //    (OFFI), puis les objectifs d'apprentissage ; un domaine d'objectifs
 //    coché pose ses exercices d'application, avec la phrase du programme ;
+// N. un seul arbre en 3e aussi (15 novembre 2026) : pastilles OFFI 37 et
+//    OBJ 49, trois domaines « à remplir » ; depuis le 22 novembre, seules
+//    les lignes OBJ1 et OBJ2 des nombres rationnels ont des exercices, et
+//    le pair et l'impair (Calcul littéral, C6) se coche avec ses seules
+//    questions de cours ;
 // F. aucune erreur.
 import { chromium } from '../commun/playwright.mjs'
 
@@ -287,9 +292,28 @@ await p.waitForSelector('dialog.dialogue-flash[open]')
 ok(await p.evaluate(() => !document.querySelector('.niveau-flash[data-niveau="3e"]').disabled), 'K) Le niveau 3e n\'est plus grisé')
 for (const b of await p.$$('.niveau-flash[aria-pressed=true]')) await b.click()
 await p.click('.niveau-flash[data-niveau="3e"]')
-const grisees3 = await p.evaluate(() => [...document.querySelectorAll('.themes-niveau[data-niveau="3e"] .case-competence')].filter(c => c.disabled).length)
-const comps3 = await p.evaluate(() => document.querySelectorAll('.themes-niveau[data-niveau="3e"] .case-competence').length)
+// Depuis le 15 novembre 2026, la 3e a l'arbre unique : on ne compte ici que
+// les lignes OFFI (les lignes OBJ n'ont pas encore d'exercice)
+const grisees3 = await p.evaluate(() => [...document.querySelectorAll('.themes-niveau[data-niveau="3e"] .case-competence:not([value^="3e/obj:"])')].filter(c => c.disabled).length)
+const comps3 = await p.evaluate(() => document.querySelectorAll('.themes-niveau[data-niveau="3e"] .case-competence:not([value^="3e/obj:"])').length)
 ok(comps3 === 37 && grisees3 === 0, 'K) En 3e, 37 compétences, aucune grisée', { comps3, grisees3 })
+// N. Un seul arbre en 3e : pastilles, OBJ1 et OBJ2 des nombres rationnels
+// actives, les autres lignes OBJ en gris, trois domaines « à remplir »
+const arbre3 = await p.evaluate(() => {
+  const n = document.querySelector('.themes-niveau[data-niveau="3e"]')
+  const obj = [...n.querySelectorAll('.case-competence[value^="3e/obj:"]')]
+  const pair = n.querySelector('.case-competence[value="3e/Calcul littéral et algébrique/5"]')
+  return {
+    pastilles: [...n.querySelectorAll('.pastille-filtre')].map(b => b.textContent.replace(/\s+/g, ' ').trim()), obj: obj.length,
+    objActives: obj.filter(c => !c.disabled).map(c => c.value),
+    vides: [...n.querySelectorAll('.arbre-domaine')].filter(d => /à remplir/.test(d.querySelector('.ligne-arbre').textContent)).length,
+    pair: pair && !pair.disabled ? pair.closest('label').querySelector('small')?.textContent : null,
+  }
+})
+ok(arbre3.pastilles.some(t => /^OFFI\s*37/.test(t)) && arbre3.pastilles.some(t => /^OBJ\s*49/.test(t)) && arbre3.obj > 0
+  && arbre3.objActives.join() === '3e/obj:Nombres rationnels/0,3e/obj:Nombres rationnels/1' && arbre3.vides === 3,
+  'N) Un seul arbre en 3e : OFFI 37, OBJ 49, seules OBJ1 et OBJ2 des nombres rationnels actives, trois domaines « à remplir »', arbre3)
+ok(Number(arbre3.pair) >= 1, 'N) Le pair et l\'impair (C6) se coche : ses questions de cours, sans exercice', arbre3.pair)
 // Les cases de domaine sont repliées sous leur thème : on les coche comme un clic
 await p.evaluate(() => {
   for (const c of document.querySelectorAll('.themes-niveau[data-niveau="3e"] .case-domaine:checked')) c.click()
