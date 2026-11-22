@@ -119,7 +119,7 @@ describe('les dossiers', () => {
 
   it('les noms : 40 caractères pour un dossier, 20 pour une étiquette, rien de vide', () => {
     expect(nomDeDossier('  5e   B ')).toBe('5e B')
-    expect(nomDeDossier('x'.repeat(50))).toHaveLength(40)
+    expect(nomDeDossier('x'.repeat(70))).toHaveLength(60)
     expect(nomDeDossier('   ')).toBeNull()
     expect(nomDEtiquette('Seconde générale et technologique')).toBe('Seconde générale et')
     expect(nomDEtiquette('y'.repeat(30))).toHaveLength(20)
@@ -239,8 +239,8 @@ describe('le tri et le nom d\'une copie', () => {
     expect(nomLibre('Symétrie', ['Symétrie', 'symétrie (copie)'])).toBe('Symétrie (copie 2)')
     expect(nomLibre('Symétrie (copie)', ['Symétrie', 'Symétrie (copie)'])).toBe('Symétrie (copie 2)')
     expect(nomLibre('Symétrie (copie 2)', ['Symétrie', 'Symétrie (copie)', 'Symétrie (copie 2)'])).toBe('Symétrie (copie 3)')
-    const long = 'x'.repeat(60)
-    expect(nomLibre(long, [long])).toHaveLength(60)
+    const long = 'x'.repeat(100)
+    expect(nomLibre(long, [long])).toHaveLength(100)
     expect(nomLibre(long, [long]).endsWith(' (copie)')).toBe(true)
   })
 })

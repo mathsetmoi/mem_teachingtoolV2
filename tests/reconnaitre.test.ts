@@ -119,7 +119,7 @@ describe('nomDepuisFichier', () => {
     expect(nomDepuisFichier('C:\\Users\\prof\\Fractions 2026-10-10.memc')).toBe('Fractions')
     expect(nomDepuisFichier('.memc')).toBe('Classeur')
     expect(nomDepuisFichier('   ')).toBe('Classeur')
-    expect([...nomDepuisFichier('x'.repeat(90) + '.memc')].length).toBe(60)
+    expect([...nomDepuisFichier('x'.repeat(120) + '.memc')].length).toBe(100)
   })
 })
 

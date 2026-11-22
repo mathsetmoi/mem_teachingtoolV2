@@ -3020,13 +3020,13 @@ pas une sauvegarde.
 
 Le fichier : une première ligne de texte,
 `{"format":"mem-tableau","v":1,"app":"MEM teachingtool","date":…,"pages":…,"nom":"Symétrie centrale","id":"…"}`,
-puis le document Yjs entier, compressé (gzip). Le nom (60 caractères au
-plus, sans caractère de contrôle) et l'id (16 caractères hexadécimaux) du
+puis le document Yjs entier, compressé (gzip). Le nom (100 caractères au
+plus depuis le 22 novembre 2026, 60 avant ; sans caractère de contrôle) et l'id (16 caractères hexadécimaux) du
 classeur sont à la fin de l'en-tête depuis le lot 4 ; c'est toujours la
 version 1 : le format reste en tête, et la version d'avant, qui ne lit que
 `format`, `v`, `date` et `pages`, ouvre ces fichiers comme les siens (un
 essai le vérifie avec 94c518f, dans les deux sens). L'en-tête tient dans les
-4 096 premiers octets, même avec un nom de 60 caractères accentués ou de
+4 096 premiers octets, même avec un nom de 100 caractères accentués ou de
 guillemets ; `lireEntete` le lit seul, sur un début de fichier, sans rien
 décompresser (`lireTableau`, qui vérifie tout, dirait « abîmé » sur un
 début). Un nom ou un id qui ne sont pas valables sont ignorés à la lecture.
@@ -3053,7 +3053,7 @@ Les noms de fichiers (le classeur, l'image copiée, le PDF) se font tous par
 une seule fonction, `nomSur` (`src/fichier.ts`) : les blancs réunis,
 `\ / : * ? < > |`, les guillemets et les caractères de contrôle remplacés par
 « - », ni espace ni point au bout (Windows les refuse), une longueur bornée
-(80 caractères pour un classeur, 60 pour une page), et les noms réservés de
+(100 caractères pour un classeur, 80 pour un replay, 60 pour une page), et les noms réservés de
 Windows (CON, PRN, AUX, NUL, COM1 à COM9, LPT1 à LPT9, seuls ou avant un
 point) suivis de « (classeur) » : « CON (classeur) 2026-10-10 14h05.memc ».
 
@@ -4447,7 +4447,7 @@ classeurs d'un niveau. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
   [Créer un dossier de niveau] (« Nouveau dossier », la case cochée
   d'avance) [Plus tard] (il ne revient plus : le réglage `conseil` de
   l'index vaut `vu`). Il ne prend pas le focus.
-- **Nouveau dossier** (le bandeau) : « Nom » (40 caractères, « 5ème » en
+- **Nouveau dossier** (le bandeau) : « Nom » (60 caractères, « 5ème » en
   exemple grisé), « Couleur » (huit pastilles, des boutons radio nommés :
   Gris, Bleu au départ, Vert, Jaune, Orange, Rouge, Violet, Rose), la case
   **Dossier d'un niveau : ses classeurs portent l'étiquette « 5ème »**, cochée
@@ -4502,7 +4502,7 @@ classeurs d'un niveau. Le modèle est pur et testé (`src/classeurs/arbre.ts`).
 - **Renommer** : F2 sur la carte qui a le focus, « Renommer… », ou un
   double-clic sur le nom (un clic simple sur le nom attend un instant le
   second, comme dans la trieuse, puis ouvre). Un champ dans la carte, sur le
-  nom, prérempli et tout choisi (60 caractères pour un classeur, 40 pour un
+  nom, prérempli et tout choisi (100 caractères pour un classeur, 60 pour un
   dossier ; 16 px : l'iPad ne zoome pas) ; Entrée ou un clic ailleurs
   gardent, Échap rend l'ancien ; un nom vide est refusé (« Un classeur a
   besoin d'un nom. », le champ reste). « Classeur renommé » [Annuler]. Le
@@ -4765,7 +4765,7 @@ l'écran se ferme. Un autre : « Ouverture de « Fractions »… », puis
    classeur qui a pu changer.
 
 **Nouveau classeur** : une fenêtre, « Nom » (« Nouveau classeur », tout
-choisi, 60 caractères ; vide, il garde ce nom), « Fond de la première
+choisi, 100 caractères ; vide, il garde ce nom), « Fond de la première
 page » (Petits carreaux ; Page blanche, cochée d'office depuis les retouches
 d'après le lot 5 — avant, les petits carreaux — ; Seyès ; Repère ; puis,
 depuis le lot 5, Grands carreaux (1 cm) ; Papier millimétré ; Papier pointé ;

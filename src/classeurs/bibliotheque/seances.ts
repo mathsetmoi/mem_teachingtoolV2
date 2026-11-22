@@ -25,7 +25,7 @@ import { libelleSeances, lignesDesSeances, nomDeClasseur } from '../liste'
 export const methodesSeances = {
   // ---------- Renommer ----------
   /** F2, « Renommer… », un double-clic sur le nom : un champ dans la carte
-   *  (classeur : 60 caractères ; dossier : 40), prérempli, tout choisi.
+   *  (classeur : 100 caractères ; dossier : 60), prérempli, tout choisi.
    *  Entrée ou un clic ailleurs gardent le nom, Échap rend l'ancien ; un nom
    *  vide est refusé. Au doigt, le champ reste au-dessus du clavier virtuel. */
   renommer(this: Bibliotheque, cle: string): void {
