@@ -2929,3 +2929,4 @@ body.page-nuit.contraste :is(.bouton, button.rang, .bouton-classeur, .zoom-texte
 .bandeau-flash .choix-remplacer[hidden] { display: none; }
 .bandeau-flash .choix-remplacer span { font-size: 14px; color: var(--encre-douce); margin: 0 2px; }
 .bandeau-flash .choix-remplacer .numero { width: 38px; padding: 0; }
+.bandeau-flash .remplacer.actif { background: #e9eef5; }

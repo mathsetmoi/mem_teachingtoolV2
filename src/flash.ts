@@ -16,7 +16,12 @@
 //    milieu, qui va se ranger dans sa case à la fin de son temps (ou
 //    avec →) ; ou toutes d'un coup. La minuterie et le numéro de la
 //    question sont dans un bandeau, hors de la page.
-// 3. La correction (à la fin du temps, ou C) : chaque réponse s'écrit en
+//    « Remplacer » (R) met une autre question à la place de celle qui ne
+//    plaît pas : même forme, même réglage, jamais une question déjà
+//    venue. Une à la fois, son temps repart du début ; toutes d'un coup,
+//    on choisit laquelle et la minuterie continue.
+// 3. La correction (à la fin du temps si « Correction à la fin » est
+//    cochée, sinon quand le professeur la demande ; ou C) : chaque réponse s'écrit en
 //    vert sous sa question, et sous elle, en petit et en bleu, la phrase
 //    du programme que l'exercice travaille (comme au brevet). « Nouveaux exemples » rejoue le même réglage
 //    sur une nouvelle page, juste après.
@@ -739,8 +744,9 @@ export class Flash {
 
   /** Une autre question à la place de celle qu'on voit (une à la fois),
    *  ou de la question k (toutes d'un coup) : même forme, même réglage,
-   *  jamais une question déjà venue dans ce flash. Le temps repart du
-   *  début : celui de la question, ou toute la minuterie. La question
+   *  jamais une question déjà venue dans ce flash. Une à la fois, le temps
+   *  de la question repart du début ; toutes d'un coup, la minuterie
+   *  continue (choix du professeur, 22 novembre 2026). La question
    *  remplacée s'efface de la page (le replay la montre un instant). */
   async remplacer(k?: number) {
     const f = this.flash
@@ -771,9 +777,8 @@ export class Flash {
       f.posees = []
       this.placerCases(f, true)
       f.cases.forEach((_, j) => this.poserCase(f, j))
-      f.reste = f.reglages.minutes * 60
     }
-    f.pause = false
+    if (une) f.pause = false
     this.majBandeau()
   }
 
@@ -891,10 +896,15 @@ export class Flash {
     const q = (s: string) => b.querySelector(s) as HTMLButtonElement
     q('.pause').hidden = f.corrige || f.fini
     q('.remplacer').hidden = f.corrige || f.fini
-    if (f.corrige || f.fini) (b.querySelector('.choix-remplacer') as HTMLElement).hidden = true
+    const choix = b.querySelector('.choix-remplacer') as HTMLElement
+    if (f.corrige || f.fini) choix.hidden = true
+    // Toutes d'un coup, pendant qu'on choisit laquelle remplacer : le
+    // bandeau tient sur une ligne
+    q('.remplacer').classList.toggle('actif', !choix.hidden)
+    if (!choix.hidden) q('.pause').hidden = true
     q('.pause').textContent = f.pause ? 'Reprendre' : 'Pause'
     q('.suivante').hidden = f.corrige || f.fini || !une
-    q('.corriger').hidden = f.corrige
+    q('.corriger').hidden = f.corrige || !choix.hidden
     q('.nouveaux').hidden = !f.corrige
     b.classList.toggle('presque', !f.corrige && !f.fini && f.reste <= 5)
   }
@@ -905,14 +915,19 @@ export class Flash {
     const f = this.flash
     if (!f) return
     if (f.reglages.affichage === 'une') { void this.remplacer(); return }
-    const choix = this.bandeau.querySelector('.choix-remplacer') as HTMLElement
-    if (!choix.hidden) { choix.hidden = true; return }
-    choix.innerHTML = '<span>Laquelle ?</span>' + f.questions.map((_, k) => `<button type="button" class="secondaire numero" data-k="${k}">${k + 1}</button>`).join('')
-    choix.querySelectorAll<HTMLButtonElement>('.numero').forEach(b => b.addEventListener('click', () => { choix.hidden = true; void this.remplacer(Number(b.dataset.k)) }))
+    const choix = this.choixRemplacer
+    if (!choix.hidden) { this.fermerChoix(); return }
+    choix.innerHTML = '<span>Laquelle ?</span>' + f.questions.map((_, k) => `<button type="button" class="secondaire numero" data-k="${k}" title="Remplacer la question ${k + 1} (touche ${k + 1})">${k + 1}</button>`).join('')
+    choix.querySelectorAll<HTMLButtonElement>('.numero').forEach(b => b.addEventListener('click', () => this.choisirARemplacer(Number(b.dataset.k))))
     choix.hidden = false
+    this.majBandeau()
   }
+  private get choixRemplacer(): HTMLElement { return this.bandeau.querySelector('.choix-remplacer') as HTMLElement }
+  private fermerChoix() { this.choixRemplacer.hidden = true; this.majBandeau() }
+  private choisirARemplacer(k: number) { this.fermerChoix(); void this.remplacer(k) }
 
-  /** → (ou Page↓) : la question suivante ; Espace : pause ; C : la
+  /** → (ou Page↓) : la question suivante ; Espace : pause ; R :
+   *  remplacer (toutes d'un coup, puis le chiffre de la question) ; C : la
    *  correction. Seulement sur la page du flash, hors des champs et des
    *  fenêtres, et jusqu'à la correction. */
   private touche(e: KeyboardEvent) {
@@ -928,6 +943,14 @@ export class Flash {
       ' ': () => this.basculerPause(), c: () => this.corriger(), C: () => this.corriger(),
       r: () => this.boutonRemplacer(), R: () => this.boutonRemplacer(),
     }
+    // Toutes d'un coup, le choix ouvert : le chiffre de la question
+    const n = Number(e.key)
+    if (!this.choixRemplacer.hidden && Number.isInteger(n) && n >= 1 && n <= f.questions.length) {
+      e.preventDefault(); e.stopPropagation()
+      if (!e.repeat) this.choisirARemplacer(n - 1)
+      return
+    }
+    if (e.key === 'Escape' && !this.choixRemplacer.hidden) { e.preventDefault(); e.stopPropagation(); this.fermerChoix(); return }
     const a = actions[e.key]
     if (!a) return
     e.preventDefault(); e.stopPropagation()
