@@ -623,7 +623,8 @@ export class Flash {
   private lignesPhrase(it: QuestionFlash, numero: number, l: number, T: number): string[] {
     if (!it.programme) return []
     const W = Math.max(T * 6, l - this.retrait(it, numero, T))
-    return this.couper(it.programme, W, T * 0.62).map(x => `\\textit{${texteEnLatex(x)}}`)
+    // L'italique sur le texte seul : une formule ($x^2 = a$) reste en maths
+    return this.couper(it.programme, W, T * 0.62).map(x => x.split('$').map((m, i) => i % 2 ? m : m ? `\\textit{${texteEnLatex(m)}}` : '').join(''))
   }
 
   /** L'énoncé coupé en lignes qui tiennent dans la largeur W (les maths,

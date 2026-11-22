@@ -1142,7 +1142,8 @@ page derrière reste vide. On y choisit :
   compétence. Le pair et l'impair (Calcul littéral, C6) n'a plus que des
   questions de cours. Les objectifs 1 et 2 des nombres rationnels
   (fraction irréductible) ont leurs exercices et leur question de cours :
-  ce sont les seules lignes OBJ de 3e qui ne sont plus grises. Les règles
+  ce sont les seules lignes OBJ de 3e qui ne sont plus grises (voir plus
+  bas : tout le thème Nombres et calculs depuis le 22 novembre). Les règles
   du professeur : on ne garde que ce qui correspond exactement à
   l'intitulé de la compétence ; pas de calculatrice, donc des calculs
   simples (moyennes, partages, pourcentages, volumes) ; les questions ne
@@ -1157,6 +1158,23 @@ page derrière reste vide. On y choisit :
   diamètre un de ses côtés, un triangle rectangle nommé ; la droite des
   milieux se dessine aussi sans longueur, et pour la réciproque.
   `rangerSousObjectif` accepte plusieurs objectifs pour un même exercice.
+  **Les objectifs d'apprentissage de 3e, thème Nombres et calculs** (22
+  novembre 2026, `src/automatismes/troisieme-objectifs.ts`) : le
+  professeur a revu chaque objectif, un par un, et chaque proposition
+  balaie tout son intitulé (une sorte de problème par exercice). 97
+  exercices `3e-obj-…` : problèmes de fractions (9), exposants négatifs,
+  multiplier et diviser des puissances, notation scientifique, problèmes
+  avec la notation scientifique, x² = a (par le calcul et sur la courbe de
+  y = x²), problèmes avec la racine carrée, simplifier produits et
+  rapports, double distributivité, inéquation ax ⩾ b (par le calcul, sur
+  une droite graduée et avec les droites tracées), équation produit nul,
+  identités remarquables ; et 17 questions de cours (numéros 200 et plus),
+  aucune pour les objectifs où il n'en voulait pas. L'analyse-synthèse
+  (6e objectif du calcul littéral) est en suspens : sa ligne reste grise.
+  Trois dessins de plus : `paraboleEtDroite`, `droitesRepere` (une ou deux
+  droites avec leur équation), `intervalleGradue` (crochet et partie
+  coloriée). À la correction, une phrase du programme qui contient une
+  formule (« $x^2 = a$ ») s'écrit maintenant sans erreur.
 
 - combien de questions de chaque sorte, avec − et + : par défaut **5
   questions, 2 questions de cours** (une définition, une propriété, le

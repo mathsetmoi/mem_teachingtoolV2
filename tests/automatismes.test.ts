@@ -713,14 +713,47 @@ describe('la liste des objectifs d\'apprentissage en 3e', () => {
   const objectifs = PROGRAMME_AUTOMATISMES['3e'].filter(t => t.section?.nom === SECTION_OBJECTIFS.nom)
   const reglage = (themes: string[], competences: string[] = []) => ({ ...REGLAGES_PAR_DEFAUT, niveaux: ['3e'], themes, competences })
 
-  it('la 3e a aussi les deux listes, avec ses 49 objectifs ; seuls les deux premiers des nombres rationnels ont des exercices', () => {
+  it('la 3e a aussi les deux listes, avec ses 49 objectifs ; ceux de Nombres et calculs ont des exercices (sauf l\'analyse-synthèse, en suspens)', () => {
     const p = PROGRAMME_AUTOMATISMES['3e']
     expect(p.slice(0, 5).every(t => t.section?.nom === SECTION_AUTOMATISMES.nom)).toBe(true)
     expect(objectifs.map(t => t.nom)).toEqual(PROGRAMME_CYCLE4['3e'].map(t => t.nom))
     expect(objectifs.flatMap(t => t.domaines).reduce((n, d) => n + d.competences.length, 0)).toBe(49)
     const sous = NIVEAUX.find(n => n.id === '3e')!.automatismes.filter(a => objectifsDeExercice('3e', a.id))
-    expect(sous.map(a => a.id).sort()).toEqual(['3e-forme-irreductible', 'ancien-cours-3e-Nombres rationnels-4-1', 'ancien-cours-3e-Nombres rationnels-4-2'])
     expect(objectifsDeExercice('3e', '3e-forme-irreductible')).toEqual({ cle: 'obj:Nombres rationnels', ks: [0, 1] })
+    // Les objectifs qui ont des exercices (22 novembre 2026) : tout le thème
+    // Nombres et calculs, sauf le 6e du calcul littéral
+    const remplis = new Set(sous.flatMap(a => { const o = objectifsDeExercice('3e', a.id)!; return o.ks.map(k => `${o.cle}/${k}`) }))
+    expect([...remplis].sort()).toEqual([
+      'obj:Calcul littéral et algébrique/0', 'obj:Calcul littéral et algébrique/1', 'obj:Calcul littéral et algébrique/2', 'obj:Calcul littéral et algébrique/3', 'obj:Calcul littéral et algébrique/4',
+      'obj:Nombres rationnels/0', 'obj:Nombres rationnels/1', 'obj:Nombres rationnels/2',
+      'obj:Puissances/0', 'obj:Puissances/1', 'obj:Puissances/2', 'obj:Puissances/3',
+      'obj:Racine carrée/0', 'obj:Racine carrée/1',
+    ])
+    expect(sous.length).toBe(3 + 97)
+  })
+
+  it('les objectifs de 3e revus le 22 novembre : rien de fixe, des réponses justes et lisibles', () => {
+    const nouveaux = NIVEAUX.find(n => n.id === '3e')!.automatismes.filter(a => a.id.startsWith('3e-obj-'))
+    for (const a of nouveaux) {
+      const vus = new Set<string>()
+      for (let i = 0; i < 60; i++) {
+        const q = a.generer()
+        const t = q.enonce + q.reponse
+        expect(t, a.id).not.toMatch(/undefined|NaN|Infinity|\+ -|- -|\{,\}\d*e[-+]/)
+        katex.renderToString(q.reponse.startsWith('§') ? '' : q.reponse, { throwOnError: true })
+        vus.add(q.enonce + (q.figure ?? ''))
+      }
+      expect(vus.size, a.id).toBeGreaterThan(1)
+    }
+    // La correction juste, sur quelques exercices où le calcul se vérifie
+    const de = (id: string) => nouveaux.find(a => a.id === id)!
+    for (let i = 0; i < 50; i++) {
+      const q = de('3e-obj-ns-grand').generer()
+      const [m, e] = q.reponse.replace('{,}', '.').split(' \\times 10^')
+      expect(Number(m) * 10 ** Number(e.replace(/[{}]/g, ''))).toBeCloseTo(Number(q.enonce.match(/\$([\d\\,]+)\$/)![1].replace(/\\,/g, '')))
+      expect(Number(m)).toBeGreaterThanOrEqual(1)
+      expect(Number(m)).toBeLessThan(10)
+    }
   })
 
   it('chaque domaine officiel de 3e trouve son domaine d\'objectifs', () => {
@@ -734,7 +767,7 @@ describe('la liste des objectifs d\'apprentissage en 3e', () => {
   it('les réglages gardés de 3e gardent leur sens : la même compétence, avec ses exercices d\'aujourd\'hui', () => {
     const ids = automatismesChoisis(reglage(['3e/Puissances'], ['3e/Puissances/1'])).map(a => a.id)
     expect(ids).toEqual(['3e-produit-meme-nombre', '3e-calculer-meme-nombre'])
-    expect(automatismesChoisis(reglage(['3e/obj:Puissances']))).toEqual([])
+    expect(automatismesChoisis(reglage(['3e/obj:Triangles']))).toEqual([])
   })
 
   it('cocher un objectif ou une compétence pose ses questions de cours et ses exercices', () => {
