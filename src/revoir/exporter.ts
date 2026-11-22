@@ -22,6 +22,7 @@
 import type { Etape, EtatDePage, EtatTableau, Tableau } from '../document'
 import type { Fond, Forme } from '../types'
 import { filiationDe } from '../heritage'
+import { titreComplement } from '../seances'
 import type { Chapitre, EtapeFilm, FilmEleve, Op, PageFilm } from './format'
 import { FORMAT, VERSION } from './format'
 import { lireTemps } from './main-levee'
@@ -107,6 +108,9 @@ export interface SeanceExplicite extends Seance {
   nom: string | null
   ancienne: boolean
   pagesDeSeance: string[]
+  /** La dernière étape du cours lui-même : `a` sans les compléments (voir
+   *  seances.ts, « Compléter une séance passée ») ; a sans complément */
+  aCours: number
 }
 
 /** Les séances explicites dans le film, de la plus récente à la plus
@@ -118,7 +122,7 @@ export interface SeanceExplicite extends Seance {
  *  Une séance sans étape a de > a. gestes, fin et pages comptent comme
  *  seancesDuFilm (ni l'ordre changé, ni une naissance, ni un rangement, ni
  *  un réglage) ; debut reste celui de la séance. */
-export function seancesExplicitesDuFilm(film: readonly Etape[], seances: readonly { id: string; debut: number; depuis: number; nom: string | null; ancienne?: boolean; aVenir?: boolean; pages: string[] }[]): SeanceExplicite[] {
+export function seancesExplicitesDuFilm(film: readonly Etape[], seances: readonly { id: string; debut: number; depuis: number; nom: string | null; ancienne?: boolean; aVenir?: boolean; complements?: readonly number[]; pages: string[] }[]): SeanceExplicite[] {
   const asc = [...seances].sort((x, y) => x.debut - y.debut)
   // Le décor d'une séance préparée (lot 25, voir seances.ts) : ce qu'on a
   // écrit sur ses pages avant que son cours commence (avant son début, ou
@@ -139,9 +143,26 @@ export function seancesExplicitesDuFilm(film: readonly Etape[], seances: readonl
     departs.push(Math.max(i, departs[k - 1]))
   })
   const jour = (t: number) => new Date(t).toDateString()
+  const fins = asc.map((_, k) => (k + 1 < asc.length ? departs[k + 1] : film.length) - 1)
+  // Les compléments (lot 28, voir seances.ts) : une étape sur une page d'une
+  // séance qu'on a commencé à compléter, après son cours et après l'heure du
+  // premier complément, est d'elle (depuis le lot 6, on n'écrit sur la page
+  // d'une séance passée qu'en la complétant). Elle tombe dans la plage d'une
+  // autre séance (la séance du jour), mais n'en est ni un geste, ni une
+  // page, ni la fin.
+  const complement = new Map<number, number>()
+  asc.forEach((s, k) => {
+    const c = s.complements?.length ? Math.min(...s.complements) : Infinity
+    if (c === Infinity) return
+    const siennes = new Set(s.pages)
+    for (let j = fins[k] + 1; j < film.length; j++) {
+      const e = film[j]
+      if (e.t >= c && e.page && siennes.has(e.page)) complement.set(j, k)
+    }
+  })
   const r: SeanceExplicite[] = asc.map((s, k) => {
     let de = departs[k]
-    const a = (k + 1 < asc.length ? departs[k + 1] : film.length) - 1
+    const a = fins[k]
     // Ce qui précède le premier geste (la naissance de la page 1, un ordre
     // changé, un rangement) n'est de la plage que comme dans seancesDuFilm :
     // une page qui naît juste avant le premier geste (moins de 20 minutes, le
@@ -157,10 +178,21 @@ export function seancesExplicitesDuFilm(film: readonly Etape[], seances: readonl
       }
       de = d
     }
-    const x: SeanceExplicite = { id: s.id, nom: s.nom, ancienne: !!s.ancienne, pagesDeSeance: [...s.pages], de, a, debut: s.debut, fin: s.debut, gestes: 0, pages: [] }
+    const x: SeanceExplicite = { id: s.id, nom: s.nom, ancienne: !!s.ancienne, pagesDeSeance: [...s.pages], de, a, aCours: a, debut: s.debut, fin: s.debut, gestes: 0, pages: [] }
     for (let j = de; j <= a; j++) {
       const e = film[j]
       if (e.seulOrdre || e.naissance || e.rangement || e.reglage || deDecor(e, s)) continue
+      const autre = complement.get(j)
+      if (autre !== undefined && autre !== k) continue
+      x.gestes++; x.fin = Math.max(x.fin, e.t)
+      if (e.page && !x.pages.includes(e.page)) x.pages.push(e.page)
+    }
+    // Ses compléments la prolongent : sa plage va jusqu'au dernier
+    for (const [j, q] of complement) {
+      if (q !== k) continue
+      x.a = Math.max(x.a, j)
+      const e = film[j]
+      if (e.seulOrdre || e.naissance || e.rangement || e.reglage) continue
       x.gestes++; x.fin = Math.max(x.fin, e.t)
       if (e.page && !x.pages.includes(e.page)) x.pages.push(e.page)
     }
@@ -207,12 +239,17 @@ export function seancesDuTableau(tableau: Tableau, film: readonly Etape[] = tabl
  *  elle l'est encore). */
 export function pagesAPublier(tableau: Tableau, s: SeanceExplicite): string[] {
   const ordre = new Set(tableau.ordre.toArray())
-  const vues = pagesDeLaSeance(tableau, s)
+  // Une séance complétée (lot 28) : sa plage passe sur d'autres séances ;
+  // les pages vues sont celles de son cours, plus les siennes
+  const vues = pagesDeLaSeance(tableau, s.aCours < s.a ? { ...s, a: s.aCours } : s)
   const siennes = s.pagesDeSeance.filter(p => ordre.has(p))
   // Une page de la séance jetée pendant elle, où il s'est passé quelque chose
   // (pas la page 1 vide qu'une page reprise a remplacée : elle n'a rien)
   const jetees = vues.filter(p => !ordre.has(p) && s.pagesDeSeance.includes(p) && (tableau.formesDe(p)?.size ?? 0) > 0)
-  const autres = s.ancienne ? vues.filter(p => !siennes.includes(p) && !jetees.includes(p)) : []
+  // (pas les pages d'une séance complétée depuis, qu'on a vu passer dans sa plage)
+  const completees = new Set(tableau.seancesDuClasseur().filter(x => x.complements.length && x.id !== s.id).map(x => x.id))
+  const dUneCompletee = (p: string) => { const n = tableau.seanceNoteeDe(p); return !!n && completees.has(n) }
+  const autres = s.ancienne ? vues.filter(p => !siennes.includes(p) && !jetees.includes(p) && !dUneCompletee(p)) : []
   return [...siennes, ...jetees, ...autres]
 }
 
@@ -344,6 +381,13 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
    *  relançant la lecture pour rien. Une page qu'on n'écrit jamais ne part
    *  pas (voir montrees). */
   const naissances = new Map<string, Op[]>()
+  // Les compléments des séances publiées (lot 28, voir seances.ts) : le
+  // premier geste d'un complément vient juste après le geste d'avant (pas
+  // une semaine de silence), sous un chapitre « Complément du 17 novembre »
+  const notees = new Set([...gardees].map(p => tableau.seanceNoteeDe(p)).filter((x): x is string => !!x))
+  const complements = notees.size ? tableau.seancesDuClasseur().filter(x => notees.has(x.id)).flatMap(x => x.complements).sort((x, y) => x - y) : []
+  const reperes: { k: number; t: number }[] = []
+  let heureDuGeste = -Infinity
   for (let i = debut; i <= a; i++) {
     const etat = etatA(i)
     const parPage = new Map<string, Op[]>()
@@ -395,8 +439,15 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
     // Plusieurs pages touchées d'un coup (rare) : un geste par page
     const ordreTouche = [...parPage.keys()].sort((x, y) => (x === vue ? -1 : 0) - (y === vue ? -1 : 0))
     let ms = film[i].ms
+    let pause = Math.max(0, Math.round(dt + attente))
+    const c = complements.filter(x => x <= film[i].t && x > heureDuGeste).pop()
+    if (c !== undefined) {
+      if (etapes.length) pause = Math.min(pause, PAUSE_COMPLEMENT)
+      reperes.push({ k: etapes.length, t: c })
+    }
+    heureDuGeste = film[i].t
     ordreTouche.forEach((p, k) => {
-      const g: EtapeFilm = { dt: k ? 0 : Math.max(0, Math.round(dt + attente)), p, o: parPage.get(p)! }
+      const g: EtapeFilm = { dt: k ? 0 : pause, p, o: parPage.get(p)! }
       // Un trait coupé par la gomme qui efface là où elle passe (lot 5) : le
       // lecteur fait paraître ses morceaux d'un coup (voir EtapeFilm.coupe)
       if (film[i].coupe) g.coupe = true
@@ -444,7 +495,7 @@ export function exporterDetaille(tableau: Tableau, choix: Choix, options: Option
     format: FORMAT, v: VERSION, titre: choix.titre.trim() || 'Séance',
     date: film[debut <= a ? debut : de]?.t ?? Date.now(),
     ordre, pages, etapes,
-    chapitres: chapitresAuto(etapes, ordre, pages),
+    chapitres: chapitresDesComplements(chapitresAuto(etapes, ordre, pages), reperes, etapes, ordre),
     images,
   }
   if (options.instruments !== false && tableau.piste.length && etapes.length) {
@@ -627,6 +678,25 @@ function resoudre(etat: EtatTableau, i: number, gardees: ReadonlySet<string>, so
     if (k >= 0) ordre.splice(k + 1, 0, id); else ordre.push(id)
   }
   return { ordre, pages }
+}
+
+/** Le silence (ms) avant le premier geste d'un complément, dans le replay */
+export const PAUSE_COMPLEMENT = 2000
+
+/** Les chapitres, avec « Complément du 17 novembre · Page 4 » au premier
+ *  geste de chaque complément (k : son rang parmi les gestes) */
+function chapitresDesComplements(chapitres: Chapitre[], reperes: { k: number; t: number }[], etapes: EtapeFilm[], ordre: string[]): Chapitre[] {
+  if (!reperes.length) return chapitres
+  const r = [...chapitres]
+  for (const { k, t } of reperes) {
+    const i = k === 0 ? 0 : k + 1
+    const p = etapes[k]?.p
+    const titre = `${titreComplement(t)}${p && ordre.length > 1 ? ` · Page ${ordre.indexOf(p) + 1}` : ''}`
+    const deja = r.findIndex(x => x.i === i)
+    if (deja >= 0) r[deja] = { i, titre }
+    else r.push({ i, titre })
+  }
+  return r.sort((x, y) => x.i - y.i)
 }
 
 /** Un chapitre à chaque changement de page */

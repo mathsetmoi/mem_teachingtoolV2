@@ -498,11 +498,11 @@ export const methodesVueSeances = {
    *  4) la page se recharge sur l'adresse du classeur.
    *  Celui de l'onglet : l'écran se ferme (le second clic d'un double-clic
    *  ne tombe pas sur le tableau). arrivee : ce qu'on dira en arrivant. */
-  async ouvrirClasseur(this: Bibliotheque, f: FicheClasseur, o: { x?: number; y?: number; arrivee?: string; cle?: CleALArrivee; seance?: string; page?: string; forme?: string; publier?: boolean } = {}): Promise<void> {
+  async ouvrirClasseur(this: Bibliotheque, f: FicheClasseur, o: { x?: number; y?: number; arrivee?: string; cle?: CleALArrivee; seance?: string; page?: string; forme?: string; publier?: boolean; completer?: boolean } = {}): Promise<void> {
     const ici = this.hote.classeur
     if (ici && f.id === ici.id) {
       this.fermer()
-      const voir = o.publier ? this.hote.publierSeance : this.hote.voirSeance
+      const voir = o.publier ? this.hote.publierSeance : o.completer ? this.hote.completerSeance : this.hote.voirSeance
       if (o.seance && voir?.(o.seance) === false) this.hote.message('Cette séance n\'existe plus dans ce classeur.')
       if (o.page && this.hote.voirPage?.(o.page, o.forme ?? null) === false) this.hote.message('Cette page n\'existe plus dans ce classeur.')
       if (o.x !== undefined && o.y !== undefined) avalerLeSecondAppui(o.x, o.y)
@@ -552,7 +552,7 @@ export const methodesVueSeances = {
       // La connexion Google suit l'onglet d'un classeur à l'autre (la copie
       // sur le Drive continue sans un clic, voir publication/drive.ts)
       passerLaConnexion()
-      location.assign(urlDuClasseur(location.href, f.id, o.seance, { page: o.page, forme: o.forme, publier: o.publier }))
+      location.assign(urlDuClasseur(location.href, f.id, o.seance, { page: o.page, forme: o.forme, publier: o.publier, completer: o.completer }))
     } finally {
       if (!parti) this.depart = false
     }

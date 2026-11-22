@@ -6,14 +6,14 @@
 // coup (un flash d'automatismes, une démonstration du catalogue, des pages
 // d'un PDF), que le tableau note au moment où on le pose (Tableau.noterActivite :
 // les séances d'avant n'en ont pas, leur résumé se fait sans). L'écriture à
-// la main ne se lit pas : c'est ce que la rédaction par Gemini ajoute
-// (voir gemini.ts), dans la version en ligne.
+// la main ne se lit pas : c'est ce que la rédaction automatique ajoute
+// (voir redaction.ts), dans la version en ligne.
 //
 // Ce qu'on en tire :
 // - la fiche de la séance (la trieuse, « Bonjour ! ») : une ligne de ce qui
 //   a été fait ;
 // - le texte du cahier de textes (Publier, « Copier et ouvrir Pronote ») : rédigé
-//   par l'outil (le secours), ou par Gemini ; le professeur peut le corriger,
+//   par l'outil (le secours), ou par Claude ; le professeur peut le corriger,
 //   il est gardé avec la séance (Tableau.textesCahier).
 //
 // Ce fichier est pur (ni interface ni base) : il se teste sous Node.
@@ -24,11 +24,11 @@ import type { Forme, LigneTexte } from '../types'
 export interface Activite { t: number; page: string; type: 'flash' | 'demonstration' | 'dessin' | 'pdf'; titre: string }
 
 /** Le texte du cahier de textes d'une séance, gardé dans le document. par :
- *  qui l'a écrit en dernier (l'outil, Gemini, ou le professeur qui l'a
- *  corrigé) ; gestes : le nombre d'étapes du film de la séance quand il a été
+ *  qui l'a écrit en dernier (l'outil, Claude, Gemini avant novembre 2026,
+ *  ou le professeur qui l'a corrigé) ; gestes : le nombre d'étapes du film de la séance quand il a été
  *  rédigé (la séance a continué depuis : on le rédige à nouveau, sauf s'il
  *  est du professeur) */
-export interface TexteCahier { texte: string; par: 'outil' | 'gemini' | 'professeur'; quand: number; gestes?: number }
+export interface TexteCahier { texte: string; par: 'outil' | 'claude' | 'gemini' | 'professeur'; quand: number; gestes?: number }
 
 /** Une activité qui se lit (un document abîmé, une autre version) */
 export function activiteValable(v: unknown): v is Activite {
@@ -176,7 +176,7 @@ const minusculeSaufSigle = (t: string) => /^[A-ZÀ-Ý]{2}/.test(t) ? t : t.charA
 
 /** Le texte du cahier de textes, rédigé par l'outil (sans internet) :
  *  « Lundi 26 octobre · Ensembles de nombres », puis « Fait en classe : … ».
- *  C'est aussi le secours quand Gemini ne répond pas. */
+ *  C'est aussi le secours quand Claude ne répond pas. */
 export function texteCahierDeLOutil(f: FicheDeSeance): string {
   const tete = `${jourDit(f.debut)} · ${f.chapitre}`
   const l = faitEnClasse(f)
@@ -194,13 +194,15 @@ export function texteAvecLeLien(texte: string, lien: string, pages: string): str
   return `${t ? t + '\n' : ''}Revoir la séance : ${lien}${pages}`
 }
 
-// ---------- Ce qu'on demande à Gemini ----------
-/** La consigne envoyée à Gemini avec les images des pages : ce que l'outil
+// ---------- Ce qu'on demande à Claude ----------
+/** La consigne envoyée à Claude avec les images des pages : ce que l'outil
  *  sait déjà (le chapitre, la date, les pages et ce qui y a été posé), et la
  *  forme du texte attendu */
 /** precedent : le texte du cahier de textes de la séance d'avant dans le
  *  classeur (son « À faire » dit quels exercices sont des corrections) */
-export function consigneGemini(f: FicheDeSeance, niveau: string | null, consignes = '', precedent = ''): string {
+/** rejete : un texte que le professeur n'a pas retenu (« Rédiger un autre
+ *  texte ») : on en demande un autre, rédigé autrement */
+export function consigneRedaction(f: FicheDeSeance, niveau: string | null, consignes = '', precedent = '', rejete = ''): string {
   const pages = f.pages.map(p => {
     const bits = [libelleDeLaPage(p, f.activites), ...f.activites.filter(a => a.page === p.id && a.titre !== libelleDeLaPage(p, f.activites)).map(a => a.titre)]
       .filter(Boolean)
@@ -218,26 +220,38 @@ export function consigneGemini(f: FicheDeSeance, niveau: string | null, consigne
       'Un exercice de ce travail à faire qui est traité pendant cette séance est une correction (il a été fait à la maison) ; un autre exercice traité est fait en classe, pendant la séance.',
       '',
     ] : []),
-    'Écris le texte du cahier de textes, en français, comme un professeur l\'écrit pour ses élèves et leurs parents :',
-    '- une ligne qui commence par « Fait en classe : », qui dit les notions vues, les définitions, propriétés et démonstrations, et les exercices (avec leur numéro et leur page du manuel quand ils sont écrits au tableau) ;',
-    '- s\'il est écrit au tableau un travail à faire pour la prochaine fois, une ligne qui commence par « À faire : » ; sinon, pas de ligne « À faire ».',
-    'Au plus 4 lignes en tout. Pas de titre, pas de date, pas de formule de politesse.',
-    'Mise en forme permise (Pronote la garde) : **gras**, __souligné__, et des puces « • » en début de ligne. Rien d\'autre (ni dièses, ni tableaux).',
+    // Avec des consignes du professeur (« Rédaction automatique… »), c'est
+    // SA forme qui compte, seule : la forme de l'outil (« Fait en classe : »,
+    // 4 lignes) n'est plus demandée, sinon Claude mélange les deux
+    ...(consignes.trim() ? [
+      'Écris le texte du cahier de textes, en français, pour les élèves et leurs parents, en suivant exactement la forme que le professeur demande ci-dessous, point par point. Ses consignes sont la seule forme à suivre : rien d\'autre n\'est imposé (ni ligne « Fait en classe : », ni nombre de lignes).',
+      '',
+      'Les consignes du professeur :',
+      consignes.trim(),
+      '',
+      'Si ses consignes n\'en disent rien : s\'il est écrit au tableau un travail à faire pour la prochaine fois, termine par une ligne « À faire : … ».',
+    ] : [
+      'Écris le texte du cahier de textes, en français, comme un professeur l\'écrit pour ses élèves et leurs parents :',
+      '- une ligne qui commence par « Fait en classe : », qui dit les notions vues, les définitions, propriétés et démonstrations, et les exercices (avec leur numéro et leur page du manuel quand ils sont écrits au tableau) ;',
+      '- s\'il est écrit au tableau un travail à faire pour la prochaine fois, une ligne qui commence par « À faire : » ; sinon, pas de ligne « À faire ».',
+      'Au plus 4 lignes en tout. Pas de titre, pas de date, pas de formule de politesse.',
+    ]),
+    'Mise en forme permise (Pronote la garde) : **gras**, __souligné__, des puces « • » et des tirets « - » en début de ligne. Rien d\'autre (ni dièses, ni tableaux).',
     'Écris les mathématiques en caractères simples (√2, x², ≤, ℝ, 3/4), sans LaTeX.',
-    // Les consignes du professeur (« Rédaction automatique… ») passent avant
-    // la forme ci-dessus, jamais avant la dernière règle
-    ...(consignes.trim() ? ['', 'Les consignes du professeur, à suivre en priorité sur celles du dessus :', consignes.trim(), ''] : []),
+    'Réponds seulement par le texte du cahier de textes, sans phrase avant ni après.',
+    ...(rejete.trim() ? ['', 'Le professeur n\'a pas retenu ce texte :', rejete.trim(), 'Rédige-en un autre, autrement (ordre, mots, regroupements), toujours fidèle aux pages et à ses consignes.', ''] : []),
     'Dans tous les cas, n\'invente rien : seulement ce qui se voit sur les pages. N\'écris jamais un prénom ou un nom d\'élève.',
   ].join('\n')
 }
 
-/** Le texte rendu par Gemini, mis au propre : sans mise en forme (les
+/** Le texte rendu par Claude, mis au propre : sans mise en forme (les
  *  puces gardées), sans lignes vides ; enTete : la date et le chapitre en
  *  tête, comme le texte de l'outil (le professeur peut ne pas les vouloir) */
-export function texteCahierDeGemini(f: FicheDeSeance, brut: string, enTete = true): string | null {
+export function texteCahierRedige(f: FicheDeSeance, brut: string, enTete = true): string | null {
   const lignes = brut.replace(/\r/g, '').split('\n')
-    // Une puce (- * •) devient « • » : le professeur peut en demander
-    .map(l => l.replace(/^\s*[-*•]\s+(?=\S)/, '• ').replace(/^\s*[#>]+\s*/, '').replace(/`/g, '').replace(/\s+/g, ' ').trim())
+    // Une puce (* •) devient « • », un tiret reste un tiret (le professeur
+    // peut demander les deux : « • Cours : » puis « - Propriété : … »)
+    .map(l => l.replace(/^\s*[*•]\s+(?=\S)/, '• ').replace(/^\s*[-–]\s+(?=\S)/, '- ').replace(/^\s*[#>]+\s*/, '').replace(/`/g, '').replace(/\s+/g, ' ').trim())
     .filter(l => l && l !== '•')
   if (!lignes.length) return null
   const corps = lignes.slice(0, LIGNES_MAX).join('\n')
@@ -289,5 +303,5 @@ export async function copierMisEnForme(t: string): Promise<void> {
   await navigator.clipboard.writeText(simple)
 }
 
-/** Au plus tant de lignes gardées du texte de Gemini */
+/** Au plus tant de lignes gardées du texte rédigé */
 export const LIGNES_MAX = 30

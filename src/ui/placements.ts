@@ -61,17 +61,21 @@ export const methodesPlacements = {
     const nom = i >= 0 ? app.tableau.nomDe(pages[i]) : null
     // Une séance à venir qu'on prépare (lot 25) : « À venir · lun 16 nov 8h05 », en violet
     const prepare = !!seance && !passee && seance.aVenir
-    const texteSeance = !seance ? '' : passee ? `${seance.nom ?? dateCourteMajuscule(seance.debut)} · en lecture` : prepare ? libelleAVenir(seance) : libelleSeance(seance)
+    // Une séance passée qu'on complète (lot 28) : « Complément · Lun 9 nov 8h », en vert
+    const complete = !!seance && !passee && !prepare && app.tableau.seanceEnComplement === seance.id
+    const texteSeance = !seance ? '' : passee ? `${seance.nom ?? dateCourteMajuscule(seance.debut)} · en lecture` : prepare ? libelleAVenir(seance) : complete ? `Complément · ${seance.nom ?? dateCourteMajuscule(seance.debut)}` : libelleSeance(seance)
     if (this.rangSeanceTexte.textContent !== texteSeance) this.rangSeanceTexte.textContent = texteSeance
     this.rangSeance.hidden = !texteSeance
     this.rang.classList.toggle('en-lecture', passee)
     this.rangSeance.classList.toggle('en-lecture', passee)
     this.rang.classList.toggle('a-venir', prepare)
     this.rangSeance.classList.toggle('a-venir', prepare)
+    this.rang.classList.toggle('en-complement', complete)
+    this.rangSeance.classList.toggle('en-complement', complete)
     if (this.rangNumero.textContent !== numero) this.rangNumero.textContent = numero
     const suite = nom ? ` · ${nom}` : ''
     if (this.rangNom.textContent !== suite) this.rangNom.textContent = suite
-    const titreSeance = seance ? `${passee ? `Séance passée, en lecture : ${libelleSeance(seance)}` : prepare ? `Séance à venir, préparée pour le ${dateLongue(seance.debut)}` : libelleSeance(seance)} · Toutes les pages (Maj + P)` : ''
+    const titreSeance = seance ? `${passee ? `Séance passée, en lecture : ${libelleSeance(seance)}` : prepare ? `Séance à venir, préparée pour le ${dateLongue(seance.debut)}` : complete ? `Séance passée, que vous complétez : ${libelleSeance(seance)}` : libelleSeance(seance)} · Toutes les pages (Maj + P)` : ''
     if (this.rangSeanceTexte.title !== titreSeance) this.rangSeanceTexte.title = titreSeance
     const titreRang = nom ? `Page ${numero} · ${nom} · Toutes les pages (Maj + P)` : 'Toutes les pages (Maj + P)'
     if (this.rang.title !== titreRang) this.rang.title = titreRang

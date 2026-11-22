@@ -1,17 +1,17 @@
 // ESSAI DU LOT 19 : le résumé de la séance et le texte du cahier de textes.
-// Gemini et le relais du Drive sont simulés (aucun appel réel). DEV=… pour le
+// Claude (Anthropic) et le relais du Drive sont simulés (aucun appel réel). DEV=… pour le
 // port ; CAPTURES=dossier pour garder les captures.
 // A. Sans clé : le texte de l'outil (la date, le chapitre, « Fait en classe : »
 //    avec le PDF noté et le texte tapé), « Rédaction automatique… ».
 // B. La fenêtre « Rédaction automatique » : une fausse clé refusée, la clé
 //    gardée dans ce navigateur, l'adresse de Pronote.
-// C. Gemini rédige à l'ouverture de Publier : les images des pages et la
+// C. Claude rédige à l'ouverture de Publier : les images des pages et la
 //    consigne partent, le texte rendu remplace celui de l'outil, gardé avec
 //    la séance ; rouvrir ne redemande rien.
-// D. Le professeur corrige le texte : il est gardé, Gemini ne le réécrit plus.
+// D. Le professeur corrige le texte : il est gardé, Claude ne le réécrit plus.
 // E. Publier : le texte part dans le presse-papiers avec le lien,
 //    « Copier et ouvrir Pronote » mène à l'adresse retenue.
-// F. Gemini refuse (quota) : le texte de l'outil reste, le message le dit.
+// F. Claude refuse (trop de demandes, surcharge), « Rédiger un autre texte » : le texte de l'outil reste, le message le dit.
 // G. La trieuse : la fiche d'une séance passée (sa durée, ce qui a été fait) ;
 //    F2 propose un nom de page, Tab le prend.
 // H. Aucune clé, aucun texte ne va dans le document hors de ses cartes.
@@ -30,29 +30,29 @@ const p = await ctx.newPage()
 p.on('pageerror', e => erreurs.push(e.message))
 const capture = async nom => { if (CAPTURES) await p.screenshot({ path: `${CAPTURES}/${nom}.png` }) }
 
-// Gemini simulé
-let gemini = { statut: 200, texte: '**Fait en classe :** démonstration : √2 n\'est pas rationnel ; correction de l\'exercice 12 p. 42.\nÀ faire : exercices 14 et 15 p. 43.' }
+// Claude (l'API d'Anthropic) simulé
+const BONNE = 'sk-ant-api03-EssaiEssaiEssaiEssaiEssai12345'
+const SANS_CREDIT = 'sk-ant-api03-SansCreditSansCreditSansCredit1'
+let claude = { statut: 200, texte: '**Fait en classe :** démonstration : √2 n\'est pas rationnel ; correction de l\'exercice 12 p. 42.\nÀ faire : exercices 14 et 15 p. 43.' }
 const demandes = []
-await ctx.route(/generativelanguage\.googleapis\.com/, async r => {
-  const u = new URL(r.request().url()), cle = r.request().headers()['x-goog-api-key']
-  const rep = (statut, o) => r.fulfill({ status: statut, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(o) })
-  if (cle === 'AIzaLimiteeLimiteeLimiteeLimiteeLimitee1') return rep(403, { error: { code: 403, message: 'Requests from referer https://mathsetmoi.github.io/ are blocked.', status: 'PERMISSION_DENIED', details: [{ reason: 'API_KEY_HTTP_REFERRER_BLOCKED' }] } })
-  if (cle !== 'AIzaEssaiEssaiEssaiEssaiEssaiEssai12345') return rep(400, { error: { code: 400, message: 'API key not valid. Please pass a valid API key.', status: 'INVALID_ARGUMENT', details: [{ reason: 'API_KEY_INVALID' }] } })
-  if (r.request().method() === 'GET' && u.pathname.endsWith('/models')) return rep(200, { models: [
-    { name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] },
-    { name: 'models/gemini-3.6-flash', supportedGenerationMethods: ['generateContent'] },
-    { name: 'models/gemini-3.8-flash-lite', supportedGenerationMethods: ['generateContent'] },
-  ] })
-  const corps = JSON.parse(r.request().postData() ?? '{}')
-  demandes.push({ chemin: u.pathname, corps })
-  // restants : tant de refus, puis Gemini répond (un pic de demande passager)
-  if (gemini.statut !== 200 && (gemini.restants ?? Infinity) > 0) {
-    if (gemini.restants) gemini.restants--
-    return gemini.statut === 503
-      ? rep(503, { error: { code: 503, message: 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', status: 'UNAVAILABLE' } })
-      : rep(gemini.statut, { error: { code: gemini.statut, message: 'Resource has been exhausted', status: 'RESOURCE_EXHAUSTED' } })
+await ctx.route(/api\.anthropic\.com/, async r => {
+  const q = r.request(), h = await q.allHeaders()
+  const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' }
+  if (q.method() === 'OPTIONS') return r.fulfill({ status: 204, headers: cors })
+  // La clé part dans « x-api-key » ou « authorization: Bearer » (le SDK choisit)
+  const cle = h['x-api-key'] ?? (h.authorization ?? '').replace(/^Bearer /, '')
+  const rep = (statut, o) => r.fulfill({ status: statut, contentType: 'application/json', headers: cors, body: JSON.stringify(o) })
+  const erreur = (statut, type, message) => rep(statut, { type: 'error', error: { type, message } })
+  if (cle === SANS_CREDIT) return erreur(400, 'invalid_request_error', 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.')
+  if (cle !== BONNE) return erreur(401, 'authentication_error', 'invalid x-api-key')
+  const corps = JSON.parse(q.postData() ?? '{}')
+  demandes.push({ chemin: new URL(q.url()).pathname, corps, navigateur: h['anthropic-dangerous-direct-browser-access'] })
+  // restants : tant de refus, puis Claude répond (un pic de demande passager)
+  if (claude.statut !== 200 && (claude.restants ?? Infinity) > 0) {
+    if (claude.restants) claude.restants--
+    return claude.statut === 529 ? erreur(529, 'overloaded_error', 'Overloaded') : erreur(claude.statut, 'rate_limit_error', 'Number of request tokens has exceeded your per-minute rate limit')
   }
-  return rep(200, { candidates: [{ content: { parts: [{ text: gemini.texte }] } }] })
+  return rep(200, { id: 'msg_essai', type: 'message', role: 'assistant', model: corps.model, content: [{ type: 'text', text: claude.texte }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 10 } })
 })
 // Le relais du Drive simulé (voir lot15/P1-publier-dossier.mjs)
 await ctx.route(/accounts\.google\.com|www\.googleapis\.com/, r => r.fulfill({ status: 404, body: '{}' }))
@@ -101,7 +101,7 @@ const texteA = await p.inputValue('.p-texte-cahier')
 ok(await p.isVisible('.p-cahier'), 'A1) Le texte pour le cahier de textes est dans Publier')
 ok(/^\S+ \d+ \S+ · .+\nFait en classe : Manuel p\. 42 ; exercice 12 p\. 42\.$/.test(texteA), 'A2) Le texte de l\'outil : la date, le chapitre, ce qui a été fait', texteA)
 ok(/Rédigé par l'outil/.test(await p.textContent('.p-cahier-qui')) && await p.isVisible('.p-redaction'), 'A3) « Rédigé par l\'outil » et « Rédaction automatique… »')
-ok(demandes.length === 0, 'A4) Sans clé, rien ne part à Gemini', demandes.length)
+ok(demandes.length === 0, 'A4) Sans clé, rien ne part à Claude', demandes.length)
 await capture('1-publier-sans-cle')
 
 // B. la fenêtre « Rédaction automatique »
@@ -110,40 +110,42 @@ await capture('2-redaction')
 await p.fill('.r-cle', 'pas une clé')
 await p.click('.r-garder')
 ok(/Ce n'est pas une clé/.test(await p.textContent('.r-etat')), 'B1) Une fausse clé est refusée', await p.textContent('.r-etat'))
-// une clé d'une autre forme que « AIza… », collée avec des guillemets : c'est Gemini qui juge
-await p.fill('.r-cle', ' "AQ.Ab8RN6Mauvaise-Mauvaise_Mauvaise.Mauvaise" ')
+// une clé d'Anthropic, collée avec des guillemets, mais refusée : c'est Anthropic qui juge
+await p.fill('.r-cle', ' "sk-ant-api03-Mauvaise-Mauvaise_Mauvaise.Mauvaise" ')
 await p.click('.r-essayer'); await p.waitForFunction(() => /refuse la clé/.test(document.querySelector('.r-etat').textContent), null, { timeout: 5000 }).catch(() => {})
-ok(/refuse la clé/.test(await p.textContent('.r-etat')), 'B2) « Essayer la clé » dit qu\'une clé est refusée par Gemini', await p.textContent('.r-etat'))
-await p.fill('.r-cle', 'AIzaLimiteeLimiteeLimiteeLimiteeLimitee1')
-await p.click('.r-essayer'); await p.waitForFunction(() => /certains sites/.test(document.querySelector('.r-etat').textContent), null, { timeout: 5000 }).catch(() => {})
-ok(/limitée à certains sites.*Google dit : « Requests from referer/.test(await p.textContent('.r-etat')), 'B2b) Une clé limitée à certains sites : la raison, et ce que Google en dit', await p.textContent('.r-etat'))
-await p.fill('.r-cle', '  AIzaEssaiEssaiEssai EssaiEssaiEssai12345\n')
+ok(/refuse la clé/.test(await p.textContent('.r-etat')), 'B2) « Essayer la clé » dit qu\'une clé est refusée par Anthropic', await p.textContent('.r-etat'))
+await p.fill('.r-cle', SANS_CREDIT)
+await p.click('.r-essayer'); await p.waitForFunction(() => /crédit/.test(document.querySelector('.r-etat').textContent), null, { timeout: 5000 }).catch(() => {})
+ok(/crédit est épuisé.*console\.anthropic\.com/.test(await p.textContent('.r-etat')), 'B2b) Plus de crédit : le message le dit, et où en ajouter', await p.textContent('.r-etat'))
+ok(await p.inputValue('.r-modele') === 'claude-haiku-5-5', 'B2c) Le modèle au départ : Haiku 5.5', await p.inputValue('.r-modele'))
+await p.fill('.r-cle', '  sk-ant-api03-EssaiEssaiEssai EssaiEssai12345\n')
 await p.click('.r-essayer'); await p.waitForFunction(() => /La clé marche/.test(document.querySelector('.r-etat').textContent), null, { timeout: 5000 }).catch(() => {})
-ok(/La clé marche \(modèle : gemini-3\.6-flash\)/.test(await p.textContent('.r-etat')), 'B3) « Essayer la clé » : la clé marche, et le modèle', await p.textContent('.r-etat'))
+ok(/La clé marche \(modèle : Haiku 5\.5\)/.test(await p.textContent('.r-etat')), 'B3) « Essayer la clé » : la clé marche, et le modèle', await p.textContent('.r-etat'))
 await p.fill('.r-pronote-mem', 'exemple.index-education.net/pronote/professeur.html')
 await p.fill('.r-consignes', 'Écris « Exercices » au pluriel.')
 await capture('2b-redaction-consignes')
 const avantC = demandes.length
 await p.click('.r-garder'); await p.waitForSelector('.dialogue-redaction', { state: 'detached' })
-ok(await p.evaluate(() => localStorage.getItem('mem-redaction-cle')) === 'AIzaEssaiEssaiEssaiEssaiEssaiEssai12345', 'B4) La clé est gardée dans ce navigateur')
+ok(await p.evaluate(() => localStorage.getItem('mem-redaction-cle-anthropic')) === BONNE, 'B4) La clé est gardée dans ce navigateur')
 ok(/"mem":"https:\/\/exemple\.index-education\.net\/pronote\/professeur\.html"/.test(await p.evaluate(() => localStorage.getItem('mem-pronote'))), 'B5) L\'adresse de Pronote est gardée (https ajouté)')
 ok(await p.evaluate(() => localStorage.getItem('mem-redaction-consignes')) === 'Écris « Exercices » au pluriel.', 'B6) Les consignes du professeur sont gardées dans ce navigateur')
 
-// C. Gemini rédige
-await p.waitForFunction(() => /Rédigé par Gemini/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 10000 }).catch(() => {})
+// C. Claude rédige
+await p.waitForFunction(() => /Rédigé par Claude/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 10000 }).catch(() => {})
 const texteC = await p.inputValue('.p-texte-cahier')
-ok(/Rédigé par Gemini \(gemini-3\.6-flash\)/.test(await p.textContent('.p-cahier-qui')), 'C1) « Rédigé par Gemini (le modèle) : relisez-le »', await p.textContent('.p-cahier-qui'))
-ok(/· .+\n\*\*Fait en classe :\*\* démonstration : √2 n'est pas rationnel ; correction de l'exercice 12 p\. 42\.\nÀ faire : exercices 14 et 15 p\. 43\.$/.test(texteC), 'C2) Le texte de Gemini, mis au propre, avec la date et le chapitre', texteC)
+ok(/Rédigé par Claude \(Haiku 5\.5\)/.test(await p.textContent('.p-cahier-qui')), 'C1) « Rédigé par Claude (le modèle) : relisez-le »', await p.textContent('.p-cahier-qui'))
+ok(/· .+\n\*\*Fait en classe :\*\* démonstration : √2 n'est pas rationnel ; correction de l'exercice 12 p\. 42\.\nÀ faire : exercices 14 et 15 p\. 43\.$/.test(texteC), 'C2) Le texte de Claude, mis au propre, avec la date et le chapitre', texteC)
 const d = demandes[avantC]
-const parts = d?.corps?.contents?.[0]?.parts ?? []
-ok(/gemini-3\.6-flash:generateContent$/.test(d?.chemin ?? ''), 'C3) Le modèle choisi : le gemini-X-flash le plus récent', d?.chemin)
-ok(parts.filter(x => x.inline_data?.mime_type === 'image/jpeg' && x.inline_data.data.length > 1000).length === 1, 'C4) L\'image de la page part avec la consigne (une page : une image)', parts.map(x => Object.keys(x)))
-ok(/Manuel p\. 42/.test(parts[0]?.text ?? '') && /n'invente rien/i.test(parts[0]?.text ?? ''), 'C5) La consigne dit ce que l\'outil sait déjà')
-ok(/consignes du professeur[^\n]*\nÉcris « Exercices » au pluriel\./.test(parts[0]?.text ?? ''), 'C5b) Les consignes du professeur partent avec la consigne')
+const parts = d?.corps?.messages?.[0]?.content ?? []
+const consigne = parts.find(x => x.type === 'text')?.text ?? ''
+ok(d?.chemin === '/v1/messages' && d?.corps?.model === 'claude-haiku-5-5' && d?.navigateur === 'true' && !('temperature' in (d?.corps ?? {})), 'C3) La demande : Haiku 5.5, depuis le navigateur, sans température', { chemin: d?.chemin, modele: d?.corps?.model, nav: d?.navigateur })
+ok(parts.filter(x => x.type === 'image' && x.source?.media_type === 'image/jpeg' && x.source.data.length > 1000).length === 1, 'C4) L\'image de la page part avec la consigne (une page : une image)', parts.map(x => x.type))
+ok(/Manuel p\. 42/.test(consigne) && /n'invente rien/i.test(consigne), 'C5) La consigne dit ce que l\'outil sait déjà')
+ok(/consignes du professeur[^\n]*\nÉcris « Exercices » au pluriel\./.test(consigne), 'C5b) Les consignes du professeur partent avec la consigne')
 const avantC6 = demandes.length
 await ouvrir(); await p.waitForTimeout(600)
 ok(demandes.length === avantC6 && await p.inputValue('.p-texte-cahier') === texteC, 'C6) Rouvrir Publier ne redemande rien : le texte est gardé avec la séance', demandes.length - avantC6)
-await capture('3-publier-gemini')
+await capture('3-publier-claude')
 
 // D. le professeur corrige
 const corrige = texteC.replace('exercices 14 et 15', 'exercice 14')
@@ -151,7 +153,7 @@ await p.fill('.p-texte-cahier', corrige)
 await p.click('.p-titre') // le champ perd le focus : « change »
 ok(/Votre texte/.test(await p.textContent('.p-cahier-qui')), 'D1) « Votre texte, gardé avec la séance »')
 await ouvrir(); await p.waitForTimeout(600)
-ok(await p.inputValue('.p-texte-cahier') === corrige && demandes.length === avantC6, 'D2) Rouvrir garde le texte corrigé, sans demander à Gemini')
+ok(await p.inputValue('.p-texte-cahier') === corrige && demandes.length === avantC6, 'D2) Rouvrir garde le texte corrigé, sans demander à Claude')
 
 // E. publier
 await p.check('input[name="p-lieu"][value="dossier"]').catch(() => {})
@@ -175,39 +177,52 @@ ok(/<b>Fait en classe :<\/b>/.test(html) && /<a href="http/.test(html), 'E5) La 
 if (onglet) await onglet.close()
 await capture('4-publie')
 
-// F. Gemini refuse : le texte de l'outil reste
+// F. Claude refuse : le texte de l'outil reste
 await p.evaluate(() => { const a = window.__app; a.tableau.textesCahier.clear() })
-gemini = { statut: 429 }
+claude = { statut: 429 }
 await ouvrir()
-await p.waitForFunction(() => /quota/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 10000 }).catch(() => {})
-ok(/quota/.test(await p.textContent('.p-cahier-qui')) && /Fait en classe : Manuel p\. 42/.test(await p.inputValue('.p-texte-cahier')), 'F1) Quota atteint : le message le dit, le texte de l\'outil reste', await p.textContent('.p-cahier-qui'))
+await p.waitForFunction(() => /Trop de demandes/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 20000 }).catch(() => {})
+ok(/Trop de demandes/.test(await p.textContent('.p-cahier-qui')) && /Fait en classe : Manuel p\. 42/.test(await p.inputValue('.p-texte-cahier')), 'F1) Trop de demandes : le message le dit, le texte de l\'outil reste', await p.textContent('.p-cahier-qui'))
 await p.keyboard.press('Escape')
-// Gemini très demandé une fois : l'outil réessaie tout seul
+// Claude surchargé une fois : l'outil réessaie tout seul
 await p.evaluate(() => window.__app.tableau.textesCahier.clear())
-gemini = { statut: 503, restants: 1, texte: '**Fait en classe :** exercice 12 p. 42.' }
+claude = { statut: 529, restants: 1, texte: '**Fait en classe :** exercice 12 p. 42.' }
 await ouvrir()
-await p.waitForFunction(() => /Rédigé par Gemini/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 15000 }).catch(() => {})
-ok(/Rédigé par Gemini/.test(await p.textContent('.p-cahier-qui')) && /exercice 12 p\. 42/.test(await p.inputValue('.p-texte-cahier')), 'F2) Gemini très demandé une fois : l\'outil réessaie tout seul', await p.textContent('.p-cahier-qui'))
+await p.waitForFunction(() => /Rédigé par Claude/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 15000 }).catch(() => {})
+ok(/Rédigé par Claude/.test(await p.textContent('.p-cahier-qui')) && /exercice 12 p\. 42/.test(await p.inputValue('.p-texte-cahier')), 'F2) Claude surchargé une fois : l\'outil réessaie tout seul', await p.textContent('.p-cahier-qui'))
 await p.keyboard.press('Escape')
 // Toujours très demandé : le message le dit, « Réessayer » relance
 await p.evaluate(() => window.__app.tableau.textesCahier.clear())
-gemini = { statut: 503, texte: '**Fait en classe :** exercice 13 p. 42.' }
+claude = { statut: 529, texte: '**Fait en classe :** exercice 13 p. 42.' }
 await ouvrir()
 await p.waitForFunction(() => /très demandé en ce moment/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 20000 }).catch(() => {})
 ok(/très demandé en ce moment.*Réessayer/.test(await p.textContent('.p-cahier-qui')) && await p.isVisible('.p-reessayer'), 'F3) Toujours très demandé : le message en français, et « Réessayer »', await p.textContent('.p-cahier-qui'))
-gemini.statut = 200
+claude.statut = 200
 await p.click('.p-reessayer')
-await p.waitForFunction(() => /Rédigé par Gemini/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 15000 }).catch(() => {})
-ok(/exercice 13 p\. 42/.test(await p.inputValue('.p-texte-cahier')) && !(await p.isVisible('.p-reessayer')), 'F4) « Réessayer » : Gemini rédige le texte')
+await p.waitForFunction(() => /Rédigé par Claude/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 15000 }).catch(() => {})
+ok(/exercice 13 p\. 42/.test(await p.inputValue('.p-texte-cahier')) && !(await p.isVisible('.p-reessayer')), 'F4) « Réessayer » : Claude rédige le texte')
+// Le texte ne convient pas : « Rédiger un autre texte »
+ok(await p.isVisible('.p-autre-texte'), 'F4b) « Rédiger un autre texte » est proposé')
+const avantF4 = demandes.length, ecarte = await p.inputValue('.p-texte-cahier')
+claude.texte = '**Fait en classe :** correction de l\'exercice 13 p. 42.'
+await p.click('.p-autre-texte')
+await p.waitForFunction(() => /correction de l'exercice 13/.test(document.querySelector('.p-texte-cahier').value), null, { timeout: 15000 }).catch(() => {})
+const consigneF4 = demandes[avantF4]?.corps?.messages?.[0]?.content?.find(x => x.type === 'text')?.text ?? ''
+ok(/correction de l'exercice 13/.test(await p.inputValue('.p-texte-cahier')) && consigneF4.includes('Le professeur n\'a pas retenu ce texte :\n' + ecarte) && await p.isVisible('.p-autre-texte'),
+  'F4c) Claude rédige un autre texte, en sachant lequel n\'a pas été retenu', consigneF4.slice(-400))
 // Sans la date ni le chapitre en tête, et les puces gardées
-gemini.texte = 'Cours :\n- Propriété : somme et produit des racines.'
+claude.texte = 'Cours :\n- Propriété : somme et produit des racines.'
 await p.click('.p-redaction'); await p.waitForSelector('.dialogue-redaction[open]')
 ok(await p.isChecked('.r-entete'), 'F5) Au départ, la date et le chapitre en tête')
 await p.uncheck('.r-entete')
+await p.selectOption('.r-modele', 'claude-sonnet-5-5')
 await p.click('.r-garder'); await p.waitForSelector('.dialogue-redaction', { state: 'detached' })
 await p.waitForFunction(() => /^Cours :/.test(document.querySelector('.p-texte-cahier').value), null, { timeout: 15000 }).catch(() => {})
-ok(await p.inputValue('.p-texte-cahier') === 'Cours :\n• Propriété : somme et produit des racines.', 'F6) Case décochée : ni date ni chapitre en tête, la puce gardée', await p.inputValue('.p-texte-cahier'))
+ok(await p.inputValue('.p-texte-cahier') === 'Cours :\n- Propriété : somme et produit des racines.', 'F6) Case décochée : ni date ni chapitre en tête, le tiret gardé', await p.inputValue('.p-texte-cahier'))
 ok(await p.evaluate(() => localStorage.getItem('mem-redaction-entete')) === 'non', 'F7) Le choix est gardé dans ce navigateur')
+await p.waitForFunction(() => /Sonnet/.test(document.querySelector('.p-cahier-qui').textContent), null, { timeout: 5000 }).catch(() => {})
+ok(demandes.at(-1)?.corps?.model === 'claude-sonnet-5-5' && /Rédigé par Claude \(Sonnet 5\.5\)/.test(await p.textContent('.p-cahier-qui'))
+  && await p.evaluate(() => localStorage.getItem('mem-redaction-modele-claude')) === 'claude-sonnet-5-5', 'F8) Un autre modèle choisi : il rédige, et le choix est gardé', demandes.at(-1)?.corps?.model)
 await p.keyboard.press('Escape')
 
 // G. la trieuse
@@ -231,7 +246,7 @@ await p.keyboard.press('Escape').catch(() => {})
 
 // H. le document : la clé n'y est pas
 const doc = await p.evaluate(() => { const t = window.__app.tableau; return JSON.stringify({ a: t.activites.toJSON(), c: t.textesCahier.toJSON(), autres: [...t.doc.share.keys()] }) })
-ok(!/AIza/.test(doc) && /Manuel p\. 42/.test(doc), 'H1) Les activités sont dans le document, la clé jamais', doc.slice(0, 300))
+ok(!/sk-ant-/.test(doc) && /Manuel p\. 42/.test(doc), 'H1) Les activités sont dans le document, la clé jamais', doc.slice(0, 300))
 
 ok(!erreurs.length, 'Aucune erreur de page', erreurs)
 await b.close()

@@ -302,6 +302,18 @@ etabs = await puces()
 ok(etabs.some(x => x.nom === 'Lycée F'), 'K6) Ensuite « Lycée F » est proposé comme les autres', etabs)
 await p.keyboard.press('Escape'); await p.waitForTimeout(200)
 
+// ---------- L. « Échanger A et B » ----------
+await poserEDT(EDT(SEMAINE))
+await p.evaluate(() => window.__app.ui.boutonFichier.click()); await p.waitForTimeout(400)
+await p.click('.menu-flottant:not([hidden]) [data-action="emploi-du-temps"]'); await p.waitForTimeout(400)
+const avantL = await p.evaluate(() => document.querySelector('.edt-etat')?.textContent)
+await p.click('.edt-echanger'); await p.waitForTimeout(400)
+tout = await p.evaluate(async () => (await window.__registre.reglage('emploi-du-temps')))
+const apresL = await p.evaluate(() => document.querySelector('.edt-etat')?.textContent)
+ok(tout.echange === true && tout.creneaux.find(c => c.id === (4).toString(16).padStart(16, '0')).semaines === 'B' && tout.creneaux.find(c => c.id === (5).toString(16).padStart(16, '0')).semaines === 'A' && tout.creneaux.find(c => c.id === (1).toString(16).padStart(16, '0')).semaines === 'AB' && avantL === apresL,
+  'L1) « Échanger A et B » : les créneaux de la semaine A passent en B et inversement, la semaine de cette date ne change pas', { tout: tout.creneaux.map(c => c.semaines), avantL, apresL })
+await p.keyboard.press('Escape'); await p.waitForTimeout(200)
+
 // ---------- G6. Au menu ⋯ de la bibliothèque ----------
 await p.evaluate(() => { if (!window.__bibliotheque.ouvert) window.__app.ui.ouvrirBibliotheque() })
 await p.waitForFunction(() => window.__bibliotheque.ouvert, null, { timeout: 10000 })

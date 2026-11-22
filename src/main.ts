@@ -362,6 +362,7 @@ async function demarrer() {
         ui.publierLaSeance(id)
         return true
       },
+      completerSeance: id => voirLaSeance(app, id) && app.completerSeance(id),
       voirPage: (page, forme) => voirLaPage(app, page, forme),
       oublierMessage: cle => ui.oublierAction(cle),
       // Effacé depuis la corbeille de cet onglet (lot 4 C8) : les autres onglets
@@ -598,6 +599,8 @@ async function demarrer() {
   else if (depart.genre === 'accueil' && depart.seance && !ouvertDUnFichier && !arrivee) accueil = ouvrirLAccueil(app, ui, registre, fiche, depart.seance, moment, edtBranche?.ouvrir ?? null)
   // Arrivé par « Publier la séance… » : la fenêtre Publier, sur cette séance
   if (seanceVue && PUBLIER_VOULU && SEANCE_VOULUE && !document.querySelector('dialog[open]')) ui.publierLaSeance(SEANCE_VOULUE)
+  // Arrivé par « Compléter la séance » : on la complète
+  if (seanceVue && COMPLETER_VOULU && SEANCE_VOULUE) app.completerSeance(SEANCE_VOULUE)
   // Parti d'un autre classeur avec « Commencer par des automatismes » cochée
   if (arrivage.automatismes && !document.querySelector('dialog[open]')) ui.flash.ouvrir()
   // Parti de l'emploi du temps d'un autre classeur pour préparer un cours (lot 25)
@@ -639,6 +642,9 @@ const SEANCE_VOULUE = new URLSearchParams(location.search).get('seance')
  *  (« Publier la séance… », le menu d'une séance de la bibliothèque, pour un
  *  autre classeur que celui de l'onglet) */
 const PUBLIER_VOULU = SEANCE_VOULUE !== null && new URLSearchParams(location.search).has('publier')
+/** « &completer » avec la séance : on la complète (lot 28, « Compléter la
+ *  séance », le menu d'une séance de la bibliothèque) */
+const COMPLETER_VOULU = SEANCE_VOULUE !== null && new URLSearchParams(location.search).has('completer')
 /** La page où l'on arrive, et la formule à y prendre (« &page=…&forme=… »,
  *  par la recherche), lues de même */
 const PAGE_VOULUE = new URLSearchParams(location.search).get('page')

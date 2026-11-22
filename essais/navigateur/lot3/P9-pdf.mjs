@@ -450,8 +450,8 @@ if (faire('noms')) {
   await page.mouse.click(1000, 600, { button: 'right' }); await page.waitForTimeout(150)
   const entrees = await page.evaluate(() => [...document.querySelector('.menu-flottant[aria-label="Page"]').children].map(c => c.tagName === 'HR' ? '─' : (c.querySelector('.libelle')?.firstChild?.textContent ?? '').trim() + (c.querySelector('.touche') ? ' [' + c.querySelector('.touche').textContent + ']' : '')))
   await page.keyboard.press('Escape')
-  verifier('Le menu de la page : … Dupliquer la page · Toutes les pages… · ─ · Copier la page en image · Exporter la page en PDF… (Ctrl + P)',
-    JSON.stringify(entrees.slice(3)) === JSON.stringify(['─', 'Dupliquer la page [Ctrl + Maj + D]', 'Toutes les pages… [Maj + P]', '─', 'Copier la page en image', 'Exporter la page en PDF… [Ctrl + P]']), entrees)
+  verifier('Le menu de la page : … Dupliquer la page · Envoyer la page vers… · Toutes les pages… · ─ · Copier la page en image · Exporter la page en PDF… (Ctrl + P)',
+    JSON.stringify(entrees.slice(3)) === JSON.stringify(['─', 'Dupliquer la page [Ctrl + Maj + D]', 'Envoyer la page vers…', 'Toutes les pages… [Maj + P]', '─', 'Copier la page en image', 'Exporter la page en PDF… [Ctrl + P]']), entrees)
   const r1 = await exporter(page, 'nommee', menuDeLaPage(page))
   verifier('Une page nommée : « Exercice 12 p. 84.pdf », titre « Page 3 · Exercice 12 p. 84 » ; la fenêtre dit « La page 3 · Exercice 12 p. 84 »',
     r1.propose === 'Exercice 12 p. 84.pdf' && info(r1.fichier).titre === 'Page 3 · Exercice 12 p. 84' && r1.fen?.radios[0]?.t === 'La page 3 · Exercice 12 p. 84' && r1.fen.radios[1]?.t === 'Tout le classeur : 7 pages', { p: r1.propose, fen: r1.fen })

@@ -6112,6 +6112,61 @@ comprise (version en ligne, avec une clé) ; **l'outil rédige lui-même un
 texte plus court** quand Gemini n'est pas là (sans clé, hors ligne, sans
 internet, quota atteint).
 
+### Depuis le 17 novembre 2026 : Claude à la place de Gemini
+
+Gemini était trop lent, et la limite de la clé gratuite était souvent
+atteinte : le professeur a choisi une **clé de l'API Anthropic** à la place
+(maquette validée, modèle **Haiku 5.5** par défaut, son choix). Tout le
+reste ne change pas : ses consignes, la case de la date, les adresses de
+Pronote, le texte de l'outil en secours. Partout plus bas où il est écrit
+« Gemini », c'est maintenant Claude, sauf ce qui est dit ici.
+
+- **Rédaction automatique…** : « Clé de l'API Anthropic » (elle commence par
+  `sk-ant-`, à créer une fois sur console.anthropic.com : un compte, du
+  crédit, une limite de dépense par mois, puis « API keys », « Create
+  key » ; le pas à pas est dans la fenêtre), « Essayer la clé », et un
+  **Modèle** : Haiku 5.5 (rapide, moins d'un centime par séance), Sonnet 5.5
+  (environ 8 centimes) ou Opus 5.5 (environ 16 centimes).
+- Publier : « Claude lit les pages et rédige le texte… », puis « Rédigé par
+  Claude (Haiku 5.5) : relisez-le ». Un texte rédigé par Gemini avant reste
+  (« Rédigé automatiquement »).
+- **Rédiger un autre texte** (sous le texte, dès qu'il y a une clé) : le
+  texte ne convient pas, Claude en rédige un autre ; le texte écarté part
+  avec la consigne (« Le professeur n'a pas retenu ce texte… rédige-en un
+  autre, autrement »). Il remplace aussi un texte corrigé à la main, puisque
+  le professeur le demande. Si Claude ne répond pas, le texte d'avant reste.
+- **Vos consignes passent seules** (17 novembre, le professeur voyait
+  encore « Fait en classe : » malgré les siennes) : quand il a écrit des
+  consignes, la forme de l'outil (« Fait en classe : », « au plus 4
+  lignes ») n'est plus demandée du tout ; restent seulement les règles
+  fixes (rien d'inventé, aucun nom d'élève, maths en caractères simples,
+  « À faire » si ses consignes n'en disent rien). Les tirets « - » en début
+  de ligne restent des tirets (« • Cours : » puis « - Propriété : … ») ;
+  seuls « * » et « • » deviennent « • ». Avec des consignes, Claude
+  réfléchit un peu plus (`effort` à `medium`) pour les suivre à la lettre.
+- Les erreurs en clair : clé refusée (401), crédit épuisé, limite de dépense
+  du mois atteinte, modèle refusé ou disparu, trop de demandes (429), Claude
+  très demandé (529, 5xx), pas d'internet ; le texte de l'outil reste, et
+  « Réessayer ».
+- Comment c'est fait : `src/resume/redaction.ts` remplace `gemini.ts`. Le SDK
+  officiel `@anthropic-ai/sdk` (version fixée), appelé depuis le navigateur
+  (`dangerouslyAllowBrowser` : c'est la clé du professeur, dans son
+  navigateur, comme avant), l'API Messages, `output_config.effort` à `low`
+  (lire des pages et en faire une liste ne demande pas de longue
+  réflexion), sans température (refusée par ces modèles), les pages en
+  images JPEG d'au plus 1568 points de large (au-delà, Claude réduit
+  lui-même). Le SDK réessaie tout seul deux fois quand Claude est surchargé
+  ou trop demandé. Seuls les blocs de texte de la réponse comptent.
+- Dans ce navigateur, deux nouvelles clés : `mem-redaction-cle-anthropic` (la
+  clé) et `mem-redaction-modele-claude` (le modèle, vide : Haiku). Les clés
+  `mem-redaction-cle` et `mem-redaction-modele` (Gemini) restent comme elles
+  sont : l'outil ne s'en sert plus. Dans le document, `textesCahier` peut
+  dire `par : claude` (champ déjà là, une valeur de plus).
+- Ce qui part chez Anthropic : les mêmes images et la même consigne que pour
+  Gemini, rien d'autre. La version hors ligne ne fait jamais appel à Claude.
+- L'essai `lot19/R1-resume-seance.mjs` simule maintenant l'API d'Anthropic
+  (clé refusée, crédit épuisé, trop de demandes, surcharge, autre modèle).
+
 ### Le mode d'emploi
 
 - **Publier** montre, sous les pages, le **texte pour le cahier de textes** :
@@ -6313,7 +6368,12 @@ propose la classe qui arrive à l'heure qu'il est.
 - **Les semaines A et B** alternent chaque semaine à partir de « Cette
   semaine est une semaine A » ; un lien corrige (« C'est une semaine B »
   dans la fenêtre, « Pas la bonne semaine ? On est en semaine B » dans
-  « Bonjour ! »), et l'alternance repart de là.
+  « Bonjour ! »), et l'alternance repart de là. Les créneaux venus de
+  Pronote restent aux mêmes dates (leurs lettres A et B s'échangent) ;
+  ceux saisis à la main gardent la lettre choisie. **« Échanger A et B »**
+  (à côté) fait passer les créneaux de la semaine A en semaine B et
+  inversement, sans changer la lettre de cette semaine ; les imports de
+  Pronote suivants s'en souviennent (champ facultatif `echange`).
 - **« Importer de Pronote… »** : un établissement, puis le **lien
   synchronisé** (bouton « iCal » de la page de l'emploi du temps de
   Pronote) ou un **fichier .ics**. L'outil range les cours en créneaux (un

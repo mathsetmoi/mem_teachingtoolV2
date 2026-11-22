@@ -150,6 +150,9 @@ export interface HoteBibliotheque {
   /** Va à une séance du classeur de cet onglet et ouvre la fenêtre Publier
    *  sur elle ; faux : elle n'existe plus */
   publierSeance?(id: string): boolean
+  /** Va à une séance passée du classeur de cet onglet et la complète (lot
+   *  28) ; faux : elle n'existe plus */
+  completerSeance?(id: string): boolean
   /** Va à une page du classeur de cet onglet, une formule prise (la
    *  recherche) ; faux : elle n'existe plus */
   voirPage?(page: string, forme: string | null): boolean

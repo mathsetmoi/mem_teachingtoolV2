@@ -498,8 +498,8 @@ if (faire('image')) {
   await page.keyboard.press('Escape')
   // (Adapté au morceau P9 : « Exporter la page en PDF… » suit « Copier la page
   // en image », grisée elle aussi sur une page vide)
-  verifier('Le menu de la page : … Dupliquer la page · Toutes les pages… · ─ · Copier la page en image (grisée sur une page vide) · Exporter la page en PDF…',
-    JSON.stringify(entrees.slice(3)) === JSON.stringify(['─', 'Dupliquer la page', 'Toutes les pages…', '─', 'Copier la page en image (grisée)', 'Exporter la page en PDF… (grisée)']), entrees)
+  verifier('Le menu de la page : … Dupliquer la page · Envoyer la page vers… · Toutes les pages… · ─ · Copier la page en image (grisée sur une page vide) · Exporter la page en PDF…',
+    JSON.stringify(entrees.slice(3)) === JSON.stringify(['─', 'Dupliquer la page', 'Envoyer la page vers…', 'Toutes les pages…', '─', 'Copier la page en image (grisée)', 'Exporter la page en PDF… (grisée)']), entrees)
   for (const fond of ['carreaux', 'seyes']) {
     if (fond === 'seyes') await page.evaluate(() => window.__app.tableau.changerFond(window.__app.page, 'seyes'))
     else await page.evaluate(SCENE, fond)

@@ -37,9 +37,9 @@ import { choisirLeDossier, deposerLeFichierSeance, deposerLeReplay, dossierDuCha
 import { marqueDeCopie } from '../fichier'
 import { connecte, connecter, courrielDe, deconnecter, preparerGoogle, publier } from './drive'
 import type { FicheDeSeance } from '../resume/fiche'
-import { texteAvecLeLien, texteCahierDeGemini, texteCahierDeLOutil, consigneGemini, copierMisEnForme } from '../resume/fiche'
+import { texteAvecLeLien, texteCahierRedige, texteCahierDeLOutil, consigneRedaction, copierMisEnForme } from '../resume/fiche'
 import { ficheDeLaSeance, gestesDeLaSeance } from '../resume/collecte'
-import { ErreurGemini, PAGES_MAX, cleGemini, consignesDuProfesseur, demanderAGemini, dernierModele, enTeteGemini, imagePourGemini, pronoteDe } from '../resume/gemini'
+import { ErreurRedaction, PAGES_MAX, cleRedaction, consignesDuProfesseur, demanderAClaude, modeleChoisi, nomDuModele, enTeteRedaction, imagePourRedaction, pronoteDe } from '../resume/redaction'
 import { ouvrirRedaction } from '../resume/reglage-vue'
 import { ouvrirQrEnGrand, svgQr } from './qr'
 import { messageEleveAbsent, nomDeLaFiche, peindrePageDeGarde } from './fiche-absent'
@@ -86,11 +86,11 @@ export class Publication {
    *  ajoute le texte du cahier de textes tel qu'il est à ce moment-là */
   private publie: { lien: string; pages: string; titre: string } | null = null
   /** Le texte du cahier de textes a été touché par le professeur depuis
-   *  qu'on l'a rempli : Gemini ne l'écrase pas */
+   *  qu'on l'a rempli : la rédaction automatique ne l'écrase pas */
   private texteTouche = false
-  /** Quelle rédaction par Gemini est en cours (la séance change : elle ne compte plus) */
+  /** Quelle rédaction automatique est en cours (la séance change : elle ne compte plus) */
   private redaction = 0
-  /** L'image d'une page pour Gemini (ui.ts) ; absente : pas de rédaction automatique */
+  /** L'image d'une page pour la rédaction (ui.ts) ; absente : pas de rédaction automatique */
   imageDePage: ((page: string) => Promise<Blob | null>) | null = null
   /** Publier quand même avec un autre compte que d'habitude : « compte:adresse » confirmé */
   private autreCompteAccepte = ''
@@ -167,6 +167,7 @@ export class Publication {
           <p class="p-cahier-marques">Dans Pronote : **gras**, __souligné__, « • » en début de ligne pour une puce.</p>
           <p class="p-cahier-pied"><span class="p-cahier-qui" role="status" aria-live="polite"></span>
             <button type="button" class="lien p-reessayer" hidden>Réessayer</button>
+            <button type="button" class="lien p-autre-texte" hidden>Rédiger un autre texte</button>
             <button type="button" class="lien p-redaction">Rédaction automatique…</button></p>
         </div>
         <label class="champ"><span>Titre (les élèves le voient)</span><input class="p-titre" maxlength="120" /></label>
@@ -264,10 +265,13 @@ export class Publication {
         .finally(() => window.open(adresse, '_blank', 'noopener'))
     })
     q('.p-reessayer').addEventListener('click', () => this.preparerTexte(true))
+    // Le texte ne convient pas : Claude en rédige un autre (même à la place
+    // d'un texte corrigé par le professeur, puisqu'il le demande)
+    q('.p-autre-texte').addEventListener('click', () => this.preparerTexte(true, q<HTMLTextAreaElement>('.p-texte-cahier').value))
     q('.p-redaction').addEventListener('click', () => ouvrirRedaction(this.racine, () => { this.majPronote(); this.preparerTexte(true) }))
     const champCahier = q<HTMLTextAreaElement>('.p-texte-cahier')
     champCahier.addEventListener('input', () => { this.texteTouche = true })
-    // Corrigé par le professeur : il le garde, avec la séance (Gemini ne le réécrit plus)
+    // Corrigé par le professeur : il le garde, avec la séance (la rédaction automatique ne le réécrit plus)
     champCahier.addEventListener('change', () => this.garderTexte(champCahier.value, 'professeur'))
     q('.p-fermer').addEventListener('click', () => d.close())
     d.addEventListener('close', () => { d.remove(); if (this.d === d) this.d = null })
@@ -455,7 +459,7 @@ export class Publication {
 
   /** Le texte du cahier de textes de la séance d'avant, dans ce classeur
    *  (celui qui est gardé, sinon celui de l'outil) : son « À faire » dit à
-   *  Gemini quels exercices sont des corrections. '' : pas de séance d'avant */
+   *  à Claude quels exercices sont des corrections. '' : pas de séance d'avant */
   private texteDeLaSeancePrecedente(id: string): string {
     const t = this.app.tableau, l = t.seancesDuClasseur()
     const k = l.findIndex(s => s.id === id)
@@ -471,10 +475,12 @@ export class Publication {
 
   /** Le texte du cahier de textes de la séance choisie : celui qui est gardé
    *  (corrigé par le professeur, ou rédigé depuis le dernier geste), sinon
-   *  celui de l'outil ; puis, dans la version en ligne avec une clé, Gemini le
-   *  rédige. refaire : la clé vient de changer, Gemini rédige à nouveau (sauf
-   *  un texte du professeur). */
-  private preparerTexte(refaire = false) {
+   *  celui de l'outil ; puis, dans la version en ligne avec une clé, Claude le
+   *  rédige. refaire : la clé vient de changer, Claude rédige à nouveau (sauf
+   *  un texte du professeur). autre : le texte que le professeur n'a pas
+   *  retenu (« Rédiger un autre texte ») : Claude en rédige un autre, même à
+   *  la place d'un texte du professeur. */
+  private preparerTexte(refaire = false, autre?: string) {
     const d = this.d
     if (!d) return
     const bloc = d.querySelector('.p-cahier') as HTMLElement
@@ -486,47 +492,55 @@ export class Publication {
     if (!c) return
     const t = this.app.tableau, gestes = gestesDeLaSeance(t, c.id), garde = t.texteCahierDe(c.id)
     const aJour = !!garde && (garde.par === 'professeur' || garde.gestes === gestes)
-    champ.value = aJour ? garde!.texte : texteCahierDeLOutil(c.fiche)
+    champ.value = autre ?? (aJour ? garde!.texte : texteCahierDeLOutil(c.fiche))
     this.texteTouche = false
-    const gemini = this.enLigne && !!cleGemini() && !!this.imageDePage
+    const auto = this.enLigne && !!cleRedaction() && !!this.imageDePage
     qui.classList.remove('erreur')
     ;(d.querySelector('.p-reessayer') as HTMLElement).hidden = true
+    ;(d.querySelector('.p-autre-texte') as HTMLElement).hidden = !auto
     qui.textContent = aJour && garde!.par === 'professeur' ? 'Votre texte, gardé avec la séance.'
-      : aJour && garde!.par === 'gemini' ? 'Rédigé par Gemini : relisez-le.'
-      : gemini ? '' : this.enLigne ? 'Rédigé par l\'outil. Pour que Gemini lise aussi l\'écriture à la main :' : 'Rédigé par l\'outil (la version hors ligne ne fait pas appel à Gemini).'
+      : aJour && garde!.par === 'claude' ? 'Rédigé par Claude : relisez-le.'
+      : aJour && garde!.par === 'gemini' ? 'Rédigé automatiquement : relisez-le.'
+      : auto ? '' : this.enLigne ? 'Rédigé par l\'outil. Pour que Claude lise aussi l\'écriture à la main :' : 'Rédigé par l\'outil (la version hors ligne ne fait pas appel à Claude).'
     ;(d.querySelector('.p-redaction') as HTMLElement).hidden = !this.enLigne
-    if (!gemini || garde?.par === 'professeur' || (aJour && garde!.par === 'gemini' && !refaire)) return
-    void this.redigerAvecGemini(moi, c.id, c.fiche, gestes)
+    if (autre !== undefined && auto) return void this.redigerAvecClaude(moi, c.id, c.fiche, gestes, autre)
+    if (!auto || garde?.par === 'professeur' || (aJour && (garde!.par === 'claude' || garde!.par === 'gemini') && !refaire)) return
+    void this.redigerAvecClaude(moi, c.id, c.fiche, gestes)
   }
 
-  private async redigerAvecGemini(moi: number, id: string, fiche: FicheDeSeance, gestes: number) {
+  private async redigerAvecClaude(moi: number, id: string, fiche: FicheDeSeance, gestes: number, autre = '') {
     const d = this.d!, qui = d.querySelector('.p-cahier-qui') as HTMLElement
     const champ = d.querySelector('.p-texte-cahier') as HTMLTextAreaElement
+    const bouton = d.querySelector('.p-autre-texte') as HTMLElement
     const encore = () => this.d === d && this.redaction === moi
-    qui.textContent = 'Gemini lit les pages et rédige le texte…'
+    qui.textContent = autre ? 'Claude rédige un autre texte…' : 'Claude lit les pages et rédige le texte…'
+    bouton.hidden = true
+    const modele = modeleChoisi()
     try {
       const images: string[] = []
       for (const p of fiche.pages.slice(0, PAGES_MAX)) {
         const png = await this.imageDePage!(p.id).catch(() => null)
-        const b64 = png ? await imagePourGemini(png) : null
+        const b64 = png ? await imagePourRedaction(png) : null
         if (b64) images.push(b64)
         if (!encore()) return
       }
-      const brut = await demanderAGemini(cleGemini(), consigneGemini(fiche, null, consignesDuProfesseur(), this.texteDeLaSeancePrecedente(id)), images,
-        { nouvelEssai: () => { if (encore()) qui.textContent = 'Gemini est très demandé : nouvel essai…' } })
+      const brut = await demanderAClaude(cleRedaction(), consigneRedaction(fiche, null, consignesDuProfesseur(), this.texteDeLaSeancePrecedente(id), autre), images, { modele, effort: consignesDuProfesseur() ? 'medium' : 'low' })
       if (!encore()) return
-      const texte = texteCahierDeGemini(fiche, brut, enTeteGemini())
-      if (!texte) throw new ErreurGemini('Gemini n\'a rien rédigé pour cette séance : le texte de l\'outil reste.')
+      const texte = texteCahierRedige(fiche, brut, enTeteRedaction())
+      if (!texte) throw new ErreurRedaction('Claude n\'a rien rédigé pour cette séance : le texte de l\'outil reste.')
       // Le professeur a commencé à corriger le texte de l'outil : on ne l'écrase pas
-      if (this.texteTouche) { qui.textContent = 'Gemini a rédigé un texte, mais vous avez déjà écrit le vôtre : il reste.'; return }
+      if (this.texteTouche) { qui.textContent = 'Claude a rédigé un texte, mais vous avez déjà écrit le vôtre : il reste.'; return }
       champ.value = texte
-      this.app.tableau.garderTexteCahier(id, { texte, par: 'gemini', quand: Date.now(), gestes })
-      qui.textContent = `Rédigé par Gemini (${dernierModele()}) : relisez-le.`
+      this.app.tableau.garderTexteCahier(id, { texte, par: 'claude', quand: Date.now(), gestes })
+      qui.textContent = `Rédigé par Claude (${nomDuModele(modele)}) : relisez-le.`
     } catch (e) {
       if (!encore()) return
-      qui.textContent = e instanceof ErreurGemini ? e.message : 'Gemini n\'a pas pu rédiger le texte : le texte de l\'outil reste.'
+      if (autre) champ.value = autre
+      qui.textContent = e instanceof ErreurRedaction ? e.message : 'Claude n\'a pas pu rédiger le texte : le texte de l\'outil reste.'
       qui.classList.add('erreur')
       ;(d.querySelector('.p-reessayer') as HTMLElement).hidden = false
+    } finally {
+      if (encore()) bouton.hidden = false
     }
   }
 
