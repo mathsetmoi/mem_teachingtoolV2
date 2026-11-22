@@ -940,3 +940,81 @@ export function arbrePondere(n1: [string, string], n2: [string, string], p: { a:
   }
   return svg(320, 260, r)
 }
+
+/** La courbe de y = x² et la droite horizontale y = a, dans un repère
+ *  quadrillé et gradué (x de −4 à 4) : on y lit les solutions de x² = a */
+export function paraboleEtDroite(a: number) {
+  const g = grilleRepere(-4, 4, -3, 9, 20, 1, 1, true), xm = Math.sqrt(9.5)
+  let d = ''
+  for (let i = 0; i <= 60; i++) { const x = -xm + i * 2 * xm / 60; d += `${i ? 'L' : 'M'}${f2(g.X(x))} ${f2(g.Y(x * x))}` }
+  let r = g.r + `<path d="${d}" stroke="${ROUGE}" stroke-width="2.6"/>`
+  r += ligne({ x: g.X(-4), y: g.Y(a) }, { x: g.X(4), y: g.Y(a) }, `stroke="${BLEU_DROITE}" stroke-width="2.4"`)
+  r += ecrit({ x: g.X(xm) + 6, y: g.Y(9.5) + 4 }, 'y = x²', { taille: 14, couleur: ROUGE, italique: true, ancre: 'start' })
+  r += ecrit({ x: g.X(4) - 2, y: g.Y(a) - 9 }, `y = ${String(a).replace('-', '−')}`, { taille: 14, couleur: BLEU_DROITE, italique: true, ancre: 'end' })
+  return svg(g.L + 40, g.H, r)
+}
+const BLEU_DROITE = '#1f5fbf'
+
+/** Une ou deux droites y = m x + p dans un repère quadrillé et gradué
+ *  (de −5 à 5), chacune avec son équation écrite à côté */
+export function droitesRepere(droites: { m: number; p: number }[]) {
+  const g = grilleRepere(-5, 5, -5, 5, 22, 1, 1, true)
+  let r = g.r
+  droites.forEach(({ m, p }, i) => {
+    const pts: P[] = []
+    for (const x of [-5, 5]) { const y = m * x + p; if (y >= -5 && y <= 5) pts.push({ x, y }) }
+    for (const y of [-5, 5]) { if (m !== 0) { const x = (y - p) / m; if (x > -5 && x < 5) pts.push({ x, y }) } }
+    pts.sort((a, b) => a.x - b.x)
+    const [a, b] = [pts[0], pts[pts.length - 1]], couleur = i ? BLEU_DROITE : ROUGE
+    r += ligne({ x: g.X(a.x), y: g.Y(a.y) }, { x: g.X(b.x), y: g.Y(b.y) }, `stroke="${couleur}" stroke-width="2.6"`)
+    const terme = m === 0 ? '' : m === 1 ? 'x' : m === -1 ? '−x' : `${String(m).replace('-', '−')}x`
+    const eq = `y = ${terme || String(p).replace('-', '−')}${terme && p ? ` ${p < 0 ? '−' : '+'} ${Math.abs(p)}` : ''}`
+    // L'équation : près du bout droit pour la première, au-dessus du bout gauche pour une horizontale
+    const e = m === 0 ? { x: g.X(-4.9), y: g.Y(p) - 9 } : { x: g.X(a.x + (b.x - a.x) * 0.8) + 10, y: g.Y(a.y + (b.y - a.y) * 0.8) + (m > 0 ? 12 : -8) }
+    r += ecrit(e, eq, { taille: 14, couleur, italique: true, ancre: 'start' })
+  })
+  return svg(g.L, g.H, r)
+}
+
+/** Les solutions d'une inéquation sur une droite graduée : un crochet en
+ *  `borne`, tourné selon que la borne est comprise ou non, et la partie
+ *  coloriée d'un côté */
+export function intervalleGradue(borne: number, versDroite: boolean, compris: boolean) {
+  const debut = borne - 4, fin = borne + 4, L = 520, g = 30, u = (L - 2 * g) / (fin - debut)
+  const X = (v: number) => g + (v - debut) * u
+  let r = ligne({ x: 10, y: 60 }, { x: L - 10, y: 60 }) + `<path d="M${L - 18} 54L${L - 8} 60L${L - 18} 66"/>`
+  for (let v = debut; v <= fin; v++) {
+    r += ligne({ x: X(v), y: 52 }, { x: X(v), y: 68 })
+    r += texte({ x: X(v), y: 96 }, String(v).replace('-', '−'), 'font-size="20"')
+  }
+  r += ligne({ x: X(borne), y: 60 }, { x: versDroite ? L - 22 : 14, y: 60 }, `stroke="${ROUGE}" stroke-width="7"`)
+  // Le crochet s'ouvre vers les solutions quand la borne en fait partie
+  const s = compris === versDroite ? 1 : -1, x0 = X(borne)
+  r += `<path d="M${f2(x0 + 10 * s)} 40L${f2(x0)} 40L${f2(x0)} 80L${f2(x0 + 10 * s)} 80" stroke="${ROUGE}" stroke-width="3.5"/>`
+  return svg(L, 110, r)
+}
+
+/** La configuration de Thalès : (MN) parallèle à (BC), M sur la droite
+ *  (AB), N sur la droite (AC). En triangles emboîtés (M sur [AB], N sur
+ *  [AC]) ou en papillon (A entre M et B, et entre N et C).
+ *  noms = A, M, B, N, C (dans cet ordre). */
+export function thales(noms: string, papillon: boolean) {
+  const A: P = { x: 0, y: 0 }, t = (Math.random() * 24 - 12) * Math.PI / 180
+  const tourne = (q: P): P => ({ x: q.x * Math.cos(t) - q.y * Math.sin(t), y: q.x * Math.sin(t) + q.y * Math.cos(t) })
+  const B = tourne({ x: -60 - Math.random() * 40, y: 170 }), C = tourne({ x: 80 + Math.random() * 50, y: 170 })
+  const k = (0.42 + Math.random() * 0.2) * (papillon ? -1 : 1)
+  const M = { x: k * B.x, y: k * B.y }, N = { x: k * C.x, y: k * C.y }
+  let r = papillon ? ligne(M, B) + ligne(N, C) : ligne(A, B) + ligne(A, C)
+  r += ligne(M, N) + ligne(B, C)
+  // Les noms : écartés de A le long des droites, un peu sur le côté
+  const loin = (p: P, cote: P) => {
+    const d = dist(p, A) || 1, u = { x: (p.x - A.x) / d, y: (p.y - A.y) / d }
+    let n = { x: -u.y, y: u.x }
+    if (n.x * (cote.x - A.x) + n.y * (cote.y - A.y) > 0) n = { x: -n.x, y: -n.y }
+    return { x: p.x + u.x * 12 + n.x * 16, y: p.y + u.y * 12 + n.y * 16 }
+  }
+  r += nom(loin(B, C), noms[2], 24) + nom(loin(C, B), noms[4], 24)
+  r += nom(papillon ? loin(M, N) : loin(M, C), noms[1], 24) + nom(papillon ? loin(N, M) : loin(N, B), noms[3], 24)
+  r += nom(papillon ? { x: A.x - 24, y: A.y + 2 } : { x: A.x, y: A.y - 20 }, noms[0], 24)
+  return cadre([A, B, C, M, N], r, 36)
+}

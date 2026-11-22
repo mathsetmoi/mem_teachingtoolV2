@@ -25,6 +25,8 @@ import type { Automatisme, Facon, QuestionCours } from './outils'
 import { PRENOMS, aTrou, choix, cm3, ent, etL, frac, grandNb, irreductible, melange, mot, nb, notions, pgcd, piFois, pts, relNonNul, tableau, tri, unite } from './outils'
 import { AUTOMATISMES_3E_AVANT, COURS_3E_AVANT, NOM_POLYGONE, VILLES, affine, facteursPremiers, fr, ppcm } from './troisieme'
 import { AUTOMATISMES_4E, aligne, surUnTrait } from './quatrieme'
+import { AUTOMATISMES_3E_OBJECTIFS, COURS_3E_OBJECTIFS, PHRASES_DU_PROFESSEUR_3E_OBJECTIFS } from './troisieme-objectifs'
+import { AUTOMATISMES_3E_OBJECTIFS_GEOMETRIE, COURS_3E_OBJECTIFS_GEOMETRIE } from './troisieme-objectifs-geometrie'
 import { rangerSousObjectif } from '../objectifs-flash'
 import { PROGRAMME_CYCLE4 } from '../programme-cycle4'
 
@@ -572,6 +574,9 @@ export const AUTOMATISMES_3E: Automatisme[] = [
     const objet = choix(['Un livre', 'Un jeu', 'Un pull', 'Un casque', 'Un ballon', 'Une lampe', 'Un sac']), p = choix([20, 40, 60, 80, 100, 120, 200])
     return { enonce: `${objet} coûte $${p}$ euros. Quel sera son prix après ${plus ? 'une augmentation' : 'une baisse'} de $${t}\\,\\%$ ?`, reponse: unite(nb(p * (1 + (plus ? t : -t) / 100)), '€') }
   }),
+  // Les objectifs d'apprentissage revus le 22 novembre 2026 (troisieme-objectifs.ts)
+  ...AUTOMATISMES_3E_OBJECTIFS,
+  ...AUTOMATISMES_3E_OBJECTIFS_GEOMETRIE,
 ]
 
 // =============================================================
@@ -786,8 +791,11 @@ const RANGEES: QuestionCours[] = [
 ]
 
 const RANGEES_IDS = new Set(RANGEES.map(c => c.id))
+for (const id of PHRASES_DU_PROFESSEUR_3E_OBJECTIFS) PHRASES_DU_PROFESSEUR_3E.add(id)
 export const COURS_3E: QuestionCours[] = [
   ...RANGEES,
+  ...COURS_3E_OBJECTIFS,
+  ...COURS_3E_OBJECTIFS_GEOMETRIE,
   // Les notions d'avant que le professeur ne garde pas : sans compétence,
   // le flash ne les pose plus (elles restent ici, telles quelles)
   ...COURS_3E_AVANT.filter(c => !RANGEES_IDS.has(c.id)),
