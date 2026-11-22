@@ -1193,6 +1193,19 @@ page derrière reste vide. On y choisit :
   représentation de l'espace) n'ont que leurs questions de cours : les
   exercices sont en suspens. Le repérage n'a pas d'objectif en 3e.
 
+  **Le thème Données et probabilités** (même jour,
+  `src/automatismes/troisieme-objectifs-donnees.ts`) : 57 exercices et 17
+  questions de cours. Effectifs cumulés croissants, médiane et quartiles
+  (tableau d'effectifs, diagramme en barres, effectifs cumulés donnés ;
+  premier quartile au rang « quart de l'effectif, arrondi au-dessus »),
+  boîtes à moustaches (lire, étendue, écart interquartile, comparer deux
+  classes par un écart chiffré, construire depuis 11 valeurs),
+  interpréter (médiane, quartile, valeur extrême, fréquence, note
+  manquante), tableur (formules MOYENNE, MEDIANE, MAX−MIN, plages) ;
+  P(A ∪ B) + P(A ∩ B) = P(A) + P(B) (dé, jeu de 32 cartes), expériences
+  indépendantes (arbre, urne avec remise, simulation au tableur et en
+  Scratch), fréquence et probabilité (estimer, courbe qui se stabilise).
+
 - combien de questions de chaque sorte, avec − et + : par défaut **5
   questions, 2 questions de cours** (une définition, une propriété, le
   vocabulaire : « La médiatrice d'un segment est la droite… ») **puis 3
