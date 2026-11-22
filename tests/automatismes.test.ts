@@ -454,7 +454,9 @@ describe('les automatismes de 3e', () => {
       const q = c.poser(); verifier(q.enonce, c.id); verifier(q.reponse, c.id)
       if (q.figure) expect(q.figure, c.id).not.toMatch(/NaN|undefined/)
     }
-  })
+    // Plus de 200 exercices de 3e tirés 30 fois, beaucoup avec un dessin :
+    // plus de 5 secondes sur la machine de vérification
+  }, 20000)
 
   it('par défaut : 2 questions de cours de 3e, puis 3 exercices, avec la phrase du programme pour la correction', () => {
     for (let k = 0; k < 50; k++) {
