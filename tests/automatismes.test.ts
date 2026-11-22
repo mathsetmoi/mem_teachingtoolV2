@@ -5,7 +5,7 @@
 // un trou ; un thème sans question de cours donne un exercice à la place.
 import { describe, expect, it } from 'vitest'
 import katex from 'katex'
-import { AUTOMATISMES_1RE, AUTOMATISMES_2NDE, AUTOMATISMES_3E, AUTOMATISMES_4E, AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_1RE, COURS_2NDE, COURS_3E, COURS_4E, COURS_5E, NIVEAUX, automatismesDuFlash, themesDe, tirerFlash } from '../src/automatismes'
+import { AUTOMATISMES_1RE, AUTOMATISMES_2NDE, AUTOMATISMES_3E, AUTOMATISMES_4E, AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_1RE, COURS_2NDE, COURS_3E, COURS_4E, COURS_5E, NIVEAUX, automatismesDuFlash, themesDe, tirerFlash, tirerRemplacante } from '../src/automatismes'
 import { PROGRAMME_AUTOMATISMES, THEMES_COLLEGE } from '../src/programme-automatismes'
 import { cleObjectifsDe, objectifsDeExercice, SECTION_AUTOMATISMES, SECTION_OBJECTIFS } from '../src/objectifs-flash'
 import { PROGRAMME_CYCLE4 } from '../src/programme-cycle4'
@@ -857,5 +857,31 @@ describe('les questions de cours de 5e, rangées par compétence', () => {
     const para = cinq.cours.find(c => c.titre === 'La nature d’un parallélogramme codé')!
     for (let k = 0; k < 40; k++) expect(para.poser().reponse).toMatch(/^§un (carré|losange|rectangle)$/)
     void q
+  })
+})
+
+describe('remplacer une question pendant le flash (22 novembre 2026)', () => {
+  it('même forme, jamais une question déjà venue', () => {
+    for (let k = 0; k < 40; k++) {
+      const { questions } = tirerFlash(AUTOMATISMES_5E, COURS_5E, COMPOSITION_PAR_DEFAUT)
+      for (const q of questions) {
+        const r = tirerRemplacante(AUTOMATISMES_5E, COURS_5E, q, questions)!
+        expect(r.forme).toBe(q.forme)
+        expect(questions.map(x => x.id)).not.toContain(r.id)
+      }
+    }
+  })
+  it('plus d\'autre exercice : le même revient, avec d\'autres nombres si possible', () => {
+    const seul = AUTOMATISMES_5E.slice(0, 1)
+    const { questions } = tirerFlash(seul, [], { cours: 0, application: 1 })
+    const r = tirerRemplacante(seul, [], questions[0], questions)!
+    expect(r.id).toBe(seul[0].id)
+    expect(tirerRemplacante([], [], questions[0], questions)).toBeNull()
+  })
+  it('un réglage d\'avant a la correction à la fin ; décochée, elle est retenue', () => {
+    expect(REGLAGES_PAR_DEFAUT.correctionALaFin).toBe(true)
+    expect(lireReglages(JSON.stringify({ themes: ['5e/Angles'] })).correctionALaFin).toBe(true)
+    expect(lireReglages(JSON.stringify({ correctionALaFin: false })).correctionALaFin).toBe(false)
+    expect(lireReglages(JSON.stringify({ correctionALaFin: 'non' })).correctionALaFin).toBe(true)
   })
 })

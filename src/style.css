@@ -2925,3 +2925,8 @@ body.page-nuit.contraste :is(.bouton, button.rang, .bouton-classeur, .zoom-texte
 .compteur-type.rien { opacity: .45; }
 .bilan-cases { margin: 8px 0 0; font-size: 14px; color: var(--encre-douce); }
 .filtre-masque { display: none !important; }
+.bandeau-flash .choix-remplacer { display: inline-flex; align-items: center; gap: 4px; }
+.bandeau-flash .choix-remplacer[hidden] { display: none; }
+.bandeau-flash .choix-remplacer span { font-size: 14px; color: var(--encre-douce); margin: 0 2px; }
+.bandeau-flash .choix-remplacer .numero { width: 38px; padding: 0; }
+.bandeau-flash .remplacer.actif { background: #e9eef5; }

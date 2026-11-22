@@ -99,6 +99,27 @@ function tirerDans<T extends { id: string; theme: string }>(lot: T[], pris: Map<
   return { x, q }
 }
 
+/** Une autre question pour remplacer celle que le professeur n'aime pas,
+ *  de la même forme (une question de cours reste une question de cours)
+ *  et dans le même réglage : d'abord un autre exercice que tous ceux du
+ *  flash (et que ceux déjà remplacés) ; s'il n'y en a plus, un autre que
+ *  celui qu'on remplace ; en dernier, le même avec d'autres nombres. */
+export function tirerRemplacante(autos: Automatisme[], lecons: QuestionCours[], remplacee: QuestionFlash, deja: QuestionFlash[]): QuestionFlash | null {
+  const cours = remplacee.forme === 'cours' && lecons.length > 0
+  const lot: { id: string; theme: string }[] = cours ? lecons : autos
+  if (!lot.length) return null
+  const exclus = new Set(deja.map(q => q.id))
+  const candidats = lot.filter(x => !exclus.has(x.id)).length ? lot.filter(x => !exclus.has(x.id))
+    : lot.filter(x => x.id !== remplacee.id).length ? lot.filter(x => x.id !== remplacee.id) : lot
+  const pris = new Map<string, number>(), vus = new Set(deja.map(q => q.q.enonce + (q.q.figure ?? '') + q.q.reponse))
+  if (cours) {
+    const { x, q } = tirerDans(candidats as QuestionCours[], pris, vus, l => l.poser())
+    return { id: x.id, theme: x.theme, q, forme: 'cours' }
+  }
+  const { x, q } = tirerDans(candidats as Automatisme[], pris, vus, a => a.trou && Math.random() < PART_DES_TROUS ? a.trou() : a.generer())
+  return { id: x.id, theme: x.theme, q, forme: 'application', ...(x.programme ? { programme: x.programme } : {}) }
+}
+
 /** Les questions d'un flash, dans l'ordre : les questions de cours, puis
  *  les exercices d'application (une question à trou s'y glisse parfois).
  *  Les thèmes choisis passent chacun leur tour ; on évite de reprendre

@@ -1230,6 +1230,12 @@ page derrière reste vide. On y choisit :
   la remplace, et un message le dit ;
 - l'**affichage** : une question à la fois (30 s chacune par défaut), ou
   toutes d'un coup avec une minuterie (5 min par défaut).
+- la case **« Correction à la fin »** (22 novembre 2026), cochée par défaut :
+  la correction s'affiche d'elle-même à la fin du temps. Décochée, le temps
+  fini, les questions reviennent en grille sans réponse, le bandeau dit
+  « Temps écoulé », et le professeur montre la correction avec « Correction »
+  (ou C) quand il veut. Champ facultatif `correctionALaFin` du réglage (un
+  réglage d'avant n'en a pas : il vaut oui).
 
 Le dernier réglage est retenu sur l'appareil, et pour chaque classeur
 (`mem-flash`, `mem-flash-<classeur>`), avec les compétences cochées d'un
@@ -1246,8 +1252,15 @@ on écrit dessus au stylet, on les déplace. Une question de cours porte la
 mention « Cours » après son numéro.
 Le titre « Automatismes — » et la date est en haut de la page. Le temps et le
 numéro de la question sont dans un bandeau, pas sur la page : Pause (ou
-Espace), Suivante (ou →), Correction (ou C), Nouveaux exemples, et × pour
-arrêter. Une question à la fois : la question en grand à droite, et quand son
+Espace), Remplacer (ou R), Suivante (ou →), Correction (ou C), Nouveaux
+exemples, et × pour arrêter. **Remplacer** (22 novembre 2026) met une autre
+question à la place de celle qui ne plaît pas : de la même forme (cours ou
+exercice), du même réglage, jamais une question déjà venue dans ce flash (ni
+une déjà remplacée) ; s'il n'y a plus d'autre exercice, le même revient avec
+d'autres nombres. La question remplacée s'efface de la page (le replay la
+montre un instant). Une question à la fois, son temps repart du début ;
+toutes d'un coup, « Remplacer » demande laquelle (1 à 5, au clic ou au
+chiffre, Échap pour renoncer) et la minuterie continue. Une question à la fois : la question en grand à droite, et quand son
 temps est passé elle va se ranger dans sa case à gauche. Si l'on va sur une
 autre page, le temps attend. **La correction** remet toutes les questions en
 grille et écrit chaque réponse en vert dessous (une réponse de cours un peu

@@ -43,6 +43,12 @@
 //    6e du calcul littéral, en suspens), les autres restent grises, et
 //    le pair et l'impair (Calcul littéral, C6) se coche avec ses seules
 //    questions de cours ;
+// O. « Remplacer » (22 novembre 2026) : une à la fois, une autre question
+//    de la même forme arrive en grand, le temps repart du début, l'ancienne
+//    s'efface ; toutes d'un coup, « Remplacer » demande laquelle (chiffre),
+//    la minuterie continue, le bandeau tient sur une ligne ; la case
+//    « Correction à la fin » décochée : le temps fini, « Temps écoulé »,
+//    aucune réponse en vert jusqu'à C ;
 // F. aucune erreur.
 import { chromium } from '../commun/playwright.mjs'
 
@@ -338,6 +344,77 @@ const bleusK = await p.evaluate(pg => [...window.__app.tableau.formesDe(pg).valu
 ok(bleusK >= 3, 'K) À la correction, la phrase du programme sous chaque exercice', bleusK)
 if (process.env.CAPTURE3) await p.screenshot({ path: process.env.CAPTURE3 })
 await p.click('.bandeau-flash .fermer').catch(() => {})
+
+// ---------- O. Remplacer, correction à la fin ----------
+{
+  const ctxO = await nav.newContext({ viewport: { width: 1366, height: 768 } })
+  const o = await ctxO.newPage()
+  o.on('pageerror', e => erreurs.push(e.message))
+  o.on('console', m => { if (m.type() === 'error') erreurs.push(m.text()) })
+  await o.goto(DEV)
+  await o.waitForFunction(() => window.__app, null, { timeout: 30000 })
+  await o.waitForTimeout(1200)
+  const etatO = () => o.evaluate(() => document.querySelector('.etat-flash')?.textContent ?? '')
+  const enGrand = () => o.evaluate(() => window.__app.ui.flash?.flash?.enGrand?.slice() ?? null)
+  const cocherO = async (niveau, domaine) => {
+    const c = `.case-domaine[value="${niveau}/${domaine}"]`
+    if (!await o.isVisible(c)) await o.click(`.themes-niveau[data-niveau="${niveau}"] .arbre-theme:has(${c}) > .ligne-arbre > .deplier`)
+    await o.click(c)
+  }
+  await o.click('button[title^="Automatismes"]')
+  await o.waitForSelector('dialog.dialogue-flash[open]')
+  ok(await o.evaluate(() => document.querySelector('.correction-fin').checked), 'O) « Correction à la fin » est cochée par défaut')
+  await cocherO('5e', 'Nombres relatifs'); await cocherO('5e', 'Nombres rationnels')
+  await o.fill('.par-question', '10')
+  await o.uncheck('.correction-fin')
+  await o.click('.dialogue-flash .lancer')
+  await o.waitForTimeout(3500)
+  const avant = await o.evaluate(() => ({ enonces: [...window.__app.tableau.formesDe(window.__app.page).values()].map(f => f.latex).join('|'), q: window.__app.ui.flash?.flash?.questions?.[0]?.id }))
+  const tAvant = await etatO()
+  await o.click('.bandeau-flash .remplacer'); await o.waitForTimeout(800)
+  const tApres = await etatO()
+  const apres = await o.evaluate(() => ({ q: window.__app.ui.flash?.flash?.questions?.[0], deja: window.__app.ui.flash?.flash?.remplacees?.map(x => x.id) }))
+  ok(/0:0[0-7]/.test(tAvant) && /0:(09|10)/.test(tApres), 'O) Remplacer : le temps de la question repart du début', { tAvant, tApres })
+  ok(apres.q && apres.q.id !== avant.q && apres.q.forme === 'cours' && apres.deja?.[0] === avant.q, 'O) Une autre question de cours, l\'ancienne retenue', { avant: avant.q, apres })
+  const ids = await enGrand()
+  ok(ids && ids.length > 0 && await o.evaluate(ids => ids.every(id => window.__app.tableau.formesDe(window.__app.page).has(id)), ids), 'O) La nouvelle question est posée en grand')
+  await o.keyboard.press('r'); await o.waitForTimeout(800)
+  const apres2 = await o.evaluate(() => window.__app.ui.flash?.flash?.questions?.[0]?.id)
+  ok(apres2 && apres2 !== apres.q.id && apres2 !== avant.q, 'O) La touche R remplace aussi, sans retomber sur une question déjà venue', { apres2 })
+  for (let k = 0; k < 5; k++) { await o.keyboard.press('ArrowRight'); await o.waitForTimeout(400) }
+  const fin = await etatO()
+  const vertsFin = await o.evaluate(v => [...window.__app.tableau.formesDe(window.__app.page).values()].filter(f => f.couleur === v).length, VERT)
+  ok(/Temps écoulé/.test(fin) && vertsFin === 0, 'O) Case décochée : « Temps écoulé », aucune réponse en vert', { fin, vertsFin })
+  ok(await o.evaluate(() => !document.querySelector('.bandeau-flash .corriger').hidden && document.querySelector('.bandeau-flash .remplacer').hidden), 'O) … le bouton « Correction » reste, « Remplacer » part')
+  await o.keyboard.press('c'); await o.waitForTimeout(800)
+  const vertsC = await o.evaluate(v => [...window.__app.tableau.formesDe(window.__app.page).values()].filter(f => f.couleur === v).length, VERT)
+  ok(vertsC >= 5, 'O) C montre la correction quand on veut', vertsC)
+  await o.click('.bandeau-flash .fermer')
+  // Toutes d'un coup
+  await o.click('button[title^="Automatismes"]')
+  await o.waitForSelector('dialog.dialogue-flash[open]')
+  ok(!(await o.evaluate(() => document.querySelector('.correction-fin').checked)), 'O) La case décochée est retenue')
+  await o.click('input[name=affichage-flash][value=toutes]')
+  await o.click('.dialogue-flash .lancer')
+  await o.waitForTimeout(3500)
+  const t1 = await etatO()
+  await o.keyboard.press('r'); await o.waitForTimeout(300)
+  const bandeau = await o.evaluate(() => {
+    const b = document.querySelector('.bandeau-flash')
+    return { h: b.getBoundingClientRect().height, choix: !document.querySelector('.choix-remplacer').hidden, n: document.querySelectorAll('.choix-remplacer .numero').length }
+  })
+  ok(bandeau.choix && bandeau.n === 5 && bandeau.h < 70, 'O) Toutes d\'un coup : « Laquelle ? » 1 à 5, sur une seule ligne', bandeau)
+  const q3 = await o.evaluate(() => window.__app.ui.flash.flash.questions[2].id)
+  await o.keyboard.press('3'); await o.waitForTimeout(800)
+  const t2 = await etatO()
+  const q3b = await o.evaluate(() => window.__app.ui.flash.flash.questions[2].id)
+  const sec = t => { const m = t.match(/(\d+):(\d\d)/); return m ? +m[1] * 60 + +m[2] : -1 }
+  ok(q3b !== q3, 'O) La touche 3 remplace la question 3', { q3, q3b })
+  ok(sec(t2) <= sec(t1) && sec(t2) > 0, 'O) La minuterie continue (elle ne repart pas du début)', { t1, t2 })
+  ok(await o.evaluate(() => document.querySelector('.choix-remplacer').hidden), 'O) Le choix se referme')
+  await o.click('.bandeau-flash .fermer')
+  await ctxO.close()
+}
 
 // ---------- F. ----------
 ok(!erreurs.length, 'F) Aucune erreur', erreurs)
