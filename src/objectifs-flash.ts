@@ -6,8 +6,8 @@
 // compétence est un objectif, et ses exercices sont les exercices
 // d'application directe que le Catalogue range déjà sous cet objectif
 // (le champ « exemples »). Un domaine sans exercice reste visible, en
-// gris, « à remplir » : en 3e, faute d'exercice d'application, tous les
-// objectifs le sont encore (15 novembre 2026).
+// gris, « à remplir ». En 3e, seuls les deux premiers objectifs des
+// nombres rationnels ont des exercices (22 novembre 2026).
 //
 // La clé d'un domaine d'objectifs est « obj: » suivi de son nom dans le
 // programme (« obj:Opérations ») : elle ne se confond pas avec celle du
@@ -45,9 +45,9 @@ export function objectifsDeExercice(niveau: string, id: string): { cle: string; 
 /** Les exercices que le professeur a rangés sous un objectif en plus de
  *  ceux du Catalogue (les anciennes formulations d'une question de cours) */
 const SUPPLEMENTS = new Map<string, { cle: string; ks: number[] }>()
-export function rangerSousObjectif(niveau: string, id: string, theme: string, k: number) {
+export function rangerSousObjectif(niveau: string, id: string, theme: string, k: number | number[]) {
   const cle = cleObjectifsDe(niveau, theme)
-  if (cle) SUPPLEMENTS.set(`${niveau}/${id}`, { cle, ks: [k] })
+  if (cle) SUPPLEMENTS.set(`${niveau}/${id}`, { cle, ks: Array.isArray(k) ? [...k] : [k] })
 }
 /** La clé du domaine d'objectifs qui correspond à un thème du flash
  *  (« Repérage » pour « Repérage sur une droite et dans le plan ») */

@@ -1075,7 +1075,9 @@ page derrière reste vide. On y choisit :
   du programme qu'il travaille (champ `programme`), comme au brevet : elle
   s'écrit à la correction, en petit et en bleu, sous la réponse. Ceux de
   **3e** (7 novembre 2026) ne sont que des **automatismes** de la liste de
-  3e du programme 2026 : 40 exercices, chacun rangé sous sa compétence, et
+  3e du programme 2026 : 40 exercices au départ (62, et 41 questions de
+  cours rangées par compétence, depuis la revue du 22 novembre décrite plus
+  bas), chacun rangé sous sa compétence, et
   chacune des 37 compétences a au moins le sien (fractions, puissances,
   carrés, décomposition en facteurs premiers, dénominateur commun,
   divisibilité par 2, 3, 5, 9, équations, réduire, valeur d'une expression,
@@ -1129,8 +1131,32 @@ page derrière reste vide. On y choisit :
   gris, « à remplir », et Probabilités, Fonctions et Pensée informatique,
   qui n'ont que des objectifs, sont « à remplir » en entier. « Multiples et
   diviseurs » et « Repérage » n'ont aucun objectif au programme de 3e. Les
-  réglages gardés de 3e (« 3e/Puissances », « 3e/Puissances/1 ») posent les
-  mêmes exercices qu'avant. La 4e garde l'arbre à compétences d'avant.
+  réglages gardés de 3e (« 3e/Puissances », « 3e/Puissances/1 ») gardent
+  leur sens. La 4e garde l'arbre à compétences d'avant.
+  **Les questions de cours et les exercices de 3e, revus compétence par
+  compétence** (du 18 au 22 novembre 2026,
+  `src/automatismes/troisieme-competences.ts`) : comme en 5e, chaque
+  question de cours porte sa compétence (ou son objectif), une compétence
+  sans question de cours pose un exercice, et l'ancienne formulation d'une
+  question reformulée devient un exercice `ancien-cours-3e-…` de la même
+  compétence. Le pair et l'impair (Calcul littéral, C6) n'a plus que des
+  questions de cours. Les objectifs 1 et 2 des nombres rationnels
+  (fraction irréductible) ont leurs exercices et leur question de cours :
+  ce sont les seules lignes OBJ de 3e qui ne sont plus grises. Les règles
+  du professeur : on ne garde que ce qui correspond exactement à
+  l'intitulé de la compétence ; pas de calculatrice, donc des calculs
+  simples (moyennes, partages, pourcentages, volumes) ; les questions ne
+  listent jamais les réponses possibles (« Quelle est la nature de
+  l'expression … ? ») ; rien de fixe, sauf les phrases du cours qu'il a
+  écrites lui-même (`PHRASES_DU_PROFESSEUR_3E`). Ce qu'il ne garde pas
+  n'est plus posé mais reste dans `troisieme.ts`, tel quel
+  (`AUTOMATISMES_3E_AVANT`, `COURS_3E_AVANT`). Nouveaux dessins
+  (`src/figures.ts`) : une pyramide aux sommets nommés (base de 3 à 6
+  côtés, arêtes cachées en pointillés), une pyramide ou un cône avec ses
+  mesures, le patron d'une pyramide, un triangle inscrit dans un cercle de
+  diamètre un de ses côtés, un triangle rectangle nommé ; la droite des
+  milieux se dessine aussi sans longueur, et pour la réciproque.
+  `rangerSousObjectif` accepte plusieurs objectifs pour un même exercice.
 
 - combien de questions de chaque sorte, avec − et + : par défaut **5
   questions, 2 questions de cours** (une définition, une propriété, le

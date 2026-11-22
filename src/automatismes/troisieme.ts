@@ -1,8 +1,12 @@
 // =============================================================
 // LES AUTOMATISMES DE 3e
-// Les exercices de 3e (AUTOMATISMES_3E ; certains reprennent ceux de 4e)
-// et les questions de cours (COURS_3E). Voir ../automatismes.ts pour
-// l'ensemble.
+// Les exercices de 3e et les questions de cours, tels qu'ils étaient
+// avant le 22 novembre 2026 (AUTOMATISMES_3E_AVANT, COURS_3E_AVANT ;
+// certains exercices reprennent ceux de 4e), et les outils qu'ils
+// partagent. Le professeur les a revus compétence par compétence : la
+// liste que le flash pose est dans troisieme-competences.ts, qui reprend
+// d'ici ce qu'il a gardé. Rien n'est effacé : ce qui n'est plus posé reste
+// dans ce fichier. Voir ../automatismes.ts pour l'ensemble.
 // =============================================================
 import * as F from '../figures'
 import type { Automatisme, Facon, QuestionCours } from './outils'
@@ -88,7 +92,7 @@ export const POLYGONES_BASE: [number, string][] = [[3, 'triangulaire'], [4, 'car
 export const NOM_POLYGONE: Record<number, string> = { 3: 'un triangle', 4: 'un quadrilatère', 5: 'un pentagone', 6: 'un hexagone', 8: 'un octogone' }
 export const VILLES = ['Lyon', 'Nantes', 'Lille', 'Rennes', 'Dijon', 'Tours', 'Reims', 'Metz', 'Brest', 'Nîmes', 'Caen', 'Pau']
 
-export const AUTOMATISMES_3E: Automatisme[] = [
+export const AUTOMATISMES_3E_AVANT: Automatisme[] = [
   // ================= NOMBRES RATIONNELS =================
   {
     ...reprendre4e('4e-fractions-addsub', { id: '3e-fractions-addsub', theme: 'Nombres rationnels', competence: 0, programme: P3.fractions }),
@@ -459,9 +463,9 @@ export const AUTOMATISMES_3E: Automatisme[] = [
   reprendre4e('4e-augmentation', { id: '3e-evolution', theme: 'Proportionnalité', competence: 5, programme: P3.evolution }),
 ]
 
-// ---------- Les questions de cours de 3e (rien de fixe) ----------
+// ---------- Les questions de cours de 3e, avant le 22 novembre 2026 (rien de fixe) ----------
 export const n3 = (theme: string, liste: [string, ...Facon[]][]) => notions(theme, liste, '3e-')
-export const COURS_3E: QuestionCours[] = [
+export const COURS_3E_AVANT: QuestionCours[] = [
   ...n3('Nombres rationnels', [
     ['Diviser par une fraction',
       () => { let a: number, b: number; do { a = ent(1, 9); b = ent(2, 9) } while (a === b || pgcd(a, b) !== 1); return [`Diviser par $${frac(a, b)}$ revient à…`, `multiplier par son inverse, $${frac(b, a)}$`] }],
