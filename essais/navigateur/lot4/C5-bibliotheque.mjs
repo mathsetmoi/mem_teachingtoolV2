@@ -506,7 +506,7 @@ if (seul('F')) {
       cle: d.querySelector('.case-cle') ? { texte: d.querySelector('.case-cle span').firstChild.textContent, coche: d.querySelector('.case-cle input').checked } : null,
       boutons: [...d.querySelectorAll('.actions button')].map(b => b.textContent + (b.classList.contains('principal') ? ' (principal)' : '')) }
   })
-  ok(d.titre === 'Nouveau classeur' && d.nom === 'Nouveau classeur' && d.choisi && d.max === 60, 'La fenêtre « Nouveau classeur » : le nom prérempli, tout choisi, 60 caractères', d)
+  ok(d.titre === 'Nouveau classeur' && d.nom === 'Nouveau classeur' && d.choisi && d.max === 100, 'La fenêtre « Nouveau classeur » : le nom prérempli, tout choisi, 100 caractères', d)
   // (Adapté aux réglages par défaut, retouches après le lot 5 : la page blanche est cochée d'office, l'ordre ne change pas)
   ok(d.legende === 'Fond de la première page' && JSON.stringify(d.fonds) === JSON.stringify(['Petits carreaux', 'Page blanche ✓', 'Seyès', 'Repère', 'Grands carreaux (1 cm)', 'Papier millimétré', 'Papier pointé', 'Réseau isométrique']), '   … le fond : Petits carreaux, Page blanche (cochée), Seyès, Repère, puis les quatre du lot 5 (K8 : adapté volontairement)', d.fonds)
   // (Lot 18 : la case dit « Enregistrer automatiquement dans un fichier » ; le mot « clé » quitte l'écran)

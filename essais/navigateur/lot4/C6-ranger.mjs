@@ -176,7 +176,7 @@ if (seul('A') || seul('B') || seul('C') || seul('D') || seul('E') || seul('F')) 
       classe: { coche: d.querySelector('input[name="classe"]').checked, texte: d.querySelector('.case-classe span').textContent }, boutons: [...d.querySelectorAll('.actions button')].map(b => b.textContent),
       dans: d.querySelector('.dans')?.textContent ?? null }
   })
-  ok(d0.titre === 'Nouveau dossier' && d0.max === 40 && d0.ph === '5ème' && d0.focus && d0.dans === null, '« Nouveau dossier » : « Nom », 40 caractères, l\'exemple grisé « 5ème », le focus dedans', d0)
+  ok(d0.titre === 'Nouveau dossier' && d0.max === 60 && d0.ph === '5ème' && d0.focus && d0.dans === null, '« Nouveau dossier » : « Nom », 60 caractères, l\'exemple grisé « 5ème », le focus dedans', d0)
   ok(d0.legende === 'Couleur' && d0.couleurs.join() === 'Gris,Bleu*,Vert,Jaune,Orange,Rouge,Violet,Rose' && d0.valeurs.join() === '#8a94a6,#3b6fb6,#2f8a57,#b8901f,#cf7a2b,#c24a4a,#7d5ba6,#b9578a', '   … « Couleur » : 8 pastilles (boutons radio nommés), Bleu au départ', d0.couleurs)
   ok(!d0.classe.coche && JSON.stringify(d0.boutons) === '["Annuler","Créer"]', '   … la case « Dossier d\'un niveau », décochée tant que rien n\'est tapé ; [Annuler] [Créer]', d0)
   await p.keyboard.type('5e B'); await p.waitForTimeout(50)
@@ -439,7 +439,7 @@ if (etat.p && (seul('E') || seul('F'))) {
   // À la souris : un double-clic sur le nom
   await p.dblclick(`${sel(a)} .carte-nom-classeur`); await p.waitForTimeout(250)
   let v = await vue(p)
-  ok(v.saisie && v.saisie.valeur === 'Fractions' && v.saisie.focus && v.saisie.choisi && v.saisie.max === 60 && v.saisie.cle === a && p.url().endsWith('?classeur=' + ici), 'Un double-clic sur le nom : un champ dans la carte, prérempli, tout choisi, 60 caractères ; rien ne s\'ouvre', v.saisie)
+  ok(v.saisie && v.saisie.valeur === 'Fractions' && v.saisie.focus && v.saisie.choisi && v.saisie.max === 100 && v.saisie.cle === a && p.url().endsWith('?classeur=' + ici), 'Un double-clic sur le nom : un champ dans la carte, prérempli, tout choisi, 100 caractères ; rien ne s\'ouvre', v.saisie)
   const geom = await p.evaluate(() => { const i = document.querySelector('.carte-saisie').getBoundingClientRect(), n = document.querySelector('.carte-saisie').closest('li').querySelector('.carte-nom-classeur').getBoundingClientRect(); return { i: Math.round(i.top), n: Math.round(n.top), dans: i.left >= n.left - 8 && i.right <= n.right + 8 } })
   ok(Math.abs(geom.i + 7 - geom.n) <= 2 && geom.dans, '   … le champ est posé sur le nom', geom)
   await p.screenshot({ path: CAPTURES + 'E-renommer.png' })
@@ -475,7 +475,7 @@ if (etat.p && (seul('E') || seul('F'))) {
   // Un dossier : « Renommer… » ; un dossier de niveau garde son étiquette accordée
   await ouvrirMenu(p, 'd:' + etat.d2); await choisir(p, 'renommer-dossier')
   v = await vue(p)
-  ok(v.saisie?.max === 40 && v.saisie.valeur === '2nde 3', '« Renommer… » d\'un dossier : 40 caractères', v.saisie)
+  ok(v.saisie?.max === 60 && v.saisie.valeur === '2nde 3', '« Renommer… » d\'un dossier : 40 caractères', v.saisie)
   await p.keyboard.press('Backspace'); await p.keyboard.press('Enter'); await p.waitForTimeout(200)
   ok((await toasts(p)).some(x => x.includes('Un dossier a besoin d\'un nom.')), '   … vide : « Un dossier a besoin d\'un nom. »')
   await p.keyboard.type('2nde 4'); await p.keyboard.press('Enter'); await p.waitForTimeout(400)

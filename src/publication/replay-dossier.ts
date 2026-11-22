@@ -28,7 +28,7 @@ import { nomSur } from '../fichier'
  *  puis le code, qui relie le lien des élèves au fichier */
 export function nomDuReplay(titre: string, code: string): string {
   // 80 caractères au plus pour le titre : le code et l'extension s'y ajoutent
-  const base = nomSur(titre, { repli: 'Séance' })
+  const base = nomSur(titre, { repli: 'Séance', longueur: 80 })
   return `${base} [${code}]${EXTENSION}`
 }
 
@@ -37,7 +37,7 @@ export function nomDuReplay(titre: string, code: string): string {
  *  dossier du chapitre (lot 18) : le même crible que nomDuReplay, sans code
  *  (« Séance du 5 oct.mem » à côté de « Séance du 5 oct [re34G].mem ») */
 export function nomDuFichierSeance(titre: string): string {
-  return nomSur(titre, { repli: 'Séance' }) + EXTENSION
+  return nomSur(titre, { repli: 'Séance', longueur: 80 }) + EXTENSION
 }
 
 /** Écrit un fichier texte dans le dossier, d'un bloc (createWritable écrit à

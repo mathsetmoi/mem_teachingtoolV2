@@ -110,24 +110,24 @@ describe('l\'en-tête d\'un classeur (lot 4) : son nom et son id, à la fin', ()
     expect(lu.pages).toBe(2)
   })
 
-  it('le nom coupé à 60 caractères, les blancs réunis, sans contrôle ; un id qui n\'en est pas un n\'est pas écrit', async () => {
+  it('le nom coupé à 100 caractères, les blancs réunis, sans contrôle ; un id qui n\'en est pas un n\'est pas écrit', async () => {
     const { t } = await unTableau()
     const ligne = async (infos: { nom?: string; id?: string }) => { const o = await octets(ecrireTableau(t.doc, 1, infos)); return JSON.parse(new TextDecoder().decode(o.subarray(0, o.indexOf(0x0a)))) }
-    expect((await ligne({ nom: 'é'.repeat(80) })).nom).toBe('é'.repeat(60))
+    expect((await ligne({ nom: 'é'.repeat(120) })).nom).toBe('é'.repeat(100))
     expect((await ligne({ nom: '  Une\tleçon\n  bien  nommée\u0007 ' })).nom).toBe('Une leçon bien nommée')
     expect(await ligne({ nom: '   ', id: '' })).toEqual({ format: 'mem-tableau', v: 1, app: 'MEM teachingtool', date: 1, pages: 2 })
     expect((await ligne({ id: 'ABCDEF0123456789' })).id).toBeUndefined()        // en majuscules : pas un id
     expect((await ligne({ id: '0123' })).id).toBeUndefined()
   })
 
-  it('il tient dans les 4096 premiers octets, avec 60 caractères accentués et des guillemets', async () => {
+  it('il tient dans les 4096 premiers octets, avec 100 caractères accentués et des guillemets', async () => {
     const { t } = await unTableau()
-    for (const nom of ['é'.repeat(60), '"'.repeat(60), '«"»\\'.repeat(15), '𝔸'.repeat(60)]) {
+    for (const nom of ['é'.repeat(100), '"'.repeat(100), '«"»\\'.repeat(25), '𝔸'.repeat(100)]) {
       const o = await octets(ecrireTableau(t.doc, Date.now(), { nom, id: ID }))
       const fin = o.indexOf(0x0a)
       expect(fin).toBeGreaterThan(0)
       expect(fin).toBeLessThan(4096)
-      expect(lireTableau(o).entete.nom).toBe([...nom].slice(0, 60).join(''))
+      expect(lireTableau(o).entete.nom).toBe([...nom].slice(0, 100).join(''))
     }
   })
 
@@ -137,7 +137,8 @@ describe('l\'en-tête d\'un classeur (lot 4) : son nom et son id, à la fin', ()
     const corps = o.subarray(o.indexOf(0x0a) + 1)
     const avec = (e: object) => lireTableau(new Uint8Array([...strToU8(JSON.stringify(e) + '\n'), ...corps])).entete
     const base = { format: 'mem-tableau', v: 1, app: 'MEM teachingtool', date: 1, pages: 2 }
-    expect(avec({ ...base, nom: 'a'.repeat(61), id: 'ABCDEF0123456789' })).toEqual(base)
+    expect(avec({ ...base, nom: 'a'.repeat(101), id: 'ABCDEF0123456789' })).toEqual(base)
+    expect(avec({ ...base, nom: 'a'.repeat(100) }).nom).toBe('a'.repeat(100))
     expect(avec({ ...base, nom: 'deux\nlignes', id: 12 })).toEqual(base)
     expect(avec({ ...base, nom: '', id: ID + '0' })).toEqual(base)
     expect(avec({ ...base, nom: 'Bon nom', id: ID })).toEqual({ ...base, nom: 'Bon nom', id: ID })
@@ -298,7 +299,7 @@ describe('les mots', () => {
     expect(nomSur('  Une\tleçon\n  bien   nommée ')).toBe('Une leçon bien nommée')
     expect(nomSur('« Citation »\u0007')).toBe('- Citation --')
     expect(nomSur('Fin.  ')).toBe('Fin')
-    expect(nomSur('é'.repeat(100))).toBe('é'.repeat(80))
+    expect(nomSur('é'.repeat(120))).toBe('é'.repeat(100))
     expect(nomSur('é'.repeat(100), { longueur: 60 })).toBe('é'.repeat(60))
     expect(nomSur('', { repli: 'page' })).toBe('page')
     expect(nomSur('...')).toBe('Classeur')

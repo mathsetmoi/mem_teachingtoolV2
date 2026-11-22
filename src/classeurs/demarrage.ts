@@ -41,8 +41,12 @@ export const CLE_DERNIER_ENREGISTREMENT = 'mem-dernier-enregistrement'
 export const NOM_PREMIER = 'Mon tableau'
 /** … et quand il n'y avait rien (un navigateur neuf) */
 export const NOM_PREMIER_VIDE = 'Premier classeur'
-export const LONGUEUR_NOM_CLASSEUR = 60
-export const LONGUEUR_NOM_DOSSIER = 40
+/** Un nom de classeur : 100 caractères au plus. Il revient souvent deux fois
+ *  dans le chemin sur l'ordinateur (le dossier du chapitre, puis le .memc) :
+ *  à 100, le chemin reste sous la limite de 260 caractères de Windows. */
+export const LONGUEUR_NOM_CLASSEUR = 100
+/** Un nom de dossier de la bibliothèque : 60 caractères au plus */
+export const LONGUEUR_NOM_DOSSIER = 60
 /** Toute remontée vers la racine s'arrête là, même si deux onglets ont fait
  *  un cycle de dossiers */
 export const PROFONDEUR_MAX = 64

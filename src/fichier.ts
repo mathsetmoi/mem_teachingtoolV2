@@ -35,10 +35,11 @@ import { heureLisible } from './revue/bande'
 export const EXTENSION_TABLEAU = '.memc'
 export const VERSION_TABLEAU = 1
 const APP = 'MEM teachingtool'
-/** L'en-tête tient dans ces premiers octets (il en fait deux cents au plus) */
+/** L'en-tête tient dans ces premiers octets (il en fait quelques centaines au plus) */
 const DEBUT = 4096
-/** Le nom du classeur dans l'en-tête : 60 caractères au plus */
-const LONGUEUR_NOM = 60
+/** Le nom du classeur dans l'en-tête : 100 caractères au plus (avant le
+ *  22 novembre 2026, 60 : un ancien fichier se lit toujours) */
+const LONGUEUR_NOM = 100
 
 /** Pourquoi un fichier n'a pas pu être lu ou écrit, quand on le sait :
  *  'abimee' : le classeur de ce navigateur (sa base) est abîmé, voir
@@ -67,7 +68,7 @@ const ID_VALABLE = /^[0-9a-f]{16}$/
 const CONTROLE = /[\u0000-\u001f\u007f-\u009f]/
 
 /** Le nom d'un classeur tel que l'en-tête le garde : les blancs réunis, sans
- *  caractère de contrôle, 60 caractères au plus (sans couper un caractère en
+ *  caractère de contrôle, 100 caractères au plus (sans couper un caractère en
  *  deux) ; undefined s'il ne reste rien */
 function nomPourEntete(nom: unknown): string | undefined {
   if (typeof nom !== 'string') return undefined
@@ -109,7 +110,7 @@ export function ecrireTableau(doc: Y.Doc, date = Date.now(), infos?: { nom?: str
 
 /** Un en-tête lu : celui d'un classeur (sinon null), avec nom et id
  *  seulement s'ils sont valables (un id de 16 caractères hexadécimaux en
- *  minuscules ; un nom d'au plus 60 caractères, sans caractère de contrôle,
+ *  minuscules ; un nom d'au plus 100 caractères, sans caractère de contrôle,
  *  pas vide). Les autres champs restent tels quels, comme avant le lot 4. */
 function enteteValable(o: unknown): EnteteTableau | null {
   if (!o || typeof o !== 'object') return null
@@ -327,14 +328,14 @@ const RESERVES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i
  * un PDF) : chaque suite de blancs devient une espace ; \ / : * ? < > | les
  * guillemets et les autres caractères de contrôle deviennent « - » ; les
  * bouts sont coupés (ni espace ni point à la fin : Windows les refuse),
- * longueur caractères au plus (80 par défaut, sans couper un caractère en
- * deux) ; repli (« Classeur » par défaut) si rien ne reste. Un nom réservé de
- * Windows (CON, PRN, AUX, NUL, COM1 à COM9, LPT1 à LPT9, seul ou avant un
+ * longueur caractères au plus (100 par défaut, autant qu'un nom de
+ * classeur, sans couper un caractère en deux) ; repli (« Classeur » par
+ * défaut) si rien ne reste. Un nom réservé de Windows (CON, PRN, AUX, NUL, COM1 à COM9, LPT1 à LPT9, seul ou avant un
  * point) prend « (classeur) » (« (page) »… : le repli, en minuscules) :
  * « CON (classeur) ». Sans extension : à chacun la sienne.
  */
 export function nomSur(nom: string, o: { repli?: string; longueur?: number } = {}): string {
-  const repli = o.repli ?? 'Classeur', longueur = o.longueur ?? 80
+  const repli = o.repli ?? 'Classeur', longueur = o.longueur ?? 100
   // Les blancs d'abord (une tabulation, un saut de ligne sont des blancs, pas des « - »)
   const propre = String(nom ?? '')
     .replace(/\s+/g, ' ')

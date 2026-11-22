@@ -179,8 +179,8 @@ describe('la carte d\'un classeur', () => {
     expect(nomDeClasseur('  Symétrie   centrale ')).toBe('Symétrie centrale')
     expect(nomDeClasseur('A\tB\nC\u0007D')).toBe('A B C D')
     expect(nomDeClasseur('   ')).toBe(null)
-    expect(nomDeClasseur('é'.repeat(80))).toBe('é'.repeat(60))
-    expect([...nomDeClasseur('😀'.repeat(70))!].length).toBe(60)
+    expect(nomDeClasseur('é'.repeat(120))).toBe('é'.repeat(100))
+    expect([...nomDeClasseur('😀'.repeat(110))!].length).toBe(100)
   })
 })
 

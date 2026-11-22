@@ -73,7 +73,7 @@ export const methodesDossiers = {
     }
   },
 
-  /** « Nouveau dossier » : son nom (40 caractères, « 5e B » en exemple), sa
+  /** « Nouveau dossier » : son nom (60 caractères, « 5e B » en exemple), sa
    *  couleur (Bleu), « Dossier d'un niveau » (cochée d'office quand le nom
    *  ressemble à un niveau ; son libellé suit le nom tapé). Il se crée dans
    *  le dossier affiché. classe : la case cochée d'avance (le conseil). */

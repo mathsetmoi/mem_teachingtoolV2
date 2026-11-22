@@ -197,7 +197,7 @@ export function nombreDeClasseurs(n: number): string {
 }
 
 /** Le nom d'un classeur tel qu'on le range : les blancs réunis, sans
- *  caractère de contrôle, 60 caractères au plus ; null s'il ne reste rien */
+ *  caractère de contrôle, 100 caractères au plus ; null s'il ne reste rien */
 export function nomDeClasseur(texte: string): string | null {
   const propre = String(texte ?? '').replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').replace(/\s+/g, ' ').trim()
   const court = [...propre].slice(0, LONGUEUR_NOM_CLASSEUR).join('').trim()
