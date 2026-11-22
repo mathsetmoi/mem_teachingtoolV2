@@ -28,6 +28,7 @@ import { AUTOMATISMES_4E, aligne, surUnTrait } from './quatrieme'
 import { AUTOMATISMES_3E_OBJECTIFS, COURS_3E_OBJECTIFS, PHRASES_DU_PROFESSEUR_3E_OBJECTIFS } from './troisieme-objectifs'
 import { AUTOMATISMES_3E_OBJECTIFS_GEOMETRIE, COURS_3E_OBJECTIFS_GEOMETRIE } from './troisieme-objectifs-geometrie'
 import { AUTOMATISMES_3E_OBJECTIFS_DONNEES, COURS_3E_OBJECTIFS_DONNEES } from './troisieme-objectifs-donnees'
+import { AUTOMATISMES_3E_OBJECTIFS_FONCTIONS, COURS_3E_OBJECTIFS_FONCTIONS } from './troisieme-objectifs-fonctions'
 import { rangerSousObjectif } from '../objectifs-flash'
 import { PROGRAMME_CYCLE4 } from '../programme-cycle4'
 
@@ -579,6 +580,7 @@ export const AUTOMATISMES_3E: Automatisme[] = [
   ...AUTOMATISMES_3E_OBJECTIFS,
   ...AUTOMATISMES_3E_OBJECTIFS_GEOMETRIE,
   ...AUTOMATISMES_3E_OBJECTIFS_DONNEES,
+  ...AUTOMATISMES_3E_OBJECTIFS_FONCTIONS,
 ]
 
 // =============================================================
@@ -799,6 +801,7 @@ export const COURS_3E: QuestionCours[] = [
   ...COURS_3E_OBJECTIFS,
   ...COURS_3E_OBJECTIFS_GEOMETRIE,
   ...COURS_3E_OBJECTIFS_DONNEES,
+  ...COURS_3E_OBJECTIFS_FONCTIONS,
   // Les notions d'avant que le professeur ne garde pas : sans compétence,
   // le flash ne les pose plus (elles restent ici, telles quelles)
   ...COURS_3E_AVANT.filter(c => !RANGEES_IDS.has(c.id)),

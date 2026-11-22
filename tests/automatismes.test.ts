@@ -713,7 +713,7 @@ describe('la liste des objectifs d\'apprentissage en 3e', () => {
   const objectifs = PROGRAMME_AUTOMATISMES['3e'].filter(t => t.section?.nom === SECTION_OBJECTIFS.nom)
   const reglage = (themes: string[], competences: string[] = []) => ({ ...REGLAGES_PAR_DEFAUT, niveaux: ['3e'], themes, competences })
 
-  it('la 3e a aussi les deux listes, avec ses 49 objectifs ; ceux de Nombres et calculs, d\'Espace et géométrie et de Données et probabilités ont des exercices (sauf l\'analyse-synthèse et les sections, en suspens)', () => {
+  it('la 3e a aussi les deux listes, avec ses 49 objectifs ; ceux de Nombres et calculs, d\'Espace et géométrie, de Données et probabilités et de Proportionnalité et fonctions ont des exercices (sauf l\'analyse-synthèse, les sections et Proportionnalité OBJ2, en suspens)', () => {
     const p = PROGRAMME_AUTOMATISMES['3e']
     expect(p.slice(0, 5).every(t => t.section?.nom === SECTION_AUTOMATISMES.nom)).toBe(true)
     expect(objectifs.map(t => t.nom)).toEqual(PROGRAMME_CYCLE4['3e'].map(t => t.nom))
@@ -723,12 +723,15 @@ describe('la liste des objectifs d\'apprentissage en 3e', () => {
     // Les objectifs qui ont des exercices (22 novembre 2026) : tout le thème
     // Nombres et calculs, sauf le 6e du calcul littéral, et tout Espace et
     // géométrie, sauf les sections (que des questions de cours), et tout
-    // Données et probabilités
+    // Données et probabilités, et tout Proportionnalité et fonctions, sauf
+    // le 2e objectif de Proportionnalité (en suspens)
     const remplis = new Set(sous.flatMap(a => { const o = objectifsDeExercice('3e', a.id)!; return o.ks.map(k => `${o.cle}/${k}`) }))
     expect([...remplis].sort()).toEqual([
       'obj:Calcul littéral et algébrique/0', 'obj:Calcul littéral et algébrique/1', 'obj:Calcul littéral et algébrique/2', 'obj:Calcul littéral et algébrique/3', 'obj:Calcul littéral et algébrique/4',
+      'obj:Fonctions/0', 'obj:Fonctions/1', 'obj:Fonctions/2', 'obj:Fonctions/3', 'obj:Fonctions/4', 'obj:Fonctions/5', 'obj:Fonctions/6', 'obj:Fonctions/7',
       'obj:Nombres rationnels/0', 'obj:Nombres rationnels/1', 'obj:Nombres rationnels/2',
       'obj:Probabilités/0', 'obj:Probabilités/1', 'obj:Probabilités/2',
+      'obj:Proportionnalité/0', 'obj:Proportionnalité/2',
       'obj:Puissances/0', 'obj:Puissances/1', 'obj:Puissances/2', 'obj:Puissances/3',
       'obj:Racine carrée/0', 'obj:Racine carrée/1',
       'obj:Représentation de l’espace/0', 'obj:Représentation de l’espace/1', 'obj:Représentation de l’espace/3',
@@ -736,7 +739,7 @@ describe('la liste des objectifs d\'apprentissage en 3e', () => {
       'obj:Translations et vecteurs/0', 'obj:Translations et vecteurs/1', 'obj:Translations et vecteurs/2', 'obj:Translations et vecteurs/3',
       'obj:Triangles/0', 'obj:Triangles/1',
     ])
-    expect(sous.length).toBe(3 + 97 + 51 + 57)
+    expect(sous.length).toBe(3 + 97 + 51 + 57 + 63)
   })
 
   it('les objectifs de 3e revus le 22 novembre : rien de fixe, des réponses justes et lisibles', () => {
@@ -774,7 +777,7 @@ describe('la liste des objectifs d\'apprentissage en 3e', () => {
   it('les réglages gardés de 3e gardent leur sens : la même compétence, avec ses exercices d\'aujourd\'hui', () => {
     const ids = automatismesChoisis(reglage(['3e/Puissances'], ['3e/Puissances/1'])).map(a => a.id)
     expect(ids).toEqual(['3e-produit-meme-nombre', '3e-calculer-meme-nombre'])
-    expect(automatismesChoisis(reglage(['3e/obj:Fonctions']))).toEqual([])
+    expect(automatismesChoisis(reglage(['3e/obj:Pensée informatique']))).toEqual([])
   })
 
   it('cocher un objectif ou une compétence pose ses questions de cours et ses exercices', () => {

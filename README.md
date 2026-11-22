@@ -1206,6 +1206,20 @@ page derrière reste vide. On y choisit :
   indépendantes (arbre, urne avec remise, simulation au tableur et en
   Scratch), fréquence et probabilité (estimer, courbe qui se stabilise).
 
+  **Le thème Proportionnalité et fonctions** (même jour,
+  `src/automatismes/troisieme-objectifs-fonctions.ts`) : 63 exercices et
+  25 questions de cours. Hausses et baisses en pourcentage (nouveau prix,
+  coefficient multiplicateur, prix d'avant, deux évolutions de suite),
+  fonctions linéaires (image, antécédent, prix proportionnel, tableau,
+  pourcentage vu comme une fonction) ; une fonction par son expression,
+  son tableau ou sa courbe, image et antécédents (lus sur une courbe dont
+  les antécédents tombent sur le quadrillage), résoudre graphiquement
+  f(x) = k, une inéquation, f(x) = g(x) (des droites sans leur équation,
+  des solutions entières), fonctions affines (a et b, abonnement, a et b
+  lus sur la droite, a par deux points), fonction carré (tableau,
+  décimaux, antécédents sur la parabole). Le deuxième objectif de
+  Proportionnalité (représentation graphique et Thalès) est en suspens.
+
 - combien de questions de chaque sorte, avec − et + : par défaut **5
   questions, 2 questions de cours** (une définition, une propriété, le
   vocabulaire : « La médiatrice d'un segment est la droite… ») **puis 3
