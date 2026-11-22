@@ -36,9 +36,10 @@
 //    (OFFI), puis les objectifs d'apprentissage ; un domaine d'objectifs
 //    coché pose ses exercices d'application, avec la phrase du programme ;
 // N. un seul arbre en 3e aussi (15 novembre 2026) : pastilles OFFI 37 et
-//    OBJ 49, deux domaines « à remplir » ; depuis le 22 novembre, les
-//    lignes OBJ de Nombres et calculs, d'Espace et géométrie et de Données
-//    et probabilités ont des exercices (sauf la
+//    OBJ 49, des domaines « à remplir » ; depuis le 22 novembre, les
+//    lignes OBJ de Nombres et calculs, d'Espace et géométrie, de Données
+//    et probabilités et de Proportionnalité et fonctions ont des exercices
+//    (sauf Proportionnalité OBJ2 et la
 //    6e du calcul littéral, en suspens), les autres restent grises, et
 //    le pair et l'impair (Calcul littéral, C6) se coche avec ses seules
 //    questions de cours ;
@@ -299,12 +300,13 @@ await p.click('.niveau-flash[data-niveau="3e"]')
 const grisees3 = await p.evaluate(() => [...document.querySelectorAll('.themes-niveau[data-niveau="3e"] .case-competence:not([value^="3e/obj:"])')].filter(c => c.disabled).length)
 const comps3 = await p.evaluate(() => document.querySelectorAll('.themes-niveau[data-niveau="3e"] .case-competence:not([value^="3e/obj:"])').length)
 ok(comps3 === 37 && grisees3 === 0, 'K) En 3e, 37 compétences, aucune grisée', { comps3, grisees3 })
-// N. Un seul arbre en 3e : pastilles, les lignes OBJ des trois premiers thèmes
-// actives (sauf la 6e du calcul littéral), les autres en gris, deux
-// domaines « à remplir »
+// N. Un seul arbre en 3e : pastilles, les lignes OBJ des quatre premiers thèmes
+// actives (sauf la 6e du calcul littéral et Proportionnalité OBJ2), les
+// autres en gris, un seul domaine « à remplir » (Pensée informatique)
 const OBJ_ACTIFS_3E = [['Nombres rationnels', [0, 1, 2]], ['Puissances', [0, 1, 2, 3]], ['Racine carrée', [0, 1]], ['Calcul littéral et algébrique', [0, 1, 2, 3, 4]],
   ['Représentation de l’espace', [0, 1, 2, 3]], ['Triangles', [0, 1]], ['Translations et vecteurs', [0, 1, 2, 3]],
-  ['Statistiques', [0, 1, 2, 3, 4]], ['Probabilités', [0, 1, 2]]]
+  ['Statistiques', [0, 1, 2, 3, 4]], ['Probabilités', [0, 1, 2]],
+  ['Proportionnalité', [0, 2]], ['Fonctions', [0, 1, 2, 3, 4, 5, 6, 7]]]
   .flatMap(([d, ks]) => ks.map(k => `3e/obj:${d}/${k}`)).sort().join()
 const arbre3 = await p.evaluate(() => {
   const n = document.querySelector('.themes-niveau[data-niveau="3e"]')
@@ -318,8 +320,8 @@ const arbre3 = await p.evaluate(() => {
   }
 })
 ok(arbre3.pastilles.some(t => /^OFFI\s*37/.test(t)) && arbre3.pastilles.some(t => /^OBJ\s*49/.test(t)) && arbre3.obj > 0
-  && [...arbre3.objActives].sort().join() === OBJ_ACTIFS_3E && arbre3.vides === 2,
-  'N) Un seul arbre en 3e : OFFI 37, OBJ 49, les OBJ de Nombres et calculs, d\'Espace et géométrie et de Données et probabilités actives (sauf l\'analyse-synthèse), deux domaines « à remplir »', arbre3)
+  && [...arbre3.objActives].sort().join() === OBJ_ACTIFS_3E && arbre3.vides === 1,
+  'N) Un seul arbre en 3e : OFFI 37, OBJ 49, les OBJ de Nombres et calculs, d\'Espace et géométrie, de Données et probabilités et de Proportionnalité et fonctions actives (sauf l\'analyse-synthèse et Proportionnalité OBJ2), un seul domaine « à remplir » (Pensée informatique)', arbre3)
 ok(Number(arbre3.pair) >= 1, 'N) Le pair et l\'impair (C6) se coche : ses questions de cours, sans exercice', arbre3.pair)
 // Les cases de domaine sont repliées sous leur thème : on les coche comme un clic
 await p.evaluate(() => {
