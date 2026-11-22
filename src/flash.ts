@@ -25,7 +25,7 @@ import katex from 'katex'
 import type { App } from './app'
 import type { Automatisme, Composition, QuestionCours, QuestionFlash } from './automatismes'
 import type { Niveau } from './automatismes'
-import { automatismesDuFlash, COMPOSITION_PAR_DEFAUT, NIVEAUX, tirerFlash } from './automatismes'
+import { automatismesDuFlash, COMPOSITION_PAR_DEFAUT, NIVEAUX, tirerFlash, tirerRemplacante } from './automatismes'
 import type { ThemeProgramme } from './programme-automatismes'
 import { PROGRAMME_AUTOMATISMES } from './programme-automatismes'
 import { cleObjectifsDe, estDomaineObjectifs, NIVEAUX_AVEC_OBJECTIFS, objectifsDeExercice } from './objectifs-flash'
@@ -62,9 +62,14 @@ export interface ReglagesFlash extends Composition {
   parQuestion: number
   /** Toutes d'un coup : la minuterie, en minutes */
   minutes: number
+  /** La correction s'affiche d'elle-même à la fin du temps (par défaut).
+   *  Sans elle, le temps fini, les questions restent sans réponse : le
+   *  professeur la demande avec « Correction » (C) quand il veut. Champ
+   *  facultatif : un réglage d'avant n'en a pas, il vaut oui. */
+  correctionALaFin: boolean
 }
 export const REGLAGES_PAR_DEFAUT: ReglagesFlash = {
-  niveaux: ['5e'], themes: [], competences: [], ...COMPOSITION_PAR_DEFAUT, affichage: 'une', parQuestion: 30, minutes: 5,
+  niveaux: ['5e'], themes: [], competences: [], ...COMPOSITION_PAR_DEFAUT, affichage: 'une', parQuestion: 30, minutes: 5, correctionALaFin: true,
 }
 
 /** Un réglage relu : ce qui manque ou n'a pas de sens reprend la valeur par défaut */
@@ -86,6 +91,7 @@ export function lireReglages(t: string | null): ReglagesFlash {
   if (o.affichage === 'toutes' || o.affichage === 'une') r.affichage = o.affichage
   r.parQuestion = entier(o.parQuestion, 5, 300, r.parQuestion)
   r.minutes = entier(o.minutes, 1, 60, r.minutes)
+  if (typeof o.correctionALaFin === 'boolean') r.correctionALaFin = o.correctionALaFin
   return r
 }
 
@@ -282,6 +288,10 @@ interface EnCours {
   reste: number
   pause: boolean
   corrige: boolean
+  /** Le temps est fini, sans correction automatique : on attend « Correction » */
+  fini: boolean
+  /** Les questions remplacées pendant le flash : on n'y retombe pas */
+  remplacees: QuestionFlash[]
 }
 
 export class Flash {
@@ -366,6 +376,10 @@ export class Flash {
             <label><input type="radio" name="affichage-flash" value="toutes"${R.affichage === 'toutes' ? ' checked' : ''}><span>Toutes d'un coup</span></label>
             <label class="nombre"><span>pendant</span><input type="number" class="minutes" min="1" max="60" value="${R.minutes}"> min</label>
           </fieldset>
+          <fieldset><legend>Correction</legend>
+            <label><input type="checkbox" class="correction-fin"${R.correctionALaFin ? ' checked' : ''}><span>Correction à la fin</span></label>
+            <p class="note-flash">Décochée : le temps fini, les réponses ne s'affichent pas. Vous les montrez avec « Correction » (C) quand vous voulez.</p>
+          </fieldset>
         </div>
       </div>
       <div class="actions">
@@ -438,6 +452,7 @@ export class Flash {
         affichage: (d.querySelector('input[name=affichage-flash]:checked') as HTMLInputElement).value === 'toutes' ? 'toutes' : 'une',
         parQuestion: Math.max(5, Math.min(300, Math.round(Number(q<HTMLInputElement>('.par-question').value) || 30))),
         minutes: Math.max(1, Math.min(60, Math.round(Number(q<HTMLInputElement>('.minutes').value) || 5))),
+        correctionALaFin: q<HTMLInputElement>('.correction-fin').checked,
       }
       this.garder(r)
       fermer()
@@ -476,7 +491,7 @@ export class Flash {
       if (img) images.set(svg, { src: app.rangerImage(img.donnees), l: img.l, h: img.h })
     }
     if (app.page !== page) app.allerPage(page)
-    const f: EnCours = { page, reglages: r, questions, images, cadre: { x: 0, l: 0, haut: 0, bas: 0 }, posees: [], cases: [], grande: null, enGrand: [], i: 0, reste: 0, pause: false, corrige: false }
+    const f: EnCours = { page, reglages: r, questions, images, cadre: { x: 0, l: 0, haut: 0, bas: 0 }, posees: [], cases: [], grande: null, enGrand: [], i: 0, reste: 0, pause: false, corrige: false, fini: false, remplacees: [] }
     this.flash = f
     this.mettreEnPage(f)
     app.tableau.nouveauGeste()
@@ -496,13 +511,13 @@ export class Flash {
     this.minuterie = window.setInterval(() => {
       const t = performance.now(), dt = (t - avant) / 1000; avant = t
       const fl = this.flash
-      if (!fl || fl.corrige) return
+      if (!fl || fl.corrige || fl.fini) return
       // Ailleurs que sur sa page : la minuterie attend
       if (fl.pause || this.app.page !== fl.page) { this.majBandeau(); return }
       fl.reste -= dt
       if (fl.reste <= 0) {
         if (fl.reglages.affichage === 'une' && fl.i < fl.questions.length - 1) this.suivante()
-        else this.corriger()
+        else this.finDuTemps()
       }
       this.majBandeau()
     }, 200)
@@ -716,10 +731,75 @@ export class Flash {
     f.enGrand = []
     this.poserCase(f, f.i)
     f.i++
-    if (f.i >= f.questions.length) { this.corriger(false); return }
+    if (f.i >= f.questions.length) { this.finDuTemps(false); return }
     this.poserEnGrand(f, f.i)
     f.reste = f.reglages.parQuestion
     this.majBandeau()
+  }
+
+  /** Une autre question à la place de celle qu'on voit (une à la fois),
+   *  ou de la question k (toutes d'un coup) : même forme, même réglage,
+   *  jamais une question déjà venue dans ce flash. Le temps repart du
+   *  début : celui de la question, ou toute la minuterie. La question
+   *  remplacée s'efface de la page (le replay la montre un instant). */
+  async remplacer(k?: number) {
+    const f = this.flash
+    if (!f || f.corrige || f.fini) return
+    const une = f.reglages.affichage === 'une'
+    const i = une ? f.i : k
+    if (i === undefined || i < 0 || i >= f.questions.length) return
+    const ancienne = f.questions[i]
+    const nouvelle = tirerRemplacante(automatismesChoisis(f.reglages), coursChoisis(f.reglages), ancienne, [...f.questions, ...f.remplacees])
+    if (!nouvelle) { this.message('Il n\'y a pas d\'autre question dans ce réglage.'); return }
+    if (nouvelle.q.figure && !f.images.has(nouvelle.q.figure)) {
+      const img = await rasteriser(nouvelle.q.figure, this.app.couleur).catch(() => null)
+      if (img) f.images.set(nouvelle.q.figure, { src: this.app.rangerImage(img.donnees), l: img.l, h: img.h })
+    }
+    if (this.flash !== f || f.corrige || f.fini) return
+    f.remplacees.push(ancienne)
+    f.questions[i] = nouvelle
+    this.app.tableau.nouveauGeste()
+    if (une) {
+      this.app.tableau.supprimer(f.page, f.enGrand)
+      this.poserEnGrand(f, i)
+      f.reste = f.reglages.parQuestion
+    } else {
+      // Toutes d'un coup : la nouvelle n'a pas la hauteur de l'ancienne,
+      // la grille se refait
+      const ids = f.posees.flat().filter(id => this.app.tableau.formesDe(f.page)?.has(id))
+      if (ids.length) this.app.tableau.supprimer(f.page, ids)
+      f.posees = []
+      this.placerCases(f, true)
+      f.cases.forEach((_, j) => this.poserCase(f, j))
+      f.reste = f.reglages.minutes * 60
+    }
+    f.pause = false
+    this.majBandeau()
+  }
+
+  /** Le temps est fini (ou la dernière question est passée) : la
+   *  correction, si le réglage la veut ; sinon les questions se remettent
+   *  en grille, sans réponse, et l'on attend « Correction » */
+  private finDuTemps(geste = true) {
+    const f = this.flash
+    if (!f || f.corrige || f.fini) return
+    if (f.reglages.correctionALaFin !== false) { this.corriger(geste); return }
+    if (geste) this.app.tableau.nouveauGeste()
+    if (f.reglages.affichage === 'une') this.remettreEnGrille(f)
+    f.fini = true
+    f.reste = 0
+    this.majBandeau()
+  }
+
+  /** Une question à la fois : toutes les questions reviennent en grille,
+   *  sur toute la page, avec la place de leur réponse */
+  private remettreEnGrille(f: EnCours) {
+    const ids = [...f.enGrand, ...f.posees.flat()].filter(id => this.app.tableau.formesDe(f.page)?.has(id))
+    if (ids.length) this.app.tableau.supprimer(f.page, ids)
+    f.enGrand = []; f.posees = []; f.grande = null
+    this.placerCases(f, true)
+    f.cases.forEach((_, k) => this.poserCase(f, k))
+    f.i = f.questions.length
   }
 
   basculerPause() {
@@ -737,14 +817,7 @@ export class Flash {
     const f = this.flash
     if (!f || f.corrige) return
     if (geste) this.app.tableau.nouveauGeste()
-    if (f.reglages.affichage === 'une') {
-      const ids = [...f.enGrand, ...f.posees.flat()].filter(id => this.app.tableau.formesDe(f.page)?.has(id))
-      if (ids.length) this.app.tableau.supprimer(f.page, ids)
-      f.enGrand = []; f.posees = []; f.grande = null
-      this.placerCases(f, true)
-      f.cases.forEach((_, k) => this.poserCase(f, k))
-      f.i = f.questions.length
-    }
+    if (f.reglages.affichage === 'une' && !f.fini) this.remettreEnGrille(f)
     f.questions.forEach((it, k) => {
       const c = f.cases[k]
       const T = c.taille, retrait = this.retrait(it, k + 1, T)
@@ -759,6 +832,7 @@ export class Flash {
       }
     })
     f.corrige = true
+    f.fini = false
     this.majBandeau()
   }
 
@@ -788,6 +862,8 @@ export class Flash {
     b.innerHTML = `
       <span class="etat-flash" aria-live="off"></span>
       <button type="button" class="secondaire pause" title="Pause (Espace)">Pause</button>
+      <button type="button" class="secondaire remplacer" title="Une autre question à la place de celle-ci ; le temps repart du début (R)">↻ Remplacer</button>
+      <span class="choix-remplacer" hidden></span>
       <button type="button" class="secondaire suivante" title="Question suivante (→)">Suivante ▶</button>
       <button type="button" class="principal corriger" title="Afficher la correction (C)">Correction</button>
       <button type="button" class="secondaire nouveaux" title="D'autres questions, sur une nouvelle page">Nouveaux exemples</button>
@@ -795,6 +871,7 @@ export class Flash {
     const q = (s: string) => b.querySelector(s) as HTMLButtonElement
     q('.pause').addEventListener('click', () => this.basculerPause())
     q('.suivante').addEventListener('click', () => this.suivante())
+    q('.remplacer').addEventListener('click', () => this.boutonRemplacer())
     q('.corriger').addEventListener('click', () => this.corriger())
     q('.nouveaux').addEventListener('click', () => this.nouveauxExemples())
     q('.fermer').addEventListener('click', () => this.arreter())
@@ -807,17 +884,32 @@ export class Flash {
     if (!f) return
     const n = f.questions.length, une = f.reglages.affichage === 'une'
     const ailleurs = this.app.page !== f.page
-    const etat = f.corrige ? 'Correction'
+    const etat = f.corrige ? 'Correction' : f.fini ? 'Temps écoulé'
       : (une ? `Question ${Math.min(f.i + 1, n)} sur ${n} · ` : `${n} question${n > 1 ? 's' : ''} · `) + mmss(f.reste)
         + (ailleurs ? ' · en attente (autre page)' : f.pause ? ' · en pause' : '')
     ;(b.querySelector('.etat-flash') as HTMLElement).textContent = etat
     const q = (s: string) => b.querySelector(s) as HTMLButtonElement
-    q('.pause').hidden = f.corrige
+    q('.pause').hidden = f.corrige || f.fini
+    q('.remplacer').hidden = f.corrige || f.fini
+    if (f.corrige || f.fini) (b.querySelector('.choix-remplacer') as HTMLElement).hidden = true
     q('.pause').textContent = f.pause ? 'Reprendre' : 'Pause'
-    q('.suivante').hidden = f.corrige || !une
+    q('.suivante').hidden = f.corrige || f.fini || !une
     q('.corriger').hidden = f.corrige
     q('.nouveaux').hidden = !f.corrige
-    b.classList.toggle('presque', !f.corrige && f.reste <= 5)
+    b.classList.toggle('presque', !f.corrige && !f.fini && f.reste <= 5)
+  }
+
+  /** « Remplacer » : une à la fois, la question qu'on voit ; toutes d'un
+   *  coup, on choisit son numéro dans le bandeau */
+  private boutonRemplacer() {
+    const f = this.flash
+    if (!f) return
+    if (f.reglages.affichage === 'une') { void this.remplacer(); return }
+    const choix = this.bandeau.querySelector('.choix-remplacer') as HTMLElement
+    if (!choix.hidden) { choix.hidden = true; return }
+    choix.innerHTML = '<span>Laquelle ?</span>' + f.questions.map((_, k) => `<button type="button" class="secondaire numero" data-k="${k}">${k + 1}</button>`).join('')
+    choix.querySelectorAll<HTMLButtonElement>('.numero').forEach(b => b.addEventListener('click', () => { choix.hidden = true; void this.remplacer(Number(b.dataset.k)) }))
+    choix.hidden = false
   }
 
   /** → (ou Page↓) : la question suivante ; Espace : pause ; C : la
@@ -826,12 +918,15 @@ export class Flash {
   private touche(e: KeyboardEvent) {
     const f = this.flash
     if (!f || f.corrige || this.app.page !== f.page) return
+    // Le temps fini sans correction : seule C sert encore
+    if (f.fini && e.key !== 'c' && e.key !== 'C') return
     if (e.ctrlKey || e.metaKey || e.altKey) return
     const cible = e.target as HTMLElement
     if (cible.closest?.('input, textarea, select, [contenteditable], dialog') || document.querySelector('dialog[open]')) return
     const actions: Record<string, () => void> = {
       ArrowRight: () => this.suivante(), PageDown: () => this.suivante(),
       ' ': () => this.basculerPause(), c: () => this.corriger(), C: () => this.corriger(),
+      r: () => this.boutonRemplacer(), R: () => this.boutonRemplacer(),
     }
     const a = actions[e.key]
     if (!a) return
