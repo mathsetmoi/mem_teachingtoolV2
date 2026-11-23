@@ -1220,6 +1220,19 @@ page derrière reste vide. On y choisit :
   décimaux, antécédents sur la parabole). Le deuxième objectif de
   Proportionnalité (représentation graphique et Thalès) est en suspens.
 
+  **Le thème La pensée informatique** (23 novembre 2026,
+  `src/automatismes/troisieme-objectifs-informatique.ts`) : 18 exercices
+  et 5 questions de cours, avec des scripts dessinés comme dans Scratch
+  (`scriptScratch` dans `src/figures.ts` : blocs de couleur, valeurs dans
+  des ovales, conditions en hexagone, blocs « répéter » et « si … sinon »).
+  Variables (valeur finale, deux variables, échange raté puis échange avec
+  une troisième variable, compteur, somme, réponse saisie), boucle
+  « répéter jusqu'à » (valeur finale, nombre de tours, condition d'arrêt à
+  écrire, boucle qui ne s'arrête jamais), écrire un programme (polygone
+  régulier, calcul à dire, angle à corriger, nombre de répétitions,
+  modulo). Les conditions composées (OBJ2) et les blocs personnalisés
+  (OBJ4) sont en suspens.
+
 - combien de questions de chaque sorte, avec − et + : par défaut **5
   questions, 2 questions de cours** (une définition, une propriété, le
   vocabulaire : « La médiatrice d'un segment est la droite… ») **puis 3

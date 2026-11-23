@@ -1040,3 +1040,88 @@ export function cercleTrigo(lettres: string[], degres: number[]) {
   })
   return svg(2 * c, 2 * c, r, 'fig fig-grande')
 }
+
+// ---------- Les scripts façon Scratch ----------
+/** Un bloc de script : sa famille (la couleur de Scratch), son texte et,
+ *  pour « répéter » ou « si », les blocs qu'il contient. Dans le texte,
+ *  (5) est une valeur dans un ovale blanc, {a + b} un opérateur dans un
+ *  ovale vert, ⟨a > 5⟩ une condition dans un hexagone vert, [a] une
+ *  variable dans un ovale orange ; ⚑ dessine le drapeau vert. */
+export type BlocScratch = { c: 'evt' | 'ctl' | 'var' | 'mvt' | 'stylo' | 'app' | 'cap'; t: string; dans?: BlocScratch[]; sinon?: BlocScratch[] }
+const SCRATCH: Record<BlocScratch['c'], [string, string]> = {
+  evt: ['#FFBF00', '#CC9900'], ctl: ['#FFAB19', '#CF8B17'], var: ['#FF8C1A', '#DB6E00'],
+  mvt: ['#4C97FF', '#3373CC'], stylo: ['#0FBD8C', '#0B8E69'], app: ['#9966FF', '#774DCB'], cap: ['#5CB1D6', '#2E8EB8'],
+}
+const SCR_CAR = 9, SCR_H = 36, SCR_BRAS = 18
+const echapper = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+type MorceauScratch = { k: 'txt' | 'val' | 'op' | 'cond' | 'var' | 'drapeau'; s: string }
+function morceauxScratch(t: string): MorceauScratch[] {
+  const r: MorceauScratch[] = []
+  for (const m of t.matchAll(/\(([^)]*)\)|\{([^}]*)\}|⟨([^⟩]*)⟩|\[([^\]]*)\]|(⚑)|([^({⟨[⚑]+)/g)) {
+    if (m[1] !== undefined) r.push({ k: 'val', s: m[1] })
+    else if (m[2] !== undefined) r.push({ k: 'op', s: m[2] })
+    else if (m[3] !== undefined) r.push({ k: 'cond', s: m[3] })
+    else if (m[4] !== undefined) r.push({ k: 'var', s: m[4] })
+    else if (m[5]) r.push({ k: 'drapeau', s: '' })
+    else if (m[6].trim()) r.push({ k: 'txt', s: m[6].trim() })
+  }
+  return r
+}
+const largeurMorceau = (m: MorceauScratch) =>
+  m.k === 'drapeau' ? 18 : m.k === 'txt' ? m.s.length * SCR_CAR : Math.max(24, m.s.length * SCR_CAR + (m.k === 'cond' ? 26 : 16))
+const largeurLigne = (t: string) => 24 + morceauxScratch(t).reduce((n, m) => n + largeurMorceau(m) + 6, -6)
+
+/** Le contenu d'une ligne de bloc, à partir de x, centrée sur y */
+function ligneScratch(x: number, y: number, t: string, sombre: string) {
+  let r = '', cx = x + 12
+  const ecrire = (px: number, s: string, couleur: string) => `<text x="${f2(px)}" y="${f2(y)}" fill="${couleur}" stroke="none" text-anchor="middle" dominant-baseline="central" font-size="17" font-family="Helvetica, Arial, sans-serif">${echapper(s)}</text>`
+  for (const m of morceauxScratch(t)) {
+    const w = largeurMorceau(m)
+    if (m.k === 'txt') r += `<text x="${f2(cx)}" y="${f2(y)}" fill="#fff" stroke="none" dominant-baseline="central" font-size="17" font-family="Helvetica, Arial, sans-serif">${echapper(m.s)}</text>`
+    else if (m.k === 'drapeau') r += `<path d="M${f2(cx + 4)} ${f2(y + 8)}V${f2(y - 8)}" stroke="#2c7a2c" stroke-width="2"/><path d="M${f2(cx + 4)} ${f2(y - 8)}c4 -3 8 3 12 0v9c-4 3 -8 -3 -12 0z" fill="#4CBF56" stroke="#2c7a2c" stroke-width="1.2"/>`
+    else if (m.k === 'cond') {
+      const h = 24, a = h / 2
+      r += `<polygon points="${f2(cx)},${f2(y)} ${f2(cx + a)},${f2(y - a)} ${f2(cx + w - a)},${f2(y - a)} ${f2(cx + w)},${f2(y)} ${f2(cx + w - a)},${f2(y + a)} ${f2(cx + a)},${f2(y + a)}" fill="#59C059" stroke="#389438" stroke-width="1"/>` + ecrire(cx + w / 2, m.s, '#fff')
+    } else {
+      const [fond, bord, encre] = m.k === 'val' ? ['#fff', sombre, '#575E75'] : m.k === 'op' ? ['#59C059', '#389438', '#fff'] : ['#FF8C1A', '#DB6E00', '#fff']
+      r += `<rect x="${f2(cx)}" y="${f2(y - 12)}" width="${f2(w)}" height="24" rx="12" fill="${fond}" stroke="${bord}" stroke-width="1"/>` + ecrire(cx + w / 2, m.s, encre)
+    }
+    cx += w + 6
+  }
+  return r
+}
+
+/** Des blocs empilés à partir de (x, y) : le dessin, sa hauteur et sa largeur */
+function pileScratch(blocs: BlocScratch[], x: number, y: number): { r: string; h: number; l: number } {
+  let r = '', h = 0, l = 0
+  for (const b of blocs) {
+    const [fond, sombre] = SCRATCH[b.c], w = Math.max(largeurLigne(b.t), 60), y0 = y + h
+    const style = `fill="${fond}" stroke="${sombre}" stroke-width="1"`
+    if (!b.dans) {
+      r += `<rect x="${f2(x)}" y="${f2(y0)}" width="${f2(w)}" height="${SCR_H}" rx="4" ${style}/>` + ligneScratch(x, y0 + SCR_H / 2, b.t, sombre)
+      h += SCR_H; l = Math.max(l, w); continue
+    }
+    // Un bloc en C (répéter, si), avec un « sinon » s'il y en a un
+    const p1 = pileScratch(b.dans, x + SCR_BRAS, y0 + SCR_H), h1 = Math.max(p1.h, 20)
+    const p2 = b.sinon ? pileScratch(b.sinon, x + SCR_BRAS, y0 + SCR_H + h1 + 28) : null, h2 = p2 ? Math.max(p2.h, 20) : 0
+    const yb = y0 + SCR_H + h1 + (p2 ? 28 + h2 : 0), bas = 18
+    const pts: [number, number][] = [[x, y0], [x + w, y0], [x + w, y0 + SCR_H], [x + SCR_BRAS, y0 + SCR_H], [x + SCR_BRAS, y0 + SCR_H + h1]]
+    if (p2) pts.push([x + 80, y0 + SCR_H + h1], [x + 80, y0 + SCR_H + h1 + 28], [x + SCR_BRAS, y0 + SCR_H + h1 + 28], [x + SCR_BRAS, yb])
+    pts.push([x + 80, yb], [x + 80, yb + bas], [x, yb + bas])
+    r += `<polygon points="${pts.map(([a, c]) => `${f2(a)},${f2(c)}`).join(' ')}" ${style}/>` + ligneScratch(x, y0 + SCR_H / 2, b.t, sombre)
+    if (p2) r += ligneScratch(x, y0 + SCR_H + h1 + 14, 'sinon', sombre)
+    r += p1.r + (p2 ? p2.r : '')
+    h += yb + bas - y0; l = Math.max(l, w, SCR_BRAS + p1.l, p2 ? SCR_BRAS + p2.l : 0)
+  }
+  return { r, h, l }
+}
+
+/** Un script façon Scratch : le chapeau « quand ⚑ est cliqué » puis les
+ *  blocs ; le flash l'agrandit pour que ses blocs se lisent comme le texte */
+export function scriptScratch(blocs: BlocScratch[], chapeau = 'quand ⚑ est cliqué') {
+  const m = 10, haut = 16
+  const p = pileScratch(blocs, m, m + haut + SCR_H)
+  const wc = Math.max(largeurLigne(chapeau), 110), [fond, sombre] = SCRATCH.evt
+  const c = `<path d="M${m} ${m + haut}Q${m + 40} ${m - 6} ${m + 80} ${m + haut}H${f2(m + wc)}V${m + haut + SCR_H}H${m}Z" fill="${fond}" stroke="${sombre}" stroke-width="1"/>` + ligneScratch(m, m + haut + SCR_H / 2, chapeau, sombre)
+  return svg(Math.max(wc, p.l) + 2 * m, m + haut + SCR_H + p.h + m, c + p.r, 'fig fig-script')
+}
