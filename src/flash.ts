@@ -618,7 +618,10 @@ export class Flash {
       // lettres) a besoin de plus de place pour rester lisible
       const grandDessin = it.q.figure.includes('class="fig fig-grande"')
       const hMax = grand && f.grande ? Math.min(f.grande.h * (grandDessin ? 0.6 : 0.42), T * (grandDessin ? 10 : 7)) : T * (grandDessin ? 8 : 5)
-      const k = Math.min(hMax / s.h, W / s.l)
+      // Un script façon Scratch se lit comme du texte : la taille de ses
+      // blocs suit celle de l'énoncé (texte des blocs à 14 dans le dessin)
+      const script = it.q.figure.includes('class="fig fig-script"')
+      const k = script ? Math.min(T * 0.72 / 14, W / s.l) : Math.min(hMax / s.h, W / s.l)
       y += T * 0.3
       morceaux.push({ genre: 'dessin', svg: it.q.figure, dx: retrait, dy: y, l: s.l * k, h: s.h * k })
       y += s.h * k + T * 0.3
