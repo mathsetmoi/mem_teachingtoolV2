@@ -1021,3 +1021,22 @@ export function thales(noms: string, papillon: boolean) {
   r += nom(papillon ? { x: A.x - 24, y: A.y + 2 } : { x: A.x, y: A.y - 20 }, noms[0], 24)
   return cadre([A, B, C, M, N], r, 36)
 }
+
+// ---------- Le cercle trigonométrique ----------
+/** Le cercle trigonométrique de rayon 1, ses axes, et ses seize points des
+ *  valeurs remarquables (0, π/6, π/4, π/3, π/2… dans le sens direct),
+ *  nommés par les lettres données dans cet ordre. Le nom d'un point posé
+ *  sur un axe est un peu décalé, pour ne pas tomber sur l'axe. Les lettres
+ *  sont grandes : le dessin est petit dans une case du flash. */
+export function cercleTrigo(lettres: string[], degres: number[]) {
+  const R = 150, c = 205, O = { x: c, y: c }
+  let r = ligne({ x: c - R - 35, y: c }, { x: c + R + 35, y: c }, 'stroke-width="1.6"') + ligne({ x: c, y: c + R + 35 }, { x: c, y: c - R - 35 }, 'stroke-width="1.6"')
+  r += `<circle cx="${c}" cy="${c}" r="${R}" stroke-width="3"/>`
+  r += nom({ x: O.x - 18, y: O.y + 20 }, 'O', 28)
+  degres.forEach((d, i) => {
+    const a = d * Math.PI / 180, b = a + (d % 90 === 0 ? 0.13 : 0)
+    r += point({ x: c + R * Math.cos(a), y: c - R * Math.sin(a) })
+    r += nom({ x: c + (R + 32) * Math.cos(b), y: c - (R + 32) * Math.sin(b) }, lettres[i], 34)
+  })
+  return svg(2 * c, 2 * c, r, 'fig fig-grande')
+}

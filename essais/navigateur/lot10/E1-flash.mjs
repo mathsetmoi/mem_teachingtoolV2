@@ -49,6 +49,9 @@
 //    la minuterie continue, le bandeau tient sur une ligne ; la case
 //    « Correction à la fin » décochée : le temps fini, « Temps écoulé »,
 //    aucune réponse en vert jusqu'à C ;
+// P. la trigonométrie de 1re (23 novembre 2026) : la 1re rangée comme la
+//    2nde, Analyse › Trigonométrie et ses trois compétences PERSO ; cochée
+//    seule, elle pose 5 questions de cours, corrigées en vert ;
 // F. aucune erreur.
 import { chromium } from '../commun/playwright.mjs'
 
@@ -192,7 +195,8 @@ const arbre2 = await p.evaluate(() => {
   }
 })
 ok(arbre2.themes === 5 && arbre2.offi && arbre2.perso && arbre2.vides >= 8, 'H) 2nde : 4 thèmes du programme + la liste officielle (OFFI), Arithmétique PERSO, domaines vides « à remplir »', JSON.stringify(arbre2))
-await p.click('.themes-niveau[data-niveau="2nde"] .arbre-theme:has(.etiquette-offi) > .ligne-arbre > button.deplier')
+// En 1re aussi (23 novembre 2026) : la liste de l'épreuve est à part, on la déplie
+for (const n of ['2nde', '1re']) await p.click(`.themes-niveau[data-niveau="${n}"] .arbre-theme:has(.etiquette-offi) > .ligne-arbre > button.deplier`)
 for (const n of ['2nde', '1re']) for (const t of ['Fonctions et représentations', 'Statistiques', 'Probabilités']) await p.click(`.themes-niveau[data-niveau="${n}"] label:has-text("${t}")`)
 await p.click('.dialogue-flash .lancer')
 await p.waitForTimeout(1500)
@@ -203,6 +207,37 @@ ok(vertsH >= 5, 'H) Un flash de 2nde et 1re : 5 questions, corrigées en vert', 
 const bleusH = await p.evaluate(pg => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === '#1f5fbf').length, pageH)
 ok(bleusH >= 3, 'H) À la correction, la phrase de la liste officielle sous chaque exercice', bleusH)
 if (process.env.CAPTURE) await p.screenshot({ path: process.env.CAPTURE })
+await p.click('.bandeau-flash .fermer').catch(() => {})
+
+// ---------- P. La trigonométrie de 1re ----------
+await p.keyboard.press('Escape').catch(() => {})
+await p.click('.bandeau-flash .fermer').catch(() => {})
+await p.click('button[title^="Automatismes"]')
+await p.waitForSelector('dialog.dialogue-flash[open]')
+for (const b of await p.$$('.niveau-flash[aria-pressed=true]')) await b.click()
+await p.click('.niveau-flash[data-niveau="1re"]')
+await p.evaluate(() => { for (let k = 0, c; k < 200 && (c = document.querySelector('.themes-niveau:not([hidden]) input:checked')); k++) c.click() })
+const arbre1 = await p.evaluate(() => {
+  const r = document.querySelector('.themes-niveau[data-niveau="1re"]')
+  return {
+    themes: [...r.querySelectorAll('.arbre-theme')].map(t => t.querySelector('.ligne-arbre').textContent.trim().replace(/\s+/g, ' ')),
+    perso: [0, 1, 2].every(k => r.querySelector(`.case-competence[value="1re/Trigonométrie/${k}"]`)?.closest('label').querySelector('.etiquette-perso')),
+    vides: r.querySelectorAll('.arbre-domaine.vide').length,
+  }
+})
+ok(arbre1.themes.length === 5 && arbre1.perso && arbre1.vides >= 8, 'P) 1re : 4 thèmes du programme + la liste de l\'épreuve, Analyse › Trigonométrie et ses 3 compétences PERSO, domaines vides « à remplir »', arbre1)
+await p.click('.themes-niveau[data-niveau="1re"] .arbre-theme:has(.case-domaine[value="1re/Trigonométrie"]) > .ligne-arbre > button.deplier')
+await p.click('.case-domaine[value="1re/Trigonométrie"]')
+ok(!(await p.evaluate(() => document.querySelector('.dialogue-flash .lancer').disabled)), 'P) La trigonométrie seule (que des questions de cours) : « Lancer » n\'est pas grisé')
+await p.click('.dialogue-flash .lancer')
+await p.waitForTimeout(1500)
+const flashP = await p.evaluate(() => window.__app.ui.flash.flash.questions.map(q => ({ id: q.id, forme: q.forme, figure: !!q.q.figure })))
+ok(flashP.length === 5 && flashP.every(q => q.forme === 'cours' && q.id.startsWith('cours-1re-Trigonométrie')), 'P) Un flash de trigonométrie : 5 questions de cours', flashP)
+const pageP = await p.evaluate(() => window.__app.page)
+await p.keyboard.press('c'); await p.waitForTimeout(800)
+const vertsP = await p.evaluate(([v, pg]) => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === v).length, [VERT, pageP])
+ok(vertsP >= 5, 'P) Corrigées en vert', vertsP)
+if (process.env.CAPTURE_TRIGO) await p.screenshot({ path: process.env.CAPTURE_TRIGO })
 await p.click('.bandeau-flash .fermer').catch(() => {})
 
 // ---------- I. L'arbre du collège ----------

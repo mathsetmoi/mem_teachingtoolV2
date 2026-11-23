@@ -6,6 +6,7 @@
 // =============================================================
 import * as F from '../figures'
 import type { Automatisme, Facon, Question, QuestionCours } from './outils'
+import { coursTrigonometrie } from './trigonometrie-1re'
 import { PRENOMS, arrondi, choix, coord, deg, ent, etL, frac, grandNb, irreductible, lettre, melange, mot, nb, notions, pgcd, pt, pts, relNonNul, tableau, unTrou, une, unite } from './outils'
 
 // =============================================================
@@ -737,7 +738,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
 export const AUTOMATISMES_1RE: Automatisme[] = [
   // ================= CALCUL NUMÉRIQUE ET ALGÉBRIQUE =================
   {
-    id: '1re-produit-nul', theme: T_CALCUL, titre: 'Résoudre une équation produit nul',
+    id: '1re-produit-nul', theme: T_CALCUL, titre: 'Résoudre une équation produit nul', competence: 0,
     programme: 'Déterminer les solutions d’une équation produit nul.',
     generer() {
       for (;;) {
@@ -751,7 +752,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-signe-affine', theme: T_CALCUL, titre: 'Signe d’une expression du premier degré',
+    id: '1re-signe-affine', theme: T_CALCUL, titre: 'Signe d’une expression du premier degré', competence: 1,
     programme: 'Déterminer le signe d’une expression du premier degré.',
     generer() {
       const a = relNonNul(1, 6), r = ent(-6, 6), b = -a * r, s = choix(['>', '<', '\\geqslant', '\\leqslant'])
@@ -765,7 +766,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-signe-produit', theme: T_CALCUL, titre: 'Signe d’une expression factorisée du second degré',
+    id: '1re-signe-produit', theme: T_CALCUL, titre: 'Signe d’une expression factorisée du second degré', competence: 1,
     programme: 'Déterminer le signe d’une expression factorisée du second degré.',
     generer() {
       for (;;) {
@@ -781,7 +782,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-developper-reduire', theme: T_CALCUL, titre: 'Développer, factoriser, réduire',
+    id: '1re-developper-reduire', theme: T_CALCUL, titre: 'Développer, factoriser, réduire', competence: 2,
     programme: 'Développer, factoriser, réduire une expression algébrique simple.',
     generer() {
       const a = ent(1, 5), b = relNonNul(1, 9), c = ent(1, 5), d = relNonNul(1, 9)
@@ -804,7 +805,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   // ================= ÉVOLUTIONS ET VARIATIONS =================
   {
-    id: '1re-appliquer-taux', theme: T_EVOLUTIONS, titre: 'Appliquer un taux : valeur finale ou initiale',
+    id: '1re-appliquer-taux', theme: T_EVOLUTIONS, titre: 'Appliquer un taux : valeur finale ou initiale', competence: 0,
     programme: 'Appliquer un taux d’évolution pour calculer une valeur finale ou initiale.',
     generer() {
       const t = choix([5, 10, 15, 20, 25, 30, 40, 50]), baisse = Math.random() < 0.5, V0 = 20 * ent(2, 20), c = baisse ? 1 - t / 100 : 1 + t / 100, V1 = arrondi(V0 * c)
@@ -815,7 +816,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-calculer-taux', theme: T_EVOLUTIONS, titre: 'Calculer un taux d’évolution',
+    id: '1re-calculer-taux', theme: T_EVOLUTIONS, titre: 'Calculer un taux d’évolution', competence: 1,
     programme: 'Calculer un taux d’évolution, l’exprimer en pourcentage.',
     generer() {
       const t = choix([-50, -40, -25, -20, -10, -5, 5, 10, 15, 20, 25, 30, 50, 75, 100, 150]), V0 = 20 * ent(1, 25), V1 = arrondi(V0 * (1 + t / 100))
@@ -824,7 +825,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-taux-successifs', theme: T_EVOLUTIONS, titre: 'Évolutions successives',
+    id: '1re-taux-successifs', theme: T_EVOLUTIONS, titre: 'Évolutions successives', competence: 2,
     programme: 'Calculer le taux d’évolution équivalent à plusieurs évolutions successives.',
     generer() {
       const t1 = choix([-50, -20, -10, 10, 20, 25, 50, 100]), t2 = choix([-50, -20, -10, 10, 20, 30, 50])
@@ -834,7 +835,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-taux-reciproque', theme: T_EVOLUTIONS, titre: 'Taux d’évolution réciproque',
+    id: '1re-taux-reciproque', theme: T_EVOLUTIONS, titre: 'Taux d’évolution réciproque', competence: 3,
     programme: 'Calculer un taux d’évolution réciproque.',
     generer() {
       const [t, r] = choix<[number, number]>([[25, -20], [100, -50], [60, -37.5], [150, -60], [300, -75], [-20, 25], [-50, 100], [-60, 150], [-75, 300], [-37.5, 60], [-80, 400], [400, -80]])
@@ -845,7 +846,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   // ================= FONCTIONS ET REPRÉSENTATIONS =================
   {
-    id: '1re-resoudre-graphique', theme: T_FONCTIONS, titre: 'Résoudre graphiquement f(x) = k, f(x) < k…',
+    id: '1re-resoudre-graphique', theme: T_FONCTIONS, titre: 'Résoudre graphiquement f(x) = k, f(x) < k…', competence: 0,
     programme: 'Résoudre graphiquement une équation, une inéquation du type f(x) = k, f(x) < k.',
     generer() {
       for (;;) {
@@ -859,7 +860,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-signe-variations', theme: T_FONCTIONS, titre: 'Signe et variations lus sur une courbe',
+    id: '1re-signe-variations', theme: T_FONCTIONS, titre: 'Signe et variations lus sur une courbe', competence: 1,
     programme: 'Déterminer graphiquement le signe d’une fonction ou son tableau de variations.',
     generer() {
       for (;;) {
@@ -882,7 +883,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-tracer-droite', theme: T_FONCTIONS, titre: 'Tracer une droite : deux de ses points',
+    id: '1re-tracer-droite', theme: T_FONCTIONS, titre: 'Tracer une droite : deux de ses points', competence: 2,
     programme: 'Tracer une droite donnée par son équation réduite ou par un point et son coefficient directeur.',
     generer() {
       const m = relNonNul(1, 4), p = ent(-5, 5)
@@ -895,7 +896,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-lire-equation', theme: T_FONCTIONS, titre: 'Lire l’équation réduite d’une droite',
+    id: '1re-lire-equation', theme: T_FONCTIONS, titre: 'Lire l’équation réduite d’une droite', competence: 3,
     programme: 'Lire graphiquement l’équation réduite d’une droite.',
     generer() {
       for (;;) {
@@ -910,7 +911,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-coefficient-directeur', theme: T_FONCTIONS, titre: 'Coefficient directeur à partir de deux points',
+    id: '1re-coefficient-directeur', theme: T_FONCTIONS, titre: 'Coefficient directeur à partir de deux points', competence: 4,
     programme: 'Déterminer le coefficient directeur d’une droite à partir des coordonnées de deux de ses points.',
     generer() {
       for (;;) {
@@ -922,7 +923,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   // ================= STATISTIQUES =================
   {
-    id: '1re-lire-echelle', theme: T_STATS, titre: 'Lire un graphique : origine, unités, échelles',
+    id: '1re-lire-echelle', theme: T_STATS, titre: 'Lire un graphique : origine, unités, échelles', competence: 0,
     programme: 'Lire un graphique (repérer l’origine du repère, les unités de graduations ou les échelles).',
     generer() {
       const [quoi, pasY] = choix<[string, number]>([
@@ -940,7 +941,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-graphique-donnees', theme: T_STATS, titre: 'Passer du graphique aux données et inversement',
+    id: '1re-graphique-donnees', theme: T_STATS, titre: 'Passer du graphique aux données et inversement', competence: 1,
     programme: 'Passer du graphique aux données et vice-versa.',
     generer() {
       return choix<() => Question>([
@@ -952,7 +953,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-indicateurs', theme: T_STATS, titre: 'Calculer et interpréter des indicateurs',
+    id: '1re-indicateurs', theme: T_STATS, titre: 'Calculer et interpréter des indicateurs', competence: 2,
     programme: 'Calculer et interpréter des indicateurs statistiques pour une série statistique.',
     generer() {
       return choix<() => Question>([
@@ -964,7 +965,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   // ================= PROBABILITÉS =================
   {
-    id: '1re-tableau-croise', theme: T_PROBAS, titre: 'Probabilités conditionnelles : tableau croisé',
+    id: '1re-tableau-croise', theme: T_PROBAS, titre: 'Probabilités conditionnelles : tableau croisé', competence: 0,
     programme: 'Calculer des probabilités conditionnelles (tableau croisé d’effectifs).',
     generer() {
       const [[A, nA], [Ab, nAb], [B, nB], [Bb, nBb]] = choix<[string, string][]>([
@@ -980,7 +981,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-arbre', theme: T_PROBAS, titre: 'Probabilités conditionnelles : arbre pondéré',
+    id: '1re-arbre', theme: T_PROBAS, titre: 'Probabilités conditionnelles : arbre pondéré', competence: 0,
     programme: 'Calculer des probabilités conditionnelles (arbre pondéré).',
     generer() {
       const [A, B] = choix([['A', 'B'], ['M', 'T'], ['F', 'R'], ['C', 'D']])
@@ -991,7 +992,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-distinguer', theme: T_PROBAS, titre: 'Distinguer P(A ∩ B), P_A(B) et P_B(A)',
+    id: '1re-distinguer', theme: T_PROBAS, titre: 'Distinguer P(A ∩ B), P_A(B) et P_B(A)', competence: 1,
     programme: 'Distinguer P(A ∩ B), P_A(B), P_B(A).',
     generer() {
       const [A, nA, B, nB] = choix([['F', 'filles', 'I', 'internes'], ['M', 'malades', 'T', 'testés positifs'], ['S', 'sportifs', 'L', 'lecteurs'], ['C', 'clients fidèles', 'R', 'clients ayant une réduction']])
@@ -1194,4 +1195,7 @@ export const COURS_1RE: QuestionCours[] = [
     ['Les branches d\'un nœud',
       () => { const x = ent(1, 9) / 10; return [`Deux branches partent d'un même nœud d'un arbre pondéré ; l'une porte $${nb(x)}$. Que porte l'autre ?`, `$${nb(1 - x)}$ : la somme des branches issues d'un nœud vaut $1$`] }],
   ]),
+  // PERSO : Trigonométrie (Analyse), les questions du professeur, rangées
+  // par compétence (voir trigonometrie-1re.ts)
+  ...coursTrigonometrie(n1),
 ]
