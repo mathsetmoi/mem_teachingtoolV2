@@ -174,6 +174,8 @@ export class Catalogue {
           const demos = DEMONSTRATIONS.map((d, i) => d.niveau === n.niveau && d.chapitre === c ? i : -1).filter(i => i >= 0)
           const dessin = PLACE_ENSEMBLES.niveau === n.niveau && PLACE_ENSEMBLES.chapitre === c
           const trigo = PLACE_TRIGO.niveau === n.niveau && PLACE_TRIGO.chapitre === c
+          // Un domaine du programme encore vide : en gris, « à remplir »
+          if (!demos.length && !dessin && !trigo) return `<div class="chapitre vide">${html(c)}<span class="nombre">à remplir</span></div>`
           return `<details class="chapitre" data-cle="${html(n.niveau + '|' + c)}"${this.ouverts.has(n.niveau + '|' + c) ? ' open' : ''}>
             <summary>${html(c)}<span class="nombre">${demos.length + (dessin ? 1 : 0) + (trigo ? Trigo.NOMBRE : 0)}</span></summary>
             <div class="demos">${dessin ? ensembles : ''}${trigo ? this.trigo.html() : ''}${demos.map(boutonDemo).join('')}</div>

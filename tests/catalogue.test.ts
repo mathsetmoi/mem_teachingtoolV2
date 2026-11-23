@@ -85,13 +85,13 @@ describe('Le catalogue : les démonstrations', () => {
       '2nde · Droites du plan : Équation cartésienne d\'une droite',
       '2nde · Variations et extrémums : Variations des fonctions affines', '2nde · Variations et extrémums : Position de y = x et y = x²',
       '2nde · Variations et extrémums : Variations de la fonction carré', '2nde · Variations et extrémums : Variations de la fonction inverse',
-      '1re · Suites : Terme général d\'une suite arithmétique', '1re · Suites : Terme général d\'une suite géométrique',
-      '1re · Suites : Somme 1 + 2 + … + n', '1re · Suites : Somme 1 + q + … + qⁿ',
-      '1re · Second degré : Équation du second degré',
+      '1re · Suites numériques, modèles discrets : Terme général d\'une suite arithmétique', '1re · Suites numériques, modèles discrets : Terme général d\'une suite géométrique',
+      '1re · Suites numériques, modèles discrets : Somme 1 + 2 + … + n', '1re · Suites numériques, modèles discrets : Somme 1 + q + … + qⁿ',
+      '1re · Équations, fonctions polynômes du second degré : Équation du second degré',
       '1re · Dérivation : Équation de la tangente', '1re · Dérivation : √ n\'est pas dérivable en 0',
       '1re · Dérivation : Dérivée de la fonction carré', '1re · Dérivation : Dérivée de la fonction inverse',
       '1re · Dérivation : Dérivée d\'un produit', '1re · Trigonométrie : cos et sin de π/4 et de π/3',
-      '1re · Produit scalaire : Formule d\'Al-Kashi', '1re · Produit scalaire : Points M tels que MA · MB = 0',
+      '1re · Calcul vectoriel et produit scalaire : Formule d\'Al-Kashi', '1re · Calcul vectoriel et produit scalaire : Points M tels que MA · MB = 0',
     ])
     for (const d of DEMONSTRATIONS) for (const e of d.etapes) for (const l of e) expect(l.split('$').length % 2).toBe(1)
   })
@@ -103,12 +103,23 @@ describe('Le catalogue : le rangement', () => {
     for (const d of DEMONSTRATIONS) expect(chapitres(d.niveau), d.nom).toContain(d.chapitre)
     expect(chapitres(PLACE_ENSEMBLES.niveau)).toContain(PLACE_ENSEMBLES.chapitre)
   })
-  it('chaque chapitre a au moins une démonstration, et un nom unique dans son niveau', () => {
+  it('chaque chapitre a un nom unique dans son niveau ; en 2nde, chacun a au moins une démonstration', () => {
     for (const p of PROGRAMME) {
       const c = chapitres(p.niveau)
       expect(new Set(c).size).toBe(c.length)
-      for (const ch of c) expect(DEMONSTRATIONS.some(d => d.niveau === p.niveau && d.chapitre === ch), ch).toBe(true)
     }
+    for (const ch of chapitres('2nde')) expect(DEMONSTRATIONS.some(d => d.niveau === '2nde' && d.chapitre === ch), ch).toBe(true)
+  })
+  it('en 1re spé, les thèmes et les 13 domaines du programme, puis « Pour tout le programme » (13 novembre 2026)', () => {
+    const premiere = PROGRAMME.find(p => p.niveau === '1re')!
+    expect(premiere.themes.map(t => t.nom)).toEqual(['Algèbre', 'Analyse', 'Géométrie', 'Probabilités et statistiques', 'Pour tout le programme'])
+    expect(premiere.themes.slice(0, 4).flatMap(t => t.chapitres)).toEqual([
+      'Suites numériques, modèles discrets', 'Équations, fonctions polynômes du second degré',
+      'Dérivation', 'Variations et courbes représentatives des fonctions', 'Fonction exponentielle', 'Trigonométrie',
+      'Calcul vectoriel et produit scalaire', 'Géométrie repérée',
+      'Probabilités conditionnelles et indépendance', 'Variables aléatoires réelles', 'Expérimentations',
+    ])
+    expect(premiere.themes[4].chapitres).toEqual(['Vocabulaire ensembliste et logique', 'Algorithmique et programmation'])
   })
 })
 
