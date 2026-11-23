@@ -804,8 +804,6 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .panneau-catalogue .chapitre[open] summary::before { content: '▾'; }
 .panneau-catalogue .chapitre .nombre { margin-left: auto; font-weight: 400; font-size: 13px; color: var(--encre-douce); }
 .panneau-catalogue .chapitre .demos { padding: 0 8px 8px; }
-.panneau-catalogue .chapitre.vide { display: flex; align-items: center; gap: 8px; padding: 9px 12px 9px 26px; color: var(--encre-douce); border-style: dashed; }
-.panneau-catalogue .chapitre.vide .nombre { font-style: italic; white-space: nowrap; }
 .panneau-catalogue .ensembles { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px dashed var(--filet); border-radius: 10px; background: var(--papier); }
 .panneau-catalogue .ensembles h4 { margin: 0; font-size: 14px; }
 .panneau-catalogue .lieu { margin: 6px 0 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--encre-douce); }

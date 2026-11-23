@@ -406,22 +406,13 @@ export function ligneEnLatex(ligne: string): string {
   return ligne.split('$').map((m, i) => i % 2 ? m : m ? `\\text{${m.replace(/[\\{}]/g, c => '\\' + c)}}` : '').join('')
 }
 
-/** Les domaines de 1re spé qui ont changé de nom (titres du programme) */
-const CH_SUITES = 'Suites numériques, modèles discrets'
-const CH_SECOND_DEGRE = 'Équations, fonctions polynômes du second degré'
-const CH_PRODUIT_SCALAIRE = 'Calcul vectoriel et produit scalaire'
-
 /** Les niveaux du catalogue */
 export type Niveau = '2nde' | '1re'
 
 /**
  * Le rangement du programme (BO 2026) : pour chaque niveau, ses thèmes, et
  * dans chaque thème ses chapitres. Un thème sans chapitre est un thème où le
- * programme ne demande aucune démonstration. En 1re spé (13 novembre 2026,
- * choix du professeur), les thèmes et les domaines sont ceux du programme
- * officiel, avec leurs titres exacts ; un domaine encore vide reste visible,
- * en gris, « à remplir » ; en bas, « Pour tout le programme » (vocabulaire
- * ensembliste et logique, algorithmique et programmation).
+ * programme ne demande aucune démonstration.
  */
 export const PROGRAMME: readonly { niveau: Niveau; nom: string; themes: readonly { nom: string; chapitres: readonly string[] }[] }[] = [
   {
@@ -434,11 +425,10 @@ export const PROGRAMME: readonly { niveau: Niveau; nom: string; themes: readonly
   },
   {
     niveau: '1re', nom: '1re spé', themes: [
-      { nom: 'Algèbre', chapitres: [CH_SUITES, CH_SECOND_DEGRE] },
-      { nom: 'Analyse', chapitres: ['Dérivation', 'Variations et courbes représentatives des fonctions', 'Fonction exponentielle', 'Trigonométrie'] },
-      { nom: 'Géométrie', chapitres: [CH_PRODUIT_SCALAIRE, 'Géométrie repérée'] },
-      { nom: 'Probabilités et statistiques', chapitres: ['Probabilités conditionnelles et indépendance', 'Variables aléatoires réelles', 'Expérimentations'] },
-      { nom: 'Pour tout le programme', chapitres: ['Vocabulaire ensembliste et logique', 'Algorithmique et programmation'] },
+      { nom: 'Algèbre', chapitres: ['Suites', 'Second degré'] },
+      { nom: 'Analyse', chapitres: ['Dérivation', 'Trigonométrie'] },
+      { nom: 'Géométrie', chapitres: ['Produit scalaire'] },
+      { nom: 'Probabilités et statistiques', chapitres: [] },
     ],
   },
 ]
@@ -627,7 +617,7 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   {
     nom: 'Terme général d\'une suite arithmétique',
     niveau: '1re',
-    chapitre: CH_SUITES,
+    chapitre: 'Suites',
     titre: '\\textbf{Démonstration : terme général d\'une suite arithmétique.}',
     etapes: [
       ['Soit $(u_n)$ une suite arithmétique de raison $r$ : pour tout $n \\in \\mathbb{N}$, $u_{n+1} = u_n + r$.'],
@@ -641,7 +631,7 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   {
     nom: 'Terme général d\'une suite géométrique',
     niveau: '1re',
-    chapitre: CH_SUITES,
+    chapitre: 'Suites',
     titre: '\\textbf{Démonstration : terme général d\'une suite géométrique.}',
     etapes: [
       ['Soit $(u_n)$ une suite géométrique de raison $q$ : pour tout $n \\in \\mathbb{N}$, $u_{n+1} = q \\times u_n$.'],
@@ -653,7 +643,7 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   {
     nom: 'Somme 1 + 2 + … + n',
     niveau: '1re',
-    chapitre: CH_SUITES,
+    chapitre: 'Suites',
     titre: '\\textbf{Démonstration : pour tout } n \\in \\mathbb{N}^*\\textbf{, } 1 + 2 + \\cdots + n = \\dfrac{n(n+1)}{2}\\textbf{.}',
     etapes: [
       ['On note $S = 1 + 2 + \\cdots + (n - 1) + n$.'],
@@ -666,7 +656,7 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   {
     nom: 'Somme 1 + q + … + qⁿ',
     niveau: '1re',
-    chapitre: CH_SUITES,
+    chapitre: 'Suites',
     titre: '\\textbf{Démonstration : pour } q \\neq 1\\textbf{, } 1 + q + q^2 + \\cdots + q^n = \\dfrac{1 - q^{n+1}}{1 - q}\\textbf{.}',
     etapes: [
       ['Soit $q$ un réel différent de $1$ et $n \\in \\mathbb{N}$. On note $S = 1 + q + q^2 + \\cdots + q^n$.'],
@@ -679,7 +669,7 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   {
     nom: 'Équation du second degré',
     niveau: '1re',
-    chapitre: CH_SECOND_DEGRE,
+    chapitre: 'Second degré',
     titre: '\\textbf{Démonstration : résolution de l\'équation } ax^2 + bx + c = 0 \\textbf{ avec } a \\neq 0\\textbf{.}',
     etapes: [
       ['On factorise par $a$ : $ax^2 + bx + c = a\\left(x^2 + \\dfrac{b}{a}x + \\dfrac{c}{a}\\right)$.'],
@@ -777,7 +767,7 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   {
     nom: 'Formule d\'Al-Kashi',
     niveau: '1re',
-    chapitre: CH_PRODUIT_SCALAIRE,
+    chapitre: 'Produit scalaire',
     titre: '\\textbf{Démonstration : formule d\'Al-Kashi } BC^2 = AB^2 + AC^2 - 2\\,AB \\times AC \\times \\cos\\widehat{A}\\textbf{.}',
     etapes: [
       ['Soit $ABC$ un triangle. D\'après la relation de Chasles, $\\overrightarrow{BC} = \\overrightarrow{BA} + \\overrightarrow{AC} = \\overrightarrow{AC} - \\overrightarrow{AB}$.'],
@@ -790,7 +780,7 @@ export const DEMONSTRATIONS: readonly Demonstration[] = [
   {
     nom: 'Points M tels que MA · MB = 0',
     niveau: '1re',
-    chapitre: CH_PRODUIT_SCALAIRE,
+    chapitre: 'Produit scalaire',
     titre: '\\textbf{Démonstration : ensemble des points } M \\textbf{ tels que } \\overrightarrow{MA} \\cdot \\overrightarrow{MB} = 0\\textbf{.}',
     etapes: [
       ['Soit $A$ et $B$ deux points distincts et $I$ le milieu de $[AB]$ : $\\overrightarrow{IB} = -\\overrightarrow{IA}$.'],
