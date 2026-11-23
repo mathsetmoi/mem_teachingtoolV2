@@ -1420,6 +1420,24 @@ dans `src/catalogue.ts`, sans rien toucher à l'écran ; le panneau dans
 L'éditeur de formule a aussi les symboles du thème : ∉, ⊂, ⊄, ∩, ∪, ∅, ℕ,
 ℤ, 𝔻, ℚ, ℝ*₊ et +∞ (∈ et ℝ y étaient déjà).
 
+### La 1re spé rangée comme le programme (23 novembre 2026)
+
+À la demande du professeur (maquette du 13 novembre, ses recommandations),
+l'onglet « 1re spé » reprend les quatre thèmes et les treize domaines du
+programme officiel de spécialité, avec leurs titres exacts : Algèbre
+(Suites numériques, modèles discrets ; Équations, fonctions polynômes du
+second degré), Analyse (Dérivation ; Variations et courbes représentatives
+des fonctions ; Fonction exponentielle ; Trigonométrie), Géométrie (Calcul
+vectoriel et produit scalaire ; Géométrie repérée), Probabilités et
+statistiques (Probabilités conditionnelles et indépendance ; Variables
+aléatoires réelles ; Expérimentations), puis « Pour tout le programme »
+(Vocabulaire ensembliste et logique ; Algorithmique et programmation). Un
+domaine encore vide est en gris, en pointillés, « à remplir ». Rien n'a
+disparu : chaque démonstration et chaque élément de trigonométrie est dans
+son domaine. Seul effet : les chapitres dépliés qui ont changé de nom se
+replient une fois. Données : `PROGRAMME` dans `src/catalogue.ts` ; essai :
+`tests/catalogue.test.ts`.
+
 ## Les outils de classe
 
 Le bouton **Classe** de la barre du haut (entre Automatismes et Revoir ; sur
