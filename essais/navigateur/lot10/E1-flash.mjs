@@ -221,11 +221,11 @@ const arbre1 = await p.evaluate(() => {
   const r = document.querySelector('.themes-niveau[data-niveau="1re"]')
   return {
     themes: [...r.querySelectorAll('.arbre-theme')].map(t => t.querySelector('.ligne-arbre').textContent.trim().replace(/\s+/g, ' ')),
-    perso: [0, 1, 2].every(k => r.querySelector(`.case-competence[value="1re/Trigonométrie/${k}"]`)?.closest('label').querySelector('.etiquette-perso')),
+    perso: [0, 1, 2, 3, 4].every(k => r.querySelector(`.case-competence[value="1re/Trigonométrie/${k}"]`)?.closest('label').querySelector('.etiquette-perso')),
     vides: r.querySelectorAll('.arbre-domaine.vide').length,
   }
 })
-ok(arbre1.themes.length === 5 && arbre1.perso && arbre1.vides >= 8, 'P) 1re : 4 thèmes du programme + la liste de l\'épreuve, Analyse › Trigonométrie et ses 3 compétences PERSO, domaines vides « à remplir »', arbre1)
+ok(arbre1.themes.length === 5 && arbre1.perso && arbre1.vides >= 8, 'P) 1re : 4 thèmes du programme + la liste de l\'épreuve, Analyse › Trigonométrie et ses 5 compétences PERSO, domaines vides « à remplir »', arbre1)
 await p.click('.themes-niveau[data-niveau="1re"] .arbre-theme:has(.case-domaine[value="1re/Trigonométrie"]) > .ligne-arbre > button.deplier')
 await p.click('.case-domaine[value="1re/Trigonométrie"]')
 ok(!(await p.evaluate(() => document.querySelector('.dialogue-flash .lancer').disabled)), 'P) La trigonométrie seule (que des questions de cours) : « Lancer » n\'est pas grisé')

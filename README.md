@@ -6585,7 +6585,7 @@ recommandations.
   sous les phrases de la liste officielle qui ne sont pas en italique (on
   peut n’en cocher qu’une). Les réglages déjà gardés (« 1re/Probabilités »)
   restent bons.
-- **Analyse › Trigonométrie** (étiquette **PERSO**) : trois questions de
+- **Analyse › Trigonométrie** (étiquette **PERSO**) : cinq questions de
   cours, une par compétence. *Cosinus et sinus des valeurs remarquables*
   (valeur exacte de cos ou sin, les deux à la fois, ou à l’envers : le réel
   de [0 ; π] pour un cosinus, de [−π/2 ; π/2] pour un sinus). *Placer un
@@ -6596,6 +6596,14 @@ recommandations.
   conversions dans les deux sens, et π rad = 180°, 1° = π/180 rad, un tour
   = 2π rad. Les réels sont les valeurs remarquables de 0 à 2π, et une fois
   sur trois la même mesure en négatif (de −π à 0).
+- **Deux compétences de plus** (demandées le même jour) : *Déterminer la
+  mesure principale d’un réel* (« Donner la mesure principale de
+  17π/3 », ou le réel de [0 ; 2π[ du même point) et *Utiliser les angles
+  associés* (« Compléter : pour tout réel a, cos(π − a) = … », ou
+  « Sachant que sin x = 0,6, donner sin(π + x) » ; −x, π − x, π + x,
+  π/2 − x et π/2 + x, la lettre du réel change). Pour le cosinus, le sinus
+  et le cercle, une fois sur quatre le réel dépasse un tour (13π/6,
+  −11π/4…) : une valeur remarquable plus un à trois tours.
 - **Un domaine qui n’a que des questions de cours** se coche seul : le
   flash pose alors uniquement des questions de cours (autant que de
   questions en tout). Au lycée, les autres questions de cours, sans
