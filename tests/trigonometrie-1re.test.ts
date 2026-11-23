@@ -1,5 +1,5 @@
 // La trigonométrie de 1re dans le flash (src/automatismes/trigonometrie-1re.ts) :
-// trois questions de cours du professeur, une par compétence (PERSO), dans
+// cinq questions de cours du professeur, une par compétence (PERSO), dans
 // Analyse › Trigonométrie ; les valeurs exactes sont justes ; la réponse du
 // cercle est la lettre du bon point ; les autres questions de cours de 1re
 // suivent toujours leur domaine ; un domaine qui n'a que des questions de
@@ -9,13 +9,19 @@ import katex from 'katex'
 import { AUTOMATISMES_1RE, COURS_1RE, tirerFlash } from '../src/automatismes'
 import { PROGRAMME_AUTOMATISMES } from '../src/programme-automatismes'
 import { automatismesChoisis, coursChoisis, REGLAGES_PAR_DEFAUT } from '../src/flash'
-import { COMPETENCES_TRIGONOMETRIE, T_TRIGONOMETRIE, VALEURS_REMARQUABLES, enDegres, reelAuHasard, valeurExacte } from '../src/automatismes/trigonometrie-1re'
+import { ASSOCIES, COMPETENCES_TRIGONOMETRIE, T_TRIGONOMETRIE, VALEURS_REMARQUABLES, enDegres, mesurePrincipale, reelAuHasard, reelGrand, valeurExacte } from '../src/automatismes/trigonometrie-1re'
 
 const trigo = COURS_1RE.filter(c => c.theme === T_TRIGONOMETRIE)
 /** La valeur d'une écriture exacte : 0, 1, ±1/2, ±√2/2, ±√3/2 */
 const valeur = (t: string) => {
   const s = t.startsWith('-') ? -1 : 1, x = t.replace(/^-/, '')
   return s * ({ '0': 0, '1': 1, '\\frac{1}{2}': 0.5, '\\frac{\\sqrt{2}}{2}': Math.SQRT2 / 2, '\\frac{\\sqrt{3}}{2}': Math.sqrt(3) / 2 } as Record<string, number>)[x]
+}
+/** La valeur d'un réel écrit kπ/d (0, π, −17π/3…) */
+const reel = (t: string) => {
+  const m = t.match(/^(-)?(?:\\frac\{(\d*)\\pi\}\{(\d+)\}|(\d*)\\pi|0)$/)!
+  const num = t === '0' ? 0 : Number(m[2] ?? m[4] ?? '') || 1, den = Number(m[3] ?? 1)
+  return (m[1] ? -1 : 1) * num * Math.PI / den
 }
 const reglage = (themes: string[], competences: string[] = []) => ({ ...REGLAGES_PAR_DEFAUT, niveaux: ['1re'], themes, competences })
 
@@ -36,8 +42,30 @@ describe('la trigonométrie de 1re', () => {
     expect(vus).not.toContain('-\\pi')
   })
 
-  it('trois questions de cours, une par compétence, rangées dans Analyse › Trigonométrie (PERSO)', () => {
-    expect(trigo.map(c => c.competence)).toEqual([0, 1, 2])
+  it('les réels au-delà d\'un tour, et leur mesure principale', () => {
+    for (let k = 0; k < 300; k++) {
+      const r = reelGrand(), x = reel(r.txt)
+      expect(Math.abs(x)).toBeGreaterThanOrEqual(2 * Math.PI - 1e-9)
+      // Même point du cercle que l'angle en degrés
+      expect(Math.cos(x)).toBeCloseTo(Math.cos(r.degres * Math.PI / 180), 9)
+      expect(Math.sin(x)).toBeCloseTo(Math.sin(r.degres * Math.PI / 180), 9)
+      const p = reel(mesurePrincipale(r.degres))
+      expect(p).toBeGreaterThan(-Math.PI); expect(p).toBeLessThanOrEqual(Math.PI + 1e-9)
+      expect(Math.cos(p)).toBeCloseTo(Math.cos(x), 9)
+      expect(Math.sin(p)).toBeCloseTo(Math.sin(x), 9)
+    }
+  })
+
+  it('les formules des angles associés sont justes', () => {
+    const F = { cos: Math.cos, sin: Math.sin }
+    for (const a of ASSOCIES) for (const x of [0.3, 1.1, 2.5, -0.7]) {
+      expect(F[a.f](a.ajout + a.signe * x)).toBeCloseTo((a.moins ? -1 : 1) * F[a.g](x), 9)
+    }
+  })
+
+  it('cinq questions de cours, une par compétence, rangées dans Analyse › Trigonométrie (PERSO)', () => {
+    expect(trigo.map(c => c.competence)).toEqual([0, 1, 2, 3, 4])
+    expect(COMPETENCES_TRIGONOMETRIE.length).toBe(5)
     const d = PROGRAMME_AUTOMATISMES['1re'].find(t => t.nom === 'Analyse')!.domaines.find(x => x.cle === T_TRIGONOMETRIE)!
     expect(d.competencesPerso).toBe(true)
     expect(d.competences).toEqual(COMPETENCES_TRIGONOMETRIE)
@@ -62,11 +90,10 @@ describe('la trigonométrie de 1re', () => {
       expect(figure.match(/<path /g)!.length).toBe(16)
       const lettres = [...figure.matchAll(/font-style="italic"[^>]*>([A-Z])</g)].map(m => m[1]).filter(l => l !== 'O')
       expect(lettres.length).toBe(16)
-      // Le réel demandé, ramené entre 0 et 2π, donne le rang du point
+      // Le réel demandé (parfois au-delà d'un tour), ramené entre 0 et 2π,
+      // donne le rang du point
       const t = enonce.match(/réel \$([^$]+)\$/)![1]
-      const m = t.match(/^(-)?(?:\\frac\{(\d*)\\pi\}\{(\d+)\}|(\d*)\\pi|0)$/)!
-      const num = Number(m[2] ?? m[4] ?? 0) || (t === '0' ? 0 : 1), den = Number(m[3] ?? 1)
-      let deg = num * 180 / den; if (m[1]) deg = 360 - deg
+      const deg = ((Math.round(reel(t) * 180 / Math.PI) % 360) + 360) % 360
       const i = VALEURS_REMARQUABLES.findIndex(v => enDegres(v) === deg)
       expect(reponse).toBe(`le point $${lettres[i]}$`)
     }
@@ -81,7 +108,7 @@ describe('la trigonométrie de 1re', () => {
 
   it('une compétence de trigonométrie cochée seule : seulement sa question de cours', () => {
     expect(coursChoisis(reglage(['1re/Trigonométrie'], ['1re/Trigonométrie/2'])).map(c => c.id)).toEqual([trigo[2].id])
-    expect(coursChoisis(reglage(['1re/Trigonométrie'])).length).toBe(3)
+    expect(coursChoisis(reglage(['1re/Trigonométrie'])).length).toBe(5)
   })
 
   it('la trigonométrie seule : un flash complet de questions de cours', () => {
