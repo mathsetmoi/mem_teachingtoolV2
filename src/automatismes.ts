@@ -129,7 +129,10 @@ export function tirerRemplacante(autos: Automatisme[], lecons: QuestionCours[], 
 export function tirerFlash(autos: Automatisme[], lecons: QuestionCours[], c: Composition): { questions: QuestionFlash[]; coursRemplaces: number } {
   const questions: QuestionFlash[] = [], pris = new Map<string, number>(), vus = new Set<string>()
   let coursRemplaces = 0
-  const nCours = Math.max(0, c.cours), nAppli = Math.max(0, c.application)
+  const nAppli = Math.max(0, c.application)
+  // Sans aucun exercice (des domaines qui n'ont que des questions de cours),
+  // les questions d'application deviennent des questions de cours
+  const nCours = Math.max(0, c.cours) + (autos.length ? 0 : nAppli)
   for (let k = 0; k < nCours; k++) {
     if (!lecons.length) { coursRemplaces = nCours - k; break }
     const { x, q } = tirerDans(lecons, pris, vus, l => l.poser())

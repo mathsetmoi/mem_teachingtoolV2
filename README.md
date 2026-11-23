@@ -6567,6 +6567,48 @@ recommandations.
   `src/automatismes/lycee.ts`. Essai : `lot10/E1-flash.mjs` (partie H,
   adaptée : on déplie la liste officielle avant de cocher ses domaines).
 
+## La trigonométrie de 1re dans le flash
+
+Demandé par le professeur le 23 novembre 2026, maquette validée avec ses
+recommandations.
+
+- **En 1re, la fenêtre du flash** est rangée comme en 2nde : les quatre
+  thèmes du programme de spécialité de 1re et leurs domaines (Algèbre :
+  Suites numériques, modèles discrets ; Équations, fonctions polynômes du
+  second degré. Analyse : Dérivation ; Variations et courbes
+  représentatives des fonctions ; Fonction exponentielle ; Trigonométrie.
+  Géométrie : Calcul vectoriel et produit scalaire ; Géométrie repérée.
+  Probabilités et statistiques : Probabilités conditionnelles et
+  indépendance ; Variables aléatoires réelles ; Expérimentations), les
+  domaines encore vides en gris « à remplir » ; puis, à part,
+  « Automatismes de l’épreuve » (OFFI) : les 19 exercices de 1re, rangés
+  sous les phrases de la liste officielle qui ne sont pas en italique (on
+  peut n’en cocher qu’une). Les réglages déjà gardés (« 1re/Probabilités »)
+  restent bons.
+- **Analyse › Trigonométrie** (étiquette **PERSO**) : trois questions de
+  cours, une par compétence. *Cosinus et sinus des valeurs remarquables*
+  (valeur exacte de cos ou sin, les deux à la fois, ou à l’envers : le réel
+  de [0 ; π] pour un cosinus, de [−π/2 ; π/2] pour un sinus). *Placer un
+  réel sur le cercle trigonométrique* : le cercle est dessiné avec ses
+  seize points des valeurs remarquables, nommés par des lettres mélangées à
+  chaque question ; l’élève donne la lettre du point d’un réel, ou à
+  l’envers le réel de [0 ; 2π[ d’un point. *Degrés et radians* :
+  conversions dans les deux sens, et π rad = 180°, 1° = π/180 rad, un tour
+  = 2π rad. Les réels sont les valeurs remarquables de 0 à 2π, et une fois
+  sur trois la même mesure en négatif (de −π à 0).
+- **Un domaine qui n’a que des questions de cours** se coche seul : le
+  flash pose alors uniquement des questions de cours (autant que de
+  questions en tout). Au lycée, les autres questions de cours, sans
+  compétence, suivent toujours leur domaine.
+- Le cercle est un dessin « fig-grande » : il prend plus de place que les
+  autres dessins dans une case, pour que les seize lettres restent
+  lisibles.
+- Données : `src/automatismes/trigonometrie-1re.ts`, `F.cercleTrigo`
+  (`src/figures.ts`), `src/programme-automatismes.ts` (clé « 1re »).
+  Essais : `tests/trigonometrie-1re.test.ts` ; `lot10/E1-flash.mjs`
+  (partie P, et partie H adaptée : on déplie aussi la liste de l’épreuve
+  de 1re avant de cocher ses domaines).
+
 ## La barre du haut en familles (lot 24)
 
 Lot 3 de l'audit complet du 11 novembre 2026 (variante B de la maquette,

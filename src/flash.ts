@@ -124,12 +124,15 @@ export function automatismesChoisis(r: ReglagesFlash): Automatisme[] {
  *  un niveau dont les questions de cours sont rangées par compétence (la 5e),
  *  une question ne se pose que sous sa compétence (liste officielle) ou son
  *  objectif d'apprentissage, cochés en entier ou un par un ; celles qui n'ont
- *  ni l'une ni l'autre ne sont plus posées. */
+ *  ni l'une ni l'autre ne sont plus posées, sauf au lycée, où elles suivent
+ *  leur domaine (en 1re, seules les questions de trigonométrie sont rangées). */
+/** Les niveaux du lycée */
+const LYCEE: readonly string[] = ['2nde', '1re']
 export function coursChoisis(r: ReglagesFlash): QuestionCours[] {
   return NIVEAUX.filter(n => r.niveaux.includes(n.id)).flatMap(n => {
     const rangees = n.cours.some(c => c.competence !== undefined || c.objectif !== undefined)
     return n.cours.filter(c => {
-      if (!rangees) return r.themes.includes(`${n.id}/${c.theme}`)
+      if (!rangees || (LYCEE.includes(n.id) && c.competence === undefined && c.objectif === undefined)) return r.themes.includes(`${n.id}/${c.theme}`)
       const sous = (domaine: string, k: number) => {
         if (!r.themes.includes(domaine)) return false
         const visees = r.competences.filter(x => x.startsWith(domaine + '/'))
@@ -481,9 +484,10 @@ export class Flash {
   async lancer(r: ReglagesFlash) {
     const app = this.app
     if (app.enLecture) { this.message('Cette séance est passée : elle est en lecture seule.'); return }
-    const autos = automatismesChoisis(r)
-    if (!autos.length) { this.message('Cochez au moins un thème.'); return }
-    const { questions, coursRemplaces } = tirerFlash(autos, coursChoisis(r), r)
+    // Un domaine peut n'avoir que des questions de cours (la trigonométrie de 1re)
+    const autos = automatismesChoisis(r), lecons = coursChoisis(r)
+    if (!autos.length && !lecons.length) { this.message('Cochez au moins un thème.'); return }
+    const { questions, coursRemplaces } = tirerFlash(autos, lecons, r)
     if (!questions.length) return
     if (app.enSeancePassee || (app.tableau.formesDe(app.page)?.size ?? 0) > 0) app.nouvellePage()
     const page = app.page
@@ -610,7 +614,10 @@ export class Flash {
     }
     if (it.q.figure && f.images.has(it.q.figure)) {
       const s = tailleSvg(it.q.figure)
-      const hMax = grand && f.grande ? Math.min(f.grande.h * 0.42, T * 7) : T * 5
+      // Un dessin « fig-grande » (le cercle trigonométrique et ses seize
+      // lettres) a besoin de plus de place pour rester lisible
+      const grandDessin = it.q.figure.includes('class="fig fig-grande"')
+      const hMax = grand && f.grande ? Math.min(f.grande.h * (grandDessin ? 0.6 : 0.42), T * (grandDessin ? 10 : 7)) : T * (grandDessin ? 8 : 5)
       const k = Math.min(hMax / s.h, W / s.l)
       y += T * 0.3
       morceaux.push({ genre: 'dessin', svg: it.q.figure, dx: retrait, dy: y, l: s.l * k, h: s.h * k })
