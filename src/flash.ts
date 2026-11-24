@@ -35,6 +35,7 @@ import type { ThemeProgramme } from './programme-automatismes'
 import { PROGRAMME_AUTOMATISMES } from './programme-automatismes'
 import { cleObjectifsDe, estDomaineObjectifs, NIVEAUX_AVEC_OBJECTIFS, objectifsDeExercice } from './objectifs-flash'
 import { arbreUnifie, brancherArbre, choixDeLArbre } from './flash-arbre'
+import { REGLAGES_2NDE_AVANT } from './automatismes/lycee'
 import type { Formule, ImageForme } from './types'
 import { uid } from './types'
 import { fermerSurLeFond } from './dialogue'
@@ -88,6 +89,7 @@ export function lireReglages(t: string | null): ReglagesFlash {
   if (!r.niveaux.length) r.niveaux = [...REGLAGES_PAR_DEFAUT.niveaux]
   if (Array.isArray(o.themes)) r.themes = o.themes.filter(x => typeof x === 'string')
   if (Array.isArray(o.competences)) r.competences = o.competences.filter(x => typeof x === 'string')
+  convertir2nde(r)
   // Un réglage d'avant les réponses courtes (QCM, directes, à trou) :
   // ses nombres ne valent plus, on reprend 2 + 3
   r.cours = entier(o.cours, 0, MAX_PAR_FORME, r.cours)
@@ -98,6 +100,32 @@ export function lireReglages(t: string | null): ReglagesFlash {
   r.minutes = entier(o.minutes, 1, 60, r.minutes)
   if (typeof o.correctionALaFin === 'boolean') r.correctionALaFin = o.correctionALaFin
   return r
+}
+
+/** Un réglage gardé avant le rangement de la 2nde par domaines du programme
+ *  (24 novembre 2026) : ses domaines de la liste de l'épreuve (« 2nde/Statistiques »)
+ *  deviennent les domaines du programme où leurs phrases sont rangées, avec
+ *  les mêmes lignes cochées */
+function convertir2nde(r: ReglagesFlash) {
+  const anciens = Object.keys(REGLAGES_2NDE_AVANT).map(t => `2nde/${t}`)
+  if (!r.themes.some(t => anciens.includes(t))) return
+  // Les lignes cochées, domaine par domaine, après la conversion
+  const lignes = new Map<string, Set<number>>()
+  const ajouter = (d: string, k: number) => { if (!lignes.has(d)) lignes.set(d, new Set()); lignes.get(d)!.add(k) }
+  for (const ancien of Object.keys(REGLAGES_2NDE_AVANT)) {
+    const d = `2nde/${ancien}`
+    if (!r.themes.includes(d)) continue
+    const visees = r.competences.filter(c => c.startsWith(d + '/')).map(c => Number(c.slice(d.length + 1)))
+    REGLAGES_2NDE_AVANT[ancien].forEach(([nouveau, k], i) => { if (!visees.length || visees.includes(i)) ajouter(`2nde/${nouveau}`, k) })
+  }
+  r.themes = r.themes.filter(t => !anciens.includes(t))
+  r.competences = r.competences.filter(c => !anciens.some(d => c.startsWith(d + '/')))
+  for (const [d, ks] of lignes) {
+    // Toutes les lignes du domaine viennent d'anciens domaines : coché en entier
+    const toutes = Object.values(REGLAGES_2NDE_AVANT).flat().filter(([n]) => `2nde/${n}` === d).length
+    if (!r.themes.includes(d)) r.themes.push(d)
+    if (ks.size < toutes) for (const k of [...ks].sort((a, b) => a - b)) r.competences.push(`${d}/${k}`)
+  }
 }
 
 /** Les automatismes (exercices d'application) des thèmes cochés, dans

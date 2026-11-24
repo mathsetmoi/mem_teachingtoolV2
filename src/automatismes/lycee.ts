@@ -25,6 +25,25 @@ export const T_FONCTIONS = 'Fonctions et représentations'
 export const T_STATS = 'Statistiques'
 export const T_PROBAS = 'Probabilités'
 
+// En 2nde, les domaines du programme de seconde (24 novembre 2026) : chaque
+// phrase de la liste officielle des automatismes est rangée dans le domaine
+// que le professeur a choisi. La 1re garde encore les thèmes ci-dessus.
+export const D2_NOMBRES_REELS = 'Nombres réels'
+export const D2_ALGEBRE = 'Algèbre'
+export const D2_REPRESENTATION = 'Représentation algébrique et graphique des fonctions'
+export const D2_INFORMATION = 'Information chiffrée et statistique descriptive'
+/** Les réglages gardés avant ce rangement : l'ancien domaine (thème de la
+ *  liste de l'épreuve) et, pour chaque rang de ses phrases, le nouveau
+ *  domaine et le nouveau rang (flash.ts les convertit à la lecture) */
+export const REGLAGES_2NDE_AVANT: Record<string, [string, number][]> = {
+  [T_CALCUL]: [[D2_ALGEBRE, 0], [D2_ALGEBRE, 1], [D2_ALGEBRE, 2], [D2_ALGEBRE, 3], [D2_NOMBRES_REELS, 0], [D2_NOMBRES_REELS, 1], [D2_NOMBRES_REELS, 2], [D2_NOMBRES_REELS, 3],
+    [D2_ALGEBRE, 4], [D2_ALGEBRE, 5], [D2_ALGEBRE, 6], [D2_ALGEBRE, 7], [D2_ALGEBRE, 8], [D2_ALGEBRE, 9], [D2_ALGEBRE, 10]],
+  [T_PROPORTIONS]: [[D2_INFORMATION, 0], [D2_INFORMATION, 1]],
+  [T_EVOLUTIONS]: [[D2_INFORMATION, 2]],
+  [T_STATS]: [[D2_INFORMATION, 3], [D2_INFORMATION, 4], [D2_INFORMATION, 5], [D2_INFORMATION, 6], [D2_INFORMATION, 7]],
+  [T_FONCTIONS]: [[D2_REPRESENTATION, 0], [D2_REPRESENTATION, 1], [D2_REPRESENTATION, 2]],
+}
+
 // ---------- Outils du lycée ----------
 /** Un polynôme, ses coefficients du plus haut degré au plus bas :
  *  [2, −3, 1] donne 2x^2 - 3x + 1 (sans « 1x », sans « + 0 ») */
@@ -142,7 +161,7 @@ export const CARACTERES = ['sont externes', 'portent des lunettes', 'viennent à
 export const AUTOMATISMES_2NDE: Automatisme[] = [
   // ================= CALCUL NUMÉRIQUE ET ALGÉBRIQUE =================
   {
-    id: '2nde-comparer-difference', theme: T_CALCUL, titre: 'Comparer deux nombres par leur différence', competence: 0,
+    id: '2nde-comparer-difference', theme: D2_ALGEBRE, titre: 'Comparer deux nombres par leur différence', competence: 0,
     programme: 'Comparer deux nombres par le calcul de leur différence.',
     generer() {
       for (;;) {
@@ -156,7 +175,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-comparer-quotient', theme: T_CALCUL, titre: 'Comparer deux nombres positifs par leur quotient', competence: 1,
+    id: '2nde-comparer-quotient', theme: D2_ALGEBRE, titre: 'Comparer deux nombres positifs par leur quotient', competence: 1,
     programme: 'Comparer deux nombres strictement positifs par le calcul de leur quotient.',
     generer() {
       for (;;) {
@@ -169,7 +188,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-fractions', theme: T_CALCUL, titre: 'Opérations sur les fractions simples', competence: 2,
+    id: '2nde-fractions', theme: D2_ALGEBRE, titre: 'Opérations sur les fractions simples', competence: 2,
     programme: 'Effectuer des opérations et des comparaisons entre des fractions simples.',
     generer() {
       let a: number, b: number, c: number, d: number
@@ -184,7 +203,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-puissances', theme: T_CALCUL, titre: 'Opérations sur les puissances', competence: 3,
+    id: '2nde-puissances', theme: D2_ALGEBRE, titre: 'Opérations sur les puissances', competence: 3,
     programme: 'Effectuer des opérations sur les puissances.',
     generer() {
       const a = choix(['2', '3', '5', '7', '10', 'x', 'a']), n = ent(2, 9), m = ent(2, 9)
@@ -201,7 +220,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-ecritures', theme: T_CALCUL, titre: 'Écriture décimale, fractionnaire, pourcentage', competence: 4,
+    id: '2nde-ecritures', theme: D2_NOMBRES_REELS, titre: 'Écriture décimale, fractionnaire, pourcentage', competence: 0,
     programme: 'Passer d’une écriture d’un nombre à une autre (décimale, fractionnaire, pourcentage).',
     generer() {
       const [n, d] = choix<[number, number]>([[1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5], [1, 8], [3, 8], [5, 8], [7, 8], [1, 20], [3, 20], [7, 20], [9, 25], [3, 50], [1, 2], [7, 10], [9, 10]])
@@ -220,7 +239,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-ordre-grandeur', theme: T_CALCUL, titre: 'Estimer un ordre de grandeur', competence: 5,
+    id: '2nde-ordre-grandeur', theme: D2_NOMBRES_REELS, titre: 'Estimer un ordre de grandeur', competence: 1,
     programme: 'Estimer un ordre de grandeur.',
     generer() {
       const A = choix([20, 30, 40, 50, 60, 200, 300, 400, 500]), B = choix([0.2, 0.3, 0.5, 2, 3, 4, 20, 30])
@@ -231,7 +250,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-vraisemblance', theme: T_CALCUL, titre: 'S’assurer de la vraisemblance d’un résultat', competence: 6,
+    id: '2nde-vraisemblance', theme: D2_NOMBRES_REELS, titre: 'S’assurer de la vraisemblance d’un résultat', competence: 2,
     programme: 'S’assurer de la vraisemblance, de la cohérence d’un résultat.',
     generer() {
       const qui = choix(PRENOMS)
@@ -243,7 +262,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-conversions', theme: T_CALCUL, titre: 'Conversions d’unités', competence: 7,
+    id: '2nde-conversions', theme: D2_NOMBRES_REELS, titre: 'Conversions d’unités', competence: 3,
     programme: 'Effectuer des conversions d’unités : longueurs, aires, volumes, contenances, durées, vitesses, masses.',
     generer() {
       const sortes: (() => Question)[] = [
@@ -270,7 +289,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-litteral-additif', theme: T_CALCUL, titre: 'Supprimer des parenthèses précédées d’un signe moins', competence: 8,
+    id: '2nde-litteral-additif', theme: D2_ALGEBRE, titre: 'Supprimer des parenthèses précédées d’un signe moins', competence: 4,
     programme: 'Effectuer un calcul littéral élémentaire : −(a + b) = −a − b, −(a − b) = b − a.',
     generer() {
       const a = relNonNul(1, 9), b = relNonNul(1, 9), v = lettre()
@@ -282,7 +301,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-litteral-multiplicatif', theme: T_CALCUL, titre: 'Expressions multiplicatives et quotients', competence: 9,
+    id: '2nde-litteral-multiplicatif', theme: D2_ALGEBRE, titre: 'Expressions multiplicatives et quotients', competence: 5,
     programme: 'Effectuer un calcul littéral élémentaire : expressions multiplicatives et quotients.',
     generer() {
       const a = ent(2, 9), b = autreQue([2, 3, 4, 5, 7, 8, 9, 11], a), c = ent(2, 9), d = autreQue([2, 3, 5, 7, 9, 11], c), v = lettre()
@@ -302,7 +321,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-identites', theme: T_CALCUL, titre: 'Identités remarquables', competence: 10,
+    id: '2nde-identites', theme: D2_ALGEBRE, titre: 'Identités remarquables', competence: 6,
     programme: 'Développer, factoriser : identités (a + b)², (a − b)², (a + b)(a − b).',
     generer() {
       let a: number, b: number
@@ -323,7 +342,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-factoriser', theme: T_CALCUL, titre: 'Factoriser par un facteur commun', competence: 11,
+    id: '2nde-factoriser', theme: D2_ALGEBRE, titre: 'Factoriser par un facteur commun', competence: 7,
     programme: 'Factoriser ax² + bx, ax + bx.',
     generer() {
       for (;;) {
@@ -339,7 +358,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-equations', theme: T_CALCUL, titre: 'Résoudre une équation ou une inéquation', competence: 12,
+    id: '2nde-equations', theme: D2_ALGEBRE, titre: 'Résoudre une équation ou une inéquation', competence: 8,
     programme: 'Résoudre une équation du type x² = a, ax + b = cx + d ou a/x = b, ou une inéquation du premier degré.',
     generer() {
       const sortes: (() => Question)[] = [
@@ -364,7 +383,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-isoler', theme: T_CALCUL, titre: 'Isoler une variable dans une formule', competence: 13,
+    id: '2nde-isoler', theme: D2_ALGEBRE, titre: 'Isoler une variable dans une formule', competence: 9,
     programme: 'Isoler une variable dans une égalité qui en comporte plusieurs.',
     generer() {
       const formules: [string, string, string][] = [
@@ -383,7 +402,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-application-numerique', theme: T_CALCUL, titre: 'Application numérique d’une formule', competence: 14,
+    id: '2nde-application-numerique', theme: D2_ALGEBRE, titre: 'Application numérique d’une formule', competence: 10,
     programme: 'Effectuer une application numérique d’une formule.',
     generer() {
       return choix<() => Question>([
@@ -398,7 +417,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   // ================= PROPORTIONS ET POURCENTAGES =================
   {
-    id: '2nde-proportion', theme: T_PROPORTIONS, titre: 'Calculer et écrire une proportion', competence: 0,
+    id: '2nde-proportion', theme: D2_INFORMATION, titre: 'Calculer et écrire une proportion', competence: 0,
     programme: 'Calculer, appliquer, exprimer une proportion sous différentes formes (décimale, fractionnaire, pourcentage).',
     generer() {
       const { lieu, gens, N, p, n } = populationEtPart([5, 10, 15, 20, 25, 30, 35, 40, 45, 60, 75])
@@ -411,7 +430,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-partie-tout', theme: T_PROPORTIONS, titre: 'Une partie connaissant le tout, le tout connaissant une partie', competence: 1,
+    id: '2nde-partie-tout', theme: D2_INFORMATION, titre: 'Une partie connaissant le tout, le tout connaissant une partie', competence: 1,
     programme: 'Utiliser une proportion pour calculer une partie connaissant le tout, ou le tout connaissant une partie.',
     generer() {
       const { lieu, gens, N, p, n } = populationEtPart([5, 10, 15, 20, 25, 30, 40, 60, 75]), car = choix(CARACTERES)
@@ -426,7 +445,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   // ================= ÉVOLUTIONS ET VARIATIONS =================
   {
-    id: '2nde-coefficient-multiplicateur', theme: T_EVOLUTIONS, titre: 'Formulation additive et multiplicative', competence: 0,
+    id: '2nde-coefficient-multiplicateur', theme: D2_INFORMATION, titre: 'Formulation additive et multiplicative', competence: 2,
     programme: 'Passer d’une formulation additive (« augmenter de 5 % ») à une formulation multiplicative (« multiplier par 1,05 »).',
     generer() {
       const t = choix([1, 2, 3, 4, 5, 7, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 100, 150])
@@ -443,7 +462,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   // ================= FONCTIONS ET REPRÉSENTATIONS =================
   {
-    id: '2nde-image-antecedent', theme: T_FONCTIONS, titre: 'Lire graphiquement images et antécédents', competence: 0,
+    id: '2nde-image-antecedent', theme: D2_REPRESENTATION, titre: 'Lire graphiquement images et antécédents', competence: 0,
     programme: 'Déterminer graphiquement des images et des antécédents.',
     generer() {
       for (;;) {
@@ -460,7 +479,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-equation-courbe', theme: T_FONCTIONS, titre: 'Exploiter l’équation d’une courbe', competence: 1,
+    id: '2nde-equation-courbe', theme: D2_REPRESENTATION, titre: 'Exploiter l’équation d’une courbe', competence: 1,
     programme: 'Exploiter une équation de courbe (appartenance d’un point, calcul de coordonnées).',
     generer() {
       const P = pt(), a = relNonNul(1, 4), b = relNonNul(1, 9), x = relNonNul(1, 4)
@@ -473,8 +492,8 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-lineaire-affine', theme: T_FONCTIONS, titre: 'Reconnaître une fonction linéaire, affine', competence: 2,
-    programme: 'Reconnaître l’expression d’une fonction linéaire, d’une fonction affine.',
+    id: '2nde-lineaire-affine', theme: D2_REPRESENTATION, titre: 'Reconnaître une fonction linéaire, affine', competence: 2,
+    programme: 'Reconnaître l’expression d’une fonction linéaire, d’une fonction affine, savoir que leur représentation graphique est une droite.',
     generer() {
       const sortes: [string, () => string][] = [
         ['lineaire', () => polynome([relNonNul(1, 9), 0])], ['lineaire', () => `\\frac{x}{${ent(2, 9)}}`],
@@ -495,7 +514,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
   },
   // ================= STATISTIQUES =================
   {
-    id: '2nde-diagramme-barres', theme: T_STATS, titre: 'Lire un diagramme en barres', competence: 0,
+    id: '2nde-diagramme-barres', theme: D2_INFORMATION, titre: 'Lire un diagramme en barres', competence: 3,
     programme: 'Lire et commenter des graphiques usuels : diagramme en barres.',
     generer() {
       const [etiquettes, question] = choix<[string[], (e: string) => string]>([
@@ -511,7 +530,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-diagramme-circulaire', theme: T_STATS, titre: 'Lire un diagramme circulaire ou semi-circulaire', competence: 1,
+    id: '2nde-diagramme-circulaire', theme: D2_INFORMATION, titre: 'Lire un diagramme circulaire ou semi-circulaire', competence: 4,
     programme: 'Lire et commenter des graphiques usuels : diagramme circulaire, semi-circulaire.',
     generer() {
       for (;;) {
@@ -529,7 +548,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-courbe-nuage', theme: T_STATS, titre: 'Lire une courbe ou un nuage de points', competence: 2,
+    id: '2nde-courbe-nuage', theme: D2_INFORMATION, titre: 'Lire une courbe ou un nuage de points', competence: 5,
     programme: 'Lire et commenter des graphiques usuels : courbe, nuage de points.',
     generer() {
       const [quoi, debut, pasY] = choix<[string, number, number]>([['la température (en °C) relevée chaque heure à partir de $8$ h', 8, 2], ['la taille (en cm) d\'une plante, jour après jour à partir du jour $1$', 1, 1], ['le nombre de visiteurs (en centaines) d\'un musée chaque mois à partir du mois $1$', 1, 1]])
@@ -543,7 +562,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-indicateurs', theme: T_STATS, titre: 'Moyenne, médiane, quartiles', competence: 3,
+    id: '2nde-indicateurs', theme: D2_INFORMATION, titre: 'Moyenne, médiane, quartiles', competence: 6,
     programme: 'Calculer et interpréter des indicateurs statistiques (moyenne, médiane, quartiles).',
     generer() {
       return choix<() => Question>([
@@ -567,7 +586,7 @@ export const AUTOMATISMES_2NDE: Automatisme[] = [
     },
   },
   {
-    id: '2nde-boites', theme: T_STATS, titre: 'Lire et comparer des boîtes à moustaches', competence: 4,
+    id: '2nde-boites', theme: D2_INFORMATION, titre: 'Lire et comparer des boîtes à moustaches', competence: 7,
     programme: 'Comparer des distributions à l’aide de boîtes à moustaches.',
     generer() {
       const pas = choix([1, 2, 5]), boite = (): [number, number, number, number, number] => {
@@ -1018,7 +1037,7 @@ export const DEUX_NOMS = [['A', 'B'], ['a', 'b'], ['x', 'y'], ['u', 'v'], ['X', 
 export const EVENEMENTS = [['A', 'B'], ['E', 'F'], ['M', 'T'], ['R', 'S'], ['C', 'D'], ['G', 'H']]
 export const nomF = () => choix(['f', 'g', 'h', 'u'])
 
-export const COURS_2NDE: QuestionCours[] = [
+const COURS_2NDE_PAR_THEME: QuestionCours[] = [
   ...n2(T_CALCUL, [
     ['Comparer par la différence',
       () => { const [a, b] = choix(DEUX_NOMS); return [`Comment compare-t-on deux nombres $${a}$ et $${b}$ à l'aide de leur différence ?`, `on étudie le signe de $${a} - ${b}$ : si $${a} - ${b} > 0$, alors $${a} > ${b}$`] },
@@ -1129,6 +1148,16 @@ export const COURS_2NDE: QuestionCours[] = [
       () => { const p = choix(PREMIERS); return [`Combien de diviseurs a le nombre premier $${p}$, et lesquels ?`, `deux : $1$ et $${p}$`] }],
   ]),
 ]
+
+/** Les questions de cours de 2nde, chacune dans le domaine du programme où
+ *  sa notion est rangée ; elles gardent leur id (celui de l'ancien thème) */
+const DOMAINE_DU_COURS: Record<string, string> = {
+  [T_CALCUL]: D2_ALGEBRE, [T_PROPORTIONS]: D2_INFORMATION, [T_EVOLUTIONS]: D2_INFORMATION,
+  [T_STATS]: D2_INFORMATION, [T_FONCTIONS]: D2_REPRESENTATION,
+}
+export const COURS_2NDE: QuestionCours[] = COURS_2NDE_PAR_THEME.map(c => ({
+  ...c, theme: c.titre === 'Un pourcentage est une fraction' ? D2_NOMBRES_REELS : DOMAINE_DU_COURS[c.theme] ?? c.theme,
+}))
 
 export const COURS_1RE: QuestionCours[] = [
   ...n1(T_CALCUL, [

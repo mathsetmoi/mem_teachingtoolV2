@@ -18,7 +18,8 @@
 //    réponses des 3 exercices ;
 // H. un flash de 2nde et de 1re cochées ensemble (fonctions, statistiques,
 //    probabilités : courbes, diagrammes, arbres) : 5 questions corrigées
-//    en vert, la phrase du programme sous chaque exercice ;
+//    en vert, la phrase du programme sous chaque exercice ; en 2nde, un seul
+//    arbre comme en 3e, lignes OFFI puis CAP dans chaque domaine ;
 // I. au collège, l'arbre du programme (7 novembre 2026) : cinq thèmes,
 //    la pensée informatique grisée (« rien au programme »), une case de
 //    thème coche tous ses domaines, la flèche d'un domaine montre ses
@@ -183,22 +184,29 @@ ok(lycee, 'H) Les niveaux 2nde et 1re ne sont plus grisés')
 for (const b of await p.$$('.niveau-flash[aria-pressed=true]')) await b.click()
 await p.click('.niveau-flash[data-niveau="2nde"]'); await p.click('.niveau-flash[data-niveau="1re"]')
 for (const c of await p.$$('.themes-niveau:not([hidden]) input:checked')) await c.click()
-// En 2nde, l'arbre du programme (lot 24) : les thèmes du programme, que le
-// professeur remplit (Arithmétique, PERSO), les domaines vides en gris, et
-// la liste officielle de l'épreuve à part (OFFI), qu'on déplie
+// En 2nde, un seul arbre comme en 3e (24 novembre 2026) : les quatre thèmes
+// du programme ; dans chaque domaine, ses lignes OFFI (la liste officielle,
+// rangée par le professeur) puis ses lignes CAP (CAP1, CAP2…, les capacités
+// attendues, en gris « à remplir ») ; plus de bloc à part pour l'épreuve
 const arbre2 = await p.evaluate(() => {
   const r = document.querySelector('.themes-niveau[data-niveau="2nde"]')
   return {
-    themes: [...r.querySelectorAll('.arbre-theme')].length,
-    offi: !!r.querySelector('.arbre-theme .etiquette-offi'),
+    themes: [...r.querySelectorAll('.arbre-unifie > .arbre-theme')].map(t => t.querySelector('.nom-theme, label span')?.textContent.trim()),
+    pastilles: [...r.querySelectorAll('.pastille-filtre')].map(b => b.textContent.replace(/\s+/g, ' ').trim()),
+    cap1: [...r.querySelectorAll('li[data-type="CAP"] .etiquette-obj')].filter(e => e.textContent === 'CAP1').length,
     perso: [...r.querySelectorAll('.case-competence')].some(c => c.value === '2nde/Arithmétique/0' && c.closest('label').querySelector('.etiquette-perso')),
-    vides: r.querySelectorAll('.arbre-domaine.vide').length,
   }
 })
-ok(arbre2.themes === 5 && arbre2.offi && arbre2.perso && arbre2.vides >= 8, 'H) 2nde : 4 thèmes du programme + la liste officielle (OFFI), Arithmétique PERSO, domaines vides « à remplir »', JSON.stringify(arbre2))
-// En 1re aussi (23 novembre 2026) : la liste de l'épreuve est à part, on la déplie
-for (const n of ['2nde', '1re']) await p.click(`.themes-niveau[data-niveau="${n}"] .arbre-theme:has(.etiquette-offi) > .ligne-arbre > button.deplier`)
-for (const n of ['2nde', '1re']) for (const t of ['Fonctions et représentations', 'Statistiques', 'Probabilités']) await p.click(`.themes-niveau[data-niveau="${n}"] label:has-text("${t}")`)
+ok(arbre2.themes.join('|').startsWith('Nombres et calculs, algèbre') && arbre2.themes.length === 4
+  && arbre2.pastilles.includes('OFFI 35') && arbre2.pastilles.includes('CAP 53') && arbre2.pastilles.includes('PERSO 1') && arbre2.cap1 === 6 && arbre2.perso,
+'H) 2nde : un seul arbre, 4 thèmes du programme, 35 lignes OFFI + 1 PERSO + 53 lignes CAP (les domaines sans rien en gris, fermés)', JSON.stringify(arbre2))
+await p.evaluate(() => {
+  for (const d of ['Représentation algébrique et graphique des fonctions', 'Information chiffrée et statistique descriptive', 'Probabilités'])
+    document.querySelector(`.themes-niveau[data-niveau="2nde"] .case-domaine[value="2nde/${d}"]`).click()
+})
+// En 1re (23 novembre 2026) : la liste de l'épreuve est à part, on la déplie
+await p.click('.themes-niveau[data-niveau="1re"] .arbre-theme:has(.etiquette-offi) > .ligne-arbre > button.deplier')
+for (const t of ['Fonctions et représentations', 'Statistiques', 'Probabilités']) await p.click(`.themes-niveau[data-niveau="1re"] label:has-text("${t}")`)
 await p.click('.dialogue-flash .lancer')
 await p.waitForTimeout(1500)
 const pageH = await p.evaluate(() => window.__app.page)

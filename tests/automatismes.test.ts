@@ -7,7 +7,8 @@ import { describe, expect, it } from 'vitest'
 import katex from 'katex'
 import { AUTOMATISMES_1RE, AUTOMATISMES_2NDE, AUTOMATISMES_3E, AUTOMATISMES_4E, AUTOMATISMES_5E, COMPOSITION_PAR_DEFAUT, COURS_1RE, COURS_2NDE, COURS_3E, COURS_4E, COURS_5E, NIVEAUX, automatismesDuFlash, themesDe, tirerFlash, tirerRemplacante } from '../src/automatismes'
 import { PROGRAMME_AUTOMATISMES, THEMES_COLLEGE } from '../src/programme-automatismes'
-import { cleObjectifsDe, objectifsDeExercice, SECTION_AUTOMATISMES, SECTION_OBJECTIFS } from '../src/objectifs-flash'
+import { cleObjectifsDe, objectifsDeExercice, SECTION_AUTOMATISMES, SECTION_CAPACITES, SECTION_OBJECTIFS } from '../src/objectifs-flash'
+import { CAPACITES_LYCEE } from '../src/programme-lycee'
 import { PROGRAMME_CYCLE4 } from '../src/programme-cycle4'
 import { automatismesChoisis, coursChoisis, lireReglages, REGLAGES_PAR_DEFAUT } from '../src/flash'
 import { caseOpposee, estPatronDeCube, hexomino } from '../src/figures'
@@ -475,7 +476,9 @@ describe('les automatismes de 2nde et de 1re (épreuve anticipée)', () => {
     for (const [id, autos, cours] of lycee) {
       const n = NIVEAUX.find(x => x.id === id)!
       expect(n.automatismes).toBe(autos)
-      for (const t of themesDe(n)) expect(cours.filter(c => c.theme === t).length, `${id} ${t}`).toBeGreaterThanOrEqual(3)
+      // En 2nde, les questions de cours sont revues ligne par ligne : au
+      // moins une par domaine qui a des exercices, en attendant
+      for (const t of themesDe(n)) expect(cours.filter(c => c.theme === t).length, `${id} ${t}`).toBeGreaterThanOrEqual(id === '2nde' ? 1 : 3)
     }
     const ids = [...AUTOMATISMES_5E, ...AUTOMATISMES_4E, ...AUTOMATISMES_2NDE, ...AUTOMATISMES_1RE, ...COURS_5E, ...COURS_4E, ...COURS_2NDE, ...COURS_1RE].map(x => x.id)
     expect(new Set(ids).size).toBe(ids.length)
@@ -485,33 +488,61 @@ describe('les automatismes de 2nde et de 1re (épreuve anticipée)', () => {
     for (const [, autos] of lycee) for (const a of autos) expect(a.programme, a.id).toMatch(/^[A-ZÉ].*\.$/)
   })
 
-  it('les thèmes suivent la liste officielle, dans son ordre', () => {
-    const ordre = ['Calcul numérique et algébrique', 'Proportions et pourcentages', 'Évolutions et variations', 'Fonctions et représentations', 'Statistiques', 'Probabilités']
-    // En 2nde, après la liste officielle, le domaine PERSO Arithmétique (lot 24)
-    expect(themesDe(NIVEAUX.find(x => x.id === '2nde')!)).toEqual([...ordre, 'Arithmétique'])
-    expect(themesDe(NIVEAUX.find(x => x.id === '1re')!)).toEqual(ordre.filter(t => t !== 'Proportions et pourcentages'))
+  it('en 1re, les thèmes suivent la liste officielle, dans son ordre', () => {
+    const ordre = ['Calcul numérique et algébrique', 'Évolutions et variations', 'Fonctions et représentations', 'Statistiques', 'Probabilités']
+    expect(themesDe(NIVEAUX.find(x => x.id === '1re')!)).toEqual(ordre)
   })
 
-  it('en 2nde, l\'arbre du programme : quatre thèmes à remplir, puis la liste officielle (OFFI) ; chaque exercice a sa compétence, chaque compétence ses exercices', () => {
+  it('en 2nde, un seul arbre comme en 3e : les quatre thèmes du programme, chaque domaine avec ses lignes OFFI puis ses lignes CAP', () => {
     const prog = PROGRAMME_AUTOMATISMES['2nde']
-    expect(prog.map(t => t.nom)).toEqual(['Nombres et calculs, algèbre', 'Géométrie', 'Fonctions', 'Statistiques et probabilités', 'Automatismes de l’épreuve'])
-    expect(prog.slice(0, 4).every(t => t.aRemplir && !t.offi)).toBe(true)
-    expect(prog[4].offi).toBe(true)
-    const domaines = prog.flatMap(t => t.domaines)
-    expect(new Set(domaines.map(d => d.cle)).size).toBe(domaines.length)
+    const themes = ['Nombres et calculs, algèbre', 'Géométrie', 'Fonctions', 'Statistiques et probabilités']
+    // Plus de bloc à part « Automatismes de l'épreuve »
+    expect(prog.map(t => t.nom)).toEqual([...themes, ...themes])
+    expect(prog.slice(0, 4).every(t => t.section === SECTION_AUTOMATISMES)).toBe(true)
+    expect(prog.slice(4).every(t => t.section === SECTION_CAPACITES)).toBe(true)
+    const offi = prog.slice(0, 4).flatMap(t => t.domaines)
+    expect(offi.map(d => d.cle)).toEqual(['Arithmétique', 'Nombres réels', 'Algèbre', 'Vecteurs et problèmes de géométrie', 'Représentation algébrique et graphique des fonctions', 'Information chiffrée et statistique descriptive', 'Probabilités'])
+    expect(offi.map(d => d.competences.length)).toEqual([1, 4, 11, 5, 3, 8, 4])
+    // Chaque domaine officiel a son domaine de capacités (même nom)
+    for (const d of offi) expect(cleObjectifsDe('2nde', d.cle), d.cle).toBe('obj:' + d.cle)
+    // Les 53 capacités attendues du programme, toutes « à remplir » pour l'instant
+    const cap = prog.slice(4).flatMap(t => t.domaines)
+    expect(cap.length).toBe(10)
+    expect(cap.reduce((s, d) => s + d.competences.length, 0)).toBe(53)
+    expect(cap.map(d => d.competences)).toEqual(CAPACITES_LYCEE['2nde'].flatMap(t => t.domaines.map(d => d.capacites)))
     for (const a of AUTOMATISMES_2NDE) {
-      const d = domaines.find(x => x.cle === a.theme)
+      const d = offi.find(x => x.cle === a.theme)
       expect(d, a.id).toBeTruthy()
       expect(a.competence, a.id).toBeDefined()
       expect(d!.competences[a.competence!], a.id).toBeTruthy()
-      // La compétence d'un exercice officiel est la phrase qu'il travaille
-      if (prog[4].domaines.includes(d!)) expect(d!.competences[a.competence!].slice(0, 10), a.id).toBe(a.programme!.slice(0, 10))
+      // La ligne d'un exercice officiel est la phrase qu'il travaille
+      if (a.theme !== 'Arithmétique') expect(d!.competences[a.competence!].slice(0, 10), a.id).toBe(a.programme!.slice(0, 10))
     }
-    for (const d of domaines) d.competences.forEach((c, k) => expect(AUTOMATISMES_2NDE.some(a => a.theme === d.cle && a.competence === k), `${d.cle} : ${c}`).toBe(true))
-    const arith = domaines.find(d => d.cle === 'Arithmétique')!
+    // Toutes les lignes OFFI ont leurs exercices, sauf les cinq de géométrie
+    // (absentes de l'outil avant ce rangement) : elles restent « à remplir »
+    for (const d of offi) d.competences.forEach((c, k) => expect(AUTOMATISMES_2NDE.some(a => a.theme === d.cle && a.competence === k), `${d.cle} : ${c}`).toBe(d.cle !== 'Vecteurs et problèmes de géométrie'))
+    // Les questions de cours sont rangées dans un domaine du programme
+    for (const c of COURS_2NDE) expect(offi.some(d => d.cle === c.theme), c.id).toBe(true)
+    const arith = offi.find(d => d.cle === 'Arithmétique')!
     expect(arith).toMatchObject({ competencesPerso: true, competences: ['Connaître le cours'] })
     expect(arith.perso).toBeFalsy()
     expect(AUTOMATISMES_2NDE.filter(a => a.theme === 'Arithmétique').length).toBeGreaterThanOrEqual(5)
+  })
+
+  it('en 2nde, un réglage gardé avec les anciens domaines de l\'épreuve coche les mêmes lignes dans les domaines du programme', () => {
+    const r = lireReglages(JSON.stringify({ niveaux: ['2nde'], themes: ['2nde/Calcul numérique et algébrique', '2nde/Statistiques', '2nde/Probabilités', '2nde/Proportions et pourcentages'],
+      competences: ['2nde/Calcul numérique et algébrique/4', '2nde/Calcul numérique et algébrique/10', '2nde/Proportions et pourcentages/1'] }))
+    expect(r.themes.sort()).toEqual(['2nde/Algèbre', '2nde/Information chiffrée et statistique descriptive', '2nde/Nombres réels', '2nde/Probabilités'])
+    expect(r.competences.sort()).toEqual(['2nde/Algèbre/6', '2nde/Information chiffrée et statistique descriptive/1', '2nde/Information chiffrée et statistique descriptive/3',
+      '2nde/Information chiffrée et statistique descriptive/4', '2nde/Information chiffrée et statistique descriptive/5', '2nde/Information chiffrée et statistique descriptive/6',
+      '2nde/Information chiffrée et statistique descriptive/7', '2nde/Nombres réels/0'])
+    // Les mêmes exercices qu'avant : identités et écritures, une partie du tout, les cinq de statistiques, les quatre de probabilités
+    expect(automatismesChoisis(r).map(a => a.id).sort()).toEqual(['2nde-boites', '2nde-courbe-nuage', '2nde-diagramme-barres', '2nde-diagramme-circulaire', '2nde-ecritures',
+      '2nde-equiprobabilite', '2nde-identites', '2nde-indicateurs', '2nde-partie-tout', '2nde-proba-0-1', '2nde-proba-contraire', '2nde-proba-somme'])
+    // Un ancien domaine coché en entier coche ses nouveaux domaines en entier
+    const t = lireReglages(JSON.stringify({ niveaux: ['2nde'], themes: ['2nde/Calcul numérique et algébrique'], competences: [] }))
+    expect(t.themes.sort()).toEqual(['2nde/Algèbre', '2nde/Nombres réels'])
+    expect(t.competences).toEqual([])
   })
 
   it('réponse courte, jamais une chance sur deux, et les trous ont un trou', () => {
