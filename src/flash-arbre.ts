@@ -1,8 +1,10 @@
 // =============================================================
-// LA FENÊTRE DES AUTOMATISMES, EN UN SEUL ARBRE (5e)
+// LA FENÊTRE DES AUTOMATISMES, EN UN SEUL ARBRE (5e, 3e, 2nde)
 // Thème › Domaine › lignes. Chaque ligne porte son étiquette : OFFI (la
 // liste officielle des automatismes), OBJ (un objectif d'apprentissage du
-// programme) ou PERSO (une ligne du professeur). Les deux listes du
+// programme, au collège), CAP (une capacité attendue du programme, au
+// lycée : CAP1, CAP2… dans chaque domaine) ou PERSO (une ligne du
+// professeur). Les deux listes du
 // programme sont rangées ensemble, domaine par domaine, parce qu'elles ont
 // les mêmes thèmes et les mêmes domaines.
 //
@@ -17,11 +19,11 @@
 // =============================================================
 import type { Automatisme, Niveau, QuestionCours } from './automatismes'
 import type { ReglagesFlash } from './flash'
-import { cleObjectifsDe } from './objectifs-flash'
+import { cleObjectifsDe, estNiveauLycee } from './objectifs-flash'
 import type { DomaineProgramme, ThemeProgramme } from './programme-automatismes'
 
-export type TypeLigne = 'OFFI' | 'OBJ' | 'PERSO'
-const TYPES: TypeLigne[] = ['OFFI', 'OBJ', 'PERSO']
+export type TypeLigne = 'OFFI' | 'OBJ' | 'CAP' | 'PERSO'
+const TYPES: TypeLigne[] = ['OFFI', 'OBJ', 'CAP', 'PERSO']
 
 /** Ce que flash.ts prête à l'arbre : son propre décompte des exercices et des questions de cours */
 export interface AidesArbre {
@@ -39,6 +41,7 @@ export interface AidesArbre {
 const ETIQUETTE: Record<TypeLigne, string> = {
   OFFI: '<b class="etiquette-offi" title="La liste officielle des automatismes">OFFI</b>',
   OBJ: '<b class="etiquette-obj" title="Un objectif d’apprentissage du programme">OBJ</b>',
+  CAP: '<b class="etiquette-obj" title="Une capacité attendue du programme">CAP</b>',
   PERSO: '<b class="etiquette-perso" title="Une ligne à vous, hors programme officiel">PERSO</b>',
 }
 
@@ -74,7 +77,7 @@ export function arbreUnifie(a: AidesArbre): string {
   }
   for (const o of objectifs) if (!officiels.some(t => t.nom === o.nom)) themes.push({ nom: o.nom, offi: false, domaines: domainesDuTheme(undefined, o, n.id) })
 
-  const compte: Record<TypeLigne, number> = { OFFI: 0, OBJ: 0, PERSO: 0 }
+  const compte: Record<TypeLigne, number> = { OFFI: 0, OBJ: 0, CAP: 0, PERSO: 0 }
   const coche = (cle: string) => R.themes.includes(cle)
 
   /** Les lignes d'un domaine d'origine (officiel ou objectifs) */
@@ -90,14 +93,14 @@ export function arbreUnifie(a: AidesArbre): string {
       if (ok) cochables++
       compte[sorte]++
       const cochee = ok && coche(valeur) && (!visees.length || visees.includes(`${valeur}/${k}`))
-      return `<li data-type="${sorte}" data-n="${ok ? nb : 0}" data-t="${a.html(sansAccents(c))}"><label${ok ? '' : ' class="sans-exercice"'}><input type="checkbox" class="case-competence" value="${a.html(valeur)}/${k}"${cochee ? ' checked' : ''}${ok ? '' : ' disabled'}>${ETIQUETTE[sorte]}<span>${a.texte(c)}</span><small>${ok ? nb : 'à remplir'}</small></label></li>`
+      return `<li data-type="${sorte}" data-n="${ok ? nb : 0}" data-t="${a.html(sansAccents(c))}"><label${ok ? '' : ' class="sans-exercice"'}><input type="checkbox" class="case-competence" value="${a.html(valeur)}/${k}"${cochee ? ' checked' : ''}${ok ? '' : ' disabled'}>${sorte === 'CAP' ? ETIQUETTE.CAP.replace('>CAP<', `>CAP${k + 1}<`) : ETIQUETTE[sorte]}<span>${a.texte(c)}</span><small>${ok ? nb : 'à remplir'}</small></label></li>`
     }).join('')
     return { html: h, cochables }
   }
 
   const domaineHtml = (d: DomaineFusionne): { html: string; cochables: number } => {
     const o = d.officiel ? lignes(d.officiel, 'OFFI') : { html: '', cochables: 0 }
-    const b = d.objectifs ? lignes(d.objectifs, 'OBJ') : { html: '', cochables: 0 }
+    const b = d.objectifs ? lignes(d.objectifs, estNiveauLycee(n.id) ? 'CAP' : 'OBJ') : { html: '', cochables: 0 }
     const cochables = o.cochables + b.cochables
     if (!cochables) return { html: `<div class="arbre-domaine vide"><div class="ligne-arbre"><span class="deplier"></span><span class="nom-domaine">${a.html(d.nom)}</span><small>à remplir</small></div></div>`, cochables }
     const cle = d.officiel?.cle ?? d.objectifs!.cle

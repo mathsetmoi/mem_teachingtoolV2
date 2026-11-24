@@ -6580,6 +6580,40 @@ recommandations.
   `src/automatismes/lycee.ts`. Essai : `lot10/E1-flash.mjs` (partie H,
   adaptée : on déplie la liste officielle avant de cocher ses domaines).
 
+## Les automatismes de 2nde en un seul arbre, comme la 3e
+
+Demandé par le professeur le 24 novembre 2026, rangement validé domaine par
+domaine.
+
+- **Un seul arbre** Thème › Domaine › lignes, comme en 3e : les quatre
+  thèmes du programme de seconde et leurs dix domaines. Plus de bloc à part
+  « Automatismes de l’épreuve ».
+- **Deux sortes de lignes dans chaque domaine** : d’abord les lignes
+  **OFFI**, les 35 phrases de la liste « Automatismes » du programme, chacune
+  dans le domaine choisi par le professeur (Nombres réels : écritures, ordre
+  de grandeur, vraisemblance, conversions ; Algèbre : les onze phrases de
+  calcul, dont les fractions simples ; Vecteurs et problèmes de géométrie :
+  les cinq phrases de géométrie, nouvelles, encore « à remplir » ;
+  Représentation algébrique et graphique des fonctions : les trois phrases de
+  fonctions ; Information chiffrée et statistique descriptive : proportions,
+  évolutions et graphiques, huit phrases ; Probabilités : quatre phrases).
+  Puis les lignes **CAP**, les 53 capacités attendues du programme, numérotées
+  CAP1, CAP2… dans chaque domaine avec leur intitulé exact, en gris « à
+  remplir » tant qu’elles n’ont pas d’exercice. Arithmétique garde sa ligne
+  **PERSO**.
+- **Les pastilles** Tout, OFFI, CAP, PERSO et Cochés filtrent les lignes,
+  comme en 3e.
+- **Rien ne se perd** : les 30 exercices et les questions de cours gardent
+  leur contenu, rangés sous leur ligne ; les réglages gardés avec les
+  anciens domaines (« 2nde/Statistiques ») cochent les mêmes lignes dans les
+  nouveaux.
+- La revue des exercices, ligne par ligne, puis les lignes CAP, viennent
+  ensuite, une partie validée à la fois.
+- Données : `src/programme-lycee.ts` (les capacités attendues),
+  `src/programme-automatismes.ts` (clé « 2nde », les lignes OFFI),
+  `src/automatismes/lycee.ts` (`REGLAGES_2NDE_AVANT`). Essais :
+  `tests/automatismes.test.ts` et `lot10/E1-flash.mjs` (partie H, adaptée).
+
 ## La trigonométrie de 1re dans le flash
 
 Demandé par le professeur le 23 novembre 2026, maquette validée avec ses

@@ -16,7 +16,6 @@
 // =============================================================
 
 import { NIVEAUX_AVEC_OBJECTIFS, SECTION_AUTOMATISMES, themesObjectifs } from './objectifs-flash'
-import type { NiveauCollege } from './programme-cycle4'
 import { COMPETENCES_TRIGONOMETRIE, T_TRIGONOMETRIE } from './automatismes/trigonometrie-1re'
 
 export interface DomaineProgramme {
@@ -290,42 +289,28 @@ export const PROGRAMME_AUTOMATISMES: Record<string, ThemeProgramme[]> = {
     ] },
     INFORMATIQUE,
   ],
-  // La 2nde : les quatre thèmes du programme de seconde et leurs domaines,
-  // que le professeur remplit de ses questions (PERSO) ; puis, à part comme
-  // dans le programme, la liste officielle des automatismes de l'épreuve
-  // anticipée (OFFI), une compétence par phrase de la liste. Les clés de
-  // ces domaines-là sont les thèmes des exercices de lycee.ts, pour que les
-  // réglages déjà gardés (« 2nde/Statistiques ») restent bons.
+  // La 2nde, rangée comme la 3e (24 novembre 2026) : les quatre thèmes du
+  // programme de seconde et leurs domaines ; dans chaque domaine, les
+  // phrases de la liste officielle des automatismes (OFFI) qui s'y
+  // rattachent (le professeur a choisi le domaine de chacune), puis les
+  // capacités attendues du domaine (CAP, programme-lycee.ts). Les clés sont
+  // les noms des domaines du programme ; les réglages gardés avec les
+  // anciennes clés (« 2nde/Statistiques ») sont convertis à la lecture
+  // (REGLAGES_2NDE_AVANT, flash.ts).
   '2nde': [
-    { nom: 'Nombres et calculs, algèbre', aRemplir: true, domaines: [
+    { nom: 'Nombres et calculs, algèbre', domaines: [
       { cle: 'Arithmétique', competencesPerso: true, competences: ['Connaître le cours'] },
-      { cle: 'Nombres réels', competences: [] },
-      { cle: 'Algèbre', competences: [] },
-    ] },
-    { nom: 'Géométrie', aRemplir: true, domaines: [
-      { cle: 'Vecteurs et problèmes de géométrie', competences: [] },
-      { cle: 'Droites du plan', competences: [] },
-    ] },
-    { nom: 'Fonctions', aRemplir: true, domaines: [
-      { cle: 'Représentation algébrique et graphique des fonctions', competences: [] },
-      { cle: 'Variations et extrémums d’une fonction', competences: [] },
-    ] },
-    { nom: 'Statistiques et probabilités', aRemplir: true, domaines: [
-      { cle: 'Information chiffrée et statistique descriptive', competences: [] },
-      { cle: 'Croisement de deux variables qualitatives', competences: [] },
-      // « Probabilités » est déjà la clé d'un domaine de la liste officielle
-      { cle: 'Probabilités du programme', nom: 'Probabilités', competences: [] },
-    ] },
-    { nom: 'Automatismes de l’épreuve', offi: true, domaines: [
-      { cle: 'Calcul numérique et algébrique', competences: [
-        'Comparer deux nombres par le calcul de leur différence.',
-        'Comparer deux nombres strictement positifs par le calcul de leur quotient.',
-        'Effectuer des opérations et des comparaisons entre des fractions simples.',
-        'Effectuer des opérations sur les puissances.',
+      { cle: 'Nombres réels', competences: [
         'Passer d’une écriture d’un nombre à une autre (décimale, fractionnaire, pourcentage).',
         'Estimer un ordre de grandeur.',
         'S’assurer de la vraisemblance, de la cohérence d’un résultat.',
         'Effectuer des conversions d’unités : longueurs, aires, volumes, contenances, durées, vitesses, masses.',
+      ] },
+      { cle: 'Algèbre', competences: [
+        'Comparer deux nombres par le calcul de leur différence.',
+        'Comparer deux nombres strictement positifs par le calcul de leur quotient.',
+        'Effectuer des opérations et des comparaisons entre des fractions simples.',
+        'Effectuer des opérations sur les puissances.',
         'Effectuer un calcul littéral élémentaire : $-(a + b) = -a - b$, $-(a - b) = b - a$.',
         'Effectuer un calcul littéral élémentaire : expressions multiplicatives et quotients.',
         'Développer, factoriser : identités $(a + b)^2$, $(a - b)^2$, $(a + b)(a - b)$.',
@@ -334,19 +319,28 @@ export const PROGRAMME_AUTOMATISMES: Record<string, ThemeProgramme[]> = {
         'Isoler une variable dans une égalité qui en comporte plusieurs.',
         'Effectuer une application numérique d’une formule.',
       ] },
-      { cle: 'Proportions et pourcentages', competences: [
-        'Calculer, appliquer, exprimer une proportion sous différentes formes (décimale, fractionnaire, pourcentage).',
-        'Utiliser une proportion pour calculer une partie connaissant le tout, ou le tout connaissant une partie.',
+    ] },
+    { nom: 'Géométrie', domaines: [
+      { cle: 'Vecteurs et problèmes de géométrie', competences: [
+        'Sur une droite graduée, repérer ou placer un point dont l’abscisse est un nombre relatif.',
+        'Dans le plan muni d’un repère orthogonal, lire les coordonnées d’un point donné, placer un point de coordonnées données.',
+        'Calculer des périmètres (polygone et cercle), aires (rectangle, triangle et disque) et des volumes (pavé droit, prisme, cylindre, pyramide, cône et boule).',
+        'Application simple du théorème de Pythagore, du théorème de Thalès.',
+        'Connaître et utiliser les lignes trigonométriques dans le triangle rectangle : cosinus, sinus, tangente.',
       ] },
-      { cle: 'Évolutions et variations', competences: [
-        'Passer d’une formulation additive (« augmenter de 5 % ») à une formulation multiplicative (« multiplier par 1,05 »).',
-      ] },
-      { cle: 'Fonctions et représentations', competences: [
+    ] },
+    { nom: 'Fonctions', domaines: [
+      { cle: 'Représentation algébrique et graphique des fonctions', competences: [
         'Déterminer graphiquement des images et des antécédents.',
         'Exploiter une équation de courbe (appartenance d’un point, calcul de coordonnées).',
-        'Reconnaître l’expression d’une fonction linéaire, d’une fonction affine.',
+        'Reconnaître l’expression d’une fonction linéaire, d’une fonction affine, savoir que leur représentation graphique est une droite.',
       ] },
-      { cle: 'Statistiques', competences: [
+    ] },
+    { nom: 'Statistiques et probabilités', domaines: [
+      { cle: 'Information chiffrée et statistique descriptive', competences: [
+        'Calculer, appliquer, exprimer une proportion sous différentes formes (décimale, fractionnaire, pourcentage).',
+        'Utiliser une proportion pour calculer une partie connaissant le tout, ou le tout connaissant une partie.',
+        'Passer d’une formulation additive (« augmenter de 5 % ») à une formulation multiplicative (« multiplier par 1,05 »).',
         'Lire et commenter des graphiques usuels : diagramme en barres.',
         'Lire et commenter des graphiques usuels : diagramme circulaire, semi-circulaire.',
         'Lire et commenter des graphiques usuels : courbe, nuage de points.',
@@ -422,5 +416,5 @@ export const PROGRAMME_AUTOMATISMES: Record<string, ThemeProgramme[]> = {
 // Les niveaux qui ont les deux listes : la liste officielle, puis les objectifs
 for (const n of NIVEAUX_AVEC_OBJECTIFS) {
   // Des copies : la pensée informatique est la même pour tous les niveaux
-  PROGRAMME_AUTOMATISMES[n] = [...PROGRAMME_AUTOMATISMES[n].map(t => ({ ...t, section: SECTION_AUTOMATISMES })), ...themesObjectifs(n as NiveauCollege)]
+  PROGRAMME_AUTOMATISMES[n] = [...PROGRAMME_AUTOMATISMES[n].map(t => ({ ...t, section: SECTION_AUTOMATISMES })), ...themesObjectifs(n)]
 }

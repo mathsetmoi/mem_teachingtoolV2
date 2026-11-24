@@ -16,17 +16,34 @@
 import type { NiveauCollege } from './programme-cycle4'
 import { PROGRAMME_CYCLE4 } from './programme-cycle4'
 import type { ThemeProgramme } from './programme-automatismes'
+import { CAPACITES_LYCEE } from './programme-lycee'
 
 export const PREFIXE_OBJECTIFS = 'obj:'
-/** Les niveaux dont le flash a la liste des objectifs */
-export const NIVEAUX_AVEC_OBJECTIFS: readonly string[] = ['5e', '3e']
+/** Les niveaux dont le flash a la liste des objectifs (au lycée : celle des
+ *  capacités attendues, programme-lycee.ts) */
+export const NIVEAUX_AVEC_OBJECTIFS: readonly string[] = ['5e', '3e', ...Object.keys(CAPACITES_LYCEE)]
+/** Au lycée, la seconde liste est celle des capacités attendues : ses lignes
+ *  portent l'étiquette CAP (CAP1, CAP2… dans chaque domaine), au collège OBJ */
+export const estNiveauLycee = (niveau: string) => niveau in CAPACITES_LYCEE
+
+/** Les domaines de la seconde liste d'un niveau, avec leurs lignes */
+function domainesDe(niveau: string): { theme: string; nom: string; lignes: string[] }[] {
+  if (estNiveauLycee(niveau)) return CAPACITES_LYCEE[niveau].flatMap(t => t.domaines.map(d => ({ theme: t.nom, nom: d.nom, lignes: d.capacites })))
+  return (PROGRAMME_CYCLE4[niveau as NiveauCollege] ?? []).flatMap(t => t.domaines.map(d => ({ theme: t.nom, nom: d.nom, lignes: d.objectifs.map(o => o.texte) })))
+}
 
 export const estDomaineObjectifs = (cle: string) => cle.startsWith(PREFIXE_OBJECTIFS)
 
 /** Les thèmes du programme avec, pour chaque domaine, la liste de ses
  *  objectifs d'apprentissage comme compétences */
-export function themesObjectifs(niveau: NiveauCollege): ThemeProgramme[] {
-  return PROGRAMME_CYCLE4[niveau].map(t => ({
+export function themesObjectifs(niveau: string): ThemeProgramme[] {
+  if (estNiveauLycee(niveau)) return CAPACITES_LYCEE[niveau].map(t => ({
+    nom: t.nom,
+    aRemplir: true,
+    section: SECTION_CAPACITES,
+    domaines: t.domaines.map(d => ({ cle: PREFIXE_OBJECTIFS + d.nom, nom: d.nom, competences: d.capacites })),
+  }))
+  return PROGRAMME_CYCLE4[niveau as NiveauCollege].map(t => ({
     nom: t.nom,
     aRemplir: true,
     section: SECTION_OBJECTIFS,
@@ -36,6 +53,7 @@ export function themesObjectifs(niveau: NiveauCollege): ThemeProgramme[] {
 
 export const SECTION_AUTOMATISMES = { nom: 'Automatismes du programme', offi: true }
 export const SECTION_OBJECTIFS = { nom: 'Objectifs d’apprentissage du programme', offi: false }
+export const SECTION_CAPACITES = { nom: 'Capacités attendues du programme', offi: false }
 
 /** Pour un exercice d'application : le domaine d'objectifs où il est
  *  rangé et le rang de chaque objectif qu'il travaille */
@@ -52,9 +70,7 @@ export function rangerSousObjectif(niveau: string, id: string, theme: string, k:
 /** La clé du domaine d'objectifs qui correspond à un thème du flash
  *  (« Repérage » pour « Repérage sur une droite et dans le plan ») */
 export function cleObjectifsDe(niveau: string, theme: string): string | undefined {
-  for (const t of PROGRAMME_CYCLE4[niveau as NiveauCollege] ?? []) for (const d of t.domaines) {
-    if (d.nom === theme || d.nom.startsWith(theme)) return PREFIXE_OBJECTIFS + d.nom
-  }
+  for (const d of domainesDe(niveau)) if (d.nom === theme || d.nom.startsWith(theme)) return PREFIXE_OBJECTIFS + d.nom
   return undefined
 }
 const MEMOIRE = new Map<string, Map<string, { cle: string; ks: number[] }>>()
