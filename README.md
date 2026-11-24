@@ -6626,6 +6626,23 @@ domaine.
     fraction » restent dans `lycee.ts` (`AUTOMATISMES_2NDE_AVANT`,
     `COURS_2NDE_AVANT`), sans être posés. Données :
     `src/automatismes/seconde-nombres-reels.ts`.
+- **Algèbre, revu ligne par ligne** (24 novembre 2026) : 61 exercices et 29
+  questions de cours pour les 11 lignes.
+  - Comparer par la différence : fractions, expressions, carré. Comparer
+    par le quotient : puissances, fractions, décimaux.
+  - Fractions simples : les quatre opérations, ranger, une fraction d'un
+    nombre, à trou.
+  - Puissances : produit, quotient, puissance de puissance, exposant
+    négatif, même exposant, puissances de 10, à trou.
+  - −(a + b) et −(a − b) ; expressions multiplicatives et quotients (les
+    égalités du programme en cours) ; identités ; factoriser ; équations et
+    inéquations.
+  - Isoler une variable et application numérique : des exercices
+    seulement, sans question de cours (choix du professeur).
+  - L'ancienne façon « On sait que a − b = −0,3… » reste posée, à sa
+    demande. Les anciens exercices et notions d'Algèbre restent dans
+    `AUTOMATISMES_2NDE_AVANT` et `COURS_2NDE_AVANT`, sans être posés.
+    Données : `src/automatismes/lycee.ts` (partie « ALGÈBRE (2nde) »).
 - Données : `src/programme-lycee.ts` (les capacités attendues),
   `src/programme-automatismes.ts` (clé « 2nde », les lignes OFFI),
   `src/automatismes/lycee.ts` (`REGLAGES_2NDE_AVANT`). Essais :

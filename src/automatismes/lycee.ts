@@ -7,7 +7,7 @@
 import * as F from '../figures'
 import type { Automatisme, Facon, Question, QuestionCours } from './outils'
 import { coursTrigonometrie } from './trigonometrie-1re'
-import { AUTOMATISMES_2NDE_NOMBRES_REELS, COURS_2NDE_NOMBRES_REELS } from './seconde-nombres-reels'
+import { AUTOMATISMES_2NDE_NOMBRES_REELS, COURS_2NDE_NOMBRES_REELS, phraseATrou } from './seconde-nombres-reels'
 import { PRENOMS, arrondi, choix, coord, deg, ent, etL, frac, grandNb, irreductible, lettre, melange, mot, nb, notions, pgcd, pt, pts, relNonNul, tableau, unTrou, une, unite } from './outils'
 
 // =============================================================
@@ -1231,17 +1231,331 @@ export const COURS_1RE: QuestionCours[] = [
 ]
 
 // =============================================================
+// ALGÈBRE (2nde), REVU LIGNE PAR LIGNE
+// Le professeur a revu le domaine le 24 novembre 2026, ligne OFFI par
+// ligne OFFI : plusieurs exercices (A, B, C…) qui couvrent tout
+// l'intitulé, puis les questions de cours (P1, P2…), des phrases à
+// compléter dont le trou change de place. Les lignes « isoler une
+// variable » et « application numérique » n'ont pas de question de cours
+// (son choix). Les anciens exercices et les anciennes notions restent dans
+// AUTOMATISMES_2NDE_AVANT et COURS_2NDE_AVANT, sans être posés.
+// =============================================================
+const AL = D2_ALGEBRE
+/** La phrase de la liste officielle d'une ligne d'Algèbre : celle que
+ *  portaient déjà les exercices d'avant */
+const phraseAlgebre = (k: number) => AUTOMATISMES_2NDE_LISTE.find(a => a.theme === AL && a.competence === k)!.programme!
+const ancienExo = (id: string) => AUTOMATISMES_2NDE_LISTE.find(a => a.id === id)!
+const ancienneNotion = (titre: string) => COURS_2NDE_PAR_THEME.find(c => c.titre === titre)!
+function exoAl(k: number, id: string, titre: string, generer: () => Question): Automatisme {
+  return { id: `2nde-al-${id}`, theme: AL, titre, competence: k, programme: phraseAlgebre(k), generer }
+}
+/** Une notion de cours d'Algèbre ; les numéros partent de 100 */
+function notionAl(k: number, i: number, titre: string, ...facons: Facon[]): QuestionCours {
+  const [q] = notions(AL, [[titre, ...facons]], '2nde-')
+  return { ...q, id: `cours-2nde-${AL}-${i}`, competence: k }
+}
+/** Une égalité à compléter, en maths */
+const egalite = (e: string, r: string): [string, string] => [`Compléter : $${e}$`, `$${r}$`]
+const signeDe = (x: number) => x > 0 ? '>' : '<'
+const conclure = (X: string, Y: string, calcul: string, s: string, borne: string, suite = '') => mot(`$${calcul} ${s} ${borne}$, donc $${X} ${s} ${Y}$${suite}`)
+/** Deux fractions simples irréductibles a/b et c/d, de dénominateurs différents */
+function deuxFractions(): [number, number, number, number] {
+  for (;;) {
+    const b = ent(2, 7), d = autreQue([2, 3, 4, 5, 6, 7, 8, 9, 10], b), a = ent(1, 9), c = ent(1, 9)
+    if (pgcd(a, b) === 1 && pgcd(c, d) === 1) return [a, b, c, d]
+  }
+}
+const LETTRES_DEUX: [string, string][] = [['a', 'b'], ['x', 'y'], ['u', 'v'], ['p', 'q']]
+
+// ---------- Ligne 1 : comparer par la différence ----------
+const AL_DIFFERENCE: Automatisme[] = [
+  exoAl(0, 'difference-fractions', 'Comparer deux fractions par leur différence', () => ancienExo('2nde-comparer-difference').generer()),
+  exoAl(0, 'difference-expressions', 'Comparer deux expressions par leur différence', () => {
+    const [X, Y] = choix([['A', 'B'], ['E', 'F'], ['M', 'N']]), v = choix(['x', 'a', 't']), k = choix([1, 2, 3])
+    const p = relNonNul(1, 9), q = autreQue([-9, -8, -7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9], p)
+    return { enonce: `On donne $${X} = ${polynome([k, p], v)}$ et $${Y} = ${polynome([k, q], v)}$. Calculer $${X} - ${Y}$, puis comparer $${X}$ et $${Y}$.`, reponse: conclure(X, Y, `${X} - ${Y} = ${p - q}`, signeDe(p - q), '0', ` pour tout $${v}$`) }
+  }),
+  exoAl(0, 'difference-carre', 'Comparer avec un carré', () => {
+    const v = choix(['x', 'a', 't']), k = relNonNul(1, 6), carre = `(${polynome([1, k], v)})^2`, autre = polynome([1, 2 * k, 0], v)
+    const [X, Y] = choix([['A', 'B'], ['E', 'F'], ['M', 'N']])
+    return Math.random() < 0.5
+      ? { enonce: `On donne $${X} = ${carre}$ et $${Y} = ${autre}$. Calculer $${X} - ${Y}$, puis comparer $${X}$ et $${Y}$.`, reponse: conclure(X, Y, `${X} - ${Y} = ${k * k}`, '>', '0', ` pour tout $${v}$`) }
+      : { enonce: `On donne $${X} = ${autre}$ et $${Y} = ${carre}$. Calculer $${X} - ${Y}$, puis comparer $${X}$ et $${Y}$.`, reponse: conclure(X, Y, `${X} - ${Y} = -${k * k}`, '<', '0', ` pour tout $${v}$`) }
+  }),
+]
+const AL_COURS_DIFFERENCE: QuestionCours[] = [
+  notionAl(0, 100, 'Comparer par la différence', () => { const [a, b] = choix(LETTRES_DEUX); return phraseATrou(`Pour comparer deux nombres $${a}$ et $${b}$, on étudie le [signe] de leur [différence] $${a} - ${b}$.`) }),
+  // L'ancienne façon « On sait que a − b = −0,3… », gardée à la demande du professeur
+  notionAl(0, 101, 'Conclure avec le signe de la différence', ancienneNotion('Comparer par la différence').facons[1]),
+]
+
+// ---------- Ligne 2 : comparer par le quotient ----------
+const AL_QUOTIENT: Automatisme[] = [
+  exoAl(1, 'quotient-puissances', 'Comparer des puissances par leur quotient', () => ancienExo('2nde-comparer-quotient').generer()),
+  exoAl(1, 'quotient-fractions', 'Comparer deux fractions par leur quotient', () => {
+    for (;;) {
+      const [a, b, c, d] = deuxFractions(), [X, Y] = choix([['A', 'B'], ['a', 'b'], ['u', 'v']])
+      if (a * d === b * c) continue
+      return { enonce: `On donne $${X} = ${frac(a, b)}$ et $${Y} = ${frac(c, d)}$. Calculer $\\frac{${X}}{${Y}}$, puis comparer $${X}$ et $${Y}$.`, reponse: conclure(X, Y, `\\frac{${X}}{${Y}} = ${fracDec(a * d, b * c)}`, signeDe(a * d - b * c), '1') }
+    }
+  }),
+  exoAl(1, 'quotient-decimaux', 'Comparer deux décimaux par leur quotient', () => {
+    const B = ent(2, 9) / 10, k = ent(2, 5), [X, Y] = choix([['A', 'B'], ['a', 'b'], ['u', 'v']])
+    return Math.random() < 0.5
+      ? { enonce: `On donne $${X} = ${nb(k * B)}$ et $${Y} = ${nb(B)}$. Calculer $\\frac{${X}}{${Y}}$, puis comparer $${X}$ et $${Y}$.`, reponse: conclure(X, Y, `\\frac{${X}}{${Y}} = ${k}`, '>', '1') }
+      : { enonce: `On donne $${X} = ${nb(B)}$ et $${Y} = ${nb(k * B)}$. Calculer $\\frac{${X}}{${Y}}$, puis comparer $${X}$ et $${Y}$.`, reponse: conclure(X, Y, `\\frac{${X}}{${Y}} = \\frac{1}{${k}}`, '<', '1') }
+  }),
+]
+const AL_COURS_QUOTIENT: QuestionCours[] = [
+  notionAl(1, 102, 'Comparer par le quotient', () => { const [a, b] = choix(LETTRES_DEUX); return phraseATrou(`Pour comparer deux nombres strictement positifs $${a}$ et $${b}$, on compare leur [quotient] $\\frac{${a}}{${b}}$ à [1].`) }),
+]
+
+// ---------- Ligne 3 : les fractions simples ----------
+const operation = (op: string) => () => {
+  const [a, b, c, d] = deuxFractions()
+  const [n, den] = op === '+' ? [a * d + c * b, b * d] : op === '-' ? [a * d - c * b, b * d] : op === '\\times' ? [a * c, b * d] : [a * d, b * c]
+  return { enonce: `Calculer et donner le résultat sous forme irréductible : $${frac(a, b)} ${op} ${frac(c, d)}$`, reponse: fracDec(n, den) }
+}
+/** Les fractions simples entre 0 et 1, de dénominateur 2 à 10 */
+const FRACTIONS_SIMPLES = Array.from({ length: 9 }, (_, i) => i + 2).flatMap(d => Array.from({ length: d - 1 }, (_, j) => [j + 1, d] as [number, number])).filter(([n, d]) => pgcd(n, d) === 1)
+const AL_FRACTIONS: Automatisme[] = [
+  exoAl(2, 'fractions-somme', 'Somme de deux fractions', operation('+')),
+  exoAl(2, 'fractions-difference', 'Différence de deux fractions', operation('-')),
+  exoAl(2, 'fractions-produit', 'Produit de deux fractions', operation('\\times')),
+  exoAl(2, 'fractions-quotient', 'Quotient de deux fractions', operation('\\div')),
+  exoAl(2, 'fractions-ranger', 'Ranger des fractions', () => {
+    let f: [number, number][]
+    do f = melange(FRACTIONS_SIMPLES).slice(0, 3)
+    while (new Set(f.map(([n, d]) => n / d)).size < 3)
+    const tri = [...f].sort((x, y) => x[0] / x[1] - y[0] / y[1])
+    return { enonce: `Ranger dans l'ordre croissant : $${f.map(([n, d]) => frac(n, d)).join('$, $')}$.`, reponse: tri.map(([n, d]) => frac(n, d)).join(' < ') }
+  }),
+  exoAl(2, 'fractions-de', 'Une fraction d’un nombre', () => {
+    const [n, d] = choix(FRACTIONS_SIMPLES), N = d * ent(2, 9)
+    return { enonce: `Calculer $${frac(n, d)}$ de $${N}$.`, reponse: nb(n * N / d) }
+  }),
+  exoAl(2, 'fractions-trou', 'Compléter une égalité de fractions', () => ancienExo('2nde-fractions').trou!()),
+]
+const AL_COURS_FRACTIONS: QuestionCours[] = [
+  notionAl(2, 103, 'Diviser par une fraction', () => phraseATrou('Diviser par une [fraction] revient à multiplier par son [inverse].')),
+  notionAl(2, 104, 'Le quotient de deux fractions', () => { const [a, b] = choix(LETTRES_DEUX), [c, d] = choix([['c', 'd'], ['m', 'n'], ['r', 's']]); return egalite(`\\frac{${a}}{${b}} \\div \\frac{${c}}{${d}} = \\frac{${a}}{${b}} \\times \\ldots`, `\\frac{${d}}{${c}}`) }),
+  notionAl(2, 105, 'Additionner deux fractions', () => phraseATrou('Pour additionner deux fractions, on les écrit avec le même [dénominateur], puis on additionne les [numérateurs].')),
+  notionAl(2, 106, 'Comparer deux fractions', () => phraseATrou('Pour comparer deux fractions, on les écrit avec le même [dénominateur], puis on compare les [numérateurs].')),
+]
+
+// ---------- Ligne 4 : les puissances ----------
+const BASES = ['2', '3', '5', '7', '10', 'x', 'a']
+const puissance = (a: string, n: number) => n === 1 ? a : n === 0 ? '1' : `${a}^{${n}}`
+const SEULE = 'Écrire sous la forme d\'une seule puissance :'
+const AL_PUISSANCES: Automatisme[] = [
+  exoAl(3, 'puissances-produit', 'Produit de puissances', () => { const a = choix(BASES), n = ent(2, 9), m = ent(2, 9); return { enonce: `${SEULE} $${a}^{${n}} \\times ${a}^{${m}}$`, reponse: puissance(a, n + m) } }),
+  exoAl(3, 'puissances-quotient', 'Quotient de puissances', () => { const a = choix(BASES), m = ent(2, 7), n = m + ent(2, 6); return { enonce: `${SEULE} $\\frac{${a}^{${n}}}{${a}^{${m}}}$`, reponse: puissance(a, n - m) } }),
+  exoAl(3, 'puissances-puissance', 'Puissance d’une puissance', () => { const a = choix(BASES), n = ent(2, 6), m = ent(2, 5); return { enonce: `${SEULE} $(${a}^{${n}})^{${m}}$`, reponse: puissance(a, n * m) } }),
+  exoAl(3, 'puissances-negatif', 'Exposant négatif', () => choix<() => Question>([
+    () => { const a = choix(BASES), n = ent(2, 7), m = n + ent(2, 5); return { enonce: `${SEULE} $${a}^{-${n}} \\times ${a}^{${m}}$`, reponse: puissance(a, m - n) } },
+    () => { const [a, n] = choix<[number, number]>([[2, 2], [2, 3], [2, 4], [2, 5], [3, 2], [3, 3], [5, 2], [10, 2], [10, 3], [4, 2]]); return { enonce: `Écrire $${a}^{-${n}}$ sous la forme d'une fraction.`, reponse: `\\frac{1}{${a ** n}}` } },
+  ])()),
+  exoAl(3, 'puissances-meme-exposant', 'Produit de puissances de même exposant', () => {
+    const [a, b] = choix([[2, 5], [2, 3], [3, 5], [2, 7], [5, 2], [4, 5]]), n = ent(2, 9)
+    return { enonce: `${SEULE} $${a}^{${n}} \\times ${b}^{${n}}$`, reponse: `${a * b}^{${n}}` }
+  }),
+  exoAl(3, 'puissances-dix', 'Puissances de 10', () => {
+    const n = ent(-6, 9), m = ent(1, 7) * choix([1, -1])
+    return Math.random() < 0.5
+      ? { enonce: `${SEULE} $10^{${n}} \\times 10^{${m}}$`, reponse: `10^{${n + m}}` }
+      : { enonce: `${SEULE} $\\frac{10^{${n}}}{10^{${m}}}$`, reponse: `10^{${n - m}}` }
+  }),
+  exoAl(3, 'puissances-trou', 'Compléter une égalité de puissances', () => ancienExo('2nde-puissances').trou!()),
+]
+const EXPOSANTS: [string, string][] = [['n', 'm'], ['p', 'q'], ['n', 'p']]
+const AL_COURS_PUISSANCES: QuestionCours[] = [
+  notionAl(3, 107, 'Produit de puissances', () => { const a = choix(['a', 'x', 'b']), [n, m] = choix(EXPOSANTS); return egalite(`${a}^{${n}} \\times ${a}^{${m}} = ${a}^{\\ldots}`, `${n} + ${m}`) }),
+  notionAl(3, 108, 'Quotient de puissances', () => { const a = choix(['a', 'x', 'b']), [n, m] = choix(EXPOSANTS); return egalite(`\\frac{${a}^{${n}}}{${a}^{${m}}} = ${a}^{\\ldots}`, `${n} - ${m}`) }),
+  notionAl(3, 109, 'Puissance d’une puissance', () => { const a = choix(['a', 'x', 'b']), [n, m] = choix(EXPOSANTS); return egalite(`(${a}^{${n}})^{${m}} = ${a}^{\\ldots}`, `${n} \\times ${m}`) }),
+  notionAl(3, 110, 'Exposant négatif', () => { const a = choix(['a', 'x', 'b']), n = choix(['n', 'p', 'k']); return egalite(`${a}^{-${n}} = \\frac{1}{\\ldots}`, `${a}^{${n}}`) }),
+  notionAl(3, 111, 'Exposant nul', () => { const a = choix(['a', 'x', 'b']); return [`Compléter : $${a}^{0} = \\ldots$ (avec $${a} \\neq 0$)`, '$1$'] }),
+]
+
+// ---------- Ligne 5 : −(a + b) et −(a − b) ----------
+const AL_MOINS: Automatisme[] = [
+  exoAl(4, 'moins-somme', 'Un moins devant une somme', () => { const a = ent(1, 9), b = ent(1, 9), v = lettre(); return { enonce: `Supprimer les parenthèses : $-(${polynome([a, b], v)})$`, reponse: polynome([-a, -b], v) } }),
+  exoAl(4, 'moins-difference', 'Un moins devant une différence', () => {
+    const a = ent(1, 9), b = ent(1, 9), v = lettre()
+    return Math.random() < 0.5
+      ? { enonce: `Supprimer les parenthèses : $-(${polynome([a, -b], v)})$`, reponse: polynome([-a, b], v) }
+      : { enonce: `Supprimer les parenthèses : $-(${b} - ${a === 1 ? '' : a}${v})$`, reponse: polynome([a, -b], v) }
+  }),
+  exoAl(4, 'moins-expressions', 'Soustraire une expression', () => {
+    const v = lettre(), a = ent(2, 9), c = autreQue([1, 2, 3, 4, 5, 6, 7, 8, 9], a), b = relNonNul(1, 9), d = relNonNul(1, 9)
+    return { enonce: `Réduire : $(${polynome([a, b], v)}) - (${polynome([c, d], v)})$`, reponse: polynome([a - c, b - d], v) }
+  }),
+  exoAl(4, 'moins-trou', 'Compléter : un moins devant une parenthèse', () => ancienExo('2nde-litteral-additif').trou!()),
+]
+const AL_COURS_MOINS: QuestionCours[] = [
+  notionAl(4, 112, 'Un moins devant une somme', () => { const [a, b] = choix(LETTRES_DEUX); return egalite(`-(${a} + ${b}) = \\ldots`, `-${a} - ${b}`) }),
+  notionAl(4, 113, 'Un moins devant une différence', () => { const [a, b] = choix(LETTRES_DEUX); return egalite(`-(${a} - ${b}) = \\ldots`, `${b} - ${a}`) }),
+  notionAl(4, 114, 'Un moins devant une parenthèse', () => phraseATrou('Un [moins] devant une parenthèse change le [signe] de chaque terme de la parenthèse.')),
+]
+
+// ---------- Ligne 6 : expressions multiplicatives et quotients ----------
+const SEULE_FRACTION = 'Écrire sous la forme d\'une seule fraction :'
+const AL_MULTIPLICATIF: Automatisme[] = [
+  exoAl(5, 'multiplicatif-fraction-fraction', 'Une fraction divisée par une fraction', () => { const [a, b, c, d] = deuxFractions(); return { enonce: `${SEULE_FRACTION} $\\dfrac{${frac(a, b)}}{${frac(c, d)}}$`, reponse: fracDec(a * d, b * c) } }),
+  exoAl(5, 'multiplicatif-fraction-entier', 'Une fraction divisée par un entier', () => { const [a, b] = deuxFractions(), c = ent(2, 9); return { enonce: `${SEULE_FRACTION} $\\dfrac{${frac(a, b)}}{${c}}$`, reponse: fracDec(a, b * c) } }),
+  exoAl(5, 'multiplicatif-entier-fraction', 'Un entier divisé par une fraction', () => { const a = ent(2, 9), [, , c, d] = deuxFractions(); return { enonce: `${SEULE_FRACTION} $\\dfrac{${a}}{${frac(c, d)}}$`, reponse: fracDec(a * d, c) } }),
+  exoAl(5, 'multiplicatif-inverse', 'L’inverse d’une fraction', () => { const [, , c, d] = deuxFractions(); return { enonce: `Écrire plus simplement : $\\dfrac{1}{${frac(c, d)}}$`, reponse: frac(d, c) } }),
+  exoAl(5, 'multiplicatif-simplifier', 'Simplifier un quotient', () => { const a = ent(2, 9), c = ent(2, 9), v = lettre(); return { enonce: `Simplifier : $\\dfrac{${a * c}${v}}{${c}}$`, reponse: `${a}${v}` } }),
+  exoAl(5, 'multiplicatif-moins-un', 'Multiplier par −1', () => { const [a, b] = deuxFractions(), v = lettre(); return { enonce: `Simplifier : $(-1) \\times ${frac(a, b)} \\times ${v}$`, reponse: a === 1 ? `-\\frac{${v}}{${b}}` : `-\\frac{${a}${v}}{${b}}` } }),
+  exoAl(5, 'multiplicatif-un-trait', 'Un seul trait de fraction', () => { const a = ent(2, 9), b = autreQue([3, 5, 7, 11], a), v = lettre(); return { enonce: `Écrire avec un seul trait de fraction : $${a} \\times \\dfrac{${v}}{${b}}$`, reponse: `\\frac{${a}${v}}{${b}}` } }),
+  exoAl(5, 'multiplicatif-trou', 'Compléter : produits et quotients', () => {
+    const a = ent(2, 9), b = autreQue([3, 5, 7, 11], a), c = autreQue([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], a, b), v = lettre()
+    return unTrou('', [[`$\\dfrac{${v}}{${b}} = \\dfrac{1}{${b}} \\times \\ldots$`, v], [`$\\dfrac{${a}${v}}{${b}} = ${a} \\times \\ldots$`, `\\frac{${v}}{${b}}`], [`$\\dfrac{${a}}{${b}} \\div ${frac(a, c)} = \\ldots$`, fracDec(c, b)]])
+  }),
+]
+const AL_COURS_MULTIPLICATIF: QuestionCours[] = [
+  notionAl(5, 115, 'Multiplier par 1', () => { const v = lettre(); return choix([egalite(`${v} = 1 \\times \\ldots`, v), egalite(`${v} = \\ldots \\times ${v}`, '1')]) }),
+  notionAl(5, 116, 'Multiplier par −1', () => { const a = choix(['a', 'x', 'b']); return egalite(`(-1) \\times ${a} = \\ldots`, `-${a}`) }),
+  notionAl(5, 117, 'Zéro divisé par un nombre', () => { const a = choix(['a', 'x', 'b']); return [`Compléter : $\\frac{0}{${a}} = \\ldots$ (avec $${a} \\neq 0$)`, '$0$'] }),
+  notionAl(5, 118, 'Un nombre divisé par lui-même', () => { const a = choix(['a', 'x', 'b']); return [`Compléter : $\\frac{${a}}{${a}} = \\ldots$ (avec $${a} \\neq 0$)`, '$1$'] }),
+  notionAl(5, 119, 'L’inverse d’un quotient', () => { const [a, b] = choix(LETTRES_DEUX); return egalite(`\\dfrac{1}{\\frac{${a}}{${b}}} = \\ldots`, `\\frac{${b}}{${a}}`) }),
+  notionAl(5, 120, 'Un produit divisé par un nombre', () => { const [a, b] = choix(LETTRES_DEUX), c = choix(['c', 'k', 'm']); return egalite(`\\frac{${a}${b}}{${c}} = ${a} \\times \\ldots`, `\\frac{${b}}{${c}}`) }),
+]
+
+// ---------- Ligne 7 : les identités remarquables ----------
+function identite(): { a: number; b: number; v: string; ax: string } {
+  let a: number, b: number
+  do { a = ent(1, 3); b = ent(1, 9) } while (pgcd(a, b) !== 1)
+  const v = choix(['x', 'x', 'a', 't'])
+  return { a, b, v, ax: a === 1 ? v : `${a}${v}` }
+}
+const AL_IDENTITES: Automatisme[] = [
+  exoAl(6, 'identites-carre-somme', 'Développer (a + b)²', () => { const { a, b, v, ax } = identite(); return { enonce: `Développer : $(${ax} + ${b})^2$`, reponse: polynome([a * a, 2 * a * b, b * b], v) } }),
+  exoAl(6, 'identites-carre-difference', 'Développer (a − b)²', () => { const { a, b, v, ax } = identite(); return { enonce: `Développer : $(${ax} - ${b})^2$`, reponse: polynome([a * a, -2 * a * b, b * b], v) } }),
+  exoAl(6, 'identites-produit', 'Développer (a + b)(a − b)', () => { const { a, b, v, ax } = identite(); return { enonce: `Développer : $(${ax} + ${b})(${ax} - ${b})$`, reponse: polynome([a * a, 0, -b * b], v) } }),
+  exoAl(6, 'identites-factoriser-difference', 'Factoriser a² − b²', () => { const { a, b, v, ax } = identite(); return { enonce: `Factoriser : $${polynome([a * a, 0, -b * b], v)}$`, reponse: `(${ax} - ${b})(${ax} + ${b})` } }),
+  exoAl(6, 'identites-factoriser-somme', 'Factoriser a² + 2ab + b²', () => { const { a, b, v, ax } = identite(); return { enonce: `Factoriser : $${polynome([a * a, 2 * a * b, b * b], v)}$`, reponse: `(${ax} + ${b})^2` } }),
+  exoAl(6, 'identites-factoriser-moins', 'Factoriser a² − 2ab + b²', () => { const { a, b, v, ax } = identite(); return { enonce: `Factoriser : $${polynome([a * a, -2 * a * b, b * b], v)}$`, reponse: `(${ax} - ${b})^2` } }),
+  exoAl(6, 'identites-trou', 'Compléter une identité', () => ancienExo('2nde-identites').trou!()),
+]
+const AL_COURS_IDENTITES: QuestionCours[] = [
+  notionAl(6, 121, 'Le carré d’une somme', () => { const [a, b] = choix(LETTRES_DEUX); return egalite(`(${a} + ${b})^2 = ${a}^2 + \\ldots + ${b}^2`, `2${a}${b}`) }),
+  notionAl(6, 122, 'Le carré d’une différence', () => { const [a, b] = choix(LETTRES_DEUX); return egalite(`(${a} - ${b})^2 = ${a}^2 - \\ldots + ${b}^2`, `2${a}${b}`) }),
+  notionAl(6, 123, 'Le produit d’une somme par une différence', () => { const [a, b] = choix(LETTRES_DEUX); return egalite(`(${a} + ${b})(${a} - ${b}) = \\ldots`, `${a}^2 - ${b}^2`) }),
+]
+
+// ---------- Ligne 8 : factoriser ax² + bx, ax + bx ----------
+function aFactoriser(): { k: number; a: number; b: number; v: string } {
+  for (;;) {
+    const k = ent(2, 6), a = ent(1, 7), b = relNonNul(1, 7), v = choix(['x', 'x', 'a', 't'])
+    if (pgcd(a, b) === 1) return { k, a, b, v }
+  }
+}
+const AL_FACTORISER: Automatisme[] = [
+  exoAl(7, 'factoriser-nombre', 'Factoriser par un nombre', () => { const { k, a, b, v } = aFactoriser(); return { enonce: `Factoriser : $${polynome([k * a, k * b], v)}$`, reponse: `${k}${facteur(a, b, v)}` } }),
+  exoAl(7, 'factoriser-x', 'Factoriser ax² + bx', () => { const { a, b, v } = aFactoriser(), k = ent(1, 6); return { enonce: `Factoriser : $${polynome([k * a, k * b, 0], v)}$`, reponse: `${k === 1 ? '' : k}${v}${facteur(a, b, v)}` } }),
+  exoAl(7, 'factoriser-lettres', 'Factoriser ax + bx', () => {
+    const v = choix(['x', 't', 'y']), n = ent(2, 9), [p, q] = choix([['a', 'b'], ['k', 'm'], ['p', 'q']])
+    return choix([
+      { enonce: `Factoriser : $${n}${v} + ${p}${v}$`, reponse: `(${n} + ${p})${v}` },
+      { enonce: `Factoriser : $${p}${v} + ${q}${v}$`, reponse: `(${p} + ${q})${v}` },
+      { enonce: `Factoriser : $${p}${v} - ${n}${v}$`, reponse: `(${p} - ${n})${v}` },
+      { enonce: `Factoriser : $${p}${v} - ${q}${v}$`, reponse: `(${p} - ${q})${v}` },
+    ])
+  }),
+  exoAl(7, 'factoriser-trou', 'Compléter une factorisation', () => ancienExo('2nde-factoriser').trou!()),
+]
+const AL_COURS_FACTORISER: QuestionCours[] = [
+  notionAl(7, 124, 'Factoriser', () => phraseATrou('Factoriser, c’est écrire une [somme] sous la forme d’un [produit].')),
+  notionAl(7, 125, 'Le facteur commun', () => { const [a, b] = choix(LETTRES_DEUX), k = choix(['k', 'c', 'm']); return egalite(`${k}${a} + ${k}${b} = ${k}(\\ldots)`, `${a} + ${b}`) }),
+]
+
+// ---------- Ligne 9 : équations et inéquations ----------
+const RESOUDRE = 'Résoudre :'
+const AL_EQUATIONS: Automatisme[] = [
+  exoAl(8, 'equations-carre', 'x² = un carré', () => { const r = ent(1, 12); return { enonce: `${RESOUDRE} $x^2 = ${r * r}$`, reponse: ensemble([`-${r}`, `${r}`]) } }),
+  exoAl(8, 'equations-racine', 'x² = un nombre positif', () => { const r = choix([2, 3, 5, 6, 7, 10, 11, 13, 15]); return { enonce: `${RESOUDRE} $x^2 = ${r}$`, reponse: ensemble([`-\\sqrt{${r}}`, `\\sqrt{${r}}`]) } }),
+  exoAl(8, 'equations-negatif', 'x² = un nombre négatif', () => { const r = ent(1, 30); return { enonce: `${RESOUDRE} $x^2 = -${r}$`, reponse: ensemble([]) } }),
+  exoAl(8, 'equations-premier-degre', 'ax + b = cx + d', () => {
+    for (;;) {
+      const a = relNonNul(1, 9), c = relNonNul(1, 9), b = relNonNul(1, 12), d = relNonNul(1, 12)
+      if (a !== c) return { enonce: `${RESOUDRE} $${polynome([a, b])} = ${polynome([c, d])}$`, reponse: `x = ${fracDec(d - b, a - c)}` }
+    }
+  }),
+  exoAl(8, 'equations-quotient', 'a/x = b', () => { const a = ent(1, 20) * choix([1, -1]), b = relNonNul(1, 9); return { enonce: `${RESOUDRE} $\\dfrac{${a}}{x} = ${b}$`, reponse: `x = ${fracDec(a, b)}` } }),
+  exoAl(8, 'equations-inequation', 'Une inéquation du premier degré', () => {
+    const a = relNonNul(1, 9), b = relNonNul(1, 12), c = ent(-12, 12), s = choix(['<', '>', '\\leqslant', '\\geqslant'])
+    const inv: Record<string, string> = { '<': '>', '>': '<', '\\leqslant': '\\geqslant', '\\geqslant': '\\leqslant' }
+    return { enonce: `${RESOUDRE} $${polynome([a, b])} ${s} ${c}$`, reponse: `x ${a < 0 ? inv[s] : s} ${fracDec(c - b, a)}` }
+  }),
+  // L'ancienne question de cours « On divise les deux membres de −kx < c par −k… » : un calcul
+  exoAl(8, 'equations-diviser-negatif', 'Diviser une inéquation par un nombre négatif', () => {
+    const [e, r] = ancienneNotion('Inéquation et nombre négatif').facons[0]()
+    return { enonce: e, reponse: mot(r) }
+  }),
+]
+const AL_COURS_EQUATIONS: QuestionCours[] = [
+  notionAl(8, 126, 'L’équation x² = a, avec a positif', () => { const a = choix(['a', 'k', 'c']); return choix<[string, string]>([[`Compléter : si $${a} > 0$, l'équation $x^2 = ${a}$ a deux solutions : $\\sqrt{${a}}$ et …`, `$-\\sqrt{${a}}$`], [`Compléter : si $${a} > 0$, l'équation $x^2 = ${a}$ a deux solutions : … et $-\\sqrt{${a}}$`, `$\\sqrt{${a}}$`]]) }),
+  notionAl(8, 127, 'L’équation x² = a, avec a négatif', () => { const a = choix(['a', 'k', 'c']); return [`Compléter : si $${a} < 0$, l'équation $x^2 = ${a}$ a … solution.`, 'aucune'] }),
+  notionAl(8, 128, 'Inéquation et nombre négatif', () => phraseATrou('Quand on multiplie ou divise les deux membres d’une inéquation par un nombre [négatif], on change le [sens] de l’inégalité.')),
+]
+
+// ---------- Ligne 10 : isoler une variable (pas de question de cours) ----------
+const isoler = (formules: [string, string, string][]) => () => {
+  const [f, v, r] = choix(formules)
+  return { enonce: `Dans la formule $${f}$, exprimer $${v}$ en fonction des autres grandeurs.`, reponse: r }
+}
+const AL_ISOLER: Automatisme[] = [
+  exoAl(9, 'isoler-produit', 'Isoler dans un produit ou un quotient', isoler([
+    ['U = R \\times I', 'I', 'I = \\frac{U}{R}'], ['U = R \\times I', 'R', 'R = \\frac{U}{I}'],
+    ['v = \\frac{d}{t}', 'd', 'd = v \\times t'], ['v = \\frac{d}{t}', 't', 't = \\frac{d}{v}'],
+    ['P = U \\times I', 'U', 'U = \\frac{P}{I}'], ['\\rho = \\frac{m}{V}', 'V', 'V = \\frac{m}{\\rho}'], ['\\rho = \\frac{m}{V}', 'm', 'm = \\rho \\times V'],
+    ['C = \\frac{n}{V}', 'n', 'n = C \\times V'], ['P = m \\times g', 'g', 'g = \\frac{P}{m}'], ['P = m \\times g', 'm', 'm = \\frac{P}{g}'],
+  ])),
+  exoAl(9, 'isoler-somme', 'Isoler dans une formule avec une somme', isoler([
+    ['P = 2(L + \\ell)', 'L', 'L = \\frac{P}{2} - \\ell'], ['P = 2(L + \\ell)', '\\ell', '\\ell = \\frac{P}{2} - L'],
+    ['P = a + b + c', 'c', 'c = P - a - b'], ['y = ax + b', 'x', 'x = \\frac{y - b}{a}'], ['y = ax + b', 'b', 'b = y - ax'],
+    ['F = 1{,}8\\,C + 32', 'C', 'C = \\frac{F - 32}{1{,}8}'], ['u_n = u_0 + nr', 'r', 'r = \\frac{u_n - u_0}{n}'],
+  ])),
+  exoAl(9, 'isoler-carre', 'Isoler dans une formule avec un carré', isoler([
+    ['\\mathcal{A} = \\pi r^2', 'r', 'r = \\sqrt{\\frac{\\mathcal{A}}{\\pi}}'], ['E_c = \\frac{1}{2} m v^2', 'm', 'm = \\frac{2E_c}{v^2}'],
+    ['E_c = \\frac{1}{2} m v^2', 'v', 'v = \\sqrt{\\frac{2E_c}{m}}'], ['V = \\pi r^2 h', 'h', 'h = \\frac{V}{\\pi r^2}'],
+    ['V = \\pi r^2 h', 'r', 'r = \\sqrt{\\frac{V}{\\pi h}}'], ['\\mathcal{A} = c^2', 'c', 'c = \\sqrt{\\mathcal{A}}'],
+    ['P = R I^2', 'R', 'R = \\frac{P}{I^2}'], ['P = R I^2', 'I', 'I = \\sqrt{\\frac{P}{R}}'],
+  ])),
+  exoAl(9, 'isoler-premier-degre', 'Une relation du premier degré', () => {
+    const a = ent(2, 9), b = relNonNul(1, 9), c = ent(1, 20)
+    return { enonce: `Exprimer $y$ en fonction de $x$ : $${polynome([b, 0])} + ${a}y = ${c}$`, reponse: `y = \\frac{${c} ${b < 0 ? '+' : '-'} ${Math.abs(b) === 1 ? '' : Math.abs(b)}x}{${a}}` }
+  }),
+]
+
+// ---------- Ligne 11 : application numérique (pas de question de cours) ----------
+const AL_APPLICATION: Automatisme[] = [
+  exoAl(10, 'application-vitesse', 'Application numérique : une vitesse', () => { const v = ent(2, 12) * 10, t = choix([0.5, 1.5, 2, 2.5, 3]); return { enonce: `Avec $v = \\frac{d}{t}$, calculer $v$ pour $d = ${unite(nb(v * t), 'km')}$ et $t = ${unite(nb(t), 'h')}$.`, reponse: `${nb(v)}\\text{ km/h}` } }),
+  exoAl(10, 'application-tension', 'Application numérique : une tension', () => { const R = ent(2, 50) * 10, I = choix([0.1, 0.2, 0.5, 0.05, 2]); return { enonce: `Avec $U = R \\times I$, calculer $U$ pour $R = ${nb(R)}\\ \\Omega$ et $I = ${unite(nb(I), 'A')}$.`, reponse: unite(nb(R * I), 'V') } }),
+  exoAl(10, 'application-energie', 'Application numérique : une énergie', () => { const m = ent(1, 6) * 2, v = ent(2, 10); return { enonce: `Avec $E_c = \\frac{1}{2} m v^2$, calculer $E_c$ pour $m = ${unite(nb(m), 'kg')}$ et $v = ${nb(v)}\\text{ m/s}$.`, reponse: unite(nb(m * v * v / 2), 'J') } }),
+  exoAl(10, 'application-temperature', 'Application numérique : une température', () => { const C = choix([-10, 0, 10, 20, 25, 30, 35, 40, 100]); return { enonce: `Avec $F = 1{,}8 \\times C + 32$, calculer $F$ pour $C = ${nb(C)}$.`, reponse: nb(1.8 * C + 32) } }),
+  exoAl(10, 'application-masse-volumique', 'Application numérique : une masse volumique', () => { const r = ent(2, 30) / 10, V = choix([2, 5, 10, 20]); return { enonce: `Avec $\\rho = \\frac{m}{V}$, calculer $\\rho$ pour $m = ${unite(nb(r * V), 'g')}$ et $V = ${nb(V)}\\text{ cm}^3$.`, reponse: `${nb(r)}\\text{ g/cm}^3` } }),
+  exoAl(10, 'application-expression', 'Calculer une expression', () => { const a = ent(2, 9), b = relNonNul(1, 9), x = relNonNul(1, 5); return { enonce: `Calculer $${polynome([a, 0, b])}$ pour $x = ${nb(x)}$.`, reponse: nb(a * x * x + b) } }),
+  exoAl(10, 'application-aire-disque', 'Application numérique : l’aire d’un disque', () => { const r = ent(2, 10); return { enonce: `Avec $\\mathcal{A} = \\pi r^2$, calculer $\\mathcal{A}$ pour $r = ${unite(nb(r), 'cm')}$ (valeur exacte).`, reponse: `${r * r}\\pi\\text{ cm}^2` } }),
+]
+
+/** Les exercices du domaine Algèbre, ligne par ligne */
+const AUTOMATISMES_2NDE_ALGEBRE: Automatisme[] = [...AL_DIFFERENCE, ...AL_QUOTIENT, ...AL_FRACTIONS, ...AL_PUISSANCES, ...AL_MOINS, ...AL_MULTIPLICATIF, ...AL_IDENTITES, ...AL_FACTORISER, ...AL_EQUATIONS, ...AL_ISOLER, ...AL_APPLICATION]
+/** Ses questions de cours */
+const COURS_2NDE_ALGEBRE: QuestionCours[] = [...AL_COURS_DIFFERENCE, ...AL_COURS_QUOTIENT, ...AL_COURS_FRACTIONS, ...AL_COURS_PUISSANCES, ...AL_COURS_MOINS, ...AL_COURS_MULTIPLICATIF, ...AL_COURS_IDENTITES, ...AL_COURS_FACTORISER, ...AL_COURS_EQUATIONS]
+
+// =============================================================
 // LES LISTES DE 2nde QUE LE FLASH POSE
-// Les domaines revus ligne par ligne avec le professeur (Nombres réels, le
-// 24 novembre 2026) remplacent leurs anciens exercices et leurs anciennes
+// Les domaines revus ligne par ligne avec le professeur (Nombres réels et
+// Algèbre, le 24 novembre 2026) remplacent leurs anciens exercices et leurs anciennes
 // notions ; ceux-ci restent ci-dessous, tels quels, sans être posés.
 // =============================================================
 /** Les domaines déjà revus ligne par ligne */
-const REVUS_2NDE = ['Nombres réels']
+const REVUS_2NDE = ['Nombres réels', D2_ALGEBRE]
 /** Les exercices d'avant la revue de ces domaines (rien ne se perd) */
 export const AUTOMATISMES_2NDE_AVANT: Automatisme[] = AUTOMATISMES_2NDE_LISTE.filter(a => REVUS_2NDE.includes(a.theme))
 /** Les notions d'avant la revue (« Un pourcentage est une fraction » : ses
  *  deux façons sont devenues des exercices des écritures) */
 export const COURS_2NDE_AVANT: QuestionCours[] = COURS_2NDE_RANGES.filter(c => REVUS_2NDE.includes(c.theme))
-export const AUTOMATISMES_2NDE: Automatisme[] = [...AUTOMATISMES_2NDE_LISTE.filter(a => !REVUS_2NDE.includes(a.theme)), ...AUTOMATISMES_2NDE_NOMBRES_REELS]
-export const COURS_2NDE: QuestionCours[] = [...COURS_2NDE_RANGES.filter(c => !REVUS_2NDE.includes(c.theme)), ...COURS_2NDE_NOMBRES_REELS]
+export const AUTOMATISMES_2NDE: Automatisme[] = [...AUTOMATISMES_2NDE_LISTE.filter(a => !REVUS_2NDE.includes(a.theme)), ...AUTOMATISMES_2NDE_NOMBRES_REELS, ...AUTOMATISMES_2NDE_ALGEBRE]
+export const COURS_2NDE: QuestionCours[] = [...COURS_2NDE_RANGES.filter(c => !REVUS_2NDE.includes(c.theme)), ...COURS_2NDE_NOMBRES_REELS, ...COURS_2NDE_ALGEBRE]

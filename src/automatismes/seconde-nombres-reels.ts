@@ -30,7 +30,7 @@ function exo(k: number, id: string, titre: string, generer: () => Question, trou
 }
 /** Une phrase à compléter dont le trou change de place : chaque mot entre
  *  crochets peut être le trou */
-function phraseATrou(phrase: string): [string, string] {
+export function phraseATrou(phrase: string): [string, string] {
   const mots = [...phrase.matchAll(/\[([^\]]+)\]/g)].map(m => m[1])
   const k = ent(0, mots.length - 1)
   let i = -1
