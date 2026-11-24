@@ -9,6 +9,7 @@ import { AUTOMATISMES_1RE, AUTOMATISMES_2NDE, AUTOMATISMES_3E, AUTOMATISMES_4E, 
 import { PROGRAMME_AUTOMATISMES, THEMES_COLLEGE } from '../src/programme-automatismes'
 import { cleObjectifsDe, objectifsDeExercice, SECTION_AUTOMATISMES, SECTION_CAPACITES, SECTION_OBJECTIFS } from '../src/objectifs-flash'
 import { CAPACITES_LYCEE } from '../src/programme-lycee'
+import { AUTOMATISMES_2NDE_AVANT, COURS_2NDE_AVANT } from '../src/automatismes/lycee'
 import { PROGRAMME_CYCLE4 } from '../src/programme-cycle4'
 import { automatismesChoisis, coursChoisis, lireReglages, REGLAGES_PAR_DEFAUT } from '../src/flash'
 import { caseOpposee, estPatronDeCube, hexomino } from '../src/figures'
@@ -536,13 +537,46 @@ describe('les automatismes de 2nde et de 1re (épreuve anticipée)', () => {
     expect(r.competences.sort()).toEqual(['2nde/Algèbre/6', '2nde/Information chiffrée et statistique descriptive/1', '2nde/Information chiffrée et statistique descriptive/3',
       '2nde/Information chiffrée et statistique descriptive/4', '2nde/Information chiffrée et statistique descriptive/5', '2nde/Information chiffrée et statistique descriptive/6',
       '2nde/Information chiffrée et statistique descriptive/7', '2nde/Nombres réels/0'])
-    // Les mêmes exercices qu'avant : identités et écritures, une partie du tout, les cinq de statistiques, les quatre de probabilités
-    expect(automatismesChoisis(r).map(a => a.id).sort()).toEqual(['2nde-boites', '2nde-courbe-nuage', '2nde-diagramme-barres', '2nde-diagramme-circulaire', '2nde-ecritures',
-      '2nde-equiprobabilite', '2nde-identites', '2nde-indicateurs', '2nde-partie-tout', '2nde-proba-0-1', '2nde-proba-contraire', '2nde-proba-somme'])
+    // Les mêmes lignes qu'avant : identités et écritures (revues : leurs
+    // nouveaux exercices), une partie du tout, les cinq de statistiques, les quatre de probabilités
+    const ligne = (d: string, k: number) => AUTOMATISMES_2NDE.filter(a => a.theme === d && a.competence === k).map(a => a.id)
+    const ecritures = ligne('Nombres réels', 0), identites = ligne('Algèbre', 6)
+    expect([ecritures.length, identites.length]).toEqual([9, 7])
+    expect(automatismesChoisis(r).map(a => a.id).sort()).toEqual(['2nde-boites', '2nde-courbe-nuage', '2nde-diagramme-barres', '2nde-diagramme-circulaire', ...ecritures,
+      '2nde-equiprobabilite', ...identites, '2nde-indicateurs', '2nde-partie-tout', '2nde-proba-0-1', '2nde-proba-contraire', '2nde-proba-somme'].sort())
     // Un ancien domaine coché en entier coche ses nouveaux domaines en entier
     const t = lireReglages(JSON.stringify({ niveaux: ['2nde'], themes: ['2nde/Calcul numérique et algébrique'], competences: [] }))
     expect(t.themes.sort()).toEqual(['2nde/Algèbre', '2nde/Nombres réels'])
     expect(t.competences).toEqual([])
+  })
+
+  it('en 2nde, Nombres réels revu ligne par ligne : chaque ligne ses exercices et ses questions de cours, les anciens gardés à part', () => {
+    const nr = AUTOMATISMES_2NDE.filter(a => a.theme === 'Nombres réels')
+    expect([0, 1, 2, 3].map(k => nr.filter(a => a.competence === k).length)).toEqual([9, 5, 5, 8])
+    const cours = COURS_2NDE.filter(c => c.theme === 'Nombres réels')
+    expect([0, 1, 2, 3].map(k => cours.filter(c => c.competence === k).length)).toEqual([2, 1, 2, 4])
+    for (const c of cours) expect(c.poser().enonce, c.id).toMatch(/^Compléter : .*…/)
+    // Rien ne se perd : les 4 anciens exercices et l'ancienne notion restent, sans être posés
+    expect(AUTOMATISMES_2NDE_AVANT.map(a => a.id)).toEqual(expect.arrayContaining(['2nde-ecritures', '2nde-ordre-grandeur', '2nde-vraisemblance', '2nde-conversions']))
+    expect(COURS_2NDE_AVANT.map(c => c.titre)).toContain('Un pourcentage est une fraction')
+    for (const a of AUTOMATISMES_2NDE_AVANT) expect(AUTOMATISMES_2NDE.includes(a)).toBe(false)
+    // Fractions simples seulement (choix du professeur)
+    for (let k = 0; k < 200; k++) for (const a of nr.filter(x => x.competence === 0)) expect(a.generer().enonce, a.id).not.toMatch(/\{(8|20|25|50)\}/)
+  })
+
+  it('en 2nde, Algèbre revu ligne par ligne : chaque ligne ses exercices, ses questions de cours (sauf isoler et application numérique), les anciens gardés à part', () => {
+    const al = AUTOMATISMES_2NDE.filter(a => a.theme === 'Algèbre')
+    const lignes = Array.from({ length: 11 }, (_, k) => k)
+    expect(lignes.map(k => al.filter(a => a.competence === k).length)).toEqual([3, 3, 7, 7, 4, 8, 7, 4, 7, 4, 7])
+    const cours = COURS_2NDE.filter(c => c.theme === 'Algèbre')
+    expect(lignes.map(k => cours.filter(c => c.competence === k).length)).toEqual([2, 1, 4, 5, 3, 6, 3, 2, 3, 0, 0])
+    // Rien ne se perd : les 11 anciens exercices et les 10 anciennes notions d'Algèbre restent, sans être posés
+    const avant = AUTOMATISMES_2NDE_AVANT.filter(a => a.theme === 'Algèbre')
+    expect(avant.length).toBe(11)
+    for (const a of avant) expect(AUTOMATISMES_2NDE.includes(a)).toBe(false)
+    expect(COURS_2NDE_AVANT.filter(c => c.theme === 'Algèbre').length).toBe(10)
+    // Les nouvelles questions de cours sont à compléter (sauf l'ancienne façon gardée à sa demande)
+    for (const c of cours) if (c.id !== 'cours-2nde-Algèbre-101') expect(c.poser().enonce, c.id).toMatch(/^Compléter : .*(…|\\ldots)/)
   })
 
   it('réponse courte, jamais une chance sur deux, et les trous ont un trou', () => {

@@ -6609,6 +6609,40 @@ domaine.
   nouveaux.
 - La revue des exercices, ligne par ligne, puis les lignes CAP, viennent
   ensuite, une partie validée à la fois.
+- **Nombres réels, revu ligne par ligne** (24 novembre 2026) : 27 exercices
+  et 9 questions de cours, des phrases à compléter dont le trou change de
+  place.
+  - **Écritures** (9 exercices) : fraction, décimal et pourcentage dans
+    tous les sens, plus grand que 1, à trou, fraction sur 100. Seulement
+    des fractions simples : demis, quarts, cinquièmes, dixièmes.
+  - **Ordre de grandeur** (5 exercices) : produit, quotient, somme ou
+    différence, très grand par très petit, pourcentage.
+  - **Vraisemblance** (5 exercices) : produit de décimaux, pourcentage,
+    division par un nombre plus petit que 1, prix soldé, proportion
+    impossible.
+  - **Conversions** (8 exercices) : un par grandeur, plus un à trou ; et
+    1 m² = 10 000 cm², 1 dm³ = 1 L, 1 h = 3 600 s, ÷ 3,6, en cours.
+  - Les anciens exercices et l'ancienne notion « Un pourcentage est une
+    fraction » restent dans `lycee.ts` (`AUTOMATISMES_2NDE_AVANT`,
+    `COURS_2NDE_AVANT`), sans être posés. Données :
+    `src/automatismes/seconde-nombres-reels.ts`.
+- **Algèbre, revu ligne par ligne** (24 novembre 2026) : 61 exercices et 29
+  questions de cours pour les 11 lignes.
+  - Comparer par la différence : fractions, expressions, carré. Comparer
+    par le quotient : puissances, fractions, décimaux.
+  - Fractions simples : les quatre opérations, ranger, une fraction d'un
+    nombre, à trou.
+  - Puissances : produit, quotient, puissance de puissance, exposant
+    négatif, même exposant, puissances de 10, à trou.
+  - −(a + b) et −(a − b) ; expressions multiplicatives et quotients (les
+    égalités du programme en cours) ; identités ; factoriser ; équations et
+    inéquations.
+  - Isoler une variable et application numérique : des exercices
+    seulement, sans question de cours (choix du professeur).
+  - L'ancienne façon « On sait que a − b = −0,3… » reste posée, à sa
+    demande. Les anciens exercices et notions d'Algèbre restent dans
+    `AUTOMATISMES_2NDE_AVANT` et `COURS_2NDE_AVANT`, sans être posés.
+    Données : `src/automatismes/lycee.ts` (partie « ALGÈBRE (2nde) »).
 - Données : `src/programme-lycee.ts` (les capacités attendues),
   `src/programme-automatismes.ts` (clé « 2nde », les lignes OFFI),
   `src/automatismes/lycee.ts` (`REGLAGES_2NDE_AVANT`). Essais :
