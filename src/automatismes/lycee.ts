@@ -7,6 +7,7 @@
 import * as F from '../figures'
 import type { Automatisme, Facon, Question, QuestionCours } from './outils'
 import { coursTrigonometrie } from './trigonometrie-1re'
+import { AUTOMATISMES_2NDE_NOMBRES_REELS, COURS_2NDE_NOMBRES_REELS } from './seconde-nombres-reels'
 import { PRENOMS, arrondi, choix, coord, deg, ent, etL, frac, grandNb, irreductible, lettre, melange, mot, nb, notions, pgcd, pt, pts, relNonNul, tableau, unTrou, une, unite } from './outils'
 
 // =============================================================
@@ -158,7 +159,7 @@ const AVEC_DIVISEURS = Array.from({ length: 37 }, (_, i) => i + 12).filter(n => 
 
 export const CARACTERES = ['sont externes', 'portent des lunettes', 'viennent à vélo', 'pratiquent la natation', 'ont plus de 40 ans', 'jouent d\'un instrument']
 
-export const AUTOMATISMES_2NDE: Automatisme[] = [
+const AUTOMATISMES_2NDE_LISTE: Automatisme[] = [
   // ================= CALCUL NUMÉRIQUE ET ALGÉBRIQUE =================
   {
     id: '2nde-comparer-difference', theme: D2_ALGEBRE, titre: 'Comparer deux nombres par leur différence', competence: 0,
@@ -1155,7 +1156,7 @@ const DOMAINE_DU_COURS: Record<string, string> = {
   [T_CALCUL]: D2_ALGEBRE, [T_PROPORTIONS]: D2_INFORMATION, [T_EVOLUTIONS]: D2_INFORMATION,
   [T_STATS]: D2_INFORMATION, [T_FONCTIONS]: D2_REPRESENTATION,
 }
-export const COURS_2NDE: QuestionCours[] = COURS_2NDE_PAR_THEME.map(c => ({
+const COURS_2NDE_RANGES: QuestionCours[] = COURS_2NDE_PAR_THEME.map(c => ({
   ...c, theme: c.titre === 'Un pourcentage est une fraction' ? D2_NOMBRES_REELS : DOMAINE_DU_COURS[c.theme] ?? c.theme,
 }))
 
@@ -1228,3 +1229,19 @@ export const COURS_1RE: QuestionCours[] = [
   // par compétence (voir trigonometrie-1re.ts)
   ...coursTrigonometrie(n1),
 ]
+
+// =============================================================
+// LES LISTES DE 2nde QUE LE FLASH POSE
+// Les domaines revus ligne par ligne avec le professeur (Nombres réels, le
+// 24 novembre 2026) remplacent leurs anciens exercices et leurs anciennes
+// notions ; ceux-ci restent ci-dessous, tels quels, sans être posés.
+// =============================================================
+/** Les domaines déjà revus ligne par ligne */
+const REVUS_2NDE = ['Nombres réels']
+/** Les exercices d'avant la revue de ces domaines (rien ne se perd) */
+export const AUTOMATISMES_2NDE_AVANT: Automatisme[] = AUTOMATISMES_2NDE_LISTE.filter(a => REVUS_2NDE.includes(a.theme))
+/** Les notions d'avant la revue (« Un pourcentage est une fraction » : ses
+ *  deux façons sont devenues des exercices des écritures) */
+export const COURS_2NDE_AVANT: QuestionCours[] = COURS_2NDE_RANGES.filter(c => REVUS_2NDE.includes(c.theme))
+export const AUTOMATISMES_2NDE: Automatisme[] = [...AUTOMATISMES_2NDE_LISTE.filter(a => !REVUS_2NDE.includes(a.theme)), ...AUTOMATISMES_2NDE_NOMBRES_REELS]
+export const COURS_2NDE: QuestionCours[] = [...COURS_2NDE_RANGES.filter(c => !REVUS_2NDE.includes(c.theme)), ...COURS_2NDE_NOMBRES_REELS]
