@@ -527,6 +527,8 @@ export class Flash {
       const img = await rasteriser(svg, app.couleur).catch(() => null)
       if (img) images.set(svg, { src: app.rangerImage(img.donnees), l: img.l, h: img.h })
     }
+    // Les dessins de la correction, en vert comme les réponses
+    for (const it of questions) await this.rangerFigureReponse(images, it)
     if (app.page !== page) app.allerPage(page)
     const f: EnCours = { page, reglages: r, questions, images, cadre: { x: 0, l: 0, haut: 0, bas: 0 }, posees: [], cases: [], grande: null, enGrand: [], i: 0, reste: 0, pause: false, corrige: false, fini: false, remplacees: [] }
     this.flash = f
@@ -671,8 +673,25 @@ export class Flash {
     const W = Math.max(T * 6, l - this.retrait(it, numero, T))
     return this.couper('Réponse : ' + r.slice(1), W, T).map(texteEnLatex)
   }
+  /** Le dessin de la correction (s'il y en a un), rangé une fois dans le
+   *  classeur, en vert */
+  private async rangerFigureReponse(images: Map<string, { src: string; l: number; h: number }>, it: QuestionFlash) {
+    const svg = it.q.figureReponse
+    if (!svg || images.has('vert:' + svg)) return
+    const img = await rasteriser(svg, VERT).catch(() => null)
+    if (img) images.set('vert:' + svg, { src: this.app.rangerImage(img.donnees), l: img.l, h: img.h })
+  }
+  /** La taille du dessin de la correction sous la réponse : comme une
+   *  figure d'énoncé, au plus cinq lignes de haut */
+  private tailleFigureReponse(it: QuestionFlash, numero: number, l: number, T: number): { l: number; h: number } | null {
+    if (!it.q.figureReponse) return null
+    const s = tailleSvg(it.q.figureReponse), W = Math.max(T * 6, l - this.retrait(it, numero, T))
+    const k = Math.min(T * (it.q.figureReponse.includes('class="fig fig-grande"') ? 8 : 5) / s.h, W / s.l)
+    return { l: s.l * k, h: s.h * k }
+  }
   private hauteurReponse(it: QuestionFlash, numero: number, l: number, T: number): number {
     return this.lignesReponse(it, numero, l, T).reduce((s, t) => s + Math.max(this.mesurer(t, T).h, T * 1.2), 0)
+      + (this.tailleFigureReponse(it, numero, l, T)?.h ?? 0) + (it.q.figureReponse ? T * 0.3 : 0)
       + this.lignesPhrase(it, numero, l, T).reduce((s, t) => s + Math.max(this.mesurer(t, T * 0.62).h, T * 0.62 * 1.2), 0)
   }
   /** À la correction, sous la réponse : la phrase du programme que
@@ -799,6 +818,7 @@ export class Flash {
       const img = await rasteriser(nouvelle.q.figure, this.app.couleur).catch(() => null)
       if (img) f.images.set(nouvelle.q.figure, { src: this.app.rangerImage(img.donnees), l: img.l, h: img.h })
     }
+    await this.rangerFigureReponse(f.images, nouvelle)
     if (this.flash !== f || f.corrige || f.fini) return
     f.remplacees.push(ancienne)
     f.questions[i] = nouvelle
@@ -868,6 +888,13 @@ export class Flash {
       for (const t of this.lignesReponse(it, k + 1, c.l, T)) {
         this.poserFormule(f.page, t, c.x + retrait, y, T, VERT, c.groupe)
         y += Math.max(this.mesurer(t, T).h, T * 1.2)
+      }
+      const dessin = this.tailleFigureReponse(it, k + 1, c.l, T), img = it.q.figureReponse ? f.images.get('vert:' + it.q.figureReponse) : undefined
+      if (dessin && img) {
+        y += T * 0.15
+        const e = dessin.l / img.l
+        this.app.tableau.poser(f.page, { id: uid(), type: 'image', src: img.src, l: img.l, h: img.h, m: [e, 0, 0, e], x: c.x + retrait, y, z: Date.now(), auteur: this.app.tableau.moi, groupe: c.groupe } as ImageForme)
+        y += dessin.h + T * 0.15
       }
       for (const t of this.lignesPhrase(it, k + 1, c.l, T)) {
         this.poserFormule(f.page, t, c.x + retrait, y, T * 0.62, BLEU_PHRASE, c.groupe)

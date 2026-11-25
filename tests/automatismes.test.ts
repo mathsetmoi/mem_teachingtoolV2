@@ -519,9 +519,9 @@ describe('les automatismes de 2nde et de 1re (épreuve anticipée)', () => {
       // La ligne d'un exercice officiel est la phrase qu'il travaille
       if (a.theme !== 'Arithmétique') expect(d!.competences[a.competence!].slice(0, 10), a.id).toBe(a.programme!.slice(0, 10))
     }
-    // Toutes les lignes OFFI ont leurs exercices, sauf les cinq de géométrie
-    // (absentes de l'outil avant ce rangement) : elles restent « à remplir »
-    for (const d of offi) d.competences.forEach((c, k) => expect(AUTOMATISMES_2NDE.some(a => a.theme === d.cle && a.competence === k), `${d.cle} : ${c}`).toBe(d.cle !== 'Vecteurs et problèmes de géométrie'))
+    // Toutes les lignes OFFI ont leurs exercices (les cinq de géométrie
+    // depuis le 25 novembre 2026)
+    for (const d of offi) d.competences.forEach((c, k) => expect(AUTOMATISMES_2NDE.some(a => a.theme === d.cle && a.competence === k), `${d.cle} : ${c}`).toBe(true))
     // Les questions de cours sont rangées dans un domaine du programme
     for (const c of COURS_2NDE) expect(offi.some(d => d.cle === c.theme), c.id).toBe(true)
     const arith = offi.find(d => d.cle === 'Arithmétique')!
@@ -577,6 +577,35 @@ describe('les automatismes de 2nde et de 1re (épreuve anticipée)', () => {
     expect(COURS_2NDE_AVANT.filter(c => c.theme === 'Algèbre').length).toBe(10)
     // Les nouvelles questions de cours sont à compléter (sauf l'ancienne façon gardée à sa demande)
     for (const c of cours) if (c.id !== 'cours-2nde-Algèbre-101') expect(c.poser().enonce, c.id).toMatch(/^Compléter : .*(…|\\ldots)/)
+  })
+
+  it('en 2nde, Vecteurs et problèmes de géométrie revu ligne par ligne : tout est neuf, avec des questions de cours de 3e reprises', () => {
+    const geo = AUTOMATISMES_2NDE.filter(a => a.theme === 'Vecteurs et problèmes de géométrie')
+    expect([0, 1, 2, 3, 4].map(k => geo.filter(a => a.competence === k).length)).toEqual([5, 5, 11, 7, 7])
+    const cours = COURS_2NDE.filter(c => c.theme === 'Vecteurs et problèmes de géométrie')
+    expect([0, 1, 2, 3, 4].map(k => cours.filter(c => c.competence === k).length)).toEqual([3, 6, 6, 11, 7])
+    // « Placer » : la correction montre le point placé, la question non
+    for (const id of ['2nde-geo-droite-placer', '2nde-geo-repere-placer']) {
+      const q = geo.find(a => a.id === id)!.generer()
+      expect(q.figureReponse, id).toMatch(/^<svg [^>]*viewBox=/)
+      expect(q.figure, id).not.toContain('#d0342c')
+      expect(q.figureReponse, id).toContain('#d0342c')
+    }
+    // La droite graduée dit vrai : l'abscisse lue entre les deux crans écrits est la réponse
+    for (const id of ['2nde-geo-droite-autre-pas', '2nde-geo-droite-trouver-pas']) for (let k = 0; k < 50; k++) {
+      const q = geo.find(a => a.id === id)!.generer()
+      const ecrits = [...q.figure!.matchAll(/<text x="([\d.]+)"[^>]*>([^<]+)<\/text>/g)].map(m => ({ x: Number(m[1]), v: Number(m[2].replace(',', '.').replace('−', '-')) })).filter(e => !Number.isNaN(e.v))
+      const point = Number(/<circle cx="([\d.]+)"/.exec(q.figure!)![1])
+      expect(ecrits.length, id).toBe(2)
+      const [a, b] = ecrits, lu = a.v + (point - a.x) / (b.x - a.x) * (b.v - a.v)
+      expect(Math.abs(lu - Number(q.reponse.replace('{,}', '.'))), `${id} : ${q.reponse}`).toBeLessThan(0.01)
+    }
+    // Sans calculatrice : π reste écrit, et une racine ne se simplifie pas
+    for (let k = 0; k < 100; k++) {
+      expect(geo.find(a => a.id === '2nde-geo-perimetre-cercle')!.generer().reponse).toMatch(/\\pi/)
+      const r = geo.find(a => a.id === '2nde-geo-pythagore-racine')!.generer().reponse, n = Number(/sqrt\{(\d+)\}/.exec(r)![1])
+      for (const c of [4, 9, 16, 25, 36]) expect(n % c, r).not.toBe(0)
+    }
   })
 
   it('réponse courte, jamais une chance sur deux, et les trous ont un trou', () => {

@@ -8,6 +8,7 @@ import * as F from '../figures'
 import type { Automatisme, Facon, Question, QuestionCours } from './outils'
 import { coursTrigonometrie } from './trigonometrie-1re'
 import { AUTOMATISMES_2NDE_NOMBRES_REELS, COURS_2NDE_NOMBRES_REELS, phraseATrou } from './seconde-nombres-reels'
+import { AUTOMATISMES_2NDE_GEOMETRIE, COURS_2NDE_GEOMETRIE, D2_GEOMETRIE } from './seconde-geometrie'
 import { PRENOMS, arrondi, choix, coord, deg, ent, etL, frac, grandNb, irreductible, lettre, melange, mot, nb, notions, pgcd, pt, pts, relNonNul, tableau, unTrou, une, unite } from './outils'
 
 // =============================================================
@@ -1547,15 +1548,15 @@ const COURS_2NDE_ALGEBRE: QuestionCours[] = [...AL_COURS_DIFFERENCE, ...AL_COURS
 // =============================================================
 // LES LISTES DE 2nde QUE LE FLASH POSE
 // Les domaines revus ligne par ligne avec le professeur (Nombres réels et
-// Algèbre, le 24 novembre 2026) remplacent leurs anciens exercices et leurs anciennes
+// Algèbre le 24 novembre 2026, Vecteurs et problèmes de géométrie le 25) remplacent leurs anciens exercices et leurs anciennes
 // notions ; ceux-ci restent ci-dessous, tels quels, sans être posés.
 // =============================================================
 /** Les domaines déjà revus ligne par ligne */
-const REVUS_2NDE = ['Nombres réels', D2_ALGEBRE]
+const REVUS_2NDE = ['Nombres réels', D2_ALGEBRE, D2_GEOMETRIE]
 /** Les exercices d'avant la revue de ces domaines (rien ne se perd) */
 export const AUTOMATISMES_2NDE_AVANT: Automatisme[] = AUTOMATISMES_2NDE_LISTE.filter(a => REVUS_2NDE.includes(a.theme))
 /** Les notions d'avant la revue (« Un pourcentage est une fraction » : ses
  *  deux façons sont devenues des exercices des écritures) */
 export const COURS_2NDE_AVANT: QuestionCours[] = COURS_2NDE_RANGES.filter(c => REVUS_2NDE.includes(c.theme))
-export const AUTOMATISMES_2NDE: Automatisme[] = [...AUTOMATISMES_2NDE_LISTE.filter(a => !REVUS_2NDE.includes(a.theme)), ...AUTOMATISMES_2NDE_NOMBRES_REELS, ...AUTOMATISMES_2NDE_ALGEBRE]
-export const COURS_2NDE: QuestionCours[] = [...COURS_2NDE_RANGES.filter(c => !REVUS_2NDE.includes(c.theme)), ...COURS_2NDE_NOMBRES_REELS, ...COURS_2NDE_ALGEBRE]
+export const AUTOMATISMES_2NDE: Automatisme[] = [...AUTOMATISMES_2NDE_LISTE.filter(a => !REVUS_2NDE.includes(a.theme)), ...AUTOMATISMES_2NDE_NOMBRES_REELS, ...AUTOMATISMES_2NDE_ALGEBRE, ...AUTOMATISMES_2NDE_GEOMETRIE]
+export const COURS_2NDE: QuestionCours[] = [...COURS_2NDE_RANGES.filter(c => !REVUS_2NDE.includes(c.theme)), ...COURS_2NDE_NOMBRES_REELS, ...COURS_2NDE_ALGEBRE, ...COURS_2NDE_GEOMETRIE]
