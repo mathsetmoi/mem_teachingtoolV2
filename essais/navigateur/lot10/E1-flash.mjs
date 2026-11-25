@@ -198,8 +198,8 @@ const arbre2 = await p.evaluate(() => {
   }
 })
 ok(arbre2.themes.join('|').startsWith('Nombres et calculs, algèbre') && arbre2.themes.length === 4
-  && arbre2.pastilles.includes('OFFI 35') && arbre2.pastilles.includes('CAP 53') && arbre2.pastilles.includes('PERSO 1') && arbre2.cap1 === 6 && arbre2.perso,
-'H) 2nde : un seul arbre, 4 thèmes du programme, 35 lignes OFFI + 1 PERSO + 53 lignes CAP (les domaines sans rien en gris, fermés)', JSON.stringify(arbre2))
+  && arbre2.pastilles.includes('OFFI 35') && arbre2.pastilles.includes('CAP 53') && arbre2.pastilles.includes('PERSO 1') && arbre2.cap1 === 7 && arbre2.perso,
+'H) 2nde : un seul arbre, 4 thèmes du programme, 35 lignes OFFI + 1 PERSO + 53 lignes CAP (les domaines sans rien en gris, fermés ; Géométrie a ses lignes depuis le 25 novembre)', JSON.stringify(arbre2))
 await p.evaluate(() => {
   for (const d of ['Représentation algébrique et graphique des fonctions', 'Information chiffrée et statistique descriptive', 'Probabilités'])
     document.querySelector(`.themes-niveau[data-niveau="2nde"] .case-domaine[value="2nde/${d}"]`).click()

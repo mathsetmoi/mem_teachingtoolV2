@@ -10,6 +10,9 @@
 export interface Question {
   enonce: string            // texte, avec $…$ pour les maths
   figure?: string           // un dessin SVG sous l'énoncé
+  /** Un dessin montré à la correction, sous la réponse (le point placé
+   *  sur la droite graduée ou dans le repère) ; facultatif */
+  figureReponse?: string
   reponse: string           // LaTeX ou §texte
   /** Des erreurs d'élèves fréquentes (même format). Elles ne sont plus
    *  montrées depuis la fin des QCM ; facultatives. */

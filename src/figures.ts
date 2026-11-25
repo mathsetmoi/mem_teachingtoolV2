@@ -16,7 +16,12 @@ export function svg(l: number, h: number, contenu: string, classe = 'fig') {
 }
 const ligne = (a: P, b: P, extra = '') => `<line x1="${f2(a.x)}" y1="${f2(a.y)}" x2="${f2(b.x)}" y2="${f2(b.y)}" ${extra}/>`
 const poly = (p: P[], extra = '') => `<polygon points="${p.map(q => `${f2(q.x)},${f2(q.y)}`).join(' ')}" ${extra}/>`
-const texte = (p: P, t: string, extra = '') => `<text x="${f2(p.x)}" y="${f2(p.y)}" fill="currentColor" stroke="none" text-anchor="middle" dominant-baseline="middle" ${extra}>${t}</text>`
+// Un attribut donné dans `extra` (text-anchor, fill) remplace celui par
+// défaut : écrit deux fois, il empêcherait le dessin de s'afficher
+const texte = (p: P, t: string, extra = '') => {
+  const defaut = ['fill="currentColor"', 'stroke="none"', 'text-anchor="middle"', 'dominant-baseline="middle"'].filter(a => !extra.includes(a.split('=')[0] + '='))
+  return `<text x="${f2(p.x)}" y="${f2(p.y)}" ${defaut.join(' ')} ${extra}>${t}</text>`
+}
 const nom = (p: P, t: string, taille = 18) => texte(p, t, `font-style="italic" font-size="${taille}"`)
 const point = (p: P) => `<path d="M${f2(p.x - 5)} ${f2(p.y - 5)}L${f2(p.x + 5)} ${f2(p.y + 5)}M${f2(p.x + 5)} ${f2(p.y - 5)}L${f2(p.x - 5)} ${f2(p.y + 5)}"/>`
 const dist = (a: P, b: P) => Math.hypot(a.x - b.x, a.y - b.y)
@@ -540,14 +545,20 @@ export function droiteMilieux(noms: string, ecrite: { ou: 'base' | 'milieux'; t:
 /** Un triangle rectangle codé, nommé : noms[0] est le sommet de l'angle
  *  droit. `cotes` écrit une étiquette sur des côtés (« hyp » : le côté
  *  opposé à l'angle droit). */
-export function triangleRectangleNomme(noms: string, tourne = 0, cotes: { hyp?: string } = {}) {
+export function triangleRectangleNomme(noms: string, tourne = 0, cotes: { hyp?: string; a1?: string; a2?: string } = {}) {
   let p: P[] = [{ x: 70, y: 190 }, { x: 70, y: 40 }, { x: 250, y: 190 }]
   if (Math.random() < 0.5) p = [p[0], p[2], p[1]]
   p = tourner(p, centre(p), tourne)
   const c = centre(p)
   let r = poly(p) + angleDroit(p[1], p[0], p[2]) + p.map((q, i) => nomDehors(q, c, noms[i], 26)).join('')
-  if (cotes.hyp) { const m = milieu(p[1], p[2]), d = dist(m, c) || 1; r += texte({ x: m.x + (m.x - c.x) / d * 18, y: m.y + (m.y - c.y) / d * 18 }, cotes.hyp, 'font-size="22"') }
-  return cadre(p, r, 30)
+  // « a1 » et « a2 » : les côtés de l'angle droit, de noms[0] à noms[1] et à noms[2]
+  for (const [t, q1, q2] of [[cotes.hyp, p[1], p[2]], [cotes.a1, p[0], p[1]], [cotes.a2, p[0], p[2]]] as [string | undefined, P, P][]) {
+    if (!t) continue
+    const m = milieu(q1, q2), d = dist(m, c) || 1
+    const e = q1 === p[1] && q2 === p[2] ? 18 : 24
+    r += texte({ x: m.x + (m.x - c.x) / d * e, y: m.y + (m.y - c.y) / d * e }, t, 'font-size="22"')
+  }
+  return cadre(p, r, cotes.a1 || cotes.a2 ? 44 : 30)
 }
 /** Un triangle inscrit dans un cercle dont un côté, [BC] (noms[1] noms[2]),
  *  est un diamètre. `droit` code l'angle droit en A ; `centre` nomme le
@@ -1124,4 +1135,80 @@ export function scriptScratch(blocs: BlocScratch[], chapeau = 'quand ⚑ est cli
   const wc = Math.max(largeurLigne(chapeau), 110), [fond, sombre] = SCRATCH.evt
   const c = `<path d="M${m} ${m + haut}Q${m + 40} ${m - 6} ${m + 80} ${m + haut}H${f2(m + wc)}V${m + haut + SCR_H}H${m}Z" fill="${fond}" stroke="${sombre}" stroke-width="1"/>` + ligneScratch(m, m + haut + SCR_H / 2, chapeau, sombre)
   return svg(Math.max(wc, p.l) + 2 * m, m + haut + SCR_H + p.h + m, c + p.r, 'fig fig-script')
+}
+
+// =============================================================
+// LES FIGURES DE 2nde
+// =============================================================
+
+// ---------- Repère orthogonal gradué ----------
+/** Un repère quadrillé de −5 à 5 carreaux, un carreau valant `pasX` en
+ *  abscisse et `pasY` en ordonnée (écrits sous le premier carreau et à sa
+ *  gauche) ; des points nommés, en coordonnées (un point peut tomber au
+ *  milieu d'un carreau). Sans point : un repère vide, pour en placer un. */
+export function repereGradue(pasX: number, pasY: number, points: { x: number; y: number; nom: string }[]) {
+  const n = 5, c = 26, O = { x: 30 + n * c, y: 20 + n * c }, T = 40 + 2 * n * c
+  const ecrire = (v: number) => String(v).replace('.', ',').replace('-', '−')
+  let r = ''
+  for (let i = -n; i <= n; i++) {
+    r += ligne({ x: O.x + i * c, y: 20 }, { x: O.x + i * c, y: T - 20 }, 'stroke="#9bb6dc" stroke-width="1"')
+    r += ligne({ x: 30, y: O.y + i * c }, { x: T - 10, y: O.y + i * c }, 'stroke="#9bb6dc" stroke-width="1"')
+  }
+  r += ligne({ x: 24, y: O.y }, { x: T, y: O.y }) + ligne({ x: O.x, y: T - 14 }, { x: O.x, y: 10 })
+  r += `<path d="M${T - 8} ${O.y - 6}L${T} ${O.y}L${T - 8} ${O.y + 6}M${O.x - 6} 18L${O.x} 10L${O.x + 6} 18"/>`
+  r += texte({ x: O.x - 10, y: O.y + 15 }, '0', 'font-size="17"') + texte({ x: O.x + c, y: O.y + 15 }, ecrire(pasX), 'font-size="17"')
+    + texte({ x: O.x - 6, y: O.y - c }, ecrire(pasY), 'font-size="17" text-anchor="end"')
+  for (const q of points) {
+    const A = { x: O.x + q.x / pasX * c, y: O.y - q.y / pasY * c }
+    r += `<circle cx="${f2(A.x)}" cy="${f2(A.y)}" r="6" fill="#d0342c" stroke="none"/>` + nom({ x: A.x + 12, y: A.y - 12 }, q.nom, 22)
+  }
+  return svg(T + 10, T, r, 'fig fig-grande')
+}
+
+// ---------- Périmètres et aires ----------
+/** Un polygone (3 à 6 côtés) dont chaque côté porte sa longueur, écrite
+ *  telle quelle ; le dessin n'est pas à l'échelle */
+export function polygoneCote(longueurs: string[], tourne = 0) {
+  const n = longueurs.length, c0 = { x: 0, y: 0 }
+  let p: P[] = Array.from({ length: n }, (_, i) => {
+    const t = -Math.PI / 2 + 2 * Math.PI * i / n + (Math.random() - 0.5) * (1.4 / n), R = 62 + Math.random() * 14
+    return { x: R * 1.25 * Math.cos(t), y: R * Math.sin(t) }
+  })
+  p = tourner(p, c0, tourne)
+  const c = centre(p)
+  let r = poly(p)
+  longueurs.forEach((t, i) => {
+    const m = milieu(p[i], p[(i + 1) % n]), d = dist(m, c) || 1
+    r += texte({ x: m.x + (m.x - c.x) / d * 30, y: m.y + (m.y - c.y) / d * 20 }, t, 'font-size="22"')
+  })
+  return cadre(p, r, 56)
+}
+/** Un rectangle, sa longueur écrite dessous et sa largeur à gauche */
+export function rectangleCote(longueur: string, largeur: string) {
+  const L = 200, l = 110
+  const r = poly([{ x: 0, y: 0 }, { x: L, y: 0 }, { x: L, y: l }, { x: 0, y: l }]) + angleDroit({ x: L, y: 0 }, { x: 0, y: 0 }, { x: 0, y: l })
+    + texte({ x: L / 2, y: l + 20 }, longueur, 'font-size="22"') + texte({ x: -10, y: l / 2 }, largeur, 'font-size="22" text-anchor="end"')
+  return cadre([{ x: -70, y: 0 }, { x: L, y: l + 20 }], r, 20)
+}
+/** Un triangle, sa base écrite dessous et sa hauteur en pointillés bleus,
+ *  avec l'angle droit ; `dehors` : le pied de la hauteur tombe hors de la
+ *  base (sur son prolongement, en pointillés) */
+export function triangleHauteur(base: string, hauteur: string, dehors: boolean) {
+  const B = { x: 0, y: 150 }, C = { x: 190, y: 150 }, A = dehors ? { x: 260 + Math.random() * 30, y: 0 } : { x: 50 + Math.random() * 90, y: 0 }
+  const H = { x: A.x, y: 150 }, bleu = 'stroke="#1f5fbf" stroke-dasharray="6 5"'
+  let r = poly([A, B, C]) + ligne(A, H, bleu) + angleDroit(A, H, dehors ? B : C, 11)
+  if (dehors) r += ligne(C, H, 'stroke-dasharray="6 5"')
+  r += texte({ x: 95, y: 172 }, base, 'font-size="22"') + texte({ x: A.x + 8, y: 75 }, hauteur, 'font-size="22" text-anchor="start" fill="#1f5fbf"')
+  return cadre([A, B, C, H, { x: A.x + 70, y: 75 }], r, 24)
+}
+/** Un cercle (ou un disque grisé) et son centre O, avec un rayon ou un
+ *  diamètre tracé en bleu, sa longueur écrite tout près */
+export function cercleCote(etiquette: string, diametre: boolean, disque: boolean) {
+  const R = 85, t = (Math.random() * 50 - 25) * Math.PI / 180
+  const M = { x: R * Math.cos(t), y: -R * Math.sin(t) }, N = diametre ? { x: -M.x, y: -M.y } : { x: 0, y: 0 }
+  let r = `<circle cx="0" cy="0" r="${R}" ${disque ? 'fill="#d9e3f2"' : ''}/>` + ligne(N, M, 'stroke="#1f5fbf"')
+  r += `<circle cx="0" cy="0" r="3" fill="currentColor" stroke="none"/>` + nom({ x: -10, y: 16 }, 'O')
+  const m = milieu(N, M)
+  r += texte({ x: m.x + 10 * Math.sin(t) + 4, y: m.y - 18 * Math.cos(t) }, etiquette, 'font-size="22"')
+  return cadre([{ x: -R, y: -R }, { x: R, y: R }], r, 20)
 }

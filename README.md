@@ -6643,6 +6643,28 @@ domaine.
     demande. Les anciens exercices et notions d'Algèbre restent dans
     `AUTOMATISMES_2NDE_AVANT` et `COURS_2NDE_AVANT`, sans être posés.
     Données : `src/automatismes/lycee.ts` (partie « ALGÈBRE (2nde) »).
+- **Vecteurs et problèmes de géométrie, revu ligne par ligne** (25 novembre
+  2026) : ces cinq lignes n'avaient aucun exercice ; 35 exercices et 33
+  questions de cours, presque tous avec une figure tirée au hasard.
+  - **Droite graduée** (5 exercices) : lire une abscisse de 1 en 1, avec
+    une autre graduation, en trouvant le pas, en fraction (demis, tiers,
+    quarts) ; placer un point.
+  - **Repère** (5 exercices) : lire des coordonnées (même unité, unités
+    différentes, point sur un axe, au milieu d'un carreau) ; placer un
+    point. Le point-virgule et les parenthèses en cours, à sa demande.
+  - **Placer** : l'élève place le point sur son ardoise, et la correction
+    montre le point placé, en vert sous la réponse (un champ facultatif
+    `figureReponse` des questions).
+  - **Périmètres, aires, volumes** (11 exercices) : un par figure du
+    programme, sans calculatrice, π reste écrit (10π cm).
+  - **Pythagore et Thalès** (7 exercices) : des triplets connus ou une
+    racine qui ne se simplifie pas, la réciproque (« en quel sommet ? »),
+    triangles emboîtés, papillon, écrire les rapports. En cours, les
+    questions de 3e sur Pythagore et Thalès, reprises telles quelles.
+  - **Trigonométrie** (7 exercices) : les six exercices de 3e, plus
+    cos² + sin² = 1 ; les questions de cours de 3e, plus deux.
+  - Données : `src/automatismes/seconde-geometrie.ts`, figures dans
+    `src/figures.ts` (partie « LES FIGURES DE 2nde »).
 - Données : `src/programme-lycee.ts` (les capacités attendues),
   `src/programme-automatismes.ts` (clé « 2nde », les lignes OFFI),
   `src/automatismes/lycee.ts` (`REGLAGES_2NDE_AVANT`). Essais :
