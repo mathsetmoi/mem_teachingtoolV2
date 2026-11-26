@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import katex from 'katex'
 import { AUTOMATISMES_1RE, COURS_1RE, tirerFlash } from '../src/automatismes'
 import { PROGRAMME_AUTOMATISMES } from '../src/programme-automatismes'
+import { SECTION_AUTOMATISMES } from '../src/objectifs-flash'
 import { automatismesChoisis, coursChoisis, REGLAGES_PAR_DEFAUT } from '../src/flash'
 import { ASSOCIES, COMPETENCES_TRIGONOMETRIE, T_TRIGONOMETRIE, VALEURS_REMARQUABLES, enDegres, mesurePrincipale, reelAuHasard, reelGrand, valeurExacte } from '../src/automatismes/trigonometrie-1re'
 
@@ -120,12 +121,13 @@ describe('la trigonométrie de 1re', () => {
   })
 
   it('les exercices de 1re disent leur compétence de la liste officielle', () => {
-    const offi = PROGRAMME_AUTOMATISMES['1re'].find(t => t.offi)!
-    for (const a of AUTOMATISMES_1RE) {
-      const d = offi.domaines.find(x => x.cle === a.theme)!
+    // Les lignes OFFI sont rangées dans les domaines du programme (26 novembre 2026)
+    const offi = PROGRAMME_AUTOMATISMES['1re'].filter(t => t.section === SECTION_AUTOMATISMES).flatMap(t => t.domaines).filter(d => !d.competencesPerso)
+    for (const a of AUTOMATISMES_1RE.filter(x => x.competence !== undefined)) {
+      const d = offi.find(x => x.cle === a.theme)!
       expect(d.competences[a.competence!]).toBeTruthy()
     }
     // Chaque phrase de la liste a au moins un exercice
-    for (const d of offi.domaines) d.competences.forEach((_, k) => expect(AUTOMATISMES_1RE.some(a => a.theme === d.cle && a.competence === k)).toBe(true))
+    for (const d of offi) d.competences.forEach((_, k) => expect(AUTOMATISMES_1RE.some(a => a.theme === d.cle && a.competence === k)).toBe(true))
   })
 })
