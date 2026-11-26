@@ -355,59 +355,48 @@ export const PROGRAMME_AUTOMATISMES: Record<string, ThemeProgramme[]> = {
       ] },
     ] },
   ],
-  // La 1re : comme la 2nde, les quatre thèmes du programme de spécialité
-  // de 1re et leurs domaines, que le professeur remplit de ses questions
-  // (PERSO) ; puis, à part, la liste officielle de l'épreuve anticipée (les
-  // automatismes qui ne sont pas en italique). Les clés de ces domaines-là
-  // sont les thèmes des exercices de lycee.ts : les réglages déjà gardés
-  // (« 1re/Probabilités ») restent bons.
+  // La 1re, rangée comme la 3e (26 novembre 2026) : les quatre thèmes du
+  // programme de spécialité de 1re et leurs domaines ; dans chaque domaine,
+  // les phrases de la liste « Automatismes » du programme de 1re (OFFI) qui
+  // s'y rattachent, puis les capacités attendues du domaine (CAP,
+  // programme-lycee.ts). La Trigonométrie garde ses cinq compétences du
+  // professeur (PERSO). Les réglages gardés avec les anciennes clés
+  // (« 1re/Probabilités ») sont convertis à la lecture (REGLAGES_1RE_AVANT).
   '1re': [
-    { nom: 'Algèbre', aRemplir: true, domaines: [
-      { cle: 'Suites numériques, modèles discrets', competences: [] },
-      { cle: 'Équations, fonctions polynômes du second degré', competences: [] },
-    ] },
-    { nom: 'Analyse', aRemplir: true, domaines: [
-      { cle: 'Dérivation', competences: [] },
-      { cle: 'Variations et courbes représentatives des fonctions', competences: [] },
-      { cle: 'Fonction exponentielle', competences: [] },
-      { cle: T_TRIGONOMETRIE, competencesPerso: true, competences: COMPETENCES_TRIGONOMETRIE },
-    ] },
-    { nom: 'Géométrie', aRemplir: true, domaines: [
-      { cle: 'Calcul vectoriel et produit scalaire', competences: [] },
-      { cle: 'Géométrie repérée', competences: [] },
-    ] },
-    { nom: 'Probabilités et statistiques', aRemplir: true, domaines: [
-      { cle: 'Probabilités conditionnelles et indépendance', competences: [] },
-      { cle: 'Variables aléatoires réelles', competences: [] },
-      { cle: 'Expérimentations', competences: [] },
-    ] },
-    { nom: 'Automatismes de l’épreuve', offi: true, domaines: [
-      { cle: 'Calcul numérique et algébrique', competences: [
-        'Déterminer les solutions d’une équation produit nul.',
-        'Déterminer le signe d’une expression du premier degré, d’une expression factorisée du second degré.',
-        'Développer, factoriser, réduire une expression algébrique simple.',
-      ] },
-      { cle: 'Évolutions et variations', competences: [
+    { nom: 'Algèbre', domaines: [
+      { cle: 'Suites numériques, modèles discrets', competences: [
         'Appliquer un taux d’évolution pour calculer une valeur finale ou initiale.',
         'Calculer un taux d’évolution, l’exprimer en pourcentage.',
         'Calculer le taux d’évolution équivalent à plusieurs évolutions successives.',
         'Calculer un taux d’évolution réciproque.',
       ] },
-      { cle: 'Fonctions et représentations', competences: [
-        'Résoudre graphiquement une équation, une inéquation du type : $f(x) = k$, $f(x) < k$, etc.',
-        'Déterminer graphiquement le signe d’une fonction ou son tableau de variations.',
+      { cle: 'Équations, fonctions polynômes du second degré', competences: [
+        'Déterminer les solutions d’une équation produit nul.',
+        'Déterminer le signe d’une expression du premier degré, d’une expression factorisée du second degré.',
+        'Développer, factoriser, réduire une expression algébrique simple.',
+      ] },
+    ] },
+    { nom: 'Analyse', domaines: [
+      { cle: 'Dérivation', competences: [
         'Tracer une droite donnée par son équation réduite ou par un point et son coefficient directeur.',
         'Lire graphiquement l’équation réduite d’une droite.',
         'Déterminer le coefficient directeur d’une droite à partir des coordonnées de deux de ses points.',
       ] },
-      { cle: 'Statistiques', competences: [
-        'Lire un graphique, un histogramme, un diagramme en barres ou circulaire, un diagramme en boîte ou toute autre représentation (repérer l’origine du repère, les unités de graduations ou les échelles, etc.).',
+      { cle: 'Variations et courbes représentatives des fonctions', competences: [
+        'Résoudre graphiquement une équation, une inéquation du type : $f(x) = k$, $f(x) < k$, etc.',
+        'Déterminer graphiquement le signe d’une fonction ou son tableau de variations.',
+      ] },
+      { cle: T_TRIGONOMETRIE, competencesPerso: true, competences: COMPETENCES_TRIGONOMETRIE },
+    ] },
+    { nom: 'Probabilités et statistiques', domaines: [
+      { cle: 'Probabilités conditionnelles et indépendance', competences: [
+        'Calculer des probabilités conditionnelles lorsque les évènements sont présentés sous forme de tableau croisé d’effectifs ou d’arbres pondérés.',
+        'Distinguer $P(A \\cap B)$, $P_A(B)$, $P_B(A)$.',
+      ] },
+      { cle: 'Variables aléatoires réelles', competences: [
+        'Lire un graphique, un histogramme, un diagramme en barres ou circulaire, un diagramme en boite ou toute autre représentation (repérer l’origine du repère, les unités de graduations ou les échelles, etc.).',
         'Passer du graphique aux données et vice-versa.',
         'Calculer et interpréter des indicateurs statistiques pour une série statistique.',
-      ] },
-      { cle: 'Probabilités', competences: [
-        'Calculer des probabilités conditionnelles lorsque les événements sont présentés sous forme de tableau croisé d’effectifs ou d’arbres pondérés.',
-        'Distinguer $P(A \\cap B)$, $P_A(B)$, $P_B(A)$.',
       ] },
     ] },
   ],
