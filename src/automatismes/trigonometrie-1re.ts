@@ -94,7 +94,7 @@ const COSINUS_SINUS: Facon[] = [
   },
 ]
 
-const PLACER: Facon[] = [
+export const PLACER: Facon[] = [
   () => {
     const { lettres, figure } = cercle(), r = reelVarie()
     const i = VALEURS_REMARQUABLES.findIndex(v => enDegres(v) === r.degres)
@@ -142,7 +142,7 @@ export const ASSOCIES: { f: 'cos' | 'sin'; arg: (x: string) => string; moins: bo
   { f: 'sin', arg: x => `\\frac{\\pi}{2} + ${x}`, moins: false, g: 'cos', ajout: Math.PI / 2, signe: 1 },
 ]
 const LETTRE_REEL = ['x', 'a', 't', '\\theta']
-const ANGLES_ASSOCIES: Facon[] = [
+export const ANGLES_ASSOCIES: Facon[] = [
   () => {
     const a = choix(ASSOCIES), x = choix(LETTRE_REEL)
     return [`Compléter : pour tout réel $${x}$, $\\${a.f}\\left(${a.arg(x)}\\right) = \\ldots$`, `$${a.moins ? '-' : ''}\\${a.g} ${x}$`]

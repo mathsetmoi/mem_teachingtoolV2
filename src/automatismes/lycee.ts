@@ -7,6 +7,7 @@
 import * as F from '../figures'
 import type { Automatisme, Facon, Question, QuestionCours } from './outils'
 import { coursTrigonometrie } from './trigonometrie-1re'
+import { AUTOMATISMES_1RE_TRIGO_CAP, COURS_1RE_TRIGO_CAP } from './trigonometrie-1re-cap'
 import { AUTOMATISMES_2NDE_NOMBRES_REELS, COURS_2NDE_NOMBRES_REELS, phraseATrou } from './seconde-nombres-reels'
 import { AUTOMATISMES_2NDE_GEOMETRIE, COURS_2NDE_GEOMETRIE, D2_GEOMETRIE } from './seconde-geometrie'
 import { PRENOMS, arrondi, choix, coord, deg, ent, etL, frac, grandNb, irreductible, lettre, melange, mot, nb, notions, pgcd, pt, pts, relNonNul, tableau, unTrou, une, unite } from './outils'
@@ -1046,6 +1047,8 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
       ])
     },
   },
+  // Les capacités attendues de Trigonométrie (26 novembre 2026)
+  ...AUTOMATISMES_1RE_TRIGO_CAP,
 ]
 
 // =============================================================
@@ -1251,6 +1254,8 @@ export const COURS_1RE: QuestionCours[] = [
   // PERSO : Trigonométrie (Analyse), les questions du professeur, rangées
   // par compétence (voir trigonometrie-1re.ts)
   ...coursTrigonometrie(n1),
+  // CAP de Trigonométrie (26 novembre 2026, trigonometrie-1re-cap.ts)
+  ...COURS_1RE_TRIGO_CAP,
 ]
 
 // =============================================================
