@@ -34,7 +34,7 @@ function exo(k: number, id: string, titre: string, generer: () => Question): Aut
   return { id: `1re-trigo-${id}`, theme: T, titre, application: true, programme: CAPACITES[k], generer }
 }
 /** Une façon de question de cours devenue exercice */
-const deFacon = (f: Facon) => (): Question => { const [enonce, reponse, figure] = f(); return figure ? { enonce, reponse, figure } : { enonce, reponse } }
+const deFacon = (f: Facon) => (): Question => { const [enonce, reponse, figure] = f(); return figure ? { enonce, reponse: mot(reponse), figure } : { enonce, reponse: mot(reponse) } }
 
 const LETTRES_POINT = ['M', 'N', 'P', 'A', 'B']
 const LETTRES_REEL = ['x', 'a', 't', '\\theta']
@@ -59,7 +59,7 @@ const CAP1: Automatisme[] = [
     const v = choix(VALEURS_REMARQUABLES.slice(1)), d = enDegres(v), direct = Math.random() < 0.5
     return {
       enonce: `À partir du point $I$, on parcourt sur le cercle trigonométrique un arc de longueur $${reelPi(v)}$ dans le sens ${direct ? 'direct' : 'indirect'}. Quel réel de $]-\\pi\\,;\\,\\pi]$ est associé au point d'arrivée ?`,
-      reponse: `$${mesurePrincipale(direct ? d : (360 - d) % 360)}$`,
+      reponse: mesurePrincipale(direct ? d : (360 - d) % 360),
     }
   }),
 ]
@@ -72,19 +72,19 @@ const CAP2: Automatisme[] = [
     return {
       enonce: `Sur le cercle trigonométrique, $M$ est associé à $${x} = ${reelPi(v)}$ et $N$ à $${a.arg(x)}$. Donner la valeur exacte de $\\${f}\\left(${a.arg(x)}\\right)$.`,
       figure: F.cercleTrigo(['M', 'N'], [dx, dn]),
-      reponse: `$${valeurExacte(dn, f)}$`,
+      reponse: valeurExacte(dn, f),
     }
   }),
   exo(1, 'valeur', 'La valeur exacte pour un angle associé', () => {
     const v = choix(PREMIER_QUART), dx = enDegres(v), a = choix(ASSOCIES), f = choix(['cos', 'sin'] as const)
-    return { enonce: `Donner la valeur exacte de $\\${f}\\left(${a.arg(reelPi(v))}\\right)$.`, reponse: `$${valeurExacte(degresAssocie(a, dx), f)}$` }
+    return { enonce: `Donner la valeur exacte de $\\${f}\\left(${a.arg(reelPi(v))}\\right)$.`, reponse: valeurExacte(degresAssocie(a, dx), f) }
   }),
   exo(1, 'symetrique', 'Les coordonnées d’un point symétrique', () => {
     const v = choix(PREMIER_QUART), dx = enDegres(v), L = choix(LETTRES_POINT)
     const [axe, d] = choix<[string, number]>([['l\'axe des abscisses', 360 - dx], ['l\'axe des ordonnées', 180 - dx], ['l\'origine $O$ du repère', 180 + dx], ['la droite d\'équation $y = x$', 90 - dx]])
     return {
       enonce: `$${L}$ est le point du cercle trigonométrique associé au réel $${reelPi(v)}$. Donner les coordonnées de son symétrique par rapport à ${axe}.`,
-      reponse: `$\\left(${valeurExacte(d, 'cos')}\\,;\\,${valeurExacte(d, 'sin')}\\right)$`,
+      reponse: `\\left(${valeurExacte(d, 'cos')}\\,;\\,${valeurExacte(d, 'sin')}\\right)`,
     }
   }),
 ]

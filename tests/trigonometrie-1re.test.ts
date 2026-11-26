@@ -153,7 +153,11 @@ describe('les deux capacités attendues de Trigonométrie (CAP)', () => {
       for (let k = 0; k < 60; k++) {
         const q = a.generer()
         vus.add(q.enonce + q.reponse)
-        for (const t of [q.enonce, q.reponse.replace(/^§/, '')]) for (const m of t.split('$').filter((_, i) => i % 2)) expect(() => katex.renderToString(m, { throwOnError: true })).not.toThrow()
+        for (const m of q.enonce.split('$').filter((_, i) => i % 2)) expect(() => katex.renderToString(m, { throwOnError: true })).not.toThrow()
+        // Une réponse : des maths sans $, ou un texte (§) avec ses maths entre $
+        const texte = q.reponse.startsWith('§')
+        if (!texte) expect(q.reponse, a.id).not.toContain('$')
+        for (const m of texte ? q.reponse.slice(1).split('$').filter((_, i) => i % 2) : [q.reponse]) expect(() => katex.renderToString(m, { throwOnError: true })).not.toThrow()
         if (a.id === '1re-trigo-placer') expect(q.figureReponse).toMatch(/<path /)
       }
       expect(vus.size, a.id).toBeGreaterThan(2)
@@ -168,7 +172,7 @@ describe('les deux capacités attendues de Trigonométrie (CAP)', () => {
     }
     for (let k = 0; k < 100; k++) {
       const q = v.generer()
-      expect(valeur(q.reponse.slice(1, -1))).toBeCloseTo(lire(q.enonce), 9)
+      expect(valeur(q.reponse)).toBeCloseTo(lire(q.enonce), 9)
     }
   })
 })

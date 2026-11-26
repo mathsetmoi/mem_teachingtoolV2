@@ -204,9 +204,11 @@ await p.evaluate(() => {
   for (const d of ['Représentation algébrique et graphique des fonctions', 'Information chiffrée et statistique descriptive', 'Probabilités'])
     document.querySelector(`.themes-niveau[data-niveau="2nde"] .case-domaine[value="2nde/${d}"]`).click()
 })
-// En 1re (23 novembre 2026) : la liste de l'épreuve est à part, on la déplie
-await p.click('.themes-niveau[data-niveau="1re"] .arbre-theme:has(.etiquette-offi) > .ligne-arbre > button.deplier')
-for (const t of ['Fonctions et représentations', 'Statistiques', 'Probabilités']) await p.click(`.themes-niveau[data-niveau="1re"] label:has-text("${t}")`)
+// En 1re, un seul arbre aussi depuis le 26 novembre 2026 : on coche trois domaines du programme
+await p.evaluate(() => {
+  for (const d of ['Variations et courbes représentatives des fonctions', 'Variables aléatoires réelles', 'Probabilités conditionnelles et indépendance'])
+    document.querySelector(`.themes-niveau[data-niveau="1re"] .case-domaine[value="1re/${d}"]`).click()
+})
 await p.click('.dialogue-flash .lancer')
 await p.waitForTimeout(1500)
 const pageH = await p.evaluate(() => window.__app.page)
@@ -229,24 +231,44 @@ await p.evaluate(() => { for (let k = 0, c; k < 200 && (c = document.querySelect
 const arbre1 = await p.evaluate(() => {
   const r = document.querySelector('.themes-niveau[data-niveau="1re"]')
   return {
-    themes: [...r.querySelectorAll('.arbre-theme')].map(t => t.querySelector('.ligne-arbre').textContent.trim().replace(/\s+/g, ' ')),
+    themes: [...r.querySelectorAll('.arbre-unifie > .arbre-theme')].map(t => t.querySelector('.nom-theme, label span')?.textContent.trim()),
+    cap: [...r.querySelectorAll('.case-competence')].filter(c => c.value.startsWith('1re/obj:Trigonométrie/')).length,
+    offiBloc: [...r.querySelectorAll('.ligne-arbre')].some(l => l.textContent.includes('Automatismes de l’épreuve')),
     perso: [0, 1, 2, 3, 4].every(k => r.querySelector(`.case-competence[value="1re/Trigonométrie/${k}"]`)?.closest('label').querySelector('.etiquette-perso')),
     vides: r.querySelectorAll('.arbre-domaine.vide').length,
   }
 })
-ok(arbre1.themes.length === 5 && arbre1.perso && arbre1.vides >= 8, 'P) 1re : 4 thèmes du programme + la liste de l\'épreuve, Analyse › Trigonométrie et ses 5 compétences PERSO, domaines vides « à remplir »', arbre1)
-await p.click('.themes-niveau[data-niveau="1re"] .arbre-theme:has(.case-domaine[value="1re/Trigonométrie"]) > .ligne-arbre > button.deplier')
-await p.click('.case-domaine[value="1re/Trigonométrie"]')
+ok(arbre1.themes.length === 4 && arbre1.perso && arbre1.cap === 2 && !arbre1.offiBloc && arbre1.vides >= 4, 'P) 1re (26 novembre 2026) : un seul arbre, les 4 thèmes du programme, plus de bloc à part ; Trigonométrie : 5 lignes PERSO et 2 lignes CAP', arbre1)
+// Les cinq lignes PERSO seules (la case du domaine cocherait aussi les CAP)
+await p.evaluate(() => { for (let k = 0; k < 5; k++) document.querySelector(`.case-competence[value="1re/Trigonométrie/${k}"]`).click() })
 ok(!(await p.evaluate(() => document.querySelector('.dialogue-flash .lancer').disabled)), 'P) La trigonométrie seule (que des questions de cours) : « Lancer » n\'est pas grisé')
 await p.click('.dialogue-flash .lancer')
 await p.waitForTimeout(1500)
 const flashP = await p.evaluate(() => window.__app.ui.flash.flash.questions.map(q => ({ id: q.id, forme: q.forme, figure: !!q.q.figure })))
-ok(flashP.length === 5 && flashP.every(q => q.forme === 'cours' && q.id.startsWith('cours-1re-Trigonométrie')), 'P) Un flash de trigonométrie : 5 questions de cours', flashP)
+ok(flashP.length === 5 && flashP.every(q => q.forme === 'cours' && /^cours-1re-Trigonométrie-\d$/.test(q.id)), 'P) Un flash des lignes PERSO de trigonométrie : 5 questions de cours', flashP)
 const pageP = await p.evaluate(() => window.__app.page)
 await p.keyboard.press('c'); await p.waitForTimeout(800)
 const vertsP = await p.evaluate(([v, pg]) => [...window.__app.tableau.formesDe(pg).values()].filter(f => f.couleur === v).length, [VERT, pageP])
 ok(vertsP >= 5, 'P) Corrigées en vert', vertsP)
 if (process.env.CAPTURE_TRIGO) await p.screenshot({ path: process.env.CAPTURE_TRIGO })
+await p.click('.bandeau-flash .fermer').catch(() => {})
+// Les deux capacités de Trigonométrie (CAP1, CAP2) cochées seules
+await p.click('button[title^="Automatismes"]')
+await p.waitForSelector('dialog.dialogue-flash[open]')
+await p.evaluate(() => { for (let k = 0, c; k < 200 && (c = document.querySelector('.themes-niveau:not([hidden]) input:checked')); k++) c.click() })
+if (process.env.CAPTURE_TRIGO_REGLAGE) {
+  // La recherche déplie ce qu'elle trouve
+  await p.fill('.themes-niveau[data-niveau="1re"] input[type="search"], .themes-niveau[data-niveau="1re"] input[placeholder^="Rechercher"]', 'cercle')
+  await p.waitForTimeout(400)
+  await p.screenshot({ path: process.env.CAPTURE_TRIGO_REGLAGE })
+}
+await p.evaluate(() => { for (const k of [0, 1]) document.querySelector(`.case-competence[value="1re/obj:Trigonométrie/${k}"]`).click() })
+await p.click('.dialogue-flash .lancer')
+await p.waitForTimeout(1500)
+const flashCap = await p.evaluate(() => window.__app.ui.flash.flash.questions.map(q => q.id))
+ok(flashCap.length === 5 && flashCap.every(id => id.startsWith('1re-trigo-') || /^cours-1re-Trigonométrie-10\d/.test(id)), 'P) Un flash des capacités de trigonométrie : exercices et questions de cours des CAP seulement', flashCap)
+await p.keyboard.press('c'); await p.waitForTimeout(800)
+if (process.env.CAPTURE_TRIGO_CAP) await p.screenshot({ path: process.env.CAPTURE_TRIGO_CAP })
 await p.click('.bandeau-flash .fermer').catch(() => {})
 
 // ---------- I. L'arbre du collège ----------
