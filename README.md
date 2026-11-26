@@ -6720,6 +6720,51 @@ recommandations.
   (partie P, et partie H adaptée : on déplie aussi la liste de l’épreuve
   de 1re avant de cocher ses domaines).
 
+## Les automatismes de 1re rangés comme la 3e
+
+Demandé par le professeur le 24 novembre 2026, à partir du seul programme
+de spécialité de 1re qu'il a envoyé ; il a demandé le 26 de commencer par
+la trigonométrie et de fusionner.
+
+- **Un seul arbre**, comme en 3e et en 2nde : les thèmes du programme de
+  1re (Algèbre, Analyse, Géométrie, Probabilités et statistiques) et leurs
+  domaines ; dans chaque domaine, les lignes **OFFI** (la liste
+  « Automatismes » du programme de 1re) puis les lignes **CAP** (les
+  capacités attendues, CAP1, CAP2…, avec leur intitulé exact,
+  `CAPACITES_LYCEE['1re']` dans `src/programme-lycee.ts`). Plus de bloc à
+  part « Automatismes de l'épreuve ». Les lignes de la liste de 2nde
+  restent en 2nde : pour réviser l'épreuve, on coche les deux niveaux.
+- **Où vont les 17 lignes OFFI** : les quatre taux d'évolution dans
+  *Suites numériques, modèles discrets* ; produit nul, signe et
+  développer-factoriser dans *Équations, fonctions polynômes du second
+  degré* ; tracer une droite, lire son équation réduite et le coefficient
+  directeur dans *Dérivation* ; résoudre graphiquement et signe ou
+  variations lus sur la courbe dans *Variations et courbes
+  représentatives* ; les deux lignes de probabilités dans *Probabilités
+  conditionnelles et indépendance* ; les trois de statistiques dans
+  *Variables aléatoires réelles*. Les 19 exercices et les questions de
+  cours suivent leur ligne (mêmes identifiants). Les intitulés sont ceux du
+  programme (« évènements », « boite »).
+- **Les réglages déjà gardés** avec les anciens domaines (« 1re/Probabilités »)
+  cochent les mêmes lignes (`REGLAGES_1RE_AVANT` dans `lycee.ts`,
+  `convertirAnciensDomaines` dans `flash.ts`, commun à la 2nde et à la 1re).
+- **Trigonométrie** : les cinq lignes PERSO restent, et les deux capacités
+  sont remplies (`src/automatismes/trigonometrie-1re-cap.ts`). *CAP1
+  Placer un point sur le cercle trigonométrique* : placer le point d'un
+  réel (la correction montre le point placé), retrouver la lettre du point
+  d'un réel parmi les seize, l'arc parcouru depuis I dans le sens direct ou
+  indirect (le réel de ]−π ; π] du point d'arrivée) ; cours : centre et
+  rayon du cercle, le sens direct, x et x + 2kπ au même point. *CAP2
+  Cosinus et sinus d'angles associés lus sur le cercle* : lecture avec les
+  deux points M et N dessinés, la valeur exacte sans dessin, les
+  coordonnées du symétrique d'un point (axes, origine, droite y = x) ;
+  cours : les symétries de −x, π − x, π + x, et les formules.
+- Les autres domaines sont encore « à remplir » : la revue des lignes OFFI
+  et les capacités, thème par thème, viennent ensuite.
+- Essais : `tests/automatismes.test.ts` (l'arbre de 1re, la conversion des
+  réglages), `tests/trigonometrie-1re.test.ts` (les CAP) ;
+  `lot10/E1-flash.mjs` (parties H et P adaptées).
+
 ## La barre du haut en familles (lot 24)
 
 Lot 3 de l'audit complet du 11 novembre 2026 (variante B de la maquette,

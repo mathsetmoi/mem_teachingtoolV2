@@ -8,10 +8,12 @@ import { describe, expect, it } from 'vitest'
 import katex from 'katex'
 import { AUTOMATISMES_1RE, COURS_1RE, tirerFlash } from '../src/automatismes'
 import { PROGRAMME_AUTOMATISMES } from '../src/programme-automatismes'
+import { SECTION_AUTOMATISMES, objectifsDeExercice } from '../src/objectifs-flash'
+import { CAPACITES_LYCEE } from '../src/programme-lycee'
 import { automatismesChoisis, coursChoisis, REGLAGES_PAR_DEFAUT } from '../src/flash'
 import { ASSOCIES, COMPETENCES_TRIGONOMETRIE, T_TRIGONOMETRIE, VALEURS_REMARQUABLES, enDegres, mesurePrincipale, reelAuHasard, reelGrand, valeurExacte } from '../src/automatismes/trigonometrie-1re'
 
-const trigo = COURS_1RE.filter(c => c.theme === T_TRIGONOMETRIE)
+const trigo = COURS_1RE.filter(c => c.theme === T_TRIGONOMETRIE && c.objectif === undefined)
 /** La valeur d'une écriture exacte : 0, 1, ±1/2, ±√2/2, ±√3/2 */
 const valeur = (t: string) => {
   const s = t.startsWith('-') ? -1 : 1, x = t.replace(/^-/, '')
@@ -120,12 +122,57 @@ describe('la trigonométrie de 1re', () => {
   })
 
   it('les exercices de 1re disent leur compétence de la liste officielle', () => {
-    const offi = PROGRAMME_AUTOMATISMES['1re'].find(t => t.offi)!
-    for (const a of AUTOMATISMES_1RE) {
-      const d = offi.domaines.find(x => x.cle === a.theme)!
+    // Les lignes OFFI sont rangées dans les domaines du programme (26 novembre 2026)
+    const offi = PROGRAMME_AUTOMATISMES['1re'].filter(t => t.section === SECTION_AUTOMATISMES).flatMap(t => t.domaines).filter(d => !d.competencesPerso)
+    for (const a of AUTOMATISMES_1RE.filter(x => x.competence !== undefined)) {
+      const d = offi.find(x => x.cle === a.theme)!
       expect(d.competences[a.competence!]).toBeTruthy()
     }
     // Chaque phrase de la liste a au moins un exercice
-    for (const d of offi.domaines) d.competences.forEach((_, k) => expect(AUTOMATISMES_1RE.some(a => a.theme === d.cle && a.competence === k)).toBe(true))
+    for (const d of offi) d.competences.forEach((_, k) => expect(AUTOMATISMES_1RE.some(a => a.theme === d.cle && a.competence === k)).toBe(true))
+  })
+})
+
+describe('les deux capacités attendues de Trigonométrie (CAP)', () => {
+  const caps = AUTOMATISMES_1RE.filter(a => a.id.startsWith('1re-trigo-'))
+  it('chaque capacité a ses exercices et ses questions de cours, rangés sous elle', () => {
+    expect(caps.length).toBe(6)
+    for (const a of caps) {
+      expect(a.programme, a.id).toBe(CAPACITES_LYCEE['1re'].find(t => t.nom === 'Analyse')!.domaines.find(d => d.nom === 'Trigonométrie')!.capacites[objectifsDeExercice('1re', a.id)!.ks[0]])
+      expect(objectifsDeExercice('1re', a.id)!.cle).toBe('obj:Trigonométrie')
+    }
+    const r = (k: number) => ({ ...REGLAGES_PAR_DEFAUT, niveaux: ['1re'], themes: ['1re/obj:Trigonométrie'], competences: [`1re/obj:Trigonométrie/${k}`] })
+    expect(automatismesChoisis(r(0)).map(a => a.id).sort()).toEqual(['1re-trigo-arc', '1re-trigo-lettre', '1re-trigo-placer'])
+    expect(automatismesChoisis(r(1)).map(a => a.id).sort()).toEqual(['1re-trigo-lecture', '1re-trigo-symetrique', '1re-trigo-valeur'])
+    expect(coursChoisis(r(0)).length).toBe(3)
+    expect(coursChoisis(r(1)).length).toBe(4)
+  })
+  it('les réponses sont justes, lisibles par KaTeX, et rien n\'est fixe', () => {
+    for (const a of caps) {
+      const vus = new Set<string>()
+      for (let k = 0; k < 60; k++) {
+        const q = a.generer()
+        vus.add(q.enonce + q.reponse)
+        for (const m of q.enonce.split('$').filter((_, i) => i % 2)) expect(() => katex.renderToString(m, { throwOnError: true })).not.toThrow()
+        // Une réponse : des maths sans $, ou un texte (§) avec ses maths entre $
+        const texte = q.reponse.startsWith('§')
+        if (!texte) expect(q.reponse, a.id).not.toContain('$')
+        for (const m of texte ? q.reponse.slice(1).split('$').filter((_, i) => i % 2) : [q.reponse]) expect(() => katex.renderToString(m, { throwOnError: true })).not.toThrow()
+        if (a.id === '1re-trigo-placer') expect(q.figureReponse).toMatch(/<path /)
+      }
+      expect(vus.size, a.id).toBeGreaterThan(2)
+    }
+  })
+  it('la valeur exacte d\'un angle associé est celle du calcul', () => {
+    const v = caps.find(a => a.id === '1re-trigo-valeur')!
+    const lire = (t: string) => {
+      const m = t.match(/\\(cos|sin)\\left\((.*)\\right\)/)!
+      const x = m[2].replace(/\\frac\{(\d*)\\pi\}\{(\d+)\}/g, (_, n, d) => `(${n || 1}*Math.PI/${d})`).replace(/\\pi/g, 'Math.PI')
+      return (m[1] === 'cos' ? Math.cos : Math.sin)(Function(`return ${x}`)() as number)
+    }
+    for (let k = 0; k < 100; k++) {
+      const q = v.generer()
+      expect(valeur(q.reponse)).toBeCloseTo(lire(q.enonce), 9)
+    }
   })
 })

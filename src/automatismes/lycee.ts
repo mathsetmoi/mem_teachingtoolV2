@@ -7,6 +7,7 @@
 import * as F from '../figures'
 import type { Automatisme, Facon, Question, QuestionCours } from './outils'
 import { coursTrigonometrie } from './trigonometrie-1re'
+import { AUTOMATISMES_1RE_TRIGO_CAP, COURS_1RE_TRIGO_CAP } from './trigonometrie-1re-cap'
 import { AUTOMATISMES_2NDE_NOMBRES_REELS, COURS_2NDE_NOMBRES_REELS, phraseATrou } from './seconde-nombres-reels'
 import { AUTOMATISMES_2NDE_GEOMETRIE, COURS_2NDE_GEOMETRIE, D2_GEOMETRIE } from './seconde-geometrie'
 import { PRENOMS, arrondi, choix, coord, deg, ent, etL, frac, grandNb, irreductible, lettre, melange, mot, nb, notions, pgcd, pt, pts, relNonNul, tableau, unTrou, une, unite } from './outils'
@@ -44,6 +45,26 @@ export const REGLAGES_2NDE_AVANT: Record<string, [string, number][]> = {
   [T_EVOLUTIONS]: [[D2_INFORMATION, 2]],
   [T_STATS]: [[D2_INFORMATION, 3], [D2_INFORMATION, 4], [D2_INFORMATION, 5], [D2_INFORMATION, 6], [D2_INFORMATION, 7]],
   [T_FONCTIONS]: [[D2_REPRESENTATION, 0], [D2_REPRESENTATION, 1], [D2_REPRESENTATION, 2]],
+}
+
+// En 1re, les domaines du programme de spécialité de 1re (26 novembre
+// 2026) : chaque phrase de la liste « Automatismes » du programme de 1re
+// est rangée dans le domaine où le professeur l'a mise (taux d'évolution
+// dans les suites, droites dans la dérivation, statistiques dans les
+// variables aléatoires).
+export const D1_SUITES = 'Suites numériques, modèles discrets'
+export const D1_SECOND_DEGRE = 'Équations, fonctions polynômes du second degré'
+export const D1_DERIVATION = 'Dérivation'
+export const D1_VARIATIONS = 'Variations et courbes représentatives des fonctions'
+export const D1_PROBAS_COND = 'Probabilités conditionnelles et indépendance'
+export const D1_VARIABLES = 'Variables aléatoires réelles'
+/** Les réglages de 1re gardés avant ce rangement (flash.ts les convertit) */
+export const REGLAGES_1RE_AVANT: Record<string, [string, number][]> = {
+  [T_CALCUL]: [[D1_SECOND_DEGRE, 0], [D1_SECOND_DEGRE, 1], [D1_SECOND_DEGRE, 2]],
+  [T_EVOLUTIONS]: [[D1_SUITES, 0], [D1_SUITES, 1], [D1_SUITES, 2], [D1_SUITES, 3]],
+  [T_FONCTIONS]: [[D1_VARIATIONS, 0], [D1_VARIATIONS, 1], [D1_DERIVATION, 0], [D1_DERIVATION, 1], [D1_DERIVATION, 2]],
+  [T_STATS]: [[D1_VARIABLES, 0], [D1_VARIABLES, 1], [D1_VARIABLES, 2]],
+  [T_PROBAS]: [[D1_PROBAS_COND, 0], [D1_PROBAS_COND, 1]],
 }
 
 // ---------- Outils du lycée ----------
@@ -759,7 +780,7 @@ const AUTOMATISMES_2NDE_LISTE: Automatisme[] = [
 export const AUTOMATISMES_1RE: Automatisme[] = [
   // ================= CALCUL NUMÉRIQUE ET ALGÉBRIQUE =================
   {
-    id: '1re-produit-nul', theme: T_CALCUL, titre: 'Résoudre une équation produit nul', competence: 0,
+    id: '1re-produit-nul', theme: D1_SECOND_DEGRE, titre: 'Résoudre une équation produit nul', competence: 0,
     programme: 'Déterminer les solutions d’une équation produit nul.',
     generer() {
       for (;;) {
@@ -773,7 +794,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-signe-affine', theme: T_CALCUL, titre: 'Signe d’une expression du premier degré', competence: 1,
+    id: '1re-signe-affine', theme: D1_SECOND_DEGRE, titre: 'Signe d’une expression du premier degré', competence: 1,
     programme: 'Déterminer le signe d’une expression du premier degré.',
     generer() {
       const a = relNonNul(1, 6), r = ent(-6, 6), b = -a * r, s = choix(['>', '<', '\\geqslant', '\\leqslant'])
@@ -787,7 +808,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-signe-produit', theme: T_CALCUL, titre: 'Signe d’une expression factorisée du second degré', competence: 1,
+    id: '1re-signe-produit', theme: D1_SECOND_DEGRE, titre: 'Signe d’une expression factorisée du second degré', competence: 1,
     programme: 'Déterminer le signe d’une expression factorisée du second degré.',
     generer() {
       for (;;) {
@@ -803,7 +824,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-developper-reduire', theme: T_CALCUL, titre: 'Développer, factoriser, réduire', competence: 2,
+    id: '1re-developper-reduire', theme: D1_SECOND_DEGRE, titre: 'Développer, factoriser, réduire', competence: 2,
     programme: 'Développer, factoriser, réduire une expression algébrique simple.',
     generer() {
       const a = ent(1, 5), b = relNonNul(1, 9), c = ent(1, 5), d = relNonNul(1, 9)
@@ -826,7 +847,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   // ================= ÉVOLUTIONS ET VARIATIONS =================
   {
-    id: '1re-appliquer-taux', theme: T_EVOLUTIONS, titre: 'Appliquer un taux : valeur finale ou initiale', competence: 0,
+    id: '1re-appliquer-taux', theme: D1_SUITES, titre: 'Appliquer un taux : valeur finale ou initiale', competence: 0,
     programme: 'Appliquer un taux d’évolution pour calculer une valeur finale ou initiale.',
     generer() {
       const t = choix([5, 10, 15, 20, 25, 30, 40, 50]), baisse = Math.random() < 0.5, V0 = 20 * ent(2, 20), c = baisse ? 1 - t / 100 : 1 + t / 100, V1 = arrondi(V0 * c)
@@ -837,7 +858,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-calculer-taux', theme: T_EVOLUTIONS, titre: 'Calculer un taux d’évolution', competence: 1,
+    id: '1re-calculer-taux', theme: D1_SUITES, titre: 'Calculer un taux d’évolution', competence: 1,
     programme: 'Calculer un taux d’évolution, l’exprimer en pourcentage.',
     generer() {
       const t = choix([-50, -40, -25, -20, -10, -5, 5, 10, 15, 20, 25, 30, 50, 75, 100, 150]), V0 = 20 * ent(1, 25), V1 = arrondi(V0 * (1 + t / 100))
@@ -846,7 +867,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-taux-successifs', theme: T_EVOLUTIONS, titre: 'Évolutions successives', competence: 2,
+    id: '1re-taux-successifs', theme: D1_SUITES, titre: 'Évolutions successives', competence: 2,
     programme: 'Calculer le taux d’évolution équivalent à plusieurs évolutions successives.',
     generer() {
       const t1 = choix([-50, -20, -10, 10, 20, 25, 50, 100]), t2 = choix([-50, -20, -10, 10, 20, 30, 50])
@@ -856,7 +877,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-taux-reciproque', theme: T_EVOLUTIONS, titre: 'Taux d’évolution réciproque', competence: 3,
+    id: '1re-taux-reciproque', theme: D1_SUITES, titre: 'Taux d’évolution réciproque', competence: 3,
     programme: 'Calculer un taux d’évolution réciproque.',
     generer() {
       const [t, r] = choix<[number, number]>([[25, -20], [100, -50], [60, -37.5], [150, -60], [300, -75], [-20, 25], [-50, 100], [-60, 150], [-75, 300], [-37.5, 60], [-80, 400], [400, -80]])
@@ -867,7 +888,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   // ================= FONCTIONS ET REPRÉSENTATIONS =================
   {
-    id: '1re-resoudre-graphique', theme: T_FONCTIONS, titre: 'Résoudre graphiquement f(x) = k, f(x) < k…', competence: 0,
+    id: '1re-resoudre-graphique', theme: D1_VARIATIONS, titre: 'Résoudre graphiquement f(x) = k, f(x) < k…', competence: 0,
     programme: 'Résoudre graphiquement une équation, une inéquation du type f(x) = k, f(x) < k.',
     generer() {
       for (;;) {
@@ -881,7 +902,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-signe-variations', theme: T_FONCTIONS, titre: 'Signe et variations lus sur une courbe', competence: 1,
+    id: '1re-signe-variations', theme: D1_VARIATIONS, titre: 'Signe et variations lus sur une courbe', competence: 1,
     programme: 'Déterminer graphiquement le signe d’une fonction ou son tableau de variations.',
     generer() {
       for (;;) {
@@ -904,7 +925,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-tracer-droite', theme: T_FONCTIONS, titre: 'Tracer une droite : deux de ses points', competence: 2,
+    id: '1re-tracer-droite', theme: D1_DERIVATION, titre: 'Tracer une droite : deux de ses points', competence: 0,
     programme: 'Tracer une droite donnée par son équation réduite ou par un point et son coefficient directeur.',
     generer() {
       const m = relNonNul(1, 4), p = ent(-5, 5)
@@ -917,7 +938,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-lire-equation', theme: T_FONCTIONS, titre: 'Lire l’équation réduite d’une droite', competence: 3,
+    id: '1re-lire-equation', theme: D1_DERIVATION, titre: 'Lire l’équation réduite d’une droite', competence: 1,
     programme: 'Lire graphiquement l’équation réduite d’une droite.',
     generer() {
       for (;;) {
@@ -932,7 +953,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-coefficient-directeur', theme: T_FONCTIONS, titre: 'Coefficient directeur à partir de deux points', competence: 4,
+    id: '1re-coefficient-directeur', theme: D1_DERIVATION, titre: 'Coefficient directeur à partir de deux points', competence: 2,
     programme: 'Déterminer le coefficient directeur d’une droite à partir des coordonnées de deux de ses points.',
     generer() {
       for (;;) {
@@ -944,7 +965,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   // ================= STATISTIQUES =================
   {
-    id: '1re-lire-echelle', theme: T_STATS, titre: 'Lire un graphique : origine, unités, échelles', competence: 0,
+    id: '1re-lire-echelle', theme: D1_VARIABLES, titre: 'Lire un graphique : origine, unités, échelles', competence: 0,
     programme: 'Lire un graphique (repérer l’origine du repère, les unités de graduations ou les échelles).',
     generer() {
       const [quoi, pasY] = choix<[string, number]>([
@@ -962,7 +983,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-graphique-donnees', theme: T_STATS, titre: 'Passer du graphique aux données et inversement', competence: 1,
+    id: '1re-graphique-donnees', theme: D1_VARIABLES, titre: 'Passer du graphique aux données et inversement', competence: 1,
     programme: 'Passer du graphique aux données et vice-versa.',
     generer() {
       return choix<() => Question>([
@@ -974,7 +995,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-indicateurs', theme: T_STATS, titre: 'Calculer et interpréter des indicateurs', competence: 2,
+    id: '1re-indicateurs', theme: D1_VARIABLES, titre: 'Calculer et interpréter des indicateurs', competence: 2,
     programme: 'Calculer et interpréter des indicateurs statistiques pour une série statistique.',
     generer() {
       return choix<() => Question>([
@@ -986,7 +1007,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   // ================= PROBABILITÉS =================
   {
-    id: '1re-tableau-croise', theme: T_PROBAS, titre: 'Probabilités conditionnelles : tableau croisé', competence: 0,
+    id: '1re-tableau-croise', theme: D1_PROBAS_COND, titre: 'Probabilités conditionnelles : tableau croisé', competence: 0,
     programme: 'Calculer des probabilités conditionnelles (tableau croisé d’effectifs).',
     generer() {
       const [[A, nA], [Ab, nAb], [B, nB], [Bb, nBb]] = choix<[string, string][]>([
@@ -1002,7 +1023,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-arbre', theme: T_PROBAS, titre: 'Probabilités conditionnelles : arbre pondéré', competence: 0,
+    id: '1re-arbre', theme: D1_PROBAS_COND, titre: 'Probabilités conditionnelles : arbre pondéré', competence: 0,
     programme: 'Calculer des probabilités conditionnelles (arbre pondéré).',
     generer() {
       const [A, B] = choix([['A', 'B'], ['M', 'T'], ['F', 'R'], ['C', 'D']])
@@ -1013,7 +1034,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     },
   },
   {
-    id: '1re-distinguer', theme: T_PROBAS, titre: 'Distinguer P(A ∩ B), P_A(B) et P_B(A)', competence: 1,
+    id: '1re-distinguer', theme: D1_PROBAS_COND, titre: 'Distinguer P(A ∩ B), P_A(B) et P_B(A)', competence: 1,
     programme: 'Distinguer P(A ∩ B), P_A(B), P_B(A).',
     generer() {
       const [A, nA, B, nB] = choix([['F', 'filles', 'I', 'internes'], ['M', 'malades', 'T', 'testés positifs'], ['S', 'sportifs', 'L', 'lecteurs'], ['C', 'clients fidèles', 'R', 'clients ayant une réduction']])
@@ -1026,6 +1047,8 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
       ])
     },
   },
+  // Les capacités attendues de Trigonométrie (26 novembre 2026)
+  ...AUTOMATISMES_1RE_TRIGO_CAP,
 ]
 
 // =============================================================
@@ -1162,7 +1185,7 @@ const COURS_2NDE_RANGES: QuestionCours[] = COURS_2NDE_PAR_THEME.map(c => ({
 }))
 
 export const COURS_1RE: QuestionCours[] = [
-  ...n1(T_CALCUL, [
+  ...n1(D1_SECOND_DEGRE, [
     ['L\'équation produit nul',
       () => { const a = ent(1, 9), b = ent(1, 9); return [`Quelle propriété permet de résoudre $(x - ${a})(x + ${b}) = 0$ ?`, 'un produit est nul si et seulement si l\'un de ses facteurs est nul'] },
       () => { const [a, b] = choix(DEUX_NOMS); return [`Compléter : $${a} \\times ${b} = 0$ si et seulement si…`, `$${a} = 0$ ou $${b} = 0$`] }],
@@ -1176,7 +1199,7 @@ export const COURS_1RE: QuestionCours[] = [
     ['Factoriser par un facteur commun',
       () => { const [a, b] = choix(DEUX_NOMS), k = choix(['k', '(x + 1)', '3', 'x']); return [`Factoriser $${k}${a} + ${k}${b}$.`, `$${k}(${a} + ${b})$`] }],
   ]),
-  ...n1(T_EVOLUTIONS, [
+  ...n1(D1_SUITES, [
     ['La valeur finale',
       () => { const t = choix([5, 10, 15, 20, 30]), [v] = choix([['V_0'], ['P_0'], ['y_0']]); return [`Une valeur $${v}$ augmente de $${pct(t)}$. Quel calcul donne la valeur finale ?`, `$${v} \\times ${nb(1 + t / 100)}$`] }],
     ['La valeur initiale',
@@ -1188,13 +1211,15 @@ export const COURS_1RE: QuestionCours[] = [
     ['Du coefficient au taux',
       () => { const t = choix([-40, -25, -12, -5, 3, 8, 15, 35, 60]); return [`Le coefficient multiplicateur est $${nb(1 + t / 100)}$. Quel est le taux d'évolution ?`, `$${nb(1 + t / 100)} - 1 = ${nb(t / 100)}$, soit $${t > 0 ? '+' : ''}${pct(t)}$`] }],
   ]),
-  ...n1(T_FONCTIONS, [
+  ...n1(D1_VARIATIONS, [
     ['Résoudre f(x) = k graphiquement',
       () => { const f = nomF(), k = ent(-5, 5); return [`Comment résout-on graphiquement $${f}(x) = ${k}$ ?`, `on lit les abscisses des points de la courbe d'ordonnée $${k}$`] }],
     ['Résoudre f(x) < k graphiquement',
       () => { const f = nomF(), k = ent(-5, 5); return [`Comment résout-on graphiquement $${f}(x) < ${k}$ ?`, `on lit les abscisses des points de la courbe situés strictement sous la droite d'équation $y = ${k}$`] }],
     ['Le signe d\'une fonction sur sa courbe',
       () => { const f = nomF(), a = ent(-5, 0), b = ent(1, 6); return [`La fonction $${f}$ est strictement positive sur $${intervalle(nb(a), nb(b), false, false)}$. Où est sa courbe sur cet intervalle ?`, 'au-dessus de l\'axe des abscisses'] }],
+  ]),
+  ...n1(D1_DERIVATION, [
     ['Le coefficient directeur',
       () => { const [A, B] = pts(2); return [`Quelle formule donne le coefficient directeur de la droite $(${A}${B})$ ?`, `$\\frac{y_${B} - y_${A}}{x_${B} - x_${A}}$`] },
       () => { const m = relNonNul(1, 5), p = relNonNul(1, 5); return [`Sur la droite $y = ${polynome([m, p])}$, de combien varie $y$ quand $x$ augmente de $1$ ?`, `de $${nb(m)}$, le coefficient directeur`] }],
@@ -1203,7 +1228,7 @@ export const COURS_1RE: QuestionCours[] = [
     ['Tracer une droite',
       () => { const m = relNonNul(1, 4), p = ent(-4, 4); return [`De quoi a-t-on besoin pour tracer la droite d'équation $y = ${polynome([m, p])}$ ?`, `de deux de ses points, par exemple $${coord(0, p)}$ et $${coord(1, m + p)}$`] }],
   ]),
-  ...n1(T_STATS, [
+  ...n1(D1_VARIABLES, [
     ['Moyenne et transformation',
       () => { const m = ent(8, 15), k = ent(2, 5); return une([`Une série a pour moyenne $${m}$. On ajoute $${k}$ à chaque valeur. Que devient la moyenne ?`, `elle augmente de $${k}$ : $${m + k}$`], [`Une série a pour moyenne $${m}$. On multiplie chaque valeur par $${k}$. Que devient la moyenne ?`, `elle est multipliée par $${k}$ : $${m * k}$`]) }],
     ['La moyenne pondérée',
@@ -1213,7 +1238,7 @@ export const COURS_1RE: QuestionCours[] = [
     ['Interpréter la médiane',
       () => { const m = ent(5, 40); return [`La médiane d'une série vaut $${m}$. Qu'est-ce que cela signifie ?`, `au moins la moitié des valeurs sont inférieures ou égales à $${m}$, au moins la moitié supérieures ou égales`] }],
   ]),
-  ...n1(T_PROBAS, [
+  ...n1(D1_PROBAS_COND, [
     ['La probabilité conditionnelle',
       () => { const [A, B] = choix(EVENEMENTS); return [`Quelle formule donne $P_{${A}}(${B})$ ?`, `$P_{${A}}(${B}) = \\frac{P(${A} \\cap ${B})}{P(${A})}$`] },
       () => { const [A, B] = choix(EVENEMENTS); return [`Comment lit-on $P_{${A}}(${B})$ ?`, `la probabilité de $${B}$ sachant $${A}$`] }],
@@ -1229,6 +1254,8 @@ export const COURS_1RE: QuestionCours[] = [
   // PERSO : Trigonométrie (Analyse), les questions du professeur, rangées
   // par compétence (voir trigonometrie-1re.ts)
   ...coursTrigonometrie(n1),
+  // CAP de Trigonométrie (26 novembre 2026, trigonometrie-1re-cap.ts)
+  ...COURS_1RE_TRIGO_CAP,
 ]
 
 // =============================================================

@@ -489,9 +489,38 @@ describe('les automatismes de 2nde et de 1re (épreuve anticipée)', () => {
     for (const [, autos] of lycee) for (const a of autos) expect(a.programme, a.id).toMatch(/^[A-ZÉ].*\.$/)
   })
 
-  it('en 1re, les thèmes suivent la liste officielle, dans son ordre', () => {
-    const ordre = ['Calcul numérique et algébrique', 'Évolutions et variations', 'Fonctions et représentations', 'Statistiques', 'Probabilités']
-    expect(themesDe(NIVEAUX.find(x => x.id === '1re')!)).toEqual(ordre)
+  it('en 1re, un seul arbre comme en 3e : les thèmes du programme de spécialité, chaque domaine avec ses lignes OFFI puis ses lignes CAP', () => {
+    const prog = PROGRAMME_AUTOMATISMES['1re']
+    // Plus de bloc à part : trois thèmes ont des lignes OFFI, les quatre ont des capacités
+    expect(prog.map(t => t.nom)).toEqual(['Algèbre', 'Analyse', 'Probabilités et statistiques', 'Algèbre', 'Analyse', 'Géométrie', 'Probabilités et statistiques'])
+    expect(prog.slice(0, 3).every(t => t.section === SECTION_AUTOMATISMES)).toBe(true)
+    expect(prog.slice(3).every(t => t.section === SECTION_CAPACITES)).toBe(true)
+    const offi = prog.slice(0, 3).flatMap(t => t.domaines)
+    expect(offi.map(d => d.cle)).toEqual(['Suites numériques, modèles discrets', 'Équations, fonctions polynômes du second degré', 'Dérivation', 'Variations et courbes représentatives des fonctions', 'Trigonométrie', 'Probabilités conditionnelles et indépendance', 'Variables aléatoires réelles'])
+    // Les 17 lignes de la liste « Automatismes » du programme de 1re, et les 5 PERSO de trigonométrie
+    expect(offi.map(d => d.competences.length)).toEqual([4, 3, 3, 2, 5, 2, 3])
+    expect(offi.find(d => d.cle === 'Trigonométrie')!.competencesPerso).toBe(true)
+    for (const d of offi) expect(cleObjectifsDe('1re', d.cle), d.cle).toBe('obj:' + d.cle)
+    // Les capacités attendues des 11 domaines du programme
+    const cap = prog.slice(3).flatMap(t => t.domaines)
+    expect(cap.length).toBe(11)
+    expect(cap.map(d => d.competences)).toEqual(CAPACITES_LYCEE['1re'].flatMap(t => t.domaines.map(d => d.capacites)))
+    for (const a of AUTOMATISMES_1RE) {
+      const d = offi.find(x => x.cle === a.theme)!
+      expect(d, a.id).toBeTruthy()
+      if (a.theme === 'Trigonométrie') continue
+      expect(d.competences[a.competence!].slice(0, 10), a.id).toBe(a.programme!.slice(0, 10))
+    }
+    // Chaque ligne OFFI garde ses exercices ; les questions de cours sont dans un domaine du programme
+    for (const d of offi) if (!d.competencesPerso) d.competences.forEach((c, k) => expect(AUTOMATISMES_1RE.some(a => a.theme === d.cle && a.competence === k), c).toBe(true))
+    for (const c of COURS_1RE) expect(offi.some(d => d.cle === c.theme), c.id).toBe(true)
+  })
+
+  it('en 1re, un réglage gardé avec les anciens domaines coche les mêmes lignes dans les domaines du programme', () => {
+    const r = lireReglages(JSON.stringify({ niveaux: ['1re'], themes: ['1re/Fonctions et représentations', '1re/Probabilités', '1re/Trigonométrie'], competences: ['1re/Fonctions et représentations/0', '1re/Fonctions et représentations/4', '1re/Trigonométrie/2'] }))
+    expect(r.themes.sort()).toEqual(['1re/Dérivation', '1re/Probabilités conditionnelles et indépendance', '1re/Trigonométrie', '1re/Variations et courbes représentatives des fonctions'])
+    expect(r.competences.sort()).toEqual(['1re/Dérivation/2', '1re/Trigonométrie/2', '1re/Variations et courbes représentatives des fonctions/0'])
+    expect(automatismesChoisis(r).map(a => a.id).sort()).toEqual(['1re-arbre', '1re-coefficient-directeur', '1re-distinguer', '1re-resoudre-graphique', '1re-tableau-croise'])
   })
 
   it('en 2nde, un seul arbre comme en 3e : les quatre thèmes du programme, chaque domaine avec ses lignes OFFI puis ses lignes CAP', () => {
