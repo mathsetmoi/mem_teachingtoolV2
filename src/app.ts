@@ -114,6 +114,9 @@ export interface Interface {
    *  « Annuler » rendait est revenue par Ctrl+Z) : il s'en va ; sans clé,
    *  quel qu'il soit */
   oublierAction(cle?: string): void
+  /** Ctrl+C : la copie part aussi en image PNG, pour la coller hors de
+   *  l'outil (voir sorties/image.ts) ; facultatif (les essais s'en passent) */
+  copierAussiEnImage?(formes: Forme[], html: string, texte: string): Promise<boolean>
   /** Le menu du rôle du doigt (dessine, déplace, auto) */
   ouvrirReglageDoigt(): void
   /** Le menu de la Gomme (lot 5 : le trait entier, ou seulement là où elle
@@ -396,6 +399,8 @@ export class App {
   collages: { cle: number; pointeur: { clientX: number; clientY: number } | null; pages: Map<string, P> } | null = null
   /** La copie que l'événement copy doit ranger (voir ecrireSysteme) */
   copieAEcrire: Copie | null = null
+  /** L'écriture de la dernière copie en image (vrai : partie), pour les essais */
+  copieEnImage: Promise<boolean> | null = null
   copieEcrite = false
   /** L'heure de la dernière copie que le presse-papiers du système a
    *  refusée : Ctrl+V la colle quand même (voir surColler) */
@@ -897,6 +902,8 @@ export class App {
     this.collages = { cle: c.t, pointeur: this.pointeurSurZone && { ...this.pointeurSurZone }, pages: new Map() }
     this.garderCopie(c)
     this.ecrireSysteme(c)
+    // Et en image, pour la coller hors de l'outil (WhatsApp…)
+    this.copieEnImage = this.ui?.copierAussiEnImage?.(formes, versHtml(c), versTexte(c)) ?? null
     const n = c.formes.length
     if (dire) this.ui.message(n === 1 ? '1 objet copié' : `${n} objets copiés`)
     return true

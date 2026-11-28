@@ -320,6 +320,25 @@ async function sourisDehors(page) { await page.mouse.move(400, 10); await page.m
   await ctrl(cdp, 'c')
   verifier('Copier une image : son point lié est copié avec elle (« 2 objets copiés »)', (await dernierMessage(page)) === '2 objets copiés', JSON.stringify(await messages(page)))
   a0 = await etat(page)
+  // Ctrl+C met aussi une image PNG dans le presse-papiers du système, pour
+  // la coller hors de l'outil (WhatsApp…), à côté de la copie marquée
+  const sys = await page.evaluate(async () => {
+    const partie = await window.__app.copieEnImage
+    const [item] = await navigator.clipboard.read()
+    const r = { partie, types: item.types }
+    if (item.types.includes('image/png')) {
+      const bm = await createImageBitmap(await item.getType('image/png'))
+      const cv = Object.assign(document.createElement('canvas'), { width: bm.width, height: bm.height })
+      const g = cv.getContext('2d'); g.drawImage(bm, 0, 0)
+      const pt = (x, y) => [...g.getImageData(Math.round(x * bm.width), Math.round(y * bm.height), 1, 1).data]
+      r.l = bm.width; r.gauche = pt(0.3, 0.5); r.droite = pt(0.7, 0.5)
+    }
+    if (item.types.includes('text/html')) r.marquee = (await (await item.getType('text/html')).text()).includes('data-copie')
+    return r
+  })
+  verifier('… et part aussi en image PNG (on la colle dans WhatsApp), à côté de la copie marquée', sys.partie === true && sys.types.includes('image/png') && sys.marquee && sys.types.includes('text/plain'), JSON.stringify(sys))
+  verifier('… l\'image montre l\'image copiée (rouge à gauche, bleu à droite)', sys.gauche?.[0] > 180 && sys.gauche[2] < 100 && sys.droite?.[2] > 150 && sys.droite[0] < 100, JSON.stringify(sys))
+  a0 = await etat(page)
   await ctrl(cdp, 'v')
   const colles = await formesSel(page)
   const nImg = colles.find(f => f.type === 'image'), nPt = colles.find(f => f.type === 'polygone')
@@ -328,6 +347,17 @@ async function sourisDehors(page) { await page.mouse.move(400, 10); await page.m
   verifier('… le point lié (P, pris sur la page) reçoit la première lettre libre, D, jamais P\'', JSON.stringify(nPt?.noms) === '["D"]', JSON.stringify(nPt?.noms))
   await ctrl(cdp, 'z')
   verifier('… et Ctrl+Z retire l\'image et son point ensemble', JSON.stringify((await etat(page)).ids) === JSON.stringify(a0.ids))
+  // Des formules seules : leur LaTeX en texte, sans image
+  const Fo = await poser(page, { type: 'formule', x: 900, y: 500, latex: 'a^2+b^2=c^2' })
+  await page.evaluate(id => { const a = window.__app; a.selection.clear(); a.selection.add(id) }, Fo)
+  await ctrl(cdp, 'c')
+  const sysF = await page.evaluate(async () => {
+    const partie = await window.__app.copieEnImage
+    const [item] = await navigator.clipboard.read()
+    return { partie, types: item.types, texte: item.types.includes('text/plain') ? await (await item.getType('text/plain')).text() : null }
+  })
+  verifier('Une formule seule copiée : son LaTeX en texte, sans image', sysF.partie === false && !sysF.types.includes('image/png') && sysF.texte === 'a^2+b^2=c^2', JSON.stringify(sysF))
+  await page.evaluate(id => { const a = window.__app; a.selection.clear(); a.tableau.nouveauGeste(); a.tableau.supprimer(a.page, [id]) }, Fo)
   void Pt
 
   // ----- Le champ d'une formule : le texte, pas les objets -----

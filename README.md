@@ -7709,7 +7709,12 @@ une image collée avec lui suit la nouvelle image. La copie passe d'une page à 
 lendemain ce qu'on avait oublié avoir copié), et entre la version en ligne et
 la version hors ligne par le presse-papiers du système, images comprises (leurs
 pixels voyagent avec elles). Collées dans un autre logiciel, des formules
-seules donnent leur LaTeX. Une image copiée ailleurs (une capture d'écran) se
+seules donnent leur LaTeX ; tout le reste (une image, de l'écriture, une
+figure, l'image du fond copiée par le menu de la page) part aussi en image
+PNG, cadrée sur ce qu'on a copié, sur le fond de la page : on la colle dans
+WhatsApp, un message ou un traitement de texte, et Ctrl+V dans l'outil colle
+toujours les objets eux-mêmes. Un navigateur qui ne sait pas copier d'image
+garde la copie seule, sans message. Une image copiée ailleurs (une capture d'écran) se
 colle toujours comme une image importée. Ce qui vient du presse-papiers du
 système n'entre jamais dans la page telle quelle : seules les copies de MEM
 teachingtool sont lues, chaque forme est refaite champ par champ (une forme
