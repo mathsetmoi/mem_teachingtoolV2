@@ -112,6 +112,6 @@ export const COURS_1RE_SUITES: QuestionCours[] = [
   notion(2, 105, 'Le coefficient global', () => phraseATrou('Le coefficient multiplicateur global de plusieurs évolutions successives est le [produit] des coefficients [multiplicateurs].')),
   notion(2, 106, 'Des évolutions successives', () => { const n = ent(2, 4); return [`Comment obtient-on le coefficient multiplicateur global de $${n}$ évolutions successives ?`, `on multiplie les $${n}$ coefficients multiplicateurs`] }),
   notion(2, 107, 'Une hausse puis une baisse', () => { const t = choix([10, 20, 25, 50]); return phraseATrou(`Une hausse de $${pct(t)}$ suivie d'une baisse de $${pct(t)}$ fait [baisser] la valeur.`) }),
-  notion(3, 108, 'L’évolution réciproque', () => phraseATrou('Le coefficient de l’évolution réciproque est l’[inverse] du coefficient de départ.')),
+  notion(3, 108, 'L’évolution réciproque', () => { const [c, r] = choix<[string, string]>([['1{,}25', '0{,}8'], ['0{,}8', '1{,}25'], ['2', '0{,}5'], ['0{,}5', '2'], ['4', '0{,}25'], ['2{,}5', '0{,}4'], ['5', '0{,}2']]); return phraseATrou(`Le coefficient de l’évolution réciproque est l’[inverse] du coefficient de départ : pour $${c}$, c'est [$${r}$].`) }),
   notion(3, 109, 'Revenir au départ', () => { const [t, r] = choix<[number, number]>([[25, 20], [100, 50], [300, 75], [400, 80]]); return phraseATrou(`Après une hausse de [$${pct(t)}$], il faut une baisse de [$${pct(r)}$] pour revenir à la valeur de départ.`) }),
 ]
