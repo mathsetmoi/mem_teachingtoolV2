@@ -95,6 +95,8 @@ export function arbreUnifie(a: AidesArbre): string {
       const cochee = ok && coche(valeur) && (!visees.length || visees.includes(`${valeur}/${k}`))
       return `<li data-type="${sorte}" data-n="${ok ? nb : 0}" data-t="${a.html(sansAccents(c))}"><label${ok ? '' : ' class="sans-exercice"'}><input type="checkbox" class="case-competence" value="${a.html(valeur)}/${k}"${cochee ? ' checked' : ''}${ok ? '' : ' disabled'}>${sorte === 'CAP' ? ETIQUETTE.CAP.replace('>CAP<', `>CAP${k + 1}<`) : ETIQUETTE[sorte]}<span>${a.texte(c)}</span><small>${ok ? nb : 'à remplir'}</small></label></li>`
     }).join('')
+    // Un sous-domaine du programme coiffe les lignes officielles du domaine
+    if (type === 'OFFI' && d.sousDomaine) return { html: `<li class="sous-domaine"><span class="nom-sous-domaine">${a.texte(d.sousDomaine)}</span><ul>${h}</ul></li>`, cochables }
     return { html: h, cochables }
   }
 
@@ -186,7 +188,8 @@ export function brancherArbre(zone: HTMLElement): () => void {
       li.classList.toggle('filtre-masque', !visible)
     })
     arbre.querySelectorAll<HTMLElement>('.arbre-domaine[data-fusion]').forEach(d => {
-      d.classList.toggle('filtre-masque', actif && !d.querySelector('li:not(.filtre-masque)'))
+      d.querySelectorAll<HTMLElement>('li.sous-domaine').forEach(s => s.classList.toggle('filtre-masque', !s.querySelector('li[data-type]:not(.filtre-masque)')))
+      d.classList.toggle('filtre-masque', actif && !d.querySelector('li[data-type]:not(.filtre-masque)'))
       // Les compteurs d'un domaine : cochées sur possibles, par étiquette
       const c = d.querySelector<HTMLElement>('.compteurs')!
       c.innerHTML = TYPES.map(t => {

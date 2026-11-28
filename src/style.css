@@ -910,6 +910,9 @@ body:has(dialog[open]) .barre-actions { visibility: hidden; }
 .dialogue-flash .arbre-domaine li label { align-items: flex-start; min-height: 30px; padding: 4px 0; font-size: 14px; line-height: 1.35; }
 .dialogue-flash .arbre-domaine li label input { margin-top: 1px; }
 .dialogue-flash .arbre-domaine li label.sans-exercice { color: var(--encre-douce); cursor: default; }
+/* Un sous-domaine du programme, au-dessus de ses lignes */
+.arbre-domaine li.sous-domaine > .nom-sous-domaine { display: block; padding: 4px 0 2px; font-size: 13px; font-weight: 600; color: var(--encre-douce); }
+.arbre-domaine li.sous-domaine > ul { padding-left: 14px; margin-bottom: 2px; }
 .etiquette-perso { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 5px; background: #fbe9dd; color: #a4481a; font-size: 11px; font-weight: 700; letter-spacing: .05em; vertical-align: 1px; }
 .etiquette-offi { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 5px; background: #e2f1e6; color: #23683a; font-size: 11px; font-weight: 700; letter-spacing: .05em; vertical-align: 1px; }
 .arbre-domaine.vide .ligne-arbre { color: var(--encre-douce); min-height: 30px; }

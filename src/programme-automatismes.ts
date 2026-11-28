@@ -31,6 +31,9 @@ export interface DomaineProgramme {
   /** Un domaine du programme dont les compétences sont celles du
    *  professeur : l'étiquette PERSO va seulement sur ses compétences */
   competencesPerso?: boolean
+  /** Un sous-domaine du programme qui coiffe les lignes de la liste
+   *  officielle du domaine (en 1re, « Évolutions et variations ») */
+  sousDomaine?: string
 }
 export interface ThemeProgramme {
   nom: string
@@ -364,7 +367,7 @@ export const PROGRAMME_AUTOMATISMES: Record<string, ThemeProgramme[]> = {
   // (« 1re/Probabilités ») sont convertis à la lecture (REGLAGES_1RE_AVANT).
   '1re': [
     { nom: 'Algèbre', domaines: [
-      { cle: 'Suites numériques, modèles discrets', competences: [
+      { cle: 'Suites numériques, modèles discrets', sousDomaine: 'Évolutions et variations', competences: [
         'Appliquer un taux d’évolution pour calculer une valeur finale ou initiale.',
         'Calculer un taux d’évolution, l’exprimer en pourcentage.',
         'Calculer le taux d’évolution équivalent à plusieurs évolutions successives.',

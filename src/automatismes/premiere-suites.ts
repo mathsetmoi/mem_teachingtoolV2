@@ -87,7 +87,7 @@ export const AUTOMATISMES_1RE_SUITES: Automatisme[] = [
     return { enonce: `Une valeur ${quoi}. Quelle évolution, en pourcentage, la ramène à sa valeur de départ ?`, reponse: taux(r) }
   }),
   exo(3, 'inverse', 'Le coefficient réciproque : l’inverse', () => {
-    const c = choix(['1{,}25', '2', '0{,}5', '0{,}8', '4'])
+    const c = choix(['1{,}25', '2', '0{,}5', '0{,}8', '4', '0{,}25', '2{,}5', '0{,}4', '5', '0{,}2'])
     return { enonce: `Une évolution a pour coefficient multiplicateur $${c}$. Quel calcul donne le coefficient de l'évolution réciproque ?`, reponse: mot(`$\\frac{1}{${c}}$, l'inverse de $${c}$`) }
   }),
 ]
