@@ -6759,10 +6759,23 @@ la trigonométrie et de fusionner.
   deux points M et N dessinés, la valeur exacte sans dessin, les
   coordonnées du symétrique d'un point (axes, origine, droite y = x) ;
   cours : les symétries de −x, π − x, π + x, et les formules.
+- **Suites (revue du 28 novembre 2026)** : les quatre lignes OFFI des taux
+  d'évolution sont rangées sous le sous-domaine du programme
+  « Évolutions et variations » (champ facultatif `sousDomaine` d'un
+  domaine, un intertitre au-dessus de ses lignes dans la fenêtre). Chaque
+  ligne a ses exercices et ses phrases à compléter
+  (`src/automatismes/premiere-suites.ts`) : le coefficient d'une hausse ou
+  d'une baisse, la relation de récurrence, les calculs de la valeur finale
+  ou initiale ; le taux depuis un coefficient, doubler ou diviser ; la même
+  évolution deux fois, le coefficient global, une hausse puis une baisse ;
+  le coefficient réciproque, revenir au départ. Toutes les valeurs se
+  calculent de tête. Le cours de la ligne 1, « Augmenter/Diminuer de t %,
+  c'est multiplier par 1 ± t/100 », cache tour à tour chacun de ses mots.
+  Les anciennes questions de cours de Suites sont devenues des exercices.
 - Les autres domaines sont encore « à remplir » : la revue des lignes OFFI
   et les capacités, thème par thème, viennent ensuite.
 - Essais : `tests/automatismes.test.ts` (l'arbre de 1re, la conversion des
-  réglages), `tests/trigonometrie-1re.test.ts` (les CAP) ;
+  réglages), `tests/trigonometrie-1re.test.ts` (les CAP), `tests/premiere-suites.test.ts` ;
   `lot10/E1-flash.mjs` (parties H et P adaptées).
 
 ## La barre du haut en familles (lot 24)
