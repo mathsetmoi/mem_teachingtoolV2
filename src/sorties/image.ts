@@ -171,6 +171,33 @@ export function copierEnImage(h: HoteImage, q: AImager): void {
   }, () => h.message('La copie de l\'image a été refusée.', enregistrer))
 }
 
+/**
+ * Ctrl+C (et « Copier », « Copier l'image du fond ») : la copie part aussi
+ * en image PNG, pour qu'on la colle hors de l'outil (WhatsApp, un message,
+ * un traitement de texte), qui ne savent rien faire de la copie marquée. Un
+ * seul ClipboardItem porte les trois : l'image (une promesse, faite pendant
+ * que la copie part : rien n'est attendu avant navigator.clipboard.write,
+ * dans le geste), le text/html marqué (Ctrl+V dans l'outil retrouve les
+ * objets tels quels, pas leur image) et le text/plain. Le presse-papiers a
+ * déjà reçu le HTML et le texte par execCommand('copy') : si le navigateur
+ * ne sait pas écrire une image, ou refuse, la copie reste celle-là, sans
+ * message (elle se colle toujours dans l'outil). Des formules seules gardent
+ * leur LaTeX en texte, sans image : on les colle dans un document.
+ * Rend la promesse de l'écriture (vrai : l'image est partie), pour les essais.
+ */
+export function copierAussiEnImage(ap: Apercus, page: PageAPeindre, formes: Forme[], html: string, texte: string): Promise<boolean> {
+  if (!formes.length || formes.every(f => f.type === 'formule') || !presseImage()) return Promise.resolve(false)
+  try {
+    const png = imagePng(ap, page, { fond: ap.fondImprime(), formes }).then(b => { if (!b) throw new Error('Pas d\'image'); return b })
+    png.catch(() => null)
+    return navigator.clipboard.write([new ClipboardItem({
+      'image/png': png,
+      'text/html': new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([texte], { type: 'text/plain' }),
+    })]).then(() => true, () => false)
+  } catch { return Promise.resolve(false) }
+}
+
 /** « Enregistrer l'image (.png) » : l'image déjà faite, téléchargée */
 async function enregistrerImage(h: HoteImage, image: Promise<Blob | null>, nom: string) {
   let b: Blob | null = null

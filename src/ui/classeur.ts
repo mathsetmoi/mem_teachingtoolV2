@@ -28,9 +28,10 @@ import { deLaSeance } from '../seances'
 import type { PageAPeindre } from '../sorties/apercu'
 import { ouvrirFenetrePdf } from '../sorties/export-pdf'
 import type { CibleExport, HoteFenetrePdf } from '../sorties/export-pdf'
-import { copierEnImage, nomDeLImage } from '../sorties/image'
+import { copierAussiEnImage, copierEnImage, nomDeLImage } from '../sorties/image'
 import { AUTOUR_DU_TEXTE, COURTS_LES_PLUS_LONGS, ID_ETAT, PLUSIEURS_RANGEES, SEANCES_AU_MENU, TITRE_FICHIER, TITRE_PLUS_TELEPHONE } from '../ui'
 import type { FormeBoutonClasseur } from '../ui'
+import type { Forme } from '../types'
 import { accorder, compterObjets } from '../verrou'
 
 export const methodesClasseur = {
@@ -391,6 +392,13 @@ export const methodesClasseur = {
     // Le point d'un simple toucher qui attend encore est de la page
     app.poserCeQuiAttend()
     this.copierPageEnImage(id)
+  },
+
+  /** Ctrl+C : la copie part aussi en image, pour la coller hors de l'outil
+   *  (voir copierAussiEnImage). Ces formes sont celles de la page affichée. */
+  copierAussiEnImage(this: UI, formes: Forme[], html: string, texte: string): Promise<boolean> {
+    if (!this.apercus) return Promise.resolve(false)
+    return copierAussiEnImage(this.apercus, this.pageAPeindre(this.app.page), formes, html, texte)
   },
 
   /** La page entière en image (le menu de la page ; celui d'une vignette de
