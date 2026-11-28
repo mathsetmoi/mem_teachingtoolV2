@@ -28,8 +28,12 @@ button, select, input { font: inherit; color: inherit; }
 #app { position: fixed; inset: 0; }
 /* -webkit-touch-callout : sur iPad et iPhone, l'appui long (le menu de MEM,
    voir App.armerAppuiLong) ne fait paraître ni loupe ni bulle du système */
+/* overflow: clip, et non hidden : une zone « hidden » se fait encore défiler
+   par le navigateur (la calculatrice NumWorks qui prend le clavier, plus bas
+   que l'écran) ; décalée, l'encre paraîtrait au-dessus du stylet. Voir aussi
+   la garde dans Calculatrices. */
 #zone {
-  position: absolute; inset: 0; overflow: hidden;
+  position: absolute; inset: 0; overflow: hidden; overflow: clip;
   touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   cursor: crosshair;
 }
