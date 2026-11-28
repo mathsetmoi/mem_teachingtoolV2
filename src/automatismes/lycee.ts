@@ -8,6 +8,7 @@ import * as F from '../figures'
 import type { Automatisme, Facon, Question, QuestionCours } from './outils'
 import { coursTrigonometrie } from './trigonometrie-1re'
 import { AUTOMATISMES_1RE_TRIGO_CAP, COURS_1RE_TRIGO_CAP } from './trigonometrie-1re-cap'
+import { AUTOMATISMES_1RE_SUITES, COURS_1RE_SUITES } from './premiere-suites'
 import { AUTOMATISMES_2NDE_NOMBRES_REELS, COURS_2NDE_NOMBRES_REELS, phraseATrou } from './seconde-nombres-reels'
 import { AUTOMATISMES_2NDE_GEOMETRIE, COURS_2NDE_GEOMETRIE, D2_GEOMETRIE } from './seconde-geometrie'
 import { PRENOMS, arrondi, choix, coord, deg, ent, etL, frac, grandNb, irreductible, lettre, melange, mot, nb, notions, pgcd, pt, pts, relNonNul, tableau, unTrou, une, unite } from './outils'
@@ -870,7 +871,8 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     id: '1re-taux-successifs', theme: D1_SUITES, titre: 'Évolutions successives', competence: 2,
     programme: 'Calculer le taux d’évolution équivalent à plusieurs évolutions successives.',
     generer() {
-      const t1 = choix([-50, -20, -10, 10, 20, 25, 50, 100]), t2 = choix([-50, -20, -10, 10, 20, 30, 50])
+      // Des couples qui se calculent de tête (28 novembre 2026)
+      const [t1, t2] = choix<[number, number]>([[10, 10], [20, -10], [10, -10], [50, -20], [100, -50], [-50, 100], [20, 50], [-20, 50], [50, 50], [-10, -10], [25, -20], [-20, 25], [-50, -50], [10, 20], [100, 100]])
       const g = arrondi(((1 + t1 / 100) * (1 + t2 / 100) - 1) * 100)
       const dire = (t: number) => t > 0 ? `une hausse de $${pct(t)}$` : `une baisse de $${pct(-t)}$`
       return { enonce: `${choix(['Un prix', 'Une action', 'Un loyer'])} connaît ${dire(t1)}, puis ${dire(t2)}. Quelle est l'évolution globale, en pourcentage ?`, reponse: g === 0 ? mot('aucune : $0\\,\\%$') : mot(dire(g)) }
@@ -880,7 +882,7 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
     id: '1re-taux-reciproque', theme: D1_SUITES, titre: 'Taux d’évolution réciproque', competence: 3,
     programme: 'Calculer un taux d’évolution réciproque.',
     generer() {
-      const [t, r] = choix<[number, number]>([[25, -20], [100, -50], [60, -37.5], [150, -60], [300, -75], [-20, 25], [-50, 100], [-60, 150], [-75, 300], [-37.5, 60], [-80, 400], [400, -80]])
+      const [t, r] = choix<[number, number]>([[25, -20], [100, -50], [150, -60], [300, -75], [-20, 25], [-50, 100], [-60, 150], [-75, 300], [-80, 400], [400, -80]])
       const quoi = choix(['un prix', 'une population', 'un tarif'])
       const dire = (x: number) => x > 0 ? `une hausse de $${pct(x)}$` : `une baisse de $${pct(-x)}$`
       return { enonce: `Après ${dire(t)}, quelle évolution ramène ${quoi} à sa valeur de départ ?`, reponse: mot(dire(r)) }
@@ -1049,6 +1051,8 @@ export const AUTOMATISMES_1RE: Automatisme[] = [
   },
   // Les capacités attendues de Trigonométrie (26 novembre 2026)
   ...AUTOMATISMES_1RE_TRIGO_CAP,
+  // Suites : les lignes OFFI revues le 28 novembre 2026 (premiere-suites.ts)
+  ...AUTOMATISMES_1RE_SUITES,
 ]
 
 // =============================================================
@@ -1199,18 +1203,9 @@ export const COURS_1RE: QuestionCours[] = [
     ['Factoriser par un facteur commun',
       () => { const [a, b] = choix(DEUX_NOMS), k = choix(['k', '(x + 1)', '3', 'x']); return [`Factoriser $${k}${a} + ${k}${b}$.`, `$${k}(${a} + ${b})$`] }],
   ]),
-  ...n1(D1_SUITES, [
-    ['La valeur finale',
-      () => { const t = choix([5, 10, 15, 20, 30]), [v] = choix([['V_0'], ['P_0'], ['y_0']]); return [`Une valeur $${v}$ augmente de $${pct(t)}$. Quel calcul donne la valeur finale ?`, `$${v} \\times ${nb(1 + t / 100)}$`] }],
-    ['La valeur initiale',
-      () => { const t = choix([5, 10, 15, 20, 30]), [v] = choix([['V_1'], ['P_1'], ['y_1']]); return [`Après une baisse de $${pct(t)}$, on obtient $${v}$. Quel calcul redonne la valeur initiale ?`, `$${v} \\div ${nb(1 - t / 100)}$`] }],
-    ['Des évolutions successives',
-      () => { const n = ent(2, 4); return [`Comment obtient-on le coefficient multiplicateur global de $${n}$ évolutions successives ?`, `on multiplie les $${n}$ coefficients multiplicateurs`] }],
-    ['L\'évolution réciproque',
-      () => { const c = nb(1 + choix([5, 10, 20, 25, 50]) / 100); return [`Une évolution a pour coefficient multiplicateur $${c}$. Quel est le coefficient de l'évolution réciproque ?`, `$\\frac{1}{${c}}$, l'inverse`] }],
-    ['Du coefficient au taux',
-      () => { const t = choix([-40, -25, -12, -5, 3, 8, 15, 35, 60]); return [`Le coefficient multiplicateur est $${nb(1 + t / 100)}$. Quel est le taux d'évolution ?`, `$${nb(1 + t / 100)} - 1 = ${nb(t / 100)}$, soit $${t > 0 ? '+' : ''}${pct(t)}$`] }],
-  ]),
+  // Suites : les questions de cours sont dans premiere-suites.ts (28 novembre
+  // 2026) ; les anciennes y sont devenues des exercices de leur ligne
+  ...COURS_1RE_SUITES,
   ...n1(D1_VARIATIONS, [
     ['Résoudre f(x) = k graphiquement',
       () => { const f = nomF(), k = ent(-5, 5); return [`Comment résout-on graphiquement $${f}(x) = ${k}$ ?`, `on lit les abscisses des points de la courbe d'ordonnée $${k}$`] }],

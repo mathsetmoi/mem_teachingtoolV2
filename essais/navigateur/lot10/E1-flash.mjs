@@ -270,6 +270,28 @@ ok(flashCap.length === 5 && flashCap.every(id => id.startsWith('1re-trigo-') || 
 await p.keyboard.press('c'); await p.waitForTimeout(800)
 if (process.env.CAPTURE_TRIGO_CAP) await p.screenshot({ path: process.env.CAPTURE_TRIGO_CAP })
 await p.click('.bandeau-flash .fermer').catch(() => {})
+// Les suites de 1re : les quatre lignes sous le sous-domaine « Évolutions et variations »
+await p.click('button[title^="Automatismes"]')
+await p.waitForSelector('dialog.dialogue-flash[open]')
+await p.evaluate(() => { for (let k = 0, c; k < 200 && (c = document.querySelector('.themes-niveau:not([hidden]) input:checked')); k++) c.click() })
+const sousDom = await p.evaluate(() => {
+  const s = document.querySelector('.themes-niveau[data-niveau="1re"] li.sous-domaine')
+  return { nom: s?.querySelector('.nom-sous-domaine')?.textContent, lignes: s ? s.querySelectorAll('li[data-type="OFFI"]').length : 0 }
+})
+ok(sousDom.nom === 'Évolutions et variations' && sousDom.lignes === 4, 'P) Suites : quatre lignes OFFI sous « Évolutions et variations »', sousDom)
+await p.evaluate(() => { for (const k of [0, 1, 2, 3]) document.querySelector(`.case-competence[value="1re/Suites numériques, modèles discrets/${k}"]`).click() })
+if (process.env.CAPTURE_SUITES_REGLAGE) {
+  await p.evaluate(() => { const s = document.querySelector('.themes-niveau[data-niveau="1re"] li.sous-domaine'); s.closest('.enfants').hidden = false; s.closest('.arbre-theme').querySelector(':scope > .enfants').hidden = false; s.scrollIntoView({ block: 'center' }) })
+  await p.waitForTimeout(300)
+  await p.screenshot({ path: process.env.CAPTURE_SUITES_REGLAGE })
+}
+await p.click('.dialogue-flash .lancer')
+await p.waitForTimeout(1500)
+const flashSuites = await p.evaluate(() => window.__app.ui.flash.flash.questions.map(q => q.id))
+ok(flashSuites.length === 5 && flashSuites.every(id => /^1re-(suites-|taux-|appliquer-taux|calculer-taux)/.test(id) || /^cours-1re-Suites/.test(id)), 'P) Un flash des suites : leurs exercices et leurs questions de cours', flashSuites)
+await p.keyboard.press('c'); await p.waitForTimeout(800)
+if (process.env.CAPTURE_SUITES) await p.screenshot({ path: process.env.CAPTURE_SUITES })
+await p.click('.bandeau-flash .fermer').catch(() => {})
 
 // ---------- I. L'arbre du collège ----------
 await p.keyboard.press('Escape').catch(() => {})
