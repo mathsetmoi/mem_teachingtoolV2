@@ -136,6 +136,16 @@ export class Calculatrices {
       const a = document.activeElement
       if (a instanceof HTMLIFrameElement && this.couche.contains(a)) a.blur()
     }, true)
+    // L'émulateur prend le clavier dès qu'il paraît (et à chaque remise à
+    // zéro) : le navigateur fait alors défiler ce qui le contient pour le
+    // montrer, la zone du tableau comprise quand la calculatrice dépasse du
+    // bas de l'écran. Décalée, la zone ne serait plus sous le pointeur :
+    // l'encre paraîtrait au-dessus du stylet. Elle ne défile donc jamais
+    // (le CSS la coupe déjà sans défilement, overflow: clip ; ceci pour les
+    // navigateurs qui ne le connaissent pas).
+    conteneur.addEventListener('scroll', () => {
+      if (conteneur.scrollTop || conteneur.scrollLeft) { conteneur.scrollTop = 0; conteneur.scrollLeft = 0 }
+    })
   }
 
   /** Une calculatrice qu'on vient de poser : son écran d'accueil sera noté */

@@ -43,6 +43,11 @@
   // Le curseur clignote, comme sur la vraie : sans appui, rien ne doit s'écrire
   setInterval(() => { curseur = !curseur; peindre() }, 500)
   peindre()
+  // Comme la vraie, elle prend le clavier dès qu'elle paraît : le navigateur
+  // fait défiler ce qui la contient pour la montrer (voir E3)
+  const touches = document.querySelector('.touches')
+  touches.tabIndex = -1
+  setTimeout(() => touches.focus(), 50)
 </script>
 </body>
 </html>
